@@ -1,0 +1,64 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "49466d78-738a-4dee-a2fb-2143f7800b45",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "item",
+				"operation": "create",
+				"container": {
+					"__rl": true,
+					"value": "container1",
+					"mode": "list",
+					"cachedResultName": "container1"
+				},
+				"customProperties": "{\n\t\"id\": \"item1\"\n}",
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.azureCosmosDb",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "00d6b986-6b8a-43ee-a6a5-b6a7c165c991",
+			"name": "Azure Cosmos Db",
+			"credentials": {
+				"microsoftAzureCosmosDbSharedKeyApi": {
+					"id": "exampleId",
+					"name": "Azure Cosmos DB account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Azure Cosmos Db",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Azure Cosmos Db": [
+			{
+				"json": {
+					"id": "item1",
+					"_rid": "4PVyAMPuBtoEAAAAAAAAAA==",
+					"_self": "dbs/4PVyAA==/colls/4PVyAMPuBto=/docs/4PVyAMPuBtoEAAAAAAAAAA==/",
+					"_etag": "\"bb000143-0000-0300-0000-67d9a2430000\"",
+					"_attachments": "attachments/",
+					"_ts": 1742316099
+				}
+			}
+		]
+	}
+}

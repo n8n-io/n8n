@@ -1,0 +1,287 @@
+{
+    "type": "object",
+    "properties": {
+        "attachments": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "content_type": {
+                        "type": "string"
+                    },
+                    "filename": {
+                        "type": "string"
+                    },
+                    "height": {
+                        "type": "integer"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "placeholder": {
+                        "type": "string"
+                    },
+                    "placeholder_version": {
+                        "type": "integer"
+                    },
+                    "proxy_url": {
+                        "type": "string"
+                    },
+                    "size": {
+                        "type": "integer"
+                    },
+                    "url": {
+                        "type": "string"
+                    },
+                    "width": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "author": {
+            "type": "object",
+            "properties": {
+                "accent_color": {
+                    "type": "null"
+                },
+                "banner": {
+                    "type": "null"
+                },
+                "banner_color": {
+                    "type": "null"
+                },
+                "clan": {
+                    "type": "null"
+                },
+                "collectibles": {
+                    "type": "null"
+                },
+                "discriminator": {
+                    "type": "string"
+                },
+                "flags": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "primary_guild": {
+                    "type": "null"
+                },
+                "public_flags": {
+                    "type": "integer"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "channel_id": {
+            "type": "string"
+        },
+        "components": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "components": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "integer"
+                                },
+                                "label": {
+                                    "type": "string"
+                                },
+                                "style": {
+                                    "type": "integer"
+                                },
+                                "type": {
+                                    "type": "integer"
+                                },
+                                "url": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "id": {
+                        "type": "integer"
+                    },
+                    "type": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "content": {
+            "type": "string"
+        },
+        "embeds": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "author": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "url": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "color": {
+                        "type": "integer"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "provider": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "url": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "thumbnail": {
+                        "type": "object",
+                        "properties": {
+                            "flags": {
+                                "type": "integer"
+                            },
+                            "height": {
+                                "type": "integer"
+                            },
+                            "placeholder": {
+                                "type": "string"
+                            },
+                            "placeholder_version": {
+                                "type": "integer"
+                            },
+                            "proxy_url": {
+                                "type": "string"
+                            },
+                            "url": {
+                                "type": "string"
+                            },
+                            "width": {
+                                "type": "integer"
+                            }
+                        }
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "url": {
+                        "type": "string"
+                    },
+                    "video": {
+                        "type": "object",
+                        "properties": {
+                            "flags": {
+                                "type": "integer"
+                            },
+                            "height": {
+                                "type": "integer"
+                            },
+                            "placeholder": {
+                                "type": "string"
+                            },
+                            "placeholder_version": {
+                                "type": "integer"
+                            },
+                            "url": {
+                                "type": "string"
+                            },
+                            "width": {
+                                "type": "integer"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "flags": {
+            "type": "integer"
+        },
+        "id": {
+            "type": "string"
+        },
+        "mention_everyone": {
+            "type": "boolean"
+        },
+        "mention_roles": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "mentions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "accent_color": {
+                        "type": "null"
+                    },
+                    "banner": {
+                        "type": "null"
+                    },
+                    "banner_color": {
+                        "type": "null"
+                    },
+                    "clan": {
+                        "type": "null"
+                    },
+                    "collectibles": {
+                        "type": "null"
+                    },
+                    "discriminator": {
+                        "type": "string"
+                    },
+                    "flags": {
+                        "type": "integer"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "primary_guild": {
+                        "type": "null"
+                    },
+                    "public_flags": {
+                        "type": "integer"
+                    },
+                    "username": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "pinned": {
+            "type": "boolean"
+        },
+        "timestamp": {
+            "type": "string"
+        },
+        "tts": {
+            "type": "boolean"
+        },
+        "type": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

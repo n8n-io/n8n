@@ -1,36 +1,29 @@
 import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject,
-	INodeTypeDescription,
-	INodeType,
-	IWebhookResponseData,
+	type IHookFunctions,
+	type IWebhookFunctions,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookResponseData,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
-import {
-	apiRequest,
-} from './GenericFunctions';
+import { apiRequest } from './GenericFunctions';
 
-import { createHmac } from 'crypto';
-
+// import { createHmac } from 'crypto';
 
 export class TrelloTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Trello Trigger',
 		name: 'trelloTrigger',
-		icon: 'file:trello.png',
+		icon: 'file:trello.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when Trello events occure.',
+		description: 'Starts the workflow when Trello events occur',
 		defaults: {
 			name: 'Trello Trigger',
-			color: '#026aa7',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'trelloApi',
@@ -40,7 +33,7 @@ export class TrelloTrigger implements INodeType {
 		webhooks: [
 			{
 				name: 'setup',
-				httpMethod: 'GET',
+				httpMethod: 'HEAD',
 				responseMode: 'onReceived',
 				path: 'webhook',
 			},
@@ -62,24 +55,12 @@ export class TrelloTrigger implements INodeType {
 				description: 'ID of the model of which to subscribe to events',
 			},
 		],
-
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
-				if (this.getWebhookName() === 'setup') {
-					// Is setup-webhook which only gets used once when
-					// the webhook gets created so nothing to do.
-					return true;
-				}
-
-				const credentials = this.getCredentials('trelloApi');
-
-				if (credentials === undefined) {
-					throw new Error('No credentials got returned!');
-				}
+				const credentials = await this.getCredentials('trelloApi');
 
 				// Check all the webhooks which exist already if it is identical to the
 				// one that is supposed to get created.
@@ -102,18 +83,9 @@ export class TrelloTrigger implements INodeType {
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				if (this.getWebhookName() === 'setup') {
-					// Is setup-webhook which only gets used once when
-					// the webhook gets created so nothing to do.
-					return true;
-				}
-
 				const webhookUrl = this.getNodeWebhookUrl('default');
 
-				const credentials = this.getCredentials('trelloApi');
-				if (credentials === undefined) {
-					throw new Error('No credentials got returned!');
-				}
+				const credentials = await this.getCredentials('trelloApi');
 
 				const idModel = this.getNodeParameter('id') as string;
 
@@ -138,19 +110,10 @@ export class TrelloTrigger implements INodeType {
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
-				if (this.getWebhookName() === 'setup') {
-					// Is setup-webhook which only gets used once when
-					// the webhook gets created so nothing to do.
-					return true;
-				}
-
 				const webhookData = this.getWorkflowStaticData('node');
 
 				if (webhookData.webhookId !== undefined) {
-					const credentials = this.getCredentials('trelloApi');
-					if (credentials === undefined) {
-						throw new Error('No credentials got returned!');
-					}
+					const credentials = await this.getCredentials('trelloApi');
 
 					const endpoint = `tokens/${credentials.apiToken}/webhooks/${webhookData.webhookId}`;
 
@@ -158,12 +121,12 @@ export class TrelloTrigger implements INodeType {
 
 					try {
 						await apiRequest.call(this, 'DELETE', endpoint, body);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 				}
 
@@ -171,8 +134,6 @@ export class TrelloTrigger implements INodeType {
 			},
 		},
 	};
-
-
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const webhookName = this.getWebhookName();
@@ -188,14 +149,10 @@ export class TrelloTrigger implements INodeType {
 
 		const bodyData = this.getBodyData();
 
-		const credentials = this.getCredentials('trelloApi');
-
-		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
-		}
-
 		// TODO: Check why that does not work as expected even though it gets done as described
-		//       https://developers.trello.com/page/webhooks
+		//    https://developers.trello.com/page/webhooks
+
+		//const credentials = await this.getCredentials('trelloApi');
 		// // Check if the request is valid
 		// const headerData = this.getHeaderData() as IDataObject;
 		// const webhookUrl = this.getNodeWebhookUrl('default');
@@ -207,9 +164,7 @@ export class TrelloTrigger implements INodeType {
 		// }
 
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(bodyData),
-			],
+			workflowData: [this.helpers.returnJsonArray(bodyData)],
 		};
 	}
 }

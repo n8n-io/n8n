@@ -2,240 +2,504 @@
 
 Great that you are here and you want to contribute to n8n
 
-
 ## Contents
 
-- [Code of Conduct](#code-of-conduct)
-- [Directory Structure](#directory-structure)
-- [Development Setup](#development-setup)
-- [Development Cycle](#development-cycle)
-- [Create Custom Nodes](#create-custom-nodes)
-- [Create a new node to contribute to n8n](#create-a-new-node-to-contribute-to-n8n)
-- [Checklist before submitting a new node](#checklist-before-submitting-a-new-node)
-- [Extend Documentation](#extend-documentation)
-- [Contributor License Agreement](#contributor-license-agreement)
+- [Contributing to n8n](#contributing-to-n8n)
+	- [Contents](#contents)
+	- [Code of conduct](#code-of-conduct)
+	- [Directory structure](#directory-structure)
+	- [Development setup](#development-setup)
+		- [Dev Container](#dev-container)
+		- [Requirements](#requirements)
+			- [Node.js](#nodejs)
+			- [pnpm](#pnpm)
+				- [pnpm workspaces](#pnpm-workspaces)
+			- [corepack](#corepack)
+			- [Build tools](#build-tools)
+		- [Actual n8n setup](#actual-n8n-setup)
+		- [Start](#start)
+	- [Development cycle](#development-cycle)
+		- [Community PR Guidelines](#community-pr-guidelines)
+			- [**1. Change Request/Comment**](#1-change-requestcomment)
+			- [**2. General Requirements**](#2-general-requirements)
+			- [**3. PR Specific Requirements**](#3-pr-specific-requirements)
+			- [**4. Workflow Summary for Non-Compliant PRs**](#4-workflow-summary-for-non-compliant-prs)
+		- [Test suite](#test-suite)
+			- [Unit tests](#unit-tests)
+			- [Code Coverage](#code-coverage)
+			- [E2E tests](#e2e-tests)
+	- [Releasing](#releasing)
+	- [Create custom nodes](#create-custom-nodes)
+	- [Extend documentation](#extend-documentation)
+	- [Contribute workflow templates](#contribute-workflow-templates)
+	- [Contributor License Agreement](#contributor-license-agreement)
 
-
-## Code of Conduct
+## Code of conduct
 
 This project and everyone participating in it are governed by the Code of
 Conduct which can be found in the file [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 By participating, you are expected to uphold this code. Please report
 unacceptable behavior to jan@n8n.io.
 
-
-## Directory Structure
+## Directory structure
 
 n8n is split up in different modules which are all in a single mono repository.
 
 The most important directories:
 
- - [/docker/image](/docker/image) - Dockerfiles to create n8n containers
- - [/docker/compose](/docker/compose) - Examples Docker Setups
- - [/packages](/packages) - The different n8n modules
- - [/packages/cli](/packages/cli) - CLI code to run front- & backend
- - [/packages/core](/packages/core) - Core code which handles workflow
-                                      execution, active webhooks and
-                                      workflows
- - [/packages/editor-ui](/packages/editor-ui) - Vue frontend workflow editor
- - [/packages/node-dev](/packages/node-dev) - Simple CLI to create new n8n-nodes
- - [/packages/nodes-base](/packages/nodes-base) - Base n8n nodes
- - [/packages/workflow](/packages/workflow) - Workflow code with interfaces which
-                                            get used by front- & backend
+- [/docker/images](/docker/images) - Dockerfiles to create n8n containers
+- [/packages](/packages) - The different n8n modules
+- [/packages/cli](/packages/cli) - CLI code to run front- & backend; this also contains the code for n8n's APIs
+- [/packages/core](/packages/core) - Core code which handles workflow
+  execution, active webhooks and
+  workflows. **Contact n8n before
+  starting on any changes here**
+- [/packages/frontend/@n8n/design-system](/packages/design-system) - Vue frontend components
+- [/packages/frontend/editor-ui](/packages/editor-ui) - Vue frontend workflow editor
+- [/packages/node-dev](/packages/node-dev) - CLI to create new n8n-nodes
+- [/packages/nodes-base](/packages/nodes-base) - Base n8n nodes
+- [/packages/workflow](/packages/workflow) - Workflow code with interfaces which
+  get used by front- & backend
 
+## Development setup
 
-## Development Setup
+If you want to change or extend n8n you have to make sure that all the needed
+dependencies are installed and the packages get linked correctly. Here's a short guide on how that can be done:
 
-If you want to change or extend n8n you have to make sure that all needed
-dependencies are installed and the packages get linked correctly. Here a short guide on how that can be done:
+### Dev Container
 
+If you already have VS Code and Docker installed, you can click [here](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://github.com/n8n-io/n8n) to get started. Clicking these links will cause VS Code to automatically install the Dev Containers extension if needed, clone the source code into a container volume, and spin up a dev container for use.
 
 ### Requirements
 
+#### Node.js
 
-#### Build Tools
+[Node.js](https://nodejs.org/en/) version 24 or newer is required for development purposes.
+
+#### pnpm
+
+[pnpm](https://pnpm.io/) version 10.22 or newer is required for development purposes. We recommend installing it with [corepack](#corepack).
+
+##### pnpm workspaces
+
+n8n is split up into different modules which are all in a single mono repository.
+To facilitate the module management, [pnpm workspaces](https://pnpm.io/workspaces) are used.
+This automatically sets up file-links between modules which depend on each other.
+
+#### corepack
+
+We recommend enabling [Node.js corepack](https://nodejs.org/docs/latest-v16.x/api/corepack.html)  and pnpm with:
+
+```bash
+corepack enable
+corepack prepare pnpm@10.22.0 --activate
+```
+
+**IMPORTANT**: If you have installed Node.js via homebrew, you'll need to run `brew install corepack`, since homebrew explicitly removes `npm` and `corepack` from [the `node` formula](https://github.com/Homebrew/homebrew-core/blob/master/Formula/node.rb#L66).
+
+**IMPORTANT**: If you are on windows, you'd need to run `corepack enable` and `corepack prepare --activate` in a terminal as an administrator.
+
+#### Build tools
 
 The packages which n8n uses depend on a few build tools:
 
-Linux:
-```
+Debian/Ubuntu:
+
+```bash
 apt-get install -y build-essential python
 ```
 
+CentOS:
+
+```bash
+yum install gcc gcc-c++ make
+```
+
 Windows:
-```
-npm install -g windows-build-tools
-```
 
-#### lerna
-
-n8n is split up in different modules which are all in a single mono repository.
-To facilitate those modules management, [lerna](https://lerna.js.org) gets
-used. It automatically sets up file-links between modules which depend on each
-other.
-
-So for the setup to work correctly lerna has to be installed globally like this:
-
-```
-npm install -g lerna
+```bash
+npm add -g windows-build-tools
 ```
 
+MacOS:
+
+No additional packages required.
+
+#### actionlint (for GitHub Actions workflow development)
+
+If you plan to modify GitHub Actions workflow files (`.github/workflows/*.yml`), you'll need [actionlint](https://github.com/rhysd/actionlint) for workflow validation:
+
+**macOS (Homebrew):**
+```bash
+brew install actionlint
+```
+> **Note:** actionlint is only required if you're modifying workflow files. It runs automatically via git hooks when workflow files are changed.
 
 ### Actual n8n setup
 
-> **IMPORTANT**: All the steps bellow have to get executed at least once to get the development setup up and running!
+> **IMPORTANT**: All the steps below have to get executed at least once to get the development setup up and running!
 
-
-Now that everything n8n requires to run is installed the actual n8n code can be
+Now that everything n8n requires to run is installed, the actual n8n code can be
 checked out and set up:
 
-1. Clone the repository
-	```
-	git clone https://github.com/n8n-io/n8n.git
-	```
+#### For external contributors
 
-1. Go into repository folder
-	```
-	cd n8n
-	```
+1. [Fork](https://guides.github.com/activities/forking/#fork) the n8n repository.
 
-1. Install all dependencies of all modules and link them together:
-	```
-	lerna bootstrap --hoist
-	```
+2. Clone your forked repository:
 
-1. Build all the code:
-	```
-	npm run build
-	```
+   ```
+   git clone https://github.com/<your_github_username>/n8n.git
+   ```
 
+3. Go into repository folder:
 
+   ```
+   cd n8n
+   ```
+
+4. Add the original n8n repository as `upstream` to your forked repository:
+
+   ```
+   git remote add upstream https://github.com/n8n-io/n8n.git
+   ```
+
+#### For everyone
+
+1. Go into the cloned repository folder
+
+2. Install all dependencies of all modules and link them together:
+
+   ```
+   pnpm install
+   ```
+
+3. Build all the code:
+   ```
+   pnpm build
+   ```
 
 ### Start
 
 To start n8n execute:
 
+```bash
+pnpm start
 ```
-npm run start
-```
 
+## Development cycle
 
-## Development Cycle
-
-While iterating on n8n modules code, you can run `npm run dev`. It will then
+While iterating on n8n modules code, you can run `pnpm dev`. It will then
 automatically build your code, restart the backend and refresh the frontend
 (editor-ui) on every change you make.
+Given the size of the code base and the number of modules, we recommend only watching the modules you're
+actively working on.
+
+### Basic Development Workflow Example (most used within n8n)
+
+If you're working on API and FE, a lot of team members run the following steps:
 
 1. Start n8n in development mode:
-	```
-	npm run dev
-	```
-1. hack, hack, hack
-1. Check if everything still runs in production mode
-	```
-	npm run build
-	npm run start
-	```
-1. Create tests
-1. Run all tests
-	```
-	npm run test
-	```
-1. Commit code and create pull request
+```bash
+# Terminal 1: CLI code runs the backend
+cd packages/cli
+pnpm dev
+```
+```bash
+# Terminal 2: Vue frontend workflow editor
+cd packages/frontend/editor-ui
+pnpm dev
+```
+2. Hack, hack, hack
+3. Check if everything still runs in production mode:
+   ```
+   pnpm build
+   pnpm start
+   ```
+4. Create tests
+5. Run all [tests](#test-suite):
+   ```
+   pnpm test
+   ```
+6. Commit code and [create a pull request](https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork)
 
+Note: If you're changing code outside of `packages/cli` and `packages/frontend/editor-ui` in this setup, please re-run `pnpm build`
+
+### Selective Package Development
+
+Running all packages in development mode can be resource-intensive. For better performance, run only the packages relevant to your work:
+
+#### Available Filtered Commands
+
+- **Backend-only development:**
+  ```bash
+  pnpm dev:be
+  ```
+  Excludes frontend packages like editor-ui and design-system
+
+- **Frontend-only development:**
+  ```bash
+  pnpm dev:fe
+  ```
+  Runs editor-ui & design system development server
+
+- **AI/LangChain nodes development:**
+  ```bash
+  pnpm dev:ai
+  ```
+  Runs only essential packages for AI node development
+
+#### Custom Selective Development
+
+For even more focused development, you can run packages individually:
+
+**Example 1: Working on custom nodes**
+```bash
+# Terminal 1: Build and watch nodes package
+cd packages/nodes-base
+pnpm dev
+
+# Terminal 2: Run the CLI with hot reload
+cd packages/cli
+N8N_DEV_RELOAD=true pnpm dev
+```
+
+**Example 2: Pure frontend development**
+```bash
+# Terminal 1: Start the backend server (no watching)
+pnpm start
+
+# Terminal 2: Run frontend dev server
+cd packages/editor-ui
+pnpm dev
+```
+
+**Example 3: Working on a specific node package**
+```bash
+# Terminal 1: Watch your node package
+cd packages/nodes-base  # or your custom node package
+pnpm watch
+
+# Terminal 2: Run CLI with hot reload
+cd packages/cli
+N8N_DEV_RELOAD=true pnpm dev
+```
+
+#### Running the BE server with a clean database
+
+If you want to flush your existing database, you can delete the `~/.n8n` folder.
+However, there might be times where you want to test a feature in a clean n8n set-up without losing your existing local setup.
+In such use cases, you can specify another `N8N_USER_FOLDER`, e.g.:
+
+```bash
+packages/cli$ N8N_USER_FOLDER=~/.n8n3/ pnpm run dev
+packages/cli$ N8N_USER_FOLDER=~/.n8n4/ pnpm run dev
+```
+
+
+### Hot Reload for Nodes (N8N_DEV_RELOAD)
+
+When developing custom nodes or credentials, you can enable hot reload to automatically detect changes without restarting the server by setting
+
+```bash
+N8N_DEV_RELOAD=true pnpm dev
+```
+
+**Performance considerations:**
+- File watching adds overhead to your system, especially on slower machines
+- The watcher monitors potentially thousands of files, which can impact CPU and memory usage
+- On resource-constrained systems, consider developing without hot reload and manually restarting when needed
+
+### Run local instances in different configurations
+
+We use [**Testcontainers**](https://testcontainers.com/) to easily and quickly spin up a local instance with multiple different configurations for testing.
+
+**1. Get a Docker image**
+
+You can either build one from your own branch:
+
+```bash
+pnpm build:docker
+```
+
+or set an environment variable to use a different image:
+
+```bash
+N8N_DOCKER_IMAGE=n8nio/n8n:latest
+```
+
+**2. Run a stack**
+
+- **SQLite:**
+
+  ```bash
+  pnpm --filter n8n-containers stack:sqlite
+  ```
+
+- **Postgres:**
+
+  ```bash
+  pnpm --filter n8n-containers stack:postgres
+  ```
+
+- **Queue:**
+
+  ```bash
+  pnpm --filter n8n-containers stack:queue
+  ```
+
+- **Multi-Main:**
+
+  ```bash
+  pnpm --filter n8n-containers stack:multi-main
+  ```
+
+**3. Customize or scale**
+
+Customize with environment variables:
+
+```bash
+pnpm --filter n8n-containers stack --env N8N_ENABLED_MODULES=insights
+```
+
+Or scale up:
+
+```bash
+pnpm --filter n8n-containers stack --queue --mains 4 --workers 20
+```
+
+Each instance gets its own port, and the webhook URL matches the main URL. Multi-main stacks use a load balancer by default.
+
+>**Running testcontainers with docker alternatives**
+>- This does not work with Podman out of the box. You need to [configure Testcontainers for Podman](https://podman-desktop.io/tutorial/testcontainers-with-podman) first.
+>- Alternatively, you can use colima and set DOCKER_HOST and TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE environment variables as described [here](https://node.testcontainers.org/supported-container-runtimes/#colima)
+
+Refer to [packages/testing/containers/README.md](packages/testing/containers/README.md) for more information.
+
+### Work locally with syslog
+
+For manual testing of the event bus with syslog (TCP or UDP), see [packages/cli/test/integration/eventbus/README-manual-test-syslog.md](packages/cli/test/integration/eventbus/README-manual-test-syslog.md). An enterprise license is required to configure syslog in n8n.
+
+### Performance Considerations
+
+The full development mode (`pnpm dev`) runs multiple processes in parallel:
+
+1. **TypeScript compilation** for each package
+2. **File watchers** monitoring source files
+3. **Nodemon** restarting the backend on changes
+4. **Vite dev server** for the frontend with HMR
+5. **Multiple build processes** for various packages
+
+**Performance impact:**
+- Can consume significant CPU and memory resources
+- File system watching creates overhead, especially on:
+  - Networked file systems
+  - Virtual machines with shared folders
+  - Systems with slower I/O performance
+- The more packages you run in dev mode, the more system resources are consumed
+
+**Recommendations for resource-constrained environments:**
+1. Use selective development commands based on your task
+2. Close unnecessary applications to free up resources
+3. Monitor system performance and adjust your development approach accordingly
+
+---
+
+### Community PR Guidelines
+
+#### **1. Change Request/Comment**
+
+Please address the requested changes or provide feedback within 14 days. If there is no response or updates to the pull request during this time, it will be automatically closed. The PR can be reopened once the requested changes are applied.
+
+#### **2. General Requirements**
+
+- **Follow the Style Guide:**
+  - Ensure your code adheres to n8n's coding standards and conventions (e.g., formatting, naming, indentation). Use linting tools where applicable.
+- **TypeScript Compliance:**
+  - Do not use `ts-ignore` .
+  - Ensure code adheres to TypeScript rules.
+- **Avoid Repetitive Code:**
+  - Reuse existing components, parameters, and logic wherever possible instead of redefining or duplicating them.
+  - For nodes: Use the same parameter across multiple operations rather than defining a new parameter for each operation (if applicable).
+- **Testing Requirements:**
+  - PRs **must include tests**:
+    - Unit tests
+    - Workflow tests for nodes (example [here](https://github.com/n8n-io/n8n/tree/master/packages/nodes-base/nodes/Switch/V3/test))
+    - UI tests (if applicable)
+- **Typos:**
+  - Use a spell-checking tool, such as [**Code Spell Checker**](https://marketplace.visualstudio.com/items?itemName=streetsidesoftware.code-spell-checker), to avoid typos.
+
+#### **3. PR Specific Requirements**
+
+- **Small PRs Only:**
+  - Focus on a single feature or fix per PR.
+- **Naming Convention:**
+  - Follow [n8n's PR Title Conventions](https://github.com/n8n-io/n8n/blob/master/.github/pull_request_title_conventions.md#L36).
+- **New Nodes:**
+  - PRs that introduce new nodes will be **auto-closed** unless they are explicitly requested by the n8n team and aligned with an agreed project scope. However, you can still explore [building your own nodes](https://docs.n8n.io/integrations/creating-nodes/overview/), as n8n offers the flexibility to create your own custom nodes.
+- **Typo-Only PRs:**
+  - Typos are not sufficient justification for a PR and will be rejected.
+
+#### **4. Workflow Summary for Non-Compliant PRs**
+
+- **No Tests:** If tests are not provided, the PR will be auto-closed after **14 days**.
+- **Non-Small PRs:** Large or multifaceted PRs will be returned for segmentation.
+- **New Nodes/Typo PRs:** Automatically rejected if not aligned with project scope or guidelines.
+
+---
 
 ### Test suite
 
-The tests can be started via:
+#### Unit tests
+
+Unit tests can be started via:
+
 ```
-npm run test
+pnpm test
 ```
 
 If that gets executed in one of the package folders it will only run the tests
 of this package. If it gets executed in the n8n-root folder it will run all
 tests of all packages.
 
+If you made a change which requires an update on a `.test.ts.snap` file, pass `-u` to the command to run tests or press `u` in watch mode.
 
+#### Code Coverage
+We track coverage for all our code on [Codecov](https://app.codecov.io/gh/n8n-io/n8n).
+But when you are working on tests locally, we recommend running your tests with env variable `COVERAGE_ENABLED` set to `true`. You can then view the code coverage in the `coverage` folder, or you can use [this VSCode extension](https://marketplace.visualstudio.com/items?itemName=ryanluker.vscode-coverage-gutters) to visualize the coverage directly in VSCode.
 
-## Create Custom Nodes
+#### E2E tests
 
-It is very easy to create own nodes for n8n. More information about that can
-be found in the documentation of "n8n-node-dev" which is a small CLI which
-helps with n8n-node-development.
+n8n uses [Playwright](https://playwright.dev) for E2E testing.
 
-[To n8n-node-dev](https://github.com/n8n-io/n8n/tree/master/packages/node-dev)
+E2E tests can be started via one of the following commands:
 
+- `pnpm --filter=n8n-playwright test:local` - Run tests locally (starts local server on port 5680 and runs UI tests)
+- `pnpm --filter=n8n-playwright test:local --ui` - Run tests in interactive UI mode (useful for debugging)
+- `pnpm --filter=n8n-playwright test:local --grep="test-name"` - Run specific tests matching pattern
 
+See `packages/testing/playwright/README.md` for more test commands and `packages/testing/playwright/CONTRIBUTING.md` for writing guidelines.
 
-## Create a new node to contribute to n8n
+## Create custom nodes
 
-If you want to create a node which should be added to n8n follow these steps:
+Learn about [building nodes](https://docs.n8n.io/integrations/creating-nodes/overview/) to create custom nodes for n8n. You can create community nodes and make them available using [npm](https://www.npmjs.com/).
 
-  1. Read the information in the [n8n-node-dev](https://github.com/n8n-io/n8n/tree/master/packages/node-dev) package as it contains a lot of generic information about node development.
+## Extend documentation
 
-  1. Create the n8n development setup like described above and start n8n in develoment mode `npm run dev`
+The repository for the n8n documentation on [docs.n8n.io](https://docs.n8n.io) can be found [here](https://github.com/n8n-io/n8n-docs).
 
-  1. Create a new folder for the new node. For a service named "Example" the folder would be called: `/packages/nodes-base/nodes/Example`
+## Contribute workflow templates
 
-  1. If there is already a similar node simply copy the existing one in the new folder and rename it. If none exists yet, create a boilerplate node with [n8n-node-dev](https://github.com/n8n-io/n8n/tree/master/packages/node-dev) and copy that one in the folder.
+You can submit your workflows to n8n's template library.
 
-  1. If the node needs credentials because it has to authenticate with an API or similar create new ones. Existing ones can be found in folder `/packages/nodes-base/credentials`. Also there it is the easiest to simply copy existing similar ones.
+n8n is working on a creator program, and developing a marketplace of templates. This is an ongoing project, and details are likely to change.
 
-  1. Add the path to the new node (and optionally credentials) to package.json of `nodes-base`. It already contains a property `n8n` with its own keys `credentials` and `nodes`.
-
-  1. Add icon for the node (60x60 PNG)
-
-  1. Start n8n. The new node will then be available via the editor UI and can be tested.
-
-
-When developing n8n must get restarted and the browser reloaded every time parameters of a node change (like new ones added, removed or changed). Only then will the new data be loaded and the node displayed correctly.
-
-If only the code of the node changes (the execute method) than it is not needed as each workflow automatically starts a new process and so will always load the latest code.
-
-
-## Checklist before submitting a new node
-
-If you'd like to submit a new node, please go through the following checklist. This will help us be quicker to review and merge your PR.
-
-- [ ]  Make failing requests to the API to ensure that the errors get displayed correctly (like malformed requests or requests with invalid credentials)
-- [ ]  Ensure that the default values do not change and that the parameters do not get renamed, as it would break the existing workflows of the users
-- [ ]  Ensure that all the top-level parameters use camelCase
-- [ ]  Ensure that all the options are ordered alphabetically, unless a different order is needed for a specific reason
-- [ ]  Ensure that the parameters have the correct type
-- [ ]  Make sure that the file-name and the Class name are identical (case sensitive). The name under "description" in the node-code should also be identical (except that it starts with a lower-case letter and that it will never have a space)
-- [ ]  Names of Trigger-Nodes always have to end with "Trigger"
-- [ ]  Add credentials and nodes to the `package.json` file in alphanumerical order
-- [ ]  Use tabs in all the files except in the `package.json` file, where 4-spaces have to get used
-- [ ]  To make it as simple as possible for the users, check other similar nodes to ensure that they all behave similarly
-- [ ]  Try to add as few parameters as possible on the main level to ensure that the node doesn't appear overwhelming. It should only contain the required parameters. All the other ones should be hidden on lower levels as "Additional Parameters" or "Options"
-- [ ]  Create only one node per service which can do everything via "Resource" and "Options" and not a separate one for each possible operation.
-
-
-## Extend Documentation
-
-All the files which get used in the n8n documentation on [https://docs.n8n.io](https://docs.n8n.io)
-can be found in the [/docs](https://github.com/n8n-io/n8n/tree/master/docs) folder. So all changes
-and additions can directly be made in there
-
-That the markdown docs look pretty we use [docsify](https://docsify.js.org). It is possible to test
-locally how it looks like rendered with the following commands:
-
-```bash
-# 1. Install docisify
-npm i docsify-cli -g
-
-# 2. Go into n8n folder (the same folder which contains this file). For example:
-cd /data/n8n
-
-# 3. Start docsificy
-docsify serve ./docs
-```
-
+Refer to [n8n Creator hub](https://www.notion.so/n8n/n8n-Creator-hub-7bd2cbe0fce0449198ecb23ff4a2f76f) for information on how to submit templates and become a creator.
 
 ## Contributor License Agreement
 
 That we do not have any potential problems later it is sadly necessary to sign a [Contributor License Agreement](CONTRIBUTOR_LICENSE_AGREEMENT.md). That can be done literally with the push of a button.
 
-We used the most simple one that exists. It is from [Indie Open Source](https://indieopensource.com/forms/cla) which uses plain English and is literally just a few lines long.
+We used the most simple one that exists. It is from [Indie Open Source](https://indieopensource.com/forms/cla) which uses plain English and is literally only a few lines long.
 
-A bot will automatically comment on the pull request once it got opened asking for the agreement to be signed. Before it did not get signed it is sadly not possible to merge it in.
+Once a pull request is opened, an automated bot will promptly leave a comment requesting the agreement to be signed. The pull request can only be merged once the signature is obtained.

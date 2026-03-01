@@ -1,26 +1,24 @@
-import {
+import type {
 	IExecuteFunctions,
 	IHookFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
+	JsonObject,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 /**
  * Make an API request to Twilio
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
-export async function moceanApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('moceanApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
+export async function moceanApiRequest(
+	this: IHookFunctions | IExecuteFunctions,
+	method: IHttpRequestMethods,
+	endpoint: string,
+	body: IDataObject,
+	query?: IDataObject,
+): Promise<any> {
+	const credentials = await this.getCredentials('moceanApi');
 
 	if (query === undefined) {
 		query = {};
@@ -47,22 +45,6 @@ export async function moceanApiRequest(this: IHookFunctions | IExecuteFunctions,
 	try {
 		return await this.helpers.request(options);
 	} catch (error) {
-		if (error.statusCode === 401) {
-			// Return a clear error
-			throw new Error('Authentication failed.');
-		}
-
-		if (error.response && error.response.body && error.response.body.message) {
-			// Try to return the error prettier
-			let errorMessage = error.response.body.message;
-			if (error.response.body.more_info) {
-				errorMessage += `errorMessage (${error.response.body.more_info})`;
-			}
-
-			throw new Error(`Mocean error response [${error.statusCode}]: ${errorMessage}`);
-		}
-
-		// If that data does not exist for some reason return the actual error
-		throw error;
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

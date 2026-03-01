@@ -1,0 +1,31 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`N8nSelectableList > renders disabled collection without selectables 1`] = `
+"<div>
+  <!--v-if-->
+  <div class="slotComboContainer" data-test-id="selectable-list-slot-propB">
+    <!--v-if-->
+    <div class="slotContainer"></div>
+  </div>
+</div>"
+`;
+
+exports[`N8nSelectableList > renders multiple elements with some pre-selected 1`] = `
+"<div>
+  <div class="selectableContainer"><span class="selectableCell" data-test-id="selectable-list-selectable-propB"><div class="selectableTextSize">+ Add a propB</div></span><span class="selectableCell" data-test-id="selectable-list-selectable-propD"><div class="selectableTextSize">+ Add a propD</div></span></div>
+  <div class="slotComboContainer" data-test-id="selectable-list-slot-propA">
+    <n8n-icon-stub icon="trash-2" size="xsmall" spin="false" class="slotRemoveIcon" data-test-id="selectable-list-remove-slot-propA"></n8n-icon-stub>
+    <div class="slotContainer"></div>
+  </div>
+  <div class="slotComboContainer" data-test-id="selectable-list-slot-propC">
+    <n8n-icon-stub icon="trash-2" size="xsmall" spin="false" class="slotRemoveIcon" data-test-id="selectable-list-remove-slot-propC"></n8n-icon-stub>
+    <div class="slotContainer"></div>
+  </div>
+</div>"
+`;
+
+exports[`N8nSelectableList > renders when empty 1`] = `
+"<div>
+  <div class="selectableContainer"></div>
+</div>"
+`;

@@ -1,37 +1,40 @@
 {
-	"compilerOptions": {
-		"lib": [
-			"es2017"
-		],
-		"types": [
-			"node",
-			"jest"
-		],
-		"module": "commonjs",
-		"noImplicitAny": true,
-		"removeComments": true,
-		"strictNullChecks": true,
-		"forceConsistentCasingInFileNames": true,
-		"noImplicitReturns": true,
-		"preserveConstEnums": true,
-		"declaration": true,
-		"outDir": "./dist/",
-		"target": "es2017",
-		"sourceMap": true,
-		"emitDecoratorMetadata": true,
-		"experimentalDecorators": true
-	},
-	"include": [
-		"**/*.d.ts",
-		"commands/**/*",
-		"index.ts",
-		"config/**/*",
-		"src/**/*",
-		"test/**/*"
+	"extends": [
+		"@n8n/typescript-config/tsconfig.common.json",
+		"@n8n/typescript-config/tsconfig.backend.json"
 	],
-	"exclude": [
-		"dist/**/*",
-		"node_modules/**/*",
-		"**/*.spec.ts"
+	"compilerOptions": {
+		"rootDir": ".",
+		"emitDecoratorMetadata": true,
+		"experimentalDecorators": true,
+		"baseUrl": "src",
+		"paths": {
+			"@/*": ["./*"],
+			"@test/*": ["../test/shared/*"],
+			"@test-integration/*": ["../test/integration/shared/*"]
+		},
+		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
+		// TODO: remove all options below this line
+		"strict": false,
+		"useUnknownInCatchVariables": false
+	},
+	"include": ["src/**/*.ts", "test/**/*.ts", "src/sso.ee/saml/saml-schema-metadata-2.0.xsd"],
+	"references": [
+		{ "path": "../core/tsconfig.build.json" },
+		{ "path": "../nodes-base/tsconfig.build.cjs.json" },
+		{ "path": "../workflow/tsconfig.build.esm.json" },
+		{ "path": "../@n8n/ai-utilities/tsconfig.build.cjs.json" },
+		{ "path": "../@n8n/api-types/tsconfig.build.json" },
+		{ "path": "../@n8n/client-oauth2/tsconfig.build.json" },
+		{ "path": "../@n8n/config/tsconfig.build.json" },
+		{ "path": "../@n8n/constants/tsconfig.build.json" },
+		{ "path": "../@n8n/decorators/tsconfig.build.json" },
+		{ "path": "../@n8n/db/tsconfig.build.json" },
+		{ "path": "../@n8n/errors/tsconfig.build.json" },
+		{ "path": "../@n8n/backend-common/tsconfig.build.json" },
+		{ "path": "../@n8n/backend-test-utils/tsconfig.build.json" },
+		{ "path": "../@n8n/di/tsconfig.build.json" },
+		{ "path": "../@n8n/nodes-langchain/tsconfig.build.json" },
+		{ "path": "../@n8n/permissions/tsconfig.build.json" }
 	]
 }

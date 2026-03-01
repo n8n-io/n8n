@@ -1,0 +1,123 @@
+{
+    "type": "object",
+    "properties": {
+        "Active": {
+            "type": "boolean"
+        },
+        "BillAddr": {
+            "type": "object",
+            "properties": {
+                "City": {
+                    "type": "string"
+                },
+                "CountrySubDivisionCode": {
+                    "type": "string"
+                },
+                "Id": {
+                    "type": "string"
+                },
+                "Line1": {
+                    "type": "string"
+                },
+                "PostalCode": {
+                    "type": "string"
+                }
+            }
+        },
+        "BillWithParent": {
+            "type": "boolean"
+        },
+        "CompanyName": {
+            "type": "string"
+        },
+        "CurrencyRef": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "DisplayName": {
+            "type": "string"
+        },
+        "domain": {
+            "type": "string"
+        },
+        "FullyQualifiedName": {
+            "type": "string"
+        },
+        "Id": {
+            "type": "string"
+        },
+        "Job": {
+            "type": "boolean"
+        },
+        "MetaData": {
+            "type": "object",
+            "properties": {
+                "CreateTime": {
+                    "type": "string"
+                },
+                "LastUpdatedTime": {
+                    "type": "string"
+                }
+            }
+        },
+        "PreferredDeliveryMethod": {
+            "type": "string"
+        },
+        "PrimaryEmailAddr": {
+            "type": "object",
+            "properties": {
+                "Address": {
+                    "type": "string"
+                }
+            }
+        },
+        "PrimaryPhone": {
+            "type": "object",
+            "properties": {
+                "FreeFormNumber": {
+                    "type": "string"
+                }
+            }
+        },
+        "PrintOnCheckName": {
+            "type": "string"
+        },
+        "ShipAddr": {
+            "type": "object",
+            "properties": {
+                "City": {
+                    "type": "string"
+                },
+                "CountrySubDivisionCode": {
+                    "type": "string"
+                },
+                "Id": {
+                    "type": "string"
+                },
+                "Line1": {
+                    "type": "string"
+                },
+                "PostalCode": {
+                    "type": "string"
+                }
+            }
+        },
+        "sparse": {
+            "type": "boolean"
+        },
+        "SyncToken": {
+            "type": "string"
+        },
+        "Taxable": {
+            "type": "boolean"
+        }
+    },
+    "version": 1
+}

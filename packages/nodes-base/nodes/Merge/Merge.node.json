@@ -1,0 +1,48 @@
+{
+	"node": "n8n-nodes-base.merge",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Core Nodes"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/"
+			}
+		],
+		"generic": [
+			{
+				"label": "How to synchronize data between two systems (one-way vs. two-way sync",
+				"icon": "🏬",
+				"url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/"
+			},
+			{
+				"label": "Supercharging your conference registration process with n8n",
+				"icon": "🎫",
+				"url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/"
+			},
+			{
+				"label": "Migrating Community Metrics to Orbit using n8n",
+				"icon": "📈",
+				"url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/"
+			},
+			{
+				"label": "Build your own virtual assistant with n8n: A step by step guide",
+				"icon": "👦",
+				"url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/"
+			},
+			{
+				"label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n ",
+				"icon": "🙌",
+				"url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/"
+			},
+			{
+				"label": "7 no-code workflow automations for Amazon Web Services",
+				"url": "https://n8n.io/blog/aws-workflow-automation/"
+			}
+		]
+	},
+	"alias": ["Join", "Concatenate", "Wait"],
+	"subcategories": {
+		"Core Nodes": ["Flow", "Data Transformation"]
+	}
+}

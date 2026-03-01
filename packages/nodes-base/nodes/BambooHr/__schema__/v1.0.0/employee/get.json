@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "properties": {
+        "canUploadPhoto": {
+            "type": "boolean"
+        },
+        "displayName": {
+            "type": "string"
+        },
+        "firstName": {
+            "type": "string"
+        },
+        "hireDate": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "lastName": {
+            "type": "string"
+        },
+        "photoUploaded": {
+            "type": "boolean"
+        },
+        "photoUrl": {
+            "type": "string"
+        }
+    },
+    "version": 5
+}

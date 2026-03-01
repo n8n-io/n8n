@@ -1,0 +1,25 @@
+{
+	"node": "n8n-nodes-base.mauticTrigger",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Marketing", "Communication"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/mautic/"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.mautictrigger/"
+			}
+		],
+		"generic": [
+			{
+				"label": "How a Membership Development Manager automates his work and investments",
+				"icon": "📈",
+				"url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/"
+			}
+		]
+	}
+}

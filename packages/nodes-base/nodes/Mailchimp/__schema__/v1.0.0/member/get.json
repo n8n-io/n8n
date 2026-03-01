@@ -1,0 +1,155 @@
+{
+    "type": "object",
+    "properties": {
+        "_links": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "href": {
+                        "type": "string"
+                    },
+                    "method": {
+                        "type": "string"
+                    },
+                    "rel": {
+                        "type": "string"
+                    },
+                    "schema": {
+                        "type": "string"
+                    },
+                    "targetSchema": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "consents_to_one_to_one_messaging": {
+            "type": "boolean"
+        },
+        "contact_id": {
+            "type": "string"
+        },
+        "email_address": {
+            "type": "string"
+        },
+        "email_client": {
+            "type": "string"
+        },
+        "email_type": {
+            "type": "string"
+        },
+        "full_name": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "ip_opt": {
+            "type": "string"
+        },
+        "ip_signup": {
+            "type": "string"
+        },
+        "language": {
+            "type": "string"
+        },
+        "last_changed": {
+            "type": "string"
+        },
+        "list_id": {
+            "type": "string"
+        },
+        "location": {
+            "type": "object",
+            "properties": {
+                "country_code": {
+                    "type": "string"
+                },
+                "dstoff": {
+                    "type": "integer"
+                },
+                "gmtoff": {
+                    "type": "integer"
+                },
+                "region": {
+                    "type": "string"
+                },
+                "timezone": {
+                    "type": "string"
+                }
+            }
+        },
+        "member_rating": {
+            "type": "integer"
+        },
+        "merge_fields": {
+            "type": "object",
+            "properties": {
+                "BIRTHDAY": {
+                    "type": "string"
+                },
+                "COMPANY": {
+                    "type": "string"
+                },
+                "FNAME": {
+                    "type": "string"
+                },
+                "LNAME": {
+                    "type": "string"
+                },
+                "PHONE": {
+                    "type": "string"
+                }
+            }
+        },
+        "sms_phone_number": {
+            "type": "string"
+        },
+        "sms_subscription_last_updated": {
+            "type": "string"
+        },
+        "sms_subscription_status": {
+            "type": "string"
+        },
+        "source": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "tags_count": {
+            "type": "integer"
+        },
+        "timestamp_opt": {
+            "type": "string"
+        },
+        "timestamp_signup": {
+            "type": "string"
+        },
+        "unique_email_id": {
+            "type": "string"
+        },
+        "vip": {
+            "type": "boolean"
+        },
+        "web_id": {
+            "type": "integer"
+        }
+    },
+    "version": 3
+}

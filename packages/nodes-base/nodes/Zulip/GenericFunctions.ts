@@ -1,27 +1,34 @@
-import { OptionsWithUri } from 'request';
-
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject,
 	IHookFunctions,
-	IWebhookFunctions
+	IWebhookFunctions,
+	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-export async function zulipApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+import type { IMessage } from './MessageInterface';
+import type { IStream } from './StreamInterface';
+import type { IUser } from './UserInterface';
 
-	const credentials = this.getCredentials('zulipApi');
+export async function zulipApiRequest(
+	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	resource: string,
 
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
+	body: IMessage | IStream | IUser = {},
+	query: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+) {
+	const credentials = await this.getCredentials('zulipApi');
 
-	const endpoint = `${credentials.url}/api/v1`;
+	const endpoint = `${credentials.url.toString().replace(new RegExp('/$'), '')}/api/v1`;
 
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		auth: {
 			user: credentials.email as string,
 			password: credentials.apiKey as string,
@@ -30,10 +37,10 @@ export async function zulipApiRequest(this: IExecuteFunctions | IWebhookFunction
 			'Content-Type': 'application/x-www-form-urlencoded',
 		},
 		method,
-		form: body,
+		form: body as IDataObject,
 		qs: query,
 		uri: uri || `${endpoint}${resource}`,
-		json: true
+		json: true,
 	};
 	if (!Object.keys(body).length) {
 		delete options.form;
@@ -43,12 +50,18 @@ export async function zulipApiRequest(this: IExecuteFunctions | IWebhookFunction
 	}
 	options = Object.assign({}, options, option);
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		if (error.response) {
-			const errorMessage = error.response.body.message || error.response.body.description || error.message;
-			throw new Error(`Zulip error response [${error.statusCode}]: ${errorMessage}`);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
+}
+
+export function validateJSON(json: string | undefined): any {
+	let result;
+	try {
+		result = JSON.parse(json!);
+	} catch (exception) {
+		result = undefined;
+	}
+	return result;
 }

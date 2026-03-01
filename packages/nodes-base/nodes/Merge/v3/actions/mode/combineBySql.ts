@@ -1,0 +1,429 @@
+import { Container } from '@n8n/di';
+import { ErrorReporter } from 'n8n-core';
+
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INode,
+	INodeExecutionData,
+	INodeProperties,
+	IPairedItemData,
+} from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
+import { getResolvables, updateDisplayOptions } from '@utils/utilities';
+
+import { numberInputsProperty } from '../../helpers/descriptions';
+import { modifySelectQuery, rowToExecutionData } from '../../helpers/utils';
+
+// Type for AlaSQL - use type-only import to avoid runtime import
+// We import the type statically for type checking, but use dynamic import at runtime
+import type AlasqlType from 'alasql';
+type AlaSQLBase = typeof AlasqlType;
+export type AlaSQLExtended = AlaSQLBase & {
+	// Access `engines` internal structure to override file access engines
+	engines?: Record<string, unknown>;
+	// Access `into` handlers to override file write operations
+	into?: Record<string, unknown>;
+	// Access `utils` for utility functions
+	utils?: Record<string, unknown>;
+	// Access `yy` for statement types like REQUIRE
+	yy?: {
+		Require?: {
+			prototype?: {
+				execute?: (...args: unknown[]) => unknown;
+			};
+		};
+		[key: string]: unknown;
+	};
+	// Fix Database constructor typing
+	Database: AlaSQLBase['Database'] & { new (databaseId: string): AlaSQLBase['Database'] };
+};
+
+// Cache for the loaded and secured alasql instance
+let cachedAlaSql: AlaSQLExtended | null = null;
+
+// Export for testing - allows resetting the cache
+export function resetAlaSqlCache() {
+	cachedAlaSql = null;
+}
+
+const disabledFunction = () => {
+	throw new Error('File access operations are disabled for security reasons');
+};
+
+export function disableUnsafeAccess(alasql: AlaSQLExtended) {
+	// Block ALL FROM handlers that can read files or external resources
+	if (alasql.from) {
+		const fromHandlers = [
+			'FILE',
+			'JSON',
+			'JSONL',
+			'NDJSON',
+			'TXT',
+			'CSV',
+			'TAB',
+			'TSV',
+			'XLS',
+			'XLSX',
+			'ODS',
+			'XML',
+			'GEXF',
+			'HTML',
+			'TABLETOP',
+			'METEOR',
+		];
+		fromHandlers.forEach((handler) => {
+			alasql.from[handler] = disabledFunction;
+		});
+	}
+
+	// Block ALL INTO handlers that can write files
+	if (alasql.into) {
+		const intoHandlers = [
+			'FILE',
+			'JSON',
+			'TXT',
+			'CSV',
+			'TAB',
+			'TSV',
+			'SQL',
+			'XLS',
+			'XLSXML',
+			'XLSX',
+			'HTML',
+		];
+		const intoObj = alasql.into;
+		intoHandlers.forEach((handler) => {
+			intoObj[handler] = disabledFunction;
+		});
+	}
+
+	// Block ALL file-based database engines
+	if (alasql.engines) {
+		const engines = [
+			'FILE',
+			'FILESTORAGE',
+			'LOCALSTORAGE',
+			'INDEXEDDB',
+			'SQLITE',
+			'JSON',
+			'TXT',
+			'CSV',
+			'XLSX',
+			'XLS',
+		];
+		const enginesObj = alasql.engines;
+		engines.forEach((engine) => {
+			enginesObj[engine] = disabledFunction;
+		});
+	}
+
+	// Block file system utility functions
+	if (alasql.utils) {
+		alasql.utils.loadFile = disabledFunction;
+		alasql.utils.loadBinaryFile = disabledFunction;
+		alasql.utils.saveFile = disabledFunction;
+		alasql.utils.removeFile = disabledFunction;
+		alasql.utils.deleteFile = disabledFunction;
+		alasql.utils.fileExists = disabledFunction;
+		alasql.utils.require = disabledFunction;
+	}
+
+	// Block fn handlers if present
+	if (alasql.fn) {
+		const fnHandlers = ['FILE', 'JSON', 'TXT', 'CSV', 'XLSX', 'XLS', 'LOAD', 'SAVE', 'REQUIRE'];
+		fnHandlers.forEach((handler) => {
+			alasql.fn[handler] = disabledFunction;
+		});
+		alasql.fn = Object.freeze(alasql.fn);
+	}
+
+	if (alasql.yy) {
+		alasql.yy.JavaScript = disabledFunction;
+	}
+
+	// Block REQUIRE statement execution
+	// REQUIRE is a statement type (like SELECT, INSERT) that can load and execute arbitrary code
+	// We need to override yy.Require.prototype.execute before freezing
+	// The yy object contains statement constructors and is accessible via alasql.yy
+	if (alasql.yy?.Require?.prototype) {
+		alasql.yy.Require.prototype.execute = disabledFunction;
+	}
+}
+
+export function freezeAlasql(alasql: AlaSQLExtended) {
+	/*
+	 * we freeze these elements of alasql to avoid users being able to create new functions as part of an execution
+	 * by creating and immediately executing functions with CREATE FUNCTION or with AGGREGATE manipulation.
+	 */
+	alasql.fn = Object.freeze(alasql.fn);
+	if (alasql.yy) {
+		alasql.yy = Object.freeze(alasql.yy);
+	}
+}
+
+/**
+ * Lazy loads AlaSQL, disables file access, and freezes it in one go.
+ * This ensures AlaSQL is only loaded when needed and is immediately secured.
+ */
+export async function loadAlaSql(): Promise<AlaSQLExtended> {
+	if (cachedAlaSql) {
+		return cachedAlaSql;
+	}
+
+	const alasqlImport = await import('alasql');
+	const alasql = (alasqlImport.default || alasqlImport) as AlaSQLExtended;
+
+	disableUnsafeAccess(alasql);
+	freezeAlasql(alasql);
+
+	cachedAlaSql = alasql;
+
+	return alasql;
+}
+
+type OperationOptions = {
+	emptyQueryResult: 'success' | 'empty';
+};
+
+export const properties: INodeProperties[] = [
+	numberInputsProperty,
+	{
+		displayName: 'Query',
+		name: 'query',
+		type: 'string',
+		default: 'SELECT * FROM input1 LEFT JOIN input2 ON input1.name = input2.id',
+		noDataExpression: true,
+		description: 'Input data available as tables with corresponding number, e.g. input1, input2',
+		hint: 'Supports <a href="https://github.com/alasql/alasql/wiki/Supported-SQL-statements" target="_blank">most</a> of the SQL-99 language',
+		required: true,
+		typeOptions: {
+			rows: 5,
+			editor: 'sqlEditor',
+		},
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add option',
+		default: {},
+		options: [
+			{
+				displayName: 'Empty Query Result',
+				name: 'emptyQueryResult',
+				type: 'options',
+				description: 'What to return if the query executed successfully but returned no results',
+				options: [
+					{
+						name: 'Success',
+						value: 'success',
+					},
+					{
+						name: 'Empty Result',
+						value: 'empty',
+					},
+				],
+				default: 'empty',
+			},
+		],
+		displayOptions: {
+			show: {
+				'@version': [3.2],
+			},
+		},
+	},
+];
+
+const displayOptions = {
+	show: {
+		mode: ['combineBySql'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
+
+const prepareError = (node: INode, error: Error) => {
+	let message = '';
+	if (typeof error === 'string') {
+		message = error;
+	} else {
+		message = error.message;
+	}
+	throw new NodeOperationError(node, error, {
+		message: 'Issue while executing query',
+		description: message,
+		itemIndex: 0,
+	});
+};
+
+async function executeSelectWithMappedPairedItems(
+	node: INode,
+	inputsData: INodeExecutionData[][],
+	query: string,
+	returnSuccessItemIfEmpty: boolean,
+	alasql: AlaSQLExtended,
+): Promise<INodeExecutionData[][]> {
+	const returnData: INodeExecutionData[] = [];
+
+	const db = new alasql.Database(node.id);
+
+	try {
+		for (let i = 0; i < inputsData.length; i++) {
+			const inputData = inputsData[i];
+
+			db.exec(`CREATE TABLE input${i + 1}`);
+			db.tables[`input${i + 1}`].data = inputData.map((entry) => ({
+				...entry.json,
+				pairedItem: entry.pairedItem,
+			}));
+		}
+	} catch (error) {
+		throw new NodeOperationError(node, error, {
+			message: 'Issue while creating table from',
+			description: error.message,
+			itemIndex: 0,
+		});
+	}
+
+	try {
+		const result = db.exec(modifySelectQuery(query, inputsData.length)) as IDataObject[];
+
+		for (const item of result) {
+			if (Array.isArray(item)) {
+				returnData.push.apply(returnData, item.map(rowToExecutionData));
+			} else if (typeof item === 'object') {
+				returnData.push(rowToExecutionData(item));
+			}
+		}
+
+		if (!returnData.length && returnSuccessItemIfEmpty) {
+			returnData.push({ json: { success: true } });
+		}
+	} catch (error) {
+		prepareError(node, error as Error);
+	} finally {
+		delete alasql.databases[node.id];
+	}
+
+	return [returnData];
+}
+
+export async function execute(
+	this: IExecuteFunctions,
+	inputsData: INodeExecutionData[][],
+): Promise<INodeExecutionData[][]> {
+	// Lazy load AlaSQL, disable file access, and freeze it
+	const alasql = await loadAlaSql();
+
+	const node = this.getNode();
+	const returnData: INodeExecutionData[] = [];
+	const pairedItem: IPairedItemData[] = [];
+	const options = this.getNodeParameter('options', 0, {}) as OperationOptions;
+
+	let query = this.getNodeParameter('query', 0) as string;
+
+	for (const resolvable of getResolvables(query)) {
+		query = query.replace(resolvable, this.evaluateExpression(resolvable, 0) as string);
+	}
+
+	const isSelectQuery = node.typeVersion >= 3.1 ? query.toLowerCase().startsWith('select') : false;
+	const returnSuccessItemIfEmpty =
+		node.typeVersion <= 3.1 ? true : options.emptyQueryResult === 'success';
+
+	if (isSelectQuery) {
+		try {
+			return await executeSelectWithMappedPairedItems(
+				node,
+				inputsData,
+				query,
+				returnSuccessItemIfEmpty,
+				alasql,
+			);
+		} catch (error) {
+			Container.get(ErrorReporter).error(error, {
+				extra: {
+					nodeName: node.name,
+					nodeType: node.type,
+					nodeVersion: node.typeVersion,
+					workflowId: this.getWorkflow().id,
+				},
+			});
+		}
+	}
+
+	const db = new alasql.Database(node.id);
+
+	try {
+		for (let i = 0; i < inputsData.length; i++) {
+			const inputData = inputsData[i];
+
+			inputData.forEach((item, index) => {
+				if (item.pairedItem === undefined) {
+					item.pairedItem = index;
+				}
+
+				if (typeof item.pairedItem === 'number') {
+					pairedItem.push({
+						item: item.pairedItem,
+						input: i,
+					});
+					return;
+				}
+
+				if (Array.isArray(item.pairedItem)) {
+					const pairedItems = item.pairedItem
+						.filter((p) => p !== undefined)
+						.map((p) => (typeof p === 'number' ? { item: p } : p))
+						.map((p) => {
+							return {
+								item: p.item,
+								input: i,
+							};
+						});
+					pairedItem.push.apply(pairedItem, pairedItems);
+					return;
+				}
+
+				pairedItem.push({
+					item: item.pairedItem.item,
+					input: i,
+				});
+			});
+
+			db.exec(`CREATE TABLE input${i + 1}`);
+			db.tables[`input${i + 1}`].data = inputData.map((entry) => entry.json);
+		}
+	} catch (error) {
+		throw new NodeOperationError(node, error, {
+			message: 'Issue while creating table from',
+			description: error.message,
+			itemIndex: 0,
+		});
+	}
+
+	try {
+		const result: IDataObject[] = db.exec(query);
+
+		for (const item of result) {
+			if (Array.isArray(item)) {
+				returnData.push.apply(
+					returnData,
+					item.map((json) => ({ json, pairedItem })),
+				);
+			} else if (typeof item === 'object') {
+				returnData.push({ json: item, pairedItem });
+			}
+		}
+
+		if (!returnData.length && returnSuccessItemIfEmpty) {
+			returnData.push({ json: { success: true }, pairedItem });
+		}
+	} catch (error) {
+		prepareError(node, error as Error);
+	} finally {
+		delete alasql.databases[node.id];
+	}
+
+	return [returnData];
+}

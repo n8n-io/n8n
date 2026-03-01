@@ -1,0 +1,481 @@
+import type { User, ICredentialsDb } from '@n8n/db';
+import {
+	CredentialsEntity,
+	SharedCredentials,
+	CredentialsRepository,
+	ProjectRepository,
+	SharedCredentialsRepository,
+} from '@n8n/db';
+import { Container } from '@n8n/di';
+import { Credentials } from 'n8n-core';
+import {
+	BaseError,
+	type DisplayCondition,
+	type ICredentialDataDecryptedObject,
+	type IDataObject,
+	type INodeProperties,
+	type INodePropertyOptions,
+} from 'n8n-workflow';
+
+import { CredentialsService } from '@/credentials/credentials.service';
+import {
+	validateAccessToReferencedSecretProviders,
+	validateExternalSecretsPermissions,
+} from '@/credentials/validation';
+import { EventService } from '@/events/event.service';
+import { ExternalHooks } from '@/external-hooks';
+import type { CredentialRequest } from '@/requests';
+
+import type { IDependency, IJsonSchema } from '../../../types';
+import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
+import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+
+export class CredentialsIsNotUpdatableError extends BaseError {}
+
+/**
+ * Shared entry for credential list: project id/name plus sharing role and timestamps.
+ * Derived from credential.shared (SharedCredentials + Project), limited to these fields.
+ */
+export type CredentialListSharedItem = {
+	id: string;
+	name: string;
+	role: string;
+	createdAt: Date;
+	updatedAt: Date;
+};
+
+/**
+ * Build the shared array for a credential list item from credential.shared.
+ * Each entry has id, name from the project and role, createdAt, updatedAt from the shared relation.
+ */
+export function buildSharedForCredential(
+	credential: CredentialsEntity,
+): CredentialListSharedItem[] {
+	const shared = credential.shared;
+	return shared
+		.filter((sh) => typeof sh.project?.id === 'string')
+		.map((sh) => ({
+			id: sh.project.id,
+			name: sh.project.name,
+			role: sh.role,
+			createdAt: sh.createdAt,
+			updatedAt: sh.updatedAt,
+		}));
+}
+
+export async function getCredential(credentialId: string): Promise<ICredentialsDb | null> {
+	return await Container.get(CredentialsRepository).findOne({
+		where: { id: credentialId },
+		relations: ['shared', 'shared.project'],
+	});
+}
+
+function isProjectScopedExternalSecretsEnabled() {
+	return Container.get(ExternalSecretsConfig).externalSecretsForProjects;
+}
+
+export async function getSharedCredentials(
+	userId: string,
+	credentialId: string,
+): Promise<SharedCredentials | null> {
+	return await Container.get(SharedCredentialsRepository).findOne({
+		where: {
+			project: { projectRelations: { userId } },
+			credentialsId: credentialId,
+		},
+		relations: ['credentials'],
+	});
+}
+
+export async function createCredential(
+	properties: CredentialRequest.CredentialProperties,
+): Promise<CredentialsEntity> {
+	const newCredential = new CredentialsEntity();
+
+	Object.assign(newCredential, properties);
+
+	return newCredential;
+}
+
+/**
+ * Creats a credential in the personal project of the given user.
+ */
+export async function saveCredential(
+	payload: { type: string; name: string; data: ICredentialDataDecryptedObject },
+	user: User,
+): Promise<CredentialsEntity> {
+	const credential = await createCredential(payload);
+
+	validateExternalSecretsPermissions(user, payload.data);
+
+	const encryptedData = await encryptCredential(credential);
+	Object.assign(credential, encryptedData);
+
+	const projectRepository = Container.get(ProjectRepository);
+	const { manager: dbManager } = projectRepository;
+	const result = await dbManager.transaction(async (transactionManager) => {
+		const savedCredential = await transactionManager.save<CredentialsEntity>(credential);
+
+		savedCredential.data = credential.data;
+
+		const newSharedCredential = new SharedCredentials();
+
+		const personalProject = await projectRepository.getPersonalProjectForUserOrFail(
+			user.id,
+			transactionManager,
+		);
+
+		Object.assign(newSharedCredential, {
+			role: 'credential:owner',
+			credentials: savedCredential,
+			projectId: personalProject.id,
+		});
+
+		await transactionManager.save<SharedCredentials>(newSharedCredential);
+
+		return savedCredential;
+	});
+
+	await Container.get(ExternalHooks).run('credentials.create', [encryptedData]);
+
+	const project = await Container.get(SharedCredentialsRepository).findCredentialOwningProject(
+		credential.id,
+	);
+
+	Container.get(EventService).emit('credentials-created', {
+		user,
+		credentialType: credential.type,
+		credentialId: credential.id,
+		projectId: project?.id,
+		projectType: project?.type,
+		publicApi: true,
+		isDynamic: credential.isResolvable ?? false,
+	});
+
+	return result;
+}
+
+export async function updateCredential(
+	credentialId: string,
+	user: User,
+	updateData: {
+		type?: string;
+		name?: string;
+		data?: ICredentialDataDecryptedObject;
+		isGlobal?: boolean;
+		isResolvable?: boolean;
+		isPartialData?: boolean;
+	},
+): Promise<ICredentialsDb | null> {
+	const existingCredential = await getCredential(credentialId);
+	if (!existingCredential) {
+		return null;
+	}
+
+	if (existingCredential.isManaged) {
+		throw new CredentialsIsNotUpdatableError('Managed credentials cannot be updated.');
+	}
+
+	// Merge the update data with existing credential
+	const credentialData: Partial<CredentialsEntity> = {};
+
+	if (updateData.name !== undefined) {
+		credentialData.name = updateData.name;
+	}
+
+	if (updateData.type !== undefined) {
+		credentialData.type = updateData.type;
+	}
+
+	// If data is provided, encrypt it
+	if (updateData.data !== undefined) {
+		const credentialsService = Container.get(CredentialsService);
+
+		// Decrypt existing data to access oauthTokenData
+		const decryptedData = credentialsService.decrypt(existingCredential as CredentialsEntity, true);
+
+		validateExternalSecretsPermissions(user, updateData.data, decryptedData);
+
+		if (isProjectScopedExternalSecretsEnabled() && decryptedData) {
+			// eslint-disable-next-line @typescript-eslint/no-non-null-asserted-optional-chain -- credential will always have an owner
+			const projectOwningCredential = existingCredential.shared?.find(
+				(shared) => shared.role === 'credential:owner',
+			)!;
+
+			await validateAccessToReferencedSecretProviders(
+				projectOwningCredential.project.id,
+				updateData.data,
+				Container.get(SecretsProviderAccessCheckService),
+				'update',
+			);
+		}
+
+		let dataToEncrypt: ICredentialDataDecryptedObject;
+
+		// If isPartialData is true, merge with existing decrypted data and unredact
+		if (updateData.isPartialData === true) {
+			// First merge existing decrypted data with new data
+			// This ensures all existing fields are preserved unless explicitly overridden
+			const mergedData = {
+				...decryptedData,
+				...updateData.data,
+			};
+
+			// Then unredact any redacted values (e.g., replace "***" with original values)
+			dataToEncrypt = credentialsService.unredact(mergedData, decryptedData);
+		} else {
+			// isPartialData is false or undefined (default): replace entire data object
+			dataToEncrypt = updateData.data;
+		}
+
+		const newCredential = new CredentialsEntity();
+		Object.assign(newCredential, {
+			id: credentialId,
+			name: updateData.name ?? existingCredential.name,
+			type: updateData.type ?? existingCredential.type,
+			data: dataToEncrypt,
+		});
+
+		const encryptedData = await encryptCredential(newCredential);
+		Object.assign(credentialData, encryptedData);
+	}
+
+	if (updateData.isResolvable !== undefined) {
+		credentialData.isResolvable = updateData.isResolvable;
+	}
+
+	if (updateData.isGlobal !== undefined) {
+		credentialData.isGlobal = updateData.isGlobal;
+	}
+
+	credentialData.updatedAt = new Date();
+
+	await Container.get(CredentialsRepository).update(credentialId, credentialData);
+
+	return await getCredential(credentialId);
+}
+
+export async function removeCredential(
+	user: User,
+	credentials: CredentialsEntity,
+): Promise<ICredentialsDb> {
+	await Container.get(ExternalHooks).run('credentials.delete', [credentials.id]);
+	Container.get(EventService).emit('credentials-deleted', {
+		user,
+		credentialType: credentials.type,
+		credentialId: credentials.id,
+	});
+	return await Container.get(CredentialsRepository).remove(credentials);
+}
+
+export async function encryptCredential(credential: CredentialsEntity): Promise<ICredentialsDb> {
+	// Encrypt the data
+	const coreCredential = new Credentials({ id: null, name: credential.name }, credential.type);
+
+	// @ts-ignore
+	coreCredential.setData(credential.data);
+
+	return coreCredential.getDataToSave() as ICredentialsDb;
+}
+
+export function sanitizeCredentials(credentials: CredentialsEntity): Partial<CredentialsEntity>;
+export function sanitizeCredentials(
+	credentials: CredentialsEntity[],
+): Array<Partial<CredentialsEntity>>;
+
+export function sanitizeCredentials(
+	credentials: CredentialsEntity | CredentialsEntity[],
+): Partial<CredentialsEntity> | Array<Partial<CredentialsEntity>> {
+	const argIsArray = Array.isArray(credentials);
+	const credentialsList = argIsArray ? credentials : [credentials];
+
+	const sanitizedCredentials = credentialsList.map((credential) => {
+		const { data, shared, ...rest } = credential;
+		return rest;
+	});
+
+	return argIsArray ? sanitizedCredentials : sanitizedCredentials[0];
+}
+
+/**
+ * toJsonSchema
+ * Take an array of credentials parameter and map it
+ * to a JSON Schema (see https://json-schema.org/). With
+ * the JSON Schema definition we can validate the credential's shape
+ * @param properties - Credentials properties
+ */
+export function toJsonSchema(properties: INodeProperties[]): IDataObject {
+	const jsonSchema: IJsonSchema = {
+		additionalProperties: false,
+		type: 'object',
+		properties: {},
+		allOf: [],
+		required: [],
+	};
+
+	const optionsValues: { [key: string]: string[] } = {};
+	const resolveProperties: string[] = [];
+
+	// get all possible values of properties type "options"
+	// so we can later resolve the displayOptions dependencies
+	properties
+		.filter((property) => property.type === 'options')
+		.forEach((property) => {
+			Object.assign(optionsValues, {
+				[property.name]: property.options?.map((option: INodePropertyOptions) => option.value),
+			});
+		});
+
+	let requiredFields: string[] = [];
+
+	const propertyRequiredDependencies: { [key: string]: IDependency } = {};
+
+	// add all credential's properties to the properties
+	// object in the JSON Schema definition. This allows us
+	// to later validate that only this properties are set in
+	// the credentials sent in the API call.
+	// eslint-disable-next-line complexity
+	properties.forEach((property) => {
+		if (property.required) {
+			requiredFields.push(property.name);
+		}
+		if (property.type === 'options') {
+			// if the property is type options,
+			// include all possible values in the enum property.
+			Object.assign(jsonSchema.properties, {
+				[property.name]: {
+					type: 'string',
+					enum: property.options?.map((data: INodePropertyOptions) => data.value),
+				},
+			});
+		} else {
+			Object.assign(jsonSchema.properties, {
+				[property.name]: {
+					type: property.type,
+				},
+			});
+		}
+
+		// if the credential property has a dependency
+		// then add a JSON Schema condition that satisfy each property value
+		// e.x: If A has value X then required B, else required C
+		// see https://json-schema.org/understanding-json-schema/reference/conditionals.html#if-then-else
+		if (property.displayOptions?.show) {
+			const dependantName = Object.keys(property.displayOptions?.show)[0] || '';
+			const displayOptionsValues = property.displayOptions.show[dependantName];
+			let dependantValue: DisplayCondition | string | number | boolean = '';
+
+			if (
+				displayOptionsValues &&
+				Array.isArray(displayOptionsValues) &&
+				displayOptionsValues[0] !== undefined &&
+				displayOptionsValues[0] !== null
+			) {
+				dependantValue = displayOptionsValues[0];
+			}
+
+			// Create a unique key for each dependant name and value combination
+			// so that if multiple properties depend on the same property but different values
+			// they get their own if-then-else block
+			const dependencyKey = `${dependantName}:${JSON.stringify(dependantValue)}`;
+
+			if (!resolveProperties.includes(dependencyKey)) {
+				let conditionalValue;
+				if (typeof dependantValue === 'object' && dependantValue._cnd) {
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					const [key, targetValue] = Object.entries(dependantValue._cnd)[0];
+
+					if (key === 'eq') {
+						conditionalValue = {
+							const: [targetValue],
+						};
+					} else if (key === 'not') {
+						conditionalValue = {
+							not: {
+								const: [targetValue],
+							},
+						};
+					} else if (key === 'gt') {
+						conditionalValue = {
+							type: 'number',
+							exclusiveMinimum: [targetValue],
+						};
+					} else if (key === 'gte') {
+						conditionalValue = {
+							type: 'number',
+							minimum: [targetValue],
+						};
+					} else if (key === 'lt') {
+						conditionalValue = {
+							type: 'number',
+							exclusiveMaximum: [targetValue],
+						};
+					} else if (key === 'lte') {
+						conditionalValue = {
+							type: 'number',
+							maximum: [targetValue],
+						};
+					} else if (key === 'startsWith') {
+						conditionalValue = {
+							type: 'string',
+							pattern: `^${targetValue}`,
+						};
+					} else if (key === 'endsWith') {
+						conditionalValue = {
+							type: 'string',
+							pattern: `${targetValue}$`,
+						};
+					} else if (key === 'includes') {
+						conditionalValue = {
+							type: 'string',
+							pattern: `${targetValue}`,
+						};
+					} else if (key === 'regex') {
+						conditionalValue = {
+							type: 'string',
+							pattern: `${targetValue}`,
+						};
+					} else {
+						conditionalValue = {
+							enum: [dependantValue],
+						};
+					}
+				} else {
+					conditionalValue = {
+						enum: [dependantValue],
+					};
+				}
+				propertyRequiredDependencies[dependencyKey] = {
+					if: {
+						properties: {
+							[dependantName]: conditionalValue,
+						},
+					},
+					then: {
+						allOf: [],
+					},
+					else: {
+						allOf: [],
+					},
+				};
+				resolveProperties.push(dependencyKey);
+			}
+
+			propertyRequiredDependencies[dependencyKey].then?.allOf.push({ required: [property.name] });
+			propertyRequiredDependencies[dependencyKey].else?.allOf.push({
+				not: { required: [property.name] },
+			});
+			// remove global required
+			requiredFields = requiredFields.filter((field) => field !== property.name);
+		}
+	});
+	Object.assign(jsonSchema, { required: requiredFields });
+
+	jsonSchema.allOf = Object.values(propertyRequiredDependencies);
+
+	if (!jsonSchema.allOf.length) {
+		delete jsonSchema.allOf;
+	}
+
+	return jsonSchema as unknown as IDataObject;
+}

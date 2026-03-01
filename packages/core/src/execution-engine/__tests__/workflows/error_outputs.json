@@ -1,0 +1,669 @@
+{
+	"name": "My workflow 105",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "a94bc1fb-1f39-404b-b149-a76c4fbaed25",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-60, 780]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"name": "originalName",
+							"stringValue": "={{ $('Mock Data').item.json.name }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "6ba26bdf-91e2-4f18-8f4c-09e98aa4a9df",
+			"name": "Success",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [820, 1180]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"name": "originalName",
+							"stringValue": "={{ $('Mock Data').item.json.name }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "e3d1eadf-0994-4806-97ce-c5c5f673c624",
+			"name": "Error",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [820, 1360]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    \"id\": \"23423532\",\n    \"name\": \"Jay Gatsby\",\n    \"email\": \"gatsby@west-egg.com\",\n    \"notes\": \"Keeps asking about a green light??\",\n    \"country\": \"US\",\n    \"created\": \"1925-04-10\"\n  },\n  {\n    \"id\": \"23423533\",\n    \"name\": \"José Arcadio Buendía\",\n    \"email\": \"jab@macondo.co\",\n    \"notes\": \"Lots of people named after him. Very confusing\",\n    \"country\": \"CO\",\n    \"created\": \"1967-05-05\"\n  },\n  {\n    \"id\": \"23423534\",\n    \"name\": \"Max Sendak\",\n    \"email\": \"info@in-and-out-of-weeks.org\",\n    \"notes\": \"Keeps rolling his terrible eyes\",\n    \"country\": \"US\",\n    \"created\": \"1963-04-09\"\n  },\n  {\n    \"id\": \"23423535\",\n    \"name\": \"Zaphod Beeblebrox\",\n    \"email\": \"captain@heartofgold.com\",\n    \"notes\": \"Felt like I was talking to more than one person\",\n    \"country\": null,\n    \"created\": \"1979-10-12\"\n  },\n  {\n    \"id\": \"23423536\",\n    \"name\": \"Edmund Pevensie\",\n    \"email\": \"edmund@narnia.gov\",\n    \"notes\": \"Passionate sailor\",\n    \"country\": \"UK\",\n    \"created\": \"1950-10-16\"\n  }\n]"
+			},
+			"id": "01adfc2d-141d-4843-b2d6-04115a476bc1",
+			"name": "Mock Data",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [160, 780]
+		},
+		{
+			"parameters": {
+				"content": "## On Error: Continue (using error output)",
+				"height": 414,
+				"width": 564
+			},
+			"id": "8ca689eb-7910-43ad-bd10-fae35a8fc203",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [460, 1100]
+		},
+		{
+			"parameters": {
+				"content": "## Continue On Fail (deprecated)",
+				"height": 279,
+				"width": 564
+			},
+			"id": "a17460d6-b0c0-432d-ac6f-8ff684357c8d",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [460, 460]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"name": "originalName",
+							"stringValue": "={{ $('Mock Data').item.json.name }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "46df5463-4289-4e61-9f80-87e035931bda",
+			"name": "Combined",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [800, 560]
+		},
+		{
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "// Add a new field called 'myNewField' to the JSON of the item\n$input.item.json.myNewField = 1;\n\nif ($input.item.json.country === 'US') {\n  throw new Error('This is an error');\n}\n\nreturn $input.item;"
+			},
+			"id": "a4708520-aaca-4618-b7a2-94da268fba37",
+			"name": "Throw Error",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [480, 1280],
+			"errorOutput": true,
+			"onError": "continueErrorOutput"
+		},
+		{
+			"parameters": {
+				"content": "## On Error: Continue",
+				"height": 279,
+				"width": 564
+			},
+			"id": "f0a450cd-4124-490d-964f-a71b645f770c",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [460, 780]
+		},
+		{
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "// Add a new field called 'myNewField' to the JSON of the item\n$input.item.json.myNewField = 1;\n\nif ($input.item.json.country === 'US') {\n  throw new Error('This is an error');\n}\n\nreturn $input.item;"
+			},
+			"id": "823f12e6-cbfc-4545-8505-fab158d1effe",
+			"name": "Throw Error2",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [500, 880],
+			"onError": "continueRegularOutput"
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"name": "originalName",
+							"stringValue": "={{ $('Mock Data').item.json.name }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "8f88d130-9a13-4236-81c0-157f8a8990c0",
+			"name": "Combined1",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [800, 880]
+		},
+		{
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "// Add a new field called 'myNewField' to the JSON of the item\n$input.item.json.myNewField = 1;\n\nif ($input.item.json.country === 'US') {\n  throw new Error('This is an error');\n}\n\nreturn $input.item;"
+			},
+			"id": "1a3f4beb-0d1e-44fe-a411-5bd1096ffd74",
+			"name": "Throw Error1",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [500, 560],
+			"continueOnFail": true
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"name": "originalName",
+							"stringValue": "={{ $('Mock Data').item.json.name }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "c617a3d7-15e3-49b4-a7dd-d45c5e059a22",
+			"name": "Success1",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [820, 1640]
+		},
+		{
+			"parameters": {
+				"content": "## On Error: Continue (using error output) + Make sure error data gets removed",
+				"height": 509.71047006830065,
+				"width": 1183.725293692246
+			},
+			"id": "046de2cf-970a-4925-b87d-16e8cca511fd",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [460, 1560]
+		},
+		{
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "// Add a new field called 'myNewField' to the JSON of the item\n$input.item.json.myNewField = 1;\n\nif ($input.item.json.country === 'US') {\n  throw new Error('This is an error');\n}\n\nreturn $input.item;"
+			},
+			"id": "9ec21de1-dfca-4fff-b5a7-a56364239d7b",
+			"name": "Throw Error3",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [480, 1740],
+			"errorOutput": true,
+			"onError": "continueErrorOutput"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"id": "e3605953-75cf-4036-99f7-05e3971a6a75",
+			"name": "Edit Fields",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [1040, 1820],
+			"onError": "continueErrorOutput"
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"name": "originalName",
+							"stringValue": "={{ $('Mock Data').item.json.name }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "a71cfb77-adfd-4c77-9a8e-7e58cbd0931b",
+			"name": "Success2",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [1320, 1680]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"name": "originalName",
+							"stringValue": "={{ $('Mock Data').item.json.name }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "ea9d02e9-1716-4f69-a14a-9133f5184886",
+			"name": "Error2",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [1320, 1900]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"name": "originalName",
+							"stringValue": "={{ $('Mock Data').item.json.name }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "17780679-f7a3-4b1b-b6ee-f3f61e0843ad",
+			"name": "Error1",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [820, 1820]
+		}
+	],
+	"pinData": {
+		"Combined": [
+			{
+				"json": {
+					"error": "This is an error [line 5, for item 0]",
+					"originalName": "Jay Gatsby"
+				}
+			},
+			{
+				"json": {
+					"id": "23423533",
+					"name": "José Arcadio Buendía",
+					"email": "jab@macondo.co",
+					"notes": "Lots of people named after him. Very confusing",
+					"country": "CO",
+					"created": "1967-05-05",
+					"myNewField": 1,
+					"originalName": "José Arcadio Buendía"
+				}
+			},
+			{
+				"json": {
+					"error": "This is an error [line 5, for item 2]",
+					"originalName": "Max Sendak"
+				}
+			},
+			{
+				"json": {
+					"id": "23423535",
+					"name": "Zaphod Beeblebrox",
+					"email": "captain@heartofgold.com",
+					"notes": "Felt like I was talking to more than one person",
+					"country": null,
+					"created": "1979-10-12",
+					"myNewField": 1,
+					"originalName": "Zaphod Beeblebrox"
+				}
+			},
+			{
+				"json": {
+					"id": "23423536",
+					"name": "Edmund Pevensie",
+					"email": "edmund@narnia.gov",
+					"notes": "Passionate sailor",
+					"country": "UK",
+					"created": "1950-10-16",
+					"myNewField": 1,
+					"originalName": "Edmund Pevensie"
+				}
+			}
+		],
+		"Combined1": [
+			{
+				"json": {
+					"error": "This is an error [line 5, for item 0]",
+					"originalName": "Jay Gatsby"
+				}
+			},
+			{
+				"json": {
+					"id": "23423533",
+					"name": "José Arcadio Buendía",
+					"email": "jab@macondo.co",
+					"notes": "Lots of people named after him. Very confusing",
+					"country": "CO",
+					"created": "1967-05-05",
+					"myNewField": 1,
+					"originalName": "José Arcadio Buendía"
+				}
+			},
+			{
+				"json": {
+					"error": "This is an error [line 5, for item 2]",
+					"originalName": "Max Sendak"
+				}
+			},
+			{
+				"json": {
+					"id": "23423535",
+					"name": "Zaphod Beeblebrox",
+					"email": "captain@heartofgold.com",
+					"notes": "Felt like I was talking to more than one person",
+					"country": null,
+					"created": "1979-10-12",
+					"myNewField": 1,
+					"originalName": "Zaphod Beeblebrox"
+				}
+			},
+			{
+				"json": {
+					"id": "23423536",
+					"name": "Edmund Pevensie",
+					"email": "edmund@narnia.gov",
+					"notes": "Passionate sailor",
+					"country": "UK",
+					"created": "1950-10-16",
+					"myNewField": 1,
+					"originalName": "Edmund Pevensie"
+				}
+			}
+		],
+		"Success1": [
+			{
+				"json": {
+					"id": "23423533",
+					"name": "José Arcadio Buendía",
+					"email": "jab@macondo.co",
+					"notes": "Lots of people named after him. Very confusing",
+					"country": "CO",
+					"created": "1967-05-05",
+					"myNewField": 1,
+					"originalName": "José Arcadio Buendía"
+				}
+			},
+			{
+				"json": {
+					"id": "23423535",
+					"name": "Zaphod Beeblebrox",
+					"email": "captain@heartofgold.com",
+					"notes": "Felt like I was talking to more than one person",
+					"country": null,
+					"created": "1979-10-12",
+					"myNewField": 1,
+					"originalName": "Zaphod Beeblebrox"
+				}
+			},
+			{
+				"json": {
+					"id": "23423536",
+					"name": "Edmund Pevensie",
+					"email": "edmund@narnia.gov",
+					"notes": "Passionate sailor",
+					"country": "UK",
+					"created": "1950-10-16",
+					"myNewField": 1,
+					"originalName": "Edmund Pevensie"
+				}
+			}
+		],
+		"Error1": [
+			{
+				"json": {
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10",
+					"error": "This is an error [line 5, for item 0]",
+					"originalName": "Jay Gatsby"
+				}
+			},
+			{
+				"json": {
+					"id": "23423534",
+					"name": "Max Sendak",
+					"email": "info@in-and-out-of-weeks.org",
+					"notes": "Keeps rolling his terrible eyes",
+					"country": "US",
+					"created": "1963-04-09",
+					"error": "This is an error [line 5, for item 2]",
+					"originalName": "Max Sendak"
+				}
+			}
+		],
+		"Success2": [
+			{
+				"json": {
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10",
+					"error": "This is an error [line 5, for item 0]",
+					"originalName": "Jay Gatsby"
+				}
+			},
+			{
+				"json": {
+					"id": "23423534",
+					"name": "Max Sendak",
+					"email": "info@in-and-out-of-weeks.org",
+					"notes": "Keeps rolling his terrible eyes",
+					"country": "US",
+					"created": "1963-04-09",
+					"error": "This is an error [line 5, for item 2]",
+					"originalName": "Max Sendak"
+				}
+			}
+		],
+		"Error": [
+			{
+				"json": {
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10",
+					"error": "This is an error [line 5, for item 0]",
+					"originalName": "Jay Gatsby"
+				}
+			},
+			{
+				"json": {
+					"id": "23423534",
+					"name": "Max Sendak",
+					"email": "info@in-and-out-of-weeks.org",
+					"notes": "Keeps rolling his terrible eyes",
+					"country": "US",
+					"created": "1963-04-09",
+					"error": "This is an error [line 5, for item 2]",
+					"originalName": "Max Sendak"
+				}
+			}
+		],
+		"Success": [
+			{
+				"json": {
+					"id": "23423533",
+					"name": "José Arcadio Buendía",
+					"email": "jab@macondo.co",
+					"notes": "Lots of people named after him. Very confusing",
+					"country": "CO",
+					"created": "1967-05-05",
+					"myNewField": 1,
+					"originalName": "José Arcadio Buendía"
+				}
+			},
+			{
+				"json": {
+					"id": "23423535",
+					"name": "Zaphod Beeblebrox",
+					"email": "captain@heartofgold.com",
+					"notes": "Felt like I was talking to more than one person",
+					"country": null,
+					"created": "1979-10-12",
+					"myNewField": 1,
+					"originalName": "Zaphod Beeblebrox"
+				}
+			},
+			{
+				"json": {
+					"id": "23423536",
+					"name": "Edmund Pevensie",
+					"email": "edmund@narnia.gov",
+					"notes": "Passionate sailor",
+					"country": "UK",
+					"created": "1950-10-16",
+					"myNewField": 1,
+					"originalName": "Edmund Pevensie"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Mock Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Mock Data": {
+			"main": [
+				[
+					{
+						"node": "Throw Error",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Throw Error2",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Throw Error1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Throw Error3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Throw Error": {
+			"main": [
+				[
+					{
+						"node": "Success",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Error",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Throw Error2": {
+			"main": [
+				[
+					{
+						"node": "Combined1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Throw Error1": {
+			"main": [
+				[
+					{
+						"node": "Combined",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Throw Error3": {
+			"main": [
+				[
+					{
+						"node": "Success1",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Error1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [
+				[
+					{
+						"node": "Success2",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Error2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Error1": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "94aaa2ce-558a-4fed-948a-09860174272a",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+	},
+	"id": "FJvJXVvjM5rw3sUM",
+	"tags": []
+}

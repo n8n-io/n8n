@@ -1,111 +1,163 @@
-import { INodeProperties } from "n8n-workflow";
+import type { INodeProperties } from 'n8n-workflow';
 
-export const issueOperations = [
+export const issueOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
+				resource: ['issue'],
 			},
 		},
 		options: [
 			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create a new issue',
-			},
-			{
-				name: 'Update',
-				value: 'update',
-				description: 'Update an issue',
-			},
-			{
-				name: 'Get',
-				value: 'get',
-				description: 'Get an issue',
-			},
-			{
-				name: 'Get All',
-				value: 'getAll',
-				description: 'Get all issues',
-			},
-			{
 				name: 'Changelog',
 				value: 'changelog',
 				description: 'Get issue changelog',
+				action: 'Get an issue changelog',
 			},
 			{
-				name: 'Notify',
-				value: 'notify',
-				description: 'Creates an email notification for an issue and adds it to the mail queue.',
-			},
-			{
-				name: 'Status',
-				value: 'transitions',
-				description: `Returns either all transitions or a transition that can be performed by the user on an issue, based on the issue's status.`,
+				name: 'Create',
+				value: 'create',
+				description: 'Create a new issue',
+				action: 'Create an issue',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an issue',
+				action: 'Delete an issue',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get an issue',
+				action: 'Get an issue',
+			},
+			{
+				name: 'Get Many',
+				value: 'getAll',
+				description: 'Get many issues',
+				action: 'Get many issues',
+			},
+			{
+				name: 'Notify',
+				value: 'notify',
+				description: 'Create an email notification for an issue and add it to the mail queue',
+				action: 'Create an email notification for an issue',
+			},
+			{
+				name: 'Status',
+				value: 'transitions',
+				description:
+					"Return either all transitions or a transition that can be performed by the user on an issue, based on the issue's status",
+				action: 'Get the status of an issue',
+			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update an issue',
+				action: 'Update an issue',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const issueFields = [
-
-/* -------------------------------------------------------------------------- */
-/*                                issue:create                                */
-/* -------------------------------------------------------------------------- */
+export const issueFields: INodeProperties[] = [
+	/* -------------------------------------------------------------------------- */
+	/*                                issue:create                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Project',
 		name: 'project',
-		type: 'options',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
+		modes: [
+			{
+				displayName: 'Project',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a Project...',
+				typeOptions: {
+					searchListMethod: 'getProjects',
+					// missing searchListDependsOn: ['jiraVersion'],
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: '10000',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '([0-9]{2,})[ \t]*',
+							errorMessage: 'Not a valid Jira Project ID',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '^([0-9]{2,})',
+				},
+			},
+		],
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'create'
-				]
+				resource: ['issue'],
+				operation: ['create'],
 			},
 		},
-		typeOptions: {
-			loadOptionsMethod: 'getProjects',
-		},
-		description: 'Project',
 	},
 	{
 		displayName: 'Issue Type',
 		name: 'issueType',
-		type: 'options',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
+		modes: [
+			{
+				displayName: 'Issue Type',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select an Issue Type...',
+				typeOptions: {
+					searchListMethod: 'getIssueTypes',
+					// missing searchListDependsOn: ['project'],
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: '10000',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '([0-9]{1,})[ \t]*',
+							errorMessage: 'Not a valid Jira Issue Type ID',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '^([0-9]{1,})',
+				},
+			},
+		],
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'create'
-				]
+				resource: ['issue'],
+				operation: ['create'],
 			},
 		},
-		typeOptions: {
-			loadOptionsMethod: 'getIssueTypes',
-			loadOptionsDependsOn: [
-				'project',
-			],
-		},
-		description: 'Issue Types',
 	},
 	{
 		displayName: 'Summary',
@@ -114,16 +166,11 @@ export const issueFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['issue'],
+				operation: ['create'],
 			},
 		},
 		default: '',
-		description: 'Summary',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -133,79 +180,251 @@ export const issueFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['issue'],
+				operation: ['create'],
 			},
 		},
 		options: [
 			{
 				displayName: 'Assignee',
 				name: 'assignee',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getUsers',
-				},
-				default: '',
-				required : false,
-				description: 'Assignee',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				modes: [
+					{
+						displayName: 'Assignee',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select an Assignee...',
+						typeOptions: {
+							searchListMethod: 'getUsers',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: '62971ebae540870069668714',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '([-:a-z0-9]{2,})[ \t]*',
+									errorMessage: 'Not a valid Jira Assignee ID',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: '^([-:a-z0-9]{2,})',
+						},
+					},
+				],
 			},
 			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
 				default: '',
-				required : false,
-				description: 'Description',
 			},
 			{
-				displayName: 'Labels',
+				displayName: 'Component Names or IDs',
+				name: 'componentIds',
+				type: 'multiOptions',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getProjectComponents',
+					loadOptionsDependsOn: ['project'],
+				},
+				default: [],
+			},
+			{
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				type: 'fixedCollection',
+				default: {},
+				placeholder: 'Add Custom Field',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						name: 'customFieldsValues',
+						displayName: 'Custom Field',
+						values: [
+							{
+								displayName: 'Field',
+								name: 'fieldId',
+								type: 'resourceLocator',
+								default: { mode: 'list', value: '' },
+								modes: [
+									{
+										displayName: 'Field',
+										name: 'list',
+										type: 'list',
+										placeholder: 'Select a Field...',
+										typeOptions: {
+											searchListMethod: 'getCustomFields',
+											// missing searchListDependsOn: ['project'],
+										},
+									},
+									{
+										displayName: 'ID',
+										name: 'id',
+										type: 'string',
+										placeholder: 'customfield_10035',
+										validation: [
+											{
+												type: 'regex',
+												properties: {
+													regex: '(customfield_[0-9]{2,})[ \t]*',
+													errorMessage: 'Not a valid Jira Field ID',
+												},
+											},
+										],
+										extractValue: {
+											type: 'regex',
+											regex: '^(customfield_[0-9]{2,})',
+										},
+									},
+								],
+							},
+							{
+								displayName: 'Field Value',
+								name: 'fieldValue',
+								type: 'string',
+								description: 'Value of the field to set',
+								default: '',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Label Names or IDs',
 				name: 'labels',
 				type: 'multiOptions',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getLabels',
 				},
 				default: [],
-				required : false,
-				description: 'Labels',
+				displayOptions: {
+					show: {
+						'/jiraVersion': ['cloud'],
+					},
+				},
+			},
+			{
+				displayName: 'Labels',
+				name: 'serverLabels',
+				type: 'string',
+				default: [],
+				displayOptions: {
+					show: {
+						'/jiraVersion': ['server'],
+					},
+				},
+				typeOptions: {
+					multipleValues: true,
+				},
 			},
 			{
 				displayName: 'Parent Issue Key',
 				name: 'parentIssueKey',
 				type: 'string',
-				required: false,
 				default: '',
-				description: 'Parent Issue Key',
 			},
 			{
 				displayName: 'Priority',
 				name: 'priority',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getPriorities',
-				},
-				default: '',
-				required : false,
-				description: 'Priority',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				modes: [
+					{
+						displayName: 'Priority',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a Priority...',
+						typeOptions: {
+							searchListMethod: 'getPriorities',
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: '1',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '([0-9]{1,})[ \t]*',
+									errorMessage: 'Not a valid Jira Priority ID',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: '^([0-9]{1,})',
+						},
+					},
+				],
+			},
+			{
+				displayName: 'Reporter',
+				name: 'reporter',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				modes: [
+					{
+						displayName: 'Reporter',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a Reporter...',
+						typeOptions: {
+							searchListMethod: 'getUsers',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: '62971ebae540870069668714',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '([-:a-z0-9]{2,})[ \t]*',
+									errorMessage: 'Not a valid Jira Reporter ID',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: '^([-:a-z0-9]{2,})',
+						},
+					},
+				],
 			},
 			{
 				displayName: 'Update History',
 				name: 'updateHistory',
 				type: 'boolean',
 				default: false,
-				required : false,
-				description: `Whether the project in which the issue is created is added to the user's<br/>
-				Recently viewed project list, as shown under Projects in Jira.`,
+				description:
+					"Whether the project in which the issue is created is added to the user's Recently viewed project list, as shown under Projects in Jira",
 			},
 		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                issue:update                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                issue:update                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Issue Key',
 		name: 'issueKey',
@@ -213,16 +432,11 @@ export const issueFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['issue'],
+				operation: ['update'],
 			},
 		},
 		default: '',
-		description: 'Issue Key',
 	},
 	{
 		displayName: 'Update Fields',
@@ -232,100 +446,280 @@ export const issueFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['issue'],
+				operation: ['update'],
 			},
 		},
 		options: [
 			{
 				displayName: 'Assignee',
 				name: 'assignee',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getUsers',
-				},
-				default: '',
-				required : false,
-				description: 'Assignee',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				modes: [
+					{
+						displayName: 'Assignee',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select an Assignee...',
+						typeOptions: {
+							searchListMethod: 'getUsers',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: '62971ebae540870069668714',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '([-:a-z0-9]{2,})[ \t]*',
+									errorMessage: 'Not a valid Jira Assignee ID',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: '^([-:a-z0-9]{2,})',
+						},
+					},
+				],
 			},
 			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
 				default: '',
-				required : false,
-				description: 'Description',
+			},
+			{
+				displayName: 'Custom Fields',
+				name: 'customFieldsUi',
+				type: 'fixedCollection',
+				default: {},
+				placeholder: 'Add Custom Field',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						name: 'customFieldsValues',
+						displayName: 'Custom Field',
+						values: [
+							{
+								displayName: 'Field',
+								name: 'fieldId',
+								type: 'resourceLocator',
+								default: { mode: 'list', value: '' },
+								modes: [
+									{
+										displayName: 'Field',
+										name: 'list',
+										type: 'list',
+										placeholder: 'Select a Field...',
+										typeOptions: {
+											searchListMethod: 'getCustomFields',
+											// missing searchListDependsOn: ['issueKey'],
+										},
+									},
+									{
+										displayName: 'ID',
+										name: 'id',
+										type: 'string',
+										placeholder: 'customfield_10035',
+										validation: [
+											{
+												type: 'regex',
+												properties: {
+													regex: '(customfield_[0-9]{2,})[ \t]*',
+													errorMessage: 'Not a valid Jira Field ID',
+												},
+											},
+										],
+										extractValue: {
+											type: 'regex',
+											regex: '^(customfield_[0-9]{2,})',
+										},
+									},
+								],
+							},
+							{
+								displayName: 'Field Value',
+								name: 'fieldValue',
+								type: 'string',
+								description: 'Value of the field to set',
+								default: '',
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Issue Type',
 				name: 'issueType',
-				type: 'options',
-				required: false,
-				typeOptions: {
-					loadOptionsMethod: 'getIssueTypes',
-				},
+				type: 'string',
 				default: '',
 				description: 'Issue Types',
 			},
 			{
-				displayName: 'Labels',
+				displayName: 'Label Names or IDs',
 				name: 'labels',
 				type: 'multiOptions',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getLabels',
 				},
 				default: [],
-				required : false,
-				description: 'Labels',
+				displayOptions: {
+					show: {
+						'/jiraVersion': ['cloud'],
+					},
+				},
+			},
+			{
+				displayName: 'Labels',
+				name: 'serverLabels',
+				type: 'string',
+				default: [],
+				displayOptions: {
+					show: {
+						'/jiraVersion': ['server'],
+					},
+				},
+				typeOptions: {
+					multipleValues: true,
+				},
 			},
 			{
 				displayName: 'Parent Issue Key',
 				name: 'parentIssueKey',
 				type: 'string',
-				required: false,
 				default: '',
-				description: 'Parent Issue Key',
 			},
 			{
 				displayName: 'Priority',
 				name: 'priority',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getPriorities',
-				},
-				default: '',
-				required : false,
-				description: 'Priority',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				modes: [
+					{
+						displayName: 'Priority',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a Priority...',
+						typeOptions: {
+							searchListMethod: 'getPriorities',
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: '1',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '([0-9]{1,})[ \t]*',
+									errorMessage: 'Not a valid Jira Priority ID',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: '^([0-9]{1,})',
+						},
+					},
+				],
+			},
+			{
+				displayName: 'Reporter',
+				name: 'reporter',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				modes: [
+					{
+						displayName: 'Reporter',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a Reporter...',
+						typeOptions: {
+							searchListMethod: 'getUsers',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: '62971ebae540870069668714',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '([-:a-z0-9]{2,})[ \t]*',
+									errorMessage: 'Not a valid Jira Reporter ID',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: '^([-:a-z0-9]{2,})',
+						},
+					},
+				],
 			},
 			{
 				displayName: 'Summary',
 				name: 'summary',
 				type: 'string',
-				required: false,
 				default: '',
-				description: 'Summary',
 			},
 			{
-				displayName: 'Status ID',
+				displayName: 'Status',
 				name: 'statusId',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getTransitions',
-				},
-				required: false,
-				default: '',
-				description: 'The ID of the issue status.',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				modes: [
+					{
+						displayName: 'Status',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a Status...',
+						typeOptions: {
+							searchListMethod: 'getTransitions',
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: '11',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '([0-9]{1,})[ \t]*',
+									errorMessage: 'Not a valid Jira Status ID',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: '^([0-9]{1,})',
+						},
+					},
+				],
 			},
 		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                issue:delete                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                issue:delete                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Issue Key',
 		name: 'issueKey',
@@ -333,16 +727,11 @@ export const issueFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['issue'],
+				operation: ['delete'],
 			},
 		},
 		default: '',
-		description: 'Issue Key',
 	},
 	{
 		displayName: 'Delete Subtasks',
@@ -351,21 +740,16 @@ export const issueFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['issue'],
+				operation: ['delete'],
 			},
 		},
 		default: false,
-		description: 'Delete Subtasks',
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                  issue:get                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                  issue:get                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Issue Key',
 		name: 'issueKey',
@@ -373,16 +757,24 @@ export const issueFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['issue'],
+				operation: ['get'],
 			},
 		},
 		default: '',
-		description: 'Issue Key',
+	},
+	{
+		displayName: 'Simplify',
+		name: 'simplifyOutput',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['issue'],
+				operation: ['get'],
+			},
+		},
+		default: false,
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -392,12 +784,8 @@ export const issueFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['issue'],
+				operation: ['get'],
 			},
 		},
 		options: [
@@ -405,90 +793,68 @@ export const issueFields = [
 				displayName: 'Expand',
 				name: 'expand',
 				type: 'string',
-				required: false,
 				default: '',
-				description: `Use expand to include additional information about the issues in the response.<br/>
-				This parameter accepts a comma-separated list. Expand options include:<br/>
-				renderedFields Returns field values rendered in HTML format.<br/>
-				names Returns the display name of each field.<br/>
-				schema Returns the schema describing a field type.<br/>
-				transitions Returns all possible transitions for the issue.<br/>
-				editmeta Returns information about how each field can be edited.<br/>
-				changelog Returns a list of recent updates to an issue, sorted by date, starting from the most recent.<br/>
-				versionedRepresentations Returns a JSON array for each version of a field's value, with the highest number<br/>
-				representing the most recent version. Note: When included in the request, the fields parameter is ignored.`
+				description: `<p>Use expand to include additional information about the issues in the response. This parameter accepts a comma-separated list. Expand options include:
+				<ul>
+					<li><code>renderedFields</code> Returns field values rendered in HTML format.</li>
+					<li><code>names</code> Returns the display name of each field.</li>
+					<li><code>schema</code> Returns the schema describing a field type.</li>
+					<li><code>transitions</code> Returns all possible transitions for the issue.</li>
+					<li><code>editmeta</code> Returns information about how each field can be edited.</li>
+					<li><code>changelog</code> Returns a list of recent updates to an issue, sorted by date, starting from the most recent.</li>
+					<li><code>versionedRepresentations</code> Returns a JSON array for each version of a field's value, with the highest number representing the most recent version. Note: When included in the request, the fields parameter is ignored.</li>
+				</ul>`,
 			},
 			{
 				displayName: 'Fields',
 				name: 'fields',
 				type: 'string',
-				required: false,
 				default: '',
-				description: `A list of fields to return for the issue.<br/>
-				This parameter accepts a comma-separated list.<br/>
-				Use it to retrieve a subset of fields. Allowed values:<br/>
-				*all Returns all fields.<br/>
-				*navigable Returns navigable fields.<br/>
-				Any issue field, prefixed with a minus to exclude.<br/>`
+				description:
+					'A list of fields to return for the issue. This parameter accepts a comma-separated list. Use it to retrieve a subset of fields. Allowed values: <code>*all</code> Returns all fields. <code>*navigable</code> Returns navigable fields. Any issue field, prefixed with a minus to exclude.',
 			},
 			{
 				displayName: 'Fields By Key',
 				name: 'fieldsByKey',
 				type: 'boolean',
-				required: false,
 				default: false,
-				description: `Indicates whether fields in fields are referenced by keys rather than IDs.<br/>
-				This parameter is useful where fields have been added by a connect app and a field's key<br/>
-				may differ from its ID.`,
+				description:
+					"Whether fields in fields are referenced by keys rather than IDs. This parameter is useful where fields have been added by a connect app and a field's key may differ from its ID.",
 			},
 			{
 				displayName: 'Properties',
 				name: 'properties',
 				type: 'string',
-				required: false,
 				default: '',
-				description: `A list of issue properties to return for the issue.<br/>
-				This parameter accepts a comma-separated list. Allowed values:<br/>
-				*all Returns all issue properties.<br/>
-				Any issue property key, prefixed with a minus to exclude.<br/>
-				Examples:<br/>
-				*all Returns all properties.<br/>
-				*all,-prop1 Returns all properties except prop1.<br/>
-				prop1,prop2 Returns prop1 and prop2 properties.<br/>
-				This parameter may be specified multiple times. For example, properties=prop1,prop2& properties=prop3.`
+				description:
+					'A list of issue properties to return for the issue. This parameter accepts a comma-separated list. Allowed values: <code>*all</code> Returns all issue properties. Any issue property key, prefixed with a minus to exclude. Examples: <code>*all</code> Returns all properties. <code>*all</code>,-prop1 Returns all properties except prop1. <code>prop1,prop2</code> Returns prop1 and prop2 properties. This parameter may be specified multiple times. For example, properties=prop1,prop2& properties=prop3.',
 			},
 			{
 				displayName: 'Update History',
 				name: 'updateHistory',
 				type: 'boolean',
-				required: false,
 				default: false,
-				description: `Whether the project in which the issue is created is added to the user's
-				Recently viewed project list, as shown under Projects in Jira. This also populates the
-				JQL issues search lastViewed field.`,
+				description:
+					"Whether the project in which the issue is created is added to the user's Recently viewed project list, as shown under Projects in Jira. This also populates the JQL issues search lastViewed field.",
 			},
-		]
+		],
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                  issue:getAll                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                  issue:getAll                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['issue'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -496,15 +862,9 @@ export const issueFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['issue'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -512,21 +872,17 @@ export const issueFields = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'issue',
-				],
+				operation: ['getAll'],
+				resource: ['issue'],
 			},
 		},
 		default: {},
@@ -534,13 +890,14 @@ export const issueFields = [
 			{
 				displayName: 'Expand',
 				name: 'expand',
-				type: 'options',
-				default: '',
+				type: 'multiOptions',
+				default: [],
 				options: [
 					{
 						name: 'Changelog',
 						value: 'changelog',
-						description: 'Returns a list of recent updates to an issue, sorted by date, starting from the most recent.',
+						description:
+							'Returns a list of recent updates to an issue, sorted by date, starting from the most recent',
 					},
 					{
 						name: 'Editmeta',
@@ -555,66 +912,59 @@ export const issueFields = [
 					{
 						name: 'Operations',
 						value: 'operations',
-						description: 'Returns all possible operations for the issue.',
+						description: 'Returns all possible operations for the issue',
 					},
 					{
 						name: 'Rendered Fields',
 						value: 'renderedFields',
-						description: ' Returns field values rendered in HTML format.',
+						description: 'Returns field values rendered in HTML format',
 					},
 					{
 						name: 'Schema',
 						value: 'schema',
-						description: 'Returns the schema describing a field type.',
+						description: 'Returns the schema describing a field type',
 					},
 					{
 						name: 'Transitions',
 						value: 'transitions',
-						description: ' Returns all possible transitions for the issue.',
+						description: 'Returns all possible transitions for the issue',
 					},
 					{
 						name: 'Versioned Representations',
 						value: 'versionedRepresentations',
-						description: `JSON array containing each version of a field's value`,
+						description: "JSON array containing each version of a field's value",
 					},
 				],
-				description: `Use expand to include additional information about issues in the response`,
+				description: 'Use expand to include additional information about issues in the response',
 			},
 			{
 				displayName: 'Fields',
 				name: 'fields',
 				type: 'string',
 				default: '*navigable',
-				description: `A list of fields to return for each issue, use it to retrieve a subset of fields. This parameter accepts a comma-separated list. Expand options include:<br/>
-				*all Returns all fields.<br/>
-				*navigable Returns navigable fields.<br/>
-				Any issue field, prefixed with a minus to exclude.<br/>`,
+				description:
+					'A list of fields to return for each issue, use it to retrieve a subset of fields. This parameter accepts a comma-separated list. Expand options include: <code>*all</code> Returns all fields. <code>*navigable</code> Returns navigable fields. Any issue field, prefixed with a minus to exclude.',
 			},
 			{
 				displayName: 'Fields By Key',
 				name: 'fieldsByKey',
 				type: 'boolean',
-				required: false,
 				default: false,
-				description: `Indicates whether fields in fields are referenced by keys rather than IDs.<br/>
-				This parameter is useful where fields have been added by a connect app and a field's key<br/>
-				may differ from its ID.`,
+				description:
+					"Whether fields in fields are referenced by keys rather than IDs. This parameter is useful where fields have been added by a connect app and a field's key may differ from its ID.",
 			},
 			{
-				displayName: ' JQL',
+				displayName: 'JQL',
 				name: 'jql',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				description: 'A JQL expression.',
+				description: 'A JQL expression',
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                               issue:changelog                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                               issue:changelog                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Issue Key',
 		name: 'issueKey',
@@ -622,16 +972,11 @@ export const issueFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'changelog',
-				],
+				resource: ['issue'],
+				operation: ['changelog'],
 			},
 		},
 		default: '',
-		description: 'Issue Key',
 	},
 	{
 		displayName: 'Return All',
@@ -639,16 +984,12 @@ export const issueFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'changelog',
-				],
+				resource: ['issue'],
+				operation: ['changelog'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -656,15 +997,9 @@ export const issueFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'changelog',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['issue'],
+				operation: ['changelog'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -672,11 +1007,11 @@ export const issueFields = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                issue:notify                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                issue:notify                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Issue Key',
 		name: 'issueKey',
@@ -684,31 +1019,21 @@ export const issueFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'notify',
-				],
+				resource: ['issue'],
+				operation: ['notify'],
 			},
 		},
 		default: '',
-		description: 'Issue Key',
 	},
 	{
 		displayName: 'JSON Parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'notify',
-				],
+				resource: ['issue'],
+				operation: ['notify'],
 			},
 		},
 	},
@@ -720,12 +1045,8 @@ export const issueFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'notify',
-				],
+				resource: ['issue'],
+				operation: ['notify'],
 			},
 		},
 		options: [
@@ -733,33 +1054,24 @@ export const issueFields = [
 				displayName: 'HTML Body',
 				name: 'htmlBody',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				required: false,
 				default: '',
-				description: 'The HTML body of the email notification for the issue.',
+				description: 'The HTML body of the email notification for the issue',
 			},
 			{
 				displayName: 'Subject',
 				name: 'subject',
 				type: 'string',
-				required: false,
 				default: '',
-				description: `The subject of the email notification for the issue. If this is not specified,
-				then the subject is set to the issue key and summary.`
+				description:
+					'The subject of the email notification for the issue. If this is not specified, then the subject is set to the issue key and summary.',
 			},
 			{
 				displayName: 'Text Body',
 				name: 'textBody',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				required: false,
 				default: '',
-				description: `The subject of the email notification for the issue.
-				If this is not specified, then the subject is set to the issue key and summary.`
+				description:
+					'The subject of the email notification for the issue. If this is not specified, then the subject is set to the issue key and summary.',
 			},
 		],
 	},
@@ -771,19 +1083,13 @@ export const issueFields = [
 		typeOptions: {
 			multipleValues: false,
 		},
-		description: 'The recipients of the email notification for the issue.',
+		description: 'The recipients of the email notification for the issue',
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'notify',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['issue'],
+				operation: ['notify'],
+				jsonParameters: [false],
 			},
 		},
 		options: [
@@ -795,7 +1101,7 @@ export const issueFields = [
 						displayName: 'Reporter',
 						name: 'reporter',
 						type: 'boolean',
-						description: `Indicates whether the notification should be sent to the issue's reporter.`,
+						description: "Whether the notification should be sent to the issue's reporter",
 						default: false,
 					},
 					{
@@ -803,46 +1109,47 @@ export const issueFields = [
 						name: 'assignee',
 						type: 'boolean',
 						default: false,
-						description: `Indicates whether the notification should be sent to the issue's assignees.`,
+						description: "Whether the notification should be sent to the issue's assignees",
 					},
 					{
 						displayName: 'Watchers',
 						name: 'watchers',
 						type: 'boolean',
 						default: false,
-						description: `Indicates whether the notification should be sent to the issue's assignees.`,
+						description: "Whether the notification should be sent to the issue's assignees",
 					},
 					{
 						displayName: 'Voters',
 						name: 'voters',
 						type: 'boolean',
 						default: false,
-						description: `Indicates whether the notification should be sent to the issue's voters.`,
+						description: "Whether the notification should be sent to the issue's voters",
 					},
 					{
-						displayName: 'Users',
+						displayName: 'User Names or IDs',
 						name: 'users',
 						type: 'multiOptions',
 						typeOptions: {
 							loadOptionsMethod: 'getUsers',
 						},
 						default: [],
-						description: `List of users to receive the notification.`,
+						description:
+							'List of users to receive the notification. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
-						displayName: 'Groups',
+						displayName: 'Group Names or IDs',
 						name: 'groups',
 						type: 'multiOptions',
 						typeOptions: {
 							loadOptionsMethod: 'getGroups',
 						},
 						default: [],
-						description: `List of groups to receive the notification.`,
+						description:
+							'List of groups to receive the notification. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
-				]
-
-			}
-		]
+				],
+			},
+		],
 	},
 	{
 		displayName: 'Notification Recipients',
@@ -851,22 +1158,15 @@ export const issueFields = [
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},
-		required: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'notify',
-				],
-				jsonParameters: [
-					true,
-				]
+				resource: ['issue'],
+				operation: ['notify'],
+				jsonParameters: [true],
 			},
 		},
 		default: '',
-		description: 'The recipients of the email notification for the issue.',
+		description: 'The recipients of the email notification for the issue',
 	},
 	{
 		displayName: 'Notification Recipients Restrictions',
@@ -876,19 +1176,13 @@ export const issueFields = [
 		typeOptions: {
 			multipleValues: false,
 		},
-		description: 'Restricts the notifications to users with the specified permissions.',
+		description: 'Restricts the notifications to users with the specified permissions',
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'notify',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['issue'],
+				operation: ['notify'],
+				jsonParameters: [false],
 			},
 		},
 		options: [
@@ -897,29 +1191,30 @@ export const issueFields = [
 				displayName: 'Recipients Restrictions',
 				values: [
 					{
-						displayName: 'Users',
+						displayName: 'User Names or IDs',
 						name: 'users',
 						type: 'multiOptions',
 						typeOptions: {
 							loadOptionsMethod: 'getUsers',
 						},
 						default: [],
-						description: `List of users to receive the notification.`,
+						description:
+							'List of users to receive the notification. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
-						displayName: 'Groups',
+						displayName: 'Group Names or IDs',
 						name: 'groups',
 						type: 'multiOptions',
 						typeOptions: {
 							loadOptionsMethod: 'getGroups',
 						},
 						default: [],
-						description: `List of groups to receive the notification.`,
+						description:
+							'List of groups to receive the notification. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
-				]
-
-			}
-		]
+				],
+			},
+		],
 	},
 	{
 		displayName: 'Notification Recipients Restrictions',
@@ -928,27 +1223,20 @@ export const issueFields = [
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},
-		required: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'notify',
-				],
-				jsonParameters: [
-					true,
-				]
+				resource: ['issue'],
+				operation: ['notify'],
+				jsonParameters: [true],
 			},
 		},
 		default: '',
-		description: 'Restricts the notifications to users with the specified permissions.',
+		description: 'Restricts the notifications to users with the specified permissions',
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                              issue:transitions                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                              issue:transitions                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Issue Key',
 		name: 'issueKey',
@@ -956,16 +1244,11 @@ export const issueFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'transitions',
-				],
+				resource: ['issue'],
+				operation: ['transitions'],
 			},
 		},
 		default: '',
-		description: 'Issue Key',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -975,12 +1258,8 @@ export const issueFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'transitions',
-				],
+				resource: ['issue'],
+				operation: ['transitions'],
 			},
 		},
 		options: [
@@ -988,30 +1267,25 @@ export const issueFields = [
 				displayName: 'Expand',
 				name: 'expand',
 				type: 'string',
-				required: false,
 				default: '',
-				description: `Use expand to include additional information about transitions in the response.<br/>
-				 This parameter accepts transitions.fields, which returns information about the fields in the<br/>
-				 transition screen for each transition. Fields hidden from the screen are not returned. Use this<br/>
-				 information to populate the fields and update fields in Transition issue.`
+				description:
+					'Use expand to include additional information about transitions in the response. This parameter accepts transitions.fields, which returns information about the fields in the transition screen for each transition. Fields hidden from the screen are not returned. Use this information to populate the fields and update fields in Transition issue.',
 			},
 			{
 				displayName: 'Transition ID',
 				name: 'transitionId',
 				type: 'string',
-				required: false,
 				default: '',
-				description: 'The ID of the transition.',
+				description: 'The ID of the transition',
 			},
 			{
 				displayName: 'Skip Remote Only Condition',
 				name: 'skipRemoteOnlyCondition',
 				type: 'boolean',
-				required: false,
 				default: false,
-				description: `Indicates whether transitions with the condition Hide<br/>
-				From User Condition are included in the response.`,
+				description:
+					'Whether transitions with the condition Hide From User Condition are included in the response',
 			},
 		],
 	},
-] as INodeProperties[];
+];

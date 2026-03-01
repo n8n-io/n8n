@@ -1,81 +1,131 @@
-import {
+import type {
 	IExecuteFunctions,
 	IHookFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
+	ILoadOptionsFunctions,
+	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 /**
  * Make an API request to Github
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
-export async function githubApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: object, query?: object): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('githubApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
-	const baseUrl = credentials!.server || 'https://api.github.com';
-
-	const options = {
+export async function githubApiRequest(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	endpoint: string,
+	body: object,
+	query?: IDataObject,
+	option: IDataObject = {},
+): Promise<any> {
+	const options: IRequestOptions = {
 		method,
 		headers: {
-			'Authorization': `token ${credentials.accessToken}`,
-			'User-Agent': credentials.user,
+			'User-Agent': 'n8n',
 		},
 		body,
 		qs: query,
-		uri: `${baseUrl}${endpoint}`,
-		json: true
+		uri: '',
+		json: true,
 	};
 
+	if (Object.keys(option).length !== 0) {
+		Object.assign(options, option);
+	}
+
 	try {
-		return await this.helpers.request(options);
+		const authenticationMethod = this.getNodeParameter(
+			'authentication',
+			0,
+			'accessToken',
+		) as string;
+		let credentialType = '';
+
+		if (authenticationMethod === 'accessToken') {
+			const credentials = await this.getCredentials('githubApi');
+			credentialType = 'githubApi';
+
+			const baseUrl = credentials.server || 'https://api.github.com';
+			options.uri = `${baseUrl}${endpoint}`;
+		} else {
+			const credentials = await this.getCredentials('githubOAuth2Api');
+			credentialType = 'githubOAuth2Api';
+
+			const baseUrl = credentials.server || 'https://api.github.com';
+			options.uri = `${baseUrl}${endpoint}`;
+		}
+
+		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
-		if (error.statusCode === 401) {
-			// Return a clear error
-			throw new Error('The Github credentials are not valid!');
-		}
-
-		if (error.response && error.response.body && error.response.body.message) {
-			// Try to return the error prettier
-			throw new Error(`Github error response [${error.statusCode}]: ${error.response.body.message}`);
-		}
-
-		// If that data does not exist for some reason return the actual error
-		throw error;
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
-
-
 
 /**
  * Returns the SHA of the given file
  *
- * @export
  * @param {(IHookFunctions | IExecuteFunctions)} this
- * @param {string} owner
- * @param {string} repository
- * @param {string} filePath
- * @param {string} [branch]
- * @returns {Promise<any>}
  */
-export async function getFileSha(this: IHookFunctions | IExecuteFunctions, owner: string, repository: string, filePath: string, branch?: string): Promise<any> { // tslint:disable-line:no-any
-	const getBody: IDataObject = {};
+export async function getFileSha(
+	this: IHookFunctions | IExecuteFunctions,
+	owner: string,
+	repository: string,
+	filePath: string,
+	branch?: string,
+): Promise<any> {
+	const query: IDataObject = {};
 	if (branch !== undefined) {
-		getBody.branch = branch;
+		query.ref = branch;
 	}
+
 	const getEndpoint = `/repos/${owner}/${repository}/contents/${encodeURI(filePath)}`;
-	const responseData = await githubApiRequest.call(this, 'GET', getEndpoint, getBody, {});
+	const responseData = await githubApiRequest.call(this, 'GET', getEndpoint, {}, query);
 
 	if (responseData.sha === undefined) {
-		throw new Error('Could not get the SHA of the file.');
+		throw new NodeOperationError(this.getNode(), 'Could not get the SHA of the file.');
 	}
 	return responseData.sha;
+}
+
+export async function githubApiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions,
+	method: IHttpRequestMethods,
+	endpoint: string,
+
+	body: any = {},
+	query: IDataObject = {},
+): Promise<any> {
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+
+	query.per_page = 100;
+	query.page = 1;
+
+	do {
+		responseData = await githubApiRequest.call(this, method, endpoint, body as IDataObject, query, {
+			resolveWithFullResponse: true,
+		});
+		query.page++;
+		returnData.push.apply(returnData, responseData.body as IDataObject[]);
+	} while (responseData.headers.link?.includes('next'));
+	return returnData;
+}
+
+export function isBase64(content: string) {
+	const base64regex = /^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$/;
+	return base64regex.test(content);
+}
+
+export function validateJSON(json: string | undefined): any {
+	let result;
+	try {
+		result = JSON.parse(json!);
+	} catch (exception) {
+		result = undefined;
+	}
+	return result;
 }

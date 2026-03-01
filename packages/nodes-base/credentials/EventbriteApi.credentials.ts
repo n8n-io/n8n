@@ -1,16 +1,18 @@
-import {
-	ICredentialType,
-	NodePropertyTypes,
-} from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class EventbriteApi implements ICredentialType {
 	name = 'eventbriteApi';
+
 	displayName = 'Eventbrite API';
-	properties = [
+
+	documentationUrl = 'eventbrite';
+
+	properties: INodeProperties[] = [
 		{
-			displayName: 'API Key',
+			displayName: 'Private Key',
 			name: 'apiKey',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

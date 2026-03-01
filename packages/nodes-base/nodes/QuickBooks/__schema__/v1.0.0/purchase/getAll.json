@@ -1,0 +1,157 @@
+{
+    "type": "object",
+    "properties": {
+        "AccountRef": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "Credit": {
+            "type": "boolean"
+        },
+        "CurrencyRef": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain": {
+            "type": "string"
+        },
+        "EntityRef": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "Id": {
+            "type": "string"
+        },
+        "Line": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "AccountBasedExpenseLineDetail": {
+                        "type": "object",
+                        "properties": {
+                            "AccountRef": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "BillableStatus": {
+                                "type": "string"
+                            },
+                            "TaxCodeRef": {
+                                "type": "object",
+                                "properties": {
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "DetailType": {
+                        "type": "string"
+                    },
+                    "Id": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "MetaData": {
+            "type": "object",
+            "properties": {
+                "CreateTime": {
+                    "type": "string"
+                },
+                "LastUpdatedTime": {
+                    "type": "string"
+                }
+            }
+        },
+        "PaymentType": {
+            "type": "string"
+        },
+        "PurchaseEx": {
+            "type": "object",
+            "properties": {
+                "any": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "declaredType": {
+                                "type": "string"
+                            },
+                            "globalScope": {
+                                "type": "boolean"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "nil": {
+                                "type": "boolean"
+                            },
+                            "scope": {
+                                "type": "string"
+                            },
+                            "typeSubstituted": {
+                                "type": "boolean"
+                            },
+                            "value": {
+                                "type": "object",
+                                "properties": {
+                                    "Name": {
+                                        "type": "string"
+                                    },
+                                    "Value": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "sparse": {
+            "type": "boolean"
+        },
+        "SyncToken": {
+            "type": "string"
+        },
+        "TxnDate": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

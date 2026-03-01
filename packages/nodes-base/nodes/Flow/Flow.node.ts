@@ -1,82 +1,68 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
+	INodeTypeDescription,
+	JsonObject,
 } from 'n8n-workflow';
-import {
-	flowApiRequest,
-	FlowApiRequestAllItems,
-} from './GenericFunctions';
-import {
-	taskOpeations,
-	taskFields,
-} from './TaskDescription';
-import {
-	ITask, TaskInfo,
- } from './TaskInterface';
-import { response } from 'express';
+import { NodeConnectionTypes, NodeApiError } from 'n8n-workflow';
+
+import { flowApiRequest, FlowApiRequestAllItems } from './GenericFunctions';
+import { taskFields, taskOperations } from './TaskDescription';
+import type { ITask, TaskInfo } from './TaskInterface';
 
 export class Flow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Flow',
-		name: 'Flow',
-		icon: 'file:flow.png',
+		name: 'flow',
+		icon: 'file:flow.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Flow API',
 		defaults: {
 			name: 'Flow',
-			color: '#c02428',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'flowApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Task',
 						value: 'task',
-						description: `The primary unit within Flow; tasks track units of work and can be assigned, sorted, nested, and tagged.</br>
-						Tasks can either be part of a List, or "private" (meaning "without a list", essentially).</br>
-						Through this endpoint you are able to do anything you wish to your tasks in Flow, including create new ones.`,
+						description:
+							'Tasks are units of work that can be private or assigned to a list. Through this endpoint, you can manipulate your tasks in Flow, including creating new ones.',
 					},
 				],
 				default: 'task',
-				description: 'Resource to consume.',
 			},
-			...taskOpeations,
+			...taskOperations,
 			...taskFields,
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const credentials = this.getCredentials('flowApi');
-
-		if (credentials === undefined) {
-			throw new Error('No credentials got returned!');
-		}
+		const credentials = await this.getCredentials('flowApi');
 
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const returnData: INodeExecutionData[] = [];
+		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			if (resource === 'task') {
@@ -84,13 +70,13 @@ export class Flow implements INodeType {
 				if (operation === 'create') {
 					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 					const name = this.getNodeParameter('name', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: ITask = {
 						organization_id: credentials.organizationId as number,
 					};
 					const task: TaskInfo = {
 						name,
-						workspace_id: parseInt(workspaceId, 10)
+						workspace_id: parseInt(workspaceId, 10),
 					};
 					if (additionalFields.ownerId) {
 						task.owner_id = parseInt(additionalFields.ownerId as string, 10);
@@ -138,15 +124,15 @@ export class Flow implements INodeType {
 					try {
 						responseData = await flowApiRequest.call(this, 'POST', '/tasks', body);
 						responseData = responseData.task;
-					} catch (err) {
-						throw new Error(`Flow Error: ${err.message}`);
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error as JsonObject);
 					}
 				}
 				//https://developer.getflow.com/api/#tasks_update-a-task
 				if (operation === 'update') {
 					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 					const taskId = this.getNodeParameter('taskId', i) as string;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					const body: ITask = {
 						organization_id: credentials.organizationId as number,
 					};
@@ -206,28 +192,28 @@ export class Flow implements INodeType {
 					try {
 						responseData = await flowApiRequest.call(this, 'PUT', `/tasks/${taskId}`, body);
 						responseData = responseData.task;
-					} catch (err) {
-						throw new Error(`Flow Error: ${err.message}`);
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error as JsonObject);
 					}
 				}
 				//https://developer.getflow.com/api/#tasks_get-task
 				if (operation === 'get') {
 					const taskId = this.getNodeParameter('taskId', i) as string;
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					const filters = this.getNodeParameter('filters', i);
 					qs.organization_id = credentials.organizationId as number;
 					if (filters.include) {
 						qs.include = (filters.include as string[]).join(',');
 					}
 					try {
-						responseData = await flowApiRequest.call(this,'GET', `/tasks/${taskId}`, {}, qs);
-					} catch (err) {
-						throw new Error(`Flow Error: ${err.message}`);
+						responseData = await flowApiRequest.call(this, 'GET', `/tasks/${taskId}`, {}, qs);
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error as JsonObject);
 					}
 				}
 				//https://developer.getflow.com/api/#tasks_get-tasks
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					const returnAll = this.getNodeParameter('returnAll', i);
+					const filters = this.getNodeParameter('filters', i);
 					qs.organization_id = credentials.organizationId as number;
 					if (filters.include) {
 						qs.include = (filters.include as string[]).join(',');
@@ -257,24 +243,32 @@ export class Flow implements INodeType {
 						qs.cleared = filters.cleared as boolean;
 					}
 					try {
-						if (returnAll === true) {
-							responseData = await FlowApiRequestAllItems.call(this, 'tasks', 'GET', '/tasks', {}, qs);
+						if (returnAll) {
+							responseData = await FlowApiRequestAllItems.call(
+								this,
+								'tasks',
+								'GET',
+								'/tasks',
+								{},
+								qs,
+							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await flowApiRequest.call(this, 'GET', '/tasks', {}, qs);
 							responseData = responseData.tasks;
 						}
-					} catch (err) {
-						throw new Error(`Flow Error: ${err.message}`);
+					} catch (error) {
+						throw new NodeApiError(this.getNode(), error as JsonObject, { itemIndex: i });
 					}
 				}
 			}
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
-			}
+
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
+				{ itemData: { item: i } },
+			);
+			returnData.push(...executionData);
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return [returnData];
 	}
 }

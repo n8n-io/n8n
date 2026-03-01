@@ -1,0 +1,57 @@
+{
+    "type": "object",
+    "properties": {
+        "assignee_id": {
+            "type": "null"
+        },
+        "assigner_id": {
+            "type": "null"
+        },
+        "comment_count": {
+            "type": "integer"
+        },
+        "content": {
+            "type": "string"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "creator_id": {
+            "type": "string"
+        },
+        "deadline": {
+            "type": "null"
+        },
+        "description": {
+            "type": "string"
+        },
+        "duration": {
+            "type": "null"
+        },
+        "id": {
+            "type": "string"
+        },
+        "is_completed": {
+            "type": "boolean"
+        },
+        "labels": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "order": {
+            "type": "integer"
+        },
+        "priority": {
+            "type": "integer"
+        },
+        "project_id": {
+            "type": "string"
+        },
+        "url": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

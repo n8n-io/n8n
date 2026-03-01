@@ -1,0 +1,54 @@
+@mixin utils-user-select($value) {
+	-moz-user-select: $value;
+	-webkit-user-select: $value;
+	-ms-user-select: $value;
+}
+
+@mixin utils-clearfix {
+	$selector: &;
+
+	@at-root {
+		#{$selector}::before,
+		#{$selector}::after {
+			display: table;
+			content: '';
+		}
+		#{$selector}::after {
+			clear: both;
+		}
+	}
+}
+
+@mixin utils-vertical-center {
+	$selector: &;
+
+	@at-root {
+		#{$selector}::after {
+			display: inline-block;
+			content: '';
+			height: 100%;
+			vertical-align: middle;
+		}
+	}
+}
+
+@mixin utils-ellipsis {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+@function joinVarName($list) {
+	$name: '--' + 'el';
+	@each $item in $list {
+		@if $item != '' {
+			$name: $name + '-' + $item;
+		}
+	}
+	@return $name;
+}
+
+// getCssVarName('button', 'text-color') => '--el-button-text-color'
+@function getCssVarName($args...) {
+	@return joinVarName($args);
+}

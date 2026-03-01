@@ -1,35 +1,28 @@
-import {
+import type {
 	IHookFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import {
-	INodeTypeDescription,
-	INodeType,
-	IWebhookResponseData,
 	IDataObject,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
 } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import {
-	affinityApiRequest,
-	eventsExist,
-	mapResource,
-} from './GenericFunctions';
+import { affinityApiRequest, eventsExist, mapResource } from './GenericFunctions';
 
 export class AffinityTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Affinity Trigger',
 		name: 'affinityTrigger',
-		icon: 'file:affinity.png',
+		icon: { light: 'file:affinity.svg', dark: 'file:affinity.dark.svg' },
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle Affinity events via webhooks',
 		defaults: {
-			name: 'Affinity-Trigger',
-			color: '#3343df',
+			name: 'Affinity Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'affinityApi',
@@ -51,48 +44,36 @@ export class AffinityTrigger implements INodeType {
 				type: 'multiOptions',
 				options: [
 					{
-						name: 'file.created',
-						value: 'file.deleted',
-					},
-					{
-						name: 'file.created',
-						value: 'file.deleted',
-					},
-					{
 						name: 'field_value.created',
 						value: 'field_value.created',
-					},
-					{
-						name: 'field_value.updated',
-						value: 'field_value.updated',
 					},
 					{
 						name: 'field_value.deleted',
 						value: 'field_value.deleted',
 					},
 					{
-						name: 'field.created',
-						value: 'field.created',
+						name: 'field_value.updated',
+						value: 'field_value.updated',
 					},
 					{
-						name: 'field.updated',
-						value: 'field.updated',
+						name: 'field.created',
+						value: 'field.created',
 					},
 					{
 						name: 'field.deleted',
 						value: 'field.deleted',
 					},
 					{
-						name: 'list.created',
-						value: 'list.created',
+						name: 'field.updated',
+						value: 'field.updated',
 					},
 					{
-						name: 'list.updated',
-						value: 'list.updated',
+						name: 'file.created',
+						value: 'file.created',
 					},
 					{
-						name: 'list.deleted',
-						value: 'list.deleted',
+						name: 'file.deleted',
+						value: 'file.deleted',
 					},
 					{
 						name: 'list_entry.created',
@@ -103,63 +84,73 @@ export class AffinityTrigger implements INodeType {
 						value: 'list_entry.deleted',
 					},
 					{
-						name: 'note.created',
-						value: 'note.created',
+						name: 'list.created',
+						value: 'list.created',
 					},
 					{
-						name: 'note.updated',
-						value: 'note.updated',
+						name: 'list.deleted',
+						value: 'list.deleted',
+					},
+					{
+						name: 'list.updated',
+						value: 'list.updated',
+					},
+					{
+						name: 'note.created',
+						value: 'note.created',
 					},
 					{
 						name: 'note.deleted',
 						value: 'note.deleted',
 					},
 					{
-						name: 'organization.created',
-						value: 'organization.created',
-					},
-					{
-						name: 'organization.updated',
-						value: 'organization.updated',
-					},
-					{
-						name: 'organization.deleted',
-						value: 'organization.deleted',
+						name: 'note.updated',
+						value: 'note.updated',
 					},
 					{
 						name: 'opportunity.created',
 						value: 'opportunity.created',
 					},
 					{
+						name: 'opportunity.deleted',
+						value: 'opportunity.deleted',
+					},
+					{
 						name: 'opportunity.updated',
 						value: 'opportunity.updated',
 					},
 					{
-						name: 'opportunity.deleted',
+						name: 'organization.created',
+						value: 'organization.created',
+					},
+					{
+						name: 'organization.deleted',
 						value: 'organization.deleted',
+					},
+					{
+						name: 'organization.updated',
+						value: 'organization.updated',
 					},
 					{
 						name: 'person.created',
 						value: 'person.created',
 					},
 					{
-						name: 'person.updated',
-						value: 'person.updated',
-					},
-					{
 						name: 'person.deleted',
 						value: 'person.deleted',
+					},
+					{
+						name: 'person.updated',
+						value: 'person.updated',
 					},
 				],
 				default: [],
 				required: true,
-				description: 'Webhook events that will be enabled for that endpoint.',
+				description: 'Webhook events that will be enabled for that endpoint',
 			},
 		],
-
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -174,7 +165,10 @@ export class AffinityTrigger implements INodeType {
 				const events = this.getNodeParameter('events') as string[];
 
 				for (const webhook of responseData) {
-					if (eventsExist(webhook.subscriptions, events) && webhook.webhook_url === webhookUrl) {
+					if (
+						eventsExist(webhook.subscriptions as string[], events) &&
+						webhook.webhook_url === webhookUrl
+					) {
 						// Set webhook-id to be sure that it can be deleted
 						const webhookData = this.getWorkflowStaticData('node');
 						webhookData.webhookId = webhook.id as string;
@@ -187,7 +181,10 @@ export class AffinityTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 
 				if (webhookUrl.includes('%20')) {
-					throw new Error('The name of the Affinity Trigger Node is not allowed to contain any spaces!');
+					throw new NodeOperationError(
+						this.getNode(),
+						'The name of the Affinity Trigger Node is not allowed to contain any spaces!',
+					);
 				}
 
 				const events = this.getNodeParameter('events') as string[];
@@ -213,7 +210,6 @@ export class AffinityTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				if (webhookData.webhookId !== undefined) {
-
 					const endpoint = `/webhook/${webhookData.webhookId}`;
 
 					const responseData = await affinityApiRequest.call(this, 'DELETE', endpoint);
@@ -222,7 +218,7 @@ export class AffinityTrigger implements INodeType {
 						return false;
 					}
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 				}
 				return true;
@@ -248,9 +244,7 @@ export class AffinityTrigger implements INodeType {
 		}
 
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(responseData),
-			],
+			workflowData: [this.helpers.returnJsonArray(responseData)],
 		};
 	}
 }

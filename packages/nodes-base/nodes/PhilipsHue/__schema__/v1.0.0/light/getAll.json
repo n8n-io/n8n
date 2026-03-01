@@ -1,0 +1,160 @@
+{
+    "type": "object",
+    "properties": {
+        "capabilities": {
+            "type": "object",
+            "properties": {
+                "certified": {
+                    "type": "boolean"
+                },
+                "control": {
+                    "type": "object",
+                    "properties": {
+                        "colorgamut": {
+                            "type": "array",
+                            "items": {
+                                "type": "array",
+                                "items": {
+                                    "type": "number"
+                                }
+                            }
+                        },
+                        "colorgamuttype": {
+                            "type": "string"
+                        },
+                        "ct": {
+                            "type": "object",
+                            "properties": {
+                                "max": {
+                                    "type": "integer"
+                                },
+                                "min": {
+                                    "type": "integer"
+                                }
+                            }
+                        },
+                        "maxlumen": {
+                            "type": "integer"
+                        },
+                        "mindimlevel": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "streaming": {
+                    "type": "object",
+                    "properties": {
+                        "proxy": {
+                            "type": "boolean"
+                        },
+                        "renderer": {
+                            "type": "boolean"
+                        }
+                    }
+                }
+            }
+        },
+        "config": {
+            "type": "object",
+            "properties": {
+                "archetype": {
+                    "type": "string"
+                },
+                "direction": {
+                    "type": "string"
+                },
+                "function": {
+                    "type": "string"
+                },
+                "startup": {
+                    "type": "object",
+                    "properties": {
+                        "configured": {
+                            "type": "boolean"
+                        },
+                        "mode": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "manufacturername": {
+            "type": "string"
+        },
+        "modelid": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "productid": {
+            "type": "string"
+        },
+        "productname": {
+            "type": "string"
+        },
+        "state": {
+            "type": "object",
+            "properties": {
+                "alert": {
+                    "type": "string"
+                },
+                "bri": {
+                    "type": "integer"
+                },
+                "colormode": {
+                    "type": "string"
+                },
+                "ct": {
+                    "type": "integer"
+                },
+                "effect": {
+                    "type": "string"
+                },
+                "hue": {
+                    "type": "integer"
+                },
+                "mode": {
+                    "type": "string"
+                },
+                "on": {
+                    "type": "boolean"
+                },
+                "reachable": {
+                    "type": "boolean"
+                },
+                "sat": {
+                    "type": "integer"
+                },
+                "xy": {
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                }
+            }
+        },
+        "swconfigid": {
+            "type": "string"
+        },
+        "swupdate": {
+            "type": "object",
+            "properties": {
+                "state": {
+                    "type": "string"
+                }
+            }
+        },
+        "swversion": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "uniqueid": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

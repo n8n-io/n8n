@@ -1,0 +1,41 @@
+{
+    "type": "object",
+    "properties": {
+        "custom_fields": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "id": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        },
+        "notes": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "owner": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "result_score": {
+            "type": "number"
+        },
+        "type": {
+            "type": "string"
+        },
+        "visible_to": {
+            "type": "integer"
+        }
+    },
+    "version": 3
+}

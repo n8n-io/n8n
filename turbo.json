@@ -1,0 +1,50 @@
+{
+	"globalEnv": ["CI", "BUILD_WITH_COVERAGE", "RELEASE"],
+	"globalPassThroughEnv": ["CODECOV_TOKEN", "COVERAGE_ENABLED", "SENTRY_AUTH_TOKEN"],
+	"tasks": {
+		"clean": { "cache": false },
+		"build": {
+			"dependsOn": ["^build"],
+			"outputs": ["dist/**"]
+		},
+		"typecheck": {
+			"dependsOn": ["^typecheck", "^build"]
+		},
+		"format": {},
+		"format:check": {},
+		"lint": {
+			"dependsOn": ["^build", "@n8n/eslint-config#build"]
+		},
+		"lint:fix": {},
+		"lint:styles": {
+			"dependsOn": ["@n8n/stylelint-config#build"]
+		},
+		"lint:styles:fix": {
+			"dependsOn": ["@n8n/stylelint-config#build"]
+		},
+		"test": {
+			"dependsOn": ["^build", "build"],
+			"outputs": ["coverage/**", "*.xml"]
+		},
+		"test:unit": {
+			"dependsOn": ["^build", "build"],
+			"outputs": ["coverage/**", "*.xml"]
+		},
+		"test:integration": {
+			"dependsOn": ["^build", "build"],
+			"outputs": ["coverage/**", "*.xml"]
+		},
+		"watch": { "cache": false, "persistent": true },
+		"dev": { "cache": false, "persistent": true },
+		"install-browsers": {
+			"cache": true,
+			"inputs": [".playwright-version"],
+			"outputs": [".playwright-browsers/**"],
+			"env": ["PLAYWRIGHT_BROWSERS_PATH"]
+		},
+		"test:container:standard": {
+			"env": ["E2E_TESTS"],
+			"cache": false
+		}
+	}
+}

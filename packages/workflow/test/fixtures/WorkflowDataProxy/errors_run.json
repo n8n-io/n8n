@@ -1,0 +1,1017 @@
+{
+	"data": {
+		"startData": {},
+		"resultData": {
+			"runData": {
+				"When clicking ‘Execute workflow’": [
+					{
+						"startTime": 1707471743600,
+						"executionTime": 1,
+						"source": [],
+						"executionStatus": "success",
+						"data": {
+							"main": [
+								[
+									{
+										"json": {},
+										"pairedItem": {
+											"item": 0
+										}
+									}
+								]
+							]
+						}
+					}
+				],
+				"Customer Datastore (n8n training)": [
+					{
+						"startTime": 1707471743602,
+						"executionTime": 1,
+						"source": [
+							{
+								"previousNode": "When clicking ‘Execute workflow’"
+							}
+						],
+						"executionStatus": "success",
+						"data": {
+							"main": [
+								[
+									{
+										"json": {
+											"id": "23423532",
+											"name": "Jay Gatsby",
+											"email": "gatsby@west-egg.com",
+											"notes": "Keeps asking about a green light??",
+											"country": "US",
+											"created": "1925-04-10"
+										},
+										"pairedItem": {
+											"item": 0
+										}
+									},
+									{
+										"json": {
+											"id": "23423533",
+											"name": "JosÃ© Arcadio BuendÃ­a",
+											"email": "jab@macondo.co",
+											"notes": "Lots of people named after him. Very confusing",
+											"country": "CO",
+											"created": "1967-05-05"
+										},
+										"pairedItem": {
+											"item": 0
+										}
+									},
+									{
+										"json": {
+											"id": "23423534",
+											"name": "Max Sendak",
+											"email": "info@in-and-out-of-weeks.org",
+											"notes": "Keeps rolling his terrible eyes",
+											"country": "US",
+											"created": "1963-04-09"
+										},
+										"pairedItem": {
+											"item": 0
+										}
+									},
+									{
+										"json": {
+											"id": "23423535",
+											"name": "Zaphod Beeblebrox",
+											"email": "captain@heartofgold.com",
+											"notes": "Felt like I was talking to more than one person",
+											"country": null,
+											"created": "1979-10-12"
+										},
+										"pairedItem": {
+											"item": 0
+										}
+									},
+									{
+										"json": {
+											"id": "23423536",
+											"name": "Edmund Pevensie",
+											"email": "edmund@narnia.gov",
+											"notes": "Passionate sailor",
+											"country": "UK",
+											"created": "1950-10-16"
+										},
+										"pairedItem": {
+											"item": 0
+										}
+									}
+								]
+							]
+						}
+					}
+				],
+				"Edit Fields": [
+					{
+						"startTime": 1707471743604,
+						"executionTime": 2,
+						"source": [
+							{
+								"previousNode": "Customer Datastore (n8n training)"
+							}
+						],
+						"executionStatus": "success",
+						"data": {
+							"main": [
+								[
+									{
+										"json": {
+											"id": "23423532",
+											"name": "Jay Gatsby",
+											"email": "gatsby@west-egg.com",
+											"notes": "Keeps asking about a green light??",
+											"country": "US",
+											"created": "1925-04-10"
+										},
+										"pairedItem": {
+											"item": 0
+										}
+									},
+									{
+										"json": {
+											"id": "23423533",
+											"name": "JosÃ© Arcadio BuendÃ­a",
+											"email": "jab@macondo.co",
+											"notes": "Lots of people named after him. Very confusing",
+											"country": "CO",
+											"created": "1967-05-05"
+										},
+										"pairedItem": {
+											"item": 1
+										}
+									},
+									{
+										"json": {
+											"id": "23423534",
+											"name": "Max Sendak",
+											"email": "info@in-and-out-of-weeks.org",
+											"notes": "Keeps rolling his terrible eyes",
+											"country": "US",
+											"created": "1963-04-09"
+										},
+										"pairedItem": {
+											"item": 2
+										}
+									},
+									{
+										"json": {
+											"id": "23423535",
+											"name": "Zaphod Beeblebrox",
+											"email": "captain@heartofgold.com",
+											"notes": "Felt like I was talking to more than one person",
+											"country": null,
+											"created": "1979-10-12"
+										},
+										"pairedItem": {
+											"item": 3
+										}
+									},
+									{
+										"json": {
+											"id": "23423536",
+											"name": "Edmund Pevensie",
+											"email": "edmund@narnia.gov",
+											"notes": "Passionate sailor",
+											"country": "UK",
+											"created": "1950-10-16"
+										},
+										"pairedItem": {
+											"item": 4
+										}
+									}
+								]
+							]
+						}
+					}
+				],
+				"Aggregate": [
+					{
+						"startTime": 1707471743607,
+						"executionTime": 1,
+						"source": [
+							{
+								"previousNode": "Edit Fields"
+							}
+						],
+						"executionStatus": "success",
+						"data": {
+							"main": [
+								[
+									{
+										"json": {
+											"name": [
+												"Jay Gatsby",
+												"JosÃ© Arcadio BuendÃ­a",
+												"Max Sendak",
+												"Zaphod Beeblebrox",
+												"Edmund Pevensie"
+											]
+										},
+										"pairedItem": [
+											{
+												"item": 0
+											},
+											{
+												"item": 1
+											},
+											{
+												"item": 2
+											},
+											{
+												"item": 3
+											},
+											{
+												"item": 4
+											}
+										]
+									}
+								]
+							]
+						}
+					}
+				],
+				"PairedItemMultipleMatches": [
+					{
+						"startTime": 1707471743609,
+						"executionTime": 1,
+						"source": [
+							{
+								"previousNode": "Aggregate"
+							}
+						],
+						"executionStatus": "success",
+						"data": {
+							"main": [
+								[
+									{
+										"json": {
+											"error": "Invalid expression",
+											"pairedItem": {
+												"item": 0
+											}
+										},
+										"pairedItem": {
+											"item": 0
+										}
+									}
+								],
+								[]
+							]
+						}
+					}
+				],
+				"Break pairedItem chain": [
+					{
+						"startTime": 1707471743611,
+						"executionTime": 5,
+						"source": [
+							{
+								"previousNode": "Edit Fields"
+							}
+						],
+						"executionStatus": "success",
+						"data": {
+							"main": [
+								[
+									{
+										"json": {
+											"field": "the same"
+										}
+									}
+								]
+							]
+						}
+					}
+				],
+				"PairedItemInfoMissing": [
+					{
+						"startTime": 1707471743617,
+						"executionTime": 1,
+						"source": [
+							{
+								"previousNode": "Break pairedItem chain"
+							}
+						],
+						"executionStatus": "success",
+						"data": {
+							"main": [
+								[
+									{
+										"json": {
+											"error": "Canât get data for expression",
+											"pairedItem": {
+												"item": 0
+											}
+										},
+										"pairedItem": {
+											"item": 0
+										}
+									}
+								],
+								[]
+							]
+						}
+					}
+				],
+				"Break pairedItem chain, pinned": [
+					{
+						"startTime": 1707471743619,
+						"executionTime": 0,
+						"source": [
+							{
+								"previousNode": "Edit Fields"
+							}
+						],
+						"executionStatus": "success",
+						"data": {
+							"main": [
+								[
+									{
+										"json": {
+											"field": "the same"
+										}
+									}
+								]
+							]
+						}
+					}
+				],
+				"PairedItemInfoMissingPinned": [
+					{
+						"startTime": 1707471743620,
+						"executionTime": 2,
+						"source": [
+							{
+								"previousNode": "Break pairedItem chain, pinned"
+							}
+						],
+						"executionStatus": "success",
+						"data": {
+							"main": [
+								[
+									{
+										"json": {
+											"error": "âNode Break pairedItem chain, pinnedâ must be unpinned to execute",
+											"pairedItem": {
+												"item": 0
+											}
+										},
+										"pairedItem": {
+											"item": 0
+										}
+									}
+								],
+								[]
+							]
+						}
+					}
+				],
+				"Incorrect pairedItem info": [
+					{
+						"startTime": 1707471743623,
+						"executionTime": 3,
+						"source": [
+							{
+								"previousNode": "Edit Fields"
+							}
+						],
+						"executionStatus": "success",
+						"data": {
+							"main": [
+								[
+									{
+										"json": {
+											"field": "the same"
+										},
+										"pairedItem": 99
+									}
+								]
+							]
+						}
+					}
+				],
+				"IncorrectPairedItem": [
+					{
+						"startTime": 1707471743628,
+						"executionTime": 2,
+						"source": [
+							{
+								"previousNode": "Incorrect pairedItem info"
+							}
+						],
+						"executionStatus": "success",
+						"data": {
+							"main": [
+								[
+									{
+										"json": {
+											"error": "Canât get data for expression",
+											"pairedItem": {
+												"item": 0
+											}
+										},
+										"pairedItem": {
+											"item": 0
+										}
+									}
+								],
+								[]
+							]
+						}
+					}
+				],
+				"Incorrect pairedItem info, pinned1": [
+					{
+						"startTime": 1707471743631,
+						"executionTime": 0,
+						"source": [
+							{
+								"previousNode": "Edit Fields"
+							}
+						],
+						"executionStatus": "success",
+						"data": {
+							"main": [
+								[
+									{
+										"json": {
+											"field": "the same"
+										}
+									}
+								]
+							]
+						}
+					}
+				],
+				"IncorrectPairedItemPinned": [
+					{
+						"startTime": 1707471743632,
+						"executionTime": 1,
+						"source": [
+							{
+								"previousNode": "Incorrect pairedItem info, pinned1"
+							}
+						],
+						"executionStatus": "success",
+						"data": {
+							"main": [
+								[
+									{
+										"json": {
+											"error": "âNode Incorrect pairedItem info, pinned1â must be unpinned to execute",
+											"pairedItem": {
+												"item": 0
+											}
+										},
+										"pairedItem": {
+											"item": 0
+										}
+									}
+								],
+								[]
+							]
+						}
+					}
+				],
+				"Multiple matching items": [
+					{
+						"startTime": 1707471743634,
+						"executionTime": 5,
+						"source": [
+							{
+								"previousNode": "Edit Fields"
+							}
+						],
+						"executionStatus": "success",
+						"data": {
+							"main": [
+								[
+									{
+										"json": {
+											"field": "the same"
+										},
+										"pairedItem": [1, 2, 3, 4]
+									}
+								]
+							]
+						}
+					}
+				],
+				"PairedItemMultipleMatches2": [
+					{
+						"startTime": 1707471743640,
+						"executionTime": 1,
+						"source": [
+							{
+								"previousNode": "Multiple matching items"
+							}
+						],
+						"executionStatus": "success",
+						"data": {
+							"main": [
+								[
+									{
+										"json": {
+											"error": "Invalid expression",
+											"pairedItem": {
+												"item": 0
+											}
+										},
+										"pairedItem": {
+											"item": 0
+										}
+									}
+								],
+								[]
+							]
+						}
+					}
+				],
+				"Multiple matching items, pinned": [
+					{
+						"startTime": 1707471743642,
+						"executionTime": 0,
+						"source": [
+							{
+								"previousNode": "Edit Fields"
+							}
+						],
+						"executionStatus": "success",
+						"data": {
+							"main": [
+								[
+									{
+										"json": {
+											"field": "the same"
+										}
+									}
+								]
+							]
+						}
+					}
+				],
+				"IncorrectPairedItemPinned2": [
+					{
+						"startTime": 1707471743645,
+						"executionTime": 1,
+						"source": [
+							{
+								"previousNode": "Multiple matching items, pinned"
+							}
+						],
+						"executionStatus": "success",
+						"data": {
+							"main": [
+								[
+									{
+										"json": {
+											"error": "âNode Multiple matching items, pinnedâ must be unpinned to execute",
+											"pairedItem": {
+												"item": 0
+											}
+										},
+										"pairedItem": {
+											"item": 0
+										}
+									}
+								],
+								[]
+							]
+						}
+					}
+				],
+				"Reference impossible with .item": [
+					{
+						"startTime": 1707471743647,
+						"executionTime": 15,
+						"source": [
+							{
+								"previousNode": "Customer Datastore (n8n training)"
+							}
+						],
+						"executionStatus": "error",
+						"error": {
+							"level": "error",
+							"tags": {},
+							"context": {
+								"itemIndex": 0,
+								"messageTemplate": "Invalid expression under â%%PARAMETER%%â",
+								"functionality": "pairedItem",
+								"nodeCause": "Impossible",
+								"type": "paired_item_no_connection",
+								"parameter": "fields.values"
+							},
+							"functionality": "regular",
+							"name": "NodeOperationError",
+							"timestamp": 1707471743662,
+							"node": {
+								"parameters": {
+									"mode": "manual",
+									"duplicateItem": false,
+									"fields": {
+										"values": [
+											{
+												"name": "name",
+												"type": "stringValue",
+												"stringValue": "={{ $('Impossible').item.json.name }}"
+											}
+										]
+									},
+									"include": "all",
+									"options": {}
+								},
+								"id": "4cbbee96-dd4c-4625-95b9-c68faef3e9a8",
+								"name": "Reference impossible with .item",
+								"type": "n8n-nodes-base.set",
+								"typeVersion": 3.2,
+								"position": [1420, 2000]
+							},
+							"description": "The expression uses data in the node <strong>âImpossibleâ</strong> but there is no path back to it. Please check this node is connected to it (there can be other nodes in between).",
+							"message": "Invalid expression",
+							"stack": "NodeOperationError: Invalid expression\n    at Object.execute (/usr/local/lib/node_modules/n8n/node_modules/.pnpm/file+packages+nodes-base_asn1.js@5.4.1_date-fns@2.30.0_promise-ftp-common@1.1.5_zod@3.22.4/node_modules/n8n-nodes-base/dist/nodes/Set/v2/manual.mode.js:197:15)\n    at Object.execute (/usr/local/lib/node_modules/n8n/node_modules/.pnpm/file+packages+nodes-base_asn1.js@5.4.1_date-fns@2.30.0_promise-ftp-common@1.1.5_zod@3.22.4/node_modules/n8n-nodes-base/dist/nodes/Set/v2/SetV2.node.js:286:57)\n    at Workflow.runNode (/usr/local/lib/node_modules/n8n/node_modules/.pnpm/file+packages+workflow/node_modules/n8n-workflow/dist/Workflow.js:706:42)\n    at /usr/local/lib/node_modules/n8n/node_modules/.pnpm/file+packages+core_n8n-nodes-base@1.28.0/node_modules/n8n-core/dist/WorkflowExecute.js:656:68\n    at /usr/local/lib/node_modules/n8n/node_modules/.pnpm/file+packages+core_n8n-nodes-base@1.28.0/node_modules/n8n-core/dist/WorkflowExecute.js:1058:20"
+						}
+					}
+				]
+			},
+			"pinData": {
+				"Multiple matching items, pinned": [
+					{
+						"json": {
+							"field": "the same"
+						}
+					}
+				],
+				"Incorrect pairedItem info, pinned1": [
+					{
+						"json": {
+							"field": "the same"
+						}
+					}
+				],
+				"Break pairedItem chain, pinned": [
+					{
+						"json": {
+							"field": "the same"
+						}
+					}
+				]
+			},
+			"lastNodeExecuted": "Reference impossible with .item",
+			"error": {
+				"level": "error",
+				"tags": {},
+				"context": {
+					"itemIndex": 0,
+					"messageTemplate": "Invalid expression under â%%PARAMETER%%â",
+					"functionality": "pairedItem",
+					"nodeCause": "Impossible",
+					"type": "paired_item_no_connection",
+					"parameter": "fields.values"
+				},
+				"functionality": "regular",
+				"name": "NodeOperationError",
+				"timestamp": 1707471743662,
+				"node": {
+					"parameters": {
+						"mode": "manual",
+						"duplicateItem": false,
+						"fields": {
+							"values": [
+								{
+									"name": "name",
+									"type": "stringValue",
+									"stringValue": "={{ $('Impossible').item.json.name }}"
+								}
+							]
+						},
+						"include": "all",
+						"options": {}
+					},
+					"id": "4cbbee96-dd4c-4625-95b9-c68faef3e9a8",
+					"name": "Reference impossible with .item",
+					"type": "n8n-nodes-base.set",
+					"typeVersion": 3.2,
+					"position": [1420, 2000]
+				},
+				"description": "The expression uses data in the node <strong>âImpossibleâ</strong> but there is no path back to it. Please check this node is connected to it (there can be other nodes in between).",
+				"message": "Invalid expression",
+				"stack": "NodeOperationError: Invalid expression\n    at Object.execute (/usr/local/lib/node_modules/n8n/node_modules/.pnpm/file+packages+nodes-base_asn1.js@5.4.1_date-fns@2.30.0_promise-ftp-common@1.1.5_zod@3.22.4/node_modules/n8n-nodes-base/dist/nodes/Set/v2/manual.mode.js:197:15)\n    at Object.execute (/usr/local/lib/node_modules/n8n/node_modules/.pnpm/file+packages+nodes-base_asn1.js@5.4.1_date-fns@2.30.0_promise-ftp-common@1.1.5_zod@3.22.4/node_modules/n8n-nodes-base/dist/nodes/Set/v2/SetV2.node.js:286:57)\n    at Workflow.runNode (/usr/local/lib/node_modules/n8n/node_modules/.pnpm/file+packages+workflow/node_modules/n8n-workflow/dist/Workflow.js:706:42)\n    at /usr/local/lib/node_modules/n8n/node_modules/.pnpm/file+packages+core_n8n-nodes-base@1.28.0/node_modules/n8n-core/dist/WorkflowExecute.js:656:68\n    at /usr/local/lib/node_modules/n8n/node_modules/.pnpm/file+packages+core_n8n-nodes-base@1.28.0/node_modules/n8n-core/dist/WorkflowExecute.js:1058:20"
+			}
+		},
+		"executionData": {
+			"contextData": {},
+			"nodeExecutionStack": [
+				{
+					"node": {
+						"parameters": {
+							"mode": "manual",
+							"duplicateItem": false,
+							"fields": {
+								"values": [
+									{
+										"name": "name",
+										"type": "stringValue",
+										"stringValue": "={{ $('Impossible').item.json.name }}"
+									}
+								]
+							},
+							"include": "all",
+							"options": {}
+						},
+						"id": "4cbbee96-dd4c-4625-95b9-c68faef3e9a8",
+						"name": "Reference impossible with .item",
+						"type": "n8n-nodes-base.set",
+						"typeVersion": 3.2,
+						"position": [1420, 2000]
+					},
+					"data": {
+						"main": [
+							[
+								{
+									"json": {
+										"id": "23423532",
+										"name": "Jay Gatsby",
+										"email": "gatsby@west-egg.com",
+										"notes": "Keeps asking about a green light??",
+										"country": "US",
+										"created": "1925-04-10"
+									},
+									"pairedItem": {
+										"item": 0
+									}
+								},
+								{
+									"json": {
+										"id": "23423533",
+										"name": "JosÃ© Arcadio BuendÃ­a",
+										"email": "jab@macondo.co",
+										"notes": "Lots of people named after him. Very confusing",
+										"country": "CO",
+										"created": "1967-05-05"
+									},
+									"pairedItem": {
+										"item": 1
+									}
+								},
+								{
+									"json": {
+										"id": "23423534",
+										"name": "Max Sendak",
+										"email": "info@in-and-out-of-weeks.org",
+										"notes": "Keeps rolling his terrible eyes",
+										"country": "US",
+										"created": "1963-04-09"
+									},
+									"pairedItem": {
+										"item": 2
+									}
+								},
+								{
+									"json": {
+										"id": "23423535",
+										"name": "Zaphod Beeblebrox",
+										"email": "captain@heartofgold.com",
+										"notes": "Felt like I was talking to more than one person",
+										"country": null,
+										"created": "1979-10-12"
+									},
+									"pairedItem": {
+										"item": 3
+									}
+								},
+								{
+									"json": {
+										"id": "23423536",
+										"name": "Edmund Pevensie",
+										"email": "edmund@narnia.gov",
+										"notes": "Passionate sailor",
+										"country": "UK",
+										"created": "1950-10-16"
+									},
+									"pairedItem": {
+										"item": 4
+									}
+								}
+							]
+						]
+					},
+					"source": {
+						"main": [
+							{
+								"previousNode": "Customer Datastore (n8n training)"
+							}
+						]
+					}
+				},
+				{
+					"node": {
+						"parameters": {
+							"mode": "manual",
+							"duplicateItem": false,
+							"fields": {
+								"values": [
+									{
+										"name": "name",
+										"type": "stringValue",
+										"stringValue": "={{ $('Impossible').first().json.name }}"
+									}
+								]
+							},
+							"include": "all",
+							"options": {}
+						},
+						"id": "6d47bd08-810a-4ade-be57-635adc1df47f",
+						"name": "Reference impossible with .first()",
+						"type": "n8n-nodes-base.set",
+						"typeVersion": 3.2,
+						"position": [1420, 2320]
+					},
+					"data": {
+						"main": [
+							[
+								{
+									"json": {
+										"id": "23423532",
+										"name": "Jay Gatsby",
+										"email": "gatsby@west-egg.com",
+										"notes": "Keeps asking about a green light??",
+										"country": "US",
+										"created": "1925-04-10"
+									},
+									"pairedItem": {
+										"item": 0
+									}
+								},
+								{
+									"json": {
+										"id": "23423533",
+										"name": "JosÃ© Arcadio BuendÃ­a",
+										"email": "jab@macondo.co",
+										"notes": "Lots of people named after him. Very confusing",
+										"country": "CO",
+										"created": "1967-05-05"
+									},
+									"pairedItem": {
+										"item": 0
+									}
+								},
+								{
+									"json": {
+										"id": "23423534",
+										"name": "Max Sendak",
+										"email": "info@in-and-out-of-weeks.org",
+										"notes": "Keeps rolling his terrible eyes",
+										"country": "US",
+										"created": "1963-04-09"
+									},
+									"pairedItem": {
+										"item": 0
+									}
+								},
+								{
+									"json": {
+										"id": "23423535",
+										"name": "Zaphod Beeblebrox",
+										"email": "captain@heartofgold.com",
+										"notes": "Felt like I was talking to more than one person",
+										"country": null,
+										"created": "1979-10-12"
+									},
+									"pairedItem": {
+										"item": 0
+									}
+								},
+								{
+									"json": {
+										"id": "23423536",
+										"name": "Edmund Pevensie",
+										"email": "edmund@narnia.gov",
+										"notes": "Passionate sailor",
+										"country": "UK",
+										"created": "1950-10-16"
+									},
+									"pairedItem": {
+										"item": 0
+									}
+								}
+							]
+						]
+					},
+					"source": {
+						"main": [
+							{
+								"previousNode": "Customer Datastore (n8n training)"
+							}
+						]
+					}
+				},
+				{
+					"node": {
+						"parameters": {
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict"
+								},
+								"conditions": [
+									{
+										"id": "1fff886f-3d13-4fbf-b0fb-7e2f845937c0",
+										"leftValue": "={{ false }}",
+										"rightValue": "",
+										"operator": {
+											"type": "boolean",
+											"operation": "true",
+											"singleValue": true
+										}
+									}
+								],
+								"combinator": "and"
+							},
+							"options": {}
+						},
+						"id": "56dd65f0-d67a-42ce-a876-77434f621dc3",
+						"name": "Impossible if",
+						"type": "n8n-nodes-base.if",
+						"typeVersion": 2,
+						"position": [1000, 2000]
+					},
+					"data": {
+						"main": [
+							[
+								{
+									"json": {},
+									"pairedItem": {
+										"item": 0
+									}
+								}
+							]
+						]
+					},
+					"source": {
+						"main": [
+							{
+								"previousNode": "When clicking ‘Execute workflow’"
+							}
+						]
+					}
+				},
+				{
+					"node": {
+						"parameters": {
+							"mode": "manual",
+							"duplicateItem": false,
+							"fields": {
+								"values": [
+									{
+										"name": "",
+										"type": "stringValue",
+										"stringValue": "={{ $('non existent') }}"
+									}
+								]
+							},
+							"include": "all",
+							"options": {}
+						},
+						"id": "327d7f7b-61a5-4d60-9542-d61f84e7c83a",
+						"name": "Reference non-existent node",
+						"type": "n8n-nodes-base.set",
+						"typeVersion": 3.2,
+						"position": [1000, 2320]
+					},
+					"data": {
+						"main": [
+							[
+								{
+									"json": {},
+									"pairedItem": {
+										"item": 0
+									}
+								}
+							]
+						]
+					},
+					"source": {
+						"main": [
+							{
+								"previousNode": "When clicking ‘Execute workflow’"
+							}
+						]
+					}
+				}
+			],
+			"metadata": {},
+			"waitingExecution": {},
+			"waitingExecutionSource": {}
+		}
+	},
+	"mode": "manual",
+	"startedAt": "2024-02-09T09:42:23.598Z",
+	"stoppedAt": "2024-02-09T09:42:23.663Z",
+	"status": "running"
+}

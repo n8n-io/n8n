@@ -1,25 +1,21 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { Command } from '@oclif/core';
 import * as changeCase from 'change-case';
-import * as fs from 'fs';
+import { access } from 'fs/promises';
 import * as inquirer from 'inquirer';
-import { Command } from '@oclif/command';
 import { join } from 'path';
 
-const { promisify } = require('util');
-const fsAccess = promisify(fs.access);
-
-import {
-	createTemplate
-} from '../src';
+import { createTemplate } from '../src';
 
 export class New extends Command {
 	static description = 'Create new credentials/node';
 
-	static examples = [
-		`$ n8n-node-dev new`,
-	];
+	static examples = ['$ n8n-node-dev new'];
 
 	async run() {
-
 		try {
 			this.log('\nCreate new credentials/node');
 			this.log('=========================');
@@ -30,10 +26,7 @@ export class New extends Command {
 				type: 'list',
 				default: 'Node',
 				message: 'What do you want to create?',
-				choices: [
-					'Credentials',
-					'Node',
-				],
+				choices: ['Credentials', 'Node'],
 			};
 
 			const typeAnswers = await inquirer.prompt(typeQuestion);
@@ -42,7 +35,6 @@ export class New extends Command {
 			const sourceFileName = 'simple.ts';
 			let defaultName = '';
 			let getDescription = false;
-
 
 			if (typeAnswers.type === 'Node') {
 				// Create new node
@@ -54,11 +46,7 @@ export class New extends Command {
 					type: 'list',
 					default: 'Execute',
 					message: 'What kind of node do you want to create?',
-					choices: [
-						'Execute',
-						'Trigger',
-						'Webhook',
-					],
+					choices: ['Execute', 'Trigger', 'Webhook'],
 				};
 
 				const nodeTypeAnswers = await inquirer.prompt(nodeTypeQuestion);
@@ -91,7 +79,7 @@ export class New extends Command {
 				},
 			];
 
-			if (getDescription === true) {
+			if (getDescription) {
 				// Get also a node description
 				additionalQuestions.push({
 					name: 'description',
@@ -101,20 +89,26 @@ export class New extends Command {
 				});
 			}
 
-			const additionalAnswers = await inquirer.prompt(additionalQuestions as inquirer.QuestionCollection);
+			const additionalAnswers = await inquirer.prompt(
+				additionalQuestions as inquirer.QuestionCollection,
+			);
 
 			const nodeName = additionalAnswers.name;
 
 			// Define the source file to be used and the location and name of the new
 			// node file
-			const destinationFilePath = join(process.cwd(), `${changeCase.pascalCase(nodeName)}.${typeAnswers.type.toLowerCase()}.ts`);
+			const destinationFilePath = join(
+				process.cwd(),
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				`${changeCase.pascalCase(nodeName)}.${typeAnswers.type.toLowerCase()}.ts`,
+			);
 
 			const sourceFilePath = join(__dirname, '../../templates', sourceFolder, sourceFileName);
 
 			// Check if node with the same name already exists in target folder
 			// to not overwrite it by accident
 			try {
-				await fsAccess(destinationFilePath);
+				await access(destinationFilePath);
 
 				// File does already exist. So ask if it should be overwritten.
 				const overwriteQuestion: inquirer.QuestionCollection = [
@@ -136,26 +130,27 @@ export class New extends Command {
 				// File does not exist. That is exactly what we want so go on.
 			}
 
-			// Make sure that the variables in the template file get formated
+			// Make sure that the variables in the template file get formatted
 			// in the correct way
 			const replaceValues = {
 				ClassNameReplace: changeCase.pascalCase(nodeName),
-				DisplayNameReplace: changeCase.titleCase(nodeName),
+				DisplayNameReplace: changeCase.capitalCase(nodeName),
 				N8nNameReplace: changeCase.camelCase(nodeName),
 				NodeDescriptionReplace: additionalAnswers.description,
 			};
 
 			await createTemplate(sourceFilePath, destinationFilePath, replaceValues);
 
-			this.log('\nExecution was successfull:');
+			this.log('\nExecution was successful:');
 			this.log('====================================');
 
-			this.log('Node got created: ' + destinationFilePath);
+			this.log(`Node got created: ${destinationFilePath}`);
 		} catch (error) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			this.log(`\nGOT ERROR: "${error.message}"`);
 			this.log('====================================');
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			this.log(error.stack);
-			return;
 		}
 	}
 }

@@ -1,37 +1,66 @@
-import { OptionsWithUri } from 'request';
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-import { IDataObject } from 'n8n-workflow';
+	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
+	IHttpRequestOptions,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-export async function bitbucketApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('bitbucketApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
-	let options: OptionsWithUri = {
-		method,
-		auth: {
-			user: credentials.username as string,
-			password: credentials.appPassword as string,
-		},
-		qs,
-		body,
-		uri: uri ||`https://api.bitbucket.org/2.0${resource}`,
-		json: true
-	};
-	options = Object.assign({}, options, option);
-	if (Object.keys(options.body).length === 0) {
-		delete options.body;
-	}
-
+export async function bitbucketApiRequest(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	resource: string,
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+): Promise<any> {
 	try {
-		return await this.helpers.request!(options);
-	} catch (err) {
-		throw new Error('Bitbucket Error: ' + err.message);
+		const authentication = this.getNodeParameter('authentication', 0) as 'password' | 'accessToken';
+
+		if (authentication === 'accessToken') {
+			const httpRequestOptions: IHttpRequestOptions = {
+				method,
+				qs,
+				body,
+				url: uri || `https://api.bitbucket.org/2.0${resource}`,
+				json: true,
+			};
+
+			if (Object.keys(httpRequestOptions.body as IDataObject).length === 0) {
+				delete httpRequestOptions.body;
+			}
+
+			return await this.helpers.httpRequestWithAuthentication.call(
+				this,
+				'bitbucketAccessTokenApi',
+				httpRequestOptions,
+			);
+		}
+
+		const credentials = await this.getCredentials('bitbucketApi');
+		const options: IRequestOptions = {
+			method,
+			auth: {
+				user: credentials.username as string,
+				password: credentials.appPassword as string,
+			},
+			qs,
+			body,
+			uri: uri || `https://api.bitbucket.org/2.0${resource}`,
+			json: true,
+		};
+
+		if (Object.keys(options.body as IDataObject).length === 0) {
+			delete options.body;
+		}
+
+		return await this.helpers.request(options);
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -39,8 +68,15 @@ export async function bitbucketApiRequest(this: IHookFunctions | IExecuteFunctio
  * Make an API request to paginated flow endpoint
  * and return all results
  */
-export async function bitbucketApiRequestAllItems(this: IHookFunctions | IExecuteFunctions| ILoadOptionsFunctions, propertyName: string, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function bitbucketApiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	method: IHttpRequestMethods,
+	resource: string,
 
+	body: any = {},
+	query: IDataObject = {},
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -50,10 +86,8 @@ export async function bitbucketApiRequestAllItems(this: IHookFunctions | IExecut
 	do {
 		responseData = await bitbucketApiRequest.call(this, method, resource, body, query, uri);
 		uri = responseData.next;
-		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (
-		responseData.next !== undefined
-	);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+	} while (responseData.next !== undefined);
 
 	return returnData;
 }

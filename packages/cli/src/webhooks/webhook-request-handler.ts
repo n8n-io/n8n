@@ -1,0 +1,244 @@
+import { Logger } from '@n8n/backend-common';
+import { Container } from '@n8n/di';
+import type express from 'express';
+import { isWebhookHtmlSandboxingDisabled, getWebhookSandboxCSP } from 'n8n-core';
+import { ensureError, type IHttpRequestMethods } from 'n8n-workflow';
+import { Readable } from 'stream';
+import { finished } from 'stream/promises';
+
+import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
+import * as ResponseHelper from '@/response-helper';
+import type {
+	WebhookStaticResponse,
+	WebhookResponse,
+	WebhookResponseStream,
+} from '@/webhooks/webhook-response';
+import {
+	isWebhookNoResponse,
+	isWebhookStaticResponse,
+	isWebhookResponse,
+	isWebhookStreamResponse,
+} from '@/webhooks/webhook-response';
+import { WebhookResponseHeaders } from '@/webhooks/webhook-response-headers';
+import type {
+	IWebhookManager,
+	WebhookOptionsRequest,
+	WebhookRequest,
+} from '@/webhooks/webhook.types';
+
+const WEBHOOK_METHODS: IHttpRequestMethods[] = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'];
+
+class WebhookRequestHandler {
+	constructor(private readonly webhookManager: IWebhookManager) {}
+
+	/**
+	 * Handles an incoming webhook request. Handles CORS and delegates the
+	 * request to the webhook manager to execute the webhook.
+	 */
+	async handleRequest(req: WebhookRequest | WebhookOptionsRequest, res: express.Response) {
+		const method = req.method;
+
+		if (method !== 'OPTIONS' && !WEBHOOK_METHODS.includes(method)) {
+			return ResponseHelper.sendErrorResponse(
+				res,
+				new Error(`The method ${method} is not supported.`),
+			);
+		}
+
+		// Setup CORS headers only if the incoming request has an `origin` header
+		if ('origin' in req.headers) {
+			const corsSetupError = await this.setupCorsHeaders(req, res);
+			if (corsSetupError) {
+				return ResponseHelper.sendErrorResponse(res, corsSetupError);
+			}
+		}
+
+		if (method === 'OPTIONS') {
+			return ResponseHelper.sendSuccessResponse(res, {}, true, 204);
+		}
+
+		try {
+			const response = await this.webhookManager.executeWebhook(req, res);
+
+			// Modern way of responding to webhooks
+			if (isWebhookResponse(response)) {
+				await this.sendWebhookResponse(res, response);
+			} else if (response.noWebhookResponse !== true) {
+				// Legacy way of responding to webhooks. `WebhookResponse` should be used to
+				// pass the response from the webhookManager. However, we still have code
+				// that doesn't use that yet. We need to keep this here until all codepaths
+				// return a `WebhookResponse` instead.
+				this.sendLegacyResponse(res, response.data, true, response.responseCode, response.headers);
+			}
+		} catch (e) {
+			const error = ensureError(e);
+
+			const logger = Container.get(Logger);
+
+			if (e instanceof WebhookNotFoundError) {
+				logger.error(`Received request for unknown webhook: ${e.message}`);
+			} else {
+				logger.error(
+					`Error in handling webhook request ${req.method} ${req.path}: ${error.message}`,
+					{ stacktrace: error.stack },
+				);
+			}
+
+			return ResponseHelper.sendErrorResponse(res, error);
+		}
+	}
+
+	private async sendWebhookResponse(res: express.Response, webhookResponse: WebhookResponse) {
+		if (isWebhookNoResponse(webhookResponse)) {
+			return;
+		}
+
+		if (isWebhookStaticResponse(webhookResponse)) {
+			this.sendStaticResponse(res, webhookResponse);
+			return;
+		}
+
+		if (isWebhookStreamResponse(webhookResponse)) {
+			await this.sendStreamResponse(res, webhookResponse);
+			return;
+		}
+	}
+
+	private async sendStreamResponse(res: express.Response, webhookResponse: WebhookResponseStream) {
+		const { stream, code, headers } = webhookResponse;
+
+		this.setResponseStatus(res, code);
+		this.setResponseHeaders(res, headers);
+
+		stream.pipe(res, { end: false });
+		await finished(stream);
+
+		process.nextTick(() => res.end());
+	}
+
+	private sendStaticResponse(res: express.Response, webhookResponse: WebhookStaticResponse) {
+		const { body, code, headers } = webhookResponse;
+
+		this.setResponseStatus(res, code);
+		this.setResponseHeaders(res, headers);
+
+		if (typeof body === 'string') {
+			res.send(body);
+		} else {
+			res.json(body);
+		}
+	}
+
+	private setResponseStatus(res: express.Response, statusCode?: number) {
+		if (statusCode !== undefined) {
+			res.status(statusCode);
+		}
+	}
+
+	private setResponseHeaders(res: express.Response, headers?: WebhookResponseHeaders) {
+		headers?.applyToResponse(res);
+
+		if (!isWebhookHtmlSandboxingDisabled()) {
+			res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
+		}
+	}
+
+	/**
+	 * Sends a legacy response to the client, i.e. when the webhook response is not a `WebhookResponse`.
+	 * @deprecated Use `sendWebhookResponse` instead.
+	 */
+	private sendLegacyResponse(
+		res: express.Response,
+		data: any,
+		raw?: boolean,
+		responseCode?: number,
+		responseHeader?: object,
+	) {
+		this.setResponseStatus(res, responseCode);
+		if (responseHeader) {
+			this.setResponseHeaders(res, WebhookResponseHeaders.fromObject(responseHeader));
+		}
+
+		if (data instanceof Readable) {
+			data.pipe(res);
+			return;
+		}
+
+		if (raw === true) {
+			if (typeof data === 'string') {
+				res.send(data);
+			} else {
+				res.json(data);
+			}
+		} else {
+			res.json({
+				data,
+			});
+		}
+	}
+
+	private async setupCorsHeaders(
+		req: WebhookRequest | WebhookOptionsRequest,
+		res: express.Response,
+	): Promise<Error | null> {
+		const method = req.method;
+		const { path } = req.params;
+
+		if (this.webhookManager.getWebhookMethods) {
+			try {
+				const allowedMethods = await this.webhookManager.getWebhookMethods(path);
+				res.header('Access-Control-Allow-Methods', ['OPTIONS', ...allowedMethods].join(', '));
+			} catch (error) {
+				return error as Error;
+			}
+		}
+
+		const requestedMethod =
+			method === 'OPTIONS'
+				? (req.headers['access-control-request-method'] as IHttpRequestMethods)
+				: method;
+		if (this.webhookManager.findAccessControlOptions && requestedMethod) {
+			const options = await this.webhookManager.findAccessControlOptions(path, requestedMethod);
+			const { allowedOrigins } = options ?? {};
+
+			if (allowedOrigins && allowedOrigins !== '*' && allowedOrigins !== req.headers.origin) {
+				const originsList = allowedOrigins.split(',');
+				const defaultOrigin = originsList[0];
+
+				if (originsList.length === 1) {
+					res.header('Access-Control-Allow-Origin', defaultOrigin);
+				}
+
+				if (originsList.includes(req.headers.origin as string)) {
+					res.header('Access-Control-Allow-Origin', req.headers.origin);
+				} else {
+					res.header('Access-Control-Allow-Origin', defaultOrigin);
+				}
+			} else {
+				res.header('Access-Control-Allow-Origin', req.headers.origin);
+			}
+
+			if (method === 'OPTIONS') {
+				res.header('Access-Control-Max-Age', '300');
+				const requestedHeaders = req.headers['access-control-request-headers'];
+				if (requestedHeaders?.length) {
+					res.header('Access-Control-Allow-Headers', requestedHeaders);
+				}
+			}
+		}
+
+		return null;
+	}
+}
+
+export function createWebhookHandlerFor(webhookManager: IWebhookManager) {
+	const handler = new WebhookRequestHandler(webhookManager);
+
+	return async (req: WebhookRequest | WebhookOptionsRequest, res: express.Response) => {
+		const { params } = req;
+		if (Array.isArray(params.path)) {
+			params.path = params.path.join('/');
+		}
+		await handler.handleRequest(req, res);
+	};
+}

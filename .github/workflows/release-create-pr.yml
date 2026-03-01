@@ -1,0 +1,119 @@
+name: 'Release: Create Pull Request'
+
+on:
+  workflow_call:
+    inputs:
+      base-branch:
+        description: 'The branch, tag, or commit to create this release PR from.'
+        required: true
+        type: string
+
+      release-type:
+        description: 'A SemVer release type.'
+        required: true
+        type: string
+
+  workflow_dispatch:
+    inputs:
+      base-branch:
+        description: 'The branch, tag, or commit to create this release PR from.'
+        required: true
+        default: 'master'
+
+      release-type:
+        description: 'A SemVer release type.'
+        required: true
+        type: choice
+        default: 'minor'
+        options:
+          - patch
+          - minor
+          - major
+          - experimental
+          - premajor
+
+jobs:
+  create-release-pr:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    timeout-minutes: 5
+
+    steps:
+      - name: Generate GitHub App Token
+        id: generate_token
+        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          fetch-depth: 0
+          token: ${{ steps.generate_token.outputs.token }}
+
+      # Checkout base branch via separate step to prevent unsafe actions/checkout ref usage.
+      # poutine: untrusted_checkout_exec
+      - name: Switch to base branch
+        env:
+          BASE_BRANCH: ${{ github.event.inputs.base-branch }}
+        run: git checkout "$BASE_BRANCH"
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24.13.1
+
+      - run: npm install --prefix=.github/scripts --no-package-lock
+
+      - name: Setup corepack and pnpm
+        run: |
+          npm i -g corepack@0.33
+          corepack enable
+
+      - name: Bump package versions
+        run: |
+          echo "NEXT_RELEASE=$(node .github/scripts/bump-versions.mjs)" >> "$GITHUB_ENV"
+        env:
+          RELEASE_TYPE: ${{ github.event.inputs.release-type }}
+
+      - name: Update Changelog
+        run: node .github/scripts/update-changelog.mjs
+
+      - name: Push the base branch
+        env:
+          BASE_BRANCH: ${{ github.event.inputs.base-branch }}
+        run: |
+          git push -f origin "refs/remotes/origin/${{ env.BASE_BRANCH }}:refs/heads/release/${{ env.NEXT_RELEASE }}"
+
+      - name: Generate PR body
+        id: generate-body
+        run: |
+          set -e
+          CHANGELOG_FILE="CHANGELOG-${{ env.NEXT_RELEASE }}.md"
+          DELIMITER="EOF_$(uuidgen)"
+
+          if [ -f "${CHANGELOG_FILE}" ]; then
+            {
+              echo "content<<${DELIMITER}"
+              cat "${CHANGELOG_FILE}"
+              echo "${DELIMITER}"
+            } >> "$GITHUB_OUTPUT"
+          else
+            echo "content=No changelog generated. Likely points to fixes in our CI." >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Push the release branch, and Create the PR
+        uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c # v6
+        with:
+          token: ${{ steps.generate_token.outputs.token }}
+          base: 'release/${{ env.NEXT_RELEASE }}'
+          branch: 'release-pr/${{ env.NEXT_RELEASE }}'
+          commit-message: ':rocket: Release ${{ env.NEXT_RELEASE }}'
+          delete-branch: true
+          labels: release,release:${{ github.event.inputs.release-type }}
+          title: ':rocket: Release ${{ env.NEXT_RELEASE }}'
+          body: ${{ steps.generate-body.outputs.content }}

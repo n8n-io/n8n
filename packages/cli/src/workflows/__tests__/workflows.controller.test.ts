@@ -1,0 +1,529 @@
+import type { CreateWorkflowDto, ImportWorkflowFromUrlDto } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
+import { WorkflowEntity } from '@n8n/db';
+import type {
+	AuthenticatedRequest,
+	IExecutionResponse,
+	CredentialsEntity,
+	ProjectRepository,
+	User,
+	WorkflowRepository,
+} from '@n8n/db';
+import axios from 'axios';
+import type { Response } from 'express';
+import { mock } from 'jest-mock-extended';
+
+import { WorkflowsController } from '../workflows.controller';
+
+import type { CredentialsService } from '@/credentials/credentials.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import type { ExecutionService } from '@/executions/execution.service';
+import type { License } from '@/license';
+import { userHasScopes } from '@/permissions.ee/check-access';
+import type { ProjectService } from '@/services/project.service.ee';
+import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+
+jest.mock('axios');
+jest.mock('@/permissions.ee/check-access');
+
+describe('WorkflowsController', () => {
+	const controller = Object.create(WorkflowsController.prototype);
+	const axiosMock = axios.get as jest.Mock;
+	const req = mock<AuthenticatedRequest>();
+	const res = mock<Response>();
+	const projectService = mock<ProjectService>();
+	const logger = mock<Logger>();
+
+	beforeEach(() => {
+		controller.projectService = projectService;
+		controller.logger = logger;
+		jest.clearAllMocks();
+	});
+
+	describe('getFromUrl', () => {
+		const projectId = 'project-123';
+
+		describe('should return workflow data', () => {
+			it('when the URL points to a valid JSON file and user has permissions', async () => {
+				const mockWorkflowData = {
+					nodes: [],
+					connections: {},
+				};
+
+				projectService.getProjectWithScope.mockResolvedValue({} as any);
+				axiosMock.mockResolvedValue({ data: mockWorkflowData });
+
+				const query: ImportWorkflowFromUrlDto = {
+					url: 'https://example.com/workflow.json',
+					projectId,
+				};
+				const result = await controller.getFromUrl(req, res, query);
+
+				expect(result).toEqual(mockWorkflowData);
+				expect(projectService.getProjectWithScope).toHaveBeenCalledWith(req.user, projectId, [
+					'workflow:create',
+				]);
+				expect(axiosMock).toHaveBeenCalledWith(query.url);
+			});
+		});
+
+		describe('should throw a ForbiddenError', () => {
+			it('when the user does not have permissions to create workflows in the project', async () => {
+				projectService.getProjectWithScope.mockResolvedValue(null);
+
+				const query: ImportWorkflowFromUrlDto = {
+					url: 'https://example.com/workflow.json',
+					projectId,
+				};
+
+				await expect(controller.getFromUrl(req, res, query)).rejects.toThrow(ForbiddenError);
+				expect(projectService.getProjectWithScope).toHaveBeenCalledWith(req.user, projectId, [
+					'workflow:create',
+				]);
+				expect(axiosMock).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('should throw a BadRequestError', () => {
+			beforeEach(() => {
+				projectService.getProjectWithScope.mockResolvedValue({} as any);
+			});
+
+			it('when the URL does not point to a valid JSON file', async () => {
+				axiosMock.mockRejectedValue(new Error('Network Error'));
+
+				const query: ImportWorkflowFromUrlDto = {
+					url: 'https://example.com/invalid.json',
+					projectId,
+				};
+
+				await expect(controller.getFromUrl(req, res, query)).rejects.toThrow(BadRequestError);
+				expect(axiosMock).toHaveBeenCalledWith(query.url);
+			});
+
+			it('when the data is not a valid n8n workflow JSON', async () => {
+				const invalidWorkflowData = {
+					nodes: 'not an array',
+					connections: 'not an object',
+				};
+
+				axiosMock.mockResolvedValue({ data: invalidWorkflowData });
+
+				const query: ImportWorkflowFromUrlDto = {
+					url: 'https://example.com/invalid.json',
+					projectId,
+				};
+
+				await expect(controller.getFromUrl(req, res, query)).rejects.toThrow(BadRequestError);
+				expect(axiosMock).toHaveBeenCalledWith(query.url);
+			});
+
+			it('when the data is missing required fields', async () => {
+				const incompleteWorkflowData = {
+					nodes: [],
+					// Missing connections field
+				};
+
+				axiosMock.mockResolvedValue({ data: incompleteWorkflowData });
+
+				const query: ImportWorkflowFromUrlDto = {
+					url: 'https://example.com/workflow.json',
+					projectId,
+				};
+
+				await expect(controller.getFromUrl(req, res, query)).rejects.toThrow(BadRequestError);
+				expect(axiosMock).toHaveBeenCalledWith(query.url);
+			});
+		});
+	});
+
+	describe('getLastSuccessfulExecution', () => {
+		it('should return the last successful execution', async () => {
+			/**
+			 * Arrange
+			 */
+			const workflowId = 'workflow-123';
+			const mockExecution = mock<IExecutionResponse>({
+				id: 'execution-456',
+				workflowId,
+				mode: 'trigger',
+				startedAt: new Date('2025-01-15T10:00:00Z'),
+				stoppedAt: new Date('2025-01-15T10:05:00Z'),
+				status: 'success',
+			});
+			const executionService = mock<ExecutionService>();
+			executionService.getLastSuccessfulExecution.mockResolvedValue(mockExecution);
+			controller.executionService = executionService;
+
+			/**
+			 * Act
+			 */
+			const result = await controller.getLastSuccessfulExecution(req, res, workflowId);
+
+			/**
+			 * Assert
+			 */
+			expect(result).toEqual(mockExecution);
+			expect(executionService.getLastSuccessfulExecution).toHaveBeenCalledWith(workflowId);
+		});
+
+		it('should return null when no successful execution exists', async () => {
+			/**
+			 * Arrange
+			 */
+			const workflowId = 'workflow-no-success';
+			const executionService = mock<ExecutionService>();
+			executionService.getLastSuccessfulExecution.mockResolvedValue(undefined);
+			controller.executionService = executionService;
+
+			/**
+			 * Act
+			 */
+			const result = await controller.getLastSuccessfulExecution(req, res, workflowId);
+
+			/**
+			 * Assert
+			 */
+			expect(result).toBeNull();
+			expect(executionService.getLastSuccessfulExecution).toHaveBeenCalledWith(workflowId);
+		});
+	});
+
+	describe('create', () => {
+		describe('credential retrieval for workflow creation', () => {
+			it('should include global credentials when checking credential permissions', async () => {
+				/**
+				 * Arrange
+				 */
+				const mockUser = mock<User>({ id: 'user-123' });
+				const mockBody: CreateWorkflowDto = {
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+				};
+				const mockRequest = mock<AuthenticatedRequest>({
+					user: mockUser,
+				});
+
+				const mockGlobalCredential = mock<CredentialsEntity>({
+					id: 'global-cred-123',
+					name: 'Global Credential',
+					type: 'httpBasicAuth',
+					isGlobal: true,
+				});
+
+				const mockPersonalCredential = mock<CredentialsEntity>({
+					id: 'personal-cred-456',
+					name: 'Personal Credential',
+					type: 'httpBasicAuth',
+					isGlobal: false,
+				});
+
+				const credentialsService = mock<CredentialsService>();
+				const enterpriseWorkflowService = mock<EnterpriseWorkflowService>();
+				const license = mock<License>();
+
+				credentialsService.getMany.mockResolvedValue([
+					mockGlobalCredential,
+					mockPersonalCredential,
+				]);
+				license.isSharingEnabled.mockReturnValue(true);
+
+				// Stop execution after credential validation
+				enterpriseWorkflowService.validateCredentialPermissionsToUser.mockImplementation(() => {
+					throw new BadRequestError('Stopping execution for test');
+				});
+
+				const workflowRepository = mock<WorkflowRepository>();
+				workflowRepository.existsBy.mockResolvedValue(false);
+
+				controller.credentialsService = credentialsService;
+				controller.enterpriseWorkflowService = enterpriseWorkflowService;
+				controller.license = license;
+				controller.externalHooks = mock();
+				controller.externalHooks.run = jest.fn().mockResolvedValue(undefined);
+				controller.tagRepository = mock();
+				controller.globalConfig = { tags: { disabled: true } };
+				controller.workflowRepository = workflowRepository;
+
+				/**
+				 * Act & Assert
+				 */
+				await expect(controller.create(mockRequest, res, mockBody)).rejects.toThrow(
+					BadRequestError,
+				);
+
+				/**
+				 * Assert - Verify credentials were fetched with includeGlobal: true
+				 */
+				expect(credentialsService.getMany).toHaveBeenCalledWith(mockUser, {
+					includeGlobal: true,
+				});
+				expect(enterpriseWorkflowService.validateCredentialPermissionsToUser).toHaveBeenCalledWith(
+					expect.any(WorkflowEntity),
+					[mockGlobalCredential, mockPersonalCredential],
+				);
+			});
+
+			it('should throw BadRequestError when user lacks access to credentials in workflow', async () => {
+				/**
+				 * Arrange
+				 */
+				const mockUser = mock<User>({ id: 'user-123' });
+				const mockBody: CreateWorkflowDto = {
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+				};
+				const mockRequest = mock<AuthenticatedRequest>({
+					user: mockUser,
+				});
+
+				const mockGlobalCredential = mock<CredentialsEntity>({
+					id: 'global-cred-123',
+					name: 'Global Credential',
+					type: 'httpBasicAuth',
+					isGlobal: true,
+				});
+
+				const credentialsService = mock<CredentialsService>();
+				const enterpriseWorkflowService = mock<EnterpriseWorkflowService>();
+				const license = mock<License>();
+
+				credentialsService.getMany.mockResolvedValue([mockGlobalCredential]);
+				license.isSharingEnabled.mockReturnValue(true);
+				enterpriseWorkflowService.validateCredentialPermissionsToUser.mockImplementation(() => {
+					throw new Error('User does not have access');
+				});
+
+				const workflowRepository = mock<WorkflowRepository>();
+				workflowRepository.existsBy.mockResolvedValue(false);
+
+				controller.credentialsService = credentialsService;
+				controller.enterpriseWorkflowService = enterpriseWorkflowService;
+				controller.license = license;
+				controller.externalHooks = mock();
+				controller.externalHooks.run = jest.fn().mockResolvedValue(undefined);
+				controller.tagRepository = mock();
+				controller.globalConfig = { tags: { disabled: true } };
+				controller.workflowRepository = workflowRepository;
+
+				/**
+				 * Act & Assert
+				 */
+				await expect(controller.create(mockRequest, res, mockBody)).rejects.toThrow(
+					BadRequestError,
+				);
+				await expect(controller.create(mockRequest, res, mockBody)).rejects.toThrow(
+					'The workflow you are trying to save contains credentials that are not shared with you',
+				);
+
+				expect(credentialsService.getMany).toHaveBeenCalledWith(mockUser, {
+					includeGlobal: true,
+				});
+			});
+		});
+
+		describe('redaction policy scope enforcement', () => {
+			const userHasScopesMock = jest.mocked(userHasScopes);
+
+			// Helper to set up mocks that get the controller into the transaction
+			// where the redaction scope check now happens. Uses transactionManager.save
+			// as the stop point (throws to halt execution after the check).
+			function setupTransactionMocks(options: {
+				mockUser: User;
+				projectId?: string;
+				personalProjectId?: string;
+			}) {
+				const transactionManager = {
+					save: jest.fn().mockRejectedValue(new Error('Stopping for test')),
+				};
+
+				const projectRepository = mock<ProjectRepository>();
+				if (options.personalProjectId) {
+					projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
+						id: options.personalProjectId,
+					} as any);
+				}
+				(projectRepository as any).manager = {
+					transaction: jest.fn(async (cb: any) => cb(transactionManager)),
+				};
+
+				const workflowRepository = mock<WorkflowRepository>();
+				workflowRepository.existsBy.mockResolvedValue(false);
+
+				const license = mock<License>();
+				license.isSharingEnabled.mockReturnValue(false);
+
+				projectService.getProjectWithScope.mockResolvedValue({
+					id: options.projectId ?? options.personalProjectId,
+				} as any);
+
+				controller.workflowRepository = workflowRepository;
+				controller.projectRepository = projectRepository;
+				controller.license = license;
+				controller.externalHooks = mock();
+				controller.externalHooks.run = jest.fn().mockResolvedValue(undefined);
+				controller.tagRepository = mock();
+				controller.globalConfig = { tags: { disabled: true } };
+
+				return { projectRepository, transactionManager };
+			}
+
+			it('should strip redactionPolicy on create when user lacks scope', async () => {
+				/**
+				 * Arrange
+				 */
+				const mockUser = mock<User>({ id: 'user-123' });
+				const body: CreateWorkflowDto = {
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+					projectId: 'project-123',
+					settings: { redactionPolicy: 'all' } as CreateWorkflowDto['settings'],
+				};
+				const mockRequest = mock<AuthenticatedRequest>({
+					user: mockUser,
+				});
+
+				userHasScopesMock.mockResolvedValue(false);
+				setupTransactionMocks({ mockUser, projectId: 'project-123' });
+
+				/**
+				 * Act
+				 */
+				await expect(controller.create(mockRequest, res, body)).rejects.toThrow(
+					'Stopping for test',
+				);
+
+				/**
+				 * Assert
+				 */
+				expect(userHasScopesMock).toHaveBeenCalledWith(
+					mockUser,
+					['workflow:updateRedactionSetting'],
+					false,
+					{ projectId: 'project-123' },
+				);
+			});
+
+			it('should preserve redactionPolicy on create when user has scope', async () => {
+				/**
+				 * Arrange
+				 */
+				const mockUser = mock<User>({ id: 'user-123' });
+				const body: CreateWorkflowDto = {
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+					projectId: 'project-123',
+					settings: { redactionPolicy: 'all' } as CreateWorkflowDto['settings'],
+				};
+				const mockRequest = mock<AuthenticatedRequest>({
+					user: mockUser,
+				});
+
+				userHasScopesMock.mockResolvedValue(true);
+				const { transactionManager } = setupTransactionMocks({
+					mockUser,
+					projectId: 'project-123',
+				});
+
+				/**
+				 * Act
+				 */
+				await expect(controller.create(mockRequest, res, body)).rejects.toThrow(
+					'Stopping for test',
+				);
+
+				/**
+				 * Assert
+				 */
+				expect(userHasScopesMock).toHaveBeenCalledWith(
+					mockUser,
+					['workflow:updateRedactionSetting'],
+					false,
+					{ projectId: 'project-123' },
+				);
+				// Verify the workflow entity passed to save still has redactionPolicy
+				const savedEntity = transactionManager.save.mock.calls[0][0] as WorkflowEntity;
+				expect(savedEntity.settings?.redactionPolicy).toBe('all');
+			});
+
+			it('should resolve projectId from personal project when projectId not provided', async () => {
+				/**
+				 * Arrange
+				 */
+				const mockUser = mock<User>({ id: 'user-456' });
+				const body: CreateWorkflowDto = {
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+					settings: { redactionPolicy: 'all' } as CreateWorkflowDto['settings'],
+				};
+				const mockRequest = mock<AuthenticatedRequest>({
+					user: mockUser,
+				});
+
+				userHasScopesMock.mockResolvedValue(false);
+				const { projectRepository } = setupTransactionMocks({
+					mockUser,
+					personalProjectId: 'personal-project-789',
+				});
+
+				/**
+				 * Act
+				 */
+				await expect(controller.create(mockRequest, res, body)).rejects.toThrow(
+					'Stopping for test',
+				);
+
+				/**
+				 * Assert
+				 */
+				expect(projectRepository.getPersonalProjectForUserOrFail).toHaveBeenCalledWith(
+					'user-456',
+					expect.anything(),
+				);
+				expect(userHasScopesMock).toHaveBeenCalledWith(
+					mockUser,
+					['workflow:updateRedactionSetting'],
+					false,
+					{ projectId: 'personal-project-789' },
+				);
+			});
+
+			it('should not check scope when settings has no redactionPolicy', async () => {
+				/**
+				 * Arrange
+				 */
+				const mockUser = mock<User>({ id: 'user-123' });
+				const body: CreateWorkflowDto = {
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+					projectId: 'project-123',
+					settings: { executionOrder: 'v1' } as CreateWorkflowDto['settings'],
+				};
+				const mockRequest = mock<AuthenticatedRequest>({
+					user: mockUser,
+				});
+
+				setupTransactionMocks({ mockUser, projectId: 'project-123' });
+
+				/**
+				 * Act
+				 */
+				await expect(controller.create(mockRequest, res, body)).rejects.toThrow(
+					'Stopping for test',
+				);
+
+				/**
+				 * Assert
+				 */
+				expect(userHasScopesMock).not.toHaveBeenCalled();
+			});
+		});
+	});
+});

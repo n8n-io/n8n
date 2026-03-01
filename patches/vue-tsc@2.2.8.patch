@@ -1,0 +1,13 @@
+diff --git a/index.js b/index.js
+index a680d25dfa98a45a3efec0bfb493500e6e9faa91..ca90b6226c88b5bc27aa5323c4e0e5f30f5b9ef2 100644
+--- a/index.js
++++ b/index.js
+@@ -4,7 +4,7 @@ exports.run = run;
+ const runTsc_1 = require("@volar/typescript/lib/quickstart/runTsc");
+ const vue = require("@vue/language-core");
+ const windowsPathReg = /\\/g;
+-function run(tscPath = require.resolve('typescript/lib/tsc')) {
++function run(tscPath = require.resolve('typescript/lib/_tsc')) {
+     let runExtensions = ['.vue'];
+     const extensionsChangedException = new Error('extensions changed');
+     const main = () => (0, runTsc_1.runTsc)(tscPath, runExtensions, (ts, options) => {

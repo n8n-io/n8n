@@ -1,0 +1,50 @@
+{
+	"node": "n8n-nodes-base.postgres",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Development", "Data & Storage"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/postgres/"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.postgres/"
+			}
+		],
+		"generic": [
+			{
+				"label": "Love at first sight: Ricardo’s n8n journey",
+				"icon": "❤️",
+				"url": "https://n8n.io/blog/love-at-first-sight-ricardos-n8n-journey/"
+			},
+			{
+				"label": "Why I chose n8n over Zapier in 2020",
+				"icon": "😍",
+				"url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/"
+			},
+			{
+				"label": "Database Monitoring and Alerting with n8n",
+				"icon": "📡",
+				"url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/"
+			},
+			{
+				"label": "Running n8n on ships: An interview with Maranics",
+				"icon": "🛳",
+				"url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/"
+			},
+			{
+				"label": "Automate your data processing pipeline in 9 steps",
+				"icon": "⚙️",
+				"url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/"
+			},
+			{
+				"label": "How Honest Burgers Use Automation to Save $100k per year",
+				"icon": "🍔",
+				"url": "https://n8n.io/blog/how-honest-burgers-use-automation-to-save-100k-per-year/"
+			}
+		]
+	}
+}

@@ -1,33 +1,40 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type {
+	IExecuteFunctions,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import {moceanApiRequest} from './GenericFunctions';
-
+import { moceanApiRequest } from './GenericFunctions';
 
 export class Mocean implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mocean',
 		name: 'mocean',
-		icon: 'file:mocean.png',
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+		icon: { light: 'file:mocean.svg', dark: 'file:mocean.dark.svg' },
 		group: ['transform'],
 		version: 1,
-		description: 'Send SMS & voice messages via Mocean (https://moceanapi.com)',
+		description: 'Send SMS and voice messages via Mocean',
 		defaults: {
 			name: 'Mocean',
-			color: '#772244',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'moceanApi',
 				required: true,
-			}
+				testedBy: 'moceanApiTest',
+			},
 		],
 		properties: [
 			// Node properties which the user gets displayed and
@@ -36,7 +43,8 @@ export class Mocean implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
-				options:[
+				noDataExpression: true,
+				options: [
 					{
 						name: 'SMS',
 						value: 'sms',
@@ -44,7 +52,7 @@ export class Mocean implements INodeType {
 					{
 						name: 'Voice',
 						value: 'voice',
-					}
+					},
 				],
 				default: 'sms',
 			},
@@ -52,12 +60,10 @@ export class Mocean implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'sms',
-							'voice',
-						],
+						resource: ['sms', 'voice'],
 					},
 				},
 				options: [
@@ -65,10 +71,10 @@ export class Mocean implements INodeType {
 						name: 'Send',
 						value: 'send',
 						description: 'Send SMS/Voice message',
+						action: 'Send an SMS',
 					},
 				],
 				default: 'send',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'From',
@@ -79,16 +85,11 @@ export class Mocean implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'sms',
-							'voice',
-						],
+						operation: ['send'],
+						resource: ['sms', 'voice'],
 					},
 				},
-				description: 'The number to which to send the message',
+				description: 'Number to which to send the message',
 			},
 
 			{
@@ -100,52 +101,43 @@ export class Mocean implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'sms',
-							'voice',
-						],
+						operation: ['send'],
+						resource: ['sms', 'voice'],
 					},
 				},
-				description: 'The number from which to send the message',
+				description: 'Number from which to send the message',
 			},
 
 			{
 				displayName: 'Language',
 				name: 'language',
 				type: 'options',
-				options:[
+				options: [
 					{
 						name: 'Chinese Mandarin (China)',
-						value: 'cmn-CN'
+						value: 'cmn-CN',
 					},
 					{
 						name: 'English (United Kingdom)',
-						value: 'en-GB'
+						value: 'en-GB',
 					},
 					{
 						name: 'English (United States)',
-						value: 'en-US'
+						value: 'en-US',
 					},
 					{
 						name: 'Japanese (Japan)',
-						value: 'ja-JP'
+						value: 'ja-JP',
 					},
 					{
 						name: 'Korean (Korea)',
-						value: 'ko-KR'
+						value: 'ko-KR',
 					},
 				],
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'voice',
-						],
+						operation: ['send'],
+						resource: ['voice'],
 					},
 				},
 				default: 'en-US',
@@ -160,21 +152,69 @@ export class Mocean implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'sms',
-							'voice',
-						],
+						operation: ['send'],
+						resource: ['sms', 'voice'],
 					},
 				},
-				description: 'The message to send',
+				description: 'Message to send',
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: ['send'],
+						resource: ['sms'],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Delivery Report URL',
+						name: 'dlrUrl',
+						type: 'string',
+						default: '',
+						placeholder: '',
+					},
+				],
 			},
 		],
-
 	};
 
+	methods = {
+		credentialTest: {
+			async moceanApiTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
+				const credentials = credential.data;
+				const query: IDataObject = {};
+				query['mocean-api-key'] = credentials!['mocean-api-key'];
+				query['mocean-api-secret'] = credentials!['mocean-api-secret'];
+
+				const options = {
+					method: 'GET',
+					qs: query,
+					uri: 'https://rest.moceanapi.com/rest/2/account/balance',
+					json: true,
+				};
+				try {
+					await this.helpers.request(options);
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: `Connection details not valid: ${(error as JsonObject).message}`,
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Authentication successful!',
+				};
+			},
+		},
+	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -182,9 +222,10 @@ export class Mocean implements INodeType {
 
 		let endpoint: string;
 		let operation: string;
-		let requesetMethod: string;
+		let requestMethod: IHttpRequestMethods;
 		let resource: string;
 		let text: string;
+		let dlrUrl: string;
 		let dataKey: string;
 		// For Post
 		let body: IDataObject;
@@ -194,45 +235,60 @@ export class Mocean implements INodeType {
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			body = {};
 			qs = {};
+			try {
+				resource = this.getNodeParameter('resource', itemIndex, '');
+				operation = this.getNodeParameter('operation', itemIndex, '');
+				text = this.getNodeParameter('message', itemIndex, '') as string;
+				requestMethod = 'POST';
+				body['mocean-from'] = this.getNodeParameter('from', itemIndex, '') as string;
+				body['mocean-to'] = this.getNodeParameter('to', itemIndex, '') as string;
 
-			resource = this.getNodeParameter('resource', itemIndex, '') as string;
-			operation = this.getNodeParameter('operation',itemIndex,'') as string;
-			text = this.getNodeParameter('message', itemIndex, '') as string;
-			requesetMethod = 'POST';
-			body['mocean-from'] = this.getNodeParameter('from', itemIndex, '') as string;
-			body['mocean-to'] = this.getNodeParameter('to', itemIndex, '') as string;
+				if (resource === 'voice') {
+					const language: string = this.getNodeParameter('language', itemIndex) as string;
+					const command = [
+						{
+							action: 'say',
+							language,
+							text,
+						},
+					];
 
-			if (resource === 'voice') {
-				const language: string = this.getNodeParameter('language', itemIndex) as string;
-				const command = [
-					{
-						action: 'say',
-						language,
-						text,
+					dataKey = 'voice';
+					body['mocean-command'] = JSON.stringify(command);
+					endpoint = '/rest/2/voice/dial';
+				} else if (resource === 'sms') {
+					dlrUrl = this.getNodeParameter('options.dlrUrl', itemIndex, '') as string;
+					dataKey = 'messages';
+					body['mocean-text'] = text;
+					if (dlrUrl !== '') {
+						body['mocean-dlr-url'] = dlrUrl;
+						body['mocean-dlr-mask'] = '1';
 					}
-				];
-
-				dataKey = 'voice';
-				body['mocean-command'] = JSON.stringify(command);
-				endpoint = '/rest/2/voice/dial';
-			} else if(resource === 'sms') {
-				dataKey = 'messages';
-				body['mocean-text'] = text;
-				endpoint = '/rest/2/sms';
-			} else {
-				throw new Error(`Unknown resource ${resource}`);
-			}
-
-			if (operation === 'send') {
-				const responseData = await moceanApiRequest.call(this,requesetMethod,endpoint,body,qs);
-
-				for (const item of responseData[dataKey] as IDataObject[]) {
-					item.type = resource;
-					returnData.push(item);
+					endpoint = '/rest/2/sms';
+				} else {
+					throw new NodeOperationError(this.getNode(), `Unknown resource ${resource}`, {
+						itemIndex,
+					});
 				}
 
-			} else {
-				throw new Error(`Unknown operation ${operation}`);
+				if (operation === 'send') {
+					const responseData = await moceanApiRequest.call(this, requestMethod, endpoint, body, qs);
+
+					for (const item of responseData[dataKey] as IDataObject[]) {
+						item.type = resource;
+						returnData.push(item);
+					}
+				} else {
+					throw new NodeOperationError(this.getNode(), `Unknown operation ${operation}`, {
+						itemIndex,
+					});
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: (error as JsonObject).message });
+					continue;
+				}
+				throw error;
 			}
 		}
 

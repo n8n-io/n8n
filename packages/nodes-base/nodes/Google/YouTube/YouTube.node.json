@@ -1,0 +1,25 @@
+{
+	"node": "n8n-nodes-base.youTube",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Marketing"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.youtube/"
+			}
+		],
+		"generic": [
+			{
+				"label": "Using Automation to Boost Productivity in the Workplace",
+				"icon": "💪",
+				"url": "https://n8n.io/blog/using-automation-to-boost-productivity-in-the-workplace/"
+			}
+		]
+	}
+}

@@ -1,0 +1,319 @@
+import { type Response } from 'express';
+import { mock } from 'jest-mock-extended';
+import { isWebhookHtmlSandboxingDisabled, getWebhookSandboxCSP } from 'n8n-core';
+import { randomString } from 'n8n-workflow';
+import type { IHttpRequestMethods } from 'n8n-workflow';
+
+import { ResponseError } from '@/errors/response-errors/abstract/response.error';
+import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler';
+import type {
+	IWebhookManager,
+	IWebhookResponseCallbackData,
+	WebhookOptionsRequest,
+	WebhookRequest,
+} from '@/webhooks/webhook.types';
+
+jest.mock('n8n-core', () => ({
+	...jest.requireActual('n8n-core'),
+	isWebhookHtmlSandboxingDisabled: jest.fn().mockReturnValue(false),
+	getWebhookSandboxCSP: jest
+		.fn()
+		.mockReturnValue('sandbox allow-downloads allow-forms allow-modals'),
+}));
+
+describe('WebhookRequestHandler', () => {
+	const webhookManager = mock<Required<IWebhookManager>>();
+	const handler = createWebhookHandlerFor(webhookManager);
+
+	beforeEach(() => {
+		jest.resetAllMocks();
+	});
+
+	it('should throw for unsupported methods', async () => {
+		const req = mock<WebhookRequest | WebhookOptionsRequest>({
+			method: 'CONNECT' as IHttpRequestMethods,
+		});
+		const res = mock<Response>();
+		res.status.mockReturnValue(res);
+
+		await handler(req, res);
+
+		expect(res.status).toHaveBeenCalledWith(500);
+		expect(res.json).toHaveBeenCalledWith({
+			code: 0,
+			message: 'The method CONNECT is not supported.',
+		});
+	});
+
+	describe('preflight requests', () => {
+		it('should handle missing header for requested method', async () => {
+			const req = mock<WebhookRequest | WebhookOptionsRequest>({
+				method: 'OPTIONS',
+				headers: {
+					origin: 'https://example.com',
+					'access-control-request-method': undefined,
+				},
+				params: { path: 'test' },
+			});
+			const res = mock<Response>();
+			res.status.mockReturnValue(res);
+
+			webhookManager.getWebhookMethods.mockResolvedValue(['GET', 'PATCH']);
+
+			await handler(req, res);
+
+			expect(res.status).toHaveBeenCalledWith(204);
+			expect(res.header).toHaveBeenCalledWith(
+				'Access-Control-Allow-Methods',
+				'OPTIONS, GET, PATCH',
+			);
+		});
+
+		it('should handle default origin and max-age', async () => {
+			const req = mock<WebhookRequest | WebhookOptionsRequest>({
+				method: 'OPTIONS',
+				headers: {
+					origin: 'https://example.com',
+					'access-control-request-method': 'GET',
+				},
+				params: { path: 'test' },
+			});
+			const res = mock<Response>();
+			res.status.mockReturnValue(res);
+
+			webhookManager.getWebhookMethods.mockResolvedValue(['GET', 'PATCH']);
+
+			await handler(req, res);
+
+			expect(res.status).toHaveBeenCalledWith(204);
+			expect(res.header).toHaveBeenCalledWith(
+				'Access-Control-Allow-Methods',
+				'OPTIONS, GET, PATCH',
+			);
+			expect(res.header).toHaveBeenCalledWith('Access-Control-Allow-Origin', 'https://example.com');
+			expect(res.header).toHaveBeenCalledWith('Access-Control-Max-Age', '300');
+		});
+
+		it('should handle wildcard origin', async () => {
+			const randomOrigin = randomString(10);
+			const req = mock<WebhookRequest | WebhookOptionsRequest>({
+				method: 'OPTIONS',
+				headers: {
+					origin: randomOrigin,
+					'access-control-request-method': 'GET',
+				},
+				params: { path: 'test' },
+			});
+			const res = mock<Response>();
+			res.status.mockReturnValue(res);
+
+			webhookManager.getWebhookMethods.mockResolvedValue(['GET', 'PATCH']);
+			webhookManager.findAccessControlOptions.mockResolvedValue({
+				allowedOrigins: '*',
+			});
+
+			await handler(req, res);
+
+			expect(res.status).toHaveBeenCalledWith(204);
+			expect(res.header).toHaveBeenCalledWith(
+				'Access-Control-Allow-Methods',
+				'OPTIONS, GET, PATCH',
+			);
+			expect(res.header).toHaveBeenCalledWith('Access-Control-Allow-Origin', randomOrigin);
+		});
+
+		it('should handle custom origin', async () => {
+			const req = mock<WebhookRequest | WebhookOptionsRequest>({
+				method: 'OPTIONS',
+				headers: {
+					origin: 'https://example.com',
+					'access-control-request-method': 'GET',
+				},
+				params: { path: 'test' },
+			});
+			const res = mock<Response>();
+			res.status.mockReturnValue(res);
+
+			webhookManager.getWebhookMethods.mockResolvedValue(['GET', 'PATCH']);
+			webhookManager.findAccessControlOptions.mockResolvedValue({
+				allowedOrigins: 'https://test.com',
+			});
+
+			await handler(req, res);
+
+			expect(res.status).toHaveBeenCalledWith(204);
+			expect(res.header).toHaveBeenCalledWith(
+				'Access-Control-Allow-Methods',
+				'OPTIONS, GET, PATCH',
+			);
+			expect(res.header).toHaveBeenCalledWith('Access-Control-Allow-Origin', 'https://test.com');
+		});
+	});
+
+	describe('webhook requests', () => {
+		it('should delegate the request to the webhook manager and send the response', async () => {
+			const req = mock<WebhookRequest>({
+				method: 'GET',
+				params: { path: 'test' },
+			});
+
+			const res = mock<Response>();
+
+			const executeWebhookResponse: IWebhookResponseCallbackData = {
+				responseCode: 200,
+				data: {},
+				headers: {
+					'x-custom-header': 'test',
+				},
+			};
+			webhookManager.executeWebhook.mockResolvedValueOnce(executeWebhookResponse);
+
+			await handler(req, res);
+
+			expect(webhookManager.executeWebhook).toHaveBeenCalledWith(req, res);
+			expect(res.status).toHaveBeenCalledWith(200);
+			expect(res.setHeaders).toHaveBeenCalledWith(new Map([['x-custom-header', 'test']]));
+			expect(res.json).toHaveBeenCalledWith(executeWebhookResponse.data);
+		});
+
+		it('should send an error response if webhook execution throws', async () => {
+			class TestError extends ResponseError {}
+			const req = mock<WebhookRequest>({
+				method: 'GET',
+				params: { path: 'test' },
+			});
+
+			const res = mock<Response>();
+			res.status.mockReturnValue(res);
+
+			webhookManager.executeWebhook.mockRejectedValueOnce(
+				new TestError('Test error', 500, 100, 'Test hint'),
+			);
+
+			await handler(req, res);
+
+			expect(webhookManager.executeWebhook).toHaveBeenCalledWith(req, res);
+			expect(res.status).toHaveBeenCalledWith(500);
+			expect(res.json).toHaveBeenCalledWith({
+				code: 100,
+				message: 'Test error',
+				hint: 'Test hint',
+			});
+		});
+
+		it('should not throw when legacy response headers contain invalid names', async () => {
+			const req = mock<WebhookRequest>({
+				method: 'GET',
+				params: { path: 'test' },
+			});
+
+			const res = mock<Response>();
+
+			const executeWebhookResponse: IWebhookResponseCallbackData = {
+				responseCode: 200,
+				data: { ok: true },
+				headers: {
+					'<img src=x onerror=alert(1)>': 'xss',
+					'x-valid': 'value',
+				},
+			};
+			webhookManager.executeWebhook.mockResolvedValueOnce(executeWebhookResponse);
+
+			await handler(req, res);
+
+			expect(res.setHeaders).toHaveBeenCalledTimes(1);
+			expect(res.setHeaders).toHaveBeenCalledWith(new Map([['x-valid', 'value']]));
+			expect(res.json).toHaveBeenCalledWith(executeWebhookResponse.data);
+		});
+
+		it('should not allow user to override CSP via response headers', async () => {
+			const req = mock<WebhookRequest>({
+				method: 'GET',
+				params: { path: 'test' },
+			});
+
+			const res = mock<Response>();
+
+			const executeWebhookResponse: IWebhookResponseCallbackData = {
+				responseCode: 200,
+				data: { ok: true },
+				headers: {
+					'Content-Security-Policy': "default-src 'unsafe-inline'",
+				},
+			};
+			webhookManager.executeWebhook.mockResolvedValueOnce(executeWebhookResponse);
+
+			await handler(req, res);
+
+			expect(res.setHeaders).not.toHaveBeenCalled();
+			expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getWebhookSandboxCSP());
+		});
+
+		test.each<IHttpRequestMethods>(['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'])(
+			"should handle '%s' method",
+			async (method) => {
+				const req = mock<WebhookRequest>({
+					method,
+					params: { path: 'test' },
+				});
+
+				const res = mock<Response>();
+
+				const executeWebhookResponse: IWebhookResponseCallbackData = {
+					responseCode: 200,
+				};
+				webhookManager.executeWebhook.mockResolvedValueOnce(executeWebhookResponse);
+
+				await handler(req, res);
+
+				expect(webhookManager.executeWebhook).toHaveBeenCalledWith(req, res);
+				expect(res.status).toHaveBeenCalledWith(200);
+				expect(res.json).toHaveBeenCalledWith(executeWebhookResponse.data);
+			},
+		);
+	});
+
+	describe('CSP sandbox header', () => {
+		it('should set CSP sandbox header on all webhook responses', async () => {
+			const req = mock<WebhookRequest>({
+				method: 'GET',
+				params: { path: 'test' },
+			});
+
+			const res = mock<Response>();
+
+			const executeWebhookResponse: IWebhookResponseCallbackData = {
+				responseCode: 200,
+				data: {},
+				headers: { 'content-type': 'image/svg+xml' },
+			};
+			webhookManager.executeWebhook.mockResolvedValueOnce(executeWebhookResponse);
+
+			await handler(req, res);
+
+			expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getWebhookSandboxCSP());
+		});
+
+		it('should not set CSP sandbox header when sandboxing is disabled', async () => {
+			jest.mocked(isWebhookHtmlSandboxingDisabled).mockReturnValueOnce(true);
+
+			const req = mock<WebhookRequest>({
+				method: 'GET',
+				params: { path: 'test' },
+			});
+
+			const res = mock<Response>();
+
+			const executeWebhookResponse: IWebhookResponseCallbackData = {
+				responseCode: 200,
+				data: {},
+				headers: { 'content-type': 'text/html' },
+			};
+			webhookManager.executeWebhook.mockResolvedValueOnce(executeWebhookResponse);
+
+			await handler(req, res);
+
+			expect(res.setHeader).not.toHaveBeenCalledWith('Content-Security-Policy', expect.anything());
+		});
+	});
+});

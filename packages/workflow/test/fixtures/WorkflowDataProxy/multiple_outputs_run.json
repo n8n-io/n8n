@@ -1,0 +1,84 @@
+{
+	"data": {
+		"startData": {},
+		"resultData": {
+			"runData": {
+				"When clicking ‘Execute workflow’": [
+					{
+						"hints": [],
+						"startTime": 1718369813697,
+						"executionTime": 0,
+						"source": [],
+						"executionStatus": "success",
+						"data": {
+							"main": [
+								[
+									{
+										"json": {
+											"name": "First item",
+											"code": 1
+										},
+										"pairedItem": {
+											"item": 0
+										}
+									},
+									{
+										"json": {
+											"name": "Second item",
+											"code": 2
+										},
+										"pairedItem": {
+											"item": 0
+										}
+									}
+								]
+							]
+						}
+					}
+				],
+				"If": [
+					{
+						"hints": [],
+						"startTime": 1718369813698,
+						"executionTime": 1,
+						"source": [
+							{
+								"previousNode": "When clicking ‘Execute workflow’"
+							}
+						],
+						"executionStatus": "success",
+						"data": {
+							"main": [
+								[],
+								[
+									{
+										"json": {
+											"name": "First item",
+											"code": 1
+										},
+										"pairedItem": {
+											"item": 0
+										}
+									},
+									{
+										"json": {
+											"name": "Second item",
+											"code": 2
+										},
+										"pairedItem": {
+											"item": 1
+										}
+									}
+								]
+							]
+						}
+					}
+				]
+			}
+		}
+	},
+	"mode": "manual",
+	"startedAt": "2024-02-08T15:45:18.848Z",
+	"stoppedAt": "2024-02-08T15:45:18.862Z",
+	"status": "running"
+}

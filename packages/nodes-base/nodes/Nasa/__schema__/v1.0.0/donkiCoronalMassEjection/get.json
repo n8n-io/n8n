@@ -1,0 +1,94 @@
+{
+    "type": "object",
+    "properties": {
+        "activityID": {
+            "type": "string"
+        },
+        "catalog": {
+            "type": "string"
+        },
+        "cmeAnalyses": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "featureCode": {
+                        "type": "string"
+                    },
+                    "halfAngle": {
+                        "type": "integer"
+                    },
+                    "imageType": {
+                        "type": "string"
+                    },
+                    "isMostAccurate": {
+                        "type": "boolean"
+                    },
+                    "latitude": {
+                        "type": "integer"
+                    },
+                    "levelOfData": {
+                        "type": "integer"
+                    },
+                    "link": {
+                        "type": "string"
+                    },
+                    "measurementTechnique": {
+                        "type": "string"
+                    },
+                    "minorHalfWidth": {
+                        "type": "null"
+                    },
+                    "note": {
+                        "type": "string"
+                    },
+                    "speed": {
+                        "type": "integer"
+                    },
+                    "submissionTime": {
+                        "type": "string"
+                    },
+                    "tilt": {
+                        "type": "null"
+                    },
+                    "time21_5": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "instruments": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "displayName": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "link": {
+            "type": "string"
+        },
+        "note": {
+            "type": "string"
+        },
+        "sourceLocation": {
+            "type": "string"
+        },
+        "startTime": {
+            "type": "string"
+        },
+        "submissionTime": {
+            "type": "string"
+        },
+        "versionId": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

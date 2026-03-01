@@ -1,32 +1,31 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const singletonOperations = [
+export const singletonOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'singleton',
-				],
+				resource: ['singleton'],
 			},
 		},
 		options: [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Gets a Singleton',
+				description: 'Get a singleton',
+				action: 'Get a singleton',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
-	}
-] as INodeProperties[];
+	},
+];
 
-export const singletonFields = [
+export const singletonFields: INodeProperties[] = [
 	{
-		displayName: 'Singleton',
+		displayName: 'Singleton Name or ID',
 		name: 'singleton',
 		type: 'options',
 		default: '',
@@ -35,12 +34,11 @@ export const singletonFields = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'singleton',
-				],
+				resource: ['singleton'],
 			},
 		},
 		required: true,
-		description: 'Name of the singleton to operate on.'
+		description:
+			'Name of the singleton to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
-] as INodeProperties[];
+];

@@ -1,42 +1,59 @@
-import { OptionsWithUri } from 'request';
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
+	IRequestOptions,
 	IWebhookFunctions,
-} from 'n8n-core';
-import { IDataObject } from 'n8n-workflow';
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-export async function acuitySchedulingApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('acuitySchedulingApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
+export async function acuitySchedulingApiRequest(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+	method: IHttpRequestMethods,
+	resource: string,
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	_option: IDataObject = {},
+): Promise<any> {
+	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 		},
-		auth: {
-			user: credentials.userId as string,
-			password: credentials.apiKey as string,
-		},
+		auth: {},
 		method,
 		qs,
 		body,
-		uri: uri ||`https://acuityscheduling.com/api/v1${resource}`,
-		json: true
+		uri: uri || `https://acuityscheduling.com/api/v1${resource}`,
+		json: true,
 	};
+
 	try {
-		return await this.helpers.request!(options);
-	} catch (error) {
+		if (authenticationMethod === 'apiKey') {
+			const credentials = await this.getCredentials('acuitySchedulingApi');
 
-		let errorMessage = error.message;
-		if (error.response.body && error.response.body.message) {
-			errorMessage = `[${error.response.body.status_code}] ${error.response.body.message}`;
+			options.auth = {
+				user: credentials.userId as string,
+				password: credentials.apiKey as string,
+			};
+
+			return await this.helpers.request(options);
+		} else {
+			delete options.auth;
+			return await this.helpers.requestOAuth2.call(
+				this,
+				'acuitySchedulingOAuth2Api',
+				options,
+				//@ts-ignore
+				true,
+			);
 		}
-
-		throw new Error('Acuity Scheduling Error: ' + errorMessage);
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

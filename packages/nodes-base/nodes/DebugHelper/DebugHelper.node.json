@@ -1,0 +1,14 @@
+{
+	"node": "n8n-nodes-base.debughelper",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Development"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.debughelper/"
+			}
+		]
+	},
+	"alias": ["Mock", "Sample", "Demo", "Test", "Throw error", "OOM", "Out of Memory", "placeholder"]
+}

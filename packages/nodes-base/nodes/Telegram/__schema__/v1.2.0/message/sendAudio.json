@@ -1,0 +1,77 @@
+{
+    "type": "object",
+    "properties": {
+        "ok": {
+            "type": "boolean"
+        },
+        "result": {
+            "type": "object",
+            "properties": {
+                "audio": {
+                    "type": "object",
+                    "properties": {
+                        "duration": {
+                            "type": "integer"
+                        },
+                        "file_id": {
+                            "type": "string"
+                        },
+                        "file_name": {
+                            "type": "string"
+                        },
+                        "file_size": {
+                            "type": "integer"
+                        },
+                        "file_unique_id": {
+                            "type": "string"
+                        },
+                        "mime_type": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "chat": {
+                    "type": "object",
+                    "properties": {
+                        "first_name": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "integer"
+                        },
+                        "last_name": {
+                            "type": "string"
+                        },
+                        "type": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "date": {
+                    "type": "integer"
+                },
+                "from": {
+                    "type": "object",
+                    "properties": {
+                        "first_name": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "integer"
+                        },
+                        "is_bot": {
+                            "type": "boolean"
+                        },
+                        "username": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "message_id": {
+                    "type": "integer"
+                }
+            }
+        }
+    },
+    "version": 1
+}

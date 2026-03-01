@@ -1,0 +1,145 @@
+{
+  "name": "My workflow 35",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "6666-9999-77777",
+      "name": "When clicking \"Execute Workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        880,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "channelMessage",
+        "teamId": {
+          "__rl": true,
+          "value": "1111-2222-3333",
+          "mode": "list",
+          "cachedResultName": "U.S. Sales"
+        },
+        "channelId": {
+          "__rl": true,
+          "value": "42:aaabbbccc.tacv2",
+          "mode": "list",
+          "cachedResultName": "Sales West",
+          "cachedResultUrl": "https://teams.microsoft.com/l/channel/threadId/Sales%20West?groupId=1111-2222-3333&tenantId=tenantId-111-222-333&allowXTenantAccess=False"
+        },
+        "contentType": "html",
+        "message": "new sale",
+        "options": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "id": "6666-5555-77777",
+      "name": "Microsoft Teams",
+      "type": "n8n-nodes-base.microsoftTeams",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        380
+      ],
+      "credentials": {
+        "microsoftTeamsOAuth2Api": {
+          "id": "6isd5ytvA0qV78eK",
+          "name": "Microsoft Teams account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "9d1a2e59-c71c-486c-b3ac-dec6adbc26b3",
+      "name": "No Operation, do nothing",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1400,
+        380
+      ]
+    }
+  ],
+  "pinData": {
+    "No Operation, do nothing": [
+      {
+        "json": {
+          "@odata.context": "https://graph.microsoft.com/beta/$metadata#teams('1111-2222-3333')/channels('threadId')/messages/$entity",
+          "id": "1698324478896",
+          "replyToId": null,
+          "etag": "1698324478896",
+          "messageType": "message",
+          "createdDateTime": "2023-10-26T12:47:58.896Z",
+          "lastModifiedDateTime": "2023-10-26T12:47:58.896Z",
+          "lastEditedDateTime": null,
+          "deletedDateTime": null,
+          "subject": null,
+          "summary": null,
+          "chatId": null,
+          "importance": "normal",
+          "locale": "en-us",
+          "webUrl": "https://teams.microsoft.com/l/message/threadId/1698324478896?groupId=1111-2222-3333&tenantId=tenantId-111-222-333&createdTime=1698324478896&parentMessageId=1698324478896",
+          "onBehalfOf": null,
+          "policyViolation": null,
+          "eventDetail": null,
+          "from": {
+            "application": null,
+            "device": null,
+            "user": {
+              "@odata.type": "#microsoft.graph.teamworkUserIdentity",
+              "id": "11111-2222-3333",
+              "displayName": "My Name",
+              "userIdentityType": "aadUser"
+            }
+          },
+          "body": {
+            "contentType": "html",
+            "content": "new sale"
+          },
+          "channelIdentity": {
+            "teamId": "1111-2222-3333",
+            "channelId": "42:aaabbbccc.tacv2"
+          },
+          "attachments": [],
+          "mentions": [],
+          "reactions": []
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking \"Execute Workflow\"": {
+      "main": [
+        [
+          {
+            "node": "Microsoft Teams",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Microsoft Teams": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "30cec397-a737-41b8-8da2-dff4d293ce70",
+  "id": "i3NYGF0LXV4qDFV9",
+  "meta": {
+    "instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
+  },
+  "tags": []
+}

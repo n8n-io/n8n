@@ -1,0 +1,37 @@
+name: 'Test: Visual Chromatic'
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: GitHub ref to check out.
+        required: false
+        type: string
+        default: ''
+
+jobs:
+  chromatic:
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref }}
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: pnpm run build --filter=@n8n/utils --filter=@n8n/vitest-config --filter=@n8n/chat --filter=@n8n/design-system
+
+      - name: Publish to Chromatic
+        uses: chromaui/action@1cfa065cbdab28f6ca3afaeb3d761383076a35aa # v11
+        id: chromatic_tests
+        with:
+          workingDir: packages/frontend/@n8n/storybook
+          buildScriptName: build
+          autoAcceptChanges: 'master'
+          skip: 'release/**'
+          onlyChanged: true
+          projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+          exitZeroOnChanges: false

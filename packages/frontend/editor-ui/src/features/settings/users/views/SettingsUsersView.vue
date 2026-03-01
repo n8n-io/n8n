@@ -1,0 +1,564 @@
+<script lang="ts" setup>
+import { ref, computed, onMounted } from 'vue';
+import { useDebounceFn } from '@vueuse/core';
+import {
+	ROLE,
+	type Role,
+	type UsersListSortOptions,
+	type User,
+	USERS_LIST_SORT_OPTIONS,
+} from '@n8n/api-types';
+import type { UserAction } from '@n8n/design-system';
+import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
+import {
+	DEBOUNCE_TIME,
+	EnterpriseEditionFeature,
+	getDebounceTime,
+	MODAL_CONFIRM,
+} from '@/app/constants';
+import { DELETE_USER_MODAL_KEY, INVITE_USER_MODAL_KEY } from '../users.constants';
+import type { InvitableRoleName } from '../users.types';
+import type { IUser } from '@n8n/rest-api-client/api/users';
+import { useToast } from '@/app/composables/useToast';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUsersStore } from '../users.store';
+import { useSSOStore } from '@/features/settings/sso/sso.store';
+import { hasPermission } from '@/app/utils/rbac/permissions';
+import { useClipboard } from '@/app/composables/useClipboard';
+import { useI18n } from '@n8n/i18n';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import SettingsUsersTable from '../components/SettingsUsersTable.vue';
+import { I18nT } from 'vue-i18n';
+import { useUserRoleProvisioningStore } from '@/features/settings/sso/provisioning/composables/userRoleProvisioning.store';
+import N8nAlert from '@n8n/design-system/components/N8nAlert/Alert.vue';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { TAMPER_PROOF_INVITE_LINKS } from '@/app/constants/experiments';
+import {
+	N8nActionBox,
+	N8nButton,
+	N8nHeading,
+	N8nIcon,
+	N8nInput,
+	N8nLink,
+	N8nNotice,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
+import { useMessage } from '@/app/composables/useMessage';
+
+const clipboard = useClipboard();
+const { showToast, showError } = useToast();
+const message = useMessage();
+
+const settingsStore = useSettingsStore();
+const uiStore = useUIStore();
+const usersStore = useUsersStore();
+const ssoStore = useSSOStore();
+const documentTitle = useDocumentTitle();
+const pageRedirectionHelper = usePageRedirectionHelper();
+const userRoleProvisioningStore = useUserRoleProvisioningStore();
+const postHog = usePostHog();
+
+const i18n = useI18n();
+
+const search = ref('');
+const usersTableState = ref<TableOptions>({
+	page: 0,
+	itemsPerPage: 10,
+	sortBy: [
+		{ id: 'firstName', desc: false },
+		{ id: 'lastName', desc: false },
+		{ id: 'email', desc: false },
+	],
+});
+const showUMSetupWarning = computed(() => hasPermission(['defaultUser']));
+
+const isInstanceRoleProvisioningEnabled = computed(
+	() => userRoleProvisioningStore.provisioningConfig?.scopesProvisionInstanceRole || false,
+);
+
+const isTamperProofInviteLinksEnabled = computed(() =>
+	postHog.isVariantEnabled(TAMPER_PROOF_INVITE_LINKS.name, TAMPER_PROOF_INVITE_LINKS.variant),
+);
+
+const isSSOEnabled = computed(() => !!ssoStore.isSamlLoginEnabled || !!ssoStore.isOidcLoginEnabled);
+
+onMounted(async () => {
+	documentTitle.set(i18n.baseText('settings.users'));
+
+	if (!showUMSetupWarning.value) {
+		await updateUsersTableData(usersTableState.value);
+	}
+
+	await userRoleProvisioningStore.getProvisioningConfig();
+});
+
+const usersListActions = computed((): Array<UserAction<IUser>> => {
+	return [
+		{
+			label: i18n.baseText('settings.users.actions.generateInviteLink'),
+			value: 'generateInviteLink',
+			guard: (user) =>
+				isTamperProofInviteLinksEnabled.value &&
+				hasPermission(['rbac'], { rbac: { scope: 'user:generateInviteLink' } }) &&
+				usersStore.usersLimitNotReached &&
+				user.id !== usersStore.currentUserId &&
+				!user.firstName,
+		},
+		{
+			label: i18n.baseText('settings.users.actions.copyInviteLink'),
+			value: 'copyInviteLink',
+			guard: (user) =>
+				!isTamperProofInviteLinksEnabled.value &&
+				usersStore.usersLimitNotReached &&
+				!user.firstName &&
+				!!user.inviteAcceptUrl,
+		},
+		{
+			label: i18n.baseText('settings.users.actions.reinvite'),
+			value: 'reinvite',
+			guard: (user) =>
+				usersStore.usersLimitNotReached && !user.firstName && settingsStore.isSmtpSetup,
+		},
+		{
+			label: i18n.baseText('settings.users.actions.delete'),
+			value: 'delete',
+			guard: (user) =>
+				hasPermission(['rbac'], { rbac: { scope: 'user:delete' } }) &&
+				user.id !== usersStore.currentUserId,
+		},
+		{
+			label: i18n.baseText('settings.users.actions.copyPasswordResetLink'),
+			value: 'copyPasswordResetLink',
+			guard: (user) =>
+				hasPermission(['rbac'], { rbac: { scope: 'user:resetPassword' } }) &&
+				usersStore.usersLimitNotReached &&
+				!user.isPendingUser &&
+				user.id !== usersStore.currentUserId,
+		},
+		{
+			label: i18n.baseText('settings.users.actions.allowSSOManualLogin'),
+			value: 'allowSSOManualLogin',
+			guard: (user) => isSSOEnabled.value && !user.settings?.allowSSOManualLogin,
+		},
+		{
+			label: i18n.baseText('settings.users.actions.disallowSSOManualLogin'),
+			value: 'disallowSSOManualLogin',
+			guard: (user) => isSSOEnabled.value && user.settings?.allowSSOManualLogin === true,
+		},
+	];
+});
+const isAdvancedPermissionsEnabled = computed(
+	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedPermissions],
+);
+
+const userRoles = computed((): Array<{ value: Role; label: string; disabled?: boolean }> => {
+	return [
+		{
+			value: ROLE.Member,
+			label: i18n.baseText('auth.roles.member'),
+		},
+		{
+			value: ROLE.ChatUser,
+			label: i18n.baseText('auth.roles.chatUser'),
+			disabled: !isAdvancedPermissionsEnabled.value,
+		},
+		{
+			value: ROLE.Admin,
+			label: i18n.baseText('auth.roles.admin'),
+			disabled: !isAdvancedPermissionsEnabled.value,
+		},
+	];
+});
+
+async function onUsersListAction({ action, userId }: { action: string; userId: string }) {
+	switch (action) {
+		case 'delete':
+			await onDelete(userId);
+			break;
+		case 'reinvite':
+			await onReinvite(userId);
+			break;
+		case 'copyInviteLink':
+			await onCopyInviteLink(userId);
+			break;
+		case 'generateInviteLink':
+			await onGenerateInviteLink(userId);
+			break;
+		case 'copyPasswordResetLink':
+			await onCopyPasswordResetLink(userId);
+			break;
+		case 'allowSSOManualLogin':
+			await onAllowSSOManualLogin(userId);
+			break;
+		case 'disallowSSOManualLogin':
+			await onDisallowSSOManualLogin(userId);
+			break;
+	}
+}
+function onInvite() {
+	uiStore.openModalWithData({
+		name: INVITE_USER_MODAL_KEY,
+		data: {
+			afterInvite: async () => {
+				await updateUsersTableData(usersTableState.value);
+			},
+		},
+	});
+}
+async function onDelete(userId: string) {
+	uiStore.openModalWithData({
+		name: DELETE_USER_MODAL_KEY,
+		data: {
+			userId,
+			afterDelete: async () => {
+				await updateUsersTableData(usersTableState.value);
+			},
+		},
+	});
+}
+async function onReinvite(userId: string) {
+	try {
+		const user = usersStore.usersList.state.items.find((u) => u.id === userId);
+		if (user?.email && user?.role) {
+			if (!['global:admin', 'global:member'].includes(user.role)) {
+				throw new Error('Invalid role name on reinvite');
+			}
+			await usersStore.reinviteUser({
+				email: user.email,
+				role: user.role as InvitableRoleName,
+			});
+			showToast({
+				type: 'success',
+				title: i18n.baseText('settings.users.inviteResent'),
+				message: i18n.baseText('settings.users.emailSentTo', {
+					interpolate: { email: user.email ?? '' },
+				}),
+			});
+		}
+	} catch (e) {
+		showError(e, i18n.baseText('settings.users.userReinviteError'));
+	}
+}
+async function onCopyInviteLink(userId: string) {
+	const user = usersStore.usersList.state.items.find((u) => u.id === userId);
+	if (user?.inviteAcceptUrl) {
+		void clipboard.copy(user.inviteAcceptUrl);
+
+		showToast({
+			type: 'success',
+			title: i18n.baseText('settings.users.inviteUrlCreated'),
+			message: i18n.baseText('settings.users.inviteUrlCreated.message'),
+		});
+	}
+}
+async function onGenerateInviteLink(userId: string) {
+	try {
+		const user = usersStore.usersList.state.items.find((u) => u.id === userId);
+		if (user) {
+			const url = await usersStore.generateInviteLink({ id: userId });
+			void clipboard.copy(url.link);
+
+			showToast({
+				type: 'success',
+				title: i18n.baseText('settings.users.inviteUrlCreated'),
+				message: i18n.baseText('settings.users.inviteUrlCreated.message'),
+			});
+		}
+	} catch (error) {
+		showError(error, i18n.baseText('settings.users.inviteLinkError'));
+	}
+}
+async function onCopyPasswordResetLink(userId: string) {
+	try {
+		const user = usersStore.usersList.state.items.find((u) => u.id === userId);
+		if (user) {
+			const url = await usersStore.getUserPasswordResetLink(user);
+			void clipboard.copy(url.link);
+
+			showToast({
+				type: 'success',
+				title: i18n.baseText('settings.users.passwordResetUrlCreated'),
+				message: i18n.baseText('settings.users.passwordResetUrlCreated.message'),
+			});
+		}
+	} catch (error) {
+		showError(error, i18n.baseText('settings.users.passwordResetLinkError'));
+	}
+}
+async function onAllowSSOManualLogin(userId: string) {
+	const user = usersStore.usersList.state.items.find((u) => u.id === userId);
+	if (user) {
+		if (!user.settings) {
+			user.settings = {};
+		}
+		user.settings.allowSSOManualLogin = true;
+		await usersStore.updateOtherUserSettings(userId, user.settings);
+		await updateUsersTableData(usersTableState.value);
+
+		showToast({
+			type: 'success',
+			title: i18n.baseText('settings.users.allowSSOManualLogin'),
+			message: i18n.baseText('settings.users.allowSSOManualLogin.message'),
+		});
+	}
+}
+async function onDisallowSSOManualLogin(userId: string) {
+	const user = usersStore.usersList.state.items.find((u) => u.id === userId);
+	if (user?.settings) {
+		user.settings.allowSSOManualLogin = false;
+		await usersStore.updateOtherUserSettings(userId, user.settings);
+		await updateUsersTableData(usersTableState.value);
+
+		showToast({
+			type: 'success',
+			title: i18n.baseText('settings.users.disallowSSOManualLogin'),
+			message: i18n.baseText('settings.users.disallowSSOManualLogin.message'),
+		});
+	}
+}
+function goToUpgrade() {
+	void pageRedirectionHelper.goToUpgrade('settings-users', 'upgrade-users');
+}
+function goToUpgradeAdvancedPermissions() {
+	void pageRedirectionHelper.goToUpgrade('settings-users', 'upgrade-advanced-permissions');
+}
+
+const updatingRoleUserId = ref<string | null>(null);
+
+const onUpdateRole = async (payload: { userId: string; role: Role }) => {
+	const user = usersStore.usersList.state.items.find((u) => u.id === payload.userId);
+	if (!user) {
+		showError(new Error('User not found'), i18n.baseText('settings.users.userNotFound'));
+		return;
+	}
+
+	await onRoleChange(user, payload.role);
+};
+
+const updateUsersTableData = async ({ page, itemsPerPage, sortBy }: TableOptions) => {
+	try {
+		usersTableState.value = {
+			page,
+			itemsPerPage,
+			sortBy,
+		};
+
+		const skip = page * itemsPerPage;
+		const take = itemsPerPage;
+
+		const transformedSortBy = sortBy
+			.flatMap(({ id, desc }) => {
+				const dir = desc ? 'desc' : 'asc';
+				if (id === 'name') {
+					return [`firstName:${dir}`, `lastName:${dir}`, `email:${dir}`];
+				}
+				return `${id}:${dir}`;
+			})
+			.filter(isValidSortKey);
+
+		await usersStore.usersList.execute(0, {
+			skip,
+			take,
+			sortBy: transformedSortBy,
+			expand: ['projectRelations'],
+			filter: {
+				fullText: search.value.trim(),
+			},
+		});
+	} catch (error) {
+		showError(error, i18n.baseText('settings.users.table.update.error'));
+	}
+};
+
+async function onRoleChange(user: User, newRoleName: Role) {
+	if (newRoleName === user.role) return;
+
+	const name =
+		user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : (user.email ?? '');
+	const role = userRoles.value.find(({ value }) => value === newRoleName)?.label ?? newRoleName;
+
+	if (newRoleName === ROLE.ChatUser) {
+		const confirmed = await message.confirm(
+			i18n.baseText('settings.users.userRoleUpdated.confirm.message', {
+				interpolate: {
+					role,
+				},
+			}),
+			i18n.baseText('settings.users.userRoleUpdated.confirm.title', {
+				interpolate: {
+					user: name,
+				},
+			}),
+			{
+				confirmButtonText: i18n.baseText('settings.users.userRoleUpdated.confirm.button'),
+				cancelButtonText: i18n.baseText('settings.users.userRoleUpdated.cancel.button'),
+			},
+		);
+
+		if (confirmed !== MODAL_CONFIRM) {
+			return;
+		}
+	}
+
+	updatingRoleUserId.value = user.id;
+	try {
+		await usersStore.updateGlobalRole({ id: user.id, newRoleName });
+		await updateUsersTableData(usersTableState.value);
+
+		showToast({
+			type: 'success',
+			title: i18n.baseText('settings.users.userRoleUpdated'),
+			message: i18n.baseText('settings.users.userRoleUpdated.message', {
+				interpolate: {
+					user: name,
+					role,
+				},
+			}),
+		});
+	} catch (e) {
+		showError(e, i18n.baseText('settings.users.userRoleUpdatedError'));
+	} finally {
+		updatingRoleUserId.value = null;
+	}
+}
+
+const isValidSortKey = (key: string): key is UsersListSortOptions =>
+	(USERS_LIST_SORT_OPTIONS as readonly string[]).includes(key);
+
+const debouncedUpdateUsersTableData = useDebounceFn(() => {
+	usersTableState.value.page = 0; // Reset to first page on search
+	void updateUsersTableData(usersTableState.value);
+}, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
+
+const onSearch = (value: string) => {
+	search.value = value;
+	void debouncedUpdateUsersTableData();
+};
+</script>
+
+<template>
+	<div :class="$style.container">
+		<N8nHeading tag="h1" size="2xlarge" class="mb-xl">
+			{{ i18n.baseText('settings.users') }}
+			<N8nText v-if="!showUMSetupWarning" :class="$style.userCount" color="text-light">{{
+				i18n.baseText('settings.users.count', {
+					interpolate: {
+						count: usersStore.usersList.state.count,
+					},
+					adjustToNumber: usersStore.usersList.state.count,
+				})
+			}}</N8nText>
+		</N8nHeading>
+		<div v-if="!usersStore.usersLimitNotReached" :class="$style.setupInfoContainer">
+			<N8nActionBox
+				:heading="
+					i18n.baseText(uiStore.contextBasedTranslationKeys.users.settings.unavailable.title)
+				"
+				:description="
+					i18n.baseText(uiStore.contextBasedTranslationKeys.users.settings.unavailable.description)
+				"
+				:button-text="
+					i18n.baseText(uiStore.contextBasedTranslationKeys.users.settings.unavailable.button)
+				"
+				@click:button="goToUpgrade"
+			/>
+		</div>
+		<N8nNotice v-if="!isAdvancedPermissionsEnabled">
+			<I18nT keypath="settings.users.advancedPermissions.warning" scope="global">
+				<template #link>
+					<N8nLink
+						data-test-id="upgrade-permissions-link"
+						size="small"
+						@click="goToUpgradeAdvancedPermissions"
+					>
+						{{ i18n.baseText('generic.upgrade') }}
+					</N8nLink>
+				</template>
+			</I18nT>
+		</N8nNotice>
+		<div v-if="isInstanceRoleProvisioningEnabled" :class="$style.container">
+			<N8nAlert
+				type="info"
+				:title="i18n.baseText('settings.provisioningInstanceRolesHandledBySsoProvider.description')"
+			/>
+		</div>
+		<div v-if="!showUMSetupWarning" :class="$style.buttonContainer">
+			<N8nInput
+				:class="$style.search"
+				:model-value="search"
+				:placeholder="i18n.baseText('settings.users.search.placeholder')"
+				clearable
+				data-test-id="users-list-search"
+				@update:model-value="onSearch"
+			>
+				<template #prefix>
+					<N8nIcon icon="search" />
+				</template>
+			</N8nInput>
+			<N8nTooltip :disabled="!isSSOEnabled">
+				<template #content>
+					<span> {{ i18n.baseText('settings.users.invite.tooltip') }} </span>
+				</template>
+				<div>
+					<N8nButton
+						:disabled="
+							isSSOEnabled || !usersStore.usersLimitNotReached || isInstanceRoleProvisioningEnabled
+						"
+						:label="i18n.baseText('settings.users.invite')"
+						size="large"
+						data-test-id="settings-users-invite-button"
+						@click="onInvite"
+					/>
+				</div>
+			</N8nTooltip>
+		</div>
+		<!-- If there's more than 1 user it means the account quota was more than 1 in the past. So we need to allow instance owner to be able to delete users and transfer workflows.
+		-->
+		<div
+			v-if="usersStore.usersLimitNotReached || usersStore.usersList.state.count > 1"
+			:class="$style.usersContainer"
+		>
+			<SettingsUsersTable
+				v-model:table-options="usersTableState"
+				data-test-id="settings-users-table"
+				:can-edit-role="!isInstanceRoleProvisioningEnabled"
+				:data="usersStore.usersList.state"
+				:loading="usersStore.usersList.isLoading"
+				:updating-role-user-id="updatingRoleUserId"
+				:actions="usersListActions"
+				@update:options="updateUsersTableData"
+				@update:role="onUpdateRole"
+				@action="onUsersListAction"
+			/>
+		</div>
+	</div>
+</template>
+
+<style lang="scss" module>
+.userCount {
+	display: block;
+	padding: var(--spacing--3xs) 0 0;
+}
+
+.buttonContainer {
+	display: flex;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+	margin: 0 0 var(--spacing--sm);
+}
+
+.search {
+	max-width: 300px;
+}
+
+.setupInfoContainer {
+	max-width: 728px;
+}
+
+.container {
+	padding-bottom: 20px;
+}
+</style>

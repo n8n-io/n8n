@@ -1,28 +1,21 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import {
-	upleadApiRequest,
-} from './GenericFunctions';
-import {
-	companyFields,
-	companyOperations,
-} from './CompanyDesciption';
-import {
-	personOperations,
-	 personFields,
-} from './PersonDescription';
+import { NodeConnectionTypes } from 'n8n-workflow';
+
+import { companyFields, companyOperations } from './CompanyDesciption';
+import { upleadApiRequest } from './GenericFunctions';
+import { personFields, personOperations } from './PersonDescription';
 
 export class Uplead implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Uplead',
 		name: 'uplead',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:uplead.png',
 		group: ['output'],
 		version: 1,
@@ -30,35 +23,37 @@ export class Uplead implements INodeType {
 		description: 'Consume Uplead API',
 		defaults: {
 			name: 'Uplead',
-			color: '#5d6f7b',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'upleadApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Company',
 						value: 'company',
-						description: 'Company API lets you lookup company data via a domain name or company name.',
+						description:
+							'Company API lets you lookup company data via a domain name or company name',
 					},
 					{
 						name: 'Person',
 						value: 'person',
-						description: `Person API lets you lookup a person based on an email address OR based on a domain name + first name + last name`
+						description:
+							'Person API lets you lookup a person based on an email address OR based on a domain name + first name + last name',
 					},
 				],
 				default: 'company',
-				description: 'Resource to consume.',
 			},
 			...companyOperations,
 			...companyFields,
@@ -70,50 +65,60 @@ export class Uplead implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
-			if (resource === 'person') {
-				if (operation === 'enrich') {
-					const email = this.getNodeParameter('email', i) as string;
-					const firstname = this.getNodeParameter('firstname', i) as string;
-					const lastname = this.getNodeParameter('lastname', i) as string;
-					const domain = this.getNodeParameter('domain', i) as string;
-					if (email) {
-						qs.email = email;
+			try {
+				if (resource === 'person') {
+					if (operation === 'enrich') {
+						const email = this.getNodeParameter('email', i) as string;
+						const firstname = this.getNodeParameter('firstname', i) as string;
+						const lastname = this.getNodeParameter('lastname', i) as string;
+						const domain = this.getNodeParameter('domain', i) as string;
+						if (email) {
+							qs.email = email;
+						}
+						if (firstname) {
+							qs.first_name = firstname;
+						}
+						if (lastname) {
+							qs.last_name = lastname;
+						}
+						if (domain) {
+							qs.domain = domain;
+						}
+						responseData = await upleadApiRequest.call(this, 'GET', '/person-search', {}, qs);
 					}
-					if (firstname) {
-						qs.first_name = firstname;
-					}
-					if (lastname) {
-						qs.last_name = lastname;
-					}
-					if (domain) {
-						qs.domain = domain;
-					}
-					responseData = await upleadApiRequest.call(this, 'GET', '/person-search', {}, qs);
 				}
-			}
-			if (resource === 'company') {
-				if (operation === 'enrich') {
-					const domain = this.getNodeParameter('domain', i) as string;
-					const company = this.getNodeParameter('company', i) as string;
-					if (domain) {
-						qs.domain = domain;
+				if (resource === 'company') {
+					if (operation === 'enrich') {
+						const domain = this.getNodeParameter('domain', i) as string;
+						const company = this.getNodeParameter('company', i) as string;
+						if (domain) {
+							qs.domain = domain;
+						}
+						if (company) {
+							qs.company = company;
+						}
+						responseData = await upleadApiRequest.call(this, 'GET', '/company-search', {}, qs);
 					}
-					if (company) {
-						qs.company = company;
-					}
-					responseData = await upleadApiRequest.call(this, 'GET', '/company-search', {}, qs);
 				}
-			}
-			if (Array.isArray(responseData.data)) {
-				returnData.push.apply(returnData, responseData.data as IDataObject[]);
-			} else {
-				returnData.push(responseData.data as IDataObject);
+				if (Array.isArray(responseData.data)) {
+					returnData.push.apply(returnData, responseData.data as IDataObject[]);
+				} else {
+					if (responseData.data !== null) {
+						returnData.push(responseData.data as IDataObject);
+					}
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({ error: error.message });
+					continue;
+				}
+				throw error;
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];

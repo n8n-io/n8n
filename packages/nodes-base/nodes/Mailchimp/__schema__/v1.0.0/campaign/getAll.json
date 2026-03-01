@@ -1,0 +1,52 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "settings": {
+            "type": "object",
+            "properties": {
+                "from_name": {
+                    "type": "string"
+                },
+                "reply_to": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "status": {
+            "type": "string"
+        },
+        "tracking": {
+            "type": "object",
+            "properties": {
+                "clicktale": {
+                    "type": "string"
+                },
+                "ecomm360": {
+                    "type": "boolean"
+                },
+                "goal_tracking": {
+                    "type": "boolean"
+                },
+                "google_analytics": {
+                    "type": "string"
+                },
+                "html_clicks": {
+                    "type": "boolean"
+                },
+                "opens": {
+                    "type": "boolean"
+                },
+                "text_clicks": {
+                    "type": "boolean"
+                }
+            }
+        }
+    },
+    "version": 1
+}

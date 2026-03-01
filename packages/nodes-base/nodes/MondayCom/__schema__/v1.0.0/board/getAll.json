@@ -1,0 +1,29 @@
+{
+    "type": "object",
+    "properties": {
+        "board_kind": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "owners": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "state": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

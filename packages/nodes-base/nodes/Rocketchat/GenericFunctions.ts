@@ -1,46 +1,36 @@
-import { OptionsWithUri } from 'request';
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
-	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
-	IExecuteSingleFunctions,
-} from 'n8n-core';
+	IRequestOptions,
+} from 'n8n-workflow';
 
-export async function rocketchatApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, resource: string, method: string, operation: string, body: any = {}, headers?: object): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('rocketchatApi');
+export async function rocketchatApiRequest(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	resource: string,
+	method: IHttpRequestMethods,
+	operation: string,
 
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
+	body: any = {},
+	headers?: IDataObject,
+): Promise<any> {
+	const credentials = await this.getCredentials('rocketchatApi');
 
-	const headerWithAuthentication = Object.assign({}, headers,
-		{ 'X-Auth-Token': credentials.authKey, 'X-User-Id': credentials.userId   });
-
-	const options: OptionsWithUri = {
-		headers: headerWithAuthentication,
+	const options: IRequestOptions = {
+		headers,
 		method,
 		body,
 		uri: `${credentials.domain}/api/v1${resource}.${operation}`,
-		json: true
+		json: true,
 	};
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
 	}
-	try {
-		return await this.helpers.request!(options);
-	} catch (error) {
-		console.error(error);
-
-		const errorMessage = error.response.body.message || error.response.body.Message;
-
-		if (errorMessage !== undefined) {
-			throw errorMessage;
-		}
-		throw error.response.body;
-	}
+	return await this.helpers.requestWithAuthentication.call(this, 'rocketchatApi', options);
 }
 
-export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
 		result = JSON.parse(json!);

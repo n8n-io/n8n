@@ -1,49 +1,42 @@
-import { OptionsWithUri } from 'request';
-
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
-	IExecuteSingleFunctions,
 	IPollFunctions,
+	IRequestOptions,
 	ITriggerFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-export async function togglApiRequest(this: ITriggerFunctions | IPollFunctions | IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('togglApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
-	const headerWithAuthentication = Object.assign({},
-		{ Authorization: ` Basic ${Buffer.from(`${credentials.username}:${credentials.password}`).toString('base64')}` });
-
-	const options: OptionsWithUri = {
-		headers: headerWithAuthentication,
+export async function togglApiRequest(
+	this:
+		| ITriggerFunctions
+		| IPollFunctions
+		| IHookFunctions
+		| IExecuteFunctions
+		| ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	resource: string,
+	body: IDataObject = {},
+	query?: IDataObject,
+	uri?: string,
+) {
+	const options: IRequestOptions = {
 		method,
 		qs: query,
-		uri: uri || `https://www.toggl.com/api/v8${resource}`,
+		uri: uri || `https://api.track.toggl.com/api/v9/me${resource}`,
 		body,
-		json: true
+		json: true,
 	};
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
 	}
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'togglApi', options);
 	} catch (error) {
-		if (error.statusCode === 403) {
-			throw new Error('The Toggle credentials are probably invalid!');
-		}
-
-		const errorMessage = error.response.body && (error.response.body.message || error.response.body.Message);
-		if (errorMessage !== undefined) {
-			throw new Error(errorMessage);
-		}
-
-		throw error;
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

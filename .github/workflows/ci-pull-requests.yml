@@ -1,0 +1,174 @@
+name: 'CI: Pull Requests (Build, Test, Lint)'
+
+on:
+  pull_request:
+  merge_group:
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.event.merge_group.head_sha || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  install-and-build:
+    name: Install & Build
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
+    env:
+      NODE_OPTIONS: '--max-old-space-size=6144'
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      BUILD_STATS_WEBHOOK_URL: ${{ secrets.BUILD_STATS_WEBHOOK_URL }}
+      BUILD_STATS_WEBHOOK_USER: ${{ secrets.BUILD_STATS_WEBHOOK_USER }}
+      BUILD_STATS_WEBHOOK_PASSWORD: ${{ secrets.BUILD_STATS_WEBHOOK_PASSWORD }}
+    outputs:
+      ci: ${{ fromJSON(steps.ci-filter.outputs.results).ci == true }}
+      unit: ${{ fromJSON(steps.ci-filter.outputs.results).unit == true }}
+      e2e: ${{ fromJSON(steps.ci-filter.outputs.results).e2e == true }}
+      workflows: ${{ fromJSON(steps.ci-filter.outputs.results).workflows == true }}
+      db: ${{ fromJSON(steps.ci-filter.outputs.results).db == true }}
+      design_system: ${{ fromJSON(steps.ci-filter.outputs.results)['design-system'] == true }}
+      commit_sha: ${{ steps.commit-sha.outputs.sha }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          # Use merge_group SHA when in merge queue, otherwise PR merge ref
+          ref: ${{ github.event_name == 'merge_group' && github.event.merge_group.head_sha || format('refs/pull/{0}/merge', github.event.pull_request.number) }}
+
+      - name: Capture commit SHA for cache consistency
+        id: commit-sha
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Check for relevant changes
+        uses: ./.github/actions/ci-filter
+        id: ci-filter
+        with:
+          mode: filter
+          filters: |
+            ci:
+              **
+              !packages/@n8n/task-runner-python/**
+              !.github/**
+            unit:
+              **
+              !packages/@n8n/task-runner-python/**
+              !packages/testing/playwright/**
+              !.github/**
+            e2e:
+              .github/workflows/test-e2e-*.yml
+              .github/scripts/cleanup-ghcr-images.mjs
+              packages/testing/playwright/**
+              packages/testing/containers/**
+            workflows: .github/**
+            design-system:
+              packages/frontend/@n8n/design-system/**
+              packages/frontend/@n8n/chat/**
+              packages/frontend/@n8n/storybook/**
+              .github/workflows/test-visual-chromatic.yml
+            db:
+              packages/cli/src/databases/**
+              packages/cli/src/modules/*/database/**
+              packages/cli/src/modules/**/*.entity.ts
+              packages/cli/src/modules/**/*.repository.ts
+              packages/cli/test/integration/**
+              packages/cli/test/migration/**
+              packages/cli/test/shared/db/**
+              packages/@n8n/db/**
+              packages/cli/**/__tests__/**
+              packages/testing/containers/services/postgres.ts
+              .github/workflows/test-db-reusable.yml
+
+      - name: Setup and Build
+        if: fromJSON(steps.ci-filter.outputs.results).ci
+        uses: ./.github/actions/setup-nodejs
+
+      - name: Run format check
+        if: fromJSON(steps.ci-filter.outputs.results).ci
+        run: pnpm format:check
+
+  unit-test:
+    name: Unit tests
+    if: needs.install-and-build.outputs.unit == 'true'
+    uses: ./.github/workflows/test-unit-reusable.yml
+    needs: install-and-build
+    with:
+      ref: ${{ needs.install-and-build.outputs.commit_sha }}
+      collectCoverage: true
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      BUILD_STATS_WEBHOOK_URL: ${{ secrets.BUILD_STATS_WEBHOOK_URL }}
+      BUILD_STATS_WEBHOOK_USER: ${{ secrets.BUILD_STATS_WEBHOOK_USER }}
+      BUILD_STATS_WEBHOOK_PASSWORD: ${{ secrets.BUILD_STATS_WEBHOOK_PASSWORD }}
+
+  typecheck:
+    name: Typecheck
+    if: needs.install-and-build.outputs.ci == 'true'
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    needs: install-and-build
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ needs.install-and-build.outputs.commit_sha }}
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: pnpm typecheck
+
+  lint:
+    name: Lint
+    if: needs.install-and-build.outputs.ci == 'true'
+    uses: ./.github/workflows/test-linting-reusable.yml
+    needs: install-and-build
+    with:
+      ref: ${{ needs.install-and-build.outputs.commit_sha }}
+
+  e2e-tests:
+    name: E2E Tests
+    needs: install-and-build
+    if: (needs.install-and-build.outputs.ci == 'true' || needs.install-and-build.outputs.e2e == 'true') && github.repository == 'n8n-io/n8n'
+    uses: ./.github/workflows/test-e2e-ci-reusable.yml
+    with:
+      branch: ${{ needs.install-and-build.outputs.commit_sha }}
+    secrets: inherit
+
+  db-tests:
+    name: DB Tests
+    needs: install-and-build
+    if: needs.install-and-build.outputs.db == 'true'
+    uses: ./.github/workflows/test-db-reusable.yml
+    with:
+      ref: ${{ needs.install-and-build.outputs.commit_sha }}
+
+  security-checks:
+    name: Security Checks
+    needs: install-and-build
+    if: needs.install-and-build.outputs.workflows == 'true'
+    uses: ./.github/workflows/sec-ci-reusable.yml
+    with:
+      ref: ${{ needs.install-and-build.outputs.commit_sha }}
+    secrets: inherit
+
+  chromatic:
+    name: Chromatic
+    needs: install-and-build
+    if: needs.install-and-build.outputs.design_system == 'true'
+    uses: ./.github/workflows/test-visual-chromatic.yml
+    with:
+      ref: ${{ needs.install-and-build.outputs.commit_sha }}
+    secrets: inherit
+
+  # This job is required by GitHub branch protection rules.
+  # PRs cannot be merged unless this job passes.
+  required-checks:
+    name: Required Checks
+    needs: [install-and-build, unit-test, typecheck, lint, e2e-tests, db-tests, security-checks, chromatic]
+    if: always()
+    runs-on: ubuntu-slim
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          sparse-checkout: .github/actions/ci-filter
+          sparse-checkout-cone-mode: false
+      - name: Validate required checks
+        uses: ./.github/actions/ci-filter
+        with:
+          mode: validate
+          job-results: ${{ toJSON(needs) }}

@@ -1,41 +1,35 @@
-import {
+import type {
 	IHookFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	INodePropertyOptions,
 	IWebhookResponseData,
 } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
-import {
-	activeCampaignApiRequest,
-	activeCampaignApiRequestAllItems,
-} from './GenericFunctions';
+import { activeCampaignApiRequest, activeCampaignApiRequestAllItems } from './GenericFunctions';
 
 export class ActiveCampaignTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Active Campaign Trigger',
+		displayName: 'ActiveCampaign Trigger',
 		name: 'activeCampaignTrigger',
-		icon: 'file:activeCampaign.png',
+		icon: { light: 'file:activeCampaign.svg', dark: 'file:activeCampaign.dark.svg' },
 		group: ['trigger'],
 		version: 1,
-		description: 'Handle Active Campaign events via webhooks',
+		description: 'Handle ActiveCampaign events via webhooks',
 		defaults: {
 			name: 'ActiveCampaign Trigger',
-			color: '#356ae6',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'activeCampaignApi',
 				required: true,
-			}
+			},
 		],
 		webhooks: [
 			{
@@ -47,9 +41,11 @@ export class ActiveCampaignTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Events',
+				displayName: 'Event Names or IDs',
 				name: 'events',
 				type: 'multiOptions',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getEvents',
 				},
@@ -86,13 +82,21 @@ export class ActiveCampaignTrigger implements INodeType {
 			},
 		],
 	};
+
 	methods = {
 		loadOptions: {
-			// Get all the events to display them to user so that he can
+			// Get all the events to display them to user so that they can
 			// select them easily
 			async getEvents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const events = await activeCampaignApiRequestAllItems.call(this, 'GET', '/api/3/webhook/events', {}, {}, 'webhookEvents');
+				const events = await activeCampaignApiRequestAllItems.call(
+					this,
+					'GET',
+					'/api/3/webhook/events',
+					{},
+					{},
+					'webhookEvents',
+				);
 				for (const event of events) {
 					const eventName = event;
 					const eventId = event;
@@ -103,9 +107,9 @@ export class ActiveCampaignTrigger implements INodeType {
 				}
 				return returnData;
 			},
-		}
+		},
 	};
-	// @ts-ignore
+
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -116,7 +120,7 @@ export class ActiveCampaignTrigger implements INodeType {
 				const endpoint = `/api/3/webhooks/${webhookData.webhookId}`;
 				try {
 					await activeCampaignApiRequest.call(this, 'GET', endpoint, {});
-				} catch (e) {
+				} catch (error) {
 					return false;
 				}
 				return true;
@@ -132,17 +136,27 @@ export class ActiveCampaignTrigger implements INodeType {
 						url: webhookUrl,
 						events,
 						sources,
-					}
+					},
 				};
-				const { webhook } = await activeCampaignApiRequest.call(this, 'POST', '/api/3/webhooks', body);
+				const { webhook } = await activeCampaignApiRequest.call(
+					this,
+					'POST',
+					'/api/3/webhooks',
+					body,
+				);
 				webhookData.webhookId = webhook.id;
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				try {
-					await activeCampaignApiRequest.call(this, 'DELETE', `/api/3/webhooks/${webhookData.webhookId}`, {});
-				} catch(error) {
+					await activeCampaignApiRequest.call(
+						this,
+						'DELETE',
+						`/api/3/webhooks/${webhookData.webhookId}`,
+						{},
+					);
+				} catch (error) {
 					return false;
 				}
 				delete webhookData.webhookId;
@@ -154,9 +168,7 @@ export class ActiveCampaignTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(req.body)
-			],
+			workflowData: [this.helpers.returnJsonArray(req.body as IDataObject[])],
 		};
 	}
 }

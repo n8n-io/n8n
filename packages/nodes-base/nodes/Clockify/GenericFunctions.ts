@@ -1,38 +1,66 @@
-import { OptionsWithUri } from 'request';
-import {
+import type {
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
-	IPollFunctions
-} from 'n8n-core';
+	IPollFunctions,
+	IDataObject,
+	IHttpRequestMethods,
+	IRequestOptions,
+} from 'n8n-workflow';
 
-import { IDataObject } from 'n8n-workflow';
+export async function clockifyApiRequest(
+	this: ILoadOptionsFunctions | IPollFunctions | IExecuteFunctions,
+	method: IHttpRequestMethods,
+	resource: string,
 
-export async function clockifyApiRequest(this: ILoadOptionsFunctions | IPollFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('clockifyApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
+	body: any = {},
+	qs: IDataObject = {},
+	_uri?: string,
+	_option: IDataObject = {},
+): Promise<any> {
 	const BASE_URL = 'https://api.clockify.me/api/v1';
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
-			'X-Api-Key': credentials.apiKey as string,
 		},
 		method,
 		qs,
 		body,
 		uri: `${BASE_URL}/${resource}`,
-		json: true
+		json: true,
+		useQuerystring: true,
 	};
-	try {
-		return await this.helpers.request!(options);
-	} catch (error) {
+	return await this.helpers.requestWithAuthentication.call(this, 'clockifyApi', options);
+}
 
-		let errorMessage = error.message;
-		if (error.response.body && error.response.body.message) {
-			errorMessage = `[${error.response.body.status_code}] ${error.response.body.message}`;
+export async function clockifyApiRequestAllItems(
+	this: IExecuteFunctions | IPollFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	endpoint: string,
+
+	body: any = {},
+	query: IDataObject = {},
+): Promise<any> {
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+
+	query['page-size'] = 50;
+
+	query.page = 1;
+
+	do {
+		responseData = await clockifyApiRequest.call(this, method, endpoint, body, query);
+
+		returnData.push.apply(returnData, responseData as IDataObject[]);
+
+		const limit = query.limit as number | undefined;
+		if (limit && returnData.length >= limit) {
+			return returnData;
 		}
 
-		throw new Error('Clockify Error: ' + errorMessage);
-	}
+		query.page++;
+	} while (responseData.length !== 0);
+
+	return returnData;
 }

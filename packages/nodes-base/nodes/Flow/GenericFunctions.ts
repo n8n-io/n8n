@@ -1,40 +1,43 @@
-import { OptionsWithUri } from 'request';
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
-	IExecuteSingleFunctions,
-} from 'n8n-core';
-import { IDataObject } from 'n8n-workflow';
+	IRequestOptions,
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-export async function flowApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('flowApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
+export async function flowApiRequest(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	resource: string,
 
-	let options: OptionsWithUri = {
-		headers: { 'Authorization': `Bearer ${credentials.accessToken}`},
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+): Promise<any> {
+	const credentials = await this.getCredentials('flowApi');
+
+	let options: IRequestOptions = {
+		headers: { Authorization: `Bearer ${credentials.accessToken}` },
 		method,
 		qs,
 		body,
-		uri: uri ||`https://api.getflow.com/v2${resource}`,
-		json: true
+		uri: uri || `https://api.getflow.com/v2${resource}`,
+		json: true,
 	};
 	options = Object.assign({}, options, option);
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		let errorMessage = error.message;
-		if (error.response.body) {
-			errorMessage = error.response.body.message || error.response.body.Message || error.message;
-		}
-
-		throw new Error(errorMessage);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -42,8 +45,15 @@ export async function flowApiRequest(this: IHookFunctions | IExecuteFunctions | 
  * Make an API request to paginated flow endpoint
  * and return all results
  */
-export async function FlowApiRequestAllItems(this: IHookFunctions | IExecuteFunctions, propertyName: string, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function FlowApiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions,
+	propertyName: string,
+	method: IHttpRequestMethods,
+	resource: string,
 
+	body: any = {},
+	query: IDataObject = {},
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -53,14 +63,12 @@ export async function FlowApiRequestAllItems(this: IHookFunctions | IExecuteFunc
 	let uri: string | undefined;
 
 	do {
-		responseData = await flowApiRequest.call(this, method, resource, body, query, uri, { resolveWithFullResponse: true });
+		responseData = await flowApiRequest.call(this, method, resource, body, query, uri, {
+			resolveWithFullResponse: true,
+		});
 		uri = responseData.headers.link;
-		// @ts-ignore
-		returnData.push.apply(returnData, responseData.body[propertyName]);
-	} while (
-		responseData.headers.link !== undefined &&
-		responseData.headers.link !== ''
-	);
+		returnData.push.apply(returnData, responseData.body[propertyName] as IDataObject[]);
+	} while (responseData.headers.link !== undefined && responseData.headers.link !== '');
 
 	return returnData;
 }

@@ -1,0 +1,106 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "31e68280-caac-4297-bb03-ca6d548b459e",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"resource": "videoCategory",
+				"regionCode": "GB",
+				"limit": 3
+			},
+			"type": "n8n-nodes-base.youTube",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "790afd1a-f8b5-4bc1-b839-9658ee112890",
+			"name": "YouTube",
+			"credentials": {
+				"youTubeOAuth2Api": {
+					"id": "62",
+					"name": "YouTube OAuth2 creds"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [440, 0],
+			"id": "84ef4be3-8c98-449f-ba1e-b08d1492435e",
+			"name": "Video Category Get All"
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "YouTube",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"YouTube": {
+			"main": [
+				[
+					{
+						"node": "Video Category Get All",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Video Category Get All": [
+			{
+				"json": {
+					"kind": "youtube#videoCategory",
+					"etag": "grPOPYEUUZN3ltuDUGEWlrTR90U",
+					"id": "1",
+					"snippet": {
+						"title": "Film & Animation",
+						"assignable": true,
+						"channelId": "UCFAKE1234567890TEST"
+					}
+				}
+			},
+			{
+				"json": {
+					"kind": "youtube#videoCategory",
+					"etag": "Q0xgUf8BFM8rW3W0R9wNq809xyA",
+					"id": "2",
+					"snippet": {
+						"title": "Autos & Vehicles",
+						"assignable": true,
+						"channelId": "UCFAKE1234567890TEST"
+					}
+				}
+			},
+			{
+				"json": {
+					"kind": "youtube#videoCategory",
+					"etag": "qnpwjh5QlWM5hrnZCvHisquztC4",
+					"id": "10",
+					"snippet": {
+						"title": "Music",
+						"assignable": true,
+						"channelId": "UCFAKE1234567890TEST"
+					}
+				}
+			}
+		]
+	},
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+	}
+}

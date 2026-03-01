@@ -1,0 +1,92 @@
+{
+    "type": "object",
+    "properties": {
+        "attributes": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "CreatedById": {
+            "type": "string"
+        },
+        "CreatedDate": {
+            "type": "string"
+        },
+        "EmailBouncedDate": {
+            "type": "null"
+        },
+        "EmailBouncedReason": {
+            "type": "null"
+        },
+        "GeocodeAccuracy": {
+            "type": "null"
+        },
+        "HasOptedOutOfEmail": {
+            "type": "boolean"
+        },
+        "Id": {
+            "type": "string"
+        },
+        "IndividualId": {
+            "type": "null"
+        },
+        "IsConverted": {
+            "type": "boolean"
+        },
+        "IsDeleted": {
+            "type": "boolean"
+        },
+        "IsPriorityRecord": {
+            "type": "boolean"
+        },
+        "IsUnreadByOwner": {
+            "type": "boolean"
+        },
+        "Jigsaw": {
+            "type": "null"
+        },
+        "JigsawContactId": {
+            "type": "null"
+        },
+        "LastModifiedById": {
+            "type": "string"
+        },
+        "LastModifiedDate": {
+            "type": "string"
+        },
+        "LastName": {
+            "type": "string"
+        },
+        "Latitude": {
+            "type": "null"
+        },
+        "Longitude": {
+            "type": "null"
+        },
+        "MasterRecordId": {
+            "type": "null"
+        },
+        "Name": {
+            "type": "string"
+        },
+        "OwnerId": {
+            "type": "string"
+        },
+        "Status": {
+            "type": "string"
+        },
+        "Suffix": {
+            "type": "null"
+        },
+        "SystemModstamp": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

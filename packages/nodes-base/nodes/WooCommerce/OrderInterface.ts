@@ -1,4 +1,4 @@
-import { IDataObject } from "n8n-workflow";
+import type { IDataObject } from 'n8n-workflow';
 
 export interface IAddress {
 	first_name?: string;
@@ -46,6 +46,7 @@ export interface ICouponLine {
 }
 
 export interface IOrder {
+	[index: string]: any;
 	billing?: IAddress;
 	coupon_lines?: ICouponLine[];
 	currency?: string;

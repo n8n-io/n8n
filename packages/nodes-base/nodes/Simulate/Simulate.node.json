@@ -1,0 +1,11 @@
+{
+	"node": "n8n-nodes-base.simulate",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Core Nodes"],
+	"resources": {},
+	"alias": ["placeholder", "stub", "dummy"],
+	"subcategories": {
+		"Core Nodes": ["Helpers"]
+	}
+}

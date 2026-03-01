@@ -1,0 +1,13 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`components > N8nRecycleScroller > should render correctly 1`] = `
+"<div class="recycle-scroller-wrapper">
+  <div class="recycle-scroller" style="height: 10000px;">
+    <div class="recycle-scroller-items-wrapper" style="transform: translateY(0px);">
+      <div class="recycle-scroller-item"></div>
+      <div class="recycle-scroller-item"></div>
+      <div class="recycle-scroller-item"></div>
+    </div>
+  </div>
+</div>"
+`;

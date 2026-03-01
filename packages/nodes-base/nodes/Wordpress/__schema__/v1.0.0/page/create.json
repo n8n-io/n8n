@@ -1,0 +1,273 @@
+{
+    "type": "object",
+    "properties": {
+        "_links": {
+            "type": "object",
+            "properties": {
+                "about": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "author": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "embeddable": {
+                                "type": "boolean"
+                            },
+                            "href": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "collection": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "curies": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "templated": {
+                                "type": "boolean"
+                            }
+                        }
+                    }
+                },
+                "replies": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "embeddable": {
+                                "type": "boolean"
+                            },
+                            "href": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "self": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            },
+                            "targetHints": {
+                                "type": "object",
+                                "properties": {
+                                    "allow": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "version-history": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "count": {
+                                "type": "integer"
+                            },
+                            "href": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "wp:action-assign-author": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "wp:action-publish": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "wp:action-unfiltered-html": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "wp:attachment": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "href": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "author": {
+            "type": "integer"
+        },
+        "comment_status": {
+            "type": "string"
+        },
+        "content": {
+            "type": "object",
+            "properties": {
+                "block_version": {
+                    "type": "integer"
+                },
+                "protected": {
+                    "type": "boolean"
+                },
+                "raw": {
+                    "type": "string"
+                }
+            }
+        },
+        "date": {
+            "type": "string"
+        },
+        "date_gmt": {
+            "type": "string"
+        },
+        "excerpt": {
+            "type": "object",
+            "properties": {
+                "protected": {
+                    "type": "boolean"
+                },
+                "raw": {
+                    "type": "string"
+                },
+                "rendered": {
+                    "type": "string"
+                }
+            }
+        },
+        "featured_media": {
+            "type": "integer"
+        },
+        "generated_slug": {
+            "type": "string"
+        },
+        "guid": {
+            "type": "object",
+            "properties": {
+                "raw": {
+                    "type": "string"
+                },
+                "rendered": {
+                    "type": "string"
+                }
+            }
+        },
+        "id": {
+            "type": "integer"
+        },
+        "link": {
+            "type": "string"
+        },
+        "menu_order": {
+            "type": "integer"
+        },
+        "meta": {
+            "type": "object",
+            "properties": {
+                "footnotes": {
+                    "type": "string"
+                }
+            }
+        },
+        "modified": {
+            "type": "string"
+        },
+        "modified_gmt": {
+            "type": "string"
+        },
+        "parent": {
+            "type": "integer"
+        },
+        "password": {
+            "type": "string"
+        },
+        "permalink_template": {
+            "type": "string"
+        },
+        "ping_status": {
+            "type": "string"
+        },
+        "slug": {
+            "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "template": {
+            "type": "string"
+        },
+        "title": {
+            "type": "object",
+            "properties": {
+                "raw": {
+                    "type": "string"
+                },
+                "rendered": {
+                    "type": "string"
+                }
+            }
+        },
+        "type": {
+            "type": "string"
+        }
+    },
+    "version": 3
+}

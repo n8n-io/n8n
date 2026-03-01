@@ -1,0 +1,37 @@
+@use './common/var';
+@use 'mixins/mixins';
+@use 'mixins/utils';
+
+@include mixins.b(row) {
+	position: relative;
+	box-sizing: border-box;
+	@include utils.utils-clearfix;
+
+	@include mixins.m(flex) {
+		display: flex;
+		&:before,
+		&:after {
+			display: none;
+		}
+
+		@include mixins.when(justify-center) {
+			justify-content: center;
+		}
+		@include mixins.when(justify-end) {
+			justify-content: flex-end;
+		}
+		@include mixins.when(justify-space-between) {
+			justify-content: space-between;
+		}
+		@include mixins.when(justify-space-around) {
+			justify-content: space-around;
+		}
+
+		@include mixins.when(align-middle) {
+			align-items: center;
+		}
+		@include mixins.when(align-bottom) {
+			align-items: flex-end;
+		}
+	}
+}

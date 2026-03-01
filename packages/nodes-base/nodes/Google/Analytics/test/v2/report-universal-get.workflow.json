@@ -1,0 +1,83 @@
+{
+	"name": "Google Analytics Universal Report Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "report",
+				"operation": "get",
+				"propertyType": "universal",
+				"viewId": {
+					"mode": "id",
+					"value": "123456789"
+				},
+				"dateRange": "last7days",
+				"metricsUA": {
+					"metricValues": [
+						{
+							"listName": "ga:users"
+						},
+						{
+							"listName": "ga:sessions"
+						}
+					]
+				},
+				"dimensionsUA": {
+					"dimensionValues": [
+						{
+							"listName": "ga:date"
+						}
+					]
+				},
+				"returnAll": false,
+				"limit": 10
+			},
+			"type": "n8n-nodes-base.googleAnalytics",
+			"typeVersion": 2,
+			"position": [200, 0],
+			"id": "universal-report-node",
+			"name": "Universal Report",
+			"credentials": {
+				"googleAnalyticsOAuth2": {
+					"id": "ga-oauth-cred-id",
+					"name": "Google Analytics OAuth2"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Universal Report": [
+			{
+				"json": {
+					"ga:date": "20240101",
+					"ga:users": "100",
+					"ga:sessions": "50"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Universal Report",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

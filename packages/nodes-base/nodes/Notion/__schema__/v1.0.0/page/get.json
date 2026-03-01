@@ -1,0 +1,12 @@
+{
+    "type": "object",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "Messaggi Schedulati": {
+            "type": "string"
+        }
+    },
+    "version": 2
+}

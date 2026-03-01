@@ -1,0 +1,105 @@
+{
+    "type": "object",
+    "properties": {
+        "active": {
+            "type": "boolean"
+        },
+        "alias": {
+            "type": "null"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "custom_role_id": {
+            "type": "null"
+        },
+        "default_group_id": {
+            "type": "null"
+        },
+        "details": {
+            "type": "null"
+        },
+        "iana_time_zone": {
+            "type": "string"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "last_active": {
+            "type": "string"
+        },
+        "last_login_at": {
+            "type": "null"
+        },
+        "locale": {
+            "type": "string"
+        },
+        "locale_id": {
+            "type": "integer"
+        },
+        "moderator": {
+            "type": "boolean"
+        },
+        "name": {
+            "type": "string"
+        },
+        "only_private_comments": {
+            "type": "boolean"
+        },
+        "organization_id": {
+            "type": "null"
+        },
+        "photo": {
+            "type": "null"
+        },
+        "report_csv": {
+            "type": "boolean"
+        },
+        "restricted_agent": {
+            "type": "boolean"
+        },
+        "role": {
+            "type": "string"
+        },
+        "role_type": {
+            "type": "null"
+        },
+        "shared": {
+            "type": "boolean"
+        },
+        "shared_agent": {
+            "type": "boolean"
+        },
+        "signature": {
+            "type": "null"
+        },
+        "suspended": {
+            "type": "boolean"
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "ticket_restriction": {
+            "type": "string"
+        },
+        "time_zone": {
+            "type": "string"
+        },
+        "two_factor_auth_enabled": {
+            "type": "null"
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "url": {
+            "type": "string"
+        },
+        "verified": {
+            "type": "boolean"
+        }
+    },
+    "version": 1
+}

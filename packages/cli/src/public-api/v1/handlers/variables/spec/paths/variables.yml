@@ -1,0 +1,54 @@
+post:
+  x-eov-operation-id: createVariable
+  x-eov-operation-handler: v1/handlers/variables/variables.handler
+  tags:
+    - Variables
+  summary: Create a variable
+  description: Create a variable in your instance.
+  requestBody:
+    description: Payload for variable to create.
+    content:
+      application/json:
+        schema:
+          $ref: '../schemas/variable.create.yml'
+    required: true
+  responses:
+    '201':
+      description: Operation successful.
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+get:
+  x-eov-operation-id: getVariables
+  x-eov-operation-handler: v1/handlers/variables/variables.handler
+  tags:
+    - Variables
+  summary: Retrieve variables
+  description: Retrieve variables from your instance.
+  parameters:
+    - $ref: '../../../../shared/spec/parameters/limit.yml'
+    - $ref: '../../../../shared/spec/parameters/cursor.yml'
+    - name: projectId
+      in: query
+      required: false
+      explode: false
+      allowReserved: true
+      schema:
+        type: string
+        example: VmwOO9HeTEj20kxM
+    - name: state
+      in: query
+      required: false
+      schema:
+        type: string
+        enum: [empty]
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/variableList.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'

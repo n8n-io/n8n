@@ -1,0 +1,147 @@
+{
+    "type": "object",
+    "properties": {
+        "active_flag": {
+            "type": "boolean"
+        },
+        "Add time": {
+            "type": "string"
+        },
+        "Apartment/suite no of Location": {
+            "type": "null"
+        },
+        "Assigned to user": {
+            "type": "integer"
+        },
+        "assigned_to_user_id": {
+            "type": "integer"
+        },
+        "City/town/village/locality of Location": {
+            "type": "null"
+        },
+        "company_id": {
+            "type": "integer"
+        },
+        "conference_meeting_id": {
+            "type": "null"
+        },
+        "Contact person": {
+            "type": "integer"
+        },
+        "Country of Location": {
+            "type": "null"
+        },
+        "Creator": {
+            "type": "integer"
+        },
+        "District/sublocality of Location": {
+            "type": "null"
+        },
+        "Done": {
+            "type": "string"
+        },
+        "Due date": {
+            "type": "string"
+        },
+        "Due time": {
+            "type": "string"
+        },
+        "Duration": {
+            "type": "string"
+        },
+        "Free/busy": {
+            "type": "string"
+        },
+        "Full/combined address of Location": {
+            "type": "null"
+        },
+        "House number of Location": {
+            "type": "null"
+        },
+        "ID": {
+            "type": "integer"
+        },
+        "is_recurring": {
+            "type": "null"
+        },
+        "Last notification time": {
+            "type": "null"
+        },
+        "last_notification_user_id": {
+            "type": "null"
+        },
+        "lead": {
+            "type": "null"
+        },
+        "Lead": {
+            "type": "null"
+        },
+        "lead_title": {
+            "type": "null"
+        },
+        "Location": {
+            "type": "null"
+        },
+        "Marked as done time": {
+            "type": "string"
+        },
+        "Note": {
+            "type": "string"
+        },
+        "Organisation": {
+            "type": "integer"
+        },
+        "original_start_time": {
+            "type": "null"
+        },
+        "owner_name": {
+            "type": "string"
+        },
+        "Priority": {
+            "type": "null"
+        },
+        "private": {
+            "type": "boolean"
+        },
+        "rec_master_activity_id": {
+            "type": "null"
+        },
+        "rec_rule": {
+            "type": "null"
+        },
+        "rec_rule_extension": {
+            "type": "null"
+        },
+        "reference_id": {
+            "type": "null"
+        },
+        "Region of Location": {
+            "type": "null"
+        },
+        "series": {
+            "type": "null"
+        },
+        "State/county of Location": {
+            "type": "null"
+        },
+        "Street/road name of Location": {
+            "type": "null"
+        },
+        "Subject": {
+            "type": "string"
+        },
+        "Type": {
+            "type": "string"
+        },
+        "type_name": {
+            "type": "string"
+        },
+        "Update time": {
+            "type": "string"
+        },
+        "ZIP/Postal code of Location": {
+            "type": "null"
+        }
+    },
+    "version": 1
+}

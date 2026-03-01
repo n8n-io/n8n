@@ -1,0 +1,134 @@
+{
+  "name": "My workflow 21",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "e524f588-b6a3-4849-8777-b32a8a755ae5",
+      "name": "When clicking \"Execute Workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        820,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "reply",
+        "messageId": {
+          "__rl": true,
+          "value": "AAMkADlhOTA0MTc5LWUwOTMtNDRkZS05NzE0LTNlYmI0ZWM5OWI5OABGAAAAAABPLqzvT6b9RLP0CKzHiJrRBwBZf4De-LkrSqpPI8eyjUmAAAAAAAEJAABZf4De-LkrSqpPI8eyjUmAAAFXBEVwAAA=",
+          "mode": "list",
+          "cachedResultName": "Hello",
+          "cachedResultUrl": "https://outlook.office365.com/owa/?ItemID=AAMkADlhOTA0MTc5LWUwOTMtNDRkZS05NzE0LTNlYmI0ZWM5OWI5OABGAAAAAABPLqzvT6b9RLP0CKzHiJrRBwBZf4De%2FLkrSqpPI8eyjUmAAAAAAAEJAABZf4De%2FLkrSqpPI8eyjUmAAAFXBEVwAAA%3D&exvsurl=1&viewmodel=ReadMessageItem"
+        },
+        "replyToSenderOnly": true,
+        "message": "Reply message",
+        "additionalFields": {
+          "importance": "High",
+          "bodyContentType": "html",
+          "subject": "Reply Subject"
+        },
+        "options": {}
+      },
+      "id": "baff6798-0304-4255-bdb0-dd3f2659373b",
+      "name": "Microsoft Outlook",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        360
+      ],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "iXJCki7i5Vz0bdks",
+          "name": "Microsoft Outlook account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Microsoft Outlook": [
+      {
+        "json": {
+          "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#users('b834447b-6848-4af9-8390-d2259ce46b74')/messages/$entity",
+          "@odata.etag": "W/\"CQAAABYAAABZf4De/LkrSqpPI8eyjUmAAAFW3CX+\"",
+          "id": "AAMkADlhOTA0MTc5LWUwOTMtNDRkZS05NzE0LTNlYmI0ZWM5OWI5OABGAAAAAABPLqzvT6b9RLP0CKzHiJrRBwBZf4De-LkrSqpPI8eyjUmAAAAAAAEPAABZf4De-LkrSqpPI8eyjUmAAAFXBDurAAA=",
+          "createdDateTime": "2023-09-04T12:29:59Z",
+          "lastModifiedDateTime": "2023-09-04T12:29:59Z",
+          "changeKey": "CQAAABYAAABZf4De/LkrSqpPI8eyjUmAAAFW3CX+",
+          "categories": [],
+          "receivedDateTime": "2023-09-04T12:29:59Z",
+          "sentDateTime": "2023-09-04T12:29:59Z",
+          "hasAttachments": false,
+          "internetMessageId": "<AM0PR10MB2100903A148F1623165004E3DDE9A@AM0PR10MB2100.EURPRD10.PROD.OUTLOOK.COM>",
+          "subject": "Reply Subject",
+          "bodyPreview": "Reply message",
+          "importance": "high",
+          "parentFolderId": "AAMkADlhOTA0MTc5LWUwOTMtNDRkZS05NzE0LTNlYmI0ZWM5OWI5OAAuAAAAAABPLqzvT6b9RLP0CKzHiJrRAQBZf4De-LkrSqpPI8eyjUmAAAAAAAEPAAA=",
+          "conversationId": "AAQkADlhOTA0MTc5LWUwOTMtNDRkZS05NzE0LTNlYmI0ZWM5OWI5OAAQAKwkQLinj69KtoFOxMG2lVY=",
+          "conversationIndex": "AQHZ3yq3rCRAuKePr0q2gU7EwbaVVrAKmLQ4",
+          "isDeliveryReceiptRequested": false,
+          "isReadReceiptRequested": false,
+          "isRead": true,
+          "isDraft": true,
+          "webLink": "https://outlook.office365.com/owa/?ItemID=AAMkADlhOTA0MTc5LWUwOTMtNDRkZS05NzE0LTNlYmI0ZWM5OWI5OABGAAAAAABPLqzvT6b9RLP0CKzHiJrRBwBZf4De%2FLkrSqpPI8eyjUmAAAAAAAEPAABZf4De%2FLkrSqpPI8eyjUmAAAFXBDurAAA%3D&exvsurl=1&viewmodel=ReadMessageItem",
+          "inferenceClassification": "focused",
+          "body": {
+            "contentType": "html",
+            "content": "<html><head>\r\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\"></head><body>Reply message </body></html>"
+          },
+          "sender": {
+            "emailAddress": {
+              "name": "Michael Kret",
+              "address": "MichaelDevSandbox@5w1hb7.onmicrosoft.com"
+            }
+          },
+          "from": {
+            "emailAddress": {
+              "name": "Michael Kret",
+              "address": "MichaelDevSandbox@5w1hb7.onmicrosoft.com"
+            }
+          },
+          "toRecipients": [
+            {
+              "emailAddress": {
+                "name": "reply@mail.com",
+                "address": "reply@mail.com"
+              }
+            }
+          ],
+          "ccRecipients": [],
+          "bccRecipients": [],
+          "replyTo": [],
+          "flag": {
+            "flagStatus": "notFlagged"
+          }
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking \"Execute Workflow\"": {
+      "main": [
+        [
+          {
+            "node": "Microsoft Outlook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "edd34dd1-0321-4d5b-a935-0c47d4c746b8",
+  "id": "1CYHzBXQw1nfPGtB",
+  "meta": {
+    "instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
+  },
+  "tags": []
+}

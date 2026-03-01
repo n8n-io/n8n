@@ -1,16 +1,14 @@
-import {
+import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import {
+	IDataObject,
 	INodePropertyOptions,
+	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
-
-import { OptionsWithUri } from 'request';
-import { IDataObject } from 'n8n-workflow';
-
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 // Interface in Typeform
 export interface ITypeformDefinition {
@@ -38,25 +36,18 @@ export interface ITypeformAnswerField {
 /**
  * Make an API request to Typeform
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
-export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('typeformApi');
+export async function apiRequest(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	endpoint: string,
+	body: object,
+	query?: IDataObject,
+): Promise<any> {
+	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
-
-	query = query || {};
-
-	const options: OptionsWithUri = {
-		headers: {
-			'Authorization': `bearer ${credentials.accessToken}`,
-		},
+	const options: IRequestOptions = {
+		headers: {},
 		method,
 		body,
 		qs: query,
@@ -64,40 +55,33 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 		json: true,
 	};
 
+	query = query || {};
+
 	try {
-		return await this.helpers.request!(options);
+		if (authenticationMethod === 'accessToken') {
+			return await this.helpers.requestWithAuthentication.call(this, 'typeformApi', options);
+		} else {
+			return await this.helpers.requestOAuth2.call(this, 'typeformOAuth2Api', options);
+		}
 	} catch (error) {
-		if (error.statusCode === 401) {
-			// Return a clear error
-			throw new Error('The Typeform credentials are not valid!');
-		}
-
-		if (error.response && error.response.body && error.response.body.description) {
-			// Try to return the error prettier
-			const errorBody = error.response.body;
-			throw new Error(`Typeform error response [${error.statusCode} - errorBody.code]: ${errorBody.description}`);
-		}
-
-		// Expected error data did not get returned so throw the actual error
-		throw error;
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
-
 
 /**
  * Make an API request to paginated Typeform endpoint
  * and return all results
  *
- * @export
  * @param {(IHookFunctions | IExecuteFunctions)} this
- * @param {string} method
- * @param {string} endpoint
- * @param {IDataObject} body
- * @param {IDataObject} [query]
- * @returns {Promise<any>}
  */
-export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, dataKey?: string): Promise<any> { // tslint:disable-line:no-any
-
+export async function apiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	endpoint: string,
+	body: IDataObject,
+	query?: IDataObject,
+	_dataKey?: string,
+): Promise<any> {
 	if (query === undefined) {
 		query = {};
 	}
@@ -116,29 +100,22 @@ export async function apiRequestAllItems(this: IHookFunctions | IExecuteFunction
 
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
 
-		returnData.items.push.apply(returnData.items, responseData.items);
-	} while (
-		responseData.page_count !== undefined &&
-		responseData.page_count > query.page
-	);
+		returnData.items.push.apply(returnData.items, responseData.items as IDataObject[]);
+	} while (responseData.page_count !== undefined && responseData.page_count > query.page);
 
 	return returnData;
 }
 
-
 /**
  * Returns all the available forms
  *
- * @export
- * @param {ILoadOptionsFunctions} this
- * @returns {Promise<INodePropertyOptions[]>}
  */
 export async function getForms(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const endpoint = 'forms';
 	const responseData = await apiRequestAllItems.call(this, 'GET', endpoint, {});
 
 	if (responseData.items === undefined) {
-		throw new Error('No data got returned');
+		throw new NodeOperationError(this.getNode(), 'No data got returned');
 	}
 
 	const returnData: INodePropertyOptions[] = [];

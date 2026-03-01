@@ -1,58 +1,73 @@
 {
-    "name": "n8n-workflow",
-    "version": "0.29.0",
-    "description": "Workflow base code of n8n",
-    "license": "SEE LICENSE IN LICENSE.md",
-    "homepage": "https://n8n.io",
-    "author": {
-        "name": "Jan Oberhauser",
-        "email": "jan@n8n.io"
+  "name": "n8n-workflow",
+  "version": "2.10.0",
+  "description": "Workflow base code of n8n",
+  "types": "dist/esm/index.d.ts",
+  "module": "dist/esm/index.js",
+  "main": "dist/cjs/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/esm/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
     },
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/n8n-io/n8n.git"
+    "./common": {
+      "types": "./dist/esm/common/index.d.ts",
+      "import": "./dist/esm/common/index.js",
+      "require": "./dist/cjs/common/index.js"
     },
-    "main": "dist/src/index",
-    "types": "dist/src/index.d.ts",
-    "scripts": {
-        "dev": "npm run watch",
-        "build": "tsc",
-        "tslint": "tslint -p tsconfig.json -c tslint.json",
-        "watch": "tsc --watch",
-        "test": "jest"
-    },
-    "files": [
-        "dist"
-    ],
-    "devDependencies": {
-        "@types/express": "^4.16.1",
-        "@types/jest": "^24.0.18",
-        "@types/lodash.get": "^4.4.6",
-        "@types/node": "^10.10.1",
-        "jest": "^24.9.0",
-        "ts-jest": "^24.0.2",
-        "tslint": "^5.17.0",
-        "typescript": "~3.7.4"
-    },
-    "dependencies": {
-        "lodash.get": "^4.4.2",
-        "riot-tmpl": "^3.0.8"
-    },
-    "jest": {
-        "transform": {
-            "^.+\\.tsx?$": "ts-jest"
-        },
-        "testURL": "http://localhost/",
-        "testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$",
-        "testPathIgnorePatterns": [
-            "/dist/",
-            "/node_modules/"
-        ],
-        "moduleFileExtensions": [
-            "ts",
-            "tsx",
-            "js",
-            "json"
-        ]
-    }
+    "./*": "./*"
+  },
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "dev": "pnpm watch",
+    "typecheck": "tsc --noEmit",
+    "build:vite": "vite build",
+    "build": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "lint": "eslint src --quiet",
+    "lint:fix": "eslint src --fix",
+    "watch": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json --watch",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:dev": "vitest --watch"
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "devDependencies": {
+    "@langchain/core": "catalog:",
+    "@n8n/config": "workspace:*",
+    "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
+    "@types/express": "catalog:",
+    "@types/jmespath": "^0.15.0",
+    "@types/lodash": "catalog:",
+    "@types/luxon": "3.2.0",
+    "@types/md5": "^2.3.5",
+    "@types/xml2js": "catalog:",
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:"
+  },
+  "dependencies": {
+    "@n8n/errors": "workspace:*",
+    "@n8n/tournament": "1.0.6",
+    "ast-types": "0.16.1",
+    "callsites": "catalog:",
+    "esprima-next": "5.8.4",
+    "form-data": "catalog:",
+    "jmespath": "0.16.0",
+    "js-base64": "catalog:",
+    "jssha": "3.3.1",
+    "lodash": "catalog:",
+    "luxon": "catalog:",
+    "md5": "2.3.0",
+    "recast": "0.22.0",
+    "title-case": "3.0.3",
+    "transliteration": "2.3.5",
+    "xml2js": "catalog:",
+    "zod": "catalog:",
+    "jsonrepair": "catalog:"
+  }
 }

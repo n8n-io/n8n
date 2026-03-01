@@ -1,0 +1,71 @@
+delete:
+  x-eov-operation-id: deleteUserFromProject
+  x-eov-operation-handler: v1/handlers/projects/projects.handler
+  tags:
+    - Projects
+  summary: Delete a user from a project
+  description: Delete a user from a project on your instance.
+  parameters:
+    - name: projectId
+      in: path
+      description: The ID of the project.
+      required: true
+      schema:
+        type: string
+    - name: userId
+      in: path
+      description: The ID of the user.
+      required: true
+      schema:
+        type: string
+  responses:
+    '204':
+      description: Operation successful.
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'
+patch:
+  x-eov-operation-id: changeUserRoleInProject
+  x-eov-operation-handler: v1/handlers/projects/projects.handler
+  tags:
+    - Projects
+  summary: Change a user's role in a project
+  description: Change a user's role in a project.
+  parameters:
+    - name: projectId
+      in: path
+      description: The ID of the project.
+      required: true
+      schema:
+        type: string
+    - name: userId
+      in: path
+      description: The ID of the user.
+      required: true
+      schema:
+        type: string
+  requestBody:
+    description: Payload containing the new role to assign to the project user.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            role:
+              type: string
+              description: The role assigned to the user in the project.
+              example: 'project:viewer'
+          required:
+            - role
+  responses:
+    '204':
+      description: Operation successful.
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'

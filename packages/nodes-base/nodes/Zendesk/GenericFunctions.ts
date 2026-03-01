@@ -1,57 +1,74 @@
-import {
-	OptionsWithUri,
- } from 'request';
-
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
+	IHttpRequestMethods,
+	IRequestOptions,
+} from 'n8n-workflow';
 
-import {
-	IDataObject,
- } from 'n8n-workflow';
-
-export async function zendeskApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('zendeskApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
+function getUri(resource: string, subdomain: string) {
+	if (resource.includes('webhooks')) {
+		return `https://${subdomain}.zendesk.com/api/v2${resource}`;
+	} else {
+		return `https://${subdomain}.zendesk.com/api/v2${resource}.json`;
 	}
-	const base64Key =  Buffer.from(`${credentials.email}/token:${credentials.apiToken}`).toString('base64');
-	let options: OptionsWithUri = {
-		headers: { 'Authorization': `Basic ${base64Key}`},
+}
+
+export async function zendeskApiRequest(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	resource: string,
+
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+) {
+	const authenticationMethod = this.getNodeParameter('authentication', 0);
+
+	let credentials;
+
+	if (authenticationMethod === 'apiToken') {
+		credentials = await this.getCredentials<{ subdomain: string }>('zendeskApi');
+	} else {
+		credentials = await this.getCredentials<{ subdomain: string }>('zendeskOAuth2Api');
+	}
+
+	let options: IRequestOptions = {
 		method,
 		qs,
 		body,
-		uri: uri ||`${credentials.url}/api/v2${resource}.json`,
-		json: true
+		uri: uri || getUri(resource, credentials.subdomain),
+		json: true,
+		qsStringifyOptions: {
+			arrayFormat: 'brackets',
+		},
 	};
+
 	options = Object.assign({}, options, option);
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
 	}
-	try {
-		return await this.helpers.request!(options);
-	} catch (err) {
-		let errorMessage = err.message;
-		if (err.response && err.response.body && err.response.body.error) {
-			errorMessage = err.response.body.error;
-			if (typeof err.response.body.error !== 'string') {
-				errorMessage = JSON.stringify(errorMessage);
-			}
-		}
 
-		throw new Error(`Zendesk error response [${err.statusCode}]: ${errorMessage}`);
-	}
+	const credentialType = authenticationMethod === 'apiToken' ? 'zendeskApi' : 'zendeskOAuth2Api';
+
+	return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 }
 
 /**
  * Make an API request to paginated flow endpoint
  * and return all results
  */
-export async function zendeskApiRequestAllItems(this: IHookFunctions | IExecuteFunctions| ILoadOptionsFunctions, propertyName: string, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function zendeskApiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	method: IHttpRequestMethods,
+	resource: string,
 
+	body: any = {},
+	query: IDataObject = {},
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -61,19 +78,17 @@ export async function zendeskApiRequestAllItems(this: IHookFunctions | IExecuteF
 	do {
 		responseData = await zendeskApiRequest.call(this, method, resource, body, query, uri);
 		uri = responseData.next_page;
-		returnData.push.apply(returnData, responseData[propertyName]);
-		if (query.limit && query.limit <= returnData.length) {
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+		const limit = query.limit as number | undefined;
+		if (limit && limit <= returnData.length) {
 			return returnData;
 		}
-	} while (
-		responseData.next_page !== undefined &&
-		responseData.next_page !== null
-	);
+	} while (responseData.next_page !== undefined && responseData.next_page !== null);
 
 	return returnData;
 }
 
-export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
 		result = JSON.parse(json!);

@@ -1,0 +1,393 @@
+{
+	"name": "date time",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "7192e181-4384-430d-a25c-25beb0ae6b1f",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-100, 1040]
+		},
+		{
+			"parameters": {
+				"values": {
+					"number": [
+						{
+							"name": "dateMilis",
+							"value": 1682918315906
+						},
+						{
+							"name": "dateMilisFloat",
+							"value": 1682918315.906
+						},
+						{
+							"name": "dateUnix",
+							"value": 1682918315
+						}
+					],
+					"string": [
+						{
+							"name": "dateMilisStr",
+							"value": "1682918315906"
+						},
+						{
+							"name": "dateMilisFloatStr",
+							"value": "1682918315.906"
+						},
+						{
+							"name": "dateUnixStr",
+							"value": "1682918315"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "dc933b29-a770-43b8-aa20-a8e82b0d034f",
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 2,
+			"position": [60, 1040]
+		},
+		{
+			"parameters": {
+				"value": "={{ $json.dateMilis }}",
+				"options": {}
+			},
+			"id": "2bcbc9d8-af2f-4c44-b47e-80a9462350d0",
+			"name": "Date & Time",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 1,
+			"position": [360, 560]
+		},
+		{
+			"parameters": {
+				"keepOnlySet": true,
+				"values": {
+					"string": [
+						{
+							"name": "data",
+							"value": "={{ $json.data }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "c1b947a8-45c6-4c6a-b4ce-467d57de6d50",
+			"name": "Set1",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 2,
+			"position": [580, 560]
+		},
+		{
+			"parameters": {
+				"value": "={{ $json.dateMilisFloat }}",
+				"options": {}
+			},
+			"id": "a91fc3d9-afb8-4c78-ad0b-2078639708da",
+			"name": "Date & Time1",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 1,
+			"position": [360, 740]
+		},
+		{
+			"parameters": {
+				"keepOnlySet": true,
+				"values": {
+					"string": [
+						{
+							"name": "data",
+							"value": "={{ $json.data }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "370b58aa-555f-4dc7-9c48-564bddfcbe33",
+			"name": "Set2",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 2,
+			"position": [580, 740]
+		},
+		{
+			"parameters": {
+				"value": "={{ $json.dateUnix }}",
+				"options": {}
+			},
+			"id": "91d1e77d-3d25-4e87-9af8-f756ace4abcf",
+			"name": "Date & Time2",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 1,
+			"position": [360, 940]
+		},
+		{
+			"parameters": {
+				"keepOnlySet": true,
+				"values": {
+					"string": [
+						{
+							"name": "data",
+							"value": "={{ $json.data }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "77cdf5fa-641e-46e1-8cb9-00160773b4b2",
+			"name": "Set3",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 2,
+			"position": [580, 940]
+		},
+		{
+			"parameters": {
+				"value": "={{ $json.dateMilisStr }}",
+				"options": {}
+			},
+			"id": "084e7b19-f03e-42a9-b4df-865f2f6610de",
+			"name": "Date & Time3",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 1,
+			"position": [360, 1120]
+		},
+		{
+			"parameters": {
+				"keepOnlySet": true,
+				"values": {
+					"string": [
+						{
+							"name": "data",
+							"value": "={{ $json.data }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "eb46b668-2ebc-47ee-adca-a8f99205ac26",
+			"name": "Set4",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 2,
+			"position": [580, 1120]
+		},
+		{
+			"parameters": {
+				"value": "={{ $json.dateMilisFloatStr }}",
+				"options": {}
+			},
+			"id": "9cb46fb5-e6e4-4fb3-859a-8cd26bebf1c9",
+			"name": "Date & Time4",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 1,
+			"position": [360, 1300]
+		},
+		{
+			"parameters": {
+				"keepOnlySet": true,
+				"values": {
+					"string": [
+						{
+							"name": "data",
+							"value": "={{ $json.data }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "0d09dc35-d572-41f5-984c-30a66184b80a",
+			"name": "Set5",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 2,
+			"position": [580, 1300]
+		},
+		{
+			"parameters": {
+				"value": "={{ $json.dateUnixStr }}",
+				"options": {}
+			},
+			"id": "208e26b1-db01-417b-b21f-fcb8198a1e27",
+			"name": "Date & Time5",
+			"type": "n8n-nodes-base.dateTime",
+			"typeVersion": 1,
+			"position": [360, 1480]
+		},
+		{
+			"parameters": {
+				"keepOnlySet": true,
+				"values": {
+					"string": [
+						{
+							"name": "data",
+							"value": "={{ $json.data }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "1076029a-91a7-4121-aadc-e9dde57b3d56",
+			"name": "Set6",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 2,
+			"position": [580, 1480]
+		}
+	],
+	"pinData": {
+		"Set1": [
+			{
+				"json": {
+					"data": "05/01/2023"
+				}
+			}
+		],
+		"Set2": [
+			{
+				"json": {
+					"data": "05/01/2023"
+				}
+			}
+		],
+		"Set4": [
+			{
+				"json": {
+					"data": "05/01/2023"
+				}
+			}
+		],
+		"Set5": [
+			{
+				"json": {
+					"data": "05/01/2023"
+				}
+			}
+		],
+		"Set6": [
+			{
+				"json": {
+					"data": "05/01/2023"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set": {
+			"main": [
+				[
+					{
+						"node": "Date & Time",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Date & Time1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Date & Time2",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Date & Time3",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Date & Time4",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Date & Time5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Date & Time": {
+			"main": [
+				[
+					{
+						"node": "Set1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Date & Time1": {
+			"main": [
+				[
+					{
+						"node": "Set2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Date & Time2": {
+			"main": [
+				[
+					{
+						"node": "Set3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Date & Time3": {
+			"main": [
+				[
+					{
+						"node": "Set4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Date & Time4": {
+			"main": [
+				[
+					{
+						"node": "Set5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Date & Time5": {
+			"main": [
+				[
+					{
+						"node": "Set6",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "d11f32bd-0d35-4aeb-9b0c-c4cac94f6445",
+	"id": "12",
+	"meta": {
+		"instanceId": "6ebec4953fe56f1c009e7c3b107578b375137523af057073c0b5da17350651bd"
+	},
+	"tags": []
+}

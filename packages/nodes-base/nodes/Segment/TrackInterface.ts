@@ -1,4 +1,4 @@
-import { IDataObject } from "n8n-workflow";
+import type { IDataObject } from 'n8n-workflow';
 
 export interface ITrack {
 	event?: string;
@@ -10,4 +10,8 @@ export interface ITrack {
 	timestamp?: string;
 	properties?: IDataObject;
 	integrations?: IDataObject;
+}
+
+export interface IGroup extends ITrack {
+	groupId: string;
 }

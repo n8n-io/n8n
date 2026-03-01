@@ -1,17 +1,22 @@
-import {
+import type {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
-
 
 export class MailgunApi implements ICredentialType {
 	name = 'mailgunApi';
+
 	displayName = 'Mailgun API';
-	properties = [
+
+	documentationUrl = 'mailgun';
+
+	properties: INodeProperties[] = [
 		{
 			displayName: 'API Domain',
 			name: 'apiDomain',
-			type: 'options' as NodePropertyTypes,
+			type: 'options',
 			options: [
 				{
 					name: 'api.eu.mailgun.net',
@@ -23,20 +28,37 @@ export class MailgunApi implements ICredentialType {
 				},
 			],
 			default: 'api.mailgun.net',
-			description: 'The configured mailgun API domain.',
+			description: 'The configured mailgun API domain',
 		},
 		{
 			displayName: 'Email Domain',
 			name: 'emailDomain',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
-			description: '.',
 		},
 		{
 			displayName: 'API Key',
 			name: 'apiKey',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];
+
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			auth: {
+				username: 'api',
+				password: '={{$credentials.apiKey}}',
+			},
+		},
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '=https://{{$credentials.apiDomain}}/v3',
+			url: '/domains',
+		},
+	};
 }

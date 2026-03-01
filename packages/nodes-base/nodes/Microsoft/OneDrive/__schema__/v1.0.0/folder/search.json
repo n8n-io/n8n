@@ -1,0 +1,92 @@
+{
+    "type": "object",
+    "properties": {
+        "createdBy": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "type": "object",
+                    "properties": {
+                        "displayName": {
+                            "type": "string"
+                        },
+                        "email": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "createdDateTime": {
+            "type": "string"
+        },
+        "fileSystemInfo": {
+            "type": "object",
+            "properties": {
+                "createdDateTime": {
+                    "type": "string"
+                },
+                "lastModifiedDateTime": {
+                    "type": "string"
+                }
+            }
+        },
+        "folder": {
+            "type": "object",
+            "properties": {
+                "childCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "id": {
+            "type": "string"
+        },
+        "lastModifiedBy": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "type": "object",
+                    "properties": {
+                        "displayName": {
+                            "type": "string"
+                        },
+                        "email": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "lastModifiedDateTime": {
+            "type": "string"
+        },
+        "name": {
+            "type": "string"
+        },
+        "parentReference": {
+            "type": "object",
+            "properties": {
+                "driveId": {
+                    "type": "string"
+                },
+                "driveType": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "siteId": {
+                    "type": "string"
+                }
+            }
+        },
+        "size": {
+            "type": "integer"
+        },
+        "webUrl": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

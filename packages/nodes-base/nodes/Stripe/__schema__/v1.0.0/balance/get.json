@@ -1,0 +1,89 @@
+{
+    "type": "object",
+    "properties": {
+        "available": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "amount": {
+                        "type": "integer"
+                    },
+                    "currency": {
+                        "type": "string"
+                    },
+                    "source_types": {
+                        "type": "object",
+                        "properties": {
+                            "card": {
+                                "type": "integer"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "livemode": {
+            "type": "boolean"
+        },
+        "object": {
+            "type": "string"
+        },
+        "pending": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "amount": {
+                        "type": "integer"
+                    },
+                    "currency": {
+                        "type": "string"
+                    },
+                    "source_types": {
+                        "type": "object",
+                        "properties": {
+                            "card": {
+                                "type": "integer"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "refund_and_dispute_prefunding": {
+            "type": "object",
+            "properties": {
+                "available": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "amount": {
+                                "type": "integer"
+                            },
+                            "currency": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "pending": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "amount": {
+                                "type": "integer"
+                            },
+                            "currency": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "version": 2
+}

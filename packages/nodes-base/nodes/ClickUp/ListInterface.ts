@@ -1,4 +1,3 @@
-
 export interface IList {
 	name?: string;
 	content?: string;

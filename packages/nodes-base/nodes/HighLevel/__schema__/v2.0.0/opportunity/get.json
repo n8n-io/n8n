@@ -1,0 +1,111 @@
+{
+    "type": "object",
+    "properties": {
+        "opportunity": {
+            "type": "object",
+            "properties": {
+                "contact": {
+                    "type": "object",
+                    "properties": {
+                        "email": {
+                            "type": "string"
+                        },
+                        "followers": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        },
+                        "phone": {
+                            "type": "string"
+                        },
+                        "tags": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "contactId": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "followers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "indexVersion": {
+                    "type": "integer"
+                },
+                "internalSource": {
+                    "type": "object",
+                    "properties": {
+                        "apiVersion": {
+                            "type": "string"
+                        },
+                        "channel": {
+                            "type": "string"
+                        },
+                        "id": {
+                            "type": "string"
+                        },
+                        "source": {
+                            "type": "string"
+                        },
+                        "type": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "isAttribute": {
+                    "type": "boolean"
+                },
+                "lastActionDate": {
+                    "type": "string"
+                },
+                "lastStageChangeAt": {
+                    "type": "string"
+                },
+                "lastStatusChangeAt": {
+                    "type": "string"
+                },
+                "locationId": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "pipelineId": {
+                    "type": "string"
+                },
+                "pipelineStageId": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "traceId": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

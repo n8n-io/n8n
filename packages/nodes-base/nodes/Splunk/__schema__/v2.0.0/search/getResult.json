@@ -1,0 +1,90 @@
+{
+    "type": "object",
+    "properties": {
+        "fields": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "init_offset": {
+            "type": "integer"
+        },
+        "messages": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "text": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "preview": {
+            "type": "boolean"
+        },
+        "results": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "_time": {
+                        "type": "string"
+                    },
+                    "app": {
+                        "type": "string"
+                    },
+                    "attack": {
+                        "type": "string"
+                    },
+                    "dest_ip": {
+                        "type": "string"
+                    },
+                    "dest_port": {
+                        "type": "string"
+                    },
+                    "file_name": {
+                        "type": "string"
+                    },
+                    "file_path": {
+                        "type": "string"
+                    },
+                    "http_user_agent": {
+                        "type": "string"
+                    },
+                    "httpmethod": {
+                        "type": "string"
+                    },
+                    "ids_type": {
+                        "type": "string"
+                    },
+                    "src_ip": {
+                        "type": "string"
+                    },
+                    "src_port": {
+                        "type": "string"
+                    },
+                    "srccountry": {
+                        "type": "string"
+                    },
+                    "timestamp": {
+                        "type": "string"
+                    },
+                    "transport": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    },
+    "version": 1
+}

@@ -1,0 +1,77 @@
+{
+    "type": "object",
+    "properties": {
+        "can_be_edited": {
+            "type": "boolean"
+        },
+        "can_change_info": {
+            "type": "boolean"
+        },
+        "can_delete_messages": {
+            "type": "boolean"
+        },
+        "can_delete_stories": {
+            "type": "boolean"
+        },
+        "can_edit_stories": {
+            "type": "boolean"
+        },
+        "can_invite_users": {
+            "type": "boolean"
+        },
+        "can_manage_chat": {
+            "type": "boolean"
+        },
+        "can_manage_topics": {
+            "type": "boolean"
+        },
+        "can_manage_video_chats": {
+            "type": "boolean"
+        },
+        "can_manage_voice_chats": {
+            "type": "boolean"
+        },
+        "can_pin_messages": {
+            "type": "boolean"
+        },
+        "can_post_stories": {
+            "type": "boolean"
+        },
+        "can_promote_members": {
+            "type": "boolean"
+        },
+        "can_restrict_members": {
+            "type": "boolean"
+        },
+        "is_anonymous": {
+            "type": "boolean"
+        },
+        "status": {
+            "type": "string"
+        },
+        "user": {
+            "type": "object",
+            "properties": {
+                "first_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_bot": {
+                    "type": "boolean"
+                },
+                "language_code": {
+                    "type": "string"
+                },
+                "last_name": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "version": 1
+}

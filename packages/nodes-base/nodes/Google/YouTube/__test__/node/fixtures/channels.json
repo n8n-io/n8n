@@ -1,0 +1,217 @@
+[
+	{
+		"kind": "youtube#channel",
+		"etag": "etag_123456",
+		"id": "UCabc123def456ghi789jkl",
+		"snippet": {
+			"title": "Tech Insights",
+			"description": "Latest tech reviews and industry insights.",
+			"customUrl": "@techinsights",
+			"publishedAt": "2015-06-15T09:30:00Z",
+			"thumbnails": {
+				"default": {
+					"url": "https://yt3.ggpht.com/ytc/AIdro_tech1=s88-c-k-c0x00ffffff-no-rj",
+					"width": 88,
+					"height": 88
+				},
+				"medium": {
+					"url": "https://yt3.ggpht.com/ytc/AIdro_tech1=s240-c-k-c0x00ffffff-no-rj",
+					"width": 240,
+					"height": 240
+				},
+				"high": {
+					"url": "https://yt3.ggpht.com/ytc/AIdro_tech1=s800-c-k-c0x00ffffff-no-rj",
+					"width": 800,
+					"height": 800
+				}
+			},
+			"localized": {
+				"title": "Tech Insights",
+				"description": "Latest tech reviews and industry insights."
+			}
+		},
+		"statistics": {
+			"viewCount": "1250000",
+			"subscriberCount": "45000",
+			"hiddenSubscriberCount": false,
+			"videoCount": "320"
+		},
+		"status": {
+			"privacyStatus": "public",
+			"isLinked": true,
+			"longUploadsStatus": "eligible"
+		}
+	},
+	{
+		"kind": "youtube#channel",
+		"etag": "etag_654321",
+		"id": "UCxyz987uvw654rst321mno",
+		"snippet": {
+			"title": "Daily Vlogs",
+			"description": "Sharing daily experiences and adventures.",
+			"customUrl": "@dailyvlogs",
+			"publishedAt": "2018-03-10T14:20:00Z",
+			"thumbnails": {
+				"default": {
+					"url": "https://yt3.ggpht.com/ytc/AIdro_vlog1=s88-c-k-c0x00ffffff-no-rj",
+					"width": 88,
+					"height": 88
+				},
+				"medium": {
+					"url": "https://yt3.ggpht.com/ytc/AIdro_vlog1=s240-c-k-c0x00ffffff-no-rj",
+					"width": 240,
+					"height": 240
+				},
+				"high": {
+					"url": "https://yt3.ggpht.com/ytc/AIdro_vlog1=s800-c-k-c0x00ffffff-no-rj",
+					"width": 800,
+					"height": 800
+				}
+			},
+			"localized": {
+				"title": "Daily Vlogs",
+				"description": "Sharing daily experiences and adventures."
+			}
+		},
+		"statistics": {
+			"viewCount": "530000",
+			"subscriberCount": "12000",
+			"hiddenSubscriberCount": false,
+			"videoCount": "540"
+		},
+		"status": {
+			"privacyStatus": "public",
+			"isLinked": true,
+			"longUploadsStatus": "eligible"
+		}
+	},
+	{
+		"kind": "youtube#channel",
+		"etag": "etag_987654",
+		"id": "UCopq135stu864vwx579yzb",
+		"snippet": {
+			"title": "Fitness Pro",
+			"description": "Workout tips and health advice.",
+			"customUrl": "@fitnesspro",
+			"publishedAt": "2017-08-22T07:45:00Z",
+			"thumbnails": {
+				"default": {
+					"url": "https://yt3.ggpht.com/ytc/AIdro_fitness1=s88-c-k-c0x00ffffff-no-rj",
+					"width": 88,
+					"height": 88
+				},
+				"medium": {
+					"url": "https://yt3.ggpht.com/ytc/AIdro_fitness1=s240-c-k-c0x00ffffff-no-rj",
+					"width": 240,
+					"height": 240
+				},
+				"high": {
+					"url": "https://yt3.ggpht.com/ytc/AIdro_fitness1=s800-c-k-c0x00ffffff-no-rj",
+					"width": 800,
+					"height": 800
+				}
+			},
+			"localized": {
+				"title": "Fitness Pro",
+				"description": "Workout tips and health advice."
+			}
+		},
+		"statistics": {
+			"viewCount": "850000",
+			"subscriberCount": "30000",
+			"hiddenSubscriberCount": false,
+			"videoCount": "215"
+		},
+		"status": {
+			"privacyStatus": "public",
+			"isLinked": true,
+			"longUploadsStatus": "eligible"
+		}
+	},
+	{
+		"kind": "youtube#channel",
+		"etag": "etag_246810",
+		"id": "UCghi123stu456vwx789yzc",
+		"snippet": {
+			"title": "Gamer's Den",
+			"description": "Game walkthroughs, reviews, and tips.",
+			"customUrl": "@gamersden",
+			"publishedAt": "2016-12-05T12:10:00Z",
+			"thumbnails": {
+				"default": {
+					"url": "https://yt3.ggpht.com/ytc/AIdro_gamer1=s88-c-k-c0x00ffffff-no-rj",
+					"width": 88,
+					"height": 88
+				},
+				"medium": {
+					"url": "https://yt3.ggpht.com/ytc/AIdro_gamer1=s240-c-k-c0x00ffffff-no-rj",
+					"width": 240,
+					"height": 240
+				},
+				"high": {
+					"url": "https://yt3.ggpht.com/ytc/AIdro_gamer1=s800-c-k-c0x00ffffff-no-rj",
+					"width": 800,
+					"height": 800
+				}
+			},
+			"localized": {
+				"title": "Gamer's Den",
+				"description": "Game walkthroughs, reviews, and tips."
+			}
+		},
+		"statistics": {
+			"viewCount": "1950000",
+			"subscriberCount": "80000",
+			"hiddenSubscriberCount": false,
+			"videoCount": "640"
+		},
+		"status": {
+			"privacyStatus": "public",
+			"isLinked": true,
+			"longUploadsStatus": "eligible"
+		}
+	},
+	{
+		"kind": "youtube#channel",
+		"etag": "etag_135790",
+		"id": "UCjkl987stu654vwx321mno",
+		"snippet": {
+			"title": "Cooking Mastery",
+			"description": "Delicious recipes and cooking tips.",
+			"customUrl": "@cookingmastery",
+			"publishedAt": "2019-04-17T16:55:00Z",
+			"thumbnails": {
+				"default": {
+					"url": "https://yt3.ggpht.com/ytc/AIdro_cooking1=s88-c-k-c0x00ffffff-no-rj",
+					"width": 88,
+					"height": 88
+				},
+				"medium": {
+					"url": "https://yt3.ggpht.com/ytc/AIdro_cooking1=s240-c-k-c0x00ffffff-no-rj",
+					"width": 240,
+					"height": 240
+				},
+				"high": {
+					"url": "https://yt3.ggpht.com/ytc/AIdro_cooking1=s800-c-k-c0x00ffffff-no-rj",
+					"width": 800,
+					"height": 800
+				}
+			},
+			"localized": {
+				"title": "Cooking Mastery",
+				"description": "Delicious recipes and cooking tips."
+			}
+		},
+		"statistics": {
+			"viewCount": "650000",
+			"subscriberCount": "25000",
+			"hiddenSubscriberCount": false,
+			"videoCount": "190"
+		},
+		"status": {
+			"privacyStatus": "public",
+			"isLinked": true,
+			"longUploadsStatus": "eligible"
+		}
+	}
+]

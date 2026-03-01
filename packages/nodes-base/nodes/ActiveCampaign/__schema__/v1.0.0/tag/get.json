@@ -1,0 +1,46 @@
+{
+    "type": "object",
+    "properties": {
+        "tag": {
+            "type": "object",
+            "properties": {
+                "created_timestamp": {
+                    "type": "string"
+                },
+                "deleted": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "links": {
+                    "type": "object",
+                    "properties": {
+                        "contactGoalTags": {
+                            "type": "string"
+                        },
+                        "templateTags": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "subscriber_count": {
+                    "type": "string"
+                },
+                "tag": {
+                    "type": "string"
+                },
+                "tagType": {
+                    "type": "string"
+                },
+                "updated_timestamp": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "version": 1
+}

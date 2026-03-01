@@ -1,0 +1,8 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`N8NCircleLoader > should render correctly 1`] = `
+"<div class="progress-circle"><svg class="progress-ring" width="60" height="60">
+    <circle class="progressRingCircle" stroke-width="10" stroke="#DCDFE6" fill="transparent" r="20" cx="30" cy="30"></circle>
+    <circle class="progressRingCircle" stroke="#5C4EC2" stroke-width="10" fill="transparent" r="20" cx="30" cy="30" style="stroke-dasharray: 125.66370614359172; stroke-dashoffset: 72.8849495632832;"></circle>
+  </svg></div>"
+`;

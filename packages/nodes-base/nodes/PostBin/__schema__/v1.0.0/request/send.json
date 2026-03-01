@@ -1,0 +1,9 @@
+{
+    "type": "object",
+    "properties": {
+        "requestId": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

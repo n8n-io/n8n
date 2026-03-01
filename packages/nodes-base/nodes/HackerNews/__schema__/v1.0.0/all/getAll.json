@@ -1,0 +1,101 @@
+{
+    "type": "object",
+    "properties": {
+        "_highlightResult": {
+            "type": "object",
+            "properties": {
+                "author": {
+                    "type": "object",
+                    "properties": {
+                        "matchLevel": {
+                            "type": "string"
+                        },
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "title": {
+                    "type": "object",
+                    "properties": {
+                        "fullyHighlighted": {
+                            "type": "boolean"
+                        },
+                        "matchedWords": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "matchLevel": {
+                            "type": "string"
+                        },
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "url": {
+                    "type": "object",
+                    "properties": {
+                        "fullyHighlighted": {
+                            "type": "boolean"
+                        },
+                        "matchedWords": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "matchLevel": {
+                            "type": "string"
+                        },
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "_tags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "author": {
+            "type": "string"
+        },
+        "children": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "created_at_i": {
+            "type": "integer"
+        },
+        "num_comments": {
+            "type": "integer"
+        },
+        "objectID": {
+            "type": "string"
+        },
+        "story_id": {
+            "type": "integer"
+        },
+        "title": {
+            "type": "string"
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "url": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

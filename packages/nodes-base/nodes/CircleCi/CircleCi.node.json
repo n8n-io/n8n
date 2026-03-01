@@ -1,0 +1,25 @@
+{
+	"node": "n8n-nodes-base.circleCi",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Development"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/circleci/"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.circleci/"
+			}
+		],
+		"generic": [
+			{
+				"label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI",
+				"icon": "🎡",
+				"url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/"
+			}
+		]
+	}
+}

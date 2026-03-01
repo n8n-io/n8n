@@ -1,72 +1,103 @@
-import { sign } from 'aws4';
-import { OptionsWithUri } from 'request';
-import { parseString } from 'xml2js';
-
-import {
+import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
+	IHttpRequestOptions,
+	JsonObject,
+	IHttpRequestMethods,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
+import { parseString as parseXml } from 'xml2js';
+import type {
+	AwsAssumeRoleCredentialsType,
+	AwsIamCredentialsType,
+} from '../../credentials/common/aws/types';
 
-
-export async function awsApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, service: string, method: string, path: string, body?: string, headers?: object): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('aws');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
-
-	const endpoint = `${service}.${credentials.region}.amazonaws.com`;
-
-	// Sign AWS API request with the user credentials
-	const signOpts = {headers: headers || {}, host: endpoint, method, path, body};
-	sign(signOpts, {accessKeyId: `${credentials.accessKeyId}`, secretAccessKey: `${credentials.secretAccessKey}`});
-
-	const options: OptionsWithUri = {
-		headers: signOpts.headers,
-		method,
-		uri: `https://${endpoint}${signOpts.path}`,
-		body: signOpts.body,
-	};
+export async function getAwsCredentials(
+	context: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+) {
+	let credentialsType: 'aws' | 'awsAssumeRole' = 'aws';
 
 	try {
-		return await this.helpers.request!(options);
-	} catch (error) {
-		const errorMessage = error.response.body.message || error.response.body.Message || error.message;
+		const authentication = context.getNodeParameter('authentication', 0) as 'iam' | 'assumeRole';
 
-		if (error.statusCode === 403) {
-			if (errorMessage === 'The security token included in the request is invalid.') {
-				throw new Error('The AWS credentials are not valid!');
-			} else if (errorMessage.startsWith('The request signature we calculated does not match the signature you provided')) {
-				throw new Error('The AWS credentials are not valid!');
-			}
+		if (authentication === 'assumeRole') {
+			credentialsType = 'awsAssumeRole';
 		}
+	} catch (error) {
+		context.logger.warn('Could not get authentication type');
+	}
 
-		throw new Error(`AWS error response [${error.statusCode}]: ${errorMessage}`);
+	const credentials: AwsIamCredentialsType | AwsAssumeRoleCredentialsType =
+		await context.getCredentials(credentialsType);
+
+	return { credentials, credentialsType };
+}
+
+export async function awsApiRequest(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+	service: string,
+	method: IHttpRequestMethods,
+	path: string,
+	body?: string,
+	headers?: object,
+): Promise<any> {
+	const { credentials, credentialsType } = await getAwsCredentials(this);
+	const requestOptions = {
+		qs: {
+			service,
+			path,
+		},
+		method,
+		body: service === 'lambda' ? body : JSON.stringify(body),
+		url: '',
+		headers,
+		region: credentials?.region as string,
+	} as IHttpRequestOptions;
+
+	try {
+		return await this.helpers.requestWithAuthentication.call(this, credentialsType, requestOptions);
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error as JsonObject, { parseXml: true });
 	}
 }
 
-export async function awsApiRequestREST(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, service: string, method: string, path: string, body?: string, headers?: object): Promise<any> { // tslint:disable-line:no-any
+export async function awsApiRequestREST(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	service: string,
+	method: IHttpRequestMethods,
+	path: string,
+	body?: string,
+	headers?: object,
+): Promise<any> {
 	const response = await awsApiRequest.call(this, service, method, path, body, headers);
 	try {
-		return JSON.parse(response);
-	} catch (e) {
+		return JSON.parse(response as string);
+	} catch (error) {
 		return response;
 	}
 }
 
-export async function awsApiRequestSOAP(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions, service: string, method: string, path: string, body?: string, headers?: object): Promise<any> { // tslint:disable-line:no-any
+export async function awsApiRequestSOAP(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+	service: string,
+	method: IHttpRequestMethods,
+	path: string,
+	body?: string,
+	headers?: object,
+): Promise<any> {
 	const response = await awsApiRequest.call(this, service, method, path, body, headers);
 	try {
 		return await new Promise((resolve, reject) => {
-			parseString(response, { explicitArray: false }, (err, data) => {
+			parseXml(response as string, { explicitArray: false }, (err, data) => {
 				if (err) {
 					return reject(err);
 				}
 				resolve(data);
 			});
 		});
-	} catch (e) {
+	} catch (error) {
 		return response;
 	}
 }

@@ -1,15 +1,17 @@
-import { IDataObject } from "n8n-workflow";
+export const RecipientTypes = {
+	email: 'EMAIL',
+	phone: 'PHONE',
+	paypalId: 'PAYPAL_ID',
+} as const;
 
-export enum RecipientType {
-	email = 'EMAIL',
-	phone = 'PHONE',
-	paypalId = 'PAYPAL_ID',
-}
+export type RecipientType = (typeof RecipientTypes)[keyof typeof RecipientTypes];
 
-export enum RecipientWallet {
-	paypal = 'PAYPAL',
-	venmo = 'VENMO',
-}
+export const RecipientWallets = {
+	paypal: 'PAYPAL',
+	venmo: 'VENMO',
+} as const;
+
+export type RecipientWallet = (typeof RecipientWallets)[keyof typeof RecipientWallets];
 
 export interface IAmount {
 	currency?: string;

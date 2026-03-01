@@ -1,24 +1,23 @@
-import {
-	ICredentialType,
-	NodePropertyTypes,
-} from 'n8n-workflow';
-
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class Smtp implements ICredentialType {
 	name = 'smtp';
+
 	displayName = 'SMTP';
-	properties = [
+
+	documentationUrl = 'sendemail';
+
+	properties: INodeProperties[] = [
 		{
 			displayName: 'User',
 			name: 'user',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
-
 		},
 		{
 			displayName: 'Password',
 			name: 'password',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			typeOptions: {
 				password: true,
 			},
@@ -27,20 +26,39 @@ export class Smtp implements ICredentialType {
 		{
 			displayName: 'Host',
 			name: 'host',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 		{
 			displayName: 'Port',
 			name: 'port',
-			type: 'number' as NodePropertyTypes,
+			type: 'number',
 			default: 465,
 		},
 		{
 			displayName: 'SSL/TLS',
 			name: 'secure',
-			type: 'boolean' as NodePropertyTypes,
+			type: 'boolean',
 			default: true,
+		},
+		{
+			displayName: 'Disable STARTTLS',
+			name: 'disableStartTls',
+			type: 'boolean',
+			default: false,
+			displayOptions: {
+				show: {
+					secure: [false],
+				},
+			},
+		},
+		{
+			displayName: 'Client Host Name',
+			name: 'hostName',
+			type: 'string',
+			default: '',
+			placeholder: '',
+			description: 'The hostname of the client, used for identifying to the server',
 		},
 	];
 }

@@ -1,35 +1,10 @@
 {
+	"extends": "@n8n/typescript-config/modern/tsconfig.json",
 	"compilerOptions": {
-		"lib": [
-			"dom",
-			"es2017"
-		],
-		"types": [
-			"node",
-			"jest"
-		],
-		"module": "commonjs",
-		"noImplicitAny": true,
-		"removeComments": true,
-		"strictNullChecks": true,
-		"forceConsistentCasingInFileNames": true,
-		"noImplicitReturns": true,
-		"strict": true,
-		"noUnusedLocals": true,
-		"preserveConstEnums": true,
-		"declaration": true,
-		"outDir": "./dist/",
-		"target": "es2017",
-		"sourceMap": true
+		"rootDir": ".",
+		"noUncheckedIndexedAccess": false,
+		"types": ["vite/client", "vitest/globals"]
 	},
-	"include": [
-		"**/*.d.ts",
-		"src/**/*",
-		"test/**/*"
-	],
-	"exclude": [
-		"dist/**/*",
-		"node_modules/**/*",
-		"**/*.spec.ts"
-	]
+	"include": ["src/**/*.ts", "test/**/*.ts", "vitest.config.ts"],
+	"exclude": ["node_modules"]
 }

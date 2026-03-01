@@ -1,15 +1,14 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const identifyOperations = [
+export const identifyOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'identify',
-				],
+				resource: ['identify'],
 			},
 		},
 		options: [
@@ -17,18 +16,17 @@ export const identifyOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an identity',
+				action: 'Create an identity',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const identifyFields = [
-
-/* -------------------------------------------------------------------------- */
-/*                                identify:create                             */
-/* -------------------------------------------------------------------------- */
+export const identifyFields: INodeProperties[] = [
+	/* -------------------------------------------------------------------------- */
+	/*                                identify:create                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'User ID',
 		name: 'userId',
@@ -36,15 +34,10 @@ export const identifyFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'identify',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['identify'],
+				operation: ['create'],
 			},
 		},
-		required: false,
 	},
 	{
 		displayName: 'Traits',
@@ -52,16 +45,12 @@ export const identifyFields = [
 		placeholder: 'Add Trait',
 		type: 'fixedCollection',
 		typeOptions: {
-			multipleValues: false,
+			multipleValues: true,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'identify',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['identify'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -71,196 +60,18 @@ export const identifyFields = [
 				displayName: 'Trait',
 				values: [
 					{
-						displayName: 'Email',
-						name: 'email',
+						displayName: 'Key',
+						name: 'key',
 						type: 'string',
 						default: '',
-						description: 'Email address of a user',
 					},
 					{
-						displayName: 'First Name',
-						name: 'firstname',
+						displayName: 'Value',
+						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'First name of a user',
 					},
-					{
-						displayName: 'Last Name',
-						name: 'lastname',
-						type: 'string',
-						default: '',
-						description: 'Last name of a user',
-					},
-					{
-						displayName: 'Gender',
-						name: 'gender',
-						type: 'string',
-						default: '',
-						description: 'Gender of a user',
-					},
-					{
-						displayName: 'Phone',
-						name: 'phone',
-						type: 'string',
-						default: '',
-						description: 'Phone number of a user',
-					},
-					{
-						displayName: 'Username',
-						name: 'username',
-						type: 'string',
-						default: '',
-						description: 'User’s username',
-					},
-					{
-						displayName: 'Website',
-						name: 'website',
-						type: 'string',
-						default: '',
-						description: 'Website of a user',
-					},
-					{
-						displayName: 'Age',
-						name: 'age',
-						type: 'number',
-						default: 1,
-						description: 'Age of a user',
-					},
-					{
-						displayName: 'Avatar',
-						name: 'avatar',
-						type: 'string',
-						default: '',
-						description: 'URL to an avatar image for the user',
-					},
-					{
-						displayName: 'Birthday',
-						name: 'birthday',
-						type: 'dateTime',
-						default: '',
-						description: 'User’s birthday',
-					},
-					{
-						displayName: 'Created At',
-						name: 'createdAt',
-						type: 'dateTime',
-						default: '',
-						description: 'Date the user’s account was first created',
-					},
-					{
-						displayName: 'Description',
-						name: 'description',
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						default: '',
-						description: 'Description of the user',
-					},
-					{
-						displayName: 'ID',
-						name: 'id',
-						type: 'string',
-						default: '',
-						description: 'Unique ID in your database for a user',
-					},
-					{
-						displayName: 'Company',
-						name: 'company',
-						placeholder: 'Add Company',
-						type: 'fixedCollection',
-						typeOptions: {
-							multipleValues: false,
-						},
-						default: {},
-						options: [
-							{
-								name: 'companyUi',
-								displayName: 'Company',
-								values: [
-									{
-										displayName: 'ID',
-										name: 'id',
-										type: 'string',
-										default: '',
-									},
-									{
-										displayName: 'Name',
-										name: 'name',
-										type: 'string',
-										default: '',
-									},
-									{
-										displayName: 'Industry',
-										name: 'industry',
-										type: 'string',
-										default: '',
-									},
-									{
-										displayName: 'Employee Count',
-										name: 'employeeCount',
-										type: 'number',
-										default: 1,
-									},
-									{
-										displayName: 'Plan',
-										name: 'plan',
-										type: 'string',
-										default: '',
-									},
-								]
-							},
-						],
-					},
-					{
-						displayName: 'Address',
-						name: 'address',
-						placeholder: 'Add Address',
-						type: 'fixedCollection',
-						typeOptions: {
-							multipleValues: false,
-						},
-						default: {},
-						options: [
-							{
-								name: 'addressUi',
-								displayName: 'Address',
-								values: [
-									{
-										displayName: 'Street',
-										name: 'street',
-										type: 'string',
-										default: '',
-									},
-									{
-										displayName: 'City',
-										name: 'city',
-										type: 'string',
-										default: '',
-									},
-									{
-										displayName: 'State',
-										name: 'state',
-										type: 'string',
-										default: '',
-									},
-									{
-										displayName: 'Postal Code',
-										name: 'postalCode',
-										type: 'string',
-										default: '',
-									},
-									{
-										displayName: 'Country',
-										name: 'country',
-										type: 'string',
-										default: '',
-									},
-								]
-							},
-						],
-					},
-				]
+				],
 			},
 		],
 	},
@@ -274,12 +85,8 @@ export const identifyFields = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'identify',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['identify'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -292,7 +99,7 @@ export const identifyFields = [
 						displayName: 'Active',
 						name: 'active',
 						type: 'boolean',
-						default: '',
+						default: false,
 						description: 'Whether a user is active',
 					},
 					{
@@ -300,28 +107,30 @@ export const identifyFields = [
 						name: 'ip',
 						type: 'string',
 						default: '',
-						description: 'Current user’s IP address.',
+						description: 'Current user’s IP address',
 					},
 					{
 						displayName: 'Locale',
 						name: 'locate',
 						type: 'string',
 						default: '',
-						description: 'Locale string for the current user, for example en-US.',
+						description: 'Locale string for the current user, for example en-US',
 					},
 					{
 						displayName: 'Page',
 						name: 'page',
 						type: 'string',
 						default: '',
-						description: 'Dictionary of information about the current page in the browser, containing hash, path, referrer, search, title and url',
+						description:
+							'Dictionary of information about the current page in the browser, containing hash, path, referrer, search, title and URL',
 					},
 					{
 						displayName: 'Timezone',
 						name: 'timezone',
 						type: 'string',
 						default: '',
-						description: 'Timezones are sent as tzdata strings to add user timezone information which might be stripped from the timestamp, for example America/New_York',
+						description:
+							'Timezones are sent as tzdata strings to add user timezone information which might be stripped from the timestamp, for example America/New_York',
 					},
 					{
 						displayName: 'App',
@@ -355,7 +164,7 @@ export const identifyFields = [
 										type: 'string',
 										default: '',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -403,7 +212,7 @@ export const identifyFields = [
 										type: 'string',
 										default: '',
 									},
-								]
+								],
 							},
 						],
 					},
@@ -461,7 +270,7 @@ export const identifyFields = [
 							},
 						],
 					},
-				]
+				],
 			},
 		],
 	},
@@ -475,12 +284,8 @@ export const identifyFields = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'identify',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['identify'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -505,4 +310,4 @@ export const identifyFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

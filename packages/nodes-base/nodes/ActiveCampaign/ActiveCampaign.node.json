@@ -1,0 +1,19 @@
+{
+	"node": "n8n-nodes-base.activeCampaign",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"details": "ActiveCampaign is a cloud software platform that allows customer experience automation, which combines email marketing, marketing automation, sales automation, and CRM categories. Use this node when you want to interact with your ActiveCampaign account.",
+	"categories": ["Marketing"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/activecampaign/"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.activecampaign/"
+			}
+		]
+	}
+}

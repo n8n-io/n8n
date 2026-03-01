@@ -1,21 +1,17 @@
+import basicAuth from 'basic-auth';
+import type { Response } from 'express';
 import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
-
-import {
-	INodeTypeDescription,
-	INodeType,
-	IWebhookResponseData,
+	type IHookFunctions,
+	type IWebhookFunctions,
+	type ICredentialDataDecryptedObject,
+	type IDataObject,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookResponseData,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
-import {
-	pipedriveApiRequest,
-} from './GenericFunctions';
-
-import * as basicAuth from 'basic-auth';
-import { Response } from 'express';
-
+import { pipedriveApiRequest } from './GenericFunctions';
 
 function authorizationError(resp: Response, realm: string, responseCode: number, message?: string) {
 	if (message === undefined) {
@@ -33,34 +29,91 @@ function authorizationError(resp: Response, realm: string, responseCode: number,
 		noWebhookResponse: true,
 	};
 }
-
+const entityOptions = [
+	{
+		name: 'Activity',
+		value: 'activity',
+	},
+	{
+		name: 'Activity Type',
+		value: 'activityType',
+	},
+	{
+		name: 'All',
+		value: '*',
+	},
+	{
+		name: 'Deal',
+		value: 'deal',
+	},
+	{
+		name: 'Note',
+		value: 'note',
+	},
+	{
+		name: 'Organization',
+		value: 'organization',
+	},
+	{
+		name: 'Person',
+		value: 'person',
+	},
+	{
+		name: 'Pipeline',
+		value: 'pipeline',
+	},
+	{
+		name: 'Product',
+		value: 'product',
+	},
+	{
+		name: 'Stage',
+		value: 'stage',
+	},
+	{
+		name: 'User',
+		value: 'user',
+	},
+];
 export class PipedriveTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Pipedrive Trigger',
 		name: 'pipedriveTrigger',
-		icon: 'file:pipedrive.png',
+		icon: 'file:pipedrive.svg',
 		group: ['trigger'],
-		version: 1,
-		description: 'Starts the workflow when Pipedrive events occure.',
+		version: [1, 1.1],
+		defaultVersion: 1.1,
+		description: 'Starts the workflow when Pipedrive events occur',
 		defaults: {
 			name: 'Pipedrive Trigger',
-			color: '#559922',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'pipedriveApi',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['apiToken'],
+					},
+				},
+			},
+			{
+				name: 'pipedriveOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['oAuth2'],
+					},
+				},
 			},
 			{
 				name: 'httpBasicAuth',
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'basicAuth',
-						],
+						incomingAuthentication: ['basicAuth'],
 					},
 				},
 			},
@@ -80,121 +133,159 @@ export class PipedriveTrigger implements INodeType {
 				type: 'options',
 				options: [
 					{
+						name: 'API Token',
+						value: 'apiToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'apiToken',
+			},
+			{
+				displayName: 'Incoming Authentication',
+				name: 'incomingAuthentication',
+				type: 'options',
+				options: [
+					{
 						name: 'Basic Auth',
-						value: 'basicAuth'
+						value: 'basicAuth',
 					},
 					{
 						name: 'None',
-						value: 'none'
+						value: 'none',
 					},
 				],
 				default: 'none',
-				description: 'If authentication should be activated for the webhook (makes it more scure).',
+				description: 'If authentication should be activated for the webhook (makes it more secure)',
 			},
 			{
 				displayName: 'Action',
 				name: 'action',
 				type: 'options',
+				displayOptions: {
+					hide: {
+						'@version': [{ _cnd: { gte: 1.1 } }],
+					},
+				},
+				options: [
+					{
+						name: 'Added',
+						value: 'added',
+						description: 'Data got added',
+						action: 'Data was added',
+					},
+					{
+						name: 'All',
+						value: '*',
+						description: 'Any change',
+						action: 'Any change',
+					},
+					{
+						name: 'Deleted',
+						value: 'deleted',
+						description: 'Data got deleted',
+						action: 'Data was deleted',
+					},
+					{
+						name: 'Merged',
+						value: 'merged',
+						description: 'Data got merged',
+						action: 'Data was merged',
+					},
+					{
+						name: 'Updated',
+						value: 'updated',
+						description: 'Data got updated',
+						action: 'Data was updated',
+					},
+				],
+				default: '*',
+				description: 'Type of action to receive notifications about',
+			},
+			{
+				displayName: 'Action',
+				name: 'action',
+				type: 'options',
+				displayOptions: {
+					hide: {
+						'@version': [{ _cnd: { lte: 1 } }],
+					},
+				},
 				options: [
 					{
 						name: 'All',
 						value: '*',
 						description: 'Any change',
+						action: 'Any change',
 					},
 					{
-						name: 'Added',
-						value: 'added',
-						description: 'Data got added'
+						name: 'Create',
+						value: 'create',
+						description: 'Data got added',
+						action: 'Data was added',
 					},
 					{
-						name: 'Deleted',
-						value: 'deleted',
-						description: 'Data got deleted'
+						name: 'Delete',
+						value: 'delete',
+						description: 'Data got deleted',
+						action: 'Data was deleted',
 					},
 					{
-						name: 'Merged',
-						value: 'merged',
-						description: 'Data got merged'
-					},
-					{
-						name: 'Updated',
-						value: 'updated',
-						description: 'Data got updated'
+						name: 'Change',
+						value: 'change',
+						description: 'Data got changed',
+						action: 'Data was changed',
 					},
 				],
 				default: '*',
-				description: 'Type of action to receive notifications about.',
+				description: 'Type of action to receive notifications about',
+			},
+			{
+				displayName: 'Entity',
+				name: 'entity',
+				type: 'options',
+				options: entityOptions,
+				default: '*',
+				description: 'Type of object to receive notifications about',
+				displayOptions: {
+					hide: {
+						'@version': [{ _cnd: { lte: 1 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Object',
 				name: 'object',
 				type: 'options',
-				options: [
-					{
-						name: 'All',
-						value: '*',
-					},
-					{
-						name: 'Activity',
-						value: 'activity',
-					},
-					{
-						name: 'Activity Type',
-						value: 'activityType',
-					},
-					{
-						name: 'Deal',
-						value: 'deal',
-					},
-					{
-						name: 'Note',
-						value: 'note',
-					},
-					{
-						name: 'Organization',
-						value: 'organization',
-					},
-					{
-						name: 'Person',
-						value: 'person',
-					},
-					{
-						name: 'Pipeline',
-						value: 'pipeline',
-					},
-					{
-						name: 'Product',
-						value: 'product',
-					},
-					{
-						name: 'Stage',
-						value: 'stage',
-					},
-					{
-						name: 'User',
-						value: 'user',
-					},
-				],
+				options: entityOptions,
 				default: '*',
-				description: 'Type of object to receive notifications about.',
+				description: 'Type of object to receive notifications about',
+				displayOptions: {
+					hide: {
+						'@version': [{ _cnd: { gte: 1.1 } }],
+					},
+				},
 			},
 		],
-
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
+				const webhookUrl = this.getNodeWebhookUrl('default');
+
 				const webhookData = this.getWorkflowStaticData('node');
 
-				if (webhookData.webhookId === undefined) {
-					// No webhook id is set so no webhook can exist
-					return false;
-				}
+				const eventAction = this.getNodeParameter('action') as string;
+
+				const nodeVersion = this.getNode().typeVersion;
+				const entityParamName = nodeVersion === 1 ? 'object' : 'entity';
+				const eventObject = this.getNodeParameter(entityParamName) as string;
 
 				// Webhook got created before so check if it still exists
-				const endpoint = `/webhooks`;
+				const endpoint = '/webhooks';
 
 				const responseData = await pipedriveApiRequest.call(this, 'GET', endpoint, {});
 
@@ -203,8 +294,13 @@ export class PipedriveTrigger implements INodeType {
 				}
 
 				for (const existingData of responseData.data) {
-					if (existingData.id === webhookData.webhookId) {
+					if (
+						existingData.subscription_url === webhookUrl &&
+						existingData.event_action === eventAction &&
+						existingData.event_object === eventObject
+					) {
 						// The webhook exists already
+						webhookData.webhookId = existingData.id;
 						return true;
 					}
 				}
@@ -213,12 +309,13 @@ export class PipedriveTrigger implements INodeType {
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
-				const authentication = this.getNodeParameter('authentication', 0) as string;
-
+				const incomingAuthentication = this.getNodeParameter('incomingAuthentication', 0) as string;
 				const eventAction = this.getNodeParameter('action') as string;
-				const eventObject = this.getNodeParameter('object') as string;
+				const nodeVersion = this.getNode().typeVersion;
+				const entityParamName = nodeVersion === 1 ? 'object' : 'entity';
+				const eventObject = this.getNodeParameter(entityParamName) as string;
 
-				const endpoint = `/webhooks`;
+				const endpoint = '/webhooks';
 
 				const body = {
 					event_action: eventAction,
@@ -228,8 +325,14 @@ export class PipedriveTrigger implements INodeType {
 					http_auth_password: undefined as string | undefined,
 				};
 
-				if (authentication === 'basicAuth') {
-					const httpBasicAuth = this.getCredentials('httpBasicAuth');
+				if (incomingAuthentication === 'basicAuth') {
+					let httpBasicAuth;
+
+					try {
+						httpBasicAuth = await this.getCredentials('httpBasicAuth');
+					} catch (error) {
+						// Do nothing
+					}
 
 					if (httpBasicAuth === undefined || !httpBasicAuth.user || !httpBasicAuth.password) {
 						// Data is not defined on node so can not authenticate
@@ -261,12 +364,12 @@ export class PipedriveTrigger implements INodeType {
 
 					try {
 						await pipedriveApiRequest.call(this, 'DELETE', endpoint, body);
-					} catch (e) {
+					} catch (error) {
 						return false;
 					}
 
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 					delete webhookData.webhookEvents;
 				}
@@ -276,18 +379,22 @@ export class PipedriveTrigger implements INodeType {
 		},
 	};
 
-
-
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		const resp = this.getResponseObject();
 		const realm = 'Webhook';
 
-		const authentication = this.getNodeParameter('authentication', 0) as string;
+		const incomingAuthentication = this.getNodeParameter('incomingAuthentication', 0) as string;
 
-		if (authentication === 'basicAuth') {
+		if (incomingAuthentication === 'basicAuth') {
 			// Basic authorization is needed to call webhook
-			const httpBasicAuth = this.getCredentials('httpBasicAuth');
+			let httpBasicAuth: ICredentialDataDecryptedObject | undefined;
+
+			try {
+				httpBasicAuth = await this.getCredentials<ICredentialDataDecryptedObject>('httpBasicAuth');
+			} catch (error) {
+				// Do nothing
+			}
 
 			if (httpBasicAuth === undefined || !httpBasicAuth.user || !httpBasicAuth.password) {
 				// Data is not defined on node so can not authenticate
@@ -301,16 +408,17 @@ export class PipedriveTrigger implements INodeType {
 				return authorizationError(resp, realm, 401);
 			}
 
-			if (basicAuthData.name !== httpBasicAuth!.user || basicAuthData.pass !== httpBasicAuth!.password) {
+			if (
+				basicAuthData.name !== httpBasicAuth.user ||
+				basicAuthData.pass !== httpBasicAuth.password
+			) {
 				// Provided authentication data is wrong
 				return authorizationError(resp, realm, 403);
 			}
 		}
 
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(req.body)
-			],
+			workflowData: [this.helpers.returnJsonArray(req.body as IDataObject[])],
 		};
 	}
 }

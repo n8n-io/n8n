@@ -1,0 +1,19 @@
+{
+	"node": "n8n-nodes-base.freshservice",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Productivity"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/freshservice/"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.freshservice/"
+			}
+		]
+	},
+	"alias": ["Freshdesk"]
+}

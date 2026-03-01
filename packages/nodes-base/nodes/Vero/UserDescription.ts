@@ -1,65 +1,68 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const userOperations = [
+export const userOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
+				resource: ['user'],
 			},
 		},
 		options: [
 			{
-				name: 'Create/Update',
-				value: 'create',
-				description: `Creates a new user profile if the user doesn’t exist yet.
-				Otherwise, the user profile is updated based on the properties provided.`,
+				name: 'Add Tags',
+				value: 'addTags',
+				description: 'Adds a tag to a users profile',
+				action: 'Add tags to a user',
 			},
 			{
 				name: 'Alias',
 				value: 'alias',
-				description: 'Changes a user’s identifier.',
+				description: 'Change a users identifier',
+				action: "Change a user's alias",
 			},
 			{
-				name: 'Unsubscribe',
-				value: 'unsubscribe',
-				description: 'Unsubscribes a single user.',
-			},
-			{
-				name: 'Re-subscribe',
-				value: 'resubscribe',
-				description: 'Resubscribe a single user.',
+				name: 'Create or Update',
+				value: 'create',
+				description: 'Create or update a user profile',
+				action: 'Create or update a user',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Delete a single user.',
+				description: 'Delete a user',
+				action: 'Delete a user',
 			},
 			{
-				name: 'Add Tags',
-				value: 'addTags',
-				description: 'Adds a tag to a user’s profile.',
+				name: 'Re-Subscribe',
+				value: 'resubscribe',
+				description: 'Resubscribe a user',
+				action: 'Resubscribe a user',
 			},
 			{
 				name: 'Remove Tags',
 				value: 'removeTags',
-				description: 'Removes a tag from a user’s profile.',
+				description: 'Removes a tag from a users profile',
+				action: 'Remove tags from a user',
+			},
+			{
+				name: 'Unsubscribe',
+				value: 'unsubscribe',
+				description: 'Unsubscribe a user',
+				action: 'Unsubscribe a user',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const userFields = [
-
-/* -------------------------------------------------------------------------- */
-/*                                user:create                                 */
-/* -------------------------------------------------------------------------- */
+export const userFields: INodeProperties[] = [
+	/* -------------------------------------------------------------------------- */
+	/*                                user:create                                 */
+	/* -------------------------------------------------------------------------- */
 
 	{
 		displayName: 'ID',
@@ -69,12 +72,8 @@ export const userFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				]
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 		description: 'The unique identifier of the customer',
@@ -84,17 +83,12 @@ export const userFields = [
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				]
+				resource: ['user'],
+				operation: ['create'],
 			},
-		}
+		},
 	},
 	{
 		displayName: 'Additional Fields',
@@ -104,12 +98,8 @@ export const userFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -117,16 +107,17 @@ export const userFields = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
-				description: 'The table to create the row in.',
+				description: 'The table to create the row in',
 			},
-		]
+		],
 	},
 	{
 		displayName: 'Data',
 		name: 'dataAttributesUi',
 		placeholder: 'Add Data',
-		description: 'key value pairs that represent the custom user properties you want to update',
+		description: 'Key value pairs that represent the custom user properties you want to update',
 		type: 'fixedCollection',
 		typeOptions: {
 			multipleValues: true,
@@ -134,15 +125,9 @@ export const userFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['user'],
+				operation: ['create'],
+				jsonParameters: [false],
 			},
 		},
 		options: [
@@ -155,16 +140,16 @@ export const userFields = [
 						name: 'key',
 						type: 'string',
 						default: '',
-						description: 'Name of the property to set.',
+						description: 'Name of the property to set',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Value of the property to set.',
+						description: 'Value of the property to set',
 					},
-				]
+				],
 			},
 		],
 	},
@@ -173,29 +158,22 @@ export const userFields = [
 		name: 'dataAttributesJson',
 		type: 'json',
 		default: '',
-		required: false,
 		typeOptions: {
 			alwaysOpenEditWindow: true,
 		},
-		description: 'key value pairs that represent the custom user properties you want to update',
+		description: 'Key value pairs that represent the custom user properties you want to update',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
-				jsonParameters: [
-					true,
-				],
+				resource: ['user'],
+				operation: ['create'],
+				jsonParameters: [true],
 			},
 		},
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                   user:alias                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                   user:alias                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'ID',
 		name: 'id',
@@ -204,12 +182,8 @@ export const userFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'alias',
-				]
+				resource: ['user'],
+				operation: ['alias'],
 			},
 		},
 		description: 'The old unique identifier of the user',
@@ -222,19 +196,15 @@ export const userFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'alias',
-				]
+				resource: ['user'],
+				operation: ['alias'],
 			},
 		},
 		description: 'The new unique identifier of the user',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                   user:unsubscribe                         */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                   user:unsubscribe                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'ID',
 		name: 'id',
@@ -243,19 +213,15 @@ export const userFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'unsubscribe',
-				]
+				resource: ['user'],
+				operation: ['unsubscribe'],
 			},
 		},
 		description: 'The unique identifier of the user',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 user:resubscribe                           */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 user:resubscribe                           */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'ID',
 		name: 'id',
@@ -264,19 +230,15 @@ export const userFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'resubscribe',
-				]
+				resource: ['user'],
+				operation: ['resubscribe'],
 			},
 		},
 		description: 'The unique identifier of the user',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 user:delete                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 user:delete                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'ID',
 		name: 'id',
@@ -285,19 +247,15 @@ export const userFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'delete',
-				]
+				resource: ['user'],
+				operation: ['delete'],
 			},
 		},
 		description: 'The unique identifier of the user',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 user:addTags                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 user:addTags                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'ID',
 		name: 'id',
@@ -306,12 +264,8 @@ export const userFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'addTags',
-				]
+				resource: ['user'],
+				operation: ['addTags'],
 			},
 		},
 		description: 'The unique identifier of the user',
@@ -324,19 +278,15 @@ export const userFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'addTags',
-				]
+				resource: ['user'],
+				operation: ['addTags'],
 			},
 		},
 		description: 'Tags to add separated by ","',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 user:removeTags                            */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 user:removeTags                            */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'ID',
 		name: 'id',
@@ -345,12 +295,8 @@ export const userFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'removeTags',
-				]
+				resource: ['user'],
+				operation: ['removeTags'],
 			},
 		},
 		description: 'The unique identifier of the user',
@@ -363,14 +309,10 @@ export const userFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'removeTags',
-				]
+				resource: ['user'],
+				operation: ['removeTags'],
 			},
 		},
 		description: 'Tags to remove separated by ","',
 	},
-] as INodeProperties[];
+];

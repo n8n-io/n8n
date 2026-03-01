@@ -1,32 +1,14 @@
 {
-	"compilerOptions": {
-		"lib": [
-			"es2017"
-		],
-		"types": [
-			"node"
-		],
-		"module": "commonjs",
-		"esModuleInterop": true,
-		"noImplicitAny": true,
-		"removeComments": true,
-		"strictNullChecks": true,
-		"strict": true,
-		"preserveConstEnums": true,
-		"declaration": true,
-		"outDir": "./dist/",
-		"target": "es2017",
-		"sourceMap": true
-	},
-	"include": [
-		"**/*.d.ts",
-		"commands/**/*",
-		"index.ts",
-		"src/**/*"
+	"extends": [
+		"@n8n/typescript-config/tsconfig.common.json",
+		"@n8n/typescript-config/tsconfig.backend.json"
 	],
-	"exclude": [
-		"dist",
-		"node_modules/**/*",
-		"**/*.spec.ts"
-	]
+	"compilerOptions": {
+		"outDir": "dist",
+		"preserveSymlinks": true,
+		"tsBuildInfoFile": "dist/build.tsbuildinfo",
+		// TODO: remove all options below this line
+		"useUnknownInCatchVariables": false
+	},
+	"include": ["commands/**/*.ts", "src/**/*.ts"]
 }

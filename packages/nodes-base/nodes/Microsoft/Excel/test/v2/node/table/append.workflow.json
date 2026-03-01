@@ -1,0 +1,104 @@
+{
+	"name": "My workflow 5",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "875e8784-eb59-40d8-ba45-129a5e29881c",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [380, 140]
+		},
+		{
+			"parameters": {
+				"resource": "table",
+				"workbook": {
+					"__rl": true,
+					"value": "01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I",
+					"mode": "list",
+					"cachedResultName": "ПРРО копія",
+					"cachedResultUrl": "https://5w1hb7-my.sharepoint.com/personal/michaeldevsandbox_5w1hb7_onmicrosoft_com/_layouts/15/Doc.aspx?sourcedoc=%7BECC4041C-3AB6-4CF7-B079-0926470A1388%7D&file=%D0%9F%D0%A0%D0%A0%D0%9E%20%D0%BA%D0%BE%D0%BF%D1%96%D1%8F.xlsx&action=default&mobileredirect=true&DefaultItemOpen=1"
+				},
+				"worksheet": {
+					"__rl": true,
+					"value": "{A0883CFE-D27E-4ECC-B94B-981830AAD55B}",
+					"mode": "list",
+					"cachedResultName": "Sheet4",
+					"cachedResultUrl": "https://5w1hb7-my.sharepoint.com/personal/michaeldevsandbox_5w1hb7_onmicrosoft_com/_layouts/15/Doc.aspx?sourcedoc=%7BECC4041C-3AB6-4CF7-B079-0926470A1388%7D&file=%D0%9F%D0%A0%D0%A0%D0%9E%20%D0%BA%D0%BE%D0%BF%D1%96%D1%8F.xlsx&action=default&mobileredirect=true&DefaultItemOpen=1&activeCell=Sheet4!A1"
+				},
+				"table": {
+					"__rl": true,
+					"value": "{317CA469-7D1C-4A5D-9B0B-424444BF0336}",
+					"mode": "list",
+					"cachedResultName": "Table3",
+					"cachedResultUrl": "https://5w1hb7-my.sharepoint.com/personal/michaeldevsandbox_5w1hb7_onmicrosoft_com/_layouts/15/Doc.aspx?sourcedoc=%7BECC4041C-3AB6-4CF7-B079-0926470A1388%7D&file=%D0%9F%D0%A0%D0%A0%D0%9E%20%D0%BA%D0%BE%D0%BF%D1%96%D1%8F.xlsx&action=default&mobileredirect=true&DefaultItemOpen=1&activeCell=Sheet4!A1:D4"
+				},
+				"fieldsUi": {
+					"values": [
+						{
+							"column": "id",
+							"fieldValue": "3"
+						},
+						{
+							"column": "name",
+							"fieldValue": "Donald"
+						},
+						{
+							"column": "age",
+							"fieldValue": "99"
+						},
+						{
+							"column": "data",
+							"fieldValue": "data 5"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "0e0ac1d2-242c-486a-9287-c70307645acc",
+			"name": "Microsoft Excel 365",
+			"type": "n8n-nodes-base.microsoftExcel",
+			"typeVersion": 2,
+			"position": [860, 140],
+			"credentials": {
+				"microsoftExcelOAuth2Api": {
+					"id": "70",
+					"name": "Microsoft Excel account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Microsoft Excel 365": [
+			{
+				"json": {
+					"id": 3,
+					"name": "Donald",
+					"age": 99,
+					"data": "data 5"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Excel 365",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "b9eda2d8-e1a5-4a54-aaa9-5e81adaae909",
+	"id": "135",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
+}

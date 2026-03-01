@@ -1,22 +1,24 @@
-import {
-	ICredentialType,
-	NodePropertyTypes,
-} from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class SalesmateApi implements ICredentialType {
 	name = 'salesmateApi';
+
 	displayName = 'Salesmate API';
-	properties = [
+
+	documentationUrl = 'salesmate';
+
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Session Token',
 			name: 'sessionToken',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{
 			displayName: 'URL',
 			name: 'url',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 			placeholder: 'n8n.salesmate.io',
 		},

@@ -1,17 +1,17 @@
-import { INodeProperties } from "n8n-workflow";
+import type { INodeProperties } from 'n8n-workflow';
 
 import { allCurrencies } from './currencies';
+import { activeCampaignDefaultGetAllProperties } from './GenericFunctions';
 
-export const ecomOrderOperations = [
+export const ecomOrderOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'ecommerceOrder',
-				],
+				resource: ['ecommerceOrder'],
 			},
 		},
 		options: [
@@ -19,34 +19,38 @@ export const ecomOrderOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a order',
+				action: 'Create an e-commerce order',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a order',
+				action: 'Delete an e-commerce order',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a order',
+				action: 'Get an e-commerce order',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get data of all orders',
+				description: 'Get data of many orders',
+				action: 'Get many e-commerce orders',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a order',
+				action: 'Update an e-commerce order',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const ecomOrderFields = [
+export const ecomOrderFields: INodeProperties[] = [
 	// ----------------------------------
 	//         ecommerceOrder:create
 	// ----------------------------------
@@ -57,105 +61,86 @@ export const ecomOrderFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'ecommerceOrder',
-				],
+				operation: ['create'],
+				resource: ['ecommerceOrder'],
 			},
 		},
-		description: 'The id of the order in the external service. ONLY REQUIRED IF EXTERNALCHECKOUTID NOT INCLUDED',
+		description:
+			'The ID of the order in the external service. ONLY REQUIRED IF EXTERNALCHECKOUTID NOT INCLUDED.',
 	},
 	{
-		displayName: 'External checkout ID',
+		displayName: 'External Checkout ID',
 		name: 'externalcheckoutid',
 		type: 'string',
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'ecommerceOrder',
-				],
+				operation: ['create'],
+				resource: ['ecommerceOrder'],
 			},
 		},
-		description: 'The id of the cart in the external service. ONLY REQUIRED IF EXTERNALID IS NOT INCLUDED.',
+		description:
+			'The ID of the cart in the external service. ONLY REQUIRED IF EXTERNALID IS NOT INCLUDED.',
 	},
 	{
-		displayName: 'Order source',
+		displayName: 'Order Source',
 		name: 'source',
 		type: 'number',
 		default: 0,
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'ecommerceOrder',
-				],
+				operation: ['create'],
+				resource: ['ecommerceOrder'],
 			},
 		},
-		description: 'The order source code (0 - will not trigger automations, 1 - will trigger automations).',
+		description:
+			'The order source code (0 - will not trigger automations, 1 - will trigger automations)',
 	},
 	{
 		displayName: 'Customer Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'ecommerceOrder',
-				],
+				operation: ['create'],
+				resource: ['ecommerceOrder'],
 			},
 		},
-		description: 'The email address of the customer who placed the order.',
+		description: 'The email address of the customer who placed the order',
 	},
 	{
-		displayName: 'Total price',
+		displayName: 'Total Price',
 		name: 'totalPrice',
 		type: 'number',
 		default: 0,
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'ecommerceOrder',
-				],
+				operation: ['create'],
+				resource: ['ecommerceOrder'],
 			},
 		},
-		description: 'The total price of the order in cents, including tax and shipping charges. (i.e. $456.78 => 45678). Must be greater than or equal to zero.',
+		description:
+			'The total price of the order in cents, including tax and shipping charges. (i.e. $456.78 => 45678). Must be greater than or equal to zero.',
 	},
 	{
-		displayName: 'Order currency',
+		displayName: 'Order Currency',
 		name: 'currency',
 		type: 'options',
 		default: 'eur',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'ecommerceOrder',
-				],
+				operation: ['create'],
+				resource: ['ecommerceOrder'],
 			},
 		},
 		options: allCurrencies,
-		description: 'The currency of the order (3-digit ISO code, e.g., "USD").',
+		description: 'The currency of the order (3-digit ISO code, e.g., "USD")',
 	},
 	{
 		displayName: 'Connection ID',
@@ -165,15 +150,11 @@ export const ecomOrderFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'ecommerceOrder',
-				],
+				operation: ['create'],
+				resource: ['ecommerceOrder'],
 			},
 		},
-		description: 'The id of the connection from which this order originated.',
+		description: 'The ID of the connection from which this order originated',
 	},
 	{
 		displayName: 'Customer ID',
@@ -183,15 +164,11 @@ export const ecomOrderFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'ecommerceOrder',
-				],
+				operation: ['create'],
+				resource: ['ecommerceOrder'],
 			},
 		},
-		description: 'The id of the customer associated with this order.',
+		description: 'The ID of the customer associated with this order',
 	},
 	{
 		displayName: 'Creation Date',
@@ -201,15 +178,11 @@ export const ecomOrderFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'ecommerceOrder',
-				],
+				operation: ['create'],
+				resource: ['ecommerceOrder'],
 			},
 		},
-		description: 'The date the order was placed.',
+		description: 'The date the order was placed',
 	},
 	{
 		displayName: 'Abandoning Date',
@@ -218,12 +191,8 @@ export const ecomOrderFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'ecommerceOrder',
-				],
+				operation: ['create'],
+				resource: ['ecommerceOrder'],
 			},
 		},
 		description: 'The date the cart was abandoned. REQUIRED ONLY IF INCLUDING EXTERNALCHECKOUTID.',
@@ -238,12 +207,8 @@ export const ecomOrderFields = [
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'create'
-				],
-				resource: [
-					'ecommerceOrder',
-				],
+				operation: ['create'],
+				resource: ['ecommerceOrder'],
 			},
 		},
 		default: {},
@@ -262,56 +227,57 @@ export const ecomOrderFields = [
 				name: 'price',
 				type: 'number',
 				default: 0,
-				description: 'The price of the product, in cents. (i.e. $456.78 => 45678). Must be greater than or equal to zero.',
+				description:
+					'The price of the product, in cents. (i.e. $456.78 => 45678). Must be greater than or equal to zero.',
 			},
 			{
 				displayName: 'Product Quantity',
 				name: 'quantity',
 				type: 'number',
 				default: 0,
-				description: 'The quantity ordered.',
+				description: 'The quantity ordered',
 			},
 			{
-				displayName: 'Product external ID',
+				displayName: 'Product External ID',
 				name: 'externalid',
 				type: 'string',
 				default: '',
-				description: 'The id of the product in the external service.',
+				description: 'The ID of the product in the external service',
 			},
 			{
 				displayName: 'Product Category',
 				name: 'category',
 				type: 'string',
 				default: '',
-				description: 'The category of the product.',
+				description: 'The category of the product',
 			},
 			{
 				displayName: 'SKU',
 				name: 'sku',
 				type: 'string',
 				default: '',
-				description: 'The SKU for the product.',
+				description: 'The SKU for the product',
 			},
 			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'The description of the product.',
+				description: 'The description of the product',
 			},
 			{
 				displayName: 'Image URL',
 				name: 'imageUrl',
 				type: 'string',
 				default: '',
-				description: 'An Image URL that displays an image of the product.',
+				description: 'An Image URL that displays an image of the product',
 			},
 			{
 				displayName: 'Product URL',
 				name: 'productUrl',
 				type: 'string',
 				default: '',
-				description: 'A URL linking to the product in your store.',
+				description: 'A URL linking to the product in your store',
 			},
 		],
 	},
@@ -322,12 +288,8 @@ export const ecomOrderFields = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'ecommerceOrder',
-				],
+				operation: ['create'],
+				resource: ['ecommerceOrder'],
 			},
 		},
 		default: {},
@@ -337,7 +299,7 @@ export const ecomOrderFields = [
 				name: 'shippingAmount',
 				type: 'number',
 				default: 0,
-				description: 'The total shipping amount for the order in cents .',
+				description: 'The total shipping amount for the order in cents',
 			},
 
 			{
@@ -345,35 +307,35 @@ export const ecomOrderFields = [
 				name: 'taxAmount',
 				type: 'number',
 				default: 0,
-				description: 'The total tax amount for the order in cents.',
+				description: 'The total tax amount for the order in cents',
 			},
 			{
 				displayName: 'Discount Amount',
 				name: 'discountAmount',
 				type: 'number',
 				default: 0,
-				description: 'The total discount amount for the order in cents.',
+				description: 'The total discount amount for the order in cents',
 			},
 			{
 				displayName: 'Order URL',
 				name: 'orderUrl',
 				type: 'string',
 				default: '',
-				description: 'The URL for the order in the external service.',
+				description: 'The URL for the order in the external service',
 			},
 			{
-				displayName: 'External updated date',
+				displayName: 'External Updated Date',
 				name: 'externalUpdatedDate',
 				type: 'dateTime',
 				default: '',
-				description: 'The date the order was updated.',
+				description: 'The date the order was updated',
 			},
 			{
 				displayName: 'Shipping Method',
 				name: 'shippingMethod',
 				type: 'string',
 				default: '',
-				description: 'The shipping method of the order.',
+				description: 'The shipping method of the order',
 			},
 			{
 				displayName: 'Order Number',
@@ -382,8 +344,7 @@ export const ecomOrderFields = [
 				default: '',
 				description: 'The order number. This can be different than the externalid.',
 			},
-
-		]
+		],
 	},
 
 	// ----------------------------------
@@ -396,30 +357,22 @@ export const ecomOrderFields = [
 		default: 0,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'ecommerceOrder',
-				],
+				operation: ['update'],
+				resource: ['ecommerceOrder'],
 			},
 		},
-		description: 'The id of the e-commerce order.',
+		description: 'The ID of the e-commerce order',
 	},
 
 	{
-		displayName: 'Add Field',
+		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'ecommerceOrder',
-				],
+				operation: ['update'],
+				resource: ['ecommerceOrder'],
 			},
 		},
 		default: {},
@@ -429,78 +382,84 @@ export const ecomOrderFields = [
 				name: 'externalid',
 				type: 'string',
 				default: '',
-				description: 'The id of the order in the external service. ONLY REQUIRED IF EXTERNALCHECKOUTID NOT INCLUDED',
+				description:
+					'The ID of the order in the external service. ONLY REQUIRED IF EXTERNALCHECKOUTID NOT INCLUDED.',
 			},
 			{
-				displayName: 'External checkout ID',
+				displayName: 'External Checkout ID',
 				name: 'externalcheckoutid',
 				type: 'string',
 				default: '',
-				description: 'The id of the cart in the external service. ONLY REQUIRED IF EXTERNALID IS NOT INCLUDED.',
+				description:
+					'The ID of the cart in the external service. ONLY REQUIRED IF EXTERNALID IS NOT INCLUDED.',
 			},
 			{
-				displayName: 'Order source',
+				displayName: 'Order Source',
 				name: 'source',
 				type: 'number',
 				default: 0,
-				description: 'The order source code (0 - will not trigger automations, 1 - will trigger automations).',
+				description:
+					'The order source code (0 - will not trigger automations, 1 - will trigger automations)',
 			},
 			{
 				displayName: 'Customer Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
-				description: 'The email address of the customer who placed the order.',
+				description: 'The email address of the customer who placed the order',
 			},
 			{
-				displayName: 'Total price',
+				displayName: 'Total Price',
 				name: 'totalPrice',
 				type: 'number',
 				default: 0,
-				description: 'The total price of the order in cents, including tax and shipping charges. (i.e. $456.78 => 45678). Must be greater than or equal to zero.',
+				description:
+					'The total price of the order in cents, including tax and shipping charges. (i.e. $456.78 => 45678). Must be greater than or equal to zero.',
 			},
 			{
-				displayName: 'Order currency',
+				displayName: 'Order Currency',
 				name: 'currency',
 				type: 'options',
 				default: 'eur',
 				options: allCurrencies,
-				description: 'The currency of the order (3-digit ISO code, e.g., "USD").',
+				description: 'The currency of the order (3-digit ISO code, e.g., "USD")',
 			},
 			{
 				displayName: 'Connection ID',
 				name: 'connectionid',
 				type: 'number',
 				default: 0,
-				description: 'The id of the connection from which this order originated.',
+				description: 'The ID of the connection from which this order originated',
 			},
 			{
 				displayName: 'Customer ID',
 				name: 'customerid',
 				type: 'number',
 				default: 0,
-				description: 'The id of the customer associated with this order.',
+				description: 'The ID of the customer associated with this order',
 			},
 			{
 				displayName: 'Creation Date',
 				name: 'externalupdatedDate',
 				type: 'dateTime',
 				default: '',
-				description: 'The date the order was placed.',
+				description: 'The date the order was placed',
 			},
 			{
 				displayName: 'Abandoning Date',
 				name: 'abandonedDate',
 				type: 'dateTime',
 				default: '',
-				description: 'The date the cart was abandoned. REQUIRED ONLY IF INCLUDING EXTERNALCHECKOUTID.',
+				description:
+					'The date the cart was abandoned. REQUIRED ONLY IF INCLUDING EXTERNALCHECKOUTID.',
 			},
 			{
 				displayName: 'Shipping Amount',
 				name: 'shippingAmount',
 				type: 'number',
 				default: 0,
-				description: 'The total shipping amount for the order in cents .',
+				description: 'The total shipping amount for the order in cents',
 			},
 
 			{
@@ -508,35 +467,35 @@ export const ecomOrderFields = [
 				name: 'taxAmount',
 				type: 'number',
 				default: 0,
-				description: 'The total tax amount for the order in cents.',
+				description: 'The total tax amount for the order in cents',
 			},
 			{
 				displayName: 'Discount Amount',
 				name: 'discountAmount',
 				type: 'number',
 				default: 0,
-				description: 'The total discount amount for the order in cents.',
+				description: 'The total discount amount for the order in cents',
 			},
 			{
 				displayName: 'Order URL',
 				name: 'orderUrl',
 				type: 'string',
 				default: '',
-				description: 'The URL for the order in the external service.',
+				description: 'The URL for the order in the external service',
 			},
 			{
-				displayName: 'External updated date',
+				displayName: 'External Updated Date',
 				name: 'externalUpdatedDate',
 				type: 'dateTime',
 				default: '',
-				description: 'The date the order was updated.',
+				description: 'The date the order was updated',
 			},
 			{
 				displayName: 'Shipping Method',
 				name: 'shippingMethod',
 				type: 'string',
 				default: '',
-				description: 'The shipping method of the order.',
+				description: 'The shipping method of the order',
 			},
 			{
 				displayName: 'Order Number',
@@ -570,61 +529,61 @@ export const ecomOrderFields = [
 						name: 'price',
 						type: 'number',
 						default: 0,
-						description: 'The price of the product, in cents. (i.e. $456.78 => 45678). Must be greater than or equal to zero.',
+						description:
+							'The price of the product, in cents. (i.e. $456.78 => 45678). Must be greater than or equal to zero.',
 					},
 					{
 						displayName: 'Product Quantity',
 						name: 'quantity',
 						type: 'number',
 						default: 0,
-						description: 'The quantity ordered.',
+						description: 'The quantity ordered',
 					},
 					{
-						displayName: 'Product external ID',
+						displayName: 'Product External ID',
 						name: 'externalid',
 						type: 'string',
 						default: '',
-						description: 'The id of the product in the external service.',
+						description: 'The ID of the product in the external service',
 					},
 					{
 						displayName: 'Product Category',
 						name: 'category',
 						type: 'string',
 						default: '',
-						description: 'The category of the product.',
+						description: 'The category of the product',
 					},
 					{
 						displayName: 'SKU',
 						name: 'sku',
 						type: 'string',
 						default: '',
-						description: 'The SKU for the product.',
+						description: 'The SKU for the product',
 					},
 					{
 						displayName: 'Description',
 						name: 'description',
 						type: 'string',
 						default: '',
-						description: 'The description of the product.',
+						description: 'The description of the product',
 					},
 					{
 						displayName: 'Image URL',
 						name: 'imageUrl',
 						type: 'string',
 						default: '',
-						description: 'An Image URL that displays an image of the product.',
+						description: 'An Image URL that displays an image of the product',
 					},
 					{
 						displayName: 'Product URL',
 						name: 'productUrl',
 						type: 'string',
 						default: '',
-						description: 'A URL linking to the product in your store.',
+						description: 'A URL linking to the product in your store',
 					},
 				],
 			},
-
-		]
+		],
 	},
 
 	// ----------------------------------
@@ -637,15 +596,11 @@ export const ecomOrderFields = [
 		default: 0,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'ecommerceOrder',
-				],
+				operation: ['delete'],
+				resource: ['ecommerceOrder'],
 			},
 		},
-		description: 'The id of the e-commerce order.',
+		description: 'The ID of the e-commerce order',
 	},
 
 	// ----------------------------------
@@ -658,59 +613,15 @@ export const ecomOrderFields = [
 		default: 0,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'ecommerceOrder',
-				],
+				operation: ['get'],
+				resource: ['ecommerceOrder'],
 			},
 		},
-		description: 'The id of the e-commerce order.',
+		description: 'The ID of the e-commerce order',
 	},
 
 	// ----------------------------------
 	//         ecommerceOrder:getAll
 	// ----------------------------------
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'ecommerceOrder',
-				],
-			},
-		},
-		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		displayOptions: {
-			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'ecommerceOrder',
-				],
-				returnAll: [
-					false,
-				],
-			},
-		},
-		typeOptions: {
-			minValue: 1,
-			maxValue: 500,
-		},
-		default: 100,
-		description: 'How many results to return.',
-	},
-] as INodeProperties[];
+	...activeCampaignDefaultGetAllProperties('ecommerceOrder', 'getAll'),
+];

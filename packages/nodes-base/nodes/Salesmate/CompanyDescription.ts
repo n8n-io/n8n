@@ -1,15 +1,14 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const companyOperations = [
+export const companyOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
+				resource: ['company'],
 			},
 		},
 		options: [
@@ -17,38 +16,41 @@ export const companyOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a company',
+				action: 'Create a company',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a company',
+				action: 'Delete a company',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a company',
+				action: 'Get a company',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all companies',
+				description: 'Get many companies',
+				action: 'Get many companies',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a company',
+				action: 'Update a company',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const companyFields = [
-
-/* -------------------------------------------------------------------------- */
-/*                                company:create                              */
-/* -------------------------------------------------------------------------- */
+export const companyFields: INodeProperties[] = [
+	/* -------------------------------------------------------------------------- */
+	/*                                company:create                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Name',
 		name: 'name',
@@ -56,32 +58,26 @@ export const companyFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['company'],
+				operation: ['create'],
 			},
 		},
 		required: true,
 	},
 	{
-		displayName: 'Owner',
+		displayName: 'Owner Name or ID',
 		name: 'owner',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getUsers',
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['company'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -92,16 +88,12 @@ export const companyFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['company'],
+				operation: ['create'],
 			},
 		},
 		default: false,
-		description: `If the data should include the fields details`,
+		description: 'Whether the data should include the fields details',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -111,12 +103,8 @@ export const companyFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['company'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -224,9 +212,9 @@ export const companyFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                company:update                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                company:update                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Company ID',
 		name: 'id',
@@ -235,15 +223,10 @@ export const companyFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['company'],
+				operation: ['update'],
 			},
 		},
-		description: 'company ID',
 	},
 	{
 		displayName: 'RAW Data',
@@ -251,16 +234,12 @@ export const companyFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['company'],
+				operation: ['update'],
 			},
 		},
 		default: false,
-		description: `If the data should include the fields details`,
+		description: 'Whether the data should include the fields details',
 	},
 	{
 		displayName: 'Update Fields',
@@ -270,25 +249,23 @@ export const companyFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['company'],
+				operation: ['update'],
 			},
 		},
 		options: [
 			{
-				displayName: 'name',
+				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Owner',
+				displayName: 'Owner Name or ID',
 				name: 'owner',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
@@ -397,11 +374,10 @@ export const companyFields = [
 				default: '',
 			},
 		],
-
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 company:get                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 company:get                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Company ID',
 		name: 'id',
@@ -410,15 +386,10 @@ export const companyFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['company'],
+				operation: ['get'],
 			},
 		},
-		description: 'company ID',
 	},
 	{
 		displayName: 'RAW Data',
@@ -426,36 +397,28 @@ export const companyFields = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['company'],
+				operation: ['get'],
 			},
 		},
 		default: false,
-		description: `If the data should include the fields details`,
+		description: 'Whether the data should include the fields details',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 company:getAll                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 company:getAll                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['company'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -463,15 +426,9 @@ export const companyFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['company'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -479,22 +436,17 @@ export const companyFields = [
 			maxValue: 25,
 		},
 		default: 10,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'JSON Parameters',
 		name: 'jsonParameters',
 		type: 'boolean',
 		default: false,
-		description: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'company',
-				],
+				operation: ['getAll'],
+				resource: ['company'],
 			},
 		},
 	},
@@ -502,16 +454,12 @@ export const companyFields = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['company'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -520,14 +468,14 @@ export const companyFields = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Comma separated list of fields to return.',
+				description: 'Comma-separated list of fields to return',
 			},
 			{
 				displayName: 'Sort By',
 				name: 'sortBy',
 				type: 'string',
 				default: '',
-				description: 'The field to sort by.',
+				description: 'The field to sort by',
 			},
 			{
 				displayName: 'Sort Order',
@@ -544,8 +492,7 @@ export const companyFields = [
 					},
 				],
 				default: 'desc',
-				description: 'Sort order',
-			}
+			},
 		],
 	},
 	{
@@ -558,15 +505,9 @@ export const companyFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'company',
-				],
-				jsonParameters: [
-					true,
-				],
+				operation: ['getAll'],
+				resource: ['company'],
+				jsonParameters: [true],
 			},
 		},
 	},
@@ -580,15 +521,9 @@ export const companyFields = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['company'],
+				operation: ['getAll'],
+				jsonParameters: [false],
 			},
 		},
 		default: {},
@@ -651,6 +586,7 @@ export const companyFields = [
 										displayName: 'Condition',
 										name: 'condition',
 										type: 'options',
+										// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 										options: [
 											{
 												name: 'Equals',
@@ -661,20 +597,20 @@ export const companyFields = [
 												value: 'NOT_EQUALS',
 											},
 											{
-												name: 'Empty',
-												value: 'EMPTY',
-											},
-											{
-												name: 'Not Empty',
-												value: 'NOT_EMPTY',
-											},
-											{
 												name: 'CONTAINS',
 												value: 'Contains',
 											},
 											{
 												name: 'Does Not Contains',
 												value: 'DOES_NOT_CONTAINS',
+											},
+											{
+												name: 'Empty',
+												value: 'EMPTY',
+											},
+											{
+												name: 'Not Empty',
+												value: 'NOT_EMPTY',
 											},
 											{
 												name: 'Starts With',
@@ -686,25 +622,25 @@ export const companyFields = [
 											},
 										],
 										default: 'EQUALS',
-										description: 'Value of the property to set.',
+										description: 'Value of the property to set',
 									},
 									{
 										displayName: 'Value',
 										name: 'value',
 										type: 'string',
 										default: '',
-									}
-								]
+									},
+								],
 							},
 						],
 					},
-				]
+				],
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                company:delete                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                company:delete                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Company ID',
 		name: 'id',
@@ -713,14 +649,10 @@ export const companyFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['company'],
+				operation: ['delete'],
 			},
 		},
 		description: 'If more than one company add them separated by ,',
 	},
-] as INodeProperties[];
+];

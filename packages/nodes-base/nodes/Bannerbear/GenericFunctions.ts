@@ -1,31 +1,29 @@
-import {
-	OptionsWithUri,
- } from 'request';
-
-import {
+import { snakeCase } from 'change-case';
+import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	IHookFunctions,
 	IWebhookFunctions,
+	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import {
-	snakeCase,
-} from 'change-case';
+export async function bannerbearApiRequest(
+	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	resource: string,
 
-export async function bannerbearApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	uri?: string,
+	headers: IDataObject = {},
+): Promise<any> {
+	const credentials = await this.getCredentials('bannerbearApi');
 
-	const credentials = this.getCredentials('bannerbearApi');
-
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
-
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers: {
 			Accept: 'application/json',
 			Authorization: `Bearer ${credentials.apiKey}`,
@@ -36,7 +34,7 @@ export async function bannerbearApiRequest(this: IExecuteFunctions | IWebhookFun
 		uri: uri || `https://api.bannerbear.com/v2${resource}`,
 		json: true,
 	};
-	if (!Object.keys(body).length) {
+	if (!Object.keys(body as IDataObject).length) {
 		delete options.form;
 	}
 	if (!Object.keys(query).length) {
@@ -44,18 +42,13 @@ export async function bannerbearApiRequest(this: IExecuteFunctions | IWebhookFun
 	}
 	options.headers = Object.assign({}, options.headers, headers);
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.message) {
-			// Try to return the error prettier
-				//@ts-ignore
-				throw new Error(`Bannerbear error response [${error.statusCode}]: ${error.response.body.message}`);
-		}
-		throw error;
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
-export function keysToSnakeCase(elements: IDataObject[] | IDataObject) : IDataObject[] {
+export function keysToSnakeCase(elements: IDataObject[] | IDataObject): IDataObject[] {
 	if (!Array.isArray(elements)) {
 		elements = [elements];
 	}

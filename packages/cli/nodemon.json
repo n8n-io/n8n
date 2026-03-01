@@ -1,14 +1,6 @@
 {
-	"ignore": [
-		"**/*.spec.ts",
-		".git",
-		"node_modules"
-	],
-	"watch": [
-		"commands",
-		"index.ts",
-		"src"
-	],
+	"ignore": ["**/*.spec.ts", ".git", "node_modules"],
+	"watch": ["dist"],
 	"exec": "npm start",
-	"ext": "ts"
+	"ext": "js"
 }

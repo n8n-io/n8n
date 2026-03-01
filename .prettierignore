@@ -1,0 +1,24 @@
+coverage
+dist
+package.json
+pnpm-lock.yaml
+packages/frontend/editor-ui/index.html
+packages/nodes-base/nodes/**/test
+packages/cli/templates/form-trigger.handlebars
+packages/cli/templates/form-trigger-completion.handlebars
+packages/cli/templates/form-trigger-409.handlebars
+packages/cli/templates/form-trigger-404.handlebars
+CHANGELOG.md
+.github/pull_request_template.md
+# Ignored for now
+**/*.md
+# Handled by biome
+**/*.ts
+**/*.js
+**/*.json
+**/*.jsonc
+
+# Auto-generated
+**/components.d.ts
+
+justfile

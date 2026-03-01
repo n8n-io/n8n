@@ -1,0 +1,23 @@
+{
+	"name": "@n8n/n8n-extension-insights",
+	"version": "1.0.0",
+	"author": "n8n",
+	"category": "Internal",
+	"minSDKVersion": "0.0.0",
+	"permissions": {
+		"frontend": [],
+		"backend": []
+	},
+	"events": ["workflow:started"],
+	"setup": {
+		"backend": "./dist/backend/index.js",
+		"frontend": "./dist/frontend/index.js"
+	},
+	"extends": {
+		"views": {
+			"workflows": {
+				"header": "InsightsDashboard"
+			}
+		}
+	}
+}

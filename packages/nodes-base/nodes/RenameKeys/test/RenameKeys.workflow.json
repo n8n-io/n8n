@@ -1,0 +1,302 @@
+{
+  "name": "node-268-node-unit-test-rename-keys",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "2057ea8b-4834-425f-8ca5-d810c20628fe",
+      "name": "When clicking \"Execute Workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "keys": {
+          "key": [
+            {
+              "currentKey": "=propertyName",
+              "newKey": "test"
+            }
+          ]
+        },
+        "additionalOptions": {}
+      },
+      "id": "c44432e0-47bd-43e9-aefe-819c01920dc0",
+      "name": "Rename Keys",
+      "type": "n8n-nodes-base.renameKeys",
+      "typeVersion": 1,
+      "position": [
+        700,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "number": [
+            {}
+          ]
+        },
+        "options": {}
+      },
+      "id": "2e4f420d-1aac-408f-8585-4c332a68ae48",
+      "name": "Set",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        500,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "number": [
+            {
+              "name": "propertyName.newPropertyName",
+              "value": 21
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4a8bcf08-d16b-462b-9bb9-f1ab28c0cc88",
+      "name": "Set with dot notation",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        500,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "keys": {
+          "key": [
+            {
+              "currentKey": "=propertyName.newPropertyName",
+              "newKey": "test.dot"
+            }
+          ]
+        },
+        "additionalOptions": {}
+      },
+      "id": "3efdd843-74aa-478c-a1d3-66bd36e49b24",
+      "name": "Rename Keys with dot notation",
+      "type": "n8n-nodes-base.renameKeys",
+      "typeVersion": 1,
+      "position": [
+        700,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "number": [
+            {
+              "name": "propertyName.newPropertyName",
+              "value": 21
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3fae3aad-89ad-40c7-a49e-1ae1c4ddf999",
+      "name": "Set with undefined",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        500,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "keys": {
+          "key": [
+            {
+              "currentKey": "=propertyName.newPropertyName"
+            }
+          ]
+        },
+        "additionalOptions": {}
+      },
+      "id": "7d6f85d3-1847-409b-a0b4-ebbfbaa0dd19",
+      "name": "Rename Keys with undefined",
+      "type": "n8n-nodes-base.renameKeys",
+      "typeVersion": 1,
+      "position": [
+        700,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "number": [
+            {
+              "name": "propertyName.newPropertyName"
+            },
+            {
+              "name": "regex"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "748143c8-cf83-4585-9f1c-1ef23911accb",
+      "name": "Set with dot notation1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        500,
+        760
+      ]
+    },
+    {
+      "parameters": {
+        "additionalOptions": {
+          "regexReplacement": {
+            "replacements": [
+              {
+                "searchRegex": "reg",
+                "replaceRegex": "test",
+                "options": {}
+              }
+            ]
+          }
+        }
+      },
+      "id": "e47b7001-8270-43e7-a6ac-6bede047cfac",
+      "name": "Rename Keys with Regex",
+      "type": "n8n-nodes-base.renameKeys",
+      "typeVersion": 1,
+      "position": [
+        700,
+        760
+      ]
+    }
+  ],
+  "pinData": {
+    "Rename Keys": [
+      {
+        "json": {
+          "test": 0
+        }
+      }
+    ],
+    "Rename Keys with dot notation": [
+      {
+        "json": {
+          "propertyName": {},
+          "test": {
+            "dot": 21
+          }
+        }
+      }
+    ],
+    "Rename Keys with undefined": [
+      {
+        "json": {
+          "propertyName": {
+            "newPropertyName": 21
+          }
+        }
+      }
+    ],
+    "Rename Keys with Regex": [
+      {
+        "json": {
+          "propertyName": {
+            "newPropertyName": 0
+          },
+          "testex": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking \"Execute Workflow\"": {
+      "main": [
+        [
+          {
+            "node": "Set",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Set with dot notation",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Set with undefined",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Set with dot notation1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set": {
+      "main": [
+        [
+          {
+            "node": "Rename Keys",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set with dot notation": {
+      "main": [
+        [
+          {
+            "node": "Rename Keys with dot notation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set with undefined": {
+      "main": [
+        [
+          {
+            "node": "Rename Keys with undefined",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set with dot notation1": {
+      "main": [
+        [
+          {
+            "node": "Rename Keys with Regex",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "cd3cd0a4-12ec-44a9-8cca-f0c4acd4b0cd",
+  "id": "231",
+  "meta": {
+    "instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+  },
+  "tags": []
+}

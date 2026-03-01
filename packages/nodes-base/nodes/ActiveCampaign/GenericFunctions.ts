@@ -1,13 +1,14 @@
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
-} from 'n8n-core';
-
-import {
-	IDataObject, ILoadOptionsFunctions,
+	ILoadOptionsFunctions,
+	INodeProperties,
+	JsonObject,
+	IRequestOptions,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
-
-import { OptionsWithUri } from 'request';
+import { NodeApiError } from 'n8n-workflow';
 
 export interface IProduct {
 	fields: {
@@ -15,34 +16,30 @@ export interface IProduct {
 	};
 }
 
-
 /**
  * Make an API request to ActiveCampaign
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
-export async function activeCampaignApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, dataKey?: string): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('activeCampaignApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
+export async function activeCampaignApiRequest(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	endpoint: string,
+	body: IDataObject,
+	query?: IDataObject,
+	dataKey?: string,
+): Promise<any> {
+	const credentials = await this.getCredentials('activeCampaignApi');
 
 	if (query === undefined) {
 		query = {};
 	}
 
-	const options: OptionsWithUri = {
-		headers: {
-			'Api-Token': credentials.apiKey,
-		},
+	const options: IRequestOptions = {
+		headers: {},
 		method,
 		qs: query,
 		uri: `${credentials.apiUrl}${endpoint}`,
-		json: true
+		json: true,
 	};
 
 	if (Object.keys(body).length !== 0) {
@@ -50,10 +47,14 @@ export async function activeCampaignApiRequest(this: IHookFunctions | IExecuteFu
 	}
 
 	try {
-		const responseData = await this.helpers.request!(options);
+		const responseData = await this.helpers.requestWithAuthentication.call(
+			this,
+			'activeCampaignApi',
+			options,
+		);
 
 		if (responseData.success === false) {
-			throw new Error(`ActiveCampaign error response: ${responseData.error} (${responseData.error_info})`);
+			throw new NodeApiError(this.getNode(), responseData as JsonObject);
 		}
 
 		if (dataKey === undefined) {
@@ -61,34 +62,25 @@ export async function activeCampaignApiRequest(this: IHookFunctions | IExecuteFu
 		} else {
 			return responseData[dataKey] as IDataObject;
 		}
-
 	} catch (error) {
-		if (error.statusCode === 403) {
-			// Return a clear error
-			throw new Error('The ActiveCampaign credentials are not valid!');
-		}
-
-		// If that data does not exist for some reason return the actual error
-		throw error;
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
-
-
 
 /**
  * Make an API request to paginated ActiveCampaign endpoint
  * and return all results
  *
- * @export
  * @param {(IHookFunctions | IExecuteFunctions)} this
- * @param {string} method
- * @param {string} endpoint
- * @param {IDataObject} body
- * @param {IDataObject} [query]
- * @returns {Promise<any>}
  */
-export async function activeCampaignApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject, dataKey?: string): Promise<any> { // tslint:disable-line:no-any
-
+export async function activeCampaignApiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	endpoint: string,
+	body: IDataObject,
+	query?: IDataObject,
+	dataKey?: string,
+): Promise<any> {
 	if (query === undefined) {
 		query = {};
 	}
@@ -104,23 +96,71 @@ export async function activeCampaignApiRequestAllItems(this: IHookFunctions | IE
 		responseData = await activeCampaignApiRequest.call(this, method, endpoint, body, query);
 
 		if (dataKey === undefined) {
-			returnData.push.apply(returnData, responseData);
+			returnData.push.apply(returnData, responseData as IDataObject[]);
 			if (returnData !== undefined) {
 				itemsReceived += returnData.length;
 			}
 		} else {
-			returnData.push.apply(returnData, responseData[dataKey]);
+			returnData.push.apply(returnData, responseData[dataKey] as IDataObject[]);
 			if (responseData[dataKey] !== undefined) {
 				itemsReceived += responseData[dataKey].length;
 			}
 		}
 
 		query.offset = itemsReceived;
-	} while (
-		responseData.meta !== undefined &&
-		responseData.meta.total !== undefined &&
-		responseData.meta.total > itemsReceived
-	);
+	} while (responseData.meta?.total !== undefined && responseData.meta.total > itemsReceived);
 
 	return returnData;
+}
+
+export function activeCampaignDefaultGetAllProperties(
+	resource: string,
+	operation: string,
+): INodeProperties[] {
+	return [
+		{
+			displayName: 'Return All',
+			name: 'returnAll',
+			type: 'boolean',
+			displayOptions: {
+				show: {
+					operation: [operation],
+					resource: [resource],
+				},
+			},
+			default: false,
+			description: 'Whether to return all results or only up to a given limit',
+		},
+		{
+			displayName: 'Limit',
+			name: 'limit',
+			type: 'number',
+			displayOptions: {
+				show: {
+					operation: [operation],
+					resource: [resource],
+					returnAll: [false],
+				},
+			},
+			typeOptions: {
+				minValue: 1,
+				maxValue: 500,
+			},
+			default: 100,
+			description: 'Max number of results to return',
+		},
+		{
+			displayName: 'Simplify',
+			name: 'simple',
+			type: 'boolean',
+			displayOptions: {
+				show: {
+					operation: [operation],
+					resource: [resource],
+				},
+			},
+			default: true,
+			description: 'Whether to return a simplified version of the response instead of the raw data',
+		},
+	];
 }

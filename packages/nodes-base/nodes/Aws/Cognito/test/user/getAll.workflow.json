@@ -1,0 +1,86 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [260, 360],
+			"id": "9ed2b86b-7c24-4ea0-a328-92d9e6dba35a",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"userPool": {
+					"__rl": true,
+					"value": "eu-central-1_KkXQgdCJv",
+					"mode": "list",
+					"cachedResultName": "AWS test"
+				},
+				"returnAll": true,
+				"requestOptions": {}
+			},
+			"id": "e788623f-5d4a-4e76-b7f6-3e9389e2fe29",
+			"name": "getAllUsers",
+			"type": "n8n-nodes-base.awsCognito",
+			"typeVersion": 1,
+			"position": [460, 360],
+			"alwaysOutputData": true,
+			"credentials": {
+				"aws": {
+					"id": "testId",
+					"name": "AWS account Central Europe"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"getAllUsers": [
+			{
+				"json": {
+					"Enabled": true,
+					"UserCreateDate": 1736343033.226,
+					"UserLastModifiedDate": 1736343033.226,
+					"UserStatus": "FORCE_CHANGE_PASSWORD",
+					"Username": "034448d2-4011-7079-9474-9a4fccd4247a",
+					"email": "FinalUser@gmail.com",
+					"Sub": "034448d2-4011-7079-9474-9a4fccd4247a"
+				}
+			},
+			{
+				"json": {
+					"Enabled": true,
+					"UserCreateDate": 1733746687.223,
+					"UserLastModifiedDate": 1733746687.223,
+					"UserStatus": "FORCE_CHANGE_PASSWORD",
+					"Username": "03a438f2-10d1-70f1-f45a-09753ab5c4c3",
+					"email": "mail.this1@gmail.com",
+					"Sub": "03a438f2-10d1-70f1-f45a-09753ab5c4c3"
+				}
+			},
+			{
+				"json": {
+					"Enabled": true,
+					"UserCreateDate": 1742928785.796,
+					"UserLastModifiedDate": 1742928785.796,
+					"UserStatus": "FORCE_CHANGE_PASSWORD",
+					"Username": "03f438d2-b0f1-70bc-04d9-f6dd31f2d878",
+					"email": "test3@gmail.com",
+					"Sub": "03f438d2-b0f1-70bc-04d9-f6dd31f2d878"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "getAllUsers",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

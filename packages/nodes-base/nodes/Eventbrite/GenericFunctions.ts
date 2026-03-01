@@ -1,41 +1,57 @@
-import { OptionsWithUri } from 'request';
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
+	IRequestOptions,
 	IWebhookFunctions,
-} from 'n8n-core';
-import { IDataObject } from 'n8n-workflow';
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-export async function eventbriteApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('eventbriteApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
+const baseUrl = 'https://www.eventbriteapi.com/';
 
-	let options: OptionsWithUri = {
-		headers: { 'Authorization': `Bearer ${credentials.apiKey}`},
+export function isValidEventbriteUrl(url: unknown): boolean {
+	return typeof url === 'string' && url.startsWith(baseUrl);
+}
+
+export async function eventbriteApiRequest(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+	method: IHttpRequestMethods,
+	resource: string,
+
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+): Promise<any> {
+	let options: IRequestOptions = {
+		headers: {},
 		method,
 		qs,
 		body,
-		uri: uri ||`https://www.eventbriteapi.com/v3${resource}`,
-		json: true
+		uri: uri || `${baseUrl}v3${resource}`,
+		json: true,
 	};
 	options = Object.assign({}, options, option);
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
 	}
 
-	try {
-		return await this.helpers.request!(options);
-	} catch (error) {
-		let errorMessage = error.message;
-		if (error.response.body && error.response.body.error_description) {
-			errorMessage = error.response.body.error_description;
-		}
+	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
-		throw new Error('Eventbrite Error: ' + errorMessage);
+	try {
+		if (authenticationMethod === 'privateKey') {
+			const credentials = await this.getCredentials('eventbriteApi');
+
+			options.headers!.Authorization = `Bearer ${credentials.apiKey}`;
+			return await this.helpers.request(options);
+		} else {
+			return await this.helpers.requestOAuth2.call(this, 'eventbriteOAuth2Api', options);
+		}
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -43,8 +59,15 @@ export async function eventbriteApiRequest(this: IHookFunctions | IExecuteFuncti
  * Make an API request to paginated flow endpoint
  * and return all results
  */
-export async function eventbriteApiRequestAllItems(this: IHookFunctions | IExecuteFunctions| ILoadOptionsFunctions, propertyName: string, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function eventbriteApiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	method: IHttpRequestMethods,
+	resource: string,
 
+	body: any = {},
+	query: IDataObject = {},
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -52,10 +75,9 @@ export async function eventbriteApiRequestAllItems(this: IHookFunctions | IExecu
 	do {
 		responseData = await eventbriteApiRequest.call(this, method, resource, body, query);
 		query.continuation = responseData.pagination.continuation;
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (
-		responseData.pagination !== undefined &&
-		responseData.pagination.has_more_items !== undefined &&
+		responseData.pagination?.has_more_items !== undefined &&
 		responseData.pagination.has_more_items !== false
 	);
 

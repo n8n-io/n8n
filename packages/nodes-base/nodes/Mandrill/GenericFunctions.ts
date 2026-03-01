@@ -1,71 +1,62 @@
-import {
-	OptionsWithUri,
- } from 'request';
-
-import {
+import map from 'lodash/map';
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
+	IRequestOptions,
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import * as _ from 'lodash';
+export async function mandrillApiRequest(
+	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
+	resource: string,
+	method: IHttpRequestMethods,
+	action: string,
 
-export async function mandrillApiRequest(this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions, resource: string, method: string, action: string, body: any = {}, headers?: object): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('mandrillApi');
-
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
+	body: any = {},
+	headers?: IDataObject,
+): Promise<any> {
+	const credentials = await this.getCredentials('mandrillApi');
 
 	const data = Object.assign({}, body, { key: credentials.apiKey });
 
 	const endpoint = 'mandrillapp.com/api/1.0';
 
-	const options: OptionsWithUri = {
+	const options: IRequestOptions = {
 		headers,
 		method,
 		uri: `https://${endpoint}${resource}${action}.json`,
 		body: data,
-		json: true
+		json: true,
 	};
 
-
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		console.error(error);
-
-		const errorMessage = error.response.body.message || error.response.body.Message;
-		if (error.name === 'Invalid_Key') {
-			throw new Error('The provided API key is not a valid Mandrill API key');
-		} else if (error.name === 'ValidationError') {
-			throw new Error('The parameters passed to the API call are invalid or not provided when required');
-		} else if (error.name === 'GeneralError') {
-			throw new Error('An unexpected error occurred processing the request. Mandrill developers will be notified.');
-		}
-
-		if (errorMessage !== undefined) {
-			throw errorMessage;
-		}
-		throw error.response.body;
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
-export function getToEmailArray(toEmail: string): any { // tslint:disable-line:no-any
+export function getToEmailArray(toEmail: string): any {
 	let toEmailArray;
 	if (toEmail.split(',').length > 0) {
 		const array = toEmail.split(',');
-		toEmailArray = _.map(array, (email) => {
+		toEmailArray = map(array, (email) => {
 			return {
 				email,
-				type: 'to'
+				type: 'to',
 			};
 		});
 	} else {
-		toEmailArray = [{
-			email: toEmail,
-			type: 'to'
-		}];
+		toEmailArray = [
+			{
+				email: toEmail,
+				type: 'to',
+			},
+		];
 	}
 	return toEmailArray;
 }
@@ -80,7 +71,7 @@ export function getGoogleAnalyticsDomainsArray(s: string): string[] {
 	return array;
 }
 
-export function getTags(s: string): any[] { // tslint:disable-line:no-any
+export function getTags(s: string): any[] {
 	let array = [];
 	if (s.split(',').length > 0) {
 		array = s.split(',');
@@ -90,7 +81,7 @@ export function getTags(s: string): any[] { // tslint:disable-line:no-any
 	return array;
 }
 
-export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
 		result = JSON.parse(json!);

@@ -1,0 +1,19 @@
+{
+  "name": "@n8n/typescript-config",
+  "version": "1.3.0",
+  "type": "module",
+  "files": [
+    "tsconfig.backend.json",
+    "tsconfig.build.json",
+    "tsconfig.common.json",
+    "tsconfig.frontend.json"
+  ],
+  "exports": {
+    "./tsconfig.backend.json": "./tsconfig.backend.json",
+    "./tsconfig.build.json": "./tsconfig.build.json",
+    "./tsconfig.common.json": "./tsconfig.common.json",
+    "./tsconfig.frontend.json": "./tsconfig.frontend.json",
+    "./*": "./*"
+  },
+  "license": "See LICENSE.md file in the root of the repository"
+}

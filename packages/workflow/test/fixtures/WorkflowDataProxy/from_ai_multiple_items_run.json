@@ -1,0 +1,221 @@
+{
+	"data": {
+		"startData": {},
+		"resultData": {
+			"runData": {
+				"When clicking ‘Execute workflow’": [
+					{
+						"hints": [],
+						"startTime": 1733478795595,
+						"executionTime": 0,
+						"source": [],
+						"executionStatus": "success",
+						"data": {
+							"main": [
+								[
+									{
+										"json": {},
+										"pairedItem": {
+											"item": 0
+										}
+									}
+								]
+							]
+						}
+					}
+				],
+				"Code": [
+					{
+						"hints": [
+							{
+								"message": "To make sure expressions after this node work, return the input items that produced each output item. <a target=\"_blank\" href=\"https://docs.n8n.io/data/data-mapping/data-item-linking/item-linking-code-node/\">More info</a>",
+								"location": "outputPane"
+							}
+						],
+						"startTime": 1733478795595,
+						"executionTime": 2,
+						"source": [
+							{
+								"previousNode": "When clicking ‘Execute workflow’"
+							}
+						],
+						"executionStatus": "success",
+						"data": {
+							"main": [
+								[
+									{
+										"json": {
+											"full_name": "Mr. Input 1",
+											"email": "input1@n8n.io"
+										},
+										"pairedItem": {
+											"item": 0
+										}
+									},
+									{
+										"json": {
+											"full_name": "Mr. Input 2",
+											"email": "input2@n8n.io"
+										},
+										"pairedItem": {
+											"item": 0
+										}
+									}
+								]
+							]
+						}
+					}
+				],
+				"Google Sheets1": [
+					{
+						"startTime": 1733478796468,
+						"executionTime": 1417,
+						"executionStatus": "success",
+						"source": [null],
+						"data": {
+							"ai_tool": [
+								[
+									{
+										"json": {
+											"response": [
+												{
+													"full name": "Mr. Input 1",
+													"email": "input1@n8n.io"
+												},
+												{},
+												{}
+											]
+										}
+									}
+								]
+							]
+						},
+						"inputOverride": {
+							"ai_tool": [
+								[
+									{
+										"json": {
+											"full_name": "Mr. Input 1",
+											"email": "input1@n8n.io"
+										}
+									}
+								]
+							]
+						},
+						"metadata": {
+							"subRun": [
+								{
+									"node": "Google Sheets1",
+									"runIndex": 0
+								},
+								{
+									"node": "Google Sheets1",
+									"runIndex": 1
+								}
+							]
+						}
+					},
+					{
+						"startTime": 1733478799915,
+						"executionTime": 1271,
+						"executionStatus": "success",
+						"source": [null],
+						"data": {
+							"ai_tool": [
+								[
+									{
+										"json": {
+											"response": [
+												{
+													"full name": "Mr. Input 1",
+													"email": "input1@n8n.io"
+												},
+												{},
+												{}
+											]
+										}
+									}
+								]
+							]
+						},
+						"inputOverride": {
+							"ai_tool": [
+								[
+									{
+										"json": {
+											"full_name": "Mr. Input 2",
+											"email": "input2@n8n.io"
+										}
+									}
+								]
+							]
+						}
+					}
+				],
+				"Agent single list with multiple tool calls": [
+					{
+						"hints": [],
+						"startTime": 1733478795597,
+						"executionTime": 9157,
+						"source": [
+							{
+								"previousNode": "Code"
+							}
+						],
+						"executionStatus": "success",
+						"data": {
+							"main": [
+								[
+									{
+										"json": {
+											"output": "The user \"Mr. Input 1\" with the email \"input1@n8n.io\" has been successfully added to your Users sheet."
+										},
+										"pairedItem": {
+											"item": 0
+										}
+									},
+									{
+										"json": {
+											"output": "The user \"Mr. Input 2\" with the email \"input2@n8n.io\" has been successfully added to your Users sheet."
+										},
+										"pairedItem": {
+											"item": 1
+										}
+									}
+								]
+							]
+						}
+					}
+				]
+			},
+			"pinData": {},
+			"lastNodeExecuted": "Agent single list with multiple tool calls"
+		},
+		"executionData": {
+			"contextData": {},
+			"nodeExecutionStack": [],
+			"metadata": {
+				"Google Sheets1": [
+					{
+						"subRun": [
+							{
+								"node": "Google Sheets1",
+								"runIndex": 0
+							},
+							{
+								"node": "Google Sheets1",
+								"runIndex": 1
+							}
+						]
+					}
+				]
+			},
+			"waitingExecution": {},
+			"waitingExecutionSource": {}
+		}
+	},
+	"mode": "manual",
+	"startedAt": "2024-02-08T15:45:18.848Z",
+	"stoppedAt": "2024-02-08T15:45:18.862Z",
+	"status": "running"
+}

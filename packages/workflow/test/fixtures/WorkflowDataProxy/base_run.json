@@ -1,0 +1,140 @@
+{
+	"data": {
+		"startData": {},
+		"resultData": {
+			"runData": {
+				"Start": [
+					{
+						"startTime": 1,
+						"executionTime": 1,
+						"data": {
+							"main": [
+								[
+									{
+										"json": {}
+									}
+								]
+							]
+						},
+						"source": []
+					}
+				],
+				"Function": [
+					{
+						"startTime": 1,
+						"executionTime": 1,
+						"data": {
+							"main": [
+								[
+									{
+										"json": { "initialName": 105 },
+										"pairedItem": { "item": 0 }
+									},
+									{
+										"json": { "initialName": 160 },
+										"pairedItem": { "item": 0 }
+									},
+									{
+										"json": { "initialName": 121 },
+										"pairedItem": { "item": 0 }
+									},
+									{
+										"json": { "initialName": 275 },
+										"pairedItem": { "item": 0 }
+									},
+									{
+										"json": { "initialName": 950 },
+										"pairedItem": { "item": 0 }
+									}
+								]
+							]
+						},
+						"source": [
+							{
+								"previousNode": "Start"
+							}
+						]
+					}
+				],
+				"Rename": [
+					{
+						"startTime": 1,
+						"executionTime": 1,
+						"data": {
+							"main": [
+								[
+									{
+										"json": { "data": 105 },
+										"pairedItem": { "item": 0 }
+									},
+									{
+										"json": { "data": 160 },
+										"pairedItem": { "item": 1 }
+									},
+									{
+										"json": { "data": 121 },
+										"pairedItem": { "item": 2 }
+									},
+									{
+										"json": { "data": 275 },
+										"pairedItem": { "item": 3 }
+									},
+									{
+										"json": { "data": 950 },
+										"pairedItem": { "item": 4 }
+									}
+								]
+							]
+						},
+						"source": [
+							{
+								"previousNode": "Function"
+							}
+						]
+					}
+				],
+				"End": [
+					{
+						"startTime": 1,
+						"executionTime": 1,
+						"data": {
+							"main": [
+								[
+									{
+										"json": { "data": 105 },
+										"pairedItem": { "item": 0 }
+									},
+									{
+										"json": { "data": 160 },
+										"pairedItem": { "item": 1 }
+									},
+									{
+										"json": { "data": 121 },
+										"pairedItem": { "item": 2 }
+									},
+									{
+										"json": { "data": 275 },
+										"pairedItem": { "item": 3 }
+									},
+									{
+										"json": { "data": 950 },
+										"pairedItem": { "item": 4 }
+									}
+								]
+							]
+						},
+						"source": [
+							{
+								"previousNode": "Rename"
+							}
+						]
+					}
+				]
+			}
+		}
+	},
+	"mode": "manual",
+	"startedAt": "2024-02-08T15:45:18.848Z",
+	"stoppedAt": "2024-02-08T15:45:18.862Z",
+	"status": "running"
+}

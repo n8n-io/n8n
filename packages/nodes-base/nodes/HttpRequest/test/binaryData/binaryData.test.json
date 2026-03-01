@@ -1,0 +1,264 @@
+{
+	"name": "Download as Binary Data",
+	"nodes": [
+		{
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"parameters": {},
+			"position": [580, 300]
+		},
+		{
+			"name": "HTTP Request (v1)",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 1,
+			"parameters": {
+				"url": "https://dummy.domain/path/to/image.png",
+				"responseFormat": "file"
+			},
+			"position": [1020, -100]
+		},
+		{
+			"name": "HTTP Request (v2)",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 2,
+			"parameters": {
+				"url": "https://dummy.domain/path/to/image.png",
+				"responseFormat": "file",
+				"options": {}
+			},
+			"position": [1020, 80]
+		},
+		{
+			"name": "HTTP Request (v3)",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 3,
+			"parameters": {
+				"url": "https://dummy.domain/path/to/image.png",
+				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "file"
+						}
+					}
+				}
+			},
+			"position": [1020, 240]
+		},
+		{
+			"name": "HTTP Request (v4)",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4,
+			"parameters": {
+				"url": "https://dummy.domain/path/to/image.png",
+				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "file"
+						}
+					}
+				}
+			},
+			"position": [1020, 400]
+		},
+		{
+			"name": "Follow Redirect",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"parameters": {
+				"url": "https://dummy.domain/redirect-to-image",
+				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "file"
+						}
+					}
+				}
+			},
+			"position": [1020, 560]
+		},
+		{
+			"name": "Content Disposition",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"parameters": {
+				"url": "https://dummy.domain/custom-content-disposition",
+				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "file"
+						}
+					}
+				}
+			},
+			"position": [1020, 720]
+		},
+		{
+			"parameters": {
+				"url": "https://dummy.domain/path/to/text.txt",
+				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "file"
+						}
+					}
+				}
+			},
+			"name": "HTTP Request (v4)2",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4,
+			"position": [1680, 600],
+			"id": "665fef5c-6380-4bc0-be2a-430446b140ca"
+		}
+	],
+	"pinData": {
+		"HTTP Request (v1)": [
+			{
+				"binary": {
+					"data": {
+						"data": "dGVzdA==",
+						"mimeType": "image/png",
+						"fileType": "image",
+						"fileExtension": "png",
+						"fileName": "image.png",
+						"fileSize": "4 B"
+					}
+				},
+				"json": {}
+			}
+		],
+		"HTTP Request (v2)": [
+			{
+				"binary": {
+					"data": {
+						"data": "dGVzdA==",
+						"mimeType": "image/png",
+						"fileType": "image",
+						"fileExtension": "png",
+						"fileName": "image.png",
+						"fileSize": "4 B"
+					}
+				},
+				"json": {}
+			}
+		],
+		"HTTP Request (v3)": [
+			{
+				"binary": {
+					"data": {
+						"data": "dGVzdA==",
+						"mimeType": "image/png",
+						"fileType": "image",
+						"fileExtension": "png",
+						"fileName": "image.png",
+						"fileSize": "4 B"
+					}
+				},
+				"json": {}
+			}
+		],
+		"HTTP Request (v4)": [
+			{
+				"binary": {
+					"data": {
+						"data": "dGVzdA==",
+						"mimeType": "image/png",
+						"fileType": "image",
+						"fileExtension": "png",
+						"fileName": "image.png",
+						"fileSize": "4 B"
+					}
+				},
+				"json": {}
+			}
+		],
+		"Follow Redirect": [
+			{
+				"binary": {
+					"data": {
+						"data": "dGVzdA==",
+						"mimeType": "image/png",
+						"fileType": "image",
+						"fileExtension": "png",
+						"fileName": "image.png",
+						"fileSize": "4 B"
+					}
+				},
+				"json": {}
+			}
+		],
+		"Content Disposition": [
+			{
+				"binary": {
+					"data": {
+						"data": "dGVzdGluZw==",
+						"mimeType": "image/jpeg",
+						"fileType": "image",
+						"fileExtension": "jpg",
+						"fileName": "testing.jpg",
+						"fileSize": "7 B"
+					}
+				},
+				"json": {}
+			}
+		],
+		"HTTP Request (v4)2": [
+			{
+				"binary": {
+					"data": {
+						"data": "dGVzdA==",
+						"mimeType": "text/plain",
+						"fileType": "text",
+						"fileExtension": "txt",
+						"fileName": "text.txt",
+						"fileSize": "4 B"
+					}
+				},
+				"json": {}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "HTTP Request (v1)",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HTTP Request (v2)",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HTTP Request (v3)",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HTTP Request (v4)",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Follow Redirect",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Content Disposition",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HTTP Request (v4)2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

@@ -1,0 +1,127 @@
+import { computed } from 'vue';
+import { defineStore } from 'pinia';
+import { saveAs } from 'file-saver';
+import type { IWorkflowDb } from '@/Interface';
+import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
+import type {
+	WorkflowHistory,
+	WorkflowVersion,
+	WorkflowHistoryRequestParams,
+	WorkflowVersionId,
+	UpdateWorkflowHistoryVersion,
+} from '@n8n/rest-api-client/api/workflowHistory';
+import * as whApi from '@n8n/rest-api-client/api/workflowHistory';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { getNewWorkflow } from '@/app/api/workflows';
+
+export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
+	const rootStore = useRootStore();
+	const settingsStore = useSettingsStore();
+	const workflowsStore = useWorkflowsStore();
+	const workflowsListStore = useWorkflowsListStore();
+
+	const licensePruneTime = computed(() => settingsStore.settings.workflowHistory?.licensePruneTime);
+	// pruneTime is already evaluated by backend (getWorkflowHistoryPruneTime)
+	const evaluatedPruneTime = computed(() => settingsStore.settings.workflowHistory?.pruneTime);
+
+	// Show retention message with upgrade link when license is the limiting factor
+	// (Don't show if user explicitly configured a shorter retention via config)
+	const shouldUpgrade = computed(
+		() => licensePruneTime.value !== -1 && licensePruneTime.value === evaluatedPruneTime.value,
+	);
+
+	const getWorkflowHistory = async (
+		workflowId: string,
+		queryParams: WorkflowHistoryRequestParams,
+	): Promise<WorkflowHistory[]> =>
+		await whApi.getWorkflowHistory(rootStore.restApiContext, workflowId, queryParams);
+
+	const getWorkflowVersion = async (
+		workflowId: string,
+		versionId: string,
+	): Promise<WorkflowVersion> =>
+		await whApi.getWorkflowVersion(rootStore.restApiContext, workflowId, versionId);
+
+	const downloadVersion = async (
+		workflowId: string,
+		workflowVersionId: WorkflowVersionId,
+		data: { formattedCreatedAt: string },
+	) => {
+		const [workflow, workflowVersion] = await Promise.all([
+			workflowsListStore.fetchWorkflow(workflowId),
+			getWorkflowVersion(workflowId, workflowVersionId),
+		]);
+		const { connections, nodes } = workflowVersion;
+		const blob = new Blob([JSON.stringify({ ...workflow, nodes, connections }, null, 2)], {
+			type: 'application/json;charset=utf-8',
+		});
+		saveAs(blob, `${workflow.name}(${data.formattedCreatedAt}).json`);
+	};
+
+	const cloneIntoNewWorkflow = async (
+		workflowId: string,
+		workflowVersionId: string,
+		data: { formattedCreatedAt: string },
+	): Promise<IWorkflowDb> => {
+		const [workflow, workflowVersion] = await Promise.all([
+			workflowsListStore.fetchWorkflow(workflowId),
+			getWorkflowVersion(workflowId, workflowVersionId),
+		]);
+		const { connections, nodes } = workflowVersion;
+		const { name } = workflow;
+		const newWorkflow = await getNewWorkflow(rootStore.restApiContext, {
+			name: `${name} (${data.formattedCreatedAt})`,
+		});
+		const newWorkflowData: WorkflowDataUpdate = {
+			nodes,
+			connections,
+			name: newWorkflow.name,
+		};
+		return await workflowsStore.createNewWorkflow(newWorkflowData);
+	};
+
+	const restoreWorkflow = async (
+		workflowId: string,
+		workflowVersionId: string,
+	): Promise<IWorkflowDb> => {
+		const workflowVersion = await getWorkflowVersion(workflowId, workflowVersionId);
+		const { connections, nodes } = workflowVersion;
+		const updateData: WorkflowDataUpdate = { connections, nodes };
+
+		return await workflowsStore
+			.updateWorkflow(workflowId, updateData, true)
+			.catch(async (error) => {
+				if (
+					error.httpStatusCode === 400 &&
+					typeof error.message === 'string' &&
+					error.message.includes('can not be activated')
+				) {
+					return await workflowsListStore.fetchWorkflow(workflowId);
+				} else {
+					throw new Error(error);
+				}
+			});
+	};
+
+	const updateWorkflowHistoryVersion = async (
+		workflowId: string,
+		versionId: string,
+		data: UpdateWorkflowHistoryVersion,
+	): Promise<void> => {
+		await whApi.updateWorkflowHistoryVersion(rootStore.restApiContext, workflowId, versionId, data);
+	};
+
+	return {
+		getWorkflowHistory,
+		getWorkflowVersion,
+		downloadVersion,
+		cloneIntoNewWorkflow,
+		restoreWorkflow,
+		updateWorkflowHistoryVersion,
+		evaluatedPruneTime,
+		shouldUpgrade,
+	};
+});

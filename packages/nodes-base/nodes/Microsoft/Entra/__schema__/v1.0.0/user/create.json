@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "properties": {
+        "@odata.context": {
+            "type": "string"
+        },
+        "businessPhones": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "department": {
+            "type": "string"
+        },
+        "displayName": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "preferredLanguage": {
+            "type": "null"
+        },
+        "userPrincipalName": {
+            "type": "string"
+        }
+    },
+    "version": 3
+}

@@ -1,50 +1,58 @@
-import { OptionsWithUri } from 'request';
-import {
+import type {
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-import { IDataObject } from 'n8n-workflow';
+	IDataObject,
+	JsonObject,
+	IHttpRequestMethods,
+	IRequestOptions,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-export async function wordpressApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('wordpressApi');
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
+export async function wordpressApiRequest(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	resource: string,
 
-	let options: OptionsWithUri = {
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+): Promise<any> {
+	const credentials = await this.getCredentials('wordpressApi');
+
+	let options: IRequestOptions = {
 		headers: {
 			Accept: 'application/json',
 			'Content-Type': 'application/json',
-		},
-		auth: {
-			user: credentials!.username as string,
-			password: credentials!.password as string,
+			'User-Agent': 'n8n',
 		},
 		method,
 		qs,
 		body,
-		uri: uri ||`${credentials!.url}/wp-json/wp/v2${resource}`,
-		json: true
+		uri: uri || `${credentials.url}/wp-json/wp/v2${resource}`,
+		rejectUnauthorized: !credentials.allowUnauthorizedCerts,
+		json: true,
 	};
 	options = Object.assign({}, options, option);
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
 	}
 	try {
-		return await this.helpers.request!(options);
+		const credentialType = 'wordpressApi';
+		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
-		let errorMessage = error.message;
-		if (error.response.body) {
-			errorMessage = error.response.body.message || error.response.body.Message || error.message;
-		}
-
-		throw new Error('Wordpress Error: ' + errorMessage);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
-export async function wordpressApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function wordpressApiRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	endpoint: string,
 
+	body: any = {},
+	query: IDataObject = {},
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -54,11 +62,14 @@ export async function wordpressApiRequestAllItems(this: IExecuteFunctions | ILoa
 
 	do {
 		query.page++;
-		responseData = await wordpressApiRequest.call(this, method, endpoint, body, query, undefined, { resolveWithFullResponse: true });
-		returnData.push.apply(returnData, responseData.body);
+		responseData = await wordpressApiRequest.call(this, method, endpoint, body, query, undefined, {
+			resolveWithFullResponse: true,
+		});
+		returnData.push.apply(returnData, responseData.body as IDataObject[]);
 	} while (
 		responseData.headers['x-wp-totalpages'] !== undefined &&
-		parseInt(responseData.headers['x-wp-totalpages'], 10) < query.page
+		responseData.headers['x-wp-totalpages'] !== '0' &&
+		parseInt(responseData.headers['x-wp-totalpages'] as string, 10) !== query.page
 	);
 
 	return returnData;

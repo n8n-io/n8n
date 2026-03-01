@@ -1,0 +1,12 @@
+{
+    "type": "object",
+    "properties": {
+        "CreationDate": {
+            "type": "string"
+        },
+        "Name": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

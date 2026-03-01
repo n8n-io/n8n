@@ -1,15 +1,14 @@
-import { INodeProperties } from "n8n-workflow";
+import type { INodeProperties } from 'n8n-workflow';
 
-export const invoiceOperations = [
+export const invoiceOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
+				resource: ['invoice'],
 			},
 		},
 		options: [
@@ -17,37 +16,41 @@ export const invoiceOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new invoice',
+				action: 'Create an invoice',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a invoice',
+				action: 'Delete an invoice',
 			},
 			{
 				name: 'Email',
 				value: 'email',
 				description: 'Email an invoice',
+				action: 'Email an invoice',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a invoice',
+				action: 'Get an invoice',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get data of all invoices',
+				description: 'Get data of many invoices',
+				action: 'Get many invoices',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const invoiceFields = [
-/* -------------------------------------------------------------------------- */
-/*                                 invoice:create                             */
-/* -------------------------------------------------------------------------- */
+export const invoiceFields: INodeProperties[] = [
+	/* -------------------------------------------------------------------------- */
+	/*                                 invoice:create                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -56,19 +59,17 @@ export const invoiceFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'invoice',
-				],
+				operation: ['create'],
+				resource: ['invoice'],
 			},
 		},
 		options: [
 			{
-				displayName: 'Client',
+				displayName: 'Client Name or ID',
 				name: 'client',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getClients',
 				},
@@ -114,6 +115,7 @@ export const invoiceFields = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 			},
 			{
@@ -157,6 +159,12 @@ export const invoiceFields = [
 				default: false,
 			},
 			{
+				displayName: 'Mark Sent',
+				name: 'markSent',
+				type: 'boolean',
+				default: false,
+			},
+			{
 				displayName: 'Paid',
 				name: 'paid',
 				type: 'number',
@@ -184,18 +192,12 @@ export const invoiceFields = [
 				displayName: 'Private Notes',
 				name: 'privateNotes',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
 				displayName: 'Public Notes',
 				name: 'publicNotes',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
@@ -234,12 +236,8 @@ export const invoiceFields = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['invoice'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -258,17 +256,11 @@ export const invoiceFields = [
 						displayName: 'Description',
 						name: 'description',
 						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
 						default: '',
 					},
 					{
 						displayName: 'Service',
 						name: 'service',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
 						type: 'string',
 						default: '',
 					},
@@ -309,60 +301,51 @@ export const invoiceFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 invoice:delete                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 invoice:delete                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Invoice ID',
 		name: 'invoiceId',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['invoice'],
+				operation: ['delete'],
 			},
 		},
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  invoice:email                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                  invoice:email                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Invoice ID',
 		name: 'invoiceId',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'email',
-				],
+				resource: ['invoice'],
+				operation: ['email'],
 			},
 		},
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  invoice:get                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                  invoice:get                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Invoice ID',
 		name: 'invoiceId',
 		type: 'string',
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['invoice'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -374,12 +357,8 @@ export const invoiceFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'invoice',
-				],
+				operation: ['get'],
+				resource: ['invoice'],
 			},
 		},
 		options: [
@@ -397,25 +376,21 @@ export const invoiceFields = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                  invoice:getAll                            */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                  invoice:getAll                            */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['invoice'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -423,15 +398,9 @@ export const invoiceFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['invoice'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -439,7 +408,7 @@ export const invoiceFields = [
 			maxValue: 60,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -449,12 +418,8 @@ export const invoiceFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'invoice',
-				],
+				operation: ['getAll'],
+				resource: ['invoice'],
 			},
 		},
 		options: [
@@ -476,6 +441,68 @@ export const invoiceFields = [
 				],
 				default: 'client',
 			},
+			{
+				displayName: 'Status',
+				name: 'status',
+				type: 'options',
+				options: [
+					{
+						name: 'Active',
+						value: 'active',
+					},
+					{
+						name: 'Archived',
+						value: 'archived',
+					},
+					{
+						name: 'Deleted',
+						value: 'deleted',
+					},
+				],
+				default: 'active',
+			},
+			{
+				displayName: 'Created At',
+				name: 'createdAt',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Updated At',
+				name: 'updatedAt',
+				type: 'dateTime',
+				default: '',
+			},
+			{
+				displayName: 'Is Deleted',
+				name: 'isDeleted',
+				type: 'boolean',
+				default: false,
+			},
+			{
+				displayName: 'Client Status',
+				name: 'clientStatus',
+				type: 'options',
+				options: [
+					{
+						name: 'All',
+						value: 'all',
+					},
+					{
+						name: 'Paid',
+						value: 'paid',
+					},
+					{
+						name: 'Unpaid',
+						value: 'unpaid',
+					},
+					{
+						name: 'Overdue',
+						value: 'overdue',
+					},
+				],
+				default: 'all',
+			},
 		],
 	},
-] as INodeProperties[];
+];

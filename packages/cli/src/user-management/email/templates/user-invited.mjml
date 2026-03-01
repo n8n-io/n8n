@@ -1,0 +1,15 @@
+<mjml>
+	<mj-include path="./_common.mjml" />
+	<mj-body>
+		<mj-section padding="0 20px">
+			<mj-column>
+				<mj-include path="./_logo.mjml" />
+				<mj-text font-size="22px" font-weight="400">Welcome to n8n! 🎉</mj-text>
+				<mj-text>You have been invited to join n8n at <b>{{domain}}</b>.</mj-text>
+				<mj-text>To accept, please click the button below.</mj-text>
+				<mj-button href="{{inviteAcceptUrl}}">Set up your n8n account</mj-button>
+				<mj-include path="./_footer.mjml" />
+			</mj-column>
+		</mj-section>
+	</mj-body>
+</mjml>

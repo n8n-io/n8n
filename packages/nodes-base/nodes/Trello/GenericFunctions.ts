@@ -1,37 +1,26 @@
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import { OptionsWithUri } from 'request';
-import { IDataObject } from 'n8n-workflow';
-
+	IRequestOptions,
+} from 'n8n-workflow';
 
 /**
  * Make an API request to Trello
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
-export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: object, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
-	const credentials = this.getCredentials('trelloApi');
-
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
-
+export async function apiRequest(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	endpoint: string,
+	body: object,
+	query?: IDataObject,
+): Promise<any> {
 	query = query || {};
 
-	query.key = credentials.apiKey;
-	query.token = credentials.apiToken;
-
-	const options: OptionsWithUri = {
-		headers: {
-		},
+	const options: IRequestOptions = {
 		method,
 		body,
 		qs: query,
@@ -39,13 +28,35 @@ export async function apiRequest(this: IHookFunctions | IExecuteFunctions | ILoa
 		json: true,
 	};
 
-	try {
-		return await this.helpers.request!(options);
-	} catch (error) {
-		if (error.statusCode === 401) {
-			throw new Error('The Trello credentials are not valid!');
-		}
-
-		throw error;
+	if (method === 'GET') {
+		delete options.body;
 	}
+
+	return await this.helpers.requestWithAuthentication.call(this, 'trelloApi', options);
+}
+
+export async function apiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions,
+	method: IHttpRequestMethods,
+	endpoint: string,
+	body: IDataObject,
+	query: IDataObject = {},
+): Promise<any> {
+	query.limit = 30;
+
+	query.sort = '-id';
+
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+
+	do {
+		responseData = await apiRequest.call(this, method, endpoint, body, query);
+		returnData.push.apply(returnData, responseData as IDataObject[]);
+		if (responseData.length !== 0) {
+			query.before = responseData[responseData.length - 1].id;
+		}
+	} while (query.limit <= responseData.length);
+
+	return returnData;
 }

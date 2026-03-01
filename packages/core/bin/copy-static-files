@@ -1,0 +1,24 @@
+#!/usr/bin/env node
+
+const glob = require('fast-glob');
+const pLimit = require('p-limit');
+const { cp } = require('fs/promises');
+const { packageDir } = require('./common');
+
+const limiter = pLimit(20);
+const staticFiles = glob.sync(
+	['{nodes,credentials}/**/*.{png,svg}', 'nodes/**/__schema__/**/*.json'],
+	{
+		cwd: packageDir,
+	},
+);
+
+(async () => {
+	await Promise.all(
+		staticFiles.map((path) =>
+			limiter(() => {
+				return cp(path, `dist/${path}`, { recursive: true });
+			}),
+		),
+	);
+})();

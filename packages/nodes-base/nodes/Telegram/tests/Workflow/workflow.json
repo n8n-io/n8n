@@ -1,0 +1,1328 @@
+{
+	"name": "[TEST] Telegram",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-60, 2000],
+			"id": "c4d16e3b-b442-4497-87ca-b946f7106da8",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [480, -760],
+			"id": "c9ff68b5-7b2c-4b7a-b7ff-03a8f5ffac0c",
+			"name": "No Operation, do nothing"
+		},
+		{
+			"parameters": {
+				"resource": "chat",
+				"chatId": "123456789"
+			},
+			"type": "n8n-nodes-base.telegram",
+			"typeVersion": 1.2,
+			"position": [260, -760],
+			"id": "d6151630-28f8-4b08-9e84-8e43ace5465e",
+			"name": "Chat > Get",
+			"credentials": {
+				"telegramApi": {
+					"id": "2nAyfFQ9FBSmeiBn",
+					"name": "n8n_com_test_bot - 123456789"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "chat",
+				"chatId": "FAIL"
+			},
+			"type": "n8n-nodes-base.telegram",
+			"typeVersion": 1.2,
+			"position": [260, -580],
+			"id": "14a0a29a-e0cf-43c1-a8df-da60e90e7f54",
+			"name": "Continue on fail",
+			"credentials": {
+				"telegramApi": {
+					"id": "2nAyfFQ9FBSmeiBn",
+					"name": "n8n_com_test_bot - 123456789"
+				}
+			},
+			"onError": "continueErrorOutput"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [480, -560],
+			"id": "855ec4d7-aca7-4070-adc1-b35ff4271072",
+			"name": "No Operation, do nothing1"
+		},
+		{
+			"parameters": {
+				"chatId": "123456789",
+				"text": "a",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.telegram",
+			"typeVersion": 1.2,
+			"position": [260, -380],
+			"id": "d1925d73-74b2-4208-ba61-40cec6ad3b1b",
+			"name": "SendMessage",
+			"credentials": {
+				"telegramApi": {
+					"id": "2nAyfFQ9FBSmeiBn",
+					"name": "n8n_com_test_bot - 123456789"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [540, -380],
+			"id": "e6dccee0-d653-46fd-989f-b808f46d8bc2",
+			"name": "No Operation, do nothing2"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [460, -200],
+			"id": "4020c961-b8a3-4887-8cf4-574a255eafca",
+			"name": "No Operation, do nothing3"
+		},
+		{
+			"parameters": {
+				"operation": "sendMediaGroup",
+				"chatId": "123456789",
+				"media": {
+					"media": [
+						{
+							"media": "https://raw.githubusercontent.com/n8n-io/n8n/refs/heads/master/assets/n8n-logo.png",
+							"additionalFields": {}
+						}
+					]
+				},
+				"additionalFields": {
+					"disable_notification": true
+				}
+			},
+			"type": "n8n-nodes-base.telegram",
+			"typeVersion": 1.2,
+			"position": [240, -200],
+			"id": "9f9615f1-1c64-4f45-aac1-666194ed4f1f",
+			"name": "Send Media Group",
+			"credentials": {
+				"telegramApi": {
+					"id": "2nAyfFQ9FBSmeiBn",
+					"name": "n8n_com_test_bot - 123456789"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "sendLocation",
+				"chatId": "123456789",
+				"additionalFields": {
+					"reply_to_message_id": 40
+				}
+			},
+			"type": "n8n-nodes-base.telegram",
+			"typeVersion": 1.2,
+			"position": [240, 0],
+			"id": "5c7de253-68b0-4046-9278-e432c4481679",
+			"name": "Send a Location",
+			"credentials": {
+				"telegramApi": {
+					"id": "2nAyfFQ9FBSmeiBn",
+					"name": "n8n_com_test_bot - 123456789"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [460, 0],
+			"id": "f237f864-1fa5-450d-b468-e688b3b3f3da",
+			"name": "No Operation, do nothing4"
+		},
+		{
+			"parameters": {
+				"operation": "deleteMessage",
+				"chatId": "123456789",
+				"messageId": "41"
+			},
+			"type": "n8n-nodes-base.telegram",
+			"typeVersion": 1.2,
+			"position": [240, 180],
+			"id": "479b1be2-7f2d-4dfe-b687-e3da070a92ff",
+			"name": "Delete Message",
+			"credentials": {
+				"telegramApi": {
+					"id": "2nAyfFQ9FBSmeiBn",
+					"name": "n8n_com_test_bot - 123456789"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [480, 180],
+			"id": "8b26df1c-4afc-4fa2-bd4b-618dde510ce9",
+			"name": "No Operation, do nothing5"
+		},
+		{
+			"parameters": {
+				"operation": "pinChatMessage",
+				"chatId": "123456789",
+				"messageId": "40",
+				"additionalFields": {
+					"disable_notification": true
+				}
+			},
+			"type": "n8n-nodes-base.telegram",
+			"typeVersion": 1.2,
+			"position": [240, 380],
+			"id": "a90a5b1e-aca1-4871-81f4-afe9f1b54ac3",
+			"name": "Pin Message",
+			"credentials": {
+				"telegramApi": {
+					"id": "2nAyfFQ9FBSmeiBn",
+					"name": "n8n_com_test_bot - 123456789"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [480, 380],
+			"id": "a8ab2e08-1aa6-46c3-bc9e-f5cc66d27c0d",
+			"name": "No Operation, do nothing6"
+		},
+		{
+			"parameters": {
+				"operation": "sendSticker",
+				"chatId": "123456789",
+				"file": "https://www.gstatic.com/webp/gallery3/1_webp_ll.png",
+				"replyMarkup": "forceReply",
+				"forceReply": {
+					"force_reply": true,
+					"selective": true
+				},
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.telegram",
+			"typeVersion": 1.2,
+			"position": [240, 580],
+			"id": "6aad1200-b0f2-4783-b1e0-4f59d1251258",
+			"name": "Send Sticker",
+			"credentials": {
+				"telegramApi": {
+					"id": "2nAyfFQ9FBSmeiBn",
+					"name": "n8n_com_test_bot - 123456789"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [480, 580],
+			"id": "e69ee02f-9b67-46c0-a628-c1affe0abdd7",
+			"name": "No Operation, do nothing7"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [480, 760],
+			"id": "ee592083-2274-4d38-be07-581828b2522d",
+			"name": "No Operation, do nothing8"
+		},
+		{
+			"parameters": {
+				"operation": "editMessageText",
+				"chatId": "123456789",
+				"messageId": "40",
+				"replyMarkup": "inlineKeyboard",
+				"text": "test",
+				"inlineKeyboard": {
+					"rows": [
+						{
+							"row": {
+								"buttons": [
+									{
+										"text": "foo",
+										"additionalFields": {
+											"callback_data": "callback",
+											"pay": true
+										}
+									},
+									{
+										"text": "n8n",
+										"additionalFields": {
+											"url": "https://n8n.io"
+										}
+									}
+								]
+							}
+						}
+					]
+				},
+				"additionalFields": {
+					"disable_web_page_preview": true,
+					"parse_mode": "HTML"
+				}
+			},
+			"type": "n8n-nodes-base.telegram",
+			"typeVersion": 1.2,
+			"position": [240, 760],
+			"id": "520c74fa-e332-485e-b02e-fa0f5c2e7078",
+			"name": "Edit Message Text",
+			"credentials": {
+				"telegramApi": {
+					"id": "2nAyfFQ9FBSmeiBn",
+					"name": "n8n_com_test_bot - 123456789"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "chat",
+				"operation": "setDescription",
+				"chatId": "-1000000000000",
+				"description": "Chat description"
+			},
+			"type": "n8n-nodes-base.telegram",
+			"typeVersion": 1.2,
+			"position": [240, 960],
+			"id": "933dd9a4-ce49-4f35-85ec-6fd7820c2686",
+			"name": "Set Description",
+			"credentials": {
+				"telegramApi": {
+					"id": "2nAyfFQ9FBSmeiBn",
+					"name": "n8n_com_test_bot - 123456789"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [480, 960],
+			"id": "791ca8fe-bd4f-4285-a89d-27f5567dcd11",
+			"name": "No Operation, do nothing9"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [500, 1140],
+			"id": "044d6f3e-b9cf-4a4c-b6d4-5d6afe03132a",
+			"name": "No Operation, do nothing10"
+		},
+		{
+			"parameters": {
+				"resource": "chat",
+				"operation": "administrators",
+				"chatId": "-1000000000000"
+			},
+			"type": "n8n-nodes-base.telegram",
+			"typeVersion": 1.2,
+			"position": [240, 1320],
+			"id": "5b538ca7-dff1-4f6a-b0d9-aa5ce8ca8c7a",
+			"name": "Get Administrators",
+			"credentials": {
+				"telegramApi": {
+					"id": "2nAyfFQ9FBSmeiBn",
+					"name": "n8n_com_test_bot - 123456789 - -1000000000000"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "chat",
+				"operation": "setTitle",
+				"chatId": "-1000000000000",
+				"title": "Test Chat Title"
+			},
+			"type": "n8n-nodes-base.telegram",
+			"typeVersion": 1.2,
+			"position": [240, 1140],
+			"id": "8024fed5-f5c7-4cd0-8c16-0a29565b6d4b",
+			"name": "Set Title",
+			"credentials": {
+				"telegramApi": {
+					"id": "2nAyfFQ9FBSmeiBn",
+					"name": "n8n_com_test_bot - 123456789 - -1000000000000"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [460, 1320],
+			"id": "3ad12afe-633e-4866-a243-eccde83d3e30",
+			"name": "No Operation, do nothing11"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [460, 1500],
+			"id": "79797b7d-85fd-4a46-b87e-ccd584b18177",
+			"name": "No Operation, do nothing12"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [460, 1680],
+			"id": "341f6b75-0773-45fc-8e5b-f5cb74ff3e7c",
+			"name": "No Operation, do nothing13"
+		},
+		{
+			"parameters": {
+				"operation": "unpinChatMessage",
+				"chatId": "123456789",
+				"messageId": "40"
+			},
+			"type": "n8n-nodes-base.telegram",
+			"typeVersion": 1.2,
+			"position": [240, 1500],
+			"id": "975c435f-7a1d-46b8-8646-6df9fb457803",
+			"name": "Unpin Message",
+			"credentials": {
+				"telegramApi": {
+					"id": "2nAyfFQ9FBSmeiBn",
+					"name": "n8n_com_test_bot - 123456789 - -1000000000000"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "sendAnimation",
+				"chatId": "123456789",
+				"file": "https://blog.emojipedia.org/content/images/2023/07/Telegram---Opening-Image.gif",
+				"additionalFields": {
+					"caption": "Animation",
+					"disable_notification": true
+				}
+			},
+			"type": "n8n-nodes-base.telegram",
+			"typeVersion": 1.2,
+			"position": [240, 1680],
+			"id": "1efff378-5d28-41c9-8011-e9337c1d0fa6",
+			"name": "Send Animation",
+			"credentials": {
+				"telegramApi": {
+					"id": "2nAyfFQ9FBSmeiBn",
+					"name": "n8n_com_test_bot - 123456789 - -1000000000000"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"operation": "sendAudio",
+				"chatId": "123456789",
+				"file": "https://download.samplelib.com/mp3/sample-3s.mp3",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.telegram",
+			"typeVersion": 1.2,
+			"position": [240, 1860],
+			"id": "3ee62b00-8faa-4ed5-aa9a-91b381f6880f",
+			"name": "Send Audio",
+			"credentials": {
+				"telegramApi": {
+					"id": "2nAyfFQ9FBSmeiBn",
+					"name": "n8n_com_test_bot - 123456789 - -1000000000000"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [460, 1860],
+			"id": "ff9a84a7-5def-47c8-b29c-b0a3450a7661",
+			"name": "No Operation, do nothing14"
+		},
+		{
+			"parameters": {
+				"operation": "sendChatAction",
+				"chatId": "123456789"
+			},
+			"type": "n8n-nodes-base.telegram",
+			"typeVersion": 1.2,
+			"position": [220, 2020],
+			"id": "f8dd78ee-4090-47ab-9fb1-2fb5530c78db",
+			"name": "Send Chat Action",
+			"credentials": {
+				"telegramApi": {
+					"id": "2nAyfFQ9FBSmeiBn",
+					"name": "n8n_com_test_bot - 123456789 - -1000000000000"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [440, 2020],
+			"id": "47117767-0f12-4ecf-9a64-f0bda661c1aa",
+			"name": "No Operation, do nothing15"
+		},
+		{
+			"parameters": {
+				"resource": "chat",
+				"operation": "leave",
+				"chatId": "-1000000000000"
+			},
+			"type": "n8n-nodes-base.telegram",
+			"typeVersion": 1.2,
+			"position": [220, 2200],
+			"id": "abc0591b-cd27-4603-8635-9cc90be1f87a",
+			"name": "Leave Chat",
+			"credentials": {
+				"telegramApi": {
+					"id": "2nAyfFQ9FBSmeiBn",
+					"name": "n8n_com_test_bot - 123456789 - -1000000000000"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [440, 2200],
+			"id": "4222cedf-6267-46a2-a9da-542ff1f709c4",
+			"name": "No Operation, do nothing16"
+		},
+		{
+			"parameters": {
+				"resource": "chat",
+				"operation": "member",
+				"chatId": "-1000000000000",
+				"userId": "123456789"
+			},
+			"type": "n8n-nodes-base.telegram",
+			"typeVersion": 1.2,
+			"position": [220, 2380],
+			"id": "2057b4b7-1bde-4dcd-9fb3-da3a1dae8afd",
+			"name": "Chat Get Member",
+			"credentials": {
+				"telegramApi": {
+					"id": "2nAyfFQ9FBSmeiBn",
+					"name": "n8n_com_test_bot - 123456789 - -1000000000000"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [440, 2380],
+			"id": "ff742218-5832-4f5b-8e2b-bf5cd4231dc1",
+			"name": "No Operation, do nothing17"
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"ok": true,
+					"result": {
+						"id": 123456789,
+						"first_name": "Nathan",
+						"last_name": "W",
+						"username": "n8n",
+						"type": "private",
+						"active_usernames": ["n8n"],
+						"bio": "Automation",
+						"has_private_forwards": true,
+						"max_reaction_count": 11,
+						"accent_color_id": 3
+					}
+				}
+			}
+		],
+		"No Operation, do nothing1": [
+			{
+				"json": {
+					"error": "Chat not found"
+				}
+			}
+		],
+		"No Operation, do nothing2": [
+			{
+				"json": {
+					"ok": true,
+					"result": {
+						"message_id": 40,
+						"from": {
+							"id": 9876543210,
+							"is_bot": true,
+							"first_name": "@n8n",
+							"username": "n8n_test_bot"
+						},
+						"chat": {
+							"id": 123456789,
+							"first_name": "Nathan",
+							"last_name": "W",
+							"username": "n8n",
+							"type": "private"
+						},
+						"date": 1732960606,
+						"text": "a\n\nThis message was sent automatically with n8n",
+						"entities": [
+							{
+								"offset": 3,
+								"length": 41,
+								"type": "italic"
+							},
+							{
+								"offset": 44,
+								"length": 3,
+								"type": "text_link",
+								"url": "https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.telegram_8c8c5237b8e37b006a7adce87f4369350c58e41f3ca9de16196d3197f69eabcd"
+							}
+						],
+						"link_preview_options": {
+							"is_disabled": true
+						}
+					}
+				}
+			}
+		],
+		"No Operation, do nothing3": [
+			{
+				"json": {
+					"ok": true,
+					"result": [
+						{
+							"message_id": 41,
+							"from": {
+								"id": 9876543210,
+								"is_bot": true,
+								"first_name": "@n8n",
+								"username": "n8n_test_bot"
+							},
+							"chat": {
+								"id": 123456789,
+								"first_name": "Nathan",
+								"last_name": "W",
+								"username": "n8n",
+								"type": "private"
+							},
+							"date": 1732963445,
+							"photo": [
+								{
+									"file_id": "AgACAgQAAxkDAAMpZ0rsde8lw0E3xttFxGpPdwkExZIAAv21MRvcM11S26tCdFbflv4BAAMCAANzAAM2BA",
+									"file_unique_id": "AQAD_bUxG9wzXVJ4",
+									"file_size": 919,
+									"width": 90,
+									"height": 24
+								},
+								{
+									"file_id": "AgACAgQAAxkDAAMpZ0rsde8lw0E3xttFxGpPdwkExZIAAv21MRvcM11S26tCdFbflv4BAAMCAANtAAM2BA",
+									"file_unique_id": "AQAD_bUxG9wzXVJy",
+									"file_size": 6571,
+									"width": 320,
+									"height": 87
+								},
+								{
+									"file_id": "AgACAgQAAxkDAAMpZ0rsde8lw0E3xttFxGpPdwkExZIAAv21MRvcM11S26tCdFbflv4BAAMCAAN4AAM2BA",
+									"file_unique_id": "AQAD_bUxG9wzXVJ9",
+									"file_size": 9639,
+									"width": 458,
+									"height": 124
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"No Operation, do nothing4": [
+			{
+				"json": {
+					"ok": true,
+					"result": {
+						"message_id": 42,
+						"from": {
+							"id": 9876543210,
+							"is_bot": true,
+							"first_name": "@n8n",
+							"username": "n8n_test_bot"
+						},
+						"chat": {
+							"id": 123456789,
+							"first_name": "Nathan",
+							"last_name": "W",
+							"username": "n8n",
+							"type": "private"
+						},
+						"date": 1732963630,
+						"reply_to_message": {
+							"message_id": 40,
+							"from": {
+								"id": 9876543210,
+								"is_bot": true,
+								"first_name": "@n8n",
+								"username": "n8n_test_bot"
+							},
+							"chat": {
+								"id": 123456789,
+								"first_name": "Nathan",
+								"last_name": "W",
+								"username": "n8n",
+								"type": "private"
+							},
+							"date": 1732960606,
+							"text": "a\n\nThis message was sent automatically with n8n",
+							"entities": [
+								{
+									"offset": 3,
+									"length": 41,
+									"type": "italic"
+								},
+								{
+									"offset": 44,
+									"length": 3,
+									"type": "text_link",
+									"url": "https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.telegram_8c8c5237b8e37b006a7adce87f4369350c58e41f3ca9de16196d3197f69eabcd"
+								}
+							],
+							"link_preview_options": {
+								"is_disabled": true
+							}
+						},
+						"location": {
+							"latitude": 0.00001,
+							"longitude": 0.000003
+						}
+					}
+				}
+			}
+		],
+		"No Operation, do nothing5": [
+			{
+				"json": {
+					"ok": true,
+					"result": true
+				}
+			}
+		],
+		"No Operation, do nothing6": [
+			{
+				"json": {
+					"ok": true,
+					"result": true
+				}
+			}
+		],
+		"No Operation, do nothing7": [
+			{
+				"json": {
+					"ok": true,
+					"result": {
+						"message_id": 44,
+						"from": {
+							"id": 9876543210,
+							"is_bot": true,
+							"first_name": "@n8n",
+							"username": "n8n_test_bot"
+						},
+						"chat": {
+							"id": 123456789,
+							"first_name": "Nathan",
+							"last_name": "W",
+							"username": "n8n",
+							"type": "private"
+						},
+						"date": 1732965815,
+						"document": {
+							"file_name": "1_webp_ll.png",
+							"mime_type": "image/png",
+							"thumbnail": {
+								"file_id": "AAMCBAADGQMAAyxnSvW31uMAAWa2AAFl0vD1zqc_3xXeAAIbBwACJ95cUvzVqVKE_cXTAQAHbQADNgQ",
+								"file_unique_id": "AQADGwcAAifeXFJy",
+								"file_size": 12534,
+								"width": 320,
+								"height": 241
+							},
+							"thumb": {
+								"file_id": "AAMCBAADGQMAAyxnSvW31uMAAWa2AAFl0vD1zqc_3xXeAAIbBwACJ95cUvzVqVKE_cXTAQAHbQADNgQ",
+								"file_unique_id": "AQADGwcAAifeXFJy",
+								"file_size": 12534,
+								"width": 320,
+								"height": 241
+							},
+							"file_id": "BQACAgQAAxkDAAMsZ0r1t9bjAAFmtgABZdLw9c6nP98V3gACGwcAAifeXFL81alShP3F0zYE",
+							"file_unique_id": "AgADGwcAAifeXFI",
+							"file_size": 122750
+						}
+					}
+				}
+			}
+		],
+		"No Operation, do nothing8": [
+			{
+				"json": {
+					"ok": true,
+					"result": {
+						"message_id": 40,
+						"from": {
+							"id": 9876543210,
+							"is_bot": true,
+							"first_name": "@n8n",
+							"username": "n8n_test_bot"
+						},
+						"chat": {
+							"id": 123456789,
+							"first_name": "Nathan",
+							"last_name": "W",
+							"username": "n8n",
+							"type": "private"
+						},
+						"date": 1732960606,
+						"edit_date": 1732967008,
+						"text": "test",
+						"reply_markup": {
+							"inline_keyboard": [
+								[
+									{
+										"text": "foo",
+										"callback_data": "callback"
+									},
+									{
+										"text": "n8n",
+										"url": "https://n8n.io/"
+									}
+								]
+							]
+						}
+					}
+				}
+			}
+		],
+		"No Operation, do nothing9": [
+			{
+				"json": {
+					"ok": true,
+					"result": true
+				}
+			}
+		],
+		"No Operation, do nothing10": [
+			{
+				"json": {
+					"ok": true,
+					"result": true
+				}
+			}
+		],
+		"No Operation, do nothing11": [
+			{
+				"json": {
+					"user": {
+						"id": 9876543210,
+						"is_bot": true,
+						"first_name": "@n8n",
+						"username": "n8n_test_bot"
+					},
+					"status": "administrator",
+					"can_be_edited": false,
+					"can_manage_chat": true,
+					"can_change_info": true,
+					"can_post_messages": true,
+					"can_edit_messages": true,
+					"can_delete_messages": true,
+					"can_invite_users": true,
+					"can_restrict_members": true,
+					"can_promote_members": false,
+					"can_manage_video_chats": true,
+					"can_post_stories": true,
+					"can_edit_stories": true,
+					"can_delete_stories": true,
+					"is_anonymous": false,
+					"can_manage_voice_chats": true
+				}
+			},
+			{
+				"json": {
+					"user": {
+						"id": 123456789,
+						"is_bot": false,
+						"first_name": "Nathan",
+						"last_name": "W",
+						"username": "n8n",
+						"language_code": "en"
+					},
+					"status": "creator",
+					"is_anonymous": false
+				}
+			}
+		],
+		"No Operation, do nothing12": [
+			{
+				"json": {
+					"ok": true,
+					"result": true
+				}
+			}
+		],
+		"No Operation, do nothing13": [
+			{
+				"json": {
+					"ok": true,
+					"result": {
+						"message_id": 45,
+						"from": {
+							"id": 9876543210,
+							"is_bot": true,
+							"first_name": "@n8n",
+							"username": "n8n_test_bot"
+						},
+						"chat": {
+							"id": 123456789,
+							"first_name": "Nathan",
+							"last_name": "W",
+							"username": "n8n",
+							"type": "private"
+						},
+						"date": 1732968868,
+						"animation": {
+							"file_name": "Telegram---Opening-Image.gif.mp4",
+							"mime_type": "video/mp4",
+							"duration": 6,
+							"width": 320,
+							"height": 320,
+							"thumbnail": {
+								"file_id": "AAMCBAADGQMAAy1nSwGkq99SDYaaS1VR0EMAAUrOw1cAAiYEAALzCVxR7jIYS8d3HycBAAdtAAM2BA",
+								"file_unique_id": "AQADJgQAAvMJXFFy",
+								"file_size": 36480,
+								"width": 320,
+								"height": 320
+							},
+							"thumb": {
+								"file_id": "AAMCBAADGQMAAy1nSwGkq99SDYaaS1VR0EMAAUrOw1cAAiYEAALzCVxR7jIYS8d3HycBAAdtAAM2BA",
+								"file_unique_id": "AQADJgQAAvMJXFFy",
+								"file_size": 36480,
+								"width": 320,
+								"height": 320
+							},
+							"file_id": "CgACAgQAAxkDAAMtZ0sBpKvfUg2GmktVUdBDAAFKzsNXAAImBAAC8wlcUe4yGEvHdx8nNgQ",
+							"file_unique_id": "AgADJgQAAvMJXFE",
+							"file_size": 309245
+						},
+						"document": {
+							"file_name": "Telegram---Opening-Image.gif.mp4",
+							"mime_type": "video/mp4",
+							"thumbnail": {
+								"file_id": "AAMCBAADGQMAAy1nSwGkq99SDYaaS1VR0EMAAUrOw1cAAiYEAALzCVxR7jIYS8d3HycBAAdtAAM2BA",
+								"file_unique_id": "AQADJgQAAvMJXFFy",
+								"file_size": 36480,
+								"width": 320,
+								"height": 320
+							},
+							"thumb": {
+								"file_id": "AAMCBAADGQMAAy1nSwGkq99SDYaaS1VR0EMAAUrOw1cAAiYEAALzCVxR7jIYS8d3HycBAAdtAAM2BA",
+								"file_unique_id": "AQADJgQAAvMJXFFy",
+								"file_size": 36480,
+								"width": 320,
+								"height": 320
+							},
+							"file_id": "CgACAgQAAxkDAAMtZ0sBpKvfUg2GmktVUdBDAAFKzsNXAAImBAAC8wlcUe4yGEvHdx8nNgQ",
+							"file_unique_id": "AgADJgQAAvMJXFE",
+							"file_size": 309245
+						},
+						"caption": "Animation"
+					}
+				}
+			}
+		],
+		"No Operation, do nothing14": [
+			{
+				"json": {
+					"ok": true,
+					"result": {
+						"message_id": 46,
+						"from": {
+							"id": 9876543210,
+							"is_bot": true,
+							"first_name": "@n8n",
+							"username": "n8n_test_bot"
+						},
+						"chat": {
+							"id": 123456789,
+							"first_name": "Nathan",
+							"last_name": "W",
+							"username": "n8n",
+							"type": "private"
+						},
+						"date": 1732969291,
+						"audio": {
+							"duration": 3,
+							"file_name": "sample-3s.mp3",
+							"mime_type": "audio/mpeg",
+							"file_id": "CQACAgQAAxkDAAMuZ0sDSxCh3hW89NQa-eTpxKioqGAAAjsEAAIBCU1SGtsPA4N9TSo2BA",
+							"file_unique_id": "AgADOwQAAgEJTVI",
+							"file_size": 52079
+						}
+					}
+				}
+			}
+		],
+		"No Operation, do nothing15": [
+			{
+				"json": {
+					"ok": true,
+					"result": true
+				}
+			}
+		],
+		"No Operation, do nothing16": [
+			{
+				"json": {
+					"ok": true,
+					"result": true
+				}
+			}
+		],
+		"No Operation, do nothing17": [
+			{
+				"json": {
+					"ok": true,
+					"result": {
+						"user": {
+							"id": 123456789,
+							"is_bot": false,
+							"first_name": "Nathan",
+							"last_name": "W",
+							"username": "n8n",
+							"language_code": "en"
+						},
+						"status": "creator",
+						"is_anonymous": false
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Chat > Get",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Continue on fail",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "SendMessage",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Send Media Group",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Send a Location",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Delete Message",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Pin Message",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Send Sticker",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Edit Message Text",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Set Description",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Set Title",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Administrators",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Unpin Message",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Send Animation",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Send Audio",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Send Chat Action",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Leave Chat",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Chat Get Member",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Chat > Get": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Continue on fail": {
+			"main": [
+				[],
+				[
+					{
+						"node": "No Operation, do nothing1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"SendMessage": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send Media Group": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send a Location": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Delete Message": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Pin Message": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing6",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send Sticker": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing7",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Message Text": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing8",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set Description": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing9",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set Title": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing10",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Administrators": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing11",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Unpin Message": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing12",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send Animation": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing13",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send Audio": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing14",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Send Chat Action": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing15",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Leave Chat": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing16",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Chat Get Member": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing17",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "364f5fce-de4b-42fb-a586-a05cf3551f13",
+	"meta": {
+		"instanceId": "8c8c5237b8e37b006a7adce87f4369350c58e41f3ca9de16196d3197f69eabcd"
+	},
+	"id": "JcxRMMgCHCSdXeBC",
+	"tags": []
+}

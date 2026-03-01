@@ -1,8 +1,5 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-
-import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -10,26 +7,17 @@ import {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
-import {
-	bannerbearApiRequest,
-	keysToSnakeCase,
-} from './GenericFunctions';
-
-import {
-	imageFields,
-	imageOperations,
-} from './ImageDescription';
-
-import {
-	templateFields,
-	templateOperations,
-} from './TemplateDescription';
+import { bannerbearApiRequest, keysToSnakeCase } from './GenericFunctions';
+import { imageFields, imageOperations } from './ImageDescription';
+import { templateFields, templateOperations } from './TemplateDescription';
 
 export class Bannerbear implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Bannerbear',
 		name: 'bannerbear',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:bannerbear.png',
 		group: ['output'],
 		version: 1,
@@ -37,10 +25,9 @@ export class Bannerbear implements INodeType {
 		description: 'Consume Bannerbear API',
 		defaults: {
 			name: 'Bannerbear',
-			color: '#f9d749',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'bannerbearApi',
@@ -52,6 +39,7 @@ export class Bannerbear implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Image',
@@ -63,7 +51,6 @@ export class Bannerbear implements INodeType {
 					},
 				],
 				default: 'image',
-				description: 'Resource to consume.',
 			},
 			// IMAGE
 			...imageOperations,
@@ -76,7 +63,7 @@ export class Bannerbear implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available escalation policies to display them to user so that he can
+			// Get all the available templates to display them to user so that they can
 			// select them easily
 			async getTemplates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -91,24 +78,45 @@ export class Bannerbear implements INodeType {
 				}
 				return returnData;
 			},
+
+			// Get all the available modifications to display them to user so that they can
+			// select them easily
+			async getModificationNames(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const templateId = this.getCurrentNodeParameter('templateId');
+				const returnData: INodePropertyOptions[] = [];
+				const { available_modifications } = await bannerbearApiRequest.call(
+					this,
+					'GET',
+					`/templates/${templateId}`,
+				);
+				for (const modification of available_modifications) {
+					const modificationName = modification.name;
+					const modificationId = modification.name;
+					returnData.push({
+						name: modificationName,
+						value: modificationId,
+					});
+				}
+				return returnData;
+			},
 		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const length = items.length;
 		let responseData;
-		const qs: IDataObject = {};
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			if (resource === 'image') {
 				//https://developers.bannerbear.com/#create-an-image
 				if (operation === 'create') {
 					const templateId = this.getNodeParameter('templateId', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					const modifications = (this.getNodeParameter('modificationsUi', i) as IDataObject).modificationsValues as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
+					const modifications = (this.getNodeParameter('modificationsUi', i) as IDataObject)
+						.modificationsValues as IDataObject;
 					const body: IDataObject = {
 						template: templateId,
 					};
@@ -119,7 +127,7 @@ export class Bannerbear implements INodeType {
 						body.metadata = additionalFields.metadata as string;
 					}
 					if (modifications) {
-						body.modifications = keysToSnakeCase(modifications) as IDataObject[];
+						body.modifications = keysToSnakeCase(modifications);
 						// delete all fields set to empty
 						for (const modification of body.modifications as IDataObject[]) {
 							for (const key of Object.keys(modification)) {
@@ -130,6 +138,29 @@ export class Bannerbear implements INodeType {
 						}
 					}
 					responseData = await bannerbearApiRequest.call(this, 'POST', '/images', body);
+					if (additionalFields.waitForImage && responseData.status !== 'completed') {
+						let maxTries = (additionalFields.waitForImageMaxTries as number) || 3;
+
+						const promise = async (uid: string) => {
+							let data: IDataObject = {};
+							return await new Promise((resolve, reject) => {
+								const timeout = setInterval(async () => {
+									data = await bannerbearApiRequest.call(this, 'GET', `/images/${uid}`);
+
+									if (data.status === 'completed') {
+										clearInterval(timeout);
+										resolve(data);
+									}
+									if (--maxTries === 0) {
+										clearInterval(timeout);
+										reject(new Error('Image did not finish processing after multiple tries.'));
+									}
+								}, 2000);
+							});
+						};
+
+						responseData = await promise(responseData.uid as string);
+					}
 				}
 				//https://developers.bannerbear.com/#get-a-specific-image
 				if (operation === 'get') {
@@ -151,7 +182,7 @@ export class Bannerbear implements INodeType {
 			if (Array.isArray(responseData)) {
 				returnData.push.apply(returnData, responseData as IDataObject[]);
 			} else {
-				returnData.push(responseData);
+				returnData.push(responseData as IDataObject);
 			}
 		}
 		return [this.helpers.returnJsonArray(returnData)];

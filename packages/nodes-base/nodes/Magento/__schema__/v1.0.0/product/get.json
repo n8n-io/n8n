@@ -1,0 +1,215 @@
+{
+    "type": "object",
+    "properties": {
+        "attribute_set_id": {
+            "type": "integer"
+        },
+        "created_at": {
+            "type": "string"
+        },
+        "custom_attributes": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "attribute_code": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "extension_attributes": {
+            "type": "object",
+            "properties": {
+                "stock_item": {
+                    "type": "object",
+                    "properties": {
+                        "backorders": {
+                            "type": "integer"
+                        },
+                        "enable_qty_increments": {
+                            "type": "boolean"
+                        },
+                        "is_decimal_divided": {
+                            "type": "boolean"
+                        },
+                        "is_in_stock": {
+                            "type": "boolean"
+                        },
+                        "is_qty_decimal": {
+                            "type": "boolean"
+                        },
+                        "item_id": {
+                            "type": "integer"
+                        },
+                        "manage_stock": {
+                            "type": "boolean"
+                        },
+                        "max_sale_qty": {
+                            "type": "integer"
+                        },
+                        "min_qty": {
+                            "type": "integer"
+                        },
+                        "min_sale_qty": {
+                            "type": "integer"
+                        },
+                        "notify_stock_qty": {
+                            "type": "integer"
+                        },
+                        "product_id": {
+                            "type": "integer"
+                        },
+                        "qty": {
+                            "type": "integer"
+                        },
+                        "qty_increments": {
+                            "type": "integer"
+                        },
+                        "show_default_notification_message": {
+                            "type": "boolean"
+                        },
+                        "stock_id": {
+                            "type": "integer"
+                        },
+                        "stock_status_changed_auto": {
+                            "type": "integer"
+                        },
+                        "use_config_backorders": {
+                            "type": "boolean"
+                        },
+                        "use_config_enable_qty_inc": {
+                            "type": "boolean"
+                        },
+                        "use_config_manage_stock": {
+                            "type": "boolean"
+                        },
+                        "use_config_max_sale_qty": {
+                            "type": "boolean"
+                        },
+                        "use_config_min_qty": {
+                            "type": "boolean"
+                        },
+                        "use_config_min_sale_qty": {
+                            "type": "integer"
+                        },
+                        "use_config_notify_stock_qty": {
+                            "type": "boolean"
+                        },
+                        "use_config_qty_increments": {
+                            "type": "boolean"
+                        }
+                    }
+                },
+                "website_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "id": {
+            "type": "integer"
+        },
+        "media_gallery_entries": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "disabled": {
+                        "type": "boolean"
+                    },
+                    "file": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "integer"
+                    },
+                    "media_type": {
+                        "type": "string"
+                    },
+                    "position": {
+                        "type": "integer"
+                    },
+                    "types": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "name": {
+            "type": "string"
+        },
+        "product_links": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "link_type": {
+                        "type": "string"
+                    },
+                    "linked_product_sku": {
+                        "type": "string"
+                    },
+                    "linked_product_type": {
+                        "type": "string"
+                    },
+                    "position": {
+                        "type": "integer"
+                    },
+                    "sku": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "sku": {
+            "type": "string"
+        },
+        "status": {
+            "type": "integer"
+        },
+        "tier_prices": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "customer_group_id": {
+                        "type": "integer"
+                    },
+                    "extension_attributes": {
+                        "type": "object",
+                        "properties": {
+                            "percentage_value": {
+                                "type": "integer"
+                            },
+                            "website_id": {
+                                "type": "integer"
+                            }
+                        }
+                    },
+                    "qty": {
+                        "type": "integer"
+                    },
+                    "value": {
+                        "type": "number"
+                    }
+                }
+            }
+        },
+        "type_id": {
+            "type": "string"
+        },
+        "updated_at": {
+            "type": "string"
+        },
+        "visibility": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

@@ -1,31 +1,54 @@
-import {
+import type {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
-
 
 export class RocketchatApi implements ICredentialType {
 	name = 'rocketchatApi';
+
 	displayName = 'Rocket API';
-	properties = [
+
+	documentationUrl = 'rocketchat';
+
+	properties: INodeProperties[] = [
 		{
-			displayName: 'User Id',
+			displayName: 'User ID',
 			name: 'userId',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 		},
 		{
 			displayName: 'Auth Key',
 			name: 'authKey',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{
 			displayName: 'Domain',
 			name: 'domain',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
 			default: '',
 			placeholder: 'https://n8n.rocket.chat',
 		},
 	];
+
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			headers: {
+				'X-Auth-Token': '={{$credentials.authKey}}',
+				'X-User-Id': '={{$credentials.userId}}',
+			},
+		},
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials.domain}}',
+			url: '/api/v1/webdav.getMyAccounts',
+		},
+	};
 }

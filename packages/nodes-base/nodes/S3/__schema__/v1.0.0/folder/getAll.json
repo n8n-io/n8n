@@ -1,0 +1,24 @@
+{
+    "type": "object",
+    "properties": {
+        "ETag": {
+            "type": "string"
+        },
+        "Key": {
+            "type": "string"
+        },
+        "LastModified": {
+            "type": "string"
+        },
+        "Size": {
+            "type": "string"
+        },
+        "StorageClass": {
+            "type": "string"
+        },
+        "Type": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

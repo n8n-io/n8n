@@ -1,0 +1,34 @@
+{
+  "name": "@n8n/api-types",
+  "version": "1.10.0",
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "dev": "pnpm watch",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix",
+    "watch": "tsc -p tsconfig.build.json --watch",
+    "test": "jest",
+    "test:unit": "jest",
+    "test:dev": "jest --watch"
+  },
+  "main": "dist/index.js",
+  "module": "src/index.ts",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/**/*"
+  ],
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
+    "@n8n/config": "workspace:*"
+  },
+  "dependencies": {
+    "n8n-workflow": "workspace:*",
+    "xss": "catalog:",
+    "zod": "catalog:",
+    "@n8n/permissions": "workspace:*"
+  }
+}

@@ -1,17 +1,14 @@
-import {
-	INodeProperties
-} from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const boardColumnOperations = [
+export const boardColumnOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'boardColumn',
-				],
+				resource: ['boardColumn'],
 			},
 		},
 		options: [
@@ -19,26 +16,29 @@ export const boardColumnOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new column',
+				action: 'Create a board column',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all columns',
+				description: 'Get many columns',
+				action: 'Get many board columns',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const boardColumnFields = [
-/* -------------------------------------------------------------------------- */
-/*                                 boardColumn:create                         */
-/* -------------------------------------------------------------------------- */
+export const boardColumnFields: INodeProperties[] = [
+	/* -------------------------------------------------------------------------- */
+	/*                                 boardColumn:create                         */
+	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getBoards',
@@ -46,12 +46,8 @@ export const boardColumnFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'boardColumn',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['boardColumn'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -63,12 +59,8 @@ export const boardColumnFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'boardColumn',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['boardColumn'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -79,12 +71,12 @@ export const boardColumnFields = [
 		default: '',
 		options: [
 			{
-				name: 'Country',
-				value: 'country',
-			},
-			{
 				name: 'Checkbox',
 				value: 'checkbox',
+			},
+			{
+				name: 'Country',
+				value: 'country',
 			},
 			{
 				name: 'Date',
@@ -166,12 +158,8 @@ export const boardColumnFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'boardColumn',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['boardColumn'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -182,12 +170,8 @@ export const boardColumnFields = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'boardColumn',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['boardColumn'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -200,17 +184,19 @@ export const boardColumnFields = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: `The new column's defaults.`,
+				description: "The new column's defaults",
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 boardColumn:getAll                         */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 boardColumn:getAll                         */
+	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Board ID',
+		displayName: 'Board Name or ID',
 		name: 'boardId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getBoards',
@@ -218,13 +204,9 @@ export const boardColumnFields = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'boardColumn',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['boardColumn'],
+				operation: ['getAll'],
 			},
 		},
 	},
-] as INodeProperties[];
+];

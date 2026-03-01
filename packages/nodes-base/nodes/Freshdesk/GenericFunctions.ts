@@ -1,26 +1,30 @@
-import { OptionsWithUri } from 'request';
-
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
+	IHttpRequestMethods,
 	ILoadOptionsFunctions,
-	BINARY_ENCODING
-} from 'n8n-core';
+	IRequestOptions,
+	JsonObject,
+} from 'n8n-workflow';
+import { BINARY_ENCODING, NodeApiError } from 'n8n-workflow';
 
-import { IDataObject } from 'n8n-workflow';
+export async function freshdeskApiRequest(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	resource: string,
 
-export async function freshdeskApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
-	const credentials = this.getCredentials('freshdeskApi');
-
-	if (credentials === undefined) {
-		throw new Error('No credentials got returned!');
-	}
+	body: any = {},
+	query: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+) {
+	const credentials = await this.getCredentials('freshdeskApi');
 
 	const apiKey = `${credentials.apiKey}:X`;
 
 	const endpoint = 'freshdesk.com/api/v2';
 
-	let options: OptionsWithUri = {
+	let options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
 			Authorization: `${Buffer.from(apiKey).toString(BINARY_ENCODING)}`,
@@ -29,9 +33,9 @@ export async function freshdeskApiRequest(this: IExecuteFunctions | ILoadOptions
 		body,
 		qs: query,
 		uri: uri || `https://${credentials.domain}.${endpoint}${resource}`,
-		json: true
+		json: true,
 	};
-	if (!Object.keys(body).length) {
+	if (!Object.keys(body as IDataObject).length) {
 		delete options.body;
 	}
 	if (!Object.keys(query).length) {
@@ -39,41 +43,38 @@ export async function freshdeskApiRequest(this: IExecuteFunctions | ILoadOptions
 	}
 	options = Object.assign({}, options, option);
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		if (error.response) {
-			let errorMessage = error.response.body.message || error.response.body.description || error.message;
-			if (error.response.body && error.response.body.errors) {
-				errorMessage = error.response.body.errors.map((err: IDataObject) => `"${err.field}" => ${err.message}`).join(', ');
-			}
-			throw new Error(`Freshdesk error response [${error.statusCode}]: ${errorMessage}`);
-		}
-
-		throw error;
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
-export async function freshdeskApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function freshdeskApiRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	endpoint: string,
 
+	body: any = {},
+	query: IDataObject = {},
+) {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
 	let uri: string | undefined;
 	query.per_page = 100;
 	do {
-		responseData = await freshdeskApiRequest.call(this, method, endpoint, body, query, uri, { resolveWithFullResponse: true });
+		responseData = await freshdeskApiRequest.call(this, method, endpoint, body, query, uri, {
+			resolveWithFullResponse: true,
+		});
 		if (responseData.headers.link) {
-			uri = responseData.headers['link'].split(';')[0].replace('<', '').replace('>','');
+			uri = responseData.headers.link.split(';')[0].replace('<', '').replace('>', '');
 		}
-		returnData.push.apply(returnData, responseData.body);
-	} while (
-		responseData.headers['link'] !== undefined &&
-		responseData.headers['link'].includes('rel="next"')
-	);
+		returnData.push.apply(returnData, responseData.body as IDataObject[]);
+	} while (responseData.headers.link?.includes('rel="next"'));
 	return returnData;
 }
 
-export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
 		result = JSON.parse(json!);

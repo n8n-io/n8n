@@ -1,0 +1,41 @@
+{
+    "type": "object",
+    "properties": {
+        "attributes": {
+            "type": "object",
+            "properties": {
+                "FIRSTNAME": {
+                    "type": "string"
+                }
+            }
+        },
+        "createdAt": {
+            "type": "string"
+        },
+        "email": {
+            "type": "string"
+        },
+        "emailBlacklisted": {
+            "type": "boolean"
+        },
+        "id": {
+            "type": "integer"
+        },
+        "listIds": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "listUnsubscribed": {
+            "type": "null"
+        },
+        "modifiedAt": {
+            "type": "string"
+        },
+        "smsBlacklisted": {
+            "type": "boolean"
+        }
+    },
+    "version": 3
+}

@@ -1,0 +1,318 @@
+import get from 'lodash/get';
+import set from 'lodash/set';
+import unset from 'lodash/unset';
+import {
+	ApplicationError,
+	NodeOperationError,
+	deepCopy,
+	getValueDescription,
+	jsonParse,
+	validateFieldType,
+	isBinaryValue,
+	BINARY_MODE_COMBINED,
+} from 'n8n-workflow';
+import type {
+	AssignmentCollectionValue,
+	FieldType,
+	IDataObject,
+	IExecuteFunctions,
+	INode,
+	INodeExecutionData,
+	ISupplyDataFunctions,
+} from 'n8n-workflow';
+
+import type { SetNodeOptions } from './interfaces';
+import { INCLUDE } from './interfaces';
+import { getResolvables, sanitizeDataPathKey } from '../../../../utils/utilities';
+
+const configureFieldHelper = (dotNotation?: boolean) => {
+	if (dotNotation !== false) {
+		return {
+			set: (item: IDataObject, key: string, value: IDataObject) => {
+				set(item, key, value);
+			},
+			get: (item: IDataObject, key: string) => {
+				return get(item, key);
+			},
+			unset: (item: IDataObject, key: string) => {
+				unset(item, key);
+			},
+		};
+	} else {
+		return {
+			set: (item: IDataObject, key: string, value: IDataObject) => {
+				item[sanitizeDataPathKey(item, key)] = value;
+			},
+			get: (item: IDataObject, key: string) => {
+				return item[sanitizeDataPathKey(item, key)];
+			},
+			unset: (item: IDataObject, key: string) => {
+				delete item[sanitizeDataPathKey(item, key)];
+			},
+		};
+	}
+};
+
+export function composeReturnItem(
+	this: IExecuteFunctions | ISupplyDataFunctions,
+	itemIndex: number,
+	inputItem: INodeExecutionData,
+	newFields: IDataObject,
+	options: SetNodeOptions,
+	nodeVersion: number,
+) {
+	const newItem: INodeExecutionData = {
+		json: {},
+		pairedItem: { item: itemIndex },
+	};
+
+	const includeBinary =
+		(nodeVersion >= 3.4 && !options.stripBinary && options.include !== 'none') ||
+		(nodeVersion < 3.4 && !!options.includeBinary);
+	if (includeBinary && inputItem.binary !== undefined) {
+		// Create a shallow copy of the binary data so that the old
+		// data references which do not get changed still stay behind
+		// but the incoming data does not get changed.
+		newItem.binary = {};
+		Object.assign(newItem.binary, inputItem.binary);
+	}
+
+	const fieldHelper = configureFieldHelper(options.dotNotation);
+
+	switch (options.include) {
+		case INCLUDE.ALL:
+			newItem.json = deepCopy(inputItem.json);
+			break;
+		case INCLUDE.SELECTED:
+			const includeFields = (this.getNodeParameter('includeFields', itemIndex) as string)
+				.split(',')
+				.map((item) => item.trim())
+				.filter((item) => item);
+
+			for (const key of includeFields) {
+				const fieldValue = fieldHelper.get(inputItem.json, key) as IDataObject;
+				let keyToSet = key;
+				if (options.dotNotation !== false && key.includes('.')) {
+					keyToSet = key.split('.').pop() as string;
+				}
+				fieldHelper.set(newItem.json, keyToSet, fieldValue);
+			}
+			break;
+		case INCLUDE.EXCEPT:
+			const excludeFields = (this.getNodeParameter('excludeFields', itemIndex) as string)
+				.split(',')
+				.map((item) => item.trim())
+				.filter((item) => item);
+
+			const inputData = deepCopy(inputItem.json);
+
+			for (const key of excludeFields) {
+				fieldHelper.unset(inputData, key);
+			}
+
+			newItem.json = inputData;
+			break;
+		case INCLUDE.NONE:
+			break;
+		default:
+			throw new ApplicationError(`The include option "${options.include}" is not known!`, {
+				level: 'warning',
+			});
+	}
+
+	for (const key of Object.keys(newFields)) {
+		fieldHelper.set(newItem.json, key, newFields[key] as IDataObject);
+	}
+
+	return newItem;
+}
+
+export const parseJsonParameter = (
+	jsonData: string | IDataObject,
+	node: INode,
+	i: number,
+	entryName?: string,
+) => {
+	let returnData: IDataObject;
+	const location = entryName ? `entry "${entryName}" inside 'Fields to Set'` : "'JSON Output'";
+
+	if (typeof jsonData === 'string') {
+		try {
+			returnData = jsonParse<IDataObject>(jsonData, { repairJSON: true });
+		} catch (error) {
+			throw new NodeOperationError(node, `The ${location} in item ${i} contains invalid JSON`, {
+				description: jsonData,
+			});
+		}
+	} else {
+		returnData = jsonData;
+	}
+
+	if (returnData === undefined || typeof returnData !== 'object' || Array.isArray(returnData)) {
+		throw new NodeOperationError(
+			node,
+			`The ${location} in item ${i} does not contain a valid JSON object`,
+		);
+	}
+
+	return returnData;
+};
+
+export const validateEntry = (
+	name: string,
+	type: FieldType,
+	value: unknown,
+	node: INode,
+	itemIndex: number,
+	ignoreErrors = false,
+	nodeVersion?: number,
+) => {
+	if (nodeVersion && nodeVersion >= 3.2 && (value === undefined || value === null)) {
+		return { name, value: null };
+	}
+
+	const description = `To fix the error try to change the type for the field "${name}" or activate the option “Ignore Type Conversion Errors” to apply a less strict type validation`;
+
+	if (type === 'string') {
+		if (nodeVersion && nodeVersion > 3 && (value === undefined || value === null)) {
+			if (ignoreErrors) {
+				return { name, value: null };
+			} else {
+				throw new NodeOperationError(
+					node,
+					`'${name}' expects a ${type} but we got ${getValueDescription(value)} [item ${itemIndex}]`,
+					{ description },
+				);
+			}
+		} else if (typeof value === 'object') {
+			value = JSON.stringify(value);
+		} else {
+			value = String(value);
+		}
+	}
+
+	const validationResult = validateFieldType(name, value, type);
+
+	if (!validationResult.valid) {
+		if (ignoreErrors) {
+			return { name, value: value ?? null };
+		} else {
+			const message = `${'errorMessage' in validationResult ? validationResult.errorMessage : 'Error'} [item ${itemIndex}]`;
+			throw new NodeOperationError(node, message, {
+				itemIndex,
+				description,
+			});
+		}
+	}
+
+	return {
+		name,
+		value: validationResult.newValue ?? null,
+	};
+};
+
+export function resolveRawData(
+	this: IExecuteFunctions | ISupplyDataFunctions,
+	rawData: string,
+	i: number,
+) {
+	const resolvables = getResolvables(rawData);
+	let returnData: string = rawData;
+
+	if (resolvables.length) {
+		for (const resolvable of resolvables) {
+			const resolvedValue = this.evaluateExpression(`${resolvable}`, i);
+
+			// Use a function replacer to avoid issues with special replacement patterns like $&
+			if (typeof resolvedValue === 'object' && resolvedValue !== null) {
+				returnData = returnData.replace(resolvable, () => JSON.stringify(resolvedValue));
+			} else {
+				returnData = returnData.replace(resolvable, () => String(resolvedValue));
+			}
+		}
+	}
+	return returnData;
+}
+
+export function prepareReturnItem(
+	context: IExecuteFunctions | ISupplyDataFunctions,
+	value: AssignmentCollectionValue,
+	itemIndex: number,
+	item: INodeExecutionData,
+	node: INode,
+	options: SetNodeOptions,
+) {
+	const jsonValues: AssignmentCollectionValue['assignments'] = [];
+	const binaryValues: AssignmentCollectionValue['assignments'] = [];
+
+	for (const assignment of value?.assignments ?? []) {
+		if (assignment.type === 'binary') {
+			binaryValues.push(assignment);
+		} else {
+			jsonValues.push(assignment);
+		}
+	}
+
+	const newData = Object.fromEntries(
+		jsonValues.map((assignment) => {
+			const { name, value } = validateEntry(
+				assignment.name,
+				assignment.type as FieldType,
+				assignment.value,
+				node,
+				itemIndex,
+				options.ignoreConversionErrors,
+				node.typeVersion,
+			);
+
+			return [name, value];
+		}),
+	);
+
+	const returnItem = composeReturnItem.call(
+		context,
+		itemIndex,
+		item,
+		newData,
+		options,
+		node.typeVersion,
+	);
+
+	if (binaryValues.length) {
+		if (!returnItem.binary) {
+			returnItem.binary = {};
+		}
+		const { binaryMode } = context.getWorkflowSettings();
+
+		const target = binaryMode === BINARY_MODE_COMBINED ? 'json' : 'binary';
+
+		const fieldHelper = configureFieldHelper(options.dotNotation);
+
+		for (const assignment of binaryValues) {
+			const name = assignment.name;
+			const value = assignment.value as string;
+			const binaryData = context.helpers.assertBinaryData(itemIndex, value);
+			if (!isBinaryValue(binaryData)) {
+				throw new NodeOperationError(
+					node,
+					`Could not find binary data specified in field ${name}`,
+					{ itemIndex },
+				);
+			}
+			// Do not push binary data to json if entry contains raw data
+			if (target === 'json' && !binaryData.id) {
+				returnItem.binary[name] = binaryData;
+				continue;
+			}
+
+			if (target === 'json') {
+				fieldHelper.set(returnItem.json, name, binaryData);
+				continue;
+			}
+
+			returnItem[target]![name] = binaryData;
+		}
+	}
+
+	return returnItem;
+}

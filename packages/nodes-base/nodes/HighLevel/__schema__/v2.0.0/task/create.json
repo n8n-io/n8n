@@ -1,0 +1,35 @@
+{
+    "type": "object",
+    "properties": {
+        "contactId": {
+            "type": "string"
+        },
+        "task": {
+            "type": "object",
+            "properties": {
+                "businessId": {
+                    "type": "string"
+                },
+                "completed": {
+                    "type": "boolean"
+                },
+                "contactId": {
+                    "type": "string"
+                },
+                "dueDate": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "traceId": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

@@ -1,15 +1,14 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
-export const productOperations = [
+export const productOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
+				resource: ['product'],
 			},
 		},
 		options: [
@@ -17,38 +16,41 @@ export const productOperations = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a product',
+				action: 'Create a product',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a product',
+				action: 'Delete a product',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a product',
+				action: 'Get a product',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all products',
+				description: 'Get many products',
+				action: 'Get many products',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a product',
+				action: 'Update a product',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-] as INodeProperties[];
+];
 
-export const productFields = [
-
-/* -------------------------------------------------------------------------- */
-/*                                product:create                              */
-/* -------------------------------------------------------------------------- */
+export const productFields: INodeProperties[] = [
+	/* -------------------------------------------------------------------------- */
+	/*                                product:create                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Name',
 		name: 'name',
@@ -57,15 +59,11 @@ export const productFields = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'create',
-				]
+				resource: ['product'],
+				operation: ['create'],
 			},
 		},
-		description: 'Product name.',
+		description: 'Product name',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -75,12 +73,8 @@ export const productFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['product'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -135,55 +129,52 @@ export const productFields = [
 					},
 				],
 				default: 'visible',
-				description: 'Catalog visibility.',
 			},
 			{
-				displayName: 'Categories',
+				displayName: 'Category Names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getCategories',
 				},
 				default: [],
-				description: 'List of categories',
+				description:
+					'List of categories. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Cross Sell IDs',
 				name: 'crossSellIds',
 				type: 'string',
 				default: '',
-				description: 'List of cross-sell products IDs. Multiple can be added separated by ,',
+				description: 'List of cross-sell products IDs. Multiple can be added separated by ,.',
 			},
 			{
 				displayName: 'Date On Sale From',
 				name: 'dateOnSaleFrom',
 				type: 'dateTime',
 				default: '',
-				description: `Start date of sale price, in the site's timezone.`,
+				description: "Start date of sale price, in the site's timezone",
 			},
 			{
 				displayName: 'Date On Sale To',
 				name: 'dateOnSaleTo',
 				type: 'dateTime',
 				default: '',
-				description: `Ennd date of sale price, in the site's timezone.`,
+				description: "Ennd date of sale price, in the site's timezone",
 			},
 			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
-				description: 'Product description.',
+				description: 'Product description',
 			},
 			{
 				displayName: 'Downloadable',
 				name: 'downloadable',
 				type: 'boolean',
 				default: false,
-				description: 'if the product is downloadable.',
+				description: 'Whether the product is downloadable',
 			},
 			{
 				displayName: 'External URL',
@@ -197,13 +188,14 @@ export const productFields = [
 				name: 'featured',
 				type: 'boolean',
 				default: false,
-				description: 'Featured product',
+				description: 'Whether the product is featured',
 			},
 			{
 				displayName: 'Manage Stock',
 				name: 'manageStock',
 				type: 'boolean',
 				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'Stock management at product level',
 			},
 			{
@@ -211,77 +203,77 @@ export const productFields = [
 				name: 'menuOrder',
 				type: 'number',
 				default: 1,
-				description: 'Menu order, used to custom sort products.',
+				description: 'Menu order, used to custom sort products',
 			},
 			{
 				displayName: 'Parent ID',
 				name: 'parentId',
 				type: 'string',
 				default: '',
-				description: 'Product parent ID.',
+				description: 'Product parent ID',
 			},
 			{
 				displayName: 'Purchase Note',
 				name: 'purchaseNote',
 				type: 'string',
 				default: '',
-				description: 'Optional note to send the customer after purchase.',
+				description: 'Optional note to send the customer after purchase',
 			},
 			{
 				displayName: 'Regular Price',
 				name: 'regularPrice',
 				type: 'string',
 				default: '',
-				description: 'Product regular price.',
+				description: 'Product regular price',
 			},
 			{
 				displayName: 'Reviews Allowed',
 				name: 'reviewsAllowed',
 				type: 'boolean',
 				default: true,
-				description: 'Allow reviews.',
+				description: 'Whether to allow reviews',
 			},
 			{
 				displayName: 'Sale Price',
 				name: 'salePrice',
 				type: 'string',
 				default: '',
-				description: 'Product sale price.',
+				description: 'Product sale price',
 			},
 			{
 				displayName: 'Shipping Class',
 				name: 'shippingClass',
 				type: 'string',
 				default: '',
-				description: 'Shipping class slug.',
+				description: 'Shipping class slug',
 			},
 			{
 				displayName: 'Short Description',
 				name: 'shortDescription',
 				type: 'string',
 				default: '',
-				description: 'Product short description.',
+				description: 'Product short description',
 			},
 			{
 				displayName: 'SKU',
 				name: 'sku',
 				type: 'string',
 				default: '',
-				description: 'Unique identifier.',
+				description: 'Unique identifier',
 			},
 			{
 				displayName: 'Slug',
 				name: 'slug',
 				type: 'string',
 				default: '',
-				description: 'Product slug.',
+				description: 'Product slug',
 			},
 			{
 				displayName: 'Sold Individually',
 				name: 'soldIndividually',
 				type: 'boolean',
 				default: false,
-				description: 'Allow one item to be bought in a single order.',
+				description: 'Whether to allow one item to be bought in a single order',
 			},
 			{
 				displayName: 'Status',
@@ -306,14 +298,13 @@ export const productFields = [
 					},
 				],
 				default: 'publish',
-				description: 'A named status for the product.',
+				description: 'A named status for the product',
 			},
 			{
 				displayName: 'Stock Quantity',
 				name: 'stockQuantity',
 				type: 'number',
 				default: 1,
-				description: 'Stock quantity.',
 			},
 			{
 				displayName: 'Stock Status',
@@ -337,21 +328,21 @@ export const productFields = [
 				description: 'Controls the stock status of the product',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'List of tags',
+				description:
+					'List of tags. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Tax Class',
 				name: 'taxClass',
 				type: 'string',
 				default: '',
-				description: 'Tax class.',
 			},
 			{
 				displayName: 'Tax Status',
@@ -372,7 +363,6 @@ export const productFields = [
 					},
 				],
 				default: 'taxable',
-				description: 'Tax status.',
 			},
 			{
 				displayName: 'Type',
@@ -404,41 +394,37 @@ export const productFields = [
 				name: 'upsellIds',
 				type: 'string',
 				default: '',
-				description: 'List of up-sell products IDs. Multiple can be added separated by ,',
+				description: 'List of up-sell products IDs. Multiple can be added separated by ,.',
 			},
 			{
 				displayName: 'Virtual',
 				name: 'virtual',
 				type: 'boolean',
 				default: false,
-				description: 'If the product is virtual.',
+				description: 'Whether the product is virtual',
 			},
 			{
 				displayName: 'Weight',
 				name: 'weight',
 				type: 'string',
 				default: '',
-				description: 'Product weight.',
+				description: 'Product weight',
 			},
-		]
+		],
 	},
 	{
 		displayName: 'Dimensions',
 		name: 'dimensionsUi',
 		placeholder: 'Add Dimension',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: false,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'create',
-				]
+				resource: ['product'],
+				operation: ['create'],
 			},
 		},
 		description: 'Product dimensions',
@@ -452,21 +438,21 @@ export const productFields = [
 						name: 'height',
 						type: 'string',
 						default: '',
-						description: 'Product height.',
+						description: 'Product height',
 					},
 					{
 						displayName: 'Length',
 						name: 'length',
 						type: 'string',
 						default: '',
-						description: 'Product length.',
+						description: 'Product length',
 					},
 					{
 						displayName: 'Width',
 						name: 'width',
 						type: 'string',
 						default: '',
-						description: 'Product width.',
+						description: 'Product width',
 					},
 				],
 			},
@@ -477,18 +463,14 @@ export const productFields = [
 		name: 'imagesUi',
 		placeholder: 'Add Image',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'create',
-				]
+				resource: ['product'],
+				operation: ['create'],
 			},
 		},
 		description: 'Product Image',
@@ -502,21 +484,21 @@ export const productFields = [
 						name: 'alt',
 						type: 'string',
 						default: '',
-						description: 'Image alternative text.',
+						description: 'Image alternative text',
 					},
 					{
 						displayName: 'Src',
 						name: 'src',
 						type: 'string',
 						default: '',
-						description: 'Image URL.',
+						description: 'Image URL',
 					},
 					{
 						displayName: 'Name',
 						name: 'name',
 						type: 'string',
 						default: '',
-						description: 'Image name.',
+						description: 'Image name',
 					},
 				],
 			},
@@ -527,18 +509,14 @@ export const productFields = [
 		name: 'metadataUi',
 		placeholder: 'Add Metadata',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'create',
-				]
+				resource: ['product'],
+				operation: ['create'],
 			},
 		},
 		description: 'Meta data',
@@ -552,38 +530,33 @@ export const productFields = [
 						name: 'key',
 						type: 'string',
 						default: '',
-						description: 'Name of the metadata key to add.',
+						description: 'Name of the metadata key to add',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Value to set for the metadata key.',
+						description: 'Value to set for the metadata key',
 					},
 				],
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 product:update                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 product:update                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Product ID',
 		name: 'productId',
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['product'],
+				operation: ['update'],
 			},
 		},
 		default: '',
-		description: 'Product ID.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -593,12 +566,8 @@ export const productFields = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['product'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -653,55 +622,52 @@ export const productFields = [
 					},
 				],
 				default: 'visible',
-				description: 'Catalog visibility.',
 			},
 			{
-				displayName: 'Categories',
+				displayName: 'Category Names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getCategories',
 				},
 				default: [],
-				description: 'List of categories',
+				description:
+					'List of categories. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Cross Sell IDs',
 				name: 'crossSellIds',
 				type: 'string',
 				default: '',
-				description: 'List of cross-sell products IDs. Multiple can be added separated by ,',
+				description: 'List of cross-sell products IDs. Multiple can be added separated by ,.',
 			},
 			{
 				displayName: 'Date On Sale From',
 				name: 'dateOnSaleFrom',
 				type: 'dateTime',
 				default: '',
-				description: `Start date of sale price, in the site's timezone.`,
+				description: "Start date of sale price, in the site's timezone",
 			},
 			{
 				displayName: 'Date On Sale To',
 				name: 'dateOnSaleTo',
 				type: 'dateTime',
 				default: '',
-				description: `Ennd date of sale price, in the site's timezone.`,
+				description: "Ennd date of sale price, in the site's timezone",
 			},
 			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
-				description: 'Product description.',
+				description: 'Product description',
 			},
 			{
 				displayName: 'Downloadable',
 				name: 'downloadable',
 				type: 'boolean',
 				default: false,
-				description: 'if the product is downloadable.',
+				description: 'Whether the product is downloadable',
 			},
 			{
 				displayName: 'External URL',
@@ -715,13 +681,14 @@ export const productFields = [
 				name: 'featured',
 				type: 'boolean',
 				default: false,
-				description: 'Featured product',
+				description: 'Whether the product is featured',
 			},
 			{
 				displayName: 'Manage Stock',
 				name: 'manageStock',
 				type: 'boolean',
 				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'Stock management at product level',
 			},
 			{
@@ -729,84 +696,84 @@ export const productFields = [
 				name: 'menuOrder',
 				type: 'number',
 				default: 1,
-				description: 'Menu order, used to custom sort products.',
+				description: 'Menu order, used to custom sort products',
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Product name.',
+				description: 'Product name',
 			},
 			{
 				displayName: 'Parent ID',
 				name: 'parentId',
 				type: 'string',
 				default: '',
-				description: 'Product parent ID.',
+				description: 'Product parent ID',
 			},
 			{
 				displayName: 'Purchase Note',
 				name: 'purchaseNote',
 				type: 'string',
 				default: '',
-				description: 'Optional note to send the customer after purchase.',
+				description: 'Optional note to send the customer after purchase',
 			},
 			{
 				displayName: 'Regular Price',
 				name: 'regularPrice',
 				type: 'string',
 				default: '',
-				description: 'Product regular price.',
+				description: 'Product regular price',
 			},
 			{
 				displayName: 'Reviews Allowed',
 				name: 'reviewsAllowed',
 				type: 'boolean',
 				default: true,
-				description: 'Allow reviews.',
+				description: 'Whether to allow reviews',
 			},
 			{
 				displayName: 'Sale Price',
 				name: 'salePrice',
 				type: 'string',
 				default: '',
-				description: 'Product sale price.',
+				description: 'Product sale price',
 			},
 			{
 				displayName: 'Shipping Class',
 				name: 'shippingClass',
 				type: 'string',
 				default: '',
-				description: 'Shipping class slug.',
+				description: 'Shipping class slug',
 			},
 			{
 				displayName: 'Short Description',
 				name: 'shortDescription',
 				type: 'string',
 				default: '',
-				description: 'Product short description.',
+				description: 'Product short description',
 			},
 			{
 				displayName: 'SKU',
 				name: 'sku',
 				type: 'string',
 				default: '',
-				description: 'Unique identifier.',
+				description: 'Unique identifier',
 			},
 			{
 				displayName: 'Slug',
 				name: 'slug',
 				type: 'string',
 				default: '',
-				description: 'Product slug.',
+				description: 'Product slug',
 			},
 			{
 				displayName: 'Sold Individually',
 				name: 'soldIndividually',
 				type: 'boolean',
 				default: false,
-				description: 'Allow one item to be bought in a single order.',
+				description: 'Whether to allow one item to be bought in a single order',
 			},
 			{
 				displayName: 'Status',
@@ -831,14 +798,13 @@ export const productFields = [
 					},
 				],
 				default: 'publish',
-				description: 'A named status for the product.',
+				description: 'A named status for the product',
 			},
 			{
 				displayName: 'Stock Quantity',
 				name: 'stockQuantity',
 				type: 'number',
 				default: 1,
-				description: 'Stock quantity.',
 			},
 			{
 				displayName: 'Stock Status',
@@ -862,21 +828,21 @@ export const productFields = [
 				description: 'Controls the stock status of the product',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
-				description: 'List of tags',
+				description:
+					'List of tags. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Tax Class',
 				name: 'taxClass',
 				type: 'string',
 				default: '',
-				description: 'Tax class.',
 			},
 			{
 				displayName: 'Tax Status',
@@ -897,7 +863,6 @@ export const productFields = [
 					},
 				],
 				default: 'taxable',
-				description: 'Tax status.',
 			},
 			{
 				displayName: 'Type',
@@ -929,41 +894,37 @@ export const productFields = [
 				name: 'upsellIds',
 				type: 'string',
 				default: '',
-				description: 'List of up-sell products IDs. Multiple can be added separated by ,',
+				description: 'List of up-sell products IDs. Multiple can be added separated by ,.',
 			},
 			{
 				displayName: 'Virtual',
 				name: 'virtual',
 				type: 'boolean',
 				default: false,
-				description: 'If the product is virtual.',
+				description: 'Whether the product is virtual',
 			},
 			{
 				displayName: 'Weight',
 				name: 'weight',
 				type: 'string',
 				default: '',
-				description: 'Product weight.',
+				description: 'Product weight',
 			},
-		]
+		],
 	},
 	{
 		displayName: 'Dimensions',
 		name: 'dimensionsUi',
 		placeholder: 'Add Dimension',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: false,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'update',
-				]
+				resource: ['product'],
+				operation: ['update'],
 			},
 		},
 		description: 'Product dimensions',
@@ -977,21 +938,21 @@ export const productFields = [
 						name: 'height',
 						type: 'string',
 						default: '',
-						description: 'Product height.',
+						description: 'Product height',
 					},
 					{
 						displayName: 'Length',
 						name: 'length',
 						type: 'string',
 						default: '',
-						description: 'Product length.',
+						description: 'Product length',
 					},
 					{
 						displayName: 'Width',
 						name: 'width',
 						type: 'string',
 						default: '',
-						description: 'Product width.',
+						description: 'Product width',
 					},
 				],
 			},
@@ -1002,18 +963,14 @@ export const productFields = [
 		name: 'imagesUi',
 		placeholder: 'Add Image',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'update',
-				]
+				resource: ['product'],
+				operation: ['update'],
 			},
 		},
 		description: 'Product Image',
@@ -1027,21 +984,21 @@ export const productFields = [
 						name: 'alt',
 						type: 'string',
 						default: '',
-						description: 'Image alternative text.',
+						description: 'Image alternative text',
 					},
 					{
 						displayName: 'Src',
 						name: 'src',
 						type: 'string',
 						default: '',
-						description: 'Image URL.',
+						description: 'Image URL',
 					},
 					{
 						displayName: 'Name',
 						name: 'name',
 						type: 'string',
 						default: '',
-						description: 'Image name.',
+						description: 'Image name',
 					},
 				],
 			},
@@ -1052,18 +1009,14 @@ export const productFields = [
 		name: 'metadataUi',
 		placeholder: 'Add Metadata',
 		type: 'fixedCollection',
-		default: '',
+		default: {},
 		typeOptions: {
 			multipleValues: true,
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'update',
-				]
+				resource: ['product'],
+				operation: ['update'],
 			},
 		},
 		description: 'Meta data',
@@ -1077,58 +1030,49 @@ export const productFields = [
 						name: 'key',
 						type: 'string',
 						default: '',
-						description: 'Name of the metadata key to add.',
+						description: 'Name of the metadata key to add',
 					},
 					{
 						displayName: 'Value',
 						name: 'value',
 						type: 'string',
 						default: '',
-						description: 'Value to set for the metadata key.',
+						description: 'Value to set for the metadata key',
 					},
 				],
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                   product:get                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                   product:get                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Product ID',
 		name: 'productId',
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['product'],
+				operation: ['get'],
 			},
 		},
 		default: '',
-		description: 'Product ID.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                   product:getAll                           */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                   product:getAll                           */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['product'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
-		description: 'If all results should be returned or only up to a given limit.',
+		description: 'Whether to return all results or only up to a given limit',
 	},
 	{
 		displayName: 'Limit',
@@ -1136,15 +1080,9 @@ export const productFields = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['product'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -1152,22 +1090,18 @@ export const productFields = [
 			maxValue: 100,
 		},
 		default: 50,
-		description: 'How many results to return.',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['product'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -1176,7 +1110,7 @@ export const productFields = [
 				name: 'after',
 				type: 'dateTime',
 				default: '',
-				description: 'Limit response to resources published after a given ISO8601 compliant date.',
+				description: 'Limit response to resources published after a given ISO8601 compliant date',
 			},
 			{
 				displayName: 'Before',
@@ -1186,14 +1120,15 @@ export const productFields = [
 				description: 'Limit response to resources published before a given ISO8601 compliant date',
 			},
 			{
-				displayName: 'Category',
+				displayName: 'Category Name or ID',
 				name: 'category',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getCategories',
 				},
-				description: 'Limit result set to products assigned a specific category ID.',
+				description:
+					'Limit result set to products assigned a specific category ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Context',
@@ -1214,28 +1149,28 @@ export const productFields = [
 					},
 				],
 				default: 'view',
-				description: 'Scope under which the request is made; determines fields present in response.',
+				description: 'Scope under which the request is made; determines fields present in response',
 			},
 			{
 				displayName: 'Featured',
 				name: 'featured',
 				type: 'boolean',
 				default: false,
-				description: 'Limit result set to featured products.',
+				description: 'Whether to limit the result set to featured products',
 			},
 			{
 				displayName: 'Max Price',
 				name: 'maxPrice',
 				type: 'string',
 				default: '',
-				description: 'Limit result set to products based on a maximun price.',
+				description: 'Limit result set to products based on a maximun price',
 			},
 			{
 				displayName: 'Min Price',
 				name: 'minPrice',
 				type: 'string',
 				default: '',
-				description: 'Limit result set to products based on a minimum price.',
+				description: 'Limit result set to products based on a minimum price',
 			},
 			{
 				displayName: 'Order',
@@ -1252,7 +1187,7 @@ export const productFields = [
 					},
 				],
 				default: 'desc',
-				description: 'Order sort attribute ascending or descending.',
+				description: 'Order sort attribute ascending or descending',
 			},
 			{
 				displayName: 'Order By',
@@ -1281,34 +1216,38 @@ export const productFields = [
 					},
 				],
 				default: 'id',
-				description: 'Sort collection by object attribute.',
+				description: 'Sort collection by object attribute',
 			},
 			{
 				displayName: 'Search',
 				name: 'search',
 				type: 'string',
 				default: '',
-				description: 'Limit results to those matching a string.',
+				description: 'Limit results to those matching a string',
 			},
 			{
 				displayName: 'SKU',
 				name: 'sku',
 				type: 'string',
 				default: '',
-				description: 'Limit result set to products with a specific SKU.',
+				description: 'Limit result set to products with a specific SKU',
 			},
 			{
 				displayName: 'Slug',
 				name: 'slug',
 				type: 'string',
 				default: '',
-				description: 'Limit result set to products with a specific slug.',
+				description: 'Limit result set to products with a specific slug',
 			},
 			{
 				displayName: 'Status',
 				name: 'status',
 				type: 'options',
 				options: [
+					{
+						name: 'Any',
+						value: 'any',
+					},
 					{
 						name: 'Draft',
 						value: 'draft',
@@ -1325,13 +1264,9 @@ export const productFields = [
 						name: 'Publish',
 						value: 'publish',
 					},
-					{
-						name: 'Any',
-						value: 'any',
-					},
 				],
 				default: 'any',
-				description: 'Limit result set to products assigned a specific status.',
+				description: 'Limit result set to products assigned a specific status',
 			},
 			{
 				displayName: 'Stock Status',
@@ -1355,14 +1290,15 @@ export const productFields = [
 				description: 'Controls the stock status of the product',
 			},
 			{
-				displayName: 'Tag',
+				displayName: 'Tag Name or ID',
 				name: 'tag',
 				type: 'options',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getTags',
 				},
-				description: 'Limit result set to products assigned a specific tag ID.',
+				description:
+					'Limit result set to products assigned a specific tag ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Tax Class',
@@ -1410,26 +1346,21 @@ export const productFields = [
 				default: 'simple',
 				description: 'Product type',
 			},
-		]
+		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                   product:delete                           */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                   product:delete                           */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Product ID',
 		name: 'productId',
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['product'],
+				operation: ['delete'],
 			},
 		},
 		default: '',
-		description: 'Product ID.',
 	},
-] as INodeProperties[];
+];

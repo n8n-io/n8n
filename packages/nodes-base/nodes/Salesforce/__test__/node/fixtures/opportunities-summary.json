@@ -1,0 +1,59 @@
+{
+	"objectDescribe": {
+		"activateable": false,
+		"associateEntityType": null,
+		"associateParentEntity": null,
+		"createable": true,
+		"custom": false,
+		"customSetting": false,
+		"deepCloneable": true,
+		"deletable": true,
+		"deprecatedAndHidden": false,
+		"feedEnabled": true,
+		"hasSubtypes": false,
+		"isInterface": false,
+		"isSubtype": false,
+		"keyPrefix": "006",
+		"label": "Opportunity",
+		"labelPlural": "Opportunities",
+		"layoutable": true,
+		"mergeable": false,
+		"mruEnabled": true,
+		"name": "Opportunity",
+		"queryable": true,
+		"replicateable": true,
+		"retrieveable": true,
+		"searchable": true,
+		"triggerable": true,
+		"undeletable": true,
+		"updateable": true,
+		"urls": {
+			"compactLayouts": "/services/data/v59.0/sobjects/Opportunity/describe/compactLayouts",
+			"rowTemplate": "/services/data/v59.0/sobjects/Opportunity/{ID}",
+			"approvalLayouts": "/services/data/v59.0/sobjects/Opportunity/describe/approvalLayouts",
+			"listviews": "/services/data/v59.0/sobjects/Opportunity/listviews",
+			"describe": "/services/data/v59.0/sobjects/Opportunity/describe",
+			"quickActions": "/services/data/v59.0/sobjects/Opportunity/quickActions",
+			"layouts": "/services/data/v59.0/sobjects/Opportunity/describe/layouts",
+			"sobject": "/services/data/v59.0/sobjects/Opportunity"
+		}
+	},
+	"recentItems": [
+		{
+			"attributes": {
+				"type": "Opportunity",
+				"url": "/services/data/v59.0/sobjects/Opportunity/id1"
+			},
+			"Id": "id1",
+			"Name": "Opportunity 1"
+		},
+		{
+			"attributes": {
+				"type": "Opportunity",
+				"url": "/services/data/v59.0/sobjects/Opportunity/id2"
+			},
+			"Id": "id2",
+			"Name": "Opportunity 2"
+		}
+	]
+}

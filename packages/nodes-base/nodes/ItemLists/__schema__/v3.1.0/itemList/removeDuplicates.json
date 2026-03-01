@@ -1,0 +1,77 @@
+{
+    "type": "object",
+    "properties": {
+        "address": {
+            "type": "string"
+        },
+        "data_cid": {
+            "type": "string"
+        },
+        "data_id": {
+            "type": "string"
+        },
+        "gps_coordinates": {
+            "type": "object",
+            "properties": {
+                "latitude": {
+                    "type": "number"
+                },
+                "longitude": {
+                    "type": "number"
+                }
+            }
+        },
+        "photos_link": {
+            "type": "string"
+        },
+        "place_id": {
+            "type": "string"
+        },
+        "place_id_search": {
+            "type": "string"
+        },
+        "position": {
+            "type": "integer"
+        },
+        "provider_id": {
+            "type": "string"
+        },
+        "reviews": {
+            "type": "integer"
+        },
+        "reviews_link": {
+            "type": "string"
+        },
+        "thumbnail": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        },
+        "type_id": {
+            "type": "string"
+        },
+        "type_ids": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "types": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "unclaimed_listing": {
+            "type": "boolean"
+        },
+        "website": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

@@ -1,0 +1,694 @@
+{
+  "name": "My workflow 2",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "798b312a-c922-4f11-8b96-496802bd327b",
+      "name": "When clicking \"Execute Workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        640,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "filters": {
+          "tags": "n8n-test"
+        }
+      },
+      "id": "90a66b97-baf9-4388-aee6-ce46dfce2749",
+      "name": "n8n",
+      "type": "n8n-nodes-base.n8n",
+      "typeVersion": 1,
+      "position": [
+        900,
+        360
+      ],
+      "credentials": {
+        "n8nApi": {
+          "id": "7",
+          "name": "n8n account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "n8n": [
+      {
+        "json": {
+          "createdAt": "2023-02-07T10:30:32.416Z",
+          "updatedAt": "2023-02-10T11:28:18.000Z",
+          "id": "107",
+          "name": "merge tests",
+          "active": false,
+          "nodes": [
+            {
+              "parameters": {},
+              "id": "9f880c6f-b5e0-4453-b1d7-550beb1febe8",
+              "name": "When clicking \"Execute Workflow\"",
+              "type": "n8n-nodes-base.manualTrigger",
+              "typeVersion": 1,
+              "position": [
+                700,
+                660
+              ]
+            },
+            {
+              "parameters": {
+                "jsCode": "return [\n  {id: 1, data: 'a', input: 1, text: 'foo'},\n  {id: 2, data: 'b', input: 1, text: 'foo'},\n];"
+              },
+              "id": "263d9c7f-32d4-4112-b271-73d09b73809a",
+              "name": "Code",
+              "type": "n8n-nodes-base.code",
+              "typeVersion": 1,
+              "position": [
+                900,
+                540
+              ]
+            },
+            {
+              "parameters": {
+                "jsCode": "return [\n  {id: 1, data: 'c', input: 2, tag: 'second'},\n  {id: 2, data: 'd', input: 2, tag: 'second'},\n  {id: 3, data: 'e', input: 2, tag: 'second'},\n];"
+              },
+              "id": "3defcf5a-ec5e-4d23-a1f6-a99b7362a241",
+              "name": "Code1",
+              "type": "n8n-nodes-base.code",
+              "typeVersion": 1,
+              "position": [
+                900,
+                780
+              ]
+            },
+            {
+              "parameters": {
+                "mode": "combine",
+                "mergeByFields": {
+                  "values": [
+                    {
+                      "field1": "id",
+                      "field2": "id"
+                    }
+                  ]
+                },
+                "options": {}
+              },
+              "id": "7120cd6f-29f3-4f5b-aa25-babebd6335d3",
+              "name": "Merge",
+              "type": "n8n-nodes-base.merge",
+              "typeVersion": 2,
+              "position": [
+                1320,
+                140
+              ]
+            },
+            {
+              "parameters": {
+                "mode": "combine",
+                "mergeByFields": {
+                  "values": [
+                    {
+                      "field1": "id",
+                      "field2": "id"
+                    }
+                  ]
+                },
+                "joinMode": "keepNonMatches",
+                "options": {}
+              },
+              "id": "1d6973e5-0716-4d47-85ef-298d3f86bb9d",
+              "name": "Merge1",
+              "type": "n8n-nodes-base.merge",
+              "typeVersion": 2,
+              "position": [
+                1320,
+                280
+              ]
+            },
+            {
+              "parameters": {
+                "mode": "combine",
+                "mergeByFields": {
+                  "values": [
+                    {
+                      "field1": "id",
+                      "field2": "id"
+                    }
+                  ]
+                },
+                "joinMode": "keepEverything",
+                "options": {}
+              },
+              "id": "dd75b8c0-21bf-460f-9920-644a467ed356",
+              "name": "Merge2",
+              "type": "n8n-nodes-base.merge",
+              "typeVersion": 2,
+              "position": [
+                1320,
+                420
+              ]
+            },
+            {
+              "parameters": {
+                "mode": "combine",
+                "mergeByFields": {
+                  "values": [
+                    {
+                      "field1": "id",
+                      "field2": "id"
+                    }
+                  ]
+                },
+                "joinMode": "enrichInput1",
+                "options": {}
+              },
+              "id": "3545877d-6e4f-437e-b91f-4c792d714e73",
+              "name": "Merge3",
+              "type": "n8n-nodes-base.merge",
+              "typeVersion": 2,
+              "position": [
+                1320,
+                560
+              ]
+            },
+            {
+              "parameters": {
+                "mode": "combine",
+                "mergeByFields": {
+                  "values": [
+                    {
+                      "field1": "id",
+                      "field2": "id"
+                    }
+                  ]
+                },
+                "joinMode": "enrichInput2",
+                "options": {}
+              },
+              "id": "4b6ac099-6e6f-4e91-bcfe-74d7524fad54",
+              "name": "Merge4",
+              "type": "n8n-nodes-base.merge",
+              "typeVersion": 2,
+              "position": [
+                1320,
+                740
+              ]
+            },
+            {
+              "parameters": {
+                "mode": "combine",
+                "mergeByFields": {
+                  "values": [
+                    {
+                      "field1": "id",
+                      "field2": "id"
+                    }
+                  ]
+                },
+                "outputDataFrom": "input1",
+                "options": {}
+              },
+              "id": "fb4fef36-26ea-4fc0-b6e9-a4b2781c94fa",
+              "name": "Merge5",
+              "type": "n8n-nodes-base.merge",
+              "typeVersion": 2,
+              "position": [
+                1320,
+                900
+              ]
+            },
+            {
+              "parameters": {
+                "mode": "combine",
+                "mergeByFields": {
+                  "values": [
+                    {
+                      "field1": "id",
+                      "field2": "id"
+                    }
+                  ]
+                },
+                "outputDataFrom": "input2",
+                "options": {}
+              },
+              "id": "0b4fbaaa-cf0b-4da5-b35f-da3f49409965",
+              "name": "Merge6",
+              "type": "n8n-nodes-base.merge",
+              "typeVersion": 2,
+              "position": [
+                1320,
+                1040
+              ]
+            },
+            {
+              "parameters": {
+                "mode": "combine",
+                "mergeByFields": {
+                  "values": [
+                    {
+                      "field1": "id",
+                      "field2": "id"
+                    }
+                  ]
+                },
+                "options": {
+                  "clashHandling": {
+                    "values": {
+                      "resolveClash": "addSuffix"
+                    }
+                  }
+                }
+              },
+              "id": "25489a7a-74c1-48d5-a03d-1bbd2aba2abe",
+              "name": "Merge7",
+              "type": "n8n-nodes-base.merge",
+              "typeVersion": 2,
+              "position": [
+                1320,
+                1200
+              ]
+            }
+          ],
+          "connections": {
+            "When clicking \"Execute Workflow\"": {
+              "main": [
+                [
+                  {
+                    "node": "Code",
+                    "type": "main",
+                    "index": 0
+                  },
+                  {
+                    "node": "Code1",
+                    "type": "main",
+                    "index": 0
+                  }
+                ]
+              ]
+            },
+            "Code": {
+              "main": [
+                [
+                  {
+                    "node": "Merge",
+                    "type": "main",
+                    "index": 0
+                  },
+                  {
+                    "node": "Merge1",
+                    "type": "main",
+                    "index": 0
+                  },
+                  {
+                    "node": "Merge2",
+                    "type": "main",
+                    "index": 0
+                  },
+                  {
+                    "node": "Merge3",
+                    "type": "main",
+                    "index": 0
+                  },
+                  {
+                    "node": "Merge4",
+                    "type": "main",
+                    "index": 0
+                  },
+                  {
+                    "node": "Merge5",
+                    "type": "main",
+                    "index": 0
+                  },
+                  {
+                    "node": "Merge6",
+                    "type": "main",
+                    "index": 0
+                  },
+                  {
+                    "node": "Merge7",
+                    "type": "main",
+                    "index": 0
+                  }
+                ]
+              ]
+            },
+            "Code1": {
+              "main": [
+                [
+                  {
+                    "node": "Merge",
+                    "type": "main",
+                    "index": 1
+                  },
+                  {
+                    "node": "Merge3",
+                    "type": "main",
+                    "index": 1
+                  },
+                  {
+                    "node": "Merge2",
+                    "type": "main",
+                    "index": 1
+                  },
+                  {
+                    "node": "Merge1",
+                    "type": "main",
+                    "index": 1
+                  },
+                  {
+                    "node": "Merge4",
+                    "type": "main",
+                    "index": 1
+                  },
+                  {
+                    "node": "Merge5",
+                    "type": "main",
+                    "index": 1
+                  },
+                  {
+                    "node": "Merge6",
+                    "type": "main",
+                    "index": 1
+                  },
+                  {
+                    "node": "Merge7",
+                    "type": "main",
+                    "index": 1
+                  }
+                ]
+              ]
+            }
+          },
+          "settings": {},
+          "staticData": null,
+          "pinData": {
+            "Merge": [
+              {
+                "json": {
+                  "id": 1,
+                  "data": "c",
+                  "input": 2,
+                  "text": "foo",
+                  "tag": "second"
+                }
+              },
+              {
+                "json": {
+                  "id": 2,
+                  "data": "d",
+                  "input": 2,
+                  "text": "foo",
+                  "tag": "second"
+                }
+              }
+            ],
+            "Merge1": [
+              {
+                "json": {
+                  "id": 3,
+                  "data": "e",
+                  "input": 2,
+                  "tag": "second",
+                  "_source": "input2"
+                }
+              }
+            ],
+            "Merge2": [
+              {
+                "json": {
+                  "id": 1,
+                  "data": "c",
+                  "input": 2,
+                  "text": "foo",
+                  "tag": "second"
+                }
+              },
+              {
+                "json": {
+                  "id": 2,
+                  "data": "d",
+                  "input": 2,
+                  "text": "foo",
+                  "tag": "second"
+                }
+              },
+              {
+                "json": {
+                  "id": 3,
+                  "data": "e",
+                  "input": 2,
+                  "tag": "second"
+                }
+              }
+            ],
+            "Merge3": [
+              {
+                "json": {
+                  "id": 1,
+                  "data": "c",
+                  "input": 2,
+                  "text": "foo",
+                  "tag": "second"
+                }
+              },
+              {
+                "json": {
+                  "id": 2,
+                  "data": "d",
+                  "input": 2,
+                  "text": "foo",
+                  "tag": "second"
+                }
+              }
+            ],
+            "Merge4": [
+              {
+                "json": {
+                  "id": 1,
+                  "data": "c",
+                  "input": 2,
+                  "text": "foo",
+                  "tag": "second"
+                }
+              },
+              {
+                "json": {
+                  "id": 2,
+                  "data": "d",
+                  "input": 2,
+                  "text": "foo",
+                  "tag": "second"
+                }
+              },
+              {
+                "json": {
+                  "id": 3,
+                  "data": "e",
+                  "input": 2,
+                  "tag": "second"
+                }
+              }
+            ],
+            "Merge5": [
+              {
+                "json": {
+                  "id": 1,
+                  "data": "a",
+                  "input": 1,
+                  "text": "foo"
+                }
+              },
+              {
+                "json": {
+                  "id": 2,
+                  "data": "b",
+                  "input": 1,
+                  "text": "foo"
+                }
+              }
+            ],
+            "Merge6": [
+              {
+                "json": {
+                  "id": 1,
+                  "data": "c",
+                  "input": 2,
+                  "tag": "second"
+                }
+              },
+              {
+                "json": {
+                  "id": 2,
+                  "data": "d",
+                  "input": 2,
+                  "tag": "second"
+                }
+              }
+            ],
+            "Merge7": [
+              {
+                "json": {
+                  "id_1": 1,
+                  "data_1": "a",
+                  "input_1": 1,
+                  "text_1": "foo",
+                  "id_2": 1,
+                  "data_2": "c",
+                  "input_2": 2,
+                  "tag_2": "second"
+                }
+              },
+              {
+                "json": {
+                  "id_1": 2,
+                  "data_1": "b",
+                  "input_1": 1,
+                  "text_1": "foo",
+                  "id_2": 2,
+                  "data_2": "d",
+                  "input_2": 2,
+                  "tag_2": "second"
+                }
+              }
+            ]
+          },
+          "versionId": "e5d89802-2f19-42e3-8f3e-b8d5b3315227",
+          "triggerCount": 0,
+          "tags": [
+            {
+              "createdAt": "2023-02-10T11:27:50.689Z",
+              "updatedAt": "2023-02-10T11:27:50.689Z",
+              "id": "2",
+              "name": "n8n-test"
+            }
+          ]
+        }
+      },
+      {
+        "json": {
+          "createdAt": "2023-02-09T13:38:39.242Z",
+          "updatedAt": "2023-02-10T11:27:51.000Z",
+          "id": "113",
+          "name": "rss feed test",
+          "active": false,
+          "nodes": [
+            {
+              "parameters": {},
+              "id": "e5fd1ef8-5528-4626-a523-7668969b2123",
+              "name": "When clicking \"Execute Workflow\"",
+              "type": "n8n-nodes-base.manualTrigger",
+              "typeVersion": 1,
+              "position": [
+                880,
+                400
+              ]
+            },
+            {
+              "parameters": {
+                "url": "https://lorem-rss.herokuapp.com/feed?length=3"
+              },
+              "id": "9c40a026-fa38-4c91-a4a1-5332f762c3dd",
+              "name": "RSS Read",
+              "type": "n8n-nodes-base.rssFeedRead",
+              "typeVersion": 1,
+              "position": [
+                1080,
+                400
+              ]
+            }
+          ],
+          "connections": {
+            "When clicking \"Execute Workflow\"": {
+              "main": [
+                [
+                  {
+                    "node": "RSS Read",
+                    "type": "main",
+                    "index": 0
+                  }
+                ]
+              ]
+            }
+          },
+          "settings": {},
+          "staticData": null,
+          "pinData": {
+            "RSS Read": [
+              {
+                "json": {
+                  "creator": "John Smith",
+                  "title": "Lorem ipsum 2023-02-09T13:40:00Z",
+                  "link": "http://example.com/test/1675950000",
+                  "pubDate": "Thu, 09 Feb 2023 13:40:00 GMT",
+                  "dc:creator": "John Smith",
+                  "content": "Fugiat excepteur exercitation tempor ut aute sunt pariatur veniam pariatur dolor.",
+                  "contentSnippet": "Fugiat excepteur exercitation tempor ut aute sunt pariatur veniam pariatur dolor.",
+                  "guid": "http://example.com/test/1675950000",
+                  "isoDate": "2023-02-09T13:40:00.000Z"
+                }
+              },
+              {
+                "json": {
+                  "creator": "John Smith",
+                  "title": "Lorem ipsum 2023-02-09T13:39:00Z",
+                  "link": "http://example.com/test/1675949940",
+                  "pubDate": "Thu, 09 Feb 2023 13:39:00 GMT",
+                  "dc:creator": "John Smith",
+                  "content": "Laboris quis nulla tempor eu ullamco est esse qui aute commodo aliqua occaecat.",
+                  "contentSnippet": "Laboris quis nulla tempor eu ullamco est esse qui aute commodo aliqua occaecat.",
+                  "guid": "http://example.com/test/1675949940",
+                  "isoDate": "2023-02-09T13:39:00.000Z"
+                }
+              },
+              {
+                "json": {
+                  "creator": "John Smith",
+                  "title": "Lorem ipsum 2023-02-09T13:38:00Z",
+                  "link": "http://example.com/test/1675949880",
+                  "pubDate": "Thu, 09 Feb 2023 13:38:00 GMT",
+                  "dc:creator": "John Smith",
+                  "content": "Irure labore dolor dolore sint aliquip eu anim aute anim et nulla adipisicing nostrud.",
+                  "contentSnippet": "Irure labore dolor dolore sint aliquip eu anim aute anim et nulla adipisicing nostrud.",
+                  "guid": "http://example.com/test/1675949880",
+                  "isoDate": "2023-02-09T13:38:00.000Z"
+                }
+              }
+            ]
+          },
+          "versionId": "c0b88b07-6bb4-4b56-b692-6eafe5f77c8d",
+          "triggerCount": 0,
+          "tags": [
+            {
+              "createdAt": "2023-02-10T11:27:50.689Z",
+              "updatedAt": "2023-02-10T11:27:50.689Z",
+              "id": "2",
+              "name": "n8n-test"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking \"Execute Workflow\"": {
+      "main": [
+        [
+          {
+            "node": "n8n",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "4f4c9685-5901-41d6-938f-0a45ac378dec",
+  "id": "3",
+  "meta": {
+    "instanceId": "c9d4cba5f22cf38c90f74ed94dd16cea1f9b65fbb0fc58c6df51b44b4ca7d75d"
+  },
+  "tags": []
+}

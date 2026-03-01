@@ -1,16 +1,18 @@
-import {
-	ICredentialType,
-	NodePropertyTypes,
-} from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class GumroadApi implements ICredentialType {
 	name = 'gumroadApi';
+
 	displayName = 'Gumroad API';
-	properties = [
+
+	documentationUrl = 'gumroad';
+
+	properties: INodeProperties[] = [
 		{
 			displayName: 'Access Token',
 			name: 'accessToken',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

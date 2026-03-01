@@ -1,0 +1,1897 @@
+{
+	"name": "HTTP Pagination Test",
+	"nodes": [
+		{
+			"parameters": {
+				"url": "https://dummyjson.com/users",
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "limit",
+							"value": "3"
+						}
+					]
+				},
+				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "json"
+						}
+					},
+					"pagination": {
+						"pagination": {
+							"parameters": {
+								"parameters": [
+									{
+										"name": "skip",
+										"value": "={{ $pageCount * 3 }}"
+									}
+								]
+							},
+							"limitPagesFetched": true,
+							"maxRequests": 3
+						}
+					}
+				}
+			},
+			"id": "363a12c4-5af8-411e-a0f9-071e07a8ec48",
+			"name": "Page Limit",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"position": [80, 1480]
+		},
+		{
+			"parameters": {
+				"url": "https://dummyjson.com/users",
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "limit",
+							"value": "3"
+						}
+					]
+				},
+				"options": {
+					"response": {
+						"response": {
+							"neverError": true,
+							"responseFormat": "json"
+						}
+					},
+					"pagination": {
+						"pagination": {
+							"parameters": {
+								"parameters": [
+									{
+										"name": "skip",
+										"value": "={{ $pageCount * 3 }}"
+									}
+								]
+							}
+						}
+					}
+				}
+			},
+			"id": "834de1fa-7568-4f79-8ae5-a5241ed92876",
+			"name": "Response Empty",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"position": [80, 1820]
+		},
+		{
+			"parameters": {
+				"url": "https://dummyjson.com/users",
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "limit",
+							"value": "3"
+						}
+					]
+				},
+				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "json"
+						}
+					},
+					"pagination": {
+						"pagination": {
+							"parameters": {
+								"parameters": [
+									{
+										"name": "skip",
+										"value": "={{ $pageCount * 3 }}"
+									}
+								]
+							},
+							"paginationCompleteWhen": "receiveSpecificStatusCodes",
+							"statusCodesWhenComplete": "404",
+							"limitPagesFetched": true
+						}
+					}
+				}
+			},
+			"id": "97ba6e36-8fea-424d-a1a1-2c34dc573e65",
+			"name": "Receive Status Code",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"position": [80, 1980]
+		},
+		{
+			"parameters": {
+				"url": "https://dummyjson.com/users",
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "limit",
+							"value": "3"
+						}
+					]
+				},
+				"options": {
+					"response": {
+						"response": {
+							"neverError": true,
+							"responseFormat": "json"
+						}
+					},
+					"pagination": {
+						"pagination": {
+							"parameters": {
+								"parameters": [
+									{
+										"name": "skip",
+										"value": "={{ $pageCount * 3 }}"
+									}
+								]
+							},
+							"paginationCompleteWhen": "other",
+							"completeExpression": "={{ $response.statusCode === 404 }}"
+						}
+					}
+				}
+			},
+			"id": "446a7da0-8c23-4421-8bf4-0028d4c46919",
+			"name": "Complete Expression",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"position": [80, 2160]
+		},
+		{
+			"parameters": {
+				"content": "### Next URL\nResponse Format: JSON",
+				"height": 223.6542431762359,
+				"width": 365.5274479049966
+			},
+			"id": "4277a919-66a0-4598-a51a-fb28be9838fe",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [20, 2800]
+		},
+		{
+			"parameters": {
+				"content": "### Update a Parameter in Each Request\nResponse Format: JSON",
+				"height": 1360,
+				"width": 354
+			},
+			"id": "14589c89-65e4-4ee3-bbbc-5112e9a247b5",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [20, 1400]
+		},
+		{
+			"parameters": {
+				"url": "https://dummyjson.com/users",
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "limit",
+							"value": "4"
+						}
+					]
+				},
+				"options": {
+					"response": {
+						"response": {
+							"neverError": true,
+							"responseFormat": "text"
+						}
+					},
+					"pagination": {
+						"pagination": {
+							"paginationMode": "responseContainsNextURL",
+							"nextURL": "={{ $response.headers[\"next-url\"] }}",
+							"paginationCompleteWhen": "receiveSpecificStatusCodes",
+							"statusCodesWhenComplete": "404"
+						}
+					}
+				}
+			},
+			"id": "87dfc0aa-3cda-465e-9a89-4c78ba8dc91d",
+			"name": "Response Empty - Text",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"position": [80, 3120]
+		},
+		{
+			"parameters": {
+				"url": "https://dummyjson.com/users",
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "limit",
+							"value": "4"
+						}
+					]
+				},
+				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "json"
+						}
+					},
+					"pagination": {
+						"pagination": {
+							"paginationMode": "responseContainsNextURL",
+							"nextURL": "={{ $response.headers[\"next-url\"] }}",
+							"limitPagesFetched": true,
+							"maxRequests": 3
+						}
+					}
+				}
+			},
+			"id": "1d5f7772-a646-4ce2-8e1d-10d14b66a4b1",
+			"name": "Response Empty Next with Max Pages",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"position": [80, 2860]
+		},
+		{
+			"parameters": {
+				"content": "### Next URL\nResponse Format: Text",
+				"height": 388.6542431762359,
+				"width": 363.5274479049966
+			},
+			"id": "f7f7affa-96dc-4845-856a-40842131cf1c",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [20, 3060]
+		},
+		{
+			"parameters": {
+				"url": "https://dummyjson.com/users",
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "limit",
+							"value": "3"
+						}
+					]
+				},
+				"options": {
+					"response": {
+						"response": {
+							"neverError": true,
+							"responseFormat": "json"
+						}
+					},
+					"pagination": {
+						"pagination": {
+							"parameters": {
+								"parameters": [
+									{
+										"name": "skip",
+										"value": "={{ $pageCount * 3 }}"
+									}
+								]
+							},
+							"paginationCompleteWhen": "other",
+							"completeExpression": "={{ $response.statusCode === 404 }}"
+						}
+					}
+				}
+			},
+			"id": "40299b65-81a6-4a7a-b74f-5ba01f01cafc",
+			"name": "Complete Expression - JSON",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"position": [80, 1200]
+		},
+		{
+			"parameters": {
+				"content": "### Update a Parameter in Each Request\nResponse Format: JSON",
+				"height": 232.15942469988397,
+				"width": 323.21100909416833
+			},
+			"id": "61d8b266-f399-4a3b-882d-90db2764833b",
+			"name": "Sticky Note3",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [20, 1140]
+		},
+		{
+			"parameters": {
+				"url": "https://dummyjson.com/users",
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "limit",
+							"value": "4"
+						}
+					]
+				},
+				"options": {
+					"response": {
+						"response": {
+							"fullResponse": true,
+							"neverError": true,
+							"responseFormat": "text"
+						}
+					},
+					"pagination": {
+						"pagination": {
+							"paginationMode": "responseContainsNextURL",
+							"nextURL": "={{ $response.headers[\"next-url\"] }}",
+							"paginationCompleteWhen": "receiveSpecificStatusCodes",
+							"statusCodesWhenComplete": "404"
+						}
+					}
+				}
+			},
+			"id": "570660cc-5361-4b75-9222-08c006e83937",
+			"name": "Response Empty - Include Full Response",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"position": [80, 3300]
+		},
+		{
+			"parameters": {
+				"url": "https://dummyjson.com/users",
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "limit",
+							"value": "3"
+						}
+					]
+				},
+				"options": {
+					"response": {
+						"response": {
+							"neverError": true,
+							"responseFormat": "json"
+						}
+					},
+					"pagination": {
+						"pagination": {
+							"paginationMode": "off"
+						}
+					}
+				}
+			},
+			"id": "6418e1dc-e637-47e5-8d40-51b74c618c5d",
+			"name": "Pagination Off",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"position": [80, 3520]
+		},
+		{
+			"parameters": {
+				"content": "### Pagination Off",
+				"height": 373,
+				"width": 363
+			},
+			"id": "8144d108-1e1b-473c-bc69-ff233fc809ef",
+			"name": "Sticky Note4",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [20, 3480]
+		},
+		{
+			"parameters": {
+				"url": "https://dummyjson.com/users",
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "limit",
+							"value": "3"
+						}
+					]
+				},
+				"options": {
+					"response": {
+						"response": {
+							"neverError": true,
+							"responseFormat": "json"
+						}
+					}
+				}
+			},
+			"id": "f94a61b9-8bff-49d4-8007-30ba93cfa749",
+			"name": "Pagination Not Set",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"position": [80, 3700]
+		},
+		{
+			"parameters": {
+				"content": "### Detect identical responses\nThrow then error",
+				"height": 232.15942469988397,
+				"width": 394.89100909416834
+			},
+			"id": "74f93f2a-a399-46d6-a953-4de7751e3fcd",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [20, 3920]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"name": "Error",
+							"stringValue": "={{ $json.error.name }}"
+						}
+					]
+				},
+				"include": "none",
+				"options": {}
+			},
+			"id": "53bfa924-95cd-40da-bd31-d4ed3669fedc",
+			"name": "Edit Fields",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [260, 4000]
+		},
+		{
+			"parameters": {
+				"url": "https://dummyjson.com/users",
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "limit",
+							"value": "3"
+						}
+					]
+				},
+				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "json"
+						}
+					},
+					"pagination": {
+						"pagination": {
+							"parameters": {
+								"parameters": [
+									{
+										"name": "does_not_matter",
+										"value": "0"
+									}
+								]
+							}
+						}
+					}
+				}
+			},
+			"id": "be59f9c2-f2ad-4c68-b3c4-80038660ece7",
+			"name": "Loop",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"position": [80, 4000],
+			"continueOnFail": true
+		},
+		{
+			"parameters": {
+				"content": "### Next URL\nResponse Format: Autodetect\nActual Response Format: JSON",
+				"height": 650.4724697091658,
+				"width": 323.21100909416833
+			},
+			"id": "46d75487-5549-4e98-bf7e-09c7805908af",
+			"name": "Sticky Note6",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"content": "# Response Format: Autodetect\n",
+				"width": 545.8929725020898
+			},
+			"id": "1f16875c-f65b-4c00-9718-b0b44f9cf821",
+			"name": "Sticky Note7",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [-620, 220]
+		},
+		{
+			"parameters": {
+				"content": "# Response Format: set",
+				"width": 545.8929725020898
+			},
+			"id": "a609821f-3f0a-4718-a031-b6d2740e01bc",
+			"name": "Sticky Note8",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [-600, 1140]
+		},
+		{
+			"parameters": {
+				"url": "https://dummyjson.com/users",
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "limit",
+							"value": "3"
+						}
+					]
+				},
+				"options": {
+					"response": {
+						"response": {}
+					},
+					"pagination": {
+						"pagination": {
+							"paginationMode": "responseContainsNextURL",
+							"nextURL": "={{ $response.headers[\"next-url\"] }}",
+							"limitPagesFetched": true,
+							"maxRequests": 2
+						}
+					}
+				}
+			},
+			"id": "d8185b9f-a2ec-484e-b57c-6ac6b7ac9d57",
+			"name": "Complete Expression - JSON Autodetect set",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"position": [60, 100]
+		},
+		{
+			"parameters": {
+				"url": "https://dummyjson.com/users",
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "limit",
+							"value": "3"
+						}
+					]
+				},
+				"options": {
+					"pagination": {
+						"pagination": {
+							"paginationMode": "responseContainsNextURL",
+							"nextURL": "={{ $response.headers[\"next-url\"] }}",
+							"limitPagesFetched": true,
+							"maxRequests": 2
+						}
+					}
+				}
+			},
+			"id": "b29a2d0b-43aa-467e-a654-9716c445a6b0",
+			"name": "Complete Expression - JSON unset",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"position": [60, 280]
+		},
+		{
+			"parameters": {},
+			"id": "08f83213-2e7e-487b-90af-f0acba0c5fc7",
+			"name": "No Operation, do nothing1",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [-400, 2000]
+		},
+		{
+			"parameters": {},
+			"id": "a97d0a1b-2bce-42de-ada9-61eabee947dd",
+			"name": "Data 2",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-700, 1480]
+		},
+		{
+			"parameters": {},
+			"id": "097086b0-6594-4a45-9bcf-0f8bcb61283a",
+			"name": "Data 1",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [-380, 460]
+		},
+		{
+			"parameters": {
+				"url": "https://dummyjson.com/users",
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "limit",
+							"value": "4"
+						}
+					]
+				},
+				"sendHeaders": true,
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "content-type",
+							"value": "text/plain"
+						}
+					]
+				},
+				"options": {
+					"response": {
+						"response": {
+							"neverError": true
+						}
+					},
+					"pagination": {
+						"pagination": {
+							"paginationMode": "responseContainsNextURL",
+							"nextURL": "={{ $response.headers[\"next-url\"] }}",
+							"paginationCompleteWhen": "receiveSpecificStatusCodes",
+							"statusCodesWhenComplete": "404"
+						}
+					}
+				}
+			},
+			"id": "59015f28-eba8-483e-ab6b-64a0251c1146",
+			"name": "Response Empty - Text1",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"position": [60, 760]
+		},
+		{
+			"parameters": {
+				"content": "### Next URL\nResponse Format: Autodetect\nActual Response Format: text",
+				"height": 437.60980047313967,
+				"width": 323.31395441111135
+			},
+			"id": "065479b1-4da7-4704-81d2-d682aa4afc8f",
+			"name": "Sticky Note9",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [0, 680]
+		},
+		{
+			"parameters": {
+				"url": "https://dummyjson.com/users",
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "limit",
+							"value": "4"
+						}
+					]
+				},
+				"sendHeaders": true,
+				"headerParameters": {
+					"parameters": [
+						{
+							"name": "content-type",
+							"value": "text/plain"
+						}
+					]
+				},
+				"options": {
+					"response": {
+						"response": {
+							"fullResponse": true,
+							"neverError": true
+						}
+					},
+					"pagination": {
+						"pagination": {
+							"paginationMode": "responseContainsNextURL",
+							"nextURL": "={{ $response.headers[\"next-url\"] }}",
+							"paginationCompleteWhen": "receiveSpecificStatusCodes",
+							"statusCodesWhenComplete": "404"
+						}
+					}
+				}
+			},
+			"id": "6788ee1a-0816-427e-aa65-c110ecae9500",
+			"name": "Response Empty - Include Full Response1",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"position": [60, 940]
+		},
+		{
+			"parameters": {
+				"method": "POST",
+				"url": "https://dummyjson.com/users",
+				"sendBody": true,
+				"contentType": "multipart-form-data",
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "limit",
+							"value": "3"
+						},
+						{
+							"name": "skip",
+							"value": "0"
+						}
+					]
+				},
+				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "json"
+						}
+					},
+					"pagination": {
+						"pagination": {
+							"parameters": {
+								"parameters": [
+									{
+										"type": "body",
+										"name": "skip",
+										"value": "={{ $pageCount * 3 }}"
+									}
+								]
+							},
+							"limitPagesFetched": true,
+							"maxRequests": 3
+						}
+					}
+				}
+			},
+			"id": "7c3ae844-8f2f-4e38-972f-54a56bc71b46",
+			"name": "POST Form Data",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"position": [80, 2520]
+		},
+		{
+			"parameters": {
+				"method": "POST",
+				"url": "https://dummyjson.com/users",
+				"sendBody": true,
+				"bodyParameters": {
+					"parameters": [
+						{
+							"name": "limit",
+							"value": "3"
+						},
+						{
+							"name": "skip",
+							"value": "0"
+						}
+					]
+				},
+				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "json"
+						}
+					},
+					"pagination": {
+						"pagination": {
+							"parameters": {
+								"parameters": [
+									{
+										"type": "body",
+										"name": "skip",
+										"value": "={{ $pageCount * 3 }}"
+									}
+								]
+							},
+							"limitPagesFetched": true,
+							"maxRequests": 3
+						}
+					}
+				}
+			},
+			"id": "0e9bbc1b-902a-40ad-be73-709ce4917422",
+			"name": "POST JSON",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"position": [80, 2340]
+		},
+		{
+			"parameters": {
+				"url": "https://dummyjson.com/users",
+				"options": {
+					"pagination": {
+						"pagination": {
+							"paginationMode": "responseContainsNextURL",
+							"limitPagesFetched": true,
+							"maxRequests": 2
+						}
+					}
+				}
+			},
+			"id": "c4d85fd5-09c4-4688-9e2d-c5711d5d5b59",
+			"name": "Complete Expression - JSON unset1",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"position": [60, 480],
+			"onError": "continueRegularOutput"
+		},
+		{
+			"parameters": {
+				"url": "https://dummyjson.com/users",
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "limit",
+							"value": "3"
+						}
+					]
+				},
+				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "json"
+						}
+					},
+					"pagination": {
+						"pagination": {
+							"parameters": {
+								"parameters": [
+									{
+										"name": "skip",
+										"value": "={{ $pageCount * 3 }}"
+									}
+								]
+							},
+							"limitPagesFetched": true,
+							"maxRequests": "={{ 3 }}"
+						}
+					}
+				}
+			},
+			"id": "cd885033-15a6-4102-bcc6-f31555a86c34",
+			"name": "Page Limit Expression",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"position": [240, 1660]
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "d3f0ff85-a900-447e-bc50-1ed1d0277a59",
+							"name": "pageLimit",
+							"value": 3,
+							"type": "number"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [80, 1660],
+			"id": "d5a16020-25e6-4756-be2e-0203345651b3",
+			"name": "Set Page Limit"
+		}
+	],
+	"pinData": {
+		"Page Limit": [
+			{
+				"json": {
+					"id": 0
+				}
+			},
+			{
+				"json": {
+					"id": 1
+				}
+			},
+			{
+				"json": {
+					"id": 2
+				}
+			},
+			{
+				"json": {
+					"id": 3
+				}
+			},
+			{
+				"json": {
+					"id": 4
+				}
+			},
+			{
+				"json": {
+					"id": 5
+				}
+			},
+			{
+				"json": {
+					"id": 6
+				}
+			},
+			{
+				"json": {
+					"id": 7
+				}
+			},
+			{
+				"json": {
+					"id": 8
+				}
+			}
+		],
+		"Response Empty": [
+			{
+				"json": {
+					"id": 0
+				}
+			},
+			{
+				"json": {
+					"id": 1
+				}
+			},
+			{
+				"json": {
+					"id": 2
+				}
+			},
+			{
+				"json": {
+					"id": 3
+				}
+			},
+			{
+				"json": {
+					"id": 4
+				}
+			},
+			{
+				"json": {
+					"id": 5
+				}
+			},
+			{
+				"json": {
+					"id": 6
+				}
+			},
+			{
+				"json": {
+					"id": 7
+				}
+			},
+			{
+				"json": {
+					"id": 8
+				}
+			},
+			{
+				"json": {
+					"id": 9
+				}
+			},
+			{
+				"json": {
+					"id": 10
+				}
+			},
+			{
+				"json": {
+					"id": 11
+				}
+			},
+			{
+				"json": {
+					"id": 12
+				}
+			},
+			{
+				"json": {
+					"id": 13
+				}
+			},
+			{
+				"json": {
+					"id": 14
+				}
+			}
+		],
+		"Receive Status Code": [
+			{
+				"json": {
+					"id": 0
+				}
+			},
+			{
+				"json": {
+					"id": 1
+				}
+			},
+			{
+				"json": {
+					"id": 2
+				}
+			},
+			{
+				"json": {
+					"id": 3
+				}
+			},
+			{
+				"json": {
+					"id": 4
+				}
+			},
+			{
+				"json": {
+					"id": 5
+				}
+			},
+			{
+				"json": {
+					"id": 6
+				}
+			},
+			{
+				"json": {
+					"id": 7
+				}
+			},
+			{
+				"json": {
+					"id": 8
+				}
+			},
+			{
+				"json": {
+					"id": 9
+				}
+			},
+			{
+				"json": {
+					"id": 10
+				}
+			},
+			{
+				"json": {
+					"id": 11
+				}
+			},
+			{
+				"json": {
+					"id": 12
+				}
+			},
+			{
+				"json": {
+					"id": 13
+				}
+			},
+			{
+				"json": {
+					"id": 14
+				}
+			}
+		],
+		"Complete Expression": [
+			{
+				"json": {
+					"id": 0
+				}
+			},
+			{
+				"json": {
+					"id": 1
+				}
+			},
+			{
+				"json": {
+					"id": 2
+				}
+			},
+			{
+				"json": {
+					"id": 3
+				}
+			},
+			{
+				"json": {
+					"id": 4
+				}
+			},
+			{
+				"json": {
+					"id": 5
+				}
+			},
+			{
+				"json": {
+					"id": 6
+				}
+			},
+			{
+				"json": {
+					"id": 7
+				}
+			},
+			{
+				"json": {
+					"id": 8
+				}
+			},
+			{
+				"json": {
+					"id": 9
+				}
+			},
+			{
+				"json": {
+					"id": 10
+				}
+			},
+			{
+				"json": {
+					"id": 11
+				}
+			},
+			{
+				"json": {
+					"id": 12
+				}
+			},
+			{
+				"json": {
+					"id": 13
+				}
+			},
+			{
+				"json": {
+					"id": 14
+				}
+			}
+		],
+		"Response Empty - Text": [
+			{
+				"json": {
+					"data": "[{\"id\":0},{\"id\":1},{\"id\":2},{\"id\":3}]"
+				}
+			},
+			{
+				"json": {
+					"data": "[{\"id\":4},{\"id\":5},{\"id\":6},{\"id\":7}]"
+				}
+			},
+			{
+				"json": {
+					"data": "[{\"id\":8},{\"id\":9},{\"id\":10},{\"id\":11}]"
+				}
+			},
+			{
+				"json": {
+					"data": "[{\"id\":12},{\"id\":13},{\"id\":14}]"
+				}
+			},
+			{
+				"json": {
+					"data": "[]"
+				}
+			}
+		],
+		"Response Empty Next with Max Pages": [
+			{
+				"json": {
+					"id": 0
+				}
+			},
+			{
+				"json": {
+					"id": 1
+				}
+			},
+			{
+				"json": {
+					"id": 2
+				}
+			},
+			{
+				"json": {
+					"id": 3
+				}
+			},
+			{
+				"json": {
+					"id": 4
+				}
+			},
+			{
+				"json": {
+					"id": 5
+				}
+			},
+			{
+				"json": {
+					"id": 6
+				}
+			},
+			{
+				"json": {
+					"id": 7
+				}
+			},
+			{
+				"json": {
+					"id": 8
+				}
+			},
+			{
+				"json": {
+					"id": 9
+				}
+			},
+			{
+				"json": {
+					"id": 10
+				}
+			},
+			{
+				"json": {
+					"id": 11
+				}
+			}
+		],
+		"Response Empty - Include Full Response": [
+			{
+				"json": {
+					"data": "[{\"id\":0},{\"id\":1},{\"id\":2},{\"id\":3}]",
+					"headers": {
+						"content-type": "application/json",
+						"next-url": "https://dummyjson.com/users?skip=4&limit=4"
+					},
+					"statusCode": 200,
+					"statusMessage": "OK"
+				}
+			},
+			{
+				"json": {
+					"data": "[{\"id\":4},{\"id\":5},{\"id\":6},{\"id\":7}]",
+					"headers": {
+						"content-type": "application/json",
+						"next-url": "https://dummyjson.com/users?skip=8&limit=4"
+					},
+					"statusCode": 200,
+					"statusMessage": "OK"
+				}
+			},
+			{
+				"json": {
+					"data": "[{\"id\":8},{\"id\":9},{\"id\":10},{\"id\":11}]",
+					"headers": {
+						"content-type": "application/json",
+						"next-url": "https://dummyjson.com/users?skip=12&limit=4"
+					},
+					"statusCode": 200,
+					"statusMessage": "OK"
+				}
+			},
+			{
+				"json": {
+					"data": "[{\"id\":12},{\"id\":13},{\"id\":14}]",
+					"headers": {
+						"content-type": "application/json",
+						"next-url": "https://dummyjson.com/users?skip=16&limit=4"
+					},
+					"statusCode": 200,
+					"statusMessage": "OK"
+				}
+			},
+			{
+				"json": {
+					"data": "[]",
+					"headers": {
+						"content-type": "application/json",
+						"next-url": "https://dummyjson.com/users?skip=20&limit=4"
+					},
+					"statusCode": 404,
+					"statusMessage": "Not Found"
+				}
+			}
+		],
+		"Complete Expression - JSON": [
+			{
+				"json": {
+					"id": 0
+				}
+			},
+			{
+				"json": {
+					"id": 1
+				}
+			},
+			{
+				"json": {
+					"id": 2
+				}
+			},
+			{
+				"json": {
+					"id": 3
+				}
+			},
+			{
+				"json": {
+					"id": 4
+				}
+			},
+			{
+				"json": {
+					"id": 5
+				}
+			},
+			{
+				"json": {
+					"id": 6
+				}
+			},
+			{
+				"json": {
+					"id": 7
+				}
+			},
+			{
+				"json": {
+					"id": 8
+				}
+			},
+			{
+				"json": {
+					"id": 9
+				}
+			},
+			{
+				"json": {
+					"id": 10
+				}
+			},
+			{
+				"json": {
+					"id": 11
+				}
+			},
+			{
+				"json": {
+					"id": 12
+				}
+			},
+			{
+				"json": {
+					"id": 13
+				}
+			},
+			{
+				"json": {
+					"id": 14
+				}
+			}
+		],
+		"Pagination Off": [
+			{
+				"json": {
+					"id": 0
+				}
+			},
+			{
+				"json": {
+					"id": 1
+				}
+			},
+			{
+				"json": {
+					"id": 2
+				}
+			}
+		],
+		"Pagination Not Set": [
+			{
+				"json": {
+					"id": 0
+				}
+			},
+			{
+				"json": {
+					"id": 1
+				}
+			},
+			{
+				"json": {
+					"id": 2
+				}
+			}
+		],
+		"Edit Fields": [
+			{
+				"json": {
+					"Error": "NodeOperationError"
+				}
+			}
+		],
+		"Complete Expression - JSON Autodetect set": [
+			{
+				"json": {
+					"id": 0
+				}
+			},
+			{
+				"json": {
+					"id": 1
+				}
+			},
+			{
+				"json": {
+					"id": 2
+				}
+			},
+			{
+				"json": {
+					"id": 3
+				}
+			},
+			{
+				"json": {
+					"id": 4
+				}
+			},
+			{
+				"json": {
+					"id": 5
+				}
+			}
+		],
+		"Complete Expression - JSON unset": [
+			{
+				"json": {
+					"id": 0
+				}
+			},
+			{
+				"json": {
+					"id": 1
+				}
+			},
+			{
+				"json": {
+					"id": 2
+				}
+			},
+			{
+				"json": {
+					"id": 3
+				}
+			},
+			{
+				"json": {
+					"id": 4
+				}
+			},
+			{
+				"json": {
+					"id": 5
+				}
+			}
+		],
+		"Response Empty - Text1": [
+			{
+				"json": {
+					"data": "[{\"id\":0},{\"id\":1},{\"id\":2},{\"id\":3}]"
+				}
+			},
+			{
+				"json": {
+					"data": "[{\"id\":4},{\"id\":5},{\"id\":6},{\"id\":7}]"
+				}
+			},
+			{
+				"json": {
+					"data": "[{\"id\":8},{\"id\":9},{\"id\":10},{\"id\":11}]"
+				}
+			},
+			{
+				"json": {
+					"data": "[{\"id\":12},{\"id\":13},{\"id\":14}]"
+				}
+			},
+			{
+				"json": {
+					"data": "[]"
+				}
+			}
+		],
+		"Response Empty - Include Full Response1": [
+			{
+				"json": {
+					"data": "[{\"id\":0},{\"id\":1},{\"id\":2},{\"id\":3}]",
+					"headers": {
+						"content-type": "text/plain",
+						"next-url": "https://dummyjson.com/users?skip=4&limit=4"
+					},
+					"statusCode": 200,
+					"statusMessage": "OK"
+				}
+			},
+			{
+				"json": {
+					"data": "[{\"id\":4},{\"id\":5},{\"id\":6},{\"id\":7}]",
+					"headers": {
+						"content-type": "text/plain",
+						"next-url": "https://dummyjson.com/users?skip=8&limit=4"
+					},
+					"statusCode": 200,
+					"statusMessage": "OK"
+				}
+			},
+			{
+				"json": {
+					"data": "[{\"id\":8},{\"id\":9},{\"id\":10},{\"id\":11}]",
+					"headers": {
+						"content-type": "text/plain",
+						"next-url": "https://dummyjson.com/users?skip=12&limit=4"
+					},
+					"statusCode": 200,
+					"statusMessage": "OK"
+				}
+			},
+			{
+				"json": {
+					"data": "[{\"id\":12},{\"id\":13},{\"id\":14}]",
+					"headers": {
+						"content-type": "text/plain",
+						"next-url": "https://dummyjson.com/users?skip=16&limit=4"
+					},
+					"statusCode": 200,
+					"statusMessage": "OK"
+				}
+			},
+			{
+				"json": {
+					"data": "[]",
+					"headers": {
+						"content-type": "text/plain",
+						"next-url": "https://dummyjson.com/users?skip=20&limit=4"
+					},
+					"statusCode": 404,
+					"statusMessage": "Not Found"
+				}
+			}
+		],
+		"POST Form Data": [
+			{
+				"json": {
+					"id": 0
+				}
+			},
+			{
+				"json": {
+					"id": 1
+				}
+			},
+			{
+				"json": {
+					"id": 2
+				}
+			},
+			{
+				"json": {
+					"id": 3
+				}
+			},
+			{
+				"json": {
+					"id": 4
+				}
+			},
+			{
+				"json": {
+					"id": 5
+				}
+			},
+			{
+				"json": {
+					"id": 6
+				}
+			},
+			{
+				"json": {
+					"id": 7
+				}
+			},
+			{
+				"json": {
+					"id": 8
+				}
+			}
+		],
+		"POST JSON": [
+			{
+				"json": {
+					"id": 0
+				}
+			},
+			{
+				"json": {
+					"id": 1
+				}
+			},
+			{
+				"json": {
+					"id": 2
+				}
+			},
+			{
+				"json": {
+					"id": 3
+				}
+			},
+			{
+				"json": {
+					"id": 4
+				}
+			},
+			{
+				"json": {
+					"id": 5
+				}
+			},
+			{
+				"json": {
+					"id": 6
+				}
+			},
+			{
+				"json": {
+					"id": 7
+				}
+			},
+			{
+				"json": {
+					"id": 8
+				}
+			}
+		],
+		"Complete Expression - JSON unset1": [
+			{
+				"json": {
+					"error": {
+						"message": "'' is not a valid URL.",
+						"name": "NodeOperationError",
+						"description": "Make sure the \"Next URL\" parameter evaluates to a valid URL.",
+						"context": {}
+					}
+				}
+			}
+		],
+		"Page Limit Expression": [
+			{
+				"json": {
+					"id": 0
+				}
+			},
+			{
+				"json": {
+					"id": 1
+				}
+			},
+			{
+				"json": {
+					"id": 2
+				}
+			},
+			{
+				"json": {
+					"id": 3
+				}
+			},
+			{
+				"json": {
+					"id": 4
+				}
+			},
+			{
+				"json": {
+					"id": 5
+				}
+			},
+			{
+				"json": {
+					"id": 6
+				}
+			},
+			{
+				"json": {
+					"id": 7
+				}
+			},
+			{
+				"json": {
+					"id": 8
+				}
+			}
+		]
+	},
+	"connections": {
+		"Loop": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"No Operation, do nothing1": {
+			"main": [
+				[
+					{
+						"node": "Receive Status Code",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Complete Expression",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Response Empty Next with Max Pages",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Response Empty - Text",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Response Empty - Include Full Response",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Pagination Off",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Pagination Not Set",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Loop",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Response Empty",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Page Limit",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Complete Expression - JSON",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "POST JSON",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "POST Form Data",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Set Page Limit",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Data 2": {
+			"main": [
+				[
+					{
+						"node": "Data 1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "No Operation, do nothing1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Data 1": {
+			"main": [
+				[
+					{
+						"node": "Complete Expression - JSON Autodetect set",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Complete Expression - JSON unset",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Response Empty - Text1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Response Empty - Include Full Response1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Complete Expression - JSON unset1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Page Limit Expression": {
+			"main": [[]]
+		},
+		"Set Page Limit": {
+			"main": [
+				[
+					{
+						"node": "Page Limit Expression",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "ced3a46e-5b98-4fe6-9050-25f2dbd11844",
+	"meta": {
+		"instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+	},
+	"id": "DW81RnxFN27lqW8y",
+	"tags": []
+}

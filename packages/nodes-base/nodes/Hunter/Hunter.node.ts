@@ -1,21 +1,19 @@
-import {
+import type {
 	IExecuteFunctions,
-} from 'n8n-core';
-import {
 	IDataObject,
-	INodeTypeDescription,
 	INodeExecutionData,
 	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
-import {
-	hunterApiRequest,
-	hunterApiRequestAllItems,
-} from './GenericFunctions';
+import { NodeConnectionTypes } from 'n8n-workflow';
+
+import { hunterApiRequest, hunterApiRequestAllItems } from './GenericFunctions';
 
 export class Hunter implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Hunter',
 		name: 'hunter',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:hunter.png',
 		group: ['output'],
 		version: 1,
@@ -23,40 +21,48 @@ export class Hunter implements INodeType {
 		description: 'Consume Hunter API',
 		defaults: {
 			name: 'Hunter',
-			color: '#ff3807',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		usableAsTool: true,
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'hunterApi',
 				required: true,
-			}
+			},
 		],
 		properties: [
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
-						name: ' Domain Search',
+						name: 'Domain Search',
 						value: 'domainSearch',
-						description: 'Get every email address found on the internet using a given domain name, with sources.',
+						description:
+							'Get every email address found on the internet using a given domain name, with sources',
+						action:
+							'Get every email address found on the internet using a given domain name, with sources',
 					},
 					{
-						name: ' Email Finder',
+						name: 'Email Finder',
 						value: 'emailFinder',
-						description: 'Generates or retrieves the most likely email address from a domain name, a first name and a last name.',
+						description:
+							'Generate or retrieve the most likely email address from a domain name, a first name and a last name',
+						action:
+							'Generate or retrieve the most likely email address from a domain name, a first name and a last name',
 					},
 					{
 						name: 'Email Verifier',
 						value: 'emailVerifier',
-						description: 'Allows you to verify the deliverability of an email address.',
+						description: 'Verify the deliverability of an email address',
+						action: 'Verify the deliverability of an email address',
 					},
 				],
 				default: 'domainSearch',
-				description: 'operation to consume.',
+				description: 'Operation to consume',
 			},
 			{
 				displayName: 'Domain',
@@ -64,14 +70,13 @@ export class Hunter implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: [
-							'domainSearch',
-						],
+						operation: ['domainSearch'],
 					},
 				},
 				default: '',
 				required: true,
-				description: 'Domain name from which you want to find the email addresses. For example, "stripe.com".',
+				description:
+					'Domain name from which you want to find the email addresses. For example, "stripe.com".',
 			},
 			{
 				displayName: 'Only Emails',
@@ -79,13 +84,11 @@ export class Hunter implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						operation: [
-							'domainSearch',
-						],
+						operation: ['domainSearch'],
 					},
 				},
 				default: true,
-				description: 'Return only the the found emails.',
+				description: 'Whether to return only the found emails',
 			},
 			{
 				displayName: 'Return All',
@@ -93,13 +96,11 @@ export class Hunter implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						operation: [
-							'domainSearch',
-						],
+						operation: ['domainSearch'],
 					},
 				},
 				default: false,
-				description: 'If all results should be returned or only up to a given limit.',
+				description: 'Whether to return all results or only up to a given limit',
 			},
 			{
 				displayName: 'Limit',
@@ -107,12 +108,8 @@ export class Hunter implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						operation: [
-							'domainSearch',
-						],
-						returnAll: [
-							false,
-						],
+						operation: ['domainSearch'],
+						returnAll: [false],
 					},
 				},
 				typeOptions: {
@@ -120,7 +117,7 @@ export class Hunter implements INodeType {
 					maxValue: 100,
 				},
 				default: 100,
-				description: 'How many results to return.',
+				description: 'Max number of results to return',
 			},
 			{
 				displayName: 'Filters',
@@ -130,9 +127,7 @@ export class Hunter implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						operation: [
-							'domainSearch',
-						],
+						operation: ['domainSearch'],
 					},
 				},
 				options: [
@@ -150,7 +145,7 @@ export class Hunter implements INodeType {
 								name: 'Generic',
 								value: 'generic',
 							},
-						]
+						],
 					},
 					{
 						displayName: 'Seniority',
@@ -170,7 +165,7 @@ export class Hunter implements INodeType {
 								name: 'Executive',
 								value: 'executive',
 							},
-						]
+						],
 					},
 					{
 						displayName: 'Department',
@@ -179,46 +174,46 @@ export class Hunter implements INodeType {
 						default: [],
 						options: [
 							{
-								name: 'Executive',
-								value: 'executive',
+								name: 'Communication',
+								value: 'communication',
 							},
 							{
-								name: 'IT',
-								value: 'it',
+								name: 'Executive',
+								value: 'executive',
 							},
 							{
 								name: 'Finance',
 								value: 'finance',
 							},
 							{
-								name: 'Management',
-								value: 'management',
+								name: 'HR',
+								value: 'hr',
 							},
 							{
-								name: 'Sales',
-								value: 'sales',
+								name: 'IT',
+								value: 'it',
 							},
 							{
 								name: 'Legal',
 								value: 'legal',
 							},
 							{
-								name: 'Support',
-								value: 'support',
-							},
-							{
-								name: 'HR',
-								value: 'hr',
+								name: 'Management',
+								value: 'management',
 							},
 							{
 								name: 'Marketing',
 								value: 'marketing',
 							},
 							{
-								name: 'Communication',
-								value: 'communication',
+								name: 'Sales',
+								value: 'sales',
 							},
-						]
+							{
+								name: 'Support',
+								value: 'support',
+							},
+						],
 					},
 				],
 			},
@@ -229,13 +224,12 @@ export class Hunter implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						operation: [
-							'emailFinder',
-						],
+						operation: ['emailFinder'],
 					},
 				},
 				required: true,
-				description: 'Domain name from which you want to find the email addresses. For example, "stripe.com".',
+				description:
+					'Domain name from which you want to find the email addresses. For example, "stripe.com".',
 			},
 			{
 				displayName: 'First Name',
@@ -243,14 +237,12 @@ export class Hunter implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: [
-							'emailFinder',
-						],
+						operation: ['emailFinder'],
 					},
 				},
 				default: '',
 				required: true,
-				description: `The person's first name. It doesn't need to be in lowercase.`,
+				description: "The person's first name. It doesn't need to be in lowercase.",
 			},
 			{
 				displayName: 'Last Name',
@@ -258,121 +250,143 @@ export class Hunter implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: [
-							'emailFinder',
-						],
+						operation: ['emailFinder'],
 					},
 				},
 				default: '',
 				required: true,
-				description: `The person's last name. It doesn't need to be in lowercase.`,
+				description: "The person's last name. It doesn't need to be in lowercase.",
 			},
 			{
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				displayOptions: {
 					show: {
-						operation: [
-							'emailVerifier',
-						],
+						operation: ['emailVerifier'],
 					},
 				},
 				default: '',
 				required: true,
-				description: 'The email address you want to verify.',
+				description: 'The email address you want to verify',
 			},
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
-		const length = items.length as unknown as number;
+		const returnData: INodeExecutionData[] = [];
+		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		for (let i = 0; i < length; i++) {
-			const operation = this.getNodeParameter('operation', 0) as string;
-			//https://hunter.io/api-documentation/v2#domain-search
-			if (operation === 'domainSearch') {
-				const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-				const filters = this.getNodeParameter('filters', i) as IDataObject;
-				const domain = this.getNodeParameter('domain', i) as string;
-				const onlyEmails = this.getNodeParameter('onlyEmails', i, false) as boolean;
+			try {
+				const operation = this.getNodeParameter('operation', 0);
+				//https://hunter.io/api-documentation/v2#domain-search
+				if (operation === 'domainSearch') {
+					const returnAll = this.getNodeParameter('returnAll', i);
+					const filters = this.getNodeParameter('filters', i);
+					const domain = this.getNodeParameter('domain', i) as string;
+					const onlyEmails = this.getNodeParameter('onlyEmails', i, false) as boolean;
 
-				qs.domain = domain;
-				if (filters.type){
-					qs.type = filters.type;
-				}
-				if (filters.seniority){
-					qs.seniority = (filters.seniority as string[]).join(',');
-				}
-				if (filters.department){
-					qs.department = (filters.department as string[]).join(',');
-				}
-				if (returnAll) {
-					responseData = await hunterApiRequestAllItems.call(this, 'data', 'GET', '/domain-search', {}, qs);
+					qs.domain = domain;
+					if (filters.type) {
+						qs.type = filters.type;
+					}
+					if (filters.seniority) {
+						qs.seniority = (filters.seniority as string[]).join(',');
+					}
+					if (filters.department) {
+						qs.department = (filters.department as string[]).join(',');
+					}
+					if (returnAll) {
+						responseData = await hunterApiRequestAllItems.call(
+							this,
+							'data',
+							'GET',
+							'/domain-search',
+							{},
+							qs,
+						);
 
-					// Make sure that the company information is there only once and
-					// the emails are combined underneath it.
-					if (onlyEmails === false) {
-						let tempReturnData: IDataObject = {};
+						// Make sure that the company information is there only once and
+						// the emails are combined underneath it.
+						if (!onlyEmails) {
+							let tempReturnData: IDataObject = {};
 
-						for (let i = 0; i < responseData.length; i++) {
-							if (i === 0) {
-								tempReturnData = responseData[i];
-								continue;
+							for (let index = 0; index < responseData.length; index++) {
+								if (index === 0) {
+									tempReturnData = responseData[index];
+									continue;
+								}
+								(tempReturnData.emails as IDataObject[]).push.apply(
+									tempReturnData.emails,
+									responseData[index].emails as IDataObject[],
+								);
 							}
-							((tempReturnData as IDataObject).emails as IDataObject[]).push.apply(tempReturnData.emails, responseData[i].emails);
+
+							responseData = tempReturnData;
+						}
+					} else {
+						const limit = this.getNodeParameter('limit', i);
+						qs.limit = limit;
+						responseData = await hunterApiRequest.call(this, 'GET', '/domain-search', {}, qs);
+						responseData = responseData.data;
+					}
+
+					if (onlyEmails) {
+						let tempReturnData: IDataObject[] = [];
+
+						if (Array.isArray(responseData)) {
+							for (const data of responseData) {
+								tempReturnData.push.apply(tempReturnData, data.emails as IDataObject[]);
+							}
+						} else {
+							tempReturnData = responseData.emails;
 						}
 
 						responseData = tempReturnData;
 					}
-				} else {
-					const limit = this.getNodeParameter('limit', i) as number;
-					qs.limit = limit;
-					responseData = await hunterApiRequest.call(this, 'GET', '/domain-search', {}, qs);
+				}
+				//https://hunter.io/api-documentation/v2#email-finder
+				if (operation === 'emailFinder') {
+					const domain = this.getNodeParameter('domain', i) as string;
+					const firstname = this.getNodeParameter('firstname', i) as string;
+					const lastname = this.getNodeParameter('lastname', i) as string;
+					qs.first_name = firstname;
+					qs.last_name = lastname;
+					qs.domain = domain;
+					responseData = await hunterApiRequest.call(this, 'GET', '/email-finder', {}, qs);
+					responseData = responseData.data;
+				}
+				//https://hunter.io/api-documentation/v2#email-verifier
+				if (operation === 'emailVerifier') {
+					const email = this.getNodeParameter('email', i) as string;
+					qs.email = email;
+					responseData = await hunterApiRequest.call(this, 'GET', '/email-verifier', {}, qs);
 					responseData = responseData.data;
 				}
 
-				if (onlyEmails === true) {
-					let tempReturnData: IDataObject[] = [];
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
+					{ itemData: { item: i } },
+				);
 
-					if (Array.isArray(responseData)) {
-						for (const data of responseData) {
-							tempReturnData.push.apply(tempReturnData, data.emails);
-						}
-					} else {
-						tempReturnData = responseData.emails;
-					}
-
-					responseData = tempReturnData;
+				returnData.push(...executionData);
+			} catch (error) {
+				if (this.continueOnFail()) {
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
+					continue;
 				}
-			}
-			//https://hunter.io/api-documentation/v2#email-finder
-			if (operation === 'emailFinder') {
-				const domain = this.getNodeParameter('domain', i) as string;
-				const firstname = this.getNodeParameter('firstname', i) as string;
-				const lastname = this.getNodeParameter('lastname', i) as string;
-				qs.first_name = firstname;
-				qs.last_name = lastname;
-				qs.domain = domain;
-				responseData = await hunterApiRequest.call(this, 'GET', '/email-finder', {}, qs);
-				responseData = responseData.data;
-			}
-			//https://hunter.io/api-documentation/v2#email-verifier
-			if (operation === 'emailVerifier') {
-				const email = this.getNodeParameter('email', i) as string;
-				qs.email = email;
-				responseData = await hunterApiRequest.call(this, 'GET', '/email-verifier', {}, qs);
-				responseData = responseData.data;
-			}
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
+				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+
+		return [returnData];
 	}
 }

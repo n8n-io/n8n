@@ -1,0 +1,309 @@
+@use 'mixins/mixins';
+@use './common/var';
+@use 'common/popup';
+@use 'input';
+
+@include mixins.b(message-box) {
+	display: inline-block;
+	width: var.$msgbox-width;
+	padding-bottom: var(--spacing--sm);
+	vertical-align: middle;
+	background-color: var.$color-white;
+	border-radius: var.$msgbox-border-radius;
+	border: 1px solid var(--border-color--light);
+	font-size: var.$messagebox-font-size;
+	box-shadow: var.$box-shadow-light;
+	text-align: left;
+	overflow: hidden;
+	backface-visibility: hidden;
+
+	@include mixins.e(wrapper) {
+		position: fixed;
+		top: 0;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		text-align: center;
+
+		&::after {
+			content: '';
+			display: inline-block;
+			height: 100%;
+			width: 0;
+			vertical-align: middle;
+		}
+	}
+
+	@include mixins.e(header) {
+		position: relative;
+		padding: var.$msgbox-padding-primary;
+		padding-bottom: var(--spacing--2xs);
+	}
+
+	@include mixins.e(title) {
+		padding-left: 0;
+		margin-bottom: 0;
+		font-size: var.$messagebox-font-size;
+		line-height: 1;
+		color: var.$messagebox-title-color;
+	}
+
+	@include mixins.e(headerbtn) {
+		position: absolute;
+		top: var.$msgbox-padding-primary;
+		right: var.$msgbox-padding-primary;
+		padding: 0;
+		border: none;
+		outline: none;
+		background: transparent;
+		font-size: var.$message-close-size;
+		cursor: pointer;
+
+		.el-message-box__close {
+			color: var(--color--info);
+		}
+
+		&:focus,
+		&:hover {
+			.el-message-box__close {
+				color: var(--color--primary);
+			}
+		}
+	}
+
+	@include mixins.e(content) {
+		padding: var(--spacing--2xs) var.$msgbox-padding-primary var(--spacing--sm);
+		color: var.$messagebox-content-color;
+		font-size: var.$messagebox-content-font-size;
+	}
+
+	@include mixins.e(container) {
+		position: relative;
+	}
+
+	@include mixins.e(input) {
+		padding-top: 15px;
+
+		& input.invalid {
+			border-color: var(--color--danger);
+			&:focus {
+				border-color: var(--color--danger);
+			}
+		}
+	}
+
+	@include mixins.e(status) {
+		position: absolute;
+		top: 50%;
+		transform: translateY(-50%);
+		font-size: 24px !important;
+
+		&::before {
+			// 防止图标切割
+			padding-left: 1px;
+		}
+
+		+ .el-message-box__message {
+			padding-left: 36px;
+			padding-right: 12px;
+		}
+
+		&.el-icon-success {
+			color: var.$messagebox-success-color;
+		}
+
+		&.el-icon-info {
+			color: var.$messagebox-info-color;
+		}
+
+		&.el-icon-warning {
+			color: var.$messagebox-warning-color;
+		}
+
+		&.el-icon-error {
+			color: var.$messagebox-danger-color;
+		}
+	}
+
+	@include mixins.e(message) {
+		margin: 0;
+
+		& p {
+			margin: 0;
+			line-height: var(--line-height--lg);
+		}
+	}
+
+	@include mixins.e(errormsg) {
+		color: var(--color--danger);
+		font-size: var.$messagebox-error-font-size;
+		min-height: 18px;
+		margin-top: 2px;
+	}
+
+	@include mixins.e(btns) {
+		padding: var(--spacing--sm) var(--spacing--sm) 0;
+		text-align: right;
+
+		& button {
+			margin-left: 10px;
+		}
+
+		// Align MessageBox buttons with N8nButton styles; DS-463 will replace this patch.
+		& .btn--confirm,
+		& .btn--cancel {
+			--button--color--background: transparent;
+			--button--color--background-hover: transparent;
+			--button--color--background-active: transparent;
+			--button--color: light-dark(var(--color--neutral-900), var(--color--neutral-100));
+			--button--shadow: none;
+			--button--shadow--hover: none;
+			--button--shadow--active: none;
+			--button--border-color: transparent;
+			--button--border-color--hover: transparent;
+			--button--border-color--active: transparent;
+
+			height: 2rem;
+			padding: 0 var(--spacing--xs);
+			border-radius: var(--radius--xs);
+			font-size: var(--font-size--sm);
+			font-family: var(--font-family);
+			font-weight: var(--font-weight--medium);
+			line-height: 1;
+			border: 1px solid var(--button--border-color);
+			background-color: var(--button--color--background);
+			color: var(--button--color);
+			box-shadow: var(--button--shadow);
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+		}
+
+		& .btn--confirm:hover,
+		& .btn--cancel:hover {
+			background-color: var(--button--color--background-hover);
+			box-shadow: var(--button--shadow--hover);
+			border-color: var(--button--border-color--hover);
+		}
+
+		& .btn--confirm:active,
+		& .btn--cancel:active {
+			background-color: var(--button--color--background-active);
+			box-shadow: var(--button--shadow--active);
+			border-color: var(--button--border-color--active);
+		}
+
+		& .btn--confirm {
+			--button--color--background: var(--color--orange-400);
+			--button--color--background-hover: var(--color--orange-500);
+			--button--color--background-active: var(--color--orange-600);
+			--button--color: var(--color--neutral-white);
+			--button--shadow: 0 1px 3px 0
+				light-dark(var(--color--black-alpha-100), var(--color--black-alpha-200));
+			--button--shadow--hover: 0 1px 3px 0
+				light-dark(var(--color--black-alpha-100), var(--color--black-alpha-200));
+			--button--shadow--active: 0 1px 3px 0
+				light-dark(var(--color--black-alpha-100), var(--color--black-alpha-200));
+			--button--border-color: var(--color--orange-400);
+			--button--border-color--hover: var(--color--orange-500);
+			--button--border-color--active: var(--color--orange-600);
+		}
+
+		& .btn--cancel {
+			--button--color--background: transparent;
+			--button--color--background-hover: light-dark(
+				var(--color--neutral-150),
+				var(--color--white-alpha-100)
+			);
+			--button--color--background-active: light-dark(
+				var(--color--black-alpha-200),
+				var(--color--white-alpha-200)
+			);
+			--button--border-color: light-dark(
+				var(--color--black-alpha-200),
+				var(--color--white-alpha-100)
+			);
+			--button--border-color--hover: light-dark(
+				var(--color--black-alpha-200),
+				var(--color--white-alpha-200)
+			);
+			--button--border-color--active: light-dark(
+				var(--color--black-alpha-300),
+				var(--color--white-alpha-300)
+			);
+		}
+	}
+
+	@include mixins.e(btns-reverse) {
+		flex-direction: row-reverse;
+	}
+
+	// centerAlign 布局
+	@include mixins.m(center) {
+		padding-bottom: 30px;
+
+		@include mixins.e(header) {
+			padding-top: 30px;
+		}
+
+		@include mixins.e(title) {
+			position: relative;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+
+		@include mixins.e(status) {
+			position: relative;
+			top: auto;
+			padding-right: 5px;
+			text-align: center;
+			transform: translateY(-1px);
+		}
+
+		@include mixins.e(message) {
+			margin-left: 0;
+		}
+
+		@include mixins.e((btns, content)) {
+			text-align: center;
+		}
+
+		@include mixins.e(content) {
+			$padding-horizontal: var.$msgbox-padding-primary + 12px;
+
+			padding-left: $padding-horizontal;
+			padding-right: $padding-horizontal;
+		}
+	}
+}
+
+.msgbox-fade-enter-active {
+	animation: msgbox-fade-in 0.3s;
+}
+
+.msgbox-fade-leave-active {
+	animation: msgbox-fade-out 0.3s;
+}
+
+@keyframes msgbox-fade-in {
+	0% {
+		transform: translate3d(0, -20px, 0);
+		opacity: 0;
+	}
+	100% {
+		transform: translate3d(0, 0, 0);
+		opacity: 1;
+	}
+}
+
+@keyframes msgbox-fade-out {
+	0% {
+		transform: translate3d(0, 0, 0);
+		opacity: 1;
+	}
+	100% {
+		transform: translate3d(0, -20px, 0);
+		opacity: 0;
+	}
+}

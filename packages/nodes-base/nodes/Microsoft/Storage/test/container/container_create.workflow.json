@@ -1,0 +1,54 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "99f866fa-f63c-477d-a0d0-48fbdb8a344a",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"operation": "create",
+				"containerCreate": "mycontainer",
+				"options": {
+					"accessLevel": "blob",
+					"metadata": { "metadataValues": [{ "fieldName": "key1", "fieldValue": "value1" }] }
+				},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.azureStorage",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "ab1b6258-5c75-4893-90bf-ef591264420c",
+			"name": "Azure Storage",
+			"credentials": {
+				"azureStorageSharedKeyApi": {
+					"id": "VPmcFM58eDDexWQL",
+					"name": "Azure Storage Shared Key account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [[{ "node": "Azure Storage", "type": "main", "index": 0 }]]
+		}
+	},
+	"pinData": {
+		"Azure Storage": [
+			{
+				"json": {
+					"etag": "\"0x22769D26D3F3740\"",
+					"lastModified": "Thu, 23 Jan 2025 17:53:23 GMT",
+					"requestId": "75b87ee3-a7f7-468d-b7d1-e7e7b3173dab",
+					"version": "2025-01-05",
+					"date": "Thu, 23 Jan 2025 17:53:23 GMT",
+					"clientRequestId": "client-request-id-123",
+					"requestServerEncrypted": true
+				}
+			}
+		]
+	}
+}
