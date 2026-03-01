@@ -142,11 +142,17 @@
       "langchain": "1.2.3",
       "@rudderstack/rudder-sdk-node@<=3.0.0": "3.0.0",
       "@smithy/config-resolver": ">=4.4.0",
+      "fast-xml-parser": "5.3.8",
+      "minimatch@<=5.1.8": "5.1.8",
       "word-wrap@<=1.2.4": "1.2.4",
       "hono@<=4.11.10": "4.11.10",
+      "jsonpath@<=1.2.0": "1.2.0",
+      "mailparser@<=3.9.3": "3.9.3",
+      "mysql2@<=3.17.0": "3.17.0",
       "langsmith@<=0.4.6": "0.4.6",
-      "minimatch@<=5.1.8": "5.1.8",
-      "fast-xml-parser": "5.3.8"
+      "zx@<=8.8.5": "8.8.5",
+      "jsonrepair@<=3.13.2": "3.13.2",
+      "tsup@<=8.5.1": "8.5.1"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
