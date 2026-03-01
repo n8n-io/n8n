@@ -6065,30 +6065,58 @@
 		"type": "node"
 	},
 	{
-		"uuid": "5322bb7d-abe2-4e8b-857e-5f588b523c9d",
-		"key": "n8n-nodes-base.line",
+		"uuid": "3ea6a12b-7291-4556-9c0f-503a387d4363",
+		"key": "n8n-nodes-base.lineMessagingApi",
 		"subcategory": "*",
 		"properties": {
-			"displayName": "Line",
+			"displayName": "LINE Messaging API",
 			"defaults": {
-				"name": "Line"
+				"name": "LINE Messaging API"
 			},
-			"description": "Consume Line API",
-			"name": "n8n-nodes-base.line",
+			"description": "Send messages using the LINE Messaging API",
+			"name": "n8n-nodes-base.lineMessagingApi",
 			"group": ["input"],
-			"iconUrl": "icons/n8n-nodes-base/dist/nodes/Line/line.png",
+			"iconUrl": "icons/n8n-nodes-base/dist/nodes/LineMessagingApi/line.png",
 			"outputs": ["main"],
 			"codex": {
 				"categories": ["Communication"],
+				"subcategories": {
+					"Communication": ["LINE Messaging API"]
+				},
 				"resources": {
 					"primaryDocumentation": [
 						{
-							"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.line/"
+							"url": "https://developers.line.biz/en/docs/messaging-api/"
 						}
-					],
-					"credentialDocumentation": [
+					]
+				}
+			}
+		},
+		"type": "node"
+	},
+	{
+		"uuid": "2b3a192f-48ec-4afd-afc9-3da84aa53ada",
+		"key": "n8n-nodes-base.lineMessagingApiTrigger",
+		"subcategory": "*",
+		"properties": {
+			"displayName": "LINE Messaging API Trigger",
+			"defaults": {
+				"name": "LINE Messaging API"
+			},
+			"description": "Starts the workflow when LINE Messaging API webhook events are received",
+			"name": "n8n-nodes-base.lineMessagingApiTrigger",
+			"group": ["trigger"],
+			"iconUrl": "icons/n8n-nodes-base/dist/nodes/LineMessagingApi/line.png",
+			"outputs": ["main"],
+			"codex": {
+				"categories": ["Communication"],
+				"subcategories": {
+					"Communication": ["LINE Messaging API"]
+				},
+				"resources": {
+					"primaryDocumentation": [
 						{
-							"url": "https://docs.n8n.io/integrations/builtin/credentials/line/"
+							"url": "https://developers.line.biz/en/docs/messaging-api/"
 						}
 					]
 				}
