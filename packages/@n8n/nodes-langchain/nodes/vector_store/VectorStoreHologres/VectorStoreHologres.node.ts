@@ -500,6 +500,7 @@ function createPoolFromCredentials(credentials: Record<string, unknown>): pg.Poo
 		password: credentials.password as string,
 		max: (credentials.maxConnections as number) ?? 100,
 		ssl: false,
+		application_name: 'n8n_hologres_vector_store',
 	});
 }
 
