@@ -207,4 +207,40 @@ describe('Test MySql V2, runQueries', () => {
 
 		expect(connectionReleaseSpy).toBeCalledTimes(1);
 	});
+
+	it('should return error item with continueOnFail = true for connection error', async () => {
+		const nodeOptions: IDataObject = { queryBatching: BATCH_MODE.SINGLE, nodeVersion: 2 };
+		const pool = createFakePool(fakeConnection);
+		pool.getConnection = jest.fn(() => {
+			throw new Error('ECONNREFUSED');
+		});
+		const fakeExecuteFunction = createMockExecuteFunction({}, mySqlMockNode);
+		fakeExecuteFunction.continueOnFail = () => true;
+
+		const result = await configureQueryRunner.call(
+			fakeExecuteFunction,
+			nodeOptions,
+			pool,
+		)([{ query: 'SELECT * FROM my_table WHERE id = ?', values: [55] }]);
+
+		expect(result).toEqual([{ json: expect.objectContaining({ message: 'Connection refused' }) }]);
+	});
+
+	it('should throw error when continueOnFail = false for connection error', async () => {
+		const nodeOptions: IDataObject = { queryBatching: BATCH_MODE.SINGLE, nodeVersion: 2 };
+		const pool = createFakePool(fakeConnection);
+		pool.getConnection = jest.fn(() => {
+			throw new Error('ECONNREFUSED');
+		});
+		const fakeExecuteFunction = createMockExecuteFunction({}, mySqlMockNode);
+		fakeExecuteFunction.continueOnFail = () => false;
+
+		await expect(
+			configureQueryRunner.call(
+				fakeExecuteFunction,
+				nodeOptions,
+				pool,
+			)([{ query: 'SELECT * FROM my_table WHERE id = ?', values: [55] }]),
+		).rejects.toThrow('Connection refused');
+	});
 });

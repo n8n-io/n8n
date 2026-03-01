@@ -29,5 +29,7 @@ export { ExpressionExtensionError } from './expression-extension.error';
 export { ExpressionDestructuringError } from './expression-destructuring.error';
 export { ExpressionComputedDestructuringError } from './expression-computed-destructuring.error';
 export { ExpressionClassExtensionError } from './expression-class-extension.error';
+export { ExpressionReservedVariableError } from './expression-reserved-variable.error';
+export { ExpressionWithStatementError } from './expression-with-statement.error';
 export { DbConnectionTimeoutError } from './db-connection-timeout-error';
 export { ensureError } from './ensure-error';

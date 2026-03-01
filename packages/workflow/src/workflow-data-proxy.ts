@@ -26,6 +26,7 @@ import type {
 	WorkflowExecuteMode,
 	ProxyInput,
 	INode,
+	INodeType,
 } from './interfaces';
 import * as NodeHelpers from './node-helpers';
 import { createResultError, createResultOk } from './result';
@@ -186,7 +187,16 @@ export class WorkflowDataProxy {
 	}
 
 	private buildAgentToolInfo(node: INode) {
-		const nodeType = this.workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		const nodeType: INodeType | undefined = this.workflow.nodeTypes.getByNameAndVersion(
+			node.type,
+			node.typeVersion,
+		);
+		if (!nodeType) {
+			return {
+				name: node.name,
+				type: node.type,
+			};
+		}
 		const type = nodeType.description.displayName;
 		const params = NodeHelpers.getNodeParameters(
 			nodeType.description.properties,
@@ -1049,7 +1059,8 @@ export class WorkflowDataProxy {
 				);
 			}
 
-			const resultData = that.runExecutionData?.resultData.runData[that.activeNodeName]?.[runIndex];
+			const resultData =
+				that.runExecutionData?.resultData?.runData?.[that.activeNodeName]?.[runIndex];
 			let inputData;
 			let placeholdersDataInputData;
 
@@ -1075,6 +1086,29 @@ export class WorkflowDataProxy {
 				placeholdersDataInputData?.[name] ??
 				defaultValue
 			);
+		};
+		const handleTool = (throwOnError = true) => {
+			const fallbackValue = that.additionalKeys?.['$tool'];
+			try {
+				const toolName = handleFromAi('tool', '');
+				const toolParameters = handleFromAi('toolParameters', '');
+				return {
+					name: toolName ?? fallbackValue?.name,
+					parameters: toolParameters ?? fallbackValue?.parameters,
+				};
+			} catch (error) {
+				const isNoExecutionDataError =
+					error instanceof ExpressionError && error.context.type === 'no_execution_data';
+				// always suppress no_execution_data error
+				// $tool can get accessed in some cases where no execution data is available, e.g. task runners
+				if (isNoExecutionDataError) {
+					return fallbackValue;
+				}
+				if (throwOnError) {
+					throw error;
+				}
+				return undefined;
+			}
 		};
 
 		const base = {
@@ -1488,6 +1522,7 @@ export class WorkflowDataProxy {
 
 				return that.getNodeExecutionData(nodeName, false, outputIndex, runIndex);
 			},
+			$tool: {}, // Placeholder
 			$json: {}, // Placeholder
 			$node: this.nodeGetter(),
 			$self: this.selfGetter(),
@@ -1541,6 +1576,9 @@ export class WorkflowDataProxy {
 				if (name === '$binary') {
 					return that.nodeDataGetter(that.contextNodeName, true, throwOnMissingExecutionData)
 						?.binary;
+				}
+				if (name === '$tool') {
+					return handleTool(throwOnMissingExecutionData);
 				}
 
 				return Reflect.get(target, name, receiver);

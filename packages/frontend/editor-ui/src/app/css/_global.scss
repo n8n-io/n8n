@@ -19,6 +19,7 @@
 // Dialog
 .el-overlay {
 	background-color: var(--dialog--overlay--color--background--dark);
+	pointer-events: auto;
 }
 
 #app-modals .el-overlay {
@@ -177,6 +178,7 @@
 	&.whats-new-notification {
 		bottom: var(--spacing--xs) !important;
 		left: var(--spacing--sm) !important;
+		margin-bottom: 0;
 		width: 300px;
 		padding: var(--spacing--xs);
 		border: var(--border);
@@ -240,5 +242,16 @@
 				background-color: var(--color--background--light-2) !important;
 			}
 		}
+	}
+}
+
+// Drag and drop: disable hover effects on all elements except valid drop targets
+body.dragging-resource {
+	* {
+		pointer-events: none;
+	}
+
+	[data-droppable] {
+		pointer-events: auto;
 	}
 }

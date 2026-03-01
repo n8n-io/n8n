@@ -1,13 +1,13 @@
 import {
 	passwordSchema,
 	PasswordUpdateRequestDto,
-	SettingsUpdateRequestDto,
+	UserSelfSettingsUpdateRequestDto,
 	UserUpdateRequestDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User, PublicUser } from '@n8n/db';
 import { UserRepository, AuthenticatedRequest } from '@n8n/db';
-import { Body, Patch, Post, RestController } from '@n8n/decorators';
+import { Body, createUserKeyedRateLimiter, Patch, Post, RestController } from '@n8n/decorators';
 import { plainToInstance } from 'class-transformer';
 import { Response } from 'express';
 
@@ -166,9 +166,7 @@ export class MeController {
 	 * Update the logged-in user's password.
 	 */
 	@Patch('/password', {
-		keyedRateLimit: {
-			source: 'user',
-		},
+		keyedRateLimit: createUserKeyedRateLimiter({}),
 	})
 	async updatePassword(
 		req: AuthenticatedRequest,
@@ -274,12 +272,14 @@ export class MeController {
 
 	/**
 	 * Update the logged-in user's settings.
+	 * Note: This endpoint uses UserSelfSettingsUpdateRequestDto which excludes admin-only
+	 * fields like allowSSOManualLogin to prevent privilege escalation attacks (SSO bypass).
 	 */
 	@Patch('/settings')
 	async updateCurrentUserSettings(
 		req: AuthenticatedRequest,
 		_: Response,
-		@Body payload: SettingsUpdateRequestDto,
+		@Body payload: UserSelfSettingsUpdateRequestDto,
 	): Promise<User['settings']> {
 		const { id } = req.user;
 

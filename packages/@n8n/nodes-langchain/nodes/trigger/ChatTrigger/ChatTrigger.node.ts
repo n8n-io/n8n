@@ -134,6 +134,7 @@ const commonOptionsFields: INodeProperties[] = [
 		],
 		default: 'notSupported',
 		description: 'If loading messages of a previous session should be enabled',
+		builderHint: { message: "Set to 'memory' to persist conversation history across sessions" },
 	},
 	{
 		displayName: 'Require Button Click to Start Chat',
@@ -254,6 +255,19 @@ export class ChatTrigger extends Node {
 			];
 		 })() }}`,
 		outputs: [NodeConnectionTypes.Main],
+		builderHint: {
+			inputs: {
+				ai_memory: {
+					required: true,
+					displayOptions: {
+						show: {
+							mode: ['hostedChat', 'webhook'],
+							'options.loadPreviousSession': ['memory'],
+						},
+					},
+				},
+			},
+		},
 		credentials: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
@@ -395,12 +409,13 @@ export class ChatTrigger extends Node {
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-				displayName: 'Make Available in n8n Chat',
+				displayName: 'Make Available in n8n Chat Hub',
 				name: 'availableInChat',
 				type: 'boolean',
 				default: false,
 				noDataExpression: true,
-				description: 'Whether to make the agent available in n8n Chat',
+				description:
+					'Whether to make the agent available in n8n Chat Hub for n8n instance users to chat with',
 			},
 			{
 				displayName:
@@ -473,6 +488,46 @@ export class ChatTrigger extends Node {
 						'@version': [{ _cnd: { gte: 1.2 } }],
 					},
 				},
+			},
+			{
+				displayName: 'Suggestions',
+				name: 'suggestedPrompts',
+				type: 'fixedCollection',
+				typeOptions: { multipleValues: true, fixedCollection: { layout: 'inline' } },
+				default: {},
+				noDataExpression: true,
+				placeholder: 'Add Prompt',
+				description:
+					'Suggested prompts shown to users in n8n Chat Hub to start a conversation with the agent',
+				displayOptions: {
+					show: {
+						availableInChat: [true],
+						'@version': [{ _cnd: { gte: 1.2 } }],
+					},
+				},
+				options: [
+					{
+						name: 'prompts',
+						displayName: 'Prompts',
+						values: [
+							{
+								displayName: 'Icon',
+								name: 'icon',
+								type: 'icon',
+								noDataExpression: true,
+								default: { type: 'icon', value: 'comment' },
+							},
+							{
+								displayName: 'Prompt Text',
+								name: 'text',
+								type: 'string',
+								default: '',
+								noDataExpression: true,
+								required: true,
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Options',
@@ -713,7 +768,10 @@ export class ChatTrigger extends Node {
 		const nodeMode = ctx.getNodeParameter('mode', 'hostedChat');
 		assertParamIsString('mode', nodeMode, ctx.getNode());
 
-		if (!isPublic) {
+		const mode = ctx.getMode() === 'manual' ? 'test' : 'production';
+
+		// Allow execution in manual mode (test) even when not public
+		if (!isPublic && mode !== 'test') {
 			res.status(404).end();
 			return {
 				noWebhookResponse: true,
@@ -748,7 +806,6 @@ export class ChatTrigger extends Node {
 
 		const req = ctx.getRequestObject();
 		const webhookName = ctx.getWebhookName();
-		const mode = ctx.getMode() === 'manual' ? 'test' : 'production';
 		const bodyData = ctx.getBodyData() ?? {};
 
 		try {

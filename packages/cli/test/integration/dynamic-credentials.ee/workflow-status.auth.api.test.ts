@@ -1,6 +1,6 @@
 import { LicenseState } from '@n8n/backend-common';
 import { mockInstance, getPersonalProject, testDb } from '@n8n/backend-test-utils';
-import type { CredentialsEntity } from '@n8n/db';
+import type { CredentialsEntity, User } from '@n8n/db';
 import {
 	GLOBAL_OWNER_ROLE,
 	WorkflowRepository,
@@ -102,12 +102,13 @@ const setupWorkflow = async () => {
 		role: 'workflow:owner',
 	});
 
-	return { savedWorkflow, savedCredential };
+	return { savedWorkflow, savedCredential, owner };
 };
 
 describe('Workflow Status API', () => {
 	let savedWorkflow: WorkflowEntity;
 	let savedCredential: CredentialsEntity;
+	let owner: User;
 
 	beforeAll(async () => {
 		// Mock OAuth metadata endpoint for resolver validation
@@ -142,7 +143,7 @@ describe('Workflow Status API', () => {
 			'DynamicCredentialResolver',
 		]);
 
-		({ savedWorkflow, savedCredential } = await setupWorkflow());
+		({ savedWorkflow, savedCredential, owner } = await setupWorkflow());
 	});
 
 	afterAll(async () => {
@@ -203,6 +204,52 @@ describe('Workflow Status API', () => {
 				.get(`/workflows/${savedWorkflow.id}/execution-status`)
 				.set('X-Authorization', 'Bearer static-test-token')
 				.expect(401);
+		});
+
+		describe('when a user is authenticated via cookie', () => {
+			it('should allow access without static auth token', async () => {
+				const response = await testServer
+					.authAgentFor(owner)
+					.get(`/workflows/${savedWorkflow.id}/execution-status`)
+					.set('Authorization', 'Bearer test-token')
+					// Note: NO X-Authorization header provided
+					.expect(200);
+
+				expect(response.body.data).toMatchObject({
+					workflowId: savedWorkflow.id,
+					readyToExecute: expect.any(Boolean),
+					credentials: expect.arrayContaining([
+						expect.objectContaining({
+							credentialId: savedCredential.id,
+							credentialName: savedCredential.name,
+							credentialType: savedCredential.type,
+							credentialStatus: expect.any(String),
+						}),
+					]),
+				});
+			});
+
+			it('should allow access even with invalid static token if cookie auth succeeds', async () => {
+				const response = await testServer
+					.authAgentFor(owner)
+					.get(`/workflows/${savedWorkflow.id}/execution-status`)
+					.set('Authorization', 'Bearer test-token')
+					.set('X-Authorization', 'Bearer invalid-static-token') // Invalid token
+					.expect(200);
+
+				expect(response.body.data).toMatchObject({
+					workflowId: savedWorkflow.id,
+					readyToExecute: expect.any(Boolean),
+					credentials: expect.arrayContaining([
+						expect.objectContaining({
+							credentialId: savedCredential.id,
+							credentialName: savedCredential.name,
+							credentialType: savedCredential.type,
+							credentialStatus: expect.any(String),
+						}),
+					]),
+				});
+			});
 		});
 	});
 });

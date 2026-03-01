@@ -50,7 +50,6 @@ type QueryBuilder = SelectQueryBuilder<any>;
  *
  * Why the crazy backslashes:
  * - Postgres/SQLite/Oracle/SQL Server: `ESCAPE '\'` is written as-is.
- * - MySQL/MariaDB: the SQL literal itself requires two backslashes (`'\\'`) to mean one.
  */
 function getConditionAndParams(
 	filter: DataTableFilter['filters'][number],
@@ -101,14 +100,6 @@ function getConditionAndParams(
 				return [`${columnRef} GLOB :${paramName}`, { [paramName]: globValue }];
 			}
 
-			if (['mysql', 'mariadb'].includes(dbType)) {
-				const escapedValue = escapeLikeSpecials(value as string);
-				return [
-					`${columnRef} LIKE BINARY :${paramName} ESCAPE '\\\\'`,
-					{ [paramName]: escapedValue },
-				];
-			}
-
 			// PostgreSQL: LIKE is case-sensitive
 			if (dbType === 'postgres') {
 				const escapedValue = escapeLikeSpecials(value as string);
@@ -124,14 +115,6 @@ function getConditionAndParams(
 				const escapedValue = escapeLikeSpecials(value as string);
 				return [
 					`UPPER(${columnRef}) LIKE UPPER(:${paramName}) ESCAPE '\\'`,
-					{ [paramName]: escapedValue },
-				];
-			}
-
-			if (['mysql', 'mariadb'].includes(dbType)) {
-				const escapedValue = escapeLikeSpecials(value as string);
-				return [
-					`UPPER(${columnRef}) LIKE UPPER(:${paramName}) ESCAPE '\\\\'`,
 					{ [paramName]: escapedValue },
 				];
 			}
@@ -639,7 +622,6 @@ export class DataTableRowsRepository {
 		const dbType = this.dataSource.options.type;
 		const searchTerm = rawSearch.includes('%') ? rawSearch : `%${rawSearch}%`;
 		const isSqlite = ['sqlite', 'sqlite-pooled'].includes(dbType);
-		const isMy = ['mysql', 'mariadb'].includes(dbType);
 		const isPg = dbType === 'postgres';
 
 		const allColumnNames: string[] = columns.map((c) => c.name);
@@ -652,11 +634,6 @@ export class DataTableRowsRepository {
 			const colRef = `${tableRefQuoted}.${quoteIdentifier(col, dbType)}`;
 			if (isSqlite) {
 				conditions.push(`UPPER(CAST(${colRef} AS TEXT)) LIKE UPPER(:search) ESCAPE '\\'`);
-				continue;
-			}
-
-			if (isMy) {
-				conditions.push(`UPPER(CAST(${colRef} AS CHAR)) LIKE UPPER(:search) ESCAPE '\\\\'`);
 				continue;
 			}
 

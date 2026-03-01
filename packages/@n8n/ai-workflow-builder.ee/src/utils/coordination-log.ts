@@ -12,11 +12,12 @@ import type {
 	SubgraphPhase,
 	DiscoveryMetadata,
 	BuilderMetadata,
-	ConfiguratorMetadata,
+	AssistantMetadata,
 	StateManagementMetadata,
+	ResponderMetadata,
 } from '../types/coordination';
 
-export type RoutingDecision = 'discovery' | 'builder' | 'configurator' | 'responder';
+export type RoutingDecision = 'discovery' | 'builder' | 'assistant' | 'responder';
 
 /**
  * Get the last completed phase from the coordination log
@@ -51,14 +52,6 @@ export function hasPhaseCompleted(log: CoordinationLogEntry[], phase: SubgraphPh
 }
 
 /**
- * Get configurator output (setup instructions) from the log
- */
-export function getConfiguratorOutput(log: CoordinationLogEntry[]): string | null {
-	const entry = getPhaseEntry(log, 'configurator');
-	return entry?.output ?? null;
-}
-
-/**
  * Get builder output (workflow summary) from the log
  */
 export function getBuilderOutput(log: CoordinationLogEntry[]): string | null {
@@ -79,8 +72,8 @@ export function getPhaseMetadata(
 ): BuilderMetadata | null;
 export function getPhaseMetadata(
 	log: CoordinationLogEntry[],
-	phase: 'configurator',
-): ConfiguratorMetadata | null;
+	phase: 'assistant',
+): AssistantMetadata | null;
 export function getPhaseMetadata(
 	log: CoordinationLogEntry[],
 	phase: 'state_management',
@@ -88,7 +81,13 @@ export function getPhaseMetadata(
 export function getPhaseMetadata(
 	log: CoordinationLogEntry[],
 	phase: SubgraphPhase,
-): DiscoveryMetadata | BuilderMetadata | ConfiguratorMetadata | StateManagementMetadata | null {
+):
+	| DiscoveryMetadata
+	| BuilderMetadata
+	| AssistantMetadata
+	| StateManagementMetadata
+	| ResponderMetadata
+	| null {
 	const entry = getPhaseEntry(log, phase);
 	if (!entry) return null;
 
@@ -96,6 +95,14 @@ export function getPhaseMetadata(
 	if (entry.metadata.phase === 'error') return null;
 
 	return entry.metadata;
+}
+
+/**
+ * Check if the coordination log contains a completed builder phase.
+ * Used to gate credit consumption — only builder phases consume credits.
+ */
+export function hasBuilderPhaseInLog(log: CoordinationLogEntry[]): boolean {
+	return log.some((entry) => entry.phase === 'builder' && entry.status === 'completed');
 }
 
 /**
@@ -160,23 +167,39 @@ export function getNextPhaseFromLog(log: CoordinationLogEntry[]): RoutingDecisio
 	}
 
 	const lastPhase = getLastCompletedPhase(log);
-	// After discovery → always builder (builder decides what new nodes to add)
+	// After discovery → builder (handles adding, connecting, and configuring nodes)
 	if (lastPhase === 'discovery') {
 		return 'builder';
 	}
 
-	// After builder → configurator
+	// After builder → responder (terminal)
 	if (lastPhase === 'builder') {
-		return 'configurator';
+		return 'responder';
 	}
 
-	// After configurator → responder (terminal)
-	if (lastPhase === 'configurator') {
+	if (lastPhase === 'assistant') {
 		return 'responder';
 	}
 
 	// No phases completed yet → let supervisor decide
 	return 'responder';
+}
+
+/**
+ * Get entries from the current turn only.
+ * A turn ends when the responder completes, so current-turn entries
+ * are those after the last completed responder entry.
+ * This prevents stale entries from previous turns leaking into context.
+ */
+export function getCurrentTurnEntries(log: CoordinationLogEntry[]): CoordinationLogEntry[] {
+	const lastResponderIndex = log.findLastIndex(
+		(entry) => entry.phase === 'responder' && entry.status === 'completed',
+	);
+
+	// No previous responder completion — entire log is the current turn
+	if (lastResponderIndex === -1) return log;
+
+	return log.slice(lastResponderIndex + 1);
 }
 
 /**

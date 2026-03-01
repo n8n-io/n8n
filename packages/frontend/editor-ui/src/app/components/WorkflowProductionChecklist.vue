@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, watch } from 'vue';
+import { computed, inject, ref, onMounted, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 import { useEvaluationStore } from '@/features/ai/evaluation.ee/evaluation.store';
@@ -27,6 +27,7 @@ import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { N8nSuggestedActions } from '@n8n/design-system';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 
 const props = defineProps<{
 	workflow: IWorkflowDb;
@@ -44,6 +45,7 @@ const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
 const { isEligibleForMcpAccess } = useMcp();
 const usersStore = useUsersStore();
+const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
 
 const isPopoverOpen = ref(false);
 const cachedSettings = ref<WorkflowSettings | null>(null);
@@ -101,7 +103,7 @@ const isWorkflowEligibleForMcpAccess = computed(() => {
 const canToggleInstanceMCPAccess = computed(() => isOwner.value || isAdmin.value);
 
 const availableActions = computed(() => {
-	if (props.workflow.activeVersionId === null || workflowsCache.isCacheLoading.value) {
+	if (!workflowDocumentStore?.value?.activeVersionId || workflowsCache.isCacheLoading.value) {
 		return [];
 	}
 
@@ -298,7 +300,7 @@ function handlePopoverOpenChange(open: boolean) {
 
 // Watch for workflow activation
 watch(
-	() => !!props.workflow.activeVersionId,
+	() => !!workflowDocumentStore?.value?.activeVersionId,
 	async (isActive, wasActive) => {
 		if (isActive && !wasActive) {
 			// Check if this is the first activation

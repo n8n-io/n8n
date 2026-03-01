@@ -140,7 +140,7 @@ watch(
 				</NDVEmptyState>
 				<div :class="$style.warningActions">
 					<N8nButton
-						outline
+						variant="outline"
 						size="small"
 						:label="i18n.baseText('runData.downloadBinaryData')"
 						@click.stop="downloadJsonData"

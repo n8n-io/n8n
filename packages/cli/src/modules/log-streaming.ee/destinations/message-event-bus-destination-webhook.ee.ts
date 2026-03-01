@@ -22,7 +22,6 @@ import type {
 } from 'n8n-workflow';
 
 import { CredentialsHelper } from '@/credentials-helper';
-import { eventMessageGenericDestinationTestEvent } from '@/eventbus/event-message-classes/event-message-generic';
 import type {
 	MessageEventBus,
 	MessageWithCallback,
@@ -129,7 +128,22 @@ export class MessageEventBusDestinationWebhook
 			axiosSetting.maxRedirects = axiosParameters.options.redirect?.maxRedirects;
 		}
 
-		axiosSetting.proxy = axiosParameters.options?.proxy;
+		// Unwrap nested proxy: fixedCollection in logStreaming.constants uses name 'proxy' for both
+		// the collection and its single option, producing options.proxy = { proxy: { protocol, host, port } }.
+		// Axios expects proxy to be { protocol, host, port }. Only set when explicitly configured;
+		// leaving proxy undefined allows axios to use HTTP_PROXY/HTTPS_PROXY from the environment.
+		let proxy = axiosParameters.options?.proxy;
+		if (
+			proxy &&
+			typeof proxy === 'object' &&
+			'proxy' in proxy &&
+			typeof (proxy as { proxy?: unknown }).proxy === 'object'
+		) {
+			proxy = (proxy as { proxy: typeof proxy }).proxy;
+		}
+		if (proxy) {
+			axiosSetting.proxy = proxy;
+		}
 
 		axiosSetting.timeout =
 			axiosParameters.options?.timeout ?? LOGSTREAMING_DEFAULT_SOCKET_TIMEOUT_MS;
@@ -302,10 +316,7 @@ export class MessageEventBusDestinationWebhook
 	async receiveFromEventBus(emitterPayload: MessageWithCallback): Promise<boolean> {
 		const { msg, confirmCallback } = emitterPayload;
 		let sendResult = false;
-		if (msg.eventName !== eventMessageGenericDestinationTestEvent) {
-			if (!this.license.isLogStreamingEnabled()) return sendResult;
-			if (!this.hasSubscribedToEvent(msg)) return sendResult;
-		}
+
 		// at first run, build this.requestOptions with the destination settings
 		await this.generateAxiosOptions();
 

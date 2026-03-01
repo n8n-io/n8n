@@ -7,6 +7,7 @@ import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 
 import { EXECUTE_WORKFLOW_NODE_TYPE, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE } from './constants';
+import { isExpression } from './expressions/expression-helpers';
 import { NodeConnectionTypes } from './interfaces';
 import type {
 	FieldType,
@@ -790,6 +791,15 @@ export function getNodeParameters(
 				nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
 				continue;
 			}
+
+			// Strip expression prefix if noDataExpression is true
+			if (nodeProperties.noDataExpression && nodeParameters[nodeProperties.name] !== undefined) {
+				const value = nodeParameters[nodeProperties.name];
+				if (isExpression(value)) {
+					nodeParameters[nodeProperties.name] = value.slice(1);
+					nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
+				}
+			}
 		}
 
 		if (onlySimpleTypes) {
@@ -1133,6 +1143,10 @@ export function getNodeOutputs(
 	nodeTypeData: INodeTypeDescription,
 ): Array<NodeConnectionType | INodeOutputConfiguration> {
 	let outputs: Array<NodeConnectionType | INodeOutputConfiguration> = [];
+
+	if (!nodeTypeData) {
+		return [];
+	}
 
 	if (Array.isArray(nodeTypeData.outputs)) {
 		outputs = nodeTypeData.outputs;
@@ -1659,6 +1673,9 @@ export function isTriggerNode(nodeTypeData: INodeTypeDescription) {
 }
 
 export function isExecutable(workflow: Workflow, node: INode, nodeTypeData: INodeTypeDescription) {
+	if (!nodeTypeData) {
+		return false;
+	}
 	const outputs = getNodeOutputs(workflow, node, nodeTypeData);
 	const outputNames = getConnectionTypes(outputs);
 	return (
@@ -1741,6 +1758,27 @@ export function makeDescription(
 	return nodeTypeDescription.description;
 }
 
+export function isToolType(
+	nodeType?: string,
+	{ includeHitl = true }: { includeHitl?: boolean } = {},
+) {
+	if (!nodeType) return false;
+	const node = nodeType.split('.').pop();
+	if (node?.endsWith('Tool') || node?.startsWith('tool')) {
+		// don't check if it's hitl
+		if (includeHitl) {
+			return true;
+		}
+		return !isHitlToolType(nodeType);
+	}
+	return false;
+}
+
+export function isHitlToolType(nodeType?: string) {
+	if (!nodeType) return false;
+	return nodeType.endsWith('HitlTool');
+}
+
 export function isTool(
 	nodeTypeDescription: INodeTypeDescription,
 	parameters: INodeParameters,
@@ -1779,6 +1817,11 @@ export function makeNodeName(
 	nodeParameters: INodeParameters,
 	nodeTypeDescription: INodeTypeDescription,
 ): string {
+	// If skipNameGeneration is set, skip resource/operation resolution
+	if (nodeTypeDescription.skipNameGeneration) {
+		return nodeTypeDescription.defaults.name ?? nodeTypeDescription.displayName;
+	}
+
 	const { action, operation, resource } = resolveResourceAndOperation(
 		nodeParameters,
 		nodeTypeDescription,

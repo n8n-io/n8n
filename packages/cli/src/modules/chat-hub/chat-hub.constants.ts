@@ -3,6 +3,17 @@ import type { ExecutionStatus, INodeTypeNameVersion } from 'n8n-workflow';
 
 import type { ChatTriggerResponseMode } from './chat-hub.types';
 
+export type ChatHubInputModality = 'text' | 'image' | 'audio' | 'video' | 'file';
+
+/** Internal metadata that includes inputModalities for LLM capability checks */
+export interface InternalModelMetadata extends ChatModelMetadataDto {
+	inputModalities: ChatHubInputModality[];
+}
+
+type InternalModelOverride = Partial<
+	Omit<InternalModelMetadata, 'allowFileUploads' | 'allowedFilesMimeTypes'>
+>;
+
 export const EXECUTION_POLL_INTERVAL = 1000;
 export const STREAM_CLOSE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 export const EXECUTION_FINISHED_STATUSES: ExecutionStatus[] = [
@@ -95,8 +106,11 @@ export const JSONL_STREAM_HEADERS = {
 };
 /* eslint-enable @typescript-eslint/naming-convention */
 
-// Default metadata for all models
-const DEFAULT_MODEL_METADATA: ChatModelMetadataDto = {
+// Default internal metadata for all LLM models
+const DEFAULT_INTERNAL_METADATA: InternalModelOverride &
+	Pick<InternalModelMetadata, 'inputModalities' | 'available'> & {
+		capabilities: { functionCalling: boolean };
+	} = {
 	inputModalities: ['text', 'image', 'audio', 'video', 'file'],
 	capabilities: {
 		functionCalling: true,
@@ -105,7 +119,7 @@ const DEFAULT_MODEL_METADATA: ChatModelMetadataDto = {
 };
 
 const MODEL_METADATA_REGISTRY: Partial<
-	Record<ChatHubLLMProvider, Partial<Record<string, Partial<ChatModelMetadataDto>>>>
+	Record<ChatHubLLMProvider, Partial<Record<string, InternalModelOverride>>>
 > = {
 	anthropic: {
 		'claude-3-5-haiku-20241022': {
@@ -129,11 +143,21 @@ const MODEL_METADATA_REGISTRY: Partial<
 		'claude-sonnet-4-20250514': {
 			inputModalities: ['text', 'image'],
 		},
-		'claude-sonnet-4-5-20250929': {
-			inputModalities: ['text', 'image'],
-		},
 		'claude-haiku-4-5-20251001': {
 			inputModalities: ['text', 'image'],
+			priority: 70,
+		},
+		'claude-sonnet-4-5-20250929': {
+			inputModalities: ['text', 'image'],
+			priority: 80,
+		},
+		'claude-opus-4-6': {
+			inputModalities: ['text', 'image'],
+			priority: 100,
+		},
+		'claude-opus-4-5-20251101': {
+			inputModalities: ['text', 'image'],
+			priority: 90,
 		},
 		'claude-opus-4-20250514': {
 			inputModalities: ['text', 'image'],
@@ -229,30 +253,6 @@ const MODEL_METADATA_REGISTRY: Partial<
 		'o1-pro-2025-03-19': {
 			inputModalities: ['text'],
 		},
-		'o3-mini': {
-			inputModalities: ['text'],
-		},
-		'o4-mini': {
-			inputModalities: ['text'],
-		},
-		'o4-mini-2025-04-16': {
-			inputModalities: ['text'],
-		},
-		'o4-mini-high': {
-			inputModalities: ['text'],
-		},
-		o3: {
-			inputModalities: ['text'],
-		},
-		'o3-2025-04-16': {
-			inputModalities: ['text'],
-		},
-		'o3-pro': {
-			inputModalities: ['text'],
-		},
-		'o3-pro-2025-06-10': {
-			inputModalities: ['text'],
-		},
 		'gpt-audio': {
 			available: false,
 		},
@@ -267,6 +267,65 @@ const MODEL_METADATA_REGISTRY: Partial<
 		},
 		'gpt-3.5-turbo-16k': {
 			available: false,
+		},
+		'gpt-5.2': {
+			priority: 100,
+		},
+		'gpt-5.2-pro': {
+			priority: 99,
+		},
+		'gpt-5.1': {
+			priority: 90,
+		},
+		'gpt-5-pro': {
+			priority: 85,
+		},
+		'gpt-5': {
+			priority: 84,
+		},
+		'gpt-5-mini': {
+			priority: 83,
+		},
+		'gpt-5-nano': {
+			priority: 82,
+		},
+		'gpt-4.1': {
+			priority: 80,
+		},
+		'gpt-4.1-mini': {
+			priority: 79,
+		},
+		'gpt-4.1-nano': {
+			priority: 78,
+		},
+		'o4-mini': {
+			inputModalities: ['text'],
+			priority: 70,
+		},
+		'o4-mini-2025-04-16': {
+			inputModalities: ['text'],
+		},
+		'o4-mini-high': {
+			inputModalities: ['text'],
+			priority: 69,
+		},
+		o3: {
+			inputModalities: ['text'],
+			priority: 60,
+		},
+		'o3-pro': {
+			inputModalities: ['text'],
+			priority: 59,
+		},
+		'o3-pro-2025-06-10': {
+			inputModalities: ['text'],
+		},
+		'o3-mini': {
+			inputModalities: ['text'],
+			priority: 58,
+		},
+		'o3-2025-04-16': {
+			inputModalities: ['text'],
 		},
 	},
 	mistralCloud: {
@@ -358,6 +417,10 @@ const MODEL_METADATA_REGISTRY: Partial<
 			capabilities: { functionCalling: false },
 		},
 		// Gemini 2.5 Pro series
+		'models/gemini-2.5-pro': {
+			inputModalities: ['text', 'image', 'video', 'audio'],
+			priority: 100,
+		},
 		'models/gemini-2.5-pro-preview-tts': {
 			inputModalities: ['text'],
 			capabilities: { functionCalling: false },
@@ -365,6 +428,7 @@ const MODEL_METADATA_REGISTRY: Partial<
 		// Gemini 2.5 Flash series
 		'models/gemini-2.5-flash': {
 			inputModalities: ['text', 'image', 'video', 'audio'],
+			priority: 90,
 		},
 		'models/gemini-2.5-flash-preview-04-17': {
 			inputModalities: ['text', 'image', 'video', 'audio'],
@@ -396,6 +460,7 @@ const MODEL_METADATA_REGISTRY: Partial<
 		// Gemini 2.0 Flash series
 		'models/gemini-2.0-flash': {
 			inputModalities: ['text', 'image', 'video', 'audio'],
+			priority: 80,
 		},
 		'models/gemini-2.0-flash-001': {
 			inputModalities: ['text', 'image', 'video', 'audio'],
@@ -418,6 +483,7 @@ const MODEL_METADATA_REGISTRY: Partial<
 		// Gemini 2.0 Flash-Lite series
 		'models/gemini-2.0-flash-lite': {
 			inputModalities: ['text', 'image', 'video', 'audio'],
+			priority: 60,
 		},
 		'models/gemini-2.0-flash-lite-001': {
 			inputModalities: ['text', 'image', 'video', 'audio'],
@@ -427,6 +493,9 @@ const MODEL_METADATA_REGISTRY: Partial<
 		},
 		'models/gemini-2.0-flash-lite-preview-02-05': {
 			inputModalities: ['text', 'image', 'video', 'audio'],
+		},
+		'models/aqa': {
+			priority: -1,
 		},
 	},
 	groq: {
@@ -556,28 +625,99 @@ const MODEL_METADATA_REGISTRY: Partial<
 			available: false, // Not supporting multi-turn conversations
 		},
 	},
+	xAiGrok: {
+		'grok-4-1-fast-non-reasoning': {
+			priority: 100,
+		},
+		'grok-4-1-fast-reasoning': {
+			priority: 99,
+		},
+		'grok-4-fast-non-reasoning': {
+			priority: 90,
+		},
+		'grok-4-fast-reasoning': {
+			priority: 89,
+		},
+		'grok-4-0709': {
+			priority: 88,
+		},
+		'grok-3': {
+			priority: 80,
+		},
+		'grok-3-mini': {
+			priority: 79,
+		},
+		'grok-2-1212': {
+			priority: 70,
+		},
+	},
 };
+
+const TEXT_COMMON_MIME_TYPES = ['text/css', 'text/csv', 'text/markdown', 'text/plain'];
+
+/**
+ * Application/* MIME types accepted for the 'text' input modality.
+ */
+const TEXT_APPLICATION_MIME_TYPES = [
+	'application/json',
+	'application/xml',
+	'application/csv',
+	'application/x-yaml',
+	'application/yaml',
+	'application/ld+json',
+	'application/xhtml+xml',
+	'application/javascript',
+	'application/rtf',
+];
+
+/** Resolves inputModalities into MIME type string for the API response */
+function resolveAllowedMimeTypes(modalities: ChatHubInputModality[]): string {
+	if (modalities.includes('file')) {
+		return '*/*';
+	}
+
+	const mimeTypes: string[] = [];
+
+	for (const modality of modalities) {
+		if (modality === 'text') {
+			mimeTypes.push('text/*', ...TEXT_COMMON_MIME_TYPES, ...TEXT_APPLICATION_MIME_TYPES);
+		}
+		if (modality === 'image') {
+			mimeTypes.push('image/*');
+		}
+		if (modality === 'audio') {
+			mimeTypes.push('audio/*');
+		}
+		if (modality === 'video') {
+			mimeTypes.push('video/*');
+		}
+	}
+
+	return mimeTypes.join(',');
+}
 
 export function getModelMetadata(
 	provider: ChatHubLLMProvider,
 	modelId: string,
-): ChatModelMetadataDto {
+): InternalModelMetadata {
 	const providerModels = MODEL_METADATA_REGISTRY[provider];
 	const modelOverride = providerModels?.[modelId];
 
-	if (!modelOverride) {
-		return DEFAULT_MODEL_METADATA;
-	}
+	const inputModalities =
+		modelOverride?.inputModalities ?? DEFAULT_INTERNAL_METADATA.inputModalities;
 
-	// Merge override with default metadata
 	return {
-		inputModalities: modelOverride.inputModalities ?? DEFAULT_MODEL_METADATA.inputModalities,
+		inputModalities,
+		// LLM providers always allow file uploads
+		allowFileUploads: true,
+		allowedFilesMimeTypes: resolveAllowedMimeTypes(inputModalities),
+		priority: modelOverride?.priority,
 		capabilities: {
 			functionCalling:
-				modelOverride.capabilities?.functionCalling ??
-				DEFAULT_MODEL_METADATA.capabilities.functionCalling,
+				modelOverride?.capabilities?.functionCalling ??
+				DEFAULT_INTERNAL_METADATA.capabilities.functionCalling,
 		},
-		available: modelOverride.available ?? true,
+		available: modelOverride?.available ?? true,
 	};
 }
 

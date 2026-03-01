@@ -7,10 +7,10 @@ import { BinaryDataService, FileLocation } from 'n8n-core';
 import { BINARY_ENCODING, type IBinaryData } from 'n8n-workflow';
 import type Stream from 'node:stream';
 
-import { ChatHubMessageRepository } from './chat-message.repository';
-
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
+import { ChatHubMessageRepository } from './chat-message.repository';
 
 @Service()
 export class ChatHubAttachmentService {
@@ -20,6 +20,32 @@ export class ChatHubAttachmentService {
 		private readonly binaryDataService: BinaryDataService,
 		private readonly messageRepository: ChatHubMessageRepository,
 	) {}
+
+	/**
+	 * Validates that attachments conform to the model's upload policy.
+	 * Throws BadRequestError if uploads are disallowed or a MIME type is rejected.
+	 */
+	validateAttachments(
+		attachments: ChatAttachment[],
+		allowFileUploads: boolean,
+		allowedFilesMimeTypes: string,
+	): void {
+		if (attachments.length === 0) return;
+
+		if (!allowFileUploads) {
+			throw new BadRequestError('File uploads are not allowed for this model');
+		}
+
+		if (allowedFilesMimeTypes === '*/*' || allowedFilesMimeTypes === '') return;
+
+		for (const attachment of attachments) {
+			if (!this.isAllowedMimeType(attachment.mimeType, allowedFilesMimeTypes)) {
+				throw new BadRequestError(
+					`File type "${attachment.mimeType}" is not allowed. Allowed types: ${allowedFilesMimeTypes}`,
+				);
+			}
+		}
+	}
 
 	/**
 	 * Stores attachments through BinaryDataService.
@@ -143,6 +169,18 @@ export class ChatHubAttachmentService {
 
 	async getAsBuffer(binaryData: IBinaryData): Promise<Buffer<ArrayBufferLike>> {
 		return await this.binaryDataService.getAsBuffer(binaryData);
+	}
+
+	private isAllowedMimeType(mimeType: string, allowedMimeTypes: string): boolean {
+		const patterns = allowedMimeTypes.split(',').map((p) => p.trim());
+		for (const pattern of patterns) {
+			if (pattern === mimeType) return true;
+			if (pattern.endsWith('/*')) {
+				const category = pattern.slice(0, pattern.indexOf('/'));
+				if (mimeType.startsWith(`${category}/`)) return true;
+			}
+		}
+		return false;
 	}
 
 	/**

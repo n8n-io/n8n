@@ -27,7 +27,14 @@ import { retry } from '@n8n/utils/retry';
 import { useToast } from '@/app/composables/useToast';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 
-import { CHAT_TRIGGER_NODE_TYPE, IN_PROGRESS_EXECUTION_ID } from '@/app/constants';
+import {
+	CHAT_NODE_TYPE,
+	CHAT_TOOL_NODE_TYPE,
+	CHAT_HITL_TOOL_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
+	IN_PROGRESS_EXECUTION_ID,
+	RESPOND_TO_WEBHOOK_NODE_TYPE,
+} from '@/app/constants';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -41,6 +48,7 @@ import get from 'lodash/get';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useTelemetry } from './useTelemetry';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useNodeDirtiness } from '@/app/composables/useNodeDirtiness';
 import { useCanvasOperations } from './useCanvasOperations';
@@ -60,6 +68,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	const telemetry = useTelemetry();
 	const externalHooks = useExternalHooks();
 	const settingsStore = useSettingsStore();
+	const uiStore = useUIStore();
 	const agentRequestStore = useAgentRequestStore();
 
 	const rootStore = useRootStore();
@@ -129,6 +138,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 		rerunTriggerNode?: boolean;
 		nodeData?: ITaskData;
 		source?: string;
+		sessionId?: string;
 	}): Promise<IExecutionPushResponse | undefined> {
 		if (workflowsStore.activeExecutionId) {
 			return;
@@ -149,7 +159,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 			const runData = workflowsStore.getWorkflowRunData;
 
-			if (!workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) {
+			if (uiStore.stateIsDirty || !workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) {
 				await workflowSaving.saveCurrentWorkflow();
 			}
 
@@ -210,7 +220,8 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				options.destinationNode &&
 				(workflowsStore.checkIfNodeHasChatParent(options.destinationNode.nodeName) ||
 					destinationNodeType === CHAT_TRIGGER_NODE_TYPE) &&
-				options.source !== 'RunData.ManualChatMessage'
+				options.source !== 'RunData.ManualChatMessage' &&
+				options.source !== 'RunData.ManualChatTrigger'
 			) {
 				const startNode = workflowObject.value.getStartNode(options.destinationNode.nodeName);
 				if (startNode && startNode.type === CHAT_TRIGGER_NODE_TYPE) {
@@ -230,8 +241,30 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			}
 
 			const triggers = workflowData.nodes.filter(
-				(node) => node.type.toLowerCase().includes('trigger') && !node.disabled,
+				(node) => !node.disabled && node.type.toLowerCase().includes('trigger'),
 			);
+			const chatTriggerNode = triggers.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
+			const chatTriggerNodeOptions = chatTriggerNode?.parameters?.options as IDataObject;
+			if (
+				options.triggerNode === chatTriggerNode?.name &&
+				chatTriggerNodeOptions?.responseMode === 'responseNodes'
+			) {
+				const responseNodes = workflowData.nodes.filter(
+					(node) =>
+						!node.disabled &&
+						(node.type === CHAT_NODE_TYPE ||
+							node.type === CHAT_TOOL_NODE_TYPE ||
+							node.type === CHAT_HITL_TOOL_NODE_TYPE ||
+							node.type === RESPOND_TO_WEBHOOK_NODE_TYPE),
+				);
+				if (!responseNodes?.length) {
+					toast.showMessage({
+						title: i18n.baseText('workflowRun.showWarning.noChatResponseNodes.title'),
+						message: i18n.baseText('workflowRun.showWarning.noChatResponseNodes.description'),
+						type: 'warning',
+					});
+				}
+			}
 
 			//if no destination node is specified
 			//and execution is not triggered from chat
@@ -240,17 +273,11 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			if (
 				!options.destinationNode &&
 				options.source !== 'RunData.ManualChatMessage' &&
-				workflowData.nodes.some((node) => node.type === CHAT_TRIGGER_NODE_TYPE)
+				chatTriggerNode
 			) {
 				const otherTriggers = triggers.filter((node) => node.type !== CHAT_TRIGGER_NODE_TYPE);
-
 				if (otherTriggers.length) {
-					const chatTriggerNode = workflowData.nodes.find(
-						(node) => node.type === CHAT_TRIGGER_NODE_TYPE,
-					);
-					if (chatTriggerNode) {
-						chatTriggerNode.disabled = true;
-					}
+					chatTriggerNode.disabled = true;
 				}
 			}
 
@@ -294,12 +321,13 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				});
 
 			const startRunData: IStartRunData = {
-				workflowData,
+				workflowId: workflowData.id!,
 				runData: isPartialExecution
 					? (runData ?? undefined) // For partial execution, backend decides what run data to use and what to ignore.
 					: undefined, // if it's a full execution we don't want to send any run data
 				startNodes,
 				triggerToStartFrom,
+				chatSessionId: options.sessionId,
 			};
 
 			if ('destinationNode' in options) {
@@ -540,8 +568,21 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			void externalHooks.run('nodeView.onRunWorkflow', telemetryPayload);
 		});
 
+		let resolvedTriggerNode = triggerNode ?? workflowsStore.selectedTriggerNodeName;
+
+		// When no trigger is explicitly selected (e.g. chat trigger is the only trigger
+		// and the Run button doesn't offer it for selection), resolve it from the workflow.
+		if (!resolvedTriggerNode) {
+			const triggers = Object.values(workflowObject.value.nodes).filter(
+				(node) => !node.disabled && node.type.toLowerCase().includes('trigger'),
+			);
+			if (triggers.length === 1) {
+				resolvedTriggerNode = triggers[0].name;
+			}
+		}
+
 		void runWorkflow({
-			triggerNode: triggerNode ?? workflowsStore.selectedTriggerNodeName,
+			triggerNode: resolvedTriggerNode,
 		});
 	}
 

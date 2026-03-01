@@ -6,6 +6,7 @@ import { useRouter } from 'vue-router';
 import { useLocalStorage } from '@vueuse/core';
 import { VIEWS } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { N8nIcon } from '@n8n/design-system';
 import NodeIcon from '@/app/components/NodeIcon.vue';
@@ -32,6 +33,7 @@ export function useRecentResources() {
 	const i18n = useI18n();
 	const router = useRouter();
 	const workflowsStore = useWorkflowsStore();
+	const workflowsListStore = useWorkflowsListStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const { setNodeActive } = useCanvasOperations();
 
@@ -137,7 +139,7 @@ export function useRecentResources() {
 				}
 
 				// Get workflow from store (will be loaded by initialize())
-				const workflow = workflowsStore.getWorkflowById(recentWorkflow.id);
+				const workflow = workflowsListStore.getWorkflowById(recentWorkflow.id);
 				if (!workflow) {
 					continue;
 				}
@@ -178,10 +180,10 @@ export function useRecentResources() {
 		await Promise.all(
 			workflowsToFetch.map(async (recentWorkflow) => {
 				try {
-					const workflow = workflowsStore.getWorkflowById(recentWorkflow.id);
+					const workflow = workflowsListStore.getWorkflowById(recentWorkflow.id);
 
 					if (!workflow) {
-						await workflowsStore.fetchWorkflow(recentWorkflow.id);
+						await workflowsListStore.fetchWorkflow(recentWorkflow.id);
 					}
 				} catch {
 					// If fetch fails, skip this workflow (it may have been deleted)
