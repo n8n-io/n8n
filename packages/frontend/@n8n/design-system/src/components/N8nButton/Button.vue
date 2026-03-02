@@ -134,6 +134,7 @@ const handleClick = (event: MouseEvent) => {
 	user-select: none;
 	width: fit-content;
 	display: grid;
+	align-items: center;
 	font-weight: var(--font-weight--medium);
 	line-height: 1;
 	cursor: pointer;
@@ -160,7 +161,9 @@ const handleClick = (event: MouseEvent) => {
 
 	background-color: var(--button--color--background);
 	color: var(--button--color);
-	box-shadow: var(--button--shadow), var(--button--border--shadow);
+	box-shadow:
+		inset var(--button--border--shadow),
+		var(--button--shadow);
 	border: none;
 
 	> * {
@@ -169,12 +172,16 @@ const handleClick = (event: MouseEvent) => {
 
 	&:hover {
 		background-color: var(--button--color--background-hover);
-		box-shadow: var(--button--shadow--hover), var(--button--border--shadow--hover);
+		box-shadow:
+			inset var(--button--border--shadow--hover),
+			var(--button--shadow--hover);
 	}
 
 	&:active {
 		background-color: var(--button--color--background-active);
-		box-shadow: var(--button--shadow--active), var(--button--border--shadow--active);
+		box-shadow:
+			inset var(--button--border--shadow--active),
+			var(--button--shadow--active);
 	}
 
 	&:focus {
@@ -338,6 +345,34 @@ const handleClick = (event: MouseEvent) => {
 		--button--border-color: light-dark(var(--color--red-500), var(--color--red-600));
 		--button--border-color--hover: light-dark(var(--color--red-600), var(--color--red-500));
 		--button--border-color--active: light-dark(var(--color--red-600), var(--color--red-400));
+		--button--border--shadow: 0 0 0 1px var(--button--border-color);
+		--button--border--shadow--hover: 0 0 0 1px var(--button--border-color--hover);
+		--button--border--shadow--active: 0 0 0 1px var(--button--border-color--active);
+	}
+
+	&.success {
+		--button--color--background: light-dark(var(--color--green-600), var(--color--green-700));
+		--button--color--background-hover: light-dark(var(--color--green-700), var(--color--green-600));
+		--button--color--background-active: light-dark(
+			var(--color--green-700),
+			var(--color--green-500)
+		);
+		--button--color: var(--color--neutral-white);
+		--button--shadow: light-dark(
+			0 1px 3px 0 var(--color--black-alpha-100),
+			0 1px 3px 0 var(--color--black-alpha-200)
+		);
+		--button--shadow--hover: light-dark(
+			0 1px 3px 0 var(--color--black-alpha-100),
+			0 1px 3px 0 var(--color--black-alpha-200)
+		);
+		--button--shadow--active: light-dark(
+			0 1px 3px 0 var(--color--black-alpha-100),
+			0 1px 3px 0 var(--color--black-alpha-200)
+		);
+		--button--border-color: light-dark(var(--color--green-600), var(--color--green-700));
+		--button--border-color--hover: light-dark(var(--color--green-700), var(--color--green-600));
+		--button--border-color--active: light-dark(var(--color--green-700), var(--color--green-500));
 		--button--border--shadow: 0 0 0 1px var(--button--border-color);
 		--button--border--shadow--hover: 0 0 0 1px var(--button--border-color--hover);
 		--button--border--shadow--active: 0 0 0 1px var(--button--border-color--active);

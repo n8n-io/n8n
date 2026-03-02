@@ -335,7 +335,7 @@ describe('CredentialModeSelector', () => {
 			expect(screen.getByText('Setup credential')).toBeInTheDocument();
 		});
 
-		it('should emit update:authType with useCustomOauth when switching from managed to custom OAuth', async () => {
+		it('should emit update:authType with customOauth when switching from managed to custom OAuth', async () => {
 			const pinia = setupStores({
 				nodeType: twoAuthNodeType,
 				node: makeNode('n8n-nodes-base.dropbox', 'oAuth2'),
@@ -364,11 +364,11 @@ describe('CredentialModeSelector', () => {
 
 			await waitFor(() => {
 				expect(emitted('update:authType')).toHaveLength(1);
-				expect(emitted('update:authType')[0]).toEqual([{ type: 'oAuth2', useCustomOauth: true }]);
+				expect(emitted('update:authType')[0]).toEqual([{ type: 'oAuth2', customOauth: true }]);
 			});
 		});
 
-		it('should emit update:authType with useCustomOauth when switching from custom to managed OAuth', async () => {
+		it('should emit update:authType with customOauth when switching from custom to managed OAuth', async () => {
 			const pinia = setupStores({
 				nodeType: twoAuthNodeType,
 				node: makeNode('n8n-nodes-base.dropbox', 'oAuth2'),
@@ -397,7 +397,7 @@ describe('CredentialModeSelector', () => {
 
 			await waitFor(() => {
 				expect(emitted('update:authType')).toHaveLength(1);
-				expect(emitted('update:authType')[0]).toEqual([{ type: 'oAuth2', useCustomOauth: false }]);
+				expect(emitted('update:authType')[0]).toEqual([{ type: 'oAuth2', customOauth: false }]);
 			});
 		});
 
@@ -432,6 +432,134 @@ describe('CredentialModeSelector', () => {
 				expect(emitted('update:authType')).toHaveLength(1);
 				expect(emitted('update:authType')[0]).toEqual([{ type: 'accessToken' }]);
 			});
+		});
+	});
+
+	describe('quick connect options', () => {
+		// Single-credential node (no authentication parameter)
+		const singleCredApiType: ICredentialType = {
+			name: 'firecrawlApi',
+			displayName: 'Firecrawl API',
+			properties: [
+				{
+					displayName: 'API Key',
+					name: 'apiKey',
+					type: 'string',
+					default: '',
+				},
+			],
+		};
+
+		const singleCredNodeType = {
+			displayName: 'Firecrawl',
+			name: 'n8n-nodes-base.firecrawl',
+			group: ['input'],
+			version: 1,
+			description: 'Crawl with Firecrawl',
+			defaults: { name: 'Firecrawl' },
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
+			credentials: [
+				{
+					name: 'firecrawlApi',
+					required: true,
+				},
+			],
+			properties: [],
+		} as unknown as INodeTypeDescription;
+
+		it('should show "Use quick connect" link in manual mode and emit quickConnectEnabled on click', async () => {
+			const pinia = setupStores({
+				nodeType: singleCredNodeType,
+				node: makeNode('n8n-nodes-base.firecrawl', ''),
+				credentialTypes: { firecrawlApi: singleCredApiType },
+			});
+
+			const { emitted } = renderComponent({
+				pinia,
+				props: {
+					credentialType: singleCredApiType,
+					quickConnectAvailable: true,
+					isQuickConnectMode: false,
+				},
+			});
+
+			const link = screen.getByTestId('credential-mode-switch-link');
+			expect(link).toHaveTextContent('Use quick connect');
+			expect(screen.queryByTestId('credential-mode-dropdown-trigger')).not.toBeInTheDocument();
+
+			await userEvent.click(link);
+
+			expect(emitted('update:authType')).toHaveLength(1);
+			expect(emitted('update:authType')[0]).toEqual([{ type: '', quickConnectEnabled: true }]);
+		});
+
+		it('should show "Set up manually" link in QC mode and emit manual fallback on click', async () => {
+			const pinia = setupStores({
+				nodeType: singleCredNodeType,
+				node: makeNode('n8n-nodes-base.firecrawl', ''),
+				credentialTypes: { firecrawlApi: singleCredApiType },
+			});
+
+			const { emitted } = renderComponent({
+				pinia,
+				props: {
+					credentialType: singleCredApiType,
+					quickConnectAvailable: true,
+					isQuickConnectMode: true,
+				},
+			});
+
+			const link = screen.getByTestId('credential-mode-switch-link');
+			expect(link).toHaveTextContent('Set up manually');
+
+			await userEvent.click(link);
+
+			expect(emitted('update:authType')).toHaveLength(1);
+			expect(emitted('update:authType')[0]).toEqual([{ type: '' }]);
+		});
+
+		it('should not show selector when quickConnectAvailable is false for single-cred nodes', () => {
+			const pinia = setupStores({
+				nodeType: singleCredNodeType,
+				node: makeNode('n8n-nodes-base.firecrawl', ''),
+				credentialTypes: { firecrawlApi: singleCredApiType },
+			});
+
+			renderComponent({
+				pinia,
+				props: {
+					credentialType: singleCredApiType,
+					quickConnectAvailable: false,
+				},
+			});
+
+			expect(screen.queryByTestId('credential-mode-selector')).not.toBeInTheDocument();
+		});
+
+		it('should show dropdown when QC + multi-auth node (3+ options)', () => {
+			const pinia = setupStores({
+				nodeType: twoAuthNodeType,
+				node: makeNode('n8n-nodes-base.dropbox', 'accessToken'),
+				credentialTypes: {
+					dropboxApi: dropboxApiType,
+					dropboxOAuth2Api: dropboxOAuth2ApiType,
+				},
+			});
+
+			renderComponent({
+				pinia,
+				props: {
+					credentialType: dropboxApiType,
+					quickConnectAvailable: true,
+					isQuickConnectMode: false,
+				},
+			});
+
+			// QC + Access Token + OAuth2 = 3 options → dropdown
+			expect(screen.getByTestId('credential-mode-selector')).toBeInTheDocument();
+			expect(screen.getByTestId('credential-mode-dropdown-trigger')).toBeInTheDocument();
+			expect(screen.queryByTestId('credential-mode-switch-link')).not.toBeInTheDocument();
 		});
 	});
 

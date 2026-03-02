@@ -869,7 +869,7 @@ describe('useWorkflowsStore', () => {
 	});
 
 	describe('setWorkflowActive()', () => {
-		it('should set workflow as active when it is not already active', async () => {
+		it('should set workflow as active in list cache and clear dirty state', async () => {
 			const workflowsListStore = useWorkflowsListStore();
 			uiStore.markStateDirty();
 			workflowsListStore.workflowsById = { '1': { active: false } as IWorkflowDb };
@@ -889,7 +889,6 @@ describe('useWorkflowsStore', () => {
 
 			expect(workflowsListStore.activeWorkflows).toContain('1');
 			expect(workflowsListStore.workflowsById['1'].active).toBe(true);
-			expect(workflowsStore.workflow.active).toBe(true);
 			expect(uiStore.stateIsDirty).toBe(false);
 		});
 
@@ -913,10 +912,9 @@ describe('useWorkflowsStore', () => {
 
 			expect(workflowsListStore.activeWorkflows).toEqual(['1']);
 			expect(workflowsListStore.workflowsById['1'].active).toBe(true);
-			expect(workflowsStore.workflow.active).toBe(true);
 		});
 
-		it('should not set current workflow as active when it is not the target', () => {
+		it('should not clear dirty state when targeting a different workflow', () => {
 			const workflowsListStore = useWorkflowsListStore();
 			uiStore.markStateDirty();
 			workflowsStore.workflow.id = '1';
@@ -957,11 +955,14 @@ describe('useWorkflowsStore', () => {
 			expect(workflowsListStore.workflowsById['2'].active).toBe(true);
 		});
 
-		it('should set current workflow as inactive when it is the target', () => {
+		it('should update list cache when targeting any workflow', () => {
+			const workflowsListStore = useWorkflowsListStore();
+			workflowsListStore.activeWorkflows = ['1'];
+			workflowsListStore.workflowsById = { '1': { active: true } as IWorkflowDb };
 			workflowsStore.workflow.id = '1';
-			workflowsStore.workflow.active = true;
 			workflowsStore.setWorkflowInactive('1');
-			expect(workflowsStore.workflow.active).toBe(false);
+			expect(workflowsListStore.workflowsById['1'].active).toBe(false);
+			expect(workflowsListStore.activeWorkflows).toEqual([]);
 		});
 	});
 
@@ -1356,7 +1357,6 @@ describe('useWorkflowsStore', () => {
 			expect(workflowsListStore.workflowsById['1'].active).toBe(false);
 			expect(workflowsListStore.workflowsById['1'].isArchived).toBe(true);
 			expect(workflowsListStore.workflowsById['1'].versionId).toBe(updatedVersionId);
-			expect(workflowsStore.workflow.active).toBe(false);
 			expect(workflowsStore.workflow.isArchived).toBe(true);
 			expect(workflowsStore.workflow.versionId).toBe(updatedVersionId);
 			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
@@ -1380,7 +1380,6 @@ describe('useWorkflowsStore', () => {
 			workflowsListStore.workflowsById = {
 				'1': { active: true, isArchived: false, versionId } as IWorkflowDb,
 			};
-			workflowsStore.workflow.active = true;
 			workflowsStore.workflow.isArchived = false;
 			workflowsStore.workflow.id = workflowId;
 			workflowsStore.workflow.versionId = versionId;
@@ -1433,7 +1432,6 @@ describe('useWorkflowsStore', () => {
 			expect(workflowsListStore.workflowsById['1'].active).toBe(false);
 			expect(workflowsListStore.workflowsById['1'].isArchived).toBe(false);
 			expect(workflowsListStore.workflowsById['1'].versionId).toBe(updatedVersionId);
-			expect(workflowsStore.workflow.active).toBe(false);
 			expect(workflowsStore.workflow.isArchived).toBe(false);
 			expect(workflowsStore.workflow.versionId).toBe(updatedVersionId);
 			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(

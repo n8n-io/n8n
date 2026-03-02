@@ -122,6 +122,7 @@ onBeforeMount(async () => {
 				size="small"
 				:iconOnly="shouldBeIconButton"
 				:active="hasFilters"
+				:aria-label="i18n.baseText('forms.resourceFiltersDropdown.filters')"
 				:class="{
 					[$style['filter-button']]: true,
 					[$style['no-label']]: justIcon && filtersLength === 0,
@@ -200,10 +201,6 @@ onBeforeMount(async () => {
 			margin: 0;
 		}
 	}
-}
-
-.filters-dropdown {
-	width: 280px;
 }
 
 .filters-dropdown-footer {

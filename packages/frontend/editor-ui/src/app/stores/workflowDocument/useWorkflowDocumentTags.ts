@@ -1,54 +1,43 @@
 import { ref, readonly } from 'vue';
+import { createEventHook } from '@vueuse/core';
+import { CHANGE_ACTION } from './types';
+import type { ChangeAction, ChangeEvent } from './types';
 
-type Action<N, P> = { name: N; payload: P };
+export type TagsPayload = {
+	tags: string[];
+};
 
-type SetTagsAction = Action<'setTags', { tags: string[] }>;
-type AddTagsAction = Action<'addTags', { tags: string[] }>;
-type RemoveTagAction = Action<'removeTag', { tagId: string }>;
+export type TagsChangeEvent = ChangeEvent<TagsPayload>;
 
-export type TagAction = SetTagsAction | AddTagsAction | RemoveTagAction;
-
-const TAG_ACTION_NAMES = new Set<string>(['setTags', 'addTags', 'removeTag']);
-
-export function isTagAction(action: { name: string }): action is TagAction {
-	return TAG_ACTION_NAMES.has(action.name);
-}
-
-/**
- * Composable that encapsulates tag state, public API, and mutation logic
- * for a workflow document store.
- *
- * Accepts an `onChange` callback that routes actions through the store's
- * unified dispatcher for CRDT migration readiness.
- */
-export function useWorkflowDocumentTags(onChange: (action: TagAction) => void) {
+export function useWorkflowDocumentTags() {
 	const tags = ref<string[]>([]);
 
+	const onTagsChange = createEventHook<TagsChangeEvent>();
+
+	function applyTags(newTags: string[], action: ChangeAction = CHANGE_ACTION.UPDATE) {
+		tags.value = newTags;
+		void onTagsChange.trigger({ action, payload: { tags: newTags } });
+	}
+
+	function applyRemoveTag(tagId: string) {
+		tags.value = tags.value.filter((tag) => tag !== tagId);
+		void onTagsChange.trigger({
+			action: CHANGE_ACTION.DELETE,
+			payload: { tags: tags.value },
+		});
+	}
+
 	function setTags(newTags: string[]) {
-		onChange({ name: 'setTags', payload: { tags: newTags } });
+		applyTags(newTags);
 	}
 
 	function addTags(newTags: string[]) {
-		onChange({ name: 'addTags', payload: { tags: newTags } });
+		const uniqueTags = new Set([...tags.value, ...newTags]);
+		applyTags(Array.from(uniqueTags), CHANGE_ACTION.ADD);
 	}
 
 	function removeTag(tagId: string) {
-		onChange({ name: 'removeTag', payload: { tagId } });
-	}
-
-	/**
-	 * Apply a tag action to the state.
-	 * Called by the store's unified onChange dispatcher.
-	 */
-	function handleAction(action: TagAction) {
-		if (action.name === 'setTags') {
-			tags.value = action.payload.tags;
-		} else if (action.name === 'addTags') {
-			const uniqueTags = new Set([...tags.value, ...action.payload.tags]);
-			tags.value = Array.from(uniqueTags);
-		} else if (action.name === 'removeTag') {
-			tags.value = tags.value.filter((tag) => tag !== action.payload.tagId);
-		}
+		applyRemoveTag(tagId);
 	}
 
 	return {
@@ -56,6 +45,6 @@ export function useWorkflowDocumentTags(onChange: (action: TagAction) => void) {
 		setTags,
 		addTags,
 		removeTag,
-		handleAction,
+		onTagsChange: onTagsChange.on,
 	};
 }

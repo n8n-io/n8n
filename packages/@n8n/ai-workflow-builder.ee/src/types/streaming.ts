@@ -7,6 +7,7 @@ export interface AgentMessageChunk {
 	role: 'assistant';
 	type: 'message';
 	text: string;
+	codeSnippet?: string;
 }
 
 /**
@@ -65,12 +66,44 @@ export interface SessionMessagesChunk {
 	messages: unknown[];
 }
 
+export interface CodeDiffChunk {
+	role: 'assistant';
+	type: 'code-diff';
+	suggestionId: string;
+	sdkSessionId: string;
+	codeDiff?: string;
+	description?: string;
+	nodeName?: string;
+	quickReplies?: unknown[];
+}
+
 /**
  * Signals that message history was compacted (e.g. via /compact).
  * Frontend should clear old messages when this is received.
  */
 export interface MessagesCompactedChunk {
 	type: 'messages-compacted';
+}
+
+/**
+ * Summary chunk for structured summary messages from the SDK
+ */
+export interface SummaryChunk {
+	role: 'assistant';
+	type: 'summary';
+	title: string;
+	content: string;
+}
+
+/**
+ * Agent suggestion chunk for structured suggestion messages from the SDK
+ */
+export interface AgentSuggestionChunk {
+	role: 'assistant';
+	type: 'agent-suggestion';
+	title: string;
+	text: string;
+	suggestionId?: string;
 }
 
 /**
@@ -84,7 +117,10 @@ export type StreamChunk =
 	| SessionMessagesChunk
 	| QuestionsChunk
 	| PlanChunk
-	| MessagesCompactedChunk;
+	| CodeDiffChunk
+	| MessagesCompactedChunk
+	| SummaryChunk
+	| AgentSuggestionChunk;
 
 /**
  * Stream output containing messages
