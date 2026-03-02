@@ -229,11 +229,9 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		// Initialize the auth roles service to make sure that roles are correctly setup for the instance.
 		// Only run on main instance - workers should not modify auth roles/scopes as they may have
 		// different code versions, and scope sync would incorrectly delete scopes they don't know about.
-		// In multi-main setups, only sync on the leader instance to avoid race conditions.
-		if (
-			this.instanceSettings.instanceType === 'main' &&
-			(!this.instanceSettings.isMultiMain || this.instanceSettings.isLeader)
-		) {
+		// All main instances sync on startup; a Postgres advisory lock inside a transaction
+		// serializes concurrent callers to prevent duplicate-key crashes.
+		if (this.instanceSettings.instanceType === 'main') {
 			await Container.get(AuthRolesService).init();
 		}
 

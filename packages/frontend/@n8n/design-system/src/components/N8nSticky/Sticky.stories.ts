@@ -4,7 +4,7 @@ import { action } from 'storybook/actions';
 import N8nSticky from './Sticky.vue';
 
 export default {
-	title: 'Atoms/Sticky',
+	title: 'Core/Sticky',
 	component: N8nSticky,
 	argTypes: {
 		content: {

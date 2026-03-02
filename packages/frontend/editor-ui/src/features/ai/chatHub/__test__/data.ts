@@ -30,7 +30,8 @@ export function createMockAgent(overrides: Partial<ChatModelDto> = {}): ChatMode
 		updatedAt: '2024-01-15T12:00:00Z',
 		createdAt: '2024-01-15T12:00:00Z',
 		metadata: {
-			inputModalities: ['text'],
+			allowFileUploads: true,
+			allowedFilesMimeTypes: 'text/*',
 			capabilities: {
 				functionCalling: true,
 			},

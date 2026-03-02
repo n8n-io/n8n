@@ -268,6 +268,18 @@ export type FrontendModuleSettings = {
 	'quick-connect'?: {
 		options: QuickConnectOption[];
 	};
+
+	/**
+	 * Client settings for external secrets module.
+	 */
+	'external-secrets'?: {
+		/** Whether multiple connections per vault type are enabled. */
+		multipleConnections: boolean;
+		/** Whether project-scoped external secrets are enabled. */
+		forProjects: boolean;
+		/** Whether role-based access control for external secrets is enabled. */
+		roleBasedAccess: boolean;
+	};
 };
 
 export type N8nEnvFeatFlagValue = boolean | string | number | undefined;

@@ -130,7 +130,7 @@ export function useQuickConnect() {
 	async function connect(connectParams: {
 		credentialTypeName: string;
 		nodeType: string;
-		source: string;
+		source: 'node_type' | 'credential_type';
 		serviceName: string;
 	}): Promise<ICredentialsResponse | null> {
 		cleanUpDanglingHandlers();

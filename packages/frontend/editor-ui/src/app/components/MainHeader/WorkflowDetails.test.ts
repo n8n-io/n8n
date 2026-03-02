@@ -11,6 +11,7 @@ import {
 } from '@/app/constants';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
 import { STORES } from '@n8n/stores';
+import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -24,6 +25,12 @@ import { useCollaborationStore } from '@/features/collaboration/collaboration/co
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import type { SourceControlPreferences } from '@/features/integrations/sourceControl.ee/sourceControl.types';
 import type { Project } from '@/features/collaboration/projects/projects.types';
+import { shallowRef } from 'vue';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 vi.mock('vue-router', async (importOriginal) => ({
 	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -111,9 +118,17 @@ const initialState = {
 	},
 };
 
+const pinia = createTestingPinia({ initialState });
+const workflowDocumentStoreRef = shallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>(
+	null,
+);
+
 const renderComponent = createComponentRenderer(WorkflowDetails, {
-	pinia: createTestingPinia({ initialState }),
+	pinia,
 	global: {
+		provide: {
+			[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
+		},
 		stubs: {
 			RouterLink: true,
 			FolderBreadcrumbs: {
@@ -155,15 +170,20 @@ const defaultProps = {
 	id: workflow.id,
 	tags: ['1', '2'] as readonly string[],
 	name: workflow.name,
-	meta: workflow.meta,
 	scopes: workflow.scopes,
-	active: workflow.active,
 	isArchived: workflow.isArchived,
 	description: workflow.description,
 };
 
 describe('WorkflowDetails', () => {
 	beforeEach(() => {
+		const docPinia = createTestingPinia({ stubActions: false });
+		setActivePinia(docPinia);
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
+		workflowDocumentStore.setActiveState({ activeVersionId: null, activeVersion: null });
+		workflowDocumentStoreRef.value = workflowDocumentStore;
+		setActivePinia(pinia);
+
 		uiStore = useUIStore();
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsListStore = mockedStore(useWorkflowsListStore);
@@ -171,7 +191,6 @@ describe('WorkflowDetails', () => {
 		collaborationStore = mockedStore(useCollaborationStore);
 		sourceControlStore = mockedStore(useSourceControlStore);
 
-		// Set up default mocks
 		mockSaveCurrentWorkflow.mockClear();
 		mockSaveCurrentWorkflow.mockResolvedValue(true);
 		workflowsListStore.workflowsById = {
@@ -180,7 +199,7 @@ describe('WorkflowDetails', () => {
 		};
 		workflowsStore.isWorkflowSaved = { '1': true, '123': true };
 		workflowsStore.workflowId = workflow.id;
-		workflowsStore.workflowChecksum = 'test-checksum';
+		workflowDocumentStoreRef.value?.setChecksum('test-checksum');
 		projectsStore.currentProject = null;
 		projectsStore.personalProject = { id: 'personal', name: 'Personal' } as Project;
 		collaborationStore.shouldBeReadOnly = false;
@@ -473,7 +492,6 @@ describe('WorkflowDetails', () => {
 			const { getByTestId } = renderComponent({
 				props: {
 					...defaultProps,
-					active: false,
 					isArchived: false,
 					scopes: ['workflow:delete'],
 				},
@@ -512,7 +530,6 @@ describe('WorkflowDetails', () => {
 			const { getByTestId } = renderComponent({
 				props: {
 					...defaultProps,
-					active: false,
 					isArchived: false,
 					scopes: ['workflow:delete'],
 				},
@@ -544,7 +561,6 @@ describe('WorkflowDetails', () => {
 			const { getByTestId } = renderComponent({
 				props: {
 					...defaultProps,
-					active: false,
 					isArchived: false,
 					scopes: ['workflow:delete'],
 				},
@@ -563,10 +579,13 @@ describe('WorkflowDetails', () => {
 		});
 
 		it("should confirm onWorkflowMenuSelect on 'Archive' option click on active workflow", async () => {
+			workflowDocumentStoreRef.value?.setActiveState({
+				activeVersionId: 'v1',
+				activeVersion: null,
+			});
 			const { getByTestId } = renderComponent({
 				props: {
 					...defaultProps,
-					active: true,
 					isArchived: false,
 					scopes: ['workflow:delete'],
 				},
@@ -586,6 +605,7 @@ describe('WorkflowDetails', () => {
 			expect(router.push).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOWS,
 			});
+			expect(workflowDocumentStoreRef.value?.active).toBe(false);
 		});
 
 		it("should call onWorkflowMenuSelect on 'Unarchive' option click", async () => {
