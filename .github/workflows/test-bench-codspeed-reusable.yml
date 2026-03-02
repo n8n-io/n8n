@@ -13,9 +13,9 @@ on:
 jobs:
   codspeed:
     name: CodSpeed Benchmarks
-    # CodSpeed walltime mode requires linux-tools (perf), which needs matching kernel packages.
-    # Blacksmith runners use non-standard kernels, so pin to ubuntu-latest for now.
-    runs-on: ubuntu-latest
+    # Simulation mode uses CPU instruction counting (valgrind) — hardware-independent and
+    # works on any runner. Walltime mode requires codspeed-macro bare-metal runners.
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -29,5 +29,5 @@ jobs:
         continue-on-error: true
         uses: CodSpeedHQ/action@2ac572851726409c88c02a307f1ea2632a9ea59b # v4.11.0
         with:
-          mode: walltime
+          mode: simulation
           run: pnpm --filter=@n8n/performance bench
