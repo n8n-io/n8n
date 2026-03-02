@@ -49,6 +49,7 @@ export class ModuleRegistry {
 		'favorites',
 		'redaction',
 		'instance-registry',
+		'import-export',
 		'otel',
 		'token-exchange',
 		'instance-version-history',

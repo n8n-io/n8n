@@ -22,6 +22,7 @@ export const MODULE_NAMES = [
 	'favorites',
 	'redaction',
 	'instance-registry',
+	'import-export',
 	'instance-ai',
 	'otel',
 	'token-exchange',

@@ -190,6 +190,10 @@ export class LicenseState {
 		return this.isLicensed(LICENSE_FEATURES.DATA_REDACTION);
 	}
 
+	isPackageExportLicensed() {
+		return this.isLicensed(LICENSE_FEATURES.PACKAGE_EXPORT);
+	}
+
 	isProvisioningLicensed() {
 		return this.isLicensed(['feat:saml', 'feat:oidc']);
 	}
