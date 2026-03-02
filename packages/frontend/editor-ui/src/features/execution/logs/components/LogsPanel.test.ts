@@ -7,7 +7,8 @@ import { createTestingPinia, type TestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createRouter, createWebHistory } from 'vue-router';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { computed, h, nextTick, ref } from 'vue';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { computed, h, nextTick, ref, shallowRef } from 'vue';
 import {
 	aiAgentNode,
 	aiChatExecutionResponse as aiChatExecutionResponseTemplate,
@@ -78,6 +79,20 @@ vi.mock('@/app/composables/useNodeHelpers', async (importOriginal) => {
 	};
 });
 
+const mockDocStoreFactory = vi.fn();
+
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	useWorkflowDocumentStore: (...args: unknown[]) => mockDocStoreFactory(...args),
+	createWorkflowDocumentId: (workflowId: string, version = 'latest') => `${workflowId}@${version}`,
+	injectWorkflowDocumentStore: vi.fn(() => docStoreRef),
+	getWorkflowDocumentStoreId: (id: string) => `workflowDocuments/${id}`,
+	disposeWorkflowDocumentStore: vi.fn(),
+	getPinDataSize: vi.fn(() => 0),
+	pinDataToExecutionData: vi.fn(() => ({})),
+}));
+
+const docStoreRef = shallowRef<Record<string, unknown> | null>(null);
+
 describe('LogsPanel', () => {
 	const VIEWPORT_HEIGHT = 800;
 
@@ -98,6 +113,7 @@ describe('LogsPanel', () => {
 					[ChatSymbol as symbol]: {},
 					[ChatOptionsSymbol as symbol]: {},
 					[WorkflowStateKey as symbol]: workflowState,
+					[WorkflowDocumentStoreKey as symbol]: docStoreRef,
 				},
 				plugins: [
 					createRouter({
@@ -135,6 +151,61 @@ describe('LogsPanel', () => {
 		ndvStore = mockedStore(useNDVStore);
 
 		uiStore = mockedStore(useUIStore);
+
+		const docStoreProxy = {
+			get allNodes() {
+				return workflowsStore.allNodes;
+			},
+			get nodesByName() {
+				return workflowsStore.nodesByName;
+			},
+			findNode: (id: string) => workflowsStore.getNodeById(id),
+			findNodeByName: (name: string) => workflowsStore.getNodeByName(name),
+			getNodes: () => workflowsStore.allNodes,
+			getNodesByIds: (ids: string[]) => workflowsStore.getNodesByIds(ids),
+			setNodes: (nodes: unknown[]) => workflowsStore.setNodes(nodes as []),
+			addNode: (node: unknown) => workflowsStore.addNode(node as never),
+			removeNode: (node: unknown) => workflowsStore.removeNode(node as never),
+			removeNodeById: (id: string) => workflowsStore.removeNodeById(id),
+			updateNodeProperties: (...args: unknown[]) =>
+				workflowState.updateNodeProperties(
+					...(args as Parameters<typeof workflowState.updateNodeProperties>),
+				),
+			setNodeParameters: (...args: unknown[]) =>
+				workflowState.setNodeParameters(
+					...(args as Parameters<typeof workflowState.setNodeParameters>),
+				),
+			setNodePositionById: (...args: unknown[]) =>
+				workflowState.setNodePositionById(
+					...(args as Parameters<typeof workflowState.setNodePositionById>),
+				),
+			setNodeValue: (...args: unknown[]) =>
+				workflowState.setNodeValue(...(args as Parameters<typeof workflowState.setNodeValue>)),
+			get pinData() {
+				return workflowsStore.workflow.pinData ?? {};
+			},
+			setPinData: vi.fn(),
+			getPinDataSnapshot: () => workflowsStore.workflow.pinData ?? {},
+			setChecksum: vi.fn(),
+			renamePinDataNode: vi.fn(),
+			unpinNodeData: vi.fn(),
+			addTags: vi.fn(),
+			addToMeta: vi.fn(),
+			get checksum() {
+				return '';
+			},
+			get meta() {
+				return workflowsStore.workflow.meta ?? {};
+			},
+			get active() {
+				return workflowsStore.workflow.active ?? false;
+			},
+			get tags() {
+				return workflowsStore.workflow.tags ?? [];
+			},
+		};
+		docStoreRef.value = docStoreProxy;
+		mockDocStoreFactory.mockImplementation(() => docStoreProxy);
 
 		Object.defineProperty(document.body, 'offsetHeight', {
 			configurable: true,
