@@ -341,12 +341,12 @@ test.describe(
 			await expect(n8n.ndv.getParameterSwitch('includeOtherFields')).toBeHidden();
 			await expect(n8n.ndv.getParameterTextInput('includeOtherFields')).toBeVisible();
 
-			// Check outline on input wrapper (N8nInput uses outline for droppable state)
-			const includeOtherFieldsWrapper = n8n.ndv.getParameterInputContainer('includeOtherFields');
-			await expect(includeOtherFieldsWrapper).toHaveCSS('outline', /dashed.*rgb\(255, 111, 92\)/);
+			// Check droppable state on parameter inputs
+			const includeOtherFieldsInput = n8n.ndv.getParameterInput('includeOtherFields');
+			await expect(includeOtherFieldsInput).toHaveClass(/droppable/);
 
-			const valueWrapper = n8n.ndv.getParameterInputContainer('value');
-			await expect(valueWrapper).toHaveCSS('outline', /dashed.*rgb\(255, 111, 92\)/);
+			const valueInput = n8n.ndv.getParameterInput('value');
+			await expect(valueInput).toHaveClass(/droppable/);
 
 			await n8n.page.mouse.up();
 		});
