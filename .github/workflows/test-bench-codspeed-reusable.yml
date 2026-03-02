@@ -13,7 +13,9 @@ on:
 jobs:
   codspeed:
     name: CodSpeed Benchmarks
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
+    # CodSpeed walltime mode requires linux-tools (perf), which needs matching kernel packages.
+    # Blacksmith runners use non-standard kernels, so pin to ubuntu-latest for now.
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
