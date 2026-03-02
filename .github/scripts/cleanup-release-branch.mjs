@@ -1,18 +1,6 @@
 import fs from 'node:fs/promises';
 import { getOctokit } from '@actions/github';
-import { ensureEnvVar } from './github-helpers.mjs';
-
-// TODO: Write tests
-// TODO: Install octokit
-// TODO: Test
-
-/**
- * @param {any[]} labels
- */
-function asLabelNames(labels) {
-	if (!Array.isArray(labels)) return [];
-	return labels.map((l) => l?.name).filter(Boolean);
-}
+import { ensureEnvVar, readPrLabels } from './github-helpers.mjs';
 
 /**
  * @typedef {PullRequestCheckPass | PullRequestCheckFail} PullRequestCheckResult
@@ -43,7 +31,7 @@ function pullRequestCheckFailed(pullRequestCheck) {
  * @param {any} pullRequest
  * @returns {PullRequestCheckResult}
  */
-function pullRequestIsDismissedRelease(pullRequest) {
+export function pullRequestIsDismissedRelease(pullRequest) {
 	if (!pullRequest) {
 		throw new Error('Missing pullRequest in event payload');
 	}
@@ -73,7 +61,7 @@ function pullRequestIsDismissedRelease(pullRequest) {
 		return { pass: false, reason: `Version mismatch: base='${baseVer}' head='${headVer}'` };
 	}
 
-	const labelNames = asLabelNames(pullRequest.labels);
+	const labelNames = readPrLabels(pullRequest);
 	if (!labelNames.includes('release')) {
 		return {
 			pass: false,
@@ -108,12 +96,11 @@ async function main() {
 
 	const octokit = getOctokit(token);
 
-	// DELETE /repos/{owner}/{repo}/git/refs/{ref}
-	// ref must be "heads/<branch>"
 	try {
 		await octokit.rest.git.deleteRef({
 			owner,
 			repo,
+			// ref must be "heads/<branch>"
 			ref: `heads/${branch}`,
 		});
 		console.log(`Deleted '${branch}'.`);
