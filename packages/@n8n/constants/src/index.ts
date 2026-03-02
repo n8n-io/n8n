@@ -41,6 +41,7 @@ export const LICENSE_FEATURES = {
 	AI_BUILDER: 'feat:aiBuilder',
 	DYNAMIC_CREDENTIALS: 'feat:dynamicCredentials',
 	PERSONAL_SPACE_POLICY: 'feat:personalSpacePolicy',
+	PACKAGE_EXPORT: 'feat:packageExport',
 } as const;
 
 export const LICENSE_QUOTAS = {

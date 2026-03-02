@@ -174,3 +174,5 @@ export {
 	ExecutionRedactionQueryDtoSchema,
 	type ExecutionRedactionQueryDto,
 } from './executions/execution-redaction-query.dto';
+
+export { ExportProjectsRequestDto } from './import-export/export-projects-request.dto';
