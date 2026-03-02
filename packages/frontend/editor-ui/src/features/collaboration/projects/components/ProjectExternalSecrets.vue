@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, reactive, ref, onMounted, watch } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { useProjectsStore } from '../projects.store';
@@ -270,16 +270,20 @@ watch(
 	{ immediate: true },
 );
 
-onMounted(async () => {
-	if (!showExternalSecretsSection.value) return;
-	await Promise.allSettled([
-		secretsProviders.fetchProviderTypes(),
-		secretsProviders.fetchActiveConnections(),
-	]);
-	if (canCreateGlobalSecretsStore.value) {
-		await projectsStore.getAllProjects();
-	}
-});
+watch(
+	showExternalSecretsSection,
+	async (showSection) => {
+		if (!showSection) return;
+		await Promise.allSettled([
+			secretsProviders.fetchProviderTypes(),
+			secretsProviders.fetchActiveConnections(),
+		]);
+		if (canCreateGlobalSecretsStore.value) {
+			await projectsStore.getAllProjects();
+		}
+	},
+	{ immediate: true },
+);
 
 defineExpose({
 	fetchProjectSecretConnections,
