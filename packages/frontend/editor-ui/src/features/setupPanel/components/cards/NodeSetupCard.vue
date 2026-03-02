@@ -247,7 +247,12 @@ const cardComplete = computed(() => {
 		</template>
 
 		<template #card-description>
-			<N8nText v-if="executableNode" size="medium" color="text-base" class="pl-xs pr-xs">
+			<N8nText
+				v-if="state.isTrigger && hasCredential && !state.selectedCredentialId"
+				size="medium"
+				color="text-base"
+				class="pl-xs pr-xs"
+			>
 				{{ i18n.baseText('setupPanel.trigger.credential.note') }}
 			</N8nText>
 			<N8nText v-else-if="hasShownParameters" size="medium" color="text-base" class="pl-xs pr-xs">
