@@ -1,5 +1,7 @@
 import { writeFileSync } from 'node:fs';
 
+import { DETERMINISTIC_CHECKS } from '../evaluators/binary-checks/checks';
+import { LLM_CHECKS } from '../evaluators/binary-checks/llm-checks';
 import type { ExampleResult, Feedback } from './harness-types';
 
 /**
@@ -45,33 +47,13 @@ const PAIRWISE_METRICS = [
 ] as const;
 
 /**
- * Binary check names (in order).
- * Each check gets a single score column (0 or 1).
+ * Binary check names derived from the check registries.
+ * Order: deterministic checks first, then LLM checks.
  */
 const BINARY_CHECK_NAMES = [
-	'has_nodes',
-	'all_nodes_connected',
-	'no_unreachable_nodes',
-	'has_trigger',
-	'no_empty_set_nodes',
-	'agent_has_dynamic_prompt',
-	'agent_has_language_model',
-	'memory_properly_connected',
-	'vector_store_has_embeddings',
-	'has_start_node',
-	'no_hardcoded_credentials',
-	'no_unnecessary_code_nodes',
-	'expressions_reference_existing_nodes',
-	'valid_required_parameters',
-	'valid_options_values',
-	'no_invalid_from_ai',
-	'tools_have_parameters',
-	'fulfills_user_request',
-	'correct_node_operations',
-	'valid_data_flow',
-	'handles_multiple_items',
-	'descriptive_node_names',
-] as const;
+	...DETERMINISTIC_CHECKS.map((c) => c.name),
+	...LLM_CHECKS.map((c) => c.name),
+];
 
 type EvaluationSuite = 'llm-judge' | 'pairwise' | 'binary-checks' | 'unknown';
 
