@@ -149,6 +149,7 @@ describe('NodeSetupCard', () => {
 			properties: [
 				{ name: 'testParam', displayName: 'Test Parameter', type: 'string', required: true },
 			],
+			outputs: ['main'],
 		});
 		setupPanelStore.setHighlightedNodes = vi.fn();
 		setupPanelStore.clearHighlightedNodes = vi.fn();
