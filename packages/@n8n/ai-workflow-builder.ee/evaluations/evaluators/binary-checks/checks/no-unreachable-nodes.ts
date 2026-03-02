@@ -19,37 +19,47 @@ function findTriggerNames(workflow: SimpleWorkflow, nodeTypes: INodeTypeDescript
 	return triggers;
 }
 
+/** Check if a node has an ai_* output connection to any node in the reachable set. */
+function connectsToReachableViaAi(
+	nodeConns: SimpleWorkflow['connections'][string],
+	reachable: Set<string>,
+): boolean {
+	return Object.entries(nodeConns).some(
+		([connType, connGroups]) =>
+			connType.startsWith('ai_') &&
+			connGroups.some((group) => group?.some((conn) => conn?.node && reachable.has(conn.node))),
+	);
+}
+
 /**
- * Expand the reachable set by finding sub-nodes that connect TO already-reachable
- * nodes via ai_* outputs. Repeats until no new nodes are discovered (fixpoint),
- * so deeply nested sub-nodes (e.g., Tool → AgentTool → Agent) are handled.
+ * Find sub-nodes that connect TO already-reachable nodes via ai_* outputs.
+ * Repeats until no new nodes are discovered (fixpoint), so deeply nested
+ * sub-nodes (e.g., Tool → AgentTool → Agent) are handled.
+ *
+ * Returns a new Set containing the original reachable nodes plus discovered sub-nodes.
  */
 function expandReachableWithSubNodes(
-	reachable: Set<string>,
+	reachable: ReadonlySet<string>,
 	connections: SimpleWorkflow['connections'],
 	allNodeNames: string[],
-): void {
+): Set<string> {
+	const expanded = new Set(reachable);
 	let changed = true;
 	while (changed) {
 		changed = false;
 		for (const nodeName of allNodeNames) {
-			if (reachable.has(nodeName)) continue;
+			if (expanded.has(nodeName)) continue;
 
 			const nodeConns = connections[nodeName];
 			if (!nodeConns) continue;
 
-			const connectsToReachable = Object.entries(nodeConns).some(
-				([connType, connGroups]) =>
-					connType.startsWith('ai_') &&
-					connGroups.some((group) => group?.some((conn) => conn?.node && reachable.has(conn.node))),
-			);
-
-			if (connectsToReachable) {
-				reachable.add(nodeName);
+			if (connectsToReachableViaAi(nodeConns, expanded)) {
+				expanded.add(nodeName);
 				changed = true;
 			}
 		}
 	}
+	return expanded;
 }
 
 export const noUnreachableNodes: BinaryCheck = {
@@ -86,9 +96,9 @@ export const noUnreachableNodes: BinaryCheck = {
 		// Iteratively expand: sub-nodes connect TO parents via ai_* outputs.
 		// Repeat until stable so nested sub-nodes (Tool → AgentTool → Agent) are found.
 		const allNodeNames = activeNodes.map((n) => n.name);
-		expandReachableWithSubNodes(reachable, connections, allNodeNames);
+		const expanded = expandReachableWithSubNodes(reachable, connections, allNodeNames);
 
-		const unreachable = activeNodes.filter((n) => !reachable.has(n.name)).map((n) => n.name);
+		const unreachable = activeNodes.filter((n) => !expanded.has(n.name)).map((n) => n.name);
 
 		return {
 			pass: unreachable.length === 0,

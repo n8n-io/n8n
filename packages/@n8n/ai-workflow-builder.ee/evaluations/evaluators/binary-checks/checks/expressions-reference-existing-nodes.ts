@@ -20,23 +20,24 @@ function unescapeNodeName(raw: string): string {
 	return raw.replace(/\\(.)/g, '$1');
 }
 
+/** Collect all matches from a global regex, returning captured groups at the given index. */
+function collectMatches(pattern: RegExp, text: string, groupIndex: number): string[] {
+	return Array.from(text.matchAll(pattern), (m) => m[groupIndex]);
+}
+
 /** Extract all referenced node names from an expression string. */
 function extractNodeNamesFromExpression(expression: string): string[] {
 	const names: string[] = [];
 
 	for (const pattern of QUOTED_NODE_REFS) {
-		pattern.lastIndex = 0;
-		let match: RegExpExecArray | null;
-		while ((match = pattern.exec(expression)) !== null) {
-			names.push(unescapeNodeName(match[2]));
+		for (const raw of collectMatches(pattern, expression, 2)) {
+			names.push(unescapeNodeName(raw));
 		}
 	}
 
 	// Legacy $node.Name dot-notation
-	DOT_NODE_REF.lastIndex = 0;
-	let dotMatch: RegExpExecArray | null;
-	while ((dotMatch = DOT_NODE_REF.exec(expression)) !== null) {
-		names.push(dotMatch[1]);
+	for (const name of collectMatches(DOT_NODE_REF, expression, 1)) {
+		names.push(name);
 	}
 
 	return names;
