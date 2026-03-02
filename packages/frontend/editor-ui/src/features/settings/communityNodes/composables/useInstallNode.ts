@@ -2,15 +2,20 @@ import { useCommunityNodesStore } from '../communityNodes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { computed, nextTick, ref } from 'vue';
+import { nextTick, ref } from 'vue';
 import { i18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 
 type InstallNodeProps = {
 	type: 'verified' | 'unverified';
+	telemetry?: {
+		hasQuickConnect: boolean;
+		source: string;
+	};
 } & (
 	| {
 			type: 'verified';
@@ -34,10 +39,11 @@ export function useInstallNode() {
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
 	const workflowsStore = useWorkflowsStore();
-	const isOwner = computed(() => useUsersStore().isInstanceOwner);
+	const userStore = useUsersStore();
 	const loading = ref(false);
 	const toast = useToast();
 	const canvasOperations = useCanvasOperations();
+	const telemetry = useTelemetry();
 
 	const getNpmVersion = async (key: string) => {
 		const communityNodeAttributes = await nodeTypesStore.getCommunityNodeAttributes(key);
@@ -50,11 +56,20 @@ export function useInstallNode() {
 	};
 
 	const installNode = async (props: InstallNodeProps): Promise<InstallNodeResult> => {
-		if (!isOwner.value) {
-			const error = new Error('User is not an owner');
+		if (!userStore.isAdminOrOwner) {
+			const error = new Error('User is not an owner or admin');
 			toast.showError(error, i18n.baseText('settings.communityNodes.messages.install.error'));
 			return { success: false, error };
 		}
+
+		if (props.telemetry) {
+			telemetry.track('user started cnr package install', {
+				input_string: props.packageName,
+				has_quick_connect: props.telemetry.hasQuickConnect,
+				source: props.telemetry.source,
+			});
+		}
+
 		try {
 			loading.value = true;
 			if (props.type === 'verified') {

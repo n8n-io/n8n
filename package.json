@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "2.7.0",
+  "version": "2.10.0",
   "private": true,
   "engines": {
     "node": ">=22.16",
@@ -77,12 +77,13 @@
     "ts-jest": "^29.1.1",
     "tsc-alias": "^1.8.10",
     "tsc-watch": "^6.2.0",
-    "turbo": "2.7.3",
+    "turbo": "2.8.9",
     "typescript": "*",
-    "zx": "^8.1.4"
+    "zx": "^8.8.5"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "isolated-vm",
       "sqlite3"
     ],
     "overrides": {
@@ -94,7 +95,7 @@
       "@mistralai/mistralai": "^1.10.0",
       "@n8n/typeorm>@sentry/node": "catalog:sentry",
       "@types/node": "^20.17.50",
-      "axios": "1.12.0",
+      "axios": "1.13.5",
       "chokidar": "4.0.3",
       "esbuild": "^0.25.0",
       "expr-eval@2.0.2": "npm:expr-eval-fork@3.0.0",
@@ -126,14 +127,24 @@
       "glob@7": "7.2.3",
       "jws@3": "3.2.2",
       "jws@4": "4.0.1",
-      "qs@6": "6.14.1",
+      "qs@6": "6.14.2",
       "@smithy/config-resolver": ">=4.4.0",
       "@rudderstack/rudder-sdk-node@<=3.0.0": "3.0.0",
       "diff": "8.0.3",
       "undici@6": "^6.23.0",
       "undici@7": "^7.18.2",
-      "tar": "^7.5.4",
-      "lodash-es": "4.17.23"
+      "tar": "^7.5.8",
+      "hono": "4.11.10",
+      "ajv@6": "6.14.0",
+      "ajv@7": "8.18.0",
+      "ajv@8": "8.18.0",
+      "bn.js@4": "5.2.3",
+      "bn.js@5": "5.2.3",
+      "langsmith": ">=0.4.6",
+      "lodash-es": "4.17.23",
+      "word-wrap@<=1.2.4": "1.2.4",
+      "minimatch@<=5.1.8": "5.1.8",
+      "fast-xml-parser": "5.3.8"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",

@@ -1,5 +1,4 @@
 import type { TestCaseExecutionRepository, TestRun, TestRunRepository, User } from '@n8n/db';
-import type { InstanceSettings } from 'n8n-core';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
@@ -18,7 +17,6 @@ describe('TestRunsController', () => {
 	let mockWorkflowFinderService: jest.Mocked<WorkflowFinderService>;
 	let mockTestCaseExecutionRepository: jest.Mocked<TestCaseExecutionRepository>;
 	let mockTestRunnerService: jest.Mocked<TestRunnerService>;
-	let mockInstanceSettings: jest.Mocked<InstanceSettings>;
 	let mockTelemetry: jest.Mocked<Telemetry>;
 	let mockGetSharedWorkflowIds: jest.MockedFunction<typeof getSharedWorkflowIds>;
 	let mockUser: User;
@@ -49,10 +47,6 @@ describe('TestRunsController', () => {
 			cancelTestRun: jest.fn(),
 		} as unknown as jest.Mocked<TestRunnerService>;
 
-		mockInstanceSettings = {
-			isMultiMain: false,
-		} as unknown as jest.Mocked<InstanceSettings>;
-
 		mockTelemetry = {
 			track: jest.fn(),
 		} as unknown as jest.Mocked<Telemetry>;
@@ -67,7 +61,6 @@ describe('TestRunsController', () => {
 			mockWorkflowFinderService,
 			mockTestCaseExecutionRepository,
 			mockTestRunnerService,
-			mockInstanceSettings,
 			mockTelemetry,
 		);
 

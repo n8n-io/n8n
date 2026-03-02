@@ -490,6 +490,46 @@ export class ChatTrigger extends Node {
 				},
 			},
 			{
+				displayName: 'Suggestions',
+				name: 'suggestedPrompts',
+				type: 'fixedCollection',
+				typeOptions: { multipleValues: true, fixedCollection: { layout: 'inline' } },
+				default: {},
+				noDataExpression: true,
+				placeholder: 'Add Prompt',
+				description:
+					'Suggested prompts shown to users in n8n Chat Hub to start a conversation with the agent',
+				displayOptions: {
+					show: {
+						availableInChat: [true],
+						'@version': [{ _cnd: { gte: 1.2 } }],
+					},
+				},
+				options: [
+					{
+						name: 'prompts',
+						displayName: 'Prompts',
+						values: [
+							{
+								displayName: 'Icon',
+								name: 'icon',
+								type: 'icon',
+								noDataExpression: true,
+								default: { type: 'icon', value: 'comment' },
+							},
+							{
+								displayName: 'Prompt Text',
+								name: 'text',
+								type: 'string',
+								default: '',
+								noDataExpression: true,
+								required: true,
+							},
+						],
+					},
+				],
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
@@ -728,7 +768,10 @@ export class ChatTrigger extends Node {
 		const nodeMode = ctx.getNodeParameter('mode', 'hostedChat');
 		assertParamIsString('mode', nodeMode, ctx.getNode());
 
-		if (!isPublic) {
+		const mode = ctx.getMode() === 'manual' ? 'test' : 'production';
+
+		// Allow execution in manual mode (test) even when not public
+		if (!isPublic && mode !== 'test') {
 			res.status(404).end();
 			return {
 				noWebhookResponse: true,
@@ -763,7 +806,6 @@ export class ChatTrigger extends Node {
 
 		const req = ctx.getRequestObject();
 		const webhookName = ctx.getWebhookName();
-		const mode = ctx.getMode() === 'manual' ? 'test' : 'production';
 		const bodyData = ctx.getBodyData() ?? {};
 
 		try {

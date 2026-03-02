@@ -175,7 +175,7 @@ export function createLangsmithClient(logger?: EvalLogger): LangsmithClientResul
 
 /**
  * Resolve built-in node definition directories from installed node packages.
- * Mirrors `NodeDefinitionGeneratorService.getBuiltinDefinitionDirs()` for use
+ * Mirrors `WorkflowBuilderService.resolveBuiltinNodeDefinitionDirs()` for use
  * in the eval harness where the DI container is not available.
  */
 export function resolveBuiltinNodeDefinitionDirs(): string[] {
@@ -207,7 +207,7 @@ export function resolveBuiltinNodeDefinitionDirs(): string[] {
 }
 
 /** Walk up from startDir to find the monorepo root (contains pnpm-workspace.yaml). */
-function findRepoRoot(startDir: string): string | undefined {
+export function findRepoRoot(startDir: string): string | undefined {
 	let dir = startDir;
 	while (dir !== path.dirname(dir)) {
 		if (fs.existsSync(path.join(dir, 'pnpm-workspace.yaml'))) {
@@ -216,6 +216,17 @@ function findRepoRoot(startDir: string): string | undefined {
 		dir = path.dirname(dir);
 	}
 	return undefined;
+}
+
+/**
+ * Resolve the path to packages/nodes-base/nodes/ for __schema__ resolution.
+ * Returns undefined if the path doesn't exist (e.g. running outside the monorepo).
+ */
+export function resolveNodesBasePath(): string | undefined {
+	const repoRoot = findRepoRoot(__dirname);
+	if (!repoRoot) return undefined;
+	const p = path.join(repoRoot, 'packages', 'nodes-base', 'nodes');
+	return fs.existsSync(p) ? p : undefined;
 }
 
 /**

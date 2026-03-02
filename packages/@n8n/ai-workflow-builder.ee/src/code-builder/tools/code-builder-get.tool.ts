@@ -7,7 +7,6 @@
 
 import { tool } from '@langchain/core/tools';
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
-import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { z } from 'zod';
 
@@ -52,17 +51,14 @@ export function validatePathWithinBase(filePath: string, baseDir: string): boole
 
 /**
  * Get the paths to the generated nodes directories.
- * Searches multiple directories in order (built-in first, then community).
- * Falls back to ~/.n8n/node-definitions if no dirs are provided.
+ * Searches the configured built-in definition directories.
  */
 function getGeneratedNodesPaths(nodeDefinitionDirs?: string[]): string[] {
 	if (nodeDefinitionDirs && nodeDefinitionDirs.length > 0) {
 		return nodeDefinitionDirs.map((dir) => join(dir, 'nodes'));
 	}
 
-	// Default to ~/.n8n/node-definitions (same location as runtime and CLI)
-	const defaultTypesDir = join(homedir(), '.n8n', 'node-definitions');
-	return [join(defaultTypesDir, 'nodes')];
+	return [];
 }
 
 /**
@@ -572,9 +568,7 @@ type NodeRequest =
  */
 export interface CodeBuilderGetToolOptions {
 	/**
-	 * Ordered list of directories to search for node definitions.
-	 * Built-in dirs come first, then the community dir.
-	 * If not provided, falls back to ~/.n8n/node-definitions.
+	 * Ordered list of directories to search for built-in node definitions.
 	 */
 	nodeDefinitionDirs?: string[];
 }

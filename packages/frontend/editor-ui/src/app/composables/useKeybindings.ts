@@ -180,21 +180,39 @@ export const useKeybindings = (
 		};
 	}
 
+	// Resolution strategy:
+	// 1. Prefer `byKey` (event.key) so shortcuts follow the logical character
+	//    produced by the active keyboard layout (works correctly for QWERTY,
+	//    Colemak/Dvorak, and most layouts).
+	// 2. Use `byLayout` (Keyboard Layout Map API) as a layout-aware fallback when
+	//    available. This helps in cases where `event.key` is unreliable (e.g.
+	//    certain macOS modifier combinations or dead keys).
+	// 3. Avoid falling back to `byCode` (physical key position) for letter keys
+	//    when the active layout produces Latin letters (a–z). Physical fallback
+	//    can remap one letter to another on alternative layouts (e.g. Colemak),
+	//    causing unintended matches such as CMD+R triggering a CMD+S handler.
+	// 4. For non-Latin layouts (Hebrew, Russian, etc.), allow `byCode` fallback for
+	//    Ctrl/Cmd-modified letter shortcuts so common shortcuts like Ctrl/Cmd+C
+	//    still work even when the key produces a non-Latin character.
+	// 5. For non-letter keys (arrows, function keys, etc.), allow `byCode` as a
+	//    last resort to ensure consistent physical-key behavior across layouts.
 	function onKeyDown(event: KeyboardEvent) {
 		if (ignoreKeyPresses.value || isDisabled.value) return;
 
 		const { byKey, byCode, byLayout } = toShortcutString(event);
 
-		// Prefer `byKey` over `byCode` so that:
-		// - ANSI layouts work correctly
-		// - Dvorak works correctly
-		// - Non-ansi layouts work correctly
-		// Fall back to `byLayout` (Keyboard Layout Map API) for layouts like
-		// Colemak where macOS Alt+key produces dead keys
-		const handler =
-			normalizedKeymap.value[byKey] ??
-			normalizedKeymap.value[byCode] ??
-			(byLayout ? normalizedKeymap.value[byLayout] : undefined);
+		const isLetterKey = event.code.startsWith('Key'); // KeyA..KeyZ
+		const isLatinLetter = /^[a-z]$/i.test(event.key);
+		const isNonLatinLetter = /^\p{L}$/u.test(event.key) && !isLatinLetter;
+		const ctrlOrCmd = isCtrlKeyPressed(event);
+
+		const useCodeFallback = !isLetterKey || (ctrlOrCmd && isNonLatinLetter);
+
+		const handlerFromKey = normalizedKeymap.value[byKey];
+		const handlerFromLayout = byLayout ? normalizedKeymap.value[byLayout] : undefined;
+		const handlerFromCode = useCodeFallback ? normalizedKeymap.value[byCode] : undefined;
+
+		const handler = handlerFromKey ?? handlerFromLayout ?? handlerFromCode;
 		const run =
 			typeof handler === 'function' ? handler : handler?.disabled() ? undefined : handler?.run;
 

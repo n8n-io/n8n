@@ -97,7 +97,7 @@ function generateSubnodeCall(
 	const parts: string[] = [];
 
 	parts.push(`type: '${subnodeNode.type}'`);
-	parts.push(`version: ${subnodeNode.json.typeVersion}`);
+	parts.push(`version: ${subnodeNode.json.typeVersion ?? 1}`);
 
 	const configParts: string[] = [];
 
@@ -142,37 +142,47 @@ function generateSubnodesConfigForNode(node: SemanticNode, ctx: GenerationContex
 		return null;
 	}
 
-	// Group subnodes by connection type
-	const grouped = new Map<AiConnectionType, SemanticNode[]>();
+	// Group subnodes by connection type, tracking indices
+	const grouped = new Map<AiConnectionType, Array<{ node: SemanticNode; index: number }>>();
 
 	for (const sub of node.subnodes) {
+		// Skip self-referencing subnodes (circular reference in source data)
+		if (sub.subnodeName === node.name) continue;
+
 		const subnodeNode = ctx.graph.nodes.get(sub.subnodeName);
 		if (!subnodeNode) continue;
 
 		const existing = grouped.get(sub.connectionType) ?? [];
-		existing.push(subnodeNode);
+		existing.push({ node: subnodeNode, index: sub.index });
 		grouped.set(sub.connectionType, existing);
 	}
 
 	// Generate config entries
 	const entries: string[] = [];
 
-	for (const [connType, subnodeNodes] of grouped) {
+	for (const [connType, subnodeEntries] of grouped) {
 		const configKey = AI_CONNECTION_TO_CONFIG_KEY[connType];
 		const builderName = AI_CONNECTION_TO_BUILDER[connType];
 
-		if (subnodeNodes.length === 0) continue;
+		if (subnodeEntries.length === 0) continue;
 
-		const calls = subnodeNodes.map((n) => generateSubnodeCall(n, builderName, ctx));
+		const calls = subnodeEntries.map((e) => generateSubnodeCall(e.node, builderName, ctx));
 
 		if (AI_ALWAYS_ARRAY_TYPES.has(connType)) {
 			// Always array type (tools) - generate as array even for single item
 			entries.push(`${configKey}: [${calls.join(', ')}]`);
 		} else if (AI_OPTIONAL_ARRAY_TYPES.has(connType)) {
-			// Optional array type (model) - single if one, array if multiple
-			if (subnodeNodes.length === 1) {
+			// Optional array type (model, documentLoader, etc.) - single if one, array if multiple
+			if (subnodeEntries.length === 1) {
 				entries.push(`${configKey}: ${calls[0]}`);
+			} else if (
+				connType === 'ai_languageModel' &&
+				subnodeEntries.every((e) => e.index === subnodeEntries[0].index)
+			) {
+				// Nested array: [[m1, m2]] — all at same input slot (ai_languageModel only)
+				entries.push(`${configKey}: [[${calls.join(', ')}]]`);
 			} else {
+				// Flat array: [m1, m2] — sequential indices (primary=0, fallback=1)
 				entries.push(`${configKey}: [${calls.join(', ')}]`);
 			}
 		} else {
@@ -198,16 +208,30 @@ function generateSubnodesConfig(node: SemanticNode, ctx: GenerationContext): str
 /**
  * Recursively collect all subnodes from a node and add them to the context's subnodeVariables.
  * Processes nested subnodes first so they're declared before their parents.
+ * Skips nodes that also participate in the main workflow flow (in variableNodes),
+ * since those must be declared as node() calls rather than subnode builder calls.
  */
-function collectSubnodesAsVariables(node: SemanticNode, ctx: GenerationContext): void {
+function collectSubnodesAsVariables(
+	node: SemanticNode,
+	ctx: GenerationContext,
+	visited = new Set<string>(),
+): void {
 	if (node.subnodes.length === 0) return;
 
 	for (const sub of node.subnodes) {
+		// Skip circular subnode references
+		if (visited.has(sub.subnodeName)) continue;
+		visited.add(sub.subnodeName);
+
 		const subnodeNode = ctx.graph.nodes.get(sub.subnodeName);
 		if (!subnodeNode) continue;
 
 		// First, recursively collect nested subnodes (they must be declared first)
-		collectSubnodesAsVariables(subnodeNode, ctx);
+		collectSubnodesAsVariables(subnodeNode, ctx, visited);
+
+		// Skip nodes that are also in the main flow (they'll be declared as node() calls)
+		// These nodes have main connections and need to participate in the flow chain
+		if (ctx.variableNodes.has(sub.subnodeName)) continue;
 
 		// Then add this subnode
 		const builderName = AI_CONNECTION_TO_BUILDER[sub.connectionType];
@@ -226,7 +250,7 @@ function generateSubnodeCallWithVarRefs(
 	const parts: string[] = [];
 
 	parts.push(`type: '${subnodeNode.type}'`);
-	parts.push(`version: ${subnodeNode.json.typeVersion}`);
+	parts.push(`version: ${subnodeNode.json.typeVersion ?? 1}`);
 
 	const configParts: string[] = [];
 
@@ -274,32 +298,44 @@ function generateSubnodesConfigWithVarRefs(
 		return null;
 	}
 
-	// Group subnodes by connection type, using variable names
-	const grouped = new Map<AiConnectionType, string[]>();
+	// Group subnodes by connection type, using variable names and tracking indices
+	const grouped = new Map<AiConnectionType, Array<{ varName: string; index: number }>>();
 
 	for (const sub of node.subnodes) {
+		// Skip self-referencing subnodes (circular reference in source data)
+		if (sub.subnodeName === node.name) continue;
+
 		const varName = getVarName(sub.subnodeName, ctx);
 		const existing = grouped.get(sub.connectionType) ?? [];
-		existing.push(varName);
+		existing.push({ varName, index: sub.index });
 		grouped.set(sub.connectionType, existing);
 	}
 
 	// Generate config entries using variable names
 	const entries: string[] = [];
 
-	for (const [connType, varNames] of grouped) {
+	for (const [connType, varEntries] of grouped) {
 		const configKey = AI_CONNECTION_TO_CONFIG_KEY[connType];
 
-		if (varNames.length === 0) continue;
+		if (varEntries.length === 0) continue;
+
+		const varNames = varEntries.map((e) => e.varName);
 
 		if (AI_ALWAYS_ARRAY_TYPES.has(connType)) {
 			// Always array type (tools) - generate as array even for single item
 			entries.push(`${configKey}: [${varNames.join(', ')}]`);
 		} else if (AI_OPTIONAL_ARRAY_TYPES.has(connType)) {
-			// Optional array type (model) - single if one, array if multiple
-			if (varNames.length === 1) {
+			// Optional array type (model, documentLoader, etc.) - single if one, array if multiple
+			if (varEntries.length === 1) {
 				entries.push(`${configKey}: ${varNames[0]}`);
+			} else if (
+				connType === 'ai_languageModel' &&
+				varEntries.every((e) => e.index === varEntries[0].index)
+			) {
+				// Nested array: [[m1, m2]] — all at same input slot (ai_languageModel only)
+				entries.push(`${configKey}: [[${varNames.join(', ')}]]`);
 			} else {
+				// Flat array: [m1, m2] — sequential indices (primary=0, fallback=1)
 				entries.push(`${configKey}: [${varNames.join(', ')}]`);
 			}
 		} else {
@@ -340,7 +376,7 @@ function generateNodeConfig(node: SemanticNode, ctx: GenerationContext): string 
 	const parts: string[] = [];
 
 	parts.push(`${innerIndent}type: '${node.type}'`);
-	parts.push(`${innerIndent}version: ${node.json.typeVersion}`);
+	parts.push(`${innerIndent}version: ${node.json.typeVersion ?? 1}`);
 
 	const configParts: string[] = [];
 
@@ -440,7 +476,9 @@ function generateNodeConfig(node: SemanticNode, ctx: GenerationContext): string 
  * Used by ifElse, merge, switchCase (which require pre-declared nodes in named syntax).
  */
 function getVarRefOrInlineNode(node: SemanticNode, ctx: GenerationContext): string {
-	const nodeName = node.json.name;
+	// Use semantic node name (graph key) for variable lookup, not json.name.
+	// For duplicate node names, node.name is the unique graph key.
+	const nodeName = node.name;
 	if (nodeName && ctx.variableNodes.has(nodeName)) {
 		return getVarName(nodeName, ctx);
 	}
@@ -504,8 +542,12 @@ function generateStickyCall(node: SemanticNode, ctx: GenerationContext): string 
 
 	const params = node.json.parameters;
 	if (params?.color !== undefined) {
-		// eslint-disable-next-line @typescript-eslint/no-base-to-string -- color is a string/number primitive
-		options.push(`color: ${String(params.color)}`);
+		if (typeof params.color === 'number') {
+			options.push(`color: ${params.color}`);
+		} else if (typeof params.color === 'string') {
+			options.push(`color: '${escapeString(params.color)}'`);
+		}
+		// Skip object/other types — they're invalid color values
 	}
 	if (params?.width !== undefined) {
 		options.push(`width: ${Number(params.width)}`);
@@ -533,7 +575,7 @@ function generateMergeCall(node: SemanticNode, ctx: GenerationContext): string {
 
 	const parts: string[] = [];
 
-	parts.push(`${innerIndent}version: ${node.json.typeVersion}`);
+	parts.push(`${innerIndent}version: ${node.json.typeVersion ?? 1}`);
 
 	const configParts: string[] = [];
 
@@ -593,7 +635,10 @@ function generateNodeCall(node: SemanticNode, ctx: GenerationContext): string {
  * Generate code for a leaf node, using variable reference if the node is declared as a variable
  */
 function generateLeafCode(leaf: LeafNode, ctx: GenerationContext): string {
-	const nodeName = leaf.node.json.name;
+	// Use semantic node name (graph key) for variable lookup, not json.name.
+	// For duplicate node names, node.name is the unique graph key (e.g., "NodeA 2")
+	// while json.name is the original shared name (e.g., "NodeA").
+	const nodeName = leaf.node.name;
 	if (nodeName && ctx.variableNodes.has(nodeName)) {
 		// Use variable reference for nodes that are declared as variables
 		// (JSDoc is already added in variable declaration)
@@ -650,8 +695,8 @@ function generateChain(chain: ChainNode, ctx: GenerationContext): string {
 /**
  * Generate code for a variable reference
  */
-function generateVarRef(varRef: VariableReference, _ctx: GenerationContext): string {
-	return varRef.varName;
+function generateVarRef(varRef: VariableReference, ctx: GenerationContext): string {
+	return getVarName(varRef.nodeName, ctx);
 }
 
 /**
@@ -695,6 +740,12 @@ function generateIfElse(ifElse: IfElseCompositeNode, ctx: GenerationContext): st
 	if (ifElse.falseBranch !== null) {
 		const falseBranchCode = generateBranchCode(ifElse.falseBranch, innerCtx);
 		code += `.onFalse(${falseBranchCode})`;
+	}
+
+	// Add onError if error handler exists
+	if (ifElse.errorHandler) {
+		const errorHandlerCode = generateComposite(ifElse.errorHandler, innerCtx);
+		code += `.onError(${errorHandlerCode})`;
 	}
 
 	return code;
@@ -816,10 +867,12 @@ function generateSplitInBatches(sib: SplitInBatchesCompositeNode, ctx: Generatio
 					if (strippedCode === null) {
 						// Branch is just the self-loop
 						branchCode = `nextBatch(${sibVarName})`;
-					} else {
-						// Has processing nodes before the loop back
+					} else if (strippedCode !== branchCode) {
+						// Has processing nodes before the loop back to SIB
 						branchCode = `${strippedCode}.to(nextBatch(${sibVarName}))`;
 					}
+					// else: VarRef is NOT to the SIB - leave unchanged.
+					// The loop-back connection already exists via the main chain.
 				}
 
 				return branchCode;
@@ -836,10 +889,12 @@ function generateSplitInBatches(sib: SplitInBatchesCompositeNode, ctx: Generatio
 				if (strippedCode === null) {
 					// Entire each branch is just the self-loop (no processing nodes)
 					eachCode = `nextBatch(${sibVarName})`;
-				} else {
-					// Has processing nodes before the loop back
+				} else if (strippedCode !== eachCode) {
+					// Has processing nodes before the loop back to SIB
 					eachCode = `${strippedCode}.to(nextBatch(${sibVarName}))`;
 				}
+				// else: VarRef is NOT to the SIB - leave unchanged.
+				// The loop-back connection already exists via the main chain.
 			}
 		}
 
@@ -987,49 +1042,55 @@ function generateVariableDeclarations(
  * Recursively collect all nested multiOutput nodes from a composite tree.
  * These need to be extracted and their output connections generated as separate .add() calls.
  */
-function collectNestedMultiOutputs(node: CompositeNode, collected: MultiOutputNode[]): void {
+export function collectNestedMultiOutputs(
+	node: CompositeNode,
+	collected: MultiOutputNode[],
+	visited: WeakSet<CompositeNode> = new WeakSet(),
+): void {
 	if (!node) return;
+	if (visited.has(node)) return;
+	visited.add(node);
 
 	if (node.kind === 'multiOutput') {
 		collected.push(node);
 		// Also check the output targets for nested multiOutput nodes
 		for (const [, target] of node.outputTargets) {
-			collectNestedMultiOutputs(target, collected);
+			collectNestedMultiOutputs(target, collected, visited);
 		}
 	} else if (node.kind === 'chain') {
 		for (const n of node.nodes) {
-			collectNestedMultiOutputs(n, collected);
+			collectNestedMultiOutputs(n, collected, visited);
 		}
 	} else if (node.kind === 'splitInBatches') {
 		const sib = node;
 		if (sib.doneChain) {
 			if (Array.isArray(sib.doneChain)) {
-				for (const b of sib.doneChain) collectNestedMultiOutputs(b, collected);
+				for (const b of sib.doneChain) collectNestedMultiOutputs(b, collected, visited);
 			} else {
-				collectNestedMultiOutputs(sib.doneChain, collected);
+				collectNestedMultiOutputs(sib.doneChain, collected, visited);
 			}
 		}
 		if (sib.loopChain) {
 			if (Array.isArray(sib.loopChain)) {
-				for (const b of sib.loopChain) collectNestedMultiOutputs(b, collected);
+				for (const b of sib.loopChain) collectNestedMultiOutputs(b, collected, visited);
 			} else {
-				collectNestedMultiOutputs(sib.loopChain, collected);
+				collectNestedMultiOutputs(sib.loopChain, collected, visited);
 			}
 		}
 	} else if (node.kind === 'ifElse') {
 		const ifElse = node;
 		if (ifElse.trueBranch) {
 			if (Array.isArray(ifElse.trueBranch)) {
-				for (const b of ifElse.trueBranch) collectNestedMultiOutputs(b, collected);
+				for (const b of ifElse.trueBranch) collectNestedMultiOutputs(b, collected, visited);
 			} else {
-				collectNestedMultiOutputs(ifElse.trueBranch, collected);
+				collectNestedMultiOutputs(ifElse.trueBranch, collected, visited);
 			}
 		}
 		if (ifElse.falseBranch) {
 			if (Array.isArray(ifElse.falseBranch)) {
-				for (const b of ifElse.falseBranch) collectNestedMultiOutputs(b, collected);
+				for (const b of ifElse.falseBranch) collectNestedMultiOutputs(b, collected, visited);
 			} else {
-				collectNestedMultiOutputs(ifElse.falseBranch, collected);
+				collectNestedMultiOutputs(ifElse.falseBranch, collected, visited);
 			}
 		}
 	} else if (node.kind === 'switchCase') {
@@ -1037,25 +1098,49 @@ function collectNestedMultiOutputs(node: CompositeNode, collected: MultiOutputNo
 		for (const c of switchCase.cases) {
 			if (c) {
 				if (Array.isArray(c)) {
-					for (const b of c) collectNestedMultiOutputs(b, collected);
+					for (const b of c) collectNestedMultiOutputs(b, collected, visited);
 				} else {
-					collectNestedMultiOutputs(c, collected);
+					collectNestedMultiOutputs(c, collected, visited);
 				}
 			}
 		}
 	} else if (node.kind === 'fanOut') {
 		const fanOut = node;
-		collectNestedMultiOutputs(fanOut.sourceNode, collected);
+		collectNestedMultiOutputs(fanOut.sourceNode, collected, visited);
 		for (const t of fanOut.targets) {
-			collectNestedMultiOutputs(t, collected);
+			collectNestedMultiOutputs(t, collected, visited);
 		}
 	} else if (node.kind === 'merge') {
 		const merge = node;
 		for (const b of merge.branches) {
-			collectNestedMultiOutputs(b, collected);
+			collectNestedMultiOutputs(b, collected, visited);
 		}
 	}
 	// leaf, varRef, explicitConnections don't need recursive checking
+}
+
+/**
+ * Generate a multi-output target code string.
+ * When a fan-out's source node matches the multi-output source, unwraps it to just the
+ * targets array, avoiding self-referencing connections (e.g., webhook.output(1).to(webhook...)).
+ */
+function generateMultiOutputTarget(
+	targetComposite: CompositeNode,
+	multiOutputSourceName: string,
+	ctx: GenerationContext,
+): string {
+	if (
+		targetComposite.kind === 'fanOut' &&
+		targetComposite.sourceNode.kind === 'leaf' &&
+		targetComposite.sourceNode.node.name === multiOutputSourceName
+	) {
+		const innerCtx = { ...ctx, indent: ctx.indent + 1 };
+		const targetsCode = targetComposite.targets
+			.map((target) => generateComposite(target, innerCtx))
+			.join(',\n' + getIndent(innerCtx));
+		return `[\n${getIndent(innerCtx)}${targetsCode}]`;
+	}
+	return generateComposite(targetComposite, ctx);
 }
 
 /**
@@ -1072,7 +1157,7 @@ function generateMultiOutputConnections(
 	const sortedOutputs = [...multiOutput.outputTargets.entries()].sort((a, b) => a[0] - b[0]);
 
 	for (const [outputIndex, targetComposite] of sortedOutputs) {
-		const targetCode = generateComposite(targetComposite, ctx);
+		const targetCode = generateMultiOutputTarget(targetComposite, multiOutput.sourceNode.name, ctx);
 		calls.push(['add', `${sourceVarName}.output(${outputIndex}).to(${targetCode})`]);
 	}
 
@@ -1101,9 +1186,20 @@ function flattenToWorkflowCalls(
 		// Sort by output index for consistent ordering
 		const sortedOutputs = [...multiOutput.outputTargets.entries()].sort((a, b) => a[0] - b[0]);
 
+		// Collect nested multiOutput nodes from output targets
+		const nestedMultiOutputs: MultiOutputNode[] = [];
 		for (const [outputIndex, targetComposite] of sortedOutputs) {
-			const targetCode = generateComposite(targetComposite, ctx);
+			const targetCode = generateMultiOutputTarget(
+				targetComposite,
+				multiOutput.sourceNode.name,
+				ctx,
+			);
 			calls.push(['add', `${sourceVarName}.output(${outputIndex}).to(${targetCode})`]);
+			collectNestedMultiOutputs(targetComposite, nestedMultiOutputs);
+		}
+		for (const nested of nestedMultiOutputs) {
+			const nestedCalls = generateMultiOutputConnections(nested, ctx);
+			calls.push(...nestedCalls);
 		}
 	} else if (root.kind === 'explicitConnections') {
 		// Explicit connections pattern: generate .add() for each node, then .connect() for each connection
@@ -1147,8 +1243,15 @@ function flattenToWorkflowCalls(
 				const sortedOutputs = [...multiOutput.outputTargets.entries()].sort((a, b) => a[0] - b[0]);
 
 				for (const [outputIndex, targetComposite] of sortedOutputs) {
-					const targetCode = generateComposite(targetComposite, ctx);
+					const targetCode = generateMultiOutputTarget(
+						targetComposite,
+						multiOutput.sourceNode.name,
+						ctx,
+					);
 					calls.push(['add', `${sourceVarName}.output(${outputIndex}).to(${targetCode})`]);
+
+					// Collect nested multiOutput nodes from output targets
+					collectNestedMultiOutputs(targetComposite, nestedMultiOutputsInChain);
 				}
 			} else {
 				const method = i === 0 ? 'add' : 'to';
@@ -1215,6 +1318,14 @@ export function generateCode(
 		pinnedNodes: executionContext?.pinnedNodes,
 	};
 
+	// Pre-register all node variable names to detect and resolve collisions.
+	// This ensures getVarName() lookups always find the deduplicated name,
+	// even for nodes whose names normalize to the same variable (e.g.,
+	// "Get_Analysis" vs "Get Analysis" both → get_Analysis).
+	for (const nodeName of graph.nodes.keys()) {
+		getUniqueVarName(nodeName, ctx);
+	}
+
 	// Collect all subnodes from all nodes in the graph (not just variable nodes)
 	for (const node of graph.nodes.values()) {
 		collectSubnodesAsVariables(node, ctx);
@@ -1263,14 +1374,25 @@ export function generateCode(
 		const sourceVarName = getVarName(conn.sourceNodeName, ctx);
 		const targetVarName = getVarName(conn.targetNode.name, ctx);
 
-		// Handle output index if not default (0)
-		const sourceRef =
-			conn.sourceOutputIndex > 0
-				? `${sourceVarName}.output(${conn.sourceOutputIndex})`
-				: sourceVarName;
+		if (conn.isErrorOutput) {
+			// Error outputs use .onError() with target.input(n) for specific input indices
+			const targetRef =
+				conn.targetInputIndex > 0
+					? `${targetVarName}.input(${conn.targetInputIndex})`
+					: targetVarName;
+			workflowCalls.push(`  .add(${sourceVarName}.onError(${targetRef}))`);
+		} else {
+			// Handle output index if not default (0)
+			const sourceRef =
+				conn.sourceOutputIndex > 0
+					? `${sourceVarName}.output(${conn.sourceOutputIndex})`
+					: sourceVarName;
 
-		// Generate: .add(source.to(target.input(n)))
-		workflowCalls.push(`  .add(${sourceRef}.to(${targetVarName}.input(${conn.targetInputIndex})))`);
+			// Generate: .add(source.to(target.input(n)))
+			workflowCalls.push(
+				`  .add(${sourceRef}.to(${targetVarName}.input(${conn.targetInputIndex})))`,
+			);
+		}
 	}
 
 	// Generate deferred merge downstream chains
@@ -1281,6 +1403,16 @@ export function generateCode(
 			const chainCode = generateComposite(downstream.downstreamChain, ctx);
 			workflowCalls.push(`  .add(${mergeVarName})`);
 			workflowCalls.push(`  .to(${chainCode})`);
+
+			// Collect and generate nested multiOutput nodes inside the downstream chain
+			const nestedMultiOutputs: MultiOutputNode[] = [];
+			collectNestedMultiOutputs(downstream.downstreamChain, nestedMultiOutputs);
+			for (const nested of nestedMultiOutputs) {
+				const nestedCalls = generateMultiOutputConnections(nested, ctx);
+				for (const [method, args] of nestedCalls) {
+					workflowCalls.push(`  .${method}(${args})`);
+				}
+			}
 		}
 	}
 

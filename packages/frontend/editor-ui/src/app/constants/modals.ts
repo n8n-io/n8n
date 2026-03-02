@@ -24,6 +24,7 @@ export const SETUP_CREDENTIALS_MODAL_KEY = 'setupCredentials';
 export const NEW_ASSISTANT_SESSION_MODAL = 'newAssistantSession';
 export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
 export const SECRETS_PROVIDER_CONNECTION_MODAL_KEY = 'secretsProviderConnection';
+export const DELETE_SECRETS_PROVIDER_MODAL_KEY = 'deleteSecretsProvider';
 export const WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY =
 	'workflowActivationConflictingWebhook';
 export const FROM_AI_PARAMETERS_MODAL_KEY = 'fromAiParameters';
@@ -38,4 +39,6 @@ export const BINARY_DATA_VIEW_MODAL_KEY = 'binaryDataView';
 export const WORKFLOW_DESCRIPTION_MODAL_KEY = 'workflowDescription';
 export const WORKFLOW_PUBLISH_MODAL_KEY = 'workflowPublish';
 export const WORKFLOW_HISTORY_PUBLISH_MODAL_KEY = 'workflowHistoryPublish';
+export const WORKFLOW_HISTORY_DIFF_MODAL_KEY = 'workflowHistoryDiff';
 export const CREDENTIAL_RESOLVER_EDIT_MODAL_KEY = 'credentialResolverEdit';
+export const AI_BUILDER_DIFF_MODAL_KEY = 'aiBuilderDiff';

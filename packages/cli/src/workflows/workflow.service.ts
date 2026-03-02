@@ -42,7 +42,6 @@ import { v4 as uuid } from 'uuid';
 
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
-import { WorkflowSharingService } from './workflow-sharing.service';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
@@ -51,6 +50,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { EventService } from '@/events/event.service';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { NodeTypes } from '@/node-types';
@@ -81,7 +81,6 @@ export class WorkflowService {
 		private readonly externalHooks: ExternalHooks,
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly roleService: RoleService,
-		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly projectService: ProjectService,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly eventService: EventService,
@@ -107,7 +106,6 @@ export class WorkflowService {
 		let count;
 		let workflows;
 		let workflowsAndFolders: WorkflowFolderUnionFull[] = [];
-		let sharedWorkflowIds: string[] = [];
 		let isPersonalProject = false;
 		let personalProjectOwnerId: string | null = null;
 
@@ -122,33 +120,47 @@ export class WorkflowService {
 			personalProjectOwnerId = project.creatorId;
 		}
 
+		// Prepare sharing options for the subquery
+		const sharingOptions: {
+			scopes?: Scope[];
+			projectRoles?: string[];
+			workflowRoles?: string[];
+			isPersonalProject?: boolean;
+			personalProjectOwnerId?: string;
+			onlySharedWithMe?: boolean;
+		} = {};
+
 		if (isPersonalProject && personalProjectOwnerId) {
 			if (personalProjectOwnerId !== user.id && !hasGlobalScope(user, 'workflow:read')) {
 				return { workflows: [], count: 0 };
 			}
-
-			sharedWorkflowIds =
-				await this.workflowSharingService.getOwnedWorkflowsInPersonalProject(
-					personalProjectOwnerId,
-				);
+			sharingOptions.isPersonalProject = true;
+			sharingOptions.personalProjectOwnerId = personalProjectOwnerId;
 		} else if (onlySharedWithMe) {
-			sharedWorkflowIds = await this.workflowSharingService.getSharedWithMeIds(user);
+			sharingOptions.onlySharedWithMe = true;
 		} else {
-			sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(user, {
-				scopes: requiredScopes,
-			});
+			// Get roles from scopes
+			const projectRoles = await this.roleService.rolesWithScope('project', requiredScopes);
+			const workflowRoles = await this.roleService.rolesWithScope('workflow', requiredScopes);
+			sharingOptions.scopes = requiredScopes;
+			sharingOptions.projectRoles = projectRoles;
+			sharingOptions.workflowRoles = workflowRoles;
 		}
 
+		// Use the new subquery-based repository methods
 		if (includeFolders) {
-			[workflowsAndFolders, count] = await this.workflowRepository.getWorkflowsAndFoldersWithCount(
-				sharedWorkflowIds,
-				options,
-			);
+			[workflowsAndFolders, count] =
+				await this.workflowRepository.getWorkflowsAndFoldersWithCountWithSharingSubquery(
+					user,
+					sharingOptions,
+					options,
+				);
 
 			workflows = workflowsAndFolders.filter((wf) => wf.resource === 'workflow');
 		} else {
-			({ workflows, count } = await this.workflowRepository.getManyAndCount(
-				sharedWorkflowIds,
+			({ workflows, count } = await this.workflowRepository.getManyAndCountWithSharingSubquery(
+				user,
+				sharingOptions,
 				options,
 			));
 		}
@@ -349,6 +361,19 @@ export class WorkflowService {
 		await WorkflowHelpers.replaceInvalidCredentials(workflowUpdateData);
 
 		WorkflowHelpers.addNodeIds(workflowUpdateData);
+
+		// Strip redactionPolicy if user lacks scope and value is changing
+		if (
+			workflowUpdateData.settings?.redactionPolicy !== undefined &&
+			workflowUpdateData.settings.redactionPolicy !== workflow.settings?.redactionPolicy
+		) {
+			const canUpdate = await userHasScopes(user, ['workflow:updateRedactionSetting'], false, {
+				workflowId,
+			});
+			if (!canUpdate) {
+				delete workflowUpdateData.settings.redactionPolicy;
+			}
+		}
 
 		// Merge settings to support partial updates
 		if (workflowUpdateData.settings && workflow.settings) {

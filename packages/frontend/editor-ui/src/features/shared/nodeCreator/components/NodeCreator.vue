@@ -135,10 +135,6 @@ registerKeyHook('NodeCreatorCloseEscape', {
 	keyboardKeys: ['Escape'],
 	handler: () => emit('closeNodeCreator'),
 });
-registerKeyHook('NodeCreatorCloseTab', {
-	keyboardKeys: ['Tab'],
-	handler: () => emit('closeNodeCreator'),
-});
 
 watch(
 	() => ({
@@ -177,9 +173,9 @@ onClickOutside(
 			}"
 		/>
 		<N8nIconButton
+			variant="subtle"
 			v-if="active"
 			:class="$style.close"
-			type="secondary"
 			icon="x"
 			aria-label="Close Node Creator"
 			@click="emit('closeNodeCreator')"

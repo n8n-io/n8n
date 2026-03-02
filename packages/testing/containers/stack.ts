@@ -40,10 +40,12 @@ export interface N8NStack {
 }
 
 function shouldServiceStart(name: ServiceName, service: Service, ctx: StartContext): boolean {
+	// Explicitly requested services always start
+	if (ctx.config.services?.includes(name)) return true;
 	if (service.shouldStart) {
 		return service.shouldStart(ctx);
 	}
-	return ctx.config.services?.includes(name) ?? false;
+	return false;
 }
 
 function groupByDependencyLevel(serviceNames: ServiceName[]): ServiceName[][] {
@@ -79,6 +81,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		projectName,
 		resourceQuota,
 		services: enabledServices = [],
+		external = false,
 	} = config;
 
 	const log = createElapsedLogger('stack');
@@ -125,6 +128,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			isQueueMode,
 			usePostgres,
 			needsLoadBalancer,
+			external,
 			environment,
 			serviceResults,
 			allocatedPorts: {

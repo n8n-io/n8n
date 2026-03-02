@@ -37,9 +37,7 @@ export interface CodeWorkflowBuilderConfig {
 	/** Optional logger */
 	logger?: Logger;
 	/**
-	 * Ordered list of directories to search for node definitions.
-	 * Built-in dirs come first, then the community dir.
-	 * If not provided, falls back to ~/.n8n/node-definitions.
+	 * Ordered list of directories to search for built-in node definitions.
 	 */
 	nodeDefinitionDirs?: string[];
 	/**
@@ -69,6 +67,10 @@ export interface CodeWorkflowBuilderConfig {
 	 * Optional callback for emitting telemetry events.
 	 */
 	onTelemetryEvent?: (event: string, properties: ITelemetryTrackProperties) => void;
+	/**
+	 * Whether to generate pin data for new nodes. Defaults to true.
+	 */
+	generatePinData?: boolean;
 }
 
 /**
@@ -97,6 +99,7 @@ export class CodeWorkflowBuilder {
 			callbacks: config.callbacks,
 			runMetadata: config.runMetadata,
 			onTelemetryEvent: config.onTelemetryEvent,
+			generatePinData: config.generatePinData,
 		});
 
 		this.logger = config.logger;

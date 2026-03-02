@@ -2,6 +2,7 @@ import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
 
 import type {
 	AgentMessageChunk,
+	MessagesCompactedChunk,
 	ToolProgressChunk,
 	WorkflowUpdateChunk,
 	StreamOutput,
@@ -69,7 +70,7 @@ describe('stream-processor', () => {
 				expect(result).toBeNull();
 			});
 
-			it('should skip compact_messages (responder handles user message)', () => {
+			it('should emit messages-compacted event for compact_messages', () => {
 				const chunk = {
 					compact_messages: {
 						messages: [
@@ -82,7 +83,10 @@ describe('stream-processor', () => {
 
 				const result = processStreamChunk('updates', chunk);
 
-				expect(result).toBeNull();
+				expect(result).toBeDefined();
+				expect(result?.messages).toHaveLength(1);
+				const message = result?.messages[0] as MessagesCompactedChunk;
+				expect(message.type).toBe('messages-compacted');
 			});
 
 			it('should handle responder with empty content', () => {
@@ -117,6 +121,40 @@ describe('stream-processor', () => {
 				expect(message.role).toBe('assistant');
 				expect(message.type).toBe('workflow-updated');
 				expect(message.codeSnippet).toBe(JSON.stringify(workflowData, null, 2));
+			});
+
+			it('should handle create_workflow_name with generated name', () => {
+				const workflowData = {
+					nodes: [] as unknown[],
+					connections: {},
+					name: 'Email Automation Workflow',
+				};
+				const chunk = {
+					create_workflow_name: {
+						workflowJSON: workflowData,
+					},
+				};
+
+				const result = processStreamChunk('updates', chunk);
+
+				expect(result).toBeDefined();
+				expect(result?.messages).toHaveLength(1);
+				const message = result?.messages[0] as WorkflowUpdateChunk;
+				expect(message.role).toBe('assistant');
+				expect(message.type).toBe('workflow-updated');
+				expect(message.codeSnippet).toBe(JSON.stringify(workflowData, null, 2));
+			});
+
+			it('should ignore create_workflow_name without a name', () => {
+				const chunk = {
+					create_workflow_name: {
+						workflowJSON: { nodes: [], connections: {} },
+					},
+				};
+
+				const result = processStreamChunk('updates', chunk);
+
+				expect(result).toBeNull();
 			});
 
 			it('should ignore chunks without relevant content', () => {
@@ -207,6 +245,23 @@ describe('stream-processor', () => {
 				expect(result).toBeDefined();
 				expect(result?.messages).toHaveLength(1);
 				expect(result?.messages[0]).toEqual(toolChunk);
+			});
+
+			it('should process assistant message chunks', () => {
+				const messageChunk: AgentMessageChunk = {
+					role: 'assistant',
+					type: 'message',
+					text: 'Here is how to set up credentials...',
+				};
+
+				const result = processStreamChunk('custom', messageChunk);
+
+				expect(result).toBeDefined();
+				expect(result?.messages).toHaveLength(1);
+				const message = result?.messages[0] as AgentMessageChunk;
+				expect(message.role).toBe('assistant');
+				expect(message.type).toBe('message');
+				expect(message.text).toBe('Here is how to set up credentials...');
 			});
 
 			it('should ignore non-tool chunks in custom mode', () => {
@@ -721,7 +776,9 @@ describe('stream-processor', () => {
 			expect(result[2].updates).toHaveLength(2); // input and output
 		});
 
-		it('should handle AIMessage with both content and tool_calls', () => {
+		it('should handle AIMessage with both content and tool_calls - only include tool calls', () => {
+			// When an AIMessage has tool_calls, the content is intermediate LLM "thinking" text
+			// that should be skipped. Only the tool calls should be formatted.
 			const aiMessage = new AIMessage('I will add a node for you');
 			aiMessage.tool_calls = [
 				{
@@ -736,13 +793,9 @@ describe('stream-processor', () => {
 
 			const result = formatMessages(messages);
 
-			expect(result).toHaveLength(2);
-			expect(result[0]).toEqual({
-				role: 'assistant',
-				type: 'message',
-				text: 'I will add a node for you',
-			});
-			expect(result[1].type).toBe('tool');
+			// Only tool message, content is skipped
+			expect(result).toHaveLength(1);
+			expect(result[0].type).toBe('tool');
 		});
 
 		it('should handle tool calls without args', () => {
@@ -1506,6 +1559,18 @@ code
 			const chunk = {
 				supervisor: {
 					messages: [{ content: 'Supervisor internal message' }],
+				},
+			};
+
+			const result = processStreamChunk('updates', chunk);
+
+			expect(result).toBeNull();
+		});
+
+		it('should skip assistant_subgraph state updates (text streamed via custom events)', () => {
+			const chunk = {
+				assistant_subgraph: {
+					messages: [{ content: 'Assistant response text' }],
 				},
 			};
 
