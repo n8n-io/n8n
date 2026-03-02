@@ -49,7 +49,7 @@ function getOrchestration(numShards, options = {}) {
 	const baseFlag = options.base ? ` --base=${options.base}` : '';
 	const output = execSync(
 		`node ${JANITOR_CLI} orchestrate --shards=${numShards}${impactFlag}${baseFlag}`,
-		{ cwd: PLAYWRIGHT_DIR, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] },
+		{ cwd: PLAYWRIGHT_DIR, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'inherit'] },
 	);
 	return JSON.parse(output);
 }
@@ -80,7 +80,7 @@ if (matrixMode) {
 
 		if (result.shards.length === 0) {
 			console.error('\n⏭️  No specs to run — all filtered out by discovery/impact. Skipping.\n');
-			console.log(JSON.stringify([{ shard: 1, specs: '', images: '' }]));
+			console.log(JSON.stringify([{ shard: 1, specs: '', images: '', skip: true }]));
 		} else {
 			console.error('\n📊 Shard Distribution:');
 			let maxShardTime = 0;
