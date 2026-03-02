@@ -245,30 +245,6 @@ export async function getVariables(workflowId?: string, projectId?: string): Pro
 	);
 }
 
-export async function getExternalSecretsProxy(projectId?: string): Promise<ExternalSecretsProxy> {
-	const externalSecretsProxy = Container.get(ExternalSecretsProxy);
-	const secretsProviderConnectionRepository = Container.get(SecretsProviderConnectionRepository);
-	// TODO: add caching for the secretsProviderConnectionRepository queries, similarly to Container.get(OwnershipService).getWorkflowProjectCached(workflowId)
-	if (projectId) {
-		const providerKeysAvailableInProject = (
-			await secretsProviderConnectionRepository.findAllAccessibleByProjectWithProjectAccess(
-				projectId,
-			)
-		).map((connection) => connection.providerKey);
-		externalSecretsProxy.setAvailableProviderKeysForProject(
-			projectId,
-			providerKeysAvailableInProject,
-		);
-	}
-	externalSecretsProxy.setGloballyAvailableProviderKeys(
-		(await secretsProviderConnectionRepository.findGlobalConnections()).map(
-			(connection) => connection.providerKey,
-		),
-	);
-
-	return externalSecretsProxy;
-}
-
 /**
  * Determines if a parent execution should be restarted when a child execution completes.
  *

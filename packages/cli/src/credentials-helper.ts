@@ -8,6 +8,7 @@ import {
 	GLOBAL_ADMIN_ROLE,
 	GLOBAL_OWNER_ROLE,
 	SharedCredentialsRepository,
+	SecretsProviderConnectionRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
@@ -93,6 +94,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly cacheService: CacheService,
 		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
+		private readonly secretsProviderConnectionRepository: SecretsProviderConnectionRepository,
 	) {
 		super();
 	}
@@ -386,6 +388,14 @@ export class CredentialsHelper extends ICredentialsHelper {
 		if (raw === true) {
 			return decryptedDataOriginal;
 		}
+
+		const externalSecretProvidersForCredential =
+			await this.secretsProviderConnectionRepository.findAllAccessibleByCredentialId(
+				credentialsEntity.id,
+			);
+		additionalData.externalSecrets.providerKeysAccessibleByCredential = new Set(
+			externalSecretProvidersForCredential.map((connection) => connection.providerKey),
+		);
 
 		return await this.applyDefaultsAndOverwrites(
 			additionalData,
