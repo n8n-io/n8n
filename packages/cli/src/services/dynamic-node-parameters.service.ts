@@ -221,8 +221,8 @@ export class DynamicNodeParametersService {
 		const method = this.getMethod('listSearch', methodName, nodeType);
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return await this.withCredentialExpressionErrorHandling(() =>
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 			method.call(thisArgs, filter, paginationToken),
 		);
 	}
