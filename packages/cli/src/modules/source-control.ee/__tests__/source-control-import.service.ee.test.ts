@@ -3036,6 +3036,37 @@ describe('SourceControlImportService', () => {
 				// Assert
 				expect(dataTableRepository.upsert).not.toHaveBeenCalled();
 			});
+
+			it('should throw UserError when a data table with the same name but different ID exists locally', async () => {
+				// Arrange
+				const mockDataTable = {
+					id: 'dt1',
+					name: 'Test Table',
+					ownedBy: {
+						type: 'team',
+						teamId: 'project1',
+						teamName: 'Team Project 1',
+					},
+					columns: [{ id: 'col1', name: 'Column 1', type: 'string', index: 0 }],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-02T00:00:00.000Z',
+				};
+
+				fsReadFile.mockResolvedValue(JSON.stringify(mockDataTable) as any);
+				projectRepository.findOne.mockResolvedValue({ id: 'project1', type: 'team' } as any);
+
+				// Return a different ID for the same name — simulates name collision
+				dataTableRepository.findOne.mockResolvedValueOnce({ id: 'dt-other' } as any);
+
+				// Act & Assert
+				await expect(
+					service.importDataTablesFromWorkFolder([mockCandidate], mockUser.id),
+				).rejects.toThrow(
+					'A data table with the name <strong>Test Table</strong> already exists locally.',
+				);
+
+				expect(dataTableRepository.upsert).not.toHaveBeenCalled();
+			});
 		});
 	});
 });

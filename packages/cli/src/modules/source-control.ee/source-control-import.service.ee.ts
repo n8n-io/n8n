@@ -1350,6 +1350,17 @@ export class SourceControlImportService {
 
 				const targetProjectId = targetProject.id;
 
+				// Check for name collision: a local table with the same name but different ID
+				const existingByName = await this.dataTableRepository.findOne({
+					where: { name: dataTable.name },
+					select: ['id'],
+				});
+				if (existingByName && existingByName.id !== dataTable.id) {
+					throw new UserError(
+						`A data table with the name <strong>${dataTable.name}</strong> already exists locally.<br />Please either rename the local data table, or the remote one with the id <strong>${dataTable.id}</strong> in the source control files.`,
+					);
+				}
+
 				// Check if data table already exists
 				const existingDataTable = await this.dataTableRepository.findOne({
 					where: { id: dataTable.id },
@@ -1440,6 +1451,9 @@ export class SourceControlImportService {
 
 				result.imported.push(dataTable.name);
 			} catch (error) {
+				if (error instanceof UserError) {
+					throw error;
+				}
 				this.logger.error(`Failed to import data table ${candidate.name}`, {
 					error: ensureError(error),
 				});
