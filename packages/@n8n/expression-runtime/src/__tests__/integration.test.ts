@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { ExpressionEvaluator } from '../evaluator/expression-evaluator';
 import { IsolatedVmBridge } from '../bridge/isolated-vm-bridge';
+import { TimeoutError, MemoryLimitError } from '../types';
 
 describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 	let evaluator: ExpressionEvaluator;
@@ -176,5 +177,29 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 		const result = evaluator.evaluate('{{ $json.items[150].id }}', data);
 
 		expect(result).toBe(150);
+	});
+});
+
+describe('Integration: IsolatedVmBridge error handling', () => {
+	it('should throw TimeoutError when expression exceeds timeout', async () => {
+		const bridge = new IsolatedVmBridge({ timeout: 100 });
+		await bridge.initialize();
+		try {
+			expect(() => bridge.execute('while(true){}', {})).toThrow(TimeoutError);
+		} finally {
+			await bridge.dispose();
+		}
+	});
+
+	it('should throw MemoryLimitError when expression exceeds memory limit', async () => {
+		const bridge = new IsolatedVmBridge({ memoryLimit: 8 });
+		await bridge.initialize();
+		try {
+			expect(() =>
+				bridge.execute('let a=[]; while(true){a.push(new Array(1000000).fill(1))}', {}),
+			).toThrow(MemoryLimitError);
+		} finally {
+			await bridge.dispose();
+		}
 	});
 });
