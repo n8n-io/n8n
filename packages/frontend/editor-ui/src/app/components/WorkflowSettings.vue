@@ -75,6 +75,20 @@ const posthogStore = usePostHog();
 
 const isLoading = ref(true);
 const workflowCallerPolicyOptions = ref<Array<{ key: string; value: string }>>([]);
+const redactionPolicyOptions = ref<Array<{ key: string; value: string }>>([
+	{
+		key: 'none',
+		value: i18n.baseText('workflowSettings.redactionPolicy.options.none'),
+	},
+	{
+		key: 'all',
+		value: i18n.baseText('workflowSettings.redactionPolicy.options.all'),
+	},
+	{
+		key: 'non-manual',
+		value: i18n.baseText('workflowSettings.redactionPolicy.options.nonManual'),
+	},
+]);
 const saveDataErrorExecutionOptions = ref<Array<{ key: string; value: string }>>([]);
 const saveDataSuccessExecutionOptions = ref<Array<{ key: string; value: string }>>([]);
 const saveExecutionProgressOptions = ref<Array<{ key: string | boolean; value: string }>>([]);
@@ -104,13 +118,26 @@ const originalBinaryMode = ref<undefined | WorkflowSettingsBinaryMode>(undefined
 
 const {
 	resolvers: credentialResolvers,
+	resolverTypes: credentialResolverTypes,
 	fetchResolvers: loadCredentialResolvers,
+	fetchResolverTypes: loadCredentialResolverTypes,
 	openCreateModal,
 	openEditModal,
 } = useCredentialResolvers();
 const executionTimeout = ref(0);
 const maxExecutionTimeout = ref(0);
 const timeoutHMS = ref<ITimeoutHMS>({ hours: 0, minutes: 0, seconds: 0 });
+
+const isSelectedResolverEditable = computed(() => {
+	const resolverId = workflowSettings.value.credentialResolverId;
+	if (!resolverId) return false;
+
+	const resolver = credentialResolvers.value.find((r) => r.id === resolverId);
+	if (!resolver) return false;
+
+	const resolverType = credentialResolverTypes.value.find((t) => t.name === resolver.type);
+	return !!resolverType?.options?.length;
+});
 
 const helpTexts = computed(() => ({
 	errorWorkflow: i18n.baseText('workflowSettings.helpTexts.errorWorkflow'),
@@ -124,6 +151,7 @@ const helpTexts = computed(() => ({
 	executionTimeout: i18n.baseText('workflowSettings.helpTexts.executionTimeout'),
 	workflowCallerPolicy: i18n.baseText('workflowSettings.helpTexts.workflowCallerPolicy'),
 	workflowCallerIds: i18n.baseText('workflowSettings.helpTexts.workflowCallerIds'),
+	redactionPolicy: i18n.baseText('workflowSettings.helpTexts.redactionPolicy'),
 }));
 
 const defaultValues = ref({
@@ -161,6 +189,11 @@ const workflowOwnerName = computed(() => {
 	return workflowsEEStore.getWorkflowOwnerName(`${workflowId.value}`, fallback);
 });
 const workflowPermissions = computed(() => getResourcePermissions(workflow.value?.scopes).workflow);
+
+const isRedactionSettingVisible = computed(
+	() =>
+		settingsStore.isModuleActive('redaction') && workflowPermissions.value.updateRedactionSetting,
+);
 
 const mcpToggleDisabled = computed(() => {
 	return readOnlyEnv.value || !workflowPermissions.value.update || !isEligibleForMcp.value;
@@ -630,7 +663,7 @@ onMounted(async () => {
 		];
 
 		if (isCredentialResolverEnabled.value) {
-			promises.push(loadCredentialResolvers());
+			promises.push(loadCredentialResolvers(), loadCredentialResolverTypes());
 		}
 
 		await Promise.all(promises);
@@ -826,6 +859,7 @@ onBeforeUnmount(() => {
 								v-model="workflowSettings.credentialResolverId"
 								:placeholder="i18n.baseText('workflowSettings.credentialResolver.placeholder')"
 								filterable
+								clearable
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								:limit-popper-width="true"
 								data-test-id="workflow-settings-credential-resolver"
@@ -851,7 +885,7 @@ onBeforeUnmount(() => {
 								</template>
 							</N8nSelect>
 							<N8nIconButton
-								v-if="workflowSettings.credentialResolverId"
+								v-if="isSelectedResolverEditable"
 								variant="ghost"
 								icon="pen"
 								size="small"
@@ -1060,6 +1094,37 @@ onBeforeUnmount(() => {
 						</N8nSelect>
 					</ElCol>
 				</ElRow>
+				<div v-if="isRedactionSettingVisible" data-test-id="workflow-settings-redaction-policy">
+					<ElRow>
+						<ElCol :span="10" :class="$style['setting-name']">
+							{{ i18n.baseText('workflowSettings.redactionPolicy') }}
+							<N8nTooltip placement="top">
+								<template #content>
+									<div v-text="helpTexts.redactionPolicy"></div>
+								</template>
+								<N8nIcon icon="circle-help" />
+							</N8nTooltip>
+						</ElCol>
+						<ElCol :span="14" class="ignore-key-press-canvas">
+							<N8nSelect
+								v-model="workflowSettings.redactionPolicy"
+								:disabled="readOnlyEnv || !workflowPermissions.updateRedactionSetting"
+								:placeholder="i18n.baseText('workflowSettings.selectOption')"
+								filterable
+								:limit-popper-width="true"
+								data-test-id="workflow-settings-redaction-policy-select"
+							>
+								<N8nOption
+									v-for="option of redactionPolicyOptions"
+									:key="option.key"
+									:label="option.value"
+									:value="option.key"
+								>
+								</N8nOption>
+							</N8nSelect>
+						</ElCol>
+					</ElRow>
+				</div>
 				<ElRow>
 					<ElCol :span="10" :class="$style['setting-name']">
 						{{ i18n.baseText('workflowSettings.timeoutWorkflow') }}

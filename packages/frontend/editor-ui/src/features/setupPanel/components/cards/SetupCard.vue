@@ -8,9 +8,9 @@ import TriggerExecuteButton from '@/features/setupPanel/components/TriggerExecut
 import WebhookUrlPreview from '@/features/setupPanel/components/WebhookUrlPreview.vue';
 import { useTriggerExecution } from '@/features/setupPanel/composables/useTriggerExecution';
 import { useWebhookUrls } from '@/features/setupPanel/composables/useWebhookUrls';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const props = withDefaults(
 	defineProps<{
@@ -40,8 +40,8 @@ const expanded = defineModel<boolean>('expanded', { default: false });
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
-const workflowsStore = useWorkflowsStore();
 const setupPanelStore = useSetupPanelStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const hadManualInteraction = ref(false);
 
@@ -96,8 +96,8 @@ watch(
 	(isComplete) => {
 		if (isComplete && hadManualInteraction.value) {
 			telemetry.track('User completed setup step', {
-				template_id: workflowsStore.workflow.meta?.templateId,
-				workflow_id: workflowsStore.workflowId,
+				template_id: workflowDocumentStore?.value?.meta?.templateId,
+				workflow_id: workflowDocumentStore?.value?.workflowId,
 				...props.telemetryPayload,
 			});
 			hadManualInteraction.value = false;

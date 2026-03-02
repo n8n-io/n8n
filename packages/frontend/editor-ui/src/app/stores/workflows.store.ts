@@ -833,8 +833,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			...value,
 			...(!value.hasOwnProperty('active') ? { active: false } : {}),
 			...(!value.hasOwnProperty('connections') ? { connections: {} } : {}),
-			...(!value.hasOwnProperty('createdAt') ? { createdAt: -1 } : {}),
-			...(!value.hasOwnProperty('updatedAt') ? { updatedAt: -1 } : {}),
 			...(!value.hasOwnProperty('id') ? { id: '' } : {}),
 			...(!value.hasOwnProperty('nodes') ? { nodes: [] } : {}),
 			...(!value.hasOwnProperty('settings') ? { settings: { ...defaults.settings } } : {}),
@@ -1508,15 +1506,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	async function runWorkflow(startRunData: IStartRunData): Promise<IExecutionPushResponse> {
-		if (startRunData.workflowData.settings === null) {
-			startRunData.workflowData.settings = undefined;
-		}
-
 		try {
 			return await makeRestApiRequest(
 				rootStore.restApiContext,
 				'POST',
-				`/workflows/${startRunData.workflowData.id}/run`,
+				`/workflows/${startRunData.workflowId}/run`,
 				startRunData as unknown as IDataObject,
 			);
 		} catch (error) {
