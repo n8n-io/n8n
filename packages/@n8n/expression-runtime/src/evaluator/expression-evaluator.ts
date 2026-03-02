@@ -64,6 +64,10 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 		}
 
 		if (!this.tournament) {
+			// Tournament requires an errorHandler but we only use getExpressionCode()
+			// for AST transformation — we never call tournament.execute(), so this
+			// handler is never invoked. Runtime errors are handled by the bridge's
+			// own E() injection in injectErrorHandler().
 			const errorHandler = () => {};
 			this.tournament = new Tournament(errorHandler, undefined, undefined, {
 				before: this.config.hooks?.before ?? [],
