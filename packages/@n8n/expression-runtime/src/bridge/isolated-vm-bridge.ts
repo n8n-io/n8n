@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { RuntimeBridge, BridgeConfig } from '../types';
+import { DEFAULT_BRIDGE_CONFIG } from '../types';
 
 // Get __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -38,9 +39,8 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 	constructor(config: BridgeConfig = {}) {
 		this.config = {
-			memoryLimit: config.memoryLimit ?? 128,
-			timeout: config.timeout ?? 5000,
-			debug: config.debug ?? false,
+			...DEFAULT_BRIDGE_CONFIG,
+			...config,
 		};
 
 		// Create isolate with memory limit
