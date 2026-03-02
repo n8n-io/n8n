@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createDeepLazyProxy } from '../lazy-proxy';
+import { createDeepLazyProxy, isLazyProxy, getProxyPath } from '../lazy-proxy';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -68,24 +68,6 @@ describe('createDeepLazyProxy', () => {
 			expect(mocks.getValueAtPath).not.toHaveBeenCalled();
 		});
 
-		it('returns true for __isProxy', () => {
-			const proxy = createDeepLazyProxy();
-			expect(proxy.__isProxy).toBe(true);
-			expect(mocks.getValueAtPath).not.toHaveBeenCalled();
-		});
-
-		it('returns empty array for __path when basePath is default', () => {
-			const proxy = createDeepLazyProxy();
-			expect(proxy.__path).toEqual([]);
-			expect(mocks.getValueAtPath).not.toHaveBeenCalled();
-		});
-
-		it('returns basePath for __path when basePath is provided', () => {
-			const proxy = createDeepLazyProxy(['$json', 'user']);
-			expect(proxy.__path).toEqual(['$json', 'user']);
-			expect(mocks.getValueAtPath).not.toHaveBeenCalled();
-		});
-
 		it('toString() returns "[object Object]"', () => {
 			const proxy = createDeepLazyProxy();
 			expect(proxy.toString()).toBe('[object Object]');
@@ -98,6 +80,37 @@ describe('createDeepLazyProxy', () => {
 			expect(typeof val).toBe('object');
 			expect(val).not.toBeNull();
 			expect(mocks.getValueAtPath).not.toHaveBeenCalled();
+		});
+	});
+
+	// -----------------------------------------------------------------------
+	// 1b. Proxy identity helpers (isLazyProxy / getProxyPath)
+	// -----------------------------------------------------------------------
+
+	describe('proxy identity helpers', () => {
+		it('isLazyProxy() returns true for a proxy', () => {
+			const proxy = createDeepLazyProxy();
+			expect(isLazyProxy(proxy)).toBe(true);
+		});
+
+		it('isLazyProxy() returns false for plain objects', () => {
+			expect(isLazyProxy({})).toBe(false);
+			expect(isLazyProxy(null)).toBe(false);
+			expect(isLazyProxy('string')).toBe(false);
+		});
+
+		it('getProxyPath() returns [] when no basePath is provided', () => {
+			const proxy = createDeepLazyProxy();
+			expect(getProxyPath(proxy)).toEqual([]);
+		});
+
+		it('getProxyPath() returns the provided basePath', () => {
+			const proxy = createDeepLazyProxy(['$json', 'user']);
+			expect(getProxyPath(proxy)).toEqual(['$json', 'user']);
+		});
+
+		it('getProxyPath() returns undefined for non-proxies', () => {
+			expect(getProxyPath({})).toBeUndefined();
 		});
 	});
 
@@ -207,16 +220,16 @@ describe('createDeepLazyProxy', () => {
 			const proxy = proxyWithLargeArray();
 			mocks.getArrayElement.mockReturnValue({ __isObject: true, __keys: ['a'] });
 			const element = proxy.items[0];
-			expect(element.__isProxy).toBe(true);
-			expect(element.__path).toEqual(['items', '0']);
+			expect(isLazyProxy(element)).toBe(true);
+			expect(getProxyPath(element)).toEqual(['items', '0']);
 		});
 
 		it('creates a nested proxy for array elements that are arrays', () => {
 			const proxy = proxyWithLargeArray();
 			mocks.getArrayElement.mockReturnValue({ __isArray: true, __length: 5 });
 			const element = proxy.items[0];
-			expect(element.__isProxy).toBe(true);
-			expect(element.__path).toEqual(['items', '0']);
+			expect(isLazyProxy(element)).toBe(true);
+			expect(getProxyPath(element)).toEqual(['items', '0']);
 		});
 
 		it('caches elements after first access', () => {
@@ -257,13 +270,13 @@ describe('createDeepLazyProxy', () => {
 		it('creates a nested proxy for object metadata', () => {
 			mocks.getValueAtPath.mockReturnValue({ __isObject: true, __keys: ['a', 'b'] });
 			const proxy = createDeepLazyProxy();
-			expect(proxy.obj.__isProxy).toBe(true);
+			expect(isLazyProxy(proxy.obj)).toBe(true);
 		});
 
 		it('nested proxy has the correct path', () => {
 			mocks.getValueAtPath.mockReturnValue({ __isObject: true, __keys: ['a'] });
 			const proxy = createDeepLazyProxy();
-			expect(proxy.obj.__path).toEqual(['obj']);
+			expect(getProxyPath(proxy.obj)).toEqual(['obj']);
 		});
 
 		it('deep nesting builds correct paths', () => {
@@ -282,7 +295,7 @@ describe('createDeepLazyProxy', () => {
 			// a.b.c -> returns object metadata
 			const c = b.c;
 			expect(mocks.getValueAtPath).toHaveBeenLastCalledWith(null, [['a', 'b', 'c']], ivmCallOpts);
-			expect(c.__path).toEqual(['a', 'b', 'c']);
+			expect(getProxyPath(c)).toEqual(['a', 'b', 'c']);
 		});
 
 		it('caches the nested proxy', () => {
@@ -311,7 +324,7 @@ describe('createDeepLazyProxy', () => {
 			mocks.getValueAtPath.mockReturnValue({ __isObject: true, __keys: ['name'] });
 			const proxy = createDeepLazyProxy(['$json']);
 			const user = proxy.user;
-			expect(user.__path).toEqual(['$json', 'user']);
+			expect(getProxyPath(user)).toEqual(['$json', 'user']);
 
 			// Accessing a property on the nested proxy should build the full path
 			mocks.getValueAtPath.mockReturnValue('Alice');
