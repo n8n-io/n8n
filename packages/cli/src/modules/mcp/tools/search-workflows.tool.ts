@@ -52,7 +52,7 @@ const outputSchema = {
 				canExecute: z
 					.boolean()
 					.describe('Whether the user has permission to execute this workflow'),
-				availableInMCP: z.boolean().describe('Whether the workflow is available for MCP execution'),
+				availableInMCP: z.boolean().describe('Whether the workflow is visible to MCP tools'),
 			}),
 		)
 		.describe('List of workflows matching the query'),
