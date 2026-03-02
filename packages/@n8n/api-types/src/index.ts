@@ -152,6 +152,7 @@ export {
 	type DataTableCreateColumnSchema,
 	type DataTableListFilter,
 	type DataTableListOptions,
+	type DataTableListSortBy,
 	dateTimeSchema,
 	dataTableColumnNameSchema,
 } from './schemas/data-table.schema';

@@ -19,8 +19,10 @@ import { useProjectPages } from '@/features/collaboration/projects/composables/u
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import {
+	DEBOUNCE_TIME,
 	DEFAULT_WORKFLOW_PAGE_SIZE,
 	EnterpriseEditionFeature,
+	getDebounceTime,
 	MODAL_CONFIRM,
 	VIEWS,
 } from '@/app/constants';
@@ -92,7 +94,8 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-const SEARCH_DEBOUNCE_TIME = 300;
+
+const SEARCH_DEBOUNCE_TIME = getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH);
 const FILTERS_DEBOUNCE_TIME = 100;
 
 interface Filters extends BaseFilters {
