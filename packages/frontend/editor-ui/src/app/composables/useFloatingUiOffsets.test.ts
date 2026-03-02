@@ -28,7 +28,9 @@ describe(useFloatingUiOffsets, () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		currentRouteName = '';
-		useWorkflowsStore().setNodes([createTestNode({ name: 'n0' })]);
+		const workflowsStore = useWorkflowsStore();
+		workflowsStore.workflow.id = 'test-workflow';
+		workflowsStore.setNodes([createTestNode({ name: 'n0' })]);
 	});
 
 	describe('toastBottomOffset', () => {
