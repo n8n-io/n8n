@@ -670,6 +670,7 @@ const onAddButtonClick = () => {
 					variant="subtle"
 					v-if="hasSingleOption"
 					icon="plus"
+					size="small"
 					:data-test-id="`fixed-collection-add-top-level-button`"
 					:label="placeholder"
 					:disabled="isAddDisabled"
@@ -688,6 +689,7 @@ const onAddButtonClick = () => {
 							class="n8n-button--highlightFill"
 							variant="subtle"
 							icon="plus"
+							size="small"
 							:label="placeholder"
 							:disabled="isAddDisabled"
 						/>
@@ -769,6 +771,7 @@ const onAddButtonClick = () => {
 							variant="subtle"
 							v-if="hasSingleOption"
 							icon="plus"
+							size="small"
 							:data-test-id="`fixed-collection-add-nested-button`"
 							:label="placeholder"
 							@click="onAddButtonClick"
@@ -785,6 +788,7 @@ const onAddButtonClick = () => {
 									class="n8n-button--highlightFill"
 									variant="subtle"
 									icon="plus"
+									size="small"
 									:label="placeholder"
 								/>
 							</template>
