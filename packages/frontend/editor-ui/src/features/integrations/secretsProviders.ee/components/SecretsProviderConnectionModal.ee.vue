@@ -144,7 +144,7 @@ const scopeOptions = computed<Array<{ value: string; label: string; icon: IconOr
 });
 
 const scopeSelectValue = computed(() =>
-	modal.isSharedGlobally.value ? '' : modal.projectIds.value[0] ?? '',
+	modal.isSharedGlobally.value ? '' : (modal.projectIds.value[0] ?? ''),
 );
 
 const selectedScopeIcon = computed<IconOrEmoji>(() => {
@@ -380,7 +380,7 @@ onMounted(async () => {
 										:readonly="modal.isEditMode.value"
 										:disabled="modal.isEditMode.value"
 										aria-required="true"
-										placeholder="vault-project-x-y-z"
+										placeholder="myVault"
 										@update:model-value="handleConnectionNameUpdate"
 										@blur="handleConnectionNameBlur"
 									/>
