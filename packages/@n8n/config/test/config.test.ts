@@ -6,7 +6,7 @@ import path from 'node:path';
 
 import type { UserManagementConfig } from '../src/configs/user-management.config';
 import type { DatabaseConfig } from '../src/index';
-import { GlobalConfig } from '../src/index';
+import { GlobalConfig, SSRF_DEFAULT_BLOCKED_IP_RANGES } from '../src/index';
 
 jest.mock('fs');
 const mockFs = mock<typeof fs>();
@@ -25,7 +25,7 @@ describe('GlobalConfig', () => {
 		process.env = originalEnv;
 	});
 
-	const defaultConfig: GlobalConfig = {
+	const defaultConfig = {
 		path: '/',
 		host: 'localhost',
 		port: 5678,
@@ -411,11 +411,19 @@ describe('GlobalConfig', () => {
 				scopesProjectsRolesClaimName: 'n8n_projects',
 			},
 		},
+		ssrfProtection: {
+			enabled: false,
+			blockedIpRanges: 'default',
+			allowedIpRanges: [],
+			allowedHostnames: [],
+			dnsCacheMaxTtlSeconds: 300,
+			dnsCacheMaxSize: 1024 * 1024,
+			resolvedBlockedIpRanges: [...SSRF_DEFAULT_BLOCKED_IP_RANGES],
+		},
 		redis: {
 			prefix: 'n8n',
 		},
 		externalFrontendHooksUrls: '',
-		// @ts-expect-error structuredClone ignores properties defined as a getter
 		ai: {
 			enabled: false,
 			persistBuilderSessions: false,
