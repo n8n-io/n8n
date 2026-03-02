@@ -1,7 +1,11 @@
-import { computed, watch, type Ref } from 'vue';
+import { computed, ref, watch, type Ref } from 'vue';
 
 import type { INodeUi } from '@/Interface';
-import { type ICredentialDataDecryptedObject } from 'n8n-workflow';
+import {
+	type ICredentialDataDecryptedObject,
+	type INode,
+	isResourceLocatorValue,
+} from 'n8n-workflow';
 import type { SetupCardItem, NodeSetupState } from '@/features/setupPanel/setupPanel.types';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -25,6 +29,8 @@ import { PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/app/constants';
 import { sortNodesByExecutionOrder } from '@/app/utils/workflowUtils';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 /**
  * Composable that manages workflow setup state for credential configuration.
@@ -39,8 +45,107 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	const nodeHelpers = useNodeHelpers();
 	const environmentsStore = useEnvironmentsStore();
 	const workflowState = injectWorkflowState();
+	const templatesStore = useTemplatesStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	const sourceNodes = computed(() => nodes?.value ?? workflowsStore.allNodes);
+
+	/**
+	 * Synchronous: detects resource locator parameters from the current workflow
+	 * nodes using node type definitions and current parameter values.
+	 * Only active for template-based workflows (templateId is set).
+	 */
+	const resourceLocatorsByNode = computed(() => {
+		if (!workflowDocumentStore?.value?.meta?.templateId) return new Map<string, string[]>();
+
+		const paramMap = new Map<string, string[]>();
+		for (const node of sourceNodes.value) {
+			const paramNames = new Set<string>();
+
+			// From node type definition
+			const nodeTypeInfo = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+			if (nodeTypeInfo) {
+				for (const prop of nodeTypeInfo.properties) {
+					if (prop.type === 'resourceLocator') {
+						paramNames.add(prop.name);
+					}
+				}
+			}
+
+			// From current parameter values (catches dynamic parameters not in the type definition)
+			for (const [key, value] of Object.entries(node.parameters)) {
+				if (isResourceLocatorValue(value)) {
+					paramNames.add(key);
+				}
+			}
+
+			if (paramNames.size > 0) {
+				paramMap.set(node.name, Array.from(paramNames));
+			}
+		}
+		return paramMap;
+	});
+
+	/**
+	 * Async supplement: additional parameter names from the upstream template
+	 * (required parameters that were missing in the template).
+	 */
+	const templateMissingParams = ref(new Map<string, string[]>());
+
+	/**
+	 * Combined map of node name → parameter names that should always be shown.
+	 * Merges synchronous resource locator detection with async template results.
+	 */
+	const templateParametersByNode = computed(() => {
+		const merged = new Map<string, string[]>();
+
+		for (const [nodeName, params] of resourceLocatorsByNode.value) {
+			merged.set(nodeName, [...params]);
+		}
+
+		for (const [nodeName, params] of templateMissingParams.value) {
+			const existing = merged.get(nodeName);
+			if (existing) {
+				const combined = new Set([...existing, ...params]);
+				merged.set(nodeName, Array.from(combined));
+			} else {
+				merged.set(nodeName, [...params]);
+			}
+		}
+
+		return merged;
+	});
+
+	const nodeHasTemplateParams = (nodeName: string) =>
+		(templateParametersByNode.value.get(nodeName)?.length ?? 0) > 0;
+
+	async function loadTemplateMissingParameters() {
+		const templateId = workflowDocumentStore?.value?.meta?.templateId;
+		if (!templateId) return;
+
+		try {
+			const template =
+				templatesStore.getFullTemplateById(templateId) ??
+				(await templatesStore.fetchTemplateById(templateId));
+
+			if (!template?.workflow?.nodes) return;
+
+			const paramMap = new Map<string, string[]>();
+			for (const templateNode of template.workflow.nodes) {
+				// Required parameters that are missing in the template
+				const issues = getNodeParametersIssues(nodeTypesStore, templateNode as unknown as INode);
+				const paramNames = Object.keys(issues);
+				if (paramNames.length > 0) {
+					paramMap.set(templateNode.name, paramNames);
+				}
+			}
+			templateMissingParams.value = paramMap;
+		} catch {
+			// Template fetch failed — resource locators still detected synchronously
+		}
+	}
+
+	void loadTemplateMissingParameters();
 
 	const getCredentialDisplayName = (credentialType: string): string => {
 		const credentialTypeInfo = credentialsStore.getCredentialTypeByName(credentialType);
@@ -128,7 +233,8 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 			.filter(
 				({ credentialTypes, isTrigger, parameterIssues, node }) =>
 					seenNodes.has(node.id) ||
-					0 < credentialTypes.length + +isTrigger + Object.keys(parameterIssues).length,
+					0 < credentialTypes.length + +isTrigger + Object.keys(parameterIssues).length ||
+					nodeHasTemplateParams(node.name),
 			);
 
 		// Never remove entries once we show them
@@ -164,7 +270,9 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	const nodesWithMissingParameters = computed(() => {
 		const result = nodesRequiringSetup.value.filter(
 			({ parameterIssues, node }) =>
-				seenParameterNodes.has(node.id) || Object.keys(parameterIssues).length > 0,
+				seenParameterNodes.has(node.id) ||
+				Object.keys(parameterIssues).length > 0 ||
+				nodeHasTemplateParams(node.name),
 		);
 
 		for (const { node } of result) {
@@ -196,10 +304,10 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	 * When nodes have both credentials and parameters, they're handled by nodeStates instead.
 	 */
 	const credentialTypeStates = computed(() => {
-		// First, identify which credential types have ANY nodes with parameter issues
+		// First, identify which credential types have ANY nodes with parameter issues or template parameters
 		const credentialTypesWithParameters = new Set<string>();
-		for (const { credentialTypes, parameterIssues } of nodesRequiringSetup.value) {
-			if (Object.keys(parameterIssues).length > 0) {
+		for (const { credentialTypes, parameterIssues, node } of nodesRequiringSetup.value) {
+			if (Object.keys(parameterIssues).length > 0 || nodeHasTemplateParams(node.name)) {
 				for (const credType of credentialTypes) {
 					credentialTypesWithParameters.add(credType);
 				}
@@ -298,16 +406,18 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 			result.push({
 				node,
 				parameterIssues,
+				templateParameterNames: templateParametersByNode.value.get(node.name),
 				isTrigger,
 				isComplete: Object.keys(parameterIssues).length === 0,
 			});
 		}
 
 		// --- Credential+parameter nodes ---
-		// Identify which credential types have ANY nodes with parameter issues (or had in the past)
+		// Identify which credential types have ANY nodes with parameter issues,
+		// template parameters, or had them in the past
 		const credentialTypesWithParameters = new Set<string>();
-		for (const { credentialTypes, parameterIssues } of nodesRequiringSetup.value) {
-			if (Object.keys(parameterIssues).length > 0) {
+		for (const { credentialTypes, parameterIssues, node } of nodesRequiringSetup.value) {
+			if (Object.keys(parameterIssues).length > 0 || nodeHasTemplateParams(node.name)) {
 				for (const credType of credentialTypes) {
 					credentialTypesWithParameters.add(credType);
 					seenCredentialTypesWithParameters.add(credType);
@@ -349,9 +459,10 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 
 				const combinationKey = `${credType}:${node.id}`;
 				const hasParameters = Object.keys(parameterIssues).length > 0;
+				const hasTemplateParams = nodeHasTemplateParams(node.name);
 				const alreadySeen = seenNodeCredentials.has(combinationKey);
 
-				if (hasParameters || alreadySeen) {
+				if (hasParameters || hasTemplateParams || alreadySeen) {
 					if (!credTypeToNodesWithParams.has(credType)) {
 						credTypeToNodesWithParams.set(credType, []);
 					}
@@ -408,6 +519,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 					selectedCredentialId,
 					issues: issueMessages,
 					parameterIssues,
+					templateParameterNames: templateParametersByNode.value.get(node.name),
 					isTrigger,
 					showCredentialPicker,
 					isComplete,

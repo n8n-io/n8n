@@ -24,6 +24,10 @@ export interface NodeSetupState {
 	isTrigger: boolean;
 	isComplete: boolean;
 
+	/** Parameter names from the upstream template that should always be shown
+	 * (resource locators and missing required parameters in the template). */
+	templateParameterNames?: string[];
+
 	// Credential fields — present when the node requires credentials
 	credentialType?: string;
 	credentialDisplayName?: string;

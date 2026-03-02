@@ -19,6 +19,7 @@ import SetupCard from '@/features/setupPanel/components/cards/SetupCard.vue';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useExpressionResolveCtx } from '@/features/workflows/canvas/experimental/composables/useExpressionResolveCtx';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const props = defineProps<{
 	state: NodeSetupState;
@@ -38,6 +39,7 @@ const credentialsStore = useCredentialsStore();
 const nodeHelpers = useNodeHelpers();
 const workflowState = injectWorkflowState();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const setupCard = ref<InstanceType<typeof SetupCard> | null>(null);
 
@@ -96,7 +98,9 @@ const parameters = computed<INodeProperties[]>(() => {
 	if (shownParameters.value.length > 0) return shownParameters.value;
 
 	const issueParamNames = Object.keys(props.state.parameterIssues);
-	const result = nodeType.value.properties.filter((param) => issueParamNames.includes(param.name));
+	const templateParamNames = props.state.templateParameterNames ?? [];
+	const allParamNames = new Set([...issueParamNames, ...templateParamNames]);
+	const result = nodeType.value.properties.filter((param) => allParamNames.has(param.name));
 	for (const x of result) {
 		if (!shownParameters.value.includes(x)) shownParameters.value.push(x);
 	}
@@ -131,7 +135,7 @@ const telemetryPayload = computed(() => {
 
 	return {
 		type: types,
-		template_id: workflowsStore.workflow.meta?.templateId,
+		template_id: workflowDocumentStore?.value?.meta?.templateId,
 		workflow_id: workflowsStore.workflow.id,
 		node_types: (props.state.allNodesUsingCredential ?? [props.state.node]).map((n) => n.type),
 		credential_type: props.state.credentialType,
@@ -181,7 +185,12 @@ const { onSharedNodesHintEnter, onSharedNodesHintLeave } = useCardNodeHighlight(
 	computed(() => (props.state.allNodesUsingCredential ?? []).map((n) => n.id)),
 );
 
-const allParametersAddressed = ref(false);
+const allParametersAddressed = ref(
+	// When template parameters exist but there are no current issues,
+	// the user already configured them in a previous session
+	(props.state.templateParameterNames?.length ?? 0) > 0 &&
+		Object.keys(props.state.parameterIssues).length === 0,
+);
 
 // Only mark as complete if explicitly closed
 watch(expanded, (value, oldValue) => {
