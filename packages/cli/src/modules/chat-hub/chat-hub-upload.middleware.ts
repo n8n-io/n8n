@@ -14,7 +14,7 @@ export class ChatHubUploadMiddleware {
 	constructor(globalConfig: GlobalConfig) {
 		const maxFileSizeBytes = globalConfig.endpoints.formDataFileSizeMax * 1024 * 1024;
 		this.upload = multer({
-			storage: multer.memoryStorage(),
+			storage: multer.diskStorage({}),
 			limits: { fileSize: maxFileSizeBytes },
 			fileFilter: (_req, file, next) => {
 				if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
