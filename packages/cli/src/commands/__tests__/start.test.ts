@@ -26,6 +26,7 @@ import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
+import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 
 const authRolesService = mockInstance(AuthRolesService);
 authRolesService.init.mockResolvedValue(undefined);
@@ -62,6 +63,8 @@ mockInstance(MessageEventBus);
 mockInstance(CommunityPackagesConfig);
 const communityPackagesService = mockInstance(CommunityPackagesService);
 communityPackagesService.init.mockResolvedValue(undefined);
+const taskRunnerModule = mockInstance(TaskRunnerModule);
+taskRunnerModule.start.mockResolvedValue(undefined);
 
 const instanceSettings = Container.get(InstanceSettings);
 
@@ -113,6 +116,7 @@ describe('Start - AuthRolesService initialization', () => {
 		Container.set(MessageEventBus, mockInstance(MessageEventBus));
 		Container.set(CommunityPackagesConfig, mockInstance(CommunityPackagesConfig));
 		Container.set(CommunityPackagesService, communityPackagesService);
+		Container.set(TaskRunnerModule, taskRunnerModule);
 
 		start = new Start();
 		// @ts-expect-error - Accessing protected property for testing
