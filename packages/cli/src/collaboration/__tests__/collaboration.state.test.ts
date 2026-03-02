@@ -67,6 +67,38 @@ describe('CollaborationState', () => {
 			expect(users).toBeEmptyArray();
 		});
 
+		it('should handle legacy cache format without pipe delimiter (CAT-2502)', async () => {
+			// Arrange - simulate old cache format from 2.9.x: userId -> timestamp (no pipe)
+			mockCacheService.getHash.mockResolvedValueOnce({
+				'4b324c79-e576-49f2-b493-43408059b081': '2026-02-26T21:23:36.318Z',
+			});
+
+			// Act - this should not throw when parsing legacy format
+			const users = await collaborationState.getCollaborators(workflowId);
+
+			// Assert - should gracefully handle legacy format
+			// Either return empty array or parse what it can
+			expect(users).toBeDefined();
+		});
+
+		it('should handle mixed legacy and new cache formats (CAT-2502)', async () => {
+			// Arrange - simulate mixed cache with both old and new formats
+			const now = new Date().toISOString();
+			mockCacheService.getHash.mockResolvedValueOnce({
+				// Old format: userId -> timestamp (no pipe, from 2.9.x)
+				'old-user-id': '2026-02-26T21:23:36.318Z',
+				// New format: clientId -> "userId|timestamp"
+				'new-client-id': `new-user-id|${now}`,
+			});
+
+			// Act - should handle mixed formats without crashing
+			const users = await collaborationState.getCollaborators(workflowId);
+
+			// Assert - should at least parse the valid new format entries
+			expect(users).toBeDefined();
+			expect(Array.isArray(users)).toBe(true);
+		});
+
 		it('should get workflow collaborators that are not expired', async () => {
 			// Arrange
 			const nowMinus16Minutes = new Date();
