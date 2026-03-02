@@ -3,15 +3,17 @@ import { ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nSwitch2, N8nText } from '@n8n/design-system';
 import SetupPanelCards from '@/features/setupPanel/components/SetupPanelCards.vue';
+import { useWorkflowSetupState } from '@/features/setupPanel/composables/useWorkflowSetupState';
 
 const i18n = useI18n();
 const showCompleted = ref(true);
+const setupState = useWorkflowSetupState();
 </script>
 
 <template>
 	<div :class="$style.container" data-test-id="setup-panel-container">
 		<div :class="$style.content" data-test-id="setup-panel-cards">
-			<SetupPanelCards :show-completed="showCompleted" />
+			<SetupPanelCards :state="setupState" :show-completed="showCompleted" />
 		</div>
 		<footer :class="$style.footer" data-test-id="setup-panel-footer">
 			<N8nText :class="$style['toggle-label']" tag="label" size="small">

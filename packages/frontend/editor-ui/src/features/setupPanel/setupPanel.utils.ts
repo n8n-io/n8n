@@ -8,7 +8,88 @@ import type {
 	CredentialTypeSetupState,
 	TriggerSetupState,
 } from '@/features/setupPanel/setupPanel.types';
-import { type INode, NodeHelpers } from 'n8n-workflow';
+import { type INode, type INodeConnections, NodeHelpers } from 'n8n-workflow';
+
+/**
+ * Checks if a node is disabled, either directly or through any ancestor node.
+ * Sub-nodes (like AI models) won't execute if their parent node is disabled.
+ * Handles nested sub-nodes by recursively checking up the chain.
+ *
+ * @param nodeName The name of the node to check
+ * @param getNodeByName Lookup function to resolve a node by name
+ * @param outgoingConnectionsByNodeName Function that returns outgoing connections for a node
+ * @param visited Internal set to prevent infinite loops in circular connections
+ */
+export function isNodeEffectivelyDisabled(
+	nodeName: string,
+	getNodeByName: (name: string) => INodeUi | null,
+	outgoingConnectionsByNodeName: (name: string) => INodeConnections,
+	visited: Set<string> = new Set(),
+): boolean {
+	if (visited.has(nodeName)) {
+		return false;
+	}
+	visited.add(nodeName);
+
+	const node = getNodeByName(nodeName);
+
+	if (node?.disabled === true) {
+		return true;
+	}
+
+	// Check if any parent node (via sub-node connections) is disabled.
+	// Sub-nodes output to their parent via non-main connection types (ai_languageModel, ai_tool, etc).
+	// Skip "main" connections — those are regular workflow links, not sub-node → parent links.
+	const outgoingConnections = outgoingConnectionsByNodeName(nodeName) ?? {};
+	for (const connectionType of Object.keys(outgoingConnections)) {
+		if (connectionType === 'main') continue;
+		const connections = outgoingConnections[connectionType];
+		if (connections) {
+			for (const connectionGroup of connections) {
+				if (!connectionGroup) continue;
+				for (const connection of connectionGroup) {
+					if (
+						isNodeEffectivelyDisabled(
+							connection.node,
+							getNodeByName,
+							outgoingConnectionsByNodeName,
+							visited,
+						)
+					) {
+						return true;
+					}
+				}
+			}
+		}
+	}
+
+	return false;
+}
+
+export const PLACEHOLDER_REGEX = /<__PLACEHOLDER.*?__>/;
+
+/**
+ * Recursively walks a value and replaces any string matching the
+ * AIWB placeholder pattern (`<__PLACEHOLDER…__>`) with an empty string.
+ * Returns a shallow-ish copy — only branches that contained a placeholder
+ * are cloned; everything else is shared with the original.
+ */
+export function stripPlaceholderValues<T>(value: T): T {
+	if (typeof value === 'string') {
+		return (PLACEHOLDER_REGEX.test(value) ? '' : value) as T;
+	}
+	if (Array.isArray(value)) {
+		return value.map((item) => stripPlaceholderValues(item)) as T;
+	}
+	if (value !== null && typeof value === 'object') {
+		const result: Record<string, unknown> = {};
+		for (const [k, v] of Object.entries(value)) {
+			result[k] = stripPlaceholderValues(v);
+		}
+		return result as T;
+	}
+	return value;
+}
 
 /**
  * Collects all credential types that a node requires from three sources:

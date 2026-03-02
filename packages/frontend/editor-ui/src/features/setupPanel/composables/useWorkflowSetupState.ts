@@ -19,6 +19,7 @@ import {
 	isCredentialCardComplete,
 	buildTriggerSetupState,
 	getNodeParametersIssues,
+	isNodeEffectivelyDisabled,
 } from '@/features/setupPanel/setupPanel.utils';
 import { PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/app/constants';
 
@@ -32,7 +33,11 @@ import { useUIStore } from '@/app/stores/ui.store';
  * with trigger nodes getting their own dedicated cards (test button only).
  * @param nodes Optional sub-set of nodes to check (defaults to full workflow)
  */
-export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
+export const useWorkflowSetupState = (
+	nodes?: Ref<INodeUi[]>,
+	additionalParameterIssues?: Ref<Record<string, Record<string, string[]>>>,
+	options?: { excludeTriggerOnlyCards?: boolean },
+) => {
 	const workflowsStore = useWorkflowsStore();
 	const credentialsStore = useCredentialsStore();
 	const nodeTypesStore = useNodeTypesStore();
@@ -118,13 +123,37 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	 */
 	const nodesRequiringSetup = computed(() => {
 		const nodesForSetup = sourceNodes.value
-			.filter((node) => !node.disabled)
-			.map((node) => ({
-				node,
-				credentialTypes: getNodeCredentialTypes(nodeTypesStore, node),
-				parameterIssues: getNodeParametersIssues(nodeTypesStore, node),
-				isTrigger: isTriggerNode(node),
-			}))
+			.filter(
+				(node) =>
+					!isNodeEffectivelyDisabled(
+						node.name,
+						workflowsStore.getNodeByName,
+						workflowsStore.outgoingConnectionsByNodeName,
+					),
+			)
+			.map((node) => {
+				const baseIssues = getNodeParametersIssues(nodeTypesStore, node);
+				const extra = additionalParameterIssues?.value?.[node.name] ?? {};
+				// Also include pre-computed issues from node.issues.parameters (set by
+				// updateNodesParameterIssues) so setup cards reflect the same errors shown on the canvas.
+				const existingIssues = node.issues?.parameters ?? {};
+				const parameterIssues = { ...baseIssues };
+				for (const source of [existingIssues, extra]) {
+					for (const [key, msgs] of Object.entries(source)) {
+						const existing = parameterIssues[key] ?? [];
+						const newMsgs = msgs.filter((m) => !existing.includes(m));
+						if (newMsgs.length > 0) {
+							parameterIssues[key] = [...existing, ...newMsgs];
+						}
+					}
+				}
+				return {
+					node,
+					credentialTypes: getNodeCredentialTypes(nodeTypesStore, node),
+					parameterIssues,
+					isTrigger: isTriggerNode(node),
+				};
+			})
 			.filter(
 				({ credentialTypes, isTrigger, parameterIssues, node }) =>
 					seenNodes.has(node.id) ||
@@ -269,7 +298,14 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		if (isFirstTriggerEmbedded) return [];
 
 		return nodesRequiringSetup.value
-			.filter(({ isTrigger, node }) => isTrigger && node.name === firstTriggerName.value)
+			.filter(
+				({ isTrigger, node, parameterIssues }) =>
+					isTrigger &&
+					node.name === firstTriggerName.value &&
+					// Triggers with parameter issues are handled by nodeStates instead,
+					// which displays the parameter inputs. Avoid creating a duplicate card here.
+					Object.keys(parameterIssues).length === 0,
+			)
 			.map(({ node, credentialTypes }) =>
 				buildTriggerSetupState(
 					node,
@@ -442,13 +478,17 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 			allNodesUsingCredential: credState.nodes,
 		}));
 
-		// Convert trigger states to NodeSetupState (trigger-only cards)
-		const triggerCards: NodeSetupState[] = triggerStates.value.map((trigState) => ({
-			node: trigState.node,
-			parameterIssues: {},
-			isTrigger: true,
-			isComplete: trigState.isComplete,
-		}));
+		// Convert trigger states to NodeSetupState (trigger-only cards).
+		// When excludeTriggerOnlyCards is set, these are omitted entirely — useful when
+		// per-node execution is not available (e.g. AIWB uses a single "Execute workflow" button).
+		const triggerCards: NodeSetupState[] = options?.excludeTriggerOnlyCards
+			? []
+			: triggerStates.value.map((trigState) => ({
+					node: trigState.node,
+					parameterIssues: {},
+					isTrigger: true,
+					isComplete: trigState.isComplete,
+				}));
 
 		const all: SetupCardItem[] = [...credentialCards, ...triggerCards, ...nodeStates.value].map(
 			(state) => ({ state }),

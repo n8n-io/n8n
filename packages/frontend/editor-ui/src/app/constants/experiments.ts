@@ -101,6 +101,8 @@ export const CODE_WORKFLOW_BUILDER_EXPERIMENT = createExperiment('071_coding_wor
 
 export const QUICK_CONNECT_EXPERIMENT = createExperiment('073_quick_connect');
 
+export const SETUP_PANEL_AIWB = createExperiment('077_setup_panel_aiwb');
+
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
@@ -124,4 +126,5 @@ export const EXPERIMENTS_TO_TRACK = [
 	QUICK_CONNECT_EXPERIMENT.name,
 	AI_BUILDER_REVIEW_CHANGES_EXPERIMENT.name,
 	MERGE_ASK_BUILD_EXPERIMENT.name,
+	SETUP_PANEL_AIWB.name,
 ];

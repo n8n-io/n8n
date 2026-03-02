@@ -1,3 +1,4 @@
+import type { ComputedRef } from 'vue';
 import type { INodeUi } from '@/Interface';
 
 /** One card per unique credential type — groups all nodes that need it */
@@ -36,3 +37,12 @@ export interface NodeSetupState {
 
 /** Unified setup card item — all cards use NodeSetupState */
 export type SetupCardItem = { state: NodeSetupState };
+
+/** Subset of useWorkflowSetupState return that SetupPanelCards needs */
+export interface SetupPanelState {
+	setupCards: ComputedRef<SetupCardItem[]>;
+	isAllComplete: ComputedRef<boolean>;
+	firstTriggerName: ComputedRef<string | null>;
+	setCredential: (credentialType: string, credentialId: string, sourceNodeName?: string) => void;
+	unsetCredential: (credentialType: string, sourceNodeName?: string) => void;
+}

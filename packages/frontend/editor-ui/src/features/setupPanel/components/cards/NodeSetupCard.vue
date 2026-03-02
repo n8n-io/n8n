@@ -10,6 +10,7 @@ import CredentialPicker from '@/features/credentials/components/CredentialPicker
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import type { NodeSetupState } from '@/features/setupPanel/setupPanel.types';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
+import { stripPlaceholderValues } from '@/features/setupPanel/setupPanel.utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useCardNodeHighlight } from '@/features/setupPanel/composables/useCardNodeHighlight';
@@ -20,16 +21,24 @@ import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useExpressionResolveCtx } from '@/features/workflows/canvas/experimental/composables/useExpressionResolveCtx';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
-const props = defineProps<{
-	state: NodeSetupState;
-	firstTriggerName?: string | null;
-}>();
+const props = withDefaults(
+	defineProps<{
+		state: NodeSetupState;
+		firstTriggerName?: string | null;
+		sequential?: boolean;
+		stepLabel?: string;
+	}>(),
+	{
+		sequential: false,
+	},
+);
 
 const expanded = defineModel<boolean>('expanded', { default: false });
 
 const emit = defineEmits<{
 	credentialSelected: [payload: { credentialType: string; credentialId: string; nodeName: string }];
 	credentialDeselected: [payload: { credentialType: string; nodeName: string }];
+	continue: [];
 }>();
 
 const i18n = useI18n();
@@ -38,7 +47,6 @@ const credentialsStore = useCredentialsStore();
 const nodeHelpers = useNodeHelpers();
 const workflowState = injectWorkflowState();
 const workflowsStore = useWorkflowsStore();
-
 const setupCard = ref<InstanceType<typeof SetupCard> | null>(null);
 
 const node = computed<INodeUi | null>(() => props.state.node);
@@ -109,9 +117,20 @@ const parameters = computed<INodeProperties[]>(() => {
  */
 const hasShownParameters = computed(() => shownParameters.value.length > 0);
 
-/** Trigger-only: no credentials, no parameters — standalone trigger card */
+/**
+ * Node parameter values with AI Workflow Builder placeholder strings replaced by empty strings.
+ * This keeps the inputs visually empty instead of showing raw `<__PLACEHOLDER…__>` tokens.
+ * Safe to apply unconditionally — the pattern never appears in real user data.
+ */
+const cleanedNodeValues = computed(() => stripPlaceholderValues(props.state.node.parameters));
+
+/** Trigger-only: no credentials, no parameter issues — standalone trigger card */
 const isTriggerOnly = computed(
-	() => props.state.isTrigger && !hasCredential.value && !hasShownParameters.value,
+	() =>
+		props.state.isTrigger &&
+		!hasCredential.value &&
+		!hasShownParameters.value &&
+		!hasParameters.value,
 );
 
 /** Credential-only: has credential but no parameters shown — use credential icon */
@@ -194,9 +213,13 @@ watch(expanded, (value, oldValue) => {
  * Card completion logic:
  * - Trigger-only / credential-only cards: pass through state.isComplete directly
  * - Cards with parameters: also require user to have collapsed the card after resolving all issues
+ *   (except in sequential mode where Continue is the explicit "done" action)
  */
 const cardComplete = computed(() => {
 	if (hasShownParameters.value) {
+		// In sequential mode the Continue button itself is the "I'm done" action,
+		// so just check state.isComplete — no need to wait for the card to be collapsed.
+		if (props.sequential) return props.state.isComplete;
 		return props.state.isComplete && allParametersAddressed.value;
 	}
 	return props.state.isComplete;
@@ -211,12 +234,14 @@ const cardComplete = computed(() => {
 		:loading="isTestingCredential"
 		:title="state.node.name"
 		:show-footer="showFooter"
+		:sequential="sequential"
 		:executable-node="executableNode"
 		:is-trigger="state.isTrigger"
 		:is-testing-credential="isTestingCredential"
 		:telemetry-payload="telemetryPayload"
 		:highlight-node-ids="[state.node.id]"
 		card-test-id="node-setup-card"
+		@continue="emit('continue')"
 	>
 		<template #icon>
 			<CredentialIcon
@@ -227,8 +252,9 @@ const cardComplete = computed(() => {
 			<NodeIcon v-else :node-type="nodeType" :size="16" />
 		</template>
 
-		<template v-if="isTriggerOnly" #header-extra>
-			<N8nTooltip>
+		<template #header-extra>
+			<N8nText v-if="stepLabel" size="small" color="text-light">{{ stepLabel }}</N8nText>
+			<N8nTooltip v-else-if="isTriggerOnly">
 				<template #content>
 					{{ i18n.baseText('nodeCreator.nodeItem.triggerIconTitle') }}
 				</template>
@@ -286,7 +312,7 @@ const cardComplete = computed(() => {
 			<ParameterInputList
 				v-if="parameters.length > 0"
 				:parameters="parameters"
-				:node-values="state.node.parameters"
+				:node-values="cleanedNodeValues"
 				:remove-first-parameter-margin="true"
 				:node="state.node"
 				:hide-delete="true"

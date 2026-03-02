@@ -11,6 +11,7 @@ import { useRouter } from 'vue-router';
 
 import NodeIssueItem from './NodeIssueItem.vue';
 import CredentialsSetupCard from './CredentialsSetupCard.vue';
+import SetupPanelCards from '@/features/setupPanel/components/SetupPanelCards.vue';
 import CanvasRunWorkflowButton from '@/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { isChatNode } from '@/app/utils/aiUtils';
@@ -18,8 +19,10 @@ import { useToast } from '@/app/composables/useToast';
 import { N8nTooltip, N8nIcon, N8nButton } from '@n8n/design-system';
 import { nextTick } from 'vue';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
-import { SETUP_CREDENTIALS_MODAL_KEY } from '@/app/constants';
+import { SETUP_CREDENTIALS_MODAL_KEY, SETUP_PANEL_AIWB } from '@/app/constants';
 import type { WorkflowValidationIssue } from '@/Interface';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { useBuilderSetupState } from '@/features/ai/assistant/composables/useBuilderSetupState';
 
 interface Emits {
 	/** Emitted when workflow execution completes */
@@ -37,6 +40,18 @@ const i18n = useI18n();
 const logsStore = useLogsStore();
 const toast = useToast();
 const builderStore = useBuilderStore();
+
+// Feature flag for setup panel cards in AIWB
+const posthogStore = usePostHog();
+const useSetupPanelCards = computed(() =>
+	posthogStore.isVariantEnabled(SETUP_PANEL_AIWB.name, SETUP_PANEL_AIWB.variant),
+);
+
+// Setup state for the new setup panel cards (only used when feature flag is active)
+const builderSetupState = useBuilderSetupState();
+const hasSetupCards = computed(
+	() => useSetupPanelCards.value && builderSetupState.setupCards.value.length > 0,
+);
 
 // Workflow execution composable
 const { runWorkflow } = useRunWorkflow({ router });
@@ -76,7 +91,13 @@ const ensureExecutionWatcher = () => {
 	);
 };
 
-const hasValidationIssues = computed(() => builderStore.workflowTodos.length > 0);
+const hasValidationIssues = computed(() => {
+	if (useSetupPanelCards.value) {
+		const cards = builderSetupState.setupCards.value;
+		return cards.length > 0 && !builderSetupState.isAllComplete.value;
+	}
+	return builderStore.workflowTodos.length > 0;
+});
 const triggerNodes = computed(() =>
 	workflowsStore.workflow.nodes.filter((node) => nodeTypesStore.isTriggerNode(node.type)),
 );
@@ -152,11 +173,15 @@ const executeButtonTooltip = computed(() =>
 		: '',
 );
 
+const hasTodosHidden = computed(() =>
+	useSetupPanelCards.value
+		? builderSetupState.hasTodosHiddenByPinnedData.value
+		: builderStore.hasTodosHiddenByPinnedData,
+);
+
 const showUnpinSection = computed(
 	() =>
-		builderStore.isCodeBuilder &&
-		builderStore.hasTodosHiddenByPinnedData &&
-		builderStore.hasHadSuccessfulExecution,
+		builderStore.isCodeBuilder && hasTodosHidden.value && builderStore.hasHadSuccessfulExecution,
 );
 
 function onUnpinAll() {
@@ -242,8 +267,16 @@ onBeforeUnmount(() => {
 		role="region"
 		aria-label="Workflow execution panel"
 	>
-		<!-- Validation Issues Section -->
-		<template v-if="hasValidationIssues">
+		<!-- Validation Issues Section (new setup panel cards) -->
+		<template v-if="hasSetupCards">
+			<p v-if="hasValidationIssues" :class="$style.description">
+				{{ i18n.baseText('aiAssistant.builder.executeMessage.description') }}
+			</p>
+			<SetupPanelCards :state="builderSetupState" :sequential="true" />
+		</template>
+
+		<!-- Validation Issues Section (legacy) -->
+		<template v-else-if="hasValidationIssues">
 			<p :class="$style.description">
 				{{ i18n.baseText('aiAssistant.builder.executeMessage.description') }}
 			</p>
@@ -279,11 +312,11 @@ onBeforeUnmount(() => {
 		<template v-else-if="triggerNodes.length > 0">
 			<p :class="$style.noIssuesMessage">
 				{{
-					builderStore.hasTodosHiddenByPinnedData
+					hasTodosHidden
 						? i18n.baseText('aiAssistant.builder.executeMessage.noIssuesWithPinData')
 						: i18n.baseText('aiAssistant.builder.executeMessage.noIssues')
 				}}
-				<N8nTooltip v-if="builderStore.hasTodosHiddenByPinnedData" placement="top">
+				<N8nTooltip v-if="hasTodosHidden" placement="top">
 					<template #content>
 						{{ i18n.baseText('aiAssistant.builder.executeMessage.unpinTooltip') }}
 					</template>
@@ -294,7 +327,7 @@ onBeforeUnmount(() => {
 
 		<!-- Execution Button -->
 		<N8nTooltip
-			v-if="triggerNodes.length > 0"
+			v-if="triggerNodes.length > 0 && (!useSetupPanelCards || !hasValidationIssues)"
 			:disabled="!hasValidationIssues"
 			:content="executeButtonTooltip"
 			placement="left"

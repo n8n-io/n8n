@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, onBeforeUnmount } from 'vue';
-import { useI18n } from '@n8n/i18n';
-import { N8nCallout, N8nIcon, N8nText } from '@n8n/design-system';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { N8nButton, N8nCallout, N8nIcon, N8nText } from '@n8n/design-system';
 
 import type { INodeUi } from '@/Interface';
 import TriggerExecuteButton from '@/features/setupPanel/components/TriggerExecuteButton.vue';
@@ -19,6 +19,7 @@ const props = withDefaults(
 		cardTestId: string;
 		title: string;
 		showFooter?: boolean;
+		sequential?: boolean;
 		executableNode?: INodeUi | null;
 		isTrigger?: boolean;
 		isTestingCredential?: boolean;
@@ -28,6 +29,7 @@ const props = withDefaults(
 	{
 		loading: false,
 		showFooter: true,
+		sequential: false,
 		executableNode: null,
 		isTrigger: false,
 		isTestingCredential: false,
@@ -35,6 +37,10 @@ const props = withDefaults(
 		telemetryPayload: () => ({}),
 	},
 );
+
+const emit = defineEmits<{
+	continue: [];
+}>();
 
 const expanded = defineModel<boolean>('expanded', { default: false });
 
@@ -182,15 +188,26 @@ defineExpose({ markInteracted });
 					</N8nText>
 				</div>
 				<slot name="footer-actions" />
-				<TriggerExecuteButton
-					v-if="executableNode"
-					:label="executeLabel"
-					:icon="executeButtonIcon"
-					:disabled="isButtonDisabled || isTestingCredential"
-					:loading="isExecuting"
-					:tooltip-items="executeTooltipItems"
-					@click="onExecuteClick"
-				/>
+				<div v-if="executableNode || sequential" :class="$style['footer-actions']">
+					<TriggerExecuteButton
+						v-if="executableNode"
+						:label="executeLabel"
+						:icon="executeButtonIcon"
+						:disabled="isButtonDisabled || isTestingCredential"
+						:loading="isExecuting"
+						:tooltip-items="executeTooltipItems"
+						@click="onExecuteClick"
+					/>
+					<N8nButton
+						v-if="sequential"
+						variant="ghost"
+						size="small"
+						:label="i18n.baseText('setupPanel.continue' as BaseTextKey)"
+						:disabled="!isComplete"
+						data-test-id="setup-card-continue-btn"
+						@click="emit('continue')"
+					/>
+				</div>
 			</footer>
 		</template>
 	</div>
@@ -269,6 +286,12 @@ defineExpose({ markInteracted });
 	justify-content: flex-end;
 	align-items: center;
 	padding: 0 var(--spacing--xs) var(--spacing--xs);
+}
+
+.footer-actions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .footer-complete-check {

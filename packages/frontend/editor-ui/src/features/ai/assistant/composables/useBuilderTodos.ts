@@ -6,10 +6,13 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import type { WorkflowValidationIssue } from '@/Interface';
+import {
+	isNodeEffectivelyDisabled,
+	PLACEHOLDER_REGEX,
+} from '@/features/setupPanel/setupPanel.utils';
 
 const PLACEHOLDER_PREFIX = '<__PLACEHOLDER';
 const PLACEHOLDER_SUFFIX = '__>';
-const PLACEHOLDER_REGEX = /<__PLACEHOLDER.*?__>/g;
 
 export interface PlaceholderDetail {
 	path: string[];
@@ -135,45 +138,12 @@ export function useBuilderTodos() {
 			: undefined,
 	);
 
-	/**
-	 * Checks if a node is disabled, either directly or through any ancestor node.
-	 * Sub-nodes (like AI models) won't execute if their parent node is disabled.
-	 * Handles nested sub-nodes by recursively checking up the chain.
-	 */
-	function nodeIsDisabled(nodeName: string, visited: Set<string> = new Set()): boolean {
-		// Prevent infinite loops in case of circular connections
-		if (visited.has(nodeName)) {
-			return false;
-		}
-		visited.add(nodeName);
-
-		const node = workflowsStore.getNodeByName(nodeName);
-
-		// Check if node itself is disabled
-		if (node?.disabled === true) {
-			return true;
-		}
-
-		// Check if any parent node (via sub-node connections) is disabled.
-		// Sub-nodes output to their parent via non-main connection types (ai_languageModel, ai_tool, etc).
-		// Skip "main" connections — those are regular workflow links, not sub-node → parent links.
-		const outgoingConnections = workflowsStore.outgoingConnectionsByNodeName(nodeName);
-		for (const connectionType of Object.keys(outgoingConnections)) {
-			if (connectionType === 'main') continue;
-			const connections = outgoingConnections[connectionType];
-			if (connections) {
-				for (const connectionGroup of connections) {
-					if (!connectionGroup) continue;
-					for (const connection of connectionGroup) {
-						if (nodeIsDisabled(connection.node, visited)) {
-							return true;
-						}
-					}
-				}
-			}
-		}
-
-		return false;
+	function nodeIsDisabled(nodeName: string): boolean {
+		return isNodeEffectivelyDisabled(
+			nodeName,
+			workflowsStore.getNodeByName,
+			workflowsStore.outgoingConnectionsByNodeName,
+		);
 	}
 
 	/**
@@ -360,5 +330,7 @@ export function useBuilderTodos() {
 		placeholderIssues,
 		getTodosToTrack,
 		hasTodosHiddenByPinnedData,
+		nodeHasPinnedData,
+		nodeIsDisabled,
 	};
 }

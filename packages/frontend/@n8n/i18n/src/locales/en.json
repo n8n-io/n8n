@@ -4452,6 +4452,8 @@
 	"templateSetup.continue.button.fillRemaining": "Fill remaining credentials to continue",
 	"setupCredentialsModal.title": "Set up template",
 	"setupCredentialsModal.title.builder": "Set up credentials",
+	"setupPanel.continue": "Continue",
+	"setupPanel.progress": "Step {current} of {total}",
 	"setupPanel.empty.heading": "Workflow setup",
 	"setupPanel.empty.description": "Nothing to configure at the moment",
 	"setupPanel.tabs.setup": "Setup",

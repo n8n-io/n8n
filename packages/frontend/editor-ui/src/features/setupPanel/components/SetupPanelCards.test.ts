@@ -4,7 +4,11 @@ import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { ref, computed } from 'vue';
 import SetupPanelCards from '@/features/setupPanel/components/SetupPanelCards.vue';
-import type { SetupCardItem, NodeSetupState } from '@/features/setupPanel/setupPanel.types';
+import type {
+	SetupCardItem,
+	NodeSetupState,
+	SetupPanelState,
+} from '@/features/setupPanel/setupPanel.types';
 import type { INodeUi } from '@/Interface';
 
 const mockSetCredential = vi.fn();
@@ -16,15 +20,15 @@ const mockIsAllComplete = computed(
 
 const mockFirstTriggerName = ref<string | null>(null);
 
-vi.mock('../composables/useWorkflowSetupState', () => ({
-	useWorkflowSetupState: () => ({
-		setupCards: mockSetupCards,
-		isAllComplete: mockIsAllComplete,
-		setCredential: mockSetCredential,
-		unsetCredential: mockUnsetCredential,
-		firstTriggerName: mockFirstTriggerName,
-	}),
-}));
+const mockState: SetupPanelState = {
+	setupCards: mockSetupCards as unknown as SetupPanelState['setupCards'],
+	isAllComplete: mockIsAllComplete,
+	firstTriggerName: mockFirstTriggerName as unknown as SetupPanelState['firstTriggerName'],
+	setCredential: (...args: Parameters<SetupPanelState['setCredential']>) =>
+		mockSetCredential(...args),
+	unsetCredential: (...args: Parameters<SetupPanelState['unsetCredential']>) =>
+		mockUnsetCredential(...args),
+};
 
 vi.mock('./cards/NodeSetupCard.vue', () => ({
 	default: {
@@ -32,15 +36,19 @@ vi.mock('./cards/NodeSetupCard.vue', () => ({
 			'<div data-test-id="node-setup-card">' +
 			'<span data-test-id="card-node-name">{{ state.node.name }}</span>' +
 			'<span v-if="state.credentialDisplayName" data-test-id="card-credential-name">{{ state.credentialDisplayName }}</span>' +
+			'<span v-if="stepLabel" data-test-id="card-step-label">{{ stepLabel }}</span>' +
 			'<button data-test-id="select-credential-btn" @click="$emit(\'credentialSelected\', { credentialType: state.credentialType, credentialId: \'cred-123\' })">Select</button>' +
 			'<button data-test-id="deselect-credential-btn" @click="$emit(\'credentialDeselected\', { credentialType: state.credentialType })">Deselect</button>' +
+			'<button data-test-id="continue-btn" @click="$emit(\'continue\')">Continue</button>' +
 			'</div>',
-		props: ['state', 'firstTriggerName', 'expanded'],
-		emits: ['credentialSelected', 'credentialDeselected', 'update:expanded'],
+		props: ['state', 'firstTriggerName', 'expanded', 'sequential', 'stepLabel'],
+		emits: ['credentialSelected', 'credentialDeselected', 'update:expanded', 'continue'],
 	},
 }));
 
-const renderComponent = createComponentRenderer(SetupPanelCards);
+const baseRenderComponent = createComponentRenderer(SetupPanelCards);
+const renderComponent = (props?: Record<string, unknown>) =>
+	baseRenderComponent({ props: { state: mockState, ...props } });
 
 const createTriggerCard = (overrides: Partial<NodeSetupState> = {}): SetupCardItem => ({
 	state: {
@@ -211,6 +219,147 @@ describe('SetupPanelCards', () => {
 			await userEvent.click(getByTestId('deselect-credential-btn'));
 
 			expect(mockUnsetCredential).toHaveBeenCalledWith('openAiApi', undefined);
+		});
+	});
+
+	describe('sequential mode', () => {
+		it('should show only the first card initially when sequential is true', () => {
+			mockSetupCards.value = [
+				createTriggerCard({ node: createTestNode({ name: 'Trigger' }) as INodeUi }),
+				createCredentialCard({
+					node: createTestNode({ name: 'OpenAI' }) as INodeUi,
+					credentialDisplayName: 'OpenAI',
+				}),
+				createCredentialCard({
+					node: createTestNode({ name: 'Slack' }) as INodeUi,
+					credentialType: 'slackApi',
+					credentialDisplayName: 'Slack',
+				}),
+			];
+
+			const { getAllByTestId } = renderComponent({ sequential: true });
+
+			const cards = getAllByTestId('node-setup-card');
+			expect(cards).toHaveLength(1);
+
+			const names = getAllByTestId('card-node-name');
+			expect(names[0]).toHaveTextContent('Trigger');
+		});
+
+		it('should advance to next card when Continue is clicked', async () => {
+			mockSetupCards.value = [
+				createTriggerCard({ node: createTestNode({ name: 'Trigger' }) as INodeUi }),
+				createCredentialCard({
+					node: createTestNode({ name: 'OpenAI' }) as INodeUi,
+					credentialDisplayName: 'OpenAI',
+				}),
+				createCredentialCard({
+					node: createTestNode({ name: 'Slack' }) as INodeUi,
+					credentialType: 'slackApi',
+					credentialDisplayName: 'Slack',
+				}),
+			];
+
+			const { getAllByTestId } = renderComponent({ sequential: true });
+
+			// Initially only 1 card
+			expect(getAllByTestId('node-setup-card')).toHaveLength(1);
+
+			// Click Continue on the first card
+			await userEvent.click(getAllByTestId('continue-btn')[0]);
+
+			// Now 2 cards visible
+			expect(getAllByTestId('node-setup-card')).toHaveLength(2);
+			const names = getAllByTestId('card-node-name');
+			expect(names[0]).toHaveTextContent('Trigger');
+			expect(names[1]).toHaveTextContent('OpenAI');
+		});
+
+		it('should advance through all cards via Continue', async () => {
+			mockSetupCards.value = [
+				createTriggerCard({ node: createTestNode({ name: 'Trigger' }) as INodeUi }),
+				createCredentialCard({
+					node: createTestNode({ name: 'OpenAI' }) as INodeUi,
+					credentialDisplayName: 'OpenAI',
+				}),
+				createCredentialCard({
+					node: createTestNode({ name: 'Slack' }) as INodeUi,
+					credentialType: 'slackApi',
+					credentialDisplayName: 'Slack',
+				}),
+			];
+
+			const { getAllByTestId } = renderComponent({ sequential: true });
+
+			// Click Continue twice to reveal all cards
+			await userEvent.click(getAllByTestId('continue-btn')[0]);
+			await userEvent.click(getAllByTestId('continue-btn')[1]);
+
+			expect(getAllByTestId('node-setup-card')).toHaveLength(3);
+		});
+
+		it('should not auto-collapse cards in sequential mode when state.isComplete changes', async () => {
+			mockSetupCards.value = [
+				createTriggerCard({
+					node: createTestNode({ name: 'Trigger' }) as INodeUi,
+					isComplete: false,
+				}),
+				createCredentialCard({
+					node: createTestNode({ name: 'OpenAI' }) as INodeUi,
+					credentialDisplayName: 'OpenAI',
+				}),
+			];
+
+			const { getAllByTestId } = renderComponent({ sequential: true });
+
+			// Only 1 card visible (activeStepIndex = 0)
+			expect(getAllByTestId('node-setup-card')).toHaveLength(1);
+
+			// Simulate completion of the first card
+			mockSetupCards.value[0].state.isComplete = true;
+			await vi.waitFor(() => {
+				// Still only 1 card visible — no auto-advance happened
+				expect(getAllByTestId('node-setup-card')).toHaveLength(1);
+			});
+		});
+
+		it('should render step labels in sequential mode', () => {
+			mockSetupCards.value = [
+				createTriggerCard({
+					node: createTestNode({ name: 'Trigger' }) as INodeUi,
+				}),
+				createCredentialCard({
+					node: createTestNode({ name: 'OpenAI' }) as INodeUi,
+					credentialDisplayName: 'OpenAI',
+				}),
+				createCredentialCard({
+					node: createTestNode({ name: 'Slack' }) as INodeUi,
+					credentialType: 'slackApi',
+					credentialDisplayName: 'Slack',
+				}),
+			];
+
+			const { getAllByTestId } = renderComponent({ sequential: true });
+
+			const stepLabels = getAllByTestId('card-step-label');
+			expect(stepLabels).toHaveLength(1);
+			expect(stepLabels[0]).toHaveTextContent('Step 1 of 3');
+		});
+
+		it('should not render step labels when sequential is false', () => {
+			mockSetupCards.value = [
+				createTriggerCard({
+					node: createTestNode({ name: 'Trigger' }) as INodeUi,
+				}),
+				createCredentialCard({
+					node: createTestNode({ name: 'OpenAI' }) as INodeUi,
+					credentialDisplayName: 'OpenAI',
+				}),
+			];
+
+			const { queryByTestId } = renderComponent({ sequential: false });
+
+			expect(queryByTestId('card-step-label')).not.toBeInTheDocument();
 		});
 	});
 });

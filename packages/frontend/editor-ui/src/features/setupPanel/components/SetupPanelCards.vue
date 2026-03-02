@@ -1,20 +1,22 @@
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue';
-import { useWorkflowSetupState } from '@/features/setupPanel/composables/useWorkflowSetupState';
+import { computed, reactive, ref, watch } from 'vue';
 import NodeSetupCard from '@/features/setupPanel/components/cards/NodeSetupCard.vue';
 import { N8nIcon, N8nText } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import type { SetupCardItem } from '@/features/setupPanel/setupPanel.types';
+import type { SetupCardItem, SetupPanelState } from '@/features/setupPanel/setupPanel.types';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const props = withDefaults(
 	defineProps<{
+		state: SetupPanelState;
 		showCompleted?: boolean;
+		sequential?: boolean;
 	}>(),
 	{
 		showCompleted: true,
+		sequential: false,
 	},
 );
 
@@ -22,8 +24,7 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
-const { setupCards, isAllComplete, setCredential, unsetCredential, firstTriggerName } =
-	useWorkflowSetupState();
+const { setupCards, isAllComplete, setCredential, unsetCredential, firstTriggerName } = props.state;
 
 watch(isAllComplete, (allComplete) => {
 	if (allComplete) {
@@ -46,10 +47,23 @@ const onCredentialDeselected = (payload: { credentialType: string; nodeName?: st
 	unsetCredential(payload.credentialType, payload.nodeName);
 };
 
+const activeStepIndex = ref(0);
+
 const visibleCards = computed(() => {
+	if (props.sequential) {
+		return setupCards.value.slice(0, activeStepIndex.value + 1);
+	}
 	if (props.showCompleted) return setupCards.value;
 	return setupCards.value.filter((card) => !card.state.isComplete);
 });
+
+const cardStepLabel = (card: SetupCardItem): string | undefined => {
+	if (!props.sequential) return undefined;
+	const index = setupCards.value.indexOf(card) + 1;
+	return i18n.baseText('setupPanel.progress' as BaseTextKey, {
+		interpolate: { current: String(index), total: String(setupCards.value.length) },
+	});
+};
 
 const cardKey = (card: SetupCardItem): string => {
 	return card.state.credentialType
@@ -78,6 +92,16 @@ watch(
 				expandedStates[cardKey(firstUncompleted)] = true;
 			}
 			initialized = true;
+		} else if (props.sequential) {
+			// In sequential mode, auto-advance when the active card completes
+			// (e.g. after a successful execution, credential test, or parameter fill)
+			const activeCard = cards[activeStepIndex.value];
+			if (activeCard) {
+				const wasComplete = prevCompleteStates.get(cardKey(activeCard)) ?? false;
+				if (!wasComplete && activeCard.state.isComplete) {
+					continueToNext();
+				}
+			}
 		} else {
 			// When a card completes, collapse it and auto-expand the next uncompleted card
 			for (let i = 0; i < cards.length; i++) {
@@ -103,6 +127,16 @@ watch(
 	},
 	{ deep: true, immediate: true },
 );
+
+const continueToNext = () => {
+	const currentKey = cardKey(setupCards.value[activeStepIndex.value]);
+	expandedStates[currentKey] = false;
+	if (activeStepIndex.value < setupCards.value.length - 1) {
+		activeStepIndex.value++;
+		const nextKey = cardKey(setupCards.value[activeStepIndex.value]);
+		expandedStates[nextKey] = true;
+	}
+};
 </script>
 
 <template>
@@ -133,10 +167,13 @@ watch(
 				:key="cardKey(card)"
 				:state="card.state"
 				:first-trigger-name="firstTriggerName"
+				:sequential="sequential"
+				:step-label="cardStepLabel(card)"
 				:expanded="isCardExpanded(cardKey(card))"
 				@update:expanded="(val: boolean) => setCardExpanded(cardKey(card), val)"
 				@credential-selected="onCredentialSelected"
 				@credential-deselected="onCredentialDeselected"
+				@continue="continueToNext"
 			/>
 			<div
 				v-if="isAllComplete"
