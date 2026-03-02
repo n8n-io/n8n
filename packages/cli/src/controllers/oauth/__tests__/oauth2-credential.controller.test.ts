@@ -225,6 +225,7 @@ describe('OAuth2CredentialController', () => {
 				},
 				'token123',
 				'resolver-id',
+				{},
 			);
 			expect(oauthService.encryptAndSaveData).not.toHaveBeenCalled();
 			expect(res.render).toHaveBeenCalledWith('oauth-callback');

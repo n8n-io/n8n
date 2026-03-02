@@ -28,7 +28,6 @@ import * as workflowsApi from '@/app/api/workflows';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { isEmpty } from '@/app/utils/typesUtils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { clearPopupWindowState } from '@/features/execution/executions/executions.utils';
 import { useDocumentTitle } from './useDocumentTitle';
 import { useWorkflowStateStore } from '@/app/stores/workflowState.store';
@@ -38,7 +37,6 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 import { createEventBus } from '@n8n/utils/event-bus';
-import type { WorkflowMetadata } from '@n8n/rest-api-client';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -171,10 +169,8 @@ export function useWorkflowState() {
 
 	function makeNewWorkflowShareable() {
 		const { currentProject, personalProject } = useProjectsStore();
-		const homeProject = currentProject ?? personalProject ?? {};
 		const scopes = currentProject?.scopes ?? personalProject?.scopes ?? [];
 
-		ws.workflow.homeProject = homeProject as ProjectSharingData;
 		ws.workflow.scopes = scopes;
 	}
 
@@ -190,17 +186,6 @@ export function useWorkflowState() {
 
 	function setWorkflowScopes(scopes: IWorkflowDb['scopes']): void {
 		ws.workflow.scopes = scopes;
-	}
-
-	function setWorkflowMetadata(metadata: WorkflowMetadata | undefined): void {
-		ws.workflow.meta = metadata;
-	}
-
-	function addToWorkflowMetadata(data: Partial<WorkflowMetadata>): void {
-		ws.workflow.meta = {
-			...ws.workflow.meta,
-			...data,
-		};
 	}
 
 	////
@@ -457,8 +442,6 @@ export function useWorkflowState() {
 		setActiveExecutionId,
 		getNewWorkflowDataAndMakeShareable,
 		setWorkflowScopes,
-		setWorkflowMetadata,
-		addToWorkflowMetadata,
 
 		// Execution
 		markExecutionAsStopped,

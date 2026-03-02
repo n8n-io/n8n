@@ -3,8 +3,12 @@ import { STORES } from '@n8n/stores';
 import { inject } from 'vue';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useWorkflowDocumentActive } from './workflowDocument/useWorkflowDocumentActive';
+import { useWorkflowDocumentHomeProject } from './workflowDocument/useWorkflowDocumentHomeProject';
+import { useWorkflowDocumentChecksum } from './workflowDocument/useWorkflowDocumentChecksum';
+import { useWorkflowDocumentMeta } from './workflowDocument/useWorkflowDocumentMeta';
 import { useWorkflowDocumentPinData } from './workflowDocument/useWorkflowDocumentPinData';
 import { useWorkflowDocumentTags } from './workflowDocument/useWorkflowDocumentTags';
+import { useWorkflowDocumentTimestamps } from './workflowDocument/useWorkflowDocumentTimestamps';
 
 export {
 	getPinDataSize,
@@ -47,15 +51,23 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		const [workflowId, workflowVersion] = id.split('@');
 
 		const workflowDocumentActive = useWorkflowDocumentActive();
+		const workflowDocumentHomeProject = useWorkflowDocumentHomeProject();
+		const workflowDocumentChecksum = useWorkflowDocumentChecksum();
+		const workflowDocumentMeta = useWorkflowDocumentMeta();
 		const workflowDocumentTags = useWorkflowDocumentTags();
 		const workflowDocumentPinData = useWorkflowDocumentPinData();
+		const workflowDocumentTimestamps = useWorkflowDocumentTimestamps();
 
 		return {
 			workflowId,
 			workflowVersion,
 			...workflowDocumentActive,
+			...workflowDocumentHomeProject,
+			...workflowDocumentChecksum,
+			...workflowDocumentMeta,
 			...workflowDocumentTags,
 			...workflowDocumentPinData,
+			...workflowDocumentTimestamps,
 		};
 	})();
 }
