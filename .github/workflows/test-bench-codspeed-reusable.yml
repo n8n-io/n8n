@@ -9,6 +9,12 @@ on:
         type: string
         default: ''
   workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch or ref to benchmark (defaults to the workflow's branch).
+        required: false
+        type: string
+        default: ''
 
 jobs:
   codspeed:
