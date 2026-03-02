@@ -1,25 +1,27 @@
 import type { BinaryCheck, SimpleWorkflow } from '../types';
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 /**
  * Check if a Set node has values configured in either format:
  * - v3.x+: parameters.assignments.assignments (array)
  * - v2.x:  parameters.fields.values (array)
  */
-function hasSetNodeValues(parameters: Record<string, unknown> | undefined): boolean {
-	if (!parameters) return false;
+function hasSetNodeValues(parameters: unknown): boolean {
+	if (!isRecord(parameters)) return false;
 
 	// v3.x+ format: assignments.assignments
 	const assignments = parameters.assignments;
-	if (typeof assignments === 'object' && assignments !== null) {
-		const inner = (assignments as Record<string, unknown>).assignments;
-		if (Array.isArray(inner) && inner.length > 0) return true;
+	if (isRecord(assignments)) {
+		if (Array.isArray(assignments.assignments) && assignments.assignments.length > 0) return true;
 	}
 
 	// v2.x format: fields.values
 	const fields = parameters.fields;
-	if (typeof fields === 'object' && fields !== null) {
-		const values = (fields as Record<string, unknown>).values;
-		if (Array.isArray(values) && values.length > 0) return true;
+	if (isRecord(fields)) {
+		if (Array.isArray(fields.values) && fields.values.length > 0) return true;
 	}
 
 	return false;
@@ -35,9 +37,9 @@ export const noEmptySetNodes: BinaryCheck = {
 
 		const emptySetNodes: string[] = [];
 		for (const node of workflow.nodes) {
-			if (!node.type.endsWith('n8n-nodes-base.set')) continue;
+			if (node.type !== 'n8n-nodes-base.set') continue;
 
-			if (!hasSetNodeValues(node.parameters as Record<string, unknown> | undefined)) {
+			if (!hasSetNodeValues(node.parameters)) {
 				emptySetNodes.push(node.name);
 			}
 		}

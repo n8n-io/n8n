@@ -24,10 +24,7 @@ const EVALUATOR_NAME = 'binary-checks';
 export function createBinaryChecksEvaluator(
 	options: BinaryChecksEvaluatorOptions,
 ): Evaluator<EvaluationContext> {
-	const allChecks: BinaryCheck[] = [
-		...DETERMINISTIC_CHECKS,
-		...(options.llm ? (LLM_CHECKS as BinaryCheck[]) : []),
-	];
+	const allChecks: BinaryCheck[] = [...DETERMINISTIC_CHECKS, ...(options.llm ? LLM_CHECKS : [])];
 
 	const allCheckNames = allChecks.map((c) => c.name);
 
