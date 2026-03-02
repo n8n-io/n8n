@@ -10,8 +10,13 @@ import { createTestingPinia } from '@pinia/testing';
 import { useVueFlow } from '@vue-flow/core';
 import type { INodeProperties } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
-import { reactive } from 'vue';
+import { reactive, shallowRef } from 'vue';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import FocusPanel from './FocusPanel.vue';
 
 vi.mock('vue-router', () => ({
@@ -48,6 +53,9 @@ describe('FocusPanel', () => {
 	let focusPanelStore: ReturnType<typeof useFocusPanelStore>;
 	let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
+	let workflowDocumentStoreRef: ReturnType<
+		typeof shallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>
+	>;
 
 	beforeEach(() => {
 		const pinia = setActivePinia(createTestingPinia({ stubActions: false }));
@@ -66,6 +74,10 @@ describe('FocusPanel', () => {
 		workflowsStore.setNodes([
 			createTestNode({ id: 'n0', name: 'N0', parameters: { p0: 'v0' }, type: SET_NODE_TYPE }),
 		]);
+
+		const documentStore = useWorkflowDocumentStore(createWorkflowDocumentId('w0'));
+		workflowDocumentStoreRef = shallowRef(documentStore);
+
 		focusPanelStore = useFocusPanelStore(pinia);
 		focusPanelStore.toggleFocusPanel();
 	});
@@ -77,13 +89,21 @@ describe('FocusPanel', () => {
 		});
 
 		it('should render empty state when neither a node nor a parameter is selected', async () => {
-			const rendered = renderComponent({});
+			const rendered = renderComponent({
+				global: {
+					provide: { [WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef },
+				},
+			});
 
 			expect(await rendered.findByText('Select a node to edit it here'));
 		});
 
 		it('should render the parameter focus input when a parameter is selected', async () => {
-			const rendered = renderComponent({});
+			const rendered = renderComponent({
+				global: {
+					provide: { [WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef },
+				},
+			});
 
 			focusPanelStore.openWithFocusedNodeParameter({
 				nodeId: 'n0',
@@ -100,7 +120,11 @@ describe('FocusPanel', () => {
 		it('should render node parameters when a node is selected on canvas', async () => {
 			const graphNode = createCanvasGraphNode({ id: 'n0' });
 			const vueFlow = useVueFlow('w0');
-			const rendered = renderComponent({});
+			const rendered = renderComponent({
+				global: {
+					provide: { [WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef },
+				},
+			});
 
 			vueFlow.addNodes([graphNode]);
 			vueFlow.addSelectedNodes([graphNode]);
@@ -114,7 +138,11 @@ describe('FocusPanel', () => {
 		it('should render the parameters when a node is selected on canvas and a parameter is selected', async () => {
 			const graphNode = createCanvasGraphNode({ id: 'n0' });
 			const vueFlow = useVueFlow('w0');
-			const rendered = renderComponent({});
+			const rendered = renderComponent({
+				global: {
+					provide: { [WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef },
+				},
+			});
 
 			vueFlow.addNodes([graphNode]);
 			vueFlow.addSelectedNodes([graphNode]);
