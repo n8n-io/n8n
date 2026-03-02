@@ -517,12 +517,8 @@ defineExpose({
 .secretName {
 	font-family: var(--font-family--monospace);
 	font-size: var(--font-size--2xs);
-	background-color: var(--color--neutral-125);
+	background-color: var(--code--color--background--readonly);
 	padding: var(--spacing--4xs);
-
-	body[data-theme='dark'] & {
-		background-color: var(--color--background--light-1);
-	}
 }
 
 .connectionLink {
