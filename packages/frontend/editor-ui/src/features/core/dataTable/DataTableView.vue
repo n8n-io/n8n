@@ -26,6 +26,7 @@ import { useRoute, useRouter } from 'vue-router';
 
 import { N8nActionBox } from '@n8n/design-system';
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
+import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
 
 const i18n = useI18n();
 const route = useRoute();
@@ -46,7 +47,12 @@ const loading = ref(true);
 const currentPage = ref(1);
 const pageSize = ref(DEFAULT_DATA_TABLE_PAGE_SIZE);
 
-const SEARCH_DEBOUNCE_TIME = 300;
+const SEARCH_DEBOUNCE_TIME = getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH);
+// Sorting by size involves potentially expensive extra DB queries so we
+// disallow defaulting to these values
+const PERSIST_KEY_EXCLUSIONS = ['sizeAsc', 'sizeDesc'] satisfies Array<
+	keyof typeof DATA_TABLE_SORT_MAP
+>;
 
 const filters = ref<BaseFilters>({
 	search: '',
@@ -183,9 +189,7 @@ watch(
 			sortEnabled: true,
 		}"
 		tab-key="dataTable"
-		:persist-key-exclusions="
-			['sizeAsc', 'sizeDesc'] satisfies Array<keyof typeof DATA_TABLE_SORT_MAP>
-		"
+		:persist-key-exclusions="PERSIST_KEY_EXCLUSIONS"
 		@update:search="onSearchUpdated"
 		@update:pagination-and-sort="onPaginationUpdate"
 	>
