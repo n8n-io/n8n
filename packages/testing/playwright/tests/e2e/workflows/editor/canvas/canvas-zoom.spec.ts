@@ -245,13 +245,10 @@ test.describe(
 			await expect(n8n.ndv.getNodesWithIssues()).toHaveCount(1);
 		});
 
-		test.fixme(
-			'should open and close the about modal on keyboard shortcut @fixme',
-			async ({ n8n }) => {
-				await n8n.sideBar.openAboutModalViaShortcut();
-				await expect(n8n.sideBar.getAboutModal()).toBeVisible();
-				await n8n.sideBar.closeAboutModal();
-			},
-		);
+		test.fixme('should open and close the about modal on keyboard shortcut', async ({ n8n }) => {
+			await n8n.sideBar.openAboutModalViaShortcut();
+			await expect(n8n.sideBar.getAboutModal()).toBeVisible();
+			await n8n.sideBar.closeAboutModal();
+		});
 	},
 );

@@ -79,7 +79,7 @@
     "tsc-watch": "^6.2.0",
     "turbo": "2.8.9",
     "typescript": "*",
-    "zx": "^8.1.4"
+    "zx": "^8.8.5"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -134,17 +134,17 @@
       "undici@6": "^6.23.0",
       "undici@7": "^7.18.2",
       "tar": "^7.5.8",
-      "fast-xml-parser": "5.3.6",
       "hono": "4.11.10",
       "ajv@6": "6.14.0",
       "ajv@7": "8.18.0",
       "ajv@8": "8.18.0",
       "bn.js@4": "5.2.3",
       "bn.js@5": "5.2.3",
-      "minimatch@9": "10.2.1",
-      "minimatch@10": "10.2.1",
       "langsmith": ">=0.4.6",
-      "lodash-es": "4.17.23"
+      "lodash-es": "4.17.23",
+      "word-wrap@<=1.2.4": "1.2.4",
+      "minimatch@<=5.1.8": "5.1.8",
+      "fast-xml-parser": "5.3.8"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",

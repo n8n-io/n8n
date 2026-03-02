@@ -40,142 +40,144 @@ const getNpsTestRequirements: TestRequirements = {
 	},
 };
 
-test.fixme('NPS Survey @fixme', {
-	annotation: [
-		{ type: 'owner', description: 'Adore' },
-	],
-}, () => {
-	test.beforeEach(async ({ n8n }) => {
-		await n8n.page.route('**/rest/login', async (route) => {
-			const response = await route.fetch();
-			const originalJson = await response.json();
+test.fixme(
+	'NPS Survey',
+	{
+		annotation: [{ type: 'owner', description: 'Adore' }],
+	},
+	() => {
+		test.beforeEach(async ({ n8n }) => {
+			await n8n.page.route('**/rest/login', async (route) => {
+				const response = await route.fetch();
+				const originalJson = await response.json();
 
-			const modifiedData = {
-				...originalJson,
-				data: {
-					...originalJson.data,
-					settings: {
-						...originalJson.data?.settings,
-						...ACTIVATED_USER_SETTINGS,
+				const modifiedData = {
+					...originalJson,
+					data: {
+						...originalJson.data,
+						settings: {
+							...originalJson.data?.settings,
+							...ACTIVATED_USER_SETTINGS,
+						},
 					},
-				},
-			};
+				};
 
-			await route.fulfill({
-				status: response.status(),
-				headers: response.headers(),
-				contentType: 'application/json',
-				body: JSON.stringify(modifiedData),
+				await route.fulfill({
+					status: response.status(),
+					headers: response.headers(),
+					contentType: 'application/json',
+					body: JSON.stringify(modifiedData),
+				});
 			});
+
+			await n8n.goHome();
 		});
 
-		await n8n.goHome();
-	});
+		test('shows nps survey to recently activated user and can submit feedback', async ({
+			n8n,
+			setupRequirements,
+		}) => {
+			await setupRequirements(getNpsTestRequirements);
+			await n8n.canvas.visitWithTimestamp(NOW);
+			// Add a node to trigger autosave (required for NPS survey to show)
+			await n8n.canvas.addNode('Manual Trigger');
+			await n8n.page.keyboard.press('Escape');
+			await n8n.canvas.waitForSaveWorkflowCompleted();
 
-	test('shows nps survey to recently activated user and can submit feedback', async ({
-		n8n,
-		setupRequirements,
-	}) => {
-		await setupRequirements(getNpsTestRequirements);
-		await n8n.canvas.visitWithTimestamp(NOW);
-		// Add a node to trigger autosave (required for NPS survey to show)
-		await n8n.canvas.addNode('Manual Trigger');
-		await n8n.page.keyboard.press('Escape');
-		await n8n.canvas.waitForSaveWorkflowCompleted();
+			await expect(n8n.npsSurvey.getNpsSurveyModal()).toBeVisible();
+			expect(await n8n.npsSurvey.getRatingButtonCount()).toBe(11);
 
-		await expect(n8n.npsSurvey.getNpsSurveyModal()).toBeVisible();
-		expect(await n8n.npsSurvey.getRatingButtonCount()).toBe(11);
+			await n8n.npsSurvey.clickRating(0);
+			await n8n.npsSurvey.fillFeedback('n8n is the best');
+			await n8n.npsSurvey.clickSubmitButton();
 
-		await n8n.npsSurvey.clickRating(0);
-		await n8n.npsSurvey.fillFeedback('n8n is the best');
-		await n8n.npsSurvey.clickSubmitButton();
+			await n8n.canvas.visitWithTimestamp(NOW + ONE_DAY);
+			// Add a node to trigger autosave (required for NPS survey to show)
+			await n8n.canvas.addNode('Manual Trigger');
+			await n8n.page.keyboard.press('Escape');
+			await n8n.canvas.waitForSaveWorkflowCompleted();
+			await expect(n8n.npsSurvey.getNpsSurveyModal()).toBeHidden();
 
-		await n8n.canvas.visitWithTimestamp(NOW + ONE_DAY);
-		// Add a node to trigger autosave (required for NPS survey to show)
-		await n8n.canvas.addNode('Manual Trigger');
-		await n8n.page.keyboard.press('Escape');
-		await n8n.canvas.waitForSaveWorkflowCompleted();
-		await expect(n8n.npsSurvey.getNpsSurveyModal()).toBeHidden();
+			await n8n.canvas.visitWithTimestamp(NOW + ABOUT_SIX_MONTHS);
+			// Add a node to trigger autosave (required for NPS survey to show)
+			await n8n.canvas.addNode('Manual Trigger');
+			await n8n.page.keyboard.press('Escape');
+			await n8n.canvas.waitForSaveWorkflowCompleted();
+			await expect(n8n.npsSurvey.getNpsSurveyModal()).toBeVisible();
+		});
 
-		await n8n.canvas.visitWithTimestamp(NOW + ABOUT_SIX_MONTHS);
-		// Add a node to trigger autosave (required for NPS survey to show)
-		await n8n.canvas.addNode('Manual Trigger');
-		await n8n.page.keyboard.press('Escape');
-		await n8n.canvas.waitForSaveWorkflowCompleted();
-		await expect(n8n.npsSurvey.getNpsSurveyModal()).toBeVisible();
-	});
+		test('allows user to ignore survey 3 times before stopping to show until 6 months later', async ({
+			n8n,
+			setupRequirements,
+		}) => {
+			await setupRequirements(getNpsTestRequirements);
+			await n8n.canvas.visitWithTimestamp(NOW);
+			// Add a node to trigger autosave (required for NPS survey to show)
+			await n8n.canvas.addNode('Manual Trigger');
+			await n8n.page.keyboard.press('Escape');
+			await n8n.canvas.waitForSaveWorkflowCompleted();
+			await n8n.notifications.quickCloseAll();
 
-	test('allows user to ignore survey 3 times before stopping to show until 6 months later', async ({
-		n8n,
-		setupRequirements,
-	}) => {
-		await setupRequirements(getNpsTestRequirements);
-		await n8n.canvas.visitWithTimestamp(NOW);
-		// Add a node to trigger autosave (required for NPS survey to show)
-		await n8n.canvas.addNode('Manual Trigger');
-		await n8n.page.keyboard.press('Escape');
-		await n8n.canvas.waitForSaveWorkflowCompleted();
-		await n8n.notifications.quickCloseAll();
+			await expect(n8n.npsSurvey.getNpsSurveyModal()).toBeVisible();
+			await n8n.npsSurvey.closeSurvey();
+			await expect(n8n.npsSurvey.getNpsSurveyModal()).toBeHidden();
 
-		await expect(n8n.npsSurvey.getNpsSurveyModal()).toBeVisible();
-		await n8n.npsSurvey.closeSurvey();
-		await expect(n8n.npsSurvey.getNpsSurveyModal()).toBeHidden();
+			await n8n.canvas.visitWithTimestamp(NOW + ONE_DAY);
+			// Add a node to trigger autosave (required for NPS survey to show)
+			await n8n.canvas.addNode('Manual Trigger');
+			await n8n.page.keyboard.press('Escape');
+			await n8n.canvas.waitForSaveWorkflowCompleted();
+			await expect(n8n.npsSurvey.getNpsSurveyModal()).toBeHidden();
 
-		await n8n.canvas.visitWithTimestamp(NOW + ONE_DAY);
-		// Add a node to trigger autosave (required for NPS survey to show)
-		await n8n.canvas.addNode('Manual Trigger');
-		await n8n.page.keyboard.press('Escape');
-		await n8n.canvas.waitForSaveWorkflowCompleted();
-		await expect(n8n.npsSurvey.getNpsSurveyModal()).toBeHidden();
+			await n8n.canvas.visitWithTimestamp(NOW + SEVEN_DAYS + 10000);
+			// Add a node to trigger autosave (required for NPS survey to show)
+			await n8n.canvas.addNode('Manual Trigger');
+			await n8n.page.keyboard.press('Escape');
+			await n8n.canvas.waitForSaveWorkflowCompleted();
+			await n8n.notifications.quickCloseAll();
 
-		await n8n.canvas.visitWithTimestamp(NOW + SEVEN_DAYS + 10000);
-		// Add a node to trigger autosave (required for NPS survey to show)
-		await n8n.canvas.addNode('Manual Trigger');
-		await n8n.page.keyboard.press('Escape');
-		await n8n.canvas.waitForSaveWorkflowCompleted();
-		await n8n.notifications.quickCloseAll();
+			await expect(n8n.npsSurvey.getNpsSurveyModal()).toBeVisible();
+			await n8n.npsSurvey.closeSurvey();
+			await expect(n8n.npsSurvey.getNpsSurveyModal()).toBeHidden();
 
-		await expect(n8n.npsSurvey.getNpsSurveyModal()).toBeVisible();
-		await n8n.npsSurvey.closeSurvey();
-		await expect(n8n.npsSurvey.getNpsSurveyModal()).toBeHidden();
+			await n8n.canvas.visitWithTimestamp(NOW + SEVEN_DAYS + 10000);
+			// Add a node to trigger autosave (required for NPS survey to show)
+			await n8n.canvas.addNode('Manual Trigger');
+			await n8n.page.keyboard.press('Escape');
+			await n8n.canvas.waitForSaveWorkflowCompleted();
+			await expect(n8n.npsSurvey.getNpsSurveyModal()).toBeHidden();
 
-		await n8n.canvas.visitWithTimestamp(NOW + SEVEN_DAYS + 10000);
-		// Add a node to trigger autosave (required for NPS survey to show)
-		await n8n.canvas.addNode('Manual Trigger');
-		await n8n.page.keyboard.press('Escape');
-		await n8n.canvas.waitForSaveWorkflowCompleted();
-		await expect(n8n.npsSurvey.getNpsSurveyModal()).toBeHidden();
+			await n8n.canvas.visitWithTimestamp(NOW + (SEVEN_DAYS + 10000) * 2 + ONE_DAY);
+			// Add a node to trigger autosave (required for NPS survey to show)
+			await n8n.canvas.addNode('Manual Trigger');
+			await n8n.page.keyboard.press('Escape');
+			await n8n.canvas.waitForSaveWorkflowCompleted();
+			await n8n.notifications.quickCloseAll();
 
-		await n8n.canvas.visitWithTimestamp(NOW + (SEVEN_DAYS + 10000) * 2 + ONE_DAY);
-		// Add a node to trigger autosave (required for NPS survey to show)
-		await n8n.canvas.addNode('Manual Trigger');
-		await n8n.page.keyboard.press('Escape');
-		await n8n.canvas.waitForSaveWorkflowCompleted();
-		await n8n.notifications.quickCloseAll();
+			await expect(n8n.npsSurvey.getNpsSurveyModal()).toBeVisible();
+			await n8n.npsSurvey.closeSurvey();
+			await expect(n8n.npsSurvey.getNpsSurveyModal()).toBeHidden();
 
-		await expect(n8n.npsSurvey.getNpsSurveyModal()).toBeVisible();
-		await n8n.npsSurvey.closeSurvey();
-		await expect(n8n.npsSurvey.getNpsSurveyModal()).toBeHidden();
+			await n8n.canvas.visitWithTimestamp(NOW + (SEVEN_DAYS + 10000) * 2 + ONE_DAY * 2);
+			// Add a node to trigger autosave (required for NPS survey to show)
+			await n8n.canvas.addNode('Manual Trigger');
+			await n8n.page.keyboard.press('Escape');
+			await n8n.canvas.waitForSaveWorkflowCompleted();
+			await expect(n8n.npsSurvey.getNpsSurveyModal()).toBeHidden();
 
-		await n8n.canvas.visitWithTimestamp(NOW + (SEVEN_DAYS + 10000) * 2 + ONE_DAY * 2);
-		// Add a node to trigger autosave (required for NPS survey to show)
-		await n8n.canvas.addNode('Manual Trigger');
-		await n8n.page.keyboard.press('Escape');
-		await n8n.canvas.waitForSaveWorkflowCompleted();
-		await expect(n8n.npsSurvey.getNpsSurveyModal()).toBeHidden();
+			await n8n.canvas.visitWithTimestamp(NOW + (SEVEN_DAYS + 10000) * 3 + ONE_DAY * 3);
+			// Add a node to trigger autosave (required for NPS survey to show)
+			await n8n.canvas.addNode('Manual Trigger');
+			await n8n.page.keyboard.press('Escape');
+			await n8n.canvas.waitForSaveWorkflowCompleted();
+			await expect(n8n.npsSurvey.getNpsSurveyModal()).toBeHidden();
 
-		await n8n.canvas.visitWithTimestamp(NOW + (SEVEN_DAYS + 10000) * 3 + ONE_DAY * 3);
-		// Add a node to trigger autosave (required for NPS survey to show)
-		await n8n.canvas.addNode('Manual Trigger');
-		await n8n.page.keyboard.press('Escape');
-		await n8n.canvas.waitForSaveWorkflowCompleted();
-		await expect(n8n.npsSurvey.getNpsSurveyModal()).toBeHidden();
-
-		await n8n.canvas.visitWithTimestamp(NOW + (SEVEN_DAYS + 10000) * 3 + ABOUT_SIX_MONTHS);
-		// Add a node to trigger autosave (required for NPS survey to show)
-		await n8n.canvas.addNode('Manual Trigger');
-		await n8n.page.keyboard.press('Escape');
-		await n8n.canvas.waitForSaveWorkflowCompleted();
-		await expect(n8n.npsSurvey.getNpsSurveyModal()).toBeVisible();
-	});
-});
+			await n8n.canvas.visitWithTimestamp(NOW + (SEVEN_DAYS + 10000) * 3 + ABOUT_SIX_MONTHS);
+			// Add a node to trigger autosave (required for NPS survey to show)
+			await n8n.canvas.addNode('Manual Trigger');
+			await n8n.page.keyboard.press('Escape');
+			await n8n.canvas.waitForSaveWorkflowCompleted();
+			await expect(n8n.npsSurvey.getNpsSurveyModal()).toBeVisible();
+		});
+	},
+);

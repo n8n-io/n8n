@@ -49,11 +49,13 @@
     "langchain": "catalog:",
     "@n8n/config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
-    "n8n-workflow": "workspace:*",
     "tmp-promise": "3.0.3",
     "js-tiktoken": "catalog:",
     "https-proxy-agent": "catalog:",
     "proxy-from-env": "^1.1.0",
     "undici": "^6.21.0"
+  },
+  "peerDependencies": {
+    "n8n-workflow": "*"
   }
 }

@@ -5,7 +5,7 @@ import type { WorkflowSuggestion } from '../../types/assistant';
 import N8nPromptInput from '../N8nPromptInput';
 
 export default {
-	title: 'Assistant/PromptInputSuggestions',
+	title: 'Core/PromptInputSuggestions',
 	component: N8nPromptInputSuggestions,
 	argTypes: {
 		suggestionClick: { action: 'suggestion-clicked' },

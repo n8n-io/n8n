@@ -2,21 +2,20 @@ import { expect, test } from '../../../fixtures/base';
 
 test.use({ capability: 'proxy' });
 
-test.describe('Evaluations @capability:proxy', {
-	annotation: [
-		{ type: 'owner', description: 'AI' },
-	],
-}, () => {
-	test.beforeEach(async ({ n8n, services }) => {
-		await services.proxy.clearAllExpectations();
+test.describe(
+	'Evaluations @capability:proxy',
+	{
+		annotation: [{ type: 'owner', description: 'AI' }],
+	},
+	() => {
+		test.beforeEach(async ({ n8n, services }) => {
+			await services.proxy.clearAllExpectations();
 
-		await n8n.goHome();
-	});
+			await n8n.goHome();
+		});
 
-	// @AI team to look at this
-	test.fixme(
-		'should load evaluations workflow and execute twice @fixme',
-		async ({ n8n, services }) => {
+		// @AI team to look at this
+		test.fixme('should load evaluations workflow and execute twice', async ({ n8n, services }) => {
 			await services.proxy.loadExpectations('evaluations');
 
 			await n8n.api.credentials.createCredentialFromDefinition({
@@ -119,6 +118,6 @@ m82JpEptTfAxFHtd8+Sb0U2G
 				],
 				valueInputOption: 'RAW',
 			});
-		},
-	);
-});
+		});
+	},
+);
