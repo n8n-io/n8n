@@ -17,7 +17,7 @@ export type CredentialResolveMetadata = {
 export type CredentialResolutionResult = {
 	data: ICredentialDataDecryptedObject;
 	/** True only when the credential was actually resolved via a dynamic resolver (not a fallback to static data). */
-	wasDynamic: boolean;
+	isDynamic: boolean;
 };
 
 /**

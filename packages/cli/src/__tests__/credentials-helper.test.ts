@@ -621,7 +621,7 @@ describe('CredentialsHelper', () => {
 			const resolvedData = { apiKey: 'dynamic-key' };
 			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({
 				data: resolvedData,
-				wasDynamic: true,
+				isDynamic: true,
 			});
 			credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntity);
 
@@ -655,7 +655,7 @@ describe('CredentialsHelper', () => {
 			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
 			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({
 				data: { apiKey: 'resolved' },
-				wasDynamic: false,
+				isDynamic: false,
 			});
 
 			await credentialsHelper.getDecrypted(
@@ -676,7 +676,7 @@ describe('CredentialsHelper', () => {
 			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
 			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({
 				data: { apiKey: 'resolved' },
-				wasDynamic: false,
+				isDynamic: false,
 			});
 
 			await credentialsHelper.getDecrypted(
@@ -724,7 +724,7 @@ describe('CredentialsHelper', () => {
 			const dynamicData = { apiKey: 'dynamic-key', extraField: 'extra-value' };
 			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({
 				data: dynamicData,
-				wasDynamic: true,
+				isDynamic: true,
 			});
 
 			const result = await credentialsHelper.getDecrypted(
@@ -744,7 +744,7 @@ describe('CredentialsHelper', () => {
 			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
 			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({
 				data: { apiKey: 'resolved' },
-				wasDynamic: false,
+				isDynamic: false,
 			});
 
 			const additionalDataWithoutContext = {
@@ -769,7 +769,7 @@ describe('CredentialsHelper', () => {
 			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
 			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({
 				data: { apiKey: 'resolved' },
-				wasDynamic: false,
+				isDynamic: false,
 			});
 
 			const additionalDataWithoutCredentials = {
@@ -801,7 +801,7 @@ describe('CredentialsHelper', () => {
 			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
 			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({
 				data: { apiKey: 'resolved' },
-				wasDynamic: false,
+				isDynamic: false,
 			});
 
 			const additionalDataWithoutSettings = {

@@ -51,7 +51,7 @@ export class DynamicCredentialsProxy
 				);
 				throw new Error('No dynamic credential resolving provider set');
 			}
-			return { data: staticData, wasDynamic: false };
+			return { data: staticData, isDynamic: false };
 		}
 		return await this.resolvingProvider.resolveIfNeeded(
 			credentialsResolveMetadata,

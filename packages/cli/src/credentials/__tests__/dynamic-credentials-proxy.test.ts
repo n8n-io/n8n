@@ -54,7 +54,7 @@ describe('DynamicCredentialsProxy', () => {
 		it('should return static data when no provider is set and credential is not resolvable', async () => {
 			const result = await proxy.resolveIfNeeded(credentialMetadata, staticData);
 
-			expect(result).toEqual({ data: staticData, wasDynamic: false });
+			expect(result).toEqual({ data: staticData, isDynamic: false });
 			expect(mockLogger.warn).not.toHaveBeenCalled();
 		});
 
@@ -73,7 +73,7 @@ describe('DynamicCredentialsProxy', () => {
 		it('should delegate to provider when set', async () => {
 			const dynamicResult: CredentialResolutionResult = {
 				data: { token: 'dynamic-token' },
-				wasDynamic: true,
+				isDynamic: true,
 			};
 			mockResolverProvider.resolveIfNeeded.mockResolvedValue(dynamicResult);
 
@@ -104,7 +104,7 @@ describe('DynamicCredentialsProxy', () => {
 
 			mockResolverProvider.resolveIfNeeded.mockResolvedValue({
 				data: staticData,
-				wasDynamic: false,
+				isDynamic: false,
 			});
 			proxy.setResolverProvider(mockResolverProvider);
 

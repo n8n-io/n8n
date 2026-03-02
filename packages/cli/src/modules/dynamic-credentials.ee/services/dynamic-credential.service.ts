@@ -66,7 +66,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 
 		// Not resolvable - return static credentials
 		if (!credentialsResolveMetadata.isResolvable) {
-			return { data: staticData, wasDynamic: false };
+			return { data: staticData, isDynamic: false };
 		}
 
 		if (!resolverId) {
@@ -139,7 +139,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			}
 
 			// Adds and override static data with dynamically resolved data
-			return { data: { ...staticData, ...dynamicData }, wasDynamic: true };
+			return { data: { ...staticData, ...dynamicData }, isDynamic: true };
 		} catch (error) {
 			return this.handleResolutionError(credentialsResolveMetadata, staticData, error, resolverId);
 		}
@@ -185,7 +185,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 				error: error instanceof Error ? error.message : String(error),
 				isDataNotFound,
 			});
-			return { data: staticData, wasDynamic: false };
+			return { data: staticData, isDynamic: false };
 		}
 
 		this.logger.debug('Dynamic credential resolution failed without fallback', {
@@ -217,7 +217,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 				resolverId,
 				resolverSource: credentialsResolveMetadata.resolverId ? 'credential' : 'workflow',
 			});
-			return { data: staticData, wasDynamic: false };
+			return { data: staticData, isDynamic: false };
 		}
 
 		throw new CredentialResolutionError(
@@ -237,7 +237,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 				credentialId: credentialsResolveMetadata.id,
 				credentialName: credentialsResolveMetadata.name,
 			});
-			return { data: staticData, wasDynamic: false };
+			return { data: staticData, isDynamic: false };
 		}
 
 		throw new CredentialResolutionError(

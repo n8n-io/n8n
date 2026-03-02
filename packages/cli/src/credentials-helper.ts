@@ -382,7 +382,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				canUseExternalSecrets,
 			);
 			decryptedDataOriginal = resolveResult.data;
-			if (resolveResult.wasDynamic) {
+			if (resolveResult.isDynamic) {
 				additionalData.currentNodeUsedDynamicCredentials = true;
 			}
 		}
