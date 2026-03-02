@@ -417,7 +417,7 @@
 	"chatHub.agent.newAgent": "New Agent",
 	"chatHub.agent.unavailableAgent": "Unavailable agent",
 	"chatHub.agent.configureCredentials": "Configure credentials",
-	"chatHub.agent.addModel": "Add model",
+	"chatHub.agent.addModel": "Choose model by ID",
 	"chatHub.agent.credentialsMissing": "Credentials missing",
 	"chatHub.agent.card.menu.edit": "Edit",
 	"chatHub.agent.card.menu.delete": "Delete",
