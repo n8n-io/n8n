@@ -455,11 +455,21 @@ export interface ChatHubConversationResponse {
 	conversation: ChatHubConversationDto;
 }
 
+export const suggestedPromptSchema = z.object({
+	text: z.string().min(1).max(256),
+	icon: agentIconOrEmojiSchema.optional(),
+});
+
+export const suggestedPromptsSchema = z.array(suggestedPromptSchema).max(6);
+
+export type SuggestedPrompt = z.infer<typeof suggestedPromptSchema>;
+
 export interface ChatHubAgentDto {
 	id: string;
 	name: string;
 	description: string | null;
 	icon: AgentIconOrEmoji | null;
+	suggestedPrompts: SuggestedPrompt[] | null;
 	systemPrompt: string;
 	ownerId: string;
 	credentialId: string | null;
@@ -474,6 +484,7 @@ export class ChatHubCreateAgentRequest extends Z.class({
 	name: z.string().min(1).max(128),
 	description: z.string().max(512).optional(),
 	icon: agentIconOrEmojiSchema,
+	suggestedPrompts: suggestedPromptsSchema.optional(),
 	systemPrompt: z.string().min(1),
 	credentialId: z.string(),
 	provider: chatHubLLMProviderSchema,
@@ -485,6 +496,7 @@ export class ChatHubUpdateAgentRequest extends Z.class({
 	name: z.string().min(1).max(128).optional(),
 	description: z.string().max(512).optional(),
 	icon: agentIconOrEmojiSchema.optional(),
+	suggestedPrompts: suggestedPromptsSchema.optional(),
 	systemPrompt: z.string().min(1).optional(),
 	credentialId: z.string().optional(),
 	provider: chatHubLLMProviderSchema.optional(),

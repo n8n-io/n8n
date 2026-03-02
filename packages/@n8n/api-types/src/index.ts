@@ -51,6 +51,8 @@ export {
 	ChatHubUpdateAgentRequest,
 	type AgentIconOrEmoji,
 	agentIconOrEmojiSchema,
+	type SuggestedPrompt,
+	suggestedPromptsSchema,
 	type MessageChunk,
 	UpdateChatSettingsRequest,
 	type ChatProviderSettingsDto,

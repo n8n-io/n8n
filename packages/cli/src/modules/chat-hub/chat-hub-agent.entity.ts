@@ -20,6 +20,7 @@ export interface IChatHubAgent {
 	name: string;
 	description: string | null;
 	icon: AgentIconOrEmoji | null;
+	suggestedPrompts: Array<{ text: string; icon?: AgentIconOrEmoji }> | null;
 	systemPrompt: string;
 	ownerId: string;
 	credentialId: string | null;
@@ -49,6 +50,12 @@ export class ChatHubAgent extends WithTimestamps {
 	 */
 	@JsonColumn({ nullable: true })
 	icon: AgentIconOrEmoji | null;
+
+	/**
+	 * Suggested prompts displayed on the chat greeting screen.
+	 */
+	@JsonColumn({ nullable: true })
+	suggestedPrompts: Array<{ text: string; icon?: AgentIconOrEmoji }> | null;
 
 	/**
 	 * The system prompt for the chat agent.
