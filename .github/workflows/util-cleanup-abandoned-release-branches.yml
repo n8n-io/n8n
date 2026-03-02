@@ -9,7 +9,7 @@ jobs:
     # Only if PR was closed without merge
     if: >
       github.event.pull_request.merged == false
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     permissions:
       contents: write
 
