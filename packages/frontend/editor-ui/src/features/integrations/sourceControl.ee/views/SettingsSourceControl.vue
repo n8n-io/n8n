@@ -489,6 +489,7 @@ watch(connectionType, () => {
 								iconOnly
 								size="xlarge"
 								icon="refresh-cw"
+								:aria-label="locale.baseText('generic.refresh')"
 								data-test-id="source-control-refresh-branches-button"
 								:class="$style.refreshBranches"
 								@click="refreshBranches"

@@ -1,5 +1,4 @@
 import { setActivePinia, createPinia } from 'pinia';
-import { computed } from 'vue';
 import { vi } from 'vitest';
 import { useExternalSecretsStore } from './externalSecrets.ee.store';
 import type { ExternalSecretsProvider } from '@n8n/api-types';
@@ -28,10 +27,8 @@ const {
 	updateProvider: vi.fn(),
 }));
 
-// Hoisted mock for feature flag composable
-const { useEnvFeatureFlag } = vi.hoisted(() => ({
-	useEnvFeatureFlag: vi.fn(),
-}));
+// Mock module settings - mutable so tests can change it
+const mockModuleSettings: Record<string, unknown> = {};
 
 // Mock API client module
 vi.mock('@n8n/rest-api-client', () => ({
@@ -68,12 +65,8 @@ vi.mock('@/app/stores/settings.store', () => ({
 		isEnterpriseFeatureEnabled: {
 			[EnterpriseEditionFeature.ExternalSecrets]: true,
 		},
+		moduleSettings: mockModuleSettings,
 	})),
-}));
-
-// Mock feature flag composable
-vi.mock('@/features/shared/envFeatureFlag/useEnvFeatureFlag', () => ({
-	useEnvFeatureFlag,
 }));
 
 // Test fixtures
@@ -150,10 +143,12 @@ const expectedProjectSecretsObject = {
 };
 
 // Helper functions
-const mockFeatureFlag = (featureName: string, enabled: boolean) => {
-	vi.mocked(useEnvFeatureFlag).mockReturnValue({
-		check: computed(() => (flag: string) => flag === featureName && enabled),
-	} as ReturnType<typeof useEnvFeatureFlag>);
+const setModuleSettings = (settings: { forProjects?: boolean; multipleConnections?: boolean }) => {
+	mockModuleSettings['external-secrets'] = settings;
+};
+
+const clearModuleSettings = () => {
+	delete mockModuleSettings['external-secrets'];
 };
 
 const setHasPermission = (hasPermission: boolean) => {
@@ -165,7 +160,7 @@ describe('externalSecretsStore', () => {
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
 		// Reset to defaults
-		mockFeatureFlag('EXTERNAL_SECRETS_FOR_PROJECTS', false);
+		clearModuleSettings();
 		setHasPermission(true);
 	});
 
@@ -209,8 +204,8 @@ describe('externalSecretsStore', () => {
 	});
 
 	describe('secretsAsObject', () => {
-		it('should only contain the global secrets if development feature flag for project secrets is disabled', () => {
-			mockFeatureFlag('EXTERNAL_SECRETS_FOR_PROJECTS', false);
+		it('should only contain the global secrets if forProjects is disabled', () => {
+			clearModuleSettings();
 			const store = useExternalSecretsStore();
 			store.state.secrets = mockGlobalSecrets;
 			store.state.projectSecrets = mockProjectSecrets;
@@ -221,7 +216,7 @@ describe('externalSecretsStore', () => {
 		});
 
 		it('should contain combined global and project secrets', () => {
-			mockFeatureFlag('EXTERNAL_SECRETS_FOR_PROJECTS', true);
+			setModuleSettings({ forProjects: true });
 			const store = useExternalSecretsStore();
 			store.state.secrets = mockGlobalSecrets;
 			store.state.projectSecrets = mockProjectSecrets;
@@ -251,8 +246,8 @@ describe('externalSecretsStore', () => {
 	});
 
 	describe('fetchGlobalSecrets()', () => {
-		it('should fetch and set global secrets when user has permission (feature flag disabled)', async () => {
-			mockFeatureFlag('EXTERNAL_SECRETS_FOR_PROJECTS', false);
+		it('should fetch and set global secrets when user has permission (no module settings)', async () => {
+			clearModuleSettings();
 			setHasPermission(true);
 			getExternalSecrets.mockResolvedValue(mockGlobalSecrets);
 			const store = useExternalSecretsStore();
@@ -265,8 +260,8 @@ describe('externalSecretsStore', () => {
 			expect(store.state.secrets).toEqual(mockGlobalSecrets);
 		});
 
-		it('should use new completions endpoint when feature flag is enabled', async () => {
-			mockFeatureFlag('EXTERNAL_SECRETS_FOR_PROJECTS', true);
+		it('should use new completions endpoint when forProjects is enabled', async () => {
+			setModuleSettings({ forProjects: true });
 			setHasPermission(true);
 			getGlobalExternalSecrets.mockResolvedValue(mockGlobalSecrets);
 			const store = useExternalSecretsStore();
@@ -291,8 +286,8 @@ describe('externalSecretsStore', () => {
 			expect(store.state.secrets).toEqual({});
 		});
 
-		it('should set secrets to empty object on API error (feature flag disabled)', async () => {
-			mockFeatureFlag('EXTERNAL_SECRETS_FOR_PROJECTS', false);
+		it('should set secrets to empty object on API error (no module settings)', async () => {
+			clearModuleSettings();
 			setHasPermission(true);
 			getExternalSecrets.mockRejectedValue(new Error('API Error'));
 			const store = useExternalSecretsStore();
@@ -302,8 +297,8 @@ describe('externalSecretsStore', () => {
 			expect(store.state.secrets).toEqual({});
 		});
 
-		it('should set secrets to empty object on API error (feature flag enabled)', async () => {
-			mockFeatureFlag('EXTERNAL_SECRETS_FOR_PROJECTS', true);
+		it('should set secrets to empty object on API error (forProjects enabled)', async () => {
+			setModuleSettings({ forProjects: true });
 			setHasPermission(true);
 			getGlobalExternalSecrets.mockRejectedValue(new Error('API Error'));
 			const store = useExternalSecretsStore();
@@ -315,8 +310,8 @@ describe('externalSecretsStore', () => {
 	});
 
 	describe('fetchProjectSecrets()', () => {
-		it('should leave state.projectSecrets as empty object if development feature flag for project secrets is disabled', async () => {
-			mockFeatureFlag('EXTERNAL_SECRETS_FOR_PROJECTS', false);
+		it('should leave state.projectSecrets as empty object if forProjects is disabled', async () => {
+			clearModuleSettings();
 			setHasPermission(true);
 			getProjectExternalSecrets.mockResolvedValue(mockProjectSecrets);
 			const store = useExternalSecretsStore();
@@ -328,7 +323,7 @@ describe('externalSecretsStore', () => {
 		});
 
 		it('should set state.projectSecrets to response from API', async () => {
-			mockFeatureFlag('EXTERNAL_SECRETS_FOR_PROJECTS', true);
+			setModuleSettings({ forProjects: true });
 			setHasPermission(true);
 			getProjectExternalSecrets.mockResolvedValue(mockProjectSecrets);
 			const store = useExternalSecretsStore();
@@ -339,8 +334,8 @@ describe('externalSecretsStore', () => {
 			expect(store.state.projectSecrets).toEqual(mockProjectSecrets);
 		});
 
-		it('should not fetch when feature flag is enabled but user lacks permission', async () => {
-			mockFeatureFlag('EXTERNAL_SECRETS_FOR_PROJECTS', true);
+		it('should not fetch when forProjects is enabled but user lacks permission', async () => {
+			setModuleSettings({ forProjects: true });
 			setHasPermission(false);
 			const store = useExternalSecretsStore();
 
@@ -351,7 +346,7 @@ describe('externalSecretsStore', () => {
 		});
 
 		it('should set projectSecrets to empty object on API error', async () => {
-			mockFeatureFlag('EXTERNAL_SECRETS_FOR_PROJECTS', true);
+			setModuleSettings({ forProjects: true });
 			setHasPermission(true);
 			getProjectExternalSecrets.mockRejectedValue(new Error('API Error'));
 			const store = useExternalSecretsStore();

@@ -269,34 +269,39 @@ function generateSubnodesConfigInline(
 	ctx: SubnodeGenerationContext,
 	options: SubnodeGeneratorOptions,
 ): string | null {
-	// Group subnodes by connection type
-	const grouped = new Map<AiConnectionType, SemanticNode[]>();
+	// Group subnodes by connection type, tracking indices
+	const grouped = new Map<AiConnectionType, Array<{ node: SemanticNode; index: number }>>();
 
 	for (const sub of node.subnodes) {
 		const subnodeNode = ctx.graph.nodes.get(sub.subnodeName);
 		if (!subnodeNode) continue;
 
 		const existing = grouped.get(sub.connectionType) ?? [];
-		existing.push(subnodeNode);
+		existing.push({ node: subnodeNode, index: sub.index });
 		grouped.set(sub.connectionType, existing);
 	}
 
 	// Generate config entries
 	const entries: string[] = [];
 
-	for (const [connType, subnodeNodes] of grouped) {
+	for (const [connType, subnodeEntries] of grouped) {
 		const configKey = AI_CONNECTION_TO_CONFIG_KEY[connType];
 		const builderName = AI_CONNECTION_TO_BUILDER[connType];
 
-		if (subnodeNodes.length === 0) continue;
+		if (subnodeEntries.length === 0) continue;
 
-		const calls = subnodeNodes.map((n) => generateSubnodeCall(n, builderName, ctx, options));
+		const calls = subnodeEntries.map((e) => generateSubnodeCall(e.node, builderName, ctx, options));
 
 		if (AI_ALWAYS_ARRAY_TYPES.has(connType)) {
 			entries.push(`${configKey}: [${calls.join(', ')}]`);
 		} else if (AI_OPTIONAL_ARRAY_TYPES.has(connType)) {
-			if (subnodeNodes.length === 1) {
+			if (subnodeEntries.length === 1) {
 				entries.push(`${configKey}: ${calls[0]}`);
+			} else if (
+				connType === 'ai_languageModel' &&
+				subnodeEntries.every((e) => e.index === subnodeEntries[0].index)
+			) {
+				entries.push(`${configKey}: [[${calls.join(', ')}]]`);
 			} else {
 				entries.push(`${configKey}: [${calls.join(', ')}]`);
 			}
@@ -319,29 +324,36 @@ function generateSubnodesConfigWithVarRefs(
 	node: SemanticNode,
 	ctx: SubnodeGenerationContext,
 ): string | null {
-	// Group subnodes by connection type, using variable names
-	const grouped = new Map<AiConnectionType, string[]>();
+	// Group subnodes by connection type, tracking indices
+	const grouped = new Map<AiConnectionType, Array<{ varName: string; index: number }>>();
 
 	for (const sub of node.subnodes) {
 		const varName = getVarName(sub.subnodeName, ctx);
 		const existing = grouped.get(sub.connectionType) ?? [];
-		existing.push(varName);
+		existing.push({ varName, index: sub.index });
 		grouped.set(sub.connectionType, existing);
 	}
 
 	// Generate config entries using variable names
 	const entries: string[] = [];
 
-	for (const [connType, varNames] of grouped) {
+	for (const [connType, varEntries] of grouped) {
 		const configKey = AI_CONNECTION_TO_CONFIG_KEY[connType];
 
-		if (varNames.length === 0) continue;
+		if (varEntries.length === 0) continue;
+
+		const varNames = varEntries.map((e) => e.varName);
 
 		if (AI_ALWAYS_ARRAY_TYPES.has(connType)) {
 			entries.push(`${configKey}: [${varNames.join(', ')}]`);
 		} else if (AI_OPTIONAL_ARRAY_TYPES.has(connType)) {
-			if (varNames.length === 1) {
+			if (varEntries.length === 1) {
 				entries.push(`${configKey}: ${varNames[0]}`);
+			} else if (
+				connType === 'ai_languageModel' &&
+				varEntries.every((e) => e.index === varEntries[0].index)
+			) {
+				entries.push(`${configKey}: [[${varNames.join(', ')}]]`);
 			} else {
 				entries.push(`${configKey}: [${varNames.join(', ')}]`);
 			}

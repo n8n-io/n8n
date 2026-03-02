@@ -142,6 +142,7 @@ const onTableAction = (action: string, settings: ChatProviderSettingsDto) => {
 							iconOnly
 							size="small"
 							icon="refresh-cw"
+							:aria-label="i18n.baseText('generic.refresh')"
 							@click="$emit('refresh')"
 						/>
 					</N8nTooltip>

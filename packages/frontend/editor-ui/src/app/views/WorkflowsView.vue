@@ -1819,6 +1819,7 @@ const onNameSubmit = async (name: string) => {
 					size="small"
 					iconOnly
 					icon="folder-plus"
+					:aria-label="i18n.baseText('workflows.addFolder')"
 					data-test-id="add-folder-button"
 					:class="$style['add-folder-button']"
 					:disabled="!showRegisteredCommunityCTA && (readOnlyEnv || !hasPermissionToCreateFolders)"

@@ -6,7 +6,7 @@ import { useI18n } from '@n8n/i18n';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useUIStore } from '@/app/stores/ui.store';
 import { ref, computed, onMounted, onBeforeUnmount, useTemplateRef } from 'vue';
-import { generateVersionName } from '@/features/workflows/workflowHistory/utils';
+import { generateVersionNameFromId } from '@/features/workflows/workflowHistory/utils';
 import type { EventBus } from '@n8n/utils/event-bus';
 
 export type WorkflowVersionFormModalEventBusEvents = {
@@ -48,7 +48,7 @@ onMounted(() => {
 	if (props.data.versionName) {
 		versionName.value = props.data.versionName;
 	} else if (props.data.versionId) {
-		versionName.value = generateVersionName(props.data.versionId);
+		versionName.value = generateVersionNameFromId(props.data.versionId);
 	}
 
 	if (props.data.description) {
