@@ -2701,6 +2701,8 @@ export interface ITaskData extends ITaskStartedData {
 	inputOverride?: ITaskDataConnections;
 	error?: ExecutionError;
 	metadata?: ITaskMetadata;
+	/** True when at least one credential used by this node was resolved dynamically */
+	usedDynamicCredentials?: boolean;
 }
 
 export interface ISourceData {
@@ -2937,6 +2939,11 @@ export interface IWorkflowExecuteAdditionalData {
 	): Promise<Result<T, E>>;
 	getRunnerStatus?(taskType: string): { available: true } | { available: false; reason?: string };
 	validateCookieAuth?: (cookieValue: string) => Promise<void>;
+	/**
+	 * Mutable flag set to true during a node's execution if any credential was resolved
+	 * dynamically. Reset to false by the execution engine before each node runs.
+	 */
+	currentNodeUsedDynamicCredentials?: boolean;
 }
 
 export type WorkflowActivateMode =
