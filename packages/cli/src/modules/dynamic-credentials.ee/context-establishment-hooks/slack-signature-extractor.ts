@@ -124,10 +124,9 @@ export class SlackSignatureExtractor implements IContextEstablishmentHook {
 			return body;
 		}
 
-		// Fallback: serialize the body object
-		// This is less reliable for signature verification but handles edge cases
+		// Fallback: reconstruct URL-encoded form body (Slack sends form-urlencoded)
 		if (body !== null && body !== undefined && typeof body === 'object') {
-			return JSON.stringify(body);
+			return new URLSearchParams(body as Record<string, string>).toString();
 		}
 
 		throw new Error('Could not retrieve raw body for Slack identity extraction');
