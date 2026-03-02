@@ -10,38 +10,30 @@
  *
  * Run: pnpm --filter=@n8n/performance bench
  */
-import { bench, describe, beforeAll, afterAll } from 'vitest';
+import { bench, describe } from 'vitest';
 import { ExpressionEvaluator, IsolatedVmBridge } from '@n8n/expression-runtime';
-import type { IExpressionEvaluator } from '@n8n/expression-runtime';
 import {
 	DollarSignValidator,
 	PrototypeSanitizer,
 	ThisSanitizer,
 } from 'n8n-workflow/src/expression-sandboxing';
 
-let evaluator: IExpressionEvaluator;
+// Top-level await — vitest bench doesn't support beforeAll
+const bridge = new IsolatedVmBridge({ timeout: 5000 });
+const evaluator = new ExpressionEvaluator({
+	bridge,
+	hooks: {
+		before: [ThisSanitizer],
+		after: [PrototypeSanitizer, DollarSignValidator],
+	},
+});
+await evaluator.initialize();
 
 const testData: Record<string, unknown> = {
 	$json: { id: 123, name: 'test', email: 'test@example.com' },
 	$runIndex: 0,
 	$itemIndex: 0,
 };
-
-beforeAll(async () => {
-	const bridge = new IsolatedVmBridge({ timeout: 5000 });
-	evaluator = new ExpressionEvaluator({
-		bridge,
-		hooks: {
-			before: [ThisSanitizer],
-			after: [PrototypeSanitizer, DollarSignValidator],
-		},
-	});
-	await evaluator.initialize();
-});
-
-afterAll(async () => {
-	await evaluator.dispose();
-});
 
 describe('Script Compilation', () => {
 	// Cache hit: same expression every iteration
