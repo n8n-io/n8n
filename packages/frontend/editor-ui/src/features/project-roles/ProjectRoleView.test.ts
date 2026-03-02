@@ -493,16 +493,16 @@ describe('ProjectRoleView', () => {
 	});
 
 	describe('External Secrets Scopes', () => {
-		it('should not render externalSecretsProvider scope type when forProjects is off', () => {
+		it('should not render externalSecretsProvider scope type when roleBasedAccess is off', () => {
 			const { queryByText } = renderComponent();
 
 			expect(queryByText('Secret stores')).not.toBeInTheDocument();
 			expect(queryByText('Secrets')).not.toBeInTheDocument();
 		});
 
-		it('should render externalSecretsProvider scope type when forProjects is on', () => {
+		it('should render externalSecretsProvider scope type when roleBasedAccess is on', () => {
 			settingsStore.moduleSettings = {
-				'external-secrets': { forProjects: true, multipleConnections: true },
+				'external-secrets': { roleBasedAccess: true, forProjects: true, multipleConnections: true },
 			};
 			const { getByText } = renderComponent();
 
@@ -510,9 +510,9 @@ describe('ProjectRoleView', () => {
 			expect(getByText('Secrets')).toBeInTheDocument();
 		});
 
-		it('should show secrets checkboxes when forProjects is on', async () => {
+		it('should show secrets checkboxes when roleBasedAccess is on', async () => {
 			settingsStore.moduleSettings = {
-				'external-secrets': { forProjects: true, multipleConnections: true },
+				'external-secrets': { roleBasedAccess: true, forProjects: true, multipleConnections: true },
 			};
 			const { getByTestId } = renderComponent();
 
