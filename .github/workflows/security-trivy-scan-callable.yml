@@ -34,8 +34,9 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           sparse-checkout: |
-            vex.openvex.json
-            .github/trivy.yaml
+            security/vex.openvex.json
+            security/trivy.yaml
+            security/trivy-ignore-policy.rego
           sparse-checkout-cone-mode: false
 
       - name: Pull Docker image with retry
@@ -46,7 +47,7 @@ jobs:
           done
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@dc5a429b52fcf669ce959baa2c2dd26090d2a6c4 # v0.32.0
+        uses: aquasecurity/trivy-action@e368e328979b113139d6f9068e03accaed98a518 # v0.34.1
         id: trivy_scan
         with:
           image-ref: ${{ inputs.image_ref }}
@@ -55,7 +56,7 @@ jobs:
           severity: 'CRITICAL,HIGH,MEDIUM,LOW'
           ignore-unfixed: false
           exit-code: '0'
-          trivy-config: '.github/trivy.yaml'
+          trivy-config: 'security/trivy.yaml'
 
       - name: Calculate vulnerability counts
         id: process_results

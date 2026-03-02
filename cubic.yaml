@@ -40,6 +40,14 @@ reviews:
     - Version files
 
     Approve if reasonably tested. Let humans handle edge cases.
+
+    ## Step 4: Design System Tokens
+
+    For any hard-coded visual values in CSS (colors, shadows, spacing), check
+    `@n8n/design-system/src/css/_primitives.scss` and
+    `@n8n/design-system/src/css/_tokens.scss` for an appropriate alternative.
+    If one exists, suggest using it. If none exist, ask why the hard-coded
+    value is required.
   custom_rules:
     - name: Tests
       description: |-
@@ -187,9 +195,15 @@ reviews:
         - Higher scrutiny for: expression engine, credential handling, code execution nodes, license enforcement, SSO integrations
         - Consider n8n's security audit categories: credentials, database, nodes, instance, filesystem risks
         - Community/custom nodes have higher risk profile than official nodes
+    - name: Design System Tokens
+      description: |-
+        For any hard-coded visual values in CSS (colors, shadows, spacing),
+        check `@n8n/design-system/src/css/_primitives.scss` and
+        `@n8n/design-system/src/css/_tokens.scss` for an appropriate alternative.
+        If one exists, suggest using it. If none exist, ask why the hard-coded
+        value is required.
 pr_descriptions:
   generate: false
   instructions: Each PR is supposed to have a limited scope. In your review, focus on changes made in the PR and avoid pointing out problems you found in the code that already existed.
 issues:
   fix_with_cubic_buttons: true
-

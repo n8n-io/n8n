@@ -6,7 +6,7 @@ import type { IUser } from '@n8n/design-system/types';
 import N8nUsersList from './UsersList.vue';
 
 export default {
-	title: 'Modules/UsersList',
+	title: 'Core/UsersList',
 	component: N8nUsersList,
 	argTypes: {},
 	parameters: {

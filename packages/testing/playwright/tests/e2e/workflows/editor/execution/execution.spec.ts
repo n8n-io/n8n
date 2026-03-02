@@ -92,7 +92,7 @@ test.describe(
 		});
 
 		// Failing/flaky in multi-main
-		test.fixme('should test manual workflow stop @fixme', async ({ n8n }) => {
+		test.fixme('should test manual workflow stop', async ({ n8n }) => {
 			await n8n.start.fromImportedWorkflow('Manual_wait_set.json');
 
 			await expect(n8n.canvas.getExecuteWorkflowButton()).toBeVisible();
@@ -231,7 +231,7 @@ test.describe(
 		/**
 		 * @TODO New Canvas: Different classes for pinned states on edges and nodes
 		 */
-		test.describe('connections should be colored differently for pinned data @fixme', () => {
+		test.describe('connections should be colored differently for pinned data', () => {
 			test.fixme();
 
 			test('when executing the workflow', async () => {
