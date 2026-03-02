@@ -89,7 +89,9 @@ export async function runAgent(
 		// Save conversation to memory including any tool call context
 		if (memory && input && result?.output) {
 			const previousCount = response?.metadata?.previousRequests?.length;
-			await saveToMemory(input, result.output, memory, steps, previousCount);
+			// Only save intermediate steps to memory if returnIntermediateSteps is enabled
+			const stepsToSave = options.returnIntermediateSteps ? steps : undefined;
+			await saveToMemory(input, result.output, memory, stepsToSave, previousCount);
 		}
 
 		if (options.returnIntermediateSteps && steps.length > 0) {
@@ -110,7 +112,9 @@ export async function runAgent(
 			// Save conversation to memory including any tool call context
 			if (memory && input && modelResponse.returnValues.output) {
 				const previousCount = response?.metadata?.previousRequests?.length;
-				await saveToMemory(input, modelResponse.returnValues.output, memory, steps, previousCount);
+				// Only save intermediate steps to memory if returnIntermediateSteps is enabled
+				const stepsToSave = options.returnIntermediateSteps ? steps : undefined;
+				await saveToMemory(input, modelResponse.returnValues.output, memory, stepsToSave, previousCount);
 			}
 			// Include intermediate steps if requested
 			const result = { ...modelResponse.returnValues };
