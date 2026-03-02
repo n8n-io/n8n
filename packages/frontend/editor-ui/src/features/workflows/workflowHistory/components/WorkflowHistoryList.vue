@@ -110,11 +110,10 @@ const onCompare = ({ id }: { id: WorkflowVersionId }) => {
 	emit('compare', { id });
 };
 
-const getHistoryVersionLabel = (workflowHistoryItem: WorkflowHistory): string => {
-	const isCurrentVersion = workflowHistoryItem.versionId === props.items[0]?.versionId;
-	return isCurrentVersion
-		? i18n.baseText('workflowHistory.item.currentChanges')
-		: getVersionLabel(workflowHistoryItem);
+const getHistoryVersionLabel = (workflowHistory: WorkflowHistory): string => {
+	const currentVersionId = props.items[0]?.versionId;
+
+	return getVersionLabel({ workflowHistory, currentVersionId });
 };
 
 const getItemToCompareWith = (

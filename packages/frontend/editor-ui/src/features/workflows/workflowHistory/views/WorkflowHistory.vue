@@ -628,6 +628,7 @@ watchEffect(async () => {
 					:workflow-id="workflowId"
 					:source-workflow-version-id="diffWithVersionId"
 					:target-workflow-version-id="versionId"
+					:available-versions="workflowHistory"
 					@close="closeCompareView"
 				/>
 			</template>

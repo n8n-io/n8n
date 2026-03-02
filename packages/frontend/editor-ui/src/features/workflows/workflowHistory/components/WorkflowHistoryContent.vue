@@ -61,10 +61,10 @@ const versionNameDisplay = computed(() => {
 		return '';
 	}
 
-	const isCurrentVersion = props.workflowVersion.versionId === props.workflow?.versionId;
-	return isCurrentVersion
-		? i18n.baseText('workflowHistory.item.currentChanges')
-		: getVersionLabel(props.workflowVersion);
+	return getVersionLabel({
+		workflowHistory: props.workflowVersion,
+		currentVersionId: props.workflow?.versionId,
+	});
 });
 
 const MAX_DESCRIPTION_LENGTH = 200;

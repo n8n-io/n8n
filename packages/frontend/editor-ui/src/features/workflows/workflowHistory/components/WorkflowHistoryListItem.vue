@@ -17,6 +17,7 @@ import {
 } from '@/features/workflows/workflowHistory/utils';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
+import WorkflowHistoryVersionDot from './WorkflowHistoryVersionDot.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -67,11 +68,24 @@ const authorLabel = computed<string>(() => {
 });
 
 const versionName = computed(() => {
-	if (props.index === 0) {
-		return i18n.baseText('workflowHistory.item.currentChanges');
+	const currentVersionId = props.index === 0 ? props.item.versionId : undefined;
+
+	return getVersionLabel({
+		workflowHistory: props.item,
+		currentVersionId,
+	});
+});
+
+const versionStatus = computed<'published' | 'latest' | 'default'>(() => {
+	if (props.isVersionActive) {
+		return 'published';
 	}
 
-	return getVersionLabel(props.item);
+	if (props.index === 0) {
+		return 'latest';
+	}
+
+	return 'default';
 });
 
 const versionPublishInfo = computed(() => {
@@ -192,15 +206,7 @@ onMounted(() => {
 			<!-- Timeline column -->
 			<span :class="$style.timelineColumn">
 				<template v-if="!props.isGrouped">
-					<span
-						v-if="props.isVersionActive"
-						:class="[$style.timelineDot, $style.timelineDotPublished]"
-					/>
-					<span
-						v-else-if="props.index === 0 && !props.isVersionActive"
-						:class="[$style.timelineDot, $style.timelineDotLatest]"
-					/>
-					<span v-else :class="[$style.timelineDot, $style.timelineDotDefault]" />
+					<WorkflowHistoryVersionDot :status="versionStatus" />
 				</template>
 				<span v-else :class="$style.timelineLine" />
 			</span>
@@ -254,7 +260,6 @@ onMounted(() => {
 <style module lang="scss">
 @use './timeline' as *;
 
-$timelineDotSize: 8px;
 $hoverBackground: var(--color--background--light-1);
 $authorMaxWidth: 130px;
 
@@ -317,26 +322,6 @@ $authorMaxWidth: 130px;
 	min-width: var(--spacing--lg);
 	position: relative;
 	align-self: stretch;
-}
-
-.timelineDot {
-	height: $timelineDotSize;
-	width: $timelineDotSize;
-	border-radius: 50%;
-	display: inline-block;
-}
-
-.timelineDotPublished {
-	background-color: var(--color--mint-600);
-}
-
-.timelineDotLatest {
-	background-color: var(--color--yellow-500);
-}
-
-.timelineDotDefault {
-	border: var(--border);
-	border-color: var(--color--text--tint-2);
 }
 
 .timelineLine {
