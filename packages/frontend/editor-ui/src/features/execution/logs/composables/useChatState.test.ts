@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { nextTick } from 'vue';
+import { computed, nextTick, shallowRef } from 'vue';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useChatState } from './useChatState';
@@ -7,6 +7,11 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import {
+	injectWorkflowDocumentStore,
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import type { INode } from 'n8n-workflow';
 import * as useRunWorkflowModule from '@/app/composables/useRunWorkflow';
 
@@ -30,6 +35,13 @@ vi.mock('@/app/composables/useWorkflowState', () => ({
 		setActiveExecutionId: vi.fn(),
 	})),
 }));
+vi.mock('@/app/stores/workflowDocument.store', async () => {
+	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
+	return {
+		...actual,
+		injectWorkflowDocumentStore: vi.fn(),
+	};
+});
 vi.mock('@/app/composables/useNodeHelpers', () => ({
 	useNodeHelpers: vi.fn(() => ({
 		updateNodesExecutionIssues: vi.fn(),
@@ -162,6 +174,13 @@ describe('useChatState', () => {
 		logsStore = useLogsStore();
 		const rootStore = useRootStore();
 		nodeTypesStore = useNodeTypesStore();
+
+		// Provide real document store (delegates to workflowsStore internally)
+		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(
+			shallowRef(
+				useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+			) as ReturnType<typeof injectWorkflowDocumentStore>,
+		);
 
 		// Mock computed getters
 		vi.spyOn(logsStore, 'chatSessionId', 'get').mockReturnValue('session-456');

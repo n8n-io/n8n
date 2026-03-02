@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { reactive, ref, nextTick } from 'vue';
+import { reactive, ref, shallowRef, nextTick } from 'vue';
 import { fireEvent } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
@@ -16,6 +16,11 @@ import { useLogsStore } from '@/app/stores/logs.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useBuilderStore } from '../../builder.store';
 import { SETUP_CREDENTIALS_MODAL_KEY } from '@/app/constants';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 const workflowValidationIssuesRef = ref<
 	Array<{ node: string; type: string; value: string | string[] }>
@@ -67,7 +72,17 @@ vi.mock('@/app/composables/useToast', () => ({
 	}),
 }));
 
-const renderComponent = createComponentRenderer(ExecuteMessage);
+const workflowDocumentStoreRef = shallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>(
+	null,
+);
+
+const renderComponent = createComponentRenderer(ExecuteMessage, {
+	global: {
+		provide: {
+			[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
+		},
+	},
+});
 
 vi.mock('./NodeIssueItem.vue', () => ({
 	default: {
@@ -115,6 +130,8 @@ describe('ExecuteMessage', () => {
 		setActivePinia(pinia);
 
 		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsStore.workflow.id = 'test-workflow';
+
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		logsStore = mockedStore(useLogsStore);
 		uiStore = mockedStore(useUIStore);
@@ -157,6 +174,10 @@ describe('ExecuteMessage', () => {
 			get: () => workflowTodosRef.value,
 		});
 		builderStore.trackWorkflowBuilderJourney = vi.fn();
+
+		workflowDocumentStoreRef.value = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
 
 		renderExecuteMessage = () => renderComponent({ pinia });
 	});

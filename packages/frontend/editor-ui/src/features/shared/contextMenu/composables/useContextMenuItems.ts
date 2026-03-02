@@ -87,9 +87,8 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 	);
 
 	const canAddNodeOfType = (nodeType: INodeTypeDescription) => {
-		const sameTypeNodes = (documentStore?.value?.allNodes ?? []).filter(
-			(n) => n.type === nodeType.name,
-		);
+		const allNodes = documentStore?.value?.allNodes ?? [];
+		const sameTypeNodes = allNodes.filter((n) => n.type === nodeType.name);
 		return nodeType.maxNodes === undefined || sameTypeNodes.length < nodeType.maxNodes;
 	};
 

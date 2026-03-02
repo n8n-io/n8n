@@ -38,9 +38,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	const nodeHelpers = useNodeHelpers();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 
-	const sourceNodes = computed(
-		() => nodes?.value ?? workflowDocumentStore?.value?.allNodes ?? workflowsStore.allNodes,
-	);
+	const sourceNodes = computed(() => nodes?.value ?? workflowDocumentStore?.value?.allNodes ?? []);
 
 	const getCredentialDisplayName = (credentialType: string): string => {
 		const credentialTypeInfo = credentialsStore.getCredentialTypeByName(credentialType);

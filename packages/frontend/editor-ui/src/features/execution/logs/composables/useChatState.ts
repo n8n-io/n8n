@@ -63,7 +63,7 @@ export function useChatState(
 
 	const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
 	const chatTriggerNode = computed(
-		() => (workflowDocumentStore?.value?.allNodes ?? []).find(isChatNode) ?? null,
+		() => workflowDocumentStore?.value?.allNodes.find(isChatNode) ?? null,
 	);
 
 	// Resolve the effective value for an options sub-parameter: returns the

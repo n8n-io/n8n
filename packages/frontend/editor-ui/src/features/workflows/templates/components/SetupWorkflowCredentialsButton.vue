@@ -6,10 +6,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { doesNodeHaveAllCredentialsFilled } from '@/app/utils/nodes/nodeTransforms';
 
 import { N8nButton } from '@n8n/design-system';
@@ -29,11 +26,7 @@ const setupPanelStore = useSetupPanelStore();
 const i18n = useI18n();
 const route = useRoute();
 
-const workflowDocumentStore = computed(() =>
-	workflowsStore.workflowId
-		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-		: undefined,
-);
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const isTemplateImportRoute = computed(() => {
 	return route.query.templateId !== undefined;
@@ -48,7 +41,7 @@ const allCredentialsFilled = computed(() => {
 		return true;
 	}
 
-	const nodes = workflowDocumentStore.value?.getNodes() ?? [];
+	const nodes = workflowDocumentStore?.value?.getNodes() ?? [];
 	if (!nodes.length) {
 		return true;
 	}
@@ -73,7 +66,7 @@ const showButton = computed(() => {
 	}
 
 	if (isSetupPanelFeatureEnabled.value) {
-		return (workflowDocumentStore.value?.getNodes() ?? []).length > 0;
+		return (workflowDocumentStore?.value?.getNodes() ?? []).length > 0;
 	}
 
 	if (isTemplateSetupCompleted.value) {
