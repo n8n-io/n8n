@@ -40,7 +40,7 @@ export async function conversationalAgentExecute(
 		returnIntermediateSteps?: boolean;
 		tracingMetadata?: { values?: Array<{ key: string; value: unknown }> };
 	};
-	const additionalMetadata = buildTracingMetadata(options.tracingMetadata?.values);
+	const additionalMetadata = buildTracingMetadata(options.tracingMetadata?.values, this.logger);
 	if (Object.keys(additionalMetadata).length > 0) {
 		this.logger.debug('Tracing metadata', { additionalMetadata });
 	}

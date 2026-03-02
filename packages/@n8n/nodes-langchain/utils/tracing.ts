@@ -1,5 +1,5 @@
 import type { BaseCallbackConfig } from '@langchain/core/callbacks/manager';
-import type { FieldType, IExecuteFunctions, ISupplyDataFunctions } from 'n8n-workflow';
+import type { FieldType, IExecuteFunctions, ISupplyDataFunctions, Logger } from 'n8n-workflow';
 import { jsonParse, validateFieldType } from 'n8n-workflow';
 
 interface TracingConfig {
@@ -18,6 +18,7 @@ export type TracingMetadataEntry = {
 
 export function buildTracingMetadata(
 	entries: Array<TracingMetadataEntry> | undefined,
+	logger?: Logger,
 ): Record<string, unknown> {
 	const additionalMetadata: Record<string, unknown> = {};
 
@@ -53,12 +54,12 @@ export function buildTracingMetadata(
 					if (validationResult.valid) {
 						value = validationResult.newValue;
 					} else {
-						// Skip invalid values
+						logger?.warn(`Tracing metadata entry '${key}' skipped: failed ${fieldType} validation`);
 						continue;
 					}
 				}
-			} catch {
-				// Skip entries that fail validation
+			} catch (error) {
+				logger?.warn(`Tracing metadata entry '${key}' skipped: ${(error as Error).message}`);
 				continue;
 			}
 

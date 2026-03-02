@@ -59,8 +59,9 @@ export async function runAgent(
 			'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
 	};
 	const executeOptions = { signal: ctx.getExecutionCancelSignal() };
-	const additionalMetadata = buildTracingMetadata(options.tracingMetadata?.values);
-	if (Object.keys(additionalMetadata).length > 0 && 'logger' in ctx) {
+	const logger = 'logger' in ctx ? ctx.logger : undefined;
+	const additionalMetadata = buildTracingMetadata(options.tracingMetadata?.values, logger);
+	if (Object.keys(additionalMetadata).length > 0 && logger) {
 		ctx.logger.debug('Tracing metadata', { additionalMetadata });
 	}
 	const tracingConfig = isExecuteFunctions(ctx)

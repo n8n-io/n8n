@@ -92,7 +92,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 				returnIntermediateSteps: options.returnIntermediateSteps === true,
 				maxIterations: options.maxIterations ?? 10,
 			});
-			const additionalMetadata = buildTracingMetadata(options.tracingMetadata?.values);
+			const additionalMetadata = buildTracingMetadata(options.tracingMetadata?.values, this.logger);
 			if (Object.keys(additionalMetadata).length > 0) {
 				this.logger.debug('Tracing metadata', { additionalMetadata });
 			}
