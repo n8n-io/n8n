@@ -26,6 +26,17 @@ export async function invokeAgent(
 	invokeOptions: RunnableConfig = {},
 	microsoftMcpTools: Array<DynamicStructuredTool<ToolInputSchemaBase, any, any, any>> = [],
 ): Promise<string> {
+	// Inject conversationId as sessionId into the request body so memory sub-nodes
+	// can resolve session ID expressions (e.g. $json.sessionId in fromInput auto mode).
+	const conversationId = (invokeOptions.configurable as { thread_id?: string } | undefined)
+		?.thread_id;
+	if (conversationId) {
+		const req = nodeContext.getRequestObject();
+		if (req.body && typeof req.body === 'object') {
+			(req.body as Record<string, unknown>).sessionId = conversationId;
+		}
+	}
+
 	const needsFallback = nodeContext.getNodeParameter('needsFallback', false) as boolean;
 	const memory = await getOptionalMemory(nodeContext);
 	const model = await getChatModel(nodeContext, 0);

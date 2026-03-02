@@ -33,7 +33,7 @@ export class MicrosoftAgent365Trigger implements INodeType {
 				],
 			},
 		},
-		version: [1],
+		version: [1, 1.1],
 		defaults: {
 			name: 'Microsoft Agent 365',
 		},
@@ -201,6 +201,7 @@ export class MicrosoftAgent365Trigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		const res = this.getResponseObject();
+		const node = this.getNode();
 
 		const method = req.method;
 		if (method === 'HEAD') {
@@ -233,9 +234,21 @@ export class MicrosoftAgent365Trigger implements INodeType {
 
 			await agent.adapter.process(req, res, callback);
 
+			let returnData;
+
+			if (node.typeVersion === 1) {
+				returnData = activityCapture;
+			} else {
+				returnData = {
+					input: activityCapture.input,
+					output: activityCapture.output,
+					...req.body,
+				};
+			}
+
 			return {
 				noWebhookResponse: true,
-				workflowData: [this.helpers.returnJsonArray({ ...activityCapture })],
+				workflowData: [this.helpers.returnJsonArray({ ...returnData })],
 			};
 		} catch (error) {
 			const errorData = error.response?.data;
@@ -243,10 +256,10 @@ export class MicrosoftAgent365Trigger implements INodeType {
 				const message = 'Error: ' + String(errorData.error);
 				const description = (errorData.error_description as string) ?? error.message;
 
-				throw new NodeOperationError(this.getNode(), message, { description });
+				throw new NodeOperationError(node, message, { description });
 			}
 
-			throw new NodeOperationError(this.getNode(), error.message);
+			throw new NodeOperationError(node, error.message);
 		}
 	}
 }
