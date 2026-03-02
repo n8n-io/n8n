@@ -458,7 +458,6 @@ div[class*='info'] > span > span:last-child {
 <style lang="scss" scoped>
 .settings-usage-and-plan {
 	:deep(.el-overlay-dialog) {
-		color: red;
 		display: flex;
 		align-items: center;
 		justify-content: center;
