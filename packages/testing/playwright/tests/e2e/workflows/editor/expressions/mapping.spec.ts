@@ -266,7 +266,7 @@ test.describe(
 		});
 
 		// There is an issue here sometimes, when dragging to the target it prepends the last value that was in the window even if it was cleared
-		test.fixme('maps expressions to updated fields correctly', async ({ n8n }) => {
+			test.fixme('maps expressions to updated fields correctly @fixme', async ({ n8n }) => {
 			await n8n.start.fromImportedWorkflow('Test_workflow_3.json');
 			await n8n.canvas.openNode('Set');
 
@@ -341,12 +341,12 @@ test.describe(
 			await expect(n8n.ndv.getParameterSwitch('includeOtherFields')).toBeHidden();
 			await expect(n8n.ndv.getParameterTextInput('includeOtherFields')).toBeVisible();
 
-			// Check border on input wrapper (N8nInput has border on wrapper, not input)
+			// Check outline on input wrapper (N8nInput uses outline for droppable state)
 			const includeOtherFieldsWrapper = n8n.ndv.getParameterInputContainer('includeOtherFields');
-			await expect(includeOtherFieldsWrapper).toHaveCSS('border', /dashed.*rgb\(90, 76, 194\)/);
+			await expect(includeOtherFieldsWrapper).toHaveCSS('outline', /dashed.*rgb\(255, 111, 92\)/);
 
 			const valueWrapper = n8n.ndv.getParameterInputContainer('value');
-			await expect(valueWrapper).toHaveCSS('border', /dashed.*rgb\(90, 76, 194\)/);
+			await expect(valueWrapper).toHaveCSS('outline', /dashed.*rgb\(255, 111, 92\)/);
 
 			await n8n.page.mouse.up();
 		});
