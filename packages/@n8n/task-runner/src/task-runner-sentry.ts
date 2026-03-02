@@ -4,6 +4,8 @@ import { ErrorReporter } from 'n8n-core';
 
 import { SentryConfig } from './config/sentry-config';
 
+const TASK_RUNNER_IGNORED_SPANS = ['GET /healthz'];
+
 /**
  * Sentry service for the task runner.
  */
@@ -30,6 +32,7 @@ export class TaskRunnerSentry {
 			withEventLoopBlockDetection: false,
 			tracesSampleRate,
 			profilesSampleRate,
+			ignoreSpans: TASK_RUNNER_IGNORED_SPANS,
 			eligibleIntegrations: {
 				Http: true,
 			},

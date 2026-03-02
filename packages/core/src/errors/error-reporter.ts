@@ -44,8 +44,8 @@ type ErrorReporterInitOptions = {
 	 */
 	eligibleIntegrations?: Partial<Record<SentryIntegration, boolean>>;
 
-	/** Health endpoint path */
-	healthEndpoint?: string;
+	/** Span descriptions to ignore in Sentry tracing (substring match) */
+	ignoreSpans?: string[];
 };
 
 const ONE_DAY_IN_MS = 24 * 60 * 60 * 1000;
@@ -117,7 +117,7 @@ export class ErrorReporter {
 		profilesSampleRate,
 		tracesSampleRate,
 		eligibleIntegrations = {},
-		healthEndpoint = '/healthz',
+		ignoreSpans = [],
 	}: ErrorReporterInitOptions) {
 		if (inTest) return;
 
@@ -207,8 +207,8 @@ export class ErrorReporter {
 			...(isTracingEnabled ? { tracesSampleRate } : {}),
 			...(isProfilingEnabled ? { profilesSampleRate, profileLifecycle: 'trace' } : {}),
 			beforeSend: this.beforeSend.bind(this) as NodeOptions['beforeSend'],
-			ignoreTransactions: [`GET ${healthEndpoint}`, 'GET /metrics'],
-			ignoreSpans: [`GET ${healthEndpoint}`, 'GET /metrics'],
+			ignoreTransactions: ignoreSpans,
+			ignoreSpans,
 			integrations: (integrations) => [
 				...integrations.filter(({ name }) => enabledIntegrations.has(name)),
 				rewriteFramesIntegration({ root: '/' }),
