@@ -2,10 +2,10 @@ import { Pinecone } from '@pinecone-database/pinecone';
 import { MilvusClient } from '@zilliz/milvus2-sdk-node';
 import { ApplicationError, type IDataObject, type ILoadOptionsFunctions } from 'n8n-workflow';
 
-import type { QdrantCredential } from '../../../VectorStoreQdrant/Qdrant.utils';
-import { createQdrantClient } from '../../../VectorStoreQdrant/Qdrant.utils';
-import type { WeaviateCredential } from '../../../VectorStoreWeaviate/Weaviate.utils';
-import { createWeaviateClient } from '../../../VectorStoreWeaviate/Weaviate.utils';
+import type { QdrantCredential } from '../../VectorStoreQdrant/Qdrant.utils';
+import { createQdrantClient } from '../../VectorStoreQdrant/Qdrant.utils';
+import type { WeaviateCredential } from '../../VectorStoreWeaviate/Weaviate.utils';
+import { createWeaviateClient } from '../../VectorStoreWeaviate/Weaviate.utils';
 
 export async function pineconeIndexSearch(this: ILoadOptionsFunctions) {
 	const credentials = await this.getCredentials('pineconeApi');

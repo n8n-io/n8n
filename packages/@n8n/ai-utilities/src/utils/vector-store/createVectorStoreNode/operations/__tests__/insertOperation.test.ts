@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 import type { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
@@ -8,9 +7,9 @@ import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { logAiEvent } from '@n8n/ai-utilities';
-import type { N8nBinaryLoader, N8nJsonLoader } from '@n8n/ai-utilities';
-
+import { logAiEvent } from '../../../../log-ai-event';
+import type { N8nBinaryLoader } from '../../../../n8n-binary-loader';
+import type { N8nJsonLoader } from '../../../../n8n-json-loader';
 import type { VectorStoreNodeConstructorArgs } from '../../types';
 import { handleInsertOperation } from '../insertOperation';
 
@@ -42,9 +41,15 @@ jest.mock('../../../processDocuments', () => ({
 }));
 
 // Mock helper functions
-jest.mock('@n8n/ai-utilities', () => ({
+jest.mock('../../../../log-ai-event', () => ({
 	logAiEvent: jest.fn(),
+}));
+
+jest.mock('../../../../n8n-binary-loader', () => ({
 	N8nBinaryLoader: class {},
+}));
+
+jest.mock('../../../../n8n-json-loader', () => ({
 	N8nJsonLoader: class {},
 }));
 

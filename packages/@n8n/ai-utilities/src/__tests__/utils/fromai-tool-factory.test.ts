@@ -5,7 +5,7 @@ import {
 	createToolFromNode,
 	createZodSchemaFromArgs,
 	extractFromAIParameters,
-} from './fromAIToolFactory';
+} from '../../utils/fromai-tool-factory';
 
 describe('fromAIToolFactory', () => {
 	describe('extractFromAIParameters', () => {

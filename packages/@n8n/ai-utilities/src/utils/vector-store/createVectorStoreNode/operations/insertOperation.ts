@@ -1,11 +1,12 @@
 import type { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { VectorStore } from '@langchain/core/vectorstores';
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
-import { logAiEvent } from '@n8n/ai-utilities';
-import type { N8nBinaryLoader, N8nJsonLoader } from '@n8n/ai-utilities';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
+import { logAiEvent } from '../../../log-ai-event';
+import type { N8nBinaryLoader } from '../../../n8n-binary-loader';
+import type { N8nJsonLoader } from '../../../n8n-json-loader';
 import { processDocument } from '../../processDocuments';
 import type { VectorStoreNodeConstructorArgs } from '../types';
 

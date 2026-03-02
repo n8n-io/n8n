@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/unbound-method */
 import type { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { VectorStore } from '@langchain/core/vectorstores';
@@ -7,8 +6,7 @@ import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { logAiEvent } from '@n8n/ai-utilities';
-
+import { logAiEvent } from '../../../../log-ai-event';
 import type { VectorStoreNodeConstructorArgs } from '../../types';
 import { isUpdateSupported } from '../../utils';
 import { handleUpdateOperation } from '../updateOperation';
@@ -18,8 +16,11 @@ jest.mock('../../utils', () => ({
 	isUpdateSupported: jest.fn(),
 }));
 
-jest.mock('@n8n/ai-utilities', () => ({
+jest.mock('../../../../log-ai-event', () => ({
 	logAiEvent: jest.fn(),
+}));
+
+jest.mock('../../../../n8n-json-loader', () => ({
 	N8nJsonLoader: jest.fn().mockImplementation(() => ({})),
 }));
 

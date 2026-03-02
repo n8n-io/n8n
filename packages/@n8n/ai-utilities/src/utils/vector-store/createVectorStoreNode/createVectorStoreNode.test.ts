@@ -1,10 +1,10 @@
-/* eslint-disable @typescript-eslint/unbound-method */
+/* eslint-disable n8n-local-rules/no-uncaught-json-parse */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import type { DynamicTool } from '@langchain/classic/tools';
 import type { DocumentInterface } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { VectorStore } from '@langchain/core/vectorstores';
 import { mock } from 'jest-mock-extended';
-import type { DynamicTool } from '@langchain/classic/tools';
 import type {
 	IExecuteFunctions,
 	ISupplyDataFunctions,
@@ -15,9 +15,15 @@ import type {
 import { createVectorStoreNode } from './createVectorStoreNode';
 import type { VectorStoreNodeConstructorArgs } from './types';
 
-jest.mock('@n8n/ai-utilities', () => ({
+jest.mock('../../log-wrapper', () => ({
 	logWrapper: jest.fn().mockImplementation((val: DynamicTool) => ({ logWrapped: val })),
+}));
+
+jest.mock('../../helpers', () => ({
 	getMetadataFiltersValues: jest.fn().mockReturnValue(undefined),
+}));
+
+jest.mock('../../log-ai-event', () => ({
 	logAiEvent: jest.fn(),
 }));
 

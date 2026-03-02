@@ -1,4 +1,6 @@
-/* eslint-disable @typescript-eslint/unbound-method */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable n8n-local-rules/no-uncaught-json-parse */
+
 import { type DynamicTool, DynamicStructuredTool } from '@langchain/classic/tools';
 import type { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
@@ -9,14 +11,16 @@ import { mock } from 'jest-mock-extended';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { logWrapper } from '@n8n/ai-utilities';
-
+import { logWrapper } from '../../../../log-wrapper';
 import type { VectorStoreNodeConstructorArgs } from '../../types';
 import { handleRetrieveAsToolOperation } from '../retrieveAsToolOperation';
 
 // Mock the helper functions
-jest.mock('@n8n/ai-utilities', () => ({
+jest.mock('../../../../helpers', () => ({
 	getMetadataFiltersValues: jest.fn().mockReturnValue({ testFilter: 'value' }),
+}));
+
+jest.mock('../../../../log-wrapper', () => ({
 	logWrapper: jest.fn().mockImplementation((obj) => obj),
 }));
 

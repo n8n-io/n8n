@@ -1,16 +1,11 @@
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { BaseDocumentCompressor } from '@langchain/core/retrievers/document_compressors';
 import type { VectorStore } from '@langchain/core/vectorstores';
-import {
-	assertParamIsBoolean,
-	assertParamIsNumber,
-	NodeConnectionTypes,
-	type IExecuteFunctions,
-	type INodeExecutionData,
-} from 'n8n-workflow';
+import { assertParamIsBoolean, assertParamIsNumber, NodeConnectionTypes } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import { getMetadataFiltersValues, logAiEvent } from '@n8n/ai-utilities';
-
+import { getMetadataFiltersValues } from '../../../helpers';
+import { logAiEvent } from '../../../log-ai-event';
 import type { VectorStoreNodeConstructorArgs } from '../types';
 
 /**

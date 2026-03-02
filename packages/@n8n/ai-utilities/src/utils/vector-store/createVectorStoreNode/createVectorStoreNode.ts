@@ -11,8 +11,6 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
-
 // Import custom types
 import {
 	handleLoadOperation,
@@ -25,6 +23,7 @@ import {
 import type { NodeOperationMode, VectorStoreNodeConstructorArgs } from './types';
 // Import utility functions
 import { transformDescriptionForOperationMode, getOperationModeOptions } from './utils';
+import { getConnectionHintNoticeField } from '../../shared-fields';
 
 const ragStarterCallout: INodeProperties = {
 	displayName: 'Tip: Get a feel for vector stores in n8n with our',

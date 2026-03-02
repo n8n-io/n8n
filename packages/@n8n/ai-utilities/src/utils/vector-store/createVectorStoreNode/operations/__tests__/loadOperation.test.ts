@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/unbound-method */
+
 import type { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { BaseDocumentCompressor } from '@langchain/core/retrievers/document_compressors';
@@ -9,14 +9,16 @@ import { mock } from 'jest-mock-extended';
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { logAiEvent } from '@n8n/ai-utilities';
-
+import { logAiEvent } from '../../../../log-ai-event';
 import type { VectorStoreNodeConstructorArgs } from '../../types';
 import { handleLoadOperation } from '../loadOperation';
 
 // Mock helper functions from external modules
-jest.mock('@n8n/ai-utilities', () => ({
+jest.mock('../../../../helpers', () => ({
 	getMetadataFiltersValues: jest.fn().mockReturnValue({ testFilter: 'value' }),
+}));
+
+jest.mock('../../../../log-ai-event', () => ({
 	logAiEvent: jest.fn(),
 }));
 

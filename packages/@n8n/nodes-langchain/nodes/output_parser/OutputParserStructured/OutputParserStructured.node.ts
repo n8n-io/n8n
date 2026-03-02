@@ -23,7 +23,7 @@ import {
 	N8nStructuredOutputParser,
 } from '@utils/output_parsers/N8nOutputParser';
 import { convertJsonSchemaToZod, generateSchemaFromExample } from '@utils/schemaParsing';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 import { NAIVE_FIX_PROMPT } from './prompt';
 
