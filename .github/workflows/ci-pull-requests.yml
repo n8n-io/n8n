@@ -66,7 +66,7 @@ jobs:
             bench:
               packages/testing/performance/**
               packages/workflow/src/**
-              .github/workflows/test-bench-codspeed-reusable.yml
+              .github/workflows/test-bench-reusable.yml
             db:
               packages/cli/src/databases/**
               packages/cli/src/modules/*/database/**
@@ -146,7 +146,7 @@ jobs:
     name: Benchmarks
     needs: install-and-build
     if: needs.install-and-build.outputs.bench == 'true'
-    uses: ./.github/workflows/test-bench-codspeed-reusable.yml
+    uses: ./.github/workflows/test-bench-reusable.yml
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
 

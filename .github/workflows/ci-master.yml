@@ -47,7 +47,7 @@ jobs:
 
   bench:
     name: Benchmarks
-    uses: ./.github/workflows/test-bench-codspeed-reusable.yml
+    uses: ./.github/workflows/test-bench-reusable.yml
     with:
       ref: ${{ github.sha }}
 

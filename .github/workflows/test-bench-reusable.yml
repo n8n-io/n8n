@@ -1,4 +1,4 @@
-name: 'Test: CodSpeed Benchmarks'
+name: 'Test: Benchmarks'
 
 on:
   workflow_call:
@@ -17,10 +17,8 @@ on:
         default: ''
 
 jobs:
-  codspeed:
-    name: CodSpeed Benchmarks
-    # Simulation mode uses CPU instruction counting (valgrind) — hardware-independent and
-    # works on any runner. Walltime mode requires codspeed-macro bare-metal runners.
+  bench:
+    name: Benchmarks
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
