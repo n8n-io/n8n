@@ -19,7 +19,8 @@ const props = withDefaults(
 		cardTestId: string;
 		title: string;
 		showFooter?: boolean;
-		triggerNode?: INodeUi | null;
+		executableNode?: INodeUi | null;
+		isTrigger?: boolean;
 		isTestingCredential?: boolean;
 		highlightNodeIds?: string[];
 		telemetryPayload?: Record<string, unknown>;
@@ -27,7 +28,8 @@ const props = withDefaults(
 	{
 		loading: false,
 		showFooter: true,
-		triggerNode: null,
+		executableNode: null,
+		isTrigger: false,
 		isTestingCredential: false,
 		highlightNodeIds: () => [],
 		telemetryPayload: () => ({}),
@@ -63,22 +65,22 @@ const onCardMouseLeave = () => {
 	}
 };
 
-const triggerNodeRef = computed(() => props.triggerNode ?? null);
+const executableNodeRef = computed(() => props.executableNode ?? null);
 
 const {
 	isExecuting,
 	isButtonDisabled,
-	label: triggerLabel,
-	buttonIcon: triggerButtonIcon,
-	tooltipItems: triggerTooltipItems,
+	label: executeLabel,
+	buttonIcon: executeButtonIcon,
+	tooltipItems: executeTooltipItems,
 	execute,
 	isInListeningState,
 	listeningHint,
-} = useTriggerExecution(triggerNodeRef);
+} = useTriggerExecution(executableNodeRef);
 
-const { webhookUrls } = useWebhookUrls(triggerNodeRef);
+const { webhookUrls } = useWebhookUrls(executableNodeRef);
 
-const showTriggerCallout = computed(() => !!props.triggerNode && isInListeningState.value);
+const showTriggerCallout = computed(() => props.isTrigger && isInListeningState.value);
 
 const onExecuteClick = async () => {
 	await execute();
@@ -167,7 +169,7 @@ defineExpose({ markInteracted });
 				</div>
 			</Transition>
 			<WebhookUrlPreview
-				v-if="triggerNode && isInListeningState && webhookUrls.length > 0"
+				v-if="isTrigger && isInListeningState && webhookUrls.length > 0"
 				:urls="webhookUrls"
 			/>
 			<slot />
@@ -181,12 +183,12 @@ defineExpose({ markInteracted });
 				</div>
 				<slot name="footer-actions" />
 				<TriggerExecuteButton
-					v-if="triggerNode"
-					:label="triggerLabel"
-					:icon="triggerButtonIcon"
+					v-if="executableNode"
+					:label="executeLabel"
+					:icon="executeButtonIcon"
 					:disabled="isButtonDisabled || isTestingCredential"
 					:loading="isExecuting"
-					:tooltip-items="triggerTooltipItems"
+					:tooltip-items="executeTooltipItems"
 					@click="onExecuteClick"
 				/>
 			</footer>

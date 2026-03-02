@@ -51,10 +51,15 @@ const nodeType = computed(() =>
 
 const hasCredential = computed(() => !!props.state.credentialType);
 
-// Only the workflow's first trigger (by execution order) can be executed from setup cards.
-const triggerNode = computed(() => {
-	if (!props.firstTriggerName || !props.state.isTrigger) return null;
-	return props.state.node.name === props.firstTriggerName ? props.state.node : null;
+// Determines which node can be executed from this setup card.
+// - Triggers: only the workflow's first trigger (by execution order) can be executed.
+// - Non-triggers: always returned (button shows but is disabled via useNodeExecution when issues exist).
+const executableNode = computed(() => {
+	if (props.state.isTrigger) {
+		if (!props.firstTriggerName) return null;
+		return props.state.node.name === props.firstTriggerName ? props.state.node : null;
+	}
+	return props.state.node;
 });
 
 const isTestingCredential = computed(() => {
@@ -63,7 +68,7 @@ const isTestingCredential = computed(() => {
 });
 
 const showFooter = computed(
-	() => !hasCredential.value || triggerNode.value !== null || props.state.isComplete,
+	() => !hasCredential.value || executableNode.value !== null || props.state.isComplete,
 );
 
 const hasParameters = computed(() => Object.keys(props.state.parameterIssues).length > 0);
@@ -206,7 +211,8 @@ const cardComplete = computed(() => {
 		:loading="isTestingCredential"
 		:title="state.node.name"
 		:show-footer="showFooter"
-		:trigger-node="triggerNode"
+		:executable-node="executableNode"
+		:is-trigger="state.isTrigger"
 		:is-testing-credential="isTestingCredential"
 		:telemetry-payload="telemetryPayload"
 		:highlight-node-ids="[state.node.id]"
@@ -231,7 +237,7 @@ const cardComplete = computed(() => {
 		</template>
 
 		<template #card-description>
-			<N8nText v-if="triggerNode" size="medium" color="text-base" class="pl-xs pr-xs">
+			<N8nText v-if="executableNode" size="medium" color="text-base" class="pl-xs pr-xs">
 				{{ i18n.baseText('setupPanel.trigger.credential.note') }}
 			</N8nText>
 			<N8nText v-else-if="hasShownParameters" size="medium" color="text-base" class="pl-xs pr-xs">

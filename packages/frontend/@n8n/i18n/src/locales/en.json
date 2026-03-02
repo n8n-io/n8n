@@ -1595,6 +1595,7 @@
 	"ndv.execute.stopListening": "Stop Listening",
 	"ndv.execute.nodeIsDisabled": "Enable node to execute",
 	"ndv.execute.requiredFieldsMissing": "Complete required fields first",
+	"ndv.execute.upstreamNodeHasIssues": "A previous node has missing required fields",
 	"ndv.execute.stopWaitingForWebhook.error": "Problem deleting test webhook",
 	"ndv.execute.workflowAlreadyRunning": "Workflow is already running",
 	"ndv.execute.deactivated": "This node is deactivated and can't be run",

@@ -478,12 +478,12 @@ describe('NodeSetupCard', () => {
 		});
 
 		describe('trigger section', () => {
-			it('should not render trigger buttons when node is not a trigger', () => {
-				const { queryByTestId } = renderComponent({
-					props: { state: createCredentialState(), expanded: true },
+			it('should render execute button for non-trigger nodes', () => {
+				const { getByTestId } = renderComponent({
+					props: { state: createCredentialState({ isComplete: false }), expanded: true },
 				});
 
-				expect(queryByTestId('trigger-execute-button')).not.toBeInTheDocument();
+				expect(getByTestId('trigger-execute-button')).toBeInTheDocument();
 			});
 
 			it('should render trigger execute button when node is the first trigger', () => {
@@ -692,15 +692,15 @@ describe('NodeSetupCard', () => {
 				expect(queryByTestId('credential-picker')).not.toBeInTheDocument();
 			});
 
-			it('should not render trigger execute button', () => {
-				const { queryByTestId } = renderComponent({
+			it('should render execute button for parameter-only nodes', () => {
+				const { getByTestId } = renderComponent({
 					props: {
-						state: createParameterOnlyState(),
+						state: createParameterOnlyState({ isComplete: false }),
 						expanded: true,
 					},
 				});
 
-				expect(queryByTestId('trigger-execute-button')).not.toBeInTheDocument();
+				expect(getByTestId('trigger-execute-button')).toBeInTheDocument();
 			});
 		});
 
