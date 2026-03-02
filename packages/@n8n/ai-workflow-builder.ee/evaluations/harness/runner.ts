@@ -449,7 +449,11 @@ function extractContextFromLangsmithInputs(inputs: unknown): TestCaseContext {
 	}
 
 	// Extract annotations for binary-checks evaluator
-	if (record.annotations && typeof record.annotations === 'object') {
+	if (
+		record.annotations &&
+		typeof record.annotations === 'object' &&
+		!Array.isArray(record.annotations)
+	) {
 		context.annotations = record.annotations as Record<string, unknown>;
 	}
 
@@ -1320,15 +1324,21 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 			});
 
 			// Run all evaluators in parallel (wrapped in traceable so it appears
-			// as a sibling to workflow_generation in LangSmith traces)
+			// as a sibling to workflow_generation in LangSmith traces).
+			// Fall back to direct call if traceable wrapper fails.
 			const evalStart = Date.now();
-			const feedback = await traceableEvaluateWorkflow({
-				workflow,
-				evaluators,
-				context,
-				evalTimeoutMs: timeoutMs,
-				evalLifecycle: lifecycle,
-			});
+			let feedback: Feedback[];
+			try {
+				feedback = await traceableEvaluateWorkflow({
+					workflow,
+					evaluators,
+					context,
+					evalTimeoutMs: timeoutMs,
+					evalLifecycle: lifecycle,
+				});
+			} catch {
+				feedback = await evaluateWithPlugins(workflow, evaluators, context, timeoutMs, lifecycle);
+			}
 			const evalDurationMs = Date.now() - evalStart;
 			const totalDurationMs = Date.now() - startTime;
 
