@@ -1,10 +1,17 @@
 import { ApplicationError } from '@n8n/errors';
+import type { IExpressionEvaluator } from '@n8n/expression-runtime';
 import { DateTime, Duration, Interval } from 'luxon';
 
 import { ExpressionExtensionError } from './errors/expression-extension.error';
 import { ExpressionError } from './errors/expression.error';
 import { evaluateExpression, setErrorHandler } from './expression-evaluator-proxy';
-import { sanitizer, sanitizerName } from './expression-sandboxing';
+import {
+	DollarSignValidator,
+	PrototypeSanitizer,
+	ThisSanitizer,
+	sanitizer,
+	sanitizerName,
+} from './expression-sandboxing';
 import { isExpression } from './expressions/expression-helpers';
 import { extend, extendOptional } from './extensions';
 import { extendSyntax } from './extensions/expression-extension';
@@ -165,7 +172,78 @@ const createSafeErrorSubclass = <T extends ErrorConstructor>(ErrorClass: T): T =
 };
 
 export class Expression {
+	// Feature gate for expression engine selection
+	private static expressionEngine = process.env.N8N_EXPRESSION_ENGINE || 'current';
+	private static vmEvaluator?: IExpressionEvaluator;
+
 	constructor(private readonly timezone: string) {}
+
+	/**
+	 * Check if VM evaluator should be used for evaluation.
+	 * @private
+	 */
+	private static shouldUseVm(): boolean {
+		return this.expressionEngine === 'vm' && !IS_FRONTEND && !!this.vmEvaluator;
+	}
+
+	/**
+	 * Check if VM evaluator is configured but not initialized.
+	 * @private
+	 */
+	private static isVmNotInitialized(): boolean {
+		return this.expressionEngine === 'vm' && !IS_FRONTEND && !this.vmEvaluator;
+	}
+
+	/**
+	 * Initialize the VM evaluator (if feature flag is enabled).
+	 * Should be called once during application startup.
+	 * Only available in Node.js environments (not in browser).
+	 */
+	static async initializeVmEvaluator(): Promise<void> {
+		if (this.expressionEngine !== 'vm' || IS_FRONTEND) return;
+
+		if (!this.vmEvaluator) {
+			// Dynamic import to avoid loading expression-runtime in browser environments
+			const { ExpressionEvaluator, IsolatedVmBridge } = await import('@n8n/expression-runtime');
+			const bridge = new IsolatedVmBridge({ timeout: 5000 });
+			this.vmEvaluator = new ExpressionEvaluator({
+				bridge,
+				hooks: {
+					before: [ThisSanitizer],
+					after: [PrototypeSanitizer, DollarSignValidator],
+				},
+			});
+			await this.vmEvaluator.initialize();
+		}
+	}
+
+	/**
+	 * Dispose the VM evaluator and release resources.
+	 * Should be called during application shutdown or test teardown.
+	 */
+	static async disposeVmEvaluator(): Promise<void> {
+		if (this.vmEvaluator) {
+			await this.vmEvaluator.dispose();
+			this.vmEvaluator = undefined;
+		}
+	}
+
+	/**
+	 * Get the active expression evaluation implementation.
+	 * Used for testing and verification.
+	 */
+	static getActiveImplementation(): string {
+		if (this.shouldUseVm()) return 'vm';
+		return this.expressionEngine === 'current' ? 'current' : this.expressionEngine;
+	}
+
+	/**
+	 * Get the VM evaluator instance for direct testing.
+	 * @internal
+	 */
+	static getVmEvaluator(): IExpressionEvaluator | undefined {
+		return this.vmEvaluator;
+	}
 
 	static initializeGlobalContext(data: IDataObject) {
 		/**
@@ -435,6 +513,36 @@ export class Expression {
 	}
 
 	private renderExpression(expression: string, data: IWorkflowDataProxyData) {
+		// Safety check: If VM engine is configured but not initialized
+		if (Expression.isVmNotInitialized()) {
+			throw new ApplicationError(
+				'N8N_EXPRESSION_ENGINE=vm is enabled but VM evaluator is not initialized. Call Expression.initializeVmEvaluator() during application startup.',
+			);
+		}
+
+		// Use VM evaluator if available
+		if (Expression.shouldUseVm() && Expression.vmEvaluator) {
+			try {
+				const result = Expression.vmEvaluator.evaluate(expression, data);
+				return result as string | null | (() => unknown);
+			} catch (error) {
+				if (isExpressionError(error)) throw error;
+
+				if (isSyntaxError(error)) throw new ApplicationError('invalid syntax');
+
+				if (isTypeError(error) && IS_FRONTEND && error.message.endsWith('is not a function')) {
+					const match = error.message.match(/(?<msg>[^.]+is not a function)/);
+
+					if (!match?.groups?.msg) return null;
+
+					throw new ApplicationError(match.groups.msg);
+				}
+
+				throw error;
+			}
+		}
+
+		// Fall back to current implementation
 		try {
 			return evaluateExpression(expression, data);
 		} catch (error) {
