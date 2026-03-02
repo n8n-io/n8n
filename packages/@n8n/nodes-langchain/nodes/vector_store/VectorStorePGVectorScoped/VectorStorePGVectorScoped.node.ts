@@ -48,6 +48,28 @@ const retrieveFields: INodeProperties[] = [
 	},
 ];
 
+// TODO: Use configurePostgres() here to support SSH tunneling.
+// Currently this creates a direct pg.Pool without SSH tunnel support.
+async function withPool<T>(
+	credentials: VectorStorePGVectorScopedApiCredentials,
+	callback: (pool: pg.Pool) => Promise<T>,
+): Promise<T> {
+	const sslEnabled = credentials.ssl !== 'disable' && credentials.ssl !== undefined;
+	const pool = new pg.Pool({
+		host: credentials.host as string,
+		port: credentials.port as number,
+		database: credentials.database as string,
+		user: credentials.user as string,
+		password: credentials.password as string,
+		ssl: sslEnabled ? { rejectUnauthorized: !credentials.allowUnauthorizedCerts } : false,
+	});
+	try {
+		return await callback(pool);
+	} finally {
+		await pool.end();
+	}
+}
+
 async function deleteDocuments(
 	this: ILoadOptionsFunctions,
 	payload: IDataObject | string | undefined,
@@ -87,23 +109,9 @@ async function deleteDocuments(
 		paramIndex++;
 	}
 
-	// TODO: Use configurePostgres() here to support SSH tunneling.
-	// Currently this creates a direct pg.Pool without SSH tunnel support.
-	const sslEnabled = credentials.ssl !== 'disable' && credentials.ssl !== undefined;
-	const pool = new pg.Pool({
-		host: credentials.host as string,
-		port: credentials.port as number,
-		database: credentials.database as string,
-		user: credentials.user as string,
-		password: credentials.password as string,
-		ssl: sslEnabled ? { rejectUnauthorized: !credentials.allowUnauthorizedCerts } : false,
-	});
-
-	try {
+	await withPool(credentials, async (pool) => {
 		await pool.query(`DELETE FROM "${tableName}" WHERE ${conditions.join(' AND ')}`, values);
-	} finally {
-		await pool.end();
-	}
+	});
 
 	return null;
 }
@@ -116,7 +124,36 @@ async function vectorStorePGVectorScopedApiConnectionTest(
 		...credential,
 		data: { ...(credential.data ?? {}), sshTunnel: false },
 	};
-	return await postgresConnectionTest.call(this, credentialWithSsh);
+
+	const connectionResult = await postgresConnectionTest.call(this, credentialWithSsh);
+	if (connectionResult.status === 'Error') {
+		return connectionResult;
+	}
+
+	const credentials = credential.data as VectorStorePGVectorScopedApiCredentials;
+
+	try {
+		const extensionExists = await withPool(credentials, async (pool) => {
+			const result = await pool.query<{ exists: boolean }>(
+				"SELECT EXISTS(SELECT 1 FROM pg_extension WHERE extname = 'vector') AS exists",
+			);
+			return result.rows[0]?.exists;
+		});
+		if (!extensionExists) {
+			return {
+				status: 'Error',
+				message:
+					'The pgvector extension is not enabled. Please install and enable the pgvector extension in your PostgreSQL database.',
+			};
+		}
+	} catch (error) {
+		return {
+			status: 'Error',
+			message: error.message as string,
+		};
+	}
+
+	return connectionResult;
 }
 
 export class VectorStorePGVectorScoped extends createVectorStoreNode(
