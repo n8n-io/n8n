@@ -23,7 +23,7 @@ function buildSecretsValueProxy(value: IDataObject): unknown {
 }
 
 export function getSecretsProxy(additionalData: IWorkflowExecuteAdditionalData): IDataObject {
-	const { externalSecretsProxy } = additionalData;
+	const { externalSecretsProxy, projectIdOwningWorkflow: projectId } = additionalData;
 	return new Proxy(
 		{},
 		{
@@ -31,7 +31,7 @@ export function getSecretsProxy(additionalData: IWorkflowExecuteAdditionalData):
 				if (typeof providerName !== 'string') {
 					return {};
 				}
-				if (externalSecretsProxy.hasProvider(providerName)) {
+				if (externalSecretsProxy.hasProvider(providerName, projectId)) {
 					return new Proxy(
 						{},
 						{

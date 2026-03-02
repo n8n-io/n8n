@@ -72,17 +72,11 @@ describe('getAdditionalKeys', () => {
 		});
 	});
 
-	it('should include secrets when enabled', () => {
-		const result = getAdditionalKeys(additionalData, 'manual', null, { secretsEnabled: true });
+	it('should include secrets', () => {
+		const result = getAdditionalKeys(additionalData, 'manual', null);
 
 		expect(result.$secrets).toBeDefined();
 		expect((result.$secrets?.provider1 as IDataObject).secret1).toEqual('secret-value');
-	});
-
-	it('should not include secrets when disabled', () => {
-		const result = getAdditionalKeys(additionalData, 'manual', null, { secretsEnabled: false });
-
-		expect(result.$secrets).toBeUndefined();
 	});
 
 	it('should throw errors in manual mode', () => {

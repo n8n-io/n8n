@@ -1,4 +1,4 @@
-import { CredentialsRepository } from '@n8n/db';
+import { CredentialsRepository, SecretsProviderConnectionRepository } from '@n8n/db';
 import type { WorkflowEntity, WorkflowHistory, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type {
@@ -10,6 +10,7 @@ import type {
 	IWorkflowSettings,
 	RelatedExecution,
 } from 'n8n-workflow';
+import { ExternalSecretsProxy } from 'n8n-core';
 import { v4 as uuid } from 'uuid';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
@@ -242,6 +243,30 @@ export async function getVariables(workflowId?: string, projectId?: string): Pro
 			return acc;
 		}, {} as IDataObject),
 	);
+}
+
+export async function getExternalSecretsProxy(projectId?: string): Promise<ExternalSecretsProxy> {
+	const externalSecretsProxy = Container.get(ExternalSecretsProxy);
+	const secretsProviderConnectionRepository = Container.get(SecretsProviderConnectionRepository);
+	// TODO: add caching for the secretsProviderConnectionRepository queries, similarly to Container.get(OwnershipService).getWorkflowProjectCached(workflowId)
+	if (projectId) {
+		const providerKeysAvailableInProject = (
+			await secretsProviderConnectionRepository.findAllAccessibleByProjectWithProjectAccess(
+				projectId,
+			)
+		).map((connection) => connection.providerKey);
+		externalSecretsProxy.setAvailableProviderKeysForProject(
+			projectId,
+			providerKeysAvailableInProject,
+		);
+	}
+	externalSecretsProxy.setGloballyAvailableProviderKeys(
+		(await secretsProviderConnectionRepository.findGlobalConnections()).map(
+			(connection) => connection.providerKey,
+		),
+	);
+
+	return externalSecretsProxy;
 }
 
 /**

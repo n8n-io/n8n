@@ -465,6 +465,7 @@ export async function getBase({
 	const globalConfig = Container.get(GlobalConfig);
 
 	const variables = await WorkflowHelpers.getVariables(workflowId, projectId);
+	const externalSecretsProxy = await WorkflowHelpers.getExternalSecretsProxy(projectId);
 
 	const eventService = Container.get(EventService);
 
@@ -481,6 +482,7 @@ export async function getBase({
 		currentNodeParameters,
 		executionTimeoutTimestamp,
 		userId,
+		projectIdOwningWorkflow: projectId,
 		setExecutionStatus,
 		variables,
 		workflowSettings,
@@ -493,7 +495,7 @@ export async function getBase({
 
 			return executionData?.data;
 		},
-		externalSecretsProxy: Container.get(ExternalSecretsProxy),
+		externalSecretsProxy,
 		async startRunnerTask(
 			additionalData: IWorkflowExecuteAdditionalData,
 			jobType: string,

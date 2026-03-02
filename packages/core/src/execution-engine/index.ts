@@ -6,6 +6,10 @@ import type { ExternalSecretsProxy } from './external-secrets-proxy';
 declare module 'n8n-workflow' {
 	interface IWorkflowExecuteAdditionalData {
 		hooks?: ExecutionLifecycleHooks;
+		/*
+		 * TODO: figure out why we can't always have this be defined
+		 */
+		projectIdOwningWorkflow?: string;
 		externalSecretsProxy: ExternalSecretsProxy;
 		'data-table'?: { dataTableProxyProvider: DataTableProxyProvider };
 		// Project ID is currently only added on the additionalData if the user
