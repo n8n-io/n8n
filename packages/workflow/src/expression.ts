@@ -245,6 +245,14 @@ export class Expression {
 		return this.vmEvaluator;
 	}
 
+	/**
+	 * Set the expression engine programmatically.
+	 * Used by benchmarks and tests to switch engines within a single process.
+	 */
+	static setExpressionEngine(engine: 'current' | 'vm'): void {
+		this.expressionEngine = engine;
+	}
+
 	static initializeGlobalContext(data: IDataObject) {
 		/**
 		 * Denylist
