@@ -460,46 +460,59 @@ onMounted(async () => {
 								<N8nInputLabel
 									:label="i18n.baseText('settings.secretsProviderConnections.modal.scope.label')"
 								>
-									<N8nSelect
-										:model-value="scopeSelectValue"
-										size="large"
-										filterable
-										:disabled="!modal.canUpdate.value"
-										data-test-id="secrets-provider-scope-select"
-										@update:model-value="handleScopeSelect"
+									<N8nTooltip
+										:disabled="!modal.isScopedMode.value"
+										:content="
+											i18n.baseText(
+												'settings.secretsProviderConnections.modal.scope.disabled.tooltip',
+											)
+										"
+										placement="top"
 									>
-										<template #prefix>
-											<N8nText
-												v-if="selectedScopeIcon?.type === 'emoji'"
-												color="text-light"
-												:class="$style.menuItemEmoji"
-											>
-												{{ selectedScopeIcon.value }}
-											</N8nText>
-											<N8nIcon
-												v-else-if="selectedScopeIcon?.value"
-												color="text-light"
-												:icon="selectedScopeIcon.value"
-											/>
-										</template>
-										<N8nOption
-											v-for="option in scopeOptions"
-											:key="option.value || 'global'"
-											:value="option.value"
-											:label="option.label"
-											:class="{
-												[$style.globalOption]: option.value === '' && scopeOptions.length > 1,
-											}"
+										<N8nSelect
+											:model-value="scopeSelectValue"
+											size="large"
+											filterable
+											:disabled="!modal.canUpdate.value || modal.isScopedMode.value"
+											data-test-id="secrets-provider-scope-select"
+											@update:model-value="handleScopeSelect"
 										>
-											<div :class="$style.optionContent">
-												<N8nText v-if="option.icon?.type === 'emoji'" :class="$style.menuItemEmoji">
-													{{ option.icon.value }}
+											<template #prefix>
+												<N8nText
+													v-if="selectedScopeIcon?.type === 'emoji'"
+													color="text-light"
+													:class="$style.menuItemEmoji"
+												>
+													{{ selectedScopeIcon.value }}
 												</N8nText>
-												<N8nIcon v-else-if="option.icon?.value" :icon="option.icon.value" />
-												<span>{{ option.label }}</span>
-											</div>
-										</N8nOption>
-									</N8nSelect>
+												<N8nIcon
+													v-else-if="selectedScopeIcon?.value"
+													color="text-light"
+													:icon="selectedScopeIcon.value"
+												/>
+											</template>
+											<N8nOption
+												v-for="option in scopeOptions"
+												:key="option.value || 'global'"
+												:value="option.value"
+												:label="option.label"
+												:class="{
+													[$style.globalOption]: option.value === '' && scopeOptions.length > 1,
+												}"
+											>
+												<div :class="$style.optionContent">
+													<N8nText
+														v-if="option.icon?.type === 'emoji'"
+														:class="$style.menuItemEmoji"
+													>
+														{{ option.icon.value }}
+													</N8nText>
+													<N8nIcon v-else-if="option.icon?.value" :icon="option.icon.value" />
+													<span>{{ option.label }}</span>
+												</div>
+											</N8nOption>
+										</N8nSelect>
+									</N8nTooltip>
 								</N8nInputLabel>
 							</div>
 						</div>

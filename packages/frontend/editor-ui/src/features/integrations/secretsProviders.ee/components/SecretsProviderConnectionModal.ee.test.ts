@@ -67,6 +67,7 @@ const mockConnectionModal = {
 	canUpdate: { value: true },
 	canDelete: { value: true },
 	canShareGlobally: { value: true },
+	isScopedMode: { value: false },
 	projectIds: { value: [] as string[] },
 	sharedWithProjects: { value: [] as ProjectSharingData[] },
 	selectProviderType: vi.fn(),
@@ -175,6 +176,7 @@ describe('SecretsProviderConnectionModal', () => {
 		mockConnection.isTesting.value = false;
 		mockConnectionModal.connectionProjects.value = [];
 		mockConnectionModal.isSharedGlobally.value = false;
+		mockConnectionModal.isScopedMode.value = false;
 	});
 
 	it('should load connection data', async () => {
@@ -467,6 +469,33 @@ describe('SecretsProviderConnectionModal', () => {
 
 			// Verify setScopeState was called with the selected project ID
 			expect(mockConnectionModal.setScopeState).toHaveBeenCalledWith([mockProject.id], false);
+		});
+
+		it('should disable scope select when isScopedMode is true', async () => {
+			mockConnectionModal.canUpdate.value = true;
+			mockConnectionModal.isScopedMode.value = true;
+			mockConnectionModal.canShareGlobally.value = true;
+			mockConnectionModal.isEditMode.value = true;
+			mockProjectsStore.projects = mockProjects;
+
+			const { queryByTestId } = renderComponent({
+				props: {
+					modalName: SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
+					data: {
+						activeTab: 'sharing',
+						providerKey: 'test-123',
+						providerTypes: mockProviderTypes,
+					},
+				},
+			});
+
+			await nextTick();
+
+			const scopeSelect = queryByTestId('secrets-provider-scope-select');
+			expect(scopeSelect).toBeInTheDocument();
+
+			const selectInput = scopeSelect?.querySelector('input');
+			expect(selectInput).toHaveAttribute('disabled');
 		});
 
 		it('should call setScopeState when sharing globally', async () => {
