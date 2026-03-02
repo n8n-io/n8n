@@ -20,10 +20,38 @@ Microbenchmarks for measuring and tracking performance of critical code paths.
 ## Commands
 
 ```bash
-pnpm --filter=@n8n/performance bench          # Run benchmarks
-pnpm --filter=@n8n/performance bench:baseline # Save new baseline
-pnpm --filter=@n8n/performance bench:ci       # CI check (fails if >10% slower)
+pnpm --filter=@n8n/performance bench          # Run benchmarks locally
+pnpm --filter=@n8n/performance bench:baseline  # Save baseline for local comparison
+pnpm --filter=@n8n/performance bench:ci        # Compare against local baseline (>10% = fail)
 ```
+
+## CI Regression Detection
+
+Benchmarks run automatically on PRs that touch `packages/testing/performance/**` or `packages/workflow/src/**`. Regression detection is handled by [CodSpeed](https://codspeed.io), which:
+
+- **Counts CPU instructions** (via valgrind simulation) instead of measuring wall-clock time
+- Produces **deterministic results** regardless of runner load or hardware
+- **Comments on PRs** with benchmark results and regression warnings
+- Tracks performance history on the [CodSpeed dashboard](https://codspeed.io)
+
+You can also trigger benchmarks manually for any branch via **Actions > Test: Benchmarks > Run workflow**.
+
+### How It Works
+
+In CI, the `@codspeed/vitest-plugin` replaces vitest's benchmark runner. Instead of running thousands of iterations and measuring time, it runs each benchmark once under valgrind to count the exact number of CPU instructions executed. Same code = same instruction count, every time.
+
+This means CI catches subtle regressions (~1-2%) that wall-clock timing on shared runners would miss due to noise.
+
+### Local vs CI
+
+| | Local (`bench`) | CI (CodSpeed) |
+|---|---|---|
+| **Measurement** | Wall-clock time (Hz, ms) | CPU instruction count |
+| **Iterations** | Thousands | One |
+| **Noise** | 15-30% variance | Near-zero variance |
+| **Best for** | Quick sanity checks, comparing approaches | Automated regression detection |
+
+Local benchmarks are useful for eyeballing performance during development but too noisy for automated regression gating. Use `bench:baseline` + `bench:ci` for local before/after comparisons on the same machine in the same session.
 
 ## Adding a Benchmark
 
@@ -35,7 +63,7 @@ import { bench, describe } from 'vitest';
 
 describe('My Feature', () => {
   bench('operation name', () => {
-    // Code to measure - runs thousands of times
+    // Code to measure - runs thousands of times locally, once in CI
     doTheThing();
   });
 });
@@ -72,7 +100,7 @@ describe('My Feature', () => {
 });
 ```
 
-## Reading Results
+## Reading Local Results
 
 ```
 name                hz      min    max   mean    p99    rme   samples
@@ -87,54 +115,11 @@ my operation    20,000   0.04   0.20   0.05   0.10  ±0.5%   10000
 | rme | Margin of error - lower = more reliable |
 | samples | Number of iterations run |
 
-## Regression Detection
-
-Benchmarks are compared against a saved baseline:
-
-- **>10% slower** = regression (CI fails)
-- **>10% faster** = improvement (consider updating baseline)
-
-### Local Workflow
-
-```bash
-# 1. Before making changes, save a baseline
-pnpm --filter=@n8n/performance bench:baseline
-
-# 2. Make your changes/refactors
-
-# 3. Check for regressions
-pnpm --filter=@n8n/performance bench:ci
-```
-
-### After Intentional Improvements
-
-```bash
-# Save new baseline to reflect the improvement
-pnpm --filter=@n8n/performance bench:baseline
-```
-
 ## Current Benchmarks
 
 | Area | What it measures | Why it matters |
 |------|------------------|----------------|
 | Expression Engine | `={{ }}` evaluation speed | Runs for every node parameter |
-
-## Current Status
-
-This is a proof-of-concept for local regression detection.
-
-### CI Integration (TODO)
-
-Baselines are hardware-specific (an 8-core MacBook baseline is meaningless on a 2-core runner). CI needs its own baseline management:
-
-- **Option A:** Store baselines as CI artifacts, restore before comparison
-- **Option B:** External storage (S3, dedicated benchmark service)
-- **Option C:** Compare against previous CI run on same runner type
-
-## Known Limitations
-
-- **Local noise**: Background processes affect results. Run multiple times to verify.
-- **Baselines are machine-specific**: Cannot commit baselines to git - they must be generated on the same hardware they'll be compared against.
 
 ## Tips
 
