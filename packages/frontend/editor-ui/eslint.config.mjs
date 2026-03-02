@@ -3,6 +3,62 @@ import { frontendConfig } from '@n8n/eslint-config/frontend';
 
 export default defineConfig(frontendConfig, {
 	rules: {
+		// Guard: prevent direct node access on workflowsStore — use workflowDocumentStore instead.
+		// Level: 'warn' during migration (baseline tracking). Flip to 'error' pre-PR 7.
+		'no-restricted-syntax': [
+			'warn',
+			{
+				selector: "MemberExpression[property.name='allNodes'][object.name='workflowsStore']",
+				message: 'Use workflowDocumentStore.allNodes instead of workflowsStore.allNodes',
+			},
+			{
+				selector:
+					"CallExpression[callee.property.name='getNodeById'][callee.object.name='workflowsStore']",
+				message: 'Use workflowDocumentStore.findNode() instead of workflowsStore.getNodeById()',
+			},
+			{
+				selector:
+					"CallExpression[callee.property.name='getNodeByName'][callee.object.name='workflowsStore']",
+				message:
+					'Use workflowDocumentStore.findNodeByName() instead of workflowsStore.getNodeByName()',
+			},
+			{
+				selector:
+					"CallExpression[callee.property.name='getNodes'][callee.object.name='workflowsStore']",
+				message: 'Use workflowDocumentStore.getNodes() instead of workflowsStore.getNodes()',
+			},
+			{
+				selector:
+					"CallExpression[callee.property.name='getNodesByIds'][callee.object.name='workflowsStore']",
+				message:
+					'Use workflowDocumentStore.getNodesByIds() instead of workflowsStore.getNodesByIds()',
+			},
+			{
+				selector: "MemberExpression[property.name='nodesByName'][object.name='workflowsStore']",
+				message: 'Use workflowDocumentStore.findNodeByName() instead of workflowsStore.nodesByName',
+			},
+			{
+				selector:
+					"CallExpression[callee.property.name='addNode'][callee.object.name='workflowsStore']",
+				message: 'Use workflowDocumentStore.addNode() instead of workflowsStore.addNode()',
+			},
+			{
+				selector:
+					"CallExpression[callee.property.name='removeNode'][callee.object.name='workflowsStore']",
+				message: 'Use workflowDocumentStore.removeNode() instead of workflowsStore.removeNode()',
+			},
+			{
+				selector:
+					"CallExpression[callee.property.name='removeNodeById'][callee.object.name='workflowsStore']",
+				message:
+					'Use workflowDocumentStore.removeNodeById() instead of workflowsStore.removeNodeById()',
+			},
+			{
+				selector:
+					"CallExpression[callee.property.name='setNodes'][callee.object.name='workflowsStore']",
+				message: 'Use workflowDocumentStore.setNodes() instead of workflowsStore.setNodes()',
+			},
+		],
 		// TODO: Remove these
 		'n8n-local-rules/no-internal-package-import': 'warn',
 		'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],

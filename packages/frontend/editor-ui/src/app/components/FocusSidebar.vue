@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -32,6 +33,7 @@ const wrapperRef = useTemplateRef('wrapper');
 
 const focusPanelStore = useFocusPanelStore();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const setupPanelStore = useSetupPanelStore();
 const telemetry = useTelemetry();
@@ -60,7 +62,7 @@ const node = computed<INodeUi | undefined>(() => {
 	const selected: CanvasNode | undefined = vueFlow.getSelectedNodes.value[0];
 
 	return selected?.data?.render.type === CanvasNodeRenderType.Default
-		? workflowsStore.allNodes.find((n) => n.id === selected.id)
+		? workflowDocumentStore?.value?.findNode(selected.id)
 		: undefined;
 });
 

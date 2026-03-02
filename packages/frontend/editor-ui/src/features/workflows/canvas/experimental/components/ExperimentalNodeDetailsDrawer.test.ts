@@ -1,12 +1,17 @@
 import { createTestNode } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
 import { SET_NODE_TYPE } from '@/app/constants';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { createTestingPinia } from '@pinia/testing';
 import ExperimentalNodeDetailsDrawer from './ExperimentalNodeDetailsDrawer.vue';
-import { nextTick } from 'vue';
+import { nextTick, shallowRef } from 'vue';
 import { fireEvent } from '@testing-library/vue';
 import {
 	injectWorkflowState,
@@ -22,7 +27,17 @@ vi.mock('@/app/composables/useWorkflowState', async () => {
 	};
 });
 
-const renderComponent = createComponentRenderer(ExperimentalNodeDetailsDrawer);
+const workflowDocumentStoreRef = shallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>(
+	null,
+);
+
+const renderComponent = createComponentRenderer(ExperimentalNodeDetailsDrawer, {
+	global: {
+		provide: {
+			[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
+		},
+	},
+});
 
 describe('ExperimentalNodeDetailsDrawer', () => {
 	let pinia: ReturnType<typeof createTestingPinia>;
@@ -48,6 +63,7 @@ describe('ExperimentalNodeDetailsDrawer', () => {
 		});
 
 		workflowsStore = useWorkflowsStore(pinia);
+		workflowsStore.workflow.id = 'test-workflow';
 		workflowsStore.setNodes(mockNodes);
 		nodeTypesStore = useNodeTypesStore(pinia);
 		nodeTypesStore.setNodeTypes([
@@ -67,6 +83,10 @@ describe('ExperimentalNodeDetailsDrawer', () => {
 
 		workflowState = useWorkflowState();
 		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
+
+		workflowDocumentStoreRef.value = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
 	});
 
 	it('should show updated parameter after closing NDV', async () => {

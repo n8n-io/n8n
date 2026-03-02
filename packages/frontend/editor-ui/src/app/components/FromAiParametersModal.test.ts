@@ -15,6 +15,12 @@ import { nextTick } from 'vue';
 import { mock } from 'vitest-mock-extended';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
+import { shallowRef } from 'vue';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 
 const ModalStub = {
 	template: `
@@ -102,6 +108,9 @@ let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 let agentRequestStore: ReturnType<typeof useAgentRequestStore>;
 let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
 let projectsStore: MockedStore<typeof useProjectsStore>;
+let workflowDocumentStoreRef: ReturnType<
+	typeof shallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>
+>;
 
 describe('FromAiParametersModal', () => {
 	beforeEach(() => {
@@ -144,6 +153,12 @@ describe('FromAiParametersModal', () => {
 		nodeTypesStore.getNodeParameterOptions = vi.fn().mockResolvedValue(mockTools);
 		projectsStore = mockedStore(useProjectsStore);
 		projectsStore.currentProjectId = 'test-project-id';
+
+		const documentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow'));
+		vi.mocked(documentStore.findNodeByName).mockImplementation((name: string) =>
+			workflowsStore.getNodeByName(name),
+		);
+		workflowDocumentStoreRef = shallowRef(documentStore);
 	});
 
 	it('renders correctly with node data', () => {
@@ -158,6 +173,7 @@ describe('FromAiParametersModal', () => {
 				stubs: {
 					Modal: ModalStub,
 				},
+				provide: { [WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef },
 			},
 			pinia,
 		});
@@ -177,6 +193,7 @@ describe('FromAiParametersModal', () => {
 				stubs: {
 					Modal: ModalStub,
 				},
+				provide: { [WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef },
 			},
 			pinia,
 		});
@@ -197,6 +214,7 @@ describe('FromAiParametersModal', () => {
 				stubs: {
 					Modal: ModalStub,
 				},
+				provide: { [WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef },
 			},
 			pinia,
 		});
@@ -224,6 +242,7 @@ describe('FromAiParametersModal', () => {
 				stubs: {
 					Modal: ModalStub,
 				},
+				provide: { [WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef },
 			},
 			pinia,
 		});
@@ -252,6 +271,7 @@ describe('FromAiParametersModal', () => {
 				stubs: {
 					Modal: ModalStub,
 				},
+				provide: { [WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef },
 			},
 			pinia,
 		});
@@ -273,6 +293,7 @@ describe('FromAiParametersModal', () => {
 				stubs: {
 					Modal: ModalStub,
 				},
+				provide: { [WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef },
 			},
 			pinia,
 		});
@@ -310,6 +331,7 @@ describe('FromAiParametersModal', () => {
 				stubs: {
 					Modal: ModalStub,
 				},
+				provide: { [WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef },
 			},
 			pinia,
 		});
@@ -346,6 +368,7 @@ describe('FromAiParametersModal', () => {
 					stubs: {
 						Modal: ModalStub,
 					},
+					provide: { [WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef },
 				},
 				pinia,
 			});
@@ -375,6 +398,7 @@ describe('FromAiParametersModal', () => {
 					stubs: {
 						Modal: ModalStub,
 					},
+					provide: { [WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef },
 				},
 				pinia,
 			});

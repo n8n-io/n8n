@@ -14,6 +14,10 @@ import { useRoute } from 'vue-router';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { assert } from '@n8n/utils/assert';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import type { ICredentialType, NodeError, INode } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -36,6 +40,11 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const usersStore = useUsersStore();
 	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 	const route = useRoute();
 	const streaming = ref<boolean>();
 	const streamingAbortController = ref<AbortController | null>(null);
@@ -689,7 +698,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				task: 'credentials';
 		  }
 	)) {
-		const canvasStatus = workflowsStore.allNodes.length === 0 ? 'empty' : 'existing_workflow';
+		const canvasStatus =
+			(workflowDocumentStore.value?.allNodes.length ?? 0) === 0 ? 'empty' : 'existing_workflow';
 		telemetry.track('User opened assistant', {
 			source,
 			task,

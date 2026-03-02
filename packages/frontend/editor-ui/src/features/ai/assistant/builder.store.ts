@@ -177,6 +177,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const posthogStore = usePostHog();
 	const focusedNodesStore = useFocusedNodesStore();
 
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
+
 	// Composables
 	const {
 		processAssistantMessages,
@@ -804,7 +810,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			quickReplyType,
 			workflow: workflowsStore.workflow,
 			executionData: executionResult,
-			nodesForSchema: Object.keys(workflowsStore.nodesByName),
+			nodesForSchema: Object.keys(workflowDocumentStore.value?.nodesByName ?? {}),
 			mode: modeForPayload,
 			isPlanModeEnabled: isPlanModeAvailable.value,
 			allowSendingParameterValues: settings.settings.ai.allowSendingParameterValues,
@@ -1107,7 +1113,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	// Only applies when the chat is fresh (no messages) so it doesn't interfere
 	// with an active conversation.
 	watch(
-		[() => workflowsStore.workflowId, () => workflowsStore.workflow.nodes?.length ?? 0],
+		[() => workflowsStore.workflowId, () => workflowDocumentStore.value?.allNodes.length ?? 0],
 		([, nodesCount]) => {
 			if (chatMessages.value.length > 0) return;
 			if (!isPlanModeAvailable.value) return;

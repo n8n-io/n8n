@@ -493,7 +493,7 @@ export function useWorkflowSaving({
 						value: changedNodes[nodeName],
 						name: nodeName,
 					} as IUpdateInformation;
-					workflowState.setNodeValue(changes);
+					workflowDocumentStore.setNodeValue(changes);
 				});
 			}
 

@@ -23,6 +23,7 @@ import { getAuthTypeForNodeCredential, getMainAuthField } from '@/app/utils/node
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { NodeHelpers, type IConnections, type INode } from 'n8n-workflow';
 import isEqual from 'lodash/isEqual';
+import { computed } from 'vue';
 
 export interface UpdateWorkflowOptions {
 	isInitialGeneration?: boolean;
@@ -51,6 +52,12 @@ export function useWorkflowUpdate() {
 	const canvasOperations = useCanvasOperations();
 	const nodeHelpers = useNodeHelpers();
 
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
+
 	/**
 	 * Categorize nodes into those to update, add, or remove.
 	 *
@@ -61,11 +68,13 @@ export function useWorkflowUpdate() {
 	 * triggering maxNodes validation errors for nodes like ChatTrigger.
 	 */
 	function categorizeNodes(workflowData: WorkflowDataUpdate) {
-		const existingNodesById = new Map(workflowsStore.allNodes.map((n) => [n.id, n]));
+		const existingNodesById = new Map(
+			(workflowDocumentStore.value?.allNodes ?? []).map((n) => [n.id, n]),
+		);
 
 		// Add name+type index for fallback matching when IDs differ
 		const existingNodesByNameType = new Map(
-			workflowsStore.allNodes.map((n) => [`${n.type}::${n.name}`, n]),
+			(workflowDocumentStore.value?.allNodes ?? []).map((n) => [`${n.type}::${n.name}`, n]),
 		);
 
 		const nodesToUpdate: Array<{ existing: INodeUi; updated: INode }> = [];
@@ -172,7 +181,7 @@ export function useWorkflowUpdate() {
 		}
 
 		// Sync state back to store
-		workflowsStore.setNodes(Object.values(workflow.nodes));
+		workflowDocumentStore.value?.setNodes(Object.values(workflow.nodes));
 		workflowsStore.setConnections(workflow.connectionsBySourceNode);
 		// Revalidate updated nodes to refresh error indicators on canvas
 		for (const { existing } of nodesToUpdate) {
@@ -245,11 +254,11 @@ export function useWorkflowUpdate() {
 		// Convert to canvas format for comparison
 		const existingCanvasConnections = mapLegacyConnectionsToCanvasConnections(
 			existingConnections,
-			workflowsStore.allNodes,
+			workflowDocumentStore.value?.allNodes ?? [],
 		);
 		const newCanvasConnections = mapLegacyConnectionsToCanvasConnections(
 			newConnections,
-			workflowsStore.allNodes,
+			workflowDocumentStore.value?.allNodes ?? [],
 		);
 
 		// Find connections to remove (exist in current but not in new)

@@ -1,4 +1,4 @@
-import { reactive } from 'vue';
+import { reactive, shallowRef } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { useRouter } from 'vue-router';
 import userEvent from '@testing-library/user-event';
@@ -33,6 +33,11 @@ import {
 	useWorkflowState,
 	type WorkflowState,
 } from '@/app/composables/useWorkflowState';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({}),
@@ -103,6 +108,7 @@ let renderComponent: ReturnType<typeof createComponentRenderer>;
 let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 let nodeTypesStore: MockedStore<typeof useNodeTypesStore>;
 let ndvStore: MockedStore<typeof useNDVStore>;
+let documentStore: ReturnType<typeof useWorkflowDocumentStore>;
 
 let runWorkflow: ReturnType<typeof useRunWorkflow>;
 let externalHooks: ReturnType<typeof useExternalHooks>;
@@ -117,15 +123,30 @@ describe('NodeExecuteButton', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 
+		const pinia = createTestingPinia();
+
+		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsStore.workflowId = 'abc123';
+
+		documentStore = useWorkflowDocumentStore(createWorkflowDocumentId('abc123'));
+		vi.mocked(documentStore.findNodeByName).mockImplementation((name: string) =>
+			workflowsStore.getNodeByName(name),
+		);
+		const workflowDocumentStoreRef = shallowRef(documentStore);
+
 		renderComponent = createComponentRenderer(NodeExecuteButton, {
-			pinia: createTestingPinia(),
+			pinia,
 			props: {
 				nodeName: 'test-node',
 				telemetrySource: 'test-source',
 			},
+			global: {
+				provide: {
+					[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
+				},
+			},
 		});
 
-		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowState = useWorkflowState();
 		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 
@@ -136,8 +157,6 @@ describe('NodeExecuteButton', () => {
 		externalHooks = useExternalHooks();
 		message = useMessage();
 		toast = useToast();
-
-		workflowsStore.workflowId = 'abc123';
 	});
 
 	it('renders without error', () => {
@@ -384,7 +403,7 @@ describe('NodeExecuteButton', () => {
 				name: 'test',
 				value: 'Test',
 			}));
-		const updateNodePropertiesSpy = vi.spyOn(workflowState, 'updateNodeProperties');
+		const updateNodePropertiesSpy = vi.mocked(documentStore.updateNodeProperties);
 		const node = mockNode({
 			name: 'test-node',
 			type: AI_TRANSFORM_NODE_TYPE,

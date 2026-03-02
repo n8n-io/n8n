@@ -461,8 +461,10 @@ describe('AI Assistant store', () => {
 	});
 
 	it('should call telemetry for opening assistant on existing workflow', () => {
-		const assistantStore = useAssistantStore();
 		const workflowsStore = useWorkflowsStore();
+
+		// Set a truthy workflow ID so the workflowDocumentStore computed resolves
+		workflowsStore.workflow.id = 'test-workflow';
 
 		// Add a node to the workflow
 		workflowsStore.workflow.nodes = [
@@ -476,6 +478,8 @@ describe('AI Assistant store', () => {
 			},
 		];
 
+		const assistantStore = useAssistantStore();
+
 		assistantStore.trackUserOpenedAssistant({
 			task: 'placeholder',
 			source: 'canvas',
@@ -487,7 +491,7 @@ describe('AI Assistant store', () => {
 			task: 'placeholder',
 			has_existing_session: false,
 			instance_id: '',
-			workflow_id: '',
+			workflow_id: 'test-workflow',
 			canvas_status: 'existing_workflow',
 			node_type: undefined,
 			error: undefined,

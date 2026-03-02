@@ -111,7 +111,7 @@ import {
 	N8nSwitch2,
 } from '@n8n/design-system';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { isPlaceholderValue } from '@/features/ai/assistant/composables/useBuilderTodos';
 
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
@@ -174,7 +174,7 @@ const credentialsStore = useCredentialsStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
-const workflowState = injectWorkflowState();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const settingsStore = useSettingsStore();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
@@ -704,9 +704,9 @@ function isRemoteParameterOption(option: INodePropertyOptions) {
 
 function credentialSelected(updateInformation: INodeUpdatePropertiesInformation) {
 	// Update the values on the node
-	workflowState.updateNodeProperties(updateInformation);
+	workflowDocumentStore?.value?.updateNodeProperties(updateInformation);
 
-	const updateNode = workflowsStore.getNodeByName(updateInformation.name);
+	const updateNode = workflowDocumentStore?.value?.findNodeByName(updateInformation.name);
 
 	if (updateNode) {
 		// Update the issues

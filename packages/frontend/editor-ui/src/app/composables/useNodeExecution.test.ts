@@ -156,6 +156,16 @@ vi.mock('@/app/event-bus', () => ({
 	nodeViewEventBus: { emit: vi.fn() },
 }));
 
+const { mockDocumentStore } = vi.hoisted(() => ({
+	mockDocumentStore: {
+		updateNodeProperties: vi.fn(),
+	},
+}));
+
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	injectWorkflowDocumentStore: vi.fn().mockReturnValue({ value: mockDocumentStore }),
+}));
+
 function createTestNode(overrides: Partial<INodeUi> = {}): INodeUi {
 	return {
 		id: 'test-id',
@@ -207,6 +217,7 @@ describe('useNodeExecution', () => {
 
 		vi.mocked(needsAgentInput).mockReturnValue(false);
 		vi.mocked(generateCodeForAiTransform).mockReset();
+		mockDocumentStore.updateNodeProperties.mockReset();
 	});
 
 	describe('isTriggerNode', () => {
@@ -755,7 +766,6 @@ describe('useNodeExecution', () => {
 				name: `parameters.${AI_TRANSFORM_JS_CODE}`,
 				value: 'return items;',
 			});
-			vi.spyOn(workflowState, 'updateNodeProperties').mockImplementation(() => {});
 			const node = ref(
 				createTestNode({
 					name: 'AI Transform',
@@ -768,7 +778,7 @@ describe('useNodeExecution', () => {
 			const result = await execute();
 
 			expect(generateCodeForAiTransform).toHaveBeenCalled();
-			expect(workflowState.updateNodeProperties).toHaveBeenCalled();
+			expect(mockDocumentStore.updateNodeProperties).toHaveBeenCalled();
 			expect(result).toBe('executed');
 		});
 
@@ -777,7 +787,6 @@ describe('useNodeExecution', () => {
 				name: `parameters.${AI_TRANSFORM_JS_CODE}`,
 				value: 'return items;',
 			});
-			vi.spyOn(workflowState, 'updateNodeProperties').mockImplementation(() => {});
 			const onCodeGenerated = vi.fn();
 			const node = ref(
 				createTestNode({

@@ -106,6 +106,15 @@ vi.mock('@/features/ai/assistant/chatPanelState.store', () => ({
 	useChatPanelStateStore: () => mockChatPanelStateStore,
 }));
 
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	useWorkflowDocumentStore: () => ({
+		get allNodes() {
+			return mockWorkflowsStore.workflow.nodes;
+		},
+	}),
+	createWorkflowDocumentId: (id: string, version = 'latest') => `${id}@${version}`,
+}));
+
 function makeNode(overrides: Partial<INode> = {}): INode {
 	return {
 		id: 'node-1',

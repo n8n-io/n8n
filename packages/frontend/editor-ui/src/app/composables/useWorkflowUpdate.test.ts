@@ -3,6 +3,10 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useWorkflowUpdate } from './useWorkflowUpdate';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
@@ -92,6 +96,14 @@ describe('useWorkflowUpdate', () => {
 
 		credentialsStore.getCredentialsByType = vi.fn().mockReturnValue([]);
 		nodeTypesStore.getNodeType = vi.fn();
+
+		// Create the workflow document store so the composable can access it via
+		// workflowsStore.workflowId. The document store's setNodes is stubbed by
+		// createTestingPinia(), so we unstub it to delegate to workflowsStore.setNodes.
+		const documentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow'));
+		vi.mocked(documentStore.setNodes).mockImplementation((nodes: INodeUi[]) => {
+			workflowsStore.setNodes(nodes);
+		});
 	});
 
 	describe('updateWorkflow', () => {

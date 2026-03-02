@@ -29,7 +29,6 @@ import { createEventBus } from '@n8n/utils/event-bus';
 
 import { useLogStreamingStore } from '../logStreaming.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import type { IMenuItem, IUpdateInformation, ModalKey } from '@/Interface';
 import { LOG_STREAM_MODAL_KEY, MODAL_CONFIRM } from '@/app/constants';
@@ -63,10 +62,10 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import {
-	injectWorkflowState,
 	type WorkflowStateBusEvents,
 	workflowStateEventBus,
 } from '@/app/composables/useWorkflowState';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 defineOptions({ name: 'EventDestinationSettingsModal' });
 
@@ -89,8 +88,7 @@ const { confirm } = useMessage();
 const telemetry = useTelemetry();
 const logStreamingStore = useLogStreamingStore();
 const ndvStore = useNDVStore();
-const workflowsStore = useWorkflowsStore();
-const workflowState = injectWorkflowState();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const uiStore = useUIStore();
 
 const unchanged = ref(!isNew);
@@ -222,9 +220,9 @@ function onLabelChange(value: string) {
 }
 
 function setupNode(options: MessageEventBusDestinationOptions) {
-	workflowsStore.removeNode(node.value);
+	workflowDocumentStore?.value?.removeNode(node.value);
 	ndvStore.setActiveNodeName(options.id ?? 'thisshouldnothappen', 'other');
-	workflowsStore.addNode(destinationToFakeINodeUi(options));
+	workflowDocumentStore?.value?.addNode(destinationToFakeINodeUi(options));
 	nodeParameters.value = options as INodeParameters;
 	logStreamingStore.items[destination.id!].destination = options;
 }
@@ -289,7 +287,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 	}
 
 	nodeParameters.value = deepCopy(nodeParametersCopy);
-	workflowState.updateNodeProperties({
+	workflowDocumentStore?.value?.updateNodeProperties({
 		name: node.value.name,
 		properties: { parameters: nodeParameters.value, position: [0, 0] },
 	});
@@ -329,7 +327,7 @@ async function removeThis() {
 
 function onModalClose() {
 	if (!hasOnceBeenSaved.value) {
-		workflowsStore.removeNode(node.value);
+		workflowDocumentStore?.value?.removeNode(node.value);
 		if (nodeParameters.value.id && typeof nodeParameters.value.id !== 'object') {
 			logStreamingStore.removeDestination(nodeParameters.value.id.toString());
 		}

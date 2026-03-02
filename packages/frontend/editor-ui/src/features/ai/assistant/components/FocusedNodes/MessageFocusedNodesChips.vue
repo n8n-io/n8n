@@ -4,7 +4,7 @@ import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { CHIP_BUNDLE_THRESHOLD } from '../../composables/useFocusedNodesChipUI';
 
 interface Props {
@@ -14,21 +14,21 @@ interface Props {
 const props = defineProps<Props>();
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
-const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const nodeCount = computed(() => props.focusedNodeNames?.length ?? 0);
 const shouldBundle = computed(() => nodeCount.value >= CHIP_BUNDLE_THRESHOLD);
 const allNodesSelected = computed(
 	() =>
 		nodeCount.value > 0 &&
-		workflowsStore.allNodes.length > 0 &&
-		nodeCount.value >= workflowsStore.allNodes.length,
+		(workflowDocumentStore?.value?.allNodes.length ?? 0) > 0 &&
+		nodeCount.value >= (workflowDocumentStore?.value?.allNodes.length ?? 0),
 );
 
 const resolvedNodes = computed(() => {
 	if (!props.focusedNodeNames?.length) return [];
 	return props.focusedNodeNames.map((name) => {
-		const workflowNode = workflowsStore.allNodes.find((n) => n.name === name);
+		const workflowNode = workflowDocumentStore?.value?.findNodeByName(name);
 		const nodeType = workflowNode ? nodeTypesStore.getNodeType(workflowNode.type) : null;
 		return { name, nodeType };
 	});

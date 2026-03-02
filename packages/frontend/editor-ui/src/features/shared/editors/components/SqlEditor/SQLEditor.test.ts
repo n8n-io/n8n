@@ -1,5 +1,5 @@
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
-import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
+import { SETTINGS_STORE_DEFAULT_STATE, mockedStore } from '@/__tests__/utils';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 
@@ -10,6 +10,18 @@ import { userEvent } from '@testing-library/user-event';
 import { setActivePinia } from 'pinia';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { INodeUi } from '@/Interface';
+
+const mockDocStoreFactory = vi.fn();
+
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	useWorkflowDocumentStore: (...args: unknown[]) => mockDocStoreFactory(...args),
+	createWorkflowDocumentId: (workflowId: string, version = 'latest') => `${workflowId}@${version}`,
+	injectWorkflowDocumentStore: vi.fn(() => null),
+	getWorkflowDocumentStoreId: (id: string) => `workflowDocuments/${id}`,
+	disposeWorkflowDocumentStore: vi.fn(),
+	getPinDataSize: vi.fn(() => 0),
+	pinDataToExecutionData: vi.fn(() => ({})),
+}));
 
 const EXPRESSION_OUTPUT_TEST_ID = 'inline-expression-editor-output';
 
@@ -66,6 +78,7 @@ describe('SqlEditor.vue', () => {
 				},
 				[STORES.WORKFLOWS]: {
 					workflow: {
+						id: 'test-workflow-id',
 						nodes,
 						connections: {},
 					},
@@ -76,6 +89,17 @@ describe('SqlEditor.vue', () => {
 
 		const workflowsStore = useWorkflowsStore();
 		vi.mocked(workflowsStore).getNodeByName.mockReturnValue(nodes[0]);
+
+		const ws = mockedStore(useWorkflowsStore);
+		mockDocStoreFactory.mockImplementation(() => ({
+			get allNodes() {
+				return ws.allNodes;
+			},
+			findNodeByName: (...args: unknown[]) => ws.getNodeByName(...(args as [string])),
+			get pinData() {
+				return {};
+			},
+		}));
 	});
 
 	afterAll(() => {

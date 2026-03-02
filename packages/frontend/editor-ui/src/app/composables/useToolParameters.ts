@@ -8,6 +8,7 @@ import {
 } from 'n8n-workflow';
 import { computed, reactive, ref, watch, type Ref } from 'vue';
 import { useWorkflowsStore } from '../stores/workflows.store';
+import { injectWorkflowDocumentStore } from '../stores/workflowDocument.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useNodeTypesStore } from '../stores/nodeTypes.store';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
@@ -27,6 +28,7 @@ interface GetToolParametersProps {
 export function useToolParameters({ node }: GetToolParametersProps) {
 	const parameters = ref<IFormInput[]>([]);
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const projectsStore = useProjectsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const agentRequestStore = useAgentRequestStore();
@@ -197,7 +199,7 @@ export function useToolParameters({ node }: GetToolParametersProps) {
 			1,
 		);
 		const connectedTools = connectedToolNodeNames
-			.map((nodeName) => workflowsStore.getNodeByName(nodeName))
+			.map((nodeName) => workflowDocumentStore?.value?.findNodeByName(nodeName))
 			.filter((tool): tool is INode => !!tool);
 
 		const ignoredFields = ['tool', 'toolParameters'];

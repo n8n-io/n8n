@@ -83,11 +83,12 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 	});
 
 	const targetNodes = computed(() =>
-		targetNodeIds.value.map((nodeId) => workflowsStore.getNodeById(nodeId)).filter(isPresent),
+		targetNodeIds.value.map((nodeId) => documentStore?.value?.findNode(nodeId)).filter(isPresent),
 	);
 
 	const canAddNodeOfType = (nodeType: INodeTypeDescription) => {
-		const sameTypeNodes = workflowsStore.allNodes.filter((n) => n.type === nodeType.name);
+		const allNodes = documentStore?.value?.allNodes ?? [];
+		const sameTypeNodes = allNodes.filter((n) => n.type === nodeType.name);
 		return nodeType.maxNodes === undefined || sameTypeNodes.length < nodeType.maxNodes;
 	};
 
@@ -143,7 +144,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 				divided: true,
 				label: i18n.baseText('contextMenu.selectAll'),
 				shortcut: { metaKey: true, keys: ['A'] },
-				disabled: nodes.length === workflowsStore.allNodes.length,
+				disabled: nodes.length === (documentStore?.value?.allNodes.length ?? 0),
 			},
 			{
 				id: 'deselect_all',

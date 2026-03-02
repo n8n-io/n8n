@@ -172,6 +172,22 @@ vi.mock('@/app/composables/useDataSchema', () => {
 	};
 });
 
+// Mock workflowDocumentStore to delegate back to workflowsStore/workflowState
+// so existing test setups (which configure workflowsStore mocks) continue to work.
+// NOTE: Must NOT use async factory — async vi.mock does not intercept transitive
+// dependency imports (e.g. useNodeHelpers importing useWorkflowDocumentStore).
+const mockDocStoreFactory = vi.fn();
+
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	useWorkflowDocumentStore: (...args: unknown[]) => mockDocStoreFactory(...args),
+	createWorkflowDocumentId: (workflowId: string, version = 'latest') => `${workflowId}@${version}`,
+	injectWorkflowDocumentStore: vi.fn(() => null),
+	getWorkflowDocumentStoreId: (id: string) => `workflowDocuments/${id}`,
+	disposeWorkflowDocumentStore: vi.fn(),
+	getPinDataSize: vi.fn(() => 0),
+	pinDataToExecutionData: vi.fn(() => ({})),
+}));
+
 describe('useCanvasOperations', () => {
 	const workflowId = 'test';
 	const initialState = {
@@ -204,6 +220,69 @@ describe('useCanvasOperations', () => {
 
 		workflowState = useWorkflowState();
 		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
+
+		// Document store proxy: delegates ALL calls to workflowsStore mocks and
+		// workflowState so existing test spy assertions keep working.
+		const docStoreCache = new Map<string, Record<string, unknown>>();
+		mockDocStoreFactory.mockImplementation((id: string) => {
+			if (docStoreCache.has(id)) return docStoreCache.get(id);
+			const ws = mockedStore(useWorkflowsStore);
+			const proxy: Record<string, unknown> = {
+				get allNodes() {
+					return ws.allNodes;
+				},
+				// Delegate to store mocks so test spies/mockReturnValue work
+				findNode: (...args: unknown[]) => ws.getNodeById(...(args as [string])),
+				findNodeByName: (...args: unknown[]) => ws.getNodeByName(...(args as [string])),
+				getNodesByIds: (...args: unknown[]) => ws.getNodesByIds(...(args as [string[]])),
+				getNodes: () => ws.allNodes,
+				setNodes: (...args: unknown[]) => ws.setNodes(...(args as [INodeUi[]])),
+				addNode: (...args: unknown[]) => ws.addNode(...(args as [INodeUi])),
+				removeNodeById: (...args: unknown[]) => ws.removeNodeById(...(args as [string])),
+				removeNode: (...args: unknown[]) => ws.removeNode(...(args as [INodeUi])),
+				// Delegate writes to workflowState so vi.spyOn(workflowState, ...) works
+				setNodePositionById: (...args: unknown[]) =>
+					workflowState.setNodePositionById(...(args as [string, [number, number]])),
+				setNodeParameters: (...args: unknown[]) =>
+					workflowState.setNodeParameters(
+						...(args as Parameters<typeof workflowState.setNodeParameters>),
+					),
+				updateNodeProperties: (...args: unknown[]) =>
+					workflowState.updateNodeProperties(
+						...(args as Parameters<typeof workflowState.updateNodeProperties>),
+					),
+				setNodeValue: (...args: unknown[]) =>
+					workflowState.setNodeValue(...(args as Parameters<typeof workflowState.setNodeValue>)),
+				get meta() {
+					return ws.workflow.meta ?? {};
+				},
+				get pinData() {
+					return ws.workflow.pinData ?? {};
+				},
+				get active() {
+					return ws.workflow.active ?? false;
+				},
+				get tags() {
+					return ws.workflow.tags ?? [];
+				},
+				workflowId: id.split('@')[0],
+				workflowVersion: id.split('@')[1] ?? 'latest',
+				setPinData: vi.fn(),
+				getPinDataSnapshot: vi.fn(() => ({})),
+				unpinNodeData: vi.fn(),
+				addTags: vi.fn(),
+				setTags: vi.fn(),
+				addToMeta: vi.fn(),
+				setMeta: vi.fn(),
+				setActiveState: vi.fn(),
+				setCreatedAt: vi.fn(),
+				setUpdatedAt: vi.fn(),
+				setHomeProject: vi.fn(),
+				setChecksum: vi.fn(),
+			};
+			docStoreCache.set(id, proxy);
+			return proxy;
+		});
 	});
 
 	describe('requireNodeTypeDescription', () => {
@@ -1807,6 +1886,7 @@ describe('useCanvasOperations', () => {
 			const updateNodePropertiesSpy = vi.spyOn(workflowState, 'updateNodeProperties');
 
 			const { toggleNodesDisabled } = useCanvasOperations();
+
 			toggleNodesDisabled([nodes[0].id, nodes[1].id], {
 				trackHistory: true,
 				trackBulk: true,
@@ -6188,6 +6268,7 @@ describe('useCanvasOperations', () => {
 				return null;
 			});
 
+			workflowsStore.workflow.id = workflowId;
 			workflowsStore.workflow.nodes = [agentNode, toolNode];
 			workflowsStore.workflow.connections = {
 				[agentNode.name]: {
@@ -6227,10 +6308,6 @@ describe('useCanvasOperations', () => {
 				if (name === 'HITL') return hitlNode;
 				return null;
 			});
-			workflowsStore.addConnection = vi.fn();
-			workflowsStore.removeConnection = vi.fn();
-			workflowsStore.addNode = vi.fn();
-
 			// Mock the last interacted node as the tool node with an existing connection
 			uiStore.lastInteractedWithNode = toolNode;
 			uiStore.lastInteractedWithNodeConnection = {

@@ -27,10 +27,18 @@ vi.mock('@/features/credentials/credentials.store', async () => {
 const mockUpdateNodeProperties = vi.fn();
 const mockUpdateNodeCredentialIssuesByName = vi.fn();
 const mockUpdateNodesCredentialsIssues = vi.fn();
+const mockDocStoreFindNodeByName = vi.fn();
+const mockDocStoreAllNodes = vi.fn<() => INodeUi[]>(() => []);
 
-vi.mock('@/app/composables/useWorkflowState', () => ({
-	injectWorkflowState: vi.fn(() => ({
-		updateNodeProperties: mockUpdateNodeProperties,
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	injectWorkflowDocumentStore: vi.fn(() => ({
+		value: {
+			get allNodes() {
+				return mockDocStoreAllNodes();
+			},
+			findNodeByName: (...args: unknown[]) => mockDocStoreFindNodeByName(...args),
+			updateNodeProperties: (...args: unknown[]) => mockUpdateNodeProperties(...args),
+		},
 	})),
 }));
 
@@ -91,6 +99,11 @@ describe('useWorkflowSetupState', () => {
 		mockUpdateNodeProperties.mockReset();
 		mockUpdateNodeCredentialIssuesByName.mockReset();
 		mockUpdateNodesCredentialsIssues.mockReset();
+		mockDocStoreFindNodeByName.mockReset();
+		mockDocStoreAllNodes.mockImplementation(() => workflowsStore.allNodes);
+		mockDocStoreFindNodeByName.mockImplementation((name: string) =>
+			workflowsStore.getNodeByName(name),
+		);
 		mockOnCredentialDeleted = undefined;
 	});
 

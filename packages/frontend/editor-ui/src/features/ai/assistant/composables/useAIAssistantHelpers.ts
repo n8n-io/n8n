@@ -307,7 +307,7 @@ export const useAIAssistantHelpers = () => {
 		const schemas: ChatRequest.NodeExecutionSchema[] = [];
 		const pinnedNodeNames: string[] = [];
 		for (const name of nodeNames) {
-			const node = workflowsStore.getNodeByName(name);
+			const node = workflowDocumentStore?.findNodeByName(name);
 			if (!node) {
 				continue;
 			}

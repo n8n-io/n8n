@@ -93,6 +93,8 @@ function setDocumentStoreMeta(meta: Record<string, unknown>) {
 	const docStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId));
 	// Note: createTestingPinia() stubs actions by default, so setMeta() won't work
 	Object.defineProperty(docStore, 'meta', { value: meta, configurable: true });
+	// createTestingPinia stubs action-like functions; restore delegation for getNodes
+	docStore.getNodes = (() => workflowsStore.getNodes()) as typeof docStore.getNodes;
 	workflowDocumentStoreRef.value = docStore;
 }
 

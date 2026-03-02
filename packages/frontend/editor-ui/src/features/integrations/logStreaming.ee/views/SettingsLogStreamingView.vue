@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeMount, onMounted, ref, getCurrentInstance } from 'vue';
 import { v4 as uuid } from 'uuid';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useLogStreamingStore } from '../logStreaming.store';
@@ -16,6 +15,7 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
 import { N8nActionBox, N8nButton, N8nHeading, N8nInfoTip } from '@n8n/design-system';
@@ -23,8 +23,8 @@ const environment = process.env.NODE_ENV;
 
 const settingsStore = useSettingsStore();
 const logStreamingStore = useLogStreamingStore();
-const workflowsStore = useWorkflowsStore();
 const workflowState = injectWorkflowState();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const documentTitle = useDocumentTitle();
@@ -148,9 +148,9 @@ async function addDestination() {
 async function onRemove(destinationId?: string) {
 	if (!destinationId) return;
 	await logStreamingStore.deleteDestination(destinationId);
-	const foundNode = workflowsStore.getNodeByName(destinationId);
+	const foundNode = workflowDocumentStore?.value?.findNodeByName(destinationId);
 	if (foundNode) {
-		workflowsStore.removeNode(foundNode);
+		workflowDocumentStore?.value?.removeNode(foundNode);
 	}
 }
 

@@ -63,7 +63,7 @@ import {
 	N8nText,
 	type IMenuItem,
 } from '@n8n/design-system';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { setParameterValue } from '@/app/utils/parameterUtils';
 import get from 'lodash/get';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
@@ -83,7 +83,7 @@ const ndvStore = useNDVStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
-const workflowState = injectWorkflowState();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const nodeTypesStore = useNodeTypesStore();
 const projectsStore = useProjectsStore();
 
@@ -808,7 +808,11 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 
 	const appliedAuthType = pendingAuthType.value;
 	if (appliedAuthType && ndvStore.activeNode) {
-		updateNodeAuthType(workflowState, ndvStore.activeNode, appliedAuthType);
+		updateNodeAuthType(
+			workflowDocumentStore?.value ?? undefined,
+			ndvStore.activeNode,
+			appliedAuthType,
+		);
 		pendingAuthType.value = null;
 	}
 

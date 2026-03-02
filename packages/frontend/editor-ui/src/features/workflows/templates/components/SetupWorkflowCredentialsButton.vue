@@ -5,7 +5,7 @@ import { SETUP_CREDENTIALS_MODAL_KEY, TEMPLATE_SETUP_EXPERIENCE } from '@/app/co
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { doesNodeHaveAllCredentialsFilled } from '@/app/utils/nodes/nodeTransforms';
 
 import { N8nButton } from '@n8n/design-system';
@@ -14,11 +14,8 @@ import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/ready
 
 import { useRoute } from 'vue-router';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
-const workflowsStore = useWorkflowsStore();
 const readyToRunStore = useReadyToRunStore();
-const workflowDocumentStore = injectWorkflowDocumentStore();
 const nodeTypesStore = useNodeTypesStore();
 const posthogStore = usePostHog();
 const uiStore = useUIStore();
@@ -26,6 +23,8 @@ const focusPanelStore = useFocusPanelStore();
 const setupPanelStore = useSetupPanelStore();
 const i18n = useI18n();
 const route = useRoute();
+
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const isTemplateImportRoute = computed(() => {
 	return route.query.templateId !== undefined;
@@ -40,7 +39,7 @@ const allCredentialsFilled = computed(() => {
 		return true;
 	}
 
-	const nodes = workflowsStore.getNodes();
+	const nodes = workflowDocumentStore?.value?.getNodes() ?? [];
 	if (!nodes.length) {
 		return true;
 	}
@@ -65,7 +64,7 @@ const showButton = computed(() => {
 	}
 
 	if (isSetupPanelFeatureEnabled.value) {
-		return workflowsStore.getNodes().length > 0;
+		return (workflowDocumentStore?.value?.getNodes() ?? []).length > 0;
 	}
 
 	if (isTemplateSetupCompleted.value) {

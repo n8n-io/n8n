@@ -10,6 +10,10 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -40,6 +44,13 @@ export function useReviewChanges() {
 	const posthogStore = usePostHog();
 	const i18n = useI18n();
 	const isLoadingDiff = ref(false);
+
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
+
 	const cachedVersionNodes = ref<INode[]>([]);
 	const cachedVersionConnections = ref<IConnections>({});
 	const cachedVersionLoaded = ref(false);
@@ -96,7 +107,7 @@ export function useReviewChanges() {
 	const nodeChanges = computed<NodeChangeEntry[]>(() => {
 		if (!cachedVersionLoaded.value || builderStore.streaming) return [];
 		const normalized = resolveNodeDefaults(cachedVersionNodes.value);
-		const currentNodes: INode[] = workflowsStore.workflow.nodes;
+		const currentNodes: INode[] = workflowDocumentStore.value?.allNodes ?? [];
 		const diff = compareWorkflowsNodes(normalized, currentNodes);
 		const currentNodesById = new Map(currentNodes.map((n) => [n.id, n]));
 		return [...diff.values()]

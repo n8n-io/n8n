@@ -65,7 +65,9 @@ const executionsHelpEventBus = createEventBus();
 
 const help = ref<HTMLElement | null>(null);
 
-const node = computed<INodeUi | null>(() => workflowsStore.getNodeByName(props.nodeName));
+const node = computed<INodeUi | null>(
+	() => workflowDocumentStore?.value?.findNodeByName(props.nodeName) ?? null,
+);
 
 const nodeType = computed<INodeTypeDescription | null>(() => {
 	if (node.value) {

@@ -52,7 +52,7 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 type Props = {
 	node: INodeUi;
 	overrideCredType?: NodeParameterValueType;
@@ -83,8 +83,8 @@ const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const projectsStore = useProjectsStore();
-const workflowState = injectWorkflowState();
 const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
 
 // Quick connect
@@ -445,7 +445,7 @@ function onCredentialSelected(
 		);
 		const authOption = getAuthTypeForNodeCredential(nodeType.value, nodeCredentialDescription);
 		if (authOption) {
-			updateNodeAuthType(workflowState, props.node, authOption.value);
+			updateNodeAuthType(workflowDocumentStore?.value ?? undefined, props.node, authOption.value);
 			const parameterData = {
 				name: `parameters.${mainNodeAuthField.value.name}`,
 				value: authOption.value,

@@ -73,6 +73,12 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 	const i18n = useI18n();
 	const canvasStore = useCanvasStore();
 
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
+
 	const isInsertingNodes = ref(false);
 	const credentialsUpdated = ref(false);
 	const isProductionExecutionPreview = ref(false);
@@ -295,7 +301,7 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 	}
 
 	function updateNodesInputIssues() {
-		const nodes = workflowsStore.allNodes;
+		const nodes = workflowDocumentStore.value?.allNodes ?? [];
 
 		for (const node of nodes) {
 			updateNodeInputIssues(node);
@@ -303,7 +309,7 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 	}
 
 	function updateNodesExecutionIssues() {
-		const nodes = workflowsStore.allNodes;
+		const nodes = workflowDocumentStore.value?.allNodes ?? [];
 
 		for (const node of nodes) {
 			workflowState.setNodeIssue({
@@ -315,7 +321,7 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 	}
 
 	function updateNodesParameterIssues() {
-		const nodes = workflowsStore.allNodes;
+		const nodes = workflowDocumentStore.value?.allNodes ?? [];
 
 		for (const node of nodes) {
 			updateNodeParameterIssues(node);
@@ -323,7 +329,7 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 	}
 
 	function updateNodeCredentialIssuesByName(name: string): void {
-		const node = workflowsStore.getNodeByName(name);
+		const node = workflowDocumentStore.value?.findNodeByName(name);
 
 		if (node) {
 			updateNodeCredentialIssues(node);
@@ -346,7 +352,7 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 	}
 
 	function updateNodeParameterIssuesByName(name: string): void {
-		const node = workflowsStore.getNodeByName(name);
+		const node = workflowDocumentStore.value?.findNodeByName(name);
 
 		if (node) {
 			updateNodeParameterIssues(node);
@@ -598,7 +604,7 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 	}
 
 	function updateNodesCredentialsIssues() {
-		const nodes = workflowsStore.allNodes;
+		const nodes = workflowDocumentStore.value?.allNodes ?? [];
 		let issues: INodeIssues | null;
 
 		for (const node of nodes) {
@@ -736,7 +742,7 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 				workflow_id: workflowsStore.workflowId,
 			});
 
-			workflowState.updateNodeProperties(updateInformation);
+			workflowDocumentStore.value?.updateNodeProperties(updateInformation);
 			workflowsStore.clearNodeExecutionData(node.name);
 			updateNodeParameterIssues(node);
 			updateNodeCredentialIssues(node);
