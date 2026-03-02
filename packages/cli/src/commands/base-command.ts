@@ -36,7 +36,7 @@ import { CommunityPackagesConfig } from '@/modules/community-packages/community-
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { ShutdownService } from '@/shutdown/shutdown.service';
-import { buildIgnoredSpans } from '@/utils/sentry-span-filter';
+import { resolveHealthEndpointPath } from '@/utils/health-endpoint.util';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
@@ -104,7 +104,7 @@ export abstract class BaseCommand<F = never> {
 			eventLoopBlockThreshold,
 			tracesSampleRate,
 			profilesSampleRate,
-			ignoreSpans: buildIgnoredSpans(this.globalConfig),
+			healthEndpoint: resolveHealthEndpointPath(this.globalConfig),
 			eligibleIntegrations: {
 				Express: true,
 				Http: true,

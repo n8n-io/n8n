@@ -290,7 +290,6 @@ describe('TaskRunnerSentry', () => {
 				withEventLoopBlockDetection: false,
 				profilesSampleRate: 0,
 				tracesSampleRate: 0,
-				ignoreSpans: ['GET /healthz'],
 				eligibleIntegrations: {
 					Http: true,
 				},
