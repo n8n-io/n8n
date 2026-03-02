@@ -2,8 +2,14 @@ import { createTestNode, createTestWorkflow, createTestWorkflowObject } from '@/
 import { createComponentRenderer } from '@/__tests__/render';
 import InputPanel, { type Props } from './InputPanel.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
+import { shallowRef } from 'vue';
 import {
 	createRunExecutionData,
 	NodeConnectionTypes,
@@ -60,6 +66,9 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 
 	workflowStore.setWorkflow(workflow);
 
+	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
+	const workflowDocumentStoreRef = shallowRef(workflowDocumentStore);
+
 	if (pinData) {
 		workflowStore.workflow.pinData = Object.fromEntries(nodes.map((n) => [n.name, pinData]));
 	}
@@ -107,6 +116,9 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 			isMappingOnboarded: false,
 		},
 		global: {
+			provide: {
+				[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
+			},
 			stubs: {
 				InputPanelPinButton: { template: '<button data-test-id="ndv-pin-data"></button>' },
 			},
