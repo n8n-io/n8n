@@ -210,10 +210,7 @@ const mcpToggleTooltip = computed(() => {
 	return i18n.baseText('workflowSettings.availableInMCP.tooltip');
 });
 
-const isEligibleForMcp = computed(() => {
-	if (!workflow?.value?.active) return false;
-	return isEligibleForMcpAccess(workflow.value);
-});
+const isEligibleForMcp = computed(() => isEligibleForMcpAccess(workflow.value));
 
 const savedTimeNodes = computed(() => {
 	if (!workflow?.value?.nodes) return [];
