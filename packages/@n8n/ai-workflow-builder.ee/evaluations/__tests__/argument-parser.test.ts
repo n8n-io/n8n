@@ -142,6 +142,12 @@ describe('argument-parser', () => {
 		expect(args.checks).toEqual(['has_nodes', 'has_trigger']);
 	});
 
+	it('throws when --checks is used with non-binary-checks suite', () => {
+		expect(() => parseEvaluationArgs(['--suite', 'llm-judge', '--checks', 'has_nodes'])).toThrow(
+			'`--checks` is only supported for `--suite binary-checks`',
+		);
+	});
+
 	describe('--webhook-secret', () => {
 		it('parses valid webhook secret', () => {
 			const args = parseEvaluationArgs(['--webhook-secret', 'my-secure-secret-key-1234567890']);

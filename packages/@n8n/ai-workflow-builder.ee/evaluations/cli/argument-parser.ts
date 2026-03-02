@@ -646,6 +646,10 @@ export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): Eva
 		);
 	}
 
+	if (parsed.checks && parsed.suite !== 'binary-checks') {
+		throw new Error('`--checks` is only supported for `--suite binary-checks`');
+	}
+
 	return {
 		suite: parsed.suite,
 		backend: parsed.backend,
