@@ -44,6 +44,8 @@ function enableRedisDebug() {
 		process.env['DEBUG'] = debuggers.join(',');
 	}
 }
+const RECONNECT_AND_RETRY = 2;
+const DO_NOT_RECONNECT = false;
 
 @Service()
 export class RedisClientService extends TypedEmitter<RedisEventMap> {
@@ -145,13 +147,23 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		return { client, nodes };
 	}
 
-	private getOptions({ type, extraOptions }: CreateRedisClientArgs) {
-		const redisConfig = this.globalConfig.queue.bull.redis;
-		const { username, password, db, tls, tlsConfig, enableAutoPipelining } = redisConfig;
+	private getOptions({ extraOptions }: { extraOptions?: RedisOptions }) {
+		const {
+			username,
+			password,
+			db,
+			tls,
+			tlsConfig,
+			enableAutoPipelining,
+			keepAlive,
+			keepAliveDelay,
+			keepAliveInterval,
+			reconnectOnFailover,
+		} = this.globalConfig.queue.bull.redis;
 
 		// Support all IPv4/IPv6 DNS lookup variants. Defaults to IPv4. Backward compatible with DUALSTACK option.
 		const getHostnameResolutionIpAddressFamily = (): 0 | 4 | 6 => {
-			const { dualStack, ipV6 } = redisConfig;
+			const { dualStack, ipV6 } = this.globalConfig.queue.bull.redis;
 			if (dualStack && ipV6) this.exitWithError('Set only one redis option: DUALSTACK or IPV6.');
 			if (ipV6) return 6;
 			if (dualStack) return 0;
@@ -178,7 +190,6 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		const options: RedisOptions = {
 			username,
 			password,
-			connectionName: `${this.instanceSettings.hostId}:${type}`,
 			db,
 			enableReadyCheck: false,
 			lazyConnect: true,
@@ -213,6 +224,24 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 			// To be backward compatible tls=true still works and tlsConfig={} was added to set TLS options.
 			// In case tlsConfig is set but tls=false (default) we error out to avoid confusion.
 			this.exitWithError('Redis TLS disabled but config found. Set QUEUE_BULL_REDIS_TLS=true.');
+		}
+
+		// Add keep-alive configuration
+		if (keepAlive) {
+			options.keepAlive = keepAliveDelay;
+			// @ts-expect-error: keepAliveInterval is missing in ioRedis types but supported in node js socket since v18.4.0
+			options.keepAliveInterval = keepAliveInterval;
+		}
+
+		if (reconnectOnFailover) {
+			options.reconnectOnError = (redisErr: Error) => {
+				const targetError = 'READONLY';
+				if (redisErr.message.includes(targetError)) {
+					this.logger.warn('Reconnecting to Redis due to READONLY error (possible failover event)');
+					return RECONNECT_AND_RETRY;
+				}
+				return DO_NOT_RECONNECT;
+			};
 		}
 
 		return options;

@@ -38,6 +38,8 @@ export type SearchWorkflowsItem = {
 	updatedAt: string | null;
 	triggerCount: number | null;
 	nodes: Array<{ name: string; type: string }>;
+	scopes: string[];
+	canExecute: boolean;
 };
 
 export type SearchWorkflowsResult = {
@@ -72,6 +74,18 @@ export type UserConnectedToMCPEventPayload = {
 	error?: string;
 };
 
+export type ExecuteWorkflowsInputMeta = {
+	type: 'webhook' | 'chat' | 'schedule' | 'form';
+	parameter_count: number;
+};
+
+export type WorkflowNotFoundReason =
+	| 'workflow_does_not_exist'
+	| 'no_permission'
+	| 'workflow_archived'
+	| 'not_available_in_mcp'
+	| 'unsupported_trigger';
+
 export type UserCalledMCPToolEventPayload = {
 	user_id?: string;
 	tool_name: string;
@@ -79,13 +93,9 @@ export type UserCalledMCPToolEventPayload = {
 	results?: {
 		success: boolean;
 		data?: unknown;
-		error?: string;
+		error?: string | Record<string, unknown>;
+		error_reason?: WorkflowNotFoundReason;
 	};
-};
-
-export type ExecuteWorkflowsInputMeta = {
-	type: 'webhook' | 'chat' | 'schedule' | 'form';
-	parameter_count: number;
 };
 
 type SupportedTriggerNodeTypes = keyof typeof SUPPORTED_MCP_TRIGGERS;

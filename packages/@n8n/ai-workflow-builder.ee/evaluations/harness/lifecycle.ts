@@ -1,15 +1,16 @@
 import pc from 'picocolors';
 
 import type {
+	DisplayLine,
 	EvaluationLifecycle,
 	RunConfig,
 	Feedback,
 	ExampleResult,
 	RunSummary,
-} from './harness-types.js';
-import type { EvalLogger } from './logger.js';
+} from './harness-types';
+import type { EvalLogger } from './logger';
 import { groupByEvaluator, selectScoringItems, calculateFiniteAverage } from './score-calculator';
-import type { SimpleWorkflow } from '../../src/types/workflow.js';
+import type { SimpleWorkflow } from '../../src/types/workflow';
 
 /**
  * Truncate a string for display.
@@ -64,10 +65,15 @@ const DISPLAY_METRICS_BY_EVALUATOR: Record<string, string[]> = {
 		'pairwise_judges_passed',
 		'pairwise_total_passes',
 		'pairwise_total_violations',
-		'pairwise_generation_correctness',
-		'pairwise_aggregated_diagnostic',
-		'pairwise_generations_passed',
-		'pairwise_total_judge_calls',
+	],
+	'responder-judge': [
+		'relevance',
+		'accuracy',
+		'completeness',
+		'clarity',
+		'criteriaMatch',
+		'forbiddenPhrases',
+		'overallScore',
 	],
 };
 
@@ -75,9 +81,35 @@ const PAIRWISE_COUNT_METRICS = new Set([
 	'pairwise_judges_passed',
 	'pairwise_total_passes',
 	'pairwise_total_violations',
-	'pairwise_generations_passed',
-	'pairwise_total_judge_calls',
 ]);
+
+const PAIRWISE_DISPLAY_NAMES: Record<string, string> = {
+	pairwise_primary: 'primary',
+	pairwise_diagnostic: 'diagnostic',
+	pairwise_judges_passed: 'judges_passed',
+	pairwise_total_passes: 'total_passes',
+	pairwise_total_violations: 'total_violations',
+};
+
+function getDisplayMetricName(evaluator: string, metric: string): string {
+	if (evaluator === 'pairwise') {
+		return PAIRWISE_DISPLAY_NAMES[metric] ?? metric;
+	}
+	return metric;
+}
+
+function isDisplayLine(item: unknown): item is DisplayLine {
+	if (typeof item !== 'object' || item === null) return false;
+	if (!('text' in item)) return false;
+	return typeof item.text === 'string';
+}
+
+function getDisplayLines(details?: Feedback['details']): DisplayLine[] | undefined {
+	if (!details?.displayLines || !Array.isArray(details.displayLines)) return undefined;
+	// Validate each item matches DisplayLine shape
+	if (!details.displayLines.every(isDisplayLine)) return undefined;
+	return details.displayLines;
+}
 
 function formatMetricValue(evaluator: string, metric: string, score: number): string {
 	if (evaluator === 'pairwise' && PAIRWISE_COUNT_METRICS.has(metric)) {
@@ -112,6 +144,16 @@ function extractIssuesForLogs(evaluator: string, feedback: Feedback[]): Feedback
 			if (f.metric === 'pairwise_primary' && f.score < 1) return true;
 			if (f.metric === 'pairwise_generation_correctness' && f.score < 1) return true;
 
+			return false;
+		});
+	}
+
+	if (evaluator === 'responder-judge') {
+		return withComments.filter((f) => {
+			// Show per-judge detail summaries
+			if (/^judge\d+$/u.test(f.metric)) return true;
+			// Show dimensions that scored below threshold
+			if (f.kind === 'metric' && f.score < 0.7) return true;
 			return false;
 		});
 	}
@@ -198,7 +240,8 @@ function formatEvaluatorLines(args: {
 		const metricsLine = picked
 			.map((f) => {
 				const color = scoreColor(f.score);
-				return `${f.metric}: ${color(formatMetricValue(evaluatorName, f.metric, f.score))}`;
+				const displayName = getDisplayMetricName(evaluatorName, f.metric);
+				return `${displayName}: ${color(formatMetricValue(evaluatorName, f.metric, f.score))}`;
 			})
 			.join(pc.dim(' | '));
 		lines.push(pc.dim('    ') + metricsLine);
@@ -221,8 +264,20 @@ function formatEvaluatorLines(args: {
 		const top = issues.slice(0, 3);
 		lines.push(pc.dim(`    issues(top=${top.length}):`));
 		for (const issue of top) {
-			const comment = truncateForSingleLine(issue.comment ?? '', 320);
-			lines.push(pc.dim(`      - [${issue.metric}] `) + pc.red(comment));
+			const displayMetric = getDisplayMetricName(evaluatorName, issue.metric);
+			const displayLines = getDisplayLines(issue.details);
+			if (displayLines && displayLines.length > 0) {
+				// Evaluator provided custom display lines with optional color
+				lines.push(pc.dim(`      - [${displayMetric}]`));
+				for (const dl of displayLines) {
+					const truncated = truncateForSingleLine(dl.text, 300);
+					const colorFn = dl.color === 'yellow' ? pc.yellow : dl.color === 'dim' ? pc.dim : pc.red;
+					lines.push(pc.dim('          ') + colorFn(truncated));
+				}
+			} else {
+				const comment = truncateForSingleLine(issue.comment ?? '', 320);
+				lines.push(pc.dim(`      - [${displayMetric}] `) + pc.red(comment));
+			}
 		}
 		if (issues.length > top.length) {
 			lines.push(pc.dim(`      ... and ${issues.length - top.length} more`));
@@ -346,10 +401,7 @@ export function createConsoleLifecycle(options: ConsoleLifecycleOptions): Evalua
 		},
 
 		onEnd(summary: RunSummary): void {
-			if (runMode === 'langsmith') {
-				return;
-			}
-
+			if (runMode === 'langsmith') return;
 			logger.info('\n' + pc.bold('═══════════════════ SUMMARY ═══════════════════'));
 			logger.info(
 				`  Total: ${summary.totalExamples} | ` +
@@ -361,6 +413,19 @@ export function createConsoleLifecycle(options: ConsoleLifecycleOptions): Evalua
 			logger.info(`  Pass rate: ${formatScore(passRate)}`);
 			logger.info(`  Average score: ${formatScore(summary.averageScore)}`);
 			logger.info(`  Total time: ${formatDuration(summary.totalDurationMs)}`);
+
+			if (summary.evaluatorAverages && Object.keys(summary.evaluatorAverages).length > 0) {
+				logger.info(pc.dim('  Evaluator averages:'));
+				for (const [name, avg] of Object.entries(summary.evaluatorAverages)) {
+					const color = scoreColor(avg);
+					logger.info(`    ${pc.dim(name + ':')} ${color(formatScore(avg))}`);
+				}
+			}
+
+			if (summary.langsmith) {
+				logger.info(pc.dim(`  Experiment: ${summary.langsmith.experimentName}`));
+			}
+
 			logger.info(pc.bold('═══════════════════════════════════════════════\n'));
 		},
 	};
@@ -433,9 +498,9 @@ export function mergeLifecycles(
 			}
 		},
 
-		onEnd(summary: RunSummary): void {
+		async onEnd(summary: RunSummary): Promise<void> {
 			for (const lc of validLifecycles) {
-				lc.onEnd?.(summary);
+				await lc.onEnd?.(summary);
 			}
 		},
 	};

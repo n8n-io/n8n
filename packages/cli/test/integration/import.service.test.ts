@@ -8,7 +8,6 @@ import {
 	createActiveWorkflow,
 	createWorkflowWithHistory,
 } from '@n8n/backend-test-utils';
-import { DatabaseConfig } from '@n8n/config';
 import type { Project, User } from '@n8n/db';
 import {
 	TagEntity,
@@ -70,7 +69,6 @@ describe('ImportService', () => {
 			mock(),
 			mockActiveWorkflowManager,
 			mockWorkflowIndexService,
-			Container.get(DatabaseConfig),
 		);
 	});
 
@@ -99,11 +97,7 @@ describe('ImportService', () => {
 		if (!dbWorkflow) fail('Expected to find workflow');
 
 		expect(dbWorkflow.id).toBe(workflowToImport.id);
-		if (Container.get(DatabaseConfig).isLegacySqlite) {
-			expect(mockWorkflowIndexService.updateIndexFor).not.toHaveBeenCalled();
-		} else {
-			expect(mockWorkflowIndexService.updateIndexFor).toHaveBeenCalledWith(workflowToImport);
-		}
+		expect(mockWorkflowIndexService.updateIndexForDraft).toHaveBeenCalledWith(workflowToImport);
 	});
 
 	test('should make user owner of imported workflow', async () => {
@@ -271,6 +265,26 @@ describe('ImportService', () => {
 		expect(workflowHistoryRecords[0].authors).toBe('import');
 		expect(workflowHistoryRecords[0].nodes).toEqual(workflowToImport.nodes);
 		expect(workflowHistoryRecords[0].connections).toEqual(workflowToImport.connections);
+	});
+
+	test('should preserve versionMetadata name and description when importing', async () => {
+		const workflowToImport: any = newWorkflow();
+		workflowToImport.versionMetadata = {
+			name: 'Historical Workflow Name',
+			description: 'Historical workflow description',
+		};
+
+		await importService.importWorkflows([workflowToImport], ownerPersonalProject.id);
+
+		const workflowHistoryRecords = await workflowHistoryRepository.find({
+			where: {
+				workflowId: workflowToImport.id,
+			},
+		});
+
+		expect(workflowHistoryRecords).toHaveLength(1);
+		expect(workflowHistoryRecords[0].name).toBe('Historical Workflow Name');
+		expect(workflowHistoryRecords[0].description).toBe('Historical workflow description');
 	});
 
 	test('should create a record in workflow publish history if active version exists', async () => {

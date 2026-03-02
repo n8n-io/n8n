@@ -104,9 +104,20 @@ export class ExecutionsPage extends BasePage {
 		await this.getFilterButton().click();
 	}
 
-	async selectStatus(status: string): Promise<void> {
-		await this.getStatusSelect().click();
-		await this.page.waitForTimeout(1000);
+	getFilterBadge(): Locator {
+		return this.page.getByTestId('execution-filter-badge');
+	}
+
+	getFilterResetButton(): Locator {
+		return this.page.getByTestId('executions-filter-reset-button');
+	}
+
+	async resetFilter(): Promise<void> {
+		await this.getFilterResetButton().click();
+	}
+
+	async selectFilterStatus(status: string): Promise<void> {
+		await this.getStatusSelect().getByRole('combobox').click();
 		await this.page.getByRole('option', { name: status }).click();
 	}
 }

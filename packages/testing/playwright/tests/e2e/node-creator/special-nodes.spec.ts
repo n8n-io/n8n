@@ -1,7 +1,11 @@
 import { MANUAL_TRIGGER_NODE_DISPLAY_NAME } from '../../../config/constants';
 import { test, expect } from '../../../fixtures/base';
 
-test.describe('Node Creator Special Nodes', () => {
+test.describe('Node Creator Special Nodes', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 	});
@@ -40,8 +44,7 @@ test.describe('Node Creator Special Nodes', () => {
 		await n8n.canvas.addNode('Manual Trigger');
 		await n8n.canvas.clickNodePlusEndpoint(MANUAL_TRIGGER_NODE_DISPLAY_NAME);
 
-		await n8n.canvas.nodeCreator.selectItem('Human in the loop');
-
+		await n8n.canvas.nodeCreator.navigateToSubcategory('Human review');
 		await n8n.canvas.nodeCreator.selectItem('Slack');
 		await n8n.ndv.setupHelper.setParameter('operation', 'Send and Wait for Response');
 		await n8n.ndv.close();

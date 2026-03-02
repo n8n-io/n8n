@@ -19,6 +19,10 @@ export class SettingsLogStreamingPage extends BasePage {
 		return this.getActionBoxLicensed().locator('button');
 	}
 
+	getAddNewDestinationButton(): Locator {
+		return this.page.getByRole('button', { name: 'Add new destination' });
+	}
+
 	getDestinationModal(): Locator {
 		return this.page.getByTestId('destination-modal');
 	}
@@ -51,22 +55,6 @@ export class SettingsLogStreamingPage extends BasePage {
 		return this.page.getByTestId('destination-card');
 	}
 
-	getInlineEditPreview(): Locator {
-		return this.page.getByTestId('inline-edit-preview');
-	}
-
-	getInlineEditInput(): Locator {
-		return this.page.getByTestId('inline-edit-input');
-	}
-
-	getModalOverlay(): Locator {
-		return this.page.locator('.el-overlay');
-	}
-
-	getDropdownMenu(): Locator {
-		return this.page.locator('.el-dropdown-menu');
-	}
-
 	getDropdownMenuItem(index: number): Locator {
 		return this.page.locator('.el-dropdown-menu__item').nth(index);
 	}
@@ -83,8 +71,10 @@ export class SettingsLogStreamingPage extends BasePage {
 		return this.page.locator('.btn--confirm');
 	}
 
-	async clickAddFirstDestination(): Promise<void> {
-		await this.getAddFirstDestinationButton().click();
+	async addDestination(): Promise<void> {
+		const addFirstButton = this.getAddFirstDestinationButton();
+		const addNewButton = this.getAddNewDestinationButton();
+		await addFirstButton.or(addNewButton).click();
 	}
 
 	async clickSelectDestinationType(): Promise<void> {
@@ -122,7 +112,11 @@ export class SettingsLogStreamingPage extends BasePage {
 	}
 
 	async saveDestination(): Promise<void> {
+		const responsePromise = this.page.waitForResponse(
+			(res) => res.url().includes('/eventbus/destination') && res.request().method() === 'POST',
+		);
 		await this.getDestinationSaveButton().click();
+		await responsePromise;
 	}
 
 	async deleteDestination(): Promise<void> {
@@ -162,7 +156,7 @@ export class SettingsLogStreamingPage extends BasePage {
 	 * @param destinationName - The name to give the new destination
 	 */
 	async createDestination(destinationName: string): Promise<void> {
-		await this.clickAddFirstDestination();
+		await this.addDestination();
 		await this.getDestinationModal().waitFor({ state: 'visible' });
 		await this.clickSelectDestinationType();
 		await this.selectDestinationType(0); // Webhook
@@ -184,7 +178,7 @@ export class SettingsLogStreamingPage extends BasePage {
 		host: string;
 		port: number;
 	}): Promise<void> {
-		await this.clickAddFirstDestination();
+		await this.addDestination();
 		await this.getDestinationModal().waitFor({ state: 'visible' });
 		await this.clickSelectDestinationType();
 		await this.selectDestinationType(2); // Syslog (0=Webhook, 1=Sentry, 2=Syslog)
@@ -201,11 +195,12 @@ export class SettingsLogStreamingPage extends BasePage {
 
 		await hostInput.clear();
 		await hostInput.fill(config.host);
-		await this.page.waitForTimeout(200);
+		await this.page.waitForTimeout(300);
 		await portInput.clear();
 		await portInput.fill(config.port.toString());
 
-		await this.page.waitForTimeout(150);
+		// Wait for debounced input update (200ms debounce in ParameterInput.vue)
+		await this.page.waitForTimeout(200);
 		await this.saveDestination();
 	}
 
@@ -221,6 +216,8 @@ export class SettingsLogStreamingPage extends BasePage {
 	 * Must be called while the destination modal is open and the destination has been saved.
 	 */
 	async sendTestEvent(): Promise<void> {
-		await this.getSendTestEventButton().click();
+		const testButton = this.getSendTestEventButton();
+		await testButton.waitFor({ state: 'visible' });
+		await testButton.click();
 	}
 }

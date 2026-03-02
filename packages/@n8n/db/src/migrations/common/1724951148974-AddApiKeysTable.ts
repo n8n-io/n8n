@@ -1,5 +1,6 @@
+import { generateNanoId } from '@n8n/utils';
+
 import type { ApiKey } from '../../entities';
-import { generateNanoId } from '../../utils/generators';
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 export class AddApiKeysTable1724951148974 implements ReversibleMigration {
@@ -61,7 +62,6 @@ export class AddApiKeysTable1724951148974 implements ReversibleMigration {
 		runQuery,
 		schemaBuilder: { dropTable, addColumns, createIndex, column },
 		escape,
-		isMysql,
 	}: MigrationContext) {
 		const userTable = escape.tableName('user');
 		const userApiKeysTable = escape.tableName('user_api_keys');
@@ -74,16 +74,7 @@ export class AddApiKeysTable1724951148974 implements ReversibleMigration {
 
 		await createIndex('user', ['apiKey'], true);
 
-		const queryToGetUsersApiKeys = isMysql
-			? `
-			SELECT ${userIdColumn},
-				${apiKeyColumn},
-				${createdAtColumn}
-			FROM ${userApiKeysTable} u
-			WHERE ${createdAtColumn} = (SELECT Min(${createdAtColumn})
-																	FROM   ${userApiKeysTable}
-																	WHERE  ${userIdColumn} = u.${userIdColumn});`
-			: `
+		const queryToGetUsersApiKeys = `
 				SELECT DISTINCT ON
 					(${userIdColumn}) ${userIdColumn},
 					${apiKeyColumn}, ${createdAtColumn}

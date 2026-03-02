@@ -7,6 +7,7 @@ import { VIEWS } from '../constants';
 import { useUIStore } from '../stores/ui.store';
 import { useSettingsStore } from '../stores/settings.store';
 import { hasPermission } from '../utils/rbac/permissions';
+import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 
 export function useSettingsItems() {
 	const router = useRouter();
@@ -40,6 +41,15 @@ export function useSettingsItems() {
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.USERS_SETTINGS),
 				route: { to: { name: VIEWS.USERS_SETTINGS } },
+			},
+			{
+				id: 'settings-ai',
+				icon: 'sparkles',
+				label: i18n.baseText('settings.ai'),
+				position: 'top',
+				available:
+					settingsStore.isAiAssistantEnabled && canUserAccessRouteByName(VIEWS.AI_SETTINGS),
+				route: { to: { name: VIEWS.AI_SETTINGS } },
 			},
 			{
 				id: 'settings-project-roles',
@@ -90,6 +100,14 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.SSO_SETTINGS } },
 			},
 			{
+				id: 'settings-security',
+				icon: 'shield',
+				label: i18n.baseText('settings.security'),
+				position: 'top',
+				available: canUserAccessRouteByName(VIEWS.SECURITY_SETTINGS),
+				route: { to: { name: VIEWS.SECURITY_SETTINGS } },
+			},
+			{
 				id: 'settings-ldap',
 				icon: 'network',
 				label: i18n.baseText('settings.ldap'),
@@ -127,14 +145,16 @@ export function useSettingsItems() {
 			route: { to: { name: VIEWS.COMMUNITY_NODES } },
 		});
 
-		menuItems.push({
-			id: 'settings-migration-report',
-			icon: 'list-checks',
-			label: i18n.baseText('settings.migrationReport'),
-			position: 'top',
-			available: canUserAccessRouteByName(VIEWS.MIGRATION_REPORT),
-			route: { to: { name: VIEWS.MIGRATION_REPORT } },
-		});
+		if (MIGRATION_REPORT_TARGET_VERSION) {
+			menuItems.push({
+				id: 'settings-migration-report',
+				icon: 'list-checks',
+				label: i18n.baseText('settings.migrationReport'),
+				position: 'top',
+				available: canUserAccessRouteByName(VIEWS.MIGRATION_REPORT),
+				route: { to: { name: VIEWS.MIGRATION_REPORT } },
+			});
+		}
 
 		// Append module-registered settings sidebar items.
 		const moduleItems = uiStore.settingsSidebarItems;

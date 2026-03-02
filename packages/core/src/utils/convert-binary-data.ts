@@ -28,7 +28,7 @@ export async function convertBinaryData(
 			item.json = { ...item.json };
 			item.binary = { ...item.binary };
 
-			const embededBinaries: IBinaryKeyData = {};
+			const embeddedBinaries: IBinaryKeyData = {};
 			const jsonBinaries: IBinaryKeyData = {};
 
 			for (const [key, value] of Object.entries(item.binary)) {
@@ -38,7 +38,7 @@ export async function convertBinaryData(
 				}
 
 				if (!executionId) {
-					embededBinaries[key] = value;
+					embeddedBinaries[key] = value;
 					continue;
 				}
 
@@ -70,7 +70,7 @@ export async function convertBinaryData(
 				item.json[BINARY_IN_JSON_PROPERTY] = { ...existingJsonBinaries, ...jsonBinaries };
 			}
 
-			item.binary = Object.keys(embededBinaries).length ? embededBinaries : undefined;
+			item.binary = Object.keys(embeddedBinaries).length ? embeddedBinaries : undefined;
 		}
 	}
 

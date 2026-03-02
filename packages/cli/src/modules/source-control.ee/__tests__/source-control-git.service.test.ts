@@ -329,7 +329,7 @@ describe('SourceControlGitService', () => {
 
 			expect(mockGitInstance.env).toHaveBeenCalledWith(
 				'GIT_SSH_COMMAND',
-				'ssh -o UserKnownHostsFile=".ssh/known_hosts" -o StrictHostKeyChecking=no -i "private-key"',
+				'ssh -o UserKnownHostsFile=".ssh/known_hosts" -o StrictHostKeyChecking=accept-new -i "private-key"',
 			);
 			expect(mockGitInstance.env).toHaveBeenCalledWith('GIT_TERMINAL_PROMPT', '0');
 		});
@@ -573,7 +573,7 @@ describe('SourceControlGitService', () => {
 				);
 				expect(mockGitInstance.env).toHaveBeenCalledWith(
 					'GIT_SSH_COMMAND',
-					expect.stringContaining('StrictHostKeyChecking=no'),
+					expect.stringContaining('StrictHostKeyChecking=accept-new'),
 				);
 			});
 

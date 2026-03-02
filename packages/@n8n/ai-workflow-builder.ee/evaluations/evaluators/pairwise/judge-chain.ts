@@ -58,7 +58,12 @@ const EVALUATOR_SYSTEM_PROMPT = prompt()
 - Provider-specific nodes (e.g., n8n-nodes-langchain.openAi, n8n-nodes-langchain.anthropic) are standalone nodes that directly call a provider's API.
 - Chat model sub-nodes (e.g., @n8n/n8n-nodes-langchain.lmChatAnthropic, @n8n/n8n-nodes-langchain.lmChatOpenAi) are NOT provider-specific nodes. They are required infrastructure for connecting generic nodes like the AI Agent to a language model.
 
-If a criterion says "do not use provider-specific nodes" or similar, the presence of lmChat* sub-nodes should NOT count as a violation - these are necessary connectors, not provider-specific workflow nodes.`,
+If a criterion says "do not use provider-specific nodes" or similar, the presence of lmChat* sub-nodes should NOT count as a violation - these are necessary connectors, not provider-specific workflow nodes.
+
+When evaluating whether a specific node type has been used:
+- The "@n8n/" prefix in node types is OPTIONAL - ignore it when comparing
+- "@n8n/n8n-nodes-langchain.chatTrigger" and "n8n-nodes-langchain.chatTrigger" are the SAME node type
+- This applies regardless of which form appears in the criteria or the workflow`,
 	)
 	.section(
 		'constraints',

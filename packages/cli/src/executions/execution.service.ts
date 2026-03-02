@@ -1,3 +1,4 @@
+import { ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type {
@@ -14,6 +15,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { stringify } from 'flatted';
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import type {
 	ExecutionError,
@@ -49,6 +51,8 @@ import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
+import { ExecutionPersistence } from './execution-persistence';
+import { ExecutionRedactionServiceProxy } from './execution-redaction-proxy.service';
 import type { ExecutionRequest, StopResult } from './execution.types';
 
 export const schemaGetExecutionsQueryFilter = {
@@ -104,6 +108,7 @@ export class ExecutionService {
 		private readonly executionAnnotationRepository: ExecutionAnnotationRepository,
 		private readonly annotationTagMappingRepository: AnnotationTagMappingRepository,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
 		private readonly waitTracker: WaitTracker,
@@ -112,6 +117,7 @@ export class ExecutionService {
 		private readonly license: License,
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly eventService: EventService,
+		private readonly executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
 	) {}
 
 	async findOne(
@@ -121,7 +127,10 @@ export class ExecutionService {
 		if (!sharedWorkflowIds.length) return undefined;
 
 		const { id: executionId } = req.params;
-		const execution = await this.executionRepository.findIfShared(executionId, sharedWorkflowIds);
+		const execution = await this.executionRepository.findIfSharedUnflatten(
+			executionId,
+			sharedWorkflowIds,
+		);
 
 		if (!execution) {
 			this.logger.info('Attempt to read execution was blocked due to insufficient permissions', {
@@ -131,7 +140,24 @@ export class ExecutionService {
 			return undefined;
 		}
 
-		return execution;
+		let redactExecutionData: boolean | undefined;
+		const redactQuery = ExecutionRedactionQueryDtoSchema.safeParse(req.query);
+		if (redactQuery.success) {
+			redactExecutionData = redactQuery.data.redactExecutionData;
+		}
+
+		const processedExecution = await this.executionRedactionServiceProxy.processExecution(
+			execution,
+			{
+				user: req.user,
+				redactExecutionData,
+			},
+		);
+
+		return {
+			...execution,
+			data: stringify(processedExecution.data),
+		};
 	}
 
 	async getLastSuccessfulExecution(workflowId: string): Promise<IExecutionResponse | undefined> {
@@ -297,6 +323,7 @@ export class ExecutionService {
 			workflowData: execution.workflowData,
 			customData: execution.customData,
 			annotation: execution.annotation,
+			storedAt: execution.storedAt,
 		};
 	}
 
@@ -320,9 +347,10 @@ export class ExecutionService {
 			delete requestFilters.metadata;
 		}
 
-		await this.executionRepository.deleteExecutionsByFilter(requestFilters, sharedWorkflowIds, {
-			deleteBefore,
-			ids,
+		await this.executionPersistence.hardDeleteBy({
+			filters: requestFilters,
+			accessibleWorkflowIds: sharedWorkflowIds,
+			deleteConditions: { deleteBefore, ids },
 		});
 
 		this.eventService.emit('execution-deleted', {
@@ -362,7 +390,7 @@ export class ExecutionService {
 			status: 'error',
 		};
 
-		await this.executionRepository.createNewExecution(fullExecutionData);
+		await this.executionPersistence.create(fullExecutionData);
 	}
 
 	// ----------------------------------
@@ -623,7 +651,7 @@ export class ExecutionService {
 			['execution'],
 		);
 
-		// Upsert behavior differs for Postgres, MySQL and sqlite,
+		// Upsert behavior differs for Postgres and sqlite,
 		// so we need to fetch the annotation to get the ID
 		const annotation = await this.executionAnnotationRepository.findOneOrFail({
 			where: {

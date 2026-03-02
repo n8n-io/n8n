@@ -14,6 +14,12 @@ export type CredentialResolveMetadata = {
 	isResolvable: boolean;
 };
 
+export type CredentialResolutionResult = {
+	data: ICredentialDataDecryptedObject;
+	/** True only when the credential was actually resolved via a dynamic resolver (not a fallback to static data). */
+	isDynamic: boolean;
+};
+
 /**
  * Interface for credential resolution providers.
  * Implementations can provide dynamic credential resolution logic.
@@ -27,7 +33,7 @@ export interface ICredentialResolutionProvider {
 	 * @param staticData The decrypted static credential data
 	 * @param additionalData Additional workflow execution data for context and settings
 	 * @param canUseExternalSecrets Whether the credential can use external secrets for expression resolution
-	 * @returns Resolved credential data (either dynamic or static)
+	 * @returns Resolved credential data and a flag indicating whether dynamic resolution occurred
 	 */
 	resolveIfNeeded(
 		credentialsResolveMetadata: CredentialResolveMetadata,
@@ -35,5 +41,5 @@ export interface ICredentialResolutionProvider {
 		executionContext?: IExecutionContext,
 		workflowSettings?: IWorkflowSettings,
 		canUseExternalSecrets?: boolean,
-	): Promise<ICredentialDataDecryptedObject>;
+	): Promise<CredentialResolutionResult>;
 }

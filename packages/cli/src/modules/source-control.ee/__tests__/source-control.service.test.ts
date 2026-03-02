@@ -127,6 +127,16 @@ describe('SourceControlService', () => {
 					updatedAt: now,
 				},
 				{
+					file: 'data_tables.json',
+					id: 'data-tables',
+					name: 'Data Tables',
+					type: 'datatable',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					updatedAt: now,
+				},
+				{
 					file: 'tags.json',
 					id: 'tags',
 					name: 'Tags',
@@ -190,10 +200,14 @@ describe('SourceControlService', () => {
 			sourceControlExportService.exportGlobalVariablesToWorkFolder.mockResolvedValueOnce(
 				mockExportResult,
 			);
+			sourceControlExportService.exportDataTablesToWorkFolder.mockResolvedValueOnce(
+				mockExportResult,
+			);
 			sourceControlExportService.exportFoldersToWorkFolder.mockResolvedValueOnce(mockExportResult);
 			sourceControlExportService.exportGlobalVariablesToWorkFolder.mockResolvedValueOnce(
 				mockExportResult,
 			);
+			sourceControlExportService.rmFilesFromExportFolder.mockResolvedValueOnce(new Set());
 
 			(isContainedWithin as jest.Mock).mockReturnValue(true);
 
@@ -230,6 +244,7 @@ describe('SourceControlService', () => {
 			expect(sourceControlExportService.exportTagsToWorkFolder).toHaveBeenCalled();
 			expect(sourceControlExportService.exportFoldersToWorkFolder).toHaveBeenCalled();
 			expect(sourceControlExportService.exportGlobalVariablesToWorkFolder).toHaveBeenCalled();
+			expect(sourceControlExportService.exportDataTablesToWorkFolder).toHaveBeenCalled();
 
 			// Deleted resources should be passed to rmFilesFromExportFolder
 			expect(sourceControlExportService.rmFilesFromExportFolder).toHaveBeenCalledWith(
@@ -248,6 +263,7 @@ describe('SourceControlService', () => {
 					`${preferencesService.gitFolder}/project-1.json`,
 					`${preferencesService.gitFolder}/folders.json`,
 					`${preferencesService.gitFolder}/variables.json`,
+					`${preferencesService.gitFolder}/data_tables.json`,
 					`${preferencesService.gitFolder}/tags.json`,
 				]),
 				new Set([
@@ -499,7 +515,7 @@ describe('SourceControlService', () => {
 			mockStatusService.getStatus.mockResolvedValueOnce(statuses);
 
 			// ACT
-			const result = await sourceControlService.pullWorkfolder(user, {});
+			const result = await sourceControlService.pullWorkfolder(user, { autoPublish: 'none' });
 
 			// ASSERT
 			expect(result).toMatchObject({ statusCode: 409, statusResult: statuses });
@@ -523,7 +539,7 @@ describe('SourceControlService', () => {
 			mockStatusService.getStatus.mockResolvedValueOnce(statuses);
 
 			// ACT
-			const result = await sourceControlService.pullWorkfolder(user, {});
+			const result = await sourceControlService.pullWorkfolder(user, { autoPublish: 'none' });
 
 			// ASSERT
 			expect(result).toMatchObject({ statusCode: 409, statusResult: statuses });
@@ -793,6 +809,7 @@ describe('SourceControlService', () => {
 			sourceControlExportService.deleteRepositoryFolder.mockResolvedValue(undefined);
 			preferencesService.deleteHttpsCredentials = jest.fn().mockResolvedValue(undefined);
 			preferencesService.deleteKeyPair = jest.fn().mockResolvedValue(undefined);
+			preferencesService.resetKnownHosts = jest.fn().mockResolvedValue(undefined);
 			gitService.resetService.mockReturnValue(undefined);
 		});
 
@@ -870,6 +887,20 @@ describe('SourceControlService', () => {
 			await sourceControlService.disconnect({ keepKeyPair: true });
 
 			expect(preferencesService.deleteKeyPair).not.toHaveBeenCalled();
+		});
+
+		it('should reset known_hosts file during disconnect', async () => {
+			const mockPreferences = {
+				connected: true,
+				branchName: 'main',
+				repositoryUrl: 'git@github.com:test/repo.git',
+				connectionType: 'ssh' as const,
+			};
+			preferencesService.getPreferences = jest.fn().mockReturnValue(mockPreferences);
+
+			await sourceControlService.disconnect();
+
+			expect(preferencesService.resetKnownHosts).toHaveBeenCalledTimes(1);
 		});
 
 		it('should set git client to null', async () => {
@@ -1011,6 +1042,69 @@ describe('SourceControlService', () => {
 			expect(preferencesService.loadFromDbAndApplySourceControlPreferences).toHaveBeenCalledTimes(
 				2,
 			);
+		});
+	});
+
+	describe('initializeRepository', () => {
+		beforeEach(() => {
+			gitService.initRepository.mockResolvedValue(undefined);
+			gitService.setBranch.mockResolvedValue({ branches: ['main'], currentBranch: 'main' });
+			preferencesService.setPreferences = jest.fn().mockResolvedValue(undefined);
+		});
+
+		it('should throw UserError for host key verification failure', async () => {
+			const user = mock<User>();
+			const preferences = {
+				branchName: 'main',
+				repositoryUrl: 'git@github.com:test/repo.git',
+				connectionType: 'ssh' as const,
+			} as any;
+
+			gitService.fetch.mockRejectedValue(new Error('Host key verification failed.'));
+
+			await expect(sourceControlService.initializeRepository(preferences, user)).rejects.toThrow(
+				"SSH host key verification failed. The remote server's key may have changed.",
+			);
+		});
+
+		it('should throw UserError when remote host identification has changed', async () => {
+			const user = mock<User>();
+			const preferences = {
+				branchName: 'main',
+				repositoryUrl: 'git@github.com:test/repo.git',
+				connectionType: 'ssh' as const,
+			} as any;
+
+			gitService.fetch.mockRejectedValue(
+				new Error('WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!'),
+			);
+
+			await expect(sourceControlService.initializeRepository(preferences, user)).rejects.toThrow(
+				"SSH host key verification failed. The remote server's key may have changed.",
+			);
+		});
+
+		it('should retry on "Permanently added" warning and succeed', async () => {
+			const user = mock<User>();
+			const preferences = {
+				branchName: 'main',
+				repositoryUrl: 'git@github.com:test/repo.git',
+				connectionType: 'ssh' as const,
+			} as any;
+
+			// SSH outputs this warning to stderr when adding a new host key.
+			// simple-git captures stderr and may include it in errors.
+			gitService.fetch
+				.mockRejectedValueOnce(
+					new Error("Warning: Permanently added 'github.com' to the list of known hosts."),
+				)
+				.mockResolvedValueOnce({ raw: '' } as any);
+			gitService.getBranches.mockResolvedValue({ branches: ['main'], currentBranch: 'main' });
+
+			const result = await sourceControlService.initializeRepository(preferences, user);
+
+			expect(gitService.fetch).toHaveBeenCalledTimes(2);
+			expect(result).toEqual({ branches: ['main'], currentBranch: 'main' });
 		});
 	});
 

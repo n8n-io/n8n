@@ -125,15 +125,23 @@ describe('CredentialResolverWorkflowService', () => {
 		it('should throw when workflow not found', async () => {
 			mockWorkflowRepository.get.mockResolvedValue(null);
 
-			await expect(service.getWorkflowStatus('workflow-1', 'token-123')).rejects.toThrow(
-				'Workflow not found',
-			);
+			await expect(
+				service.getWorkflowStatus('workflow-1', {
+					identity: 'token-123',
+					version: 1 as const,
+					metadata: {},
+				}),
+			).rejects.toThrow('Workflow not found');
 		});
 
 		it('should return empty array when workflow has no nodes', async () => {
 			mockWorkflowRepository.get.mockResolvedValue(createMockWorkflow({ nodes: [] }));
 
-			const result = await service.getWorkflowStatus('workflow-1', 'token-123');
+			const result = await service.getWorkflowStatus('workflow-1', {
+				identity: 'token-123',
+				version: 1 as const,
+				metadata: {},
+			});
 
 			expect(result).toEqual([]);
 			expect(mockCredentialRepository.find).not.toHaveBeenCalled();
@@ -146,7 +154,11 @@ describe('CredentialResolverWorkflowService', () => {
 				}),
 			);
 
-			const result = await service.getWorkflowStatus('workflow-1', 'token-123');
+			const result = await service.getWorkflowStatus('workflow-1', {
+				identity: 'token-123',
+				version: 1 as const,
+				metadata: {},
+			});
 
 			expect(result).toEqual([]);
 			expect(mockCredentialRepository.find).not.toHaveBeenCalled();
@@ -185,7 +197,13 @@ describe('CredentialResolverWorkflowService', () => {
 			mockCipher.decrypt.mockReturnValue(JSON.stringify({ prefix: 'test' }));
 			mockResolverImplementation.getSecret.mockResolvedValue('secret-value' as any);
 
-			const result = await service.getWorkflowStatus('workflow-1', 'token-123');
+			const credentialContext = {
+				identity: 'token-123',
+				version: 1 as const,
+				metadata: {},
+			};
+
+			const result = await service.getWorkflowStatus('workflow-1', credentialContext);
 
 			expect(result).toHaveLength(1);
 			expect(result[0]).toEqual({
@@ -197,7 +215,7 @@ describe('CredentialResolverWorkflowService', () => {
 			});
 			expect(mockResolverImplementation.getSecret).toHaveBeenCalledWith(
 				'cred-1',
-				{ identity: 'token-123', version: 1 },
+				credentialContext,
 				{
 					configuration: { prefix: 'test' },
 					resolverName: 'test.resolver',
@@ -239,7 +257,11 @@ describe('CredentialResolverWorkflowService', () => {
 			mockCipher.decrypt.mockReturnValue(JSON.stringify({ prefix: 'test' }));
 			mockResolverImplementation.getSecret.mockRejectedValue(new Error('Secret not found'));
 
-			const result = await service.getWorkflowStatus('workflow-1', 'token-123');
+			const result = await service.getWorkflowStatus('workflow-1', {
+				identity: 'token-123',
+				version: 1 as const,
+				metadata: {},
+			});
 
 			expect(result).toHaveLength(1);
 			expect(result[0]).toEqual({
@@ -293,13 +315,19 @@ describe('CredentialResolverWorkflowService', () => {
 				.mockReturnValueOnce(JSON.stringify({ prefix: 'test-2' }));
 			mockResolverImplementation.getSecret.mockResolvedValue('secret-value' as any);
 
-			const result = await service.getWorkflowStatus('workflow-1', 'token-123');
+			const credentialContext = {
+				identity: 'token-123',
+				version: 1 as const,
+				metadata: {},
+			};
+
+			const result = await service.getWorkflowStatus('workflow-1', credentialContext);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].resolverId).toBe('resolver-2');
 			expect(mockResolverImplementation.getSecret).toHaveBeenCalledWith(
 				'cred-1',
-				{ identity: 'token-123', version: 1 },
+				credentialContext,
 				{
 					configuration: { prefix: 'test-2' },
 					resolverName: 'test.resolver',
@@ -330,7 +358,11 @@ describe('CredentialResolverWorkflowService', () => {
 			mockWorkflowRepository.get.mockResolvedValue(mockWorkflow);
 			mockCredentialRepository.find.mockResolvedValue([mockCredential]);
 
-			const result = await service.getWorkflowStatus('workflow-1', 'token-123');
+			const result = await service.getWorkflowStatus('workflow-1', {
+				identity: 'token-123',
+				version: 1 as const,
+				metadata: {},
+			});
 
 			expect(result).toEqual([]);
 			expect(mockResolverImplementation.getSecret).not.toHaveBeenCalled();
@@ -379,7 +411,11 @@ describe('CredentialResolverWorkflowService', () => {
 				.mockResolvedValueOnce('secret-1' as any)
 				.mockResolvedValueOnce('secret-2' as any);
 
-			const result = await service.getWorkflowStatus('workflow-1', 'token-123');
+			const result = await service.getWorkflowStatus('workflow-1', {
+				identity: 'token-123',
+				version: 1 as const,
+				metadata: {},
+			});
 
 			expect(result).toHaveLength(2);
 			expect(mockResolverImplementation.getSecret).toHaveBeenCalledTimes(2);
@@ -430,7 +466,11 @@ describe('CredentialResolverWorkflowService', () => {
 				.mockResolvedValueOnce('secret-1' as any)
 				.mockRejectedValueOnce(new Error('Secret not found'));
 
-			const result = await service.getWorkflowStatus('workflow-1', 'token-123');
+			const result = await service.getWorkflowStatus('workflow-1', {
+				identity: 'token-123',
+				version: 1 as const,
+				metadata: {},
+			});
 
 			expect(result).toHaveLength(2);
 			expect(result[0].status).toBe('configured');

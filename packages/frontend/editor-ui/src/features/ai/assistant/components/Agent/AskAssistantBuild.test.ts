@@ -8,8 +8,10 @@ interface VueComponentInstance {
 			onUserMessage?: (message: string) => Promise<void>;
 			showAskOwnerTooltip?: boolean;
 			showExecuteMessage?: boolean;
+			showReviewChanges?: boolean;
 			isInputDisabled?: boolean;
 			disabledTooltip?: string;
+			workflowSuggestions?: unknown[] | undefined;
 		};
 	};
 }
@@ -24,6 +26,24 @@ vi.mock('@/app/composables/useWorkflowSaving', () => ({
 	}),
 }));
 
+// Mock useWorkflowUpdate composable
+const updateWorkflowMock = vi.hoisted(() =>
+	vi.fn().mockResolvedValue({ success: true, newNodeIds: [] }),
+);
+vi.mock('@/app/composables/useWorkflowUpdate', () => ({
+	useWorkflowUpdate: vi.fn().mockReturnValue({
+		updateWorkflow: updateWorkflowMock,
+	}),
+}));
+
+// Mock focusedNodes store to prevent defineStore from failing during module load
+vi.mock('@/features/ai/assistant/focusedNodes.store', () => ({
+	useFocusedNodesStore: vi.fn().mockReturnValue({
+		buildContextPayload: vi.fn().mockReturnValue([]),
+		isFeatureEnabled: false,
+	}),
+}));
+
 // Mock ExecuteMessage component
 vi.mock('./ExecuteMessage.vue', () => ({
 	default: defineComponent({
@@ -31,6 +51,17 @@ vi.mock('./ExecuteMessage.vue', () => ({
 		emits: ['workflow-executed'],
 		setup() {
 			return () => h('div', { 'data-test-id': 'execute-message-component' }, 'Execute and refine');
+		},
+	}),
+}));
+
+// Mock NotificationPermissionBanner component
+vi.mock('./NotificationPermissionBanner.vue', () => ({
+	default: defineComponent({
+		name: 'NotificationPermissionBanner',
+		setup() {
+			return () =>
+				h('div', { 'data-test-id': 'notification-permission-banner' }, 'Notification Banner');
 		},
 	}),
 }));
@@ -60,11 +91,21 @@ vi.mock('@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue', (
 
 			// Create a more realistic mock that includes rating buttons and slots when needed
 			return () => {
-				const lastMessage = props.messages?.[props.messages.length - 1];
-				const showRating = lastMessage?.showRating;
+				// Footer rating logic (matches showFooterRating computed in AskAssistantChat.vue)
+				const messages = props.messages || [];
+				const hasWorkflowUpdate = messages.some(
+					(msg: { type: string }) => msg.type === 'workflow-updated',
+				);
+				const lastMessage = messages[messages.length - 1];
+				const showFooterRating =
+					!props.streaming &&
+					messages.length > 0 &&
+					hasWorkflowUpdate &&
+					lastMessage?.role !== 'user' &&
+					lastMessage?.type !== 'thinking-group';
 
 				return h('div', { 'data-test-id': 'mocked-assistant-chat' }, [
-					showRating
+					showFooterRating
 						? [
 								h('button', {
 									'data-test-id': 'message-thumbs-up-button',
@@ -88,6 +129,8 @@ vi.mock('@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue', (
 								}),
 							]
 						: null,
+					// Render inputHeader slot if it exists (for notification banner)
+					slots.inputHeader?.(),
 					// Render messagesFooter slot if it exists
 					slots.messagesFooter?.(),
 				]);
@@ -109,11 +152,14 @@ import { useBuilderStore } from '../../builder.store';
 import { mockedStore } from '@/__tests__/utils';
 import { STORES } from '@n8n/stores';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useHistoryStore } from '@/app/stores/history.store';
 import type { INodeUi } from '@/Interface';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
-import { useWorkflowAutosaveStore } from '@/app/stores/workflowAutosave.store';
+import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { AutoSaveState } from '@/app/constants';
+import { usePostHog } from '@/app/stores/posthog.store';
 
 const nodeViewEventBusEmitMock = vi.hoisted(() => vi.fn());
 vi.mock('@/app/event-bus', () => ({
@@ -124,6 +170,15 @@ vi.mock('@/app/event-bus', () => ({
 		on: vi.fn(),
 		off: vi.fn(),
 		emit: vi.fn(),
+	},
+}));
+
+const canvasEventBusEmitMock = vi.hoisted(() => vi.fn());
+vi.mock('@/features/workflows/canvas/canvas.eventBus', () => ({
+	canvasEventBus: {
+		emit: canvasEventBusEmitMock,
+		on: vi.fn(),
+		off: vi.fn(),
 	},
 }));
 
@@ -169,6 +224,16 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 	}),
 }));
 
+// Mock useBrowserNotifications
+const mockCanPrompt = { value: true };
+vi.mock('@/app/composables/useBrowserNotifications', () => ({
+	useBrowserNotifications: () => ({
+		canPrompt: mockCanPrompt,
+		requestPermission: vi.fn().mockResolvedValue({ permission: 'granted', wasRequested: true }),
+		recordDismissal: vi.fn(),
+	}),
+}));
+
 // Mock useDocumentVisibility
 let onDocumentVisibleCallback: (() => void) | null = null;
 vi.mock('@/app/composables/useDocumentVisibility', () => ({
@@ -187,6 +252,8 @@ describe('AskAssistantBuild', () => {
 	const renderComponent = createComponentRenderer(AskAssistantBuild);
 	let builderStore: ReturnType<typeof mockedStore<typeof useBuilderStore>>;
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+	let workflowsListStore: ReturnType<typeof mockedStore<typeof useWorkflowsListStore>>;
+	let historyStore: ReturnType<typeof mockedStore<typeof useHistoryStore>>;
 	let collaborationStore: ReturnType<typeof mockedStore<typeof useCollaborationStore>>;
 
 	beforeAll(() => {
@@ -196,6 +263,11 @@ describe('AskAssistantBuild', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		onDocumentVisibleCallback = null;
+		mockCanPrompt.value = true;
+
+		// Reset the updateWorkflow mock before each test
+		updateWorkflowMock.mockReset();
+		updateWorkflowMock.mockResolvedValue({ success: true, newNodeIds: [] });
 
 		const pinia = createTestingPinia({
 			initialState: {
@@ -222,7 +294,7 @@ describe('AskAssistantBuild', () => {
 				},
 				workflowAutosave: {
 					autoSaveState: AutoSaveState.Idle,
-					pendingAutoSave: null,
+					pendingSave: null,
 				},
 			},
 		});
@@ -230,6 +302,8 @@ describe('AskAssistantBuild', () => {
 		setActivePinia(pinia);
 		builderStore = mockedStore(useBuilderStore);
 		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsListStore = mockedStore(useWorkflowsListStore);
+		historyStore = mockedStore(useHistoryStore);
 		collaborationStore = mockedStore(useCollaborationStore);
 
 		// Mock collaboration store methods
@@ -239,14 +313,15 @@ describe('AskAssistantBuild', () => {
 		builderStore.sendChatMessage = vi.fn();
 		builderStore.resetBuilderChat = vi.fn();
 		builderStore.addAssistantMessages = vi.fn();
-		builderStore.applyWorkflowUpdate = vi
-			.fn()
-			.mockReturnValue({ success: true, workflowData: {}, newNodeIds: [] });
 		builderStore.getWorkflowSnapshot = vi.fn().mockReturnValue('{}');
 		builderStore.getRunningTools = vi.fn().mockReturnValue([]);
 		builderStore.workflowMessages = [];
 		builderStore.toolMessages = [];
 		builderStore.workflowPrompt = workflowPrompt;
+
+		// Mock history store actions
+		historyStore.startRecordingUndo = vi.fn();
+		historyStore.stopRecordingUndo = vi.fn();
 		builderStore.trackingSessionId = 'app_session_id';
 		workflowsStore.workflowId = 'abc123';
 	});
@@ -293,7 +368,7 @@ describe('AskAssistantBuild', () => {
 		});
 
 		it('should disable input when autosave is scheduled', () => {
-			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			const workflowAutosaveStore = mockedStore(useWorkflowSaveStore);
 			workflowAutosaveStore.autoSaveState = AutoSaveState.Scheduled;
 
 			const { container } = renderComponent();
@@ -305,7 +380,7 @@ describe('AskAssistantBuild', () => {
 		});
 
 		it('should disable input when autosave is in progress', () => {
-			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			const workflowAutosaveStore = mockedStore(useWorkflowSaveStore);
 			workflowAutosaveStore.autoSaveState = AutoSaveState.InProgress;
 
 			const { container } = renderComponent();
@@ -317,7 +392,7 @@ describe('AskAssistantBuild', () => {
 		});
 
 		it('should not disable input when autosave is idle', () => {
-			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			const workflowAutosaveStore = mockedStore(useWorkflowSaveStore);
 			workflowAutosaveStore.autoSaveState = AutoSaveState.Idle;
 
 			const { container } = renderComponent();
@@ -330,7 +405,7 @@ describe('AskAssistantBuild', () => {
 
 		it('should disable input when collaboration shouldBeReadOnly is true regardless of autosave state', () => {
 			collaborationStore.shouldBeReadOnly = true;
-			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			const workflowAutosaveStore = mockedStore(useWorkflowSaveStore);
 			workflowAutosaveStore.autoSaveState = AutoSaveState.Idle;
 
 			const { container } = renderComponent();
@@ -342,7 +417,7 @@ describe('AskAssistantBuild', () => {
 		});
 
 		it('should show autosaving tooltip when autosave is scheduled', () => {
-			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			const workflowAutosaveStore = mockedStore(useWorkflowSaveStore);
 			workflowAutosaveStore.autoSaveState = AutoSaveState.Scheduled;
 
 			const { container } = renderComponent();
@@ -354,7 +429,7 @@ describe('AskAssistantBuild', () => {
 		});
 
 		it('should show autosaving tooltip when autosave is in progress', () => {
-			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			const workflowAutosaveStore = mockedStore(useWorkflowSaveStore);
 			workflowAutosaveStore.autoSaveState = AutoSaveState.InProgress;
 
 			const { container } = renderComponent();
@@ -367,7 +442,7 @@ describe('AskAssistantBuild', () => {
 
 		it('should show read-only tooltip when collaboration shouldBeReadOnly is true', () => {
 			collaborationStore.shouldBeReadOnly = true;
-			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			const workflowAutosaveStore = mockedStore(useWorkflowSaveStore);
 			workflowAutosaveStore.autoSaveState = AutoSaveState.Idle;
 
 			const { container } = renderComponent();
@@ -380,7 +455,7 @@ describe('AskAssistantBuild', () => {
 
 		it('should show autosaving tooltip when both autosave is in progress and collaboration is read-only', () => {
 			collaborationStore.shouldBeReadOnly = true;
-			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			const workflowAutosaveStore = mockedStore(useWorkflowSaveStore);
 			workflowAutosaveStore.autoSaveState = AutoSaveState.InProgress;
 
 			const { container } = renderComponent();
@@ -393,7 +468,7 @@ describe('AskAssistantBuild', () => {
 		});
 
 		it('should not show any tooltip when input is not disabled', () => {
-			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			const workflowAutosaveStore = mockedStore(useWorkflowSaveStore);
 			workflowAutosaveStore.autoSaveState = AutoSaveState.Idle;
 
 			const { container } = renderComponent();
@@ -405,11 +480,69 @@ describe('AskAssistantBuild', () => {
 		});
 	});
 
+	describe('workflow suggestions visibility', () => {
+		it('should not show suggestions when workflow has existing nodes', () => {
+			workflowsStore.$patch({
+				workflow: {
+					nodes: [
+						{
+							id: 'node1',
+							name: 'Start',
+							type: 'n8n-nodes-base.manualTrigger',
+							position: [0, 0],
+							typeVersion: 1,
+							parameters: {},
+						} as INodeUi,
+					],
+					connections: {},
+				},
+			});
+			builderStore.hasMessages = false;
+
+			const { container } = renderComponent();
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const workflowSuggestions = vm?.setupState?.workflowSuggestions;
+
+			expect(workflowSuggestions).toBeUndefined();
+		});
+
+		it('should show suggestions when workflow is empty and has no messages', () => {
+			workflowsStore.$patch({
+				workflow: { nodes: [], connections: {} },
+			});
+			builderStore.hasMessages = false;
+
+			const { container } = renderComponent();
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const workflowSuggestions = vm?.setupState?.workflowSuggestions;
+
+			expect(workflowSuggestions).toBeDefined();
+			expect(Array.isArray(workflowSuggestions)).toBe(true);
+			expect(workflowSuggestions!.length).toBeGreaterThan(0);
+		});
+
+		it('should not show suggestions when there are already messages', () => {
+			workflowsStore.$patch({
+				workflow: { nodes: [], connections: {} },
+			});
+			builderStore.hasMessages = true;
+
+			const { container } = renderComponent();
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const workflowSuggestions = vm?.setupState?.workflowSuggestions;
+
+			expect(workflowSuggestions).toBeUndefined();
+		});
+	});
+
 	describe('user message handling', () => {
 		it('should initialize builder chat when a user sends a message', async () => {
 			// Mock empty workflow to ensure initialGeneration is true
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
+			workflowsListStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			const { container } = renderComponent();
 			const testMessage = 'Create a workflow to send emails';
@@ -430,7 +563,7 @@ describe('AskAssistantBuild', () => {
 
 		it('should request write access when sending a message', async () => {
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
+			workflowsListStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			const { container } = renderComponent();
 			const testMessage = 'Create a workflow';
@@ -450,9 +583,13 @@ describe('AskAssistantBuild', () => {
 		const workflowJson = '{"nodes": [], "connections": {}}';
 
 		describe('when workflow-updated message exists', () => {
+			const testUserMessageId = 'test-user-message-id';
+
 			beforeEach(() => {
 				// Use $patch to ensure reactivity
+				// Note: showRating is no longer set on messages - rating is shown in footer
 				builderStore.$patch({
+					lastUserMessageId: testUserMessageId,
 					chatMessages: [
 						{
 							id: faker.string.uuid(),
@@ -467,8 +604,6 @@ describe('AskAssistantBuild', () => {
 							type: 'text',
 							content: 'Wat',
 							read: true,
-							showRating: true,
-							ratingStyle: 'minimal',
 						},
 					],
 				});
@@ -536,6 +671,7 @@ describe('AskAssistantBuild', () => {
 					expect.objectContaining({
 						feedback: feedbackText,
 						workflow_id: 'abc123',
+						user_message_id: testUserMessageId,
 					}),
 				);
 			});
@@ -551,7 +687,6 @@ describe('AskAssistantBuild', () => {
 							type: 'text',
 							content: 'This is just an informational message',
 							read: true,
-							showRating: false,
 						},
 					],
 				});
@@ -562,7 +697,7 @@ describe('AskAssistantBuild', () => {
 
 				await flushPromises();
 
-				// Rating buttons should not be present
+				// Rating buttons should not be present (footer rating requires workflow-updated)
 				expect(queryAllByTestId('message-thumbs-up-button')).toHaveLength(0);
 				expect(queryAllByTestId('message-thumbs-down-button')).toHaveLength(0);
 			});
@@ -570,7 +705,9 @@ describe('AskAssistantBuild', () => {
 
 		describe('when tools are still running', () => {
 			beforeEach(() => {
+				// Note: footer rating should NOT show while streaming is true
 				builderStore.$patch({
+					streaming: true,
 					chatMessages: [
 						{
 							id: faker.string.uuid(),
@@ -594,24 +731,19 @@ describe('AskAssistantBuild', () => {
 							type: 'text',
 							content: 'Working on your workflow...',
 							read: true,
-							showRating: true,
-							ratingStyle: 'minimal',
 						},
 					],
 				});
 			});
 
-			it('should show minimal rating style when tools are still running', async () => {
-				const { findByTestId } = renderComponent();
+			it('should NOT show rating buttons while streaming/tools are running', async () => {
+				const { queryAllByTestId } = renderComponent();
 
 				await flushPromises();
 
-				// Check that rating buttons exist but in minimal style
-				const thumbsUpButton = await findByTestId('message-thumbs-up-button');
-				expect(thumbsUpButton).toBeInTheDocument();
-
-				// The minimal style should have icon-only buttons (no label)
-				expect(thumbsUpButton.textContent).toBe('');
+				// Rating buttons should NOT be present while streaming
+				expect(queryAllByTestId('message-thumbs-up-button')).toHaveLength(0);
+				expect(queryAllByTestId('message-thumbs-down-button')).toHaveLength(0);
 			});
 		});
 	});
@@ -620,7 +752,7 @@ describe('AskAssistantBuild', () => {
 		it('should reset initialGeneration flag when streaming ends and workflow has nodes', async () => {
 			// Setup: empty workflow
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
+			workflowsListStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			renderComponent();
 
@@ -659,7 +791,7 @@ describe('AskAssistantBuild', () => {
 		it('should NOT reset initialGeneration flag when workflow is still empty', async () => {
 			// Setup: empty workflow
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
+			workflowsListStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			renderComponent();
 
@@ -676,6 +808,68 @@ describe('AskAssistantBuild', () => {
 
 			// Verify initialGeneration flag was NOT reset since workflow is still empty
 			expect(builderStore.initialGeneration).toBe(true);
+		});
+	});
+
+	describe('zoom to fit after streaming ends', () => {
+		it('should emit fitView when streaming ends and new nodes were added', async () => {
+			const newWorkflow = {
+				nodes: [
+					{
+						id: 'new-node-1',
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						position: [0, 0] as [number, number],
+						typeVersion: 1,
+						parameters: {},
+					},
+				],
+				connections: {},
+			};
+
+			updateWorkflowMock.mockResolvedValue({ success: true, newNodeIds: ['new-node-1'] });
+			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
+
+			renderComponent();
+
+			// Start streaming and trigger a workflow update with new nodes
+			builderStore.$patch({ streaming: true });
+			await flushPromises();
+
+			builderStore.workflowMessages = [
+				{
+					id: faker.string.uuid(),
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: JSON.stringify(newWorkflow),
+				},
+			];
+			await flushPromises();
+
+			canvasEventBusEmitMock.mockClear();
+
+			// End streaming
+			builderStore.$patch({ streaming: false });
+			await flushPromises();
+
+			expect(canvasEventBusEmitMock).toHaveBeenCalledWith('fitView');
+		});
+
+		it('should NOT emit fitView when streaming ends without new nodes', async () => {
+			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
+
+			renderComponent();
+
+			// Start and end streaming without any workflow updates
+			builderStore.$patch({ streaming: true });
+			await flushPromises();
+
+			canvasEventBusEmitMock.mockClear();
+
+			builderStore.$patch({ streaming: false });
+			await flushPromises();
+
+			expect(canvasEventBusEmitMock).not.toHaveBeenCalledWith('fitView');
 		});
 	});
 
@@ -895,9 +1089,8 @@ describe('AskAssistantBuild', () => {
 		});
 	});
 
-	describe('shouldTidyUp logic', () => {
-		it('should set tidyUp to true when new nodes are added', async () => {
-			const originalWorkflow = { nodes: [], connections: {} };
+	describe('workflow update via useWorkflowUpdate', () => {
+		it('should call updateWorkflow when workflow-updated message is received', async () => {
 			const newWorkflow = {
 				nodes: [
 					{
@@ -912,15 +1105,9 @@ describe('AskAssistantBuild', () => {
 				connections: {},
 			};
 
-			builderStore.getWorkflowSnapshot.mockReturnValue(JSON.stringify(originalWorkflow));
-			builderStore.applyWorkflowUpdate.mockReturnValue({
-				success: true,
-				workflowData: newWorkflow,
-				newNodeIds: ['new-node-1'],
-				oldNodeIds: [],
-			});
+			updateWorkflowMock.mockResolvedValue({ success: true, newNodeIds: ['new-node-1'] });
 
-			workflowsStore.$patch({ workflow: originalWorkflow });
+			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
 
 			renderComponent();
 
@@ -939,84 +1126,15 @@ describe('AskAssistantBuild', () => {
 
 			await flushPromises();
 
-			// Verify importWorkflowData was called with tidyUp: true
-			expect(nodeViewEventBusEmitMock).toHaveBeenCalledWith('importWorkflowData', {
-				data: newWorkflow,
-				tidyUp: true,
-				nodesIdsToTidyUp: ['new-node-1'],
-				regenerateIds: false,
-				trackEvents: false,
+			// Verify updateWorkflow was called with parsed workflow data
+			expect(updateWorkflowMock).toHaveBeenCalledWith(newWorkflow, {
+				isInitialGeneration: false,
+				nodeIdsToTidyUp: [],
 			});
 		});
 
-		it('should set tidyUp to false when no new nodes are added (only parameter updates)', async () => {
-			const existingWorkflow = {
-				nodes: [
-					{
-						id: 'existing-node',
-						name: 'HTTP',
-						type: 'n8n-nodes-base.httpRequest',
-						position: [0, 0] as [number, number],
-						typeVersion: 1,
-						parameters: { url: 'http://old.com' },
-					},
-				],
-				connections: {},
-			};
-			const updatedWorkflow = {
-				nodes: [
-					{
-						id: 'existing-node',
-						name: 'HTTP',
-						type: 'n8n-nodes-base.httpRequest',
-						position: [0, 0] as [number, number],
-						typeVersion: 1,
-						parameters: { url: 'http://new.com' },
-					},
-				],
-				connections: {},
-			};
-
-			builderStore.getWorkflowSnapshot.mockReturnValue(JSON.stringify(existingWorkflow));
-			builderStore.applyWorkflowUpdate.mockReturnValue({
-				success: true,
-				workflowData: updatedWorkflow,
-				newNodeIds: [], // No new nodes, just parameter update
-				oldNodeIds: ['existing-node'],
-			});
-
-			workflowsStore.$patch({ workflow: existingWorkflow });
-
-			renderComponent();
-
-			builderStore.$patch({ streaming: true });
-			await flushPromises();
-
-			// Trigger workflow update without new nodes
-			builderStore.workflowMessages = [
-				{
-					id: faker.string.uuid(),
-					role: 'assistant' as const,
-					type: 'workflow-updated' as const,
-					codeSnippet: JSON.stringify(updatedWorkflow),
-				},
-			];
-
-			await flushPromises();
-
-			// Verify importWorkflowData was called with tidyUp: false
-			expect(nodeViewEventBusEmitMock).toHaveBeenCalledWith('importWorkflowData', {
-				data: updatedWorkflow,
-				tidyUp: false,
-				nodesIdsToTidyUp: [],
-				regenerateIds: false,
-				trackEvents: false,
-			});
-		});
-
-		it('should keep tidyUp true once set within the same user message exchange', async () => {
-			const workflow1 = { nodes: [], connections: {} };
-			const workflow2 = {
+		it('should accumulate new node IDs across multiple workflow updates in same message exchange', async () => {
+			const workflow1 = {
 				nodes: [
 					{
 						id: 'node-1',
@@ -1029,7 +1147,7 @@ describe('AskAssistantBuild', () => {
 				],
 				connections: {},
 			};
-			const workflow3 = {
+			const workflow2 = {
 				nodes: [
 					{
 						id: 'node-1',
@@ -1037,31 +1155,27 @@ describe('AskAssistantBuild', () => {
 						type: 'n8n-nodes-base.manualTrigger',
 						position: [0, 0] as [number, number],
 						typeVersion: 1,
-						parameters: { updated: true },
+						parameters: {},
+					},
+					{
+						id: 'node-2',
+						name: 'HTTP',
+						type: 'n8n-nodes-base.httpRequest',
+						position: [100, 0] as [number, number],
+						typeVersion: 1,
+						parameters: {},
 					},
 				],
 				connections: {},
 			};
 
-			builderStore.getWorkflowSnapshot.mockReturnValue(JSON.stringify(workflow1));
+			// First update adds node-1
+			updateWorkflowMock
+				.mockResolvedValueOnce({ success: true, newNodeIds: ['node-1'] })
+				// Second update adds node-2
+				.mockResolvedValueOnce({ success: true, newNodeIds: ['node-2'] });
 
-			// First update adds new nodes
-			builderStore.applyWorkflowUpdate
-				.mockReturnValueOnce({
-					success: true,
-					workflowData: workflow2,
-					newNodeIds: ['node-1'],
-					oldNodeIds: [],
-				})
-				// Second update has no new nodes (just parameter change)
-				.mockReturnValueOnce({
-					success: true,
-					workflowData: workflow3,
-					newNodeIds: [],
-					oldNodeIds: ['node-1'],
-				});
-
-			workflowsStore.$patch({ workflow: workflow1 });
+			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
 
 			renderComponent();
 
@@ -1071,60 +1185,52 @@ describe('AskAssistantBuild', () => {
 			const msgId1 = faker.string.uuid();
 			const msgId2 = faker.string.uuid();
 
-			// First workflow update (adds new nodes)
+			// First workflow update
 			builderStore.workflowMessages = [
 				{
 					id: msgId1,
 					role: 'assistant' as const,
 					type: 'workflow-updated' as const,
-					codeSnippet: JSON.stringify(workflow2),
+					codeSnippet: JSON.stringify(workflow1),
 				},
 			];
 
 			await flushPromises();
 
-			// First call should have tidyUp: true
-			expect(nodeViewEventBusEmitMock).toHaveBeenCalledWith('importWorkflowData', {
-				data: workflow2,
-				tidyUp: true,
-				nodesIdsToTidyUp: ['node-1'],
-				regenerateIds: false,
-				trackEvents: false,
+			// First call should have empty nodeIdsToTidyUp
+			expect(updateWorkflowMock).toHaveBeenCalledWith(workflow1, {
+				isInitialGeneration: false,
+				nodeIdsToTidyUp: [],
 			});
 
-			nodeViewEventBusEmitMock.mockClear();
-
-			// Second workflow update (no new nodes, just parameter update)
+			// Second workflow update
 			builderStore.workflowMessages = [
 				{
 					id: msgId1,
 					role: 'assistant' as const,
 					type: 'workflow-updated' as const,
-					codeSnippet: JSON.stringify(workflow2),
+					codeSnippet: JSON.stringify(workflow1),
 				},
 				{
 					id: msgId2,
 					role: 'assistant' as const,
 					type: 'workflow-updated' as const,
-					codeSnippet: JSON.stringify(workflow3),
+					codeSnippet: JSON.stringify(workflow2),
 				},
 			];
 
 			await flushPromises();
 
-			// Second call should still have tidyUp: true because it was set earlier
-			expect(nodeViewEventBusEmitMock).toHaveBeenCalledWith('importWorkflowData', {
-				data: workflow3,
-				tidyUp: true,
-				nodesIdsToTidyUp: [],
-				regenerateIds: false,
-				trackEvents: false,
+			// Second call should have accumulated node IDs from first call
+			expect(updateWorkflowMock).toHaveBeenLastCalledWith(workflow2, {
+				isInitialGeneration: false,
+				nodeIdsToTidyUp: ['node-1'],
 			});
 		});
 
-		it('should reset shouldTidyUp flag on new user message', async () => {
+		it('should reset accumulated node IDs on new user message', async () => {
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
+			workflowsListStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			const { container } = renderComponent();
 
@@ -1142,15 +1248,9 @@ describe('AskAssistantBuild', () => {
 				connections: {},
 			};
 
-			builderStore.getWorkflowSnapshot.mockReturnValue('{}');
-			builderStore.applyWorkflowUpdate.mockReturnValue({
-				success: true,
-				workflowData: workflow1,
-				newNodeIds: ['node-1'],
-				oldNodeIds: [],
-			});
+			updateWorkflowMock.mockResolvedValue({ success: true, newNodeIds: ['node-1'] });
 
-			// First message exchange - adds nodes
+			// First message exchange
 			builderStore.$patch({ streaming: true });
 			await flushPromises();
 
@@ -1165,27 +1265,19 @@ describe('AskAssistantBuild', () => {
 
 			await flushPromises();
 
-			expect(nodeViewEventBusEmitMock).toHaveBeenCalledWith('importWorkflowData', {
-				data: workflow1,
-				tidyUp: true,
-				nodesIdsToTidyUp: ['node-1'],
-				regenerateIds: false,
-				trackEvents: false,
-			});
-
 			builderStore.$patch({ streaming: false });
 			await flushPromises();
 
-			nodeViewEventBusEmitMock.mockClear();
+			updateWorkflowMock.mockClear();
 
-			// Second message - user sends new message, which should reset shouldTidyUp
+			// User sends new message - should reset accumulated node IDs
 			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
 			if (vm?.setupState?.onUserMessage) {
 				await vm.setupState.onUserMessage('Update parameters');
 			}
 			await flushPromises();
 
-			// Now simulate a workflow update with no new nodes
+			// New workflow update with no new nodes
 			const workflow2 = {
 				nodes: [
 					{
@@ -1200,12 +1292,7 @@ describe('AskAssistantBuild', () => {
 				connections: {},
 			};
 
-			builderStore.applyWorkflowUpdate.mockReturnValue({
-				success: true,
-				workflowData: workflow2,
-				newNodeIds: [], // No new nodes this time
-				oldNodeIds: ['node-1'],
-			});
+			updateWorkflowMock.mockResolvedValue({ success: true, newNodeIds: [] });
 
 			builderStore.$patch({ streaming: true });
 			await flushPromises();
@@ -1221,14 +1308,302 @@ describe('AskAssistantBuild', () => {
 
 			await flushPromises();
 
-			// shouldTidyUp should be reset, so tidyUp should be false
-			expect(nodeViewEventBusEmitMock).toHaveBeenCalledWith('importWorkflowData', {
-				data: workflow2,
-				tidyUp: false,
-				nodesIdsToTidyUp: [],
-				regenerateIds: false,
-				trackEvents: false,
+			// nodeIdsToTidyUp should be reset (empty), not containing 'node-1' from previous exchange
+			expect(updateWorkflowMock).toHaveBeenCalledWith(workflow2, {
+				isInitialGeneration: false,
+				nodeIdsToTidyUp: [],
 			});
+		});
+
+		it('should pass isInitialGeneration flag from builder store', async () => {
+			const newWorkflow = {
+				nodes: [
+					{
+						id: 'new-node-1',
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						position: [0, 0] as [number, number],
+						typeVersion: 1,
+						parameters: {},
+					},
+				],
+				connections: {},
+			};
+
+			updateWorkflowMock.mockResolvedValue({ success: true, newNodeIds: ['new-node-1'] });
+
+			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
+			builderStore.initialGeneration = true;
+
+			renderComponent();
+
+			builderStore.$patch({ streaming: true });
+			await flushPromises();
+
+			builderStore.workflowMessages = [
+				{
+					id: faker.string.uuid(),
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: JSON.stringify(newWorkflow),
+				},
+			];
+
+			await flushPromises();
+
+			expect(updateWorkflowMock).toHaveBeenCalledWith(newWorkflow, {
+				isInitialGeneration: true,
+				nodeIdsToTidyUp: [],
+			});
+		});
+
+		it('should not process same message twice', async () => {
+			const newWorkflow = {
+				nodes: [
+					{
+						id: 'new-node-1',
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						position: [0, 0] as [number, number],
+						typeVersion: 1,
+						parameters: {},
+					},
+				],
+				connections: {},
+			};
+
+			updateWorkflowMock.mockResolvedValue({ success: true, newNodeIds: ['new-node-1'] });
+
+			renderComponent();
+
+			builderStore.$patch({ streaming: true });
+			await flushPromises();
+
+			const msgId = faker.string.uuid();
+
+			// Same message added twice
+			builderStore.workflowMessages = [
+				{
+					id: msgId,
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: JSON.stringify(newWorkflow),
+				},
+			];
+
+			await flushPromises();
+
+			// Trigger watcher again with same message
+			builderStore.workflowMessages = [
+				{
+					id: msgId,
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: JSON.stringify(newWorkflow),
+				},
+			];
+
+			await flushPromises();
+
+			// Should only be called once
+			expect(updateWorkflowMock).toHaveBeenCalledTimes(1);
+		});
+
+		it('should abort streaming when updateWorkflow returns an error', async () => {
+			const testError = new Error('Failed to update workflow');
+			updateWorkflowMock.mockResolvedValue({ success: false, error: testError });
+
+			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
+
+			renderComponent();
+
+			builderStore.$patch({ streaming: true });
+			await flushPromises();
+
+			builderStore.workflowMessages = [
+				{
+					id: faker.string.uuid(),
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: JSON.stringify({
+						nodes: [
+							{
+								id: 'node-1',
+								name: 'Node',
+								type: 'n8n-nodes-base.httpRequest',
+								position: [0, 0],
+								typeVersion: 1,
+								parameters: {},
+							},
+						],
+						connections: {},
+					}),
+				},
+			];
+
+			await flushPromises();
+
+			expect(builderStore.abortStreaming).toHaveBeenCalled();
+		});
+
+		it('should not accumulate node IDs after error occurs', async () => {
+			// First update succeeds and adds a node
+			updateWorkflowMock
+				.mockResolvedValueOnce({ success: true, newNodeIds: ['node-1'] })
+				// Second update fails
+				.mockResolvedValueOnce({ success: false, error: new Error('Failed') });
+
+			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
+
+			renderComponent();
+
+			builderStore.$patch({ streaming: true });
+			await flushPromises();
+
+			const msgId1 = faker.string.uuid();
+			const msgId2 = faker.string.uuid();
+
+			// First message - should succeed
+			builderStore.workflowMessages = [
+				{
+					id: msgId1,
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: JSON.stringify({ nodes: [], connections: {} }),
+				},
+			];
+
+			await flushPromises();
+
+			// Second message - should fail and abort
+			builderStore.workflowMessages = [
+				{
+					id: msgId1,
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: JSON.stringify({ nodes: [], connections: {} }),
+				},
+				{
+					id: msgId2,
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: JSON.stringify({ nodes: [], connections: {} }),
+				},
+			];
+
+			await flushPromises();
+
+			// First call should have empty nodeIdsToTidyUp, second should have accumulated 'node-1'
+			expect(updateWorkflowMock).toHaveBeenNthCalledWith(1, expect.anything(), {
+				isInitialGeneration: false,
+				nodeIdsToTidyUp: [],
+			});
+			expect(updateWorkflowMock).toHaveBeenNthCalledWith(2, expect.anything(), {
+				isInitialGeneration: false,
+				nodeIdsToTidyUp: ['node-1'],
+			});
+
+			// Should abort after error
+			expect(builderStore.abortStreaming).toHaveBeenCalled();
+		});
+
+		it('should not process remaining messages after error occurs', async () => {
+			const testError = new Error('Failed to update workflow');
+			updateWorkflowMock.mockResolvedValue({ success: false, error: testError });
+
+			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
+
+			renderComponent();
+
+			builderStore.$patch({ streaming: true });
+			await flushPromises();
+
+			// Add multiple messages at once
+			builderStore.workflowMessages = [
+				{
+					id: faker.string.uuid(),
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: JSON.stringify({ nodes: [], connections: {} }),
+				},
+				{
+					id: faker.string.uuid(),
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: JSON.stringify({ nodes: [], connections: {} }),
+				},
+				{
+					id: faker.string.uuid(),
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: JSON.stringify({ nodes: [], connections: {} }),
+				},
+			];
+
+			await flushPromises();
+
+			// Should only be called once because error stops processing
+			expect(updateWorkflowMock).toHaveBeenCalledTimes(1);
+			expect(builderStore.abortStreaming).toHaveBeenCalled();
+		});
+	});
+
+	describe('undo recording management', () => {
+		it('should start undo recording when streaming begins', async () => {
+			renderComponent();
+
+			// Streaming starts
+			builderStore.$patch({ streaming: true });
+			await flushPromises();
+
+			expect(historyStore.startRecordingUndo).toHaveBeenCalledTimes(1);
+		});
+
+		it('should stop undo recording when streaming ends', async () => {
+			renderComponent();
+
+			// Start streaming
+			builderStore.$patch({ streaming: true });
+			await flushPromises();
+
+			// Stop streaming
+			builderStore.$patch({ streaming: false });
+			await flushPromises();
+
+			expect(historyStore.stopRecordingUndo).toHaveBeenCalledTimes(1);
+		});
+
+		it('should not call start/stop if streaming state does not change', async () => {
+			builderStore.$patch({ streaming: false });
+
+			renderComponent();
+			await flushPromises();
+
+			// Patch with same value
+			builderStore.$patch({ streaming: false });
+			await flushPromises();
+
+			expect(historyStore.startRecordingUndo).not.toHaveBeenCalled();
+			expect(historyStore.stopRecordingUndo).not.toHaveBeenCalled();
+		});
+
+		it('should handle multiple streaming cycles correctly', async () => {
+			renderComponent();
+
+			// First cycle
+			builderStore.$patch({ streaming: true });
+			await flushPromises();
+			builderStore.$patch({ streaming: false });
+			await flushPromises();
+
+			// Second cycle
+			builderStore.$patch({ streaming: true });
+			await flushPromises();
+			builderStore.$patch({ streaming: false });
+			await flushPromises();
+
+			expect(historyStore.startRecordingUndo).toHaveBeenCalledTimes(2);
+			expect(historyStore.stopRecordingUndo).toHaveBeenCalledTimes(2);
 		});
 	});
 
@@ -1255,6 +1630,164 @@ describe('AskAssistantBuild', () => {
 
 			// Verify clearDoneIndicatorTitle was called
 			expect(builderStore.clearDoneIndicatorTitle).toHaveBeenCalled();
+		});
+	});
+
+	describe('notification banner visibility', () => {
+		it('should not show notification banner before streaming starts', async () => {
+			builderStore.$patch({
+				streaming: false,
+				chatMessages: [],
+			});
+			mockCanPrompt.value = true;
+
+			const { queryByTestId } = renderComponent();
+
+			await flushPromises();
+
+			expect(queryByTestId('notification-permission-banner')).not.toBeInTheDocument();
+		});
+
+		it('should show notification banner when streaming starts and canPrompt is true', async () => {
+			mockCanPrompt.value = true;
+
+			const { queryByTestId } = renderComponent();
+
+			// Start streaming
+			builderStore.$patch({ streaming: true });
+			await flushPromises();
+
+			expect(queryByTestId('notification-permission-banner')).toBeInTheDocument();
+		});
+
+		it('should not show notification banner when streaming starts but canPrompt is false', async () => {
+			mockCanPrompt.value = false;
+
+			const { queryByTestId } = renderComponent();
+
+			// Start streaming
+			builderStore.$patch({ streaming: true });
+			await flushPromises();
+
+			expect(queryByTestId('notification-permission-banner')).not.toBeInTheDocument();
+		});
+
+		it('should keep notification banner visible after streaming ends', async () => {
+			mockCanPrompt.value = true;
+
+			const { queryByTestId } = renderComponent();
+
+			// Start streaming - banner should appear
+			builderStore.$patch({ streaming: true });
+			await flushPromises();
+
+			expect(queryByTestId('notification-permission-banner')).toBeInTheDocument();
+
+			// End streaming - banner should remain visible
+			builderStore.$patch({ streaming: false });
+			await flushPromises();
+
+			expect(queryByTestId('notification-permission-banner')).toBeInTheDocument();
+		});
+
+		it('should not show notification banner for existing chat sessions without streaming', async () => {
+			// Simulate returning to an existing chat session with messages but no streaming
+			builderStore.$patch({
+				streaming: false,
+				chatMessages: [
+					{ id: '1', role: 'user', type: 'text', content: 'Create a workflow' },
+					{
+						id: '2',
+						role: 'assistant',
+						type: 'workflow-updated',
+						codeSnippet: JSON.stringify({ nodes: [], connections: {} }),
+					},
+				],
+			});
+			builderStore.hasMessages = true;
+			mockCanPrompt.value = true;
+
+			const { queryByTestId } = renderComponent();
+
+			await flushPromises();
+
+			// Banner should NOT be shown since streaming hasn't started in this session
+			expect(queryByTestId('notification-permission-banner')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('review changes button', () => {
+		it('showReviewChanges is false when feature flag is disabled', () => {
+			const posthogStore = mockedStore(usePostHog);
+			posthogStore.isFeatureEnabled = vi.fn().mockReturnValue(false);
+			builderStore.streaming = false;
+			builderStore.latestRevertVersion = { id: 'v1', createdAt: '2024-01-01' };
+
+			const { container } = renderComponent();
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			expect(vm?.setupState?.showReviewChanges).toBe(false);
+		});
+
+		it('showReviewChanges is false when streaming is true', () => {
+			const posthogStore = mockedStore(usePostHog);
+			posthogStore.isFeatureEnabled = vi.fn().mockReturnValue(true);
+			builderStore.streaming = true;
+			builderStore.latestRevertVersion = { id: 'v1', createdAt: '2024-01-01' };
+
+			const { container } = renderComponent();
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			expect(vm?.setupState?.showReviewChanges).toBe(false);
+		});
+
+		it('showReviewChanges is false when no latestRevertVersion exists', () => {
+			const posthogStore = mockedStore(usePostHog);
+			posthogStore.isFeatureEnabled = vi.fn().mockReturnValue(true);
+			builderStore.streaming = false;
+			builderStore.latestRevertVersion = null;
+
+			const { container } = renderComponent();
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			expect(vm?.setupState?.showReviewChanges).toBe(false);
+		});
+
+		it('showReviewChanges is false when editedNodesCount is 0', async () => {
+			const posthogStore = mockedStore(usePostHog);
+			posthogStore.isFeatureEnabled = vi.fn().mockReturnValue(true);
+			builderStore.streaming = false;
+			builderStore.latestRevertVersion = { id: 'v1', createdAt: '2024-01-01' };
+			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
+
+			const { container } = renderComponent();
+			await flushPromises();
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			expect(vm?.setupState?.showReviewChanges).toBe(false);
+		});
+
+		it('showReviewChanges is true when feature flag is enabled, not streaming, latestRevertVersion exists, and nodes were edited', async () => {
+			const posthogStore = mockedStore(usePostHog);
+			posthogStore.isFeatureEnabled = vi.fn().mockReturnValue(true);
+			builderStore.streaming = false;
+			builderStore.latestRevertVersion = { id: 'v1', createdAt: '2024-01-01' };
+			workflowsStore.$patch({
+				workflow: {
+					nodes: [
+						{
+							id: 'node1',
+							name: 'Start',
+							type: 'n8n-nodes-base.manualTrigger',
+							position: [0, 0],
+							typeVersion: 1,
+							parameters: {},
+						} as INodeUi,
+					],
+					connections: {},
+				},
+			});
+
+			const { container } = renderComponent();
+			await flushPromises();
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			expect(vm?.setupState?.showReviewChanges).toBe(true);
 		});
 	});
 });

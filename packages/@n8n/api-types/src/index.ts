@@ -1,3 +1,4 @@
+export { Z, type ZodClass } from './zod-class';
 export type * from './datetime';
 export * from './dto';
 export type * from './push';
@@ -6,11 +7,11 @@ export type * from './frontend-settings';
 export type * from './user';
 export type * from './api-keys';
 export type * from './community-node-types';
+export type * from './quick-connect';
 export {
 	chatHubConversationModelSchema,
 	type ChatModelDto,
 	type ChatModelMetadataDto,
-	type ChatHubInputModality,
 	type ChatHubOpenAIModel,
 	type ChatHubAnthropicModel,
 	type ChatHubGoogleModel,
@@ -50,10 +51,40 @@ export {
 	type AgentIconOrEmoji,
 	agentIconOrEmojiSchema,
 	type MessageChunk,
-	type ChatHubAgentTool,
 	UpdateChatSettingsRequest,
 	type ChatProviderSettingsDto,
+	type ChatSendMessageResponse,
+	type ChatReconnectResponse,
+	ChatReconnectRequest,
+	type ChatArtifact,
+	type ChatArtifactCreateCommand,
+	type ChatArtifactEditCommand,
+	type ChatMessageContentChunk,
+	type ChatHubMessageButton,
+	chatHubMessageWithButtonsSchema,
+	type ChatHubMessageWithButtons,
+	type ChatHubToolDto,
+	ChatHubCreateToolRequest,
+	ChatHubUpdateToolRequest,
+	ALWAYS_BLOCKED_CHAT_HUB_TOOL_TYPES,
+	CHAT_USER_BLOCKED_CHAT_HUB_TOOL_TYPES,
 } from './chat-hub';
+
+export type {
+	ChatHubPushMessage,
+	ChatHubStreamEvent,
+	ChatHubStreamBegin,
+	ChatHubStreamChunk,
+	ChatHubStreamEnd,
+	ChatHubStreamError,
+	ChatHubStreamMetadata,
+	ChatHubExecutionEvent,
+	ChatHubExecutionBegin,
+	ChatHubExecutionEnd,
+	ChatHubHumanMessageCreated,
+	ChatHubMessageEdited,
+	ChatHubAttachmentInfo,
+} from './push/chat-hub';
 
 export type { Collaborator } from './push/collaboration';
 export type { HeartbeatMessage } from './push/heartbeat';
@@ -156,3 +187,22 @@ export type {
 	BreakingChangeLightReportResult,
 	BreakingChangeVersion,
 } from './schemas/breaking-changes.schema';
+
+export { MIGRATION_REPORT_TARGET_VERSION } from './schemas/breaking-changes.schema';
+
+export type {
+	SecretsProviderType,
+	SecretsProviderState,
+	SecretsProviderConnectionTestState,
+	SecretProviderConnectionListItem,
+	SecretProviderConnection,
+	SecretProviderTypeResponse,
+	SecretCompletionsResponse,
+	TestSecretProviderConnectionResponse,
+	ReloadSecretProviderConnectionResponse,
+} from './schemas/secrets-provider.schema';
+
+export {
+	testSecretProviderConnectionResponseSchema,
+	reloadSecretProviderConnectionResponseSchema,
+} from './schemas/secrets-provider.schema';

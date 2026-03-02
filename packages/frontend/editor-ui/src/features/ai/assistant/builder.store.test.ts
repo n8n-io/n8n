@@ -20,7 +20,7 @@ import { defaultSettings } from '@/__tests__/defaults';
 import merge from 'lodash/merge';
 import { DEFAULT_POSTHOG_SETTINGS } from '@/app/stores/posthog.store.test';
 import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants';
-import { reactive } from 'vue';
+import { nextTick, reactive } from 'vue';
 import * as chatAPI from '@/features/ai/assistant/assistant.api';
 import * as telemetryModule from '@/app/composables/useTelemetry';
 import {
@@ -31,12 +31,16 @@ import {
 import type { Telemetry } from '@/app/plugins/telemetry';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
-import { type INodeTypeDescription } from 'n8n-workflow';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import { AI_BUILDER_PLAN_MODE_EXPERIMENT } from '@/app/constants/experiments';
 
 // Mock useI18n to return the keys instead of translations
 vi.mock('@n8n/i18n', () => ({
@@ -94,6 +98,18 @@ vi.mock('@/app/composables/useDocumentTitle', () => ({
 		reset: vi.fn(),
 		setDocumentTitle: setDocumentTitleMock,
 		getDocumentState: getDocumentStateMock,
+	}),
+}));
+
+// Mock useBrowserNotifications
+const mockShowNotification = vi.fn();
+const mockIsNotificationsEnabled = { value: false };
+vi.mock('@/app/composables/useBrowserNotifications', () => ({
+	useBrowserNotifications: () => ({
+		showNotification: mockShowNotification,
+		isEnabled: mockIsNotificationsEnabled,
+		canPrompt: { value: false },
+		requestPermission: vi.fn(),
 	}),
 }));
 
@@ -389,6 +405,38 @@ describe('AI Builder store', () => {
 		expect(builderStore.builderThinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
 
 		vi.useRealTimers();
+	});
+
+	it('should preserve thinking during streaming gaps (empty chunks before tools arrive)', async () => {
+		const builderStore = useBuilderStore();
+
+		apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, onDone) => {
+			// First chunk: empty (no displayable messages) — simulates streaming gap
+			onMessage({ messages: [] });
+
+			// Second chunk: tool arrives
+			onMessage({
+				messages: [
+					{
+						type: 'tool',
+						role: 'assistant',
+						toolName: 'search_nodes',
+						toolCallId: 'call-1',
+						status: 'running',
+						displayTitle: 'Searching nodes',
+						updates: [],
+					},
+				],
+			});
+
+			onDone();
+		});
+
+		await builderStore.sendChatMessage({ text: 'Build a workflow' });
+
+		// After empty chunk, thinking should still be set (preserved from prepareForStreaming)
+		// After tool chunk, thinking should show the tool name
+		await vi.waitFor(() => expect(builderStore.builderThinkingMessage).toBe('Searching nodes'));
 	});
 
 	it('should keep processing message when workflow-updated arrives', async () => {
@@ -1038,657 +1086,6 @@ describe('AI Builder store', () => {
 		});
 	});
 
-	describe('applyWorkflowUpdate with workflow naming', () => {
-		it('should apply generated workflow name during initial generation when workflow has default name', () => {
-			const builderStore = useBuilderStore();
-
-			// Set initial generation flag
-			builderStore.initialGeneration = true;
-
-			// Ensure workflow has default name
-			workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
-
-			// Create workflow JSON with a generated name
-			const workflowJson = JSON.stringify({
-				name: 'Generated Workflow Name for Email Processing',
-				nodes: [
-					{
-						id: 'node1',
-						name: 'Start',
-						type: 'n8n-nodes-base.manualTrigger',
-						position: [250, 300],
-						parameters: {},
-					},
-				],
-				connections: {},
-			});
-
-			// Apply the workflow update
-			const result = builderStore.applyWorkflowUpdate(workflowJson);
-
-			// Verify the update was successful
-			expect(result.success).toBe(true);
-
-			// Verify setWorkflowName was called with the generated name
-			expect(setWorkflowNameSpy).toHaveBeenCalledWith({
-				newName: 'Generated Workflow Name for Email Processing',
-				setStateDirty: false,
-			});
-		});
-
-		it('should NOT apply generated workflow name during initial generation when workflow has custom name', () => {
-			const builderStore = useBuilderStore();
-
-			// Set initial generation flag
-			builderStore.initialGeneration = true;
-
-			// Set a custom workflow name (not the default)
-			workflowsStore.workflow.name = 'My Custom Workflow';
-
-			// Create workflow JSON with a generated name
-			const workflowJson = JSON.stringify({
-				name: 'Generated Workflow Name for Email Processing',
-				nodes: [
-					{
-						id: 'node1',
-						name: 'Start',
-						type: 'n8n-nodes-base.manualTrigger',
-						position: [250, 300],
-						parameters: {},
-					},
-				],
-				connections: {},
-			});
-
-			// Apply the workflow update
-			const result = builderStore.applyWorkflowUpdate(workflowJson);
-
-			// Verify the update was successful
-			expect(result.success).toBe(true);
-
-			// Verify setWorkflowName was NOT called
-			expect(setWorkflowNameSpy).not.toHaveBeenCalled();
-		});
-
-		it('should NOT apply generated workflow name when not initial generation', () => {
-			const builderStore = useBuilderStore();
-
-			// Ensure initial generation flag is false
-			builderStore.initialGeneration = false;
-
-			// Ensure workflow has default name
-			workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
-
-			// Create workflow JSON with a generated name
-			const workflowJson = JSON.stringify({
-				name: 'Generated Workflow Name for Email Processing',
-				nodes: [
-					{
-						id: 'node1',
-						name: 'Start',
-						type: 'n8n-nodes-base.manualTrigger',
-						position: [250, 300],
-						parameters: {},
-					},
-				],
-				connections: {},
-			});
-
-			// Apply the workflow update
-			const result = builderStore.applyWorkflowUpdate(workflowJson);
-
-			// Verify the update was successful
-			expect(result.success).toBe(true);
-
-			// Verify setWorkflowName was NOT called
-			expect(setWorkflowNameSpy).not.toHaveBeenCalled();
-		});
-
-		it('should handle workflow updates without name property', () => {
-			const builderStore = useBuilderStore();
-
-			// Set initial generation flag
-			builderStore.initialGeneration = true;
-
-			// Ensure workflow has default name
-			workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
-
-			// Create workflow JSON without a name property
-			const workflowJson = JSON.stringify({
-				nodes: [
-					{
-						id: 'node1',
-						name: 'Start',
-						type: 'n8n-nodes-base.manualTrigger',
-						position: [250, 300],
-						parameters: {},
-					},
-				],
-				connections: {},
-			});
-
-			// Apply the workflow update
-			const result = builderStore.applyWorkflowUpdate(workflowJson);
-
-			// Verify the update was successful
-			expect(result.success).toBe(true);
-
-			// Verify setWorkflowName was NOT called
-			expect(setWorkflowNameSpy).not.toHaveBeenCalled();
-		});
-
-		it('should handle workflow names that start with but are not exactly the default name', () => {
-			const builderStore = useBuilderStore();
-
-			// Set initial generation flag
-			builderStore.initialGeneration = true;
-
-			// Set workflow name that starts with default but has more text
-			workflowsStore.workflow.name = `${DEFAULT_NEW_WORKFLOW_NAME} - Copy`;
-
-			// Create workflow JSON with a generated name
-			const workflowJson = JSON.stringify({
-				name: 'Generated Workflow Name for Email Processing',
-				nodes: [
-					{
-						id: 'node1',
-						name: 'Start',
-						type: 'n8n-nodes-base.manualTrigger',
-						position: [250, 300],
-						parameters: {},
-					},
-				],
-				connections: {},
-			});
-
-			// Apply the workflow update
-			const result = builderStore.applyWorkflowUpdate(workflowJson);
-
-			// Verify the update was successful
-			expect(result.success).toBe(true);
-
-			// Verify setWorkflowName WAS called because the name starts with default
-			expect(setWorkflowNameSpy).toHaveBeenCalledWith({
-				newName: 'Generated Workflow Name for Email Processing',
-				setStateDirty: false,
-			});
-		});
-
-		it('should handle malformed JSON gracefully', () => {
-			const builderStore = useBuilderStore();
-
-			// Set initial generation flag
-			builderStore.initialGeneration = true;
-
-			// Create malformed JSON
-			const workflowJson = '{ invalid json }';
-
-			// Apply the workflow update
-			const result = builderStore.applyWorkflowUpdate(workflowJson);
-
-			// Verify the update failed
-			expect(result.success).toBe(false);
-			expect(result.error).toBeDefined();
-		});
-
-		it('should maintain initial generation flag state across multiple updates', () => {
-			const builderStore = useBuilderStore();
-
-			// Set initial generation flag
-			builderStore.initialGeneration = true;
-
-			// Ensure workflow has default name
-			workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
-
-			// First update with name
-			const workflowJson1 = JSON.stringify({
-				name: 'First Generated Name',
-				nodes: [],
-				connections: {},
-			});
-
-			builderStore.applyWorkflowUpdate(workflowJson1);
-			expect(setWorkflowNameSpy).toHaveBeenCalledTimes(1);
-
-			// The flag should still be true for subsequent updates in the same generation
-			expect(builderStore.initialGeneration).toBe(true);
-
-			// Second update without name (simulating further tool operations)
-			const workflowJson2 = JSON.stringify({
-				nodes: [
-					{
-						id: 'node2',
-						name: 'HTTP',
-						type: 'n8n-nodes-base.httpRequest',
-						position: [450, 300],
-						parameters: {},
-					},
-				],
-				connections: {},
-			});
-
-			builderStore.applyWorkflowUpdate(workflowJson2);
-
-			// Should not call setWorkflowName again
-			expect(setWorkflowNameSpy).toHaveBeenCalledTimes(1);
-		});
-
-		describe('applyWorkflowUpdate credential defaults', () => {
-			const createTestNodeType = (): INodeTypeDescription => ({
-				displayName: 'Test Node',
-				name: 'n8n-nodes-base.test',
-				description: 'Test node',
-				group: ['trigger'],
-				version: 1,
-				defaults: { name: 'Test Node' },
-				inputs: ['main'],
-				outputs: ['main'],
-				properties: [
-					{
-						displayName: 'Authentication',
-						name: 'authentication',
-						type: 'options',
-						options: [
-							{
-								name: 'API Key',
-								value: 'apiKey',
-							},
-						],
-						default: 'apiKey',
-						required: true,
-					},
-				],
-				credentials: [
-					{
-						name: 'testApi',
-						required: true,
-						displayOptions: {
-							show: {
-								authentication: ['apiKey'],
-							},
-						},
-					},
-				],
-			});
-
-			it('assigns default credentials when available', () => {
-				const builderStore = useBuilderStore();
-				getNodeTypeSpy.mockReturnValue(createTestNodeType());
-				getCredentialsByTypeSpy.mockReturnValue([
-					{ id: 'cred-id', name: 'API Credential', type: 'testApi' },
-				]);
-
-				const workflowJson = JSON.stringify({
-					nodes: [
-						{
-							id: 'node1',
-							name: 'HTTP Request',
-							type: 'n8n-nodes-base.test',
-							position: [0, 0],
-							parameters: {},
-						},
-					],
-					connections: {},
-				});
-
-				const result = builderStore.applyWorkflowUpdate(workflowJson);
-				expect(result.success).toBe(true);
-				const [node] = result.workflowData?.nodes ?? [];
-				expect(node.credentials).toEqual({
-					testApi: { id: 'cred-id', name: 'API Credential' },
-				});
-				expect(node.parameters.authentication).toBe('apiKey');
-			});
-
-			it('keeps existing credentials untouched', () => {
-				const builderStore = useBuilderStore();
-				getNodeTypeSpy.mockReturnValue(createTestNodeType());
-				getCredentialsByTypeSpy.mockReturnValue([
-					{ id: 'cred-id', name: 'API Credential', type: 'testApi' },
-				]);
-
-				const workflowJson = JSON.stringify({
-					nodes: [
-						{
-							id: 'node1',
-							name: 'HTTP Request',
-							type: 'n8n-nodes-base.test',
-							position: [0, 0],
-							parameters: { authentication: 'apiKey' },
-							credentials: {
-								testApi: { id: 'existing', name: 'Existing Credential' },
-							},
-						},
-					],
-					connections: {},
-				});
-
-				const result = builderStore.applyWorkflowUpdate(workflowJson);
-				expect(result.success).toBe(true);
-				const [node] = result.workflowData?.nodes ?? [];
-				expect(node.credentials).toEqual({
-					testApi: { id: 'existing', name: 'Existing Credential' },
-				});
-			});
-		});
-	});
-
-	describe('applyWorkflowUpdate with pinned data preservation', () => {
-		it('should preserve pinned data for nodes with matching names', () => {
-			const builderStore = useBuilderStore();
-
-			// Set up initial workflow with nodes that have pinned data
-			const node1 = {
-				id: 'node1-id',
-				name: 'HTTP Request',
-				type: 'n8n-nodes-base.httpRequest',
-				typeVersion: 1,
-				position: [0, 0] as [number, number],
-				parameters: {},
-			};
-			const node2 = {
-				id: 'node2-id',
-				name: 'Set',
-				type: 'n8n-nodes-base.set',
-				position: [0, 0] as [number, number],
-				typeVersion: 1,
-				parameters: {},
-			};
-
-			workflowsStore.allNodes = [node1, node2];
-			workflowsStore.workflow.nodes = [node1, node2];
-
-			// Mock pinned data for these nodes
-			const pinnedData1 = [{ json: { data: 'test1' } }];
-			const pinnedData2 = [{ json: { data: 'test2' } }];
-
-			vi.spyOn(workflowsStore, 'pinDataByNodeName', 'get').mockReturnValue(
-				vi.fn((nodeName: string) => {
-					if (nodeName === 'HTTP Request') return pinnedData1;
-					if (nodeName === 'Set') return pinnedData2;
-					return undefined;
-				}),
-			);
-
-			// Create workflow update with the same node names but different IDs
-			const workflowJson = JSON.stringify({
-				nodes: [
-					{
-						id: 'new-node1-id',
-						name: 'HTTP Request',
-						type: 'n8n-nodes-base.httpRequest',
-						position: [250, 300] as [number, number],
-						parameters: {},
-					},
-					{
-						id: 'new-node2-id',
-						name: 'Set',
-						type: 'n8n-nodes-base.set',
-						position: [450, 300] as [number, number],
-						parameters: {},
-					},
-				],
-				connections: {},
-			});
-
-			// Apply the workflow update
-			const result = builderStore.applyWorkflowUpdate(workflowJson);
-
-			// Verify the update was successful
-			expect(result.success).toBe(true);
-
-			// Verify pinned data was preserved for nodes with matching names
-			expect(result.workflowData?.pinData).toEqual({
-				'HTTP Request': pinnedData1,
-				Set: pinnedData2,
-			});
-		});
-
-		it('should preserve pinned data only for nodes that still exist', () => {
-			const builderStore = useBuilderStore();
-
-			// Set up initial workflow with three nodes
-			const node1 = {
-				id: 'node1-id',
-				name: 'HTTP Request',
-				type: 'n8n-nodes-base.httpRequest',
-				typeVersion: 1,
-				position: [250, 300] as [number, number],
-				parameters: {},
-			};
-			const node2 = {
-				id: 'node2-id',
-				name: 'Set',
-				type: 'n8n-nodes-base.set',
-				typeVersion: 1,
-				position: [450, 300] as [number, number],
-				parameters: {},
-			};
-			const node3 = {
-				id: 'node3-id',
-				name: 'Code',
-				type: 'n8n-nodes-base.code',
-				typeVersion: 1,
-				position: [650, 300] as [number, number],
-				parameters: {},
-			};
-
-			workflowsStore.allNodes = [node1, node2, node3];
-			workflowsStore.workflow.nodes = [node1, node2, node3];
-
-			// Mock pinned data for all three nodes
-			const pinnedData1 = [{ json: { data: 'test1' } }];
-			const pinnedData2 = [{ json: { data: 'test2' } }];
-			const pinnedData3 = [{ json: { data: 'test3' } }];
-
-			vi.spyOn(workflowsStore, 'pinDataByNodeName', 'get').mockReturnValue(
-				vi.fn((nodeName: string) => {
-					if (nodeName === 'HTTP Request') return pinnedData1;
-					if (nodeName === 'Set') return pinnedData2;
-					if (nodeName === 'Code') return pinnedData3;
-					return undefined;
-				}),
-			);
-
-			// Create workflow update with only two of the three nodes
-			const workflowJson = JSON.stringify({
-				nodes: [
-					{
-						id: 'new-node1-id',
-						name: 'HTTP Request',
-						type: 'n8n-nodes-base.httpRequest',
-						position: [250, 300] as [number, number],
-						typeVersion: 1,
-						parameters: {},
-					},
-					{
-						id: 'new-node2-id',
-						name: 'Set',
-						type: 'n8n-nodes-base.set',
-						typeVersion: 1,
-						position: [450, 300] as [number, number],
-						parameters: {},
-					},
-				],
-				connections: {},
-			});
-
-			// Apply the workflow update
-			const result = builderStore.applyWorkflowUpdate(workflowJson);
-
-			// Verify the update was successful
-			expect(result.success).toBe(true);
-
-			// Verify only pinned data for existing nodes was preserved
-			expect(result.workflowData?.pinData).toEqual({
-				'HTTP Request': pinnedData1,
-				Set: pinnedData2,
-			});
-
-			// Code node's pinned data should not be included
-			expect(result.workflowData?.pinData).not.toHaveProperty('Code');
-		});
-
-		it('should not add pinData property if no pinned data exists', () => {
-			const builderStore = useBuilderStore();
-
-			// Set up initial workflow without pinned data
-			const node1 = {
-				id: 'node1-id',
-				name: 'HTTP Request',
-				type: 'n8n-nodes-base.httpRequest',
-				typeVersion: 1,
-				position: [250, 300] as [number, number],
-				parameters: {},
-			};
-
-			workflowsStore.allNodes = [node1];
-			workflowsStore.workflow.nodes = [node1];
-
-			// Mock no pinned data
-			vi.spyOn(workflowsStore, 'pinDataByNodeName', 'get').mockReturnValue(vi.fn(() => undefined));
-
-			// Create workflow update
-			const workflowJson = JSON.stringify({
-				nodes: [
-					{
-						id: 'new-node1-id',
-						name: 'HTTP Request',
-						type: 'n8n-nodes-base.httpRequest',
-						typeVersion: 1,
-						position: [250, 300] as [number, number],
-						parameters: {},
-					},
-				],
-				connections: {},
-			});
-
-			// Apply the workflow update
-			const result = builderStore.applyWorkflowUpdate(workflowJson);
-
-			// Verify the update was successful
-			expect(result.success).toBe(true);
-
-			// Verify pinData property is not added
-			expect(result.workflowData?.pinData).toBeUndefined();
-		});
-
-		it('should handle nodes with renamed names correctly', () => {
-			const builderStore = useBuilderStore();
-
-			// Set up initial workflow
-			const node1 = {
-				id: 'node1-id',
-				name: 'HTTP Request',
-				type: 'n8n-nodes-base.httpRequest',
-				typeVersion: 1,
-				position: [250, 300] as [number, number],
-				parameters: {},
-			};
-
-			workflowsStore.allNodes = [node1];
-			workflowsStore.workflow.nodes = [node1];
-
-			// Mock pinned data
-			const pinnedData1 = [{ json: { data: 'test1' } }];
-
-			vi.spyOn(workflowsStore, 'pinDataByNodeName', 'get').mockReturnValue(
-				vi.fn((nodeName: string) => {
-					if (nodeName === 'HTTP Request') return pinnedData1;
-					return undefined;
-				}),
-			);
-
-			// Create workflow update with renamed node
-			const workflowJson = JSON.stringify({
-				nodes: [
-					{
-						id: 'new-node1-id',
-						name: 'HTTP Request1',
-						type: 'n8n-nodes-base.httpRequest',
-						typeVersion: 1,
-						position: [250, 300] as [number, number],
-						parameters: {},
-					},
-				],
-				connections: {},
-			});
-
-			// Apply the workflow update
-			const result = builderStore.applyWorkflowUpdate(workflowJson);
-
-			// Verify the update was successful
-			expect(result.success).toBe(true);
-
-			// Verify pinned data was not preserved since the name changed
-			expect(result.workflowData?.pinData).toBeUndefined();
-		});
-
-		it('should preserve pinned data when adding new nodes', () => {
-			const builderStore = useBuilderStore();
-
-			// Set up initial workflow with one node
-			const node1 = {
-				id: 'node1-id',
-				name: 'HTTP Request',
-				type: 'n8n-nodes-base.httpRequest',
-				typeVersion: 1,
-				position: [250, 300] as [number, number],
-				parameters: {},
-			};
-
-			workflowsStore.allNodes = [node1];
-			workflowsStore.workflow.nodes = [node1];
-
-			// Mock pinned data for the existing node
-			const pinnedData1 = [{ json: { data: 'test1' } }];
-
-			vi.spyOn(workflowsStore, 'pinDataByNodeName', 'get').mockReturnValue(
-				vi.fn((nodeName: string) => {
-					if (nodeName === 'HTTP Request') return pinnedData1;
-					return undefined;
-				}),
-			);
-
-			// Create workflow update with existing node plus a new node
-			const workflowJson = JSON.stringify({
-				nodes: [
-					{
-						id: 'new-node1-id',
-						name: 'HTTP Request',
-						type: 'n8n-nodes-base.httpRequest',
-						typeVersion: 1,
-						position: [250, 300] as [number, number],
-						parameters: {},
-					},
-					{
-						id: 'new-node2-id',
-						name: 'Set',
-						type: 'n8n-nodes-base.set',
-						typeVersion: 1,
-						position: [450, 300] as [number, number],
-						parameters: {},
-					},
-				],
-				connections: {},
-			});
-
-			// Apply the workflow update
-			const result = builderStore.applyWorkflowUpdate(workflowJson);
-
-			// Verify the update was successful
-			expect(result.success).toBe(true);
-
-			// Verify pinned data was preserved only for the existing node
-			expect(result.workflowData?.pinData).toEqual({
-				'HTTP Request': pinnedData1,
-			});
-
-			// New node should not have pinned data
-			expect(result.workflowData?.pinData).not.toHaveProperty('Set');
-		});
-	});
-
 	describe('Credits management', () => {
 		it('should update builder credits correctly', () => {
 			const builderStore = useBuilderStore();
@@ -1903,13 +1300,15 @@ describe('AI Builder store', () => {
 			});
 
 			// Mock loadSessions to prevent actual API call
-			vi.spyOn(chatAPI, 'getAiSessions').mockResolvedValueOnce({ sessions: [] });
+			const spy = vi.spyOn(chatAPI, 'getAiSessions').mockResolvedValueOnce({ sessions: [] });
 
 			await chatPanelStore.open({ mode: 'builder' });
 
 			expect(mockGetBuilderCredits).toHaveBeenCalled();
 			expect(builderStore.creditsQuota).toBe(100);
 			expect(builderStore.creditsRemaining).toBe(80);
+
+			spy.mockRestore();
 		});
 	});
 
@@ -2095,6 +1494,23 @@ describe('AI Builder store', () => {
 			builderStore.abortStreaming();
 
 			expect(track).not.toHaveBeenCalledWith('End of response from builder', expect.anything());
+		});
+
+		it('includes tab_visible in abort telemetry', async () => {
+			const builderStore = useBuilderStore();
+
+			apiSpy.mockImplementationOnce(() => {});
+			await builderStore.sendChatMessage({ text: 'test' });
+
+			track.mockClear();
+			builderStore.abortStreaming();
+
+			expect(track).toHaveBeenCalledWith(
+				'End of response from builder',
+				expect.objectContaining({
+					tab_visible: expect.any(Boolean),
+				}),
+			);
 		});
 	});
 
@@ -2599,13 +2015,279 @@ describe('AI Builder store', () => {
 		const mockTruncateBuilderMessages = vi.spyOn(chatAPI, 'truncateBuilderMessages');
 
 		beforeEach(() => {
-			mockGetAiSessions.mockClear();
-			mockTruncateBuilderMessages.mockClear();
+			mockGetAiSessions.mockReset();
+			mockTruncateBuilderMessages.mockReset();
+		});
+
+		describe('loadSessions guards', () => {
+			it('should return early if workflow is not saved', async () => {
+				const builderStore = useBuilderStore();
+
+				// Mark workflow as not saved
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': false };
+
+				await builderStore.loadSessions();
+
+				// Should not call the API
+				expect(mockGetAiSessions).not.toHaveBeenCalled();
+				expect(builderStore.chatMessages).toHaveLength(0);
+			});
+
+			it('should not request again after loading empty sessions for the same workflow', async () => {
+				const builderStore = useBuilderStore();
+
+				// Ensure clean state by resetting the builder chat
+				builderStore.resetBuilderChat();
+
+				// Mark workflow as saved
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
+
+				// Mock API to return empty sessions
+				mockGetAiSessions.mockResolvedValueOnce({ sessions: [] });
+
+				// First call - should make API request
+				await builderStore.loadSessions();
+
+				expect(mockGetAiSessions).toHaveBeenCalledTimes(1);
+				expect(builderStore.chatMessages).toHaveLength(0);
+
+				// Reset mock to track second call
+				mockGetAiSessions.mockClear();
+
+				// Second call - should NOT make API request (cached)
+				await builderStore.loadSessions();
+
+				expect(mockGetAiSessions).not.toHaveBeenCalled();
+			});
+
+			it('should allow loading sessions after resetBuilderChat clears the cache', async () => {
+				const builderStore = useBuilderStore();
+
+				// Ensure clean state by resetting the builder chat
+				builderStore.resetBuilderChat();
+
+				// Mark workflow as saved
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
+
+				// Mock API to return empty sessions
+				mockGetAiSessions.mockResolvedValue({ sessions: [] });
+
+				// First call
+				await builderStore.loadSessions();
+				expect(mockGetAiSessions).toHaveBeenCalledTimes(1);
+
+				// Reset mock
+				mockGetAiSessions.mockClear();
+
+				// Reset builder chat (this should clear the cache)
+				builderStore.resetBuilderChat();
+
+				// Now loadSessions should make a new API request
+				await builderStore.loadSessions();
+				expect(mockGetAiSessions).toHaveBeenCalledTimes(1);
+			});
+
+			it('should prevent duplicate concurrent calls', async () => {
+				const builderStore = useBuilderStore();
+
+				// Mark workflow as saved
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
+
+				// Mock API to return with a delay
+				let resolvePromise: ((value: { sessions: [] }) => void) | undefined;
+				mockGetAiSessions.mockImplementation(
+					async () =>
+						await new Promise((resolve) => {
+							resolvePromise = resolve;
+						}),
+				);
+
+				// Start first call
+				const firstCall = builderStore.loadSessions();
+
+				// Wait a tick to ensure the first call has started
+				await Promise.resolve();
+
+				// Start second call while first is still in progress
+				const secondCall = builderStore.loadSessions();
+
+				// Resolve the first call
+				if (resolvePromise) {
+					resolvePromise({ sessions: [] });
+				}
+
+				await firstCall;
+				await secondCall;
+
+				// Should only call the API once
+				expect(mockGetAiSessions).toHaveBeenCalledTimes(1);
+			});
+
+			it('should reset loading state even on error and allow retry after resetBuilderChat', async () => {
+				const builderStore = useBuilderStore();
+
+				// Mark workflow as saved
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
+
+				// First call fails
+				mockGetAiSessions.mockRejectedValueOnce(new Error('API error'));
+				await builderStore.loadSessions();
+
+				// Reset mock call count
+				mockGetAiSessions.mockClear();
+				mockGetAiSessions.mockResolvedValue({ sessions: [] });
+
+				// Reset builder chat to clear the cache and allow retry
+				builderStore.resetBuilderChat();
+
+				// Second call should work after proper reset
+				await builderStore.loadSessions();
+
+				expect(mockGetAiSessions).toHaveBeenCalledTimes(1);
+			});
+
+			it('should reset loading state even on error', async () => {
+				const builderStore = useBuilderStore();
+
+				// Mark workflow as saved
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
+
+				// Mock API to throw error
+				mockGetAiSessions.mockRejectedValueOnce(new Error('API error'));
+
+				await builderStore.loadSessions();
+
+				// Reset mock
+				mockGetAiSessions.mockClear();
+				mockGetAiSessions.mockResolvedValue({ sessions: [] });
+
+				// Should be able to call again (loading state was reset)
+				await builderStore.loadSessions();
+
+				expect(mockGetAiSessions).toHaveBeenCalledTimes(1);
+			});
+		});
+
+		describe('default plan mode based on canvas nodes', () => {
+			function enablePlanModeExperiment() {
+				vi.spyOn(posthogStore, 'getVariant').mockImplementation((experiment) =>
+					experiment === AI_BUILDER_PLAN_MODE_EXPERIMENT.name
+						? AI_BUILDER_PLAN_MODE_EXPERIMENT.variant
+						: undefined,
+				);
+			}
+
+			it('should switch to plan mode when nodes become empty and plan mode is available', async () => {
+				enablePlanModeExperiment();
+				const builderStore = useBuilderStore();
+
+				// Start with nodes, then clear them (simulates workflow load sequence)
+				workflowsStore.workflow.nodes = [{ name: 'Node1' }] as never;
+				await nextTick();
+				expect(builderStore.builderMode).toBe('build');
+
+				workflowsStore.workflow.nodes = [];
+				await nextTick();
+				expect(builderStore.builderMode).toBe('plan');
+			});
+
+			it('should switch to build mode when nodes are added', async () => {
+				enablePlanModeExperiment();
+				// Start with nodes so the watcher can observe changes
+				workflowsStore.workflow.nodes = [{ name: 'Node1' }] as never;
+
+				const builderStore = useBuilderStore();
+				await nextTick();
+
+				// Clear nodes to trigger plan mode
+				workflowsStore.workflow.nodes = [];
+				await nextTick();
+				expect(builderStore.builderMode).toBe('plan');
+
+				// Add nodes back to trigger build mode
+				workflowsStore.workflow.nodes = [{ name: 'Node1' }] as never;
+				await nextTick();
+				expect(builderStore.builderMode).toBe('build');
+			});
+
+			it('should stay in build mode when plan mode experiment is not enabled', async () => {
+				const builderStore = useBuilderStore();
+
+				// Change workflowId to trigger the watcher (nodes stay empty)
+				workflowsStore.workflowId = 'different-workflow-id';
+				await nextTick();
+
+				expect(builderStore.builderMode).toBe('build');
+			});
+
+			it('should not change mode when chat has messages', async () => {
+				enablePlanModeExperiment();
+				const builderStore = useBuilderStore();
+
+				// Add nodes first so we can trigger a change later
+				workflowsStore.workflow.nodes = [{ name: 'Node1' }] as never;
+				await nextTick();
+
+				// Simulate an active conversation
+				builderStore.chatMessages = [{ role: 'user', type: 'text', text: 'hello' } as never];
+
+				// Remove nodes — would normally switch to plan, but chat has messages
+				workflowsStore.workflow.nodes = [];
+				await nextTick();
+
+				// Should stay at build because chat has messages
+				expect(builderStore.builderMode).toBe('build');
+			});
+
+			it('should default to plan mode when workflowId changes with empty canvas', async () => {
+				enablePlanModeExperiment();
+				const builderStore = useBuilderStore();
+
+				// Simulate navigating to a new empty workflow
+				workflowsStore.workflowId = 'new-empty-workflow';
+				workflowsStore.workflow.nodes = [];
+				await nextTick();
+
+				expect(builderStore.builderMode).toBe('plan');
+			});
+
+			it('should not switch to plan mode after restoreToVersion truncates messages', async () => {
+				enablePlanModeExperiment();
+				const builderStore = useBuilderStore();
+
+				// Simulate a conversation with nodes on canvas (active build session)
+				builderStore.chatMessages = [
+					{ role: 'user', type: 'text', text: 'Build me something' } as never,
+					{ role: 'assistant', type: 'text', text: 'Done' } as never,
+				];
+				workflowsStore.workflow.nodes = [{ name: 'Node1' }] as never;
+				await nextTick();
+				expect(builderStore.builderMode).toBe('build');
+
+				// Simulate what happens during restore: chat messages are truncated to []
+				// and nodes are cleared. The watcher would normally switch to plan mode.
+				builderStore.chatMessages = [];
+				workflowsStore.workflow.nodes = [];
+				await nextTick();
+
+				// The watcher fires and sets plan mode
+				expect(builderStore.builderMode).toBe('plan');
+
+				// Simulate the nextTick override that onRestoreConfirm performs
+				builderStore.builderMode = 'build';
+				await nextTick();
+
+				// Should stay in build mode — the override sticks
+				expect(builderStore.builderMode).toBe('build');
+			});
 		});
 
 		describe('fetchExistingVersionIds and message enrichment', () => {
 			it('should enrich messages with revertVersion when versions exist', async () => {
 				const builderStore = useBuilderStore();
+
+				// Mark workflow as saved to allow loadSessions
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
 
 				// Import the mocked module
 				const workflowHistoryModule = await import('@n8n/rest-api-client/api/workflowHistory');
@@ -2657,6 +2339,9 @@ describe('AI Builder store', () => {
 			it('should handle empty version IDs array', async () => {
 				const builderStore = useBuilderStore();
 
+				// Mark workflow as saved to allow loadSessions
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
+
 				mockGetAiSessions.mockResolvedValueOnce({
 					sessions: [
 						{
@@ -2681,6 +2366,9 @@ describe('AI Builder store', () => {
 
 			it('should handle API errors gracefully when checking versions', async () => {
 				const builderStore = useBuilderStore();
+
+				// Mark workflow as saved to allow loadSessions
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
 
 				// Import the mocked module
 				const workflowHistoryModule = await import('@n8n/rest-api-client/api/workflowHistory');
@@ -2712,6 +2400,51 @@ describe('AI Builder store', () => {
 
 				// Should still load messages but without revertVersion (error is caught)
 				expect(builderStore.chatMessages).toHaveLength(1);
+			});
+
+			it('should restore lastUserMessageId from loaded session', async () => {
+				const builderStore = useBuilderStore();
+
+				// Mark workflow as saved to allow loadSessions
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
+
+				// Mock API to return messages with a user message
+				mockGetAiSessions.mockResolvedValueOnce({
+					sessions: [
+						{
+							sessionId: 'session-1',
+							lastUpdated: '2024-01-01T00:00:00Z',
+							messages: [
+								{
+									type: 'message',
+									role: 'user',
+									text: 'First user message',
+									id: 'user-msg-1',
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'message',
+									role: 'assistant',
+									text: 'Assistant response',
+									id: 'assistant-msg-1',
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'message',
+									role: 'user',
+									text: 'Second user message',
+									id: 'user-msg-2',
+								} as unknown as ChatRequest.MessageResponse,
+							],
+						},
+					],
+				});
+
+				await builderStore.loadSessions();
+
+				// Should have 3 messages
+				expect(builderStore.chatMessages).toHaveLength(3);
+
+				// lastUserMessageId should be set to the last user message ID
+				expect(builderStore.lastUserMessageId).toBe('user-msg-2');
 			});
 		});
 
@@ -2829,6 +2562,717 @@ describe('AI Builder store', () => {
 			builderStore.clearDoneIndicatorTitle();
 
 			expect(setDocumentTitleMock).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('revertVersion on user messages', () => {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		let capturedOnMessageCallback: ((data: any) => void) | null = null;
+		let capturedDoneCallback: (() => void) | null = null;
+
+		beforeEach(() => {
+			capturedOnMessageCallback = null;
+			capturedDoneCallback = null;
+
+			apiSpy.mockImplementation((_context, _options, onMessage, onDone) => {
+				capturedOnMessageCallback = onMessage;
+				capturedDoneCallback = onDone;
+			});
+		});
+
+		it('should not show revertVersion on user message during streaming', async () => {
+			const builderStore = useBuilderStore();
+			workflowsStore.workflowId = 'test-workflow-123';
+			workflowsStore.isNewWorkflow = false;
+			workflowsStore.workflowVersionId = 'version-1';
+
+			await builderStore.sendChatMessage({ text: 'Build a workflow' });
+
+			// While streaming, user message should NOT have revertVersion
+			const userMessage = builderStore.chatMessages[0] as ChatUI.TextMessage;
+			expect(userMessage.role).toBe('user');
+			expect(userMessage.revertVersion).toBeUndefined();
+		});
+
+		it('should add revertVersion to user message after streaming when workflow was modified', async () => {
+			const builderStore = useBuilderStore();
+			workflowsStore.workflowId = 'test-workflow-123';
+			workflowsStore.isNewWorkflow = false;
+			workflowsStore.workflowVersionId = 'version-1';
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setUpdatedAt('2024-01-01T00:00:00Z');
+
+			await builderStore.sendChatMessage({ text: 'Build a workflow' });
+
+			// Simulate a workflow-updated message
+			if (capturedOnMessageCallback) {
+				capturedOnMessageCallback({
+					messages: [
+						{
+							type: 'workflow-updated',
+							role: 'assistant',
+							codeSnippet: '{"nodes":[],"connections":{}}',
+						},
+					],
+					sessionId: 'test-session',
+				});
+			}
+
+			// Complete streaming
+			if (capturedDoneCallback) {
+				capturedDoneCallback();
+			}
+
+			await vi.waitFor(() => expect(builderStore.streaming).toBe(false));
+
+			// User message should now have revertVersion
+			const userMessage = builderStore.chatMessages[0] as ChatUI.TextMessage;
+			expect(userMessage.role).toBe('user');
+			expect(userMessage.revertVersion).toEqual({
+				id: 'version-1',
+				createdAt: '2024-01-01T00:00:00Z',
+			});
+		});
+
+		it('should not add revertVersion to user message after streaming when workflow was not modified', async () => {
+			const builderStore = useBuilderStore();
+			workflowsStore.workflowId = 'test-workflow-123';
+			workflowsStore.isNewWorkflow = false;
+			workflowsStore.workflowVersionId = 'version-1';
+
+			await builderStore.sendChatMessage({ text: 'What can you help me with?' });
+
+			// Simulate a text response without workflow-updated
+			if (capturedOnMessageCallback) {
+				capturedOnMessageCallback({
+					messages: [
+						{
+							type: 'message',
+							role: 'assistant',
+							text: 'Here is a plan for your workflow.',
+						},
+					],
+					sessionId: 'test-session',
+				});
+			}
+
+			// Complete streaming
+			if (capturedDoneCallback) {
+				capturedDoneCallback();
+			}
+
+			await vi.waitFor(() => expect(builderStore.streaming).toBe(false));
+
+			// User message should NOT have revertVersion
+			const userMessage = builderStore.chatMessages[0] as ChatUI.TextMessage;
+			expect(userMessage.role).toBe('user');
+			expect(userMessage.revertVersion).toBeUndefined();
+		});
+	});
+
+	describe('Plan mode telemetry', () => {
+		function enablePlanMode() {
+			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experiment) =>
+				experiment === AI_BUILDER_PLAN_MODE_EXPERIMENT.name
+					? AI_BUILDER_PLAN_MODE_EXPERIMENT.variant
+					: undefined,
+			);
+		}
+
+		function addPlanMessageToChat(builderStore: ReturnType<typeof useBuilderStore>) {
+			builderStore.chatMessages.push({
+				role: 'assistant',
+				type: 'custom',
+				customType: 'plan',
+				data: {
+					plan: { summary: 'Test plan', trigger: 'Manual', steps: [] },
+				},
+			} as unknown as ChatUI.AssistantMessage);
+		}
+
+		describe('user_switched_builder_mode', () => {
+			it('tracks journey event when switching to plan mode', () => {
+				const builderStore = useBuilderStore();
+				enablePlanMode();
+
+				track.mockClear();
+				builderStore.setBuilderMode('plan');
+
+				expect(track).toHaveBeenCalledWith(
+					'Workflow builder journey',
+					expect.objectContaining({
+						event_type: 'user_switched_builder_mode',
+						event_properties: { mode: 'plan' },
+					}),
+				);
+			});
+
+			it('tracks journey event when switching to build mode', () => {
+				const builderStore = useBuilderStore();
+				enablePlanMode();
+				builderStore.setBuilderMode('plan');
+
+				track.mockClear();
+				builderStore.setBuilderMode('build');
+
+				expect(track).toHaveBeenCalledWith(
+					'Workflow builder journey',
+					expect.objectContaining({
+						event_type: 'user_switched_builder_mode',
+						event_properties: { mode: 'build' },
+					}),
+				);
+			});
+
+			it('does not track when plan mode is unavailable', () => {
+				const builderStore = useBuilderStore();
+				// Do NOT enable plan mode
+
+				track.mockClear();
+				builderStore.setBuilderMode('plan');
+
+				expect(track).not.toHaveBeenCalledWith(
+					'Workflow builder journey',
+					expect.objectContaining({
+						event_type: 'user_switched_builder_mode',
+					}),
+				);
+			});
+		});
+
+		describe('user_clicked_implement_plan', () => {
+			it('tracks journey event when user approves plan', async () => {
+				const builderStore = useBuilderStore();
+				enablePlanMode();
+				builderStore.setBuilderMode('plan');
+
+				// Set up interrupted state with a plan message
+				addPlanMessageToChat(builderStore);
+
+				apiSpy.mockImplementationOnce((_ctx, _payload, _onMessage, onDone) => {
+					onDone();
+				});
+
+				track.mockClear();
+				await builderStore.resumeWithPlanDecision({ action: 'approve' });
+
+				expect(track).toHaveBeenCalledWith(
+					'Workflow builder journey',
+					expect.objectContaining({
+						event_type: 'user_clicked_implement_plan',
+					}),
+				);
+			});
+		});
+
+		describe('mode in User submitted builder message', () => {
+			it('includes plan mode', async () => {
+				const builderStore = useBuilderStore();
+				enablePlanMode();
+				builderStore.setBuilderMode('plan');
+
+				apiSpy.mockImplementationOnce(() => {});
+				track.mockClear();
+				await builderStore.sendChatMessage({ text: 'plan something' });
+
+				expect(track).toHaveBeenCalledWith(
+					'User submitted builder message',
+					expect.objectContaining({ mode: 'plan' }),
+				);
+			});
+
+			it('includes build mode by default', async () => {
+				const builderStore = useBuilderStore();
+
+				apiSpy.mockImplementationOnce(() => {});
+				track.mockClear();
+				await builderStore.sendChatMessage({ text: 'build something' });
+
+				expect(track).toHaveBeenCalledWith(
+					'User submitted builder message',
+					expect.objectContaining({ mode: 'build' }),
+				);
+			});
+		});
+
+		describe('mode in End of response from builder', () => {
+			it('includes mode on abort', async () => {
+				const builderStore = useBuilderStore();
+
+				apiSpy.mockImplementationOnce(() => {});
+				await builderStore.sendChatMessage({ text: 'test' });
+
+				track.mockClear();
+				builderStore.abortStreaming();
+
+				expect(track).toHaveBeenCalledWith(
+					'End of response from builder',
+					expect.objectContaining({ mode: 'build' }),
+				);
+			});
+
+			it('includes plan mode on abort when in plan mode', async () => {
+				const builderStore = useBuilderStore();
+				enablePlanMode();
+				builderStore.setBuilderMode('plan');
+
+				apiSpy.mockImplementationOnce(() => {});
+				await builderStore.sendChatMessage({ text: 'test' });
+
+				track.mockClear();
+				builderStore.abortStreaming();
+
+				expect(track).toHaveBeenCalledWith(
+					'End of response from builder',
+					expect.objectContaining({ mode: 'plan' }),
+				);
+			});
+
+			it('includes plan_approved when plan was approved', async () => {
+				const builderStore = useBuilderStore();
+				enablePlanMode();
+				builderStore.setBuilderMode('plan');
+
+				// Set up interrupted state with a plan message
+				addPlanMessageToChat(builderStore);
+
+				apiSpy.mockImplementationOnce((_ctx, _payload, _onMessage, onDone) => {
+					onDone();
+				});
+
+				track.mockClear();
+				await builderStore.resumeWithPlanDecision({ action: 'approve' });
+				await vi.waitFor(() => expect(builderStore.streaming).toBe(false));
+
+				expect(track).toHaveBeenCalledWith(
+					'End of response from builder',
+					expect.objectContaining({ plan_approved: true }),
+				);
+			});
+		});
+	});
+
+	describe('Browser notifications', () => {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		let capturedOnMessageCallback: ((data: any) => void) | null = null;
+		let capturedDoneCallback: (() => void) | null = null;
+
+		beforeEach(() => {
+			mockShowNotification.mockClear();
+			mockShowNotification.mockReturnValue({
+				onclick: null,
+				close: vi.fn(),
+			});
+			capturedOnMessageCallback = null;
+			capturedDoneCallback = null;
+
+			// Mock chatWithBuilder to capture the onMessage and done callbacks
+			apiSpy.mockImplementation((_context, _options, onMessage, onDone) => {
+				capturedOnMessageCallback = onMessage;
+				capturedDoneCallback = onDone;
+			});
+		});
+
+		const triggerSuccessfulStreamingComplete = async () => {
+			const builderStore = useBuilderStore();
+			workflowsStore.workflowName = 'Test Workflow';
+			workflowsStore.workflowId = 'test-workflow-123';
+			workflowsStore.isNewWorkflow = false;
+			workflowsStore.workflowVersionId = 'version-1';
+
+			// Trigger sendChatMessage to start streaming and capture callbacks
+			await builderStore.sendChatMessage({ text: 'test message' });
+
+			// Simulate a workflow-updated message to indicate successful build
+			if (capturedOnMessageCallback) {
+				capturedOnMessageCallback({
+					messages: [
+						{
+							type: 'workflow-updated',
+							role: 'assistant',
+							codeSnippet: '{"nodes":[],"connections":{}}',
+						},
+					],
+					sessionId: 'test-session',
+				});
+			}
+
+			// Simulate successful completion by calling the done callback
+			if (capturedDoneCallback) {
+				capturedDoneCallback();
+			}
+		};
+
+		it('should show browser notification when streaming completes successfully and tab is hidden', async () => {
+			Object.defineProperty(document, 'hidden', { value: true, configurable: true });
+			mockIsNotificationsEnabled.value = true;
+
+			await triggerSuccessfulStreamingComplete();
+
+			expect(mockShowNotification).toHaveBeenCalledWith(
+				'aiAssistant.builder.notification.title',
+				expect.objectContaining({
+					body: 'aiAssistant.builder.notification.body',
+					icon: '/favicon.ico',
+					requireInteraction: false,
+				}),
+			);
+		});
+
+		it('should NOT show browser notification when build is aborted', () => {
+			Object.defineProperty(document, 'hidden', { value: true, configurable: true });
+			mockIsNotificationsEnabled.value = true;
+
+			const builderStore = useBuilderStore();
+			workflowsStore.workflowName = 'Test Workflow';
+
+			builderStore.streaming = true;
+			builderStore.abortStreaming();
+
+			expect(mockShowNotification).not.toHaveBeenCalled();
+		});
+
+		it('should NOT show browser notification when tab is visible', async () => {
+			Object.defineProperty(document, 'hidden', { value: false, configurable: true });
+			mockIsNotificationsEnabled.value = true;
+
+			await triggerSuccessfulStreamingComplete();
+
+			expect(mockShowNotification).not.toHaveBeenCalled();
+		});
+
+		it('should NOT show browser notification when notifications are not enabled', async () => {
+			Object.defineProperty(document, 'hidden', { value: true, configurable: true });
+			mockIsNotificationsEnabled.value = false;
+
+			await triggerSuccessfulStreamingComplete();
+
+			expect(mockShowNotification).not.toHaveBeenCalled();
+		});
+
+		it('should use workflow-specific tag to prevent duplicate notifications from the same workflow', async () => {
+			Object.defineProperty(document, 'hidden', { value: true, configurable: true });
+			mockIsNotificationsEnabled.value = true;
+
+			await triggerSuccessfulStreamingComplete();
+
+			expect(mockShowNotification).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					tag: 'workflow-build-test-workflow-123',
+				}),
+			);
+		});
+
+		it('should set onclick handler that focuses window when notification is created', async () => {
+			Object.defineProperty(document, 'hidden', { value: true, configurable: true });
+			mockIsNotificationsEnabled.value = true;
+
+			const mockNotification = {
+				onclick: null as ((ev: Event) => void) | null,
+				close: vi.fn(),
+			};
+			mockShowNotification.mockReturnValue(mockNotification);
+
+			const windowFocusSpy = vi.spyOn(window, 'focus').mockImplementation(() => {});
+
+			await triggerSuccessfulStreamingComplete();
+
+			// Verify onclick handler was set
+			expect(mockNotification.onclick).not.toBeNull();
+
+			// Simulate clicking the notification
+			if (mockNotification.onclick) {
+				mockNotification.onclick(new Event('click'));
+			}
+
+			expect(windowFocusSpy).toHaveBeenCalled();
+			expect(mockNotification.close).toHaveBeenCalled();
+
+			windowFocusSpy.mockRestore();
+		});
+	});
+
+	describe('focused nodes integration', () => {
+		it('should track focusedNodes.chatSent when confirmed nodes > 0', async () => {
+			const builderStore = useBuilderStore();
+
+			// Add focused nodes
+			const { useFocusedNodesStore } = await import('./focusedNodes.store');
+			const focusedNodesStore = useFocusedNodesStore();
+			workflowsStore.allNodes = [
+				{
+					id: 'test-node-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			] as unknown as typeof workflowsStore.allNodes;
+			focusedNodesStore.confirmNodes(['test-node-1'], 'context_menu');
+			track.mockReset();
+
+			apiSpy.mockImplementationOnce((_ctx, _payload, _onMessage, onDone) => {
+				onDone();
+			});
+
+			await builderStore.sendChatMessage({ text: 'fix this node' });
+
+			expect(track).toHaveBeenCalledWith(
+				'ai.focusedNodes.chatSent',
+				expect.objectContaining({
+					focused_count: 1,
+					has_deictic_ref: true,
+				}),
+			);
+		});
+
+		it('should detect deictic references in message text', async () => {
+			const builderStore = useBuilderStore();
+
+			const { useFocusedNodesStore } = await import('./focusedNodes.store');
+			const focusedNodesStore = useFocusedNodesStore();
+			workflowsStore.allNodes = [
+				{
+					id: 'test-node-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			] as unknown as typeof workflowsStore.allNodes;
+			focusedNodesStore.confirmNodes(['test-node-1'], 'context_menu');
+			track.mockReset();
+
+			apiSpy.mockImplementationOnce((_ctx, _payload, _onMessage, onDone) => {
+				onDone();
+			});
+
+			await builderStore.sendChatMessage({ text: 'these nodes need updating' });
+
+			expect(track).toHaveBeenCalledWith(
+				'ai.focusedNodes.chatSent',
+				expect.objectContaining({
+					has_deictic_ref: true,
+				}),
+			);
+		});
+
+		it('should not track focusedNodes.chatSent when no confirmed nodes', async () => {
+			const builderStore = useBuilderStore();
+			track.mockReset();
+
+			apiSpy.mockImplementationOnce((_ctx, _payload, _onMessage, onDone) => {
+				onDone();
+			});
+
+			await builderStore.sendChatMessage({ text: 'create a workflow' });
+
+			expect(track).not.toHaveBeenCalledWith('ai.focusedNodes.chatSent', expect.anything());
+		});
+
+		it('should set has_deictic_ref=false without deictic patterns', async () => {
+			const builderStore = useBuilderStore();
+
+			const { useFocusedNodesStore } = await import('./focusedNodes.store');
+			const focusedNodesStore = useFocusedNodesStore();
+			workflowsStore.allNodes = [
+				{
+					id: 'test-node-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			] as unknown as typeof workflowsStore.allNodes;
+			focusedNodesStore.confirmNodes(['test-node-1'], 'context_menu');
+			track.mockReset();
+
+			apiSpy.mockImplementationOnce((_ctx, _payload, _onMessage, onDone) => {
+				onDone();
+			});
+
+			await builderStore.sendChatMessage({ text: 'add error handling' });
+
+			expect(track).toHaveBeenCalledWith(
+				'ai.focusedNodes.chatSent',
+				expect.objectContaining({
+					has_deictic_ref: false,
+				}),
+			);
+		});
+
+		it('should include focused node names in user message', async () => {
+			const builderStore = useBuilderStore();
+
+			const { useFocusedNodesStore } = await import('./focusedNodes.store');
+			const focusedNodesStore = useFocusedNodesStore();
+			workflowsStore.allNodes = [
+				{
+					id: 'test-node-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			] as unknown as typeof workflowsStore.allNodes;
+			focusedNodesStore.confirmNodes(['test-node-1'], 'context_menu');
+
+			apiSpy.mockImplementationOnce((_ctx, _payload, _onMessage, onDone) => {
+				onDone();
+			});
+
+			await builderStore.sendChatMessage({ text: 'fix this' });
+
+			// Check that the user message in chatMessages includes focusedNodeNames
+			const userMessage = builderStore.chatMessages.find((m) => m.role === 'user');
+			expect(userMessage).toBeDefined();
+			expect((userMessage as Record<string, unknown>).focusedNodeNames).toEqual(['HTTP Request']);
+		});
+
+		it('should set isHelpStreaming when streaming response contains assistant tool message', async () => {
+			const builderStore = useBuilderStore();
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			let capturedOnMessage: ((data: any) => void) | null = null;
+			let capturedOnDone: (() => void) | null = null;
+
+			apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, onDone) => {
+				capturedOnMessage = onMessage;
+				capturedOnDone = onDone;
+			});
+
+			await builderStore.sendChatMessage({ text: 'what does this node do?' });
+
+			expect(builderStore.streaming).toBe(true);
+			expect(builderStore.isHelpStreaming).toBe(false);
+
+			// Simulate backend routing to the assistant (help path)
+			capturedOnMessage!({
+				messages: [
+					{
+						type: 'tool',
+						toolName: 'assistant',
+						toolCallId: 'assistant-123',
+						displayTitle: 'Asking assistant',
+						status: 'running',
+					},
+				],
+				sessionId: 'test-session',
+			});
+
+			expect(builderStore.isHelpStreaming).toBe(true);
+
+			// Complete streaming
+			capturedOnDone!();
+			expect(builderStore.streaming).toBe(false);
+			expect(builderStore.isHelpStreaming).toBe(false);
+		});
+
+		it('should NOT set isHelpStreaming for regular build tool messages', async () => {
+			const builderStore = useBuilderStore();
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			let capturedOnMessage: ((data: any) => void) | null = null;
+			let capturedOnDone: (() => void) | null = null;
+
+			apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, onDone) => {
+				capturedOnMessage = onMessage;
+				capturedOnDone = onDone;
+			});
+
+			await builderStore.sendChatMessage({ text: 'build a workflow' });
+
+			expect(builderStore.isHelpStreaming).toBe(false);
+
+			// Simulate a build tool message (not assistant)
+			capturedOnMessage!({
+				messages: [
+					{
+						type: 'tool',
+						toolName: 'generate_workflow',
+						toolCallId: 'tool-456',
+						displayTitle: 'Building workflow',
+						status: 'running',
+					},
+				],
+				sessionId: 'test-session',
+			});
+
+			expect(builderStore.isHelpStreaming).toBe(false);
+
+			capturedOnDone!();
+		});
+	});
+
+	describe('latestRevertVersion', () => {
+		it('returns null when chatMessages is empty', () => {
+			const builderStore = useBuilderStore();
+			expect(builderStore.latestRevertVersion).toBeNull();
+		});
+
+		it('returns null when no messages have revertVersion', () => {
+			const builderStore = useBuilderStore();
+			builderStore.$patch({
+				chatMessages: [
+					{ id: '1', type: 'text', role: 'user', content: 'hello', read: true },
+					{ id: '2', type: 'text', role: 'assistant', content: 'hi', read: true },
+				],
+			});
+			expect(builderStore.latestRevertVersion).toBeNull();
+		});
+
+		it('returns the revertVersion when only one message has it', () => {
+			const builderStore = useBuilderStore();
+			const revertVersion = { id: 'version-1', createdAt: '2024-01-01T00:00:00Z' };
+			builderStore.$patch({
+				chatMessages: [
+					{
+						id: '1',
+						type: 'text',
+						role: 'user',
+						content: 'build a workflow',
+						read: true,
+						revertVersion,
+					},
+					{ id: '2', type: 'text', role: 'assistant', content: 'done', read: true },
+				],
+			});
+			expect(builderStore.latestRevertVersion).toEqual(revertVersion);
+		});
+
+		it('returns the latest revertVersion when multiple messages have revertVersion', () => {
+			const builderStore = useBuilderStore();
+			const firstRevertVersion = { id: 'version-1', createdAt: '2024-01-01T00:00:00Z' };
+			const secondRevertVersion = { id: 'version-2', createdAt: '2024-01-02T00:00:00Z' };
+			builderStore.$patch({
+				chatMessages: [
+					{
+						id: '1',
+						type: 'text',
+						role: 'user',
+						content: 'build a workflow',
+						read: true,
+						revertVersion: firstRevertVersion,
+					},
+					{ id: '2', type: 'text', role: 'assistant', content: 'done', read: true },
+					{
+						id: '3',
+						type: 'text',
+						role: 'user',
+						content: 'modify it',
+						read: true,
+						revertVersion: secondRevertVersion,
+					},
+				],
+			});
+			expect(builderStore.latestRevertVersion).toEqual(secondRevertVersion);
 		});
 	});
 });

@@ -30,7 +30,7 @@ import {
 	schemaTypeField,
 } from '@utils/descriptions';
 import { convertJsonSchemaToZod, generateSchemaFromExample } from '@utils/schemaParsing';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 import type { DynamicZodObject } from '../../../types/zod.types';
 
@@ -79,17 +79,10 @@ function getTool(
 	const runFunction = async (query: string | IDataObject): Promise<unknown> => {
 		if (language === 'javaScript') {
 			if (isJsRunnerEnabled) {
-				const sandbox = new JsTaskRunnerSandbox(
-					code,
-					'runOnceForAllItems',
-					workflowMode,
-					ctx,
-					undefined,
-					{
-						query,
-					},
-				);
-				return await sandbox.runCodeForTool();
+				const sandbox = new JsTaskRunnerSandbox(workflowMode, ctx, /*chunkSize=*/ undefined, {
+					query,
+				});
+				return await sandbox.runCodeForTool(code);
 			} else {
 				const context = getSandboxContext.call(ctx, itemIndex);
 				context.query = query;

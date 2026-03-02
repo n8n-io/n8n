@@ -5,7 +5,11 @@ import { ChatHubSettingsPage } from '../../../pages/ChatHubSettingsPage';
 
 test.use(chatHubTestConfig);
 
-test.describe('Settings @capability:proxy', () => {
+test.describe('Settings @capability:proxy', {
+	annotation: [
+		{ type: 'owner', description: 'Chat' },
+	],
+}, () => {
 	test('set global credentials for a provider', async ({ n8n, anthropicCredential }) => {
 		const page = new ChatHubSettingsPage(n8n.page);
 
@@ -35,6 +39,7 @@ test.describe('Settings @capability:proxy', () => {
 		const chatPage = new ChatHubChatPage(memberN8n.page);
 
 		await memberN8n.navigate.toChatHub();
+		await chatPage.dismissWelcomeScreen();
 
 		await expect(chatPage.getSelectedCredentialName()).toHaveText(anthropicCredential.name);
 
@@ -74,7 +79,7 @@ test.describe('Settings @capability:proxy', () => {
 
 		// Anthropic: save settings
 		await page.providerModal.getConfirmButton().click();
-		await expect(page.providerModal.getRoot()).not.toBeVisible();
+		await expect(page.providerModal.getRoot()).toBeHidden();
 
 		// Open OpenAI settings
 		await page.getProviderActionToggle('OpenAI').click();
@@ -84,7 +89,7 @@ test.describe('Settings @capability:proxy', () => {
 		await expect(page.providerModal.getEnabledToggle()).toBeChecked();
 		await page.providerModal.getEnabledToggle().click();
 		await page.providerModal.getConfirmButton().click();
-		await expect(page.providerModal.getRoot()).not.toBeVisible();
+		await expect(page.providerModal.getRoot()).toBeHidden();
 
 		await n8n.page.close();
 
@@ -101,10 +106,11 @@ test.describe('Settings @capability:proxy', () => {
 		});
 
 		await memberN8n.navigate.toChatHub();
+		await chatPage.dismissWelcomeScreen();
 
 		await chatPage.getModelSelectorButton().click();
 		await expect(chatPage.getVisiblePopoverMenuItem('Anthropic')).toBeVisible();
-		await expect(chatPage.getVisiblePopoverMenuItem('OpenAI')).not.toBeVisible();
+		await expect(chatPage.getVisiblePopoverMenuItem('OpenAI')).toBeHidden();
 		await chatPage.getVisiblePopoverMenuItem('Anthropic').hover({ force: true });
 
 		const anthropicModels = chatPage.getVisiblePopoverMenuItem(/^Claude/);

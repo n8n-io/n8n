@@ -181,6 +181,10 @@ export class Telemetry {
 				executionTrackDataKey.count++;
 			}
 
+			if (properties.used_dynamic_credentials) {
+				this.track('Workflow execution with dynamic credentials', properties);
+			}
+
 			if (
 				!properties.success &&
 				properties.is_manual &&
@@ -248,19 +252,6 @@ export class Telemetry {
 		const maxPayloadSize = 32 << 10; // 32 KB
 
 		if (payloadSize > maxPayloadSize) {
-			this.errorReporter.warn(
-				new Error(
-					`Telemetry event "${eventName}" payload size (${payloadSize} bytes) exceeds limit (${maxPayloadSize} bytes). Skipping event.`,
-				),
-				{
-					extra: {
-						eventName,
-						payloadSize,
-						maxPayloadSize,
-						userId: payload.userId,
-					},
-				},
-			);
 			return;
 		}
 

@@ -128,7 +128,7 @@ describe('Console Lifecycle', () => {
 			lifecycle.onStart(config);
 			mockConsole.log.mockClear();
 
-			lifecycle.onEnd({
+			await lifecycle.onEnd({
 				totalExamples: 0,
 				passed: 0,
 				failed: 0,
@@ -276,14 +276,14 @@ describe('Console Lifecycle', () => {
 				feedback: [
 					{
 						evaluator: 'pairwise',
-						metric: 'pairwise_generation_correctness',
-						score: 0.5,
-						comment: '1/2 generations passed',
+						metric: 'pairwise_primary',
+						score: 0,
+						comment: '1/3 judges passed',
 						kind: 'score',
 					},
 					{
 						evaluator: 'pairwise',
-						metric: 'gen2.judge2',
+						metric: 'judge2',
 						score: 0,
 						comment: '[No HTTP] Contains HTTP Request node',
 						kind: 'detail',
@@ -297,7 +297,7 @@ describe('Console Lifecycle', () => {
 			expect(mockConsole.log).toHaveBeenCalled();
 			const logOutput = mockConsole.log.mock.calls.flat().join(' ');
 			expect(logOutput).toContain('issues');
-			expect(logOutput).toContain('gen2.judge2');
+			expect(logOutput).toContain('judge2');
 			expect(logOutput).toContain('Contains HTTP Request node');
 		});
 
@@ -538,7 +538,7 @@ describe('Console Lifecycle', () => {
 				totalDurationMs: 30000,
 			};
 
-			lifecycle.onEnd(summary);
+			await lifecycle.onEnd(summary);
 
 			expect(mockConsole.log).toHaveBeenCalled();
 			const logOutput = mockConsole.log.mock.calls.flat().join(' ');
@@ -601,7 +601,7 @@ describe('Console Lifecycle', () => {
 
 			lifecycle.onStart(config);
 			lifecycle.onExampleStart(1, 1, 'Test');
-			lifecycle.onEnd({
+			await lifecycle.onEnd({
 				totalExamples: 1,
 				passed: 1,
 				failed: 0,
@@ -809,10 +809,44 @@ describe('Console Lifecycle', () => {
 				averageScore: 0.85,
 				totalDurationMs: 5000,
 			};
-			merged.onEnd(summary);
+			await merged.onEnd(summary);
 
 			expect(hook1).toHaveBeenCalledWith(summary);
 			expect(hook2).toHaveBeenCalledWith(summary);
+		});
+
+		it('should properly await async onEnd hooks in mergeLifecycles', async () => {
+			const { mergeLifecycles } = await import('../harness/lifecycle');
+
+			const callOrder: string[] = [];
+
+			const asyncHook = jest.fn(async () => {
+				await new Promise((resolve) => setTimeout(resolve, 50));
+				callOrder.push('async');
+			});
+			const syncHook = jest.fn(() => {
+				callOrder.push('sync');
+			});
+
+			const lifecycle1: Partial<EvaluationLifecycle> = { onEnd: asyncHook };
+			const lifecycle2: Partial<EvaluationLifecycle> = { onEnd: syncHook };
+
+			const merged = mergeLifecycles(lifecycle1, lifecycle2);
+			const summary: RunSummary = {
+				totalExamples: 1,
+				passed: 1,
+				failed: 0,
+				errors: 0,
+				averageScore: 1,
+				totalDurationMs: 100,
+			};
+
+			await merged.onEnd(summary);
+
+			expect(asyncHook).toHaveBeenCalledWith(summary);
+			expect(syncHook).toHaveBeenCalledWith(summary);
+			// Async hook should complete before sync hook starts (sequential await)
+			expect(callOrder).toEqual(['async', 'sync']);
 		});
 	});
 });
