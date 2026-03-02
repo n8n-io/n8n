@@ -220,6 +220,10 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		},
 	);
 
+	function openFocusPanelForWorkflow(wid: string) {
+		_setOptions({ isActive: true, wid });
+	}
+
 	return {
 		focusPanelActive,
 		focusedNodeParameters,
@@ -231,6 +235,7 @@ export const useFocusPanelStore = defineStore(STORES.FOCUS_PANEL, () => {
 		openWithFocusedNodeParameter,
 		isRichParameter,
 		openFocusPanel,
+		openFocusPanelForWorkflow,
 		closeFocusPanel,
 		toggleFocusPanel,
 		onNewWorkflowSave,

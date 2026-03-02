@@ -3153,6 +3153,12 @@ export function useCanvasOperations() {
 		);
 		workflowDocumentStore.addToMeta({ templateId: `${templateId}` });
 
+		if (useSetupPanelStore().isFeatureEnabled) {
+			const focusPanelStore = useFocusPanelStore();
+			focusPanelStore.openFocusPanel();
+			focusPanelStore.setSelectedTab('setup');
+		}
+
 		canvasStore.stopLoading();
 
 		void externalHooks.run('template.open', {
@@ -3202,6 +3208,12 @@ export function useCanvasOperations() {
 			createWorkflowDocumentId(workflowsStore.workflowId),
 		);
 		workflowDocumentStore.addToMeta({ templateId: `${templateId}` });
+
+		if (useSetupPanelStore().isFeatureEnabled) {
+			const focusPanelStore = useFocusPanelStore();
+			focusPanelStore.openFocusPanel();
+			focusPanelStore.setSelectedTab('setup');
+		}
 
 		canvasStore.stopLoading();
 

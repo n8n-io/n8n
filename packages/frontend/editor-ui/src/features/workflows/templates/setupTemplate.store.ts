@@ -15,6 +15,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useCredentialSetupState } from './composables/useCredentialSetupState';
 import { tryToParseNumber } from '@/app/utils/typesUtils';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
+import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 
 export type NodeAndType = {
 	node: INodeUi;
@@ -210,6 +211,13 @@ export const useSetupTemplateStore = defineStore('setupTemplate', () => {
 				workflow_id: createdWorkflow.id,
 				wf_template_repo_session_id: templatesStore.currentSessionId,
 			});
+
+			const setupPanelStore = useSetupPanelStore();
+			if (setupPanelStore.isFeatureEnabled) {
+				const focusPanelStore = useFocusPanelStore();
+				focusPanelStore.openFocusPanelForWorkflow(createdWorkflow.id);
+				focusPanelStore.setSelectedTab('setup');
+			}
 
 			// Replace the URL so back button doesn't come back to this setup view
 			await router.replace({
