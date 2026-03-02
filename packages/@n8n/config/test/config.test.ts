@@ -435,7 +435,6 @@ describe('GlobalConfig', () => {
 			prefix: 'n8n',
 		},
 		externalFrontendHooksUrls: '',
-		// @ts-expect-error structuredClone ignores properties defined as a getter
 		ai: {
 			enabled: false,
 			persistBuilderSessions: false,
