@@ -140,6 +140,8 @@ const scopes = SCOPES;
 
 function toggleScope(scope: string) {
 	const index = form.value.scopes.indexOf(scope);
+	const isBeingAdded = index === -1;
+
 	if (index !== -1) {
 		form.value.scopes.splice(index, 1);
 	} else {
@@ -155,8 +157,17 @@ function toggleScope(scope: string) {
 		toggleScope(scope.replace(':read', ':list'));
 	}
 
-	if (scope === 'workflow:update') {
-		toggleScope('workflow:execute');
+	// Dependency: workflow:execute requires workflow:read
+	if (scope === 'workflow:execute' && isBeingAdded) {
+		if (!form.value.scopes.includes('workflow:read')) {
+			toggleScope('workflow:read');
+		}
+	}
+
+	if (scope === 'workflow:read' && !isBeingAdded) {
+		if (form.value.scopes.includes('workflow:execute')) {
+			toggleScope('workflow:execute');
+		}
 	}
 }
 
