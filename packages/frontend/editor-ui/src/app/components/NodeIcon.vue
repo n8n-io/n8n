@@ -5,7 +5,7 @@ import type { VersionNode } from '@n8n/rest-api-client/api/versions';
 import type { INode } from 'n8n-workflow';
 import { computed } from 'vue';
 
-import { N8nNodeIcon, isNodeIconV2 } from '@n8n/design-system';
+import { N8nNodeIcon, isNodeIcon } from '@n8n/design-system';
 type Props = {
 	size?: number;
 	disabled?: boolean;
@@ -75,7 +75,7 @@ const nodeTypeName = computed(() =>
  * - Node picker/NDV header: 24px (vs 20px)
  */
 const isV2Icon = computed(() => {
-	return iconSource.value?.type === 'icon' && isNodeIconV2(iconSource.value.name);
+	return iconSource.value?.type === 'icon' && isNodeIcon(iconSource.value.name);
 });
 
 const adjustedSize = computed(() => {
