@@ -12,7 +12,7 @@ import {
 	isTriggerLikeNode,
 	toExecutionContextEstablishmentHookParameter,
 } from 'n8n-workflow';
-import type { INode, INodes, IConnections, INodeType } from 'n8n-workflow';
+import type { INode, INodes, IConnections, INodeType, IWorkflowSettings } from 'n8n-workflow';
 
 import { STARTING_NODES } from '@/constants';
 import type { NodeTypes } from '@/node-types';
@@ -191,14 +191,16 @@ export class WorkflowValidationService {
 	}
 
 	/**
-	 * Validates that workflows using dynamic (resolvable) credentials have at least
-	 * one trigger node with context establishment hooks configured.
+	 * Validates that workflows using dynamic (resolvable) credentials have:
+	 * 1. A resolver configured on each dynamic credential.
+	 * 2. At least one trigger node with context establishment hooks configured.
 	 * These hooks extract identity from trigger data (e.g., bearer tokens from HTTP headers)
 	 * and are required for dynamic credential resolution.
 	 */
 	async validateDynamicCredentials(
 		nodes: INode[],
 		nodeTypes: NodeTypes,
+		workflowSettings?: IWorkflowSettings,
 	): Promise<WorkflowValidationResult> {
 		const credentialIds = new Set<string>();
 		for (const node of nodes) {
@@ -217,11 +219,22 @@ export class WorkflowValidationService {
 
 		const resolvableCredentials = await this.credentialsRepository.find({
 			where: { id: In([...credentialIds]), isResolvable: true },
-			select: ['id', 'name'],
+			select: ['id', 'name', 'resolverId'],
 		});
 
 		if (resolvableCredentials.length === 0) {
 			return { isValid: true };
+		}
+
+		// A credential is covered if it has its own resolver OR the workflow has a defined resolver
+		const workflowResolverId = workflowSettings?.credentialResolverId;
+		const credentialsWithoutResolver = resolvableCredentials.filter((c) => !c.resolverId);
+		if (!workflowResolverId && credentialsWithoutResolver.length > 0) {
+			const credNames = credentialsWithoutResolver.map((c) => `"${c.name}"`).join(', ');
+			return {
+				isValid: false,
+				error: `Cannot publish workflow: dynamic credentials (${credNames}) require a resolver to be configured.`,
+			};
 		}
 
 		const hasExtractorHook = nodes.some((node) => {
@@ -240,7 +253,7 @@ export class WorkflowValidationService {
 			const credNames = resolvableCredentials.map((c) => `"${c.name}"`).join(', ');
 			return {
 				isValid: false,
-				error: `Cannot publish workflow: dynamic credentials (${credNames}) require a trigger with context establishment hooks configured to establish user identity. Please configure an extractor hook on the trigger node.`,
+				error: `Cannot publish workflow: dynamic credentials (${credNames}) require a trigger with an identity extractor configured. Please configure an identity extractor on the trigger node.`,
 			};
 		}
 

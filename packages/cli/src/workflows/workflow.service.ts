@@ -661,7 +661,7 @@ export class WorkflowService {
 		await this._detectWebhookConflicts(workflow, versionToActivate);
 
 		this._validateNodes(workflowId, versionToActivate.nodes, versionToActivate.connections);
-		await this._validateDynamicCredentials(workflowId, versionToActivate.nodes);
+		await this._validateDynamicCredentials(workflowId, versionToActivate.nodes, workflow.settings);
 		await this._validateSubWorkflowReferences(workflowId, versionToActivate.nodes);
 
 		if (previousActiveVersionId) {
@@ -1057,10 +1057,15 @@ export class WorkflowService {
 		}
 	}
 
-	private async _validateDynamicCredentials(workflowId: string, nodes: INode[]) {
+	private async _validateDynamicCredentials(
+		workflowId: string,
+		nodes: INode[],
+		workflowSettings?: IWorkflowSettings,
+	) {
 		const validation = await this.workflowValidationService.validateDynamicCredentials(
 			nodes,
 			this.nodeTypes,
+			workflowSettings,
 		);
 
 		if (!validation.isValid) {
