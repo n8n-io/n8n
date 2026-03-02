@@ -1495,6 +1495,7 @@ describe('useWorkflowsStore', () => {
 			expect(workflowsStore.workflow.versionId).toBe('v1');
 			expect(workflowDocumentStore.settings).toEqual({
 				executionOrder: 'v1',
+				binaryMode: 'separate',
 				timezone: 'UTC',
 				executionTimeout: 10,
 			});

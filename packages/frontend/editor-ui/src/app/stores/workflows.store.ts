@@ -49,7 +49,6 @@ import {
 	SEND_AND_WAIT_OPERATION,
 	Workflow,
 	TelemetryHelpers,
-	BINARY_MODE_SEPARATE,
 } from 'n8n-workflow';
 import * as workflowUtils from 'n8n-workflow/common';
 
@@ -93,6 +92,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { DEFAULT_SETTINGS } from '@/app/stores/workflowDocument/useWorkflowDocumentSettings';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -104,10 +104,7 @@ const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['s
 	updatedAt: -1,
 	connections: {},
 	nodes: [],
-	settings: {
-		executionOrder: 'v1',
-		binaryMode: BINARY_MODE_SEPARATE,
-	},
+	settings: { ...DEFAULT_SETTINGS },
 	tags: [],
 	pinData: {},
 	versionId: '',
@@ -582,7 +579,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			connections: copyData ? deepCopy(connections) : connections,
 			active: false,
 			nodeTypes,
-			settings: workflowDocumentStore?.settings ?? { ...defaults.settings },
+			settings: workflowDocumentStore?.settings ?? { ...DEFAULT_SETTINGS },
 			pinData: workflowDocumentStore?.getPinDataSnapshot() ?? {},
 		});
 	}
@@ -829,14 +826,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			...(!value.hasOwnProperty('connections') ? { connections: {} } : {}),
 			...(!value.hasOwnProperty('id') ? { id: '' } : {}),
 			...(!value.hasOwnProperty('nodes') ? { nodes: [] } : {}),
-			...(!value.hasOwnProperty('settings') ? { settings: { ...defaults.settings } } : {}),
+			...(!value.hasOwnProperty('settings') ? { settings: { ...DEFAULT_SETTINGS } } : {}),
 		};
 
 		// Sync settings to the document store so createWorkflowObject reads correct settings
 		const wfId = workflow.value.id;
 		if (wfId) {
 			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(wfId));
-			workflowDocumentStore.setSettings(workflow.value.settings ?? { ...defaults.settings });
+			workflowDocumentStore.setSettings(workflow.value.settings ?? {});
 		}
 
 		workflowObject.value = createWorkflowObject(
@@ -1455,7 +1452,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		// Update local store state to reflect the change
 		if (isCurrentWorkflow && workflowDocumentStore) {
-			workflowDocumentStore.setSettings(updated.settings ?? { ...defaults.settings });
+			workflowDocumentStore.setSettings(updated.settings ?? {});
 		} else if (workflowsListStore.getWorkflowById(id)) {
 			workflowsListStore.updateWorkflowInCache(id, {
 				settings: updated.settings,

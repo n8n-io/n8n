@@ -18,6 +18,7 @@ import { getPairedItemsMapping } from '@/app/utils/pairedItemUtils';
 import {
 	type INodeIssueData,
 	type INodeIssueObjectProperty,
+	type IWorkflowSettings,
 	NodeHelpers,
 	type IDataObject,
 	type INodeParameters,
@@ -28,6 +29,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { isEmpty } from '@/app/utils/typesUtils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { clearPopupWindowState } from '@/features/execution/executions/executions.utils';
+import { DEFAULT_SETTINGS } from '@/app/stores/workflowDocument/useWorkflowDocumentSettings';
 import { useDocumentTitle } from './useDocumentTitle';
 import { useWorkflowStateStore } from '@/app/stores/workflowState.store';
 import { isObject } from '@/app/utils/objectUtils';
@@ -137,9 +139,9 @@ export function useWorkflowState() {
 		projectId?: string,
 		parentFolderId?: string,
 	): Promise<INewWorkflowData> {
-		let workflowData = {
+		let workflowData: { name: string; settings: IWorkflowSettings } = {
 			name: '',
-			settings: { ...ws.defaults.settings },
+			settings: { ...DEFAULT_SETTINGS },
 		};
 		try {
 			const data: IDataObject = {
@@ -228,7 +230,7 @@ export function useWorkflowState() {
 		setWorkflowId('');
 		setWorkflowName({ newName: '', setStateDirty: false });
 		// Settings are managed by workflowDocumentStore; reset the runtime Workflow instance directly
-		ws.workflowObject.setSettings({ ...ws.defaults.settings });
+		ws.workflowObject.setSettings({ ...DEFAULT_SETTINGS });
 		// Note: Tags are now managed by workflowDocumentStore, which is disposed during reset
 
 		setActiveExecutionId(undefined);
