@@ -20,87 +20,44 @@ Microbenchmarks for measuring and tracking performance of critical code paths.
 ## Commands
 
 ```bash
-pnpm --filter=@n8n/performance bench          # Run benchmarks locally
+pnpm --filter=@n8n/performance bench          # Run benchmarks
 pnpm --filter=@n8n/performance bench:baseline  # Save baseline for local comparison
-pnpm --filter=@n8n/performance bench:ci        # Compare against local baseline (>10% = fail)
+pnpm --filter=@n8n/performance bench:compare   # Compare against baseline (>10% = fail)
 ```
 
 ## CI Regression Detection
 
-Benchmarks run automatically on PRs that touch `packages/testing/performance/**` or `packages/workflow/src/**`. Regression detection is handled by [CodSpeed](https://codspeed.io), which:
-
-- **Counts CPU instructions** (via valgrind simulation) instead of measuring wall-clock time
-- Produces **deterministic results** regardless of runner load or hardware
-- **Comments on PRs** with benchmark results and regression warnings
-- Tracks performance history on the [CodSpeed dashboard](https://codspeed.io)
+Benchmarks run automatically on PRs that touch `packages/testing/performance/**` or `packages/workflow/src/**`. [CodSpeed](https://codspeed.io) counts CPU instructions instead of wall-clock time, producing deterministic results regardless of runner load. It comments on PRs with results and regression warnings.
 
 You can also trigger benchmarks manually for any branch via **Actions > Test: Benchmarks > Run workflow**.
 
-### How It Works
-
-In CI, the `@codspeed/vitest-plugin` replaces vitest's benchmark runner. Instead of running thousands of iterations and measuring time, it runs each benchmark once under valgrind to count the exact number of CPU instructions executed. Same code = same instruction count, every time.
-
-This means CI catches subtle regressions (~1-2%) that wall-clock timing on shared runners would miss due to noise.
-
 ### Local vs CI
 
-| | Local (`bench`) | CI (CodSpeed) |
+| | Local (`bench`) | CI |
 |---|---|---|
 | **Measurement** | Wall-clock time (Hz, ms) | CPU instruction count |
-| **Iterations** | Thousands | One |
 | **Noise** | 15-30% variance | Near-zero variance |
 | **Best for** | Quick sanity checks, comparing approaches | Automated regression detection |
 
-Local benchmarks are useful for eyeballing performance during development but too noisy for automated regression gating. Use `bench:baseline` + `bench:ci` for local before/after comparisons on the same machine in the same session.
+Local benchmarks are useful for eyeballing performance during development. Use `bench:baseline` + `bench:compare` for before/after comparisons on the same machine in the same session.
 
 ## Adding a Benchmark
-
-### 1. Create a bench file
 
 ```typescript
 // benchmarks/my-feature/thing.bench.ts
 import { bench, describe } from 'vitest';
 
-describe('My Feature', () => {
-  bench('operation name', () => {
-    // Code to measure - runs thousands of times locally, once in CI
-    doTheThing();
-  });
-});
-```
-
-### 2. Add setup outside the bench function
-
-```typescript
 // Setup runs once, not measured
 const data = createTestData();
-const instance = new MyClass();
 
 describe('My Feature', () => {
-  bench('with small input', () => {
-    instance.process(data.small);
-  });
-
-  bench('with large input', () => {
-    instance.process(data.large);
+  bench('operation name', () => {
+    doTheThing(data);
   });
 });
 ```
 
-### 3. Add warmup if needed
-
-```typescript
-// Warmup ensures JIT compilation is done before measuring
-for (let i = 0; i < 1000; i++) {
-  instance.process(data.small);
-}
-
-describe('My Feature', () => {
-  // Now benchmarks measure hot path, not JIT compilation
-});
-```
-
-## Reading Local Results
+## Reading Results
 
 ```
 name                hz      min    max   mean    p99    rme   samples
