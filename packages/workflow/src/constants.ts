@@ -105,6 +105,10 @@ export const MCP_CLIENT_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpClientTool
 export const MCP_CLIENT_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpClient';
 export const VECTOR_STORE_PG_VECTOR_SCOPED_NODE_TYPE =
 	'@n8n/n8n-nodes-langchain.vectorStorePGVectorScoped';
+export const VECTOR_STORE_QDRANT_SCOPED_NODE_TYPE =
+	'@n8n/n8n-nodes-langchain.vectorStoreQdrantScoped';
+export const VECTOR_STORE_PINECONE_SCOPED_NODE_TYPE =
+	'@n8n/n8n-nodes-langchain.vectorStorePineconeScoped';
 export const DOCUMENT_DEFAULT_DATA_LOADER_NODE_TYPE =
 	'@n8n/n8n-nodes-langchain.documentDefaultDataLoader';
 

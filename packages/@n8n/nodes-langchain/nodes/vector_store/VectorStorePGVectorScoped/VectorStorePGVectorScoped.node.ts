@@ -21,6 +21,7 @@ import {
 	createPGVectorNodeArgs,
 	distanceStrategyField,
 } from '../shared/pgvector';
+import { getUserScopedSlot } from '../shared/userScoped';
 
 type VectorStorePGVectorScopedApiCredentials = PostgresNodeCredentials & {
 	tableNamePrefix: string;
@@ -88,13 +89,7 @@ async function deleteDocuments(
 	const credentials = await this.getCredentials<VectorStorePGVectorScopedApiCredentials>(
 		'vectorStorePGVectorScopedApi',
 	);
-	const userId = this.getUserId();
-	if (!userId) {
-		throw new NodeOperationError(this.getNode(), 'User ID is not available.');
-	}
-
-	const sanitizedUserId = userId.replace(/-/g, '_');
-	const tableName = `${credentials.tableNamePrefix}_${sanitizedUserId}`;
+	const tableName = getUserScopedSlot(this, credentials.tableNamePrefix);
 
 	const conditions: string[] = [];
 	const values: Array<string | string[]> = [];
@@ -188,16 +183,7 @@ export class VectorStorePGVectorScoped extends createVectorStoreNode(
 			const credentials = await context.getCredentials<VectorStorePGVectorScopedApiCredentials>(
 				'vectorStorePGVectorScopedApi',
 			);
-			const userId = context.getUserId();
-			if (!userId) {
-				throw new NodeOperationError(
-					context.getNode(),
-					'User ID is not available. This node requires an authenticated user session.',
-					{ itemIndex },
-				);
-			}
-			const sanitizedUserId = userId.replace(/-/g, '_');
-			const tableName = `${credentials.tableNamePrefix}_${sanitizedUserId}`;
+			const tableName = getUserScopedSlot(context, credentials.tableNamePrefix, itemIndex);
 			const pgConf = await configurePostgres.call(context, credentials);
 			return { pool: pgConf.db.$pool as unknown as pg.Pool, tableName };
 		},
