@@ -232,43 +232,48 @@ export class ChatHubAgentService {
 		agentId: string,
 		embeddingModel: ProviderAndCredentialId,
 		files: Array<{ attachment: IBinaryData; knowledgeId: string }>,
+		workflowId: string,
 	) {
 		if (files.length === 0) {
 			return;
 		}
 
-		const cred = await this.ensureVectorStoreCredential(user);
+		try {
+			const cred = await this.ensureVectorStoreCredential(user);
 
-		const { workflowData, executionData } = await this.chatAgentRepository.manager.transaction(
-			async (trx) => {
-				const project = await this.chatHubCredentialsService.findPersonalProject(user, trx);
+			const { workflowData, executionData } = await this.chatAgentRepository.manager.transaction(
+				async (trx) => {
+					const project = await this.chatHubCredentialsService.findPersonalProject(user, trx);
 
-				return await this.chatHubWorkflowService.createEmbeddingsInsertionWorkflow(
-					user,
-					project.id,
-					files,
-					{
-						agentId,
-						embeddingModel,
-						credentialId: cred.id,
-					},
-					trx,
-				);
-			},
-		);
+					return await this.chatHubWorkflowService.createEmbeddingsInsertionWorkflow(
+						user,
+						project.id,
+						files,
+						{
+							agentId,
+							embeddingModel,
+							credentialId: cred.id,
+						},
+						trx,
+						workflowId,
+					);
+				},
+			);
 
-		const execution = await this.workflowExecutionService.executeChatWorkflow(
-			user,
-			workflowData,
-			executionData,
-			undefined,
-			false,
-			'chat', // TODO: check which one to use
-		);
+			const execution = await this.workflowExecutionService.executeChatWorkflow(
+				user,
+				workflowData,
+				executionData,
+				undefined,
+				false,
+				'chat',
+			);
 
-		await this.chatHubExecutionService.waitForExecutionCompletion(execution.executionId);
-		await this.chatHubExecutionService.ensureWasSuccessfulOrThrow(execution.executionId);
-		//await this.chatHubWorkflowService.deleteWorkflow(workflowData.id);
+			await this.chatHubExecutionService.waitForExecutionCompletion(execution.executionId);
+			await this.chatHubExecutionService.ensureWasSuccessfulOrThrow(execution.executionId);
+		} finally {
+			await this.chatHubWorkflowService.deleteChatWorkflow(workflowId);
+		}
 	}
 
 	private async deleteEmbeddings(user: User, agentId: string): Promise<void> {
@@ -354,6 +359,7 @@ export class ChatHubAgentService {
 	): Promise<ChatHubAgentKnowledgeItem[]> {
 		const knowledgeItems: ChatHubAgentKnowledgeItem[] = [];
 		const pdfFilesToInsert: Array<{ attachment: IBinaryData; knowledgeId: string }> = [];
+		const workflowId = uuidv4();
 
 		for (const file of files) {
 			if (!embeddingModel) {
@@ -367,7 +373,7 @@ export class ChatHubAgentService {
 			const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
 
 			const storedFile = await this.chatHubAttachmentService.storeAgentAttachmentFromBuffer(
-				agentId,
+				workflowId,
 				file.buffer,
 				file.mimetype,
 				originalName,
@@ -386,10 +392,7 @@ export class ChatHubAgentService {
 		}
 
 		if (pdfFilesToInsert.length > 0) {
-			await this.insertEmbeddings(user, agentId, embeddingModel!, pdfFilesToInsert);
-			await this.chatHubAttachmentService.deleteAttachments(
-				pdfFilesToInsert.map((f) => f.attachment),
-			);
+			await this.insertEmbeddings(user, agentId, embeddingModel!, pdfFilesToInsert, workflowId);
 		}
 
 		return knowledgeItems;

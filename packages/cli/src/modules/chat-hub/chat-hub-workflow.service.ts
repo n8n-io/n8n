@@ -84,7 +84,9 @@ export class ChatHubWorkflowService {
 	}
 
 	async deleteChatWorkflow(workflowId: string): Promise<void> {
-		//await this.workflowRepository.delete(workflowId);
+		if (process.env.SKIP_CHAT_WORKFLOW_CLEANUP !== 'true') {
+			await this.workflowRepository.delete(workflowId);
+		}
 	}
 
 	async createChatWorkflow(
@@ -1218,6 +1220,7 @@ Respond the title only:`,
 		attachments: Array<{ attachment: IBinaryData; knowledgeId: string }>,
 		vectorStoreSearch: VectorStoreSearchOptions,
 		trx: EntityManager,
+		workflowId: string,
 	): Promise<{
 		workflowData: IWorkflowBase;
 		executionData: IRunExecutionData;
@@ -1360,6 +1363,7 @@ Respond the title only:`,
 			// from the user by default while they are being run.
 			newWorkflow.isArchived = true;
 
+			newWorkflow.id = workflowId;
 			newWorkflow.versionId = uuidv4();
 			newWorkflow.name = `Chat files insertion ${uuidv4()}`;
 			newWorkflow.active = false;

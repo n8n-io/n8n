@@ -73,7 +73,7 @@ export class ChatHubAttachmentService {
 				);
 			}
 
-			const stored = await this.processMessageAttachment(sessionId, messageId, attachment, buffer);
+			const stored = await this.processAttachment(sessionId, messageId, attachment, buffer);
 			storedAttachments.push(stored);
 		}
 
@@ -177,7 +177,7 @@ export class ChatHubAttachmentService {
 	}
 
 	async storeAgentAttachmentFromBuffer(
-		agentId: string,
+		workflowId: string,
 		buffer: Buffer,
 		mimeType: string,
 		fileName: string,
@@ -192,11 +192,7 @@ export class ChatHubAttachmentService {
 		};
 
 		return await this.binaryDataService.store(
-			FileLocation.ofCustom({
-				sourceType: 'chat_agent_attachment',
-				pathSegments: ['chat-hub', 'agents', agentId],
-				sourceId: agentId,
-			}), // TODO: should be bound to execution. Once documents are indexed, files need not be stored as binary data.
+			FileLocation.ofExecution(workflowId, 'temp'),
 			buffer,
 			binaryData,
 		);
@@ -217,7 +213,7 @@ export class ChatHubAttachmentService {
 	/**
 	 * Processes a single message attachment by populating metadata and storing it.
 	 */
-	private async processMessageAttachment(
+	private async processAttachment(
 		sessionId: ChatSessionId,
 		messageId: ChatMessageId,
 		attachment: ChatAttachment,
