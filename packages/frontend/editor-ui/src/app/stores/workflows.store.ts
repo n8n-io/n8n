@@ -763,6 +763,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				name: versionData.value?.name ?? null,
 				description: versionData.value?.description ?? null,
 			});
+
 			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
 			workflowDocumentStore.setChecksum(updatedWorkflow.checksum!);
 		}
@@ -834,8 +835,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		// Sync settings to the document store so createWorkflowObject reads correct settings
 		const wfId = workflow.value.id;
 		if (wfId) {
-			const docStore = useWorkflowDocumentStore(createWorkflowDocumentId(wfId));
-			docStore.setSettings(workflow.value.settings ?? { ...defaults.settings });
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(wfId));
+			workflowDocumentStore.setSettings(workflow.value.settings ?? { ...defaults.settings });
 		}
 
 		workflowObject.value = createWorkflowObject(
