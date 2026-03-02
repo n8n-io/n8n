@@ -830,6 +830,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			...(!value.hasOwnProperty('nodes') ? { nodes: [] } : {}),
 			...(!value.hasOwnProperty('settings') ? { settings: { ...defaults.settings } } : {}),
 		};
+
+		// Sync settings to the document store so createWorkflowObject reads correct settings
+		const wfId = workflow.value.id;
+		if (wfId) {
+			const docStore = useWorkflowDocumentStore(createWorkflowDocumentId(wfId));
+			docStore.setSettings(workflow.value.settings ?? { ...defaults.settings });
+		}
+
 		workflowObject.value = createWorkflowObject(
 			workflow.value.nodes,
 			workflow.value.connections,
