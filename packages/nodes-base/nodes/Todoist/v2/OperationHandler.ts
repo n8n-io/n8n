@@ -315,7 +315,9 @@ export class GetAllHandler implements OperationHandler {
 			assertParamIsNumber('limit', limit, ctx.getNode());
 		}
 
-		const data = await todoistApiGetAllRequest(ctx, '/tasks', qs, limit);
+		const nodeVersion = ctx.getNode().typeVersion;
+		const endpoint = qs.filter && nodeVersion >= 2.2 ? '/tasks/filter' : '/tasks';
+		const data = await todoistApiGetAllRequest(ctx, endpoint, qs, limit);
 
 		return { data };
 	}
