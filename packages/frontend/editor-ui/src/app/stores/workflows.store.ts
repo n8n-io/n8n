@@ -1455,7 +1455,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		// Update local store state to reflect the change
 		if (isCurrentWorkflow && workflowDocumentStore) {
-			workflowDocumentStore.setSettings(updated.settings ?? {});
+			workflowDocumentStore.setSettings(updated.settings ?? { ...defaults.settings });
 		} else if (workflowsListStore.getWorkflowById(id)) {
 			workflowsListStore.updateWorkflowInCache(id, {
 				settings: updated.settings,

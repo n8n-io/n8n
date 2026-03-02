@@ -1034,7 +1034,9 @@ export function useWorkflowHelpers() {
 			activeVersionId: workflowData.activeVersionId,
 			activeVersion: workflowData.activeVersion ?? null,
 		});
-		workflowDocumentStore.setSettings(workflowData.settings ?? {});
+		workflowDocumentStore.setSettings(
+			workflowData.settings ?? { ...workflowsStore.defaults.settings },
+		);
 		workflowDocumentStore.setPinData(workflowData.pinData ?? {});
 		workflowDocumentStore.setCreatedAt(workflowData.createdAt);
 		workflowDocumentStore.setUpdatedAt(workflowData.updatedAt);
