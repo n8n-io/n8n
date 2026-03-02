@@ -5,7 +5,6 @@ import { SETUP_CREDENTIALS_MODAL_KEY, TEMPLATE_SETUP_EXPERIENCE } from '@/app/co
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { doesNodeHaveAllCredentialsFilled } from '@/app/utils/nodes/nodeTransforms';
 
@@ -16,7 +15,6 @@ import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/ready
 import { useRoute } from 'vue-router';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 
-const workflowsStore = useWorkflowsStore();
 const readyToRunStore = useReadyToRunStore();
 const nodeTypesStore = useNodeTypesStore();
 const posthogStore = usePostHog();

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { computed, nextTick, shallowRef } from 'vue';
+import { nextTick, shallowRef } from 'vue';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useChatState } from './useChatState';
