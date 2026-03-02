@@ -24,7 +24,7 @@ before(async () => {
 	({ pullRequestIsDismissedRelease } = await import('./cleanup-release-branch.mjs'));
 });
 
-describe('determine-tracks', () => {
+describe('pullRequestIsDismissedRelease', () => {
 	it('Recognizes classic dismissed pull request', () => {
 		const pullRequest = {
 			merged: false,
