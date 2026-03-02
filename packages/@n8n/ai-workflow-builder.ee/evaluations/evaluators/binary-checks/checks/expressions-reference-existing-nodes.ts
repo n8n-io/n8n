@@ -9,7 +9,7 @@ import type { BinaryCheck, SimpleWorkflow } from '../types';
 const QUOTED_NODE_REFS: RegExp[] = [
 	/\$\(\s*(['"`])((?:\\.|(?!\1)[^\\])*)\1\s*\)/g, // $('Node Name')
 	/\$node\[\s*(['"])((?:\\.|(?!\1)[^\\])*)\1\s*\]/g, // $node["Node Name"]
-	/\$items\(\s*(['"])((?:\\.|(?!\1)[^\\])*)\1\s*\)/g, // $items("Node Name")
+	/\$items\(\s*(['"])((?:\\.|(?!\1)[^\\])*)\1\s*[,)]/g, // $items("Node Name") or $items("Node Name", 0)
 ];
 
 /** Legacy dot-notation: $node.NodeName.json... — name is a JS identifier after $node. */

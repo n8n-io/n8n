@@ -77,7 +77,7 @@ describe('has_nodes', () => {
 	it('fails when workflow has no nodes', async () => {
 		const result = await hasNodes.run(makeWorkflow({ nodes: [] }), makeCtx());
 		expect(result.pass).toBe(false);
-		expect(result.comment).toBeDefined();
+		expect(result.comment).toBe('Workflow has no nodes');
 	});
 });
 
@@ -665,6 +665,35 @@ describe('expressions_reference_existing_nodes', () => {
 		);
 		expect(result.pass).toBe(false);
 		expect(result.comment).toContain('Missing');
+	});
+
+	it('detects $items("Node", index) form with second argument', async () => {
+		const result = await expressionsReferenceExistingNodes.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [0, 0],
+						parameters: {
+							assignments: {
+								assignments: [
+									{
+										name: 'val',
+										value: '={{ $items("Gone", 0)[0].json.field }}',
+										type: 'string',
+									},
+								],
+							},
+						},
+					},
+				],
+			}),
+			makeCtx(),
+		);
+		expect(result.pass).toBe(false);
+		expect(result.comment).toContain('Gone');
 	});
 
 	it('detects legacy $node.Name dot-notation syntax', async () => {
