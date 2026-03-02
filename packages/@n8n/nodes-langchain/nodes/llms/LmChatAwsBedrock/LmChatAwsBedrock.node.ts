@@ -5,9 +5,10 @@ import {
 	getNodeProxyAgent,
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
+	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
 import {
 	NodeConnectionTypes,
 	type INodeType,

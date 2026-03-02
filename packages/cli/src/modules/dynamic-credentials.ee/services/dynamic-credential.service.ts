@@ -17,6 +17,7 @@ import { DynamicCredentialResolverRegistry } from './credential-resolver-registr
 import { ResolverConfigExpressionService } from './resolver-config-expression.service';
 import { extractSharedFields } from './shared-fields';
 import type {
+	CredentialResolutionResult,
 	CredentialResolveMetadata,
 	ICredentialResolutionProvider,
 } from '../../../credentials/credential-resolution-provider.interface';
@@ -58,14 +59,14 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		executionContext?: IExecutionContext,
 		workflowSettings?: IWorkflowSettings,
 		canUseExternalSecrets?: boolean,
-	): Promise<ICredentialDataDecryptedObject> {
+	): Promise<CredentialResolutionResult> {
 		// Determine which resolver ID to use: credential's own resolver or workflow's fallback
 		const resolverId =
 			credentialsResolveMetadata.resolverId ?? workflowSettings?.credentialResolverId;
 
 		// Not resolvable - return static credentials
 		if (!credentialsResolveMetadata.isResolvable) {
-			return staticData;
+			return { data: staticData, isDynamic: false };
 		}
 
 		if (!resolverId) {
@@ -138,7 +139,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			}
 
 			// Adds and override static data with dynamically resolved data
-			return { ...staticData, ...dynamicData };
+			return { data: { ...staticData, ...dynamicData }, isDynamic: true };
 		} catch (error) {
 			return this.handleResolutionError(credentialsResolveMetadata, staticData, error, resolverId);
 		}
@@ -172,7 +173,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		staticData: ICredentialDataDecryptedObject,
 		error: unknown,
 		resolverId: string,
-	): ICredentialDataDecryptedObject {
+	): CredentialResolutionResult {
 		const isDataNotFound = error instanceof CredentialResolverDataNotFoundError;
 
 		if (credentialsResolveMetadata.resolvableAllowFallback) {
@@ -184,7 +185,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 				error: error instanceof Error ? error.message : String(error),
 				isDataNotFound,
 			});
-			return staticData;
+			return { data: staticData, isDynamic: false };
 		}
 
 		this.logger.debug('Dynamic credential resolution failed without fallback', {
@@ -208,7 +209,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		credentialsResolveMetadata: CredentialResolveMetadata,
 		staticData: ICredentialDataDecryptedObject,
 		resolverId?: string,
-	): ICredentialDataDecryptedObject {
+	): CredentialResolutionResult {
 		if (credentialsResolveMetadata.resolvableAllowFallback) {
 			this.logger.debug('Resolver not found, falling back to static credentials', {
 				credentialId: credentialsResolveMetadata.id,
@@ -216,7 +217,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 				resolverId,
 				resolverSource: credentialsResolveMetadata.resolverId ? 'credential' : 'workflow',
 			});
-			return staticData;
+			return { data: staticData, isDynamic: false };
 		}
 
 		throw new CredentialResolutionError(
@@ -230,13 +231,13 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 	private handleMissingContext(
 		credentialsResolveMetadata: CredentialResolveMetadata,
 		staticData: ICredentialDataDecryptedObject,
-	): ICredentialDataDecryptedObject {
+	): CredentialResolutionResult {
 		if (credentialsResolveMetadata.resolvableAllowFallback) {
 			this.logger.debug('No execution context available, falling back to static credentials', {
 				credentialId: credentialsResolveMetadata.id,
 				credentialName: credentialsResolveMetadata.name,
 			});
-			return staticData;
+			return { data: staticData, isDynamic: false };
 		}
 
 		throw new CredentialResolutionError(

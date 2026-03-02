@@ -1509,6 +1509,9 @@ export class WorkflowExecute {
 						this.runExecutionData.executionData!.nodeExecutionStack.shift() as IExecuteData;
 					executionNode = executionData.node;
 
+					// Reset per-node dynamic credential flag before each node execution
+					this.additionalData.currentNodeUsedDynamicCredentials = false;
+
 					const taskStartedData: ITaskStartedData = {
 						startTime: Date.now(),
 						executionIndex: this.additionalData.currentNodeExecutionIndex++,
@@ -1825,6 +1828,8 @@ export class WorkflowExecute {
 						executionTime: Date.now() - taskStartedData.startTime,
 						metadata: executionData.metadata,
 						executionStatus: this.runExecutionData.waitTill ? 'waiting' : 'success',
+						usedDynamicCredentials:
+							this.additionalData.currentNodeUsedDynamicCredentials || undefined,
 					};
 
 					if (executionError !== undefined) {

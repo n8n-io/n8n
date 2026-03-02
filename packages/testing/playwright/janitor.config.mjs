@@ -78,6 +78,11 @@ export default defineConfig({
 		'no-direct-page-instantiation': { enabled: true, severity: 'error' },
 	},
 
+	orchestration: {
+		metricsPath: '../../../.github/test-metrics/playwright.json',
+		specFilter: 'tests/e2e/',
+	},
+
 	tcr: {
 		testCommand: 'pnpm test:local',
 		workerCount: 1,
