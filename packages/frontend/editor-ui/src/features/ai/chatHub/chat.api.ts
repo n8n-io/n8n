@@ -263,8 +263,12 @@ export const updateChatSettingsApi = async (
 export const updateVectorStoreCredentialApi = async (
 	context: IRestApiContext,
 	credentialId: string | null,
+	credentialType: string | null,
 ): Promise<void> => {
-	await makeRestApiRequest(context, 'PUT', '/chat/vector-store-credential', { credentialId });
+	await makeRestApiRequest(context, 'PUT', '/chat/vector-store-credential', {
+		credentialId,
+		credentialType,
+	});
 };
 
 export const updateEmbeddingCredentialApi = async (

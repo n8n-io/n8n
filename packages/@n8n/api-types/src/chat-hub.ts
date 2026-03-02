@@ -537,6 +537,7 @@ export class UpdateChatSettingsRequest extends Z.class({
 
 export class UpdateVectorStoreCredentialRequest extends Z.class({
 	credentialId: z.string().nullable(),
+	credentialType: z.string().nullable(),
 }) {}
 
 export class UpdateEmbeddingCredentialRequest extends Z.class({
@@ -547,7 +548,7 @@ export class UpdateEmbeddingCredentialRequest extends Z.class({
 export interface ChatHubModuleSettings {
 	enabled: boolean;
 	providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>;
-	vectorStoreCredential?: { type: string; id: string };
+	vectorStoreCredential?: { type: string; id: string | null };
 	embeddingCredential?: { type: string; id: string };
 }
 

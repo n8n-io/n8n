@@ -453,7 +453,7 @@ export class ChatHubService {
 					tz,
 					trx,
 					executionMetadata,
-					vectorStoreCredential?.id,
+					vectorStoreCredential ?? undefined,
 				);
 
 				return { workflow: replyWorkflow, previousMessage };
@@ -627,7 +627,7 @@ export class ChatHubService {
 						tz,
 						trx,
 						executionMetadata,
-						vectorStoreCredential?.id,
+						vectorStoreCredential ?? undefined,
 					);
 
 					return { workflow, combinedAttachments: attachments };
@@ -744,7 +744,7 @@ export class ChatHubService {
 					tz,
 					trx,
 					executionMetadata,
-					vectorStoreCredential?.id,
+					vectorStoreCredential ?? undefined,
 				);
 
 				return {
@@ -781,7 +781,7 @@ export class ChatHubService {
 		timeZone: string,
 		trx: EntityManager,
 		executionMetadata: ChatHubAuthenticationMetadata,
-		vectorStoreCredentialId?: string,
+		vectorStoreCredential?: { id: string; type: string },
 	) {
 		if (model.provider === 'n8n') {
 			return await this.chatHubWorkflowService.prepareWorkflowAgentWorkflow(
@@ -841,8 +841,13 @@ ${agent.systemPrompt
 					.filter(Boolean)
 					.join('\n\n'),
 				executionMetadata,
-				embeddingModel && vectorStoreCredentialId
-					? { agentId: agent.id, embeddingModel, credentialId: vectorStoreCredentialId }
+				embeddingModel && vectorStoreCredential?.id
+					? {
+							agentId: agent.id,
+							embeddingModel,
+							credentialId: vectorStoreCredential.id,
+							vectorStoreType: vectorStoreCredential.type,
+						}
 					: null,
 			);
 		}

@@ -11,13 +11,14 @@ import { PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { EntityManager, User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { readFile, unlink } from 'fs/promises';
 import { nanoid } from 'nanoid';
 import { v4 as uuidv4 } from 'uuid';
 
 import type { ChatHubAgent, IChatHubAgent } from './chat-hub-agent.entity';
 import { ChatHubAgentRepository } from './chat-hub-agent.repository';
 import { ChatHubCredentialsService } from './chat-hub-credentials.service';
-import { getModelMetadata } from './chat-hub.constants';
+import { getModelMetadata, VECTOR_STORE_NODE_TYPE_MAP } from './chat-hub.constants';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import { type IBinaryData } from 'n8n-workflow';
 import { ChatHubWorkflowService } from './chat-hub-workflow.service';
@@ -216,15 +217,15 @@ export class ChatHubAgentService {
 	}
 
 	async ensureVectorStoreCredential(_user: User) {
-		const credentialId = await this.chatHubSettingsService.getVectorStoreCredentialId();
+		const credential = await this.chatHubSettingsService.getVectorStoreCredential();
 
-		if (credentialId === null) {
+		if (!credential?.id) {
 			throw new BadRequestError(
-				'No PGVector credential configured. Please set up a vector store credential in the Chat Hub settings.',
+				'No vector store credential configured. Please set up a vector store credential in the Chat Hub settings.',
 			);
 		}
 
-		return { id: credentialId };
+		return { id: credential.id, type: credential.type };
 	}
 
 	private async insertEmbeddings(
@@ -253,6 +254,7 @@ export class ChatHubAgentService {
 							agentId,
 							embeddingModel,
 							credentialId: cred.id,
+							vectorStoreType: cred.type,
 						},
 						trx,
 						workflowId,
@@ -278,15 +280,17 @@ export class ChatHubAgentService {
 
 	private async deleteEmbeddings(user: User, agentId: string): Promise<void> {
 		const cred = await this.ensureVectorStoreCredential(user);
+		const nodeType =
+			VECTOR_STORE_NODE_TYPE_MAP[cred.type] ?? VECTOR_STORE_PG_VECTOR_SCOPED_NODE_TYPE;
 		const additionalData = await getBase({ userId: user.id });
 		await this.dynamicNodeParametersService.getActionResult(
 			'deleteDocuments',
 			'',
 			additionalData,
-			{ name: VECTOR_STORE_PG_VECTOR_SCOPED_NODE_TYPE, version: 1 },
+			{ name: nodeType, version: 1 },
 			{},
 			JSON.stringify({ filter: { agentId } }),
-			{ vectorStorePGVectorScopedApi: { id: cred.id, name: '' } },
+			{ [cred.type]: { id: cred.id, name: '' } },
 		);
 		this.logger.debug(`Deleted embeddings for agent ${agentId} from vector store`);
 	}
@@ -301,15 +305,17 @@ export class ChatHubAgentService {
 		}
 
 		const cred = await this.ensureVectorStoreCredential(user);
+		const nodeType =
+			VECTOR_STORE_NODE_TYPE_MAP[cred.type] ?? VECTOR_STORE_PG_VECTOR_SCOPED_NODE_TYPE;
 		const additionalData = await getBase({ userId: user.id });
 		await this.dynamicNodeParametersService.getActionResult(
 			'deleteDocuments',
 			'',
 			additionalData,
-			{ name: VECTOR_STORE_PG_VECTOR_SCOPED_NODE_TYPE, version: 1 },
+			{ name: nodeType, version: 1 },
 			{},
 			JSON.stringify({ filter: { agentId, fileKnowledgeId: knowledgeIds } }),
-			{ vectorStorePGVectorScopedApi: { id: cred.id, name: '' } },
+			{ [cred.type]: { id: cred.id, name: '' } },
 		);
 		this.logger.debug(
 			`Deleted embeddings for ${knowledgeIds.length} files from vector store (agentId: ${agentId}, knowledgeIds: ${knowledgeIds.join(', ')})`,
@@ -372,9 +378,15 @@ export class ChatHubAgentService {
 			// but browsers send it as UTF-8 bytes. Re-encode to get the correct string.
 			const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
 
+			// With disk storage file.buffer is undefined; read from the temp path instead.
+			const buffer = file.buffer ?? (await readFile(file.path));
+			if (file.path) {
+				await unlink(file.path).catch(() => {});
+			}
+
 			const storedFile = await this.chatHubAttachmentService.storeAgentAttachmentFromBuffer(
 				workflowId,
-				file.buffer,
+				buffer,
 				file.mimetype,
 				originalName,
 			);

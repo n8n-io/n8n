@@ -42,7 +42,11 @@ const isOwner = computed(() => usersStore.isInstanceOwner);
 const isAdmin = computed(() => usersStore.isAdmin);
 const disabled = computed(() => !isOwner.value && !isAdmin.value);
 
-const VECTOR_STORE_CREDENTIAL_TYPE = 'vectorStorePGVectorScopedApi';
+const VECTOR_STORE_PROVIDER_OPTIONS = [
+	{ label: 'PGVector', value: 'vectorStorePGVectorScopedApi' },
+	{ label: 'Pinecone', value: 'vectorStorePineconeScopedApi' },
+	{ label: 'Qdrant', value: 'vectorStoreQdrantScopedApi' },
+];
 
 const EMBEDDING_PROVIDER_OPTIONS = (
 	Object.entries(PROVIDER_CREDENTIAL_TYPE_MAP) as Array<[ChatHubLLMProvider, string]>
@@ -56,6 +60,11 @@ const EMBEDDING_PROVIDER_OPTIONS = (
 const { vectorStoreCredentialId, embeddingCredentialId, semanticSearchReadiness } =
 	storeToRefs(chatStore);
 
+const localVectorStoreType = ref<string>(
+	settingsStore.moduleSettings['chat-hub']?.vectorStoreCredential?.type ??
+		VECTOR_STORE_PROVIDER_OPTIONS[0].value,
+);
+
 const localEmbeddingType = ref<string | null>(
 	settingsStore.moduleSettings['chat-hub']?.embeddingCredential?.type ??
 		EMBEDDING_PROVIDER_OPTIONS[0]?.value ??
@@ -64,6 +73,13 @@ const localEmbeddingType = ref<string | null>(
 
 const localEmbeddingDisplayName = computed(
 	() => EMBEDDING_PROVIDER_OPTIONS.find((o) => o.value === localEmbeddingType.value)?.label ?? '',
+);
+
+watch(
+	() => settingsStore.moduleSettings['chat-hub']?.vectorStoreCredential?.type,
+	(newType) => {
+		localVectorStoreType.value = newType ?? VECTOR_STORE_PROVIDER_OPTIONS[0].value;
+	},
 );
 
 watch(
@@ -99,9 +115,40 @@ const embeddingTooltip = computed(() => {
 		: i18n.baseText('settings.chatHub.embeddingModel.notShared');
 });
 
+async function onVectorStoreTypeChange(credentialType: string) {
+	const currentType = settingsStore.moduleSettings['chat-hub']?.vectorStoreCredential?.type;
+	if (currentType && currentType !== credentialType) {
+		const confirmed = await message.confirm(
+			i18n.baseText('settings.chatHub.vectorStore.changeProvider.confirm.message'),
+			i18n.baseText('settings.chatHub.vectorStore.changeProvider.confirm.title'),
+			{
+				confirmButtonText: i18n.baseText(
+					'settings.chatHub.vectorStore.changeProvider.confirm.button',
+				),
+				cancelButtonText: i18n.baseText('generic.cancel'),
+				type: 'warning',
+			},
+		);
+		if (confirmed !== 'confirm') {
+			return;
+		}
+	}
+	localVectorStoreType.value = credentialType;
+	try {
+		await updateVectorStoreCredentialApi(rootStore.restApiContext, null, credentialType);
+		await settingsStore.getModuleSettings();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.chatHub.vectorStore.save.error'));
+	}
+}
+
 async function onVectorStoreCredentialSelected(credentialId: string | null) {
 	try {
-		await updateVectorStoreCredentialApi(rootStore.restApiContext, credentialId);
+		await updateVectorStoreCredentialApi(
+			rootStore.restApiContext,
+			credentialId,
+			localVectorStoreType.value,
+		);
 		await settingsStore.getModuleSettings();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.chatHub.vectorStore.save.error'));
@@ -250,12 +297,18 @@ onMounted(async () => {
 								{{ i18n.baseText('settings.chatHub.label.provider') }}
 							</N8nText>
 							<N8nSelect
-								model-value="vectorStorePGVectorScopedApi"
+								:model-value="localVectorStoreType"
 								size="small"
-								:disabled="true"
+								:disabled="disabled"
 								:class="$style.typeSelect"
+								@update:model-value="onVectorStoreTypeChange"
 							>
-								<N8nOption value="vectorStorePGVectorScopedApi" label="PGVector" />
+								<N8nOption
+									v-for="option in VECTOR_STORE_PROVIDER_OPTIONS"
+									:key="option.value"
+									:value="option.value"
+									:label="option.label"
+								/>
 							</N8nSelect>
 						</div>
 						<div :class="$style.labeledControl">
@@ -264,8 +317,11 @@ onMounted(async () => {
 							</N8nText>
 							<CredentialPicker
 								:class="$style.credentialPicker"
-								app-name="PGVector"
-								:credential-type="VECTOR_STORE_CREDENTIAL_TYPE"
+								:app-name="
+									VECTOR_STORE_PROVIDER_OPTIONS.find((o) => o.value === localVectorStoreType)
+										?.label ?? ''
+								"
+								:credential-type="localVectorStoreType"
 								:selected-credential-id="vectorStoreCredentialId"
 								create-button-variant="subtle"
 								@credential-selected="onVectorStoreCredentialSelected"

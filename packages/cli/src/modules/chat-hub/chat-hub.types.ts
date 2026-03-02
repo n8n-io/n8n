@@ -110,6 +110,7 @@ export interface VectorStoreSearchOptions {
 	agentId: string;
 	embeddingModel: ProviderAndCredentialId;
 	credentialId: string;
+	vectorStoreType: string;
 }
 
 export interface ProviderAndCredentialId {

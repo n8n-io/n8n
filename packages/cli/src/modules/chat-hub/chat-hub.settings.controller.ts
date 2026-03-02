@@ -71,7 +71,10 @@ export class ChatHubSettingsController {
 		_res: Response,
 		@Body body: UpdateVectorStoreCredentialRequest,
 	) {
-		await this.settings.setVectorStoreCredentialId(body.credentialId);
+		const credential = body.credentialType
+			? { id: body.credentialId, type: body.credentialType }
+			: null;
+		await this.settings.setVectorStoreCredential(credential);
 		try {
 			await this.moduleRegistry.refreshModuleSettings('chat-hub');
 		} catch (error) {

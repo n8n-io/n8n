@@ -104,9 +104,12 @@ export class ChatHubSettingsService {
 		return result;
 	}
 
-	async getVectorStoreCredentialId(): Promise<string | null> {
+	async getVectorStoreCredential(): Promise<{ id: string | null; type: string } | null> {
 		const row = await this.settingsRepository.findByKey(CHAT_VECTOR_STORE_CREDENTIAL_KEY);
-		return row?.value ?? null;
+		if (!row) return null;
+		return jsonParse<{ id: string | null; type: string } | null>(row.value, {
+			fallbackValue: null,
+		});
 	}
 
 	async getEmbeddingCredential(): Promise<{ type: string; id: string } | null> {
@@ -130,12 +133,18 @@ export class ChatHubSettingsService {
 		}
 	}
 
-	async setVectorStoreCredentialId(id: string | null): Promise<void> {
-		if (id === null) {
+	async setVectorStoreCredential(
+		credential: { id: string | null; type: string } | null,
+	): Promise<void> {
+		if (credential === null) {
 			await this.settingsRepository.delete({ key: CHAT_VECTOR_STORE_CREDENTIAL_KEY });
 		} else {
 			await this.settingsRepository.upsert(
-				{ key: CHAT_VECTOR_STORE_CREDENTIAL_KEY, value: id, loadOnStartup: true },
+				{
+					key: CHAT_VECTOR_STORE_CREDENTIAL_KEY,
+					value: JSON.stringify(credential),
+					loadOnStartup: true,
+				},
 				['key'],
 			);
 		}

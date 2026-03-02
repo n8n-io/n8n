@@ -37,6 +37,7 @@ import {
 	type IBinaryData,
 	type NodeParameterValueType,
 } from 'n8n-workflow';
+import { VECTOR_STORE_NODE_TYPE_MAP } from './chat-hub.constants';
 import { v4 as uuidv4 } from 'uuid';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -1154,7 +1155,11 @@ Respond the title only:`,
 
 	private buildVectorStoreNodes(options: VectorStoreSearchOptions): INode[] {
 		const embeddingsModelNode = this.buildEmbeddingsModelNode(options);
-		const vectorStoreNode = this.buildVectorStoreNode(options.credentialId, options.agentId);
+		const vectorStoreNode = this.buildVectorStoreNode(
+			options.credentialId,
+			options.agentId,
+			options.vectorStoreType,
+		);
 
 		return [embeddingsModelNode, vectorStoreNode];
 	}
@@ -1188,7 +1193,13 @@ Respond the title only:`,
 		};
 	}
 
-	private buildVectorStoreNode(credentialId: string, agentId: string): INode {
+	private buildVectorStoreNode(
+		credentialId: string,
+		agentId: string,
+		vectorStoreType: string,
+	): INode {
+		const nodeType =
+			VECTOR_STORE_NODE_TYPE_MAP[vectorStoreType] ?? VECTOR_STORE_PG_VECTOR_SCOPED_NODE_TYPE;
 		return {
 			parameters: {
 				mode: 'retrieve-as-tool',
@@ -1200,13 +1211,13 @@ Respond the title only:`,
 					},
 				},
 			},
-			type: VECTOR_STORE_PG_VECTOR_SCOPED_NODE_TYPE,
+			type: nodeType,
 			typeVersion: 1,
 			position: [800, 496],
 			id: uuidv4(),
 			name: 'Vector Store',
 			credentials: {
-				vectorStorePGVectorScopedApi: {
+				[vectorStoreType]: {
 					id: credentialId,
 					name: '',
 				},
@@ -1245,18 +1256,22 @@ Respond the title only:`,
 			name: 'Embeddings Model',
 		};
 
+		const vectorStoreNodeType =
+			VECTOR_STORE_NODE_TYPE_MAP[vectorStoreSearch.vectorStoreType] ??
+			VECTOR_STORE_PG_VECTOR_SCOPED_NODE_TYPE;
+
 		const nodes: INode[] = [
 			{
 				parameters: {
 					mode: 'insert',
 				},
-				type: VECTOR_STORE_PG_VECTOR_SCOPED_NODE_TYPE,
+				type: vectorStoreNodeType,
 				typeVersion: 1,
 				position: [208, 0],
 				id: uuidv4(),
 				name: 'Vector Store',
 				credentials: {
-					vectorStorePGVectorScopedApi: {
+					[vectorStoreSearch.vectorStoreType]: {
 						id: vectorStoreSearch.credentialId,
 						name: '',
 					},
