@@ -739,9 +739,25 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getParameterInputWithIssues(parameterPath: string) {
-		return this.page.locator(
+		const nestedPath = parameterPath.includes('.')
+			? parameterPath.split('.').slice(1).join('.')
+			: '';
+
+		// Parameter controls differ across NDV implementations (input/select/etc), but
+		// issue state is consistently exposed in the title tooltip text.
+		const selectors = [
 			`[data-test-id="parameter-input-field"][title*="${parameterPath}"][title*="has issues"]`,
-		);
+			`[title*="${parameterPath}"][title*="has issues"]`,
+		];
+
+		if (nestedPath) {
+			selectors.push(
+				`[data-test-id="parameter-input-field"][title*="${nestedPath}"][title*="has issues"]`,
+			);
+			selectors.push(`[title*="${nestedPath}"][title*="has issues"]`);
+		}
+
+		return this.page.locator(selectors.join(', ')).first();
 	}
 
 	getResourceLocator(paramName: string) {
