@@ -129,7 +129,7 @@ function resetForm(payload: Role | undefined) {
 }
 
 const scopeTypes = computed(() => {
-	if (!settingsStore.moduleSettings['external-secrets']?.forProjects) {
+	if (!settingsStore.moduleSettings['external-secrets']?.roleBasedAccess) {
 		return SCOPE_TYPES.filter(
 			(type) => type !== 'externalSecretsProvider' && type !== 'externalSecret',
 		);
