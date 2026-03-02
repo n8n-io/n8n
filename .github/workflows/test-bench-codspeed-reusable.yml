@@ -24,8 +24,11 @@ jobs:
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
 
-      - name: Run benchmarks
+      - name: Run benchmarks (wall-time)
+        run: pnpm --filter=@n8n/performance bench
+
+      - name: Run benchmarks (CodSpeed)
         uses: CodSpeedHQ/action@2ac572851726409c88c02a307f1ea2632a9ea59b # v4.11.0
         with:
           mode: simulation
-          run: pnpm --filter=@n8n/performance bench
+          run: CODSPEED=true pnpm --filter=@n8n/performance bench
