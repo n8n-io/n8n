@@ -6,3 +6,4 @@ self-hosted-runner:
     - blacksmith-4vcpu-ubuntu-2204-arm
     - blacksmith-8vcpu-ubuntu-2204
     - ubuntu-slim
+    - codspeed-macro
