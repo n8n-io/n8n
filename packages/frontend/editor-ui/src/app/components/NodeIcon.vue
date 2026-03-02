@@ -5,7 +5,7 @@ import type { VersionNode } from '@n8n/rest-api-client/api/versions';
 import type { INode } from 'n8n-workflow';
 import { computed } from 'vue';
 
-import { N8nNodeIcon, isNodeIcon } from '@n8n/design-system';
+import { N8nNodeIcon } from '@n8n/design-system';
 type Props = {
 	size?: number;
 	disabled?: boolean;
@@ -69,21 +69,7 @@ const nodeTypeName = computed(() =>
 	props.nodeName && props.nodeName !== '' ? props.nodeName : props.nodeType?.displayName,
 );
 
-/**
- * V2 icons render 20% larger than current icons:
- * - Canvas nodes: 48px (vs 40px)
- * - Node picker/NDV header: 24px (vs 20px)
- */
-const isV2Icon = computed(() => {
-	return iconSource.value?.type === 'icon' && isNodeIcon(iconSource.value.name);
-});
-
-const adjustedSize = computed(() => {
-	if (props.size === undefined) return undefined;
-	if (!isV2Icon.value) return props.size;
-	// V2 icons render 20% larger: 40 -> 48, 20 -> 24, 30 -> 36
-	return Math.round(props.size * 1.2);
-});
+const adjustedSize = computed(() => props.size);
 </script>
 
 <template>
