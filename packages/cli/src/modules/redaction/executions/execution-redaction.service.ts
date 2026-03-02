@@ -63,7 +63,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 				this.policyAllowsReveal(execution) || (await this.canUserReveal(options.user, execution));
 			if (allowed) {
 				this.eventService.emit('execution-data-revealed', {
-					userId: options.user.id,
+					user: options.user,
 					executionId: execution.id,
 					workflowId: execution.workflowId,
 					ipAddress: options.ipAddress ?? '',

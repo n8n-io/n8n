@@ -745,7 +745,7 @@ export class LogStreamingEventRelay extends EventRelay {
 	}
 
 	private executionDataRevealed({
-		userId,
+		user,
 		executionId,
 		workflowId,
 		ipAddress,
@@ -754,7 +754,7 @@ export class LogStreamingEventRelay extends EventRelay {
 	}: RelayEventMap['execution-data-revealed']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.execution.data.revealed',
-			payload: { userId, executionId, workflowId, ipAddress, userAgent, redactionPolicy },
+			payload: { ...user, executionId, workflowId, ipAddress, userAgent, redactionPolicy },
 		});
 	}
 

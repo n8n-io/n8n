@@ -317,7 +317,7 @@ describe('ExecutionRedactionService', () => {
 			await service.processExecution(execution, options);
 
 			expect(eventService.emit).toHaveBeenCalledWith('execution-data-revealed', {
-				userId: mockUser.id,
+				user: mockUser,
 				executionId: execution.id,
 				workflowId: execution.workflowId,
 				ipAddress: '1.2.3.4',

@@ -463,7 +463,7 @@ export type RelayEventMap = {
 	};
 
 	'execution-data-revealed': {
-		userId: string;
+		user: UserLike;
 		executionId: string;
 		workflowId: string;
 		ipAddress: string;
