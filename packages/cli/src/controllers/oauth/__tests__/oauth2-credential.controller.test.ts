@@ -343,7 +343,7 @@ describe('OAuth2CredentialController', () => {
 
 			expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
 				res,
-				'Authorization header is required',
+				'Credential identity is required',
 			);
 			expect(oauthService.saveDynamicCredential).not.toHaveBeenCalled();
 		});
@@ -403,7 +403,7 @@ describe('OAuth2CredentialController', () => {
 
 			expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
 				res,
-				'Authorization header is required',
+				'Credential identity is required',
 			);
 			expect(oauthService.saveDynamicCredential).not.toHaveBeenCalled();
 		});

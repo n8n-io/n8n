@@ -107,18 +107,26 @@ export class OAuth2CredentialController {
 					return this.oauthService.renderCallbackError(res, 'Credential resolver ID is required');
 				}
 
-				if (
-					!state.authorizationHeader ||
-					typeof state.authorizationHeader !== 'string' ||
-					!state.authorizationHeader.startsWith('Bearer ')
+				// Support both new resolvedIdentity and legacy authorizationHeader
+				let identity: string | undefined;
+				if (state.resolvedIdentity && typeof state.resolvedIdentity === 'string') {
+					identity = state.resolvedIdentity;
+				} else if (
+					state.authorizationHeader &&
+					typeof state.authorizationHeader === 'string' &&
+					state.authorizationHeader.startsWith('Bearer ')
 				) {
-					return this.oauthService.renderCallbackError(res, 'Authorization header is required');
+					identity = state.authorizationHeader.split('Bearer ')[1];
+				}
+
+				if (!identity) {
+					return this.oauthService.renderCallbackError(res, 'Credential identity is required');
 				}
 
 				await this.oauthService.saveDynamicCredential(
 					credential,
 					{ oauthTokenData },
-					state.authorizationHeader.split('Bearer ')[1],
+					identity,
 					state.credentialResolverId,
 				);
 				return res.render('oauth-callback');

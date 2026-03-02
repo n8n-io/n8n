@@ -207,7 +207,7 @@ describe('OAuth1CredentialController', () => {
 			expect(oauthService.saveDynamicCredential).not.toHaveBeenCalled();
 		});
 
-		it('should render error when authorizationHeader is missing for dynamic credential', async () => {
+		it('should render error when identity is missing for dynamic credential', async () => {
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
 			const mockState = {
 				token: 'token',
@@ -240,12 +240,12 @@ describe('OAuth1CredentialController', () => {
 
 			expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
 				res,
-				'Authorization header is required',
+				'Credential identity is required',
 			);
 			expect(oauthService.saveDynamicCredential).not.toHaveBeenCalled();
 		});
 
-		it('should render error when authorizationHeader does not start with Bearer', async () => {
+		it('should render error when identity cannot be resolved from legacy authorizationHeader', async () => {
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
 			const mockState = {
 				token: 'token',
@@ -279,7 +279,7 @@ describe('OAuth1CredentialController', () => {
 
 			expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
 				res,
-				'Authorization header is required',
+				'Credential identity is required',
 			);
 			expect(oauthService.saveDynamicCredential).not.toHaveBeenCalled();
 		});

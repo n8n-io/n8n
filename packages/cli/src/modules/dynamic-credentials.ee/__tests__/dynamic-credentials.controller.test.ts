@@ -196,7 +196,7 @@ describe('DynamicCredentialsController', () => {
 			expect(oauthService.generateAOauth2AuthUri).toHaveBeenCalledWith(mockCredential, {
 				cid: '1',
 				origin: 'dynamic-credential',
-				authorizationHeader: 'Bearer token123',
+				resolvedIdentity: 'token123',
 				credentialResolverId: 'resolver-123',
 			});
 		});
@@ -231,7 +231,7 @@ describe('DynamicCredentialsController', () => {
 			expect(oauthService.generateAOauth1AuthUri).toHaveBeenCalledWith(mockCredential, {
 				cid: '1',
 				origin: 'dynamic-credential',
-				authorizationHeader: 'Bearer token123',
+				resolvedIdentity: 'token123',
 				credentialResolverId: 'resolver-123',
 			});
 		});

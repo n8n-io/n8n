@@ -172,7 +172,6 @@ export class CredentialResolverWorkflowService {
 					credentialType: credential.type,
 				};
 			} catch (error) {
-				// Handle error (e.g., log it, collect status, etc.
 				return {
 					credentialId: credential.id,
 					resolverId: credentialResolverId,

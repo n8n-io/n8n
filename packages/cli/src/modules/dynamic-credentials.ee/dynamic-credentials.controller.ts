@@ -140,7 +140,7 @@ export class DynamicCredentialsController {
 			{
 				cid: credential.id,
 				origin: 'dynamic-credential',
-				authorizationHeader: req.headers.authorization ?? '',
+				resolvedIdentity: credentialContext.identity,
 				credentialResolverId: req.query.resolverId,
 			},
 		];

@@ -6,6 +6,7 @@ import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import nock from 'nock';
 
+import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { DynamicCredentialResolverRepository } from '@/modules/dynamic-credentials.ee/database/repositories/credential-resolver.repository';
 import { DynamicCredentialResolverService } from '@/modules/dynamic-credentials.ee/services/credential-resolver.service';
 import { Telemetry } from '@/telemetry';
@@ -159,7 +160,7 @@ describe('Credential Resolvers API', () => {
 			expect(response.body.data.decryptedConfig).toMatchObject({
 				metadataUri: 'https://auth.example.com/.well-known/openid-configuration',
 				clientId: 'test-client-id',
-				clientSecret: 'test-client-secret',
+				clientSecret: CREDENTIAL_BLANKING_VALUE,
 				validation: 'oauth2-introspection',
 			});
 

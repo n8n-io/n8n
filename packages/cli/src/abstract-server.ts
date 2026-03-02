@@ -262,6 +262,13 @@ export abstract class AbstractServer {
 		this.app.use((req, res, next) => {
 			const userAgent = req.headers['user-agent'];
 			if (userAgent && checkIfBot(userAgent)) {
+				// Allow Slack-signed requests through (Slackbot user-agent is expected)
+				if (
+					typeof req.headers['x-slack-signature'] === 'string' &&
+					typeof req.headers['x-slack-request-timestamp'] === 'string'
+				) {
+					return next();
+				}
 				this.logger.info(`Blocked ${req.method} ${req.url} for "${userAgent}"`);
 				res.status(204).end();
 			} else next();

@@ -69,10 +69,14 @@ describe('SlackSignatureIdentifier', () => {
 	describe('resolve', () => {
 		describe('with user_id subject claim', () => {
 			it('should return the user_id as identity', async () => {
+				const timestamp = Math.floor(Date.now() / 1000).toString();
+				const rawBody = 'user_id=U12345';
+				const signature = computeSlackSignature(TEST_SIGNING_SECRET, timestamp, rawBody);
+
 				const context = {
 					identity: 'U12345',
 					version: 1 as const,
-					metadata: { source: 'slack-signature' },
+					metadata: { source: 'slack-signature', rawBody, timestamp, signature },
 				};
 
 				const result = await identifier.resolve(context, {
@@ -84,9 +88,14 @@ describe('SlackSignatureIdentifier', () => {
 			});
 
 			it('should return user_id when no subjectClaim specified (default)', async () => {
+				const timestamp = Math.floor(Date.now() / 1000).toString();
+				const rawBody = 'user_id=UDEFAULT';
+				const signature = computeSlackSignature(TEST_SIGNING_SECRET, timestamp, rawBody);
+
 				const context = {
 					identity: 'UDEFAULT',
 					version: 1 as const,
+					metadata: { rawBody, timestamp, signature },
 				};
 
 				const result = await identifier.resolve(context, {
@@ -99,12 +108,19 @@ describe('SlackSignatureIdentifier', () => {
 
 		describe('with team_user subject claim', () => {
 			it('should return team_id:user_id composite key', async () => {
+				const timestamp = Math.floor(Date.now() / 1000).toString();
+				const rawBody = 'user_id=U12345&team_id=T67890';
+				const signature = computeSlackSignature(TEST_SIGNING_SECRET, timestamp, rawBody);
+
 				const context = {
 					identity: 'U12345',
 					version: 1 as const,
 					metadata: {
 						source: 'slack-signature',
 						team_id: 'T67890',
+						rawBody,
+						timestamp,
+						signature,
 					},
 				};
 
@@ -117,10 +133,14 @@ describe('SlackSignatureIdentifier', () => {
 			});
 
 			it('should throw when team_id is missing for team_user claim', async () => {
+				const timestamp = Math.floor(Date.now() / 1000).toString();
+				const rawBody = 'user_id=U12345';
+				const signature = computeSlackSignature(TEST_SIGNING_SECRET, timestamp, rawBody);
+
 				const context = {
 					identity: 'U12345',
 					version: 1 as const,
-					metadata: { source: 'slack-signature' },
+					metadata: { source: 'slack-signature', rawBody, timestamp, signature },
 				};
 
 				await expect(
@@ -203,20 +223,33 @@ describe('SlackSignatureIdentifier', () => {
 				).rejects.toThrow(IdentifierValidationError);
 			});
 
-			it('should skip re-verification when metadata has no raw data', async () => {
+			it('should throw when metadata is missing signature verification data', async () => {
 				const context = {
 					identity: 'U12345',
 					version: 1 as const,
 					metadata: { source: 'slack-signature' },
 				};
 
-				// Should not throw - just returns the identity
-				const result = await identifier.resolve(context, {
-					signingSecret: TEST_SIGNING_SECRET,
-					subjectClaim: 'user_id',
-				});
+				await expect(
+					identifier.resolve(context, {
+						signingSecret: TEST_SIGNING_SECRET,
+						subjectClaim: 'user_id',
+					}),
+				).rejects.toThrow(IdentifierValidationError);
+			});
 
-				expect(result).toBe('U12345');
+			it('should throw when metadata is missing entirely', async () => {
+				const context = {
+					identity: 'U12345',
+					version: 1 as const,
+				};
+
+				await expect(
+					identifier.resolve(context, {
+						signingSecret: TEST_SIGNING_SECRET,
+						subjectClaim: 'user_id',
+					}),
+				).rejects.toThrow(IdentifierValidationError);
 			});
 		});
 
