@@ -84,9 +84,9 @@ const shownParameters = ref<INodeProperties[]>([]);
 
 /**
  * Get parameters that should be displayed in the card.
- * Once a parameter has been shown (due to having issues), it continues to be shown
- * even after the issue is resolved. This prevents the jarring experience of parameters
- * disappearing as the user fills them in.
+ * Parameters are accumulated: once shown they persist (no disappearing on fill),
+ * and new issues that appear dynamically (e.g. via displayOptions changes when
+ * a resource locator is filled) are picked up on subsequent evaluations.
  *
  * Note: Uses a side effect (modifying shownParameters ref) to achieve persistence.
  * This is intentional - computed properties normally shouldn't have side effects,
@@ -95,14 +95,14 @@ const shownParameters = ref<INodeProperties[]>([]);
 const parameters = computed<INodeProperties[]>(() => {
 	if (!nodeType.value?.properties) return [];
 
-	if (shownParameters.value.length > 0) return shownParameters.value;
-
 	const issueParamNames = Object.keys(props.state.parameterIssues);
 	const templateParamNames = props.state.templateParameterNames ?? [];
 	const allParamNames = new Set([...issueParamNames, ...templateParamNames]);
-	const result = nodeType.value.properties.filter((param) => allParamNames.has(param.name));
-	for (const x of result) {
-		if (!shownParameters.value.includes(x)) shownParameters.value.push(x);
+
+	for (const prop of nodeType.value.properties) {
+		if (allParamNames.has(prop.name) && !shownParameters.value.includes(prop)) {
+			shownParameters.value.push(prop);
+		}
 	}
 	return shownParameters.value;
 });

@@ -498,7 +498,9 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 
 				const credentialComplete = !!selectedCredentialId && issueMessages.length === 0;
 				const testPassed =
-					!selectedCredentialId || credentialsStore.isCredentialTestedOk(selectedCredentialId);
+					!selectedCredentialId ||
+					!isCredentialTypeTestable(credType) ||
+					credentialsStore.isCredentialTestedOk(selectedCredentialId);
 
 				const isTriggerNodeType = (nodeType: string) => nodeTypesStore.isTriggerNode(nodeType);
 				const triggerComplete =

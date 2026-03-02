@@ -7,6 +7,7 @@ import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import type { SetupCardItem } from '@/features/setupPanel/setupPanel.types';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const props = withDefaults(
@@ -21,6 +22,7 @@ const props = withDefaults(
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
+const nodeTypesStore = useNodeTypesStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const { setupCards, isAllComplete, setCredential, unsetCredential, firstTriggerName } =
 	useWorkflowSetupState();
@@ -60,17 +62,54 @@ const cardKey = (card: SetupCardItem): string => {
 // --- Expanded state management ---
 const expandedStates = reactive<Record<string, boolean>>({});
 const prevCompleteStates = new Map<string, boolean>();
+/** Cards that have non-resource-locator parameters (text inputs) — these should not be auto-collapsed */
+const cardsWithTextParameters = new Set<string>();
 let initialized = false;
 
 const isCardExpanded = (key: string): boolean => expandedStates[key] ?? false;
 
 const setCardExpanded = (key: string, value: boolean) => {
 	expandedStates[key] = value;
+
+	// When a text-parameter card is manually collapsed and is complete, auto-advance
+	if (!value) {
+		const cards = setupCards.value;
+		const cardIndex = cards.findIndex((c) => cardKey(c) === key);
+		const card = cards[cardIndex];
+		if (card?.state.isComplete && cardsWithTextParameters.has(key)) {
+			const nextUncompleted = cards.find((c, j) => j > cardIndex && !c.state.isComplete);
+			if (nextUncompleted) {
+				expandedStates[cardKey(nextUncompleted)] = true;
+			}
+		}
+	}
 };
 
 watch(
 	setupCards,
 	(cards) => {
+		// Track cards that have non-resource-locator parameters (persists even after issues resolve).
+		// RL-only cards can auto-collapse (selecting from a dropdown is a discrete action).
+		for (const card of cards) {
+			const key = cardKey(card);
+			if (cardsWithTextParameters.has(key)) continue;
+
+			const { node } = card.state;
+			const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+			if (!nodeType) continue;
+
+			const templateParamNames = card.state.templateParameterNames ?? [];
+			const issueParamNames = Object.keys(card.state.parameterIssues);
+			const allParamNames = new Set([...templateParamNames, ...issueParamNames]);
+
+			for (const prop of nodeType.properties) {
+				if (allParamNames.has(prop.name) && prop.type !== 'resourceLocator') {
+					cardsWithTextParameters.add(key);
+					break;
+				}
+			}
+		}
+
 		if (!initialized) {
 			// On first load, expand the first uncompleted card
 			const firstUncompleted = cards.find((c) => !c.state.isComplete);
@@ -79,13 +118,15 @@ watch(
 			}
 			initialized = true;
 		} else {
-			// When a card completes, collapse it and auto-expand the next uncompleted card
+			// When a card completes, collapse it and auto-expand the next uncompleted card.
+			// Skip auto-collapse for cards with text parameters — those require manual collapse.
+			// RL-only and credential-only cards auto-collapse on completion.
 			for (let i = 0; i < cards.length; i++) {
 				const card = cards[i];
 				const key = cardKey(card);
 				const wasComplete = prevCompleteStates.get(key) ?? false;
 
-				if (card.state.isComplete && !wasComplete) {
+				if (card.state.isComplete && !wasComplete && !cardsWithTextParameters.has(key)) {
 					expandedStates[key] = false;
 					const nextUncompleted = cards.find((c, j) => j > i && !c.state.isComplete);
 					if (nextUncompleted) {
