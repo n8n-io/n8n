@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { isValidHexColor, adjustColorLightness } from './colorUtils';
+import { isValidHexColor, adjustColorLightness, getContrastTextColor } from './colorUtils';
 
 describe('colorUtils.isValidHexColor', () => {
 	it.each([
@@ -121,5 +121,23 @@ describe('colorUtils.adjustColorLightness', () => {
 			expect(adjustColorLightness('#ff5733', 0)).toBe('#FF5733');
 			expect(adjustColorLightness('#AbCdEf', 10)).toMatch(/^#[0-9A-F]{6}$/);
 		});
+	});
+});
+
+describe('colorUtils.getContrastTextColor', () => {
+	it('returns dark text for white background', () => {
+		expect(getContrastTextColor('#FFFFFF')).toBe('#2B2B2B');
+	});
+
+	it('returns light text for black background', () => {
+		expect(getContrastTextColor('#000000')).toBe('#F5F5F5');
+	});
+
+	it('returns dark text for light yellow background', () => {
+		expect(getContrastTextColor('#FFFFCC')).toBe('#2B2B2B');
+	});
+
+	it('returns light text for dark blue background', () => {
+		expect(getContrastTextColor('#000066')).toBe('#F5F5F5');
 	});
 });

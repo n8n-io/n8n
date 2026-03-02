@@ -1,3 +1,4 @@
+import type { RoleAssignmentsResponse, RoleProjectMembersResponse } from '@n8n/api-types';
 import { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import {
@@ -49,12 +50,13 @@ export class RoleService {
 		private readonly logger: Logger,
 	) {}
 
-	private dbRoleToRoleDTO(role: Role, usedByUsers?: number): RoleDTO {
+	private dbRoleToRoleDTO(role: Role, usedByUsers?: number, usedByProjects?: number): RoleDTO {
 		return {
 			...role,
 			scopes: role.scopes.map((s) => s.slug),
 			licensed: this.isRoleLicensed(role.slug),
 			usedByUsers,
+			usedByProjects,
 		};
 	}
 
@@ -65,23 +67,60 @@ export class RoleService {
 			return roles.map((r) => this.dbRoleToRoleDTO(r));
 		}
 
-		const roleCounts = await this.roleRepository.findAllRoleCounts();
+		const [roleCounts, projectCounts] = await Promise.all([
+			this.roleRepository.findAllRoleCounts(),
+			this.roleRepository.findAllProjectCounts(),
+		]);
 
 		return roles.map((role) => {
 			const usedByUsers = roleCounts[role.slug] ?? 0;
-			return this.dbRoleToRoleDTO(role, usedByUsers);
+			const usedByProjects = projectCounts[role.slug] ?? 0;
+			return this.dbRoleToRoleDTO(role, usedByUsers, usedByProjects);
 		});
 	}
 
 	async getRole(slug: string, withCount: boolean = false): Promise<RoleDTO> {
 		const role = await this.roleRepository.findBySlug(slug);
 		if (role) {
-			const usedByUsers = withCount
-				? await this.roleRepository.countUsersWithRole(role)
-				: undefined;
-			return this.dbRoleToRoleDTO(role, usedByUsers);
+			let usedByUsers: number | undefined;
+			let usedByProjects: number | undefined;
+			if (withCount) {
+				const [userCount, projectCounts] = await Promise.all([
+					this.roleRepository.countUsersWithRole(role),
+					this.roleRepository.findAllProjectCounts(),
+				]);
+				usedByUsers = userCount;
+				usedByProjects = projectCounts[role.slug] ?? 0;
+			}
+			return this.dbRoleToRoleDTO(role, usedByUsers, usedByProjects);
 		}
 		throw new NotFoundError('Role not found');
+	}
+
+	async getRoleAssignments(slug: string): Promise<RoleAssignmentsResponse> {
+		const role = await this.roleRepository.findBySlug(slug);
+		if (!role) {
+			throw new NotFoundError('Role not found');
+		}
+
+		const projects = await this.roleRepository.findProjectAssignments(role.slug);
+		return {
+			projects,
+			totalProjects: projects.length,
+		};
+	}
+
+	async getRoleProjectMembers(
+		slug: string,
+		projectId: string,
+	): Promise<RoleProjectMembersResponse> {
+		const role = await this.roleRepository.findBySlug(slug);
+		if (!role) {
+			throw new NotFoundError('Role not found');
+		}
+
+		const members = await this.roleRepository.findAllProjectMembers(projectId, role.slug);
+		return { members };
 	}
 
 	async removeCustomRole(slug: string) {

@@ -63,7 +63,10 @@ function onCancelFeedback() {
 </script>
 
 <template>
-	<div :class="[$style.rating, { [$style.minimal]: minimal }]">
+	<div
+		:class="[$style.rating, { [$style.minimal]: minimal }]"
+		:data-feedback-expanded="showFeedbackArea || undefined"
+	>
 		<div v-if="showRatingButtons" :class="$style.buttons">
 			<template v-if="!minimal">
 				<N8nButton
@@ -185,10 +188,16 @@ function onCancelFeedback() {
 
 /* Minimal style specific */
 .minimal {
-	margin-top: var(--spacing--5xs);
+	margin-top: 0;
+	gap: 0;
 
 	.buttons {
 		gap: var(--spacing--5xs);
+		border: var(--border);
+		border-radius: var(--radius--lg);
+		padding: var(--spacing--4xs);
+		background-color: var(--color--background--light-2);
+		width: fit-content;
 	}
 
 	.ratingButton {

@@ -1,0 +1,14 @@
+name: 'Release: Create Minor Release PR'
+
+on:
+  workflow_dispatch:
+  # schedule:
+  #   - cron: 0 13 * * 1
+
+jobs:
+  create-release-pr:
+    name: Create release PR
+    uses: ./.github/workflows/release-create-pr.yml
+    with:
+      base-branch: master
+      release-type: minor

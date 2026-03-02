@@ -37,6 +37,7 @@ test-results/
 compiled_app_output
 trivy_report*
 compiled
+docker-build-manifest.json
 packages/cli/src/modules/my-feature
 .secrets
 packages/testing/**/.cursor/rules/

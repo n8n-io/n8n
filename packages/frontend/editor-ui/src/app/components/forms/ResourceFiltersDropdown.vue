@@ -203,10 +203,6 @@ onBeforeMount(async () => {
 	}
 }
 
-.filters-dropdown {
-	width: 280px;
-}
-
 .filters-dropdown-footer {
 	display: flex;
 	justify-content: space-between;
