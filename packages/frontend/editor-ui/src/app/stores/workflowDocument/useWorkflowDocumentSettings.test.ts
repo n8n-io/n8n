@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { useWorkflowDocumentSettings } from './useWorkflowDocumentSettings';
+import { useWorkflowDocumentSettings, DEFAULT_SETTINGS } from './useWorkflowDocumentSettings';
 
 function createSettings() {
 	return useWorkflowDocumentSettings();
@@ -7,14 +7,14 @@ function createSettings() {
 
 describe('useWorkflowDocumentSettings', () => {
 	describe('initial state', () => {
-		it('should start with empty settings', () => {
+		it('should start with default settings', () => {
 			const { settings } = createSettings();
-			expect(settings.value).toEqual({});
+			expect(settings.value).toEqual(DEFAULT_SETTINGS);
 		});
 	});
 
 	describe('setSettings', () => {
-		it('should set settings and fire event hook', () => {
+		it('should set settings merged with defaults and fire event hook', () => {
 			const { settings, setSettings, onSettingsChange } = createSettings();
 			const hookSpy = vi.fn();
 			onSettingsChange(hookSpy);
@@ -22,20 +22,21 @@ describe('useWorkflowDocumentSettings', () => {
 			const newSettings = { executionOrder: 'v1' as const, timezone: 'UTC' };
 			setSettings(newSettings);
 
-			expect(settings.value).toEqual(newSettings);
+			const expected = { ...DEFAULT_SETTINGS, ...newSettings };
+			expect(settings.value).toEqual(expected);
 			expect(hookSpy).toHaveBeenCalledWith({
 				action: 'update',
-				payload: { settings: newSettings },
+				payload: { settings: expected },
 			});
 		});
 
-		it('should replace existing settings', () => {
+		it('should always include defaults when replacing settings', () => {
 			const { settings, setSettings } = createSettings();
 			setSettings({ executionOrder: 'v1' });
 
 			setSettings({ timezone: 'UTC' });
 
-			expect(settings.value).toEqual({ timezone: 'UTC' });
+			expect(settings.value).toEqual({ ...DEFAULT_SETTINGS, timezone: 'UTC' });
 		});
 
 		it('should fire event hook on every call', () => {
@@ -59,7 +60,11 @@ describe('useWorkflowDocumentSettings', () => {
 			setSettings({ executionOrder: 'v1', timezone: 'UTC' });
 			mergeSettings({ timezone: 'America/New_York' });
 
-			expect(settings.value).toEqual({ executionOrder: 'v1', timezone: 'America/New_York' });
+			expect(settings.value).toEqual({
+				...DEFAULT_SETTINGS,
+				executionOrder: 'v1',
+				timezone: 'America/New_York',
+			});
 		});
 
 		it('should add new fields without removing existing ones', () => {
@@ -68,7 +73,11 @@ describe('useWorkflowDocumentSettings', () => {
 
 			mergeSettings({ timezone: 'UTC' });
 
-			expect(settings.value).toEqual({ executionOrder: 'v1', timezone: 'UTC' });
+			expect(settings.value).toEqual({
+				...DEFAULT_SETTINGS,
+				executionOrder: 'v1',
+				timezone: 'UTC',
+			});
 		});
 
 		it('should fire event hook with merged settings', () => {
@@ -81,7 +90,7 @@ describe('useWorkflowDocumentSettings', () => {
 
 			expect(hookSpy).toHaveBeenCalledWith({
 				action: 'update',
-				payload: { settings: { executionOrder: 'v1', timezone: 'UTC' } },
+				payload: { settings: { ...DEFAULT_SETTINGS, executionOrder: 'v1', timezone: 'UTC' } },
 			});
 		});
 	});
@@ -94,13 +103,13 @@ describe('useWorkflowDocumentSettings', () => {
 
 			const snapshot = getSettingsSnapshot();
 
-			expect(snapshot).toEqual(original);
+			expect(snapshot).toEqual({ ...DEFAULT_SETTINGS, ...original });
 			expect(snapshot).not.toBe(settings.value);
 		});
 
-		it('should return empty object when no settings set', () => {
+		it('should return default settings when no settings set', () => {
 			const { getSettingsSnapshot } = createSettings();
-			expect(getSettingsSnapshot()).toEqual({});
+			expect(getSettingsSnapshot()).toEqual(DEFAULT_SETTINGS);
 		});
 	});
 });
