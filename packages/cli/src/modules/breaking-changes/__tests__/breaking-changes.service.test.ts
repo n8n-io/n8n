@@ -11,7 +11,6 @@ import { RuleRegistry } from '../breaking-changes.rule-registry.service';
 import { BreakingChangeService } from '../breaking-changes.service';
 import { createNode, createWorkflow } from './test-helpers';
 import { FileAccessRule } from '../rules/v2/file-access.rule';
-import { ProcessEnvAccessRule } from '../rules/v2/process-env-access.rule';
 import { RemovedNodesRule } from '../rules/v2/removed-nodes.rule';
 import { WaitNodeSubworkflowRule } from '../rules/v2/wait-node-subworkflow.rule';
 
@@ -57,10 +56,9 @@ describe('BreakingChangeService', () => {
 
 		// Manually register only the rules we want to test with
 		const removedNodesRule = new RemovedNodesRule();
-		const processEnvAccessRule = new ProcessEnvAccessRule();
 		const fileAccessRule = new FileAccessRule();
 
-		ruleRegistry.registerAll([removedNodesRule, processEnvAccessRule, fileAccessRule]);
+		ruleRegistry.registerAll([removedNodesRule, fileAccessRule]);
 	});
 
 	describe('detect()', () => {
@@ -79,12 +77,9 @@ describe('BreakingChangeService', () => {
 		});
 
 		it('should aggregate results from multiple rules', async () => {
-			// Create a workflow that triggers all three rules
+			// Create a workflow that triggers multiple rules
 			const { workflow } = createWorkflow('wf-1', 'Complex Workflow', [
 				createNode('Spontit Node', 'n8n-nodes-base.spontit'), // Triggers RemovedNodesRule
-				createNode('Code Node', 'n8n-nodes-base.code', {
-					code: 'const key = process.env.KEY;', // Triggers ProcessEnvAccessRule
-				}),
 				createNode('File Node', 'n8n-nodes-base.readWriteFile'), // Triggers FileAccessRule
 			]);
 
@@ -103,11 +98,6 @@ describe('BreakingChangeService', () => {
 				(r) => r.ruleId === 'removed-nodes-v2',
 			);
 			expect(removedNodesResult?.affectedWorkflows).toHaveLength(1);
-
-			const processEnvResult = report.report.workflowResults.find(
-				(r) => r.ruleId === 'process-env-access-v2',
-			);
-			expect(processEnvResult?.affectedWorkflows).toHaveLength(1);
 
 			const fileAccessResult = report.report.workflowResults.find(
 				(r) => r.ruleId === 'file-access-restriction-v2',

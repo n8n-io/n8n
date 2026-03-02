@@ -4,7 +4,6 @@ import { DisabledNodesRule } from './disabled-nodes.rule';
 import { DotenvUpgradeRule } from './dotenv-upgrade.rule';
 import { FileAccessRule } from './file-access.rule';
 import { OAuthCallbackAuthRule } from './oauth-callback-auth.rule';
-import { ProcessEnvAccessRule } from './process-env-access.rule';
 import { PyodideRemovedRule } from './pyodide-removed.rule';
 import { QueueWorkerMaxStalledCountRule } from './queue-worker-max-stalled-count.rule';
 import { RemovedNodesRule } from './removed-nodes.rule';
@@ -19,7 +18,6 @@ import { WorkflowHooksDeprecatedRule } from './workflow-hooks-deprecated.rule';
 const v2Rules = [
 	// Workflow-level rules
 	RemovedNodesRule,
-	ProcessEnvAccessRule,
 	PyodideRemovedRule,
 	FileAccessRule,
 	DisabledNodesRule,
