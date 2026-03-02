@@ -605,7 +605,6 @@ describe('CredentialsHelper', () => {
 			type: credentialType,
 			data: cipher.encrypt({ apiKey: 'static-key' }),
 			isResolvable: false,
-			resolvableAllowFallback: false,
 		} as CredentialsEntity;
 
 		beforeEach(() => {
@@ -629,7 +628,7 @@ describe('CredentialsHelper', () => {
 				mockAdditionalData,
 				nodeCredentials,
 				credentialType,
-				'manual',
+				'trigger',
 				undefined, // executeData
 				true, // raw = true to get the resolved data directly
 			);
@@ -641,7 +640,6 @@ describe('CredentialsHelper', () => {
 					isResolvable: false,
 					type: 'testApi',
 					resolverId: undefined,
-					resolvableAllowFallback: false,
 				},
 				{ apiKey: 'static-key' },
 				mockAdditionalData.executionContext,
@@ -662,7 +660,7 @@ describe('CredentialsHelper', () => {
 				mockAdditionalData,
 				nodeCredentials,
 				credentialType,
-				'manual',
+				'trigger',
 				undefined,
 				true,
 			);
@@ -683,7 +681,7 @@ describe('CredentialsHelper', () => {
 				mockAdditionalData,
 				nodeCredentials,
 				credentialType,
-				'manual',
+				'trigger',
 				undefined,
 				true,
 			);
@@ -731,7 +729,7 @@ describe('CredentialsHelper', () => {
 				mockAdditionalData,
 				nodeCredentials,
 				credentialType,
-				'manual',
+				'trigger',
 				undefined,
 				true,
 			);
@@ -754,6 +752,23 @@ describe('CredentialsHelper', () => {
 
 			const result = await credentialsHelper.getDecrypted(
 				additionalDataWithoutContext,
+				nodeCredentials,
+				credentialType,
+				'manual',
+				undefined,
+				true,
+			);
+
+			expect(mockCredentialResolutionProvider.resolveIfNeeded).not.toHaveBeenCalled();
+			expect(result).toEqual({ apiKey: 'static-key' });
+		});
+
+		test('should skip resolution in manual mode and return static data', async () => {
+			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({ apiKey: 'dynamic-key' });
+
+			const result = await credentialsHelper.getDecrypted(
+				mockAdditionalData,
 				nodeCredentials,
 				credentialType,
 				'manual',
@@ -813,7 +828,7 @@ describe('CredentialsHelper', () => {
 				additionalDataWithoutSettings,
 				nodeCredentials,
 				credentialType,
-				'manual',
+				'trigger',
 				undefined,
 				true,
 			);

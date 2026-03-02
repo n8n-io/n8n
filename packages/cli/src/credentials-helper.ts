@@ -362,10 +362,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 		const canUseExternalSecrets = await this.credentialCanUseExternalSecrets(nodeCredentials);
 
 		/**
-		 * We skip dynamic credentials resolution when no credentials context is present.
-		 * This helps workflow developers to run workflows with static credentials.
+		 * We skip dynamic credentials resolution when no credentials context is present,
+		 * or when the execution mode is manual — workflow developers should be able to
+		 * test with static credentials without needing a resolver configured.
 		 */
-		if (additionalData.executionContext?.credentials !== undefined) {
+		if (additionalData.executionContext?.credentials !== undefined && mode !== 'manual') {
 			// Resolve dynamic credentials if configured (EE feature)
 			const resolveResult = await this.dynamicCredentialsProxy.resolveIfNeeded(
 				{
@@ -374,7 +375,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 					type: credentialsEntity.type,
 					isResolvable: credentialsEntity.isResolvable,
 					resolverId: credentialsEntity.resolverId ?? undefined,
-					resolvableAllowFallback: credentialsEntity.resolvableAllowFallback,
 				},
 				decryptedDataOriginal,
 				additionalData.executionContext,
