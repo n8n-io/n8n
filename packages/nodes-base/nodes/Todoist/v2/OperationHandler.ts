@@ -299,14 +299,25 @@ export class GetAllHandler implements OperationHandler {
 		if (filters.labelId) {
 			qs.label = filters.labelId;
 		}
-		if (filters.filter) {
-			qs.filter = filters.filter;
-		}
-		if (filters.lang) {
-			qs.lang = filters.lang;
-		}
 		if (filters.ids) {
 			qs.ids = filters.ids;
+		}
+
+		// In API v1 (node version >= 2.2), the filter and lang parameters were removed
+		// from the /tasks endpoint. Filtered task queries must use the dedicated
+		// /tasks/filter endpoint with the "query" parameter instead.
+		// See: https://developer.todoist.com/api/v1/#tag/Migrating-from-v9/Other-endpoints/tasks
+		const nodeVersion = ctx.getNode().typeVersion;
+		const useFilterEndpoint = nodeVersion >= 2.2 && filters.filter;
+
+		if (useFilterEndpoint) {
+			qs.query = filters.filter;
+		} else if (filters.filter) {
+			qs.filter = filters.filter;
+		}
+
+		if (filters.lang) {
+			qs.lang = filters.lang;
 		}
 
 		let limit: undefined | number = undefined;
@@ -315,7 +326,8 @@ export class GetAllHandler implements OperationHandler {
 			assertParamIsNumber('limit', limit, ctx.getNode());
 		}
 
-		const data = await todoistApiGetAllRequest(ctx, '/tasks', qs, limit);
+		const endpoint = useFilterEndpoint ? '/tasks/filter' : '/tasks';
+		const data = await todoistApiGetAllRequest(ctx, endpoint, qs, limit);
 
 		return { data };
 	}
