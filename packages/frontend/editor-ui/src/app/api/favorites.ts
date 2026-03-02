@@ -1,5 +1,8 @@
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
+import type { FavoriteResourceType } from '@n8n/api-types';
+
+export type { FavoriteResourceType };
 
 export type UserFavorite = {
 	id: number;
@@ -9,8 +12,6 @@ export type UserFavorite = {
 	resourceName: string;
 	resourceProjectId?: string;
 };
-
-export type FavoriteResourceType = 'workflow' | 'project' | 'dataTable' | 'folder';
 
 export async function getFavorites(context: IRestApiContext): Promise<UserFavorite[]> {
 	return await makeRestApiRequest<UserFavorite[]>(context, 'GET', '/favorites');
@@ -31,10 +32,6 @@ export async function removeFavorite(
 	context: IRestApiContext,
 	resourceId: string,
 	resourceType: FavoriteResourceType,
-): Promise<never> {
-	return await makeRestApiRequest<never>(
-		context,
-		'DELETE',
-		`/favorites/${resourceType}/${resourceId}`,
-	);
+): Promise<void> {
+	await makeRestApiRequest<void>(context, 'DELETE', `/favorites/${resourceType}/${resourceId}`);
 }

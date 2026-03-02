@@ -9,11 +9,13 @@ import { In } from '@n8n/typeorm';
 
 import { UserFavoriteRepository } from './database/repositories/user-favorite.repository';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 
 @Service()
 export class FavoritesService {
+	private readonly MAX_FAVORITES = 200;
 	constructor(
 		private readonly userFavoriteRepository: UserFavoriteRepository,
 		private readonly workflowRepository: WorkflowRepository,
@@ -127,6 +129,11 @@ export class FavoritesService {
 		});
 
 		if (existing) return existing;
+
+		const count = await this.userFavoriteRepository.count({ where: { userId } });
+		if (count >= this.MAX_FAVORITES) {
+			throw new BadRequestError(`Favorites limit of ${this.MAX_FAVORITES} reached`);
+		}
 
 		const favorite = this.userFavoriteRepository.create({ userId, resourceId, resourceType });
 		return await this.userFavoriteRepository.save(favorite);

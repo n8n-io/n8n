@@ -3,15 +3,14 @@ import { computed, onBeforeUnmount, ref } from 'vue';
 import { N8nIcon, N8nMenuItem, N8nPopover, N8nText } from '@n8n/design-system';
 import type { IMenuItem } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
-import { VIEWS } from '@/app/constants';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
-import { useProjectsStore } from '../projects.store';
-import type { Project } from '../projects.types';
-import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
+import { useFavoriteNavItems } from '../composables/useFavoriteNavItems';
 
 const locale = useI18n();
 const favoritesStore = useFavoritesStore();
-const projectsStore = useProjectsStore();
+
+const { favoriteGroups, activeTabId, onFavoriteProjectClick, onFavoriteWorkflowClick } =
+	useFavoriteNavItems();
 
 const show = ref(false);
 let closeTimer: ReturnType<typeof setTimeout> | null = null;
@@ -34,122 +33,7 @@ onBeforeUnmount(() => {
 	if (closeTimer !== null) clearTimeout(closeTimer);
 });
 
-const favoriteWorkflowItems = computed<IMenuItem[]>(() =>
-	favoritesStore.favorites
-		.filter((f) => f.resourceType === 'workflow')
-		.map((f) => ({
-			id: `favorite-workflow-${f.resourceId}`,
-			label: f.resourceName,
-			icon: 'log-in' as IMenuItem['icon'],
-			route: { to: { name: VIEWS.WORKFLOW, params: { name: f.resourceId } } },
-		})),
-);
-
-const favoriteProjectItems = computed<IMenuItem[]>(() =>
-	favoritesStore.favorites
-		.filter((f) => f.resourceType === 'project')
-		.map((f) => {
-			const project = projectsStore.myProjects.find((p) => p.id === f.resourceId);
-			return {
-				id: `favorite-project-${f.resourceId}`,
-				label: f.resourceName,
-				icon: (project?.icon as IMenuItem['icon']) ?? ('layers' as IMenuItem['icon']),
-				route: {
-					to: { name: VIEWS.PROJECTS_WORKFLOWS, params: { projectId: f.resourceId } },
-				},
-			};
-		}),
-);
-
-const favoriteDataTableItems = computed<IMenuItem[]>(() =>
-	favoritesStore.favorites
-		.filter((f) => f.resourceType === 'dataTable' && f.resourceProjectId)
-		.map((f) => ({
-			id: `favorite-datatable-${f.resourceId}`,
-			label: f.resourceName,
-			icon: 'table' as IMenuItem['icon'],
-			route: {
-				to: {
-					name: DATA_TABLE_DETAILS,
-					params: { projectId: f.resourceProjectId, id: f.resourceId },
-				},
-			},
-		})),
-);
-
-const favoriteFolderItems = computed<IMenuItem[]>(() =>
-	favoritesStore.favorites
-		.filter((f) => f.resourceType === 'folder' && f.resourceProjectId)
-		.map((f) => ({
-			id: `favorite-folder-${f.resourceId}`,
-			label: f.resourceName,
-			icon: 'folder' as IMenuItem['icon'],
-			route: {
-				to: {
-					name: VIEWS.PROJECTS_FOLDERS,
-					params: { projectId: f.resourceProjectId, folderId: f.resourceId },
-				},
-			},
-		})),
-);
-
-type FavoriteGroup = {
-	type: string;
-	items: IMenuItem[];
-	showIndividualIcons: boolean;
-};
-
-const favoriteGroups = computed<FavoriteGroup[]>(() => {
-	const groups: FavoriteGroup[] = [];
-	if (favoriteProjectItems.value.length > 0) {
-		groups.push({
-			type: 'project',
-			items: favoriteProjectItems.value,
-			showIndividualIcons: true,
-		});
-	}
-	if (favoriteWorkflowItems.value.length > 0) {
-		groups.push({
-			type: 'workflow',
-			items: favoriteWorkflowItems.value,
-			showIndividualIcons: false,
-		});
-	}
-	if (favoriteDataTableItems.value.length > 0) {
-		groups.push({
-			type: 'dataTable',
-			items: favoriteDataTableItems.value,
-			showIndividualIcons: false,
-		});
-	}
-	if (favoriteFolderItems.value.length > 0) {
-		groups.push({
-			type: 'folder',
-			items: favoriteFolderItems.value,
-			showIndividualIcons: false,
-		});
-	}
-	return groups;
-});
-
-const activeTabId = computed(() => {
-	const id = projectsStore.projectNavActiveId;
-	return (Array.isArray(id) ? id[0] : id) ?? undefined;
-});
-
 const hasFavorites = computed(() => favoritesStore.favorites.length > 0);
-
-function onFavoriteProjectClick(itemId: string) {
-	const projectId = itemId.replace('favorite-project-', '');
-	const project = projectsStore.myProjects.find((p) => p.id === projectId);
-	if (project) {
-		projectsStore.setCurrentProject(project as unknown as Project);
-	}
-}
-
-function onFavoriteWorkflowClick() {
-	projectsStore.setCurrentProject(null);
-}
 </script>
 
 <template>

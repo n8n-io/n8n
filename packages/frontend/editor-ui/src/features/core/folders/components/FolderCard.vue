@@ -58,7 +58,7 @@ const resourceTypeLabel = computed(() => i18n.baseText('generic.folder').toLower
 const allActions = computed<Array<UserAction<IUser>>>(() => [
 	...props.actions,
 	{
-		label: favoritesStore.isFavorite(props.data.id)
+		label: favoritesStore.isFavorite(props.data.id, 'folder')
 			? i18n.baseText('favorites.remove')
 			: i18n.baseText('favorites.add'),
 		value: FOLDER_LIST_ITEM_ACTIONS.TOGGLE_FAVORITE,

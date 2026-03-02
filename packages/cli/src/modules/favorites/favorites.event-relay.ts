@@ -22,10 +22,8 @@ export class FavoritesEventRelay extends EventRelay {
 				await this.favoritesService.deleteByResource(dataTableId, 'dataTable'),
 			'folder-deleted': async ({ folderId }) =>
 				await this.favoritesService.deleteByResource(folderId, 'folder'),
-			'team-project-deleted': async ({ projectId, removalType }) => {
-				if (removalType === 'delete') {
-					await this.favoritesService.deleteByResource(projectId, 'project');
-				}
+			'team-project-deleted': async ({ projectId }) => {
+				await this.favoritesService.deleteByResource(projectId, 'project');
 			},
 		});
 	}

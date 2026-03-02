@@ -1,5 +1,8 @@
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Param, Post, RestController } from '@n8n/decorators';
+import { FAVORITE_RESOURCE_TYPES } from '@n8n/api-types';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import { FavoritesService } from './favorites.service';
 import { AddFavoriteDto } from './dto/add-favorite.dto';
@@ -25,6 +28,9 @@ export class FavoritesController {
 		@Param('resourceId') resourceId: string,
 		@Param('resourceType') resourceType: string,
 	) {
+		if (!(FAVORITE_RESOURCE_TYPES as readonly string[]).includes(resourceType)) {
+			throw new BadRequestError(`Invalid resourceType: ${resourceType}`);
+		}
 		await this.favoritesService.removeFavorite(req.user.id, resourceId, resourceType);
 		return true;
 	}

@@ -51,26 +51,37 @@ describe('favorites.store', () => {
 	});
 
 	describe('isFavorite()', () => {
-		it('should return true for a favorited resource', async () => {
+		it('should return true for a favorited resource with matching type', async () => {
 			vi.mocked(favoritesApi.getFavorites).mockResolvedValue([
-				makeFavorite({ resourceId: 'wf-1' }),
+				makeFavorite({ resourceId: 'wf-1', resourceType: 'workflow' }),
 			]);
 
 			const store = useFavoritesStore();
 			await store.fetchFavorites();
 
-			expect(store.isFavorite('wf-1')).toBe(true);
+			expect(store.isFavorite('wf-1', 'workflow')).toBe(true);
 		});
 
 		it('should return false for a non-favorited resource', async () => {
 			vi.mocked(favoritesApi.getFavorites).mockResolvedValue([
-				makeFavorite({ resourceId: 'wf-1' }),
+				makeFavorite({ resourceId: 'wf-1', resourceType: 'workflow' }),
 			]);
 
 			const store = useFavoritesStore();
 			await store.fetchFavorites();
 
-			expect(store.isFavorite('wf-99')).toBe(false);
+			expect(store.isFavorite('wf-99', 'workflow')).toBe(false);
+		});
+
+		it('should return false when ID matches but resourceType differs', async () => {
+			vi.mocked(favoritesApi.getFavorites).mockResolvedValue([
+				makeFavorite({ resourceId: 'res-1', resourceType: 'workflow' }),
+			]);
+
+			const store = useFavoritesStore();
+			await store.fetchFavorites();
+
+			expect(store.isFavorite('res-1', 'project')).toBe(false);
 		});
 	});
 
@@ -117,7 +128,7 @@ describe('favorites.store', () => {
 			vi.mocked(favoritesApi.getFavorites).mockResolvedValue([
 				makeFavorite({ resourceId: 'wf-1', resourceType: 'workflow' }),
 			]);
-			vi.mocked(favoritesApi.removeFavorite).mockResolvedValue(undefined as never);
+			vi.mocked(favoritesApi.removeFavorite).mockResolvedValue(undefined);
 
 			const store = useFavoritesStore();
 			await store.fetchFavorites();
@@ -144,6 +155,77 @@ describe('favorites.store', () => {
 
 			expect(favoritesApi.addFavorite).toHaveBeenCalledWith(expect.anything(), 'wf-2', 'workflow');
 			expect(store.favorites).toEqual([newFavorite]);
+		});
+
+		it('should not modify local state when addFavorite API throws', async () => {
+			vi.mocked(favoritesApi.getFavorites).mockResolvedValue([]);
+			vi.mocked(favoritesApi.addFavorite).mockRejectedValue(new Error('API error'));
+
+			const store = useFavoritesStore();
+			await store.fetchFavorites();
+
+			await expect(store.toggleFavorite('wf-2', 'workflow')).rejects.toThrow('API error');
+			expect(store.favorites).toHaveLength(0);
+		});
+
+		it('should not remove from local state when removeFavorite API throws', async () => {
+			vi.mocked(favoritesApi.getFavorites).mockResolvedValue([
+				makeFavorite({ resourceId: 'wf-1', resourceType: 'workflow' }),
+			]);
+			vi.mocked(favoritesApi.removeFavorite).mockRejectedValue(new Error('API error'));
+
+			const store = useFavoritesStore();
+			await store.fetchFavorites();
+
+			await expect(store.toggleFavorite('wf-1', 'workflow')).rejects.toThrow('API error');
+			expect(store.favorites).toHaveLength(1);
+		});
+	});
+
+	describe('removeFavoriteLocally()', () => {
+		it('should remove the matching favorite from local state without API call', async () => {
+			vi.mocked(favoritesApi.getFavorites).mockResolvedValue([
+				makeFavorite({ resourceId: 'wf-1', resourceType: 'workflow' }),
+				makeFavorite({ id: 2, resourceId: 'proj-1', resourceType: 'project' }),
+			]);
+
+			const store = useFavoritesStore();
+			await store.fetchFavorites();
+			store.removeFavoriteLocally('wf-1', 'workflow');
+
+			expect(store.favorites).toHaveLength(1);
+			expect(store.favorites[0].resourceId).toBe('proj-1');
+			expect(favoritesApi.removeFavorite).not.toHaveBeenCalled();
+		});
+
+		it('should not remove when resourceType does not match', async () => {
+			vi.mocked(favoritesApi.getFavorites).mockResolvedValue([
+				makeFavorite({ resourceId: 'res-1', resourceType: 'workflow' }),
+			]);
+
+			const store = useFavoritesStore();
+			await store.fetchFavorites();
+			store.removeFavoriteLocally('res-1', 'folder');
+
+			expect(store.favorites).toHaveLength(1);
+		});
+	});
+
+	describe('reset()', () => {
+		it('should clear favorites and reset initialized flag', async () => {
+			vi.mocked(favoritesApi.getFavorites).mockResolvedValue([makeFavorite()]);
+
+			const store = useFavoritesStore();
+			await store.fetchFavorites();
+			expect(store.favorites).toHaveLength(1);
+
+			store.reset();
+			expect(store.favorites).toHaveLength(0);
+
+			// Should allow fetching again after reset
+			vi.mocked(favoritesApi.getFavorites).mockResolvedValue([makeFavorite()]);
+			await store.fetchFavorites();
+			expect(favoritesApi.getFavorites).toHaveBeenCalledTimes(2);
 		});
 	});
 
@@ -184,12 +266,25 @@ describe('favorites.store', () => {
 			expect(store.dataTableFavoriteIds).toEqual(['dt-1']);
 		});
 
+		it('should return folder favorite IDs', async () => {
+			vi.mocked(favoritesApi.getFavorites).mockResolvedValue([
+				makeFavorite({ resourceId: 'wf-1', resourceType: 'workflow' }),
+				makeFavorite({ id: 2, resourceId: 'folder-1', resourceType: 'folder' }),
+			]);
+
+			const store = useFavoritesStore();
+			await store.fetchFavorites();
+
+			expect(store.folderFavoriteIds).toEqual(['folder-1']);
+		});
+
 		it('should return empty arrays when no favorites exist', () => {
 			const store = useFavoritesStore();
 
 			expect(store.workflowFavoriteIds).toEqual([]);
 			expect(store.projectFavoriteIds).toEqual([]);
 			expect(store.dataTableFavoriteIds).toEqual([]);
+			expect(store.folderFavoriteIds).toEqual([]);
 		});
 	});
 });

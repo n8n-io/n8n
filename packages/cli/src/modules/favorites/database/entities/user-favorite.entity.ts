@@ -3,6 +3,7 @@ import { Column, Entity, Index, ManyToOne, PrimaryGeneratedColumn, Unique } from
 
 @Entity('user_favorites')
 @Unique(['userId', 'resourceId', 'resourceType'])
+@Index(['userId', 'resourceType'])
 export class UserFavorite {
 	@PrimaryGeneratedColumn()
 	id: number;
@@ -10,7 +11,6 @@ export class UserFavorite {
 	@ManyToOne(() => User, { onDelete: 'CASCADE' })
 	user: User;
 
-	@Index()
 	@Column({ type: String })
 	userId: string;
 

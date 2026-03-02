@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue';
+import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useElementSize, useResizeObserver } from '@vueuse/core';
 import type { TabOptions, UserAction } from '@n8n/design-system';
@@ -38,16 +38,12 @@ const telemetry = useTelemetry();
 const usersStore = useUsersStore();
 const favoritesStore = useFavoritesStore();
 
-onMounted(() => {
-	void favoritesStore.fetchFavorites();
-});
-
 const currentProjectId = computed(() => projectsStore.currentProject?.id);
 
 const isTeamProject = computed(() => projectsStore.currentProject?.type === ProjectTypes.Team);
 
 const isProjectFavorited = computed(() =>
-	currentProjectId.value ? favoritesStore.isFavorite(currentProjectId.value) : false,
+	currentProjectId.value ? favoritesStore.isFavorite(currentProjectId.value, 'project') : false,
 );
 
 async function onToggleProjectFavorite() {

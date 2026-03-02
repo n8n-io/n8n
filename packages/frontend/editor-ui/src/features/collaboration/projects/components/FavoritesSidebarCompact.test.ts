@@ -60,10 +60,8 @@ describe('FavoritesSidebarCompact', () => {
 		];
 
 		// The component builds favoriteWorkflowItems from favorites filtered by resourceType
-		// Access computed via the wrapper
-		const { getByText } = renderComponent();
-		// The popover content uses N8nMenuItem which renders label text
-		// We verify via the computed: favoriteWorkflowItems maps workflow favorites
+		// Verify via the computed: favoriteWorkflowItems maps workflow favorites
+		renderComponent();
 		expect(favoritesStore.favorites.filter((f) => f.resourceType === 'workflow')).toHaveLength(1);
 		expect(favoritesStore.favorites[0].resourceName).toBe('My Workflow');
 	});

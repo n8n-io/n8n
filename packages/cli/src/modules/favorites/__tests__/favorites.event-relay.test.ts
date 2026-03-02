@@ -60,7 +60,7 @@ describe('FavoritesEventRelay', () => {
 			expect(favoritesService.deleteByResource).toHaveBeenCalledWith('proj1', 'project');
 		});
 
-		it('should not delete favorites when a project is transferred', async () => {
+		it('should delete favorites when a project is transferred', async () => {
 			const event: RelayEventMap['team-project-deleted'] = {
 				userId: 'user1',
 				role: 'owner',
@@ -73,7 +73,7 @@ describe('FavoritesEventRelay', () => {
 
 			await new Promise(setImmediate);
 
-			expect(favoritesService.deleteByResource).not.toHaveBeenCalled();
+			expect(favoritesService.deleteByResource).toHaveBeenCalledWith('proj1', 'project');
 		});
 	});
 });

@@ -6,7 +6,7 @@ export class CreateFavoritesTable1771500000002 implements ReversibleMigration {
 			.withColumns(
 				column('id').int.primary.autoGenerate2.notNull,
 				column('userId').uuid.notNull,
-				column('resourceId').varchar(36).notNull,
+				column('resourceId').varchar(255).notNull,
 				column('resourceType').varchar(64).notNull,
 			)
 			.withForeignKey('userId', {

@@ -9,15 +9,14 @@ import type { IMenuItem } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeMount, onBeforeUnmount, ref, watch } from 'vue';
 import { useProjectsStore } from '../projects.store';
-import type { Project, ProjectListItem } from '../projects.types';
+import type { ProjectListItem } from '../projects.types';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
-import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
+import { useFavoriteNavItems } from '../composables/useFavoriteNavItems';
 import FavoritesSidebarCompact from './FavoritesSidebarCompact.vue';
 
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
-const FAVORITES_COLLAPSED_KEY = 'n8n:sidebar:favorites-collapsed';
 const PROJECTS_COLLAPSED_KEY = 'n8n:sidebar:projects-collapsed';
 
 type Props = {
@@ -35,6 +34,9 @@ const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 const favoritesStore = useFavoritesStore();
 
+const { favoriteGroups, activeTabId, onFavoriteProjectClick, onFavoriteWorkflowClick } =
+	useFavoriteNavItems();
+
 const displayProjects = computed(() => globalEntityCreation.displayProjects.value);
 const isFoldersFeatureEnabled = computed(() => settingsStore.isFoldersFeatureEnabled);
 const isChatLinkAvailable = computed(
@@ -46,10 +48,16 @@ const hasMultipleVerifiedUsers = computed(
 	() => usersStore.allUsers.filter((user) => !user.isPendingUser).length > 1,
 );
 
-const favoritesCollapsed = ref(localStorage.getItem(FAVORITES_COLLAPSED_KEY) === 'true');
+const FAVORITES_COLLAPSED_KEY = computed(
+	() => `n8n:sidebar:${usersStore.currentUser?.id ?? 'anonymous'}:favorites-collapsed`,
+);
+
+const favoritesCollapsed = ref(localStorage.getItem(FAVORITES_COLLAPSED_KEY.value) === 'true');
 const projectsCollapsed = ref(localStorage.getItem(PROJECTS_COLLAPSED_KEY) === 'true');
 
-watch(favoritesCollapsed, (val) => localStorage.setItem(FAVORITES_COLLAPSED_KEY, String(val)));
+watch(favoritesCollapsed, (val) =>
+	localStorage.setItem(FAVORITES_COLLAPSED_KEY.value, String(val)),
+);
 watch(projectsCollapsed, (val) => localStorage.setItem(PROJECTS_COLLAPSED_KEY, String(val)));
 
 const home = computed<IMenuItem>(() => ({
@@ -94,112 +102,7 @@ const personalProject = computed<IMenuItem>(() => ({
 	},
 }));
 
-const favoriteWorkflowItems = computed<IMenuItem[]>(() =>
-	favoritesStore.favorites
-		.filter((f) => f.resourceType === 'workflow')
-		.map((f) => ({
-			id: `favorite-workflow-${f.resourceId}`,
-			label: f.resourceName,
-			icon: 'log-in' as IMenuItem['icon'],
-			route: { to: { name: VIEWS.WORKFLOW, params: { name: f.resourceId } } },
-		})),
-);
-
-const favoriteProjectItems = computed<IMenuItem[]>(() =>
-	favoritesStore.favorites
-		.filter((f) => f.resourceType === 'project')
-		.map((f) => {
-			const project = projectsStore.myProjects.find((p) => p.id === f.resourceId);
-			return {
-				id: `favorite-project-${f.resourceId}`,
-				label: f.resourceName,
-				icon: (project?.icon as IMenuItem['icon']) ?? ('layers' as IMenuItem['icon']),
-				route: { to: { name: VIEWS.PROJECTS_WORKFLOWS, params: { projectId: f.resourceId } } },
-			};
-		}),
-);
-
-const favoriteDataTableItems = computed<IMenuItem[]>(() =>
-	favoritesStore.favorites
-		.filter((f) => f.resourceType === 'dataTable' && f.resourceProjectId)
-		.map((f) => ({
-			id: `favorite-datatable-${f.resourceId}`,
-			label: f.resourceName,
-			icon: 'table' as IMenuItem['icon'],
-			route: {
-				to: {
-					name: DATA_TABLE_DETAILS,
-					params: { projectId: f.resourceProjectId, id: f.resourceId },
-				},
-			},
-		})),
-);
-
-const favoriteFolderItems = computed<IMenuItem[]>(() =>
-	favoritesStore.favorites
-		.filter((f) => f.resourceType === 'folder' && f.resourceProjectId)
-		.map((f) => ({
-			id: `favorite-folder-${f.resourceId}`,
-			label: f.resourceName,
-			icon: 'folder' as IMenuItem['icon'],
-			route: {
-				to: {
-					name: VIEWS.PROJECTS_FOLDERS,
-					params: { projectId: f.resourceProjectId, folderId: f.resourceId },
-				},
-			},
-		})),
-);
-
-type FavoriteGroup = {
-	type: string;
-	items: IMenuItem[];
-	showIndividualIcons: boolean;
-};
-
-const favoriteGroups = computed<FavoriteGroup[]>(() => {
-	const groups: FavoriteGroup[] = [];
-	// Projects first, each with its own icon
-	if (favoriteProjectItems.value.length > 0) {
-		groups.push({
-			type: 'project',
-			items: favoriteProjectItems.value,
-			showIndividualIcons: true,
-		});
-	}
-	if (favoriteWorkflowItems.value.length > 0) {
-		groups.push({
-			type: 'workflow',
-			items: favoriteWorkflowItems.value,
-			showIndividualIcons: false,
-		});
-	}
-	if (favoriteDataTableItems.value.length > 0) {
-		groups.push({
-			type: 'dataTable',
-			items: favoriteDataTableItems.value,
-			showIndividualIcons: false,
-		});
-	}
-	if (favoriteFolderItems.value.length > 0) {
-		groups.push({
-			type: 'folder',
-			items: favoriteFolderItems.value,
-			showIndividualIcons: false,
-		});
-	}
-	return groups;
-});
-
 const hasFavorites = computed(() => favoritesStore.favorites.length > 0);
-
-const activeTabId = computed(() => {
-	return (
-		(Array.isArray(projectsStore.projectNavActiveId)
-			? projectsStore.projectNavActiveId[0]
-			: projectsStore.projectNavActiveId) ?? undefined
-	);
-});
 
 const chat = computed<IMenuItem>(() => ({
 	id: 'chat',
@@ -210,18 +113,6 @@ const chat = computed<IMenuItem>(() => ({
 	beta: true,
 }));
 
-function onFavoriteProjectClick(itemId: string) {
-	const projectId = itemId.replace('favorite-project-', '');
-	const project = projectsStore.myProjects.find((p) => p.id === projectId);
-	if (project) {
-		projectsStore.setCurrentProject(project as unknown as Project);
-	}
-}
-
-function onFavoriteWorkflowClick() {
-	projectsStore.setCurrentProject(null);
-}
-
 async function onSourceControlPull() {
 	// Update myProjects for the sidebar display
 	await projectsStore.getMyProjects();
@@ -229,7 +120,6 @@ async function onSourceControlPull() {
 
 onBeforeMount(async () => {
 	await usersStore.fetchUsers({ filter: { isPending: false }, take: 2 });
-	void favoritesStore.fetchFavorites();
 	sourceControlEventBus.on('pull', onSourceControlPull);
 });
 

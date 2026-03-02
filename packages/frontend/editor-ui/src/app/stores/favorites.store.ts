@@ -25,14 +25,20 @@ export const useFavoritesStore = defineStore(STORES.FAVORITES, () => {
 		favorites.value.filter((f) => f.resourceType === 'dataTable').map((f) => f.resourceId),
 	);
 
+	const folderFavoriteIds = computed(() =>
+		favorites.value.filter((f) => f.resourceType === 'folder').map((f) => f.resourceId),
+	);
+
 	async function fetchFavorites() {
 		if (initialized.value) return;
 		favorites.value = await favoritesApi.getFavorites(rootStore.restApiContext);
 		initialized.value = true;
 	}
 
-	function isFavorite(resourceId: string): boolean {
-		return favoriteIds.value.has(resourceId);
+	function isFavorite(resourceId: string, resourceType: FavoriteResourceType): boolean {
+		return favorites.value.some(
+			(f) => f.resourceId === resourceId && f.resourceType === resourceType,
+		);
 	}
 
 	function renameFavorite(resourceId: string, resourceType: FavoriteResourceType, newName: string) {
@@ -45,14 +51,27 @@ export const useFavoritesStore = defineStore(STORES.FAVORITES, () => {
 	}
 
 	async function toggleFavorite(resourceId: string, resourceType: FavoriteResourceType) {
-		if (isFavorite(resourceId)) {
+		if (isFavorite(resourceId, resourceType)) {
 			await favoritesApi.removeFavorite(rootStore.restApiContext, resourceId, resourceType);
-			favorites.value = favorites.value.filter((f) => f.resourceId !== resourceId);
+			favorites.value = favorites.value.filter(
+				(f) => !(f.resourceId === resourceId && f.resourceType === resourceType),
+			);
 		} else {
 			await favoritesApi.addFavorite(rootStore.restApiContext, resourceId, resourceType);
 			// Re-fetch to get enriched metadata from the server
 			favorites.value = await favoritesApi.getFavorites(rootStore.restApiContext);
 		}
+	}
+
+	function removeFavoriteLocally(resourceId: string, resourceType: FavoriteResourceType) {
+		favorites.value = favorites.value.filter(
+			(f) => !(f.resourceId === resourceId && f.resourceType === resourceType),
+		);
+	}
+
+	function reset() {
+		favorites.value = [];
+		initialized.value = false;
 	}
 
 	return {
@@ -61,9 +80,12 @@ export const useFavoritesStore = defineStore(STORES.FAVORITES, () => {
 		workflowFavoriteIds,
 		projectFavoriteIds,
 		dataTableFavoriteIds,
+		folderFavoriteIds,
 		fetchFavorites,
 		isFavorite,
 		renameFavorite,
 		toggleFavorite,
+		removeFavoriteLocally,
+		reset,
 	};
 });

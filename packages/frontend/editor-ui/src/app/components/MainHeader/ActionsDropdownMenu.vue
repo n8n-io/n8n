@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref, useCssModule } from 'vue';
+import { computed, ref, useCssModule } from 'vue';
 import { type ActionDropdownItem, N8nActionDropdown } from '@n8n/design-system';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client';
 import { useToast } from '@/app/composables/useToast';
@@ -70,10 +70,6 @@ const workflowHelpers = useWorkflowHelpers();
 const changeOwnerEventBus = createEventBus();
 const workflowTelemetry = useTelemetry();
 const favoritesStore = useFavoritesStore();
-
-onMounted(() => {
-	void favoritesStore.fetchFavorites();
-});
 
 const onWorkflowPage = computed(() => {
 	return route.meta && (route.meta.nodeView || route.meta.keepWorkflowAlive === true);
@@ -208,7 +204,7 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 
 	actions.push({
 		id: WORKFLOW_MENU_ACTIONS.FAVORITE,
-		label: favoritesStore.isFavorite(props.id)
+		label: favoritesStore.isFavorite(props.id, 'workflow')
 			? locale.baseText('favorites.remove')
 			: locale.baseText('favorites.add'),
 		disabled: !onWorkflowPage.value || props.isNewWorkflow,

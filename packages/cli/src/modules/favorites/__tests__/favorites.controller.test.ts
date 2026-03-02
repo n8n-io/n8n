@@ -1,6 +1,7 @@
 import type { AuthenticatedRequest } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { UserFavorite } from '../database/entities/user-favorite.entity';
 import { FavoritesController } from '../favorites.controller';
 import type { FavoritesService } from '../favorites.service';
@@ -48,6 +49,14 @@ describe('FavoritesController', () => {
 
 			expect(favoritesService.removeFavorite).toHaveBeenCalledWith('user1', 'res1', 'workflow');
 			expect(result).toBe(true);
+		});
+
+		it('should throw BadRequestError for invalid resourceType', async () => {
+			await expect(controller.removeFavorite(req, undefined, 'res1', 'invalid')).rejects.toThrow(
+				BadRequestError,
+			);
+
+			expect(favoritesService.removeFavorite).not.toHaveBeenCalled();
 		});
 	});
 });

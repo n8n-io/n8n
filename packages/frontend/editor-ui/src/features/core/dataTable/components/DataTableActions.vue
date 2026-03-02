@@ -11,7 +11,7 @@ import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';
 import type { IUser, UserAction } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, onMounted } from 'vue';
+import { computed } from 'vue';
 
 import { N8nActionToggle } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -41,10 +41,6 @@ const dataTableStore = useDataTableStore();
 const uiStore = useUIStore();
 const favoritesStore = useFavoritesStore();
 
-onMounted(() => {
-	void favoritesStore.fetchFavorites();
-});
-
 const i18n = useI18n();
 const message = useMessage();
 const toast = useToast();
@@ -58,7 +54,7 @@ const actions = computed<Array<UserAction<IUser>>>(() => {
 			disabled: false,
 		},
 		{
-			label: favoritesStore.isFavorite(props.dataTable.id)
+			label: favoritesStore.isFavorite(props.dataTable.id, 'dataTable')
 				? i18n.baseText('favorites.remove')
 				: i18n.baseText('favorites.add'),
 			value: DATA_TABLE_CARD_ACTIONS.FAVORITE,

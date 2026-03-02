@@ -192,7 +192,7 @@ const actions = computed(() => {
 	];
 
 	items.push({
-		label: favoritesStore.isFavorite(props.data.id)
+		label: favoritesStore.isFavorite(props.data.id, 'workflow')
 			? locale.baseText('favorites.remove')
 			: locale.baseText('favorites.add'),
 		value: WORKFLOW_LIST_ITEM_ACTIONS.TOGGLE_FAVORITE,
