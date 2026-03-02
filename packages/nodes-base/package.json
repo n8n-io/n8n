@@ -856,8 +856,6 @@
     "@n8n/eslint-plugin-community-nodes": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
-    "n8n-containers": "workspace:*",
-    "vitest": "catalog:",
     "@types/amqplib": "^0.10.1",
     "@types/aws4": "^1.5.1",
     "@types/basic-auth": "catalog:",
@@ -883,7 +881,9 @@
     "@types/uuid": "catalog:",
     "@types/xml2js": "catalog:",
     "eslint-plugin-n8n-nodes-base": "^1.16.5",
-    "n8n-core": "workspace:*"
+    "n8n-containers": "workspace:*",
+    "n8n-core": "workspace:*",
+    "vitest": "catalog:"
   },
   "dependencies": {
     "@aws-sdk/client-sso-oidc": "3.808.0",
@@ -924,7 +924,7 @@
     "lodash": "catalog:",
     "lossless-json": "1.0.5",
     "luxon": "catalog:",
-    "mailparser": "3.6.7",
+    "mailparser": "3.9.3",
     "mime-types": "catalog:",
     "minifaker": "1.34.1",
     "moment-timezone": "0.5.48",
