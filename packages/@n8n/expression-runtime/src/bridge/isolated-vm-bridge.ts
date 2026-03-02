@@ -322,6 +322,9 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			let arr: unknown = data;
 			for (const key of path) {
 				arr = (arr as Record<string, unknown>)?.[key];
+				if (arr === undefined || arr === null) {
+					return undefined;
+				}
 			}
 
 			if (!Array.isArray(arr)) {
