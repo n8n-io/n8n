@@ -481,9 +481,12 @@ export function generateNodesGraph(
 			const responseMode = node.parameters?.responseMode;
 			nodeItem.response_mode = typeof responseMode === 'string' ? responseMode : 'onReceived';
 		} else if (node.type === CHAT_TRIGGER_NODE_TYPE) {
-			// Capture streaming response mode parameter
+			// Capture streaming response mode parameter (top-level in v1.5+, inside options in older)
+			const topLevelResponseMode = node.parameters?.responseMode;
 			const options = node.parameters?.options;
-			if (
+			if (typeof topLevelResponseMode === 'string') {
+				nodeItem.response_mode = topLevelResponseMode;
+			} else if (
 				typeof options === 'object' &&
 				options &&
 				'responseMode' in options &&

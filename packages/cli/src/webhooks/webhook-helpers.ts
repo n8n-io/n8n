@@ -175,14 +175,16 @@ export function getWorkflowWebhooks(
 const getChatResponseMode = (workflowStartNode: INode, method: string) => {
 	const parameters = workflowStartNode.parameters as {
 		public: boolean;
-		options?: { responseMode: string };
+		responseMode?: string;
+		options?: { responseMode?: string };
 	};
 
 	if (workflowStartNode.type !== CHAT_TRIGGER_NODE_TYPE) return undefined;
 
 	if (method === 'GET') return 'onReceived';
 
-	if (method === 'POST' && parameters.options?.responseMode === 'responseNodes') {
+	const responseMode = parameters.responseMode ?? parameters.options?.responseMode;
+	if (method === 'POST' && responseMode === 'responseNodes') {
 		return 'hostedChat';
 	}
 

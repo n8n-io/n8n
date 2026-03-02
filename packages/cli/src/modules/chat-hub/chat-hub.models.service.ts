@@ -782,9 +782,12 @@ export class ChatHubModelsService {
 			return null;
 		}
 
-		const inputModalities = this.chatHubWorkflowService.parseInputModalities(
-			chatTriggerParams.options,
-		);
+		const inputModalities = this.chatHubWorkflowService.parseInputModalities({
+			allowFileUploads:
+				chatTriggerParams.allowFileUploads ?? chatTriggerParams.options?.allowFileUploads,
+			allowedFilesMimeTypes:
+				chatTriggerParams.allowedFilesMimeTypes ?? chatTriggerParams.options?.allowedFilesMimeTypes,
+		});
 
 		const agentName =
 			chatTriggerParams.agentName && chatTriggerParams.agentName.trim().length > 0

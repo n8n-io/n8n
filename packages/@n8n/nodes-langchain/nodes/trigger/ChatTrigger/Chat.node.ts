@@ -324,7 +324,8 @@ export class Chat implements INodeType {
 
 		const parameters = chatTrigger.parameters as {
 			mode?: 'hostedChat' | 'webhook';
-			options: { responseMode: 'lastNode' | 'responseNodes' | 'streaming' | 'responseNode' };
+			responseMode?: 'lastNode' | 'responseNodes' | 'streaming' | 'responseNode';
+			options?: { responseMode?: 'lastNode' | 'responseNodes' | 'streaming' | 'responseNode' };
 		};
 
 		if (parameters.mode === 'webhook') {
@@ -334,7 +335,8 @@ export class Chat implements INodeType {
 			);
 		}
 
-		if (parameters.options.responseMode !== 'responseNodes') {
+		const responseMode = parameters.responseMode ?? parameters.options?.responseMode;
+		if (responseMode !== 'responseNodes') {
 			throw new NodeOperationError(
 				this.getNode(),
 				'"Response Mode" in the chat trigger node must be set to "Using Response Nodes"',

@@ -23,6 +23,7 @@ describe('ChatTrigger Node', () => {
 
 		mockContext.getRequestObject.mockReturnValue(mockRequest);
 		mockContext.getResponseObject.mockReturnValue(mockResponse);
+		mockContext.getNode.mockReturnValue({ typeVersion: 1.4 } as any);
 		mockContext.getNodeParameter.mockImplementation(
 			(
 				paramName: string,

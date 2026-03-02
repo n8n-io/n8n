@@ -1240,7 +1240,8 @@ Respond the title only:`,
 			throw new BadRequestError('Chat Trigger node must be made available in Chat');
 		}
 
-		const responseMode = chatTriggerParams.options?.responseMode ?? 'streaming';
+		const responseMode =
+			chatTriggerParams.responseMode ?? chatTriggerParams.options?.responseMode ?? 'streaming';
 		if (!SUPPORTED_RESPONSE_MODES.includes(responseMode)) {
 			throw new BadRequestError(
 				'Chat Trigger node response mode must be set to "When Last Node Finishes", "Using Response Nodes" or "Streaming" to use the workflow on Chat',

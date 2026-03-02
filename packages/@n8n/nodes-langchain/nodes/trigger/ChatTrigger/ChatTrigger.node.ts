@@ -220,8 +220,8 @@ export class ChatTrigger extends Node {
 		icon: 'fa:comments',
 		iconColor: 'black',
 		group: ['trigger'],
-		version: [1, 1.1, 1.2, 1.3, 1.4],
-		defaultVersion: 1.4,
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
+		defaultVersion: 1.5,
 		description: 'Runs the workflow when an n8n generated webchat is submitted',
 		defaults: {
 			name: 'When chat message received',
@@ -292,7 +292,7 @@ export class ChatTrigger extends Node {
 				name: 'default',
 				httpMethod: 'POST',
 				responseMode:
-					'={{$parameter.options?.["responseMode"] ?? ($parameter.availableInChat ? "streaming" : "lastNode") }}',
+					'={{ $parameter.responseMode ?? $parameter.options?.["responseMode"] ?? ($parameter.availableInChat ? "streaming" : "lastNode") }}',
 				path: CHAT_TRIGGER_PATH_IDENTIFIER,
 				ndvHideMethod: true,
 				ndvHideUrl: '={{ !$parameter.public }}',
@@ -302,6 +302,20 @@ export class ChatTrigger extends Node {
 		activationMessage: 'You can now make calls to your production chat URL.',
 		triggerPanel: false,
 		properties: [
+			{
+				displayName: 'Enable in Chat',
+				name: 'availableInChat',
+				type: 'boolean',
+				default: true,
+				noDataExpression: true,
+				description:
+					'Whether to make the agent available in n8n Chat Hub for n8n instance users to chat with',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.5 } }],
+					},
+				},
+			},
 			/**
 			 * @note If we change this property, also update it in ChatEmbedModal.vue
 			 */
@@ -416,6 +430,11 @@ export class ChatTrigger extends Node {
 				noDataExpression: true,
 				description:
 					'Whether to make the agent available in n8n Chat Hub for n8n instance users to chat with',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { lte: 1.4 } }],
+					},
+				},
 			},
 			{
 				displayName:
@@ -468,7 +487,22 @@ export class ChatTrigger extends Node {
 				displayOptions: {
 					show: {
 						availableInChat: [true],
-						'@version': [{ _cnd: { gte: 1.2 } }],
+						'@version': [{ _cnd: { between: { from: 1.2, to: 1.4 } } }],
+					},
+				},
+			},
+			{
+				displayName: 'Name',
+				name: 'agentName',
+				type: 'string',
+				default: '',
+				noDataExpression: true,
+				description:
+					'The name of the agent on n8n Chat. Name of the workflow is used if left empty.',
+				displayOptions: {
+					show: {
+						availableInChat: [true],
+						'@version': [{ _cnd: { gte: 1.5 } }],
 					},
 				},
 			},
@@ -485,7 +519,193 @@ export class ChatTrigger extends Node {
 				displayOptions: {
 					show: {
 						availableInChat: [true],
-						'@version': [{ _cnd: { gte: 1.2 } }],
+						'@version': [{ _cnd: { between: { from: 1.2, to: 1.4 } } }],
+					},
+				},
+			},
+			{
+				displayName: 'Description',
+				name: 'agentDescription',
+				type: 'string',
+				typeOptions: {
+					rows: 2,
+				},
+				default: '',
+				noDataExpression: true,
+				description: 'The description of the agent on n8n Chat',
+				displayOptions: {
+					show: {
+						availableInChat: [true],
+						'@version': [{ _cnd: { gte: 1.5 } }],
+					},
+				},
+			},
+			// Top-level Allow File Uploads for v1.5 (non-public)
+			{
+				...allowFileUploadsOption,
+				displayOptions: {
+					show: {
+						public: [false],
+						'@version': [{ _cnd: { gte: 1.5 } }],
+					},
+				},
+			},
+			// Top-level Allow File Uploads for v1.5 (public + hostedChat)
+			{
+				...allowFileUploadsOption,
+				displayOptions: {
+					show: {
+						public: [true],
+						mode: ['hostedChat'],
+						'@version': [{ _cnd: { gte: 1.5 } }],
+					},
+				},
+			},
+			// Top-level Allow File Uploads for v1.5 (public + webhook + availableInChat)
+			{
+				...allowFileUploadsOption,
+				displayOptions: {
+					show: {
+						public: [true],
+						mode: ['webhook'],
+						availableInChat: [true],
+						'@version': [{ _cnd: { gte: 1.5 } }],
+					},
+				},
+			},
+			// Top-level Allowed File Mime Types for v1.5 (non-public)
+			{
+				...allowedFileMimeTypeOption,
+				displayOptions: {
+					show: {
+						public: [false],
+						allowFileUploads: [true],
+						'@version': [{ _cnd: { gte: 1.5 } }],
+					},
+				},
+			},
+			// Top-level Allowed File Mime Types for v1.5 (public + hostedChat)
+			{
+				...allowedFileMimeTypeOption,
+				displayOptions: {
+					show: {
+						public: [true],
+						mode: ['hostedChat'],
+						allowFileUploads: [true],
+						'@version': [{ _cnd: { gte: 1.5 } }],
+					},
+				},
+			},
+			// Top-level Allowed File Mime Types for v1.5 (public + webhook + availableInChat)
+			{
+				...allowedFileMimeTypeOption,
+				displayOptions: {
+					show: {
+						public: [true],
+						mode: ['webhook'],
+						availableInChat: [true],
+						allowFileUploads: [true],
+						'@version': [{ _cnd: { gte: 1.5 } }],
+					},
+				},
+			},
+			// Top-level Response Type for v1.5 (non-public, availableInChat=false)
+			{
+				displayName: 'Response Type',
+				name: 'responseMode',
+				type: 'options',
+				options: [lastNodeResponseMode, respondNodesResponseMode, streamingResponseMode],
+				default: 'lastNode',
+				description: 'When and how to respond to the chat',
+				displayOptions: {
+					show: {
+						public: [false],
+						availableInChat: [false],
+						'@version': [{ _cnd: { gte: 1.5 } }],
+					},
+				},
+			},
+			// Top-level Response Type for v1.5 (non-public, availableInChat=true)
+			{
+				displayName: 'Response Type',
+				name: 'responseMode',
+				type: 'options',
+				options: [streamingResponseMode, lastNodeResponseMode, respondNodesResponseMode],
+				default: 'streaming',
+				description: 'When and how to respond to the chat',
+				displayOptions: {
+					show: {
+						public: [false],
+						availableInChat: [true],
+						'@version': [{ _cnd: { gte: 1.5 } }],
+					},
+				},
+			},
+			// Top-level Response Type for v1.5 (public, webhook, availableInChat=false)
+			{
+				displayName: 'Response Type',
+				name: 'responseMode',
+				type: 'options',
+				options: [lastNodeResponseMode, streamingResponseMode, respondToWebhookResponseMode],
+				default: 'lastNode',
+				description: 'When and how to respond to the chat',
+				displayOptions: {
+					show: {
+						public: [true],
+						mode: ['webhook'],
+						availableInChat: [false],
+						'@version': [{ _cnd: { gte: 1.5 } }],
+					},
+				},
+			},
+			// Top-level Response Type for v1.5 (public, webhook, availableInChat=true)
+			{
+				displayName: 'Response Type',
+				name: 'responseMode',
+				type: 'options',
+				options: [streamingResponseMode, lastNodeResponseMode],
+				default: 'streaming',
+				description: 'When and how to respond to the chat',
+				displayOptions: {
+					show: {
+						public: [true],
+						mode: ['webhook'],
+						availableInChat: [true],
+						'@version': [{ _cnd: { gte: 1.5 } }],
+					},
+				},
+			},
+			// Top-level Response Type for v1.5 (public, hostedChat, availableInChat=false)
+			{
+				displayName: 'Response Type',
+				name: 'responseMode',
+				type: 'options',
+				options: [lastNodeResponseMode, streamingResponseMode, respondNodesResponseMode],
+				default: 'lastNode',
+				description: 'When and how to respond to the chat',
+				displayOptions: {
+					show: {
+						public: [true],
+						mode: ['hostedChat'],
+						availableInChat: [false],
+						'@version': [{ _cnd: { gte: 1.5 } }],
+					},
+				},
+			},
+			// Top-level Response Type for v1.5 (public, hostedChat, availableInChat=true)
+			{
+				displayName: 'Response Type',
+				name: 'responseMode',
+				type: 'options',
+				options: [streamingResponseMode, lastNodeResponseMode, respondNodesResponseMode],
+				default: 'streaming',
+				description: 'When and how to respond to the chat',
+				displayOptions: {
+					show: {
+						public: [true],
+						mode: ['hostedChat'],
+						availableInChat: [true],
+						'@version': [{ _cnd: { gte: 1.5 } }],
 					},
 				},
 			},
@@ -572,7 +792,7 @@ export class ChatTrigger extends Node {
 				displayOptions: {
 					show: {
 						public: [false],
-						'@version': [{ _cnd: { gte: 1.3 } }],
+						'@version': [{ _cnd: { between: { from: 1.3, to: 1.4 } } }],
 					},
 				},
 				placeholder: 'Add Field',
@@ -608,7 +828,7 @@ export class ChatTrigger extends Node {
 					show: {
 						mode: ['hostedChat', 'webhook'],
 						public: [true],
-						'@version': [{ _cnd: { gte: 1.3 } }],
+						'@version': [{ _cnd: { between: { from: 1.3, to: 1.4 } } }],
 					},
 				},
 				placeholder: 'Add Field',
@@ -652,6 +872,25 @@ export class ChatTrigger extends Node {
 						displayOptions: { show: { '/mode': ['hostedChat'], '/availableInChat': [true] } },
 					},
 				],
+			},
+			// Options for v1.5 (public mode) - allowFileUploads, allowedFilesMimeTypes, and
+			// responseMode are now top-level, so they are excluded here
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				displayOptions: {
+					show: {
+						mode: ['hostedChat', 'webhook'],
+						public: [true],
+						'@version': [{ _cnd: { gte: 1.5 } }],
+					},
+				},
+				placeholder: 'Add Field',
+				default: {},
+				options: commonOptionsFields.filter(
+					(f) => f.name !== 'allowFileUploads' && f.name !== 'allowedFilesMimeTypes',
+				),
 			},
 		],
 	};
@@ -757,12 +996,28 @@ export class ChatTrigger extends Node {
 			ctx.getNode(),
 		);
 
+		const nodeVersion = ctx.getNode().typeVersion;
+
+		// In v1.5+, responseMode, allowFileUploads, and allowedFilesMimeTypes are top-level params
+		const responseMode =
+			nodeVersion >= 1.5
+				? (ctx.getNodeParameter('responseMode', undefined) as string | undefined)
+				: (options.responseMode as string | undefined);
+		const allowFileUploads =
+			nodeVersion >= 1.5
+				? (ctx.getNodeParameter('allowFileUploads', false) as boolean)
+				: (options.allowFileUploads as boolean | undefined);
+		const allowedFilesMimeTypes =
+			nodeVersion >= 1.5
+				? (ctx.getNodeParameter('allowedFilesMimeTypes', '*') as string)
+				: (options.allowedFilesMimeTypes as string | undefined);
+
 		const loadPreviousSession = options.loadPreviousSession;
 		assertValidLoadPreviousSessionOption(loadPreviousSession, ctx.getNode());
 
 		const enableStreaming = availableInChat
-			? !options.responseMode || options.responseMode === 'streaming'
-			: options.responseMode === 'streaming';
+			? !responseMode || responseMode === 'streaming'
+			: responseMode === 'streaming';
 
 		const req = ctx.getRequestObject();
 		const webhookName = ctx.getWebhookName();
@@ -817,8 +1072,8 @@ export class ChatTrigger extends Node {
 					mode,
 					instanceId,
 					authentication,
-					allowFileUploads: options.allowFileUploads,
-					allowedFilesMimeTypes: options.allowedFilesMimeTypes,
+					allowFileUploads: allowFileUploads ?? options.allowFileUploads,
+					allowedFilesMimeTypes: allowedFilesMimeTypes ?? options.allowedFilesMimeTypes,
 					customCss: options.customCss,
 					enableStreaming,
 				});

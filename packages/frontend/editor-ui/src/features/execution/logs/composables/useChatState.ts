@@ -62,10 +62,11 @@ export function useChatState(
 	const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
 	const chatTriggerNode = computed(() => workflowsStore.allNodes.find(isChatNode) ?? null);
 
-	// Resolve the effective value for an options sub-parameter: returns the
-	// user-set value if present, otherwise the default from the node type
-	// definition (respecting displayOptions at both collection and parameter
-	// level, e.g. responseMode default varies based on availableInChat).
+	// Resolve the effective value for a parameter that may be either a
+	// top-level param (v1.5+) or inside the options collection (older versions).
+	// Returns the user-set value if present, otherwise the default from the
+	// node type definition (respecting displayOptions at both collection and
+	// parameter level, e.g. responseMode default varies based on availableInChat).
 	const getOptionsValue = <T>(parameterName: string): T | undefined => {
 		const node = chatTriggerNode.value;
 		const nodeType = node ? nodeTypesStore.getNodeType(node.type, node.typeVersion) : null;
@@ -85,9 +86,15 @@ export function useChatState(
 				node,
 				nodeType,
 			) ?? {};
+
+		// In v1.5+, these params may be top-level. Check there first.
+		if (parameterName in resolvedParams) {
+			return resolvedParams[parameterName] as T;
+		}
+
 		const optionsValues = (resolvedParams.options ?? {}) as INodeParameters;
 
-		// Use the user set value if present
+		// Use the user set value if present in options
 		if (parameterName in optionsValues) {
 			return optionsValues[parameterName] as T;
 		}

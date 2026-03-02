@@ -75,6 +75,10 @@ export const chatTriggerParamsShape = z.object({
 	agentName: z.string().min(1).optional(),
 	agentDescription: z.string().min(1).optional(),
 	agentIcon: IconOrEmojiSchema.optional(),
+	// In v1.5+, these fields are top-level params instead of inside options
+	allowFileUploads: z.boolean().optional(),
+	allowedFilesMimeTypes: z.string().optional(),
+	responseMode: ChatTriggerResponseModeSchema.optional(),
 	options: z
 		.object({
 			allowFileUploads: z.boolean().optional(),

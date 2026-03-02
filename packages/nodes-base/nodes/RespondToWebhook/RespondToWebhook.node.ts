@@ -536,7 +536,8 @@ export class RespondToWebhook implements INodeType {
 			);
 
 			const parameters = chatTrigger?.parameters as {
-				options: { responseMode: string };
+				responseMode?: string;
+				options?: { responseMode?: string };
 			};
 
 			// if workflow is started from chat trigger and responseMode is set to "responseNodes"
@@ -544,7 +545,7 @@ export class RespondToWebhook implements INodeType {
 			if (
 				chatTrigger &&
 				!chatTrigger.disabled &&
-				parameters.options.responseMode === 'responseNodes'
+				(parameters.responseMode ?? parameters.options?.responseMode) === 'responseNodes'
 			) {
 				let message = '';
 
