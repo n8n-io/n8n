@@ -3,8 +3,8 @@
 	"@context": "https://openvex.dev/ns/v0.2.0",
 	"@id": "https://github.com/n8n-io/n8n/vex",
 	"author": "n8n Security Team <security@n8n.io>",
-	"timestamp": "2026-02-13T00:00:00Z",
-	"version": 3,
+	"timestamp": "2026-03-01T00:00:00Z",
+	"version": 5,
 	"statements": [
 		{
 			"vulnerability": {

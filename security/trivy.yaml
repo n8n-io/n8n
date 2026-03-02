@@ -2,4 +2,5 @@
 # See: https://trivy.dev/latest/docs/references/configuration/config-file/
 vulnerability:
   vex:
-    - vex.openvex.json
+    - security/vex.openvex.json
+  ignore-policy: security/trivy-ignore-policy.rego
