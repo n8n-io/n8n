@@ -28,6 +28,10 @@ export function useWorkflowDocumentSettings() {
 		applySettings(newSettings);
 	}
 
+	function mergeSettings(partialSettings: Partial<IWorkflowSettings>) {
+		applySettings({ ...settings.value, ...partialSettings });
+	}
+
 	function getSettingsSnapshot(): IWorkflowSettings {
 		return deepCopy(settings.value);
 	}
@@ -35,6 +39,7 @@ export function useWorkflowDocumentSettings() {
 	return {
 		settings: readonly(settings),
 		setSettings,
+		mergeSettings,
 		getSettingsSnapshot,
 		onSettingsChange: onSettingsChange.on,
 	};

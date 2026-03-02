@@ -87,7 +87,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 			});
 			if (settings) {
 				const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
-				workflowDocumentStore.setSettings(settings);
+				workflowDocumentStore.mergeSettings(settings);
 			}
 		}
 		if (workflowsListStore.workflowsById[id]) {

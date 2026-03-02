@@ -50,6 +50,42 @@ describe('useWorkflowDocumentSettings', () => {
 		});
 	});
 
+	describe('mergeSettings', () => {
+		it('should merge partial settings with existing settings', () => {
+			const { settings, setSettings, mergeSettings, onSettingsChange } = createSettings();
+			const hookSpy = vi.fn();
+			onSettingsChange(hookSpy);
+
+			setSettings({ executionOrder: 'v1', timezone: 'UTC' });
+			mergeSettings({ timezone: 'America/New_York' });
+
+			expect(settings.value).toEqual({ executionOrder: 'v1', timezone: 'America/New_York' });
+		});
+
+		it('should add new fields without removing existing ones', () => {
+			const { settings, setSettings, mergeSettings } = createSettings();
+			setSettings({ executionOrder: 'v1' });
+
+			mergeSettings({ timezone: 'UTC' });
+
+			expect(settings.value).toEqual({ executionOrder: 'v1', timezone: 'UTC' });
+		});
+
+		it('should fire event hook with merged settings', () => {
+			const { setSettings, mergeSettings, onSettingsChange } = createSettings();
+			const hookSpy = vi.fn();
+			setSettings({ executionOrder: 'v1' });
+			onSettingsChange(hookSpy);
+
+			mergeSettings({ timezone: 'UTC' });
+
+			expect(hookSpy).toHaveBeenCalledWith({
+				action: 'update',
+				payload: { settings: { executionOrder: 'v1', timezone: 'UTC' } },
+			});
+		});
+	});
+
 	describe('getSettingsSnapshot', () => {
 		it('should return a deep copy of settings', () => {
 			const { settings, setSettings, getSettingsSnapshot } = createSettings();
