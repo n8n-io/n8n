@@ -1,7 +1,7 @@
 import { mock } from 'jest-mock-extended';
 import type { DataSource, DeleteResult, EntityManager } from '@n8n/typeorm';
 
-import { UserFavorite } from '../database/entities/user-favorite.entity';
+import type { UserFavorite } from '../database/entities/user-favorite.entity';
 import { UserFavoriteRepository } from '../database/repositories/user-favorite.repository';
 
 const makeEntity = (overrides: Partial<UserFavorite> = {}): UserFavorite => ({
