@@ -56,7 +56,6 @@ const props = defineProps<{
 	id: IWorkflowDb['id'];
 	tags: readonly string[];
 	name: IWorkflowDb['name'];
-	meta: IWorkflowDb['meta'];
 	currentFolder?: FolderShortInfo;
 	isArchived: IWorkflowDb['isArchived'];
 	description?: IWorkflowDb['description'];
