@@ -239,7 +239,13 @@ export class Webhook extends Node {
 			validationData = await this.validateAuth(context);
 		} catch (error) {
 			if (error instanceof WebhookAuthorizationError) {
-				resp.writeHead(error.responseCode, { 'WWW-Authenticate': 'Basic realm="Webhook"' });
+				const headers: Record<string, string> = {};
+				// Per RFC 7235, WWW-Authenticate MUST be sent with 401 responses,
+				// using the scheme that matches the authentication method
+				if (error.responseCode === 401 && error.scheme) {
+					headers['WWW-Authenticate'] = `${error.scheme} realm="Webhook"`;
+				}
+				resp.writeHead(error.responseCode, headers);
 				resp.end(error.message);
 				return { noWebhookResponse: true };
 			}

@@ -4,6 +4,7 @@ export class WebhookAuthorizationError extends ApplicationError {
 	constructor(
 		readonly responseCode: number,
 		message?: string,
+		readonly scheme?: string,
 	) {
 		if (message === undefined) {
 			message = 'Authorization problem!';
