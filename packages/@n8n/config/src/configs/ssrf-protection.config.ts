@@ -5,7 +5,7 @@ import { Config, Env } from '../decorators';
  * Default blocked IP ranges applied when N8N_SSRF_BLOCKED_IP_RANGES is 'default'.
  * Covers RFC 1918, loopback, link-local, IPv6 unique local, and reserved/special ranges.
  */
-export const SSRF_DEFAULT_BLOCKED_IP_RANGES: readonly string[] = [
+export const SSRF_DEFAULT_BLOCKED_IP_RANGES: readonly string[] = Object.freeze([
 	// RFC 1918 private ranges
 	'10.0.0.0/8',
 	'172.16.0.0/12',
@@ -26,7 +26,7 @@ export const SSRF_DEFAULT_BLOCKED_IP_RANGES: readonly string[] = [
 	'198.18.0.0/15',
 	'198.51.100.0/24',
 	'203.0.113.0/24',
-] as const;
+]);
 
 @Config
 export class SsrfProtectionConfig {
@@ -63,11 +63,12 @@ export class SsrfProtectionConfig {
 	sanitize() {
 		if (this.blockedIpRanges === 'default') {
 			this.resolvedBlockedIpRanges = SSRF_DEFAULT_BLOCKED_IP_RANGES;
-		} else {
-			this.resolvedBlockedIpRanges = this.blockedIpRanges
-				.split(',')
-				.map((s) => s.trim())
-				.filter((s) => s.length > 0);
+			return;
 		}
+
+		this.resolvedBlockedIpRanges = this.blockedIpRanges
+			.split(',')
+			.map((s) => s.trim())
+			.filter((s) => s.length > 0);
 	}
 }
