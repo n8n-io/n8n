@@ -36,7 +36,8 @@
     "jest-mock-extended": "^3.0.4",
     "@types/mime-types": "catalog:",
     "tsx": "catalog:",
-    "axios": "catalog:"
+    "axios": "catalog:",
+    "n8n-workflow": "workspace:*"
   },
   "dependencies": {
     "zod": "catalog:",
