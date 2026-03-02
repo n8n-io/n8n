@@ -59,6 +59,7 @@ export interface VectorStoreNodeConstructorArgs<T extends VectorStore = VectorSt
 	loadFields?: INodeProperties[];
 	retrieveFields?: INodeProperties[];
 	updateFields?: INodeProperties[];
+	hidden?: true;
 
 	/**
 	 * Optional function called once before any documents are inserted.

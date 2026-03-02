@@ -158,6 +158,7 @@ async function vectorStorePGVectorScopedApiConnectionTest(
 
 export class VectorStorePGVectorScoped extends createVectorStoreNode(
 	createPGVectorNodeArgs({
+		hidden: true,
 		methods: {
 			credentialTest: { vectorStorePGVectorScopedApiConnectionTest },
 			actionHandler: { deleteDocuments },

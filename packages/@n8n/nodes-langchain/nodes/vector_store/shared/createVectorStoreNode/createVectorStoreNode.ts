@@ -52,6 +52,7 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 			displayName: args.meta.displayName,
 			name: args.meta.name,
 			description: args.meta.description,
+			hidden: args.hidden,
 			icon: args.meta.icon,
 			iconColor: args.meta.iconColor,
 			group: ['transform'],
