@@ -10,9 +10,14 @@ import { createTestingPinia } from '@pinia/testing';
 import { useVueFlow } from '@vue-flow/core';
 import type { INodeProperties } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
-import { reactive } from 'vue';
+import { reactive, shallowRef } from 'vue';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import FocusSidebar from './FocusSidebar.vue';
 
 vi.mock('vue-router', () => ({
@@ -22,6 +27,10 @@ vi.mock('vue-router', () => ({
 }));
 
 describe('FocusSidebar', () => {
+	let workflowDocumentStoreRef: ReturnType<
+		typeof shallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>
+	>;
+
 	const renderComponent = createComponentRenderer(FocusSidebar, {
 		props: {
 			isCanvasReadOnly: false,
@@ -68,6 +77,10 @@ describe('FocusSidebar', () => {
 		workflowsStore.setNodes([
 			createTestNode({ id: 'n0', name: 'N0', parameters: { p0: 'v0' }, type: SET_NODE_TYPE }),
 		]);
+
+		const documentStore = useWorkflowDocumentStore(createWorkflowDocumentId('w0'));
+		workflowDocumentStoreRef = shallowRef(documentStore);
+
 		focusPanelStore = useFocusPanelStore(pinia);
 		focusPanelStore.toggleFocusPanel();
 
@@ -84,19 +97,31 @@ describe('FocusSidebar', () => {
 		});
 
 		it('should render the setup panel tabs', async () => {
-			const rendered = renderComponent({});
+			const rendered = renderComponent({
+				global: {
+					provide: { [WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef },
+				},
+			});
 
 			expect(await rendered.findByTestId('setup-panel-tabs')).toBeInTheDocument();
 		});
 
 		it('should render the setup panel content by default', async () => {
-			const rendered = renderComponent({});
+			const rendered = renderComponent({
+				global: {
+					provide: { [WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef },
+				},
+			});
 
 			expect(await rendered.findByTestId('setup-panel-container')).toBeInTheDocument();
 		});
 
 		it('should switch to focus tab when a parameter is focused', async () => {
-			const rendered = renderComponent({});
+			const rendered = renderComponent({
+				global: {
+					provide: { [WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef },
+				},
+			});
 
 			// Initially shows setup panel
 			expect(await rendered.findByTestId('setup-panel-container')).toBeInTheDocument();
@@ -114,7 +139,11 @@ describe('FocusSidebar', () => {
 		});
 
 		it('should show parameter displayName as focus tab label when parameter is focused', async () => {
-			const rendered = renderComponent({});
+			const rendered = renderComponent({
+				global: {
+					provide: { [WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef },
+				},
+			});
 
 			focusPanelStore.openWithFocusedNodeParameter({
 				nodeId: 'n0',
@@ -131,7 +160,11 @@ describe('FocusSidebar', () => {
 		it('should show node name as focus tab label when node is selected but no parameter is focused', async () => {
 			const graphNode = createCanvasGraphNode({ id: 'n0' });
 			const vueFlow = useVueFlow('w0');
-			const rendered = renderComponent({});
+			const rendered = renderComponent({
+				global: {
+					provide: { [WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef },
+				},
+			});
 
 			vueFlow.addNodes([graphNode]);
 			vueFlow.addSelectedNodes([graphNode]);

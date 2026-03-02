@@ -27,8 +27,8 @@ vi.mock('@/features/ndv/shared/ndv.store', () => ({
 	useNDVStore: () => ({ activeNode: null }),
 }));
 
-vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => {
-	const original = await importOriginal<typeof import('@/app/stores/workflowDocument.store')>();
+vi.mock('@/app/stores/workflowDocument.store', async () => {
+	const original = await vi.importActual('@/app/stores/workflowDocument.store');
 	return {
 		...original,
 		injectWorkflowDocumentStore: vi.fn(),
