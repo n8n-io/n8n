@@ -1,7 +1,19 @@
 import { defineStore, getActivePinia, type StoreGeneric } from 'pinia';
 import { STORES } from '@n8n/stores';
-import { ref, readonly, inject } from 'vue';
+import { inject } from 'vue';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { useWorkflowDocumentActive } from './workflowDocument/useWorkflowDocumentActive';
+import { useWorkflowDocumentHomeProject } from './workflowDocument/useWorkflowDocumentHomeProject';
+import { useWorkflowDocumentChecksum } from './workflowDocument/useWorkflowDocumentChecksum';
+import { useWorkflowDocumentMeta } from './workflowDocument/useWorkflowDocumentMeta';
+import { useWorkflowDocumentPinData } from './workflowDocument/useWorkflowDocumentPinData';
+import { useWorkflowDocumentTags } from './workflowDocument/useWorkflowDocumentTags';
+import { useWorkflowDocumentTimestamps } from './workflowDocument/useWorkflowDocumentTimestamps';
+
+export {
+	getPinDataSize,
+	pinDataToExecutionData,
+} from './workflowDocument/useWorkflowDocumentPinData';
 
 // Pinia internal type - _s is the store registry Map
 type PiniaInternal = ReturnType<typeof getActivePinia> & {
@@ -16,14 +28,6 @@ export function createWorkflowDocumentId(
 ): WorkflowDocumentId {
 	return `${workflowId}@${version}`;
 }
-
-type Action<N, P> = { name: N; payload: P };
-
-type SetTagsAction = Action<'setTags', { tags: string[] }>;
-type AddTagsAction = Action<'addTags', { tags: string[] }>;
-type RemoveTagAction = Action<'removeTag', { tagId: string }>;
-
-type WorkflowDocumentAction = SetTagsAction | AddTagsAction | RemoveTagAction;
 
 /**
  * Gets the store ID for a workflow document store.
@@ -46,46 +50,24 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 	return defineStore(getWorkflowDocumentStoreId(id), () => {
 		const [workflowId, workflowVersion] = id.split('@');
 
-		/**
-		 * Tags
-		 */
-
-		const tags = ref<string[]>([]);
-
-		function setTags(newTags: string[]) {
-			onChange({ name: 'setTags', payload: { tags: newTags } });
-		}
-
-		function addTags(newTags: string[]) {
-			onChange({ name: 'addTags', payload: { tags: newTags } });
-		}
-
-		function removeTag(tagId: string) {
-			onChange({ name: 'removeTag', payload: { tagId } });
-		}
-
-		/**
-		 * Handle actions in a CRDT like manner
-		 */
-
-		function onChange(action: WorkflowDocumentAction) {
-			if (action.name === 'setTags') {
-				tags.value = action.payload.tags;
-			} else if (action.name === 'addTags') {
-				const uniqueTags = new Set([...tags.value, ...action.payload.tags]);
-				tags.value = Array.from(uniqueTags);
-			} else if (action.name === 'removeTag') {
-				tags.value = tags.value.filter((tag) => tag !== action.payload.tagId);
-			}
-		}
+		const workflowDocumentActive = useWorkflowDocumentActive();
+		const workflowDocumentHomeProject = useWorkflowDocumentHomeProject();
+		const workflowDocumentChecksum = useWorkflowDocumentChecksum();
+		const workflowDocumentMeta = useWorkflowDocumentMeta();
+		const workflowDocumentTags = useWorkflowDocumentTags();
+		const workflowDocumentPinData = useWorkflowDocumentPinData();
+		const workflowDocumentTimestamps = useWorkflowDocumentTimestamps();
 
 		return {
 			workflowId,
 			workflowVersion,
-			tags: readonly(tags),
-			setTags,
-			addTags,
-			removeTag,
+			...workflowDocumentActive,
+			...workflowDocumentHomeProject,
+			...workflowDocumentChecksum,
+			...workflowDocumentMeta,
+			...workflowDocumentTags,
+			...workflowDocumentPinData,
+			...workflowDocumentTimestamps,
 		};
 	})();
 }
@@ -123,6 +105,5 @@ export function disposeWorkflowDocumentStore(id: string) {
  * document store but may be called outside of the NodeView tree.
  */
 export function injectWorkflowDocumentStore() {
-	const storeRef = inject(WorkflowDocumentStoreKey, null);
-	return storeRef?.value ?? null;
+	return inject(WorkflowDocumentStoreKey, null);
 }

@@ -45,8 +45,7 @@ export class ProjectSettingsPage extends BasePage {
 		return this.getMembersTable()
 			.locator('tr')
 			.filter({ hasText: email })
-			.getByTestId('project-member-role-dropdown')
-			.getByRole('button');
+			.getByTestId('project-member-role-dropdown');
 	}
 
 	getMembersTable() {
@@ -62,11 +61,6 @@ export class ProjectSettingsPage extends BasePage {
 	async expectTableHasMemberCount(expectedCount: number) {
 		const actualCount = await this.getMemberRowCount();
 		expect(actualCount).toBe(expectedCount);
-	}
-
-	async expectSearchInputValue(expectedValue: string) {
-		const searchInput = this.getMembersSearchInput();
-		await expect(searchInput).toHaveValue(expectedValue);
 	}
 
 	getTitle() {

@@ -465,6 +465,12 @@ export interface IExecuteContextData {
 
 export type IHttpRequestMethods = 'DELETE' | 'GET' | 'HEAD' | 'PATCH' | 'POST' | 'PUT';
 
+export type IgnoreStatusErrorConfig = {
+	ignore: true;
+	/** Ignore HTTP status errors except for the specified status codes */
+	except: number[];
+};
+
 /** used in helpers.httpRequest(WithAuthentication) */
 export interface IHttpRequestOptions {
 	url: string;
@@ -483,7 +489,7 @@ export interface IHttpRequestOptions {
 	encoding?: 'arraybuffer' | 'blob' | 'document' | 'json' | 'text' | 'stream';
 	skipSslCertificateValidation?: boolean;
 	returnFullResponse?: boolean;
-	ignoreHttpStatusErrors?: boolean;
+	ignoreHttpStatusErrors?: boolean | IgnoreStatusErrorConfig;
 	proxy?: {
 		host: string;
 		port: number;
@@ -1273,6 +1279,7 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getRequestObject(): express.Request;
 	getResponseObject(): express.Response;
 	getWebhookName(): string;
+	validateCookieAuth(cookieValue: string): Promise<void>;
 	nodeHelpers: NodeHelperFunctions;
 	helpers: RequestHelperFunctions & BaseHelperFunctions & BinaryHelperFunctions;
 }
@@ -1361,10 +1368,16 @@ export type ChatNodeMessageWithButtons = {
 
 export type ChatNodeMessage = ChatNodeMessageWithButtons | string;
 
+export interface INodeExecutionRedactionInfo {
+	redacted: true;
+	reason: string;
+}
+
 export interface INodeExecutionData {
 	[key: string]:
 		| IDataObject
 		| IBinaryKeyData
+		| INodeExecutionRedactionInfo
 		| IPairedItemData
 		| IPairedItemData[]
 		| NodeApiError
@@ -1380,6 +1393,12 @@ export interface INodeExecutionData {
 		subExecution: RelatedExecution;
 	};
 	evaluationData?: Record<string, GenericValue>;
+	/**
+	 * Redaction marker. Present when this item's data has been redacted.
+	 * Check `redaction.redacted` to determine if data was stripped,
+	 * and `redaction.reason` for why (e.g. "workflow_redaction_policy").
+	 */
+	redaction?: INodeExecutionRedactionInfo;
 	/**
 	 * Use this key to send a message to the chat.
 	 *
@@ -1528,6 +1547,7 @@ export interface INodePropertyTypeOptions {
 	numberPrecision?: number; // Supported by: number
 	fixedCollection?: {
 		itemTitle?: string; // Template for item titles, supports {{ $collection.item.value }}, {{ $collection.item.index }}
+		layout?: 'inline'; // Render sub-parameters side-by-side in a row
 	};
 	password?: boolean; // Supported by: string
 	rows?: number; // Supported by: string
@@ -2916,6 +2936,7 @@ export interface IWorkflowExecuteAdditionalData {
 		executeData?: IExecuteData,
 	): Promise<Result<T, E>>;
 	getRunnerStatus?(taskType: string): { available: true } | { available: false; reason?: string };
+	validateCookieAuth?: (cookieValue: string) => Promise<void>;
 }
 
 export type WorkflowActivateMode =
@@ -2929,6 +2950,7 @@ export type WorkflowActivateMode =
 export namespace WorkflowSettings {
 	export type CallerPolicy = 'any' | 'none' | 'workflowsFromAList' | 'workflowsFromSameOwner';
 	export type SaveDataExecution = 'DEFAULT' | 'all' | 'none';
+	export type RedactionPolicy = 'none' | 'all' | 'non-manual';
 }
 
 export type WorkflowSettingsBinaryMode = typeof BINARY_MODE_SEPARATE | typeof BINARY_MODE_COMBINED;
@@ -2949,6 +2971,7 @@ export interface IWorkflowSettings {
 	timeSavedMode?: 'fixed' | 'dynamic';
 	availableInMCP?: boolean;
 	credentialResolverId?: string;
+	redactionPolicy?: WorkflowSettings.RedactionPolicy;
 }
 
 export interface WorkflowFEMeta {

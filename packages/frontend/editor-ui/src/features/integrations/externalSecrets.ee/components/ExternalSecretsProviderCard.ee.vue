@@ -124,8 +124,9 @@ async function onActionDropdownClick(id: string) {
 						{{
 							i18n.baseText('settings.externalSecrets.card.secretsCount', {
 								interpolate: {
-									count: `${externalSecretsStore.secrets[provider.name]?.length}`,
+									count: externalSecretsStore.secrets[provider.name]?.length ?? 0,
 								},
+								adjustToNumber: externalSecretsStore.secrets[provider.name]?.length ?? 0,
 							})
 						}}
 					</span>
@@ -160,7 +161,7 @@ async function onActionDropdownClick(id: string) {
 					@action="onActionDropdownClick"
 				/>
 			</div>
-			<N8nButton v-else type="tertiary" @click="openExternalSecretProvider()">
+			<N8nButton variant="subtle" v-else @click="openExternalSecretProvider()">
 				{{ i18n.baseText('settings.externalSecrets.card.setUp') }}
 			</N8nButton>
 		</div>

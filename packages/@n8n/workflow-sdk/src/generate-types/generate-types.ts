@@ -13,14 +13,13 @@
  *   pnpm generate-types
  *
  * Output:
- *   ~/.n8n/node-definitions/
+ *   dist/node-definitions/ (within each node package)
  *
  * @generated - This file generates code, but is itself manually maintained.
  */
 
 import * as fs from 'fs';
 import { deepCopy } from 'n8n-workflow';
-import * as os from 'os';
 import * as path from 'path';
 
 // eslint-disable-next-line import-x/no-cycle -- TODO: Refactor shared types/utils to break cycle
@@ -42,7 +41,8 @@ const NODES_LANGCHAIN_TYPES = path.resolve(
 	__dirname,
 	'../../../nodes-langchain/dist/types/nodes.json',
 );
-const OUTPUT_PATH = path.join(os.homedir(), '.n8n', 'node-definitions');
+/** Dev script output path (local to the package) */
+const DEV_OUTPUT_PATH = path.resolve(__dirname, '../../dist/node-definitions');
 
 // Path to nodes-base dist for finding output schemas
 const NODES_BASE_DIST = path.resolve(__dirname, '../../../../nodes-base/dist/nodes');
@@ -3778,20 +3778,18 @@ function convertNodeToToolVariant(node: NodeTypeDescription): NodeTypeDescriptio
 // Main Entry Point
 // =============================================================================
 
+/** Batch size for parallel file writes to avoid file descriptor exhaustion */
+const WRITE_BATCH_SIZE = 100;
+
 /**
- * Write files from a plan map to disk
- * Creates directories as needed
+ * Write files in parallel batches to stay within OS file descriptor limits.
  */
-async function writePlanToDisk(baseDir: string, plan: Map<string, string>): Promise<number> {
-	let fileCount = 0;
-	for (const [relativePath, content] of plan) {
-		const fullPath = path.join(baseDir, relativePath);
-		const dir = path.dirname(fullPath);
-		await fs.promises.mkdir(dir, { recursive: true });
-		await fs.promises.writeFile(fullPath, content);
-		fileCount++;
+async function writeFilesInBatches(files: Array<{ path: string; content: string }>): Promise<void> {
+	for (let i = 0; i < files.length; i += WRITE_BATCH_SIZE) {
+		const batch = files.slice(i, i + WRITE_BATCH_SIZE);
+		// eslint-disable-next-line @typescript-eslint/promise-function-async
+		await Promise.all(batch.map((f) => fs.promises.writeFile(f.path, f.content)));
 	}
-	return fileCount;
 }
 
 /**
@@ -3817,23 +3815,24 @@ async function generateVersionSpecificFiles(
 	nodesByName: Map<string, NodeTypeDescription[]>,
 ): Promise<NodeTypeDescription[]> {
 	const allNodes: NodeTypeDescription[] = [];
-	let generatedFiles = 0;
-	let generatedDirs = 0;
-	let splitVersions = 0;
-	let flatVersions = 0;
+
+	// Phase 1: Pure computation — generate all file contents in memory
+	const allDirs = new Set<string>();
+	const allWrites: Array<{ path: string; content: string }> = [];
+	// Track split plans that need their own directory creation + writes
+	const splitPlans: Array<{ baseDir: string; plan: Map<string, string> }> = [];
 
 	for (const [nodeName, nodes] of nodesByName) {
 		try {
-			// Create directory for this node
 			const nodeDir = path.join(packageDir, nodeName);
-			await fs.promises.mkdir(nodeDir, { recursive: true });
-			generatedDirs++;
 
-			// Collect all individual versions from all node entries and map them to their source node
-			// This allows us to generate a file per individual version (e.g., v3, v31, v32, v33, v34)
+			// Accumulate writes locally — only commit to allWrites on success
+			const nodeWrites: Array<{ path: string; content: string }> = [];
+			const nodeDirs = new Set<string>([nodeDir]);
+			const nodeSplitPlans: Array<{ baseDir: string; plan: Map<string, string> }> = [];
+
 			const versionToNode = new Map<number, NodeTypeDescription>();
 			const allVersions: number[] = [];
-			// Track which versions use split structure
 			const splitVersionsSet = new Set<number>();
 
 			for (const node of nodes) {
@@ -3846,47 +3845,55 @@ async function generateVersionSpecificFiles(
 				}
 			}
 
-			// Generate files for each individual version
 			for (const version of allVersions) {
 				const sourceNode = versionToNode.get(version)!;
 				const fileName = versionToFileName(version);
 
-				// Check if this node uses a discriminator pattern that benefits from splitting
 				if (hasDiscriminatorPattern(sourceNode)) {
-					// Generate split structure in a version directory
 					const versionDir = path.join(nodeDir, fileName);
 					const plan = planSplitVersionFiles(sourceNode, version);
-					const count = await writePlanToDisk(versionDir, plan);
-					generatedFiles += count;
+					nodeSplitPlans.push({ baseDir: versionDir, plan });
 					splitVersionsSet.add(version);
-					splitVersions++;
 				} else {
-					// Generate flat type file
 					const content = generateSingleVersionTypeFile(sourceNode, version);
-					const filePath = path.join(nodeDir, `${fileName}.ts`);
-					await fs.promises.writeFile(filePath, content);
-					generatedFiles++;
-					flatVersions++;
+					nodeWrites.push({ path: path.join(nodeDir, `${fileName}.ts`), content });
 
-					// Generate corresponding Zod schema file (CommonJS JavaScript for runtime loading)
 					const schemaContent = generateSingleVersionSchemaFile(sourceNode, version);
-					const schemaFilePath = path.join(nodeDir, `${fileName}.schema.js`);
-					await fs.promises.writeFile(schemaFilePath, schemaContent);
-					generatedFiles++;
+					nodeWrites.push({
+						path: path.join(nodeDir, `${fileName}.schema.js`),
+						content: schemaContent,
+					});
 				}
 			}
 
-			// Generate index.ts that re-exports all individual versions
-			// Pass splitVersionsSet so it knows which versions are directories vs files
 			const indexContent = generateVersionIndexFile(nodes[0], allVersions, splitVersionsSet);
-			await fs.promises.writeFile(path.join(nodeDir, 'index.ts'), indexContent);
+			nodeWrites.push({ path: path.join(nodeDir, 'index.ts'), content: indexContent });
 
-			// Add first node to allNodes for main index generation
+			// Commit: all generation succeeded for this node, merge into global arrays
+			allWrites.push(...nodeWrites);
+			for (const d of nodeDirs) allDirs.add(d);
+			splitPlans.push(...nodeSplitPlans);
 			allNodes.push(nodes[0]);
 		} catch (error) {
 			console.error(`  Error generating ${nodeName}:`, error);
 		}
 	}
+
+	// Collect directories from split plans
+	for (const { baseDir, plan } of splitPlans) {
+		for (const [relativePath, content] of plan) {
+			const fullPath = path.join(baseDir, relativePath);
+			allDirs.add(path.dirname(fullPath));
+			allWrites.push({ path: fullPath, content });
+		}
+	}
+
+	// Phase 2: Create all directories in parallel
+	// eslint-disable-next-line @typescript-eslint/promise-function-async
+	await Promise.all([...allDirs].map((d) => fs.promises.mkdir(d, { recursive: true })));
+
+	// Phase 3: Write all files in parallel batches
+	await writeFilesInBatches(allWrites);
 
 	return allNodes;
 }
@@ -3937,9 +3944,10 @@ export async function orchestrateGeneration(options: GenerationOptions): Promise
 
 	const allNodes: NodeTypeDescription[] = [];
 
-	// Generate files for each package
+	// Generate files for each package, cleaning stale output first
 	for (const [packageName, nodesByName] of nodesByPackage) {
 		const packageDir = path.join(outputDir, 'nodes', packageName);
+		await fs.promises.rm(packageDir, { recursive: true, force: true });
 		const packageNodes = await generateVersionSpecificFiles(packageDir, packageName, nodesByName);
 		allNodes.push(...packageNodes);
 	}
@@ -3984,7 +3992,7 @@ export async function generateTypes(): Promise<void> {
 		);
 	}
 
-	const result = await orchestrateGeneration({ nodes: allNodes, outputDir: OUTPUT_PATH });
+	const result = await orchestrateGeneration({ nodes: allNodes, outputDir: DEV_OUTPUT_PATH });
 
 	if (result.nodeCount === 0) {
 		// Generate placeholder if no nodes found
@@ -4001,7 +4009,7 @@ export async function generateTypes(): Promise<void> {
 
 export {};
 `;
-		await fs.promises.writeFile(path.join(OUTPUT_PATH, 'index.ts'), placeholderContent);
+		await fs.promises.writeFile(path.join(DEV_OUTPUT_PATH, 'index.ts'), placeholderContent);
 		console.log('Generated placeholder index.ts (no nodes found)');
 	} else {
 		console.log(`Generated definitions for ${result.nodeCount} nodes`);

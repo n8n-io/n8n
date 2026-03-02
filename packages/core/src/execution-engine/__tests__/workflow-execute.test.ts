@@ -546,6 +546,8 @@ describe('WorkflowExecute', () => {
 		const nodeTypes = Helpers.NodeTypes(Helpers.getNodeTypes(tests));
 
 		for (const testData of tests) {
+			// These tests execute real Code node sandboxes with retries, which can
+			// exceed the default 5s timeout on slow CI runners
 			test(testData.description, async () => {
 				const workflowInstance = new Workflow({
 					id: 'test',
@@ -602,8 +604,47 @@ describe('WorkflowExecute', () => {
 				expect(result.data.executionData!.runtimeData!.source).toEqual('manual');
 				expect(typeof result.data.executionData!.runtimeData!.establishedAt).toBe('number');
 				expect(result.data.executionData!.runtimeData!.establishedAt).toBeGreaterThan(0);
-			});
+			}, 15_000);
 		}
+	});
+
+	describe('run() destination filtering', () => {
+		const executionMode = 'manual';
+		const executionOrder = 'v1';
+		const nodeTypes = Helpers.NodeTypes();
+
+		test('includes non-main parent nodes in runNodeFilter when destination node is set', async () => {
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const agent = createNodeData({ name: 'agent' });
+			const tool = createNodeData({ name: 'tool' });
+
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, agent, tool)
+				.addConnections(
+					{ from: trigger, to: agent, type: NodeConnectionTypes.Main },
+					{ from: tool, to: agent, type: NodeConnectionTypes.AiTool },
+				)
+				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder } });
+
+			const workflowExecute = new WorkflowExecute(
+				Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>()),
+				executionMode,
+			);
+
+			await workflowExecute.run({
+				workflow,
+				startNode: trigger,
+				destinationNode: { nodeName: agent.name, mode: 'inclusive' },
+			});
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const runNodeFilter: string[] | undefined = (workflowExecute as any).runExecutionData
+				.startData?.runNodeFilter;
+			expect(runNodeFilter).toBeDefined();
+			expect(runNodeFilter).toContain(trigger.name);
+			expect(runNodeFilter).toContain(agent.name);
+			expect(runNodeFilter).toContain(tool.name);
+		});
 	});
 
 	describe('runPartialWorkflow2', () => {

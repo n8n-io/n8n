@@ -14,7 +14,7 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
-import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
+import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { nodeViewEventBus } from '@/app/event-bus';
 import type { IWorkflowDb } from '@/Interface';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
@@ -27,6 +27,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { createEventBus } from '@n8n/utils/event-bus';
 import {
 	computed,
+	inject,
 	onBeforeUnmount,
 	onMounted,
 	ref,
@@ -41,6 +42,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 
 const WORKFLOW_NAME_BP_TO_WIDTH: { [key: string]: number } = {
 	XS: 150,
@@ -54,9 +56,7 @@ const props = defineProps<{
 	id: IWorkflowDb['id'];
 	tags: readonly string[];
 	name: IWorkflowDb['name'];
-	meta: IWorkflowDb['meta'];
 	scopes: IWorkflowDb['scopes'];
-	active: IWorkflowDb['active'];
 	currentFolder?: FolderShortInfo;
 	isArchived: IWorkflowDb['isArchived'];
 	description?: IWorkflowDb['description'];
@@ -82,11 +82,11 @@ const telemetry = useTelemetry();
 const message = useMessage();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
-const workflowSaving = useWorkflowSaving({ router });
+const workflowState = injectWorkflowState();
+const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
 
 const isTagsEditEnabled = ref(false);
 const appliedTagIds = ref<string[]>([]);
-const tagsSaving = ref(false);
 const workflowHeaderActionsRef =
 	useTemplateRef<InstanceType<typeof WorkflowHeaderDraftPublishActions>>('workflowHeaderActions');
 const tagsEventBus = createEventBus();
@@ -153,15 +153,12 @@ function onTagsEditEnable() {
 	}, 0);
 }
 
-async function onTagsBlur() {
+function onTagsBlur() {
 	const current = props.tags;
 	const tags = appliedTagIds.value;
 	if (!hasChanged(current, tags)) {
 		isTagsEditEnabled.value = false;
 
-		return;
-	}
-	if (tagsSaving.value) {
 		return;
 	}
 
@@ -172,18 +169,17 @@ async function onTagsBlur() {
 
 	collaborationStore.requestWriteAccess();
 
-	tagsSaving.value = true;
+	if (workflowDocumentStore?.value) {
+		workflowDocumentStore.value.setTags(tags);
+	}
+	uiStore.markStateDirty('metadata');
 
-	const saved = await workflowSaving.saveCurrentWorkflow({ tags });
 	telemetry.track('User edited workflow tags', {
 		workflow_id: props.id,
 		new_tag_count: tags.length,
 	});
 
-	tagsSaving.value = false;
-	if (saved) {
-		isTagsEditEnabled.value = false;
-	}
+	isTagsEditEnabled.value = false;
 }
 
 function onTagsEditEsc() {
@@ -197,7 +193,7 @@ function onNameToggle() {
 	}
 }
 
-async function onNameSubmit(name: string) {
+function onNameSubmit(name: string) {
 	const newName = name.trim();
 	if (!newName) {
 		toast.showMessage({
@@ -215,18 +211,15 @@ async function onNameSubmit(name: string) {
 		return;
 	}
 
-	uiStore.addActiveAction('workflowSaving');
+	// Update workflow name in store and mark state as dirty
+	workflowState.setWorkflowName({ newName, setStateDirty: true });
 
-	const saved = await workflowSaving.saveCurrentWorkflow({ name });
-	if (saved) {
-		documentTitle.setDocumentTitle(newName, 'IDLE');
-	}
-	uiStore.removeActiveAction('workflowSaving');
+	documentTitle.setDocumentTitle(newName, 'IDLE');
 	renameInput.value?.forceCancel();
 }
 
 async function handleArchiveWorkflow() {
-	if (props.active) {
+	if (workflowDocumentStore?.value?.active) {
 		const archiveConfirmed = await message.confirm(
 			locale.baseText('mainSidebar.confirmMessage.workflowArchive.message', {
 				interpolate: { workflowName: props.name },
@@ -250,8 +243,12 @@ async function handleArchiveWorkflow() {
 
 	try {
 		const expectedChecksum =
-			props.id === workflowsStore.workflowId ? workflowsStore.workflowChecksum : undefined;
+			props.id === workflowsStore.workflowId ? workflowDocumentStore?.value?.checksum : undefined;
 		await workflowsStore.archiveWorkflow(props.id, expectedChecksum);
+		workflowDocumentStore?.value?.setActiveState({
+			activeVersionId: null,
+			activeVersion: null,
+		});
 	} catch (error) {
 		toast.showError(error, locale.baseText('generic.archiveWorkflowError'));
 		return;
@@ -459,7 +456,6 @@ onBeforeUnmount(() => {
 				ref="workflowHeaderActions"
 				:tags="tags"
 				:name="name"
-				:meta="meta"
 				:is-archived="isArchived"
 				:is-new-workflow="isNewWorkflow"
 				:workflow-permissions="workflowPermissions"

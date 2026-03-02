@@ -9,7 +9,7 @@ import type { IUser, INodeTypeDescription } from 'n8n-workflow';
 
 import { AiWorkflowBuilderService } from '@/ai-workflow-builder-agent.service';
 import { LLMServiceError } from '@/errors';
-import { anthropicClaudeSonnet45, anthropicClaudeSonnet45Think } from '@/llm-config';
+import { anthropicClaudeSonnet45 } from '@/llm-config';
 import { SessionManagerService } from '@/session-manager.service';
 import { formatMessages } from '@/utils/stream-processor';
 import { WorkflowBuilderAgent, type ChatPayload } from '@/workflow-builder-agent';
@@ -40,7 +40,6 @@ jest.mock('@/workflow-builder-agent');
 jest.mock('@/session-manager.service');
 jest.mock('@/llm-config', () => ({
 	anthropicClaudeSonnet45: jest.fn(),
-	anthropicClaudeSonnet45Think: jest.fn(),
 }));
 jest.mock('@/utils/stream-processor', () => ({
 	formatMessages: jest.fn(),
@@ -59,9 +58,6 @@ const MockedSessionManagerService = SessionManagerService as jest.MockedClass<
 const anthropicClaudeSonnet45Mock = anthropicClaudeSonnet45 as jest.MockedFunction<
 	typeof anthropicClaudeSonnet45
 >;
-const anthropicClaudeSonnet45ThinkMock = anthropicClaudeSonnet45Think as jest.MockedFunction<
-	typeof anthropicClaudeSonnet45Think
->;
 const formatMessagesMock = formatMessages as jest.MockedFunction<typeof formatMessages>;
 
 describe('AiWorkflowBuilderService', () => {
@@ -77,7 +73,7 @@ describe('AiWorkflowBuilderService', () => {
 
 	const mockNodeTypeDescriptions: INodeTypeDescription[] = [
 		{
-			name: 'TestNode',
+			name: 'n8n-nodes-base.testNode',
 			displayName: 'Test Node',
 			description: 'A test node',
 			version: 1,
@@ -95,7 +91,7 @@ describe('AiWorkflowBuilderService', () => {
 			group: ['transform'],
 		},
 		{
-			name: 'HiddenNode',
+			name: 'n8n-nodes-base.hiddenNode',
 			displayName: 'Hidden Node',
 			description: 'A hidden node',
 			version: 1,
@@ -130,7 +126,7 @@ describe('AiWorkflowBuilderService', () => {
 			group: ['transform'],
 		},
 		{
-			name: 'TestNodeTool',
+			name: 'n8n-nodes-base.testNodeTool',
 			displayName: 'Test Tool Node',
 			description: 'Test tool node description',
 			version: 1,
@@ -145,6 +141,17 @@ describe('AiWorkflowBuilderService', () => {
 					default: '',
 				},
 			],
+			group: ['transform'],
+		},
+		{
+			name: 'community-nodes-test.someNode',
+			displayName: 'Community Node',
+			description: 'A community node that should be filtered out',
+			version: 1,
+			defaults: {},
+			inputs: [],
+			outputs: [],
+			properties: [],
 			group: ['transform'],
 		},
 	];
@@ -187,7 +194,13 @@ describe('AiWorkflowBuilderService', () => {
 		// Mock SessionManagerService
 		mockSessionManager = mock<SessionManagerService>();
 		(mockSessionManager.getCheckpointer as jest.Mock).mockReturnValue(mockMemorySaver);
+		(mockSessionManager.loadSessionMessages as jest.Mock).mockResolvedValue([]);
 		MockedSessionManagerService.mockImplementation(() => mockSessionManager);
+		// Mock the static generateThreadId method
+		MockedSessionManagerService.generateThreadId = jest.fn(
+			(workflowId?: string, userId?: string) =>
+				workflowId ? `workflow-${workflowId}-user-${userId ?? 'anonymous'}` : 'random-uuid',
+		);
 
 		// Mock WorkflowBuilderAgent - capture config and call onGenerationSuccess
 		MockedWorkflowBuilderAgent.mockImplementation((config) => {
@@ -203,7 +216,6 @@ describe('AiWorkflowBuilderService', () => {
 		});
 
 		anthropicClaudeSonnet45Mock.mockResolvedValue(mockChatAnthropic);
-		anthropicClaudeSonnet45ThinkMock.mockResolvedValue(mockChatAnthropic);
 
 		// Mock onCreditsUpdated callback
 		mockOnCreditsUpdated = jest.fn();
@@ -211,6 +223,7 @@ describe('AiWorkflowBuilderService', () => {
 		// Create service instance
 		service = new AiWorkflowBuilderService(
 			mockNodeTypeDescriptions,
+			undefined, // sessionStorage
 			mockClient,
 			mockLogger,
 			'test-instance-id',
@@ -224,6 +237,7 @@ describe('AiWorkflowBuilderService', () => {
 		it('should initialize with provided dependencies', () => {
 			const testService = new AiWorkflowBuilderService(
 				mockNodeTypeDescriptions,
+				undefined, // sessionStorage
 				mockClient,
 				mockLogger,
 				'test-instance-id',
@@ -234,7 +248,8 @@ describe('AiWorkflowBuilderService', () => {
 
 			expect(testService).toBeInstanceOf(AiWorkflowBuilderService);
 			expect(MockedSessionManagerService).toHaveBeenCalledWith(
-				expect.arrayContaining([expect.objectContaining({ name: 'TestNode' })]),
+				expect.arrayContaining([expect.objectContaining({ name: 'n8n-nodes-base.testNode' })]),
+				undefined, // sessionStorage
 				mockLogger,
 			);
 		});
@@ -243,7 +258,11 @@ describe('AiWorkflowBuilderService', () => {
 			const testService = new AiWorkflowBuilderService(mockNodeTypeDescriptions);
 
 			expect(testService).toBeInstanceOf(AiWorkflowBuilderService);
-			expect(MockedSessionManagerService).toHaveBeenCalledWith(expect.any(Array), undefined);
+			expect(MockedSessionManagerService).toHaveBeenCalledWith(
+				expect.any(Array),
+				undefined,
+				undefined,
+			);
 		});
 
 		it('should filter out ignored types and hidden nodes except the data table', () => {
@@ -251,6 +270,7 @@ describe('AiWorkflowBuilderService', () => {
 
 			new AiWorkflowBuilderService(
 				mockNodeTypeDescriptions,
+				undefined, // sessionStorage
 				mockClient,
 				mockLogger,
 				'test-instance-id',
@@ -262,9 +282,14 @@ describe('AiWorkflowBuilderService', () => {
 			expect(MockedSessionManagerService).toHaveBeenCalledTimes(1);
 			const filteredNodeTypes = MockedSessionManagerService.mock.calls[0][0];
 
-			expect(filteredNodeTypes.find((node) => node.name === 'HiddenNode')).toBeUndefined();
+			expect(
+				filteredNodeTypes.find((node) => node.name === 'n8n-nodes-base.hiddenNode'),
+			).toBeUndefined();
 			expect(
 				filteredNodeTypes.find((node) => node.name === '@n8n/n8n-nodes-langchain.toolVectorStore'),
+			).toBeUndefined();
+			expect(
+				filteredNodeTypes.find((node) => node.name === 'community-nodes-test.someNode'),
 			).toBeUndefined();
 			expect(
 				filteredNodeTypes.find((node) => node.name === 'n8n-nodes-base.dataTable'),
@@ -276,6 +301,7 @@ describe('AiWorkflowBuilderService', () => {
 
 			new AiWorkflowBuilderService(
 				mockNodeTypeDescriptions,
+				undefined, // sessionStorage
 				mockClient,
 				mockLogger,
 				'test-instance-id',
@@ -287,7 +313,9 @@ describe('AiWorkflowBuilderService', () => {
 			expect(MockedSessionManagerService).toHaveBeenCalledTimes(1);
 			const filteredNodeTypes = MockedSessionManagerService.mock.calls[0][0];
 
-			const testToolNode = filteredNodeTypes.find((node) => node.name === 'TestNodeTool');
+			const testToolNode = filteredNodeTypes.find(
+				(node) => node.name === 'n8n-nodes-base.testNodeTool',
+			);
 			expect(testToolNode).toBeDefined();
 			expect(testToolNode?.description).toBe('Test tool node description');
 			expect(testToolNode?.displayName).toBe('Test Tool Node');
@@ -338,6 +366,8 @@ describe('AiWorkflowBuilderService', () => {
 				mockPayload,
 				'test-user-id',
 				abortController.signal,
+				undefined, // externalCallbacks
+				[], // historicalMessages (empty from loadSessionMessages mock)
 			);
 		});
 
@@ -363,7 +393,8 @@ describe('AiWorkflowBuilderService', () => {
 		it('should create WorkflowBuilderAgent without tracer when no client', async () => {
 			const serviceWithoutClient = new AiWorkflowBuilderService(
 				mockNodeTypeDescriptions,
-				undefined,
+				undefined, // sessionStorage
+				undefined, // client
 				mockLogger,
 			);
 
@@ -450,6 +481,32 @@ describe('AiWorkflowBuilderService', () => {
 
 			// Verify callback was called with correct parameters
 			expect(mockOnCreditsUpdated).toHaveBeenCalledWith('test-user-id', 10, 1);
+		});
+
+		it('should save session to persistent storage after chat completes', async () => {
+			const generator = service.chat(mockPayload, mockUser);
+			// Drain the generator to complete the stream
+			for await (const _ of generator) {
+				// consume all outputs
+			}
+
+			// Verify session was saved after stream completion
+			expect(mockSessionManager.saveSessionFromCheckpointer).toHaveBeenCalledTimes(1);
+			expect(mockSessionManager.saveSessionFromCheckpointer).toHaveBeenCalledWith(
+				'workflow-test-workflow-user-test-user-id',
+				undefined, // previousSummary from state
+			);
+		});
+
+		it('should load historical messages before starting chat', async () => {
+			const generator = service.chat(mockPayload, mockUser);
+			await generator.next();
+
+			// Verify historical messages were loaded
+			expect(mockSessionManager.loadSessionMessages).toHaveBeenCalledTimes(1);
+			expect(mockSessionManager.loadSessionMessages).toHaveBeenCalledWith(
+				'workflow-test-workflow-user-test-user-id',
+			);
 		});
 	});
 

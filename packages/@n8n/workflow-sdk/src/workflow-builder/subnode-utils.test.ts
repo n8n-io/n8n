@@ -174,15 +174,16 @@ describe('addNodeWithSubnodes', () => {
 			});
 		});
 
-		it('adds tool subnodes with ai_tool connections', () => {
+		it('adds tool subnodes with ai_tool connections all at index 0', () => {
 			const nodes = new Map<string, GraphNode>();
 			const tool1 = createSubnode({ name: 'Calculator', type: 'toolCalculator' });
 			const tool2 = createSubnode({ name: 'Wikipedia', type: 'toolWikipedia' });
+			const tool3 = createSubnode({ name: 'Code', type: 'toolCode' });
 			const agentNode = createNode({
 				name: 'Agent',
 				config: {
 					subnodes: {
-						tools: [tool1, tool2],
+						tools: [tool1, tool2, tool3],
 					},
 				} as unknown as NodeInstance<string, string, unknown>['config'],
 			});
@@ -191,9 +192,25 @@ describe('addNodeWithSubnodes', () => {
 
 			expect(nodes.has('Calculator')).toBe(true);
 			expect(nodes.has('Wikipedia')).toBe(true);
+			expect(nodes.has('Code')).toBe(true);
 
+			// All tools should target index 0 (single ai_tool input on the agent)
 			const calcConns = nodes.get('Calculator')?.connections.get('ai_tool');
 			expect(calcConns?.get(0)).toContainEqual({
+				node: 'Agent',
+				type: 'ai_tool',
+				index: 0,
+			});
+
+			const wikiConns = nodes.get('Wikipedia')?.connections.get('ai_tool');
+			expect(wikiConns?.get(0)).toContainEqual({
+				node: 'Agent',
+				type: 'ai_tool',
+				index: 0,
+			});
+
+			const codeConns = nodes.get('Code')?.connections.get('ai_tool');
+			expect(codeConns?.get(0)).toContainEqual({
 				node: 'Agent',
 				type: 'ai_tool',
 				index: 0,
@@ -246,6 +263,96 @@ describe('addNodeWithSubnodes', () => {
 			});
 		});
 
+		it('adds multiple embedding subnodes all at index 0', () => {
+			const nodes = new Map<string, GraphNode>();
+			const emb1 = createSubnode({ name: 'Embeddings 1', type: 'embeddingsOpenAi' });
+			const emb2 = createSubnode({ name: 'Embeddings 2', type: 'embeddingsOpenAi' });
+			const vectorStore = createNode({
+				name: 'Vector Store',
+				config: {
+					subnodes: {
+						embedding: [emb1, emb2],
+					},
+				} as unknown as NodeInstance<string, string, unknown>['config'],
+			});
+
+			addNodeWithSubnodes(nodes, vectorStore);
+
+			const emb1Conns = nodes.get('Embeddings 1')?.connections.get('ai_embedding');
+			expect(emb1Conns?.get(0)).toContainEqual({
+				node: 'Vector Store',
+				type: 'ai_embedding',
+				index: 0,
+			});
+
+			const emb2Conns = nodes.get('Embeddings 2')?.connections.get('ai_embedding');
+			expect(emb2Conns?.get(0)).toContainEqual({
+				node: 'Vector Store',
+				type: 'ai_embedding',
+				index: 0,
+			});
+		});
+
+		it('adds multiple document loader subnodes all at index 0', () => {
+			const nodes = new Map<string, GraphNode>();
+			const doc1 = createSubnode({ name: 'Doc Loader 1', type: 'documentDefaultDataLoader' });
+			const doc2 = createSubnode({ name: 'Doc Loader 2', type: 'documentDefaultDataLoader' });
+			const vectorStore = createNode({
+				name: 'Vector Store',
+				config: {
+					subnodes: {
+						documentLoader: [doc1, doc2],
+					},
+				} as unknown as NodeInstance<string, string, unknown>['config'],
+			});
+
+			addNodeWithSubnodes(nodes, vectorStore);
+
+			const doc1Conns = nodes.get('Doc Loader 1')?.connections.get('ai_document');
+			expect(doc1Conns?.get(0)).toContainEqual({
+				node: 'Vector Store',
+				type: 'ai_document',
+				index: 0,
+			});
+
+			const doc2Conns = nodes.get('Doc Loader 2')?.connections.get('ai_document');
+			expect(doc2Conns?.get(0)).toContainEqual({
+				node: 'Vector Store',
+				type: 'ai_document',
+				index: 0,
+			});
+		});
+
+		it('keeps ai_languageModel array index for primary/fallback', () => {
+			const nodes = new Map<string, GraphNode>();
+			const model1 = createSubnode({ name: 'Primary Model', type: 'lmChatOpenAi' });
+			const model2 = createSubnode({ name: 'Fallback Model', type: 'lmChatOpenAi' });
+			const agentNode = createNode({
+				name: 'Agent',
+				config: {
+					subnodes: {
+						model: [model1, model2],
+					},
+				} as unknown as NodeInstance<string, string, unknown>['config'],
+			});
+
+			addNodeWithSubnodes(nodes, agentNode);
+
+			const primaryConns = nodes.get('Primary Model')?.connections.get('ai_languageModel');
+			expect(primaryConns?.get(0)).toContainEqual({
+				node: 'Agent',
+				type: 'ai_languageModel',
+				index: 0,
+			});
+
+			const fallbackConns = nodes.get('Fallback Model')?.connections.get('ai_languageModel');
+			expect(fallbackConns?.get(0)).toContainEqual({
+				node: 'Agent',
+				type: 'ai_languageModel',
+				index: 1,
+			});
+		});
+
 		it('handles embeddings subnode (plural key)', () => {
 			const nodes = new Map<string, GraphNode>();
 			const embedding = createSubnode({ name: 'OpenAI Embeddings', type: 'embeddingsOpenAi' });
@@ -294,6 +401,52 @@ describe('addNodeWithSubnodes', () => {
 			const connections = modelConns?.get(0) ?? [];
 			expect(connections).toContainEqual({ node: 'Agent 1', type: 'ai_languageModel', index: 0 });
 			expect(connections).toContainEqual({ node: 'Agent 2', type: 'ai_languageModel', index: 0 });
+		});
+	});
+
+	describe('duplicate parent names with shared subnodes', () => {
+		it('processes subnodes for auto-renamed nodes', () => {
+			const nodes = new Map<string, GraphNode>();
+			const sharedModel = createSubnode({ name: 'Shared Model', type: 'lmChatOpenAi' });
+
+			// Two agents with IDENTICAL names, sharing the same model
+			const agent1 = createNode({
+				name: 'Agent',
+				config: { subnodes: { model: sharedModel } } as unknown as NodeInstance<
+					string,
+					string,
+					unknown
+				>['config'],
+			});
+			const agent2 = createNode({
+				name: 'Agent',
+				config: { subnodes: { model: sharedModel } } as unknown as NodeInstance<
+					string,
+					string,
+					unknown
+				>['config'],
+			});
+
+			const key1 = addNodeWithSubnodes(nodes, agent1);
+			const key2 = addNodeWithSubnodes(nodes, agent2);
+
+			// First agent keeps its name, second gets renamed
+			expect(key1).toBe('Agent');
+			expect(key2).toBe('Agent 1');
+
+			// Shared model should exist and connect to BOTH agents using their map keys
+			const modelConns = nodes.get('Shared Model')?.connections.get('ai_languageModel');
+			const connections = modelConns?.get(0) ?? [];
+			expect(connections).toContainEqual({
+				node: 'Agent',
+				type: 'ai_languageModel',
+				index: 0,
+			});
+			expect(connections).toContainEqual({
+				node: 'Agent 1',
+				type: 'ai_languageModel',
+				index: 0,
+			});
 		});
 	});
 

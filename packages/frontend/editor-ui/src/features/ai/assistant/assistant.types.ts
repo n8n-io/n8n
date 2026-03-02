@@ -126,7 +126,9 @@ export namespace ChatRequest {
 	export interface BuilderFeatureFlags {
 		templateExamples?: boolean;
 		codeBuilder?: boolean;
+		pinData?: boolean;
 		planMode?: boolean;
+		mergeAskBuild?: boolean;
 	}
 
 	export interface UserChatMessage {
@@ -179,6 +181,8 @@ export namespace ChatRequest {
 
 	// API-specific types that extend UI types
 	export interface CodeDiffMessage extends ChatUI.CodeDiffMessage {
+		sdkSessionId?: string;
+		nodeName?: string;
 		solution_count?: number;
 		quickReplies?: ChatUI.QuickReply[];
 	}
@@ -242,6 +246,10 @@ export namespace ChatRequest {
 		answers: PlanMode.QuestionResponse[];
 	}
 
+	export interface MessagesCompactedEvent {
+		type: 'messages-compacted';
+	}
+
 	// API-only types
 	export type MessageResponse =
 		| ((
@@ -259,7 +267,8 @@ export namespace ChatRequest {
 		  ) & {
 				quickReplies?: ChatUI.QuickReply[];
 		  })
-		| ChatUI.EndSessionMessage;
+		| ChatUI.EndSessionMessage
+		| MessagesCompactedEvent;
 
 	export interface ResponsePayload {
 		sessionId?: string;
@@ -470,4 +479,10 @@ export function isUserAnswersMessage(
 	msg: ChatRequest.MessageResponse,
 ): msg is ChatRequest.ApiUserAnswersMessage {
 	return 'type' in msg && msg.type === 'user_answers' && 'answers' in msg;
+}
+
+export function isMessagesCompactedEvent(
+	msg: ChatRequest.MessageResponse,
+): msg is ChatRequest.MessagesCompactedEvent {
+	return 'type' in msg && msg.type === 'messages-compacted';
 }

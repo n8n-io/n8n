@@ -60,6 +60,7 @@ export interface IEnterpriseSettings {
 		};
 	};
 	customRoles: boolean;
+	personalSpacePolicy: boolean;
 }
 
 export interface FrontendSettings {
@@ -75,6 +76,7 @@ export interface FrontendSettings {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	endpointWebhookWaiting: string;
+	endpointHealth: string;
 	saveDataErrorExecution: WorkflowSettings.SaveDataExecution;
 	saveDataSuccessExecution: WorkflowSettings.SaveDataExecution;
 	saveManualExecutions: boolean;
@@ -265,6 +267,16 @@ export type FrontendModuleSettings = {
 	 */
 	'quick-connect'?: {
 		options: QuickConnectOption[];
+	};
+
+	/**
+	 * Client settings for external secrets module.
+	 */
+	'external-secrets'?: {
+		/** Whether multiple connections per vault type are enabled. */
+		multipleConnections: boolean;
+		/** Whether project-scoped external secrets are enabled. */
+		forProjects: boolean;
 	};
 };
 

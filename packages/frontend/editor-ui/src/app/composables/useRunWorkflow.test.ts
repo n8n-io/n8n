@@ -709,7 +709,7 @@ describe('useRunWorkflow({ router })', () => {
 					},
 				],
 				triggerToStartFrom: undefined,
-				workflowData,
+				workflowId: workflowData.id,
 			});
 			expect(result).toEqual(mockExecutionResponse);
 			expect(setWorkflowExecutionData).toHaveBeenCalledTimes(1);
@@ -1089,11 +1089,70 @@ describe('useRunWorkflow({ router })', () => {
 					data: undefined,
 					name: 'foo',
 				},
-				workflowData: {
-					id: 'workflowId',
-					nodes: [],
-				},
+				workflowId: 'workflowId',
 			});
+		});
+
+		it('should resolve single trigger when no trigger is selected', async () => {
+			const chatTrigger = createTestNode({
+				name: 'When chat message received',
+				type: CHAT_TRIGGER_NODE_TYPE,
+			});
+			const runWorkflowComposable = useRunWorkflow({ router });
+
+			vi.mocked(workflowsStore).workflowObject = {
+				id: 'workflowId',
+				nodes: { [chatTrigger.name]: chatTrigger },
+			} as unknown as Workflow;
+			vi.mocked(workflowsStore).selectedTriggerNodeName = undefined;
+			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+				id: 'workflowId',
+				nodes: [],
+			} as unknown as WorkflowData);
+
+			await runWorkflowComposable.runEntireWorkflow('main');
+
+			expect(workflowsStore.runWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({
+					triggerToStartFrom: {
+						data: undefined,
+						name: 'When chat message received',
+					},
+				}),
+			);
+		});
+
+		it('should not resolve trigger when multiple triggers exist', async () => {
+			const chatTrigger = createTestNode({
+				name: 'When chat message received',
+				type: CHAT_TRIGGER_NODE_TYPE,
+			});
+			const manualTrigger = createTestNode({
+				name: 'Manual Trigger',
+				type: MANUAL_TRIGGER_NODE_TYPE,
+			});
+			const runWorkflowComposable = useRunWorkflow({ router });
+
+			vi.mocked(workflowsStore).workflowObject = {
+				id: 'workflowId',
+				nodes: {
+					[chatTrigger.name]: chatTrigger,
+					[manualTrigger.name]: manualTrigger,
+				},
+			} as unknown as Workflow;
+			vi.mocked(workflowsStore).selectedTriggerNodeName = undefined;
+			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+				id: 'workflowId',
+				nodes: [],
+			} as unknown as WorkflowData);
+
+			await runWorkflowComposable.runEntireWorkflow('main');
+
+			expect(workflowsStore.runWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({
+					triggerToStartFrom: undefined,
+				}),
+			);
 		});
 	});
 

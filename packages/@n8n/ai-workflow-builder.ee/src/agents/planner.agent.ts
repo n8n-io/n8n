@@ -35,7 +35,9 @@ export const plannerOutputSchema = z.object({
 				suggestedNodes: z
 					.array(z.string())
 					.optional()
-					.describe('Suggested internal n8n node type names (when known)'),
+					.describe(
+						'Copy exact node type names from discovery_context_suggested_nodes. Do not modify, prefix, or invent names.',
+					),
 			}),
 		)
 		.min(1)
@@ -92,6 +94,7 @@ export interface PlannerNodeInput {
 	workflowJSON: SimpleWorkflow;
 	planPrevious?: PlanOutput | null;
 	planFeedback?: string | null;
+	selectedNodesContext?: string;
 }
 
 export interface PlannerNodeResult {
@@ -141,6 +144,7 @@ export async function invokePlannerNode(
 		workflowJSON: input.workflowJSON,
 		planPrevious: input.planPrevious,
 		planFeedback: input.planFeedback,
+		selectedNodesContext: input.selectedNodesContext,
 	});
 	const contextMessage = createContextMessage([contextContent]);
 
