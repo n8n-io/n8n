@@ -13,7 +13,7 @@
  *   node distribute-tests.mjs <shards> <index>                 # Specs for a single shard
  */
 
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -45,12 +45,14 @@ function getRequiredImages(capabilities) {
 }
 
 function getOrchestration(numShards, options = {}) {
-	const impactFlag = options.impact ? ' --impact' : '';
-	const filesFlag = options.files ? ` --files=${options.files}` : '';
-	const output = execSync(
-		`node ${JANITOR_CLI} orchestrate --shards=${numShards}${impactFlag}${filesFlag}`,
-		{ cwd: PLAYWRIGHT_DIR, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'inherit'] },
-	);
+	const cliArgs = ['orchestrate', `--shards=${numShards}`];
+	if (options.impact) cliArgs.push('--impact');
+	if (options.files) cliArgs.push(`--files=${options.files}`);
+	const output = execFileSync('node', [JANITOR_CLI, ...cliArgs], {
+		cwd: PLAYWRIGHT_DIR,
+		encoding: 'utf-8',
+		stdio: ['pipe', 'pipe', 'inherit'],
+	});
 	return JSON.parse(output);
 }
 
