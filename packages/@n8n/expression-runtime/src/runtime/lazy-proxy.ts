@@ -96,6 +96,11 @@ export function createDeepLazyProxy(basePath: string[] = []): any {
 			if (value && typeof value === 'object' && value.__isArray) {
 				const arrayProxy = new Proxy([] as any[], {
 					get(arrTarget: any, arrProp: string | symbol): unknown {
+						// Symbols can't be transferred via isolated-vm; return undefined
+						if (typeof arrProp === 'symbol') {
+							return undefined;
+						}
+
 						// Handle array length
 						if (arrProp === 'length') {
 							return value.__length;
