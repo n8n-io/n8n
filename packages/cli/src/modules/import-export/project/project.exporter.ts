@@ -3,6 +3,7 @@ import { ProjectRepository } from '@n8n/db';
 import { In } from '@n8n/typeorm';
 
 import type { Exporter } from '../exporter';
+import { FolderExporter } from '../folder/folder.exporter';
 import type { ExportContext } from '../import-export.types';
 import type { PackageWriter } from '../package-writer';
 import { generateSlug } from '../slug.utils';
@@ -18,6 +19,7 @@ export class ProjectExporter implements Exporter<ManifestProjectEntry> {
 	constructor(
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectSerializer: ProjectSerializer,
+		private readonly folderExporter: FolderExporter,
 	) {}
 
 	async export(context: ExportContext, writer: PackageWriter): Promise<ManifestProjectEntry[]> {
@@ -43,11 +45,19 @@ export class ProjectExporter implements Exporter<ManifestProjectEntry> {
 			writer.writeDirectory(target);
 			writer.writeFile(`${target}/project.json`, JSON.stringify(serialized, null, '\t'));
 
-			entries.push({
+			const folderEntries = await this.folderExporter.exportForProject(project.id, target, writer);
+
+			const entry: ManifestProjectEntry = {
 				id: project.id,
 				name: project.name,
 				target,
-			});
+			};
+
+			if (folderEntries.length > 0) {
+				entry.folders = folderEntries;
+			}
+
+			entries.push(entry);
 		}
 
 		return entries;
