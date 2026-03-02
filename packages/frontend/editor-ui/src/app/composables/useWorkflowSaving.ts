@@ -252,7 +252,7 @@ export function useWorkflowSaving({
 
 				uiStore.removeActiveAction('workflowSaving');
 
-				if (error.errorCode === 100) {
+				if (error.errorCode === 409) {
 					telemetry.track('User attempted to save locked workflow', {
 						workflowId: currentWorkflow,
 						sharing_role: getWorkflowProjectRole(currentWorkflow),
