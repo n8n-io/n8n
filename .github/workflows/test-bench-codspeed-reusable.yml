@@ -25,8 +25,6 @@ jobs:
         uses: ./.github/actions/setup-nodejs
 
       - name: Run benchmarks
-        # TODO: Remove continue-on-error once CodSpeed app is approved and repo is connected
-        continue-on-error: true
         uses: CodSpeedHQ/action@2ac572851726409c88c02a307f1ea2632a9ea59b # v4.11.0
         with:
           mode: simulation
