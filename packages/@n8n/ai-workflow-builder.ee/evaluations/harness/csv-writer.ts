@@ -1,8 +1,8 @@
 import { writeFileSync } from 'node:fs';
 
+import type { ExampleResult, Feedback } from './harness-types';
 import { DETERMINISTIC_CHECKS } from '../evaluators/binary-checks/checks';
 import { LLM_CHECKS } from '../evaluators/binary-checks/llm-checks';
-import type { ExampleResult, Feedback } from './harness-types';
 
 /**
  * Fixed columns that appear first in the CSV (in order).

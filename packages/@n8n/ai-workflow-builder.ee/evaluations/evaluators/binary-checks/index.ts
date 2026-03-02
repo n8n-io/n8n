@@ -1,12 +1,12 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
+import type { SimpleWorkflow } from '@/types/workflow';
+
 import { DETERMINISTIC_CHECKS } from './checks';
 import { LLM_CHECKS } from './llm-checks';
 import type { BinaryCheck, BinaryCheckContext } from './types';
 import type { EvaluationContext, Evaluator, Feedback } from '../../harness/harness-types';
-
-import type { SimpleWorkflow } from '@/types/workflow';
 
 export interface BinaryChecksEvaluatorOptions {
 	nodeTypes: INodeTypeDescription[];
