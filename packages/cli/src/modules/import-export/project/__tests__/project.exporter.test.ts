@@ -4,6 +4,7 @@ import { mock } from 'jest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
+import type { FolderExporter } from '../../folder/folder.exporter';
 import type { ExportContext } from '../../import-export.types';
 import type { PackageWriter } from '../../package-writer';
 import { ProjectExporter } from '../project.exporter';
@@ -13,6 +14,7 @@ describe('ProjectExporter', () => {
 	let exporter: ProjectExporter;
 	let mockProjectRepository: MockProxy<ProjectRepository>;
 	let mockSerializer: MockProxy<ProjectSerializer>;
+	let mockFolderExporter: MockProxy<FolderExporter>;
 	let mockWriter: MockProxy<PackageWriter>;
 	let context: ExportContext;
 
@@ -21,9 +23,12 @@ describe('ProjectExporter', () => {
 
 		mockProjectRepository = mock<ProjectRepository>();
 		mockSerializer = mock<ProjectSerializer>();
+		mockFolderExporter = mock<FolderExporter>();
 		mockWriter = mock<PackageWriter>();
 
-		exporter = new ProjectExporter(mockProjectRepository, mockSerializer);
+		mockFolderExporter.exportForProject.mockResolvedValue([]);
+
+		exporter = new ProjectExporter(mockProjectRepository, mockSerializer, mockFolderExporter);
 
 		context = {
 			user: mock(),
@@ -105,5 +110,64 @@ describe('ProjectExporter', () => {
 
 		const writtenContent = mockWriter.writeFile.mock.calls[0][1] as string;
 		expect(JSON.parse(writtenContent)).toEqual(serialized);
+	});
+
+	it('should call FolderExporter for each project', async () => {
+		const project = {
+			id: '550e8400-e29b-41d4-a716-446655440000',
+			name: 'billing',
+			type: 'team',
+		} as Project;
+
+		mockProjectRepository.find.mockResolvedValue([project]);
+		mockSerializer.serialize.mockReturnValue({ id: project.id, name: project.name });
+
+		await exporter.export(context, mockWriter);
+
+		expect(mockFolderExporter.exportForProject).toHaveBeenCalledWith(
+			project.id,
+			'projects/billing-550e84',
+			mockWriter,
+		);
+	});
+
+	it('should include folder entries in manifest when folders exist', async () => {
+		const project = {
+			id: '550e8400-e29b-41d4-a716-446655440000',
+			name: 'billing',
+			type: 'team',
+		} as Project;
+
+		const folderEntries = [
+			{
+				id: 'folder-1',
+				name: 'invoices',
+				target: 'projects/billing-550e84/folders/invoices-folder',
+			},
+		];
+
+		mockProjectRepository.find.mockResolvedValue([project]);
+		mockSerializer.serialize.mockReturnValue({ id: project.id, name: project.name });
+		mockFolderExporter.exportForProject.mockResolvedValue(folderEntries);
+
+		const entries = await exporter.export(context, mockWriter);
+
+		expect(entries[0].folders).toEqual(folderEntries);
+	});
+
+	it('should omit folders from manifest when project has no folders', async () => {
+		const project = {
+			id: '550e8400-e29b-41d4-a716-446655440000',
+			name: 'billing',
+			type: 'team',
+		} as Project;
+
+		mockProjectRepository.find.mockResolvedValue([project]);
+		mockSerializer.serialize.mockReturnValue({ id: project.id, name: project.name });
+		mockFolderExporter.exportForProject.mockResolvedValue([]);
+
+		const entries = await exporter.export(context, mockWriter);
+
+		expect(entries[0].folders).toBeUndefined();
 	});
 });

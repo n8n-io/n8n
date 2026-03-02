@@ -4,6 +4,7 @@ import type { ManifestProjectEntry } from './project/project.types';
 
 export type { ManifestProjectEntry } from './project/project.types';
 export type { SerializedProject } from './project/project.types';
+export type { ManifestFolderEntry, SerializedFolder } from './folder/folder.types';
 
 export interface PackageManifest {
 	formatVersion: string;
