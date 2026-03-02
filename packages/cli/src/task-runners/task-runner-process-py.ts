@@ -65,8 +65,16 @@ export class PyTaskRunnerProcess extends TaskRunnerProcessBase {
 	 */
 	static async checkRequirements(): Promise<'python' | 'venv' | null> {
 		try {
-			const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
-			await asyncExec(`${pythonCmd} --version`, { timeout: 5000 });
+			if (process.platform === 'win32') {
+				const { stdout, stderr } = await asyncExec('python --version', { timeout: 5000 });
+				// Python 2 prints version to stderr, Python 3 to stdout
+				const output = (stdout + stderr).trim();
+				if (!output.startsWith('Python 3')) {
+					return 'python';
+				}
+			} else {
+				await asyncExec('python3 --version', { timeout: 5000 });
+			}
 		} catch {
 			return 'python';
 		}
