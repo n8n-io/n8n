@@ -116,7 +116,10 @@ export class SlackCredentialResolver implements ICredentialResolver {
 		handle: CredentialResolverHandle,
 	): Promise<void> {
 		const parsedOptions = this.parseOptions(handle.configuration);
-		const key = await this.slackSignatureIdentifier.resolve(context, parsedOptions);
+		// setSecret is called from the OAuth callback where the identity was already
+		// verified during the authorize step and carried via encrypted CSRF state.
+		// Use resolveKey() which only derives the storage key without re-verifying.
+		const key = this.slackSignatureIdentifier.resolveKey(context, parsedOptions);
 
 		const encryptedData = this.cipher.encrypt(data);
 

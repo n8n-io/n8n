@@ -27,6 +27,7 @@ describe('SlackCredentialResolver', () => {
 
 		mockIdentifier = {
 			resolve: jest.fn(),
+			resolveKey: jest.fn(),
 			validateOptions: jest.fn(),
 		} as unknown as jest.Mocked<SlackSignatureIdentifier>;
 
@@ -49,6 +50,9 @@ describe('SlackCredentialResolver', () => {
 			const storage = new Map<string, string>();
 
 			mockIdentifier.resolve.mockImplementation(async (context) => {
+				return `slack-${context.identity}`;
+			});
+			mockIdentifier.resolveKey.mockImplementation((context) => {
 				return `slack-${context.identity}`;
 			});
 			mockIdentifier.validateOptions.mockResolvedValue(undefined);
@@ -102,6 +106,7 @@ describe('SlackCredentialResolver', () => {
 
 		beforeEach(() => {
 			mockIdentifier.resolve.mockResolvedValue('U12345');
+			mockIdentifier.resolveKey.mockReturnValue('U12345');
 			mockIdentifier.validateOptions.mockResolvedValue(undefined);
 			resolver = new SlackCredentialResolver(mockLogger, mockIdentifier, mockStorage, mockCipher);
 		});
@@ -228,7 +233,7 @@ describe('SlackCredentialResolver', () => {
 				const credentialId = 'cred-123';
 				const handle = testHelpers.createHandle(validOptions);
 
-				mockIdentifier.resolve.mockImplementation(async (context) => {
+				mockIdentifier.resolveKey.mockImplementation((context) => {
 					return context.identity; // user_id directly
 				});
 

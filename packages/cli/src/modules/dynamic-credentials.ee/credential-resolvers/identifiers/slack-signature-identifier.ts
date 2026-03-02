@@ -37,14 +37,16 @@ export class SlackSignatureIdentifier implements ITokenIdentifier {
 		}
 	}
 
+	/**
+	 * Verifies the Slack signature and returns the storage key.
+	 * Use this for untrusted entry points (execution-status, authorize, revoke).
+	 */
 	async resolve(
 		context: ICredentialContext,
 		identifierOptions: Record<string, unknown>,
 	): Promise<string> {
 		const options = this.parseOptions(identifierOptions);
 
-		// The identity was set by SlackSignatureExtractor and contains the user_id.
-		// Always re-verify the signature to prevent identity spoofing.
 		if (
 			!context.metadata?.rawBody ||
 			!context.metadata?.signature ||
@@ -52,7 +54,7 @@ export class SlackSignatureIdentifier implements ITokenIdentifier {
 		) {
 			throw new IdentifierValidationError('Missing Slack signature verification data');
 		}
-		this.verifySignature(
+		this.verifySlackSignature(
 			options.signingSecret,
 			context.metadata.timestamp as string,
 			context.metadata.rawBody as string,
@@ -60,6 +62,21 @@ export class SlackSignatureIdentifier implements ITokenIdentifier {
 		);
 		this.logger.debug('Slack signature verified');
 
+		return this.deriveKey(context, options);
+	}
+
+	/**
+	 * Derives the storage key from a pre-verified identity context.
+	 * Use this only for trusted internal paths where the identity was already
+	 * verified upstream (e.g. OAuth callback where identity comes from
+	 * encrypted CSRF state).
+	 */
+	resolveKey(context: ICredentialContext, identifierOptions: Record<string, unknown>): string {
+		const options = this.parseOptions(identifierOptions);
+		return this.deriveKey(context, options);
+	}
+
+	private deriveKey(context: ICredentialContext, options: SlackSignatureOptions): string {
 		const userId = context.identity;
 		if (!userId) {
 			throw new IdentifierValidationError('Slack user_id not found in credential context');
@@ -92,7 +109,7 @@ export class SlackSignatureIdentifier implements ITokenIdentifier {
 		return result.data;
 	}
 
-	private verifySignature(
+	private verifySlackSignature(
 		signingSecret: string,
 		timestamp: string,
 		rawBody: string,

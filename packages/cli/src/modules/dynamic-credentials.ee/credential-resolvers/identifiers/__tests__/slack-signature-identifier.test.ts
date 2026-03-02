@@ -200,9 +200,8 @@ describe('SlackSignatureIdentifier', () => {
 				).rejects.toThrow(IdentifierValidationError);
 			});
 
-			// TEMP: skipped while MAX_TIMESTAMP_AGE_SECONDS is disabled for local testing
-			it.skip('should throw when timestamp in metadata is too old', async () => {
-				const oldTimestamp = (Math.floor(Date.now() / 1000) - 400).toString();
+			it('should throw when timestamp in metadata is too old', async () => {
+				const oldTimestamp = '0';
 				const rawBody = 'user_id=U12345';
 				const signature = computeSlackSignature(TEST_SIGNING_SECRET, oldTimestamp, rawBody);
 
@@ -266,6 +265,51 @@ describe('SlackSignatureIdentifier', () => {
 					subjectClaim: 'user_id',
 				}),
 			).rejects.toThrow(IdentifierValidationError);
+		});
+	});
+
+	describe('resolveKey', () => {
+		it('should derive key without signature verification', () => {
+			const context = {
+				identity: 'U12345',
+				version: 1 as const,
+			};
+
+			const result = identifier.resolveKey(context, {
+				signingSecret: TEST_SIGNING_SECRET,
+				subjectClaim: 'user_id',
+			});
+
+			expect(result).toBe('U12345');
+		});
+
+		it('should derive team_user composite key', () => {
+			const context = {
+				identity: 'U12345',
+				version: 1 as const,
+				metadata: { team_id: 'T67890' },
+			};
+
+			const result = identifier.resolveKey(context, {
+				signingSecret: TEST_SIGNING_SECRET,
+				subjectClaim: 'team_user',
+			});
+
+			expect(result).toBe('T67890:U12345');
+		});
+
+		it('should throw when identity is empty', () => {
+			const context = {
+				identity: '',
+				version: 1 as const,
+			};
+
+			expect(() =>
+				identifier.resolveKey(context, {
+					signingSecret: TEST_SIGNING_SECRET,
+					subjectClaim: 'user_id',
+				}),
+			).toThrow(IdentifierValidationError);
 		});
 	});
 });
