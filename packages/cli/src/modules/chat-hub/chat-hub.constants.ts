@@ -93,7 +93,6 @@ export const NODE_NAMES = {
 	CHAT_MODEL: 'Chat Model',
 	EMBEDDINGS_MODEL: 'Embeddings Model',
 	VECTOR_STORE: 'Vector Store',
-	VECTOR_STORE_QUESTION_TOOL: 'Vector Store Question Tool',
 	MEMORY: 'Memory',
 	RESTORE_CHAT_MEMORY: 'Restore Chat Memory',
 	CLEAR_CHAT_MEMORY: 'Clear Chat Memory',

@@ -45,7 +45,6 @@ import {
 	RegenerateMessagePayload,
 	EditMessagePayload,
 	PreparedChatWorkflow,
-	type ChatInput,
 	type MessageRecord,
 	type ContentBlock,
 } from './chat-hub.types';
@@ -448,7 +447,8 @@ export class ChatHubService {
 					credentials,
 					model,
 					history,
-					{ message, attachments: processedAttachments },
+					message,
+					processedAttachments,
 					tools,
 					tz,
 					trx,
@@ -621,7 +621,8 @@ export class ChatHubService {
 						credentials,
 						model,
 						history,
-						{ message, attachments },
+						message,
+						attachments,
 						tools,
 						tz,
 						trx,
@@ -737,7 +738,8 @@ export class ChatHubService {
 					credentials,
 					model,
 					history,
-					{ message, attachments },
+					message,
+					attachments,
 					tools,
 					tz,
 					trx,
@@ -773,7 +775,8 @@ export class ChatHubService {
 		credentials: INodeCredentials,
 		model: ChatHubConversationModel,
 		history: ChatHubMessage[],
-		input: ChatInput,
+		message: string,
+		attachments: IBinaryData[],
 		tools: INode[],
 		timeZone: string,
 		trx: EntityManager,
@@ -785,7 +788,8 @@ export class ChatHubService {
 				user,
 				sessionId,
 				model.workflowId,
-				input,
+				message,
+				attachments,
 				trx,
 				executionMetadata,
 			);
@@ -819,10 +823,23 @@ export class ChatHubService {
 				agent,
 				user,
 				sessionId,
-				await this.buildConversationHistory(history, agent.files),
-				input,
+				await this.buildConversationHistory(history),
+				message,
+				attachments,
 				trx,
-				agent.systemPrompt + '\n\n' + this.getSystemMessage(timeZone, history),
+				[
+					'Combine provided tools and knowledge to answer questions.',
+					this.buildKnowledgeSection(knowledgeItems),
+					this.getSystemMessage(timeZone, history),
+					`## Instructions from the user
+
+${agent.systemPrompt
+	.split('\n')
+	.map((line) => `> ${line}`)
+	.join('\n')}`,
+				]
+					.filter(Boolean)
+					.join('\n\n'),
 				executionMetadata,
 				embeddingModel && vectorStoreCredentialId
 					? { agentId: agent.id, embeddingModel, credentialId: vectorStoreCredentialId }
@@ -835,8 +852,9 @@ export class ChatHubService {
 			sessionId,
 			credentials,
 			model,
-			await this.buildConversationHistory(history, []),
-			input,
+			await this.buildConversationHistory(history),
+			message,
+			attachments,
 			'You are a helpful assistant.\n\n' + this.getSystemMessage(timeZone, history),
 			tools,
 			null,
@@ -971,10 +989,7 @@ export class ChatHubService {
 		};
 	}
 
-	async buildConversationHistory(
-		history: ChatHubMessage[],
-		contextFiles: ChatHubAgentKnowledgeItem[],
-	): Promise<MessageRecord[]> {
+	async buildConversationHistory(history: ChatHubMessage[]): Promise<MessageRecord[]> {
 		// Gemini has 20MB limit, the value should also be what n8n instance can safely handle
 		const maxTotalPayloadSize = 20 * 1024 * 1024 * 0.9;
 
@@ -1034,28 +1049,6 @@ export class ChatHubService {
 				type,
 				message: blocks,
 				hideFromUI: false,
-			});
-		}
-
-		const contextFileBlocks: ContentBlock[] = [];
-
-		for (let i = 0; i < contextFiles.length; i++) {
-			const file = contextFiles[i];
-			const label = `Context file (${i + 1} of ${contextFiles.length})`;
-			const text =
-				currentTotalSize < maxTotalPayloadSize
-					? `${label}: ${file.fileName}\nContent: \n(Use vector store question tool to query this document)`
-					: `${label}: ${file.fileName}\n(Content omitted due to size limit)`;
-			const block: ContentBlock = { type: 'text', text };
-			contextFileBlocks.push(block);
-			currentTotalSize += text.length;
-		}
-
-		if (contextFileBlocks.length > 0) {
-			messageValues.push({
-				type: 'user',
-				message: contextFileBlocks,
-				hideFromUI: true,
 			});
 		}
 
@@ -1129,6 +1122,25 @@ export class ChatHubService {
 			mimeType === 'application/x-yaml' ||
 			mimeType === 'application/yaml'
 		);
+	}
+
+	private buildKnowledgeSection(knowledgeItems: ChatHubAgentKnowledgeItem[]): string {
+		if (knowledgeItems.length === 0) {
+			return '';
+		}
+
+		const fileList = knowledgeItems.map((f) => `- ${f.fileName}`).join('\n');
+
+		return `
+
+## Your Knowledge
+
+You have access to the following files as a searchable knowledge base:
+
+${fileList}
+
+Use the vector store tool to search the content of these files when answering questions that may be related to them.
+Do not proactively mention these files to the user.`;
 	}
 
 	private getSystemMessage(timeZone: string, history: ChatHubMessage[]) {

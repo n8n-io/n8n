@@ -49,12 +49,12 @@ const warningTooltip = computed<string | undefined>(() => {
 	<div :class="$style.fileRow">
 		<span :class="$style.fileName">{{ item.name }}</span>
 		<div :class="$style.indexedCell">
-			<N8nText size="small" color="text-light">
-				{{ item.isNew ? item.mimeType : i18n.baseText('chatHub.agent.editor.files.indexed') }}
-			</N8nText>
 			<N8nTooltip v-if="warningTooltip" :content="warningTooltip">
 				<N8nIcon icon="triangle-alert" :class="$style.iconWarning" size="small" />
 			</N8nTooltip>
+			<N8nText v-else size="small" color="text-light">
+				{{ item.isNew ? item.mimeType : i18n.baseText('chatHub.agent.editor.files.indexed') }}
+			</N8nText>
 		</div>
 		<N8nIconButton icon="x" size="small" variant="ghost" @click.stop="emit('remove')" />
 	</div>

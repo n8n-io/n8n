@@ -33,6 +33,7 @@ export const chatHubLLMProviderSchema = z.enum([
 export type ChatHubLLMProvider = z.infer<typeof chatHubLLMProviderSchema>;
 
 export interface ChatHubAgentKnowledgeItem {
+	id: string;
 	type: 'embedding';
 	provider: ChatHubLLMProvider;
 	fileName: string;
@@ -482,11 +483,10 @@ export class ChatHubCreateAgentRequest extends Z.class({
 	name: z.string().min(1).max(128),
 	description: z.string().max(512).optional(),
 	icon: agentIconOrEmojiSchema,
-	systemPrompt: z.string().min(1),
+	systemPrompt: z.string().default(''),
 	credentialId: z.string(),
 	provider: chatHubLLMProviderSchema,
 	model: z.string().max(64),
-	files: z.array(chatAttachmentSchema).default([]),
 	toolIds: z.array(z.string().uuid()),
 }) {}
 
@@ -494,12 +494,10 @@ export class ChatHubUpdateAgentRequest extends Z.class({
 	name: z.string().min(1).max(128).optional(),
 	description: z.string().max(512).optional(),
 	icon: agentIconOrEmojiSchema.optional(),
-	systemPrompt: z.string().min(1).optional(),
+	systemPrompt: z.string().optional(),
 	credentialId: z.string().optional(),
 	provider: chatHubLLMProviderSchema.optional(),
 	model: z.string().max(64).optional(),
-	newFiles: z.array(chatAttachmentSchema),
-	keepFileIndices: z.array(z.number()),
 	toolIds: z.array(z.string().uuid()).optional(),
 }) {}
 

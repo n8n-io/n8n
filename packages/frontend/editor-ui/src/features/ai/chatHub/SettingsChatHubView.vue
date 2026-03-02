@@ -210,128 +210,123 @@ onMounted(async () => {
 </script>
 <template>
 	<div :class="$style.container">
-		<N8nHeading size="2xlarge" :class="$style.title">
+		<N8nHeading size="2xlarge">
 			{{ i18n.baseText('settings.chatHub') }}
 		</N8nHeading>
-		<div :class="$style.container">
-			<div :class="$style.section">
-				<N8nHeading size="medium" :bold="true" :class="$style.sectionTitle">
-					{{ i18n.baseText('settings.chatHub.semanticSearch.title') }}
-				</N8nHeading>
-				<div :class="$style.semanticSearchCard">
-					<div :class="$style.semanticSearchRow">
-						<div :class="$style.rowInfo">
-							<div :class="$style.rowLabelRow">
-								<N8nText :bold="true" tag="span" :class="$style.rowLabel">
-									{{ i18n.baseText('settings.chatHub.vectorStore.title') }}
-								</N8nText>
-								<N8nTooltip
-									v-if="semanticSearchReadiness.vectorStoreIssue"
-									:content="vectorStoreTooltip"
-								>
-									<N8nIcon icon="triangle-alert" :class="$style.iconWarning" size="large" />
-								</N8nTooltip>
-								<N8nIcon v-else icon="check" :class="$style.iconReady" size="large" />
-							</div>
-							<N8nText color="text-light" size="small" tag="span" :class="$style.rowDescription">
-								{{ i18n.baseText('settings.chatHub.vectorStore.description') }}
+		<ChatProvidersTable
+			:data-test-d="'chat-providers-table'"
+			:settings="chatStore.settings"
+			:loading="chatStore.settingsLoading"
+			:disabled="disabled"
+			@edit-provider="onEditProvider"
+			@refresh="onRefreshWorkflows"
+		/>
+		<div :class="$style.section">
+			<N8nHeading size="medium" :bold="true" :class="$style.sectionTitle">
+				{{ i18n.baseText('settings.chatHub.semanticSearch.title') }}
+			</N8nHeading>
+			<div :class="$style.semanticSearchCard">
+				<div :class="$style.semanticSearchRow">
+					<div :class="$style.rowInfo">
+						<div :class="$style.rowLabelRow">
+							<N8nText :bold="true" tag="span" :class="$style.rowLabel">
+								{{ i18n.baseText('settings.chatHub.vectorStore.title') }}
 							</N8nText>
+							<N8nTooltip
+								v-if="semanticSearchReadiness.vectorStoreIssue"
+								:content="vectorStoreTooltip"
+							>
+								<N8nIcon icon="triangle-alert" :class="$style.iconWarning" size="large" />
+							</N8nTooltip>
+							<N8nIcon v-else icon="check" :class="$style.iconReady" size="large" />
 						</div>
-						<div :class="[$style.rowControls, disabled && $style.rowControlsDisabled]">
-							<div :class="$style.labeledControl">
-								<N8nText size="small" color="text-light" tag="span" :class="$style.controlLabel">
-									{{ i18n.baseText('settings.chatHub.label.provider') }}
-								</N8nText>
-								<N8nSelect
-									model-value="vectorStorePGVectorScopedApi"
-									size="small"
-									:disabled="true"
-									:class="$style.typeSelect"
-								>
-									<N8nOption value="vectorStorePGVectorScopedApi" label="PGVector" />
-								</N8nSelect>
-							</div>
-							<div :class="$style.labeledControl">
-								<N8nText size="small" color="text-light" tag="span" :class="$style.controlLabel">
-									{{ i18n.baseText('settings.chatHub.label.credential') }}
-								</N8nText>
-								<CredentialPicker
-									:class="$style.credentialPicker"
-									app-name="PGVector"
-									:credential-type="VECTOR_STORE_CREDENTIAL_TYPE"
-									:selected-credential-id="vectorStoreCredentialId"
-									create-button-variant="subtle"
-									@credential-selected="onVectorStoreCredentialSelected"
-									@credential-deleted="onVectorStoreCredentialSelected(null)"
-								/>
-							</div>
+						<N8nText color="text-light" size="small" tag="span" :class="$style.rowDescription">
+							{{ i18n.baseText('settings.chatHub.vectorStore.description') }}
+						</N8nText>
+					</div>
+					<div :class="[$style.rowControls, disabled && $style.rowControlsDisabled]">
+						<div :class="$style.labeledControl">
+							<N8nText size="small" color="text-light" tag="span" :class="$style.controlLabel">
+								{{ i18n.baseText('settings.chatHub.label.provider') }}
+							</N8nText>
+							<N8nSelect
+								model-value="vectorStorePGVectorScopedApi"
+								size="small"
+								:disabled="true"
+								:class="$style.typeSelect"
+							>
+								<N8nOption value="vectorStorePGVectorScopedApi" label="PGVector" />
+							</N8nSelect>
+						</div>
+						<div :class="$style.labeledControl">
+							<N8nText size="small" color="text-light" tag="span" :class="$style.controlLabel">
+								{{ i18n.baseText('settings.chatHub.label.credential') }}
+							</N8nText>
+							<CredentialPicker
+								:class="$style.credentialPicker"
+								app-name="PGVector"
+								:credential-type="VECTOR_STORE_CREDENTIAL_TYPE"
+								:selected-credential-id="vectorStoreCredentialId"
+								create-button-variant="subtle"
+								@credential-selected="onVectorStoreCredentialSelected"
+								@credential-deleted="onVectorStoreCredentialSelected(null)"
+							/>
 						</div>
 					</div>
-					<div :class="[$style.semanticSearchRow, $style.semanticSearchRowBordered]">
-						<div :class="$style.rowInfo">
-							<div :class="$style.rowLabelRow">
-								<N8nText :bold="true" tag="span" :class="$style.rowLabel">
-									{{ i18n.baseText('settings.chatHub.embeddingModel.title') }}
-								</N8nText>
-								<N8nTooltip
-									v-if="semanticSearchReadiness.embeddingIssue"
-									:content="embeddingTooltip"
-								>
-									<N8nIcon icon="triangle-alert" :class="$style.iconWarning" size="large" />
-								</N8nTooltip>
-								<N8nIcon v-else icon="check" :class="$style.iconReady" size="large" />
-							</div>
-							<N8nText color="text-light" size="small" tag="span" :class="$style.rowDescription">
-								{{ i18n.baseText('settings.chatHub.embeddingModel.description') }}
+				</div>
+				<div :class="[$style.semanticSearchRow, $style.semanticSearchRowBordered]">
+					<div :class="$style.rowInfo">
+						<div :class="$style.rowLabelRow">
+							<N8nText :bold="true" tag="span" :class="$style.rowLabel">
+								{{ i18n.baseText('settings.chatHub.embeddingModel.title') }}
 							</N8nText>
+							<N8nTooltip v-if="semanticSearchReadiness.embeddingIssue" :content="embeddingTooltip">
+								<N8nIcon icon="triangle-alert" :class="$style.iconWarning" size="large" />
+							</N8nTooltip>
+							<N8nIcon v-else icon="check" :class="$style.iconReady" size="large" />
 						</div>
-						<div :class="[$style.rowControls, disabled && $style.rowControlsDisabled]">
-							<div :class="$style.labeledControl">
-								<N8nText size="small" color="text-light" tag="span" :class="$style.controlLabel">
-									{{ i18n.baseText('settings.chatHub.label.provider') }}
-								</N8nText>
-								<N8nSelect
-									:model-value="localEmbeddingType"
-									size="small"
-									:disabled="disabled"
-									:class="$style.typeSelect"
-									@update:model-value="onEmbeddingTypeChange"
-								>
-									<N8nOption
-										v-for="option in EMBEDDING_PROVIDER_OPTIONS"
-										:key="option.value"
-										:value="option.value"
-										:label="option.label"
-									/>
-								</N8nSelect>
-							</div>
-							<div :class="$style.labeledControl">
-								<N8nText size="small" color="text-light" tag="span" :class="$style.controlLabel">
-									{{ i18n.baseText('settings.chatHub.label.credential') }}
-								</N8nText>
-								<CredentialPicker
-									v-if="localEmbeddingType"
-									:class="$style.credentialPicker"
-									:app-name="localEmbeddingDisplayName"
-									:credential-type="localEmbeddingType"
-									:selected-credential-id="embeddingCredentialId"
-									create-button-variant="subtle"
-									@credential-selected="onEmbeddingCredentialSelected"
-									@credential-deleted="onEmbeddingCredentialSelected(null)"
+						<N8nText color="text-light" size="small" tag="span" :class="$style.rowDescription">
+							{{ i18n.baseText('settings.chatHub.embeddingModel.description') }}
+						</N8nText>
+					</div>
+					<div :class="[$style.rowControls, disabled && $style.rowControlsDisabled]">
+						<div :class="$style.labeledControl">
+							<N8nText size="small" color="text-light" tag="span" :class="$style.controlLabel">
+								{{ i18n.baseText('settings.chatHub.label.provider') }}
+							</N8nText>
+							<N8nSelect
+								:model-value="localEmbeddingType"
+								size="small"
+								:disabled="disabled"
+								:class="$style.typeSelect"
+								@update:model-value="onEmbeddingTypeChange"
+							>
+								<N8nOption
+									v-for="option in EMBEDDING_PROVIDER_OPTIONS"
+									:key="option.value"
+									:value="option.value"
+									:label="option.label"
 								/>
-							</div>
+							</N8nSelect>
+						</div>
+						<div :class="$style.labeledControl">
+							<N8nText size="small" color="text-light" tag="span" :class="$style.controlLabel">
+								{{ i18n.baseText('settings.chatHub.label.credential') }}
+							</N8nText>
+							<CredentialPicker
+								v-if="localEmbeddingType"
+								:class="$style.credentialPicker"
+								:app-name="localEmbeddingDisplayName"
+								:credential-type="localEmbeddingType"
+								:selected-credential-id="embeddingCredentialId"
+								create-button-variant="subtle"
+								@credential-selected="onEmbeddingCredentialSelected"
+								@credential-deleted="onEmbeddingCredentialSelected(null)"
+							/>
 						</div>
 					</div>
 				</div>
 			</div>
-			<ChatProvidersTable
-				:data-test-id="'chat-providers-table'"
-				:settings="chatStore.settings"
-				:loading="chatStore.settingsLoading"
-				:disabled="disabled"
-				@edit-provider="onEditProvider"
-				@refresh="onRefreshWorkflows"
-			/>
 		</div>
 	</div>
 </template>
@@ -340,11 +335,8 @@ onMounted(async () => {
 .container {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--lg);
-}
-
-.title {
-	margin-bottom: var(--spacing--sm);
+	gap: var(--spacing--2xl);
+	padding-bottom: var(--spacing--2xl);
 }
 
 .section {

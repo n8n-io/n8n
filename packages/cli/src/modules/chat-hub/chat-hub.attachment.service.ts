@@ -15,7 +15,6 @@ import { ChatHubMessageRepository } from './chat-message.repository';
 @Service()
 export class ChatHubAttachmentService {
 	private readonly maxTotalSizeBytes = 200 * 1024 * 1024; // 200 MB
-	private readonly maxAgentSizeBytes = 50 * 1024 * 1024; // 50 MB per agent
 
 	constructor(
 		private readonly binaryDataService: BinaryDataService,
@@ -177,15 +176,30 @@ export class ChatHubAttachmentService {
 		return await this.binaryDataService.getAsBuffer(binaryData);
 	}
 
-	async storeAgentAttachment(agentId: string, attachment: ChatAttachment): Promise<IBinaryData> {
-		const buffer = Buffer.from(attachment.data, BINARY_ENCODING);
+	async storeAgentAttachmentFromBuffer(
+		agentId: string,
+		buffer: Buffer,
+		mimeType: string,
+		fileName: string,
+	): Promise<IBinaryData> {
+		const sanitizedFileName = sanitizeFilename(fileName);
+		const binaryData: IBinaryData = {
+			data: buffer.toString(BINARY_ENCODING),
+			mimeType,
+			fileName: sanitizedFileName,
+			fileSize: `${buffer.length}`,
+			fileExtension: sanitizedFileName?.split('.').pop(),
+		};
 
-		if (buffer.length > this.maxAgentSizeBytes) {
-			const maxSizeMB = Math.floor(this.maxAgentSizeBytes / (1024 * 1024));
-			throw new BadRequestError(`Agent attachment exceeds maximum size of ${maxSizeMB} MB`); // TODO: check total size per agent
-		}
-
-		return await this.processAgentAttachment(agentId, attachment, buffer);
+		return await this.binaryDataService.store(
+			FileLocation.ofCustom({
+				sourceType: 'chat_agent_attachment',
+				pathSegments: ['chat-hub', 'agents', agentId],
+				sourceId: agentId,
+			}), // TODO: should be bound to execution. Once documents are indexed, files need not be stored as binary data.
+			buffer,
+			binaryData,
+		);
 	}
 
 	private isAllowedMimeType(mimeType: string, allowedMimeTypes: string): boolean {
@@ -225,33 +239,6 @@ export class ChatHubAttachmentService {
 				sourceType: 'chat_message_attachment',
 				pathSegments: ['chat-hub', 'sessions', sessionId, 'messages', messageId],
 				sourceId: messageId,
-			}),
-			buffer,
-			binaryData,
-		);
-	}
-
-	private async processAgentAttachment(
-		agentId: string,
-		attachment: ChatAttachment,
-		buffer: Buffer,
-	): Promise<IBinaryData> {
-		const sanitizedFileName = sanitizeFilename(attachment.fileName);
-
-		// Construct IBinaryData with all required fields
-		const binaryData: IBinaryData = {
-			data: attachment.data,
-			mimeType: attachment.mimeType,
-			fileName: sanitizedFileName,
-			fileSize: `${buffer.length}`,
-			fileExtension: sanitizedFileName?.split('.').pop(),
-		};
-
-		return await this.binaryDataService.store(
-			FileLocation.ofCustom({
-				sourceType: 'chat_agent_attachment',
-				pathSegments: ['chat-hub', 'agents', agentId],
-				sourceId: agentId,
 			}),
 			buffer,
 			binaryData,

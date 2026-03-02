@@ -6,7 +6,7 @@ import type {
 	ChatAttachment,
 	ChatHubLLMProvider,
 } from '@n8n/api-types';
-import type { IBinaryData, INodeCredentials, IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
+import type { INodeCredentials, IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { IconOrEmojiSchema } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -110,11 +110,6 @@ export interface VectorStoreSearchOptions {
 	agentId: string;
 	embeddingModel: ProviderAndCredentialId;
 	credentialId: string;
-}
-
-export interface ChatInput {
-	message: string;
-	attachments: IBinaryData[];
 }
 
 export interface ProviderAndCredentialId {

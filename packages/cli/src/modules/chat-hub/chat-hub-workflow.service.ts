@@ -34,7 +34,6 @@ import {
 	NodeConnectionTypes,
 	OperationalError,
 	VECTOR_STORE_PG_VECTOR_SCOPED_NODE_TYPE,
-	VECTOR_STORE_TOOL_NODE_TYPE,
 	type IBinaryData,
 	type NodeParameterValueType,
 } from 'n8n-workflow';
@@ -61,7 +60,6 @@ import {
 	MessageRecord,
 	type ChatTriggerResponseMode,
 	type VectorStoreSearchOptions,
-	type ChatInput,
 } from './chat-hub.types';
 import { getMaxContextWindowTokens } from './context-limits';
 import type { ChatHubAgent } from './chat-hub-agent.entity';
@@ -86,7 +84,7 @@ export class ChatHubWorkflowService {
 	}
 
 	async deleteChatWorkflow(workflowId: string): Promise<void> {
-		await this.workflowRepository.delete(workflowId);
+		//await this.workflowRepository.delete(workflowId);
 	}
 
 	async createChatWorkflow(
@@ -94,7 +92,8 @@ export class ChatHubWorkflowService {
 		sessionId: ChatSessionId,
 		projectId: string,
 		history: MessageRecord[],
-		input: ChatInput,
+		message: string,
+		attachments: IBinaryData[],
 		credentials: INodeCredentials,
 		model: ChatHubBaseLLMModel,
 		systemMessage: string,
@@ -116,7 +115,8 @@ export class ChatHubWorkflowService {
 				userId,
 				sessionId,
 				history,
-				input,
+				message,
+				attachments,
 				credentials,
 				model,
 				systemMessage,
@@ -319,7 +319,8 @@ export class ChatHubWorkflowService {
 		userId,
 		sessionId,
 		history,
-		input,
+		message,
+		attachments,
 		credentials,
 		model,
 		systemMessage,
@@ -330,7 +331,8 @@ export class ChatHubWorkflowService {
 		userId: string;
 		sessionId: ChatSessionId;
 		history: MessageRecord[];
-		input: ChatInput;
+		message: string;
+		attachments: IBinaryData[];
 		credentials: INodeCredentials;
 		model: ChatHubBaseLLMModel;
 		systemMessage: string;
@@ -398,18 +400,7 @@ export class ChatHubWorkflowService {
 			},
 			[NODE_NAMES.CHAT_MODEL]: {
 				[NodeConnectionTypes.AiLanguageModel]: [
-					[
-						{ node: NODE_NAMES.REPLY_AGENT, type: NodeConnectionTypes.AiLanguageModel, index: 0 },
-						...(vectorStoreSearch
-							? [
-									{
-										node: NODE_NAMES.VECTOR_STORE_QUESTION_TOOL,
-										type: NodeConnectionTypes.AiLanguageModel,
-										index: 0,
-									},
-								]
-							: []),
-					],
+					[{ node: NODE_NAMES.REPLY_AGENT, type: NodeConnectionTypes.AiLanguageModel, index: 0 }],
 				],
 			},
 			[NODE_NAMES.MEMORY]: {
@@ -461,17 +452,6 @@ export class ChatHubWorkflowService {
 							],
 						},
 						[NODE_NAMES.VECTOR_STORE]: {
-							[NodeConnectionTypes.AiVectorStore]: [
-								[
-									{
-										node: NODE_NAMES.VECTOR_STORE_QUESTION_TOOL,
-										type: NodeConnectionTypes.AiVectorStore,
-										index: 0,
-									},
-								],
-							],
-						},
-						[NODE_NAMES.VECTOR_STORE_QUESTION_TOOL]: {
 							[NodeConnectionTypes.AiTool]: [
 								[
 									{
@@ -489,7 +469,8 @@ export class ChatHubWorkflowService {
 		const nodeExecutionStack = this.prepareExecutionData(
 			chatTriggerNode,
 			sessionId,
-			input,
+			message,
+			attachments,
 			executionMetadata,
 		);
 
@@ -928,7 +909,8 @@ Respond the title only:`,
 	prepareExecutionData(
 		triggerNode: INode,
 		sessionId: string,
-		{ message, attachments }: ChatInput,
+		message: string,
+		attachments: IBinaryData[],
 		executionMetadata: ChatHubAuthenticationMetadata,
 	): IExecuteData[] {
 		const encryptedMetadata = this.cipher.encrypt(executionMetadata);
@@ -979,7 +961,8 @@ Respond the title only:`,
 		credentials: INodeCredentials,
 		model: ChatHubBaseLLMModel,
 		history: MessageRecord[],
-		input: ChatInput,
+		message: string,
+		attachments: IBinaryData[],
 		systemMessage: string,
 		tools: INode[],
 		vectorStoreSearch: VectorStoreSearchOptions | null,
@@ -995,7 +978,8 @@ Respond the title only:`,
 			sessionId,
 			projectId,
 			history,
-			input,
+			message,
+			attachments,
 			credentials,
 			model,
 			systemMessage,
@@ -1011,7 +995,8 @@ Respond the title only:`,
 		user: User,
 		sessionId: ChatSessionId,
 		history: MessageRecord[],
-		input: ChatInput,
+		message: string,
+		attachments: IBinaryData[],
 		trx: EntityManager,
 		systemMessage: string,
 		executionMetadata: ChatHubAuthenticationMetadata,
@@ -1046,7 +1031,8 @@ Respond the title only:`,
 			credentials,
 			model,
 			history,
-			input,
+			message,
+			attachments,
 			systemMessage,
 			tools,
 			vectorStoreSearchOptions,
@@ -1059,7 +1045,8 @@ Respond the title only:`,
 		user: User,
 		sessionId: ChatSessionId,
 		workflowId: string,
-		input: ChatInput,
+		message: string,
+		attachments: IBinaryData[],
 		trx: EntityManager,
 		executionMetadata: ChatHubAuthenticationMetadata,
 	) {
@@ -1130,7 +1117,8 @@ Respond the title only:`,
 		const nodeExecutionStack = this.prepareExecutionData(
 			chatTrigger,
 			sessionId,
-			input,
+			message,
+			attachments,
 			executionMetadata,
 		);
 
@@ -1165,9 +1153,8 @@ Respond the title only:`,
 	private buildVectorStoreNodes(options: VectorStoreSearchOptions): INode[] {
 		const embeddingsModelNode = this.buildEmbeddingsModelNode(options);
 		const vectorStoreNode = this.buildVectorStoreNode(options.credentialId, options.agentId);
-		const vectorStoreQuestionToolNode = this.buildVectorStoreQuestionToolNode();
 
-		return [embeddingsModelNode, vectorStoreNode, vectorStoreQuestionToolNode];
+		return [embeddingsModelNode, vectorStoreNode];
 	}
 
 	private buildEmbeddingsModelNode({ embeddingModel: embedding }: VectorStoreSearchOptions): INode {
@@ -1202,7 +1189,9 @@ Respond the title only:`,
 	private buildVectorStoreNode(credentialId: string, agentId: string): INode {
 		return {
 			parameters: {
-				mode: 'retrieve',
+				mode: 'retrieve-as-tool',
+				toolName: 'file_knowledge',
+				toolDescription: 'Use this tool to query context files',
 				options: {
 					metadata: {
 						metadataValues: [{ name: 'agentId', value: agentId }],
@@ -1223,23 +1212,10 @@ Respond the title only:`,
 		};
 	}
 
-	private buildVectorStoreQuestionToolNode(): INode {
-		return {
-			parameters: {
-				description: 'Use this tool to query context files',
-			},
-			type: VECTOR_STORE_TOOL_NODE_TYPE,
-			typeVersion: 1.1,
-			position: [720, 288],
-			id: uuidv4(),
-			name: NODE_NAMES.VECTOR_STORE_QUESTION_TOOL,
-		};
-	}
-
 	async createEmbeddingsInsertionWorkflow(
 		user: User,
 		projectId: string,
-		attachments: IBinaryData[],
+		attachments: Array<{ attachment: IBinaryData; knowledgeId: string }>,
 		vectorStoreSearch: VectorStoreSearchOptions,
 		trx: EntityManager,
 	): Promise<{
@@ -1300,6 +1276,10 @@ Respond the title only:`,
 									name: 'agentId',
 									value: vectorStoreSearch.agentId,
 								},
+								{
+									name: 'fileKnowledgeId',
+									value: '={{ $json.knowledgeId }}',
+								},
 							],
 						},
 					},
@@ -1350,11 +1330,12 @@ Respond the title only:`,
 			},
 		};
 		// Create one item per file so each file gets its own metadata with correct fileName
-		const items = attachments.map((attachment) => ({
+		const items = attachments.map(({ attachment, knowledgeId }) => ({
 			json: {
 				sessionId: uuidv4(),
 				action: 'sendMessage',
 				chatInput: '',
+				knowledgeId,
 				files: [{ ...attachment, data: undefined }], // Strip data field
 			},
 			binary: {

@@ -4,7 +4,6 @@ import type {
 	ChatHubAgentDto,
 	ChatModelDto,
 	ChatHubAgentKnowledgeItem,
-	ChatAttachment,
 	ChatHubLLMProvider,
 } from '@n8n/api-types';
 import { PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
@@ -12,6 +11,7 @@ import { PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { EntityManager, User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { nanoid } from 'nanoid';
 import { v4 as uuidv4 } from 'uuid';
 
 import type { ChatHubAgent, IChatHubAgent } from './chat-hub-agent.entity';
@@ -120,8 +120,6 @@ export class ChatHubAgentService {
 		await this.chatHubCredentialsService.ensureCredentialAccess(user, data.credentialId);
 
 		const id = uuidv4();
-		const embeddingModel = await this.determineEmbeddingProvider(user);
-		const files = await this.processNewFiles(user, id, data.files, embeddingModel);
 
 		const agent = await this.chatAgentRepository.createAgent({
 			id,
@@ -133,7 +131,7 @@ export class ChatHubAgentService {
 			credentialId: data.credentialId,
 			provider: data.provider,
 			model: data.model,
-			files,
+			files: [],
 		});
 
 		if (data.toolIds.length > 0) {
@@ -169,19 +167,6 @@ export class ChatHubAgentService {
 		if (updates.credentialId !== undefined) updateData.credentialId = updates.credentialId ?? null;
 		if (updates.provider !== undefined) updateData.provider = updates.provider;
 		if (updates.model !== undefined) updateData.model = updates.model ?? null;
-
-		const newEmbeddingModel = await this.determineEmbeddingProvider(user);
-
-		const filesToKeep = await this.processDeleteFiles(
-			user,
-			id,
-			existingAgent.files,
-			updates.keepFileIndices,
-			newEmbeddingModel?.provider ?? null,
-		);
-		const newFiles = await this.processNewFiles(user, id, updates.newFiles, newEmbeddingModel);
-
-		updateData.files = filesToKeep.concat(newFiles);
 
 		const agent = await this.chatAgentRepository.updateAgent(id, updateData);
 
@@ -246,7 +231,7 @@ export class ChatHubAgentService {
 		user: User,
 		agentId: string,
 		embeddingModel: ProviderAndCredentialId,
-		files: IBinaryData[],
+		files: Array<{ attachment: IBinaryData; knowledgeId: string }>,
 	) {
 		if (files.length === 0) {
 			return;
@@ -301,12 +286,12 @@ export class ChatHubAgentService {
 		this.logger.debug(`Deleted embeddings for agent ${agentId} from vector store`);
 	}
 
-	private async deleteEmbeddingsByFileNames(
+	private async deleteEmbeddingsByKnowledgeIds(
 		user: User,
 		agentId: string,
-		fileNames: string[],
+		knowledgeIds: string[],
 	): Promise<void> {
-		if (fileNames.length === 0) {
+		if (knowledgeIds.length === 0) {
 			return;
 		}
 
@@ -318,76 +303,95 @@ export class ChatHubAgentService {
 			additionalData,
 			{ name: VECTOR_STORE_PG_VECTOR_SCOPED_NODE_TYPE, version: 1 },
 			{},
-			JSON.stringify({ filter: { agentId, fileName: fileNames } }),
+			JSON.stringify({ filter: { agentId, fileKnowledgeId: knowledgeIds } }),
 			{ vectorStorePGVectorScopedApi: { id: cred.id, name: '' } },
 		);
 		this.logger.debug(
-			`Deleted embeddings for ${fileNames.length} files from vector store (agentId: ${agentId}, fileNames: ${fileNames.join(', ')})`,
+			`Deleted embeddings for ${knowledgeIds.length} files from vector store (agentId: ${agentId}, knowledgeIds: ${knowledgeIds.join(', ')})`,
 		);
 	}
 
-	private async processNewFiles(
+	async addFilesToAgent(
+		agentId: string,
 		user: User,
-		id: string,
-		binaryItems: ChatAttachment[],
+		files: Express.Multer.File[],
+	): Promise<ChatHubAgentDto> {
+		const agent = await this.getAgentById(agentId, user.id);
+		const embeddingModel = await this.determineEmbeddingProvider(user);
+		const newFiles = await this.processNewFilesFromMulter(user, agentId, files, embeddingModel);
+
+		const updatedAgent = await this.chatAgentRepository.updateAgent(agentId, {
+			files: [...agent.files, ...newFiles],
+		});
+
+		const toolIds = await this.chatHubToolService.getToolIdsForAgent(agentId);
+		this.logger.debug(`Added ${files.length} file(s) to agent ${agentId} by user ${user.id}`);
+		return this.toDto(updatedAgent, toolIds);
+	}
+
+	async deleteAgentFile(agentId: string, user: User, fileName: string): Promise<void> {
+		const agent = await this.getAgentById(agentId, user.id);
+
+		const fileItem = agent.files.find((f) => f.fileName === fileName);
+		if (!fileItem) {
+			throw new NotFoundError('File not found');
+		}
+
+		await this.deleteEmbeddingsByKnowledgeIds(user, agentId, [fileItem.id]);
+
+		await this.chatAgentRepository.updateAgent(agentId, {
+			files: agent.files.filter((f) => f.fileName !== fileName),
+		});
+
+		this.logger.debug(`Deleted file "${fileName}" from agent ${agentId} by user ${user.id}`);
+	}
+
+	private async processNewFilesFromMulter(
+		user: User,
+		agentId: string,
+		files: Express.Multer.File[],
 		embeddingModel: ProviderAndCredentialId | null,
 	): Promise<ChatHubAgentKnowledgeItem[]> {
-		const files: ChatHubAgentKnowledgeItem[] = [];
-		const pdfFilesToInsert: IBinaryData[] = [];
+		const knowledgeItems: ChatHubAgentKnowledgeItem[] = [];
+		const pdfFilesToInsert: Array<{ attachment: IBinaryData; knowledgeId: string }> = [];
 
-		for (const file of binaryItems) {
-			if (file.mimeType !== 'application/pdf') {
-				throw new BadRequestError(
-					`Unsupported file type: ${file.mimeType}. Only PDF files are supported as agent knowledge.`,
-				);
-			}
-
+		for (const file of files) {
 			if (!embeddingModel) {
 				throw new BadRequestError(
 					'Agent must have embedding provider configured to insert embeddings for RAG',
 				);
 			}
 
-			const storedFile = await this.chatHubAttachmentService.storeAgentAttachment(id, file);
-			files.push({
+			// Multer/busboy parses the Content-Disposition filename as Latin-1 by default,
+			// but browsers send it as UTF-8 bytes. Re-encode to get the correct string.
+			const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+
+			const storedFile = await this.chatHubAttachmentService.storeAgentAttachmentFromBuffer(
+				agentId,
+				file.buffer,
+				file.mimetype,
+				originalName,
+			);
+
+			const knowledgeId = nanoid();
+
+			knowledgeItems.push({
+				id: knowledgeId,
 				type: 'embedding',
-				mimeType: file.mimeType,
-				fileName: file.fileName,
+				mimeType: file.mimetype,
+				fileName: storedFile.fileName ?? originalName,
 				provider: embeddingModel.provider,
 			});
-			pdfFilesToInsert.push(storedFile);
+			pdfFilesToInsert.push({ attachment: storedFile, knowledgeId });
 		}
 
 		if (pdfFilesToInsert.length > 0) {
-			await this.insertEmbeddings(user, id, embeddingModel!, pdfFilesToInsert);
-			await this.chatHubAttachmentService.deleteAttachments(pdfFilesToInsert);
+			await this.insertEmbeddings(user, agentId, embeddingModel!, pdfFilesToInsert);
+			await this.chatHubAttachmentService.deleteAttachments(
+				pdfFilesToInsert.map((f) => f.attachment),
+			);
 		}
 
-		return files;
-	}
-
-	private async processDeleteFiles(
-		user: User,
-		agentId: string,
-		existingFiles: ChatHubAgentKnowledgeItem[],
-		keepFileIndices: number[],
-		availableEmbeddingProvider: ChatHubLLMProvider | null,
-	): Promise<ChatHubAgentKnowledgeItem[]> {
-		const filesToKeep: ChatHubAgentKnowledgeItem[] = [];
-		const embeddingsToDelete: string[] = [];
-
-		for (let i = 0; i < existingFiles.length; i++) {
-			const file = existingFiles[i];
-
-			if (!keepFileIndices.includes(i) || availableEmbeddingProvider !== file.provider) {
-				embeddingsToDelete.push(file.fileName);
-			} else {
-				filesToKeep.push(file);
-			}
-		}
-
-		await this.deleteEmbeddingsByFileNames(user, agentId, embeddingsToDelete);
-
-		return filesToKeep;
+		return knowledgeItems;
 	}
 }

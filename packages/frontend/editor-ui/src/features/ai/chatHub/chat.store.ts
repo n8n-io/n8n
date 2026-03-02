@@ -20,6 +20,8 @@ import {
 	createAgentApi,
 	updateAgentApi,
 	deleteAgentApi,
+	uploadAgentFilesApi,
+	deleteAgentFileApi,
 	updateConversationApi,
 	fetchChatSettingsApi,
 	fetchChatProviderSettingsApi,
@@ -809,9 +811,15 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 
 	async function createCustomAgent(
 		payload: ChatHubCreateAgentRequest,
+		files: File[],
 		credentials: CredentialsMap,
 	): Promise<ChatModelDto> {
-		const customAgent = await createAgentApi(rootStore.restApiContext, payload);
+		let customAgent = await createAgentApi(rootStore.restApiContext, payload);
+
+		if (files.length > 0) {
+			customAgent = await uploadAgentFilesApi(rootStore.restApiContext, customAgent.id, files);
+		}
+
 		const baseModel = agents.value?.[customAgent.provider]?.models.find(
 			(model) => model.name === customAgent.model,
 		);
@@ -847,9 +855,21 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	async function updateCustomAgent(
 		agentId: string,
 		payload: ChatHubUpdateAgentRequest,
+		newFiles: File[],
+		filesToDelete: string[],
 		credentials: CredentialsMap,
 	): Promise<ChatHubAgentDto> {
-		const customAgent = await updateAgentApi(rootStore.restApiContext, agentId, payload);
+		await updateAgentApi(rootStore.restApiContext, agentId, payload);
+
+		for (const fileName of filesToDelete) {
+			await deleteAgentFileApi(rootStore.restApiContext, agentId, fileName);
+		}
+
+		if (newFiles.length > 0) {
+			await uploadAgentFilesApi(rootStore.restApiContext, agentId, newFiles);
+		}
+
+		const customAgent = await fetchAgentApi(rootStore.restApiContext, agentId);
 
 		// Update the agent in models as well
 		if (agents.value?.['custom-agent']) {

@@ -197,6 +197,35 @@ export const deleteAgentApi = async (context: IRestApiContext, agentId: string):
 	await makeRestApiRequest(context, 'DELETE', apiEndpoint);
 };
 
+export const uploadAgentFilesApi = async (
+	context: IRestApiContext,
+	agentId: string,
+	files: File[],
+): Promise<ChatHubAgentDto> => {
+	const formData = new FormData();
+	for (const file of files) {
+		formData.append('files', file);
+	}
+	return await makeRestApiRequest<ChatHubAgentDto>(
+		context,
+		'POST',
+		`/chat/agents/${agentId}/files`,
+		formData,
+	);
+};
+
+export const deleteAgentFileApi = async (
+	context: IRestApiContext,
+	agentId: string,
+	fileName: string,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'DELETE',
+		`/chat/agents/${agentId}/files/${encodeURIComponent(fileName)}`,
+	);
+};
+
 export const fetchChatSettingsApi = async (
 	context: IRestApiContext,
 ): Promise<Record<ChatHubLLMProvider, ChatProviderSettingsDto>> => {

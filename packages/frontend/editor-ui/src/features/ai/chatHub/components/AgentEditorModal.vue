@@ -35,7 +35,6 @@ import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
 import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
 import type { CredentialsMap } from '../chat.types';
-import { type IBinaryData } from 'n8n-workflow';
 import ToolsSelector from './ToolsSelector.vue';
 import { personalAgentDefaultIcon, isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
 import { CHAT_SETTINGS_VIEW } from '@/features/ai/chatHub/constants';
@@ -45,7 +44,6 @@ import AgentEditorModalFileRow, {
 import { I18nT } from 'vue-i18n';
 import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
 import { useFileDrop } from '@/features/ai/chatHub/composables/useFileDrop';
-import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 
 const props = defineProps<{
 	modalName: string;
@@ -81,7 +79,8 @@ const isLoadingAgents = ref(false);
 const nameInputRef = useTemplateRef('nameInput');
 const icon = ref<AgentIconOrEmoji>(personalAgentDefaultIcon);
 const savedFiles = ref<ChatHubAgentKnowledgeItem[]>([]);
-const newFiles = ref<IBinaryData[]>([]);
+const newFiles = ref<File[]>([]);
+const removedFileNames = ref<string[]>([]);
 const fileInputRef = useTemplateRef<HTMLInputElement>('fileInput');
 
 const currentEmbeddingProvider = computed<ChatHubLLMProvider | null>(() => {
@@ -104,8 +103,8 @@ const allFiles = computed<FileRow[]>(() => [
 	})),
 	...newFiles.value.map((file, index) => ({
 		id: `new-${index}`,
-		name: file.fileName ?? '',
-		mimeType: file.mimeType ?? '',
+		name: file.name,
+		mimeType: file.type,
 		isNew: true,
 		embeddingProvider: null,
 		index,
@@ -140,7 +139,6 @@ const acceptedMimeTypes = computed(() => 'application/pdf');
 const isValid = computed(
 	() =>
 		name.value.trim().length > 0 &&
-		systemPrompt.value.trim().length > 0 &&
 		selectedModel.value !== null &&
 		!!credentialIdForSelectedModelProvider.value,
 );
@@ -183,6 +181,7 @@ watch(
 		selectedModel.value = { provider: agent.provider, model: agent.model };
 		savedFiles.value = agent.files;
 		newFiles.value = [];
+		removedFileNames.value = [];
 		toolIds.value = agent.toolIds ?? [];
 
 		if (agent.credentialId) {
@@ -262,13 +261,9 @@ async function onSave() {
 		if (isEditMode.value && props.data.agentId) {
 			await chatStore.updateCustomAgent(
 				props.data.agentId,
-				{
-					...payload,
-					keepFileIndices:
-						customAgent.value?.files.flatMap((f, i) => (savedFiles.value.includes(f) ? [i] : [])) ??
-						[],
-					newFiles: newFiles.value.map((f) => ({ fileName: '', ...f })),
-				},
+				payload,
+				newFiles.value,
+				removedFileNames.value,
 				props.data.credentials,
 			);
 			toast.showMessage({
@@ -277,10 +272,8 @@ async function onSave() {
 			});
 		} else {
 			const agent = await chatStore.createCustomAgent(
-				{
-					...payload,
-					files: newFiles.value.map((f) => ({ fileName: '', ...f })),
-				},
+				payload,
+				newFiles.value,
 				props.data.credentials,
 			);
 			props.data.onCreateCustomAgent?.(agent);
@@ -348,21 +341,17 @@ function isFileTypeAccepted(file: File): boolean {
 	});
 }
 
-async function onFilesDropped(droppedFiles: File[]) {
+function onFilesDropped(droppedFiles: File[]) {
 	const acceptedFiles = droppedFiles.filter((file) => isFileTypeAccepted(file));
 
 	if (acceptedFiles.length === 0) {
 		return;
 	}
 
-	const binaryItems = await Promise.all(
-		acceptedFiles.map(async (f) => await convertFileToBinaryData(f)),
-	);
-
-	newFiles.value = [...newFiles.value, ...binaryItems];
+	newFiles.value = [...newFiles.value, ...acceptedFiles];
 }
 
-async function handleFileSelect(event: Event) {
+function handleFileSelect(event: Event) {
 	const target = event.target as HTMLInputElement;
 	if (!target.files) {
 		return;
@@ -375,17 +364,17 @@ async function handleFileSelect(event: Event) {
 		return;
 	}
 
-	const binaryItems = await Promise.all(
-		acceptedFiles.map(async (f) => await convertFileToBinaryData(f)),
-	);
-
-	newFiles.value = [...newFiles.value, ...binaryItems];
+	newFiles.value = [...newFiles.value, ...acceptedFiles];
 
 	// Reset input value to allow selecting the same file again
 	target.value = '';
 }
 
 function removeExistingFile(index: number) {
+	const file = savedFiles.value[index];
+	if (file) {
+		removedFileNames.value = [...removedFileNames.value, file.fileName];
+	}
 	savedFiles.value = savedFiles.value.filter((_, i) => i !== index);
 }
 
@@ -475,7 +464,6 @@ const fileDrop = useFileDrop(true, onFilesDropped);
 					<N8nInputLabel
 						input-name="agent-system-prompt"
 						:label="i18n.baseText('chatHub.agent.editor.systemPrompt.label')"
-						:required="true"
 					>
 						<N8nInput
 							id="agent-system-prompt"
