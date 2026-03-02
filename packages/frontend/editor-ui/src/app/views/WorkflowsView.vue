@@ -441,7 +441,8 @@ const showPersonalizedTemplates = computed(
 );
 
 const shouldUseSimplifiedLayout = computed(() => {
-	return !loading.value && readyToRunStore.getSimplifiedLayoutVisibility(route);
+	const simplifiedLayoutVisible = readyToRunStore.getSimplifiedLayoutVisibility(route);
+	return !loading.value && simplifiedLayoutVisible;
 });
 
 const hasActiveCallouts = computed(() => {
@@ -1814,9 +1815,11 @@ const onNameSubmit = async (name: string) => {
 					</span>
 				</template>
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					size="small"
+					iconOnly
 					icon="folder-plus"
+					:aria-label="i18n.baseText('workflows.addFolder')"
 					data-test-id="add-folder-button"
 					:class="$style['add-folder-button']"
 					:disabled="!showRegisteredCommunityCTA && (readOnlyEnv || !hasPermissionToCreateFolders)"

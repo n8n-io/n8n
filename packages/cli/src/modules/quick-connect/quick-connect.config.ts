@@ -1,29 +1,40 @@
 import { Config, Env } from '@n8n/config';
 import { z } from 'zod';
 
-const backendFlowConfigSchema = z.object({
-	secret: z.string(),
-});
-
-export type BackendFlowConfig = z.infer<typeof backendFlowConfigSchema>;
-
-const quickConnectOptionSchema = z.object({
+const baseQuickConnectOptionSchema = z.object({
 	packageName: z.string(),
 	credentialType: z.string(),
 	text: z.string(),
 	quickConnectType: z.string(),
-	serviceName: z.string(),
 	consentText: z.string().optional(),
-	backendFlowConfig: backendFlowConfigSchema.optional(),
+	config: z.never().optional(),
+	backendFlowConfig: z.never().optional(),
 });
+
+const pineconeQuickConnectOptionSchema = baseQuickConnectOptionSchema.extend({
+	quickConnectType: z.literal('pinecone'),
+	config: z.object({
+		integrationId: z.string(),
+	}),
+});
+
+const firecrawlQuickConnectSchema = baseQuickConnectOptionSchema.extend({
+	quickConnectType: z.literal('firecrawl'),
+	consentText: z.string(),
+	backendFlowConfig: z.object({
+		secret: z.string(),
+	}),
+});
+
+export type FirecrawlQuickConnect = z.infer<typeof firecrawlQuickConnectSchema>;
+
+const quickConnectOptionSchema = z.union([
+	firecrawlQuickConnectSchema,
+	pineconeQuickConnectOptionSchema,
+	baseQuickConnectOptionSchema,
+]);
 
 export type QuickConnectOption = z.infer<typeof quickConnectOptionSchema>;
-
-const quickConnectBackendOptionSchema = quickConnectOptionSchema.required({
-	backendFlowConfig: true,
-});
-
-export type QuickConnectBackendOption = z.infer<typeof quickConnectBackendOptionSchema>;
 
 const quickConnectOptionsSchema = z.string().pipe(
 	z.preprocess((input: string) => {

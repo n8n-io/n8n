@@ -12,6 +12,7 @@ import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 vi.mock('@n8n/rest-api-client', () => ({
 	getSecretProviderTypes: vi.fn(),
 	getSecretProviderConnections: vi.fn(),
+	getSecretProviderConnectionByKey: vi.fn(),
 }));
 
 describe('useSecretsProvidersList', () => {
@@ -73,9 +74,7 @@ describe('useSecretsProvidersList', () => {
 				},
 			];
 
-			vi.mocked(secretsProviderApi.getSecretProviderTypes).mockResolvedValue(
-				mockProviderTypes as SecretProviderTypeResponse[],
-			);
+			vi.mocked(secretsProviderApi.getSecretProviderTypes).mockResolvedValue(mockProviderTypes);
 
 			const { fetchProviderTypes, providerTypes, isLoading } = useSecretsProvidersList();
 
@@ -115,7 +114,6 @@ describe('useSecretsProvidersList', () => {
 				name: 'aws-prod',
 				type: 'awsSecretsManager',
 				state: 'connected',
-				isEnabled: true,
 				projects: [],
 				settings: {},
 				secretsCount: 5,
@@ -128,7 +126,6 @@ describe('useSecretsProvidersList', () => {
 				name: 'gcp-staging',
 				type: 'gcpSecretsManager',
 				state: 'connected',
-				isEnabled: true,
 				projects: [],
 				settings: {},
 				secretsCount: 3,
@@ -168,6 +165,89 @@ describe('useSecretsProvidersList', () => {
 		});
 	});
 
+	describe('fetchConnection', () => {
+		const mockConnections: SecretProviderConnection[] = [
+			{
+				id: '1',
+				name: 'aws-prod',
+				type: 'awsSecretsManager',
+				state: 'connected',
+				projects: [],
+				settings: {},
+				secretsCount: 5,
+				secrets: [],
+				createdAt: '2024-01-20T10:00:00Z',
+				updatedAt: '2024-01-20T10:00:00Z',
+			},
+			{
+				id: '2',
+				name: 'gcp-staging',
+				type: 'gcpSecretsManager',
+				state: 'connected',
+				projects: [],
+				settings: {},
+				secretsCount: 3,
+				secrets: [],
+				createdAt: '2024-01-22T10:00:00Z',
+				updatedAt: '2024-01-22T10:00:00Z',
+			},
+		];
+
+		it('should update existing connection in activeConnections', async () => {
+			vi.spyOn(rbacStore, 'hasScope').mockReturnValue(true);
+			vi.mocked(secretsProviderApi.getSecretProviderConnections).mockResolvedValue(mockConnections);
+
+			const updatedConnection: SecretProviderConnection = {
+				...mockConnections[0],
+				secretsCount: 10,
+				state: 'connected',
+			};
+			vi.mocked(secretsProviderApi.getSecretProviderConnectionByKey).mockResolvedValue(
+				updatedConnection,
+			);
+
+			const { fetchActiveConnections, fetchConnection, activeProviders } =
+				useSecretsProvidersList();
+
+			await fetchActiveConnections();
+			expect(activeProviders.value.find((p) => p.name === 'aws-prod')?.secretsCount).toBe(5);
+
+			await fetchConnection('aws-prod');
+			expect(secretsProviderApi.getSecretProviderConnectionByKey).toHaveBeenCalledTimes(1);
+			expect(activeProviders.value.find((p) => p.name === 'aws-prod')?.secretsCount).toBe(10);
+		});
+
+		it('should not modify activeConnections when provider key is not found', async () => {
+			vi.spyOn(rbacStore, 'hasScope').mockReturnValue(true);
+			vi.mocked(secretsProviderApi.getSecretProviderConnections).mockResolvedValue(mockConnections);
+
+			const newConnection: SecretProviderConnection = {
+				id: '3',
+				name: 'unknown-provider',
+				type: 'vault',
+				state: 'connected',
+				projects: [],
+				settings: {},
+				secretsCount: 1,
+				secrets: [],
+				createdAt: '2024-01-25T10:00:00Z',
+				updatedAt: '2024-01-25T10:00:00Z',
+			};
+			vi.mocked(secretsProviderApi.getSecretProviderConnectionByKey).mockResolvedValue(
+				newConnection,
+			);
+
+			const { fetchActiveConnections, fetchConnection, activeProviders } =
+				useSecretsProvidersList();
+
+			await fetchActiveConnections();
+			const providersBefore = activeProviders.value.map((p) => ({ ...p }));
+
+			await fetchConnection('unknown-provider');
+			expect(activeProviders.value).toEqual(providersBefore);
+		});
+	});
+
 	describe('activeProviders computed', () => {
 		beforeEach(() => {
 			vi.spyOn(rbacStore, 'hasScope').mockReturnValue(true);
@@ -180,7 +260,6 @@ describe('useSecretsProvidersList', () => {
 					name: 'alpha',
 					type: 'awsSecretsManager',
 					state: 'connected',
-					isEnabled: true,
 					projects: [],
 					settings: {},
 					secretsCount: 5,
@@ -193,7 +272,6 @@ describe('useSecretsProvidersList', () => {
 					name: 'zulu',
 					type: 'gcpSecretsManager',
 					state: 'connected',
-					isEnabled: true,
 					projects: [],
 					settings: {},
 					secretsCount: 3,
@@ -206,7 +284,6 @@ describe('useSecretsProvidersList', () => {
 					name: 'bravo',
 					type: 'azureKeyVault',
 					state: 'connected',
-					isEnabled: true,
 					projects: [],
 					settings: {},
 					secretsCount: 2,

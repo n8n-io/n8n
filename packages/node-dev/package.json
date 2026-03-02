@@ -2,6 +2,7 @@
   "name": "n8n-node-dev",
   "version": "2.9.0",
   "description": "CLI to simplify n8n credentials/node development",
+  "private": true,
   "main": "dist/src/index",
   "types": "dist/src/index.d.ts",
   "oclif": {

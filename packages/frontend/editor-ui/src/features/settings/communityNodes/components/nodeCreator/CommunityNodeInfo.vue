@@ -37,7 +37,8 @@ const quickConnect = computed(() => {
 
 const nodeTypesStore = useNodeTypesStore();
 
-const isOwner = computed(() => useUsersStore().isInstanceOwner);
+const usersStore = useUsersStore();
+const isAdminOrOwner = computed(() => usersStore.isAdminOrOwner);
 
 const formatNumber = (number: number) => {
 	if (!number) return null;
@@ -163,16 +164,19 @@ onMounted(async () => {
 				</N8nText>
 			</div>
 
-			<div v-if="quickConnect">
-				<N8nIcon :class="$style.tooltipIcon" icon="quick-connect" />
-				<N8nText color="text-light" size="xsmall" bold data-test-id="quick-connect-tag">
-					{{ i18n.baseText('communityNodeInfo.quickConnect') }}
-				</N8nText>
-			</div>
+			<N8nTooltip v-if="quickConnect" placement="top">
+				<template #content>{{ i18n.baseText('communityNodeInfo.quickConnect.tooltip') }}</template>
+				<div>
+					<N8nIcon :class="$style.tooltipIcon" icon="quick-connect" />
+					<N8nText color="text-light" size="xsmall" bold data-test-id="quick-connect-tag">
+						{{ i18n.baseText('communityNodeInfo.quickConnect') }}
+					</N8nText>
+				</div>
+			</N8nTooltip>
 		</div>
 
 		<QuickConnectBanner v-if="quickConnect" :text="quickConnect?.text" />
-		<ContactAdministratorToInstall v-if="!isOwner && !communityNodeDetails?.installed" />
+		<ContactAdministratorToInstall v-if="!isAdminOrOwner && !communityNodeDetails?.installed" />
 	</div>
 </template>
 

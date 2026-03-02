@@ -24,6 +24,7 @@ import { PushConfig } from '@/push/push.config';
 import { OwnershipService } from '@/services/ownership.service';
 import { getSamlLoginLabel, getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
+import { resolveHealthEndpointPath } from '@/utils/health-endpoint.util';
 import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
@@ -149,6 +150,13 @@ export class FrontendService {
 		return envFeatureFlags;
 	}
 
+	private async getShowSetupOnFirstLoad() {
+		const previewMode = process.env.N8N_PREVIEW_MODE === 'true';
+		const hasInstanceOwner = await this.ownershipService.hasInstanceOwner();
+		// In preview mode, skip the setup redirect to allow accessing demo routes
+		return previewMode ? false : !hasInstanceOwner;
+	}
+
 	private async initSettings() {
 		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
 		const restEndpoint = this.globalConfig.endpoints.rest;
@@ -171,12 +179,14 @@ export class FrontendService {
 			telemetrySettings.config = { key, url, proxy, sourceConfig };
 		}
 
+		const previewMode = process.env.N8N_PREVIEW_MODE === 'true';
+
 		this.settings = {
 			settingsMode: 'authenticated',
 			inE2ETests,
 			isDocker: this.instanceSettings.isDocker,
 			databaseType: this.globalConfig.database.type,
-			previewMode: process.env.N8N_PREVIEW_MODE === 'true',
+			previewMode,
 			endpointForm: this.globalConfig.endpoints.form,
 			endpointFormTest: this.globalConfig.endpoints.formTest,
 			endpointFormWaiting: this.globalConfig.endpoints.formWaiting,
@@ -185,7 +195,7 @@ export class FrontendService {
 			endpointWebhook: this.globalConfig.endpoints.webhook,
 			endpointWebhookTest: this.globalConfig.endpoints.webhookTest,
 			endpointWebhookWaiting: this.globalConfig.endpoints.webhookWaiting,
-			endpointHealth: this.globalConfig.endpoints.health,
+			endpointHealth: resolveHealthEndpointPath(this.globalConfig),
 			saveDataErrorExecution: this.globalConfig.executions.saveDataOnError,
 			saveDataSuccessExecution: this.globalConfig.executions.saveDataOnSuccess,
 			saveManualExecutions: this.globalConfig.executions.saveDataManualExecutions,
@@ -236,7 +246,7 @@ export class FrontendService {
 			defaultLocale: this.globalConfig.defaultLocale,
 			userManagement: {
 				quota: this.license.getUsersLimit(),
-				showSetupOnFirstLoad: !(await this.ownershipService.hasInstanceOwner()),
+				showSetupOnFirstLoad: await this.getShowSetupOnFirstLoad(),
 				smtpSetup: this.mailer.isEmailSetUp,
 				authenticationMethod: getCurrentAuthenticationMethod(),
 			},
@@ -376,28 +386,17 @@ export class FrontendService {
 	}
 
 	async generateTypes() {
-		/*
-		 * If there are no types and credentials, they have been released from memory
-		 * we trigger a re-initialization of the types to ensure they are loaded in memory, post processing triggers type regeneration
-		 */
-		const { types } = this.loadNodesAndCredentials;
-		if (types.nodes.length === 0 && types.credentials.length === 0) {
-			return await this.loadNodesAndCredentials.postProcessLoaders();
-		}
-
 		this.overwriteCredentialsProperties();
+
+		const { credentials, nodes } = await this.loadNodesAndCredentials.collectTypes();
 
 		const { staticCacheDir } = this.instanceSettings;
 		// pre-render all the node and credential types as static json files
 		await mkdir(path.join(staticCacheDir, 'types'), { recursive: true });
-		const { credentials, nodes } = this.loadNodesAndCredentials.types;
 		await this.writeStaticJSON('nodes', nodes);
 		const nodeVersionIdentifiers = this.getNodeVersionIdentifiers(nodes);
 		await this.writeStaticJSON('node-versions', nodeVersionIdentifiers);
 		await this.writeStaticJSON('credentials', credentials);
-
-		// release types to free memory
-		this.loadNodesAndCredentials.releaseTypes();
 	}
 
 	async getSettings(): Promise<FrontendSettings> {
@@ -418,7 +417,7 @@ export class FrontendService {
 		Object.assign(this.settings.userManagement, {
 			quota: this.license.getUsersLimit(),
 			authenticationMethod: getCurrentAuthenticationMethod(),
-			showSetupOnFirstLoad: !(await this.ownershipService.hasInstanceOwner()),
+			showSetupOnFirstLoad: await this.getShowSetupOnFirstLoad(),
 		});
 
 		let dismissedBanners: string[] = [];
@@ -565,14 +564,12 @@ export class FrontendService {
 			mfa,
 			communityNodesEnabled,
 		} = await this.getSettings();
-
 		const publicSettings: PublicFrontendSettings = {
 			settingsMode: 'public',
 			defaultLocale,
 			userManagement: {
 				authenticationMethod,
-				// In preview mode, skip the setup redirect to allow accessing demo routes
-				showSetupOnFirstLoad: previewMode ? false : showSetupOnFirstLoad,
+				showSetupOnFirstLoad,
 				smtpSetup,
 			},
 			sso: {

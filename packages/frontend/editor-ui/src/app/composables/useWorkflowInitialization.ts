@@ -129,6 +129,17 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 
 		disposeCurrentWorkflowDocumentStore();
 
+		// Load credentials and credential types for template import
+		try {
+			await Promise.all([loadCredentials(), credentialsStore.fetchCredentialTypes(true)]);
+		} catch (error) {
+			toast.showError(
+				error,
+				i18n.baseText('nodeView.showError.mounted1.title'),
+				i18n.baseText('nodeView.showError.mounted1.message') + ':',
+			);
+		}
+
 		const loadWorkflowFromJSON = route.query.fromJson === 'true';
 
 		if (loadWorkflowFromJSON) {
@@ -260,9 +271,11 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 
 		workflowState.setWorkflowId(workflowId.value);
 
-		// Create document store for new workflow (empty tags)
+		// Create document store for new workflow
 		const workflowDocumentId = createWorkflowDocumentId(workflowId.value);
 		currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
+		const homeProject = projectsStore.currentProject ?? projectsStore.personalProject ?? null;
+		currentWorkflowDocumentStore.value.setHomeProject(homeProject);
 
 		await projectsStore.refreshCurrentProject();
 		await fetchAndSetParentFolder(parentFolderId);
