@@ -8,6 +8,11 @@ on:
         required: false
         type: string
         default: ''
+      playwright-only:
+        description: 'Only Playwright files changed — run impacted tests only'
+        required: false
+        type: boolean
+        default: false
 
 env:
   DOCKER_IMAGE: ghcr.io/${{ github.repository }}:ci-${{ github.run_id }}
@@ -28,6 +33,10 @@ jobs:
         with:
           ref: ${{ inputs.branch || github.ref }}
           fetch-depth: 1
+
+      - name: Fetch base branch for impact analysis
+        if: ${{ inputs.playwright-only }}
+        run: git fetch origin ${{ github.event.pull_request.base.ref || 'master' }} --depth=1
 
       - name: Login to GHCR
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
@@ -53,7 +62,7 @@ jobs:
 
       - name: Generate shard matrix
         id: generate-matrix
-        run: echo "matrix=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix 16 --orchestrate)" >> "$GITHUB_OUTPUT"
+        run: echo "matrix=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix 16 --orchestrate ${{ inputs.playwright-only && format('--impact --base=origin/{0}', github.event.pull_request.base.ref || 'master') || '' }})" >> "$GITHUB_OUTPUT"
 
   sqlite-sanity:
     needs: [prepare]

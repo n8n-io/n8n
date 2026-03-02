@@ -193,35 +193,35 @@ const handleClick = (event: MouseEvent) => {
 	}
 
 	&.xsmall {
-		--button--height: 1.5rem;
+		--button--height: var(--height--xs);
 		--button--padding: 0 var(--spacing--2xs);
 		--button--radius: var(--radius--3xs);
 		--button--font-size: var(--font-size--2xs);
 	}
 
 	&.small {
-		--button--height: 1.75rem;
+		--button--height: var(--height--sm);
 		--button--padding: 0 var(--spacing--xs);
 		--button--radius: var(--radius--3xs);
 		--button--font-size: var(--font-size--xs);
 	}
 
 	&.medium {
-		--button--height: 2rem;
+		--button--height: var(--height--md);
 		--button--padding: 0 var(--spacing--xs);
 		--button--radius: var(--radius--3xs);
 		--button--font-size: var(--font-size--sm);
 	}
 
 	&.large {
-		--button--height: 2.25rem;
+		--button--height: var(--height--lg);
 		--button--padding: 0 var(--spacing--sm);
 		--button--radius: var(--radius--2xs);
 		--button--font-size: var(--font-size--sm);
 	}
 
 	&.xlarge {
-		--button--height: 2.5rem;
+		--button--height: var(--height--xl);
 		--button--padding: 0 var(--spacing--sm);
 		--button--radius: var(--radius--xs);
 		--button--font-size: var(--font-size--md);
