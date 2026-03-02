@@ -55,12 +55,13 @@ const hasCredential = computed(() => !!props.state.credentialType);
 
 // Determines which node can be executed from this setup card.
 // - Triggers: only the workflow's first trigger (by execution order) can be executed.
-// - Non-triggers: always returned (button shows but is disabled via useNodeExecution when issues exist).
+// - Non-triggers: only nodes with main or aiTool inputs (not AI sub-nodes like memory, model, etc.).
 const executableNode = computed(() => {
 	if (props.state.isTrigger) {
 		if (!props.firstTriggerName) return null;
 		return props.state.node.name === props.firstTriggerName ? props.state.node : null;
 	}
+	if (!nodeHelpers.isNodeExecutable(props.state.node, true, [])) return null;
 	return props.state.node;
 });
 
