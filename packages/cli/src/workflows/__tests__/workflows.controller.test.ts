@@ -5,6 +5,7 @@ import type {
 	AuthenticatedRequest,
 	IExecutionResponse,
 	CredentialsEntity,
+	ProjectRepository,
 	User,
 	WorkflowRepository,
 } from '@n8n/db';
@@ -19,10 +20,12 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { License } from '@/license';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 jest.mock('axios');
+jest.mock('@/permissions.ee/check-access');
 
 describe('WorkflowsController', () => {
 	const controller = Object.create(WorkflowsController.prototype);
@@ -319,6 +322,207 @@ describe('WorkflowsController', () => {
 				expect(credentialsService.getMany).toHaveBeenCalledWith(mockUser, {
 					includeGlobal: true,
 				});
+			});
+		});
+
+		describe('redaction policy scope enforcement', () => {
+			const userHasScopesMock = jest.mocked(userHasScopes);
+
+			// Helper to set up mocks that get the controller into the transaction
+			// where the redaction scope check now happens. Uses transactionManager.save
+			// as the stop point (throws to halt execution after the check).
+			function setupTransactionMocks(options: {
+				mockUser: User;
+				projectId?: string;
+				personalProjectId?: string;
+			}) {
+				const transactionManager = {
+					save: jest.fn().mockRejectedValue(new Error('Stopping for test')),
+				};
+
+				const projectRepository = mock<ProjectRepository>();
+				if (options.personalProjectId) {
+					projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
+						id: options.personalProjectId,
+					} as any);
+				}
+				(projectRepository as any).manager = {
+					transaction: jest.fn(async (cb: any) => cb(transactionManager)),
+				};
+
+				const workflowRepository = mock<WorkflowRepository>();
+				workflowRepository.existsBy.mockResolvedValue(false);
+
+				const license = mock<License>();
+				license.isSharingEnabled.mockReturnValue(false);
+
+				projectService.getProjectWithScope.mockResolvedValue({
+					id: options.projectId ?? options.personalProjectId,
+				} as any);
+
+				controller.workflowRepository = workflowRepository;
+				controller.projectRepository = projectRepository;
+				controller.license = license;
+				controller.externalHooks = mock();
+				controller.externalHooks.run = jest.fn().mockResolvedValue(undefined);
+				controller.tagRepository = mock();
+				controller.globalConfig = { tags: { disabled: true } };
+
+				return { projectRepository, transactionManager };
+			}
+
+			it('should strip redactionPolicy on create when user lacks scope', async () => {
+				/**
+				 * Arrange
+				 */
+				const mockUser = mock<User>({ id: 'user-123' });
+				const body: CreateWorkflowDto = {
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+					projectId: 'project-123',
+					settings: { redactionPolicy: 'all' } as CreateWorkflowDto['settings'],
+				};
+				const mockRequest = mock<AuthenticatedRequest>({
+					user: mockUser,
+				});
+
+				userHasScopesMock.mockResolvedValue(false);
+				setupTransactionMocks({ mockUser, projectId: 'project-123' });
+
+				/**
+				 * Act
+				 */
+				await expect(controller.create(mockRequest, res, body)).rejects.toThrow(
+					'Stopping for test',
+				);
+
+				/**
+				 * Assert
+				 */
+				expect(userHasScopesMock).toHaveBeenCalledWith(
+					mockUser,
+					['workflow:updateRedactionSetting'],
+					false,
+					{ projectId: 'project-123' },
+				);
+			});
+
+			it('should preserve redactionPolicy on create when user has scope', async () => {
+				/**
+				 * Arrange
+				 */
+				const mockUser = mock<User>({ id: 'user-123' });
+				const body: CreateWorkflowDto = {
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+					projectId: 'project-123',
+					settings: { redactionPolicy: 'all' } as CreateWorkflowDto['settings'],
+				};
+				const mockRequest = mock<AuthenticatedRequest>({
+					user: mockUser,
+				});
+
+				userHasScopesMock.mockResolvedValue(true);
+				const { transactionManager } = setupTransactionMocks({
+					mockUser,
+					projectId: 'project-123',
+				});
+
+				/**
+				 * Act
+				 */
+				await expect(controller.create(mockRequest, res, body)).rejects.toThrow(
+					'Stopping for test',
+				);
+
+				/**
+				 * Assert
+				 */
+				expect(userHasScopesMock).toHaveBeenCalledWith(
+					mockUser,
+					['workflow:updateRedactionSetting'],
+					false,
+					{ projectId: 'project-123' },
+				);
+				// Verify the workflow entity passed to save still has redactionPolicy
+				const savedEntity = transactionManager.save.mock.calls[0][0] as WorkflowEntity;
+				expect(savedEntity.settings?.redactionPolicy).toBe('all');
+			});
+
+			it('should resolve projectId from personal project when projectId not provided', async () => {
+				/**
+				 * Arrange
+				 */
+				const mockUser = mock<User>({ id: 'user-456' });
+				const body: CreateWorkflowDto = {
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+					settings: { redactionPolicy: 'all' } as CreateWorkflowDto['settings'],
+				};
+				const mockRequest = mock<AuthenticatedRequest>({
+					user: mockUser,
+				});
+
+				userHasScopesMock.mockResolvedValue(false);
+				const { projectRepository } = setupTransactionMocks({
+					mockUser,
+					personalProjectId: 'personal-project-789',
+				});
+
+				/**
+				 * Act
+				 */
+				await expect(controller.create(mockRequest, res, body)).rejects.toThrow(
+					'Stopping for test',
+				);
+
+				/**
+				 * Assert
+				 */
+				expect(projectRepository.getPersonalProjectForUserOrFail).toHaveBeenCalledWith(
+					'user-456',
+					expect.anything(),
+				);
+				expect(userHasScopesMock).toHaveBeenCalledWith(
+					mockUser,
+					['workflow:updateRedactionSetting'],
+					false,
+					{ projectId: 'personal-project-789' },
+				);
+			});
+
+			it('should not check scope when settings has no redactionPolicy', async () => {
+				/**
+				 * Arrange
+				 */
+				const mockUser = mock<User>({ id: 'user-123' });
+				const body: CreateWorkflowDto = {
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+					projectId: 'project-123',
+					settings: { executionOrder: 'v1' } as CreateWorkflowDto['settings'],
+				};
+				const mockRequest = mock<AuthenticatedRequest>({
+					user: mockUser,
+				});
+
+				setupTransactionMocks({ mockUser, projectId: 'project-123' });
+
+				/**
+				 * Act
+				 */
+				await expect(controller.create(mockRequest, res, body)).rejects.toThrow(
+					'Stopping for test',
+				);
+
+				/**
+				 * Assert
+				 */
+				expect(userHasScopesMock).not.toHaveBeenCalled();
 			});
 		});
 	});

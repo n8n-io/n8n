@@ -8,11 +8,11 @@ export type * from './user';
 export type * from './api-keys';
 export type * from './community-node-types';
 export type * from './quick-connect';
+export * from './instance-registry-types';
 export {
 	chatHubConversationModelSchema,
 	type ChatModelDto,
 	type ChatModelMetadataDto,
-	type ChatHubInputModality,
 	type ChatHubOpenAIModel,
 	type ChatHubAnthropicModel,
 	type ChatHubGoogleModel,
@@ -188,6 +188,8 @@ export type {
 	BreakingChangeLightReportResult,
 	BreakingChangeVersion,
 } from './schemas/breaking-changes.schema';
+
+export { MIGRATION_REPORT_TARGET_VERSION } from './schemas/breaking-changes.schema';
 
 export type {
 	SecretsProviderType,

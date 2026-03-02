@@ -45,6 +45,7 @@ vi.mock('@n8n/rest-api-client', async (importOriginal) => {
 	return {
 		...actual,
 		getCredentialResolvers: vi.fn(),
+		getCredentialResolverTypes: vi.fn().mockResolvedValue([]),
 	};
 });
 
@@ -570,7 +571,7 @@ describe('WorkflowSettingsVue', () => {
 			{
 				id: 'resolver-1',
 				name: 'Test Resolver 1',
-				type: 'test-type',
+				type: 'editable-type',
 				config: '{}',
 				createdAt: new Date(),
 				updatedAt: new Date(),
@@ -578,15 +579,37 @@ describe('WorkflowSettingsVue', () => {
 			{
 				id: 'resolver-2',
 				name: 'Test Resolver 2',
-				type: 'test-type',
+				type: 'editable-type',
+				config: '{}',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			},
+			{
+				id: 'resolver-n8n',
+				name: 'N8n Resolver',
+				type: 'n8n-internal-type',
 				config: '{}',
 				createdAt: new Date(),
 				updatedAt: new Date(),
 			},
 		];
 
+		const mockResolverTypes = [
+			{
+				name: 'editable-type',
+				displayName: 'Editable Resolver',
+				options: [{ name: 'url', type: 'string', displayName: 'URL', default: '' }],
+			},
+			{
+				name: 'n8n-internal-type',
+				displayName: 'N8N Resolver',
+				options: [],
+			},
+		];
+
 		beforeEach(() => {
 			vi.mocked(restApiClient.getCredentialResolvers).mockResolvedValue(mockResolvers);
+			vi.mocked(restApiClient.getCredentialResolverTypes).mockResolvedValue(mockResolverTypes);
 		});
 
 		it('should render credential resolver dropdown', async () => {
@@ -608,10 +631,11 @@ describe('WorkflowSettingsVue', () => {
 				getByTestId('workflow-settings-credential-resolver'),
 			);
 
-			// Should have 2 resolvers
-			expect(dropdownItems).toHaveLength(2);
+			// Should have 3 resolvers
+			expect(dropdownItems).toHaveLength(3);
 			expect(dropdownItems[0]).toHaveTextContent('Test Resolver 1');
 			expect(dropdownItems[1]).toHaveTextContent('Test Resolver 2');
+			expect(dropdownItems[2]).toHaveTextContent('N8n Resolver');
 		});
 
 		it('should show "New" button for creating a new resolver', async () => {
@@ -632,7 +656,7 @@ describe('WorkflowSettingsVue', () => {
 			});
 		});
 
-		it('should show "Edit" button when a resolver is selected', async () => {
+		it('should show "Edit" button when an editable resolver is selected', async () => {
 			workflowsStore.workflowSettings.credentialResolverId = 'resolver-1';
 
 			const { getByTestId } = createComponent({ pinia });
@@ -640,6 +664,21 @@ describe('WorkflowSettingsVue', () => {
 
 			await waitFor(() => {
 				expect(getByTestId('workflow-settings-credential-resolver-edit')).toBeInTheDocument();
+			});
+		});
+
+		it('should not show "Edit" button when a non-editable resolver is selected', async () => {
+			workflowsStore.workflowSettings.credentialResolverId = 'resolver-n8n';
+
+			const { queryByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			await waitFor(() => {
+				expect(restApiClient.getCredentialResolverTypes).toHaveBeenCalled();
+			});
+
+			await waitFor(() => {
+				expect(queryByTestId('workflow-settings-credential-resolver-edit')).not.toBeInTheDocument();
 			});
 		});
 
@@ -687,6 +726,22 @@ describe('WorkflowSettingsVue', () => {
 			expect(callArgs[1].settings?.credentialResolverId).toBe('resolver-2');
 		});
 
+		it('should save with empty credentialResolverId when resolver is cleared', async () => {
+			// Element Plus clearable sets the model value to '' when the clear icon is clicked.
+			// The clear icon requires CSS hover state which jsdom cannot simulate,
+			// so we verify the save behavior when the value is already empty.
+			workflowsStore.workflowSettings.credentialResolverId = '';
+
+			const { getByRole } = createComponent({ pinia });
+			await nextTick();
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			const callArgs = workflowsStore.updateWorkflow.mock.calls[0];
+			expect(callArgs[0]).toBe('1');
+			expect(callArgs[1].settings?.credentialResolverId).toBe('');
+		});
+
 		it('should disable credential resolver dropdown when environment is read-only', async () => {
 			sourceControlStore.preferences.branchReadOnly = true;
 
@@ -719,6 +774,110 @@ describe('WorkflowSettingsVue', () => {
 			const dropdownContainer = getByTestId('workflow-settings-credential-resolver');
 			const input = dropdownContainer.querySelector('input');
 			expect(input).toBeDisabled();
+		});
+	});
+
+	describe('Redaction Policy', () => {
+		it('should not render redaction policy when redaction module is inactive', async () => {
+			vi.spyOn(settingsStore, 'isModuleActive').mockImplementation(
+				(name: string) => name !== 'redaction',
+			);
+
+			const workflowWithRedactionScope = createTestWorkflow({
+				id: '1',
+				name: 'Test Workflow',
+				active: true,
+				scopes: ['workflow:update', 'workflow:updateRedactionSetting'],
+			});
+			workflowsListStore.workflowsById = { '1': workflowWithRedactionScope };
+			workflowsListStore.getWorkflowById.mockImplementation(() => workflowWithRedactionScope);
+
+			const { queryByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			expect(queryByTestId('workflow-settings-redaction-policy')).not.toBeInTheDocument();
+		});
+
+		it('should not render redaction policy when user lacks updateRedactionSetting scope', async () => {
+			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+
+			const { queryByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			expect(queryByTestId('workflow-settings-redaction-policy')).not.toBeInTheDocument();
+		});
+
+		it('should render redaction policy when module is active and user has scope', async () => {
+			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+
+			const workflowWithRedactionScope = createTestWorkflow({
+				id: '1',
+				name: 'Test Workflow',
+				active: true,
+				scopes: ['workflow:update', 'workflow:updateRedactionSetting'],
+			});
+			workflowsListStore.workflowsById = { '1': workflowWithRedactionScope };
+			workflowsListStore.getWorkflowById.mockImplementation(() => workflowWithRedactionScope);
+
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			expect(getByTestId('workflow-settings-redaction-policy')).toBeVisible();
+		});
+
+		it('should render three redaction policy options', async () => {
+			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+
+			const workflowWithRedactionScope = createTestWorkflow({
+				id: '1',
+				name: 'Test Workflow',
+				active: true,
+				scopes: ['workflow:update', 'workflow:updateRedactionSetting'],
+			});
+			workflowsListStore.workflowsById = { '1': workflowWithRedactionScope };
+			workflowsListStore.getWorkflowById.mockImplementation(() => workflowWithRedactionScope);
+
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-redaction-policy'),
+			);
+
+			expect(dropdownItems).toHaveLength(3);
+			expect(dropdownItems[0]).toHaveTextContent('No redaction');
+			expect(dropdownItems[1]).toHaveTextContent('Redact all executions');
+			expect(dropdownItems[2]).toHaveTextContent('Redact non-manual executions');
+		});
+
+		it('should save redaction policy when selected', async () => {
+			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+
+			const workflowWithRedactionScope = createTestWorkflow({
+				id: '1',
+				name: 'Test Workflow',
+				active: true,
+				scopes: ['workflow:update', 'workflow:updateRedactionSetting'],
+			});
+			workflowsListStore.workflowsById = { '1': workflowWithRedactionScope };
+			workflowsListStore.getWorkflowById.mockImplementation(() => workflowWithRedactionScope);
+
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await nextTick();
+
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-redaction-policy'),
+			);
+			await userEvent.click(dropdownItems[1]);
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					settings: expect.objectContaining({ redactionPolicy: 'all' }),
+				}),
+			);
 		});
 	});
 });

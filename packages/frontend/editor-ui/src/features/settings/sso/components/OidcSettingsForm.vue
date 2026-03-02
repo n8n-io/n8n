@@ -183,6 +183,10 @@ function sendTrackingEvent(config: OidcConfigDto) {
 	telemetry.track('User updated single sign on settings', trackingMetadata);
 }
 
+const hasUnsavedChanges = computed(() => !cannotSaveOidcSettings.value && !savingForm.value);
+
+defineExpose({ hasUnsavedChanges, onSave: onOidcSettingsSave });
+
 onMounted(async () => {
 	await loadOidcConfig();
 });

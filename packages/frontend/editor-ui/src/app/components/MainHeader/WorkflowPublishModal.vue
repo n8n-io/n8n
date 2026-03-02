@@ -17,11 +17,11 @@ import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import WorkflowActivationErrorMessage from '@/app/components/WorkflowActivationErrorMessage.vue';
-import { generateVersionName } from '@/features/workflows/workflowHistory/utils';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { generateVersionNameFromId } from '@/features/workflows/workflowHistory/utils';
 
 const modalBus = createEventBus();
 const i18n = useI18n();
@@ -95,7 +95,7 @@ onMounted(() => {
 		if (versionData?.name) {
 			versionName.value = versionData.name;
 		} else {
-			versionName.value = generateVersionName(workflowsStore.workflow.versionId);
+			versionName.value = generateVersionNameFromId(workflowsStore.workflow.versionId);
 		}
 	}
 

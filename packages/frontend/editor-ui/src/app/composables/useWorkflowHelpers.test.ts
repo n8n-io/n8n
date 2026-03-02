@@ -250,7 +250,6 @@ describe('useWorkflowHelpers', () => {
 			const setWorkflowNameSpy = vi.spyOn(workflowState, 'setWorkflowName');
 			const setWorkflowSettingsSpy = vi.spyOn(workflowState, 'setWorkflowSettings');
 			const setWorkflowVersionDataSpy = vi.spyOn(workflowsStore, 'setWorkflowVersionData');
-			const setWorkflowMetadataSpy = vi.spyOn(workflowState, 'setWorkflowMetadata');
 			const setWorkflowScopesSpy = vi.spyOn(workflowState, 'setWorkflowScopes');
 			const setUsedCredentialsSpy = vi.spyOn(workflowsStore, 'setUsedCredentials');
 			const setWorkflowSharedWithSpy = vi.spyOn(workflowsEEStore, 'setWorkflowSharedWith');
@@ -268,11 +267,11 @@ describe('useWorkflowHelpers', () => {
 				executionOrder: 'v1',
 				timezone: 'DEFAULT',
 			});
-			expect(setWorkflowVersionDataSpy).toHaveBeenCalledWith(
-				{ versionId: 'v1', name: null, description: null },
-				'checksum',
-			);
-			expect(setWorkflowMetadataSpy).toHaveBeenCalledWith({});
+			expect(setWorkflowVersionDataSpy).toHaveBeenCalledWith({
+				versionId: 'v1',
+				name: null,
+				description: null,
+			});
 			expect(setWorkflowScopesSpy).toHaveBeenCalledWith(['workflow:create']);
 			expect(setUsedCredentialsSpy).toHaveBeenCalledWith([]);
 			expect(setWorkflowSharedWithSpy).toHaveBeenCalledWith({
@@ -336,7 +335,6 @@ describe('useWorkflowHelpers', () => {
 			workflowsStore.isWorkflowActive = false;
 			workflowsStore.workflow.settings = { executionOrder: 'v1' };
 			workflowsStore.workflow.versionId = 'v1';
-			workflowsStore.workflow.meta = {};
 			workflowsStore.pinnedWorkflowData = {};
 
 			const documentId = createWorkflowDocumentId(workflowId);
