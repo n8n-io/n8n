@@ -27,6 +27,7 @@ import {
 	ERROR_WORKFLOW_DOCS_URL,
 	TIME_SAVED_DOCS_URL,
 	EVALUATIONS_DOCS_URL,
+	ERROR_TRIGGER_NODE_TYPE,
 } from '@/app/constants';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { createTestNode } from '@/__tests__/mocks';
@@ -378,6 +379,63 @@ describe('WorkflowProductionChecklist', () => {
 				expect(
 					container.querySelector('[data-test-id="n8n-suggested-actions-stub"]'),
 				).not.toBeInTheDocument();
+			});
+		});
+
+		it('should not show error workflow action when workflow contains an enabled Error Trigger node', async () => {
+			renderComponent({
+				props: {
+					workflow: {
+						...mockWorkflow,
+						nodes: [createTestNode({ type: ERROR_TRIGGER_NODE_TYPE, typeVersion: 1 })],
+					},
+				},
+				pinia: createTestingPinia(),
+			});
+
+			await vi.waitFor(() => {
+				expect(mockN8nSuggestedActionsProps.actions).toEqual([
+					{
+						id: 'timeSaved',
+						title: 'workflowProductionChecklist.timeSaved.title',
+						description: 'workflowProductionChecklist.timeSaved.description',
+						moreInfoLink: TIME_SAVED_DOCS_URL,
+						completed: false,
+					},
+				]);
+			});
+		});
+
+		it('should show error workflow action when workflow contains a disabled Error Trigger node', async () => {
+			renderComponent({
+				props: {
+					workflow: {
+						...mockWorkflow,
+						nodes: [
+							createTestNode({ type: ERROR_TRIGGER_NODE_TYPE, typeVersion: 1, disabled: true }),
+						],
+					},
+				},
+				pinia: createTestingPinia(),
+			});
+
+			await vi.waitFor(() => {
+				expect(mockN8nSuggestedActionsProps.actions).toEqual([
+					{
+						id: 'errorWorkflow',
+						title: 'workflowProductionChecklist.errorWorkflow.title',
+						description: 'workflowProductionChecklist.errorWorkflow.description',
+						moreInfoLink: ERROR_WORKFLOW_DOCS_URL,
+						completed: false,
+					},
+					{
+						id: 'timeSaved',
+						title: 'workflowProductionChecklist.timeSaved.title',
+						description: 'workflowProductionChecklist.timeSaved.description',
+						moreInfoLink: TIME_SAVED_DOCS_URL,
+						completed: false,
+					},
+				]);
 			});
 		});
 	});
