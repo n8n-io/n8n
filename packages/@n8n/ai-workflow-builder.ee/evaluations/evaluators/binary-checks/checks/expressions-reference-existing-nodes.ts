@@ -3,24 +3,42 @@ import type { BinaryCheck, SimpleWorkflow } from '../types';
 /**
  * Regex patterns to extract node names from n8n expression syntaxes.
  * Mirrors ACCESS_PATTERNS from packages/workflow/src/node-reference-parser-utils.ts.
+ *
+ * Quoted patterns capture at group index 2; dot-notation captures at group index 1.
  */
-const EXPRESSION_NODE_REFS: RegExp[] = [
+const QUOTED_NODE_REFS: RegExp[] = [
 	/\$\(\s*(['"`])((?:\\.|(?!\1)[^\\])*)\1\s*\)/g, // $('Node Name')
 	/\$node\[\s*(['"])((?:\\.|(?!\1)[^\\])*)\1\s*\]/g, // $node["Node Name"]
 	/\$items\(\s*(['"])((?:\\.|(?!\1)[^\\])*)\1\s*\)/g, // $items("Node Name")
 ];
 
+/** Legacy dot-notation: $node.NodeName.json... — name is a JS identifier after $node. */
+const DOT_NODE_REF = /\$node\.(\w+)\./g;
+
+/** Remove backslash escapes from a captured node name (e.g. `Node\'s` → `Node's`). */
+function unescapeNodeName(raw: string): string {
+	return raw.replace(/\\(.)/g, '$1');
+}
+
 /** Extract all referenced node names from an expression string. */
 function extractNodeNamesFromExpression(expression: string): string[] {
 	const names: string[] = [];
-	for (const pattern of EXPRESSION_NODE_REFS) {
-		// Reset lastIndex for each use since the regex has /g flag
+
+	for (const pattern of QUOTED_NODE_REFS) {
 		pattern.lastIndex = 0;
 		let match: RegExpExecArray | null;
 		while ((match = pattern.exec(expression)) !== null) {
-			names.push(match[2]);
+			names.push(unescapeNodeName(match[2]));
 		}
 	}
+
+	// Legacy $node.Name dot-notation
+	DOT_NODE_REF.lastIndex = 0;
+	let dotMatch: RegExpExecArray | null;
+	while ((dotMatch = DOT_NODE_REF.exec(expression)) !== null) {
+		names.push(dotMatch[1]);
+	}
+
 	return names;
 }
 

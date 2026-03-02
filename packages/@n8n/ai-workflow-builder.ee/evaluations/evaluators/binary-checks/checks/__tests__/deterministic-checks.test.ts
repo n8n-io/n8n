@@ -667,6 +667,69 @@ describe('expressions_reference_existing_nodes', () => {
 		expect(result.comment).toContain('Missing');
 	});
 
+	it('detects legacy $node.Name dot-notation syntax', async () => {
+		const result = await expressionsReferenceExistingNodes.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [0, 0],
+						parameters: {
+							assignments: {
+								assignments: [
+									{
+										name: 'val',
+										value: '={{ $node.MissingNode.json.field }}',
+										type: 'string',
+									},
+								],
+							},
+						},
+					},
+				],
+			}),
+			makeCtx(),
+		);
+		expect(result.pass).toBe(false);
+		expect(result.comment).toContain('MissingNode');
+	});
+
+	it('handles escaped quotes in node names', async () => {
+		const result = await expressionsReferenceExistingNodes.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: "Node's Data",
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [0, 0],
+					},
+					{
+						name: 'Consumer',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3,
+						position: [200, 0],
+						parameters: {
+							assignments: {
+								assignments: [
+									{
+										name: 'val',
+										value: "={{ $('Node\\'s Data').first().json.field }}",
+										type: 'string',
+									},
+								],
+							},
+						},
+					},
+				],
+			}),
+			makeCtx(),
+		);
+		expect(result.pass).toBe(true);
+	});
+
 	it('passes for empty workflow', async () => {
 		const result = await expressionsReferenceExistingNodes.run(
 			makeWorkflow({ nodes: [] }),
