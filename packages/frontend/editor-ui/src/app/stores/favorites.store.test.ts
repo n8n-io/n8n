@@ -128,7 +128,7 @@ describe('favorites.store', () => {
 			vi.mocked(favoritesApi.getFavorites).mockResolvedValue([
 				makeFavorite({ resourceId: 'wf-1', resourceType: 'workflow' }),
 			]);
-			vi.mocked(favoritesApi.removeFavorite).mockResolvedValue(undefined);
+			vi.mocked(favoritesApi.removeFavorite).mockResolvedValue(true);
 
 			const store = useFavoritesStore();
 			await store.fetchFavorites();

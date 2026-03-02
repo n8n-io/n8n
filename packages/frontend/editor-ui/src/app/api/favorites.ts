@@ -32,6 +32,10 @@ export async function removeFavorite(
 	context: IRestApiContext,
 	resourceId: string,
 	resourceType: FavoriteResourceType,
-): Promise<void> {
-	await makeRestApiRequest<void>(context, 'DELETE', `/favorites/${resourceType}/${resourceId}`);
+): Promise<boolean> {
+	return await makeRestApiRequest<boolean>(
+		context,
+		'DELETE',
+		`/favorites/${resourceType}/${resourceId}`,
+	);
 }
