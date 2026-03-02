@@ -56,8 +56,7 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 		displayName: 'Simple Vector Store',
 		name: 'vectorStoreInMemory',
 		description: 'The easiest way to experiment with vector stores, without external setup.',
-		icon: 'fa:database',
-		iconColor: 'black',
+		icon: 'node:simple-vector-store',
 		docsUrl:
 			'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoreinmemory/',
 		categories: ['AI'],

@@ -22,8 +22,7 @@ export class ToolCalculator implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Calculator',
 		name: 'toolCalculator',
-		icon: 'fa:calculator',
-		iconColor: 'black',
+		icon: 'node:calculator',
 		group: ['transform'],
 		version: 1,
 		description: 'Make it easier for AI agents to perform arithmetic',

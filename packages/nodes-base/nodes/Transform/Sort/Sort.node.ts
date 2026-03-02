@@ -19,7 +19,7 @@ export class Sort implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Sort',
 		name: 'sort',
-		icon: 'file:sort.svg',
+		icon: 'node:sort',
 		group: ['transform'],
 		subtitle: '',
 		version: 1,

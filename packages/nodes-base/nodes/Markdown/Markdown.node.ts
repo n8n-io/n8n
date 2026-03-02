@@ -16,7 +16,7 @@ export class Markdown implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Markdown',
 		name: 'markdown',
-		icon: { light: 'file:markdown.svg', dark: 'file:markdown.dark.svg' },
+		icon: 'node:markdown',
 		group: ['output'],
 		version: 1,
 		subtitle:

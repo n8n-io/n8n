@@ -125,8 +125,7 @@ export class Ftp implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'FTP',
 		name: 'ftp',
-		icon: 'fa:server',
-		iconColor: 'dark-blue',
+		icon: 'node:ftp',
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["protocol"] + ": " + $parameter["operation"]}}',

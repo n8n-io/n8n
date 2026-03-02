@@ -11,8 +11,7 @@ export class Xml implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'XML',
 		name: 'xml',
-		icon: 'fa:file-code',
-		iconColor: 'purple',
+		icon: 'node:xml',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["mode"]==="jsonToxml" ? "JSON to XML" : "XML to JSON"}}',

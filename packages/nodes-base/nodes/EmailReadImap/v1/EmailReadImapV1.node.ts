@@ -60,7 +60,7 @@ export async function parseRawEmail(
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Email Trigger (IMAP)',
 	name: 'emailReadImap',
-	icon: 'fa:inbox',
+	icon: 'node:email-trigger',
 	group: ['trigger'],
 	version: 1,
 	description: 'Triggers the workflow when a new email is received',

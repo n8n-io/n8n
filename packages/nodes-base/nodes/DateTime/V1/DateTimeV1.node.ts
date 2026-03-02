@@ -47,7 +47,7 @@ function parseDateByDefault(this: IExecuteFunctions, value: string) {
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Date & Time',
 	name: 'dateTime',
-	icon: 'fa:clock',
+	icon: 'node:date-and-time',
 	group: ['transform'],
 	version: 1,
 	description: 'Allows you to manipulate date and time values',

@@ -765,8 +765,7 @@ export class EditImage implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Edit Image',
 		name: 'editImage',
-		icon: 'fa:image',
-		iconColor: 'purple',
+		icon: 'node:edit-image',
 		group: ['transform'],
 		version: 1,
 		description: 'Edits an image like blur, resize or adding border and text',

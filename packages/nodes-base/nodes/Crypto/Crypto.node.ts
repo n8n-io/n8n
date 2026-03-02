@@ -9,8 +9,7 @@ export class Crypto extends VersionedNodeType {
 		const baseDescription: INodeTypeBaseDescription = {
 			displayName: 'Crypto',
 			name: 'crypto',
-			icon: 'fa:key',
-			iconColor: 'green',
+			icon: 'node:crypto',
 			group: ['transform'],
 			defaultVersion: 2,
 			subtitle: '={{$parameter["action"]}}',

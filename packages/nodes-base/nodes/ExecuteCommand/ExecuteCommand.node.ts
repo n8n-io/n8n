@@ -46,8 +46,7 @@ export class ExecuteCommand implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Execute Command',
 		name: 'executeCommand',
-		icon: 'fa:terminal',
-		iconColor: 'crimson',
+		icon: 'node:execute-command',
 		group: ['transform'],
 		version: 1,
 		description: 'Executes a command on the host',

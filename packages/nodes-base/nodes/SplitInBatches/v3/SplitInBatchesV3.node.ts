@@ -12,7 +12,6 @@ export class SplitInBatchesV3 implements INodeType {
 		displayName: 'Loop Over Items (Split in Batches)',
 		name: 'splitInBatches',
 		icon: 'node:loop-over-items',
-		iconColor: 'dark-green',
 		group: ['organization'],
 		version: 3,
 		description: 'Split data into batches and iterate over each batch',

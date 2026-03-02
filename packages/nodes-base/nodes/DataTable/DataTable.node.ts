@@ -15,8 +15,7 @@ export class DataTable implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Data table',
 		name: 'dataTable',
-		icon: 'fa:table',
-		iconColor: 'orange-red',
+		icon: 'node:data-table',
 		group: ['input', 'transform'],
 		version: [1, 1.1],
 		subtitle: '={{$parameter["action"]}}',

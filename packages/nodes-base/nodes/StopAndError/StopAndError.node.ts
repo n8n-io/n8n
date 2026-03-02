@@ -17,8 +17,7 @@ export class StopAndError implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Stop and Error',
 		name: 'stopAndError',
-		icon: 'fa:exclamation-triangle',
-		iconColor: 'red',
+		icon: 'node:stop-and-error',
 		group: ['input'],
 		version: 1,
 		description: 'Throw an error in the workflow',

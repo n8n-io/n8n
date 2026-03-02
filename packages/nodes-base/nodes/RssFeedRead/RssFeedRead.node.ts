@@ -26,8 +26,7 @@ export class RssFeedRead implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'RSS Read',
 		name: 'rssFeedRead',
-		icon: 'fa:rss',
-		iconColor: 'orange-red',
+		icon: 'node:rss-feed-trigger',
 		group: ['input'],
 		version: [1, 1.1, 1.2],
 		description: 'Reads data from an RSS Feed',

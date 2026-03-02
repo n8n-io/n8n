@@ -9,7 +9,7 @@ export class EmailReadImap extends VersionedNodeType {
 		const baseDescription: INodeTypeBaseDescription = {
 			displayName: 'Email Trigger (IMAP)',
 			name: 'emailReadImap',
-			icon: 'fa:inbox',
+			icon: 'node:email-trigger',
 			group: ['trigger'],
 			description: 'Triggers the workflow when a new email is received',
 			defaultVersion: 2.1,

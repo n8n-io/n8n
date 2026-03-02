@@ -40,8 +40,7 @@ export class ToolThink implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Think Tool',
 		name: 'toolThink',
-		icon: 'fa:brain',
-		iconColor: 'black',
+		icon: 'node:think-tool',
 		group: ['transform'],
 		version: [1, 1.1],
 		description: 'Invite the AI agent to do some thinking',

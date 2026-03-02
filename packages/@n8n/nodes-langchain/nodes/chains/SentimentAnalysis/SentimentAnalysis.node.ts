@@ -33,8 +33,7 @@ export class SentimentAnalysis implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Sentiment Analysis',
 		name: 'sentimentAnalysis',
-		icon: 'fa:balance-scale-left',
-		iconColor: 'black',
+		icon: 'node:sentiment-analysis',
 		group: ['transform'],
 		version: [1, 1.1],
 		description: 'Analyze the sentiment of your text',

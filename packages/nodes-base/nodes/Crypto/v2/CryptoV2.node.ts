@@ -31,8 +31,7 @@ const supportedAlgorithms = getHashes()
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Crypto',
 	name: 'crypto',
-	icon: 'fa:key',
-	iconColor: 'green',
+	icon: 'node:crypto',
 	group: ['transform'],
 	version: 2,
 	subtitle: '={{$parameter["action"]}}',

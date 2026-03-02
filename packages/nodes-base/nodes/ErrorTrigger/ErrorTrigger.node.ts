@@ -12,8 +12,7 @@ export class ErrorTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Error Trigger',
 		name: 'errorTrigger',
-		icon: 'fa:bug',
-		iconColor: 'blue',
+		icon: 'node:error-trigger',
 		group: ['trigger'],
 		version: 1,
 		description: 'Triggers the workflow when another workflow has an error',

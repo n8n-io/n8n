@@ -15,8 +15,7 @@ export class RetrieverMultiQuery implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'MultiQuery Retriever',
 		name: 'retrieverMultiQuery',
-		icon: 'fa:box-open',
-		iconColor: 'black',
+		icon: 'node:multiquery-retriever',
 		group: ['transform'],
 		version: 1,
 		description:

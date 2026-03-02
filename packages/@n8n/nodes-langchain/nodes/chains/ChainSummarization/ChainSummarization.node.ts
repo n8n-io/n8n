@@ -9,8 +9,7 @@ export class ChainSummarization extends VersionedNodeType {
 		const baseDescription: INodeTypeBaseDescription = {
 			displayName: 'Summarization Chain',
 			name: 'chainSummarization',
-			icon: 'fa:link',
-			iconColor: 'black',
+			icon: 'node:summarization-chain',
 			group: ['transform'],
 			description: 'Transforms text into a concise summary',
 			codex: {
