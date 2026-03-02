@@ -45,6 +45,13 @@ describe('useExecutionDebugging()', () => {
 		const workflowStore = mockedStore(useWorkflowsStore);
 		workflowStore.workflow.id = 'test-workflow';
 
+		// Create the document store so useExecutionDebugging can access it via workflowsStore.workflowId.
+		// Default createTestingPinia() stubs actions, so mock getNodes to delegate to workflowsStore.
+		const documentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowStore.workflow.id),
+		);
+		vi.mocked(documentStore.getNodes).mockImplementation(() => workflowStore.getNodes());
+
 		toast = useToast();
 
 		workflowState = useWorkflowState();

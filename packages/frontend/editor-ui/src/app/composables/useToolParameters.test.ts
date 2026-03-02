@@ -1,7 +1,7 @@
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ref, nextTick } from 'vue';
+import { ref, shallowRef, nextTick } from 'vue';
 import { waitFor } from '@testing-library/vue';
 import { useToolParameters } from './useToolParameters';
 import { useWorkflowsStore } from '../stores/workflows.store';
@@ -13,6 +13,14 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import type { INode, INodeTypeDescription, Workflow } from 'n8n-workflow';
 import { AI_MCP_TOOL_NODE_TYPE } from '../constants';
 import { mock } from 'vitest-mock-extended';
+
+const mockDocumentStore: { findNodeByName: ReturnType<typeof vi.fn> } = {
+	findNodeByName: vi.fn(),
+};
+
+vi.mock('../stores/workflowDocument.store', () => ({
+	injectWorkflowDocumentStore: () => shallowRef(mockDocumentStore),
+}));
 
 describe('useToolParameters', () => {
 	let workflowsStore: MockedStore<typeof useWorkflowsStore>;
@@ -32,6 +40,9 @@ describe('useToolParameters', () => {
 		workflowsStore.workflowId = 'test-workflow';
 		workflowsStore.getWorkflowExecution = null;
 		agentRequestStore.getQueryValue = vi.fn().mockReturnValue(null);
+
+		// Reset document store mock - delegate to workflowsStore.getNodeByName by default
+		mockDocumentStore.findNodeByName = vi.fn((name: string) => workflowsStore.getNodeByName(name));
 	});
 
 	describe('getToolName', () => {

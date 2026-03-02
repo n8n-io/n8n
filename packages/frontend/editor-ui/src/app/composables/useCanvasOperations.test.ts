@@ -6268,6 +6268,7 @@ describe('useCanvasOperations', () => {
 				return null;
 			});
 
+			workflowsStore.workflow.id = workflowId;
 			workflowsStore.workflow.nodes = [agentNode, toolNode];
 			workflowsStore.workflow.connections = {
 				[agentNode.name]: {
@@ -6307,10 +6308,6 @@ describe('useCanvasOperations', () => {
 				if (name === 'HITL') return hitlNode;
 				return null;
 			});
-			workflowsStore.addConnection = vi.fn();
-			workflowsStore.removeConnection = vi.fn();
-			workflowsStore.addNode = vi.fn();
-
 			// Mock the last interacted node as the tool node with an existing connection
 			uiStore.lastInteractedWithNode = toolNode;
 			uiStore.lastInteractedWithNodeConnection = {

@@ -71,7 +71,7 @@ describe('useFocusedNodesStore', () => {
 		);
 
 		workflowsStore = mockedStore(useWorkflowsStore);
-		workflowsStore.allNodes = [
+		workflowsStore.workflow.nodes = [
 			createMockNode('node-1', 'HTTP Request', 'n8n-nodes-base.httpRequest'),
 			createMockNode('node-2', 'Code', 'n8n-nodes-base.code'),
 			createMockNode('node-3', 'Set', 'n8n-nodes-base.set'),
@@ -259,7 +259,7 @@ describe('useFocusedNodesStore', () => {
 					state: 'unconfirmed',
 				};
 			}
-			workflowsStore.allNodes = manyNodes;
+			workflowsStore.workflow.nodes = manyNodes;
 			focusedNodesStore.focusedNodesMap = map;
 
 			expect(focusedNodesStore.tooManyUnconfirmed).toBe(true);
@@ -790,7 +790,7 @@ describe('useFocusedNodesStore', () => {
 					httpBasicAuth: ['Credentials not set'],
 				},
 			};
-			workflowsStore.allNodes = [nodeWithIssues];
+			workflowsStore.workflow.nodes = [nodeWithIssues];
 
 			focusedNodesStore.confirmNodes(['node-1'], 'context_menu');
 			track.mockReset();
@@ -853,7 +853,7 @@ describe('useFocusedNodesStore', () => {
 			track.mockReset();
 
 			// Remove node-1 from workflow
-			workflowsStore.allNodes = [
+			workflowsStore.workflow.nodes = [
 				createMockNode('node-2', 'Code', 'n8n-nodes-base.code'),
 				createMockNode('node-3', 'Set', 'n8n-nodes-base.set'),
 			];
@@ -878,7 +878,7 @@ describe('useFocusedNodesStore', () => {
 				},
 			};
 
-			workflowsStore.allNodes = [
+			workflowsStore.workflow.nodes = [
 				createMockNode('node-2', 'Code', 'n8n-nodes-base.code'),
 				createMockNode('node-3', 'Set', 'n8n-nodes-base.set'),
 			];
@@ -891,7 +891,7 @@ describe('useFocusedNodesStore', () => {
 			focusedNodesStore.confirmNodes(['node-1'], 'context_menu');
 			track.mockReset();
 
-			workflowsStore.allNodes = [
+			workflowsStore.workflow.nodes = [
 				createMockNode('node-1', 'My HTTP Request', 'n8n-nodes-base.httpRequest'),
 				createMockNode('node-2', 'Code', 'n8n-nodes-base.code'),
 				createMockNode('node-3', 'Set', 'n8n-nodes-base.set'),
