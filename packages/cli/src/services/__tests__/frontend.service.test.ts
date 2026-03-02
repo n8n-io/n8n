@@ -74,6 +74,10 @@ describe('FrontendService', () => {
 
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>({
 		addPostProcessor: jest.fn(),
+		collectTypes: jest.fn().mockResolvedValue({
+			credentials: [],
+			nodes: [],
+		}),
 		types: {
 			credentials: [],
 			nodes: [],
@@ -280,8 +284,12 @@ describe('FrontendService', () => {
 			process.env.N8N_PREVIEW_MODE = 'true';
 
 			const { service } = createMockService();
-			const settings = await service.getPublicSettings(false);
+			const publicSettings = await service.getPublicSettings(false);
 
+			expect(publicSettings.previewMode).toBe(true);
+			expect(publicSettings.userManagement.showSetupOnFirstLoad).toBe(false);
+
+			const settings = await service.getSettings();
 			expect(settings.previewMode).toBe(true);
 			expect(settings.userManagement.showSetupOnFirstLoad).toBe(false);
 		});
@@ -479,13 +487,17 @@ describe('FrontendService', () => {
 
 	describe('generateTypes', () => {
 		it('should write node versions file with generated identifiers', async () => {
-			const { service } = createMockService();
-
-			const originalNodes = (loadNodesAndCredentials.types as any).nodes;
-			(loadNodesAndCredentials.types as any).nodes = [
+			const testNodes = [
 				{ name: 'n8n-nodes-base.single', version: 1 },
 				{ name: 'n8n-nodes-base.multi', version: [1, 2] },
 			];
+
+			(loadNodesAndCredentials.collectTypes as jest.Mock).mockResolvedValue({
+				nodes: testNodes,
+				credentials: [],
+			});
+
+			const { service } = createMockService();
 
 			const writeStaticJSONSpy = jest
 				.spyOn(service as any, 'writeStaticJSON')
@@ -512,7 +524,6 @@ describe('FrontendService', () => {
 				expect(identifiers).toHaveLength(3);
 			} finally {
 				writeStaticJSONSpy.mockRestore();
-				(loadNodesAndCredentials.types as any).nodes = originalNodes;
 			}
 		});
 	});

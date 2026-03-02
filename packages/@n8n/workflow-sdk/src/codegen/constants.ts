@@ -44,4 +44,9 @@ export const AI_ALWAYS_ARRAY_TYPES = new Set<AiConnectionType>(['ai_tool']);
 /**
  * AI connection types that can be single or array (array only when multiple)
  */
-export const AI_OPTIONAL_ARRAY_TYPES = new Set<AiConnectionType>(['ai_languageModel']);
+export const AI_OPTIONAL_ARRAY_TYPES = new Set<AiConnectionType>([
+	'ai_languageModel',
+	'ai_document',
+	'ai_embedding',
+	'ai_reranker',
+]);

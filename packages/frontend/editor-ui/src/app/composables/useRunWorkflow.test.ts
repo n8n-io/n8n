@@ -709,7 +709,7 @@ describe('useRunWorkflow({ router })', () => {
 					},
 				],
 				triggerToStartFrom: undefined,
-				workflowData,
+				workflowId: workflowData.id,
 			});
 			expect(result).toEqual(mockExecutionResponse);
 			expect(setWorkflowExecutionData).toHaveBeenCalledTimes(1);
@@ -1089,10 +1089,7 @@ describe('useRunWorkflow({ router })', () => {
 					data: undefined,
 					name: 'foo',
 				},
-				workflowData: {
-					id: 'workflowId',
-					nodes: [],
-				},
+				workflowId: 'workflowId',
 			});
 		});
 

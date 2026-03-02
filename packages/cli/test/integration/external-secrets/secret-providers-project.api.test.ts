@@ -162,6 +162,7 @@ describe('Secret Providers Project API', () => {
 				expect(globalConnection1).toMatchObject({
 					name: 'global-connection1',
 					type: 'dummy',
+					state: 'initializing',
 					projects: [],
 				});
 			});
@@ -214,6 +215,7 @@ describe('Secret Providers Project API', () => {
 					expect(connection1).toMatchObject({
 						name: 'connection1',
 						type: 'dummy',
+						state: 'initializing',
 						projects: [{ id: teamProject1.id, name: teamProject1.name }],
 					});
 				});
@@ -299,7 +301,7 @@ describe('Secret Providers Project API', () => {
 			const response = await ownerAgent
 				.post(`/secret-providers/projects/${teamProject1.id}/connections`)
 				.send({
-					providerKey: 'new-conn',
+					providerKey: 'newConn',
 					type: 'awsSecretsManager',
 					projectIds: [],
 					settings: { region: 'us-east-1', accessKeyId: 'test-key' },
@@ -307,13 +309,14 @@ describe('Secret Providers Project API', () => {
 				.expect(200);
 
 			expect(response.body.data).toMatchObject({
-				name: 'new-conn',
+				name: 'newConn',
 				type: 'awsSecretsManager',
+				state: 'connected',
 				projects: [{ id: teamProject1.id, name: teamProject1.name }],
 			});
 
 			// Verify it exists in the DB
-			const found = await connectionRepository.findOneBy({ providerKey: 'new-conn' });
+			const found = await connectionRepository.findOneBy({ providerKey: 'newConn' });
 			expect(found).not.toBeNull();
 
 			// Verify project access was created
@@ -325,12 +328,12 @@ describe('Secret Providers Project API', () => {
 		});
 
 		test('should return 400 when connection with same providerKey already exists', async () => {
-			await createProviderConnection('existing-conn', [teamProject1.id]);
+			await createProviderConnection('existingConn', [teamProject1.id]);
 
 			await ownerAgent
 				.post(`/secret-providers/projects/${teamProject1.id}/connections`)
 				.send({
-					providerKey: 'existing-conn',
+					providerKey: 'existingConn',
 					type: 'awsSecretsManager',
 					projectIds: [],
 					settings: { region: 'us-east-1', accessKeyId: 'test-key' },
@@ -342,7 +345,7 @@ describe('Secret Providers Project API', () => {
 			await ownerAgent
 				.post(`/secret-providers/projects/${teamProject1.id}/connections`)
 				.send({
-					providerKey: 'proj1-only',
+					providerKey: 'proj1Only',
 					type: 'awsSecretsManager',
 					projectIds: [],
 					settings: { region: 'us-east-1', accessKeyId: 'test-key' },
@@ -355,7 +358,7 @@ describe('Secret Providers Project API', () => {
 				.expect(200);
 
 			const names = response.body.data.map((c: { name: string }) => c.name);
-			expect(names).not.toContain('proj1-only');
+			expect(names).not.toContain('proj1Only');
 		});
 
 		describe('authorization', () => {
@@ -369,7 +372,7 @@ describe('Secret Providers Project API', () => {
 					const response = await agents[role]
 						.post(`/secret-providers/projects/${teamProject1.id}/connections`)
 						.send({
-							providerKey: `create-auth-${role}`,
+							providerKey: `createAuth${role.charAt(0).toUpperCase() + role.slice(1)}`,
 							type: 'awsSecretsManager',
 							projectIds: [],
 							settings: { region: 'us-east-1', accessKeyId: 'test-key' },
@@ -405,6 +408,7 @@ describe('Secret Providers Project API', () => {
 
 			expect(response.body.data).toMatchObject({
 				name: 'my-conn',
+				state: 'initializing',
 				projects: [{ id: teamProject1.id }],
 			});
 		});
@@ -419,12 +423,17 @@ describe('Secret Providers Project API', () => {
 			expect(response.body.message).toContain('not found');
 		});
 
-		test('should return 404 for a global connection (no project access)', async () => {
+		test('should return a global connection (no project access) accessible from any project', async () => {
 			await createProviderConnection('global-conn', []);
 
-			await ownerAgent
+			const response = await ownerAgent
 				.get(`/secret-providers/projects/${teamProject1.id}/connections/global-conn`)
-				.expect(404);
+				.expect(200);
+
+			expect(response.body.data).toMatchObject({
+				name: 'global-conn',
+				state: 'initializing',
+			});
 		});
 
 		test('should return 404 for a non-existent connection', async () => {
@@ -500,6 +509,15 @@ describe('Secret Providers Project API', () => {
 				.expect(404);
 		});
 
+		test('should return 404 for a global connection (cannot update global from project context)', async () => {
+			await createProviderConnection('global-update', []);
+
+			await ownerAgent
+				.patch(`/secret-providers/projects/${teamProject1.id}/connections/global-update`)
+				.send({ settings: { region: 'eu-west-1' } })
+				.expect(404);
+		});
+
 		test('should return 404 for a non-existent connection', async () => {
 			await ownerAgent
 				.patch(`/secret-providers/projects/${teamProject1.id}/connections/missing`)
@@ -545,11 +563,9 @@ describe('Secret Providers Project API', () => {
 		test('should delete a connection belonging to the project', async () => {
 			const connectionId = await createProviderConnection('del-conn', [teamProject1.id]);
 
-			const response = await ownerAgent
+			await ownerAgent
 				.delete(`/secret-providers/projects/${teamProject1.id}/connections/del-conn`)
-				.expect(200);
-
-			expect(response.body.data.name).toBe('del-conn');
+				.expect(204);
 
 			// Verify it's actually gone from the DB
 			const found = await connectionRepository.findOneBy({ id: connectionId });
@@ -563,14 +579,26 @@ describe('Secret Providers Project API', () => {
 		});
 
 		test('should return 404 for a connection belonging to another project', async () => {
-			await createProviderConnection('other-del', [teamProject2.id]);
+			await createProviderConnection('otherDel', [teamProject2.id]);
 
 			await ownerAgent
-				.delete(`/secret-providers/projects/${teamProject1.id}/connections/other-del`)
+				.delete(`/secret-providers/projects/${teamProject1.id}/connections/otherDel`)
 				.expect(404);
 
 			// Verify the connection was NOT deleted
-			const found = await connectionRepository.findOneBy({ providerKey: 'other-del' });
+			const found = await connectionRepository.findOneBy({ providerKey: 'otherDel' });
+			expect(found).not.toBeNull();
+		});
+
+		test('should return 404 for a global connection (cannot delete global from project context)', async () => {
+			await createProviderConnection('global-del', []);
+
+			await ownerAgent
+				.delete(`/secret-providers/projects/${teamProject1.id}/connections/global-del`)
+				.expect(404);
+
+			// Verify the connection was NOT deleted
+			const found = await connectionRepository.findOneBy({ providerKey: 'global-del' });
 			expect(found).not.toBeNull();
 		});
 
@@ -592,7 +620,7 @@ describe('Secret Providers Project API', () => {
 
 					const response = await agents[role]
 						.delete(`/secret-providers/projects/${teamProject1.id}/connections/auth-del-${role}`)
-						.expect(allowed ? 200 : 403);
+						.expect(allowed ? 204 : 403);
 
 					if (!allowed) {
 						expect(response.body.message).toBe(FORBIDDEN_MESSAGE);
@@ -637,6 +665,21 @@ describe('Secret Providers Project API', () => {
 
 			const response = await ownerAgent
 				.post(`/secret-providers/projects/${teamProject1.id}/connections/test-conn/test`)
+				.expect(200);
+
+			expect(response.body.data).toMatchObject({ success: true });
+		});
+
+		test('should test a global connection accessible from the project', async () => {
+			await createProviderConnection('global-test-conn', []);
+
+			const { ExternalSecretsManager } = await import(
+				'@/modules/external-secrets.ee/external-secrets-manager.ee'
+			);
+			await Container.get(ExternalSecretsManager).reloadAllProviders();
+
+			const response = await ownerAgent
+				.post(`/secret-providers/projects/${teamProject1.id}/connections/global-test-conn/test`)
 				.expect(200);
 
 			expect(response.body.data).toMatchObject({ success: true });

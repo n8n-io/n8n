@@ -937,6 +937,60 @@ describe('AuthService', () => {
 		});
 	});
 
+	describe('validateCookieToken', () => {
+		beforeEach(() => {
+			jest.resetAllMocks();
+		});
+
+		it('should resolve for a valid token', async () => {
+			const token = authService.issueJWT(user, false, browserId);
+			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+			userRepository.findOne.mockResolvedValue(user);
+
+			await expect(authService.validateCookieToken(token)).resolves.toBeUndefined();
+			expect(invalidAuthTokenRepository.existsBy).toHaveBeenCalledWith({ token });
+			expect(userRepository.findOne).toHaveBeenCalled();
+		});
+
+		it('should throw when token has been revoked', async () => {
+			const token = authService.issueJWT(user, false, browserId);
+			invalidAuthTokenRepository.existsBy.mockResolvedValue(true);
+
+			await expect(authService.validateCookieToken(token)).rejects.toThrow('Unauthorized');
+			expect(userRepository.findOne).not.toHaveBeenCalled();
+		});
+
+		it('should throw when token is malformed', async () => {
+			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+
+			await expect(authService.validateCookieToken('fake-value')).rejects.toThrow('jwt malformed');
+		});
+
+		it('should throw when token is expired', async () => {
+			const token = authService.issueJWT(user, false, browserId);
+			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+			jest.advanceTimersByTime(365 * Time.days.toMilliseconds);
+
+			await expect(authService.validateCookieToken(token)).rejects.toThrow('jwt expired');
+		});
+
+		it('should throw when user is disabled', async () => {
+			const token = authService.issueJWT(user, false, browserId);
+			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+			userRepository.findOne.mockResolvedValue(mock<User>({ ...userData, disabled: true }));
+
+			await expect(authService.validateCookieToken(token)).rejects.toThrow('Unauthorized');
+		});
+
+		it('should throw when user no longer exists', async () => {
+			const token = authService.issueJWT(user, false, browserId);
+			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
+			userRepository.findOne.mockResolvedValue(null);
+
+			await expect(authService.validateCookieToken(token)).rejects.toThrow('Unauthorized');
+		});
+	});
+
 	describe('authenticateUserBasedOnToken', () => {
 		const method = 'POST';
 		const endpoint = '/api/users';

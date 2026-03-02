@@ -9,7 +9,7 @@ import {
 } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { AuthRolesService, DbConnection } from '@n8n/db';
+import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	BinaryDataConfig,
@@ -36,6 +36,7 @@ import { CommunityPackagesConfig } from '@/modules/community-packages/community-
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { ShutdownService } from '@/shutdown/shutdown.service';
+import { resolveHealthEndpointPath } from '@/utils/health-endpoint.util';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
@@ -103,7 +104,7 @@ export abstract class BaseCommand<F = never> {
 			eventLoopBlockThreshold,
 			tracesSampleRate,
 			profilesSampleRate,
-			healthEndpoint: this.globalConfig.endpoints.health,
+			healthEndpoint: resolveHealthEndpointPath(this.globalConfig),
 			eligibleIntegrations: {
 				Express: true,
 				Http: true,
@@ -142,13 +143,6 @@ export abstract class BaseCommand<F = never> {
 				async (error: Error) =>
 					await this.exitWithCrash('There was an error running database migrations', error),
 			);
-
-		// Initialize the auth roles service to make sure that roles are correctly setup for the instance.
-		// Only run on main instance - workers should not modify auth roles/scopes as they may have
-		// different code versions, and scope sync would incorrectly delete scopes they don't know about.
-		if (this.instanceSettings.instanceType === 'main') {
-			await Container.get(AuthRolesService).init();
-		}
 
 		if (process.env.EXECUTIONS_PROCESS === 'own') process.exit(-1);
 
