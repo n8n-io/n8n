@@ -71,3 +71,10 @@ export interface BridgeConfig {
 	 */
 	debug?: boolean;
 }
+
+/** Default values for BridgeConfig. Bridge implementations should use this as their baseline. */
+export const DEFAULT_BRIDGE_CONFIG: Required<BridgeConfig> = {
+	memoryLimit: 128,
+	timeout: 5000,
+	debug: false,
+};
