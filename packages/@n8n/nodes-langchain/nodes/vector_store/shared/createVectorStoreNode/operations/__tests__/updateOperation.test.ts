@@ -1,4 +1,11 @@
 /* eslint-disable @typescript-eslint/unbound-method */
+jest.mock(
+	'n8n-workflow',
+	() => ({
+		NodeOperationError: class NodeOperationError extends Error {},
+	}),
+	{ virtual: true },
+);
 import type { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { VectorStore } from '@langchain/core/vectorstores';
@@ -66,11 +73,11 @@ describe('handleUpdateOperation', () => {
 		// Setup context mock
 		mockContext = mock<IExecuteFunctions>();
 		mockContext.getInputData.mockReturnValue(mockInputItems);
-		mockContext.getNodeParameter.mockImplementation((paramName, itemIndex) => {
+		mockContext.getNodeParameter.mockImplementation((paramName, itemIndex, fallback) => {
 			if (paramName === 'id') {
 				return `doc-id-${itemIndex}`;
 			}
-			return undefined;
+			return fallback;
 		});
 
 		// Setup embeddings mock
@@ -79,6 +86,7 @@ describe('handleUpdateOperation', () => {
 		// Setup vector store mock
 		mockVectorStore = mock<VectorStore>();
 		mockVectorStore.addDocuments.mockResolvedValue(undefined);
+		(mockVectorStore as any).primaryKey = '_id';
 
 		// Setup args mock
 		mockArgs = {
@@ -155,11 +163,52 @@ describe('handleUpdateOperation', () => {
 		expect(mockArgs.releaseVectorStoreClient).toHaveBeenCalledWith(mockVectorStore);
 	});
 
+	it('skips updating when document is missing and upsert disabled', async () => {
+		mockInputItems = [{ json: { text: 'only doc' } }];
+		mockContext.getInputData.mockReturnValue(mockInputItems);
+		mockContext.getNodeParameter.mockImplementation((paramName, _idx, fallback) => {
+			if (paramName === 'id') return 'missing-id';
+			if (paramName === 'options.upsert') return false;
+			return fallback;
+		});
+
+		const findOne = jest.fn().mockResolvedValue(null);
+		(mockVectorStore as any).collection = { findOne };
+
+		const result = await handleUpdateOperation(mockContext, mockArgs, mockEmbeddings);
+
+		expect(findOne).toHaveBeenCalledWith({ _id: 'missing-id' });
+		expect(mockVectorStore.addDocuments).not.toHaveBeenCalled();
+		expect(result).toHaveLength(0);
+	});
+
+	it('inserts when document is missing and upsert enabled', async () => {
+		mockInputItems = [{ json: { text: 'only doc' } }];
+		mockContext.getInputData.mockReturnValue(mockInputItems);
+		mockContext.getNodeParameter.mockImplementation((paramName, _index, fallback) => {
+			if (paramName === 'id') return 'missing-id';
+			if (paramName === 'options.upsert') return true;
+			return fallback;
+		});
+
+		const findOne = jest.fn();
+		(mockVectorStore as any).collection = { findOne };
+
+		const result = await handleUpdateOperation(mockContext, mockArgs, mockEmbeddings);
+
+		expect(findOne).not.toHaveBeenCalled();
+		expect(mockVectorStore.addDocuments).toHaveBeenCalledTimes(1);
+		expect(result).toHaveLength(1);
+	});
+
 	it('should use proper document ID from node parameters', async () => {
 		// Setup custom document IDs
-		mockContext.getNodeParameter
-			.mockReturnValueOnce('custom-id-123')
-			.mockReturnValueOnce('custom-id-456');
+		mockContext.getNodeParameter.mockImplementation((paramName, itemIndex, fallback) => {
+			if (paramName === 'id') {
+				return itemIndex === 0 ? 'custom-id-123' : 'custom-id-456';
+			}
+			return fallback;
+		});
 
 		await handleUpdateOperation(mockContext, mockArgs, mockEmbeddings);
 

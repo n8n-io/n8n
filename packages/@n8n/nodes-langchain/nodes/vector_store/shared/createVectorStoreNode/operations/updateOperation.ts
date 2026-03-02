@@ -42,10 +42,19 @@ export async function handleUpdateOperation<T extends VectorStore = VectorStore>
 			extractValue: true,
 		}) as string;
 
+		const upsert = context.getNodeParameter('options.upsert', itemIndex, true) as boolean;
+
 		// Get the vector store client
 		const vectorStore = await args.getVectorStoreClient(context, undefined, embeddings, itemIndex);
 
 		try {
+			if (!upsert) {
+				const collection = (vectorStore as any).collection;
+				const primaryKey = (vectorStore as any).primaryKey ?? '_id';
+				const existing = await collection.findOne({ [primaryKey]: documentId });
+				if (!existing) continue;
+			}
+
 			// Process the document from the input
 			const { processedDocuments, serializedDocuments } = await processDocument(
 				loader,
