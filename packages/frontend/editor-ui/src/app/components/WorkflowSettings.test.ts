@@ -743,6 +743,10 @@ describe('WorkflowSettingsVue', () => {
 			const { getByRole } = createComponent({ pinia });
 			await nextTick();
 
+			await waitFor(() => {
+				expect(workflowsListStore.fetchWorkflow).toHaveBeenCalled();
+			});
+
 			await userEvent.click(getByRole('button', { name: 'Save' }));
 
 			const callArgs = workflowsStore.updateWorkflow.mock.calls[0];
