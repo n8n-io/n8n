@@ -200,6 +200,6 @@ export class Code implements INodeType {
 			return [await sandbox.runUsingIncomingItems()];
 		}
 
-		throw new UnexpectedError(`Unsupported language: ${language as string}`);
+		throw new UnexpectedError(`Unsupported language: ${language}`);
 	}
 }
