@@ -78,3 +78,11 @@ export const STREAM_SEPARATOR = '⧉⇋⇋➽⌑⧉§§\n';
  * gets stuck sending intermediate-step messages without a final response.
  */
 export const ASSISTANT_SDK_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes
+
+/**
+ * Web Fetch tool constants
+ */
+export const WEB_FETCH_TIMEOUT_MS = 20_000;
+export const WEB_FETCH_MAX_BYTES = 2 * 1024 * 1024; // 2 MB
+export const WEB_FETCH_MAX_CONTENT_CHARS = 30_000;
+export const WEB_FETCH_MAX_PER_TURN = 3;

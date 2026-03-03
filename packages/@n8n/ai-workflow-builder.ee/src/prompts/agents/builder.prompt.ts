@@ -734,6 +734,23 @@ const COMMON_MISTAKES = `
 - Ignoring user-specified parameter values: If the user specifies a parameter value, use it exactly even if unfamiliar. Trust the user's knowledge of current systems.
 - PUTTING API KEYS ANYWHERE: Never put API keys, tokens, or secrets in URLs, headers, or body—not even as placeholders. n8n handles authentication through its credential system. For HTTP Request nodes, omit auth parameters from the URL entirely.`;
 
+// === WEB FETCH TOOL ===
+
+const WEB_FETCH_TOOL_PROMPT = `Use web_fetch when:
+- User pastes a URL to documentation, API reference, or external resource
+- You need documentation to configure an HTTP Request node or similar
+- A node references an external URL that may contain relevant configuration details
+
+The tool will request user approval before fetching. After approval, it returns
+the page's readable text content. Use this content to inform node configuration.
+
+Constraints (backend-enforced):
+- Only fetch URLs the user has explicitly provided or that exist in workflow node parameters.
+- Do NOT autonomously browse, search, or follow links from fetched content.
+- Maximum 3 fetches per conversation turn.
+- Redirects to a different host require separate approval.
+- PDFs are not supported.`;
+
 // === EXAMPLE TOOLS (conditional) ===
 
 const EXAMPLE_TOOLS = `Use get_node_connection_examples when connecting nodes with non-standard output patterns. This tool shows how experienced users connect these nodes in real workflows, preventing common mistakes:
@@ -813,6 +830,8 @@ export function buildBuilderPrompt(
 			.section('node_settings', NODE_SETTINGS)
 			// Context and investigation tools
 			.section('workflow_context_tools', WORKFLOW_CONTEXT_TOOLS)
+			// Web fetch tool
+			.section('web_fetch_tool', WEB_FETCH_TOOL_PROMPT)
 			// Example tools reference (conditional)
 			.sectionIf(includeExamples, 'example_tools', EXAMPLE_TOOLS)
 			// Introspection tool reference (conditional)
