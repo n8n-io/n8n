@@ -1220,6 +1220,9 @@ importers:
 
   packages/@n8n/expression-runtime:
     dependencies:
+      '@n8n/tournament':
+        specifier: 1.0.6
+        version: 1.0.6
       isolated-vm:
         specifier: ^6.0.2
         version: 6.0.2
