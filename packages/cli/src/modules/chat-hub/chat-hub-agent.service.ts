@@ -194,7 +194,6 @@ export class ChatHubAgentService {
 			model: agent.model,
 			files: agent.files,
 			toolIds,
-			files: [],
 			createdAt: agent.createdAt.toISOString(),
 			updatedAt: agent.updatedAt.toISOString(),
 		};
@@ -405,7 +404,7 @@ export class ChatHubAgentService {
 		}
 
 		if (pdfFilesToInsert.length > 0) {
-			await this.insertEmbeddings(user, agentId, embeddingModel!, pdfFilesToInsert, workflowId);
+			await this.insertEmbeddings(user, agentId, embeddingModel, pdfFilesToInsert, workflowId);
 		}
 
 		return knowledgeItems;
