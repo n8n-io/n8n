@@ -1,7 +1,55 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import DemoLayout from './DemoLayout.vue';
+import { computed, ref, shallowRef } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
+
+vi.mock('vue-router', async (importOriginal) => {
+	const actual = (await importOriginal()) as object;
+	return {
+		...actual,
+		useRoute: () => ({
+			params: {},
+			query: {},
+			meta: {},
+			name: 'demo',
+		}),
+		useRouter: () => ({
+			replace: vi.fn(),
+			push: vi.fn(),
+		}),
+	};
+});
+
+vi.mock('@/app/composables/useWorkflowState', async (importOriginal) => {
+	const actual = (await importOriginal()) as object;
+	return {
+		...actual,
+		useWorkflowState: vi.fn(() => ({
+			getNewWorkflowDataAndMakeShareable: vi.fn(),
+			setWorkflowId: vi.fn(),
+			resetState: vi.fn(),
+		})),
+	};
+});
+
+vi.mock('@/app/composables/useWorkflowInitialization', () => ({
+	useWorkflowInitialization: vi.fn(() => ({
+		isLoading: ref(false),
+		workflowId: computed(() => 'demo'),
+		currentWorkflowDocumentStore: shallowRef(null),
+		initializeData: vi.fn().mockResolvedValue(undefined),
+		initializeWorkflow: vi.fn().mockResolvedValue(undefined),
+		cleanup: vi.fn(),
+	})),
+}));
+
+vi.mock('@/app/composables/usePostMessageHandler', () => ({
+	usePostMessageHandler: vi.fn(() => ({
+		setup: vi.fn(),
+		cleanup: vi.fn(),
+	})),
+}));
 
 const renderComponent = createComponentRenderer(DemoLayout, {
 	global: {
@@ -17,10 +65,14 @@ const renderComponent = createComponentRenderer(DemoLayout, {
 			},
 		},
 	},
-	pinia: createTestingPinia(),
 });
 
 describe('DemoLayout', () => {
+	beforeEach(() => {
+		createTestingPinia();
+		vi.clearAllMocks();
+	});
+
 	it('should render the layout without throwing', () => {
 		expect(() => renderComponent()).not.toThrow();
 	});

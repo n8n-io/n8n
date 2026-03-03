@@ -19,7 +19,9 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PLAYWRIGHT_DIR = path.resolve(__dirname, '..');
+const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 const JANITOR_CLI = path.resolve(__dirname, '..', '..', 'janitor', 'dist', 'cli.js');
+const PLAYWRIGHT_PREFIX = path.relative(REPO_ROOT, PLAYWRIGHT_DIR) + path.sep;
 const CONTAINER_STARTUP_TIME = 22_500; // 22.5s average per fixture
 
 const CAPABILITY_IMAGES = {
@@ -47,7 +49,15 @@ function getRequiredImages(capabilities) {
 function getOrchestration(numShards, options = {}) {
 	const cliArgs = ['orchestrate', `--shards=${numShards}`];
 	if (options.impact) cliArgs.push('--impact');
-	if (options.files) cliArgs.push(`--files=${options.files}`);
+	if (options.files) {
+		// Normalize repo-root-relative paths to playwright-root-relative
+		// git diff gives 'packages/testing/playwright/foo.ts', janitor expects 'foo.ts'
+		const normalized = options.files
+			.split(',')
+			.map((f) => (f.startsWith(PLAYWRIGHT_PREFIX) ? f.slice(PLAYWRIGHT_PREFIX.length) : f))
+			.join(',');
+		cliArgs.push(`--files=${normalized}`);
+	}
 	const output = execFileSync('node', [JANITOR_CLI, ...cliArgs], {
 		cwd: PLAYWRIGHT_DIR,
 		encoding: 'utf-8',
