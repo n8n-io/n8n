@@ -949,9 +949,7 @@
 	"credentialEdit.credentialConfig.missingCredentialType": "This credential's type isn't available. This usually happens when a previously installed community or custom node was uninstalled.",
 	"credentialEdit.credentialConfig.oauthModeManaged": "Managed OAuth2 (recommended)",
 	"credentialEdit.credentialConfig.oauthModeCustom": "Custom OAuth2",
-	"credentialEdit.credentialConfig.oauthModeManagedTitle": "Setup managed OAuth",
-	"credentialEdit.credentialConfig.oauthModeCustomTitle": "Setup custom OAuth",
-	"credentialEdit.credentialConfig.genericTitle": "Setup {credential}",
+
 	"credentialEdit.credentialConfig.setupCredential": "Setup credential",
 	"credentialEdit.credentialConfig.quickConnect": "Use quick connect",
 	"credentialEdit.credentialConfig.quickConnectTitle": "Connect to set up a credential",
