@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
-import { User, WorkflowRepository } from '@n8n/db';
+import { ProjectRepository, SharedWorkflowRepository, User, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import {
@@ -13,6 +13,15 @@ import {
 import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createSearchWorkflowsTool } from './tools/search-workflows.tool';
+import { createCreateWorkflowFromCodeTool } from './tools/workflow-builder/create-workflow-from-code.tool';
+import { createGetSuggestedWorkflowNodesTool } from './tools/workflow-builder/get-suggested-workflow-nodes.tool';
+import { createGetWorkflowNodeTypesTool } from './tools/workflow-builder/get-workflow-node-types.tool';
+import { createGetWorkflowSdkReferenceTool } from './tools/workflow-builder/get-workflow-sdk-reference.tool';
+import { getMcpInstructions } from './tools/workflow-builder/mcp-instructions';
+import { createSearchWorkflowNodesTool } from './tools/workflow-builder/search-workflow-nodes.tool';
+import { getSdkReferenceContent } from './tools/workflow-builder/sdk-reference-content';
+import { createValidateWorkflowCodeTool } from './tools/workflow-builder/validate-workflow-code.tool';
+import { WorkflowBuilderToolsService } from './tools/workflow-builder/workflow-builder-tools.service';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -22,6 +31,7 @@ import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 /**
@@ -56,15 +66,25 @@ export class McpService {
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly roleService: RoleService,
 		private readonly projectService: ProjectService,
+		private readonly workflowBuilderToolsService: WorkflowBuilderToolsService,
+		private readonly projectRepository: ProjectRepository,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly workflowHistoryService: WorkflowHistoryService,
 	) {}
 
 	async getServer(user: User) {
 		const { McpServer } = await import('@modelcontextprotocol/sdk/server/mcp.js');
-		const server = new McpServer({
-			name: 'n8n MCP Server',
-			version: '1.0.0',
-		});
+		const server = new McpServer(
+			{
+				name: 'n8n MCP Server',
+				version: '1.0.0',
+			},
+			{
+				instructions: getMcpInstructions(),
+			},
+		);
 
+		// Existing tools
 		const workflowSearchTool = createSearchWorkflowsTool(
 			user,
 			this.workflowService,
@@ -108,6 +128,70 @@ export class McpService {
 			workflowDetailsTool.name,
 			workflowDetailsTool.config,
 			workflowDetailsTool.handler,
+		);
+
+		// Workflow builder tools
+		await this.workflowBuilderToolsService.initialize();
+
+		const sdkRefTool = createGetWorkflowSdkReferenceTool(user, this.telemetry);
+		server.registerTool(sdkRefTool.name, sdkRefTool.config, sdkRefTool.handler);
+
+		const searchNodesTool = createSearchWorkflowNodesTool(
+			user,
+			this.workflowBuilderToolsService,
+			this.telemetry,
+		);
+		server.registerTool(searchNodesTool.name, searchNodesTool.config, searchNodesTool.handler);
+
+		const getNodeTypesTool = createGetWorkflowNodeTypesTool(
+			user,
+			this.workflowBuilderToolsService,
+			this.telemetry,
+		);
+		server.registerTool(getNodeTypesTool.name, getNodeTypesTool.config, getNodeTypesTool.handler);
+
+		const suggestedNodesTool = createGetSuggestedWorkflowNodesTool(
+			user,
+			this.workflowBuilderToolsService,
+			this.telemetry,
+		);
+		server.registerTool(
+			suggestedNodesTool.name,
+			suggestedNodesTool.config,
+			suggestedNodesTool.handler,
+		);
+
+		const validateTool = createValidateWorkflowCodeTool(user, this.telemetry);
+		server.registerTool(validateTool.name, validateTool.config, validateTool.handler);
+
+		const createTool = createCreateWorkflowFromCodeTool(
+			user,
+			this.projectRepository,
+			this.projectService,
+			this.sharedWorkflowRepository,
+			this.workflowHistoryService,
+			this.urlService,
+			this.telemetry,
+		);
+		server.registerTool(createTool.name, createTool.config, createTool.handler);
+
+		// SDK reference as MCP resource
+		server.resource(
+			'workflow-sdk-reference',
+			'n8n://workflow-sdk/reference',
+			{
+				description:
+					'n8n Workflow SDK reference — patterns, expressions, and rules for building workflows',
+			},
+			async () => ({
+				contents: [
+					{
+						uri: 'n8n://workflow-sdk/reference',
+						mimeType: 'text/plain',
+						text: getSdkReferenceContent(),
+					},
+				],
+			}),
 		);
 
 		return server;
