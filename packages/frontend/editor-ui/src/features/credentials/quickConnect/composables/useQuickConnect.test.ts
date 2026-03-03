@@ -597,7 +597,7 @@ describe('useQuickConnect()', () => {
 								await connect({
 									credentialTypeName: 'firecrawlApi',
 									nodeType: 'n8n-nodes-firecrawl.firecrawl',
-									source: 'node',
+									source: 'node_type',
 									serviceName: 'Firecrawl',
 								});
 
@@ -620,7 +620,7 @@ describe('useQuickConnect()', () => {
 								await connect({
 									credentialTypeName: 'firecrawlApi',
 									nodeType: 'n8n-nodes-firecrawl.firecrawl',
-									source: 'node',
+									source: 'node_type',
 									serviceName: 'Firecrawl',
 								});
 
@@ -642,7 +642,7 @@ describe('useQuickConnect()', () => {
 								await connect({
 									credentialTypeName: 'firecrawlApi',
 									nodeType: 'n8n-nodes-firecrawl.firecrawl',
-									source: 'node',
+									source: 'node_type',
 									serviceName: 'Firecrawl',
 								});
 
@@ -666,7 +666,7 @@ describe('useQuickConnect()', () => {
 								const result = await connect({
 									credentialTypeName: 'firecrawlApi',
 									nodeType: 'n8n-nodes-firecrawl.firecrawl',
-									source: 'node',
+									source: 'node_type',
 									serviceName: 'Firecrawl',
 								});
 
@@ -687,7 +687,7 @@ describe('useQuickConnect()', () => {
 								const result = await connect({
 									credentialTypeName: 'firecrawlApi',
 									nodeType: 'n8n-nodes-firecrawl.firecrawl',
-									source: 'node',
+									source: 'node_type',
 									serviceName: 'Firecrawl',
 								});
 
@@ -717,7 +717,7 @@ describe('useQuickConnect()', () => {
 									await connect({
 										credentialTypeName: 'firecrawlApi',
 										nodeType: 'n8n-nodes-firecrawl.firecrawl',
-										source: 'node',
+										source: 'node_type',
 										serviceName: 'Firecrawl',
 									});
 
@@ -743,7 +743,7 @@ describe('useQuickConnect()', () => {
 									await connect({
 										credentialTypeName: 'firecrawlApi',
 										nodeType: 'n8n-nodes-firecrawl.firecrawl',
-										source: 'node',
+										source: 'node_type',
 										serviceName: 'Firecrawl',
 									});
 
@@ -775,7 +775,7 @@ describe('useQuickConnect()', () => {
 									await connect({
 										credentialTypeName: 'firecrawlApi',
 										nodeType: 'n8n-nodes-firecrawl.firecrawl',
-										source: 'node',
+										source: 'node_type',
 										serviceName: 'Firecrawl',
 									});
 
