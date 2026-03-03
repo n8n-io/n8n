@@ -31,6 +31,7 @@ export async function loadAlaSqlSandbox(): Promise<ivm.Context> {
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
 	const alasqlBundlePath = require.resolve('alasql/dist/alasql.min.js');
 	await sandboxContext.eval(await readFile(alasqlBundlePath, 'utf-8'));
+	await sandboxContext.eval('Object.freeze(alasql.fn)');
 
 	return sandboxContext;
 }
@@ -48,7 +49,9 @@ export async function runAlaSqlInSandbox(
 	// don't collide on alasql.databases.
 	const dbId = randomUUID();
 
-	// Table data is embedded as a JSON literal so no live objects cross the boundary.
+	// Double-serialization: outer JSON.stringify produces a JSON string, inner produces a JSON literal
+	// embedded in the script source. Inside the isolate, JSON.parse reconstructs the plain array.
+	// This ensures data enters the isolate as a parsed JSON literal, never as live objects.
 	const script = `(function() {
 		const __rows = JSON.parse(${JSON.stringify(JSON.stringify(tableData))});
 		const __db = new alasql.Database(${JSON.stringify(dbId)});

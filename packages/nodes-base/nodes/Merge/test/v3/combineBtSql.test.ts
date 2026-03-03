@@ -5,15 +5,15 @@ import {
 } from '../../v3/helpers/sandbox-utils';
 
 describe('combineBySql sandbox (isolated-vm)', () => {
-	beforeEach(() => {
-		resetSandboxCache();
-	});
-
-	afterEach(() => {
-		resetSandboxCache();
-	});
-
 	describe('loadAlaSqlSandbox', () => {
+		beforeEach(() => {
+			resetSandboxCache();
+		});
+
+		afterEach(() => {
+			resetSandboxCache();
+		});
+
 		it('should return a context with alasql available', async () => {
 			const context = await loadAlaSqlSandbox();
 			const result = await context.eval('typeof alasql', { copy: true });
@@ -35,6 +35,14 @@ describe('combineBySql sandbox (isolated-vm)', () => {
 	});
 
 	describe('runAlaSqlInSandbox – isolation', () => {
+		beforeAll(() => {
+			resetSandboxCache();
+		});
+
+		afterAll(() => {
+			resetSandboxCache();
+		});
+
 		// ── Host API access ────────────────────────────────────────────────────
 
 		it('should not expose require inside the sandbox', async () => {
@@ -143,6 +151,17 @@ describe('combineBySql sandbox (isolated-vm)', () => {
 			expect(result === 'undefined' || result.startsWith('error:')).toBe(true);
 		});
 
+		it('should block alasql arrow-operator prototype traversal from reaching host globals', async () => {
+			const context = await loadAlaSqlSandbox();
+			// process is unavailable in the isolate, the inner call silently fails, resulting in an empty object
+			const result = await runAlaSqlInSandbox(
+				context,
+				[[{ id: 1 }]],
+				'SELECT {}.constructor->constructor->[call](\'\',\'return {result: process.getBuiltinModule("child_process").execSync("id").toString()}\') AS r FROM input1',
+			);
+			expect(result).toEqual([{}]);
+		});
+
 		it('should block Function constructor from reaching host APIs', async () => {
 			const context = await loadAlaSqlSandbox();
 			const result = (await context.eval(
@@ -165,6 +184,30 @@ describe('combineBySql sandbox (isolated-vm)', () => {
 			expect(({} as Record<string, unknown>).__polluted).toBeUndefined();
 		});
 
+		it('should have alasql.fn frozen after sandbox initialisation', async () => {
+			const context = await loadAlaSqlSandbox();
+			const isFrozen = (await context.eval('Object.isFrozen(alasql.fn)', {
+				copy: true,
+			})) as boolean;
+			expect(isFrozen).toBe(true);
+		});
+
+		it('should not allow a CREATE FUNCTION', async () => {
+			const context = await loadAlaSqlSandbox();
+
+			await expect(
+				runAlaSqlInSandbox(
+					context,
+					[[{ x: 1 }]],
+					'CREATE FUNCTION double(n) RETURNS NUMBER BEGIN RETURN n * 2 END; SELECT double(x) AS v FROM input1',
+				),
+			).rejects.toThrow();
+
+			await expect(
+				runAlaSqlInSandbox(context, [[{ x: 1 }]], 'SELECT double(x) AS v FROM input1'),
+			).rejects.toThrow();
+		});
+
 		// ── Resource limits ────────────────────────────────────────────────────
 
 		it('should enforce the CPU timeout on an infinite loop', async () => {
@@ -176,6 +219,14 @@ describe('combineBySql sandbox (isolated-vm)', () => {
 	});
 
 	describe('runAlaSqlInSandbox – SQL execution', () => {
+		beforeAll(() => {
+			resetSandboxCache();
+		});
+
+		afterAll(() => {
+			resetSandboxCache();
+		});
+
 		it('should execute a basic SELECT query', async () => {
 			const context = await loadAlaSqlSandbox();
 			const result = await runAlaSqlInSandbox(
