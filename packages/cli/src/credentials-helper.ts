@@ -361,12 +361,15 @@ export class CredentialsHelper extends ICredentialsHelper {
 		// Check if credential can use external secrets for expression resolution
 		const canUseExternalSecrets = await this.credentialCanUseExternalSecrets(nodeCredentials);
 
-		/**
-		 * We skip dynamic credentials resolution when no credentials context is present,
-		 * or when the execution mode is manual — workflow developers should be able to
-		 * test with static credentials without needing a resolver configured.
-		 */
-		if (additionalData.executionContext?.credentials !== undefined && mode !== 'manual') {
+		// In manual mode (or when the root execution is manual, e.g. a subworkflow called
+		// from a manual parent), skip dynamic resolution unless a credentials context is
+		// present (set by webhook triggers with an identity extractor). Canvas node tests
+		// have no incoming request, so we fall back to static data for easier developer
+		// testing. For all other modes (especially production), always attempt resolution —
+		// missing credentials will surface an error rather than silently falling back to
+		// static data.
+		const effectiveMode = additionalData.rootExecutionMode ?? mode;
+		if (additionalData.executionContext?.credentials !== undefined || effectiveMode !== 'manual') {
 			// Resolve dynamic credentials if configured (EE feature)
 			const resolveResult = await this.dynamicCredentialsProxy.resolveIfNeeded(
 				{

@@ -2919,6 +2919,12 @@ export interface IWorkflowExecuteAdditionalData {
 	variables: IDataObject;
 	logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => void;
 	parentCallbackManager?: CallbackManager;
+	/**
+	 * The execution mode of the root (top-level) workflow. Used to propagate manual
+	 * mode context into subworkflows so credential resolution can fall back to static
+	 * data consistently across the entire execution tree.
+	 */
+	rootExecutionMode?: WorkflowExecuteMode;
 	startRunnerTask<T, E = unknown>(
 		additionalData: IWorkflowExecuteAdditionalData,
 		jobType: string,
