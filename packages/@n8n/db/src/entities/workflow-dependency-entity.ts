@@ -13,6 +13,7 @@ import type { WorkflowEntity } from './workflow-entity';
 
 export type DependencyType =
 	| 'credentialId'
+	| 'dataTableId'
 	| 'nodeType'
 	| 'webhookPath'
 	| 'workflowCall'
@@ -48,7 +49,7 @@ export class WorkflowDependency extends WithCreatedAt {
 
 	/**
 	 * The type of the dependency.
-	 * credentialId | nodeType | webhookPath | workflowCall | workflowIndexed
+	 * credentialId | dataTableId | nodeType | webhookPath | workflowCall | workflowIndexed
 	 */
 	@Column({ length: 32 })
 	@Index()

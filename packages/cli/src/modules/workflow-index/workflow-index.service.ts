@@ -181,6 +181,7 @@ export class WorkflowIndexService {
 				workflow.nodes.forEach((node) => {
 					this.addNodeTypeDependencies(node, dependencyUpdates);
 					this.addCredentialDependencies(node, dependencyUpdates);
+					this.addDataTableDependencies(node, dependencyUpdates);
 					this.addWorkflowCallDependencies(node, dependencyUpdates);
 					this.addWebhookPathDependencies(node, dependencyUpdates);
 				});
@@ -242,6 +243,34 @@ export class WorkflowIndexService {
 				dependencyInfo: { nodeId: node.id, nodeVersion: node.typeVersion },
 			});
 		}
+	}
+
+	private static readonly DATA_TABLE_NODE_TYPES = new Set([
+		'n8n-nodes-base.dataTable',
+		'n8n-nodes-base.dataTableTool',
+		'n8n-nodes-base.evaluationTrigger',
+		'n8n-nodes-base.evaluation',
+	]);
+
+	private addDataTableDependencies(node: INode, dependencyUpdates: WorkflowDependencies): void {
+		if (!WorkflowIndexService.DATA_TABLE_NODE_TYPES.has(node.type)) {
+			return;
+		}
+		const dataTableId = node.parameters?.['dataTableId'] as
+			| { mode?: string; value?: string }
+			| undefined;
+		if (!dataTableId?.value || typeof dataTableId.value !== 'string') {
+			return;
+		}
+		// Skip expression-based IDs that can't be statically resolved
+		if (dataTableId.value.includes('{')) {
+			return;
+		}
+		dependencyUpdates.add({
+			dependencyType: 'dataTableId',
+			dependencyKey: dataTableId.value,
+			dependencyInfo: { nodeId: node.id, nodeVersion: node.typeVersion, mode: dataTableId.mode },
+		});
 	}
 
 	private addWorkflowCallDependencies(node: INode, dependencyUpdates: WorkflowDependencies): void {
