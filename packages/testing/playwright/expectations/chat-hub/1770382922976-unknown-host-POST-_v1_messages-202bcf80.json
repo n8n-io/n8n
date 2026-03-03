@@ -16,15 +16,11 @@
 					{
 						"role": "user",
 						"content": "Hi"
-					},
-					{
-						"role": "user",
-						"content": "Hi"
 					}
 				],
 				"system": "You are a helpful assistant.\n\n__e2e_system_prompt_placeholder__"
 			},
-			"rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1vcHVzLTQtNiIsInN0cmVhbSI6dHJ1ZSwibWF4X3Rva2VucyI6ODE5MiwidGhpbmtpbmciOnsidHlwZSI6ImRpc2FibGVkIn0sIm1lc3NhZ2VzIjpbeyJyb2xlIjoidXNlciIsImNvbnRlbnQiOiJIaSJ9LHsicm9sZSI6InVzZXIiLCJjb250ZW50IjoiSGkifV0sInN5c3RlbSI6IllvdSBhcmUgYSBoZWxwZnVsIGFzc2lzdGFudC5cblxuX19lMmVfc3lzdGVtX3Byb21wdF9wbGFjZWhvbGRlcl9fIn0="
+			"rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1vcHVzLTQtNiIsInN0cmVhbSI6dHJ1ZSwibWF4X3Rva2VucyI6ODE5MiwidGhpbmtpbmciOnsidHlwZSI6ImRpc2FibGVkIn0sIm1lc3NhZ2VzIjpbeyJyb2xlIjoidXNlciIsImNvbnRlbnQiOiJIaSJ9XSwic3lzdGVtIjoiWW91IGFyZSBhIGhlbHBmdWwgYXNzaXN0YW50LlxuXG5fX2UyZV9zeXN0ZW1fcHJvbXB0X3BsYWNlaG9sZGVyX18ifQ=="
 		}
 	},
 	"httpResponse": {
@@ -59,7 +55,7 @@
 			"contentType": "text/event-stream; charset=utf-8"
 		}
 	},
-	"id": "1770382922976-unknown-host-POST-_v1_messages-eb3a8d37.json",
+	"id": "1770382922976-unknown-host-POST-_v1_messages-202bcf80.json",
 	"priority": 0,
 	"timeToLive": {
 		"unlimited": true
