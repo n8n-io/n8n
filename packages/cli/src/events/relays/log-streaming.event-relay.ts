@@ -744,6 +744,7 @@ export class LogStreamingEventRelay extends EventRelay {
 		});
 	}
 
+	@Redactable()
 	private executionDataRevealed({
 		user,
 		executionId,
