@@ -110,7 +110,7 @@ export class ChatHubController {
 		await this.chatService.ensureConversation(req.user.id, sessionId);
 
 		const [{ mimeType, fileName }, attachmentAsStreamOrBuffer] =
-			await this.chatAttachmentService.getMessageAttachment(sessionId, messageId, attachmentIndex);
+			await this.chatAttachmentService.getAttachment(sessionId, messageId, attachmentIndex);
 
 		return await this.sendAttachment(res, mimeType, fileName, attachmentAsStreamOrBuffer);
 	}

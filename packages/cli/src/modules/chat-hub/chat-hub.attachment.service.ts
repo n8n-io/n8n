@@ -22,7 +22,6 @@ export class ChatHubAttachmentService {
 	) {}
 
 	/**
-	 * Stores message attachments through BinaryDataService.
 	 * Validates that attachments conform to the model's upload policy.
 	 * Throws BadRequestError if uploads are disallowed or a MIME type is rejected.
 	 */
@@ -53,7 +52,7 @@ export class ChatHubAttachmentService {
 	 * This populates the 'id' and other metadata for attachments. When external storage is used,
 	 * BinaryDataService replaces base64 data with the storage mode string (e.g., "filesystem-v2").
 	 */
-	async storeMessageAttachments(
+	async store(
 		sessionId: ChatSessionId,
 		messageId: ChatMessageId,
 		attachments: ChatAttachment[],
@@ -80,10 +79,10 @@ export class ChatHubAttachmentService {
 		return storedAttachments;
 	}
 
-	/**
-	 * Gets a specific message attachment by index and returns it as either buffer or stream
+	/*
+	 * Gets a specific attachment from a message by index and returns it as either buffer or stream
 	 */
-	async getMessageAttachment(
+	async getAttachment(
 		sessionId: ChatSessionId,
 		messageId: ChatMessageId,
 		attachmentIndex: number,
@@ -125,21 +124,18 @@ export class ChatHubAttachmentService {
 	}
 
 	/**
-	 * Deletes all message attachments in a session
+	 * Deletes all files attached to messages in the session
 	 */
-	async deleteAllMessageAttachmentsBySessionId(
-		sessionId: string,
-		trx?: EntityManager,
-	): Promise<void> {
+	async deleteAllBySessionId(sessionId: string, trx?: EntityManager): Promise<void> {
 		const messages = await this.messageRepository.getManyBySessionId(sessionId, trx);
 		// Attachment deletion cannot be rolled back, and the transaction doesn't cover it.
 		await this.deleteAttachments(messages.flatMap((message) => message.attachments ?? []));
 	}
 
 	/**
-	 * Deletes all message attachment files across all sessions
+	 * Deletes all chat attachment files.
 	 */
-	async deleteAllMessageAttachments(): Promise<void> {
+	async deleteAll(): Promise<void> {
 		const messages = await this.messageRepository.find({
 			where: {
 				attachments: Not(IsNull()),
@@ -150,6 +146,9 @@ export class ChatHubAttachmentService {
 		await this.deleteAttachments(messages.flatMap((message) => message.attachments ?? []));
 	}
 
+	/**
+	 * Deletes attachments by their binary data directly (used for rollback when message wasn't saved)
+	 */
 	async deleteAttachments(attachments: IBinaryData[]): Promise<void> {
 		await this.binaryDataService.deleteManyByBinaryDataId(
 			attachments.flatMap((attachment) => (attachment.id ? [attachment.id] : [])),
@@ -168,10 +167,6 @@ export class ChatHubAttachmentService {
 		return `data:${mimeType};base64,${base64Data}`;
 	}
 
-	/**
-	 * Gets attachment binary data as a buffer.
-	 * Used for both message and agent attachments.
-	 */
 	async getAsBuffer(binaryData: IBinaryData): Promise<Buffer<ArrayBufferLike>> {
 		return await this.binaryDataService.getAsBuffer(binaryData);
 	}
@@ -211,7 +206,7 @@ export class ChatHubAttachmentService {
 	}
 
 	/**
-	 * Processes a single message attachment by populating metadata and storing it.
+	 * Processes a single attachment by populating metadata and storing it.
 	 */
 	private async processAttachment(
 		sessionId: ChatSessionId,

@@ -4,9 +4,8 @@ import type {
 	ChatHubAgentDto,
 	ChatModelDto,
 	ChatHubAgentKnowledgeItem,
-	ChatHubLLMProvider,
 } from '@n8n/api-types';
-import { PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
+import { chatHubLLMProviderSchema } from '@n8n/api-types';
 
 import { Logger } from '@n8n/backend-common';
 import type { EntityManager, User } from '@n8n/db';
@@ -33,6 +32,7 @@ import { ChatHubExecutionService } from './chat-hub-execution.service';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { getBase } from '@/workflow-execute-additional-data';
 import { VECTOR_STORE_PG_VECTOR_SCOPED_NODE_TYPE } from 'n8n-workflow';
+import { EMBEDDINGS_NODE_TYPE_MAP } from '@n8n/chat-hub';
 
 @Service()
 export class ChatHubAgentService {
@@ -72,29 +72,6 @@ export class ChatHubAgentService {
 			groupName: null,
 			groupIcon: null,
 		};
-	}
-
-	/**
-	 * Determines which embedding provider to use for the agent.
-	 * Uses the embedding credential configured in Chat Hub settings.
-	 */
-	async determineEmbeddingProvider(user: User): Promise<ProviderAndCredentialId | null> {
-		const embeddingCredential = await this.chatHubSettingsService.getEmbeddingCredential();
-		if (!embeddingCredential) return null;
-
-		await this.chatHubCredentialsService.ensureCredentialAccess(user, embeddingCredential.id);
-
-		const credentialTypeToProvider = Object.fromEntries(
-			Object.entries(PROVIDER_CREDENTIAL_TYPE_MAP).map(([provider, credType]) => [
-				credType,
-				provider as ChatHubLLMProvider,
-			]),
-		);
-
-		const provider = credentialTypeToProvider[embeddingCredential.type];
-		if (!provider) return null;
-
-		return { provider, credentialId: embeddingCredential.id };
 	}
 
 	async getAgentsByUserId(userId: string): Promise<ChatHubAgent[]> {
@@ -216,7 +193,7 @@ export class ChatHubAgentService {
 		return `chat-hub-agent-files-${agentId}`;
 	}
 
-	async ensureVectorStoreCredential(_user: User) {
+	private async ensureVectorStoreCredential() {
 		const credential = await this.chatHubSettingsService.getVectorStoreCredential();
 
 		if (!credential?.id) {
@@ -226,6 +203,27 @@ export class ChatHubAgentService {
 		}
 
 		return { id: credential.id, type: credential.type };
+	}
+
+	private async ensureEmbeddingCredential(): Promise<ProviderAndCredentialId> {
+		const credential = await this.chatHubSettingsService.getEmbeddingCredential();
+
+		if (!credential?.id) {
+			throw new BadRequestError(
+				'No embedding provider credential configured. Please set up an embedding provider credential in the Chat Hub settings.',
+			);
+		}
+
+		for (const provider of chatHubLLMProviderSchema.options) {
+			if (EMBEDDINGS_NODE_TYPE_MAP[provider]?.name === credential.type) {
+				return {
+					provider,
+					credentialId: credential.id,
+				};
+			}
+		}
+
+		throw new BadRequestError(`Invalid embedding credential type ${credential.type}`);
 	}
 
 	private async insertEmbeddings(
@@ -240,7 +238,7 @@ export class ChatHubAgentService {
 		}
 
 		try {
-			const cred = await this.ensureVectorStoreCredential(user);
+			const cred = await this.ensureVectorStoreCredential();
 
 			const { workflowData, executionData } = await this.chatAgentRepository.manager.transaction(
 				async (trx) => {
@@ -279,7 +277,7 @@ export class ChatHubAgentService {
 	}
 
 	private async deleteEmbeddings(user: User, agentId: string): Promise<void> {
-		const cred = await this.ensureVectorStoreCredential(user);
+		const cred = await this.ensureVectorStoreCredential();
 		const nodeType =
 			VECTOR_STORE_NODE_TYPE_MAP[cred.type] ?? VECTOR_STORE_PG_VECTOR_SCOPED_NODE_TYPE;
 		const additionalData = await getBase({ userId: user.id });
@@ -304,7 +302,7 @@ export class ChatHubAgentService {
 			return;
 		}
 
-		const cred = await this.ensureVectorStoreCredential(user);
+		const cred = await this.ensureVectorStoreCredential();
 		const nodeType =
 			VECTOR_STORE_NODE_TYPE_MAP[cred.type] ?? VECTOR_STORE_PG_VECTOR_SCOPED_NODE_TYPE;
 		const additionalData = await getBase({ userId: user.id });
@@ -328,8 +326,7 @@ export class ChatHubAgentService {
 		files: Express.Multer.File[],
 	): Promise<ChatHubAgentDto> {
 		const agent = await this.getAgentById(agentId, user.id);
-		const embeddingModel = await this.determineEmbeddingProvider(user);
-		const newFiles = await this.processNewFilesFromMulter(user, agentId, files, embeddingModel);
+		const newFiles = await this.processNewFilesFromMulter(user, agentId, files);
 
 		const updatedAgent = await this.chatAgentRepository.updateAgent(agentId, {
 			files: [...agent.files, ...newFiles],
@@ -361,19 +358,13 @@ export class ChatHubAgentService {
 		user: User,
 		agentId: string,
 		files: Express.Multer.File[],
-		embeddingModel: ProviderAndCredentialId | null,
 	): Promise<ChatHubAgentKnowledgeItem[]> {
 		const knowledgeItems: ChatHubAgentKnowledgeItem[] = [];
 		const pdfFilesToInsert: Array<{ attachment: IBinaryData; knowledgeId: string }> = [];
 		const workflowId = uuidv4();
+		const embeddingModel = await this.ensureEmbeddingCredential();
 
 		for (const file of files) {
-			if (!embeddingModel) {
-				throw new BadRequestError(
-					'Agent must have embedding provider configured to insert embeddings for RAG',
-				);
-			}
-
 			// Multer/busboy parses the Content-Disposition filename as Latin-1 by default,
 			// but browsers send it as UTF-8 bytes. Re-encode to get the correct string.
 			const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');

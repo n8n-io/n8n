@@ -104,10 +104,10 @@ export class ChatHubSettingsService {
 		return result;
 	}
 
-	async getVectorStoreCredential(): Promise<{ id: string | null; type: string } | null> {
+	async getVectorStoreCredential(): Promise<{ id: string; type: string } | null> {
 		const row = await this.settingsRepository.findByKey(CHAT_VECTOR_STORE_CREDENTIAL_KEY);
 		if (!row) return null;
-		return jsonParse<{ id: string | null; type: string } | null>(row.value, {
+		return jsonParse<{ id: string; type: string } | null>(row.value, {
 			fallbackValue: null,
 		});
 	}
