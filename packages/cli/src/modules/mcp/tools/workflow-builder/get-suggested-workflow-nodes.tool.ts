@@ -6,6 +6,7 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.ty
 
 import type { Telemetry } from '@/telemetry';
 
+import { CODE_BUILDER_GET_SUGGESTED_NODES_TOOL } from './constants';
 import type { WorkflowBuilderToolsService } from './workflow-builder-tools.service';
 
 const inputSchema = {
@@ -25,13 +26,13 @@ export const createGetSuggestedWorkflowNodesTool = (
 	workflowBuilderToolsService: WorkflowBuilderToolsService,
 	telemetry: Telemetry,
 ): ToolDefinition<typeof inputSchema> => ({
-	name: 'n8n_get_suggested_workflow_nodes',
+	name: CODE_BUILDER_GET_SUGGESTED_NODES_TOOL.toolName,
 	config: {
 		description:
 			'Get curated node recommendations for workflow technique categories. Returns recommended nodes with pattern hints and configuration guidance. Use after analyzing what kind of workflow to build.',
 		inputSchema,
 		annotations: {
-			title: 'Get Suggested Workflow Nodes',
+			title: CODE_BUILDER_GET_SUGGESTED_NODES_TOOL.displayTitle,
 			readOnlyHint: true,
 			destructiveHint: false,
 			idempotentHint: true,
@@ -41,7 +42,7 @@ export const createGetSuggestedWorkflowNodesTool = (
 	handler: async ({ categories }: { categories: string[] }) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
-			tool_name: 'n8n_get_suggested_workflow_nodes',
+			tool_name: CODE_BUILDER_GET_SUGGESTED_NODES_TOOL.toolName,
 			parameters: { categories },
 		};
 

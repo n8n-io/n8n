@@ -10,6 +10,10 @@ import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import {
+	CODE_BUILDER_CREATE_WORKFLOW_FROM_CODE_TOOL,
+	CODE_BUILDER_VALIDATE_TOOL,
+} from './constants';
 
 import { validateEntity } from '@/generic-helpers';
 import type { ProjectService } from '@/services/project.service.ee';
@@ -22,7 +26,7 @@ const inputSchema = {
 	code: z
 		.string()
 		.describe(
-			'Full TypeScript/JavaScript workflow code using the n8n Workflow SDK. Must be validated first with n8n_validate_workflow_code.',
+			`Full TypeScript/JavaScript workflow code using the n8n Workflow SDK. Must be validated first with ${CODE_BUILDER_VALIDATE_TOOL.toolName}.`,
 		),
 	name: z
 		.string()
@@ -50,13 +54,12 @@ export const createCreateWorkflowFromCodeTool = (
 	urlService: UrlService,
 	telemetry: Telemetry,
 ): ToolDefinition<typeof inputSchema> => ({
-	name: 'n8n_create_workflow_from_code',
+	name: CODE_BUILDER_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName,
 	config: {
-		description:
-			'Create a workflow in n8n from validated SDK code. Parses the code into a workflow and saves it. Always validate with n8n_validate_workflow_code first.',
+		description: `Create a workflow in n8n from validated SDK code. Parses the code into a workflow and saves it. Always validate with ${CODE_BUILDER_VALIDATE_TOOL.toolName} first.`,
 		inputSchema,
 		annotations: {
-			title: 'Create Workflow from Code',
+			title: CODE_BUILDER_CREATE_WORKFLOW_FROM_CODE_TOOL.displayTitle,
 			readOnlyHint: false,
 			destructiveHint: false,
 			idempotentHint: false,
@@ -74,7 +77,7 @@ export const createCreateWorkflowFromCodeTool = (
 	}) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
-			tool_name: 'n8n_create_workflow_from_code',
+			tool_name: CODE_BUILDER_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName,
 			parameters: { codeLength: code.length, hasName: !!name, hasProjectId: !!projectId },
 		};
 

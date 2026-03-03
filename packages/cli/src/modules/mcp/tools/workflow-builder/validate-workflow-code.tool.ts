@@ -6,6 +6,8 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.ty
 
 import type { Telemetry } from '@/telemetry';
 
+import { CODE_BUILDER_VALIDATE_TOOL } from './constants';
+
 const inputSchema = {
 	code: z
 		.string()
@@ -22,13 +24,13 @@ export const createValidateWorkflowCodeTool = (
 	user: User,
 	telemetry: Telemetry,
 ): ToolDefinition<typeof inputSchema> => ({
-	name: 'n8n_validate_workflow_code',
+	name: CODE_BUILDER_VALIDATE_TOOL.toolName,
 	config: {
 		description:
 			'Validate n8n Workflow SDK code. Parses the code into a workflow and checks for errors. Returns the workflow JSON if valid, or detailed error messages to fix. Always validate before creating a workflow.',
 		inputSchema,
 		annotations: {
-			title: 'Validate Workflow Code',
+			title: CODE_BUILDER_VALIDATE_TOOL.displayTitle,
 			readOnlyHint: true,
 			destructiveHint: false,
 			idempotentHint: true,
@@ -38,7 +40,7 @@ export const createValidateWorkflowCodeTool = (
 	handler: async ({ code }: { code: string }) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
-			tool_name: 'n8n_validate_workflow_code',
+			tool_name: CODE_BUILDER_VALIDATE_TOOL.toolName,
 			parameters: { codeLength: code.length },
 		};
 

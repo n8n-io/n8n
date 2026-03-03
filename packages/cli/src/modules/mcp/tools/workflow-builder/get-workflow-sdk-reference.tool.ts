@@ -6,6 +6,7 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.ty
 
 import type { Telemetry } from '@/telemetry';
 
+import { CODE_BUILDER_GET_SDK_REFERENCE_TOOL } from './constants';
 import { getSdkReferenceContent, type SdkReferenceSection } from './sdk-reference-content';
 
 const VALID_SECTIONS: SdkReferenceSection[] = [
@@ -34,13 +35,13 @@ export const createGetWorkflowSdkReferenceTool = (
 	user: User,
 	telemetry: Telemetry,
 ): ToolDefinition<typeof inputSchema> => ({
-	name: 'n8n_get_workflow_sdk_reference',
+	name: CODE_BUILDER_GET_SDK_REFERENCE_TOOL.toolName,
 	config: {
 		description:
 			'Get the n8n Workflow SDK reference documentation including patterns, expression syntax, and rules. Call this FIRST before building workflows to learn the SDK.',
 		inputSchema,
 		annotations: {
-			title: 'Get Workflow SDK Reference',
+			title: CODE_BUILDER_GET_SDK_REFERENCE_TOOL.displayTitle,
 			readOnlyHint: true,
 			destructiveHint: false,
 			idempotentHint: true,
@@ -50,7 +51,7 @@ export const createGetWorkflowSdkReferenceTool = (
 	handler: async ({ section }: { section?: string }) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
-			tool_name: 'n8n_get_workflow_sdk_reference',
+			tool_name: CODE_BUILDER_GET_SDK_REFERENCE_TOOL.toolName,
 			parameters: { section },
 		};
 

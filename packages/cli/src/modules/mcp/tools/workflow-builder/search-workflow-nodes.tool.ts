@@ -6,6 +6,7 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.ty
 
 import type { Telemetry } from '@/telemetry';
 
+import { CODE_BUILDER_SEARCH_NODES_TOOL } from './constants';
 import type { WorkflowBuilderToolsService } from './workflow-builder-tools.service';
 
 const inputSchema = {
@@ -26,13 +27,13 @@ export const createSearchWorkflowNodesTool = (
 	workflowBuilderToolsService: WorkflowBuilderToolsService,
 	telemetry: Telemetry,
 ): ToolDefinition<typeof inputSchema> => ({
-	name: 'n8n_search_workflow_nodes',
+	name: CODE_BUILDER_SEARCH_NODES_TOOL.toolName,
 	config: {
 		description:
 			'Search for n8n nodes by service name, trigger type, or utility function. Returns node IDs, discriminators (resource/operation/mode), and related nodes needed for get_workflow_node_types.',
 		inputSchema,
 		annotations: {
-			title: 'Search Workflow Nodes',
+			title: CODE_BUILDER_SEARCH_NODES_TOOL.displayTitle,
 			readOnlyHint: true,
 			destructiveHint: false,
 			idempotentHint: true,
@@ -42,7 +43,7 @@ export const createSearchWorkflowNodesTool = (
 	handler: async ({ queries }: { queries: string[] }) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
-			tool_name: 'n8n_search_workflow_nodes',
+			tool_name: CODE_BUILDER_SEARCH_NODES_TOOL.toolName,
 			parameters: { queries },
 		};
 

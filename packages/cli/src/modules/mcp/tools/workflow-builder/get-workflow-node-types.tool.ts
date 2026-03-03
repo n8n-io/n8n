@@ -6,6 +6,7 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.ty
 
 import type { Telemetry } from '@/telemetry';
 
+import { CODE_BUILDER_GET_NODE_TYPES_TOOL } from './constants';
 import type { WorkflowBuilderToolsService } from './workflow-builder-tools.service';
 
 const nodeIdWithDiscriminators = z.object({
@@ -44,13 +45,13 @@ export const createGetWorkflowNodeTypesTool = (
 	workflowBuilderToolsService: WorkflowBuilderToolsService,
 	telemetry: Telemetry,
 ): ToolDefinition<typeof inputSchema> => ({
-	name: 'n8n_get_workflow_node_types',
+	name: CODE_BUILDER_GET_NODE_TYPES_TOOL.toolName,
 	config: {
 		description:
 			'Get TypeScript type definitions for n8n nodes. Returns exact parameter names and structures. MUST be called before writing workflow code — guessing parameter names creates invalid workflows. Include discriminators (resource/operation/mode) from search results.',
 		inputSchema,
 		annotations: {
-			title: 'Get Workflow Node Types',
+			title: CODE_BUILDER_GET_NODE_TYPES_TOOL.displayTitle,
 			readOnlyHint: true,
 			destructiveHint: false,
 			idempotentHint: true,
@@ -60,7 +61,7 @@ export const createGetWorkflowNodeTypesTool = (
 	handler: async ({ nodeIds }: { nodeIds: NodeRequest[] }) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
-			tool_name: 'n8n_get_workflow_node_types',
+			tool_name: CODE_BUILDER_GET_NODE_TYPES_TOOL.toolName,
 			parameters: { nodeIdCount: nodeIds.length },
 		};
 
