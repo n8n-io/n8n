@@ -43,7 +43,7 @@ const renderComponent = createComponentRenderer(WorkflowHistoryVersionSelect, {
 				props: ['label'],
 				template: '<div><div data-test-id="group-label">{{ label }}</div><slot /></div>',
 			},
-			WorkflowHistoryVersionDot: {
+			WorkflowVersionStatusIndicator: {
 				props: ['status'],
 				template: '<span data-test-id="dot" :data-status="status" />',
 			},

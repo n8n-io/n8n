@@ -2,7 +2,7 @@
 import { toRef } from 'vue';
 import { N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import WorkflowHistoryVersionDot from './WorkflowHistoryVersionDot.vue';
+import WorkflowVersionStatusIndicator from './WorkflowVersionStatusIndicator.vue';
 import type { N8nTooltipProps } from '@n8n/design-system/components/N8nTooltip';
 import type { WorkflowHistoryVersionStatus } from '../types';
 import { usePublishedByDetails } from './usePublishedByDetails';
@@ -43,7 +43,7 @@ const publishedByDetails = usePublishedByDetails(toRef(props, 'publishInfo'));
 	>
 		<template #content>
 			<div :class="$style.tooltipContentTitle">
-				<WorkflowHistoryVersionDot :status="props.status" />
+				<WorkflowVersionStatusIndicator :status="props.status" />
 				<N8nText size="small" :bold="true">
 					{{ props.label }} ({{ i18n.baseText('workflows.published') }})
 				</N8nText>

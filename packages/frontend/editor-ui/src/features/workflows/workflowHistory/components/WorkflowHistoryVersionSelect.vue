@@ -3,7 +3,7 @@ import { computed, ref, unref } from 'vue';
 import { ElOption, ElOptionGroup } from 'element-plus';
 import { N8nSelect } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import WorkflowHistoryVersionDot from './WorkflowHistoryVersionDot.vue';
+import WorkflowVersionStatusIndicator from './WorkflowVersionStatusIndicator.vue';
 import WorkflowHistoryPublishedTooltip from './WorkflowHistoryPublishedTooltip.vue';
 import WorkflowHistoryUpgradeFooter from './WorkflowHistoryUpgradeFooter.vue';
 import type { WorkflowHistoryVersionOption } from '../useWorkflowHistoryVersionOptions';
@@ -152,7 +152,7 @@ const shouldShowUpgradeFooter = computed(() => Boolean(unref(workflowHistoryStor
 				@visible-change="onVisibleChange"
 			>
 				<template #prefix>
-					<WorkflowHistoryVersionDot :status="selectedOption?.status" />
+					<WorkflowVersionStatusIndicator :status="selectedOption?.status" />
 				</template>
 				<ElOptionGroup
 					v-for="group in filteredGroupedOptions"
@@ -174,12 +174,12 @@ const shouldShowUpgradeFooter = computed(() => Boolean(unref(workflowHistoryStor
 							placement="right"
 						>
 							<span :class="$style.optionRow">
-								<WorkflowHistoryVersionDot :status="option.status" />
+								<WorkflowVersionStatusIndicator :status="option.status" />
 								<span>{{ option.label }}</span>
 							</span>
 						</WorkflowHistoryPublishedTooltip>
 						<span v-else :class="$style.optionRow">
-							<WorkflowHistoryVersionDot :status="option.status" />
+							<WorkflowVersionStatusIndicator :status="option.status" />
 							<span>{{ option.label }}</span>
 						</span>
 					</ElOption>

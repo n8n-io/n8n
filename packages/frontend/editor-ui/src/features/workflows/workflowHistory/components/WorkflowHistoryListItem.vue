@@ -20,7 +20,7 @@ import type {
 	WorkflowHistoryAction,
 	WorkflowHistoryVersionStatus,
 } from '@/features/workflows/workflowHistory/types';
-import WorkflowHistoryVersionDot from './WorkflowHistoryVersionDot.vue';
+import WorkflowVersionStatusIndicator from './WorkflowVersionStatusIndicator.vue';
 import WorkflowHistoryPublishedTooltip from './WorkflowHistoryPublishedTooltip.vue';
 
 const props = withDefaults(
@@ -182,7 +182,7 @@ onMounted(() => {
 			<!-- Timeline column -->
 			<span :class="$style.timelineColumn">
 				<template v-if="!props.isGrouped">
-					<WorkflowHistoryVersionDot :status="versionStatus" />
+					<WorkflowVersionStatusIndicator :status="versionStatus" />
 				</template>
 				<span v-else :class="$style.timelineLine" />
 			</span>
