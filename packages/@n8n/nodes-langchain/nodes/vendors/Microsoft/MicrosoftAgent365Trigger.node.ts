@@ -1,5 +1,6 @@
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
+	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookFunctions,
@@ -239,10 +240,14 @@ export class MicrosoftAgent365Trigger implements INodeType {
 			if (node.typeVersion === 1) {
 				returnData = activityCapture;
 			} else {
+				const { conversationId, ...activity }: IDataObject = activityCapture.activity;
+				activity.conversation = {
+					id: conversationId,
+				};
 				returnData = {
 					input: activityCapture.input,
 					output: activityCapture.output,
-					...req.body,
+					...activity,
 				};
 			}
 
