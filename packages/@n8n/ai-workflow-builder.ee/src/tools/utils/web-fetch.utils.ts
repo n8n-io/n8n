@@ -1,6 +1,7 @@
+import { HumanMessage, type BaseMessage } from '@langchain/core/messages';
 import { Readability } from '@mozilla/readability';
 import dns from 'dns';
-import { JSDOM } from 'jsdom';
+import { JSDOM, VirtualConsole } from 'jsdom';
 import { promisify } from 'util';
 
 import {
@@ -11,6 +12,53 @@ import {
 
 const resolve4 = promisify(dns.resolve4);
 const resolve6 = promisify(dns.resolve6);
+
+// ============================================================================
+// URL PROVENANCE
+// ============================================================================
+
+/**
+ * Normalize a URL for comparison: lowercase scheme+host, strip trailing slash.
+ */
+function normalizeUrlForComparison(url: string): string {
+	return url.replace(/\/+$/, '');
+}
+
+/**
+ * Extract text content from a message, handling both string and array content formats.
+ */
+function getMessageText(msg: BaseMessage): string {
+	if (typeof msg.content === 'string') return msg.content;
+	if (Array.isArray(msg.content)) {
+		return msg.content
+			.filter(
+				(part): part is { type: 'text'; text: string } =>
+					typeof part === 'object' && part !== null && 'type' in part && part.type === 'text',
+			)
+			.map((part) => part.text)
+			.join(' ');
+	}
+	return '';
+}
+
+/**
+ * Check if a URL was provided by the user in any HumanMessage.
+ * Matches exact URL or URL without trailing slash.
+ */
+export function isUrlInUserMessages(url: string, messages: BaseMessage[]): boolean {
+	const normalized = normalizeUrlForComparison(url);
+
+	for (const msg of messages) {
+		if (!(msg instanceof HumanMessage)) continue;
+		const content = getMessageText(msg);
+		if (!content) continue;
+
+		if (content.includes(url) || content.includes(normalized)) {
+			return true;
+		}
+	}
+	return false;
+}
 
 // ============================================================================
 // TYPES
@@ -262,7 +310,8 @@ export async function fetchUrl(url: string, signal?: AbortSignal): Promise<Fetch
  * Extract readable content from HTML using JSDOM + Readability.
  */
 export function extractReadableContent(html: string, url: string): ExtractedContent {
-	const dom = new JSDOM(html, { url });
+	const virtualConsole = new VirtualConsole();
+	const dom = new JSDOM(html, { url, virtualConsole });
 	const article = new Readability(dom.window.document, { keepClasses: false }).parse();
 
 	const title = article?.title ?? '';

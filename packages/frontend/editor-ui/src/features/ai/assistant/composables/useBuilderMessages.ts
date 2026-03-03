@@ -352,13 +352,14 @@ export function useBuilderMessages() {
 			};
 		}
 
-		const hasCompletedTools = getToolMessages(messages).some((msg) => msg.status === 'completed');
+		const isToolDone = (status: string) => status === 'completed' || status === 'error';
+		const hasCompletedTools = getToolMessages(messages).some((msg) => isToolDone(msg.status));
 
-		// Find the last completed tool message
+		// Find the last completed/errored tool message
 		let lastCompletedToolIndex = -1;
 		for (let i = messages.length - 1; i >= 0; i--) {
 			const msg = messages[i];
-			if (msg.type === 'tool' && msg.status === 'completed') {
+			if (msg.type === 'tool' && isToolDone(msg.status)) {
 				lastCompletedToolIndex = i;
 				break;
 			}

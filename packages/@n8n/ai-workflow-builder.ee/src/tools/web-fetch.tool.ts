@@ -1,3 +1,4 @@
+import type { BaseMessage } from '@langchain/core/messages';
 import { tool } from '@langchain/core/tools';
 import { interrupt, getCurrentTaskInput } from '@langchain/langgraph';
 import { randomUUID } from 'crypto';
@@ -15,6 +16,7 @@ import {
 	isBlockedUrl,
 	fetchUrl,
 	extractReadableContent,
+	isUrlInUserMessages,
 } from './utils/web-fetch.utils';
 
 export const WEB_FETCH_TOOL: BuilderToolBase = {
@@ -51,22 +53,32 @@ export function createWebFetchTool() {
 				if (blocked) {
 					const message =
 						'This URL cannot be fetched because it points to a private or internal address.';
-					reporter.complete({ status: 'blocked', url });
+					reporter.error({ message });
 					return createSuccessResponse(config, message);
 				}
 
-				// 2. Read state for approved domains and fetch count
+				// 2. Read state for approved domains, fetch count, and messages
 				const state = getCurrentTaskInput() as {
 					approvedDomains?: string[];
 					webFetchCount?: number;
+					messages?: BaseMessage[];
 				};
 				const approvedDomains: string[] = state.approvedDomains ?? [];
 				const webFetchCount: number = state.webFetchCount ?? 0;
 
+				// 2b. URL provenance check — only fetch URLs the user provided
+				const messages = state.messages ?? [];
+				if (!isUrlInUserMessages(url, messages)) {
+					const message =
+						'This URL was not provided by the user. Only URLs from the conversation can be fetched.';
+					reporter.error({ message });
+					return createSuccessResponse(config, message);
+				}
+
 				// 3. Check per-turn budget
 				if (webFetchCount >= WEB_FETCH_MAX_PER_TURN) {
 					const message = `Maximum of ${WEB_FETCH_MAX_PER_TURN} web fetches per turn reached. Please continue without additional fetches.`;
-					reporter.complete({ status: 'budget_exceeded' });
+					reporter.error({ message });
 					return createSuccessResponse(config, message);
 				}
 
@@ -91,13 +103,20 @@ export function createWebFetchTool() {
 					// requestId is not (regenerated on re-execution), so only check url.
 					if (resumeValue.url !== url) {
 						const message = 'The approval response did not match the request. Please try again.';
-						reporter.complete({ status: 'stale_resume' });
+						reporter.error({ message });
 						return createSuccessResponse(config, message);
 					}
 
 					if (resumeValue.action === 'deny') {
 						const message = `The user denied fetching content from ${host}. Continue without this content.`;
-						reporter.complete({ status: 'denied', domain: host });
+						reporter.error({ message });
+						return createSuccessResponse(config, message);
+					}
+
+					// Validate action against allowlist
+					if (resumeValue.action !== 'allow_once' && resumeValue.action !== 'allow_domain') {
+						const message = 'Invalid approval action. Please try again.';
+						reporter.error({ message });
 						return createSuccessResponse(config, message);
 					}
 
@@ -112,7 +131,7 @@ export function createWebFetchTool() {
 				// Handle unsupported content
 				if (fetchResult.status === 'unsupported') {
 					const message = `This content type is not supported: ${fetchResult.reason}. The tool cannot process PDF files.`;
-					reporter.complete({ status: 'unsupported', reason: fetchResult.reason });
+					reporter.error({ message });
 					return createSuccessResponse(config, message, {
 						webFetchCount: webFetchCount + 1,
 					});
@@ -126,7 +145,7 @@ export function createWebFetchTool() {
 					const redirectBlocked = await isBlockedUrl(fetchResult.finalUrl);
 					if (redirectBlocked) {
 						const message = `The URL redirected to ${newHost}, which points to a private address. Fetch blocked.`;
-						reporter.complete({ status: 'redirect_blocked' });
+						reporter.error({ message });
 						return createSuccessResponse(config, message, {
 							webFetchCount: webFetchCount + 1,
 						});
@@ -135,7 +154,7 @@ export function createWebFetchTool() {
 					// If new host not approved, block (don't interrupt again to keep flow simple)
 					if (!approvedDomains.includes(newHost)) {
 						const message = `The URL redirected to a different domain (${newHost}). The user has not approved this domain. Please ask the user to provide the final URL directly.`;
-						reporter.complete({ status: 'redirect_unapproved', domain: newHost });
+						reporter.error({ message });
 						return createSuccessResponse(config, message, {
 							webFetchCount: webFetchCount + 1,
 						});
@@ -145,7 +164,7 @@ export function createWebFetchTool() {
 					const finalResult = await fetchUrl(fetchResult.finalUrl);
 					if (finalResult.status !== 'success' || !finalResult.body) {
 						const message = `Failed to fetch content from the redirected URL (${newHost}).`;
-						reporter.complete({ status: 'fetch_failed' });
+						reporter.error({ message });
 						return createSuccessResponse(config, message, {
 							webFetchCount: webFetchCount + 1,
 						});
@@ -158,7 +177,7 @@ export function createWebFetchTool() {
 
 				if (!fetchResult.body) {
 					const message = 'The page returned no content.';
-					reporter.complete({ status: 'empty' });
+					reporter.error({ message });
 					return createSuccessResponse(config, message, {
 						webFetchCount: webFetchCount + 1,
 					});
@@ -244,6 +263,7 @@ The tool will request user approval before fetching any URL.
 After approval, it returns the page's readable text content.
 
 Constraints:
+- Only URLs that appear in the user's messages can be fetched
 - Only public HTTP/HTTPS URLs
 - Maximum 3 fetches per conversation turn
 - PDFs are not supported

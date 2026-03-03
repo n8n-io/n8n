@@ -260,15 +260,22 @@ function isLastPlanMessage(message: PlanMode.PlanMessage): boolean {
 async function onWebFetchDecision(payload: {
 	requestId: string;
 	url: string;
+	domain: string;
 	action: 'allow_once' | 'allow_domain' | 'deny';
 }) {
+	builderStore.trackWorkflowBuilderJourney('web_fetch_decision', {
+		domain: payload.domain,
+		url: payload.url,
+		decision: payload.action,
+	});
+
 	await builderStore.sendChatMessage({
 		text:
 			payload.action === 'deny'
 				? i18n.baseText('aiAssistant.builder.webFetch.deny')
 				: payload.action === 'allow_domain'
 					? i18n.baseText('aiAssistant.builder.webFetch.allowDomain', {
-							interpolate: { domain: '' },
+							interpolate: { domain: payload.domain },
 						})
 					: i18n.baseText('aiAssistant.builder.webFetch.allowOnce'),
 		resumeData: payload,
