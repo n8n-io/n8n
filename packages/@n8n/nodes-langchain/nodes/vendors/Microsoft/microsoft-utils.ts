@@ -1,5 +1,6 @@
 import type {
 	AuthConfiguration,
+	Authorization,
 	DefaultConversationState,
 	DefaultUserState,
 	TurnContext,
@@ -23,14 +24,12 @@ import {
 	type Builder,
 	defaultObservabilityConfigurationProvider,
 } from '@microsoft/agents-a365-observability';
-import { Utility as RuntimeUtility } from '@microsoft/agents-a365-runtime';
 import { type Activity, ActivityTypes } from '@microsoft/agents-activity';
 import { v4 as uuid } from 'uuid';
 import { invokeAgent } from './langchain-utils';
 
 import {
 	McpToolServerConfigurationService,
-	Utility,
 	defaultToolingConfigurationProvider,
 } from '@microsoft/agents-a365-tooling';
 
@@ -145,15 +144,18 @@ export function createMicrosoftAgentApplication(credentials: MicrosoftAgent365Cr
 
 export async function getMicrosoftMcpTools(
 	turnContext: TurnContext,
+	authorization: Authorization,
 	mcpAuthToken: string,
 	selectedTools: string[] | undefined,
 ) {
 	const configService: McpToolServerConfigurationService = new McpToolServerConfigurationService();
 
-	Utility.ValidateAuthToken(mcpAuthToken);
-
-	const agenticAppId = RuntimeUtility.ResolveAgentIdentity(turnContext, mcpAuthToken);
-	let servers = await configService.listToolServers(agenticAppId, mcpAuthToken);
+	let servers = await configService.listToolServers(
+		turnContext,
+		authorization,
+		'agentic',
+		mcpAuthToken,
+	);
 
 	if (servers.length === 0) return undefined;
 
@@ -230,6 +232,7 @@ export const configureActivityCallback = (
 	nodeContext: IWebhookFunctions,
 	credentials: MicrosoftAgent365Credentials,
 	mcpTokenRef: { token: string | undefined },
+	authorization: Authorization,
 ) => {
 	const systemPrompt = nodeContext.getNodeParameter('systemPrompt') as string;
 	const { clientId, tenantId } = credentials;
@@ -287,6 +290,7 @@ export const configureActivityCallback = (
 
 							const result = await getMicrosoftMcpTools(
 								turnContext,
+								authorization,
 								mcpTokenRef.token,
 								selectedTools,
 							);
@@ -400,7 +404,12 @@ export function configureAdapterProcessCallback(
 				await context.sendActivity(welcomeMessage);
 			});
 
-			const onActivity = configureActivityCallback(nodeContext, credentials, mcpTokenRef);
+			const onActivity = configureActivityCallback(
+				nodeContext,
+				credentials,
+				mcpTokenRef,
+				agent.authorization,
+			);
 			agent.onActivity(ActivityTypes.Message, onActivity, ['agentic']);
 
 			await agent.run(turnContext);
