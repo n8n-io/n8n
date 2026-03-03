@@ -32,6 +32,10 @@ const selectedStatus = computed<WorkflowHistoryVersionStatus>(() => {
 	return selectedOption?.status ?? 'default';
 });
 
+const selectedOption = computed(() => {
+	return props.options.find((option) => option.value === props.modelValue);
+});
+
 const groupedOptions = computed<
 	Array<{ dateLabel: string; options: WorkflowHistoryVersionOption[] }>
 >(() => {
@@ -97,55 +101,61 @@ const shouldShowUpgradeFooter = computed(() => Boolean(unref(workflowHistoryStor
 <template>
 	<div :class="$style.container">
 		<div ref="popperContainer" />
-		<ElSelect
-			:model-value="props.modelValue"
-			size="small"
-			filterable
-			:filter-method="onFilter"
-			:class="$style.select"
-			:popper-class="$style['workflow-history-version-select-dropdown']"
-			:append-to="popperContainer"
-			teleported
-			:data-test-id="props.dataTestId"
-			@update:model-value="emit('update:modelValue', $event)"
-			@visible-change="onVisibleChange"
+		<WorkflowHistoryPublishedTooltip
+			:label="selectedOption?.label ?? ''"
+			:status="selectedStatus"
+			:publish-info="selectedOption?.publishInfo"
 		>
-			<template #prefix>
-				<WorkflowHistoryVersionDot :status="selectedStatus" />
-			</template>
-			<ElOptionGroup
-				v-for="group in filteredGroupedOptions"
-				:key="group.dateLabel"
-				:label="group.dateLabel"
+			<ElSelect
+				:model-value="props.modelValue"
+				size="small"
+				filterable
+				:filter-method="onFilter"
+				:class="$style.select"
+				:popper-class="$style['workflow-history-version-select-dropdown']"
+				:append-to="popperContainer"
+				teleported
+				:data-test-id="props.dataTestId"
+				@update:model-value="emit('update:modelValue', $event)"
+				@visible-change="onVisibleChange"
 			>
-				<ElOption
-					v-for="option in group.options"
-					:key="option.value"
-					:value="option.value"
-					:label="option.label"
+				<template #prefix>
+					<WorkflowHistoryVersionDot :status="selectedStatus" />
+				</template>
+				<ElOptionGroup
+					v-for="group in filteredGroupedOptions"
+					:key="group.dateLabel"
+					:label="group.dateLabel"
 				>
-					<WorkflowHistoryPublishedTooltip
+					<ElOption
+						v-for="option in group.options"
+						:key="option.value"
+						:value="option.value"
 						:label="option.label"
-						:status="option.status"
-						:publish-info="option.publishInfo"
-						:offset="24"
-						placement="right"
 					>
-						<span :class="$style.optionRow">
-							<WorkflowHistoryVersionDot :status="option.status" />
-							<span>{{ option.label }}</span>
-						</span>
-					</WorkflowHistoryPublishedTooltip>
-				</ElOption>
-			</ElOptionGroup>
-			<template v-if="shouldShowUpgradeFooter" #footer>
-				<WorkflowHistoryUpgradeFooter
-					:prune-time-display="pruneTimeDisplay"
-					:with-top-border="true"
-					@upgrade="emit('upgrade')"
-				/>
-			</template>
-		</ElSelect>
+						<WorkflowHistoryPublishedTooltip
+							:label="option.label"
+							:status="option.status"
+							:publish-info="option.publishInfo"
+							:offset="24"
+							placement="right"
+						>
+							<span :class="$style.optionRow">
+								<WorkflowHistoryVersionDot :status="option.status" />
+								<span>{{ option.label }}</span>
+							</span>
+						</WorkflowHistoryPublishedTooltip>
+					</ElOption>
+				</ElOptionGroup>
+				<template v-if="shouldShowUpgradeFooter" #footer>
+					<WorkflowHistoryUpgradeFooter
+						:prune-time-display="pruneTimeDisplay"
+						:with-top-border="true"
+						@upgrade="emit('upgrade')"
+					/>
+				</template>
+			</ElSelect>
+		</WorkflowHistoryPublishedTooltip>
 	</div>
 </template>
 

@@ -97,7 +97,7 @@ describe('WorkflowHistoryVersionSelect', () => {
 			},
 		});
 
-		expect(rendered.getByText(/Published by John Doe/)).toBeInTheDocument();
+		expect(rendered.getAllByText(/Published by John Doe/)).toHaveLength(2);
 	});
 
 	it('filters options by search query while preserving grouping', async () => {
