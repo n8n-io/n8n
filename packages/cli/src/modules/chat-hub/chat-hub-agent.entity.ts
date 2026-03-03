@@ -1,4 +1,8 @@
-import { ChatHubLLMProvider, AgentIconOrEmoji } from '@n8n/api-types';
+import type {
+	ChatHubLLMProvider,
+	AgentIconOrEmoji,
+	ChatHubAgentKnowledgeItem,
+} from '@n8n/api-types';
 import { User, CredentialsEntity, JsonColumn, WithTimestamps } from '@n8n/db';
 import {
 	Column,
@@ -25,6 +29,7 @@ export interface IChatHubAgent {
 	credentialId: string | null;
 	provider: ChatHubLLMProvider;
 	model: string;
+	files: ChatHubAgentKnowledgeItem[];
 }
 
 @Entity({ name: 'chat_hub_agents' })
@@ -104,4 +109,11 @@ export class ChatHubAgent extends WithTimestamps {
 		inverseJoinColumn: { name: 'toolId', referencedColumnName: 'id' },
 	})
 	tools?: Relation<ChatHubTool[]>;
+
+	/**
+	 * The files attached to the agent.
+	 * Can be active files with binary data or embedded PDFs (embeddings only).
+	 */
+	@JsonColumn({ default: '[]' })
+	files: ChatHubAgentKnowledgeItem[];
 }

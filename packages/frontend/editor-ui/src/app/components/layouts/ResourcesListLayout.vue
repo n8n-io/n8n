@@ -508,7 +508,7 @@ const savePaginationPreferences = async () => {
 		(route.params.projectId as string) ?? '',
 		props.tabKey,
 		{
-			sort: sortBy.value,
+			sort: props.persistKeyExclusions.includes(sortBy.value) ? preferredSort.value : sortBy.value,
 			pageSize: rowsPerPage.value,
 		},
 	);
@@ -532,7 +532,7 @@ const loadPaginationPreferences = async () => {
 	// For now, only load workflow list preferences from local storage
 	const localStorageValues = n8nLocalStorage.loadProjectPreferencesFromLocalStorage(
 		(route.params.projectId as string) ?? '',
-		'workflows',
+		props.tabKey,
 	);
 
 	const emitPayload: SortingAndPaginationUpdates = {};

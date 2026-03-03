@@ -231,3 +231,19 @@ export function listTagsPointingAt(commit) {
 		.map((s) => s.trim())
 		.filter(Boolean);
 }
+
+/**
+ * @param {string} branch
+ */
+export function remoteBranchExists(branch) {
+	const res = trySh('git', ['ls-remote', '--heads', 'origin', branch]);
+	return res.ok && res.out.length > 0;
+}
+
+/**
+ * @param {string} ref
+ */
+export function localRefExists(ref) {
+	const res = trySh('git', ['show-ref', '--verify', '--quiet', ref]);
+	return res.ok;
+}

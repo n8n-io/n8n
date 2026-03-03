@@ -60,7 +60,7 @@ jobs:
       # poutine: untrusted_checkout_exec
       - name: Switch to base branch
         env:
-          BASE_BRANCH: ${{ github.event.inputs.base-branch }}
+          BASE_BRANCH: ${{ inputs.base-branch }}
         run: git checkout "$BASE_BRANCH"
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -78,14 +78,14 @@ jobs:
         run: |
           echo "NEXT_RELEASE=$(node .github/scripts/bump-versions.mjs)" >> "$GITHUB_ENV"
         env:
-          RELEASE_TYPE: ${{ github.event.inputs.release-type }}
+          RELEASE_TYPE: ${{ inputs.release-type }}
 
       - name: Update Changelog
         run: node .github/scripts/update-changelog.mjs
 
       - name: Push the base branch
         env:
-          BASE_BRANCH: ${{ github.event.inputs.base-branch }}
+          BASE_BRANCH: ${{ inputs.base-branch }}
         run: |
           git push -f origin "refs/remotes/origin/${{ env.BASE_BRANCH }}:refs/heads/release/${{ env.NEXT_RELEASE }}"
 
@@ -114,6 +114,6 @@ jobs:
           branch: 'release-pr/${{ env.NEXT_RELEASE }}'
           commit-message: ':rocket: Release ${{ env.NEXT_RELEASE }}'
           delete-branch: true
-          labels: release,release:${{ github.event.inputs.release-type }}
+          labels: release,release:${{ inputs.release-type }}
           title: ':rocket: Release ${{ env.NEXT_RELEASE }}'
           body: ${{ steps.generate-body.outputs.content }}
