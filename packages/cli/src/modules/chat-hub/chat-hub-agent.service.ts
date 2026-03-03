@@ -186,7 +186,7 @@ export class ChatHubAgentService {
 		this.logger.debug(`Chat agent deleted: ${id} by user ${userId}`);
 	}
 
-	private async ensureSemanticSearchSettings(): Promise<SemanticSearchOptions> {
+	private async ensureSemanticSearchOptions(): Promise<SemanticSearchOptions> {
 		const options = await this.chatHubSettingsService.getSemanticSearchOptions();
 
 		if (options === null) {
@@ -209,7 +209,7 @@ export class ChatHubAgentService {
 		}
 
 		try {
-			const settings = await this.ensureSemanticSearchSettings();
+			const settings = await this.ensureSemanticSearchOptions();
 
 			const { workflowData, executionData } = await this.chatAgentRepository.manager.transaction(
 				async (trx) => {
@@ -244,7 +244,7 @@ export class ChatHubAgentService {
 	}
 
 	private async deleteEmbeddings(userId: string, agentId: string): Promise<void> {
-		const settings = await this.ensureSemanticSearchSettings();
+		const settings = await this.ensureSemanticSearchOptions();
 		const additionalData = await getBase({ userId });
 
 		await this.dynamicNodeParametersService.getActionResult(
@@ -271,7 +271,7 @@ export class ChatHubAgentService {
 			return;
 		}
 
-		const settings = await this.ensureSemanticSearchSettings();
+		const settings = await this.ensureSemanticSearchOptions();
 		const additionalData = await getBase({ userId: user.id });
 
 		await this.dynamicNodeParametersService.getActionResult(
@@ -333,7 +333,7 @@ export class ChatHubAgentService {
 		const knowledgeItems: ChatHubAgentKnowledgeItem[] = [];
 		const pdfFilesToInsert: Array<{ attachment: IBinaryData; knowledgeId: string }> = [];
 		const workflowId = uuidv4();
-		const settings = await this.ensureSemanticSearchSettings();
+		const settings = await this.ensureSemanticSearchOptions();
 
 		for (const file of files) {
 			// Multer/busboy parses the Content-Disposition filename as Latin-1 by default,

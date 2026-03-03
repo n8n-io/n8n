@@ -11,12 +11,10 @@ import Modal from '@/app/components/Modal.vue';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
 import {
 	emptyChatModelsResponse,
-	PROVIDER_CREDENTIAL_TYPE_MAP,
 	type ChatModelsResponse,
 	type ChatHubBaseLLMModel,
 	type AgentIconOrEmoji,
 	type ChatHubConversationModel,
-	type ChatHubLLMProvider,
 	type ChatHubProvider,
 	type ChatModelDto,
 	type ChatHubAgentKnowledgeItem,
@@ -83,14 +81,9 @@ const newFiles = ref<File[]>([]);
 const removedFileNames = ref<string[]>([]);
 const fileInputRef = useTemplateRef<HTMLInputElement>('fileInput');
 
-const currentEmbeddingProvider = computed<ChatHubLLMProvider | null>(() => {
-	const credentialType = settingsStore.moduleSettings['chat-hub']?.embeddingCredential?.type;
-	if (!credentialType) return null;
-	const entry = (
-		Object.entries(PROVIDER_CREDENTIAL_TYPE_MAP) as Array<[ChatHubLLMProvider, string]>
-	).find(([, type]) => type === credentialType);
-	return entry?.[0] ?? null;
-});
+const currentEmbeddingProvider = computed(
+	() => settingsStore.moduleSettings['chat-hub']?.semanticSearch.embeddingModel.provider ?? null,
+);
 
 const allFiles = computed<FileRow[]>(() => [
 	...savedFiles.value.map((file, index) => ({

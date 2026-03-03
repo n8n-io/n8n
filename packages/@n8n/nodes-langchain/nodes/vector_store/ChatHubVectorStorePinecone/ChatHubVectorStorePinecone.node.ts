@@ -72,11 +72,9 @@ export class ChatHubVectorStorePinecone extends createVectorStoreNode<PineconeSt
 	meta: {
 		displayName: 'ChatHub Pinecone Vector Store',
 		name: 'chatHubVectorStorePinecone',
-		description:
-			'Work with your data in Pinecone Vector Store, scoped per user via credential namespace prefix',
-		icon: { light: 'file:pinecone.svg', dark: 'file:pinecone.dark.svg' },
-		docsUrl:
-			'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstorepinecone/',
+		description: 'Internal-use vector store for ChatHub',
+		icon: { light: 'file:../VectorStorePinecone/pinecone.svg', dark: 'file:pinecone.dark.svg' },
+		docsUrl: 'https://docs.n8n.io',
 		credentials: [
 			{
 				name: 'chatHubVectorStorePineconeApi',

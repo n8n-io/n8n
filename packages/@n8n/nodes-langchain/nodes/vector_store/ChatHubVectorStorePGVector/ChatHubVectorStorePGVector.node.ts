@@ -141,12 +141,10 @@ export class ChatHubVectorStorePGVector extends createVectorStoreNode({
 		actionHandler: { deleteDocuments },
 	},
 	meta: {
-		description:
-			'Work with your data in Postgresql with PGVector, scoped per user via credential table prefix',
-		icon: 'file:postgres.svg',
+		description: 'Internal-use vector store for ChatHub',
+		icon: 'file:../VectorStorePGVector/postgres.svg',
 		displayName: 'ChatHub PGVector Store',
-		docsUrl:
-			'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstorepgvector/',
+		docsUrl: 'https://docs.n8n.io',
 		name: 'chatHubVectorStorePGVector',
 		credentials: [
 			{

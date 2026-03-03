@@ -81,11 +81,9 @@ export class ChatHubVectorStoreQdrant extends createVectorStoreNode<QdrantVector
 	meta: {
 		displayName: 'ChatHub Qdrant Vector Store',
 		name: 'chatHubVectorStoreQdrant',
-		description:
-			'Work with your data in a Qdrant collection, scoped per user via userId metadata field',
-		icon: 'file:qdrant.svg',
-		docsUrl:
-			'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoreqdrant/',
+		description: 'Internal-use vector store for ChatHub',
+		icon: 'file:../VectorStoreQdrant/qdrant.svg',
+		docsUrl: 'https://docs.n8n.io',
 		credentials: [
 			{
 				name: 'chatHubVectorStoreQdrantApi',
