@@ -13,6 +13,16 @@ import type { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useVueFlow } from '@vue-flow/core';
 import { SIMULATE_NODE_TYPE } from '@/app/constants';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
+import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
+import { useChatPanelStateStore } from '@/features/ai/assistant/chatPanelState.store';
+
+vi.mock('@/app/stores/posthog.store', () => ({
+	usePostHog: () => ({
+		isVariantEnabled: () => true,
+		isFeatureEnabled: () => true,
+		getVariant: () => undefined,
+	}),
+}));
 
 const matchMedia = global.window.matchMedia;
 // @ts-expect-error Initialize window object
@@ -332,6 +342,29 @@ describe('Canvas', () => {
 			});
 
 			expect(queryByTestId('canvas-controls')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('focused nodes on node click', () => {
+		it('should call setUnconfirmedFromCanvasSelection (not confirmNodes) when a node is clicked with the chat panel open', async () => {
+			const nodes = [createCanvasNodeElement({ id: 'node-1' })];
+			const { container } = renderComponent({ props: { nodes } });
+
+			await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(1));
+
+			// Open the chat panel so the focused-nodes branch is active
+			const chatPanelStateStore = useChatPanelStateStore();
+			chatPanelStateStore.isOpen = true;
+
+			const focusedNodesStore = useFocusedNodesStore();
+			const setUnconfirmedSpy = vi.spyOn(focusedNodesStore, 'setUnconfirmedFromCanvasSelection');
+			const confirmNodesSpy = vi.spyOn(focusedNodesStore, 'confirmNodes');
+
+			const nodeEl = container.querySelector('[data-id="node-1"]') as Element;
+			await fireEvent.click(nodeEl);
+
+			expect(setUnconfirmedSpy).toHaveBeenCalledWith(['node-1']);
+			expect(confirmNodesSpy).not.toHaveBeenCalled();
 		});
 	});
 });
