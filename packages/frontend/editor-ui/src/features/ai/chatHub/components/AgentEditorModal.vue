@@ -127,7 +127,7 @@ watch(
 		description.value = agent.description ?? '';
 		systemPrompt.value = agent.systemPrompt;
 		selectedModel.value = { provider: agent.provider, model: agent.model };
-		suggestedPrompts.value = agent.suggestedPrompts ?? [];
+		suggestedPrompts.value = agent.suggestedPrompts;
 		toolIds.value = agent.toolIds ?? [];
 
 		if (agent.credentialId) {

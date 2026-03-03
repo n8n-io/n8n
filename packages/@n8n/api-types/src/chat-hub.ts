@@ -469,7 +469,7 @@ export interface ChatHubAgentDto {
 	name: string;
 	description: string | null;
 	icon: AgentIconOrEmoji | null;
-	suggestedPrompts: SuggestedPrompt[] | null;
+	suggestedPrompts: SuggestedPrompt[];
 	systemPrompt: string;
 	ownerId: string;
 	credentialId: string | null;

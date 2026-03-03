@@ -808,9 +808,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		const baseModel = agents.value?.[customAgent.provider]?.models.find(
 			(model) => model.name === customAgent.model,
 		);
-		const suggestedPrompts = (customAgent.suggestedPrompts ?? []).filter(
-			(p) => p.text.trim().length > 0,
-		);
+		const suggestedPrompts = customAgent.suggestedPrompts.filter((p) => p.text.trim().length > 0);
 
 		const agent: ChatModelDto = {
 			model: {
@@ -851,7 +849,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 
 		// Update the agent in models as well
 		if (agents.value?.['custom-agent']) {
-			const updatedSuggestedPrompts = (customAgent.suggestedPrompts ?? []).filter(
+			const updatedSuggestedPrompts = customAgent.suggestedPrompts.filter(
 				(p) => p.text.trim().length > 0,
 			);
 

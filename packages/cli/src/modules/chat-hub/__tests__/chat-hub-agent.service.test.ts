@@ -19,7 +19,7 @@ function makeAgent(overrides: Partial<ChatHubAgent> = {}): ChatHubAgent {
 		name: 'Test Agent',
 		description: 'A test agent',
 		icon: { type: 'emoji', value: '🤖' },
-		suggestedPrompts: null,
+		suggestedPrompts: [],
 		systemPrompt: 'You are a helpful assistant',
 		ownerId: mockUserId,
 		credentialId: 'cred-1',
@@ -162,7 +162,7 @@ describe('ChatHubAgentService', () => {
 			expect(dto.suggestedPrompts).toEqual(prompts);
 		});
 
-		it('should persist null suggestedPrompts when not provided', async () => {
+		it('should persist empty suggestedPrompts when not provided', async () => {
 			const agent = makeAgent();
 			agentRepository.createAgent.mockResolvedValue(agent);
 
@@ -177,7 +177,7 @@ describe('ChatHubAgentService', () => {
 			});
 
 			expect(agentRepository.createAgent).toHaveBeenCalledWith(
-				expect.objectContaining({ suggestedPrompts: null }),
+				expect.objectContaining({ suggestedPrompts: [] }),
 			);
 		});
 	});
@@ -436,14 +436,14 @@ describe('ChatHubAgentService', () => {
 			expect(dto.suggestedPrompts).toEqual(prompts);
 		});
 
-		it('should return null suggestedPrompts when agent has none', async () => {
-			const agent = makeAgent({ suggestedPrompts: null });
+		it('should return empty suggestedPrompts when agent has none', async () => {
+			const agent = makeAgent();
 			agentRepository.getOneById.mockResolvedValue(agent);
 			toolService.getToolIdsForAgent.mockResolvedValue([]);
 
 			const dto = await service.getAgentByIdAsDto(agent.id, mockUserId);
 
-			expect(dto.suggestedPrompts).toBeNull();
+			expect(dto.suggestedPrompts).toEqual([]);
 		});
 	});
 });
