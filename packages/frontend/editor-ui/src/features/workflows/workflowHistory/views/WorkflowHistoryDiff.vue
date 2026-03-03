@@ -111,6 +111,30 @@ const loadComparedVersions = async (sourceVersionId: string, targetVersionId: st
 	}
 };
 
+const swapSelectedVersions = () => {
+	const previousSourceVersionId = selectedSourceVersionId.value;
+	selectedSourceVersionId.value = selectedTargetVersionId.value;
+	selectedTargetVersionId.value = previousSourceVersionId;
+};
+
+const onSourceVersionChange = (nextSourceVersionId: string) => {
+	if (nextSourceVersionId === selectedTargetVersionId.value) {
+		swapSelectedVersions();
+		return;
+	}
+
+	selectedSourceVersionId.value = nextSourceVersionId;
+};
+
+const onTargetVersionChange = (nextTargetVersionId: string) => {
+	if (nextTargetVersionId === selectedSourceVersionId.value) {
+		swapSelectedVersions();
+		return;
+	}
+
+	selectedTargetVersionId.value = nextTargetVersionId;
+};
+
 watch(
 	() => [props.sourceWorkflowVersionId, props.targetWorkflowVersionId],
 	([sourceVersionId, targetVersionId]) => {
@@ -145,18 +169,20 @@ watch(
 			<template #sourceLabel>
 				<div :class="$style.sourceBadge">
 					<WorkflowHistoryVersionSelect
-						v-model="selectedSourceVersionId"
+						:model-value="selectedSourceVersionId"
 						:options="versionOptions"
 						data-test-id="workflow-history-diff-source-version"
+						@update:model-value="onSourceVersionChange"
 					/>
 				</div>
 			</template>
 			<template #targetLabel>
 				<div :class="$style.sourceBadge">
 					<WorkflowHistoryVersionSelect
-						v-model="selectedTargetVersionId"
+						:model-value="selectedTargetVersionId"
 						:options="versionOptions"
 						data-test-id="workflow-history-diff-target-version"
+						@update:model-value="onTargetVersionChange"
 					/>
 				</div>
 			</template>
