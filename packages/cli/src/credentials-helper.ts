@@ -367,7 +367,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		 */
 		if (additionalData.executionContext?.credentials !== undefined) {
 			// Resolve dynamic credentials if configured (EE feature)
-			decryptedDataOriginal = await this.dynamicCredentialsProxy.resolveIfNeeded(
+			const resolveResult = await this.dynamicCredentialsProxy.resolveIfNeeded(
 				{
 					id: credentialsEntity.id,
 					name: credentialsEntity.name,
@@ -381,6 +381,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 				additionalData.workflowSettings,
 				canUseExternalSecrets,
 			);
+			decryptedDataOriginal = resolveResult.data;
+			if (resolveResult.isDynamic) {
+				additionalData.currentNodeUsedDynamicCredentials = true;
+			}
 		}
 
 		if (raw === true) {

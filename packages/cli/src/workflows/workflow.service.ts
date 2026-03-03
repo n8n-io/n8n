@@ -1029,9 +1029,8 @@ export class WorkflowService {
 		const currentChecksum = await calculateWorkflowChecksum(dbWorkflow);
 
 		if (expectedChecksum !== currentChecksum) {
-			throw new BadRequestError(
+			throw new ConflictError(
 				'Your most recent changes may be lost, because someone else just updated this workflow. Open this workflow in a new tab to see those new updates.',
-				100,
 			);
 		}
 	}

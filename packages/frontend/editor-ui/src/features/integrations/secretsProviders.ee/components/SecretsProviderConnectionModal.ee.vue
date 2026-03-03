@@ -380,7 +380,7 @@ onMounted(async () => {
 										:readonly="modal.isEditMode.value"
 										:disabled="modal.isEditMode.value"
 										aria-required="true"
-										placeholder="vault-project-x-y-z"
+										placeholder="myVault"
 										@update:model-value="handleConnectionNameUpdate"
 										@blur="handleConnectionNameBlur"
 									/>
@@ -464,7 +464,7 @@ onMounted(async () => {
 										:model-value="scopeSelectValue"
 										size="large"
 										filterable
-										:disabled="!modal.canUpdate.value"
+										:disabled="!modal.canUpdate.value || modal.isScopedMode.value"
 										data-test-id="secrets-provider-scope-select"
 										@update:model-value="handleScopeSelect"
 									>
@@ -487,7 +487,9 @@ onMounted(async () => {
 											:key="option.value || 'global'"
 											:value="option.value"
 											:label="option.label"
-											:class="{ [$style.globalOption]: option.value === '' }"
+											:class="{
+												[$style.globalOption]: option.value === '' && scopeOptions.length > 1,
+											}"
 										>
 											<div :class="$style.optionContent">
 												<N8nText v-if="option.icon?.type === 'emoji'" :class="$style.menuItemEmoji">

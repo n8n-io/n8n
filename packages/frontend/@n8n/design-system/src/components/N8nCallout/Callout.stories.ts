@@ -5,7 +5,7 @@ import N8nLink from '../N8nLink';
 import N8nText from '../N8nText';
 
 export default {
-	title: 'Atoms/Callout',
+	title: 'Core/Callout',
 	component: N8nCallout,
 	argTypes: {
 		theme: {

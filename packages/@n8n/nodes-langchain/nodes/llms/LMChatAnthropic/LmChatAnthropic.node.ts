@@ -1,6 +1,11 @@
 import { ChatAnthropic } from '@langchain/anthropic';
 import type { LLMResult } from '@langchain/core/outputs';
-import { getProxyAgent, makeN8nLlmFailedAttemptHandler, N8nLlmTracing } from '@n8n/ai-utilities';
+import {
+	getProxyAgent,
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
 import {
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -11,8 +16,6 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { searchModels } from './methods/searchModels';
 

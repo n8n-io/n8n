@@ -19,6 +19,8 @@ Commands:
   impact             Analyze impact of file changes (which tests to run)
   method-impact      Find tests that use a specific method (e.g., CanvasPage.addNode)
   tcr                Run TCR (Test && Commit || Revert) workflow
+  discover           Discover test specs and capabilities (for orchestration)
+  orchestrate        Distribute specs across shards using capability-aware bin-packing
 
 Analysis Options:
   --config=<path>    Path to janitor.config.js (default: ./janitor.config.js)
@@ -48,6 +50,8 @@ For command-specific help:
   playwright-janitor impact --help
   playwright-janitor method-impact --help
   playwright-janitor tcr --help
+  playwright-janitor discover --help
+  playwright-janitor orchestrate --help
 `);
 }
 
@@ -130,6 +134,65 @@ Workflow:
 
 Example:
   playwright-janitor baseline && git add .janitor-baseline.json
+`);
+}
+
+export function showDiscoverHelp(): void {
+	console.log(`
+Discover - Find test specs and their capabilities via AST analysis
+
+Statically discovers spec files and extracts capability tags.
+Outputs JSON to stdout. Pipe to jq for human-readable output.
+
+Usage:
+  playwright-janitor discover
+
+Output:
+  { specs: [{ path, capabilities }], skipTags }
+
+Config:
+  skipTags: string[]       Tags that exclude specs (default: [])
+  capabilityPrefix: string Prefix for capability extraction (default: '@capability:')
+
+Skip detection:
+  - test.fixme() and test.skip() are always detected via AST
+  - Specs with ALL tests skipped are excluded from output
+  - skipTags provides additional tag-based filtering
+
+Example:
+  playwright-janitor discover | jq '.specs | length'
+`);
+}
+
+export function showOrchestrateHelp(): void {
+	console.log(`
+Orchestrate - Distribute specs across shards using capability-aware bin-packing
+
+Groups tests by capability to minimize fixture overhead, then uses greedy
+bin-packing to balance test time across shards. Outputs JSON to stdout.
+
+Usage:
+  playwright-janitor orchestrate --shards=<N>                    # Full result as JSON
+  playwright-janitor orchestrate --shards=<N> --shard-index=<I>  # Specs for one shard
+
+Options:
+  --shards=<N>         Number of shards (required)
+  --shard-index=<I>    Output specs for a single shard (0-indexed)
+  --impact             Only include specs affected by changed files (git diff)
+  --file=<path>        With --impact: specify changed files explicitly
+
+Config:
+  orchestration.metricsPath      Path to metrics JSON (relative to rootDir)
+  orchestration.defaultDuration  Duration for specs without metrics (default: 60s)
+  orchestration.maxGroupDuration Max group size before splitting (default: 5min)
+
+Output:
+  { shards: [{ shard, specs, testTime, capabilities, fixtureCount }], totalTestTime }
+
+Examples:
+  playwright-janitor orchestrate --shards=14 | jq '.shards[0].specs'
+  playwright-janitor orchestrate --shards=8 --impact
+  playwright-janitor orchestrate --shards=4 --impact --file=pages/CanvasPage.ts
 `);
 }
 
