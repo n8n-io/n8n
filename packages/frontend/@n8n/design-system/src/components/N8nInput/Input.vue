@@ -458,7 +458,7 @@ defineExpose({ focus, blur, select });
 	> input {
 		padding: 0 var(--input--padding);
 		margin-inline: calc(var(--input--padding) * -1);
-		border-radius: var(--input--radius);
+		border-radius: inherit;
 	}
 
 	@include focus.focus-within-ring;
