@@ -74,7 +74,11 @@ function extractEndpointsFromSpec(): string[] {
 }
 
 function loadManifest(): Manifest {
-	return JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf-8')) as Manifest;
+	try {
+		return JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf-8')) as Manifest;
+	} catch (error) {
+		throw new Error('Failed to parse ' + MANIFEST_RELATIVE + ': ' + String(error));
+	}
 }
 
 describe('n8n node API coverage', () => {
@@ -95,13 +99,13 @@ describe('n8n node API coverage', () => {
 		expect(
 			unregistered,
 			[
-				`API endpoint(s) in the spec are not in the manifest.`,
-				`Add each to: ${MANIFEST_RELATIVE}`,
-				``,
-				`Missing:`,
-				...unregistered.map((ep) => `  - ${ep}`),
-				``,
-				`Example entry:`,
+				'API endpoint(s) in the spec are not in the manifest.',
+				'Add each to: ' + MANIFEST_RELATIVE,
+				'',
+				'Missing:',
+				...unregistered.map((ep) => '  - ' + ep),
+				'',
+				'Example entry:',
 				`  "${unregistered[0] ?? 'METHOD /path'}": ${example}`,
 			].join('\n'),
 		).toEqual([]);
@@ -114,11 +118,11 @@ describe('n8n node API coverage', () => {
 		expect(
 			stale,
 			[
-				`Manifest entry(ies) reference endpoints no longer in the spec.`,
-				`Remove from: ${MANIFEST_RELATIVE}`,
-				``,
-				`Stale:`,
-				...stale.map((ep) => `  - ${ep}`),
+				'Manifest entry(ies) reference endpoints no longer in the spec.',
+				'Remove from: ' + MANIFEST_RELATIVE,
+				'',
+				'Stale:',
+				...stale.map((ep) => '  - ' + ep),
 			].join('\n'),
 		).toEqual([]);
 	});
@@ -131,10 +135,10 @@ describe('n8n node API coverage', () => {
 		expect(
 			missing,
 			[
-				`"excluded" entry(ies) missing required "reason" field.`,
-				`Fix in: ${MANIFEST_RELATIVE}`,
-				``,
-				...missing.map((ep) => `  - ${ep}`),
+				'"excluded" entry(ies) missing required "reason" field.',
+				'Fix in: ' + MANIFEST_RELATIVE,
+				'',
+				...missing.map((ep) => '  - ' + ep),
 			].join('\n'),
 		).toEqual([]);
 	});
