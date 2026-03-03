@@ -79,7 +79,7 @@ export class ChatHubWorkflowService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly chatHubAttachmentService: ChatHubAttachmentService,
-		private readonly chatHubAgentService: ChatHubAgentRepository,
+		private readonly chatHubAgentRepository: ChatHubAgentRepository,
 		private readonly chatHubSettingsService: ChatHubSettingsService,
 		private readonly chatHubCredentialsService: ChatHubCredentialsService,
 		private readonly chatHubToolService: ChatHubToolService,
@@ -317,7 +317,7 @@ export class ChatHubWorkflowService {
 		}
 
 		if (model.provider === 'custom-agent') {
-			const agent = await this.chatHubAgentService.getOneById(model.agentId, user.id, trx);
+			const agent = await this.chatHubAgentRepository.getOneById(model.agentId, user.id, trx);
 
 			if (!agent?.provider || !agent.model) {
 				throw new BadRequestError('Agent not found or has no model configured');
@@ -1267,7 +1267,7 @@ Respond the title only:`,
 		trx: EntityManager,
 		executionMetadata: ChatHubAuthenticationMetadata,
 	) {
-		const agent = await this.chatHubAgentService.getOneById(agentId, user.id, trx);
+		const agent = await this.chatHubAgentRepository.getOneById(agentId, user.id, trx);
 
 		if (!agent) {
 			throw new BadRequestError('Agent not found');
@@ -1436,6 +1436,10 @@ Respond the title only:`,
 	}
 
 	private buildCustomInstructionsContext(systemPrompt: string): string {
+		if (!systemPrompt.trim()) {
+			return '';
+		}
+
 		return `## Instructions from the user
 
 ${systemPrompt
@@ -1451,9 +1455,7 @@ ${systemPrompt
 
 		const fileList = knowledgeItems.map((f) => `- ${f.fileName}`).join('\n');
 
-		return `
-
-## Your Knowledge
+		return `## Your Knowledge
 
 You have access to the following files as a searchable knowledge base:
 

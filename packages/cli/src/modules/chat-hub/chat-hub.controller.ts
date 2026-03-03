@@ -36,7 +36,6 @@ import { Container } from '@n8n/di';
 import { sanitizeFilename } from '@n8n/utils';
 import type { Response } from 'express';
 import multer from 'multer';
-import type Stream from 'node:stream';
 
 import { ChatHubAgentService } from './chat-hub-agent.service';
 import { ChatHubUploadMiddleware } from './chat-hub-upload.middleware';
@@ -112,7 +111,30 @@ export class ChatHubController {
 		const [{ mimeType, fileName }, attachmentAsStreamOrBuffer] =
 			await this.chatAttachmentService.getAttachment(sessionId, messageId, attachmentIndex);
 
-		return await this.sendAttachment(res, mimeType, fileName, attachmentAsStreamOrBuffer);
+		res.setHeader('Content-Type', mimeType);
+
+		if (attachmentAsStreamOrBuffer.fileSize) {
+			res.setHeader('Content-Length', attachmentAsStreamOrBuffer.fileSize);
+		}
+
+		if (!mimeType || !ViewableMimeTypes.includes(mimeType.toLowerCase())) {
+			// Force download if file is not viewable
+			res.setHeader(
+				'Content-Disposition',
+				`attachment${fileName ? `; filename=${sanitizeFilename(fileName)}` : ''}`,
+			);
+		}
+
+		if (attachmentAsStreamOrBuffer.type === 'buffer') {
+			res.send(attachmentAsStreamOrBuffer.buffer);
+			return;
+		}
+
+		return await new Promise<void>((resolve, reject) => {
+			attachmentAsStreamOrBuffer.stream.on('end', resolve);
+			attachmentAsStreamOrBuffer.stream.on('error', reject);
+			attachmentAsStreamOrBuffer.stream.pipe(res);
+		});
 	}
 
 	@GlobalScope('chatHub:message')
@@ -364,44 +386,6 @@ export class ChatHubController {
 	): Promise<void> {
 		await this.chatAgentService.deleteAgentFile(agentId, req.user, fileName);
 		res.status(204).send();
-	}
-
-	/**
-	 * Common method to send attachment data to the response.
-	 * Handles setting headers and streaming/buffering the content.
-	 */
-	private async sendAttachment(
-		res: Response,
-		mimeType: string,
-		fileName: string | undefined,
-		attachmentAsStreamOrBuffer:
-			| { type: 'buffer'; buffer: Buffer<ArrayBufferLike>; fileSize: number }
-			| { type: 'stream'; stream: Stream.Readable; fileSize: number },
-	): Promise<void> {
-		res.setHeader('Content-Type', mimeType);
-
-		if (attachmentAsStreamOrBuffer.fileSize) {
-			res.setHeader('Content-Length', attachmentAsStreamOrBuffer.fileSize);
-		}
-
-		if (!mimeType || !ViewableMimeTypes.includes(mimeType.toLowerCase())) {
-			// Force download if file is not viewable
-			res.setHeader(
-				'Content-Disposition',
-				`attachment${fileName ? `; filename=${sanitizeFilename(fileName)}` : ''}`,
-			);
-		}
-
-		if (attachmentAsStreamOrBuffer.type === 'buffer') {
-			res.send(attachmentAsStreamOrBuffer.buffer);
-			return;
-		}
-
-		return await new Promise<void>((resolve, reject) => {
-			attachmentAsStreamOrBuffer.stream.on('end', resolve);
-			attachmentAsStreamOrBuffer.stream.on('error', reject);
-			attachmentAsStreamOrBuffer.stream.pipe(res);
-		});
 	}
 
 	private assertToolTypeAllowed(type: string, user: AuthenticatedRequest['user']) {
