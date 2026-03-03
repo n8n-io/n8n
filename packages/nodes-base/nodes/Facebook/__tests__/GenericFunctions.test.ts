@@ -1,3 +1,5 @@
+import { createHmac } from 'crypto';
+
 import * as utils from '../GenericFunctions';
 
 jest.mock('n8n-workflow', () => {
@@ -80,7 +82,6 @@ describe('Facebook GenericFunctions', () => {
 		});
 
 		it('should include appsecret_proof and appsecret_time when appSecret is set', async () => {
-			const { createHmac } = require('crypto');
 			const fixedTime = 1700000000;
 			jest.spyOn(Date, 'now').mockReturnValue(fixedTime * 1000);
 
@@ -119,6 +120,19 @@ describe('Facebook GenericFunctions', () => {
 			mockExecuteFunctions.helpers.request.mockResolvedValue({ success: true });
 
 			await utils.facebookApiRequest.call(mockExecuteFunctions, 'GET', '/app', {}, {});
+
+			const requestCall = mockExecuteFunctions.helpers.request.mock.calls[0][0];
+			expect(requestCall.qs).not.toHaveProperty('appsecret_proof');
+			expect(requestCall.qs).not.toHaveProperty('appsecret_time');
+		});
+
+		it('should not include appsecret_proof when appSecret is undefined', async () => {
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				accessToken: 'test-access-token',
+			});
+			mockExecuteFunctions.helpers.request.mockResolvedValue({ success: true });
+
+			await utils.facebookApiRequest.call(mockExecuteFunctions, 'GET', '/me', {}, {});
 
 			const requestCall = mockExecuteFunctions.helpers.request.mock.calls[0][0];
 			expect(requestCall.qs).not.toHaveProperty('appsecret_proof');
