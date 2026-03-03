@@ -103,16 +103,17 @@ const isMcpAccessEnabled = computed(() => {
 	return settingsStore.moduleSettings.mcp?.mcpAccessEnabled ?? false;
 });
 
+const canToggleInstanceMCPAccess = computed(() => isOwner.value || isAdmin.value);
+
 const isWorkflowEligibleForMcpAccess = computed(() => {
 	return isEligibleForMcpAccess(props.workflow);
 });
 
-const canToggleInstanceMCPAccess = computed(() => isOwner.value || isAdmin.value);
-
 const availableActions = computed(() => {
-	if (!workflowDocumentStore?.value?.activeVersionId || workflowsCache.isCacheLoading.value) {
+	if (workflowsCache.isCacheLoading.value) {
 		return [];
 	}
+	const hasPublishedVersion = !!workflowDocumentStore?.value?.activeVersionId;
 
 	const actions: Array<{
 		id: ActionType;
@@ -124,7 +125,7 @@ const availableActions = computed(() => {
 	const suggestedActionSettings = cachedSettings.value?.suggestedActions ?? {};
 
 	// Error workflow action (skip for workflows that are themselves error workflows)
-	if (!isErrorWorkflow.value && !suggestedActionSettings.errorWorkflow?.ignored) {
+	if (!isErrorWorkflow.value && hasPublishedVersion && !suggestedActionSettings.errorWorkflow?.ignored) {
 		actions.push({
 			id: 'errorWorkflow',
 			title: i18n.baseText('workflowProductionChecklist.errorWorkflow.title'),
@@ -136,6 +137,7 @@ const availableActions = computed(() => {
 
 	// Evaluations action
 	if (
+		hasPublishedVersion &&
 		hasAINode.value &&
 		evaluationStore.isEvaluationEnabled &&
 		!suggestedActionSettings.evaluations?.ignored
@@ -150,7 +152,7 @@ const availableActions = computed(() => {
 	}
 
 	// Time saved action
-	if (!suggestedActionSettings.timeSaved?.ignored) {
+	if (hasPublishedVersion && !suggestedActionSettings.timeSaved?.ignored) {
 		actions.push({
 			id: 'timeSaved',
 			title: i18n.baseText('workflowProductionChecklist.timeSaved.title'),

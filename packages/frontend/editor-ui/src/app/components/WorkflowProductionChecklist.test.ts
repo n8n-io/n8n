@@ -33,8 +33,8 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import { createTestNode } from '@/__tests__/mocks';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { MCP_DOCS_PAGE_URL, MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
+import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 
 vi.mock('vue-router', async (importOriginal) => {
 	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -194,7 +194,7 @@ describe('WorkflowProductionChecklist', () => {
 		(useTelemetry as ReturnType<typeof vi.fn>).mockReturnValue(telemetry);
 
 		mcpComposable = {
-			isEligibleForMcpAccess: vi.fn().mockReturnValue(false),
+			isEligibleForMcpAccess: vi.fn().mockReturnValue(true),
 		} as unknown as ReturnType<typeof useMcp>;
 		(useMcp as ReturnType<typeof vi.fn>).mockReturnValue(mcpComposable);
 	});
