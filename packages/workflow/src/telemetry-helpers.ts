@@ -595,7 +595,8 @@ export function generateNodesGraph(
 
 		// Capture ai_model for Language Model nodes
 		if (node.type.startsWith(LANGCHAIN_LM_NODE_TYPE_PREFIX)) {
-			for (const key of ['model', 'modelName']) {
+			const modelNameKeys = ['model', 'modelName'] as const;
+			for (const key of modelNameKeys) {
 				const resolved = resolveParameterValue(node.parameters?.[key]);
 				if (resolved) {
 					nodeItem.ai_model = resolved;
