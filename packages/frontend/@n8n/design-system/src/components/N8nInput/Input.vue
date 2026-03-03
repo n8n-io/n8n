@@ -455,8 +455,7 @@ defineExpose({ focus, blur, select });
 		inset var(--input--border--shadow);
 
 	/** NOTE (@heymynameisrob): Handles autofill colouring as padding from above isn't included **/
-	> textarea,
-	input {
+	> input {
 		padding: 0 var(--input--padding);
 		margin-inline: calc(var(--input--padding) * -1);
 		border-radius: var(--input--radius);
