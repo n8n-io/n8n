@@ -134,6 +134,7 @@ describe('Start - AuthRolesService initialization', () => {
 				eventLoopBlockThreshold: 0,
 			},
 			cache: { backend: 'memory' },
+			taskRunners: {},
 		};
 		// @ts-expect-error - Accessing protected method for testing
 		start.initCrashJournal = jest.fn().mockResolvedValue(undefined);
@@ -183,6 +184,7 @@ describe('Start - AuthRolesService initialization', () => {
 					eventLoopBlockThreshold: 0,
 				},
 				cache: { backend: 'memory' },
+				taskRunners: {},
 			};
 
 			await start.init();
@@ -215,6 +217,7 @@ describe('Start - AuthRolesService initialization', () => {
 					eventLoopBlockThreshold: 0,
 				},
 				cache: { backend: 'memory' },
+				taskRunners: {},
 			};
 
 			await start.init();
