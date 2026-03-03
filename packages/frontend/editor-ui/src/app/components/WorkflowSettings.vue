@@ -26,7 +26,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import type { WorkflowSettings, WorkflowSettingsBinaryMode } from 'n8n-workflow';
-import { deepCopy, BINARY_MODE_COMBINED, BINARY_MODE_SEPARATE } from 'n8n-workflow';
+import { BINARY_MODE_COMBINED, BINARY_MODE_SEPARATE } from 'n8n-workflow';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
@@ -41,8 +41,10 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useDebounce } from '@/app/composables/useDebounce';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
@@ -67,8 +69,11 @@ const sourceControlStore = useSourceControlStore();
 const collaborationStore = useCollaborationStore();
 const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
-const workflowState = injectWorkflowState();
-const workflowDocumentStore = injectWorkflowDocumentStore();
+const workflowDocumentStore = computed(() => {
+	const wfId = workflowsStore.workflowId;
+	if (!wfId) return null;
+	return useWorkflowDocumentStore(createWorkflowDocumentId(wfId));
+});
 const workflowsEEStore = useWorkflowsEEStore();
 const nodeCreatorStore = useNodeCreatorStore();
 const posthogStore = usePostHog();
@@ -548,9 +553,10 @@ const saveSettings = async () => {
 		Object.entries(workflowSettings.value).filter(([, value]) => value !== 'DEFAULT'),
 	);
 
-	const oldSettings = deepCopy(workflowsStore.workflowSettings);
+	const oldSettings = (workflowDocumentStore?.value?.getSettingsSnapshot() ??
+		{}) as IWorkflowSettings;
 
-	workflowState.setWorkflowSettings(localWorkflowSettings);
+	workflowDocumentStore?.value?.setSettings(localWorkflowSettings);
 
 	isLoading.value = false;
 
@@ -561,7 +567,7 @@ const saveSettings = async () => {
 
 	closeDialog();
 
-	void externalHooks.run('workflowSettings.saveSettings', { oldSettings });
+	void externalHooks.run('workflowSettings.saveSettings', { oldSettings: { ...oldSettings } });
 	telemetry.track('User updated workflow settings', {
 		workflow_id: workflowsStore.workflowId,
 		// null and undefined values are removed from the object, but we need the keys to be there
@@ -672,7 +678,8 @@ onMounted(async () => {
 		);
 	}
 
-	const workflowSettingsData = deepCopy(workflowsStore.workflowSettings);
+	const workflowSettingsData = (workflowDocumentStore?.value?.getSettingsSnapshot() ??
+		{}) as IWorkflowSettings;
 
 	if (workflowSettingsData.timeSavedMode === undefined) {
 		workflowSettingsData.timeSavedMode = 'fixed';
