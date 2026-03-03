@@ -1,9 +1,11 @@
+import { PGVectorStore, type PGVectorStoreArgs } from '@langchain/community/vectorstores/pgvector';
+import { createVectorStoreNode, metadataFilterField } from '@n8n/ai-utilities';
 import { configurePostgres } from 'n8n-nodes-base/dist/nodes/Postgres/transport/index';
 import type { PostgresNodeCredentials } from 'n8n-nodes-base/dist/nodes/Postgres/v2/helpers/interfaces';
 import { postgresConnectionTest } from 'n8n-nodes-base/dist/nodes/Postgres/v2/methods/credentialTest';
 import type {
-	ICredentialTestFunctions,
 	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeCredentialTestResult,
@@ -12,28 +14,12 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 import pg from 'pg';
-import {
-	columnNamesField,
-	createPGVectorNodeArgs,
-	distanceStrategyField,
-} from '../shared/pgvector';
 import { getUserScopedSlot } from '../shared/userScoped';
-import { createVectorStoreNode, metadataFilterField } from '@n8n/ai-utilities';
+import { ExtendedPGVectorStore } from '../VectorStorePGVector/VectorStorePGVector.node';
 
 type VectorStorePGVectorScopedApiCredentials = PostgresNodeCredentials & {
 	tableNamePrefix: string;
 };
-
-const insertFields: INodeProperties[] = [
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Option',
-		default: {},
-		options: [columnNamesField],
-	},
-];
 
 const retrieveFields: INodeProperties[] = [
 	{
@@ -42,7 +28,7 @@ const retrieveFields: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
-		options: [distanceStrategyField, columnNamesField, metadataFilterField],
+		options: [metadataFilterField],
 	},
 ];
 
@@ -148,41 +134,68 @@ async function vectorStorePGVectorScopedApiConnectionTest(
 	return connectionResult;
 }
 
-export class VectorStorePGVectorScoped extends createVectorStoreNode(
-	createPGVectorNodeArgs({
-		hidden: true,
-		methods: {
-			credentialTest: { vectorStorePGVectorScopedApiConnectionTest },
-			actionHandler: { deleteDocuments },
-		},
-		meta: {
-			description:
-				'Work with your data in Postgresql with PGVector, scoped per user via credential table prefix',
-			icon: 'file:postgres.svg',
-			displayName: 'Postgres PGVector Store (User-Scoped)',
-			docsUrl:
-				'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstorepgvector/',
-			name: 'vectorStorePGVectorScoped',
-			credentials: [
-				{
-					name: 'vectorStorePGVectorScopedApi',
-					required: true,
-					testedBy: 'vectorStorePGVectorScopedApiConnectionTest',
-				},
-			],
-			operationModes: ['load', 'insert', 'retrieve', 'retrieve-as-tool'],
-		},
-		sharedFields: [],
-		insertFields,
-		loadFields: retrieveFields,
-		retrieveFields,
-		async getPoolAndTableName(context, itemIndex) {
-			const credentials = await context.getCredentials<VectorStorePGVectorScopedApiCredentials>(
-				'vectorStorePGVectorScopedApi',
-			);
-			const tableName = getUserScopedSlot(context, credentials.tableNamePrefix, itemIndex);
-			const pgConf = await configurePostgres.call(context, credentials);
-			return { pool: pgConf.db.$pool as unknown as pg.Pool, tableName };
-		},
-	}),
-) {}
+export class VectorStorePGVectorScoped extends createVectorStoreNode({
+	hidden: true,
+	methods: {
+		credentialTest: { vectorStorePGVectorScopedApiConnectionTest },
+		actionHandler: { deleteDocuments },
+	},
+	meta: {
+		description:
+			'Work with your data in Postgresql with PGVector, scoped per user via credential table prefix',
+		icon: 'file:postgres.svg',
+		displayName: 'Postgres PGVector Store (User-Scoped)',
+		docsUrl:
+			'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstorepgvector/',
+		name: 'vectorStorePGVectorScoped',
+		credentials: [
+			{
+				name: 'vectorStorePGVectorScopedApi',
+				required: true,
+				testedBy: 'vectorStorePGVectorScopedApiConnectionTest',
+			},
+		],
+		operationModes: ['load', 'insert', 'retrieve', 'retrieve-as-tool'],
+	},
+	sharedFields: [],
+	insertFields: [],
+	loadFields: retrieveFields,
+	retrieveFields,
+	async getVectorStoreClient(context, filter, embeddings, itemIndex) {
+		const credentials = await context.getCredentials<VectorStorePGVectorScopedApiCredentials>(
+			'vectorStorePGVectorScopedApi',
+		);
+		const tableName = getUserScopedSlot(context, credentials.tableNamePrefix, itemIndex);
+		const pgConf = await configurePostgres.call(context, credentials as PostgresNodeCredentials);
+		const pool = pgConf.db.$pool as unknown as pg.Pool;
+
+		const config: PGVectorStoreArgs = {
+			pool,
+			tableName,
+			filter,
+		};
+
+		return await ExtendedPGVectorStore.initialize(embeddings, config);
+	},
+
+	async populateVectorStore(context, embeddings, documents, itemIndex) {
+		const credentials = await context.getCredentials<VectorStorePGVectorScopedApiCredentials>(
+			'vectorStorePGVectorScopedApi',
+		);
+		const tableName = getUserScopedSlot(context, credentials.tableNamePrefix, itemIndex);
+		const pgConf = await configurePostgres.call(context, credentials as PostgresNodeCredentials);
+		const pool = pgConf.db.$pool as unknown as pg.Pool;
+
+		const config: PGVectorStoreArgs = {
+			pool,
+			tableName,
+		};
+
+		const vectorStore = await PGVectorStore.fromDocuments(documents, embeddings, config);
+		vectorStore.client?.release();
+	},
+
+	releaseVectorStoreClient(vectorStore) {
+		vectorStore.client?.release();
+	},
+}) {}
