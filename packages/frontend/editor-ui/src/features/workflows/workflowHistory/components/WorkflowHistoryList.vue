@@ -8,8 +8,8 @@ import type {
 	WorkflowHistoryRequestParams,
 } from '@n8n/rest-api-client/api/workflowHistory';
 import WorkflowHistoryListItem from './WorkflowHistoryListItem.vue';
+import WorkflowHistoryUpgradeFooter from './WorkflowHistoryUpgradeFooter.vue';
 import type { IUser } from 'n8n-workflow';
-import { I18nT } from 'vue-i18n';
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 import { N8nLoading, N8nIcon, N8nText } from '@n8n/design-system';
 import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
@@ -262,17 +262,11 @@ const pruneTimeDisplay = computed(() => {
 			<N8nLoading :rows="3" class="mb-xs" />
 			<N8nLoading :rows="3" class="mb-xs" />
 		</li>
-		<li v-if="props.shouldUpgrade" :class="$style.retention">
-			<span data-test-id="prune-time-display">
-				{{ pruneTimeDisplay }}
-			</span>
-			<I18nT keypath="workflowHistory.upgrade" tag="span" scope="global">
-				<template #link>
-					<a href="#" @click="emit('upgrade')">
-						{{ i18n.baseText('workflowHistory.upgrade.link') }}
-					</a>
-				</template>
-			</I18nT>
+		<li v-if="props.shouldUpgrade">
+			<WorkflowHistoryUpgradeFooter
+				:prune-time-display="pruneTimeDisplay"
+				@upgrade="emit('upgrade')"
+			/>
 		</li>
 	</ul>
 </template>
@@ -296,14 +290,6 @@ const pruneTimeDisplay = computed(() => {
 
 .sentinel {
 	height: 1px;
-}
-
-.retention {
-	display: grid;
-	padding: var(--spacing--sm);
-	font-size: var(--font-size--2xs);
-	line-height: var(--line-height--lg);
-	text-align: center;
 }
 
 .groupHeader {
