@@ -105,7 +105,7 @@ const getPublishedUserName = (userId: string | undefined | null) => {
 
 const wrapperProps = computed(() => {
 	if (!versionPublishInfo.value) {
-		return {};
+		return null;
 	}
 
 	const publishedBy = getPublishedUserName(versionPublishInfo.value.userId);
@@ -162,7 +162,10 @@ onMounted(() => {
 });
 </script>
 <template>
-	<component :is="wrapperProps ? WorkflowHistoryPublishedTooltip : 'span'" v-bind="wrapperProps">
+	<component
+		:is="wrapperProps ? WorkflowHistoryPublishedTooltip : 'span'"
+		v-bind="wrapperProps ?? {}"
+	>
 		<li
 			ref="itemElement"
 			data-test-id="workflow-history-list-item"

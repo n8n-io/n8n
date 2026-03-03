@@ -37,7 +37,7 @@ const selectedOption = computed(() => {
 const selectedOptionWrapperProps = computed(() => {
 	const publishInfo = selectedOption.value?.publishInfo;
 	if (!publishInfo) {
-		return {};
+		return null;
 	}
 
 	return {
@@ -135,7 +135,7 @@ const shouldShowUpgradeFooter = computed(() => Boolean(unref(workflowHistoryStor
 		<div ref="popperContainer" />
 		<component
 			:is="selectedOptionHasPublishInfo ? WorkflowHistoryPublishedTooltip : 'span'"
-			v-bind="selectedOptionWrapperProps"
+			v-bind="selectedOptionWrapperProps ?? {}"
 		>
 			<ElSelect
 				:model-value="props.modelValue"
