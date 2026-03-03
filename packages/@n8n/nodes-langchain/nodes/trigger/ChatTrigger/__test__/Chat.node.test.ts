@@ -305,7 +305,6 @@ describe('Test Chat Node', () => {
 			const result = await chat.onMessage(mockExecuteFunctions, message);
 
 			expect(result).toEqual([[message]]);
-			expect(result).not.toEqual([differentInputData]);
 		});
 
 		it('v1.2 should return output data directly without nesting into `data` field (except `approved`)', async () => {
