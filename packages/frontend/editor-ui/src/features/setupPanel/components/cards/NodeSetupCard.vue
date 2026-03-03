@@ -293,6 +293,7 @@ const cardComplete = computed(() => {
 					:app-name="state.credentialDisplayName ?? ''"
 					:credential-type="state.credentialType ?? ''"
 					:selected-credential-id="state.selectedCredentialId ?? null"
+					edit-icon-only
 					@credential-selected="onCredentialSelected"
 					@credential-deselected="onCredentialDeselected"
 				/>

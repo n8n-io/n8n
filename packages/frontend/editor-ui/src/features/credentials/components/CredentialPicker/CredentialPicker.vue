@@ -7,7 +7,7 @@ import CredentialsDropdown from './CredentialsDropdown.vue';
 import { useI18n } from '@n8n/i18n';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
 
-import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import type { ButtonProps } from '@n8n/design-system';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -24,6 +24,7 @@ const props = defineProps<{
 	showDelete?: boolean;
 	hideCreateNew?: boolean;
 	createButtonVariant?: ButtonProps['variant'];
+	editIconOnly?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -223,13 +224,24 @@ watch(
 				:content="i18n.baseText('nodeCredentials.updateCredential.permissionDenied')"
 				:placement="'top'"
 			>
+				<div
+					v-if="props.editIconOnly"
+					:class="$style.editIcon"
+					data-test-id="credential-edit-button"
+				>
+					<N8nIcon
+						icon="pen"
+						class="clickable"
+						:title="i18n.baseText('nodeCredentials.updateCredential')"
+						@click="editCredential()"
+					/>
+				</div>
 				<N8nIconButton
+					v-else
 					variant="subtle"
 					icon="pen"
 					size="small"
-					:class="{
-						[$style.edit]: true,
-					}"
+					:class="$style.edit"
 					:title="i18n.baseText('nodeCredentials.updateCredential')"
 					data-test-id="credential-edit-button"
 					:disabled="!credentialPermissions.update"
@@ -271,6 +283,7 @@ watch(
 <style lang="scss" module>
 .dropdown {
 	display: flex;
+	align-items: center;
 	gap: var(--spacing--2xs);
 }
 
@@ -280,6 +293,20 @@ watch(
 	align-items: center;
 	min-width: 20px;
 	font-size: var(--font-size--sm);
+}
+
+.editIcon {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	color: var(--color--text);
+	margin-left: var(--spacing--3xs);
+	font-size: var(--font-size--sm);
+
+	&:hover,
+	&:focus {
+		color: var(--color--primary);
+	}
 }
 
 .createButton {
