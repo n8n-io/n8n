@@ -5,6 +5,9 @@ import { ref, useCssModule } from 'vue';
 import type { ChatMessageContentChunk } from '@n8n/api-types';
 import ChatButtons from './ChatButtons.vue';
 import { useI18n } from '@n8n/i18n';
+import { N8nButton } from '@n8n/design-system';
+import { useUIStore } from '@/app/stores/ui.store';
+import { CHAT_HUB_MEMORY_SETTINGS_MODAL_KEY } from '@/features/ai/chatHub/constants';
 
 const {
 	source,
@@ -22,6 +25,11 @@ const styles = useCssModule();
 const markdown = useChatHubMarkdownOptions(styles.codeBlockActions, styles.tableContainer);
 const hoveredCodeBlockActions = ref<HTMLElement | null>(null);
 const i18n = useI18n();
+const uiStore = useUIStore();
+
+function openMemorySettings() {
+	uiStore.openModal(CHAT_HUB_MEMORY_SETTINGS_MODAL_KEY);
+}
 
 function getHoveredCodeBlockContent() {
 	const idx = hoveredCodeBlockActions.value?.getAttribute('data-markdown-token-idx');
@@ -89,13 +97,33 @@ defineExpose({
 		v-else-if="source.type === 'memory-create' && !source.isIncomplete"
 		:class="$style.memoryCommand"
 	>
-		{{ i18n.baseText('chatHub.message.memoryUpdated') }}: <b>{{ source.item }}</b>
+		<span
+			>{{ i18n.baseText('chatHub.message.memoryUpdated') }}: <b>{{ source.item }}</b></span
+		>
+		<N8nButton
+			icon="settings"
+			variant="subtle"
+			size="small"
+			square
+			:class="$style.commandAction"
+			@click="openMemorySettings"
+		/>
 	</div>
 	<div
 		v-else-if="source.type === 'memory-edit' && !source.isIncomplete"
 		:class="$style.memoryCommand"
 	>
-		{{ i18n.baseText('chatHub.message.memoryUpdated') }}: <b>{{ source.item }}</b>
+		<span
+			>{{ i18n.baseText('chatHub.message.memoryUpdated') }}: <b>{{ source.item }}</b></span
+		>
+		<N8nButton
+			icon="settings"
+			variant="subtle"
+			size="small"
+			square
+			:class="$style.commandAction"
+			@click="openMemorySettings"
+		/>
 	</div>
 </template>
 
@@ -465,17 +493,25 @@ defineExpose({
 	padding: var(--spacing--sm);
 	margin-bottom: var(--spacing--sm);
 	background-color: transparent;
-	display: block;
 	width: 100%;
 	text-align: left;
 }
 
 .documentCommand {
+	display: block;
 	font-weight: var(--font-weight--regular);
 	cursor: pointer;
 }
 
 .memoryCommand {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--xs);
 	font-size: var(--font-size--sm);
+}
+
+.commandAction {
+	margin-block: calc(-1 * var(--spacing--2xs));
 }
 </style>

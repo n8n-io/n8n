@@ -7,15 +7,20 @@ import { MAX_MEMORY_ENTRIES } from './chat-hub.constants';
 export class ChatHubContextMemoryService {
 	constructor(private readonly memoryRepository: ChatHubContextMemoryItemRepository) {}
 
-	async getMemoryItems(userId: string): Promise<string[]> {
+	async getMemoryItems(userId: string): Promise<Array<{ item: string; sessionId: string }>> {
 		const items = await this.memoryRepository.getAllByUserId(userId);
-		return items.map(({ item }) => item);
+		return items.map(({ item, sessionId }) => ({ item, sessionId }));
 	}
 
-	async addMemoryItem(userId: string, item: string): Promise<void> {
+	async addMemoryItem(
+		userId: string,
+		sessionId: string,
+		messageId: string,
+		item: string,
+	): Promise<void> {
 		const count = await this.memoryRepository.countBy({ userId });
 		if (count >= MAX_MEMORY_ENTRIES) return;
-		await this.memoryRepository.insert({ userId, item });
+		await this.memoryRepository.insert({ userId, sessionId, messageId, item });
 	}
 
 	async deleteMemoryItemByIndex(userId: string, index: number): Promise<void> {

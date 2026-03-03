@@ -6,12 +6,22 @@ export class CreateChatHubContextMemoryItemsTable1772000000000 implements Revers
 			.withColumns(
 				column('id').uuid.primary.notNull,
 				column('userId').uuid.notNull,
+				column('sessionId').uuid.notNull,
+				column('messageId').uuid.notNull,
 				column('item').text.notNull,
 			)
 			.withForeignKey('userId', {
 				tableName: 'user',
 				columnName: 'id',
 				onDelete: 'CASCADE',
+			})
+			.withForeignKey('sessionId', {
+				tableName: 'chat_hub_sessions',
+				columnName: 'id',
+			})
+			.withForeignKey('messageId', {
+				tableName: 'chat_hub_messages',
+				columnName: 'id',
 			})
 			.withIndexOn(['userId']).withTimestamps;
 	}

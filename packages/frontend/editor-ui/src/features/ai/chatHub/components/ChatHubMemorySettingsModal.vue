@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
@@ -8,6 +9,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { N8nActionToggle, N8nButton, N8nHeading, N8nText } from '@n8n/design-system';
 import { useChatStore } from '../chat.store';
 import { clearAllMemoryApi, deleteMemoryItemApi } from '../chat.api';
+import { CHAT_CONVERSATION_VIEW } from '../constants';
 
 defineProps<{
 	modalName: string;
@@ -18,15 +20,16 @@ const { showError } = useToast();
 const { confirm } = useMessage();
 const rootStore = useRootStore();
 const chatStore = useChatStore();
+const router = useRouter();
 
-const memoryItems = computed(() => {
-	return chatStore.memory
-		.split('\n')
-		.map((f) => f.trim())
-		.filter((f) => f.length > 0);
-});
+const memoryItems = computed(() => chatStore.memory);
 
 const rowActions = computed(() => [
+	{
+		label: i18n.baseText('settings.chatHub.memory.openConversation'),
+		value: 'open-conversation',
+		type: 'external-link' as const,
+	},
 	{ label: i18n.baseText('settings.chatHub.memory.action.delete'), value: 'delete' },
 ]);
 
@@ -38,7 +41,15 @@ async function fetchMemory() {
 	}
 }
 
-async function onMemoryRowAction(_action: string, index: number) {
+async function onMemoryRowAction(action: string, index: number) {
+	if (action === 'open-conversation') {
+		const sessionId = memoryItems.value[index]?.sessionId;
+		if (sessionId) {
+			const url = router.resolve({ name: CHAT_CONVERSATION_VIEW, params: { id: sessionId } }).href;
+			window.open(url, '_blank');
+		}
+		return;
+	}
 	await onDeleteMemoryFact(index);
 }
 
@@ -82,14 +93,12 @@ onMounted(fetchMemory);
 		</template>
 		<template #content>
 			<div :class="$style.content">
-				<div v-if="memoryItems.length === 0" :class="$style.empty">
-					<N8nText color="text-light">
-						{{ i18n.baseText('settings.chatHub.memory.empty') }}
-					</N8nText>
-				</div>
+				<N8nText v-if="memoryItems.length === 0" color="text-light">
+					{{ i18n.baseText('settings.chatHub.memory.empty') }}
+				</N8nText>
 				<ul v-else :class="$style.list">
-					<li v-for="(item, index) in memoryItems" :key="index" :class="$style.row">
-						<N8nText :class="$style.item">{{ item }}</N8nText>
+					<li v-for="(memoryItem, index) in memoryItems" :key="index" :class="$style.row">
+						<N8nText :class="$style.item">{{ memoryItem.item }}</N8nText>
 						<N8nActionToggle
 							placement="bottom"
 							:actions="rowActions"
@@ -115,11 +124,6 @@ onMounted(fetchMemory);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
-	padding: var(--spacing--sm) 0 var(--spacing--md);
-}
-
-.empty {
-	padding: var(--spacing--sm) 0;
 }
 
 .list {

@@ -210,9 +210,15 @@ export const fetchChatSettingsApi = async (
 	}>(context, 'GET', '/chat/settings');
 };
 
-export const fetchChatMemoryApi = async (context: IRestApiContext): Promise<string> => {
-	const response = await makeRestApiRequest<{ memory: string }>(context, 'GET', '/chat/memory');
-	return response.memory;
+export const fetchChatMemoryApi = async (
+	context: IRestApiContext,
+): Promise<Array<{ item: string; sessionId: string }>> => {
+	const response = await makeRestApiRequest<{ items: Array<{ item: string; sessionId: string }> }>(
+		context,
+		'GET',
+		'/chat/memory',
+	);
+	return response.items;
 };
 
 export const fetchChatProviderSettingsApi = async (

@@ -67,7 +67,7 @@ export class ChatHubSettingsController {
 	@GlobalScope('chatHub:message')
 	async getMemory(req: AuthenticatedRequest) {
 		const items = await this.memoryService.getMemoryItems(req.user.id);
-		return { memory: items.join('\n') };
+		return { items };
 	}
 
 	@Delete('/memory')

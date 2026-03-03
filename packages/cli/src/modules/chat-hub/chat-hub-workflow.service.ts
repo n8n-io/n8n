@@ -575,7 +575,7 @@ export class ChatHubWorkflowService {
 
 	getSystemMessageMetadata(
 		timeZone: string,
-		memory: string[] = [],
+		memory: Array<{ item: string; sessionId: string }> = [],
 		capabilities?: ChatCapabilities,
 	) {
 		if (inE2ETests) {
@@ -595,7 +595,7 @@ export class ChatHubWorkflowService {
 
 The following items about the user have been remembered from previous conversations:
 
-${memory.map((item, i) => `${i + 1}. ${item}`).join('\n')}
+${memory.map(({ item }, i) => `${i + 1}. ${item}`).join('\n')}
 
 `
 				: '';

@@ -249,7 +249,7 @@ export class ChatHubExecutionService {
 
 				// Extract and save any memory facts from the AI response
 				if (message.status === 'success' && message.content) {
-					await this.extractAndSaveMemoryItems(user.id, message.content);
+					await this.extractAndSaveMemoryItems(user.id, sessionId, message.id, message.content);
 				}
 
 				// End the stream for this message
@@ -664,12 +664,17 @@ export class ChatHubExecutionService {
 	/**
 	 * Parse AI message content for memory commands and save/update items
 	 */
-	private async extractAndSaveMemoryItems(userId: string, content: string): Promise<void> {
+	private async extractAndSaveMemoryItems(
+		userId: string,
+		sessionId: string,
+		messageId: string,
+		content: string,
+	): Promise<void> {
 		const chunks = parseMessage({ type: 'ai', content });
 		for (const chunk of chunks) {
 			if (chunk.type === 'memory-create' && !chunk.isIncomplete && chunk.item) {
 				try {
-					await this.chatHubMemoryService.addMemoryItem(userId, chunk.item);
+					await this.chatHubMemoryService.addMemoryItem(userId, sessionId, messageId, chunk.item);
 				} catch (error) {
 					this.logger.warn('Failed to save memory item', {
 						cause: error instanceof Error ? error.message : String(error),
@@ -680,7 +685,7 @@ export class ChatHubExecutionService {
 					if (chunk.index > 0) {
 						await this.chatHubMemoryService.deleteMemoryItemByIndex(userId, chunk.index - 1);
 					}
-					await this.chatHubMemoryService.addMemoryItem(userId, chunk.item);
+					await this.chatHubMemoryService.addMemoryItem(userId, sessionId, messageId, chunk.item);
 				} catch (error) {
 					this.logger.warn('Failed to update memory item', {
 						cause: error instanceof Error ? error.message : String(error),

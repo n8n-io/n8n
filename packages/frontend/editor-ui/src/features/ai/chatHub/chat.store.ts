@@ -105,7 +105,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	const streaming = ref<ChatStreamingState>();
 	const settingsLoading = ref(false);
 	const settings = ref<Record<ChatHubLLMProvider, ChatProviderSettingsDto> | null>(null);
-	const memory = ref<string>('');
+	const memory = ref<Array<{ item: string; sessionId: string }>>([]);
 	const configuredTools = ref<ChatHubToolDto[]>([]);
 	const configuredToolsLoaded = ref(false);
 
