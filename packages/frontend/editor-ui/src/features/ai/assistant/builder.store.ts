@@ -51,6 +51,7 @@ import type { PlanMode } from '@/features/ai/assistant/assistant.types';
 import {
 	isPlanModePlanMessage,
 	isPlanModeQuestionsMessage,
+	isWebFetchApprovalCustomMessage,
 } from '@/features/ai/assistant/assistant.types';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import { useCodeDiff } from '@/features/ai/assistant/composables/useCodeDiff';
@@ -277,7 +278,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const pendingInterruptMessage = computed(() => {
 		for (let i = chatMessages.value.length - 1; i >= 0; i--) {
 			const msg = chatMessages.value[i];
-			if (isPlanModeQuestionsMessage(msg) || isPlanModePlanMessage(msg)) {
+			if (
+				isPlanModeQuestionsMessage(msg) ||
+				isPlanModePlanMessage(msg) ||
+				isWebFetchApprovalCustomMessage(msg)
+			) {
 				return msg;
 			}
 			// Stop searching if we hit a user message — any interrupt before that is already resolved
@@ -304,7 +309,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 */
 	const shouldDisableChatInput = computed(() => {
 		const msg = pendingInterruptMessage.value;
-		return msg ? isPlanModeQuestionsMessage(msg) : false;
+		if (!msg) return false;
+		return isPlanModeQuestionsMessage(msg) || isWebFetchApprovalCustomMessage(msg);
 	});
 
 	// Chat management functions
@@ -555,11 +561,14 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		messageId: string,
 		focusedNodeNames?: string[],
 		planAnswers?: PlanMode.QuestionResponse[],
+		skipUserMessage?: boolean,
 	) {
-		const userMsg = planAnswers
-			? createUserAnswersMessage(planAnswers, messageId)
-			: createUserMessage(userMessage, messageId, undefined, focusedNodeNames ?? []);
-		chatMessages.value = clearRatingLogic([...chatMessages.value, userMsg]);
+		if (!skipUserMessage) {
+			const userMsg = planAnswers
+				? createUserAnswersMessage(planAnswers, messageId)
+				: createUserMessage(userMessage, messageId, undefined, focusedNodeNames ?? []);
+			chatMessages.value = clearRatingLogic([...chatMessages.value, userMsg]);
+		}
 		const thinkingKey =
 			userMessage.trim() === '/compact'
 				? 'aiAssistant.thinkingSteps.compacting'
@@ -721,6 +730,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		planAnswers?: PlanMode.QuestionResponse[];
 		/** Whether this is a help question (e.g. credential or error help) that should not lock the canvas */
 		helpMessage?: boolean;
+		/** When true, skip adding the user message bubble to chat (e.g. web_fetch approval decisions shown inline) */
+		skipUserMessage?: boolean;
 	}) {
 		isHelpStreaming.value = Boolean(options.helpMessage);
 		if (streaming.value) {
@@ -793,7 +804,13 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		resetManualExecutionStats();
 
-		prepareForStreaming(text, userMessageId, focusedNodeNames, options.planAnswers);
+		prepareForStreaming(
+			text,
+			userMessageId,
+			focusedNodeNames,
+			options.planAnswers,
+			options.skipUserMessage,
+		);
 
 		const executionResult = workflowsStore.workflowExecutionData?.data?.resultData;
 		const modeForPayload =

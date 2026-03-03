@@ -42,12 +42,14 @@ import {
 	isPlanModePlanMessage,
 	isPlanModeQuestionsMessage,
 	isPlanModeUserAnswersMessage,
+	isWebFetchApprovalCustomMessage,
 	type PlanMode,
 } from '../../assistant.types';
 import PlanDisplayMessage from './PlanDisplayMessage.vue';
 import PlanModeSelector from './PlanModeSelector.vue';
 import PlanQuestionsMessage from './PlanQuestionsMessage.vue';
 import UserAnswersMessage from './UserAnswersMessage.vue';
+import WebFetchApprovalMessage from './WebFetchApprovalMessage.vue';
 
 const emit = defineEmits<{
 	close: [];
@@ -151,7 +153,8 @@ const showExecuteMessage = computed(() => {
 	const hasPendingInteraction =
 		lastAssistantMessage &&
 		(isPlanModeQuestionsMessage(lastAssistantMessage) ||
-			isPlanModePlanMessage(lastAssistantMessage));
+			isPlanModePlanMessage(lastAssistantMessage) ||
+			isWebFetchApprovalCustomMessage(lastAssistantMessage));
 
 	return (
 		!builderStore.streaming &&
@@ -252,6 +255,25 @@ function isLastPlanMessage(message: PlanMode.PlanMessage): boolean {
 	if (idx === -1) return false;
 	// Check that no user message or other content exists after this plan
 	return !messages.slice(idx + 1).some((m) => m.role === 'user');
+}
+
+async function onWebFetchDecision(payload: {
+	requestId: string;
+	url: string;
+	action: 'allow_once' | 'allow_domain' | 'deny';
+}) {
+	await builderStore.sendChatMessage({
+		text:
+			payload.action === 'deny'
+				? i18n.baseText('aiAssistant.builder.webFetch.deny')
+				: payload.action === 'allow_domain'
+					? i18n.baseText('aiAssistant.builder.webFetch.allowDomain', {
+							interpolate: { domain: '' },
+						})
+					: i18n.baseText('aiAssistant.builder.webFetch.allowOnce'),
+		resumeData: payload,
+		skipUserMessage: true,
+	});
 }
 
 async function onUserMessage(content: string) {
@@ -599,6 +621,12 @@ defineExpose({
 				<UserAnswersMessage
 					v-else-if="isPlanModeUserAnswersMessage(message)"
 					:answers="message.data.answers"
+				/>
+				<WebFetchApprovalMessage
+					v-else-if="isWebFetchApprovalCustomMessage(message)"
+					:data="message.data"
+					:disabled="builderStore.streaming"
+					@decision="onWebFetchDecision"
 				/>
 			</template>
 			<template

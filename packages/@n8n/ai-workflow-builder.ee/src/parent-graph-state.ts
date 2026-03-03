@@ -118,4 +118,16 @@ export const ParentGraphState = Annotation.Root({
 		reducer: (x, y) => y ?? x,
 		default: () => undefined,
 	}),
+
+	// Web Fetch: Per-session approved domains for web_fetch tool
+	approvedDomains: Annotation<string[]>({
+		reducer: (x, y) => [...new Set([...x, ...y])],
+		default: () => [],
+	}),
+
+	// Web Fetch: Per-turn fetch count (reset each turn)
+	webFetchCount: Annotation<number>({
+		reducer: (_x, y) => y,
+		default: () => 0,
+	}),
 });

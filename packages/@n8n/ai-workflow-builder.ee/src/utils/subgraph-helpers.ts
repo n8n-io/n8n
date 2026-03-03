@@ -14,6 +14,7 @@ interface CommandUpdate {
 	templateIds?: number[];
 	cachedTemplates?: WorkflowMetadata[];
 	bestPractices?: string;
+	approvedDomains?: string[];
 }
 
 /**
@@ -56,6 +57,14 @@ function isCommandUpdate(value: unknown): value is CommandUpdate {
 	) {
 		return false;
 	}
+	// approvedDomains is optional, but if present must be an array
+	if (
+		'approvedDomains' in obj &&
+		obj.approvedDomains !== undefined &&
+		!Array.isArray(obj.approvedDomains)
+	) {
+		return false;
+	}
 	return true;
 }
 
@@ -82,6 +91,7 @@ export async function executeSubgraphTools(
 	templateIds?: number[];
 	cachedTemplates?: WorkflowMetadata[];
 	bestPractices?: string;
+	approvedDomains?: string[];
 }> {
 	const lastMessage = state.messages[state.messages.length - 1];
 
@@ -130,6 +140,7 @@ export async function executeSubgraphTools(
 	const templateIds: number[] = [];
 	const cachedTemplates: WorkflowMetadata[] = [];
 	let bestPractices: string | undefined;
+	const approvedDomains: string[] = [];
 
 	for (const result of toolResults) {
 		if (isCommand(result)) {
@@ -150,6 +161,9 @@ export async function executeSubgraphTools(
 				if (result.update.bestPractices) {
 					bestPractices = result.update.bestPractices;
 				}
+				if (result.update.approvedDomains) {
+					approvedDomains.push(...result.update.approvedDomains);
+				}
 			}
 		} else if (isBaseMessage(result)) {
 			// Direct message (ToolMessage, AIMessage, etc.)
@@ -163,6 +177,7 @@ export async function executeSubgraphTools(
 		templateIds?: number[];
 		cachedTemplates?: WorkflowMetadata[];
 		bestPractices?: string;
+		approvedDomains?: string[];
 	} = {};
 
 	if (messages.length > 0) {
@@ -183,6 +198,10 @@ export async function executeSubgraphTools(
 
 	if (bestPractices) {
 		stateUpdate.bestPractices = bestPractices;
+	}
+
+	if (approvedDomains.length > 0) {
+		stateUpdate.approvedDomains = approvedDomains;
 	}
 
 	return stateUpdate;

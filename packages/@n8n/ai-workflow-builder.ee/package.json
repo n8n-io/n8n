@@ -54,6 +54,8 @@
     }
   },
   "dependencies": {
+    "@mozilla/readability": "0.6.0",
+    "jsdom": "23.0.1",
     "@langchain/anthropic": "catalog:",
     "@langchain/core": "catalog:",
     "@langchain/langgraph": "1.0.2",

@@ -41,6 +41,7 @@ import { createUpdateNodeParametersTool } from '../tools/update-node-parameters.
 import { mermaidStringify } from '../tools/utils/mermaid.utils';
 import { createValidateConfigurationTool } from '../tools/validate-configuration.tool';
 import { createValidateStructureTool } from '../tools/validate-structure.tool';
+import { createWebFetchTool } from '../tools/web-fetch.tool';
 // Types and utilities
 import type { CoordinationLogEntry } from '../types/coordination';
 import { createBuilderMetadata } from '../types/coordination';
@@ -137,6 +138,18 @@ export const BuilderSubgraphState = Annotation.Root({
 		reducer: (x, y) => y ?? x,
 		default: () => [],
 	}),
+
+	// Web Fetch: Per-session approved domains
+	approvedDomains: Annotation<string[]>({
+		reducer: (x, y) => [...new Set([...x, ...y])],
+		default: () => [],
+	}),
+
+	// Web Fetch: Per-turn fetch count
+	webFetchCount: Annotation<number>({
+		reducer: (_x, y) => y,
+		default: () => 0,
+	}),
 });
 
 export interface BuilderSubgraphConfig {
@@ -207,6 +220,8 @@ export class BuilderSubgraph extends BaseSubgraph<
 			// Workflow context tools
 			createGetWorkflowOverviewTool(config.logger),
 			createGetNodeContextTool(config.logger),
+			// Web fetch tool
+			createWebFetchTool(),
 		];
 
 		// Conditionally add resource locator tool if callback is provided
@@ -463,6 +478,8 @@ export class BuilderSubgraph extends BaseSubgraph<
 			instanceUrl: this.instanceUrl,
 			messages: [contextMessage], // Context already in messages
 			cachedTemplates: parentState.cachedTemplates,
+			approvedDomains: parentState.approvedDomains ?? [],
+			webFetchCount: 0, // Reset per-turn counter
 		};
 	}
 
@@ -542,6 +559,7 @@ export class BuilderSubgraph extends BaseSubgraph<
 			planFeedback: null,
 			planPrevious: null,
 			messages: toolMessages,
+			approvedDomains: subgraphOutput.approvedDomains ?? [],
 		};
 	}
 }
