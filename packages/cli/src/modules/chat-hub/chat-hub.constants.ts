@@ -26,6 +26,7 @@ export const EXECUTION_FINISHED_STATUSES: ExecutionStatus[] = [
 ] as const satisfies ExecutionStatus[];
 export const TOOLS_AGENT_NODE_MIN_VERSION = 2.2;
 export const CHAT_TRIGGER_NODE_MIN_VERSION = 1.2;
+export const MAX_MEMORY_ENTRIES = 3;
 
 export const PROVIDER_NODE_TYPE_MAP: Record<ChatHubLLMProvider, INodeTypeNameVersion> = {
 	openai: {

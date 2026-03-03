@@ -6,7 +6,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { N8nActionToggle, N8nButton, N8nInputLabel, N8nText } from '@n8n/design-system';
 import { useChatStore } from '../chat.store';
-import { clearAllMemoryApi, deleteMemoryFactApi } from '../chat.api';
+import { clearAllMemoryApi, deleteMemoryItemApi } from '../chat.api';
 
 const i18n = useI18n();
 const { showError } = useToast();
@@ -14,7 +14,7 @@ const { confirm } = useMessage();
 const rootStore = useRootStore();
 const chatStore = useChatStore();
 
-const memoryFacts = computed(() => {
+const memoryItems = computed(() => {
 	return chatStore.memory
 		.split('\n')
 		.map((f) => f.trim())
@@ -27,7 +27,7 @@ const rowActions = computed(() => [
 
 async function fetchMemory() {
 	try {
-		await chatStore.fetchAllChatSettings();
+		await chatStore.fetchMemory();
 	} catch (error) {
 		showError(error, i18n.baseText('settings.chatHub.providers.fetching.error'));
 	}
@@ -39,7 +39,7 @@ async function onMemoryRowAction(_action: string, index: number) {
 
 async function onDeleteMemoryFact(index: number) {
 	try {
-		await deleteMemoryFactApi(rootStore.restApiContext, index);
+		await deleteMemoryItemApi(rootStore.restApiContext, index);
 		await fetchMemory();
 	} catch (error) {
 		showError(error, i18n.baseText('settings.chatHub.memory.delete.error'));
@@ -78,7 +78,7 @@ onMounted(fetchMemory);
 				</N8nText>
 			</div>
 			<N8nButton
-				v-if="memoryFacts.length > 0"
+				v-if="memoryItems.length > 0"
 				size="small"
 				variant="subtle"
 				icon="trash"
@@ -87,14 +87,14 @@ onMounted(fetchMemory);
 				@click="onClearAllMemory"
 			/>
 		</div>
-		<div v-if="memoryFacts.length === 0" :class="$style.empty">
+		<div v-if="memoryItems.length === 0" :class="$style.empty">
 			<N8nText color="text-light" size="small">
 				{{ i18n.baseText('settings.chatHub.memory.empty') }}
 			</N8nText>
 		</div>
 		<ul v-else :class="$style.list">
-			<li v-for="(fact, index) in memoryFacts" :key="index" :class="$style.row">
-				<N8nText size="small" :class="$style.fact">{{ fact }}</N8nText>
+			<li v-for="(item, index) in memoryItems" :key="index" :class="$style.row">
+				<N8nText size="small" :class="$style.item">{{ item }}</N8nText>
 				<N8nActionToggle
 					placement="bottom"
 					:actions="rowActions"
@@ -150,7 +150,7 @@ onMounted(fetchMemory);
 	}
 }
 
-.fact {
+.item {
 	flex: 1;
 	min-width: 0;
 	overflow-wrap: break-word;

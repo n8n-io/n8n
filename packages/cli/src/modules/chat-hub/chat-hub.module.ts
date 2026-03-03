@@ -24,9 +24,8 @@ export class ChatHubModule implements ModuleInterface {
 		const service = Container.get(ChatHubSettingsService);
 		const enabled = await service.getEnabled();
 		const providers = await service.getAllProviderSettings();
-		const memory = await service.getMemory();
 
-		return { enabled, providers, memory };
+		return { enabled, providers };
 	}
 
 	async entities() {
@@ -34,8 +33,9 @@ export class ChatHubModule implements ModuleInterface {
 		const { ChatHubMessage } = await import('./chat-hub-message.entity');
 		const { ChatHubAgent } = await import('./chat-hub-agent.entity');
 		const { ChatHubTool } = await import('./chat-hub-tool.entity');
+		const { ChatHubContextMemoryItem } = await import('./chat-hub-context-memory-item.entity');
 
-		return [ChatHubSession, ChatHubMessage, ChatHubAgent, ChatHubTool];
+		return [ChatHubSession, ChatHubMessage, ChatHubAgent, ChatHubTool, ChatHubContextMemoryItem];
 	}
 
 	@OnShutdown()

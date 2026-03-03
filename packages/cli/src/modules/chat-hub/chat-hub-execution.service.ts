@@ -33,8 +33,8 @@ import { ExecutionService } from '@/executions/execution.service';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
 import { ChatHubExecutionStore } from './chat-hub-execution-store.service';
+import { ChatHubContextMemoryService } from './chat-hub-context-memory.service';
 import { ChatHubWorkflowService } from './chat-hub-workflow.service';
-import { ChatHubSettingsService } from './chat-hub.settings.service';
 import {
 	EXECUTION_FINISHED_STATUSES,
 	EXECUTION_POLL_INTERVAL,
@@ -60,7 +60,7 @@ export class ChatHubExecutionService {
 		private readonly chatHubWorkflowService: ChatHubWorkflowService,
 		private readonly chatHubExecutionStore: ChatHubExecutionStore,
 		private readonly messageRepository: ChatHubMessageRepository,
-		private readonly chatHubSettingsService: ChatHubSettingsService,
+		private readonly chatHubMemoryService: ChatHubContextMemoryService,
 	) {
 		this.logger = this.logger.scoped('chat-hub');
 	}
@@ -249,7 +249,7 @@ export class ChatHubExecutionService {
 
 				// Extract and save any memory facts from the AI response
 				if (message.status === 'success' && message.content) {
-					await this.extractAndSaveMemoryFacts(message.content);
+					await this.extractAndSaveMemoryItems(user.id, message.content);
 				}
 
 				// End the stream for this message
@@ -662,27 +662,27 @@ export class ChatHubExecutionService {
 	}
 
 	/**
-	 * Parse AI message content for memory commands and save/update facts
+	 * Parse AI message content for memory commands and save/update items
 	 */
-	private async extractAndSaveMemoryFacts(content: string): Promise<void> {
+	private async extractAndSaveMemoryItems(userId: string, content: string): Promise<void> {
 		const chunks = parseMessage({ type: 'ai', content });
 		for (const chunk of chunks) {
-			if (chunk.type === 'memory-create' && !chunk.isIncomplete && chunk.fact) {
+			if (chunk.type === 'memory-create' && !chunk.isIncomplete && chunk.item) {
 				try {
-					await this.chatHubSettingsService.addMemoryFact(chunk.fact);
+					await this.chatHubMemoryService.addMemoryItem(userId, chunk.item);
 				} catch (error) {
-					this.logger.warn('Failed to save memory fact', {
+					this.logger.warn('Failed to save memory item', {
 						cause: error instanceof Error ? error.message : String(error),
 					});
 				}
-			} else if (chunk.type === 'memory-edit' && !chunk.isIncomplete && chunk.newFact) {
+			} else if (chunk.type === 'memory-edit' && !chunk.isIncomplete && chunk.item) {
 				try {
-					if (chunk.oldFact) {
-						await this.chatHubSettingsService.deleteMemoryFact(chunk.oldFact);
+					if (chunk.index > 0) {
+						await this.chatHubMemoryService.deleteMemoryItemByIndex(userId, chunk.index - 1);
 					}
-					await this.chatHubSettingsService.addMemoryFact(chunk.newFact);
+					await this.chatHubMemoryService.addMemoryItem(userId, chunk.item);
 				} catch (error) {
-					this.logger.warn('Failed to update memory fact', {
+					this.logger.warn('Failed to update memory item', {
 						cause: error instanceof Error ? error.message : String(error),
 					});
 				}

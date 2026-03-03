@@ -43,6 +43,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { ChatHubAgentService } from './chat-hub-agent.service';
 import { ChatHubCredentialsService } from './chat-hub-credentials.service';
+import { ChatHubContextMemoryService } from './chat-hub-context-memory.service';
 import { ChatHubToolService } from './chat-hub-tool.service';
 import { CHATHUB_EXTRACTOR_NAME, ChatHubAuthenticationMetadata } from './chat-hub-extractor';
 import { ChatHubMessage } from './chat-hub-message.entity';
@@ -50,6 +51,7 @@ import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import {
 	CHAT_TRIGGER_NODE_MIN_VERSION,
 	getModelMetadata,
+	MAX_MEMORY_ENTRIES,
 	NODE_NAMES,
 	PROVIDER_NODE_TYPE_MAP,
 	SUPPORTED_RESPONSE_MODES,
@@ -57,7 +59,7 @@ import {
 	type ChatHubInputModality,
 	type InternalModelMetadata,
 } from './chat-hub.constants';
-import { ChatHubSettingsService, MAX_MEMORY_ENTRIES } from './chat-hub.settings.service';
+import { ChatHubSettingsService } from './chat-hub.settings.service';
 import {
 	chatTriggerParamsShape,
 	MessageRecord,
@@ -78,6 +80,7 @@ export class ChatHubWorkflowService {
 		private readonly chatHubAttachmentService: ChatHubAttachmentService,
 		private readonly chatHubAgentService: ChatHubAgentService,
 		private readonly chatHubSettingsService: ChatHubSettingsService,
+		private readonly chatHubMemoryService: ChatHubContextMemoryService,
 		private readonly chatHubCredentialsService: ChatHubCredentialsService,
 		private readonly chatHubToolService: ChatHubToolService,
 		private readonly workflowFinderService: WorkflowFinderService,
@@ -87,7 +90,9 @@ export class ChatHubWorkflowService {
 	}
 
 	async deleteChatWorkflow(workflowId: string): Promise<void> {
-		await this.workflowRepository.delete(workflowId);
+		if (process.env.SKIP_CHAT_WORKFLOW_CLEANUP !== 'true') {
+			await this.workflowRepository.delete(workflowId);
+		}
 	}
 
 	async createChatWorkflow(
@@ -122,7 +127,8 @@ export class ChatHubWorkflowService {
 				attachments,
 				credentials,
 				model,
-				systemMessage: systemMessage ?? (await this.getBaseSystemMessage(history, timeZone)),
+				systemMessage:
+					systemMessage ?? (await this.getBaseSystemMessage(history, timeZone, userId)),
 				tools,
 				executionMetadata,
 			});
@@ -575,11 +581,11 @@ export class ChatHubWorkflowService {
 		const memoryContext =
 			memory.length > 0
 				? `
-# Known Facts About the User
+# Known Items About the User
 
-The following facts about the user have been remembered from previous conversations:
+The following items about the user have been remembered from previous conversations:
 
-${memory.join('\n')}
+${memory.map((item, i) => `${i + 1}. ${item}`).join('\n')}
 
 `
 				: '';
@@ -661,10 +667,10 @@ ${
 <command:memory-create>entry about the user</command:memory-create>`
 }
 
-To correct or update an existing entry:
+To correct or update an existing entry, use its number from the list above:
 <command:memory-edit>
-<oldFact>the exact existing entry to replace</oldFact>
-<newFact>the updated entry</newFact>
+<index>1</index>
+<item>the updated entry</item>
 </command:memory-edit>
 
 Each entry should be concise and not exceed 20 words. Remember anything that would help you assist the user better in future conversations, including:
@@ -682,13 +688,13 @@ IMPORTANT:
 `;
 	}
 
-	private async getBaseSystemMessage(history: ChatHubMessage[], timeZone: string) {
+	private async getBaseSystemMessage(history: ChatHubMessage[], timeZone: string, userId: string) {
 		const artifactContext = this.buildArtifactContext(history);
-		const facts = await this.chatHubSettingsService.getMemoryFacts();
+		const items = await this.chatHubMemoryService.getMemoryItems(userId);
 
 		return `You are a helpful assistant.
 
-${this.getSystemMessageMetadata(timeZone, facts) + artifactContext}`;
+${this.getSystemMessageMetadata(timeZone, items) + artifactContext}`;
 	}
 
 	private buildToolsAgentNode(
@@ -1280,11 +1286,11 @@ Respond the title only:`,
 		}
 
 		const artifactContext = this.buildArtifactContext(history);
-		const facts = await this.chatHubSettingsService.getMemoryFacts();
+		const items = await this.chatHubMemoryService.getMemoryItems(user.id);
 		const systemMessage =
 			agent.systemPrompt +
 			'\n\n' +
-			this.getSystemMessageMetadata(timeZone, facts) +
+			this.getSystemMessageMetadata(timeZone, items) +
 			artifactContext;
 
 		const model: ChatHubBaseLLMModel = {

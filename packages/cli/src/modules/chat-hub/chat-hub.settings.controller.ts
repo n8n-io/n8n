@@ -2,6 +2,7 @@ import { ModuleRegistry, Logger } from '@n8n/backend-common';
 import { type AuthenticatedRequest } from '@n8n/db';
 import { Delete, Get, Post, RestController, GlobalScope, Param, Body } from '@n8n/decorators';
 
+import { ChatHubContextMemoryService } from './chat-hub-context-memory.service';
 import { ChatHubSettingsService } from './chat-hub.settings.service';
 import {
 	ChatHubLLMProvider,
@@ -14,6 +15,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 export class ChatHubSettingsController {
 	constructor(
 		private readonly settings: ChatHubSettingsService,
+		private readonly memoryService: ChatHubContextMemoryService,
 		private readonly logger: Logger,
 		private readonly moduleRegistry: ModuleRegistry,
 	) {
@@ -23,11 +25,7 @@ export class ChatHubSettingsController {
 	@Get('/settings')
 	@GlobalScope('chatHub:manage')
 	async getSettings(_req: AuthenticatedRequest, _res: Response) {
-		const [providers, memory] = await Promise.all([
-			this.settings.getAllProviderSettings(),
-			this.settings.getMemory(),
-		]);
-		return { providers, memory };
+		return { providers: await this.settings.getAllProviderSettings() };
 	}
 
 	@Get('/settings/:provider')
@@ -65,19 +63,22 @@ export class ChatHubSettingsController {
 		return await this.settings.getProviderSettings(payload.provider);
 	}
 
+	@Get('/memory')
+	@GlobalScope('chatHub:message')
+	async getMemory(req: AuthenticatedRequest) {
+		const items = await this.memoryService.getMemoryItems(req.user.id);
+		return { memory: items.join('\n') };
+	}
+
 	@Delete('/memory')
-	@GlobalScope('chatHub:manage')
-	async clearMemory(_req: AuthenticatedRequest) {
-		await this.settings.clearMemory();
+	@GlobalScope('chatHub:message')
+	async clearMemory(req: AuthenticatedRequest) {
+		await this.memoryService.clearMemory(req.user.id);
 	}
 
 	@Delete('/memory/:index')
-	@GlobalScope('chatHub:manage')
-	async deleteMemoryFact(
-		_req: AuthenticatedRequest,
-		_res: Response,
-		@Param('index') index: string,
-	) {
-		await this.settings.deleteMemoryFactByIndex(Number(index));
+	@GlobalScope('chatHub:message')
+	async deleteMemoryItem(req: AuthenticatedRequest, _res: Response, @Param('index') index: string) {
+		await this.memoryService.deleteMemoryItemByIndex(req.user.id, Number(index));
 	}
 }

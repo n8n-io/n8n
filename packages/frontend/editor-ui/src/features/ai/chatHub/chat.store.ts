@@ -21,6 +21,7 @@ import {
 	deleteAgentApi,
 	updateConversationApi,
 	fetchChatSettingsApi,
+	fetchChatMemoryApi,
 	fetchChatProviderSettingsApi,
 	updateChatSettingsApi,
 	fetchToolsApi,
@@ -891,12 +892,15 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		return createFakeAgent(model, fallback);
 	}
 
+	async function fetchMemory() {
+		memory.value = await fetchChatMemoryApi(rootStore.restApiContext);
+	}
+
 	async function fetchAllChatSettings() {
 		try {
 			settingsLoading.value = true;
 			const response = await fetchChatSettingsApi(rootStore.restApiContext);
 			settings.value = response.providers;
-			memory.value = response.memory;
 		} finally {
 			settingsLoading.value = false;
 		}
@@ -1305,6 +1309,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		settings,
 		memory,
 		settingsLoading,
+		fetchMemory,
 		fetchAllChatSettings,
 		fetchProviderSettings,
 		updateProviderSettings,

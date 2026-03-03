@@ -12,6 +12,7 @@ import type { WorkflowExecutionService } from '@/workflows/workflow-execution.se
 
 import type { ChatHubExecutionStore } from '../chat-hub-execution-store.service';
 import { ChatHubExecutionService } from '../chat-hub-execution.service';
+import type { ChatHubContextMemoryService } from '../chat-hub-context-memory.service';
 import type { ChatHubWorkflowService } from '../chat-hub-workflow.service';
 import type { ChatHubMessageRepository } from '../chat-message.repository';
 import type { ChatStreamService } from '../chat-stream.service';
@@ -30,6 +31,7 @@ describe('ChatHubExecutionService', () => {
 	const chatHubWorkflowService = mock<ChatHubWorkflowService>();
 	const chatHubExecutionStore = mock<ChatHubExecutionStore>();
 	const messageRepository = mock<ChatHubMessageRepository>();
+	const chatHubMemoryService = mock<ChatHubContextMemoryService>();
 
 	let service: ChatHubExecutionService;
 
@@ -48,6 +50,7 @@ describe('ChatHubExecutionService', () => {
 			chatHubWorkflowService,
 			chatHubExecutionStore,
 			messageRepository,
+			chatHubMemoryService,
 		);
 	});
 

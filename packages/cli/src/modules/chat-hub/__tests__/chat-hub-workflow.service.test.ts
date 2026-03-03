@@ -8,6 +8,7 @@ import type { ChatHubAgentService } from '../chat-hub-agent.service';
 import type { ChatHubCredentialsService } from '../chat-hub-credentials.service';
 import type { ChatHubAuthenticationMetadata } from '../chat-hub-extractor';
 import { ChatHubMessage } from '../chat-hub-message.entity';
+import type { ChatHubContextMemoryService } from '../chat-hub-context-memory.service';
 import { ChatHubSession } from '../chat-hub-session.entity';
 import type { ChatHubToolService } from '../chat-hub-tool.service';
 import { ChatHubWorkflowService } from '../chat-hub-workflow.service';
@@ -25,6 +26,7 @@ describe('ChatHubWorkflowService', () => {
 	const messageRepository = mock<ChatHubMessageRepository>();
 	const chatHubAgentService = mock<ChatHubAgentService>();
 	const chatHubSettingsService = mock<ChatHubSettingsService>();
+	const chatHubMemoryService = mock<ChatHubContextMemoryService>();
 	const chatHubCredentialsService = mock<ChatHubCredentialsService>();
 	const chatHubToolService = mock<ChatHubToolService>();
 	const workflowFinderService = mock<WorkflowFinderService>();
@@ -59,6 +61,7 @@ describe('ChatHubWorkflowService', () => {
 			chatHubAttachmentService,
 			chatHubAgentService,
 			chatHubSettingsService,
+			chatHubMemoryService,
 			chatHubCredentialsService,
 			chatHubToolService,
 			workflowFinderService,

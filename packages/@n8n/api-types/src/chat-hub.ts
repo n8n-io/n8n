@@ -409,14 +409,14 @@ export type ChatMessageContentChunk =
 	| {
 			type: 'memory-create';
 			content: string;
-			fact: string;
+			item: string;
 			isIncomplete: boolean;
 	  }
 	| {
 			type: 'memory-edit';
 			content: string;
-			oldFact: string;
-			newFact: string;
+			index: number;
+			item: string;
 			isIncomplete: boolean;
 	  }
 	| {

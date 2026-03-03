@@ -204,12 +204,15 @@ export const deleteAgentApi = async (context: IRestApiContext, agentId: string):
 
 export const fetchChatSettingsApi = async (
 	context: IRestApiContext,
-): Promise<{ providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>; memory: string }> => {
-	const apiEndpoint = '/chat/settings';
+): Promise<{ providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto> }> => {
 	return await makeRestApiRequest<{
 		providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>;
-		memory: string;
-	}>(context, 'GET', apiEndpoint);
+	}>(context, 'GET', '/chat/settings');
+};
+
+export const fetchChatMemoryApi = async (context: IRestApiContext): Promise<string> => {
+	const response = await makeRestApiRequest<{ memory: string }>(context, 'GET', '/chat/memory');
+	return response.memory;
 };
 
 export const fetchChatProviderSettingsApi = async (
@@ -240,7 +243,7 @@ export const clearAllMemoryApi = async (context: IRestApiContext): Promise<void>
 	await makeRestApiRequest(context, 'DELETE', '/chat/memory');
 };
 
-export const deleteMemoryFactApi = async (
+export const deleteMemoryItemApi = async (
 	context: IRestApiContext,
 	index: number,
 ): Promise<void> => {

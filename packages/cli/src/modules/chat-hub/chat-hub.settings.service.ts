@@ -14,9 +14,6 @@ const CHAT_PROVIDER_SETTINGS_KEY_PREFIX = 'chat.provider.';
 const CHAT_PROVIDER_SETTINGS_KEY = (provider: ChatHubLLMProvider) =>
 	`${CHAT_PROVIDER_SETTINGS_KEY_PREFIX}${provider}`;
 const CHAT_ENABLED_KEY = 'chat.access.enabled';
-const CHAT_MEMORY_KEY = 'chat.memory';
-
-export const MAX_MEMORY_ENTRIES = 3;
 
 const getDefaultProviderSettings = (provider: ChatHubLLMProvider): ChatProviderSettingsDto => ({
 	provider,
@@ -103,61 +100,6 @@ export class ChatHubSettingsService {
 		}
 
 		return result;
-	}
-
-	async getMemory(): Promise<string> {
-		const row = await this.settingsRepository.findByKey(CHAT_MEMORY_KEY);
-		if (!row) return '';
-		return row.value;
-	}
-
-	async getMemoryFacts(): Promise<string[]> {
-		const memory = await this.getMemory();
-		return memory
-			.split('\n')
-			.map((f) => f.trim())
-			.filter((f) => f.length > 0);
-	}
-
-	async addMemoryFact(fact: string): Promise<void> {
-		const facts = await this.getMemoryFacts();
-		if (facts.length >= MAX_MEMORY_ENTRIES) {
-			return;
-		}
-		const current = await this.getMemory();
-		const updated = current ? `${current}\n${fact}` : fact;
-		await this.settingsRepository.upsert(
-			{ key: CHAT_MEMORY_KEY, value: updated, loadOnStartup: false },
-			['key'],
-		);
-	}
-
-	async deleteMemoryFact(fact: string): Promise<void> {
-		const current = await this.getMemory();
-		const facts = current.split('\n').filter((f) => f !== fact);
-		const updated = facts.join('\n');
-		await this.settingsRepository.upsert(
-			{ key: CHAT_MEMORY_KEY, value: updated, loadOnStartup: false },
-			['key'],
-		);
-	}
-
-	async clearMemory(): Promise<void> {
-		await this.settingsRepository.upsert(
-			{ key: CHAT_MEMORY_KEY, value: '', loadOnStartup: false },
-			['key'],
-		);
-	}
-
-	async deleteMemoryFactByIndex(index: number): Promise<void> {
-		const current = await this.getMemory();
-		const facts = current.split('\n').filter((f) => f.trim().length > 0);
-		facts.splice(index, 1);
-		const updated = facts.join('\n');
-		await this.settingsRepository.upsert(
-			{ key: CHAT_MEMORY_KEY, value: updated, loadOnStartup: false },
-			['key'],
-		);
 	}
 
 	async setProviderSettings(

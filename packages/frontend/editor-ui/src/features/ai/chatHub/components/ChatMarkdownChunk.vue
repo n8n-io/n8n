@@ -89,13 +89,13 @@ defineExpose({
 		v-else-if="source.type === 'memory-create' && !source.isIncomplete"
 		:class="$style.memoryCommand"
 	>
-		{{ i18n.baseText('chatHub.message.memoryUpdated') }}: <b>{{ source.fact }}</b>
+		{{ i18n.baseText('chatHub.message.memoryUpdated') }}: <b>{{ source.item }}</b>
 	</div>
 	<div
 		v-else-if="source.type === 'memory-edit' && !source.isIncomplete"
 		:class="$style.memoryCommand"
 	>
-		{{ i18n.baseText('chatHub.message.memoryUpdated') }}: <b>{{ source.newFact }}</b>
+		{{ i18n.baseText('chatHub.message.memoryUpdated') }}: <b>{{ source.item }}</b>
 	</div>
 </template>
 

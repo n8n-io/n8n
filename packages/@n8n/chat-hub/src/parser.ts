@@ -247,14 +247,14 @@ function parseMemoryCreateCommand(content: string): {
 		: content.slice(0, closingIndex + closingTag.length);
 
 	const openTag = '<command:memory-create>';
-	const factStart = openTag.length;
-	const fact = isIncomplete ? content.slice(factStart) : content.slice(factStart, closingIndex);
+	const itemStart = openTag.length;
+	const item = isIncomplete ? content.slice(itemStart) : content.slice(itemStart, closingIndex);
 
 	return {
 		item: {
 			type: 'memory-create',
 			content: commandContent,
-			fact: fact.trim(),
+			item: item.trim(),
 			isIncomplete,
 		},
 		consumed: commandContent.length,
@@ -273,15 +273,15 @@ function parseMemoryEditCommand(content: string): {
 		? content
 		: content.slice(0, closingIndex + closingTag.length);
 
-	const oldFact = extractTagContent(commandContent, 'oldFact') ?? '';
-	const newFact = extractTagContent(commandContent, 'newFact') ?? '';
+	const indexStr = extractTagContent(commandContent, 'index') ?? '';
+	const item = extractTagContent(commandContent, 'item') ?? '';
 
 	return {
 		item: {
 			type: 'memory-edit',
 			content: commandContent,
-			oldFact: oldFact.trim(),
-			newFact: newFact.trim(),
+			index: parseInt(indexStr.trim(), 10) || 0,
+			item: item.trim(),
 			isIncomplete,
 		},
 		consumed: commandContent.length,
