@@ -63,7 +63,7 @@ export class CollaborationState {
 			return [];
 		}
 
-		const { valid, invalid } = this.cacheHashToCollaborators(cacheValue);
+		const { valid, invalid } = this.parseCacheHashToCollaborators(cacheValue);
 		const [expired, stillActive] = this.splitToExpiredAndStillActive(valid);
 
 		const toRemove = [...expired, ...invalid];
@@ -114,7 +114,7 @@ export class CollaborationState {
 		);
 	}
 
-	private cacheHashToCollaborators(workflowCacheEntry: WorkflowCacheHash): {
+	private parseCacheHashToCollaborators(workflowCacheEntry: WorkflowCacheHash): {
 		valid: CacheEntry[];
 		invalid: CacheEntry[];
 	} {
