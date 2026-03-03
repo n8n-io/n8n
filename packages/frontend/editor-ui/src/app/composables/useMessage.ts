@@ -79,7 +79,7 @@ export function useMessage() {
 					{
 						class: 'el-message-box__message__structured',
 					},
-					message,
+					content,
 				),
 				h(
 					N8nCheckbox,
