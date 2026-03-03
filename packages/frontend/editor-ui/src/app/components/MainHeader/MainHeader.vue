@@ -257,7 +257,10 @@ function hideGithubButton() {
 }
 
 async function onWorkflowDeactivated() {
-	if (settingsStore.isModuleActive('mcp') && workflow.value.settings?.availableInMCP) {
+	if (
+		settingsStore.isModuleActive('mcp') &&
+		workflowDocumentStore?.value?.settings?.availableInMCP
+	) {
 		try {
 			// Fetch the updated workflow to get the latest settings after backend processing
 			const updatedWorkflow = await workflowsListStore.fetchWorkflow(workflow.value.id);
@@ -285,7 +288,6 @@ async function onWorkflowDeactivated() {
 					:id="workflow.id"
 					:tags="workflowTags"
 					:name="workflow.name"
-					:meta="workflow.meta"
 					:scopes="workflow.scopes"
 					:current-folder="parentFolderForBreadcrumbs"
 					:is-archived="workflow.isArchived"

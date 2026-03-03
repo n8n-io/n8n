@@ -1,17 +1,11 @@
+import type { TournamentHooks } from '@n8n/tournament';
+
 import type { RuntimeBridge } from './bridge';
 
 // ============================================================================
 // Phase 1.1: Core Evaluation Interfaces (MVP)
 // These are the minimal interfaces needed to evaluate expressions.
 // ============================================================================
-
-// TournamentHooks is imported from '@n8n/tournament' once that dependency is
-// added (PR 4). Defined locally here so the type surface is complete from PR 1.
-// See: packages/@n8n/expression-runtime/src/evaluator/expression-evaluator.ts
-export interface TournamentHooks {
-	before?: Array<(ast: unknown) => unknown>;
-	after?: Array<(ast: unknown) => unknown>;
-}
 
 /**
  * Configuration for ExpressionEvaluator.

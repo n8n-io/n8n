@@ -8,11 +8,8 @@ import type {
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
-
-import { metadataFilterField } from '@utils/sharedFields';
-
-import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
 import { getUserScopedSlot } from '../shared/userScoped';
+import { createVectorStoreNode, metadataFilterField } from '@n8n/ai-utilities';
 
 type VectorStorePineconeScopedApiCredentials = {
 	apiKey: string;

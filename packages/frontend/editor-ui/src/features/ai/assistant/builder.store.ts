@@ -74,7 +74,9 @@ export type WorkflowBuilderJourneyEventType =
 	| 'user_switched_builder_mode'
 	| 'user_clicked_implement_plan'
 	| 'user_opened_review_changes'
-	| 'user_closed_review_changes';
+	| 'user_closed_review_changes'
+	| 'user_expanded_review_changes'
+	| 'user_collapsed_review_changes';
 
 interface WorkflowBuilderJourneyEventProperties {
 	node_type?: string;

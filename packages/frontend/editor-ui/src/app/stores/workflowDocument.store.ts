@@ -5,7 +5,9 @@ import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useWorkflowDocumentActive } from './workflowDocument/useWorkflowDocumentActive';
 import { useWorkflowDocumentHomeProject } from './workflowDocument/useWorkflowDocumentHomeProject';
 import { useWorkflowDocumentChecksum } from './workflowDocument/useWorkflowDocumentChecksum';
+import { useWorkflowDocumentMeta } from './workflowDocument/useWorkflowDocumentMeta';
 import { useWorkflowDocumentPinData } from './workflowDocument/useWorkflowDocumentPinData';
+import { useWorkflowDocumentSettings } from './workflowDocument/useWorkflowDocumentSettings';
 import { useWorkflowDocumentTags } from './workflowDocument/useWorkflowDocumentTags';
 import { useWorkflowDocumentTimestamps } from './workflowDocument/useWorkflowDocumentTimestamps';
 
@@ -52,9 +54,11 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		const workflowDocumentActive = useWorkflowDocumentActive();
 		const workflowDocumentHomeProject = useWorkflowDocumentHomeProject();
 		const workflowDocumentChecksum = useWorkflowDocumentChecksum();
+		const workflowDocumentMeta = useWorkflowDocumentMeta();
 		const workflowDocumentTags = useWorkflowDocumentTags();
 		const workflowDocumentPinData = useWorkflowDocumentPinData();
 		const workflowDocumentTimestamps = useWorkflowDocumentTimestamps();
+		const workflowDocumentSettings = useWorkflowDocumentSettings();
 
 		return {
 			workflowId,
@@ -62,6 +66,8 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentActive,
 			...workflowDocumentHomeProject,
 			...workflowDocumentChecksum,
+			...workflowDocumentMeta,
+			...workflowDocumentSettings,
 			...workflowDocumentTags,
 			...workflowDocumentPinData,
 			...workflowDocumentTimestamps,

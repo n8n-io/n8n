@@ -18,6 +18,8 @@
     "stack:clean:containers": "docker ps -aq --filter 'name=n8n-stack-*' | xargs -r docker rm -f 2>/dev/null",
     "stack:clean:networks": "docker network ls --filter 'label=org.testcontainers=true' -q | xargs -r docker network rm 2>/dev/null",
     "stack:clean:all": "pnpm run stack:clean:containers && pnpm run stack:clean:networks",
+    "stack:helm": "tsx ./helm-start-stack.ts",
+    "stack:helm:clean": "docker ps -aq --filter 'label=org.testcontainers=true' --filter 'ancestor=rancher/k3s' | xargs -r docker rm -f 2>/dev/null",
     "services": "tsx ./n8n-start-stack.ts --services-only",
     "services:clean": "docker ps -aq --filter 'name=n8n-svc-*' | xargs docker rm -f 2>/dev/null; rm -f ../../../packages/cli/bin/.env",
     "lint": "eslint . --quiet",
@@ -28,6 +30,7 @@
   "license": "ISC",
   "devDependencies": {
     "@aws-sdk/client-secrets-manager": "3.808.0",
+    "@testcontainers/k3s": "^11.11.0",
     "@testcontainers/kafka": "^11.11.0",
     "@testcontainers/mysql": "^11.11.0",
     "@testcontainers/postgresql": "^11.0.3",

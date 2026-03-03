@@ -10,8 +10,8 @@ import {
 
 import type { Callbacks } from '@langchain/core/callbacks/manager';
 import { createQdrantClient, type QdrantCredential } from '../VectorStoreQdrant/Qdrant.utils';
-import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
 import { ensureUserId } from '../shared/userScoped';
+import { createVectorStoreNode } from '@n8n/ai-utilities';
 
 type VectorStoreQdrantScopedApiCredentials = QdrantCredential & {
 	collectionName: string;

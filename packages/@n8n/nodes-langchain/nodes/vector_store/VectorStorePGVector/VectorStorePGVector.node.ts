@@ -4,15 +4,13 @@ import { postgresConnectionTest } from 'n8n-nodes-base/dist/nodes/Postgres/v2/me
 import type { INodeProperties } from 'n8n-workflow';
 import type pg from 'pg';
 
-import { metadataFilterField } from '@utils/sharedFields';
-
-import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
 import {
 	collectionField,
 	columnNamesField,
 	createPGVectorNodeArgs,
 	distanceStrategyField,
 } from '../shared/pgvector';
+import { createVectorStoreNode, metadataFilterField } from '@n8n/ai-utilities';
 
 const sharedFields: INodeProperties[] = [
 	{

@@ -4,10 +4,9 @@ import {
 	type PGVectorStoreArgs,
 } from '@langchain/community/vectorstores/pgvector';
 import type { EmbeddingsInterface } from '@langchain/core/embeddings';
+import type { VectorStoreNodeConstructorArgs } from '@n8n/ai-utilities';
 import type { IExecuteFunctions, INodeProperties, ISupplyDataFunctions } from 'n8n-workflow';
 import type pg from 'pg';
-
-import type { VectorStoreNodeConstructorArgs } from './createVectorStoreNode/types';
 
 export type ColumnOptions = {
 	idColumnName: string;

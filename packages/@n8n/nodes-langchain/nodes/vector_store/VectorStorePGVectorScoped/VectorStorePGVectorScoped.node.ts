@@ -12,16 +12,13 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 import pg from 'pg';
-
-import { metadataFilterField } from '@utils/sharedFields';
-
-import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
 import {
 	columnNamesField,
 	createPGVectorNodeArgs,
 	distanceStrategyField,
 } from '../shared/pgvector';
 import { getUserScopedSlot } from '../shared/userScoped';
+import { createVectorStoreNode, metadataFilterField } from '@n8n/ai-utilities';
 
 type VectorStorePGVectorScopedApiCredentials = PostgresNodeCredentials & {
 	tableNamePrefix: string;
