@@ -17,7 +17,7 @@ import pg from 'pg';
 import { getUserScopedSlot } from '../shared/userScoped';
 import { ExtendedPGVectorStore } from '../VectorStorePGVector/VectorStorePGVector.node';
 
-type VectorStorePGVectorScopedApiCredentials = PostgresNodeCredentials & {
+type ChatHubVectorStorePGVectorApiCredentials = PostgresNodeCredentials & {
 	tableNamePrefix: string;
 };
 
@@ -35,7 +35,7 @@ const retrieveFields: INodeProperties[] = [
 // TODO: Use configurePostgres() here to support SSH tunneling.
 // Currently this creates a direct pg.Pool without SSH tunnel support.
 async function withPool<T>(
-	credentials: VectorStorePGVectorScopedApiCredentials,
+	credentials: ChatHubVectorStorePGVectorApiCredentials,
 	callback: (pool: pg.Pool) => Promise<T>,
 ): Promise<T> {
 	const sslEnabled = credentials.ssl !== 'disable' && credentials.ssl !== undefined;
@@ -69,8 +69,8 @@ async function deleteDocuments(
 		);
 	}
 
-	const credentials = await this.getCredentials<VectorStorePGVectorScopedApiCredentials>(
-		'vectorStorePGVectorScopedApi',
+	const credentials = await this.getCredentials<ChatHubVectorStorePGVectorApiCredentials>(
+		'chatHubVectorStorePGVectorApi',
 	);
 	const tableName = getUserScopedSlot(this, credentials.tableNamePrefix);
 
@@ -94,7 +94,7 @@ async function deleteDocuments(
 	return null;
 }
 
-async function vectorStorePGVectorScopedApiConnectionTest(
+async function chatHubVectorStorePGVectorApiConnectionTest(
 	this: ICredentialTestFunctions,
 	credential: ICredentialsDecrypted,
 ): Promise<INodeCredentialTestResult> {
@@ -108,7 +108,7 @@ async function vectorStorePGVectorScopedApiConnectionTest(
 		return connectionResult;
 	}
 
-	const credentials = credential.data as VectorStorePGVectorScopedApiCredentials;
+	const credentials = credential.data as ChatHubVectorStorePGVectorApiCredentials;
 
 	try {
 		const extensionExists = await withPool(credentials, async (pool) => {
@@ -134,25 +134,25 @@ async function vectorStorePGVectorScopedApiConnectionTest(
 	return connectionResult;
 }
 
-export class VectorStorePGVectorScoped extends createVectorStoreNode({
+export class ChatHubVectorStorePGVector extends createVectorStoreNode({
 	hidden: true,
 	methods: {
-		credentialTest: { vectorStorePGVectorScopedApiConnectionTest },
+		credentialTest: { chatHubVectorStorePGVectorApiConnectionTest },
 		actionHandler: { deleteDocuments },
 	},
 	meta: {
 		description:
 			'Work with your data in Postgresql with PGVector, scoped per user via credential table prefix',
 		icon: 'file:postgres.svg',
-		displayName: 'Postgres PGVector Store (User-Scoped)',
+		displayName: 'ChatHub PGVector Store',
 		docsUrl:
 			'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstorepgvector/',
-		name: 'vectorStorePGVectorScoped',
+		name: 'chatHubVectorStorePGVector',
 		credentials: [
 			{
-				name: 'vectorStorePGVectorScopedApi',
+				name: 'chatHubVectorStorePGVectorApi',
 				required: true,
-				testedBy: 'vectorStorePGVectorScopedApiConnectionTest',
+				testedBy: 'chatHubVectorStorePGVectorApiConnectionTest',
 			},
 		],
 		operationModes: ['load', 'insert', 'retrieve', 'retrieve-as-tool'],
@@ -162,8 +162,8 @@ export class VectorStorePGVectorScoped extends createVectorStoreNode({
 	loadFields: retrieveFields,
 	retrieveFields,
 	async getVectorStoreClient(context, filter, embeddings, itemIndex) {
-		const credentials = await context.getCredentials<VectorStorePGVectorScopedApiCredentials>(
-			'vectorStorePGVectorScopedApi',
+		const credentials = await context.getCredentials<ChatHubVectorStorePGVectorApiCredentials>(
+			'chatHubVectorStorePGVectorApi',
 		);
 		const tableName = getUserScopedSlot(context, credentials.tableNamePrefix, itemIndex);
 		const pgConf = await configurePostgres.call(context, credentials as PostgresNodeCredentials);
@@ -179,8 +179,8 @@ export class VectorStorePGVectorScoped extends createVectorStoreNode({
 	},
 
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
-		const credentials = await context.getCredentials<VectorStorePGVectorScopedApiCredentials>(
-			'vectorStorePGVectorScopedApi',
+		const credentials = await context.getCredentials<ChatHubVectorStorePGVectorApiCredentials>(
+			'chatHubVectorStorePGVectorApi',
 		);
 		const tableName = getUserScopedSlot(context, credentials.tableNamePrefix, itemIndex);
 		const pgConf = await configurePostgres.call(context, credentials as PostgresNodeCredentials);

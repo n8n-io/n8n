@@ -5,9 +5,9 @@ import type {
 } from '@n8n/api-types';
 import type { ExecutionStatus, INodeTypeNameVersion } from 'n8n-workflow';
 import {
-	VECTOR_STORE_PG_VECTOR_SCOPED_NODE_TYPE,
-	VECTOR_STORE_PINECONE_SCOPED_NODE_TYPE,
-	VECTOR_STORE_QDRANT_SCOPED_NODE_TYPE,
+	CHAT_HUB_VECTOR_STORE_PG_VECTOR_NODE_TYPE,
+	CHAT_HUB_VECTOR_STORE_PINECONE_NODE_TYPE,
+	CHAT_HUB_VECTOR_STORE_QDRANT_NODE_TYPE,
 } from 'n8n-workflow';
 
 import type { ChatTriggerResponseMode } from './chat-hub.types';
@@ -739,7 +739,7 @@ export const SUPPORTED_RESPONSE_MODES: ChatTriggerResponseMode[] = [
 ] as const;
 
 export const VECTOR_STORE_NODE_TYPE_MAP: Record<ChatHubVectorStoreProvider, string> = {
-	pgvector: VECTOR_STORE_PG_VECTOR_SCOPED_NODE_TYPE,
-	pinecone: VECTOR_STORE_PINECONE_SCOPED_NODE_TYPE,
-	qdrant: VECTOR_STORE_QDRANT_SCOPED_NODE_TYPE,
+	pgvector: CHAT_HUB_VECTOR_STORE_PG_VECTOR_NODE_TYPE,
+	pinecone: CHAT_HUB_VECTOR_STORE_PINECONE_NODE_TYPE,
+	qdrant: CHAT_HUB_VECTOR_STORE_QDRANT_NODE_TYPE,
 };

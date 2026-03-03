@@ -103,12 +103,12 @@ export const MEMORY_BUFFER_WINDOW_NODE_TYPE = '@n8n/n8n-nodes-langchain.memoryBu
 export const GUARDRAILS_NODE_TYPE = '@n8n/n8n-nodes-langchain.guardrails';
 export const MCP_CLIENT_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpClientTool';
 export const MCP_CLIENT_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpClient';
-export const VECTOR_STORE_PG_VECTOR_SCOPED_NODE_TYPE =
-	'@n8n/n8n-nodes-langchain.vectorStorePGVectorScoped';
-export const VECTOR_STORE_QDRANT_SCOPED_NODE_TYPE =
-	'@n8n/n8n-nodes-langchain.vectorStoreQdrantScoped';
-export const VECTOR_STORE_PINECONE_SCOPED_NODE_TYPE =
-	'@n8n/n8n-nodes-langchain.vectorStorePineconeScoped';
+export const CHAT_HUB_VECTOR_STORE_PG_VECTOR_NODE_TYPE =
+	'@n8n/n8n-nodes-langchain.chatHubVectorStorePGVector';
+export const CHAT_HUB_VECTOR_STORE_QDRANT_NODE_TYPE =
+	'@n8n/n8n-nodes-langchain.chatHubVectorStoreQdrant';
+export const CHAT_HUB_VECTOR_STORE_PINECONE_NODE_TYPE =
+	'@n8n/n8n-nodes-langchain.chatHubVectorStorePinecone';
 export const DOCUMENT_DEFAULT_DATA_LOADER_NODE_TYPE =
 	'@n8n/n8n-nodes-langchain.documentDefaultDataLoader';
 

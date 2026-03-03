@@ -1,11 +1,11 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
-export class VectorStorePineconeScopedApi implements ICredentialType {
-	name = 'vectorStorePineconeScopedApi';
+export class ChatHubVectorStorePineconeApi implements ICredentialType {
+	name = 'chatHubVectorStorePineconeApi';
 
 	extends = ['pineconeApi'];
 
-	displayName = 'Pinecone Vector Store (User-Scoped) API';
+	displayName = 'ChatHub Pinecone Vector Store API';
 
 	documentationUrl = 'pinecone';
 

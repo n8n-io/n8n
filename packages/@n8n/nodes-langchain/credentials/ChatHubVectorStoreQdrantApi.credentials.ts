@@ -1,11 +1,11 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
-export class VectorStoreQdrantScopedApi implements ICredentialType {
-	name = 'vectorStoreQdrantScopedApi';
+export class ChatHubVectorStoreQdrantApi implements ICredentialType {
+	name = 'chatHubVectorStoreQdrantApi';
 
 	extends = ['qdrantApi'];
 
-	displayName = 'Qdrant Vector Store (User-Scoped) API';
+	displayName = 'ChatHub Qdrant Vector Store API';
 
 	documentationUrl = 'qdrant';
 

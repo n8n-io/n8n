@@ -90,9 +90,9 @@ export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<ChatHubLLMProvider, string> = 
 
 export const VECTOR_STORE_PROVIDER_CREDENTIAL_TYPE_MAP: Record<ChatHubVectorStoreProvider, string> =
 	{
-		pgvector: 'vectorStorePGVectorScopedApi',
-		qdrant: 'vectorStoreQdrantScopedApi',
-		pinecone: 'vectorStorePineconeScopedApi',
+		pgvector: 'chatHubVectorStorePGVectorApi',
+		qdrant: 'chatHubVectorStoreQdrantApi',
+		pinecone: 'chatHubVectorStorePineconeApi',
 	};
 
 /**

@@ -61,6 +61,8 @@ import {
 	type ChatHubExecutionBegin,
 	type ChatHubExecutionEnd,
 	type ChatMessageContentChunk,
+	VECTOR_STORE_PROVIDER_CREDENTIAL_TYPE_MAP,
+	PROVIDER_CREDENTIAL_TYPE_MAP,
 } from '@n8n/api-types';
 import type {
 	CredentialsMap,
@@ -1279,7 +1281,12 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 
 		if (!vectorStoreCredentialId) {
 			vectorStoreIssue = 'unspecified';
-		} else if (!vectorStoreCredential) {
+		} else if (
+			!vectorStoreCredential ||
+			!semanticSearch?.vectorStore.provider ||
+			vectorStoreCredential?.type !==
+				VECTOR_STORE_PROVIDER_CREDENTIAL_TYPE_MAP[semanticSearch?.vectorStore.provider]
+		) {
 			vectorStoreIssue = 'notFound';
 		} else if (isSharingEnabled.value && !vectorStoreCredential.isGlobal) {
 			vectorStoreIssue = 'notShared';
@@ -1287,8 +1294,13 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 
 		if (!embeddingCredentialId) {
 			embeddingIssue = 'unspecified';
-		} else if (!embeddingCredential) {
-			embeddingIssue = 'notShared';
+		} else if (
+			!embeddingCredential ||
+			!semanticSearch?.embeddingModel.provider ||
+			embeddingCredential?.type !==
+				PROVIDER_CREDENTIAL_TYPE_MAP[semanticSearch?.embeddingModel.provider]
+		) {
+			embeddingIssue = 'notFound';
 		} else if (isSharingEnabled.value && !embeddingCredential.isGlobal) {
 			embeddingIssue = 'notShared';
 		}

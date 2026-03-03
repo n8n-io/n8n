@@ -1,11 +1,11 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
-export class VectorStorePGVectorScopedApi implements ICredentialType {
-	name = 'vectorStorePGVectorScopedApi';
+export class ChatHubVectorStorePGVectorApi implements ICredentialType {
+	name = 'chatHubVectorStorePGVectorApi';
 
 	extends = ['postgres'];
 
-	displayName = 'PGVector Store (User-Scoped) API';
+	displayName = 'ChatHub PGVector Store API';
 
 	documentationUrl = 'postgres';
 

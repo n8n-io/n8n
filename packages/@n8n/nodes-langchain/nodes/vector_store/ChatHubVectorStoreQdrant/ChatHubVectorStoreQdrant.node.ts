@@ -13,7 +13,7 @@ import { createQdrantClient, type QdrantCredential } from '../VectorStoreQdrant/
 import { ensureUserId } from '../shared/userScoped';
 import { createVectorStoreNode } from '@n8n/ai-utilities';
 
-type VectorStoreQdrantScopedApiCredentials = QdrantCredential & {
+type ChatHubVectorStoreQdrantApiCredentials = QdrantCredential & {
 	collectionName: string;
 };
 
@@ -52,8 +52,8 @@ async function deleteDocuments(
 		);
 	}
 
-	const credentials = await this.getCredentials<VectorStoreQdrantScopedApiCredentials>(
-		'vectorStoreQdrantScopedApi',
+	const credentials = await this.getCredentials<ChatHubVectorStoreQdrantApiCredentials>(
+		'chatHubVectorStoreQdrantApi',
 	);
 	const userId = ensureUserId(this);
 	const client = createQdrantClient(credentials);
@@ -77,10 +77,10 @@ async function deleteDocuments(
 	return null;
 }
 
-export class VectorStoreQdrantScoped extends createVectorStoreNode<QdrantVectorStore>({
+export class ChatHubVectorStoreQdrant extends createVectorStoreNode<QdrantVectorStore>({
 	meta: {
-		displayName: 'Qdrant Vector Store (User-Scoped)',
-		name: 'vectorStoreQdrantScoped',
+		displayName: 'ChatHub Qdrant Vector Store',
+		name: 'chatHubVectorStoreQdrant',
 		description:
 			'Work with your data in a Qdrant collection, scoped per user via userId metadata field',
 		icon: 'file:qdrant.svg',
@@ -88,7 +88,7 @@ export class VectorStoreQdrantScoped extends createVectorStoreNode<QdrantVectorS
 			'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoreqdrant/',
 		credentials: [
 			{
-				name: 'vectorStoreQdrantScopedApi',
+				name: 'chatHubVectorStoreQdrantApi',
 				required: true,
 			},
 		],
@@ -101,8 +101,8 @@ export class VectorStoreQdrantScoped extends createVectorStoreNode<QdrantVectorS
 	loadFields: [],
 	retrieveFields: [],
 	async getVectorStoreClient(context, filter, embeddings) {
-		const credentials = await context.getCredentials<VectorStoreQdrantScopedApiCredentials>(
-			'vectorStoreQdrantScopedApi',
+		const credentials = await context.getCredentials<ChatHubVectorStoreQdrantApiCredentials>(
+			'chatHubVectorStoreQdrantApi',
 		);
 		const userId = ensureUserId(context);
 		const client = createQdrantClient(credentials);
@@ -150,8 +150,8 @@ export class VectorStoreQdrantScoped extends createVectorStoreNode<QdrantVectorS
 		return store;
 	},
 	async populateVectorStore(context, embeddings, documents) {
-		const credentials = await context.getCredentials<VectorStoreQdrantScopedApiCredentials>(
-			'vectorStoreQdrantScopedApi',
+		const credentials = await context.getCredentials<ChatHubVectorStoreQdrantApiCredentials>(
+			'chatHubVectorStoreQdrantApi',
 		);
 		const userId = ensureUserId(context);
 		const client = createQdrantClient(credentials);

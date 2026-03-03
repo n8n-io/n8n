@@ -11,7 +11,7 @@ import { jsonParse, NodeOperationError } from 'n8n-workflow';
 import { getUserScopedSlot } from '../shared/userScoped';
 import { createVectorStoreNode, metadataFilterField } from '@n8n/ai-utilities';
 
-type VectorStorePineconeScopedApiCredentials = {
+type ChatHubVectorStorePineconeApiCredentials = {
 	apiKey: string;
 	pineconeIndex: string;
 	namespacePrefix: string;
@@ -54,8 +54,8 @@ async function deleteDocuments(
 		);
 	}
 
-	const credentials = await this.getCredentials<VectorStorePineconeScopedApiCredentials>(
-		'vectorStorePineconeScopedApi',
+	const credentials = await this.getCredentials<ChatHubVectorStorePineconeApiCredentials>(
+		'chatHubVectorStorePineconeApi',
 	);
 	const namespaceName = getUserScopedSlot(this, credentials.namespacePrefix);
 
@@ -68,10 +68,10 @@ async function deleteDocuments(
 	return null;
 }
 
-export class VectorStorePineconeScoped extends createVectorStoreNode<PineconeStore>({
+export class ChatHubVectorStorePinecone extends createVectorStoreNode<PineconeStore>({
 	meta: {
-		displayName: 'Pinecone Vector Store (User-Scoped)',
-		name: 'vectorStorePineconeScoped',
+		displayName: 'ChatHub Pinecone Vector Store',
+		name: 'chatHubVectorStorePinecone',
 		description:
 			'Work with your data in Pinecone Vector Store, scoped per user via credential namespace prefix',
 		icon: { light: 'file:pinecone.svg', dark: 'file:pinecone.dark.svg' },
@@ -79,7 +79,7 @@ export class VectorStorePineconeScoped extends createVectorStoreNode<PineconeSto
 			'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstorepinecone/',
 		credentials: [
 			{
-				name: 'vectorStorePineconeScopedApi',
+				name: 'chatHubVectorStorePineconeApi',
 				required: true,
 			},
 		],
@@ -92,8 +92,8 @@ export class VectorStorePineconeScoped extends createVectorStoreNode<PineconeSto
 	loadFields: retrieveFields,
 	insertFields,
 	async getVectorStoreClient(context, filter, embeddings, itemIndex) {
-		const credentials = await context.getCredentials<VectorStorePineconeScopedApiCredentials>(
-			'vectorStorePineconeScopedApi',
+		const credentials = await context.getCredentials<ChatHubVectorStorePineconeApiCredentials>(
+			'chatHubVectorStorePineconeApi',
 		);
 		const namespaceName = getUserScopedSlot(context, credentials.namespacePrefix, itemIndex);
 
@@ -109,8 +109,8 @@ export class VectorStorePineconeScoped extends createVectorStoreNode<PineconeSto
 		return await PineconeStore.fromExistingIndex(embeddings, config);
 	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
-		const credentials = await context.getCredentials<VectorStorePineconeScopedApiCredentials>(
-			'vectorStorePineconeScopedApi',
+		const credentials = await context.getCredentials<ChatHubVectorStorePineconeApiCredentials>(
+			'chatHubVectorStorePineconeApi',
 		);
 		const namespaceName = getUserScopedSlot(context, credentials.namespacePrefix, itemIndex);
 
