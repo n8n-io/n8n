@@ -555,13 +555,9 @@ export class ChatHubSemanticSearchSettings extends Z.class({
 	}),
 }) {}
 
-export class ChatHubEmbeddingModelSettings extends Z.class({}) {}
-
 export interface ChatHubModuleSettings {
 	enabled: boolean;
 	providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>;
-	vectorStoreCredential?: { type: string; id: string | null };
-	embeddingCredential?: { type: string; id: string };
 }
 
 /**

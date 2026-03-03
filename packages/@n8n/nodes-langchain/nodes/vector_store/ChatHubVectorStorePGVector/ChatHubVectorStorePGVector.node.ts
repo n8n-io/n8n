@@ -13,7 +13,7 @@ import type {
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
-import pg from 'pg';
+import type pg from 'pg';
 import { getUserScopedSlot } from '../shared/userScoped';
 import { ExtendedPGVectorStore } from '../VectorStorePGVector/VectorStorePGVector.node';
 
@@ -31,28 +31,6 @@ const retrieveFields: INodeProperties[] = [
 		options: [metadataFilterField],
 	},
 ];
-
-// TODO: Use configurePostgres() here to support SSH tunneling.
-// Currently this creates a direct pg.Pool without SSH tunnel support.
-async function withPool<T>(
-	credentials: ChatHubVectorStorePGVectorApiCredentials,
-	callback: (pool: pg.Pool) => Promise<T>,
-): Promise<T> {
-	const sslEnabled = credentials.ssl !== 'disable' && credentials.ssl !== undefined;
-	const pool = new pg.Pool({
-		host: credentials.host as string,
-		port: credentials.port as number,
-		database: credentials.database as string,
-		user: credentials.user as string,
-		password: credentials.password as string,
-		ssl: sslEnabled ? { rejectUnauthorized: !credentials.allowUnauthorizedCerts } : false,
-	});
-	try {
-		return await callback(pool);
-	} finally {
-		await pool.end();
-	}
-}
 
 async function deleteDocuments(
 	this: ILoadOptionsFunctions,
@@ -87,9 +65,9 @@ async function deleteDocuments(
 		paramIndex++;
 	}
 
-	await withPool(credentials, async (pool) => {
-		await pool.query(`DELETE FROM "${tableName}" WHERE ${conditions.join(' AND ')}`, values);
-	});
+	const pgConf = await configurePostgres.call(this, credentials as PostgresNodeCredentials);
+	const pool = pgConf.db.$pool as unknown as pg.Pool;
+	await pool.query(`DELETE FROM "${tableName}" WHERE ${conditions.join(' AND ')}`, values);
 
 	return null;
 }
@@ -111,12 +89,12 @@ async function chatHubVectorStorePGVectorApiConnectionTest(
 	const credentials = credential.data as ChatHubVectorStorePGVectorApiCredentials;
 
 	try {
-		const extensionExists = await withPool(credentials, async (pool) => {
-			const result = await pool.query<{ exists: boolean }>(
-				"SELECT EXISTS(SELECT 1 FROM pg_extension WHERE extname = 'vector') AS exists",
-			);
-			return result.rows[0]?.exists;
-		});
+		const pgConf = await configurePostgres.call(this, credentials as PostgresNodeCredentials);
+		const pool = pgConf.db.$pool as unknown as pg.Pool;
+		const result = await pool.query<{ exists: boolean }>(
+			"SELECT EXISTS(SELECT 1 FROM pg_extension WHERE extname = 'vector') AS exists",
+		);
+		const extensionExists = result.rows[0]?.exists;
 		if (!extensionExists) {
 			return {
 				status: 'Error',
