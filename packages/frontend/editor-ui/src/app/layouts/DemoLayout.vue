@@ -17,7 +17,6 @@ provide(WorkflowStateKey, workflowState);
 const {
 	workflowId,
 	initializeData,
-	initializeWorkflow,
 	currentWorkflowDocumentStore,
 	cleanup: cleanupInitialization,
 } = useWorkflowInitialization(workflowState);
@@ -36,7 +35,6 @@ onBeforeMount(() => {
 
 onMounted(async () => {
 	await initializeData();
-	await initializeWorkflow();
 });
 
 onBeforeUnmount(() => {
