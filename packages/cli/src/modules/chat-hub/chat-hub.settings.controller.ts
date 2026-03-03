@@ -7,8 +7,7 @@ import {
 	ChatHubLLMProvider,
 	chatHubLLMProviderSchema,
 	UpdateChatSettingsRequest,
-	UpdateEmbeddingCredentialRequest,
-	UpdateVectorStoreCredentialRequest,
+	ChatHubSemanticSearchSettings,
 } from '@n8n/api-types';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
@@ -64,38 +63,14 @@ export class ChatHubSettingsController {
 		return await this.settings.getProviderSettings(payload.provider);
 	}
 
-	@Put('/vector-store-credential')
+	@Put('/semantic-search')
 	@GlobalScope('chatHub:manage')
 	async setVectorStoreCredential(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Body body: UpdateVectorStoreCredentialRequest,
+		@Body body: ChatHubSemanticSearchSettings,
 	) {
-		const credential = body.credentialType
-			? { id: body.credentialId, type: body.credentialType }
-			: null;
-		await this.settings.setVectorStoreCredential(credential);
-		try {
-			await this.moduleRegistry.refreshModuleSettings('chat-hub');
-		} catch (error) {
-			this.logger.warn('Failed to sync chat settings to module registry', {
-				cause: error instanceof Error ? error.message : String(error),
-			});
-		}
-	}
-
-	@Put('/embedding-credential')
-	@GlobalScope('chatHub:manage')
-	async setEmbeddingCredential(
-		_req: AuthenticatedRequest,
-		_res: Response,
-		@Body body: UpdateEmbeddingCredentialRequest,
-	) {
-		const credential =
-			body.credentialId && body.credentialType
-				? { id: body.credentialId, type: body.credentialType }
-				: null;
-		await this.settings.setEmbeddingCredential(credential);
+		await this.settings.setSemanticSearchSettings(body);
 		try {
 			await this.moduleRegistry.refreshModuleSettings('chat-hub');
 		} catch (error) {

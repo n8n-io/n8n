@@ -9,20 +9,25 @@ import { storeToRefs } from 'pinia';
 import { useChatStore } from './chat.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { N8nHeading, N8nIcon, N8nOption, N8nSelect, N8nText, N8nTooltip } from '@n8n/design-system';
-import { CHAT_PROVIDER_SETTINGS_MODAL_KEY } from './constants';
+import { CHAT_PROVIDER_SETTINGS_MODAL_KEY, vectorStoreProviderDisplayNames } from './constants';
 import ChatProvidersTable from './components/ChatProvidersTable.vue';
 import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
 import {
 	type ChatHubLLMProvider,
+	chatHubLLMProviderSchema,
+	type ChatHubSemanticSearchSettings,
+	type ChatHubVectorStoreProvider,
+	chatHubVectorStoreProviderSchema,
 	type ChatProviderSettingsDto,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
+	VECTOR_STORE_PROVIDER_CREDENTIAL_TYPE_MAP,
 } from '@n8n/api-types';
 import { EMBEDDINGS_NODE_TYPE_MAP } from '@n8n/chat-hub';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { updateVectorStoreCredentialApi, updateEmbeddingCredentialApi } from './chat.api';
+import { updateSemanticSearchSettingsApi } from './chat.api';
 import { providerDisplayNames } from './constants';
 
 const i18n = useI18n();
@@ -42,52 +47,29 @@ const isOwner = computed(() => usersStore.isInstanceOwner);
 const isAdmin = computed(() => usersStore.isAdmin);
 const disabled = computed(() => !isOwner.value && !isAdmin.value);
 
-const VECTOR_STORE_PROVIDER_OPTIONS = [
-	{ label: 'PGVector', value: 'vectorStorePGVectorScopedApi' },
-	{ label: 'Pinecone', value: 'vectorStorePineconeScopedApi' },
-	{ label: 'Qdrant', value: 'vectorStoreQdrantScopedApi' },
-];
+const { semanticSearchReadiness } = storeToRefs(chatStore);
 
-const EMBEDDING_PROVIDER_OPTIONS = (
-	Object.entries(PROVIDER_CREDENTIAL_TYPE_MAP) as Array<[ChatHubLLMProvider, string]>
-)
-	.filter(([provider]) => provider in EMBEDDINGS_NODE_TYPE_MAP)
-	.map(([provider, credentialType]) => ({
-		label: providerDisplayNames[provider],
-		value: credentialType,
-	}));
-
-const { vectorStoreCredentialId, embeddingCredentialId, semanticSearchReadiness } =
-	storeToRefs(chatStore);
-
-const localVectorStoreType = ref<string>(
-	settingsStore.moduleSettings['chat-hub']?.vectorStoreCredential?.type ??
-		VECTOR_STORE_PROVIDER_OPTIONS[0].value,
-);
-
-const localEmbeddingType = ref<string | null>(
-	settingsStore.moduleSettings['chat-hub']?.embeddingCredential?.type ??
-		EMBEDDING_PROVIDER_OPTIONS[0]?.value ??
-		null,
-);
-
-const localEmbeddingDisplayName = computed(
-	() => EMBEDDING_PROVIDER_OPTIONS.find((o) => o.value === localEmbeddingType.value)?.label ?? '',
-);
-
-watch(
-	() => settingsStore.moduleSettings['chat-hub']?.vectorStoreCredential?.type,
-	(newType) => {
-		localVectorStoreType.value = newType ?? VECTOR_STORE_PROVIDER_OPTIONS[0].value;
+const settings = ref<ChatHubSemanticSearchSettings>(
+	settingsStore.moduleSettings['chat-hub']?.semanticSearch ?? {
+		embeddingModel: { provider: null, credentialId: null },
+		vectorStore: { provider: null, credentialId: null },
 	},
 );
 
 watch(
-	() => settingsStore.moduleSettings['chat-hub']?.embeddingCredential?.type,
+	() => settingsStore.moduleSettings['chat-hub']?.semanticSearch,
 	(newType) => {
-		localEmbeddingType.value = newType ?? EMBEDDING_PROVIDER_OPTIONS[0]?.value ?? null;
+		if (newType) {
+			settings.value = newType;
+		}
 	},
 );
+
+const vectorStoreCredentialType = computed(() => {
+	const provider = settings.value.vectorStore.provider;
+
+	return provider ? VECTOR_STORE_PROVIDER_CREDENTIAL_TYPE_MAP[provider] : undefined;
+});
 
 const vectorStoreTooltip = computed(() => {
 	const issue = semanticSearchReadiness.value.vectorStoreIssue;
@@ -115,9 +97,10 @@ const embeddingTooltip = computed(() => {
 		: i18n.baseText('settings.chatHub.embeddingModel.notShared');
 });
 
-async function onVectorStoreTypeChange(credentialType: string) {
-	const currentType = settingsStore.moduleSettings['chat-hub']?.vectorStoreCredential?.type;
-	if (currentType && currentType !== credentialType) {
+async function onVectorStoreProviderChange(provider: ChatHubVectorStoreProvider) {
+	const currentType = settings.value.vectorStore.provider;
+
+	if (currentType && currentType !== provider) {
 		const confirmed = await message.confirm(
 			i18n.baseText('settings.chatHub.vectorStore.changeProvider.confirm.message'),
 			i18n.baseText('settings.chatHub.vectorStore.changeProvider.confirm.title'),
@@ -133,9 +116,12 @@ async function onVectorStoreTypeChange(credentialType: string) {
 			return;
 		}
 	}
-	localVectorStoreType.value = credentialType;
+
+	settings.value.vectorStore.provider = provider;
+	settings.value.vectorStore.credentialId = null;
+
 	try {
-		await updateVectorStoreCredentialApi(rootStore.restApiContext, null, credentialType);
+		await updateSemanticSearchSettingsApi(rootStore.restApiContext, settings.value);
 		await settingsStore.getModuleSettings();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.chatHub.vectorStore.save.error'));
@@ -143,21 +129,20 @@ async function onVectorStoreTypeChange(credentialType: string) {
 }
 
 async function onVectorStoreCredentialSelected(credentialId: string | null) {
+	settings.value.vectorStore.credentialId = credentialId;
+
 	try {
-		await updateVectorStoreCredentialApi(
-			rootStore.restApiContext,
-			credentialId,
-			localVectorStoreType.value,
-		);
+		await updateSemanticSearchSettingsApi(rootStore.restApiContext, settings.value);
 		await settingsStore.getModuleSettings();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.chatHub.vectorStore.save.error'));
 	}
 }
 
-async function onEmbeddingTypeChange(credentialType: string) {
-	const currentType = settingsStore.moduleSettings['chat-hub']?.embeddingCredential?.type;
-	if (currentType && currentType !== credentialType) {
+async function onEmbeddingModelProviderChange(provider: ChatHubLLMProvider) {
+	const currentProvider = settings.value.embeddingModel.provider;
+
+	if (currentProvider && currentProvider !== provider) {
 		const confirmed = await message.confirm(
 			i18n.baseText('settings.chatHub.embeddingModel.changeProvider.confirm.message'),
 			i18n.baseText('settings.chatHub.embeddingModel.changeProvider.confirm.title'),
@@ -173,9 +158,12 @@ async function onEmbeddingTypeChange(credentialType: string) {
 			return;
 		}
 	}
-	localEmbeddingType.value = credentialType;
+
+	settings.value.embeddingModel.provider = provider;
+	settings.value.embeddingModel.credentialId = null;
+
 	try {
-		await updateEmbeddingCredentialApi(rootStore.restApiContext, null, credentialType);
+		await updateSemanticSearchSettingsApi(rootStore.restApiContext, settings.value);
 		await settingsStore.getModuleSettings();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.chatHub.embeddingModel.save.error'));
@@ -183,13 +171,12 @@ async function onEmbeddingTypeChange(credentialType: string) {
 }
 
 async function onEmbeddingCredentialSelected(credentialId: string | null) {
-	if (!localEmbeddingType.value) return;
+	if (!settings.value.embeddingModel.provider) return;
+
+	settings.value.embeddingModel.credentialId = credentialId;
+
 	try {
-		await updateEmbeddingCredentialApi(
-			rootStore.restApiContext,
-			credentialId,
-			localEmbeddingType.value,
-		);
+		await updateSemanticSearchSettingsApi(rootStore.restApiContext, settings.value);
 		await settingsStore.getModuleSettings();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.chatHub.embeddingModel.save.error'));
@@ -297,17 +284,16 @@ onMounted(async () => {
 								{{ i18n.baseText('settings.chatHub.label.provider') }}
 							</N8nText>
 							<N8nSelect
-								:model-value="localVectorStoreType"
+								:model-value="settings.vectorStore.provider"
 								size="small"
 								:disabled="disabled"
-								:class="$style.typeSelect"
-								@update:model-value="onVectorStoreTypeChange"
+								@update:model-value="onVectorStoreProviderChange"
 							>
 								<N8nOption
-									v-for="option in VECTOR_STORE_PROVIDER_OPTIONS"
-									:key="option.value"
-									:value="option.value"
-									:label="option.label"
+									v-for="option in chatHubVectorStoreProviderSchema.options"
+									:key="option"
+									:value="option"
+									:label="vectorStoreProviderDisplayNames[option]"
 								/>
 							</N8nSelect>
 						</div>
@@ -317,12 +303,9 @@ onMounted(async () => {
 							</N8nText>
 							<CredentialPicker
 								:class="$style.credentialPicker"
-								:app-name="
-									VECTOR_STORE_PROVIDER_OPTIONS.find((o) => o.value === localVectorStoreType)
-										?.label ?? ''
-								"
-								:credential-type="localVectorStoreType"
-								:selected-credential-id="vectorStoreCredentialId"
+								app-name=""
+								:credential-type="vectorStoreCredentialType ?? ''"
+								:selected-credential-id="settings.vectorStore.credentialId"
 								create-button-variant="subtle"
 								@credential-selected="onVectorStoreCredentialSelected"
 								@credential-deleted="onVectorStoreCredentialSelected(null)"
@@ -351,18 +334,20 @@ onMounted(async () => {
 								{{ i18n.baseText('settings.chatHub.label.provider') }}
 							</N8nText>
 							<N8nSelect
-								:model-value="localEmbeddingType"
+								:model-value="settings.embeddingModel.provider"
 								size="small"
 								:disabled="disabled"
 								:class="$style.typeSelect"
-								@update:model-value="onEmbeddingTypeChange"
+								@update:model-value="onEmbeddingModelProviderChange"
 							>
-								<N8nOption
-									v-for="option in EMBEDDING_PROVIDER_OPTIONS"
-									:key="option.value"
-									:value="option.value"
-									:label="option.label"
-								/>
+								<template v-for="option in chatHubLLMProviderSchema.options">
+									<N8nOption
+										v-if="option in EMBEDDINGS_NODE_TYPE_MAP"
+										:key="option"
+										:value="option"
+										:label="providerDisplayNames[option]"
+									/>
+								</template>
 							</N8nSelect>
 						</div>
 						<div :class="$style.labeledControl">
@@ -370,11 +355,14 @@ onMounted(async () => {
 								{{ i18n.baseText('settings.chatHub.label.credential') }}
 							</N8nText>
 							<CredentialPicker
-								v-if="localEmbeddingType"
 								:class="$style.credentialPicker"
-								:app-name="localEmbeddingDisplayName"
-								:credential-type="localEmbeddingType"
-								:selected-credential-id="embeddingCredentialId"
+								app-name=""
+								:credential-type="
+									settings.embeddingModel.provider
+										? PROVIDER_CREDENTIAL_TYPE_MAP[settings.embeddingModel.provider]
+										: ''
+								"
+								:selected-credential-id="settings.embeddingModel.credentialId"
 								create-button-variant="subtle"
 								@credential-selected="onEmbeddingCredentialSelected"
 								@credential-deleted="onEmbeddingCredentialSelected(null)"

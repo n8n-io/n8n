@@ -1,4 +1,8 @@
-import type { ChatHubLLMProvider, ChatModelMetadataDto } from '@n8n/api-types';
+import type {
+	ChatHubLLMProvider,
+	ChatHubVectorStoreProvider,
+	ChatModelMetadataDto,
+} from '@n8n/api-types';
 import type { ExecutionStatus, INodeTypeNameVersion } from 'n8n-workflow';
 import {
 	VECTOR_STORE_PG_VECTOR_SCOPED_NODE_TYPE,
@@ -734,9 +738,8 @@ export const SUPPORTED_RESPONSE_MODES: ChatTriggerResponseMode[] = [
 	'responseNodes',
 ] as const;
 
-/** Maps vector store credential type to its corresponding node type */
-export const VECTOR_STORE_NODE_TYPE_MAP: Record<string, string> = {
-	vectorStorePGVectorScopedApi: VECTOR_STORE_PG_VECTOR_SCOPED_NODE_TYPE,
-	vectorStorePineconeScopedApi: VECTOR_STORE_PINECONE_SCOPED_NODE_TYPE,
-	vectorStoreQdrantScopedApi: VECTOR_STORE_QDRANT_SCOPED_NODE_TYPE,
+export const VECTOR_STORE_NODE_TYPE_MAP: Record<ChatHubVectorStoreProvider, string> = {
+	pgvector: VECTOR_STORE_PG_VECTOR_SCOPED_NODE_TYPE,
+	pinecone: VECTOR_STORE_PINECONE_SCOPED_NODE_TYPE,
+	qdrant: VECTOR_STORE_QDRANT_SCOPED_NODE_TYPE,
 };

@@ -4,18 +4,21 @@ import {
 	ChatHubLLMProvider,
 	chatHubLLMProviderSchema,
 	ChatProviderSettingsDto,
+	VECTOR_STORE_PROVIDER_CREDENTIAL_TYPE_MAP,
+	type ChatHubSemanticSearchSettings,
 } from '@n8n/api-types';
 import { SettingsRepository } from '@n8n/db';
 import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
+import type { SemanticSearchOptions } from './chat-hub.types';
+import { VECTOR_STORE_NODE_TYPE_MAP } from './chat-hub.constants';
 
 const CHAT_PROVIDER_SETTINGS_KEY_PREFIX = 'chat.provider.';
 const CHAT_PROVIDER_SETTINGS_KEY = (provider: ChatHubLLMProvider) =>
 	`${CHAT_PROVIDER_SETTINGS_KEY_PREFIX}${provider}`;
 const CHAT_ENABLED_KEY = 'chat.access.enabled';
-const CHAT_VECTOR_STORE_CREDENTIAL_KEY = 'chat.vector-store-credential-id';
-const CHAT_EMBEDDING_CREDENTIAL_KEY = 'chat.embedding-credential';
+const CHAT_SEMANTIC_SEARCH_SETTINGS_KEY = 'chat.semantic-search';
 
 const getDefaultProviderSettings = (provider: ChatHubLLMProvider): ChatProviderSettingsDto => ({
 	provider,
@@ -104,50 +107,15 @@ export class ChatHubSettingsService {
 		return result;
 	}
 
-	async getVectorStoreCredential(): Promise<{ id: string; type: string } | null> {
-		const row = await this.settingsRepository.findByKey(CHAT_VECTOR_STORE_CREDENTIAL_KEY);
-		if (!row) return null;
-		return jsonParse<{ id: string; type: string } | null>(row.value, {
-			fallbackValue: null,
-		});
-	}
+	async getSemanticSearchSettings(): Promise<ChatHubSemanticSearchSettings> {
+		const row = await this.settingsRepository.findByKey(CHAT_SEMANTIC_SEARCH_SETTINGS_KEY);
+		if (!row)
+			return {
+				embeddingModel: { credentialId: null, provider: null },
+				vectorStore: { credentialId: null, provider: null },
+			};
 
-	async getEmbeddingCredential(): Promise<{ type: string; id: string } | null> {
-		const row = await this.settingsRepository.findByKey(CHAT_EMBEDDING_CREDENTIAL_KEY);
-		if (!row) return null;
-		return jsonParse<{ type: string; id: string } | null>(row.value, { fallbackValue: null });
-	}
-
-	async setEmbeddingCredential(credential: { type: string; id: string } | null): Promise<void> {
-		if (credential === null) {
-			await this.settingsRepository.delete({ key: CHAT_EMBEDDING_CREDENTIAL_KEY });
-		} else {
-			await this.settingsRepository.upsert(
-				{
-					key: CHAT_EMBEDDING_CREDENTIAL_KEY,
-					value: JSON.stringify(credential),
-					loadOnStartup: true,
-				},
-				['key'],
-			);
-		}
-	}
-
-	async setVectorStoreCredential(
-		credential: { id: string | null; type: string } | null,
-	): Promise<void> {
-		if (credential === null) {
-			await this.settingsRepository.delete({ key: CHAT_VECTOR_STORE_CREDENTIAL_KEY });
-		} else {
-			await this.settingsRepository.upsert(
-				{
-					key: CHAT_VECTOR_STORE_CREDENTIAL_KEY,
-					value: JSON.stringify(credential),
-					loadOnStartup: true,
-				},
-				['key'],
-			);
-		}
+		return jsonParse<ChatHubSemanticSearchSettings>(row.value);
 	}
 
 	async setProviderSettings(
@@ -164,5 +132,42 @@ export class ChatHubSettingsService {
 			{ key: CHAT_PROVIDER_SETTINGS_KEY(provider), value, loadOnStartup: true },
 			['key'],
 		);
+	}
+
+	async setSemanticSearchSettings(settings: ChatHubSemanticSearchSettings): Promise<void> {
+		await this.settingsRepository.upsert(
+			{
+				key: CHAT_SEMANTIC_SEARCH_SETTINGS_KEY,
+				value: JSON.stringify(settings),
+				loadOnStartup: true,
+			},
+			['key'],
+		);
+	}
+
+	async getSemanticSearchOptions(): Promise<SemanticSearchOptions | null> {
+		const settings = await this.getSemanticSearchSettings();
+
+		if (
+			!settings.embeddingModel.credentialId ||
+			!settings.embeddingModel.provider ||
+			!settings.vectorStore.credentialId ||
+			!settings.vectorStore.provider
+		) {
+			// return null if not fully configured
+			return null;
+		}
+
+		return {
+			embeddingModel: {
+				provider: settings.embeddingModel.provider,
+				credentialId: settings.embeddingModel.credentialId,
+			},
+			vectorStore: {
+				nodeType: VECTOR_STORE_NODE_TYPE_MAP[settings.vectorStore.provider],
+				credentialType: VECTOR_STORE_PROVIDER_CREDENTIAL_TYPE_MAP[settings.vectorStore.provider],
+				credentialId: settings.vectorStore.credentialId,
+			},
+		};
 	}
 }

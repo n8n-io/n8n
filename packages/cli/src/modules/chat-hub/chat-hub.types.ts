@@ -106,14 +106,14 @@ export type PreparedChatWorkflow = {
 	responseMode: ChatTriggerResponseMode;
 };
 
-export interface VectorStoreSearchOptions {
-	agentId: string;
-	embeddingModel: ProviderAndCredentialId;
-	credentialId: string;
-	vectorStoreType: string;
-}
-
-export interface ProviderAndCredentialId {
-	provider: ChatHubLLMProvider;
-	credentialId: string;
+export interface SemanticSearchOptions {
+	embeddingModel: {
+		provider: ChatHubLLMProvider;
+		credentialId: string;
+	};
+	vectorStore: {
+		nodeType: string;
+		credentialType: string;
+		credentialId: string;
+	};
 }

@@ -30,7 +30,12 @@ export const chatHubLLMProviderSchema = z.enum([
 	'cohere',
 	'mistralCloud',
 ]);
+
 export type ChatHubLLMProvider = z.infer<typeof chatHubLLMProviderSchema>;
+
+export const chatHubVectorStoreProviderSchema = z.enum(['pgvector', 'qdrant', 'pinecone']);
+
+export type ChatHubVectorStoreProvider = z.infer<typeof chatHubVectorStoreProviderSchema>;
 
 export interface ChatHubAgentKnowledgeItem {
 	id: string;
@@ -66,10 +71,7 @@ export type ChatHubProvider = z.infer<typeof chatHubProviderSchema>;
  * Map of providers to their credential types
  * Only LLM providers (openai, anthropic, google) have credentials
  */
-export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<
-	Exclude<ChatHubProvider, 'n8n' | 'custom-agent'>,
-	string
-> = {
+export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<ChatHubLLMProvider, string> = {
 	openai: 'openAiApi',
 	anthropic: 'anthropicApi',
 	google: 'googlePalmApi',
@@ -85,6 +87,13 @@ export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<
 	cohere: 'cohereApi',
 	mistralCloud: 'mistralCloudApi',
 };
+
+export const VECTOR_STORE_PROVIDER_CREDENTIAL_TYPE_MAP: Record<ChatHubVectorStoreProvider, string> =
+	{
+		pgvector: 'vectorStorePGVectorScopedApi',
+		qdrant: 'vectorStoreQdrantScopedApi',
+		pinecone: 'vectorStorePineconeScopedApi',
+	};
 
 /**
  * Chat Hub conversation model configuration
@@ -535,15 +544,18 @@ export class UpdateChatSettingsRequest extends Z.class({
 	payload: chatProviderSettingsSchema,
 }) {}
 
-export class UpdateVectorStoreCredentialRequest extends Z.class({
-	credentialId: z.string().nullable(),
-	credentialType: z.string().nullable(),
+export class ChatHubSemanticSearchSettings extends Z.class({
+	vectorStore: z.object({
+		provider: chatHubVectorStoreProviderSchema.nullable(),
+		credentialId: z.string().nullable(),
+	}),
+	embeddingModel: z.object({
+		provider: chatHubLLMProviderSchema.nullable(),
+		credentialId: z.string().nullable(),
+	}),
 }) {}
 
-export class UpdateEmbeddingCredentialRequest extends Z.class({
-	credentialId: z.string().nullable(),
-	credentialType: z.string().nullable(),
-}) {}
+export class ChatHubEmbeddingModelSettings extends Z.class({}) {}
 
 export interface ChatHubModuleSettings {
 	enabled: boolean;

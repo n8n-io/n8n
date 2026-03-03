@@ -324,7 +324,7 @@ export class ChatHubController {
 		res: Response,
 		@Param('agentId') agentId: string,
 	): Promise<void> {
-		await this.chatAgentService.deleteAgent(agentId, req.user);
+		await this.chatAgentService.deleteAgent(agentId, req.user.id);
 
 		res.status(204).send();
 	}

@@ -21,6 +21,7 @@ import type {
 	WorkflowExecutionStatus,
 	ChatHubUpdateToolRequest,
 	ChatHubToolDto,
+	ChatHubSemanticSearchSettings,
 } from '@n8n/api-types';
 import type { INode } from 'n8n-workflow';
 
@@ -260,26 +261,11 @@ export const updateChatSettingsApi = async (
 	});
 };
 
-export const updateVectorStoreCredentialApi = async (
+export const updateSemanticSearchSettingsApi = async (
 	context: IRestApiContext,
-	credentialId: string | null,
-	credentialType: string | null,
+	data: ChatHubSemanticSearchSettings,
 ): Promise<void> => {
-	await makeRestApiRequest(context, 'PUT', '/chat/vector-store-credential', {
-		credentialId,
-		credentialType,
-	});
-};
-
-export const updateEmbeddingCredentialApi = async (
-	context: IRestApiContext,
-	credentialId: string | null,
-	credentialType: string | null,
-): Promise<void> => {
-	await makeRestApiRequest(context, 'PUT', '/chat/embedding-credential', {
-		credentialId,
-		credentialType,
-	});
+	await makeRestApiRequest(context, 'PUT', '/chat/semantic-search', data);
 };
 
 export function buildChatAttachmentUrl(

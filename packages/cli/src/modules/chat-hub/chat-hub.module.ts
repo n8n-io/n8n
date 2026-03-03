@@ -22,18 +22,16 @@ export class ChatHubModule implements ModuleInterface {
 	async settings() {
 		const { ChatHubSettingsService } = await import('./chat-hub.settings.service');
 		const service = Container.get(ChatHubSettingsService);
-		const [enabled, providers, vectorStoreCredential, embeddingCredential] = await Promise.all([
+		const [enabled, providers, semanticSearch] = await Promise.all([
 			service.getEnabled(),
 			service.getAllProviderSettings(),
-			service.getVectorStoreCredential(),
-			service.getEmbeddingCredential(),
+			service.getSemanticSearchSettings(),
 		]);
 
 		return {
 			enabled,
 			providers,
-			...(vectorStoreCredential && { vectorStoreCredential }),
-			...(embeddingCredential && { embeddingCredential }),
+			semanticSearch,
 		};
 	}
 

@@ -1263,28 +1263,6 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		addMessage(data.sessionId, message);
 	}
 
-	const vectorStoreCredentialId = computed(
-		() => settingsStore.moduleSettings['chat-hub']?.vectorStoreCredential?.id ?? null,
-	);
-
-	const embeddingCredentialId = computed(
-		() => settingsStore.moduleSettings['chat-hub']?.embeddingCredential?.id ?? null,
-	);
-
-	const vectorStoreCredential = computed(() => {
-		if (!vectorStoreCredentialId.value) {
-			return null;
-		}
-		return credentialsStore.getCredentialById(vectorStoreCredentialId.value) ?? null;
-	});
-
-	const embeddingCredential = computed(() => {
-		if (!embeddingCredentialId.value) {
-			return null;
-		}
-		return credentialsStore.getCredentialById(embeddingCredentialId.value) ?? null;
-	});
-
 	const isSharingEnabled = computed(
 		() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
 	);
@@ -1293,19 +1271,25 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		let vectorStoreIssue: SemanticSearchCredentialIssue | undefined;
 		let embeddingIssue: SemanticSearchCredentialIssue | undefined;
 
-		if (!vectorStoreCredentialId.value) {
+		const semanticSearch = settingsStore.moduleSettings['chat-hub']?.semanticSearch;
+		const vectorStoreCredentialId = semanticSearch?.vectorStore.credentialId ?? '';
+		const embeddingCredentialId = semanticSearch?.embeddingModel.credentialId ?? '';
+		const vectorStoreCredential = credentialsStore.getCredentialById(vectorStoreCredentialId);
+		const embeddingCredential = credentialsStore.getCredentialById(embeddingCredentialId);
+
+		if (!vectorStoreCredentialId) {
 			vectorStoreIssue = 'unspecified';
-		} else if (!vectorStoreCredential.value) {
+		} else if (!vectorStoreCredential) {
 			vectorStoreIssue = 'notFound';
-		} else if (isSharingEnabled.value && !vectorStoreCredential.value.isGlobal) {
+		} else if (isSharingEnabled.value && !vectorStoreCredential.isGlobal) {
 			vectorStoreIssue = 'notShared';
 		}
 
-		if (!embeddingCredentialId.value) {
+		if (!embeddingCredentialId) {
 			embeddingIssue = 'unspecified';
-		} else if (!embeddingCredential.value) {
+		} else if (!embeddingCredential) {
 			embeddingIssue = 'notShared';
-		} else if (isSharingEnabled.value && !embeddingCredential.value.isGlobal) {
+		} else if (isSharingEnabled.value && !embeddingCredential.isGlobal) {
 			embeddingIssue = 'notShared';
 		}
 
@@ -1384,10 +1368,6 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		fetchAllChatSettings,
 		fetchProviderSettings,
 		updateProviderSettings,
-		vectorStoreCredentialId,
-		vectorStoreCredential,
-		embeddingCredential,
-		embeddingCredentialId,
 		semanticSearchReadiness,
 
 		/**

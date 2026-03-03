@@ -1,11 +1,10 @@
-import type {
-	ChatHubUpdateAgentRequest,
-	ChatHubCreateAgentRequest,
-	ChatHubAgentDto,
-	ChatModelDto,
-	ChatHubAgentKnowledgeItem,
+import {
+	type ChatHubUpdateAgentRequest,
+	type ChatHubCreateAgentRequest,
+	type ChatHubAgentDto,
+	type ChatModelDto,
+	type ChatHubAgentKnowledgeItem,
 } from '@n8n/api-types';
-import { chatHubLLMProviderSchema } from '@n8n/api-types';
 
 import { Logger } from '@n8n/backend-common';
 import type { EntityManager, User } from '@n8n/db';
@@ -17,22 +16,20 @@ import { v4 as uuidv4 } from 'uuid';
 import type { ChatHubAgent, IChatHubAgent } from './chat-hub-agent.entity';
 import { ChatHubAgentRepository } from './chat-hub-agent.repository';
 import { ChatHubCredentialsService } from './chat-hub-credentials.service';
-import { getModelMetadata, VECTOR_STORE_NODE_TYPE_MAP } from './chat-hub.constants';
+import { getModelMetadata } from './chat-hub.constants';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import { type IBinaryData } from 'n8n-workflow';
 import { ChatHubWorkflowService } from './chat-hub-workflow.service';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ChatHubSettingsService } from './chat-hub.settings.service';
-import type { ProviderAndCredentialId } from './chat-hub.types';
 import { ChatHubToolService } from './chat-hub-tool.service';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ChatHubExecutionService } from './chat-hub-execution.service';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { getBase } from '@/workflow-execute-additional-data';
-import { VECTOR_STORE_PG_VECTOR_SCOPED_NODE_TYPE } from 'n8n-workflow';
-import { EMBEDDINGS_NODE_TYPE_MAP } from '@n8n/chat-hub';
+import type { SemanticSearchOptions } from './chat-hub.types';
 
 @Service()
 export class ChatHubAgentService {
@@ -176,60 +173,34 @@ export class ChatHubAgentService {
 		};
 	}
 
-	async deleteAgent(id: string, user: User): Promise<void> {
+	async deleteAgent(id: string, userId: string): Promise<void> {
 		// First check if the agent exists and belongs to the user
-		const existingAgent = await this.chatAgentRepository.getOneById(id, user.id);
+		const existingAgent = await this.chatAgentRepository.getOneById(id, userId);
 		if (!existingAgent) {
 			throw new NotFoundError('Chat agent not found');
 		}
 
 		await this.chatAgentRepository.deleteAgent(id);
-		await this.deleteEmbeddings(user, id);
+		await this.deleteEmbeddings(userId, id);
 
-		this.logger.debug(`Chat agent deleted: ${id} by user ${user.id}`);
+		this.logger.debug(`Chat agent deleted: ${id} by user ${userId}`);
 	}
 
-	getAgentMemoryKey(agentId: string): string {
-		return `chat-hub-agent-files-${agentId}`;
-	}
+	private async ensureSemanticSearchSettings(): Promise<SemanticSearchOptions> {
+		const options = await this.chatHubSettingsService.getSemanticSearchOptions();
 
-	private async ensureVectorStoreCredential() {
-		const credential = await this.chatHubSettingsService.getVectorStoreCredential();
-
-		if (!credential?.id) {
+		if (options === null) {
 			throw new BadRequestError(
 				'No vector store credential configured. Please set up a vector store credential in the Chat Hub settings.',
 			);
 		}
 
-		return { id: credential.id, type: credential.type };
-	}
-
-	private async ensureEmbeddingCredential(): Promise<ProviderAndCredentialId> {
-		const credential = await this.chatHubSettingsService.getEmbeddingCredential();
-
-		if (!credential?.id) {
-			throw new BadRequestError(
-				'No embedding provider credential configured. Please set up an embedding provider credential in the Chat Hub settings.',
-			);
-		}
-
-		for (const provider of chatHubLLMProviderSchema.options) {
-			if (EMBEDDINGS_NODE_TYPE_MAP[provider]?.name === credential.type) {
-				return {
-					provider,
-					credentialId: credential.id,
-				};
-			}
-		}
-
-		throw new BadRequestError(`Invalid embedding credential type ${credential.type}`);
+		return options;
 	}
 
 	private async insertEmbeddings(
 		user: User,
 		agentId: string,
-		embeddingModel: ProviderAndCredentialId,
 		files: Array<{ attachment: IBinaryData; knowledgeId: string }>,
 		workflowId: string,
 	) {
@@ -238,7 +209,7 @@ export class ChatHubAgentService {
 		}
 
 		try {
-			const cred = await this.ensureVectorStoreCredential();
+			const settings = await this.ensureSemanticSearchSettings();
 
 			const { workflowData, executionData } = await this.chatAgentRepository.manager.transaction(
 				async (trx) => {
@@ -248,12 +219,8 @@ export class ChatHubAgentService {
 						user,
 						project.id,
 						files,
-						{
-							agentId,
-							embeddingModel,
-							credentialId: cred.id,
-							vectorStoreType: cred.type,
-						},
+						agentId,
+						settings,
 						trx,
 						workflowId,
 					);
@@ -276,20 +243,22 @@ export class ChatHubAgentService {
 		}
 	}
 
-	private async deleteEmbeddings(user: User, agentId: string): Promise<void> {
-		const cred = await this.ensureVectorStoreCredential();
-		const nodeType =
-			VECTOR_STORE_NODE_TYPE_MAP[cred.type] ?? VECTOR_STORE_PG_VECTOR_SCOPED_NODE_TYPE;
-		const additionalData = await getBase({ userId: user.id });
+	private async deleteEmbeddings(userId: string, agentId: string): Promise<void> {
+		const settings = await this.ensureSemanticSearchSettings();
+		const additionalData = await getBase({ userId });
+
 		await this.dynamicNodeParametersService.getActionResult(
 			'deleteDocuments',
 			'',
 			additionalData,
-			{ name: nodeType, version: 1 },
+			{ name: settings.vectorStore.nodeType, version: 1 },
 			{},
 			JSON.stringify({ filter: { agentId } }),
-			{ [cred.type]: { id: cred.id, name: '' } },
+			{
+				[settings.vectorStore.credentialType]: { id: settings.vectorStore.credentialId, name: '' },
+			},
 		);
+
 		this.logger.debug(`Deleted embeddings for agent ${agentId} from vector store`);
 	}
 
@@ -302,19 +271,21 @@ export class ChatHubAgentService {
 			return;
 		}
 
-		const cred = await this.ensureVectorStoreCredential();
-		const nodeType =
-			VECTOR_STORE_NODE_TYPE_MAP[cred.type] ?? VECTOR_STORE_PG_VECTOR_SCOPED_NODE_TYPE;
+		const settings = await this.ensureSemanticSearchSettings();
 		const additionalData = await getBase({ userId: user.id });
+
 		await this.dynamicNodeParametersService.getActionResult(
 			'deleteDocuments',
 			'',
 			additionalData,
-			{ name: nodeType, version: 1 },
+			{ name: settings.vectorStore.nodeType, version: 1 },
 			{},
 			JSON.stringify({ filter: { agentId, fileKnowledgeId: knowledgeIds } }),
-			{ [cred.type]: { id: cred.id, name: '' } },
+			{
+				[settings.vectorStore.credentialType]: { id: settings.vectorStore.credentialId, name: '' },
+			},
 		);
+
 		this.logger.debug(
 			`Deleted embeddings for ${knowledgeIds.length} files from vector store (agentId: ${agentId}, knowledgeIds: ${knowledgeIds.join(', ')})`,
 		);
@@ -362,7 +333,7 @@ export class ChatHubAgentService {
 		const knowledgeItems: ChatHubAgentKnowledgeItem[] = [];
 		const pdfFilesToInsert: Array<{ attachment: IBinaryData; knowledgeId: string }> = [];
 		const workflowId = uuidv4();
-		const embeddingModel = await this.ensureEmbeddingCredential();
+		const settings = await this.ensureSemanticSearchSettings();
 
 		for (const file of files) {
 			// Multer/busboy parses the Content-Disposition filename as Latin-1 by default,
@@ -389,13 +360,13 @@ export class ChatHubAgentService {
 				type: 'embedding',
 				mimeType: file.mimetype,
 				fileName: storedFile.fileName ?? originalName,
-				provider: embeddingModel.provider,
+				provider: settings.embeddingModel.provider,
 			});
 			pdfFilesToInsert.push({ attachment: storedFile, knowledgeId });
 		}
 
 		if (pdfFilesToInsert.length > 0) {
-			await this.insertEmbeddings(user, agentId, embeddingModel, pdfFilesToInsert, workflowId);
+			await this.insertEmbeddings(user, agentId, pdfFilesToInsert, workflowId);
 		}
 
 		return knowledgeItems;

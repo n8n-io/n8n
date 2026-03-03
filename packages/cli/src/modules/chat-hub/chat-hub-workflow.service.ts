@@ -3,7 +3,6 @@ import {
 	ChatSessionId,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 	type ChatHubBaseLLMModel,
-	type ChatHubLLMProvider,
 	type ChatHubAgentKnowledgeItem,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -36,11 +35,9 @@ import {
 	MERGE_NODE_TYPE,
 	NodeConnectionTypes,
 	OperationalError,
-	VECTOR_STORE_PG_VECTOR_SCOPED_NODE_TYPE,
 	type IBinaryData,
 	type NodeParameterValueType,
 } from 'n8n-workflow';
-import { VECTOR_STORE_NODE_TYPE_MAP } from './chat-hub.constants';
 import { v4 as uuidv4 } from 'uuid';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -68,12 +65,12 @@ import {
 	PreparedChatWorkflow,
 	type ContentBlock,
 	type ChatTriggerResponseMode,
-	type VectorStoreSearchOptions,
+	type SemanticSearchOptions,
 } from './chat-hub.types';
 import { getMaxContextWindowTokens } from './context-limits';
 import { inE2ETests } from '../../constants';
 import { EMBEDDINGS_NODE_TYPE_MAP, parseMessage, collectChatArtifacts } from '@n8n/chat-hub';
-import { ChatHubAgentService } from './chat-hub-agent.service';
+import { ChatHubAgentRepository } from './chat-hub-agent.repository';
 
 @Service()
 export class ChatHubWorkflowService {
@@ -82,7 +79,7 @@ export class ChatHubWorkflowService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly chatHubAttachmentService: ChatHubAttachmentService,
-		private readonly chatHubAgentService: ChatHubAgentService,
+		private readonly chatHubAgentService: ChatHubAgentRepository,
 		private readonly chatHubSettingsService: ChatHubSettingsService,
 		private readonly chatHubCredentialsService: ChatHubCredentialsService,
 		private readonly chatHubToolService: ChatHubToolService,
@@ -110,7 +107,7 @@ export class ChatHubWorkflowService {
 		systemMessage: string | undefined,
 		tools: INode[],
 		timeZone: string,
-		vectorStoreSearch: VectorStoreSearchOptions | null,
+		vectorStoreSearch: { agentId: string; options: SemanticSearchOptions } | null,
 		executionMetadata: ChatHubAuthenticationMetadata,
 		trx?: EntityManager,
 	): Promise<{
@@ -320,7 +317,7 @@ export class ChatHubWorkflowService {
 		}
 
 		if (model.provider === 'custom-agent') {
-			const agent = await this.chatHubAgentService.getAgentById(model.agentId, user.id, trx);
+			const agent = await this.chatHubAgentService.getOneById(model.agentId, user.id, trx);
 
 			if (!agent?.provider || !agent.model) {
 				throw new BadRequestError('Agent not found or has no model configured');
@@ -378,7 +375,7 @@ export class ChatHubWorkflowService {
 		model: ChatHubBaseLLMModel;
 		systemMessage: string;
 		tools: INode[];
-		vectorStoreSearch: VectorStoreSearchOptions | null;
+		vectorStoreSearch: { agentId: string; options: SemanticSearchOptions } | null;
 		executionMetadata: ChatHubAuthenticationMetadata;
 	}) {
 		const chatTriggerNode = this.buildChatTriggerNode();
@@ -397,7 +394,9 @@ export class ChatHubWorkflowService {
 			restoreMemoryNode,
 			clearMemoryNode,
 			mergeNode,
-			...(vectorStoreSearch ? this.buildVectorStoreNodes(vectorStoreSearch) : []),
+			...(vectorStoreSearch
+				? this.buildVectorStoreNodes(vectorStoreSearch.agentId, vectorStoreSearch.options)
+				: []),
 		];
 
 		const nodeNames = new Set(nodes.map((node) => node.name));
@@ -1231,7 +1230,7 @@ Respond the title only:`,
 		tools: INode[],
 		attachments: IBinaryData[],
 		timeZone: string,
-		vectorStoreSearch: VectorStoreSearchOptions | null,
+		vectorStoreSearch: { agentId: string; options: SemanticSearchOptions } | null,
 		trx: EntityManager,
 		executionMetadata: ChatHubAuthenticationMetadata,
 	) {
@@ -1268,7 +1267,7 @@ Respond the title only:`,
 		trx: EntityManager,
 		executionMetadata: ChatHubAuthenticationMetadata,
 	) {
-		const agent = await this.chatHubAgentService.getAgentById(agentId, user.id, trx);
+		const agent = await this.chatHubAgentService.getOneById(agentId, user.id, trx);
 
 		if (!agent) {
 			throw new BadRequestError('Agent not found');
@@ -1306,8 +1305,7 @@ Respond the title only:`,
 		};
 
 		const tools = await this.chatHubToolService.getToolDefinitionsForAgent(agentId, trx);
-		const vectorStoreCredential = await this.chatHubSettingsService.getVectorStoreCredential();
-		const embeddingCredential = await this.chatHubSettingsService.getEmbeddingCredential();
+		const semanticSearchOptions = await this.chatHubSettingsService.getSemanticSearchOptions();
 
 		return await this.prepareBaseChatWorkflow(
 			user,
@@ -1320,16 +1318,8 @@ Respond the title only:`,
 			tools,
 			attachments,
 			timeZone,
-			agent.files.length > 0 && vectorStoreCredential && embeddingCredential
-				? {
-						agentId: agent.id,
-						credentialId: vectorStoreCredential.id,
-						embeddingModel: {
-							credentialId: embeddingCredential.id,
-							provider: embeddingCredential.type as ChatHubLLMProvider,
-						},
-						vectorStoreType: vectorStoreCredential.type,
-					}
+			agent.files.length > 0 && semanticSearchOptions
+				? { agentId: agent.id, options: semanticSearchOptions }
 				: null,
 			trx,
 			executionMetadata,
@@ -1500,18 +1490,14 @@ ${artifactsText}
 You can update the most recent document using the commands described above, or create a new document.`;
 	}
 
-	private buildVectorStoreNodes(options: VectorStoreSearchOptions): INode[] {
+	private buildVectorStoreNodes(agentId: string, options: SemanticSearchOptions): INode[] {
 		const embeddingsModelNode = this.buildEmbeddingsModelNode(options);
-		const vectorStoreNode = this.buildVectorStoreNode(
-			options.credentialId,
-			options.agentId,
-			options.vectorStoreType,
-		);
+		const vectorStoreNode = this.buildVectorStoreNode(agentId, options);
 
 		return [embeddingsModelNode, vectorStoreNode];
 	}
 
-	private buildEmbeddingsModelNode({ embeddingModel: embedding }: VectorStoreSearchOptions): INode {
+	private buildEmbeddingsModelNode({ embeddingModel: embedding }: SemanticSearchOptions): INode {
 		const embeddingsNodeType = EMBEDDINGS_NODE_TYPE_MAP[embedding.provider];
 
 		if (!embeddingsNodeType) {
@@ -1540,13 +1526,7 @@ You can update the most recent document using the commands described above, or c
 		};
 	}
 
-	private buildVectorStoreNode(
-		credentialId: string,
-		agentId: string,
-		vectorStoreType: string,
-	): INode {
-		const nodeType =
-			VECTOR_STORE_NODE_TYPE_MAP[vectorStoreType] ?? VECTOR_STORE_PG_VECTOR_SCOPED_NODE_TYPE;
+	private buildVectorStoreNode(agentId: string, settings: SemanticSearchOptions): INode {
 		return {
 			parameters: {
 				mode: 'retrieve-as-tool',
@@ -1558,14 +1538,14 @@ You can update the most recent document using the commands described above, or c
 					},
 				},
 			},
-			type: nodeType,
+			type: settings.vectorStore.nodeType,
 			typeVersion: 1,
 			position: [800, 496],
 			id: uuidv4(),
 			name: 'Vector Store',
 			credentials: {
-				[vectorStoreType]: {
-					id: credentialId,
+				[settings.vectorStore.credentialType]: {
+					id: settings.vectorStore.credentialId,
 					name: '',
 				},
 			},
@@ -1576,7 +1556,8 @@ You can update the most recent document using the commands described above, or c
 		user: User,
 		projectId: string,
 		attachments: Array<{ attachment: IBinaryData; knowledgeId: string }>,
-		vectorStoreSearch: VectorStoreSearchOptions,
+		agentId: string,
+		vectorStoreSearch: SemanticSearchOptions,
 		trx: EntityManager,
 		workflowId: string,
 	): Promise<{
@@ -1603,23 +1584,19 @@ You can update the most recent document using the commands described above, or c
 			name: 'Embeddings Model',
 		};
 
-		const vectorStoreNodeType =
-			VECTOR_STORE_NODE_TYPE_MAP[vectorStoreSearch.vectorStoreType] ??
-			VECTOR_STORE_PG_VECTOR_SCOPED_NODE_TYPE;
-
 		const nodes: INode[] = [
 			{
 				parameters: {
 					mode: 'insert',
 				},
-				type: vectorStoreNodeType,
+				type: vectorStoreSearch.vectorStore.nodeType,
 				typeVersion: 1,
 				position: [208, 0],
 				id: uuidv4(),
 				name: 'Vector Store',
 				credentials: {
-					[vectorStoreSearch.vectorStoreType]: {
-						id: vectorStoreSearch.credentialId,
+					[vectorStoreSearch.vectorStore.credentialType]: {
+						id: vectorStoreSearch.vectorStore.credentialId,
 						name: '',
 					},
 				},
@@ -1639,7 +1616,7 @@ You can update the most recent document using the commands described above, or c
 								},
 								{
 									name: 'agentId',
-									value: vectorStoreSearch.agentId,
+									value: agentId,
 								},
 								{
 									name: 'fileKnowledgeId',
