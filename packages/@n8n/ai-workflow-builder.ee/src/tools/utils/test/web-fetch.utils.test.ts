@@ -18,15 +18,21 @@ jest.mock('dns', () => ({
 const mockResolve4 = dns.resolve4 as unknown as jest.Mock;
 const mockResolve6 = dns.resolve6 as unknown as jest.Mock;
 
+type DnsCallback = (error: Error | null, addresses: string[]) => void;
+
 // Helper to make dns.resolve return values via callback
 function mockDnsResolve(v4: string[] = [], v6: string[] = []) {
-	mockResolve4.mockImplementation((_hostname: string, cb: Function) => cb(null, v4));
-	mockResolve6.mockImplementation((_hostname: string, cb: Function) => cb(null, v6));
+	mockResolve4.mockImplementation((_hostname: string, done: DnsCallback) => done(null, v4));
+	mockResolve6.mockImplementation((_hostname: string, done: DnsCallback) => done(null, v6));
 }
 
 function mockDnsResolveError() {
-	mockResolve4.mockImplementation((_hostname: string, cb: Function) => cb(new Error('ENOTFOUND')));
-	mockResolve6.mockImplementation((_hostname: string, cb: Function) => cb(new Error('ENOTFOUND')));
+	mockResolve4.mockImplementation((_hostname: string, done: DnsCallback) =>
+		done(new Error('ENOTFOUND'), []),
+	);
+	mockResolve6.mockImplementation((_hostname: string, done: DnsCallback) =>
+		done(new Error('ENOTFOUND'), []),
+	);
 }
 
 describe('web-fetch.utils', () => {

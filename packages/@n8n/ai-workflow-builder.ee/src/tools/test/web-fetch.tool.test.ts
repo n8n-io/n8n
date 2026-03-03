@@ -2,6 +2,13 @@ import type { ToolMessage } from '@langchain/core/messages';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import type { Command } from '@langchain/langgraph';
 
+import {
+	normalizeHost,
+	isBlockedUrl,
+	fetchUrl,
+	extractReadableContent,
+	isUrlInUserMessages,
+} from '@/tools/utils/web-fetch.utils';
 import { createWebFetchTool, WEB_FETCH_TOOL } from '@/tools/web-fetch.tool';
 
 // Mock the LangGraph state access and interrupt
@@ -9,9 +16,9 @@ const mockGetCurrentTaskInput = jest.fn();
 const mockInterrupt = jest.fn();
 
 jest.mock('@langchain/langgraph', () => ({
-	...jest.requireActual('@langchain/langgraph'),
-	getCurrentTaskInput: (...args: unknown[]) => mockGetCurrentTaskInput(...args),
-	interrupt: (...args: unknown[]) => mockInterrupt(...args),
+	...jest.requireActual<object>('@langchain/langgraph'),
+	getCurrentTaskInput: (...args: unknown[]) => mockGetCurrentTaskInput(...args) as unknown,
+	interrupt: (...args: unknown[]) => mockInterrupt(...args) as unknown,
 }));
 
 // Mock the web-fetch utilities
@@ -22,14 +29,6 @@ jest.mock('@/tools/utils/web-fetch.utils', () => ({
 	extractReadableContent: jest.fn(),
 	isUrlInUserMessages: jest.fn(),
 }));
-
-import {
-	normalizeHost,
-	isBlockedUrl,
-	fetchUrl,
-	extractReadableContent,
-	isUrlInUserMessages,
-} from '@/tools/utils/web-fetch.utils';
 
 const mockIsBlockedUrl = isBlockedUrl as jest.MockedFunction<typeof isBlockedUrl>;
 const mockFetchUrl = fetchUrl as jest.MockedFunction<typeof fetchUrl>;
