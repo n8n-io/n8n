@@ -269,7 +269,7 @@ describe('OperationHandler', () => {
 				expect(mockTodoistApiGetAllRequest).toHaveBeenCalledWith(
 					mockCtx,
 					'/tasks/filter',
-					expect.objectContaining({ filter: 'today' }),
+					expect.objectContaining({ query: 'today' }),
 					5,
 				);
 				expect(result).toEqual({ data: mockApiResponse });
