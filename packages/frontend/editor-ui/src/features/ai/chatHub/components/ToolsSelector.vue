@@ -2,23 +2,37 @@
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { computed, onMounted, ref, useTemplateRef } from 'vue';
-import { N8nButton, N8nDropdownMenu, N8nIcon, N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDropdownMenu,
+	N8nIcon,
+	N8nIconButton,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
-import { TOOLS_MANAGER_MODAL_KEY, TOOL_SETTINGS_MODAL_KEY } from '@/features/ai/chatHub/constants';
+import {
+	TOOLS_MANAGER_MODAL_KEY,
+	TOOL_SETTINGS_MODAL_KEY,
+	CHAT_HUB_MEMORY_SETTINGS_MODAL_KEY,
+} from '@/features/ai/chatHub/constants';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
+import { type ChatCapabilities } from '@n8n/api-types';
 
 const props = defineProps<{
 	disabled: boolean;
 	checkedToolIds: string[];
+	capabilities: ChatCapabilities;
 	customAgentId?: string;
 	disabledTooltip?: string;
 }>();
 
 const emit = defineEmits<{
 	toggle: [toolId: string];
+	updateCapabilities: [capabilities: ChatCapabilities];
 }>();
 
 const nodeTypesStore = useNodeTypesStore();
@@ -73,6 +87,11 @@ function openToolsManager() {
 	});
 }
 
+function openMemorySettings() {
+	dropdownRef.value?.close();
+	uiStore.openModal(CHAT_HUB_MEMORY_SETTINGS_MODAL_KEY);
+}
+
 function openToolSettings(item: ToolMenuItem) {
 	dropdownRef.value?.close();
 	const tool = item.data?.tool;
@@ -104,24 +123,48 @@ const CREATE_NEW_TOOL_ID = 'action::create-new';
 const menuItems = computed<ToolMenuItem[]>(() => {
 	const query = searchQuery.value.toLowerCase();
 
-	const toolItems: ToolMenuItem[] = chatStore.configuredTools
-		.filter((tool) => {
-			if (!query) return true;
-			const def = tool.definition;
-			const nodeType = nodeTypesStore.getNodeType(def.type, def.typeVersion);
-			const nameMatch = def.name.toLowerCase().includes(query);
-			const typeMatch = nodeType?.displayName.toLowerCase().includes(query);
-			return nameMatch || typeMatch;
-		})
-		.map((tool) => ({
-			id: `tool::${tool.definition.id}`,
-			label: tool.definition.name,
-			checked: checkedToolIdsSet.value.has(tool.definition.id),
-			data: {
-				nodeType: nodeTypesStore.getNodeType(tool.definition.type, tool.definition.typeVersion),
-				tool: tool.definition,
-			},
-		}));
+	const toolItems: ToolMenuItem[] = [];
+
+	toolItems.push({ id: 'section::tools', label: 'Tools', disabled: true });
+
+	toolItems.push(
+		...chatStore.configuredTools
+			.filter((tool) => {
+				if (!query) return true;
+				const def = tool.definition;
+				const nodeType = nodeTypesStore.getNodeType(def.type, def.typeVersion);
+				const nameMatch = def.name.toLowerCase().includes(query);
+				const typeMatch = nodeType?.displayName.toLowerCase().includes(query);
+				return nameMatch || typeMatch;
+			})
+			.map((tool) => ({
+				id: `tool::${tool.definition.id}`,
+				label: tool.definition.name,
+				checked: checkedToolIdsSet.value.has(tool.definition.id),
+				data: {
+					nodeType: nodeTypesStore.getNodeType(tool.definition.type, tool.definition.typeVersion),
+					tool: tool.definition,
+				},
+			})),
+	);
+
+	toolItems.push({
+		id: 'section::capabilities',
+		label: 'Other Capabilities',
+		disabled: true,
+	});
+	toolItems.push({
+		id: 'capability::artifact',
+		label: 'Document creation',
+		checked: props.capabilities.artifacts,
+		icon: { type: 'icon', value: 'file-text' },
+	});
+	toolItems.push({
+		id: 'capability::memory',
+		label: 'Context memory',
+		checked: props.capabilities.contextMemory,
+		icon: { type: 'icon', value: 'brain' },
+	});
 
 	toolItems.push({
 		id: CREATE_NEW_TOOL_ID,
@@ -143,6 +186,18 @@ function handleSelect(id: string) {
 
 	if (command === 'tool') {
 		emit('toggle', toolId);
+	} else if (command === 'capability') {
+		if (toolId === 'artifact') {
+			emit('updateCapabilities', {
+				...props.capabilities,
+				artifacts: !props.capabilities.artifacts,
+			});
+		} else if (toolId === 'memory') {
+			emit('updateCapabilities', {
+				...props.capabilities,
+				contextMemory: !props.capabilities.contextMemory,
+			});
+		}
 	}
 }
 
@@ -195,32 +250,42 @@ onMounted(async () => {
 				@search="handleSearch"
 			>
 				<template #trigger>
-					<N8nButton
-						variant="subtle"
-						native-type="button"
-						:disabled="disabled"
-						:icon="toolCount === 0 ? 'plus' : undefined"
-						data-test-id="chat-tools-button"
-					>
-						<span v-if="toolCount > 0" :class="$style.iconStack">
-							<NodeIcon
-								v-for="(nodeType, i) in displayToolNodeTypes"
-								:key="`${nodeType?.name}-${i}`"
-								:style="{ zIndex: i + 1 }"
-								:node-type="nodeType"
-								:class="[$style.icon, { [$style.iconOverlap]: i !== 0 }]"
-								:circle="true"
-								:size="12"
-							/>
-							<span
-								v-if="remainingToolCount > 0"
-								:class="[$style.icon, $style.iconOverlap, $style.countBadge]"
-							>
-								+{{ remainingToolCount }}
+					<div>
+						<N8nIconButton
+							v-if="toolCount === 0"
+							icon="plus"
+							variant="subtle"
+							native-type="button"
+							:disabled="disabled"
+							data-test-id="chat-tools-button"
+						/>
+						<N8nButton
+							v-else
+							variant="subtle"
+							native-type="button"
+							:disabled="disabled"
+							data-test-id="chat-tools-button"
+						>
+							<span :class="$style.iconStack">
+								<NodeIcon
+									v-for="(nodeType, i) in displayToolNodeTypes"
+									:key="`${nodeType?.name}-${i}`"
+									:style="{ zIndex: i + 1 }"
+									:node-type="nodeType"
+									:class="[$style.icon, { [$style.iconOverlap]: i !== 0 }]"
+									:circle="true"
+									:size="12"
+								/>
+								<span
+									v-if="remainingToolCount > 0"
+									:class="[$style.icon, $style.iconOverlap, $style.countBadge]"
+								>
+									+{{ remainingToolCount }}
+								</span>
 							</span>
-						</span>
-						{{ toolsLabel }}
-					</N8nButton>
+							{{ toolsLabel }}
+						</N8nButton>
+					</div>
 				</template>
 
 				<template #search-prefix>
@@ -243,15 +308,24 @@ onMounted(async () => {
 					<N8nIcon v-else-if="item.icon?.type === 'icon'" :icon="item.icon.value" size="large" />
 				</template>
 
+				<template #item-label="{ item }">
+					<N8nText v-if="item.id.startsWith('section::')" bold size="small">{{
+						item.label
+					}}</N8nText>
+				</template>
+
 				<template #item-trailing="{ item }">
 					<template v-if="item.id !== CREATE_NEW_TOOL_ID">
 						<N8nIconButton
+							v-if="item.id.startsWith('tool::') || item.id === 'capability::memory'"
 							icon="settings"
 							variant="ghost"
 							size="medium"
 							text
 							:class="$style.itemSettingsButton"
-							@click.stop="openToolSettings(item)"
+							@click.stop="
+								item.id === 'capability::memory' ? openMemorySettings() : openToolSettings(item)
+							"
 						/>
 						<span v-if="!item.checked" :class="$style.checkPlaceholder" />
 					</template>

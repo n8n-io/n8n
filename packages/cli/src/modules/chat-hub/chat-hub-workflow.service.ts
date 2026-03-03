@@ -2,6 +2,7 @@ import {
 	ChatHubConversationModel,
 	ChatSessionId,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
+	type ChatCapabilities,
 	type ChatHubBaseLLMModel,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -109,6 +110,7 @@ export class ChatHubWorkflowService {
 		timeZone: string,
 		executionMetadata: ChatHubAuthenticationMetadata,
 		trx?: EntityManager,
+		capabilities?: ChatCapabilities,
 	): Promise<{
 		workflowData: IWorkflowBase;
 		executionData: IRunExecutionData;
@@ -128,7 +130,8 @@ export class ChatHubWorkflowService {
 				credentials,
 				model,
 				systemMessage:
-					systemMessage ?? (await this.getBaseSystemMessage(history, timeZone, userId)),
+					systemMessage ??
+					(await this.getBaseSystemMessage(history, timeZone, userId, capabilities)),
 				tools,
 				executionMetadata,
 			});
@@ -570,7 +573,11 @@ export class ChatHubWorkflowService {
 		};
 	}
 
-	getSystemMessageMetadata(timeZone: string, memory: string[] = []) {
+	getSystemMessageMetadata(
+		timeZone: string,
+		memory: string[] = [],
+		capabilities?: ChatCapabilities,
+	) {
 		if (inE2ETests) {
 			return '__e2e_system_prompt_placeholder__';
 		}
@@ -578,8 +585,11 @@ export class ChatHubWorkflowService {
 		const now = DateTime.now();
 		const isoTime = now.setZone(timeZone).toISO({ includeOffset: true });
 
+		const includeArtifacts = capabilities?.artifacts !== false;
+		const includeMemory = capabilities?.contextMemory !== false;
+
 		const memoryContext =
-			memory.length > 0
+			includeMemory && memory.length > 0
 				? `
 # Known Items About the User
 
@@ -590,20 +600,8 @@ ${memory.map((item, i) => `${i + 1}. ${item}`).join('\n')}
 `
 				: '';
 
-		return `
-# Current Date and Time
-
-The user's current local date and time is: ${isoTime} (timezone: ${timeZone}).
-When you need to reference "now", use this date and time.
-${memoryContext}
-# Output Capabilities
-
-## Multimedia Generation
-
-You are allowed to describe, explain and analyze provided multimedia data if you're capable of, but not allowed to create, generate, edit, or display images, videos, or other non-text content.
-If the user asks you to generate or edit an image (or other media), explain that you are not able to do that and, if helpful, describe in words what the image could look like or how they could create it using external tools.
-
-## Document Generation
+		const documentGenerationSection = includeArtifacts
+			? `## Document Generation
 
 You can create and edit documents for the user using special XML-like commands. When you use these commands, documents appear in a side panel next to this chat where users can view them in real-time. You can create multiple documents in a conversation, and users can switch between them using a dropdown selector.
 
@@ -657,7 +655,11 @@ To make targeted edits to a document, you must specify the exact title of the do
 - Set replaceAll to true to replace all occurrences, or false to replace only the first occurrence.
 - If the document title doesn't exist, the edit command will be ignored.
 
-## Memory
+`
+			: '';
+
+		const memorySection = includeMemory
+			? `## Memory
 
 Memory usage: ${memory.length}/${MAX_MEMORY_ENTRIES} entries.
 ${
@@ -682,19 +684,45 @@ Each entry should be concise and not exceed 20 words. Remember anything that wou
 Only save genuinely useful, distinct information. Do not duplicate entries already listed in "Known Facts About the User".
 Prefer memory-edit over memory-create when elaborating or refining an existing entry.
 
-IMPORTANT:
+`
+			: '';
+
+		const importantNote =
+			includeArtifacts || includeMemory
+				? `IMPORTANT:
 - Write these commands directly in your response text, NOT inside code blocks or fences.
 - ALWAYS include conversational text before and/or after document commands. Never send a message with only commands and no explanation.
-`;
+`
+				: '';
+
+		return `
+# Current Date and Time
+
+The user's current local date and time is: ${isoTime} (timezone: ${timeZone}).
+When you need to reference "now", use this date and time.
+${memoryContext}
+# Output Capabilities
+
+## Multimedia Generation
+
+You are allowed to describe, explain and analyze provided multimedia data if you're capable of, but not allowed to create, generate, edit, or display images, videos, or other non-text content.
+If the user asks you to generate or edit an image (or other media), explain that you are not able to do that and, if helpful, describe in words what the image could look like or how they could create it using external tools.
+
+${documentGenerationSection}${memorySection}${importantNote}`;
 	}
 
-	private async getBaseSystemMessage(history: ChatHubMessage[], timeZone: string, userId: string) {
+	private async getBaseSystemMessage(
+		history: ChatHubMessage[],
+		timeZone: string,
+		userId: string,
+		capabilities?: ChatCapabilities,
+	) {
 		const artifactContext = this.buildArtifactContext(history);
 		const items = await this.chatHubMemoryService.getMemoryItems(userId);
 
 		return `You are a helpful assistant.
 
-${this.getSystemMessageMetadata(timeZone, items) + artifactContext}`;
+${this.getSystemMessageMetadata(timeZone, items, capabilities) + artifactContext}`;
 	}
 
 	private buildToolsAgentNode(
@@ -1179,6 +1207,7 @@ Respond the title only:`,
 		tools: INode[],
 		attachments: IBinaryData[],
 		timeZone: string,
+		capabilities: ChatCapabilities | undefined,
 		trx: EntityManager,
 		executionMetadata: ChatHubAuthenticationMetadata,
 	): Promise<PreparedChatWorkflow> {
@@ -1205,6 +1234,7 @@ Respond the title only:`,
 				timeZone,
 				trx,
 				executionMetadata,
+				capabilities,
 			);
 		}
 
@@ -1221,6 +1251,7 @@ Respond the title only:`,
 			timeZone,
 			trx,
 			executionMetadata,
+			capabilities,
 		);
 	}
 
@@ -1237,6 +1268,7 @@ Respond the title only:`,
 		timeZone: string,
 		trx: EntityManager,
 		executionMetadata: ChatHubAuthenticationMetadata,
+		capabilities?: ChatCapabilities,
 	) {
 		await this.chatHubSettingsService.ensureModelIsAllowed(model, trx);
 		this.chatHubCredentialsService.findProviderCredential(model.provider, credentials);
@@ -1256,6 +1288,7 @@ Respond the title only:`,
 			timeZone,
 			executionMetadata,
 			trx,
+			capabilities,
 		);
 	}
 
@@ -1269,6 +1302,7 @@ Respond the title only:`,
 		timeZone: string,
 		trx: EntityManager,
 		executionMetadata: ChatHubAuthenticationMetadata,
+		capabilities?: ChatCapabilities,
 	) {
 		const agent = await this.chatHubAgentService.getAgentById(agentId, user.id, trx);
 
@@ -1290,7 +1324,7 @@ Respond the title only:`,
 		const systemMessage =
 			agent.systemPrompt +
 			'\n\n' +
-			this.getSystemMessageMetadata(timeZone, items) +
+			this.getSystemMessageMetadata(timeZone, items, capabilities) +
 			artifactContext;
 
 		const model: ChatHubBaseLLMModel = {
@@ -1320,6 +1354,7 @@ Respond the title only:`,
 			timeZone,
 			trx,
 			executionMetadata,
+			capabilities,
 		);
 	}
 

@@ -1,12 +1,17 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue';
+import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { N8nActionToggle, N8nButton, N8nInputLabel, N8nText } from '@n8n/design-system';
+import { N8nActionToggle, N8nButton, N8nHeading, N8nText } from '@n8n/design-system';
 import { useChatStore } from '../chat.store';
 import { clearAllMemoryApi, deleteMemoryItemApi } from '../chat.api';
+
+defineProps<{
+	modalName: string;
+}>();
 
 const i18n = useI18n();
 const { showError } = useToast();
@@ -69,60 +74,48 @@ onMounted(fetchMemory);
 </script>
 
 <template>
-	<div :class="$style.container">
-		<div :class="$style.titleRow">
-			<div :class="$style.header">
-				<N8nInputLabel :label="i18n.baseText('settings.personal.chatHubMemory')" />
-				<N8nText color="text-light" size="small">
-					{{ i18n.baseText('settings.chatHub.memory.description') }}
-				</N8nText>
-			</div>
-			<N8nButton
-				v-if="memoryItems.length > 0"
-				size="small"
-				variant="subtle"
-				icon="trash"
-				icon-only
-				:title="i18n.baseText('settings.chatHub.memory.clearAll')"
-				@click="onClearAllMemory"
-			/>
-		</div>
-		<div v-if="memoryItems.length === 0" :class="$style.empty">
-			<N8nText color="text-light" size="small">
-				{{ i18n.baseText('settings.chatHub.memory.empty') }}
-			</N8nText>
-		</div>
-		<ul v-else :class="$style.list">
-			<li v-for="(item, index) in memoryItems" :key="index" :class="$style.row">
-				<N8nText size="small" :class="$style.item">{{ item }}</N8nText>
-				<N8nActionToggle
-					placement="bottom"
-					:actions="rowActions"
-					theme="dark"
-					@action="onMemoryRowAction($event, index)"
+	<Modal :name="modalName" width="500px">
+		<template #header>
+			<N8nHeading size="large" color="text-dark">
+				{{ i18n.baseText('settings.chatHub.memory.title') }}
+			</N8nHeading>
+		</template>
+		<template #content>
+			<div :class="$style.content">
+				<div v-if="memoryItems.length === 0" :class="$style.empty">
+					<N8nText color="text-light">
+						{{ i18n.baseText('settings.chatHub.memory.empty') }}
+					</N8nText>
+				</div>
+				<ul v-else :class="$style.list">
+					<li v-for="(item, index) in memoryItems" :key="index" :class="$style.row">
+						<N8nText :class="$style.item">{{ item }}</N8nText>
+						<N8nActionToggle
+							placement="bottom"
+							:actions="rowActions"
+							theme="dark"
+							@action="onMemoryRowAction($event, index)"
+						/>
+					</li>
+				</ul>
+				<N8nButton
+					v-if="memoryItems.length > 0"
+					variant="subtle"
+					icon="trash"
+					:label="i18n.baseText('settings.chatHub.memory.clearAll')"
+					@click="onClearAllMemory"
 				/>
-			</li>
-		</ul>
-	</div>
+			</div>
+		</template>
+	</Modal>
 </template>
 
 <style lang="scss" module>
-.container {
+.content {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xs);
-}
-
-.titleRow {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-}
-
-.header {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--sm);
+	padding: var(--spacing--sm) 0 var(--spacing--md);
 }
 
 .empty {

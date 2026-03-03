@@ -49,6 +49,7 @@ import {
 	type AgentIconOrEmoji,
 	type ChatHubEditMessageRequest,
 	type ChatHubRegenerateMessageRequest,
+	type ChatCapabilities,
 	type ChatHubStreamBegin,
 	type ChatHubStreamChunk,
 	type ChatHubStreamEnd,
@@ -503,7 +504,8 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		message: string,
 		agent: ChatModelDto,
 		credentials: ChatHubSendMessageRequest['credentials'],
-		files: File[] = [],
+		files: File[],
+		capabilities: ChatCapabilities,
 	) {
 		const messageId = uuidv4();
 		const conversation = ensureConversation(sessionId);
@@ -545,6 +547,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			attachments,
 			agentName: agent.name,
 			timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+			capabilities,
 		};
 
 		try {
@@ -575,8 +578,9 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		content: string,
 		agent: ChatModelDto,
 		credentials: ChatHubSendMessageRequest['credentials'],
-		keepAttachmentIndices: number[] = [],
-		newFiles: File[] = [],
+		keepAttachmentIndices: number[],
+		newFiles: File[],
+		capabilities: ChatCapabilities,
 	) {
 		const promptId = uuidv4();
 
@@ -596,6 +600,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			})),
 			keepAttachmentIndices,
 			timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+			capabilities,
 		};
 
 		if (message?.type === 'ai') {
@@ -652,6 +657,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		retryId: ChatMessageId,
 		agent: ChatModelDto,
 		credentials: ChatHubSendMessageRequest['credentials'],
+		capabilities: ChatCapabilities,
 	) {
 		const conversation = ensureConversation(sessionId);
 		const previousMessageId = conversation.messages[retryId]?.previousMessageId ?? null;
@@ -659,6 +665,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			model: agent.model,
 			credentials,
 			timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+			capabilities,
 		};
 
 		if (!previousMessageId) {

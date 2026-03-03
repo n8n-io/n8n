@@ -23,6 +23,7 @@ import { useI18n } from '@n8n/i18n';
 import { I18nT } from 'vue-i18n';
 import type { MessagingState } from '@/features/ai/chatHub/chat.types';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
+import { type ChatCapabilities } from '@n8n/api-types';
 
 const props = defineProps<{
 	messagingState: MessagingState;
@@ -30,6 +31,7 @@ const props = defineProps<{
 	isToolsSelectable: boolean;
 	selectedModel: ChatModelDto | null;
 	checkedToolIds: string[];
+	capabilities: ChatCapabilities;
 	sessionId?: ChatSessionId;
 	customAgentId?: string;
 	showCreditsClaimedCallout: boolean;
@@ -42,6 +44,7 @@ const chatStore = useChatStore();
 const emit = defineEmits<{
 	submit: [message: string, attachments: File[]];
 	stop: [];
+	updateCapabilities: [capabilities: ChatCapabilities];
 	selectModel: [];
 	setCredentials: [ChatHubLLMProvider];
 	editAgent: [agentId: string];
@@ -384,6 +387,7 @@ defineExpose({
 						<ToolsSelector
 							:class="$style.toolsButton"
 							:checked-tool-ids="checkedToolIds"
+							:capabilities="capabilities"
 							:custom-agent-id="customAgentId"
 							:disabled="messagingState !== 'idle' || !isToolsSelectable"
 							:disabled-tooltip="
@@ -394,6 +398,7 @@ defineExpose({
 										: i18n.baseText('chatHub.tools.selector.disabled.noModel.tooltip')
 							"
 							@toggle="handleToolToggle"
+							@update-capabilities="emit('updateCapabilities', $event)"
 						/>
 					</div>
 					<div :class="$style.actions">

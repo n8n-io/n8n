@@ -373,6 +373,7 @@ export class ChatHubService {
 			previousMessageId,
 			attachments,
 			timeZone,
+			capabilities,
 		} = payload;
 		const tz = timeZone ?? this.globalConfig.generic.timezone;
 
@@ -440,6 +441,7 @@ export class ChatHubService {
 					tools,
 					processedAttachments,
 					tz,
+					capabilities,
 					trx,
 					executionMetadata,
 				);
@@ -541,7 +543,8 @@ export class ChatHubService {
 		payload: EditMessagePayload,
 		executionMetadata: ChatHubAuthenticationMetadata,
 	): Promise<void> {
-		const { sessionId, editId, messageId, message, model, credentials, timeZone } = payload;
+		const { sessionId, editId, messageId, message, model, credentials, timeZone, capabilities } =
+			payload;
 		const tz = timeZone ?? this.globalConfig.generic.timezone;
 
 		let result: {
@@ -608,6 +611,7 @@ export class ChatHubService {
 						tools,
 						attachments,
 						tz,
+						capabilities,
 						trx,
 						executionMetadata,
 					);
@@ -674,7 +678,7 @@ export class ChatHubService {
 		payload: RegenerateMessagePayload,
 		executionMetadata: ChatHubAuthenticationMetadata,
 	): Promise<void> {
-		const { sessionId, retryId, model, credentials, timeZone } = payload;
+		const { sessionId, retryId, model, credentials, timeZone, capabilities } = payload;
 		const tz = timeZone ?? this.globalConfig.generic.timezone;
 
 		const { retryOfMessageId, previousMessageId, workflow } =
@@ -719,6 +723,7 @@ export class ChatHubService {
 					tools,
 					attachments,
 					tz,
+					capabilities,
 					trx,
 					executionMetadata,
 				);

@@ -34,6 +34,8 @@ export {
 	type ChatModelsResponse,
 	chatAttachmentSchema,
 	type ChatAttachment,
+	chatCapabilitiesSchema,
+	type ChatCapabilities,
 	ChatHubSendMessageRequest,
 	ChatHubRegenerateMessageRequest,
 	ChatHubEditMessageRequest,

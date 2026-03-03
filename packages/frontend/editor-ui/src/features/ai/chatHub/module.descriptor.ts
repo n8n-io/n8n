@@ -11,6 +11,7 @@ import {
 	CHAT_MODEL_BY_ID_SELECTOR_MODAL_KEY,
 	CHAT_SETTINGS_VIEW,
 	CHAT_PROVIDER_SETTINGS_MODAL_KEY,
+	CHAT_HUB_MEMORY_SETTINGS_MODAL_KEY,
 } from '@/features/ai/chatHub/constants';
 import { i18n } from '@n8n/i18n';
 import { hasPermission } from '@/app/utils/rbac/permissions';
@@ -99,6 +100,13 @@ export const ChatModule: FrontendModuleDescription = {
 					onConfirm: () => {},
 					onCancel: () => {},
 				},
+			},
+		},
+		{
+			key: CHAT_HUB_MEMORY_SETTINGS_MODAL_KEY,
+			component: async () => await import('./components/ChatHubMemorySettingsModal.vue'),
+			initialState: {
+				open: false,
 			},
 		},
 	],

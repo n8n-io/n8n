@@ -3,6 +3,7 @@ import { useToast } from '@/app/composables/useToast';
 import {
 	LOCAL_STORAGE_CHAT_HUB_HAD_CONVERSATION_BEFORE,
 	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL,
+	LOCAL_STORAGE_CHAT_HUB_CAPABILITIES,
 	VIEWS,
 } from '@/app/constants';
 import {
@@ -21,6 +22,7 @@ import {
 	CHAT_CONVERSATION_VIEW,
 	CHAT_VIEW,
 	MOBILE_MEDIA_QUERY,
+	DEFAULT_CAPABILITIES,
 } from '@/features/ai/chatHub/constants';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import {
@@ -30,6 +32,8 @@ import {
 	type ChatMessageId,
 	type ChatHubSendMessageRequest,
 	type ChatModelDto,
+	type ChatCapabilities,
+	chatCapabilitiesSchema,
 	chatHubConversationModelSchema,
 } from '@n8n/api-types';
 import { N8nIconButton, N8nResizeWrapper, N8nScrollArea, N8nText } from '@n8n/design-system';
@@ -71,6 +75,7 @@ import { useChatArtifacts } from './composables/useChatArtifacts';
 import { useChatInputFocus } from './composables/useChatInputFocus';
 import { useDynamicCredentialsStatus } from './composables/useDynamicCredentialsStatus';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { jsonParse } from 'n8n-workflow';
 
 const router = useRouter();
 const route = useRoute();
@@ -124,6 +129,16 @@ const hadConversationBefore = useLocalStorage(
 	LOCAL_STORAGE_CHAT_HUB_HAD_CONVERSATION_BEFORE(usersStore.currentUserId ?? 'anonymous'),
 	false,
 );
+const capabilities = useLocalStorage<ChatCapabilities>(
+	LOCAL_STORAGE_CHAT_HUB_CAPABILITIES(usersStore.currentUserId ?? 'anonymous'),
+	DEFAULT_CAPABILITIES,
+	{
+		serializer: {
+			read: (v) => chatCapabilitiesSchema.catch(DEFAULT_CAPABILITIES).parse(jsonParse(v)),
+			write: (v) => JSON.stringify(v),
+		},
+	},
+);
 const hasSession = computed(() => (chatStore.sessions.ids?.length ?? 0) > 0);
 
 const showWelcomeScreen = computed<boolean | undefined>(() => {
@@ -159,7 +174,7 @@ const defaultModel = useLocalStorage<ChatHubConversationModelWithCachedDisplayNa
 		serializer: {
 			read: (value) => {
 				try {
-					return chatHubConversationModelWithCachedDisplayNameSchema.parse(JSON.parse(value));
+					return chatHubConversationModelWithCachedDisplayNameSchema.parse(jsonParse(value));
 				} catch (error) {
 					return null;
 				}
@@ -563,6 +578,7 @@ async function onSubmit(message: string, attachments: File[]) {
 		selectedModel.value,
 		credentialsForSelectedProvider.value,
 		attachments,
+		capabilities.value,
 	);
 
 	inputRef.value?.reset();
@@ -608,6 +624,7 @@ async function handleEditMessage(
 		credentialsForSelectedProvider.value,
 		keptAttachmentIndices,
 		newFiles,
+		capabilities.value,
 	);
 
 	editingMessageId.value = undefined;
@@ -633,6 +650,7 @@ async function handleRegenerateMessage(message: ChatMessageType) {
 		messageToRetry,
 		selectedModel.value,
 		credentialsForSelectedProvider.value,
+		capabilities.value,
 	);
 }
 
@@ -847,6 +865,7 @@ function onFilesDropped(files: File[]) {
 								:class="$style.prompt"
 								:selected-model="selectedModel"
 								:checked-tool-ids="canSelectTools ? checkedToolIds : []"
+								:capabilities="capabilities"
 								:session-id="isNewSession ? undefined : sessionId"
 								:custom-agent-id="customAgentId"
 								:messaging-state="messagingState"
@@ -862,6 +881,7 @@ function onFilesDropped(files: File[]) {
 								@edit-agent="handleEditAgent"
 								@dismiss-credits-callout="handleDismissCreditsCallout"
 								@open-dynamic-credentials="isDynamicCredentialsDrawerOpen = true"
+								@update-capabilities="capabilities = $event"
 							/>
 						</div>
 					</div>

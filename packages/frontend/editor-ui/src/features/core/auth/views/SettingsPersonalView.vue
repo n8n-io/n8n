@@ -24,8 +24,6 @@ import type { BaseTextKey } from '@n8n/i18n';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import type { ConfirmPasswordModalEvents } from '../auth.eventBus';
 import { confirmPasswordEventBus } from '../auth.eventBus';
-import ChatHubMemorySettings from '@/features/ai/chatHub/components/ChatHubMemorySettings.vue';
-
 import {
 	N8nAvatar,
 	N8nButton,
@@ -453,10 +451,6 @@ onBeforeUnmount(() => {
 					</N8nSelect>
 				</N8nInputLabel>
 			</div>
-			<ChatHubMemorySettings
-				v-if="settingsStore.isChatFeatureEnabled"
-				:class="$style.memorySection"
-			/>
 		</div>
 		<div>
 			<N8nButton
@@ -534,9 +528,5 @@ onBeforeUnmount(() => {
 
 .themeSelect {
 	max-width: 50%;
-}
-
-.memorySection {
-	margin-top: var(--spacing--md);
 }
 </style>

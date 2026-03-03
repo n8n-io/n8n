@@ -1,4 +1,5 @@
 import type {
+	ChatCapabilities,
 	ChatHubConversationModel,
 	ChatHubProvider,
 	ChatMessageId,
@@ -24,6 +25,7 @@ export interface BaseMessagePayload {
 	model: ChatHubConversationModel;
 	credentials: INodeCredentials;
 	timeZone?: string;
+	capabilities?: ChatCapabilities;
 }
 
 export interface HumanMessagePayload extends BaseMessagePayload {

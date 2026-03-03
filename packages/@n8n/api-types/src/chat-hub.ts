@@ -313,6 +313,13 @@ export const TimeZoneSchema = StrictTimeZoneSchema.optional().catch(undefined);
 
 export type ChatAttachment = z.infer<typeof chatAttachmentSchema>;
 
+export const chatCapabilitiesSchema = z.object({
+	contextMemory: z.boolean(),
+	artifacts: z.boolean(),
+});
+
+export type ChatCapabilities = z.infer<typeof chatCapabilitiesSchema>;
+
 export class ChatHubSendMessageRequest extends Z.class({
 	messageId: z.string().uuid(),
 	sessionId: z.string().uuid(),
@@ -328,6 +335,7 @@ export class ChatHubSendMessageRequest extends Z.class({
 	attachments: z.array(chatAttachmentSchema),
 	agentName: z.string().optional(),
 	timeZone: TimeZoneSchema,
+	capabilities: chatCapabilitiesSchema,
 }) {}
 
 export class ChatHubRegenerateMessageRequest extends Z.class({
@@ -339,6 +347,7 @@ export class ChatHubRegenerateMessageRequest extends Z.class({
 		}),
 	),
 	timeZone: TimeZoneSchema,
+	capabilities: chatCapabilitiesSchema,
 }) {}
 
 export class ChatHubEditMessageRequest extends Z.class({
@@ -354,6 +363,7 @@ export class ChatHubEditMessageRequest extends Z.class({
 	newAttachments: z.array(chatAttachmentSchema),
 	keepAttachmentIndices: z.array(z.number()),
 	timeZone: TimeZoneSchema,
+	capabilities: chatCapabilitiesSchema,
 }) {}
 
 export class ChatHubUpdateConversationRequest extends Z.class({

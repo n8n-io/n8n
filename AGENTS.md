@@ -126,6 +126,7 @@ const children = getChildNodes(workflow.connections, 'NodeName', 'main', 1);
 - **NEVER use `any` type** - use proper types or `unknown`
 - **Avoid type casting with `as`** - use type guards or type predicates instead (except in test code where `as` is acceptable)
 - **Define shared interfaces in `@n8n/api-types`** package for FE/BE communication
+- **When adding exports to `@n8n/api-types`**, always register them in `packages/@n8n/api-types/src/index.ts` — the package uses an explicit named export list, so new types and values in source files are not accessible from outside the package until added there
 
 ### Error Handling
 - Don't use `ApplicationError` class in CLI and nodes for throwing errors,
