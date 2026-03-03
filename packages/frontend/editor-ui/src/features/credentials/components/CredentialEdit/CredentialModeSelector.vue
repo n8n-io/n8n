@@ -4,7 +4,7 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
 import { computed } from 'vue';
-import { N8nButton, N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import {
 	N8nDropdownMenu,
 	type DropdownMenuItemProps,
@@ -84,33 +84,26 @@ const options = computed<Option[]>(() => {
 	});
 });
 
-const showSelector = computed(() => options.value.length >= 2);
-const showDropdown = computed(() => options.value.length > 2);
-const selectedOption = computed(() => {
-	const selected = options.value.find((option) => isSelected(option.value)) ?? null;
-	return selected;
-});
+function isSelected(option: Option['value']): boolean {
+	if ('oauthMode' in option) {
+		const selectedOAuthMode = props.useCustomOauth ? 'custom' : 'managed';
+		return isOAuthCredential.value && selectedOAuthMode === option.oauthMode;
+	}
 
-const otherOption = computed(() => {
-	if (showDropdown.value) return null;
-	return options.value.find((option) => !isSelected(option.value)) ?? null;
+	if ('type' in option) {
+		return option.type === selectedAuthType.value?.value;
+	}
+
+	return false;
+}
+
+const showSelector = computed(() => options.value.length >= 2);
+const selectedOption = computed(() => {
+	return options.value.find((option) => isSelected(option.value)) ?? null;
 });
 
 const headingText = computed(() => {
-	if (options.value.length > 2) {
-		return i18n.baseText('credentialEdit.credentialConfig.setupCredential');
-	}
-
-	if (props.showManagedOauthOptions) {
-		if (props.useCustomOauth) {
-			return i18n.baseText('credentialEdit.credentialConfig.oauthModeCustomTitle');
-		}
-		return i18n.baseText('credentialEdit.credentialConfig.oauthModeManagedTitle');
-	}
-
-	return i18n.baseText('credentialEdit.credentialConfig.genericTitle', {
-		interpolate: { credential: selectedAuthType.value?.name ?? '' },
-	});
+	return i18n.baseText('credentialEdit.credentialConfig.setupCredential');
 });
 
 const menuItems = computed<Array<DropdownMenuItemProps<Option['value']>>>(() => {
@@ -134,25 +127,6 @@ function onOptionChange(value: Option['value']): void {
 
 	emit('update:authType', { type: value.type });
 }
-
-function switchToOther(): void {
-	if (otherOption.value) {
-		onOptionChange(otherOption.value.value);
-	}
-}
-
-function isSelected(option: Option['value']): boolean {
-	if ('oauthMode' in option) {
-		const selectedOAuthMode = props.useCustomOauth ? 'custom' : 'managed';
-		return isOAuthCredential.value && selectedOAuthMode === option.oauthMode;
-	}
-
-	if ('type' in option) {
-		return option.type === selectedAuthType.value?.value;
-	}
-
-	return false;
-}
 </script>
 
 <template>
@@ -162,24 +136,7 @@ function isSelected(option: Option['value']): boolean {
 				{{ headingText }}
 			</N8nText>
 
-			<N8nLink
-				v-if="otherOption"
-				theme="secondary"
-				underline
-				size="small"
-				:class="$style.switchLink"
-				data-test-id="credential-mode-switch-link"
-				@click="switchToOther"
-			>
-				{{
-					i18n.baseText('credentialEdit.credentialConfig.switchTo', {
-						interpolate: { name: otherOption?.name ?? '' },
-					})
-				}}
-			</N8nLink>
-
 			<N8nDropdownMenu
-				v-else
 				:items="menuItems"
 				placement="bottom-end"
 				:extra-popper-class="$style.dropdownContent"
@@ -202,18 +159,6 @@ function isSelected(option: Option['value']): boolean {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-}
-
-.switchLink {
-	--link--color--secondary: var(--color--text);
-
-	&:hover,
-	&:focus,
-	&:active {
-		:global(span) {
-			color: var(--color--text--shade-1);
-		}
-	}
 }
 
 .dropdownContent {
