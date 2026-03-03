@@ -28,6 +28,7 @@ const settingsStore = useSettingsStore();
 const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
 const telemetry = useTelemetry();
+
 const isOwner = computed(() => usersStore.isInstanceOwner);
 const isAdmin = computed(() => usersStore.isAdmin);
 
@@ -115,7 +116,6 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--lg);
-	padding-bottom: var(--spacing--2xl);
 }
 
 .title {
