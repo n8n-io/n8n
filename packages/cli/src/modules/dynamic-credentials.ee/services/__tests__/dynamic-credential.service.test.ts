@@ -344,7 +344,9 @@ describe('DynamicCredentialService', () => {
 						additionalData.executionContext,
 						undefined,
 					),
-				).rejects.toThrow('Failed to resolve dynamic credentials for "Test Credential"');
+				).rejects.toThrow(
+					'Failed to resolve dynamic credentials for "Test Credential": Resolution failed',
+				);
 
 				expect(mockLogger.debug).toHaveBeenCalledWith(
 					'Dynamic credential resolution failed',

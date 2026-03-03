@@ -181,8 +181,9 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			error: error instanceof Error ? error.message : String(error),
 		});
 
+		const causeMessage = error instanceof Error ? `: ${error.message}` : '';
 		throw new CredentialResolutionError(
-			`Failed to resolve dynamic credentials for "${credentialsResolveMetadata.name}"`,
+			`Failed to resolve dynamic credentials for "${credentialsResolveMetadata.name}"${causeMessage}`,
 			{ cause: error },
 		);
 	}
