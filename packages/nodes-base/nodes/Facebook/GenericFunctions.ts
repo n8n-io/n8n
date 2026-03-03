@@ -1,4 +1,5 @@
 import { capitalCase } from 'change-case';
+import { createHmac } from 'crypto';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -30,6 +31,12 @@ export async function facebookApiRequest(
 	}
 
 	qs.access_token = credentials.accessToken;
+
+	if (credentials.appSecret) {
+		qs.appsecret_proof = createHmac('sha256', credentials.appSecret as string)
+			.update(credentials.accessToken as string)
+			.digest('hex');
+	}
 
 	const options: IRequestOptions = {
 		headers: {

@@ -79,6 +79,45 @@ describe('Facebook GenericFunctions', () => {
 			);
 		});
 
+		it('should include appsecret_proof when appSecret is set', async () => {
+			const { createHmac } = require('crypto');
+			mockExecuteFunctions.getNode.mockReturnValue({ name: 'Facebook Trigger' });
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				accessToken: 'test-app-access-token',
+				appSecret: 'test-app-secret',
+			});
+			mockExecuteFunctions.helpers.request.mockResolvedValue({ success: true });
+
+			await utils.facebookApiRequest.call(mockExecuteFunctions, 'GET', '/app', {}, {});
+
+			const expectedProof = createHmac('sha256', 'test-app-secret')
+				.update('test-app-access-token')
+				.digest('hex');
+
+			expect(mockExecuteFunctions.helpers.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					qs: {
+						access_token: 'test-app-access-token',
+						appsecret_proof: expectedProof,
+					},
+				}),
+			);
+		});
+
+		it('should not include appsecret_proof when appSecret is empty', async () => {
+			mockExecuteFunctions.getNode.mockReturnValue({ name: 'Facebook Trigger' });
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				accessToken: 'test-app-access-token',
+				appSecret: '',
+			});
+			mockExecuteFunctions.helpers.request.mockResolvedValue({ success: true });
+
+			await utils.facebookApiRequest.call(mockExecuteFunctions, 'GET', '/app', {}, {});
+
+			const requestCall = mockExecuteFunctions.helpers.request.mock.calls[0][0];
+			expect(requestCall.qs).not.toHaveProperty('appsecret_proof');
+		});
+
 		it('should allow custom URI', async () => {
 			mockExecuteFunctions.helpers.request.mockResolvedValue({ success: true });
 			const customUri = 'https://graph.facebook.com/v23.0/me/feed';
