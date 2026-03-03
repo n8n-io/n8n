@@ -29,7 +29,7 @@ import { useRouter } from 'vue-router';
 import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import {
 	getLastPublishedVersion,
-	generateVersionName,
+	generateVersionNameFromId,
 } from '@/features/workflows/workflowHistory/utils';
 import { nodeViewEventBus } from '@/app/event-bus';
 import CollaborationPane from '@/features/collaboration/collaboration/components/CollaborationPane.vue';
@@ -52,7 +52,6 @@ const props = defineProps<{
 	id: IWorkflowDb['id'];
 	tags: readonly string[];
 	name: IWorkflowDb['name'];
-	meta: IWorkflowDb['meta'];
 	currentFolder?: FolderShortInfo;
 	isArchived: IWorkflowDb['isArchived'];
 	isNewWorkflow: boolean;
@@ -309,7 +308,7 @@ const activeVersionName = computed(() => {
 	if (!activeVersion.value) {
 		return '';
 	}
-	return activeVersion.value.name ?? generateVersionName(activeVersion.value.versionId);
+	return activeVersion.value.name ?? generateVersionNameFromId(activeVersion.value.versionId);
 });
 
 const latestPublishDate = computed(() => {
@@ -578,7 +577,6 @@ defineExpose({
 			:name="name"
 			:tags="tags"
 			:current-folder="currentFolder"
-			:meta="meta"
 		/>
 	</div>
 </template>

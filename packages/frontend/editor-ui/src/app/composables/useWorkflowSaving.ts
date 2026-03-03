@@ -230,7 +230,7 @@ export function useWorkflowSaving({
 					name: null,
 					description: null,
 				});
-				workflowState.setWorkflowProperty('updatedAt', workflowData.updatedAt);
+				workflowDocumentStore.setUpdatedAt(workflowData.updatedAt);
 
 				// Only mark state clean if no new changes were made during the save
 				if (uiStore.dirtyStateSetCount === dirtyCountBeforeSave) {
@@ -252,7 +252,7 @@ export function useWorkflowSaving({
 
 				uiStore.removeActiveAction('workflowSaving');
 
-				if (error.errorCode === 100) {
+				if (error.errorCode === 409) {
 					telemetry.track('User attempted to save locked workflow', {
 						workflowId: currentWorkflow,
 						sharing_role: getWorkflowProjectRole(currentWorkflow),
@@ -483,7 +483,7 @@ export function useWorkflowSaving({
 				name: null,
 				description: null,
 			});
-			workflowState.setWorkflowProperty('updatedAt', workflowData.updatedAt);
+			workflowDocumentStore.setUpdatedAt(workflowData.updatedAt);
 
 			// Only update webhook IDs if we explicitly reset them
 			if (resetWebhookUrls) {

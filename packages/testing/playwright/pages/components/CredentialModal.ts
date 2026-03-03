@@ -143,10 +143,6 @@ export class CredentialModal extends BaseModal {
 		return this.root.getByTestId('credential-mode-selector');
 	}
 
-	getModeSwitchLink() {
-		return this.root.getByTestId('credential-mode-switch-link');
-	}
-
 	getModeDropdownTrigger() {
 		return this.root.getByTestId('credential-mode-dropdown-trigger');
 	}

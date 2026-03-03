@@ -170,7 +170,6 @@ const defaultProps = {
 	id: workflow.id,
 	tags: ['1', '2'] as readonly string[],
 	name: workflow.name,
-	meta: workflow.meta,
 	scopes: workflow.scopes,
 	isArchived: workflow.isArchived,
 	description: workflow.description,

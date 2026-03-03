@@ -3,7 +3,7 @@ import type { StoryFn } from '@storybook/vue3-vite';
 import N8nBlockUi from './BlockUi.vue';
 
 export default {
-	title: 'Atoms/BlockUI',
+	title: 'Core/BlockUI',
 	component: N8nBlockUi,
 };
 

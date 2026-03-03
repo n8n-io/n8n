@@ -12,7 +12,7 @@ import { useRoute, useRouter } from 'vue-router';
 
 import type { BaseFilters, Resource, SortingAndPaginationUpdates } from '@/Interface';
 import { isSharedResource, isResourceSortableByDate } from '@/app/utils/typeGuards';
-import { useN8nLocalStorage } from '@/app/composables/useN8nLocalStorage';
+import { type LocalStorageTabKey, useN8nLocalStorage } from '@/app/composables/useN8nLocalStorage';
 import { useResourcesListI18n } from '@/app/composables/useResourcesListI18n';
 
 import { ElPagination } from 'element-plus';
@@ -69,6 +69,8 @@ const props = withDefaults(
 		dontPerformSortingAndFiltering?: boolean;
 		hasEmptyState?: boolean;
 		uiConfig?: UIConfig;
+		tabKey?: LocalStorageTabKey;
+		persistKeyExclusions?: string[];
 	}>(),
 	{
 		displayName: (resource: ResourceType) => resource.name || '',
@@ -92,6 +94,8 @@ const props = withDefaults(
 			showFiltersDropdown: true,
 			sortEnabled: true,
 		}),
+		tabKey: 'workflows',
+		persistKeyExclusions: () => [],
 	},
 );
 
@@ -493,7 +497,7 @@ const savePaginationPreferences = async () => {
 		delete currentQuery.pageSize;
 	}
 
-	if (sortBy.value !== preferredSort.value) {
+	if (sortBy.value !== preferredSort.value && !props.persistKeyExclusions.includes(sortBy.value)) {
 		currentQuery.sort = sortBy.value;
 		preferredSort.value = sortBy.value;
 	} else {
@@ -502,7 +506,7 @@ const savePaginationPreferences = async () => {
 
 	n8nLocalStorage.saveProjectPreferencesToLocalStorage(
 		(route.params.projectId as string) ?? '',
-		'workflows',
+		props.tabKey,
 		{
 			sort: sortBy.value,
 			pageSize: rowsPerPage.value,

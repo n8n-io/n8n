@@ -9,9 +9,7 @@ import {
 	type IExecuteFunctions,
 	type ISupplyDataFunctions,
 } from 'n8n-workflow';
-import { metadataFilterField } from '@utils/sharedFields';
-
-import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
+import { metadataFilterField, createVectorStoreNode } from '@n8n/ai-utilities';
 
 import { validateAndResolveMongoCredentials } from 'n8n-nodes-base/dist/nodes/MongoDb/GenericFunctions';
 

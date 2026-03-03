@@ -8,7 +8,10 @@ import type {
 	IExecutionContext,
 } from 'n8n-workflow';
 
-import type { CredentialResolveMetadata } from '@/credentials/credential-resolution-provider.interface';
+import type {
+	CredentialResolutionResult,
+	CredentialResolveMetadata,
+} from '@/credentials/credential-resolution-provider.interface';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { StaticAuthService } from '@/services/static-auth-service';
 
@@ -215,6 +218,11 @@ describe('DynamicCredentialService', () => {
 			apiKey: 'static-key',
 		};
 
+		const expectStaticResult = (result: CredentialResolutionResult) => {
+			expect(result.data).toBe(staticData);
+			expect(result.isDynamic).toBe(false);
+		};
+
 		describe('should return static credentials when', () => {
 			it('credential is not resolvable', async () => {
 				const credentialsEntity = createMockCredentialsMetadata({
@@ -223,7 +231,7 @@ describe('DynamicCredentialService', () => {
 
 				const result = await service.resolveIfNeeded(credentialsEntity, staticData, undefined);
 
-				expect(result).toBe(staticData);
+				expectStaticResult(result);
 				expect(mockResolverRepository.findOneBy).not.toHaveBeenCalled();
 			});
 
@@ -236,7 +244,7 @@ describe('DynamicCredentialService', () => {
 
 				const result = await service.resolveIfNeeded(credentialsEntity, staticData, undefined);
 
-				expect(result).toBe(staticData);
+				expectStaticResult(result);
 				expect(mockLogger.debug).toHaveBeenCalledWith(
 					'Resolver not found, falling back to static credentials',
 					expect.objectContaining({
@@ -257,7 +265,7 @@ describe('DynamicCredentialService', () => {
 
 				const result = await service.resolveIfNeeded(credentialsEntity, staticData, undefined);
 
-				expect(result).toBe(staticData);
+				expectStaticResult(result);
 				expect(mockLogger.debug).toHaveBeenCalled();
 			});
 
@@ -273,7 +281,7 @@ describe('DynamicCredentialService', () => {
 
 				const result = await service.resolveIfNeeded(credentialsEntity, staticData, undefined);
 
-				expect(result).toBe(staticData);
+				expectStaticResult(result);
 				expect(mockLogger.debug).toHaveBeenCalledWith(
 					'No execution context available, falling back to static credentials',
 					expect.objectContaining({
@@ -304,7 +312,7 @@ describe('DynamicCredentialService', () => {
 					undefined,
 				);
 
-				expect(result).toBe(staticData);
+				expectStaticResult(result);
 				expect(mockLogger.error).toHaveBeenCalledWith(
 					'Failed to decrypt credential context from execution context',
 					expect.any(Object),
@@ -334,7 +342,7 @@ describe('DynamicCredentialService', () => {
 					undefined,
 				);
 
-				expect(result).toBe(staticData);
+				expectStaticResult(result);
 				expect(mockLogger.debug).toHaveBeenCalledWith(
 					'Dynamic credential resolution failed, falling back to static',
 					expect.objectContaining({
@@ -368,7 +376,7 @@ describe('DynamicCredentialService', () => {
 					undefined,
 				);
 
-				expect(result).toBe(staticData);
+				expectStaticResult(result);
 				expect(mockLogger.debug).toHaveBeenCalledWith(
 					'Dynamic credential resolution failed, falling back to static',
 					expect.objectContaining({
@@ -543,7 +551,8 @@ describe('DynamicCredentialService', () => {
 				);
 
 				// Verify merge: static fields preserved, dynamic fields added/overridden
-				expect(result).toEqual({
+				expect(result.isDynamic).toBe(true);
+				expect(result.data).toEqual({
 					clientId: 'static-client-id', // From static (preserved)
 					clientSecret: 'static-client-secret', // From static (preserved)
 					token: 'dynamic-token', // From dynamic (overridden)
@@ -664,7 +673,7 @@ describe('DynamicCredentialService', () => {
 					undefined,
 				);
 
-				expect(result).toBe(staticData);
+				expectStaticResult(result);
 				expect(mockCipher.decrypt).not.toHaveBeenCalled();
 			});
 
@@ -688,7 +697,7 @@ describe('DynamicCredentialService', () => {
 					undefined,
 				);
 
-				expect(result).toBe(staticData);
+				expectStaticResult(result);
 				expect(mockLogger.debug).toHaveBeenCalled();
 			});
 
@@ -757,7 +766,8 @@ describe('DynamicCredentialService', () => {
 				expect(mockResolverRepository.findOneBy).toHaveBeenCalledWith({
 					id: 'workflow-resolver-789',
 				});
-				expect(result).toEqual({ token: 'dynamic-token', apiKey: 'dynamic-key' });
+				expect(result.isDynamic).toBe(true);
+				expect(result.data).toEqual({ token: 'dynamic-token', apiKey: 'dynamic-key' });
 				expect(mockLogger.debug).toHaveBeenCalledWith(
 					'Successfully resolved dynamic credentials',
 					expect.objectContaining({
@@ -800,7 +810,8 @@ describe('DynamicCredentialService', () => {
 				expect(mockResolverRepository.findOneBy).toHaveBeenCalledWith({
 					id: 'credential-resolver-456',
 				});
-				expect(result).toEqual({ token: 'dynamic-token', apiKey: 'dynamic-key' });
+				expect(result.isDynamic).toBe(true);
+				expect(result.data).toEqual({ token: 'dynamic-token', apiKey: 'dynamic-key' });
 				expect(mockLogger.debug).toHaveBeenCalledWith(
 					'Successfully resolved dynamic credentials',
 					expect.objectContaining({
@@ -832,7 +843,7 @@ describe('DynamicCredentialService', () => {
 					additionalData.workflowSettings,
 				);
 
-				expect(result).toBe(staticData);
+				expectStaticResult(result);
 				expect(mockLogger.debug).toHaveBeenCalledWith(
 					'Resolver not found, falling back to static credentials',
 					expect.objectContaining({

@@ -69,11 +69,10 @@ test.describe(
 
 			await n8n.ndv.clickCreateNewCredential();
 
-			// Gmail has 2 auth options (OAuth2 + Service Account), shown as a switch link
+			// Gmail has 2 auth options (OAuth2 + Service Account), shown as a dropdown
 			await expect(n8n.canvas.credentialModal.getModeSelector()).toBeVisible();
-			await expect(n8n.canvas.credentialModal.getModeSwitchLink()).toBeVisible();
 
-			await n8n.canvas.credentialModal.getModeSwitchLink().click();
+			await n8n.canvas.credentialModal.selectAuthTypeFromDropdown(/Service Account/);
 
 			// Fill in the Service Account fields and save
 			await n8n.canvas.credentialModal.addCredential(

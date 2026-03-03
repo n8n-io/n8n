@@ -83,7 +83,7 @@ type EmailMode = z.infer<typeof emailModeSchema>;
 
 @Config
 class EmailConfig {
-	/** How to send emails */
+	/** Email delivery method: `smtp` or empty (disabled). */
 	@Env('N8N_EMAIL_MODE', emailModeSchema)
 	mode: EmailMode = 'smtp';
 
