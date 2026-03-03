@@ -740,11 +740,11 @@ describe('WorkflowSettingsVue', () => {
 			// so we verify the save behavior when the value is already empty.
 			workflowDocumentStore.setSettings({ credentialResolverId: '' });
 
-			const { getByRole } = createComponent({ pinia });
+			const { getByTestId, getByRole } = createComponent({ pinia });
 			await nextTick();
 
 			await waitFor(() => {
-				expect(workflowsListStore.fetchWorkflow).toHaveBeenCalled();
+				expect(getByTestId('workflow-settings-credential-resolver-create-new')).toBeInTheDocument();
 			});
 
 			await userEvent.click(getByRole('button', { name: 'Save' }));
