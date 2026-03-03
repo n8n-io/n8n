@@ -508,7 +508,7 @@ const savePaginationPreferences = async () => {
 		(route.params.projectId as string) ?? '',
 		props.tabKey,
 		{
-			sort: sortBy.value,
+			sort: props.persistKeyExclusions.includes(sortBy.value) ? preferredSort.value : sortBy.value,
 			pageSize: rowsPerPage.value,
 		},
 	);
