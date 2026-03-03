@@ -68,7 +68,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 			sourceControlStore.preferences.branchReadOnly ||
 			uiStore.isReadOnlyView ||
 			!workflowPermissions.value.update ||
-			workflowsStore.workflow.isArchived ||
+			(documentStore?.value?.isArchived ?? false) ||
 			collaborationStore.shouldBeReadOnly,
 	);
 

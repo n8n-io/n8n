@@ -48,7 +48,12 @@ export function useNodeCommands(options: {
 	const isReadOnly = computed(
 		() => sourceControlStore.preferences.branchReadOnly || collaborationStore.shouldBeReadOnly,
 	);
-	const isArchived = computed(() => workflowsStore.workflow.isArchived);
+	const isArchived = computed(() => {
+		const wfId = workflowsStore.workflowId;
+		if (!wfId) return false;
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(wfId));
+		return workflowDocumentStore.isArchived;
+	});
 
 	const workflowPermissions = computed(
 		() => getResourcePermissions(workflowDocumentStore.value.scopes).workflow,
