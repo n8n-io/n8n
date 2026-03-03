@@ -1,3 +1,4 @@
+import flatted from 'flatted';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
@@ -65,22 +66,29 @@ test.describe(
 				createCodeNodeWorkflow(),
 			);
 
-			const { executionId } = await api.workflows.runManually(workflowId, TRIGGER_NAME);
-			expect(executionId).toBeDefined();
+			await api.workflows.runManually(workflowId, TRIGGER_NAME);
 
 			const execution = await api.workflows.waitForExecution(workflowId, 15_000, 'manual');
 			expect(execution.status).toBe('success');
 
-			const executionDetails = await api.workflows.getExecution(execution.id);
-			const executionData = JSON.parse(executionDetails.data) as {
-				resultData: { runData: Record<string, unknown[]> };
-			};
+			const fullExecution = await api.workflows.getExecution(execution.id);
+			const executionData = flatted.parse(fullExecution.data);
 
-			// Verify runOnceForAllItems node produced output
-			expect(executionData.resultData.runData[ALL_ITEMS_NODE_NAME]).toBeDefined();
+			// Verify runOnceForAllItems node produced correct output
+			const allItemsOutput = executionData.resultData.runData[ALL_ITEMS_NODE_NAME];
+			expect(allItemsOutput).toBeDefined();
+			expect(allItemsOutput[0].data.main[0]).toEqual([
+				expect.objectContaining({ json: { value: 1 } }),
+				expect.objectContaining({ json: { value: 2 } }),
+			]);
 
-			// Verify runOnceForEachItem node produced output
-			expect(executionData.resultData.runData[EACH_ITEM_NODE_NAME]).toBeDefined();
+			// Verify runOnceForEachItem node processed each item correctly
+			const eachItemOutput = executionData.resultData.runData[EACH_ITEM_NODE_NAME];
+			expect(eachItemOutput).toBeDefined();
+			expect(eachItemOutput[0].data.main[0]).toEqual([
+				expect.objectContaining({ json: { processed: 2 } }),
+				expect.objectContaining({ json: { processed: 4 } }),
+			]);
 		});
 	},
 );
