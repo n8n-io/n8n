@@ -808,7 +808,7 @@ export const routes: RouteRecordRaw[] = [
 					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
 						rbac: {
-							scope: ['externalSecretsProvider:read', 'externalSecretsProvider:update'],
+							scope: ['externalSecretsProvider:list', 'externalSecretsProvider:update'],
 						},
 					},
 					telemetry: {

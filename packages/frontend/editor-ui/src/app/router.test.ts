@@ -111,7 +111,7 @@ describe('router', () => {
 		[
 			'/settings/external-secrets',
 			VIEWS.EXTERNAL_SECRETS_SETTINGS,
-			['externalSecretsProvider:read', 'externalSecretsProvider:update'],
+			['externalSecretsProvider:list', 'externalSecretsProvider:update'],
 		],
 		['/settings/sso', VIEWS.WORKFLOWS, []],
 		['/settings/sso', VIEWS.SSO_SETTINGS, ['saml:manage']],

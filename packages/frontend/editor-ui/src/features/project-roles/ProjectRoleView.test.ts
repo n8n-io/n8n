@@ -627,7 +627,7 @@ describe('ProjectRoleView', () => {
 			const { getByTestId } = renderComponent();
 
 			await waitFor(() =>
-				expect(getByTestId('scope-checkbox-externalSecretsProvider:read')).toBeInTheDocument(),
+				expect(getByTestId('scope-checkbox-externalSecretsProvider:list')).toBeInTheDocument(),
 			);
 			expect(getByTestId('scope-checkbox-externalSecretsProvider:create')).toBeInTheDocument();
 			expect(getByTestId('scope-checkbox-externalSecretsProvider:update')).toBeInTheDocument();

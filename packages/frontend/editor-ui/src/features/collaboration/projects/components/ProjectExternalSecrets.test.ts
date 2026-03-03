@@ -181,7 +181,7 @@ describe('ProjectExternalSecrets', () => {
 						id: 'project-1',
 						name: 'Test Project',
 						type: 'team',
-						scopes: ['externalSecretsProvider:read', 'externalSecretsProvider:create'],
+						scopes: ['externalSecretsProvider:list', 'externalSecretsProvider:create'],
 					},
 				},
 				users: {
@@ -373,7 +373,7 @@ describe('ProjectExternalSecrets', () => {
 				id: 'project-1',
 				name: 'Test Project',
 				type: 'team',
-				scopes: ['externalSecretsProvider:read'],
+				scopes: ['externalSecretsProvider:list'],
 				icon: null,
 				createdAt: '',
 				updatedAt: '',

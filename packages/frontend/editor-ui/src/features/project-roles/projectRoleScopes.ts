@@ -29,7 +29,7 @@ const UI_OPERATIONS = {
 		'updateRedactionSetting',
 	],
 	credential: ['read', 'update', 'create', 'share', 'unshare', 'move', 'delete'],
-	externalSecretsProvider: ['read', 'create', 'update', 'delete', 'sync'],
+	externalSecretsProvider: ['list', 'create', 'update', 'delete', 'sync'],
 	externalSecret: ['list'],
 	sourceControl: ['push'],
 	dataTable: ['read', 'readRow', 'update', 'writeRow', 'create', 'delete'],

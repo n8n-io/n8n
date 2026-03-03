@@ -56,7 +56,7 @@ const isFeatureEnabled = computed(
 
 // Permissions
 const hasExternalSecretsReadPermission = computed(
-	() => projectsStore.currentProject?.scopes?.includes('externalSecretsProvider:read') ?? false,
+	() => projectsStore.currentProject?.scopes?.includes('externalSecretsProvider:list') ?? false,
 );
 
 const hasProjectExternalSecretsCreatePermission = computed(
