@@ -1,3 +1,4 @@
+import { shallowRef } from 'vue';
 import { describe, it, vi } from 'vitest';
 import { screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
@@ -19,6 +20,11 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { FrontendSettings } from '@n8n/api-types';
 import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 const httpNode: INodeUi = {
 	parameters: {
@@ -97,14 +103,25 @@ function createCredential(
 }
 
 describe('NodeCredentials', () => {
+	const pinia = createTestingPinia({ stubActions: false });
+	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('1'));
+	const workflowDocumentStoreRef = shallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>(
+		workflowDocumentStore,
+	);
+
 	const defaultRenderOptions: RenderOptions<typeof NodeCredentials> = {
-		pinia: createTestingPinia({ stubActions: false }),
+		pinia,
 		props: {
 			overrideCredType: 'openAiApi',
 			node: httpNode,
 			readonly: false,
 			showAll: false,
 			hideIssues: false,
+		},
+		global: {
+			provide: {
+				[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
+			},
 		},
 	};
 
@@ -390,7 +407,7 @@ describe('NodeCredentials', () => {
 
 		it('should show warning when resolvable credential selected but workflow has no resolver', async () => {
 			setupResolvableCredential();
-			workflowsStore.workflowSettings = { executionOrder: 'v1' };
+			workflowDocumentStore.setSettings({ executionOrder: 'v1' });
 
 			renderComponent();
 
@@ -399,10 +416,10 @@ describe('NodeCredentials', () => {
 
 		it('should not show warning when resolvable credential selected and workflow has resolver', async () => {
 			setupResolvableCredential();
-			workflowsStore.workflowSettings = {
+			workflowDocumentStore.setSettings({
 				executionOrder: 'v1',
 				credentialResolverId: 'resolver-123',
-			};
+			});
 
 			renderComponent();
 

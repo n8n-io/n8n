@@ -127,6 +127,7 @@ jobs:
     uses: ./.github/workflows/test-e2e-ci-reusable.yml
     with:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
+      playwright-only: ${{ needs.install-and-build.outputs.e2e == 'true' && needs.install-and-build.outputs.unit == 'false' }}
     secrets: inherit
 
   db-tests:

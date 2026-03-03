@@ -1458,6 +1458,10 @@ describe('useWorkflowsStore', () => {
 				timezone: 'UTC',
 			};
 
+			// Also populate the document store since updateWorkflowSetting reads from it
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('w1'));
+			workflowDocumentStore.setSettings({ executionOrder: 'v1', timezone: 'UTC' });
+
 			const makeRestApiRequestSpy = vi.spyOn(apiUtils, 'makeRestApiRequest').mockResolvedValue(
 				createTestWorkflow({
 					id: 'w1',
@@ -1489,8 +1493,9 @@ describe('useWorkflowsStore', () => {
 			// Assert returned value and store updates
 			expect(result.versionId).toBe('v1');
 			expect(workflowsStore.workflow.versionId).toBe('v1');
-			expect(workflowsStore.workflow.settings).toEqual({
+			expect(workflowDocumentStore.settings).toEqual({
 				executionOrder: 'v1',
+				binaryMode: 'separate',
 				timezone: 'UTC',
 				executionTimeout: 10,
 			});
