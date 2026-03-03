@@ -239,6 +239,10 @@ const selectedModel = computed<ChatModelDto | null>(() => {
 	});
 });
 
+const isAgentModel = computed(
+	() => !!selectedModel.value && !isLlmProvider(selectedModel.value.model.provider),
+);
+
 const customAgentId = computed(() =>
 	selectedModel.value?.model.provider === 'custom-agent'
 		? selectedModel.value.model.agentId
@@ -734,6 +738,7 @@ function onFilesDropped(files: File[]) {
 		:class="{
 			[$style.chatLayout]: true,
 			[$style.isNewSession]: isNewSession,
+			[$style.isAgentNewSession]: isNewSession && isAgentModel,
 			[$style.isExistingSession]: !isNewSession,
 			[$style.isMobileDevice]: isMobileDevice,
 			[$style.isDraggingFile]: fileDrop.isDragging.value,
@@ -795,6 +800,7 @@ function onFilesDropped(files: File[]) {
 					<div ref="scrollable" :class="$style.scrollable">
 						<ChatGreetings
 							v-if="isNewSession"
+							:class="{ [$style.greetingsCentered]: !isAgentModel }"
 							:selected-agent="selectedModel"
 							:loading="!chatStore.agentsReady"
 							@select-prompt="handleSelectPrompt"
@@ -968,8 +974,18 @@ function onFilesDropped(files: File[]) {
 
 	.isNewSession & {
 		justify-content: space-between;
+	}
+
+	.isAgentNewSession & {
 		padding-top: var(--spacing--2xl);
 	}
+}
+
+.greetingsCentered {
+	flex: 1;
+	display: flex;
+	justify-content: center;
+	align-items: center;
 }
 
 .header {
