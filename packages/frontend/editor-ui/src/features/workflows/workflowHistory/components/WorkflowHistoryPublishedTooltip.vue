@@ -49,14 +49,14 @@ const publishedByDetails = computed(() => {
 
 <template>
 	<N8nTooltip
-		:disabled="!publishInfo"
+		:disabled="!props.publishInfo"
 		:placement="props.placement"
 		:show-after="300"
 		:offset="props.offset"
 		:content-class="$style.tooltipContent"
 	>
 		<template #content>
-			<div v-if="publishInfo">
+			<div v-if="props.publishInfo">
 				<div :class="$style.tooltipContentTitle">
 					<WorkflowHistoryVersionDot :status="props.status" />
 					<N8nText size="small" :bold="true">
