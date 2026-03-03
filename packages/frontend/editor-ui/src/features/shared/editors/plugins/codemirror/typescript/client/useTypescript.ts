@@ -5,6 +5,7 @@ import { autocompletableNodeNames } from '@/features/shared/editors/plugins/code
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { forceParse } from '@/app/utils/forceParse';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import { autocompletion } from '@codemirror/autocomplete';
@@ -33,6 +34,7 @@ export function useTypescript(
 	const { getInputDataWithPinned, getSchemaForExecutionData } = useDataSchema();
 	const ndvStore = useNDVStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const { debounce } = useDebounce();
 	const activeNodeName = toValue(targetNodeParameterContext)?.nodeName ?? ndvStore.activeNodeName;
 	const worker = ref<Comlink.Remote<LanguageServiceWorker>>();
@@ -57,7 +59,7 @@ export function useTypescript(
 						)
 					: [],
 				mode: toValue(mode),
-				binaryMode: workflowsStore.workflow.settings?.binaryMode,
+				binaryMode: workflowDocumentStore?.value?.settings?.binaryMode,
 			},
 			Comlink.proxy(async (nodeName) => {
 				const node = workflowsStore.getNodeByName(nodeName);
