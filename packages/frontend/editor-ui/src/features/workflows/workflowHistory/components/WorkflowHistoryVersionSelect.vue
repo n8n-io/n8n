@@ -169,7 +169,7 @@ const shouldShowUpgradeFooter = computed(() => Boolean(unref(workflowHistoryStor
 .workflow-history-version-select-dropdown :global(.el-select-group__wrap::after) {
 	width: 100%;
 	left: 0;
-	bottom: 8px;
+	bottom: var(--spacing--2xs);
 }
 
 .workflow-history-version-select-dropdown :global(.el-select-group__wrap:not(:last-of-type)) {

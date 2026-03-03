@@ -30,8 +30,11 @@ export const useWorkflowHistoryVersionOptions = ({
 	selectedVersionIds,
 	resolveUserDisplayName,
 }: UseWorkflowHistoryVersionOptionsParams) => {
-	const getVersionById = (versionId: string) =>
-		availableVersions.value.find((version) => version.versionId === versionId);
+	const versionsById = computed(() => {
+		return new Map(availableVersions.value.map((version) => [version.versionId, version]));
+	});
+
+	const getVersionById = (versionId: string) => versionsById.value.get(versionId);
 
 	const getVersionLabelById = (versionId: string): string => {
 		const workflowHistory = getVersionById(versionId) ?? { versionId, name: null };

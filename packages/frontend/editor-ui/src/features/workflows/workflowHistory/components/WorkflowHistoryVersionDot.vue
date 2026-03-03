@@ -18,8 +18,8 @@ withDefaults(
 <style module lang="scss">
 .dot {
 	display: inline-block;
-	width: 8px;
-	height: 8px;
+	width: var(--spacing--2xs);
+	height: var(--spacing--2xs);
 	border-radius: 50%;
 	flex-shrink: 0;
 }

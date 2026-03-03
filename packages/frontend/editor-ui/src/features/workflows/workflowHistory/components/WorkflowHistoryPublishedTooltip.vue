@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { toRef } from 'vue';
 import { N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { formatTimestamp } from '../utils';
 import WorkflowHistoryVersionDot from './WorkflowHistoryVersionDot.vue';
 import type { N8nTooltipProps } from '@n8n/design-system/components/N8nTooltip';
 import type { WorkflowHistoryVersionStatus } from '../types';
+import { usePublishedByDetails } from './usePublishedByDetails';
 
 defineSlots<{
 	default: () => unknown;
@@ -31,20 +31,7 @@ const props = withDefaults(
 
 const i18n = useI18n();
 
-const publishedByDetails = computed(() => {
-	if (!props.publishInfo) {
-		return '';
-	}
-
-	const { date, time } = formatTimestamp(props.publishInfo.publishedAt);
-	const publishedAt = i18n.baseText('workflowHistory.item.createdAt', {
-		interpolate: { date, time },
-	});
-	const publishedByLabel = i18n.baseText('workflowHistory.item.publishedBy');
-	const publishedBy = props.publishInfo.publishedBy ?? 'Unknown';
-
-	return `${publishedByLabel} ${publishedBy}, ${publishedAt}`;
-});
+const publishedByDetails = usePublishedByDetails(toRef(props, 'publishInfo'));
 </script>
 
 <template>
@@ -82,7 +69,8 @@ const publishedByDetails = computed(() => {
 .tooltipSecondaryText {
 	color: var(--color--text--tint-1);
 	display: block;
-	padding-left: calc(8px + var(--spacing--3xs));
+	// This padding is to align the secondary text with the title text (to cover for the status dot space)
+	padding-left: calc(var(--spacing--3xs) + var(--spacing--2xs));
 }
 
 .tooltipContent {
