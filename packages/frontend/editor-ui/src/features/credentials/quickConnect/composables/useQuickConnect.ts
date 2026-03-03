@@ -9,13 +9,13 @@ import { computed, ref, h } from 'vue';
 import type { ICredentialsResponse } from '../../credentials.types';
 import { useCredentialOAuth } from '../../composables/useCredentialOAuth';
 import { useCredentialsStore } from '../../credentials.store';
-import QuickConnectConfirmationMessage from '../components/QuickConnectConfirmationMessage.vue';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { getQuickConnectApiKey } from '../quickConnect.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useMessage } from '@/app/composables/useMessage';
 import { N8nMarkdown } from '@n8n/design-system';
+import { useUsersStore } from '@/features/settings/users/users.store';
 
 export function useQuickConnect() {
 	const settingsStore = useSettingsStore();
@@ -27,6 +27,7 @@ export function useQuickConnect() {
 	const credentialsStore = useCredentialsStore();
 	const projectsStore = useProjectsStore();
 	const rootStore = useRootStore();
+	const usersStore = useUsersStore();
 	const loading = ref(false);
 	const { isOAuthCredentialType, createAndAuthorize, cancelAuthorize } = useCredentialOAuth();
 
@@ -117,6 +118,20 @@ export function useQuickConnect() {
 		}
 	}
 
+	function replaceUserData(text: string) {
+		const currentUser = usersStore.currentUser;
+		if (currentUser) {
+			const keysToUse = ['email', 'firstName', 'fullName', 'lastName'] as const satisfies Array<
+				keyof typeof currentUser
+			>;
+			return keysToUse.reduce((result, key) => {
+				return result.replaceAll(`{user.${key}}`, currentUser[key] ?? '');
+			}, text);
+		}
+
+		return text;
+	}
+
 	async function connect(connectParams: {
 		credentialTypeName: string;
 		nodeType: string;
@@ -146,15 +161,21 @@ export function useQuickConnect() {
 			try {
 				if (quickConnectOption.consentText) {
 					const confirmed = await message.confirm(
-						h(N8nMarkdown, { content: quickConnectOption.consentText }),
+						h(N8nMarkdown, {
+							content: replaceUserData(quickConnectOption.consentText),
+							class: 'markdown-structured',
+						}),
 						i18n.baseText('nodeCredentials.quickConnect.connectTo', {
 							interpolate: { provider: connectParams.serviceName },
 						}),
 						{
+							customClass: 'wide',
 							confirmButtonText: i18n.baseText('nodeCredentials.quickConnect.consent.confirm'),
 							cancelButtonText: i18n.baseText('nodeCredentials.quickConnect.consent.cancel'),
 							confirmationCheckboxMessage: quickConnectOption.consentCheckbox
-								? h(N8nMarkdown, { content: quickConnectOption.consentCheckbox })
+								? h(N8nMarkdown, {
+										content: quickConnectOption.consentCheckbox,
+									})
 								: undefined,
 						},
 					);

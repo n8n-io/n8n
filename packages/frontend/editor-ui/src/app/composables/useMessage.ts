@@ -70,11 +70,21 @@ export function useMessage() {
 
 		if (confirmationCheckboxMessage) {
 			confirmedCheckbox = false;
+			resolvedConfig.customClass = [resolvedConfig.customClass, 'with-confirmation-checkbox'].join(
+				' ',
+			);
 			content = h('div', [
-				h('div', message),
+				h(
+					'div',
+					{
+						class: 'el-message-box__message__structured',
+					},
+					message,
+				),
 				h(
 					N8nCheckbox,
 					{
+						// @ts-expect-error - the checkbox component passes the value as custom data rather than the event itself
 						onChange: (_, data: { target: { value: boolean } }) =>
 							(confirmedCheckbox = data.target.value),
 						required: true,
