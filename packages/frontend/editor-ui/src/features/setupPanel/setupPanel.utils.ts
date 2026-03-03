@@ -8,7 +8,7 @@ import type {
 	CredentialTypeSetupState,
 	TriggerSetupState,
 } from '@/features/setupPanel/setupPanel.types';
-import { type INode, NodeHelpers } from 'n8n-workflow';
+import { type INode, type INodeParameters, NodeHelpers } from 'n8n-workflow';
 
 /**
  * Collects all credential types that a node requires from three sources:
@@ -45,8 +45,37 @@ export function getNodeParametersIssues(nodeTypesStore: NodeTypeProvider, node: 
 	const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
 	if (!nodeType) return {};
 
-	const issues = NodeHelpers.getNodeParametersIssues(nodeType.properties, node, nodeType);
-	return issues?.parameters ?? {};
+	// Fill in default values for parameters not explicitly set on the node.
+	// Required parameters with valid defaults (e.g. binaryPropertyName: 'data')
+	// are not stored in node.parameters when the user hasn't changed them.
+	// Without this, the issue checker flags them as missing.
+	const paramsWithDefaults: INodeParameters = { ...node.parameters };
+	for (const prop of nodeType.properties) {
+		if (!(prop.name in paramsWithDefaults) && prop.default !== undefined) {
+			paramsWithDefaults[prop.name] = prop.default;
+		}
+	}
+
+	const nodeWithDefaults: INode = { ...node, parameters: paramsWithDefaults };
+	const issues = NodeHelpers.getNodeParametersIssues(
+		nodeType.properties,
+		nodeWithDefaults,
+		nodeType,
+	);
+	const allIssues = issues?.parameters ?? {};
+
+	// Only keep issues for top-level parameters that the setup card can display.
+	// Nested issues (e.g. a missing field inside a fixedCollection entry) use child
+	// property names as keys which don't match top-level properties and can't be
+	// configured in the setup card.
+	const topLevelNames = new Set(nodeType.properties.map((p) => p.name));
+	const filteredIssues: Record<string, string[]> = {};
+	for (const [key, value] of Object.entries(allIssues)) {
+		if (topLevelNames.has(key)) {
+			filteredIssues[key] = value;
+		}
+	}
+	return filteredIssues;
 }
 
 /**
