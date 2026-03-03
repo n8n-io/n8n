@@ -1,6 +1,7 @@
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 } from 'n8n-workflow';
@@ -12,9 +13,20 @@ export const UNAUTHORIZED_ERROR_MESSAGE = 'Unauthorized';
 export const INTERNAL_SERVER_ERROR_MESSAGE = 'Internal server error';
 export const MCP_ACCESS_DISABLED_ERROR_MESSAGE = 'MCP access is disabled';
 
-export const SUPPORTED_MCP_TRIGGERS = {
+/**
+ * Triggers supported in production mode for MCP execution
+ */
+export const SUPPORTED_PRODUCTION_MCP_TRIGGERS = {
 	[SCHEDULE_TRIGGER_NODE_TYPE]: 'Schedule Trigger',
 	[WEBHOOK_NODE_TYPE]: 'Webhook Trigger',
 	[FORM_TRIGGER_NODE_TYPE]: 'Form Trigger',
 	[CHAT_TRIGGER_NODE_TYPE]: 'Chat Trigger',
+};
+
+/**
+ * All triggers supported for MCP (production + manual mode)
+ */
+export const SUPPORTED_MCP_TRIGGERS = {
+	...SUPPORTED_PRODUCTION_MCP_TRIGGERS,
+	[MANUAL_TRIGGER_NODE_TYPE]: 'Manual Trigger',
 };

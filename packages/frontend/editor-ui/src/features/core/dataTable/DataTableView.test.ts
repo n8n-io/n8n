@@ -1,5 +1,6 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
+import { fireEvent } from '@testing-library/vue';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import DataTableView from '@/features/core/dataTable/DataTableView.vue';
@@ -137,7 +138,13 @@ describe('DataTableView', () => {
 			const { getByTestId } = renderComponent({ pinia });
 			await waitAllPromises();
 
-			expect(dataTableStore.fetchDataTables).toHaveBeenCalledWith('', 1, 25);
+			expect(dataTableStore.fetchDataTables).toHaveBeenCalledWith(
+				'',
+				1,
+				25,
+				{ name: undefined, projectId: undefined },
+				'updatedAt:desc',
+			);
 			expect(getByTestId('resources-list-wrapper')).toBeInTheDocument();
 		});
 
@@ -152,7 +159,13 @@ describe('DataTableView', () => {
 
 			renderComponent({ pinia });
 			await waitAllPromises();
-			expect(dataTableStore.fetchDataTables).toHaveBeenCalledWith('test-project', 1, 25);
+			expect(dataTableStore.fetchDataTables).toHaveBeenCalledWith(
+				'test-project',
+				1,
+				25,
+				{ name: undefined, projectId: undefined },
+				'updatedAt:desc',
+			);
 		});
 		it('should set document title on mount', async () => {
 			renderComponent({ pinia });
@@ -238,8 +251,56 @@ describe('DataTableView', () => {
 			renderComponent({ pinia });
 			await waitAllPromises();
 
-			// Initial call should use default page size of 25
-			expect(dataTableStore.fetchDataTables).toHaveBeenCalledWith('', 1, 25);
+			// Initial call should use default page size of 25 with default sort and empty filters
+			expect(dataTableStore.fetchDataTables).toHaveBeenCalledWith(
+				'',
+				1,
+				25,
+				{ name: undefined, projectId: undefined },
+				'updatedAt:desc',
+			);
+		});
+	});
+
+	describe('search', () => {
+		it('should fetch with search term when search is updated', async () => {
+			const { getByTestId } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			dataTableStore.fetchDataTables = vi.fn().mockResolvedValue(undefined);
+
+			const searchInput = getByTestId('resources-list-search');
+			await fireEvent.input(searchInput, { target: { value: 'my table' } });
+			await waitAllPromises();
+
+			expect(dataTableStore.fetchDataTables).toHaveBeenCalledWith(
+				'',
+				1,
+				25,
+				{ name: 'my table', projectId: undefined },
+				'updatedAt:desc',
+			);
+		});
+
+		it('should fetch without search term when search is cleared', async () => {
+			const { getByTestId } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			const searchInput = getByTestId('resources-list-search');
+			await fireEvent.input(searchInput, { target: { value: 'my table' } });
+			await waitAllPromises();
+
+			dataTableStore.fetchDataTables = vi.fn().mockResolvedValue(undefined);
+			await fireEvent.input(searchInput, { target: { value: '' } });
+			await waitAllPromises();
+
+			expect(dataTableStore.fetchDataTables).toHaveBeenCalledWith(
+				'',
+				1,
+				25,
+				{ name: undefined, projectId: undefined },
+				'updatedAt:desc',
+			);
 		});
 	});
 });
