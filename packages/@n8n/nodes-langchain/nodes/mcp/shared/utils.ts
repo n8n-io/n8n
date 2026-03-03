@@ -116,31 +116,17 @@ export async function connectMcpClient({
 		return createResultError({ type: 'invalid_url', error: endpoint.error });
 	}
 
+	const authFetch = createAuthFetch(headers, onUnauthorized);
 	const client = new Client({ name, version: version.toString() }, { capabilities: {} });
 
 	if (serverTransport === 'httpStreamable') {
 		try {
 			const transport = new StreamableHTTPClientTransport(endpoint.result, {
-				requestInit: { headers },
-				fetch: proxyFetch,
+				fetch: authFetch,
 			});
 			await client.connect(transport);
 			return createResultOk(client);
 		} catch (error) {
-			if (onUnauthorized && isUnauthorizedError(error)) {
-				const newHeaders = await onUnauthorized(headers);
-				if (newHeaders) {
-					// Don't pass `onUnauthorized` to avoid possible infinite recursion
-					return await connectMcpClient({
-						headers: newHeaders,
-						serverTransport,
-						endpointUrl,
-						name,
-						version,
-					});
-				}
-			}
-
 			if (isUnauthorizedError(error) || isForbiddenError(error)) {
 				return createResultError({ type: 'auth', error: error as Error });
 			} else {
@@ -153,40 +139,62 @@ export async function connectMcpClient({
 		const sseTransport = new SSEClientTransport(endpoint.result, {
 			eventSourceInit: {
 				fetch: async (url, init) =>
-					await proxyFetch(url, {
+					await authFetch(url, {
 						...init,
 						headers: {
-							...headers,
+							...init?.headers,
 							Accept: 'text/event-stream',
 						},
 					}),
 			},
-			fetch: proxyFetch,
-			requestInit: { headers },
+			fetch: authFetch,
 		});
 		await client.connect(sseTransport);
 		return createResultOk(client);
 	} catch (error) {
-		if (onUnauthorized && isUnauthorizedError(error)) {
-			const newHeaders = await onUnauthorized(headers);
-			if (newHeaders) {
-				// Don't pass `onUnauthorized` to avoid possible infinite recursion
-				return await connectMcpClient({
-					headers: newHeaders,
-					serverTransport,
-					endpointUrl,
-					name,
-					version,
-				});
-			}
-		}
-
 		if (isUnauthorizedError(error) || isForbiddenError(error)) {
 			return createResultError({ type: 'auth', error: error as Error });
 		} else {
 			return createResultError({ type: 'connection', error: error as Error });
 		}
 	}
+}
+
+/**
+ * Creates a fetch wrapper that injects auth headers into every request
+ * and retries once on 401 after refreshing the token via onUnauthorized.
+ */
+function createAuthFetch(
+	initialHeaders: Record<string, string> | undefined,
+	onUnauthorized?: OnUnauthorizedHandler,
+): typeof fetch {
+	let headers = initialHeaders;
+
+	return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+		const response = await proxyFetch(input, {
+			...init,
+			headers: {
+				...(init?.headers as Record<string, string> | undefined),
+				...headers,
+			},
+		});
+
+		if (response.status === 401 && onUnauthorized) {
+			const refreshedHeaders = await onUnauthorized(headers);
+			if (refreshedHeaders) {
+				headers = refreshedHeaders;
+				return await proxyFetch(input, {
+					...init,
+					headers: {
+						...(init?.headers as Record<string, string> | undefined),
+						...headers,
+					},
+				});
+			}
+		}
+
+		return response;
+	};
 }
 
 export async function getAuthHeaders(
