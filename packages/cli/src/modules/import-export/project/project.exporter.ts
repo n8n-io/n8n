@@ -3,10 +3,14 @@ import { ProjectRepository } from '@n8n/db';
 import { In } from '@n8n/typeorm';
 
 import type { Exporter } from '../exporter';
+import { CredentialExporter } from '../credential/credential.exporter';
+import { DataTableExporter } from '../data-table/data-table.exporter';
 import { FolderExporter } from '../folder/folder.exporter';
-import type { ExportContext } from '../import-export.types';
+import type { ExportContext, ProjectExportContext } from '../import-export.types';
 import type { PackageWriter } from '../package-writer';
 import { generateSlug } from '../slug.utils';
+import { VariableExporter } from '../variable/variable.exporter';
+import { WorkflowExporter } from '../workflow/workflow.exporter';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import { ProjectSerializer } from './project.serializer';
@@ -20,6 +24,10 @@ export class ProjectExporter implements Exporter<ManifestProjectEntry> {
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectSerializer: ProjectSerializer,
 		private readonly folderExporter: FolderExporter,
+		private readonly workflowExporter: WorkflowExporter,
+		private readonly credentialExporter: CredentialExporter,
+		private readonly variableExporter: VariableExporter,
+		private readonly dataTableExporter: DataTableExporter,
 	) {}
 
 	async export(context: ExportContext, writer: PackageWriter): Promise<ManifestProjectEntry[]> {
@@ -45,19 +53,30 @@ export class ProjectExporter implements Exporter<ManifestProjectEntry> {
 			writer.writeDirectory(target);
 			writer.writeFile(`${target}/project.json`, JSON.stringify(serialized, null, '\t'));
 
-			const folderEntries = await this.folderExporter.exportForProject(project.id, target, writer);
+			const ctx: ProjectExportContext = {
+				projectId: project.id,
+				projectTarget: target,
+				folderPathMap: new Map(),
+				writer,
+			};
 
-			const entry: ManifestProjectEntry = {
+			// Folders must run first — they populate ctx.folderPathMap
+			const folders = await this.folderExporter.exportForProject(ctx);
+			const workflows = await this.workflowExporter.exportForProject(ctx);
+			const credentials = await this.credentialExporter.exportForProject(ctx);
+			const variables = await this.variableExporter.exportForProject(ctx);
+			const dataTables = await this.dataTableExporter.exportForProject(ctx);
+
+			entries.push({
 				id: project.id,
 				name: project.name,
 				target,
-			};
-
-			if (folderEntries.length > 0) {
-				entry.folders = folderEntries;
-			}
-
-			entries.push(entry);
+				folders,
+				workflows,
+				credentials,
+				variables,
+				dataTables,
+			});
 		}
 
 		return entries;

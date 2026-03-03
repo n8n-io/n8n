@@ -7,6 +7,7 @@ import { Readable } from 'node:stream';
 import type { ProjectService } from '@/services/project.service.ee';
 
 import type { ProjectExporter } from '../project/project.exporter';
+import type { ProjectImporter } from '../project/project.importer';
 import { ImportExportService } from '../import-export.service';
 import type { ManifestProjectEntry } from '../import-export.types';
 
@@ -25,6 +26,12 @@ jest.mock('../tar-package-writer', () => ({
 	})),
 }));
 
+jest.mock('../tar-package-reader', () => ({
+	TarPackageReader: {
+		fromBuffer: jest.fn(),
+	},
+}));
+
 jest.mock('@/constants', () => ({
 	N8N_VERSION: '2.10.0',
 }));
@@ -33,6 +40,7 @@ describe('ImportExportService', () => {
 	let service: ImportExportService;
 	let mockProjectService: MockProxy<ProjectService>;
 	let mockProjectExporter: MockProxy<ProjectExporter>;
+	let mockProjectImporter: MockProxy<ProjectImporter>;
 	let mockInstanceSettings: MockProxy<InstanceSettings>;
 	let mockUser: MockProxy<User>;
 
@@ -41,12 +49,14 @@ describe('ImportExportService', () => {
 
 		mockProjectService = mock<ProjectService>();
 		mockProjectExporter = mock<ProjectExporter>();
+		mockProjectImporter = mock<ProjectImporter>();
 		mockInstanceSettings = mock<InstanceSettings>({ instanceId: 'test-instance-id' });
 		mockUser = mock<User>();
 
 		service = new ImportExportService(
 			mockProjectService,
 			mockProjectExporter,
+			mockProjectImporter,
 			mockInstanceSettings,
 		);
 	});
@@ -95,9 +105,9 @@ describe('ImportExportService', () => {
 		});
 
 		it('should run the project exporter and write the manifest', async () => {
-			const projectEntries: ManifestProjectEntry[] = [
+			const projectEntries = [
 				{ id: 'project-1', name: 'billing', target: 'projects/billing-projec' },
-			];
+			] as unknown as ManifestProjectEntry[];
 
 			mockProjectService.getProjectWithScope.mockResolvedValue(mock<Project>());
 			mockProjectExporter.export.mockResolvedValue(projectEntries);
@@ -128,6 +138,78 @@ describe('ImportExportService', () => {
 				projects: projectEntries,
 			});
 			expect(manifestJson.exportedAt).toBeDefined();
+		});
+	});
+
+	describe('importPackage', () => {
+		it('should parse manifest and delegate to ProjectImporter', async () => {
+			const manifest = {
+				formatVersion: '1',
+				exportedAt: '2024-01-01T00:00:00.000Z',
+				n8nVersion: '2.10.0',
+				source: 'source-instance',
+				projects: [
+					{
+						id: 'project-1',
+						name: 'billing',
+						target: 'projects/billing',
+						folders: [],
+						workflows: [],
+						credentials: [],
+						variables: [],
+						dataTables: [],
+					},
+				],
+			};
+
+			const mockReader = {
+				readFile: jest.fn().mockReturnValue(JSON.stringify(manifest)),
+				hasFile: jest.fn(),
+			};
+
+			// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+			const { TarPackageReader } = jest.requireMock('../tar-package-reader') as {
+				TarPackageReader: { fromBuffer: jest.Mock };
+			};
+			TarPackageReader.fromBuffer.mockResolvedValue(mockReader);
+
+			const importResult = { projects: [{ sourceId: 'project-1', id: 'new-1', name: 'billing' }] };
+			mockProjectImporter.import.mockResolvedValue(importResult);
+
+			const result = await service.importPackage(Buffer.from('fake'), mockUser);
+
+			expect(TarPackageReader.fromBuffer).toHaveBeenCalledWith(Buffer.from('fake'));
+			expect(mockProjectImporter.import).toHaveBeenCalledWith(
+				manifest.projects,
+				mockReader,
+				mockUser,
+			);
+			expect(result).toEqual(importResult);
+		});
+
+		it('should throw BadRequestError for unsupported format version', async () => {
+			const manifest = {
+				formatVersion: '999',
+				exportedAt: '2024-01-01T00:00:00.000Z',
+				n8nVersion: '2.10.0',
+				source: 'source-instance',
+				projects: [],
+			};
+
+			const mockReader = {
+				readFile: jest.fn().mockReturnValue(JSON.stringify(manifest)),
+				hasFile: jest.fn(),
+			};
+
+			// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+			const { TarPackageReader } = jest.requireMock('../tar-package-reader') as {
+				TarPackageReader: { fromBuffer: jest.Mock };
+			};
+			TarPackageReader.fromBuffer.mockResolvedValue(mockReader);
+
+			await expect(service.importPackage(Buffer.from('fake'), mockUser)).rejects.toThrow(
+				'Unsupported package format version',
+			);
 		});
 	});
 });
