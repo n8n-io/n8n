@@ -4,7 +4,6 @@ import { GlobalConfig } from '@n8n/config';
 import type {
 	CreateExecutionPayload,
 	ExecutionSummaries,
-	IExecutionDb,
 	IExecutionResponse,
 	IGetExecutionsQueryFilter,
 	User,
@@ -187,10 +186,10 @@ export class ExecutionService {
 		const execution = executions[0];
 		if (!execution) return undefined;
 
-		await this.executionRedactionServiceProxy.processExecution(
-			execution as unknown as IExecutionDb,
-			{ user, redactExecutionData },
-		);
+		await this.executionRedactionServiceProxy.processExecution(execution, {
+			user,
+			redactExecutionData,
+		});
 		return execution;
 	}
 
@@ -344,13 +343,10 @@ export class ExecutionService {
 		const redactExecutionData = redactQuery.success
 			? redactQuery.data.redactExecutionData
 			: undefined;
-		await this.executionRedactionServiceProxy.processExecution(
-			response as unknown as IExecutionDb,
-			{
-				user: req.user,
-				redactExecutionData,
-			},
-		);
+		await this.executionRedactionServiceProxy.processExecution(response, {
+			user: req.user,
+			redactExecutionData,
+		});
 
 		return response;
 	}

@@ -1,4 +1,4 @@
-import type { IExecutionDb } from '@n8n/db';
+import type { IExecutionBase } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
@@ -14,8 +14,15 @@ import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { RedactableExecution } from '@/executions/execution-redaction';
 import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';
+
+function isRedactableExecution(
+	execution: IExecutionBase,
+): execution is IExecutionBase & RedactableExecution {
+	return 'data' in execution && 'workflowData' in execution;
+}
 
 import type { ExecutionRequest } from '../../../types';
 import { apiKeyHasScope, validCursor } from '../../shared/middlewares/global.middleware';
@@ -93,11 +100,10 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			if (includeData) {
-				await Container.get(ExecutionRedactionServiceProxy).processExecution(
-					execution as unknown as IExecutionDb,
-					{ user: req.user },
-				);
+			if (includeData && isRedactableExecution(execution)) {
+				await Container.get(ExecutionRedactionServiceProxy).processExecution(execution, {
+					user: req.user,
+				});
 			}
 
 			Container.get(EventService).emit('user-retrieved-execution', {
@@ -160,9 +166,9 @@ export = {
 			if (includeData) {
 				const redactionProxy = Container.get(ExecutionRedactionServiceProxy);
 				await Promise.all(
-					executions.map(
+					executions.filter(isRedactableExecution).map(
 						async (execution) =>
-							await redactionProxy.processExecution(execution as unknown as IExecutionDb, {
+							await redactionProxy.processExecution(execution, {
 								user: req.user,
 							}),
 					),

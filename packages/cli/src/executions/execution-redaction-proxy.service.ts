@@ -1,7 +1,10 @@
-import type { IExecutionDb } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import type { ExecutionRedaction, ExecutionRedactionOptions } from './execution-redaction';
+import type {
+	ExecutionRedaction,
+	ExecutionRedactionOptions,
+	RedactableExecution,
+} from './execution-redaction';
 
 @Service()
 export class ExecutionRedactionServiceProxy implements ExecutionRedaction {
@@ -12,9 +15,9 @@ export class ExecutionRedactionServiceProxy implements ExecutionRedaction {
 	}
 
 	async processExecution(
-		execution: IExecutionDb,
+		execution: RedactableExecution,
 		options: ExecutionRedactionOptions,
-	): Promise<IExecutionDb> {
+	): Promise<RedactableExecution> {
 		if (!this.executionRedaction) {
 			return execution;
 		}
