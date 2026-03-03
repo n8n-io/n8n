@@ -29,16 +29,18 @@ jobs:
     name: Push new release to channel
     if: inputs.release_type != 'rc'
     uses: ./.github/workflows/release-push-to-channel.yml
+    secrets: inherit
     with:
       version: ${{ inputs.version }}
       release-channel: ${{ inputs.track }}
 
   promote-previous-beta-to-stable:
     name: Promote previous beta to stable
-    uses: ./.github/workflows/release-push-to-channel.yml
     if: |
       inputs.release_type != 'rc' &&
       inputs.bump == 'minor'
+    uses: ./.github/workflows/release-push-to-channel.yml
+    secrets: inherit
     with:
       version: ${{ inputs.new_stable_version }}
       release-channel: stable
