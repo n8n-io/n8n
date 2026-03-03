@@ -2,6 +2,7 @@ import type { Folder, FolderRepository } from '@n8n/db';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 
+import type { ProjectExportContext } from '../../import-export.types';
 import type { PackageWriter } from '../../package-writer';
 import { FolderExporter } from '../folder.exporter';
 import type { FolderSerializer } from '../folder.serializer';
@@ -11,6 +12,7 @@ describe('FolderExporter', () => {
 	let mockFolderRepository: MockProxy<FolderRepository>;
 	let mockSerializer: MockProxy<FolderSerializer>;
 	let mockWriter: MockProxy<PackageWriter>;
+	let ctx: ProjectExportContext;
 
 	const projectTarget = 'projects/billing-550e84';
 
@@ -22,12 +24,19 @@ describe('FolderExporter', () => {
 		mockWriter = mock<PackageWriter>();
 
 		exporter = new FolderExporter(mockFolderRepository, mockSerializer);
+
+		ctx = {
+			projectId: 'project-1',
+			projectTarget,
+			folderPathMap: new Map(),
+			writer: mockWriter,
+		};
 	});
 
 	it('should return empty array when project has no folders', async () => {
 		mockFolderRepository.find.mockResolvedValue([]);
 
-		const entries = await exporter.exportForProject('project-1', projectTarget, mockWriter);
+		const entries = await exporter.exportForProject(ctx);
 
 		expect(entries).toEqual([]);
 		expect(mockWriter.writeDirectory).not.toHaveBeenCalled();
@@ -48,7 +57,7 @@ describe('FolderExporter', () => {
 			parentFolderId: null,
 		});
 
-		const entries = await exporter.exportForProject('project-1', projectTarget, mockWriter);
+		const entries = await exporter.exportForProject(ctx);
 
 		expect(entries).toHaveLength(1);
 		expect(entries[0].id).toBe(folder.id);
@@ -61,6 +70,27 @@ describe('FolderExporter', () => {
 		expect(mockWriter.writeFile).toHaveBeenCalledWith(
 			'projects/billing-550e84/folders/invoices-aabb11/folder.json',
 			expect.any(String),
+		);
+	});
+
+	it('should populate folderPathMap on context', async () => {
+		const folder = {
+			id: 'aabb1100-0000-0000-0000-000000000000',
+			name: 'invoices',
+			parentFolderId: null,
+		} as Folder;
+
+		mockFolderRepository.find.mockResolvedValue([folder]);
+		mockSerializer.serialize.mockReturnValue({
+			id: folder.id,
+			name: folder.name,
+			parentFolderId: null,
+		});
+
+		await exporter.exportForProject(ctx);
+
+		expect(ctx.folderPathMap.get(folder.id)).toBe(
+			'projects/billing-550e84/folders/invoices-aabb11',
 		);
 	});
 
@@ -90,7 +120,7 @@ describe('FolderExporter', () => {
 				parentFolderId: childFolder.parentFolderId,
 			});
 
-		const entries = await exporter.exportForProject('project-1', projectTarget, mockWriter);
+		const entries = await exporter.exportForProject(ctx);
 
 		expect(entries).toHaveLength(2);
 
@@ -114,7 +144,7 @@ describe('FolderExporter', () => {
 			.mockReturnValueOnce({ id: folders[0].id, name: folders[0].name, parentFolderId: null })
 			.mockReturnValueOnce({ id: folders[1].id, name: folders[1].name, parentFolderId: null });
 
-		const entries = await exporter.exportForProject('project-1', projectTarget, mockWriter);
+		const entries = await exporter.exportForProject(ctx);
 
 		expect(entries).toHaveLength(2);
 		expect(mockWriter.writeDirectory).toHaveBeenCalledTimes(2);
@@ -132,7 +162,7 @@ describe('FolderExporter', () => {
 		mockFolderRepository.find.mockResolvedValue([folder]);
 		mockSerializer.serialize.mockReturnValue(serialized);
 
-		await exporter.exportForProject('project-1', projectTarget, mockWriter);
+		await exporter.exportForProject(ctx);
 
 		const writtenContent = mockWriter.writeFile.mock.calls[0][1] as string;
 		expect(JSON.parse(writtenContent)).toEqual(serialized);
@@ -171,7 +201,7 @@ describe('FolderExporter', () => {
 				parentFolderId: leaf.parentFolderId,
 			});
 
-		const entries = await exporter.exportForProject('project-1', projectTarget, mockWriter);
+		const entries = await exporter.exportForProject(ctx);
 
 		const leafEntry = entries.find((e) => e.id === leaf.id)!;
 		expect(leafEntry.target).toBe(
@@ -182,7 +212,7 @@ describe('FolderExporter', () => {
 	it('should query folders by project id', async () => {
 		mockFolderRepository.find.mockResolvedValue([]);
 
-		await exporter.exportForProject('project-1', projectTarget, mockWriter);
+		await exporter.exportForProject(ctx);
 
 		expect(mockFolderRepository.find).toHaveBeenCalledWith({
 			where: { homeProject: { id: 'project-1' } },

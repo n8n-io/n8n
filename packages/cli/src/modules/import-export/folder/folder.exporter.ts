@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import { FolderRepository } from '@n8n/db';
 
-import type { PackageWriter } from '../package-writer';
+import type { ProjectExportContext } from '../import-export.types';
 import { generateSlug } from '../slug.utils';
 
 import { FolderSerializer } from './folder.serializer';
@@ -14,19 +14,15 @@ export class FolderExporter {
 		private readonly folderSerializer: FolderSerializer,
 	) {}
 
-	async exportForProject(
-		projectId: string,
-		projectTarget: string,
-		writer: PackageWriter,
-	): Promise<ManifestFolderEntry[]> {
+	async exportForProject(ctx: ProjectExportContext): Promise<ManifestFolderEntry[]> {
 		const folders = await this.folderRepository.find({
-			where: { homeProject: { id: projectId } },
+			where: { homeProject: { id: ctx.projectId } },
 		});
 
 		if (folders.length === 0) return [];
 
 		const folderMap = new Map(folders.map((f) => [f.id, f]));
-		const pathMap = this.buildPathMap(folders, folderMap, projectTarget);
+		const pathMap = this.buildPathMap(folders, folderMap, ctx.projectTarget);
 
 		const entries: ManifestFolderEntry[] = [];
 
@@ -34,8 +30,10 @@ export class FolderExporter {
 			const target = pathMap.get(folder.id)!;
 			const serialized = this.folderSerializer.serialize(folder);
 
-			writer.writeDirectory(target);
-			writer.writeFile(`${target}/folder.json`, JSON.stringify(serialized, null, '\t'));
+			ctx.writer.writeDirectory(target);
+			ctx.writer.writeFile(`${target}/folder.json`, JSON.stringify(serialized, null, '\t'));
+
+			ctx.folderPathMap.set(folder.id, target);
 
 			entries.push({
 				id: folder.id,

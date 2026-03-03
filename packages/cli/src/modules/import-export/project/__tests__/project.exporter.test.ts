@@ -4,9 +4,13 @@ import { mock } from 'jest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
+import type { CredentialExporter } from '../../credential/credential.exporter';
+import type { DataTableExporter } from '../../data-table/data-table.exporter';
 import type { FolderExporter } from '../../folder/folder.exporter';
-import type { ExportContext } from '../../import-export.types';
+import type { ExportContext, ProjectExportContext } from '../../import-export.types';
 import type { PackageWriter } from '../../package-writer';
+import type { VariableExporter } from '../../variable/variable.exporter';
+import type { WorkflowExporter } from '../../workflow/workflow.exporter';
 import { ProjectExporter } from '../project.exporter';
 import type { ProjectSerializer } from '../project.serializer';
 
@@ -15,6 +19,10 @@ describe('ProjectExporter', () => {
 	let mockProjectRepository: MockProxy<ProjectRepository>;
 	let mockSerializer: MockProxy<ProjectSerializer>;
 	let mockFolderExporter: MockProxy<FolderExporter>;
+	let mockWorkflowExporter: MockProxy<WorkflowExporter>;
+	let mockCredentialExporter: MockProxy<CredentialExporter>;
+	let mockVariableExporter: MockProxy<VariableExporter>;
+	let mockDataTableExporter: MockProxy<DataTableExporter>;
 	let mockWriter: MockProxy<PackageWriter>;
 	let context: ExportContext;
 
@@ -24,11 +32,27 @@ describe('ProjectExporter', () => {
 		mockProjectRepository = mock<ProjectRepository>();
 		mockSerializer = mock<ProjectSerializer>();
 		mockFolderExporter = mock<FolderExporter>();
+		mockWorkflowExporter = mock<WorkflowExporter>();
+		mockCredentialExporter = mock<CredentialExporter>();
+		mockVariableExporter = mock<VariableExporter>();
+		mockDataTableExporter = mock<DataTableExporter>();
 		mockWriter = mock<PackageWriter>();
 
 		mockFolderExporter.exportForProject.mockResolvedValue([]);
+		mockWorkflowExporter.exportForProject.mockResolvedValue([]);
+		mockCredentialExporter.exportForProject.mockResolvedValue([]);
+		mockVariableExporter.exportForProject.mockResolvedValue([]);
+		mockDataTableExporter.exportForProject.mockResolvedValue([]);
 
-		exporter = new ProjectExporter(mockProjectRepository, mockSerializer, mockFolderExporter);
+		exporter = new ProjectExporter(
+			mockProjectRepository,
+			mockSerializer,
+			mockFolderExporter,
+			mockWorkflowExporter,
+			mockCredentialExporter,
+			mockVariableExporter,
+			mockDataTableExporter,
+		);
 
 		context = {
 			user: mock(),
@@ -112,7 +136,7 @@ describe('ProjectExporter', () => {
 		expect(JSON.parse(writtenContent)).toEqual(serialized);
 	});
 
-	it('should call FolderExporter for each project', async () => {
+	it('should pass ProjectExportContext to sub-exporters', async () => {
 		const project = {
 			id: '550e8400-e29b-41d4-a716-446655440000',
 			name: 'billing',
@@ -124,14 +148,21 @@ describe('ProjectExporter', () => {
 
 		await exporter.export(context, mockWriter);
 
-		expect(mockFolderExporter.exportForProject).toHaveBeenCalledWith(
-			project.id,
-			'projects/billing-550e84',
-			mockWriter,
-		);
+		const expectedCtx: ProjectExportContext = {
+			projectId: project.id,
+			projectTarget: 'projects/billing-550e84',
+			folderPathMap: new Map(),
+			writer: mockWriter,
+		};
+
+		expect(mockFolderExporter.exportForProject).toHaveBeenCalledWith(expectedCtx);
+		expect(mockWorkflowExporter.exportForProject).toHaveBeenCalledWith(expectedCtx);
+		expect(mockCredentialExporter.exportForProject).toHaveBeenCalledWith(expectedCtx);
+		expect(mockVariableExporter.exportForProject).toHaveBeenCalledWith(expectedCtx);
+		expect(mockDataTableExporter.exportForProject).toHaveBeenCalledWith(expectedCtx);
 	});
 
-	it('should include folder entries in manifest when folders exist', async () => {
+	it('should attach folder entries from FolderExporter to manifest', async () => {
 		const project = {
 			id: '550e8400-e29b-41d4-a716-446655440000',
 			name: 'billing',
@@ -155,19 +186,99 @@ describe('ProjectExporter', () => {
 		expect(entries[0].folders).toEqual(folderEntries);
 	});
 
-	it('should omit folders from manifest when project has no folders', async () => {
+	it('should attach workflow entries from WorkflowExporter to manifest', async () => {
 		const project = {
 			id: '550e8400-e29b-41d4-a716-446655440000',
 			name: 'billing',
 			type: 'team',
 		} as Project;
 
+		const workflowEntries = [
+			{
+				id: 'wf-1',
+				name: 'daily-sync',
+				target: 'projects/billing-550e84/workflows/daily-sync-wf1',
+			},
+		];
+
 		mockProjectRepository.find.mockResolvedValue([project]);
 		mockSerializer.serialize.mockReturnValue({ id: project.id, name: project.name });
-		mockFolderExporter.exportForProject.mockResolvedValue([]);
+		mockWorkflowExporter.exportForProject.mockResolvedValue(workflowEntries);
 
 		const entries = await exporter.export(context, mockWriter);
 
-		expect(entries[0].folders).toBeUndefined();
+		expect(entries[0].workflows).toEqual(workflowEntries);
+	});
+
+	it('should attach credential entries from CredentialExporter to manifest', async () => {
+		const project = {
+			id: '550e8400-e29b-41d4-a716-446655440000',
+			name: 'billing',
+			type: 'team',
+		} as Project;
+
+		const credentialEntries = [
+			{
+				id: 'cred-1',
+				name: 'Slack Token',
+				target: 'projects/billing-550e84/credentials/slack-token-cred-1',
+			},
+		];
+
+		mockProjectRepository.find.mockResolvedValue([project]);
+		mockSerializer.serialize.mockReturnValue({ id: project.id, name: project.name });
+		mockCredentialExporter.exportForProject.mockResolvedValue(credentialEntries);
+
+		const entries = await exporter.export(context, mockWriter);
+
+		expect(entries[0].credentials).toEqual(credentialEntries);
+	});
+
+	it('should attach variable entries from VariableExporter to manifest', async () => {
+		const project = {
+			id: '550e8400-e29b-41d4-a716-446655440000',
+			name: 'billing',
+			type: 'team',
+		} as Project;
+
+		const variableEntries = [
+			{
+				id: 'var-1',
+				name: 'API_URL',
+				target: 'projects/billing-550e84/variables/api-url-var-1',
+			},
+		];
+
+		mockProjectRepository.find.mockResolvedValue([project]);
+		mockSerializer.serialize.mockReturnValue({ id: project.id, name: project.name });
+		mockVariableExporter.exportForProject.mockResolvedValue(variableEntries);
+
+		const entries = await exporter.export(context, mockWriter);
+
+		expect(entries[0].variables).toEqual(variableEntries);
+	});
+
+	it('should attach dataTable entries from DataTableExporter to manifest', async () => {
+		const project = {
+			id: '550e8400-e29b-41d4-a716-446655440000',
+			name: 'billing',
+			type: 'team',
+		} as Project;
+
+		const dataTableEntries = [
+			{
+				id: 'dt-1',
+				name: 'customers',
+				target: 'projects/billing-550e84/data-tables/customers-dt-1',
+			},
+		];
+
+		mockProjectRepository.find.mockResolvedValue([project]);
+		mockSerializer.serialize.mockReturnValue({ id: project.id, name: project.name });
+		mockDataTableExporter.exportForProject.mockResolvedValue(dataTableEntries);
+
+		const entries = await exporter.export(context, mockWriter);
+
+		expect(entries[0].dataTables).toEqual(dataTableEntries);
 	});
 });

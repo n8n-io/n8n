@@ -99,6 +99,38 @@ const showSettings = computed(
 		projectsStore.currentProject?.type === ProjectTypes.Team,
 );
 
+const showExport = computed(
+	() => !!route?.params?.projectId && projectsStore.currentProject?.type === ProjectTypes.Team,
+);
+
+async function exportProject() {
+	const projectId = route.params.projectId as string;
+	try {
+		const browserId = localStorage.getItem('n8n-browserId') ?? '';
+		const response = await fetch('/rest/import-export/export', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'browser-id': browserId,
+			},
+			body: JSON.stringify({ projectIds: [projectId] }),
+		});
+		if (!response.ok) throw new Error('Export failed');
+		const blob = await response.blob();
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = `${projectsStore.currentProject?.name ?? 'export'}.n8np`;
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		URL.revokeObjectURL(url);
+	} catch {
+		// eslint-disable-next-line no-console
+		console.error('Export failed');
+	}
+}
+
 const showFolders = computed(() => {
 	return (
 		settingsStore.isFoldersFeatureEnabled &&
@@ -443,6 +475,14 @@ const onSelect = (action: string) => {
 					:content="i18n.baseText('readOnlyEnv.cantAdd.any')"
 				>
 					<div style="display: flex; gap: var(--spacing--xs); align-items: center">
+						<N8nButton
+							v-if="showExport"
+							data-test-id="export-project-button"
+							label="Export"
+							type="secondary"
+							size="medium"
+							@click="exportProject"
+						/>
 						<ReadyToRunButton :has-active-callouts="props.hasActiveCallouts" />
 						<ProjectCreateResource
 							data-test-id="add-resource-buttons"

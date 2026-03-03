@@ -1,14 +1,18 @@
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { Readable } from 'node:stream';
 
 import { N8N_VERSION } from '@/constants';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ProjectService } from '@/services/project.service.ee';
 
-import { ProjectExporter } from './project/project.exporter';
 import { FORMAT_VERSION } from './import-export.constants';
-import type { ExportContext, PackageManifest } from './import-export.types';
+import type { ExportContext, ImportResult, PackageManifest } from './import-export.types';
+import { ProjectExporter } from './project/project.exporter';
+import { ProjectImporter } from './project/project.importer';
+import { TarPackageReader } from './tar-package-reader';
 import { TarPackageWriter } from './tar-package-writer';
 
 @Service()
@@ -16,6 +20,7 @@ export class ImportExportService {
 	constructor(
 		private readonly projectService: ProjectService,
 		private readonly projectExporter: ProjectExporter,
+		private readonly projectImporter: ProjectImporter,
 		private readonly instanceSettings: InstanceSettings,
 	) {}
 
@@ -48,5 +53,20 @@ export class ImportExportService {
 		writer.writeFile('manifest.json', JSON.stringify(manifest, null, '\t'));
 
 		return writer.finalize();
+	}
+
+	async importPackage(buffer: Buffer, user: User): Promise<ImportResult> {
+		const reader = await TarPackageReader.fromBuffer(buffer);
+
+		const manifestJson = reader.readFile('manifest.json');
+		const manifest = JSON.parse(manifestJson) as PackageManifest;
+
+		if (manifest.formatVersion !== FORMAT_VERSION) {
+			throw new BadRequestError(
+				`Unsupported package format version "${manifest.formatVersion}" (expected "${FORMAT_VERSION}")`,
+			);
+		}
+
+		return await this.projectImporter.import(manifest.projects, reader, user);
 	}
 }
