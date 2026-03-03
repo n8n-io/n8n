@@ -78,6 +78,10 @@ my operation    20,000   0.04   0.20   0.05   0.10  ±0.5%   10000
 |------|------------------|----------------|
 | Expression Engine | `={{ }}` evaluation speed | Runs for every node parameter |
 
+## Notes
+
+This package pins `vitest@^3.2.0` independently from the monorepo catalog (`^3.1.3`) because CodSpeed requires vitest 3.2+.
+
 ## Tips
 
 1. **Keep benchmarks focused** - one thing per bench, not workflows
