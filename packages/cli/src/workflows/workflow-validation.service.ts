@@ -226,15 +226,16 @@ export class WorkflowValidationService {
 			return { isValid: true };
 		}
 
+		const errors: string[] = [];
+
 		// A credential is covered if it has its own resolver OR the workflow has a defined resolver
 		const workflowResolverId = workflowSettings?.credentialResolverId;
-		const credentialsWithoutResolver = resolvableCredentials.filter((c) => !c.resolverId);
-		if (!workflowResolverId && credentialsWithoutResolver.length > 0) {
-			const credNames = credentialsWithoutResolver.map((c) => `"${c.name}"`).join(', ');
-			return {
-				isValid: false,
-				error: `Cannot publish workflow: dynamic credentials (${credNames}) require a resolver to be configured.`,
-			};
+		if (!workflowResolverId) {
+			const credentialsWithoutResolver = resolvableCredentials.filter((c) => !c.resolverId);
+			if (credentialsWithoutResolver.length > 0) {
+				const credNames = credentialsWithoutResolver.map((c) => `"${c.name}"`).join(', ');
+				errors.push(`dynamic credentials (${credNames}) require a resolver to be configured.`);
+			}
 		}
 
 		const hasExtractorHook = nodes.some((node) => {
@@ -251,9 +252,15 @@ export class WorkflowValidationService {
 
 		if (!hasExtractorHook) {
 			const credNames = resolvableCredentials.map((c) => `"${c.name}"`).join(', ');
+			errors.push(
+				`dynamic credentials (${credNames}) require a trigger with an identity extractor configured. Please configure an identity extractor on the trigger node.`,
+			);
+		}
+
+		if (errors.length > 0) {
 			return {
 				isValid: false,
-				error: `Cannot publish workflow: dynamic credentials (${credNames}) require a trigger with an identity extractor configured. Please configure an identity extractor on the trigger node.`,
+				error: `Cannot publish workflow: ${errors.join(' ')}`,
 			};
 		}
 
