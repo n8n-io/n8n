@@ -9,6 +9,7 @@ import { InstanceSettings, BinaryDataService, Cipher } from 'n8n-core';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	CHAT_NODE_TYPE,
+	MEMORY_MANAGER_NODE_TYPE,
 	createRunExecutionData,
 	NodeOperationError,
 	type INode,
@@ -1200,6 +1201,176 @@ describe('chatHub', () => {
 				) as [ChatHubExecutionEnd, string[]] | undefined;
 				expect(endEvent).toBeDefined();
 				expect(endEvent![0].data.sessionId).toBe(sessionId);
+			});
+		});
+
+		describe('regenerateAIMessage', () => {
+			let anthropicCredential: CredentialsEntity;
+			let sessionId: string;
+			let messageId: string;
+
+			let spyExecute: jest.SpyInstance<
+				ReturnType<WorkflowExecutionService['executeChatWorkflow']>,
+				Parameters<WorkflowExecutionService['executeChatWorkflow']>
+			>;
+			let finishRun = (_: IRun) => {};
+
+			beforeEach(async () => {
+				jest.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(false);
+				jest.spyOn(settingsRepository, 'findByKey').mockResolvedValue(null);
+
+				spyExecute = jest.spyOn(Container.get(WorkflowExecutionService), 'executeChatWorkflow');
+
+				jest
+					.spyOn(Container.get(ActiveExecutions), 'getPostExecutePromise')
+					// eslint-disable-next-line @typescript-eslint/promise-function-async
+					.mockImplementation(() => {
+						return new Promise((r) => {
+							finishRun = r;
+						});
+					});
+
+				anthropicCredential = await saveCredential(
+					{
+						name: 'Test Anthropic Credential',
+						type: 'anthropicApi',
+						data: { apiKey: 'test-api-key' },
+					},
+					{ user: member, role: 'credential:owner' },
+				);
+
+				sessionId = crypto.randomUUID();
+				messageId = crypto.randomUUID();
+			});
+
+			it('should not include the last human message in restored memory history', async () => {
+				// Step 1: Send a human message and get an AI response
+				spyExecute.mockImplementationOnce(async (_user, workflowData, executionData, stream) => {
+					const executionId = await executionPersistence.create({
+						finished: false,
+						mode: 'chat',
+						status: 'running',
+						workflowId: workflowData.id,
+						data: executionData,
+						workflowData,
+					});
+
+					setTimeout(() => stream!.write('{"type":"begin","metadata":{}}\n'));
+					setTimeout(() =>
+						stream!.write('{"type":"item","content":"AI response","metadata":{}}\n'),
+					);
+					setTimeout(() => stream!.write('{"type":"end","metadata":{}}\n'));
+					setTimeout(() => stream!.end());
+					setTimeout(async () => {
+						await executionRepository.updateExistingExecution(executionId, { status: 'success' });
+					});
+					setTimeout(() => finishRun({} as IRun));
+
+					return { executionId };
+				});
+
+				// Title generation mock — needed because sendHumanMessage triggers it for new sessions
+				spyExecute.mockRejectedValueOnce(Error());
+
+				await chatHubService.sendHumanMessage(
+					member,
+					{
+						userId: member.id,
+						sessionId,
+						messageId,
+						message: 'Hello',
+						model: { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022' },
+						credentials: {
+							anthropicApi: { id: anthropicCredential.id, name: anthropicCredential.name },
+						},
+						previousMessageId: null,
+						attachments: [],
+					},
+					{
+						authToken: 'authtoken',
+						method: 'POST',
+						endpoint: '/api/chat/message',
+					},
+				);
+
+				// Wait for the AI response to be persisted
+				const messages = await retryUntil(async () => {
+					const messages = await messagesRepository.getManyBySessionId(sessionId);
+					expect(messages.length).toBeGreaterThanOrEqual(2);
+					expect(messages[1]?.status).toBe('success');
+					return messages;
+				});
+
+				const aiMessageId = messages[1].id;
+
+				// Step 2: Regenerate the AI message — capture the workflow
+				let capturedWorkflowData: IWorkflowBase | undefined;
+				spyExecute.mockImplementationOnce(async (_user, workflowData, executionData, stream) => {
+					capturedWorkflowData = workflowData;
+
+					const executionId = await executionPersistence.create({
+						finished: false,
+						mode: 'chat',
+						status: 'running',
+						workflowId: workflowData.id,
+						data: executionData,
+						workflowData,
+					});
+
+					setTimeout(() => stream!.write('{"type":"begin","metadata":{}}\n'));
+					setTimeout(() =>
+						stream!.write('{"type":"item","content":"Regenerated","metadata":{}}\n'),
+					);
+					setTimeout(() => stream!.write('{"type":"end","metadata":{}}\n'));
+					setTimeout(() => stream!.end());
+					setTimeout(async () => {
+						await executionRepository.updateExistingExecution(executionId, { status: 'success' });
+					});
+					setTimeout(() => finishRun({} as IRun));
+
+					return { executionId };
+				});
+
+				await chatHubService.regenerateAIMessage(
+					member,
+					{
+						userId: member.id,
+						sessionId,
+						retryId: aiMessageId,
+						model: { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022' },
+						credentials: {
+							anthropicApi: { id: anthropicCredential.id, name: anthropicCredential.name },
+						},
+					},
+					{
+						authToken: 'authtoken',
+						method: 'POST',
+						endpoint: '/api/chat/message',
+					},
+				);
+
+				await retryUntil(async () => {
+					expect(capturedWorkflowData).toBeDefined();
+				});
+
+				// Verify the "Restore Chat Memory" node does NOT contain the human message
+				// The human message is already replayed via the chat trigger input,
+				// so including it in memory would cause the agent to see it twice
+				const restoreMemoryNode = capturedWorkflowData!.nodes.find(
+					(n) => n.type === MEMORY_MANAGER_NODE_TYPE && n.name === 'Restore Chat Memory',
+				);
+				expect(restoreMemoryNode).toBeDefined();
+
+				const messageValues = (
+					restoreMemoryNode!.parameters as {
+						messages: { messageValues: Array<{ type: string; message: string }> };
+					}
+				).messages.messageValues;
+
+				// Memory should be empty — the human message "Hello" should NOT be in the history
+				// because it's sent as the current chat input, not as part of memory restoration
+				const userMessages = messageValues.filter((m) => m.type === 'user');
+				expect(userMessages).toHaveLength(0);
 			});
 		});
 

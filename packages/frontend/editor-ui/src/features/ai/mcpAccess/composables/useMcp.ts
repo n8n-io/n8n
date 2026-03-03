@@ -1,6 +1,7 @@
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 } from '@/app/constants';
@@ -15,6 +16,7 @@ export function useMcp() {
 		[WEBHOOK_NODE_TYPE]: 'Webhook Trigger',
 		[FORM_TRIGGER_NODE_TYPE]: 'Form Trigger',
 		[CHAT_TRIGGER_NODE_TYPE]: 'Chat Trigger',
+		[MANUAL_TRIGGER_NODE_TYPE]: 'Manual Trigger',
 	};
 
 	/**
@@ -24,6 +26,7 @@ export function useMcp() {
 	 * - Webhook trigger
 	 * - Form trigger
 	 * - Chat trigger
+	 * - Manual trigger
 	 * @param workflow
 	 */
 	const isEligibleForMcpAccess = (workflow: IWorkflowDb) => {
