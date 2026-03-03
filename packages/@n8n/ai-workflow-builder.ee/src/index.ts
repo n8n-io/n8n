@@ -21,6 +21,10 @@ export {
 	createGetSuggestedNodesTool,
 	stripImportStatements,
 	SDK_IMPORT_STATEMENT,
+	EXPRESSION_REFERENCE,
+	WORKFLOW_PATTERNS,
+	ADDITIONAL_FUNCTIONS,
+	WORKFLOW_RULES,
 } from './code-builder';
 export type {
 	CodeBuilderGetToolOptions,

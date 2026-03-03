@@ -25,3 +25,11 @@ export { createCodeBuilderGetTool } from './tools/code-builder-get.tool';
 export type { CodeBuilderGetToolOptions } from './tools/code-builder-get.tool';
 export { createGetSuggestedNodesTool } from './tools/get-suggested-nodes.tool';
 export { stripImportStatements, SDK_IMPORT_STATEMENT } from './utils/extract-code';
+
+// SDK reference content (raw, unescaped curly braces)
+export {
+	EXPRESSION_REFERENCE,
+	WORKFLOW_PATTERNS,
+	ADDITIONAL_FUNCTIONS,
+	WORKFLOW_RULES,
+} from './prompts';
