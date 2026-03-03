@@ -5,7 +5,7 @@ import { N8nAlertDialog } from '@n8n/design-system/components/N8nAlertDialog';
 import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
 
 const meta = {
-	title: 'Components/N8nAlertDialog',
+	title: 'Core/AlertDialog',
 	component: N8nAlertDialog,
 	parameters: {
 		docs: {
