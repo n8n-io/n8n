@@ -8,11 +8,11 @@ export type * from './user';
 export type * from './api-keys';
 export type * from './community-node-types';
 export type * from './quick-connect';
+export * from './instance-registry-types';
 export {
 	chatHubConversationModelSchema,
 	type ChatModelDto,
 	type ChatModelMetadataDto,
-	type ChatHubInputModality,
 	type ChatHubOpenAIModel,
 	type ChatHubAnthropicModel,
 	type ChatHubGoogleModel,
@@ -152,6 +152,7 @@ export {
 	type DataTableCreateColumnSchema,
 	type DataTableListFilter,
 	type DataTableListOptions,
+	type DataTableListSortBy,
 	dateTimeSchema,
 	dataTableColumnNameSchema,
 } from './schemas/data-table.schema';
@@ -189,10 +190,13 @@ export type {
 	BreakingChangeVersion,
 } from './schemas/breaking-changes.schema';
 
+export { MIGRATION_REPORT_TARGET_VERSION } from './schemas/breaking-changes.schema';
+
 export type {
 	SecretsProviderType,
 	SecretsProviderState,
 	SecretsProviderConnectionTestState,
+	SecretProviderConnectionListItem,
 	SecretProviderConnection,
 	SecretProviderTypeResponse,
 	SecretCompletionsResponse,

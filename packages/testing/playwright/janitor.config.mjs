@@ -22,8 +22,8 @@ export default defineConfig({
 		helpers: [
 			'helpers/**/*.ts',
 			'utils/**/*.ts',
-			'config/**/*.ts', // TODO: Move TestRequirements to helpers/
-			'tests/**/fixtures.ts', // TODO: Consolidate colocated fixtures
+			'config/**/*.ts',
+			'tests/**/fixtures.ts',
 		],
 		factories: ['test-data/**/*.ts', 'factories/**/*.ts'],
 		testData: ['workflows/**/*'],
@@ -76,6 +76,11 @@ export default defineConfig({
 		'api-purity': { enabled: true, severity: 'warning' },
 		// Enforce facade pattern - access pages through n8n.* instead of new *Page()
 		'no-direct-page-instantiation': { enabled: true, severity: 'error' },
+	},
+
+	orchestration: {
+		metricsPath: '../../../.github/test-metrics/playwright.json',
+		specFilter: 'tests/e2e/',
 	},
 
 	tcr: {

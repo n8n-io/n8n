@@ -1,15 +1,13 @@
 <script lang="ts" setup>
-import { computed, reactive, ref, onMounted, watch } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { useProjectsStore } from '../projects.store';
 import { useSecretsProvidersList } from '@/features/integrations/secretsProviders.ee/composables/useSecretsProvidersList.ee';
 import type { SecretProviderConnection } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
-import { ROLE } from '@n8n/api-types';
 import { SECRETS_PROVIDER_CONNECTION_MODAL_KEY, VIEWS } from '@/app/constants';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRouter } from 'vue-router';
 
 import {
@@ -24,16 +22,17 @@ import {
 } from '@n8n/design-system';
 import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import { useSecretsProviderConnection } from '@/features/integrations/secretsProviders.ee/composables/useSecretsProviderConnection.ee';
+import { useRBACStore } from '@/app/stores/rbac.store';
 
 const i18n = useI18n();
 const toast = useToast();
 const router = useRouter();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
-const usersStore = useUsersStore();
+const rbacStore = useRBACStore();
+const settingsStore = useSettingsStore();
 const secretsProviders = useSecretsProvidersList();
-const secretsProviderConnection = useSecretsProviderConnection();
-const envFeatureFlag = useEnvFeatureFlag();
+const secretsProviderConnection = useSecretsProviderConnection(projectsStore.currentProjectId);
 
 interface ConnectionRow {
 	id: string;
@@ -51,8 +50,8 @@ const expandedConnections = ref<Set<string>>(new Set());
 const currentPage = ref(0);
 const itemsPerPage = ref(5);
 
-const isFeatureEnabled = computed(() =>
-	envFeatureFlag.check.value('EXTERNAL_SECRETS_FOR_PROJECTS'),
+const isFeatureEnabled = computed(
+	() => settingsStore.moduleSettings['external-secrets']?.forProjects ?? false,
 );
 
 // Permissions
@@ -64,8 +63,8 @@ const hasProjectExternalSecretsCreatePermission = computed(
 	() => projectsStore.currentProject?.scopes?.includes('externalSecretsProvider:create') ?? false,
 );
 
-const isInstanceAdmin = computed(
-	() => usersStore.currentUser?.role === ROLE.Owner || usersStore.currentUser?.role === ROLE.Admin,
+const canCreateGlobalSecretsStore = computed(() =>
+	rbacStore.hasScope('externalSecretsProvider:create'),
 );
 
 const showExternalSecretsSection = computed(
@@ -78,7 +77,7 @@ type EmptyStateType = 'instance-admin-no-project-providers' | 'project-admin-no-
 const emptyStateType = computed<EmptyStateType>(() => {
 	if (projectSecretConnections.value.length > 0) return null;
 
-	if (isInstanceAdmin.value) {
+	if (canCreateGlobalSecretsStore.value) {
 		const hasGlobalProviders = secretsProviders.activeProviders.value.length > 0;
 		return hasGlobalProviders
 			? 'instance-admin-no-project-providers'
@@ -99,7 +98,6 @@ const emptyStateConfig = computed(() => {
 				'projects.settings.externalSecrets.emptyState.instanceAdmin.noProjectProviders.description',
 			),
 			buttonText: i18n.baseText('projects.settings.externalSecrets.button.shareSecretsStore'),
-			buttonType: 'secondary' as const,
 			buttonAction: onShareSecretsStore,
 			testId: 'external-secrets-empty-state-no-project-providers',
 		},
@@ -109,12 +107,10 @@ const emptyStateConfig = computed(() => {
 				'projects.settings.externalSecrets.emptyState.projectAdmin.description',
 			),
 			buttonText: i18n.baseText('projects.settings.externalSecrets.button.addSecretsStore'),
-			buttonType: 'secondary' as const,
 			buttonAction: onAddSecretsStore,
 			testId: 'external-secrets-empty-state-project-admin',
 		},
 	};
-
 	return configs[type];
 });
 
@@ -247,6 +243,7 @@ function openProviderModal(providerKey: string) {
 }
 
 function onAddSecretsStore() {
+	if (!hasProjectExternalSecretsCreatePermission.value) return;
 	openConnectionModal();
 }
 
@@ -262,24 +259,31 @@ watch([currentPage, itemsPerPage], async () => {
 	await fetchSecretsForCurrentPage();
 });
 
-// Fetch project secret providers when currentProjectId is available
+// Fetch project secret providers when currentProjectId is available and section is visible
 watch(
-	() => projectsStore.currentProjectId,
-	async (newProjectId) => {
-		if (newProjectId && showExternalSecretsSection.value) {
+	[() => projectsStore.currentProjectId, showExternalSecretsSection],
+	async ([newProjectId, showSection]) => {
+		if (newProjectId && showSection) {
 			await fetchProjectSecretConnections();
 		}
 	},
 	{ immediate: true },
 );
 
-onMounted(async () => {
-	if (!showExternalSecretsSection.value) return;
-	await Promise.all([
-		secretsProviders.fetchProviderTypes(),
-		secretsProviders.fetchActiveConnections(),
-	]);
-});
+watch(
+	showExternalSecretsSection,
+	async (showSection) => {
+		if (!showSection) return;
+		await Promise.allSettled([
+			secretsProviders.fetchProviderTypes(),
+			secretsProviders.fetchActiveConnections(),
+		]);
+		if (canCreateGlobalSecretsStore.value) {
+			await projectsStore.getAllProjects();
+		}
+	},
+	{ immediate: true },
+);
 
 defineExpose({
 	fetchProjectSecretConnections,
@@ -295,12 +299,7 @@ defineExpose({
 		</h3>
 
 		<!-- Empty State: Consolidated view based on user role and current state -->
-		<N8nActionBox
-			v-if="emptyStateConfig"
-			:class="$style.externalSecretsEmpty"
-			:data-test-id="emptyStateConfig.testId"
-			description="yes"
-		>
+		<N8nActionBox v-if="emptyStateConfig" :data-test-id="emptyStateConfig.testId" description="yes">
 			<template #description>
 				<N8nHeading tag="h3" size="small" class="mb-2xs">
 					{{ emptyStateConfig.heading }}
@@ -311,7 +310,8 @@ defineExpose({
 			</template>
 			<template #additionalContent>
 				<N8nButton
-					type="highlight"
+					variant="ghost"
+					size="xsmall"
 					class="mr-2xs"
 					element="a"
 					:href="i18n.baseText('settings.externalSecrets.docs')"
@@ -321,7 +321,8 @@ defineExpose({
 					{{ i18n.baseText('generic.learnMore') }} <N8nIcon icon="arrow-up-right" />
 				</N8nButton>
 				<N8nButton
-					:type="emptyStateConfig.buttonType"
+					variant="subtle"
+					size="xsmall"
 					:data-test-id="`${emptyStateType}-button`"
 					@click="emptyStateConfig.buttonAction"
 				>
@@ -332,18 +333,29 @@ defineExpose({
 
 		<!-- Table View: Show when there are providers -->
 		<div v-else-if="projectSecretConnections.length > 0" :class="$style.secretProvidersContainer">
-			<div :class="$style.searchContainer">
-				<N8nInput
-					v-model="secretsSearch"
-					:placeholder="i18n.baseText('projects.settings.externalSecrets.search.placeholder')"
-					clearable
-					data-test-id="secrets-providers-search"
+			<div :class="$style.actionsContainer">
+				<div :class="$style.searchContainer">
+					<N8nInput
+						v-model="secretsSearch"
+						:placeholder="i18n.baseText('projects.settings.externalSecrets.search.placeholder')"
+						clearable
+						data-test-id="secrets-providers-search"
+						size="small"
+					>
+						<template #prefix>
+							<N8nIcon icon="search" />
+						</template>
+					</N8nInput>
+				</div>
+				<N8nButton
+					v-if="hasProjectExternalSecretsCreatePermission"
+					variant="outline"
 					size="small"
+					data-test-id="external-secrets-add-button"
+					@click="onAddSecretsStore"
 				>
-					<template #prefix>
-						<N8nIcon icon="search" />
-					</template>
-				</N8nInput>
+					{{ i18n.baseText('projects.settings.externalSecrets.button.addSecretsStore') }}
+				</N8nButton>
 			</div>
 
 			<N8nDataTableServer
@@ -411,10 +423,6 @@ defineExpose({
 </template>
 
 <style lang="scss" module>
-.externalSecretsEmpty {
-	margin-bottom: var(--spacing--lg);
-}
-
 .description {
 	max-width: 40rem;
 	display: block;
@@ -424,6 +432,11 @@ defineExpose({
 	margin-top: var(--spacing--sm);
 	max-width: 100%;
 	overflow: auto;
+}
+
+.actionsContainer {
+	display: flex;
+	justify-content: space-between;
 }
 
 .searchContainer {
@@ -504,7 +517,7 @@ defineExpose({
 .secretName {
 	font-family: var(--font-family--monospace);
 	font-size: var(--font-size--2xs);
-	background-color: var(--color--neutral-125);
+	background-color: var(--code--color--background--readonly);
 	padding: var(--spacing--4xs);
 }
 

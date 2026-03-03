@@ -4,7 +4,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { computed, ref, h } from 'vue';
+import { computed, onBeforeUnmount, ref, h } from 'vue';
 
 import type { ICredentialsResponse } from '../../credentials.types';
 import { useCredentialOAuth } from '../../composables/useCredentialOAuth';
@@ -30,6 +30,7 @@ export function useQuickConnect() {
 	const usersStore = useUsersStore();
 	const loading = ref(false);
 	const { isOAuthCredentialType, createAndAuthorize, cancelAuthorize } = useCredentialOAuth();
+	const cleanUpHandlers: Array<() => void> = [];
 
 	const isQuickConnectEnabled = computed(() =>
 		posthogStore.isVariantEnabled(QUICK_CONNECT_EXPERIMENT.name, QUICK_CONNECT_EXPERIMENT.variant),
@@ -89,14 +90,15 @@ export function useQuickConnect() {
 	async function connectToPinecone(quickConnectOption: QuickConnectPineconeOption) {
 		const { ConnectPopup } = await import('@pinecone-database/connect');
 
-		return await new Promise<object>((resolve, reject) => {
+		return await new Promise<object | null>((resolve) => {
 			const popup = ConnectPopup({
 				onConnect: ({ key }) => resolve({ apiKey: key }),
-				onCancel: reject,
+				onCancel: () => resolve(null),
 				integrationId: String(quickConnectOption.config.integrationId),
 			});
 
 			popup.open();
+			cleanUpHandlers.push(() => popup.cleanup());
 		});
 	}
 
@@ -105,7 +107,7 @@ export function useQuickConnect() {
 		return await getQuickConnectApiKey(rootStore.restApiContext, quickConnectOption);
 	}
 
-	async function getCredentialData(quickConnectOption: QuickConnectOption): Promise<object> {
+	async function getCredentialData(quickConnectOption: QuickConnectOption): Promise<object | null> {
 		switch (quickConnectOption.quickConnectType) {
 			case 'pinecone':
 				return await connectToPinecone(quickConnectOption as QuickConnectPineconeOption);
@@ -117,6 +119,16 @@ export function useQuickConnect() {
 				);
 		}
 	}
+
+	function cleanUpDanglingHandlers() {
+		cleanUpHandlers.splice(0, cleanUpHandlers.length).forEach((handler) => {
+			try {
+				handler();
+			} catch {}
+		});
+	}
+
+	onBeforeUnmount(cleanUpDanglingHandlers);
 
 	function replaceUserData(text: string) {
 		const currentUser = usersStore.currentUser;
@@ -135,9 +147,10 @@ export function useQuickConnect() {
 	async function connect(connectParams: {
 		credentialTypeName: string;
 		nodeType: string;
-		source: string;
+		source: 'node_type' | 'credential_type';
 		serviceName: string;
 	}): Promise<ICredentialsResponse | null> {
+		cleanUpDanglingHandlers();
 		const { credentialTypeName, nodeType, source } = connectParams;
 
 		telemetry.track('User clicked quick connect button', {
@@ -185,6 +198,10 @@ export function useQuickConnect() {
 					}
 				}
 				const credentialData = await getCredentialData(quickConnectOption);
+				if (!credentialData) {
+					// creation was aborted
+					return null;
+				}
 				const credential = await credentialsStore.createNewCredential(
 					{
 						id: '',
@@ -207,6 +224,7 @@ export function useQuickConnect() {
 				return null;
 			} finally {
 				loading.value = false;
+				cleanUpDanglingHandlers();
 			}
 		}
 
