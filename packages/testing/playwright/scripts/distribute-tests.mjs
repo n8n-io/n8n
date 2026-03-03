@@ -13,7 +13,7 @@
  *   node distribute-tests.mjs <shards> <index>                 # Specs for a single shard
  */
 
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -45,12 +45,14 @@ function getRequiredImages(capabilities) {
 }
 
 function getOrchestration(numShards, options = {}) {
-	const impactFlag = options.impact ? ' --impact' : '';
-	const baseFlag = options.base ? ` --base=${options.base}` : '';
-	const output = execSync(
-		`node ${JANITOR_CLI} orchestrate --shards=${numShards}${impactFlag}${baseFlag}`,
-		{ cwd: PLAYWRIGHT_DIR, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] },
-	);
+	const cliArgs = ['orchestrate', `--shards=${numShards}`];
+	if (options.impact) cliArgs.push('--impact');
+	if (options.files) cliArgs.push(`--files=${options.files}`);
+	const output = execFileSync('node', [JANITOR_CLI, ...cliArgs], {
+		cwd: PLAYWRIGHT_DIR,
+		encoding: 'utf-8',
+		stdio: ['pipe', 'pipe', 'inherit'],
+	});
 	return JSON.parse(output);
 }
 
@@ -58,7 +60,7 @@ const args = process.argv.slice(2);
 const matrixMode = args.includes('--matrix');
 const orchestrateMode = args.includes('--orchestrate');
 const impactMode = args.includes('--impact');
-const baseArg = args.find((a) => a.startsWith('--base='))?.slice('--base='.length);
+const filesArg = args.find((a) => a.startsWith('--files='))?.slice('--files='.length) || undefined;
 const shards = parseInt(args.find((a) => !a.startsWith('-')) ?? '');
 
 if (!shards || shards < 1) {
@@ -76,11 +78,11 @@ if (matrixMode) {
 		}));
 		console.log(JSON.stringify(matrix));
 	} else {
-		const result = getOrchestration(shards, { impact: impactMode, base: baseArg });
+		const result = getOrchestration(shards, { impact: impactMode, files: filesArg });
 
 		if (result.shards.length === 0) {
 			console.error('\n⏭️  No specs to run — all filtered out by discovery/impact. Skipping.\n');
-			console.log(JSON.stringify([{ shard: 1, specs: '', images: '' }]));
+			console.log(JSON.stringify([{ shard: 1, specs: '', images: '', skip: true }]));
 		} else {
 			console.error('\n📊 Shard Distribution:');
 			let maxShardTime = 0;
@@ -116,7 +118,7 @@ if (matrixMode) {
 		console.error(`Index must be between 0 and ${shards - 1}`);
 		process.exit(1);
 	}
-	const result = getOrchestration(shards, { impact: impactMode, base: baseArg });
+	const result = getOrchestration(shards, { impact: impactMode, files: filesArg });
 	const shard = result.shards[index];
 	if (shard) {
 		console.log(shard.specs.join('\n'));

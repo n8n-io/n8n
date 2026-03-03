@@ -51,6 +51,7 @@ jobs:
         id: trivy_scan
         with:
           image-ref: ${{ inputs.image_ref }}
+          version: 'v0.69.2'
           format: 'json'
           output: 'trivy-results.json'
           severity: 'CRITICAL,HIGH,MEDIUM,LOW'
@@ -102,7 +103,11 @@ jobs:
             echo ""
           } >> "$GITHUB_STEP_SUMMARY"
 
-          if [ "${{ steps.process_results.outputs.vulnerabilities_found }}" == "false" ]; then
+          if [ ! -s trivy-results.json ]; then
+            {
+              echo "⚠️ **Scan did not produce results.** Check the 'Run Trivy vulnerability scanner' step for errors."
+            } >> "$GITHUB_STEP_SUMMARY"
+          elif [ "${{ steps.process_results.outputs.vulnerabilities_found }}" == "false" ]; then
             {
               echo "✅ **No vulnerabilities found!**"
             } >> "$GITHUB_STEP_SUMMARY"
