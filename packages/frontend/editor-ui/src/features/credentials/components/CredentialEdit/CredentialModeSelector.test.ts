@@ -155,76 +155,7 @@ function makeNode(nodeTypeName: string, authValue: string): INodeUi {
 }
 
 describe('CredentialModeSelector', () => {
-	describe('2 auth options (switch link)', () => {
-		it('should show switch link when there are exactly 2 options', () => {
-			const pinia = setupStores({
-				nodeType: twoAuthNodeType,
-				node: makeNode('n8n-nodes-base.dropbox', 'accessToken'),
-				credentialTypes: {
-					dropboxApi: dropboxApiType,
-					dropboxOAuth2Api: dropboxOAuth2ApiType,
-				},
-			});
-
-			renderComponent({
-				pinia,
-				props: {
-					credentialType: dropboxApiType,
-				},
-			});
-
-			expect(screen.getByTestId('credential-mode-selector')).toBeInTheDocument();
-			expect(screen.getByTestId('credential-mode-switch-link')).toBeInTheDocument();
-			expect(screen.queryByTestId('credential-mode-dropdown-trigger')).not.toBeInTheDocument();
-		});
-
-		it('should emit authTypeChanged when clicking switch link', async () => {
-			const pinia = setupStores({
-				nodeType: twoAuthNodeType,
-				node: makeNode('n8n-nodes-base.dropbox', 'accessToken'),
-				credentialTypes: {
-					dropboxApi: dropboxApiType,
-					dropboxOAuth2Api: dropboxOAuth2ApiType,
-				},
-			});
-
-			const { emitted } = renderComponent({
-				pinia,
-				props: {
-					credentialType: dropboxApiType,
-				},
-			});
-
-			await userEvent.click(screen.getByTestId('credential-mode-switch-link'));
-
-			expect(emitted('update:authType')).toHaveLength(1);
-			expect(emitted('update:authType')[0]).toEqual([{ type: 'oAuth2' }]);
-		});
-
-		it('should emit the other auth type when switch link is clicked from OAuth2', async () => {
-			const pinia = setupStores({
-				nodeType: twoAuthNodeType,
-				node: makeNode('n8n-nodes-base.dropbox', 'oAuth2'),
-				credentialTypes: {
-					dropboxApi: dropboxApiType,
-					dropboxOAuth2Api: dropboxOAuth2ApiType,
-				},
-			});
-
-			const { emitted } = renderComponent({
-				pinia,
-				props: {
-					credentialType: dropboxOAuth2ApiType,
-				},
-			});
-
-			// From OAuth2, switch to Access Token
-			await userEvent.click(screen.getByTestId('credential-mode-switch-link'));
-			expect(emitted('update:authType')[0]).toEqual([{ type: 'accessToken' }]);
-		});
-	});
-
-	describe('3+ auth options (dropdown menu)', () => {
+	describe('dropdown menu', () => {
 		it('should show dropdown trigger when there are 3+ options', () => {
 			const pinia = setupStores({
 				nodeType: threeAuthNodeType,
@@ -245,7 +176,6 @@ describe('CredentialModeSelector', () => {
 
 			expect(screen.getByTestId('credential-mode-selector')).toBeInTheDocument();
 			expect(screen.getByTestId('credential-mode-dropdown-trigger')).toBeInTheDocument();
-			expect(screen.queryByTestId('credential-mode-switch-link')).not.toBeInTheDocument();
 			expect(screen.getByText('Setup credential')).toBeInTheDocument();
 		});
 
@@ -331,7 +261,6 @@ describe('CredentialModeSelector', () => {
 			// plus the Access Token option = 3 total, so dropdown should appear
 			expect(screen.getByTestId('credential-mode-selector')).toBeInTheDocument();
 			expect(screen.getByTestId('credential-mode-dropdown-trigger')).toBeInTheDocument();
-			expect(screen.queryByTestId('credential-mode-switch-link')).not.toBeInTheDocument();
 			expect(screen.getByText('Setup credential')).toBeInTheDocument();
 		});
 
@@ -468,7 +397,7 @@ describe('CredentialModeSelector', () => {
 			properties: [],
 		} as unknown as INodeTypeDescription;
 
-		it('should show "Use quick connect" link in manual mode and emit quickConnectEnabled on click', async () => {
+		it('should emit quickConnectEnabled when selecting quick connect from dropdown', async () => {
 			const pinia = setupStores({
 				nodeType: singleCredNodeType,
 				node: makeNode('n8n-nodes-base.firecrawl', ''),
@@ -484,17 +413,23 @@ describe('CredentialModeSelector', () => {
 				},
 			});
 
-			const link = screen.getByTestId('credential-mode-switch-link');
-			expect(link).toHaveTextContent('Use quick connect');
-			expect(screen.queryByTestId('credential-mode-dropdown-trigger')).not.toBeInTheDocument();
+			expect(screen.getByTestId('credential-mode-dropdown-trigger')).toBeInTheDocument();
 
-			await userEvent.click(link);
+			await userEvent.click(screen.getByTestId('credential-mode-dropdown-trigger'));
 
-			expect(emitted('update:authType')).toHaveLength(1);
-			expect(emitted('update:authType')[0]).toEqual([{ type: '', quickConnectEnabled: true }]);
+			await waitFor(() => {
+				expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
+			});
+
+			await userEvent.click(screen.getByRole('menuitem', { name: /Use quick connect/ }));
+
+			await waitFor(() => {
+				expect(emitted('update:authType')).toHaveLength(1);
+				expect(emitted('update:authType')[0]).toEqual([{ type: '', quickConnectEnabled: true }]);
+			});
 		});
 
-		it('should show "Set up manually" link in QC mode and emit manual fallback on click', async () => {
+		it('should emit manual fallback when selecting set up manually from dropdown in QC mode', async () => {
 			const pinia = setupStores({
 				nodeType: singleCredNodeType,
 				node: makeNode('n8n-nodes-base.firecrawl', ''),
@@ -510,13 +445,18 @@ describe('CredentialModeSelector', () => {
 				},
 			});
 
-			const link = screen.getByTestId('credential-mode-switch-link');
-			expect(link).toHaveTextContent('Set up manually');
+			await userEvent.click(screen.getByTestId('credential-mode-dropdown-trigger'));
 
-			await userEvent.click(link);
+			await waitFor(() => {
+				expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
+			});
 
-			expect(emitted('update:authType')).toHaveLength(1);
-			expect(emitted('update:authType')[0]).toEqual([{ type: '' }]);
+			await userEvent.click(screen.getByRole('menuitem', { name: /Set up manually/ }));
+
+			await waitFor(() => {
+				expect(emitted('update:authType')).toHaveLength(1);
+				expect(emitted('update:authType')[0]).toEqual([{ type: '' }]);
+			});
 		});
 
 		it('should not show selector when quickConnectAvailable is false for single-cred nodes', () => {
@@ -559,7 +499,6 @@ describe('CredentialModeSelector', () => {
 			// QC + Access Token + OAuth2 = 3 options → dropdown
 			expect(screen.getByTestId('credential-mode-selector')).toBeInTheDocument();
 			expect(screen.getByTestId('credential-mode-dropdown-trigger')).toBeInTheDocument();
-			expect(screen.queryByTestId('credential-mode-switch-link')).not.toBeInTheDocument();
 		});
 	});
 
