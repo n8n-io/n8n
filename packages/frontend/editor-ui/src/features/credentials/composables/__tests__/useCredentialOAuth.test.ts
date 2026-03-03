@@ -280,6 +280,18 @@ describe('useCredentialOAuth', () => {
 			const { hasManagedOAuthCredentials } = useCredentialOAuth();
 			expect(hasManagedOAuthCredentials('unknownType')).toBe(false);
 		});
+
+		it('should return false when __skipManagedCreation is true', () => {
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.state.credentialTypes.slackOAuth2Api = {
+				...slackOAuth2Api,
+				__overwrittenProperties: ['clientId'],
+				__skipManagedCreation: true,
+			};
+
+			const { hasManagedOAuthCredentials } = useCredentialOAuth();
+			expect(hasManagedOAuthCredentials('slackOAuth2Api')).toBe(false);
+		});
 	});
 
 	describe('authorize', () => {

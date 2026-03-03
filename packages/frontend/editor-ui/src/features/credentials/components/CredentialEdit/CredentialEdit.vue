@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, useTemplateRef } from 'vue';
+import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
 
 import type { IUpdateInformation } from '@/Interface';
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../../credentials.types';
@@ -376,6 +376,18 @@ function setCredentialPropertyDefaults() {
 	}
 }
 
+// For new credentials of skip-list types, default to custom mode (managed creation is disabled).
+// Using { immediate: true } handles both initial load and subsequent type switches.
+watch(
+	credentialType,
+	(newType) => {
+		if (props.mode === 'new' && newType?.__skipManagedCreation) {
+			useCustomOAuth.value = true;
+		}
+	},
+	{ immediate: true },
+);
+
 onMounted(async () => {
 	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 	requiredCredentials.value =
@@ -398,9 +410,11 @@ onMounted(async () => {
 
 	setCredentialPropertyDefaults();
 
-	// Detect if existing credential uses custom OAuth (user-provided clientId/clientSecret)
+	// Detect if existing credential uses custom OAuth (user-provided clientId/clientSecret).
+	// Use __overwrittenProperties directly instead of managedOAuthAvailable so that skip-list
+	// types (where managedOAuthAvailable is false) still auto-detect custom credentials.
 	if (
-		managedOAuthAvailable.value &&
+		credentialType.value?.__overwrittenProperties?.includes('clientId') &&
 		credentialData.value.clientId &&
 		credentialData.value.clientSecret
 	) {
@@ -756,6 +770,7 @@ function usesExternalSecrets(data: Record<string, unknown>): boolean {
 
 function hasManagedOAuthCredentials(credType: string) {
 	const type = credentialsStore.getCredentialTypeByName(credType);
+	if (type?.__skipManagedCreation) return false;
 	return (
 		type?.__overwrittenProperties?.includes('clientId') &&
 		type.__overwrittenProperties.includes('clientSecret')

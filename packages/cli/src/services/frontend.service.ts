@@ -639,9 +639,11 @@ export class FrontendService {
 	private overwriteCredentialsProperties() {
 		const { credentials } = this.loadNodesAndCredentials.types;
 		const credentialsOverwrites = this.credentialsOverwrites.getAll();
+		const { skipTypes } = this.globalConfig.credentials.overwrite;
 		for (const credential of credentials) {
 			// Clear any existing overwritten properties to prevent stale data
 			delete credential.__overwrittenProperties;
+			delete credential.__skipManagedCreation;
 
 			const overwrittenProperties = [];
 			this.credentialTypes
@@ -658,6 +660,12 @@ export class FrontendService {
 
 			if (overwrittenProperties.length) {
 				credential.__overwrittenProperties = uniq(overwrittenProperties);
+			}
+
+			// For skip-list types, prevent managed credential creation in the frontend
+			// (overwrite is conditional on stored data; users should provide their own credentials)
+			if (skipTypes.includes(credential.name)) {
+				credential.__skipManagedCreation = true;
 			}
 		}
 	}

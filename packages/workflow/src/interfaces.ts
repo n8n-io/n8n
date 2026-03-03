@@ -359,6 +359,7 @@ export interface ICredentialType {
 	properties: INodeProperties[];
 	documentationUrl?: string;
 	__overwrittenProperties?: string[];
+	__skipManagedCreation?: boolean;
 	authenticate?: IAuthenticate;
 	preAuthentication?: (
 		this: IHttpRequestHelper,
