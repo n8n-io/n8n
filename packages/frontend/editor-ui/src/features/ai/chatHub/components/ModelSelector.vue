@@ -98,6 +98,7 @@ const menu = computed(() =>
 		isLoading,
 		i18n,
 		settings: settingStore.moduleSettings?.['chat-hub']?.providers ?? {},
+		credentials,
 	}),
 );
 

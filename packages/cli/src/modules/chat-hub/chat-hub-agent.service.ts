@@ -194,6 +194,7 @@ export class ChatHubAgentService {
 			model: agent.model,
 			files: agent.files,
 			toolIds,
+			files: [],
 			createdAt: agent.createdAt.toISOString(),
 			updatedAt: agent.updatedAt.toISOString(),
 		};
