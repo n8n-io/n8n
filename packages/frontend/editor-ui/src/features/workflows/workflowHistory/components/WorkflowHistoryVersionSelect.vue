@@ -6,7 +6,6 @@ import WorkflowHistoryVersionDot from './WorkflowHistoryVersionDot.vue';
 import WorkflowHistoryPublishedTooltip from './WorkflowHistoryPublishedTooltip.vue';
 import WorkflowHistoryUpgradeFooter from './WorkflowHistoryUpgradeFooter.vue';
 import type { WorkflowHistoryVersionOption } from '../useWorkflowHistoryVersionOptions';
-import type { WorkflowHistoryVersionStatus } from '../types';
 import { formatTimestamp } from '../utils';
 import { useWorkflowHistoryStore } from '../workflowHistory.store';
 const props = withDefaults(
@@ -27,13 +26,25 @@ const filter = ref('');
 const i18n = useI18n();
 const workflowHistoryStore = useWorkflowHistoryStore();
 
-const selectedStatus = computed<WorkflowHistoryVersionStatus>(() => {
-	const selectedOption = props.options.find((option) => option.value === props.modelValue);
-	return selectedOption?.status ?? 'default';
+const optionsByValue = computed(() => {
+	return new Map(props.options.map((option) => [option.value, option]));
 });
 
 const selectedOption = computed(() => {
-	return props.options.find((option) => option.value === props.modelValue);
+	return optionsByValue.value.get(props.modelValue);
+});
+
+const selectedOptionWrapperProps = computed(() => {
+	const publishInfo = selectedOption.value?.publishInfo;
+	if (!publishInfo) {
+		return {};
+	}
+
+	return {
+		label: selectedOption.value.label,
+		status: selectedOption.value.status,
+		publishInfo,
+	};
 });
 
 const groupedOptions = computed<
@@ -54,20 +65,41 @@ const groupedOptions = computed<
 	return Array.from(groups.entries()).map(([dateLabel, options]) => ({ dateLabel, options }));
 });
 
-const filteredGroupedOptions = computed(() => {
+type GroupedOption = { dateLabel: string; options: WorkflowHistoryVersionOption[] };
+
+const selectedOptionHasPublishInfo = computed(() => {
+	return Boolean(selectedOption.value?.publishInfo);
+});
+
+const filterGroupOptions = (group: GroupedOption, normalizedFilter: string): GroupedOption => {
+	const filteredOptions = group.options.filter((option) =>
+		option.label.toLowerCase().includes(normalizedFilter),
+	);
+	if (filteredOptions.length === group.options.length) {
+		return group;
+	}
+
+	return {
+		...group,
+		options: filteredOptions,
+	};
+};
+
+const filteredGroupedOptions = computed<GroupedOption[]>(() => {
 	if (!filter.value) {
 		return groupedOptions.value;
 	}
 
 	const normalizedFilter = filter.value.toLowerCase().trim();
-	return groupedOptions.value
-		.map((group) => ({
-			...group,
-			options: group.options.filter((option) =>
-				option.label.toLowerCase().includes(normalizedFilter),
-			),
-		}))
-		.filter((group) => group.options.length > 0);
+	const filteredGroups: GroupedOption[] = [];
+	for (const group of groupedOptions.value) {
+		const filteredGroup = filterGroupOptions(group, normalizedFilter);
+		const filteredGroupHasOptions = filteredGroup.options.length > 0;
+		if (filteredGroupHasOptions) {
+			filteredGroups.push(filteredGroup);
+		}
+	}
+	return filteredGroups;
 });
 
 function onFilter(query = '') {
@@ -101,10 +133,9 @@ const shouldShowUpgradeFooter = computed(() => Boolean(unref(workflowHistoryStor
 <template>
 	<div :class="$style.container">
 		<div ref="popperContainer" />
-		<WorkflowHistoryPublishedTooltip
-			:label="selectedOption?.label ?? ''"
-			:status="selectedStatus"
-			:publish-info="selectedOption?.publishInfo"
+		<component
+			:is="selectedOptionHasPublishInfo ? WorkflowHistoryPublishedTooltip : 'span'"
+			v-bind="selectedOptionWrapperProps"
 		>
 			<ElSelect
 				:model-value="props.modelValue"
@@ -120,7 +151,7 @@ const shouldShowUpgradeFooter = computed(() => Boolean(unref(workflowHistoryStor
 				@visible-change="onVisibleChange"
 			>
 				<template #prefix>
-					<WorkflowHistoryVersionDot :status="selectedStatus" />
+					<WorkflowHistoryVersionDot :status="selectedOption?.status" />
 				</template>
 				<ElOptionGroup
 					v-for="group in filteredGroupedOptions"
@@ -134,6 +165,7 @@ const shouldShowUpgradeFooter = computed(() => Boolean(unref(workflowHistoryStor
 						:label="option.label"
 					>
 						<WorkflowHistoryPublishedTooltip
+							v-if="option.publishInfo"
 							:label="option.label"
 							:status="option.status"
 							:publish-info="option.publishInfo"
@@ -145,6 +177,10 @@ const shouldShowUpgradeFooter = computed(() => Boolean(unref(workflowHistoryStor
 								<span>{{ option.label }}</span>
 							</span>
 						</WorkflowHistoryPublishedTooltip>
+						<span v-else :class="$style.optionRow">
+							<WorkflowHistoryVersionDot :status="option.status" />
+							<span>{{ option.label }}</span>
+						</span>
 					</ElOption>
 				</ElOptionGroup>
 				<template v-if="shouldShowUpgradeFooter" #footer>
@@ -155,7 +191,7 @@ const shouldShowUpgradeFooter = computed(() => Boolean(unref(workflowHistoryStor
 					/>
 				</template>
 			</ElSelect>
-		</WorkflowHistoryPublishedTooltip>
+		</component>
 	</div>
 </template>
 

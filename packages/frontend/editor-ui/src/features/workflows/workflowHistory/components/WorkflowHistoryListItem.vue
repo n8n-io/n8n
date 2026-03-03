@@ -103,18 +103,19 @@ const getPublishedUserName = (userId: string | undefined | null) => {
 	return user?.fullName ?? user?.email ?? null;
 };
 
-const mainTooltipPublishInfo = computed<{
-	publishedBy: string | null;
-	publishedAt: string;
-} | null>(() => {
-	if (props.isGrouped || !versionPublishInfo.value) {
-		return null;
+const wrapperProps = computed(() => {
+	if (!versionPublishInfo.value) {
+		return {};
 	}
 
 	const publishedBy = getPublishedUserName(versionPublishInfo.value.userId);
 	return {
-		publishedBy,
-		publishedAt: versionPublishInfo.value.createdAt,
+		label: versionName.value,
+		status: versionStatus.value,
+		publishInfo: {
+			publishedBy,
+			publishedAt: versionPublishInfo.value.createdAt,
+		},
 	};
 });
 
@@ -161,12 +162,7 @@ onMounted(() => {
 });
 </script>
 <template>
-	<WorkflowHistoryPublishedTooltip
-		:label="versionName"
-		:status="versionStatus"
-		:publish-info="mainTooltipPublishInfo ?? undefined"
-		placement="left"
-	>
+	<component :is="wrapperProps ? WorkflowHistoryPublishedTooltip : 'span'" v-bind="wrapperProps">
 		<li
 			ref="itemElement"
 			data-test-id="workflow-history-list-item"
@@ -232,7 +228,7 @@ onMounted(() => {
 				/>
 			</div>
 		</li>
-	</WorkflowHistoryPublishedTooltip>
+	</component>
 </template>
 <style module lang="scss">
 @use './timeline' as *;

@@ -14,16 +14,16 @@ defineSlots<{
 const props = withDefaults(
 	defineProps<{
 		label: string;
-		status: WorkflowHistoryVersionStatus;
-		publishInfo?: {
+		publishInfo: {
 			publishedBy: string | null;
 			publishedAt: string;
 		};
+		status?: WorkflowHistoryVersionStatus;
 		placement?: N8nTooltipProps['placement'];
 		offset?: number;
 	}>(),
 	{
-		publishInfo: undefined,
+		status: 'default',
 		placement: 'left',
 		offset: 8,
 	},
@@ -36,24 +36,21 @@ const publishedByDetails = usePublishedByDetails(toRef(props, 'publishInfo'));
 
 <template>
 	<N8nTooltip
-		:disabled="!props.publishInfo"
 		:placement="props.placement"
 		:show-after="300"
 		:offset="props.offset"
 		:content-class="$style.tooltipContent"
 	>
 		<template #content>
-			<div v-if="props.publishInfo">
-				<div :class="$style.tooltipContentTitle">
-					<WorkflowHistoryVersionDot :status="props.status" />
-					<N8nText size="small" :bold="true">
-						{{ props.label }} ({{ i18n.baseText('workflows.published') }})
-					</N8nText>
-				</div>
-				<N8nText size="small" :class="$style.tooltipSecondaryText">
-					{{ publishedByDetails }}
+			<div :class="$style.tooltipContentTitle">
+				<WorkflowHistoryVersionDot :status="props.status" />
+				<N8nText size="small" :bold="true">
+					{{ props.label }} ({{ i18n.baseText('workflows.published') }})
 				</N8nText>
 			</div>
+			<N8nText size="small" :class="$style.tooltipSecondaryText">
+				{{ publishedByDetails }}
+			</N8nText>
 		</template>
 		<slot />
 	</N8nTooltip>
@@ -67,7 +64,7 @@ const publishedByDetails = usePublishedByDetails(toRef(props, 'publishInfo'));
 }
 
 .tooltipSecondaryText {
-	color: var(--color--text--tint-1);
+	color: var(--color--text--tint-2);
 	display: block;
 	// This padding is to align the secondary text with the title text (to cover for the status dot space)
 	padding-left: calc(var(--spacing--3xs) + var(--spacing--2xs));
