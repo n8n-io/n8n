@@ -982,7 +982,6 @@ export function useWorkflowHelpers() {
 			name: null,
 			description: null,
 		});
-		ws.setWorkflowMetadata(workflowData.meta);
 
 		if ('activeVersion' in workflowData) {
 			workflowsStore.setWorkflowActiveVersion(workflowData.activeVersion ?? null);

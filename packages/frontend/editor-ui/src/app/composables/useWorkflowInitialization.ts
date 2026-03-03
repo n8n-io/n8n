@@ -263,7 +263,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 
 		const parentFolderId = route.query.parentFolderId as string | undefined;
 
-		await workflowState.getNewWorkflowDataAndMakeShareable(
+		await workflowState.getNewWorkflowData(
 			undefined,
 			projectsStore.currentProjectId,
 			parentFolderId,
@@ -277,12 +277,13 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		const homeProject = projectsStore.currentProject ?? projectsStore.personalProject ?? null;
 		currentWorkflowDocumentStore.value.setHomeProject(homeProject);
 
+		await projectsStore.refreshCurrentProject();
+
 		const { currentProject, personalProject } = projectsStore;
 		currentWorkflowDocumentStore.value.setScopes(
 			currentProject?.scopes ?? personalProject?.scopes ?? [],
 		);
 
-		await projectsStore.refreshCurrentProject();
 		await fetchAndSetParentFolder(parentFolderId);
 
 		uiStore.nodeViewInitialized = true;

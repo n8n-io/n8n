@@ -37,7 +37,6 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 import { createEventBus } from '@n8n/utils/event-bus';
-import type { WorkflowMetadata } from '@n8n/rest-api-client';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -162,25 +161,6 @@ export function useWorkflowState() {
 		setWorkflowName({ newName: workflowData.name, setStateDirty: false });
 
 		return workflowData;
-	}
-
-	async function getNewWorkflowDataAndMakeShareable(
-		name?: string,
-		projectId?: string,
-		parentFolderId?: string,
-	): Promise<INewWorkflowData> {
-		return await getNewWorkflowData(name, projectId, parentFolderId);
-	}
-
-	function setWorkflowMetadata(metadata: WorkflowMetadata | undefined): void {
-		ws.workflow.meta = metadata;
-	}
-
-	function addToWorkflowMetadata(data: Partial<WorkflowMetadata>): void {
-		ws.workflow.meta = {
-			...ws.workflow.meta,
-			...data,
-		};
 	}
 
 	////
@@ -435,9 +415,7 @@ export function useWorkflowState() {
 		setWorkflowName,
 		setWorkflowProperty,
 		setActiveExecutionId,
-		getNewWorkflowDataAndMakeShareable,
-		setWorkflowMetadata,
-		addToWorkflowMetadata,
+		getNewWorkflowData,
 
 		// Execution
 		markExecutionAsStopped,
