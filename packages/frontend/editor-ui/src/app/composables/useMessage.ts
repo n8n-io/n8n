@@ -90,7 +90,7 @@ export function useMessage() {
 						required: true,
 					},
 					{
-						label: () => h('span', confirmationCheckboxMessage),
+						label: () => h('span', sanitizeIfString(confirmationCheckboxMessage)),
 					},
 				),
 			]);
