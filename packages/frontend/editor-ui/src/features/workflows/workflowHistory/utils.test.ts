@@ -1,6 +1,8 @@
 import type { WorkflowHistory } from '@n8n/rest-api-client/api/workflowHistory';
 import {
 	computeTimelineEntries,
+	generateVersionNameFromId,
+	getVersionLabel,
 	type TimelineGroupHeader,
 	type TimelineVersionEntry,
 } from './utils';
@@ -165,7 +167,7 @@ describe('computeTimelineEntries', () => {
 		const items = [createNamedItem(), createUnnamedItem(), createNamedItem(), createUnnamedItem()];
 
 		const result = computeTimelineEntries(items);
-		const groupHeaders = result.filter((e) => e.type === 'group-header') as TimelineGroupHeader[];
+		const groupHeaders = result.filter((e) => e.type === 'group-header');
 
 		expect(groupHeaders).toHaveLength(2);
 		expect(groupHeaders[0].groupId).not.toBe(groupHeaders[1].groupId);
@@ -180,5 +182,51 @@ describe('computeTimelineEntries', () => {
 
 		expect(versionEntry.item).toBe(items[0]);
 		expect(groupHeader.versions[0].item).toBe(items[1]);
+	});
+});
+
+describe('generateVersionNameFromId', () => {
+	it('should generate version name with first 8 characters of versionId', () => {
+		const versionId = '12345678abcdef';
+		const result = generateVersionNameFromId(versionId);
+
+		expect(result).toBe('Version 12345678');
+	});
+
+	it('should handle versionId shorter than 8 characters', () => {
+		const versionId = 'abc123';
+		const result = generateVersionNameFromId(versionId);
+
+		expect(result).toBe('Version abc123');
+	});
+
+	it('should handle versionId exactly 8 characters', () => {
+		const versionId = '12345678';
+		const result = generateVersionNameFromId(versionId);
+
+		expect(result).toBe('Version 12345678');
+	});
+
+	it('should truncate versionId longer than 8 characters', () => {
+		const versionId = '123456789abcdefghijklmnop';
+		const result = generateVersionNameFromId(versionId);
+
+		expect(result).toBe('Version 12345678');
+	});
+});
+
+describe('getVersionLabel', () => {
+	it('should generate version name from versionId when name is not provided', () => {
+		const versionId = '12345678abcdef';
+		const result = getVersionLabel({ versionId, name: null });
+
+		expect(result).toBe('Version 12345678');
+	});
+
+	it('should return name when provided', () => {
+		const name = 'My Version';
+		const result = getVersionLabel({ versionId: '12345678abcdef', name });
+
+		expect(result).toBe(name);
 	});
 });

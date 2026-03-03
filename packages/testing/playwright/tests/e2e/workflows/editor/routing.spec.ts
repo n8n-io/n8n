@@ -4,7 +4,11 @@ import {
 } from '../../../../config/constants';
 import { test, expect } from '../../../../fixtures/base';
 
-test.describe('Routing', () => {
+test.describe('Routing', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test('should ask to save unsaved changes before leaving route', async ({ n8n }) => {
 		await n8n.start.fromImportedWorkflow('Test_workflow_1.json');
 		await n8n.canvas.addNode(EDIT_FIELDS_SET_NODE_NAME, { closeNDV: true });
@@ -58,7 +62,7 @@ test.describe('Routing', () => {
 		const ndvUrl = n8n.page.url();
 
 		await n8n.page.keyboard.press('Escape');
-		await n8n.canvas.clickSaveWorkflowButton();
+		await n8n.canvas.waitForSaveWorkflowCompleted();
 
 		await expect(n8n.ndv.getContainer()).toBeHidden();
 
@@ -76,7 +80,7 @@ test.describe('Routing', () => {
 		const ndvUrl = n8n.page.url();
 
 		await n8n.page.keyboard.press('Escape');
-		await n8n.canvas.clickSaveWorkflowButton();
+		await n8n.canvas.waitForSaveWorkflowCompleted();
 
 		await expect(n8n.ndv.getContainer()).toBeHidden();
 
@@ -95,9 +99,7 @@ test.describe('Routing', () => {
 		const workflowName = 'Test Existing Workflow';
 		await n8n.canvas.setWorkflowName(workflowName);
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
-		await n8n.canvas.saveWorkflow();
-
-		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
+		await n8n.canvas.waitForSaveWorkflowCompleted();
 
 		// Get the workflow ID from the URL
 		const workflowId = n8n.canvas.getWorkflowIdFromUrl();
@@ -107,11 +109,10 @@ test.describe('Routing', () => {
 		await n8n.page.goto(`/workflow/${workflowId}?new=true`);
 
 		// Wait for the canvas to load
-		await expect(n8n.page.getByTestId('node-view-loader')).not.toBeAttached();
+		await expect(n8n.canvas.getNodeViewLoader()).not.toBeAttached();
 
 		// Verify the existing workflow was loaded (not a blank canvas)
 		await expect(n8n.canvas.getWorkflowName()).toHaveAttribute('title', workflowName);
-		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
 
 		// Verify the previously added node is present
 		const scheduleNode = n8n.canvas.nodeByName(SCHEDULE_TRIGGER_NODE_NAME);

@@ -157,14 +157,12 @@ async function main() {
 
 	await checkPrerequisites();
 
-	// Build n8n Docker image
 	const n8nBuildTime = await buildDockerImage({
 		name: 'n8n',
 		dockerfilePath: config.n8n.dockerfilePath,
 		fullImageName: config.n8n.fullImageName,
 	});
 
-	// Build runners Docker image
 	const runnersBuildTime = await buildDockerImage({
 		name: 'runners',
 		dockerfilePath: config.runners.dockerfilePath,
@@ -175,8 +173,7 @@ async function main() {
 	const n8nImageSize = await getImageSize(config.n8n.fullImageName);
 	const runnersImageSize = await getImageSize(config.runners.fullImageName);
 
-	// Display summary
-	displaySummary([
+	const imageStats = [
 		{
 			imageName: config.n8n.fullImageName,
 			platform,
@@ -189,7 +186,24 @@ async function main() {
 			size: runnersImageSize,
 			buildTime: runnersBuildTime,
 		},
-	]);
+	];
+
+	// Write docker build manifest for telemetry collection
+	const dockerManifest = {
+		buildTime: new Date().toISOString(),
+		platform,
+		images: imageStats.map(({ imageName, size, buildTime }) => ({
+			imageName,
+			size,
+			buildTime,
+		})),
+	};
+	await fs.writeJson(path.join(config.buildContext, 'docker-build-manifest.json'), dockerManifest, {
+		spaces: 2,
+	});
+
+	// Display summary
+	displaySummary(imageStats);
 }
 
 async function checkPrerequisites() {
@@ -215,7 +229,14 @@ async function checkPrerequisites() {
 async function buildDockerImage({ name, dockerfilePath, fullImageName }) {
 	const startTime = Date.now();
 	const containerEngine = await getContainerEngine();
+	// Push directly if image name contains a registry (e.g., ghcr.io/...)
+	// This avoids the slow --load step (export/import tarball) when pushing to a registry
+	const shouldPush = fullImageName.includes('/') && fullImageName.split('/').length > 2;
+
 	echo(chalk.yellow(`INFO: Building ${name} Docker image using ${containerEngine}...`));
+	if (shouldPush) {
+		echo(chalk.yellow(`INFO: Registry detected - pushing directly to ${fullImageName}`));
+	}
 
 	try {
 		if (containerEngine === 'podman') {
@@ -229,12 +250,16 @@ async function buildDockerImage({ name, dockerfilePath, fullImageName }) {
 		} else {
 			// Use docker buildx build to leverage Blacksmith's layer caching when running in CI.
 			// The setup-docker-builder action creates a buildx builder with sticky disk cache.
+			// In CI, push directly to registry to avoid slow --load (export/import tarball).
+			// Locally, use --load to make image available in local daemon.
+			const outputFlag = shouldPush ? '--push' : '--load';
 			const { stdout } = await $`docker buildx build \
 				--platform ${platform} \
 				--build-arg TARGETPLATFORM=${platform} \
 				-t ${fullImageName} \
 				-f ${dockerfilePath} \
-				--load \
+				--provenance=false \
+				${outputFlag} \
 				${config.buildContext}`;
 			echo(stdout);
 		}

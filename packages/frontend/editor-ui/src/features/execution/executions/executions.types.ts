@@ -18,7 +18,8 @@ export type ExecutionFilterVote = AnnotationVote | 'all';
 
 export type ExecutionFilterType = {
 	status: string;
-	workflowId: string;
+	// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+	workflowId: 'all' | string;
 	startDate: string | Date;
 	endDate: string | Date;
 	tags: string[];
@@ -104,4 +105,29 @@ export interface IExecutionDeleteFilter {
 	deleteBefore?: Date;
 	filters?: ExecutionsQueryFilter;
 	ids?: string[];
+}
+
+export interface ExecutionPreviewSchemaField {
+	name: string;
+	type: 'string' | 'number' | 'boolean' | 'object' | 'array';
+	fields?: ExecutionPreviewSchemaField[];
+	itemSchema?: ExecutionPreviewSchemaField[];
+}
+
+export interface ExecutionPreviewOutputSchema {
+	itemCount?: number;
+	fields: ExecutionPreviewSchemaField[];
+}
+
+export interface ExecutionPreviewNodeSchema {
+	executionStatus: ExecutionStatus;
+	executionTime?: number;
+	error?: {
+		message: string;
+		description?: string;
+		name?: string;
+		stack?: string;
+		node?: { name: string; type: string };
+	};
+	outputSchema?: ExecutionPreviewOutputSchema;
 }

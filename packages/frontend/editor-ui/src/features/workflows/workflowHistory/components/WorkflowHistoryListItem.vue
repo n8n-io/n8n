@@ -9,11 +9,11 @@ import type {
 import { useI18n } from '@n8n/i18n';
 import type { IUser } from 'n8n-workflow';
 
-import { N8nActionToggle, N8nTooltip, N8nBadge, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nActionToggle, N8nIconButton, N8nTooltip, N8nText } from '@n8n/design-system';
 import {
 	getLastPublishedVersion,
 	formatTimestamp,
-	generateVersionName,
+	getVersionLabel,
 } from '@/features/workflows/workflowHistory/utils';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
@@ -22,21 +22,26 @@ const props = withDefaults(
 	defineProps<{
 		item: WorkflowHistory;
 		index: number;
+		compareWith?: { name: string; versionId: WorkflowVersionId } | null;
 		actions: Array<UserAction<IUser>>;
 		isSelected?: boolean;
 		isVersionActive?: boolean;
 		isGrouped?: boolean;
+		isWorkflowDiffsEnabled?: boolean;
 	}>(),
 	{
+		compareWith: null,
 		isSelected: false,
 		isVersionActive: false,
 		isGrouped: false,
+		isWorkflowDiffsEnabled: false,
 	},
 );
 const emit = defineEmits<{
 	action: [value: WorkflowHistoryAction];
 	preview: [value: { event: MouseEvent; id: WorkflowVersionId }];
 	mounted: [value: { index: number; offsetTop: number; isSelected: boolean }];
+	compare: [value: { id: WorkflowVersionId }];
 }>();
 
 const i18n = useI18n();
@@ -44,69 +49,81 @@ const usersStore = useUsersStore();
 
 const actionsVisible = ref(false);
 const itemElement = ref<HTMLElement | null>(null);
-const authorElement = ref<InstanceType<typeof N8nText> | null>(null);
-const isAuthorElementTruncated = ref(false);
-
-const checkAuthorTruncation = () => {
-	const el = authorElement.value?.$el;
-	if (el instanceof HTMLElement) {
-		isAuthorElementTruncated.value = el.scrollWidth > el.clientWidth;
-	}
-};
 
 const formattedCreatedAt = computed<string>(() => {
 	const { date, time } = formatTimestamp(props.item.createdAt);
 	return i18n.baseText('workflowHistory.item.createdAt', { interpolate: { date, time } });
 });
 
-const authors = computed<{ size: number; label: string }>(() => {
+const authorLabel = computed<string>(() => {
 	const allAuthors = props.item.authors.split(', ');
-	let label = allAuthors[0];
+	let displayLabel = allAuthors[0];
 
 	if (allAuthors.length > 1) {
-		label = `${label} + ${allAuthors.length - 1}`;
+		displayLabel = `${displayLabel} + ${allAuthors.length - 1}`;
 	}
 
-	return {
-		size: allAuthors.length,
-		label,
-	};
+	return displayLabel;
 });
 
 const versionName = computed(() => {
-	if (props.item.name) {
-		return props.item.name;
+	if (props.index === 0) {
+		return i18n.baseText('workflowHistory.item.currentChanges');
 	}
-	return props.isVersionActive ? generateVersionName(props.item.versionId) : '';
+
+	return getVersionLabel(props.item);
 });
 
-const lastPublishInfo = computed(() => {
-	if (!props.isVersionActive) {
-		return null;
-	}
-
-	const lastPublishedByUser = getLastPublishedVersion(props.item.workflowPublishHistory);
-	if (!lastPublishedByUser) {
-		return null;
-	}
-	return lastPublishedByUser;
+const versionPublishInfo = computed(() => {
+	const publishInfo = getLastPublishedVersion(props.item.workflowPublishHistory);
+	return publishInfo;
 });
 
-const publishedAt = computed(() => {
-	if (!lastPublishInfo.value) {
-		return null;
-	}
-	const { date, time } = formatTimestamp(lastPublishInfo.value.createdAt);
-	return i18n.baseText('workflowHistory.item.createdAt', { interpolate: { date, time } });
-});
+const isPublishedVersion = computed(() => Boolean(versionPublishInfo.value));
 
-const publishedByUserName = computed(() => {
-	const userId = lastPublishInfo.value?.userId;
+const getPublishedUserName = (userId: string | undefined | null) => {
 	if (!userId) {
 		return null;
 	}
 	const user = usersStore.usersById[userId];
 	return user?.fullName ?? user?.email ?? null;
+};
+
+const mainTooltipInfo = computed<{
+	content: string | null;
+	date: string | null;
+	user: string | null;
+}>(() => {
+	if (props.isGrouped || !versionPublishInfo.value) {
+		return { content: null, date: null, user: null };
+	}
+
+	const user = getPublishedUserName(versionPublishInfo.value.userId);
+	return {
+		content: user
+			? i18n.baseText('workflowHistory.item.publishedBy')
+			: i18n.baseText('workflowHistory.item.active'),
+		date: versionPublishInfo.value.createdAt,
+		user,
+	};
+});
+
+const mainTooltipContent = computed(() => mainTooltipInfo.value.content);
+const mainTooltipUser = computed(() => mainTooltipInfo.value.user);
+const mainTooltipDate = computed(() => mainTooltipInfo.value.date);
+
+const mainTooltipFormattedDate = computed(() => {
+	if (!mainTooltipDate.value) {
+		return null;
+	}
+	const { date, time } = formatTimestamp(mainTooltipDate.value);
+	return i18n.baseText('workflowHistory.item.createdAt', { interpolate: { date, time } });
+});
+
+const isCompareDisabled = computed(() => !props.compareWith?.versionId);
+
+const compareTooltipContent = computed(() => {
+	return props.compareWith?.name ? `Compare with ${props.compareWith.name}` : '';
 });
 
 const onAction = (value: string) => {
@@ -130,109 +147,116 @@ const onItemClick = (event: MouseEvent) => {
 	emit('preview', { event, id: props.item.versionId });
 };
 
+const onCompareClick = () => {
+	if (!props.compareWith?.versionId) {
+		return;
+	}
+	emit('compare', { id: props.compareWith.versionId });
+};
+
 onMounted(() => {
 	emit('mounted', {
 		index: props.index,
 		offsetTop: itemElement.value?.offsetTop ?? 0,
 		isSelected: props.isSelected,
 	});
-	checkAuthorTruncation();
 });
 </script>
 <template>
-	<li
-		ref="itemElement"
-		data-test-id="workflow-history-list-item"
-		role="button"
-		:class="{
-			[$style.item]: true,
-			[$style.selected]: props.isSelected,
-			[$style.actionsVisible]: actionsVisible,
-			[$style.grouped]: props.isGrouped,
-		}"
-		@click="onItemClick"
-	>
-		<!-- Timeline column -->
-		<span :class="$style.timelineColumn">
-			<template v-if="!props.isGrouped">
-				<N8nIcon v-if="props.isVersionActive" size="large" icon="circle-check" color="success" />
-				<span v-else :class="$style.timelineMarker" />
-			</template>
-			<span v-else :class="$style.timelineLine" />
-		</span>
+	<N8nTooltip placement="left" :disabled="!mainTooltipContent" :show-after="300">
+		<template #content>
+			<div>
+				{{ mainTooltipContent }}
+				<template v-if="mainTooltipUser">
+					{{ mainTooltipUser }}
+				</template>
+				<template v-if="mainTooltipFormattedDate">
+					<template v-if="mainTooltipUser">, </template>
+					{{ mainTooltipFormattedDate }}
+				</template>
+			</div>
+		</template>
+		<li
+			ref="itemElement"
+			data-test-id="workflow-history-list-item"
+			role="button"
+			:class="{
+				[$style.item]: true,
+				[$style.selected]: props.isSelected,
+				[$style.actionsVisible]: actionsVisible,
+				[$style.grouped]: props.isGrouped,
+				[$style.firstItem]: props.index === 0,
+			}"
+			@click="onItemClick"
+		>
+			<!-- Timeline column -->
+			<span :class="$style.timelineColumn">
+				<template v-if="!props.isGrouped">
+					<span
+						v-if="props.isVersionActive"
+						:class="[$style.timelineDot, $style.timelineDotPublished]"
+					/>
+					<span
+						v-else-if="props.index === 0 && !props.isVersionActive"
+						:class="[$style.timelineDot, $style.timelineDotLatest]"
+					/>
+					<span v-else :class="[$style.timelineDot, $style.timelineDotDefault]" />
+				</template>
+				<span v-else :class="$style.timelineLine" />
+			</span>
 
-		<div :class="$style.wrapper">
-			<div :class="$style.content">
-				<!-- Named version: show name + badge on first row, author + time on second -->
-				<template v-if="versionName">
+			<div :class="$style.wrapper">
+				<div :class="$style.content">
 					<div :class="$style.mainRow">
 						<N8nText size="small" :bold="true" color="text-dark" :class="$style.mainLine">
 							{{ versionName }}
-						</N8nText>
-						<N8nTooltip v-if="props.isVersionActive" placement="top" :disabled="!publishedAt">
-							<template #content>
-								<div :class="$style.tooltipContent">
-									<N8nText size="small">
-										{{ i18n.baseText('workflowHistory.item.publishedAtLabel') }}
-										{{ publishedAt }}
-									</N8nText>
-									<N8nText v-if="publishedByUserName" size="small">
-										{{ publishedByUserName }}
-									</N8nText>
-								</div>
+							<template v-if="isPublishedVersion">
+								({{ i18n.baseText('workflowHistory.item.active') }})
 							</template>
-							<N8nBadge size="xsmall" :class="$style.publishedBadge" :show-border="false">
-								{{ i18n.baseText('workflowHistory.item.active') }}
-							</N8nBadge>
-						</N8nTooltip>
+						</N8nText>
 					</div>
 					<div :class="$style.metaRow">
-						<N8nTooltip placement="right-end" :disabled="!isAuthorElementTruncated">
-							<template #content>{{ props.item.authors }}</template>
-							<N8nText ref="authorElement" size="small" color="text-base" :class="$style.metaItem">
-								{{ authors.label }},
-							</N8nText>
-						</N8nTooltip>
-						<N8nText tag="time" size="small" color="text-base" :class="$style.metaItem">
+						<N8nText size="small" color="text-base" :class="$style.metaAuthor">
+							{{ authorLabel }},
+						</N8nText>
+						<N8nText tag="time" size="small" color="text-base" :class="$style.metaTime">
 							{{ formattedCreatedAt }}
 						</N8nText>
 					</div>
-				</template>
-				<!-- Unnamed version: show author and time on single row -->
-				<div v-else :class="$style.unnamedRow">
-					<N8nTooltip placement="right-end" :disabled="!isAuthorElementTruncated">
-						<template #content>{{ props.item.authors }}</template>
-						<N8nText
-							ref="authorElement"
-							size="small"
-							color="text-base"
-							:class="$style.unnamedAuthor"
-						>
-							{{ authors.label }},
-						</N8nText>
-					</N8nTooltip>
-					<N8nText tag="time" size="small" color="text-base" :class="$style.unnamedTime">
-						{{ formattedCreatedAt }}
-					</N8nText>
 				</div>
+				<N8nTooltip
+					v-if="props.isWorkflowDiffsEnabled"
+					:content="compareTooltipContent"
+					:disabled="isCompareDisabled"
+					placement="top"
+				>
+					<N8nIconButton
+						variant="ghost"
+						icon="file-diff"
+						:disabled="isCompareDisabled"
+						:class="$style.compareButton"
+						data-test-id="workflow-history-compare-item-button"
+						@click.stop="onCompareClick"
+					/>
+				</N8nTooltip>
+				<N8nActionToggle
+					:class="$style.actions"
+					:actions="props.actions"
+					placement="bottom-end"
+					@action="onAction"
+					@click.stop
+					@visible-change="onVisibleChange"
+				/>
 			</div>
-			<N8nActionToggle
-				:class="$style.actions"
-				:actions="props.actions"
-				placement="bottom-end"
-				@action="onAction"
-				@click.stop
-				@visible-change="onVisibleChange"
-			/>
-		</div>
-	</li>
+		</li>
+	</N8nTooltip>
 </template>
 <style module lang="scss">
 @use './timeline' as *;
 
-$timelineMarkerDiameter: 13px;
-$timelineMarkerBorderWidth: 1.33px;
+$timelineDotSize: 8px;
 $hoverBackground: var(--color--background--light-1);
+$authorMaxWidth: 130px;
 
 .item {
 	display: flex;
@@ -253,12 +277,12 @@ $hoverBackground: var(--color--background--light-1);
 
 	margin-top: var(--spacing--lg);
 
-	&:first-child {
+	&.firstItem {
 		margin-top: 0;
 	}
 
 	// Line segment in the gap above this item (not for first item)
-	&:not(:first-child):not(.grouped)::before {
+	&:not(.firstItem):not(.grouped)::before {
 		@include timeline-gap-line;
 	}
 
@@ -281,6 +305,7 @@ $hoverBackground: var(--color--background--light-1);
 	display: flex;
 	flex: 1;
 	align-items: center;
+	min-width: 0;
 }
 
 .timelineColumn {
@@ -294,12 +319,24 @@ $hoverBackground: var(--color--background--light-1);
 	align-self: stretch;
 }
 
-.timelineMarker {
-	position: relative;
-	width: $timelineMarkerDiameter;
-	height: $timelineMarkerDiameter;
+.timelineDot {
+	height: $timelineDotSize;
+	width: $timelineDotSize;
 	border-radius: 50%;
-	border: $timelineMarkerBorderWidth solid var(--color--text--tint-1);
+	display: inline-block;
+}
+
+.timelineDotPublished {
+	background-color: var(--color--mint-600);
+}
+
+.timelineDotLatest {
+	background-color: var(--color--yellow-500);
+}
+
+.timelineDotDefault {
+	border: var(--border);
+	border-color: var(--color--text--tint-2);
 }
 
 .timelineLine {
@@ -334,47 +371,30 @@ $hoverBackground: var(--color--background--light-1);
 	align-items: center;
 	gap: var(--spacing--5xs);
 	margin-top: var(--spacing--5xs);
+	min-width: 0;
 }
 
-.metaItem {
-	max-width: 120px;
+.metaAuthor {
+	display: block;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	max-width: $authorMaxWidth;
 }
 
-// Unnamed version styles
-.unnamedRow {
-	display: flex;
-	align-items: center;
-}
-
-.unnamedAuthor {
+.metaTime {
 	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	max-width: 110px;
-}
-
-.unnamedTime {
-	margin-left: var(--spacing--5xs);
+	flex-shrink: 0;
 }
 
 .actions {
 	display: block;
 	padding: var(--spacing--3xs);
+	flex-shrink: 0;
+	align-self: center;
 }
 
-.publishedBadge {
-	background-color: var(--color--success);
-	color: var(--color--foreground--tint-2);
-}
-
-.tooltipContent {
-	// Set min width to keep the date on the same line
-	min-width: 200px;
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
+.compareButton {
+	flex-shrink: 0;
 }
 </style>

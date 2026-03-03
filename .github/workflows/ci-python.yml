@@ -1,4 +1,4 @@
-name: Python CI
+name: 'CI: Python'
 
 on:
   pull_request:

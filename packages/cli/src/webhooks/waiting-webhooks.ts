@@ -14,6 +14,7 @@ import {
 	FORM_NODE_TYPE,
 	type INodes,
 	type IWorkflowBase,
+	NodeConnectionTypes,
 	SEND_AND_WAIT_OPERATION,
 	WAIT_NODE_TYPE,
 	Workflow,
@@ -31,8 +32,10 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
 import { NodeTypes } from '@/node-types';
+import { applyCors } from '@/utils/cors.util';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { preserveInputOverride } from '@/workflow-helpers';
 
 /**
  * Service for handling the execution of webhooks of Wait nodes that use the
@@ -52,6 +55,14 @@ export class WaitingWebhooks implements IWebhookManager {
 	) {}
 
 	// TODO: implement `getWebhookMethods` for CORS support
+
+	async findAccessControlOptions() {
+		// waiting webhooks do not support cors configuration options
+		// allow all origins because waiting webhook forms are always submitted in cors mode due to sandbox CSP
+		return {
+			allowedOrigins: '*',
+		};
+	}
 
 	protected logReceivedWebhook(method: string, executionId: string) {
 		this.logger.debug(`Received waiting-webhook "${method}" for execution "${executionId}"`);
@@ -170,6 +181,8 @@ export class WaitingWebhooks implements IWebhookManager {
 
 		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
 
+		applyCors(req, res);
+
 		return await this.getWebhookExecutionData({
 			execution,
 			req,
@@ -202,8 +215,18 @@ export class WaitingWebhooks implements IWebhookManager {
 		// Remove waitTill information else the execution would stop
 		execution.data.waitTill = undefined;
 
-		// Remove the data of the node execution again else it will display the node as executed twice
-		execution.data.resultData.runData[lastNodeExecuted].pop();
+		// For HITL nodes, preserve inputOverride and set rewireOutputLogTo before popping run data
+		const nodeExecutionStack = execution.data.executionData?.nodeExecutionStack;
+		const executionStackEntry = nodeExecutionStack?.[0];
+		const isHitlNode = executionStackEntry?.node?.type?.endsWith('HitlTool') ?? false;
+
+		if (isHitlNode && executionStackEntry) {
+			// Set rewireOutputLogTo on the node so output is logged with ai_tool type
+			executionStackEntry.node.rewireOutputLogTo = NodeConnectionTypes.AiTool;
+		}
+
+		const runDataArray = execution.data.resultData.runData[lastNodeExecuted];
+		preserveInputOverride(runDataArray);
 
 		const { workflowData } = execution;
 		const workflow = this.createWorkflow(workflowData);

@@ -16,8 +16,19 @@ export function setupRedisClient(credentials: RedisCredential, isTest = false): 
 		port: credentials.port,
 		tls: credentials.ssl === true,
 		connectTimeout: 10000,
-		// Disable reconnection for tests to prevent hanging
-		reconnectStrategy: isTest ? false : undefined,
+		reconnectStrategy: isTest
+			? false
+			: (retries: number) => {
+					// Retry for ~15min
+					if (retries >= 10) {
+						return false;
+					}
+
+					const jitter = Math.floor(Math.random() * 1000);
+					const delay = Math.pow(2, retries) * 1000;
+
+					return delay + jitter;
+				},
 	};
 
 	// If SSL is enabled and TLS verification should be disabled
@@ -25,17 +36,23 @@ export function setupRedisClient(credentials: RedisCredential, isTest = false): 
 		socketConfig.rejectUnauthorized = false;
 	}
 
-	return createClient({
+	const client = createClient({
 		socket: socketConfig,
 		database: credentials.database,
 		username: credentials.user ?? undefined,
 		password: credentials.password ?? undefined,
-		// Disable automatic error retry for tests
 		...(isTest && {
 			disableOfflineQueue: true,
 			enableOfflineQueue: false,
 		}),
 	});
+
+	client.on('error', () => {
+		// intentionally ignored,required for reconnectStrategy to function, error will be caught by try catch
+		// https://github.com/redis/node-redis/blob/a64134c55f550f2f102a0f512218bc11717a5e16/README.md?plain=1#L298
+	});
+
+	return client;
 }
 
 export async function redisConnectionTest(

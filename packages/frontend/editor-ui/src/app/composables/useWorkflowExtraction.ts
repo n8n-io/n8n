@@ -1,4 +1,5 @@
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import {
 	buildAdjacencyList,
 	parseExtractableSubgraphSelection,
@@ -38,6 +39,8 @@ const CANVAS_HISTORY_OPTIONS = {
 export function useWorkflowExtraction() {
 	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const nodeTypesStore = useNodeTypesStore();
 	const toast = useToast();
 	const router = useRouter();
 	const historyStore = useHistoryStore();
@@ -160,13 +163,20 @@ export function useWorkflowExtraction() {
 
 		const shouldInsertReturnNode = selectionChildrenVariables.size > 0;
 
-		const startNodeConnection = startNodeTarget
+		// Connect Start node to firstNode only if it accepts main input
+		// Either because it's an explicit start target, or it accepts main connections
+		const firstNodeType = nodeTypesStore.getNodeType(firstNode.type, firstNode.typeVersion);
+		const shouldConnectStart =
+			startNodeTarget !== undefined ||
+			(firstNodeType && NodeHelpers.nodeAcceptsInputType(firstNodeType, 'main'));
+
+		const startNodeConnection = shouldConnectStart
 			? ({
 					[startNodeName]: {
 						main: [
 							[
 								{
-									node: startNodeTarget.name,
+									node: firstNode.name,
 									type: 'main',
 									index: 0,
 								},
@@ -246,7 +256,7 @@ export function useWorkflowExtraction() {
 				...endNodeConnection,
 			},
 			settings: { executionOrder: 'v1' },
-			projectId: workflowsStore.workflow.homeProject?.id,
+			projectId: workflowDocumentStore?.value?.homeProject?.id,
 			parentFolderId: workflowsStore.workflow.parentFolder?.id ?? undefined,
 		};
 	}
@@ -400,7 +410,7 @@ export function useWorkflowExtraction() {
 			);
 		}
 
-		uiStore.stateIsDirty = true;
+		uiStore.markStateDirty();
 		historyStore.stopRecordingUndo();
 	}
 

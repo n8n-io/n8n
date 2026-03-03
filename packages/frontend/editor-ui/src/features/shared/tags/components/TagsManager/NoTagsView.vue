@@ -7,11 +7,13 @@ import { N8nButton, N8nHeading } from '@n8n/design-system';
 type Props = {
 	titleLocaleKey: BaseTextKey;
 	descriptionLocaleKey: BaseTextKey;
+	createLocaleKey: BaseTextKey;
 };
 
 withDefaults(defineProps<Props>(), {
 	titleLocaleKey: 'noTagsView.readyToOrganizeYourWorkflows',
 	descriptionLocaleKey: 'noTagsView.withWorkflowTagsYouReFree',
+	createLocaleKey: 'noTagsView.createTag',
 });
 
 const i18n = useI18n();
@@ -21,7 +23,7 @@ const i18n = useI18n();
 	<div :class="$style.container">
 		<ElCol class="notags" :span="16">
 			<div class="icon">🗄️</div>
-			<div>
+			<div :class="$style.content">
 				<div class="mb-s">
 					<N8nHeading size="large">
 						{{ i18n.baseText(titleLocaleKey) }}
@@ -30,8 +32,12 @@ const i18n = useI18n();
 				<div class="description">
 					{{ i18n.baseText(descriptionLocaleKey) }}
 				</div>
+				<N8nButton
+					:label="i18n.baseText(`${createLocaleKey}`)"
+					size="large"
+					@click="$emit('enableCreate')"
+				/>
 			</div>
-			<N8nButton label="Create a tag" size="large" @click="$emit('enableCreate')" />
 		</ElCol>
 	</div>
 </template>
@@ -44,6 +50,16 @@ $--footer-spacing: 45px;
 	justify-content: center;
 	align-items: center;
 	margin-top: $--footer-spacing;
+}
+
+.content {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+
+	> button {
+		margin-top: var(--spacing--md);
+	}
 }
 </style>
 

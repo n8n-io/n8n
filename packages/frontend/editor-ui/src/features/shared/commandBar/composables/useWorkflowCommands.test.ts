@@ -6,6 +6,7 @@ import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { nodeViewEventBus } from '@/app/event-bus';
 import { createTestWorkflow } from '@/__tests__/mocks';
@@ -63,6 +64,7 @@ describe('useWorkflowCommands', () => {
 	let mockUIStore: ReturnType<typeof useUIStore>;
 	let mockTagsStore: ReturnType<typeof useTagsStore>;
 	let mockWorkflowsStore: ReturnType<typeof useWorkflowsStore>;
+	let mockWorkflowsListStore: ReturnType<typeof useWorkflowsListStore>;
 	let mockSourceControlStore: ReturnType<typeof useSourceControlStore>;
 
 	beforeEach(() => {
@@ -83,6 +85,7 @@ describe('useWorkflowCommands', () => {
 		mockUIStore = useUIStore();
 		mockTagsStore = useTagsStore();
 		mockWorkflowsStore = useWorkflowsStore();
+		mockWorkflowsListStore = useWorkflowsListStore();
 		mockSourceControlStore = useSourceControlStore();
 
 		getWorkflowDataToSaveMock.mockResolvedValue(mockWorkflow.value);
@@ -90,7 +93,7 @@ describe('useWorkflowCommands', () => {
 
 		mockWorkflowsStore.workflow = mockWorkflow.value;
 		// Mark workflow as existing by adding it to workflowsById
-		mockWorkflowsStore.workflowsById = { [mockWorkflow.value.id]: mockWorkflow.value };
+		mockWorkflowsListStore.workflowsById = { [mockWorkflow.value.id]: mockWorkflow.value };
 
 		Object.defineProperty(mockUIStore, 'isActionActive', {
 			value: { workflowSaving: false } as unknown as typeof mockUIStore.isActionActive,
@@ -171,41 +174,6 @@ describe('useWorkflowCommands', () => {
 	});
 
 	describe('canvas actions', () => {
-		it('should include save command when user has update permission and workflow is not saving', () => {
-			const { commands } = useWorkflowCommands();
-			const saveCommand = commands.value.find((cmd) => cmd.id === 'save-workflow');
-
-			expect(saveCommand).toBeDefined();
-		});
-
-		it('should not include save command when workflow is saving', () => {
-			mockUIStore.isActionActive.workflowSaving = true;
-
-			const { commands } = useWorkflowCommands();
-			const saveCommand = commands.value.find((cmd) => cmd.id === 'save-workflow');
-
-			expect(saveCommand).toBeUndefined();
-		});
-
-		it('should not include save command when workflow is archived', () => {
-			mockWorkflowsStore.workflow.isArchived = true;
-
-			const { commands } = useWorkflowCommands();
-			const saveCommand = commands.value.find((cmd) => cmd.id === 'save-workflow');
-
-			expect(saveCommand).toBeUndefined();
-		});
-
-		it('should handle save workflow', async () => {
-			const { commands } = useWorkflowCommands();
-			const saveCommand = commands.value.find((cmd) => cmd.id === 'save-workflow');
-
-			await saveCommand?.handler?.();
-
-			expect(saveCurrentWorkflowMock).toHaveBeenCalled();
-			expect(canvasEventBus.emit).toHaveBeenCalledWith('saved:workflow');
-		});
-
 		it('should include test workflow command', () => {
 			const { commands } = useWorkflowCommands();
 			const testCommand = commands.value.find((cmd) => cmd.id === 'test-workflow');
@@ -481,18 +449,18 @@ describe('useWorkflowCommands', () => {
 			mockSourceControlStore.preferences.branchReadOnly = true;
 
 			const { commands } = useWorkflowCommands();
-			const saveCommand = commands.value.find((cmd) => cmd.id === 'save-workflow');
+			const activateCommand = commands.value.find((cmd) => cmd.id === 'activate-workflow');
 
-			expect(saveCommand).toBeUndefined();
+			expect(activateCommand).toBeUndefined();
 		});
 
 		it('should allow actions for new workflows regardless of permissions', () => {
 			// For new workflows, remove from workflowsById so isNewWorkflow returns true
-			mockWorkflowsStore.workflowsById = {};
+			mockWorkflowsListStore.workflowsById = {};
 			mockWorkflowsStore.workflow.scopes = ['workflow:read'];
 
 			const { commands } = useWorkflowCommands();
-			const saveCommand = commands.value.find((cmd) => cmd.id === 'save-workflow');
+			const saveCommand = commands.value.find((cmd) => cmd.id === 'rename-workflow');
 
 			expect(saveCommand).toBeDefined();
 		});

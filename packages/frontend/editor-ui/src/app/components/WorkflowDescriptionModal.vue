@@ -136,18 +136,18 @@ onMounted(() => {
 		<template #footer>
 			<div :class="$style['popover-footer']">
 				<N8nButton
+					variant="subtle"
 					:label="i18n.baseText('generic.cancel')"
 					:size="'small'"
 					:disabled="isSaving"
-					type="tertiary"
 					data-test-id="workflow-description-cancel-button"
 					@click="cancel"
 				/>
 				<N8nButton
+					variant="solid"
 					:label="i18n.baseText('generic.unsavedWork.confirmMessage.confirmButtonText')"
 					:loading="isSaving"
 					:disabled="!canSave || isSaving"
-					type="primary"
 					data-test-id="workflow-description-save-button"
 					@click="save"
 				/>

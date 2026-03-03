@@ -193,7 +193,7 @@ export function useDataTableNavigationCommands(options: {
 		const isRootWithQuery = activeNodeId.value === null && trimmed.length > 2;
 
 		if (isInDataTableParent || isRootWithQuery) {
-			isLoading.value = isInDataTableParent;
+			isLoading.value = true;
 			void fetchDataTablesDebounced(trimmed);
 		}
 	}
@@ -205,6 +205,7 @@ export function useDataTableNavigationCommands(options: {
 			isLoading.value = true;
 			void fetchDataTablesImpl('');
 		} else if (to === null) {
+			isLoading.value = false;
 			dataTableResults.value = [];
 			hasDataFetched.value = false;
 		}

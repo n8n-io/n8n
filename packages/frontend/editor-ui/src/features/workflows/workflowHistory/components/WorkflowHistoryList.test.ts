@@ -39,7 +39,18 @@ const actions: Array<UserAction<IUser>> = actionTypes.map((value) => ({
 	value,
 }));
 
-const renderComponent = createComponentRenderer(WorkflowHistoryList);
+// N8nTooltip registers pointer-event listeners on each list item (via Element Plus).
+// userEvent.click dispatches ~10 pointer/mouse events per click, and with up to 50
+// items rendered, processing all those tooltip listeners caused intermittent timeouts
+// under parallel test load. Stubbing it to a passthrough slot fixes the flakiness
+// without affecting any test logic — no test here asserts on tooltip behaviour.
+const renderComponent = createComponentRenderer(WorkflowHistoryList, {
+	global: {
+		stubs: {
+			N8nTooltip: { template: '<slot />' },
+		},
+	},
+});
 
 let pinia: ReturnType<typeof createPinia>;
 
@@ -62,7 +73,7 @@ describe('WorkflowHistoryList', () => {
 				selectedItem: null,
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 0,
-				evaluatedPruneDays: -1,
+				evaluatedPruneTimeInHours: -1,
 				isListLoading: true,
 			},
 		});
@@ -82,7 +93,7 @@ describe('WorkflowHistoryList', () => {
 				selectedItem: null,
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 20,
-				evaluatedPruneDays: -1,
+				evaluatedPruneTimeInHours: -1,
 			},
 		});
 
@@ -114,7 +125,7 @@ describe('WorkflowHistoryList', () => {
 				selectedItem: items[0],
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 20,
-				evaluatedPruneDays: -1,
+				evaluatedPruneTimeInHours: -1,
 			},
 		});
 
@@ -132,7 +143,7 @@ describe('WorkflowHistoryList', () => {
 				selectedItem: null,
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 20,
-				evaluatedPruneDays: -1,
+				evaluatedPruneTimeInHours: -1,
 			},
 		});
 
@@ -158,6 +169,78 @@ describe('WorkflowHistoryList', () => {
 		]);
 	});
 
+	it('should delegate compare event from item', async () => {
+		const items = Array.from({ length: 3 }, namedWorkflowHistoryDataFactory);
+		const index = 1;
+		const activeVersionId = items[0].versionId;
+		const { getAllByTestId, emitted } = renderComponent({
+			pinia,
+			props: {
+				items,
+				actions,
+				selectedItem: items[0],
+				requestNumberOfItems: 20,
+				lastReceivedItemsLength: 20,
+				evaluatedPruneTimeInHours: -1,
+				activeVersionId,
+				isWorkflowDiffsEnabled: true,
+			},
+		});
+
+		const listItem = getAllByTestId('workflow-history-list-item')[index];
+		await userEvent.click(within(listItem).getByTestId('workflow-history-compare-item-button'));
+
+		expect(emitted().compare).toEqual([[{ id: items[index].versionId }]]);
+	});
+
+	it('should compare selected item with previous version', async () => {
+		const items = Array.from({ length: 3 }, namedWorkflowHistoryDataFactory);
+		const selectedIndex = 0;
+		const { getAllByTestId, emitted } = renderComponent({
+			pinia,
+			props: {
+				items,
+				actions,
+				selectedItem: items[selectedIndex],
+				requestNumberOfItems: 20,
+				lastReceivedItemsLength: 20,
+				evaluatedPruneTimeInHours: -1,
+				isWorkflowDiffsEnabled: true,
+			},
+		});
+
+		const selectedListItem = getAllByTestId('workflow-history-list-item')[selectedIndex];
+		await userEvent.click(
+			within(selectedListItem).getByTestId('workflow-history-compare-item-button'),
+		);
+
+		expect(emitted().compare).toEqual([[{ id: items[selectedIndex + 1].versionId }]]);
+	});
+
+	it('should disable compare for selected last item', async () => {
+		const items = Array.from({ length: 3 }, namedWorkflowHistoryDataFactory);
+		const selectedIndex = items.length - 1;
+		const { getAllByTestId, emitted } = renderComponent({
+			pinia,
+			props: {
+				items,
+				actions,
+				selectedItem: items[selectedIndex],
+				requestNumberOfItems: 20,
+				lastReceivedItemsLength: 20,
+				evaluatedPruneTimeInHours: -1,
+				isWorkflowDiffsEnabled: true,
+			},
+		});
+
+		const selectedListItem = getAllByTestId('workflow-history-list-item')[selectedIndex];
+		await userEvent.click(
+			within(selectedListItem).getByTestId('workflow-history-compare-item-button'),
+		);
+
+		expect(emitted().compare).toBeUndefined();
+	});
+
 	it('should show upgrade message when shouldUpgrade is true', async () => {
 		const items = Array.from({ length: 5 }, namedWorkflowHistoryDataFactory);
 
@@ -169,13 +252,42 @@ describe('WorkflowHistoryList', () => {
 				selectedItem: items[0],
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 20,
-				evaluatedPruneDays: 1,
+				evaluatedPruneTimeInHours: 1,
 				shouldUpgrade: true,
 			},
 		});
 
 		expect(getByRole('link', { name: /upgrade/i })).toBeInTheDocument();
 	});
+
+	it.each([
+		{ hours: 1, expectedValue: '1', expectedUnit: 'hour' },
+		{ hours: 5, expectedValue: '5', expectedUnit: 'hours' },
+		{ hours: 24, expectedValue: '1', expectedUnit: 'day' },
+		{ hours: 48, expectedValue: '2', expectedUnit: 'days' },
+	])(
+		'should correctly format the prune time display for $hours hours',
+		async ({ hours, expectedValue, expectedUnit }) => {
+			const items = Array.from({ length: 5 }, namedWorkflowHistoryDataFactory);
+
+			const { queryByTestId } = renderComponent({
+				pinia,
+				props: {
+					items,
+					actions,
+					selectedItem: items[0],
+					requestNumberOfItems: 20,
+					lastReceivedItemsLength: 20,
+					evaluatedPruneTimeInHours: hours,
+					shouldUpgrade: true,
+				},
+			});
+
+			const pruneTimeDisplay = queryByTestId('prune-time-display')?.textContent;
+			expect(pruneTimeDisplay).toContain(expectedValue);
+			expect(pruneTimeDisplay).toContain(expectedUnit);
+		},
+	);
 
 	it('should not show upgrade message when shouldUpgrade is false', async () => {
 		const items = Array.from({ length: 5 }, namedWorkflowHistoryDataFactory);
@@ -188,7 +300,7 @@ describe('WorkflowHistoryList', () => {
 				selectedItem: items[0],
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 20,
-				evaluatedPruneDays: 1,
+				evaluatedPruneTimeInHours: 1,
 				shouldUpgrade: false,
 			},
 		});
@@ -213,7 +325,7 @@ describe('WorkflowHistoryList', () => {
 					selectedItem: null,
 					requestNumberOfItems: 20,
 					lastReceivedItemsLength: 20,
-					evaluatedPruneDays: -1,
+					evaluatedPruneTimeInHours: -1,
 				},
 			});
 
@@ -241,7 +353,7 @@ describe('WorkflowHistoryList', () => {
 					selectedItem: null,
 					requestNumberOfItems: 20,
 					lastReceivedItemsLength: 20,
-					evaluatedPruneDays: -1,
+					evaluatedPruneTimeInHours: -1,
 				},
 			});
 
@@ -268,7 +380,7 @@ describe('WorkflowHistoryList', () => {
 					selectedItem: null,
 					requestNumberOfItems: 20,
 					lastReceivedItemsLength: 20,
-					evaluatedPruneDays: -1,
+					evaluatedPruneTimeInHours: -1,
 				},
 			});
 
@@ -296,7 +408,7 @@ describe('WorkflowHistoryList', () => {
 					selectedItem: null,
 					requestNumberOfItems: 20,
 					lastReceivedItemsLength: 20,
-					evaluatedPruneDays: -1,
+					evaluatedPruneTimeInHours: -1,
 				},
 			});
 
@@ -319,7 +431,7 @@ describe('WorkflowHistoryList', () => {
 					selectedItem: null,
 					requestNumberOfItems: 20,
 					lastReceivedItemsLength: 20,
-					evaluatedPruneDays: -1,
+					evaluatedPruneTimeInHours: -1,
 				},
 			});
 

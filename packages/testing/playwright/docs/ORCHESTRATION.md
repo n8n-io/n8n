@@ -6,7 +6,7 @@ Capability-aware test distribution across CI shards.
 
 | Step | What Happens |
 |------|--------------|
-| 1. Discovery | `pnpm playwright test --list --project="multi-main:e2e"` |
+| 1. Discovery | `pnpm janitor discover` (AST-based, detects `test.fixme()`/`test.skip()` automatically) |
 | 2. Metrics | Get `avgDuration` per spec from Currents (last 30 days) |
 | 3. Default | Missing specs get **60s** default (accounts for container startup) |
 | 4. Group | Group specs by `@capability:xxx` tag for worker reuse |
@@ -56,14 +56,14 @@ test.describe('Feature @capability:email', () => {
 
 ### Available Capabilities
 
-| Capability | Tag | Container |
+| Capability | Tag | Containers |
 |------------|-----|-----------|
 | `'proxy'` | `@capability:proxy` | Proxy server |
 | `'email'` | `@capability:email` | Mailpit |
 | `'source-control'` | `@capability:source-control` | Git server |
 | `'task-runner'` | `@capability:task-runner` | Task runner |
 | `'oidc'` | `@capability:oidc` | OIDC provider |
-| `'observability'` | `@capability:observability` | VictoriaLogs |
+| `'observability'` | `@capability:observability` | VictoriaLogs + VictoriaMetrics + Vector |
 
 ## Modes vs Capabilities
 
@@ -94,6 +94,25 @@ test('Multi-main logs @capability:observability @mode:multi-main', ...);
 
 Both `@capability:X` and `@mode:X` tests are skipped in local mode (they require containers).
 
+## Temporarily Disabling Tests
+
+Use `test.fixme()` to mark tests that need fixing. The janitor's `discover` command detects `test.fixme()` and `test.skip()` calls via AST analysis and automatically excludes them from CI distribution.
+
+```typescript
+// Individual test
+test.fixme('broken test', async ({ n8n }) => {
+  // Excluded from CI distribution automatically
+});
+
+// Entire describe block
+test.describe('Feature', () => {
+  test.fixme(); // Marks all tests in this block
+
+  test('test 1', async ({ n8n }) => { ... });
+  test('test 2', async ({ n8n }) => { ... });
+});
+```
+
 ## Refreshing Metrics
 
 ```bash
@@ -107,17 +126,36 @@ This fetches the last 30 days of test durations from Currents, aggregates by spe
 - After significant test changes
 - When adding new specs (optional - they get 60s default)
 
+## Architecture
+
+```
+janitor orchestrate (generic)          distribute-tests.mjs (n8n CI adapter)
+┌──────────────────────────┐          ┌──────────────────────────┐
+│ AST discovery            │          │ Calls janitor orchestrate│
+│ Metrics loading          │   JSON   │ Maps capabilities →      │
+│ Capability grouping      │ ──────→  │   Docker images          │
+│ Group splitting          │          │ Adds container overhead  │
+│ Greedy bin-packing       │          │ Outputs GH Actions matrix│
+└──────────────────────────┘          └──────────────────────────┘
+```
+
+The janitor handles generic orchestration (works for any Playwright project).
+`distribute-tests.mjs` is n8n's CI adapter that maps capabilities to Docker images.
+
 ## Scripts
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/distribute-tests.mjs` | Distributes specs across shards |
+| `scripts/distribute-tests.mjs` | CI adapter — calls janitor, maps images, outputs matrix |
 | `scripts/fetch-currents-metrics.mjs` | Fetches metrics from Currents API |
 
 ### Testing Locally
 
 ```bash
-# See distribution for 14 shards
+# Janitor orchestration (generic output)
+pnpm janitor orchestrate --shards=14
+
+# CI adapter (n8n-specific output with Docker images)
 node scripts/distribute-tests.mjs --matrix 14 --orchestrate
 
 # Get specs for shard 0
@@ -128,6 +166,6 @@ node scripts/distribute-tests.mjs 14 0
 
 | Problem | Solution |
 |---------|----------|
-| Specs not running | Check path matches `playwright test --list` output |
+| Specs not running | Check path matches janitor test patterns in `janitor.config.mjs` |
 | Unbalanced shards | Refresh metrics - durations may have drifted |
 | Worker not reused | Use string capabilities like `'proxy'`, not inline objects |

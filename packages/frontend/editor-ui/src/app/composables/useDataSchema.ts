@@ -1,9 +1,21 @@
 import { useI18n } from '@n8n/i18n';
-import type { INodeUi, Optional, Primitives, Schema, SchemaType } from '@/Interface';
+import type {
+	BinaryMetadata,
+	INodeUi,
+	Optional,
+	Primitives,
+	Schema,
+	SchemaType,
+} from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { generatePath, getNodeParentExpression } from '@/app/utils/mappingUtils';
 import { isObject } from '@/app/utils/objectUtils';
 import { isObj } from '@/app/utils/typeGuards';
+import { isBinary } from '@n8n/design-system';
 import { isPresent, shorten } from '@/app/utils/typesUtils';
 import type { JSONSchema7, JSONSchema7Definition, JSONSchema7TypeName } from 'json-schema';
 import merge from 'lodash/merge';
@@ -56,14 +68,18 @@ export function useDataSchema() {
 						path,
 					};
 				} else if (isObj(input)) {
+					const type = isBinary(input) ? 'binary' : 'object';
 					schema = {
-						type: 'object',
+						type,
 						value: Object.entries(input).map(([k, v]) => ({
 							key: k,
 							...getSchema(v, generatePath(path, [k]), excludeValues, collapseArrays),
 						})),
 						path,
 					};
+					if (type === 'binary') {
+						schema.binaryData = input as BinaryMetadata;
+					}
 				}
 				break;
 			case 'function':
@@ -194,8 +210,11 @@ export function useDataSchema() {
 	): INodeExecutionData[] {
 		if (!node) return [];
 
-		const { pinDataByNodeName } = useWorkflowsStore();
-		const pinnedData = pinDataByNodeName(node.name);
+		const workflowsStore = useWorkflowsStore();
+		const workflowDocumentStore = workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined;
+		const pinnedData = workflowDocumentStore?.getNodePinData(node.name)?.map((item) => item.json);
 		let inputData = getNodeInputData(node, runIndex, outputIndex);
 
 		if (pinnedData) {
@@ -277,6 +296,7 @@ export type RenderItem = {
 	preview?: boolean;
 	locked?: boolean;
 	lockedTooltip?: string;
+	binaryData?: BinaryMetadata;
 };
 
 export type RenderHeader = {
@@ -305,6 +325,14 @@ export type RenderNotice = {
 	message: string;
 };
 
+export type RenderCallout = {
+	id: string;
+	type: 'callout';
+	level: number;
+	message: string;
+	theme?: 'info' | 'success' | 'warning' | 'danger' | 'secondary';
+};
+
 export type RenderEmpty = {
 	id: string;
 	type: 'empty';
@@ -313,9 +341,16 @@ export type RenderEmpty = {
 	key: 'emptyData' | 'emptySchema' | 'emptySchemaWithBinary' | 'executeSchema';
 };
 
-export type Renders = RenderHeader | RenderItem | RenderIcon | RenderNotice | RenderEmpty;
+export type Renders =
+	| RenderHeader
+	| RenderItem
+	| RenderIcon
+	| RenderNotice
+	| RenderCallout
+	| RenderEmpty;
 
 const icons = {
+	binary: DATA_TYPE_ICON_MAP.file,
 	object: DATA_TYPE_ICON_MAP.object,
 	array: DATA_TYPE_ICON_MAP.array,
 	['string']: DATA_TYPE_ICON_MAP.string,
@@ -420,6 +455,7 @@ export const useFlattenSchema = () => {
 					nodeName,
 					type: 'item',
 					preview,
+					binaryData: schema.binaryData ? schema.binaryData : undefined,
 				});
 			}
 
@@ -492,6 +528,17 @@ export const useFlattenSchema = () => {
 				return acc;
 			}
 
+			if (item.node.type === 'n8n-nodes-base.merge' && item.itemsCount > 1) {
+				const mergeCallout: RenderCallout = {
+					id: `${item.node.name}-mergeNotice`,
+					type: 'callout',
+					level: 2,
+					message: useI18n().baseText('dataMapping.schemaView.mergeNotice'),
+					theme: 'info',
+				};
+				acc.push(mergeCallout);
+			}
+
 			if (isEmptySchema(item.schema)) {
 				if (!item.isNodeExecuted && !item.lastSuccessfulPreview) {
 					acc.push(emptyItem('executeSchema', { level: 1 }));
@@ -520,6 +567,7 @@ export const useFlattenSchema = () => {
 					expressionPrefix: getNodeParentExpression({
 						nodeName: item.node.name,
 						distanceFromActive: item.depth,
+						binaryMode: useWorkflowsStore().workflow.settings?.binaryMode,
 					}),
 				}),
 			);

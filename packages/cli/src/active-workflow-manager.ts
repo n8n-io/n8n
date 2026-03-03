@@ -17,6 +17,7 @@ import {
 	ErrorReporter,
 	InstanceSettings,
 	PollContext,
+	StorageConfig,
 	TriggerContext,
 	type IGetExecutePollFunctions,
 	type IGetExecuteTriggerFunctions,
@@ -48,6 +49,7 @@ import { strict } from 'node:assert';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { ActiveExecutions } from '@/active-executions';
+import { EventService } from '@/events/event.service';
 import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
 import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
@@ -92,6 +94,8 @@ export class ActiveWorkflowManager {
 		private readonly publisher: Publisher,
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly push: Push,
+		private readonly eventService: EventService,
+		private readonly storageConfig: StorageConfig,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -219,7 +223,6 @@ export class ActiveWorkflowManager {
 				throw error;
 			}
 		}
-		await this.webhookService.populateCache();
 
 		await this.workflowStaticDataService.saveStaticData(workflow);
 
@@ -360,6 +363,15 @@ export class ActiveWorkflowManager {
 					responsePromise,
 				);
 
+				void executePromise.then((executionId) => {
+					this.eventService.emit('workflow-executed', {
+						workflowId: workflowData.id,
+						workflowName: workflowData.name,
+						executionId,
+						source: 'trigger',
+					});
+				});
+
 				if (donePromise) {
 					void executePromise.then((executionId) => {
 						this.activeExecutions
@@ -396,7 +408,32 @@ export class ActiveWorkflowManager {
 
 				this.addQueuedWorkflowActivation(activation, workflowData as WorkflowEntity);
 			};
-			return new TriggerContext(workflow, node, additionalData, mode, activation, emit, emitError);
+
+			const saveFailedExecution = (error: ExecutionError) => {
+				this.logger.info(
+					`The trigger node "${node.name}" of workflow "${workflowData.name}" reported the error: "${error.message}". Saving to failed executions`,
+					{
+						nodeName: node.name,
+						workflowId: workflowData.id,
+						workflowName: workflowData.name,
+					},
+				);
+				void this.executionService
+					.createErrorExecution(error, node, workflowData, workflow, mode)
+					.then(() => {
+						this.executeErrorWorkflow(error, workflowData, mode);
+					});
+			};
+			return new TriggerContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				activation,
+				emit,
+				emitError,
+				saveFailedExecution,
+			);
 		};
 	}
 
@@ -417,6 +454,7 @@ export class ActiveWorkflowManager {
 			startedAt: new Date(),
 			stoppedAt: new Date(),
 			status: 'running',
+			storedAt: this.storageConfig.modeTag,
 		};
 
 		executeErrorWorkflow(workflowData, fullRunData, mode);
@@ -572,7 +610,7 @@ export class ActiveWorkflowManager {
 
 			void this.publisher.publishCommand({
 				command: 'add-webhooks-triggers-and-pollers',
-				payload: { workflowId, activeVersionId: dbWorkflow.activeVersionId },
+				payload: { workflowId, activeVersionId: dbWorkflow.activeVersionId, activationMode },
 			});
 
 			return added;
@@ -705,9 +743,10 @@ export class ActiveWorkflowManager {
 	async handleAddWebhooksTriggersAndPollers({
 		workflowId,
 		activeVersionId,
+		activationMode,
 	}: PubSubCommandMap['add-webhooks-triggers-and-pollers']) {
 		try {
-			await this.add(workflowId, 'activate', undefined, {
+			await this.add(workflowId, activationMode, undefined, {
 				shouldPublish: false, // prevent leader from re-publishing message
 			});
 

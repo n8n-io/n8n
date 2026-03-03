@@ -12,7 +12,7 @@ import { useRoute, useRouter } from 'vue-router';
 
 import type { BaseFilters, Resource, SortingAndPaginationUpdates } from '@/Interface';
 import { isSharedResource, isResourceSortableByDate } from '@/app/utils/typeGuards';
-import { useN8nLocalStorage } from '@/app/composables/useN8nLocalStorage';
+import { type LocalStorageTabKey, useN8nLocalStorage } from '@/app/composables/useN8nLocalStorage';
 import { useResourcesListI18n } from '@/app/composables/useResourcesListI18n';
 
 import { ElPagination } from 'element-plus';
@@ -69,6 +69,8 @@ const props = withDefaults(
 		dontPerformSortingAndFiltering?: boolean;
 		hasEmptyState?: boolean;
 		uiConfig?: UIConfig;
+		tabKey?: LocalStorageTabKey;
+		persistKeyExclusions?: string[];
 	}>(),
 	{
 		displayName: (resource: ResourceType) => resource.name || '',
@@ -92,6 +94,8 @@ const props = withDefaults(
 			showFiltersDropdown: true,
 			sortEnabled: true,
 		}),
+		tabKey: 'workflows',
+		persistKeyExclusions: () => [],
 	},
 );
 
@@ -310,6 +314,7 @@ onBeforeUnmount(() => {
 
 //methods
 const captureSearchHotKey = (e: KeyboardEvent) => {
+	if (!props.uiConfig.searchEnabled) return;
 	if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
 		e.preventDefault();
 		focusSearchInput();
@@ -492,7 +497,7 @@ const savePaginationPreferences = async () => {
 		delete currentQuery.pageSize;
 	}
 
-	if (sortBy.value !== preferredSort.value) {
+	if (sortBy.value !== preferredSort.value && !props.persistKeyExclusions.includes(sortBy.value)) {
 		currentQuery.sort = sortBy.value;
 		preferredSort.value = sortBy.value;
 	} else {
@@ -501,7 +506,7 @@ const savePaginationPreferences = async () => {
 
 	n8nLocalStorage.saveProjectPreferencesToLocalStorage(
 		(route.params.projectId as string) ?? '',
-		'workflows',
+		props.tabKey,
 		{
 			sort: sortBy.value,
 			pageSize: rowsPerPage.value,
@@ -639,6 +644,7 @@ defineExpose({
 								<N8nSelect
 									v-model="sortBy"
 									size="small"
+									:class="$style.resourceList"
 									data-test-id="resources-list-sort"
 									@change="setSorting(sortBy)"
 								>
@@ -874,6 +880,15 @@ defineExpose({
 
 .datatable {
 	padding-bottom: var(--spacing--sm);
+}
+
+/** NOTE (@heymynameisrob): Style override to match button and text input height **/
+.resourceList {
+	height: var(--spacing--xl);
+
+	input[role='combobox'] {
+		height: var(--spacing--xl);
+	}
 }
 </style>
 

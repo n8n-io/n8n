@@ -1,5 +1,4 @@
 @use 'mixins/mixins';
-@use 'mixins/button';
 @use './common/var';
 @use 'common/popup';
 @use 'input';
@@ -150,22 +149,88 @@
 			margin-left: 10px;
 		}
 
-		& .btn--confirm {
-			@include button.button-just-primary();
-			@include button.button-small();
-		}
-		//
+		// Align MessageBox buttons with N8nButton styles; DS-463 will replace this patch.
+		& .btn--confirm,
 		& .btn--cancel {
-			--button--color--background--active: var(--color--primary--tint-2);
-			--button--color--active: var(--color--primary);
-			--button--border-color--active: var(--color--primary);
-			--button--color--background--hover: var(--color--primary--tint-3);
-			--button--color--hover: var(--color--primary);
-			--button--border-color--hover: var(--color--primary);
-			--button--outline-color--focus: var(--color--primary--tint-1);
+			--button--color--background: transparent;
+			--button--color--background-hover: transparent;
+			--button--color--background-active: transparent;
+			--button--color: light-dark(var(--color--neutral-900), var(--color--neutral-100));
+			--button--shadow: none;
+			--button--shadow--hover: none;
+			--button--shadow--active: none;
+			--button--border-color: transparent;
+			--button--border-color--hover: transparent;
+			--button--border-color--active: transparent;
 
-			@include button.button-small();
-			@include button.button-outline;
+			height: 2rem;
+			padding: 0 var(--spacing--xs);
+			border-radius: var(--radius--xs);
+			font-size: var(--font-size--sm);
+			font-family: var(--font-family);
+			font-weight: var(--font-weight--medium);
+			line-height: 1;
+			border: 1px solid var(--button--border-color);
+			background-color: var(--button--color--background);
+			color: var(--button--color);
+			box-shadow: var(--button--shadow);
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+		}
+
+		& .btn--confirm:hover,
+		& .btn--cancel:hover {
+			background-color: var(--button--color--background-hover);
+			box-shadow: var(--button--shadow--hover);
+			border-color: var(--button--border-color--hover);
+		}
+
+		& .btn--confirm:active,
+		& .btn--cancel:active {
+			background-color: var(--button--color--background-active);
+			box-shadow: var(--button--shadow--active);
+			border-color: var(--button--border-color--active);
+		}
+
+		& .btn--confirm {
+			--button--color--background: var(--color--orange-400);
+			--button--color--background-hover: var(--color--orange-500);
+			--button--color--background-active: var(--color--orange-600);
+			--button--color: var(--color--neutral-white);
+			--button--shadow: 0 1px 3px 0
+				light-dark(var(--color--black-alpha-100), var(--color--black-alpha-200));
+			--button--shadow--hover: 0 1px 3px 0
+				light-dark(var(--color--black-alpha-100), var(--color--black-alpha-200));
+			--button--shadow--active: 0 1px 3px 0
+				light-dark(var(--color--black-alpha-100), var(--color--black-alpha-200));
+			--button--border-color: var(--color--orange-400);
+			--button--border-color--hover: var(--color--orange-500);
+			--button--border-color--active: var(--color--orange-600);
+		}
+
+		& .btn--cancel {
+			--button--color--background: transparent;
+			--button--color--background-hover: light-dark(
+				var(--color--neutral-150),
+				var(--color--white-alpha-100)
+			);
+			--button--color--background-active: light-dark(
+				var(--color--black-alpha-200),
+				var(--color--white-alpha-200)
+			);
+			--button--border-color: light-dark(
+				var(--color--black-alpha-200),
+				var(--color--white-alpha-100)
+			);
+			--button--border-color--hover: light-dark(
+				var(--color--black-alpha-200),
+				var(--color--white-alpha-200)
+			);
+			--button--border-color--active: light-dark(
+				var(--color--black-alpha-300),
+				var(--color--white-alpha-300)
+			);
 		}
 	}
 

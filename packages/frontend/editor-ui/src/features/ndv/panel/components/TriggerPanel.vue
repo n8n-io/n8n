@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { computedAsync } from '@vueuse/core';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	VIEWS,
@@ -23,6 +24,7 @@ import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { isTriggerPanelObject } from '@/app/utils/typeGuards';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import {
 	N8nButton,
@@ -51,6 +53,7 @@ const emit = defineEmits<{
 const nodesTypeStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const ndvStore = useNDVStore();
 
 const router = useRouter();
@@ -128,12 +131,12 @@ const isWebhookNode = computed(() => {
 	return Boolean(node.value && node.value.type === WEBHOOK_NODE_TYPE);
 });
 
-const webhookHttpMethod = computed(() => {
+const webhookHttpMethod = computedAsync(async () => {
 	if (!node.value || !nodeType.value?.webhooks?.length) {
 		return undefined;
 	}
 
-	const httpMethod = workflowHelpers.getWebhookExpressionValue(
+	const httpMethod = await workflowHelpers.getWebhookExpressionValue(
 		nodeType.value.webhooks[0],
 		'httpMethod',
 		false,
@@ -143,16 +146,16 @@ const webhookHttpMethod = computed(() => {
 		return httpMethod.join(', ');
 	}
 
-	return httpMethod;
-});
+	return httpMethod as string | undefined;
+}, undefined);
 
-const webhookTestUrl = computed(() => {
+const webhookTestUrl = computedAsync(async () => {
 	if (!node.value || !nodeType.value?.webhooks?.length) {
 		return undefined;
 	}
 
-	return workflowHelpers.getWebhookUrl(nodeType.value.webhooks[0], node.value, 'test');
-});
+	return await workflowHelpers.getWebhookUrl(nodeType.value.webhooks[0], node.value, 'test');
+}, undefined);
 
 const isWebhookBasedNode = computed(() => {
 	return Boolean(nodeType.value?.webhooks?.length);
@@ -188,9 +191,7 @@ const isActivelyPolling = computed(() => {
 	return workflowRunning.value && isPollingNode.value && props.nodeName === triggeredNode;
 });
 
-const isWorkflowActive = computed(() => {
-	return workflowsStore.isWorkflowActive;
-});
+const isWorkflowActive = computed(() => workflowDocumentStore?.value?.active ?? false);
 
 const listeningTitle = computed(() => {
 	return nodeType.value?.name === FORM_TRIGGER_NODE_TYPE
@@ -385,11 +386,16 @@ const onNodeExecute = () => {
 	<div :class="$style.container">
 		<Transition name="fade" mode="out-in">
 			<div v-if="hasIssues || hideContent" key="empty"></div>
-			<div v-else-if="isListeningForEvents" key="listening" data-test-id="trigger-listening">
+			<div
+				v-else-if="isListeningForEvents"
+				key="listening"
+				:class="$style.action"
+				data-test-id="trigger-listening"
+			>
 				<N8nPulse>
 					<NodeIcon :node-type="nodeType" :size="40"></NodeIcon>
 				</N8nPulse>
-				<div v-if="isWebhookNode">
+				<div v-if="isWebhookNode" :class="$style.action">
 					<N8nText tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
 						i18n.baseText('ndv.trigger.webhookNode.listening')
 					}}</N8nText>
@@ -519,6 +525,11 @@ const onNodeExecute = () => {
 }
 
 .action {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	text-align: center;
 	margin-bottom: var(--spacing--2xl);
 }
 

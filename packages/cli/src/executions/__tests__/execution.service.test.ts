@@ -9,6 +9,7 @@ import type { ActiveExecutions } from '@/active-executions';
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
+import type { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';
 import type { ExecutionRequest } from '@/executions/execution.types';
 import { ScalingService } from '@/scaling/scaling.service';
@@ -22,6 +23,7 @@ describe('ExecutionService', () => {
 	const waitTracker = mock<WaitTracker>();
 	const concurrencyControl = mock<ConcurrencyControlService>();
 	const globalConfig = Container.get(GlobalConfig);
+	const executionRedactionServiceProxy = mock<ExecutionRedactionServiceProxy>();
 
 	const executionService = new ExecutionService(
 		globalConfig,
@@ -32,16 +34,75 @@ describe('ExecutionService', () => {
 		executionRepository,
 		mock(),
 		mock(),
+		mock(),
 		waitTracker,
 		mock(),
 		concurrencyControl,
 		mock(),
 		mock(),
+		mock(),
+		executionRedactionServiceProxy,
 	);
 
 	beforeEach(() => {
 		globalConfig.executions.mode = 'regular';
 		jest.clearAllMocks();
+	});
+
+	describe('findOne', () => {
+		it('should parse redactExecutionData from query string and pass to redaction proxy', async () => {
+			/**
+			 * Arrange
+			 */
+			const execution = mock<IExecutionResponse>({ id: '123', data: { resultData: {} } });
+			executionRepository.findIfSharedUnflatten.mockResolvedValue(execution);
+			executionRedactionServiceProxy.processExecution.mockResolvedValue(execution);
+
+			const req = mock<ExecutionRequest.GetOne>({
+				params: { id: '123' },
+				query: { redactExecutionData: 'true' } as unknown as Record<string, string>,
+			});
+
+			/**
+			 * Act
+			 */
+			await executionService.findOne(req, ['workflow-1']);
+
+			/**
+			 * Assert
+			 */
+			expect(executionRedactionServiceProxy.processExecution).toHaveBeenCalledWith(
+				execution,
+				expect.objectContaining({ redactExecutionData: true }),
+			);
+		});
+
+		it('should leave redactExecutionData undefined when query param is absent', async () => {
+			/**
+			 * Arrange
+			 */
+			const execution = mock<IExecutionResponse>({ id: '123', data: { resultData: {} } });
+			executionRepository.findIfSharedUnflatten.mockResolvedValue(execution);
+			executionRedactionServiceProxy.processExecution.mockResolvedValue(execution);
+
+			const req = mock<ExecutionRequest.GetOne>({
+				params: { id: '123' },
+				query: {},
+			});
+
+			/**
+			 * Act
+			 */
+			await executionService.findOne(req, ['workflow-1']);
+
+			/**
+			 * Assert
+			 */
+			expect(executionRedactionServiceProxy.processExecution).toHaveBeenCalledWith(
+				execution,
+				expect.objectContaining({ redactExecutionData: undefined }),
+			);
+		});
 	});
 
 	describe('retry', () => {
@@ -360,6 +421,38 @@ describe('ExecutionService', () => {
 					expect(executionRepository.stopDuringRun).toHaveBeenCalled();
 				});
 			});
+		});
+	});
+	describe('stopMany', () => {
+		it('should call stop function for the given filters', async () => {
+			executionRepository.findByStopExecutionsFilter.mockResolvedValue(
+				['1', '2', '3'].map((id) => ({ id })),
+			);
+			const stopFn = jest.fn();
+			executionService.stop = stopFn;
+
+			const filters = {
+				workflowId: '1',
+				startedAfter: new Date().toISOString(),
+				startedBefore: new Date().toISOString(),
+				status: ['running'],
+			} satisfies ExecutionRequest.StopMany['body']['filter'];
+
+			const shared = ['A'];
+
+			/**
+			 * Act
+			 */
+			await executionService.stopMany(filters, shared);
+
+			/**
+			 * Assert
+			 */
+			expect(stopFn).toBeCalledTimes(3);
+			expect(stopFn).toBeCalledWith('1', shared);
+			expect(stopFn).toBeCalledWith('2', shared);
+			expect(stopFn).toBeCalledWith('3', shared);
+			expect(executionRepository.findByStopExecutionsFilter).toBeCalledWith(filters);
 		});
 	});
 });
