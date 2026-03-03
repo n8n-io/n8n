@@ -39,6 +39,7 @@ const selectedTargetVersionId = ref(props.targetWorkflowVersionId);
 const currentWorkflowVersionId = ref<string>();
 const activeWorkflowVersionId = ref<string | undefined>();
 
+// Stale response guard: only apply results from the most recent load request.
 const loadRequestId = ref(0);
 
 const { getVersionLabelById, versionOptions } = useWorkflowHistoryVersionOptions({
@@ -71,6 +72,7 @@ const loadComparedVersions = async (sourceVersionId: string, targetVersionId: st
 		]);
 
 		if (requestId !== loadRequestId.value) {
+			// Ignore stale response: A new load request has been made since this one started.
 			return;
 		}
 
