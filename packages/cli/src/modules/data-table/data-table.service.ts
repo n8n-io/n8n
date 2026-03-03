@@ -28,7 +28,11 @@ import type {
 	DataTableColumnType,
 	DataTableRowReturnWithState,
 } from 'n8n-workflow';
-import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, validateFieldType } from 'n8n-workflow';
+import {
+	DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP,
+	DATA_TABLE_SYSTEM_COLUMNS,
+	validateFieldType,
+} from 'n8n-workflow';
 
 import { CsvParserService } from './csv-parser.service';
 import { DataTableColumn } from './data-table-column.entity';
@@ -152,6 +156,79 @@ export class DataTableService {
 		} catch (error) {
 			this.logger.error('Failed to import data from CSV file', { error, fileId, dataTableId });
 			throw new FileUploadError(error instanceof Error ? error.message : 'Failed to read CSV file');
+		}
+	}
+
+	async importCsvToExistingTable(
+		dataTableId: string,
+		projectId: string,
+		fileId: string,
+	): Promise<{ importedRowCount: number; systemColumnsIgnored: string[] }> {
+		await this.validateDataTableSize();
+		await this.validateDataTableExists(dataTableId, projectId);
+
+		try {
+			const tableColumns = await this.getColumns(dataTableId, projectId);
+			const tableColumnNames = new Set(tableColumns.map((col) => col.name));
+
+			const { metadata: csvMetadata, rows: csvRows } =
+				await this.csvParserService.parseFileWithData(fileId);
+
+			const systemColumnsIgnored: string[] = [];
+			const unrecognizedColumns: string[] = [];
+			const matchedCsvColumnNames: string[] = [];
+
+			for (const csvCol of csvMetadata.columns) {
+				if (DATA_TABLE_SYSTEM_COLUMNS.includes(csvCol.name)) {
+					systemColumnsIgnored.push(csvCol.name);
+				} else if (tableColumnNames.has(csvCol.name)) {
+					matchedCsvColumnNames.push(csvCol.name);
+				} else {
+					unrecognizedColumns.push(csvCol.name);
+				}
+			}
+
+			if (unrecognizedColumns.length > 0) {
+				throw new DataTableValidationError(
+					`CSV contains columns not found in the data table: ${unrecognizedColumns.join(', ')}. Remove them and try again.`,
+				);
+			}
+
+			if (matchedCsvColumnNames.length === 0) {
+				throw new DataTableValidationError(
+					'No matching columns found between CSV and data table. CSV columns must match table column names exactly.',
+				);
+			}
+
+			const transformedRows = csvRows.map((csvRow) => {
+				const transformedRow: DataTableRow = {};
+				for (const colName of matchedCsvColumnNames) {
+					const value = csvRow[colName];
+					transformedRow[colName] = value === undefined || value === '' ? null : value;
+				}
+				return transformedRow;
+			});
+
+			if (transformedRows.length > 0) {
+				await this.insertRows(dataTableId, projectId, transformedRows);
+			}
+
+			return {
+				importedRowCount: transformedRows.length,
+				systemColumnsIgnored,
+			};
+		} catch (error) {
+			if (error instanceof DataTableValidationError) throw error;
+			this.logger.error('Failed to import CSV to existing table', {
+				error,
+				fileId,
+				dataTableId,
+			});
+			throw new FileUploadError(
+				error instanceof Error ? error.message : 'Failed to import CSV file',
+			);
+		} finally {
+			await this.fileCleanupService.deleteFile(fileId);
 		}
 	}
 

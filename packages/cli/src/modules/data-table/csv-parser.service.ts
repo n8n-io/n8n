@@ -56,11 +56,12 @@ export class CsvParserService {
 			const parser = parse({
 				columns: hasHeaders
 					? (header: string[]) => {
-							columnNames = header;
-							return header;
+							columnNames = header.map((h) => h.trim());
+							return columnNames;
 						}
 					: false,
 				skip_empty_lines: true,
+				bom: true,
 			})
 				.on('data', (row: Record<string, string> | string[]) => {
 					rowCount++;
@@ -127,8 +128,9 @@ export class CsvParserService {
 
 		return await new Promise((resolve, reject) => {
 			const parser = parse({
-				columns: hasHeaders ? true : false,
+				columns: hasHeaders ? (header: string[]) => header.map((h) => h.trim()) : false,
 				skip_empty_lines: true,
+				bom: true,
 			})
 				.on('data', (row: Record<string, string> | string[]) => {
 					if (!hasHeaders && Array.isArray(row)) {
@@ -141,6 +143,80 @@ export class CsvParserService {
 				})
 				.on('end', () => {
 					resolve(rows);
+				})
+				.on('error', reject);
+
+			createReadStream(filePath).on('error', reject).pipe(parser);
+		});
+	}
+
+	/**
+	 * Parses a CSV file in a single pass, returning both metadata and all rows.
+	 * Use this instead of calling parseFile + parseFileData separately.
+	 */
+	async parseFileWithData(
+		fileId: string,
+		hasHeaders: boolean = true,
+	): Promise<{ metadata: CsvMetadata; rows: Array<Record<string, string>> }> {
+		const filePath = safeJoinPath(this.uploadDir, fileId);
+		let columnNames: string[] = [];
+		const firstNonEmptyValues = new Map<string, string>();
+		const rows: Array<Record<string, string>> = [];
+
+		return await new Promise((resolve, reject) => {
+			const parser = parse({
+				columns: hasHeaders
+					? (header: string[]) => {
+							columnNames = header.map((h) => h.trim());
+							return columnNames;
+						}
+					: false,
+				skip_empty_lines: true,
+				bom: true,
+			})
+				.on('data', (row: Record<string, string> | string[]) => {
+					let rowObject: Record<string, string>;
+					if (!hasHeaders && Array.isArray(row)) {
+						const processed = this.processRowWithoutHeaders(row, columnNames);
+						columnNames = processed.columnNames;
+						rowObject = processed.rowObject;
+					} else if (!Array.isArray(row)) {
+						rowObject = row;
+					} else {
+						return;
+					}
+
+					rows.push(rowObject);
+
+					if (rows.length <= this.TYPE_INFERENCE_SAMPLE_SIZE) {
+						for (const colName of columnNames) {
+							if (!firstNonEmptyValues.has(colName)) {
+								const value = rowObject[colName];
+								if (value?.trim()) {
+									firstNonEmptyValues.set(colName, value);
+								}
+							}
+						}
+					}
+				})
+				.on('end', () => {
+					const columns = columnNames.map((columnName) => {
+						const detectedType = this.inferColumnType(firstNonEmptyValues.get(columnName));
+						return {
+							name: columnName,
+							type: detectedType,
+							compatibleTypes: this.getCompatibleTypes(detectedType),
+						};
+					});
+
+					resolve({
+						metadata: {
+							rowCount: rows.length,
+							columnCount: columns.length,
+							columns,
+						},
+						rows,
+					});
 				})
 				.on('error', reject);
 
