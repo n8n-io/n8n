@@ -79,8 +79,11 @@ describe('Facebook GenericFunctions', () => {
 			);
 		});
 
-		it('should include appsecret_proof when appSecret is set', async () => {
+		it('should include appsecret_proof and appsecret_time when appSecret is set', async () => {
 			const { createHmac } = require('crypto');
+			const fixedTime = 1700000000;
+			jest.spyOn(Date, 'now').mockReturnValue(fixedTime * 1000);
+
 			mockExecuteFunctions.getNode.mockReturnValue({ name: 'Facebook Trigger' });
 			mockExecuteFunctions.getCredentials.mockResolvedValue({
 				accessToken: 'test-app-access-token',
@@ -91,7 +94,7 @@ describe('Facebook GenericFunctions', () => {
 			await utils.facebookApiRequest.call(mockExecuteFunctions, 'GET', '/app', {}, {});
 
 			const expectedProof = createHmac('sha256', 'test-app-secret')
-				.update('test-app-access-token')
+				.update(`test-app-access-token|${fixedTime}`)
 				.digest('hex');
 
 			expect(mockExecuteFunctions.helpers.request).toHaveBeenCalledWith(
@@ -99,9 +102,12 @@ describe('Facebook GenericFunctions', () => {
 					qs: {
 						access_token: 'test-app-access-token',
 						appsecret_proof: expectedProof,
+						appsecret_time: fixedTime,
 					},
 				}),
 			);
+
+			jest.restoreAllMocks();
 		});
 
 		it('should not include appsecret_proof when appSecret is empty', async () => {
@@ -116,6 +122,7 @@ describe('Facebook GenericFunctions', () => {
 
 			const requestCall = mockExecuteFunctions.helpers.request.mock.calls[0][0];
 			expect(requestCall.qs).not.toHaveProperty('appsecret_proof');
+			expect(requestCall.qs).not.toHaveProperty('appsecret_time');
 		});
 
 		it('should allow custom URI', async () => {
