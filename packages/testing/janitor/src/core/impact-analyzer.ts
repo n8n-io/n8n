@@ -228,11 +228,19 @@ export class ImpactAnalyzer {
 	 * Example chain: MfaLoginPage → facade(mfaLogin) → MfaComposer(mfaLogin.*) →
 	 *   facade(mfaComposer) → test(n8n.mfaComposer.*)
 	 */
-	private resolvePropertyToTests(propertyNames: string[], visited: Set<string>): string[] {
+	private resolvePropertyToTests(
+		propertyNames: string[],
+		visited: Set<string>,
+		resolvedConsumers: Set<string> = new Set(),
+	): string[] {
 		const consumers = this.findConsumersUsingProperties(propertyNames);
 		const tests: string[] = [];
 
 		for (const consumer of consumers) {
+			// Guard against cyclic property chains (A→B→A)
+			if (resolvedConsumers.has(consumer)) continue;
+			resolvedConsumers.add(consumer);
+
 			const relativePath = getRelativePath(consumer);
 
 			if (isTestFile(relativePath)) {
@@ -248,7 +256,11 @@ export class ImpactAnalyzer {
 			const consumerPropertyNames = this.extractPropertyNames(sourceFile);
 			if (consumerPropertyNames.length > 0) {
 				// File is on the facade — recurse with its property names
-				const transitiveTests = this.resolvePropertyToTests(consumerPropertyNames, visited);
+				const transitiveTests = this.resolvePropertyToTests(
+					consumerPropertyNames,
+					visited,
+					resolvedConsumers,
+				);
 				tests.push(...transitiveTests);
 			} else {
 				// Not on the facade — fall back to import tracing
