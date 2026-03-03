@@ -102,6 +102,7 @@ export class WorkflowApiHelper {
 		return result.data ?? result;
 	}
 
+	/** Triggers a manual workflow execution from a specific trigger node. */
 	async runManually(workflowId: string, triggerNodeName: string): Promise<{ executionId: string }> {
 		const response = await this.api.request.post(`/rest/workflows/${workflowId}/run`, {
 			data: {
