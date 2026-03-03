@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
-import type { WorkflowHistory, WorkflowVersion } from '@n8n/rest-api-client/api/workflowHistory';
+import type { WorkflowHistory } from '@n8n/rest-api-client/api/workflowHistory';
 import { useWorkflowHistoryVersionOptions } from './useWorkflowHistoryVersionOptions';
 
 vi.mock('@n8n/i18n', () => ({
@@ -36,30 +36,17 @@ const createHistoryVersion = (overrides: Partial<WorkflowHistory> = {}): Workflo
 	...overrides,
 });
 
-const createLoadedVersion = (overrides: Partial<WorkflowVersion> = {}): WorkflowVersion => ({
-	...createHistoryVersion(),
-	workflowId: 'wf-1',
-	nodes: [],
-	connections: {},
-	...overrides,
-});
-
 describe('useWorkflowHistoryVersionOptions', () => {
 	it('builds options with current changes label and keeps selected fallback versions', () => {
 		const availableVersions = computed(() => [
 			createHistoryVersion({ versionId: 'v-current', name: null }),
 			createHistoryVersion({ versionId: 'v-old', name: null }),
 		]);
-		const loadedVersions = ref(
-			new Map<string, WorkflowVersion>([
-				['v-loaded', createLoadedVersion({ versionId: 'v-loaded', name: 'Loaded Version' })],
-			]),
-		);
 
 		const { versionOptions } = useWorkflowHistoryVersionOptions({
 			availableVersions,
-			activeWorkflowVersionId: ref('v-current'),
-			loadedVersions,
+			currentWorkflowVersionId: ref('v-current'),
+			activeWorkflowVersionId: ref(undefined),
 			selectedVersionIds: computed(() => ['v-current', 'v-loaded']),
 			resolveUserDisplayName: () => null,
 		});
@@ -68,11 +55,11 @@ describe('useWorkflowHistoryVersionOptions', () => {
 
 		expect(optionsById.get('v-current')?.label).toBe('Current changes');
 		expect(optionsById.get('v-old')?.label).toBe('Version v-old');
-		expect(optionsById.get('v-loaded')?.label).toBe('Loaded Version');
+		expect(optionsById.get('v-loaded')?.label).toBe('Version v-loaded');
 		expect(optionsById.has('v-loaded')).toBe(true);
 	});
 
-	it('marks latest version and exposes publish info', () => {
+	it('marks active version and exposes publish info', () => {
 		const availableVersions = computed(() => [
 			createHistoryVersion({
 				versionId: 'v-published',
@@ -91,13 +78,13 @@ describe('useWorkflowHistoryVersionOptions', () => {
 
 		const { versionOptions } = useWorkflowHistoryVersionOptions({
 			availableVersions,
-			activeWorkflowVersionId: ref(undefined),
-			loadedVersions: ref(new Map()),
+			currentWorkflowVersionId: ref(undefined),
+			activeWorkflowVersionId: ref('v-published'),
 			selectedVersionIds: computed(() => ['v-published']),
 			resolveUserDisplayName: (userId) => (userId === 'user-1' ? 'John Doe' : null),
 		});
 
-		expect(versionOptions.value[0].status).toBe('latest');
+		expect(versionOptions.value[0].status).toBe('active');
 		expect(versionOptions.value[0].publishInfo).toEqual({
 			publishedBy: 'John Doe',
 			publishedAt: '2026-02-25T16:19:43.000Z',
