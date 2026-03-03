@@ -147,24 +147,9 @@ function isPrivateIPv6(ip: string): boolean {
 }
 
 /**
- * Check if a URL should be blocked for SSRF protection.
- * Validates scheme, hostname patterns, and resolved IP addresses.
+ * Check if a hostname is blocked by static rules (localhost, private IPs, etc).
  */
-export async function isBlockedUrl(url: string): Promise<boolean> {
-	let parsed: URL;
-	try {
-		parsed = new URL(url);
-	} catch {
-		return true;
-	}
-
-	// Block non-HTTP(S) schemes
-	if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-		return true;
-	}
-
-	const hostname = parsed.hostname.toLowerCase().replace(/\.$/, '');
-
+function isBlockedHostname(hostname: string): boolean {
 	// Block localhost variants
 	if (
 		hostname === 'localhost' ||
@@ -188,6 +173,30 @@ export async function isBlockedUrl(url: string): Promise<boolean> {
 	// Check if hostname is an IP literal
 	if (isPrivateIPv4(hostname)) return true;
 	if (isPrivateIPv6(hostname.replace(/^\[|\]$/g, ''))) return true;
+
+	return false;
+}
+
+/**
+ * Check if a URL should be blocked for SSRF protection.
+ * Validates scheme, hostname patterns, and resolved IP addresses.
+ */
+export async function isBlockedUrl(url: string): Promise<boolean> {
+	let parsed: URL;
+	try {
+		parsed = new URL(url);
+	} catch {
+		return true;
+	}
+
+	// Block non-HTTP(S) schemes
+	if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+		return true;
+	}
+
+	const hostname = parsed.hostname.toLowerCase().replace(/\.$/, '');
+
+	if (isBlockedHostname(hostname)) return true;
 
 	// DNS resolution check
 	try {
@@ -274,7 +283,7 @@ export async function fetchUrl(url: string, signal?: AbortSignal): Promise<Fetch
 
 			totalBytes += value.byteLength;
 			if (totalBytes > WEB_FETCH_MAX_BYTES) {
-				reader.cancel();
+				void reader.cancel();
 				// Still return what we have
 				break;
 			}

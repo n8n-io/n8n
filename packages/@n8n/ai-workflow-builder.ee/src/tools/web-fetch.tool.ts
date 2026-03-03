@@ -19,6 +19,18 @@ import {
 	isUrlInUserMessages,
 } from './utils/web-fetch.utils';
 
+interface WebFetchState {
+	approvedDomains?: string[];
+	webFetchCount?: number;
+	messages?: BaseMessage[];
+}
+
+interface WebFetchResumeValue {
+	requestId: string;
+	url: string;
+	action: string;
+}
+
 export const WEB_FETCH_TOOL: BuilderToolBase = {
 	toolName: 'web_fetch',
 	displayTitle: 'Fetching web content',
@@ -58,11 +70,7 @@ export function createWebFetchTool() {
 				}
 
 				// 2. Read state for approved domains, fetch count, and messages
-				const state = getCurrentTaskInput() as {
-					approvedDomains?: string[];
-					webFetchCount?: number;
-					messages?: BaseMessage[];
-				};
+				const state = getCurrentTaskInput<WebFetchState>();
 				const approvedDomains: string[] = state.approvedDomains ?? [];
 				const webFetchCount: number = state.webFetchCount ?? 0;
 
@@ -92,7 +100,7 @@ export function createWebFetchTool() {
 					// produces a different value each run. The requestId in the resume payload
 					// is the one from the original interrupt; we validate via url match instead.
 					const requestId = randomUUID();
-					const resumeValue = interrupt({
+					const resumeValue = interrupt<unknown, WebFetchResumeValue>({
 						type: 'web_fetch_approval',
 						requestId,
 						url,
