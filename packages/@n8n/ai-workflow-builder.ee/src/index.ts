@@ -31,6 +31,7 @@ export {
 	CODE_BUILDER_VALIDATE_TOOL,
 	MCP_GET_SDK_REFERENCE_TOOL,
 	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL,
+	MCP_DELETE_WORKFLOW_TOOL,
 } from './code-builder';
 export type {
 	CodeBuilderGetToolOptions,
