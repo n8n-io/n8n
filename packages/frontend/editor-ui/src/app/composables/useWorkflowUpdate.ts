@@ -1,0 +1,397 @@
+/**
+ * Composable for updating workflows with new data from the AI Builder.
+ * Handles update-in-place logic: updates existing nodes by ID, adds new nodes,
+ * removes stale nodes, and handles renames.
+ */
+import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants';
+import type { INodeUi } from '@/Interface';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useBuilderStore } from '@/features/ai/assistant/builder.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
+import { mapLegacyConnectionsToCanvasConnections } from '@/features/workflows/canvas/canvas.utils';
+import { getAuthTypeForNodeCredential, getMainAuthField } from '@/app/utils/nodeTypesUtils';
+import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
+import { NodeHelpers, type IConnections, type INode } from 'n8n-workflow';
+import isEqual from 'lodash/isEqual';
+
+export interface UpdateWorkflowOptions {
+	isInitialGeneration?: boolean;
+	/** Node IDs to tidy up (in addition to any newly added nodes) */
+	nodeIdsToTidyUp?: string[];
+}
+
+export type UpdateWorkflowResult =
+	| {
+			success: true;
+			/** IDs of nodes that were newly added */
+			newNodeIds: string[];
+	  }
+	| {
+			success: false;
+			error: unknown;
+	  };
+
+export function useWorkflowUpdate() {
+	const workflowsStore = useWorkflowsStore();
+	const workflowState = injectWorkflowState();
+	const credentialsStore = useCredentialsStore();
+	const nodeTypesStore = useNodeTypesStore();
+	const builderStore = useBuilderStore();
+	const uiStore = useUIStore();
+	const canvasOperations = useCanvasOperations();
+	const nodeHelpers = useNodeHelpers();
+
+	/**
+	 * Categorize nodes into those to update, add, or remove.
+	 *
+	 * Uses name+type fallback matching when IDs don't match. This handles the case
+	 * where the workflow SDK regenerates node IDs during re-parsing (e.g., when the
+	 * AI builder makes corrections to workflow code). Without this fallback, nodes
+	 * with new IDs but the same name+type would be incorrectly categorized as "new",
+	 * triggering maxNodes validation errors for nodes like ChatTrigger.
+	 */
+	function categorizeNodes(workflowData: WorkflowDataUpdate) {
+		const existingNodesById = new Map(workflowsStore.allNodes.map((n) => [n.id, n]));
+
+		// Add name+type index for fallback matching when IDs differ
+		const existingNodesByNameType = new Map(
+			workflowsStore.allNodes.map((n) => [`${n.type}::${n.name}`, n]),
+		);
+
+		const nodesToUpdate: Array<{ existing: INodeUi; updated: INode }> = [];
+		const nodesToAdd: INode[] = [];
+		const nodesToRemove: INodeUi[] = [];
+		const processedExistingIds = new Set<string>();
+
+		workflowData.nodes?.forEach((newNode) => {
+			// First try to match by ID
+			let existing = existingNodesById.get(newNode.id);
+
+			// Fallback: match by name + type (handles ID regeneration)
+			if (!existing) {
+				const nameTypeKey = `${newNode.type}::${newNode.name}`;
+				existing = existingNodesByNameType.get(nameTypeKey);
+			}
+
+			if (existing) {
+				// Update node, preserving the existing ID for consistency
+				nodesToUpdate.push({
+					existing,
+					updated: { ...newNode, id: existing.id },
+				});
+				processedExistingIds.add(existing.id);
+			} else {
+				nodesToAdd.push(newNode);
+			}
+		});
+
+		// Nodes to remove: exist in current but not matched by new workflow
+		existingNodesById.forEach((node, id) => {
+			if (!processedExistingIds.has(id)) {
+				nodesToRemove.push(node);
+			}
+		});
+
+		return { nodesToUpdate, nodesToAdd, nodesToRemove };
+	}
+
+	/**
+	 * Update existing nodes in place, handling renames via canvasOperations.renameNode()
+	 * which properly updates pinData, nodeMetadata, runData, etc.
+	 */
+	async function updateExistingNodes(
+		nodesToUpdate: Array<{ existing: INodeUi; updated: INode }>,
+	): Promise<boolean> {
+		if (nodesToUpdate.length === 0) return false;
+
+		// Track successful renames (nodeId -> actualNewName after uniquification)
+		const renamedNodes = new Map<string, string>();
+		let hasChanges = false;
+
+		// First handle renames via canvasOperations (handles pinData, metadata, etc.)
+		for (const { existing, updated } of nodesToUpdate) {
+			if (existing.name !== updated.name) {
+				const actualNewName = await canvasOperations.renameNode(existing.name, updated.name, {
+					trackHistory: true,
+					trackBulk: false,
+					showErrorToast: false,
+				});
+				if (actualNewName) {
+					renamedNodes.set(existing.id, actualNewName);
+					hasChanges = true;
+				}
+			}
+		}
+
+		// Then update other node properties on the (possibly renamed) nodes
+		const workflow = workflowsStore.cloneWorkflowObject();
+
+		for (const { existing, updated } of nodesToUpdate) {
+			// Use new name only if rename succeeded, otherwise use old name
+			const nodeName = renamedNodes.get(existing.id) ?? existing.name;
+			const node = workflow.nodes[nodeName];
+			if (!node) continue;
+
+			// Update node properties, preserving position and current name
+			Object.assign(node, {
+				...updated,
+				position: existing.position,
+				name: nodeName, // Keep actual name (old if rename failed)
+			});
+
+			// Resolve parameters with defaults to ensure all parameter values are properly initialized
+			// This is necessary because AI builder may send partial parameters without defaults
+			const nodeTypeDescription = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+			if (nodeTypeDescription) {
+				const resolvedParameters = NodeHelpers.getNodeParameters(
+					nodeTypeDescription.properties ?? [],
+					node.parameters,
+					true, // returnDefaults
+					false,
+					node,
+					nodeTypeDescription,
+				);
+				node.parameters = resolvedParameters ?? {};
+			}
+
+			// Mark node as dirty if parameters changed
+			if (!isEqual(existing.parameters, updated.parameters)) {
+				workflowState.resetParametersLastUpdatedAt(nodeName);
+				hasChanges = true;
+			}
+		}
+
+		// Sync state back to store
+		workflowsStore.setNodes(Object.values(workflow.nodes));
+		workflowsStore.setConnections(workflow.connectionsBySourceNode);
+		// Revalidate updated nodes to refresh error indicators on canvas
+		for (const { existing } of nodesToUpdate) {
+			const nodeName = renamedNodes.get(existing.id) ?? existing.name;
+			nodeHelpers.updateNodeParameterIssuesByName(nodeName);
+		}
+
+		return hasChanges;
+	}
+
+	/**
+	 * Remove stale nodes that are no longer in the update
+	 */
+	function removeStaleNodes(nodesToRemove: INodeUi[]): void {
+		for (const node of nodesToRemove) {
+			canvasOperations.deleteNode(node.id, { trackHistory: true, trackBulk: false });
+		}
+	}
+
+	/**
+	 * Add new nodes via canvas operations
+	 */
+	async function addNewNodes(nodesToAdd: INode[]): Promise<INodeUi[]> {
+		if (nodesToAdd.length === 0) return [];
+
+		const addedNodes = await canvasOperations.addNodes(
+			nodesToAdd.map((node) => ({ ...node })),
+			{
+				trackHistory: true,
+				trackBulk: false,
+				forcePosition: true,
+				telemetry: false,
+			},
+		);
+
+		return addedNodes;
+	}
+
+	/**
+	 * Helper to compare canvas connections
+	 */
+	function isSameConnection(
+		a: {
+			source: string;
+			target: string;
+			sourceHandle?: string | null;
+			targetHandle?: string | null;
+		},
+		b: {
+			source: string;
+			target: string;
+			sourceHandle?: string | null;
+			targetHandle?: string | null;
+		},
+	): boolean {
+		return (
+			a.source === b.source &&
+			a.target === b.target &&
+			(a.sourceHandle ?? null) === (b.sourceHandle ?? null) &&
+			(a.targetHandle ?? null) === (b.targetHandle ?? null)
+		);
+	}
+
+	/**
+	 * Update connections - remove old, add new
+	 */
+	async function updateConnections(newConnections: IConnections): Promise<void> {
+		const existingConnections = workflowsStore.workflow.connections;
+
+		// Convert to canvas format for comparison
+		const existingCanvasConnections = mapLegacyConnectionsToCanvasConnections(
+			existingConnections,
+			workflowsStore.allNodes,
+		);
+		const newCanvasConnections = mapLegacyConnectionsToCanvasConnections(
+			newConnections,
+			workflowsStore.allNodes,
+		);
+
+		// Find connections to remove (exist in current but not in new)
+		const connectionsToRemove = existingCanvasConnections.filter(
+			(existing) => !newCanvasConnections.some((newConn) => isSameConnection(existing, newConn)),
+		);
+
+		// Find connections to add (exist in new but not in current)
+		const connectionsToAdd = newCanvasConnections.filter(
+			(newConn) =>
+				!existingCanvasConnections.some((existing) => isSameConnection(existing, newConn)),
+		);
+
+		// Remove old connections
+		for (const connection of connectionsToRemove) {
+			canvasOperations.deleteConnection(connection, {
+				trackHistory: true,
+				trackBulk: false,
+			});
+		}
+
+		// Add new connections
+		if (connectionsToAdd.length > 0) {
+			await canvasOperations.addConnections(connectionsToAdd, {
+				trackHistory: true,
+				trackBulk: false,
+			});
+		}
+	}
+
+	/**
+	 * Set default credentials on nodes that don't have any (mutates input array).
+	 * Must be called BEFORE nodes are added to store to avoid direct store mutation.
+	 */
+	function setDefaultCredentialsOnNodes(nodes: INode[]): void {
+		for (const node of nodes) {
+			const hasCredentials = node.credentials && Object.keys(node.credentials).length > 0;
+			if (hasCredentials) continue;
+
+			const nodeType = nodeTypesStore.getNodeType(node.type);
+			if (!nodeType?.credentials) continue;
+
+			for (const credentialConfig of nodeType.credentials) {
+				const credentials = credentialsStore.getCredentialsByType(credentialConfig.name);
+				if (!credentials || credentials.length === 0) continue;
+
+				const credential = credentials[0];
+				node.credentials = {
+					[credential.type]: {
+						id: credential.id,
+						name: credential.name,
+					},
+				};
+
+				const authField = getMainAuthField(nodeType);
+				const authType = getAuthTypeForNodeCredential(nodeType, credentialConfig);
+				if (authField && authType) {
+					node.parameters[authField.name] = authType.value;
+				}
+
+				break;
+			}
+		}
+	}
+
+	/**
+	 * Update workflow name if initial generation and name starts with default
+	 */
+	function updateWorkflowNameIfNeeded(name?: string, isInitialGeneration?: boolean): void {
+		if (
+			name &&
+			isInitialGeneration &&
+			workflowsStore.workflow.name.startsWith(DEFAULT_NEW_WORKFLOW_NAME)
+		) {
+			workflowState.setWorkflowName({ newName: name, setStateDirty: false });
+		}
+	}
+
+	/**
+	 * Tidy up node positions. When nodeIdsFilter is provided, only those nodes
+	 * are laid out. When omitted, all nodes are laid out (full re-layout).
+	 */
+	function tidyUpNodes(nodeIdsFilter?: string[]): void {
+		canvasEventBus.emit('tidyUp', {
+			source: 'builder-update',
+			nodeIdsFilter,
+			trackEvents: false,
+			trackHistory: true,
+			trackBulk: false,
+		});
+	}
+
+	/**
+	 * Updates workflow with new data, preserving existing node positions
+	 * and handling renames, additions, and removals efficiently.
+	 * Note: Undo recording should be managed by the caller (e.g., start when streaming begins, stop when it ends).
+	 */
+	async function updateWorkflow(
+		workflowData: WorkflowDataUpdate,
+		options?: UpdateWorkflowOptions,
+	): Promise<UpdateWorkflowResult> {
+		try {
+			// Apply default credentials to incoming nodes BEFORE adding to store
+			setDefaultCredentialsOnNodes(workflowData.nodes ?? []);
+
+			const { nodesToUpdate, nodesToAdd, nodesToRemove } = categorizeNodes(workflowData);
+
+			const existingNodesChanged = await updateExistingNodes(nodesToUpdate);
+
+			// Mark state dirty when existing nodes are modified (e.g., parameter changes).
+			// addNewNodes/removeStaleNodes already mark dirty via canvasOperations,
+			// but updateExistingNodes uses setNodes() which does not.
+			if (existingNodesChanged) {
+				uiStore.markStateDirty();
+			}
+
+			removeStaleNodes(nodesToRemove);
+			const addedNodes = await addNewNodes(nodesToAdd);
+			const newNodeIds = addedNodes.map((n) => n.id);
+			await updateConnections(workflowData.connections ?? {});
+			updateWorkflowNameIfNeeded(workflowData.name, options?.isInitialGeneration);
+
+			// Merge pin data from workflow data with existing pin data
+			if (workflowData.pinData && workflowsStore.workflowId) {
+				const workflowDocumentStore = useWorkflowDocumentStore(
+					createWorkflowDocumentId(workflowsStore.workflowId),
+				);
+				workflowDocumentStore.setPinData({
+					...workflowDocumentStore.getPinDataSnapshot(),
+					...workflowData.pinData,
+				});
+			}
+
+			builderStore.setBuilderMadeEdits(true);
+
+			tidyUpNodes();
+
+			return { success: true, newNodeIds };
+		} catch (error) {
+			return { success: false, error };
+		}
+	}
+
+	return { updateWorkflow };
+}

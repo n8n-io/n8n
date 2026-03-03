@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { fireEvent, screen } from '@testing-library/vue';
+import { fireEvent, screen, waitFor } from '@testing-library/vue';
 import FreeAiCreditsCallout from '@/app/components/FreeAiCreditsCallout.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -63,7 +63,7 @@ const assertUserClaimedCredits = () => {
 
 	expect(
 		screen.getByText(
-			'gpt-4o-mini, text-embedding-3-small, dall-e-3, tts-1, whisper-1, and text-moderation-latest',
+			'gpt-5-mini, gpt-4.1-mini, gpt-4.1-nano, gpt-4o-mini, text-embedding-3-small, dall-e-3, tts-1, whisper-1, and text-moderation-latest',
 		),
 	).toBeInTheDocument();
 };
@@ -130,8 +130,12 @@ describe('FreeAiCreditsCallout', () => {
 		await fireEvent.click(claimButton);
 
 		expect(credentialsStore.claimFreeAiCredits).toHaveBeenCalledWith('test-project-id');
-		expect(useTelemetry().track).toHaveBeenCalledWith('User claimed OpenAI credits');
-		assertUserClaimedCredits();
+		expect(useTelemetry().track).toHaveBeenCalledWith('User claimed OpenAI credits', {
+			source: 'freeAiCreditsCallout',
+		});
+		await waitFor(() => {
+			assertUserClaimedCredits();
+		});
 	});
 
 	it('should not be able to claim credits is user already claimed credits', async () => {

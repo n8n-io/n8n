@@ -1,4 +1,5 @@
-import type { INode, INodeExecutionData, IPairedItemData } from 'n8n-workflow';
+import { mock } from 'jest-mock-extended';
+import type { IExecuteFunctions, INode, INodeExecutionData, IPairedItemData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import pgPromise from 'pg-promise';
 
@@ -24,6 +25,8 @@ import {
 	convertValuesToJsonWithPgp,
 	hasJsonDataTypeInSchema,
 	evaluateExpression,
+	isWhereClause,
+	getWhereClauses,
 	runQueriesAndHandleErrors,
 } from '../../v2/helpers/utils';
 
@@ -213,6 +216,116 @@ describe('Test PostgresV2, addWhereClauses', () => {
 			'SELECT * FROM $1:name.$2:name WHERE $3:name = $4 AND $5:name = $6',
 		);
 		expect(updatedValues).toEqual(['public', 'my_table', 'id', '1', 'foo', 'select 2']);
+	});
+
+	it('should handle numeric comparison operators', () => {
+		const query = 'SELECT * FROM $1:name.$2:name';
+		const values = ['public', 'my_table'];
+		const whereClauses = [
+			{ column: 'age', condition: '>', value: '25' },
+			{ column: 'salary', condition: '>=', value: '50000' },
+		];
+
+		const [updatedQuery, updatedValues] = addWhereClauses(
+			node,
+			0,
+			query,
+			whereClauses,
+			values,
+			'AND',
+		);
+
+		expect(updatedQuery).toEqual(
+			'SELECT * FROM $1:name.$2:name WHERE $3:name > $4 AND $5:name >= $6',
+		);
+		// Values should be converted to numbers
+		expect(updatedValues).toEqual(['public', 'my_table', 'age', 25, 'salary', 50000]);
+	});
+
+	it('should handle date comparison operators', () => {
+		const query = 'SELECT * FROM $1:name.$2:name';
+		const values = ['public', 'my_table'];
+		const whereClauses = [
+			{ column: 'created_at', condition: '>=', value: '2025-04-28T00:00:00.000Z' },
+			{ column: 'updated_at', condition: '<', value: '2025-05-01' },
+		];
+
+		const [updatedQuery, updatedValues] = addWhereClauses(
+			node,
+			0,
+			query,
+			whereClauses,
+			values,
+			'AND',
+		);
+
+		expect(updatedQuery).toEqual(
+			'SELECT * FROM $1:name.$2:name WHERE $3:name >= $4 AND $5:name < $6',
+		);
+		// Date strings should remain as strings
+		expect(updatedValues).toEqual([
+			'public',
+			'my_table',
+			'created_at',
+			'2025-04-28T00:00:00.000Z',
+			'updated_at',
+			'2025-05-01',
+		]);
+	});
+
+	it('should handle string comparison operators', () => {
+		const query = 'SELECT * FROM $1:name.$2:name';
+		const values = ['public', 'my_table'];
+		const whereClauses = [
+			{ column: 'name', condition: '>', value: 'M' },
+			{ column: 'category', condition: '<=', value: 'Electronics' },
+		];
+
+		const [updatedQuery, updatedValues] = addWhereClauses(
+			node,
+			0,
+			query,
+			whereClauses,
+			values,
+			'AND',
+		);
+
+		expect(updatedQuery).toEqual(
+			'SELECT * FROM $1:name.$2:name WHERE $3:name > $4 AND $5:name <= $6',
+		);
+		// Text strings should remain as strings
+		expect(updatedValues).toEqual(['public', 'my_table', 'name', 'M', 'category', 'Electronics']);
+	});
+
+	it('should not convert empty strings or whitespace-only strings to numbers', () => {
+		const query = 'SELECT * FROM $1:name.$2:name';
+		const values = ['public', 'my_table'];
+		const whereClauses = [
+			{ column: 'empty_field', condition: '>', value: '' },
+			{ column: 'whitespace_field', condition: '>=', value: '   ' },
+		];
+
+		const [updatedQuery, updatedValues] = addWhereClauses(
+			node,
+			0,
+			query,
+			whereClauses,
+			values,
+			'AND',
+		);
+
+		expect(updatedQuery).toEqual(
+			'SELECT * FROM $1:name.$2:name WHERE $3:name > $4 AND $5:name >= $6',
+		);
+		// These should NOT be converted to numbers
+		expect(updatedValues).toEqual([
+			'public',
+			'my_table',
+			'empty_field',
+			'',
+			'whitespace_field',
+			'   ',
+		]);
 	});
 });
 
@@ -560,6 +673,110 @@ describe('Test PostgresV2, convertArraysToPostgresFormat', () => {
 			arr: '{1,2,3}',
 		});
 		expect(item).toEqual(referenceItem);
+	});
+
+	describe('where clause handling', () => {
+		const validOperations = [
+			'equal',
+			'=',
+			'!=',
+			'LIKE',
+			'>',
+			'<',
+			'>=',
+			'<=',
+			'IS NULL',
+			'IS NOT NULL',
+		];
+		const invalidOperations = ['=1 or 1--', '=>', ''];
+
+		test.each(validOperations)('isWhereClause returns true for "%s" operation', (operation) => {
+			expect(
+				isWhereClause({
+					column: 'id',
+					condition: operation,
+					value: '1',
+				}),
+			).toBe(true);
+		});
+
+		test.each(invalidOperations)('isWhereClause returns false for "%s" operation', (operation) => {
+			expect(
+				isWhereClause({
+					column: 'name',
+					condition: operation,
+					value: 'ok',
+				}),
+			).toBe(false);
+		});
+
+		test('isWhereClause returns false for when column is missing', () => {
+			expect(
+				isWhereClause({
+					condition: 'equal',
+					value: 'ok',
+				}),
+			).toBe(false);
+		});
+
+		test('isWhereClause returns false for when condition is missing', () => {
+			expect(
+				isWhereClause({
+					column: 'id',
+					value: 'ok',
+				}),
+			).toBe(false);
+		});
+
+		test.each(invalidOperations)(
+			'getWhereClauses throws an exception for "%s" operation',
+			(operation) => {
+				const getNodeParameterMock = jest.fn().mockReturnValue({
+					values: [
+						{
+							column: 'test',
+							condition: '=',
+							value: '3',
+						},
+						{
+							column: 'id',
+							condition: operation,
+							value: '1',
+						},
+					],
+				});
+				const ctx = mock<IExecuteFunctions>({ getNodeParameter: getNodeParameterMock });
+				expect(() => getWhereClauses(ctx, 0)).toThrow();
+			},
+		);
+
+		test.each(validOperations)(
+			'getWhereClauses returns valid clauses for "%s" operation',
+			(operation) => {
+				const clauses = [
+					{
+						column: 'name',
+						condition: 'LIKE',
+						value: 'Wohn Jick',
+					},
+					{
+						column: 'id',
+						condition: operation,
+						value: '1',
+					},
+					{
+						column: 'condition',
+						condition: 'equal',
+						value: 'angry',
+					},
+				];
+				const getNodeParameterMock = jest.fn().mockReturnValue({
+					values: clauses,
+				});
+				const ctx = mock<IExecuteFunctions>({ getNodeParameter: getNodeParameterMock });
+				expect(getWhereClauses(ctx, 0)).toBe(clauses);
+			},
+		);
 	});
 });
 

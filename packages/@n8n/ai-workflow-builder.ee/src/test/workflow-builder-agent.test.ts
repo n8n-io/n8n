@@ -1,12 +1,11 @@
 /* eslint-disable @typescript-eslint/require-await */
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { HumanMessage } from '@langchain/core/messages';
 import type { MemorySaver } from '@langchain/langgraph';
 import { GraphRecursionError } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 import type { INodeTypeDescription } from 'n8n-workflow';
-import { ApplicationError } from 'n8n-workflow';
+import { ApplicationError, OperationalError } from 'n8n-workflow';
 
 jest.mock('@/tools/add-node.tool', () => ({
 	createAddNodeTool: jest.fn().mockReturnValue({ tool: { name: 'add_node' } }),
@@ -31,30 +30,36 @@ jest.mock('@/tools/update-node-parameters.tool', () => ({
 jest.mock('@/tools/get-node-parameter.tool', () => ({
 	createGetNodeParameterTool: jest.fn().mockReturnValue({ tool: { name: 'get_node_parameter' } }),
 }));
-jest.mock('@/prompts/legacy-agent.prompt', () => ({
-	mainAgentPrompt: {
-		invoke: jest.fn().mockResolvedValue('mocked prompt'),
-	},
-	createMainAgentPrompt: jest.fn().mockReturnValue({
-		invoke: jest.fn().mockResolvedValue('mocked prompt'),
-	}),
-}));
-jest.mock('@/utils/operations-processor', () => ({
-	processOperations: jest.fn(),
-}));
 
 jest.mock('@/utils/stream-processor', () => ({
 	createStreamProcessor: jest.fn(),
 	formatMessages: jest.fn(),
 }));
-jest.mock('@/utils/tool-executor', () => ({
-	executeToolsInParallel: jest.fn(),
+
+const mockCodeWorkflowBuilderChat = jest.fn();
+jest.mock('@/code-builder', () => ({
+	CodeWorkflowBuilder: jest.fn().mockImplementation(() => ({
+		chat: mockCodeWorkflowBuilderChat,
+	})),
 }));
-jest.mock('@/chains/conversation-compact', () => ({
-	conversationCompactChain: jest.fn(),
+
+const mockTriageAgentRun = jest.fn();
+jest.mock('@/code-builder/triage.agent', () => ({
+	TriageAgent: jest.fn().mockImplementation(() => ({
+		run: mockTriageAgentRun,
+	})),
 }));
-jest.mock('@/chains/workflow-name', () => ({
-	workflowNameChain: jest.fn(),
+
+const mockLoadCodeBuilderSession = jest.fn();
+const mockSaveCodeBuilderSession = jest.fn();
+const mockGenerateCodeBuilderThreadId = jest.fn();
+jest.mock('@/code-builder/utils/code-builder-session', () => ({
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+	loadCodeBuilderSession: (...args: unknown[]) => mockLoadCodeBuilderSession(...args),
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+	saveCodeBuilderSession: (...args: unknown[]) => mockSaveCodeBuilderSession(...args),
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+	generateCodeBuilderThreadId: (...args: unknown[]) => mockGenerateCodeBuilderThreadId(...args),
 }));
 
 const mockRandomUUID = jest.fn();
@@ -65,23 +70,22 @@ Object.defineProperty(global, 'crypto', {
 	writable: true,
 });
 
+import type { AssistantHandler } from '@/assistant/assistant-handler';
+import { CodeWorkflowBuilder } from '@/code-builder';
 import { MAX_AI_BUILDER_PROMPT_LENGTH } from '@/constants';
 import { ValidationError } from '@/errors';
-import { createMainAgentPrompt } from '@/prompts/legacy-agent.prompt';
+import type { PlanInterruptValue, PlanOutput } from '@/types/planning';
 import type { StreamOutput } from '@/types/streaming';
 import { createStreamProcessor } from '@/utils/stream-processor';
 import {
 	WorkflowBuilderAgent,
 	type WorkflowBuilderAgentConfig,
 	type ChatPayload,
-	shouldModifyState,
 } from '@/workflow-builder-agent';
-import type { WorkflowState } from '@/workflow-state';
 
 describe('WorkflowBuilderAgent', () => {
 	let agent: WorkflowBuilderAgent;
-	let mockLlmSimple: BaseChatModel;
-	let mockLlmComplex: BaseChatModel;
+	let mockLlm: BaseChatModel;
 	let mockLogger: Logger;
 	let mockCheckpointer: MemorySaver;
 	let parsedNodeTypes: INodeTypeDescription[];
@@ -92,14 +96,8 @@ describe('WorkflowBuilderAgent', () => {
 	>;
 
 	beforeEach(() => {
-		mockLlmSimple = mock<BaseChatModel>({
+		mockLlm = mock<BaseChatModel>({
 			_llmType: jest.fn().mockReturnValue('test-llm'),
-			bindTools: jest.fn().mockReturnThis(),
-			invoke: jest.fn(),
-		});
-
-		mockLlmComplex = mock<BaseChatModel>({
-			_llmType: jest.fn().mockReturnValue('test-llm-complex'),
 			bindTools: jest.fn().mockReturnThis(),
 			invoke: jest.fn(),
 		});
@@ -132,8 +130,14 @@ describe('WorkflowBuilderAgent', () => {
 
 		config = {
 			parsedNodeTypes,
-			llmSimpleTask: mockLlmSimple,
-			llmComplexTask: mockLlmComplex,
+			stageLLMs: {
+				supervisor: mockLlm,
+				responder: mockLlm,
+				discovery: mockLlm,
+				builder: mockLlm,
+				parameterUpdater: mockLlm,
+				planner: mockLlm,
+			},
 			logger: mockLogger,
 			checkpointer: mockCheckpointer,
 		};
@@ -196,7 +200,7 @@ describe('WorkflowBuilderAgent', () => {
 			mockCreateStreamProcessor.mockReturnValue(mockAsyncGenerator);
 
 			// Mock the LLM to return a simple response
-			(mockLlmSimple.invoke as jest.Mock).mockResolvedValue({
+			(mockLlm.invoke as jest.Mock).mockResolvedValue({
 				content: 'Mocked response',
 				tool_calls: [],
 			});
@@ -221,6 +225,43 @@ describe('WorkflowBuilderAgent', () => {
 			}).rejects.toThrow(ApplicationError);
 		});
 
+		it('should handle 401 expired token error from LangChain MODEL_AUTHENTICATION', async () => {
+			// This matches the actual error structure from LangChain when the AI assistant proxy token expires
+			const expiredTokenError = Object.assign(new Error('Expired token'), {
+				status: 401,
+				lc_error_code: 'MODEL_AUTHENTICATION',
+			});
+
+			mockCreateStreamProcessor.mockImplementation(() => {
+				// eslint-disable-next-line require-yield
+				return (async function* () {
+					throw expiredTokenError;
+				})();
+			});
+
+			await expect(async () => {
+				const generator = agent.chat(mockPayload);
+				await generator.next();
+			}).rejects.toThrow(ApplicationError);
+		});
+
+		it('should not treat generic 401 errors as expired token errors', async () => {
+			// A generic 401 without lc_error_code should be rethrown as-is, not converted to ApplicationError
+			const generic401Error = Object.assign(new Error('Unauthorized'), { status: 401 });
+
+			mockCreateStreamProcessor.mockImplementation(() => {
+				// eslint-disable-next-line require-yield
+				return (async function* () {
+					throw generic401Error;
+				})();
+			});
+
+			await expect(async () => {
+				const generator = agent.chat(mockPayload);
+				await generator.next();
+			}).rejects.toThrow(generic401Error);
+		});
+
 		it('should handle invalid request errors', async () => {
 			const invalidRequestError = Object.assign(new Error('Request failed'), {
 				error: {
@@ -231,12 +272,18 @@ describe('WorkflowBuilderAgent', () => {
 				},
 			});
 
-			(mockLlmSimple.invoke as jest.Mock).mockRejectedValue(invalidRequestError);
+			// Mock the stream processor to throw the invalid request error
+			mockCreateStreamProcessor.mockImplementation(() => {
+				// eslint-disable-next-line require-yield
+				return (async function* () {
+					throw invalidRequestError;
+				})();
+			});
 
 			await expect(async () => {
 				const generator = agent.chat(mockPayload);
 				await generator.next();
-			}).rejects.toThrow(ApplicationError);
+			}).rejects.toThrow(ValidationError);
 		});
 
 		it('should rethrow unknown errors', async () => {
@@ -255,293 +302,556 @@ describe('WorkflowBuilderAgent', () => {
 				await generator.next();
 			}).rejects.toThrow(unknownError);
 		});
-	});
 
-	describe('shouldModifyState', () => {
-		const autoCompactThresholdTokens = 10000;
+		it('should wrap 429 quota errors in OperationalError', async () => {
+			const quotaError = Object.assign(
+				new Error('You exceeded your current quota, please check your plan and billing details.'),
+				{ status: 429 },
+			);
 
-		const createMockState = (
-			messageContent: string,
-			workflowName?: string,
-			messageCount: number = 1,
-			nodesCount: number = 0,
-		): typeof WorkflowState.State => {
-			const messages = [];
-			for (let i = 0; i < messageCount; i++) {
-				messages.push(
-					new HumanMessage({ content: i === messageCount - 1 ? messageContent : `Message ${i}` }),
-				);
+			mockCreateStreamProcessor.mockImplementation(() => {
+				// eslint-disable-next-line require-yield
+				return (async function* () {
+					throw quotaError;
+				})();
+			});
+
+			await expect(async () => {
+				const generator = agent.chat(mockPayload);
+				await generator.next();
+			}).rejects.toThrow(OperationalError);
+		});
+
+		it('should set level to warning on OperationalError from 429 quota error', async () => {
+			const quotaError = Object.assign(new Error('You exceeded your current quota'), {
+				status: 429,
+			});
+
+			mockCreateStreamProcessor.mockImplementation(() => {
+				// eslint-disable-next-line require-yield
+				return (async function* () {
+					throw quotaError;
+				})();
+			});
+
+			let thrownError: unknown;
+			try {
+				const generator = agent.chat(mockPayload);
+				await generator.next();
+				fail('Expected an error to be thrown');
+			} catch (error) {
+				thrownError = error;
 			}
-
-			const nodes = Array.from({ length: nodesCount }, (_, i) => ({
-				id: `node-${i}`,
-				name: `Node ${i}`,
-				type: 'n8n-nodes-base.testNode',
-				typeVersion: 1,
-				position: [0, 0] as [number, number],
-				parameters: {},
-			}));
-
-			return {
-				messages,
-				workflowJSON: { nodes: [], connections: {}, name: '' },
-				workflowOperations: [],
-				workflowContext: {
-					currentWorkflow: {
-						name: workflowName,
-						nodes,
-					},
-				},
-				workflowValidation: null,
-				validationHistory: [],
-				techniqueCategories: [],
-				previousSummary: 'EMPTY',
-				templateIds: [],
-				cachedTemplates: [],
-			};
-		};
-
-		describe('command handling', () => {
-			it('should return "compact_messages" for /compact command', () => {
-				const state = createMockState('/compact');
-				expect(shouldModifyState(state, autoCompactThresholdTokens)).toBe('compact_messages');
-			});
-
-			it('should return "delete_messages" for /clear command', () => {
-				const state = createMockState('/clear');
-				expect(shouldModifyState(state, autoCompactThresholdTokens)).toBe('delete_messages');
-			});
-		});
-
-		describe('workflow name generation', () => {
-			it('should return "create_workflow_name" when workflow name is undefined and empty workflow', () => {
-				const state = createMockState('Create a workflow', undefined, 1, 0);
-				expect(shouldModifyState(state, autoCompactThresholdTokens)).toBe('create_workflow_name');
-			});
-
-			it('should return "create_workflow_name" when workflow name is "My workflow" and empty workflow', () => {
-				const state = createMockState('Create a workflow', 'My workflow', 1, 0);
-				expect(shouldModifyState(state, autoCompactThresholdTokens)).toBe('create_workflow_name');
-			});
-
-			it('should return "create_workflow_name" when workflow name is "My workflow 1" and empty workflow', () => {
-				const state = createMockState('Create a workflow', 'My workflow 1', 1, 0);
-				expect(shouldModifyState(state, autoCompactThresholdTokens)).toBe('create_workflow_name');
-			});
-
-			it('should return "create_workflow_name" when workflow name is "My workflow 123" and empty workflow', () => {
-				const state = createMockState('Create a workflow', 'My workflow 123', 1, 0);
-				expect(shouldModifyState(state, autoCompactThresholdTokens)).toBe('create_workflow_name');
-			});
-
-			it('should return "agent" when workflow name is a custom name', () => {
-				const state = createMockState('Create a workflow', 'Custom Workflow Name', 1, 0);
-				expect(shouldModifyState(state, autoCompactThresholdTokens)).toBe('agent');
-			});
-
-			it('should return "agent" when workflow name is "My workflow edited"', () => {
-				const state = createMockState('Create a workflow', 'My workflow edited', 1, 0);
-				expect(shouldModifyState(state, autoCompactThresholdTokens)).toBe('agent');
-			});
-
-			it('should return "agent" when workflow has default name but multiple messages exist', () => {
-				const state = createMockState('Continue workflow', 'My workflow', 2, 0);
-				expect(shouldModifyState(state, autoCompactThresholdTokens)).toBe('agent');
-			});
-
-			it('should return "agent" when workflow has default name but workflow has nodes', () => {
-				const state = createMockState('Create a workflow', 'My workflow', 1, 3);
-				expect(shouldModifyState(state, autoCompactThresholdTokens)).toBe('agent');
-			});
-
-			it('should return "agent" when workflow name is undefined but workflow has nodes', () => {
-				const state = createMockState('Create a workflow', undefined, 1, 2);
-				expect(shouldModifyState(state, autoCompactThresholdTokens)).toBe('agent');
-			});
-		});
-
-		describe('auto-compact handling', () => {
-			it('should return "agent" when below threshold', () => {
-				const state = createMockState('Short message', 'Custom Name', 1);
-				expect(shouldModifyState(state, autoCompactThresholdTokens)).toBe('agent');
-			});
-
-			it('should return "auto_compact_messages" when messages with workflow context exceed threshold', () => {
-				// Use a smaller threshold for this test to make it easier to exceed
-				const smallThreshold = 5000; // tokens
-
-				// Create a long message that when combined with workflow context will exceed threshold
-				// With AVG_CHARS_PER_TOKEN_ANTHROPIC = 3.5, we need ~17500 characters to exceed 5000 tokens
-				const longMessage = 'x'.repeat(10000);
-				const state = createMockState(longMessage, 'Custom Name', 1, 10);
-
-				// Add substantial workflow data that will be included in context
-				state.workflowJSON = {
-					nodes: Array.from({ length: 50 }, (_, i) => ({
-						id: `node-${i}`,
-						name: `Node ${i}`,
-						type: 'n8n-nodes-base.testNode',
-						typeVersion: 1,
-						position: [i * 100, i * 100] as [number, number],
-						parameters: { data: 'x'.repeat(200) },
-					})),
-					connections: {},
-					name: 'Test Workflow',
-				};
-
-				expect(shouldModifyState(state, smallThreshold)).toBe('auto_compact_messages');
-			});
-
-			it('should return "agent" when messages with workflow context stay below threshold', () => {
-				const shortMessage = 'Create a simple workflow';
-				const state = createMockState(shortMessage, 'Custom Name', 1, 2);
-
-				// Small workflow that won't push us over threshold
-				state.workflowJSON = {
-					nodes: [
-						{
-							id: 'node-1',
-							name: 'Start',
-							type: 'n8n-nodes-base.manualTrigger',
-							typeVersion: 1,
-							position: [0, 0] as [number, number],
-							parameters: {},
-						},
-					],
-					connections: {},
-					name: 'Simple Workflow',
-				};
-
-				expect(shouldModifyState(state, autoCompactThresholdTokens)).toBe('agent');
-			});
-
-			it('should consider execution data and schema in token estimation', () => {
-				// Use a smaller threshold for this test
-				const smallThreshold = 3000; // tokens
-
-				const message = 'x'.repeat(3000);
-				const state = createMockState(message, 'Custom Name', 1, 5);
-
-				// Add execution data and schema that contribute to token count
-				state.workflowContext = {
-					...state.workflowContext,
-					executionData: {
-						runData: {
-							'node-1': [
-								{
-									data: {
-										main: [[{ json: { data: 'x'.repeat(2000) } }]],
-									},
-									executionTime: 100,
-									startTime: Date.now(),
-									executionIndex: 0,
-									source: [],
-								},
-							],
-						},
-					},
-					executionSchema: [
-						{
-							nodeName: 'node-1',
-							schema: {
-								type: 'object',
-								value: [
-									{ key: 'field1', type: 'string', value: 'x'.repeat(1000), path: '.field1' },
-									{ key: 'field2', type: 'string', value: 'x'.repeat(1000), path: '.field2' },
-								],
-								path: '',
-							},
-						},
-					],
-				};
-
-				state.workflowJSON = {
-					nodes: Array.from({ length: 20 }, (_, i) => ({
-						id: `node-${i}`,
-						name: `Node ${i}`,
-						type: 'n8n-nodes-base.testNode',
-						typeVersion: 1,
-						position: [i * 100, i * 100] as [number, number],
-						parameters: { data: 'x'.repeat(100) },
-					})),
-					connections: {},
-					name: 'Complex Workflow',
-				};
-
-				expect(shouldModifyState(state, smallThreshold)).toBe('auto_compact_messages');
-			});
+			expect(thrownError).toBeInstanceOf(OperationalError);
+			expect((thrownError as OperationalError).level).toBe('warning');
 		});
 	});
 
-	describe('feature flags', () => {
-		const mockCreateMainAgentPrompt = createMainAgentPrompt as jest.MockedFunction<
-			typeof createMainAgentPrompt
+	describe('hybrid plan+codeBuilder routing', () => {
+		const MockedCodeWorkflowBuilder = CodeWorkflowBuilder as jest.MockedClass<
+			typeof CodeWorkflowBuilder
 		>;
 
+		const mockPlan: PlanOutput = {
+			summary: 'Fetch weather and send Slack alert',
+			trigger: 'Runs every morning at 7 AM',
+			steps: [
+				{ description: 'Fetch weather forecast', suggestedNodes: ['n8n-nodes-base.httpRequest'] },
+				{ description: 'Check if rain is predicted' },
+				{ description: 'Send Slack notification', suggestedNodes: ['n8n-nodes-base.slack'] },
+			],
+		};
+
+		const mockPlanInterrupt: PlanInterruptValue = {
+			type: 'plan',
+			plan: mockPlan,
+		};
+
 		beforeEach(() => {
-			mockCreateMainAgentPrompt.mockClear();
+			jest.clearAllMocks();
+			MockedCodeWorkflowBuilder.mockClear();
+			mockCodeWorkflowBuilderChat.mockReturnValue(
+				(async function* () {
+					yield {
+						messages: [{ role: 'assistant', type: 'message', text: 'Built workflow' }],
+					} as StreamOutput;
+				})(),
+			);
 		});
 
-		it('should pass includeExamplesPhase: true when templateExamples flag is enabled', async () => {
-			const mockStreamOutput: StreamOutput = {
-				messages: [{ role: 'assistant', type: 'message', text: 'Processing...' }],
+		it('should route to multi-agent for initial plan request when codeBuilder+planMode enabled', async () => {
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'Create a weather alert workflow',
+				featureFlags: { codeBuilder: true, planMode: true },
+				mode: 'plan',
 			};
-			const mockAsyncGenerator = (async function* () {
-				yield mockStreamOutput;
-			})();
-			(createStreamProcessor as jest.MockedFunction<typeof createStreamProcessor>).mockReturnValue(
-				mockAsyncGenerator,
+
+			const mockStreamOutput: StreamOutput = {
+				messages: [{ role: 'assistant', type: 'message', text: 'Planning...' }],
+			};
+			mockCreateStreamProcessor.mockReturnValue(
+				(async function* () {
+					yield mockStreamOutput;
+				})(),
 			);
 
-			const generator = agent.chat({
-				id: '12345',
-				message: 'Create a workflow',
-				featureFlags: { templateExamples: true },
-			});
-			await generator.next();
+			const generator = agent.chat(payload);
+			const result = await generator.next();
 
-			expect(mockCreateMainAgentPrompt).toHaveBeenCalledWith({ includeExamplesPhase: true });
+			expect(result.value).toEqual(mockStreamOutput);
+			// Multi-agent path uses createStreamProcessor; code builder does not
+			expect(mockCreateStreamProcessor).toHaveBeenCalled();
+			expect(MockedCodeWorkflowBuilder).not.toHaveBeenCalled();
 		});
 
-		it('should pass includeExamplesPhase: false when templateExamples flag is disabled', async () => {
-			const mockStreamOutput: StreamOutput = {
-				messages: [{ role: 'assistant', type: 'message', text: 'Processing...' }],
+		it('should route to CodeWorkflowBuilder with plan on plan approval', async () => {
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'Create a weather alert workflow',
+				featureFlags: { codeBuilder: true, planMode: true },
+				resumeData: { action: 'approve' },
+				resumeInterrupt: mockPlanInterrupt,
 			};
-			const mockAsyncGenerator = (async function* () {
-				yield mockStreamOutput;
-			})();
-			(createStreamProcessor as jest.MockedFunction<typeof createStreamProcessor>).mockReturnValue(
-				mockAsyncGenerator,
+
+			const generator = agent.chat(payload);
+			for await (const _ of generator) {
+				// consume
+			}
+
+			// Should have constructed CodeWorkflowBuilder
+			expect(MockedCodeWorkflowBuilder).toHaveBeenCalled();
+			// Should have passed the plan via the payload
+			expect(mockCodeWorkflowBuilderChat).toHaveBeenCalledWith(
+				expect.objectContaining({ planOutput: mockPlan }),
+				expect.any(String),
+				undefined,
 			);
-
-			const generator = agent.chat({
-				id: '12345',
-				message: 'Create a workflow',
-				featureFlags: { templateExamples: false },
-			});
-			await generator.next();
-
-			expect(mockCreateMainAgentPrompt).toHaveBeenCalledWith({ includeExamplesPhase: false });
+			// Should NOT have used multi-agent stream processor
+			expect(mockCreateStreamProcessor).not.toHaveBeenCalled();
 		});
 
-		it('should pass includeExamplesPhase: false when featureFlags is not provided', async () => {
-			const mockStreamOutput: StreamOutput = {
-				messages: [{ role: 'assistant', type: 'message', text: 'Processing...' }],
+		it('should route to multi-agent on plan modification', async () => {
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'Create a weather alert workflow',
+				featureFlags: { codeBuilder: true, planMode: true },
+				resumeData: { action: 'modify', feedback: 'Add error handling' },
+				resumeInterrupt: mockPlanInterrupt,
 			};
-			const mockAsyncGenerator = (async function* () {
-				yield mockStreamOutput;
-			})();
-			(createStreamProcessor as jest.MockedFunction<typeof createStreamProcessor>).mockReturnValue(
-				mockAsyncGenerator,
+
+			const mockStreamOutput: StreamOutput = {
+				messages: [{ role: 'assistant', type: 'message', text: 'Re-planning...' }],
+			};
+			mockCreateStreamProcessor.mockReturnValue(
+				(async function* () {
+					yield mockStreamOutput;
+				})(),
 			);
 
-			const generator = agent.chat({
-				id: '12345',
-				message: 'Create a workflow',
-			});
-			await generator.next();
+			const generator = agent.chat(payload);
+			const result = await generator.next();
 
-			expect(mockCreateMainAgentPrompt).toHaveBeenCalledWith({ includeExamplesPhase: false });
+			expect(result.value).toEqual(mockStreamOutput);
+			expect(mockCreateStreamProcessor).toHaveBeenCalled();
+			expect(MockedCodeWorkflowBuilder).not.toHaveBeenCalled();
+		});
+
+		it('should route to multi-agent on plan rejection', async () => {
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'Create a weather alert workflow',
+				featureFlags: { codeBuilder: true, planMode: true },
+				resumeData: { action: 'reject' },
+				resumeInterrupt: mockPlanInterrupt,
+			};
+
+			const mockStreamOutput: StreamOutput = {
+				messages: [{ role: 'assistant', type: 'message', text: 'OK, cancelled.' }],
+			};
+			mockCreateStreamProcessor.mockReturnValue(
+				(async function* () {
+					yield mockStreamOutput;
+				})(),
+			);
+
+			const generator = agent.chat(payload);
+			const result = await generator.next();
+
+			expect(result.value).toEqual(mockStreamOutput);
+			expect(mockCreateStreamProcessor).toHaveBeenCalled();
+			expect(MockedCodeWorkflowBuilder).not.toHaveBeenCalled();
+		});
+
+		it('should fall back to CodeWorkflowBuilder when no assistantHandler provided', async () => {
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'Create a simple workflow',
+				featureFlags: { codeBuilder: true, mergeAskBuild: true },
+			};
+
+			const generator = agent.chat(payload);
+			for await (const _ of generator) {
+				// consume
+			}
+
+			expect(MockedCodeWorkflowBuilder).toHaveBeenCalled();
+			expect(mockCodeWorkflowBuilderChat).toHaveBeenCalledWith(
+				expect.not.objectContaining({ planOutput: expect.anything() }),
+				expect.any(String),
+				undefined,
+			);
+		});
+	});
+
+	describe('triage agent routing', () => {
+		let triageConfig: WorkflowBuilderAgentConfig;
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+
+			mockGenerateCodeBuilderThreadId.mockReturnValue('test-thread-id');
+			mockLoadCodeBuilderSession.mockResolvedValue({
+				conversationEntries: [],
+				previousSummary: undefined,
+			});
+			mockSaveCodeBuilderSession.mockResolvedValue(undefined);
+
+			triageConfig = {
+				...config,
+				assistantHandler: mock<AssistantHandler>(),
+			};
+		});
+
+		it('should yield assistant chunks and not call CodeWorkflowBuilder for assistant outcome', async () => {
+			const chunk1: StreamOutput = {
+				messages: [{ role: 'assistant', type: 'message', text: 'Let me help' }],
+			};
+			const chunk2: StreamOutput = {
+				messages: [{ role: 'assistant', type: 'message', text: 'Here is the answer' }],
+			};
+
+			mockTriageAgentRun.mockImplementation(async function* () {
+				yield chunk1;
+				yield chunk2;
+				return { assistantSummary: 'Here is the answer', sdkSessionId: 'sdk-1' };
+			});
+
+			const triageAgent = new WorkflowBuilderAgent(triageConfig);
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'How do credentials work?',
+				featureFlags: { codeBuilder: true, mergeAskBuild: true },
+			};
+
+			const results: StreamOutput[] = [];
+			for await (const output of triageAgent.chat(payload, 'user-456')) {
+				results.push(output);
+			}
+
+			expect(results).toEqual([chunk1, chunk2]);
+		});
+
+		it('should yield builder chunks from TriageAgent for build outcome', async () => {
+			const builderChunk: StreamOutput = {
+				messages: [{ role: 'assistant', type: 'message', text: 'Built workflow' }],
+			};
+
+			mockTriageAgentRun.mockImplementation(async function* () {
+				yield builderChunk;
+				return { buildExecuted: true };
+			});
+
+			const triageAgent = new WorkflowBuilderAgent(triageConfig);
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'Build me a Slack notification workflow',
+				featureFlags: { codeBuilder: true, mergeAskBuild: true },
+			};
+
+			const results: StreamOutput[] = [];
+			for await (const output of triageAgent.chat(payload, 'user-456')) {
+				results.push(output);
+			}
+
+			expect(results).toEqual([builderChunk]);
+		});
+
+		it('should yield direct reply chunk for empty outcome', async () => {
+			const chunk: StreamOutput = {
+				messages: [{ role: 'assistant', type: 'message', text: 'Here is a plan...' }],
+			};
+
+			mockTriageAgentRun.mockImplementation(async function* () {
+				yield chunk;
+				return {};
+			});
+
+			const triageAgent = new WorkflowBuilderAgent(triageConfig);
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'What approach should I take?',
+				featureFlags: { codeBuilder: true, mergeAskBuild: true },
+			};
+
+			const results: StreamOutput[] = [];
+			for await (const output of triageAgent.chat(payload, 'user-456')) {
+				results.push(output);
+			}
+
+			expect(results).toEqual([chunk]);
+		});
+
+		it('should pass userId to triage agent run', async () => {
+			// eslint-disable-next-line require-yield
+			mockTriageAgentRun.mockImplementation(async function* () {
+				return {};
+			});
+
+			const triageAgent = new WorkflowBuilderAgent(triageConfig);
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'Help me',
+				featureFlags: { codeBuilder: true, mergeAskBuild: true },
+			};
+
+			for await (const _ of triageAgent.chat(payload, 'user-456')) {
+				// consume
+			}
+
+			expect(mockTriageAgentRun).toHaveBeenCalledWith(
+				expect.objectContaining({ userId: 'user-456' }),
+			);
+		});
+
+		it('should pass abortSignal to triage agent run', async () => {
+			// eslint-disable-next-line require-yield
+			mockTriageAgentRun.mockImplementation(async function* () {
+				return {};
+			});
+
+			const triageAgent = new WorkflowBuilderAgent(triageConfig);
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'Help me',
+				featureFlags: { codeBuilder: true, mergeAskBuild: true },
+			};
+
+			const controller = new AbortController();
+
+			for await (const _ of triageAgent.chat(payload, 'user-456', controller.signal)) {
+				// consume
+			}
+
+			expect(mockTriageAgentRun).toHaveBeenCalledWith(
+				expect.objectContaining({ abortSignal: controller.signal }),
+			);
+		});
+
+		it('should load session and pass sdkSessionId + conversationHistory to triage agent', async () => {
+			mockLoadCodeBuilderSession.mockResolvedValue({
+				conversationEntries: [
+					{ type: 'build-request', message: 'previous build' },
+					{
+						type: 'assistant-exchange',
+						userQuery: 'How does this work?',
+						assistantSummary: 'It works like this',
+					},
+				],
+				previousSummary: undefined,
+				sdkSessionId: 'sdk-prev',
+			});
+
+			// eslint-disable-next-line require-yield
+			mockTriageAgentRun.mockImplementation(async function* () {
+				return { buildExecuted: true };
+			});
+
+			const triageAgent = new WorkflowBuilderAgent(triageConfig);
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'Build this',
+				featureFlags: { codeBuilder: true, mergeAskBuild: true },
+				workflowContext: { currentWorkflow: { id: 'wf-1' } },
+			};
+
+			for await (const _ of triageAgent.chat(payload, 'user-456')) {
+				// consume
+			}
+
+			expect(mockTriageAgentRun).toHaveBeenCalledWith(
+				expect.objectContaining({
+					sdkSessionId: 'sdk-prev',
+					conversationHistory: expect.arrayContaining([
+						{ type: 'build-request', message: 'previous build' },
+					]),
+				}),
+			);
+		});
+
+		it('should save assistant-exchange entry for assistant outcome', async () => {
+			mockTriageAgentRun.mockImplementation(async function* () {
+				yield {
+					messages: [{ role: 'assistant', type: 'message', text: 'Here is help' }],
+				} as StreamOutput;
+				return {
+					sdkSessionId: 'sdk-new',
+					assistantSummary: 'Helped with creds',
+				};
+			});
+
+			const triageAgent = new WorkflowBuilderAgent(triageConfig);
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'How do credentials work?',
+				featureFlags: { codeBuilder: true, mergeAskBuild: true },
+				workflowContext: { currentWorkflow: { id: 'wf-1' } },
+			};
+
+			for await (const _ of triageAgent.chat(payload, 'user-456')) {
+				// consume
+			}
+
+			expect(mockSaveCodeBuilderSession).toHaveBeenCalledTimes(1);
+			const [, threadId, savedSession] = mockSaveCodeBuilderSession.mock.calls[0] as unknown[];
+			expect(threadId).toBe('test-thread-id');
+			expect(savedSession).toEqual(
+				expect.objectContaining({
+					conversationEntries: [
+						{
+							type: 'assistant-exchange',
+							userQuery: 'How do credentials work?',
+							assistantSummary: 'Helped with creds',
+						},
+					],
+					sdkSessionId: 'sdk-new',
+				}),
+			);
+		});
+
+		it('should save plan entry for empty outcome (direct reply)', async () => {
+			mockTriageAgentRun.mockImplementation(async function* () {
+				yield {
+					messages: [{ role: 'assistant', type: 'message', text: 'Here is a plan' }],
+				} as StreamOutput;
+				return {};
+			});
+
+			const triageAgent = new WorkflowBuilderAgent(triageConfig);
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'What approach should I take?',
+				featureFlags: { codeBuilder: true, mergeAskBuild: true },
+				workflowContext: { currentWorkflow: { id: 'wf-1' } },
+			};
+
+			for await (const _ of triageAgent.chat(payload, 'user-456')) {
+				// consume
+			}
+
+			expect(mockSaveCodeBuilderSession).toHaveBeenCalledTimes(1);
+			const [, threadId, savedSession] = mockSaveCodeBuilderSession.mock.calls[0] as unknown[];
+			expect(threadId).toBe('test-thread-id');
+			expect(savedSession).toEqual(
+				expect.objectContaining({
+					conversationEntries: [
+						{
+							type: 'plan',
+							userQuery: 'What approach should I take?',
+							plan: 'Here is a plan',
+						},
+					],
+				}),
+			);
+		});
+
+		it('should NOT save session for build-only outcome', async () => {
+			// eslint-disable-next-line require-yield
+			mockTriageAgentRun.mockImplementation(async function* () {
+				return { buildExecuted: true };
+			});
+
+			const triageAgent = new WorkflowBuilderAgent(triageConfig);
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'Build a workflow',
+				featureFlags: { codeBuilder: true, mergeAskBuild: true },
+				workflowContext: { currentWorkflow: { id: 'wf-1' } },
+			};
+
+			for await (const _ of triageAgent.chat(payload, 'user-456')) {
+				// consume
+			}
+
+			expect(mockSaveCodeBuilderSession).not.toHaveBeenCalled();
+		});
+
+		it('should save assistant-exchange for two-step diagnosis+build outcome', async () => {
+			mockTriageAgentRun.mockImplementation(async function* () {
+				yield {
+					messages: [{ role: 'assistant', type: 'message', text: 'Diagnosing...' }],
+				} as StreamOutput;
+				return {
+					sdkSessionId: 'sdk-diag',
+					assistantSummary: 'Missing credentials',
+					buildExecuted: true,
+				};
+			});
+
+			const triageAgent = new WorkflowBuilderAgent(triageConfig);
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'Fix the Google Sheets error',
+				featureFlags: { codeBuilder: true, mergeAskBuild: true },
+				workflowContext: { currentWorkflow: { id: 'wf-1' } },
+			};
+
+			for await (const _ of triageAgent.chat(payload, 'user-456')) {
+				// consume
+			}
+
+			expect(mockSaveCodeBuilderSession).toHaveBeenCalledTimes(1);
+			const [, threadId, savedSession] = mockSaveCodeBuilderSession.mock.calls[0] as unknown[];
+			expect(threadId).toBe('test-thread-id');
+			expect(savedSession).toEqual(
+				expect.objectContaining({
+					conversationEntries: [
+						{
+							type: 'assistant-exchange',
+							userQuery: 'Fix the Google Sheets error',
+							assistantSummary: 'Missing credentials',
+						},
+					],
+					sdkSessionId: 'sdk-diag',
+				}),
+			);
+		});
+
+		it('should construct TriageAgent with buildWorkflow function', async () => {
+			// eslint-disable-next-line require-yield
+			mockTriageAgentRun.mockImplementation(async function* () {
+				return {};
+			});
+
+			const triageAgent = new WorkflowBuilderAgent(triageConfig);
+			const payload: ChatPayload = {
+				id: '123',
+				message: 'Test',
+				featureFlags: { codeBuilder: true, mergeAskBuild: true },
+			};
+
+			for await (const _ of triageAgent.chat(payload, 'user-456')) {
+				// consume
+			}
+
+			const mockedCtor = jest.requireMock<{ TriageAgent: jest.Mock }>(
+				'@/code-builder/triage.agent',
+			).TriageAgent;
+			expect(mockedCtor).toHaveBeenCalledWith(
+				expect.objectContaining({
+					buildWorkflow: expect.any(Function),
+				}),
+			);
 		});
 	});
 });

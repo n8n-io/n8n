@@ -557,7 +557,7 @@ describe('useDataTableNavigationCommands', () => {
 			expect(isLoading.value).toBe(false);
 		});
 
-		it('should not set loading state when searching from root with query longer than 2 chars', () => {
+		it('should set loading state when searching from root with query longer than 2 chars', () => {
 			const activeNodeId = ref<string | null>(null);
 			const lastQuery = ref('cus');
 			const { isLoading, handlers } = useDataTableNavigationCommands({
@@ -568,7 +568,7 @@ describe('useDataTableNavigationCommands', () => {
 
 			handlers.onCommandBarChange('cus');
 
-			expect(isLoading.value).toBe(false); // Not in parent node, so shouldn't be loading
+			expect(isLoading.value).toBe(true); // Should show loading during fetch
 		});
 	});
 

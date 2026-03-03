@@ -8,31 +8,15 @@ export class WorkflowsPage extends BasePage {
 	readonly addResource = new AddResource(this.page);
 	readonly cards = new ResourceCards(this.page);
 
-	async clickAddFirstProjectButton() {
-		await this.clickByTestId('add-first-project-button');
-	}
-
-	async clickAddProjectButton() {
-		await this.clickByTestId('project-plus-button');
-	}
-
 	/**
 	 * This is the new workflow button on the workflows page, visible when there are no workflows.
 	 */
-	async clickNewWorkflowCard() {
+	async clickNewWorkflowButtonFromOverview() {
 		await this.clickByTestId('new-workflow-card');
 	}
 
-	getNewWorkflowCard() {
-		return this.page.getByTestId('new-workflow-card');
-	}
-
-	getEasyAiWorkflowCard() {
-		return this.page.getByTestId('easy-ai-workflow-card');
-	}
-
-	async clickEasyAiWorkflowCard() {
-		await this.clickByTestId('easy-ai-workflow-card');
+	async clickNewWorkflowButtonFromProject() {
+		await this.clickByTestId('add-resource-workflow');
 	}
 
 	async clearSearch() {
@@ -48,22 +32,6 @@ export class WorkflowsPage extends BasePage {
 		return this.page.getByTestId('resources-list-search');
 	}
 
-	getWorkflowFilterButton() {
-		return this.page.getByTestId('workflow-filter-button');
-	}
-
-	getWorkflowTagsDropdown() {
-		return this.page.getByTestId('workflow-tags-dropdown');
-	}
-
-	getWorkflowTagItem(tagName: string) {
-		return this.page.getByTestId('workflow-tag-item').filter({ hasText: tagName });
-	}
-
-	getWorkflowArchivedCheckbox() {
-		return this.page.getByTestId('workflow-archived-checkbox');
-	}
-
 	async unarchiveWorkflow(workflowItem: Locator) {
 		await workflowItem.getByTestId('workflow-card-actions').click();
 		await this.page.getByRole('menuitem', { name: 'Unarchive' }).click();
@@ -71,13 +39,17 @@ export class WorkflowsPage extends BasePage {
 
 	async deleteWorkflow(workflowItem: Locator) {
 		await workflowItem.getByTestId('workflow-card-actions').click();
-		await this.page.getByRole('menuitem', { name: 'Delete' }).click();
+		await this.page.getByTestId('action-delete').click();
 		await this.page.getByRole('button', { name: 'delete' }).click();
 	}
 
 	async search(searchTerm: string) {
 		await this.clickByTestId('resources-list-search');
 		await this.fillByTestId('resources-list-search', searchTerm);
+	}
+
+	getNoWorkflowsFoundMessage() {
+		return this.page.getByText('No workflows found');
 	}
 
 	async shareWorkflow(workflowName: string) {
@@ -95,8 +67,10 @@ export class WorkflowsPage extends BasePage {
 		await this.getArchiveMenuItem().click();
 	}
 
-	getFiltersButton() {
-		return this.page.getByTestId('resources-list-filters-trigger');
+	async unpublishWorkflow(workflowItem: Locator) {
+		await workflowItem.getByTestId('workflow-card-actions').click();
+		await this.page.getByRole('menuitem', { name: 'Unpublish' }).click();
+		await this.page.getByRole('button', { name: 'Unpublish' }).click();
 	}
 
 	async openFilters() {
@@ -113,31 +87,8 @@ export class WorkflowsPage extends BasePage {
 
 	async toggleShowArchived() {
 		await this.openFilters();
-		await this.getShowArchivedCheckbox().locator('span').nth(1).click();
+		await this.getShowArchivedCheckbox().click();
 		await this.closeFilters();
-	}
-
-	getStatusDropdown() {
-		return this.page.getByTestId('status-dropdown');
-	}
-
-	/**
-	 * Select a status filter (for active/deactivated workflows)
-	 * @param status - 'All', 'Active', or 'Deactivated'
-	 */
-	async selectStatusFilter(status: 'All' | 'Active' | 'Deactivated') {
-		await this.openFilters();
-		await this.getStatusDropdown().getByRole('combobox', { name: 'Select' }).click();
-		if (status === 'All') {
-			await this.page.getByRole('option', { name: 'All' }).click();
-		} else {
-			await this.page.getByText(status, { exact: true }).click();
-		}
-		await this.closeFilters();
-	}
-
-	getTagsDropdown() {
-		return this.page.getByTestId('tags-dropdown');
 	}
 
 	async filterByTags(tags: string[]) {
@@ -199,10 +150,6 @@ export class WorkflowsPage extends BasePage {
 
 	deleteModalTransferRadioButton() {
 		return this.deleteFolderModal().getByTestId('transfer-content-radio');
-	}
-
-	deleteModalDeleteRadioButton() {
-		return this.deleteFolderModal().getByTestId('delete-content-radio');
 	}
 
 	deleteModalConfirmButton() {

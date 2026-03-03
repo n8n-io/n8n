@@ -1,17 +1,18 @@
 import type { BaseCallbackConfig } from '@langchain/core/callbacks/manager';
-import type { IExecuteFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, ISupplyDataFunctions } from 'n8n-workflow';
 
 interface TracingConfig {
 	additionalMetadata?: Record<string, unknown>;
 }
 
 export function getTracingConfig(
-	context: IExecuteFunctions,
+	context: IExecuteFunctions | ISupplyDataFunctions,
 	config: TracingConfig = {},
 ): BaseCallbackConfig {
-	const parentRunManager = context.getParentCallbackManager
-		? context.getParentCallbackManager()
-		: undefined;
+	const parentRunManager =
+		'getParentCallbackManager' in context && context.getParentCallbackManager
+			? context.getParentCallbackManager()
+			: undefined;
 
 	return {
 		runName: `[${context.getWorkflow().name}] ${context.getNode().name}`,

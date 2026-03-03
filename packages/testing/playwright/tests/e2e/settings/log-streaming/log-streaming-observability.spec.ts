@@ -9,32 +9,32 @@
  * - @capability:observability tag to bring up VictoriaLogs
  */
 
-import { SYSLOG_DEFAULTS, ObservabilityHelper } from 'n8n-containers';
-
 import { test, expect } from '../../../../fixtures/base';
-import { capabilities } from '../../../../fixtures/capabilities';
 
 // Worker-scoped fixtures must be at top level
-test.use({ addContainerCapability: capabilities.observability });
+test.use({ capability: 'observability' });
 
-test.describe('Log Streaming to VictoriaLogs @capability:observability', () => {
+test.describe('Log Streaming to VictoriaLogs @capability:observability', {
+	annotation: [
+		{ type: 'owner', description: 'Lifecycle & Governance' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		// Enable log streaming feature for the test
 		await n8n.api.enableFeature('logStreaming');
 	});
 
-	test('should configure syslog destination and send test message', async ({
-		api,
-		n8nContainer,
-	}) => {
-		// Get observability stack from the container
-		const obsStack = n8nContainer.observability!;
-		const obs = new ObservabilityHelper(obsStack);
+	test('should configure syslog destination and send test message', async ({ api, services }) => {
+		const obs = services.observability;
 
 		// Configure syslog destination pointing to VictoriaLogs
+		// syslog contains: host, port, protocol, facility, appName
 		const destination = await api.createSyslogDestination({
-			...obsStack.victoriaLogs.syslog, // host, port
-			...SYSLOG_DEFAULTS, // protocol, facility, app_name
+			host: obs.syslog.host,
+			port: obs.syslog.port,
+			protocol: obs.syslog.protocol,
+			facility: obs.syslog.facility,
+			app_name: obs.syslog.appName,
 			label: 'VictoriaLogs Test Destination',
 		});
 
@@ -58,10 +58,8 @@ test.describe('Log Streaming to VictoriaLogs @capability:observability', () => {
 		await api.deleteLogStreamingDestination(destination.id);
 	});
 
-	test('should query metrics from VictoriaMetrics', async ({ api, n8nContainer }) => {
-		// Get observability stack from the container
-		const obsStack = n8nContainer.observability!;
-		const obs = new ObservabilityHelper(obsStack);
+	test('should query metrics from VictoriaMetrics', async ({ api, services }) => {
+		const obs = services.observability;
 
 		// Import and activate a webhook workflow to generate metrics
 		const { webhookPath, workflowId } = await api.workflows.importWorkflowFromFile(

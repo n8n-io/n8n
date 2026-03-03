@@ -1,8 +1,8 @@
 import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
-import { Z } from 'zod-class';
 
 import { dataTableFilterSchema } from '../../schemas/data-table-filter.schema';
+import { Z } from '../../zod-class';
 
 const dataTableFilterQueryValidator = z.string().transform((val, ctx) => {
 	if (!val) {

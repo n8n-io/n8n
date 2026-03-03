@@ -2,6 +2,10 @@ import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import {
 	injectWorkflowState,
 	useWorkflowState,
 	type WorkflowState,
@@ -37,6 +41,10 @@ describe('useExecutionDebugging()', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		createTestingPinia();
+
+		const workflowStore = mockedStore(useWorkflowsStore);
+		workflowStore.workflow.id = 'test-workflow';
+
 		toast = useToast();
 
 		workflowState = useWorkflowState();
@@ -107,22 +115,21 @@ describe('useExecutionDebugging()', () => {
 
 		await executionDebugging.applyExecutionData('1');
 
-		expect(workflowStore.pinData).toHaveBeenCalledWith({
-			node: { name: 'TriggerNode' },
-			data: [
-				{
-					json: { test: 'data' },
-					binary: {
-						data: {
-							fileName: 'test.txt',
-							mimeType: 'text/plain',
-							data: 'dGVzdCBkYXRh',
-						},
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowStore.workflow.id),
+		);
+		expect(workflowDocumentStore.pinNodeData).toHaveBeenCalledWith('TriggerNode', [
+			{
+				json: { test: 'data' },
+				binary: {
+					data: {
+						fileName: 'test.txt',
+						mimeType: 'text/plain',
+						data: 'dGVzdCBkYXRh',
 					},
 				},
-			],
-			isRestoration: true,
-		});
+			},
+		]);
 	});
 
 	it('should handle nodes with multiple main outputs during debug restoration', async () => {
@@ -155,11 +162,12 @@ describe('useExecutionDebugging()', () => {
 
 		await executionDebugging.applyExecutionData('1');
 
-		expect(workflowStore.pinData).toHaveBeenCalledWith({
-			node: { name: 'TriggerNode' },
-			data: [{ json: { test: 'data' } }],
-			isRestoration: true,
-		});
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowStore.workflow.id),
+		);
+		expect(workflowDocumentStore.pinNodeData).toHaveBeenCalledWith('TriggerNode', [
+			{ json: { test: 'data' } },
+		]);
 	});
 
 	it('should show missing nodes warning toast', async () => {

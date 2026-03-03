@@ -10,6 +10,8 @@ import {
 	InstanceSettings,
 	ExecutionLifecycleHooks,
 } from 'n8n-core';
+
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type {
 	IRun,
 	IWorkflowBase,
@@ -33,6 +35,7 @@ import {
 	determineFinalExecutionStatus,
 	prepareExecutionDataForDbUpdate,
 	updateExistingExecution,
+	updateExistingExecutionMetadata,
 } from './shared/shared-hook-functions';
 import { type ExecutionSaveSettings, toSaveSettings } from './to-save-settings';
 import { getItemCountByConnectionType } from '@/utils/get-item-count-by-connection-type';
@@ -54,6 +57,7 @@ class ModulesHooksRegistry {
 							workflow: this.workflowData,
 							runData,
 							newStaticData,
+							executionId: this.executionId,
 						};
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 						return await instance[methodName].call(instance, context);
@@ -94,6 +98,21 @@ class ModulesHooksRegistry {
 							workflow: this.workflowData,
 							workflowInstance,
 							executionData,
+							executionId: this.executionId,
+						};
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+						return await instance[methodName].call(instance, context);
+					});
+					break;
+
+				case 'workflowExecuteResume':
+					hooks.addHandler(eventName, async function (workflowInstance, executionData) {
+						const context = {
+							type: 'workflowExecuteResume',
+							workflow: this.workflowData,
+							workflowInstance,
+							executionData,
+							executionId: this.executionId,
 						};
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 						return await instance[methodName].call(instance, context);
@@ -114,8 +133,8 @@ type HooksSetupParameters = {
 function hookFunctionsWorkflowEvents(hooks: ExecutionLifecycleHooks, userId?: string) {
 	const eventService = Container.get(EventService);
 	hooks.addHandler('workflowExecuteBefore', function () {
-		const { executionId, workflowData } = this;
-		eventService.emit('workflow-pre-execute', { executionId, data: workflowData });
+		const { executionId, workflowData, mode } = this;
+		eventService.emit('workflow-pre-execute', { executionId, data: workflowData, mode });
 	});
 	hooks.addHandler('workflowExecuteAfter', function (runData) {
 		if (runData.status === 'waiting') return;
@@ -347,6 +366,7 @@ function hookFunctionsSave(
 	const logger = Container.get(Logger);
 	const errorReporter = Container.get(ErrorReporter);
 	const executionRepository = Container.get(ExecutionRepository);
+	const executionPersistence = Container.get(ExecutionPersistence);
 	const binaryDataService = Container.get(BinaryDataService);
 	const workflowStaticDataService = Container.get(WorkflowStaticDataService);
 	const workflowStatisticsService = Container.get(WorkflowStatisticsService);
@@ -404,9 +424,10 @@ function hookFunctionsSave(
 			if (shouldNotSave && !fullRunData.waitTill && !isManualMode) {
 				executeErrorWorkflow(this.workflowData, fullRunData, this.mode, this.executionId, retryOf);
 
-				await executionRepository.hardDelete({
+				await executionPersistence.hardDelete({
 					workflowId: this.workflowData.id,
 					executionId: this.executionId,
+					storedAt: fullRunData.storedAt,
 				});
 
 				return;
@@ -431,6 +452,11 @@ function hookFunctionsSave(
 				workflowId: this.workflowData.id,
 				executionData: fullExecutionData,
 			});
+
+			await updateExistingExecutionMetadata(
+				this.executionId,
+				fullRunData.data?.resultData?.metadata,
+			);
 
 			if (!isManualMode) {
 				executeErrorWorkflow(this.workflowData, fullRunData, this.mode, this.executionId, retryOf);
@@ -498,6 +524,8 @@ function hookFunctionsSaveWorker(
 				fullExecutionData.data.pushRef = pushRef;
 			}
 
+			// In scaling mode, worker saves execution without metadata
+			// Main process will save metadata after deletion decisions to avoid FK violations
 			await updateExistingExecution({
 				executionId: this.executionId,
 				workflowId: this.workflowData.id,
@@ -574,6 +602,7 @@ export function getLifecycleHooksForScalingMain(
 	const saveSettings = toSaveSettings(workflowData.settings);
 	const optionalParameters = { pushRef, retryOf: retryOf ?? undefined, saveSettings };
 	const executionRepository = Container.get(ExecutionRepository);
+	const executionPersistence = Container.get(ExecutionPersistence);
 
 	hookFunctionsWorkflowEvents(hooks, userId);
 	hookFunctionsSaveProgress(hooks, optionalParameters);
@@ -606,10 +635,17 @@ export function getLifecycleHooksForScalingMain(
 			(fullRunData.status !== 'success' && !saveSettings.error);
 
 		if (!isManualMode && shouldNotSave && !fullRunData.waitTill) {
-			await executionRepository.hardDelete({
+			await executionPersistence.hardDelete({
 				workflowId: this.workflowData.id,
 				executionId: this.executionId,
+				storedAt: fullRunData.storedAt,
 			});
+		} else {
+			// Only save metadata if execution is being kept
+			await updateExistingExecutionMetadata(
+				this.executionId,
+				fullRunData.data?.resultData?.metadata,
+			);
 		}
 	});
 

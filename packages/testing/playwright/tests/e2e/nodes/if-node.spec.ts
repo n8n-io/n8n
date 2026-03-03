@@ -3,7 +3,11 @@ import { test, expect } from '../../../fixtures/base';
 
 const FILTER_PARAM_NAME = 'conditions';
 
-test.describe('If Node (filter component)', () => {
+test.describe('If Node (filter component)', {
+	annotation: [
+		{ type: 'owner', description: 'NODES' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 	});
@@ -14,9 +18,7 @@ test.describe('If Node (filter component)', () => {
 		// Default state
 		await expect(n8n.ndv.getFilterComponent(FILTER_PARAM_NAME)).toBeVisible();
 		await expect(n8n.ndv.getFilterConditions(FILTER_PARAM_NAME)).toHaveCount(1);
-		await expect(
-			n8n.ndv.getFilterConditionOperator(FILTER_PARAM_NAME).locator('input'),
-		).toHaveValue('is equal to');
+		await expect(n8n.ndv.getFilterConditionOperator(FILTER_PARAM_NAME)).toHaveText('is equal to');
 
 		// Add
 		await n8n.ndv.addFilterCondition(FILTER_PARAM_NAME);

@@ -45,12 +45,36 @@ export const AVG_CHARS_PER_TOKEN_ANTHROPIC = 3.5;
 export const MAX_NODE_EXAMPLE_CHARS = 5000 * AVG_CHARS_PER_TOKEN_ANTHROPIC;
 
 /**
+ * Max characters for execution data truncation in tool responses.
+ * Prevents tool responses from becoming too large and filling up the context.
+ */
+export const MAX_EXECUTION_DATA_CHARS = 10000;
+
+/**
+ * Max characters for AI response in conversation context.
+ * Used when including previous AI responses to provide context.
+ */
+export const MAX_AI_RESPONSE_CHARS = 500;
+
+/**
  * Maximum iterations for subgraph tool loops.
  * Prevents infinite loops when agents keep calling tools without finishing.
  */
-export const MAX_BUILDER_ITERATIONS = 30;
-export const MAX_CONFIGURATOR_ITERATIONS = 30;
+export const MAX_BUILDER_ITERATIONS = 100;
 export const MAX_DISCOVERY_ITERATIONS = 50;
-export const MAX_MULTI_AGENT_STREAM_ITERATIONS =
-	MAX_BUILDER_ITERATIONS + MAX_CONFIGURATOR_ITERATIONS + MAX_DISCOVERY_ITERATIONS;
-export const MAX_SINGLE_AGENT_STREAM_ITERATIONS = 50;
+export const MAX_TRIAGE_ITERATIONS = 10;
+export const MAX_MULTI_AGENT_STREAM_ITERATIONS = MAX_BUILDER_ITERATIONS + MAX_DISCOVERY_ITERATIONS;
+
+/**
+ * Separator used by the backend stream protocol (packages/cli/src/constants.ts:145).
+ * Duplicated here so the ai-workflow-builder package doesn't need a dependency on packages/cli.
+ */
+export const STREAM_SEPARATOR = '⧉⇋⇋➽⌑⧉§§\n';
+
+/**
+ * Timeout in milliseconds for the Assistant SDK stream.
+ * If the SDK doesn't finish within this time, the stream is aborted.
+ * Prevents the assistant subgraph from hanging indefinitely when the SDK
+ * gets stuck sending intermediate-step messages without a final response.
+ */
+export const ASSISTANT_SDK_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes

@@ -11,8 +11,7 @@ import {
 	ApplicationError,
 } from 'n8n-workflow';
 
-import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
-import { MemoryVectorStoreManager } from '../shared/MemoryManager/MemoryVectorStoreManager';
+import { createVectorStoreNode, MemoryVectorStoreManager } from '@n8n/ai-utilities';
 
 const warningBanner: INodeProperties = {
 	displayName:
@@ -66,6 +65,15 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 			AI: ['Vector Stores', 'Tools', 'Root Nodes'],
 			'Vector Stores': ['For Beginners'],
 			Tools: ['Other Tools'],
+		},
+		builderHint: {
+			relatedNodes: [
+				{
+					nodeType: '@n8n/n8n-nodes-langchain.retrieverVectorStore',
+					relationHint:
+						'Connect to enable retrieval-augmented generation (RAG) for AI Agent workflows',
+				},
+			],
 		},
 	},
 	sharedFields: [

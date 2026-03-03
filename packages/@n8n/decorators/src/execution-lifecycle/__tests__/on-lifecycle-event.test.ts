@@ -10,7 +10,7 @@ describe('OnLifecycleEvent', () => {
 	beforeEach(() => {
 		lifecycleMetadata = new LifecycleMetadata();
 		Container.set(LifecycleMetadata, lifecycleMetadata);
-		jest.spyOn(lifecycleMetadata, 'register');
+		vi.spyOn(lifecycleMetadata, 'register');
 	});
 
 	it('should register a method decorated with OnLifecycleEvent', () => {
@@ -43,9 +43,12 @@ describe('OnLifecycleEvent', () => {
 
 			@OnLifecycleEvent('workflowExecuteAfter')
 			async handleWorkflowExecuteAfter() {}
+
+			@OnLifecycleEvent('workflowExecuteResume')
+			async handleWorkflowExecuteResume() {}
 		}
 
-		expect(lifecycleMetadata.register).toHaveBeenCalledTimes(4);
+		expect(lifecycleMetadata.register).toHaveBeenCalledTimes(5);
 		expect(lifecycleMetadata.register).toHaveBeenCalledWith(
 			expect.objectContaining({ eventName: 'nodeExecuteBefore' }),
 		);
@@ -57,6 +60,9 @@ describe('OnLifecycleEvent', () => {
 		);
 		expect(lifecycleMetadata.register).toHaveBeenCalledWith(
 			expect.objectContaining({ eventName: 'workflowExecuteAfter' }),
+		);
+		expect(lifecycleMetadata.register).toHaveBeenCalledWith(
+			expect.objectContaining({ eventName: 'workflowExecuteResume' }),
 		);
 	});
 

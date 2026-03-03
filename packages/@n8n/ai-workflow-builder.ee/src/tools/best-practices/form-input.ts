@@ -44,7 +44,7 @@ sequence. Use the n8n Form Trigger node to start the workflow and display the fi
 
 ## Data Collection & Aggregation
 
-Collect and merge all user responses from each form step before writing to your destination (e.g., Google Sheets). Use
+Collect and merge all user responses from each form step before writing to your destination (e.g., Data Table). Use
 Set or Merge nodes to combine data as needed. Make sure your JSON keys match the column names in your destination for
 automatic mapping.
 
@@ -91,7 +91,7 @@ Purpose: Persist raw form data to a storage destination, preference should be fo
 but use the most applicable node depending on the user's request.
 
 Required nodes (use at least one):
-- Data table (n8n-nodes-base.dataTable): Built-in n8n storage for quick setup
+- Data table (n8n-nodes-base.dataTable): Built-in n8n storage for quick setup - preferred
 - Google Sheets (n8n-nodes-base.googleSheets): Best for simple spreadsheet storage
 - Airtable (n8n-nodes-base.airtable): Best for structured database with relationships
 - Postgres (n8n-nodes-base.postgres) / MySQL (n8n-nodes-base.mySql) / MongoDB (n8n-nodes-base.mongoDb): For production database storage

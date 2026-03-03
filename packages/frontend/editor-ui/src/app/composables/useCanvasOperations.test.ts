@@ -6,6 +6,7 @@ import type {
 	Workflow,
 	INodeConnections,
 	WorkflowExecuteMode,
+	INodeTypes,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeHelpers, UserError, TelemetryHelpers } from 'n8n-workflow';
 import type { CanvasConnection, CanvasNode } from '@/features/workflows/canvas/canvas.types';
@@ -39,15 +40,17 @@ import {
 	AGENT_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
+	MCP_TRIGGER_NODE_TYPE,
 	OPEN_AI_CHAT_MODEL_NODE_TYPE,
 	SET_NODE_TYPE,
 	STICKY_NODE_TYPE,
+	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
 } from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import type { Connection } from '@vue-flow/core';
-import { useClipboard } from '@/app/composables/useClipboard';
+import { useClipboard } from '@vueuse/core';
 import { createCanvasConnectionHandleString } from '@/features/workflows/canvas/canvas.utils';
 import { nextTick, reactive, ref } from 'vue';
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
@@ -59,6 +62,10 @@ import {
 	useWorkflowState,
 	type WorkflowState,
 } from '@/app/composables/useWorkflowState';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 import { useRouter } from 'vue-router';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
@@ -94,12 +101,20 @@ vi.mock('n8n-workflow', async (importOriginal) => {
 				},
 			}),
 		},
+		isHitlToolType: vi.fn((nodeType: string) => {
+			return nodeType.toLowerCase().includes('hitltool');
+		}),
 	};
 });
 
-vi.mock('@/app/composables/useClipboard', async () => {
+vi.mock('@vueuse/core', async (importOriginal) => {
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+	const original = await importOriginal<typeof import('@vueuse/core')>();
 	const copySpy = vi.fn();
-	return { useClipboard: vi.fn(() => ({ copy: copySpy })) };
+	return {
+		...original,
+		useClipboard: vi.fn(() => ({ copy: copySpy })),
+	};
 });
 
 vi.mock('@/app/composables/useTelemetry', () => {
@@ -135,6 +150,7 @@ vi.mock('@/app/composables/useWorkflowState', async () => {
 const canPinNodeMock = vi.fn();
 const setDataMock = vi.fn();
 const unsetDataMock = vi.fn();
+const hasDataRef = { value: false };
 const getInputDataWithPinnedMock = vi.fn();
 
 vi.mock('@/app/composables/usePinnedData', () => {
@@ -143,6 +159,7 @@ vi.mock('@/app/composables/usePinnedData', () => {
 			canPinNode: canPinNodeMock,
 			setData: setDataMock,
 			unsetData: unsetDataMock,
+			hasData: hasDataRef,
 		})),
 	};
 });
@@ -637,6 +654,229 @@ describe('useCanvasOperations', () => {
 			expect(position[0]).toBeLessThanOrEqual(80);
 			expect(position[1]).toBe(320);
 		});
+
+		it('should position HITL node vertically between main node and tool node when inserted via connection', () => {
+			const uiStore = mockedStore(useUIStore);
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			const mainNode = createTestNode({
+				id: 'main',
+				name: 'Main Node',
+				position: [100, 100],
+				type: 'n8n-nodes-base.agent',
+			});
+
+			const toolNode = createTestNode({
+				id: 'tool',
+				name: 'Tool Node',
+				position: [100, 400],
+				type: 'n8n-nodes-base.searchTool',
+			});
+
+			const hitlNode = createTestNode({
+				id: 'hitl',
+				type: 'n8n-nodes-base.manualChatTriggerHitlTool',
+			});
+
+			const nodeTypeDescription = mockNodeTypeDescription();
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+
+			// Mock the tool node as lastInteractedWithNode
+			uiStore.lastInteractedWithNode = toolNode;
+			uiStore.lastInteractedWithNodeConnection = {
+				source: mainNode.id,
+				target: mainNode.id,
+				sourceHandle: `outputs/${NodeConnectionTypes.AiTool}/0`,
+				targetHandle: `inputs/${NodeConnectionTypes.AiTool}/0`,
+			};
+			uiStore.lastInteractedWithNodeHandle = `outputs/${NodeConnectionTypes.AiTool}/0`;
+
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+			workflowsStore.workflowObject = workflowObject;
+			workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(workflowObject);
+			workflowObject.getNode = vi.fn().mockReturnValue(hitlNode);
+			workflowsStore.getNodeById = vi.fn().mockReturnValue(mainNode);
+
+			const { resolveNodePosition } = useCanvasOperations();
+			const position = resolveNodePosition(
+				{ ...hitlNode, position: undefined },
+				nodeTypeDescription,
+			);
+
+			// HITL node should be positioned vertically between main and tool nodes
+			// Y position should be halfway between 100 and 400 = 250 + offsets
+			expect(position[1]).toBe(256);
+			// X position should be tool node X minus half of CONFIGURABLE_NODE_SIZE width
+			// CONFIGURABLE_NODE_SIZE = [256, 96], so 100 - 128 = -28 + offsets
+			expect(position[0]).toBeLessThan(100);
+		});
+
+		it('should move tool node vertically if HITL node would be too close', () => {
+			const uiStore = mockedStore(useUIStore);
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			const mainNode = createTestNode({
+				id: 'main',
+				name: 'Main Node',
+				position: [100, 100],
+				type: 'n8n-nodes-base.agent',
+			});
+
+			// Tool node is too close to main node (less than PUSH_NODES_OFFSET)
+			const toolNode = createTestNode({
+				id: 'tool',
+				name: 'Tool Node',
+				position: [100, 150],
+				type: 'n8n-nodes-base.searchTool',
+			});
+
+			const hitlNode = createTestNode({
+				id: 'hitl',
+				type: 'n8n-nodes-base.manualChatTriggerHitlTool',
+			});
+
+			const nodeTypeDescription = mockNodeTypeDescription();
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+
+			uiStore.lastInteractedWithNode = toolNode;
+			uiStore.lastInteractedWithNodeConnection = {
+				source: mainNode.id,
+				target: mainNode.id,
+				sourceHandle: `outputs/${NodeConnectionTypes.AiTool}/0`,
+				targetHandle: `inputs/${NodeConnectionTypes.AiTool}/0`,
+			};
+			uiStore.lastInteractedWithNodeHandle = `outputs/${NodeConnectionTypes.AiTool}/0`;
+
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+			workflowsStore.workflowObject = workflowObject;
+			workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(workflowObject);
+			workflowObject.getNode = vi.fn().mockReturnValue(hitlNode);
+			workflowsStore.getNodeById = vi.fn().mockReturnValue(mainNode);
+
+			const setNodePositionByIdSpy = vi.spyOn(workflowState, 'setNodePositionById');
+
+			const { resolveNodePosition } = useCanvasOperations();
+			resolveNodePosition({ ...hitlNode, position: undefined }, nodeTypeDescription);
+
+			// Tool node should be moved vertically because it's too close
+			expect(setNodePositionByIdSpy).toHaveBeenCalledWith(
+				toolNode.id,
+				expect.arrayContaining([100, expect.any(Number)]),
+			);
+
+			// The Y position should be different from the original
+			const callArgs = setNodePositionByIdSpy.mock.calls[0][1] as [number, number];
+			expect(callArgs[1]).not.toBe(150);
+		});
+
+		it('should not apply HITL positioning if node is not a HITL tool type', () => {
+			const uiStore = mockedStore(useUIStore);
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			const mainNode = createTestNode({
+				id: 'main',
+				name: 'Main Node',
+				position: [100, 100],
+				type: 'n8n-nodes-base.agent',
+			});
+
+			const toolNode = createTestNode({
+				id: 'tool',
+				name: 'Tool Node',
+				position: [100, 300],
+				type: 'n8n-nodes-base.searchTool',
+			});
+
+			// Regular node, not a HITL tool
+			const regularNode = createTestNode({
+				id: 'regular',
+				type: 'n8n-nodes-base.set',
+			});
+
+			const nodeTypeDescription = mockNodeTypeDescription();
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+
+			uiStore.lastInteractedWithNode = toolNode;
+			uiStore.lastInteractedWithNodeConnection = {
+				source: mainNode.id,
+				target: mainNode.id,
+				sourceHandle: `outputs/${NodeConnectionTypes.AiTool}/0`,
+				targetHandle: `inputs/${NodeConnectionTypes.AiTool}/0`,
+			};
+			uiStore.lastInteractedWithNodeHandle = `outputs/${NodeConnectionTypes.AiTool}/0`;
+
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+			workflowsStore.workflowObject = workflowObject;
+			workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(workflowObject);
+			workflowObject.getNode = vi.fn().mockReturnValue(regularNode);
+			workflowsStore.getNodeById = vi.fn().mockReturnValue(mainNode);
+
+			const { resolveNodePosition } = useCanvasOperations();
+			const position = resolveNodePosition(
+				{ ...regularNode, position: undefined },
+				nodeTypeDescription,
+			);
+
+			// Regular node should not get HITL positioning
+			// It should follow normal positioning rules (to the right of last interacted node)
+			expect(position[1]).not.toBe(200); // Not halfway between main and tool
+		});
+
+		it('should not apply HITL positioning if lastInteractedWithNode is not a tool type', () => {
+			const uiStore = mockedStore(useUIStore);
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			const mainNode = createTestNode({
+				id: 'main',
+				name: 'Main Node',
+				position: [100, 100],
+				type: 'n8n-nodes-base.agent',
+			});
+
+			// Not a tool node
+			const regularNode = createTestNode({
+				id: 'regular',
+				name: 'Regular Node',
+				position: [100, 300],
+				type: 'n8n-nodes-base.set',
+			});
+
+			const hitlNode = createTestNode({
+				id: 'hitl',
+				type: 'n8n-nodes-base.manualChatTriggerHitlTool',
+			});
+
+			const nodeTypeDescription = mockNodeTypeDescription();
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+
+			uiStore.lastInteractedWithNode = regularNode;
+			uiStore.lastInteractedWithNodeConnection = {
+				source: mainNode.id,
+				target: mainNode.id,
+				sourceHandle: `outputs/${NodeConnectionTypes.AiTool}/0`,
+				targetHandle: `inputs/${NodeConnectionTypes.AiTool}/0`,
+			};
+			uiStore.lastInteractedWithNodeHandle = `outputs/${NodeConnectionTypes.AiTool}/0`;
+
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+			workflowsStore.workflowObject = workflowObject;
+			workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(workflowObject);
+			workflowObject.getNode = vi.fn().mockReturnValue(hitlNode);
+			workflowsStore.getNodeById = vi.fn().mockReturnValue(mainNode);
+
+			const { resolveNodePosition } = useCanvasOperations();
+			const position = resolveNodePosition(
+				{ ...hitlNode, position: undefined },
+				nodeTypeDescription,
+			);
+
+			// Should not apply HITL positioning when last interacted node is not a tool
+			expect(position[1]).not.toBe(200);
+		});
 	});
 
 	describe('updateNodesPosition', () => {
@@ -1043,7 +1283,7 @@ describe('useCanvasOperations', () => {
 			const { addNodes } = useCanvasOperations();
 			await addNodes(nodes, { keepPristine: false });
 
-			expect(uiStore.stateIsDirty).toEqual(true);
+			expect(uiStore.markStateDirty).toHaveBeenCalled();
 		});
 
 		it('should not mark UI state as dirty if keepPristine is true', async () => {
@@ -1062,7 +1302,7 @@ describe('useCanvasOperations', () => {
 			const { addNodes } = useCanvasOperations();
 			await addNodes(nodes, { keepPristine: true });
 
-			expect(uiStore.stateIsDirty).toEqual(false);
+			expect(uiStore.markStateDirty).not.toHaveBeenCalled();
 		});
 
 		it('should pass actionName to telemetry when adding nodes with actions', async () => {
@@ -1377,7 +1617,7 @@ describe('useCanvasOperations', () => {
 	});
 
 	describe('renameNode', () => {
-		it('should rename node', async () => {
+		it('should rename node and return the actual new name on success', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const ndvStore = mockedStore(useNDVStore);
 			const oldName = 'Old Node';
@@ -1391,13 +1631,14 @@ describe('useCanvasOperations', () => {
 			ndvStore.activeNodeName = oldName;
 
 			const { renameNode } = useCanvasOperations();
-			await renameNode(oldName, newName);
+			const result = await renameNode(oldName, newName);
 
+			expect(result).toBe(newName);
 			expect(workflowObject.renameNode).toHaveBeenCalledWith(oldName, newName);
 			expect(ndvStore.setActiveNodeName).toHaveBeenCalledWith(newName, expect.any(String));
 		});
 
-		it('should not rename node when new name is same as old name', async () => {
+		it('should return false when new name is same as old name', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const ndvStore = mockedStore(useNDVStore);
 			const oldName = 'Old Node';
@@ -1405,12 +1646,13 @@ describe('useCanvasOperations', () => {
 			ndvStore.activeNodeName = oldName;
 
 			const { renameNode } = useCanvasOperations();
-			await renameNode(oldName, oldName);
+			const result = await renameNode(oldName, oldName);
 
+			expect(result).toBe(false);
 			expect(ndvStore.activeNodeName).toBe(oldName);
 		});
 
-		it('should show error toast when renameNode throws an error', async () => {
+		it('should show error toast and return false when renameNode throws an error', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const ndvStore = mockedStore(useNDVStore);
 			const toast = useToast();
@@ -1430,14 +1672,39 @@ describe('useCanvasOperations', () => {
 			ndvStore.activeNodeName = oldName;
 
 			const { renameNode } = useCanvasOperations();
-			await renameNode(oldName, newName);
+			const result = await renameNode(oldName, newName);
 
+			expect(result).toBe(false);
 			expect(workflowObject.renameNode).toHaveBeenCalledWith(oldName, newName);
 			expect(toast.showMessage).toHaveBeenCalledWith({
 				type: 'error',
 				title: errorMessage,
 				message: errorDescription,
 			});
+		});
+
+		it('should not show error toast when showErrorToast is false', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const ndvStore = mockedStore(useNDVStore);
+			const toast = useToast();
+			const oldName = 'Old Node';
+			const newName = 'New Node';
+			const errorMessage = 'Node name already exists';
+
+			const workflowObject = createTestWorkflowObject();
+			workflowObject.renameNode = vi.fn().mockImplementation(() => {
+				throw new UserError(errorMessage);
+			});
+			workflowsStore.workflowObject = workflowObject;
+			workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(workflowObject);
+			workflowsStore.getNodeByName = vi.fn().mockReturnValue({ name: oldName });
+			ndvStore.activeNodeName = oldName;
+
+			const { renameNode } = useCanvasOperations();
+			const result = await renameNode(oldName, newName, { showErrorToast: false });
+
+			expect(result).toBe(false);
+			expect(toast.showMessage).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1580,6 +1847,7 @@ describe('useCanvasOperations', () => {
 			setDataMock.mockReset();
 			unsetDataMock.mockReset();
 			getInputDataWithPinnedMock.mockReset();
+			hasDataRef.value = false;
 		});
 
 		it('should only pin pinnable nodes when mix of pinnable and non-pinnable nodes are selected', () => {
@@ -1592,9 +1860,6 @@ describe('useCanvasOperations', () => {
 
 			const nodes = [pinnableNode1, nonPinnableNode, pinnableNode2];
 			workflowsStore.getNodesByIds.mockReturnValue(nodes);
-
-			// Initially, none have pinned data
-			workflowsStore.pinDataByNodeName = vi.fn().mockReturnValue(undefined);
 
 			let checkIndex = 0;
 			const nodeOrder: string[] = [];
@@ -1632,13 +1897,8 @@ describe('useCanvasOperations', () => {
 			const nodes = [pinnableNode1, nonPinnableNode, pinnableNode2];
 			workflowsStore.getNodesByIds.mockReturnValue(nodes);
 
-			// Set some initial pinned data for pinnable nodes
-			workflowsStore.pinDataByNodeName = vi.fn().mockImplementation((nodeName: string) => {
-				if (nodeName === 'PinnableNode1' || nodeName === 'PinnableNode2') {
-					return [{ json: { pinned: 'data' } }];
-				}
-				return undefined;
-			});
+			// Indicate all pinnable nodes have pinned data
+			hasDataRef.value = true;
 
 			let checkIndex = 0;
 
@@ -1669,7 +1929,6 @@ describe('useCanvasOperations', () => {
 			const nodes = [nonPinnableNode1, nonPinnableNode2];
 			workflowsStore.getNodesByIds.mockReturnValue(nodes);
 
-			workflowsStore.pinDataByNodeName = vi.fn().mockReturnValue(undefined);
 			canPinNodeMock.mockReturnValue(false);
 
 			const { toggleNodesPinned } = useCanvasOperations();
@@ -1775,7 +2034,7 @@ describe('useCanvasOperations', () => {
 			const { addConnections } = useCanvasOperations();
 			await addConnections(connections, { keepPristine: false });
 
-			expect(uiStore.stateIsDirty).toBe(true);
+			expect(uiStore.markStateDirty).toHaveBeenCalled();
 		});
 
 		it('should not set UI state as dirty if keepPristine is true', async () => {
@@ -1785,7 +2044,7 @@ describe('useCanvasOperations', () => {
 			const { addConnections } = useCanvasOperations();
 			await addConnections(connections, { keepPristine: true });
 
-			expect(uiStore.stateIsDirty).toBe(false);
+			expect(uiStore.markStateDirty).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1801,7 +2060,7 @@ describe('useCanvasOperations', () => {
 			createConnection(connection);
 
 			expect(workflowsStore.addConnection).not.toHaveBeenCalled();
-			expect(uiStore.stateIsDirty).toBe(false);
+			expect(uiStore.markStateDirty).not.toHaveBeenCalled();
 		});
 
 		it('should not create a connection if target node does not exist', () => {
@@ -1817,7 +2076,7 @@ describe('useCanvasOperations', () => {
 			createConnection(connection);
 
 			expect(workflowsStore.addConnection).not.toHaveBeenCalled();
-			expect(uiStore.stateIsDirty).toBe(false);
+			expect(uiStore.markStateDirty).not.toHaveBeenCalled();
 		});
 
 		it('should create a connection if source and target nodes exist and connection is allowed', () => {
@@ -1875,7 +2134,7 @@ describe('useCanvasOperations', () => {
 					{ index: 0, node: nodeB.name, type: NodeConnectionTypes.Main },
 				],
 			});
-			expect(uiStore.stateIsDirty).toBe(true);
+			expect(uiStore.markStateDirty).toHaveBeenCalled();
 		});
 
 		it('should not set UI state as dirty if keepPristine is true', () => {
@@ -1927,7 +2186,7 @@ describe('useCanvasOperations', () => {
 
 			createConnection(connection, { keepPristine: true });
 
-			expect(uiStore.stateIsDirty).toBe(false);
+			expect(uiStore.markStateDirty).not.toHaveBeenCalled();
 		});
 	});
 
@@ -2184,6 +2443,71 @@ describe('useCanvasOperations', () => {
 						filter: {
 							nodes: ['allowedType'],
 						},
+					},
+				],
+			});
+			const targetHandle: IConnection = {
+				node: targetNode.name,
+				type: NodeConnectionTypes.Main,
+				index: 0,
+			};
+
+			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+			workflowsStore.workflowObject = workflowObject;
+			workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(workflowObject);
+
+			const { isConnectionAllowed, editableWorkflowObject } = useCanvasOperations();
+
+			editableWorkflowObject.value.nodes[sourceNode.name] = sourceNode;
+			editableWorkflowObject.value.nodes[targetNode.name] = targetNode;
+			nodeTypesStore.getNodeType = vi.fn(
+				(nodeTypeName: string) =>
+					({
+						[sourceNode.type]: sourceNodeTypeDescription,
+						[targetNode.type]: targetNodeTypeDescription,
+					})[nodeTypeName],
+			);
+
+			expect(isConnectionAllowed(sourceNode, targetNode, sourceHandle, targetHandle)).toBe(false);
+		});
+
+		it('should return false if target node type is not allowed by source node output filter', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const sourceNode = mockNode({
+				id: '1',
+				type: 'sourceType',
+				name: 'Source Node',
+				typeVersion: 1,
+			});
+			const sourceNodeTypeDescription = mockNodeTypeDescription({
+				name: sourceNode.type,
+				outputs: [
+					{
+						type: NodeConnectionTypes.Main,
+						filter: {
+							nodes: ['allowedType'],
+						},
+					},
+				],
+			});
+			const sourceHandle: IConnection = {
+				node: sourceNode.name,
+				type: NodeConnectionTypes.Main,
+				index: 0,
+			};
+
+			const targetNode = mockNode({
+				id: '2',
+				type: 'targetType',
+				name: 'Target Node',
+				typeVersion: 1,
+			});
+			const targetNodeTypeDescription = mockNodeTypeDescription({
+				name: 'targetType',
+				inputs: [
+					{
+						type: NodeConnectionTypes.Main,
 					},
 				],
 			});
@@ -2710,6 +3034,46 @@ describe('useCanvasOperations', () => {
 					{ index: 0, node: nodeB.name, type: NodeConnectionTypes.Main },
 				],
 			});
+		});
+
+		it('should update node input issues for both nodes after deleting connection', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+
+			const nodeA = createTestNode({
+				id: 'a',
+				type: 'node',
+				name: 'Node A',
+			});
+
+			const nodeB = createTestNode({
+				id: 'b',
+				type: 'node',
+				name: 'Node B',
+			});
+
+			const connection: Connection = {
+				source: nodeA.id,
+				sourceHandle: `outputs/${NodeConnectionTypes.Main}/0`,
+				target: nodeB.id,
+				targetHandle: `inputs/${NodeConnectionTypes.Main}/0`,
+			};
+
+			workflowsStore.getNodeById.mockReturnValueOnce(nodeA).mockReturnValueOnce(nodeB);
+
+			const updateNodeInputIssuesSpy = vi.fn();
+			const nodeHelpersOriginal = nodeHelpers.useNodeHelpers();
+			vi.spyOn(nodeHelpers, 'useNodeHelpers').mockImplementation(() => ({
+				...nodeHelpersOriginal,
+				updateNodeInputIssues: updateNodeInputIssuesSpy,
+			}));
+
+			const { deleteConnection } = useCanvasOperations();
+			deleteConnection(connection);
+
+			await nextTick();
+
+			expect(updateNodeInputIssuesSpy).toHaveBeenCalledWith(nodeA);
+			expect(updateNodeInputIssuesSpy).toHaveBeenCalledWith(nodeB);
 		});
 	});
 
@@ -3448,6 +3812,83 @@ describe('useCanvasOperations', () => {
 			expect(updateNodeAtIndexSpy).toHaveBeenNthCalledWith(1, 0, workflow.nodes[0]);
 			expect(updateNodeAtIndexSpy).toHaveBeenNthCalledWith(2, 1, workflow.nodes[1]);
 		});
+
+		it('should remove preview token from node type when initializing', () => {
+			const updateNodeAtIndexSpy = vi.spyOn(workflowState, 'updateNodeAtIndex');
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeWithPreview = createTestNode({
+				type: 'n8n-nodes-community.testNode-preview',
+				name: 'testNode',
+			});
+			const workflow = createTestWorkflow({
+				nodes: [nodeWithPreview],
+				connections: {},
+			});
+			workflowsStore.workflow.nodes = [nodeWithPreview];
+			const { initializeUnknownNodes } = useCanvasOperations();
+			initializeUnknownNodes(workflow.nodes);
+
+			expect(updateNodeAtIndexSpy).toHaveBeenCalledTimes(1);
+			const updatedNode = updateNodeAtIndexSpy.mock.calls[0][1];
+			expect(updatedNode.type).toBe('n8n-nodes-community.testNode');
+			expect(updatedNode.type).not.toContain('-preview');
+		});
+	});
+
+	describe('resolveNodeData', () => {
+		it('should resolve node parameters and webhooks for installed nodes', () => {
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.getIsNodeInstalled = vi.fn().mockReturnValue(true);
+
+			const nodeTypeDescription = mockNodeTypeDescription({
+				name: 'n8n-nodes-base.httpRequest',
+				webhooks: [
+					{
+						name: 'default',
+						httpMethod: 'GET',
+						path: 'test',
+						responseMode: 'onReceived',
+					},
+				],
+			});
+
+			const { addNode } = useCanvasOperations();
+			const node = addNode(
+				{
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+				nodeTypeDescription,
+			);
+
+			expect(nodeTypesStore.getIsNodeInstalled).toHaveBeenCalledWith('n8n-nodes-base.httpRequest');
+			expect(node).toBeDefined();
+		});
+
+		it('should skip resolving parameters and webhooks for non-installed nodes', () => {
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.getIsNodeInstalled = vi.fn().mockReturnValue(false);
+
+			const nodeTypeDescription = mockNodeTypeDescription({
+				name: 'n8n-nodes-community.notInstalled',
+			});
+
+			const { addNode } = useCanvasOperations();
+			const node = addNode(
+				{
+					type: 'n8n-nodes-community.notInstalled',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+				nodeTypeDescription,
+			);
+
+			expect(nodeTypesStore.getIsNodeInstalled).toHaveBeenCalledWith(
+				'n8n-nodes-community.notInstalled',
+			);
+			expect(node).toBeDefined();
+		});
 	});
 
 	describe('resetWorkspace', () => {
@@ -3514,7 +3955,7 @@ describe('useCanvasOperations', () => {
 			expect(setActiveExecutionId).toHaveBeenCalledWith(undefined);
 			expect(workflowsStore.lastSuccessfulExecution).toBeNull();
 			expect(uiStore.resetLastInteractedWith).toHaveBeenCalled();
-			expect(uiStore.stateIsDirty).toBe(false);
+			expect(uiStore.markStateClean).toHaveBeenCalled();
 			expect(executionsStore.activeExecution).toBeNull();
 			expect(credentialsSpy).toHaveBeenCalledWith(false);
 			expect(credentialsUpdatedRef.value).toBe(false);
@@ -3655,7 +4096,7 @@ describe('useCanvasOperations', () => {
 			const result = await openExecution(executionId);
 
 			expect(setWorkflowExecutionData).toHaveBeenCalledWith(executionData);
-			expect(uiStore.stateIsDirty).toBe(false);
+			expect(uiStore.markStateClean).toHaveBeenCalled();
 			expect(result).toEqual(executionData);
 		});
 
@@ -3673,6 +4114,10 @@ describe('useCanvasOperations', () => {
 
 		it('should clear workflow pin data if execution mode is not manual', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			const setPinDataSpy = vi.spyOn(workflowDocumentStore, 'setPinData');
 			const { openExecution } = useCanvasOperations();
 
 			const executionId = '123';
@@ -3690,7 +4135,7 @@ describe('useCanvasOperations', () => {
 
 			await openExecution(executionId);
 
-			expect(workflowsStore.setWorkflowPinData).toHaveBeenCalledWith({});
+			expect(setPinDataSpy).toHaveBeenCalledWith({});
 		});
 		it('should show an error notification for failed executions', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
@@ -4173,6 +4618,136 @@ describe('useCanvasOperations', () => {
 			).resolves.not.toThrow();
 			expect(toast.showError).not.toHaveBeenCalled();
 		});
+
+		it.each(UPDATE_WEBHOOK_ID_NODE_TYPES)(
+			'should regenerate webhook ids for node type "%s" on pasting into canvas',
+			async (type) => {
+				const workflowsStore = mockedStore(useWorkflowsStore);
+
+				// This mock is needed for addImportedNodesToWorkflow to work
+				workflowsStore.createWorkflowObject = vi.fn().mockReturnValue({
+					nodes: {},
+					connections: {},
+					connectionsBySourceNode: {},
+					renameNode: vi.fn(),
+				});
+
+				const nodesToImport = [
+					{
+						id: 'import-1',
+						name: 'Execute Workflow Trigger 1',
+						type,
+						typeVersion: 1,
+						position: [200, 200] as [number, number],
+						webhookId: 'first-webhook',
+						parameters: {
+							path: 'some-path',
+						},
+					},
+					{
+						id: 'import-2',
+						name: 'Execute Workflow Trigger 2',
+						type,
+						typeVersion: 1,
+						position: [300, 300] as [number, number],
+						webhookId: 'second-webhook',
+						parameters: {
+							options: {
+								path: 'some-path',
+							},
+						},
+					},
+				];
+
+				const workflowDataToImport = {
+					nodes: nodesToImport,
+					connections: {},
+					pinData: {
+						'Execute Workflow Trigger 1': [{ json: { test: 'data1' } }],
+						'Execute Workflow Trigger 2': [{ json: { test: 'data2' } }],
+					},
+				};
+
+				const canvasOperations = useCanvasOperations();
+
+				// This should not throw even when nodes can't be added due to maxNodes limit
+				const workflow = await canvasOperations.importWorkflowData(workflowDataToImport, 'paste');
+
+				expect(workflow.nodes).toHaveLength(2);
+				expect(workflow.nodes![0].name).toBe('Execute Workflow Trigger 1');
+				expect(workflow.nodes![0].webhookId).not.toBe('first-webhook');
+				expect(workflow.nodes![0].parameters.path).not.toBe('some-path');
+				expect(workflow.nodes![1].name).toBe('Execute Workflow Trigger 2');
+				expect(workflow.nodes![1].webhookId).not.toBe('second-webhook');
+				expect((workflow.nodes![1].parameters.options as { path: string }).path).not.toBe(
+					'some-path',
+				);
+			},
+		);
+
+		it.each([WEBHOOK_NODE_TYPE, MCP_TRIGGER_NODE_TYPE])(
+			'should not regenerate webhook ids for node type "%s" on pasting into canvas',
+			async (type) => {
+				const workflowsStore = mockedStore(useWorkflowsStore);
+
+				// This mock is needed for addImportedNodesToWorkflow to work
+				workflowsStore.createWorkflowObject = vi.fn().mockReturnValue({
+					nodes: {},
+					connections: {},
+					connectionsBySourceNode: {},
+					renameNode: vi.fn(),
+				});
+
+				const nodesToImport = [
+					{
+						id: 'import-1',
+						name: 'Execute Workflow Trigger 1',
+						type,
+						typeVersion: 1,
+						position: [200, 200] as [number, number],
+						webhookId: 'first-webhook',
+						parameters: {
+							path: 'some-path',
+						},
+					},
+					{
+						id: 'import-2',
+						name: 'Execute Workflow Trigger 2',
+						type,
+						typeVersion: 1,
+						position: [300, 300] as [number, number],
+						webhookId: 'second-webhook',
+						parameters: {
+							options: {
+								path: 'some-path',
+							},
+						},
+					},
+				];
+
+				const workflowDataToImport = {
+					nodes: nodesToImport,
+					connections: {},
+					pinData: {
+						'Execute Workflow Trigger 1': [{ json: { test: 'data1' } }],
+						'Execute Workflow Trigger 2': [{ json: { test: 'data2' } }],
+					},
+				};
+
+				const canvasOperations = useCanvasOperations();
+
+				// This should not throw even when nodes can't be added due to maxNodes limit
+				const workflow = await canvasOperations.importWorkflowData(workflowDataToImport, 'paste');
+
+				expect(workflow.nodes).toHaveLength(2);
+				expect(workflow.nodes![0].name).toBe('Execute Workflow Trigger 1');
+				expect(workflow.nodes![0].webhookId).toBe('first-webhook');
+				expect(workflow.nodes![0].parameters.path).toBe('some-path');
+				expect(workflow.nodes![1].name).toBe('Execute Workflow Trigger 2');
+				expect(workflow.nodes![1].webhookId).toBe('second-webhook');
+				expect((workflow.nodes![1].parameters.options as { path: string }).path).toBe('some-path');
+			},
+		);
 	});
 
 	describe('duplicateNodes', () => {
@@ -4280,10 +4855,8 @@ describe('useCanvasOperations', () => {
 
 			const { importTemplate } = useCanvasOperations();
 
-			const templateId = 'template-id';
 			const templateName = 'template name';
 			await importTemplate({
-				id: templateId,
 				name: templateName,
 				workflow,
 			});
@@ -4305,9 +4878,6 @@ describe('useCanvasOperations', () => {
 				templateName,
 				projectsStore.currentProjectId,
 			);
-			expect(workflowsStore.addToWorkflowMetadata).toHaveBeenCalledWith({
-				templateId,
-			});
 		});
 	});
 	describe('replaceNodeParameters', () => {
@@ -4974,6 +5544,28 @@ describe('useCanvasOperations', () => {
 				name: VIEWS.NEW_WORKFLOW,
 				query: { templateId: 'template-id' },
 			});
+
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(useWorkflowsStore().workflowId),
+			);
+			expect(workflowDocumentStore.addToMeta).toHaveBeenCalledWith({
+				templateId: 'template-id',
+			});
+		});
+
+		it('should not mark UI state as dirty on template import', async () => {
+			const uiStore = mockedStore(useUIStore);
+
+			templatesStore.getFixedWorkflowTemplate = vi.fn().mockReturnValue({
+				id: 'workflow-id',
+				name: 'Template Name',
+				workflow: { nodes: [], connections: {} },
+			});
+
+			const { openWorkflowTemplate } = useCanvasOperations();
+			await openWorkflowTemplate('template-id');
+
+			expect(uiStore.markStateDirty).not.toHaveBeenCalled();
 		});
 	});
 
@@ -5018,6 +5610,650 @@ describe('useCanvasOperations', () => {
 					parentFolderId: undefined,
 				},
 			});
+
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(useWorkflowsStore().workflowId),
+			);
+			expect(workflowDocumentStore.addToMeta).toHaveBeenCalledWith({
+				templateId: 'template-id',
+			});
+		});
+
+		it('should not mark UI state as dirty on template import', async () => {
+			const uiStore = mockedStore(useUIStore);
+
+			const template: WorkflowDataWithTemplateId = {
+				id: 'workflow-id',
+				name: 'Template Name',
+				nodes: [],
+				connections: {},
+				meta: { templateId: 'template-id' },
+			};
+
+			const { openWorkflowTemplateFromJSON } = useCanvasOperations();
+			await openWorkflowTemplateFromJSON(template);
+
+			expect(uiStore.markStateDirty).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getNodesToShift', () => {
+		it('should not shift downstream nodes unless they are to the right of the insertion point', () => {
+			// Create nodes: Start -> Loop -> End -> Start (cycle)
+			const nodeA = createTestNode({ id: 'A', name: 'Start', position: [0, 0] });
+			const nodeB = createTestNode({ id: 'B', name: 'Loop', position: [104, 0] });
+			const nodeC = createTestNode({ id: 'C', name: 'End', position: [208, 0] });
+
+			const pinia = createTestingPinia({
+				initialState: {
+					[STORES.WORKFLOWS]: {
+						workflow: createTestWorkflow({
+							nodes: [nodeA, nodeB, nodeC],
+							connections: {
+								[nodeA.name]: {
+									main: [[{ node: nodeB.name, type: NodeConnectionTypes.Main, index: 0 }]],
+								},
+								[nodeB.name]: {
+									main: [[{ node: nodeC.name, type: NodeConnectionTypes.Main, index: 0 }]],
+								},
+								[nodeC.name]: {
+									main: [[{ node: nodeA.name, type: NodeConnectionTypes.Main, index: 0 }]],
+								},
+							},
+						}),
+					},
+				},
+			});
+			setActivePinia(pinia);
+
+			const { getNodesToShift } = useCanvasOperations();
+
+			const { nodesToMove } = getNodesToShift([50, 0], 'Start');
+
+			expect(nodesToMove).toHaveLength(2);
+			expect(nodesToMove.find((n) => n.name === 'Start')).toBeUndefined();
+		});
+
+		it('should classify sticky notes as stretch-only when they contain the source node and insertion point is inside the sticky note', () => {
+			/**
+			 * Visual representation of the test scenario:
+			 *
+			 * Before insertion:
+			 * ┌─────────────────────────────┐
+			 * │  Sticky Note (50, 50)       │
+			 * │                             │
+			 * │    [Source]────────────────> [Target]
+			 * │   (100, 100)               (400, 100)
+			 * │                             │
+			 * └─────────────────────────────┘
+			 *
+			 * Insertion point: (250, 100) - between Source and Target
+			 *
+			 * Expected behavior:
+			 * - Sticky should ONLY stretch (not move) because it contains the source node
+			 * - Source node acts as an anchor point
+			 * - Target node will shift right
+			 * - Sticky will expand to accommodate the new node while staying anchored
+			 */
+			const sourceNode = createTestNode({ id: 'source', name: 'Source', position: [100, 100] });
+			const targetNode = createTestNode({ id: 'target', name: 'Target', position: [400, 100] });
+			const stickyNote = createTestNode({
+				id: 'sticky',
+				name: 'Sticky',
+				type: STICKY_NODE_TYPE,
+				position: [50, 50],
+				parameters: { width: 300, height: 200 },
+			});
+
+			const pinia = createTestingPinia({
+				initialState: {
+					[STORES.WORKFLOWS]: {
+						workflow: createTestWorkflow({
+							nodes: [sourceNode, targetNode, stickyNote],
+							connections: {
+								[sourceNode.name]: {
+									main: [[{ node: targetNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
+								},
+							},
+						}),
+					},
+				},
+			});
+			setActivePinia(pinia);
+
+			const { getNodesToShift } = useCanvasOperations();
+			const insertPosition: [number, number] = [250, 100];
+
+			const { nodesToMove, stickiesToStretch, stickiesToMoveAndStretch } = getNodesToShift(
+				insertPosition,
+				'Source',
+			);
+
+			// Sticky containing source node should only stretch (anchored)
+			expect(stickiesToStretch).toHaveLength(1);
+			expect(stickiesToStretch[0].id).toBe('sticky');
+			expect(stickiesToMoveAndStretch).toHaveLength(0);
+			expect(nodesToMove.find((n) => n.id === 'sticky')).toBeUndefined();
+		});
+
+		it('should classify sticky notes to only move when they are far from the insertion point', () => {
+			/**
+			 * Visual representation:
+			 *
+			 * Before insertion:
+			 *                                                    ┌─────────────┐
+			 *                                                    │  Sticky     │
+			 * [Source]───────────────────────────> [Target]      │  (600, 50)  │
+			 * (100, 100)                          (500, 100)     │             │
+			 *                                                    └─────────────┘
+			 *
+			 * Insertion point: (250, 100)
+			 *
+			 * Expected behavior:
+			 * - Sticky is entirely to the right and far from insertion point
+			 * - Sticky should ONLY move (no stretching needed)
+			 * - Target node will also shift right
+			 */
+			const sourceNode = createTestNode({ id: 'source', name: 'Source', position: [100, 100] });
+			const targetNode = createTestNode({ id: 'target', name: 'Target', position: [500, 100] });
+			const stickyNote = createTestNode({
+				id: 'sticky',
+				name: 'Sticky',
+				type: STICKY_NODE_TYPE,
+				position: [600, 50],
+				parameters: { width: 200, height: 200 },
+			});
+
+			const pinia = createTestingPinia({
+				initialState: {
+					[STORES.WORKFLOWS]: {
+						workflow: createTestWorkflow({
+							nodes: [sourceNode, targetNode, stickyNote],
+							connections: {
+								[sourceNode.name]: {
+									main: [[{ node: targetNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
+								},
+							},
+						}),
+					},
+				},
+			});
+			setActivePinia(pinia);
+
+			const { getNodesToShift } = useCanvasOperations();
+			const insertPosition: [number, number] = [250, 100];
+
+			const { nodesToMove, stickiesToStretch, stickiesToMoveAndStretch } = getNodesToShift(
+				insertPosition,
+				'Source',
+			);
+
+			// Sticky far from insertion should only move
+			expect(stickiesToMoveAndStretch).toHaveLength(0);
+			expect(stickiesToStretch).toHaveLength(0);
+			expect(nodesToMove).toHaveLength(2); // target + sticky
+			expect(nodesToMove).toContainEqual(expect.objectContaining({ id: 'target' }));
+			expect(nodesToMove).toContainEqual(expect.objectContaining({ id: 'sticky' }));
+		});
+
+		it('should not move sticky notes that do not overlap vertically with the insertion area', () => {
+			/**
+			 * Visual representation:
+			 *
+			 * [Source]──────────────────────> [Target]
+			 * (100, 100)                     (400, 100)
+			 *            ↑
+			 *       Insertion: (250, 100)
+			 *
+			 *
+			 *
+			 *       ┌─────────────┐
+			 *       │  Sticky     │
+			 *       │  (300, 500) │  ← Far below, no vertical overlap
+			 *       │             │
+			 *       └─────────────┘
+			 *
+			 * Expected behavior:
+			 * - Sticky is far below the insertion area (no vertical overlap)
+			 * - Sticky should NOT be affected (no move, no stretch)
+			 */
+			const sourceNode = createTestNode({ id: 'source', name: 'Source', position: [100, 100] });
+			const targetNode = createTestNode({ id: 'target', name: 'Target', position: [400, 100] });
+			const stickyNote = createTestNode({
+				id: 'sticky',
+				name: 'Sticky',
+				type: STICKY_NODE_TYPE,
+				position: [300, 500],
+				parameters: { width: 200, height: 200 },
+			});
+
+			const pinia = createTestingPinia({
+				initialState: {
+					[STORES.WORKFLOWS]: {
+						workflow: createTestWorkflow({
+							nodes: [sourceNode, targetNode, stickyNote],
+							connections: {
+								[sourceNode.name]: {
+									main: [[{ node: targetNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
+								},
+							},
+						}),
+					},
+				},
+			});
+			setActivePinia(pinia);
+
+			const { getNodesToShift } = useCanvasOperations();
+			const insertPosition: [number, number] = [250, 100];
+
+			const { nodesToMove, stickiesToStretch, stickiesToMoveAndStretch } = getNodesToShift(
+				insertPosition,
+				'Source',
+			);
+
+			// Sticky not overlapping vertically should not be affected
+			expect(stickiesToStretch).toHaveLength(0);
+			expect(stickiesToMoveAndStretch).toHaveLength(0);
+			expect(nodesToMove).toHaveLength(1); // only target moves
+			expect(nodesToMove).toContainEqual(expect.objectContaining({ id: 'target' }));
+			expect(nodesToMove.find((n) => n.id === 'sticky')).toBeUndefined();
+		});
+
+		it('should track associated nodes for sticky notes', () => {
+			/**
+			 * Visual representation:
+			 *
+			 *                                      ┌─────────┐
+			 *                                      │ Sticky  │
+			 * [Source]──────────────────-─────────>│[Target] │
+			 * (100, 100)                           │(400,100)│
+			 *                                      └─────────┘
+			 *                 ↑
+			 *            Insertion: (250, 100)
+			 *
+			 * Expected behavior:
+			 * - Sticky contains the target node (center proximity check)
+			 * - Target node will move, so sticky will move too
+			 * - Sticky should track Target as an associated node for stretching calculations
+			 */
+			const sourceNode = createTestNode({ id: 'source', name: 'Source', position: [100, 100] });
+			const targetNode = createTestNode({ id: 'target', name: 'Target', position: [400, 100] });
+			const stickyNote = createTestNode({
+				id: 'sticky',
+				name: 'Sticky',
+				type: STICKY_NODE_TYPE,
+				position: [370, 70],
+				parameters: { width: 100, height: 100 },
+			});
+
+			const pinia = createTestingPinia({
+				initialState: {
+					[STORES.WORKFLOWS]: {
+						workflow: createTestWorkflow({
+							nodes: [sourceNode, targetNode, stickyNote],
+							connections: {
+								[sourceNode.name]: {
+									main: [[{ node: targetNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
+								},
+							},
+						}),
+					},
+				},
+			});
+			setActivePinia(pinia);
+
+			const { getNodesToShift } = useCanvasOperations();
+			const insertPosition: [number, number] = [250, 100];
+
+			const { nodesToMove, stickyAssociatedNodes } = getNodesToShift(insertPosition, 'Source');
+
+			// Should track the target node as associated with the sticky
+			expect(nodesToMove).toHaveLength(2); // target + sticky
+			expect(nodesToMove).toContainEqual(expect.objectContaining({ id: 'target' }));
+			expect(nodesToMove).toContainEqual(expect.objectContaining({ id: 'sticky' }));
+
+			const associatedNodes = stickyAssociatedNodes.get('sticky');
+			expect(associatedNodes).toBeDefined();
+			expect(associatedNodes).toHaveLength(1);
+			expect(associatedNodes?.[0].id).toBe('target');
+		});
+
+		it('should handle multiple sticky notes with different behaviors', () => {
+			/**
+			 * Visual representation:
+			 *
+			 * ┌──────────────────────┐            ┌───────┐              ┌────────────┐
+			 * │  Sticky-Anchor       │            │Sticky │              │Sticky-Move │
+			 * │                      │            │[Tgt]  │              │            │
+			 * │    [Source]──────────────────────>│(400)  │              │  (600, 50) │
+			 * │   (100, 100)         │            └───────┘              │            │
+			 * │                      │                                   └────────────┘
+			 * └──────────────────────┘
+			 *              ↑
+			 *         Insertion: (250, 100)
+			 *
+			 * Expected behavior:
+			 * - Sticky-Anchor: Contains source node → ONLY stretch (anchored)
+			 * - Sticky-WithTarget: Contains target node that will move → move + track association
+			 * - Sticky-Move: Far to the right → ONLY move
+			 */
+			const sourceNode = createTestNode({ id: 'source', name: 'Source', position: [100, 100] });
+			const targetNode = createTestNode({ id: 'target', name: 'Target', position: [400, 100] });
+			const stickyAnchor = createTestNode({
+				id: 'sticky-anchor',
+				name: 'StickyAnchor',
+				type: STICKY_NODE_TYPE,
+				position: [50, 50],
+				parameters: { width: 300, height: 200 },
+			});
+			const stickyWithTarget = createTestNode({
+				id: 'sticky-with-target',
+				name: 'StickyWithTarget',
+				type: STICKY_NODE_TYPE,
+				position: [370, 70],
+				parameters: { width: 100, height: 100 },
+			});
+			const stickyMove = createTestNode({
+				id: 'sticky-move',
+				name: 'StickyMove',
+				type: STICKY_NODE_TYPE,
+				position: [600, 50],
+				parameters: { width: 200, height: 200 },
+			});
+
+			const pinia = createTestingPinia({
+				initialState: {
+					[STORES.WORKFLOWS]: {
+						workflow: createTestWorkflow({
+							nodes: [sourceNode, targetNode, stickyAnchor, stickyWithTarget, stickyMove],
+							connections: {
+								[sourceNode.name]: {
+									main: [[{ node: targetNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
+								},
+							},
+						}),
+					},
+				},
+			});
+			setActivePinia(pinia);
+
+			const { getNodesToShift } = useCanvasOperations();
+			const insertPosition: [number, number] = [250, 100];
+
+			const { nodesToMove, stickiesToStretch, stickyAssociatedNodes } = getNodesToShift(
+				insertPosition,
+				'Source',
+			);
+
+			// Sticky containing source should only stretch
+			expect(stickiesToStretch).toHaveLength(1);
+			expect(stickiesToStretch).toContainEqual(expect.objectContaining({ id: 'sticky-anchor' }));
+
+			// Sticky containing target should move (and track associated nodes)
+			expect(nodesToMove).toHaveLength(3); // target + sticky-with-target + sticky-move
+			expect(nodesToMove).toContainEqual(expect.objectContaining({ id: 'target' }));
+			expect(nodesToMove).toContainEqual(expect.objectContaining({ id: 'sticky-with-target' }));
+			expect(stickyAssociatedNodes.get('sticky-with-target')).toHaveLength(1);
+
+			// Sticky far to the right should only move
+			expect(nodesToMove).toContainEqual(expect.objectContaining({ id: 'sticky-move' }));
+		});
+
+		it('should handle sticky notes with nodes at the center boundary', () => {
+			/**
+			 * Visual representation:
+			 *
+			 *            ┌────────────────────┐
+			 *            │  Sticky (200, 50)  │
+			 * [Source]───│───────────────────────────> [Target]
+			 * (100, 100) │        ↑           │       (400, 100)
+			 *            │   Insertion point  │
+			 *            │    (250, 100)      │
+			 *            └────────────────────┘
+			 *
+			 * Expected behavior:
+			 * - Sticky overlaps the insertion point (inside its bounds)
+			 * - Sticky does NOT contain source node
+			 * - Sticky should ONLY stretch to accommodate the new node
+			 */
+			const sourceNode = createTestNode({ id: 'source', name: 'Source', position: [100, 100] });
+			const targetNode = createTestNode({ id: 'target', name: 'Target', position: [400, 100] });
+			const stickyNote = createTestNode({
+				id: 'sticky',
+				name: 'Sticky',
+				type: STICKY_NODE_TYPE,
+				position: [200, 50],
+				parameters: { width: 200, height: 200 },
+			});
+
+			const pinia = createTestingPinia({
+				initialState: {
+					[STORES.WORKFLOWS]: {
+						workflow: createTestWorkflow({
+							nodes: [sourceNode, targetNode, stickyNote],
+							connections: {
+								[sourceNode.name]: {
+									main: [[{ node: targetNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
+								},
+							},
+						}),
+					},
+				},
+			});
+			setActivePinia(pinia);
+
+			const { getNodesToShift } = useCanvasOperations();
+			const insertPosition: [number, number] = [250, 100];
+
+			const { stickiesToStretch } = getNodesToShift(insertPosition, 'Source');
+
+			// Sticky overlapping insertion point should stretch
+			expect(stickiesToStretch).toHaveLength(1);
+			expect(stickiesToStretch[0].id).toBe('sticky');
+		});
+
+		it('should track multiple associated nodes for sticky stretching', () => {
+			/**
+			 * Visual representation:
+			 *
+			 *                                     ┌──────────┐
+			 *                                     │  Sticky  │
+			 *                           ┌────────>│[Target1] │
+			 *                           │         │ (400,80) │
+			 * [Source]──────────────────┤         │          │
+			 * (100, 100)                │         │[Target2] │
+			 *                           └────────>│(400,120) │
+			 *                                     └──────────┘
+			 *                 ↑
+			 *            Insertion: (250, 100)
+			 *
+			 * Expected behavior:
+			 * - Sticky contains BOTH target nodes
+			 * - Both target nodes will move
+			 * - Sticky should track BOTH targets as associated nodes
+			 * - This ensures proper stretching to encompass all associated nodes
+			 */
+			const sourceNode = createTestNode({
+				id: 'source',
+				name: 'Source',
+				position: [100, 100],
+			});
+
+			const targetNode1 = createTestNode({
+				id: 'target1',
+				name: 'Target1',
+				position: [400, 80],
+			});
+
+			const targetNode2 = createTestNode({
+				id: 'target2',
+				name: 'Target2',
+				position: [400, 120],
+			});
+
+			const stickyNote = createTestNode({
+				id: 'sticky',
+				name: 'Sticky',
+				type: STICKY_NODE_TYPE,
+				position: [370, 50],
+				parameters: { width: 100, height: 150 },
+			});
+
+			const pinia = createTestingPinia({
+				initialState: {
+					[STORES.WORKFLOWS]: {
+						workflow: createTestWorkflow({
+							nodes: [sourceNode, targetNode1, targetNode2, stickyNote],
+							connections: {
+								[sourceNode.name]: {
+									main: [
+										[
+											{ node: targetNode1.name, type: NodeConnectionTypes.Main, index: 0 },
+											{ node: targetNode2.name, type: NodeConnectionTypes.Main, index: 0 },
+										],
+									],
+								},
+							},
+						}),
+					},
+				},
+			});
+			setActivePinia(pinia);
+
+			const { getNodesToShift } = useCanvasOperations();
+			const insertPosition: [number, number] = [250, 100];
+
+			const { nodesToMove, stickyAssociatedNodes } = getNodesToShift(insertPosition, 'Source');
+
+			// Should track both target nodes as associated with the sticky
+			expect(nodesToMove).toHaveLength(3); // target1 + target2 + sticky
+			expect(nodesToMove).toContainEqual(expect.objectContaining({ id: 'target1' }));
+			expect(nodesToMove).toContainEqual(expect.objectContaining({ id: 'target2' }));
+			expect(nodesToMove).toContainEqual(expect.objectContaining({ id: 'sticky' }));
+
+			const associatedNodes = stickyAssociatedNodes.get('sticky');
+			expect(associatedNodes).toBeDefined();
+			expect(associatedNodes).toHaveLength(2);
+			expect(associatedNodes?.map((n) => n.id).sort()).toEqual(['target1', 'target2']);
+		});
+	});
+
+	describe('createConnectionToLastInteractedWithNode - HITL node handling', () => {
+		it('should create HITL node connection pattern when adding HITL tool node with existing connection', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const uiStore = mockedStore(useUIStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			// Setup: Agent -> Tool connection
+			const agentNode = createTestNode({
+				id: 'agent',
+				name: 'Agent',
+				type: AGENT_NODE_TYPE,
+				position: [100, 100],
+			});
+
+			const toolNode = createTestNode({
+				id: 'tool',
+				name: 'Tool',
+				type: 'n8n-nodes-base.calculator',
+				position: [300, 300],
+			});
+
+			const hitlNode = createTestNode({
+				id: 'hitl',
+				name: 'HITL',
+				type: 'n8n-nodes-base.manualChatTriggerHitlTool',
+			});
+
+			const agentNodeTypeDescription = mockNodeTypeDescription({
+				name: AGENT_NODE_TYPE,
+				inputs: [NodeConnectionTypes.Main],
+				outputs: [NodeConnectionTypes.AiTool],
+			});
+			const toolNodeTypeDescription = mockNodeTypeDescription({
+				name: 'n8n-nodes-base.calculator',
+				inputs: [NodeConnectionTypes.AiTool],
+				outputs: [NodeConnectionTypes.Main],
+			});
+			const hitlNodeTypeDescription = mockNodeTypeDescription({
+				name: 'n8n-nodes-base.manualChatTriggerHitlTool',
+				inputs: [NodeConnectionTypes.AiTool],
+				outputs: [NodeConnectionTypes.AiTool],
+			});
+
+			nodeTypesStore.getNodeType = vi.fn((type: string) => {
+				if (type === AGENT_NODE_TYPE) return agentNodeTypeDescription;
+				if (type === 'n8n-nodes-base.calculator') return toolNodeTypeDescription;
+				if (type === 'n8n-nodes-base.manualChatTriggerHitlTool') return hitlNodeTypeDescription;
+				return null;
+			});
+
+			workflowsStore.workflow.nodes = [agentNode, toolNode];
+			workflowsStore.workflow.connections = {
+				[agentNode.name]: {
+					[NodeConnectionTypes.AiTool]: [
+						[{ node: toolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
+					],
+				},
+			};
+
+			// Create mock nodeTypes for the workflow object
+			const mockNodeTypes = mock<INodeTypes>({
+				getByNameAndVersion: vi.fn((type: string) => {
+					if (type === AGENT_NODE_TYPE) return { description: agentNodeTypeDescription };
+					if (type === 'n8n-nodes-base.calculator') return { description: toolNodeTypeDescription };
+					if (type === 'n8n-nodes-base.manualChatTriggerHitlTool')
+						return { description: hitlNodeTypeDescription };
+					throw new Error(`Unknown node type: ${type}`);
+				}),
+			});
+
+			const workflowObject = createTestWorkflowObject({
+				...workflowsStore.workflow,
+				nodeTypes: mockNodeTypes,
+			});
+			workflowObject.getNode = vi.fn().mockReturnValue(hitlNode);
+			workflowsStore.workflowObject = workflowObject;
+
+			workflowsStore.getNodeById = vi.fn((id: string) => {
+				if (id === 'agent') return agentNode;
+				if (id === 'tool') return toolNode;
+				if (id === 'hitl') return hitlNode;
+				return undefined;
+			});
+			workflowsStore.getNodeByName = vi.fn((name: string) => {
+				if (name === 'Agent') return agentNode;
+				if (name === 'Tool') return toolNode;
+				if (name === 'HITL') return hitlNode;
+				return null;
+			});
+			workflowsStore.addConnection = vi.fn();
+			workflowsStore.removeConnection = vi.fn();
+			workflowsStore.addNode = vi.fn();
+
+			// Mock the last interacted node as the tool node with an existing connection
+			uiStore.lastInteractedWithNode = toolNode;
+			uiStore.lastInteractedWithNodeConnection = {
+				source: agentNode.id,
+				target: toolNode.id,
+				sourceHandle: `outputs/${NodeConnectionTypes.AiTool}/0`,
+				targetHandle: `inputs/${NodeConnectionTypes.AiTool}/0`,
+			};
+			uiStore.lastInteractedWithNodeHandle = `outputs/${NodeConnectionTypes.AiTool}/0`;
+
+			const { addNode } = useCanvasOperations();
+
+			// Act: Add HITL node
+			await nextTick();
+			addNode(hitlNode, hitlNodeTypeDescription, { isAutoAdd: false });
+			await nextTick();
+
+			// Assert: Should create 2 connections:
+			// 1. Connection from HITL to Tool (original target)
+			// 2. Connection from Agent to HITL (new)
+			// And delete the original connection from Agent to Tool
+			expect(workflowsStore.addConnection).toHaveBeenCalledTimes(2);
+			expect(workflowsStore.removeConnection).toHaveBeenCalledTimes(1);
 		});
 	});
 });

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ElMenu, ElSubMenu, ElMenuItem, type MenuItemRegistered } from 'element-plus';
-import { ref } from 'vue';
+import { ref, useSlots } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 
 import type { IconSize } from '@n8n/design-system/types';
@@ -45,6 +45,9 @@ const emit = defineEmits<{
 	itemClick: [item: MenuItemRegistered];
 	select: [id: Item['id']];
 }>();
+
+const slots = useSlots();
+const hasAppendSlot = (id: string) => Boolean(slots[`item.append.${id}`]);
 
 defineSlots<{
 	default?: () => unknown;
@@ -169,7 +172,9 @@ defineExpose({
 									>
 										<N8nIcon icon="info" size="medium" :class="$style.infoIcon" />
 									</N8nTooltip>
-									<slot :name="`item.append.${item.id}`" v-bind="{ item }" />
+									<span v-if="hasAppendSlot(item.id)" :class="$style.menuItemAppend">
+										<slot :name="`item.append.${item.id}`" v-bind="{ item }" />
+									</span>
 								</ElMenuItem>
 							</ConditionalRouterLink>
 						</template>
@@ -182,7 +187,9 @@ defineExpose({
 						data-test-id="navigation-menu-item"
 					>
 						{{ item.title }}
-						<slot :name="`item.append.${item.id}`" v-bind="{ item }" />
+						<span v-if="hasAppendSlot(item.id)" :class="$style.menuItemAppend">
+							<slot :name="`item.append.${item.id}`" v-bind="{ item }" />
+						</span>
 					</ElMenuItem>
 				</ConditionalRouterLink>
 			</template>
@@ -278,6 +285,13 @@ defineExpose({
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	min-width: 0;
+}
+
+.menuItemAppend {
+	display: inline-flex;
+	align-items: center;
+	margin-left: auto;
+	padding-left: var(--spacing--2xs);
 }
 
 .infoTooltip {

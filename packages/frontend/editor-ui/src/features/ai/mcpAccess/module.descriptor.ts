@@ -19,10 +19,9 @@ export const MCPModule: FrontendModuleDescription = {
 		{
 			path: 'mcp',
 			name: MCP_SETTINGS_VIEW,
-			components: {
-				settingsView: SettingsMCPView,
-			},
+			component: SettingsMCPView,
 			meta: {
+				layout: 'settings',
 				middleware: ['authenticated', 'custom'],
 				telemetry: {
 					pageCategory: 'settings',

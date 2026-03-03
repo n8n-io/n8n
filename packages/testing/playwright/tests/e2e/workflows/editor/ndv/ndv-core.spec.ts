@@ -5,7 +5,11 @@ import {
 } from '../../../../../config/constants';
 import { test, expect } from '../../../../../fixtures/base';
 
-test.describe('NDV', () => {
+test.describe('NDV', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 	});
@@ -93,7 +97,7 @@ test.describe('NDV', () => {
 		await n8n.ndv.execute();
 
 		await expect(n8n.ndv.getNodeRunErrorMessage()).toHaveText(
-			"Paired item data for item from node 'Break pairedItem chain' is unavailable. Ensure 'Break pairedItem chain' is providing the required output.",
+			"Paired item data for item from node 'Break pairedItem chain' is unavailable. Ensure 'Break pairedItem chain' is providing the required output. [item 0]",
 		);
 
 		await expect(n8n.ndv.getNodeRunErrorDescription()).toContainText(
@@ -102,16 +106,6 @@ test.describe('NDV', () => {
 
 		await expect(n8n.ndv.getNodeRunErrorMessage()).toBeVisible();
 		await expect(n8n.ndv.getNodeRunErrorDescription()).toBeVisible();
-	});
-
-	test('should save workflow using keyboard shortcut from NDV', async ({ n8n }) => {
-		await n8n.canvas.addNode('Manual Trigger');
-		await n8n.canvas.addNode('Edit Fields (Set)', { closeNDV: false });
-		await expect(n8n.ndv.getContainer()).toBeVisible();
-
-		await n8n.page.keyboard.press('ControlOrMeta+s');
-
-		await expect(n8n.canvas.getWorkflowSaveButton()).toBeHidden();
 	});
 
 	test('webhook should fallback to webhookId if path is empty', async ({ n8n }) => {

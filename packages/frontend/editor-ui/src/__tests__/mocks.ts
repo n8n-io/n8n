@@ -51,6 +51,7 @@ export const mockNode = ({
 	typeVersion = 1,
 	parameters = {},
 	draggable = undefined,
+	placeholder = undefined,
 }: {
 	id?: INodeUi['id'];
 	name: INodeUi['name'];
@@ -61,8 +62,20 @@ export const mockNode = ({
 	typeVersion?: INodeUi['typeVersion'];
 	parameters?: INodeUi['parameters'];
 	draggable?: INodeUi['draggable'];
+	placeholder?: INodeUi['placeholder'];
 }) =>
-	mock<INodeUi>({ id, name, type, position, disabled, issues, typeVersion, parameters, draggable });
+	mock<INodeUi>({
+		id,
+		name,
+		type,
+		position,
+		disabled,
+		issues,
+		typeVersion,
+		parameters,
+		draggable,
+		placeholder,
+	});
 
 export const mockNodeTypeDescription = ({
 	name = SET_NODE_TYPE,
@@ -106,13 +119,21 @@ export const mockNodeTypeDescription = ({
 		eventTriggerDescription,
 	});
 
-export const mockLoadedNodeType = (name: string) =>
-	mock<LoadedClass<INodeType>>({
+export const mockLoadedNodeType = (name: string) => {
+	const config: Partial<INodeTypeDescription> = { name };
+
+	// Configure special node types with their correct connection types
+	if (name === OPEN_AI_CHAT_MODEL_NODE_TYPE) {
+		config.outputs = [NodeConnectionTypes.AiLanguageModel];
+	}
+
+	return mock<LoadedClass<INodeType>>({
 		type: mock<INodeType>({
 			// @ts-expect-error
-			description: mockNodeTypeDescription({ name }),
+			description: mockNodeTypeDescription(config),
 		}),
 	});
+};
 
 export const mockNodes = [
 	mockNode({ name: 'Manual Trigger', type: MANUAL_TRIGGER_NODE_TYPE }),
@@ -263,12 +284,14 @@ export function createMockEnterpriseSettings(
 		advancedPermissions: false,
 		apiKeyScopes: false,
 		workflowDiffs: false,
+		namedVersions: false,
 		projects: {
 			team: {
 				limit: 0,
 			},
 		},
 		customRoles: false,
+		personalSpacePolicy: false,
 		...overrides, // Override with any passed properties
 	};
 }

@@ -1,0 +1,201 @@
+name: 'Util: Claude Task Runner'
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Task description - what should Claude do?'
+        required: true
+        type: string
+      resumeUrl:
+        description: 'Optional callback URL to call with the result when the workflow completes'
+        required: false
+        type: string
+      model:
+        description: 'Claude model to use (e.g., claude-opus-4-6, claude-sonnet-4-5, claude-haiku-4-5)'
+        required: false
+        type: string
+        default: 'claude-sonnet-4-5-20250929'
+      use_raw_prompt:
+        description: 'Pass the task input directly as the prompt without wrapping it with guidelines and instructions'
+        required: false
+        type: boolean
+        default: false
+      max_turns:
+        description: 'Maximum conversation turns before Claude stops gracefully'
+        required: false
+        type: number
+        default: 50
+      suppress_output:
+        description: 'Suppress console output and job summary'
+        required: false
+        type: boolean
+        default: false
+      ref:
+        description: 'Git ref (branch/tag/SHA) to check out and work on'
+        required: false
+        type: string
+        default: 'master'
+
+jobs:
+  run-claude-task:
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Generate GitHub App Token
+        id: generate_token
+        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 1
+          token: ${{ steps.generate_token.outputs.token }}
+
+      - name: Configure git remote with token
+        run: git remote set-url origin "https://x-access-token:${{ steps.generate_token.outputs.token }}@github.com/${{ github.repository }}.git"
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+
+      - name: Create working branch
+        run: |
+          BRANCH_NAME="claude/task-${{ github.run_id }}-${{ github.run_attempt }}"
+          echo "BRANCH_NAME=$BRANCH_NAME" >> "$GITHUB_ENV"
+          git checkout -b "$BRANCH_NAME"
+
+      - name: Configure git author
+        run: |
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
+          echo "Git author configured as: ${{ github.actor }}"
+
+      - name: Prepare Claude prompt
+        env:
+          INPUT_TASK: ${{ inputs.task }}
+          USE_RAW_PROMPT: ${{ inputs.use_raw_prompt }}
+        run: node .github/scripts/claude-task/prepare-claude-prompt.mjs
+
+      - name: Create MCP config
+        run: |
+          cat > /tmp/mcp-config.json << 'MCPEOF'
+          {
+            "mcpServers": {
+              "linear": {
+                "command": "npx",
+                "args": [
+                  "-y",
+                  "mcp-remote",
+                  "https://mcp.linear.app/sse",
+                  "--header",
+                  "Authorization:${AUTH_HEADER}"
+                ],
+                "env": {
+                  "AUTH_HEADER": "Bearer MCP_LINEAR_API_KEY_PLACEHOLDER"
+                }
+              },
+              "notion": {
+                "command": "npx",
+                "args": ["-y", "@notionhq/notion-mcp-server"],
+                "env": {
+                  "OPENAPI_MCP_HEADERS": "{\"Authorization\":\"Bearer MCP_NOTION_TOKEN_PLACEHOLDER\",\"Notion-Version\":\"2025-02-19\"}"
+                }
+              }
+            }
+          }
+          MCPEOF
+          sed -i "s|MCP_LINEAR_API_KEY_PLACEHOLDER|${{ secrets.MCP_LINEAR_API_KEY }}|g" /tmp/mcp-config.json
+          sed -i "s|MCP_NOTION_TOKEN_PLACEHOLDER|${{ secrets.MCP_NOTION_TOKEN }}|g" /tmp/mcp-config.json
+
+      - name: Run Claude
+        id: claude
+        continue-on-error: true
+        uses: anthropics/claude-code-action@1b8ee3b94104046d71fde52ec3557651ad8c0d71 # v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ steps.generate_token.outputs.token }}
+          prompt: ${{ env.CLAUDE_PROMPT }}
+          show_full_output: ${{ inputs.suppress_output != true }}
+          settings: |
+            {
+              "permissions": {
+                "allow": [
+                  "Bash",
+                  "Read",
+                  "Write",
+                  "Edit",
+                  "Glob",
+                  "Grep",
+                  "WebFetch",
+                  "WebSearch",
+                  "TodoWrite",
+                  "Skill",
+                  "Task",
+                  "mcp__linear__*",
+                  "mcp__notion__*"
+                ]
+              }
+            }
+          claude_args: |
+            --model ${{ inputs.model }} --max-turns ${{ inputs.max_turns }} --mcp-config /tmp/mcp-config.json
+
+      - name: Push branch
+        if: always()
+        run: |
+          if ! git diff --quiet "${{ inputs.ref }}" 2>/dev/null; then
+            git push -u origin "$BRANCH_NAME"
+            echo "::notice::Changes pushed to branch $BRANCH_NAME"
+          else
+            echo "::notice::No changes to push."
+          fi
+
+      - name: Summary
+        if: always()
+        env:
+          INPUT_TASK: ${{ inputs.task }}
+          CLAUDE_OUTCOME: ${{ steps.claude.outcome }}
+          CLAUDE_SESSION_ID: ${{ steps.claude.outputs.session_id }}
+          SUPPRESS_OUTPUT: ${{ inputs.suppress_output }}
+        run: |
+          {
+            echo "## Claude Task Runner Summary"
+            echo ""
+            if [ "$SUPPRESS_OUTPUT" = "true" ]; then
+              echo "**Task:** _(output suppressed)_"
+            else
+              echo "**Task:** $INPUT_TASK"
+            fi
+            echo "**Branch:** ${BRANCH_NAME:-N/A}"
+            echo "**Claude outcome:** $CLAUDE_OUTCOME"
+            if [ -n "$CLAUDE_SESSION_ID" ]; then
+              echo "**Session ID:** \`$CLAUDE_SESSION_ID\`"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Call resume url
+        if: always() && inputs.resumeUrl != ''
+        env:
+          RESUME_URL: ${{ inputs.resumeUrl }}
+          EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+          CLAUDE_OUTCOME: ${{ steps.claude.outcome }}
+          CLAUDE_SESSION_ID: ${{ steps.claude.outputs.session_id }}
+        run: node .github/scripts/claude-task/resume-callback.mjs
+
+      - name: Check final status
+        if: always()
+        run: |
+          if [ "${{ steps.claude.outcome }}" = "failure" ]; then
+            echo "::error::Claude task failed. Check the 'Run Claude' step logs for details."
+            exit 1
+          fi

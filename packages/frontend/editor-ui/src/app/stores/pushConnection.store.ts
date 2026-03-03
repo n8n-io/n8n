@@ -3,13 +3,11 @@ import { computed, ref, watch } from 'vue';
 import type { PushMessage } from '@n8n/api-types';
 
 import { STORES } from '@n8n/stores';
+import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants/durations';
 import { useSettingsStore } from './settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWebSocketClient } from '@/app/push-connection/useWebSocketClient';
 import { useEventSourceClient } from '@/app/push-connection/useEventSourceClient';
-import { useLocalStorage } from '@vueuse/core';
-import { LOCAL_STORAGE_RUN_DATA_WORKER } from '@/app/constants';
-import { runDataWorker } from '@/app/workers/run-data/instance';
 
 export type OnPushMessageHandler = (event: PushMessage) => void;
 
@@ -20,8 +18,6 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 
-	const isRunDataWorkerEnabled = useLocalStorage<boolean>(LOCAL_STORAGE_RUN_DATA_WORKER, false);
-
 	/**
 	 * Queue of messages to be sent to the server. Messages are queued if
 	 * the connection is down.
@@ -30,6 +26,9 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 
 	/** Whether the connection has been requested */
 	const isConnectionRequested = ref(false);
+
+	/** Whether the connection is currently being established */
+	const isConnecting = ref(false);
 
 	const onMessageReceivedHandlers = ref<OnPushMessageHandler[]>([]);
 
@@ -68,12 +67,7 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 		// The `nodeExecuteAfterData` message is sent as binary data
 		// to be handled by a web worker in the future.
 		if (data instanceof ArrayBuffer) {
-			if (isRunDataWorkerEnabled.value) {
-				await runDataWorker.onNodeExecuteAfterData(data);
-				return;
-			} else {
-				data = new TextDecoder('utf-8').decode(new Uint8Array(data));
-			}
+			data = new TextDecoder('utf-8').decode(new Uint8Array(data));
 		}
 
 		let parsedData: PushMessage;
@@ -83,7 +77,9 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 			return;
 		}
 
-		onMessageReceivedHandlers.value.forEach((handler) => handler(parsedData));
+		onMessageReceivedHandlers.value.forEach((handler) => {
+			handler(parsedData);
+		});
 	}
 
 	const url = getConnectionUrl();
@@ -102,19 +98,85 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 		}
 	}
 
+	/**
+	 * Debounce window in ms for disconnect. If pushConnect is called within this
+	 * window (before or after pushDisconnect), the connection is kept.
+	 */
+	const getDisconnectDebounceMs = () =>
+		getDebounceTime(DEBOUNCE_TIME.CONNECTION.WEBSOCKET_DISCONNECT);
+
+	/**
+	 * Tracks whether a connect was recently requested. Used to handle race conditions
+	 * during route transitions where disconnect/connect may be called in quick succession.
+	 * Connect always wins within the debounce window.
+	 */
+	let recentConnectIntent = false;
+
+	/**
+	 * Timeout to reset recentConnectIntent after the debounce window.
+	 */
+	let connectIntentTimeout: ReturnType<typeof setTimeout> | null = null;
+
+	/**
+	 * Timeout for debounced disconnect.
+	 */
+	let disconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+
 	const pushConnect = () => {
+		recentConnectIntent = true;
+
+		// Reset recentConnectIntent after debounce window
+		if (connectIntentTimeout) {
+			clearTimeout(connectIntentTimeout);
+		}
+		connectIntentTimeout = setTimeout(() => {
+			recentConnectIntent = false;
+			connectIntentTimeout = null;
+		}, getDisconnectDebounceMs());
+
+		// Cancel any pending disconnect timeout
+		if (disconnectTimeout) {
+			clearTimeout(disconnectTimeout);
+			disconnectTimeout = null;
+		}
+
 		isConnectionRequested.value = true;
+		isConnecting.value = true;
 		client.value.connect();
 	};
 
 	const pushDisconnect = () => {
-		isConnectionRequested.value = false;
-		client.value.disconnect();
+		// If connect was called recently, don't disconnect
+		// (handles race condition where new view mounts before old view unmounts)
+		if (recentConnectIntent) {
+			return;
+		}
+
+		// Cancel any existing timeout and schedule a new one
+		if (disconnectTimeout) {
+			clearTimeout(disconnectTimeout);
+		}
+
+		disconnectTimeout = setTimeout(() => {
+			// Double-check in case connect was called while we were waiting
+			if (recentConnectIntent) {
+				disconnectTimeout = null;
+				return;
+			}
+			isConnectionRequested.value = false;
+			isConnecting.value = false;
+			client.value.disconnect();
+			disconnectTimeout = null;
+		}, getDisconnectDebounceMs());
 	};
 
 	watch(
 		() => client.value.isConnected.value,
 		(didConnect) => {
+			if (didConnect) {
+				isConnecting.value = false;
+			}
+
 			if (!didConnect) {
 				return;
 			}
@@ -138,6 +200,7 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 
 	return {
 		isConnected,
+		isConnecting,
 		isConnectionRequested,
 		onMessageReceivedHandlers,
 		addEventListener,

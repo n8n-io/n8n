@@ -13,6 +13,7 @@ import {
 	removePreviewToken,
 } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import NodeIcon from '@/app/components/NodeIcon.vue';
+import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 
 const {
 	activeViewStack,
@@ -23,11 +24,17 @@ const {
 } = useViewStacks();
 
 const { communityNodeDetails } = activeViewStack;
+const packageName = computed(() => activeViewStack.communityNodeDetails?.packageName);
+const { getQuickConnectOptionByPackageName } = useQuickConnect();
+const quickConnect = computed(() => {
+	const pkg = packageName.value;
+	return pkg ? getQuickConnectOptionByPackageName(pkg) : undefined;
+});
 
 const nodeCreatorStore = useNodeCreatorStore();
 const { installNode, loading } = useInstallNode();
 
-const isOwner = computed(() => useUsersStore().isInstanceOwner);
+const isAdminOrOwner = computed(() => useUsersStore().isAdminOrOwner);
 
 const updateViewStack = (key: string) => {
 	const installedNodeKey = removePreviewToken(key);
@@ -64,9 +71,21 @@ const updateStoresAndViewStack = (key: string) => {
 };
 
 const onInstall = async () => {
-	if (isOwner.value && activeViewStack.communityNodeDetails && !communityNodeDetails?.installed) {
+	if (
+		isAdminOrOwner.value &&
+		activeViewStack.communityNodeDetails &&
+		!communityNodeDetails?.installed
+	) {
 		const { key, packageName } = activeViewStack.communityNodeDetails;
-		const result = await installNode({ type: 'verified', packageName, nodeType: key });
+		const result = await installNode({
+			type: 'verified',
+			packageName,
+			nodeType: key,
+			telemetry: {
+				source: 'cnr package detail page',
+				hasQuickConnect: quickConnect.value !== undefined,
+			},
+		});
 		if (result.success) {
 			updateStoresAndViewStack(key);
 		}
@@ -108,7 +127,7 @@ const onInstall = async () => {
 				</div>
 
 				<N8nButton
-					v-if="isOwner && !communityNodeDetails.installed"
+					v-if="isAdminOrOwner && !communityNodeDetails.installed"
 					:loading="loading"
 					:disabled="loading"
 					:label="i18n.baseText('communityNodeDetails.install')"

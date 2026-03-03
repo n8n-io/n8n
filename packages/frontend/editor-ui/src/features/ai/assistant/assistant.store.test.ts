@@ -429,6 +429,69 @@ describe('AI Assistant store', () => {
 			source: 'error',
 			task: 'error',
 			workflow_id: '',
+			instance_id: '',
+			canvas_status: 'empty',
+		});
+	});
+
+	it('should call telemetry for opening assistant with build_with_ai source on empty canvas', () => {
+		const assistantStore = useAssistantStore();
+		const workflowsStore = useWorkflowsStore();
+
+		// Ensure canvas is empty
+		workflowsStore.workflow.nodes = [];
+
+		assistantStore.trackUserOpenedAssistant({
+			task: 'placeholder',
+			source: 'build_with_ai',
+			has_existing_session: false,
+		});
+
+		expect(track).toHaveBeenCalledWith('User opened assistant', {
+			source: 'build_with_ai',
+			task: 'placeholder',
+			has_existing_session: false,
+			instance_id: '',
+			workflow_id: '',
+			canvas_status: 'empty',
+			node_type: undefined,
+			error: undefined,
+			chat_session_id: undefined,
+		});
+	});
+
+	it('should call telemetry for opening assistant on existing workflow', () => {
+		const assistantStore = useAssistantStore();
+		const workflowsStore = useWorkflowsStore();
+
+		// Add a node to the workflow
+		workflowsStore.workflow.nodes = [
+			{
+				id: '1',
+				type: 'n8n-nodes-base.start',
+				typeVersion: 1,
+				name: 'Start',
+				position: [250, 250],
+				parameters: {},
+			},
+		];
+
+		assistantStore.trackUserOpenedAssistant({
+			task: 'placeholder',
+			source: 'canvas',
+			has_existing_session: false,
+		});
+
+		expect(track).toHaveBeenCalledWith('User opened assistant', {
+			source: 'canvas',
+			task: 'placeholder',
+			has_existing_session: false,
+			instance_id: '',
+			workflow_id: '',
+			canvas_status: 'existing_workflow',
+			node_type: undefined,
+			error: undefined,
+			chat_session_id: undefined,
 		});
 	});
 
@@ -449,6 +512,81 @@ describe('AI Assistant store', () => {
 		await errorMessage.retry?.();
 
 		expect(mockFn).toHaveBeenCalled();
+	});
+
+	it('should not add error message when handleServiceError receives an AbortError', () => {
+		const assistantStore = useAssistantStore();
+		const abortError = new Error('The operation was aborted');
+		abortError.name = 'AbortError';
+
+		assistantStore.handleServiceError(abortError, '125');
+		expect(assistantStore.chatMessages.length).toBe(0);
+		expect(assistantStore.streaming).toBe(false);
+	});
+
+	it('should pass abort signal to chatWithAssistant when initializing support chat', async () => {
+		const assistantStore = useAssistantStore();
+		setAssistantEnabled(true);
+
+		await assistantStore.initSupportChat('hello');
+
+		expect(apiSpy).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.anything(),
+			expect.any(Function),
+			expect.any(Function),
+			expect.any(Function),
+			expect.any(AbortSignal),
+		);
+	});
+
+	it('should pass abort signal to chatWithAssistant when initializing error helper', async () => {
+		const context: ChatRequest.ErrorContext = {
+			error: {
+				description: '',
+				message: 'Hey',
+				name: 'NodeOperationError',
+			},
+			node: {
+				id: '1',
+				type: 'n8n-nodes-base.stopAndError',
+				typeVersion: 1,
+				name: 'Stop and Error',
+				position: [250, 250],
+				parameters: {},
+			},
+		};
+
+		const assistantStore = useAssistantStore();
+		await assistantStore.initErrorHelper(context);
+
+		expect(apiSpy).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.anything(),
+			expect.any(Function),
+			expect.any(Function),
+			expect.any(Function),
+			expect.any(AbortSignal),
+		);
+	});
+
+	it('should abort streaming and stop when abortStreaming is called', async () => {
+		const assistantStore = useAssistantStore();
+		const mockSessionId = 'test-session';
+
+		apiSpy.mockImplementationOnce((_ctx, _payload, onMessage) => {
+			onMessage({
+				messages: [{ type: 'message', role: 'assistant', text: 'Hello!' }],
+				sessionId: mockSessionId,
+			});
+			// Don't call onDone to simulate ongoing streaming
+		});
+
+		await assistantStore.initSupportChat('hello');
+		expect(assistantStore.streaming).toBe(true);
+
+		assistantStore.abortStreaming();
+		expect(assistantStore.streaming).toBe(false);
 	});
 
 	it('should properly clear messages on retry in a chat session', async () => {

@@ -11,6 +11,10 @@ export class CommunityPackagesModule implements ModuleInterface {
 		await import('./community-node-types.controller');
 	}
 
+	async commands() {
+		await import('./community-node.command');
+	}
+
 	async entities() {
 		const { InstalledNodes } = await import('./installed-nodes.entity');
 		const { InstalledPackages } = await import('./installed-packages.entity');

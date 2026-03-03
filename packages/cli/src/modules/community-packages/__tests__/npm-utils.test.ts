@@ -21,7 +21,270 @@ jest.mock('node:util', () => {
 	};
 });
 
-import { verifyIntegrity, checkIfVersionExistsOrThrow } from '../npm-utils';
+import { executeNpmCommand, verifyIntegrity, checkIfVersionExistsOrThrow } from '../npm-utils';
+import { NPM_COMMAND_TOKENS, RESPONSE_ERROR_MESSAGES } from '@/constants';
+
+describe('executeNpmCommand', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+		mockAsyncExec.mockReset();
+	});
+
+	afterEach(() => {
+		jest.clearAllMocks();
+	});
+
+	describe('successful execution', () => {
+		it('should execute npm command and return stdout as string', async () => {
+			mockAsyncExec.mockResolvedValue({
+				stdout: 'command output',
+				stderr: '',
+			});
+
+			const result = await executeNpmCommand(['install', 'some-package']);
+
+			expect(result).toBe('command output');
+			expect(mockAsyncExec).toHaveBeenCalledWith('npm', ['install', 'some-package'], undefined);
+		});
+
+		it('should execute npm command with cwd option', async () => {
+			mockAsyncExec.mockResolvedValue({
+				stdout: 'command output',
+				stderr: '',
+			});
+
+			const result = await executeNpmCommand(['install'], { cwd: '/some/path' });
+
+			expect(result).toBe('command output');
+			expect(mockAsyncExec).toHaveBeenCalledWith('npm', ['install'], { cwd: '/some/path' });
+		});
+
+		it('should convert Buffer stdout to string', async () => {
+			mockAsyncExec.mockResolvedValue({
+				stdout: Buffer.from('buffer output'),
+				stderr: '',
+			});
+
+			const result = await executeNpmCommand(['list']);
+
+			expect(result).toBe('buffer output');
+		});
+	});
+
+	describe('error handling', () => {
+		it('should throw UnexpectedError for package not found (npm ERR! 404)', async () => {
+			mockAsyncExec.mockRejectedValue(
+				new Error('npm ERR! 404 Not Found - GET https://registry.npmjs.org/nonexistent-package'),
+			);
+
+			await expect(executeNpmCommand(['install', 'nonexistent-package'])).rejects.toThrow(
+				new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND),
+			);
+		});
+
+		it('should throw UnexpectedError for package not found (E404)', async () => {
+			mockAsyncExec.mockRejectedValue(
+				new Error(
+					`${NPM_COMMAND_TOKENS.NPM_PACKAGE_NOT_FOUND_ERROR} - GET https://registry.npmjs.org/nonexistent-package`,
+				),
+			);
+
+			await expect(executeNpmCommand(['view', 'nonexistent-package'])).rejects.toThrow(
+				new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND),
+			);
+		});
+
+		it('should throw UnexpectedError for package not found (404 Not Found)', async () => {
+			mockAsyncExec.mockRejectedValue(new Error('404 Not Found - package does not exist'));
+
+			await expect(executeNpmCommand(['install', 'nonexistent-package'])).rejects.toThrow(
+				new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND),
+			);
+		});
+
+		it('should throw UnexpectedError for no version available', async () => {
+			mockAsyncExec.mockRejectedValue(new Error('No valid versions available for package'));
+
+			await expect(executeNpmCommand(['install', 'some-package'])).rejects.toThrow(
+				new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND),
+			);
+		});
+
+		it('should throw UnexpectedError for package version not found', async () => {
+			mockAsyncExec.mockRejectedValue(
+				new Error(`${NPM_COMMAND_TOKENS.NPM_PACKAGE_VERSION_NOT_FOUND_ERROR} package@1.2.3`),
+			);
+
+			await expect(executeNpmCommand(['install', 'package@1.2.3'])).rejects.toThrow(
+				new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_VERSION_NOT_FOUND),
+			);
+		});
+
+		it('should throw UnexpectedError for disk full (ENOSPC)', async () => {
+			mockAsyncExec.mockRejectedValue(
+				new Error(`${NPM_COMMAND_TOKENS.NPM_DISK_NO_SPACE}: no space left on device`),
+			);
+
+			await expect(executeNpmCommand(['install', 'some-package'])).rejects.toThrow(
+				new UnexpectedError(RESPONSE_ERROR_MESSAGES.DISK_IS_FULL),
+			);
+		});
+
+		it('should throw UnexpectedError for insufficient disk space', async () => {
+			mockAsyncExec.mockRejectedValue(new Error('Error: insufficient space on device'));
+
+			await expect(executeNpmCommand(['install', 'large-package'])).rejects.toThrow(
+				new UnexpectedError(RESPONSE_ERROR_MESSAGES.DISK_IS_FULL),
+			);
+		});
+
+		it('should throw UnexpectedError for DNS getaddrinfo errors', async () => {
+			mockAsyncExec.mockRejectedValue(new Error('getaddrinfo ENOTFOUND registry.npmjs.org'));
+
+			await expect(executeNpmCommand(['install', 'some-package'])).rejects.toThrow(
+				new UnexpectedError(
+					'Network error: Unable to reach npm registry. Please check your internet connection.',
+				),
+			);
+		});
+
+		it('should throw UnexpectedError for DNS ENOTFOUND errors', async () => {
+			mockAsyncExec.mockRejectedValue(new Error('ENOTFOUND registry.npmjs.org'));
+
+			await expect(executeNpmCommand(['install', 'some-package'])).rejects.toThrow(
+				new UnexpectedError(
+					'Network error: Unable to reach npm registry. Please check your internet connection.',
+				),
+			);
+		});
+
+		it('should throw generic UnexpectedError for unknown errors', async () => {
+			mockAsyncExec.mockRejectedValue(new Error('Some unknown error'));
+
+			await expect(executeNpmCommand(['install', 'some-package'])).rejects.toThrow(
+				'Failed to execute npm command',
+			);
+		});
+
+		it('should preserve the original error as cause', async () => {
+			const originalError = new Error('Some unknown error');
+			mockAsyncExec.mockRejectedValue(originalError);
+
+			try {
+				await executeNpmCommand(['install', 'some-package']);
+				fail('Should have thrown an error');
+			} catch (error) {
+				expect(error).toBeInstanceOf(UnexpectedError);
+				expect((error as UnexpectedError).cause).toBe(originalError);
+			}
+		});
+	});
+
+	describe('doNotHandleError option', () => {
+		it('should throw raw error when doNotHandleError is true', async () => {
+			const rawError = new Error('Raw npm error');
+			mockAsyncExec.mockRejectedValue(rawError);
+
+			await expect(
+				executeNpmCommand(['outdated', '--json'], { doNotHandleError: true }),
+			).rejects.toThrow(rawError);
+		});
+
+		it('should not convert error to UnexpectedError when doNotHandleError is true', async () => {
+			const rawError = new Error('npm ERR! 404 Not Found');
+			mockAsyncExec.mockRejectedValue(rawError);
+
+			try {
+				await executeNpmCommand(['install', 'nonexistent'], { doNotHandleError: true });
+				fail('Should have thrown an error');
+			} catch (error) {
+				expect(error).toBe(rawError);
+				expect(error).not.toBeInstanceOf(UnexpectedError);
+			}
+		});
+
+		it('should handle errors normally when doNotHandleError is false', async () => {
+			mockAsyncExec.mockRejectedValue(new Error('npm ERR! 404 Not Found'));
+
+			await expect(
+				executeNpmCommand(['install', 'nonexistent'], { doNotHandleError: false }),
+			).rejects.toThrow(new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND));
+		});
+
+		it('should handle errors normally when doNotHandleError is undefined (default)', async () => {
+			mockAsyncExec.mockRejectedValue(new Error('npm ERR! 404 Not Found'));
+
+			await expect(executeNpmCommand(['install', 'nonexistent'])).rejects.toThrow(
+				new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND),
+			);
+		});
+	});
+
+	describe('command arguments', () => {
+		it('should pass all arguments to npm command', async () => {
+			mockAsyncExec.mockResolvedValue({
+				stdout: 'success',
+				stderr: '',
+			});
+
+			await executeNpmCommand([
+				'install',
+				'package-name@1.0.0',
+				'--registry=https://custom-registry.com',
+				'--json',
+			]);
+
+			expect(mockAsyncExec).toHaveBeenCalledWith(
+				'npm',
+				['install', 'package-name@1.0.0', '--registry=https://custom-registry.com', '--json'],
+				undefined,
+			);
+		});
+
+		it('should handle empty arguments array', async () => {
+			mockAsyncExec.mockResolvedValue({
+				stdout: 'npm help output',
+				stderr: '',
+			});
+
+			const result = await executeNpmCommand([]);
+
+			expect(result).toBe('npm help output');
+			expect(mockAsyncExec).toHaveBeenCalledWith('npm', [], undefined);
+		});
+	});
+
+	describe('edge cases', () => {
+		it('should handle non-Error objects being thrown', async () => {
+			mockAsyncExec.mockRejectedValue('string error');
+
+			await expect(executeNpmCommand(['install', 'some-package'])).rejects.toThrow(
+				new UnexpectedError('Failed to execute npm command'),
+			);
+		});
+
+		it('should handle errors with no message', async () => {
+			const errorWithoutMessage = new Error();
+			errorWithoutMessage.message = '';
+			mockAsyncExec.mockRejectedValue(errorWithoutMessage);
+
+			await expect(executeNpmCommand(['install', 'some-package'])).rejects.toThrow(
+				'Failed to execute npm command',
+			);
+		});
+
+		it('should handle empty stdout', async () => {
+			mockAsyncExec.mockResolvedValue({
+				stdout: '',
+				stderr: '',
+			});
+
+			const result = await executeNpmCommand(['prune']);
+
+			expect(result).toBe('');
+		});
+	});
+});
 
 describe('verifyIntegrity', () => {
 	const registryUrl = 'https://registry.npmjs.org';
@@ -133,13 +396,17 @@ describe('verifyIntegrity', () => {
 			).resolves.not.toThrow();
 
 			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
-			expect(mockAsyncExec).toHaveBeenCalledWith('npm', [
-				'view',
-				`${packageName}@${version}`,
-				'dist.integrity',
-				`--registry=${registryUrl}`,
-				'--json',
-			]);
+			expect(mockAsyncExec).toHaveBeenCalledWith(
+				'npm',
+				[
+					'view',
+					`${packageName}@${version}`,
+					'dist.integrity',
+					`--registry=${registryUrl}`,
+					'--json',
+				],
+				undefined,
+			);
 		});
 
 		it('should fallback to npm CLI and throw error when integrity does not match', async () => {
@@ -177,13 +444,17 @@ describe('verifyIntegrity', () => {
 			await verifyIntegrity(specialPackageName, specialVersion, registryUrl, integrity);
 
 			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
-			expect(mockAsyncExec).toHaveBeenCalledWith('npm', [
-				'view',
-				`${specialPackageName}@${specialVersion}`,
-				'dist.integrity',
-				`--registry=${registryUrl}`,
-				'--json',
-			]);
+			expect(mockAsyncExec).toHaveBeenCalledWith(
+				'npm',
+				[
+					'view',
+					`${specialPackageName}@${specialVersion}`,
+					'dist.integrity',
+					`--registry=${registryUrl}`,
+					'--json',
+				],
+				undefined,
+			);
 		});
 
 		it('should handle DNS errors in CLI fallback', async () => {
@@ -353,13 +624,11 @@ describe('checkIfVersionExistsOrThrow', () => {
 			const result = await checkIfVersionExistsOrThrow(packageName, version, registryUrl);
 			expect(result).toBe(true);
 			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
-			expect(mockAsyncExec).toHaveBeenCalledWith('npm', [
-				'view',
-				`${packageName}@${version}`,
-				'version',
-				`--registry=${registryUrl}`,
-				'--json',
-			]);
+			expect(mockAsyncExec).toHaveBeenCalledWith(
+				'npm',
+				['view', `${packageName}@${version}`, 'version', `--registry=${registryUrl}`, '--json'],
+				undefined,
+			);
 		});
 
 		it('should fallback to npm CLI and throw error when version does not match', async () => {
@@ -400,13 +669,17 @@ describe('checkIfVersionExistsOrThrow', () => {
 			);
 			expect(result).toBe(true);
 			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
-			expect(mockAsyncExec).toHaveBeenCalledWith('npm', [
-				'view',
-				`${specialPackageName}@${specialVersion}`,
-				'version',
-				`--registry=${registryUrl}`,
-				'--json',
-			]);
+			expect(mockAsyncExec).toHaveBeenCalledWith(
+				'npm',
+				[
+					'view',
+					`${specialPackageName}@${specialVersion}`,
+					'version',
+					`--registry=${registryUrl}`,
+					'--json',
+				],
+				undefined,
+			);
 		});
 
 		it('should handle 404 errors in CLI fallback', async () => {
