@@ -1,22 +1,48 @@
 <script lang="ts" setup>
-import { provide, computed, onMounted } from 'vue';
+import { provide, onBeforeMount, onBeforeUnmount, onMounted } from 'vue';
 import BaseLayout from './BaseLayout.vue';
 import DemoFooter from '@/features/execution/logs/components/DemoFooter.vue';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import {
+	WorkflowIdKey,
+	WorkflowStateKey,
+	WorkflowDocumentStoreKey,
+} from '@/app/constants/injectionKeys';
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { useWorkflowInitialization } from '@/app/composables/useWorkflowInitialization';
+import { usePostMessageHandler } from '@/app/composables/usePostMessageHandler';
 
 const workflowState = useWorkflowState();
-const { initializeData, initializeWorkflow } = useWorkflowInitialization(workflowState);
+provide(WorkflowStateKey, workflowState);
 
-const workflowId = computed(() => 'demo');
+const {
+	workflowId,
+	initializeData,
+	initializeWorkflow,
+	currentWorkflowDocumentStore,
+	cleanup: cleanupInitialization,
+} = useWorkflowInitialization(workflowState);
+
+provide(WorkflowIdKey, workflowId);
+provide(WorkflowDocumentStoreKey, currentWorkflowDocumentStore);
+
+const { setup: setupPostMessages, cleanup: cleanupPostMessages } = usePostMessageHandler({
+	workflowState,
+	currentWorkflowDocumentStore,
+});
+
+onBeforeMount(() => {
+	setupPostMessages();
+});
 
 onMounted(async () => {
 	await initializeData();
 	await initializeWorkflow();
 });
 
-provide(WorkflowIdKey, workflowId);
+onBeforeUnmount(() => {
+	cleanupPostMessages();
+	cleanupInitialization();
+});
 </script>
 
 <template>
