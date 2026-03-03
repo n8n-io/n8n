@@ -36,6 +36,7 @@ ${colors.yellow}Options:${colors.reset}
   --chart-ref <ref>     Git branch/tag for n8n-hosting repo (default: main)
   --chart-repo <url>    Git repo URL (default: https://github.com/n8n-io/n8n-hosting.git)
   --k3s-image <image>   K3s image (default: rancher/k3s:v1.32.2-k3s1)
+  --env <KEY=VALUE>     Set environment variable in n8n pods (repeatable)
   --url-file <path>     Write URL to file when ready (for CI)
   --help, -h            Show this help
 
@@ -48,6 +49,9 @@ ${colors.yellow}Examples:${colors.reset}
 
   ${colors.bright}# Queue mode (PostgreSQL + Redis + workers)${colors.reset}
   pnpm stack:helm --mode queue --image n8nio/n8n:latest
+
+  ${colors.bright}# E2E test mode (requires INCLUDE_TEST_CONTROLLER image)${colors.reset}
+  pnpm stack:helm --env E2E_TESTS=true --env NODE_ENV=development
 
   ${colors.bright}# CI mode (writes URL to file)${colors.reset}
   pnpm stack:helm --url-file /tmp/n8n-url.txt &
@@ -76,6 +80,7 @@ async function main() {
 			'chart-ref': { type: 'string' },
 			'chart-repo': { type: 'string' },
 			'k3s-image': { type: 'string' },
+			env: { type: 'string', multiple: true },
 			'url-file': { type: 'string' },
 			'kubeconfig-file': { type: 'string' },
 		},
@@ -91,17 +96,29 @@ async function main() {
 
 	const mode = (values.mode as HelmStackMode) || undefined;
 
+	// Parse --env KEY=VALUE pairs into a record
+	const envOverrides: Record<string, string> = {};
+	for (const entry of values.env ?? []) {
+		const eqIndex = entry.indexOf('=');
+		if (eqIndex === -1) {
+			log.error(`Invalid --env format: "${entry}" (expected KEY=VALUE)`);
+			process.exit(1);
+		}
+		envOverrides[entry.slice(0, eqIndex)] = entry.slice(eqIndex + 1);
+	}
+
 	const stack = await createHelmStack({
 		n8nImage: values.image,
 		helmChartRef: values['chart-ref'],
 		helmChartRepo: values['chart-repo'],
 		k3sImage: values['k3s-image'],
 		mode,
+		env: Object.keys(envOverrides).length > 0 ? envOverrides : undefined,
 	});
 
 	log.header('Stack Ready');
 	log.success(`n8n URL: ${colors.bright}${colors.green}${stack.baseUrl}${colors.reset}`);
-	log.info(`Kubeconfig: ${colors.bright}export KUBECONFIG=${stack.kubeConfigPath}${colors.reset}`);
+	log.info(`Kubeconfig: ${colors.bright}${stack.kubeConfigPath}${colors.reset}`);
 
 	if (values['url-file']) {
 		writeFileSync(values['url-file'], stack.baseUrl);
@@ -114,31 +131,20 @@ async function main() {
 	}
 
 	console.log('');
-	log.info('Debug with kubectl:');
-	log.info(`  ${colors.bright}export KUBECONFIG=${stack.kubeConfigPath}${colors.reset}`);
+	log.info('Debug with kubectl (context already active):');
 	log.info(`  ${colors.bright}kubectl get pods${colors.reset}`);
 	log.info(`  ${colors.bright}kubectl logs -l app.kubernetes.io/name=n8n${colors.reset}`);
 	console.log('');
-	log.info('Run tests against this instance:');
-	log.info(
-		`  ${colors.bright}N8N_BASE_URL=${stack.baseUrl} RESET_E2E_DB=true npx playwright test tests/e2e/building-blocks/ --workers=1${colors.reset}`,
-	);
+	log.info(`Cleanup: ${colors.bright}pnpm --filter n8n-containers stack:helm:clean${colors.reset}`);
 	console.log('');
-	log.info('Press Ctrl+C to stop');
+	if (envOverrides.E2E_TESTS === 'true') {
+		log.info('Run tests against this instance:');
+		log.info(
+			`  ${colors.bright}N8N_BASE_URL=${stack.baseUrl} RESET_E2E_DB=true npx playwright test tests/e2e/building-blocks/ --workers=1${colors.reset}`,
+		);
+	}
 
-	// Keep process alive until SIGINT
-	const keepAlive = setInterval(() => {}, 60_000);
-
-	const shutdown = async () => {
-		clearInterval(keepAlive);
-		console.log('');
-		log.info('Shutting down...');
-		await stack.stop();
-		process.exit(0);
-	};
-
-	process.on('SIGINT', shutdown);
-	process.on('SIGTERM', shutdown);
+	// Container stays alive in Docker (Ryuk disabled) — clean up via stack:helm:clean.
 }
 
 main().catch((error) => {
