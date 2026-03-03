@@ -743,14 +743,18 @@ export class NodeDetailsViewPage extends BasePage {
 			? parameterPath.split('.').slice(1).join('.')
 			: '';
 
-		// Parameter controls differ across NDV implementations (input/select/etc), but
-		// issue state is consistently exposed in the title tooltip text.
+		// Prefer stable structural selectors first. Tooltip text is localized and can
+		// change, so keep those as a fallback for older NDV variants.
 		const selectors = [
+			`[data-parameter-path="${parameterPath}"] [data-test-id="parameter-issues"]`,
+			`[data-parameter-path="${parameterPath}"][data-test-id="parameter-issues"]`,
 			`[data-test-id="parameter-input-field"][title*="${parameterPath}"][title*="has issues"]`,
 			`[title*="${parameterPath}"][title*="has issues"]`,
 		];
 
 		if (nestedPath) {
+			selectors.push(`[data-parameter-path="${nestedPath}"] [data-test-id="parameter-issues"]`);
+			selectors.push(`[data-parameter-path="${nestedPath}"][data-test-id="parameter-issues"]`);
 			selectors.push(
 				`[data-test-id="parameter-input-field"][title*="${nestedPath}"][title*="has issues"]`,
 			);
