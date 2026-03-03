@@ -114,14 +114,24 @@ export class CollaborationState {
 	}
 
 	private cacheHashToCollaborators(workflowCacheEntry: WorkflowCacheHash): CacheEntry[] {
-		return Object.entries(workflowCacheEntry).map(([clientId, value]) => {
-			const [userId, lastSeen] = value.split('|');
-			return {
-				userId,
-				lastSeen,
-				clientId,
-			};
-		});
+		return Object.entries(workflowCacheEntry)
+			.map(([clientId, value]) => {
+				// Handle legacy cache format from 2.9.x (value without pipe separator)
+				// Legacy format: userId -> timestamp (no pipe)
+				// New format: clientId -> "userId|timestamp" (with pipe)
+				if (!value.includes('|')) {
+					// Skip legacy format entries - they are invalid and will be cleaned up
+					return null;
+				}
+
+				const [userId, lastSeen] = value.split('|');
+				return {
+					userId,
+					lastSeen,
+					clientId,
+				};
+			})
+			.filter((entry): entry is CacheEntry => entry !== null);
 	}
 
 	private hasSessionExpired(lastSeenString: Iso8601DateTimeString) {
