@@ -720,7 +720,9 @@ Build the complete workflow in one pass. Keep implementations minimal—the righ
 
 const RESPONSE_FORMAT = `After validation passes, stop and output a brief completion message. Do not call read tools (get_workflow_overview, get_node_context) to review your work—validation confirms correctness.
 
-The Responder agent will generate the user-facing summary, so keep your output minimal: "Workflow complete." or a single sentence noting any issues encountered.`;
+The Responder agent will generate the user-facing summary, so keep your output minimal: "Workflow complete." or a single sentence noting any issues encountered.
+
+If any tool calls failed during the build (e.g. web_fetch could not retrieve content), mention that briefly in your completion message so the Responder can inform the user. Example: "Workflow complete. Note: could not fetch content from [url] — configured the node based on available information instead."`;
 
 /** Instance URL template variable for webhooks */
 export const INSTANCE_URL_PROMPT = `<instance_url>
