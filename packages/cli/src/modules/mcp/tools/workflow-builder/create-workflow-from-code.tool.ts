@@ -1,10 +1,10 @@
 import {
 	type SharedWorkflow,
-	SharedWorkflowRepository,
+	type SharedWorkflowRepository,
+	type User,
 	WorkflowEntity,
-	ProjectRepository,
+	type ProjectRepository,
 } from '@n8n/db';
-import type { User } from '@n8n/db';
 import { v4 as uuid } from 'uuid';
 import z from 'zod';
 
@@ -12,11 +12,11 @@ import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 
 import { validateEntity } from '@/generic-helpers';
-import { ProjectService } from '@/services/project.service.ee';
-import { UrlService } from '@/services/url.service';
+import type { ProjectService } from '@/services/project.service.ee';
+import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
 import * as WorkflowHelpers from '@/workflow-helpers';
-import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 const inputSchema = {
 	code: z

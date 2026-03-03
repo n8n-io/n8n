@@ -1,12 +1,13 @@
 import type { Logger } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
-import { User, WorkflowRepository } from '@n8n/db';
+import { ProjectRepository, SharedWorkflowRepository, User, WorkflowRepository } from '@n8n/db';
 import { InstanceSettings } from 'n8n-core';
 import type { IRun } from 'n8n-workflow';
 import { createEmptyRunExecutionData, ManualExecutionCancelledError } from 'n8n-workflow';
 
 import { McpService } from '../mcp.service';
+import { WorkflowBuilderToolsService } from '../tools/workflow-builder/workflow-builder-tools.service';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -16,6 +17,7 @@ import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 describe('McpService', () => {
@@ -52,6 +54,10 @@ describe('McpService', () => {
 			mockInstance(WorkflowRunner),
 			mockInstance(RoleService),
 			mockInstance(ProjectService),
+			mockInstance(WorkflowBuilderToolsService),
+			mockInstance(ProjectRepository),
+			mockInstance(SharedWorkflowRepository),
+			mockInstance(WorkflowHistoryService),
 		);
 	});
 
@@ -83,6 +89,10 @@ describe('McpService', () => {
 				mockInstance(WorkflowRunner),
 				mockInstance(RoleService),
 				mockInstance(ProjectService),
+				mockInstance(WorkflowBuilderToolsService),
+				mockInstance(ProjectRepository),
+				mockInstance(SharedWorkflowRepository),
+				mockInstance(WorkflowHistoryService),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);
