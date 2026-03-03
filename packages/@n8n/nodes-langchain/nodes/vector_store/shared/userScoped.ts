@@ -14,6 +14,15 @@ export function getUserScopedSlot(
 	prefix: string,
 	itemIndex?: number,
 ): string {
+	const userId = ensureUserId(context, itemIndex);
+	const sanitizedUserId = userId.replace(/-/g, '_');
+	return `${prefix}_${sanitizedUserId}`;
+}
+
+export function ensureUserId(
+	context: IExecuteFunctions | ISupplyDataFunctions | ILoadOptionsFunctions,
+	itemIndex?: number,
+): string {
 	const userId = context.getUserId();
 	if (!userId) {
 		throw new NodeOperationError(
@@ -22,6 +31,6 @@ export function getUserScopedSlot(
 			{ itemIndex },
 		);
 	}
-	const sanitizedUserId = userId.replace(/-/g, '_');
-	return `${prefix}_${sanitizedUserId}`;
+
+	return userId;
 }

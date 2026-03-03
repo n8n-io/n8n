@@ -11,12 +11,12 @@ export class VectorStoreQdrantScopedApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Collection Name Prefix',
-			name: 'collectionNamePrefix',
+			displayName: 'Collection Name',
+			name: 'collectionName',
 			type: 'string',
 			default: 'n8n_vectors',
 			description:
-				'Prefix for collection names. The full collection name will be {prefix}_{userId}.',
+				'The Qdrant collection to use. All users share this collection; access is scoped per user via a userId metadata field.',
 		},
 	];
 }
