@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, unref } from 'vue';
-import { ElOption, ElOptionGroup, ElSelect } from 'element-plus';
+import { ElOption, ElOptionGroup } from 'element-plus';
+import { N8nSelect } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import WorkflowHistoryVersionDot from './WorkflowHistoryVersionDot.vue';
 import WorkflowHistoryPublishedTooltip from './WorkflowHistoryPublishedTooltip.vue';
@@ -137,7 +138,7 @@ const shouldShowUpgradeFooter = computed(() => Boolean(unref(workflowHistoryStor
 			:is="selectedOptionHasPublishInfo ? WorkflowHistoryPublishedTooltip : 'span'"
 			v-bind="selectedOptionWrapperProps ?? {}"
 		>
-			<ElSelect
+			<N8nSelect
 				:model-value="props.modelValue"
 				size="small"
 				filterable
@@ -190,7 +191,7 @@ const shouldShowUpgradeFooter = computed(() => Boolean(unref(workflowHistoryStor
 						@upgrade="emit('upgrade')"
 					/>
 				</template>
-			</ElSelect>
+			</N8nSelect>
 		</component>
 	</div>
 </template>

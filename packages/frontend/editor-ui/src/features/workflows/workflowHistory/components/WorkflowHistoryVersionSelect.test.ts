@@ -14,20 +14,27 @@ vi.mock('../workflowHistory.store', () => ({
 	}),
 }));
 
+vi.mock('@n8n/design-system', async () => {
+	const actual = await vi.importActual('@n8n/design-system');
+	return {
+		...actual,
+		N8nSelect: {
+			props: ['filterMethod'],
+			template: `
+				<div>
+					<slot name="prefix" />
+					<button data-test-id="apply-filter" @click="filterMethod?.('Two')" />
+					<slot />
+					<slot name="footer" />
+				</div>
+			`,
+		},
+	};
+});
+
 const renderComponent = createComponentRenderer(WorkflowHistoryVersionSelect, {
 	global: {
 		stubs: {
-			ElSelect: {
-				props: ['filterMethod'],
-				template: `
-					<div>
-						<slot name="prefix" />
-						<button data-test-id="apply-filter" @click="filterMethod?.('Two')" />
-						<slot />
-						<slot name="footer" />
-					</div>
-				`,
-			},
 			ElOption: { template: '<div data-test-id="option"><slot /></div>' },
 			N8nTooltip: {
 				template: '<div data-test-id="tooltip"><slot /><slot name="content" /></div>',
