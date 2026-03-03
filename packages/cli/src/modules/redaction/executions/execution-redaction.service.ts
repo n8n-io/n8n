@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { type IExecutionDb, SharedWorkflowRepository, type User } from '@n8n/db';
+import { type IExecutionDb, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import type {
@@ -12,8 +12,8 @@ import {
 	WorkflowExecuteMode,
 	WorkflowSettings,
 } from 'n8n-workflow';
-import { userHasScopes } from '@/permissions.ee/check-access';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const MANUAL_MODES: ReadonlySet<WorkflowExecuteMode> = new Set(['manual']);
 
@@ -25,7 +25,7 @@ const MANUAL_MODES: ReadonlySet<WorkflowExecuteMode> = new Set(['manual']);
 export class ExecutionRedactionService implements ExecutionRedaction {
 	constructor(
 		private readonly logger: Logger,
-		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly workflowFinderService: WorkflowFinderService,
 	) {}
 
 	/**
@@ -50,10 +50,13 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	): Promise<IExecutionDb> {
 		if (options.redactExecutionData === true) {
 			// user wants redacted data, this is always fine!
-			this.applyRedaction(execution, 'user_requested');
+			const canReveal =
+				this.policyAllowsReveal(execution) || (await this.canUserReveal(options.user, execution));
+			this.applyRedaction(execution, 'user_requested', canReveal);
 		} else if (options.redactExecutionData === false) {
-			// user wants unredacted data, lets see if they have the permissions to do so
-			const allowed = await this.canUserReveal(options.user, execution);
+			// user wants unredacted data — allowed if the policy permits it or the user has the scope
+			const allowed =
+				this.policyAllowsReveal(execution) || (await this.canUserReveal(options.user, execution));
 			if (allowed) {
 				return execution;
 			} else {
@@ -73,7 +76,9 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 				return execution;
 			}
 
-			this.applyRedaction(execution, 'workflow_redaction_policy');
+			const canReveal =
+				this.policyAllowsReveal(execution) || (await this.canUserReveal(options.user, execution));
+			this.applyRedaction(execution, 'workflow_redaction_policy', canReveal);
 		}
 
 		return execution;
@@ -85,22 +90,27 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	 * Uses the `execution:reveal` scope which is granted to:
 	 * - Global owners and admins (via global role)
 	 * - Project admins and personal project owners (via project role)
-	 *
-	 * The check finds all projects containing the workflow and verifies
-	 * the user has the scope either globally or in one of those projects.
 	 */
 	private async canUserReveal(user: User, execution: IExecutionDb): Promise<boolean> {
-		const sharedWorkflows = await this.sharedWorkflowRepository.findBy({
-			workflowId: execution.workflowId,
-		});
+		const workflow = await this.workflowFinderService.findWorkflowForUser(
+			execution.workflowId,
+			user,
+			['execution:reveal'],
+		);
+		return workflow !== null;
+	}
 
-		for (const sw of sharedWorkflows) {
-			if (await userHasScopes(user, ['execution:reveal'], false, { projectId: sw.projectId })) {
-				return true;
-			}
-		}
-
-		return false;
+	/**
+	 * Returns true when the resolved redaction policy inherently allows everyone to access
+	 * unredacted data — i.e. the policy would not have redacted the execution in the first
+	 * place.  The two cases are:
+	 *   - policy === 'none': redaction is completely disabled.
+	 *   - policy === 'non-manual' AND the execution mode is manual: manual executions are
+	 *     exempt from this policy, so the data is still accessible to all.
+	 */
+	private policyAllowsReveal(execution: IExecutionDb): boolean {
+		const policy = this.resolvePolicy(execution);
+		return policy === 'none' || (policy === 'non-manual' && MANUAL_MODES.has(execution.mode));
 	}
 
 	/**
@@ -120,9 +130,10 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 
 	/**
 	 * Mutates execution data in place, replacing all node output json with a
-	 * redaction marker and removing binary data.
+	 * redaction marker and removing binary data. Also sets `execution.data.redactionInfo`
+	 * with metadata about the redaction.
 	 */
-	private applyRedaction(execution: IExecutionDb, reason: string): void {
+	private applyRedaction(execution: IExecutionDb, reason: string, canReveal: boolean): void {
 		const runData = execution.data.resultData.runData;
 		if (!runData) return;
 
@@ -136,6 +147,8 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 				}
 			}
 		}
+
+		execution.data.redactionInfo = { isRedacted: true, reason, canReveal };
 	}
 
 	/** Walks an ITaskDataConnections structure and redacts every data item in place. */

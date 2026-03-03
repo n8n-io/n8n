@@ -13,7 +13,7 @@ import type {
 } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { getBatchingOptionFields } from '@utils/sharedFields';
+import { getBatchingOptionFields } from '@n8n/ai-utilities';
 import { getTracingConfig } from '@utils/tracing';
 
 const DEFAULT_SYSTEM_PROMPT_TEMPLATE =
