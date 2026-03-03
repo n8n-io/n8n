@@ -9,6 +9,7 @@ import {
 	configureActivityCallback,
 	microsoftMcpServers,
 	extractActivityInfo,
+	buildMcpToolName,
 	type MicrosoftAgent365Credentials,
 	type ActivityCapture,
 	type ActivityInfo,
@@ -56,6 +57,11 @@ jest.mock('@microsoft/agents-a365-observability', () => ({
 			shutdown: jest.fn(),
 		}),
 	},
+	defaultObservabilityConfigurationProvider: {
+		getConfiguration: jest.fn().mockReturnValue({
+			observabilityAuthenticationScopes: ['observability-scope'],
+		}),
+	},
 }));
 
 jest.mock('@microsoft/agents-a365-runtime', () => ({
@@ -72,6 +78,11 @@ jest.mock('@microsoft/agents-a365-tooling', () => ({
 	})),
 	Utility: {
 		ValidateAuthToken: jest.fn(),
+	},
+	defaultToolingConfigurationProvider: {
+		getConfiguration: jest.fn().mockReturnValue({
+			mcpPlatformAuthenticationScope: 'mcp-scope',
+		}),
 	},
 }));
 
@@ -327,7 +338,14 @@ describe('microsoft-utils', () => {
 			expect(agent.run).toHaveBeenCalledWith(mockTurnContext);
 		});
 
-		test('should exchange tokens for observability and MCP', async () => {
+		test('should exchange observability token only when observability is enabled', async () => {
+			const originalEnv = process.env;
+			process.env = {
+				...originalEnv,
+				ENABLE_OBSERVABILITY: 'true',
+				ENABLE_A365_OBSERVABILITY_EXPORTER: 'true',
+			};
+
 			const mockTurnContext = {
 				activity: {
 					type: 'message',
@@ -336,9 +354,7 @@ describe('microsoft-utils', () => {
 					conversation: { id: 'conversation-id' },
 				},
 				sendActivity: jest.fn(),
-				turnState: {
-					set: jest.fn(),
-				},
+				turnState: { set: jest.fn() },
 			};
 
 			(invokeAgent as jest.Mock).mockResolvedValue('Test response');
@@ -357,18 +373,63 @@ describe('microsoft-utils', () => {
 
 			await callback(mockTurnContext as any);
 
-			expect(agent.authorization.exchangeToken).toHaveBeenCalledWith(
-				mockTurnContext,
-				'observability-scope',
-				'agentic',
-			);
+			process.env = originalEnv;
 
 			expect(agent.authorization.exchangeToken).toHaveBeenCalledWith(
 				mockTurnContext,
+				['observability-scope'],
 				'agentic',
-				expect.objectContaining({
-					scopes: ['mcp-scope'],
-				}),
+			);
+			expect(agent.authorization.exchangeToken).toHaveBeenCalledWith(
+				mockTurnContext,
+				'agentic',
+				expect.objectContaining({ scopes: ['mcp-scope'] }),
+			);
+		});
+
+		test('should not exchange observability token when observability is disabled', async () => {
+			const originalEnv = process.env;
+			process.env = { ...originalEnv, ENABLE_OBSERVABILITY: 'false' };
+
+			const mockTurnContext = {
+				activity: {
+					type: 'message',
+					text: 'Test input',
+					recipient: { agenticAppId: 'agent-id', name: 'Agent', tenantId: 'tenant-id' },
+					conversation: { id: 'conversation-id' },
+				},
+				sendActivity: jest.fn(),
+				turnState: { set: jest.fn() },
+			};
+
+			(invokeAgent as jest.Mock).mockResolvedValue('Test response');
+			(nodeContext.getNodeParameter as jest.Mock).mockImplementation((param: string) => {
+				if (param === 'options.welcomeMessage') return 'Welcome!';
+				if (param === 'systemPrompt') return 'Test agent';
+				return undefined;
+			});
+
+			const callback = configureAdapterProcessCallback(
+				nodeContext,
+				agent,
+				credentials,
+				activityCapture,
+			);
+
+			await callback(mockTurnContext as any);
+
+			process.env = originalEnv;
+
+			expect(agent.authorization.exchangeToken).not.toHaveBeenCalledWith(
+				mockTurnContext,
+				['observability-scope'],
+				'agentic',
+			);
+			// MCP token exchange still happens regardless
+			expect(agent.authorization.exchangeToken).toHaveBeenCalledWith(
+				mockTurnContext,
+				'agentic',
+				expect.objectContaining({ scopes: ['mcp-scope'] }),
 			);
 		});
 
@@ -848,6 +909,50 @@ describe('microsoft-utils', () => {
 				mockCallTool,
 			);
 		});
+
+		test('should trim server prefix to keep tool name intact when combined name exceeds 64 chars', async () => {
+			// Server name (40 chars) + '_' + tool name (30 chars) = 71 chars — over the 64-char limit
+			const longServerName = 'mcp_AVeryLongServerNameThatIsFortyChars_'; // 40 chars
+			const toolName = 'a_tool_name_that_is_thirty_chars__'; // 34 chars: 40+1+34 = 75 > 64
+			const mockServers = [{ mcpServerName: longServerName, url: 'http://long-server' }];
+
+			mockConfigService.listToolServers.mockResolvedValue(mockServers);
+			(connectMcpClient as jest.Mock).mockResolvedValue({ ok: true, result: { close: jest.fn() } });
+			(getAllTools as jest.Mock).mockResolvedValue([{ name: toolName, description: 'Tool' }]);
+
+			const mockCallTool = jest.fn();
+			(createCallTool as jest.Mock).mockReturnValue(mockCallTool);
+			(mcpToolToDynamicTool as jest.Mock).mockReturnValue({ name: 'trimmed' });
+
+			await getMicrosoftMcpTools(mockTurnContext, 'test-token', undefined);
+
+			const calledWith = (mcpToolToDynamicTool as jest.Mock).mock.calls[0][0];
+			// Tool name is always preserved; only the prefix is trimmed
+			expect(calledWith.name).toHaveLength(64);
+			expect(calledWith.name).toContain(`_${toolName}`);
+			expect(calledWith.name.endsWith(`_${toolName}`)).toBe(true);
+		});
+
+		test('should use tool name alone when tool name itself reaches 64 chars', async () => {
+			// Tool name is exactly 64 chars — no room for any prefix
+			const toolName = 'a'.repeat(64);
+			const mockServers = [{ mcpServerName: 'mcp_SomeServer', url: 'http://some-server' }];
+
+			mockConfigService.listToolServers.mockResolvedValue(mockServers);
+			(connectMcpClient as jest.Mock).mockResolvedValue({ ok: true, result: { close: jest.fn() } });
+			(getAllTools as jest.Mock).mockResolvedValue([{ name: toolName, description: 'Tool' }]);
+
+			const mockCallTool = jest.fn();
+			(createCallTool as jest.Mock).mockReturnValue(mockCallTool);
+			(mcpToolToDynamicTool as jest.Mock).mockReturnValue({ name: toolName });
+
+			await getMicrosoftMcpTools(mockTurnContext, 'test-token', undefined);
+
+			expect(mcpToolToDynamicTool).toHaveBeenCalledWith(
+				expect.objectContaining({ name: toolName }),
+				mockCallTool,
+			);
+		});
 	});
 
 	describe('configureActivityCallback', () => {
@@ -1014,6 +1119,53 @@ describe('microsoft-utils', () => {
 
 		test('should have correct number of server options', () => {
 			expect(microsoftMcpServers).toHaveLength(8);
+		});
+	});
+
+	describe('buildMcpToolName', () => {
+		test('should combine server name and tool name with underscore', () => {
+			expect(buildMcpToolName('mcp_CalendarTools', 'create_event')).toBe(
+				'mcp_CalendarTools_create_event',
+			);
+		});
+
+		test('should return combined name unchanged when within 64 chars', () => {
+			const result = buildMcpToolName('server', 'tool');
+			expect(result).toBe('server_tool');
+			expect(result.length).toBeLessThanOrEqual(64);
+		});
+
+		test('should sanitize special characters in server name', () => {
+			expect(buildMcpToolName('mcp-Calendar.Tools (v2)', 'create_event')).toBe(
+				'mcp_Calendar_Tools__v2__create_event',
+			);
+		});
+
+		test('should trim prefix when combined name exceeds 64 chars', () => {
+			const serverName = 'mcp_AVeryLongServerNameThatIsFortyChars_'; // 40 chars
+			const toolName = 'a_tool_name_that_is_thirty_chars__'; // 34 chars → total 75 > 64
+			const result = buildMcpToolName(serverName, toolName);
+			expect(result.length).toBe(64);
+			expect(result.endsWith(`_${toolName}`)).toBe(true);
+		});
+
+		test('should return bare tool name when tool name alone fills 64 chars', () => {
+			const toolName = 'a'.repeat(64);
+			expect(buildMcpToolName('mcp_SomeServer', toolName)).toBe(toolName);
+		});
+
+		test('should return bare tool name when tool name exceeds 64 chars', () => {
+			const toolName = 'a'.repeat(70);
+			expect(buildMcpToolName('mcp_SomeServer', toolName)).toBe(toolName);
+		});
+
+		test('should handle exactly 64 char combined name without trimming', () => {
+			// server(10) + '_' + tool(53) = 64
+			const serverName = 'mcp_Server'; // 10 chars
+			const toolName = 'a'.repeat(53); // 53 chars
+			const result = buildMcpToolName(serverName, toolName);
+			expect(result).toBe(`${serverName}_${toolName}`);
+			expect(result.length).toBe(64);
 		});
 	});
 

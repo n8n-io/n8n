@@ -21,17 +21,18 @@ import {
 	BaggageBuilder,
 	ObservabilityManager,
 	type Builder,
+	defaultObservabilityConfigurationProvider,
 } from '@microsoft/agents-a365-observability';
-import {
-	getMcpPlatformAuthenticationScope,
-	getObservabilityAuthenticationScope,
-	Utility as RuntimeUtility,
-} from '@microsoft/agents-a365-runtime';
+import { Utility as RuntimeUtility } from '@microsoft/agents-a365-runtime';
 import { type Activity, ActivityTypes } from '@microsoft/agents-activity';
 import { v4 as uuid } from 'uuid';
 import { invokeAgent } from './langchain-utils';
 
-import { McpToolServerConfigurationService, Utility } from '@microsoft/agents-a365-tooling';
+import {
+	McpToolServerConfigurationService,
+	Utility,
+	defaultToolingConfigurationProvider,
+} from '@microsoft/agents-a365-tooling';
 
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StructuredToolkit } from 'n8n-core';
@@ -103,6 +104,17 @@ export const microsoftMcpServers: INodePropertyOptions[] = [
 ];
 
 const MS_TENANT_ID_HEADER = 'x-ms-tenant-id';
+const MAX_MCP_TOOL_NAME_LENGTH = 64;
+
+export function buildMcpToolName(serverName: string, toolName: string): string {
+	const sanitizedServerName = serverName.replace(/[^a-zA-Z0-9]/g, '_');
+	const fullName = `${sanitizedServerName}_${toolName}`;
+	if (fullName.length <= MAX_MCP_TOOL_NAME_LENGTH) {
+		return fullName;
+	}
+	const maxPrefixLen = MAX_MCP_TOOL_NAME_LENGTH - toolName.length - 1;
+	return maxPrefixLen > 0 ? `${sanitizedServerName.slice(0, maxPrefixLen)}_${toolName}` : toolName;
+}
 
 function isMicrosoftObservabilityEnabled(): boolean {
 	return (
@@ -181,11 +193,16 @@ export async function getMicrosoftMcpTools(
 		const client = clientResult.result;
 		clients.push(client);
 
-		const mcpTools = await getAllTools(client);
-		const sanitizedServerName = server.mcpServerName.replace(/[^a-zA-Z0-9]/g, '_');
+		let mcpTools;
+		try {
+			mcpTools = await getAllTools(client);
+		} catch (error) {
+			console.error(`Failed to get tools from MCP server ${server.mcpServerName}:`, error);
+			continue;
+		}
 
 		const serverTools = mcpTools.map((tool) => {
-			const prefixedName = `${sanitizedServerName}_${tool.name}`;
+			const prefixedName = buildMcpToolName(server.mcpServerName, tool.name);
 			const callToolFunc = createCallTool(tool.name, client, timeout, (errorMessage) => {
 				console.error(`Tool "${tool.name}" execution error:`, errorMessage);
 			});
@@ -297,8 +314,18 @@ export const configureActivityCallback = (
 
 					await turnContext.sendActivity(response);
 				} finally {
-					if (mcpClient) await mcpClient.close();
-					invokeAgentScope.dispose();
+					try {
+						invokeAgentScope.dispose();
+					} catch (error) {
+						console.error('Failed to dispose invokeAgentScope:', error);
+					}
+					if (mcpClient) {
+						try {
+							await mcpClient.close();
+						} catch (error) {
+							console.error('Failed to close MCP client connections:', error);
+						}
+					}
 				}
 			});
 		});
@@ -312,15 +339,19 @@ export function configureAdapterProcessCallback(
 	activityCapture: ActivityCapture,
 ) {
 	return async (turnContext: TurnContext) => {
-		const { token: aauToken } = await agent.authorization.exchangeToken(
-			turnContext,
-			getObservabilityAuthenticationScope(),
-			'agentic',
-		);
-
 		let observability: ReturnType<typeof ObservabilityManager.configure> | undefined;
 
 		if (isMicrosoftObservabilityEnabled()) {
+			const observabilityScopes = [
+				...defaultObservabilityConfigurationProvider.getConfiguration()
+					.observabilityAuthenticationScopes,
+			];
+			const { token: aauToken } = await agent.authorization.exchangeToken(
+				turnContext,
+				observabilityScopes,
+				'agentic',
+			);
+
 			observability = ObservabilityManager.configure((builder: Builder) =>
 				builder
 					.withService('TypeScript Sample Agent', '1.0.0')
@@ -335,7 +366,9 @@ export function configureAdapterProcessCallback(
 		try {
 			turnContext.turnState.set('AgenticAuthorization/agentic', undefined);
 			const tokenResult = await agent.authorization.exchangeToken(turnContext, 'agentic', {
-				scopes: [getMcpPlatformAuthenticationScope()],
+				scopes: [
+					defaultToolingConfigurationProvider.getConfiguration().mcpPlatformAuthenticationScope,
+				],
 			});
 			mcpTokenRef.token = tokenResult.token;
 		} catch (error) {
@@ -375,7 +408,11 @@ export function configureAdapterProcessCallback(
 			throw new NodeOperationError(nodeContext.getNode(), error);
 		} finally {
 			if (observability) {
-				await observability.shutdown();
+				try {
+					await observability.shutdown();
+				} catch (error) {
+					console.error('Failed to shut down observability:', error);
+				}
 			}
 		}
 	};
