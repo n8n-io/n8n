@@ -1,3 +1,4 @@
+import type { IExecutionDb } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
@@ -13,6 +14,7 @@ import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';
 
 import type { ExecutionRequest } from '../../../types';
@@ -91,6 +93,13 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
+			if (includeData) {
+				await Container.get(ExecutionRedactionServiceProxy).processExecution(
+					execution as unknown as IExecutionDb,
+					{ user: req.user },
+				);
+			}
+
 			Container.get(EventService).emit('user-retrieved-execution', {
 				userId: req.user.id,
 				publicApi: true,
@@ -147,6 +156,18 @@ export = {
 
 			const count =
 				await Container.get(ExecutionRepository).getExecutionsCountForPublicApi(filters);
+
+			if (includeData) {
+				const redactionProxy = Container.get(ExecutionRedactionServiceProxy);
+				await Promise.all(
+					executions.map(
+						async (execution) =>
+							await redactionProxy.processExecution(execution as unknown as IExecutionDb, {
+								user: req.user,
+							}),
+					),
+				);
+			}
 
 			Container.get(EventService).emit('user-retrieved-all-executions', {
 				userId: req.user.id,
