@@ -30,6 +30,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { h } from 'vue';
 import { useRolesStore } from '@/app/stores/roles.store';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 export const state = {
@@ -204,6 +205,10 @@ export async function initializeAuthenticatedFeatures(
 		rolesStore.fetchRoles(),
 	]);
 
+	await projectsStore.refreshCurrentProject();
+
+	void useFavoritesStore().fetchFavorites();
+
 	// Initialize modules
 	registerModuleResources();
 	registerModuleProjectTabs();
@@ -249,5 +254,6 @@ function registerAuthenticationHooks() {
 		cloudPlanStore.reset();
 		telemetry.reset();
 		RBACStore.setGlobalScopes([]);
+		useFavoritesStore().reset();
 	});
 }

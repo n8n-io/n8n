@@ -28,6 +28,7 @@ import * as workflowsApi from '@/app/api/workflows';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { isEmpty } from '@/app/utils/typesUtils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { clearPopupWindowState } from '@/features/execution/executions/executions.utils';
 import { DEFAULT_SETTINGS } from '@/app/stores/workflowDocument/useWorkflowDocumentSettings';
 import { useDocumentTitle } from './useDocumentTitle';
@@ -56,6 +57,7 @@ export function useWorkflowState() {
 	const uiStore = useUIStore();
 	const rootStore = useRootStore();
 	const nodeTypesStore = useNodeTypesStore();
+	const favoritesStore = useFavoritesStore();
 
 	////
 	// Workflow editing state
@@ -70,6 +72,10 @@ export function useWorkflowState() {
 
 		if (ws.workflow.id && workflowsListStore.workflowsById[ws.workflow.id]) {
 			workflowsListStore.workflowsById[ws.workflow.id].name = data.newName;
+		}
+
+		if (ws.workflow.id && data.newName) {
+			favoritesStore.renameFavorite(ws.workflow.id, 'workflow', data.newName);
 		}
 	}
 
