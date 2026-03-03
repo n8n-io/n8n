@@ -23,6 +23,8 @@ import {
 	showMethodImpactHelp,
 	showRulesHelp,
 	showTcrHelp,
+	showDiscoverHelp,
+	showOrchestrateHelp,
 } from './cli/index.js';
 import { setConfig, getConfig, defineConfig, type JanitorConfig } from './config.js';
 import {
@@ -57,9 +59,11 @@ import {
 	formatMethodUsageIndexConsole,
 	formatMethodUsageIndexJSON,
 } from './core/method-usage-analyzer.js';
+import { orchestrate } from './core/orchestrator.js';
 import { createProject } from './core/project-loader.js';
 import { toJSON, toConsole, printFixResults } from './core/reporter.js';
 import { TcrExecutor, formatTcrResultConsole, formatTcrResultJSON } from './core/tcr-executor.js';
+import { TestDiscoveryAnalyzer } from './core/test-discovery-analyzer.js';
 import { createDefaultRunner } from './index.js';
 import type { RunOptions } from './types.js';
 
@@ -402,6 +406,101 @@ function runRules(options: CliOptions): void {
 	}
 }
 
+function runDiscover(): void {
+	const config = getConfig();
+	const { project } = createProject(config.rootDir);
+	const analyzer = new TestDiscoveryAnalyzer(project);
+	const report = analyzer.discover();
+
+	console.log(JSON.stringify(report, null, 2));
+}
+
+async function runOrchestrate(options: CliOptions): Promise<void> {
+	const config = getConfig();
+
+	if (!options.shards || options.shards < 1) {
+		console.error('Error: --shards=<N> is required (N >= 1)');
+		process.exit(1);
+	}
+
+	const { project } = createProject(config.rootDir);
+	const discoveryAnalyzer = new TestDiscoveryAnalyzer(project);
+	const report = discoveryAnalyzer.discover();
+
+	let specs = config.orchestration.specFilter
+		? report.specs.filter((s) => s.path.startsWith(config.orchestration.specFilter!))
+		: report.specs;
+
+	if (options.impact) {
+		let changedFiles = options.files ?? [];
+
+		if (changedFiles.length === 0) {
+			const { getChangedFiles } = await import('./utils/git-operations.js');
+			changedFiles = getChangedFiles({
+				scopeDir: config.rootDir,
+				extensions: ['.ts'],
+				targetBranch: options.baseRef,
+			});
+		}
+
+		if (changedFiles.length === 0) {
+			console.error('Impact: No changed files detected. Returning empty orchestration.');
+			specs = [];
+		} else {
+			const impactAnalyzer = new ImpactAnalyzer(project);
+			const impactResult = impactAnalyzer.analyze(changedFiles);
+			const affectedSet = new Set(impactResult.affectedTests);
+			const totalBefore = specs.length;
+			specs = specs.filter((s) => affectedSet.has(s.path));
+			console.error(
+				`Impact: ${specs.length}/${totalBefore} specs affected by ${changedFiles.length} changed files`,
+			);
+		}
+	}
+
+	const metrics: Record<string, number> = {};
+	if (config.orchestration.metricsPath) {
+		const metricsPath = path.isAbsolute(config.orchestration.metricsPath)
+			? config.orchestration.metricsPath
+			: path.resolve(config.rootDir, config.orchestration.metricsPath);
+
+		if (fs.existsSync(metricsPath)) {
+			try {
+				const raw = JSON.parse(fs.readFileSync(metricsPath, 'utf-8')) as {
+					specs?: Record<string, { avgDuration?: number }>;
+				};
+				if (raw.specs) {
+					for (const [specPath, data] of Object.entries(raw.specs)) {
+						if (data.avgDuration) {
+							metrics[specPath] = data.avgDuration;
+						}
+					}
+				}
+			} catch (error) {
+				console.error(`Warning: Failed to parse metrics file ${metricsPath}: ${String(error)}`);
+			}
+		} else {
+			console.error(`Warning: Metrics file not found: ${metricsPath}`);
+		}
+	}
+
+	const result = orchestrate(specs, options.shards, metrics, config.orchestration);
+
+	if (options.shardIndex !== undefined) {
+		if (Number.isNaN(options.shardIndex) || options.shardIndex < 0) {
+			console.error('Error: --shard-index must be >= 0');
+			process.exit(1);
+		}
+		const shard = result.shards[options.shardIndex];
+		if (shard) {
+			console.log(shard.specs.join('\n'));
+		}
+		return;
+	}
+
+	console.log(JSON.stringify(result, null, 2));
+}
+
 async function main(): Promise<void> {
 	const options = parseArgs();
 
@@ -425,6 +524,12 @@ async function main(): Promise<void> {
 				break;
 			case 'rules':
 				showRulesHelp();
+				break;
+			case 'discover':
+				showDiscoverHelp();
+				break;
+			case 'orchestrate':
+				showOrchestrateHelp();
 				break;
 			default:
 				showHelp();
@@ -465,6 +570,12 @@ async function main(): Promise<void> {
 			break;
 		case 'rules':
 			runRules(options);
+			break;
+		case 'discover':
+			runDiscover();
+			break;
+		case 'orchestrate':
+			await runOrchestrate(options);
 			break;
 		default:
 			runAnalyze(options);
