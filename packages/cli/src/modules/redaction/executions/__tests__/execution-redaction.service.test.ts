@@ -1,7 +1,14 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { IExecutionDb, User } from '@n8n/db';
-import type { ExecutionStatus, IRunExecutionData, WorkflowExecuteMode } from 'n8n-workflow';
+import type {
+	ExecutionError,
+	ExecutionStatus,
+	INode,
+	IRunExecutionData,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
+import { ExpressionError, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import type { ExecutionRedactionOptions } from '@/executions/execution-redaction';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -499,6 +506,294 @@ describe('ExecutionRedactionService', () => {
 				isRedacted: true,
 				reason: 'workflow_redaction_policy',
 				canReveal: false,
+			});
+		});
+	});
+
+	describe('error redaction', () => {
+		const mockNode = {
+			id: 'node-1',
+			name: 'TestNode',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 1,
+			position: [0, 0] as [number, number],
+			parameters: {},
+		} as INode;
+
+		describe('item-level error (INodeExecutionData.error)', () => {
+			it('should redact NodeApiError with httpCode and preserve type and httpCode', async () => {
+				const error = new NodeApiError(mockNode, { message: 'Not Found' }, { httpCode: '404' });
+				const execution = createMockExecution({
+					policy: 'all',
+					mode: 'trigger',
+					withRunData: true,
+				});
+				execution.data.resultData.runData.TestNode[0].data!.main[0]![0].error = error;
+				const options: ExecutionRedactionOptions = { user: mockUser };
+
+				const result = await service.processExecution(execution, options);
+
+				const item = result.data.resultData.runData.TestNode[0].data!.main[0]![0];
+				expect(item.error).toBeUndefined();
+				expect(item.redaction?.error).toEqual({ type: 'NodeApiError', httpCode: '404' });
+			});
+
+			it('should preserve httpCode: null when NodeApiError has no http code', async () => {
+				const error = new NodeApiError(mockNode, { message: 'Unknown Error' });
+				const execution = createMockExecution({
+					policy: 'all',
+					mode: 'trigger',
+					withRunData: true,
+				});
+				execution.data.resultData.runData.TestNode[0].data!.main[0]![0].error = error;
+				const options: ExecutionRedactionOptions = { user: mockUser };
+
+				const result = await service.processExecution(execution, options);
+
+				const item = result.data.resultData.runData.TestNode[0].data!.main[0]![0];
+				expect(item.error).toBeUndefined();
+				expect(item.redaction?.error).toEqual({ type: 'NodeApiError', httpCode: null });
+			});
+
+			it('should redact NodeOperationError without httpCode', async () => {
+				const error = new NodeOperationError(mockNode, 'Operation failed');
+				const execution = createMockExecution({
+					policy: 'all',
+					mode: 'trigger',
+					withRunData: true,
+				});
+				execution.data.resultData.runData.TestNode[0].data!.main[0]![0].error = error;
+				const options: ExecutionRedactionOptions = { user: mockUser };
+
+				const result = await service.processExecution(execution, options);
+
+				const item = result.data.resultData.runData.TestNode[0].data!.main[0]![0];
+				expect(item.error).toBeUndefined();
+				expect(item.redaction?.error).toEqual({ type: 'NodeOperationError' });
+				expect(item.redaction?.error).not.toHaveProperty('httpCode');
+			});
+
+			it('should not add error key to redaction when item has no error', async () => {
+				const execution = createMockExecution({
+					policy: 'all',
+					mode: 'trigger',
+					withRunData: true,
+				});
+				// item has no error field
+				const options: ExecutionRedactionOptions = { user: mockUser };
+
+				const result = await service.processExecution(execution, options);
+
+				const item = result.data.resultData.runData.TestNode[0].data!.main[0]![0];
+				expect(item.error).toBeUndefined();
+				expect(item.redaction).toEqual({ redacted: true, reason: 'workflow_redaction_policy' });
+				expect(item.redaction).not.toHaveProperty('error');
+			});
+		});
+
+		describe('task-level error (ITaskData.error)', () => {
+			it('should redact NodeApiError on task and preserve type and httpCode', async () => {
+				const error = new NodeApiError(mockNode, { message: 'Server Error' }, { httpCode: '500' });
+				const execution = createMockExecution({
+					policy: 'all',
+					mode: 'trigger',
+					withRunData: true,
+				});
+				execution.data.resultData.runData.TestNode[0].error = error;
+				const options: ExecutionRedactionOptions = { user: mockUser };
+
+				const result = await service.processExecution(execution, options);
+
+				const taskData = result.data.resultData.runData.TestNode[0];
+				expect(taskData.error).toBeUndefined();
+				expect(taskData.redactedError).toEqual({ type: 'NodeApiError', httpCode: '500' });
+			});
+
+			it('should redact ExpressionError on task without httpCode', async () => {
+				const error = new ExpressionError('Expression evaluation failed');
+				const execution = createMockExecution({
+					policy: 'all',
+					mode: 'trigger',
+					withRunData: true,
+				});
+				execution.data.resultData.runData.TestNode[0].error = error;
+				const options: ExecutionRedactionOptions = { user: mockUser };
+
+				const result = await service.processExecution(execution, options);
+
+				const taskData = result.data.resultData.runData.TestNode[0];
+				expect(taskData.error).toBeUndefined();
+				expect(taskData.redactedError).toEqual({ type: 'ExpressionError' });
+				expect(taskData.redactedError).not.toHaveProperty('httpCode');
+			});
+
+			it('should not set redactedError on task when task has no error', async () => {
+				const execution = createMockExecution({
+					policy: 'all',
+					mode: 'trigger',
+					withRunData: true,
+				});
+				const options: ExecutionRedactionOptions = { user: mockUser };
+
+				const result = await service.processExecution(execution, options);
+
+				const taskData = result.data.resultData.runData.TestNode[0];
+				expect(taskData.error).toBeUndefined();
+				expect(taskData.redactedError).toBeUndefined();
+			});
+		});
+
+		describe('workflow-level error (resultData.error)', () => {
+			it('should redact resultData.error and preserve type', async () => {
+				const error = new NodeOperationError(mockNode, 'Workflow operation failed');
+				const execution = createMockExecution({
+					policy: 'all',
+					mode: 'trigger',
+					withRunData: false,
+				});
+				execution.data.resultData.error = error;
+				const options: ExecutionRedactionOptions = { user: mockUser };
+
+				const result = await service.processExecution(execution, options);
+
+				expect(result.data.resultData.error).toBeUndefined();
+				expect(result.data.resultData.redactedError).toEqual({ type: 'NodeOperationError' });
+			});
+
+			it('should redact NodeApiError in resultData and preserve httpCode', async () => {
+				const error = new NodeApiError(mockNode, { message: 'Forbidden' }, { httpCode: '403' });
+				const execution = createMockExecution({
+					policy: 'all',
+					mode: 'trigger',
+					withRunData: false,
+				});
+				execution.data.resultData.error = error;
+				const options: ExecutionRedactionOptions = { user: mockUser };
+
+				const result = await service.processExecution(execution, options);
+
+				expect(result.data.resultData.error).toBeUndefined();
+				expect(result.data.resultData.redactedError).toEqual({
+					type: 'NodeApiError',
+					httpCode: '403',
+				});
+			});
+
+			it('should not set redactedError in resultData when no error is present', async () => {
+				const execution = createMockExecution({
+					policy: 'all',
+					mode: 'trigger',
+					withRunData: false,
+				});
+				const options: ExecutionRedactionOptions = { user: mockUser };
+
+				const result = await service.processExecution(execution, options);
+
+				expect(result.data.resultData.error).toBeUndefined();
+				expect(result.data.resultData.redactedError).toBeUndefined();
+			});
+		});
+
+		describe('deserialized plain objects (after DB round-trip)', () => {
+			it('should use error.name for type when error is a deserialized NodeApiError', async () => {
+				const error = {
+					name: 'NodeApiError',
+					message: 'Not Found',
+					timestamp: Date.now(),
+					lineNumber: undefined,
+					description: null,
+					context: {},
+					cause: undefined,
+				} as unknown as ExecutionError;
+
+				const execution = createMockExecution({
+					policy: 'all',
+					mode: 'trigger',
+					withRunData: false,
+				});
+				execution.data.resultData.error = error;
+				const options: ExecutionRedactionOptions = { user: mockUser };
+
+				const result = await service.processExecution(execution, options);
+
+				expect(result.data.resultData.error).toBeUndefined();
+				expect(result.data.resultData.redactedError).toEqual({
+					type: 'NodeApiError',
+					httpCode: null,
+				});
+			});
+
+			it('should use error.name for deserialized NodeOperationError without httpCode', async () => {
+				const error = {
+					name: 'NodeOperationError',
+					message: 'Operation failed',
+					timestamp: Date.now(),
+					lineNumber: undefined,
+					description: null,
+					context: {},
+					cause: undefined,
+				} as unknown as ExecutionError;
+
+				const execution = createMockExecution({
+					policy: 'all',
+					mode: 'trigger',
+					withRunData: false,
+				});
+				execution.data.resultData.error = error;
+				const options: ExecutionRedactionOptions = { user: mockUser };
+
+				const result = await service.processExecution(execution, options);
+
+				expect(result.data.resultData.error).toBeUndefined();
+				expect(result.data.resultData.redactedError).toEqual({ type: 'NodeOperationError' });
+				expect(result.data.resultData.redactedError).not.toHaveProperty('httpCode');
+			});
+
+			it('should use error.name for deserialized ExpressionError without httpCode', async () => {
+				const error = {
+					name: 'ExpressionError',
+					message: 'Expression evaluation failed',
+					timestamp: Date.now(),
+					lineNumber: undefined,
+					description: null,
+					context: {},
+					cause: undefined,
+				} as unknown as ExecutionError;
+
+				const execution = createMockExecution({
+					policy: 'all',
+					mode: 'trigger',
+					withRunData: false,
+				});
+				execution.data.resultData.error = error;
+				const options: ExecutionRedactionOptions = { user: mockUser };
+
+				const result = await service.processExecution(execution, options);
+
+				expect(result.data.resultData.error).toBeUndefined();
+				expect(result.data.resultData.redactedError).toEqual({ type: 'ExpressionError' });
+				expect(result.data.resultData.redactedError).not.toHaveProperty('httpCode');
+			});
+
+			it('should preserve httpCode from spread plain object (pre-DB serialization)', async () => {
+				const liveError = new NodeApiError(mockNode, { message: 'Not Found' }, { httpCode: '404' });
+				const spreadError = { ...liveError } as unknown as ExecutionError;
+
+				const execution = createMockExecution({
+					policy: 'all',
+					mode: 'trigger',
+					withRunData: false,
+				});
+				execution.data.resultData.error = spreadError;
+				const options: ExecutionRedactionOptions = { user: mockUser };
+
+				const result = await service.processExecution(execution, options);
+
+				expect(result.data.resultData.error).toBeUndefined();
+				expect(result.data.resultData.redactedError).toEqual({
+					type: 'NodeApiError',
+					httpCode: '404',
+				});
 			});
 		});
 	});
