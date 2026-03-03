@@ -895,6 +895,7 @@
     "@n8n/imap": "workspace:*",
     "@thednp/dommatrix": "^2.0.12",
     "alasql": "4.4.0",
+    "isolated-vm": "^6.0.2",
     "amqplib": "0.10.6",
     "aws4": "1.11.0",
     "basic-auth": "catalog:",
