@@ -19,6 +19,7 @@ const emit = defineEmits<{
 		payload: {
 			requestId: string;
 			url: string;
+			domain: string;
 			action: 'allow_once' | 'allow_domain' | 'deny';
 		},
 	];
@@ -41,6 +42,7 @@ function onDecision(action: 'allow_once' | 'allow_domain' | 'deny') {
 	emit('decision', {
 		requestId: props.data.requestId,
 		url: props.data.url,
+		domain: props.data.domain,
 		action,
 	});
 }

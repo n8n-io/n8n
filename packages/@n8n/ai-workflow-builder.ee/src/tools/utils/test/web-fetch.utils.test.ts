@@ -1,6 +1,13 @@
+import { HumanMessage, AIMessage } from '@langchain/core/messages';
 import dns from 'dns';
 
-import { normalizeHost, isBlockedUrl, fetchUrl, extractReadableContent } from '../web-fetch.utils';
+import {
+	normalizeHost,
+	isBlockedUrl,
+	fetchUrl,
+	extractReadableContent,
+	isUrlInUserMessages,
+} from '../web-fetch.utils';
 
 // Mock dns module
 jest.mock('dns', () => ({
@@ -273,6 +280,46 @@ describe('web-fetch.utils', () => {
 			expect(result.truncated).toBe(true);
 			expect(result.truncateReason).toContain('30000');
 			expect(result.content.length).toBeLessThanOrEqual(30_000);
+		});
+	});
+
+	describe('isUrlInUserMessages', () => {
+		it('should find exact URL in a HumanMessage', () => {
+			const messages = [new HumanMessage('Check out https://example.com/docs')];
+			expect(isUrlInUserMessages('https://example.com/docs', messages)).toBe(true);
+		});
+
+		it('should match URL without trailing slash', () => {
+			const messages = [new HumanMessage('See https://example.com/docs/')];
+			expect(isUrlInUserMessages('https://example.com/docs', messages)).toBe(true);
+		});
+
+		it('should match URL with trailing slash when message has none', () => {
+			const messages = [new HumanMessage('See https://example.com/docs')];
+			expect(isUrlInUserMessages('https://example.com/docs/', messages)).toBe(true);
+		});
+
+		it('should return false for URL not in any message', () => {
+			const messages = [new HumanMessage('Check https://other.com/page')];
+			expect(isUrlInUserMessages('https://example.com/docs', messages)).toBe(false);
+		});
+
+		it('should ignore AI messages', () => {
+			const messages = [new AIMessage('Visit https://example.com/docs')];
+			expect(isUrlInUserMessages('https://example.com/docs', messages)).toBe(false);
+		});
+
+		it('should return false for empty messages array', () => {
+			expect(isUrlInUserMessages('https://example.com/docs', [])).toBe(false);
+		});
+
+		it('should find URL across multiple messages', () => {
+			const messages = [
+				new HumanMessage('Hello'),
+				new AIMessage('How can I help?'),
+				new HumanMessage('Use https://example.com/api-docs for reference'),
+			];
+			expect(isUrlInUserMessages('https://example.com/api-docs', messages)).toBe(true);
 		});
 	});
 });
