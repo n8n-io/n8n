@@ -20,4 +20,8 @@ export class ChatHubConfig {
 	/** Maximum number of response chunks to buffer per stream for reconnection in Chat Hub. */
 	@Env('N8N_CHAT_HUB_MAX_BUFFERED_CHUNKS')
 	maxBufferedChunks: number = 1000;
+
+	/** Maximum number of context memory entries per user in Chat Hub. */
+	@Env('N8N_CHAT_HUB_MAX_MEMORY_ENTRIES')
+	maxMemoryEntries: number = 20;
 }

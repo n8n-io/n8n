@@ -552,7 +552,6 @@ export class UpdateChatSettingsRequest extends Z.class({
 export interface ChatHubModuleSettings {
 	enabled: boolean;
 	providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>;
-	memory: string;
 }
 
 /**

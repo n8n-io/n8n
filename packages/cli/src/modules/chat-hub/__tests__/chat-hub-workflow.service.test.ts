@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { ChatHubConfig } from '@n8n/config';
 import type { WorkflowRepository, SharedWorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { Cipher, BinaryDataService } from 'n8n-core';
@@ -20,6 +21,7 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 
 describe('ChatHubWorkflowService', () => {
 	const logger = mock<Logger>();
+	const chatHubConfig = mock<ChatHubConfig>({ maxMemoryEntries: 20 });
 	const workflowRepository = mock<WorkflowRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const binaryDataService = mock<BinaryDataService>();
@@ -56,6 +58,7 @@ describe('ChatHubWorkflowService', () => {
 
 		service = new ChatHubWorkflowService(
 			logger,
+			chatHubConfig,
 			workflowRepository,
 			sharedWorkflowRepository,
 			chatHubAttachmentService,

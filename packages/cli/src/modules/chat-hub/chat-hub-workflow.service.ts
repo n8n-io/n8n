@@ -6,6 +6,7 @@ import {
 	type ChatHubBaseLLMModel,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { ChatHubConfig } from '@n8n/config';
 import {
 	SharedWorkflow,
 	SharedWorkflowRepository,
@@ -52,7 +53,6 @@ import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import {
 	CHAT_TRIGGER_NODE_MIN_VERSION,
 	getModelMetadata,
-	MAX_MEMORY_ENTRIES,
 	NODE_NAMES,
 	PROVIDER_NODE_TYPE_MAP,
 	SUPPORTED_RESPONSE_MODES,
@@ -76,6 +76,7 @@ import { parseMessage, collectChatArtifacts } from '@n8n/chat-hub';
 export class ChatHubWorkflowService {
 	constructor(
 		private readonly logger: Logger,
+		private readonly chatHubConfig: ChatHubConfig,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly chatHubAttachmentService: ChatHubAttachmentService,
@@ -661,9 +662,9 @@ To make targeted edits to a document, you must specify the exact title of the do
 		const memorySection = includeMemory
 			? `## Memory
 
-Memory usage: ${memory.length}/${MAX_MEMORY_ENTRIES} entries.
+Memory usage: ${memory.length}/${this.chatHubConfig.maxMemoryEntries} entries.
 ${
-	memory.length >= MAX_MEMORY_ENTRIES
+	memory.length >= this.chatHubConfig.maxMemoryEntries
 		? 'Memory is full. Do NOT use memory-create. If the user shares something worth remembering as a new entry, tell them memory is full and suggest they free up space in Settings → Chat Hub.'
 		: `To add a new entry:
 <command:memory-create>entry about the user</command:memory-create>`
