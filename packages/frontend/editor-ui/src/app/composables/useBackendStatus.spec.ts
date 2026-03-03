@@ -92,4 +92,22 @@ describe('useBackendStatus', () => {
 
 		expect(mockStopHeartbeat).toHaveBeenCalled();
 	});
+
+	it('should skip health checks in preview mode', async () => {
+		settingsStore.setSettings(
+			merge({}, defaultSettings, {
+				previewMode: true,
+				endpointHealth: '/internal/health',
+			}),
+		);
+
+		const wrapper = createWrapper();
+
+		await vi.waitFor(() => {
+			expect(mockFetch).not.toHaveBeenCalled();
+			expect(mockStartHeartbeat).not.toHaveBeenCalled();
+		});
+
+		wrapper.unmount();
+	});
 });
