@@ -5,10 +5,11 @@ import WorkflowHistoryVersionSelect from './WorkflowHistoryVersionSelect.vue';
 const renderComponent = createComponentRenderer(WorkflowHistoryVersionSelect, {
 	global: {
 		stubs: {
-			N8nSelect: { template: '<div><slot name="prefix" /><slot /></div>' },
-			N8nOption: { template: '<div data-test-id="option"><slot /></div>' },
-			N8nTooltip: { template: '<div><slot /><slot name="content" /></div>' },
-			N8nText: { template: '<span><slot /></span>' },
+			ElSelect: { template: '<div><slot name="prefix" /><slot /></div>' },
+			ElOption: { template: '<div data-test-id="option"><slot /></div>' },
+			N8nTooltip: {
+				template: '<div data-test-id="tooltip"><slot /><slot name="content" /></div>',
+			},
 			ElOptionGroup: {
 				props: ['label'],
 				template: '<div><div data-test-id="group-label">{{ label }}</div><slot /></div>',
@@ -63,7 +64,7 @@ describe('WorkflowHistoryVersionSelect', () => {
 					{
 						value: 'v-1',
 						label: 'Published Version',
-						status: 'published',
+						status: 'active',
 						createdAt: '2026-02-25T16:19:43.000Z',
 						publishInfo: {
 							publishedBy: 'John Doe',

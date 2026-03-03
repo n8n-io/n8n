@@ -1,13 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import { ElOptionGroup } from 'element-plus';
-import { N8nOption, N8nSelect, N8nText, N8nTooltip } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { computed, ref } from 'vue';
+import { ElOption, ElOptionGroup, ElSelect } from 'element-plus';
 import WorkflowHistoryVersionDot from './WorkflowHistoryVersionDot.vue';
-import type {
-	VersionStatus,
-	WorkflowHistoryVersionOption,
-} from '../useWorkflowHistoryVersionOptions';
+import WorkflowHistoryPublishedTooltip from './WorkflowHistoryPublishedTooltip.vue';
+import type { WorkflowHistoryVersionOption } from '../useWorkflowHistoryVersionOptions';
+import type { WorkflowHistoryVersionStatus } from '../types';
 import { formatTimestamp } from '../utils';
 const props = withDefaults(
 	defineProps<{
@@ -21,9 +18,9 @@ const props = withDefaults(
 const emit = defineEmits<{
 	'update:modelValue': [value: string];
 }>();
-const i18n = useI18n();
+const popperContainer = ref<HTMLElement | null>(null);
 
-const selectedStatus = computed<VersionStatus>(() => {
+const selectedStatus = computed<WorkflowHistoryVersionStatus>(() => {
 	const selectedOption = props.options.find((option) => option.value === props.modelValue);
 	return selectedOption?.status ?? 'default';
 });
@@ -45,64 +42,89 @@ const groupedOptions = computed<
 
 	return Array.from(groups.entries()).map(([dateLabel, options]) => ({ dateLabel, options }));
 });
-
-const getTooltipContent = (option: WorkflowHistoryVersionOption): string => {
-	if (!option.publishInfo) {
-		return option.label;
-	}
-
-	const { date, time } = formatTimestamp(option.publishInfo.publishedAt);
-	const publishedAt = i18n.baseText('workflowHistory.item.createdAt', {
-		interpolate: { date, time },
-	});
-
-	if (option.publishInfo.publishedBy) {
-		return `${option.label}: ${i18n.baseText('workflowHistory.item.publishedBy')} ${option.publishInfo.publishedBy}, ${publishedAt}`;
-	}
-
-	return `${option.label}: ${i18n.baseText('workflowHistory.item.active')}, ${publishedAt}`;
-};
 </script>
 
 <template>
-	<N8nSelect
-		:model-value="props.modelValue"
-		size="small"
-		style="width: 240px"
-		popper-class="workflow-history-diff-version-dropdown"
-		:data-test-id="props.dataTestId"
-		@update:model-value="emit('update:modelValue', $event)"
-	>
-		<template #prefix>
-			<WorkflowHistoryVersionDot :status="selectedStatus" />
-		</template>
-		<ElOptionGroup v-for="group in groupedOptions" :key="group.dateLabel" :label="group.dateLabel">
-			<N8nTooltip
-				v-for="option in group.options"
-				:key="option.value"
-				:content="getTooltipContent(option)"
-				placement="right"
+	<div :class="$style.container">
+		<div ref="popperContainer" />
+		<ElSelect
+			:model-value="props.modelValue"
+			size="small"
+			:class="$style.select"
+			:popper-class="$style['workflow-history-version-select-dropdown']"
+			:append-to="popperContainer"
+			teleported
+			:data-test-id="props.dataTestId"
+			@update:model-value="emit('update:modelValue', $event)"
+		>
+			<template #prefix>
+				<WorkflowHistoryVersionDot :status="selectedStatus" />
+			</template>
+			<ElOptionGroup
+				v-for="group in groupedOptions"
+				:key="group.dateLabel"
+				:label="group.dateLabel"
 			>
-				<template #content>
-					<div>
-						{{ getTooltipContent(option) }}
-					</div>
-				</template>
-				<N8nOption :value="option.value" :label="option.label">
-					<div style="display: flex; align-items: center; gap: var(--spacing--2xs)">
-						<WorkflowHistoryVersionDot :status="option.status" />
-						<N8nText size="small" color="text-dark">
-							{{ option.label }}
-						</N8nText>
-					</div>
-				</N8nOption>
-			</N8nTooltip>
-		</ElOptionGroup>
-	</N8nSelect>
+				<ElOption
+					v-for="option in group.options"
+					:key="option.value"
+					:value="option.value"
+					:label="option.label"
+				>
+					<WorkflowHistoryPublishedTooltip
+						:label="option.label"
+						:status="option.status"
+						:publish-info="option.publishInfo"
+						:offset="24"
+						placement="right"
+					>
+						<span :class="$style.optionRow">
+							<WorkflowHistoryVersionDot :status="option.status" />
+							<span>{{ option.label }}</span>
+						</span>
+					</WorkflowHistoryPublishedTooltip>
+				</ElOption>
+			</ElOptionGroup>
+		</ElSelect>
+	</div>
 </template>
 
 <style module lang="scss">
-:global(.workflow-history-diff-version-dropdown) {
+.container {
+	display: inline-block;
+}
+
+.select {
+	width: 240px;
+}
+
+.select :global(.el-input--prefix .el-input__inner) {
+	padding-left: 22px;
+}
+
+.workflow-history-version-select-dropdown :global(.el-select-dropdown) {
 	min-width: 320px !important;
+}
+
+.workflow-history-version-select-dropdown :global(.el-select-group__wrap::after) {
+	width: 100%;
+	left: 0;
+	bottom: 8px;
+}
+
+.workflow-history-version-select-dropdown :global(.el-select-group__wrap:not(:last-of-type)) {
+	padding-bottom: 16px;
+}
+
+.optionRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+/* N8nTooltip wraps the trigger in a span; make it stretch full list-row width. */
+.workflow-history-version-select-dropdown :global([data-grace-area-trigger]) {
+	display: block;
+	width: 100%;
 }
 </style>

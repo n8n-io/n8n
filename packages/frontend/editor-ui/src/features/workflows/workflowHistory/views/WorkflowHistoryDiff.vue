@@ -8,7 +8,7 @@ import { useWorkflowHistoryStore } from '../workflowHistory.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import WorkflowDiffView from '@/features/workflows/workflowDiff/WorkflowDiffView.vue';
 import omit from 'lodash/omit';
-import type { WorkflowHistory, WorkflowVersion } from '@n8n/rest-api-client/api/workflowHistory';
+import type { WorkflowHistory } from '@n8n/rest-api-client/api/workflowHistory';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import WorkflowHistoryVersionSelect from '../components/WorkflowHistoryVersionSelect.vue';
 import { useWorkflowHistoryVersionOptions } from '../useWorkflowHistoryVersionOptions';
@@ -36,14 +36,15 @@ const sourceLabel = ref('');
 const targetLabel = ref('');
 const selectedSourceVersionId = ref(props.sourceWorkflowVersionId);
 const selectedTargetVersionId = ref(props.targetWorkflowVersionId);
-const activeWorkflowVersionId = ref<string>();
-const loadedVersions = ref(new Map<string, WorkflowVersion>());
+const currentWorkflowVersionId = ref<string>();
+const activeWorkflowVersionId = ref<string | undefined>();
+
 const loadRequestId = ref(0);
 
 const { getVersionLabelById, versionOptions } = useWorkflowHistoryVersionOptions({
 	availableVersions: computed(() => props.availableVersions),
+	currentWorkflowVersionId,
 	activeWorkflowVersionId,
-	loadedVersions,
 	selectedVersionIds: computed(() => [
 		selectedSourceVersionId.value,
 		selectedTargetVersionId.value,
@@ -80,9 +81,8 @@ const loadComparedVersions = async (sourceVersionId: string, targetVersionId: st
 			throw new Error(i18n.baseText('workflowDiff.versionMismatchError'));
 		}
 
-		activeWorkflowVersionId.value = workflow.versionId;
-		loadedVersions.value.set(sourceWorkflowVersion.versionId, sourceWorkflowVersion);
-		loadedVersions.value.set(targetWorkflowVersion.versionId, targetWorkflowVersion);
+		currentWorkflowVersionId.value = workflow.versionId;
+		activeWorkflowVersionId.value = workflow.activeVersionId ?? undefined;
 
 		const workflowWithoutPinData: IWorkflowDb = omit(workflow, 'pinData');
 

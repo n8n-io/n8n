@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import type { WorkflowHistoryVersionStatus } from '../types';
+
 withDefaults(
 	defineProps<{
-		status?: 'published' | 'latest' | 'default';
+		status?: WorkflowHistoryVersionStatus;
 	}>(),
 	{
 		status: 'default',
@@ -22,7 +24,7 @@ withDefaults(
 	flex-shrink: 0;
 }
 
-.dot-published {
+.dot-active {
 	background-color: var(--color--mint-600);
 }
 

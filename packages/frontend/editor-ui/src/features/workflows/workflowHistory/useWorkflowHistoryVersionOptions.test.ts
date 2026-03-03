@@ -72,7 +72,7 @@ describe('useWorkflowHistoryVersionOptions', () => {
 		expect(optionsById.has('v-loaded')).toBe(true);
 	});
 
-	it('marks published versions and exposes publish info', () => {
+	it('marks latest version and exposes publish info', () => {
 		const availableVersions = computed(() => [
 			createHistoryVersion({
 				versionId: 'v-published',
@@ -97,7 +97,7 @@ describe('useWorkflowHistoryVersionOptions', () => {
 			resolveUserDisplayName: (userId) => (userId === 'user-1' ? 'John Doe' : null),
 		});
 
-		expect(versionOptions.value[0].status).toBe('published');
+		expect(versionOptions.value[0].status).toBe('latest');
 		expect(versionOptions.value[0].publishInfo).toEqual({
 			publishedBy: 'John Doe',
 			publishedAt: '2026-02-25T16:19:43.000Z',

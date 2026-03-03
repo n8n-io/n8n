@@ -1,14 +1,13 @@
 import type { ComputedRef, Ref } from 'vue';
 import { computed } from 'vue';
-import type { WorkflowHistory, WorkflowVersion } from '@n8n/rest-api-client/api/workflowHistory';
+import type { WorkflowHistory } from '@n8n/rest-api-client/api/workflowHistory';
 import { getLastPublishedVersion, getVersionLabel } from './utils';
-
-export type VersionStatus = 'published' | 'latest' | 'default';
+import type { WorkflowHistoryVersionStatus } from './types';
 
 export type WorkflowHistoryVersionOption = {
 	value: string;
 	label: string;
-	status: VersionStatus;
+	status: WorkflowHistoryVersionStatus;
 	publishInfo?: {
 		publishedBy: string | null;
 		publishedAt: string;
@@ -18,49 +17,43 @@ export type WorkflowHistoryVersionOption = {
 
 type UseWorkflowHistoryVersionOptionsParams = {
 	availableVersions: ComputedRef<WorkflowHistory[]>;
+	currentWorkflowVersionId: Ref<string | undefined>;
 	activeWorkflowVersionId: Ref<string | undefined>;
-	loadedVersions: Ref<Map<string, WorkflowVersion>>;
 	selectedVersionIds: ComputedRef<string[]>;
 	resolveUserDisplayName: (userId: string | undefined | null) => string | null;
 };
 
 export const useWorkflowHistoryVersionOptions = ({
 	availableVersions,
+	currentWorkflowVersionId,
 	activeWorkflowVersionId,
-	loadedVersions,
 	selectedVersionIds,
 	resolveUserDisplayName,
 }: UseWorkflowHistoryVersionOptionsParams) => {
-	const getAvailableVersionById = (versionId: string) =>
+	const getVersionById = (versionId: string) =>
 		availableVersions.value.find((version) => version.versionId === versionId);
 
 	const getVersionLabelById = (versionId: string): string => {
-		const historyVersion = getAvailableVersionById(versionId);
-		const loadedVersion = loadedVersions.value.get(versionId);
-		const workflowHistory = historyVersion ?? loadedVersion ?? { versionId };
+		const workflowHistory = getVersionById(versionId) ?? { versionId, name: null };
 		return getVersionLabel({
 			workflowHistory,
-			currentVersionId: activeWorkflowVersionId.value,
+			currentVersionId: currentWorkflowVersionId.value,
 		});
 	};
 
-	const getVersionStatusById = (versionId: string): VersionStatus => {
+	const getVersionStatusById = (versionId: string): WorkflowHistoryVersionStatus => {
 		if (versionId === activeWorkflowVersionId.value) {
-			return 'latest';
+			return 'active';
 		}
 
-		const historyVersion = getAvailableVersionById(versionId);
-		if (historyVersion && getLastPublishedVersion(historyVersion.workflowPublishHistory)) {
-			return 'published';
-		}
-
-		return 'default';
+		const isLatest = versionId === currentWorkflowVersionId.value;
+		return isLatest ? 'latest' : 'default';
 	};
 
 	const getVersionPublishInfoById = (
 		versionId: string,
 	): WorkflowHistoryVersionOption['publishInfo'] => {
-		const historyVersion = getAvailableVersionById(versionId);
+		const historyVersion = getVersionById(versionId);
 		if (!historyVersion) {
 			return undefined;
 		}
@@ -78,7 +71,7 @@ export const useWorkflowHistoryVersionOptions = ({
 	};
 
 	const getVersionCreatedAtById = (versionId: string): string | undefined => {
-		const historyVersion = getAvailableVersionById(versionId);
+		const historyVersion = getVersionById(versionId);
 		return historyVersion?.createdAt;
 	};
 
