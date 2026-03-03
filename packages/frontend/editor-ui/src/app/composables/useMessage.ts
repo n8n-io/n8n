@@ -84,9 +84,9 @@ export function useMessage() {
 				h(
 					N8nCheckbox,
 					{
-						// @ts-expect-error - the checkbox component passes the value as custom data rather than the event itself
-						onChange: (_, data: { target: { value: boolean } }) =>
-							(confirmedCheckbox = data.target.value),
+						'onUpdate:modelValue': (checked: boolean) => {
+							confirmedCheckbox = checked;
+						},
 						required: true,
 					},
 					{
