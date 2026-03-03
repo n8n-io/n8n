@@ -126,17 +126,30 @@ export const getAllKeyPaths = (
 
 /**
  * Sets Microsoft 365 observability environment variables to their default values if not already set.
- * Sets ENABLE_OBSERVABILITY and ENABLE_A365_OBSERVABILITY_EXPORTER to 'true' if they are undefined or empty.
+ * Sets ENABLE_OBSERVABILITY, ENABLE_A365_OBSERVABILITY_EXPORTER, and
+ * ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT to 'true' if they are undefined or empty.
  */
 export function setMicrosoftObservabilityDefaults(): void {
+	// Master switch for OpenTelemetry tracing in the @microsoft/agents-a365-observability SDK.
+	// Must be 'true' for any observability data to be captured or exported.
 	if (process.env.ENABLE_OBSERVABILITY === undefined || process.env.ENABLE_OBSERVABILITY === '') {
 		process.env.ENABLE_OBSERVABILITY = 'true';
 	}
+	// Routes captured spans to the Agent 365 backend exporter instead of the console exporter.
+	// When 'false', spans are printed to stdout only (useful for local validation).
 	if (
 		process.env.ENABLE_A365_OBSERVABILITY_EXPORTER === undefined ||
 		process.env.ENABLE_A365_OBSERVABILITY_EXPORTER === ''
 	) {
 		process.env.ENABLE_A365_OBSERVABILITY_EXPORTER = 'true';
+	}
+	// Enables per-request export mode: spans are buffered per webhook request and exported on
+	// completion, rather than using the BatchSpanProcessor which is designed for long-running processes.
+	if (
+		process.env.ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT === undefined ||
+		process.env.ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT === ''
+	) {
+		process.env.ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT = 'true';
 	}
 }
 

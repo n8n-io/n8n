@@ -10,6 +10,7 @@ import {
 	microsoftMcpServers,
 	extractActivityInfo,
 	buildMcpToolName,
+	disposeActivityResources,
 	type MicrosoftAgent365Credentials,
 	type ActivityCapture,
 	type ActivityInfo,
@@ -1331,6 +1332,59 @@ describe('microsoft-utils', () => {
 			const result: ActivityInfo = extractActivityInfo(activity as any);
 
 			expect(result.conversationId).toBe('conversation-id-123');
+		});
+	});
+
+	describe('disposeActivityResources', () => {
+		let mockInvokeAgentScope: { dispose: jest.Mock };
+		let mockMcpClient: { close: jest.Mock };
+
+		beforeEach(() => {
+			mockInvokeAgentScope = { dispose: jest.fn() };
+			mockMcpClient = { close: jest.fn().mockResolvedValue(undefined) };
+		});
+
+		test('should dispose invokeAgentScope and close mcpClient', async () => {
+			await disposeActivityResources(mockInvokeAgentScope as any, mockMcpClient);
+
+			expect(mockInvokeAgentScope.dispose).toHaveBeenCalledTimes(1);
+			expect(mockMcpClient.close).toHaveBeenCalledTimes(1);
+		});
+
+		test('should dispose invokeAgentScope when mcpClient is undefined', async () => {
+			await disposeActivityResources(mockInvokeAgentScope as any, undefined);
+
+			expect(mockInvokeAgentScope.dispose).toHaveBeenCalledTimes(1);
+		});
+
+		test('should not throw when invokeAgentScope.dispose throws', async () => {
+			mockInvokeAgentScope.dispose.mockImplementation(() => {
+				throw new Error('dispose failed');
+			});
+
+			await expect(
+				disposeActivityResources(mockInvokeAgentScope as any, mockMcpClient),
+			).resolves.not.toThrow();
+			expect(mockMcpClient.close).toHaveBeenCalledTimes(1);
+		});
+
+		test('should not throw when mcpClient.close rejects', async () => {
+			mockMcpClient.close.mockRejectedValue(new Error('close failed'));
+
+			await expect(
+				disposeActivityResources(mockInvokeAgentScope as any, mockMcpClient),
+			).resolves.not.toThrow();
+			expect(mockInvokeAgentScope.dispose).toHaveBeenCalledTimes(1);
+		});
+
+		test('should still close mcpClient when invokeAgentScope.dispose throws', async () => {
+			mockInvokeAgentScope.dispose.mockImplementation(() => {
+				throw new Error('dispose failed');
+			});
+
+			await disposeActivityResources(mockInvokeAgentScope as any, mockMcpClient);
+
+			expect(mockMcpClient.close).toHaveBeenCalledTimes(1);
 		});
 	});
 });

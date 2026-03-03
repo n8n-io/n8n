@@ -318,23 +318,30 @@ export const configureActivityCallback = (
 
 					await turnContext.sendActivity(response);
 				} finally {
-					try {
-						invokeAgentScope.dispose();
-					} catch (error) {
-						console.error('Failed to dispose invokeAgentScope:', error);
-					}
-					if (mcpClient) {
-						try {
-							await mcpClient.close();
-						} catch (error) {
-							console.error('Failed to close MCP client connections:', error);
-						}
-					}
+					await disposeActivityResources(invokeAgentScope, mcpClient);
 				}
 			});
 		});
 	};
 };
+
+export async function disposeActivityResources(
+	invokeAgentScope: InvokeAgentScope,
+	mcpClient: NonNullable<Awaited<ReturnType<typeof getMicrosoftMcpTools>>>['client'] | undefined,
+): Promise<void> {
+	try {
+		invokeAgentScope.dispose();
+	} catch (error) {
+		console.error('Failed to dispose invokeAgentScope:', error);
+	}
+	if (mcpClient) {
+		try {
+			await mcpClient.close();
+		} catch (error) {
+			console.error('Failed to close MCP client connections:', error);
+		}
+	}
+}
 
 export function configureAdapterProcessCallback(
 	nodeContext: IWebhookFunctions,
@@ -358,7 +365,7 @@ export function configureAdapterProcessCallback(
 
 			observability = ObservabilityManager.configure((builder: Builder) =>
 				builder
-					.withService('TypeScript Sample Agent', '1.0.0')
+					.withService('n8n-microsoft-agent-365')
 					.withTokenResolver((_agentId: string, _tenantId: string) => aauToken || ''),
 			);
 
@@ -418,9 +425,19 @@ export function configureAdapterProcessCallback(
 		} finally {
 			if (observability) {
 				try {
-					await observability.shutdown();
+					const OBSERVABILITY_SHUTDOWN_TIMEOUT_MS = 5000;
+					await Promise.race([
+						observability.shutdown(),
+						new Promise<never>((_, reject) =>
+							setTimeout(
+								() => reject(new Error('Observability shutdown timed out')),
+								OBSERVABILITY_SHUTDOWN_TIMEOUT_MS,
+							),
+						),
+					]);
 				} catch (error) {
-					console.error('Failed to shut down observability:', error);
+					// Backend unreachable or export timed out — not a code error
+					console.warn('Failed to shut down observability:', error);
 				}
 			}
 		}
