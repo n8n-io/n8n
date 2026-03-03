@@ -610,7 +610,7 @@ describe('microsoft-utils', () => {
 			}
 		});
 
-		test('should create dynamic tools from MCP tools', async () => {
+		test('should create dynamic tools from MCP tools grouped into one toolkit per server', async () => {
 			const mockServers = [{ mcpServerName: 'mcp_CalendarTools', url: 'http://calendar-server' }];
 
 			mockConfigService.listToolServers.mockResolvedValue(mockServers);
@@ -630,8 +630,8 @@ describe('microsoft-utils', () => {
 			const mockCallTool = jest.fn();
 			(createCallTool as jest.Mock).mockReturnValue(mockCallTool);
 
-			const mockDynamicTool1 = { name: 'create_event' };
-			const mockDynamicTool2 = { name: 'list_events' };
+			const mockDynamicTool1 = { name: 'mcp_CalendarTools_create_event' };
+			const mockDynamicTool2 = { name: 'mcp_CalendarTools_list_events' };
 			(mcpToolToDynamicTool as jest.Mock)
 				.mockReturnValueOnce(mockDynamicTool1)
 				.mockReturnValueOnce(mockDynamicTool2);
@@ -639,9 +639,33 @@ describe('microsoft-utils', () => {
 			const result = await getMicrosoftMcpTools(mockTurnContext, 'test-token', undefined);
 
 			expect(result).toBeDefined();
-			expect(result?.tools).toHaveLength(2);
+			// One toolkit per server
+			expect(result?.toolkits).toHaveLength(1);
+			expect(result?.toolkits[0].tools).toHaveLength(2);
 			expect(createCallTool).toHaveBeenCalledTimes(2);
 			expect(mcpToolToDynamicTool).toHaveBeenCalledTimes(2);
+			// createCallTool uses the original (unprefixed) tool name for the actual MCP call
+			expect(createCallTool).toHaveBeenCalledWith(
+				'create_event',
+				mockClient,
+				60000,
+				expect.any(Function),
+			);
+			expect(createCallTool).toHaveBeenCalledWith(
+				'list_events',
+				mockClient,
+				60000,
+				expect.any(Function),
+			);
+			// mcpToolToDynamicTool receives the prefixed name so LangChain sees unique names
+			expect(mcpToolToDynamicTool).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'mcp_CalendarTools_create_event' }),
+				mockCallTool,
+			);
+			expect(mcpToolToDynamicTool).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'mcp_CalendarTools_list_events' }),
+				mockCallTool,
+			);
 		});
 
 		test('should return undefined when no tools are available', async () => {
@@ -721,6 +745,107 @@ describe('microsoft-utils', () => {
 						'x-ms-tenant-id': 'channel-tenant-id',
 					}),
 				}),
+			);
+		});
+
+		test('should create separate toolkits for each server', async () => {
+			const mockServers = [
+				{ mcpServerName: 'mcp_CalendarTools', url: 'http://calendar-server' },
+				{ mcpServerName: 'mcp_MailTools', url: 'http://mail-server' },
+			];
+
+			mockConfigService.listToolServers.mockResolvedValue(mockServers);
+
+			const mockClient1 = { close: jest.fn() };
+			const mockClient2 = { close: jest.fn() };
+			(connectMcpClient as jest.Mock)
+				.mockResolvedValueOnce({ ok: true, result: mockClient1 })
+				.mockResolvedValueOnce({ ok: true, result: mockClient2 });
+
+			(getAllTools as jest.Mock)
+				.mockResolvedValueOnce([{ name: 'create_event', description: 'Create event' }])
+				.mockResolvedValueOnce([{ name: 'send_email', description: 'Send email' }]);
+
+			const mockCallTool = jest.fn();
+			(createCallTool as jest.Mock).mockReturnValue(mockCallTool);
+			(mcpToolToDynamicTool as jest.Mock)
+				.mockReturnValueOnce({ name: 'mcp_CalendarTools_create_event' })
+				.mockReturnValueOnce({ name: 'mcp_MailTools_send_email' });
+
+			const result = await getMicrosoftMcpTools(mockTurnContext, 'test-token', undefined);
+
+			expect(result?.toolkits).toHaveLength(2);
+			expect(result?.toolkits[0].tools).toHaveLength(1);
+			expect(result?.toolkits[1].tools).toHaveLength(1);
+		});
+
+		test('should prevent duplicate tool names when multiple servers expose same-named tools', async () => {
+			const mockServers = [
+				{ mcpServerName: 'mcp_CalendarTools', url: 'http://calendar-server' },
+				{ mcpServerName: 'mcp_MailTools', url: 'http://mail-server' },
+			];
+
+			mockConfigService.listToolServers.mockResolvedValue(mockServers);
+
+			(connectMcpClient as jest.Mock).mockResolvedValue({ ok: true, result: { close: jest.fn() } });
+
+			// Both servers expose a tool called 'search'
+			(getAllTools as jest.Mock).mockResolvedValue([{ name: 'search', description: 'Search' }]);
+
+			const mockCallTool = jest.fn();
+			(createCallTool as jest.Mock).mockReturnValue(mockCallTool);
+			(mcpToolToDynamicTool as jest.Mock)
+				.mockReturnValueOnce({ name: 'mcp_CalendarTools_search' })
+				.mockReturnValueOnce({ name: 'mcp_MailTools_search' });
+
+			const result = await getMicrosoftMcpTools(mockTurnContext, 'test-token', undefined);
+
+			// createCallTool always uses the original tool name for the MCP call
+			expect(createCallTool).toHaveBeenCalledWith(
+				'search',
+				expect.anything(),
+				60000,
+				expect.any(Function),
+			);
+			// mcpToolToDynamicTool gets server-prefixed names, avoiding collision
+			expect(mcpToolToDynamicTool).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'mcp_CalendarTools_search' }),
+				mockCallTool,
+			);
+			expect(mcpToolToDynamicTool).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'mcp_MailTools_search' }),
+				mockCallTool,
+			);
+			// Two toolkits, each with one distinctly-named tool
+			expect(result?.toolkits).toHaveLength(2);
+		});
+
+		test('should sanitize special characters in server name when prefixing tool names', async () => {
+			const mockServers = [
+				{ mcpServerName: 'mcp-Calendar.Tools (v2)', url: 'http://calendar-server' },
+			];
+
+			mockConfigService.listToolServers.mockResolvedValue(mockServers);
+
+			const mockClient = { close: jest.fn() };
+			(connectMcpClient as jest.Mock).mockResolvedValue({ ok: true, result: mockClient });
+
+			(getAllTools as jest.Mock).mockResolvedValue([
+				{ name: 'create_event', description: 'Create event' },
+			]);
+
+			const mockCallTool = jest.fn();
+			(createCallTool as jest.Mock).mockReturnValue(mockCallTool);
+			(mcpToolToDynamicTool as jest.Mock).mockReturnValue({
+				name: 'mcp_Calendar_Tools__v2__create_event',
+			});
+
+			await getMicrosoftMcpTools(mockTurnContext, 'test-token', undefined);
+
+			// Special chars (dash, dot, space, parens) all replaced with underscores
+			expect(mcpToolToDynamicTool).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'mcp_Calendar_Tools__v2__create_event' }),
+				mockCallTool,
 			);
 		});
 	});

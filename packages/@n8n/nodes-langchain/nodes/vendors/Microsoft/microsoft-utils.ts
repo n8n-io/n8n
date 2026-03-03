@@ -33,8 +33,8 @@ import { invokeAgent } from './langchain-utils';
 
 import { McpToolServerConfigurationService, Utility } from '@microsoft/agents-a365-tooling';
 
-import type { DynamicStructuredTool } from '@langchain/core/tools';
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StructuredToolkit } from 'n8n-core';
 import { connectMcpClient, getAllTools } from '../../mcp/shared/utils';
 import { createCallTool, mcpToolToDynamicTool } from '../../mcp/McpClientTool/utils';
 
@@ -152,7 +152,7 @@ export async function getMicrosoftMcpTools(
 	const tenantId =
 		turnContext.activity.recipient?.tenantId || turnContext.activity?.channelData?.tenant?.id;
 
-	const tools: DynamicStructuredTool[] = [];
+	const toolkits: StructuredToolkit[] = [];
 	const clients: Client[] = [];
 	const timeout = 60000;
 
@@ -182,21 +182,25 @@ export async function getMicrosoftMcpTools(
 		clients.push(client);
 
 		const mcpTools = await getAllTools(client);
+		const sanitizedServerName = server.mcpServerName.replace(/[^a-zA-Z0-9]/g, '_');
 
-		for (const tool of mcpTools) {
+		const serverTools = mcpTools.map((tool) => {
+			const prefixedName = `${sanitizedServerName}_${tool.name}`;
 			const callToolFunc = createCallTool(tool.name, client, timeout, (errorMessage) => {
 				console.error(`Tool "${tool.name}" execution error:`, errorMessage);
 			});
+			return mcpToolToDynamicTool({ ...tool, name: prefixedName }, callToolFunc);
+		});
 
-			const dynamicTool = mcpToolToDynamicTool(tool, callToolFunc);
-			tools.push(dynamicTool);
+		if (serverTools.length > 0) {
+			toolkits.push(new StructuredToolkit(serverTools));
 		}
 	}
 
-	if (tools.length === 0) return undefined;
+	if (toolkits.length === 0) return undefined;
 
 	return {
-		tools,
+		toolkits,
 		client: {
 			async close() {
 				await Promise.all(clients.map(async (c) => await c.close()));
@@ -247,8 +251,8 @@ export const configureActivityCallback = (
 			await invokeAgentScope.withActiveSpanAsync(async () => {
 				invokeAgentScope.recordInputMessages([inputText || 'Unknown text']);
 
-				let microsoftMcpTools = undefined;
 				let mcpClient = undefined;
+				let microsoftMcpToolkits: StructuredToolkit[] | undefined = undefined;
 				if (mcpTokenRef.token) {
 					try {
 						const useMcpTools = nodeContext.getNodeParameter('useMcpTools', false) as boolean;
@@ -271,7 +275,7 @@ export const configureActivityCallback = (
 							);
 
 							mcpClient = result?.client;
-							microsoftMcpTools = result?.tools;
+							microsoftMcpToolkits = result?.toolkits;
 						}
 					} catch (error) {
 						console.log('Error retrieving MCP tools');
@@ -286,7 +290,7 @@ export const configureActivityCallback = (
 						{
 							configurable: { thread_id: turnContext.activity.conversation!.id },
 						},
-						microsoftMcpTools,
+						microsoftMcpToolkits,
 					);
 
 					invokeAgentScope.recordOutputMessages([`n8n Agent Response: ${response}`]);

@@ -16,15 +16,14 @@ import { getOptionalOutputParser } from '../../../utils/output_parsers/N8nOutput
 import type { ChatPromptTemplate, BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
 
 import { type N8nOutputParser } from '../../../utils/output_parsers/N8nOutputParser';
-import type { DynamicStructuredTool } from '@langchain/core/tools';
-import type { ToolInputSchemaBase } from '@langchain/core/dist/tools/types';
+import type { StructuredToolkit } from 'n8n-core';
 
 export async function invokeAgent(
 	nodeContext: IWebhookFunctions,
 	input: string,
 	systemMessage?: string,
 	invokeOptions: RunnableConfig = {},
-	microsoftMcpTools: Array<DynamicStructuredTool<ToolInputSchemaBase, any, any, any>> = [],
+	microsoftMcpToolkits: StructuredToolkit[] = [],
 ): Promise<string> {
 	// Inject conversationId as sessionId into the request body so memory sub-nodes
 	// can resolve session ID expressions (e.g. $json.sessionId in fromInput auto mode).
@@ -55,8 +54,8 @@ export async function invokeAgent(
 	const outputParser = await getOptionalOutputParser(nodeContext, 0);
 	let tools = await getTools(nodeContext, outputParser);
 
-	if (microsoftMcpTools?.length) {
-		tools = tools.concat(microsoftMcpTools);
+	if (microsoftMcpToolkits?.length) {
+		tools = tools.concat(microsoftMcpToolkits.flatMap((toolkit) => toolkit.tools));
 	}
 
 	const options = nodeContext.getNodeParameter('options', {}) as {
