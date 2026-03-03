@@ -64,6 +64,7 @@
     "@vueuse/core": "catalog:frontend",
     "ag-grid-vue3": "^34.1.1",
     "array.prototype.tosorted": "1.1.4",
+    "acorn": "8.14.0",
     "axios": "catalog:",
     "bowser": "2.11.0",
     "change-case": "^5.4.4",
