@@ -18,10 +18,10 @@ import { getPairedItemsMapping } from '@/app/utils/pairedItemUtils';
 import {
 	type INodeIssueData,
 	type INodeIssueObjectProperty,
+	type IWorkflowSettings,
 	NodeHelpers,
 	type IDataObject,
 	type INodeParameters,
-	type IWorkflowSettings,
 } from 'n8n-workflow';
 import { inject } from 'vue';
 import * as workflowsApi from '@/app/api/workflows';
@@ -29,6 +29,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { isEmpty } from '@/app/utils/typesUtils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { clearPopupWindowState } from '@/features/execution/executions/executions.utils';
+import { DEFAULT_SETTINGS } from '@/app/stores/workflowDocument/useWorkflowDocumentSettings';
 import { useDocumentTitle } from './useDocumentTitle';
 import { useWorkflowStateStore } from '@/app/stores/workflowState.store';
 import { isObject } from '@/app/utils/objectUtils';
@@ -125,10 +126,6 @@ export function useWorkflowState() {
 		ws.workflowObject.id = ws.workflow.id;
 	}
 
-	function setWorkflowSettings(workflowSettings: IWorkflowSettings) {
-		ws.private.setWorkflowSettings(workflowSettings);
-	}
-
 	function setWorkflowProperty<K extends keyof IWorkflowDb>(key: K, value: IWorkflowDb[K]) {
 		ws.workflow[key] = value;
 	}
@@ -142,9 +139,9 @@ export function useWorkflowState() {
 		projectId?: string,
 		parentFolderId?: string,
 	): Promise<INewWorkflowData> {
-		let workflowData = {
+		let workflowData: { name: string; settings: IWorkflowSettings } = {
 			name: '',
-			settings: { ...ws.defaults.settings },
+			settings: { ...DEFAULT_SETTINGS },
 		};
 		try {
 			const data: IDataObject = {
@@ -232,7 +229,8 @@ export function useWorkflowState() {
 
 		setWorkflowId('');
 		setWorkflowName({ newName: '', setStateDirty: false });
-		setWorkflowSettings({ ...ws.defaults.settings });
+		// Settings are managed by workflowDocumentStore; reset the runtime Workflow instance directly
+		ws.workflowObject.setSettings({ ...DEFAULT_SETTINGS });
 		// Note: Tags are now managed by workflowDocumentStore, which is disposed during reset
 
 		setActiveExecutionId(undefined);
@@ -437,7 +435,6 @@ export function useWorkflowState() {
 		resetAllNodesIssues,
 		setWorkflowId,
 		setWorkflowName,
-		setWorkflowSettings,
 		setWorkflowProperty,
 		setActiveExecutionId,
 		getNewWorkflowDataAndMakeShareable,
