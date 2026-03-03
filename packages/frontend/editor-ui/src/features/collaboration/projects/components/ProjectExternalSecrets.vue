@@ -55,7 +55,7 @@ const isFeatureEnabled = computed(
 );
 
 // Permissions
-const hasExternalSecretsListPermission = computed(
+const hasExternalSecretsReadPermission = computed(
 	() => projectsStore.currentProject?.scopes?.includes('externalSecretsProvider:read') ?? false,
 );
 
@@ -68,7 +68,7 @@ const canCreateGlobalSecretsStore = computed(() =>
 );
 
 const showExternalSecretsSection = computed(
-	() => isFeatureEnabled.value && hasExternalSecretsListPermission.value,
+	() => isFeatureEnabled.value && hasExternalSecretsReadPermission.value,
 );
 
 // Empty state logic
@@ -188,7 +188,7 @@ async function fetchSecretsForCurrentPage() {
 async function fetchProjectSecretConnections() {
 	if (
 		!projectsStore.currentProjectId ||
-		!hasExternalSecretsListPermission.value ||
+		!hasExternalSecretsReadPermission.value ||
 		!isFeatureEnabled.value
 	) {
 		return;
