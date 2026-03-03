@@ -389,6 +389,7 @@ defineExpose({ focus, blur, select });
 	--input--height: var(--height--lg);
 	--input--radius: var(--radius--2xs);
 	--input--font-size: var(--font-size--sm);
+	--input--padding: var(--spacing--xs);
 
 	--input--color--background: light-dark(var(--color--neutral-white), var(--color--neutral-800));
 	--input--shadow: 0 0 0 0 transparent;
@@ -429,12 +430,14 @@ defineExpose({ focus, blur, select });
 		--input--height: var(--height--sm);
 		--input--radius: var(--radius--3xs);
 		--input--font-size: var(--font-size--xs);
+		--input--padding: var(--spacing--2xs);
 	}
 
 	&.mini {
 		--input--height: var(--height--xs);
 		--input--radius: var(--radius--3xs);
 		--input--font-size: var(--font-size--2xs);
+		--input--padding: var(--spacing--2xs);
 	}
 }
 
@@ -443,8 +446,8 @@ defineExpose({ focus, blur, select });
 	align-items: center;
 	flex: 1;
 	min-width: 0;
-	gap: var(--spacing--xs);
-	padding: 0 var(--spacing--xs);
+	gap: var(--input--padding);
+	padding: 0 var(--input--padding);
 	border-radius: var(--input--radius);
 	background-color: var(--input--color--background);
 	box-shadow:

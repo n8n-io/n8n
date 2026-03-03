@@ -627,7 +627,7 @@ defineExpose({
 								:model-value="filtersModel.search"
 								:class="$style.search"
 								:placeholder="getResourceText('search.placeholder', 'search.placeholder')"
-								size="small"
+								size="medium"
 								clearable
 								data-test-id="resources-list-search"
 								@update:model-value="onSearch"
@@ -805,6 +805,12 @@ defineExpose({
 		display: flex;
 		gap: var(--spacing--4xs);
 		align-items: center;
+
+		input {
+			min-height: 0;
+			width: 196px;
+			height: 32px;
+		}
 	}
 
 	@include mixins.breakpoint('xs-only') {
@@ -817,10 +823,6 @@ defineExpose({
 .search {
 	max-width: 196px;
 	justify-self: end;
-
-	input {
-		height: 30px;
-	}
 
 	@include mixins.breakpoint('sm-and-down') {
 		max-width: 100%;
@@ -876,15 +878,6 @@ defineExpose({
 
 .datatable {
 	padding-bottom: var(--spacing--sm);
-}
-
-/** NOTE (@heymynameisrob): Style override to match button and text input height **/
-.resourceList {
-	height: var(--spacing--xl);
-
-	input[role='combobox'] {
-		height: var(--spacing--xl);
-	}
 }
 </style>
 
