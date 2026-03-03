@@ -27,6 +27,7 @@ import {
 	showOrchestrateHelp,
 } from './cli/index.js';
 import { setConfig, getConfig, defineConfig, type JanitorConfig } from './config.js';
+import { diffFileMethods } from './core/ast-diff-analyzer.js';
 import {
 	generateBaseline,
 	saveBaseline,
@@ -35,7 +36,6 @@ import {
 	formatBaselineInfo,
 	getBaselinePath,
 } from './core/baseline.js';
-import { diffFileMethods } from './core/ast-diff-analyzer.js';
 import {
 	ImpactAnalyzer,
 	formatImpactConsole,
