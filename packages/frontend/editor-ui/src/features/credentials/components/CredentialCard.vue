@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import dateformat from 'dateformat';
-import { MODAL_CONFIRM } from '@/app/constants';
+import { MODAL_CONFIRM, RESOURCE_DEPENDENTS_MODAL_KEY } from '@/app/constants';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
+import { useResourceDependents } from '@/app/composables/useResourceDependents';
 import { useMessage } from '@/app/composables/useMessage';
 import CredentialIcon from './CredentialIcon.vue';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -11,6 +12,7 @@ import { useCredentialsStore } from '../credentials.store';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
+import DependencyPill from '@/app/components/DependencyPill.vue';
 import { useI18n } from '@n8n/i18n';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import type { CredentialsResource } from '@/Interface';
@@ -52,6 +54,7 @@ const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
 const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
+const { hasDependents, getDependents } = useResourceDependents();
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.credential').toLowerCase());
 const credentialType = computed(() =>
@@ -91,8 +94,21 @@ const formattedCreatedAtDate = computed(() => {
 	);
 });
 
+const credentialHasDependents = computed(() => hasDependents(props.data.id));
+const dependentCount = computed(() => getDependents(props.data.id)?.length ?? 0);
+
 function onClick() {
 	emit('click', props.data.id);
+}
+
+function openDependentsModal() {
+	uiStore.openModalWithData({
+		name: RESOURCE_DEPENDENTS_MODAL_KEY,
+		data: {
+			resourceName: props.data.name,
+			dependents: getDependents(props.data.id) ?? [],
+		},
+	});
 }
 
 async function onAction(action: string) {
@@ -186,6 +202,17 @@ function moveResource() {
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
+				<DependencyPill
+					v-if="credentialHasDependents"
+					:count="dependentCount"
+					:tooltip-text="
+						locale.baseText('resourceDependents.tooltip', {
+							interpolate: { count: String(dependentCount) },
+						})
+					"
+					data-test-id="credential-card-dependents"
+					@click="openDependentsModal"
+				/>
 				<ProjectCardBadge
 					:class="$style.cardBadge"
 					:resource="data"
@@ -235,6 +262,7 @@ function moveResource() {
 
 .cardActions {
 	display: flex;
+	gap: var(--spacing--2xs);
 	flex-direction: row;
 	justify-content: center;
 	align-items: center;

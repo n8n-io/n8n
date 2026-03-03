@@ -12,6 +12,7 @@ import { useAutoScrollOnDrag } from '@/app/composables/useAutoScrollOnDrag';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useLatestFetch } from '@/app/composables/useLatestFetch';
+import { useWorkflowDependencies } from '@/app/composables/useWorkflowDependencies';
 import type { DragTarget, DropTarget, FolderListItem } from '@/features/core/folders/folders.types';
 import { useFolders } from '@/features/core/folders/composables/useFolders';
 import { useMessage } from '@/app/composables/useMessage';
@@ -148,6 +149,7 @@ const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
 const projectPages = useProjectPages();
 const { next: nextFetch } = useLatestFetch();
+const { fetchDependencies } = useWorkflowDependencies();
 const {
 	showRecommendedTemplatesInline,
 	emptyStateHeading: emptyListHeading,
@@ -674,6 +676,12 @@ const fetchWorkflows = async () => {
 		}
 
 		workflowsAndFolders.value = fetchedResources;
+
+		// Async-fetch dependencies for visible workflows (fire-and-forget)
+		const workflowIds = fetchedResources.filter((r) => r.resource === 'workflow').map((r) => r.id);
+		if (workflowIds.length > 0) {
+			void fetchDependencies(workflowIds);
+		}
 
 		// Toggle ownership cards visibility only after we have fetched the workflows
 		showCardsBadge.value =

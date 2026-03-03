@@ -3,6 +3,8 @@ import {
 	ArchiveWorkflowDto,
 	CreateWorkflowDto,
 	DeactivateWorkflowDto,
+	GetResourceDependentsDto,
+	GetWorkflowDependenciesDto,
 	ImportWorkflowFromUrlDto,
 	ROLE,
 	TransferWorkflowBodyDto,
@@ -42,6 +44,7 @@ import express from 'express';
 import { calculateWorkflowChecksum } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { CollaborationService } from '../collaboration/collaboration.service';
+import { WorkflowDependencyQueryService } from '../modules/workflow-index/workflow-dependency-query.service';
 
 import { WorkflowExecutionService } from './workflow-execution.service';
 import { WorkflowFinderService } from './workflow-finder.service';
@@ -98,6 +101,7 @@ export class WorkflowsController {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly executionService: ExecutionService,
 		private readonly collaborationService: CollaborationService,
+		private readonly workflowDependencyQueryService: WorkflowDependencyQueryService,
 	) {}
 
 	@Post('/')
@@ -815,6 +819,27 @@ export class WorkflowsController {
 		const lastExecution = await this.executionService.getLastSuccessfulExecution(workflowId);
 
 		return lastExecution ?? null;
+	}
+
+	@Post('/dependencies')
+	async getWorkflowDependencies(
+		_req: AuthenticatedRequest,
+		_res: unknown,
+		@Body body: GetWorkflowDependenciesDto,
+	) {
+		return await this.workflowDependencyQueryService.getResolvedDependencies(body.workflowIds);
+	}
+
+	@Post('/dependents')
+	async getResourceDependents(
+		_req: AuthenticatedRequest,
+		_res: unknown,
+		@Body body: GetResourceDependentsDto,
+	) {
+		return await this.workflowDependencyQueryService.getResourceDependents(
+			body.resourceIds,
+			body.resourceType,
+		);
 	}
 
 	@Post('/with-node-types')

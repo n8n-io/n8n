@@ -1,8 +1,9 @@
 import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { DataSource, EntityManager, IsNull, LessThan, Repository, Not } from '@n8n/typeorm';
+import { DataSource, EntityManager, In, IsNull, LessThan, Repository, Not } from '@n8n/typeorm';
 
 import { WorkflowDependency } from '../entities';
+import type { DependencyType } from '../entities/workflow-dependency-entity';
 
 const INDEX_VERSION_ID = 1;
 
@@ -153,6 +154,45 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 			workflowId,
 		]);
 		return await tx.existsBy(WorkflowDependency, whereConditions);
+	}
+
+	/**
+	 * Get draft dependencies for a batch of workflows, filtered to specific types.
+	 */
+	async getDependenciesForWorkflows(
+		workflowIds: string[],
+		dependencyTypes: DependencyType[],
+	): Promise<WorkflowDependency[]> {
+		if (workflowIds.length === 0) return [];
+
+		return await this.find({
+			where: {
+				workflowId: In(workflowIds),
+				dependencyType: In(dependencyTypes),
+				publishedVersionId: IsNull(),
+			},
+			select: ['workflowId', 'dependencyType', 'dependencyKey'],
+		});
+	}
+
+	/**
+	 * Get draft dependencies that reference any of the given keys for a specific type.
+	 * Used for reverse lookups, e.g. finding which workflows call a given workflow.
+	 */
+	async getReverseDependencies(
+		dependencyKeys: string[],
+		dependencyType: DependencyType,
+	): Promise<WorkflowDependency[]> {
+		if (dependencyKeys.length === 0) return [];
+
+		return await this.find({
+			where: {
+				dependencyKey: In(dependencyKeys),
+				dependencyType,
+				publishedVersionId: IsNull(),
+			},
+			select: ['workflowId', 'dependencyType', 'dependencyKey'],
+		});
 	}
 
 	private getTableName(name: string): string {

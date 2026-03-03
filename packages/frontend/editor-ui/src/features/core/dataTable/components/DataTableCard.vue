@@ -6,11 +6,15 @@ import DataTableActions from '@/features/core/dataTable/components/DataTableActi
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
+import DependencyPill from '@/app/components/DependencyPill.vue';
 
 import { N8nBadge, N8nCard, N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
 import type { DataTableResource } from '../types';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useResourceDependents } from '@/app/composables/useResourceDependents';
+import { useUIStore } from '@/app/stores/ui.store';
+import { RESOURCE_DEPENDENTS_MODAL_KEY } from '@/app/constants';
 
 type Props = {
 	dataTable: DataTableResource;
@@ -21,6 +25,8 @@ type Props = {
 const i18n = useI18n();
 const dataTableStore = useDataTableStore();
 const projectsStore = useProjectsStore();
+const uiStore = useUIStore();
+const { hasDependents, getDependents } = useResourceDependents();
 
 const props = withDefaults(defineProps<Props>(), {
 	actions: () => [],
@@ -42,6 +48,19 @@ const getDataTableSize = computed(() => {
 	const size = dataTableStore.dataTableSizes[props.dataTable.id] ?? 0;
 	return size;
 });
+
+const dataTableHasDependents = computed(() => hasDependents(props.dataTable.id));
+const dependentCount = computed(() => getDependents(props.dataTable.id)?.length ?? 0);
+
+function openDependentsModal() {
+	uiStore.openModalWithData({
+		name: RESOURCE_DEPENDENTS_MODAL_KEY,
+		data: {
+			resourceName: props.dataTable.name,
+			dependents: getDependents(props.dataTable.id) ?? [],
+		},
+	});
+}
 </script>
 <template>
 	<div data-test-id="data-table-card">
@@ -114,19 +133,26 @@ const getDataTableSize = computed(() => {
 				</template>
 				<template #append>
 					<div :class="$style['card-actions']" @click.stop>
+						<DependencyPill
+							v-if="dataTableHasDependents"
+							:count="dependentCount"
+							:tooltip-text="
+								i18n.baseText('resourceDependents.tooltip', {
+									interpolate: { count: String(dependentCount) },
+								})
+							"
+							data-test-id="data-table-card-dependents"
+							@click="openDependentsModal"
+						/>
 						<ProjectCardBadge
 							v-if="props.showOwnershipBadge"
-							:class="{
-								[$style['card-badge']]: true,
-							}"
+							:class="$style['card-badge']"
 							:resource="dataTable"
 							:resource-type="ResourceType.DataTable"
 							:resource-type-label="'Data Table'"
 							:personal-project="projectsStore.personalProject"
 							:show-badge-border="false"
 						/>
-					</div>
-					<div :class="$style['card-actions']" @click.prevent>
 						<DataTableActions
 							:data-table="props.dataTable"
 							:is-read-only="props.readOnly"

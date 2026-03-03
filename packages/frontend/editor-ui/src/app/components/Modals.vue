@@ -37,6 +37,8 @@ import {
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
 	CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
 	AI_BUILDER_DIFF_MODAL_KEY,
+	WORKFLOW_DEPENDENCIES_MODAL_KEY,
+	RESOURCE_DEPENDENTS_MODAL_KEY,
 } from '@/app/constants';
 import {
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
@@ -129,6 +131,8 @@ import WorkflowPublishModal from '@/app/components/MainHeader/WorkflowPublishMod
 import UpdatesPanel from './UpdatesPanel.vue';
 import CredentialResolverEditModal from '@/app/components/CredentialResolverEditModal.vue';
 import AIBuilderDiffModal from '@/features/ai/assistant/components/Agent/AIBuilderDiffModal.vue';
+import WorkflowDependenciesModal from '@/app/components/WorkflowDependenciesModal.vue';
+import ResourceDependentsModal from '@/app/components/ResourceDependentsModal.vue';
 </script>
 
 <template>
@@ -484,6 +488,18 @@ import AIBuilderDiffModal from '@/features/ai/assistant/components/Agent/AIBuild
 		<ModalRoot :name="CREDENTIAL_RESOLVER_EDIT_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<CredentialResolverEditModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="WORKFLOW_DEPENDENCIES_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<WorkflowDependenciesModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="RESOURCE_DEPENDENTS_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<ResourceDependentsModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 

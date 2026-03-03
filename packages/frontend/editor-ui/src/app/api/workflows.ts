@@ -52,6 +52,25 @@ export async function getWorkflows(
 	});
 }
 
+export async function getWorkflowDependencies(context: IRestApiContext, workflowIds: string[]) {
+	return await makeRestApiRequest<
+		Record<string, Array<{ type: string; id: string; name: string }>>
+	>(context, 'POST', '/workflows/dependencies', { workflowIds });
+}
+
+export async function getResourceDependents(
+	context: IRestApiContext,
+	resourceIds: string[],
+	resourceType: 'credentialId' | 'dataTableId',
+) {
+	return await makeRestApiRequest<Record<string, Array<{ id: string; name: string }>>>(
+		context,
+		'POST',
+		'/workflows/dependents',
+		{ resourceIds, resourceType },
+	);
+}
+
 export async function getWorkflowsWithNodesIncluded(context: IRestApiContext, nodeTypes: string[]) {
 	return await getFullApiResponse<WorkflowResource[]>(
 		context,

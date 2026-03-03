@@ -27,6 +27,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { N8nActionBox } from '@n8n/design-system';
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
 import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
+import { useResourceDependents } from '@/app/composables/useResourceDependents';
 
 const i18n = useI18n();
 const route = useRoute();
@@ -41,6 +42,7 @@ const insightsStore = useInsightsStore();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const uiStore = useUIStore();
+const { fetchDependents } = useResourceDependents();
 
 const loading = ref(true);
 
@@ -114,6 +116,9 @@ const fetchDataTables = async () => {
 	} finally {
 		delayedLoading.cancel();
 		loading.value = false;
+
+		const dataTableIds = dataTableStore.dataTables.map((dt) => dt.id);
+		void fetchDependents(dataTableIds, 'dataTableId');
 	}
 };
 
