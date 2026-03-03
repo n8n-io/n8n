@@ -85,7 +85,6 @@ vi.mock('@/app/stores/workflows.store', () => {
 		incomingConnectionsByNodeName: vi.fn(),
 		outgoingConnectionsByNodeName: vi.fn(),
 		private: {
-			setWorkflowSettings: vi.fn(),
 			setActiveExecutionId: vi.fn((id: string | null | undefined) => {
 				storeState.activeExecutionId = id;
 			}),

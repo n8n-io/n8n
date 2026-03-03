@@ -15,6 +15,12 @@ import type {
 } from '..';
 import type { IRunExecutionDataV0 } from './run-execution-data.v0';
 
+export interface RedactionInfo {
+	isRedacted: boolean;
+	reason: string;
+	canReveal: boolean;
+}
+
 // DIFF: switches startData.destinationNode to a structured object, rather than just the name of the string.
 export interface IRunExecutionDataV1 {
 	version: 1;
@@ -56,6 +62,9 @@ export interface IRunExecutionDataV1 {
 		IWorkflowExecutionDataProcess,
 		'dirtyNodeNames' | 'triggerToStartFrom' | 'userId'
 	>;
+
+	/** Metadata about whether and how this execution's data was redacted. */
+	redactionInfo?: RedactionInfo;
 }
 
 export function runExecutionDataV0ToV1(data: IRunExecutionDataV0): IRunExecutionDataV1 {

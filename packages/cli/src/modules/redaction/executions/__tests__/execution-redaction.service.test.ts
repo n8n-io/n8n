@@ -1,22 +1,17 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { IExecutionDb, User } from '@n8n/db';
-import { SharedWorkflowRepository } from '@n8n/db';
 import type { ExecutionStatus, IRunExecutionData, WorkflowExecuteMode } from 'n8n-workflow';
 
 import type { ExecutionRedactionOptions } from '@/executions/execution-redaction';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { ExecutionRedactionService } from '../execution-redaction.service';
 
-jest.mock('@/permissions.ee/check-access');
-
-const mockedUserHasScopes = jest.mocked(userHasScopes);
-
 describe('ExecutionRedactionService', () => {
 	const logger = mockInstance(Logger);
-	const sharedWorkflowRepository = mockInstance(SharedWorkflowRepository);
+	const workflowFinderService = mockInstance(WorkflowFinderService);
 	let service: ExecutionRedactionService;
 
 	const mockUser = {
@@ -29,7 +24,9 @@ describe('ExecutionRedactionService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		service = new ExecutionRedactionService(logger, sharedWorkflowRepository);
+		service = new ExecutionRedactionService(logger, workflowFinderService);
+		// Default: user lacks execution:reveal scope → canReveal: false
+		workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
 	});
 
 	const createMockExecution = (
@@ -127,7 +124,8 @@ describe('ExecutionRedactionService', () => {
 	describe('redactExecutionData === true (explicit redact)', () => {
 		it('should apply redaction regardless of policy', async () => {
 			const execution = createMockExecution({
-				policy: 'none',
+				policy: 'all',
+				mode: 'trigger',
 				withRunData: true,
 			});
 			const options: ExecutionRedactionOptions = {
@@ -141,16 +139,84 @@ describe('ExecutionRedactionService', () => {
 			expect(item.json).toEqual({});
 			expect(item.binary).toBeUndefined();
 			expect(item.redaction).toEqual({ redacted: true, reason: 'user_requested' });
+			expect(result.data.redactionInfo).toEqual({
+				isRedacted: true,
+				reason: 'user_requested',
+				canReveal: false,
+			});
+		});
+
+		it('should set canReveal: true when policy allows reveal (policy=none)', async () => {
+			// policy='none' means policyAllowsReveal=true, so canReveal=true regardless of permissions
+			const execution = createMockExecution({
+				policy: 'none',
+				mode: 'trigger',
+				withRunData: true,
+			});
+			const options: ExecutionRedactionOptions = {
+				user: mockUser,
+				redactExecutionData: true,
+			};
+
+			const result = await service.processExecution(execution, options);
+
+			expect(result.data.redactionInfo).toEqual({
+				isRedacted: true,
+				reason: 'user_requested',
+				canReveal: true,
+			});
+		});
+
+		it('should set canReveal: true when policy allows reveal (policy=non-manual, mode=manual)', async () => {
+			const execution = createMockExecution({
+				policy: 'non-manual',
+				mode: 'manual',
+				withRunData: true,
+			});
+			const options: ExecutionRedactionOptions = {
+				user: mockUser,
+				redactExecutionData: true,
+			};
+
+			const result = await service.processExecution(execution, options);
+
+			expect(result.data.redactionInfo).toEqual({
+				isRedacted: true,
+				reason: 'user_requested',
+				canReveal: true,
+			});
+		});
+
+		it('should set canReveal: true when user has reveal permission', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue({ id: 'workflow-123' } as never);
+
+			const execution = createMockExecution({
+				policy: 'all',
+				mode: 'trigger',
+				withRunData: true,
+			});
+			const options: ExecutionRedactionOptions = {
+				user: mockUser,
+				redactExecutionData: true,
+			};
+
+			const result = await service.processExecution(execution, options);
+
+			expect(result.data.redactionInfo).toEqual({
+				isRedacted: true,
+				reason: 'user_requested',
+				canReveal: true,
+			});
 		});
 	});
 
 	describe('redactExecutionData === false (explicit reveal)', () => {
 		it('should return unmodified execution when user has reveal permission', async () => {
-			sharedWorkflowRepository.findBy.mockResolvedValue([{ projectId: 'project-1' } as never]);
-			mockedUserHasScopes.mockResolvedValue(true);
+			workflowFinderService.findWorkflowForUser.mockResolvedValue({ id: 'workflow-123' } as never);
 
 			const execution = createMockExecution({
 				policy: 'all',
+				mode: 'trigger',
 				withRunData: true,
 			});
 			const options: ExecutionRedactionOptions = {
@@ -163,13 +229,51 @@ describe('ExecutionRedactionService', () => {
 			expect(result.data.resultData.runData.TestNode[0].data!.main[0]![0].json).toEqual({
 				secret: 'sensitive-data',
 			});
+			expect(result.data.redactionInfo).toBeUndefined();
+		});
+
+		it('should return unmodified execution when policy allows reveal (policy=none), even without permission', async () => {
+			// policyAllowsReveal=true overrides permission check
+			const execution = createMockExecution({
+				policy: 'none',
+				mode: 'trigger',
+				withRunData: true,
+			});
+			const options: ExecutionRedactionOptions = {
+				user: mockUser,
+				redactExecutionData: false,
+			};
+
+			const result = await service.processExecution(execution, options);
+
+			expect(result.data.resultData.runData.TestNode[0].data!.main[0]![0].json).toEqual({
+				secret: 'sensitive-data',
+			});
+			expect(result.data.redactionInfo).toBeUndefined();
+		});
+
+		it('should return unmodified execution when policy allows reveal (policy=non-manual, mode=manual), even without permission', async () => {
+			const execution = createMockExecution({
+				policy: 'non-manual',
+				mode: 'manual',
+				withRunData: true,
+			});
+			const options: ExecutionRedactionOptions = {
+				user: mockUser,
+				redactExecutionData: false,
+			};
+
+			const result = await service.processExecution(execution, options);
+
+			expect(result.data.resultData.runData.TestNode[0].data!.main[0]![0].json).toEqual({
+				secret: 'sensitive-data',
+			});
+			expect(result.data.redactionInfo).toBeUndefined();
 		});
 
 		it('should throw ForbiddenError when user lacks reveal permission', async () => {
-			sharedWorkflowRepository.findBy.mockResolvedValue([{ projectId: 'project-1' } as never]);
-			mockedUserHasScopes.mockResolvedValue(false);
-
-			const execution = createMockExecution({ policy: 'all' });
+			// workflowFinderService returns null (default in beforeEach) → no permission
+			const execution = createMockExecution({ policy: 'all', mode: 'trigger' });
 			const options: ExecutionRedactionOptions = {
 				user: mockUser,
 				redactExecutionData: false,
@@ -178,10 +282,9 @@ describe('ExecutionRedactionService', () => {
 			await expect(service.processExecution(execution, options)).rejects.toThrow(ForbiddenError);
 		});
 
-		it('should throw ForbiddenError when no shared workflows exist', async () => {
-			sharedWorkflowRepository.findBy.mockResolvedValue([]);
-
-			const execution = createMockExecution({ policy: 'all' });
+		it('should throw ForbiddenError when workflow not found for user', async () => {
+			// workflowFinderService returns null (default in beforeEach) → no permission
+			const execution = createMockExecution({ policy: 'all', mode: 'trigger' });
 			const options: ExecutionRedactionOptions = {
 				user: mockUser,
 				redactExecutionData: false,
@@ -205,6 +308,7 @@ describe('ExecutionRedactionService', () => {
 			expect(result.data.resultData.runData.TestNode[0].data!.main[0]![0].json).toEqual({
 				secret: 'sensitive-data',
 			});
+			expect(result.data.redactionInfo).toBeUndefined();
 		});
 
 		it('should return unmodified when policy is non-manual and mode is manual', async () => {
@@ -220,6 +324,7 @@ describe('ExecutionRedactionService', () => {
 			expect(result.data.resultData.runData.TestNode[0].data!.main[0]![0].json).toEqual({
 				secret: 'sensitive-data',
 			});
+			expect(result.data.redactionInfo).toBeUndefined();
 		});
 
 		it('should redact when policy is non-manual and mode is trigger', async () => {
@@ -236,6 +341,30 @@ describe('ExecutionRedactionService', () => {
 			expect(item.json).toEqual({});
 			expect(item.binary).toBeUndefined();
 			expect(item.redaction).toEqual({ redacted: true, reason: 'workflow_redaction_policy' });
+			expect(result.data.redactionInfo).toEqual({
+				isRedacted: true,
+				reason: 'workflow_redaction_policy',
+				canReveal: false,
+			});
+		});
+
+		it('should set canReveal: true when policy is non-manual, mode is trigger, and user has permission', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue({ id: 'workflow-123' } as never);
+
+			const execution = createMockExecution({
+				policy: 'non-manual',
+				mode: 'trigger',
+				withRunData: true,
+			});
+			const options: ExecutionRedactionOptions = { user: mockUser };
+
+			const result = await service.processExecution(execution, options);
+
+			expect(result.data.redactionInfo).toEqual({
+				isRedacted: true,
+				reason: 'workflow_redaction_policy',
+				canReveal: true,
+			});
 		});
 
 		it('should redact when policy is non-manual and mode is webhook', async () => {
@@ -251,6 +380,11 @@ describe('ExecutionRedactionService', () => {
 			const item = result.data.resultData.runData.TestNode[0].data!.main[0]![0];
 			expect(item.json).toEqual({});
 			expect(item.redaction).toEqual({ redacted: true, reason: 'workflow_redaction_policy' });
+			expect(result.data.redactionInfo).toEqual({
+				isRedacted: true,
+				reason: 'workflow_redaction_policy',
+				canReveal: false,
+			});
 		});
 
 		it('should redact when policy is all and mode is manual', async () => {
@@ -266,6 +400,30 @@ describe('ExecutionRedactionService', () => {
 			const item = result.data.resultData.runData.TestNode[0].data!.main[0]![0];
 			expect(item.json).toEqual({});
 			expect(item.redaction).toEqual({ redacted: true, reason: 'workflow_redaction_policy' });
+			expect(result.data.redactionInfo).toEqual({
+				isRedacted: true,
+				reason: 'workflow_redaction_policy',
+				canReveal: false,
+			});
+		});
+
+		it('should set canReveal: true when policy is all, mode is manual, and user has permission', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue({ id: 'workflow-123' } as never);
+
+			const execution = createMockExecution({
+				policy: 'all',
+				mode: 'manual',
+				withRunData: true,
+			});
+			const options: ExecutionRedactionOptions = { user: mockUser };
+
+			const result = await service.processExecution(execution, options);
+
+			expect(result.data.redactionInfo).toEqual({
+				isRedacted: true,
+				reason: 'workflow_redaction_policy',
+				canReveal: true,
+			});
 		});
 
 		it('should redact when policy is all and mode is trigger', async () => {
@@ -281,6 +439,30 @@ describe('ExecutionRedactionService', () => {
 			const item = result.data.resultData.runData.TestNode[0].data!.main[0]![0];
 			expect(item.json).toEqual({});
 			expect(item.redaction).toEqual({ redacted: true, reason: 'workflow_redaction_policy' });
+			expect(result.data.redactionInfo).toEqual({
+				isRedacted: true,
+				reason: 'workflow_redaction_policy',
+				canReveal: false,
+			});
+		});
+
+		it('should set canReveal: true when policy is all, mode is trigger, and user has permission', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue({ id: 'workflow-123' } as never);
+
+			const execution = createMockExecution({
+				policy: 'all',
+				mode: 'trigger',
+				withRunData: true,
+			});
+			const options: ExecutionRedactionOptions = { user: mockUser };
+
+			const result = await service.processExecution(execution, options);
+
+			expect(result.data.redactionInfo).toEqual({
+				isRedacted: true,
+				reason: 'workflow_redaction_policy',
+				canReveal: true,
+			});
 		});
 
 		it('should default to none when runtimeData and workflow settings are missing', async () => {
@@ -296,6 +478,7 @@ describe('ExecutionRedactionService', () => {
 			expect(result.data.resultData.runData.TestNode[0].data!.main[0]![0].json).toEqual({
 				secret: 'sensitive-data',
 			});
+			expect(result.data.redactionInfo).toBeUndefined();
 		});
 
 		it('should fall back to workflow settings when runtimeData is missing', async () => {
@@ -312,6 +495,11 @@ describe('ExecutionRedactionService', () => {
 			const item = result.data.resultData.runData.TestNode[0].data!.main[0]![0];
 			expect(item.json).toEqual({});
 			expect(item.redaction).toEqual({ redacted: true, reason: 'workflow_redaction_policy' });
+			expect(result.data.redactionInfo).toEqual({
+				isRedacted: true,
+				reason: 'workflow_redaction_policy',
+				canReveal: false,
+			});
 		});
 	});
 
@@ -331,6 +519,7 @@ describe('ExecutionRedactionService', () => {
 			expect(result.data.resultData.runData.TestNode[0].data!.main[0]![0].json).toEqual({
 				secret: 'sensitive-data',
 			});
+			expect(result.data.redactionInfo).toBeUndefined();
 		});
 	});
 
@@ -368,6 +557,11 @@ describe('ExecutionRedactionService', () => {
 			expect(overrideItem.redaction).toEqual({
 				redacted: true,
 				reason: 'workflow_redaction_policy',
+			});
+			expect(result.data.redactionInfo).toEqual({
+				isRedacted: true,
+				reason: 'workflow_redaction_policy',
+				canReveal: false,
 			});
 		});
 
@@ -410,6 +604,11 @@ describe('ExecutionRedactionService', () => {
 
 			// Redaction of 1500 items should complete well under 100ms
 			expect(elapsed).toBeLessThan(100);
+			expect(result.data.redactionInfo).toEqual({
+				isRedacted: true,
+				reason: 'workflow_redaction_policy',
+				canReveal: false,
+			});
 		});
 	});
 });

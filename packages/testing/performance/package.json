@@ -6,10 +6,11 @@
 	"scripts": {
 		"bench": "vitest bench --run",
 		"bench:baseline": "node scripts/save-baseline.mjs",
-		"bench:ci": "vitest bench --run --outputJson ./profiles/benchmark-results.json && node scripts/check-regression.mjs"
+		"bench:compare": "vitest bench --run --outputJson ./profiles/benchmark-results.json && node scripts/check-regression.mjs"
 	},
 	"devDependencies": {
-		"vitest": "catalog:",
+		"@codspeed/vitest-plugin": "^4.0.0",
+		"vitest": "^3.2.0",
 		"n8n-workflow": "workspace:*"
 	}
 }

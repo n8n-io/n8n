@@ -12,9 +12,13 @@ export class ExternalSecretsConfig {
 
 	/** Whether to enable project-scoped external secrets */
 	@Env('N8N_ENV_FEAT_EXTERNAL_SECRETS_FOR_PROJECTS')
-	externalSecretsForProjects: boolean = false;
+	externalSecretsForProjects: boolean = true;
 
 	/** Whether to enable multiple connections to global secret providers */
 	@Env('N8N_ENV_FEAT_EXTERNAL_SECRETS_MULTIPLE_CONNECTIONS')
 	externalSecretsMultipleConnections: boolean = true;
+
+	/** Whether to enable role based access control to manage secret providers */
+	@Env('N8N_ENV_FEAT_EXTERNAL_SECRETS_ROLE_BASED_ACCESS')
+	externalSecretsRoleBasedAccess: boolean = false;
 }

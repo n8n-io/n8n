@@ -7,7 +7,7 @@ import N8nDropdown from './Dropdown.vue';
 import type { N8nDropdownOption } from './Dropdown.vue';
 
 export default {
-	title: 'Atoms/Dropdown',
+	title: 'Core/Dropdown',
 	component: N8nDropdown,
 	argTypes: {},
 	parameters: {
