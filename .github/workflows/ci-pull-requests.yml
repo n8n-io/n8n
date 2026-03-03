@@ -145,7 +145,7 @@ jobs:
   performance:
     name: Performance
     needs: install-and-build
-    if: needs.install-and-build.outputs.performance == 'true'
+    if: needs.install-and-build.outputs.performance == 'true' && github.event_name != 'merge_group'
     uses: ./.github/workflows/test-bench-reusable.yml
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
