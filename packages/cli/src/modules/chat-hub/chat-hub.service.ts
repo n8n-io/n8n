@@ -398,6 +398,16 @@ export class ChatHubService {
 				const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
 				const history = this.buildMessageHistory(messages, previousMessageId);
 
+				// Validate attachments against the model's upload policy before storing
+				if (attachments.length > 0) {
+					const policy = await this.chatHubWorkflowService.getAttachmentPolicy(model, user, trx);
+					this.chatHubAttachmentService.validateAttachments(
+						attachments,
+						policy.allowFileUploads,
+						policy.allowedFilesMimeTypes,
+					);
+				}
+
 				// Store attachments to populate 'id' field via BinaryDataService
 				processedAttachments = await this.chatHubAttachmentService.store(
 					sessionId,
@@ -690,7 +700,7 @@ export class ChatHubService {
 
 				const lastHumanMessageIndex = history.indexOf(lastHumanMessage);
 				if (lastHumanMessageIndex !== -1) {
-					history.splice(lastHumanMessageIndex + 1);
+					history.splice(lastHumanMessageIndex);
 				}
 
 				const retryOfMessageId = messageToRetry.retryOfMessageId ?? messageToRetry.id;

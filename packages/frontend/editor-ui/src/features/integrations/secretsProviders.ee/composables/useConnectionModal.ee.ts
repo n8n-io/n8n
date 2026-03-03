@@ -491,6 +491,8 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		}
 	}
 
+	const isScopedMode = computed(() => !!options.projectId);
+
 	return {
 		// State refs
 		providerSecretsCount,
@@ -512,6 +514,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		canUpdate,
 		canDelete,
 		canShareGlobally,
+		isScopedMode,
 		setScopeState,
 
 		// Computed

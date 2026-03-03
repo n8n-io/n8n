@@ -1368,10 +1368,16 @@ export type ChatNodeMessageWithButtons = {
 
 export type ChatNodeMessage = ChatNodeMessageWithButtons | string;
 
+export interface INodeExecutionRedactionInfo {
+	redacted: true;
+	reason: string;
+}
+
 export interface INodeExecutionData {
 	[key: string]:
 		| IDataObject
 		| IBinaryKeyData
+		| INodeExecutionRedactionInfo
 		| IPairedItemData
 		| IPairedItemData[]
 		| NodeApiError
@@ -1387,6 +1393,12 @@ export interface INodeExecutionData {
 		subExecution: RelatedExecution;
 	};
 	evaluationData?: Record<string, GenericValue>;
+	/**
+	 * Redaction marker. Present when this item's data has been redacted.
+	 * Check `redaction.redacted` to determine if data was stripped,
+	 * and `redaction.reason` for why (e.g. "workflow_redaction_policy").
+	 */
+	redaction?: INodeExecutionRedactionInfo;
 	/**
 	 * Use this key to send a message to the chat.
 	 *
@@ -2689,6 +2701,8 @@ export interface ITaskData extends ITaskStartedData {
 	inputOverride?: ITaskDataConnections;
 	error?: ExecutionError;
 	metadata?: ITaskMetadata;
+	/** True when at least one credential used by this node was resolved dynamically */
+	usedDynamicCredentials?: boolean;
 }
 
 export interface ISourceData {
@@ -2925,6 +2939,11 @@ export interface IWorkflowExecuteAdditionalData {
 	): Promise<Result<T, E>>;
 	getRunnerStatus?(taskType: string): { available: true } | { available: false; reason?: string };
 	validateCookieAuth?: (cookieValue: string) => Promise<void>;
+	/**
+	 * Mutable flag set to true during a node's execution if any credential was resolved
+	 * dynamically. Reset to false by the execution engine before each node runs.
+	 */
+	currentNodeUsedDynamicCredentials?: boolean;
 }
 
 export type WorkflowActivateMode =

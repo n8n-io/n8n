@@ -36,6 +36,10 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { AI_BUILDER_PLAN_MODE_EXPERIMENT } from '@/app/constants/experiments';
 
 // Mock useI18n to return the keys instead of translations
@@ -2595,7 +2599,10 @@ describe('AI Builder store', () => {
 			workflowsStore.workflowId = 'test-workflow-123';
 			workflowsStore.isNewWorkflow = false;
 			workflowsStore.workflowVersionId = 'version-1';
-			workflowsStore.workflow.updatedAt = '2024-01-01T00:00:00Z';
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setUpdatedAt('2024-01-01T00:00:00Z');
 
 			await builderStore.sendChatMessage({ text: 'Build a workflow' });
 

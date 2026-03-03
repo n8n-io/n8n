@@ -1,0 +1,183 @@
+name: 'Test: E2E Helm Chart'
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/test-e2e-helm.yml'
+      - 'packages/testing/containers/helm-stack.ts'
+      - 'packages/testing/containers/helm-start-stack.ts'
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to test'
+        required: false
+        default: ''
+      helm-chart-ref:
+        description: 'n8n-hosting branch/tag for Helm chart'
+        required: false
+        default: 'main'
+      mode:
+        description: 'Deployment mode to test'
+        required: true
+        type: choice
+        options:
+          - standalone
+          - queue
+        default: 'queue'
+
+env:
+  DOCKER_IMAGE: ghcr.io/${{ github.repository }}:ci-${{ github.run_id }}
+  HELM_CHART_REF: ${{ inputs.helm-chart-ref || 'main' }}
+
+jobs:
+  build:
+    name: 'Build Docker Image'
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    permissions:
+      packages: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ inputs.branch || github.ref }}
+          fetch-depth: 1
+
+      - name: Login to GHCR
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push to GHCR
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: 'pnpm build:docker'
+          enable-docker-cache: true
+        env:
+          INCLUDE_TEST_CONTROLLER: 'true'
+          IMAGE_BASE_NAME: ghcr.io/${{ github.repository }}
+          IMAGE_TAG: ci-${{ github.run_id }}
+          RUNNERS_IMAGE_BASE_NAME: ghcr.io/${{ github.repository_owner }}/runners
+
+  helm-e2e:
+    name: "Helm E2E (${{ inputs.mode || 'queue' }})"
+    needs: build
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ inputs.branch || github.ref }}
+          fetch-depth: 1
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: 'pnpm build'
+
+      - name: Install Browsers
+        working-directory: packages/testing/playwright
+        run: pnpm exec playwright install chromium
+
+      - name: Install Helm
+        uses: azure/setup-helm@bf6a7d304bc2fdb57e0331155b7ebf2c504acf0a # v4
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@c0c8b32d33a5244f1e5947304550403b63930415 # v4
+
+      - name: Start K3s + Helm stack
+        run: |
+          npx tsx packages/testing/containers/helm-start-stack.ts \
+            --mode "${{ inputs.mode || 'queue' }}" \
+            --image "${{ env.DOCKER_IMAGE }}" \
+            --chart-ref "${{ env.HELM_CHART_REF }}" \
+            --url-file /tmp/n8n-helm-url.txt \
+            --kubeconfig-file /tmp/n8n-helm-kubeconfig.txt &
+
+          echo "Waiting for Helm stack to be ready..."
+          for i in $(seq 1 60); do
+            if [ -f /tmp/n8n-helm-url.txt ]; then
+              echo "Stack ready!"
+              break
+            fi
+            if [ "$i" -eq 60 ]; then
+              echo "Timeout waiting for Helm stack"
+              exit 1
+            fi
+            sleep 10
+          done
+
+          N8N_URL=$(cat /tmp/n8n-helm-url.txt)
+          echo "n8n URL: ${N8N_URL}"
+          echo "N8N_BASE_URL=${N8N_URL}" >> "$GITHUB_ENV"
+
+          KUBECONFIG_PATH=$(cat /tmp/n8n-helm-kubeconfig.txt)
+          echo "KUBECONFIG=${KUBECONFIG_PATH}" >> "$GITHUB_ENV"
+
+      - name: Run Building Blocks E2E Tests
+        working-directory: packages/testing/playwright
+        run: |
+          N8N_BASE_URL="${{ env.N8N_BASE_URL }}" \
+          RESET_E2E_DB=true \
+          npx playwright test \
+            --project=e2e \
+            tests/e2e/building-blocks/ \
+            --workers=1 \
+            --retries=2 \
+            --reporter=list
+
+      - name: Debug K8s State
+        if: failure()
+        run: |
+          echo "=== Pod Status ==="
+          kubectl get pods -o wide
+          echo ""
+          echo "=== Pod Descriptions ==="
+          kubectl describe pods -l app.kubernetes.io/name=n8n
+          echo ""
+          echo "=== Recent Events ==="
+          kubectl get events --sort-by=.lastTimestamp | tail -30
+          echo ""
+          echo "=== n8n Pod Logs (last 100 lines) ==="
+          kubectl logs -l app.kubernetes.io/name=n8n --tail=100 || true
+          echo ""
+          echo "=== Health Check ==="
+          curl -s -o /dev/null -w "HTTP %{http_code}" "${{ env.N8N_BASE_URL }}/healthz/readiness" || echo "UNREACHABLE"
+
+      - name: Upload Failure Artifacts
+        if: failure()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: helm-e2e-report-${{ inputs.mode || 'queue' }}
+          path: |
+            packages/testing/playwright/test-results/
+            packages/testing/playwright/playwright-report/
+          retention-days: 7
+
+  cleanup-ghcr:
+    name: 'Cleanup GHCR Image'
+    needs: [build, helm-e2e]
+    if: always()
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    permissions:
+      packages: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          sparse-checkout: .github/scripts
+          sparse-checkout-cone-mode: false
+
+      - name: Delete images from GHCR
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_ORG: ${{ github.repository_owner }}
+          GHCR_REPO: ${{ github.event.repository.name }}
+        run: node .github/scripts/cleanup-ghcr-images.mjs --tag ci-${{ github.run_id }}

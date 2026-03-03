@@ -546,6 +546,8 @@ describe('WorkflowExecute', () => {
 		const nodeTypes = Helpers.NodeTypes(Helpers.getNodeTypes(tests));
 
 		for (const testData of tests) {
+			// These tests execute real Code node sandboxes with retries, which can
+			// exceed the default 5s timeout on slow CI runners
 			test(testData.description, async () => {
 				const workflowInstance = new Workflow({
 					id: 'test',
@@ -602,7 +604,7 @@ describe('WorkflowExecute', () => {
 				expect(result.data.executionData!.runtimeData!.source).toEqual('manual');
 				expect(typeof result.data.executionData!.runtimeData!.establishedAt).toBe('number');
 				expect(result.data.executionData!.runtimeData!.establishedAt).toBeGreaterThan(0);
-			});
+			}, 15_000);
 		}
 	});
 

@@ -103,6 +103,11 @@ export function removeDefaultValues(
 		delete cleanedSettings.executionTimeout;
 	}
 
+	// Remove credentialResolverId if it was cleared (empty string from UI clear action)
+	if (!cleanedSettings.credentialResolverId) {
+		delete cleanedSettings.credentialResolverId;
+	}
+
 	return cleanedSettings;
 }
 

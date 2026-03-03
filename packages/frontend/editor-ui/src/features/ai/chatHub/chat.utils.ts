@@ -8,7 +8,6 @@ import {
 	type ChatMessageId,
 	type ChatHubProvider,
 	type ChatHubLLMProvider,
-	type ChatHubInputModality,
 	type AgentIconOrEmoji,
 	type ChatProviderSettingsDto,
 } from '@n8n/api-types';
@@ -398,29 +397,6 @@ export function createSessionFromStreamingState(
 	};
 }
 
-export function createMimeTypes(modalities: ChatHubInputModality[]): string {
-	// If 'file' modality is present, accept all file types
-	if (modalities.includes('file')) {
-		return '*/*';
-	}
-
-	const mimeTypes: string[] = ['text/*'];
-
-	for (const modality of modalities) {
-		if (modality === 'image') {
-			mimeTypes.push('image/*');
-		}
-		if (modality === 'audio') {
-			mimeTypes.push('audio/*');
-		}
-		if (modality === 'video') {
-			mimeTypes.push('video/*');
-		}
-	}
-
-	return mimeTypes.join(',');
-}
-
 export const personalAgentDefaultIcon: AgentIconOrEmoji = {
 	type: 'icon',
 	value: 'message-square' satisfies IconName,
@@ -442,9 +418,10 @@ export function createFakeAgent(
 		icon: fallback?.icon ?? null,
 		createdAt: null,
 		updatedAt: null,
-		// Assume file attachment and tools are supported (except n8n provider which never supports function calling)
+		// Assume tools are supported (except n8n provider which never supports function calling)
 		metadata: {
-			inputModalities: ['text', 'file'],
+			allowFileUploads: false,
+			allowedFilesMimeTypes: '',
 			capabilities: {
 				functionCalling: model.provider !== 'n8n',
 			},
@@ -453,6 +430,18 @@ export function createFakeAgent(
 		groupName: null,
 		groupIcon: null,
 	};
+}
+
+/**
+ * Enriches a MIME type accept string with the `.md` file extension.
+ * macOS file picker does not recognise `text/*` or `text/markdown` for
+ * Markdown files, so we add the explicit extension.
+ */
+export function enrichMimeTypesWithExtensions(mimeTypes: string): string {
+	if (mimeTypes && (mimeTypes.includes('text/*') || mimeTypes.includes('text/markdown'))) {
+		return `${mimeTypes},.md`;
+	}
+	return mimeTypes;
 }
 
 export const isEditable = (message: ChatMessage): boolean => {
