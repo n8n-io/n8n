@@ -454,6 +454,14 @@ defineExpose({ focus, blur, select });
 		var(--input--shadow),
 		inset var(--input--border--shadow);
 
+	/** NOTE (@heymynameisrob): Handles autofill colouring as padding from above isn't included **/
+	> textarea,
+	input {
+		padding: 0 var(--input--padding);
+		margin-inline: calc(var(--input--padding) * -1);
+		border-radius: var(--input--radius);
+	}
+
 	@include focus.focus-within-ring;
 
 	&:hover:not(.disabled):not(:focus-within) {
