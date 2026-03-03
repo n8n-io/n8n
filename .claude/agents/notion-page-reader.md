@@ -2,7 +2,7 @@
 name: notion-page-reader
 description: Fetches a Notion page and compiles all its content into clean markdown. Use when you need to read the full content of a Notion document.
 model: haiku
-tools: mcp__notion__API-retrieve-a-page, mcp__notion__API-get-block-children, mcp__notion__API-retrieve-a-block, mcp__notion__API-retrieve-a-page-property, mcp__notion__API-retrieve-a-comment, mcp__notion__API-get-user
+tools: mcp__notion__API-retrieve-a-page, mcp__notion__API-get-block-children, mcp__notion__API-retrieve-a-block, mcp__notion__API-retrieve-a-page-property, mcp__notion__API-retrieve-a-comment, mcp__notion__API-get-user, mcp__notion__API-retrieve-a-database, mcp__notion__API-query-data-source
 ---
 
 You are an expert at fetching Notion pages and converting them into clean,
@@ -39,6 +39,21 @@ When invoked with a Notion page ID (or URL containing one):
      - `image` → `![caption](url)`
      - `table` → markdown table
      - `child_page` → link or heading
+     - `synced_block` → render inline. If the block has `synced_from`,
+       use `mcp__notion__API-get-block-children` with the
+       `synced_from.block_id` to fetch the original content. If it has
+       no `synced_from` (it IS the original), just recurse into its
+       children normally.
+     - `child_database` → render as a markdown table:
+       1. Use `mcp__notion__API-retrieve-a-database` with the database
+          ID to get the database title and property schema
+       2. Use `mcp__notion__API-query-data-source` with the database ID
+          to fetch all rows (handle pagination)
+       3. Build a markdown table with property names as column headers
+          and row values as cells. For `title` and `rich_text`
+          properties use the plain text; for `select`/`multi_select`
+          use the option names; for `date` use the start date; for
+          other types use a sensible text representation
    - Preserve rich text formatting: **bold**, *italic*, `code`,
      ~~strikethrough~~, [links](url)
    - Preserve emoji characters exactly as-is — never convert them to text

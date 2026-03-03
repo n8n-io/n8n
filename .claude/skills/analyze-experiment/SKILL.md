@@ -37,8 +37,8 @@ If a required tool is missing, stop and tell the user what needs to be set up.
 - Parse the first argument as the Notion page ID
 - Parse the second argument as the output file path for the plan
 - Launch the **notion-page-reader** agent via the Task tool, passing the
-  Notion page ID. The agent will fetch the full page and return it as clean
-  markdown.
+  Notion page ID. Ask it to fetch the full page content and any open
+  comments and return everything as clean markdown.
 - If the agent fails or returns empty content, inform the user and stop
 - Extract the experiment name from the returned markdown's title
 
