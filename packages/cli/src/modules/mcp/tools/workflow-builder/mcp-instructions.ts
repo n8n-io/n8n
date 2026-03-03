@@ -7,9 +7,9 @@
  */
 
 import {
-	CODE_BUILDER_CREATE_WORKFLOW_FROM_CODE_TOOL,
+	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL,
 	CODE_BUILDER_GET_NODE_TYPES_TOOL,
-	CODE_BUILDER_GET_SDK_REFERENCE_TOOL,
+	MCP_GET_SDK_REFERENCE_TOOL,
 	CODE_BUILDER_GET_SUGGESTED_NODES_TOOL,
 	CODE_BUILDER_SEARCH_NODES_TOOL,
 	CODE_BUILDER_VALIDATE_TOOL,
@@ -20,7 +20,7 @@ export function getMcpInstructions(): string {
 
 To build n8n workflows, follow these steps in order:
 
-1. Read the SDK reference: Call ${CODE_BUILDER_GET_SDK_REFERENCE_TOOL.toolName} (or use the n8n://workflow-sdk/reference resource) to learn the SDK patterns and syntax.
+1. Read the SDK reference: Call ${MCP_GET_SDK_REFERENCE_TOOL.toolName} (or use the n8n://workflow-sdk/reference resource) to learn the SDK patterns and syntax.
 
 2. Discover nodes: Call ${CODE_BUILDER_SEARCH_NODES_TOOL.toolName} with queries for services you need (e.g., ["gmail", "slack", "schedule trigger"]) and utility nodes (e.g., ["set", "if", "merge", "code"]). Note the discriminators (resource/operation/mode) in the results.
 
@@ -32,5 +32,5 @@ To build n8n workflows, follow these steps in order:
 
 6. Validate: Call ${CODE_BUILDER_VALIDATE_TOOL.toolName} with your full code. Fix any errors and re-validate until valid.
 
-7. Create: Call ${CODE_BUILDER_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName} with the validated code to save the workflow to n8n.`;
+7. Create: Call ${MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName} with the validated code to save the workflow to n8n.`;
 }
