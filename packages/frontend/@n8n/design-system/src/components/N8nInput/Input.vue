@@ -510,7 +510,7 @@ defineExpose({ focus, blur, select });
 	color: var(--color--text);
 }
 
-.input:placeholder {
+.input::placeholder {
 	color: var(--color--text--subtler);
 }
 
