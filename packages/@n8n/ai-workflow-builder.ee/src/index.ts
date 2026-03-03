@@ -11,3 +11,19 @@ export type {
 	AssistantSdkClient,
 	StreamWriter,
 } from './assistant';
+
+// Code builder utilities for MCP integration
+export {
+	NodeTypeParser,
+	ParseValidateHandler,
+	createCodeBuilderSearchTool,
+	createCodeBuilderGetTool,
+	createGetSuggestedNodesTool,
+	stripImportStatements,
+	SDK_IMPORT_STATEMENT,
+} from './code-builder';
+export type {
+	CodeBuilderGetToolOptions,
+	ParseAndValidateResult,
+	ValidationWarning,
+} from './code-builder';
