@@ -124,8 +124,12 @@ const availableActions = computed(() => {
 	}> = [];
 	const suggestedActionSettings = cachedSettings.value?.suggestedActions ?? {};
 
-	// Error workflow action (skip for workflows that are themselves error workflows)
-	if (!isErrorWorkflow.value && hasPublishedVersion && !suggestedActionSettings.errorWorkflow?.ignored) {
+	// Error workflow action
+	if (
+		hasPublishedVersion &&
+		!isErrorWorkflow.value &&
+		!suggestedActionSettings.errorWorkflow?.ignored
+	) {
 		actions.push({
 			id: 'errorWorkflow',
 			title: i18n.baseText('workflowProductionChecklist.errorWorkflow.title'),
