@@ -21,6 +21,7 @@ interface ReportEntry {
 	dirName: string;
 	skip?: string;
 	input: string;
+	sdkOutput?: string;
 	workflowJson?: string;
 	error?: string;
 }
@@ -60,7 +61,7 @@ function processFixtures(): ReportEntry[] {
 			// Write workflow.json to the fixture directory
 			writeFileSync(join(dirPath, 'workflow.json'), jsonStr + '\n');
 
-			entries.push({ ...base, workflowJson: jsonStr });
+			entries.push({ ...base, sdkOutput: result.code, workflowJson: jsonStr });
 		} catch (err) {
 			entries.push({ ...base, error: err instanceof Error ? err.message : String(err) });
 		}
@@ -111,6 +112,14 @@ function generateHtml(entries: ReportEntry[]): string {
         <summary>Input JS</summary>
         <pre class="code"><code>${escapeHtml(entry.input)}</code></pre>
       </details>
+      ${
+				entry.sdkOutput
+					? `<details>
+        <summary>Output SDK</summary>
+        <pre class="code"><code>${escapeHtml(entry.sdkOutput)}</code></pre>
+      </details>`
+					: ''
+			}
       ${demoComponent ? `<div class="demo">${demoComponent}</div>` : ''}
     </div>`;
 		})
