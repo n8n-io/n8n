@@ -459,7 +459,7 @@ onManual(async () => {
 	});
 
 	describe('Phase 9: switch/case', () => {
-		it('should emit switchCase SDK code', () => {
+		it('should emit switchCase SDK code with rules', () => {
 			const result = transpileWorkflowJS(`
 onManual(async () => {
   const t = await http.get('/ticket');
@@ -473,6 +473,13 @@ onManual(async () => {
 			expect(result.errors).toHaveLength(0);
 			expect(result.code).toContain('switchCase(');
 			expect(result.code).toContain('.onCase(');
+			expect(result.code).toContain("mode: 'rules'");
+			expect(result.code).toContain('"values":');
+			expect(result.code).toContain('"operation":"equals"');
+			expect(result.code).toContain('"leftValue":"={{ $json.priority }}"');
+			expect(result.code).toContain('"rightValue":"critical"');
+			expect(result.code).toContain('"rightValue":"high"');
+			expect(result.code).toContain('"fallbackOutput":"extra"');
 		});
 	});
 

@@ -896,6 +896,18 @@ function buildBranchChain(nodes: EmittedNode[]): string {
 
 // ─── Switch Processing ───────────────────────────────────────────────────────
 
+/**
+ * Resolve a discriminant AST node to a `={{ $json.property }}` expression.
+ * Extracts the property chain, drops the root variable name (since the Switch
+ * node receives data as `$json`), and prefixes with `$json`.
+ */
+function buildJsonExpression(astNode: AcornNode): string {
+	const chain = extractPropertyChain(astNode);
+	const dotIdx = chain.indexOf('.');
+	const jsonPath = dotIdx >= 0 ? chain.slice(dotIdx + 1) : '';
+	return jsonPath ? `={{ $json.${jsonPath} }}` : '={{ $json }}';
+}
+
 function processSwitchStatement(
 	ctx: TranspilerContext,
 	stmt: AcornNode,
@@ -905,16 +917,34 @@ function processSwitchStatement(
 	ctx.switchCounter++;
 
 	const switchVar = `sw${ctx.switchCounter}`;
-	const discSource = stmt.discriminant
-		? ctx.source.slice(stmt.discriminant.start, stmt.discriminant.end)
-		: 'value';
+
+	// Build $json expression from discriminant (e.g. body.action → $json.action)
+	const discExpr = stmt.discriminant ? buildJsonExpression(stmt.discriminant) : '={{ $json }}';
 
 	const cases = stmt.cases ?? [];
 	const caseBranches: Array<{ index: number; chainExpr: string }> = [];
+	const caseRules: Array<{ testValue: string; type: string }> = [];
 	const allCaseNodes: EmittedNode[] = [];
+	let hasDefault = false;
 
+	let ruleIdx = 0;
 	for (let i = 0; i < cases.length; i++) {
 		const c = cases[i];
+
+		// Collect case test value and determine output index
+		let outputIndex: number;
+		if (c.test) {
+			const testValue = extractStringLiteral(c.test) ?? ctx.source.slice(c.test.start, c.test.end);
+			const type = inferTypeFromLiteral(c.test);
+			caseRules.push({ testValue, type });
+			outputIndex = ruleIdx;
+			ruleIdx++;
+		} else {
+			// Default case – placeholder, remapped after loop
+			hasDefault = true;
+			outputIndex = -1;
+		}
+
 		const consequent = (c.consequent ?? []) as AcornNode[];
 		const caseStmts = consequent.filter((s: AcornNode) => s.type !== 'BreakStatement');
 		if (caseStmts.length === 0) continue;
@@ -929,10 +959,17 @@ function processSwitchStatement(
 
 		const chainExpr = buildBranchChain(branchCtx.nodes);
 		if (chainExpr) {
-			caseBranches.push({ index: i, chainExpr });
+			caseBranches.push({ index: outputIndex, chainExpr });
 		}
 
 		syncCounters(ctx, branchCtx);
+	}
+
+	// Fix default case output index → fallback output after all rules
+	for (const cb of caseBranches) {
+		if (cb.index === -1) {
+			cb.index = caseRules.length;
+		}
 	}
 
 	// Emit case nodes
@@ -940,9 +977,26 @@ function processSwitchStatement(
 		ctx.nodes.push({ ...cn, branchOnly: true });
 	}
 
-	// Emit switchCase
-	const condStr = discSource.replace(/'/g, "\\'");
-	let sdkCode = `const ${switchVar} = switchCase({ version: 3.2, config: { name: 'Switch ${ctx.switchCounter}', parameters: { value: '${condStr}' }, executeOnce: true } })`;
+	// Build rules.values from non-default cases
+	const rulesValues = caseRules.map((r) => ({
+		conditions: {
+			conditions: [
+				{
+					leftValue: discExpr,
+					rightValue: r.testValue,
+					operator: { type: r.type, operation: 'equals' },
+				},
+			],
+			combinator: 'and',
+		},
+	}));
+
+	const options: Record<string, string> = hasDefault ? { fallbackOutput: 'extra' } : {};
+
+	// Emit switchCase with rules
+	const rulesStr = JSON.stringify({ values: rulesValues });
+	const optionsStr = JSON.stringify(options);
+	let sdkCode = `const ${switchVar} = switchCase({ version: 3.2, config: { name: 'Switch ${ctx.switchCounter}', parameters: { mode: 'rules', rules: ${rulesStr}, options: ${optionsStr} }, executeOnce: true } })`;
 
 	for (const cb of caseBranches) {
 		sdkCode += `\n  .onCase(${cb.index}, ${cb.chainExpr})`;

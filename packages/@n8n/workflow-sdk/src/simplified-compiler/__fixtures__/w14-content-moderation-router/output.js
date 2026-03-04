@@ -56,7 +56,7 @@ const http3 = node({
 }
 });
 
-const sw1 = switchCase({ version: 3.2, config: { name: 'Switch 1', parameters: { value: 'body.action' }, executeOnce: true } })
+const sw1 = switchCase({ version: 3.2, config: { name: 'Switch 1', parameters: { mode: 'rules', rules: {"values":[{"conditions":{"conditions":[{"leftValue":"={{ $json.action }}","rightValue":"approve","operator":{"type":"string","operation":"equals"}}],"combinator":"and"}},{"conditions":{"conditions":[{"leftValue":"={{ $json.action }}","rightValue":"reject","operator":{"type":"string","operation":"equals"}}],"combinator":"and"}},{"conditions":{"conditions":[{"leftValue":"={{ $json.action }}","rightValue":"escalate","operator":{"type":"string","operation":"equals"}}],"combinator":"and"}}]}, options: {} }, executeOnce: true } })
   .onCase(0, http1)
   .onCase(1, http2)
   .onCase(2, http3);
