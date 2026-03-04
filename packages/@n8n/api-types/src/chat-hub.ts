@@ -558,11 +558,11 @@ export class UpdateChatSettingsRequest extends Z.class({
 
 export class ChatHubSemanticSearchSettings extends Z.class({
 	vectorStore: z.object({
-		provider: chatHubVectorStoreProviderSchema.nullable(),
+		provider: chatHubVectorStoreProviderSchema,
 		credentialId: z.string().nullable(),
 	}),
 	embeddingModel: z.object({
-		provider: chatHubLLMProviderSchema.nullable(),
+		provider: chatHubLLMProviderSchema,
 		credentialId: z.string().nullable(),
 	}),
 }) {}

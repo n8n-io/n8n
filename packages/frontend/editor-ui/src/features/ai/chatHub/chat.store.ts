@@ -89,7 +89,7 @@ import { deepCopy, type INode } from 'n8n-workflow';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import { ResponseError } from '@n8n/rest-api-client';
 import { STORES } from '@n8n/stores/constants';
-import { appendChunkToParsedMessageItems } from '@n8n/chat-hub';
+import { appendChunkToParsedMessageItems, DEFAULT_SEMANTIC_SEARCH_SETTINGS } from '@n8n/chat-hub';
 
 export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	const rootStore = useRootStore();
@@ -1281,7 +1281,8 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	const vectorStoreIssue = computed<SemanticSearchCredentialIssue | undefined>(() => {
 		const isSharingEnabled =
 			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing];
-		const semanticSearch = settingsStore.moduleSettings['chat-hub']?.semanticSearch;
+		const semanticSearch =
+			settingsStore.moduleSettings['chat-hub']?.semanticSearch ?? DEFAULT_SEMANTIC_SEARCH_SETTINGS;
 		const vectorStoreCredentialId = semanticSearch?.vectorStore.credentialId ?? '';
 		const vectorStoreCredential = credentialsStore.getCredentialById(vectorStoreCredentialId);
 
@@ -1291,9 +1292,8 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 
 		if (
 			!vectorStoreCredential ||
-			!semanticSearch?.vectorStore.provider ||
 			vectorStoreCredential?.type !==
-				VECTOR_STORE_PROVIDER_CREDENTIAL_TYPE_MAP[semanticSearch?.vectorStore.provider]
+				VECTOR_STORE_PROVIDER_CREDENTIAL_TYPE_MAP[semanticSearch.vectorStore.provider]
 		) {
 			return 'notFound';
 		}
@@ -1308,7 +1308,8 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	const embeddingIssue = computed<SemanticSearchCredentialIssue | undefined>(() => {
 		const isSharingEnabled =
 			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing];
-		const semanticSearch = settingsStore.moduleSettings['chat-hub']?.semanticSearch;
+		const semanticSearch =
+			settingsStore.moduleSettings['chat-hub']?.semanticSearch ?? DEFAULT_SEMANTIC_SEARCH_SETTINGS;
 		const embeddingCredentialId = semanticSearch?.embeddingModel.credentialId ?? '';
 		const embeddingCredential = credentialsStore.getCredentialById(embeddingCredentialId);
 
@@ -1318,9 +1319,8 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 
 		if (
 			!embeddingCredential ||
-			!semanticSearch?.embeddingModel.provider ||
 			embeddingCredential?.type !==
-				PROVIDER_CREDENTIAL_TYPE_MAP[semanticSearch?.embeddingModel.provider]
+				PROVIDER_CREDENTIAL_TYPE_MAP[semanticSearch.embeddingModel.provider]
 		) {
 			return 'notFound';
 		}

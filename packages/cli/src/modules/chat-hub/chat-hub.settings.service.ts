@@ -13,6 +13,7 @@ import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 import type { SemanticSearchOptions } from './chat-hub.types';
 import { VECTOR_STORE_NODE_TYPE_MAP } from './chat-hub.constants';
+import { DEFAULT_SEMANTIC_SEARCH_SETTINGS } from '@n8n/chat-hub';
 
 const CHAT_PROVIDER_SETTINGS_KEY_PREFIX = 'chat.provider.';
 const CHAT_PROVIDER_SETTINGS_KEY = (provider: ChatHubLLMProvider) =>
@@ -109,11 +110,10 @@ export class ChatHubSettingsService {
 
 	async getSemanticSearchSettings(): Promise<ChatHubSemanticSearchSettings> {
 		const row = await this.settingsRepository.findByKey(CHAT_SEMANTIC_SEARCH_SETTINGS_KEY);
-		if (!row)
-			return {
-				embeddingModel: { credentialId: null, provider: null },
-				vectorStore: { credentialId: null, provider: null },
-			};
+
+		if (!row) {
+			return DEFAULT_SEMANTIC_SEARCH_SETTINGS;
+		}
 
 		return jsonParse<ChatHubSemanticSearchSettings>(row.value);
 	}
@@ -148,12 +148,7 @@ export class ChatHubSettingsService {
 	async getSemanticSearchOptions(): Promise<SemanticSearchOptions | null> {
 		const settings = await this.getSemanticSearchSettings();
 
-		if (
-			!settings.embeddingModel.credentialId ||
-			!settings.embeddingModel.provider ||
-			!settings.vectorStore.credentialId ||
-			!settings.vectorStore.provider
-		) {
+		if (!settings.embeddingModel.credentialId || !settings.vectorStore.credentialId) {
 			// return null if not fully configured
 			return null;
 		}

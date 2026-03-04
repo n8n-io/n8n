@@ -20,7 +20,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { updateSemanticSearchSettingsApi } from './chat.api';
 import { useToast } from '@/app/composables/useToast';
 import { providerDisplayNames, vectorStoreProviderDisplayNames } from './constants';
-import { EMBEDDINGS_NODE_TYPE_MAP } from '@n8n/chat-hub';
+import { DEFAULT_SEMANTIC_SEARCH_SETTINGS, EMBEDDINGS_NODE_TYPE_MAP } from '@n8n/chat-hub';
 
 const i18n = useI18n();
 const message = useMessage();
@@ -32,10 +32,7 @@ const settingsStore = useSettingsStore();
 const { semanticSearchReadiness } = storeToRefs(chatStore);
 
 const settings = ref<ChatHubSemanticSearchSettings>(
-	settingsStore.moduleSettings['chat-hub']?.semanticSearch ?? {
-		embeddingModel: { provider: null, credentialId: null },
-		vectorStore: { provider: null, credentialId: null },
-	},
+	settingsStore.moduleSettings['chat-hub']?.semanticSearch ?? DEFAULT_SEMANTIC_SEARCH_SETTINGS,
 );
 
 const vectorStoreCredentialType = computed(() => {
@@ -43,6 +40,10 @@ const vectorStoreCredentialType = computed(() => {
 
 	return provider ? VECTOR_STORE_PROVIDER_CREDENTIAL_TYPE_MAP[provider] : undefined;
 });
+
+const embeddingProviderOptions = computed(() =>
+	chatHubLLMProviderSchema.options.filter((provider) => provider in EMBEDDINGS_NODE_TYPE_MAP),
+);
 
 const vectorStoreTooltip = computed(() => {
 	const issue = semanticSearchReadiness.value.vectorStoreIssue;
@@ -63,9 +64,8 @@ const embeddingTooltip = computed(() => {
 });
 
 async function onVectorStoreProviderChange(provider: ChatHubVectorStoreProvider) {
-	const currentType = settings.value.vectorStore.provider;
-
-	if (currentType && currentType !== provider) {
+	if (settings.value.vectorStore.credentialId) {
+		// show confirmation if already fully set-up
 		const confirmed = await message.confirm(
 			i18n.baseText('settings.chatHub.vectorStore.changeProvider.confirm.message'),
 			i18n.baseText('settings.chatHub.vectorStore.changeProvider.confirm.title'),
@@ -88,6 +88,10 @@ async function onVectorStoreProviderChange(provider: ChatHubVectorStoreProvider)
 	try {
 		await updateSemanticSearchSettingsApi(rootStore.restApiContext, settings.value);
 		await settingsStore.getModuleSettings();
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText('settings.chatHub.semanticSearch.save.success'),
+		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.chatHub.vectorStore.save.error'));
 	}
@@ -99,15 +103,18 @@ async function onVectorStoreCredentialSelected(credentialId: string | null) {
 	try {
 		await updateSemanticSearchSettingsApi(rootStore.restApiContext, settings.value);
 		await settingsStore.getModuleSettings();
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText('settings.chatHub.semanticSearch.save.success'),
+		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.chatHub.vectorStore.save.error'));
 	}
 }
 
 async function onEmbeddingModelProviderChange(provider: ChatHubLLMProvider) {
-	const currentProvider = settings.value.embeddingModel.provider;
-
-	if (currentProvider && currentProvider !== provider) {
+	if (settings.value.embeddingModel.credentialId) {
+		// show confirmation if already fully set-up
 		const confirmed = await message.confirm(
 			i18n.baseText('settings.chatHub.embeddingModel.changeProvider.confirm.message'),
 			i18n.baseText('settings.chatHub.embeddingModel.changeProvider.confirm.title'),
@@ -130,6 +137,10 @@ async function onEmbeddingModelProviderChange(provider: ChatHubLLMProvider) {
 	try {
 		await updateSemanticSearchSettingsApi(rootStore.restApiContext, settings.value);
 		await settingsStore.getModuleSettings();
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText('settings.chatHub.semanticSearch.save.success'),
+		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.chatHub.embeddingModel.save.error'));
 	}
@@ -143,6 +154,10 @@ async function onEmbeddingCredentialSelected(credentialId: string | null) {
 	try {
 		await updateSemanticSearchSettingsApi(rootStore.restApiContext, settings.value);
 		await settingsStore.getModuleSettings();
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText('settings.chatHub.semanticSearch.save.success'),
+		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.chatHub.embeddingModel.save.error'));
 	}
@@ -151,9 +166,7 @@ async function onEmbeddingCredentialSelected(credentialId: string | null) {
 watch(
 	() => settingsStore.moduleSettings['chat-hub']?.semanticSearch,
 	(newType) => {
-		if (newType) {
-			settings.value = newType;
-		}
+		settings.value = newType ?? DEFAULT_SEMANTIC_SEARCH_SETTINGS;
 	},
 );
 </script>
@@ -187,7 +200,9 @@ watch(
 							{{ i18n.baseText('settings.chatHub.label.provider') }}
 						</N8nText>
 						<N8nSelect
-							:model-value="settings.vectorStore.provider"
+							:model-value="
+								settings.vectorStore.provider ?? chatHubVectorStoreProviderSchema.options[0]
+							"
 							size="small"
 							@update:model-value="onVectorStoreProviderChange"
 						>
@@ -236,19 +251,17 @@ watch(
 							{{ i18n.baseText('settings.chatHub.label.provider') }}
 						</N8nText>
 						<N8nSelect
-							:model-value="settings.embeddingModel.provider"
+							:model-value="settings.embeddingModel.provider ?? embeddingProviderOptions[0]"
 							size="small"
 							:class="$style.typeSelect"
 							@update:model-value="onEmbeddingModelProviderChange"
 						>
-							<template v-for="option in chatHubLLMProviderSchema.options">
-								<N8nOption
-									v-if="option in EMBEDDINGS_NODE_TYPE_MAP"
-									:key="option"
-									:value="option"
-									:label="providerDisplayNames[option]"
-								/>
-							</template>
+							<N8nOption
+								v-for="option in embeddingProviderOptions"
+								:key="option"
+								:value="option"
+								:label="providerDisplayNames[option]"
+							/>
 						</N8nSelect>
 					</div>
 					<div :class="$style.labeledControl">

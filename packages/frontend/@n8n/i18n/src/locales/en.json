@@ -2753,6 +2753,7 @@
 	"settings.chatHub.providers.table.models.noModels": "No models",
 	"settings.chatHub.providers.table.models.more": " and {count} more",
 	"settings.chatHub.semanticSearch.title": "Semantic Search",
+	"settings.chatHub.semanticSearch.save.success": "Semantic search settings updated",
 	"settings.chatHub.vectorStore.title": "Vector Store",
 	"settings.chatHub.vectorStore.description": "Database used to store and retrieve document embeddings for agent knowledge.",
 	"settings.chatHub.vectorStore.notShared": "Share the credential globally to ensure all users can use file knowledge in their personal agents.",
