@@ -530,14 +530,6 @@ export class Expression {
 
 				if (isSyntaxError(error)) throw new ApplicationError('invalid syntax');
 
-				if (isTypeError(error) && IS_FRONTEND && error.message.endsWith('is not a function')) {
-					const match = error.message.match(/(?<msg>[^.]+is not a function)/);
-
-					if (!match?.groups?.msg) return null;
-
-					throw new ApplicationError(match.groups.msg);
-				}
-
 				throw error;
 			}
 		}
