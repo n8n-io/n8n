@@ -590,6 +590,78 @@ onManual(async () => {
 		});
 	});
 
+	describe('Phase 15: Set node for static assignments', () => {
+		it('should emit Set node for single static string', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const x = "hello";
+  await http.get('https://api.example.com');
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain("type: 'n8n-nodes-base.set'");
+			expect(result.code).toContain('"name": "Set x"');
+			expect(result.code).toContain('"type": "string"');
+			expect(result.code).toContain('"value": "hello"');
+			expect(result.code).toContain('.to(set1).to(http1)');
+		});
+
+		it('should emit Set node for multiple static scalars', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const x = "a";
+  const y = 42;
+  const z = true;
+  await http.get('https://api.example.com');
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain("type: 'n8n-nodes-base.set'");
+			expect(result.code).toContain('"name": "Set Variables 1"');
+			expect(result.code).toContain('"type": "string"');
+			expect(result.code).toContain('"type": "number"');
+			expect(result.code).toContain('"type": "boolean"');
+		});
+
+		it('should emit Code node for mixed batch', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const x = "a";
+  const y = x.length;
+  await http.get('https://api.example.com');
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain("type: 'n8n-nodes-base.code'");
+			expect(result.code).not.toContain("type: 'n8n-nodes-base.set'");
+		});
+
+		it('should emit Code node for object literal', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const cfg = { key: "val" };
+  await http.get('https://api.example.com');
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain("type: 'n8n-nodes-base.code'");
+			expect(result.code).not.toContain("type: 'n8n-nodes-base.set'");
+		});
+
+		it('should resolve expression from Set node variable', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const name = "test";
+  if (name === "test") {
+    await http.get('https://api.example.com');
+  }
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain("$('Set name').first().json.name");
+		});
+	});
+
 	// ─── Real-world workflow validation ──────────────────────────────────────
 	// Fixture-driven tests: each .txt file in __fixtures__/ contains a title,
 	// input DSL, and expected output separated by === markers. Files with a

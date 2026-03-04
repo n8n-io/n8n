@@ -107,6 +107,7 @@ interface EmittedNode {
 		| 'trigger'
 		| 'http'
 		| 'code'
+		| 'set'
 		| 'ai'
 		| 'respond'
 		| 'workflow'
@@ -131,7 +132,8 @@ interface TranspilerContext {
 	sibCounter: number;
 	respondCounter: number;
 	wfCounter: number;
-	pendingCode: string[];
+	setCounter: number;
+	pendingStatements: Array<{ source: string; ast: AcornNode }>;
 	prevVar: string;
 	triggerType: CallbackInfo['triggerType'];
 	callbackParams: string[];
@@ -373,7 +375,8 @@ function transpileCallback(
 		sibCounter: nodeOffset,
 		respondCounter: nodeOffset,
 		wfCounter: nodeOffset,
-		pendingCode: [],
+		setCounter: nodeOffset,
+		pendingStatements: [],
 		prevVar: '',
 		triggerType: cb.triggerType,
 		callbackParams: cb.callbackParams,
@@ -504,7 +507,7 @@ function walkStatements(
 
 		// Accumulate code statements
 		const stmtSource = ctx.source.slice(stmt.start, stmt.end);
-		ctx.pendingCode.push(stmtSource.trim());
+		ctx.pendingStatements.push({ source: stmtSource.trim(), ast: stmt });
 	}
 }
 
@@ -629,7 +632,7 @@ function extractPropertyChain(astNode: AcornNode): string {
 
 /**
  * Resolve an AST node to an n8n expression string.
- * - Identifier / MemberExpression → `={{ $('NodeName').item.json.path }}`
+ * - Identifier / MemberExpression → `={{ $('NodeName').first().json.path }}`
  * - Literal → plain value as string
  */
 function resolveExpressionFromAST(astNode: AcornNode, ctx: TranspilerContext): string {
@@ -651,10 +654,10 @@ function resolveExpressionFromAST(astNode: AcornNode, ctx: TranspilerContext): s
 			// IO node: variable IS the $json, so strip the root identifier
 			const propsAfterRoot = chain.includes('.') ? chain.slice(chain.indexOf('.') + 1) : '';
 			const jsonPath = propsAfterRoot ? `.${propsAfterRoot}` : '';
-			return `={{ $('${sourceNode}').item.json${jsonPath} }}`;
+			return `={{ $('${sourceNode}').first().json${jsonPath} }}`;
 		}
 		// Code node: variable is wrapped inside $json, keep full chain
-		return `={{ $('${sourceNode}').item.json.${chain} }}`;
+		return `={{ $('${sourceNode}').first().json.${chain} }}`;
 	}
 
 	// Fallback: use raw source
@@ -847,6 +850,7 @@ const COUNTER_KEYS = [
 	'sibCounter',
 	'respondCounter',
 	'wfCounter',
+	'setCounter',
 	'loopCounter',
 	'aggCounter',
 ] as const;
@@ -870,7 +874,8 @@ function createBranchContext(parentCtx: TranspilerContext): TranspilerContext {
 		sibCounter: parentCtx.sibCounter,
 		respondCounter: parentCtx.respondCounter,
 		wfCounter: parentCtx.wfCounter,
-		pendingCode: [],
+		setCounter: parentCtx.setCounter,
+		pendingStatements: [],
 		prevVar: '',
 		triggerType: parentCtx.triggerType,
 		callbackParams: parentCtx.callbackParams,
@@ -1072,7 +1077,7 @@ function processForOfStatement(
 	// Case 3: No IO in loop body → keep as plain JS in Code node
 	if (!loopBodyHasIO(bodyNode, ctx.source)) {
 		const loopSource = ctx.source.slice(stmt.start, stmt.end);
-		ctx.pendingCode.push(loopSource);
+		ctx.pendingStatements.push({ source: loopSource, ast: stmt });
 		return;
 	}
 
@@ -1177,7 +1182,7 @@ function processTryStatement(
 					}
 				} else {
 					const stmtSource = ctx.source.slice(tryStmt.start, tryStmt.end);
-					ctx.pendingCode.push(stmtSource.trim());
+					ctx.pendingStatements.push({ source: stmtSource.trim(), ast: tryStmt });
 				}
 			}
 		}
@@ -1569,14 +1574,95 @@ function findDeclaredVars(code: string): string[] {
 	return vars;
 }
 
+// ─── Static Assignment Detection ─────────────────────────────────────────────
+
+interface StaticAssignment {
+	varName: string;
+	type: 'string' | 'number' | 'boolean';
+	value: string | number | boolean;
+}
+
+function tryExtractStaticAssignment(ast: AcornNode): StaticAssignment | null {
+	if (ast.type !== 'VariableDeclaration') return null;
+	if (!ast.declarations || ast.declarations.length !== 1) return null;
+	const decl = ast.declarations[0];
+	if (decl.id?.type !== 'Identifier' || !decl.id.name) return null;
+	if (decl.init?.type !== 'Literal') return null;
+	const val = decl.init.value;
+	if (typeof val === 'string') return { varName: decl.id.name, type: 'string', value: val };
+	if (typeof val === 'number') return { varName: decl.id.name, type: 'number', value: val };
+	if (typeof val === 'boolean') return { varName: decl.id.name, type: 'boolean', value: val };
+	return null;
+}
+
+// ─── Set Node Emission ───────────────────────────────────────────────────────
+
+function emitSetNode(ctx: TranspilerContext, assignments: StaticAssignment[]): void {
+	ctx.setCounter++;
+	const setVar = `set${ctx.setCounter}`;
+	const nodeName =
+		assignments.length === 1 ? `Set ${assignments[0].varName}` : `Set Variables ${ctx.setCounter}`;
+
+	const configObj = {
+		name: nodeName,
+		parameters: {
+			options: {},
+			assignments: {
+				assignments: assignments.map((a, i) => ({
+					id: `assign_${i}`,
+					name: a.varName,
+					type: a.type,
+					value: a.value,
+				})),
+			},
+		},
+		executeOnce: true,
+	};
+
+	const configStr = JSON.stringify(configObj, null, 2)
+		.split('\n')
+		.map((line, i) => (i === 0 ? line : '  ' + line))
+		.join('\n');
+
+	const sdkCode = `const ${setVar} = node({
+  type: 'n8n-nodes-base.set', version: 3.4,
+  config: ${configStr}
+});`;
+
+	ctx.nodes.push({ varName: setVar, sdkCode, kind: 'set', nodeName });
+
+	for (const a of assignments) {
+		ctx.varSourceMap.set(a.varName, nodeName);
+		ctx.varSourceKind.set(a.varName, 'code');
+	}
+
+	ctx.pendingStatements = [];
+	ctx.prevVar = setVar;
+}
+
 // ─── Code Flushing ───────────────────────────────────────────────────────────
 
 function flushPendingCode(ctx: TranspilerContext): void {
-	if (ctx.pendingCode.length === 0) return;
+	if (ctx.pendingStatements.length === 0) return;
+
+	// Check if all pending statements are static scalar assignments → emit Set node
+	const statics: StaticAssignment[] = [];
+	for (const { ast } of ctx.pendingStatements) {
+		const sa = tryExtractStaticAssignment(ast);
+		if (!sa) {
+			statics.length = 0;
+			break;
+		}
+		statics.push(sa);
+	}
+	if (statics.length > 0) {
+		emitSetNode(ctx, statics);
+		return;
+	}
 
 	ctx.codeCounter++;
 	const codeVar = `code${ctx.codeCounter}`;
-	const codeSource = ctx.pendingCode.join('\n');
+	const codeSource = ctx.pendingStatements.map((s) => s.source).join('\n');
 	const referencedVars = findReferencedVars(codeSource, ctx.varSourceMap);
 	const jsCodeLines: string[] = [];
 
@@ -1619,7 +1705,7 @@ function flushPendingCode(ctx: TranspilerContext): void {
 		ctx.varSourceKind.set(v, 'code');
 	}
 
-	ctx.pendingCode = [];
+	ctx.pendingStatements = [];
 	ctx.prevVar = codeVar;
 }
 
@@ -1919,6 +2005,7 @@ function generateSDKCode(allNodes: EmittedNode[], allChains: string[]): string {
 				break;
 			case 'http':
 			case 'code':
+			case 'set':
 			case 'respond':
 			case 'workflow':
 				usedFactories.add('node');

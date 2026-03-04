@@ -1,14 +1,23 @@
 const t0 = trigger({ type: 'n8n-nodes-base.scheduleTrigger', version: 1.2, config: { parameters: {"rule":{"interval":[{"field":"hours","hoursInterval":21}]}} } });
 
-const code1 = node({
-  type: 'n8n-nodes-base.code', version: 2,
+const set1 = node({
+  type: 'n8n-nodes-base.set', version: 3.4,
   config: {
-    name: 'Code 1',
-    parameters: {
-      jsCode: `const searchInput = "What's the latest news in artificial intelligence?";\nreturn [{ json: { searchInput } }];`,
-      mode: 'runOnceForAllItems'
+    "name": "Set searchInput",
+    "parameters": {
+      "options": {},
+      "assignments": {
+        "assignments": [
+          {
+            "id": "assign_0",
+            "name": "searchInput",
+            "type": "string",
+            "value": "What's the latest news in artificial intelligence?"
+          }
+        ]
+      }
     },
-    executeOnce: true
+    "executeOnce": true
   }
 });
 
@@ -53,4 +62,4 @@ const http2 = node({
 });
 
 export default workflow('compiled', 'Compiled Workflow')
-  .add(t0.to(code1).to(http1).to(http2));
+  .add(t0.to(set1).to(http1).to(http2));

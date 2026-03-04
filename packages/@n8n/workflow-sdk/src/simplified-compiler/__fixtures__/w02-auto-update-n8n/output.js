@@ -63,7 +63,7 @@ const http4 = node({
   }
 });
 
-const if1 = ifElse({ version: 2.2, config: { name: 'IF 1', parameters: { conditions: {"options":{"caseSensitive":true,"leftValue":""},"conditions":[{"leftValue":"={{ $('GET registry.npmjs.org/n8n/latest').item.json.version }}","rightValue":"={{ $('GET 0.0.0.0/rest/settings').item.json.data.versionCli }}","operator":{"type":"string","operation":"notEquals"}}],"combinator":"and"} }, executeOnce: true } })
+const if1 = ifElse({ version: 2.2, config: { name: 'IF 1', parameters: { conditions: {"options":{"caseSensitive":true,"leftValue":""},"conditions":[{"leftValue":"={{ $('GET registry.npmjs.org/n8n/latest').first().json.version }}","rightValue":"={{ $('GET 0.0.0.0/rest/settings').first().json.data.versionCli }}","operator":{"type":"string","operation":"notEquals"}}],"combinator":"and"} }, executeOnce: true } })
   .onTrue(http3)
   .onFalse(http4);
 

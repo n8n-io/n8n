@@ -139,10 +139,10 @@ const http4 = node({
 }
 });
 
-const if2 = ifElse({ version: 2.2, config: { name: 'IF 2', parameters: { conditions: {"options":{"caseSensitive":true,"leftValue":""},"conditions":[{"leftValue":"={{ $('Code 4').item.json.wfJson }}","rightValue":"={{ $('Code 4').item.json.existing.content }}","operator":{"type":"string","operation":"notEquals"}}],"combinator":"and"} }, executeOnce: true } })
+const if2 = ifElse({ version: 2.2, config: { name: 'IF 2', parameters: { conditions: {"options":{"caseSensitive":true,"leftValue":""},"conditions":[{"leftValue":"={{ $('Code 4').first().json.wfJson }}","rightValue":"={{ $('Code 4').first().json.existing.content }}","operator":{"type":"string","operation":"notEquals"}}],"combinator":"and"} }, executeOnce: true } })
   .onTrue(http4);
 
-const if1 = ifElse({ version: 2.2, config: { name: 'IF 1', parameters: { conditions: {"options":{"caseSensitive":true,"leftValue":""},"conditions":[{"leftValue":"={{ $('Code 4').item.json.existing }}","rightValue":"","operator":{"type":"string","operation":"notExists","singleValue":true}}],"combinator":"and"} }, executeOnce: true } })
+const if1 = ifElse({ version: 2.2, config: { name: 'IF 1', parameters: { conditions: {"options":{"caseSensitive":true,"leftValue":""},"conditions":[{"leftValue":"={{ $('Code 4').first().json.existing }}","rightValue":"","operator":{"type":"string","operation":"notExists","singleValue":true}}],"combinator":"and"} }, executeOnce: true } })
   .onTrue(http3)
   .onFalse(if2);
 

@@ -54,11 +54,11 @@ model = 'claude-3-5-sonnet';\nreturn [{ json: {} }];`,
   }
 });
 
-const if2 = ifElse({ version: 2.2, config: { name: 'IF 2', parameters: { conditions: {"options":{"caseSensitive":true,"leftValue":""},"conditions":[{"leftValue":"={{ $('Code 1').item.json.priority }}","rightValue":"performance","operator":{"type":"string","operation":"equals"}}],"combinator":"and"} }, executeOnce: true } })
+const if2 = ifElse({ version: 2.2, config: { name: 'IF 2', parameters: { conditions: {"options":{"caseSensitive":true,"leftValue":""},"conditions":[{"leftValue":"={{ $('Code 1').first().json.priority }}","rightValue":"performance","operator":{"type":"string","operation":"equals"}}],"combinator":"and"} }, executeOnce: true } })
   .onTrue(code3)
   .onFalse(code4);
 
-const if1 = ifElse({ version: 2.2, config: { name: 'IF 1', parameters: { conditions: {"options":{"caseSensitive":true,"leftValue":""},"conditions":[{"leftValue":"={{ $('Code 1').item.json.priority }}","rightValue":"cost","operator":{"type":"string","operation":"equals"}}],"combinator":"and"} }, executeOnce: true } })
+const if1 = ifElse({ version: 2.2, config: { name: 'IF 1', parameters: { conditions: {"options":{"caseSensitive":true,"leftValue":""},"conditions":[{"leftValue":"={{ $('Code 1').first().json.priority }}","rightValue":"cost","operator":{"type":"string","operation":"equals"}}],"combinator":"and"} }, executeOnce: true } })
   .onTrue(code2)
   .onFalse(if2);
 
