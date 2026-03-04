@@ -789,8 +789,9 @@ describe('WorkflowSettingsVue', () => {
 		});
 
 		it('should clear stale credentialResolverId when resolver no longer exists', async () => {
-			const settings = workflowsStore.workflowSettings as IWorkflowSettings;
-			settings.credentialResolverId = 'deleted-resolver-id';
+			workflowsStore.workflowSettings = {
+				credentialResolverId: 'deleted-resolver-id',
+			} as IWorkflowSettings;
 
 			createComponent({ pinia });
 			await nextTick();
@@ -800,7 +801,9 @@ describe('WorkflowSettingsVue', () => {
 			});
 
 			// The stale ID should be cleared since it doesn't match any loaded resolver
-			expect(settings.credentialResolverId).toBe('deleted-resolver-id');
+			expect((workflowsStore.workflowSettings as IWorkflowSettings).credentialResolverId).toBe(
+				'deleted-resolver-id',
+			);
 			// Note: the clearing happens on the local workflowSettings copy, not the store
 		});
 	});
