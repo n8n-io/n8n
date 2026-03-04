@@ -147,6 +147,7 @@ describe('WorkflowBuilderSessionRepository', () => {
 			expect(entityManager.upsert).toHaveBeenCalledWith(
 				WorkflowBuilderSession,
 				{
+					id: expect.any(String),
 					workflowId: 'wf123',
 					userId: 'user456',
 					messages: expect.any(Array), // Serialized messages

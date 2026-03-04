@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import {
 	mapChatMessagesToStoredMessages,
 	mapStoredMessagesToChatMessages,
@@ -45,6 +46,7 @@ export class WorkflowBuilderSessionRepository
 
 		await this.upsert(
 			{
+				id: randomUUID(),
 				workflowId,
 				userId,
 				messages: mapChatMessagesToStoredMessages(data.messages),
