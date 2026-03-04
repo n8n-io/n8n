@@ -1,4 +1,9 @@
-import type { IRunExecutionData } from 'n8n-workflow';
+import type {
+	IRunExecutionData,
+	NodeApiError,
+	NodeOperationError,
+	ExecutionError,
+} from 'n8n-workflow';
 
 import type { RedactableExecution } from '@/executions/execution-redaction';
 import type { RedactionContext } from '../../execution-redaction.interfaces';
@@ -46,6 +51,7 @@ describe('FullItemRedactionStrategy', () => {
 				NodeA: [
 					{
 						startTime: 0,
+						executionIndex: 0,
 						executionTime: 0,
 						executionStatus: 'success',
 						source: [],
@@ -76,6 +82,7 @@ describe('FullItemRedactionStrategy', () => {
 				NodeA: [
 					{
 						startTime: 0,
+						executionIndex: 0,
 						executionTime: 0,
 						executionStatus: 'success',
 						source: [],
@@ -85,6 +92,7 @@ describe('FullItemRedactionStrategy', () => {
 				NodeB: [
 					{
 						startTime: 0,
+						executionIndex: 0,
 						executionTime: 0,
 						executionStatus: 'success',
 						source: [],
@@ -108,6 +116,7 @@ describe('FullItemRedactionStrategy', () => {
 				NodeA: [
 					{
 						startTime: 0,
+						executionIndex: 0,
 						executionTime: 0,
 						executionStatus: 'success',
 						source: [],
@@ -132,6 +141,7 @@ describe('FullItemRedactionStrategy', () => {
 				NodeA: [
 					{
 						startTime: 0,
+						executionIndex: 0,
 						executionTime: 0,
 						executionStatus: 'success',
 						source: [],
@@ -155,6 +165,7 @@ describe('FullItemRedactionStrategy', () => {
 				NodeA: [
 					{
 						startTime: 0,
+						executionIndex: 0,
 						executionTime: 0,
 						executionStatus: 'success',
 						source: [],
@@ -175,6 +186,7 @@ describe('FullItemRedactionStrategy', () => {
 				NodeA: [
 					{
 						startTime: 0,
+						executionIndex: 0,
 						executionTime: 0,
 						executionStatus: 'success',
 						source: [],
@@ -189,12 +201,124 @@ describe('FullItemRedactionStrategy', () => {
 		});
 	});
 
+	describe('error redaction', () => {
+		const makeNodeApiError = (httpCode: string | null = '404') =>
+			({ name: 'NodeApiError', message: 'API error', httpCode }) as unknown as NodeApiError;
+
+		const makeNodeOperationError = () =>
+			({ name: 'NodeOperationError', message: 'Op error' }) as unknown as NodeOperationError;
+
+		const makeExecutionError = (name: string) =>
+			({ name, message: 'error' }) as unknown as ExecutionError;
+
+		it('redacts item-level NodeApiError and stores type + httpCode in item.redaction.error', async () => {
+			const execution = makeExecution({
+				NodeA: [
+					{
+						startTime: 0,
+						executionIndex: 0,
+						executionTime: 0,
+						executionStatus: 'error',
+						source: [],
+						data: { main: [[{ json: {}, error: makeNodeApiError('404') }]] },
+					},
+				],
+			});
+
+			await strategy.apply(execution, makeContext());
+
+			const item = execution.data.resultData.runData.NodeA[0].data!.main[0]![0];
+			expect(item.error).toBeUndefined();
+			expect(item.redaction?.error).toEqual({ type: 'NodeApiError', httpCode: '404' });
+		});
+
+		it('redacts item-level NodeOperationError without httpCode', async () => {
+			const execution = makeExecution({
+				NodeA: [
+					{
+						startTime: 0,
+						executionIndex: 0,
+						executionTime: 0,
+						executionStatus: 'error',
+						source: [],
+						data: { main: [[{ json: {}, error: makeNodeOperationError() }]] },
+					},
+				],
+			});
+
+			await strategy.apply(execution, makeContext());
+
+			const item = execution.data.resultData.runData.NodeA[0].data!.main[0]![0];
+			expect(item.error).toBeUndefined();
+			expect(item.redaction?.error).toEqual({ type: 'NodeOperationError' });
+			expect(item.redaction?.error).not.toHaveProperty('httpCode');
+		});
+
+		it('redacts task-level error into taskData.redactedError', async () => {
+			const error = makeExecutionError('NodeApiError');
+			(error as unknown as { httpCode: string | null }).httpCode = null;
+
+			const execution = makeExecution({
+				NodeA: [
+					{
+						startTime: 0,
+						executionIndex: 0,
+						executionTime: 0,
+						executionStatus: 'error',
+						source: [],
+						error,
+					},
+				],
+			});
+
+			await strategy.apply(execution, makeContext());
+
+			const taskData = execution.data.resultData.runData.NodeA[0];
+			expect(taskData.error).toBeUndefined();
+			expect(taskData.redactedError).toEqual({ type: 'NodeApiError', httpCode: null });
+		});
+
+		it('redacts workflow-level error into resultData.redactedError', async () => {
+			const execution = makeExecution({});
+			(execution.data.resultData as unknown as Record<string, unknown>).error =
+				makeExecutionError('NodeOperationError');
+
+			await strategy.apply(execution, makeContext());
+
+			expect(execution.data.resultData.error).toBeUndefined();
+			expect(execution.data.resultData.redactedError).toEqual({ type: 'NodeOperationError' });
+			expect(execution.data.resultData.redactedError).not.toHaveProperty('httpCode');
+		});
+
+		it('does not set redactedError when there is no error', async () => {
+			const execution = makeExecution({
+				NodeA: [
+					{
+						startTime: 0,
+						executionIndex: 0,
+						executionTime: 0,
+						executionStatus: 'success',
+						source: [],
+						data: { main: [[{ json: { x: 1 } }]] },
+					},
+				],
+			});
+
+			await strategy.apply(execution, makeContext());
+
+			const taskData = execution.data.resultData.runData.NodeA[0];
+			expect(taskData.redactedError).toBeUndefined();
+			expect(execution.data.resultData.redactedError).toBeUndefined();
+		});
+	});
+
 	describe('redactionInfo', () => {
 		it('sets isRedacted: true with canReveal from context', async () => {
 			const execution = makeExecution({
 				NodeA: [
 					{
 						startTime: 0,
+						executionIndex: 0,
 						executionTime: 0,
 						executionStatus: 'success',
 						source: [],
@@ -216,6 +340,7 @@ describe('FullItemRedactionStrategy', () => {
 				NodeA: [
 					{
 						startTime: 0,
+						executionIndex: 0,
 						executionTime: 0,
 						executionStatus: 'success',
 						source: [],

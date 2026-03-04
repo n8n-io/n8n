@@ -1,4 +1,10 @@
-import type { INodeExecutionData, ITaskDataConnections } from 'n8n-workflow';
+import { Service } from '@n8n/di';
+import type {
+	ExecutionError,
+	INodeExecutionData,
+	IRedactedErrorInfo,
+	ITaskDataConnections,
+} from 'n8n-workflow';
 
 import type { RedactableExecution } from '@/executions/execution-redaction';
 
@@ -7,6 +13,7 @@ import type {
 	RedactionContext,
 } from '../execution-redaction.interfaces';
 
+@Service()
 export class FullItemRedactionStrategy implements IExecutionRedactionStrategy {
 	readonly name = 'full-item-redaction';
 
@@ -25,7 +32,17 @@ export class FullItemRedactionStrategy implements IExecutionRedactionStrategy {
 				if (taskData.inputOverride) {
 					this.redactConnections(taskData.inputOverride, reason);
 				}
+				if (taskData.error) {
+					taskData.redactedError = this.redactError(taskData.error);
+					delete taskData.error;
+				}
 			}
+		}
+
+		const resultData = execution.data.resultData;
+		if (resultData.error) {
+			resultData.redactedError = this.redactError(resultData.error);
+			delete resultData.error;
 		}
 
 		execution.data.redactionInfo = {
@@ -50,8 +67,23 @@ export class FullItemRedactionStrategy implements IExecutionRedactionStrategy {
 	}
 
 	private redactItem(item: INodeExecutionData, reason: string): void {
+		const redactedError = item.error ? this.redactError(item.error) : undefined;
+		delete item.error;
 		item.json = {};
 		delete item.binary;
-		item.redaction = { redacted: true, reason };
+		item.redaction = {
+			redacted: true,
+			reason,
+			...(redactedError && { error: redactedError }),
+		};
+	}
+
+	private redactError(error: ExecutionError): IRedactedErrorInfo {
+		const result: IRedactedErrorInfo = { type: error.name };
+		if (error.name === 'NodeApiError') {
+			result.httpCode =
+				('httpCode' in error ? (error as { httpCode: string | null }).httpCode : null) ?? null;
+		}
+		return result;
 	}
 }

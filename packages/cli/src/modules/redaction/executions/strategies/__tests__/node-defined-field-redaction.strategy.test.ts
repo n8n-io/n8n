@@ -195,7 +195,7 @@ describe('NodeDefinedFieldRedactionStrategy', () => {
 
 		it('leaves items unchanged for a node with no sensitiveOutputFields', async () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue({
-				description: { name: 'n8n-nodes-base.set', sensitiveOutputFields: [] },
+				description: { name: 'n8n-nodes-base.set', sensitiveOutputFields: [] as string[] },
 			} as ReturnType<typeof nodeTypes.getByNameAndVersion>);
 
 			const original = { name: 'Alice' };
