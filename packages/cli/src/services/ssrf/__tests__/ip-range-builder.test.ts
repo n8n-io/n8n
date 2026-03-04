@@ -1,25 +1,25 @@
-import { buildBlocklist } from '../ip-range-blocklist-builder';
+import { buildIpRangeList } from '../ip-range-builder';
 
-describe('buildBlocklist', () => {
-	it('should build a blocklist from valid CIDR ranges', () => {
-		const { blocklist, issues } = buildBlocklist(['10.0.0.0/8', '192.168.0.0/16']);
+describe('buildIpRangeList', () => {
+	it('should build a list from valid CIDR ranges', () => {
+		const { list, issues } = buildIpRangeList(['10.0.0.0/8', '192.168.0.0/16']);
 
 		expect(issues).toEqual([]);
-		expect(blocklist.check('10.0.0.1', 'ipv4')).toBe(true);
-		expect(blocklist.check('192.168.1.1', 'ipv4')).toBe(true);
-		expect(blocklist.check('8.8.8.8', 'ipv4')).toBe(false);
+		expect(list.check('10.0.0.1', 'ipv4')).toBe(true);
+		expect(list.check('192.168.1.1', 'ipv4')).toBe(true);
+		expect(list.check('8.8.8.8', 'ipv4')).toBe(false);
 	});
 
-	it('should build a blocklist from single-host CIDR ranges', () => {
-		const { blocklist, issues } = buildBlocklist(['127.0.0.1/32', '::1/128']);
+	it('should build a list from single-host CIDR ranges', () => {
+		const { list, issues } = buildIpRangeList(['127.0.0.1/32', '::1/128']);
 
 		expect(issues).toEqual([]);
-		expect(blocklist.check('127.0.0.1', 'ipv4')).toBe(true);
-		expect(blocklist.check('::1', 'ipv6')).toBe(true);
+		expect(list.check('127.0.0.1', 'ipv4')).toBe(true);
+		expect(list.check('::1', 'ipv6')).toBe(true);
 	});
 
 	it('should reject single IP entries without CIDR suffix', () => {
-		const { issues } = buildBlocklist(['127.0.0.1', '::1']);
+		const { issues } = buildIpRangeList(['127.0.0.1', '::1']);
 
 		expect(issues).toEqual([
 			{ entry: '127.0.0.1', error: 'Invalid CIDR notation' },
@@ -28,7 +28,7 @@ describe('buildBlocklist', () => {
 	});
 
 	it('should report issues for invalid entries with structured error and entry', () => {
-		const { issues } = buildBlocklist(['not-an-ip', '10.0.0.0/abc', '999.999.999.999/8']);
+		const { issues } = buildIpRangeList(['not-an-ip', '10.0.0.0/abc', '999.999.999.999/8']);
 
 		expect(issues).toHaveLength(3);
 		expect(issues[0]).toEqual({ entry: 'not-an-ip', error: 'Invalid CIDR notation' });
@@ -37,7 +37,7 @@ describe('buildBlocklist', () => {
 	});
 
 	it('should report issues for out-of-range prefixes', () => {
-		const { issues } = buildBlocklist(['10.0.0.0/33', 'fc00::/129']);
+		const { issues } = buildIpRangeList(['10.0.0.0/33', 'fc00::/129']);
 
 		expect(issues).toHaveLength(2);
 		expect(issues[0]).toEqual({ entry: '10.0.0.0/33', error: 'Invalid CIDR notation' });
@@ -45,7 +45,7 @@ describe('buildBlocklist', () => {
 	});
 
 	it('should reject malformed CIDR forms', () => {
-		const { issues } = buildBlocklist(['10.0.0.0/8abc', '10.0.0.0/8/extra']);
+		const { issues } = buildIpRangeList(['10.0.0.0/8abc', '10.0.0.0/8/extra']);
 
 		expect(issues).toHaveLength(2);
 		expect(issues[0]).toEqual({ entry: '10.0.0.0/8abc', error: 'Invalid CIDR notation' });
@@ -53,26 +53,26 @@ describe('buildBlocklist', () => {
 	});
 
 	it('should handle mixed valid and invalid entries', () => {
-		const { blocklist, issues } = buildBlocklist(['10.0.0.0/8', 'garbage', '::1/128']);
+		const { list, issues } = buildIpRangeList(['10.0.0.0/8', 'garbage', '::1/128']);
 
 		expect(issues).toHaveLength(1);
 		expect(issues[0]).toEqual({ entry: 'garbage', error: 'Invalid CIDR notation' });
-		expect(blocklist.check('10.0.0.1', 'ipv4')).toBe(true);
-		expect(blocklist.check('::1', 'ipv6')).toBe(true);
+		expect(list.check('10.0.0.1', 'ipv4')).toBe(true);
+		expect(list.check('::1', 'ipv6')).toBe(true);
 	});
 
 	it('should trim entries and ignore empty ones', () => {
-		const { blocklist, issues } = buildBlocklist([' 10.0.0.0/8 ', ' ::1/128 ', '   ']);
+		const { list, issues } = buildIpRangeList([' 10.0.0.0/8 ', ' ::1/128 ', '   ']);
 
 		expect(issues).toEqual([]);
-		expect(blocklist.check('10.0.0.1', 'ipv4')).toBe(true);
-		expect(blocklist.check('::1', 'ipv6')).toBe(true);
+		expect(list.check('10.0.0.1', 'ipv4')).toBe(true);
+		expect(list.check('::1', 'ipv6')).toBe(true);
 	});
 
 	it('should handle an empty list', () => {
-		const { blocklist, issues } = buildBlocklist([]);
+		const { list, issues } = buildIpRangeList([]);
 
 		expect(issues).toEqual([]);
-		expect(blocklist.check('10.0.0.1', 'ipv4')).toBe(false);
+		expect(list.check('10.0.0.1', 'ipv4')).toBe(false);
 	});
 });

@@ -21,7 +21,7 @@ export class HostnameMatcher {
 	constructor(patterns: readonly string[]) {
 		this.parsed = patterns
 			.map((p) => this.normalizeHostname(p))
-			.filter((p) => p.length > 0)
+			.filter(Boolean)
 			.map((value) => {
 				if (value.startsWith('*.')) {
 					const suffix = value.slice(1); // ".example.com"

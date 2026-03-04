@@ -3,12 +3,12 @@ import { SsrfProtectionConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { LookupAddress, LookupOptions } from 'node:dns';
 import { isIP } from 'node:net';
-import type { BlockList } from 'node:net';
+import type { BlockList, LookupFunction } from 'node:net';
 import { ensureError } from 'n8n-workflow';
 
 import { DnsResolver } from './dns-resolver';
 import { HostnameMatcher } from './hostname-matcher';
-import { buildBlocklist } from './ip-range-blocklist-builder';
+import { buildIpRangeList } from './ip-range-builder';
 import { SsrfBlockedIpError } from './ssrf-blocked-ip.error';
 
 export type SsrfCheckResult =
@@ -42,21 +42,21 @@ export class SsrfProtectionService {
 	) {
 		this.logger = logger.scoped('ssrf-protection');
 
-		const blocked = buildBlocklist(this.ssrfConfig.resolvedBlockedIpRanges);
+		const blocked = buildIpRangeList(this.ssrfConfig.resolvedBlockedIpRanges);
 		for (const issue of blocked.issues) {
 			this.logger.warn(
 				`Invalid value '${issue.entry}' in N8N_SSRF_BLOCKED_IP_RANGES: ${issue.error}`,
 			);
 		}
-		this.blockedIps = blocked.blocklist;
+		this.blockedIps = blocked.list;
 
-		const allowed = buildBlocklist(this.ssrfConfig.allowedIpRanges);
+		const allowed = buildIpRangeList(this.ssrfConfig.allowedIpRanges);
 		for (const issue of allowed.issues) {
 			this.logger.warn(
 				`Invalid value '${issue.entry}' in N8N_SSRF_ALLOWED_IP_RANGES: ${issue.error}`,
 			);
 		}
-		this.allowedIps = allowed.blocklist;
+		this.allowedIps = allowed.list;
 
 		this.allowedHostnameMatcher = new HostnameMatcher(this.ssrfConfig.allowedHostnames);
 	}
@@ -122,19 +122,17 @@ export class SsrfProtectionService {
 	}
 
 	/**
-	 * Create a custom DNS lookup function for injection into HTTP clients.
-	 * This is the single validation point that prevents TOCTOU attacks by
-	 * validating IPs at connection time rather than before the request.
+	 * Create a custom DNS lookup function that is a drop-in replacement for
+	 * Node.js `dns.lookup`. It can be passed to `socket.connect({ lookup })`
+	 * or `axios.request({ lookup })` to validate resolved IPs at connection
+	 * time, preventing TOCTOU attacks.
+	 *
+	 * Lookup options (e.g. IP family) are forwarded as-is so Node.js internals
+	 * can decide which addresses to resolve based on:
+	 * - The `family` option passed directly to `socket.connect` or `axios.request`
+	 * - The auto-select family setting (`dns.setDefaultAutoSelectFamily`)
 	 */
-	createSecureLookup(): (
-		hostname: string,
-		options: LookupOptions,
-		onResult: (
-			error: NodeJS.ErrnoException | null,
-			address: string | LookupAddress[],
-			family?: number,
-		) => void,
-	) => void {
+	createSecureLookup(): LookupFunction {
 		return async (hostname, options, onResult) => {
 			try {
 				const resolved = await this.secureLookupAsync(hostname, options);
