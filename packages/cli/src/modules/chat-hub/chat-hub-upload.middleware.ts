@@ -3,10 +3,6 @@ import { Service } from '@n8n/di';
 import type { RequestHandler } from 'express';
 import multer from 'multer';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-
-const ALLOWED_MIME_TYPES = ['application/pdf'];
-
 @Service()
 export class ChatHubUploadMiddleware {
 	private readonly upload: multer.Multer;
@@ -16,17 +12,6 @@ export class ChatHubUploadMiddleware {
 		this.upload = multer({
 			storage: multer.diskStorage({}),
 			limits: { fileSize: maxFileSizeBytes },
-			fileFilter: (_req, file, next) => {
-				if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
-					next(
-						new BadRequestError(
-							`Unsupported file type: ${file.mimetype}. Only PDF files are supported as agent knowledge.`,
-						),
-					);
-					return;
-				}
-				next(null, true);
-			},
 		});
 	}
 

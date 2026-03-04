@@ -127,8 +127,6 @@ const saveButtonLabel = computed(() =>
 		: i18n.baseText('chatHub.agent.editor.save'),
 );
 
-const acceptedMimeTypes = computed(() => 'application/pdf');
-
 const isValid = computed(
 	() =>
 		name.value.trim().length > 0 &&
@@ -319,19 +317,7 @@ async function onDelete() {
 }
 
 function isFileTypeAccepted(file: File): boolean {
-	const accepted = acceptedMimeTypes.value;
-	if (!accepted) return false;
-	if (accepted === '*/*') return true;
-
-	const acceptedTypes = accepted.split(',').map((type) => type.trim());
-	return acceptedTypes.some((acceptedType) => {
-		if (acceptedType.endsWith('/*')) {
-			// Handle wildcards like 'image/*', 'text/*'
-			const prefix = acceptedType.slice(0, -2);
-			return file.type.startsWith(prefix + '/');
-		}
-		return file.type === acceptedType;
-	});
+	return file.type === 'application/pdf';
 }
 
 function onFilesDropped(droppedFiles: File[]) {
@@ -516,7 +502,7 @@ const fileDrop = useFileDrop(true, onFilesDropped);
 							ref="fileInput"
 							type="file"
 							:class="$style.fileInput"
-							:accept="acceptedMimeTypes"
+							accept="application/pdf"
 							multiple
 							@change="handleFileSelect"
 						/>

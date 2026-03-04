@@ -300,7 +300,7 @@ export class ChatHubAgentService {
 		const newFiles = await this.processNewFilesFromMulter(user, agentId, files);
 
 		const updatedAgent = await this.chatAgentRepository.updateAgent(agentId, {
-			files: [...agent.files, ...newFiles],
+			files: agent.files.concat(newFiles),
 		});
 
 		const toolIds = await this.chatHubToolService.getToolIdsForAgent(agentId);
@@ -336,6 +336,10 @@ export class ChatHubAgentService {
 		const settings = await this.ensureSemanticSearchOptions();
 
 		for (const file of files) {
+			if (file.mimetype !== 'application/pdf') {
+				throw new BadRequestError(`Unsupported mime-type: ${file.mimetype}`);
+			}
+
 			// Multer/busboy parses the Content-Disposition filename as Latin-1 by default,
 			// but browsers send it as UTF-8 bytes. Re-encode to get the correct string.
 			const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
