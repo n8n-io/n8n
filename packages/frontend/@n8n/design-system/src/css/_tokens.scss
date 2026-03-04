@@ -160,7 +160,7 @@
 	/* stylelint-disable-next-line @n8n/css-var-naming */
 	--border-width: var(--border-width-base, 1px);
 	/* stylelint-disable-next-line @n8n/css-var-naming */
-	--border: var(--border-base, var(--border-width) var(--border-style) var(--color--foreground));
+	--border: var(--border-base, var(--border-width) var(--border-style) var(--border-color--light));
 
 	/* stylelint-disable @n8n/css-var-naming */
 	// New semantic tokens (preferred)
@@ -846,6 +846,7 @@
 	--border-color--subtle: var(--color--white-alpha-100);
 	--border-color--strong: var(--color--white-alpha-300);
 	--border-color--stronger: var(--color--white-alpha-400);
+	--border: var(--border-base, var(--border-width) var(--border-style) var(--border-color));
 
 	--icon-color--subtle: var(--color--neutral-600);
 	--icon-color: var(--color--neutral-300);
