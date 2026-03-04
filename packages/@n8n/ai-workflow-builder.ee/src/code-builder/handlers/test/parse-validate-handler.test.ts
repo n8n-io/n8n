@@ -12,6 +12,7 @@ jest.mock('@n8n/workflow-sdk', () => ({
 	parseWorkflowCodeToBuilder: jest.fn(),
 	validateWorkflow: jest.fn(),
 	workflow: { fromJSON: jest.fn() },
+	compileWorkflowJS: jest.fn(),
 	stripImportStatements: jest.fn((code: string) => code),
 }));
 
@@ -19,6 +20,11 @@ jest.mock('@n8n/workflow-sdk', () => ({
 const mockParseWorkflowCodeToBuilder = parseWorkflowCodeToBuilder as jest.Mock;
 const mockValidateWorkflow = validateWorkflow as jest.Mock;
 const mockFromJSON = workflow.fromJSON as jest.Mock;
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { compileWorkflowJS: mockCompileWorkflowJS } = require('@n8n/workflow-sdk') as {
+	compileWorkflowJS: jest.Mock;
+};
 
 describe('ParseValidateHandler', () => {
 	let handler: ParseValidateHandler;
@@ -312,6 +318,68 @@ describe('ParseValidateHandler', () => {
 			const context = handler.getErrorContext(code, 'error at line 4');
 
 			expect(context).not.toContain('HINT:');
+		});
+	});
+
+	describe('parseAndValidate with useSimplifiedSyntax', () => {
+		let simplifiedHandler: ParseValidateHandler;
+
+		beforeEach(() => {
+			simplifiedHandler = new ParseValidateHandler({ useSimplifiedSyntax: true });
+		});
+
+		it('should use compileWorkflowJS when useSimplifiedSyntax is enabled', async () => {
+			const mockWorkflow = {
+				id: 'test',
+				name: 'Compiled',
+				nodes: [{ name: 'Start' }],
+				connections: {},
+			};
+
+			mockCompileWorkflowJS.mockReturnValue({
+				workflow: mockWorkflow,
+				errors: [],
+			});
+
+			const result = await simplifiedHandler.parseAndValidate('trigger.manual()');
+
+			expect(mockCompileWorkflowJS).toHaveBeenCalledWith('trigger.manual()');
+			expect(result.workflow).toEqual(mockWorkflow);
+			expect(result.warnings).toHaveLength(0);
+			// Should NOT use the SDK parser
+			expect(mockParseWorkflowCodeToBuilder).not.toHaveBeenCalled();
+		});
+
+		it('should throw when simplified compiler returns errors', async () => {
+			mockCompileWorkflowJS.mockReturnValue({
+				workflow: { nodes: [], connections: {} },
+				errors: [
+					{ line: 3, message: 'Unexpected token' },
+					{ line: null, message: 'Missing trigger' },
+				],
+			});
+
+			await expect(simplifiedHandler.parseAndValidate('bad code')).rejects.toThrow(
+				'Line 3: Unexpected token\nLine ?: Missing trigger',
+			);
+		});
+
+		it('should not use compileWorkflowJS when useSimplifiedSyntax is false', async () => {
+			const mockBuilder = {
+				regenerateNodeIds: jest.fn(),
+				validate: jest.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
+				generatePinData: jest.fn(),
+				toJSON: jest.fn().mockReturnValue({ id: 'test', name: 'Test', nodes: [], connections: {} }),
+			};
+
+			mockParseWorkflowCodeToBuilder.mockReturnValue(mockBuilder);
+			mockValidateWorkflow.mockReturnValue({ valid: true, errors: [], warnings: [] });
+
+			// Default handler has useSimplifiedSyntax: false
+			await handler.parseAndValidate('const w = {}');
+
+			expect(mockCompileWorkflowJS).not.toHaveBeenCalled();
+			expect(mockParseWorkflowCodeToBuilder).toHaveBeenCalled();
 		});
 	});
 
