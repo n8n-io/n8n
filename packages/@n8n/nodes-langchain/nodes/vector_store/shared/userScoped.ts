@@ -3,10 +3,11 @@ import { NodeOperationError } from 'n8n-workflow';
 
 /**
  * Derives a user-scoped slot name from the credential prefix and the current user ID.
- * The user ID is sanitised by replacing all hyphens with underscores to produce
- * identifiers that are safe to use in collection names, table names, namespace names, etc.
+ * The entire resulting name (prefix + underscore + user ID) is sanitised by replacing
+ * all non-alphanumeric, non-underscore characters with underscores to produce identifiers
+ * that are safe to use in collection names, table names, namespace names, etc.
  *
- * @returns `{prefix}_{sanitisedUserId}`
+ * @returns `{sanitisedPrefix}_{sanitisedUserId}`
  * @throws NodeOperationError when no authenticated user is available
  */
 export function getUserScopedSlot(
@@ -15,8 +16,7 @@ export function getUserScopedSlot(
 	itemIndex?: number,
 ): string {
 	const userId = ensureUserId(context, itemIndex);
-	const sanitizedUserId = userId.replace(/-/g, '_');
-	return `${prefix}_${sanitizedUserId}`;
+	return `${prefix}_${userId}`.replace(/[^a-zA-Z0-9_]/g, '_');
 }
 
 export function ensureUserId(
