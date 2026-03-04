@@ -1,5 +1,6 @@
 import { ApplicationError } from '@n8n/errors';
 import type { IExpressionEvaluator } from '@n8n/expression-runtime';
+import { MemoryLimitError, SecurityViolationError, TimeoutError } from '@n8n/expression-runtime';
 import { DateTime, Duration, Interval } from 'luxon';
 
 import { ExpressionExtensionError } from './errors/expression-extension.error';
@@ -537,6 +538,25 @@ export class Expression {
 				return result as string | null | (() => unknown);
 			} catch (error) {
 				if (isExpressionError(error)) throw error;
+
+				if (error instanceof TimeoutError) {
+					const wrapped = new ExpressionError('Expression timed out');
+					// Assign cause manually because ExecutionBaseError drops it if it's an instance of Error
+					wrapped.cause = error;
+					throw wrapped;
+				}
+				if (error instanceof MemoryLimitError) {
+					const wrapped = new ExpressionError('Expression exceeded memory limit');
+					// Assign cause manually because ExecutionBaseError drops it if it's an instance of Error
+					wrapped.cause = error;
+					throw wrapped;
+				}
+				if (error instanceof SecurityViolationError) {
+					const wrapped = new ExpressionError(error.message);
+					// Assign cause manually because ExecutionBaseError drops it if it's an instance of Error
+					wrapped.cause = error;
+					throw wrapped;
+				}
 
 				if (isSyntaxError(error)) throw new ApplicationError('invalid syntax');
 
