@@ -11,6 +11,7 @@ import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTags
 import { useAutoScrollOnDrag } from '@/app/composables/useAutoScrollOnDrag';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useLatestFetch } from '@/app/composables/useLatestFetch';
 import type { DragTarget, DropTarget, FolderListItem } from '@/features/core/folders/folders.types';
 import { useFolders } from '@/features/core/folders/composables/useFolders';
 import { useMessage } from '@/app/composables/useMessage';
@@ -18,8 +19,10 @@ import { useProjectPages } from '@/features/collaboration/projects/composables/u
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import {
+	DEBOUNCE_TIME,
 	DEFAULT_WORKFLOW_PAGE_SIZE,
 	EnterpriseEditionFeature,
+	getDebounceTime,
 	MODAL_CONFIRM,
 	VIEWS,
 } from '@/app/constants';
@@ -91,7 +94,8 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-const SEARCH_DEBOUNCE_TIME = 300;
+
+const SEARCH_DEBOUNCE_TIME = getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH);
 const FILTERS_DEBOUNCE_TIME = 100;
 
 interface Filters extends BaseFilters {
@@ -143,6 +147,7 @@ const readyToRunStore = useReadyToRunStore();
 const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
 const projectPages = useProjectPages();
+const { next: nextFetch } = useLatestFetch();
 const {
 	showRecommendedTemplatesInline,
 	emptyStateHeading: emptyListHeading,
@@ -439,7 +444,8 @@ const showPersonalizedTemplates = computed(
 );
 
 const shouldUseSimplifiedLayout = computed(() => {
-	return !loading.value && readyToRunStore.getSimplifiedLayoutVisibility(route);
+	const simplifiedLayoutVisible = readyToRunStore.getSimplifiedLayoutVisibility(route);
+	return !loading.value && simplifiedLayoutVisible;
 });
 
 const hasActiveCallouts = computed(() => {
@@ -587,7 +593,7 @@ const initialize = async () => {
 	await setFiltersFromQueryString();
 
 	currentFolderId.value = route.params.folderId as string | null;
-	const [resourcesPage] = await Promise.all([
+	await Promise.all([
 		fetchWorkflows(),
 		workflowsListStore.fetchActiveWorkflows(),
 		usageStore.getLicenseInfo(),
@@ -597,8 +603,6 @@ const initialize = async () => {
 		),
 	]);
 	breadcrumbsLoading.value = false;
-	workflowsAndFolders.value = resourcesPage;
-	loading.value = false;
 };
 
 /**
@@ -608,6 +612,8 @@ const initialize = async () => {
  * - Path to the current folder (if not cached)
  */
 const fetchWorkflows = async () => {
+	const isCurrent = nextFetch();
+
 	// We debounce here so that fast enough fetches don't trigger
 	// the placeholder graphics for a few milliseconds, which would cause a flicker
 	const delayedLoading = debounce(() => {
@@ -649,6 +655,8 @@ const fetchWorkflows = async () => {
 			projectPages.isSharedSubPage,
 		);
 
+		if (!isCurrent()) return [];
+
 		foldersStore.cacheFolders(
 			fetchedResources
 				.filter((resource) => resource.resource === 'folder')
@@ -673,15 +681,18 @@ const fetchWorkflows = async () => {
 
 		return fetchedResources;
 	} catch (error) {
+		if (!isCurrent()) return [];
 		toast.showError(error, i18n.baseText('workflows.list.error.fetching'));
 		// redirect to the project page if the folder is not found
 		void router.push({ name: VIEWS.PROJECTS_FOLDERS, params: { projectId: routeProjectId } });
 		return [];
 	} finally {
 		delayedLoading.cancel();
-		loading.value = false;
-		if (breadcrumbsLoading.value) {
-			breadcrumbsLoading.value = false;
+		if (isCurrent()) {
+			loading.value = false;
+			if (breadcrumbsLoading.value) {
+				breadcrumbsLoading.value = false;
+			}
 		}
 	}
 };
@@ -1401,16 +1412,20 @@ const moveFolder = async (payload: {
 	options?: {
 		skipFetch?: boolean;
 		skipNavigation?: boolean;
+		skipApiCall?: boolean;
 	};
 }) => {
 	if (!route.params.projectId) return;
 
+	loading.value = true;
 	try {
-		await foldersStore.moveFolder(
-			route.params.projectId as string,
-			payload.folder.id,
-			payload.newParent.type === 'folder' ? payload.newParent.id : '0',
-		);
+		if (!payload.options?.skipApiCall) {
+			await foldersStore.moveFolder(
+				route.params.projectId as string,
+				payload.folder.id,
+				payload.newParent.type === 'folder' ? payload.newParent.id : '0',
+			);
+		}
 		const isCurrentFolder = currentFolderId.value === payload.folder.id;
 
 		const newFolderURL = router.resolve({
@@ -1454,6 +1469,8 @@ const moveFolder = async (payload: {
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('folders.move.error.title'));
+	} finally {
+		loading.value = false;
 	}
 };
 
@@ -1467,17 +1484,9 @@ const onFolderTransferred = async (payload: {
 		parentFolder: { id: string | undefined; name: string };
 		canAccess: boolean;
 	};
-	shareCredentials?: string[];
 }) => {
+	loading.value = true;
 	try {
-		await foldersStore.moveFolderToProject(
-			payload.source.projectId,
-			payload.source.folder.id,
-			payload.destination.projectId,
-			payload.destination.parentFolder.id,
-			payload.shareCredentials,
-		);
-
 		const isCurrentFolder = currentFolderId.value === payload.source.folder.id;
 		const newFolderURL = router.resolve({
 			name: VIEWS.PROJECTS_FOLDERS,
@@ -1537,6 +1546,8 @@ const onFolderTransferred = async (payload: {
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('folders.move.error.title'));
+	} finally {
+		loading.value = false;
 	}
 };
 
@@ -1577,17 +1588,9 @@ const onWorkflowTransferred = async (payload: {
 		parentFolder: { id: string | undefined; name: string };
 		canAccess: boolean;
 	};
-	shareCredentials?: string[];
 }) => {
+	loading.value = true;
 	try {
-		await projectsStore.moveResourceToProject(
-			'workflow',
-			payload.source.workflow.id,
-			payload.destination.projectId,
-			payload.destination.parentFolder.id,
-			payload.shareCredentials,
-		);
-
 		await refreshWorkflows();
 
 		if (payload.destination.canAccess) {
@@ -1627,6 +1630,8 @@ const onWorkflowTransferred = async (payload: {
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('folders.move.workflow.error.title'));
+	} finally {
+		loading.value = false;
 	}
 };
 
@@ -1635,9 +1640,12 @@ const onWorkflowMoved = async (payload: {
 	newParent: { id: string; name: string; type: 'folder' | 'project' };
 	options?: {
 		skipFetch?: boolean;
+		skipApiCall?: boolean;
 	};
 }) => {
 	if (!route.params.projectId) return;
+
+	loading.value = true;
 	try {
 		const newFolderURL = router.resolve({
 			name: VIEWS.PROJECTS_FOLDERS,
@@ -1646,13 +1654,15 @@ const onWorkflowMoved = async (payload: {
 				folderId: payload.newParent.type === 'folder' ? payload.newParent.id : undefined,
 			},
 		}).href;
-		const workflowResource = workflowsAndFolders.value.find(
-			(resource): resource is WorkflowListItem => resource.id === payload.workflow.id,
-		);
-		await workflowsStore.updateWorkflow(payload.workflow.id, {
-			parentFolderId: payload.newParent.type === 'folder' ? payload.newParent.id : '0',
-			versionId: workflowResource?.versionId,
-		});
+		if (!payload.options?.skipApiCall) {
+			const workflowResource = workflowsAndFolders.value.find(
+				(resource): resource is WorkflowListItem => resource.id === payload.workflow.id,
+			);
+			await workflowsStore.updateWorkflow(payload.workflow.id, {
+				parentFolderId: payload.newParent.type === 'folder' ? payload.newParent.id : '0',
+				versionId: workflowResource?.versionId,
+			});
+		}
 		if (!payload.options?.skipFetch) {
 			await fetchWorkflows();
 		}
@@ -1679,6 +1689,8 @@ const onWorkflowMoved = async (payload: {
 		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('folders.move.workflow.error.title'));
+	} finally {
+		loading.value = false;
 	}
 };
 
@@ -1806,9 +1818,11 @@ const onNameSubmit = async (name: string) => {
 					</span>
 				</template>
 				<N8nButton
+					variant="outline"
 					size="small"
+					iconOnly
 					icon="folder-plus"
-					type="tertiary"
+					:aria-label="i18n.baseText('workflows.addFolder')"
 					data-test-id="add-folder-button"
 					:class="$style['add-folder-button']"
 					:disabled="!showRegisteredCommunityCTA && (readOnlyEnv || !hasPermissionToCreateFolders)"
@@ -1827,9 +1841,9 @@ const onNameSubmit = async (name: string) => {
 				<template #trailingContent>
 					<div :class="$style['callout-trailing-content']">
 						<N8nButton
+							variant="subtle"
 							data-test-id="easy-ai-button"
 							size="small"
-							type="secondary"
 							@click="createAIStarterWorkflows('callout')"
 						>
 							{{ i18n.baseText('generic.startNow') }}
@@ -1865,9 +1879,9 @@ const onNameSubmit = async (name: string) => {
 				<template #trailingContent>
 					<div :class="$style['callout-trailing-content']">
 						<N8nButton
+							variant="subtle"
 							data-test-id="easy-ai-button"
 							size="small"
-							type="secondary"
 							@click="handleCreateReadyToRunWorkflows('callout')"
 						>
 							{{ i18n.baseText('generic.startNow') }}

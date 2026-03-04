@@ -46,7 +46,11 @@ function assertIsError(error: unknown): asserts error is Error {
 	}
 }
 
-test.describe('Sub-workflow Version Resolution', () => {
+test.describe('Sub-workflow Version Resolution', {
+	annotation: [
+		{ type: 'owner', description: 'Catalysts' },
+	],
+}, () => {
 	test('manual execution should use draft version of sub-workflow', async ({ api }) => {
 		const { workflowId: childWorkflowId, createdWorkflow: childWorkflow } =
 			await api.workflows.importWorkflowFromFile('subworkflow-version-child.json');

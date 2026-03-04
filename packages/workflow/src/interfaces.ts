@@ -465,6 +465,12 @@ export interface IExecuteContextData {
 
 export type IHttpRequestMethods = 'DELETE' | 'GET' | 'HEAD' | 'PATCH' | 'POST' | 'PUT';
 
+export type IgnoreStatusErrorConfig = {
+	ignore: true;
+	/** Ignore HTTP status errors except for the specified status codes */
+	except: number[];
+};
+
 /** used in helpers.httpRequest(WithAuthentication) */
 export interface IHttpRequestOptions {
 	url: string;
@@ -483,7 +489,7 @@ export interface IHttpRequestOptions {
 	encoding?: 'arraybuffer' | 'blob' | 'document' | 'json' | 'text' | 'stream';
 	skipSslCertificateValidation?: boolean;
 	returnFullResponse?: boolean;
-	ignoreHttpStatusErrors?: boolean;
+	ignoreHttpStatusErrors?: boolean | IgnoreStatusErrorConfig;
 	proxy?: {
 		host: string;
 		port: number;
@@ -1210,6 +1216,23 @@ export interface ITriggerFunctions
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 		donePromise?: IDeferredPromise<IRun>,
 	): void;
+	/**
+	 * Persist the current run as a failed execution and run the error workflow if configured.
+	 * Use this when the trigger or poller encounters an error during a run (e.g. processing failed)
+	 * but the listener/connection is still healthy. The workflow stays active.
+	 *
+	 * @param error - The execution error to persist and pass to the error workflow
+	 */
+	saveFailedExecution(error: ExecutionError): void;
+	/**
+	 * Report a fatal trigger/poller error: deactivate the workflow, run the error workflow if configured,
+	 * and queue the workflow for reactivation with backoff. Use this when the trigger or poller cannot
+	 * continue (e.g. connection lost, auth failure). The workflow is removed from active workflows
+	 * and will be retried periodically until it activates successfully.
+	 *
+	 * @param error - The error that caused the trigger or poller to fail
+	 * @param responsePromise - Optional. When provided (e.g. in manual trigger mode), used to signal the error to the caller
+	 */
 	emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
 	getNodeParameter(
 		parameterName: string,
@@ -1256,6 +1279,7 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getRequestObject(): express.Request;
 	getResponseObject(): express.Response;
 	getWebhookName(): string;
+	validateCookieAuth(cookieValue: string): Promise<void>;
 	nodeHelpers: NodeHelperFunctions;
 	helpers: RequestHelperFunctions & BaseHelperFunctions & BinaryHelperFunctions;
 }
@@ -1344,10 +1368,16 @@ export type ChatNodeMessageWithButtons = {
 
 export type ChatNodeMessage = ChatNodeMessageWithButtons | string;
 
+export interface INodeExecutionRedactionInfo {
+	redacted: true;
+	reason: string;
+}
+
 export interface INodeExecutionData {
 	[key: string]:
 		| IDataObject
 		| IBinaryKeyData
+		| INodeExecutionRedactionInfo
 		| IPairedItemData
 		| IPairedItemData[]
 		| NodeApiError
@@ -1363,6 +1393,12 @@ export interface INodeExecutionData {
 		subExecution: RelatedExecution;
 	};
 	evaluationData?: Record<string, GenericValue>;
+	/**
+	 * Redaction marker. Present when this item's data has been redacted.
+	 * Check `redaction.redacted` to determine if data was stripped,
+	 * and `redaction.reason` for why (e.g. "workflow_redaction_policy").
+	 */
+	redaction?: INodeExecutionRedactionInfo;
 	/**
 	 * Use this key to send a message to the chat.
 	 *
@@ -1511,6 +1547,7 @@ export interface INodePropertyTypeOptions {
 	numberPrecision?: number; // Supported by: number
 	fixedCollection?: {
 		itemTitle?: string; // Template for item titles, supports {{ $collection.item.value }}, {{ $collection.item.index }}
+		layout?: 'inline'; // Render sub-parameters side-by-side in a row
 	};
 	password?: boolean; // Supported by: string
 	rows?: number; // Supported by: string
@@ -1636,6 +1673,7 @@ export interface INodeProperties {
 	default: NodeParameterValueType;
 	description?: string;
 	hint?: string;
+	builderHint?: IParameterBuilderHint;
 	disabledOptions?: IDisplayOptions;
 	displayOptions?: IDisplayOptions;
 	options?: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>;
@@ -1733,6 +1771,7 @@ export interface INodePropertyOptions {
 	value: string | number | boolean;
 	action?: string;
 	description?: string;
+	builderHint?: IParameterBuilderHint;
 	routing?: INodePropertyRouting;
 	outputConnectionType?: NodeConnectionType;
 	inputSchema?: any;
@@ -1756,6 +1795,12 @@ export interface INodePropertyCollection {
 	displayName: string;
 	name: string;
 	values: INodeProperties[];
+	builderHint?: IParameterBuilderHint;
+}
+
+export interface IParameterBuilderHint {
+	message: string;
+	placeholderSupported?: boolean;
 }
 
 export interface INodePropertyValueExtractorBase {
@@ -2097,6 +2142,12 @@ export interface INodeTypeBaseDescription {
 	 * optionally replacing provided parts of the description
 	 */
 	usableAsTool?: true | UsableAsToolDescription;
+
+	/** Hints for workflow-sdk type generation, including explicit AI input requirements */
+	builderHint?: IBuilderHint;
+
+	/** Path to schema directory relative to nodes-base/dist/nodes/ (e.g., "Google/Drive") */
+	schemaPath?: string;
 }
 
 /**
@@ -2271,6 +2322,43 @@ export type NodeDefaults = Partial<{
 	name: string;
 }>;
 
+/**
+ * Configuration for a single AI subnode input in builderHint.inputs
+ */
+export interface IBuilderHintInputConfig {
+	/** Whether this AI input is required */
+	required: boolean;
+	/** Conditions under which this input should be available/required */
+	displayOptions?: IDisplayOptions;
+}
+
+/**
+ * Maps AI input types (e.g. 'ai_languageModel', 'ai_memory') to their configuration
+ */
+export type BuilderHintInputs = Partial<Record<AINodeConnectionType, IBuilderHintInputConfig>>;
+
+/**
+ * Related node with explanation of why it's related
+ */
+export interface IRelatedNode {
+	/** The node type ID (e.g., '@n8n/n8n-nodes-langchain.memoryBufferWindow') */
+	nodeType: string;
+	/** Brief explanation of why this node is related (e.g., 'Maintains conversation history') */
+	relationHint: string;
+}
+
+/**
+ * Builder hints for workflow-sdk type generation
+ */
+export interface IBuilderHint {
+	/** Explicit AI input requirements for accurate type generation */
+	inputs?: BuilderHintInputs;
+	/** General hint message for LLM workflow builders */
+	message?: string;
+	/** Related nodes that work together with this node */
+	relatedNodes?: IRelatedNode[];
+}
+
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number | number[];
 	defaults: NodeDefaults;
@@ -2308,6 +2396,8 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	 */
 	skipNameGeneration?: boolean;
 	features?: NodeFeaturesDefinition;
+	/** Hints for workflow-sdk type generation, including explicit AI input requirements */
+	builderHint?: IBuilderHint;
 }
 
 export type TriggerPanelDefinition = {
@@ -2611,6 +2701,8 @@ export interface ITaskData extends ITaskStartedData {
 	inputOverride?: ITaskDataConnections;
 	error?: ExecutionError;
 	metadata?: ITaskMetadata;
+	/** True when at least one credential used by this node was resolved dynamically */
+	usedDynamicCredentials?: boolean;
 }
 
 export interface ISourceData {
@@ -2733,6 +2825,22 @@ export interface IWorkflowExecutionDataProcess {
 	httpResponse?: express.Response; // Used for streaming responses
 	streamingEnabled?: boolean;
 	startedAt?: Date;
+
+	// MCP-specific fields for queue mode support
+	/** Whether this execution was triggered by an MCP tool call. */
+	isMcpExecution?: boolean;
+	/** Type of MCP execution: 'service' for MCP Service, 'trigger' for MCP Trigger Node. */
+	mcpType?: 'service' | 'trigger';
+	/** MCP session ID for routing responses back to the correct client. */
+	mcpSessionId?: string;
+	/** MCP message ID for correlating responses with requests. */
+	mcpMessageId?: string;
+	/** Tool call info for MCP Trigger executions in queue mode. */
+	mcpToolCall?: {
+		toolName: string;
+		arguments: Record<string, unknown>;
+		sourceNodeName?: string;
+	};
 }
 
 export interface ExecuteWorkflowOptions {
@@ -2830,6 +2938,12 @@ export interface IWorkflowExecuteAdditionalData {
 		executeData?: IExecuteData,
 	): Promise<Result<T, E>>;
 	getRunnerStatus?(taskType: string): { available: true } | { available: false; reason?: string };
+	validateCookieAuth?: (cookieValue: string) => Promise<void>;
+	/**
+	 * Mutable flag set to true during a node's execution if any credential was resolved
+	 * dynamically. Reset to false by the execution engine before each node runs.
+	 */
+	currentNodeUsedDynamicCredentials?: boolean;
 }
 
 export type WorkflowActivateMode =
@@ -2843,6 +2957,7 @@ export type WorkflowActivateMode =
 export namespace WorkflowSettings {
 	export type CallerPolicy = 'any' | 'none' | 'workflowsFromAList' | 'workflowsFromSameOwner';
 	export type SaveDataExecution = 'DEFAULT' | 'all' | 'none';
+	export type RedactionPolicy = 'none' | 'all' | 'non-manual';
 }
 
 export type WorkflowSettingsBinaryMode = typeof BINARY_MODE_SEPARATE | typeof BINARY_MODE_COMBINED;
@@ -2863,6 +2978,7 @@ export interface IWorkflowSettings {
 	timeSavedMode?: 'fixed' | 'dynamic';
 	availableInMCP?: boolean;
 	credentialResolverId?: string;
+	redactionPolicy?: WorkflowSettings.RedactionPolicy;
 }
 
 export interface WorkflowFEMeta {
@@ -2999,7 +3115,6 @@ export interface INodeGraphItem {
 	operation?: string;
 	domain?: string; // HTTP Request node v1
 	domain_base?: string; // HTTP Request node v2
-	domain_path?: string; // HTTP Request node v2
 	position: [number, number];
 	mode?: string;
 	credential_type?: string; // HTTP Request node v2

@@ -3,6 +3,7 @@ import {
 	type LoginRequestDto,
 	type PasswordUpdateRequestDto,
 	type SettingsUpdateRequestDto,
+	type UserSelfSettingsUpdateRequestDto,
 	type UserUpdateRequestDto,
 	type User,
 	ROLE,
@@ -71,6 +72,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	const isInstanceOwner = computed(() => _isInstanceOwner(currentUser.value));
 
 	const isAdmin = computed(() => _isAdmin(currentUser.value));
+
+	const isAdminOrOwner = computed(() => isInstanceOwner.value || isAdmin.value);
 
 	const mfaEnabled = computed(() => currentUser.value?.mfaEnabled ?? false);
 
@@ -298,7 +301,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		});
 	};
 
-	const updateUserSettings = async (settings: SettingsUpdateRequestDto) => {
+	const updateUserSettings = async (settings: UserSelfSettingsUpdateRequestDto) => {
 		const updatedSettings = await usersApi.updateCurrentUserSettings(
 			rootStore.restApiContext,
 			settings,
@@ -458,6 +461,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		isDefaultUser,
 		isInstanceOwner,
 		isAdmin,
+		isAdminOrOwner,
 		mfaEnabled,
 		globalRoleName,
 		personalizedNodeTypes,

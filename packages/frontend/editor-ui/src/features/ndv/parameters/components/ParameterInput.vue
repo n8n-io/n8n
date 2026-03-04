@@ -4,12 +4,7 @@ import { computedAsync, useDebounceFn } from '@vueuse/core';
 
 import get from 'lodash/get';
 
-import type {
-	INodeUi,
-	INodeUpdatePropertiesInformation,
-	IUpdateInformation,
-	InputSize,
-} from '@/Interface';
+import type { INodeUpdatePropertiesInformation, IUpdateInformation, InputSize } from '@/Interface';
 import type {
 	CodeExecutionMode,
 	EditorType,
@@ -25,6 +20,7 @@ import {
 	CREDENTIAL_EMPTY_VALUE,
 	IconOrEmojiSchema,
 	isResourceLocatorValue,
+	jsonParse,
 	NodeHelpers,
 	resolveRelativePath,
 } from 'n8n-workflow';
@@ -112,7 +108,9 @@ import {
 	N8nInputNumber,
 	N8nOption,
 	N8nSelect,
+	N8nSwitch2,
 } from '@n8n/design-system';
+import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { isPlaceholderValue } from '@/features/ai/assistant/composables/useBuilderTodos';
 
@@ -184,6 +182,7 @@ const focusPanelStore = useFocusPanelStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const projectsStore = useProjectsStore();
 const builderStore = useBuilderStore();
+const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 
@@ -201,6 +200,7 @@ const remoteParameterOptionsLoadingIssues = ref<string | null>(null);
 const textEditDialogVisible = ref(false);
 const editDialogClosing = ref(false);
 const tempValue = ref('');
+const jsonValidationError = ref<string | null>(null);
 const activeCredentialType = ref('');
 const dateTimePickerOptions = ref({
 	shortcuts: [
@@ -235,10 +235,12 @@ const isFocused = ref(false);
 // Track when we're switching modes to prevent spurious focus events
 const isSwitchingMode = ref(false);
 
-const contextNode = expressionLocalResolveCtx?.value?.workflow.getNode(
-	expressionLocalResolveCtx.value.nodeName,
-);
-const node = computed(() => contextNode ?? ndvStore.activeNode ?? undefined);
+const node = computed(() => {
+	const contextNode = expressionLocalResolveCtx?.value?.workflow.getNode(
+		expressionLocalResolveCtx.value.nodeName,
+	);
+	return contextNode ?? ndvStore.activeNode ?? undefined;
+});
 const nodeType = computed(
 	() => node.value && nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion),
 );
@@ -263,6 +265,10 @@ const isSecretParameter = computed<boolean>(() => {
 	return getTypeOption('password') === true;
 });
 
+const isJsonPasswordField = computed<boolean>(() => {
+	return props.parameter.type === 'json' && isSecretParameter.value;
+});
+
 const hasRemoteMethod = computed<boolean>(() => {
 	return !!getTypeOption('loadOptionsMethod') || !!getTypeOption('loadOptions');
 });
@@ -275,7 +281,12 @@ const parameterOptions = computed(() => {
 });
 
 const modelValueString = computed<string>(() => {
-	return props.modelValue as string;
+	const value = props.modelValue;
+	// For json type parameters, stringify objects to prevent [object object] display
+	if (props.parameter.type === 'json' && typeof value === 'object' && value !== null) {
+		return JSON.stringify(value);
+	}
+	return value as string;
 });
 
 const modelValueResourceLocator = computed<INodeParameterResourceLocator>(() => {
@@ -397,7 +408,7 @@ const displayValue = computed(() => {
 	if (returnValue !== undefined && returnValue !== null && props.parameter.type === 'string') {
 		const rows = editorRows.value;
 		if (rows === undefined || rows === 1) {
-			returnValue = (returnValue as string).toString().replace(/\n/, '|');
+			returnValue = (returnValue as string).toString().replace(/\n/g, '|');
 		}
 	}
 
@@ -432,7 +443,7 @@ const dependentParametersValues = computedAsync(async () => {
 	}
 
 	// Get the resolved parameter values of the current node
-	const currentNodeParameters = ndvStore.activeNode?.parameters;
+	const currentNodeParameters = node.value?.parameters;
 	try {
 		const resolvedNodeParameters = await workflowHelpers.resolveParameter(currentNodeParameters);
 
@@ -467,6 +478,12 @@ const getStringInputType = computed(() => {
 });
 
 const getIssues = computed<string[]>(() => {
+	const validationError = jsonValidationError.value;
+
+	if (validationError) {
+		return [validationError];
+	}
+
 	if (props.hideIssues || !node.value) {
 		return [];
 	}
@@ -575,6 +592,10 @@ const isSwitch = computed(
 	() => props.parameter.type === 'boolean' && !isModelValueExpression.value,
 );
 
+const switchLabel = computed(() =>
+	i18n.nodeText(node.value?.type).inputLabelDisplayName(props.parameter, props.path),
+);
+
 const isTextarea = computed(
 	() => props.parameter.type === 'string' && editorRows.value !== undefined,
 );
@@ -587,6 +608,9 @@ const parameterInputClasses = computed(() => {
 
 	if (isSwitch.value) {
 		classes['parameter-switch'] = true;
+		if (isCollectionOverhaulEnabled.value) {
+			classes['inline-switch-mode'] = true;
+		}
 	} else {
 		classes['parameter-value-container'] = true;
 	}
@@ -730,7 +754,7 @@ async function loadRemoteParameterOptions() {
 	// Get the resolved parameter values of the current node
 
 	try {
-		const currentNodeParameters = (ndvStore.activeNode as INodeUi).parameters;
+		const currentNodeParameters = node.value?.parameters;
 		const resolvedNodeParameters = (await workflowHelpers.resolveRequiredParameters(
 			props.parameter,
 			currentNodeParameters,
@@ -749,6 +773,7 @@ async function loadRemoteParameterOptions() {
 			currentNodeParameters: resolvedNodeParameters,
 			credentials: node.value.credentials,
 			projectId: projectsStore.currentProjectId,
+			workflowId: workflowsStore.workflowId,
 		});
 
 		remoteParameterOptions.value = remoteParameterOptions.value.concat(options);
@@ -1063,7 +1088,37 @@ function onResourceLocatorDrop(data: string) {
 	emit('drop', data);
 }
 
+function validateJsonPassword(value: string) {
+	if (!isJsonPasswordField.value || isModelValueExpression.value) {
+		jsonValidationError.value = null;
+		return;
+	}
+
+	if (!value || !value.trim()) {
+		jsonValidationError.value = null;
+		return;
+	}
+
+	try {
+		jsonParse(value);
+		jsonValidationError.value = null;
+	} catch (error) {
+		jsonValidationError.value = i18n.baseText('parameterInput.invalidJson');
+	}
+}
+
+function onJsonPasswordFieldChange(value: string) {
+	validateJsonPassword(value);
+	onUpdateTextInputDebounced(value);
+}
+
 function onUpdateTextInput(value: string) {
+	if (
+		props.parameter.type === 'string' &&
+		(editorRows.value === undefined || editorRows.value === 1)
+	) {
+		value = value.replace(/\|/g, '\n');
+	}
 	valueChanged(value);
 	onTextInputChange(value);
 }
@@ -1208,7 +1263,7 @@ const isSingleLineInput = computed(() => {
 
 defineExpose({
 	isSingleLineInput,
-	displaysIssues: displayIssues.value,
+	displaysIssues: displayIssues,
 	focusInput: async () => await setFocus(),
 	selectInput: () => selectInput(),
 });
@@ -1383,7 +1438,7 @@ onUpdated(async () => {
 				:button-tooltip="
 					parameter.placeholder || i18n.baseText('parameterInput.iconPicker.tooltip')
 				"
-				button-size="large"
+				:button-size="hideLabel ? 'small' : 'large'"
 				:is-read-only="isReadOnly"
 				@update:model-value="valueChanged"
 				@focus="setFocus"
@@ -1473,7 +1528,7 @@ onUpdated(async () => {
 						/>
 
 						<JsonEditor
-							v-else-if="parameter.type === 'json' && codeEditDialogVisible"
+							v-else-if="parameter.type === 'json' && codeEditDialogVisible && !isSecretParameter"
 							:model-value="modelValueString"
 							:is-read-only="isReadOnly"
 							:rows="editorRows"
@@ -1616,7 +1671,7 @@ onUpdated(async () => {
 				</JsEditor>
 
 				<JsonEditor
-					v-else-if="parameter.type === 'json' && !codeEditDialogVisible"
+					v-else-if="parameter.type === 'json' && !codeEditDialogVisible && !isSecretParameter"
 					:model-value="modelValueString"
 					:is-read-only="isReadOnly"
 					:rows="editorRows"
@@ -1664,7 +1719,11 @@ onUpdated(async () => {
 					:title="displayTitle"
 					:placeholder="getPlaceholder()"
 					data-test-id="parameter-input-field"
-					@update:model-value="onUpdateTextInputDebounced($event)"
+					@update:model-value="
+						isJsonPasswordField
+							? onJsonPasswordFieldChange($event)
+							: onUpdateTextInputDebounced($event)
+					"
 					@keydown.stop
 					@focus="setFocus"
 					@blur="onBlur"
@@ -1859,7 +1918,23 @@ onUpdated(async () => {
 				</N8nOption>
 			</N8nSelect>
 
-			<!-- temporary state of booleans while data is mapped -->
+			<N8nInput
+				v-else-if="parameter.type === 'boolean' && isCollectionOverhaulEnabled && droppable"
+				:size="inputSize"
+				:disabled="isReadOnly"
+				:title="displayTitle"
+				class="switch-droppable-input"
+			>
+				<template #prefix>
+					<N8nSwitch2
+						:model-value="Boolean(displayValue)"
+						:label="switchLabel"
+						:disabled="true"
+						size="small"
+					/>
+				</template>
+			</N8nInput>
+
 			<N8nInput
 				v-else-if="parameter.type === 'boolean' && droppable"
 				:size="inputSize"
@@ -1867,6 +1942,17 @@ onUpdated(async () => {
 				:disabled="isReadOnly"
 				:title="displayTitle"
 			/>
+
+			<N8nSwitch2
+				v-else-if="parameter.type === 'boolean' && isCollectionOverhaulEnabled"
+				ref="inputField"
+				:class="{ 'ph-no-capture': shouldRedactValue }"
+				:model-value="Boolean(displayValue)"
+				:disabled="isReadOnly"
+				size="small"
+				@update:model-value="valueChanged"
+			/>
+
 			<ElSwitch
 				v-else-if="parameter.type === 'boolean'"
 				ref="inputField"
@@ -1920,6 +2006,11 @@ onUpdated(async () => {
 	align-self: flex-start;
 	justify-items: center;
 	gap: var(--spacing--xs);
+
+	&.inline-switch-mode {
+		width: 100%;
+		gap: 0;
+	}
 }
 
 .parameter-input {
@@ -1944,11 +2035,11 @@ onUpdated(async () => {
 }
 
 .droppable {
-	--input--border-color: transparent;
-	--input--border-right-color: transparent;
+	--input--border-color: var(--ndv--droppable-parameter--color);
+	--input--border-right-color: var(--ndv--droppable-parameter--color);
+	--input--border-style: dashed;
+	--input--border-width: 1.5px;
 
-	textarea,
-	input,
 	.cm-editor {
 		border-color: transparent;
 		outline: 1.5px dashed var(--ndv--droppable-parameter--color);
@@ -1962,20 +2053,23 @@ onUpdated(async () => {
 	--input--border-right-color: var(--color--success);
 	--input--color--background: var(--color--foreground--tint-2);
 	--input--border-style: solid;
+	--input--border-width: 1px;
 
 	textarea,
 	input,
 	.cm-editor {
 		cursor: grabbing !important;
-		border-color: var(--color--success);
-		border-width: 1px;
-		outline: none;
-		transition: none;
 	}
 }
 
 .has-issues {
 	--input--border-color: var(--color--danger);
+}
+
+.switch-droppable-input {
+	.el-input__prefix {
+		left: var(--spacing--2xs);
+	}
 }
 
 .el-dropdown {
@@ -2087,6 +2181,7 @@ onUpdated(async () => {
 
 .tipVisible {
 	--input--radius--bottom-left: 0;
+	--input--radius--bottom-right: 0;
 	--input-triple--radius--bottom-right: 0;
 }
 

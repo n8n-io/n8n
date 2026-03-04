@@ -22,6 +22,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ProjectRole } from '@n8n/permissions';
+import { PERSONAL_SPACE_SHARING_SETTING } from '@n8n/permissions';
 import {
 	ApplicationError,
 	WorkflowActivationError,
@@ -32,6 +33,7 @@ import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
+import { SecuritySettingsService } from '@/services/security-settings.service';
 import { UserManagementMailer } from '@/user-management/email';
 import { createFolder } from '@test-integration/db/folders';
 
@@ -360,6 +362,136 @@ describe('PUT /workflows/:workflowId/share', () => {
 				expect.objectContaining({ projectId: project2.id, role: 'workflow:editor' }),
 			]),
 		);
+	});
+});
+
+describe('PUT /workflows/:workflowId/share - split share/unshare scopes', () => {
+	test('should allow owner to add new shares (share operation)', async () => {
+		const workflow = await createWorkflow({}, member);
+
+		const response = await authMemberAgent
+			.put(`/workflows/${workflow.id}/share`)
+			.send({ shareWithIds: [anotherMemberPersonalProject.id] });
+
+		expect(response.statusCode).toBe(200);
+
+		const sharedWorkflows = await getWorkflowSharing(workflow);
+		expect(sharedWorkflows).toHaveLength(2);
+	});
+
+	test('should allow owner to remove existing shares (unshare operation)', async () => {
+		const workflow = await createWorkflow({}, member);
+		await shareWorkflowWithUsers(workflow, [anotherMember]);
+
+		// Verify initial state: owner + 1 shared
+		const initialSharing = await getWorkflowSharing(workflow);
+		expect(initialSharing).toHaveLength(2);
+
+		// Send empty shareWithIds to remove all shares
+		const response = await authMemberAgent
+			.put(`/workflows/${workflow.id}/share`)
+			.send({ shareWithIds: [] });
+
+		expect(response.statusCode).toBe(200);
+
+		const sharedWorkflows = await getWorkflowSharing(workflow);
+		expect(sharedWorkflows).toHaveLength(1);
+	});
+
+	test('should allow both share and unshare in a single request', async () => {
+		const workflow = await createWorkflow({}, owner);
+		await shareWorkflowWithUsers(workflow, [member]);
+
+		// Replace member with anotherMember (unshare member, share anotherMember)
+		const response = await authOwnerAgent
+			.put(`/workflows/${workflow.id}/share`)
+			.send({ shareWithIds: [anotherMemberPersonalProject.id] });
+
+		expect(response.statusCode).toBe(200);
+
+		const sharedWorkflows = await getWorkflowSharing(workflow);
+		expect(sharedWorkflows).toHaveLength(2);
+		const projectIds = sharedWorkflows.map((sw) => sw.projectId);
+		expect(projectIds).toContain(anotherMemberPersonalProject.id);
+		expect(projectIds).not.toContain(memberPersonalProject.id);
+	});
+
+	describe('personal space sharing disabled', () => {
+		let securitySettingsService: SecuritySettingsService;
+
+		beforeEach(async () => {
+			securitySettingsService = Container.get(SecuritySettingsService);
+		});
+
+		test('should forbid adding new shares when personal space sharing is disabled', async () => {
+			await securitySettingsService.setPersonalSpaceSetting(PERSONAL_SPACE_SHARING_SETTING, false);
+
+			const workflow = await createWorkflow({}, member);
+
+			const response = await authMemberAgent
+				.put(`/workflows/${workflow.id}/share`)
+				.send({ shareWithIds: [anotherMemberPersonalProject.id] });
+
+			expect(response.statusCode).toBe(403);
+
+			const sharedWorkflows = await getWorkflowSharing(workflow);
+			expect(sharedWorkflows).toHaveLength(1);
+
+			// Re-enable for cleanup
+			await securitySettingsService.setPersonalSpaceSetting(PERSONAL_SPACE_SHARING_SETTING, true);
+		});
+
+		test('should allow removing existing shares when personal space sharing is disabled', async () => {
+			const workflow = await createWorkflow({}, member);
+			await shareWorkflowWithUsers(workflow, [anotherMember]);
+
+			// Verify initial state
+			const initialSharing = await getWorkflowSharing(workflow);
+			expect(initialSharing).toHaveLength(2);
+
+			// Disable personal space sharing
+			await securitySettingsService.setPersonalSpaceSetting(PERSONAL_SPACE_SHARING_SETTING, false);
+
+			// Unshare should still work
+			const response = await authMemberAgent
+				.put(`/workflows/${workflow.id}/share`)
+				.send({ shareWithIds: [] });
+
+			expect(response.statusCode).toBe(200);
+
+			const sharedWorkflows = await getWorkflowSharing(workflow);
+			expect(sharedWorkflows).toHaveLength(1);
+
+			// Re-enable for cleanup
+			await securitySettingsService.setPersonalSpaceSetting(PERSONAL_SPACE_SHARING_SETTING, true);
+		});
+
+		test('should forbid mixed share+unshare when user lacks share scope', async () => {
+			const workflow = await createWorkflow({}, member);
+			await shareWorkflowWithUsers(workflow, [anotherMember]);
+
+			// Disable sharing
+			await securitySettingsService.setPersonalSpaceSetting(PERSONAL_SPACE_SHARING_SETTING, false);
+
+			const tempUser = await createUser({ role: { slug: 'global:member' } });
+			const tempUserPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
+				tempUser.id,
+			);
+
+			// Try to unshare anotherMember AND share tempUser - should fail because of share
+			const response = await authMemberAgent
+				.put(`/workflows/${workflow.id}/share`)
+				.send({ shareWithIds: [tempUserPersonalProject.id] });
+
+			expect(response.statusCode).toBe(403);
+
+			// State should be unchanged
+			const sharedWorkflows = await getWorkflowSharing(workflow);
+			expect(sharedWorkflows).toHaveLength(2);
+
+			// Re-enable for cleanup
+			await securitySettingsService.setPersonalSpaceSetting(PERSONAL_SPACE_SHARING_SETTING, true);
+		});
 	});
 });
 
@@ -1209,8 +1341,8 @@ describe('PATCH /workflows/:workflowId', () => {
 				.patch(`/workflows/${id}`)
 				.send({ nodes: [], versionId: ownerVersionId, expectedChecksum: ownerChecksum });
 
-			expect(updateAttemptResponse.status).toBe(400);
-			expect(updateAttemptResponse.body.code).toBe(100);
+			expect(updateAttemptResponse.status).toBe(409);
+			expect(updateAttemptResponse.body.code).toBe(409);
 		});
 
 		it('should block member updating workflow nodes on interim update by owner', async () => {
@@ -1247,8 +1379,8 @@ describe('PATCH /workflows/:workflowId', () => {
 				.patch(`/workflows/${id}`)
 				.send({ nodes: [], versionId: memberVersionId, expectedChecksum: memberChecksum });
 
-			expect(updateAttemptResponse.status).toBe(400);
-			expect(updateAttemptResponse.body.code).toBe(100);
+			expect(updateAttemptResponse.status).toBe(409);
+			expect(updateAttemptResponse.body.code).toBe(409);
 		});
 
 		it('should block owner activation on interim activation by member', async () => {
@@ -1278,8 +1410,8 @@ describe('PATCH /workflows/:workflowId', () => {
 				expectedChecksum: ownerChecksum,
 			});
 
-			expect(activationAttemptResponse.status).toBe(400);
-			expect(activationAttemptResponse.body.code).toBe(100);
+			expect(activationAttemptResponse.status).toBe(409);
+			expect(activationAttemptResponse.body.code).toBe(409);
 		});
 
 		it('should block member activation on interim activation by owner', async () => {
@@ -1318,8 +1450,8 @@ describe('PATCH /workflows/:workflowId', () => {
 				expectedChecksum: memberChecksum,
 			});
 
-			expect(updateAttemptResponse.status).toBe(400);
-			expect(updateAttemptResponse.body.code).toBe(100);
+			expect(updateAttemptResponse.status).toBe(409);
+			expect(updateAttemptResponse.body.code).toBe(409);
 		});
 
 		it('should block member updating workflow settings on interim update by owner', async () => {
@@ -1351,8 +1483,8 @@ describe('PATCH /workflows/:workflowId', () => {
 				expectedChecksum: memberChecksum,
 			});
 
-			expect(updateAttemptResponse.status).toBe(400);
-			expect(updateAttemptResponse.body.code).toBe(100);
+			expect(updateAttemptResponse.status).toBe(409);
+			expect(updateAttemptResponse.body.code).toBe(409);
 		});
 
 		it('should block member updating workflow name on interim update by owner', async () => {
@@ -1384,8 +1516,8 @@ describe('PATCH /workflows/:workflowId', () => {
 				expectedChecksum: memberChecksum,
 			});
 
-			expect(updateAttemptResponse.status).toBe(400);
-			expect(updateAttemptResponse.body.code).toBe(100);
+			expect(updateAttemptResponse.status).toBe(409);
+			expect(updateAttemptResponse.body.code).toBe(409);
 		});
 	});
 
@@ -2175,5 +2307,46 @@ describe('POST /workflows/:workflowId/run', () => {
 		expect(response.body).toMatchObject({
 			message: 'User is missing a scope required to perform this action',
 		});
+	});
+
+	test('should always load the workflow from the database, ignoring request workflowData', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:editor');
+
+		const dbNode: INode = {
+			id: uuid(),
+			name: 'Start',
+			type: 'n8n-nodes-base.start',
+			parameters: {},
+			typeVersion: 1,
+			position: [240, 300],
+		};
+
+		const workflow = await createWorkflow({ nodes: [dbNode], connections: {} }, teamProject);
+
+		// Send tampered workflowData with an injected node
+		const tamperedWorkflowData = {
+			...workflow,
+			nodes: [
+				dbNode,
+				{
+					id: uuid(),
+					name: 'Injected',
+					type: 'n8n-nodes-base.noOp',
+					parameters: {},
+					typeVersion: 1,
+					position: [500, 300],
+				},
+			],
+		};
+
+		const response = await authMemberAgent
+			.post(`/workflows/${workflow.id}/run`)
+			.send({ workflowData: tamperedWorkflowData });
+
+		// The endpoint should NOT reject (the DB workflow exists and user has execute scope)
+		// It should use the DB version, not the tampered one
+		expect(response.status).not.toBe(403);
+		expect(response.status).not.toBe(404);
 	});
 });

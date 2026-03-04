@@ -1,21 +1,45 @@
 <script lang="ts" setup>
 import { computed, toRef } from 'vue';
 import SecretsProviderImage from './SecretsProviderImage.ee.vue';
-import { N8nActionToggle, N8nBadge, N8nCard, N8nHeading, N8nText } from '@n8n/design-system';
+import {
+	N8nActionToggle,
+	N8nBadge,
+	N8nCard,
+	N8nHeading,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import type { SecretProviderConnection, SecretProviderTypeResponse } from '@n8n/api-types';
 import { DateTime } from 'luxon';
 import { isDateObject } from '@/app/utils/typeGuards';
 import { useI18n } from '@n8n/i18n';
+import { useRBACStore } from '@/app/stores/rbac.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
+import { splitName } from '@/features/collaboration/projects/projects.utils';
+import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
+import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 const i18n = useI18n();
+const rbacStore = useRBACStore();
+const projectsStore = useProjectsStore();
+const settingsStore = useSettingsStore();
+const isProjectScopedSecretsEnabled =
+	settingsStore.moduleSettings['external-secrets']?.forProjects ?? false;
+
 const props = defineProps<{
 	provider: SecretProviderConnection;
 	providerTypeInfo?: SecretProviderTypeResponse;
+	project?: ProjectListItem | null;
 	canUpdate: boolean;
 }>();
 
 const emit = defineEmits<{
-	edit: [connectionId: string];
+	edit: [providerKey: string];
+	share: [providerKey: string];
+	reload: [providerKey: string];
+	delete: [providerKey: string];
 }>();
 
 const provider = toRef(props, 'provider');
@@ -33,25 +57,106 @@ const showDisconnectedBadge = computed(() => {
 	return provider.value.state === 'error';
 });
 
+const canDelete = computed(() => {
+	if (rbacStore.hasScope('externalSecretsProvider:delete')) return true;
+	if (provider.value.projects.length > 0) {
+		return provider.value.projects.every((p) => {
+			const project = projectsStore.myProjects.find((mp) => mp.id === p.id);
+			return project?.scopes?.includes('externalSecretsProvider:delete') ?? false;
+		});
+	}
+	return false;
+});
+
+const canSync = computed(() => {
+	if (rbacStore.hasScope('externalSecretsProvider:sync')) return true;
+	if (provider.value.projects.length > 0) {
+		return provider.value.projects.every((p) => {
+			const project = projectsStore.myProjects.find((mp) => mp.id === p.id);
+			return project?.scopes?.includes('externalSecretsProvider:sync') ?? false;
+		});
+	}
+	return false;
+});
+
+const isGlobal = computed(() => provider.value.projects.length === 0);
+
+const projectName = computed(() => {
+	if (props.project) {
+		const { name, email } = splitName(props.project.name ?? undefined);
+		return name ?? email ?? '';
+	}
+	return '';
+});
+
+const badgeIcon = computed<IconOrEmoji>(() => {
+	if (isGlobal.value) {
+		return { type: 'icon', value: 'globe' };
+	}
+	return isIconOrEmoji(props.project?.icon)
+		? props.project.icon
+		: { type: 'icon', value: 'layers' };
+});
+
+const badgeTooltip = computed(() => {
+	if (isGlobal.value) {
+		return i18n.baseText('settings.secretsProviderConnections.badge.tooltip.global');
+	}
+	return i18n.baseText('settings.secretsProviderConnections.badge.tooltip.project', {
+		interpolate: {
+			projectName: projectName.value,
+		},
+	});
+});
+
 const actionDropdownOptions = computed(() => {
 	if (!props.canUpdate) return [];
-	return [
+
+	const options = [
 		{
 			label: i18n.baseText('generic.edit'),
 			value: 'edit',
 		},
 	];
+	if (isProjectScopedSecretsEnabled) {
+		options.push({
+			label: i18n.baseText('settings.secretsProviderConnections.actions.share'),
+			value: 'share',
+		});
+	}
+
+	if (provider.value.state === 'connected' && canSync.value) {
+		options.push({
+			label: i18n.baseText('settings.externalSecrets.card.actionDropdown.reload'),
+			value: 'reload',
+		});
+	}
+
+	if (canDelete.value) {
+		options.push({
+			label: i18n.baseText('generic.delete'),
+			value: 'delete',
+		});
+	}
+
+	return options;
 });
 
 function onAction(action: string) {
 	if (action === 'edit') {
 		emit('edit', provider.value.name);
+	} else if (action === 'share') {
+		emit('share', provider.value.name);
+	} else if (action === 'reload') {
+		emit('reload', provider.value.name);
+	} else if (action === 'delete') {
+		emit('delete', provider.value.name);
 	}
 }
 </script>
 
 <template>
-	<N8nCard :class="$style.card" hoverable>
+	<N8nCard :class="$style.card">
 		<template v-if="providerTypeInfo" #prepend>
 			<SecretsProviderImage
 				:class="$style.providerImage"
@@ -83,17 +188,10 @@ function onAction(action: string) {
 				|
 				<span data-test-id="secrets-provider-secrets-count">
 					{{
-						provider.secretsCount === 1
-							? i18n.baseText('settings.externalSecrets.card.secretCount', {
-									interpolate: {
-										count: `${provider.secretsCount}`,
-									},
-								})
-							: i18n.baseText('settings.externalSecrets.card.secretsCount', {
-									interpolate: {
-										count: `${provider.secretsCount}`,
-									},
-								})
+						i18n.baseText('settings.externalSecrets.card.secretsCount', {
+							interpolate: { count: provider.secretsCount },
+							adjustToNumber: provider.secretsCount,
+						})
 					}}
 				</span>
 				|
@@ -109,6 +207,26 @@ function onAction(action: string) {
 			</N8nText>
 		</template>
 		<template #append>
+			<N8nTooltip :class="$style.cardBadge" placement="top">
+				<N8nBadge
+					:class="$style.badge"
+					theme="tertiary"
+					:data-test-id="
+						isGlobal ? 'secrets-provider-global-badge' : 'secrets-provider-project-badge'
+					"
+				>
+					<ProjectIcon :icon="badgeIcon" :border-less="true" size="mini" />
+					<span v-if="!isGlobal" v-n8n-truncate:20="projectName" :class="$style.nowrap">
+						{{ projectName }}
+					</span>
+					<span v-else>
+						{{ i18n.baseText('projects.badge.global') }}
+					</span>
+				</N8nBadge>
+				<template #content>
+					{{ badgeTooltip }}
+				</template>
+			</N8nTooltip>
 			<N8nActionToggle
 				:actions="actionDropdownOptions"
 				data-test-id="secrets-provider-action-toggle"
@@ -122,6 +240,12 @@ function onAction(action: string) {
 .card {
 	--card--padding: var(--spacing--2xs);
 	padding-left: var(--spacing--sm);
+	transition: box-shadow 0.3s ease;
+	cursor: pointer;
+
+	&:hover {
+		box-shadow: var(--shadow--card-hover);
+	}
 }
 
 .providerImage {
@@ -133,5 +257,27 @@ function onAction(action: string) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
+}
+
+.cardBadge {
+	margin-right: var(--spacing--3xs);
+}
+
+.badge {
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	background-color: var(--color--background--light-3);
+	border-color: var(--color--foreground);
+	height: var(--spacing--lg);
+	cursor: pointer;
+
+	& > span {
+		display: flex;
+		gap: var(--spacing--3xs);
+		align-items: center;
+	}
+}
+
+.nowrap {
+	white-space: nowrap !important;
 }
 </style>

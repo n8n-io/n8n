@@ -2,6 +2,7 @@ export * from './assert';
 export * from './event-bus';
 export * from './event-queue';
 export * from './retry';
+export * from './workflowId';
 export * from './number/smartDecimal';
 export * from './search/reRankSearchResults';
 export * from './search/sublimeSearch';

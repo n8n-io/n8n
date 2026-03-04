@@ -464,6 +464,79 @@ describe('WorkflowExecute', () => {
 		});
 	});
 
+	describe('workflowExecuteResume hook', () => {
+		const executionMode = 'manual';
+		const executionOrder = 'v1';
+		const nodeTypes = Helpers.NodeTypes();
+
+		test('should call workflowExecuteResume instead of workflowExecuteBefore when restartExecutionId is set', async () => {
+			// ARRANGE
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const node1 = createNodeData({ name: 'node1' });
+			const workflowInstance = new DirectedGraph()
+				.addNodes(trigger, node1)
+				.addConnections({ from: trigger, to: node1 })
+				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder } });
+
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>());
+			// Set restartExecutionId to simulate a resumed execution
+			additionalData.restartExecutionId = 'previous-execution-id';
+			const runHookSpy = jest.spyOn(additionalData.hooks!, 'runHook');
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
+
+			// ACT
+			await workflowExecute.run({ workflow: workflowInstance, startNode: trigger });
+
+			// ASSERT
+			const workflowHooks = runHookSpy.mock.calls.filter(
+				(call) =>
+					call[0] === 'workflowExecuteBefore' ||
+					call[0] === 'workflowExecuteAfter' ||
+					call[0] === 'workflowExecuteResume',
+			);
+
+			// Should have workflowExecuteResume instead of workflowExecuteBefore
+			expect(workflowHooks.map((hook) => hook[0])).toEqual([
+				'workflowExecuteResume',
+				'workflowExecuteAfter',
+			]);
+		});
+
+		test('should call workflowExecuteBefore when restartExecutionId is not set', async () => {
+			// ARRANGE
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const node1 = createNodeData({ name: 'node1' });
+			const workflowInstance = new DirectedGraph()
+				.addNodes(trigger, node1)
+				.addConnections({ from: trigger, to: node1 })
+				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder } });
+
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>());
+			// restartExecutionId is undefined by default
+			const runHookSpy = jest.spyOn(additionalData.hooks!, 'runHook');
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
+
+			// ACT
+			await workflowExecute.run({ workflow: workflowInstance, startNode: trigger });
+
+			// ASSERT
+			const workflowHooks = runHookSpy.mock.calls.filter(
+				(call) =>
+					call[0] === 'workflowExecuteBefore' ||
+					call[0] === 'workflowExecuteAfter' ||
+					call[0] === 'workflowExecuteResume',
+			);
+
+			// Should have workflowExecuteBefore, not workflowExecuteResume
+			expect(workflowHooks.map((hook) => hook[0])).toEqual([
+				'workflowExecuteBefore',
+				'workflowExecuteAfter',
+			]);
+		});
+	});
+
 	//run tests on json files from specified directory, default 'workflows'
 	//workflows must have pinned data that would be used to test output after execution
 	describe('run test workflows', () => {
@@ -473,6 +546,8 @@ describe('WorkflowExecute', () => {
 		const nodeTypes = Helpers.NodeTypes(Helpers.getNodeTypes(tests));
 
 		for (const testData of tests) {
+			// These tests execute real Code node sandboxes with retries, which can
+			// exceed the default 5s timeout on slow CI runners
 			test(testData.description, async () => {
 				const workflowInstance = new Workflow({
 					id: 'test',
@@ -529,8 +604,47 @@ describe('WorkflowExecute', () => {
 				expect(result.data.executionData!.runtimeData!.source).toEqual('manual');
 				expect(typeof result.data.executionData!.runtimeData!.establishedAt).toBe('number');
 				expect(result.data.executionData!.runtimeData!.establishedAt).toBeGreaterThan(0);
-			});
+			}, 15_000);
 		}
+	});
+
+	describe('run() destination filtering', () => {
+		const executionMode = 'manual';
+		const executionOrder = 'v1';
+		const nodeTypes = Helpers.NodeTypes();
+
+		test('includes non-main parent nodes in runNodeFilter when destination node is set', async () => {
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const agent = createNodeData({ name: 'agent' });
+			const tool = createNodeData({ name: 'tool' });
+
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, agent, tool)
+				.addConnections(
+					{ from: trigger, to: agent, type: NodeConnectionTypes.Main },
+					{ from: tool, to: agent, type: NodeConnectionTypes.AiTool },
+				)
+				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder } });
+
+			const workflowExecute = new WorkflowExecute(
+				Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>()),
+				executionMode,
+			);
+
+			await workflowExecute.run({
+				workflow,
+				startNode: trigger,
+				destinationNode: { nodeName: agent.name, mode: 'inclusive' },
+			});
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const runNodeFilter: string[] | undefined = (workflowExecute as any).runExecutionData
+				.startData?.runNodeFilter;
+			expect(runNodeFilter).toBeDefined();
+			expect(runNodeFilter).toContain(trigger.name);
+			expect(runNodeFilter).toContain(agent.name);
+			expect(runNodeFilter).toContain(tool.name);
+		});
 	});
 
 	describe('runPartialWorkflow2', () => {
@@ -2203,6 +2317,33 @@ describe('WorkflowExecute', () => {
 
 			expect(result?.[0][0].pairedItem).toEqual({ item: 0 });
 			expect(result?.[1][0].pairedItem).toEqual({ item: 0 });
+		});
+
+		test('should auto-fix pairedItem for single output from multiple inputs', () => {
+			// Simulates aggregating multiple items into one (e.g., Code node combining data)
+			const nodeOutput = [[{ json: { combined: 'result' } }]];
+			const executionData = mock<IExecuteData>({
+				data: { main: [[{ json: { a: 1 } }, { json: { b: 2 } }, { json: { c: 3 } }]] },
+			});
+
+			const result = workflowExecute.assignPairedItems(nodeOutput, executionData);
+
+			expect(result?.[0][0].pairedItem).toEqual({ item: 0 });
+		});
+
+		test('should not auto-fix when output count differs from input count (except single output)', () => {
+			// 2 inputs → 3 outputs: ambiguous, cannot auto-fix
+			const nodeOutput = [[{ json: { x: 1 } }, { json: { y: 2 } }, { json: { z: 3 } }]];
+			const executionData = mock<IExecuteData>({
+				data: { main: [[{ json: { a: 1 } }, { json: { b: 2 } }]] },
+			});
+
+			const result = workflowExecute.assignPairedItems(nodeOutput, executionData);
+
+			// pairedItem should remain undefined (not auto-fixed)
+			expect(result?.[0][0].pairedItem).toBeUndefined();
+			expect(result?.[0][1].pairedItem).toBeUndefined();
+			expect(result?.[0][2].pairedItem).toBeUndefined();
 		});
 	});
 

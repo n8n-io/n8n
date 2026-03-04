@@ -1,5 +1,13 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+import {
+	filterAuthorsOption,
+	filterBranchesOption,
+	filterGroupsOption,
+	filterTagsOption,
+	projectRLC,
+} from './common.descriptions';
+
 export const testOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -44,36 +52,13 @@ export const testFields: INodeProperties[] = [
 	//         test:getAll
 	// ----------------------------------
 	{
-		displayName: 'Project',
-		name: 'projectId',
-		type: 'resourceLocator',
-		default: { mode: 'list', value: '' },
-		required: true,
+		...projectRLC,
 		displayOptions: {
 			show: {
 				resource: ['test'],
 				operation: ['getAll'],
 			},
 		},
-		modes: [
-			{
-				displayName: 'From List',
-				name: 'list',
-				type: 'list',
-				placeholder: 'Select a project...',
-				typeOptions: {
-					searchListMethod: 'getProjects',
-					searchable: true,
-				},
-			},
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				placeholder: 'e.g. abc123',
-			},
-		],
-		description: 'The Currents project',
 	},
 	{
 		displayName: 'Date Start',
@@ -151,45 +136,9 @@ export const testFields: INodeProperties[] = [
 			},
 		},
 		options: [
-			{
-				displayName: 'Authors',
-				name: 'authors',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'query',
-						property: 'authors',
-					},
-				},
-				description: 'Filter by git author names (comma-separated for multiple)',
-			},
-			{
-				displayName: 'Branches',
-				name: 'branches',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'query',
-						property: 'branches',
-					},
-				},
-				description: 'Filter by branch names (comma-separated for multiple)',
-			},
-			{
-				displayName: 'Groups',
-				name: 'groups',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'query',
-						property: 'groups',
-					},
-				},
-				description: 'Filter by group names (comma-separated for multiple)',
-			},
+			filterAuthorsOption,
+			filterBranchesOption,
+			filterGroupsOption,
 			{
 				displayName: 'Minimum Executions',
 				name: 'minExecutions',
@@ -219,19 +168,7 @@ export const testFields: INodeProperties[] = [
 				},
 				description: 'Filter tests by spec file name (partial match)',
 			},
-			{
-				displayName: 'Tags',
-				name: 'tags',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'query',
-						property: 'tags',
-					},
-				},
-				description: 'Filter by tags (comma-separated for multiple)',
-			},
+			filterTagsOption,
 			{
 				displayName: 'Test State',
 				name: 'testState',
@@ -246,7 +183,7 @@ export const testFields: INodeProperties[] = [
 				routing: {
 					send: {
 						type: 'query',
-						property: 'test_state',
+						property: 'test_state[]',
 					},
 				},
 				description: 'Filter by test state',
@@ -285,13 +222,15 @@ export const testFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{ name: 'Duration', value: 'duration' },
-					{ name: 'Duration (Weighted)', value: 'duration_x_samples' },
+					{ name: 'Duration Delta', value: 'durationDelta' },
+					{ name: 'Duration Impact', value: 'durationXSamples' },
 					{ name: 'Executions', value: 'executions' },
-					{ name: 'Failure Rate Delta', value: 'failure_rate_delta' },
+					{ name: 'Failure Impact', value: 'failRateXSamples' },
+					{ name: 'Failure Rate Delta', value: 'failureRateDelta' },
 					{ name: 'Failures', value: 'failures' },
 					{ name: 'Flakiness', value: 'flakiness' },
-					{ name: 'Flakiness (Weighted)', value: 'flakiness_x_samples' },
-					{ name: 'Flakiness Rate Delta', value: 'flakiness_rate_delta' },
+					{ name: 'Flakiness Impact', value: 'flakinessXSamples' },
+					{ name: 'Flakiness Rate Delta', value: 'flakinessRateDelta' },
 					{ name: 'Passes', value: 'passes' },
 					{ name: 'Title', value: 'title' },
 				],
@@ -336,6 +275,21 @@ export const testFields: INodeProperties[] = [
 					},
 				},
 				description: 'Page number (0-indexed)',
+			},
+			{
+				displayName: 'Metric Settings',
+				name: 'metric_settings',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'query',
+						property: 'metric_settings',
+					},
+				},
+				description:
+					'Override which test statuses are included in metric calculations. JSON object with optional keys: executions, avgDuration, flakinessRate, failureRate. Each value is an array of status strings: passed, failed, pending, skipped. Example: {"executions":["failed","passed"],"failureRate":["failed"]}',
+				placeholder: '{"executions":["failed","passed"],"failureRate":["failed"]}',
 			},
 		],
 	},

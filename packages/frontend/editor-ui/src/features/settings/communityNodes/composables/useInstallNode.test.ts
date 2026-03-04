@@ -12,6 +12,7 @@ import { setActivePinia } from 'pinia';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useInstallNode } from './useInstallNode';
 import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 
 vi.mock('@/app/composables/useCanvasOperations', () => ({
 	useCanvasOperations: vi.fn().mockReturnValue({
@@ -25,6 +26,17 @@ vi.mock('@/app/composables/useToast', () => ({
 		showMessage: vi.fn(),
 	}),
 }));
+
+vi.mock('@/app/composables/useTelemetry', () => {
+	const track = vi.fn();
+	return {
+		useTelemetry: () => {
+			return {
+				track,
+			};
+		},
+	};
+});
 
 vi.mock('@n8n/i18n', () => ({
 	i18n: {
@@ -74,13 +86,22 @@ beforeEach(() => {
 
 	vi.mocked(useToast).mockReturnValue(toast);
 
+	Object.defineProperty(usersStore, 'isAdmin', {
+		value: true,
+		writable: true,
+	});
 	Object.defineProperty(usersStore, 'isInstanceOwner', {
+		value: false,
+		writable: true,
+	});
+	Object.defineProperty(usersStore, 'isAdminOrOwner', {
 		value: true,
 		writable: true,
 	});
 
 	vi.mocked(communityNodesStore.installPackage).mockResolvedValue(undefined);
 	vi.mocked(nodeTypesStore.getNodeTypes).mockResolvedValue(undefined);
+	vi.mocked(nodeTypesStore.fetchCommunityNodePreviews).mockResolvedValue(undefined);
 	vi.mocked(credentialsStore.fetchCredentialTypes).mockResolvedValue(undefined);
 	vi.mocked(nodeTypesStore.getCommunityNodeAttributes).mockResolvedValue({
 		npmVersion: '1.0.0',
@@ -119,8 +140,16 @@ beforeEach(() => {
 
 describe('useInstallNode', () => {
 	describe('installNode', () => {
-		it('should return error when user is not an owner', async () => {
+		it('should return error when user is not an owner or admin', async () => {
+			Object.defineProperty(usersStore, 'isAdmin', {
+				value: false,
+				writable: true,
+			});
 			Object.defineProperty(usersStore, 'isInstanceOwner', {
+				value: false,
+				writable: true,
+			});
+			Object.defineProperty(usersStore, 'isAdminOrOwner', {
 				value: false,
 				writable: true,
 			});
@@ -134,10 +163,42 @@ describe('useInstallNode', () => {
 
 			expect(result.success).toBe(false);
 			expect(result.error).toBeInstanceOf(Error);
-			expect(result.error?.message).toBe('User is not an owner');
+			expect(result.error?.message).toBe('User is not an owner or admin');
 			expect(showError).toHaveBeenCalledWith(
 				expect.any(Error),
 				'settings.communityNodes.messages.install.error',
+			);
+		});
+
+		it.each([
+			{ isAdmin: true, isInstanceOwner: false, label: 'admin' },
+			{ isAdmin: false, isInstanceOwner: true, label: 'instance owner' },
+		])('should allow installing when user is $label', async ({ isAdmin, isInstanceOwner }) => {
+			Object.defineProperty(usersStore, 'isAdmin', {
+				value: isAdmin,
+				writable: true,
+			});
+			Object.defineProperty(usersStore, 'isInstanceOwner', {
+				value: isInstanceOwner,
+				writable: true,
+			});
+			Object.defineProperty(usersStore, 'isAdminOrOwner', {
+				value: isAdmin || isInstanceOwner,
+				writable: true,
+			});
+			const { installNode } = useInstallNode();
+
+			const result = await installNode({
+				type: 'verified',
+				packageName: 'test-package',
+				nodeType: 'test-node',
+			});
+
+			expect(result.success).toBe(true);
+			expect(communityNodesStore.installPackage).toHaveBeenCalledWith(
+				'test-package',
+				true,
+				'1.0.0',
 			);
 		});
 
@@ -157,6 +218,7 @@ describe('useInstallNode', () => {
 				'1.0.0',
 			);
 			expect(nodeTypesStore.getNodeTypes).toHaveBeenCalled();
+			expect(nodeTypesStore.fetchCommunityNodePreviews).toHaveBeenCalled();
 			expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledWith(true);
 			expect(showMessage).toHaveBeenCalledWith({
 				title: 'settings.communityNodes.messages.install.success',
@@ -175,6 +237,7 @@ describe('useInstallNode', () => {
 			expect(result.success).toBe(true);
 			expect(communityNodesStore.installPackage).toHaveBeenCalledWith('test-package');
 			expect(nodeTypesStore.getNodeTypes).toHaveBeenCalled();
+			expect(nodeTypesStore.fetchCommunityNodePreviews).toHaveBeenCalled();
 			expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledWith(true);
 		});
 
@@ -309,6 +372,40 @@ describe('useInstallNode', () => {
 
 			expect(result.success).toBe(false);
 			expect(result.error).toBe(error);
+		});
+
+		it('should not track telemetry events when telemetry is not provided', async () => {
+			const { installNode } = useInstallNode();
+			const { track } = useTelemetry();
+
+			const result = await installNode({
+				type: 'unverified',
+				packageName: 'test-package',
+			});
+
+			expect(result.success).toBe(true);
+			expect(track).not.toHaveBeenCalled();
+		});
+
+		it('should track telemetry events when telemetry is provided', async () => {
+			const { installNode } = useInstallNode();
+			const { track } = useTelemetry();
+
+			const result = await installNode({
+				type: 'unverified',
+				packageName: 'test-package',
+				telemetry: {
+					hasQuickConnect: true,
+					source: 'node detail view',
+				},
+			});
+
+			expect(result.success).toBe(true);
+			expect(track).toHaveBeenCalledWith('user started cnr package install', {
+				input_string: 'test-package',
+				has_quick_connect: true,
+				source: 'node detail view',
+			});
 		});
 	});
 

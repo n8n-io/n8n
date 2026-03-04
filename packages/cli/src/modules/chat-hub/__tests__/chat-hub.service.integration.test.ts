@@ -4,27 +4,30 @@ import { mockInstance, testDb, testModules, createActiveWorkflow } from '@n8n/ba
 import type { User, CredentialsEntity } from '@n8n/db';
 import { ExecutionRepository, SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { saveCredential } from '@test-integration/db/credentials';
-import { createAdmin, createMember } from '@test-integration/db/users';
-import { retryUntil } from '@test-integration/retry-until';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings, BinaryDataService, Cipher } from 'n8n-core';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	CHAT_NODE_TYPE,
+	MEMORY_MANAGER_NODE_TYPE,
 	createRunExecutionData,
 	NodeOperationError,
 	type INode,
 	type IRun,
+	type IWorkflowBase,
 } from 'n8n-workflow';
 
+import { saveCredential } from '@test-integration/db/credentials';
+import { createAdmin, createMember } from '@test-integration/db/users';
+import { retryUntil } from '@test-integration/retry-until';
+
 import { ActiveExecutions } from '../../../active-executions';
-import { ExecutionPersistence } from '../../../executions/execution-persistence';
 import { ChatExecutionManager } from '../../../chat/chat-execution-manager';
+import { ExecutionPersistence } from '../../../executions/execution-persistence';
 import { Push } from '../../../push';
 import { WorkflowExecutionService } from '../../../workflows/workflow-execution.service';
 import { ChatHubAgentRepository } from '../chat-hub-agent.repository';
-import * as chatHubConstants from '../chat-hub.constants';
+import { ChatHubExecutionWatcherService } from '../chat-hub-execution-watcher.service';
 import { ChatHubService } from '../chat-hub.service';
 import { ChatHubMessageRepository } from '../chat-message.repository';
 import { ChatHubSessionRepository } from '../chat-session.repository';
@@ -46,6 +49,7 @@ beforeEach(async () => {
 		'ChatHubMessage',
 		'ChatHubSession',
 		'ChatHubAgent',
+		'ChatHubTool',
 		'ExecutionEntity',
 		'WorkflowEntity',
 		'SharedCredentials',
@@ -103,28 +107,24 @@ describe('chatHub', () => {
 				ownerId: member.id,
 				title: 'session 1',
 				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
-				tools: [],
 			});
 			const session2 = await sessionsRepository.createChatSession({
 				id: crypto.randomUUID(),
 				ownerId: member.id,
 				title: 'session 2',
 				lastMessageAt: new Date('2025-01-02T00:00:00Z'),
-				tools: [],
 			});
 			const session3 = await sessionsRepository.createChatSession({
 				id: crypto.randomUUID(),
 				ownerId: member.id,
 				title: 'session 3',
 				lastMessageAt: new Date('2025-01-01T00:00:00Z'),
-				tools: [],
 			});
 			await sessionsRepository.createChatSession({
 				id: crypto.randomUUID(),
 				ownerId: admin.id,
 				title: 'admin session',
 				lastMessageAt: new Date('2025-01-01T00:00:00Z'),
-				tools: [],
 			});
 
 			const conversations = await chatHubService.getConversations(member.id, 20);
@@ -145,7 +145,6 @@ describe('chatHub', () => {
 				provider: 'openai',
 				model: 'gpt-4',
 				credentialId: null,
-				tools: [],
 			});
 
 			await sessionsRepository.createChatSession({
@@ -155,7 +154,6 @@ describe('chatHub', () => {
 				lastMessageAt: new Date('2025-01-01T00:00:00Z'),
 				provider: 'custom-agent',
 				agentId: agent.id,
-				tools: [],
 			});
 
 			const conversations = await chatHubService.getConversations(member.id, 20);
@@ -196,7 +194,6 @@ describe('chatHub', () => {
 				lastMessageAt: new Date('2025-01-01T00:00:00Z'),
 				provider: 'n8n',
 				workflowId: workflow.id,
-				tools: [],
 			});
 
 			const conversations = await chatHubService.getConversations(member.id, 20);
@@ -211,7 +208,6 @@ describe('chatHub', () => {
 					ownerId: member.id,
 					title: 'session 1',
 					lastMessageAt: new Date('2025-01-01T00:00:00Z'),
-					tools: [],
 				});
 
 				const conversations = await chatHubService.getConversations(member.id, 10);
@@ -227,7 +223,6 @@ describe('chatHub', () => {
 					ownerId: member.id,
 					title: 'session 1',
 					lastMessageAt: new Date('2025-01-05T00:00:00Z'),
-					tools: [],
 				});
 
 				const session2 = await sessionsRepository.createChatSession({
@@ -235,7 +230,6 @@ describe('chatHub', () => {
 					ownerId: member.id,
 					title: 'session 2',
 					lastMessageAt: new Date('2025-01-04T00:00:00Z'),
-					tools: [],
 				});
 
 				const session3 = await sessionsRepository.createChatSession({
@@ -243,7 +237,6 @@ describe('chatHub', () => {
 					ownerId: member.id,
 					title: 'session 3',
 					lastMessageAt: new Date('2025-01-03T00:00:00Z'),
-					tools: [],
 				});
 
 				const session4 = await sessionsRepository.createChatSession({
@@ -251,7 +244,6 @@ describe('chatHub', () => {
 					ownerId: member.id,
 					title: 'session 4',
 					lastMessageAt: new Date('2025-01-02T00:00:00Z'),
-					tools: [],
 				});
 
 				// First page
@@ -279,7 +271,6 @@ describe('chatHub', () => {
 					ownerId: member.id,
 					title: 'Session 1',
 					lastMessageAt: sameDate,
-					tools: [],
 				});
 
 				const session2 = await sessionsRepository.createChatSession({
@@ -287,7 +278,6 @@ describe('chatHub', () => {
 					ownerId: member.id,
 					title: 'Session 2',
 					lastMessageAt: sameDate,
-					tools: [],
 				});
 
 				const session3 = await sessionsRepository.createChatSession({
@@ -295,7 +285,6 @@ describe('chatHub', () => {
 					ownerId: member.id,
 					title: 'Session 3',
 					lastMessageAt: sameDate,
-					tools: [],
 				});
 
 				// Fetch first page
@@ -318,7 +307,6 @@ describe('chatHub', () => {
 					ownerId: member.id,
 					title: 'session 1',
 					lastMessageAt: new Date('2025-01-01T00:00:00Z'),
-					tools: [],
 				});
 
 				const nonExistentCursor = '00000000-0000-0000-0000-000000000000';
@@ -334,7 +322,6 @@ describe('chatHub', () => {
 					ownerId: member.id,
 					title: 'Member Session',
 					lastMessageAt: new Date('2025-01-02T00:00:00Z'),
-					tools: [],
 				});
 
 				const adminSession = await sessionsRepository.createChatSession({
@@ -342,7 +329,6 @@ describe('chatHub', () => {
 					ownerId: admin.id,
 					title: 'Admin Session',
 					lastMessageAt: new Date('2025-01-01T00:00:00Z'),
-					tools: [],
 				});
 
 				await expect(
@@ -356,7 +342,6 @@ describe('chatHub', () => {
 						id: crypto.randomUUID(),
 						ownerId: member.id,
 						title: 'Session with date',
-						tools: [],
 					}),
 				).rejects.toThrow();
 			});
@@ -376,7 +361,6 @@ describe('chatHub', () => {
 				ownerId: admin.id,
 				title: 'admin session',
 				lastMessageAt: new Date('2025-01-01T00:00:00Z'),
-				tools: [],
 			});
 			await expect(chatHubService.getConversation(member.id, session.id)).rejects.toThrow(
 				'Chat session not found',
@@ -389,7 +373,6 @@ describe('chatHub', () => {
 				ownerId: member.id,
 				title: 'session 1',
 				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
-				tools: [],
 			});
 			const conversation = await chatHubService.getConversation(member.id, session.id);
 			expect(conversation).toBeDefined();
@@ -408,7 +391,6 @@ describe('chatHub', () => {
 				provider: 'openai',
 				model: 'gpt-4',
 				credentialId: null,
-				tools: [],
 			});
 
 			const session = await sessionsRepository.createChatSession({
@@ -418,7 +400,6 @@ describe('chatHub', () => {
 				lastMessageAt: new Date('2025-01-01T00:00:00Z'),
 				provider: 'custom-agent',
 				agentId: agent.id,
-				tools: [],
 			});
 
 			const conversation = await chatHubService.getConversation(member.id, session.id);
@@ -459,7 +440,6 @@ describe('chatHub', () => {
 				lastMessageAt: new Date('2025-01-01T00:00:00Z'),
 				provider: 'n8n',
 				workflowId: workflow.id,
-				tools: [],
 			});
 
 			const conversation = await chatHubService.getConversation(member.id, session.id);
@@ -473,7 +453,6 @@ describe('chatHub', () => {
 				ownerId: member.id,
 				title: 'session 1',
 				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
-				tools: [],
 			});
 			const ids = [
 				crypto.randomUUID(),
@@ -527,13 +506,13 @@ describe('chatHub', () => {
 			} = response;
 
 			expect(Object.keys(messages)).toHaveLength(4);
-			expect(messages[ids[0]].content).toBe('message 1');
+			expect(messages[ids[0]].content[0].content).toBe('message 1');
 			expect(messages[ids[0]].type).toBe('human');
-			expect(messages[ids[1]].content).toBe('message 2');
+			expect(messages[ids[1]].content[0].content).toBe('message 2');
 			expect(messages[ids[1]].type).toBe('ai');
-			expect(messages[ids[2]].content).toBe('message 3');
+			expect(messages[ids[2]].content[0].content).toBe('message 3');
 			expect(messages[ids[2]].type).toBe('human');
-			expect(messages[ids[3]].content).toBe('message 4');
+			expect(messages[ids[3]].content[0].content).toBe('message 4');
 			expect(messages[ids[3]].type).toBe('ai');
 		});
 
@@ -552,7 +531,6 @@ describe('chatHub', () => {
 				ownerId: member.id,
 				title: 'session 1',
 				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
-				tools: [],
 			});
 			await messagesRepository.createChatMessage({
 				id: ids[0],
@@ -619,12 +597,12 @@ describe('chatHub', () => {
 			} = response;
 
 			expect(Object.keys(messages)).toHaveLength(6);
-			expect(messages[ids[0]].content).toBe('message 1');
-			expect(messages[ids[1]].content).toBe('message 2');
-			expect(messages[ids[2]].content).toBe('message 3a');
-			expect(messages[ids[3]].content).toBe('message 4a');
-			expect(messages[ids[4]].content).toBe('message 3b');
-			expect(messages[ids[5]].content).toBe('message 4b');
+			expect(messages[ids[0]].content[0].content).toBe('message 1');
+			expect(messages[ids[1]].content[0].content).toBe('message 2');
+			expect(messages[ids[2]].content[0].content).toBe('message 3a');
+			expect(messages[ids[3]].content[0].content).toBe('message 4a');
+			expect(messages[ids[4]].content[0].content).toBe('message 3b');
+			expect(messages[ids[5]].content[0].content).toBe('message 4b');
 			expect(messages[ids[4]].previousMessageId).toBe(ids[1]);
 		});
 
@@ -640,7 +618,6 @@ describe('chatHub', () => {
 				ownerId: member.id,
 				title: 'session 1',
 				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
-				tools: [],
 			});
 
 			await messagesRepository.createChatMessage({
@@ -706,7 +683,6 @@ describe('chatHub', () => {
 				ownerId: member.id,
 				title: 'session 1',
 				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
-				tools: [],
 			});
 			await messagesRepository.createChatMessage({
 				id: ids[0],
@@ -789,7 +765,6 @@ describe('chatHub', () => {
 				ownerId: member.id,
 				title: 'session 1',
 				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
-				tools: [],
 			});
 			await messagesRepository.createChatMessage({
 				id: ids[0],
@@ -983,7 +958,6 @@ describe('chatHub', () => {
 							anthropicApi: { id: anthropicCredential.id, name: anthropicCredential.name },
 						},
 						previousMessageId: null,
-						tools: [],
 						attachments: [],
 					},
 					{
@@ -1051,7 +1025,6 @@ describe('chatHub', () => {
 							anthropicApi: { id: anthropicCredential.id, name: anthropicCredential.name },
 						},
 						previousMessageId: null,
-						tools: [],
 						attachments: [],
 					},
 					{
@@ -1131,7 +1104,6 @@ describe('chatHub', () => {
 							anthropicApi: { id: anthropicCredential.id, name: anthropicCredential.name },
 						},
 						previousMessageId: null,
-						tools: [],
 						attachments: [],
 					},
 					{
@@ -1180,7 +1152,6 @@ describe('chatHub', () => {
 							anthropicApi: { id: anthropicCredential.id, name: anthropicCredential.name },
 						},
 						previousMessageId: null,
-						tools: [],
 						attachments: [],
 					},
 					{
@@ -1233,7 +1204,8 @@ describe('chatHub', () => {
 			});
 		});
 
-		describe('n8n workflow agents', () => {
+		describe('regenerateAIMessage', () => {
+			let anthropicCredential: CredentialsEntity;
 			let sessionId: string;
 			let messageId: string;
 
@@ -1243,10 +1215,8 @@ describe('chatHub', () => {
 			>;
 			let finishRun = (_: IRun) => {};
 
-			beforeEach(() => {
+			beforeEach(async () => {
 				jest.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(false);
-
-				// Mock settings repository
 				jest.spyOn(settingsRepository, 'findByKey').mockResolvedValue(null);
 
 				spyExecute = jest.spyOn(Container.get(WorkflowExecutionService), 'executeChatWorkflow');
@@ -1259,6 +1229,169 @@ describe('chatHub', () => {
 							finishRun = r;
 						});
 					});
+
+				anthropicCredential = await saveCredential(
+					{
+						name: 'Test Anthropic Credential',
+						type: 'anthropicApi',
+						data: { apiKey: 'test-api-key' },
+					},
+					{ user: member, role: 'credential:owner' },
+				);
+
+				sessionId = crypto.randomUUID();
+				messageId = crypto.randomUUID();
+			});
+
+			it('should not include the last human message in restored memory history', async () => {
+				// Step 1: Send a human message and get an AI response
+				spyExecute.mockImplementationOnce(async (_user, workflowData, executionData, stream) => {
+					const executionId = await executionPersistence.create({
+						finished: false,
+						mode: 'chat',
+						status: 'running',
+						workflowId: workflowData.id,
+						data: executionData,
+						workflowData,
+					});
+
+					setTimeout(() => stream!.write('{"type":"begin","metadata":{}}\n'));
+					setTimeout(() =>
+						stream!.write('{"type":"item","content":"AI response","metadata":{}}\n'),
+					);
+					setTimeout(() => stream!.write('{"type":"end","metadata":{}}\n'));
+					setTimeout(() => stream!.end());
+					setTimeout(async () => {
+						await executionRepository.updateExistingExecution(executionId, { status: 'success' });
+					});
+					setTimeout(() => finishRun({} as IRun));
+
+					return { executionId };
+				});
+
+				// Title generation mock — needed because sendHumanMessage triggers it for new sessions
+				spyExecute.mockRejectedValueOnce(Error());
+
+				await chatHubService.sendHumanMessage(
+					member,
+					{
+						userId: member.id,
+						sessionId,
+						messageId,
+						message: 'Hello',
+						model: { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022' },
+						credentials: {
+							anthropicApi: { id: anthropicCredential.id, name: anthropicCredential.name },
+						},
+						previousMessageId: null,
+						attachments: [],
+					},
+					{
+						authToken: 'authtoken',
+						method: 'POST',
+						endpoint: '/api/chat/message',
+					},
+				);
+
+				// Wait for the AI response to be persisted
+				const messages = await retryUntil(async () => {
+					const messages = await messagesRepository.getManyBySessionId(sessionId);
+					expect(messages.length).toBeGreaterThanOrEqual(2);
+					expect(messages[1]?.status).toBe('success');
+					return messages;
+				});
+
+				const aiMessageId = messages[1].id;
+
+				// Step 2: Regenerate the AI message — capture the workflow
+				let capturedWorkflowData: IWorkflowBase | undefined;
+				spyExecute.mockImplementationOnce(async (_user, workflowData, executionData, stream) => {
+					capturedWorkflowData = workflowData;
+
+					const executionId = await executionPersistence.create({
+						finished: false,
+						mode: 'chat',
+						status: 'running',
+						workflowId: workflowData.id,
+						data: executionData,
+						workflowData,
+					});
+
+					setTimeout(() => stream!.write('{"type":"begin","metadata":{}}\n'));
+					setTimeout(() =>
+						stream!.write('{"type":"item","content":"Regenerated","metadata":{}}\n'),
+					);
+					setTimeout(() => stream!.write('{"type":"end","metadata":{}}\n'));
+					setTimeout(() => stream!.end());
+					setTimeout(async () => {
+						await executionRepository.updateExistingExecution(executionId, { status: 'success' });
+					});
+					setTimeout(() => finishRun({} as IRun));
+
+					return { executionId };
+				});
+
+				await chatHubService.regenerateAIMessage(
+					member,
+					{
+						userId: member.id,
+						sessionId,
+						retryId: aiMessageId,
+						model: { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022' },
+						credentials: {
+							anthropicApi: { id: anthropicCredential.id, name: anthropicCredential.name },
+						},
+					},
+					{
+						authToken: 'authtoken',
+						method: 'POST',
+						endpoint: '/api/chat/message',
+					},
+				);
+
+				await retryUntil(async () => {
+					expect(capturedWorkflowData).toBeDefined();
+				});
+
+				// Verify the "Restore Chat Memory" node does NOT contain the human message
+				// The human message is already replayed via the chat trigger input,
+				// so including it in memory would cause the agent to see it twice
+				const restoreMemoryNode = capturedWorkflowData!.nodes.find(
+					(n) => n.type === MEMORY_MANAGER_NODE_TYPE && n.name === 'Restore Chat Memory',
+				);
+				expect(restoreMemoryNode).toBeDefined();
+
+				const messageValues = (
+					restoreMemoryNode!.parameters as {
+						messages: { messageValues: Array<{ type: string; message: string }> };
+					}
+				).messages.messageValues;
+
+				// Memory should be empty — the human message "Hello" should NOT be in the history
+				// because it's sent as the current chat input, not as part of memory restoration
+				const userMessages = messageValues.filter((m) => m.type === 'user');
+				expect(userMessages).toHaveLength(0);
+			});
+		});
+
+		describe('n8n workflow agents', () => {
+			let sessionId: string;
+			let messageId: string;
+			let watcherService: ChatHubExecutionWatcherService;
+
+			let spyExecute: jest.SpyInstance<
+				ReturnType<WorkflowExecutionService['executeChatWorkflow']>,
+				Parameters<WorkflowExecutionService['executeChatWorkflow']>
+			>;
+
+			beforeEach(() => {
+				jest.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(false);
+
+				// Mock settings repository
+				jest.spyOn(settingsRepository, 'findByKey').mockResolvedValue(null);
+
+				spyExecute = jest.spyOn(Container.get(WorkflowExecutionService), 'executeChatWorkflow');
+				watcherService = Container.get(ChatHubExecutionWatcherService);
 
 				sessionId = crypto.randomUUID();
 				messageId = crypto.randomUUID();
@@ -1313,37 +1446,53 @@ describe('chatHub', () => {
 							workflowData,
 						});
 
-						// Update execution with successful result
+						const runData: IRun = {
+							finished: true,
+							status: 'success',
+							mode: 'webhook',
+							startedAt: new Date(),
+							stoppedAt: new Date(),
+							storedAt: 'db',
+							data: createRunExecutionData({
+								resultData: {
+									runData: {
+										'AI Agent': [
+											{
+												startTime: Date.now(),
+												executionTime: 100,
+												executionIndex: 0,
+												executionStatus: 'success',
+												source: [],
+												data: {
+													main: [
+														[
+															{
+																json: { output: 'Hello from last node!' },
+															},
+														],
+													],
+												},
+											},
+										],
+									},
+									lastNodeExecuted: 'AI Agent',
+								},
+							}),
+						};
+
+						// Update execution and trigger watcher
 						setTimeout(async () => {
 							await executionRepository.updateExistingExecution(executionId, {
 								status: 'success',
-								data: createRunExecutionData({
-									resultData: {
-										runData: {
-											'AI Agent': [
-												{
-													startTime: Date.now(),
-													executionTime: 100,
-													executionIndex: 0,
-													executionStatus: 'success',
-													source: [],
-													data: {
-														main: [
-															[
-																{
-																	json: { output: 'Hello from last node!' },
-																},
-															],
-														],
-													},
-												},
-											],
-										},
-										lastNodeExecuted: 'AI Agent',
-									},
-								}),
+								data: runData.data,
 							});
-							finishRun({} as IRun);
+							await watcherService.handleWorkflowExecuteAfter({
+								type: 'workflowExecuteAfter',
+								workflow: workflowData,
+								runData,
+								newStaticData: {},
+								executionId,
+							});
 						});
 
 						return { executionId };
@@ -1359,7 +1508,6 @@ describe('chatHub', () => {
 							model: { provider: 'n8n', workflowId: workflow.id },
 							credentials: {},
 							previousMessageId: null,
-							tools: [],
 							attachments: [],
 						},
 						{
@@ -1434,18 +1582,34 @@ describe('chatHub', () => {
 							workflowData,
 						});
 
-						// Update execution with error result - ensure execution is updated BEFORE finishRun
+						const runData: IRun = {
+							finished: true,
+							status: 'error',
+							mode: 'webhook',
+							startedAt: new Date(),
+							stoppedAt: new Date(),
+							storedAt: 'db',
+							data: createRunExecutionData({
+								resultData: {
+									runData: {},
+									error: new NodeOperationError(mock<INode>(), 'Workflow execution failed'),
+								},
+							}),
+						};
+
+						// Update execution and trigger watcher
 						setTimeout(async () => {
 							await executionRepository.updateExistingExecution(executionId, {
 								status: 'error',
-								data: createRunExecutionData({
-									resultData: {
-										runData: {},
-										error: new NodeOperationError(mock<INode>(), 'Workflow execution failed'),
-									},
-								}),
+								data: runData.data,
 							});
-							finishRun({} as IRun);
+							await watcherService.handleWorkflowExecuteAfter({
+								type: 'workflowExecuteAfter',
+								workflow: workflowData,
+								runData,
+								newStaticData: {},
+								executionId,
+							});
 						});
 
 						return { executionId };
@@ -1461,7 +1625,6 @@ describe('chatHub', () => {
 							model: { provider: 'n8n', workflowId: workflow.id },
 							credentials: {},
 							previousMessageId: null,
-							tools: [],
 							attachments: [],
 						},
 						{
@@ -1532,36 +1695,52 @@ describe('chatHub', () => {
 							workflowData,
 						});
 
+						const runData: IRun = {
+							finished: true,
+							status: 'success',
+							mode: 'webhook',
+							startedAt: new Date(),
+							stoppedAt: new Date(),
+							storedAt: 'db',
+							data: createRunExecutionData({
+								resultData: {
+									runData: {
+										'Code Node': [
+											{
+												startTime: Date.now(),
+												executionTime: 100,
+												executionIndex: 0,
+												executionStatus: 'success',
+												source: [],
+												data: {
+													main: [
+														[
+															{
+																json: { text: 'Response from text field!' },
+															},
+														],
+													],
+												},
+											},
+										],
+									},
+									lastNodeExecuted: 'Code Node',
+								},
+							}),
+						};
+
 						setTimeout(async () => {
 							await executionRepository.updateExistingExecution(executionId, {
 								status: 'success',
-								data: createRunExecutionData({
-									resultData: {
-										runData: {
-											'Code Node': [
-												{
-													startTime: Date.now(),
-													executionTime: 100,
-													executionIndex: 0,
-													executionStatus: 'success',
-													source: [],
-													data: {
-														main: [
-															[
-																{
-																	json: { text: 'Response from text field!' },
-																},
-															],
-														],
-													},
-												},
-											],
-										},
-										lastNodeExecuted: 'Code Node',
-									},
-								}),
+								data: runData.data,
 							});
-							finishRun({} as IRun);
+							await watcherService.handleWorkflowExecuteAfter({
+								type: 'workflowExecuteAfter',
+								workflow: workflowData,
+								runData,
+								newStaticData: {},
+								executionId,
+							});
 						});
 
 						return { executionId };
@@ -1577,7 +1756,6 @@ describe('chatHub', () => {
 							model: { provider: 'n8n', workflowId: workflow.id },
 							credentials: {},
 							previousMessageId: null,
-							tools: [],
 							attachments: [],
 						},
 						{
@@ -1641,6 +1819,7 @@ describe('chatHub', () => {
 					);
 
 					let capturedExecutionId: string;
+					let capturedWorkflowData: IWorkflowBase;
 
 					// Mock initial execution - returns waiting status
 					spyExecute.mockImplementationOnce(async (_user, workflowData, executionData) => {
@@ -1653,38 +1832,55 @@ describe('chatHub', () => {
 							workflowData,
 						});
 						capturedExecutionId = executionId;
+						capturedWorkflowData = workflowData;
+
+						const runData: IRun = {
+							finished: false,
+							status: 'waiting',
+							mode: 'webhook',
+							startedAt: new Date(),
+							stoppedAt: new Date(),
+							storedAt: 'db',
+							data: createRunExecutionData({
+								resultData: {
+									runData: {
+										'Respond to Chat': [
+											{
+												startTime: Date.now(),
+												executionTime: 100,
+												executionIndex: 0,
+												executionStatus: 'success',
+												source: [],
+												data: {
+													main: [
+														[
+															{
+																json: {},
+																sendMessage: 'Intermediate message',
+															},
+														],
+													],
+												},
+											},
+										],
+									},
+									lastNodeExecuted: 'Respond to Chat',
+								},
+							}),
+						};
 
 						setTimeout(async () => {
 							await executionRepository.updateExistingExecution(executionId, {
 								status: 'waiting',
-								data: createRunExecutionData({
-									resultData: {
-										runData: {
-											'Respond to Chat': [
-												{
-													startTime: Date.now(),
-													executionTime: 100,
-													executionIndex: 0,
-													executionStatus: 'success',
-													source: [],
-													data: {
-														main: [
-															[
-																{
-																	json: {},
-																	sendMessage: 'Intermediate message',
-																},
-															],
-														],
-													},
-												},
-											],
-										},
-										lastNodeExecuted: 'Respond to Chat',
-									},
-								}),
+								data: runData.data,
 							});
-							finishRun({} as IRun);
+							await watcherService.handleWorkflowExecuteAfter({
+								type: 'workflowExecuteAfter',
+								workflow: workflowData,
+								runData,
+								newStaticData: {},
+								executionId,
+							});
 						});
 
 						return { executionId };
@@ -1693,37 +1889,53 @@ describe('chatHub', () => {
 					// Mock ChatExecutionManager.runWorkflow for the resume - updates to success
 					const executionManager = Container.get(ChatExecutionManager);
 					jest.spyOn(executionManager, 'runWorkflow').mockImplementationOnce(async () => {
+						const runData: IRun = {
+							finished: true,
+							status: 'success',
+							mode: 'webhook',
+							startedAt: new Date(),
+							stoppedAt: new Date(),
+							storedAt: 'db',
+							data: createRunExecutionData({
+								resultData: {
+									runData: {
+										'Respond to Chat': [
+											{
+												startTime: Date.now(),
+												executionTime: 100,
+												executionIndex: 0,
+												executionStatus: 'success',
+												source: [],
+												data: {
+													main: [
+														[
+															{
+																json: {},
+																sendMessage: 'Final message',
+															},
+														],
+													],
+												},
+											},
+										],
+									},
+									lastNodeExecuted: 'Respond to Chat',
+								},
+							}),
+						};
+
 						setTimeout(async () => {
 							await executionRepository.updateExistingExecution(capturedExecutionId, {
 								status: 'success',
-								data: createRunExecutionData({
-									resultData: {
-										runData: {
-											'Respond to Chat': [
-												{
-													startTime: Date.now(),
-													executionTime: 100,
-													executionIndex: 0,
-													executionStatus: 'success',
-													source: [],
-													data: {
-														main: [
-															[
-																{
-																	json: {},
-																	sendMessage: 'Final message',
-																},
-															],
-														],
-													},
-												},
-											],
-										},
-										lastNodeExecuted: 'Respond to Chat',
-									},
-								}),
+								data: runData.data,
 							});
-							finishRun({} as IRun);
+							await watcherService.handleWorkflowExecuteAfter({
+								type: 'workflowExecuteAfter',
+								workflow: capturedWorkflowData,
+								runData,
+								newStaticData: {},
+								executionId: capturedExecutionId,
+							});
 						});
 					});
 
@@ -1737,7 +1949,6 @@ describe('chatHub', () => {
 							model: { provider: 'n8n', workflowId: workflow.id },
 							credentials: {},
 							previousMessageId: null,
-							tools: [],
 							attachments: [],
 						},
 						{
@@ -1811,37 +2022,53 @@ describe('chatHub', () => {
 							workflowData,
 						});
 
+						const runData: IRun = {
+							finished: false,
+							status: 'waiting',
+							mode: 'webhook',
+							startedAt: new Date(),
+							stoppedAt: new Date(),
+							storedAt: 'db',
+							data: createRunExecutionData({
+								resultData: {
+									runData: {
+										'Respond to Chat': [
+											{
+												startTime: Date.now(),
+												executionTime: 100,
+												executionIndex: 0,
+												executionStatus: 'success',
+												source: [],
+												data: {
+													main: [
+														[
+															{
+																json: {},
+																sendMessage: 'Please provide input',
+															},
+														],
+													],
+												},
+											},
+										],
+									},
+									lastNodeExecuted: 'Respond to Chat',
+								},
+							}),
+						};
+
 						setTimeout(async () => {
 							await executionRepository.updateExistingExecution(executionId, {
 								status: 'waiting',
-								data: createRunExecutionData({
-									resultData: {
-										runData: {
-											'Respond to Chat': [
-												{
-													startTime: Date.now(),
-													executionTime: 100,
-													executionIndex: 0,
-													executionStatus: 'success',
-													source: [],
-													data: {
-														main: [
-															[
-																{
-																	json: {},
-																	sendMessage: 'Please provide input',
-																},
-															],
-														],
-													},
-												},
-											],
-										},
-										lastNodeExecuted: 'Respond to Chat',
-									},
-								}),
+								data: runData.data,
 							});
-							finishRun({} as IRun);
+							await watcherService.handleWorkflowExecuteAfter({
+								type: 'workflowExecuteAfter',
+								workflow: workflowData,
+								runData,
+								newStaticData: {},
+								executionId,
+							});
 						});
 
 						return { executionId };
@@ -1857,7 +2084,6 @@ describe('chatHub', () => {
 							model: { provider: 'n8n', workflowId: workflow.id },
 							credentials: {},
 							previousMessageId: null,
-							tools: [],
 							attachments: [],
 						},
 						{
@@ -1921,6 +2147,7 @@ describe('chatHub', () => {
 					);
 
 					let capturedExecutionId: string;
+					let capturedWorkflowData: IWorkflowBase;
 
 					// First message: workflow goes into waiting state
 					spyExecute.mockImplementationOnce(async (_user, workflowData, executionData) => {
@@ -1933,38 +2160,55 @@ describe('chatHub', () => {
 							workflowData,
 						});
 						capturedExecutionId = executionId;
+						capturedWorkflowData = workflowData;
+
+						const runData: IRun = {
+							finished: false,
+							status: 'waiting',
+							mode: 'webhook',
+							startedAt: new Date(),
+							stoppedAt: new Date(),
+							storedAt: 'db',
+							data: createRunExecutionData({
+								resultData: {
+									runData: {
+										'Respond to Chat': [
+											{
+												startTime: Date.now(),
+												executionTime: 100,
+												executionIndex: 0,
+												executionStatus: 'success',
+												source: [],
+												data: {
+													main: [
+														[
+															{
+																json: {},
+																sendMessage: 'What is your name?',
+															},
+														],
+													],
+												},
+											},
+										],
+									},
+									lastNodeExecuted: 'Respond to Chat',
+								},
+							}),
+						};
 
 						setTimeout(async () => {
 							await executionRepository.updateExistingExecution(executionId, {
 								status: 'waiting',
-								data: createRunExecutionData({
-									resultData: {
-										runData: {
-											'Respond to Chat': [
-												{
-													startTime: Date.now(),
-													executionTime: 100,
-													executionIndex: 0,
-													executionStatus: 'success',
-													source: [],
-													data: {
-														main: [
-															[
-																{
-																	json: {},
-																	sendMessage: 'What is your name?',
-																},
-															],
-														],
-													},
-												},
-											],
-										},
-										lastNodeExecuted: 'Respond to Chat',
-									},
-								}),
+								data: runData.data,
 							});
-							finishRun({} as IRun);
+							await watcherService.handleWorkflowExecuteAfter({
+								type: 'workflowExecuteAfter',
+								workflow: workflowData,
+								runData,
+								newStaticData: {},
+								executionId,
+							});
 						});
 
 						return { executionId };
@@ -1981,7 +2225,6 @@ describe('chatHub', () => {
 							model: { provider: 'n8n', workflowId: workflow.id },
 							credentials: {},
 							previousMessageId: null,
-							tools: [],
 							attachments: [],
 						},
 						{
@@ -2006,37 +2249,53 @@ describe('chatHub', () => {
 					const runWorkflowSpy = jest
 						.spyOn(executionManager, 'runWorkflow')
 						.mockImplementationOnce(async () => {
+							const runData: IRun = {
+								finished: true,
+								status: 'success',
+								mode: 'webhook',
+								startedAt: new Date(),
+								stoppedAt: new Date(),
+								storedAt: 'db',
+								data: createRunExecutionData({
+									resultData: {
+										runData: {
+											'Respond to Chat': [
+												{
+													startTime: Date.now(),
+													executionTime: 100,
+													executionIndex: 0,
+													executionStatus: 'success',
+													source: [],
+													data: {
+														main: [
+															[
+																{
+																	json: {},
+																	sendMessage: 'Nice to meet you, Alice!',
+																},
+															],
+														],
+													},
+												},
+											],
+										},
+										lastNodeExecuted: 'Respond to Chat',
+									},
+								}),
+							};
+
 							setTimeout(async () => {
 								await executionRepository.updateExistingExecution(capturedExecutionId, {
 									status: 'success',
-									data: createRunExecutionData({
-										resultData: {
-											runData: {
-												'Respond to Chat': [
-													{
-														startTime: Date.now(),
-														executionTime: 100,
-														executionIndex: 0,
-														executionStatus: 'success',
-														source: [],
-														data: {
-															main: [
-																[
-																	{
-																		json: {},
-																		sendMessage: 'Nice to meet you, Alice!',
-																	},
-																],
-															],
-														},
-													},
-												],
-											},
-											lastNodeExecuted: 'Respond to Chat',
-										},
-									}),
+									data: runData.data,
 								});
-								finishRun({} as IRun);
+								await watcherService.handleWorkflowExecuteAfter({
+									type: 'workflowExecuteAfter',
+									workflow: capturedWorkflowData,
+									runData,
+									newStaticData: {},
+									executionId: capturedExecutionId,
+								});
 							});
 						});
 
@@ -2052,7 +2311,6 @@ describe('chatHub', () => {
 							model: { provider: 'n8n', workflowId: workflow.id },
 							credentials: {},
 							previousMessageId: waitingMessageId, // Reference the waiting message
-							tools: [],
 							attachments: [],
 						},
 						{
@@ -2139,7 +2397,6 @@ describe('chatHub', () => {
 								model: { provider: 'n8n', workflowId: workflow.id },
 								credentials: {},
 								previousMessageId: null,
-								tools: [],
 								attachments: [],
 							},
 							{
@@ -2152,31 +2409,9 @@ describe('chatHub', () => {
 				});
 			});
 
-			describe('multi-main mode execution waiting', () => {
-				const TEST_POLL_INTERVAL = 50;
-				const originalPollInterval = chatHubConstants.EXECUTION_POLL_INTERVAL;
-
-				beforeEach(() => {
-					Object.defineProperty(chatHubConstants, 'EXECUTION_POLL_INTERVAL', {
-						value: TEST_POLL_INTERVAL,
-						writable: true,
-						configurable: true,
-					});
-				});
-
-				afterEach(() => {
-					Object.defineProperty(chatHubConstants, 'EXECUTION_POLL_INTERVAL', {
-						value: originalPollInterval,
-						writable: true,
-						configurable: true,
-					});
-				});
-
-				it('should poll and complete when execution finishes with "waiting" status', async () => {
+			describe('multi-main mode execution handling', () => {
+				it('should complete when execution finishes with "waiting" status', async () => {
 					jest.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(true);
-
-					// Spy on findSingleExecution to verify polling occurs
-					const findSingleExecutionSpy = jest.spyOn(executionRepository, 'findSingleExecution');
 
 					const workflow = await createActiveWorkflow(
 						{
@@ -2226,38 +2461,55 @@ describe('chatHub', () => {
 							workflowData,
 						});
 
-						// Update execution status to 'waiting' after multiple poll intervals
+						const runData: IRun = {
+							finished: false,
+							status: 'waiting',
+							mode: 'webhook',
+							startedAt: new Date(),
+							stoppedAt: new Date(),
+							storedAt: 'db',
+							data: createRunExecutionData({
+								resultData: {
+									runData: {
+										'Respond to Chat': [
+											{
+												startTime: Date.now(),
+												executionTime: 100,
+												executionIndex: 0,
+												executionStatus: 'success',
+												source: [],
+												data: {
+													main: [
+														[
+															{
+																json: {},
+																sendMessage: 'Waiting for your input',
+															},
+														],
+													],
+												},
+											},
+										],
+									},
+									lastNodeExecuted: 'Respond to Chat',
+								},
+							}),
+						};
+
+						// Trigger watcher service after updating execution
 						setTimeout(async () => {
 							await executionRepository.updateExistingExecution(executionId, {
 								status: 'waiting',
-								data: createRunExecutionData({
-									resultData: {
-										runData: {
-											'Respond to Chat': [
-												{
-													startTime: Date.now(),
-													executionTime: 100,
-													executionIndex: 0,
-													executionStatus: 'success',
-													source: [],
-													data: {
-														main: [
-															[
-																{
-																	json: {},
-																	sendMessage: 'Waiting for your input',
-																},
-															],
-														],
-													},
-												},
-											],
-										},
-										lastNodeExecuted: 'Respond to Chat',
-									},
-								}),
+								data: runData.data,
 							});
-						}, TEST_POLL_INTERVAL * 3);
+							await watcherService.handleWorkflowExecuteAfter({
+								type: 'workflowExecuteAfter',
+								workflow: workflowData,
+								runData,
+								newStaticData: {},
+								executionId,
+							});
+						});
 
 						return { executionId };
 					});
@@ -2272,7 +2524,6 @@ describe('chatHub', () => {
 							model: { provider: 'n8n', workflowId: workflow.id },
 							credentials: {},
 							previousMessageId: null,
-							tools: [],
 							attachments: [],
 						},
 						{
@@ -2295,17 +2546,10 @@ describe('chatHub', () => {
 					expect(messages[1]?.type).toBe('ai');
 					expect(messages[1]?.status).toBe('waiting');
 					expect(messages[1]?.content).toBe('Waiting for your input');
-
-					// Ensure polling happened
-					expect(findSingleExecutionSpy.mock.calls.length).toBeGreaterThanOrEqual(3);
-
-					findSingleExecutionSpy.mockRestore();
 				});
 
-				it('should poll and complete when execution finishes with "success" status', async () => {
+				it('should complete when execution finishes with "success" status', async () => {
 					jest.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(true);
-
-					const findSingleExecutionSpy = jest.spyOn(executionRepository, 'findSingleExecution');
 
 					const workflow = await createActiveWorkflow(
 						{
@@ -2352,37 +2596,54 @@ describe('chatHub', () => {
 							workflowData,
 						});
 
-						// Update execution status to 'success' after multiple poll intervals
+						const runData: IRun = {
+							finished: true,
+							status: 'success',
+							mode: 'webhook',
+							startedAt: new Date(),
+							stoppedAt: new Date(),
+							storedAt: 'db',
+							data: createRunExecutionData({
+								resultData: {
+									runData: {
+										'AI Agent': [
+											{
+												startTime: Date.now(),
+												executionTime: 100,
+												executionIndex: 0,
+												executionStatus: 'success',
+												source: [],
+												data: {
+													main: [
+														[
+															{
+																json: { output: 'Hello from multi-main!' },
+															},
+														],
+													],
+												},
+											},
+										],
+									},
+									lastNodeExecuted: 'AI Agent',
+								},
+							}),
+						};
+
+						// Trigger watcher service after updating execution
 						setTimeout(async () => {
 							await executionRepository.updateExistingExecution(executionId, {
 								status: 'success',
-								data: createRunExecutionData({
-									resultData: {
-										runData: {
-											'AI Agent': [
-												{
-													startTime: Date.now(),
-													executionTime: 100,
-													executionIndex: 0,
-													executionStatus: 'success',
-													source: [],
-													data: {
-														main: [
-															[
-																{
-																	json: { output: 'Hello from multi-main!' },
-																},
-															],
-														],
-													},
-												},
-											],
-										},
-										lastNodeExecuted: 'AI Agent',
-									},
-								}),
+								data: runData.data,
 							});
-						}, TEST_POLL_INTERVAL * 3);
+							await watcherService.handleWorkflowExecuteAfter({
+								type: 'workflowExecuteAfter',
+								workflow: workflowData,
+								runData,
+								newStaticData: {},
+								executionId,
+							});
+						});
 
 						return { executionId };
 					});
@@ -2397,7 +2658,6 @@ describe('chatHub', () => {
 							model: { provider: 'n8n', workflowId: workflow.id },
 							credentials: {},
 							previousMessageId: null,
-							tools: [],
 							attachments: [],
 						},
 						{
@@ -2420,17 +2680,10 @@ describe('chatHub', () => {
 					expect(messages[1]?.type).toBe('ai');
 					expect(messages[1]?.status).toBe('success');
 					expect(messages[1]?.content).toBe('Hello from multi-main!');
-
-					// Ensure polling happened
-					expect(findSingleExecutionSpy.mock.calls.length).toBeGreaterThanOrEqual(3);
-
-					findSingleExecutionSpy.mockRestore();
 				});
 
-				it('should poll and complete when execution finishes with "error" status', async () => {
+				it('should complete when execution finishes with "error" status', async () => {
 					jest.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(true);
-
-					const findSingleExecutionSpy = jest.spyOn(executionRepository, 'findSingleExecution');
 
 					const workflow = await createActiveWorkflow(
 						{
@@ -2477,18 +2730,35 @@ describe('chatHub', () => {
 							workflowData,
 						});
 
-						// Update execution status to 'error' after multiple poll intervals
+						const runData: IRun = {
+							finished: true,
+							status: 'error',
+							mode: 'webhook',
+							startedAt: new Date(),
+							stoppedAt: new Date(),
+							storedAt: 'db',
+							data: createRunExecutionData({
+								resultData: {
+									runData: {},
+									error: new NodeOperationError(mock<INode>(), 'Multi-main execution failed'),
+								},
+							}),
+						};
+
+						// Trigger watcher service after updating execution
 						setTimeout(async () => {
 							await executionRepository.updateExistingExecution(executionId, {
 								status: 'error',
-								data: createRunExecutionData({
-									resultData: {
-										runData: {},
-										error: new NodeOperationError(mock<INode>(), 'Multi-main execution failed'),
-									},
-								}),
+								data: runData.data,
 							});
-						}, TEST_POLL_INTERVAL * 3);
+							await watcherService.handleWorkflowExecuteAfter({
+								type: 'workflowExecuteAfter',
+								workflow: workflowData,
+								runData,
+								newStaticData: {},
+								executionId,
+							});
+						});
 
 						return { executionId };
 					});
@@ -2503,7 +2773,6 @@ describe('chatHub', () => {
 							model: { provider: 'n8n', workflowId: workflow.id },
 							credentials: {},
 							previousMessageId: null,
-							tools: [],
 							attachments: [],
 						},
 						{
@@ -2526,25 +2795,10 @@ describe('chatHub', () => {
 					expect(messages[1]?.type).toBe('ai');
 					expect(messages[1]?.status).toBe('error');
 					expect(messages[1]?.content).toBe('Multi-main execution failed');
-
-					// Ensure polling happened
-					expect(findSingleExecutionSpy.mock.calls.length).toBeGreaterThanOrEqual(3);
-
-					findSingleExecutionSpy.mockRestore();
 				});
 
-				it('should handle poll error by saving error to message when finding execution throws', async () => {
+				it('should handle execution error by saving error to message', async () => {
 					jest.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(true);
-
-					const findSingleExecution = executionRepository.findSingleExecution.bind(
-						executionRepository,
-					) as typeof executionRepository.findSingleExecution;
-
-					// Subsequent calls during polling throw
-					const findSingleExecutionSpy = jest
-						.spyOn(executionRepository, 'findSingleExecution')
-						.mockImplementationOnce(findSingleExecution)
-						.mockRejectedValue(new Error('Database error'));
 
 					const workflow = await createActiveWorkflow(
 						{
@@ -2591,6 +2845,36 @@ describe('chatHub', () => {
 							workflowData,
 						});
 
+						const runData: IRun = {
+							finished: true,
+							status: 'error',
+							mode: 'webhook',
+							startedAt: new Date(),
+							stoppedAt: new Date(),
+							storedAt: 'db',
+							data: createRunExecutionData({
+								resultData: {
+									runData: {},
+									error: new NodeOperationError(mock<INode>(), 'Database error'),
+								},
+							}),
+						};
+
+						// Trigger watcher service with error status
+						setTimeout(async () => {
+							await executionRepository.updateExistingExecution(executionId, {
+								status: 'error',
+								data: runData.data,
+							});
+							await watcherService.handleWorkflowExecuteAfter({
+								type: 'workflowExecuteAfter',
+								workflow: workflowData,
+								runData,
+								newStaticData: {},
+								executionId,
+							});
+						});
+
 						return { executionId };
 					});
 
@@ -2604,7 +2888,6 @@ describe('chatHub', () => {
 							model: { provider: 'n8n', workflowId: workflow.id },
 							credentials: {},
 							previousMessageId: null,
-							tools: [],
 							attachments: [],
 						},
 						{
@@ -2628,11 +2911,6 @@ describe('chatHub', () => {
 					expect(messages[1]?.type).toBe('ai');
 					expect(messages[1]?.status).toBe('error');
 					expect(messages[1]?.content).toBe('Database error');
-
-					// Ensure polling was attempted
-					expect(findSingleExecutionSpy.mock.calls.length).toBeGreaterThanOrEqual(1);
-
-					findSingleExecutionSpy.mockRestore();
 				});
 			});
 		});

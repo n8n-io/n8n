@@ -34,6 +34,10 @@ describe('eligibleModules', () => {
 			'sso-saml',
 			'log-streaming',
 			'ldap',
+			'quick-connect',
+			'workflow-builder',
+			'redaction',
+			'instance-registry',
 		]);
 	});
 
@@ -54,6 +58,10 @@ describe('eligibleModules', () => {
 			'sso-saml',
 			'log-streaming',
 			'ldap',
+			'quick-connect',
+			'workflow-builder',
+			'redaction',
+			'instance-registry',
 		]);
 	});
 

@@ -5,7 +5,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
+import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -39,6 +39,7 @@ import {
 	ExecutionCancelledError,
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
+	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
 	NodeOperationError,
 	OperationalError,
 	tryToParseUrl,
@@ -49,14 +50,14 @@ import {
 import { finished } from 'stream/promises';
 
 import { WebhookService } from './webhook.service';
-import type {
-	IWebhookResponseCallbackData,
-	WebhookRequest,
-	WebhookNodeResponseHeaders,
+import {
 	WebhookResponseHeaders,
-} from './webhook.types';
+	type WebhookNodeResponseHeaders,
+} from './webhook-response-headers';
+import type { IWebhookResponseCallbackData, WebhookRequest } from './webhook.types';
 
 import { ActiveExecutions } from '@/active-executions';
+import { AuthService } from '@/auth/auth.service';
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import { EventService } from '@/events/event.service';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -75,6 +76,43 @@ import { createStaticResponse, createStreamResponse } from '@/webhooks/webhook-r
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowRunner } from '@/workflow-runner';
+import merge from 'lodash/merge';
+
+// Type guards for MCP queue mode data validation
+interface McpToolCallPayload {
+	toolName: string;
+	arguments: Record<string, unknown>;
+	sourceNodeName?: string;
+}
+
+function isMcpToolCall(value: unknown): value is McpToolCallPayload {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'toolName' in value &&
+		typeof (value as Record<string, unknown>).toolName === 'string' &&
+		'arguments' in value &&
+		typeof (value as Record<string, unknown>).arguments === 'object'
+	);
+}
+
+interface McpListToolsRelayPayload {
+	sessionId: string;
+	messageId: string;
+	marker: { _listToolsRequest: boolean };
+}
+
+function isMcpListToolsRelay(value: unknown): value is McpListToolsRelayPayload {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'sessionId' in value &&
+		typeof (value as Record<string, unknown>).sessionId === 'string' &&
+		'messageId' in value &&
+		typeof (value as Record<string, unknown>).messageId === 'string' &&
+		'marker' in value
+	);
+}
 
 export function handleHostedChatResponse(
 	res: express.Response,
@@ -271,13 +309,13 @@ export function setupResponseNodePromise(
 		.then(async (response: IN8nHttpFullResponse) => {
 			const binaryData = (response.body as IDataObject)?.binaryData as IBinaryData;
 			if (binaryData?.id) {
-				res.header(response.headers);
+				WebhookResponseHeaders.fromObject(response.headers).applyToResponse(res);
 				const stream = await Container.get(BinaryDataService).getAsStream(binaryData.id);
 				stream.pipe(res, { end: false });
 				await finished(stream);
 				responseCallback(null, { noWebhookResponse: true });
 			} else if (Buffer.isBuffer(response.body)) {
-				res.header(response.headers);
+				WebhookResponseHeaders.fromObject(response.headers).applyToResponse(res);
 				res.end(response.body);
 				responseCallback(null, { noWebhookResponse: true });
 			} else {
@@ -327,6 +365,13 @@ export function prepareExecutionData(
 			source: null,
 		},
 	];
+
+	if (
+		workflowStartNode.type === MICROSOFT_AGENT365_TRIGGER_NODE_TYPE &&
+		runExecutionData?.executionData?.nodeExecutionStack
+	) {
+		merge(runExecutionData.executionData.nodeExecutionStack, nodeExecutionStack);
+	}
 
 	runExecutionData ??= createRunExecutionData({
 		executionData: {
@@ -441,6 +486,11 @@ export async function executeWebhook(
 	additionalData.httpRequest = req;
 	additionalData.httpResponse = res;
 
+	const authService = Container.get(AuthService);
+	additionalData.validateCookieAuth = async (token: string) => {
+		await authService.validateCookieToken(token);
+	};
+
 	let didSendResponse = false;
 	let runExecutionDataMerge = {};
 	try {
@@ -451,7 +501,9 @@ export async function executeWebhook(
 		await parseRequestBody(req, workflowStartNode, workflow, executionMode, additionalKeys);
 
 		// TODO: remove this hack, and make sure that execution data is properly created before the MCP trigger is executed
-		if (workflowStartNode.type === MCP_TRIGGER_NODE_TYPE) {
+		if (
+			[MCP_TRIGGER_NODE_TYPE, MICROSOFT_AGENT365_TRIGGER_NODE_TYPE].includes(workflowStartNode.type)
+		) {
 			// Initialize the data of the webhook node
 			const nodeExecutionStack: IExecuteData[] = [];
 			nodeExecutionStack.push({
@@ -527,9 +579,7 @@ export async function executeWebhook(
 
 		if (!res.headersSent && responseHeaders) {
 			// Only set given headers if they haven't been sent yet, e.g. for streaming
-			for (const [name, value] of responseHeaders.entries()) {
-				res.setHeader(name, value);
-			}
+			responseHeaders.applyToResponse(res);
 		}
 
 		if (webhookResultData.noWebhookResponse === true && !didSendResponse) {
@@ -596,6 +646,51 @@ export async function executeWebhook(
 		// When resuming from a wait node, copy over the pushRef from the execution-data
 		if (!runData.pushRef) {
 			runData.pushRef = runExecutionData.pushRef;
+		}
+
+		const executionsConfig = Container.get(ExecutionsConfig);
+		if (workflowStartNode.type === MCP_TRIGGER_NODE_TYPE && executionsConfig.mode === 'queue') {
+			const querySessionId = req.query?.sessionId;
+			const headerSessionId = req.headers['mcp-session-id'];
+			const mcpSessionId =
+				typeof querySessionId === 'string'
+					? querySessionId
+					: typeof headerSessionId === 'string'
+						? headerSessionId
+						: '';
+
+			const firstItem = webhookResultData.workflowData?.[0]?.[0];
+			const mcpMessageId =
+				(firstItem && 'json' in firstItem && typeof firstItem.json?.mcpMessageId === 'string'
+					? firstItem.json.mcpMessageId
+					: null) ?? `mcp-trigger-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+
+			runData.isMcpExecution = true;
+			runData.mcpType = 'trigger';
+			runData.mcpSessionId = mcpSessionId;
+			runData.mcpMessageId = mcpMessageId;
+
+			const mcpToolCallValue =
+				firstItem && 'json' in firstItem ? firstItem.json?.mcpToolCall : null;
+			if (isMcpToolCall(mcpToolCallValue)) {
+				runData.mcpToolCall = mcpToolCallValue;
+			}
+
+			// Handle MCP list tools relay - forward to main with SSE transport via pub/sub
+			const mcpListToolsRelayValue =
+				firstItem && 'json' in firstItem ? firstItem.json?.mcpListToolsRelay : null;
+			if (isMcpListToolsRelay(mcpListToolsRelayValue)) {
+				const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+				const publisher = Container.get(Publisher);
+				await publisher.publishMcpRelay({
+					sessionId: mcpListToolsRelayValue.sessionId,
+					messageId: mcpListToolsRelayValue.messageId,
+					response: mcpListToolsRelayValue.marker,
+				});
+				// Don't run workflow - the relay will be handled by the main with the transport
+				// Return undefined since no execution is started
+				return undefined;
+			}
 		}
 
 		let responsePromise: IDeferredPromise<IN8nHttpFullResponse> | undefined;
@@ -934,7 +1029,7 @@ async function parseRequestBody(
  * Evaluates the `responseHeaders` parameter of a webhook node
  */
 function evaluateResponseHeaders(context: WebhookExecutionContext): WebhookResponseHeaders {
-	const headers = new Map<string, string>();
+	const headers = new WebhookResponseHeaders();
 
 	if (context.webhookData.webhookDescription.responseHeaders === undefined) {
 		return headers;
@@ -944,12 +1039,8 @@ function evaluateResponseHeaders(context: WebhookExecutionContext): WebhookRespo
 		context.evaluateComplexWebhookDescriptionExpression<WebhookNodeResponseHeaders>(
 			'responseHeaders',
 		);
-	if (evaluatedHeaders?.entries === undefined) {
-		return headers;
-	}
-
-	for (const entry of evaluatedHeaders.entries) {
-		headers.set(entry.name.toLowerCase(), entry.value);
+	if (evaluatedHeaders) {
+		headers.addFromNodeHeaders(evaluatedHeaders);
 	}
 
 	return headers;

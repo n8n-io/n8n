@@ -1,106 +1,23 @@
+import { createComponentRenderer } from '@/__tests__/render';
+import type { MockedStore } from '@/__tests__/utils';
+import { mockedStore } from '@/__tests__/utils';
 import { screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
+import { createPinia, setActivePinia } from 'pinia';
 import { vi } from 'vitest';
-import type { ProjectRole, AllRolesMap } from '@n8n/permissions';
-import type { ActionDropdownItem } from '@n8n/design-system';
+import type { AllRolesMap, ProjectRole } from '@n8n/permissions';
 import ProjectMembersRoleCell from './ProjectMembersRoleCell.vue';
-import { createComponentRenderer } from '@/__tests__/render';
 import type { ProjectMemberData } from '../projects.types';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 
-// Mock N8nActionDropdown and other design system components
-vi.mock('@n8n/design-system', async (importOriginal) => {
-	const original = await importOriginal<object>();
-	return {
-		...original,
-		N8nActionDropdown: {
-			name: 'N8nActionDropdown',
-			props: {
-				items: { type: Array, required: true },
-				placement: { type: String },
-			},
-			emits: ['select', 'badge-click'],
-			methods: {
-				handleRadioChange(itemId: string) {
-					// @ts-expect-error - $emit exists at runtime
-					this.$emit('select', itemId);
-				},
-				handleBadgeClick(event: CustomEvent) {
-					// @ts-expect-error - $emit exists at runtime
-					this.$emit('badge-click', event.detail);
-				},
-			},
-			template: `
-				<div
-					data-test-id="project-member-role-dropdown"
-					@change="handleRadioChange($event.target.value)"
-					@badge-click="handleBadgeClick($event)"
-				>
-					<div data-test-id="activator">
-						<slot name="activator" />
-					</div>
-					<ul data-test-id="dropdown-menu">
-						<li v-for="item in items" :key="item.id">
-							<div
-								:data-test-id="'action-' + item.id"
-								:disabled="item.disabled"
-							>
-								<slot name="menuItem" v-bind="item" />
-							</div>
-						</li>
-					</ul>
-				</div>
-			`,
-		},
-		N8nText: {
-			name: 'N8nText',
-			props: {
-				color: { type: String },
-				size: { type: String },
-			},
-			template: '<span><slot /></span>',
-		},
-		N8nIcon: {
-			name: 'N8nIcon',
-			props: {
-				icon: { type: String, required: true },
-				size: { type: String },
-				color: { type: String },
-			},
-			template: '<i :data-icon="icon"></i>',
-		},
-	};
-});
-
-// Mock element-plus components
-vi.mock('element-plus', async (importOriginal) => {
-	const actual = await importOriginal<object>();
+vi.mock('vue-router', async () => {
+	const actual = await vi.importActual('vue-router');
 	return {
 		...actual,
-		ElRadio: {
-			name: 'ElRadio',
-			props: {
-				modelValue: {},
-				label: {},
-				disabled: { type: Boolean },
-			},
-			emits: ['update:model-value'],
-			template: `
-				<label>
-					<input
-						type="radio"
-						:value="label"
-						:checked="modelValue === label"
-						:disabled="disabled"
-						@change="$emit('update:model-value', label)"
-					/>
-					<slot />
-				</label>
-			`,
-		},
-		ElTooltip: {
-			name: 'ElTooltip',
-			template: '<div><slot /></div>',
-		},
+		useRouter: () => ({
+			push: vi.fn(),
+		}),
 	};
 });
 
@@ -125,45 +42,72 @@ const mockRoles = [
 		slug: 'project:admin',
 		displayName: 'Admin',
 		description: 'Can manage project settings and members',
+		systemRole: true,
+		licensed: true,
+		roleType: 'project',
+		scopes: [],
 	},
 	{
 		slug: 'project:editor',
 		displayName: 'Editor',
 		description: 'Can edit workflows and credentials',
+		systemRole: true,
+		licensed: true,
+		roleType: 'project',
+		scopes: [],
 	},
 	{
 		slug: 'project:viewer',
 		displayName: 'Viewer',
 		description: 'Can view workflows and executions',
+		systemRole: true,
+		licensed: true,
+		roleType: 'project',
+		scopes: [],
 	},
 	{
 		slug: 'project:personalOwner',
 		displayName: 'Personal Owner',
+		description: null,
+		systemRole: true,
+		licensed: true,
+		roleType: 'project',
+		scopes: [],
 	},
 ] as AllRolesMap['project'];
 
-const mockActions: Array<ActionDropdownItem<string>> = [
-	{ id: 'project:admin', label: 'Admin', description: 'Can manage project settings and members' },
-	{ id: 'project:editor', label: 'Editor', description: 'Can edit workflows and credentials' },
+const mockRolesWithCustom = [
+	...mockRoles,
 	{
-		id: 'project:viewer',
-		label: 'Viewer',
-		description: 'Can view workflows and executions',
-		disabled: true,
+		slug: 'project:customDeveloper',
+		displayName: 'Developer',
+		description: 'A custom developer role',
+		systemRole: false,
+		licensed: true,
+		roleType: 'project',
+		scopes: [],
 	},
-];
+] as AllRolesMap['project'];
 
-let renderComponent: ReturnType<typeof createComponentRenderer>;
+const renderComponent = createComponentRenderer(ProjectMembersRoleCell, {
+	props: {
+		data: mockMemberData,
+		roles: mockRoles,
+	},
+});
 
 describe('ProjectMembersRoleCell', () => {
+	let settingsStore: MockedStore<typeof useSettingsStore>;
+	let usersStore: MockedStore<typeof useUsersStore>;
+
 	beforeEach(() => {
-		renderComponent = createComponentRenderer(ProjectMembersRoleCell, {
-			props: {
-				data: mockMemberData,
-				roles: mockRoles,
-				actions: mockActions,
-			},
-		});
+		setActivePinia(createPinia());
+		settingsStore = mockedStore(useSettingsStore);
+		usersStore = mockedStore(useUsersStore);
+
+		vi.spyOn(settingsStore, 'isCustomRolesFeatureEnabled', 'get').mockReturnValue(true);
+		vi.spyOn(usersStore, 'isInstanceOwner', 'get').mockReturnValue(false);
+		vi.spyOn(usersStore, 'isAdmin', 'get').mockReturnValue(false);
 	});
 
 	afterEach(() => {
@@ -172,37 +116,27 @@ describe('ProjectMembersRoleCell', () => {
 
 	describe('Rendering', () => {
 		it('should render dropdown for editable roles', () => {
-			renderComponent();
+			const { getByTestId } = renderComponent();
 
-			expect(screen.getByTestId('project-member-role-dropdown')).toBeInTheDocument();
-			expect(screen.getByTestId('activator')).toBeInTheDocument();
-			expect(screen.getAllByText('Editor')).toHaveLength(2); // One in activator, one in dropdown
+			expect(getByTestId('project-member-role-dropdown')).toBeInTheDocument();
 		});
 
 		it('should render static text for non-editable roles (personalOwner)', () => {
-			renderComponent({
+			const { queryByTestId, getByText } = renderComponent({
 				props: {
 					data: mockPersonalOwnerData,
+					roles: mockRoles,
 				},
 			});
 
-			expect(screen.queryByTestId('project-member-role-dropdown')).not.toBeInTheDocument();
-			expect(screen.getByText('Personal Owner')).toBeInTheDocument();
+			expect(queryByTestId('project-member-role-dropdown')).not.toBeInTheDocument();
+			expect(getByText('Personal Owner')).toBeInTheDocument();
 		});
 
 		it('should display the correct role label', () => {
-			renderComponent();
+			const { getByText } = renderComponent();
 
-			expect(screen.getAllByText('Editor')).toHaveLength(2); // Shown in activator and dropdown option
-		});
-
-		it('should render chevron down icon in activator button', () => {
-			renderComponent();
-
-			const activatorButton = screen.getByTestId('activator').querySelector('button');
-			expect(activatorButton).toBeInTheDocument();
-			const icon = document.querySelector('i[data-icon="chevron-down"]');
-			expect(icon).toBeInTheDocument();
+			expect(getByText('Editor')).toBeInTheDocument();
 		});
 	});
 
@@ -216,13 +150,14 @@ describe('ProjectMembersRoleCell', () => {
 				role: 'project:admin' as ProjectRole,
 			};
 
-			renderComponent({
+			const { getByText } = renderComponent({
 				props: {
 					data: customData,
+					roles: mockRoles,
 				},
 			});
 
-			expect(screen.getAllByText('Admin')).toHaveLength(2); // Shown in activator and dropdown option
+			expect(getByText('Admin')).toBeInTheDocument();
 		});
 
 		it('should handle roles prop correctly', () => {
@@ -232,194 +167,100 @@ describe('ProjectMembersRoleCell', () => {
 					slug: 'project:wooooooooo',
 					displayName: 'Super Admin',
 					description: 'Ultimate power',
+					systemRole: false,
+					licensed: true,
+					roleType: 'project',
+					scopes: [],
 				},
-			];
+			] as AllRolesMap['project'];
 
-			renderComponent({
+			const { getByText } = renderComponent({
 				props: {
-					data: { ...mockMemberData, role: 'project:wooooooooo' },
+					data: { ...mockMemberData, role: 'project:wooooooooo' as ProjectRole },
 					roles: customRoles,
 				},
 			});
 
-			expect(screen.getAllByText('Super Admin')).toHaveLength(1); // Only shown in activator, not in dropdown (different role)
-		});
-
-		it('should pass actions to dropdown component', () => {
-			renderComponent();
-
-			// Check that all role action items are rendered
-			expect(screen.getByTestId('action-project:admin')).toBeInTheDocument();
-			expect(screen.getByTestId('action-project:editor')).toBeInTheDocument();
-			expect(screen.getByTestId('action-project:viewer')).toBeInTheDocument();
-		});
-	});
-
-	describe('Event Emissions', () => {
-		it('should emit update:role when role is selected', async () => {
-			const { emitted } = renderComponent();
-			const user = userEvent.setup();
-
-			const adminRadio = screen.getByRole('radio', { name: /Admin/i });
-			await user.click(adminRadio);
-
-			expect(emitted()).toHaveProperty('update:role');
-			expect(emitted()['update:role'][0]).toEqual([
-				{
-					role: 'project:admin',
-					userId: '123',
-				},
-			]);
-		});
-
-		it('should emit with correct userId from data prop', async () => {
-			const customData = { ...mockMemberData, id: 'custom-user-id' };
-			const { emitted } = renderComponent({
-				props: {
-					data: customData,
-				},
-			});
-			const user = userEvent.setup();
-
-			const adminRadio = screen.getByRole('radio', { name: /Admin/i });
-			await user.click(adminRadio);
-
-			expect(emitted()['update:role'][0]).toEqual([
-				{
-					role: 'project:admin',
-					userId: 'custom-user-id',
-				},
-			]);
+			expect(getByText('Super Admin')).toBeInTheDocument();
 		});
 	});
 
 	describe('Role Restrictions', () => {
 		it('should compute isEditable as false for personalOwner role', () => {
-			renderComponent({
+			const { queryByTestId, getByText } = renderComponent({
 				props: {
 					data: mockPersonalOwnerData,
+					roles: mockRoles,
 				},
 			});
 
 			// Should render static text instead of dropdown
-			expect(screen.queryByTestId('project-member-role-dropdown')).not.toBeInTheDocument();
-			expect(screen.getByText('Personal Owner')).toBeInTheDocument();
+			expect(queryByTestId('project-member-role-dropdown')).not.toBeInTheDocument();
+			expect(getByText('Personal Owner')).toBeInTheDocument();
 		});
 
 		it('should compute isEditable as true for non-personalOwner roles', () => {
 			const roles: ProjectRole[] = ['project:admin', 'project:editor', 'project:viewer'];
 
 			roles.forEach((role) => {
-				const { unmount } = renderComponent({
+				const { getByTestId, unmount } = renderComponent({
 					props: {
 						data: { ...mockMemberData, role },
+						roles: mockRoles,
 					},
 				});
 
-				expect(screen.getByTestId('project-member-role-dropdown')).toBeInTheDocument();
+				expect(getByTestId('project-member-role-dropdown')).toBeInTheDocument();
 				unmount();
 			});
 		});
 	});
 
-	describe('Role Selection UI', () => {
-		it('should render radio buttons for role selection', () => {
-			renderComponent();
-
-			// Radio buttons should be present for role actions (not remove)
-			const radioInputs = screen.getAllByRole('radio');
-			expect(radioInputs).toHaveLength(3); // admin, editor, viewer (remove is not a radio)
-		});
-
-		it('should handle disabled actions correctly', () => {
-			renderComponent();
-
-			const viewerDiv = screen.getByTestId('action-project:viewer');
-			expect(viewerDiv).toHaveAttribute('disabled');
-		});
-
-		it('should show role descriptions in radio labels', () => {
-			renderComponent();
-
-			expect(screen.getByText('Can manage project settings and members')).toBeInTheDocument();
-			expect(screen.getByText('Can edit workflows and credentials')).toBeInTheDocument();
-		});
-
-		it('should update selectedRole when radio button is changed', async () => {
-			renderComponent();
-			const user = userEvent.setup();
-
-			const adminRadio = screen.getByRole('radio', { name: /Admin/i });
-			await user.click(adminRadio);
-
-			expect(adminRadio).toBeChecked();
-		});
-	});
-
-	describe('Computed Properties', () => {
-		it('should compute roleLabel correctly for known roles', () => {
-			renderComponent();
-
-			expect(screen.getAllByText('Editor')).toHaveLength(2); // Shown in activator and dropdown option
-		});
-	});
-
 	describe('Accessibility', () => {
 		it('should have proper test-id attribute', () => {
-			renderComponent();
+			const { getByTestId } = renderComponent();
 
-			expect(screen.getByTestId('project-member-role-dropdown')).toBeInTheDocument();
-		});
-
-		it('should render activator button as a button element', () => {
-			renderComponent();
-
-			const activatorButton = screen.getByTestId('activator').querySelector('button');
-			expect(activatorButton).toBeInTheDocument();
-			expect(activatorButton).toHaveAttribute('type', 'button');
-		});
-
-		it('should provide proper radio button labels', () => {
-			renderComponent();
-
-			expect(screen.getByLabelText(/Admin/i)).toBeInTheDocument();
-			expect(screen.getByLabelText(/Editor/i)).toBeInTheDocument();
+			expect(getByTestId('project-member-role-dropdown')).toBeInTheDocument();
 		});
 	});
 
-	describe('Badge Click for Disabled Roles', () => {
-		it('should forward badge-click event when emitted from dropdown', () => {
-			const disabledActions: Array<ActionDropdownItem<ProjectRole>> = [
-				{ id: 'project:admin', label: 'Admin', disabled: false },
-				{ id: 'project:viewer', label: 'Viewer', disabled: true },
-			];
+	describe('Custom roles section visibility', () => {
+		it('should not show "Custom roles" section label when license is enabled and there are no custom roles', async () => {
+			const user = userEvent.setup();
+			const { getByTestId } = renderComponent();
 
-			const { emitted } = renderComponent({
-				props: {
-					actions: disabledActions,
-				},
-			});
+			// isCustomRolesFeatureEnabled is already true from beforeEach
+			await user.click(getByTestId('project-member-role-dropdown'));
 
-			// Simulate badge-click event from N8nActionDropdown
-			const dropdown = screen.getByTestId('project-member-role-dropdown');
-			dropdown.dispatchEvent(new CustomEvent('badge-click', { detail: 'project:viewer' }));
-
-			expect(emitted()).toHaveProperty('badge-click');
+			expect(screen.getByText('System roles')).toBeInTheDocument();
+			expect(screen.queryByText('Custom roles')).not.toBeInTheDocument();
 		});
 
-		it('should use lighter text color for disabled roles', () => {
-			const disabledActions: Array<ActionDropdownItem<ProjectRole>> = [
-				{ id: 'project:viewer', label: 'Viewer', disabled: true },
-			];
+		it('should show "Custom roles" section label when license is disabled and there are no custom roles', async () => {
+			vi.spyOn(settingsStore, 'isCustomRolesFeatureEnabled', 'get').mockReturnValue(false);
 
-			renderComponent({
+			const user = userEvent.setup();
+			const { getByTestId } = renderComponent();
+
+			await user.click(getByTestId('project-member-role-dropdown'));
+
+			expect(screen.getByText('System roles')).toBeInTheDocument();
+			expect(screen.getByText('Custom roles')).toBeInTheDocument();
+		});
+
+		it('should show "Custom roles" section label when custom roles exist regardless of license', async () => {
+			const user = userEvent.setup();
+			const { getByTestId } = renderComponent({
 				props: {
-					actions: disabledActions,
+					data: mockMemberData,
+					roles: mockRolesWithCustom,
 				},
 			});
 
-			// Verify that disabled role is rendered
-			expect(screen.getByText('Viewer')).toBeInTheDocument();
+			await user.click(getByTestId('project-member-role-dropdown'));
+
+			expect(screen.getByText('System roles')).toBeInTheDocument();
+			expect(screen.getByText('Custom roles')).toBeInTheDocument();
 		});
 	});
 });

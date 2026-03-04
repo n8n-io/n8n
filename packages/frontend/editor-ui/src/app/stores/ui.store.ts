@@ -6,7 +6,6 @@ import {
 	IMPORT_CURL_MODAL_KEY,
 	LOG_STREAM_MODAL_KEY,
 	MFA_SETUP_MODAL_KEY,
-	NODE_PINNING_MODAL_KEY,
 	NPS_SURVEY_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	VIEWS,
@@ -15,6 +14,7 @@ import {
 	WORKFLOW_SHARE_MODAL_KEY,
 	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
 	SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
+	DELETE_SECRETS_PROVIDER_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
 	SETUP_CREDENTIALS_MODAL_KEY,
 	NEW_ASSISTANT_SESSION_MODAL,
@@ -34,8 +34,11 @@ import {
 	STOP_MANY_EXECUTIONS_MODAL_KEY,
 	WORKFLOW_DESCRIPTION_MODAL_KEY,
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
+	WORKFLOW_HISTORY_DIFF_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
+	WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY,
 	CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
+	AI_BUILDER_DIFF_MODAL_KEY,
 } from '@/app/constants';
 import {
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
@@ -60,6 +63,7 @@ import {
 import {
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	SOURCE_CONTROL_PULL_MODAL_KEY,
+	SOURCE_CONTROL_PULL_RESULT_MODAL_KEY,
 } from '@/features/integrations/sourceControl.ee/sourceControl.constants';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
 import {
@@ -127,7 +131,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				CREDENTIAL_SELECT_MODAL_KEY,
 				DUPLICATE_MODAL_KEY,
 				PERSONALIZATION_MODAL_KEY,
-				NODE_PINNING_MODAL_KEY,
 				INVITE_USER_MODAL_KEY,
 				TAGS_MANAGER_MODAL_KEY,
 				ANNOTATION_TAGS_MANAGER_MODAL_KEY,
@@ -141,8 +144,10 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				PROMPT_MFA_CODE_MODAL_KEY,
 				SOURCE_CONTROL_PUSH_MODAL_KEY,
 				SOURCE_CONTROL_PULL_MODAL_KEY,
+				SOURCE_CONTROL_PULL_RESULT_MODAL_KEY,
 				EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
 				SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
+				DELETE_SECRETS_PROVIDER_MODAL_KEY,
 				DEBUG_PAYWALL_MODAL_KEY,
 				WORKFLOW_HISTORY_VERSION_RESTORE,
 				SETUP_CREDENTIALS_MODAL_KEY,
@@ -156,8 +161,11 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				WORKFLOW_DESCRIPTION_MODAL_KEY,
 				WORKFLOW_PUBLISH_MODAL_KEY,
 				WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
+				WORKFLOW_HISTORY_DIFF_MODAL_KEY,
 				WORKFLOW_HISTORY_VERSION_UNPUBLISH,
+				WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY,
 				CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
+				AI_BUILDER_DIFF_MODAL_KEY,
 			].map((modalKey) => [modalKey, { open: false }]),
 		),
 		[DELETE_USER_MODAL_KEY]: {
@@ -263,9 +271,16 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	});
 
 	const modalStack = ref<string[]>([]);
-	const sidebarMenuCollapsed = useLocalStorage<boolean>('sidebar.collapsed', true);
+	const sidebarMenuCollapsed = useLocalStorage<boolean | null>('sidebar.collapsed', null, {
+		serializer: {
+			read: (v) => (v === 'null' ? null : v === 'true'),
+			write: (v) => String(v),
+		},
+	});
 	const currentView = ref<string>('');
 	const stateIsDirty = ref<boolean>(false);
+	// This tracks only structural changes without metadata (name or tags)
+	const hasUnsavedWorkflowChanges = ref<boolean>(false);
 	const dirtyStateSetCount = ref<number>(0);
 	const lastSelectedNode = ref<string | null>(null);
 	const nodeViewOffsetPosition = ref<[number, number]>([0, 0]);
@@ -508,9 +523,13 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
 	};
 
-	const openNewCredential = (type: string, showAuthOptions = false) => {
+	const openNewCredential = (type: string, showAuthOptions = false, forceManualMode = false) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, type);
 		setShowAuthSelector(CREDENTIAL_EDIT_MODAL_KEY, showAuthOptions);
+		modalsById.value[CREDENTIAL_EDIT_MODAL_KEY] = {
+			...modalsById.value[CREDENTIAL_EDIT_MODAL_KEY],
+			forceManualMode,
+		} as NewCredentialsModal;
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
 	};
@@ -572,6 +591,9 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const toggleSidebarMenuCollapse = () => {
 		sidebarMenuCollapsed.value = !sidebarMenuCollapsed.value;
+		telemetry.track('User toggled sidebar', {
+			expanded: !sidebarMenuCollapsed.value,
+		});
 	};
 
 	const setNotificationsForView = (view: VIEWS, notifications: NotificationOptions[]) => {
@@ -608,13 +630,17 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		processingExecutionResults.value = value;
 	};
 
-	const markStateDirty = () => {
+	const markStateDirty = (type: 'workflow' | 'metadata' = 'workflow') => {
 		dirtyStateSetCount.value++;
 		stateIsDirty.value = true;
+		if (type === 'workflow') {
+			hasUnsavedWorkflowChanges.value = true;
+		}
 	};
 
 	const markStateClean = () => {
 		stateIsDirty.value = false;
+		hasUnsavedWorkflowChanges.value = false;
 	};
 
 	/**
@@ -677,6 +703,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		headerHeight,
 		dirtyStateSetCount: computed(() => dirtyStateSetCount.value),
 		stateIsDirty: computed(() => stateIsDirty.value),
+		hasUnsavedWorkflowChanges: computed(() => hasUnsavedWorkflowChanges.value),
 		isBlankRedirect,
 		activeCredentialType,
 		lastSelectedNode,

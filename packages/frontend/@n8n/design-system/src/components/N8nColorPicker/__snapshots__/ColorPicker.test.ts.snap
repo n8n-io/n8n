@@ -65,34 +65,33 @@ exports[`components > N8nColorPicker > should render with input 1`] = `
     <!--teleport end-->
     
     <div
-      class="el-input el-input--large n8n-input input input"
+      class="n8n-input inputContainer large input"
       data-v-dab78bb8=""
     >
-      <!-- input -->
-      
-      <!-- prepend slot -->
+      <!-- Prepend slot (outside input container, before) -->
       <!--v-if-->
+      <!-- Input wrapper (holds border, contains prefix/input/suffix) -->
       <div
-        class="el-input__wrapper"
+        class="inputWrapper"
       >
-        <!-- prefix slot -->
+        <!-- Prefix slot -->
         <!--v-if-->
+        <!-- Input element -->
         <input
           autocomplete="off"
-          class="el-input__inner"
+          class="input"
           name="color-picker"
           placeholder=""
-          rows="2"
-          tabindex="0"
-          title=""
           type="text"
+          value=""
         />
-        <!-- suffix slot -->
+        <!-- Suffix slot -->
+        <!--v-if-->
+        <!-- Clear button -->
         <!--v-if-->
       </div>
-      <!-- append slot -->
+      <!-- Append slot (outside input container, after) -->
       <!--v-if-->
-      
     </div>
   </span>
 </div>

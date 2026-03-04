@@ -19,10 +19,10 @@ import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
-import { ChatStreamStateService } from './chat-stream-state.service';
-
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
+
+import { ChatStreamStateService } from './chat-stream-state.service';
 
 /**
  * Parameters for starting a new stream

@@ -35,9 +35,7 @@ import type {
 	INodeConnections,
 	INodeCredentials,
 	INodeCredentialsDetails,
-	INodeExecutionData,
 	INodeTypes,
-	IPinData,
 	IRunData,
 	IRunExecutionData,
 	ITaskData,
@@ -51,16 +49,19 @@ import {
 	SEND_AND_WAIT_OPERATION,
 	Workflow,
 	TelemetryHelpers,
-	BINARY_MODE_SEPARATE,
 } from 'n8n-workflow';
 import * as workflowUtils from 'n8n-workflow/common';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as workflowsApi from '@/app/api/workflows';
 import { useUIStore } from '@/app/stores/ui.store';
-import { dataPinningEventBus } from '@/app/event-bus';
-import { isJsonKeyObject, stringSizeInBytes, isPresent } from '@/app/utils/typesUtils';
-import { makeRestApiRequest, ResponseError, type WorkflowHistory } from '@n8n/rest-api-client';
+import { isPresent } from '@/app/utils/typesUtils';
+import {
+	makeRestApiRequest,
+	ResponseError,
+	type WorkflowHistory,
+	type WorkflowVersionData,
+} from '@n8n/rest-api-client';
 import {
 	unflattenExecutionData,
 	findTriggerNodeToAutoSelect,
@@ -69,7 +70,6 @@ import {
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { getCredentialOnlyNodeTypeName } from '@/app/utils/credentialOnlyNodes';
-import { convertWorkflowTagsToIds } from '@/app/utils/workflowUtils';
 import { i18n } from '@n8n/i18n';
 
 import { computed, ref, watch } from 'vue';
@@ -88,6 +88,11 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { getResourcePermissions } from '@n8n/permissions';
 import { hasRole } from '@/app/utils/rbac/checks';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import { DEFAULT_SETTINGS } from '@/app/stores/workflowDocument/useWorkflowDocumentSettings';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -99,10 +104,7 @@ const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['s
 	updatedAt: -1,
 	connections: {},
 	nodes: [],
-	settings: {
-		executionOrder: 'v1',
-		binaryMode: BINARY_MODE_SEPARATE,
-	},
+	settings: { ...DEFAULT_SETTINGS },
 	tags: [],
 	pinData: {},
 	versionId: '',
@@ -132,6 +134,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		createWorkflowObject(workflow.value.nodes, workflow.value.connections),
 	);
 
+	const versionData = ref<WorkflowVersionData | null>(null);
 	const usedCredentials = ref<Record<string, IUsedCredential>>({});
 
 	const currentWorkflowExecutions = ref<ExecutionSummary[]>([]);
@@ -154,12 +157,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const workflowVersionId = computed(() => workflow.value.versionId);
 
-	const workflowChecksum = ref<string>('');
-
-	const workflowSettings = computed(() => workflow.value.settings ?? { ...defaults.settings });
-
-	const workflowTags = computed(() => workflow.value.tags as string[]);
-
 	// A workflow is new if it hasn't been saved to the backend yet
 	const isNewWorkflow = computed(() => {
 		if (!workflow.value.id) return true;
@@ -180,8 +177,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			{},
 		);
 	});
-
-	const isWorkflowActive = computed(() => workflow.value.activeVersionId !== null);
 
 	const workflowTriggerNodes = computed(() =>
 		workflow.value.nodes.filter((node: INodeUi) => {
@@ -328,8 +323,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 		return String(issue);
 	}
-
-	const pinnedWorkflowData = computed(() => workflow.value.pinData);
 
 	const executedNode = computed(() => workflowExecutionData.value?.executedNode);
 
@@ -502,18 +495,15 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return currentWorkflowExecutions.value.find((execution) => execution.id === id);
 	}
 
-	function getPinDataSize(pinData: Record<string, string | INodeExecutionData[]> = {}): number {
-		return Object.values(pinData).reduce<number>((acc, value) => {
-			return acc + stringSizeInBytes(value);
-		}, 0);
-	}
-
 	function getNodeTypes(): INodeTypes {
 		const nodeTypes: INodeTypes = {
 			nodeTypes: {},
 			init: async (): Promise<void> => {},
 			getByNameAndVersion: (nodeType: string, version?: number): INodeType | undefined => {
-				const nodeTypeDescription = nodeTypesStore.getNodeType(nodeType, version);
+				const nodeTypeDescription =
+					nodeTypesStore.getNodeType(nodeType, version) ??
+					nodeTypesStore.communityNodeType(nodeType)?.nodeDescription ??
+					null;
 				if (nodeTypeDescription === null) {
 					return undefined;
 				}
@@ -577,6 +567,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			id = undefined;
 		}
 
+		const wfId = workflow.value.id;
+		const workflowDocumentStore = wfId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(wfId))
+			: undefined;
+
 		return new Workflow({
 			id,
 			name: workflow.value.name,
@@ -584,8 +579,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			connections: copyData ? deepCopy(connections) : connections,
 			active: false,
 			nodeTypes,
-			settings: workflow.value.settings ?? { ...defaults.settings },
-			pinData: workflow.value.pinData,
+			settings: workflowDocumentStore?.settings ?? { ...DEFAULT_SETTINGS },
+			pinData: workflowDocumentStore?.getPinDataSnapshot() ?? {},
 		});
 	}
 
@@ -636,7 +631,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function resetWorkflow() {
 		workflow.value = createEmptyWorkflow();
-		workflowChecksum.value = '';
 	}
 
 	function setUsedCredentials(data: IUsedCredential[]) {
@@ -647,15 +641,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}, {});
 	}
 
-	function setWorkflowVersionId(versionId: string, newChecksum?: string) {
-		workflow.value.versionId = versionId;
-		if (newChecksum) {
-			workflowChecksum.value = newChecksum;
-		}
-	}
-
 	function setWorkflowActiveVersion(version: WorkflowHistory | null) {
 		workflow.value.activeVersion = deepCopy(version);
+	}
+
+	function setWorkflowVersionData(version: WorkflowVersionData) {
+		versionData.value = deepCopy(version);
+		workflow.value.versionId = version.versionId;
 	}
 
 	// replace invalid credentials in workflow
@@ -719,8 +711,16 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			}
 
 			// Check if this node type supports the credential type
-			const supportsCredential = nodeType.credentials.some((cred) => cred.name === data.type);
-			if (!supportsCredential) {
+			// and if the credential is actually active given the node's current parameters
+			const credentialDescription = nodeType.credentials.find((cred) => cred.name === data.type);
+			if (!credentialDescription) {
+				return;
+			}
+
+			if (
+				credentialDescription.displayOptions &&
+				!nodeHelpers.displayParameter(node.parameters, credentialDescription, '', node)
+			) {
 				return;
 			}
 
@@ -734,13 +734,19 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return updatedNodesCount;
 	}
 
-	async function archiveWorkflow(id: string) {
-		const updatedWorkflow = await workflowsListStore.archiveWorkflowInList(id);
+	async function archiveWorkflow(id: string, expectedChecksum?: string) {
+		const updatedWorkflow = await workflowsListStore.archiveWorkflowInList(id, expectedChecksum);
 		setWorkflowInactive(id);
 
 		if (id === workflow.value.id) {
 			setIsArchived(true);
-			setWorkflowVersionId(updatedWorkflow.versionId, updatedWorkflow.checksum);
+			setWorkflowVersionData({
+				versionId: updatedWorkflow.versionId,
+				name: versionData.value?.name ?? null,
+				description: versionData.value?.description ?? null,
+			});
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
+			workflowDocumentStore.setChecksum(updatedWorkflow.checksum!);
 		}
 	}
 
@@ -749,7 +755,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		if (id === workflow.value.id) {
 			setIsArchived(false);
-			setWorkflowVersionId(updatedWorkflow.versionId, updatedWorkflow.checksum);
+			setWorkflowVersionData({
+				versionId: updatedWorkflow.versionId,
+				name: versionData.value?.name ?? null,
+				description: versionData.value?.description ?? null,
+			});
+
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
+			workflowDocumentStore.setChecksum(updatedWorkflow.checksum!);
 		}
 	}
 
@@ -760,24 +773,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	) {
 		workflowsListStore.setWorkflowActiveInCache(targetWorkflowId, activeVersion);
 
-		if (targetWorkflowId === workflow.value.id) {
-			if (clearDirtyState) {
-				uiStore.markStateClean();
-			}
-			workflow.value.active = true;
-			workflow.value.activeVersionId = activeVersion.versionId;
-			workflow.value.activeVersion = activeVersion;
+		if (targetWorkflowId === workflow.value.id && clearDirtyState) {
+			uiStore.markStateClean();
 		}
 	}
 
 	function setWorkflowInactive(targetWorkflowId: string) {
 		workflowsListStore.setWorkflowInactiveInCache(targetWorkflowId);
-
-		if (targetWorkflowId === workflow.value.id) {
-			workflow.value.active = false;
-			workflow.value.activeVersionId = null;
-			workflow.value.activeVersion = null;
-		}
 	}
 
 	function setIsArchived(isArchived: boolean) {
@@ -817,120 +819,28 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 	}
 
-	function setWorkflowSettings(workflowSettings: IWorkflowSettings) {
-		workflow.value.settings = workflowSettings as IWorkflowDb['settings'];
-		workflowObject.value.setSettings(workflowSettings);
-	}
-
-	function setWorkflowPinData(data: IPinData = {}) {
-		const validPinData = Object.keys(data).reduce((accu, nodeName) => {
-			accu[nodeName] = data[nodeName].map((item) => {
-				if (!isJsonKeyObject(item)) {
-					return { json: item };
-				}
-
-				return item;
-			});
-
-			return accu;
-		}, {} as IPinData);
-
-		workflow.value.pinData = validPinData;
-		workflowObject.value.setPinData(validPinData);
-
-		dataPinningEventBus.emit('pin-data', validPinData);
-	}
-
 	function setWorkflow(value: IWorkflowDb): void {
-		const tags = convertWorkflowTagsToIds(value.tags);
 		workflow.value = {
 			...value,
-			...(tags.length > 0 ? { tags } : {}),
 			...(!value.hasOwnProperty('active') ? { active: false } : {}),
 			...(!value.hasOwnProperty('connections') ? { connections: {} } : {}),
-			...(!value.hasOwnProperty('createdAt') ? { createdAt: -1 } : {}),
-			...(!value.hasOwnProperty('updatedAt') ? { updatedAt: -1 } : {}),
 			...(!value.hasOwnProperty('id') ? { id: '' } : {}),
 			...(!value.hasOwnProperty('nodes') ? { nodes: [] } : {}),
-			...(!value.hasOwnProperty('settings') ? { settings: { ...defaults.settings } } : {}),
+			...(!value.hasOwnProperty('settings') ? { settings: { ...DEFAULT_SETTINGS } } : {}),
 		};
+
+		// Sync settings to the document store so createWorkflowObject reads correct settings
+		const wfId = workflow.value.id;
+		if (wfId) {
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(wfId));
+			workflowDocumentStore.setSettings(workflow.value.settings ?? {});
+		}
+
 		workflowObject.value = createWorkflowObject(
 			workflow.value.nodes,
 			workflow.value.connections,
 			true,
 		);
-	}
-
-	function pinData(payload: {
-		node: INodeUi;
-		data: INodeExecutionData[];
-		isRestoration?: boolean;
-	}): void {
-		const nodeName = payload.node.name;
-
-		if (!workflow.value.pinData) {
-			workflow.value.pinData = {};
-		}
-
-		if (!Array.isArray(payload.data)) {
-			payload.data = [payload.data];
-		}
-
-		if (
-			(workflow.value.pinData?.[nodeName] ?? []).length > 0 &&
-			nodeMetadata.value[nodeName] &&
-			!payload.isRestoration
-		) {
-			// Updating existing pinned data
-			nodeMetadata.value[nodeName].pinnedDataLastUpdatedAt = Date.now();
-		} else if (payload.isRestoration && nodeMetadata.value[nodeName]) {
-			// Clear timestamps during restoration to prevent incorrect dirty marking
-			delete nodeMetadata.value[nodeName].pinnedDataLastUpdatedAt;
-			delete nodeMetadata.value[nodeName].pinnedDataLastRemovedAt;
-		}
-
-		const storedPinData = payload.data.map((item) => {
-			// Store only essential properties: json, binary, and pairedItem
-			// Exclude runtime properties (error, metadata, evaluationData, etc.)
-			if (isJsonKeyObject(item)) {
-				const { json, binary, pairedItem } = item;
-				return {
-					json,
-					...(binary && { binary }),
-					...(pairedItem !== undefined && { pairedItem }),
-				};
-			}
-			return { json: item };
-		});
-
-		workflow.value.pinData[nodeName] = storedPinData;
-		workflowObject.value.setPinData(workflow.value.pinData);
-
-		uiStore.markStateDirty();
-
-		dataPinningEventBus.emit('pin-data', { [payload.node.name]: storedPinData });
-	}
-
-	function unpinData(payload: { node: INodeUi }): void {
-		const nodeName = payload.node.name;
-
-		if (!workflow.value.pinData) {
-			workflow.value.pinData = {};
-		}
-
-		const { [nodeName]: _, ...pinData } = workflow.value.pinData;
-		workflow.value.pinData = pinData;
-		workflowObject.value.setPinData(pinData);
-
-		if (nodeMetadata.value[nodeName]) {
-			nodeMetadata.value[nodeName].pinnedDataLastRemovedAt = Date.now();
-		}
-
-		uiStore.markStateDirty();
-
-		dataPinningEventBus.emit('unpin-data', {
-			nodeNames: [nodeName],
-		});
 	}
 
 	function addConnection(data: { connection: IConnection[] }): void {
@@ -1105,14 +1015,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const { [nameData.old]: removed, ...rest } = nodeMetadata.value;
 		nodeMetadata.value = { ...rest, [nameData.new]: nodeMetadata.value[nameData.old] };
 
-		if (workflow.value.pinData?.[nameData.old]) {
-			const { [nameData.old]: renamed, ...restPinData } = workflow.value.pinData;
-			workflow.value.pinData = {
-				...restPinData,
-				[nameData.new]: renamed,
-			};
-
-			workflowObject.value.setPinData(workflow.value.pinData);
+		if (workflowId.value) {
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowId.value),
+			);
+			workflowDocumentStore.renamePinDataNode(nameData.old, nameData.new);
 		}
 
 		const resultData = workflowExecutionData.value?.data?.resultData;
@@ -1121,9 +1028,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			delete resultData.pinData[nameData.old];
 		}
 
-		// Update the name in pinData
-		Object.values(workflow.value.pinData ?? {})
-			.concat(Object.values(workflowExecutionData.value?.data?.resultData.pinData ?? {}))
+		// Update the name in execution result pinData pairedItem references
+		Object.values(workflowExecutionData.value?.data?.resultData.pinData ?? {})
 			.flatMap((executionData) =>
 				executionData.flatMap((nodeExecution) =>
 					Array.isArray(nodeExecution.pairedItem)
@@ -1203,9 +1109,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const { [node.name]: removedNodeMetadata, ...remainingNodeMetadata } = nodeMetadata.value;
 		nodeMetadata.value = remainingNodeMetadata;
 
-		if (workflow.value.pinData?.hasOwnProperty(node.name)) {
-			const { [node.name]: removedPinData, ...remainingPinData } = workflow.value.pinData;
-			workflow.value.pinData = remainingPinData;
+		if (workflowId.value) {
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowId.value),
+			);
+			workflowDocumentStore.unpinNodeData(node.name);
 		}
 
 		for (let i = 0; i < workflow.value.nodes.length; i++) {
@@ -1340,12 +1248,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowExecutionData.value.data.resultData.runData = remainingRunData;
 	}
 
-	function pinDataByNodeName(nodeName: string): INodeExecutionData[] | undefined {
-		if (!workflow.value.pinData?.[nodeName]) return undefined;
-
-		return workflow.value.pinData[nodeName].map((item) => item.json) as INodeExecutionData[];
-	}
-
 	function activeNode(): INodeUi | null {
 		// kept here for FE hooks
 		const ndvStore = useNDVStore();
@@ -1444,7 +1346,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 
 		if (id === workflow.value.id) {
-			setWorkflowVersionId(updatedWorkflow.versionId, updatedWorkflow.checksum);
+			setWorkflowVersionData({
+				versionId: updatedWorkflow.versionId,
+				name: versionData.value?.name ?? null,
+				description: versionData.value?.description ?? null,
+			});
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
+			workflowDocumentStore.setChecksum(updatedWorkflow.checksum);
 		}
 
 		if (
@@ -1474,11 +1382,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return updatedWorkflow;
 	}
 
-	async function deactivateWorkflow(id: string): Promise<IWorkflowDb> {
+	async function deactivateWorkflow(id: string, expectedChecksum?: string): Promise<IWorkflowDb> {
 		const updatedWorkflow = await makeRestApiRequest<IWorkflowDb>(
 			rootStore.restApiContext,
 			'POST',
 			`/workflows/${id}/deactivate`,
+			{ expectedChecksum },
 		);
 		if (!updatedWorkflow.checksum) {
 			throw new Error('Failed to deactivate workflow');
@@ -1487,7 +1396,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowInactive(id);
 
 		if (id === workflow.value.id) {
-			setWorkflowVersionId(updatedWorkflow.versionId, updatedWorkflow.checksum);
+			setWorkflowVersionData({
+				versionId: updatedWorkflow.versionId,
+				name: versionData.value?.name ?? null,
+				description: versionData.value?.description ?? null,
+			});
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
+			workflowDocumentStore.setChecksum(updatedWorkflow.checksum);
 		}
 
 		return updatedWorkflow;
@@ -1504,11 +1419,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		let currentVersionId = '';
 		let currentChecksum = '';
 		const isCurrentWorkflow = id === workflow.value.id;
+		const workflowDocumentStore = isCurrentWorkflow
+			? useWorkflowDocumentStore(createWorkflowDocumentId(id))
+			: undefined;
 
-		if (isCurrentWorkflow) {
-			currentSettings = workflow.value.settings ?? ({} as IWorkflowSettings);
+		if (isCurrentWorkflow && workflowDocumentStore) {
+			currentSettings = workflowDocumentStore.settings;
 			currentVersionId = workflow.value.versionId;
-			currentChecksum = workflowChecksum.value;
+			currentChecksum = workflowDocumentStore.checksum;
 		} else {
 			const cached = workflowsListStore.getWorkflowById(id);
 			if (cached && cached.versionId) {
@@ -1533,8 +1451,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		});
 
 		// Update local store state to reflect the change
-		if (isCurrentWorkflow) {
-			setWorkflowSettings(updated.settings ?? {});
+		if (isCurrentWorkflow && workflowDocumentStore) {
+			workflowDocumentStore.setSettings(updated.settings ?? {});
 		} else if (workflowsListStore.getWorkflowById(id)) {
 			workflowsListStore.updateWorkflowInCache(id, {
 				settings: updated.settings,
@@ -1555,7 +1473,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		if (isCurrentWorkflow) {
 			currentVersionId = workflow.value.versionId;
-			currentChecksum = workflowChecksum.value;
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
+			currentChecksum = workflowDocumentStore.checksum;
 		} else {
 			const cached = workflowsListStore.getWorkflowById(id);
 			if (cached?.versionId) {
@@ -1588,15 +1507,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	async function runWorkflow(startRunData: IStartRunData): Promise<IExecutionPushResponse> {
-		if (startRunData.workflowData.settings === null) {
-			startRunData.workflowData.settings = undefined;
-		}
-
 		try {
 			return await makeRestApiRequest(
 				rootStore.restApiContext,
 				'POST',
-				`/workflows/${startRunData.workflowData.id}/run`,
+				`/workflows/${startRunData.workflowId}/run`,
 				startRunData as unknown as IDataObject,
 			);
 		} catch (error) {
@@ -1767,6 +1682,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	return {
 		workflow,
+		versionData,
 		usedCredentials,
 		currentWorkflowExecutions,
 		workflowExecutionData,
@@ -1783,12 +1699,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowName,
 		workflowId,
 		workflowVersionId,
-		workflowChecksum,
-		workflowSettings,
-		workflowTags,
 		isNewWorkflow,
 		isWorkflowSaved,
-		isWorkflowActive,
 		workflowTriggerNodes,
 		currentWorkflowHasWebhookNode,
 		getWorkflowRunData,
@@ -1806,7 +1718,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		nodesIssuesExist,
 		workflowValidationIssues,
 		formatIssueMessage,
-		pinnedWorkflowData,
 		executedNode,
 		getAllLoadedFinishedExecutions,
 		getWorkflowExecution,
@@ -1826,7 +1737,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getPinnedDataLastRemovedAt,
 		isNodePristine,
 		getExecutionDataById,
-		getPinDataSize,
 		getNodeTypes,
 		getNodes,
 		convertTemplateNodeToNodeUi,
@@ -1838,8 +1748,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		resetWorkflow,
 		addNodeExecutionStartedData,
 		setUsedCredentials,
-		setWorkflowVersionId,
 		setWorkflowActiveVersion,
+		setWorkflowVersionData,
 		replaceInvalidWorkflowCredentials,
 		assignCredentialToMatchingNodes,
 		archiveWorkflow,
@@ -1850,11 +1760,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setDescription,
 		getDuplicateCurrentWorkflowName,
 		setWorkflowExecutionRunData,
-		setWorkflowPinData,
 		setParentFolder,
 		setWorkflow,
-		pinData,
-		unpinData,
 		addConnection,
 		removeConnection,
 		removeAllNodeConnection,
@@ -1864,7 +1771,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		updateNodeExecutionRunData,
 		updateNodeExecutionStatus,
 		clearNodeExecutionData,
-		pinDataByNodeName,
 		activeNode,
 		getPastExecutions,
 		getExecution,
@@ -1900,7 +1806,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		// This is exposed to ease the refactoring to the injected workflowState composable
 		// Please do not use outside this context
 		private: {
-			setWorkflowSettings,
 			setActiveExecutionId,
 		},
 	};

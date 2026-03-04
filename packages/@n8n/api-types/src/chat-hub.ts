@@ -1,13 +1,15 @@
 import type { Scope } from '@n8n/permissions';
 import {
-	type JINA_AI_TOOL_NODE_TYPE,
-	type SERP_API_TOOL_NODE_TYPE,
-	type INode,
+	CHAT_TOOL_NODE_TYPE,
 	type ChunkType,
+	DATA_TABLE_TOOL_NODE_TYPE,
+	type INode,
 	INodeSchema,
+	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 } from 'n8n-workflow';
 import { z } from 'zod';
-import { Z } from 'zod-class';
+
+import { Z } from './zod-class';
 
 /**
  * Supported AI model providers
@@ -29,6 +31,14 @@ export const chatHubLLMProviderSchema = z.enum([
 	'mistralCloud',
 ]);
 export type ChatHubLLMProvider = z.infer<typeof chatHubLLMProviderSchema>;
+
+export interface ChatHubAgentKnowledgeItem {
+	id: string;
+	type: 'embedding';
+	provider: ChatHubLLMProvider;
+	fileName: string;
+	mimeType: string;
+}
 
 /**
  * Schema for icon or emoji representation
@@ -75,8 +85,6 @@ export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<
 	cohere: 'cohereApi',
 	mistralCloud: 'mistralCloudApi',
 };
-
-export type ChatHubAgentTool = typeof JINA_AI_TOOL_NODE_TYPE | typeof SERP_API_TOOL_NODE_TYPE;
 
 /**
  * Chat Hub conversation model configuration
@@ -224,10 +232,9 @@ export const chatModelsRequestSchema = z.object({
 
 export type ChatModelsRequest = z.infer<typeof chatModelsRequestSchema>;
 
-export type ChatHubInputModality = 'text' | 'image' | 'audio' | 'video' | 'file';
-
 export interface ChatModelMetadataDto {
-	inputModalities: ChatHubInputModality[];
+	allowFileUploads: boolean;
+	allowedFilesMimeTypes: string;
 	priority?: number; // Order on the model picker list, higher means first, default 0
 	capabilities: {
 		functionCalling: boolean;
@@ -246,6 +253,7 @@ export interface ChatModelDto {
 	metadata: ChatModelMetadataDto;
 	groupName: string | null;
 	groupIcon: AgentIconOrEmoji | null;
+	suggestedPrompts?: Array<{ text: string; icon?: AgentIconOrEmoji }>;
 }
 
 /**
@@ -325,7 +333,6 @@ export class ChatHubSendMessageRequest extends Z.class({
 			name: z.string(),
 		}),
 	),
-	tools: z.array(INodeSchema),
 	attachments: z.array(chatAttachmentSchema),
 	agentName: z.string().optional(),
 	timeZone: TimeZoneSchema,
@@ -366,7 +373,7 @@ export class ChatHubUpdateConversationRequest extends Z.class({
 			name: z.string(),
 		})
 		.optional(),
-	tools: z.array(INodeSchema).optional(),
+	toolIds: z.array(z.string().uuid()).optional(),
 }) {}
 
 export type ChatHubMessageType = 'human' | 'ai' | 'system' | 'tool' | 'generic';
@@ -389,15 +396,37 @@ export interface ChatHubSessionDto {
 	agentIcon: AgentIconOrEmoji | null;
 	createdAt: string;
 	updatedAt: string;
-	tools: INode[];
+	toolIds: string[];
 }
+
+export type ChatMessageContentChunk =
+	| { type: 'text'; content: string }
+	| { type: 'hidden'; content: string }
+	| {
+			type: 'artifact-create';
+			content: string;
+			command: ChatArtifactCreateCommand;
+			isIncomplete: boolean;
+	  }
+	| {
+			type: 'artifact-edit';
+			content: string;
+			command: ChatArtifactEditCommand;
+			isIncomplete: boolean;
+	  }
+	| {
+			type: 'with-buttons';
+			content: string;
+			buttons: ChatHubMessageButton[];
+			blockUserInput: boolean;
+	  };
 
 export interface ChatHubMessageDto {
 	id: ChatMessageId;
 	sessionId: ChatSessionId;
 	type: ChatHubMessageType;
 	name: string;
-	content: string;
+	content: ChatMessageContentChunk[];
 	provider: ChatHubProvider | null;
 	model: string | null;
 	workflowId: string | null;
@@ -444,7 +473,8 @@ export interface ChatHubAgentDto {
 	credentialId: string | null;
 	provider: ChatHubLLMProvider;
 	model: string;
-	tools: INode[];
+	files: ChatHubAgentKnowledgeItem[];
+	toolIds: string[];
 	createdAt: string;
 	updatedAt: string;
 }
@@ -457,7 +487,7 @@ export class ChatHubCreateAgentRequest extends Z.class({
 	credentialId: z.string(),
 	provider: chatHubLLMProviderSchema,
 	model: z.string().max(64),
-	tools: z.array(INodeSchema),
+	toolIds: z.array(z.string().uuid()),
 }) {}
 
 export class ChatHubUpdateAgentRequest extends Z.class({
@@ -468,7 +498,7 @@ export class ChatHubUpdateAgentRequest extends Z.class({
 	credentialId: z.string().optional(),
 	provider: chatHubLLMProviderSchema.optional(),
 	model: z.string().max(64).optional(),
-	tools: z.array(INodeSchema).optional(),
+	toolIds: z.array(z.string().uuid()).optional(),
 }) {}
 
 export interface MessageChunk {
@@ -542,3 +572,84 @@ export interface ChatReconnectResponse {
 	/** Last sequence number received by client (for gap detection) */
 	lastSequenceNumber: number;
 }
+
+/**
+ * Artifact generated during chat interaction
+ */
+export interface ChatArtifact {
+	title: string;
+	/**
+	 * Document type (html, md, csv, js etc.)
+	 */
+	type: string;
+	content: string;
+}
+
+export interface ChatArtifactCreateCommand {
+	title: string;
+	type: string;
+	content: string;
+}
+
+export interface ChatArtifactEditCommand {
+	title: string;
+	oldString: string;
+	newString: string;
+	replaceAll: boolean;
+}
+
+/**
+ * Button shown in a chat message
+ */
+export const chatHubMessageButtonSchema = z.object({
+	text: z.string(),
+	link: z.string(),
+	type: z.enum(['primary', 'secondary']),
+});
+
+export type ChatHubMessageButton = z.infer<typeof chatHubMessageButtonSchema>;
+
+/**
+ * Structured message with buttons, sent from
+ * Chat node in "Send and Wait for Response" mode for HITL approvals
+ */
+export const chatHubMessageWithButtonsSchema = z.object({
+	type: z.literal('with-buttons'),
+	text: z.string(),
+	blockUserInput: z.boolean(),
+	buttons: z.array(chatHubMessageButtonSchema).min(1),
+});
+
+export type ChatHubMessageWithButtons = z.infer<typeof chatHubMessageWithButtonsSchema>;
+
+/**
+ * DTO for a configured chat hub tool
+ */
+export interface ChatHubToolDto {
+	definition: INode;
+	enabled: boolean;
+}
+
+/** Tool types blocked for ALL users in the Chat Hub. */
+export const ALWAYS_BLOCKED_CHAT_HUB_TOOL_TYPES: string[] = [CHAT_TOOL_NODE_TYPE];
+
+/** Additional tool types blocked for chat-only users (global:chatUser). */
+export const CHAT_USER_BLOCKED_CHAT_HUB_TOOL_TYPES: string[] = [
+	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
+	DATA_TABLE_TOOL_NODE_TYPE,
+];
+
+/**
+ * Request schema for creating a chat hub tool
+ */
+export class ChatHubCreateToolRequest extends Z.class({
+	definition: INodeSchema,
+}) {}
+
+/**
+ * Request schema for updating a chat hub tool
+ */
+export class ChatHubUpdateToolRequest extends Z.class({
+	definition: INodeSchema.optional(),
+	enabled: z.boolean().optional(),
+}) {}

@@ -4,7 +4,8 @@ import type { ExecutionSummary } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import { useRoute } from 'vue-router';
+import { injectStrict } from '@/app/utils/injectStrict';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 import { ElDropdown } from 'element-plus';
 import { N8nBadge, N8nButton, N8nHeading, N8nText } from '@n8n/design-system';
@@ -15,13 +16,12 @@ const props = defineProps<{
 }>();
 
 const workflowsListStore = useWorkflowsListStore();
-const route = useRoute();
 const i18n = useI18n();
 
 const annotationDropdownRef = ref<InstanceType<typeof ElDropdown> | null>(null);
 const isDropdownVisible = ref(false);
 
-const workflowId = computed(() => route.params.name as string);
+const workflowId = injectStrict(WorkflowIdKey);
 const workflowPermissions = computed(
 	() =>
 		getResourcePermissions(workflowsListStore.getWorkflowById(workflowId.value)?.scopes).workflow,
@@ -51,6 +51,7 @@ function onDropdownVisibleChange(visible: boolean) {
 		@visible-change="onDropdownVisibleChange"
 	>
 		<N8nButton
+			variant="subtle"
 			:title="i18n.baseText('executionDetails.additionalActions')"
 			:disabled="!workflowPermissions.update"
 			icon="list-checks"
@@ -60,7 +61,6 @@ function onDropdownVisibleChange(visible: boolean) {
 				[$style.highlightDataButtonOpen]: isDropdownVisible,
 			}"
 			size="small"
-			type="secondary"
 			data-test-id="execution-preview-ellipsis-button"
 			@blur="onEllipsisButtonBlur"
 		>

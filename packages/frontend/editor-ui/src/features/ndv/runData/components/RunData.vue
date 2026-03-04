@@ -94,6 +94,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const LazyRunDataTable = defineAsyncComponent(async () => await import('./RunDataTable.vue'));
 const LazyRunDataJson = defineAsyncComponent(async () => await import('./RunDataJson.vue'));
@@ -226,6 +227,7 @@ const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const workflowState = injectWorkflowState();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const sourceControlStore = useSourceControlStore();
 const collaborationStore = useCollaborationStore();
 const rootStore = useRootStore();
@@ -388,7 +390,9 @@ const workflowRunErrorAsNodeError = computed(() => {
 	return selfTaskData?.error as NodeError;
 });
 
-const hasRunError = computed(() => node.value && !!workflowRunErrorAsNodeError.value);
+const hasRunError = computed(
+	() => node.value && !isPaneTypeInput.value && !!workflowRunErrorAsNodeError.value,
+);
 
 const executionHints = computed(() => {
 	if (hasNodeRun.value) {
@@ -588,7 +592,7 @@ const parentNodeOutputData = computed(() => {
 
 const parentNodePinnedData = computed(() => {
 	const parentNode = props.workflowObject.getParentNodesByDepth(node.value?.name ?? '')[0];
-	return props.workflowObject.pinData?.[parentNode?.name || ''] ?? [];
+	return workflowDocumentStore?.value?.pinData?.[parentNode?.name || ''] ?? [];
 });
 
 const showPinButton = computed(
@@ -1500,12 +1504,11 @@ defineExpose({ enterEditMode });
 				</Suspense>
 
 				<N8nIconButton
+					variant="ghost"
 					v-if="displayMode === 'table' && collapsingTableColumnName !== null"
 					:class="$style.resetCollapseButton"
-					text
 					icon="chevrons-up-down"
-					size="xmini"
-					type="tertiary"
+					size="xsmall"
 					@click="emit('collapsingTableColumnChanged', null)"
 				/>
 
@@ -1522,13 +1525,14 @@ defineExpose({ enterEditMode });
 				/>
 
 				<N8nIconButton
+					variant="subtle"
+					size="small"
 					v-if="!props.disableEdit && canPinData && !isReadOnlyRoute && !readOnlyEnv"
 					v-show="!editMode.enabled"
 					:title="i18n.baseText('runData.editOutput')"
 					:circle="false"
 					:disabled="node?.disabled"
 					icon="pencil"
-					type="tertiary"
 					data-test-id="ndv-edit-pinned-data"
 					@click="enterEditMode({ origin: 'editIconButton' })"
 				/>
@@ -1548,13 +1552,13 @@ defineExpose({ enterEditMode });
 
 				<div v-if="!props.disableEdit" v-show="editMode.enabled" :class="$style.editModeActions">
 					<N8nButton
-						type="tertiary"
+						variant="subtle"
 						:label="i18n.baseText('runData.editor.cancel')"
 						@click="onClickCancelEdit"
 					/>
 					<N8nButton
+						variant="solid"
 						class="ml-2xs"
-						type="primary"
 						:label="i18n.baseText('runData.editor.save')"
 						@click="onClickSaveEdit"
 					/>
@@ -1601,10 +1605,9 @@ defineExpose({ enterEditMode });
 							{{ i18n.baseText(linkedRuns ? 'runData.unlinking.hint' : 'runData.linking.hint') }}
 						</template>
 						<N8nIconButton
+							variant="ghost"
 							:icon="linkedRuns ? 'unlink' : 'link'"
 							:class="['linkRun', linkedRuns ? 'linked' : '']"
-							text
-							type="tertiary"
 							size="small"
 							data-test-id="link-run"
 							@click="toggleLinkRuns"
@@ -1830,7 +1833,7 @@ defineExpose({ enterEditMode });
 
 					<div :class="$style.warningActions">
 						<N8nButton
-							outline
+							variant="outline"
 							size="small"
 							:label="i18n.baseText('runData.downloadBinaryData')"
 							@click="downloadJsonData()"
@@ -2024,8 +2027,6 @@ defineExpose({ enterEditMode });
 	margin-bottom: var(--ndv--spacing);
 	padding: var(--ndv--spacing) var(--spacing--3xs) 0 var(--ndv--spacing);
 	position: relative;
-	overflow-x: auto;
-	overflow-y: hidden;
 	min-height: calc(30px + var(--ndv--spacing));
 	scrollbar-width: thin;
 	container-type: inline-size;

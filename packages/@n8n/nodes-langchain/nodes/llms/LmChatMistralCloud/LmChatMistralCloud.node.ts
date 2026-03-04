@@ -2,18 +2,18 @@ import type { ChatMistralAIInput } from '@langchain/mistralai';
 import { ChatMistralAI } from '@langchain/mistralai';
 import { HTTPClient } from '@mistralai/mistralai/lib/http.js';
 import {
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	proxyFetch,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
+import {
 	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
-import { proxyFetch } from '@utils/httpProxyAgent';
-
-import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
-import { N8nLlmTracing } from '../N8nLlmTracing';
 
 const deprecatedMagistralModelsWithTextOutput = ['magistral-small-2506', 'magistral-medium-2506'];
 
@@ -191,7 +191,7 @@ export class LmChatMistralCloud implements INodeType {
 		}) as Partial<ChatMistralAIInput>;
 
 		const fetchWithTimeout = async (input: RequestInfo | URL, init?: RequestInit) =>
-			await proxyFetch(input.toString(), init, {});
+			await proxyFetch(input, init, {});
 		const httpClient = new HTTPClient({ fetcher: fetchWithTimeout });
 
 		const model = new ChatMistralAI({
