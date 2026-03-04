@@ -148,6 +148,7 @@ import { AddScalingFieldsToTestRun1771417407753 } from '../common/1771417407753-
 import { MigrateExternalSecretsToEntityStorage1771500000000 } from '../common/1771500000000-MigrateExternalSecretsToEntityStorage';
 import { AddUnshareScopeToCustomRoles1771500000001 } from '../common/1771500000001-AddUnshareScopeToCustomRoles';
 import { AddFilesColumnToChatHubAgents1771500000002 } from '../common/1771500000002-AddFilesColumnToChatHubAgents';
+import { AddRoleColumnToProjectSecretsProviderAccess1771500000003 } from '../common/1771500000003-AddRoleColumnToProjectSecretsProviderAccess';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -301,4 +302,5 @@ export const postgresMigrations: Migration[] = [
 	MigrateExternalSecretsToEntityStorage1771500000000,
 	AddUnshareScopeToCustomRoles1771500000001,
 	AddFilesColumnToChatHubAgents1771500000002,
+	AddRoleColumnToProjectSecretsProviderAccess1771500000003,
 ];
