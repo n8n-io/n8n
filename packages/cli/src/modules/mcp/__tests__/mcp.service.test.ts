@@ -263,5 +263,79 @@ describe('McpService', () => {
 			expect(typeof server.close).toBe('function');
 			expect(typeof server.registerTool).toBe('function');
 		});
+
+		it('should not register builder tools when mcpBuilderEnabled is false', async () => {
+			const user = Object.assign(new User(), { id: 'user-1' });
+			const workflowBuilderToolsService = mockInstance(WorkflowBuilderToolsService);
+
+			const service = new McpService(
+				mockLogger(),
+				executionsConfig,
+				instanceSettings,
+				mockInstance(WorkflowFinderService),
+				mockInstance(WorkflowRepository),
+				mockInstance(WorkflowService),
+				mockInstance(UrlService),
+				mockInstance(CredentialsService),
+				activeExecutions,
+				mockInstance(GlobalConfig, {
+					endpoints: {
+						webhook: '/webhook',
+						webhookTest: '/webhook-test',
+						mcpBuilderEnabled: false,
+					},
+				}),
+				mockInstance(Telemetry),
+				mockInstance(WorkflowRunner),
+				mockInstance(RoleService),
+				mockInstance(ProjectService),
+				workflowBuilderToolsService,
+				mockInstance(ProjectRepository),
+				mockInstance(SharedWorkflowRepository),
+				mockInstance(WorkflowHistoryService),
+			);
+
+			const server = await service.getServer(user);
+			expect(server).toBeDefined();
+			// Builder tools service should NOT have been initialized
+			expect(workflowBuilderToolsService.initialize).not.toHaveBeenCalled();
+		});
+
+		it('should register builder tools when mcpBuilderEnabled is true', async () => {
+			const user = Object.assign(new User(), { id: 'user-1' });
+			const workflowBuilderToolsService = mockInstance(WorkflowBuilderToolsService);
+
+			const service = new McpService(
+				mockLogger(),
+				executionsConfig,
+				instanceSettings,
+				mockInstance(WorkflowFinderService),
+				mockInstance(WorkflowRepository),
+				mockInstance(WorkflowService),
+				mockInstance(UrlService),
+				mockInstance(CredentialsService),
+				activeExecutions,
+				mockInstance(GlobalConfig, {
+					endpoints: {
+						webhook: '/webhook',
+						webhookTest: '/webhook-test',
+						mcpBuilderEnabled: true,
+					},
+				}),
+				mockInstance(Telemetry),
+				mockInstance(WorkflowRunner),
+				mockInstance(RoleService),
+				mockInstance(ProjectService),
+				workflowBuilderToolsService,
+				mockInstance(ProjectRepository),
+				mockInstance(SharedWorkflowRepository),
+				mockInstance(WorkflowHistoryService),
+			);
+
+			const server = await service.getServer(user);
+			expect(server).toBeDefined();
+			// Builder tools service should have been initialized
+			expect(workflowBuilderToolsService.initialize).toHaveBeenCalled();
+		});
 	});
 });
