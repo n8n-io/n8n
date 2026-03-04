@@ -1552,9 +1552,6 @@ function generateSDKCode(allNodes: EmittedNode[], allChains: string[]): string {
 		}
 	}
 
-	lines.push(`import { ${Array.from(usedFactories).join(', ')} } from '@n8n/workflow-sdk';`);
-	lines.push('');
-
 	// Node declarations
 	for (const n of allNodes) {
 		lines.push(n.sdkCode);
@@ -1564,9 +1561,7 @@ function generateSDKCode(allNodes: EmittedNode[], allChains: string[]): string {
 	// Workflow builder
 	const addCalls = allChains.map((chain) => `.add(${chain})`).join('\n  ');
 	lines.push(`export default workflow('compiled', 'Compiled Workflow')`);
-	lines.push(`  ${addCalls}`);
-	lines.push(`  .generatePinData()`);
-	lines.push(`  .toJSON();`);
+	lines.push(`  ${addCalls};`);
 
 	return lines.join('\n');
 }

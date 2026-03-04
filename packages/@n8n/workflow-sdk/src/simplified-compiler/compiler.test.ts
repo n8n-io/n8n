@@ -1,4 +1,36 @@
+import { readdirSync, readFileSync, statSync } from 'fs';
+import { join } from 'path';
 import { transpileWorkflowJS } from './compiler';
+
+// ─── Fixture helpers ────────────────────────────────────────────────────────
+
+interface Fixture {
+	title: string;
+	input: string;
+	expectedOutput: string;
+	skip?: string;
+}
+
+interface FixtureMeta {
+	title: string;
+	skip?: string;
+}
+
+function loadFixtureFromDir(dirPath: string): Fixture {
+	const meta = JSON.parse(readFileSync(join(dirPath, 'meta.json'), 'utf-8')) as FixtureMeta;
+	const input = readFileSync(join(dirPath, 'input.js'), 'utf-8').trim();
+	const expectedOutput = readFileSync(join(dirPath, 'output.js'), 'utf-8').trim();
+
+	return { title: meta.title, input, expectedOutput, skip: meta.skip };
+}
+
+function loadFixtures(): Fixture[] {
+	const dir = join(__dirname, '__fixtures__');
+	return readdirSync(dir)
+		.filter((f) => statSync(join(dir, f)).isDirectory())
+		.sort()
+		.map((f) => loadFixtureFromDir(join(dir, f)));
+}
 
 describe('transpileWorkflowJS', () => {
 	describe('Phase 1: core transpiler', () => {
@@ -12,7 +44,6 @@ onManual(async () => {
 			expect(result.code).toContain('trigger({');
 			expect(result.code).toContain('node({');
 			expect(result.code).toContain('workflow(');
-			expect(result.code).toContain('.toJSON()');
 		});
 
 		it('should generate $() references in Code nodes', () => {
@@ -53,15 +84,6 @@ const data = await http.get('https://example.com');
 `);
 			expect(result.errors.length).toBeGreaterThan(0);
 			expect(result.errors[0].message).toContain('onManual');
-		});
-
-		it('should call generatePinData() in output', () => {
-			const result = transpileWorkflowJS(`
-onManual(async () => {
-  await http.get('https://api.example.com');
-});
-`);
-			expect(result.code).toContain('.generatePinData()');
 		});
 
 		it('should generate correct HTTP node config for GET', () => {
@@ -139,8 +161,6 @@ onManual(async () => {
 `);
 			expect(result.code).toContain("workflow('compiled'");
 			expect(result.code).toContain('.add(');
-			expect(result.code).toContain('.generatePinData()');
-			expect(result.code).toContain('.toJSON()');
 		});
 
 		it('should handle multiple sequential HTTP calls', () => {
@@ -519,5 +539,24 @@ onManual(async () => {
 			expect(result.code).toContain('sortKeys');
 			expect(result.code).toContain('Object.keys(obj).sort()');
 		});
+	});
+
+	// ─── Real-world workflow validation ──────────────────────────────────────
+	// Fixture-driven tests: each .txt file in __fixtures__/ contains a title,
+	// input DSL, and expected output separated by === markers. Files with a
+	// ===skip=== section are skipped with the skip reason as the TODO.
+
+	describe('Real-world workflow validation', () => {
+		const fixtures = loadFixtures();
+
+		for (const fixture of fixtures) {
+			const testFn = fixture.skip ? it.skip : it;
+
+			testFn(fixture.title, () => {
+				const result = transpileWorkflowJS(fixture.input);
+				expect(result.errors).toHaveLength(0);
+				expect(result.code).toBe(fixture.expectedOutput);
+			});
+		}
 	});
 });
