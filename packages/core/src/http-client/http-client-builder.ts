@@ -108,11 +108,11 @@ export class HttpClientBuilder {
 	 */
 	async execute<T = unknown>(): Promise<T> {
 		const options = this.buildOptions();
-		const doRequest = () => this.doRequest<T>(options);
+		const doRequest = async () => await this.doRequest<T>(options);
 
-		return this.rateLimitOpts
+		return await (this.rateLimitOpts
 			? withRetry(doRequest, this.rateLimitOpts, () => this.context.getNode())
-			: doRequest();
+			: doRequest());
 	}
 
 	/**
@@ -128,13 +128,13 @@ export class HttpClientBuilder {
 		const baseOptions = this.buildOptions();
 
 		const executor = async <R = unknown>(options: IHttpRequestOptions): Promise<R> => {
-			const doRequest = () => this.doRequest<R>(options);
-			return this.rateLimitOpts
+			const doRequest = async () => await this.doRequest<R>(options);
+			return await (this.rateLimitOpts
 				? withRetry(doRequest, this.rateLimitOpts, () => this.context.getNode())
-				: doRequest();
+				: doRequest());
 		};
 
-		return paginate<T>(baseOptions, this.paginationOpts, executor);
+		return await paginate<T>(baseOptions, this.paginationOpts, executor);
 	}
 
 	private buildOptions(): IHttpRequestOptions {

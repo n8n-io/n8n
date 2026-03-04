@@ -1,7 +1,6 @@
 import type { IHttpRequestOptions } from 'n8n-workflow';
 
 import type { PaginationOptions, RequestExecutor } from '../types';
-
 import { paginateCursor } from './cursor';
 import { paginateLinkHeader } from './link-header';
 import { paginateOffset } from './offset';
@@ -17,12 +16,12 @@ export async function paginate<T>(
 ): Promise<T[]> {
 	switch (paginationOpts.strategy) {
 		case 'offset':
-			return paginateOffset<T>(baseOptions, paginationOpts, execute);
+			return await paginateOffset<T>(baseOptions, paginationOpts, execute);
 		case 'cursor':
-			return paginateCursor<T>(baseOptions, paginationOpts, execute);
+			return await paginateCursor<T>(baseOptions, paginationOpts, execute);
 		case 'link-header':
-			return paginateLinkHeader<T>(baseOptions, paginationOpts, execute);
+			return await paginateLinkHeader<T>(baseOptions, paginationOpts, execute);
 		case 'token':
-			return paginateToken<T>(baseOptions, paginationOpts, execute);
+			return await paginateToken<T>(baseOptions, paginationOpts, execute);
 	}
 }

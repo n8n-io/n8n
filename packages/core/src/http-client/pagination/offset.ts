@@ -1,5 +1,4 @@
 import get from 'lodash/get';
-
 import type { IHttpRequestOptions, IDataObject } from 'n8n-workflow';
 
 import type { PaginationOptions, RequestExecutor } from '../types';

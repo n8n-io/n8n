@@ -1,5 +1,4 @@
 import get from 'lodash/get';
-
 import type { IHttpRequestOptions, IDataObject } from 'n8n-workflow';
 
 import type { PaginationOptions, RequestExecutor } from '../types';
@@ -27,7 +26,7 @@ export async function paginateToken<T>(
 
 	do {
 		const body = baseOptions.body as IDataObject | undefined;
-		const variables = ((body?.variables as IDataObject) ?? {}) as IDataObject;
+		const variables = (body?.variables as IDataObject) ?? {};
 
 		const options: IHttpRequestOptions = {
 			...baseOptions,

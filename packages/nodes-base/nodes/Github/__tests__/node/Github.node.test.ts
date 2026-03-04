@@ -179,8 +179,7 @@ describe('Test Github Node', () => {
 						.fn()
 						.mockImplementation(async (_credentialType, options) => {
 							if (options.url?.includes('dispatches') && options.method === 'POST') {
-								const error: Record<string, unknown> = new Error('Not Found');
-								(error as Record<string, unknown>).statusCode = 404;
+								const error = Object.assign(new Error('Not Found'), { statusCode: 404 });
 								throw error;
 							}
 							return {};
@@ -189,8 +188,7 @@ describe('Test Github Node', () => {
 						.fn()
 						.mockImplementation(async (_credentialType, options) => {
 							if (options.uri?.includes('dispatches') && options.method === 'POST') {
-								const error: Record<string, unknown> = new Error('Not Found');
-								(error as Record<string, unknown>).statusCode = 404;
+								const error = Object.assign(new Error('Not Found'), { statusCode: 404 });
 								throw error;
 							}
 							return {};

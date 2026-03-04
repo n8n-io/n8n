@@ -2,7 +2,7 @@ import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, IHttpRequestOptions, INode } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import { httpClient } from '../HttpClientBuilder';
+import { httpClient } from '../http-client-builder';
 
 const mockNode = mock<INode>({ name: 'TestNode', type: 'test', typeVersion: 1 });
 

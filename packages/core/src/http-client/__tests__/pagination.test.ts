@@ -1,8 +1,8 @@
 import type { IHttpRequestOptions } from 'n8n-workflow';
 
-import { paginateOffset } from '../pagination/offset';
 import { paginateCursor } from '../pagination/cursor';
 import { paginateLinkHeader } from '../pagination/link-header';
+import { paginateOffset } from '../pagination/offset';
 import { paginateToken } from '../pagination/token';
 import type { PaginationOptions, RequestExecutor } from '../types';
 
