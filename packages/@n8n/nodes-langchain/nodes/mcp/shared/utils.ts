@@ -160,6 +160,14 @@ export async function connectMcpClient({
 	}
 }
 
+/** Safely converts any HeadersInit value to a plain Record<string, string>. */
+function headersToRecord(headers: HeadersInit | undefined): Record<string, string> {
+	if (!headers) return {};
+	if (headers instanceof Headers) return Object.fromEntries(headers.entries());
+	if (Array.isArray(headers)) return Object.fromEntries(headers);
+	return headers;
+}
+
 /**
  * Creates a fetch wrapper that injects auth headers into every request
  * and retries once on 401 after refreshing the token via onUnauthorized.
@@ -174,7 +182,7 @@ function createAuthFetch(
 		const response = await proxyFetch(input, {
 			...init,
 			headers: {
-				...(init?.headers as Record<string, string> | undefined),
+				...headersToRecord(init?.headers),
 				...headers,
 			},
 		});
@@ -186,7 +194,7 @@ function createAuthFetch(
 				return await proxyFetch(input, {
 					...init,
 					headers: {
-						...(init?.headers as Record<string, string> | undefined),
+						...headersToRecord(init?.headers),
 						...headers,
 					},
 				});

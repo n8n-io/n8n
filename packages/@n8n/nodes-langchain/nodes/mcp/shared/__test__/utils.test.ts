@@ -268,6 +268,42 @@ describe('utils', () => {
 				);
 			});
 
+			it('should preserve SDK headers passed as a Headers instance', async () => {
+				let capturedFetch: typeof fetch | undefined;
+				(Transport as jest.Mock).mockImplementation((_url: URL, opts: { fetch?: typeof fetch }) => {
+					capturedFetch = opts?.fetch;
+					return {};
+				});
+				mockClient.connect.mockResolvedValue(undefined);
+				mockedProxyFetch.mockResolvedValue(new Response('ok', { status: 200 }));
+
+				await connectMcpClient({
+					serverTransport: transport,
+					endpointUrl: 'https://example.com',
+					headers: { Authorization: 'Bearer my-token' },
+					name: 'test-client',
+					version: 1,
+				});
+
+				expect(capturedFetch).toBeDefined();
+				const sdkHeaders = new Headers({
+					Accept: 'text/event-stream',
+					'mcp-protocol-version': '2025-03-26',
+				});
+				await capturedFetch!('https://example.com/mcp', { headers: sdkHeaders });
+
+				expect(mockedProxyFetch).toHaveBeenCalledWith(
+					'https://example.com/mcp',
+					expect.objectContaining({
+						headers: expect.objectContaining({
+							accept: 'text/event-stream',
+							'mcp-protocol-version': '2025-03-26',
+							Authorization: 'Bearer my-token',
+						}),
+					}),
+				);
+			});
+
 			it('should retry on 401 response with refreshed headers from onUnauthorized', async () => {
 				let capturedFetch: typeof fetch | undefined;
 				(Transport as jest.Mock).mockImplementation((_url: URL, opts: { fetch?: typeof fetch }) => {
