@@ -127,7 +127,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 	async findByCredentialResolverId(
 		resolverId: string,
-	): Promise<Pick<WorkflowEntity, 'id' | 'name'>[]> {
+	): Promise<Array<Pick<WorkflowEntity, 'id' | 'name'>>> {
 		const qb = this.createQueryBuilder('workflow').select(['workflow.id', 'workflow.name']);
 
 		const dbType = this.globalConfig.database.type;
