@@ -120,4 +120,22 @@ describe('Expression VM error handling', () => {
 		);
 		expect((caught as ExpressionError).cause).toBe(securityError);
 	});
+
+	it('should convert built-in SyntaxError to ExpressionError', () => {
+		setVmEvaluator({
+			evaluate: () => {
+				throw new SyntaxError('Unexpected token');
+			},
+		});
+
+		let caught: unknown;
+		try {
+			evaluate('={{ $json.id }}');
+		} catch (error) {
+			caught = error;
+		}
+
+		expect(caught).toBeInstanceOf(ExpressionError);
+		expect((caught as ExpressionError).message).toBe('invalid syntax');
+	});
 });
