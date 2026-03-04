@@ -168,10 +168,9 @@ export const useAgGrid = <TRowData extends Record<string, unknown> = Record<stri
 	const onCellClicked = (params: CellClickedEvent<TRowData>) => {
 		const clickedCellColumn = params.column.getColId();
 		const clickedCellRow = params.rowIndex;
-		const rowPinned = params.node.rowPinned ?? null;
 
 		// Ignore clicks on pinned rows (e.g. the add-row button row)
-		if (rowPinned !== null) return;
+		if (params.node.rowPinned) return;
 
 		if (
 			clickedCellRow === null ||
@@ -188,7 +187,7 @@ export const useAgGrid = <TRowData extends Record<string, unknown> = Record<stri
 			lastFocusedCell.value &&
 			lastFocusedCell.value.rowIndex === clickedCellRow &&
 			lastFocusedCell.value.colId === clickedCellColumn &&
-			lastFocusedCell.value.rowPinned === rowPinned;
+			lastFocusedCell.value.rowPinned === null;
 
 		if (wasAlreadyFocused && params.column.getColDef()?.editable) {
 			// Cell was already selected, start editing
@@ -202,7 +201,7 @@ export const useAgGrid = <TRowData extends Record<string, unknown> = Record<stri
 		lastFocusedCell.value = {
 			rowIndex: clickedCellRow,
 			colId: clickedCellColumn,
-			rowPinned,
+			rowPinned: null,
 		};
 	};
 
