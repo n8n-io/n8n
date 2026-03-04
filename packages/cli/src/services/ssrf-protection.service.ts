@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { SsrfProtectionConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import type { LookupOptions } from 'node:dns';
 import { isIP } from 'node:net';
 import type { BlockList } from 'node:net';
 
@@ -35,7 +36,7 @@ export class SsrfProtectionService {
 
 	private readonly allowedIps: BlockList;
 
-	private readonly hostnameMatcher: HostnameMatcher;
+	private readonly allowedHostnameMatcher: HostnameMatcher;
 
 	constructor(
 		private readonly ssrfConfig: SsrfProtectionConfig,
@@ -50,7 +51,7 @@ export class SsrfProtectionService {
 		for (const issue of allowed.issues) this.logger.warn(`${issue.error}: ${issue.entry}`);
 		this.allowedIps = allowed.blocklist;
 
-		this.hostnameMatcher = new HostnameMatcher(this.ssrfConfig.allowedHostnames);
+		this.allowedHostnameMatcher = new HostnameMatcher(this.ssrfConfig.allowedHostnames);
 	}
 
 	/**
@@ -65,17 +66,17 @@ export class SsrfProtectionService {
 
 		const { hostname } = parsed;
 
-		if (this.hostnameMatcher.matches(hostname)) {
+		if (this.allowedHostnameMatcher.matches(hostname)) {
 			return { allowed: true };
 		}
 
-		const cleanIp = this.extractIpFromHostname(hostname);
+		const cleanIp = this.normalizeIpInHostname(hostname);
 		if (isIP(cleanIp)) {
 			return this.validateIp(cleanIp);
 		}
 
 		// Resolve hostname via DNS and validate all IPs
-		const ips = await this.dnsResolver.resolveAll(hostname);
+		const ips = await this.dnsResolver.lookup(hostname, { all: true });
 		if (ips.length === 0) {
 			return { allowed: false, reason: 'DNS resolution failed', hostname };
 		}
@@ -117,7 +118,7 @@ export class SsrfProtectionService {
 	 */
 	createSecureLookup(): (
 		hostname: string,
-		options: { all?: boolean; family?: number },
+		options: LookupOptions,
 		onResult: (
 			error: NodeJS.ErrnoException | null,
 			address: string | ResolvedAddress[],
@@ -152,74 +153,46 @@ export class SsrfProtectionService {
 	}
 
 	/**
-	 * Strip IPv6 bracket notation from a URL hostname.
+	 * Normalize IPv6 bracket notation from a URL hostname.
 	 * E.g. `[::1]` → `::1`, `127.0.0.1` → `127.0.0.1`.
 	 */
-	private extractIpFromHostname(hostname: string): string {
+	private normalizeIpInHostname(hostname: string): string {
 		return hostname.startsWith('[') && hostname.endsWith(']') ? hostname.slice(1, -1) : hostname;
 	}
 
 	private async secureLookupAsync(
 		hostname: string,
-		options: { all?: boolean; family?: number },
+		options: LookupOptions,
 	): Promise<{ address: ResolvedAddress[]; family: number }> {
-		if (this.hostnameMatcher.matches(hostname)) {
-			const ips = await this.dnsResolver.resolveAll(hostname);
-			if (ips.length === 0) {
-				throw new SsrfDnsResolutionError(hostname);
+		const ips = await this.lookupOrThrow(hostname, options);
+
+		if (!this.allowedHostnameMatcher.matches(hostname)) {
+			for (const ip of ips) {
+				const result = this.validateIp(ip);
+				if (!result.allowed) {
+					throw new SsrfBlockedIpError(ip);
+				}
 			}
-			const resolved = this.filterByRequestedFamily(
-				ips.map((ip) => this.toResolvedAddress(ip)),
-				options.family,
-			);
-			if (resolved.length === 0) {
-				throw new SsrfDnsResolutionError(hostname);
-			}
-			return {
-				address: resolved,
-				family: resolved[0].family,
-			};
 		}
 
-		// Handle direct IP addresses
-		const cleanIp = this.extractIpFromHostname(hostname);
+		const resolved = ips.map((ip) => this.toResolvedAddress(ip));
 
-		if (isIP(cleanIp)) {
-			const result = this.validateIp(cleanIp);
-			if (!result.allowed) {
-				throw new SsrfBlockedIpError(cleanIp);
-			}
-			const family = isIP(cleanIp) === 6 ? 6 : 4;
-			if ((options.family === 4 || options.family === 6) && options.family !== family) {
-				throw new SsrfDnsResolutionError(hostname);
-			}
-			return {
-				address: [{ address: cleanIp, family }],
-				family,
-			};
+		return { address: resolved, family: resolved[0].family };
+	}
+
+	private async lookupOrThrow(hostname: string, options: LookupOptions): Promise<string[]> {
+		let ips: string[];
+		try {
+			ips = await this.dnsResolver.lookup(hostname, options);
+		} catch (error) {
+			throw new SsrfDnsResolutionError(hostname, { cause: error });
 		}
 
-		const ips = await this.dnsResolver.resolveAll(hostname);
 		if (ips.length === 0) {
 			throw new SsrfDnsResolutionError(hostname);
 		}
 
-		for (const ip of ips) {
-			const result = this.validateIp(ip);
-			if (!result.allowed) {
-				throw new SsrfBlockedIpError(ip);
-			}
-		}
-
-		const resolved = this.filterByRequestedFamily(
-			ips.map((ip) => this.toResolvedAddress(ip)),
-			options.family,
-		);
-		if (resolved.length === 0) {
-			throw new SsrfDnsResolutionError(hostname);
-		}
-
-		return { address: resolved, family: resolved[0].family };
+		return ips;
 	}
 
 	private tryParseUrl(url: string | URL): URL | null {
@@ -242,16 +215,5 @@ export class SsrfProtectionService {
 			address: ip,
 			family: isIP(ip) === 6 ? 6 : 4,
 		};
-	}
-
-	private filterByRequestedFamily(
-		addresses: ResolvedAddress[],
-		family?: number,
-	): ResolvedAddress[] {
-		if (family !== 4 && family !== 6) {
-			return addresses;
-		}
-
-		return addresses.filter((address) => address.family === family);
 	}
 }
