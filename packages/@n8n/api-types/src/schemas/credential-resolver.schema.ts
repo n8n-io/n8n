@@ -29,3 +29,16 @@ export type CredentialResolverType = z.infer<typeof credentialResolverTypeSchema
 export const credentialResolversSchema = z.array(credentialResolverSchema);
 
 export type CredentialResolver = z.infer<typeof credentialResolverSchema>;
+
+export const credentialResolverAffectedWorkflowSchema = z.object({
+	id: z.string(),
+	name: z.string(),
+});
+
+export const credentialResolverAffectedWorkflowsSchema = z.array(
+	credentialResolverAffectedWorkflowSchema,
+);
+
+export type CredentialResolverAffectedWorkflow = z.infer<
+	typeof credentialResolverAffectedWorkflowSchema
+>;

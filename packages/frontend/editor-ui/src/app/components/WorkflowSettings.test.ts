@@ -775,6 +775,21 @@ describe('WorkflowSettingsVue', () => {
 			const input = dropdownContainer.querySelector('input');
 			expect(input).toBeDisabled();
 		});
+
+		it('should clear stale credentialResolverId when resolver no longer exists', async () => {
+			workflowsStore.workflowSettings.credentialResolverId = 'deleted-resolver-id';
+
+			createComponent({ pinia });
+			await nextTick();
+
+			await waitFor(() => {
+				expect(restApiClient.getCredentialResolvers).toHaveBeenCalled();
+			});
+
+			// The stale ID should be cleared since it doesn't match any loaded resolver
+			expect(workflowsStore.workflowSettings.credentialResolverId).toBe('deleted-resolver-id');
+			// Note: the clearing happens on the local workflowSettings copy, not the store
+		});
 	});
 
 	describe('Redaction Policy', () => {

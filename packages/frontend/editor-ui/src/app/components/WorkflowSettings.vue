@@ -717,6 +717,16 @@ onMounted(async () => {
 
 	originalBinaryMode.value = workflowSettingsData.binaryMode;
 	workflowSettings.value = workflowSettingsData;
+
+	// Clear stale credential resolver references (resolver was deleted externally)
+	if (
+		isCredentialResolverEnabled.value &&
+		workflowSettingsData.credentialResolverId &&
+		!credentialResolvers.value.some((r) => r.id === workflowSettingsData.credentialResolverId)
+	) {
+		workflowSettings.value.credentialResolverId = undefined;
+	}
+
 	timeoutHMS.value = convertToHMS(workflowSettingsData.executionTimeout);
 	isLoading.value = false;
 

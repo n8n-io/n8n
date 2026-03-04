@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { User } from '@n8n/db';
+import { User, WorkflowRepository } from '@n8n/db';
 import {
 	CredentialResolverConfiguration,
 	CredentialResolverValidationError,
@@ -46,6 +46,7 @@ export class DynamicCredentialResolverService {
 		private readonly registry: DynamicCredentialResolverRegistry,
 		private readonly cipher: Cipher,
 		private readonly expressionService: ResolverConfigExpressionService,
+		private readonly workflowRepository: WorkflowRepository,
 	) {
 		this.logger = this.logger.scoped('dynamic-credentials');
 	}
@@ -156,7 +157,20 @@ export class DynamicCredentialResolverService {
 	}
 
 	/**
+	 * Finds workflows that reference a credential resolver by ID.
+	 * @throws {DynamicCredentialResolverNotFoundError} When resolver is not found
+	 */
+	async findAffectedWorkflows(id: string): Promise<Array<{ id: string; name: string }>> {
+		const existing = await this.repository.findOneBy({ id });
+		if (!existing) {
+			throw new DynamicCredentialResolverNotFoundError(id);
+		}
+		return await this.workflowRepository.findByCredentialResolverId(id);
+	}
+
+	/**
 	 * Deletes a credential resolver by ID.
+	 * Clears credentialResolverId from workflow settings before deleting.
 	 * @throws {DynamicCredentialResolverNotFoundError} When resolver is not found
 	 */
 	async delete(id: string): Promise<void> {
@@ -164,6 +178,9 @@ export class DynamicCredentialResolverService {
 		if (!existing) {
 			throw new DynamicCredentialResolverNotFoundError(id);
 		}
+
+		// Clean up workflow references before deleting the resolver
+		await this.workflowRepository.clearCredentialResolverId(id);
 
 		await this.repository.remove(existing);
 		this.logger.debug(`Deleted credential resolver "${existing.name}" (${id})`);
