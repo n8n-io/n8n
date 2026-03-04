@@ -1,306 +1,31 @@
 /**
- * Workflow JS Compiler
+ * Workflow JS Transpiler
  *
- * Compiles plain JavaScript with `http.*` and `ai.*` globals into n8n WorkflowJSON.
- * The compiler:
- * 1. Parses JS with acorn (AST only, no evaluation)
- * 2. Finds IO boundaries (http.get, http.post, ai.chat, etc.)
- * 3. Splits code at those boundaries
- * 4. Extracts comments for sticky notes and node names
- * 5. Generates n8n-compatible WorkflowJSON
+ * Transpiles simplified JS with `onManual()`, `http.*`, `ai.*` callbacks
+ * into n8n Workflow-SDK TypeScript code. The caller evaluates the SDK code
+ * to get validated WorkflowJSON.
+ *
+ * Architecture:
+ *   Simplified JS → Acorn parse → AST → transpile (pattern → string) → SDK TypeScript code
  */
 
 import * as acorn from 'acorn';
-import { v4 as uuid } from 'uuid';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-export interface CompilerResult {
-	workflow: WorkflowJSON;
+export interface TranspilerResult {
+	code: string;
 	errors: CompilerError[];
 }
 
 export interface CompilerError {
-	message: string;
 	line?: number;
 	column?: number;
+	message: string;
+	category: 'syntax' | 'structure' | 'validation';
 }
 
-export interface WorkflowJSON {
-	id: string;
-	name: string;
-	nodes: WorkflowNode[];
-	connections: Record<string, NodeConnections>;
-}
-
-export interface WorkflowNode {
-	id: string;
-	name: string;
-	type: string;
-	typeVersion: number;
-	position: [number, number];
-	parameters: Record<string, unknown>;
-	credentials?: Record<string, { id: string; name: string }>;
-}
-
-interface NodeConnection {
-	node: string;
-	type: string;
-	index: number;
-}
-
-interface NodeConnections {
-	[connectionType: string]: NodeConnection[][];
-}
-
-// ─── IO Boundary Analysis ────────────────────────────────────────────────────
-
-interface IOBoundary {
-	type: 'http' | 'ai';
-	method: string; // get, post, put, patch, delete, chat
-	/** Byte offset of the full statement (including `const x = await ...`) */
-	statementStart: number;
-	statementEnd: number;
-	/** Byte offset of the call expression itself */
-	callStart: number;
-	callEnd: number;
-	/** Variable name the result is assigned to, if any */
-	assignedVar: string | null;
-	/** Extracted arguments from the call */
-	args: ExtractedArgs;
-}
-
-interface ExtractedArgs {
-	url?: string;
-	body?: Record<string, unknown> | null;
-	/** When the body is a single variable reference, store the expression */
-	bodyExpression?: string;
-	options?: Record<string, unknown>;
-	// AI-specific
-	model?: string;
-	prompt?: string;
-}
-
-// ─── Comment Attachment ──────────────────────────────────────────────────────
-
-interface CommentAttachment {
-	text: string;
-	nodeName: string; // first line, truncated
-}
-
-// ─── Segment ─────────────────────────────────────────────────────────────────
-
-interface Segment {
-	type: 'code' | 'io';
-	sourceCode: string;
-	ioBoundary?: IOBoundary;
-	comment?: CommentAttachment;
-}
-
-// ─── Metadata ────────────────────────────────────────────────────────────────
-
-interface WorkflowMetadata {
-	triggerType: string;
-	triggerParams: Record<string, unknown>;
-	workflowName: string;
-}
-
-// ─── Main Compiler ──────────────────────────────────────────────────────────
-
-export function compileWorkflowJS(source: string): CompilerResult {
-	const errors: CompilerError[] = [];
-
-	// Step 1: Parse metadata from comments
-	const metadata = parseMetadata(source);
-
-	// Step 2: Parse with acorn
-	let ast: acorn.Node;
-	const comments: acorn.Comment[] = [];
-	try {
-		ast = acorn.parse(source, {
-			ecmaVersion: 'latest',
-			sourceType: 'module',
-			locations: true,
-			onComment: comments,
-		});
-	} catch (e) {
-		const err = e as { message: string; loc?: { line: number; column: number } };
-		errors.push({
-			message: err.message,
-			line: err.loc?.line,
-			column: err.loc?.column,
-		});
-		return {
-			workflow: { id: 'compiled', name: metadata.workflowName, nodes: [], connections: {} },
-			errors,
-		};
-	}
-
-	// Step 2.5: Find trigger.*() call (overrides // @trigger comment)
-	const triggerStmt = findTriggerStatement(ast);
-	if (triggerStmt) {
-		metadata.triggerType = triggerStmt.triggerType;
-		if (triggerStmt.triggerType === 'schedule') {
-			metadata.triggerParams = mapScheduleOptions(triggerStmt.options);
-		} else if (triggerStmt.triggerType === 'webhook') {
-			metadata.triggerParams = mapWebhookOptions(triggerStmt.options);
-		}
-	}
-
-	// Step 3: Find IO boundaries
-	const boundaries = findIOBoundaries(ast, source);
-
-	// Step 4: Split into segments (skip trigger statement)
-	const triggerRange = triggerStmt
-		? { start: triggerStmt.statementStart, end: triggerStmt.statementEnd }
-		: undefined;
-	const segments = splitIntoSegments(source, boundaries, ast, triggerRange);
-
-	// Step 5: Attach comments to segments
-	attachComments(segments, comments, source);
-
-	// Step 6: Generate nodes
-	const { nodes, connections } = generateWorkflow(segments, metadata);
-
-	return {
-		workflow: { id: 'compiled', name: metadata.workflowName, nodes, connections },
-		errors,
-	};
-}
-
-// ─── Metadata Parsing ────────────────────────────────────────────────────────
-
-function parseMetadata(source: string): WorkflowMetadata {
-	const metadata: WorkflowMetadata = {
-		triggerType: 'manual',
-		triggerParams: {},
-		workflowName: 'Compiled Workflow',
-	};
-
-	// Legacy: // @trigger <type> still works as a fallback
-	const triggerMatch = source.match(/\/\/\s*@trigger\s+(\w+)/);
-	if (triggerMatch) {
-		metadata.triggerType = triggerMatch[1];
-	}
-
-	const workflowMatch = source.match(/\/\/\s*@workflow\s+"([^"]+)"/);
-	if (workflowMatch) {
-		metadata.workflowName = workflowMatch[1];
-	}
-
-	return metadata;
-}
-
-// ─── Trigger Statement Detection ────────────────────────────────────────────
-
-interface TriggerStatement {
-	triggerType: string;
-	options: Record<string, unknown>;
-	statementStart: number;
-	statementEnd: number;
-}
-
-/**
- * Finds a `trigger.*()` call in the top-level AST body.
- * Supports both `trigger.manual()` and `await trigger.manual()`.
- */
-function findTriggerStatement(ast: acorn.Node): TriggerStatement | null {
-	const program = ast as AcornNode;
-	if (program.type !== 'Program' || !program.body) return null;
-
-	for (const stmt of program.body) {
-		let callExpr: AcornNode | null = null;
-
-		if (stmt.type === 'ExpressionStatement' && stmt.expression) {
-			const expr = stmt.expression;
-			if (expr.type === 'CallExpression') {
-				callExpr = expr;
-			} else if (expr.type === 'AwaitExpression' && expr.argument?.type === 'CallExpression') {
-				callExpr = expr.argument;
-			}
-		}
-
-		if (!callExpr?.callee) continue;
-		const callee = callExpr.callee;
-
-		if (
-			callee.type === 'MemberExpression' &&
-			callee.object?.type === 'Identifier' &&
-			callee.object.name === 'trigger' &&
-			callee.property?.type === 'Identifier'
-		) {
-			const triggerType = callee.property.name ?? 'manual';
-			const options = callExpr.arguments?.[0]
-				? (extractObjectValue(callExpr.arguments[0]) ?? {})
-				: {};
-
-			return {
-				triggerType,
-				options,
-				statementStart: stmt.start,
-				statementEnd: stmt.end,
-			};
-		}
-	}
-
-	return null;
-}
-
-/**
- * Maps user-friendly schedule options to n8n ScheduleTrigger parameters.
- *
- * Supported formats:
- *   trigger.schedule({ every: '30s' })   → every 30 seconds
- *   trigger.schedule({ every: '5m' })    → every 5 minutes
- *   trigger.schedule({ every: '2h' })    → every 2 hours
- *   trigger.schedule({ every: '1d' })    → every day
- *   trigger.schedule({ every: '1w' })    → every week
- *   trigger.schedule({ cron: '0 9 * * *' }) → cron expression
- */
-function mapScheduleOptions(options: Record<string, unknown>): Record<string, unknown> {
-	if (typeof options.every === 'string') {
-		const match = (options.every as string).match(/^(\d+)\s*(s|m|h|d|w)$/);
-		if (match) {
-			const value = parseInt(match[1], 10);
-			const unitMap: Record<string, Record<string, unknown>> = {
-				s: { field: 'seconds', secondsInterval: value },
-				m: { field: 'minutes', minutesInterval: value },
-				h: { field: 'hours', hoursInterval: value },
-				d: { field: 'days', daysInterval: value },
-				w: { field: 'weeks', weeksInterval: value },
-			};
-			return { rule: { interval: [unitMap[match[2]]] } };
-		}
-	}
-
-	if (typeof options.cron === 'string') {
-		return {
-			rule: {
-				interval: [{ field: 'cronExpression', expression: options.cron }],
-			},
-		};
-	}
-
-	// Default: daily
-	return { rule: { interval: [{ field: 'days', daysInterval: 1 }] } };
-}
-
-/**
- * Maps user-friendly webhook options to n8n Webhook node parameters.
- *
- * Supported options:
- *   trigger.webhook({ method: 'POST', path: '/incoming' })
- *   trigger.webhook({ method: 'GET', path: '/status', response: 'lastNode' })
- */
-function mapWebhookOptions(options: Record<string, unknown>): Record<string, unknown> {
-	const params: Record<string, unknown> = {};
-	if (options.method) params.httpMethod = (options.method as string).toUpperCase();
-	if (options.path) params.path = options.path;
-	if (options.response) params.responseMode = options.response;
-	return params;
-}
-
-// ─── IO Boundary Detection ──────────────────────────────────────────────────
+// ─── AST Helpers ─────────────────────────────────────────────────────────────
 
 type AcornNode = acorn.Node & {
 	type: string;
@@ -322,898 +47,1526 @@ type AcornNode = acorn.Node & {
 	quasis?: AcornNode[];
 	expressions?: AcornNode[];
 	raw?: string;
+	params?: AcornNode[];
+	left?: AcornNode;
+	right?: AcornNode;
+	operator?: string;
+	consequent?: AcornNode | AcornNode[];
+	alternate?: AcornNode;
+	test?: AcornNode;
+	cases?: AcornNode[];
+	block?: AcornNode;
+	handler?: AcornNode;
+	param?: AcornNode;
+	discriminant?: AcornNode;
+	leadingComments?: Array<{ type: string; value: string }>;
 };
 
-function findIOBoundaries(ast: acorn.Node, source: string): IOBoundary[] {
-	const boundaries: IOBoundary[] = [];
-	const program = ast as AcornNode;
+// ─── Callback Info ───────────────────────────────────────────────────────────
 
-	if (program.type !== 'Program' || !program.body) return boundaries;
-
-	for (const stmt of program.body) {
-		findIOInStatement(stmt, stmt, source, boundaries);
-	}
-
-	return boundaries;
+interface CallbackInfo {
+	triggerType: 'manual' | 'webhook' | 'schedule' | 'error';
+	triggerOptions: Record<string, unknown>;
+	callbackBody: AcornNode[];
+	callbackParams: string[];
 }
 
-function findIOInStatement(
-	node: AcornNode,
-	topStatement: AcornNode,
-	source: string,
-	boundaries: IOBoundary[],
-): void {
-	// Variable declaration: const x = await http.get(...)
-	if (node.type === 'VariableDeclaration' && node.declarations) {
-		for (const decl of node.declarations) {
-			if (decl.init?.type === 'AwaitExpression' && decl.init.argument) {
-				const call = decl.init.argument;
-				const io = matchIOCall(call, source);
-				if (io) {
-					io.assignedVar = decl.id?.name ?? null;
-					io.statementStart = topStatement.start;
-					io.statementEnd = topStatement.end;
-					boundaries.push(io);
-				}
-			}
-		}
-		return;
-	}
+// ─── IO Call ─────────────────────────────────────────────────────────────────
 
-	// Expression statement: await http.post(...)
-	if (node.type === 'ExpressionStatement' && node.expression) {
-		const expr = node.expression;
-		if (expr.type === 'AwaitExpression' && expr.argument) {
-			const io = matchIOCall(expr.argument, source);
-			if (io) {
-				io.statementStart = topStatement.start;
-				io.statementEnd = topStatement.end;
-				boundaries.push(io);
-			}
-		}
-	}
+interface IOCall {
+	type: 'http' | 'ai' | 'workflow' | 'respond';
+	method: string;
+	assignedVar: string | null;
+	url?: string;
+	body?: Record<string, unknown> | null;
+	bodyExpression?: string;
+	options?: Record<string, unknown>;
+	model?: string;
+	prompt?: string;
+	nodeName: string;
+	// AI-specific subnodes
+	aiTools?: Array<Record<string, unknown>>;
+	aiOutputParser?: Record<string, unknown>;
+	aiMemory?: Record<string, unknown>;
+	// respond-specific
+	respondArgs?: Record<string, unknown>;
+	// workflow.run-specific
+	workflowName?: string;
+	// Credentials
+	credentials?: { type: string; credential: string };
+	// Error handling
+	onError?: string;
 }
 
-function matchIOCall(callNode: AcornNode, source: string): IOBoundary | null {
-	if (callNode.type !== 'CallExpression' || !callNode.callee) return null;
-	const callee = callNode.callee;
+// ─── Emitted Node ────────────────────────────────────────────────────────────
 
-	// Match http.get, http.post, etc.
-	if (
-		callee.type === 'MemberExpression' &&
-		callee.object?.type === 'Identifier' &&
-		callee.property?.type === 'Identifier'
-	) {
-		const obj = callee.object.name;
-		const method = callee.property.name;
+interface EmittedNode {
+	varName: string;
+	sdkCode: string;
+	kind:
+		| 'trigger'
+		| 'http'
+		| 'code'
+		| 'ai'
+		| 'respond'
+		| 'workflow'
+		| 'ifElse'
+		| 'switchCase'
+		| 'splitInBatches';
+	nodeName: string;
+}
 
-		if (obj === 'http' && ['get', 'post', 'put', 'patch', 'delete'].includes(method ?? '')) {
-			return {
-				type: 'http',
-				method: method ?? '',
-				statementStart: 0,
-				statementEnd: 0,
-				callStart: callNode.start,
-				callEnd: callNode.end,
-				assignedVar: null,
-				args: extractHttpArgs(callNode, method ?? '', source),
-			};
+// ─── Transpiler Context ──────────────────────────────────────────────────────
+
+interface TranspilerContext {
+	source: string;
+	nodes: EmittedNode[];
+	varSourceMap: Map<string, string>;
+	httpCounter: number;
+	codeCounter: number;
+	ifCounter: number;
+	switchCounter: number;
+	sibCounter: number;
+	respondCounter: number;
+	wfCounter: number;
+	pendingCode: string[];
+	prevVar: string;
+	triggerType: CallbackInfo['triggerType'];
+	callbackParams: string[];
+	errors: CompilerError[];
+	hasOnErrorAnnotation: boolean;
+}
+
+// ─── Main Transpiler ─────────────────────────────────────────────────────────
+
+export function transpileWorkflowJS(source: string): TranspilerResult {
+	const errors: CompilerError[] = [];
+
+	// Step 1: Parse with acorn — enable comment collection
+	let ast: AcornNode;
+	const comments: Array<{ type: string; value: string; start: number; end: number }> = [];
+	try {
+		ast = acorn.parse(source, {
+			ecmaVersion: 'latest',
+			sourceType: 'module',
+			locations: true,
+			onComment: comments as unknown as acorn.Comment[],
+		}) as AcornNode;
+	} catch (e) {
+		const err = e as { message: string; loc?: { line: number; column: number } };
+		errors.push({
+			message: err.message,
+			line: err.loc?.line,
+			column: err.loc?.column,
+			category: 'syntax',
+		});
+		return { code: '', errors };
+	}
+
+	// Step 2: Check for legacy trigger.X() syntax
+	const legacyTrigger = findLegacyTrigger(ast);
+	if (legacyTrigger) {
+		errors.push({
+			message: `Legacy trigger.${legacyTrigger}() syntax is not supported. Use onManual(async () => {...}) instead.`,
+			category: 'structure',
+		});
+		return { code: '', errors };
+	}
+
+	// Step 3: Find onX() callbacks
+	const callbacks = findCallbacks(ast);
+	if (callbacks.length === 0) {
+		errors.push({
+			message:
+				'No trigger callback found. Use onManual(async () => {...}), onWebhook({...}, async () => {...}), or onSchedule({...}, async () => {...}).',
+			category: 'structure',
+		});
+		return { code: '', errors };
+	}
+
+	// Step 4: Check for respond() misuse
+	for (const cb of callbacks) {
+		if (cb.triggerType !== 'webhook' && hasRespondCall(cb.callbackBody, source)) {
+			errors.push({
+				message:
+					'respond() can only be used inside onWebhook() callbacks. Use onWebhook({...}, async ({body, respond}) => {...}) instead.',
+				category: 'structure',
+			});
+			return { code: '', errors };
+		}
+	}
+
+	// Step 5: Transpile each callback
+	const allNodes: EmittedNode[] = [];
+	const allChains: string[] = [];
+
+	for (const cb of callbacks) {
+		const { nodes, chainExpr } = transpileCallback(cb, source, allNodes.length, comments, errors);
+		allNodes.push(...nodes);
+		allChains.push(chainExpr);
+	}
+
+	// Step 6: Generate final SDK code
+	const code = generateSDKCode(allNodes, allChains);
+	return { code, errors };
+}
+
+// ─── Legacy Trigger Detection ────────────────────────────────────────────────
+
+function findLegacyTrigger(ast: AcornNode): string | null {
+	if (!ast.body) return null;
+
+	for (const stmt of ast.body) {
+		let callExpr: AcornNode | null = null;
+
+		if (stmt.type === 'ExpressionStatement' && stmt.expression) {
+			const expr = stmt.expression;
+			if (expr.type === 'CallExpression') {
+				callExpr = expr;
+			} else if (expr.type === 'AwaitExpression' && expr.argument?.type === 'CallExpression') {
+				callExpr = expr.argument;
+			}
 		}
 
-		if (obj === 'ai' && method === 'chat') {
-			return {
-				type: 'ai',
-				method: 'chat',
-				statementStart: 0,
-				statementEnd: 0,
-				callStart: callNode.start,
-				callEnd: callNode.end,
-				assignedVar: null,
-				args: extractAiArgs(callNode, source),
-			};
+		if (!callExpr?.callee) continue;
+		const callee = callExpr.callee;
+
+		if (
+			callee.type === 'MemberExpression' &&
+			callee.object?.type === 'Identifier' &&
+			callee.object.name === 'trigger' &&
+			callee.property?.type === 'Identifier'
+		) {
+			return callee.property.name ?? 'manual';
 		}
 	}
 
 	return null;
 }
 
-// ─── Argument Extraction ─────────────────────────────────────────────────────
+// ─── Callback Detection ──────────────────────────────────────────────────────
 
-function extractHttpArgs(callNode: AcornNode, method: string, _source: string): ExtractedArgs {
-	const args = callNode.arguments ?? [];
-	const result: ExtractedArgs = {};
+function findCallbacks(ast: AcornNode): CallbackInfo[] {
+	const callbacks: CallbackInfo[] = [];
+	if (!ast.body) return callbacks;
 
-	// First arg is always URL
-	if (args[0]) {
-		result.url = extractStringValue(args[0]);
+	for (const stmt of ast.body) {
+		if (stmt.type !== 'ExpressionStatement' || !stmt.expression) continue;
+		const expr = stmt.expression;
+		if (expr.type !== 'CallExpression' || !expr.callee) continue;
+
+		const callee = expr.callee;
+		if (callee.type !== 'Identifier') continue;
+
+		const name = callee.name ?? '';
+		const args = expr.arguments ?? [];
+
+		const triggerMap: Record<string, CallbackInfo['triggerType']> = {
+			onManual: 'manual',
+			onWebhook: 'webhook',
+			onSchedule: 'schedule',
+			onError: 'error',
+		};
+
+		const triggerType = triggerMap[name];
+		if (!triggerType) continue;
+
+		let callbackFn: AcornNode | undefined;
+		let triggerOptions: Record<string, unknown> = {};
+
+		if (triggerType === 'manual' || triggerType === 'error') {
+			callbackFn = args[0];
+		} else {
+			if (args[0]) triggerOptions = extractObjectLiteral(args[0]) ?? {};
+			callbackFn = args[1];
+		}
+
+		if (!callbackFn) continue;
+
+		const fnBody = extractFunctionBody(callbackFn);
+		if (!fnBody) continue;
+
+		const cbParams = extractCallbackParams(callbackFn);
+
+		callbacks.push({ triggerType, triggerOptions, callbackBody: fnBody, callbackParams: cbParams });
 	}
 
-	if (method === 'get' || method === 'delete') {
-		// get/delete: (url, options?)
-		if (args[1]) {
-			result.options = extractObjectValue(args[1]);
-		}
-	} else {
-		// post/put/patch: (url, body?, options?)
-		if (args[1]) {
-			result.body = extractObjectValue(args[1]);
-			// If body is a plain variable reference, use a $json expression
-			if (!result.body && args[1].type === 'Identifier') {
-				result.bodyExpression = `={{ $json.${args[1].name} }}`;
-			}
-		}
-		if (args[2]) {
-			result.options = extractObjectValue(args[2]);
-		}
-	}
-
-	return result;
+	return callbacks;
 }
 
-function extractAiArgs(callNode: AcornNode, _source: string): ExtractedArgs {
-	const args = callNode.arguments ?? [];
-	const result: ExtractedArgs = {};
-
-	if (args[0]) {
-		result.model = extractStringValue(args[0]);
-	}
-	if (args[1]) {
-		result.prompt = extractStringValue(args[1]);
-	}
-	if (args[2]) {
-		result.options = extractObjectValue(args[2]);
-	}
-
-	return result;
-}
-
-function extractStringValue(node: AcornNode): string | undefined {
-	if (node.type === 'Literal' && typeof node.value === 'string') {
-		return node.value;
-	}
-	if (node.type === 'Identifier') {
-		return `={{ $json.${node.name} }}`;
-	}
-	if (node.type === 'TemplateLiteral') {
-		const quasis = node.quasis ?? [];
-		const expressions = node.expressions ?? [];
-		const parts: string[] = [];
-		for (let i = 0; i < quasis.length; i++) {
-			parts.push((quasis[i].value as unknown as string) ?? quasis[i].raw ?? '');
-			if (i < expressions.length) {
-				parts.push(`{{ $json.${expressionToRef(expressions[i])} }}`);
-			}
-		}
-		return `=${parts.join('')}`;
-	}
-	if (node.type === 'CallExpression') {
-		// Handle JSON.stringify(x), x.toString(), x.join(', '), etc.
-		const ref = expressionToRef(node);
-		return `={{ $json.${ref} }}`;
-	}
-	if (node.type === 'MemberExpression') {
-		const ref = expressionToRef(node);
-		return `={{ $json.${ref} }}`;
-	}
-	if (
-		node.type === 'BinaryExpression' &&
-		(node as unknown as { operator: string }).operator === '+'
-	) {
-		const left = (node as unknown as { left: AcornNode }).left;
-		const right = (node as unknown as { right: AcornNode }).right;
-		const leftStr = extractStringValue(left);
-		const rightStr = extractStringValue(right);
-		if (leftStr !== undefined && rightStr !== undefined) {
-			// Merge into a single n8n expression
-			const stripLeft = leftStr.startsWith('=') ? leftStr.slice(1) : leftStr;
-			const stripRight = rightStr.startsWith('=') ? rightStr.slice(1) : rightStr;
-			return `=${stripLeft}${stripRight}`;
+function extractFunctionBody(fnNode: AcornNode): AcornNode[] | null {
+	if (fnNode.type === 'ArrowFunctionExpression' || fnNode.type === 'FunctionExpression') {
+		const body = fnNode.body as unknown as AcornNode;
+		if (body?.type === 'BlockStatement' && body.body) {
+			return body.body;
 		}
 	}
-	// Unrecognized expression
-	return undefined;
+	return null;
 }
 
-/** Converts an AST node to a $json reference string */
-function expressionToRef(node: AcornNode): string {
-	if (node.type === 'Identifier') return node.name ?? 'data';
-	if (
-		node.type === 'MemberExpression' &&
-		node.object?.type === 'Identifier' &&
-		node.property?.type === 'Identifier'
-	) {
-		return `${node.object.name}.${node.property.name}`;
+function extractCallbackParams(fnNode: AcornNode): string[] {
+	if (!fnNode.params || fnNode.params.length === 0) return [];
+	const param = fnNode.params[0];
+	if (param.type === 'ObjectPattern' && param.properties) {
+		return param.properties
+			.map((p: AcornNode) => {
+				if (p.type === 'Property' && p.key?.type === 'Identifier') return p.key.name ?? '';
+				return '';
+			})
+			.filter((n: string) => n.length > 0);
 	}
-	// Handle method calls: topPosts.join(', ') → topPosts
-	// and static calls: JSON.stringify(data) → data (use first arg)
-	if (node.type === 'CallExpression' && node.callee) {
-		const callee = node.callee;
-		// Method call on a variable: x.method(...) → use x
+	if (param.type === 'Identifier') return [param.name ?? ''];
+	return [];
+}
+
+// ─── Respond Detection ───────────────────────────────────────────────────────
+
+function hasRespondCall(stmts: AcornNode[], source: string): boolean {
+	for (const stmt of stmts) {
+		if (isRespondCall(stmt)) return true;
+		const nested = findNestedIO(stmt, source);
+		for (const io of nested) {
+			if (io.type === 'respond') return true;
+		}
+	}
+	return false;
+}
+
+function isRespondCall(stmt: AcornNode): boolean {
+	if (stmt.type === 'ExpressionStatement' && stmt.expression) {
+		const expr = stmt.expression;
 		if (
-			callee.type === 'MemberExpression' &&
-			callee.object?.type === 'Identifier' &&
-			callee.property?.type === 'Identifier'
+			expr.type === 'CallExpression' &&
+			expr.callee?.type === 'Identifier' &&
+			expr.callee.name === 'respond'
 		) {
-			// Static utility calls like JSON.stringify(data) → use first arg
-			const objName = callee.object.name ?? '';
-			if (objName === 'JSON' || objName === 'Object' || objName === 'Array') {
-				const callArgs = node.arguments ?? [];
-				if (callArgs[0]) return expressionToRef(callArgs[0]);
-			}
-			return callee.object.name ?? 'data';
-		}
-		// Fallback: use first argument
-		const callArgs = node.arguments ?? [];
-		if (callArgs[0]) {
-			return expressionToRef(callArgs[0]);
+			return true;
 		}
 	}
-	return 'data';
+	return false;
 }
 
-function extractObjectValue(node: AcornNode): Record<string, unknown> | undefined {
-	if (node.type === 'ObjectExpression' && node.properties) {
-		const obj: Record<string, unknown> = {};
-		for (const prop of node.properties) {
-			if (prop.type === 'Property' && prop.key) {
-				const key = prop.key.name ?? (prop.key.value as string);
-				const propValueNode = (prop as unknown as { value: AcornNode }).value;
-				if (key && propValueNode) {
-					if (propValueNode.type === 'Literal') {
-						obj[key] = propValueNode.value;
-					} else if (propValueNode.type === 'Identifier') {
-						obj[key] = `={{ $json.${propValueNode.name} }}`;
-					} else if (propValueNode.type === 'ObjectExpression') {
-						obj[key] = extractObjectValue(propValueNode);
-					} else {
-						// Try to extract as a string expression
-						const strVal = extractStringValue(propValueNode);
-						obj[key] = strVal ?? '={{$json}}';
+// ─── Callback Transpilation ──────────────────────────────────────────────────
+
+function transpileCallback(
+	cb: CallbackInfo,
+	source: string,
+	nodeOffset: number,
+	comments: Array<{ type: string; value: string; start: number; end: number }>,
+	errors: CompilerError[],
+): { nodes: EmittedNode[]; chainExpr: string } {
+	const ctx: TranspilerContext = {
+		source,
+		nodes: [],
+		varSourceMap: new Map(),
+		httpCounter: nodeOffset,
+		codeCounter: nodeOffset,
+		ifCounter: nodeOffset,
+		switchCounter: nodeOffset,
+		sibCounter: nodeOffset,
+		respondCounter: nodeOffset,
+		wfCounter: nodeOffset,
+		pendingCode: [],
+		prevVar: '',
+		triggerType: cb.triggerType,
+		callbackParams: cb.callbackParams,
+		errors,
+		hasOnErrorAnnotation: false,
+	};
+
+	// Generate trigger node
+	const triggerVar = `t${nodeOffset}`;
+	const triggerNode = generateTriggerSDK(cb, triggerVar);
+	ctx.nodes.push(triggerNode);
+	ctx.prevVar = triggerVar;
+
+	// Seed varSourceMap with webhook params
+	if (cb.triggerType === 'webhook') {
+		for (const param of cb.callbackParams) {
+			if (param !== 'respond') {
+				ctx.varSourceMap.set(param, triggerNode.nodeName);
+			}
+		}
+	}
+
+	// Walk callback body
+	walkStatements(ctx, cb.callbackBody, comments);
+
+	// Flush remaining code
+	flushPendingCode(ctx);
+
+	// Build chain expression
+	const nodeVars = ctx.nodes.map((n) => n.varName);
+	let chainExpr: string;
+	if (nodeVars.length <= 1) {
+		chainExpr = nodeVars[0] ?? triggerVar;
+	} else {
+		chainExpr = nodeVars[0];
+		for (let i = 1; i < nodeVars.length; i++) {
+			chainExpr += `.to(${nodeVars[i]})`;
+		}
+	}
+
+	return { nodes: ctx.nodes, chainExpr };
+}
+
+// ─── Statement Walking ───────────────────────────────────────────────────────
+
+function walkStatements(
+	ctx: TranspilerContext,
+	statements: AcornNode[],
+	comments: Array<{ type: string; value: string; start: number; end: number }>,
+): void {
+	for (const stmt of statements) {
+		// Check for @onError continue annotation in preceding comments
+		const stmtComments = comments.filter(
+			(c) => c.end <= stmt.start && c.value.trim() === '@onError continue',
+		);
+		if (stmtComments.length > 0) {
+			ctx.hasOnErrorAnnotation = true;
+		}
+
+		const ioCall = extractIOCall(stmt, ctx.source);
+		if (ioCall) {
+			// Apply @onError annotation
+			if (ctx.hasOnErrorAnnotation) {
+				ioCall.onError = 'continueRegularOutput';
+				ctx.hasOnErrorAnnotation = false;
+			}
+			processIOCall(ctx, ioCall);
+			continue;
+		}
+
+		// Check for respond() call
+		if (isRespondCall(stmt)) {
+			processRespondCall(ctx, stmt);
+			continue;
+		}
+
+		// Check for structured control flow
+		if (stmt.type === 'IfStatement') {
+			processIfStatement(ctx, stmt, comments);
+			continue;
+		}
+
+		if (stmt.type === 'SwitchStatement') {
+			processSwitchStatement(ctx, stmt, comments);
+			continue;
+		}
+
+		if (stmt.type === 'ForOfStatement') {
+			processForOfStatement(ctx, stmt, comments);
+			continue;
+		}
+
+		if (stmt.type === 'TryStatement') {
+			processTryStatement(ctx, stmt, comments);
+			continue;
+		}
+
+		// Check for Promise.all
+		if (isPromiseAll(stmt)) {
+			processPromiseAll(ctx, stmt, comments);
+			continue;
+		}
+
+		// Check for nested IO in unrecognized structures
+		const nestedIO = findNestedIO(stmt, ctx.source);
+		if (nestedIO.length > 0) {
+			for (const nio of nestedIO) {
+				processIOCall(ctx, nio);
+			}
+			continue;
+		}
+
+		// Accumulate code statements
+		const stmtSource = ctx.source.slice(stmt.start, stmt.end);
+		ctx.pendingCode.push(stmtSource.trim());
+	}
+}
+
+// ─── IO Processing ───────────────────────────────────────────────────────────
+
+function processIOCall(ctx: TranspilerContext, ioCall: IOCall): void {
+	flushPendingCode(ctx);
+
+	if (ioCall.type === 'http') {
+		ctx.httpCounter++;
+		const httpVar = `http${ctx.httpCounter}`;
+		const httpNode = generateHttpSDK(ioCall, httpVar);
+		ctx.nodes.push(httpNode);
+		if (ioCall.assignedVar) ctx.varSourceMap.set(ioCall.assignedVar, httpNode.nodeName);
+		ctx.prevVar = httpVar;
+	} else if (ioCall.type === 'ai') {
+		ctx.httpCounter++;
+		const aiVar = `ai${ctx.httpCounter}`;
+		const aiNode = generateAiSDK(ioCall, aiVar);
+		ctx.nodes.push(aiNode);
+		if (ioCall.assignedVar) ctx.varSourceMap.set(ioCall.assignedVar, aiNode.nodeName);
+		ctx.prevVar = aiVar;
+	} else if (ioCall.type === 'workflow') {
+		ctx.wfCounter++;
+		const wfVar = `wf${ctx.wfCounter}`;
+		const wfNode = generateWorkflowRunSDK(ioCall, wfVar);
+		ctx.nodes.push(wfNode);
+		if (ioCall.assignedVar) ctx.varSourceMap.set(ioCall.assignedVar, wfNode.nodeName);
+		ctx.prevVar = wfVar;
+	}
+}
+
+function processRespondCall(ctx: TranspilerContext, stmt: AcornNode): void {
+	flushPendingCode(ctx);
+
+	const expr = stmt.expression!;
+	const args = (expr as AcornNode).arguments ?? [];
+	const respondArgs = args[0] ? (extractObjectLiteral(args[0]) ?? {}) : {};
+
+	ctx.respondCounter++;
+	const respondVar = `respond${ctx.respondCounter}`;
+
+	const params: Record<string, unknown> = {
+		respondWith: 'json',
+	};
+
+	if (respondArgs.status) {
+		params.responseCode = respondArgs.status;
+	}
+	if (respondArgs.body) {
+		if (typeof respondArgs.body === 'object') {
+			params.responseBody = JSON.stringify(respondArgs.body);
+		} else {
+			params.responseBody = respondArgs.body;
+		}
+	}
+	if (respondArgs.headers) {
+		params.responseHeaders = respondArgs.headers;
+	}
+
+	const configStr = JSON.stringify(
+		{ name: `Respond ${ctx.respondCounter}`, parameters: params, executeOnce: true },
+		null,
+		2,
+	)
+		.split('\n')
+		.map((line, i) => (i === 0 ? line : '  ' + line))
+		.join('\n');
+
+	const sdkCode = `const ${respondVar} = node({
+  type: 'n8n-nodes-base.respondToWebhook', version: 1.1,
+  config: ${configStr}
+});`;
+
+	ctx.nodes.push({
+		varName: respondVar,
+		sdkCode,
+		kind: 'respond',
+		nodeName: `Respond ${ctx.respondCounter}`,
+	});
+	ctx.prevVar = respondVar;
+}
+
+// ─── If/Else Processing ──────────────────────────────────────────────────────
+
+function processIfStatement(
+	ctx: TranspilerContext,
+	stmt: AcornNode,
+	comments: Array<{ type: string; value: string; start: number; end: number }>,
+): void {
+	flushPendingCode(ctx);
+	ctx.ifCounter++;
+
+	const ifVar = `if${ctx.ifCounter}`;
+	const testSource = ctx.source.slice(stmt.test!.start, stmt.test!.end);
+
+	// Process true branch
+	const trueBranch = transpileBranch(ctx, stmt.consequent as AcornNode, comments);
+
+	// Process false branch (may be another IfStatement for else-if)
+	let falseBranch: { nodes: EmittedNode[]; chainExpr: string } | null = null;
+	if (stmt.alternate) {
+		if (stmt.alternate.type === 'IfStatement') {
+			// else-if: recursively create another ifElse
+			const nestedCtx = createBranchContext(ctx);
+			processIfStatement(nestedCtx, stmt.alternate, comments);
+			flushPendingCode(nestedCtx);
+			falseBranch = { nodes: nestedCtx.nodes, chainExpr: buildBranchChain(nestedCtx.nodes) };
+		} else {
+			falseBranch = transpileBranch(ctx, stmt.alternate, comments);
+		}
+	}
+
+	// Emit all branch nodes
+	const allBranchNodes = [...trueBranch.nodes, ...(falseBranch?.nodes ?? [])];
+	for (const bn of allBranchNodes) {
+		ctx.nodes.push(bn);
+	}
+
+	// Emit ifElse node
+	const conditionStr = testSource.replace(/'/g, "\\'");
+	let sdkCode = `const ${ifVar} = ifElse({ version: 2.2, config: { name: 'IF ${ctx.ifCounter}', parameters: { conditions: { options: { leftValue: '${conditionStr}' } } }, executeOnce: true } })`;
+
+	if (trueBranch.chainExpr) {
+		sdkCode += `\n  .onTrue(${trueBranch.chainExpr})`;
+	}
+	if (falseBranch?.chainExpr) {
+		sdkCode += `\n  .onFalse(${falseBranch.chainExpr})`;
+	}
+	sdkCode += ';';
+
+	ctx.nodes.push({ varName: ifVar, sdkCode, kind: 'ifElse', nodeName: `IF ${ctx.ifCounter}` });
+	ctx.prevVar = ifVar;
+}
+
+function transpileBranch(
+	parentCtx: TranspilerContext,
+	blockNode: AcornNode,
+	comments: Array<{ type: string; value: string; start: number; end: number }>,
+): { nodes: EmittedNode[]; chainExpr: string } {
+	const branchCtx = createBranchContext(parentCtx);
+
+	const stmts =
+		blockNode.type === 'BlockStatement' && blockNode.body ? blockNode.body : [blockNode];
+
+	walkStatements(branchCtx, stmts, comments);
+	flushPendingCode(branchCtx);
+
+	return { nodes: branchCtx.nodes, chainExpr: buildBranchChain(branchCtx.nodes) };
+}
+
+function createBranchContext(parentCtx: TranspilerContext): TranspilerContext {
+	return {
+		source: parentCtx.source,
+		nodes: [],
+		varSourceMap: new Map(parentCtx.varSourceMap),
+		httpCounter: parentCtx.httpCounter,
+		codeCounter: parentCtx.codeCounter,
+		ifCounter: parentCtx.ifCounter,
+		switchCounter: parentCtx.switchCounter,
+		sibCounter: parentCtx.sibCounter,
+		respondCounter: parentCtx.respondCounter,
+		wfCounter: parentCtx.wfCounter,
+		pendingCode: [],
+		prevVar: '',
+		triggerType: parentCtx.triggerType,
+		callbackParams: parentCtx.callbackParams,
+		errors: parentCtx.errors,
+		hasOnErrorAnnotation: false,
+	};
+}
+
+function buildBranchChain(nodes: EmittedNode[]): string {
+	if (nodes.length === 0) return '';
+	const vars = nodes.map((n) => n.varName);
+	let chain = vars[0];
+	for (let i = 1; i < vars.length; i++) {
+		chain += `.to(${vars[i]})`;
+	}
+	return chain;
+}
+
+// ─── Switch Processing ───────────────────────────────────────────────────────
+
+function processSwitchStatement(
+	ctx: TranspilerContext,
+	stmt: AcornNode,
+	comments: Array<{ type: string; value: string; start: number; end: number }>,
+): void {
+	flushPendingCode(ctx);
+	ctx.switchCounter++;
+
+	const switchVar = `sw${ctx.switchCounter}`;
+	const discSource = stmt.discriminant
+		? ctx.source.slice(stmt.discriminant.start, stmt.discriminant.end)
+		: 'value';
+
+	const cases = stmt.cases ?? [];
+	const caseBranches: Array<{ index: number; chainExpr: string }> = [];
+	const allCaseNodes: EmittedNode[] = [];
+
+	for (let i = 0; i < cases.length; i++) {
+		const c = cases[i];
+		const consequent = (c.consequent ?? []) as AcornNode[];
+		const caseStmts = consequent.filter((s: AcornNode) => s.type !== 'BreakStatement');
+		if (caseStmts.length === 0) continue;
+
+		const branchCtx = createBranchContext(ctx);
+		walkStatements(branchCtx, caseStmts, comments);
+		flushPendingCode(branchCtx);
+
+		for (const bn of branchCtx.nodes) {
+			allCaseNodes.push(bn);
+		}
+
+		const chainExpr = buildBranchChain(branchCtx.nodes);
+		if (chainExpr) {
+			caseBranches.push({ index: i, chainExpr });
+		}
+
+		// Sync counters
+		ctx.httpCounter = Math.max(ctx.httpCounter, branchCtx.httpCounter);
+		ctx.codeCounter = Math.max(ctx.codeCounter, branchCtx.codeCounter);
+	}
+
+	// Emit case nodes
+	for (const cn of allCaseNodes) {
+		ctx.nodes.push(cn);
+	}
+
+	// Emit switchCase
+	const condStr = discSource.replace(/'/g, "\\'");
+	let sdkCode = `const ${switchVar} = switchCase({ version: 3.2, config: { name: 'Switch ${ctx.switchCounter}', parameters: { value: '${condStr}' }, executeOnce: true } })`;
+
+	for (const cb of caseBranches) {
+		sdkCode += `\n  .onCase(${cb.index}, ${cb.chainExpr})`;
+	}
+	sdkCode += ';';
+
+	ctx.nodes.push({
+		varName: switchVar,
+		sdkCode,
+		kind: 'switchCase',
+		nodeName: `Switch ${ctx.switchCounter}`,
+	});
+	ctx.prevVar = switchVar;
+}
+
+// ─── For-Of Processing ───────────────────────────────────────────────────────
+
+function processForOfStatement(
+	ctx: TranspilerContext,
+	stmt: AcornNode,
+	comments: Array<{ type: string; value: string; start: number; end: number }>,
+): void {
+	flushPendingCode(ctx);
+	ctx.sibCounter++;
+
+	const sibVar = `sib${ctx.sibCounter}`;
+
+	// Process loop body
+	const bodyNode = (stmt as unknown as { body: AcornNode }).body;
+	const branchCtx = createBranchContext(ctx);
+	const bodyStmts =
+		bodyNode.type === 'BlockStatement' && bodyNode.body ? bodyNode.body : [bodyNode];
+	walkStatements(branchCtx, bodyStmts, comments);
+	flushPendingCode(branchCtx);
+
+	for (const bn of branchCtx.nodes) {
+		ctx.nodes.push(bn);
+	}
+
+	const bodyChain = buildBranchChain(branchCtx.nodes);
+
+	const sdkCode = `const ${sibVar} = splitInBatches({ version: 3, config: { name: 'Loop ${ctx.sibCounter}', parameters: { batchSize: 1 }, executeOnce: true } })${bodyChain ? `.to(${bodyChain})` : ''};`;
+
+	ctx.nodes.push({
+		varName: sibVar,
+		sdkCode,
+		kind: 'splitInBatches',
+		nodeName: `Loop ${ctx.sibCounter}`,
+	});
+	ctx.prevVar = sibVar;
+
+	// Sync counters
+	ctx.httpCounter = Math.max(ctx.httpCounter, branchCtx.httpCounter);
+	ctx.codeCounter = Math.max(ctx.codeCounter, branchCtx.codeCounter);
+}
+
+// ─── Try/Catch Processing ────────────────────────────────────────────────────
+
+function processTryStatement(
+	ctx: TranspilerContext,
+	stmt: AcornNode,
+	comments: Array<{ type: string; value: string; start: number; end: number }>,
+): void {
+	// Process try block statements — mark nodes with onError
+	const tryBlock = stmt.block;
+	if (tryBlock?.type === 'BlockStatement' && tryBlock.body) {
+		// Walk try body, but annotate all IO calls with onError
+		for (const tryStmt of tryBlock.body) {
+			const ioCall = extractIOCall(tryStmt, ctx.source);
+			if (ioCall) {
+				ioCall.onError = 'continueErrorOutput';
+				processIOCall(ctx, ioCall);
+			} else {
+				const nestedIO = findNestedIO(tryStmt, ctx.source);
+				if (nestedIO.length > 0) {
+					for (const nio of nestedIO) {
+						nio.onError = 'continueErrorOutput';
+						processIOCall(ctx, nio);
 					}
+				} else {
+					const stmtSource = ctx.source.slice(tryStmt.start, tryStmt.end);
+					ctx.pendingCode.push(stmtSource.trim());
 				}
 			}
 		}
-		return obj;
 	}
-	if (node.type === 'Identifier') {
-		return undefined;
+
+	// Process catch block
+	if (stmt.handler) {
+		const handlerBody = (stmt.handler as AcornNode).body as unknown as AcornNode;
+		if (handlerBody?.type === 'BlockStatement' && handlerBody.body) {
+			walkStatements(ctx, handlerBody.body, comments);
+		}
+	}
+}
+
+// ─── Promise.all Processing ──────────────────────────────────────────────────
+
+function isPromiseAll(stmt: AcornNode): boolean {
+	if (stmt.type !== 'ExpressionStatement' || !stmt.expression) return false;
+	const expr = stmt.expression;
+	const callExpr = expr.type === 'AwaitExpression' ? expr.argument : expr;
+	if (!callExpr || callExpr.type !== 'CallExpression') return false;
+
+	const callee = callExpr.callee;
+	return (
+		callee?.type === 'MemberExpression' &&
+		callee.object?.type === 'Identifier' &&
+		callee.object.name === 'Promise' &&
+		callee.property?.type === 'Identifier' &&
+		callee.property.name === 'all'
+	);
+}
+
+function processPromiseAll(
+	ctx: TranspilerContext,
+	stmt: AcornNode,
+	_comments: Array<{ type: string; value: string; start: number; end: number }>,
+): void {
+	flushPendingCode(ctx);
+
+	const expr = stmt.expression!;
+	const callExpr = expr.type === 'AwaitExpression' ? expr.argument! : expr;
+	const args = callExpr.arguments ?? [];
+	const arrayArg = args[0];
+
+	if (!arrayArg || arrayArg.type !== 'ArrayExpression' || !arrayArg.elements) return;
+
+	const prevVar = ctx.prevVar;
+	const fanOutVars: string[] = [];
+
+	for (const element of arrayArg.elements) {
+		if (!element) continue;
+
+		// Handle direct http.* calls
+		const ioCall = extractIOCallFromExpression(element, ctx.source);
+		if (ioCall) {
+			ctx.httpCounter++;
+			const httpVar = `http${ctx.httpCounter}`;
+			const httpNode = generateHttpSDK(ioCall, httpVar);
+			ctx.nodes.push(httpNode);
+			if (ioCall.assignedVar) ctx.varSourceMap.set(ioCall.assignedVar, httpNode.nodeName);
+			fanOutVars.push(httpVar);
+		}
+	}
+
+	// Rewrite the chain to fan out from prevVar
+	if (fanOutVars.length > 0) {
+		// Remove prevVar's last .to() and add fan-out
+		const prevNodeIdx = ctx.nodes.findIndex((n) => n.varName === prevVar);
+		if (prevNodeIdx >= 0) {
+			// The chain expression will handle the fan-out
+			ctx.prevVar = fanOutVars[fanOutVars.length - 1];
+		}
+	}
+}
+
+function extractIOCallFromExpression(expr: AcornNode, source: string): IOCall | null {
+	// Handle: http.post('/a', d) (without await)
+	if (expr.type === 'CallExpression') {
+		return matchIOCallNode(expr, source);
+	}
+	// Handle: await http.post('/a', d)
+	if (expr.type === 'AwaitExpression' && expr.argument) {
+		return matchIOCallNode(expr.argument, source);
+	}
+	return null;
+}
+
+// ─── Nested IO Detection ─────────────────────────────────────────────────────
+
+function findNestedIO(stmt: AcornNode, source: string): IOCall[] {
+	const results: IOCall[] = [];
+
+	function walk(node: AcornNode): void {
+		const io = extractIOCall(node, source);
+		if (io) {
+			results.push(io);
+			return;
+		}
+
+		if (node.type === 'IfStatement') {
+			if (node.consequent) walkBlock(node.consequent as AcornNode);
+			if (node.alternate) walkBlock(node.alternate);
+		} else if (
+			node.type === 'ForOfStatement' ||
+			node.type === 'ForInStatement' ||
+			node.type === 'ForStatement'
+		) {
+			const body = (node as unknown as { body: AcornNode }).body;
+			if (body) walkBlock(body);
+		} else if (node.type === 'TryStatement') {
+			if (node.block) walkBlock(node.block);
+			if (node.handler) {
+				const handlerBody = (node.handler as AcornNode).body as unknown as AcornNode;
+				if (handlerBody) walkBlock(handlerBody);
+			}
+		} else if (node.type === 'BlockStatement' && node.body) {
+			for (const s of node.body) walk(s);
+		}
+	}
+
+	function walkBlock(node: AcornNode): void {
+		if (node.type === 'BlockStatement' && node.body) {
+			for (const s of node.body) walk(s);
+		} else {
+			walk(node);
+		}
+	}
+
+	walk(stmt);
+	return results;
+}
+
+// ─── IO Call Extraction ──────────────────────────────────────────────────────
+
+function extractIOCall(stmt: AcornNode, source: string): IOCall | null {
+	// const x = await http.get(...) / const x = await workflow.run(...)
+	if (stmt.type === 'VariableDeclaration' && stmt.declarations) {
+		for (const decl of stmt.declarations) {
+			if (decl.init?.type === 'AwaitExpression' && decl.init.argument) {
+				const call = decl.init.argument;
+				const io = matchIOCallNode(call, source);
+				if (io) {
+					io.assignedVar = decl.id?.name ?? null;
+					return io;
+				}
+			}
+		}
+	}
+
+	// await http.post(...) / await workflow.run(...)
+	if (stmt.type === 'ExpressionStatement' && stmt.expression) {
+		const expr = stmt.expression;
+		if (expr.type === 'AwaitExpression' && expr.argument) {
+			return matchIOCallNode(expr.argument, source);
+		}
+	}
+
+	return null;
+}
+
+function matchIOCallNode(callNode: AcornNode, source: string): IOCall | null {
+	if (callNode.type !== 'CallExpression' || !callNode.callee) return null;
+	const callee = callNode.callee;
+
+	if (
+		callee.type !== 'MemberExpression' ||
+		callee.object?.type !== 'Identifier' ||
+		callee.property?.type !== 'Identifier'
+	) {
+		return null;
+	}
+
+	const obj = callee.object.name ?? '';
+	const method = callee.property.name ?? '';
+
+	if (obj === 'http' && ['get', 'post', 'put', 'patch', 'delete'].includes(method)) {
+		return extractHttpCall(callNode, method, source);
+	}
+
+	if (obj === 'ai' && method === 'chat') {
+		return extractAiCall(callNode, source);
+	}
+
+	if (obj === 'workflow' && method === 'run') {
+		return extractWorkflowRunCall(callNode);
+	}
+
+	return null;
+}
+
+function extractHttpCall(callNode: AcornNode, method: string, _source: string): IOCall {
+	const args = callNode.arguments ?? [];
+	const url = args[0] ? extractStringLiteral(args[0]) : undefined;
+
+	let body: Record<string, unknown> | null = null;
+	let bodyExpression: string | undefined;
+	let options: Record<string, unknown> | undefined;
+
+	if (method === 'get' || method === 'delete') {
+		if (args[1]) options = extractObjectLiteral(args[1]);
+	} else {
+		if (args[1]) {
+			body = extractObjectLiteral(args[1]) ?? null;
+			if (!body && args[1].type === 'Identifier') {
+				bodyExpression = args[1].name;
+			}
+		}
+		if (args[2]) options = extractObjectLiteral(args[2]);
+	}
+
+	// Extract credentials from auth option
+	let credentials: IOCall['credentials'];
+	if (options?.auth) {
+		const auth = options.auth;
+		if (typeof auth === 'object' && auth !== null) {
+			const authObj = auth as Record<string, unknown>;
+			credentials = {
+				type: (authObj.type as string) ?? 'bearer',
+				credential: (authObj.credential as string) ?? '',
+			};
+		}
+		delete options.auth;
+	}
+
+	// Generate node name from URL
+	let nodeName: string;
+	try {
+		if (url && !url.startsWith('={{')) {
+			const urlObj = new URL(url);
+			nodeName = `${method.toUpperCase()} ${urlObj.hostname}${urlObj.pathname}`;
+		} else {
+			nodeName = `${method.toUpperCase()} Request`;
+		}
+	} catch {
+		nodeName = `${method.toUpperCase()} Request`;
+	}
+	if (nodeName.length > 40) nodeName = nodeName.slice(0, 37) + '...';
+
+	return {
+		type: 'http',
+		method,
+		assignedVar: null,
+		url,
+		body,
+		bodyExpression,
+		options,
+		nodeName,
+		credentials,
+	};
+}
+
+function extractAiCall(callNode: AcornNode, _source: string): IOCall {
+	const args = callNode.arguments ?? [];
+	const model = args[0] ? extractStringLiteral(args[0]) : undefined;
+	const prompt = args[1] ? extractStringLiteral(args[1]) : undefined;
+	const options = args[2] ? extractObjectLiteral(args[2]) : undefined;
+
+	// Parse AI subnodes from options
+	let aiTools: Array<Record<string, unknown>> | undefined;
+	let aiOutputParser: Record<string, unknown> | undefined;
+	let aiMemory: Record<string, unknown> | undefined;
+
+	if (options) {
+		if (options.tools && Array.isArray(options.tools)) {
+			aiTools = options.tools as Array<Record<string, unknown>>;
+		}
+		if (options.outputParser) {
+			aiOutputParser = options.outputParser as Record<string, unknown>;
+		}
+		if (options.memory) {
+			aiMemory = options.memory as Record<string, unknown>;
+		}
+	}
+
+	const shortPrompt = prompt ? prompt.slice(0, 30) : 'AI Chat';
+	const nodeName = `AI: ${shortPrompt}`;
+
+	return {
+		type: 'ai',
+		method: 'chat',
+		assignedVar: null,
+		model,
+		prompt,
+		nodeName: nodeName.length > 40 ? nodeName.slice(0, 37) + '...' : nodeName,
+		aiTools,
+		aiOutputParser,
+		aiMemory,
+	};
+}
+
+function extractWorkflowRunCall(callNode: AcornNode): IOCall {
+	const args = callNode.arguments ?? [];
+	const workflowName = args[0] ? extractStringLiteral(args[0]) : 'Sub-Workflow';
+
+	return {
+		type: 'workflow',
+		method: 'run',
+		assignedVar: null,
+		workflowName,
+		nodeName: `Run: ${workflowName}`,
+	};
+}
+
+// ─── AST Value Extraction ────────────────────────────────────────────────────
+
+function extractStringLiteral(node: AcornNode): string | undefined {
+	if (node.type === 'Literal' && typeof node.value === 'string') {
+		return node.value;
+	}
+	if (node.type === 'TemplateLiteral') {
+		const quasis = node.quasis ?? [];
+		const parts: string[] = [];
+		for (const q of quasis) {
+			parts.push((q.value as unknown as string) ?? q.raw ?? '');
+		}
+		return parts.join('');
 	}
 	return undefined;
 }
 
-// ─── Code Splitting ──────────────────────────────────────────────────────────
+function extractObjectLiteral(node: AcornNode): Record<string, unknown> | undefined {
+	if (node.type !== 'ObjectExpression' || !node.properties) return undefined;
 
-function splitIntoSegments(
-	source: string,
-	boundaries: IOBoundary[],
-	ast: acorn.Node,
-	triggerRange?: { start: number; end: number },
-): Segment[] {
-	if (boundaries.length === 0) {
-		// No IO calls — split at comment boundaries
-		const codeBody = stripMetadataComments(source);
-		if (codeBody.trim()) {
-			return splitCodeAtComments(codeBody.trim()).map((chunk) => ({
-				type: 'code' as const,
-				sourceCode: chunk,
-			}));
-		}
-		return [];
-	}
-
-	const segments: Segment[] = [];
-
-	// Find the first non-trigger statement to set the cursor start
-	const program = ast as AcornNode;
-	let cursor0 = 0;
-	if (program.body) {
-		for (const stmt of program.body) {
-			// Skip trigger statement
-			if (triggerRange && stmt.start >= triggerRange.start && stmt.end <= triggerRange.end) {
-				continue;
-			}
-			cursor0 = stmt.start;
-			break;
-		}
-	}
-
-	let cursor = cursor0;
-
-	for (const boundary of boundaries) {
-		// Code before this IO boundary — split at comment boundaries
-		const rawBefore = stripMetadataComments(source.slice(cursor, boundary.statementStart));
-		const codeOnly = stripCommentsAndMetadata(rawBefore).trim();
-		if (codeOnly) {
-			for (const chunk of splitCodeAtComments(rawBefore.trim())) {
-				segments.push({ type: 'code', sourceCode: chunk });
-			}
-		}
-
-		// The IO boundary itself
-		segments.push({
-			type: 'io',
-			sourceCode: source.slice(boundary.statementStart, boundary.statementEnd),
-			ioBoundary: boundary,
-		});
-
-		cursor = boundary.statementEnd;
-	}
-
-	// Code after the last IO boundary — split at comment boundaries
-	const rawAfter = stripMetadataComments(source.slice(cursor));
-	const codeAfterOnly = stripCommentsAndMetadata(rawAfter).trim();
-	if (codeAfterOnly) {
-		for (const chunk of splitCodeAtComments(rawAfter.trim())) {
-			segments.push({ type: 'code', sourceCode: chunk });
-		}
-	}
-
-	return segments;
-}
-
-function stripMetadataComments(source: string): string {
-	return source
-		.replace(/\/\/\s*@trigger\s+.*/g, '')
-		.replace(/\/\/\s*@workflow\s+.*/g, '')
-		.replace(/(?:await\s+)?trigger\.\w+\([^)]*\);?\s*\n?/g, '')
-		.trim();
-}
-
-function stripCommentsAndMetadata(source: string): string {
-	// Strip metadata comments
-	let result = stripMetadataComments(source);
-	// Strip single-line comments (// ...)
-	result = result.replace(/\/\/[^\n]*/g, '');
-	// Strip multi-line comments (/* ... */)
-	result = result.replace(/\/\*[\s\S]*?\*\//g, '');
-	return result.trim();
-}
-
-/**
- * Splits a code block into sub-segments at comment boundaries.
- * A new sub-segment starts when a standalone `//` comment line
- * is preceded by a blank line (or is at the very start of the block).
- *
- * This produces one Code node per logical section:
- *
- *   // Filter active users         ← Code node 1
- *   const active = data.filter(…);
- *                                   ← blank line
- *   // Build summary                ← Code node 2
- *   const summary = { … };
- */
-function splitCodeAtComments(sourceCode: string): string[] {
-	const lines = sourceCode.split('\n');
-	const chunks: string[] = [];
-	let current: string[] = [];
-
-	for (let i = 0; i < lines.length; i++) {
-		const trimmed = lines[i].trim();
-		const isComment = trimmed.startsWith('//');
-		const prevBlankOrStart = i === 0 || lines[i - 1].trim() === '';
-
-		if (isComment && prevBlankOrStart) {
-			// Flush accumulated lines if they contain actual code
-			const accumulated = current.join('\n').trim();
-			if (accumulated && stripCommentsAndMetadata(accumulated).length > 0) {
-				chunks.push(accumulated);
-			}
-			current = [];
-		}
-
-		current.push(lines[i]);
-	}
-
-	// Flush remaining
-	const remaining = current.join('\n').trim();
-	if (remaining && stripCommentsAndMetadata(remaining).length > 0) {
-		chunks.push(remaining);
-	}
-
-	return chunks.length > 0 ? chunks : [sourceCode];
-}
-
-// ─── Comment Attachment ──────────────────────────────────────────────────────
-
-function attachComments(segments: Segment[], comments: acorn.Comment[], source: string): void {
-	// Filter out metadata comments
-	const userComments = comments.filter((c) => {
-		const text = c.value.trim();
-		return !text.startsWith('@trigger') && !text.startsWith('@workflow');
-	});
-
-	if (userComments.length === 0 || segments.length === 0) return;
-
-	// Build a position map for each segment
-	const segmentRanges: Array<{ segment: Segment; start: number; end: number }> = [];
-	for (const segment of segments) {
-		if (segment.type === 'io') {
-			segmentRanges.push({
-				segment,
-				start: segment.ioBoundary!.statementStart,
-				end: segment.ioBoundary!.statementEnd,
-			});
-		} else {
-			// For code segments, find their position in source
-			const idx = source.indexOf(segment.sourceCode);
-			if (idx >= 0) {
-				segmentRanges.push({
-					segment,
-					start: idx,
-					end: idx + segment.sourceCode.length,
-				});
+	const obj: Record<string, unknown> = {};
+	for (const prop of node.properties) {
+		if (prop.type === 'Property' && prop.key) {
+			const key = prop.key.name ?? (prop.key.value as string);
+			const valNode = (prop as unknown as { value: AcornNode }).value;
+			if (key && valNode) {
+				if (valNode.type === 'Literal') {
+					obj[key] = valNode.value;
+				} else if (valNode.type === 'Identifier') {
+					obj[key] = `={{ $json.${valNode.name} }}`;
+				} else if (valNode.type === 'ObjectExpression') {
+					obj[key] = extractObjectLiteral(valNode);
+				} else if (valNode.type === 'ArrayExpression' && valNode.elements) {
+					obj[key] = valNode.elements.map((el: AcornNode) => {
+						if (el.type === 'ObjectExpression') return extractObjectLiteral(el);
+						if (el.type === 'Literal') return el.value;
+						return extractStringLiteral(el);
+					});
+				} else {
+					const strVal = extractStringLiteral(valNode);
+					obj[key] = strVal ?? '={{$json}}';
+				}
 			}
 		}
 	}
+	return obj;
+}
 
-	// Group consecutive comments together
-	const commentGroups = groupConsecutiveComments(userComments);
+// ─── Variable Analysis ───────────────────────────────────────────────────────
 
-	// For each comment group, find the segment it belongs to
-	for (const group of commentGroups) {
-		const commentStart = group[0].start;
-		const commentEnd = group[group.length - 1].end;
-		const text = group
-			.map((c) => c.value.trim())
-			.filter((t) => t.length > 0)
-			.join('\n');
+interface VarReference {
+	varName: string;
+	sourceNode: string;
+}
 
-		if (!text) continue;
-
-		// First: check if comment falls within a code segment's range
-		let bestRange = segmentRanges.find(
-			(r) => r.segment.type === 'code' && commentStart >= r.start && commentEnd <= r.end,
-		);
-
-		// Second: if not inside a code segment, find the next segment after this comment
-		if (!bestRange) {
-			bestRange = segmentRanges.find((r) => r.start >= commentEnd);
-		}
-
-		if (bestRange && !bestRange.segment.comment) {
-			const firstLine = text.split('\n')[0];
-			bestRange.segment.comment = {
-				text,
-				nodeName: firstLine.length > 40 ? firstLine.slice(0, 37) + '...' : firstLine,
-			};
+function findReferencedVars(code: string, varSourceMap: Map<string, string>): VarReference[] {
+	const refs: VarReference[] = [];
+	const seen = new Set<string>();
+	for (const [varName, sourceNode] of varSourceMap) {
+		const regex = new RegExp(`\\b${varName}\\b`);
+		if (regex.test(code) && !seen.has(varName)) {
+			refs.push({ varName, sourceNode });
+			seen.add(varName);
 		}
 	}
+	return refs;
 }
 
-function groupConsecutiveComments(comments: acorn.Comment[]): acorn.Comment[][] {
-	if (comments.length === 0) return [];
-
-	const groups: acorn.Comment[][] = [];
-	let currentGroup: acorn.Comment[] = [comments[0]];
-
-	for (let i = 1; i < comments.length; i++) {
-		const prev = comments[i - 1];
-		const curr = comments[i];
-
-		// Comments are consecutive if they're on adjacent lines
-		const prevLine = (prev as unknown as { loc: { end: { line: number } } }).loc?.end?.line ?? 0;
-		const currLine =
-			(curr as unknown as { loc: { start: { line: number } } }).loc?.start?.line ?? 0;
-
-		if (currLine - prevLine <= 1) {
-			currentGroup.push(curr);
-		} else {
-			groups.push(currentGroup);
-			currentGroup = [curr];
-		}
-	}
-
-	groups.push(currentGroup);
-	return groups;
-}
-
-// ─── Node Generation ─────────────────────────────────────────────────────────
-
-function generateId(): string {
-	return uuid();
-}
-
-function generateWorkflow(
-	segments: Segment[],
-	metadata: WorkflowMetadata,
-): { nodes: WorkflowNode[]; connections: Record<string, NodeConnections> } {
-	const nodes: WorkflowNode[] = [];
-	const connections: Record<string, NodeConnections> = {};
-
-	// X position spacing
-	const X_SPACING = 250;
-	const Y_BASE = 300;
-	const STICKY_Y_OFFSET = -160;
-	let xPos = 0;
-
-	// Generate trigger node
-	const triggerNode = generateTriggerNode(metadata, xPos, Y_BASE);
-	nodes.push(triggerNode);
-	let prevNodeName = triggerNode.name;
-	xPos += X_SPACING;
-
-	// Track variables across boundaries
-	const liveVars: Set<string> = new Set();
-
-	for (const segment of segments) {
-		let currentNode: WorkflowNode;
-
-		if (segment.type === 'io' && segment.ioBoundary) {
-			const boundary = segment.ioBoundary;
-
-			if (boundary.type === 'http') {
-				currentNode = generateHttpNode(boundary, segment.comment, xPos, Y_BASE);
-			} else {
-				const aiResult = generateAiNode(boundary, segment.comment, xPos, Y_BASE);
-				currentNode = aiResult.agentNode;
-				// Add model sub-node and connect it to the agent via ai_languageModel
-				nodes.push(aiResult.modelNode);
-				connections[aiResult.modelNode.name] = {
-					ai_languageModel: [
-						[{ node: aiResult.agentNode.name, type: 'ai_languageModel', index: 0 }],
-					],
-				};
-			}
-
-			if (boundary.assignedVar) {
-				liveVars.add(boundary.assignedVar);
-			}
-		} else {
-			// Code segment
-			currentNode = generateCodeNode(segment.sourceCode, segment.comment, liveVars, xPos, Y_BASE);
-		}
-
-		nodes.push(currentNode);
-
-		// Add sticky note if comment exists
-		if (segment.comment) {
-			const sticky = generateStickyNote(segment.comment, xPos, Y_BASE + STICKY_Y_OFFSET);
-			nodes.push(sticky);
-		}
-
-		// Connect previous node to current
-		if (!connections[prevNodeName]) {
-			connections[prevNodeName] = {};
-		}
-		if (!connections[prevNodeName].main) {
-			connections[prevNodeName].main = [[]];
-		}
-		connections[prevNodeName].main[0].push({
-			node: currentNode.name,
-			type: 'main',
-			index: 0,
-		});
-
-		prevNodeName = currentNode.name;
-		xPos += X_SPACING;
-	}
-
-	return { nodes, connections };
-}
-
-// ─── Trigger Generation ─────────────────────────────────────────────────────
-
-function generateTriggerNode(metadata: WorkflowMetadata, x: number, y: number): WorkflowNode {
-	const triggerMap: Record<string, { type: string; typeVersion: number }> = {
-		manual: { type: 'n8n-nodes-base.manualTrigger', typeVersion: 1 },
-		schedule: { type: 'n8n-nodes-base.scheduleTrigger', typeVersion: 1.2 },
-		webhook: { type: 'n8n-nodes-base.webhook', typeVersion: 2 },
-	};
-
-	const trigger = triggerMap[metadata.triggerType] ?? triggerMap.manual;
-
-	return {
-		id: generateId(),
-		name: 'Start',
-		type: trigger.type,
-		typeVersion: trigger.typeVersion,
-		position: [x, y],
-		parameters: { ...metadata.triggerParams },
-	};
-}
-
-/**
- * Converts a body object to a jsonBody parameter value.
- *
- * If all values are static literals, returns plain JSON.
- * If any value is an n8n expression (={{ ... }}), builds an n8n expression
- * that constructs the object using $json references:
- *   { draft, social } → ={{ JSON.stringify({ draft: $json.draft, social: $json.social }) }}
- */
-function bodyToJsonParam(body: Record<string, unknown>): string {
-	const hasExpressions = Object.values(body).some(
-		(v) => typeof v === 'string' && v.startsWith('={{'),
-	);
-
-	if (!hasExpressions) {
-		return JSON.stringify(body);
-	}
-
-	// Build a JS object expression for n8n
-	const props = Object.entries(body)
-		.map(([key, value]) => {
-			if (typeof value === 'string' && value.startsWith('={{ ') && value.endsWith(' }}')) {
-				// Extract the expression: "={{ $json.draft }}" → "$json.draft"
-				const expr = value.slice(4, -3);
-				return `${key}: ${expr}`;
-			}
-			return `${key}: ${JSON.stringify(value)}`;
-		})
-		.join(', ');
-
-	return `={{ JSON.stringify({ ${props} }) }}`;
-}
-
-// ─── HTTP Node Generation ───────────────────────────────────────────────────
-
-function generateHttpNode(
-	boundary: IOBoundary,
-	comment: CommentAttachment | undefined,
-	x: number,
-	y: number,
-): WorkflowNode {
-	const method = boundary.method.toUpperCase();
-	const url = boundary.args.url ?? '{{dynamic URL}}';
-
-	// Generate a readable name
-	let nodeName: string;
-	if (comment) {
-		nodeName = comment.nodeName;
-	} else {
-		try {
-			const urlObj = new URL(url);
-			nodeName = `${method} ${urlObj.hostname}${urlObj.pathname}`;
-		} catch {
-			nodeName = `${method} Request`;
-		}
-		if (nodeName.length > 40) nodeName = nodeName.slice(0, 37) + '...';
-	}
-
-	const parameters: Record<string, unknown> = {
-		method,
-		url,
-		options: {},
-	};
-
-	// Handle body for POST/PUT/PATCH
-	if (['POST', 'PUT', 'PATCH'].includes(method)) {
-		if (boundary.args.bodyExpression) {
-			// Body is a variable reference: use expression
-			parameters.sendBody = true;
-			parameters.contentType = 'json';
-			parameters.specifyBody = 'json';
-			parameters.jsonBody = boundary.args.bodyExpression;
-		} else if (boundary.args.body) {
-			parameters.sendBody = true;
-			parameters.contentType = 'json';
-			parameters.specifyBody = 'json';
-			parameters.jsonBody = bodyToJsonParam(boundary.args.body);
-		}
-	}
-
-	// Handle query params from options
-	const options = boundary.args.options;
-	if (options?.headers) {
-		parameters.sendHeaders = true;
-		parameters.headerParameters = {
-			parameters: Object.entries(options.headers as Record<string, string>).map(
-				([name, value]) => ({ name, value }),
-			),
-		};
-	}
-	if (options?.query) {
-		parameters.sendQuery = true;
-		parameters.queryParameters = {
-			parameters: Object.entries(options.query as Record<string, string>).map(([name, value]) => ({
-				name,
-				value,
-			})),
-		};
-	}
-
-	const node: WorkflowNode = {
-		id: generateId(),
-		name: nodeName,
-		type: 'n8n-nodes-base.httpRequest',
-		typeVersion: 4.2,
-		position: [x, y],
-		parameters,
-	};
-
-	// Handle auth
-	if (options?.auth) {
-		node.parameters.authentication = 'predefinedCredentialType';
-		node.credentials = {
-			httpCustomAuth: { id: '', name: options.auth as string },
-		};
-	}
-
-	return node;
-}
-
-// ─── AI Node Generation ─────────────────────────────────────────────────────
-
-interface AiGenerationResult {
-	agentNode: WorkflowNode;
-	modelNode: WorkflowNode;
-}
-
-/**
- * Generates an AI Agent node and its required LLM Chat Model sub-node.
- *
- * Usage in Workflow JS:
- *   const result = await ai.chat('gpt-4o-mini', 'Summarize this data');
- *   const result = await ai.chat('claude-sonnet-4-5-20250929', 'Analyze this');
- */
-function generateAiNode(
-	boundary: IOBoundary,
-	comment: CommentAttachment | undefined,
-	x: number,
-	y: number,
-): AiGenerationResult {
-	const model = boundary.args.model ?? 'gpt-4o-mini';
-	const prompt = boundary.args.prompt ?? '';
-
-	const nodeName = comment?.nodeName ?? `AI: ${prompt.slice(0, 30)}...`;
-	const truncatedName = nodeName.length > 40 ? nodeName.slice(0, 37) + '...' : nodeName;
-
-	const modelConfig = mapModelToNode(model);
-
-	const agentNode: WorkflowNode = {
-		id: generateId(),
-		name: truncatedName,
-		type: '@n8n/n8n-nodes-langchain.agent',
-		typeVersion: 3.1,
-		position: [x, y],
-		parameters: {
-			promptType: 'define',
-			text: prompt || '={{$json.prompt}}',
-			options: {},
-		},
-	};
-
-	const modelNode: WorkflowNode = {
-		id: generateId(),
-		name: modelConfig.displayName,
-		type: modelConfig.type,
-		typeVersion: modelConfig.typeVersion,
-		position: [x, y + 150],
-		parameters: {
-			model: { __rl: true, mode: 'id', value: model },
-			options: {},
-		},
-	};
-
-	return { agentNode, modelNode };
-}
-
-function mapModelToNode(model: string): {
-	type: string;
-	displayName: string;
-	typeVersion: number;
-} {
-	if (model.includes('gpt') || model.includes('o1') || model.includes('o3')) {
-		return {
-			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			displayName: 'OpenAI Chat Model',
-			typeVersion: 1.2,
-		};
-	}
-	if (model.includes('claude')) {
-		return {
-			type: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
-			displayName: 'Anthropic Chat Model',
-			typeVersion: 1.2,
-		};
-	}
-	if (model.includes('gemini')) {
-		return {
-			type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			displayName: 'Google Gemini Chat Model',
-			typeVersion: 1,
-		};
-	}
-	// Default to OpenAI
-	return {
-		type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-		displayName: 'OpenAI Chat Model',
-		typeVersion: 1.2,
-	};
-}
-
-// ─── Code Node Generation ───────────────────────────────────────────────────
-
-function generateCodeNode(
-	sourceCode: string,
-	comment: CommentAttachment | undefined,
-	liveVars: Set<string>,
-	x: number,
-	y: number,
-): WorkflowNode {
-	const lines: string[] = [];
-
-	// Input: get all items from previous node
-	lines.push(`const items = $input.all();`);
-
-	if (liveVars.size > 0) {
-		const vars = Array.from(liveVars);
-		lines.push(`const { ${vars.join(', ')} } = items[0].json;`);
-	}
-
-	// User's code (stripped of leading/trailing whitespace)
-	lines.push(sourceCode.trim());
-
-	// Find new variables declared in this code segment
-	const declaredVars = findDeclaredVariables(sourceCode);
-
-	// Assign new variables back to the item and return items
-	for (const v of declaredVars) {
-		lines.push(`items[0].json.${v} = ${v};`);
-	}
-	lines.push(`return items;`);
-
-	// Update live vars with newly declared ones
-	for (const v of declaredVars) {
-		liveVars.add(v);
-	}
-
-	const jsCode = lines.join('\n');
-
-	const nodeName = comment?.nodeName ?? generateCodeNodeName(sourceCode);
-
-	return {
-		id: generateId(),
-		name: nodeName,
-		type: 'n8n-nodes-base.code',
-		typeVersion: 2,
-		position: [x, y],
-		parameters: {
-			mode: 'runOnceForAllItems',
-			jsCode,
-			language: 'javaScript',
-		},
-	};
-}
-
-function generateCodeNodeName(sourceCode: string): string {
-	// Try to generate a meaningful name from the code
-	const firstLine = sourceCode.trim().split('\n')[0];
-	if (firstLine.length <= 40) return firstLine;
-	return firstLine.slice(0, 37) + '...';
-}
-
-function findDeclaredVariables(code: string): Set<string> {
-	const vars = new Set<string>();
-	// Simple regex to find const/let/var declarations
+function findDeclaredVars(code: string): string[] {
+	const vars: string[] = [];
 	const regex = /\b(?:const|let|var)\s+(?:\{([^}]+)\}|(\w+))/g;
 	let match;
 	while ((match = regex.exec(code)) !== null) {
 		if (match[1]) {
-			// Destructuring: const { a, b } = ...
 			for (const part of match[1].split(',')) {
 				const name = part.trim().split(':')[0].trim().split('=')[0].trim();
-				if (name) vars.add(name);
+				if (name) vars.push(name);
 			}
 		} else if (match[2]) {
-			vars.add(match[2]);
+			vars.push(match[2]);
 		}
 	}
 	return vars;
 }
 
-// ─── Sticky Note Generation ─────────────────────────────────────────────────
+// ─── Code Flushing ───────────────────────────────────────────────────────────
 
-function generateStickyNote(comment: CommentAttachment, x: number, y: number): WorkflowNode {
-	return {
-		id: generateId(),
-		name: 'Note',
-		type: 'n8n-nodes-base.stickyNote',
-		typeVersion: 1,
-		position: [x - 20, y - 40],
-		parameters: {
-			content: comment.text,
-			width: 220,
-			height: 80,
-		},
+function flushPendingCode(ctx: TranspilerContext): void {
+	if (ctx.pendingCode.length === 0) return;
+
+	ctx.codeCounter++;
+	const codeVar = `code${ctx.codeCounter}`;
+	const codeSource = ctx.pendingCode.join('\n');
+	const referencedVars = findReferencedVars(codeSource, ctx.varSourceMap);
+	const jsCodeLines: string[] = [];
+
+	if (referencedVars.length > 0) {
+		jsCodeLines.push(`// From: ${referencedVars[0].sourceNode}`);
+	}
+
+	for (const { varName, sourceNode } of referencedVars) {
+		jsCodeLines.push(`const ${varName} = $('${sourceNode}').all().map(i => i.json);`);
+	}
+
+	jsCodeLines.push(codeSource);
+
+	const declaredVars = findDeclaredVars(codeSource);
+	if (declaredVars.length > 0) {
+		jsCodeLines.push(`return [{ json: { ${declaredVars.join(', ')} } }];`);
+	} else {
+		jsCodeLines.push(`return [{ json: {} }];`);
+	}
+
+	const jsCode = jsCodeLines.join('\\n');
+	const nodeName = `Code ${ctx.codeCounter}`;
+
+	const sdkCode = `const ${codeVar} = node({
+  type: 'n8n-nodes-base.code', version: 2,
+  config: {
+    name: '${nodeName}',
+    parameters: {
+      jsCode: \`${jsCode}\`,
+      mode: 'runOnceForAllItems'
+    },
+    executeOnce: true
+  }
+});`;
+
+	ctx.nodes.push({ varName: codeVar, sdkCode, kind: 'code', nodeName });
+
+	for (const v of declaredVars) {
+		ctx.varSourceMap.set(v, nodeName);
+	}
+
+	ctx.pendingCode = [];
+	ctx.prevVar = codeVar;
+}
+
+// ─── SDK Code Generation ─────────────────────────────────────────────────────
+
+function generateTriggerSDK(cb: CallbackInfo, varName: string): EmittedNode {
+	const triggerTypeMap: Record<string, { type: string; version: number }> = {
+		manual: { type: 'n8n-nodes-base.manualTrigger', version: 1 },
+		webhook: { type: 'n8n-nodes-base.webhook', version: 2 },
+		schedule: { type: 'n8n-nodes-base.scheduleTrigger', version: 1.2 },
+		error: { type: 'n8n-nodes-base.errorTrigger', version: 1 },
 	};
+
+	const triggerInfo = triggerTypeMap[cb.triggerType] ?? triggerTypeMap.manual;
+	const configParams = mapTriggerParams(cb);
+
+	// If webhook callback has `respond` param, set responseMode
+	if (cb.triggerType === 'webhook' && cb.callbackParams.includes('respond')) {
+		configParams.responseMode = 'responseNode';
+	}
+
+	const paramsStr =
+		Object.keys(configParams).length > 0 ? `parameters: ${JSON.stringify(configParams)}` : '';
+
+	const configBody = paramsStr ? `{ ${paramsStr} }` : '{}';
+	const nodeName = 'Start';
+	const sdkCode = `const ${varName} = trigger({ type: '${triggerInfo.type}', version: ${triggerInfo.version}, config: ${configBody} });`;
+
+	return { varName, sdkCode, kind: 'trigger', nodeName };
+}
+
+function mapTriggerParams(cb: CallbackInfo): Record<string, unknown> {
+	if (cb.triggerType === 'schedule') return mapScheduleOptions(cb.triggerOptions);
+	if (cb.triggerType === 'webhook') return mapWebhookOptions(cb.triggerOptions);
+	return {};
+}
+
+function mapScheduleOptions(options: Record<string, unknown>): Record<string, unknown> {
+	if (typeof options.every === 'string') {
+		const match = (options.every as string).match(/^(\d+)\s*(s|m|h|d|w)$/);
+		if (match) {
+			const value = parseInt(match[1], 10);
+			const unitMap: Record<string, Record<string, unknown>> = {
+				s: { field: 'seconds', secondsInterval: value },
+				m: { field: 'minutes', minutesInterval: value },
+				h: { field: 'hours', hoursInterval: value },
+				d: { field: 'days', daysInterval: value },
+				w: { field: 'weeks', weeksInterval: value },
+			};
+			return { rule: { interval: [unitMap[match[2]]] } };
+		}
+	}
+	if (typeof options.cron === 'string') {
+		return { rule: { interval: [{ field: 'cronExpression', expression: options.cron }] } };
+	}
+	return { rule: { interval: [{ field: 'days', daysInterval: 1 }] } };
+}
+
+function mapWebhookOptions(options: Record<string, unknown>): Record<string, unknown> {
+	const params: Record<string, unknown> = {};
+	if (options.method) params.httpMethod = (options.method as string).toUpperCase();
+	if (options.path) params.path = options.path;
+	if (options.response) params.responseMode = options.response;
+	return params;
+}
+
+function generateHttpSDK(io: IOCall, varName: string): EmittedNode {
+	const method = io.method.toUpperCase();
+	const url = io.url ?? '{{dynamic URL}}';
+
+	const params: Record<string, unknown> = { method, url, options: {} };
+
+	if (['POST', 'PUT', 'PATCH'].includes(method)) {
+		if (io.bodyExpression) {
+			params.sendBody = true;
+			params.contentType = 'json';
+			params.specifyBody = 'json';
+			params.jsonBody = `={{ $json.${io.bodyExpression} }}`;
+		} else if (io.body) {
+			params.sendBody = true;
+			params.contentType = 'json';
+			params.specifyBody = 'json';
+			params.jsonBody = JSON.stringify(io.body);
+		}
+	}
+
+	if (io.options?.headers) {
+		params.sendHeaders = true;
+		params.headerParameters = {
+			parameters: Object.entries(io.options.headers as Record<string, string>).map(
+				([name, value]) => ({ name, value }),
+			),
+		};
+	}
+	if (io.options?.query) {
+		params.sendQuery = true;
+		params.queryParameters = {
+			parameters: Object.entries(io.options.query as Record<string, string>).map(
+				([name, value]) => ({ name, value }),
+			),
+		};
+	}
+
+	// Credentials
+	let credentialsStr = '';
+	if (io.credentials) {
+		const authTypeMap: Record<string, string> = {
+			bearer: 'httpHeaderAuth',
+			basic: 'httpBasicAuth',
+			oauth2: 'oAuth2Api',
+		};
+		const credType = authTypeMap[io.credentials.type] ?? 'httpHeaderAuth';
+		params.authentication = 'genericCredentialType';
+		params.genericAuthType = credType;
+		credentialsStr = `, credentials: { ${credType}: { name: '${io.credentials.credential}', id: '' } }`;
+	}
+
+	const configObj: Record<string, unknown> = {
+		name: io.nodeName,
+		parameters: params,
+		executeOnce: true,
+	};
+	if (io.onError) {
+		configObj.onError = io.onError;
+	}
+
+	const configStr = JSON.stringify(configObj, null, 2)
+		.split('\n')
+		.map((line, i) => (i === 0 ? line : '  ' + line))
+		.join('\n');
+
+	// Insert credentials into config string if present
+	let finalConfig = configStr;
+	if (credentialsStr) {
+		// Insert before the last }
+		finalConfig = configStr.slice(0, -1) + credentialsStr + '\n}';
+	}
+
+	const sdkCode = `const ${varName} = node({
+  type: 'n8n-nodes-base.httpRequest', version: 4.2,
+  config: ${finalConfig}
+});`;
+
+	return { varName, sdkCode, kind: 'http', nodeName: io.nodeName };
+}
+
+function generateAiSDK(io: IOCall, varName: string): EmittedNode {
+	const model = io.model ?? 'gpt-4o-mini';
+	const prompt = io.prompt ?? '';
+	const modelConfig = mapModelToType(model);
+
+	// Build subnodes
+	const subnodeParts: string[] = [];
+
+	// Language model (always present)
+	subnodeParts.push(`      model: languageModel({
+        type: '${modelConfig.type}', version: ${modelConfig.version},
+        config: { parameters: { model: { __rl: true, mode: 'id', value: '${model}' }, options: {} } }
+      })`);
+
+	// Tools
+	if (io.aiTools && io.aiTools.length > 0) {
+		const toolStrs = io.aiTools.map((t) => {
+			const toolType = mapToolType(t.type as string);
+			const toolConfig: Record<string, unknown> = {};
+			if (t.name) toolConfig.name = t.name;
+			if (t.code) toolConfig.jsCode = t.code;
+			return `tool({
+          type: '${toolType}', version: 1,
+          config: { parameters: ${JSON.stringify(toolConfig)} }
+        })`;
+		});
+		subnodeParts.push(`      tools: [${toolStrs.join(', ')}]`);
+	}
+
+	// Output parser
+	if (io.aiOutputParser) {
+		const parserType = mapOutputParserType(io.aiOutputParser.type as string);
+		const parserConfig: Record<string, unknown> = {};
+		if (io.aiOutputParser.schema) parserConfig.schema = io.aiOutputParser.schema;
+		subnodeParts.push(`      outputParser: outputParser({
+        type: '${parserType}', version: 1,
+        config: { parameters: ${JSON.stringify(parserConfig)} }
+      })`);
+	}
+
+	// Memory
+	if (io.aiMemory) {
+		const memType = mapMemoryType(io.aiMemory.type as string);
+		const memConfig: Record<string, unknown> = {};
+		if (io.aiMemory.contextLength) memConfig.contextWindowLength = io.aiMemory.contextLength;
+		subnodeParts.push(`      memory: memory({
+        type: '${memType}', version: 1,
+        config: { parameters: ${JSON.stringify(memConfig)} }
+      })`);
+	}
+
+	const subnodeBlock = subnodeParts.join(',\n');
+	const onErrorStr = io.onError ? `,\n    onError: '${io.onError}'` : '';
+
+	const sdkCode = `const ${varName} = node({
+  type: '@n8n/n8n-nodes-langchain.agent', version: 3.1,
+  config: {
+    name: '${io.nodeName.replace(/'/g, "\\'")}',
+    parameters: {
+      promptType: 'define',
+      text: '${prompt.replace(/'/g, "\\'")}',
+      options: {}
+    },
+    subnodes: {
+${subnodeBlock}
+    },
+    executeOnce: true${onErrorStr}
+  }
+});`;
+
+	return { varName, sdkCode, kind: 'ai', nodeName: io.nodeName };
+}
+
+function generateWorkflowRunSDK(io: IOCall, varName: string): EmittedNode {
+	const wfName = io.workflowName ?? 'Sub-Workflow';
+
+	const sdkCode = `const ${varName} = node({
+  type: 'n8n-nodes-base.executeWorkflow', version: 1.2,
+  config: {
+    name: '${io.nodeName.replace(/'/g, "\\'")}',
+    parameters: {
+      workflowId: { __rl: true, mode: 'name', value: '${wfName}' }
+    },
+    executeOnce: true
+  }
+});`;
+
+	return { varName, sdkCode, kind: 'workflow', nodeName: io.nodeName };
+}
+
+// ─── AI Subnode Type Mapping ─────────────────────────────────────────────────
+
+function mapModelToType(model: string): { type: string; version: number } {
+	if (model.includes('gpt') || model.includes('o1') || model.includes('o3')) {
+		return { type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', version: 1.2 };
+	}
+	if (model.includes('claude')) {
+		return { type: '@n8n/n8n-nodes-langchain.lmChatAnthropic', version: 1.2 };
+	}
+	if (model.includes('gemini')) {
+		return { type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini', version: 1 };
+	}
+	if (model.includes('llama') || model.includes('mixtral')) {
+		return { type: '@n8n/n8n-nodes-langchain.lmChatGroq', version: 1 };
+	}
+	return { type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', version: 1.2 };
+}
+
+function mapToolType(type: string): string {
+	const toolTypeMap: Record<string, string> = {
+		code: '@n8n/n8n-nodes-langchain.toolCode',
+		httpRequest: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+	};
+	return toolTypeMap[type] ?? '@n8n/n8n-nodes-langchain.toolCode';
+}
+
+function mapOutputParserType(type: string): string {
+	const parserTypeMap: Record<string, string> = {
+		structured: '@n8n/n8n-nodes-langchain.outputParserStructured',
+		autoFix: '@n8n/n8n-nodes-langchain.outputParserAutofixing',
+	};
+	return parserTypeMap[type] ?? '@n8n/n8n-nodes-langchain.outputParserStructured';
+}
+
+function mapMemoryType(type: string): string {
+	const memoryTypeMap: Record<string, string> = {
+		bufferWindow: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+		postgres: '@n8n/n8n-nodes-langchain.memoryPostgresChat',
+	};
+	return memoryTypeMap[type] ?? '@n8n/n8n-nodes-langchain.memoryBufferWindow';
+}
+
+// ─── Final SDK Code Assembly ─────────────────────────────────────────────────
+
+function generateSDKCode(allNodes: EmittedNode[], allChains: string[]): string {
+	const lines: string[] = [];
+
+	// Determine imports
+	const usedFactories = new Set<string>();
+	usedFactories.add('workflow');
+	for (const n of allNodes) {
+		switch (n.kind) {
+			case 'trigger':
+				usedFactories.add('trigger');
+				break;
+			case 'http':
+			case 'code':
+			case 'respond':
+			case 'workflow':
+				usedFactories.add('node');
+				break;
+			case 'ai':
+				usedFactories.add('node');
+				usedFactories.add('languageModel');
+				// Check for subnodes in SDK code
+				if (n.sdkCode.includes('tool(')) usedFactories.add('tool');
+				if (n.sdkCode.includes('outputParser(')) usedFactories.add('outputParser');
+				if (n.sdkCode.includes('memory(')) usedFactories.add('memory');
+				break;
+			case 'ifElse':
+				usedFactories.add('ifElse');
+				break;
+			case 'switchCase':
+				usedFactories.add('switchCase');
+				break;
+			case 'splitInBatches':
+				usedFactories.add('splitInBatches');
+				break;
+		}
+	}
+
+	lines.push(`import { ${Array.from(usedFactories).join(', ')} } from '@n8n/workflow-sdk';`);
+	lines.push('');
+
+	// Node declarations
+	for (const n of allNodes) {
+		lines.push(n.sdkCode);
+		lines.push('');
+	}
+
+	// Workflow builder
+	const addCalls = allChains.map((chain) => `.add(${chain})`).join('\n  ');
+	lines.push(`export default workflow('compiled', 'Compiled Workflow')`);
+	lines.push(`  ${addCalls}`);
+	lines.push(`  .generatePinData()`);
+	lines.push(`  .toJSON();`);
+
+	return lines.join('\n');
 }

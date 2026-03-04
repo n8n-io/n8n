@@ -1,678 +1,523 @@
-import { compileWorkflowJS } from './compiler';
-import { COMPILER_EXAMPLES } from './examples';
+import { transpileWorkflowJS } from './compiler';
 
-describe('compileWorkflowJS', () => {
-	describe('parse errors', () => {
-		it('should return errors for invalid JS', () => {
-			const result = compileWorkflowJS('const x = {{{');
-			expect(result.errors.length).toBeGreaterThan(0);
-			expect(result.errors[0].line).toBeDefined();
-			expect(result.workflow.nodes).toEqual([]);
-		});
-
-		it('should return empty nodes on parse error', () => {
-			const result = compileWorkflowJS('function (');
-			expect(result.errors.length).toBeGreaterThan(0);
-			expect(result.workflow.nodes).toHaveLength(0);
-		});
-	});
-
-	describe('metadata', () => {
-		it('should parse @workflow name', () => {
-			const result = compileWorkflowJS(`
-// @workflow "My Test Workflow"
-trigger.manual()
-const x = await http.get('https://example.com');
+describe('transpileWorkflowJS', () => {
+	describe('Phase 1: core transpiler', () => {
+		it('should produce valid SDK code for simple workflow', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const data = await http.get('https://api.example.com');
+});
 `);
-			expect(result.workflow.name).toBe('My Test Workflow');
-		});
-
-		it('should parse @trigger comment as fallback', () => {
-			const result = compileWorkflowJS(`
-// @trigger schedule
-const x = await http.get('https://example.com');
-`);
-			const trigger = result.workflow.nodes.find((n) => n.name === 'Start');
-			expect(trigger?.type).toBe('n8n-nodes-base.scheduleTrigger');
-		});
-
-		it('should default to manual trigger and "Compiled Workflow"', () => {
-			const result = compileWorkflowJS(`
-const x = await http.get('https://example.com');
-`);
-			expect(result.workflow.name).toBe('Compiled Workflow');
-			const trigger = result.workflow.nodes.find((n) => n.name === 'Start');
-			expect(trigger?.type).toBe('n8n-nodes-base.manualTrigger');
-		});
-	});
-
-	describe('trigger statements', () => {
-		it('should handle trigger.manual()', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
-const x = await http.get('https://example.com');
-`);
-			const trigger = result.workflow.nodes.find((n) => n.name === 'Start');
-			expect(trigger?.type).toBe('n8n-nodes-base.manualTrigger');
 			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain('trigger({');
+			expect(result.code).toContain('node({');
+			expect(result.code).toContain('workflow(');
+			expect(result.code).toContain('.toJSON()');
 		});
 
-		it('should handle trigger.schedule with every option', () => {
-			const result = compileWorkflowJS(`
-trigger.schedule({ every: '5m' })
-const x = await http.get('https://example.com');
+		it('should generate $() references in Code nodes', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const users = await http.get('https://api.example.com/users');
+  const names = users.map(u => u.name);
+});
 `);
-			const trigger = result.workflow.nodes.find((n) => n.name === 'Start');
-			expect(trigger?.type).toBe('n8n-nodes-base.scheduleTrigger');
-			expect(trigger?.parameters.rule).toEqual({
-				interval: [{ field: 'minutes', minutesInterval: 5 }],
-			});
+			expect(result.code).toContain("$('");
+			expect(result.code).toContain('.all()');
+			expect(result.code).not.toContain('$input');
 		});
 
-		it('should handle trigger.webhook with method and path', () => {
-			const result = compileWorkflowJS(`
-trigger.webhook({ method: 'POST', path: '/orders' })
-const x = await http.get('https://example.com');
+		it('should set executeOnce on non-trigger nodes', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  await http.get('https://api.example.com');
+});
 `);
-			const trigger = result.workflow.nodes.find((n) => n.name === 'Start');
-			expect(trigger?.type).toBe('n8n-nodes-base.webhook');
-			expect(trigger?.parameters.httpMethod).toBe('POST');
-			expect(trigger?.parameters.path).toBe('/orders');
+			expect(result.code).toContain('"executeOnce": true');
 		});
 
-		it('should override @trigger comment with trigger statement', () => {
-			const result = compileWorkflowJS(`
-// @trigger schedule
-trigger.webhook({ method: 'GET', path: '/status' })
-const x = await http.get('https://example.com');
+		it('should include node name comment in Code node jsCode', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const data = await http.get('https://api.example.com');
+  const x = data.length;
+});
 `);
-			const trigger = result.workflow.nodes.find((n) => n.name === 'Start');
-			expect(trigger?.type).toBe('n8n-nodes-base.webhook');
-		});
-	});
-
-	describe('schedule mapping', () => {
-		const scheduleTests = [
-			{ input: '30s', expected: { field: 'seconds', secondsInterval: 30 } },
-			{ input: '5m', expected: { field: 'minutes', minutesInterval: 5 } },
-			{ input: '2h', expected: { field: 'hours', hoursInterval: 2 } },
-			{ input: '1d', expected: { field: 'days', daysInterval: 1 } },
-			{ input: '1w', expected: { field: 'weeks', weeksInterval: 1 } },
-		];
-
-		it.each(scheduleTests)('should map every "$input" correctly', ({ input, expected }) => {
-			const result = compileWorkflowJS(`
-trigger.schedule({ every: '${input}' })
-const x = await http.get('https://example.com');
-`);
-			const trigger = result.workflow.nodes.find((n) => n.name === 'Start');
-			expect(trigger?.parameters.rule).toEqual({ interval: [expected] });
+			expect(result.code).toContain('// From:');
 		});
 
-		it('should handle cron expressions', () => {
-			const result = compileWorkflowJS(`
-trigger.schedule({ cron: '0 9 * * *' })
-const x = await http.get('https://example.com');
-`);
-			const trigger = result.workflow.nodes.find((n) => n.name === 'Start');
-			expect(trigger?.parameters.rule).toEqual({
-				interval: [{ field: 'cronExpression', expression: '0 9 * * *' }],
-			});
-		});
-	});
-
-	describe('webhook mapping', () => {
-		it('should map method, path, and response', () => {
-			const result = compileWorkflowJS(`
-trigger.webhook({ method: 'GET', path: '/status', response: 'lastNode' })
-const x = await http.get('https://example.com');
-`);
-			const trigger = result.workflow.nodes.find((n) => n.name === 'Start');
-			expect(trigger?.parameters.httpMethod).toBe('GET');
-			expect(trigger?.parameters.path).toBe('/status');
-			expect(trigger?.parameters.responseMode).toBe('lastNode');
-		});
-	});
-
-	describe('HTTP boundaries', () => {
-		it('should create HTTP Request nodes for http.get', () => {
-			const result = compileWorkflowJS(`
+		it('should error on legacy trigger.X() syntax', () => {
+			const result = transpileWorkflowJS(`
 trigger.manual()
-const data = await http.get('https://api.example.com/users');
+const data = await http.get('https://example.com');
 `);
-			const httpNode = result.workflow.nodes.find((n) => n.type === 'n8n-nodes-base.httpRequest');
-			expect(httpNode).toBeDefined();
-			expect(httpNode?.parameters.method).toBe('GET');
-			expect(httpNode?.parameters.url).toBe('https://api.example.com/users');
+			expect(result.errors.length).toBeGreaterThan(0);
+			expect(result.errors[0].message).toContain('onManual');
 		});
 
-		it('should create HTTP Request nodes for http.post with body', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
-await http.post('https://api.example.com/data', { key: 'value' });
+		it('should call generatePinData() in output', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  await http.get('https://api.example.com');
+});
 `);
-			const httpNode = result.workflow.nodes.find((n) => n.type === 'n8n-nodes-base.httpRequest');
-			expect(httpNode?.parameters.method).toBe('POST');
-			expect(httpNode?.parameters.sendBody).toBe(true);
-			expect(httpNode?.parameters.jsonBody).toBe('{"key":"value"}');
+			expect(result.code).toContain('.generatePinData()');
+		});
+
+		it('should generate correct HTTP node config for GET', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const data = await http.get('https://api.example.com/users');
+});
+`);
+			expect(result.code).toContain('"method": "GET"');
+			expect(result.code).toContain('"url": "https://api.example.com/users"');
+			expect(result.code).toContain("type: 'n8n-nodes-base.httpRequest'");
+		});
+
+		it('should generate correct HTTP node config for POST with body', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  await http.post('https://api.example.com/data', { key: 'value' });
+});
+`);
+			expect(result.code).toContain('"method": "POST"');
+			expect(result.code).toContain('"sendBody": true');
 		});
 
 		it('should handle http.put, http.patch, http.delete', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
-await http.put('https://api.example.com/a', { x: 1 });
-await http.patch('https://api.example.com/b', { y: 2 });
-await http.delete('https://api.example.com/c');
-`);
-			const httpNodes = result.workflow.nodes.filter(
-				(n) => n.type === 'n8n-nodes-base.httpRequest',
-			);
-			expect(httpNodes).toHaveLength(3);
-			expect(httpNodes[0].parameters.method).toBe('PUT');
-			expect(httpNodes[1].parameters.method).toBe('PATCH');
-			expect(httpNodes[2].parameters.method).toBe('DELETE');
-		});
-
-		it('should handle headers option', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
-const data = await http.get('https://api.example.com', { headers: { 'Authorization': 'Bearer token' } });
-`);
-			const httpNode = result.workflow.nodes.find((n) => n.type === 'n8n-nodes-base.httpRequest');
-			expect(httpNode?.parameters.sendHeaders).toBe(true);
-		});
-
-		it('should handle query option', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
-const data = await http.get('https://api.example.com', { query: { page: '1' } });
-`);
-			const httpNode = result.workflow.nodes.find((n) => n.type === 'n8n-nodes-base.httpRequest');
-			expect(httpNode?.parameters.sendQuery).toBe(true);
-		});
-	});
-
-	describe('AI boundaries', () => {
-		it('should create AI agent + model nodes for ai.chat', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
-const answer = await ai.chat('gpt-4o', 'Summarize this');
-`);
-			const agentNode = result.workflow.nodes.find(
-				(n) => n.type === '@n8n/n8n-nodes-langchain.agent',
-			);
-			const modelNode = result.workflow.nodes.find(
-				(n) => n.type === '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			);
-			expect(agentNode).toBeDefined();
-			expect(modelNode).toBeDefined();
-			expect(agentNode?.parameters.text).toBe('Summarize this');
-		});
-
-		it('should map claude model to Anthropic node', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
-const answer = await ai.chat('claude-sonnet-4-5-20250929', 'Analyze this');
-`);
-			const modelNode = result.workflow.nodes.find(
-				(n) => n.type === '@n8n/n8n-nodes-langchain.lmChatAnthropic',
-			);
-			expect(modelNode).toBeDefined();
-		});
-
-		it('should map gemini model to Google node', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
-const answer = await ai.chat('gemini-pro', 'Process this');
-`);
-			const modelNode = result.workflow.nodes.find(
-				(n) => n.type === '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
-			);
-			expect(modelNode).toBeDefined();
-		});
-
-		it('should connect model node to agent via ai_languageModel', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
-const answer = await ai.chat('gpt-4o', 'Test');
-`);
-			const modelNode = result.workflow.nodes.find((n) => n.type.includes('lmChat'));
-			expect(modelNode).toBeDefined();
-			const modelConnections = result.workflow.connections[modelNode!.name];
-			expect(modelConnections?.ai_languageModel).toBeDefined();
-		});
-	});
-
-	describe('code splitting', () => {
-		it('should create separate Code nodes for sections separated by blank line + comment', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
-const data = await http.get('https://api.example.com');
-
-// Filter active users
-const active = data.filter(u => u.active);
-
-// Build summary
-const summary = { count: active.length };
-`);
-			const codeNodes = result.workflow.nodes.filter((n) => n.type === 'n8n-nodes-base.code');
-			expect(codeNodes.length).toBeGreaterThanOrEqual(2);
-		});
-	});
-
-	describe('variable tracking', () => {
-		it('should track assigned variables across IO boundaries', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
-const users = await http.get('https://api.example.com/users');
-
-// Process users
-const names = users.map(u => u.name);
-`);
-			const codeNode = result.workflow.nodes.find((n) => n.type === 'n8n-nodes-base.code');
-			expect(codeNode).toBeDefined();
-			// The code node should destructure 'users' from items[0].json
-			expect(codeNode?.parameters.jsCode).toContain('users');
-		});
-	});
-
-	describe('body handling', () => {
-		it('should handle variable reference body', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
-await http.post('https://api.example.com', data);
-`);
-			const httpNode = result.workflow.nodes.find((n) => n.type === 'n8n-nodes-base.httpRequest');
-			expect(httpNode?.parameters.jsonBody).toBe('={{ $json.data }}');
-		});
-
-		it('should handle expression body with $json references', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
-const x = await http.get('https://api.example.com');
-await http.post('https://api.example.com', { result: x });
-`);
-			const httpNodes = result.workflow.nodes.filter(
-				(n) => n.type === 'n8n-nodes-base.httpRequest',
-			);
-			const postNode = httpNodes.find((n) => n.parameters.method === 'POST');
-			expect(postNode?.parameters.sendBody).toBe(true);
-		});
-	});
-
-	describe('node generation', () => {
-		it('should generate nodes with correct types and typeVersions', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
-const data = await http.get('https://api.example.com');
-`);
-			const trigger = result.workflow.nodes.find((n) => n.name === 'Start');
-			const httpNode = result.workflow.nodes.find((n) => n.type === 'n8n-nodes-base.httpRequest');
-			expect(trigger?.typeVersion).toBe(1);
-			expect(httpNode?.typeVersion).toBe(4.2);
-		});
-
-		it('should position nodes with increasing X', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
-const a = await http.get('https://a.com');
-const b = await http.get('https://b.com');
-`);
-			const nonStickyNodes = result.workflow.nodes.filter(
-				(n) => n.type !== 'n8n-nodes-base.stickyNote',
-			);
-			for (let i = 1; i < nonStickyNodes.length; i++) {
-				expect(nonStickyNodes[i].position[0]).toBeGreaterThan(nonStickyNodes[i - 1].position[0]);
-			}
-		});
-
-		it('should create connections between sequential nodes', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
-const data = await http.get('https://api.example.com');
-`);
-			const startConnections = result.workflow.connections['Start'];
-			expect(startConnections?.main?.[0]).toBeDefined();
-			expect(startConnections.main[0].length).toBeGreaterThan(0);
-		});
-	});
-
-	describe('sticky notes', () => {
-		it('should create sticky notes from comments', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
-
-// Fetch user data
-const data = await http.get('https://api.example.com');
-`);
-			const stickyNotes = result.workflow.nodes.filter(
-				(n) => n.type === 'n8n-nodes-base.stickyNote',
-			);
-			expect(stickyNotes.length).toBeGreaterThan(0);
-			expect(stickyNotes[0].parameters.content).toContain('Fetch user data');
-		});
-	});
-
-	describe('await trigger calls', () => {
-		it('should handle await trigger.schedule()', () => {
-			const result = compileWorkflowJS(`
-await trigger.schedule({ every: '2h' })
-const x = await http.get('https://example.com');
-`);
-			const trigger = result.workflow.nodes.find((n) => n.name === 'Start');
-			expect(trigger?.type).toBe('n8n-nodes-base.scheduleTrigger');
-			expect(trigger?.parameters.rule).toEqual({
-				interval: [{ field: 'hours', hoursInterval: 2 }],
-			});
-		});
-	});
-
-	describe('schedule fallback', () => {
-		it('should default to daily for unrecognized interval format', () => {
-			const result = compileWorkflowJS(`
-trigger.schedule({ every: '3x' })
-const x = await http.get('https://example.com');
-`);
-			const trigger = result.workflow.nodes.find((n) => n.name === 'Start');
-			expect(trigger?.parameters.rule).toEqual({
-				interval: [{ field: 'days', daysInterval: 1 }],
-			});
-		});
-	});
-
-	describe('code-only programs', () => {
-		it('should handle programs with no IO calls, splitting at comments', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
-
-// Step 1
-const a = 1;
-const b = 2;
-
-// Step 2
-const c = a + b;
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  await http.put('https://api.example.com/a', { x: 1 });
+  await http.patch('https://api.example.com/b', { y: 2 });
+  await http.delete('https://api.example.com/c');
+});
 `);
 			expect(result.errors).toHaveLength(0);
-			const codeNodes = result.workflow.nodes.filter((n) => n.type === 'n8n-nodes-base.code');
-			expect(codeNodes.length).toBeGreaterThanOrEqual(1);
+			expect(result.code).toContain('"method": "PUT"');
+			expect(result.code).toContain('"method": "PATCH"');
+			expect(result.code).toContain('"method": "DELETE"');
 		});
 
-		it('should return empty segments for code-only with only metadata comments', () => {
-			const result = compileWorkflowJS(`
-// @workflow "Empty"
-trigger.manual()
+		it('should chain nodes with .to()', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const a = await http.get('https://a.com');
+  const b = await http.post('https://b.com', a);
+});
+`);
+			expect(result.code).toContain('.to(');
+		});
+
+		it('should generate trigger node for onManual', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  await http.get('https://api.example.com');
+});
+`);
+			expect(result.code).toContain("type: 'n8n-nodes-base.manualTrigger'");
+		});
+
+		it('should use variable reference with $() in Code nodes', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const users = await http.get('https://api.example.com/users');
+  const active = users.filter(u => u.active);
+  await http.post('https://api.example.com/result', { active });
+});
+`);
+			// Code node should reference previous HTTP node via $()
+			expect(result.code).toContain("$('");
+			expect(result.code).toContain('.all()');
+		});
+
+		it('should generate workflow export', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  await http.get('https://api.example.com');
+});
+`);
+			expect(result.code).toContain("workflow('compiled'");
+			expect(result.code).toContain('.add(');
+			expect(result.code).toContain('.generatePinData()');
+			expect(result.code).toContain('.toJSON()');
+		});
+
+		it('should handle multiple sequential HTTP calls', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const users = await http.get('https://api.example.com/users');
+  const posts = await http.get('https://api.example.com/posts');
+  await http.post('https://api.example.com/result', { users, posts });
+});
 `);
 			expect(result.errors).toHaveLength(0);
+			// Should have 3 HTTP nodes chained
+			const httpMatches = result.code.match(/type: 'n8n-nodes-base\.httpRequest'/g);
+			expect(httpMatches).toHaveLength(3);
 		});
-	});
 
-	describe('template literal extraction', () => {
-		it('should extract template literal URLs with variable interpolation', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
-const id = 123;
-const data = await http.get(\`https://api.example.com/users/\${id}\`);
+		it('should generate unique node variable names', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const a = await http.get('https://a.com');
+  const b = await http.get('https://b.com');
+});
 `);
-			expect(result.errors).toHaveLength(0);
-			const httpNode = result.workflow.nodes.find((n) => n.type === 'n8n-nodes-base.httpRequest');
-			expect(httpNode).toBeDefined();
-			// Template literal produces an expression with $json reference for the interpolated var
-			expect(httpNode?.parameters.url).toContain('$json.id');
-		});
-	});
-
-	describe('HTTP auth option', () => {
-		it('should set authentication when auth option is provided', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
-const data = await http.get('https://api.example.com', { auth: 'myCredential' });
-`);
-			const httpNode = result.workflow.nodes.find((n) => n.type === 'n8n-nodes-base.httpRequest');
-			expect(httpNode?.parameters.authentication).toBe('predefinedCredentialType');
-			expect(httpNode?.credentials).toEqual({
-				httpCustomAuth: { id: '', name: 'myCredential' },
-			});
-		});
-	});
-
-	describe('HTTP options as third argument', () => {
-		it('should handle options as third arg after body', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
-await http.post('https://api.example.com', { data: 1 }, { headers: { 'X-Key': 'abc' } });
-`);
-			const httpNode = result.workflow.nodes.find((n) => n.type === 'n8n-nodes-base.httpRequest');
-			expect(httpNode?.parameters.sendBody).toBe(true);
-			expect(httpNode?.parameters.sendHeaders).toBe(true);
-		});
-	});
-
-	describe('AI options as third argument', () => {
-		it('should handle AI chat with options', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
-const answer = await ai.chat('gpt-4o', 'Summarize', { temperature: 0.5 });
-`);
-			expect(result.errors).toHaveLength(0);
-			const agentNode = result.workflow.nodes.find(
-				(n) => n.type === '@n8n/n8n-nodes-langchain.agent',
-			);
-			expect(agentNode).toBeDefined();
-		});
-	});
-
-	describe('default model mapping', () => {
-		it('should default to OpenAI for unrecognized model names', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
-const answer = await ai.chat('some-unknown-model', 'Test');
-`);
-			const modelNode = result.workflow.nodes.find(
-				(n) => n.type === '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			);
-			expect(modelNode).toBeDefined();
-		});
-	});
-
-	describe('HTTP node naming', () => {
-		it('should generate name from invalid URL', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
-const data = await http.get(endpoint);
-`);
-			expect(result.errors).toHaveLength(0);
-			const httpNode = result.workflow.nodes.find((n) => n.type === 'n8n-nodes-base.httpRequest');
-			expect(httpNode).toBeDefined();
+			// Should have distinct variable names like http1, http2
+			expect(result.code).toMatch(/const http\d+ = node/);
 		});
 
-		it('should truncate long HTTP node names', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
-const data = await http.get('https://very-long-domain-name.example.com/very/long/path/to/resource/endpoint');
-`);
-			const httpNode = result.workflow.nodes.find((n) => n.type === 'n8n-nodes-base.httpRequest');
-			expect(httpNode!.name.length).toBeLessThanOrEqual(40);
+		it('should return parse errors for invalid JS', () => {
+			const result = transpileWorkflowJS('onManual(async () => { const x = {{{ });');
+			expect(result.errors.length).toBeGreaterThan(0);
+			expect(result.code).toBe('');
 		});
-	});
 
-	describe('code node naming', () => {
-		it('should truncate long first line for code node names', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
+		it('should error when no onX callback is found', () => {
+			const result = transpileWorkflowJS(`
 const data = await http.get('https://example.com');
-
-const thisIsAVeryLongVariableNameThatExceedsFortyCharacters = data.map(item => item.value).filter(v => v > 0);
 `);
-			const codeNodes = result.workflow.nodes.filter((n) => n.type === 'n8n-nodes-base.code');
-			expect(codeNodes.length).toBeGreaterThanOrEqual(1);
-			for (const node of codeNodes) {
-				expect(node.name.length).toBeLessThanOrEqual(40);
-			}
+			expect(result.errors.length).toBeGreaterThan(0);
+			expect(result.errors[0].message).toContain('onManual');
 		});
 	});
 
-	describe('destructuring variable detection', () => {
-		it('should track destructured variables across IO boundaries', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
-const { name, age } = await http.get('https://api.example.com/user');
-
-// Use destructured vars
-const greeting = \`Hello \${name}, age \${age}\`;
+	describe('Phase 2: trigger callbacks', () => {
+		it('should transpile onWebhook with body/headers', () => {
+			const result = transpileWorkflowJS(`
+onWebhook({ method: 'POST', path: '/orders' }, async ({ body, headers }) => {
+  await http.post('/process', body);
+});
 `);
 			expect(result.errors).toHaveLength(0);
-			const codeNode = result.workflow.nodes.find((n) => n.type === 'n8n-nodes-base.code');
-			expect(codeNode).toBeDefined();
-			const jsCode = codeNode?.parameters.jsCode ?? '';
-			expect(jsCode).toContain('name');
+			expect(result.code).toContain("type: 'n8n-nodes-base.webhook'");
+			expect(result.code).toContain('"httpMethod":"POST"');
 		});
 
-		it('should detect destructured variables declared in code segments', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
-const data = await http.get('https://api.example.com/user');
-
-// Process data
-const { firstName, lastName: last } = data;
-const fullName = firstName + ' ' + last;
-
-await http.post('https://api.example.com/greeting', { name: fullName });
+		it('should transpile onSchedule with every', () => {
+			const result = transpileWorkflowJS(`
+onSchedule({ every: '5m' }, async () => {
+  await http.get('https://api.example.com/check');
+});
 `);
 			expect(result.errors).toHaveLength(0);
-			const codeNodes = result.workflow.nodes.filter((n) => n.type === 'n8n-nodes-base.code');
-			expect(codeNodes.length).toBeGreaterThanOrEqual(1);
-		});
-	});
-
-	describe('expression edge cases', () => {
-		it('should handle call expression in body (e.g. JSON.stringify)', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
-const items = [1, 2, 3];
-await http.post('https://api.example.com', JSON.stringify(items));
-`);
-			expect(result.errors).toHaveLength(0);
-			const httpNode = result.workflow.nodes.find((n) => n.type === 'n8n-nodes-base.httpRequest');
-			expect(httpNode).toBeDefined();
-			expect(httpNode?.parameters.method).toBe('POST');
+			expect(result.code).toContain("type: 'n8n-nodes-base.scheduleTrigger'");
 		});
 
-		it('should handle binary expression in string extraction', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
-const base = 'https://api.example.com';
-const url = base + '/users';
-await http.get(url);
+		it('should transpile onSchedule with cron', () => {
+			const result = transpileWorkflowJS(`
+onSchedule({ cron: '0 9 * * *' }, async () => {
+  await http.get('https://api.example.com/check');
+});
 `);
 			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain("type: 'n8n-nodes-base.scheduleTrigger'");
+			expect(result.code).toContain('cronExpression');
 		});
 
-		it('should handle array expression as body (unrecognized node type)', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
-await http.post('https://api.example.com', [1, 2, 3]);
+		it('should transpile onError', () => {
+			const result = transpileWorkflowJS(`
+onError(async () => {
+  await http.post('/slack', { text: 'Error' });
+});
 `);
 			expect(result.errors).toHaveLength(0);
-			const httpNode = result.workflow.nodes.find((n) => n.type === 'n8n-nodes-base.httpRequest');
-			expect(httpNode).toBeDefined();
+			expect(result.code).toContain("type: 'n8n-nodes-base.errorTrigger'");
 		});
 
-		it('should handle direct function call as body (non-method call)', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
-await http.post('https://api.example.com', encode(data));
+		it('should seed webhook params in varSourceMap', () => {
+			const result = transpileWorkflowJS(`
+onWebhook({ method: 'POST', path: '/orders' }, async ({ body }) => {
+  const items = body.items;
+  await http.post('/process', { items });
+});
 `);
 			expect(result.errors).toHaveLength(0);
-			const httpNode = result.workflow.nodes.find((n) => n.type === 'n8n-nodes-base.httpRequest');
-			expect(httpNode).toBeDefined();
-		});
-
-		it('should handle conditional expression as URL (unrecognized node in extractStringValue)', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
-const isProd = true;
-await http.get(isProd ? 'https://prod.example.com' : 'https://staging.example.com');
-`);
-			expect(result.errors).toHaveLength(0);
-			const httpNode = result.workflow.nodes.find((n) => n.type === 'n8n-nodes-base.httpRequest');
-			expect(httpNode).toBeDefined();
-		});
-
-		it('should handle standalone function call expression for body reference', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
-await http.post('https://api.example.com', transform(input));
-`);
-			expect(result.errors).toHaveLength(0);
-			const httpNode = result.workflow.nodes.find((n) => n.type === 'n8n-nodes-base.httpRequest');
-			expect(httpNode).toBeDefined();
+			// body should reference Start (trigger)
+			expect(result.code).toContain("$('Start')");
 		});
 	});
 
-	describe('statement grouping', () => {
-		it('should group consecutive statements and split at gaps', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
-const a = await http.get('https://api.example.com/a');
-
-const x = a.filter(i => i.active);
-const y = x.map(i => i.name);
-
-
-const z = y.join(', ');
-
-const b = await http.get('https://api.example.com/b');
+	describe('Phase 3: deep IO scanning', () => {
+		it('should detect IO inside if blocks', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  if (true) { await http.get('https://api.example.com'); }
+});
 `);
-			expect(result.errors).toHaveLength(0);
-			expect(result.workflow.nodes.length).toBeGreaterThanOrEqual(3);
+			expect(result.code).toContain("type: 'n8n-nodes-base.httpRequest'");
+		});
+
+		it('should detect IO inside try blocks', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  try { await http.get('https://api.example.com'); } catch (e) {}
+});
+`);
+			expect(result.code).toContain("type: 'n8n-nodes-base.httpRequest'");
+		});
+
+		it('should detect IO inside for-of blocks', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const items = [1, 2, 3];
+  for (const item of items) { await http.post('/process', { item }); }
+});
+`);
+			expect(result.code).toContain("type: 'n8n-nodes-base.httpRequest'");
 		});
 	});
 
-	describe('comment grouping', () => {
-		it('should group consecutive comments on adjacent lines into one sticky note', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
-
-// Step 1: Fetch data
-// This fetches from the API
-const data = await http.get('https://api.example.com');
+	describe('Phase 4: respond (webhook)', () => {
+		it('should emit respondToWebhook node when respond() used', () => {
+			const result = transpileWorkflowJS(`
+onWebhook({ method: 'POST', path: '/orders' }, async ({ body, respond }) => {
+  respond({ status: 200, body: { ok: true } });
+});
 `);
 			expect(result.errors).toHaveLength(0);
-			const stickyNotes = result.workflow.nodes.filter(
-				(n) => n.type === 'n8n-nodes-base.stickyNote',
-			);
-			// Adjacent comments should be grouped into one sticky note
-			expect(stickyNotes).toHaveLength(1);
-			expect(stickyNotes[0].parameters.content).toContain('Step 1');
-			expect(stickyNotes[0].parameters.content).toContain('fetches from the API');
+			expect(result.code).toContain("type: 'n8n-nodes-base.respondToWebhook'");
+			expect(result.code).toContain('"responseMode":"responseNode"');
 		});
 
-		it('should split non-adjacent comments into separate sticky notes', () => {
-			const result = compileWorkflowJS(`
-trigger.manual()
-
-// First section
-const a = await http.get('https://api.example.com/a');
-
-// Second section
-const b = await http.get('https://api.example.com/b');
+		it('should error when respond() in onManual', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => { respond({ status: 200 }); });
 `);
-			expect(result.errors).toHaveLength(0);
-			const stickyNotes = result.workflow.nodes.filter(
-				(n) => n.type === 'n8n-nodes-base.stickyNote',
-			);
-			expect(stickyNotes.length).toBeGreaterThanOrEqual(2);
+			expect(result.errors[0].message).toContain('respond');
+		});
+
+		it('should support respond() with custom headers', () => {
+			const result = transpileWorkflowJS(`
+onWebhook({ method: 'POST', path: '/xml' }, async ({ body, respond }) => {
+  respond({ status: 200, headers: { 'Content-Type': 'text/xml' }, body: '<ok/>' });
+});
+`);
+			expect(result.code).toContain('responseHeaders');
+			expect(result.code).toContain('Content-Type');
 		});
 	});
 
-	describe('full examples', () => {
-		it.each(COMPILER_EXAMPLES.map((ex) => [ex.label, ex.code]))(
-			'should compile "%s" without errors',
-			(_label, code) => {
-				const result = compileWorkflowJS(code);
-				expect(result.errors).toHaveLength(0);
-				expect(result.workflow.nodes.length).toBeGreaterThan(0);
-			},
-		);
+	describe('Phase 5: credentials', () => {
+		it('should map bearer auth to credentials', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  await http.get('https://api.example.com', { auth: { type: 'bearer', credential: 'My Key' } });
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain('httpHeaderAuth');
+			expect(result.code).toContain('My Key');
+		});
+
+		it('should map oauth2 auth to credentials', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  await http.get('https://sheets.googleapis.com/v4/spreadsheets/ID', {
+    auth: { type: 'oauth2', credential: 'Google Sheets' }
+  });
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain('oAuth2Api');
+			expect(result.code).toContain('Google Sheets');
+		});
+
+		it('should map basic auth to credentials', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  await http.get('https://api.example.com', { auth: { type: 'basic', credential: 'My Creds' } });
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain('httpBasicAuth');
+			expect(result.code).toContain('My Creds');
+		});
+	});
+
+	describe('Phase 6: if/else', () => {
+		it('should emit ifElse SDK code', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const order = await http.get('/order');
+  if (order.status === 'paid') { await http.post('/fulfill', order); }
+  else { await http.post('/cancel', order); }
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain('ifElse(');
+			expect(result.code).toContain('.onTrue(');
+			expect(result.code).toContain('.onFalse(');
+		});
+
+		it('should handle else-if chains as nested IF nodes', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const data = await http.get('/data');
+  if (data.priority === 'critical') {
+    await http.post('/pagerduty', data);
+  } else if (data.priority === 'high') {
+    await http.post('/slack', data);
+  } else {
+    await http.post('/queue', data);
+  }
+});
+`);
+			const ifCount = (result.code.match(/ifElse\(/g) || []).length;
+			expect(ifCount).toBe(2);
+		});
+	});
+
+	describe('Phase 7: Promise.all', () => {
+		it('should fan out to parallel nodes', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const d = await http.get('https://api.example.com');
+  await Promise.all([http.post('/a', d), http.post('/b', d)]);
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			// Multiple .to() calls from previous node
+			expect(result.code).toMatch(/\.to\(http\d+\).*\.to\(http\d+\)/s);
+		});
+	});
+
+	describe('Phase 8: loops', () => {
+		it('should emit SplitInBatches', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const items = await http.get('/items');
+  for (const item of items) { await http.post('/process', item); }
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain('splitInBatches(');
+		});
+	});
+
+	describe('Phase 9: switch/case', () => {
+		it('should emit switchCase SDK code', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const t = await http.get('/ticket');
+  switch (t.priority) {
+    case 'critical': await http.post('/pagerduty', t); break;
+    case 'high': await http.post('/slack', t); break;
+    default: await http.post('/queue', t);
+  }
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain('switchCase(');
+			expect(result.code).toContain('.onCase(');
+		});
+	});
+
+	describe('Phase 10: try/catch', () => {
+		it('should set onError on try-block nodes', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  try { await http.get('https://api.example.com'); }
+  catch { await http.post('/error', { msg: 'failed' }); }
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain('"onError": "continueErrorOutput"');
+		});
+
+		it('should support @onError continue annotation', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  // @onError continue
+  const analysis = await ai.chat('gpt-4o', 'Analyze this email');
+  await http.post('/result', analysis);
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain('"onError": "continueRegularOutput"');
+		});
+	});
+
+	describe('Phase 11: sub-workflows', () => {
+		it('should emit executeWorkflow node', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const result = await workflow.run('Process Data', {});
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain("type: 'n8n-nodes-base.executeWorkflow'");
+		});
+	});
+
+	describe('Phase 12: multiple triggers', () => {
+		it('should emit independent chains for multiple onX()', () => {
+			const result = transpileWorkflowJS(`
+onWebhook({ method: 'POST', path: '/api' }, async ({ body }) => {
+  await http.post('/process', body);
+});
+onSchedule({ every: '1h' }, async () => {
+  await http.get('/cleanup');
+});
+`);
+			expect((result.code.match(/trigger\(/g) || []).length).toBe(2);
+			expect((result.code.match(/\.add\(/g) || []).length).toBe(2);
+		});
+	});
+
+	describe('Phase 13: AI subnodes', () => {
+		it('should emit agent with tool subnodes', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  await ai.chat('gpt-4o', 'Analyze', {
+    tools: [{ type: 'code', name: 'calc', code: 'return 1+1' }],
+  });
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain('languageModel(');
+			expect(result.code).toContain('tool(');
+			expect(result.code).toContain('subnodes');
+		});
+
+		it('should emit outputParser and memory', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  await ai.chat('gpt-4o', 'Chat', {
+    outputParser: { type: 'structured', schema: { name: 'string' } },
+    memory: { type: 'bufferWindow', contextLength: 5 },
+  });
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain('outputParser(');
+			expect(result.code).toContain('memory(');
+		});
+
+		it('should map groq models', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  await ai.chat('llama-3.1-70b', 'Test');
+});
+`);
+			expect(result.code).toContain('lmChatGroq');
+		});
+	});
+
+	describe('Phase 14: helper functions', () => {
+		it('should include helper functions in Code node output', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const data = await http.get('/data');
+  function sortKeys(obj) {
+    return Object.keys(obj).sort().reduce((a, k) => ({ ...a, [k]: obj[k] }), {});
+  }
+  const sorted = sortKeys(data);
+});
+`);
+			expect(result.code).toContain('sortKeys');
+			expect(result.code).toContain('Object.keys(obj).sort()');
+		});
 	});
 });

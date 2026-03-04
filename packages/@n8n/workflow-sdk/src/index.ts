@@ -179,14 +179,12 @@ export {
 	type SerializerPlugin,
 } from './workflow-builder/plugins';
 
-// Simplified JS compiler (http.*/ai.*/trigger.* syntax → WorkflowJSON)
-export { compileWorkflowJS, COMPILER_EXAMPLES } from './simplified-compiler';
+// Simplified JS transpiler (onManual/onWebhook/onSchedule → SDK TypeScript code)
+export { transpileWorkflowJS, COMPILER_EXAMPLES } from './simplified-compiler';
 export type {
-	CompilerResult,
+	TranspilerResult,
 	CompilerError,
 	CompilerExample,
-	WorkflowJSON as SimplifiedWorkflowJSON,
-	WorkflowNode as SimplifiedWorkflowNode,
 } from './simplified-compiler';
 
 // Node type constants
