@@ -176,6 +176,7 @@ const createSafeErrorSubclass = <T extends ErrorConstructor>(ErrorClass: T): T =
 export class Expression {
 	// Feature gate for expression engine selection
 	private static expressionEngine: 'current' | 'vm' = (() => {
+		if (typeof process === 'undefined') return 'current';
 		const env = process.env.N8N_EXPRESSION_ENGINE;
 		if (env === 'vm' || env === 'current') return env;
 		if (env) {
