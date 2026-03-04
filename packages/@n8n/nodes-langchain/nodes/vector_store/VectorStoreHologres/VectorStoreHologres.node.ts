@@ -7,6 +7,23 @@ import crypto from 'node:crypto';
 
 import { metadataFilterField, createVectorStoreNode } from '@n8n/ai-utilities';
 
+// ─── Identifier Safety ────────────────────────────────────────────────────────
+
+const VALID_IDENTIFIER = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
+/**
+ * Validates and double-quote-wraps a SQL identifier (table / column name).
+ * Only alphanumeric characters and underscores are allowed.
+ */
+function quoteIdentifier(name: string): string {
+	if (!VALID_IDENTIFIER.test(name)) {
+		throw new Error(
+			`Invalid SQL identifier: "${name}". Only letters, digits, and underscores are allowed.`,
+		);
+	}
+	return `"${name}"`;
+}
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type DistanceMethod = 'Cosine' | 'InnerProduct' | 'Euclidean';
@@ -83,14 +100,19 @@ class HologresVectorStore extends VectorStore {
 	 */
 	async ensureTableInDatabase(): Promise<void> {
 		const { idColumnName, contentColumnName, metadataColumnName, vectorColumnName } = this.columns;
+		const qTable = quoteIdentifier(this.tableName);
+		const qId = quoteIdentifier(idColumnName);
+		const qContent = quoteIdentifier(contentColumnName);
+		const qMetadata = quoteIdentifier(metadataColumnName);
+		const qVector = quoteIdentifier(vectorColumnName);
 		const tableQuery = `
-			CREATE TABLE IF NOT EXISTS ${this.tableName} (
-				"${idColumnName}" text NOT NULL PRIMARY KEY,
-				"${contentColumnName}" text,
-				"${metadataColumnName}" jsonb,
-				"${vectorColumnName}" float4[] CHECK (
-					array_ndims("${vectorColumnName}") = 1
-					AND array_length("${vectorColumnName}", 1) = ${this.dimensions}
+			CREATE TABLE IF NOT EXISTS ${qTable} (
+				${qId} text NOT NULL PRIMARY KEY,
+				${qContent} text,
+				${qMetadata} jsonb,
+				${qVector} float4[] CHECK (
+					array_ndims(${qVector}) = 1
+					AND array_length(${qVector}, 1) = ${Number(this.dimensions)}
 				)
 			);
 		`;
@@ -126,7 +148,8 @@ class HologresVectorStore extends VectorStore {
 			},
 		});
 
-		const alterQuery = `ALTER TABLE ${this.tableName} SET (vectors = '${vectorsConfig}');`;
+		const qTable = quoteIdentifier(this.tableName);
+		const alterQuery = `ALTER TABLE ${qTable} SET (vectors = '${vectorsConfig}');`;
 		await this.pool.query(alterQuery);
 	}
 
@@ -154,12 +177,17 @@ class HologresVectorStore extends VectorStore {
 	): Promise<string[]> {
 		const ids = options?.ids ?? vectors.map(() => crypto.randomUUID());
 		const { idColumnName, contentColumnName, vectorColumnName, metadataColumnName } = this.columns;
+		const qTable = quoteIdentifier(this.tableName);
+		const qId = quoteIdentifier(idColumnName);
+		const qContent = quoteIdentifier(contentColumnName);
+		const qVector = quoteIdentifier(vectorColumnName);
+		const qMetadata = quoteIdentifier(metadataColumnName);
 
 		for (let i = 0; i < vectors.length; i++) {
 			const embeddingString = `{${vectors[i].join(',')}}`;
 			const queryText = `
-				INSERT INTO ${this.tableName}(
-					"${idColumnName}", "${contentColumnName}", "${vectorColumnName}", "${metadataColumnName}"
+				INSERT INTO ${qTable}(
+					${qId}, ${qContent}, ${qVector}, ${qMetadata}
 				)
 				VALUES ($1, $2, $3::float4[], $4::jsonb)
 			`;
@@ -200,10 +228,16 @@ class HologresVectorStore extends VectorStore {
 		const whereClauses: string[] = [];
 		const parameters: unknown[] = [];
 		let paramCount = paramOffset;
+		const qMetadata = quoteIdentifier(this.columns.metadataColumnName);
 
 		for (const [key, value] of Object.entries(filter)) {
+			if (!VALID_IDENTIFIER.test(key)) {
+				throw new Error(
+					`Invalid metadata filter key: "${key}". Only letters, digits, and underscores are allowed.`,
+				);
+			}
 			paramCount += 1;
-			whereClauses.push(`${this.columns.metadataColumnName}->>'${key}' = $${paramCount}`);
+			whereClauses.push(`${qMetadata}->>'${key}' = $${paramCount}`);
 			parameters.push(value);
 		}
 
@@ -230,9 +264,11 @@ class HologresVectorStore extends VectorStore {
 			whereClause = `WHERE ${whereClauses.join(' AND ')}`;
 		}
 
+		const qVector = quoteIdentifier(vectorColumnName);
+		const qTable = quoteIdentifier(this.tableName);
 		const queryString = `
-			SELECT *, ${func}("${vectorColumnName}", $1::float4[]) AS "_distance"
-			FROM ${this.tableName}
+			SELECT *, ${func}(${qVector}, $1::float4[]) AS "_distance"
+			FROM ${qTable}
 			${whereClause}
 			ORDER BY "_distance" ${order}
 			LIMIT $2
@@ -257,9 +293,11 @@ class HologresVectorStore extends VectorStore {
 
 	async delete(params: { ids: string[] }): Promise<void> {
 		const { idColumnName } = this.columns;
+		const qTable = quoteIdentifier(this.tableName);
+		const qId = quoteIdentifier(idColumnName);
 		const queryString = `
-			DELETE FROM ${this.tableName}
-			WHERE "${idColumnName}" = ANY($1::text[])
+			DELETE FROM ${qTable}
+			WHERE ${qId} = ANY($1::text[])
 		`;
 		await this.pool.query(queryString, [params.ids]);
 	}
@@ -490,6 +528,13 @@ const retrieveFields: INodeProperties[] = [
 // ─── Helper Functions ────────────────────────────────────────────────────────
 
 function createPoolFromCredentials(credentials: Record<string, unknown>): pg.Pool {
+	let ssl: boolean | { rejectUnauthorized: boolean } = false;
+	if (credentials.allowUnauthorizedCerts === true) {
+		ssl = { rejectUnauthorized: false };
+	} else if (credentials.ssl && credentials.ssl !== 'disable') {
+		ssl = true;
+	}
+
 	return new pg.Pool({
 		host: credentials.host as string,
 		port: credentials.port as number,
@@ -497,7 +542,7 @@ function createPoolFromCredentials(credentials: Record<string, unknown>): pg.Poo
 		user: credentials.user as string,
 		password: credentials.password as string,
 		max: (credentials.maxConnections as number) ?? 100,
-		ssl: false,
+		ssl,
 		application_name: 'n8n_hologres_vector_store',
 	});
 }
@@ -619,9 +664,11 @@ export class VectorStoreHologres extends createVectorStoreNode<HologresVectorSto
 
 		const vectorStore = await HologresVectorStore.fromDocuments(documents, embeddings, config);
 		vectorStore.client?.release();
+		await vectorStore.pool.end();
 	},
 
 	releaseVectorStoreClient(vectorStore) {
 		vectorStore.client?.release();
+		void vectorStore.pool.end();
 	},
 }) {}

@@ -5,12 +5,14 @@ import type { ISupplyDataFunctions } from 'n8n-workflow';
 
 const mockPoolQuery = jest.fn();
 const mockPoolConnect = jest.fn();
+const mockPoolEnd = jest.fn();
 const mockClientRelease = jest.fn();
 
 jest.mock('pg', () => {
 	const Pool = jest.fn().mockImplementation(() => ({
 		query: mockPoolQuery,
 		connect: mockPoolConnect,
+		end: mockPoolEnd,
 	}));
 	return { __esModule: true, default: { Pool } };
 });
@@ -119,6 +121,7 @@ describe('VectorStoreHologres.node', () => {
 					user: 'test_user',
 					password: 'test_password',
 					max: 50,
+					ssl: false,
 					application_name: 'n8n_hologres_vector_store',
 				}),
 			);
@@ -296,7 +299,7 @@ describe('VectorStoreHologres.node', () => {
 
 			// First call should be CREATE TABLE
 			expect(calls[0][0]).toContain('CREATE TABLE IF NOT EXISTS');
-			expect(calls[0][0]).toContain('test_vectors');
+			expect(calls[0][0]).toContain('"test_vectors"');
 			expect(calls[0][0]).toContain('float4[]');
 
 			// Second call should be ALTER TABLE for HGraph index
@@ -393,6 +396,9 @@ describe('VectorStoreHologres.node', () => {
 
 			// Verify client.release was called after population
 			expect(mockClientRelease).toHaveBeenCalled();
+
+			// Verify pool.end was called to clean up the pool
+			expect(mockPoolEnd).toHaveBeenCalled();
 		});
 
 		it('should handle empty documents array', async () => {
@@ -474,6 +480,9 @@ describe('VectorStoreHologres.node', () => {
 
 			(node as any).releaseVectorStoreClient(vectorStore);
 			expect(mockClientRelease).toHaveBeenCalled();
+
+			// Verify pool.end was called to clean up the pool
+			expect(mockPoolEnd).toHaveBeenCalled();
 		});
 	});
 
@@ -618,7 +627,7 @@ describe('VectorStoreHologres.node', () => {
 				(call: unknown[]) => typeof call[0] === 'string' && (call[0] as string).includes('WHERE'),
 			);
 			expect(searchCall).toBeDefined();
-			expect(searchCall![0]).toContain("metadata->>'category'");
+			expect(searchCall![0]).toContain('"metadata"->>');
 			expect(searchCall![1]).toContain('tech');
 		});
 
@@ -659,7 +668,7 @@ describe('VectorStoreHologres.node', () => {
 					typeof call[0] === 'string' && (call[0] as string).includes('DELETE FROM'),
 			);
 			expect(deleteCall).toBeDefined();
-			expect(deleteCall![0]).toContain('test_vectors');
+			expect(deleteCall![0]).toContain('"test_vectors"');
 			expect(deleteCall![1]).toEqual([['id1', 'id2']]);
 		});
 	});

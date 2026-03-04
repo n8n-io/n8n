@@ -50,5 +50,25 @@ export class HologresApi implements ICredentialType {
 			description:
 				'Make sure this value is lower than the maximum number of connections your Hologres instance allows.',
 		},
+		{
+			displayName: 'SSL',
+			name: 'ssl',
+			type: 'options',
+			options: [
+				{ name: 'Disable', value: 'disable' },
+				{ name: 'Allow', value: 'allow' },
+				{ name: 'Require', value: 'require' },
+			],
+			default: 'disable',
+			description: 'Whether to use SSL to connect to Hologres',
+		},
+		{
+			displayName: 'Allow Unauthorized Certificates',
+			name: 'allowUnauthorizedCerts',
+			type: 'boolean',
+			default: false,
+			description:
+				'Whether to connect even if the server certificate validation fails (e.g. self-signed certificates)',
+		},
 	];
 }
