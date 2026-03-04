@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
+import type { EntityManager } from '@n8n/db';
 import { WebhookEntity, WebhookRepository } from '@n8n/db';
-import type { EntityManager } from '@n8n/typeorm';
 import { Service } from '@n8n/di';
 import { HookContext, WebhookContext } from 'n8n-core';
 import { ensureError, Node, NodeHelpers, UnexpectedError } from 'n8n-workflow';
