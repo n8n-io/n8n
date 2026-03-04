@@ -242,6 +242,18 @@ export class Expression {
 		return 'current';
 	}
 
+	/**
+	 * Set the expression engine programmatically.
+	 *
+	 * WARNING: This is a global setting — switching engines mid-execution could
+	 * cause a workflow to evaluate some expressions with one engine and some with
+	 * another. Only use this in benchmarks and tests, never in production code.
+	 * In production, set `N8N_EXPRESSION_ENGINE` before process startup instead.
+	 */
+	static setExpressionEngine(engine: 'current' | 'vm'): void {
+		this.expressionEngine = engine;
+	}
+
 	static initializeGlobalContext(data: IDataObject) {
 		/**
 		 * Denylist

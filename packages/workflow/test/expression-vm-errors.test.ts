@@ -35,21 +35,21 @@ describe('Expression VM error handling', () => {
 		nodeTypes,
 	});
 
-	let originalEngine: string;
+	let originalEngine: 'current' | 'vm';
 	let originalEvaluator: IExpressionEvaluator | undefined;
 
 	beforeEach(() => {
-		originalEngine = (Expression as any).expressionEngine;
+		originalEngine = Expression.getActiveImplementation();
 		originalEvaluator = (Expression as any).vmEvaluator;
 	});
 
 	afterEach(() => {
-		(Expression as any).expressionEngine = originalEngine;
+		Expression.setExpressionEngine(originalEngine);
 		(Expression as any).vmEvaluator = originalEvaluator;
 	});
 
 	function setVmEvaluator(evaluator: Partial<IExpressionEvaluator>) {
-		(Expression as any).expressionEngine = 'vm';
+		Expression.setExpressionEngine('vm');
 		(Expression as any).vmEvaluator = evaluator;
 	}
 
