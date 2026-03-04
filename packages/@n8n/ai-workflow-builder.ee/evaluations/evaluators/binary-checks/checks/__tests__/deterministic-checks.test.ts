@@ -3,17 +3,19 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import type { BinaryCheckContext } from '../../types';
 import { allNodesConnected } from '../all-nodes-connected';
 import { expressionsReferenceExistingNodes } from '../expressions-reference-existing-nodes';
-import { hasNodes } from '../has-nodes';
 import { hasStartNode } from '../has-start-node';
-import { hasTrigger } from '../has-trigger';
 import { noEmptySetNodes } from '../no-empty-set-nodes';
-import { noHardcodedCredentials } from '../no-hardcoded-credentials';
-import { noInvalidFromAi } from '../no-invalid-from-ai';
 import { noUnnecessaryCodeNodes } from '../no-unnecessary-code-nodes';
 import { noUnreachableNodes } from '../no-unreachable-nodes';
-import { toolsHaveParameters } from '../tools-have-parameters';
-import { validOptionsValues } from '../valid-options-values';
-import { validRequiredParameters } from '../valid-required-parameters';
+import {
+	hasNodes,
+	hasTrigger,
+	noHardcodedCredentials,
+	noInvalidFromAi,
+	toolsHaveParameters,
+	validOptionsValues,
+	validRequiredParameters,
+} from '../validation-checks';
 
 // Minimal trigger node type for tests
 const triggerNodeType: INodeTypeDescription = {
