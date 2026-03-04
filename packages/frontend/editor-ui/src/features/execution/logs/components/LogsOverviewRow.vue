@@ -193,7 +193,7 @@ watch(
 			:class="$style.compactErrorIcon"
 		/>
 		<N8nIconButton
-			variant="subtle"
+			variant="ghost"
 			v-if="canOpenNdv && (!isCompact || !props.latestInfo?.deleted)"
 			size="small"
 			icon="square-pen"
@@ -207,7 +207,7 @@ watch(
 			@click.stop="emit('openNdv')"
 		/>
 		<N8nIconButton
-			variant="subtle"
+			variant="ghost"
 			v-if="
 				!isCompact ||
 				(!props.isReadOnly && !props.latestInfo?.deleted && !props.latestInfo?.disabled)
@@ -225,7 +225,7 @@ watch(
 		</template>
 		<N8nButton
 			v-if="!isCompact || hasChildren"
-			variant="subtle"
+			variant="ghost"
 			iconOnly
 			size="small"
 			:icon="props.expanded ? 'chevron-down' : 'chevron-up'"
