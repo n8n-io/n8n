@@ -63,6 +63,10 @@ const embeddingTooltip = computed(() => {
 });
 
 async function onVectorStoreProviderChange(provider: ChatHubVectorStoreProvider) {
+	if (provider === settings.value.vectorStore.provider) {
+		return;
+	}
+
 	if (settings.value.vectorStore.credentialId) {
 		// show confirmation if already fully set-up
 		const confirmed = await message.confirm(
@@ -81,11 +85,11 @@ async function onVectorStoreProviderChange(provider: ChatHubVectorStoreProvider)
 		}
 	}
 
-	settings.value.vectorStore.provider = provider;
-	settings.value.vectorStore.credentialId = null;
-
 	try {
-		await updateSemanticSearchSettingsApi(rootStore.restApiContext, settings.value);
+		await updateSemanticSearchSettingsApi(rootStore.restApiContext, {
+			...settings.value,
+			vectorStore: { provider, credentialId: null },
+		});
 		await settingsStore.getModuleSettings();
 		toast.showMessage({
 			type: 'success',
@@ -97,10 +101,15 @@ async function onVectorStoreProviderChange(provider: ChatHubVectorStoreProvider)
 }
 
 async function onVectorStoreCredentialSelected(credentialId: string | null) {
-	settings.value.vectorStore.credentialId = credentialId;
+	if (credentialId === settings.value.vectorStore.credentialId) {
+		return;
+	}
 
 	try {
-		await updateSemanticSearchSettingsApi(rootStore.restApiContext, settings.value);
+		await updateSemanticSearchSettingsApi(rootStore.restApiContext, {
+			...settings.value,
+			vectorStore: { ...settings.value.vectorStore, credentialId },
+		});
 		await settingsStore.getModuleSettings();
 		toast.showMessage({
 			type: 'success',
@@ -112,6 +121,10 @@ async function onVectorStoreCredentialSelected(credentialId: string | null) {
 }
 
 async function onEmbeddingModelProviderChange(provider: ChatHubLLMProvider) {
+	if (provider === settings.value.embeddingModel.provider) {
+		return;
+	}
+
 	if (settings.value.embeddingModel.credentialId) {
 		// show confirmation if already fully set-up
 		const confirmed = await message.confirm(
@@ -130,11 +143,11 @@ async function onEmbeddingModelProviderChange(provider: ChatHubLLMProvider) {
 		}
 	}
 
-	settings.value.embeddingModel.provider = provider;
-	settings.value.embeddingModel.credentialId = null;
-
 	try {
-		await updateSemanticSearchSettingsApi(rootStore.restApiContext, settings.value);
+		await updateSemanticSearchSettingsApi(rootStore.restApiContext, {
+			...settings.value,
+			embeddingModel: { provider, credentialId: null },
+		});
 		await settingsStore.getModuleSettings();
 		toast.showMessage({
 			type: 'success',
@@ -146,12 +159,15 @@ async function onEmbeddingModelProviderChange(provider: ChatHubLLMProvider) {
 }
 
 async function onEmbeddingCredentialSelected(credentialId: string | null) {
-	if (!settings.value.embeddingModel.provider) return;
-
-	settings.value.embeddingModel.credentialId = credentialId;
+	if (credentialId === settings.value.embeddingModel.credentialId) {
+		return;
+	}
 
 	try {
-		await updateSemanticSearchSettingsApi(rootStore.restApiContext, settings.value);
+		await updateSemanticSearchSettingsApi(rootStore.restApiContext, {
+			...settings.value,
+			embeddingModel: { ...settings.value.embeddingModel, credentialId },
+		});
 		await settingsStore.getModuleSettings();
 		toast.showMessage({
 			type: 'success',

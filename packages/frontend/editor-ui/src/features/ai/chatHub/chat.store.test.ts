@@ -11,6 +11,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
+	i18n: { baseText: (key: string) => key },
 }));
 
 vi.mock('@/app/composables/useToast', () => ({

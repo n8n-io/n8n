@@ -14,6 +14,7 @@ import { ref } from 'vue';
 import type { ChatModelDto } from '@n8n/api-types';
 
 vi.mock('@n8n/i18n', async (importOriginal) => {
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 	const actual = await importOriginal<typeof import('@n8n/i18n')>();
 	const i18n = {
 		baseText: (key: string) => key,
