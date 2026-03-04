@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { provide, onBeforeMount, onBeforeUnmount } from 'vue';
+import { provide, onBeforeMount, onBeforeUnmount, onMounted } from 'vue';
 import BaseLayout from './BaseLayout.vue';
 import DemoFooter from '@/features/execution/logs/components/DemoFooter.vue';
 import {
@@ -16,6 +16,7 @@ provide(WorkflowStateKey, workflowState);
 
 const {
 	workflowId,
+	initializeData,
 	currentWorkflowDocumentStore,
 	cleanup: cleanupInitialization,
 } = useWorkflowInitialization(workflowState);
@@ -30,6 +31,10 @@ const { setup: setupPostMessages, cleanup: cleanupPostMessages } = usePostMessag
 
 onBeforeMount(() => {
 	setupPostMessages();
+});
+
+onMounted(async () => {
+	await initializeData();
 });
 
 onBeforeUnmount(() => {

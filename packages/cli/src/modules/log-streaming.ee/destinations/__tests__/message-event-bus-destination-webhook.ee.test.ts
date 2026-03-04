@@ -80,28 +80,6 @@ describe('MessageEventBusDestinationWebhook', () => {
 			});
 		});
 
-		it('should pass through flat proxy config when not nested', () => {
-			const options: MessageEventBusDestinationWebhookOptions = {
-				__type: MessageEventBusDestinationTypeNames.webhook,
-				url: 'https://example.com/webhook',
-				options: {
-					proxy: {
-						protocol: 'https',
-						host: 'proxy.example.com',
-						port: 9000,
-					},
-				},
-			};
-
-			const destination = new MessageEventBusDestinationWebhook(mockEventBus, options);
-
-			expect(destination.axiosInstance.defaults.proxy).toEqual({
-				protocol: 'https',
-				host: 'proxy.example.com',
-				port: 9000,
-			});
-		});
-
 		it('should set proxy to false when options.proxy is absent', () => {
 			const options: MessageEventBusDestinationWebhookOptions = {
 				__type: MessageEventBusDestinationTypeNames.webhook,

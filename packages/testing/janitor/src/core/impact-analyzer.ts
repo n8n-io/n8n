@@ -9,8 +9,14 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { type Project, type SourceFile } from 'ts-morph';
 
+import { type FileDiffResult } from './ast-diff-analyzer.js';
 import { FacadeResolver } from './facade-resolver.js';
 import { getRootDir, findFilesRecursive, getRelativePath, isTestFile } from '../utils/paths.js';
+
+function isAdditiveOnly(diff: FileDiffResult): boolean {
+	if (diff.changedMethods.length === 0) return false;
+	return diff.changedMethods.every((m) => m.changeType === 'added');
+}
 
 export interface ImpactResult {
 	changedFiles: string[];
@@ -32,12 +38,21 @@ export class ImpactAnalyzer {
 	}
 
 	/**
-	 * Given a list of changed files, determine which test files are affected
+	 * Given a list of changed files, determine which test files are affected.
+	 * When diffs are provided, files with only additive changes (new methods)
+	 * skip dependency tracing — new exports can't break existing consumers.
 	 */
-	analyze(changedFiles: string[]): ImpactResult {
+	analyze(changedFiles: string[], diffs?: FileDiffResult[]): ImpactResult {
 		const absolutePaths = changedFiles.map((f) =>
 			path.isAbsolute(f) ? f : path.join(this.root, f),
 		);
+
+		const diffMap = new Map<string, FileDiffResult>();
+		if (diffs) {
+			for (const diff of diffs) {
+				diffMap.set(diff.filePath, diff);
+			}
+		}
 
 		const affectedSet = new Set<string>();
 		const graph: Record<string, string[]> = {};
@@ -55,6 +70,13 @@ export class ImpactAnalyzer {
 			// If the changed file is itself a test, it's affected
 			if (isTestFile(relativePath)) {
 				affectedSet.add(filePath);
+			}
+
+			// If we have diff info and all changes are additive, skip dependency tracing.
+			// New exports can't break existing consumers.
+			const diff = diffMap.get(filePath);
+			if (diff && isAdditiveOnly(diff)) {
+				continue;
 			}
 
 			// Find property names this file exposes (for property-based search)
@@ -136,8 +158,8 @@ export class ImpactAnalyzer {
 
 			// If we hit a facade, stop import tracing and switch to property search
 			if (this.facade.isFacade(depPath)) {
-				// Find tests that actually USE the property, not just import the facade
-				const testsUsingProperty = this.findTestsUsingProperties(propertyNames);
+				// Resolve through multi-hop chains (page → facade → composable → test)
+				const testsUsingProperty = this.resolvePropertyToTests(propertyNames, visited);
 				dependents.push(...testsUsingProperty);
 				continue;
 			}
@@ -157,29 +179,33 @@ export class ImpactAnalyzer {
 	}
 
 	/**
-	 * Find test files that actually use the given property names
-	 * Uses grep-style search for .propertyName. patterns
+	 * Find all .ts files that use the given property names via text search.
+	 * Searches the entire project root (not just tests/) to catch composables,
+	 * helpers, and other intermediaries between the facade and tests.
 	 */
-	private findTestsUsingProperties(propertyNames: string[]): string[] {
+	private findConsumersUsingProperties(propertyNames: string[]): string[] {
 		if (propertyNames.length === 0) {
 			return [];
 		}
 
-		const testsDir = path.join(this.root, 'tests');
-		const matchingTests = new Set<string>();
+		const matchingFiles = new Set<string>();
+		const facadePath = this.facade.getFacadePath();
 
-		// Build regex pattern to match property access: .logsPanel. or .logsPanel)
-		const patterns = propertyNames.map((name) => new RegExp(`\\.${name}[.)]`));
+		// Word-boundary regex: matches .name followed by any non-identifier char
+		const patterns = propertyNames.map((name) => new RegExp(`\\.${name}(?![a-zA-Z0-9_])`));
 
-		// Recursively find all test files
-		const testFiles = findFilesRecursive(testsDir, '.spec.ts');
+		// Search all .ts files in the project root
+		const allFiles = findFilesRecursive(this.root, '.ts');
 
-		for (const testFile of testFiles) {
+		for (const file of allFiles) {
+			// Skip the facade itself — it declares properties, doesn't consume them
+			if (file === facadePath) continue;
+
 			try {
-				const content = fs.readFileSync(testFile, 'utf-8');
+				const content = fs.readFileSync(file, 'utf-8');
 				for (const pattern of patterns) {
 					if (pattern.test(content)) {
-						matchingTests.add(testFile);
+						matchingFiles.add(file);
 						break;
 					}
 				}
@@ -188,7 +214,62 @@ export class ImpactAnalyzer {
 			}
 		}
 
-		return Array.from(matchingTests);
+		return Array.from(matchingFiles);
+	}
+
+	/**
+	 * Resolve property names to affected test files, following multi-hop chains.
+	 *
+	 * When a page changes and we hit the facade, the consumers might be:
+	 * 1. Test files → add directly to results
+	 * 2. Composables/helpers on the facade → extract THEIR property names, recurse
+	 * 3. Non-facade files → import-trace via findAllDependents
+	 *
+	 * Example chain: MfaLoginPage → facade(mfaLogin) → MfaComposer(mfaLogin.*) →
+	 *   facade(mfaComposer) → test(n8n.mfaComposer.*)
+	 */
+	private resolvePropertyToTests(
+		propertyNames: string[],
+		visited: Set<string>,
+		resolvedConsumers: Set<string> = new Set(),
+	): string[] {
+		const consumers = this.findConsumersUsingProperties(propertyNames);
+		const tests: string[] = [];
+
+		for (const consumer of consumers) {
+			// Guard against cyclic property chains (A→B→A)
+			if (resolvedConsumers.has(consumer)) continue;
+			resolvedConsumers.add(consumer);
+
+			const relativePath = getRelativePath(consumer);
+
+			if (isTestFile(relativePath)) {
+				tests.push(consumer);
+				continue;
+			}
+
+			// Non-test consumer (composable, helper, etc.)
+			const sourceFile = this.project.getSourceFile(consumer);
+			if (!sourceFile) continue;
+
+			// Check if this file is exposed on the facade
+			const consumerPropertyNames = this.extractPropertyNames(sourceFile);
+			if (consumerPropertyNames.length > 0) {
+				// File is on the facade — recurse with its property names
+				const transitiveTests = this.resolvePropertyToTests(
+					consumerPropertyNames,
+					visited,
+					resolvedConsumers,
+				);
+				tests.push(...transitiveTests);
+			} else {
+				// Not on the facade — fall back to import tracing
+				const dependents = this.findAllDependents(sourceFile, visited, []);
+				tests.push(...dependents);
+			}
+		}
+
+		return tests;
 	}
 }
 
