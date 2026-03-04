@@ -1256,6 +1256,74 @@ test('uses new method', async ({ app }) => {
 		});
 	});
 
+	describe('Regex Escaping', () => {
+		function emptyMethodIndex(): MethodUsageIndex {
+			return {
+				methods: {},
+				fixtureMapping: {},
+				timestamp: new Date().toISOString(),
+				testFilesAnalyzed: 0,
+			};
+		}
+
+		it('does not throw on method names with regex metacharacters', () => {
+			const diffs: FileDiffResult[] = [
+				{
+					filePath: '/test-root/pages/StorePage.ts',
+					changedMethods: [
+						{ className: 'StorePage', methodName: '$reset', changeType: 'added' },
+						{ className: 'StorePage', methodName: '$patch', changeType: 'added' },
+					],
+					isNewFile: true,
+					isDeletedFile: false,
+					parseTimeMs: 0,
+				},
+			];
+
+			const analyzer = new ImpactAnalyzer(project);
+
+			expect(() =>
+				analyzer.analyze(['pages/StorePage.ts'], {
+					diffs,
+					methodUsageIndex: emptyMethodIndex(),
+				}),
+			).not.toThrow();
+		});
+
+		it('matches method names containing $ when properly escaped', () => {
+			project.createSourceFile(
+				'/test-root/tests/pinia.spec.ts',
+				`
+test('uses pinia store', async ({ app }) => {
+  await app.store.$reset();
+});
+`,
+			);
+
+			const diffs: FileDiffResult[] = [
+				{
+					filePath: '/test-root/pages/StorePage.ts',
+					changedMethods: [{ className: 'StorePage', methodName: '$reset', changeType: 'added' }],
+					isNewFile: false,
+					isDeletedFile: false,
+					parseTimeMs: 0,
+				},
+			];
+
+			const analyzer = new ImpactAnalyzer(project);
+
+			// tests/pinia.spec.ts is both a changed test file AND references .$reset()
+			// Without escaping, $ would be treated as end-of-line anchor and fail to match
+			const result = analyzer.analyze(['pages/StorePage.ts', 'tests/pinia.spec.ts'], {
+				diffs,
+				methodUsageIndex: emptyMethodIndex(),
+			});
+
+			expect(result.affectedTests).toContain('tests/pinia.spec.ts');
+			expect(result.strategies['pages/StorePage.ts']).toBe('skipped');
+		});
+	});
+
 	describe('Edge Cases', () => {
 		it('handles file not found gracefully', () => {
 			const analyzer = new ImpactAnalyzer(project);
