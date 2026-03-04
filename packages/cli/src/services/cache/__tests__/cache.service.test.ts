@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { random } from 'lodash';
+import random from 'lodash/random';
 import { sleep } from 'n8n-workflow';
 
 import config from '@/config';
