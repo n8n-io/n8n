@@ -3,6 +3,7 @@ import { computed, ref, onMounted, nextTick, watch } from 'vue';
 
 import BaseMessage from './BaseMessage.vue';
 import RestoreVersionLink from './RestoreVersionLink.vue';
+import WorkflowDescription from './WorkflowDescription.vue';
 import { useMarkdown } from './useMarkdown';
 import { useI18n } from '../../../composables/useI18n';
 import type { ChatUI, RatingFeedback } from '../../../types/assistant';
@@ -32,6 +33,18 @@ const emit = defineEmits<{
 }>();
 const { renderMarkdown } = useMarkdown();
 const { t } = useI18n();
+
+const WORKFLOW_DESCRIPTION_REGEX = /<workflow-description>([\s\S]*?)<\/workflow-description>/;
+
+const workflowDescriptionContent = computed<string | null>(() => {
+	if (props.message.role !== 'assistant') return null;
+	const match = WORKFLOW_DESCRIPTION_REGEX.exec(props.message.content);
+	return match ? match[1].trim() : null;
+});
+
+const messageContent = computed(() =>
+	props.message.content.replace(WORKFLOW_DESCRIPTION_REGEX, '').trim(),
+);
 
 const isClipboardSupported = computed(() => {
 	return navigator.clipboard?.writeText;
@@ -134,10 +147,14 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 			<!-- Assistant message -->
 			<div
 				v-else
-				v-n8n-html="renderMarkdown(message.content)"
+				v-n8n-html="renderMarkdown(messageContent)"
 				:class="[$style.assistantText, $style.renderedContent]"
 				:style="color ? { color } : undefined"
 			></div>
+			<WorkflowDescription
+				v-if="workflowDescriptionContent"
+				:content="workflowDescriptionContent"
+			/>
 			<div
 				v-if="message?.codeSnippet"
 				:class="$style.codeSnippet"

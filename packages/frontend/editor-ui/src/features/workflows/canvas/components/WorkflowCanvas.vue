@@ -144,7 +144,7 @@ defineExpose({
 </script>
 
 <template>
-	<div :class="[$style.wrapper, $style[view]]" data-test-id="canvas-wrapper">
+	<div :class="[$style.wrapper, $style[`mode-${view}`]]" data-test-id="canvas-wrapper">
 		<div id="chat" :class="$style.chat">
 			<AskAssistantBuild ref="askAssistantBuildRef">
 				<!--
@@ -204,17 +204,17 @@ defineExpose({
 	height: 100%;
 	overflow: hidden;
 
-	&.chat {
+	&.mode-chat {
 		.canvas {
 			width: 0;
 		}
 	}
-	&.canvas {
+	&.mode-canvas {
 		.chat {
 			width: 0;
 		}
 	}
-	&.split {
+	&.mode-split {
 		.chat,
 		.canvas {
 			width: 50%;
@@ -248,5 +248,7 @@ defineExpose({
 	align-items: stretch;
 	justify-content: stretch;
 	background-color: var(--canvas--color--background);
+	transition: width 0.2s ease;
+	overflow: hidden;
 }
 </style>

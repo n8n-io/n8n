@@ -687,7 +687,7 @@ defineExpose({
 	height: 100%;
 	position: relative;
 	display: grid;
-	grid-template-rows: auto 1fr auto;
+	grid-template-rows: 1fr auto;
 	max-width: 80vw;
 	margin: 0 auto;
 }
