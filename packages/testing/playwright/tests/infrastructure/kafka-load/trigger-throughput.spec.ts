@@ -40,7 +40,7 @@ interface ThroughputScenario {
 
 const SCENARIOS: ThroughputScenario[] = [
 	{
-		name: 'kafka-1-node-1KB-1k',
+		name: '1-node-1KB-1k',
 		nodeCount: 1,
 		messageCount: 1_000,
 		payloadSize: '1KB',
@@ -49,7 +49,7 @@ const SCENARIOS: ThroughputScenario[] = [
 		timeoutMs: 120_000,
 	},
 	{
-		name: 'kafka-10-nodes-1KB-5k',
+		name: '10-nodes-1KB-5k',
 		nodeCount: 10,
 		messageCount: 5_000,
 		payloadSize: '1KB',
@@ -58,7 +58,7 @@ const SCENARIOS: ThroughputScenario[] = [
 		timeoutMs: 300_000,
 	},
 	{
-		name: 'kafka-30-nodes-1KB-5k',
+		name: '30-nodes-1KB-5k',
 		nodeCount: 30,
 		messageCount: 5_000,
 		payloadSize: '1KB',
@@ -67,7 +67,7 @@ const SCENARIOS: ThroughputScenario[] = [
 		timeoutMs: 300_000,
 	},
 	{
-		name: 'kafka-60-nodes-1KB-5k',
+		name: '60-nodes-1KB-5k',
 		nodeCount: 60,
 		messageCount: 5_000,
 		payloadSize: '1KB',
@@ -76,7 +76,7 @@ const SCENARIOS: ThroughputScenario[] = [
 		timeoutMs: 600_000,
 	},
 	{
-		name: 'kafka-10-nodes-1KB-10kb-out-5k',
+		name: '10-nodes-1KB-10kb-out-5k',
 		nodeCount: 10,
 		messageCount: 5_000,
 		payloadSize: '1KB',
@@ -85,7 +85,7 @@ const SCENARIOS: ThroughputScenario[] = [
 		timeoutMs: 300_000,
 	},
 	{
-		name: 'kafka-10-nodes-1KB-100kb-out-5k',
+		name: '10-nodes-1KB-100kb-out-5k',
 		nodeCount: 10,
 		messageCount: 5_000,
 		payloadSize: '1KB',

@@ -4,6 +4,7 @@ import type { Reporter, TestCase, TestResult } from '@playwright/test/reporter';
 
 interface BenchmarkRow {
 	trigger: string;
+	suite: string;
 	scenario: string;
 	metrics: Map<string, number>;
 }
@@ -42,6 +43,14 @@ function extractTrigger(filePath: string): string {
 	return match[1].replace(/-load$/, '');
 }
 
+function extractSuite(filePath: string): string {
+	// e.g. kafka-load.spec.ts → load, trigger-throughput.spec.ts → throughput
+	const filename = filePath.split('/').pop() ?? '';
+	if (filename.includes('throughput')) return 'throughput';
+	if (filename.includes('load')) return 'load';
+	return 'other';
+}
+
 function extractMetricSuffix(metricName: string, scenario: string): string | null {
 	if (metricName.startsWith(`${scenario}-`)) {
 		return metricName.slice(scenario.length + 1);
@@ -59,6 +68,7 @@ class BenchmarkSummaryReporter implements Reporter {
 		const scenario = test.title;
 		const filePath = test.location.file;
 		const trigger = extractTrigger(filePath);
+		const suite = extractSuite(filePath);
 		const metrics = new Map<string, number>();
 
 		for (const attachment of metricAttachments) {
@@ -75,7 +85,7 @@ class BenchmarkSummaryReporter implements Reporter {
 		}
 
 		if (metrics.size > 0) {
-			this.rows.push({ trigger, scenario, metrics });
+			this.rows.push({ trigger, suite, scenario, metrics });
 		}
 	}
 
@@ -83,10 +93,14 @@ class BenchmarkSummaryReporter implements Reporter {
 		if (this.rows.length === 0) return;
 
 		this.rows.sort(
-			(a, b) => a.trigger.localeCompare(b.trigger) || a.scenario.localeCompare(b.scenario),
+			(a, b) =>
+				a.trigger.localeCompare(b.trigger) ||
+				a.suite.localeCompare(b.suite) ||
+				a.scenario.localeCompare(b.scenario),
 		);
 
 		const triggerWidth = Math.max(7, ...this.rows.map((r) => r.trigger.length));
+		const suiteWidth = Math.max(5, ...this.rows.map((r) => r.suite.length));
 		const scenarioWidth = Math.max(8, ...this.rows.map((r) => r.scenario.length));
 		const colWidths = COLUMNS.map((col) => {
 			const values = this.rows.map((r) => this.resolveColumn(r, col));
@@ -98,6 +112,7 @@ class BenchmarkSummaryReporter implements Reporter {
 
 		const headerParts = [
 			padLeft('Trigger', triggerWidth),
+			padLeft('Suite', suiteWidth),
 			padLeft('Scenario', scenarioWidth),
 			...COLUMNS.map((col, i) => pad(col.header, colWidths[i])),
 		];
@@ -113,6 +128,7 @@ class BenchmarkSummaryReporter implements Reporter {
 		for (const row of this.rows) {
 			const parts = [
 				padLeft(row.trigger, triggerWidth),
+				padLeft(row.suite, suiteWidth),
 				padLeft(row.scenario, scenarioWidth),
 				...COLUMNS.map((col, i) => pad(this.resolveColumn(row, col), colWidths[i])),
 			];
@@ -129,7 +145,7 @@ class BenchmarkSummaryReporter implements Reporter {
 		const summaryPath = process.env.GITHUB_STEP_SUMMARY;
 		if (!summaryPath) return;
 
-		const headers = ['Trigger', 'Scenario', ...COLUMNS.map((c) => c.header)];
+		const headers = ['Trigger', 'Suite', 'Scenario', ...COLUMNS.map((c) => c.header)];
 		const lines: string[] = [
 			'## Benchmark Summary',
 			'',
@@ -140,6 +156,7 @@ class BenchmarkSummaryReporter implements Reporter {
 		for (const row of this.rows) {
 			const cells = [
 				row.trigger,
+				row.suite,
 				row.scenario,
 				...COLUMNS.map((col) => this.resolveColumn(row, col)),
 			];
