@@ -18,4 +18,5 @@ jobs:
       test-mode: docker-build
       test-command: pnpm --filter=n8n-playwright test:infrastructure
       shards: 1
+      workers: 1
     secrets: inherit
