@@ -48,16 +48,16 @@ const if1 = ifElse({
 	},
 }).onTrue(respond1.to(code1));
 
-const code1 = node({
+const code2 = node({
 	type: 'n8n-nodes-base.code',
 	version: 2,
 	config: {
-		name: 'Code 1',
+		name: 'Code 2',
 		parameters: {
 			jsCode: `// From: Start\nconst body = $('Start').all().map(i => i.json);\nconst meeting = {
-    notes: body.meetingNotes,
-    title: body.meetingTitle
-  };\nreturn [{ json: { meeting } }];`,
+		notes: body.meetingNotes,
+		title: body.meetingTitle,
+	};\nreturn [{ json: { meeting } }];`,
 			mode: 'runOnceForAllItems',
 		},
 		executeOnce: true,
@@ -117,11 +117,11 @@ const http2 = node({
 	},
 });
 
-const respond1 = node({
+const respond2 = node({
 	type: 'n8n-nodes-base.respondToWebhook',
 	version: 1.1,
 	config: {
-		name: 'Respond 1',
+		name: 'Respond 2',
 		parameters: {
 			respondWith: 'json',
 			responseCode: 200,
@@ -132,5 +132,5 @@ const respond1 = node({
 });
 
 export default workflow('compiled', 'Compiled Workflow').add(
-	t0.to(respond1).to(code1).to(if1).to(code1).to(ai1).to(http2).to(respond1),
+	t0.to(respond1).to(code1).to(if1).to(code2).to(ai1).to(http2).to(respond2),
 );

@@ -35,7 +35,7 @@ const http1 = node({
 	},
 });
 
-const http1 = node({
+const http2 = node({
 	type: 'n8n-nodes-base.httpRequest',
 	version: 4.2,
 	config: {
@@ -49,7 +49,7 @@ const http1 = node({
 	},
 });
 
-const http2 = node({
+const http3 = node({
 	type: 'n8n-nodes-base.httpRequest',
 	version: 4.2,
 	config: {
@@ -70,7 +70,7 @@ const http2 = node({
 	},
 });
 
-const http3 = node({
+const http4 = node({
 	type: 'n8n-nodes-base.httpRequest',
 	version: 4.2,
 	config: {
@@ -95,19 +95,19 @@ const if2 = ifElse({
 		parameters: { conditions: { options: { leftValue: 'msg.message.voice' } } },
 		executeOnce: true,
 	},
-}).onTrue(http1.to(http2).to(http3));
+}).onTrue(http2.to(http3).to(http4));
 
 const if1 = ifElse({
 	version: 2.2,
 	config: {
-		name: 'IF 1',
+		name: 'IF 2',
 		parameters: { conditions: { options: { leftValue: 'msg.message.text' } } },
 		executeOnce: true,
 	},
 })
 	.onTrue(http1)
-	.onFalse(http1.to(http2).to(http3).to(if2));
+	.onFalse(http2.to(http3).to(http4).to(if2));
 
 export default workflow('compiled', 'Compiled Workflow').add(
-	t0.to(code1).to(http1).to(http1).to(http2).to(http3).to(if2).to(if1),
+	t0.to(code1).to(http1).to(http2).to(http3).to(http4).to(if2).to(if1),
 );

@@ -36,11 +36,11 @@ model = complexity <= 2 ? 'llama-3.1-8b-instant' : 'llama-3.1-70b-versatile';\nr
 	},
 });
 
-const code2 = node({
+const code3 = node({
 	type: 'n8n-nodes-base.code',
 	version: 2,
 	config: {
-		name: 'Code 2',
+		name: 'Code 3',
 		parameters: {
 			jsCode: `// From: Code 1\nconst provider = $('Code 1').all().map(i => i.json);\nprovider = 'openai';
 model = 'gpt-4o';\nreturn [{ json: {} }];`,
@@ -50,11 +50,11 @@ model = 'gpt-4o';\nreturn [{ json: {} }];`,
 	},
 });
 
-const code2 = node({
+const code4 = node({
 	type: 'n8n-nodes-base.code',
 	version: 2,
 	config: {
-		name: 'Code 2',
+		name: 'Code 4',
 		parameters: {
 			jsCode: `// From: Code 1\nconst provider = $('Code 1').all().map(i => i.json);\nprovider = 'anthropic';
 model = 'claude-3-5-sonnet';\nreturn [{ json: {} }];`,
@@ -72,25 +72,25 @@ const if2 = ifElse({
 		executeOnce: true,
 	},
 })
-	.onTrue(code2)
-	.onFalse(code2);
+	.onTrue(code3)
+	.onFalse(code4);
 
 const if1 = ifElse({
 	version: 2.2,
 	config: {
-		name: 'IF 1',
+		name: 'IF 2',
 		parameters: { conditions: { options: { leftValue: "priority === 'cost'" } } },
 		executeOnce: true,
 	},
 })
 	.onTrue(code2)
-	.onFalse(code2.to(code2).to(if2));
+	.onFalse(code3.to(code4).to(if2));
 
-const code2 = node({
+const code5 = node({
 	type: 'n8n-nodes-base.code',
 	version: 2,
 	config: {
-		name: 'Code 2',
+		name: 'Code 5',
 		parameters: {
 			jsCode: `const startTime = Date.now();
 const prompt = 'Analyze and enrich this data';\nreturn [{ json: { startTime, prompt } }];`,
@@ -123,13 +123,13 @@ const ai1 = node({
 	},
 });
 
-const code3 = node({
+const code6 = node({
 	type: 'n8n-nodes-base.code',
 	version: 2,
 	config: {
-		name: 'Code 3',
+		name: 'Code 6',
 		parameters: {
-			jsCode: `// From: Code 2\nconst startTime = $('Code 2').all().map(i => i.json);\nconst processingTime = Date.now() - startTime;\nreturn [{ json: { processingTime } }];`,
+			jsCode: `// From: Code 5\nconst startTime = $('Code 5').all().map(i => i.json);\nconst processingTime = Date.now() - startTime;\nreturn [{ json: { processingTime } }];`,
 			mode: 'runOnceForAllItems',
 		},
 		executeOnce: true,
@@ -158,12 +158,12 @@ export default workflow('compiled', 'Compiled Workflow').add(
 	t0
 		.to(code1)
 		.to(code2)
-		.to(code2)
-		.to(code2)
+		.to(code3)
+		.to(code4)
 		.to(if2)
 		.to(if1)
-		.to(code2)
+		.to(code5)
 		.to(ai1)
-		.to(code3)
+		.to(code6)
 		.to(respond1),
 );

@@ -27,7 +27,9 @@ const code1 = node({
 	config: {
 		name: 'Code 1',
 		parameters: {
-			jsCode: `// From: GET sheets.googleapis.com/v4/spreadsh...\nconst leads = $('GET sheets.googleapis.com/v4/spreadsh...').all().map(i => i.json);\nconst newLeads = leads.values.filter(function(row) { return row[2] === 'New'; });\nreturn [{ json: { newLeads } }];`,
+			jsCode: `// From: GET sheets.googleapis.com/v4/spreadsh...\nconst leads = $('GET sheets.googleapis.com/v4/spreadsh...').all().map(i => i.json);\nconst newLeads = leads.values.filter(function (row) {
+		return row[2] === 'New';
+	});\nreturn [{ json: { newLeads } }];`,
 			mode: 'runOnceForAllItems',
 		},
 		executeOnce: true,

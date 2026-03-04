@@ -589,6 +589,7 @@ function processIfStatement(
 			const nestedCtx = createBranchContext(ctx);
 			processIfStatement(nestedCtx, stmt.alternate, comments);
 			flushPendingCode(nestedCtx);
+			syncCounters(ctx, nestedCtx);
 			falseBranch = { nodes: nestedCtx.nodes, chainExpr: buildBranchChain(nestedCtx.nodes) };
 		} else {
 			falseBranch = transpileBranch(ctx, stmt.alternate, comments);
@@ -630,7 +631,26 @@ function transpileBranch(
 	walkStatements(branchCtx, stmts, comments);
 	flushPendingCode(branchCtx);
 
+	// Sync counters back so subsequent branches/code see the highest values
+	syncCounters(parentCtx, branchCtx);
+
 	return { nodes: branchCtx.nodes, chainExpr: buildBranchChain(branchCtx.nodes) };
+}
+
+const COUNTER_KEYS = [
+	'httpCounter',
+	'codeCounter',
+	'ifCounter',
+	'switchCounter',
+	'sibCounter',
+	'respondCounter',
+	'wfCounter',
+] as const;
+
+function syncCounters(target: TranspilerContext, source: TranspilerContext): void {
+	for (const key of COUNTER_KEYS) {
+		target[key] = Math.max(target[key], source[key]);
+	}
 }
 
 function createBranchContext(parentCtx: TranspilerContext): TranspilerContext {
@@ -702,9 +722,7 @@ function processSwitchStatement(
 			caseBranches.push({ index: i, chainExpr });
 		}
 
-		// Sync counters
-		ctx.httpCounter = Math.max(ctx.httpCounter, branchCtx.httpCounter);
-		ctx.codeCounter = Math.max(ctx.codeCounter, branchCtx.codeCounter);
+		syncCounters(ctx, branchCtx);
 	}
 
 	// Emit case nodes
@@ -766,9 +784,7 @@ function processForOfStatement(
 	});
 	ctx.prevVar = sibVar;
 
-	// Sync counters
-	ctx.httpCounter = Math.max(ctx.httpCounter, branchCtx.httpCounter);
-	ctx.codeCounter = Math.max(ctx.codeCounter, branchCtx.codeCounter);
+	syncCounters(ctx, branchCtx);
 }
 
 // ─── Try/Catch Processing ────────────────────────────────────────────────────
