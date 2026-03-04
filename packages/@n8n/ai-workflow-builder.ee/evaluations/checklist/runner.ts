@@ -11,7 +11,7 @@ import type {
 } from '../../src/types/streaming';
 
 import { verifyChecklist } from './checklist';
-import type { AgentResult, ChecklistItem, Iteration, PromptConfig } from './types';
+import type { AgentResult, ChecklistItem, Iteration, PromptConfig, ToolCallDetail } from './types';
 
 function isWorkflowUpdateChunk(chunk: StreamChunk): chunk is WorkflowUpdateChunk {
 	return chunk.type === 'workflow-updated';
@@ -38,8 +38,10 @@ export async function runSingleExample(
 
 	// Track token usage per LLM call
 	const tokenSnapshots: TokenUsage[] = [];
-	const toolCallsPerIteration: Array<Array<{ name: string }>> = [];
-	let currentToolCalls: Array<{ name: string }> = [];
+	const toolCallsPerIteration: ToolCallDetail[][] = [];
+	let currentToolCalls: ToolCallDetail[] = [];
+	// Map toolCallId -> ToolCallDetail for merging running/completed/error chunks
+	const toolCallById = new Map<string, ToolCallDetail>();
 
 	const builder = new CodeWorkflowBuilder({
 		llm: config.llm,
@@ -51,6 +53,7 @@ export async function runSingleExample(
 			// Capture accumulated tool calls for this iteration
 			toolCallsPerIteration.push([...currentToolCalls]);
 			currentToolCalls = [];
+			toolCallById.clear();
 		},
 	});
 
@@ -82,7 +85,28 @@ export async function runSingleExample(
 		for await (const output of builder.chat(payload, 'checklist-eval', abortController.signal)) {
 			for (const message of output.messages) {
 				if (isToolProgressChunk(message)) {
-					currentToolCalls.push({ name: message.toolName });
+					const toolCallId = message.toolCallId as string | undefined;
+					const status = message.status;
+
+					if (status === 'running') {
+						const detail: ToolCallDetail = {
+							name: message.toolName,
+							status,
+							args: message.args as Record<string, unknown> | undefined,
+						};
+						currentToolCalls.push(detail);
+						if (toolCallId) toolCallById.set(toolCallId, detail);
+					} else if (toolCallId && toolCallById.has(toolCallId)) {
+						// Merge completed/error data into existing detail
+						const existing = toolCallById.get(toolCallId)!;
+						existing.status = status;
+						if (status === 'completed') {
+							existing.result = message.result as string | undefined;
+						}
+						if (status === 'error') {
+							existing.error = message.error as string | undefined;
+						}
+					}
 				}
 
 				if (isWorkflowUpdateChunk(message)) {

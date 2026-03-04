@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import type { Run, AgentResult, PromptConfig } from './types';
+import type { Run, AgentResult, PromptConfig, ToolCallDetail } from './types';
 
 /** Backfill complexity and tags for old results that don't have them stored */
 function backfillFromPrompts(run: Run): void {
@@ -44,6 +44,54 @@ function formatDuration(ms: number): string {
 
 function formatScore(score: number): string {
 	return `${(score * 100).toFixed(0)}%`;
+}
+
+function renderToolCallDetail(tc: ToolCallDetail, idx: number, parentId: string): string {
+	const statusBadge =
+		tc.status === 'error'
+			? '<span class="badge badge-failed">ERROR</span>'
+			: '<span class="badge badge-completed">OK</span>';
+
+	const isEditTool = tc.name === 'str_replace_based_edit_tool' || tc.name === 'batch_str_replace';
+
+	let argsHtml = '';
+	if (tc.args) {
+		if (isEditTool && tc.args.command === 'str_replace' && tc.args.old_str && tc.args.new_str) {
+			argsHtml = `<div class="diff-view">
+				<div class="diff-old"><div class="diff-label">old_str</div><pre><code>${escapeHtml(String(tc.args.old_str))}</code></pre></div>
+				<div class="diff-new"><div class="diff-label">new_str</div><pre><code>${escapeHtml(String(tc.args.new_str))}</code></pre></div>
+			</div>`;
+		} else if (isEditTool && tc.args.replacements) {
+			const replacements = tc.args.replacements as Array<Record<string, unknown>>;
+			argsHtml = replacements
+				.map(
+					(r, ri) =>
+						`<div class="diff-view"><div class="diff-label">Replacement ${ri + 1}</div>
+					<div class="diff-old"><div class="diff-label">old_str</div><pre><code>${escapeHtml(String(r.old_str ?? ''))}</code></pre></div>
+					<div class="diff-new"><div class="diff-label">new_str</div><pre><code>${escapeHtml(String(r.new_str ?? ''))}</code></pre></div>
+				</div>`,
+				)
+				.join('');
+		} else {
+			argsHtml = `<pre class="tool-json"><code>${escapeHtml(JSON.stringify(tc.args, null, 2))}</code></pre>`;
+		}
+	}
+
+	let resultHtml = '';
+	if (tc.result) {
+		resultHtml = `<details class="tool-result-details"><summary>Output</summary><pre class="tool-json"><code>${escapeHtml(tc.result)}</code></pre></details>`;
+	}
+	if (tc.error) {
+		resultHtml += `<div class="tool-error">${escapeHtml(tc.error)}</div>`;
+	}
+
+	return `<details class="tool-call-detail" id="${parentId}-tc-${idx}">
+		<summary>${escapeHtml(tc.name)} ${statusBadge}</summary>
+		<div class="tool-call-body">
+			${argsHtml ? `<div class="tool-section"><div class="tool-section-label">Input</div>${argsHtml}</div>` : ''}
+			${resultHtml ? `<div class="tool-section">${resultHtml}</div>` : ''}
+		</div>
+	</details>`;
 }
 
 function renderTags(tags: string[] | undefined): string {
@@ -111,22 +159,26 @@ function renderResultRow(result: AgentResult, index: number): string {
 					</div>
 					<div class="detail-section">
 						<h4>Iterations (${result.iterations.length})</h4>
-						<table class="iterations-table">
-							<tr><th>#</th><th>Duration</th><th>In Tokens</th><th>Out Tokens</th><th>Thinking Tokens</th><th>Tool Calls</th></tr>
-							${result.iterations
-								.map(
-									(iter) => `
-								<tr>
-									<td>${iter.iterationNumber}</td>
-									<td>${iter.durationMs > 0 ? formatDuration(iter.durationMs) : '-'}</td>
-									<td>${iter.inputTokens.toLocaleString()}</td>
-									<td>${iter.outputTokens.toLocaleString()}</td>
-									<td>${iter.thinkingTokens.toLocaleString()}</td>
-									<td>${iter.toolCalls.length > 0 ? iter.toolCalls.map((tc) => escapeHtml(tc.name)).join(', ') : 'None'}</td>
-								</tr>`,
-								)
-								.join('')}
-						</table>
+						${result.iterations
+							.map(
+								(iter) => `
+							<details class="iteration-detail">
+								<summary>
+									<span class="iter-num">#${iter.iterationNumber}</span>
+									<span class="iter-meta">
+										${iter.durationMs > 0 ? formatDuration(iter.durationMs) : '-'}
+										&middot; ${iter.inputTokens.toLocaleString()} in
+										&middot; ${iter.outputTokens.toLocaleString()} out
+										&middot; ${iter.thinkingTokens.toLocaleString()} thinking
+										&middot; ${iter.toolCalls.length} tool call${iter.toolCalls.length !== 1 ? 's' : ''}
+									</span>
+								</summary>
+								<div class="iteration-tools">
+									${iter.toolCalls.length > 0 ? iter.toolCalls.map((tc, tci) => renderToolCallDetail(tc, tci, `detail-${index}-iter-${iter.iterationNumber}`)).join('') : '<div class="no-tools">No tool calls</div>'}
+								</div>
+							</details>`,
+							)
+							.join('')}
 					</div>
 					${
 						result.workflowJson
@@ -264,6 +316,31 @@ export function generateReport(runs: Run[]): string {
 	.tags-cell { max-width: 180px; }
 	.result-row.sibling-highlight { border-left: 3px solid; }
 	n8n-demo { display: block; margin: 8px 0; min-height: 200px; }
+	.iteration-detail { margin-bottom: 4px; border: 1px solid #30363d; border-radius: 6px; }
+	.iteration-detail > summary { padding: 8px 12px; cursor: pointer; display: flex; align-items: center; gap: 12px; font-size: 13px; }
+	.iteration-detail > summary:hover { background: #1c2129; }
+	.iteration-detail[open] > summary { border-bottom: 1px solid #30363d; }
+	.iter-num { font-weight: 600; color: #f0f6fc; min-width: 24px; }
+	.iter-meta { color: #8b949e; }
+	.iteration-tools { padding: 8px; }
+	.tool-call-detail { margin: 4px 0; border: 1px solid #21262d; border-radius: 4px; }
+	.tool-call-detail > summary { padding: 6px 10px; cursor: pointer; font-size: 12px; font-family: monospace; display: flex; align-items: center; gap: 8px; }
+	.tool-call-detail > summary:hover { background: #161b22; }
+	.tool-call-detail[open] > summary { border-bottom: 1px solid #21262d; }
+	.tool-call-body { padding: 8px 10px; }
+	.tool-section { margin-bottom: 8px; }
+	.tool-section-label { color: #8b949e; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+	.tool-json { font-size: 11px; max-height: 200px; overflow-y: auto; margin: 0; padding: 8px; }
+	.tool-error { color: #f85149; font-size: 12px; padding: 4px 8px; background: #da363322; border-radius: 4px; }
+	.tool-result-details { margin-top: 4px; }
+	.tool-result-details > summary { cursor: pointer; color: #8b949e; font-size: 12px; }
+	.diff-view { margin: 4px 0; }
+	.diff-label { font-size: 11px; color: #8b949e; padding: 2px 8px; }
+	.diff-old { border-left: 3px solid #f85149; margin-bottom: 4px; }
+	.diff-old pre { background: #da363311; margin: 0; }
+	.diff-new { border-left: 3px solid #3fb950; }
+	.diff-new pre { background: #23863611; margin: 0; }
+	.no-tools { color: #8b949e; font-size: 12px; padding: 4px; }
 </style>
 </head>
 <body>

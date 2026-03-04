@@ -1,10 +1,18 @@
+export interface ToolCallDetail {
+	name: string;
+	status: string;
+	args?: Record<string, unknown>;
+	result?: string;
+	error?: string;
+}
+
 export interface Iteration {
 	iterationNumber: number;
 	durationMs: number;
 	inputTokens: number;
 	outputTokens: number;
 	thinkingTokens: number;
-	toolCalls: Array<{ name: string }>;
+	toolCalls: ToolCallDetail[];
 	errors: string;
 }
 
