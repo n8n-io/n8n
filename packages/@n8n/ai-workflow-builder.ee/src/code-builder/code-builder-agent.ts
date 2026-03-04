@@ -318,6 +318,7 @@ export class CodeBuilderAgent {
 							type: 'workflow-updated',
 							codeSnippet: JSON.stringify(workflow, null, 2),
 							iterationCount: iteration,
+							sourceCode: loopResult.sourceCode ?? undefined,
 						} as WorkflowUpdateChunk,
 					],
 				};

@@ -1,0 +1,570 @@
+{
+  "id": "3f580d0d-d66c-41c3-8f57-bd1a9f95630a",
+  "createdAt": "2026-03-04T10:22:46.608Z",
+  "status": "completed",
+  "config": {
+    "prompts": [
+      {
+        "text": "Create a workflow that receives an HTTP POST webhook at /contacts, validates the email field is present, and returns a success response with the contact ID.",
+        "complexity": "simple",
+        "source": "synthetic",
+        "tags": [
+          "webhook",
+          "validation"
+        ]
+      },
+      {
+        "text": "Create a workflow triggered by a cron schedule every day at 9am that fetches a list of users from an API endpoint and logs the count.",
+        "complexity": "simple",
+        "source": "synthetic",
+        "tags": [
+          "cron",
+          "api"
+        ]
+      },
+      {
+        "text": "Create a workflow with an HTTP GET endpoint at /health that checks a database connection status and returns either \"healthy\" or \"unhealthy\" with the current timestamp.",
+        "complexity": "simple",
+        "source": "synthetic",
+        "tags": [
+          "api"
+        ]
+      }
+    ],
+    "model": "claude-sonnet-4.5"
+  },
+  "results": [
+    {
+      "prompt": "Create a workflow that receives an HTTP POST webhook at /contacts, validates the email field is present, and returns a success response with the contact ID.",
+      "complexity": "simple",
+      "tags": [
+        "webhook",
+        "validation"
+      ],
+      "generatedCode": "{\n  \"id\": \"webhook-contact-validation\",\n  \"name\": \"Webhook Contact Validation\",\n  \"nodes\": [\n    {\n      \"id\": \"920ff466-a445-42df-a2f4-2d60d7222671\",\n      \"name\": \"Webhook Trigger\",\n      \"type\": \"n8n-nodes-base.webhook\",\n      \"typeVersion\": 2.1,\n      \"position\": [\n        240,\n        300\n      ],\n      \"parameters\": {\n        \"httpMethod\": \"POST\",\n        \"path\": \"contacts\",\n        \"responseMode\": \"responseNode\"\n      }\n    },\n    {\n      \"id\": \"006e6462-1d55-4bb8-b395-538205f3c507\",\n      \"name\": \"Validate Email\",\n      \"type\": \"n8n-nodes-base.if\",\n      \"typeVersion\": 2.3,\n      \"position\": [\n        540,\n        300\n      ],\n      \"parameters\": {\n        \"conditions\": {\n          \"conditions\": [\n            {\n              \"leftValue\": \"={{ $json.body.email }}\",\n              \"operator\": {\n                \"type\": \"string\",\n                \"operation\": \"exists\"\n              },\n              \"rightValue\": \"\"\n            }\n          ]\n        }\n      }\n    },\n    {\n      \"id\": \"90ab29ec-d04d-49b8-a4d8-e3e876098ea9\",\n      \"name\": \"Success Response\",\n      \"type\": \"n8n-nodes-base.respondToWebhook\",\n      \"typeVersion\": 1.5,\n      \"position\": [\n        840,\n        200\n      ],\n      \"parameters\": {\n        \"respondWith\": \"json\",\n        \"responseBody\": \"={{ { \\\"success\\\": true, \\\"contactId\\\": $runIndex + \\\"-\\\" + $now.toMillis(), \\\"email\\\": $json.body.email } }}\"\n      }\n    },\n    {\n      \"id\": \"94e11dd3-bcbd-44b5-9e7d-c58bbb2a7de1\",\n      \"name\": \"Error Response\",\n      \"type\": \"n8n-nodes-base.respondToWebhook\",\n      \"typeVersion\": 1.5,\n      \"position\": [\n        840,\n        400\n      ],\n      \"parameters\": {\n        \"respondWith\": \"json\",\n        \"responseBody\": \"{ \\\"success\\\": false, \\\"error\\\": \\\"Email field is required\\\" }\",\n        \"options\": {\n          \"responseCode\": 400\n        }\n      }\n    }\n  ],\n  \"connections\": {\n    \"Webhook Trigger\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Validate Email\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Validate Email\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Success Response\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ],\n        [\n          {\n            \"node\": \"Error Response\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    }\n  },\n  \"settings\": {},\n  \"pinData\": {\n    \"Webhook Trigger\": [\n      {\n        \"headers\": {},\n        \"params\": {},\n        \"query\": {},\n        \"body\": {\n          \"email\": \"user@example.com\",\n          \"name\": \"John Doe\",\n          \"phone\": \"+1234567890\"\n        },\n        \"webhookUrl\": \"https://n8n.example.com/webhook/contacts\",\n        \"executionMode\": \"production\"\n      }\n    ]\n  }\n}",
+      "workflowJson": "{\n  \"id\": \"webhook-contact-validation\",\n  \"name\": \"Webhook Contact Validation\",\n  \"nodes\": [\n    {\n      \"id\": \"920ff466-a445-42df-a2f4-2d60d7222671\",\n      \"name\": \"Webhook Trigger\",\n      \"type\": \"n8n-nodes-base.webhook\",\n      \"typeVersion\": 2.1,\n      \"position\": [\n        240,\n        300\n      ],\n      \"parameters\": {\n        \"httpMethod\": \"POST\",\n        \"path\": \"contacts\",\n        \"responseMode\": \"responseNode\"\n      }\n    },\n    {\n      \"id\": \"006e6462-1d55-4bb8-b395-538205f3c507\",\n      \"name\": \"Validate Email\",\n      \"type\": \"n8n-nodes-base.if\",\n      \"typeVersion\": 2.3,\n      \"position\": [\n        540,\n        300\n      ],\n      \"parameters\": {\n        \"conditions\": {\n          \"conditions\": [\n            {\n              \"leftValue\": \"={{ $json.body.email }}\",\n              \"operator\": {\n                \"type\": \"string\",\n                \"operation\": \"exists\"\n              },\n              \"rightValue\": \"\"\n            }\n          ]\n        }\n      }\n    },\n    {\n      \"id\": \"90ab29ec-d04d-49b8-a4d8-e3e876098ea9\",\n      \"name\": \"Success Response\",\n      \"type\": \"n8n-nodes-base.respondToWebhook\",\n      \"typeVersion\": 1.5,\n      \"position\": [\n        840,\n        200\n      ],\n      \"parameters\": {\n        \"respondWith\": \"json\",\n        \"responseBody\": \"={{ { \\\"success\\\": true, \\\"contactId\\\": $runIndex + \\\"-\\\" + $now.toMillis(), \\\"email\\\": $json.body.email } }}\"\n      }\n    },\n    {\n      \"id\": \"94e11dd3-bcbd-44b5-9e7d-c58bbb2a7de1\",\n      \"name\": \"Error Response\",\n      \"type\": \"n8n-nodes-base.respondToWebhook\",\n      \"typeVersion\": 1.5,\n      \"position\": [\n        840,\n        400\n      ],\n      \"parameters\": {\n        \"respondWith\": \"json\",\n        \"responseBody\": \"{ \\\"success\\\": false, \\\"error\\\": \\\"Email field is required\\\" }\",\n        \"options\": {\n          \"responseCode\": 400\n        }\n      }\n    }\n  ],\n  \"connections\": {\n    \"Webhook Trigger\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Validate Email\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Validate Email\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Success Response\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ],\n        [\n          {\n            \"node\": \"Error Response\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    }\n  },\n  \"settings\": {},\n  \"pinData\": {\n    \"Webhook Trigger\": [\n      {\n        \"headers\": {},\n        \"params\": {},\n        \"query\": {},\n        \"body\": {\n          \"email\": \"user@example.com\",\n          \"name\": \"John Doe\",\n          \"phone\": \"+1234567890\"\n        },\n        \"webhookUrl\": \"https://n8n.example.com/webhook/contacts\",\n        \"executionMode\": \"production\"\n      }\n    ]\n  }\n}",
+      "success": true,
+      "totalTimeMs": 17376,
+      "iterations": [
+        {
+          "iterationNumber": 1,
+          "durationMs": 0,
+          "inputTokens": 3,
+          "outputTokens": 138,
+          "thinkingTokens": 0,
+          "toolCalls": [],
+          "errors": ""
+        },
+        {
+          "iterationNumber": 2,
+          "durationMs": 0,
+          "inputTokens": 7,
+          "outputTokens": 114,
+          "thinkingTokens": 0,
+          "toolCalls": [
+            {
+              "name": "get_suggested_nodes"
+            },
+            {
+              "name": "get_suggested_nodes"
+            },
+            {
+              "name": "search_nodes"
+            },
+            {
+              "name": "search_nodes"
+            }
+          ],
+          "errors": ""
+        },
+        {
+          "iterationNumber": 3,
+          "durationMs": 0,
+          "inputTokens": 6,
+          "outputTokens": 761,
+          "thinkingTokens": 0,
+          "toolCalls": [
+            {
+              "name": "get_node_types"
+            },
+            {
+              "name": "get_node_types"
+            }
+          ],
+          "errors": ""
+        }
+      ],
+      "checklist": [
+        {
+          "id": 1,
+          "category": "structure",
+          "item": "Has HTTP POST webhook trigger at /contacts"
+        },
+        {
+          "id": 2,
+          "category": "structure",
+          "item": "Validates that the email field is present in the request body"
+        },
+        {
+          "id": 3,
+          "category": "structure",
+          "item": "Branches based on whether the email field is present or missing"
+        },
+        {
+          "id": 4,
+          "category": "data",
+          "item": "Returns a success response containing the contact ID when email is present"
+        },
+        {
+          "id": 5,
+          "category": "data",
+          "item": "Returns an error or rejection response when email field is missing"
+        }
+      ],
+      "checklistResults": [
+        {
+          "id": 1,
+          "pass": true,
+          "reasoning": "The Webhook Trigger node has httpMethod set to 'POST' and path set to 'contacts', which corresponds to a POST webhook at /contacts"
+        },
+        {
+          "id": 2,
+          "pass": true,
+          "reasoning": "The 'Validate Email' IF node checks whether '$json.body.email' exists using the 'string exists' operator, which validates the presence of the email field"
+        },
+        {
+          "id": 3,
+          "pass": true,
+          "reasoning": "The IF node branches into two paths: the true branch (index 0) goes to 'Success Response' when email exists, and the false branch (index 1) goes to 'Error Response' when email is missing"
+        },
+        {
+          "id": 4,
+          "pass": true,
+          "reasoning": "The Success Response node returns a JSON body containing 'success: true' and a 'contactId' field (generated from $runIndex and $now.toMillis()), along with the email, when the email field is present"
+        },
+        {
+          "id": 5,
+          "pass": true,
+          "reasoning": "The Error Response node returns a JSON body with 'success: false' and an error message 'Email field is required', with HTTP status code 400, when the email field is missing"
+        }
+      ],
+      "checklistScore": 1,
+      "totalInputTokens": 16,
+      "totalOutputTokens": 1013,
+      "linesOfCode": 124
+    },
+    {
+      "prompt": "Create a workflow triggered by a cron schedule every day at 9am that fetches a list of users from an API endpoint and logs the count.",
+      "complexity": "simple",
+      "tags": [
+        "cron",
+        "api"
+      ],
+      "generatedCode": "{\n  \"id\": \"daily-user-count\",\n  \"name\": \"Daily User Count Logger\",\n  \"nodes\": [\n    {\n      \"id\": \"8cfc0347-b007-4c8e-928e-61751250d778\",\n      \"name\": \"Daily at 9am\",\n      \"type\": \"n8n-nodes-base.scheduleTrigger\",\n      \"typeVersion\": 1.3,\n      \"position\": [\n        240,\n        300\n      ],\n      \"parameters\": {\n        \"rule\": {\n          \"interval\": [\n            {\n              \"field\": \"days\",\n              \"daysInterval\": 1,\n              \"triggerAtHour\": 9,\n              \"triggerAtMinute\": 0\n            }\n          ]\n        }\n      }\n    },\n    {\n      \"id\": \"a44fa3d8-6e2c-4865-a63b-2392277d3907\",\n      \"name\": \"Fetch Users\",\n      \"type\": \"n8n-nodes-base.httpRequest\",\n      \"typeVersion\": 4.4,\n      \"position\": [\n        540,\n        300\n      ],\n      \"parameters\": {\n        \"method\": \"GET\",\n        \"url\": \"https://api.example.com/users\"\n      }\n    },\n    {\n      \"id\": \"6a8d3456-062d-4c93-be94-9d4ecbb03c85\",\n      \"name\": \"Log User Count\",\n      \"type\": \"n8n-nodes-base.code\",\n      \"typeVersion\": 2,\n      \"position\": [\n        840,\n        300\n      ],\n      \"parameters\": {\n        \"mode\": \"runOnceForAllItems\",\n        \"language\": \"javaScript\",\n        \"jsCode\": \"const count = $input.all().length;\\nconsole.log(`Total users: ${count}`);\\nreturn [{ count }];\"\n      }\n    }\n  ],\n  \"connections\": {\n    \"Daily at 9am\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Fetch Users\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Fetch Users\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Log User Count\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    }\n  },\n  \"settings\": {},\n  \"pinData\": {\n    \"Fetch Users\": [\n      {\n        \"id\": 1,\n        \"name\": \"Alice\"\n      },\n      {\n        \"id\": 2,\n        \"name\": \"Bob\"\n      },\n      {\n        \"id\": 3,\n        \"name\": \"Charlie\"\n      }\n    ]\n  }\n}",
+      "workflowJson": "{\n  \"id\": \"daily-user-count\",\n  \"name\": \"Daily User Count Logger\",\n  \"nodes\": [\n    {\n      \"id\": \"8cfc0347-b007-4c8e-928e-61751250d778\",\n      \"name\": \"Daily at 9am\",\n      \"type\": \"n8n-nodes-base.scheduleTrigger\",\n      \"typeVersion\": 1.3,\n      \"position\": [\n        240,\n        300\n      ],\n      \"parameters\": {\n        \"rule\": {\n          \"interval\": [\n            {\n              \"field\": \"days\",\n              \"daysInterval\": 1,\n              \"triggerAtHour\": 9,\n              \"triggerAtMinute\": 0\n            }\n          ]\n        }\n      }\n    },\n    {\n      \"id\": \"a44fa3d8-6e2c-4865-a63b-2392277d3907\",\n      \"name\": \"Fetch Users\",\n      \"type\": \"n8n-nodes-base.httpRequest\",\n      \"typeVersion\": 4.4,\n      \"position\": [\n        540,\n        300\n      ],\n      \"parameters\": {\n        \"method\": \"GET\",\n        \"url\": \"https://api.example.com/users\"\n      }\n    },\n    {\n      \"id\": \"6a8d3456-062d-4c93-be94-9d4ecbb03c85\",\n      \"name\": \"Log User Count\",\n      \"type\": \"n8n-nodes-base.code\",\n      \"typeVersion\": 2,\n      \"position\": [\n        840,\n        300\n      ],\n      \"parameters\": {\n        \"mode\": \"runOnceForAllItems\",\n        \"language\": \"javaScript\",\n        \"jsCode\": \"const count = $input.all().length;\\nconsole.log(`Total users: ${count}`);\\nreturn [{ count }];\"\n      }\n    }\n  ],\n  \"connections\": {\n    \"Daily at 9am\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Fetch Users\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Fetch Users\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Log User Count\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    }\n  },\n  \"settings\": {},\n  \"pinData\": {\n    \"Fetch Users\": [\n      {\n        \"id\": 1,\n        \"name\": \"Alice\"\n      },\n      {\n        \"id\": 2,\n        \"name\": \"Bob\"\n      },\n      {\n        \"id\": 3,\n        \"name\": \"Charlie\"\n      }\n    ]\n  }\n}",
+      "success": true,
+      "totalTimeMs": 16000,
+      "iterations": [
+        {
+          "iterationNumber": 1,
+          "durationMs": 0,
+          "inputTokens": 3,
+          "outputTokens": 141,
+          "thinkingTokens": 0,
+          "toolCalls": [],
+          "errors": ""
+        },
+        {
+          "iterationNumber": 2,
+          "durationMs": 0,
+          "inputTokens": 7,
+          "outputTokens": 108,
+          "thinkingTokens": 0,
+          "toolCalls": [
+            {
+              "name": "get_suggested_nodes"
+            },
+            {
+              "name": "get_suggested_nodes"
+            },
+            {
+              "name": "search_nodes"
+            },
+            {
+              "name": "search_nodes"
+            }
+          ],
+          "errors": ""
+        },
+        {
+          "iterationNumber": 3,
+          "durationMs": 0,
+          "inputTokens": 6,
+          "outputTokens": 617,
+          "thinkingTokens": 0,
+          "toolCalls": [
+            {
+              "name": "get_node_types"
+            },
+            {
+              "name": "get_node_types"
+            }
+          ],
+          "errors": ""
+        }
+      ],
+      "checklist": [
+        {
+          "id": 1,
+          "category": "structure",
+          "item": "Has a cron/scheduled trigger that runs daily at 9am"
+        },
+        {
+          "id": 2,
+          "category": "structure",
+          "item": "Makes an HTTP request to fetch a list of users from an API endpoint"
+        },
+        {
+          "id": 3,
+          "category": "data",
+          "item": "Logs or outputs the count of users returned from the API"
+        }
+      ],
+      "checklistResults": [
+        {
+          "id": 1,
+          "pass": true,
+          "reasoning": "The scheduleTrigger node 'Daily at 9am' is configured with field 'days', daysInterval 1, triggerAtHour 9, and triggerAtMinute 0, which runs daily at 9am."
+        },
+        {
+          "id": 2,
+          "pass": true,
+          "reasoning": "The 'Fetch Users' node uses n8n-nodes-base.httpRequest with method GET and url 'https://api.example.com/users', which fetches a list of users from an API endpoint."
+        },
+        {
+          "id": 3,
+          "pass": true,
+          "reasoning": "The 'Log User Count' code node computes the count via $input.all().length, logs it with console.log(`Total users: ${count}`), and returns it as output."
+        }
+      ],
+      "checklistScore": 1,
+      "totalInputTokens": 16,
+      "totalOutputTokens": 866,
+      "linesOfCode": 98
+    },
+    {
+      "prompt": "Create a workflow with an HTTP GET endpoint at /health that checks a database connection status and returns either \"healthy\" or \"unhealthy\" with the current timestamp.",
+      "complexity": "simple",
+      "tags": [
+        "api"
+      ],
+      "generatedCode": "{\n  \"id\": \"health-check\",\n  \"name\": \"Health Check Endpoint\",\n  \"nodes\": [\n    {\n      \"id\": \"e4fb1737-abc3-45cd-9057-660134e148bf\",\n      \"name\": \"Health Check Endpoint\",\n      \"type\": \"n8n-nodes-base.webhook\",\n      \"typeVersion\": 2.1,\n      \"position\": [\n        240,\n        300\n      ],\n      \"parameters\": {\n        \"httpMethod\": \"GET\",\n        \"path\": \"health\",\n        \"responseMode\": \"responseNode\"\n      }\n    },\n    {\n      \"id\": \"fc74078d-745f-4ea0-bda0-bc77e9d34e2c\",\n      \"name\": \"Check Database Connection\",\n      \"type\": \"n8n-nodes-base.postgres\",\n      \"typeVersion\": 2.6,\n      \"position\": [\n        540,\n        300\n      ],\n      \"parameters\": {\n        \"operation\": \"executeQuery\",\n        \"query\": \"SELECT 1 as status\",\n        \"options\": {\n          \"connectionTimeout\": 5\n        }\n      },\n      \"credentials\": {},\n      \"onError\": \"continueErrorOutput\"\n    },\n    {\n      \"id\": \"1039d50f-67cf-49fe-880e-7d3248c5c622\",\n      \"name\": \"Build Unhealthy Response\",\n      \"type\": \"n8n-nodes-base.set\",\n      \"typeVersion\": 3.4,\n      \"position\": [\n        840,\n        400\n      ],\n      \"parameters\": {\n        \"mode\": \"manual\",\n        \"assignments\": {\n          \"assignments\": [\n            {\n              \"id\": \"1\",\n              \"name\": \"status\",\n              \"value\": \"unhealthy\",\n              \"type\": \"string\"\n            },\n            {\n              \"id\": \"2\",\n              \"name\": \"timestamp\",\n              \"value\": \"={{ $now.toISO() }}\",\n              \"type\": \"string\"\n            }\n          ]\n        }\n      }\n    },\n    {\n      \"id\": \"160c661c-6b15-48e4-9b45-ce8af06d6db5\",\n      \"name\": \"Return Unhealthy\",\n      \"type\": \"n8n-nodes-base.respondToWebhook\",\n      \"typeVersion\": 1.5,\n      \"position\": [\n        1140,\n        400\n      ],\n      \"parameters\": {\n        \"respondWith\": \"json\",\n        \"responseBody\": \"={{ $json }}\",\n        \"options\": {\n          \"responseCode\": 503\n        }\n      }\n    },\n    {\n      \"id\": \"6bb7d237-0e61-4e55-8d3f-eca011945def\",\n      \"name\": \"Build Healthy Response\",\n      \"type\": \"n8n-nodes-base.set\",\n      \"typeVersion\": 3.4,\n      \"position\": [\n        840,\n        200\n      ],\n      \"parameters\": {\n        \"mode\": \"manual\",\n        \"assignments\": {\n          \"assignments\": [\n            {\n              \"id\": \"1\",\n              \"name\": \"status\",\n              \"value\": \"healthy\",\n              \"type\": \"string\"\n            },\n            {\n              \"id\": \"2\",\n              \"name\": \"timestamp\",\n              \"value\": \"={{ $now.toISO() }}\",\n              \"type\": \"string\"\n            }\n          ]\n        }\n      }\n    },\n    {\n      \"id\": \"27b5b105-6913-4a3d-8401-f09bd58572d1\",\n      \"name\": \"Return Healthy\",\n      \"type\": \"n8n-nodes-base.respondToWebhook\",\n      \"typeVersion\": 1.5,\n      \"position\": [\n        1140,\n        200\n      ],\n      \"parameters\": {\n        \"respondWith\": \"json\",\n        \"responseBody\": \"={{ $json }}\"\n      }\n    }\n  ],\n  \"connections\": {\n    \"Health Check Endpoint\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Check Database Connection\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Check Database Connection\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Build Healthy Response\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ],\n      \"error\": [\n        [\n          {\n            \"node\": \"Build Unhealthy Response\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Build Unhealthy Response\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Return Unhealthy\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Build Healthy Response\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Return Healthy\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    }\n  },\n  \"settings\": {},\n  \"pinData\": {\n    \"Health Check Endpoint\": [\n      {\n        \"query\": {},\n        \"body\": {},\n        \"headers\": {}\n      }\n    ],\n    \"Check Database Connection\": [\n      {\n        \"status\": 1\n      }\n    ]\n  }\n}",
+      "workflowJson": "{\n  \"id\": \"health-check\",\n  \"name\": \"Health Check Endpoint\",\n  \"nodes\": [\n    {\n      \"id\": \"e4fb1737-abc3-45cd-9057-660134e148bf\",\n      \"name\": \"Health Check Endpoint\",\n      \"type\": \"n8n-nodes-base.webhook\",\n      \"typeVersion\": 2.1,\n      \"position\": [\n        240,\n        300\n      ],\n      \"parameters\": {\n        \"httpMethod\": \"GET\",\n        \"path\": \"health\",\n        \"responseMode\": \"responseNode\"\n      }\n    },\n    {\n      \"id\": \"fc74078d-745f-4ea0-bda0-bc77e9d34e2c\",\n      \"name\": \"Check Database Connection\",\n      \"type\": \"n8n-nodes-base.postgres\",\n      \"typeVersion\": 2.6,\n      \"position\": [\n        540,\n        300\n      ],\n      \"parameters\": {\n        \"operation\": \"executeQuery\",\n        \"query\": \"SELECT 1 as status\",\n        \"options\": {\n          \"connectionTimeout\": 5\n        }\n      },\n      \"credentials\": {},\n      \"onError\": \"continueErrorOutput\"\n    },\n    {\n      \"id\": \"1039d50f-67cf-49fe-880e-7d3248c5c622\",\n      \"name\": \"Build Unhealthy Response\",\n      \"type\": \"n8n-nodes-base.set\",\n      \"typeVersion\": 3.4,\n      \"position\": [\n        840,\n        400\n      ],\n      \"parameters\": {\n        \"mode\": \"manual\",\n        \"assignments\": {\n          \"assignments\": [\n            {\n              \"id\": \"1\",\n              \"name\": \"status\",\n              \"value\": \"unhealthy\",\n              \"type\": \"string\"\n            },\n            {\n              \"id\": \"2\",\n              \"name\": \"timestamp\",\n              \"value\": \"={{ $now.toISO() }}\",\n              \"type\": \"string\"\n            }\n          ]\n        }\n      }\n    },\n    {\n      \"id\": \"160c661c-6b15-48e4-9b45-ce8af06d6db5\",\n      \"name\": \"Return Unhealthy\",\n      \"type\": \"n8n-nodes-base.respondToWebhook\",\n      \"typeVersion\": 1.5,\n      \"position\": [\n        1140,\n        400\n      ],\n      \"parameters\": {\n        \"respondWith\": \"json\",\n        \"responseBody\": \"={{ $json }}\",\n        \"options\": {\n          \"responseCode\": 503\n        }\n      }\n    },\n    {\n      \"id\": \"6bb7d237-0e61-4e55-8d3f-eca011945def\",\n      \"name\": \"Build Healthy Response\",\n      \"type\": \"n8n-nodes-base.set\",\n      \"typeVersion\": 3.4,\n      \"position\": [\n        840,\n        200\n      ],\n      \"parameters\": {\n        \"mode\": \"manual\",\n        \"assignments\": {\n          \"assignments\": [\n            {\n              \"id\": \"1\",\n              \"name\": \"status\",\n              \"value\": \"healthy\",\n              \"type\": \"string\"\n            },\n            {\n              \"id\": \"2\",\n              \"name\": \"timestamp\",\n              \"value\": \"={{ $now.toISO() }}\",\n              \"type\": \"string\"\n            }\n          ]\n        }\n      }\n    },\n    {\n      \"id\": \"27b5b105-6913-4a3d-8401-f09bd58572d1\",\n      \"name\": \"Return Healthy\",\n      \"type\": \"n8n-nodes-base.respondToWebhook\",\n      \"typeVersion\": 1.5,\n      \"position\": [\n        1140,\n        200\n      ],\n      \"parameters\": {\n        \"respondWith\": \"json\",\n        \"responseBody\": \"={{ $json }}\"\n      }\n    }\n  ],\n  \"connections\": {\n    \"Health Check Endpoint\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Check Database Connection\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Check Database Connection\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Build Healthy Response\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ],\n      \"error\": [\n        [\n          {\n            \"node\": \"Build Unhealthy Response\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Build Unhealthy Response\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Return Unhealthy\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Build Healthy Response\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Return Healthy\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    }\n  },\n  \"settings\": {},\n  \"pinData\": {\n    \"Health Check Endpoint\": [\n      {\n        \"query\": {},\n        \"body\": {},\n        \"headers\": {}\n      }\n    ],\n    \"Check Database Connection\": [\n      {\n        \"status\": 1\n      }\n    ]\n  }\n}",
+      "success": true,
+      "totalTimeMs": 76745,
+      "iterations": [
+        {
+          "iterationNumber": 1,
+          "durationMs": 0,
+          "inputTokens": 3,
+          "outputTokens": 115,
+          "thinkingTokens": 0,
+          "toolCalls": [],
+          "errors": ""
+        },
+        {
+          "iterationNumber": 2,
+          "durationMs": 0,
+          "inputTokens": 7,
+          "outputTokens": 137,
+          "thinkingTokens": 0,
+          "toolCalls": [
+            {
+              "name": "get_suggested_nodes"
+            },
+            {
+              "name": "get_suggested_nodes"
+            },
+            {
+              "name": "search_nodes"
+            },
+            {
+              "name": "search_nodes"
+            }
+          ],
+          "errors": ""
+        },
+        {
+          "iterationNumber": 3,
+          "durationMs": 0,
+          "inputTokens": 6,
+          "outputTokens": 1171,
+          "thinkingTokens": 0,
+          "toolCalls": [
+            {
+              "name": "get_node_types"
+            },
+            {
+              "name": "get_node_types"
+            }
+          ],
+          "errors": ""
+        },
+        {
+          "iterationNumber": 4,
+          "durationMs": 0,
+          "inputTokens": 5,
+          "outputTokens": 284,
+          "thinkingTokens": 0,
+          "toolCalls": [
+            {
+              "name": "str_replace_based_edit_tool"
+            },
+            {
+              "name": "str_replace_based_edit_tool"
+            }
+          ],
+          "errors": ""
+        },
+        {
+          "iterationNumber": 5,
+          "durationMs": 0,
+          "inputTokens": 4,
+          "outputTokens": 103,
+          "thinkingTokens": 0,
+          "toolCalls": [
+            {
+              "name": "str_replace_based_edit_tool"
+            },
+            {
+              "name": "str_replace_based_edit_tool"
+            }
+          ],
+          "errors": ""
+        },
+        {
+          "iterationNumber": 6,
+          "durationMs": 0,
+          "inputTokens": 3,
+          "outputTokens": 103,
+          "thinkingTokens": 0,
+          "toolCalls": [
+            {
+              "name": "str_replace_based_edit_tool"
+            },
+            {
+              "name": "str_replace_based_edit_tool"
+            }
+          ],
+          "errors": ""
+        },
+        {
+          "iterationNumber": 7,
+          "durationMs": 0,
+          "inputTokens": 3,
+          "outputTokens": 726,
+          "thinkingTokens": 0,
+          "toolCalls": [
+            {
+              "name": "str_replace_based_edit_tool"
+            },
+            {
+              "name": "str_replace_based_edit_tool"
+            }
+          ],
+          "errors": ""
+        },
+        {
+          "iterationNumber": 8,
+          "durationMs": 0,
+          "inputTokens": 2,
+          "outputTokens": 79,
+          "thinkingTokens": 0,
+          "toolCalls": [
+            {
+              "name": "str_replace_based_edit_tool"
+            },
+            {
+              "name": "str_replace_based_edit_tool"
+            }
+          ],
+          "errors": ""
+        },
+        {
+          "iterationNumber": 9,
+          "durationMs": 0,
+          "inputTokens": 1,
+          "outputTokens": 1429,
+          "thinkingTokens": 0,
+          "toolCalls": [
+            {
+              "name": "str_replace_based_edit_tool"
+            },
+            {
+              "name": "str_replace_based_edit_tool"
+            }
+          ],
+          "errors": ""
+        },
+        {
+          "iterationNumber": 10,
+          "durationMs": 0,
+          "inputTokens": 0,
+          "outputTokens": 307,
+          "thinkingTokens": 0,
+          "toolCalls": [
+            {
+              "name": "str_replace_based_edit_tool"
+            },
+            {
+              "name": "str_replace_based_edit_tool"
+            }
+          ],
+          "errors": ""
+        },
+        {
+          "iterationNumber": 11,
+          "durationMs": 0,
+          "inputTokens": 0,
+          "outputTokens": 296,
+          "thinkingTokens": 0,
+          "toolCalls": [
+            {
+              "name": "str_replace_based_edit_tool"
+            },
+            {
+              "name": "str_replace_based_edit_tool"
+            }
+          ],
+          "errors": ""
+        },
+        {
+          "iterationNumber": 12,
+          "durationMs": 0,
+          "inputTokens": 0,
+          "outputTokens": 56,
+          "thinkingTokens": 0,
+          "toolCalls": [
+            {
+              "name": "str_replace_based_edit_tool"
+            },
+            {
+              "name": "str_replace_based_edit_tool"
+            }
+          ],
+          "errors": ""
+        },
+        {
+          "iterationNumber": 13,
+          "durationMs": 0,
+          "inputTokens": 0,
+          "outputTokens": 103,
+          "thinkingTokens": 0,
+          "toolCalls": [
+            {
+              "name": "validate_workflow"
+            },
+            {
+              "name": "validate_workflow"
+            }
+          ],
+          "errors": ""
+        },
+        {
+          "iterationNumber": 14,
+          "durationMs": 0,
+          "inputTokens": 0,
+          "outputTokens": 56,
+          "thinkingTokens": 0,
+          "toolCalls": [
+            {
+              "name": "str_replace_based_edit_tool"
+            },
+            {
+              "name": "str_replace_based_edit_tool"
+            }
+          ],
+          "errors": ""
+        }
+      ],
+      "checklist": [
+        {
+          "id": 1,
+          "category": "structure",
+          "item": "Has an HTTP GET trigger at the /health path"
+        },
+        {
+          "id": 2,
+          "category": "structure",
+          "item": "Includes a step that checks a database connection status"
+        },
+        {
+          "id": 3,
+          "category": "structure",
+          "item": "Branches based on whether the database connection check succeeds or fails"
+        },
+        {
+          "id": 4,
+          "category": "data",
+          "item": "Returns 'healthy' status when the database connection check succeeds"
+        },
+        {
+          "id": 5,
+          "category": "data",
+          "item": "Returns 'unhealthy' status when the database connection check fails"
+        },
+        {
+          "id": 6,
+          "category": "data",
+          "item": "Response includes the current timestamp regardless of health status"
+        },
+        {
+          "id": 7,
+          "category": "structure",
+          "item": "Sends an HTTP response back to the caller with the health check result"
+        }
+      ],
+      "checklistResults": [
+        {
+          "id": 1,
+          "pass": true,
+          "reasoning": "The webhook node has httpMethod set to 'GET' and path set to 'health', which corresponds to a GET trigger at /health"
+        },
+        {
+          "id": 2,
+          "pass": true,
+          "reasoning": "The 'Check Database Connection' node uses n8n-nodes-base.postgres with a 'SELECT 1 as status' query to check the database connection"
+        },
+        {
+          "id": 3,
+          "pass": true,
+          "reasoning": "The postgres node uses 'onError: continueErrorOutput', and connections show the main output goes to 'Build Healthy Response' while the error output goes to 'Build Unhealthy Response', creating a branch based on success or failure"
+        },
+        {
+          "id": 4,
+          "pass": true,
+          "reasoning": "The 'Build Healthy Response' node sets status to 'healthy' when the database connection check succeeds"
+        },
+        {
+          "id": 5,
+          "pass": true,
+          "reasoning": "The 'Build Unhealthy Response' node sets status to 'unhealthy' when the database connection check fails"
+        },
+        {
+          "id": 6,
+          "pass": true,
+          "reasoning": "Both 'Build Healthy Response' and 'Build Unhealthy Response' nodes include a timestamp field set to '={{ $now.toISO() }}', ensuring the current timestamp is included in both cases"
+        },
+        {
+          "id": 7,
+          "pass": true,
+          "reasoning": "Both 'Return Healthy' and 'Return Unhealthy' nodes use n8n-nodes-base.respondToWebhook to send an HTTP response back to the caller with the health check result"
+        }
+      ],
+      "checklistScore": 1,
+      "totalInputTokens": 34,
+      "totalOutputTokens": 4965,
+      "linesOfCode": 199
+    }
+  ]
+}

@@ -638,6 +638,9 @@ importers:
         specifier: 3.25.67
         version: 3.25.67
     devDependencies:
+      '@anthropic-ai/sdk':
+        specifier: ^0.71.0
+        version: 0.71.0(zod@3.25.67)
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -22303,7 +22306,7 @@ snapshots:
       '@currents/commit-info': 1.0.1-beta.0
       async-retry: 1.3.3
       axios: 1.13.5(debug@4.4.3)
-      axios-retry: 4.5.0(axios@1.13.5(debug@4.4.3))
+      axios-retry: 4.5.0(axios@1.13.5)
       c12: 1.11.2(magicast@0.3.5)
       chalk: 4.1.2
       commander: 12.1.0
@@ -28288,14 +28291,9 @@ snapshots:
 
   axe-core@4.7.2: {}
 
-  axios-retry@4.5.0(axios@1.13.5(debug@4.4.3)):
-    dependencies:
-      axios: 1.13.5(debug@4.4.3)
-      is-retry-allowed: 2.2.0
-
   axios-retry@4.5.0(axios@1.13.5):
     dependencies:
-      axios: 1.13.5
+      axios: 1.13.5(debug@4.4.3)
       is-retry-allowed: 2.2.0
 
   axios@1.13.5:

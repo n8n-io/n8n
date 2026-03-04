@@ -1,0 +1,1833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>n8n Code Builder — Checklist Eval Report</title>
+<script src="https://cdn.jsdelivr.net/npm/@webcomponents/webcomponentsjs@2.0.0/webcomponents-loader.js"></script>
+<script src="https://www.unpkg.com/lit@2.0.0-rc.2/polyfill-support.js"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/@n8n_io/n8n-demo-component/n8n-demo.bundled.js"></script>
+<style>
+	* { margin: 0; padding: 0; box-sizing: border-box; }
+	body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0d1117; color: #c9d1d9; padding: 24px; }
+	h1 { color: #f0f6fc; margin-bottom: 8px; }
+	.subtitle { color: #8b949e; margin-bottom: 24px; }
+	.filters { margin-bottom: 16px; display: flex; gap: 12px; flex-wrap: wrap; }
+	.filters select, .filters input { background: #161b22; color: #c9d1d9; border: 1px solid #30363d; padding: 6px 12px; border-radius: 6px; }
+	.run-section { background: #161b22; border: 1px solid #30363d; border-radius: 8px; margin-bottom: 16px; overflow: hidden; }
+	.run-header { padding: 16px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+	.run-header:hover { background: #1c2129; }
+	.run-header h3 { display: flex; align-items: center; gap: 12px; }
+	.run-date { color: #8b949e; font-size: 14px; font-weight: normal; }
+	.run-summary { display: flex; gap: 16px; color: #8b949e; font-size: 13px; }
+	.badge { padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+	.badge-running { background: #d29922; color: #f0c000; }
+	.badge-completed { background: #238636; color: #3fb950; }
+	.badge-failed { background: #da3633; color: #f85149; }
+	.results-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+	.results-table th { background: #0d1117; padding: 8px 12px; text-align: left; color: #8b949e; border-bottom: 1px solid #30363d; }
+	.results-table td { padding: 8px 12px; border-bottom: 1px solid #21262d; }
+	.result-row { cursor: pointer; }
+	.result-row:hover { background: #1c2129; }
+	.prompt-cell { max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.good { color: #3fb950; }
+	.ok { color: #d29922; }
+	.bad { color: #f85149; }
+	.detail-content { padding: 16px; background: #0d1117; }
+	.detail-section { margin-bottom: 16px; }
+	.detail-section h4 { color: #f0f6fc; margin-bottom: 8px; }
+	.checklist { list-style: none; }
+	.checklist li { padding: 4px 0; display: flex; gap: 8px; align-items: flex-start; }
+	.checklist .check { font-weight: bold; min-width: 16px; }
+	.checklist .pass .check { color: #3fb950; }
+	.checklist .fail .check { color: #f85149; }
+	.checklist .category { color: #8b949e; font-size: 12px; }
+	.checklist .reasoning { color: #8b949e; font-size: 12px; margin-top: 2px; margin-left: 24px; }
+	pre { background: #161b22; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 12px; line-height: 1.5; max-height: 400px; overflow-y: auto; }
+	code { color: #c9d1d9; }
+	.iterations-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+	.iterations-table th, .iterations-table td { padding: 4px 8px; border: 1px solid #30363d; }
+	.iterations-table th { background: #161b22; }
+	.summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+	.summary-card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; }
+	.summary-card .label { color: #8b949e; font-size: 13px; }
+	.summary-card .value { color: #f0f6fc; font-size: 24px; font-weight: 600; margin-top: 4px; }
+	.prompt-full { color: #c9d1d9; font-size: 13px; line-height: 1.6; white-space: pre-wrap; background: #161b22; padding: 10px 14px; border-radius: 6px; border: 1px solid #30363d; }
+	.badge-complexity-simple { background: #23863633; color: #3fb950; }
+	.badge-complexity-medium { background: #d2992233; color: #d29922; }
+	.badge-complexity-complex { background: #da363333; color: #f85149; }
+	.badge-tag { background: #30363d; color: #c9d1d9; font-size: 11px; padding: 1px 6px; margin: 1px; display: inline-block; }
+	.tags-cell { max-width: 180px; }
+	.result-row.sibling-highlight { border-left: 3px solid; }
+	n8n-demo { display: block; margin: 8px 0; min-height: 200px; }
+</style>
+</head>
+<body>
+<h1>n8n Code Builder — Checklist Eval Report</h1>
+<p class="subtitle">Generated 3/4/2026, 11:25:01 AM — 1 run(s)</p>
+
+<div class="summary-grid">
+	<div class="summary-card">
+		<div class="label">Total Runs</div>
+		<div class="value">1</div>
+	</div>
+	<div class="summary-card">
+		<div class="label">Total Results</div>
+		<div class="value">3</div>
+	</div>
+	<div class="summary-card">
+		<div class="label">Avg Checklist Score</div>
+		<div class="value">100%</div>
+	</div>
+	<div class="summary-card">
+		<div class="label">Success Rate</div>
+		<div class="value">100%</div>
+	</div>
+</div>
+
+<div class="filters">
+	<select id="filter-complexity" onchange="filterResults()">
+		<option value="">All Complexity</option>
+		<option value="simple">Simple</option>
+		<option value="medium">Medium</option>
+		<option value="complex">Complex</option>
+	</select>
+	<select id="filter-tag" onchange="filterResults()">
+		<option value="">All Tags</option>
+		<option value="api">api</option><option value="cron">cron</option><option value="validation">validation</option><option value="webhook">webhook</option>
+	</select>
+</div>
+
+
+		<div class="run-section">
+			<div class="run-header" onclick="toggleRun('run-0')">
+				<h3>
+					claude-sonnet-4.5
+					<span class="run-date">3f580d0d — 3/4/2026, 11:22:46 AM</span>
+					<span class="badge badge-completed">completed</span>
+				</h3>
+				<div class="run-summary">
+					<span>3 results</span>
+					<span>Avg Score: 100%</span>
+					<span>Avg Time: 36.7s</span>
+					<span>3 prompts</span>
+				</div>
+			</div>
+			<div id="run-0" class="run-detail" style="display:none">
+				<table class="results-table">
+					<thead>
+						<tr>
+							<th>Complexity</th>
+							<th>Prompt</th>
+							<th>Tags</th>
+							<th>Success</th>
+							<th>Score</th>
+							<th>Iterations</th>
+							<th>Time</th>
+							<th>In Tokens</th>
+							<th>Out Tokens</th>
+							<th>Lines of Code</th>
+						</tr>
+					</thead>
+					<tbody>
+						
+		<tr class="result-row" data-complexity="simple" data-tags="webhook,validation" data-prompt-hash="7sx6yi" onclick="toggleDetail('detail-0', '7sx6yi')">
+			<td><span class="badge badge-complexity-simple">SIMPLE</span></td>
+			<td class="prompt-cell" title="Create a workflow that receives an HTTP POST webhook at /contacts, validates the email field is present, and returns a success response with the contact ID.">Create a workflow that receives an HTTP POST webhook at /contacts, validates the...</td>
+			<td class="tags-cell"><span class="badge badge-tag">webhook</span> <span class="badge badge-tag">validation</span></td>
+			<td class="good">PASS</td>
+			<td class="good">5/5 (100%)</td>
+			<td>3</td>
+			<td>17.4s</td>
+			<td>16</td>
+			<td>1,013</td>
+			<td>124</td>
+		</tr>
+		<tr id="detail-0" class="detail-row" data-complexity="simple" data-prompt-hash="7sx6yi" style="display:none">
+			<td colspan="10">
+				<div class="detail-content">
+					<div class="detail-section">
+						<h4>Prompt</h4>
+						<p class="prompt-full">Create a workflow that receives an HTTP POST webhook at /contacts, validates the email field is present, and returns a success response with the contact ID.</p>
+					</div>
+					<div class="detail-section">
+						<h4>Workflow Preview</h4>
+						<n8n-demo workflow='{
+  &quot;id&quot;: &quot;webhook-contact-validation&quot;,
+  &quot;name&quot;: &quot;Webhook Contact Validation&quot;,
+  &quot;nodes&quot;: [
+    {
+      &quot;id&quot;: &quot;920ff466-a445-42df-a2f4-2d60d7222671&quot;,
+      &quot;name&quot;: &quot;Webhook Trigger&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.webhook&quot;,
+      &quot;typeVersion&quot;: 2.1,
+      &quot;position&quot;: [
+        240,
+        300
+      ],
+      &quot;parameters&quot;: {
+        &quot;httpMethod&quot;: &quot;POST&quot;,
+        &quot;path&quot;: &quot;contacts&quot;,
+        &quot;responseMode&quot;: &quot;responseNode&quot;
+      }
+    },
+    {
+      &quot;id&quot;: &quot;006e6462-1d55-4bb8-b395-538205f3c507&quot;,
+      &quot;name&quot;: &quot;Validate Email&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.if&quot;,
+      &quot;typeVersion&quot;: 2.3,
+      &quot;position&quot;: [
+        540,
+        300
+      ],
+      &quot;parameters&quot;: {
+        &quot;conditions&quot;: {
+          &quot;conditions&quot;: [
+            {
+              &quot;leftValue&quot;: &quot;={{ $json.body.email }}&quot;,
+              &quot;operator&quot;: {
+                &quot;type&quot;: &quot;string&quot;,
+                &quot;operation&quot;: &quot;exists&quot;
+              },
+              &quot;rightValue&quot;: &quot;&quot;
+            }
+          ]
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;90ab29ec-d04d-49b8-a4d8-e3e876098ea9&quot;,
+      &quot;name&quot;: &quot;Success Response&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.respondToWebhook&quot;,
+      &quot;typeVersion&quot;: 1.5,
+      &quot;position&quot;: [
+        840,
+        200
+      ],
+      &quot;parameters&quot;: {
+        &quot;respondWith&quot;: &quot;json&quot;,
+        &quot;responseBody&quot;: &quot;={{ { \&quot;success\&quot;: true, \&quot;contactId\&quot;: $runIndex + \&quot;-\&quot; + $now.toMillis(), \&quot;email\&quot;: $json.body.email } }}&quot;
+      }
+    },
+    {
+      &quot;id&quot;: &quot;94e11dd3-bcbd-44b5-9e7d-c58bbb2a7de1&quot;,
+      &quot;name&quot;: &quot;Error Response&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.respondToWebhook&quot;,
+      &quot;typeVersion&quot;: 1.5,
+      &quot;position&quot;: [
+        840,
+        400
+      ],
+      &quot;parameters&quot;: {
+        &quot;respondWith&quot;: &quot;json&quot;,
+        &quot;responseBody&quot;: &quot;{ \&quot;success\&quot;: false, \&quot;error\&quot;: \&quot;Email field is required\&quot; }&quot;,
+        &quot;options&quot;: {
+          &quot;responseCode&quot;: 400
+        }
+      }
+    }
+  ],
+  &quot;connections&quot;: {
+    &quot;Webhook Trigger&quot;: {
+      &quot;main&quot;: [
+        [
+          {
+            &quot;node&quot;: &quot;Validate Email&quot;,
+            &quot;type&quot;: &quot;main&quot;,
+            &quot;index&quot;: 0
+          }
+        ]
+      ]
+    },
+    &quot;Validate Email&quot;: {
+      &quot;main&quot;: [
+        [
+          {
+            &quot;node&quot;: &quot;Success Response&quot;,
+            &quot;type&quot;: &quot;main&quot;,
+            &quot;index&quot;: 0
+          }
+        ],
+        [
+          {
+            &quot;node&quot;: &quot;Error Response&quot;,
+            &quot;type&quot;: &quot;main&quot;,
+            &quot;index&quot;: 0
+          }
+        ]
+      ]
+    }
+  },
+  &quot;settings&quot;: {},
+  &quot;pinData&quot;: {
+    &quot;Webhook Trigger&quot;: [
+      {
+        &quot;headers&quot;: {},
+        &quot;params&quot;: {},
+        &quot;query&quot;: {},
+        &quot;body&quot;: {
+          &quot;email&quot;: &quot;user@example.com&quot;,
+          &quot;name&quot;: &quot;John Doe&quot;,
+          &quot;phone&quot;: &quot;+1234567890&quot;
+        },
+        &quot;webhookUrl&quot;: &quot;https://n8n.example.com/webhook/contacts&quot;,
+        &quot;executionMode&quot;: &quot;production&quot;
+      }
+    ]
+  }
+}'></n8n-demo>
+					</div>
+					<div class="detail-section">
+						<h4>Checklist (5/5)</h4>
+						<ul class="checklist">
+							<li class="pass">
+										<span class="check">✓</span>
+										<span class="category">[structure]</span>
+										Has HTTP POST webhook trigger at /contacts
+										<div class="reasoning">The Webhook Trigger node has httpMethod set to 'POST' and path set to 'contacts', which corresponds to a POST webhook at /contacts</div>
+									</li><li class="pass">
+										<span class="check">✓</span>
+										<span class="category">[structure]</span>
+										Validates that the email field is present in the request body
+										<div class="reasoning">The 'Validate Email' IF node checks whether '$json.body.email' exists using the 'string exists' operator, which validates the presence of the email field</div>
+									</li><li class="pass">
+										<span class="check">✓</span>
+										<span class="category">[structure]</span>
+										Branches based on whether the email field is present or missing
+										<div class="reasoning">The IF node branches into two paths: the true branch (index 0) goes to 'Success Response' when email exists, and the false branch (index 1) goes to 'Error Response' when email is missing</div>
+									</li><li class="pass">
+										<span class="check">✓</span>
+										<span class="category">[data]</span>
+										Returns a success response containing the contact ID when email is present
+										<div class="reasoning">The Success Response node returns a JSON body containing 'success: true' and a 'contactId' field (generated from $runIndex and $now.toMillis()), along with the email, when the email field is present</div>
+									</li><li class="pass">
+										<span class="check">✓</span>
+										<span class="category">[data]</span>
+										Returns an error or rejection response when email field is missing
+										<div class="reasoning">The Error Response node returns a JSON body with 'success: false' and an error message 'Email field is required', with HTTP status code 400, when the email field is missing</div>
+									</li>
+						</ul>
+					</div>
+					<div class="detail-section">
+						<h4>Generated Code (124 lines)</h4>
+						<pre><code>{
+  &quot;id&quot;: &quot;webhook-contact-validation&quot;,
+  &quot;name&quot;: &quot;Webhook Contact Validation&quot;,
+  &quot;nodes&quot;: [
+    {
+      &quot;id&quot;: &quot;920ff466-a445-42df-a2f4-2d60d7222671&quot;,
+      &quot;name&quot;: &quot;Webhook Trigger&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.webhook&quot;,
+      &quot;typeVersion&quot;: 2.1,
+      &quot;position&quot;: [
+        240,
+        300
+      ],
+      &quot;parameters&quot;: {
+        &quot;httpMethod&quot;: &quot;POST&quot;,
+        &quot;path&quot;: &quot;contacts&quot;,
+        &quot;responseMode&quot;: &quot;responseNode&quot;
+      }
+    },
+    {
+      &quot;id&quot;: &quot;006e6462-1d55-4bb8-b395-538205f3c507&quot;,
+      &quot;name&quot;: &quot;Validate Email&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.if&quot;,
+      &quot;typeVersion&quot;: 2.3,
+      &quot;position&quot;: [
+        540,
+        300
+      ],
+      &quot;parameters&quot;: {
+        &quot;conditions&quot;: {
+          &quot;conditions&quot;: [
+            {
+              &quot;leftValue&quot;: &quot;={{ $json.body.email }}&quot;,
+              &quot;operator&quot;: {
+                &quot;type&quot;: &quot;string&quot;,
+                &quot;operation&quot;: &quot;exists&quot;
+              },
+              &quot;rightValue&quot;: &quot;&quot;
+            }
+          ]
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;90ab29ec-d04d-49b8-a4d8-e3e876098ea9&quot;,
+      &quot;name&quot;: &quot;Success Response&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.respondToWebhook&quot;,
+      &quot;typeVersion&quot;: 1.5,
+      &quot;position&quot;: [
+        840,
+        200
+      ],
+      &quot;parameters&quot;: {
+        &quot;respondWith&quot;: &quot;json&quot;,
+        &quot;responseBody&quot;: &quot;={{ { \&quot;success\&quot;: true, \&quot;contactId\&quot;: $runIndex + \&quot;-\&quot; + $now.toMillis(), \&quot;email\&quot;: $json.body.email } }}&quot;
+      }
+    },
+    {
+      &quot;id&quot;: &quot;94e11dd3-bcbd-44b5-9e7d-c58bbb2a7de1&quot;,
+      &quot;name&quot;: &quot;Error Response&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.respondToWebhook&quot;,
+      &quot;typeVersion&quot;: 1.5,
+      &quot;position&quot;: [
+        840,
+        400
+      ],
+      &quot;parameters&quot;: {
+        &quot;respondWith&quot;: &quot;json&quot;,
+        &quot;responseBody&quot;: &quot;{ \&quot;success\&quot;: false, \&quot;error\&quot;: \&quot;Email field is required\&quot; }&quot;,
+        &quot;options&quot;: {
+          &quot;responseCode&quot;: 400
+        }
+      }
+    }
+  ],
+  &quot;connections&quot;: {
+    &quot;Webhook Trigger&quot;: {
+      &quot;main&quot;: [
+        [
+          {
+            &quot;node&quot;: &quot;Validate Email&quot;,
+            &quot;type&quot;: &quot;main&quot;,
+            &quot;index&quot;: 0
+          }
+        ]
+      ]
+    },
+    &quot;Validate Email&quot;: {
+      &quot;main&quot;: [
+        [
+          {
+            &quot;node&quot;: &quot;Success Response&quot;,
+            &quot;type&quot;: &quot;main&quot;,
+            &quot;index&quot;: 0
+          }
+        ],
+        [
+          {
+            &quot;node&quot;: &quot;Error Response&quot;,
+            &quot;type&quot;: &quot;main&quot;,
+            &quot;index&quot;: 0
+          }
+        ]
+      ]
+    }
+  },
+  &quot;settings&quot;: {},
+  &quot;pinData&quot;: {
+    &quot;Webhook Trigger&quot;: [
+      {
+        &quot;headers&quot;: {},
+        &quot;params&quot;: {},
+        &quot;query&quot;: {},
+        &quot;body&quot;: {
+          &quot;email&quot;: &quot;user@example.com&quot;,
+          &quot;name&quot;: &quot;John Doe&quot;,
+          &quot;phone&quot;: &quot;+1234567890&quot;
+        },
+        &quot;webhookUrl&quot;: &quot;https://n8n.example.com/webhook/contacts&quot;,
+        &quot;executionMode&quot;: &quot;production&quot;
+      }
+    ]
+  }
+}</code></pre>
+					</div>
+					<div class="detail-section">
+						<h4>Iterations (3)</h4>
+						<table class="iterations-table">
+							<tr><th>#</th><th>Duration</th><th>In Tokens</th><th>Out Tokens</th><th>Thinking Tokens</th><th>Tool Calls</th></tr>
+							
+								<tr>
+									<td>1</td>
+									<td>-</td>
+									<td>3</td>
+									<td>138</td>
+									<td>0</td>
+									<td>None</td>
+								</tr>
+								<tr>
+									<td>2</td>
+									<td>-</td>
+									<td>7</td>
+									<td>114</td>
+									<td>0</td>
+									<td>get_suggested_nodes, get_suggested_nodes, search_nodes, search_nodes</td>
+								</tr>
+								<tr>
+									<td>3</td>
+									<td>-</td>
+									<td>6</td>
+									<td>761</td>
+									<td>0</td>
+									<td>get_node_types, get_node_types</td>
+								</tr>
+						</table>
+					</div>
+					<details class="detail-section">
+						<summary><h4 style="display:inline;cursor:pointer">Workflow JSON</h4></summary>
+						<pre style="margin-top:8px;white-space:pre-wrap"><code>{
+  &quot;id&quot;: &quot;webhook-contact-validation&quot;,
+  &quot;name&quot;: &quot;Webhook Contact Validation&quot;,
+  &quot;nodes&quot;: [
+    {
+      &quot;id&quot;: &quot;920ff466-a445-42df-a2f4-2d60d7222671&quot;,
+      &quot;name&quot;: &quot;Webhook Trigger&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.webhook&quot;,
+      &quot;typeVersion&quot;: 2.1,
+      &quot;position&quot;: [
+        240,
+        300
+      ],
+      &quot;parameters&quot;: {
+        &quot;httpMethod&quot;: &quot;POST&quot;,
+        &quot;path&quot;: &quot;contacts&quot;,
+        &quot;responseMode&quot;: &quot;responseNode&quot;
+      }
+    },
+    {
+      &quot;id&quot;: &quot;006e6462-1d55-4bb8-b395-538205f3c507&quot;,
+      &quot;name&quot;: &quot;Validate Email&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.if&quot;,
+      &quot;typeVersion&quot;: 2.3,
+      &quot;position&quot;: [
+        540,
+        300
+      ],
+      &quot;parameters&quot;: {
+        &quot;conditions&quot;: {
+          &quot;conditions&quot;: [
+            {
+              &quot;leftValue&quot;: &quot;={{ $json.body.email }}&quot;,
+              &quot;operator&quot;: {
+                &quot;type&quot;: &quot;string&quot;,
+                &quot;operation&quot;: &quot;exists&quot;
+              },
+              &quot;rightValue&quot;: &quot;&quot;
+            }
+          ]
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;90ab29ec-d04d-49b8-a4d8-e3e876098ea9&quot;,
+      &quot;name&quot;: &quot;Success Response&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.respondToWebhook&quot;,
+      &quot;typeVersion&quot;: 1.5,
+      &quot;position&quot;: [
+        840,
+        200
+      ],
+      &quot;parameters&quot;: {
+        &quot;respondWith&quot;: &quot;json&quot;,
+        &quot;responseBody&quot;: &quot;={{ { \&quot;success\&quot;: true, \&quot;contactId\&quot;: $runIndex + \&quot;-\&quot; + $now.toMillis(), \&quot;email\&quot;: $json.body.email } }}&quot;
+      }
+    },
+    {
+      &quot;id&quot;: &quot;94e11dd3-bcbd-44b5-9e7d-c58bbb2a7de1&quot;,
+      &quot;name&quot;: &quot;Error Response&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.respondToWebhook&quot;,
+      &quot;typeVersion&quot;: 1.5,
+      &quot;position&quot;: [
+        840,
+        400
+      ],
+      &quot;parameters&quot;: {
+        &quot;respondWith&quot;: &quot;json&quot;,
+        &quot;responseBody&quot;: &quot;{ \&quot;success\&quot;: false, \&quot;error\&quot;: \&quot;Email field is required\&quot; }&quot;,
+        &quot;options&quot;: {
+          &quot;responseCode&quot;: 400
+        }
+      }
+    }
+  ],
+  &quot;connections&quot;: {
+    &quot;Webhook Trigger&quot;: {
+      &quot;main&quot;: [
+        [
+          {
+            &quot;node&quot;: &quot;Validate Email&quot;,
+            &quot;type&quot;: &quot;main&quot;,
+            &quot;index&quot;: 0
+          }
+        ]
+      ]
+    },
+    &quot;Validate Email&quot;: {
+      &quot;main&quot;: [
+        [
+          {
+            &quot;node&quot;: &quot;Success Response&quot;,
+            &quot;type&quot;: &quot;main&quot;,
+            &quot;index&quot;: 0
+          }
+        ],
+        [
+          {
+            &quot;node&quot;: &quot;Error Response&quot;,
+            &quot;type&quot;: &quot;main&quot;,
+            &quot;index&quot;: 0
+          }
+        ]
+      ]
+    }
+  },
+  &quot;settings&quot;: {},
+  &quot;pinData&quot;: {
+    &quot;Webhook Trigger&quot;: [
+      {
+        &quot;headers&quot;: {},
+        &quot;params&quot;: {},
+        &quot;query&quot;: {},
+        &quot;body&quot;: {
+          &quot;email&quot;: &quot;user@example.com&quot;,
+          &quot;name&quot;: &quot;John Doe&quot;,
+          &quot;phone&quot;: &quot;+1234567890&quot;
+        },
+        &quot;webhookUrl&quot;: &quot;https://n8n.example.com/webhook/contacts&quot;,
+        &quot;executionMode&quot;: &quot;production&quot;
+      }
+    ]
+  }
+}</code></pre>
+					</details>
+				</div>
+			</td>
+		</tr>
+		<tr class="result-row" data-complexity="simple" data-tags="cron,api" data-prompt-hash="86xo6i" onclick="toggleDetail('detail-1', '86xo6i')">
+			<td><span class="badge badge-complexity-simple">SIMPLE</span></td>
+			<td class="prompt-cell" title="Create a workflow triggered by a cron schedule every day at 9am that fetches a list of users from an API endpoint and logs the count.">Create a workflow triggered by a cron schedule every day at 9am that fetches a l...</td>
+			<td class="tags-cell"><span class="badge badge-tag">cron</span> <span class="badge badge-tag">api</span></td>
+			<td class="good">PASS</td>
+			<td class="good">3/3 (100%)</td>
+			<td>3</td>
+			<td>16.0s</td>
+			<td>16</td>
+			<td>866</td>
+			<td>98</td>
+		</tr>
+		<tr id="detail-1" class="detail-row" data-complexity="simple" data-prompt-hash="86xo6i" style="display:none">
+			<td colspan="10">
+				<div class="detail-content">
+					<div class="detail-section">
+						<h4>Prompt</h4>
+						<p class="prompt-full">Create a workflow triggered by a cron schedule every day at 9am that fetches a list of users from an API endpoint and logs the count.</p>
+					</div>
+					<div class="detail-section">
+						<h4>Workflow Preview</h4>
+						<n8n-demo workflow='{
+  &quot;id&quot;: &quot;daily-user-count&quot;,
+  &quot;name&quot;: &quot;Daily User Count Logger&quot;,
+  &quot;nodes&quot;: [
+    {
+      &quot;id&quot;: &quot;8cfc0347-b007-4c8e-928e-61751250d778&quot;,
+      &quot;name&quot;: &quot;Daily at 9am&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.scheduleTrigger&quot;,
+      &quot;typeVersion&quot;: 1.3,
+      &quot;position&quot;: [
+        240,
+        300
+      ],
+      &quot;parameters&quot;: {
+        &quot;rule&quot;: {
+          &quot;interval&quot;: [
+            {
+              &quot;field&quot;: &quot;days&quot;,
+              &quot;daysInterval&quot;: 1,
+              &quot;triggerAtHour&quot;: 9,
+              &quot;triggerAtMinute&quot;: 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;a44fa3d8-6e2c-4865-a63b-2392277d3907&quot;,
+      &quot;name&quot;: &quot;Fetch Users&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.httpRequest&quot;,
+      &quot;typeVersion&quot;: 4.4,
+      &quot;position&quot;: [
+        540,
+        300
+      ],
+      &quot;parameters&quot;: {
+        &quot;method&quot;: &quot;GET&quot;,
+        &quot;url&quot;: &quot;https://api.example.com/users&quot;
+      }
+    },
+    {
+      &quot;id&quot;: &quot;6a8d3456-062d-4c93-be94-9d4ecbb03c85&quot;,
+      &quot;name&quot;: &quot;Log User Count&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.code&quot;,
+      &quot;typeVersion&quot;: 2,
+      &quot;position&quot;: [
+        840,
+        300
+      ],
+      &quot;parameters&quot;: {
+        &quot;mode&quot;: &quot;runOnceForAllItems&quot;,
+        &quot;language&quot;: &quot;javaScript&quot;,
+        &quot;jsCode&quot;: &quot;const count = $input.all().length;\nconsole.log(`Total users: ${count}`);\nreturn [{ count }];&quot;
+      }
+    }
+  ],
+  &quot;connections&quot;: {
+    &quot;Daily at 9am&quot;: {
+      &quot;main&quot;: [
+        [
+          {
+            &quot;node&quot;: &quot;Fetch Users&quot;,
+            &quot;type&quot;: &quot;main&quot;,
+            &quot;index&quot;: 0
+          }
+        ]
+      ]
+    },
+    &quot;Fetch Users&quot;: {
+      &quot;main&quot;: [
+        [
+          {
+            &quot;node&quot;: &quot;Log User Count&quot;,
+            &quot;type&quot;: &quot;main&quot;,
+            &quot;index&quot;: 0
+          }
+        ]
+      ]
+    }
+  },
+  &quot;settings&quot;: {},
+  &quot;pinData&quot;: {
+    &quot;Fetch Users&quot;: [
+      {
+        &quot;id&quot;: 1,
+        &quot;name&quot;: &quot;Alice&quot;
+      },
+      {
+        &quot;id&quot;: 2,
+        &quot;name&quot;: &quot;Bob&quot;
+      },
+      {
+        &quot;id&quot;: 3,
+        &quot;name&quot;: &quot;Charlie&quot;
+      }
+    ]
+  }
+}'></n8n-demo>
+					</div>
+					<div class="detail-section">
+						<h4>Checklist (3/3)</h4>
+						<ul class="checklist">
+							<li class="pass">
+										<span class="check">✓</span>
+										<span class="category">[structure]</span>
+										Has a cron/scheduled trigger that runs daily at 9am
+										<div class="reasoning">The scheduleTrigger node 'Daily at 9am' is configured with field 'days', daysInterval 1, triggerAtHour 9, and triggerAtMinute 0, which runs daily at 9am.</div>
+									</li><li class="pass">
+										<span class="check">✓</span>
+										<span class="category">[structure]</span>
+										Makes an HTTP request to fetch a list of users from an API endpoint
+										<div class="reasoning">The 'Fetch Users' node uses n8n-nodes-base.httpRequest with method GET and url 'https://api.example.com/users', which fetches a list of users from an API endpoint.</div>
+									</li><li class="pass">
+										<span class="check">✓</span>
+										<span class="category">[data]</span>
+										Logs or outputs the count of users returned from the API
+										<div class="reasoning">The 'Log User Count' code node computes the count via $input.all().length, logs it with console.log(`Total users: ${count}`), and returns it as output.</div>
+									</li>
+						</ul>
+					</div>
+					<div class="detail-section">
+						<h4>Generated Code (98 lines)</h4>
+						<pre><code>{
+  &quot;id&quot;: &quot;daily-user-count&quot;,
+  &quot;name&quot;: &quot;Daily User Count Logger&quot;,
+  &quot;nodes&quot;: [
+    {
+      &quot;id&quot;: &quot;8cfc0347-b007-4c8e-928e-61751250d778&quot;,
+      &quot;name&quot;: &quot;Daily at 9am&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.scheduleTrigger&quot;,
+      &quot;typeVersion&quot;: 1.3,
+      &quot;position&quot;: [
+        240,
+        300
+      ],
+      &quot;parameters&quot;: {
+        &quot;rule&quot;: {
+          &quot;interval&quot;: [
+            {
+              &quot;field&quot;: &quot;days&quot;,
+              &quot;daysInterval&quot;: 1,
+              &quot;triggerAtHour&quot;: 9,
+              &quot;triggerAtMinute&quot;: 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;a44fa3d8-6e2c-4865-a63b-2392277d3907&quot;,
+      &quot;name&quot;: &quot;Fetch Users&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.httpRequest&quot;,
+      &quot;typeVersion&quot;: 4.4,
+      &quot;position&quot;: [
+        540,
+        300
+      ],
+      &quot;parameters&quot;: {
+        &quot;method&quot;: &quot;GET&quot;,
+        &quot;url&quot;: &quot;https://api.example.com/users&quot;
+      }
+    },
+    {
+      &quot;id&quot;: &quot;6a8d3456-062d-4c93-be94-9d4ecbb03c85&quot;,
+      &quot;name&quot;: &quot;Log User Count&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.code&quot;,
+      &quot;typeVersion&quot;: 2,
+      &quot;position&quot;: [
+        840,
+        300
+      ],
+      &quot;parameters&quot;: {
+        &quot;mode&quot;: &quot;runOnceForAllItems&quot;,
+        &quot;language&quot;: &quot;javaScript&quot;,
+        &quot;jsCode&quot;: &quot;const count = $input.all().length;\nconsole.log(`Total users: ${count}`);\nreturn [{ count }];&quot;
+      }
+    }
+  ],
+  &quot;connections&quot;: {
+    &quot;Daily at 9am&quot;: {
+      &quot;main&quot;: [
+        [
+          {
+            &quot;node&quot;: &quot;Fetch Users&quot;,
+            &quot;type&quot;: &quot;main&quot;,
+            &quot;index&quot;: 0
+          }
+        ]
+      ]
+    },
+    &quot;Fetch Users&quot;: {
+      &quot;main&quot;: [
+        [
+          {
+            &quot;node&quot;: &quot;Log User Count&quot;,
+            &quot;type&quot;: &quot;main&quot;,
+            &quot;index&quot;: 0
+          }
+        ]
+      ]
+    }
+  },
+  &quot;settings&quot;: {},
+  &quot;pinData&quot;: {
+    &quot;Fetch Users&quot;: [
+      {
+        &quot;id&quot;: 1,
+        &quot;name&quot;: &quot;Alice&quot;
+      },
+      {
+        &quot;id&quot;: 2,
+        &quot;name&quot;: &quot;Bob&quot;
+      },
+      {
+        &quot;id&quot;: 3,
+        &quot;name&quot;: &quot;Charlie&quot;
+      }
+    ]
+  }
+}</code></pre>
+					</div>
+					<div class="detail-section">
+						<h4>Iterations (3)</h4>
+						<table class="iterations-table">
+							<tr><th>#</th><th>Duration</th><th>In Tokens</th><th>Out Tokens</th><th>Thinking Tokens</th><th>Tool Calls</th></tr>
+							
+								<tr>
+									<td>1</td>
+									<td>-</td>
+									<td>3</td>
+									<td>141</td>
+									<td>0</td>
+									<td>None</td>
+								</tr>
+								<tr>
+									<td>2</td>
+									<td>-</td>
+									<td>7</td>
+									<td>108</td>
+									<td>0</td>
+									<td>get_suggested_nodes, get_suggested_nodes, search_nodes, search_nodes</td>
+								</tr>
+								<tr>
+									<td>3</td>
+									<td>-</td>
+									<td>6</td>
+									<td>617</td>
+									<td>0</td>
+									<td>get_node_types, get_node_types</td>
+								</tr>
+						</table>
+					</div>
+					<details class="detail-section">
+						<summary><h4 style="display:inline;cursor:pointer">Workflow JSON</h4></summary>
+						<pre style="margin-top:8px;white-space:pre-wrap"><code>{
+  &quot;id&quot;: &quot;daily-user-count&quot;,
+  &quot;name&quot;: &quot;Daily User Count Logger&quot;,
+  &quot;nodes&quot;: [
+    {
+      &quot;id&quot;: &quot;8cfc0347-b007-4c8e-928e-61751250d778&quot;,
+      &quot;name&quot;: &quot;Daily at 9am&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.scheduleTrigger&quot;,
+      &quot;typeVersion&quot;: 1.3,
+      &quot;position&quot;: [
+        240,
+        300
+      ],
+      &quot;parameters&quot;: {
+        &quot;rule&quot;: {
+          &quot;interval&quot;: [
+            {
+              &quot;field&quot;: &quot;days&quot;,
+              &quot;daysInterval&quot;: 1,
+              &quot;triggerAtHour&quot;: 9,
+              &quot;triggerAtMinute&quot;: 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;a44fa3d8-6e2c-4865-a63b-2392277d3907&quot;,
+      &quot;name&quot;: &quot;Fetch Users&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.httpRequest&quot;,
+      &quot;typeVersion&quot;: 4.4,
+      &quot;position&quot;: [
+        540,
+        300
+      ],
+      &quot;parameters&quot;: {
+        &quot;method&quot;: &quot;GET&quot;,
+        &quot;url&quot;: &quot;https://api.example.com/users&quot;
+      }
+    },
+    {
+      &quot;id&quot;: &quot;6a8d3456-062d-4c93-be94-9d4ecbb03c85&quot;,
+      &quot;name&quot;: &quot;Log User Count&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.code&quot;,
+      &quot;typeVersion&quot;: 2,
+      &quot;position&quot;: [
+        840,
+        300
+      ],
+      &quot;parameters&quot;: {
+        &quot;mode&quot;: &quot;runOnceForAllItems&quot;,
+        &quot;language&quot;: &quot;javaScript&quot;,
+        &quot;jsCode&quot;: &quot;const count = $input.all().length;\nconsole.log(`Total users: ${count}`);\nreturn [{ count }];&quot;
+      }
+    }
+  ],
+  &quot;connections&quot;: {
+    &quot;Daily at 9am&quot;: {
+      &quot;main&quot;: [
+        [
+          {
+            &quot;node&quot;: &quot;Fetch Users&quot;,
+            &quot;type&quot;: &quot;main&quot;,
+            &quot;index&quot;: 0
+          }
+        ]
+      ]
+    },
+    &quot;Fetch Users&quot;: {
+      &quot;main&quot;: [
+        [
+          {
+            &quot;node&quot;: &quot;Log User Count&quot;,
+            &quot;type&quot;: &quot;main&quot;,
+            &quot;index&quot;: 0
+          }
+        ]
+      ]
+    }
+  },
+  &quot;settings&quot;: {},
+  &quot;pinData&quot;: {
+    &quot;Fetch Users&quot;: [
+      {
+        &quot;id&quot;: 1,
+        &quot;name&quot;: &quot;Alice&quot;
+      },
+      {
+        &quot;id&quot;: 2,
+        &quot;name&quot;: &quot;Bob&quot;
+      },
+      {
+        &quot;id&quot;: 3,
+        &quot;name&quot;: &quot;Charlie&quot;
+      }
+    ]
+  }
+}</code></pre>
+					</details>
+				</div>
+			</td>
+		</tr>
+		<tr class="result-row" data-complexity="simple" data-tags="api" data-prompt-hash="s48qsl" onclick="toggleDetail('detail-2', 's48qsl')">
+			<td><span class="badge badge-complexity-simple">SIMPLE</span></td>
+			<td class="prompt-cell" title="Create a workflow with an HTTP GET endpoint at /health that checks a database connection status and returns either &quot;healthy&quot; or &quot;unhealthy&quot; with the current timestamp.">Create a workflow with an HTTP GET endpoint at /health that checks a database co...</td>
+			<td class="tags-cell"><span class="badge badge-tag">api</span></td>
+			<td class="good">PASS</td>
+			<td class="good">7/7 (100%)</td>
+			<td>14</td>
+			<td>1.3m</td>
+			<td>34</td>
+			<td>4,965</td>
+			<td>199</td>
+		</tr>
+		<tr id="detail-2" class="detail-row" data-complexity="simple" data-prompt-hash="s48qsl" style="display:none">
+			<td colspan="10">
+				<div class="detail-content">
+					<div class="detail-section">
+						<h4>Prompt</h4>
+						<p class="prompt-full">Create a workflow with an HTTP GET endpoint at /health that checks a database connection status and returns either &quot;healthy&quot; or &quot;unhealthy&quot; with the current timestamp.</p>
+					</div>
+					<div class="detail-section">
+						<h4>Workflow Preview</h4>
+						<n8n-demo workflow='{
+  &quot;id&quot;: &quot;health-check&quot;,
+  &quot;name&quot;: &quot;Health Check Endpoint&quot;,
+  &quot;nodes&quot;: [
+    {
+      &quot;id&quot;: &quot;e4fb1737-abc3-45cd-9057-660134e148bf&quot;,
+      &quot;name&quot;: &quot;Health Check Endpoint&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.webhook&quot;,
+      &quot;typeVersion&quot;: 2.1,
+      &quot;position&quot;: [
+        240,
+        300
+      ],
+      &quot;parameters&quot;: {
+        &quot;httpMethod&quot;: &quot;GET&quot;,
+        &quot;path&quot;: &quot;health&quot;,
+        &quot;responseMode&quot;: &quot;responseNode&quot;
+      }
+    },
+    {
+      &quot;id&quot;: &quot;fc74078d-745f-4ea0-bda0-bc77e9d34e2c&quot;,
+      &quot;name&quot;: &quot;Check Database Connection&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.postgres&quot;,
+      &quot;typeVersion&quot;: 2.6,
+      &quot;position&quot;: [
+        540,
+        300
+      ],
+      &quot;parameters&quot;: {
+        &quot;operation&quot;: &quot;executeQuery&quot;,
+        &quot;query&quot;: &quot;SELECT 1 as status&quot;,
+        &quot;options&quot;: {
+          &quot;connectionTimeout&quot;: 5
+        }
+      },
+      &quot;credentials&quot;: {},
+      &quot;onError&quot;: &quot;continueErrorOutput&quot;
+    },
+    {
+      &quot;id&quot;: &quot;1039d50f-67cf-49fe-880e-7d3248c5c622&quot;,
+      &quot;name&quot;: &quot;Build Unhealthy Response&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.set&quot;,
+      &quot;typeVersion&quot;: 3.4,
+      &quot;position&quot;: [
+        840,
+        400
+      ],
+      &quot;parameters&quot;: {
+        &quot;mode&quot;: &quot;manual&quot;,
+        &quot;assignments&quot;: {
+          &quot;assignments&quot;: [
+            {
+              &quot;id&quot;: &quot;1&quot;,
+              &quot;name&quot;: &quot;status&quot;,
+              &quot;value&quot;: &quot;unhealthy&quot;,
+              &quot;type&quot;: &quot;string&quot;
+            },
+            {
+              &quot;id&quot;: &quot;2&quot;,
+              &quot;name&quot;: &quot;timestamp&quot;,
+              &quot;value&quot;: &quot;={{ $now.toISO() }}&quot;,
+              &quot;type&quot;: &quot;string&quot;
+            }
+          ]
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;160c661c-6b15-48e4-9b45-ce8af06d6db5&quot;,
+      &quot;name&quot;: &quot;Return Unhealthy&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.respondToWebhook&quot;,
+      &quot;typeVersion&quot;: 1.5,
+      &quot;position&quot;: [
+        1140,
+        400
+      ],
+      &quot;parameters&quot;: {
+        &quot;respondWith&quot;: &quot;json&quot;,
+        &quot;responseBody&quot;: &quot;={{ $json }}&quot;,
+        &quot;options&quot;: {
+          &quot;responseCode&quot;: 503
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;6bb7d237-0e61-4e55-8d3f-eca011945def&quot;,
+      &quot;name&quot;: &quot;Build Healthy Response&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.set&quot;,
+      &quot;typeVersion&quot;: 3.4,
+      &quot;position&quot;: [
+        840,
+        200
+      ],
+      &quot;parameters&quot;: {
+        &quot;mode&quot;: &quot;manual&quot;,
+        &quot;assignments&quot;: {
+          &quot;assignments&quot;: [
+            {
+              &quot;id&quot;: &quot;1&quot;,
+              &quot;name&quot;: &quot;status&quot;,
+              &quot;value&quot;: &quot;healthy&quot;,
+              &quot;type&quot;: &quot;string&quot;
+            },
+            {
+              &quot;id&quot;: &quot;2&quot;,
+              &quot;name&quot;: &quot;timestamp&quot;,
+              &quot;value&quot;: &quot;={{ $now.toISO() }}&quot;,
+              &quot;type&quot;: &quot;string&quot;
+            }
+          ]
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;27b5b105-6913-4a3d-8401-f09bd58572d1&quot;,
+      &quot;name&quot;: &quot;Return Healthy&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.respondToWebhook&quot;,
+      &quot;typeVersion&quot;: 1.5,
+      &quot;position&quot;: [
+        1140,
+        200
+      ],
+      &quot;parameters&quot;: {
+        &quot;respondWith&quot;: &quot;json&quot;,
+        &quot;responseBody&quot;: &quot;={{ $json }}&quot;
+      }
+    }
+  ],
+  &quot;connections&quot;: {
+    &quot;Health Check Endpoint&quot;: {
+      &quot;main&quot;: [
+        [
+          {
+            &quot;node&quot;: &quot;Check Database Connection&quot;,
+            &quot;type&quot;: &quot;main&quot;,
+            &quot;index&quot;: 0
+          }
+        ]
+      ]
+    },
+    &quot;Check Database Connection&quot;: {
+      &quot;main&quot;: [
+        [
+          {
+            &quot;node&quot;: &quot;Build Healthy Response&quot;,
+            &quot;type&quot;: &quot;main&quot;,
+            &quot;index&quot;: 0
+          }
+        ]
+      ],
+      &quot;error&quot;: [
+        [
+          {
+            &quot;node&quot;: &quot;Build Unhealthy Response&quot;,
+            &quot;type&quot;: &quot;main&quot;,
+            &quot;index&quot;: 0
+          }
+        ]
+      ]
+    },
+    &quot;Build Unhealthy Response&quot;: {
+      &quot;main&quot;: [
+        [
+          {
+            &quot;node&quot;: &quot;Return Unhealthy&quot;,
+            &quot;type&quot;: &quot;main&quot;,
+            &quot;index&quot;: 0
+          }
+        ]
+      ]
+    },
+    &quot;Build Healthy Response&quot;: {
+      &quot;main&quot;: [
+        [
+          {
+            &quot;node&quot;: &quot;Return Healthy&quot;,
+            &quot;type&quot;: &quot;main&quot;,
+            &quot;index&quot;: 0
+          }
+        ]
+      ]
+    }
+  },
+  &quot;settings&quot;: {},
+  &quot;pinData&quot;: {
+    &quot;Health Check Endpoint&quot;: [
+      {
+        &quot;query&quot;: {},
+        &quot;body&quot;: {},
+        &quot;headers&quot;: {}
+      }
+    ],
+    &quot;Check Database Connection&quot;: [
+      {
+        &quot;status&quot;: 1
+      }
+    ]
+  }
+}'></n8n-demo>
+					</div>
+					<div class="detail-section">
+						<h4>Checklist (7/7)</h4>
+						<ul class="checklist">
+							<li class="pass">
+										<span class="check">✓</span>
+										<span class="category">[structure]</span>
+										Has an HTTP GET trigger at the /health path
+										<div class="reasoning">The webhook node has httpMethod set to 'GET' and path set to 'health', which corresponds to a GET trigger at /health</div>
+									</li><li class="pass">
+										<span class="check">✓</span>
+										<span class="category">[structure]</span>
+										Includes a step that checks a database connection status
+										<div class="reasoning">The 'Check Database Connection' node uses n8n-nodes-base.postgres with a 'SELECT 1 as status' query to check the database connection</div>
+									</li><li class="pass">
+										<span class="check">✓</span>
+										<span class="category">[structure]</span>
+										Branches based on whether the database connection check succeeds or fails
+										<div class="reasoning">The postgres node uses 'onError: continueErrorOutput', and connections show the main output goes to 'Build Healthy Response' while the error output goes to 'Build Unhealthy Response', creating a branch based on success or failure</div>
+									</li><li class="pass">
+										<span class="check">✓</span>
+										<span class="category">[data]</span>
+										Returns 'healthy' status when the database connection check succeeds
+										<div class="reasoning">The 'Build Healthy Response' node sets status to 'healthy' when the database connection check succeeds</div>
+									</li><li class="pass">
+										<span class="check">✓</span>
+										<span class="category">[data]</span>
+										Returns 'unhealthy' status when the database connection check fails
+										<div class="reasoning">The 'Build Unhealthy Response' node sets status to 'unhealthy' when the database connection check fails</div>
+									</li><li class="pass">
+										<span class="check">✓</span>
+										<span class="category">[data]</span>
+										Response includes the current timestamp regardless of health status
+										<div class="reasoning">Both 'Build Healthy Response' and 'Build Unhealthy Response' nodes include a timestamp field set to '={{ $now.toISO() }}', ensuring the current timestamp is included in both cases</div>
+									</li><li class="pass">
+										<span class="check">✓</span>
+										<span class="category">[structure]</span>
+										Sends an HTTP response back to the caller with the health check result
+										<div class="reasoning">Both 'Return Healthy' and 'Return Unhealthy' nodes use n8n-nodes-base.respondToWebhook to send an HTTP response back to the caller with the health check result</div>
+									</li>
+						</ul>
+					</div>
+					<div class="detail-section">
+						<h4>Generated Code (199 lines)</h4>
+						<pre><code>{
+  &quot;id&quot;: &quot;health-check&quot;,
+  &quot;name&quot;: &quot;Health Check Endpoint&quot;,
+  &quot;nodes&quot;: [
+    {
+      &quot;id&quot;: &quot;e4fb1737-abc3-45cd-9057-660134e148bf&quot;,
+      &quot;name&quot;: &quot;Health Check Endpoint&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.webhook&quot;,
+      &quot;typeVersion&quot;: 2.1,
+      &quot;position&quot;: [
+        240,
+        300
+      ],
+      &quot;parameters&quot;: {
+        &quot;httpMethod&quot;: &quot;GET&quot;,
+        &quot;path&quot;: &quot;health&quot;,
+        &quot;responseMode&quot;: &quot;responseNode&quot;
+      }
+    },
+    {
+      &quot;id&quot;: &quot;fc74078d-745f-4ea0-bda0-bc77e9d34e2c&quot;,
+      &quot;name&quot;: &quot;Check Database Connection&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.postgres&quot;,
+      &quot;typeVersion&quot;: 2.6,
+      &quot;position&quot;: [
+        540,
+        300
+      ],
+      &quot;parameters&quot;: {
+        &quot;operation&quot;: &quot;executeQuery&quot;,
+        &quot;query&quot;: &quot;SELECT 1 as status&quot;,
+        &quot;options&quot;: {
+          &quot;connectionTimeout&quot;: 5
+        }
+      },
+      &quot;credentials&quot;: {},
+      &quot;onError&quot;: &quot;continueErrorOutput&quot;
+    },
+    {
+      &quot;id&quot;: &quot;1039d50f-67cf-49fe-880e-7d3248c5c622&quot;,
+      &quot;name&quot;: &quot;Build Unhealthy Response&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.set&quot;,
+      &quot;typeVersion&quot;: 3.4,
+      &quot;position&quot;: [
+        840,
+        400
+      ],
+      &quot;parameters&quot;: {
+        &quot;mode&quot;: &quot;manual&quot;,
+        &quot;assignments&quot;: {
+          &quot;assignments&quot;: [
+            {
+              &quot;id&quot;: &quot;1&quot;,
+              &quot;name&quot;: &quot;status&quot;,
+              &quot;value&quot;: &quot;unhealthy&quot;,
+              &quot;type&quot;: &quot;string&quot;
+            },
+            {
+              &quot;id&quot;: &quot;2&quot;,
+              &quot;name&quot;: &quot;timestamp&quot;,
+              &quot;value&quot;: &quot;={{ $now.toISO() }}&quot;,
+              &quot;type&quot;: &quot;string&quot;
+            }
+          ]
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;160c661c-6b15-48e4-9b45-ce8af06d6db5&quot;,
+      &quot;name&quot;: &quot;Return Unhealthy&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.respondToWebhook&quot;,
+      &quot;typeVersion&quot;: 1.5,
+      &quot;position&quot;: [
+        1140,
+        400
+      ],
+      &quot;parameters&quot;: {
+        &quot;respondWith&quot;: &quot;json&quot;,
+        &quot;responseBody&quot;: &quot;={{ $json }}&quot;,
+        &quot;options&quot;: {
+          &quot;responseCode&quot;: 503
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;6bb7d237-0e61-4e55-8d3f-eca011945def&quot;,
+      &quot;name&quot;: &quot;Build Healthy Response&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.set&quot;,
+      &quot;typeVersion&quot;: 3.4,
+      &quot;position&quot;: [
+        840,
+        200
+      ],
+      &quot;parameters&quot;: {
+        &quot;mode&quot;: &quot;manual&quot;,
+        &quot;assignments&quot;: {
+          &quot;assignments&quot;: [
+            {
+              &quot;id&quot;: &quot;1&quot;,
+              &quot;name&quot;: &quot;status&quot;,
+              &quot;value&quot;: &quot;healthy&quot;,
+              &quot;type&quot;: &quot;string&quot;
+            },
+            {
+              &quot;id&quot;: &quot;2&quot;,
+              &quot;name&quot;: &quot;timestamp&quot;,
+              &quot;value&quot;: &quot;={{ $now.toISO() }}&quot;,
+              &quot;type&quot;: &quot;string&quot;
+            }
+          ]
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;27b5b105-6913-4a3d-8401-f09bd58572d1&quot;,
+      &quot;name&quot;: &quot;Return Healthy&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.respondToWebhook&quot;,
+      &quot;typeVersion&quot;: 1.5,
+      &quot;position&quot;: [
+        1140,
+        200
+      ],
+      &quot;parameters&quot;: {
+        &quot;respondWith&quot;: &quot;json&quot;,
+        &quot;responseBody&quot;: &quot;={{ $json }}&quot;
+      }
+    }
+  ],
+  &quot;connections&quot;: {
+    &quot;Health Check Endpoint&quot;: {
+      &quot;main&quot;: [
+        [
+          {
+            &quot;node&quot;: &quot;Check Database Connection&quot;,
+            &quot;type&quot;: &quot;main&quot;,
+            &quot;index&quot;: 0
+          }
+        ]
+      ]
+    },
+    &quot;Check Database Connection&quot;: {
+      &quot;main&quot;: [
+        [
+          {
+            &quot;node&quot;: &quot;Build Healthy Response&quot;,
+            &quot;type&quot;: &quot;main&quot;,
+            &quot;index&quot;: 0
+          }
+        ]
+      ],
+      &quot;error&quot;: [
+        [
+          {
+            &quot;node&quot;: &quot;Build Unhealthy Response&quot;,
+            &quot;type&quot;: &quot;main&quot;,
+            &quot;index&quot;: 0
+          }
+        ]
+      ]
+    },
+    &quot;Build Unhealthy Response&quot;: {
+      &quot;main&quot;: [
+        [
+          {
+            &quot;node&quot;: &quot;Return Unhealthy&quot;,
+            &quot;type&quot;: &quot;main&quot;,
+            &quot;index&quot;: 0
+          }
+        ]
+      ]
+    },
+    &quot;Build Healthy Response&quot;: {
+      &quot;main&quot;: [
+        [
+          {
+            &quot;node&quot;: &quot;Return Healthy&quot;,
+            &quot;type&quot;: &quot;main&quot;,
+            &quot;index&quot;: 0
+          }
+        ]
+      ]
+    }
+  },
+  &quot;settings&quot;: {},
+  &quot;pinData&quot;: {
+    &quot;Health Check Endpoint&quot;: [
+      {
+        &quot;query&quot;: {},
+        &quot;body&quot;: {},
+        &quot;headers&quot;: {}
+      }
+    ],
+    &quot;Check Database Connection&quot;: [
+      {
+        &quot;status&quot;: 1
+      }
+    ]
+  }
+}</code></pre>
+					</div>
+					<div class="detail-section">
+						<h4>Iterations (14)</h4>
+						<table class="iterations-table">
+							<tr><th>#</th><th>Duration</th><th>In Tokens</th><th>Out Tokens</th><th>Thinking Tokens</th><th>Tool Calls</th></tr>
+							
+								<tr>
+									<td>1</td>
+									<td>-</td>
+									<td>3</td>
+									<td>115</td>
+									<td>0</td>
+									<td>None</td>
+								</tr>
+								<tr>
+									<td>2</td>
+									<td>-</td>
+									<td>7</td>
+									<td>137</td>
+									<td>0</td>
+									<td>get_suggested_nodes, get_suggested_nodes, search_nodes, search_nodes</td>
+								</tr>
+								<tr>
+									<td>3</td>
+									<td>-</td>
+									<td>6</td>
+									<td>1,171</td>
+									<td>0</td>
+									<td>get_node_types, get_node_types</td>
+								</tr>
+								<tr>
+									<td>4</td>
+									<td>-</td>
+									<td>5</td>
+									<td>284</td>
+									<td>0</td>
+									<td>str_replace_based_edit_tool, str_replace_based_edit_tool</td>
+								</tr>
+								<tr>
+									<td>5</td>
+									<td>-</td>
+									<td>4</td>
+									<td>103</td>
+									<td>0</td>
+									<td>str_replace_based_edit_tool, str_replace_based_edit_tool</td>
+								</tr>
+								<tr>
+									<td>6</td>
+									<td>-</td>
+									<td>3</td>
+									<td>103</td>
+									<td>0</td>
+									<td>str_replace_based_edit_tool, str_replace_based_edit_tool</td>
+								</tr>
+								<tr>
+									<td>7</td>
+									<td>-</td>
+									<td>3</td>
+									<td>726</td>
+									<td>0</td>
+									<td>str_replace_based_edit_tool, str_replace_based_edit_tool</td>
+								</tr>
+								<tr>
+									<td>8</td>
+									<td>-</td>
+									<td>2</td>
+									<td>79</td>
+									<td>0</td>
+									<td>str_replace_based_edit_tool, str_replace_based_edit_tool</td>
+								</tr>
+								<tr>
+									<td>9</td>
+									<td>-</td>
+									<td>1</td>
+									<td>1,429</td>
+									<td>0</td>
+									<td>str_replace_based_edit_tool, str_replace_based_edit_tool</td>
+								</tr>
+								<tr>
+									<td>10</td>
+									<td>-</td>
+									<td>0</td>
+									<td>307</td>
+									<td>0</td>
+									<td>str_replace_based_edit_tool, str_replace_based_edit_tool</td>
+								</tr>
+								<tr>
+									<td>11</td>
+									<td>-</td>
+									<td>0</td>
+									<td>296</td>
+									<td>0</td>
+									<td>str_replace_based_edit_tool, str_replace_based_edit_tool</td>
+								</tr>
+								<tr>
+									<td>12</td>
+									<td>-</td>
+									<td>0</td>
+									<td>56</td>
+									<td>0</td>
+									<td>str_replace_based_edit_tool, str_replace_based_edit_tool</td>
+								</tr>
+								<tr>
+									<td>13</td>
+									<td>-</td>
+									<td>0</td>
+									<td>103</td>
+									<td>0</td>
+									<td>validate_workflow, validate_workflow</td>
+								</tr>
+								<tr>
+									<td>14</td>
+									<td>-</td>
+									<td>0</td>
+									<td>56</td>
+									<td>0</td>
+									<td>str_replace_based_edit_tool, str_replace_based_edit_tool</td>
+								</tr>
+						</table>
+					</div>
+					<details class="detail-section">
+						<summary><h4 style="display:inline;cursor:pointer">Workflow JSON</h4></summary>
+						<pre style="margin-top:8px;white-space:pre-wrap"><code>{
+  &quot;id&quot;: &quot;health-check&quot;,
+  &quot;name&quot;: &quot;Health Check Endpoint&quot;,
+  &quot;nodes&quot;: [
+    {
+      &quot;id&quot;: &quot;e4fb1737-abc3-45cd-9057-660134e148bf&quot;,
+      &quot;name&quot;: &quot;Health Check Endpoint&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.webhook&quot;,
+      &quot;typeVersion&quot;: 2.1,
+      &quot;position&quot;: [
+        240,
+        300
+      ],
+      &quot;parameters&quot;: {
+        &quot;httpMethod&quot;: &quot;GET&quot;,
+        &quot;path&quot;: &quot;health&quot;,
+        &quot;responseMode&quot;: &quot;responseNode&quot;
+      }
+    },
+    {
+      &quot;id&quot;: &quot;fc74078d-745f-4ea0-bda0-bc77e9d34e2c&quot;,
+      &quot;name&quot;: &quot;Check Database Connection&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.postgres&quot;,
+      &quot;typeVersion&quot;: 2.6,
+      &quot;position&quot;: [
+        540,
+        300
+      ],
+      &quot;parameters&quot;: {
+        &quot;operation&quot;: &quot;executeQuery&quot;,
+        &quot;query&quot;: &quot;SELECT 1 as status&quot;,
+        &quot;options&quot;: {
+          &quot;connectionTimeout&quot;: 5
+        }
+      },
+      &quot;credentials&quot;: {},
+      &quot;onError&quot;: &quot;continueErrorOutput&quot;
+    },
+    {
+      &quot;id&quot;: &quot;1039d50f-67cf-49fe-880e-7d3248c5c622&quot;,
+      &quot;name&quot;: &quot;Build Unhealthy Response&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.set&quot;,
+      &quot;typeVersion&quot;: 3.4,
+      &quot;position&quot;: [
+        840,
+        400
+      ],
+      &quot;parameters&quot;: {
+        &quot;mode&quot;: &quot;manual&quot;,
+        &quot;assignments&quot;: {
+          &quot;assignments&quot;: [
+            {
+              &quot;id&quot;: &quot;1&quot;,
+              &quot;name&quot;: &quot;status&quot;,
+              &quot;value&quot;: &quot;unhealthy&quot;,
+              &quot;type&quot;: &quot;string&quot;
+            },
+            {
+              &quot;id&quot;: &quot;2&quot;,
+              &quot;name&quot;: &quot;timestamp&quot;,
+              &quot;value&quot;: &quot;={{ $now.toISO() }}&quot;,
+              &quot;type&quot;: &quot;string&quot;
+            }
+          ]
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;160c661c-6b15-48e4-9b45-ce8af06d6db5&quot;,
+      &quot;name&quot;: &quot;Return Unhealthy&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.respondToWebhook&quot;,
+      &quot;typeVersion&quot;: 1.5,
+      &quot;position&quot;: [
+        1140,
+        400
+      ],
+      &quot;parameters&quot;: {
+        &quot;respondWith&quot;: &quot;json&quot;,
+        &quot;responseBody&quot;: &quot;={{ $json }}&quot;,
+        &quot;options&quot;: {
+          &quot;responseCode&quot;: 503
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;6bb7d237-0e61-4e55-8d3f-eca011945def&quot;,
+      &quot;name&quot;: &quot;Build Healthy Response&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.set&quot;,
+      &quot;typeVersion&quot;: 3.4,
+      &quot;position&quot;: [
+        840,
+        200
+      ],
+      &quot;parameters&quot;: {
+        &quot;mode&quot;: &quot;manual&quot;,
+        &quot;assignments&quot;: {
+          &quot;assignments&quot;: [
+            {
+              &quot;id&quot;: &quot;1&quot;,
+              &quot;name&quot;: &quot;status&quot;,
+              &quot;value&quot;: &quot;healthy&quot;,
+              &quot;type&quot;: &quot;string&quot;
+            },
+            {
+              &quot;id&quot;: &quot;2&quot;,
+              &quot;name&quot;: &quot;timestamp&quot;,
+              &quot;value&quot;: &quot;={{ $now.toISO() }}&quot;,
+              &quot;type&quot;: &quot;string&quot;
+            }
+          ]
+        }
+      }
+    },
+    {
+      &quot;id&quot;: &quot;27b5b105-6913-4a3d-8401-f09bd58572d1&quot;,
+      &quot;name&quot;: &quot;Return Healthy&quot;,
+      &quot;type&quot;: &quot;n8n-nodes-base.respondToWebhook&quot;,
+      &quot;typeVersion&quot;: 1.5,
+      &quot;position&quot;: [
+        1140,
+        200
+      ],
+      &quot;parameters&quot;: {
+        &quot;respondWith&quot;: &quot;json&quot;,
+        &quot;responseBody&quot;: &quot;={{ $json }}&quot;
+      }
+    }
+  ],
+  &quot;connections&quot;: {
+    &quot;Health Check Endpoint&quot;: {
+      &quot;main&quot;: [
+        [
+          {
+            &quot;node&quot;: &quot;Check Database Connection&quot;,
+            &quot;type&quot;: &quot;main&quot;,
+            &quot;index&quot;: 0
+          }
+        ]
+      ]
+    },
+    &quot;Check Database Connection&quot;: {
+      &quot;main&quot;: [
+        [
+          {
+            &quot;node&quot;: &quot;Build Healthy Response&quot;,
+            &quot;type&quot;: &quot;main&quot;,
+            &quot;index&quot;: 0
+          }
+        ]
+      ],
+      &quot;error&quot;: [
+        [
+          {
+            &quot;node&quot;: &quot;Build Unhealthy Response&quot;,
+            &quot;type&quot;: &quot;main&quot;,
+            &quot;index&quot;: 0
+          }
+        ]
+      ]
+    },
+    &quot;Build Unhealthy Response&quot;: {
+      &quot;main&quot;: [
+        [
+          {
+            &quot;node&quot;: &quot;Return Unhealthy&quot;,
+            &quot;type&quot;: &quot;main&quot;,
+            &quot;index&quot;: 0
+          }
+        ]
+      ]
+    },
+    &quot;Build Healthy Response&quot;: {
+      &quot;main&quot;: [
+        [
+          {
+            &quot;node&quot;: &quot;Return Healthy&quot;,
+            &quot;type&quot;: &quot;main&quot;,
+            &quot;index&quot;: 0
+          }
+        ]
+      ]
+    }
+  },
+  &quot;settings&quot;: {},
+  &quot;pinData&quot;: {
+    &quot;Health Check Endpoint&quot;: [
+      {
+        &quot;query&quot;: {},
+        &quot;body&quot;: {},
+        &quot;headers&quot;: {}
+      }
+    ],
+    &quot;Check Database Connection&quot;: [
+      {
+        &quot;status&quot;: 1
+      }
+    ]
+  }
+}</code></pre>
+					</details>
+				</div>
+			</td>
+		</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+
+<script>
+var HIGHLIGHT_COLORS = [
+	'#1f6feb', '#8957e5', '#bf4b8a', '#d29922', '#238636',
+	'#da3633', '#3fb950', '#58a6ff', '#d2a8ff', '#f0883e',
+];
+var _promptColorMap = {};
+var _nextColorIdx = 0;
+function getPromptColor(hash) {
+	if (!_promptColorMap[hash]) {
+		_promptColorMap[hash] = HIGHLIGHT_COLORS[_nextColorIdx % HIGHLIGHT_COLORS.length];
+		_nextColorIdx++;
+	}
+	return _promptColorMap[hash];
+}
+function toggleDetail(id, promptHash) {
+	var el = document.getElementById(id);
+	if (!el) return;
+	var wasOpen = el.style.display !== 'none';
+	// Close all open details and remove all highlights
+	document.querySelectorAll('.detail-row').forEach(function(d) { d.style.display = 'none'; });
+	document.querySelectorAll('.result-row.sibling-highlight').forEach(function(r) {
+		r.classList.remove('sibling-highlight');
+		r.style.borderLeftColor = '';
+		r.style.background = '';
+	});
+	if (wasOpen) return;
+	el.style.display = 'table-row';
+	// Highlight sibling rows with the same prompt
+	var clickedRow = el.previousElementSibling;
+	var color = getPromptColor(promptHash);
+	document.querySelectorAll('.result-row[data-prompt-hash="' + promptHash + '"]').forEach(function(r) {
+		if (r !== clickedRow) {
+			r.classList.add('sibling-highlight');
+			r.style.borderLeftColor = color;
+			r.style.background = color + '1a';
+		}
+	});
+}
+function toggleRun(id) {
+	const el = document.getElementById(id);
+	if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+function filterResults() {
+	var complexity = document.getElementById('filter-complexity').value;
+	var tag = document.getElementById('filter-tag').value;
+	var rows = document.querySelectorAll('.result-row');
+	rows.forEach(function(row) {
+		var show = true;
+		if (complexity && row.getAttribute('data-complexity') !== complexity) show = false;
+		if (tag) {
+			var tags = (row.getAttribute('data-tags') || '').split(',');
+			if (tags.indexOf(tag) === -1) show = false;
+		}
+		row.style.display = show ? '' : 'none';
+		// Also hide the corresponding detail row
+		var detailId = row.getAttribute('onclick').match(/detail-(\d+)/);
+		if (detailId) {
+			var detail = document.getElementById('detail-' + detailId[1]);
+			if (detail) detail.style.display = 'none';
+		}
+	});
+}
+</script>
+</body>
+</html>
