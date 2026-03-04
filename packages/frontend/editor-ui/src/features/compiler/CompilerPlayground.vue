@@ -86,6 +86,7 @@ async function compile() {
 		const response = await fetch(`${window.BASE_PATH ?? '/'}rest/temporary/parse-code`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
+			credentials: 'include',
 			body: JSON.stringify({ code: code.value }),
 		});
 		const result = (await response.json()) as { data: CompilerResult };
@@ -105,7 +106,9 @@ async function compile() {
 
 async function fetchExamples() {
 	try {
-		const response = await fetch(`${window.BASE_PATH ?? '/'}rest/temporary/examples`);
+		const response = await fetch(`${window.BASE_PATH ?? '/'}rest/temporary/examples`, {
+			credentials: 'include',
+		});
 		const result = (await response.json()) as { data: CompilerExample[] };
 		EXAMPLES.value = result.data;
 		if (result.data.length > 0) {
