@@ -175,21 +175,21 @@ defineExpose({
 
 		<div :class="$style['switcher']">
 			<N8nIconButton
-				variant="subtle"
+				:variant="view === 'chat' ? 'solid' : 'subtle'"
 				size="large"
 				icon="align-left"
 				:active="view === 'chat'"
 				@click="view = 'chat'"
 			/>
 			<N8nIconButton
-				variant="subtle"
+				:variant="view === 'split' ? 'solid' : 'subtle'"
 				size="large"
-				icon="split"
+				icon="split-horizontal"
 				:active="view === 'split'"
 				@click="view = 'split'"
 			/>
 			<N8nIconButton
-				variant="subtle"
+				:variant="view === 'canvas' ? 'solid' : 'subtle'"
 				size="large"
 				icon="workflow"
 				:active="view === 'canvas'"

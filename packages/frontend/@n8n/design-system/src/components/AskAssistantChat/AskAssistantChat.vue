@@ -689,6 +689,7 @@ defineExpose({
 	display: grid;
 	grid-template-rows: auto 1fr auto;
 	max-width: 80vw;
+	margin: 0 auto;
 }
 
 .header {
