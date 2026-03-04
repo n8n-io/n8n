@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { inDevelopment, Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ReportingOptions } from '@n8n/errors';
 import type { Request, Response } from 'express';
@@ -9,11 +9,10 @@ import { Readable } from 'node:stream';
 import picocolors from 'picocolors';
 
 import { ResponseError } from './errors/response-errors/abstract/response.error';
-import { AuthenticatedRequest, User } from '@n8n/db';
 
 export function sendSuccessResponse(
 	res: Response,
-	data: any,
+	data: unknown,
 	raw?: boolean,
 	responseCode?: number,
 	responseHeader?: object,
