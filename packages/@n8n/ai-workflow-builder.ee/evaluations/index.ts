@@ -48,8 +48,10 @@ export {
 	createSimilarityEvaluator,
 	createResponderEvaluator,
 	createExecutionEvaluator,
+	createBinaryChecksEvaluator,
 	type PairwiseEvaluatorOptions,
 	type SimilarityEvaluatorOptions,
+	type BinaryChecksEvaluatorOptions,
 	type ResponderEvaluationContext,
 } from './evaluators';
 

@@ -79,11 +79,11 @@ class PrometheusMetricsConfig {
 
 @Config
 export class EndpointsConfig {
-	/** Max payload size in MiB */
+	/** Maximum request payload size in MiB for the API. */
 	@Env('N8N_PAYLOAD_SIZE_MAX')
 	payloadSizeMax: number = 16;
 
-	/** Max payload size for files in form-data webhook payloads in MiB */
+	/** Maximum size in MiB for a single file in multipart/form-data webhook payloads. */
 	@Env('N8N_FORMDATA_FILE_SIZE_MAX')
 	formDataFileSizeMax: number = 200;
 
@@ -134,7 +134,7 @@ export class EndpointsConfig {
 	@Env('N8N_DISABLE_PRODUCTION_MAIN_PROCESS')
 	disableProductionWebhooksOnMainProcess: boolean = false;
 
-	/** Colon-delimited list of additional endpoints to not open the UI on. */
+	/** Colon-separated list of path segments that should not serve the UI (for example, health or webhook-only routes). */
 	@Env('N8N_ADDITIONAL_NON_UI_ROUTES')
 	additionalNonUIRoutes: string = '';
 

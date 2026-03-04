@@ -79,6 +79,21 @@ describe('hasErrorOutput', () => {
 		const node = createSemanticNode('Node', 'n8n-nodes-base.noOp');
 		expect(hasErrorOutput(node)).toBe(false);
 	});
+
+	it('returns true when node has error output connections without continueErrorOutput setting', () => {
+		const node = createSemanticNode(
+			'Node',
+			'n8n-nodes-base.noOp',
+			new Map([['error', [{ target: 'ErrorHandler', targetInputSlot: 'input0' }]]]),
+		);
+		// No onError setting, but has error connections
+		expect(hasErrorOutput(node)).toBe(true);
+	});
+
+	it('returns false when node has empty error output connections', () => {
+		const node = createSemanticNode('Node', 'n8n-nodes-base.noOp', new Map([['error', []]]));
+		expect(hasErrorOutput(node)).toBe(false);
+	});
 });
 
 describe('getErrorOutputTargets', () => {

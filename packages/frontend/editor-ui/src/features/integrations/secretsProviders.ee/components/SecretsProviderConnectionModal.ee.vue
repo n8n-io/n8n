@@ -32,12 +32,12 @@ import {
 	N8nTooltip,
 	type IMenuItem,
 } from '@n8n/design-system';
-import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
+import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import Banner from '@/app/components/Banner.vue';
+import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 
 // Props
 const props = withDefaults(
@@ -65,23 +65,11 @@ const { confirm } = useMessage();
 const eventBus = createEventBus();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
-const { check: checkDevFeatureFlag } = useEnvFeatureFlag();
-const isProjectScopedSecretsEnabled = checkDevFeatureFlag.value('EXTERNAL_SECRETS_FOR_PROJECTS');
+const settingsStore = useSettingsStore();
 
 // Constants
 const LABEL_SIZE: IParameterLabel = { size: 'medium' };
 const internalActiveTab = ref(props.data?.activeTab ?? 'connection');
-const ACTIVE_TAB = computed({
-	get: () => (isProjectScopedSecretsEnabled ? internalActiveTab.value : 'connection'),
-	set: (value) => {
-		if (isProjectScopedSecretsEnabled) {
-			// Additional frontend validation to ensure that other
-			// tabs than 'connection' are only accessible when project-scoped secrets
-			// are enabled.
-			internalActiveTab.value = value;
-		}
-	},
-});
 
 // Modal state
 const providerTypes = computed(() => props.data.providerTypes ?? []);
@@ -94,6 +82,22 @@ const modal = useConnectionModal({
 	providerKey,
 	existingProviderNames,
 	projectId: projectId.value,
+});
+
+const tabNavigationEnabled =
+	(settingsStore.moduleSettings['external-secrets']?.forProjects ?? false) &&
+	modal.canShareGlobally.value;
+
+const ACTIVE_TAB = computed({
+	get: () => (tabNavigationEnabled ? internalActiveTab.value : 'connection'),
+	set: (value) => {
+		if (tabNavigationEnabled) {
+			// Additional frontend validation to ensure that other
+			// tabs than 'connection' are only accessible when project-scoped secrets
+			// are enabled and the user has global update permission.
+			internalActiveTab.value = value;
+		}
+	},
 });
 
 const sidebarItems = computed(() => {
@@ -113,22 +117,49 @@ const sidebarItems = computed(() => {
 	return menuItems;
 });
 
-const scopeProjects = computed(() =>
-	modal.canShareGlobally.value
-		? projectsStore.teamProjects.filter(
-				(p: ProjectSharingData) => !modal.projectIds.value.includes(p.id),
-			)
-		: [],
+const scopeOptions = computed<Array<{ value: string; label: string; icon: IconOrEmoji }>>(() => {
+	const options: Array<{ value: string; label: string; icon: IconOrEmoji }> = [
+		{
+			value: '',
+			label: i18n.baseText('settings.secretsProviderConnections.modal.scope.global'),
+			icon: { type: 'icon', value: 'globe' },
+		},
+	];
+
+	options.push(
+		...projectsStore.teamProjects.map((project: ProjectSharingData) => {
+			const icon = (project.icon ?? {
+				type: 'icon' as const,
+				value: 'layer-group',
+			}) as IconOrEmoji;
+			return {
+				value: project.id,
+				label: project.name ?? project.id,
+				icon,
+			};
+		}),
+	);
+
+	return options;
+});
+
+const scopeSelectValue = computed(() =>
+	modal.isSharedGlobally.value ? '' : (modal.projectIds.value[0] ?? ''),
 );
 
-// Sync scope changes to composable (max 1 project)
-function handleScopeUpdate(value: ProjectSharingData[] | ProjectSharingData | null) {
-	const project = Array.isArray(value) ? value.at(-1) : value;
-	modal.setScopeState(project ? [project.id] : [], false);
-}
+const selectedScopeIcon = computed<IconOrEmoji>(() => {
+	const selectedOption = scopeOptions.value.find(
+		(option) => option.value === scopeSelectValue.value,
+	);
+	return selectedOption?.icon ?? { type: 'icon' as const, value: 'globe' };
+});
 
-function handleShareGlobally(value: boolean) {
-	modal.setScopeState([], value);
+function handleScopeSelect(value: string) {
+	if (value === '') {
+		modal.setScopeState([], true);
+	} else {
+		modal.setScopeState([value], false);
+	}
 }
 
 // Handlers
@@ -156,12 +187,16 @@ async function handleSave() {
 function handleDelete() {
 	if (!modal.providerKey.value) return;
 
+	const deleteProjectId =
+		modal.connectionProjects.value.length > 0 ? modal.connectionProjects.value[0].id : undefined;
+
 	uiStore.openModalWithData({
 		name: DELETE_SECRETS_PROVIDER_MODAL_KEY,
 		data: {
 			providerKey: modal.providerKey.value,
 			providerName: modal.connectionName.value,
 			secretsCount: modal.providerSecretsCount.value ?? 0,
+			projectId: deleteProjectId,
 			onConfirm: () => {
 				props.data.onClose?.();
 				eventBus.emit('close');
@@ -268,7 +303,7 @@ onMounted(async () => {
 		<template #content>
 			<div :class="$style.container">
 				<!-- Left sidebar menu -->
-				<nav v-if="isProjectScopedSecretsEnabled" :class="$style.sidebar">
+				<nav v-if="tabNavigationEnabled" :class="$style.sidebar">
 					<N8nMenuItem
 						v-for="item in sidebarItems"
 						:key="item.id"
@@ -345,7 +380,7 @@ onMounted(async () => {
 										:readonly="modal.isEditMode.value"
 										:disabled="modal.isEditMode.value"
 										aria-required="true"
-										placeholder="vault-project-x-y-z"
+										placeholder="myVault"
 										@update:model-value="handleConnectionNameUpdate"
 										@blur="handleConnectionNameBlur"
 									/>
@@ -422,29 +457,50 @@ onMounted(async () => {
 								<N8nInfoTip :bold="false" class="mb-s">
 									{{ i18n.baseText('settings.secretsProviderConnections.modal.scope.info') }}
 								</N8nInfoTip>
-								<ProjectSharing
-									:model-value="modal.sharedWithProjects.value"
-									:projects="scopeProjects"
-									:readonly="!modal.canUpdate.value"
-									:static="!modal.canUpdate.value"
-									:placeholder="
-										i18n.baseText(
-											'settings.secretsProviderConnections.modal.scope.placeholder.project',
-										)
-									"
-									:all-users-label="
-										i18n.baseText('settings.secretsProviderConnections.modal.scope.global')
-									"
-									:empty-options-text="
-										i18n.baseText(
-											'settings.secretsProviderConnections.modal.scope.emptyOptionsText',
-										)
-									"
-									:can-share-globally="modal.canShareGlobally.value"
-									:is-shared-globally="modal.isSharedGlobally.value"
-									@update:share-with-all-users="handleShareGlobally"
-									@update:model-value="handleScopeUpdate"
-								/>
+								<N8nInputLabel
+									:label="i18n.baseText('settings.secretsProviderConnections.modal.scope.label')"
+								>
+									<N8nSelect
+										:model-value="scopeSelectValue"
+										size="large"
+										filterable
+										:disabled="!modal.canUpdate.value || modal.isScopedMode.value"
+										data-test-id="secrets-provider-scope-select"
+										@update:model-value="handleScopeSelect"
+									>
+										<template #prefix>
+											<N8nText
+												v-if="selectedScopeIcon?.type === 'emoji'"
+												color="text-light"
+												:class="$style.menuItemEmoji"
+											>
+												{{ selectedScopeIcon.value }}
+											</N8nText>
+											<N8nIcon
+												v-else-if="selectedScopeIcon?.value"
+												color="text-light"
+												:icon="selectedScopeIcon.value"
+											/>
+										</template>
+										<N8nOption
+											v-for="option in scopeOptions"
+											:key="option.value || 'global'"
+											:value="option.value"
+											:label="option.label"
+											:class="{
+												[$style.globalOption]: option.value === '' && scopeOptions.length > 1,
+											}"
+										>
+											<div :class="$style.optionContent">
+												<N8nText v-if="option.icon?.type === 'emoji'" :class="$style.menuItemEmoji">
+													{{ option.icon.value }}
+												</N8nText>
+												<N8nIcon v-else-if="option.icon?.value" :icon="option.icon.value" />
+												<span>{{ option.label }}</span>
+											</div>
+										</N8nOption>
+									</N8nSelect>
+								</N8nInputLabel>
 							</div>
 						</div>
 					</div>
@@ -560,5 +616,32 @@ onMounted(async () => {
 .expressionExample {
 	display: block;
 	margin-top: var(--spacing--4xs);
+}
+
+.optionContent {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.menuItemEmoji {
+	font-size: var(--font-size--sm);
+	line-height: 1;
+}
+
+.globalOption {
+	position: relative;
+	margin-bottom: var(--spacing--sm);
+	overflow: visible;
+
+	&::after {
+		content: '';
+		position: absolute;
+		bottom: calc(var(--spacing--2xs) * -1);
+		left: var(--spacing--xs);
+		right: var(--spacing--xs);
+		height: 1px;
+		background-color: var(--color--foreground);
+	}
 }
 </style>

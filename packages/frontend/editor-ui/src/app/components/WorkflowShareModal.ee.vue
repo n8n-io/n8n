@@ -24,6 +24,10 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { useI18n } from '@n8n/i18n';
 import { telemetry } from '@/app/plugins/telemetry';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { I18nT } from 'vue-i18n';
 
 import { N8nButton, N8nInfoTip, N8nText } from '@n8n/design-system';
@@ -87,7 +91,14 @@ const modalTitle = computed(() => {
 	);
 });
 
-const workflowPermissions = computed(() => getResourcePermissions(workflow.value?.scopes).workflow);
+const workflowPermissions = computed(() => {
+	// For existing workflows, scopes come from the API response on the workflow object.
+	// For new unsaved workflows, scopes are only in the workflowDocument store.
+	const scopes =
+		workflow.value?.scopes ??
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflow.value.id)).scopes;
+	return getResourcePermissions(scopes).workflow;
+});
 
 const isPersonalSpaceRestricted = computed(
 	() =>

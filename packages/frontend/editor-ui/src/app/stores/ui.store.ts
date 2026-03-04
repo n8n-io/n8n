@@ -34,6 +34,7 @@ import {
 	STOP_MANY_EXECUTIONS_MODAL_KEY,
 	WORKFLOW_DESCRIPTION_MODAL_KEY,
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
+	WORKFLOW_HISTORY_DIFF_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 	WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY,
 	CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
@@ -160,6 +161,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				WORKFLOW_DESCRIPTION_MODAL_KEY,
 				WORKFLOW_PUBLISH_MODAL_KEY,
 				WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
+				WORKFLOW_HISTORY_DIFF_MODAL_KEY,
 				WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 				WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY,
 				CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
@@ -521,9 +523,13 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
 	};
 
-	const openNewCredential = (type: string, showAuthOptions = false) => {
+	const openNewCredential = (type: string, showAuthOptions = false, forceManualMode = false) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, type);
 		setShowAuthSelector(CREDENTIAL_EDIT_MODAL_KEY, showAuthOptions);
+		modalsById.value[CREDENTIAL_EDIT_MODAL_KEY] = {
+			...modalsById.value[CREDENTIAL_EDIT_MODAL_KEY],
+			forceManualMode,
+		} as NewCredentialsModal;
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
 	};

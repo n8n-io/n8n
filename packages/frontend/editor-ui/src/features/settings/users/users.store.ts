@@ -73,6 +73,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 
 	const isAdmin = computed(() => _isAdmin(currentUser.value));
 
+	const isAdminOrOwner = computed(() => isInstanceOwner.value || isAdmin.value);
+
 	const mfaEnabled = computed(() => currentUser.value?.mfaEnabled ?? false);
 
 	const globalRoleName = computed(() => currentUser.value?.role ?? 'default');
@@ -459,6 +461,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		isDefaultUser,
 		isInstanceOwner,
 		isAdmin,
+		isAdminOrOwner,
 		mfaEnabled,
 		globalRoleName,
 		personalizedNodeTypes,

@@ -195,7 +195,12 @@ const isChatInputDisabled = computed(() => {
 	return isInputDisabled.value || builderStore.shouldDisableChatInput;
 });
 
-const { showReviewChanges, editedNodesCount, isLoadingDiff, openDiffView } = useReviewChanges();
+const { showReviewChanges, nodeChanges, isExpanded, toggleExpanded, openDiffView } =
+	useReviewChanges();
+
+function onSelectChangedNode(nodeId: string) {
+	canvasEventBus.emit('nodes:select', { ids: [nodeId], panIntoView: true });
+}
 
 const codeDiffWorkflowState = injectWorkflowState();
 
@@ -423,8 +428,16 @@ watch(
 			builderStore.initialGeneration = false;
 		}
 
-		// Zoom to fit all nodes after generation completes
+		// Tidy up all nodes and zoom to fit after generation completes
 		if (accumulatedNodeIdsToTidyUp.value.length > 0) {
+			accumulatedNodeIdsToTidyUp.value = [];
+			await nextTick();
+			canvasEventBus.emit('tidyUp', {
+				source: 'builder-update',
+				trackEvents: false,
+				trackHistory: false,
+				trackBulk: false,
+			});
 			await nextTick();
 			canvasEventBus.emit('fitView');
 		}
@@ -550,9 +563,11 @@ defineExpose({
 			<template #inputHeader>
 				<ReviewChangesBanner
 					v-if="showReviewChanges"
-					:edited-nodes-count="editedNodesCount"
-					:loading="isLoadingDiff"
-					@click="openDiffView"
+					:node-changes="nodeChanges"
+					:expanded="isExpanded"
+					@toggle="toggleExpanded"
+					@open-diff="openDiffView"
+					@select-node="onSelectChangedNode"
 				/>
 				<Transition v-else name="slide">
 					<NotificationPermissionBanner v-if="shouldShowNotificationBanner" />

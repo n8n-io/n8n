@@ -9,6 +9,7 @@ import type { ActiveExecutions } from '@/active-executions';
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
+import type { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';
 import type { ExecutionRequest } from '@/executions/execution.types';
 import { ScalingService } from '@/scaling/scaling.service';
@@ -22,6 +23,7 @@ describe('ExecutionService', () => {
 	const waitTracker = mock<WaitTracker>();
 	const concurrencyControl = mock<ConcurrencyControlService>();
 	const globalConfig = Container.get(GlobalConfig);
+	const executionRedactionServiceProxy = mock<ExecutionRedactionServiceProxy>();
 
 	const executionService = new ExecutionService(
 		globalConfig,
@@ -39,11 +41,68 @@ describe('ExecutionService', () => {
 		mock(),
 		mock(),
 		mock(),
+		executionRedactionServiceProxy,
 	);
 
 	beforeEach(() => {
 		globalConfig.executions.mode = 'regular';
 		jest.clearAllMocks();
+	});
+
+	describe('findOne', () => {
+		it('should parse redactExecutionData from query string and pass to redaction proxy', async () => {
+			/**
+			 * Arrange
+			 */
+			const execution = mock<IExecutionResponse>({ id: '123', data: { resultData: {} } });
+			executionRepository.findIfSharedUnflatten.mockResolvedValue(execution);
+			executionRedactionServiceProxy.processExecution.mockResolvedValue(execution);
+
+			const req = mock<ExecutionRequest.GetOne>({
+				params: { id: '123' },
+				query: { redactExecutionData: 'true' } as unknown as Record<string, string>,
+			});
+
+			/**
+			 * Act
+			 */
+			await executionService.findOne(req, ['workflow-1']);
+
+			/**
+			 * Assert
+			 */
+			expect(executionRedactionServiceProxy.processExecution).toHaveBeenCalledWith(
+				execution,
+				expect.objectContaining({ redactExecutionData: true }),
+			);
+		});
+
+		it('should leave redactExecutionData undefined when query param is absent', async () => {
+			/**
+			 * Arrange
+			 */
+			const execution = mock<IExecutionResponse>({ id: '123', data: { resultData: {} } });
+			executionRepository.findIfSharedUnflatten.mockResolvedValue(execution);
+			executionRedactionServiceProxy.processExecution.mockResolvedValue(execution);
+
+			const req = mock<ExecutionRequest.GetOne>({
+				params: { id: '123' },
+				query: {},
+			});
+
+			/**
+			 * Act
+			 */
+			await executionService.findOne(req, ['workflow-1']);
+
+			/**
+			 * Assert
+			 */
+			expect(executionRedactionServiceProxy.processExecution).toHaveBeenCalledWith(
+				execution,
+				expect.objectContaining({ redactExecutionData: undefined }),
+			);
+		});
 	});
 
 	describe('retry', () => {

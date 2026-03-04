@@ -111,6 +111,18 @@ describe('constants', () => {
 			expect(AI_OPTIONAL_ARRAY_TYPES.has('ai_languageModel')).toBe(true);
 		});
 
+		it('includes ai_document', () => {
+			expect(AI_OPTIONAL_ARRAY_TYPES.has('ai_document')).toBe(true);
+		});
+
+		it('includes ai_embedding', () => {
+			expect(AI_OPTIONAL_ARRAY_TYPES.has('ai_embedding')).toBe(true);
+		});
+
+		it('includes ai_reranker', () => {
+			expect(AI_OPTIONAL_ARRAY_TYPES.has('ai_reranker')).toBe(true);
+		});
+
 		it('does not include ai_tool', () => {
 			expect(AI_OPTIONAL_ARRAY_TYPES.has('ai_tool')).toBe(false);
 		});

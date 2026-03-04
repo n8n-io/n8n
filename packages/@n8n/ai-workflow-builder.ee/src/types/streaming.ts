@@ -7,6 +7,7 @@ export interface AgentMessageChunk {
 	role: 'assistant';
 	type: 'message';
 	text: string;
+	codeSnippet?: string;
 }
 
 /**
@@ -85,6 +86,27 @@ export interface MessagesCompactedChunk {
 }
 
 /**
+ * Summary chunk for structured summary messages from the SDK
+ */
+export interface SummaryChunk {
+	role: 'assistant';
+	type: 'summary';
+	title: string;
+	content: string;
+}
+
+/**
+ * Agent suggestion chunk for structured suggestion messages from the SDK
+ */
+export interface AgentSuggestionChunk {
+	role: 'assistant';
+	type: 'agent-suggestion';
+	title: string;
+	text: string;
+	suggestionId?: string;
+}
+
+/**
  * Union type for all stream chunks
  */
 export type StreamChunk =
@@ -96,7 +118,9 @@ export type StreamChunk =
 	| QuestionsChunk
 	| PlanChunk
 	| CodeDiffChunk
-	| MessagesCompactedChunk;
+	| MessagesCompactedChunk
+	| SummaryChunk
+	| AgentSuggestionChunk;
 
 /**
  * Stream output containing messages

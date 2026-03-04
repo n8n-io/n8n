@@ -24,6 +24,10 @@ import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import type { IWorkflowToShare } from '@/Interface';
 import { saveAs } from 'file-saver';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import type { CommandGroup, CommandBarItem } from '../types';
 import uniqBy from 'lodash/uniqBy';
 import { nodeViewEventBus } from '@/app/event-bus';
@@ -59,6 +63,10 @@ export function useWorkflowCommands(): CommandGroup {
 	const sourceControlStore = useSourceControlStore();
 	const collaborationStore = useCollaborationStore();
 
+	const workflowDocumentStore = computed(() =>
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+	);
+
 	const router = useRouter();
 
 	const runWorkflow = useRunWorkflow({ router });
@@ -72,7 +80,7 @@ export function useWorkflowCommands(): CommandGroup {
 	const isArchived = computed(() => workflowsStore.workflow.isArchived);
 
 	const workflowPermissions = computed(
-		() => getResourcePermissions(workflowsStore.workflow.scopes).workflow,
+		() => getResourcePermissions(workflowDocumentStore.value.scopes).workflow,
 	);
 
 	const hasPermission = (permission: keyof typeof workflowPermissions.value) =>
