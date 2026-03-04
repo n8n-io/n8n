@@ -1,16 +1,16 @@
 import { Get, Post, RestController } from '@n8n/decorators';
-import type { AuthenticatedRequest } from '@n8n/db';
+import type { Request } from 'express';
 import { compileWorkflowJS, COMPILER_EXAMPLES } from '@n8n/workflow-sdk';
 
 @RestController('/temporary')
 export class TemporaryController {
-	@Post('/parse-code')
-	async parseCode(req: AuthenticatedRequest) {
+	@Post('/parse-code', { skipAuth: true })
+	async parseCode(req: Request) {
 		const { code } = req.body as { code: string };
 		return compileWorkflowJS(code);
 	}
 
-	@Get('/examples')
+	@Get('/examples', { skipAuth: true })
 	async getExamples() {
 		return COMPILER_EXAMPLES;
 	}
