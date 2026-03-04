@@ -43,17 +43,14 @@ export class WorkflowBuilderSessionRepository
 
 	async saveSession(threadId: string, data: StoredSession): Promise<void> {
 		const { workflowId, userId } = this.parseThreadId(threadId);
+		const messages = mapChatMessagesToStoredMessages(data.messages);
+		const previousSummary = data.previousSummary ?? null;
 
-		await this.upsert(
-			{
-				id: randomUUID(),
-				workflowId,
-				userId,
-				messages: mapChatMessagesToStoredMessages(data.messages),
-				previousSummary: data.previousSummary ?? null,
-			},
-			['workflowId', 'userId'],
-		);
+		const result = await this.update({ workflowId, userId }, { messages, previousSummary });
+
+		if (result.affected === 0) {
+			await this.insert({ id: randomUUID(), workflowId, userId, messages, previousSummary });
+		}
 	}
 
 	async deleteSession(threadId: string): Promise<void> {

@@ -29,7 +29,8 @@ describe('WorkflowBuilderSessionRepository', () => {
 
 	beforeEach(() => {
 		mockClear(entityManager.findOne);
-		mockClear(entityManager.upsert);
+		mockClear(entityManager.update);
+		mockClear(entityManager.insert);
 		mockClear(entityManager.delete);
 
 		// Create repository with mocked data source
@@ -134,9 +135,9 @@ describe('WorkflowBuilderSessionRepository', () => {
 	describe('saveSession', () => {
 		const validThreadId = 'workflow-wf123-user-user456';
 
-		it('should upsert session with serialized messages', async () => {
+		it('should update existing session with serialized messages', async () => {
 			const messages = [new HumanMessage('Hello'), new AIMessage('Hi there!')];
-			entityManager.upsert.mockResolvedValueOnce(undefined as never);
+			entityManager.update.mockResolvedValueOnce({ affected: 1 } as never);
 
 			await repository.saveSession(validThreadId, {
 				messages,
@@ -144,33 +145,51 @@ describe('WorkflowBuilderSessionRepository', () => {
 				updatedAt: new Date(),
 			});
 
-			expect(entityManager.upsert).toHaveBeenCalledWith(
+			expect(entityManager.update).toHaveBeenCalledWith(
 				WorkflowBuilderSession,
+				{ workflowId: 'wf123', userId: 'user456' },
 				{
-					id: expect.any(String),
-					workflowId: 'wf123',
-					userId: 'user456',
-					messages: expect.any(Array), // Serialized messages
+					messages: expect.any(Array),
 					previousSummary: 'Summary',
 				},
-				['workflowId', 'userId'],
 			);
+			expect(entityManager.insert).not.toHaveBeenCalled();
+		});
+
+		it('should insert new session when no existing row', async () => {
+			const messages = [new HumanMessage('Hello')];
+			entityManager.update.mockResolvedValueOnce({ affected: 0 } as never);
+			entityManager.insert.mockResolvedValueOnce(undefined as never);
+
+			await repository.saveSession(validThreadId, {
+				messages,
+				previousSummary: 'Summary',
+				updatedAt: new Date(),
+			});
+
+			expect(entityManager.insert).toHaveBeenCalledWith(WorkflowBuilderSession, {
+				id: expect.any(String),
+				workflowId: 'wf123',
+				userId: 'user456',
+				messages: expect.any(Array),
+				previousSummary: 'Summary',
+			});
 		});
 
 		it('should set previousSummary to null when undefined', async () => {
-			entityManager.upsert.mockResolvedValueOnce(undefined as never);
+			entityManager.update.mockResolvedValueOnce({ affected: 1 } as never);
 
 			await repository.saveSession(validThreadId, {
 				messages: [],
 				updatedAt: new Date(),
 			});
 
-			expect(entityManager.upsert).toHaveBeenCalledWith(
+			expect(entityManager.update).toHaveBeenCalledWith(
 				WorkflowBuilderSession,
+				{ workflowId: 'wf123', userId: 'user456' },
 				expect.objectContaining({
 					previousSummary: null,
 				}),
-				['workflowId', 'userId'],
 			);
 		});
 
