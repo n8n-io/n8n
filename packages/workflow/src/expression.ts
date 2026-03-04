@@ -248,14 +248,6 @@ export class Expression {
 		return 'current';
 	}
 
-	/**
-	 * Get the VM evaluator instance for direct testing.
-	 * @internal
-	 */
-	static getVmEvaluator(): IExpressionEvaluator | undefined {
-		return this.vmEvaluator;
-	}
-
 	static initializeGlobalContext(data: IDataObject) {
 		/**
 		 * Denylist
