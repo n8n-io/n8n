@@ -3,7 +3,10 @@ import { nanoid } from 'nanoid';
 import { test, expect } from '../../fixtures/base';
 import { BASE_PERFORMANCE_PLANS } from 'n8n-containers/performance-plans';
 import { preloadQueue, type PayloadSize } from '../../utils/kafka-load-helper';
-import { buildKafkaTriggeredWorkflow } from '../../utils/kafka-workflow-builder';
+import {
+	buildKafkaTriggeredWorkflow,
+	type NodeOutputSize,
+} from '../../utils/kafka-workflow-builder';
 import { attachMetric } from '../../utils/performance-helper';
 import {
 	waitForThroughput,
@@ -31,6 +34,7 @@ interface ThroughputScenario {
 	nodeCount: number;
 	messageCount: number;
 	payloadSize: PayloadSize;
+	nodeOutputSize: NodeOutputSize;
 	partitions: number;
 	timeoutMs: number;
 }
@@ -41,6 +45,7 @@ const SCENARIOS: ThroughputScenario[] = [
 		nodeCount: 1,
 		messageCount: 1_000,
 		payloadSize: '1KB',
+		nodeOutputSize: 'noop',
 		partitions: 3,
 		timeoutMs: 120_000,
 	},
@@ -49,6 +54,7 @@ const SCENARIOS: ThroughputScenario[] = [
 		nodeCount: 10,
 		messageCount: 5_000,
 		payloadSize: '1KB',
+		nodeOutputSize: 'noop',
 		partitions: 3,
 		timeoutMs: 300_000,
 	},
@@ -57,6 +63,7 @@ const SCENARIOS: ThroughputScenario[] = [
 		nodeCount: 30,
 		messageCount: 5_000,
 		payloadSize: '1KB',
+		nodeOutputSize: 'noop',
 		partitions: 3,
 		timeoutMs: 300_000,
 	},
@@ -65,6 +72,25 @@ const SCENARIOS: ThroughputScenario[] = [
 		nodeCount: 60,
 		messageCount: 5_000,
 		payloadSize: '1KB',
+		nodeOutputSize: 'noop',
+		partitions: 3,
+		timeoutMs: 600_000,
+	},
+	{
+		name: 'kafka-10nodes-10kb-5k',
+		nodeCount: 10,
+		messageCount: 5_000,
+		payloadSize: '1KB',
+		nodeOutputSize: '10KB',
+		partitions: 3,
+		timeoutMs: 300_000,
+	},
+	{
+		name: 'kafka-10nodes-100kb-5k',
+		nodeCount: 10,
+		messageCount: 5_000,
+		payloadSize: '1KB',
+		nodeOutputSize: '100KB',
 		partitions: 3,
 		timeoutMs: 600_000,
 	},
@@ -109,6 +135,7 @@ test.describe(
 					credentialId: credential.id,
 					credentialName: credential.name,
 					nodeCount: scenario.nodeCount,
+					nodeOutputSize: scenario.nodeOutputSize,
 				});
 
 				const { workflowId, createdWorkflow } =
@@ -144,8 +171,9 @@ test.describe(
 				await kafka.waitForConsumerGroup(groupId, { timeoutMs: 30_000 });
 
 				// 8. Wait for throughput
+				const nodeLabel = scenario.nodeOutputSize === 'noop' ? 'noop' : scenario.nodeOutputSize;
 				console.log(
-					`[BENCH] Draining ${messageCount} messages through ${scenario.nodeCount}-node workflow (timeout: ${scenario.timeoutMs}ms)`,
+					`[BENCH] Draining ${messageCount} messages through ${scenario.nodeCount}-node (${nodeLabel}) workflow (timeout: ${scenario.timeoutMs}ms)`,
 				);
 				const result = await waitForThroughput(obs.metrics, {
 					expectedCount: messageCount,
@@ -170,7 +198,7 @@ test.describe(
 				console.log(
 					`[BENCH RESULT] ${scenario.name}\n` +
 						`  Plan: enterprise (${plan.memory}GB RAM, ${plan.cpu} CPU)\n` +
-						`  Nodes: ${scenario.nodeCount} | Messages: ${messageCount}\n` +
+						`  Nodes: ${scenario.nodeCount} (${nodeLabel}) | Messages: ${messageCount}\n` +
 						`  Completed: ${result.totalCompleted}/${messageCount}\n` +
 						`  Throughput: ${result.avgExecPerSec.toFixed(1)} exec/s | ${result.actionsPerSec.toFixed(1)} actions/s\n` +
 						`  Peak: ${result.peakExecPerSec.toFixed(1)} exec/s | ${result.peakActionsPerSec.toFixed(1)} actions/s\n` +
