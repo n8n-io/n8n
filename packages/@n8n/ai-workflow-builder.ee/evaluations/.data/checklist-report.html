@@ -58,6 +58,8 @@
 	.badge-complexity-complex { background: #da363333; color: #f85149; }
 	.badge-tag { background: #30363d; color: #c9d1d9; font-size: 11px; padding: 1px 6px; margin: 1px; display: inline-block; }
 	.tags-cell { max-width: 180px; }
+	.tool-calls-cell { max-width: 250px; line-height: 1.6; }
+	.badge-tool { background: #1f6feb33; color: #58a6ff; font-size: 11px; padding: 1px 6px; margin: 1px; display: inline-block; font-family: monospace; }
 	.result-row.sibling-highlight { border-left: 3px solid; }
 	n8n-demo { display: block; margin: 8px 0; min-height: 200px; }
 	.iteration-detail { margin-bottom: 4px; border: 1px solid #30363d; border-radius: 6px; }
@@ -89,7 +91,7 @@
 </head>
 <body>
 <h1>n8n Code Builder — Checklist Eval Report</h1>
-<p class="subtitle">Generated 3/4/2026, 12:34:58 PM — 2 run(s)</p>
+<p class="subtitle">Generated 3/4/2026, 1:20:46 PM — 2 run(s)</p>
 
 <div class="summary-grid">
 	<div class="summary-card">
@@ -148,6 +150,7 @@
 							<th>Success</th>
 							<th>Score</th>
 							<th>Iterations</th>
+							<th>Tool Calls</th>
 							<th>Time</th>
 							<th>In Tokens</th>
 							<th>Out Tokens</th>
@@ -163,13 +166,14 @@
 			<td class="good">PASS</td>
 			<td class="good">5/5 (100%)</td>
 			<td>3</td>
+			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span></td>
 			<td>19.8s</td>
 			<td>16</td>
 			<td>1,013</td>
 			<td>124</td>
 		</tr>
 		<tr id="detail-0" class="detail-row" data-complexity="simple" data-prompt-hash="7sx6yi" style="display:none">
-			<td colspan="10">
+			<td colspan="11">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -1540,6 +1544,7 @@ export type SetV34ManualNode = {
 							<th>Success</th>
 							<th>Score</th>
 							<th>Iterations</th>
+							<th>Tool Calls</th>
 							<th>Time</th>
 							<th>In Tokens</th>
 							<th>Out Tokens</th>
@@ -1555,13 +1560,14 @@ export type SetV34ManualNode = {
 			<td class="good">PASS</td>
 			<td class="good">5/5 (100%)</td>
 			<td>3</td>
+			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span> <span class="badge badge-tool">get_node_types</span></td>
 			<td>17.4s</td>
 			<td>16</td>
 			<td>1,013</td>
 			<td>124</td>
 		</tr>
 		<tr id="detail-1000" class="detail-row" data-complexity="simple" data-prompt-hash="7sx6yi" style="display:none">
-			<td colspan="10">
+			<td colspan="11">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -2074,13 +2080,14 @@ export type SetV34ManualNode = {
 			<td class="good">PASS</td>
 			<td class="good">3/3 (100%)</td>
 			<td>3</td>
+			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span> <span class="badge badge-tool">get_node_types</span></td>
 			<td>16.0s</td>
 			<td>16</td>
 			<td>866</td>
 			<td>98</td>
 		</tr>
 		<tr id="detail-1001" class="detail-row" data-complexity="simple" data-prompt-hash="86xo6i" style="display:none">
-			<td colspan="10">
+			<td colspan="11">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -2505,13 +2512,14 @@ export type SetV34ManualNode = {
 			<td class="good">PASS</td>
 			<td class="good">7/7 (100%)</td>
 			<td>14</td>
+			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span> <span class="badge badge-tool">get_node_types</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">validate_workflow</span> <span class="badge badge-tool">validate_workflow</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span></td>
 			<td>1.3m</td>
 			<td>34</td>
 			<td>4,965</td>
 			<td>199</td>
 		</tr>
 		<tr id="detail-1002" class="detail-row" data-complexity="simple" data-prompt-hash="s48qsl" style="display:none">
-			<td colspan="10">
+			<td colspan="11">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>

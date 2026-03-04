@@ -108,6 +108,12 @@ function renderResultRow(result: AgentResult, index: number): string {
 
 	const promptHash = simpleHash(result.prompt);
 
+	// Collect all tool calls across iterations
+	const allToolCalls = result.iterations.flatMap((iter) => iter.toolCalls);
+	const toolCallSummary = allToolCalls
+		.map((tc) => `<span class="badge badge-tool">${escapeHtml(tc.name)}</span>`)
+		.join(' ');
+
 	return `
 		<tr class="result-row" data-complexity="${result.complexity ?? 'medium'}" data-tags="${escapeHtml((result.tags ?? []).join(','))}" data-prompt-hash="${promptHash}" onclick="toggleDetail('detail-${index}', '${promptHash}')">
 			<td><span class="badge badge-complexity-${result.complexity ?? 'medium'}">${(result.complexity ?? 'medium').toUpperCase()}</span></td>
@@ -116,13 +122,14 @@ function renderResultRow(result: AgentResult, index: number): string {
 			<td class="${successClass}">${result.success ? 'PASS' : 'FAIL'}</td>
 			<td class="${scoreClass}">${passedCount}/${totalCount} (${formatScore(result.checklistScore)})</td>
 			<td>${result.iterations.length}</td>
+			<td class="tool-calls-cell">${toolCallSummary || '<span class="no-tools">-</span>'}</td>
 			<td>${formatDuration(result.totalTimeMs)}</td>
 			<td>${result.totalInputTokens.toLocaleString()}</td>
 			<td>${result.totalOutputTokens.toLocaleString()}</td>
 			<td>${result.linesOfCode}</td>
 		</tr>
 		<tr id="detail-${index}" class="detail-row" data-complexity="${result.complexity ?? 'medium'}" data-prompt-hash="${promptHash}" style="display:none">
-			<td colspan="10">
+			<td colspan="11">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -229,6 +236,7 @@ function renderRunSection(run: Run, runIndex: number): string {
 							<th>Success</th>
 							<th>Score</th>
 							<th>Iterations</th>
+							<th>Tool Calls</th>
 							<th>Time</th>
 							<th>In Tokens</th>
 							<th>Out Tokens</th>
@@ -314,6 +322,8 @@ export function generateReport(runs: Run[]): string {
 	.badge-complexity-complex { background: #da363333; color: #f85149; }
 	.badge-tag { background: #30363d; color: #c9d1d9; font-size: 11px; padding: 1px 6px; margin: 1px; display: inline-block; }
 	.tags-cell { max-width: 180px; }
+	.tool-calls-cell { max-width: 250px; line-height: 1.6; }
+	.badge-tool { background: #1f6feb33; color: #58a6ff; font-size: 11px; padding: 1px 6px; margin: 1px; display: inline-block; font-family: monospace; }
 	.result-row.sibling-highlight { border-left: 3px solid; }
 	n8n-demo { display: block; margin: 8px 0; min-height: 200px; }
 	.iteration-detail { margin-bottom: 4px; border: 1px solid #30363d; border-radius: 6px; }
