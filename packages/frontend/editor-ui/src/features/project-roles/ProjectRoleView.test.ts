@@ -492,17 +492,127 @@ describe('ProjectRoleView', () => {
 		});
 	});
 
+	describe('workflow:execute scope dependency', () => {
+		it('should render workflow:execute checkbox in the UI', async () => {
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() =>
+				expect(getByTestId('scope-checkbox-workflow:execute')).toBeInTheDocument(),
+			);
+		});
+
+		it('should auto-check workflow:read when workflow:execute is checked and workflow:read is unchecked', async () => {
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() =>
+				expect(getByTestId('scope-checkbox-workflow:execute')).toBeInTheDocument(),
+			);
+
+			const executeCheckbox = getByTestId('scope-checkbox-workflow:execute');
+			const readCheckbox = getByTestId('scope-checkbox-workflow:read');
+
+			// workflow:read starts checked (it's in defaultScopes), uncheck it first
+			await userEvent.click(readCheckbox);
+			expect(readCheckbox).not.toBeChecked();
+			expect(executeCheckbox).not.toBeChecked();
+
+			// Now check workflow:execute — should auto-check workflow:read
+			await userEvent.click(executeCheckbox);
+			expect(executeCheckbox).toBeChecked();
+			expect(readCheckbox).toBeChecked();
+		});
+
+		it('should not double-add workflow:read when workflow:execute is checked and workflow:read is already checked', async () => {
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() =>
+				expect(getByTestId('scope-checkbox-workflow:execute')).toBeInTheDocument(),
+			);
+
+			const executeCheckbox = getByTestId('scope-checkbox-workflow:execute');
+			const readCheckbox = getByTestId('scope-checkbox-workflow:read');
+
+			// workflow:read is already checked (it's in defaultScopes)
+			expect(readCheckbox).toBeChecked();
+
+			await userEvent.click(executeCheckbox);
+			expect(executeCheckbox).toBeChecked();
+			// workflow:read should still be checked, not toggled off
+			expect(readCheckbox).toBeChecked();
+		});
+
+		it('should auto-uncheck workflow:execute when workflow:read is unchecked', async () => {
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() =>
+				expect(getByTestId('scope-checkbox-workflow:execute')).toBeInTheDocument(),
+			);
+
+			const executeCheckbox = getByTestId('scope-checkbox-workflow:execute');
+			const readCheckbox = getByTestId('scope-checkbox-workflow:read');
+
+			// First enable workflow:execute
+			await userEvent.click(executeCheckbox);
+			expect(executeCheckbox).toBeChecked();
+			expect(readCheckbox).toBeChecked();
+
+			// Uncheck workflow:read — should auto-uncheck workflow:execute
+			await userEvent.click(readCheckbox);
+			expect(readCheckbox).not.toBeChecked();
+			expect(executeCheckbox).not.toBeChecked();
+		});
+
+		it('should not affect workflow:execute when workflow:read is unchecked and workflow:execute was not checked', async () => {
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() =>
+				expect(getByTestId('scope-checkbox-workflow:execute')).toBeInTheDocument(),
+			);
+
+			const executeCheckbox = getByTestId('scope-checkbox-workflow:execute');
+			const readCheckbox = getByTestId('scope-checkbox-workflow:read');
+
+			// workflow:execute is not checked; uncheck workflow:read
+			expect(executeCheckbox).not.toBeChecked();
+			await userEvent.click(readCheckbox);
+			expect(readCheckbox).not.toBeChecked();
+			expect(executeCheckbox).not.toBeChecked();
+		});
+
+		it('should NOT auto-toggle workflow:execute when workflow:update is toggled', async () => {
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() =>
+				expect(getByTestId('scope-checkbox-workflow:update')).toBeInTheDocument(),
+			);
+
+			const updateCheckbox = getByTestId('scope-checkbox-workflow:update');
+			const executeCheckbox = getByTestId('scope-checkbox-workflow:execute');
+
+			expect(executeCheckbox).not.toBeChecked();
+
+			await userEvent.click(updateCheckbox);
+			expect(updateCheckbox).toBeChecked();
+			// workflow:execute must remain unchanged
+			expect(executeCheckbox).not.toBeChecked();
+
+			await userEvent.click(updateCheckbox);
+			expect(updateCheckbox).not.toBeChecked();
+			expect(executeCheckbox).not.toBeChecked();
+		});
+	});
+
 	describe('External Secrets Scopes', () => {
-		it('should not render externalSecretsProvider scope type when forProjects is off', () => {
+		it('should not render externalSecretsProvider scope type when roleBasedAccess is off', () => {
 			const { queryByText } = renderComponent();
 
 			expect(queryByText('Secret stores')).not.toBeInTheDocument();
 			expect(queryByText('Secrets')).not.toBeInTheDocument();
 		});
 
-		it('should render externalSecretsProvider scope type when forProjects is on', () => {
+		it('should render externalSecretsProvider scope type when roleBasedAccess is on', () => {
 			settingsStore.moduleSettings = {
-				'external-secrets': { forProjects: true, multipleConnections: true },
+				'external-secrets': { roleBasedAccess: true, forProjects: true, multipleConnections: true },
 			};
 			const { getByText } = renderComponent();
 
@@ -510,9 +620,9 @@ describe('ProjectRoleView', () => {
 			expect(getByText('Secrets')).toBeInTheDocument();
 		});
 
-		it('should show secrets checkboxes when forProjects is on', async () => {
+		it('should show secrets checkboxes when roleBasedAccess is on', async () => {
 			settingsStore.moduleSettings = {
-				'external-secrets': { forProjects: true, multipleConnections: true },
+				'external-secrets': { roleBasedAccess: true, forProjects: true, multipleConnections: true },
 			};
 			const { getByTestId } = renderComponent();
 

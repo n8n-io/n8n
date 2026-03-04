@@ -3,7 +3,7 @@ import type { StoryFn } from '@storybook/vue3-vite';
 import N8nBadge from './Badge.vue';
 
 export default {
-	title: 'Atoms/Badge',
+	title: 'Core/Badge',
 	component: N8nBadge,
 	argTypes: {
 		theme: {
