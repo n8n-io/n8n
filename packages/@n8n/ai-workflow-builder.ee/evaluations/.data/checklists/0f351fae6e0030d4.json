@@ -1,0 +1,80 @@
+{
+  "prompt": "Create a CRM lead automation workflow with two entry points: (1) an HTTP POST webhook at /leads for web form submissions, and (2) a Gmail trigger polling every 10 minutes for inbound sales emails. For the webhook path: validate required fields (name, email, company), check for duplicates by email lookup, enrich the lead using Clearbit API to get company size and industry, then score the lead — hot leads (score >80) get a Slack alert to the sales channel plus a follow-up email via Gmail, warm leads (40-80) get added to a nurture sequence with a 3-day wait timer then a follow-up email, cold leads (<40) get tagged and added to a newsletter list. For the email trigger path: classify email intent (purchase inquiry, support, partnership) using an AI classification step, route purchase inquiries to the lead scoring pipeline, support requests to Zendesk ticket creation, and partnership emails to a Slack channel. Both paths should log activities to a Google Sheets audit trail and sync lead status back to the CRM.",
+  "checklist": [
+    {
+      "id": 1,
+      "category": "structure",
+      "item": "Has an HTTP POST webhook trigger at /leads for web form submissions"
+    },
+    {
+      "id": 2,
+      "category": "structure",
+      "item": "Has a Gmail trigger polling every 10 minutes for inbound sales emails"
+    },
+    {
+      "id": 3,
+      "category": "structure",
+      "item": "Webhook path validates required fields: name, email, and company"
+    },
+    {
+      "id": 4,
+      "category": "structure",
+      "item": "Webhook path checks for duplicate leads by performing an email lookup before proceeding"
+    },
+    {
+      "id": 5,
+      "category": "structure",
+      "item": "Webhook path enriches the lead via Clearbit API to retrieve company size and industry"
+    },
+    {
+      "id": 6,
+      "category": "structure",
+      "item": "Webhook path branches based on lead score into three tiers: hot (score >80), warm (score 40-80), and cold (score <40)"
+    },
+    {
+      "id": 7,
+      "category": "structure",
+      "item": "Hot lead branch sends a Slack alert to the sales channel and sends a follow-up email via Gmail"
+    },
+    {
+      "id": 8,
+      "category": "structure",
+      "item": "Warm lead branch adds the lead to a nurture sequence, waits 3 days, then sends a follow-up email"
+    },
+    {
+      "id": 9,
+      "category": "structure",
+      "item": "Cold lead branch tags the lead and adds them to a newsletter list"
+    },
+    {
+      "id": 10,
+      "category": "structure",
+      "item": "Gmail trigger path uses an AI classification step to determine email intent: purchase inquiry, support, or partnership"
+    },
+    {
+      "id": 11,
+      "category": "structure",
+      "item": "Email path branches based on classified intent: purchase inquiries route to the lead scoring pipeline, support requests route to Zendesk ticket creation, and partnership emails route to a Slack channel"
+    },
+    {
+      "id": 12,
+      "category": "structure",
+      "item": "Both the webhook path and the Gmail path log activity to a spreadsheet-based audit trail"
+    },
+    {
+      "id": 13,
+      "category": "structure",
+      "item": "Both paths sync lead status back to the CRM after processing"
+    },
+    {
+      "id": 14,
+      "category": "data",
+      "item": "Clearbit enrichment result includes company size and industry fields used in lead scoring"
+    },
+    {
+      "id": 15,
+      "category": "data",
+      "item": "Audit trail log includes relevant activity data from both entry paths (e.g., lead email, source, score, action taken)"
+    }
+  ]
+}

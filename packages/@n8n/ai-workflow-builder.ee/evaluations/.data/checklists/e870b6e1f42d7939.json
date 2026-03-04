@@ -1,0 +1,40 @@
+{
+  "prompt": "Create a workflow with an HTTP GET endpoint at /health that checks a database connection status and returns either \"healthy\" or \"unhealthy\" with the current timestamp.",
+  "checklist": [
+    {
+      "id": 1,
+      "category": "structure",
+      "item": "Has an HTTP GET trigger at the /health path"
+    },
+    {
+      "id": 2,
+      "category": "structure",
+      "item": "Includes a step that checks a database connection status"
+    },
+    {
+      "id": 3,
+      "category": "structure",
+      "item": "Branches based on whether the database connection check succeeds or fails"
+    },
+    {
+      "id": 4,
+      "category": "data",
+      "item": "Returns 'healthy' status when the database connection check succeeds"
+    },
+    {
+      "id": 5,
+      "category": "data",
+      "item": "Returns 'unhealthy' status when the database connection check fails"
+    },
+    {
+      "id": 6,
+      "category": "data",
+      "item": "Response includes the current timestamp regardless of health status"
+    },
+    {
+      "id": 7,
+      "category": "structure",
+      "item": "Sends an HTTP response back to the caller with the health check result"
+    }
+  ]
+}

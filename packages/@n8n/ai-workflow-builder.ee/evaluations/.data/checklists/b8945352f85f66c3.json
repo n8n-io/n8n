@@ -1,0 +1,50 @@
+{
+  "prompt": "Create a nutrition AI assistant agent that helps users track their meals. It should have three tools: (1) an \"analyze-food\" tool that takes a food description and returns nutritional data including calories, protein, carbs, and fat, (2) a \"log-meal\" tool that records a meal entry with the food name, nutritional values, and meal type (breakfast/lunch/dinner/snack), and (3) a \"get-daily-report\" tool that takes a date string and returns a daily nutrition summary with total calories, protein, carbs, fat, and meal count. The agent should be instructed to analyze food when users describe what they ate, log meals after analysis, and provide daily reports when asked.",
+  "checklist": [
+    {
+      "id": 1,
+      "category": "structure",
+      "item": "Has an AI agent configured as a nutrition assistant"
+    },
+    {
+      "id": 2,
+      "category": "structure",
+      "item": "Agent has exactly three tools: analyze-food, log-meal, and get-daily-report"
+    },
+    {
+      "id": 3,
+      "category": "data",
+      "item": "The analyze-food tool accepts a food description as input and returns nutritional data including calories, protein, carbs, and fat"
+    },
+    {
+      "id": 4,
+      "category": "data",
+      "item": "The log-meal tool accepts food name, nutritional values (calories, protein, carbs, fat), and meal type (breakfast, lunch, dinner, or snack) as inputs and records the meal entry"
+    },
+    {
+      "id": 5,
+      "category": "data",
+      "item": "The get-daily-report tool accepts a date string as input and returns a daily summary including total calories, total protein, total carbs, total fat, and meal count"
+    },
+    {
+      "id": 6,
+      "category": "data",
+      "item": "Agent instructions direct it to analyze food when users describe what they ate"
+    },
+    {
+      "id": 7,
+      "category": "data",
+      "item": "Agent instructions direct it to log meals after food analysis is complete"
+    },
+    {
+      "id": 8,
+      "category": "data",
+      "item": "Agent instructions direct it to provide daily nutrition reports when users request them"
+    },
+    {
+      "id": 9,
+      "category": "structure",
+      "item": "Agent uses a language model to process user messages and decide which tools to invoke"
+    }
+  ]
+}

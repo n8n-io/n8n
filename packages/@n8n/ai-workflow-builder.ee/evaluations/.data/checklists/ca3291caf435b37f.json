@@ -1,0 +1,55 @@
+{
+  "prompt": "Create a workflow triggered by POST at /upload that accepts a file ID in the request body. Read the binary file data, use OpenAI credentials to call an analysis API with the file content, store the analysis results (fileName, mimeType, analysis summary) in a 'file-analyses' data table, and return the analysis as JSON.",
+  "checklist": [
+    {
+      "id": 1,
+      "category": "structure",
+      "item": "Has HTTP POST trigger at /upload"
+    },
+    {
+      "id": 2,
+      "category": "data",
+      "item": "Accepts a file ID from the request body"
+    },
+    {
+      "id": 3,
+      "category": "structure",
+      "item": "Reads binary file data using the provided file ID"
+    },
+    {
+      "id": 4,
+      "category": "structure",
+      "item": "Calls an OpenAI analysis API with the file content"
+    },
+    {
+      "id": 5,
+      "category": "data",
+      "item": "Retrieves OpenAI credentials for the API call"
+    },
+    {
+      "id": 6,
+      "category": "structure",
+      "item": "Stores analysis results in a 'file-analyses' data table"
+    },
+    {
+      "id": 7,
+      "category": "data",
+      "item": "Stores the fileName field in the 'file-analyses' table record"
+    },
+    {
+      "id": 8,
+      "category": "data",
+      "item": "Stores the mimeType field in the 'file-analyses' table record"
+    },
+    {
+      "id": 9,
+      "category": "data",
+      "item": "Stores the analysis summary field in the 'file-analyses' table record"
+    },
+    {
+      "id": 10,
+      "category": "structure",
+      "item": "Returns the analysis result as a JSON response"
+    }
+  ]
+}

@@ -1,0 +1,70 @@
+{
+  "prompt": "Create a webhook-triggered workflow that generates personalized single-use Calendly scheduling links. The webhook POST endpoint receives the recipient's name, email, event type, and UTM source. The workflow should call the Calendly API to get the current user info, then get available event types, then create a single-use scheduling link via the Calendly scheduling_links API endpoint with recipient pre-fill parameters including name and email. After generating the link, log the details to a Google Sheets spreadsheet, send a Slack notification about the new link, and return the personalized booking URL in the webhook response.",
+  "checklist": [
+    {
+      "id": 1,
+      "category": "structure",
+      "item": "Has a webhook POST endpoint that triggers the workflow"
+    },
+    {
+      "id": 2,
+      "category": "data",
+      "item": "Webhook receives recipient's name, email, event type, and UTM source as input parameters"
+    },
+    {
+      "id": 3,
+      "category": "structure",
+      "item": "Calls the Calendly API to retrieve current user info"
+    },
+    {
+      "id": 4,
+      "category": "structure",
+      "item": "Calls the Calendly API to retrieve available event types"
+    },
+    {
+      "id": 5,
+      "category": "structure",
+      "item": "Calls the Calendly scheduling_links API endpoint to create a single-use scheduling link"
+    },
+    {
+      "id": 6,
+      "category": "data",
+      "item": "Scheduling link creation includes recipient pre-fill parameters for name and email"
+    },
+    {
+      "id": 7,
+      "category": "data",
+      "item": "Scheduling link is scoped to the specific event type provided in the webhook input"
+    },
+    {
+      "id": 8,
+      "category": "structure",
+      "item": "Logs the generated link details to a spreadsheet"
+    },
+    {
+      "id": 9,
+      "category": "data",
+      "item": "Spreadsheet log includes recipient name, email, event type, UTM source, and the generated booking URL"
+    },
+    {
+      "id": 10,
+      "category": "structure",
+      "item": "Sends a Slack notification about the newly generated scheduling link"
+    },
+    {
+      "id": 11,
+      "category": "data",
+      "item": "Slack notification includes details about the new link (e.g., recipient name, email, and booking URL)"
+    },
+    {
+      "id": 12,
+      "category": "structure",
+      "item": "Returns the personalized booking URL in the webhook response"
+    },
+    {
+      "id": 13,
+      "category": "data",
+      "item": "Retrieves appropriate Calendly API credentials for all Calendly API calls"
+    }
+  ]
+}

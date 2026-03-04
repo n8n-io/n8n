@@ -1,0 +1,50 @@
+{
+  "prompt": "Create a workflow with a form trigger at /feedback that collects name, email, rating (dropdown: 1-5), and comments. Store each submission in a 'feedback' data table and return a thank-you HTML page.",
+  "checklist": [
+    {
+      "id": 1,
+      "category": "structure",
+      "item": "Has a form trigger at the path /feedback"
+    },
+    {
+      "id": 2,
+      "category": "data",
+      "item": "Form has a required name field"
+    },
+    {
+      "id": 3,
+      "category": "data",
+      "item": "Form has a required email field"
+    },
+    {
+      "id": 4,
+      "category": "data",
+      "item": "Form has a rating field implemented as a dropdown with options 1 through 5"
+    },
+    {
+      "id": 5,
+      "category": "data",
+      "item": "Form has a comments field"
+    },
+    {
+      "id": 6,
+      "category": "structure",
+      "item": "Inserts submitted form data into a persistent table named 'feedback'"
+    },
+    {
+      "id": 7,
+      "category": "data",
+      "item": "The feedback table stores name, email, rating, and comments from the submission"
+    },
+    {
+      "id": 8,
+      "category": "structure",
+      "item": "Returns an HTML page as the response after form submission"
+    },
+    {
+      "id": 9,
+      "category": "data",
+      "item": "The returned HTML page contains a thank-you message"
+    }
+  ]
+}

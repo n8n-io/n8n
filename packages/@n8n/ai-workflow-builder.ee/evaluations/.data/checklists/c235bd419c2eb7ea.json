@@ -1,0 +1,65 @@
+{
+  "prompt": "Create an email labelling workflow triggered by Gmail polling every 5 minutes for new emails. After receiving a new email, add a short wait delay, then pass it to an AI labelling agent. The agent should have tools for: (1) reading all existing Gmail labels, (2) getting a specific email message by ID, (3) adding a label to a message, and (4) creating a new label. The agent should be instructed to analyze each email's subject, sender, and content to match it to existing Gmail labels. For low-importance emails like ads and promotions, it should remove the inbox label. If no matching label exists, it should create a sub-label under an existing parent label or under an \"AI\" parent label. The agent should use window buffer memory keyed by message ID and be limited to 5 iterations.",
+  "checklist": [
+    {
+      "id": 1,
+      "category": "structure",
+      "item": "Triggered by Gmail polling on a schedule every 5 minutes for new emails"
+    },
+    {
+      "id": 2,
+      "category": "structure",
+      "item": "Includes a short wait/delay step after the trigger and before passing the email to the AI agent"
+    },
+    {
+      "id": 3,
+      "category": "structure",
+      "item": "Has an AI labelling agent node that receives the email data"
+    },
+    {
+      "id": 4,
+      "category": "structure",
+      "item": "Agent is limited to a maximum of 5 iterations"
+    },
+    {
+      "id": 5,
+      "category": "structure",
+      "item": "Agent has a tool for reading/listing all existing Gmail labels"
+    },
+    {
+      "id": 6,
+      "category": "structure",
+      "item": "Agent has a tool for retrieving a specific Gmail message by ID"
+    },
+    {
+      "id": 7,
+      "category": "structure",
+      "item": "Agent has a tool for adding a label to a Gmail message"
+    },
+    {
+      "id": 8,
+      "category": "structure",
+      "item": "Agent has a tool for creating a new Gmail label"
+    },
+    {
+      "id": 9,
+      "category": "data",
+      "item": "Agent is instructed to analyze each email's subject, sender, and content to match it to existing Gmail labels"
+    },
+    {
+      "id": 10,
+      "category": "data",
+      "item": "Agent is instructed to remove the inbox label for low-importance emails such as ads and promotions"
+    },
+    {
+      "id": 11,
+      "category": "data",
+      "item": "Agent is instructed to create a sub-label under an existing parent label or under an 'AI' parent label when no matching label exists"
+    },
+    {
+      "id": 12,
+      "category": "data",
+      "item": "The email message ID is passed to the agent as part of the input data"
+    }
+  ]
+}

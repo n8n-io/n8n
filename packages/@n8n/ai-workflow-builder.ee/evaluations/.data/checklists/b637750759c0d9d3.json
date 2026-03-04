@@ -1,0 +1,30 @@
+{
+  "prompt": "Create a workflow that receives a POST webhook at /transform with a JSON body containing a \"text\" field, converts it to uppercase, counts the words, and returns both the transformed text and word count.",
+  "checklist": [
+    {
+      "id": 1,
+      "category": "structure",
+      "item": "Has HTTP POST webhook trigger at /transform"
+    },
+    {
+      "id": 2,
+      "category": "data",
+      "item": "Reads the 'text' field from the incoming JSON request body"
+    },
+    {
+      "id": 3,
+      "category": "data",
+      "item": "Converts the text value to uppercase"
+    },
+    {
+      "id": 4,
+      "category": "data",
+      "item": "Counts the number of words in the text"
+    },
+    {
+      "id": 5,
+      "category": "structure",
+      "item": "Returns a response containing both the transformed (uppercase) text and the word count"
+    }
+  ]
+}

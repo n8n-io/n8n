@@ -1,0 +1,50 @@
+{
+  "prompt": "Create a workflow that receives an HTTP POST at /onboarding with new employee data. First, create accounts in parallel: email account, Slack workspace, and project management tool. After all three accounts are created, send a welcome email with all the account details. Then set a 7-day timer wait. After the wait, send a follow-up survey to check how onboarding went.",
+  "checklist": [
+    {
+      "id": 1,
+      "category": "structure",
+      "item": "Has HTTP POST trigger at /onboarding"
+    },
+    {
+      "id": 2,
+      "category": "structure",
+      "item": "Creates email account, Slack workspace account, and project management tool account in parallel (3 concurrent branches)"
+    },
+    {
+      "id": 3,
+      "category": "structure",
+      "item": "All 3 parallel account creation branches must complete before proceeding (join/merge step)"
+    },
+    {
+      "id": 4,
+      "category": "structure",
+      "item": "Sends a welcome email after all accounts are created"
+    },
+    {
+      "id": 5,
+      "category": "structure",
+      "item": "Has a 7-day timer wait after the welcome email"
+    },
+    {
+      "id": 6,
+      "category": "structure",
+      "item": "Sends a follow-up survey after the 7-day wait"
+    },
+    {
+      "id": 7,
+      "category": "data",
+      "item": "Receives new employee data from the POST request body"
+    },
+    {
+      "id": 8,
+      "category": "data",
+      "item": "Welcome email includes details for all three created accounts (email, Slack, and project management tool)"
+    },
+    {
+      "id": 9,
+      "category": "data",
+      "item": "Follow-up survey is targeted to the onboarded employee to check how onboarding went"
+    }
+  ]
+}
