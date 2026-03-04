@@ -9,7 +9,6 @@ import {
 	type PayloadSize,
 } from '../../../utils/kafka-load-helper';
 import { buildKafkaTriggeredWorkflow } from '../../../utils/kafka-workflow-builder';
-import { attachMetric, collectMemorySnapshot } from '../../../utils/performance-helper';
 
 // Resource profile: override via env for different hardware profiles
 const RESOURCE_MEMORY = parseFloat(process.env.KAFKA_LOAD_MEMORY ?? '2');
@@ -89,7 +88,6 @@ test.describe(
 				test.setTimeout(scenario.timeoutMs + 120_000);
 
 				const kafka = services.kafka;
-				const obs = services.observability;
 				const topic = `load-${scenario.name}-${nanoid()}`;
 				const groupId = `load-group-${nanoid()}`;
 
@@ -121,12 +119,6 @@ test.describe(
 					{
 						makeUnique: true,
 					},
-				);
-
-				// Baseline memory
-				const memBefore = await collectMemorySnapshot(obs.metrics);
-				console.log(
-					`[LOAD] Baseline: heap=${memBefore.heapUsedMB.toFixed(1)}MB rss=${memBefore.rssMB.toFixed(1)}MB`,
 				);
 
 				let expectedExecutions: number;
@@ -171,17 +163,8 @@ test.describe(
 					timeoutMs: scenario.timeoutMs,
 				});
 
-				// Final memory
-				const memAfter = await collectMemorySnapshot(obs.metrics);
-
 				// Attach results
-				await attachLoadTestResults(testInfo, scenario.name, metrics, memAfter);
-				await attachMetric(
-					testInfo,
-					`${scenario.name}-memory-delta`,
-					memAfter.heapUsedMB - memBefore.heapUsedMB,
-					'MB',
-				);
+				await attachLoadTestResults(testInfo, scenario.name, metrics);
 
 				// Summary
 				console.log(
@@ -193,9 +176,7 @@ test.describe(
 						`  Duration avg: ${metrics.avgDurationMs.toFixed(0)}ms | ` +
 						`p50: ${metrics.p50DurationMs.toFixed(0)}ms | ` +
 						`p95: ${metrics.p95DurationMs.toFixed(0)}ms | ` +
-						`p99: ${metrics.p99DurationMs.toFixed(0)}ms\n` +
-						`  Memory: heap=${memAfter.heapUsedMB.toFixed(1)}MB rss=${memAfter.rssMB.toFixed(1)}MB ` +
-						`delta=${(memAfter.heapUsedMB - memBefore.heapUsedMB).toFixed(1)}MB`,
+						`p99: ${metrics.p99DurationMs.toFixed(0)}ms`,
 				);
 
 				// Soft assertions - at least some executions should complete

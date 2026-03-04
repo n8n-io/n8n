@@ -7,7 +7,6 @@ import {
 	buildKafkaTriggeredWorkflow,
 	type NodeOutputSize,
 } from '../../../utils/kafka-workflow-builder';
-import { attachMetric, collectMemorySnapshot } from '../../../utils/performance-helper';
 import {
 	waitForThroughput,
 	getBaselineCounter,
@@ -163,10 +162,7 @@ test.describe(
 				});
 				const baselineCounter = await getBaselineCounter(obs.metrics);
 
-				// 6. Collect baseline memory
-				const memBefore = await collectMemorySnapshot(obs.metrics);
-
-				// 7. Activate workflow and wait for consumer group
+				// 6. Activate workflow and wait for consumer group
 				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
 				await kafka.waitForConsumerGroup(groupId, { timeoutMs: 30_000 });
 
@@ -182,19 +178,10 @@ test.describe(
 					baselineValue: baselineCounter,
 				});
 
-				// 9. Collect final memory
-				const memAfter = await collectMemorySnapshot(obs.metrics);
+				// 9. Attach results
+				await attachThroughputResults(testInfo, scenario.name, result);
 
-				// 10. Attach results
-				await attachThroughputResults(testInfo, scenario.name, result, memAfter);
-				await attachMetric(
-					testInfo,
-					`${scenario.name}-memory-delta`,
-					memAfter.heapUsedMB - memBefore.heapUsedMB,
-					'MB',
-				);
-
-				// 11. Summary
+				// 10. Summary
 				console.log(
 					`[BENCH RESULT] ${scenario.name}\n` +
 						`  Plan: enterprise (${plan.memory}GB RAM, ${plan.cpu} CPU)\n` +
@@ -202,16 +189,14 @@ test.describe(
 						`  Completed: ${result.totalCompleted}/${messageCount}\n` +
 						`  Throughput: ${result.avgExecPerSec.toFixed(1)} exec/s | ${result.actionsPerSec.toFixed(1)} actions/s\n` +
 						`  Peak: ${result.peakExecPerSec.toFixed(1)} exec/s | ${result.peakActionsPerSec.toFixed(1)} actions/s\n` +
-						`  Duration: ${(result.durationMs / 1000).toFixed(1)}s\n` +
-						`  Memory: heap=${memAfter.heapUsedMB.toFixed(1)}MB rss=${memAfter.rssMB.toFixed(1)}MB ` +
-						`delta=${(memAfter.heapUsedMB - memBefore.heapUsedMB).toFixed(1)}MB`,
+						`  Duration: ${(result.durationMs / 1000).toFixed(1)}s`,
 				);
 
-				// 12. Assertions
+				// 11. Assertions
 				expect(result.totalCompleted).toBeGreaterThan(0);
 				expect(result.totalCompleted).toBeGreaterThanOrEqual(Math.floor(messageCount * 0.95));
 
-				// 13. Cleanup
+				// 12. Cleanup
 				await api.workflows.deactivate(workflowId);
 			});
 		}

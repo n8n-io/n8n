@@ -30,11 +30,6 @@ export interface ThroughputResult {
 	samples: ThroughputSample[];
 }
 
-export interface MemorySnapshot {
-	heapUsedMB: number;
-	rssMB: number;
-}
-
 // --- PromQL queries ---
 
 const WORKFLOW_SUCCESS_QUERY = 'n8n_workflow_success_total';
@@ -179,7 +174,6 @@ export async function attachThroughputResults(
 	testInfo: TestInfo,
 	label: string,
 	result: ThroughputResult,
-	memory: MemorySnapshot,
 ): Promise<void> {
 	await attachMetric(testInfo, `${label}-exec-per-sec`, result.avgExecPerSec, 'exec/s');
 	await attachMetric(testInfo, `${label}-actions-per-sec`, result.actionsPerSec, 'actions/s');
@@ -192,8 +186,6 @@ export async function attachThroughputResults(
 	);
 	await attachMetric(testInfo, `${label}-total-completed`, result.totalCompleted, 'count');
 	await attachMetric(testInfo, `${label}-duration`, result.durationMs, 'ms');
-	await attachMetric(testInfo, `${label}-memory-heap`, memory.heapUsedMB, 'MB');
-	await attachMetric(testInfo, `${label}-memory-rss`, memory.rssMB, 'MB');
 }
 
 // --- Exported constants for queue mode switching ---

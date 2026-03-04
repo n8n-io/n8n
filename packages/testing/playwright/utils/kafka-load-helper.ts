@@ -203,7 +203,6 @@ export async function attachLoadTestResults(
 	testInfo: TestInfo,
 	label: string,
 	metrics: ExecutionMetrics,
-	memory: { heapUsedMB: number; rssMB: number },
 ): Promise<void> {
 	await attachMetric(testInfo, `${label}-executions-completed`, metrics.totalCompleted, 'count');
 	await attachMetric(testInfo, `${label}-executions-errors`, metrics.totalErrors, 'count');
@@ -212,7 +211,5 @@ export async function attachLoadTestResults(
 	await attachMetric(testInfo, `${label}-duration-p50`, metrics.p50DurationMs, 'ms');
 	await attachMetric(testInfo, `${label}-duration-p95`, metrics.p95DurationMs, 'ms');
 	await attachMetric(testInfo, `${label}-duration-p99`, metrics.p99DurationMs, 'ms');
-	await attachMetric(testInfo, `${label}-memory-heap`, memory.heapUsedMB, 'MB');
-	await attachMetric(testInfo, `${label}-memory-rss`, memory.rssMB, 'MB');
 	await attachMetric(testInfo, `${label}-total-duration`, metrics.durationMs, 'ms');
 }
