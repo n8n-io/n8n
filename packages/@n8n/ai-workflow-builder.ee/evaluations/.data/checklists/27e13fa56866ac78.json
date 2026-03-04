@@ -1,0 +1,70 @@
+{
+  "prompt": "Create a workflow suite for a contacts management app: (1) A GET endpoint at /contacts that reads all rows from a 'contacts' data table and returns an HTML page listing each contact's name, email, phone, and company in a table. (2) A GET endpoint at /contacts/new that serves an HTML page with a form containing fields for name, email, phone, and company. (3) A POST endpoint at /contacts protected by basic auth that receives the form data, validates all four fields are present, stores the contact in the 'contacts' data table, and returns a success HTML page. (4) A POST endpoint at /contacts/delete protected by basic auth that receives a contactId, deletes the matching row from the data table, and returns a confirmation.",
+  "checklist": [
+    {
+      "id": 1,
+      "category": "structure",
+      "item": "Has a GET endpoint at /contacts"
+    },
+    {
+      "id": 2,
+      "category": "structure",
+      "item": "Has a GET endpoint at /contacts/new"
+    },
+    {
+      "id": 3,
+      "category": "structure",
+      "item": "Has a POST endpoint at /contacts protected by basic auth"
+    },
+    {
+      "id": 4,
+      "category": "structure",
+      "item": "Has a POST endpoint at /contacts/delete protected by basic auth"
+    },
+    {
+      "id": 5,
+      "category": "data",
+      "item": "GET /contacts reads all rows from the 'contacts' data table"
+    },
+    {
+      "id": 6,
+      "category": "data",
+      "item": "GET /contacts returns an HTML page listing each contact's name, email, phone, and company in a table"
+    },
+    {
+      "id": 7,
+      "category": "data",
+      "item": "GET /contacts/new returns an HTML page with a form containing fields for name, email, phone, and company"
+    },
+    {
+      "id": 8,
+      "category": "structure",
+      "item": "POST /contacts branches based on whether all four fields (name, email, phone, company) are present in the submitted form data"
+    },
+    {
+      "id": 9,
+      "category": "data",
+      "item": "POST /contacts stores the submitted contact (name, email, phone, company) into the 'contacts' data table when validation passes"
+    },
+    {
+      "id": 10,
+      "category": "data",
+      "item": "POST /contacts returns a success HTML page after successfully storing the contact"
+    },
+    {
+      "id": 11,
+      "category": "data",
+      "item": "POST /contacts/delete receives a contactId field from the request"
+    },
+    {
+      "id": 12,
+      "category": "data",
+      "item": "POST /contacts/delete deletes the row matching the provided contactId from the 'contacts' data table"
+    },
+    {
+      "id": 13,
+      "category": "data",
+      "item": "POST /contacts/delete returns a confirmation HTML page or response after deletion"
+    }
+  ]
+}

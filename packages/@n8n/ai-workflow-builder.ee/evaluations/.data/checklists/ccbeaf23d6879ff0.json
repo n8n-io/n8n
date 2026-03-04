@@ -1,0 +1,65 @@
+{
+  "prompt": "Create a workflow with an HTTP POST endpoint at /leads that receives lead data. First validate the required fields (name, email, company). If validation fails, return an error. If valid, check if the lead already exists by email. Existing leads get updated, new leads get created. Both paths then trigger a notification to the sales team with the lead details.",
+  "checklist": [
+    {
+      "id": 1,
+      "category": "structure",
+      "item": "Has HTTP POST trigger at /leads"
+    },
+    {
+      "id": 2,
+      "category": "structure",
+      "item": "Validates required fields (name, email, company) before processing"
+    },
+    {
+      "id": 3,
+      "category": "structure",
+      "item": "Branches based on validation result (success vs failure)"
+    },
+    {
+      "id": 4,
+      "category": "structure",
+      "item": "Returns an error response when validation fails"
+    },
+    {
+      "id": 5,
+      "category": "structure",
+      "item": "Checks if a lead already exists by email after successful validation"
+    },
+    {
+      "id": 6,
+      "category": "structure",
+      "item": "Branches based on whether the lead already exists (existing vs new)"
+    },
+    {
+      "id": 7,
+      "category": "structure",
+      "item": "Updates the existing lead record when a match is found by email"
+    },
+    {
+      "id": 8,
+      "category": "structure",
+      "item": "Creates a new lead record when no match is found"
+    },
+    {
+      "id": 9,
+      "category": "structure",
+      "item": "Both the update and create paths converge to trigger a sales team notification"
+    },
+    {
+      "id": 10,
+      "category": "data",
+      "item": "Validation checks specifically for name, email, and company fields"
+    },
+    {
+      "id": 11,
+      "category": "data",
+      "item": "Lead lookup is performed using the email field as the identifier"
+    },
+    {
+      "id": 12,
+      "category": "data",
+      "item": "Sales team notification includes lead details (name, email, company)"
+    }
+  ]
+}

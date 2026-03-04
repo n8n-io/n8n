@@ -1,0 +1,35 @@
+{
+  "prompt": "Create a workflow triggered by a cron every hour that fetches new Slack messages using Slack OAuth credentials, filters messages containing 'urgent', and posts a summary to a different Slack channel.",
+  "checklist": [
+    {
+      "id": 1,
+      "category": "structure",
+      "item": "Has a cron trigger that runs every hour"
+    },
+    {
+      "id": 2,
+      "category": "structure",
+      "item": "Fetches Slack messages from a channel"
+    },
+    {
+      "id": 3,
+      "category": "data",
+      "item": "Retrieves Slack OAuth2 credentials for API calls"
+    },
+    {
+      "id": 4,
+      "category": "structure",
+      "item": "Filters messages to only those containing the word 'urgent'"
+    },
+    {
+      "id": 5,
+      "category": "structure",
+      "item": "Posts a summary message to a different Slack channel than the source"
+    },
+    {
+      "id": 6,
+      "category": "data",
+      "item": "Summary posted to Slack includes content derived from the filtered urgent messages"
+    }
+  ]
+}

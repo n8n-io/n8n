@@ -1,0 +1,55 @@
+{
+  "prompt": "Create a workflow that receives an HTTP POST at /orders with order data. Route the order based on its type: \"subscription\" orders go through a recurring billing setup, \"one-time\" orders go through direct payment processing, and \"trial\" orders skip payment and create a trial account. Each path returns a different confirmation message.",
+  "checklist": [
+    {
+      "id": 1,
+      "category": "structure",
+      "item": "Has HTTP POST trigger on /orders"
+    },
+    {
+      "id": 2,
+      "category": "structure",
+      "item": "Branches into three paths based on order type field"
+    },
+    {
+      "id": 3,
+      "category": "structure",
+      "item": "Has a dedicated path for 'subscription' order type that handles recurring billing setup"
+    },
+    {
+      "id": 4,
+      "category": "structure",
+      "item": "Has a dedicated path for 'one-time' order type that handles direct payment processing"
+    },
+    {
+      "id": 5,
+      "category": "structure",
+      "item": "Has a dedicated path for 'trial' order type that skips payment and creates a trial account"
+    },
+    {
+      "id": 6,
+      "category": "data",
+      "item": "Routing condition reads the order type field from the incoming POST body"
+    },
+    {
+      "id": 7,
+      "category": "data",
+      "item": "Subscription path returns a confirmation message specific to recurring billing"
+    },
+    {
+      "id": 8,
+      "category": "data",
+      "item": "One-time path returns a confirmation message specific to direct payment"
+    },
+    {
+      "id": 9,
+      "category": "data",
+      "item": "Trial path returns a confirmation message specific to trial account creation"
+    },
+    {
+      "id": 10,
+      "category": "structure",
+      "item": "Each of the three paths terminates with an HTTP response returning its respective confirmation message"
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "prompt": "Create an AI agent that translates text between languages. It should have a single \"translate-text\" tool that accepts a text string, source language, and target language, and returns the translated text. The agent should be instructed to help users with translations and use the translation tool when asked.",
+  "checklist": [
+    {
+      "id": 1,
+      "category": "structure",
+      "item": "Has an AI agent node configured with a language model"
+    },
+    {
+      "id": 2,
+      "category": "structure",
+      "item": "Agent has exactly one tool named 'translate-text'"
+    },
+    {
+      "id": 3,
+      "category": "data",
+      "item": "The 'translate-text' tool accepts a 'text' input parameter for the string to translate"
+    },
+    {
+      "id": 4,
+      "category": "data",
+      "item": "The 'translate-text' tool accepts a 'source language' input parameter"
+    },
+    {
+      "id": 5,
+      "category": "data",
+      "item": "The 'translate-text' tool accepts a 'target language' input parameter"
+    },
+    {
+      "id": 6,
+      "category": "data",
+      "item": "The 'translate-text' tool returns the translated text as output"
+    },
+    {
+      "id": 7,
+      "category": "data",
+      "item": "Agent system instructions specify that it should help users with translations"
+    },
+    {
+      "id": 8,
+      "category": "data",
+      "item": "Agent system instructions specify that it should use the translation tool when asked to translate"
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "prompt": "Create a workflow triggered by a cron every Monday at 8am and also by an HTTP POST at /reports/generate. The workflow gathers data from three sources in parallel: sales metrics, customer feedback scores, and support ticket statistics. After all data is collected, merge the results and generate a formatted report. Then branch based on a threshold: if the overall score is above 80, send a congratulations message to the team channel. If between 60-80, send a regular update. If below 60, escalate to management with action items. Finally, archive the report data.",
+  "checklist": [
+    {
+      "id": 1,
+      "category": "structure",
+      "item": "Has a cron trigger that fires every Monday at 8am"
+    },
+    {
+      "id": 2,
+      "category": "structure",
+      "item": "Has an HTTP POST trigger at /reports/generate"
+    },
+    {
+      "id": 3,
+      "category": "structure",
+      "item": "Fetches data from three sources in parallel: sales metrics, customer feedback scores, and support ticket statistics"
+    },
+    {
+      "id": 4,
+      "category": "structure",
+      "item": "Merges results from all three parallel data sources after all have completed"
+    },
+    {
+      "id": 5,
+      "category": "structure",
+      "item": "Generates a formatted report from the merged data"
+    },
+    {
+      "id": 6,
+      "category": "structure",
+      "item": "Branches into three paths based on the overall score threshold value"
+    },
+    {
+      "id": 7,
+      "category": "structure",
+      "item": "Has a step to archive the report data after branching logic completes"
+    },
+    {
+      "id": 8,
+      "category": "data",
+      "item": "Branch condition: if overall score is above 80, sends a congratulations message to the team channel"
+    },
+    {
+      "id": 9,
+      "category": "data",
+      "item": "Branch condition: if overall score is between 60 and 80 (inclusive), sends a regular update message"
+    },
+    {
+      "id": 10,
+      "category": "data",
+      "item": "Branch condition: if overall score is below 60, escalates to management with action items included in the message"
+    },
+    {
+      "id": 11,
+      "category": "data",
+      "item": "The merged result includes data from all three sources: sales metrics, customer feedback scores, and support ticket statistics"
+    },
+    {
+      "id": 12,
+      "category": "data",
+      "item": "The formatted report is derived from the merged dataset before branching occurs"
+    }
+  ]
+}

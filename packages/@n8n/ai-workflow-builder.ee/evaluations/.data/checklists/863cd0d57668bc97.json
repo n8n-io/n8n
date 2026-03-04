@@ -1,0 +1,50 @@
+{
+  "prompt": "Create a project management AI assistant agent with five tools: (1) \"create-task\" that takes a title, description, priority (high/medium/low), and assignee, and returns a task ID, (2) \"list-tasks\" that takes a project ID and optional status filter (open/in-progress/done) and returns an array of tasks, (3) \"update-task-status\" that takes a task ID and new status and returns the updated task, (4) \"add-comment\" that takes a task ID and comment text and returns a comment ID, and (5) \"get-project-summary\" that takes a project ID and returns statistics including total tasks, tasks by status, and overdue count. The agent should be instructed to help users manage their project tasks, create and update tasks, and provide project overviews when requested.",
+  "checklist": [
+    {
+      "id": 1,
+      "category": "structure",
+      "item": "Has an AI agent configured as a project management assistant"
+    },
+    {
+      "id": 2,
+      "category": "data",
+      "item": "Agent instructions direct it to help users manage project tasks, create and update tasks, and provide project overviews"
+    },
+    {
+      "id": 3,
+      "category": "structure",
+      "item": "Agent has exactly five tools: create-task, list-tasks, update-task-status, add-comment, and get-project-summary"
+    },
+    {
+      "id": 4,
+      "category": "data",
+      "item": "create-task tool accepts inputs: title, description, priority (high/medium/low), and assignee, and returns a task ID"
+    },
+    {
+      "id": 5,
+      "category": "data",
+      "item": "list-tasks tool accepts inputs: project ID (required) and status filter (optional, values: open/in-progress/done), and returns an array of tasks"
+    },
+    {
+      "id": 6,
+      "category": "data",
+      "item": "update-task-status tool accepts inputs: task ID and new status, and returns the updated task"
+    },
+    {
+      "id": 7,
+      "category": "data",
+      "item": "add-comment tool accepts inputs: task ID and comment text, and returns a comment ID"
+    },
+    {
+      "id": 8,
+      "category": "data",
+      "item": "get-project-summary tool accepts a project ID and returns statistics including total tasks, tasks by status, and overdue count"
+    },
+    {
+      "id": 9,
+      "category": "structure",
+      "item": "Each tool has a distinct, descriptive name and description that allows the agent to select the correct tool for user requests"
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "prompt": "Create a multi-agent content production workflow triggered by a webhook POST at /content-request containing a topic, target audience, and content type (blog or social). First, a Research Agent with tools for web search and knowledge base lookup gathers background information and outputs a research brief with key facts and sources. Second, a Strategy Agent with tools for SEO keyword analysis and content calendar checking produces a content plan with outline and keyword strategy. Third, route based on content type: blog posts go to a Writing Agent with tools for draft generation and readability scoring; social media goes to a Social Media Agent with tools for platform formatting (Twitter/LinkedIn) and hashtag generation that produces 3 post variations. Fourth, all paths converge to an Editorial Review Agent with tools for grammar checking and fact verification that outputs a quality score. If the score is below 85%, loop back to the writing agent with revision notes for up to 3 cycles. Fifth, approved content goes to a human approval webhook wait — send a Slack message with the content and wait for a webhook callback. If approved, publish to WordPress and archive to Google Drive. Store all outputs in Airtable.",
+  "checklist": [
+    {
+      "id": 1,
+      "category": "structure",
+      "item": "Has a webhook POST trigger at /content-request"
+    },
+    {
+      "id": 2,
+      "category": "data",
+      "item": "Webhook payload contains topic, target audience, and content type (blog or social)"
+    },
+    {
+      "id": 3,
+      "category": "structure",
+      "item": "Research Agent is the first agent in the pipeline, equipped with web search and knowledge base lookup tools"
+    },
+    {
+      "id": 4,
+      "category": "data",
+      "item": "Research Agent outputs a research brief containing key facts and sources"
+    },
+    {
+      "id": 5,
+      "category": "structure",
+      "item": "Strategy Agent runs second, equipped with SEO keyword analysis and content calendar checking tools"
+    },
+    {
+      "id": 6,
+      "category": "data",
+      "item": "Strategy Agent produces a content plan with an outline and keyword strategy"
+    },
+    {
+      "id": 7,
+      "category": "structure",
+      "item": "Workflow branches based on content type field: blog path and social media path"
+    },
+    {
+      "id": 8,
+      "category": "structure",
+      "item": "Blog path routes to a Writing Agent with draft generation and readability scoring tools"
+    },
+    {
+      "id": 9,
+      "category": "structure",
+      "item": "Social media path routes to a Social Media Agent with platform formatting tools (Twitter/LinkedIn) and hashtag generation tools"
+    },
+    {
+      "id": 10,
+      "category": "data",
+      "item": "Social Media Agent produces 3 post variations"
+    },
+    {
+      "id": 11,
+      "category": "structure",
+      "item": "Both content type paths converge to an Editorial Review Agent with grammar checking and fact verification tools"
+    },
+    {
+      "id": 12,
+      "category": "data",
+      "item": "Editorial Review Agent outputs a quality score"
+    },
+    {
+      "id": 13,
+      "category": "structure",
+      "item": "If quality score is below 85%, workflow loops back to the writing agent with revision notes, for a maximum of 3 revision cycles"
+    },
+    {
+      "id": 14,
+      "category": "structure",
+      "item": "Approved content (score >= 85%) enters a human approval step: sends a Slack message with the content and waits for a webhook callback response"
+    },
+    {
+      "id": 15,
+      "category": "structure",
+      "item": "If human approves via webhook callback, content is published to WordPress and archived to a cloud file storage service (Google Drive)"
+    },
+    {
+      "id": 16,
+      "category": "data",
+      "item": "All agent outputs are stored in a persistent data table (Airtable)"
+    }
+  ]
+}

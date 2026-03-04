@@ -1,0 +1,70 @@
+{
+  "prompt": "Create a workflow with a POST endpoint at /batch-import that receives an array of product items. Loop through each item and for each one: validate the data format, check for duplicates, transform prices to the correct currency, and categorize the product. Items that fail validation go to an error collection. Valid items are inserted into the database. After all items are processed, generate a summary report with counts of successful imports, duplicates found, and validation errors.",
+  "checklist": [
+    {
+      "id": 1,
+      "category": "structure",
+      "item": "Has HTTP POST trigger at /batch-import"
+    },
+    {
+      "id": 2,
+      "category": "structure",
+      "item": "Loops over each item in the received product array"
+    },
+    {
+      "id": 3,
+      "category": "structure",
+      "item": "Branches based on validation result for each item (valid vs. invalid)"
+    },
+    {
+      "id": 4,
+      "category": "structure",
+      "item": "Has a duplicate check step for each product item"
+    },
+    {
+      "id": 5,
+      "category": "structure",
+      "item": "Failed validation items are routed to an error collection path"
+    },
+    {
+      "id": 6,
+      "category": "structure",
+      "item": "Valid items are inserted into the database"
+    },
+    {
+      "id": 7,
+      "category": "structure",
+      "item": "After all items are processed, a summary report is generated"
+    },
+    {
+      "id": 8,
+      "category": "data",
+      "item": "Validates the data format of each product item"
+    },
+    {
+      "id": 9,
+      "category": "data",
+      "item": "Transforms product prices to the correct currency for each item"
+    },
+    {
+      "id": 10,
+      "category": "data",
+      "item": "Categorizes each product item during processing"
+    },
+    {
+      "id": 11,
+      "category": "data",
+      "item": "Summary report includes count of successful imports"
+    },
+    {
+      "id": 12,
+      "category": "data",
+      "item": "Summary report includes count of duplicates found"
+    },
+    {
+      "id": 13,
+      "category": "data",
+      "item": "Summary report includes count of validation errors"
+    }
+  ]
+}
