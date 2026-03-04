@@ -1,9 +1,14 @@
 import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { User, ListQueryDb, WorkflowFolderUnionFull, WorkflowHistory } from '@n8n/db';
-import {
+import type {
+	User,
 	WorkflowEntity,
+	ListQueryDb,
+	WorkflowFolderUnionFull,
+	WorkflowHistory,
+} from '@n8n/db';
+import {
 	SharedWorkflow,
 	ExecutionRepository,
 	FolderRepository,
