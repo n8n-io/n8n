@@ -61,10 +61,19 @@ export interface StartContext {
 	baseUrl?: string;
 }
 
+/**
+ * Postgres performance profiles. Controls durability vs speed trade-offs.
+ * - `fast`: Disables fsync/WAL for maximum speed. Default for CI/dev.
+ * - `production`: Enables fsync/WAL for realistic durability overhead.
+ * - Custom `Record<string, string>`: Arbitrary `-c key=value` flags passed to postgres.
+ */
+export type PostgresProfile = 'fast' | 'production' | Record<string, string>;
+
 export interface StackConfig {
 	mains?: number;
 	workers?: number;
 	postgres?: boolean;
+	postgresProfile?: PostgresProfile;
 	env?: Record<string, string>;
 	projectName?: string;
 	resourceQuota?: { memory?: number; cpu?: number };
