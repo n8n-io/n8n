@@ -56,14 +56,13 @@ export class SecretsProviderConnectionModal extends BaseModal {
 
 	/** Clicks save and waits for the connection API call. After saving, the modal auto-tests the connection. */
 	async save(): Promise<void> {
-		await Promise.all([
-			this.page.waitForResponse(
-				(res) =>
-					res.url().includes('/rest/secret-providers/connections') &&
-					['POST', 'PATCH'].includes(res.request().method()),
-			),
-			this.getSaveButton().click(),
-		]);
+		const responsePromise = this.page.waitForResponse(
+			(res) =>
+				res.url().includes('/rest/secret-providers/connections') &&
+				['POST', 'PATCH'].includes(res.request().method()),
+		);
+		await this.getSaveButton().click();
+		await responsePromise;
 	}
 
 	/** Green callout — visible when the connection test succeeds. */
@@ -87,8 +86,12 @@ export class SecretsProviderConnectionModal extends BaseModal {
 	 * @param optionLabel - The project name or 'Global' to select
 	 */
 	async selectScope(optionLabel: string): Promise<void> {
+		await this.getScopeSelect().waitFor({ state: 'visible' });
 		await this.getScopeSelect().click();
-		await this.page.getByRole('option', { name: optionLabel }).click();
+		const option = this.page.getByRole('option', { name: optionLabel });
+		await option.waitFor({ state: 'visible' });
+		await option.click();
+		await option.waitFor({ state: 'hidden' });
 	}
 
 	async close(): Promise<void> {

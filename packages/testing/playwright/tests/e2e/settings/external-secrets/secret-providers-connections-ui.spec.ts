@@ -84,7 +84,7 @@ test.describe(
 			await expect(n8n.credentials.credentialModal.getParameterInputHint()).toContainText(
 				'*********',
 			);
-			await n8n.credentials.credentialModal.getSaveButton().click();
+			await n8n.credentials.credentialModal.save();
 			await n8n.credentials.credentialModal.close();
 
 			await expect(n8n.credentials.cards.getCredential(credentialName)).toBeVisible();
@@ -175,7 +175,7 @@ test.describe(
 			await expect(n8n.credentials.credentialModal.getParameterInputHint()).toContainText(
 				'*********',
 			);
-			await n8n.credentials.credentialModal.getSaveButton().click();
+			await n8n.credentials.credentialModal.save();
 			await n8n.credentials.credentialModal.close();
 
 			await expect(n8n.credentials.cards.getCredential(credentialName)).toBeVisible();

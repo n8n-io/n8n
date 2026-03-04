@@ -40,13 +40,12 @@ export class DeleteSecretsProviderModal extends BaseModal {
 
 	/** Clicks the confirm delete button and waits for the DELETE API response. */
 	async confirmDelete(): Promise<void> {
-		await Promise.all([
-			this.page.waitForResponse(
-				(res) =>
-					res.url().includes('/rest/secret-providers/connections') &&
-					res.request().method() === 'DELETE',
-			),
-			this.getConfirmDeleteButton().click(),
-		]);
+		const responsePromise = this.page.waitForResponse(
+			(res) =>
+				res.url().includes('/rest/secret-providers/connections') &&
+				res.request().method() === 'DELETE',
+		);
+		await this.getConfirmDeleteButton().click();
+		await responsePromise;
 	}
 }
