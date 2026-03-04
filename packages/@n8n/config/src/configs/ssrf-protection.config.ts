@@ -49,10 +49,6 @@ export class SsrfProtectionConfig {
 	@Env('N8N_SSRF_ALLOWED_HOSTNAMES')
 	allowedHostnames: CommaSeparatedStringArray<string> = [];
 
-	/** Maximum DNS cache TTL in seconds. Default: 300. */
-	@Env('N8N_SSRF_DNS_CACHE_MAX_TTL_SECONDS')
-	dnsCacheMaxTtlSeconds: number = 300;
-
 	/** Maximum DNS cache size in bytes (LRU eviction). Default: 1 MB. */
 	@Env('N8N_SSRF_DNS_CACHE_MAX_SIZE')
 	dnsCacheMaxSize: number = 1024 * 1024;
