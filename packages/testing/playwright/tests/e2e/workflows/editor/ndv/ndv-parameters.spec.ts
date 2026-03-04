@@ -62,7 +62,9 @@ test.describe('NDV Parameters', {
 		test('Should show a notice when remote options cannot be fetched because of missing credentials', async ({
 			n8n,
 		}) => {
+			let fetchParameterOptionsCallCount = 0;
 			await n8n.page.route('**/rest/dynamic-node-parameters/options', async (route) => {
+				fetchParameterOptionsCallCount++;
 				await route.fulfill({ status: 403 });
 			});
 
@@ -71,13 +73,15 @@ test.describe('NDV Parameters', {
 			await expect(n8n.ndv.getContainer()).toBeVisible();
 
 			await n8n.ndv.addItemToFixedCollection('propertiesUi');
-			await expect(
-				n8n.ndv.getParameterInputWithIssues('propertiesUi.propertyValues[0].key'),
-			).toBeVisible();
+			await n8n.ndv.clickParameterDropdown('key');
+			await expect.poll(() => fetchParameterOptionsCallCount).toBeGreaterThan(0);
+			await expect(n8n.ndv.getParameterInputIssues().first()).toBeVisible();
 		});
 
 		test('Should show error state when remote options cannot be fetched', async ({ n8n }) => {
+			let fetchParameterOptionsCallCount = 0;
 			await n8n.page.route('**/rest/dynamic-node-parameters/options', async (route) => {
+				fetchParameterOptionsCallCount++;
 				await route.fulfill({ status: 500 });
 			});
 
@@ -87,11 +91,13 @@ test.describe('NDV Parameters', {
 
 			await n8n.credentialsComposer.createFromNdv({
 				apiKey: 'sk_test_123',
+			}, {
+				name: 'Test Notion Credential',
 			});
 			await n8n.ndv.addItemToFixedCollection('propertiesUi');
-			await expect(
-				n8n.ndv.getParameterInputWithIssues('propertiesUi.propertyValues[0].key'),
-			).toBeVisible();
+			await n8n.ndv.clickParameterDropdown('key');
+			await expect.poll(() => fetchParameterOptionsCallCount).toBeGreaterThan(0);
+			await expect(n8n.ndv.getParameterInputIssues().first()).toBeVisible();
 		});
 	});
 
