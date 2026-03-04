@@ -33,8 +33,12 @@ export const SSRF_DEFAULT_BLOCKED_IP_RANGES: readonly string[] = Object.freeze([
 /**
  * Parses comma-separated blocked ranges, expands `default` (case-insensitive)
  * to the built-in blocked ranges, and removes duplicates while preserving order.
+ *
+ * @example
+ * parseBlockedIpRanges('default,100.0.0.0/8')
+ * // returns [...SSRF_DEFAULT_BLOCKED_IP_RANGES, '100.0.0.0/8']
  */
-const blockedIpRangesSchema = z.string().transform((input) => {
+const parseBlockedIpRanges = (input: string): string[] => {
 	const values = input
 		.split(',')
 		.map((value) => value.trim())
@@ -45,7 +49,9 @@ const blockedIpRangesSchema = z.string().transform((input) => {
 	);
 
 	return [...new Set(expanded)];
-});
+};
+
+const blockedIpRangesSchema = z.string().transform(parseBlockedIpRanges);
 
 const positiveNumberSchema = z.coerce.number().gt(0);
 
