@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
-import { ProjectRepository, SharedWorkflowRepository, User, WorkflowRepository } from '@n8n/db';
+import { User, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import {
@@ -32,8 +32,8 @@ import { RoleService } from '@/services/role.service';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
+import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 /**
@@ -69,9 +69,7 @@ export class McpService {
 		private readonly roleService: RoleService,
 		private readonly projectService: ProjectService,
 		private readonly workflowBuilderToolsService: WorkflowBuilderToolsService,
-		private readonly projectRepository: ProjectRepository,
-		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
-		private readonly workflowHistoryService: WorkflowHistoryService,
+		private readonly workflowCreationService: WorkflowCreationService,
 	) {}
 
 	async getServer(user: User) {
@@ -174,10 +172,7 @@ export class McpService {
 
 		const createTool = createCreateWorkflowFromCodeTool(
 			user,
-			this.projectRepository,
-			this.projectService,
-			this.sharedWorkflowRepository,
-			this.workflowHistoryService,
+			this.workflowCreationService,
 			this.urlService,
 			this.telemetry,
 		);

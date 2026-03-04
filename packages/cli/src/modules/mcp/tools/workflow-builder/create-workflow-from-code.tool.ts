@@ -1,23 +1,13 @@
-import {
-	type SharedWorkflow,
-	type SharedWorkflowRepository,
-	type User,
-	WorkflowEntity,
-	type ProjectRepository,
-} from '@n8n/db';
-import { v4 as uuid } from 'uuid';
+import { type User, WorkflowEntity } from '@n8n/db';
 import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
 
-import { validateEntity } from '@/generic-helpers';
-import type { ProjectService } from '@/services/project.service.ee';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
-import * as WorkflowHelpers from '@/workflow-helpers';
-import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import type { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 
 const inputSchema = {
 	code: z
@@ -51,10 +41,7 @@ const inputSchema = {
  */
 export const createCreateWorkflowFromCodeTool = (
 	user: User,
-	projectRepository: ProjectRepository,
-	projectService: ProjectService,
-	sharedWorkflowRepository: SharedWorkflowRepository,
-	workflowHistoryService: WorkflowHistoryService,
+	workflowCreationService: WorkflowCreationService,
 	urlService: UrlService,
 	telemetry: Telemetry,
 ): ToolDefinition<typeof inputSchema> => ({
@@ -92,15 +79,11 @@ export const createCreateWorkflowFromCodeTool = (
 				'@n8n/ai-workflow-builder'
 			);
 
-			// 1. Parse and validate code
 			const handler = new ParseValidateHandler({ generatePinData: false });
 			const strippedCode = stripImportStatements(code);
 			const result = await handler.parseAndValidate(strippedCode);
 			const workflowJson = result.workflow;
 
-			// 2. Create workflow entity
-			// TODO: Once the following ticket is implemented, we car rely on the workflows service to create and save workflows
-			// https://linear.app/n8n/issue/ADO-4898/feature-move-create-workflow-from-controller-to-service
 			const newWorkflow = new WorkflowEntity();
 			Object.assign(newWorkflow, {
 				name: name ?? workflowJson.name ?? 'Untitled Workflow',
@@ -111,55 +94,9 @@ export const createCreateWorkflowFromCodeTool = (
 				pinData: workflowJson.pinData,
 				meta: { ...workflowJson.meta, aiBuilderAssisted: true },
 			});
-			newWorkflow.active = false;
-			newWorkflow.versionId = uuid();
 
-			await validateEntity(newWorkflow);
-			await WorkflowHelpers.replaceInvalidCredentials(newWorkflow);
-			WorkflowHelpers.addNodeIds(newWorkflow);
-
-			// 3. Save in transaction
-			const { manager: dbManager } = projectRepository;
-			const savedWorkflow = await dbManager.transaction(async (transactionManager) => {
-				let resolvedProjectId = projectId;
-
-				if (!resolvedProjectId) {
-					const personalProject = await projectRepository.getPersonalProjectForUserOrFail(
-						user.id,
-						transactionManager,
-					);
-					resolvedProjectId = personalProject.id;
-				}
-
-				const project = await projectService.getProjectWithScope(
-					user,
-					resolvedProjectId,
-					['workflow:create'],
-					transactionManager,
-				);
-
-				if (project === null) {
-					throw new Error("You don't have the permissions to create a workflow in this project.");
-				}
-
-				const workflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
-
-				const newSharedWorkflow = sharedWorkflowRepository.create({
-					role: 'workflow:owner',
-					projectId: project.id,
-					workflow,
-				});
-				await transactionManager.save<SharedWorkflow>(newSharedWorkflow);
-
-				await workflowHistoryService.saveVersion(
-					user,
-					workflow,
-					workflow.id,
-					false,
-					transactionManager,
-				);
-
-				return workflow;
+			const savedWorkflow = await workflowCreationService.createWorkflow(user, newWorkflow, {
+				projectId,
 			});
 
 			const baseUrl = urlService.getInstanceBaseUrl();
