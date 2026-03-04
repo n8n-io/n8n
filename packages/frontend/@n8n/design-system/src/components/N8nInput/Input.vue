@@ -382,6 +382,60 @@ defineExpose({ focus, blur, select });
 	align-items: center;
 	width: 100%;
 	gap: var(--spacing--3xs);
+
+	--input--height: var(--height--lg);
+	--input--radius: var(--radius--2xs);
+	--input--font-size: var(--font-size--sm);
+	--input--padding: var(--spacing--xs);
+
+	--input--color--background: light-dark(var(--color--neutral-white), transparent);
+	--input--shadow: 0 0 0 0 transparent;
+	--input--shadow--hover: 0 0 0 0 transparent;
+	--input--shadow--focus: 0 0 0 0 transparent;
+	--input--border-color: light-dark(var(--color--black-alpha-200), var(--color--white-alpha-100));
+	--input--border-color--hover: light-dark(
+		var(--color--black-alpha-200),
+		var(--color--white-alpha-200)
+	);
+	--input--border-color--focus: light-dark(
+		var(--color--black-alpha-300),
+		var(--color--white-alpha-300)
+	);
+	--input--border--shadow: 0 0 0 1px var(--input--border-color);
+	--input--border--shadow--hover: 0 0 0 1px var(--input--border-color--hover);
+	--input--border--shadow--focus: 0 0 0 1px var(--input--border-color--focus);
+
+	&.xlarge {
+		--input--height: var(--height--xl);
+		--input--radius: var(--radius--2xs);
+		--input--font-size: var(--font-size--md);
+	}
+
+	&.large {
+		--input--height: var(--height--lg);
+		--input--radius: var(--radius--2xs);
+		--input--font-size: var(--font-size--sm);
+	}
+
+	&.medium {
+		--input--height: var(--height--md);
+		--input--radius: var(--radius--3xs);
+		--input--font-size: var(--font-size--sm);
+	}
+
+	&.small {
+		--input--height: var(--height--sm);
+		--input--radius: var(--radius--3xs);
+		--input--font-size: var(--font-size--xs);
+		--input--padding: var(--spacing--2xs);
+	}
+
+	&.mini {
+		--input--height: var(--height--xs);
+		--input--radius: var(--radius--3xs);
+		--input--font-size: var(--font-size--2xs);
+		--input--padding: var(--spacing--2xs);
+	}
 }
 
 .inputWrapper {
