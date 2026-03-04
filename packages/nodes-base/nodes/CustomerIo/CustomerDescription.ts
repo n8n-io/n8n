@@ -13,6 +13,12 @@ export const customerOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Find by Email',
+				value: 'findEmail',
+				description: 'Find a customer by Email',
+				action: 'Find a customer by Email',
+			},
+			{
 				name: 'Create or Update',
 				value: 'upsert',
 				description:
@@ -47,6 +53,23 @@ export const customerFields: INodeProperties[] = [
 			},
 		},
 		description: 'The unique identifier for the customer',
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                   customer:findEmail			              */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Email',
+		name: 'email',
+		type: 'string',
+		required: true,
+		default: 'john.smith@example.com',
+		displayOptions: {
+			show: {
+				resource: ['customer'],
+				operation: ['findEmail'],
+			},
+		},
+		description: 'Email associated with the customer (requires App API Key)',
 	},
 
 	/* -------------------------------------------------------------------------- */

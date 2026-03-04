@@ -75,7 +75,9 @@ export class CustomerIoApi implements ICredentialType {
 			url.hostname === 'api.customer.io' ||
 			url.hostname === 'api-eu.customer.io' ||
 			url.hostname === 'beta-api.customer.io' ||
-			url.hostname === 'beta-api-eu.customer.io'
+			url.hostname === 'beta-api-eu.customer.io' ||
+			url.hostname === 'api.customer.io' ||
+			url.hostname === 'api-eu.customer.io'
 		) {
 			// @ts-ignore
 			Object.assign(requestOptions.headers, {
