@@ -1,14 +1,9 @@
 import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type {
-	User,
-	WorkflowEntity,
-	ListQueryDb,
-	WorkflowFolderUnionFull,
-	WorkflowHistory,
-} from '@n8n/db';
+import type { User, ListQueryDb, WorkflowFolderUnionFull, WorkflowHistory, Project } from '@n8n/db';
 import {
+	WorkflowEntity,
 	SharedWorkflow,
 	ExecutionRepository,
 	FolderRepository,
@@ -17,6 +12,7 @@ import {
 	WorkflowRepository,
 	WorkflowPublishHistoryRepository,
 	ProjectRepository,
+	TagRepository,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
@@ -46,6 +42,7 @@ import { WorkflowHistoryService } from './workflow-history/workflow-history.serv
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
@@ -66,6 +63,9 @@ import { getBase as getWorkflowExecutionData } from '@/workflow-execute-addition
 import { WorkflowValidationService } from './workflow-validation.service';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { FolderService } from '@/services/folder.service';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { EnterpriseWorkflowService } from './workflow.service.ee';
 
 @Service()
 export class WorkflowService {
@@ -93,7 +93,176 @@ export class WorkflowService {
 		private readonly webhookService: WebhookService,
 		private readonly licenseState: LicenseState,
 		private readonly projectRepository: ProjectRepository,
+		private readonly tagRepository: TagRepository,
+		private readonly credentialsService: CredentialsService,
+		private readonly folderService: FolderService,
+		private readonly enterpriseWorkflowService: EnterpriseWorkflowService,
 	) {}
+
+	async createWorkflow(
+		user: User,
+		newWorkflow: WorkflowEntity,
+		options: {
+			tagIds?: string[];
+			parentFolderId?: string;
+			projectId?: string;
+			autosaved?: boolean;
+			uiContext?: string;
+		} = {},
+	): Promise<WorkflowEntity> {
+		const { tagIds, parentFolderId, projectId, autosaved = false, uiContext } = options;
+
+		// Ensure workflow is created as inactive
+		newWorkflow.active = false;
+		newWorkflow.versionId = uuid();
+
+		await validateEntity(newWorkflow);
+
+		await this.externalHooks.run('workflow.create', [newWorkflow]);
+
+		if (tagIds?.length && !this.globalConfig.tags.disabled) {
+			newWorkflow.tags = await this.tagRepository.findMany(tagIds);
+		}
+
+		await WorkflowHelpers.replaceInvalidCredentials(newWorkflow);
+
+		WorkflowHelpers.addNodeIds(newWorkflow);
+
+		if (this.licenseState.isSharingLicensed()) {
+			// This is a new workflow, so we simply check if the user has access to
+			// all used credentials
+
+			const allCredentials = await this.credentialsService.getMany(user, {
+				includeGlobal: true,
+			});
+
+			try {
+				this.enterpriseWorkflowService.validateCredentialPermissionsToUser(
+					newWorkflow,
+					allCredentials,
+				);
+			} catch (error) {
+				throw new BadRequestError(
+					'The workflow you are trying to save contains credentials that are not shared with you',
+				);
+			}
+		}
+
+		const { manager: dbManager } = this.projectRepository;
+
+		let project: Project | null = null;
+		const savedWorkflow = await dbManager.transaction(async (transactionManager) => {
+			let effectiveProjectId = projectId;
+
+			if (effectiveProjectId === undefined) {
+				const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
+					user.id,
+					transactionManager,
+				);
+				// Chat users are not allowed to create workflows even within their personal project,
+				// so even though we found the project ensure it gets found via expected scope too.
+				effectiveProjectId = personalProject.id;
+			}
+
+			project = await this.projectService.getProjectWithScope(
+				user,
+				effectiveProjectId,
+				['workflow:create'],
+				transactionManager,
+			);
+
+			if (project === null) {
+				throw new BadRequestError(
+					"You don't have the permissions to save the workflow in this project.",
+				);
+			}
+
+			// Strip redactionPolicy if user lacks scope (projectId is already resolved here)
+			if (newWorkflow.settings?.redactionPolicy !== undefined) {
+				const canUpdateRedaction = await userHasScopes(
+					user,
+					['workflow:updateRedactionSetting'],
+					false,
+					{ projectId: effectiveProjectId },
+				);
+				if (!canUpdateRedaction) {
+					delete newWorkflow.settings.redactionPolicy;
+				}
+			}
+
+			const workflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
+
+			if (parentFolderId) {
+				try {
+					const parentFolder = await this.folderService.findFolderInProjectOrFail(
+						parentFolderId,
+						project.id,
+						transactionManager,
+					);
+					await transactionManager.update(WorkflowEntity, { id: workflow.id }, { parentFolder });
+				} catch {}
+			}
+
+			const newSharedWorkflow = this.sharedWorkflowRepository.create({
+				role: 'workflow:owner',
+				projectId: project.id,
+				workflow,
+			});
+
+			await transactionManager.save<SharedWorkflow>(newSharedWorkflow);
+
+			await this.workflowHistoryService.saveVersion(
+				user,
+				workflow,
+				workflow.id,
+				autosaved,
+				transactionManager,
+			);
+
+			return await this.workflowFinderService.findWorkflowForUser(
+				workflow.id,
+				user,
+				['workflow:read'],
+				{
+					em: transactionManager,
+					includeTags: true,
+					includeParentFolder: true,
+					includeActiveVersion: true,
+				},
+			);
+		});
+
+		if (!savedWorkflow) {
+			this.logger.error('Failed to create workflow', { userId: user.id });
+			throw new InternalServerError('Failed to save workflow');
+		}
+
+		if (tagIds && !this.globalConfig.tags.disabled && savedWorkflow.tags) {
+			savedWorkflow.tags = this.tagService.sortByRequestOrder(savedWorkflow.tags, {
+				requestOrder: tagIds,
+			});
+		}
+
+		await this.externalHooks.run('workflow.afterCreate', [savedWorkflow]);
+		this.eventService.emit('workflow-created', {
+			user,
+			workflow: newWorkflow,
+			publicApi: false,
+			projectId: project!.id,
+			projectType: project!.type,
+			uiContext,
+		});
+
+		return savedWorkflow;
+	}
+
+	addMetadataToWorkflow(workflow: WorkflowEntity) {
+		const enriched = this.enterpriseWorkflowService.addOwnerAndSharings(workflow);
+		// @ts-expect-error: This is added as part of addOwnerAndSharings but
+		// shouldn't be returned to the frontend
+		delete enriched.shared;
+		return enriched;
+	}
 
 	async getMany(
 		user: User,

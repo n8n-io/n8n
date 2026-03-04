@@ -80,6 +80,10 @@ beforeAll(async () => {
 		webhookServiceMock,
 		mock(), // licenseState
 		Container.get(ProjectRepository), // projectRepository
+		mock(), // tagRepository
+		mock(), // credentialsService
+		mock(), // folderService
+		mock(), // enterpriseWorkflowService
 	);
 });
 
