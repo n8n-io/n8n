@@ -85,8 +85,14 @@ export class ImpactAnalyzer {
 		// Build diff map from pre-computed diffs (no diffs = property-level for all files)
 		const diffMap = this.buildDiffMap(precomputedDiffs);
 
-		// Build method usage index (use pre-computed or build fresh)
-		const methodIndex = precomputedIndex ?? new MethodUsageAnalyzer(this.project).buildIndex();
+		// Lazy method usage index — only built if a file needs method-level resolution
+		let methodIndex: MethodUsageIndex | undefined = precomputedIndex;
+		const getMethodIndex = (): MethodUsageIndex => {
+			if (!methodIndex) {
+				methodIndex = new MethodUsageAnalyzer(this.project).buildIndex();
+			}
+			return methodIndex;
+		};
 
 		for (const file of sourceFiles) {
 			const abs = this.toAbsolute(file);
@@ -118,9 +124,10 @@ export class ImpactAnalyzer {
 				const methodTests: string[] = [];
 				for (const change of modifiedOrRemoved) {
 					const key = `${change.className}.${change.methodName}`;
-					const usages = methodIndex.methods[key] ?? [];
+					const usages = getMethodIndex().methods[key] ?? [];
 					for (const usage of usages) {
 						affectedTests.add(usage.testFile);
+						affectedFilesSet.add(usage.testFile);
 						methodTests.push(usage.testFile);
 					}
 				}
@@ -205,7 +212,8 @@ export class ImpactAnalyzer {
 
 			const content = sourceFile.getFullText();
 			for (const method of addedMethods) {
-				const methodPattern = new RegExp(`\\.${method.methodName}\\s*\\(`);
+				const escaped = method.methodName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+				const methodPattern = new RegExp(`\\.${escaped}\\s*\\(`);
 				if (methodPattern.test(content)) {
 					affectedTests.add(testFile);
 					break;
@@ -286,7 +294,10 @@ export class ImpactAnalyzer {
 
 		const matchingFiles = new Set<string>();
 		const facadePath = this.facade.getFacadePath();
-		const patterns = propertyNames.map((name) => new RegExp(`\\.${name}(?![a-zA-Z0-9_])`));
+		const patterns = propertyNames.map((name) => {
+			const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+			return new RegExp(`\\.${escaped}(?![a-zA-Z0-9_])`);
+		});
 		const allFiles = findFilesRecursive(this.root, '.ts');
 
 		for (const file of allFiles) {

@@ -1078,6 +1078,8 @@ test('uses api', () => {});
 				'tests/canvas-crud.spec.ts',
 				'tests/canvas-drag.spec.ts',
 			]);
+			expect(result.affectedFiles).toContain('tests/canvas-crud.spec.ts');
+			expect(result.affectedFiles).toContain('tests/canvas-drag.spec.ts');
 			expect(result.strategies['pages/CanvasPage.ts']).toBe('method-level');
 		});
 
