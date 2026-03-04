@@ -2,6 +2,7 @@ import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 
 import { ProjectSecretsProviderAccess } from '../entities';
+import type { SecretsProviderAccessRole } from '../entities';
 
 @Service()
 export class ProjectSecretsProviderAccessRepository extends Repository<ProjectSecretsProviderAccess> {
@@ -28,7 +29,11 @@ export class ProjectSecretsProviderAccessRepository extends Repository<ProjectSe
 		await this.delete({ secretsProviderConnectionId });
 	}
 
-	async setProjectAccess(secretsProviderConnectionId: number, projectIds: string[]): Promise<void> {
+	async setProjectAccess(
+		secretsProviderConnectionId: number,
+		projectIds: string[],
+		role: SecretsProviderAccessRole,
+	): Promise<void> {
 		// Given we're deleting / re-adding we should probably do it in a single operation
 		await this.manager.transaction(async (tx) => {
 			await tx.delete(ProjectSecretsProviderAccess, { secretsProviderConnectionId });
@@ -38,6 +43,7 @@ export class ProjectSecretsProviderAccessRepository extends Repository<ProjectSe
 					this.create({
 						secretsProviderConnectionId,
 						projectId,
+						role,
 					}),
 				);
 

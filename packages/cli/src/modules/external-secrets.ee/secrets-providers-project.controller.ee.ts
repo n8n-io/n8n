@@ -68,6 +68,8 @@ export class SecretProvidersProjectController {
 				projectIds: [projectId],
 			},
 			req.user.id,
+			// When creating a connection for a project, the project owns the connection
+			'secretsProviderConnection:owner',
 		);
 		return this.connectionsService.toPublicConnection(savedConnection);
 	}
