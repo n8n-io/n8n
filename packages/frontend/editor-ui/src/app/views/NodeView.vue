@@ -284,6 +284,7 @@ const hideCanvasControls = computed(() => {
 });
 
 const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
+const isDemoInteractive = computed(() => isDemoRoute.value && route.query.interactive === 'true');
 const isReadOnlyRoute = computed(() => !!route?.meta?.readOnlyCanvas);
 const isReadOnlyEnvironment = computed(() => {
 	return sourceControlStore.preferences.branchReadOnly;
@@ -292,7 +293,7 @@ const isNDVV2 = computed(() => true);
 
 const isCanvasReadOnly = computed(() => {
 	return (
-		isDemoRoute.value ||
+		(isDemoRoute.value && !isDemoInteractive.value) ||
 		isReadOnlyEnvironment.value ||
 		collaborationStore.shouldBeReadOnly ||
 		!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update) ||
@@ -302,7 +303,7 @@ const isCanvasReadOnly = computed(() => {
 });
 
 const canExecuteOnCanvas = computed(() => {
-	if (isDemoRoute.value) return false;
+	if (isDemoRoute.value && !isDemoInteractive.value) return false;
 	if (editableWorkflow.value.isArchived) return false;
 	if (builderStore.streaming) return false;
 	return !!(workflowPermissions.value.execute ?? projectPermissions.value.workflow.execute);
