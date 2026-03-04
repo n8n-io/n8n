@@ -1,7 +1,14 @@
 import { K3sContainer, type StartedK3sContainer } from '@testcontainers/k3s';
 import { execSync } from 'node:child_process';
-import { mkdtempSync, unlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import {
+	copyFileSync,
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	unlinkSync,
+	writeFileSync,
+} from 'node:fs';
+import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { setTimeout as wait } from 'node:timers/promises';
 
@@ -31,6 +38,8 @@ export interface HelmStackConfig {
 	startupTimeoutMs?: number;
 	/** Deployment mode: standalone (SQLite) or queue (PostgreSQL + Redis + workers) */
 	mode?: HelmStackMode;
+	/** Additional environment variables to inject into n8n pods via Helm set-flags (merge-last-wins over defaults) */
+	env?: Record<string, string>;
 }
 
 export interface HelmStack {
@@ -140,14 +149,17 @@ function parseImageName(imageName: string): { repository: string; tag: string } 
 		: { repository: imageName, tag: 'latest' };
 }
 
-function buildHelmSetFlags(imageName: string, mode: HelmStackMode, baseUrl: string): string[] {
+function buildHelmSetFlags(
+	imageName: string,
+	mode: HelmStackMode,
+	baseUrl: string,
+	envOverrides?: Record<string, string>,
+): string[] {
 	const { repository, tag } = parseImageName(imageName);
 
 	// Collect env vars as an array, then convert to indexed --set flags.
 	// This avoids fragile manual index tracking and makes it easy to add conditional entries.
 	const extraEnvs: Array<{ name: string; value: string }> = [
-		{ name: 'E2E_TESTS', value: 'true' },
-		{ name: 'NODE_ENV', value: 'development' },
 		{ name: 'N8N_DIAGNOSTICS_ENABLED', value: 'false' },
 		{ name: 'N8N_DYNAMIC_BANNERS_ENABLED', value: 'false' },
 		// WEBHOOK_URL tells n8n its externally-accessible address (for invitation links, webhooks, etc.)
@@ -166,6 +178,13 @@ function buildHelmSetFlags(imageName: string, mode: HelmStackMode, baseUrl: stri
 	}
 	if (process.env.N8N_LICENSE_CERT) {
 		extraEnvs.push({ name: 'N8N_LICENSE_CERT', value: process.env.N8N_LICENSE_CERT });
+	}
+
+	// Caller-provided env overrides (merge-last-wins)
+	if (envOverrides) {
+		for (const [name, value] of Object.entries(envOverrides)) {
+			extraEnvs.push({ name, value });
+		}
 	}
 
 	// Dynamic overrides on top of the example values file (-f).
@@ -271,17 +290,24 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 		helmChartRepo = DEFAULT_CHART_REPO,
 		startupTimeoutMs = 300_000,
 		mode = 'standalone',
+		env: envOverrides,
 	} = config;
+
+	const containerName = `n8n-helm-${mode}-${Date.now().toString(36)}`;
 
 	log('Starting K3s + Helm stack');
 	log(`  Mode: ${mode}`);
+	log(`  Container: ${containerName}`);
 	log(`  n8n image: ${n8nImage}`);
 	log(`  K3s image: ${k3sImage}`);
 	log(`  Chart: ${helmChartRepo} @ ${helmChartRef}`);
 
 	// Step 1: Start K3s with NodePort exposed (bypasses flaky kubectl port-forward)
+	// Ryuk is disabled so the container survives process exit — clean up via stack:helm:clean.
 	log('Starting K3s container (privileged)...');
 	const k3s = await new K3sContainer(k3sImage)
+		.withName(containerName)
+		.withLabels({ 'n8n.helm': 'true', 'n8n.helm.mode': mode })
 		.withExposedPorts(N8N_NODE_PORT)
 		.withStartupTimeout(K3S_STARTUP_TIMEOUT_MS)
 		.start();
@@ -289,11 +315,45 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 	const baseUrl = `http://localhost:${hostPort}`;
 	log(`K3s started (NodePort ${N8N_NODE_PORT} -> host ${hostPort})`);
 
-	// Step 2: Write kubeconfig so host helm/kubectl can talk to K3s
-	const kubeConfigPath = join(tmpdir(), `helm-kubeconfig-${Date.now()}.yaml`);
-	writeFileSync(kubeConfigPath, k3s.getKubeConfig());
+	// Step 2: Write kubeconfig to a stable path and merge into ~/.kube/config
+	const kubeDir = join(homedir(), '.kube');
+	mkdirSync(kubeDir, { recursive: true });
+	const contextName = `n8n-helm-${mode}`;
+	const kubeConfigPath = join(kubeDir, `${contextName}.yaml`);
+
+	// K3s names everything 'default' — rename to avoid clashing with existing contexts
+	const rawKubeconfig = k3s.getKubeConfig();
+	const namedKubeconfig = rawKubeconfig
+		.replace(/\bname: default\b/g, `name: ${contextName}`)
+		.replace(/\bcurrent-context: default\b/, `current-context: ${contextName}`)
+		.replace(/\bcluster: default\b/g, `cluster: ${contextName}`)
+		.replace(/\buser: default\b/g, `user: ${contextName}`);
+	writeFileSync(kubeConfigPath, namedKubeconfig);
+
+	// Merge into ~/.kube/config so kubectl works without KUBECONFIG env var
+	const defaultKubeconfig = join(kubeDir, 'config');
+	if (existsSync(defaultKubeconfig)) {
+		copyFileSync(defaultKubeconfig, `${defaultKubeconfig}.bak`);
+	}
+	try {
+		const merged = execSync('kubectl config view --flatten', {
+			env: {
+				...process.env,
+				KUBECONFIG: existsSync(defaultKubeconfig)
+					? `${kubeConfigPath}:${defaultKubeconfig}`
+					: kubeConfigPath,
+			},
+			stdio: 'pipe',
+			encoding: 'utf-8',
+		});
+		writeFileSync(defaultKubeconfig, merged);
+		execSync(`kubectl config use-context ${contextName}`, { stdio: 'pipe' });
+		log(`Kubeconfig merged into ~/.kube/config (context: ${contextName})`);
+	} catch {
+		log(`Warning: could not merge kubeconfig — use: export KUBECONFIG=${kubeConfigPath}`);
+	}
+
 	const env: NodeJS.ProcessEnv = { ...process.env, KUBECONFIG: kubeConfigPath };
-	log(`Kubeconfig written to ${kubeConfigPath}`);
 
 	let chartDir = '';
 
@@ -325,7 +385,7 @@ export async function createHelmStack(config: HelmStackConfig = {}): Promise<Hel
 		// Step 8: Install n8n chart using published example values file + dynamic overrides
 		log('Installing Helm chart (this may take a few minutes)...');
 		const valuesFile = getExampleValuesFile(chartDir, mode);
-		const setFlags = buildHelmSetFlags(n8nImage, mode, baseUrl).join(' ');
+		const setFlags = buildHelmSetFlags(n8nImage, mode, baseUrl, envOverrides).join(' ');
 		log(`Using values file: ${valuesFile}`);
 		const helmOutput = execOnHost(
 			`helm install n8n "${chartDir}/charts/n8n" -f "${valuesFile}" ${setFlags} --wait --timeout 5m`,
