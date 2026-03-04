@@ -1,3 +1,15 @@
+## [2.10.3](https://github.com/n8n-io/n8n/compare/n8n@2.10.2...n8n@2.10.3) (2026-03-04)
+
+
+### Bug Fixes
+
+* **editor:** Always show auth mode dropdown in credential modal ([#26280](https://github.com/n8n-io/n8n/issues/26280)) ([c6a5c90](https://github.com/n8n-io/n8n/commit/c6a5c909c081ddf0ff3726591cdb8d00c7db55c0))
+* **editor:** Replace jsonpath with jsonpath-plus to resolve CVE ([#26399](https://github.com/n8n-io/n8n/issues/26399)) ([65ea0a8](https://github.com/n8n-io/n8n/commit/65ea0a8fe738f177ba0a721c6d1dab70eacfeaec))
+* Handle collaboration push old format ([#26467](https://github.com/n8n-io/n8n/issues/26467)) ([4e2b9c6](https://github.com/n8n-io/n8n/commit/4e2b9c69b94b0c0d2506dbb01bf47a1267f55fc2))
+* Merge by sql update ([#26364](https://github.com/n8n-io/n8n/issues/26364)) ([9f84503](https://github.com/n8n-io/n8n/commit/9f8450358b8486398017bd6a73de440bbc86bcc0))
+
+
+
 ## [2.10.2](https://github.com/n8n-io/n8n/compare/n8n@2.10.1...n8n@2.10.2) (2026-02-27)
 
 
