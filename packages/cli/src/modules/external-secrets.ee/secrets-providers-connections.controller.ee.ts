@@ -122,7 +122,7 @@ export class SecretProvidersConnectionsController {
 	}
 
 	@Get('/')
-	@GlobalScope('externalSecretsProvider:read')
+	@GlobalScope('externalSecretsProvider:list')
 	async listConnections(): Promise<SecretProviderConnectionListItem[]> {
 		this.logger.debug('Listing all connections');
 		const connections = await this.connectionsService.listConnections();

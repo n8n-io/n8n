@@ -1,4 +1,5 @@
 import { nextTick, reactive } from 'vue';
+import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import type { MockInstance } from 'vitest';
 import { waitFor, within } from '@testing-library/vue';
@@ -741,11 +742,10 @@ describe('WorkflowSettingsVue', () => {
 			workflowDocumentStore.setSettings({ credentialResolverId: '' });
 
 			const { getByRole } = createComponent({ pinia });
-			await nextTick();
-
-			await waitFor(() => {
-				expect(workflowsListStore.fetchWorkflow).toHaveBeenCalled();
-			});
+			// flushPromises drains the full microtask queue, ensuring onMounted's
+			// Promise.all (loadCredentialResolvers, loadWorkflows, etc.) fully resolves
+			// and workflowSettings.value is initialized before we click Save.
+			await flushPromises();
 
 			await userEvent.click(getByRole('button', { name: 'Save' }));
 
