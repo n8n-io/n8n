@@ -29,11 +29,6 @@ const COLUMNS: Column[] = [
 	{ header: 'p50', suffixes: ['duration-p50'], format: (v) => `${v.toFixed(0)}ms` },
 	{ header: 'p95', suffixes: ['duration-p95'], format: (v) => `${v.toFixed(0)}ms` },
 	{ header: 'p99', suffixes: ['duration-p99'], format: (v) => `${v.toFixed(0)}ms` },
-	{
-		header: 'Heap Δ MB',
-		suffixes: ['memory-delta'],
-		format: (v) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}`,
-	},
 ];
 
 function extractTrigger(filePath: string): string {
