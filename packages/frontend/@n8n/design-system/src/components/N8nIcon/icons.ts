@@ -36,6 +36,7 @@ import Triangle from './custom/triangle.svg';
 import VectorSquare from './custom/vector-square.svg';
 import Webhook from './custom/webhook.svg';
 
+import IconLucideAlignLeft from '~icons/lucide/align-left';
 import IconLucideAlignRight from '~icons/lucide/align-right';
 import IconLucideArchive from '~icons/lucide/archive';
 import IconLucideArchiveRestore from '~icons/lucide/archive-restore';
@@ -208,6 +209,7 @@ import IconLucideSquareCheck from '~icons/lucide/square-check';
 import IconLucideSquareMinus from '~icons/lucide/square-minus';
 import IconLucideSquarePen from '~icons/lucide/square-pen';
 import IconLucideSquarePlus from '~icons/lucide/square-plus';
+import IconLucideSplitHorizontal from '~icons/lucide/square-split-horizontal';
 import IconLucideStickyNote from '~icons/lucide/sticky-note';
 import IconLucideSun from '~icons/lucide/sun';
 import IconLucideTable from '~icons/lucide/table';
@@ -273,6 +275,7 @@ export const deprecatedIconSet = {
 	mcp: Mcp,
 
 	// fontAwesomeIcons
+	'align-left': IconLucideAlignLeft,
 	'caret-up': IconLucideChevronUp,
 	'caret-down': IconLucideChevronDown,
 	'caret-right': IconLucideChevronRight,
@@ -663,6 +666,7 @@ export const updatedIconSet = {
 	smile: IconLucideSmile,
 	sparkles: IconLucideSparkles,
 	split: IconLucideSplit,
+	'split-horizontal': IconLucideSplitHorizontal,
 	square: IconLucideSquare,
 	'square-check': IconLucideSquareCheck,
 	'square-minus': IconLucideSquareMinus,

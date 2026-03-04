@@ -458,25 +458,6 @@ defineExpose({
 
 <template>
 	<div :class="$style.container">
-		<div :class="$style.header">
-			<div :class="$style.chatTitle">
-				<div :class="$style.headerText">
-					<div :class="$style.assistantTitle">
-						<AssistantIcon size="large" />
-						<AssistantText size="large" :text="t('assistantChat.aiAssistantLabel')" />
-					</div>
-				</div>
-				<slot name="header" />
-			</div>
-			<N8nIconButton
-				icon="x"
-				variant="ghost"
-				size="large"
-				:aria-label="t('askAssistantChat.close')"
-				data-test-id="close-chat-button"
-				@click="onClose"
-			/>
-		</div>
 		<div :class="$style.body">
 			<div v-if="normalizedMessages?.length || loadingMessage" :class="$style.messages">
 				<N8nScrollArea
@@ -707,13 +688,14 @@ defineExpose({
 	position: relative;
 	display: grid;
 	grid-template-rows: auto 1fr auto;
+	max-width: 80vw;
 }
 
 .header {
 	height: 65px; // same as header height in editor
 	padding: 0 var(--spacing--sm) 0 var(--spacing--lg);
-	background-color: var(--color--background--light-3);
-	border: var(--border);
+	// background-color: var(--color--background--light-3);
+	// border: var(--border);
 	border-top: 0;
 	display: flex;
 	align-items: center;
@@ -729,8 +711,8 @@ defineExpose({
 }
 
 .body {
-	background-color: var(--color--background--light-2);
-	border: var(--border);
+	// background-color: var(--color--background--light-2);
+	// border: var(--border);
 	border-top: 0;
 	border-bottom: 0;
 	position: relative;
@@ -848,9 +830,9 @@ defineExpose({
 	display: flex;
 	justify-content: center;
 	width: 100%;
-	border-left: var(--border);
-	border-right: var(--border);
-	background-color: var(--color--background--light-2);
+	// border-left: var(--border);
+	// border-right: var(--border);
+	// background-color: var(--color--background--light-2);
 
 	> :first-child {
 		width: 90%;
@@ -859,11 +841,11 @@ defineExpose({
 
 .inputWrapper {
 	padding: var(--spacing--4xs) var(--spacing--2xs) var(--spacing--xs);
-	background-color: var(--color--background--light-2);
+	// background-color: var(--color--background--light-2);
 	width: 100%;
 	position: relative;
-	border-left: var(--border);
-	border-right: var(--border);
+	// border-left: var(--border);
+	// border-right: var(--border);
 }
 
 .inputWrapperWithHeader {

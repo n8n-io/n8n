@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import type { ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
+import AskAssistantBuild from '@/features/ai/assistant/components/Agent/AskAssistantBuild.vue';
 import type { IWorkflowDb } from '@/Interface';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { getRectOfNodes, useVueFlow } from '@vue-flow/core';
 import { throttledRef } from '@vueuse/core';
+import { N8nIconButton } from '@n8n/design-system';
 import type { Workflow } from 'n8n-workflow';
 import { computed, ref, toRef, useCssModule, useTemplateRef } from 'vue';
 import type { CanvasEventBusEvents } from '../canvas.types';
@@ -38,6 +40,8 @@ const props = withDefaults(
 
 const canvasRef = useTemplateRef('canvas');
 const $style = useCssModule();
+const view = ref<'chat' | 'canvas' | 'split'>('chat');
+const askAssistantBuildRef = ref<InstanceType<typeof AskAssistantBuild>>();
 
 const { onNodesInitialized, viewport, viewportRef, getNodes, fitBounds } = useVueFlow(props.id);
 
@@ -140,8 +144,20 @@ defineExpose({
 </script>
 
 <template>
-	<div :class="$style.wrapper" data-test-id="canvas-wrapper">
-		<div id="canvas" :class="$style.canvas">
+	<div
+		:class="{ [$style.wrapper]: true, [$style.split]: view === 'split' }"
+		data-test-id="canvas-wrapper"
+	>
+		<div v-if="view !== 'canvas'" id="chat" :class="$style.chat">
+			<AskAssistantBuild ref="askAssistantBuildRef">
+				<!--
+				<template v-if="canToggleModes" #header>
+					<HubSwitcher :is-build-mode="isBuildMode" @toggle="toggleAssistantMode" />
+				</template>
+				-->
+			</AskAssistantBuild>
+		</div>
+		<div v-if="view !== 'chat'" id="canvas" :class="$style.canvas">
 			<Canvas
 				v-if="workflow"
 				:id="id"
@@ -156,6 +172,30 @@ defineExpose({
 			/>
 		</div>
 		<slot />
+
+		<div :class="$style['switcher']">
+			<N8nIconButton
+				variant="subtle"
+				size="large"
+				icon="align-left"
+				:active="view === 'chat'"
+				@click="view = 'chat'"
+			/>
+			<N8nIconButton
+				variant="subtle"
+				size="large"
+				icon="split"
+				:active="view === 'split'"
+				@click="view = 'split'"
+			/>
+			<N8nIconButton
+				variant="subtle"
+				size="large"
+				icon="workflow"
+				:active="view === 'canvas'"
+				@click="view = 'canvas'"
+			/>
+		</div>
 	</div>
 </template>
 
@@ -166,9 +206,31 @@ defineExpose({
 	width: 100%;
 	height: 100%;
 	overflow: hidden;
+
+	&.split {
+		.chat,
+		.canvas {
+			width: 50%;
+		}
+	}
 }
 
-.canvas {
+.switcher {
+	position: absolute;
+	top: 0;
+	right: left;
+	display: flex;
+	flex-direction: row;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--sm);
+	pointer-events: all !important;
+}
+
+.chatWrapper {
+	max-width: 80vw;
+}
+.canvas,
+.chat {
 	width: 100%;
 	height: 100%;
 	position: relative;
