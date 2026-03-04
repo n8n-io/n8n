@@ -526,7 +526,11 @@ const fileDrop = useFileDrop(true, onFilesDropped, ['application/pdf']);
 						</N8nInputLabel>
 					</div>
 
-					<N8nInputLabel input-name="agent-files" label="Files" :required="false">
+					<N8nInputLabel
+						input-name="agent-files"
+						:label="i18n.baseText('chatHub.agent.editor.files.label')"
+						:required="false"
+					>
 						<input
 							ref="fileInput"
 							type="file"

@@ -21,6 +21,7 @@ import { updateSemanticSearchSettingsApi } from './chat.api';
 import { useToast } from '@/app/composables/useToast';
 import { providerDisplayNames, vectorStoreProviderDisplayNames } from './constants';
 import { DEFAULT_SEMANTIC_SEARCH_SETTINGS, EMBEDDINGS_NODE_TYPE_MAP } from '@n8n/chat-hub';
+import { deepCopy } from 'n8n-workflow';
 
 const i18n = useI18n();
 const message = useMessage();
@@ -31,9 +32,7 @@ const settingsStore = useSettingsStore();
 
 const { semanticSearchReadiness } = storeToRefs(chatStore);
 
-const settings = ref<ChatHubSemanticSearchSettings>(
-	settingsStore.moduleSettings['chat-hub']?.semanticSearch ?? DEFAULT_SEMANTIC_SEARCH_SETTINGS,
-);
+const settings = ref<ChatHubSemanticSearchSettings>(deepCopy(DEFAULT_SEMANTIC_SEARCH_SETTINGS));
 
 const vectorStoreCredentialType = computed(() => {
 	const provider = settings.value.vectorStore.provider;
@@ -166,8 +165,9 @@ async function onEmbeddingCredentialSelected(credentialId: string | null) {
 watch(
 	() => settingsStore.moduleSettings['chat-hub']?.semanticSearch,
 	(newType) => {
-		settings.value = newType ?? DEFAULT_SEMANTIC_SEARCH_SETTINGS;
+		settings.value = newType ?? deepCopy(DEFAULT_SEMANTIC_SEARCH_SETTINGS);
 	},
+	{ immediate: true },
 );
 </script>
 <template>

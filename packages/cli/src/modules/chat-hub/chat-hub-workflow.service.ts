@@ -1576,14 +1576,14 @@ You can update the most recent document using the commands described above, or c
 			typeVersion: 1.4,
 			position: [-48, 0],
 			id: uuidv4(),
-			name: 'When chat message received',
+			name: NODE_NAMES.CHAT_TRIGGER,
 			webhookId: uuidv4(),
 		};
 
 		const embeddingsNode: INode = {
 			...this.buildEmbeddingsModelNode(vectorStoreSearch),
 			position: [128, 464],
-			name: 'Embeddings Model',
+			name: NODE_NAMES.EMBEDDINGS_MODEL,
 		};
 
 		const nodes: INode[] = [
@@ -1595,7 +1595,7 @@ You can update the most recent document using the commands described above, or c
 				typeVersion: 1,
 				position: [208, 0],
 				id: uuidv4(),
-				name: 'Vector Store',
+				name: NODE_NAMES.VECTOR_STORE,
 				credentials: {
 					[vectorStoreSearch.vectorStore.credentialType]: {
 						id: vectorStoreSearch.vectorStore.credentialId,
@@ -1632,40 +1632,40 @@ You can update the most recent document using the commands described above, or c
 				typeVersion: 1.1,
 				position: [320, 192],
 				id: uuidv4(),
-				name: 'Default Data Loader',
+				name: NODE_NAMES.DEFAULT_DATA_LOADER,
 			},
 		];
 		const connections: IConnections = {
-			'Vector Store': {
+			[NODE_NAMES.VECTOR_STORE]: {
 				main: [[]],
 			},
-			'When chat message received': {
+			[NODE_NAMES.CHAT_TRIGGER]: {
 				main: [
 					[
 						{
-							node: 'Vector Store',
+							node: NODE_NAMES.VECTOR_STORE,
 							type: 'main',
 							index: 0,
 						},
 					],
 				],
 			},
-			'Embeddings Model': {
+			[NODE_NAMES.EMBEDDINGS_MODEL]: {
 				ai_embedding: [
 					[
 						{
-							node: 'Vector Store',
+							node: NODE_NAMES.VECTOR_STORE,
 							type: 'ai_embedding',
 							index: 0,
 						},
 					],
 				],
 			},
-			'Default Data Loader': {
+			[NODE_NAMES.DEFAULT_DATA_LOADER]: {
 				ai_document: [
 					[
 						{
-							node: 'Vector Store',
+							node: NODE_NAMES.VECTOR_STORE,
 							type: 'ai_document',
 							index: 0,
 						},

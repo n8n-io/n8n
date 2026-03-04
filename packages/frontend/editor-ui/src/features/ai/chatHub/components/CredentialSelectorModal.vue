@@ -12,7 +12,7 @@ const props = defineProps<{
 	modalName: string;
 	data: {
 		credentialType: string;
-		displayName?: string;
+		displayName: string;
 		initialValue: string | null;
 		onSelect: (credentialId: string | null) => void;
 	};
@@ -24,7 +24,7 @@ const telemetry = useTelemetry();
 const modalBus = ref(createEventBus());
 const selectedCredentialId = ref<string | null>(props.data.initialValue);
 
-const displayName = computed(() => props.data.displayName ?? '');
+const displayName = computed(() => props.data.displayName);
 
 function onCredentialSelect(credentialId: string) {
 	selectedCredentialId.value = credentialId;

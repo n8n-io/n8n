@@ -36,9 +36,9 @@ async function deleteDocuments(
 	this: ILoadOptionsFunctions,
 	payload: IDataObject | string | undefined,
 ): Promise<NodeParameterValueType> {
-	const { filter, metadataColumnName = 'metadata' } = (
-		typeof payload === 'string' ? jsonParse(payload) : (payload ?? {})
-	) as { filter: Record<string, string | string[]>; metadataColumnName?: string };
+	const { filter } = (typeof payload === 'string' ? jsonParse(payload) : (payload ?? {})) as {
+		filter: Record<string, string | string[]>;
+	};
 
 	const credentials = await this.getCredentials<ChatHubVectorStorePGVectorApiCredentials>(
 		'chatHubVectorStorePGVectorApi',
@@ -59,10 +59,11 @@ async function deleteDocuments(
 	const values: Array<string | string[]> = [];
 	let paramIndex = 1;
 	for (const [key, value] of Object.entries(filter)) {
+		const escapedKey = `"${key.replace(/"/g, '""')}"`;
 		if (Array.isArray(value)) {
-			conditions.push(`${metadataColumnName}->>'${key}' = ANY($${paramIndex}::text[])`);
+			conditions.push(`metadata->>${escapedKey} = ANY($${paramIndex}::text[])`);
 		} else {
-			conditions.push(`${metadataColumnName}->>'${key}' = $${paramIndex}`);
+			conditions.push(`metadata->>${escapedKey} = $${paramIndex}`);
 		}
 		values.push(value);
 		paramIndex++;

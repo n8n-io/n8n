@@ -31,10 +31,13 @@ const warningTooltip = computed<string | undefined>(() => {
 	if (!props.semanticSearchReady) {
 		return i18n.baseText('chatHub.agent.editor.files.semanticSearchNotReady.tooltip');
 	}
-	if (props.item.embeddingProvider !== props.currentEmbeddingProvider) {
+	if (
+		props.item.embeddingProvider &&
+		props.item.embeddingProvider !== props.currentEmbeddingProvider
+	) {
 		return i18n.baseText('chatHub.agent.editor.files.embeddingMismatch.tooltip', {
 			interpolate: {
-				fileProvider: providerDisplayNames[props.item.embeddingProvider!],
+				fileProvider: providerDisplayNames[props.item.embeddingProvider],
 				currentProvider: props.currentEmbeddingProvider
 					? providerDisplayNames[props.currentEmbeddingProvider]
 					: 'unknown',
