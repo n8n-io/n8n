@@ -61,7 +61,6 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		openWorkflowTemplate,
 		openWorkflowTemplateFromJSON,
 	} = useCanvasOperations();
-	const { fetchAndSetParentFolder } = useParentFolder();
 	// Pass workflowState to useExecutionDebugging since we're in the same component
 	// that provides WorkflowStateKey (WorkflowLayout), so inject won't work
 	const { applyExecutionData } = useExecutionDebugging(workflowState);
@@ -73,6 +72,8 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	const currentWorkflowDocumentStore = shallowRef<ReturnType<
 		typeof useWorkflowDocumentStore
 	> | null>(null);
+
+	const { fetchParentFolder } = useParentFolder();
 
 	function disposeCurrentWorkflowDocumentStore() {
 		if (currentWorkflowDocumentStore.value) {
@@ -280,7 +281,8 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		currentWorkflowDocumentStore.value.setHomeProject(homeProject);
 
 		await projectsStore.refreshCurrentProject();
-		await fetchAndSetParentFolder(parentFolderId);
+		const parentFolder = await fetchParentFolder(parentFolderId);
+		currentWorkflowDocumentStore.value?.setParentFolder(parentFolder);
 
 		uiStore.nodeViewInitialized = true;
 		initializedWorkflowId.value = workflowId.value;
@@ -293,10 +295,6 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 			const workflowData = await workflowsListStore.fetchWorkflow(id);
 
 			await openWorkflow(workflowData);
-
-			if (workflowData.parentFolder) {
-				workflowsStore.setParentFolder(workflowData.parentFolder);
-			}
 
 			// Track telemetry for onboarding and experiment workflows
 			if (workflowData.meta?.onboardingId) {

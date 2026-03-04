@@ -1054,10 +1054,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			});
 	}
 
-	function setParentFolder(folder: IWorkflowDb['parentFolder']) {
-		workflow.value.parentFolder = folder;
-	}
-
 	function setNodes(nodes: INodeUi[]): void {
 		nodes.forEach((node) => {
 			if (!node.id) {
@@ -1760,7 +1756,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setDescription,
 		getDuplicateCurrentWorkflowName,
 		setWorkflowExecutionRunData,
-		setParentFolder,
 		setWorkflow,
 		addConnection,
 		removeConnection,

@@ -1043,6 +1043,7 @@ export function useWorkflowHelpers() {
 			workflowDocumentStore.setChecksum(workflowData.checksum);
 		}
 		workflowDocumentStore.setMeta(workflowData.meta);
+		workflowDocumentStore.setParentFolder(workflowData.parentFolder ?? null);
 		tagsStore.upsertTags(tags);
 
 		return { workflowDocumentStore };
