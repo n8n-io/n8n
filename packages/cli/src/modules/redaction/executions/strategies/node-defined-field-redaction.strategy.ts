@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type { INodeExecutionData, IRedactedFieldMarker } from 'n8n-workflow';
+import type { INodeExecutionData, IRedactedFieldMarker, ITaskDataConnections } from 'n8n-workflow';
 
 import type { RedactableExecution } from '@/executions/execution-redaction';
 import { NodeTypes } from '@/node-types';
@@ -20,14 +20,23 @@ export class NodeDefinedFieldRedactionStrategy implements IExecutionRedactionStr
 	) {}
 
 	async apply(execution: RedactableExecution, _context: RedactionContext): Promise<void> {
-		const sensitiveFieldsMap = this.buildSensitiveFieldsMap(execution);
-		if (sensitiveFieldsMap.size === 0) return;
+		const { sensitiveFields, unknownNodes } = this.buildSensitiveFieldsMap(execution);
+		if (sensitiveFields.size === 0 && unknownNodes.size === 0) return;
 
 		const runData = execution.data.resultData.runData;
 		if (!runData) return;
 
 		for (const nodeName of Object.keys(runData)) {
-			const fieldPaths = sensitiveFieldsMap.get(nodeName);
+			if (unknownNodes.has(nodeName)) {
+				for (const taskData of runData[nodeName]) {
+					if (taskData.data) {
+						this.redactAllOutputs(taskData.data);
+					}
+				}
+				continue;
+			}
+
+			const fieldPaths = sensitiveFields.get(nodeName);
 			if (!fieldPaths?.length) continue;
 
 			for (const taskData of runData[nodeName]) {
@@ -49,9 +58,18 @@ export class NodeDefinedFieldRedactionStrategy implements IExecutionRedactionStr
 	/**
 	 * Builds a map from workflow node name → sensitive field paths declared on
 	 * that node's type description.  Resolved once per execution call.
+	 *
+	 * When a node type cannot be resolved (e.g. community node uninstalled), the
+	 * node is added to `unknownNodes` so its entire output is wiped conservatively
+	 * (fail-closed), honouring the contract that `sensitiveOutputFields` are
+	 * always redacted and never revealable.
 	 */
-	private buildSensitiveFieldsMap(execution: RedactableExecution): Map<string, string[]> {
-		const map = new Map<string, string[]>();
+	private buildSensitiveFieldsMap(execution: RedactableExecution): {
+		sensitiveFields: Map<string, string[]>;
+		unknownNodes: Set<string>;
+	} {
+		const sensitiveFields = new Map<string, string[]>();
+		const unknownNodes = new Set<string>();
 
 		for (const node of execution.workflowData.nodes) {
 			let description;
@@ -59,17 +77,37 @@ export class NodeDefinedFieldRedactionStrategy implements IExecutionRedactionStr
 				description = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
 			} catch {
 				this.logger.warn(
-					`[NodeDefinedFieldRedactionStrategy] Could not load type for node "${node.name}" (${node.type} v${node.typeVersion}) — skipping`,
+					`[NodeDefinedFieldRedactionStrategy] Could not load type for node "${node.name}" (${node.type} v${node.typeVersion}) — redacting all outputs conservatively`,
 				);
+				unknownNodes.add(node.name);
 				continue;
 			}
 
 			if (description.sensitiveOutputFields?.length) {
-				map.set(node.name, description.sensitiveOutputFields);
+				sensitiveFields.set(node.name, description.sensitiveOutputFields);
 			}
 		}
 
-		return map;
+		return { sensitiveFields, unknownNodes };
+	}
+
+	/**
+	 * Clears all items across every connection output for a node whose type
+	 * could not be resolved.  Fail-closed: wipes `json` and `binary`, sets a
+	 * redaction marker so callers know the data was removed.
+	 */
+	private redactAllOutputs(connections: ITaskDataConnections): void {
+		for (const outputs of Object.values(connections)) {
+			for (const items of outputs) {
+				if (items) {
+					for (const item of items) {
+						item.json = {};
+						delete item.binary;
+						item.redaction = { redacted: true, reason: 'node_type_unavailable' };
+					}
+				}
+			}
+		}
 	}
 
 	/**

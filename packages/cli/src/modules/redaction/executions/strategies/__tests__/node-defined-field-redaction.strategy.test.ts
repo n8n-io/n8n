@@ -289,8 +289,8 @@ describe('NodeDefinedFieldRedactionStrategy', () => {
 		});
 	});
 
-	describe('fail-secure behavior', () => {
-		it('logs a warning and skips a node when its type cannot be resolved', async () => {
+	describe('fail-closed behavior', () => {
+		it('redacts all outputs conservatively when node type cannot be resolved', async () => {
 			nodeTypes.getByNameAndVersion.mockImplementation(() => {
 				throw new Error('Unknown node type');
 			});
@@ -304,18 +304,13 @@ describe('NodeDefinedFieldRedactionStrategy', () => {
 			expect(logger.warn).toHaveBeenCalledWith(
 				expect.stringContaining('Could not load type for node "Webhook"'),
 			);
-			// Item should be untouched
-			expect(
-				(
-					execution.data.resultData.runData.Webhook[0].data!.main[0]![0].json.headers as Record<
-						string,
-						unknown
-					>
-				).authorization,
-			).toBe('secret');
+			// Item should be fully wiped
+			const item = execution.data.resultData.runData.Webhook[0].data!.main[0]![0];
+			expect(item.json).toEqual({});
+			expect(item.redaction).toEqual({ redacted: true, reason: 'node_type_unavailable' });
 		});
 
-		it('continues redacting other nodes when one node type lookup fails', async () => {
+		it('continues redacting other nodes and clears unknown-type node outputs', async () => {
 			nodeTypes.getByNameAndVersion
 				.mockImplementationOnce(() => {
 					throw new Error('Unknown node type');
@@ -330,18 +325,18 @@ describe('NodeDefinedFieldRedactionStrategy', () => {
 					{ name: 'Webhook', type: 'n8n-nodes-base.webhook', typeVersion: 1 },
 				],
 				{
-					BadNode: [{ data: { main: [[{ json: { secret: 'untouched' } }]] } }],
+					BadNode: [{ data: { main: [[{ json: { secret: 'sensitive' } }]] } }],
 					Webhook: [{ data: { main: [[{ json: { headers: { authorization: 'secret' } } }]] } }],
 				},
 			);
 
 			await strategy.apply(execution, makeContext());
 
-			// BadNode untouched
-			expect(execution.data.resultData.runData.BadNode[0].data!.main[0]![0].json.secret).toBe(
-				'untouched',
-			);
-			// Webhook still redacted
+			// BadNode cleared conservatively
+			const badItem = execution.data.resultData.runData.BadNode[0].data!.main[0]![0];
+			expect(badItem.json).toEqual({});
+			expect(badItem.redaction).toEqual({ redacted: true, reason: 'node_type_unavailable' });
+			// Webhook still has field-level redaction
 			expect(
 				(
 					execution.data.resultData.runData.Webhook[0].data!.main[0]![0].json.headers as Record<
