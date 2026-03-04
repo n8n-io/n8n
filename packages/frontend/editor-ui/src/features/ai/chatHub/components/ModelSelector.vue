@@ -127,7 +127,7 @@ function openCredentialsSelectorOrCreate(provider: ChatHubLLMProvider) {
 			credentialType,
 			displayName: providerDisplayNames[provider],
 			initialValue: credentials?.[provider] ?? null,
-			onSelect: (credentialId) => handleSelectCredentials(provider, credentialId),
+			onSelect: (credentialId: string | null) => handleSelectCredentials(provider, credentialId),
 		},
 	});
 }
