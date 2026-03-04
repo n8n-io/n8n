@@ -1,3 +1,5 @@
+import { appendFileSync } from 'fs';
+
 import type { Reporter, TestCase, TestResult } from '@playwright/test/reporter';
 
 interface BenchmarkRow {
@@ -119,6 +121,33 @@ class BenchmarkSummaryReporter implements Reporter {
 
 		console.log(`└─${separator.map((s) => s).join('─┴─')}─┘`);
 		console.log('');
+
+		this.writeGitHubSummary();
+	}
+
+	private writeGitHubSummary(): void {
+		const summaryPath = process.env.GITHUB_STEP_SUMMARY;
+		if (!summaryPath) return;
+
+		const headers = ['Trigger', 'Scenario', ...COLUMNS.map((c) => c.header)];
+		const lines: string[] = [
+			'## Benchmark Summary',
+			'',
+			`| ${headers.join(' | ')} |`,
+			`| ${headers.map((h) => '---'.padEnd(h.length, '-')).join(' | ')} |`,
+		];
+
+		for (const row of this.rows) {
+			const cells = [
+				row.trigger,
+				row.scenario,
+				...COLUMNS.map((col) => this.resolveColumn(row, col)),
+			];
+			lines.push(`| ${cells.join(' | ')} |`);
+		}
+
+		lines.push('');
+		appendFileSync(summaryPath, lines.join('\n'));
 	}
 
 	private resolveColumn(row: BenchmarkRow, col: Column): string {
