@@ -241,15 +241,16 @@ describe('web-fetch.utils', () => {
 	});
 
 	describe('extractReadableContent', () => {
-		it('should extract title and content from HTML', () => {
+		it('should extract title and Markdown-formatted content from HTML', () => {
 			const html = `
 				<html>
 				<head><title>Test Page</title></head>
 				<body>
 					<article>
 						<h1>Test Page</h1>
+						<h2>Section One</h2>
 						<p>This is the main content of the page.</p>
-						<p>It has multiple paragraphs with useful information.</p>
+						<p>It has a <a href="https://example.com/link">link</a> and <strong>bold</strong> text.</p>
 					</article>
 				</body>
 				</html>
@@ -258,6 +259,10 @@ describe('web-fetch.utils', () => {
 			const result = extractReadableContent(html, 'https://example.com/page');
 			expect(result.title).toBe('Test Page');
 			expect(result.content).toContain('main content');
+			// Verify Markdown formatting is preserved
+			expect(result.content).toContain('[link](https://example.com/link)');
+			expect(result.content).toContain('**bold**');
+			expect(result.content).toContain('## Section One');
 			expect(result.truncated).toBe(false);
 		});
 

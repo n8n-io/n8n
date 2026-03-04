@@ -2,6 +2,7 @@ import { HumanMessage, type BaseMessage } from '@langchain/core/messages';
 import { Readability } from '@mozilla/readability';
 import dns from 'dns';
 import { JSDOM, VirtualConsole } from 'jsdom';
+import TurndownService from 'turndown';
 import { promisify } from 'util';
 
 import {
@@ -324,7 +325,12 @@ export function extractReadableContent(html: string, url: string): ExtractedCont
 	const article = new Readability(dom.window.document, { keepClasses: false }).parse();
 
 	const title = article?.title ?? '';
-	let content = article?.textContent ?? '';
+	const articleHtml = article?.content ?? '';
+	const turndownService = new TurndownService({
+		headingStyle: 'atx',
+		codeBlockStyle: 'fenced',
+	});
+	let content = articleHtml ? turndownService.turndown(articleHtml) : '';
 	let truncated = false;
 	let truncateReason: string | undefined;
 
