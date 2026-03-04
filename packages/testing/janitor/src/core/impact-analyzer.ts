@@ -193,6 +193,10 @@ export class ImpactAnalyzer {
 		return map;
 	}
 
+	private static escapeRegex(value: string): string {
+		return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	}
+
 	private isAllAdditive(diff: FileDiffResult): boolean {
 		if (diff.changedMethods.length === 0) return false;
 		return diff.changedMethods.every((m) => m.changeType === 'added');
@@ -212,8 +216,9 @@ export class ImpactAnalyzer {
 
 			const content = sourceFile.getFullText();
 			for (const method of addedMethods) {
-				const escaped = method.methodName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-				const methodPattern = new RegExp(`\\.${escaped}\\s*\\(`);
+				const methodPattern = new RegExp(
+					`\\.${ImpactAnalyzer.escapeRegex(method.methodName)}\\s*\\(`,
+				);
 				if (methodPattern.test(content)) {
 					affectedTests.add(testFile);
 					break;
@@ -294,10 +299,9 @@ export class ImpactAnalyzer {
 
 		const matchingFiles = new Set<string>();
 		const facadePath = this.facade.getFacadePath();
-		const patterns = propertyNames.map((name) => {
-			const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-			return new RegExp(`\\.${escaped}(?![a-zA-Z0-9_])`);
-		});
+		const patterns = propertyNames.map(
+			(name) => new RegExp(`\\.${ImpactAnalyzer.escapeRegex(name)}(?![a-zA-Z0-9_])`),
+		);
 		const allFiles = findFilesRecursive(this.root, '.ts');
 
 		for (const file of allFiles) {
