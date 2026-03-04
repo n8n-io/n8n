@@ -11,7 +11,7 @@ interface ResizeData extends ActionOptions {
 }
 
 export default {
-	title: 'Atoms/ResizeWrapper',
+	title: 'Core/ResizeWrapper',
 	component: N8nResizeWrapper,
 };
 

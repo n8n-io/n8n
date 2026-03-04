@@ -3,8 +3,15 @@ import { STORES } from '@n8n/stores';
 import { inject } from 'vue';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useWorkflowDocumentActive } from './workflowDocument/useWorkflowDocumentActive';
+import { useWorkflowDocumentHomeProject } from './workflowDocument/useWorkflowDocumentHomeProject';
+import { useWorkflowDocumentChecksum } from './workflowDocument/useWorkflowDocumentChecksum';
+import { useWorkflowDocumentMeta } from './workflowDocument/useWorkflowDocumentMeta';
 import { useWorkflowDocumentPinData } from './workflowDocument/useWorkflowDocumentPinData';
+import { useWorkflowDocumentScopes } from './workflowDocument/useWorkflowDocumentScopes';
+import { useWorkflowDocumentSettings } from './workflowDocument/useWorkflowDocumentSettings';
 import { useWorkflowDocumentTags } from './workflowDocument/useWorkflowDocumentTags';
+import { useWorkflowDocumentIsArchived } from './workflowDocument/useWorkflowDocumentIsArchived';
+import { useWorkflowDocumentTimestamps } from './workflowDocument/useWorkflowDocumentTimestamps';
 
 export {
 	getPinDataSize,
@@ -47,15 +54,29 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		const [workflowId, workflowVersion] = id.split('@');
 
 		const workflowDocumentActive = useWorkflowDocumentActive();
+		const workflowDocumentHomeProject = useWorkflowDocumentHomeProject();
+		const workflowDocumentChecksum = useWorkflowDocumentChecksum();
+		const workflowDocumentMeta = useWorkflowDocumentMeta();
 		const workflowDocumentTags = useWorkflowDocumentTags();
+		const workflowDocumentIsArchived = useWorkflowDocumentIsArchived();
 		const workflowDocumentPinData = useWorkflowDocumentPinData();
+		const workflowDocumentScopes = useWorkflowDocumentScopes();
+		const workflowDocumentTimestamps = useWorkflowDocumentTimestamps();
+		const workflowDocumentSettings = useWorkflowDocumentSettings();
 
 		return {
 			workflowId,
 			workflowVersion,
 			...workflowDocumentActive,
+			...workflowDocumentHomeProject,
+			...workflowDocumentChecksum,
+			...workflowDocumentIsArchived,
+			...workflowDocumentMeta,
+			...workflowDocumentSettings,
 			...workflowDocumentTags,
 			...workflowDocumentPinData,
+			...workflowDocumentScopes,
+			...workflowDocumentTimestamps,
 		};
 	})();
 }

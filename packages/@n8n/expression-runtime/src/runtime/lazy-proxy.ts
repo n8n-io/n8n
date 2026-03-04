@@ -1,6 +1,24 @@
 // ============================================================================
 // Deep Lazy Proxy System
 // ============================================================================
+// For more information about Proxies see
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy
+
+// ---------------------------------------------------------------------------
+// Proxy registry — used only for testing/introspection, not accessible from
+// expression code. Avoids shadowing user data keys like __isProxy / __path.
+// ---------------------------------------------------------------------------
+const proxyPaths = new WeakMap<object, string[]>();
+
+/** Returns true if `obj` is a deep lazy proxy created by createDeepLazyProxy. */
+export function isLazyProxy(obj: unknown): boolean {
+	return typeof obj === 'object' && obj !== null && proxyPaths.has(obj as object);
+}
+
+/** Returns the basePath the proxy was created with, or undefined if not a proxy. */
+export function getProxyPath(obj: object): string[] | undefined {
+	return proxyPaths.get(obj);
+}
 
 /**
  * Creates a deep lazy-loading proxy for workflow data.
@@ -19,7 +37,7 @@
  * @returns Proxy object with lazy loading behavior
  */
 export function createDeepLazyProxy(basePath: string[] = []): any {
-	return new Proxy({} as Record<string, unknown>, {
+	const proxy = new Proxy({} as Record<string, unknown>, {
 		get(target: any, prop: string | symbol): unknown {
 			// Handle Symbol properties - return undefined
 			// Symbols like Symbol.toStringTag are accessed internally
@@ -27,10 +45,6 @@ export function createDeepLazyProxy(basePath: string[] = []): any {
 			if (typeof prop === 'symbol') {
 				return undefined;
 			}
-
-			// Special properties for introspection
-			if (prop === '__isProxy') return true;
-			if (prop === '__path') return basePath;
 
 			// Handle common Object.prototype methods within isolate
 			// Don't fetch from parent to avoid native function transfer issues
@@ -82,6 +96,11 @@ export function createDeepLazyProxy(basePath: string[] = []): any {
 			if (value && typeof value === 'object' && value.__isArray) {
 				const arrayProxy = new Proxy([] as any[], {
 					get(arrTarget: any, arrProp: string | symbol): unknown {
+						// Symbols can't be transferred via isolated-vm; return undefined
+						if (typeof arrProp === 'symbol') {
+							return undefined;
+						}
+
 						// Handle array length
 						if (arrProp === 'length') {
 							return value.__length;
@@ -158,4 +177,7 @@ export function createDeepLazyProxy(basePath: string[] = []): any {
 			return value !== undefined;
 		},
 	});
+
+	proxyPaths.set(proxy, basePath);
+	return proxy;
 }

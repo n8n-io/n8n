@@ -30,61 +30,60 @@ test.use({
 	},
 });
 
-test.describe('Workflow Builder @auth:owner @ai @capability:proxy', {
-	annotation: [
-		{ type: 'owner', description: 'AI' },
-	],
-}, () => {
-	test.beforeEach(async ({ setupRequirements, services }) => {
-		await setupRequirements(workflowBuilderEnabledRequirements);
-		await services.proxy.clearAllExpectations();
-		await services.proxy.loadExpectations('workflow-builder');
-	});
+test.describe(
+	'Workflow Builder @auth:owner @ai @capability:proxy',
+	{
+		annotation: [{ type: 'owner', description: 'AI' }],
+	},
+	() => {
+		test.beforeEach(async ({ setupRequirements, services }) => {
+			await setupRequirements(workflowBuilderEnabledRequirements);
+			await services.proxy.clearAllExpectations();
+			await services.proxy.loadExpectations('workflow-builder');
+		});
 
-	test('should show Build with AI button on empty canvas', async ({ n8n }) => {
-		await n8n.page.goto('/workflow/new');
+		test('should show Build with AI button on empty canvas', async ({ n8n }) => {
+			await n8n.page.goto('/workflow/new');
 
-		await expect(n8n.aiBuilder.getCanvasBuildWithAIButton()).toBeVisible();
-	});
+			await expect(n8n.aiBuilder.getCanvasBuildWithAIButton()).toBeVisible();
+		});
 
-	test('should open workflow builder and show suggestions', async ({ n8n }) => {
-		await n8n.page.goto('/workflow/new');
+		test('should open workflow builder and show suggestions', async ({ n8n }) => {
+			await n8n.page.goto('/workflow/new');
 
-		await n8n.aiBuilder.getCanvasBuildWithAIButton().click();
+			await n8n.aiBuilder.getCanvasBuildWithAIButton().click();
 
-		await expect(n8n.aiAssistant.getAskAssistantSidebar()).toBeVisible();
-		await expect(n8n.aiAssistant.getAskAssistantChat()).toBeVisible();
-		await expect(n8n.aiBuilder.getWorkflowSuggestions()).toBeVisible();
+			await expect(n8n.aiAssistant.getAskAssistantSidebar()).toBeVisible();
+			await expect(n8n.aiAssistant.getAskAssistantChat()).toBeVisible();
+			await expect(n8n.aiBuilder.getWorkflowSuggestions()).toBeVisible();
 
-		await n8n.aiBuilder.getSuggestionPills().first().waitFor({ state: 'visible' });
-		const suggestions = n8n.aiBuilder.getSuggestionPills();
-		await expect(suggestions).toHaveCount(8);
-	});
+			await n8n.aiBuilder.getSuggestionPills().first().waitFor({ state: 'visible' });
+			const suggestions = n8n.aiBuilder.getSuggestionPills();
+			await expect(suggestions).toHaveCount(8);
+		});
 
-	// @AI team - investigated issues with this test, the replay of recorded events not working as expected
-	// doesn't appear to be matching in the correct order/some requests make it past the proxy leading to 401 error
-	test.fixme('should build workflow from suggested prompt @fixme', async ({ n8n }) => {
-		await n8n.page.goto('/workflow/new');
-		await openBuilderAndClickSuggestion(n8n, 'YouTube video chapters');
+		// @AI team - investigated issues with this test, the replay of recorded events not working as expected
+		// doesn't appear to be matching in the correct order/some requests make it past the proxy leading to 401 error
+		test.fixme('should build workflow from suggested prompt', async ({ n8n }) => {
+			await n8n.page.goto('/workflow/new');
+			await openBuilderAndClickSuggestion(n8n, 'YouTube video chapters');
 
-		await expect(n8n.aiAssistant.getChatMessagesUser().first()).toBeVisible();
+			await expect(n8n.aiAssistant.getChatMessagesUser().first()).toBeVisible();
 
-		// Wait for workflow to be built
-		await n8n.aiBuilder.waitForWorkflowBuildComplete();
+			// Wait for workflow to be built
+			await n8n.aiBuilder.waitForWorkflowBuildComplete();
 
-		await expect(n8n.canvas.getCanvasNodes().first()).toBeVisible();
+			await expect(n8n.canvas.getCanvasNodes().first()).toBeVisible();
 
-		const nodeCount = await n8n.canvas.getCanvasNodes().count();
-		expect(nodeCount).toBeGreaterThan(0);
+			const nodeCount = await n8n.canvas.getCanvasNodes().count();
+			expect(nodeCount).toBeGreaterThan(0);
 
-		// Verify "Execute and refine" button appears after workflow is built
-		await expect(n8n.page.getByRole('button', { name: 'Execute and refine' })).toBeVisible();
-	});
+			// Verify "Execute and refine" button appears after workflow is built
+			await expect(n8n.page.getByRole('button', { name: 'Execute and refine' })).toBeVisible();
+		});
 
-	// suffers from the same issue as test above
-	test.fixme(
-		'should display assistant messages during workflow generation @fixme',
-		async ({ n8n }) => {
+		// suffers from the same issue as test above
+		test.fixme('should display assistant messages during workflow generation', async ({ n8n }) => {
 			await n8n.page.goto('/workflow/new');
 			await openBuilderAndClickSuggestion(n8n, 'YouTube video chapters');
 
@@ -96,29 +95,29 @@ test.describe('Workflow Builder @auth:owner @ai @capability:proxy', {
 
 			const messageCount = await assistantMessages.count();
 			expect(messageCount).toBeGreaterThan(0);
-		},
-	);
+		});
 
-	test('should stop workflow generation and show task aborted message', async ({ n8n }) => {
-		await n8n.page.goto('/workflow/new');
-		await openBuilderAndClickSuggestion(n8n, 'Daily weather report');
+		test('should stop workflow generation and show task aborted message', async ({ n8n }) => {
+			await n8n.page.goto('/workflow/new');
+			await openBuilderAndClickSuggestion(n8n, 'Daily weather report');
 
-		await expect(n8n.aiAssistant.getChatMessagesUser().first()).toBeVisible();
+			await expect(n8n.aiAssistant.getChatMessagesUser().first()).toBeVisible();
 
-		// Wait for stop button to be enabled (streaming has started)
-		const stopButton = n8n.aiAssistant.getSendMessageButton();
-		await expect(stopButton).toBeEnabled({ timeout: 30000 });
+			// Wait for stop button to be enabled (streaming has started)
+			const stopButton = n8n.aiAssistant.getSendMessageButton();
+			await expect(stopButton).toBeEnabled({ timeout: 30000 });
 
-		await stopButton.click();
+			await stopButton.click();
 
-		// Verify "Task aborted" message appears (search by text, not test-id)
-		await expect(n8n.page.getByText('Task aborted')).toBeVisible();
+			// Verify "Task aborted" message appears (search by text, not test-id)
+			await expect(n8n.page.getByText('Task aborted')).toBeVisible();
 
-		// Verify canvas returns to default state (no nodes added)
-		const nodeCount = await n8n.canvas.getCanvasNodes().count();
-		expect(nodeCount).toBe(0);
+			// Verify canvas returns to default state (no nodes added)
+			const nodeCount = await n8n.canvas.getCanvasNodes().count();
+			expect(nodeCount).toBe(0);
 
-		// Verify the Build with AI button is still visible (canvas is back to default)
-		await expect(n8n.aiBuilder.getCanvasBuildWithAIButton()).toBeVisible();
-	});
-});
+			// Verify the Build with AI button is still visible (canvas is back to default)
+			await expect(n8n.aiBuilder.getCanvasBuildWithAIButton()).toBeVisible();
+		});
+	},
+);

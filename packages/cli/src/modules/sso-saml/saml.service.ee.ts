@@ -254,7 +254,7 @@ export class SamlService {
 					return {
 						authenticatedUser: newUser,
 						attributes,
-						onboardingRequired: true,
+						onboardingRequired: !newUser.firstName || !newUser.lastName,
 					};
 				}
 			}
