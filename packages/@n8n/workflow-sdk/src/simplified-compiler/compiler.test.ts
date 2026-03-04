@@ -679,9 +679,18 @@ onManual(async () => {
 			const testFn = fixture.skip ? it.skip : it;
 
 			testFn(fixture.title, () => {
+				// simplified -> workflow-sdk
 				const result = transpileWorkflowJS(fixture.input);
 				expect(result.errors).toHaveLength(0);
 				expect(result.code).toBe(fixture.expectedOutput);
+
+				// followup here
+				// workflow-sdk -> simplified
+				// const simplifiedAgain = compileToSimplifiedJS(result.code);
+				// validate simplified === original input
+				// expect(simplifiedAgain.code).toBe(fixture.input);
+
+				// first round: skip the test the failing, and skip reason
 			});
 		}
 	});
