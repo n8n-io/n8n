@@ -30,6 +30,13 @@ const inputSchema = {
 		.max(128)
 		.optional()
 		.describe('Optional workflow name. If not provided, uses the name from the code.'),
+	description: z
+		.string()
+		.max(255)
+		.optional()
+		.describe(
+			'Short workflow description summarizing what it does (1-2 sentences, max 255 chars).',
+		),
 	projectId: z
 		.string()
 		.optional()
@@ -66,10 +73,12 @@ export const createCreateWorkflowFromCodeTool = (
 	handler: async ({
 		code,
 		name,
+		description,
 		projectId,
 	}: {
 		code: string;
 		name?: string;
+		description?: string;
 		projectId?: string;
 	}) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
@@ -93,9 +102,10 @@ export const createCreateWorkflowFromCodeTool = (
 			const newWorkflow = new WorkflowEntity();
 			Object.assign(newWorkflow, {
 				name: name ?? workflowJson.name ?? 'Untitled Workflow',
+				...(description ? { description } : {}),
 				nodes: workflowJson.nodes,
 				connections: workflowJson.connections,
-				settings: workflowJson.settings ?? { executionOrder: 'v1' },
+				settings: { ...workflowJson.settings, executionOrder: 'v1', availableInMCP: true },
 				pinData: workflowJson.pinData,
 				meta: { ...workflowJson.meta, aiBuilderAssisted: true },
 			});
