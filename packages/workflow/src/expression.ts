@@ -3,6 +3,7 @@ import type { IExpressionEvaluator } from '@n8n/expression-runtime';
 import { MemoryLimitError, SecurityViolationError, TimeoutError } from '@n8n/expression-runtime';
 import { DateTime, Duration, Interval } from 'luxon';
 
+import { UnexpectedError } from './errors';
 import { ExpressionExtensionError } from './errors/expression-extension.error';
 import { ExpressionError } from './errors/expression.error';
 import { evaluateExpression, setErrorHandler } from './expression-evaluator-proxy';
@@ -518,7 +519,7 @@ export class Expression {
 	private renderExpression(expression: string, data: IWorkflowDataProxyData) {
 		// Safety check: If VM engine is configured but not initialized
 		if (Expression.isVmNotInitialized()) {
-			throw new ApplicationError(
+			throw new UnexpectedError(
 				'N8N_EXPRESSION_ENGINE=vm is enabled but VM evaluator is not initialized. Call Expression.initializeVmEvaluator() during application startup.',
 			);
 		}
@@ -550,7 +551,7 @@ export class Expression {
 					throw wrapped;
 				}
 
-				if (isSyntaxError(error)) throw new ApplicationError('invalid syntax');
+				if (isSyntaxError(error)) throw new ExpressionError('invalid syntax');
 
 				throw error;
 			}
