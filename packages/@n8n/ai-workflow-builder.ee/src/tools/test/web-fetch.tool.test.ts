@@ -421,18 +421,133 @@ describe('web_fetch tool', () => {
 			expect(content).toContain('private address');
 		});
 
-		it('should block redirect to unapproved domain', async () => {
-			mockFetchUrl.mockResolvedValue({
+		it('should trigger interrupt for redirect to unapproved domain and succeed on approval', async () => {
+			mockFetchUrl
+				.mockResolvedValueOnce({
+					status: 'redirect_new_host',
+					finalUrl: 'https://other-domain.com/page',
+				})
+				.mockResolvedValueOnce({
+					status: 'success',
+					body: '<html><body><p>Redirected content</p></body></html>',
+					finalUrl: 'https://other-domain.com/page',
+					httpStatus: 200,
+					contentType: 'text/html',
+				});
+
+			mockInterrupt.mockReturnValue({
+				requestId: 'any-id',
+				url: 'https://other-domain.com/page',
+				action: 'allow_once',
+			});
+
+			mockExtractReadableContent.mockReturnValue({
+				title: 'Redirected Page',
+				content: 'Redirected content',
+				truncated: false,
+			});
+
+			const { tool } = createWebFetchTool();
+			const command = await tool.invoke({ url: 'https://example.com/redirect' }, mockConfig);
+
+			expect(mockInterrupt).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'web_fetch_approval',
+					url: 'https://other-domain.com/page',
+					domain: 'other-domain.com',
+				}),
+			);
+
+			const content = getMessageContent(command);
+			expect(content).toContain('web_fetch_result');
+			expect(content).toContain('Redirected content');
+		});
+
+		it('should return deny message when user denies redirect domain', async () => {
+			mockFetchUrl.mockResolvedValueOnce({
 				status: 'redirect_new_host',
 				finalUrl: 'https://other-domain.com/page',
+			});
+
+			mockInterrupt.mockReturnValue({
+				requestId: 'any-id',
+				url: 'https://other-domain.com/page',
+				action: 'deny',
 			});
 
 			const { tool } = createWebFetchTool();
 			const command = await tool.invoke({ url: 'https://example.com/redirect' }, mockConfig);
 			const content = getMessageContent(command);
 
-			expect(content).toContain('different domain');
+			expect(content).toContain('denied');
 			expect(content).toContain('other-domain.com');
+		});
+
+		it('should add redirect host to approvedDomains on allow_domain', async () => {
+			mockFetchUrl
+				.mockResolvedValueOnce({
+					status: 'redirect_new_host',
+					finalUrl: 'https://other-domain.com/page',
+				})
+				.mockResolvedValueOnce({
+					status: 'success',
+					body: '<html><body><p>Content</p></body></html>',
+					finalUrl: 'https://other-domain.com/page',
+					httpStatus: 200,
+					contentType: 'text/html',
+				});
+
+			mockInterrupt.mockReturnValue({
+				requestId: 'any-id',
+				url: 'https://other-domain.com/page',
+				action: 'allow_domain',
+			});
+
+			mockExtractReadableContent.mockReturnValue({
+				title: 'Test',
+				content: 'Content',
+				truncated: false,
+			});
+
+			const { tool } = createWebFetchTool();
+			const command = await tool.invoke({ url: 'https://example.com/redirect' }, mockConfig);
+			const stateUpdates = getStateUpdates(command);
+
+			expect(stateUpdates.approvedDomains).toEqual(['other-domain.com']);
+		});
+
+		it('should skip interrupt when redirect domain is in allowlist', async () => {
+			mockFetchUrl
+				.mockResolvedValueOnce({
+					status: 'redirect_new_host',
+					finalUrl: 'https://docs.example.com/page',
+				})
+				.mockResolvedValueOnce({
+					status: 'success',
+					body: '<html><body><p>Content</p></body></html>',
+					finalUrl: 'https://docs.example.com/page',
+					httpStatus: 200,
+					contentType: 'text/html',
+				});
+
+			mockGetCurrentTaskInput.mockReturnValue({
+				approvedDomains: ['example.com', 'docs.example.com'],
+				webFetchCount: 0,
+			});
+
+			mockExtractReadableContent.mockReturnValue({
+				title: 'Docs',
+				content: 'Documentation content',
+				truncated: false,
+			});
+
+			const { tool } = createWebFetchTool();
+			const command = await tool.invoke({ url: 'https://example.com/redirect' }, mockConfig);
+
+			expect(mockInterrupt).not.toHaveBeenCalled();
+
+			const content = getMessageContent(command);
+			expect(content).toContain('web_fetch_result');
 		});
 	});
 

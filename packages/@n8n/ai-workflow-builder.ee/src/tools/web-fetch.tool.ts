@@ -31,6 +31,44 @@ interface WebFetchResumeValue {
 	action: string;
 }
 
+type ApprovalResult =
+	| { approved: true; action: 'allow_once' | 'allow_domain' }
+	| { approved: false; message: string };
+
+/**
+ * Trigger a HITL interrupt to ask the user for domain approval.
+ * Returns the user's decision or an error/denial message.
+ */
+function requestDomainApproval(domain: string, url: string): ApprovalResult {
+	const requestId = randomUUID();
+	const resumeValue = interrupt<unknown, WebFetchResumeValue>({
+		type: 'web_fetch_approval',
+		requestId,
+		url,
+		domain,
+	});
+
+	if (resumeValue.url !== url) {
+		return {
+			approved: false,
+			message: 'The approval response did not match the request. Please try again.',
+		};
+	}
+
+	if (resumeValue.action === 'deny') {
+		return {
+			approved: false,
+			message: `The user denied fetching content from ${domain}. Continue without this content.`,
+		};
+	}
+
+	if (resumeValue.action !== 'allow_once' && resumeValue.action !== 'allow_domain') {
+		return { approved: false, message: 'Invalid approval action. Please try again.' };
+	}
+
+	return { approved: true, action: resumeValue.action };
+}
+
 export const WEB_FETCH_TOOL: BuilderToolBase = {
 	toolName: 'web_fetch',
 	displayTitle: 'Fetching web content',
@@ -93,43 +131,15 @@ export function createWebFetchTool() {
 				// 4. Check host approval
 				const host = normalizeHost(url);
 				let userAction: string | undefined;
+				let redirectUserAction: string | undefined;
 
 				if (!isAllowedDomain(host) && !approvedDomains.includes(host)) {
-					// Trigger HITL interrupt for approval.
-					// Note: LangGraph re-executes the tool from the top on resume, so randomUUID()
-					// produces a different value each run. The requestId in the resume payload
-					// is the one from the original interrupt; we validate via url match instead.
-					const requestId = randomUUID();
-					const resumeValue = interrupt<unknown, WebFetchResumeValue>({
-						type: 'web_fetch_approval',
-						requestId,
-						url,
-						domain: host,
-					});
-
-					// Validate resume payload — url is deterministic (from tool input),
-					// requestId is not (regenerated on re-execution), so only check url.
-					if (resumeValue.url !== url) {
-						const message = 'The approval response did not match the request. Please try again.';
-						reporter.error({ message });
-						return createSuccessResponse(config, message);
+					const approval = requestDomainApproval(host, url);
+					if (!approval.approved) {
+						reporter.error({ message: approval.message });
+						return createSuccessResponse(config, approval.message);
 					}
-
-					if (resumeValue.action === 'deny') {
-						const message = `The user denied fetching content from ${host}. Continue without this content.`;
-						reporter.error({ message });
-						return createSuccessResponse(config, message);
-					}
-
-					// Validate action against allowlist
-					if (resumeValue.action !== 'allow_once' && resumeValue.action !== 'allow_domain') {
-						const message = 'Invalid approval action. Please try again.';
-						reporter.error({ message });
-						return createSuccessResponse(config, message);
-					}
-
-					userAction = resumeValue.action;
-					// allow_once or allow_domain — proceed
+					userAction = approval.action;
 				}
 
 				// 5. Fetch the URL
@@ -159,13 +169,16 @@ export function createWebFetchTool() {
 						});
 					}
 
-					// If new host not approved, block (don't interrupt again to keep flow simple)
-					if (!approvedDomains.includes(newHost)) {
-						const message = `The URL redirected to a different domain (${newHost}). The user has not approved this domain. Please ask the user to provide the final URL directly.`;
-						reporter.error({ message });
-						return createSuccessResponse(config, message, {
-							webFetchCount: webFetchCount + 1,
-						});
+					// If new host not in allowlist and not already approved, ask user
+					if (!isAllowedDomain(newHost) && !approvedDomains.includes(newHost)) {
+						const approval = requestDomainApproval(newHost, fetchResult.finalUrl);
+						if (!approval.approved) {
+							reporter.error({ message: approval.message });
+							return createSuccessResponse(config, approval.message, {
+								webFetchCount: webFetchCount + 1,
+							});
+						}
+						redirectUserAction = approval.action;
 					}
 
 					// Re-fetch from final URL (host is approved)
@@ -217,9 +230,16 @@ export function createWebFetchTool() {
 					webFetchCount: webFetchCount + 1,
 				};
 
-				// Add to approved domains only when user chose "allow_domain"
+				// Add to approved domains when user chose "allow_domain"
+				const newApprovedDomains: string[] = [];
 				if (userAction === 'allow_domain') {
-					stateUpdates.approvedDomains = [host];
+					newApprovedDomains.push(host);
+				}
+				if (redirectUserAction === 'allow_domain') {
+					newApprovedDomains.push(normalizeHost(fetchResult.finalUrl ?? url));
+				}
+				if (newApprovedDomains.length > 0) {
+					stateUpdates.approvedDomains = newApprovedDomains;
 				}
 
 				reporter.complete({
