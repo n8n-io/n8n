@@ -1,5 +1,5 @@
-import { BlockList, isIP } from 'node:net';
 import { ensureError } from 'n8n-workflow';
+import { BlockList, isIP } from 'node:net';
 import { z } from 'zod';
 
 export interface BlocklistIssue {
@@ -16,11 +16,11 @@ export interface BlocklistBuildResult {
  * Builds a `net.BlockList` from a list of CIDR IP ranges.
  * Invalid entries are skipped and collected into an `issues` array for the caller to log.
  */
-export function buildBlocklist(ranges: readonly string[]): BlocklistBuildResult {
+export function buildBlocklist(cidrRanges: readonly string[]): BlocklistBuildResult {
 	const blocklist = new BlockList();
 	const issues: BlocklistIssue[] = [];
 
-	for (const rawEntry of ranges) {
+	for (const rawEntry of cidrRanges) {
 		const entry = rawEntry.trim();
 		if (entry.length === 0) {
 			continue;
@@ -34,9 +34,9 @@ export function buildBlocklist(ranges: readonly string[]): BlocklistBuildResult 
 			}
 
 			blocklist.addSubnet(cidr.network, cidr.prefix, cidr.family);
-		} catch (error) {
-			const errorMessage = ensureError(error).message;
-			issues.push({ entry, error: `Failed to add to blocklist: ${errorMessage}` });
+		} catch (e) {
+			const error = ensureError(e);
+			issues.push({ entry, error: `Failed to add to blocklist: ${error.message}` });
 		}
 	}
 
