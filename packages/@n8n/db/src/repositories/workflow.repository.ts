@@ -125,6 +125,48 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		return count > 0;
 	}
 
+	async findByCredentialResolverId(
+		resolverId: string,
+	): Promise<Pick<WorkflowEntity, 'id' | 'name'>[]> {
+		const qb = this.createQueryBuilder('workflow').select(['workflow.id', 'workflow.name']);
+
+		const dbType = this.globalConfig.database.type;
+
+		if (dbType === 'postgresdb') {
+			qb.where("workflow.settings ->> 'credentialResolverId' = :resolverId", { resolverId });
+		} else if (dbType === 'sqlite') {
+			qb.where("JSON_EXTRACT(workflow.settings, '$.credentialResolverId') = :resolverId", {
+				resolverId,
+			});
+		}
+
+		return await qb.getMany();
+	}
+
+	async clearCredentialResolverId(resolverId: string): Promise<void> {
+		const dbType = this.globalConfig.database.type;
+
+		if (dbType === 'postgresdb') {
+			await this.createQueryBuilder('workflow')
+				.update()
+				.set({
+					settings: () => "settings::jsonb - 'credentialResolverId'",
+				})
+				.where("settings ->> 'credentialResolverId' = :resolverId", { resolverId })
+				.execute();
+		} else if (dbType === 'sqlite') {
+			await this.createQueryBuilder('workflow')
+				.update()
+				.set({
+					settings: () => "json_remove(settings, '$.credentialResolverId')",
+				})
+				.where("JSON_EXTRACT(settings, '$.credentialResolverId') = :resolverId", {
+					resolverId,
+				})
+				.execute();
+		}
+	}
+
 	async findById(workflowId: string) {
 		return await this.findOne({
 			where: { id: workflowId },

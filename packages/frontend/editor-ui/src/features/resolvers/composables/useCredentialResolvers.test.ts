@@ -32,6 +32,7 @@ vi.mock('@n8n/rest-api-client', async (importOriginal) => {
 		...actual,
 		getCredentialResolvers: vi.fn(),
 		getCredentialResolverTypes: vi.fn(),
+		getCredentialResolverWorkflows: vi.fn(),
 		deleteCredentialResolver: vi.fn(),
 	};
 });
@@ -67,6 +68,7 @@ describe('useCredentialResolvers', () => {
 
 		vi.mocked(restApiClient.getCredentialResolvers).mockResolvedValue([]);
 		vi.mocked(restApiClient.getCredentialResolverTypes).mockResolvedValue([]);
+		vi.mocked(restApiClient.getCredentialResolverWorkflows).mockResolvedValue([]);
 	});
 
 	afterEach(() => {
@@ -181,6 +183,74 @@ describe('useCredentialResolvers', () => {
 
 			expect(result).toBe(false);
 			expect(mockShowError).toHaveBeenCalledWith(error, expect.any(String));
+		});
+
+		it('should fetch affected workflows before showing confirm dialog', async () => {
+			mockConfirm.mockResolvedValue(MODAL_CANCEL);
+
+			const { deleteResolver } = useCredentialResolvers();
+
+			await deleteResolver(mockResolvers[0]);
+
+			expect(restApiClient.getCredentialResolverWorkflows).toHaveBeenCalledWith(
+				expect.any(Object),
+				'resolver-1',
+			);
+		});
+
+		it('should include affected workflow names in confirm message', async () => {
+			vi.mocked(restApiClient.getCredentialResolverWorkflows).mockResolvedValue([
+				{ id: 'wf-1', name: 'My Workflow' },
+				{ id: 'wf-2', name: 'Other Workflow' },
+			]);
+			mockConfirm.mockResolvedValue(MODAL_CANCEL);
+
+			const { deleteResolver } = useCredentialResolvers();
+
+			await deleteResolver(mockResolvers[0]);
+
+			const confirmMessage = mockConfirm.mock.calls[0][0] as string;
+			expect(confirmMessage).toContain('My Workflow');
+			expect(confirmMessage).toContain('Other Workflow');
+		});
+
+		it('should fall back to standard confirm when affected workflows fetch fails', async () => {
+			vi.mocked(restApiClient.getCredentialResolverWorkflows).mockRejectedValue(
+				new Error('Network error'),
+			);
+			mockConfirm.mockResolvedValue(MODAL_CANCEL);
+
+			const { deleteResolver } = useCredentialResolvers();
+
+			await deleteResolver(mockResolvers[0]);
+
+			// Should still show confirm dialog (no crash)
+			expect(mockConfirm).toHaveBeenCalled();
+			const confirmMessage = mockConfirm.mock.calls[0][0] as string;
+			// Standard message without workflow list
+			expect(confirmMessage).not.toContain('<ul>');
+		});
+
+		it('should cap displayed workflows and show "and more" for many affected workflows', async () => {
+			const manyWorkflows = Array.from({ length: 8 }, (_, i) => ({
+				id: `wf-${i}`,
+				name: `Workflow ${i}`,
+			}));
+			vi.mocked(restApiClient.getCredentialResolverWorkflows).mockResolvedValue(manyWorkflows);
+			mockConfirm.mockResolvedValue(MODAL_CANCEL);
+
+			const { deleteResolver } = useCredentialResolvers();
+
+			await deleteResolver(mockResolvers[0]);
+
+			const confirmMessage = mockConfirm.mock.calls[0][0] as string;
+			// Should show first 5 workflows
+			expect(confirmMessage).toContain('Workflow 0');
+			expect(confirmMessage).toContain('Workflow 4');
+			// Should NOT show the 6th workflow directly
+			expect(confirmMessage).not.toContain('<li><strong>Workflow 5</strong></li>');
+			// Should show "and 3 more..."
+			expect(confirmMessage).toContain('3');
 		});
 	});
 

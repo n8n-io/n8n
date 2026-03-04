@@ -1,8 +1,13 @@
 import { ref } from 'vue';
-import type { CredentialResolver, CredentialResolverType } from '@n8n/api-types';
+import type {
+	CredentialResolver,
+	CredentialResolverAffectedWorkflow,
+	CredentialResolverType,
+} from '@n8n/api-types';
 import {
 	getCredentialResolvers,
 	getCredentialResolverTypes,
+	getCredentialResolverWorkflows,
 	deleteCredentialResolver,
 } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -11,6 +16,8 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { CREDENTIAL_RESOLVER_EDIT_MODAL_KEY, MODAL_CONFIRM } from '@/app/constants';
+
+const MAX_DISPLAYED_WORKFLOWS = 5;
 
 export interface ModalCallbacks {
 	onSave?: (resolverId: string) => void | Promise<void>;
@@ -48,11 +55,47 @@ export function useCredentialResolvers() {
 		}
 	};
 
-	const confirmAndDeleteResolver = async (resolver: CredentialResolver): Promise<boolean> => {
-		const deleteConfirmed = await message.confirm(
-			i18n.baseText('credentialResolverEdit.confirmMessage.deleteResolver.message', {
+	const buildDeleteMessage = (
+		resolver: CredentialResolver,
+		affectedWorkflows: CredentialResolverAffectedWorkflow[],
+	): string => {
+		if (affectedWorkflows.length === 0) {
+			return i18n.baseText('credentialResolverEdit.confirmMessage.deleteResolver.message', {
 				interpolate: { savedResolverName: resolver.name },
-			}),
+			});
+		}
+
+		const displayed = affectedWorkflows.slice(0, MAX_DISPLAYED_WORKFLOWS);
+		const remaining = affectedWorkflows.length - displayed.length;
+
+		const workflowList = displayed.map((w) => `<li><strong>${w.name}</strong></li>`).join('');
+
+		let messageHtml = i18n.baseText(
+			'credentialResolverEdit.confirmMessage.deleteResolver.messageWithWorkflows',
+			{ interpolate: { savedResolverName: resolver.name } },
+		);
+		messageHtml += `<ul>${workflowList}</ul>`;
+
+		if (remaining > 0) {
+			messageHtml += `<p>${i18n.baseText('credentialResolverEdit.confirmMessage.deleteResolver.andMore', { interpolate: { count: String(remaining) } })}</p>`;
+		}
+
+		return messageHtml;
+	};
+
+	const confirmAndDeleteResolver = async (resolver: CredentialResolver): Promise<boolean> => {
+		let affectedWorkflows: CredentialResolverAffectedWorkflow[] = [];
+		try {
+			affectedWorkflows = await getCredentialResolverWorkflows(
+				rootStore.restApiContext,
+				resolver.id,
+			);
+		} catch {
+			// Fall back to standard confirm dialog if fetching affected workflows fails
+		}
+
+		const deleteConfirmed = await message.confirm(
+			buildDeleteMessage(resolver, affectedWorkflows),
 			i18n.baseText('credentialResolverEdit.confirmMessage.deleteResolver.headline'),
 			{
 				confirmButtonText: i18n.baseText(

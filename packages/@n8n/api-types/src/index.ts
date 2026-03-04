@@ -113,8 +113,10 @@ export {
 	credentialResolversSchema,
 	credentialResolverTypeSchema,
 	credentialResolverTypesSchema,
+	credentialResolverAffectedWorkflowsSchema,
 	type CredentialResolver,
 	type CredentialResolverType,
+	type CredentialResolverAffectedWorkflow,
 } from './schemas/credential-resolver.schema';
 export {
 	WORKFLOW_VERSION_NAME_MAX_LENGTH,
