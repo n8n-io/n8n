@@ -175,14 +175,14 @@ const createSafeErrorSubclass = <T extends ErrorConstructor>(ErrorClass: T): T =
 
 export class Expression {
 	// Feature gate for expression engine selection
-	private static readonly validEngines = ['current', 'vm'] as const;
 	private static expressionEngine: 'current' | 'vm' = (() => {
 		const env = process.env.N8N_EXPRESSION_ENGINE;
-		if (!env) return 'current';
-		if (Expression.validEngines.includes(env as 'current' | 'vm')) return env as 'current' | 'vm';
-		console.warn(
-			`Unknown N8N_EXPRESSION_ENGINE="${env}", falling back to "current". Valid values: ${Expression.validEngines.join(', ')}`,
-		);
+		if (env === 'vm' || env === 'current') return env;
+		if (env) {
+			console.warn(
+				`Unknown N8N_EXPRESSION_ENGINE="${env}", falling back to "current". Valid values: current, vm`,
+			);
+		}
 		return 'current';
 	})();
 
