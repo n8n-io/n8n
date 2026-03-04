@@ -353,6 +353,318 @@ const data = await http.get('https://api.example.com');
 		});
 	});
 
+	describe('await trigger calls', () => {
+		it('should handle await trigger.schedule()', () => {
+			const result = compileWorkflowJS(`
+await trigger.schedule({ every: '2h' })
+const x = await http.get('https://example.com');
+`);
+			const trigger = result.workflow.nodes.find((n) => n.name === 'Start');
+			expect(trigger?.type).toBe('n8n-nodes-base.scheduleTrigger');
+			expect(trigger?.parameters.rule).toEqual({
+				interval: [{ field: 'hours', hoursInterval: 2 }],
+			});
+		});
+	});
+
+	describe('schedule fallback', () => {
+		it('should default to daily for unrecognized interval format', () => {
+			const result = compileWorkflowJS(`
+trigger.schedule({ every: '3x' })
+const x = await http.get('https://example.com');
+`);
+			const trigger = result.workflow.nodes.find((n) => n.name === 'Start');
+			expect(trigger?.parameters.rule).toEqual({
+				interval: [{ field: 'days', daysInterval: 1 }],
+			});
+		});
+	});
+
+	describe('code-only programs', () => {
+		it('should handle programs with no IO calls, splitting at comments', () => {
+			const result = compileWorkflowJS(`
+trigger.manual()
+
+// Step 1
+const a = 1;
+const b = 2;
+
+// Step 2
+const c = a + b;
+`);
+			expect(result.errors).toHaveLength(0);
+			const codeNodes = result.workflow.nodes.filter((n) => n.type === 'n8n-nodes-base.code');
+			expect(codeNodes.length).toBeGreaterThanOrEqual(1);
+		});
+
+		it('should return empty segments for code-only with only metadata comments', () => {
+			const result = compileWorkflowJS(`
+// @workflow "Empty"
+trigger.manual()
+`);
+			expect(result.errors).toHaveLength(0);
+		});
+	});
+
+	describe('template literal extraction', () => {
+		it('should extract template literal URLs with variable interpolation', () => {
+			const result = compileWorkflowJS(`
+trigger.manual()
+const id = 123;
+const data = await http.get(\`https://api.example.com/users/\${id}\`);
+`);
+			expect(result.errors).toHaveLength(0);
+			const httpNode = result.workflow.nodes.find((n) => n.type === 'n8n-nodes-base.httpRequest');
+			expect(httpNode).toBeDefined();
+			// Template literal produces an expression with $json reference for the interpolated var
+			expect(httpNode?.parameters.url).toContain('$json.id');
+		});
+	});
+
+	describe('HTTP auth option', () => {
+		it('should set authentication when auth option is provided', () => {
+			const result = compileWorkflowJS(`
+trigger.manual()
+const data = await http.get('https://api.example.com', { auth: 'myCredential' });
+`);
+			const httpNode = result.workflow.nodes.find((n) => n.type === 'n8n-nodes-base.httpRequest');
+			expect(httpNode?.parameters.authentication).toBe('predefinedCredentialType');
+			expect(httpNode?.credentials).toEqual({
+				httpCustomAuth: { id: '', name: 'myCredential' },
+			});
+		});
+	});
+
+	describe('HTTP options as third argument', () => {
+		it('should handle options as third arg after body', () => {
+			const result = compileWorkflowJS(`
+trigger.manual()
+await http.post('https://api.example.com', { data: 1 }, { headers: { 'X-Key': 'abc' } });
+`);
+			const httpNode = result.workflow.nodes.find((n) => n.type === 'n8n-nodes-base.httpRequest');
+			expect(httpNode?.parameters.sendBody).toBe(true);
+			expect(httpNode?.parameters.sendHeaders).toBe(true);
+		});
+	});
+
+	describe('AI options as third argument', () => {
+		it('should handle AI chat with options', () => {
+			const result = compileWorkflowJS(`
+trigger.manual()
+const answer = await ai.chat('gpt-4o', 'Summarize', { temperature: 0.5 });
+`);
+			expect(result.errors).toHaveLength(0);
+			const agentNode = result.workflow.nodes.find(
+				(n) => n.type === '@n8n/n8n-nodes-langchain.agent',
+			);
+			expect(agentNode).toBeDefined();
+		});
+	});
+
+	describe('default model mapping', () => {
+		it('should default to OpenAI for unrecognized model names', () => {
+			const result = compileWorkflowJS(`
+trigger.manual()
+const answer = await ai.chat('some-unknown-model', 'Test');
+`);
+			const modelNode = result.workflow.nodes.find(
+				(n) => n.type === '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			);
+			expect(modelNode).toBeDefined();
+		});
+	});
+
+	describe('HTTP node naming', () => {
+		it('should generate name from invalid URL', () => {
+			const result = compileWorkflowJS(`
+trigger.manual()
+const data = await http.get(endpoint);
+`);
+			expect(result.errors).toHaveLength(0);
+			const httpNode = result.workflow.nodes.find((n) => n.type === 'n8n-nodes-base.httpRequest');
+			expect(httpNode).toBeDefined();
+		});
+
+		it('should truncate long HTTP node names', () => {
+			const result = compileWorkflowJS(`
+trigger.manual()
+const data = await http.get('https://very-long-domain-name.example.com/very/long/path/to/resource/endpoint');
+`);
+			const httpNode = result.workflow.nodes.find((n) => n.type === 'n8n-nodes-base.httpRequest');
+			expect(httpNode!.name.length).toBeLessThanOrEqual(40);
+		});
+	});
+
+	describe('code node naming', () => {
+		it('should truncate long first line for code node names', () => {
+			const result = compileWorkflowJS(`
+trigger.manual()
+const data = await http.get('https://example.com');
+
+const thisIsAVeryLongVariableNameThatExceedsFortyCharacters = data.map(item => item.value).filter(v => v > 0);
+`);
+			const codeNodes = result.workflow.nodes.filter((n) => n.type === 'n8n-nodes-base.code');
+			expect(codeNodes.length).toBeGreaterThanOrEqual(1);
+			for (const node of codeNodes) {
+				expect(node.name.length).toBeLessThanOrEqual(40);
+			}
+		});
+	});
+
+	describe('destructuring variable detection', () => {
+		it('should track destructured variables across IO boundaries', () => {
+			const result = compileWorkflowJS(`
+trigger.manual()
+const { name, age } = await http.get('https://api.example.com/user');
+
+// Use destructured vars
+const greeting = \`Hello \${name}, age \${age}\`;
+`);
+			expect(result.errors).toHaveLength(0);
+			const codeNode = result.workflow.nodes.find((n) => n.type === 'n8n-nodes-base.code');
+			expect(codeNode).toBeDefined();
+			const jsCode = codeNode?.parameters.jsCode ?? '';
+			expect(jsCode).toContain('name');
+		});
+
+		it('should detect destructured variables declared in code segments', () => {
+			const result = compileWorkflowJS(`
+trigger.manual()
+const data = await http.get('https://api.example.com/user');
+
+// Process data
+const { firstName, lastName: last } = data;
+const fullName = firstName + ' ' + last;
+
+await http.post('https://api.example.com/greeting', { name: fullName });
+`);
+			expect(result.errors).toHaveLength(0);
+			const codeNodes = result.workflow.nodes.filter((n) => n.type === 'n8n-nodes-base.code');
+			expect(codeNodes.length).toBeGreaterThanOrEqual(1);
+		});
+	});
+
+	describe('expression edge cases', () => {
+		it('should handle call expression in body (e.g. JSON.stringify)', () => {
+			const result = compileWorkflowJS(`
+trigger.manual()
+const items = [1, 2, 3];
+await http.post('https://api.example.com', JSON.stringify(items));
+`);
+			expect(result.errors).toHaveLength(0);
+			const httpNode = result.workflow.nodes.find((n) => n.type === 'n8n-nodes-base.httpRequest');
+			expect(httpNode).toBeDefined();
+			expect(httpNode?.parameters.method).toBe('POST');
+		});
+
+		it('should handle binary expression in string extraction', () => {
+			const result = compileWorkflowJS(`
+trigger.manual()
+const base = 'https://api.example.com';
+const url = base + '/users';
+await http.get(url);
+`);
+			expect(result.errors).toHaveLength(0);
+		});
+
+		it('should handle array expression as body (unrecognized node type)', () => {
+			const result = compileWorkflowJS(`
+trigger.manual()
+await http.post('https://api.example.com', [1, 2, 3]);
+`);
+			expect(result.errors).toHaveLength(0);
+			const httpNode = result.workflow.nodes.find((n) => n.type === 'n8n-nodes-base.httpRequest');
+			expect(httpNode).toBeDefined();
+		});
+
+		it('should handle direct function call as body (non-method call)', () => {
+			const result = compileWorkflowJS(`
+trigger.manual()
+await http.post('https://api.example.com', encode(data));
+`);
+			expect(result.errors).toHaveLength(0);
+			const httpNode = result.workflow.nodes.find((n) => n.type === 'n8n-nodes-base.httpRequest');
+			expect(httpNode).toBeDefined();
+		});
+
+		it('should handle conditional expression as URL (unrecognized node in extractStringValue)', () => {
+			const result = compileWorkflowJS(`
+trigger.manual()
+const isProd = true;
+await http.get(isProd ? 'https://prod.example.com' : 'https://staging.example.com');
+`);
+			expect(result.errors).toHaveLength(0);
+			const httpNode = result.workflow.nodes.find((n) => n.type === 'n8n-nodes-base.httpRequest');
+			expect(httpNode).toBeDefined();
+		});
+
+		it('should handle standalone function call expression for body reference', () => {
+			const result = compileWorkflowJS(`
+trigger.manual()
+await http.post('https://api.example.com', transform(input));
+`);
+			expect(result.errors).toHaveLength(0);
+			const httpNode = result.workflow.nodes.find((n) => n.type === 'n8n-nodes-base.httpRequest');
+			expect(httpNode).toBeDefined();
+		});
+	});
+
+	describe('statement grouping', () => {
+		it('should group consecutive statements and split at gaps', () => {
+			const result = compileWorkflowJS(`
+trigger.manual()
+const a = await http.get('https://api.example.com/a');
+
+const x = a.filter(i => i.active);
+const y = x.map(i => i.name);
+
+
+const z = y.join(', ');
+
+const b = await http.get('https://api.example.com/b');
+`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.workflow.nodes.length).toBeGreaterThanOrEqual(3);
+		});
+	});
+
+	describe('comment grouping', () => {
+		it('should group consecutive comments on adjacent lines into one sticky note', () => {
+			const result = compileWorkflowJS(`
+trigger.manual()
+
+// Step 1: Fetch data
+// This fetches from the API
+const data = await http.get('https://api.example.com');
+`);
+			expect(result.errors).toHaveLength(0);
+			const stickyNotes = result.workflow.nodes.filter(
+				(n) => n.type === 'n8n-nodes-base.stickyNote',
+			);
+			// Adjacent comments should be grouped into one sticky note
+			expect(stickyNotes).toHaveLength(1);
+			expect(stickyNotes[0].parameters.content).toContain('Step 1');
+			expect(stickyNotes[0].parameters.content).toContain('fetches from the API');
+		});
+
+		it('should split non-adjacent comments into separate sticky notes', () => {
+			const result = compileWorkflowJS(`
+trigger.manual()
+
+// First section
+const a = await http.get('https://api.example.com/a');
+
+// Second section
+const b = await http.get('https://api.example.com/b');
+`);
+			expect(result.errors).toHaveLength(0);
+			const stickyNotes = result.workflow.nodes.filter(
+				(n) => n.type === 'n8n-nodes-base.stickyNote',
+			);
+			expect(stickyNotes.length).toBeGreaterThanOrEqual(2);
+		});
+	});
+
 	describe('full examples', () => {
 		it.each(COMPILER_EXAMPLES.map((ex) => [ex.label, ex.code]))(
 			'should compile "%s" without errors',
