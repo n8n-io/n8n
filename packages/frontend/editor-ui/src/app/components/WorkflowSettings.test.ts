@@ -9,6 +9,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import { getDropdownItems, mockedStore, type MockedStore } from '@/__tests__/utils';
 import { EnterpriseEditionFeature } from '@/app/constants';
+import { useRBACStore } from '@/app/stores/rbac.store';
 import WorkflowSettingsVue from '@/app/components/WorkflowSettings.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -619,6 +620,9 @@ describe('WorkflowSettingsVue', () => {
 		beforeEach(() => {
 			vi.mocked(restApiClient.getCredentialResolvers).mockResolvedValue(mockResolvers);
 			vi.mocked(restApiClient.getCredentialResolverTypes).mockResolvedValue(mockResolverTypes);
+			const rbacStore = useRBACStore();
+			rbacStore.addGlobalScope('credentialResolver:create');
+			rbacStore.addGlobalScope('credentialResolver:update');
 		});
 
 		it('should render credential resolver dropdown', async () => {
