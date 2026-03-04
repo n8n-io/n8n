@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 import { CommaSeparatedStringArray } from '../custom-types';
 import { Config, Env } from '../decorators';
 
@@ -28,6 +30,25 @@ export const SSRF_DEFAULT_BLOCKED_IP_RANGES: readonly string[] = Object.freeze([
 	'203.0.113.0/24',
 ]);
 
+/**
+ * Parses comma-separated blocked ranges, expands `default` (case-insensitive)
+ * to the built-in blocked ranges, and removes duplicates while preserving order.
+ */
+const blockedIpRangesSchema = z.string().transform((input) => {
+	const values = input
+		.split(',')
+		.map((value) => value.trim())
+		.filter((value) => value.length > 0);
+
+	const expanded = values.flatMap((value) =>
+		value.toLowerCase() === 'default' ? SSRF_DEFAULT_BLOCKED_IP_RANGES : value,
+	);
+
+	return [...new Set(expanded)];
+});
+
+const positiveNumberSchema = z.coerce.number().gt(0);
+
 @Config
 export class SsrfProtectionConfig {
 	/** Whether SSRF protection is enabled for nodes making HTTP requests to user-controllable targets. */
@@ -35,11 +56,12 @@ export class SsrfProtectionConfig {
 	enabled: boolean = false;
 
 	/**
-	 * Comma-separated CIDR ranges to block, or 'default' for the standard set.
-	 * Use `resolvedBlockedIpRanges` at runtime instead of reading this directly.
+	 * Comma-separated CIDR ranges to block.
+	 * Use `default` to include the standard set, optionally with custom ranges
+	 * (for example: `default,100.0.0.0/8`).
 	 */
-	@Env('N8N_SSRF_BLOCKED_IP_RANGES')
-	blockedIpRanges: string = 'default';
+	@Env('N8N_SSRF_BLOCKED_IP_RANGES', blockedIpRangesSchema)
+	blockedIpRanges: string[] = [...SSRF_DEFAULT_BLOCKED_IP_RANGES];
 
 	/** Comma-separated CIDR ranges to allow (takes precedence over the block list). */
 	@Env('N8N_SSRF_ALLOWED_IP_RANGES')
@@ -50,25 +72,10 @@ export class SsrfProtectionConfig {
 	allowedHostnames: CommaSeparatedStringArray<string> = [];
 
 	/** Maximum DNS cache TTL in seconds. Default: 300. */
-	@Env('N8N_SSRF_DNS_CACHE_MAX_TTL_SECONDS')
+	@Env('N8N_SSRF_DNS_CACHE_MAX_TTL_SECONDS', positiveNumberSchema)
 	dnsCacheMaxTtlSeconds: number = 300;
 
 	/** Maximum DNS cache size in bytes (LRU eviction). Default: 1 MB. */
 	@Env('N8N_SSRF_DNS_CACHE_MAX_SIZE')
 	dnsCacheMaxSize: number = 1024 * 1024;
-
-	/** Resolved list of blocked IP ranges after 'default' expansion. */
-	resolvedBlockedIpRanges: readonly string[] = [];
-
-	sanitize() {
-		if (this.blockedIpRanges === 'default') {
-			this.resolvedBlockedIpRanges = SSRF_DEFAULT_BLOCKED_IP_RANGES;
-			return;
-		}
-
-		this.resolvedBlockedIpRanges = this.blockedIpRanges
-			.split(',')
-			.map((s) => s.trim())
-			.filter((s) => s.length > 0);
-	}
 }

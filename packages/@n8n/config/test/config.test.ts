@@ -427,12 +427,11 @@ describe('GlobalConfig', () => {
 		},
 		ssrfProtection: {
 			enabled: false,
-			blockedIpRanges: 'default',
+			blockedIpRanges: [...SSRF_DEFAULT_BLOCKED_IP_RANGES],
 			allowedIpRanges: [],
 			allowedHostnames: [],
 			dnsCacheMaxTtlSeconds: 300,
 			dnsCacheMaxSize: 1024 * 1024,
-			resolvedBlockedIpRanges: [...SSRF_DEFAULT_BLOCKED_IP_RANGES],
 		},
 		redis: {
 			prefix: 'n8n',

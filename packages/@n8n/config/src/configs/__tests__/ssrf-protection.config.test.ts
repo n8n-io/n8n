@@ -19,10 +19,10 @@ describe('SsrfProtectionConfig', () => {
 			expect(Container.get(SsrfProtectionConfig).enabled).toBe(false);
 		});
 
-		test('resolvedBlockedIpRanges expands to default ranges', () => {
+		test('blockedIpRanges defaults to default ranges', () => {
 			process.env = {};
 			const config = Container.get(SsrfProtectionConfig);
-			expect(config.resolvedBlockedIpRanges).toEqual(SSRF_DEFAULT_BLOCKED_IP_RANGES);
+			expect(config.blockedIpRanges).toEqual(SSRF_DEFAULT_BLOCKED_IP_RANGES);
 		});
 
 		test('allowedIpRanges is empty array', () => {
@@ -62,30 +62,42 @@ describe('SsrfProtectionConfig', () => {
 		test('expands "default" to default ranges', () => {
 			process.env = { N8N_SSRF_BLOCKED_IP_RANGES: 'default' };
 			const config = Container.get(SsrfProtectionConfig);
-			expect(config.resolvedBlockedIpRanges).toEqual(SSRF_DEFAULT_BLOCKED_IP_RANGES);
+			expect(config.blockedIpRanges).toEqual(SSRF_DEFAULT_BLOCKED_IP_RANGES);
+		});
+
+		test('expands "default" and appends custom ranges', () => {
+			process.env = { N8N_SSRF_BLOCKED_IP_RANGES: 'default,100.0.0.0/8' };
+			const config = Container.get(SsrfProtectionConfig);
+			expect(config.blockedIpRanges).toEqual([...SSRF_DEFAULT_BLOCKED_IP_RANGES, '100.0.0.0/8']);
+		});
+
+		test('matches "default" case-insensitively', () => {
+			process.env = { N8N_SSRF_BLOCKED_IP_RANGES: 'DEFAULT,100.0.0.0/8' };
+			const config = Container.get(SsrfProtectionConfig);
+			expect(config.blockedIpRanges).toEqual([...SSRF_DEFAULT_BLOCKED_IP_RANGES, '100.0.0.0/8']);
 		});
 
 		test('parses custom comma-separated CIDRs', () => {
 			process.env = { N8N_SSRF_BLOCKED_IP_RANGES: '10.0.0.0/8,192.168.0.0/16' };
 			const config = Container.get(SsrfProtectionConfig);
-			expect(config.resolvedBlockedIpRanges).toEqual(['10.0.0.0/8', '192.168.0.0/16']);
+			expect(config.blockedIpRanges).toEqual(['10.0.0.0/8', '192.168.0.0/16']);
 		});
 
 		test('trims whitespace in custom CIDRs', () => {
 			process.env = { N8N_SSRF_BLOCKED_IP_RANGES: ' 10.0.0.0/8 , 192.168.0.0/16 ' };
 			const config = Container.get(SsrfProtectionConfig);
-			expect(config.resolvedBlockedIpRanges).toEqual(['10.0.0.0/8', '192.168.0.0/16']);
+			expect(config.blockedIpRanges).toEqual(['10.0.0.0/8', '192.168.0.0/16']);
 		});
 
 		test('filters empty entries', () => {
 			process.env = { N8N_SSRF_BLOCKED_IP_RANGES: '10.0.0.0/8,,192.168.0.0/16' };
 			const config = Container.get(SsrfProtectionConfig);
-			expect(config.resolvedBlockedIpRanges).toEqual(['10.0.0.0/8', '192.168.0.0/16']);
+			expect(config.blockedIpRanges).toEqual(['10.0.0.0/8', '192.168.0.0/16']);
 		});
 
 		test('handles a single CIDR', () => {
 			process.env = { N8N_SSRF_BLOCKED_IP_RANGES: '10.0.0.0/8' };
-			expect(Container.get(SsrfProtectionConfig).resolvedBlockedIpRanges).toEqual(['10.0.0.0/8']);
+			expect(Container.get(SsrfProtectionConfig).blockedIpRanges).toEqual(['10.0.0.0/8']);
 		});
 	});
 
@@ -134,6 +146,16 @@ describe('SsrfProtectionConfig', () => {
 			const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
 
 			process.env = { N8N_SSRF_DNS_CACHE_MAX_TTL_SECONDS: 'notanumber' };
+			expect(Container.get(SsrfProtectionConfig).dnsCacheMaxTtlSeconds).toBe(300);
+			expect(consoleWarnSpy).toHaveBeenCalled();
+
+			consoleWarnSpy.mockRestore();
+		});
+
+		test('falls back to default for non-positive dnsCacheMaxTtlSeconds', () => {
+			const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+			process.env = { N8N_SSRF_DNS_CACHE_MAX_TTL_SECONDS: '0' };
 			expect(Container.get(SsrfProtectionConfig).dnsCacheMaxTtlSeconds).toBe(300);
 			expect(consoleWarnSpy).toHaveBeenCalled();
 
