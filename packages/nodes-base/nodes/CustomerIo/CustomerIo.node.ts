@@ -198,6 +198,21 @@ export class CustomerIo implements INodeType {
 						responseData = Object.assign({ id }, body);
 					}
 
+					if (operation === 'findEmail') {
+						const email = this.getNodeParameter('email', i) as string;
+						const endpoint = '/customers';
+						const query = { email: email };
+
+						responseData = await customerIoApiRequest.call(
+							this,
+							'GET',
+							endpoint,
+							body,
+							'api',
+							query,
+						);
+					}
+
 					if (operation === 'delete') {
 						const id = this.getNodeParameter('id', i) as number;
 

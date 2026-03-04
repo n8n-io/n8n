@@ -65,12 +65,7 @@ export class CustomerIoApi implements ICredentialType {
 	): Promise<IHttpRequestOptions> {
 		// @ts-ignore
 		const url = new URL(requestOptions.url ? requestOptions.url : requestOptions.uri);
-		if (
-			url.hostname === 'track.customer.io' ||
-			url.hostname === 'track-eu.customer.io' ||
-			url.hostname === 'api.customer.io' ||
-			url.hostname === 'api-eu.customer.io'
-		) {
+		if (url.hostname === 'track.customer.io' || url.hostname === 'track-eu.customer.io') {
 			const basicAuthKey = Buffer.from(
 				`${credentials.trackingSiteId}:${credentials.trackingApiKey}`,
 			).toString('base64');
@@ -78,7 +73,9 @@ export class CustomerIoApi implements ICredentialType {
 			Object.assign(requestOptions.headers, { Authorization: `Basic ${basicAuthKey}` });
 		} else if (
 			url.hostname === 'beta-api.customer.io' ||
-			url.hostname === 'beta-api-eu.customer.io'
+			url.hostname === 'beta-api-eu.customer.io' ||
+			url.hostname === 'api.customer.io' ||
+			url.hostname === 'api-eu.customer.io'
 		) {
 			// @ts-ignore
 			Object.assign(requestOptions.headers, {
