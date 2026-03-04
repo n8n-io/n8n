@@ -173,7 +173,17 @@ const createSafeErrorSubclass = <T extends ErrorConstructor>(ErrorClass: T): T =
 
 export class Expression {
 	// Feature gate for expression engine selection
-	private static expressionEngine = process.env.N8N_EXPRESSION_ENGINE || 'current';
+	private static readonly validEngines = ['current', 'vm'] as const;
+	private static expressionEngine: 'current' | 'vm' = (() => {
+		const env = process.env.N8N_EXPRESSION_ENGINE;
+		if (!env) return 'current';
+		if (Expression.validEngines.includes(env as 'current' | 'vm')) return env as 'current' | 'vm';
+		console.warn(
+			`Unknown N8N_EXPRESSION_ENGINE="${env}", falling back to "current". Valid values: ${Expression.validEngines.join(', ')}`,
+		);
+		return 'current';
+	})();
+
 	private static vmEvaluator?: IExpressionEvaluator;
 
 	constructor(private readonly timezone: string) {}
@@ -232,9 +242,9 @@ export class Expression {
 	 * Get the active expression evaluation implementation.
 	 * Used for testing and verification.
 	 */
-	static getActiveImplementation(): string {
+	static getActiveImplementation(): 'current' | 'vm' {
 		if (this.shouldUseVm()) return 'vm';
-		return this.expressionEngine === 'current' ? 'current' : this.expressionEngine;
+		return 'current';
 	}
 
 	/**
