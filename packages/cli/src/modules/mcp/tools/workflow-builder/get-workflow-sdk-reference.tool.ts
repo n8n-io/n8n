@@ -15,6 +15,8 @@ const VALID_SECTIONS: SdkReferenceSection[] = [
 	'functions',
 	'rules',
 	'import',
+	'guidelines',
+	'design',
 	'all',
 ];
 
@@ -23,7 +25,7 @@ const inputSchema = {
 		.enum(VALID_SECTIONS as [string, ...string[]])
 		.optional()
 		.describe(
-			'Optional section to retrieve: "patterns", "expressions", "functions", "rules", "import", or "all" (default)',
+			'Optional section to retrieve: "patterns", "expressions", "functions", "rules", "import", "guidelines", "design", or "all" (default)',
 		),
 } satisfies z.ZodRawShape;
 

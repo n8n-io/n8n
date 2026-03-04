@@ -12,6 +12,8 @@ import {
 	WORKFLOW_PATTERNS,
 	ADDITIONAL_FUNCTIONS,
 	WORKFLOW_RULES,
+	CODING_GUIDELINES,
+	DESIGN_GUIDANCE,
 } from '@n8n/ai-workflow-builder';
 
 /**
@@ -23,9 +25,15 @@ export type SdkReferenceSection =
 	| 'functions'
 	| 'rules'
 	| 'import'
+	| 'guidelines'
+	| 'design'
 	| 'all';
 
 const SDK_IMPORT_SECTION = `## SDK Import Statement\n\n\`\`\`javascript\n${SDK_IMPORT_STATEMENT}\n\`\`\``;
+
+const CODING_GUIDELINES_SECTION = `## Coding Guidelines\n\n${CODING_GUIDELINES}`;
+
+const DESIGN_GUIDANCE_SECTION = `## Design Guidance\n\n${DESIGN_GUIDANCE}`;
 
 const SECTIONS: Record<Exclude<SdkReferenceSection, 'all'>, string> = {
 	import: SDK_IMPORT_SECTION,
@@ -33,6 +41,8 @@ const SECTIONS: Record<Exclude<SdkReferenceSection, 'all'>, string> = {
 	expressions: EXPRESSION_REFERENCE,
 	functions: ADDITIONAL_FUNCTIONS,
 	rules: WORKFLOW_RULES,
+	guidelines: CODING_GUIDELINES_SECTION,
+	design: DESIGN_GUIDANCE_SECTION,
 };
 
 /**
@@ -55,5 +65,9 @@ export function getSdkReferenceContent(section?: SdkReferenceSection): string {
 		SECTIONS.functions,
 		'',
 		SECTIONS.rules,
+		'',
+		SECTIONS.guidelines,
+		'',
+		SECTIONS.design,
 	].join('\n');
 }
