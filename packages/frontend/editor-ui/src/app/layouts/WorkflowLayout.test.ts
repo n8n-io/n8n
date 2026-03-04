@@ -35,7 +35,7 @@ vi.mock('@/features/ai/assistant/assistant.store', () => ({
 
 vi.mock('@/app/composables/useWorkflowState', () => ({
 	useWorkflowState: vi.fn(() => ({
-		getNewWorkflowDataAndMakeShareable: vi.fn(),
+		getNewWorkflowData: vi.fn(),
 		setWorkflowId: vi.fn(),
 		resetState: vi.fn(),
 	})),

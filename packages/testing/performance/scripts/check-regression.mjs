@@ -27,7 +27,7 @@ if (!existsSync(BASELINE_PATH)) {
 }
 
 if (!existsSync(CURRENT_PATH)) {
-	console.error('❌ No current results found. Run bench:ci to generate them.');
+	console.error('❌ No current results found. Run bench:compare to generate them.');
 	process.exit(1);
 }
 

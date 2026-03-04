@@ -149,6 +149,7 @@ import { MigrateExternalSecretsToEntityStorage1771500000000 } from '../common/17
 import { AddUnshareScopeToCustomRoles1771500000001 } from '../common/1771500000001-AddUnshareScopeToCustomRoles';
 import { AddFilesColumnToChatHubAgents1771500000002 } from '../common/1771500000002-AddFilesColumnToChatHubAgents';
 import { AddRoleColumnToProjectSecretsProviderAccess1771500000003 } from '../common/1771500000003-AddRoleColumnToProjectSecretsProviderAccess';
+import { AddSuggestedPromptsToAgentTable1772000000000 } from '../common/1772000000000-AddSuggestedPromptsToAgentTable';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -303,4 +304,5 @@ export const postgresMigrations: Migration[] = [
 	AddUnshareScopeToCustomRoles1771500000001,
 	AddFilesColumnToChatHubAgents1771500000002,
 	AddRoleColumnToProjectSecretsProviderAccess1771500000003,
+	AddSuggestedPromptsToAgentTable1772000000000,
 ];
