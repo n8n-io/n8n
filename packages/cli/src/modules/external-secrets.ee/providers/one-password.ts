@@ -1,7 +1,7 @@
 import type { OPConnect } from '@1password/connect';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import { UserError, type INodeProperties } from 'n8n-workflow';
+import { UserError, type IDataObject, type INodeProperties } from 'n8n-workflow';
 
 import { DOCS_HELP_NOTICE } from '../constants';
 import { SecretsProvider, type SecretsProviderSettings } from '../types';
@@ -41,7 +41,7 @@ export class OnePasswordProvider extends SecretsProvider {
 		},
 	];
 
-	private cachedSecrets: Record<string, string> = {};
+	private cachedSecrets: Record<string, IDataObject> = {};
 
 	private client: OPConnect;
 
@@ -106,7 +106,7 @@ export class OnePasswordProvider extends SecretsProvider {
 	async update() {
 		const vaults = await this.client.listVaults();
 
-		const secrets: Record<string, string> = {};
+		const secrets: Record<string, IDataObject> = {};
 
 		for (const vault of vaults) {
 			if (!vault.id) continue;
@@ -120,7 +120,7 @@ export class OnePasswordProvider extends SecretsProvider {
 
 				if (!fullItem.fields?.length) continue;
 
-				const fieldValues: Record<string, string> = {};
+				const fieldValues: IDataObject = {};
 				for (const field of fullItem.fields) {
 					if (field.label && field.value) {
 						fieldValues[field.label] = field.value;
@@ -129,7 +129,7 @@ export class OnePasswordProvider extends SecretsProvider {
 
 				if (Object.keys(fieldValues).length === 0) continue;
 
-				secrets[item.title] = JSON.stringify(fieldValues);
+				secrets[item.title] = fieldValues;
 			}
 		}
 
@@ -138,7 +138,7 @@ export class OnePasswordProvider extends SecretsProvider {
 		this.logger.debug('1Password provider secrets updated');
 	}
 
-	getSecret(name: string) {
+	getSecret(name: string): IDataObject {
 		return this.cachedSecrets[name];
 	}
 

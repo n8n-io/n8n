@@ -170,13 +170,12 @@ describe('OnePasswordProvider', () => {
 			expect(mockGetItemById).toHaveBeenCalledWith('vault-1', 'item-2');
 			expect(mockGetItemById).toHaveBeenCalledWith('vault-2', 'item-3');
 
-			expect(provider.getSecret('Database Credentials')).toBe(
-				JSON.stringify({ username: 'admin', password: 'secret123' }),
-			);
-			expect(provider.getSecret('API Key')).toBe(JSON.stringify({ key: 'sk-abc123' }));
-			expect(provider.getSecret('SSH Key')).toBe(
-				JSON.stringify({ private_key: 'ssh-rsa AAAA...' }),
-			);
+			expect(provider.getSecret('Database Credentials')).toEqual({
+				username: 'admin',
+				password: 'secret123',
+			});
+			expect(provider.getSecret('API Key')).toEqual({ key: 'sk-abc123' });
+			expect(provider.getSecret('SSH Key')).toEqual({ private_key: 'ssh-rsa AAAA...' });
 			expect(provider.getSecretNames()).toHaveLength(3);
 		});
 
@@ -215,7 +214,7 @@ describe('OnePasswordProvider', () => {
 
 			await provider.update();
 
-			expect(provider.getSecret('Mixed Item')).toBe(JSON.stringify({ valid: 'data' }));
+			expect(provider.getSecret('Mixed Item')).toEqual({ valid: 'data' });
 		});
 
 		it('should skip items without id or title', async () => {
