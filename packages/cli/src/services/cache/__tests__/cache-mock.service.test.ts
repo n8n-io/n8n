@@ -36,6 +36,15 @@ describe('CacheService (Mock)', () => {
 
 			await cacheService.set('key', 'value', 123);
 			expect(store.set).toHaveBeenCalledWith('key', 'value', 123);
+
+			await cacheService.set('false-key', false);
+			expect(store.set).toHaveBeenCalledWith('false-key', false, undefined);
+
+			await cacheService.set('zero-key', 0);
+			expect(store.set).toHaveBeenCalledWith('zero-key', 0, undefined);
+
+			await cacheService.set('empty-string-key', '');
+			expect(store.set).toHaveBeenCalledWith('empty-string-key', '', undefined);
 		});
 
 		test('setMany', async () => {
