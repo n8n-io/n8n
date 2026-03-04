@@ -1,3 +1,4 @@
+import { mock } from 'jest-mock-extended';
 import { promises as dns } from 'node:dns';
 
 import { DnsResolver } from '../dns-resolver';
@@ -15,21 +16,13 @@ function asLookupResult(value: unknown): Awaited<ReturnType<typeof dns.lookup>> 
 	return value as Awaited<ReturnType<typeof dns.lookup>>;
 }
 
-function createMockCache(): jest.Mocked<InMemoryDnsCache> {
-	return {
-		get: jest.fn().mockResolvedValue(undefined),
-		set: jest.fn().mockResolvedValue(undefined),
-		clear: jest.fn().mockResolvedValue(undefined),
-	} as unknown as jest.Mocked<InMemoryDnsCache>;
-}
-
 describe('DnsResolver', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 	});
 
 	it('should return cached IPs when available', async () => {
-		const cache = createMockCache();
+		const cache = mock<InMemoryDnsCache>();
 		cache.get.mockResolvedValue([{ address: '1.2.3.4', family: 4 }]);
 		const resolver = new DnsResolver(cache);
 
@@ -41,7 +34,7 @@ describe('DnsResolver', () => {
 	});
 
 	it('should resolve one address by default (all=false, family=0)', async () => {
-		const cache = createMockCache();
+		const cache = mock<InMemoryDnsCache>();
 		mockedDns.lookup.mockResolvedValue({ address: '93.184.216.34', family: 4 });
 		const resolver = new DnsResolver(cache);
 
@@ -62,7 +55,7 @@ describe('DnsResolver', () => {
 	});
 
 	it('should resolve all addresses when all=true', async () => {
-		const cache = createMockCache();
+		const cache = mock<InMemoryDnsCache>();
 		mockedDns.lookup.mockResolvedValue(
 			asLookupResult([
 				{ address: '93.184.216.34', family: 4 },
@@ -94,7 +87,7 @@ describe('DnsResolver', () => {
 	});
 
 	it('should pass family option through to lookup', async () => {
-		const cache = createMockCache();
+		const cache = mock<InMemoryDnsCache>();
 		mockedDns.lookup.mockResolvedValue(
 			asLookupResult([{ address: '2606:4700::6810:85e5', family: 6 }]),
 		);
@@ -117,7 +110,7 @@ describe('DnsResolver', () => {
 	});
 
 	it('should include order in lookup options and cache key', async () => {
-		const cache = createMockCache();
+		const cache = mock<InMemoryDnsCache>();
 		mockedDns.lookup.mockResolvedValue({ address: '93.184.216.34', family: 4 });
 		const resolver = new DnsResolver(cache);
 
@@ -133,7 +126,7 @@ describe('DnsResolver', () => {
 	});
 
 	it('should normalize unsupported family values to 0', async () => {
-		const cache = createMockCache();
+		const cache = mock<InMemoryDnsCache>();
 		mockedDns.lookup.mockResolvedValue({ address: '93.184.216.34', family: 4 });
 		const resolver = new DnsResolver(cache);
 
@@ -149,7 +142,7 @@ describe('DnsResolver', () => {
 	});
 
 	it('should bubble up lookup errors', async () => {
-		const cache = createMockCache();
+		const cache = mock<InMemoryDnsCache>();
 		mockedDns.lookup.mockRejectedValue(new Error('ENOTFOUND'));
 		const resolver = new DnsResolver(cache);
 
@@ -158,7 +151,7 @@ describe('DnsResolver', () => {
 	});
 
 	it('should include options in cache key', async () => {
-		const cache = createMockCache();
+		const cache = mock<InMemoryDnsCache>();
 		mockedDns.lookup
 			.mockResolvedValueOnce({ address: '1.2.3.4', family: 4 })
 			.mockResolvedValueOnce(asLookupResult([{ address: '1.2.3.4', family: 4 }]));
@@ -173,7 +166,7 @@ describe('DnsResolver', () => {
 
 	describe('in-flight deduplication', () => {
 		it('should coalesce concurrent calls with same hostname and options', async () => {
-			const cache = createMockCache();
+			const cache = mock<InMemoryDnsCache>();
 			mockedDns.lookup.mockResolvedValue({ address: '1.2.3.4', family: 4 });
 			const resolver = new DnsResolver(cache);
 
@@ -188,7 +181,7 @@ describe('DnsResolver', () => {
 		});
 
 		it('should not coalesce concurrent calls for different option sets', async () => {
-			const cache = createMockCache();
+			const cache = mock<InMemoryDnsCache>();
 			mockedDns.lookup
 				.mockResolvedValueOnce({ address: '1.2.3.4', family: 4 })
 				.mockResolvedValueOnce(asLookupResult([{ address: '1.2.3.4', family: 4 }]));
@@ -203,7 +196,7 @@ describe('DnsResolver', () => {
 		});
 
 		it('should allow new resolve after in-flight completes', async () => {
-			const cache = createMockCache();
+			const cache = mock<InMemoryDnsCache>();
 			cache.get
 				.mockResolvedValueOnce(undefined)
 				.mockResolvedValueOnce([{ address: '1.2.3.4', family: 4 }]);
@@ -217,7 +210,7 @@ describe('DnsResolver', () => {
 		});
 
 		it('should clean up in-flight map even if resolve fails', async () => {
-			const cache = createMockCache();
+			const cache = mock<InMemoryDnsCache>();
 			mockedDns.lookup.mockRejectedValueOnce(new Error('ENOTFOUND'));
 			const resolver = new DnsResolver(cache);
 
