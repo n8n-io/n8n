@@ -178,37 +178,80 @@ export class GitlabTrigger implements INodeType {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
-
-				if (webhookData.webhookId === undefined) {
-					// No webhook id is set so no webhook can exist
-					return false;
-				}
-
-				// Webhook got created before so check if it still exists
+				const webhookUrl = this.getNodeWebhookUrl('default');
 				const owner = this.getNodeParameter('owner') as string;
 				const repository = this.getNodeParameter('repository') as string;
-
 				const path = `${owner}/${repository}`.replace(/\//g, '%2F');
 
-				const endpoint = `/projects/${path}/hooks/${webhookData.webhookId}`;
+				let eventsArray = this.getNodeParameter('events', []) as string[];
+				if (eventsArray.includes('*')) {
+					eventsArray = GITLAB_EVENTS.map((e) => e.value);
+				}
+
+				// If we have a stored webhook ID, check if it still exists
+				if (webhookData.webhookId !== undefined) {
+					const endpoint = `/projects/${path}/hooks/${webhookData.webhookId}`;
+
+					try {
+						const webhook = await gitlabApiRequest.call(this, 'GET', endpoint, {});
+						// Webhook exists, verify it matches our configuration
+						if (webhook.url === webhookUrl) {
+							return true;
+						}
+					} catch (error) {
+						if (error.cause?.httpCode === '404' || error.description?.includes('404')) {
+							// Webhook does not exist, clear the stored ID
+							delete webhookData.webhookId;
+							delete webhookData.webhookEvents;
+						} else {
+							// Some other error occurred
+							throw error;
+						}
+					}
+				}
+
+				// No stored webhook ID or the webhook was deleted
+				// Check if a webhook with our URL already exists in GitLab
+				const hooksEndpoint = `/projects/${path}/hooks`;
 
 				try {
-					await gitlabApiRequest.call(this, 'GET', endpoint, {});
-				} catch (error) {
-					if (error.cause.httpCode === '404' || error.description.includes('404')) {
-						// Webhook does not exist
-						delete webhookData.webhookId;
-						delete webhookData.webhookEvents;
+					const webhooks = await gitlabApiRequest.call(this, 'GET', hooksEndpoint, {});
 
-						return false;
+					// Look for a webhook with matching URL
+					for (const webhook of webhooks as IDataObject[]) {
+						if (webhook.url === webhookUrl) {
+							// Found a webhook with our URL
+							// Check if events match
+							const webhookEvents = new Set<string>();
+							for (const [key, value] of Object.entries(webhook)) {
+								if (key.endsWith('_events') && value === true) {
+									const eventName = key.replace('_events', '');
+									webhookEvents.add(eventName);
+								}
+							}
+
+							const expectedEvents = new Set(eventsArray);
+
+							// Check if the webhook has the same events configured
+							const eventsMatch =
+								webhookEvents.size === expectedEvents.size &&
+								[...expectedEvents].every((event) => webhookEvents.has(event));
+
+							if (eventsMatch) {
+								// Webhook exists with same URL and events, store the ID
+								webhookData.webhookId = webhook.id as string;
+								webhookData.webhookEvents = eventsArray;
+								return true;
+							}
+						}
 					}
-
-					// Some error occured
+				} catch (error) {
+					// If we can't list webhooks, throw the error
 					throw error;
 				}
 
-				// If it did not error then the webhook exists
-				return true;
+				// No matching webhook found
+				return false;
 			},
 			/**
 			 * Gitlab API - Add project hook:
