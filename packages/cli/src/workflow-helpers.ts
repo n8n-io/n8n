@@ -1,4 +1,4 @@
-import { CredentialsRepository, SecretsProviderConnectionRepository } from '@n8n/db';
+import { CredentialsRepository } from '@n8n/db';
 import type { WorkflowEntity, WorkflowHistory, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type {
@@ -10,7 +10,6 @@ import type {
 	IWorkflowSettings,
 	RelatedExecution,
 } from 'n8n-workflow';
-import { ExternalSecretsProxy } from 'n8n-core';
 import { v4 as uuid } from 'uuid';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';

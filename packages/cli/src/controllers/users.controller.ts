@@ -297,8 +297,6 @@ export class UsersController {
 					trx,
 				);
 			});
-
-			await this.projectService.clearCredentialCanUseExternalSecretsCache(transfereeProject.id);
 		}
 
 		const [ownedSharedWorkflows, ownedSharedCredentials] = await Promise.all([
@@ -386,11 +384,6 @@ export class UsersController {
 		});
 
 		const projects = await this.projectService.getUserOwnedOrAdminProjects(targetUser.id);
-		await Promise.all(
-			projects.map(
-				async (p) => await this.projectService.clearCredentialCanUseExternalSecretsCache(p.id),
-			),
-		);
 
 		return { success: true };
 	}

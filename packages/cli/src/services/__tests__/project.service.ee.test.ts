@@ -108,10 +108,6 @@ describe('ProjectService', () => {
 
 			expect(manager.delete).toHaveBeenCalled();
 			expect(manager.insert).toHaveBeenCalled();
-			expect(cacheService.deleteMany).toHaveBeenCalledWith([
-				'credential-can-use-secrets:cred1',
-				'credential-can-use-secrets:cred2',
-			]);
 		});
 
 		it('should throw error if project not found', async () => {

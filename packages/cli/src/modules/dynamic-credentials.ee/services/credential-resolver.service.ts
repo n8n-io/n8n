@@ -6,7 +6,6 @@ import {
 	ICredentialResolver,
 } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { hasGlobalScope } from '@n8n/permissions';
 import { Cipher } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 

@@ -5,15 +5,12 @@
 import type { CredentialsEntity, ICredentialsDb } from '@n8n/db';
 import {
 	CredentialsRepository,
-	GLOBAL_ADMIN_ROLE,
-	GLOBAL_OWNER_ROLE,
 	SharedCredentialsRepository,
 	SecretsProviderConnectionRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { EntityNotFoundError, In } from '@n8n/typeorm';
+import { EntityNotFoundError } from '@n8n/typeorm';
 import { Credentials, getAdditionalKeys } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
@@ -389,6 +386,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			return decryptedDataOriginal;
 		}
 
+		// Is external secrets licensed
 		const externalSecretProvidersForCredential =
 			await this.secretsProviderConnectionRepository.findAllAccessibleByCredentialId(
 				credentialsEntity.id,
@@ -589,41 +587,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 		};
 
 		await this.credentialsRepository.update(findQuery, newCredentialsData);
-	}
-
-	async credentialCanUseExternalSecrets(nodeCredential: INodeCredentialsDetails): Promise<boolean> {
-		if (!nodeCredential.id) {
-			return false;
-		}
-
-		return (
-			(await this.cacheService.get(`credential-can-use-secrets:${nodeCredential.id}`, {
-				refreshFn: async () => {
-					const credential = await this.sharedCredentialsRepository.findOne({
-						where: {
-							role: 'credential:owner',
-							project: {
-								projectRelations: {
-									role: { slug: In([PROJECT_OWNER_ROLE_SLUG, PROJECT_ADMIN_ROLE_SLUG]) },
-									user: {
-										role: { slug: In([GLOBAL_OWNER_ROLE.slug, GLOBAL_ADMIN_ROLE.slug]) },
-									},
-								},
-							},
-							credentials: {
-								id: nodeCredential.id!,
-							},
-						},
-					});
-
-					if (!credential) {
-						return false;
-					}
-
-					return true;
-				},
-			})) ?? false
-		);
 	}
 }
 
