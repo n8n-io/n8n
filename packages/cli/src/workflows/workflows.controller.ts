@@ -39,6 +39,7 @@ import express from 'express';
 import { calculateWorkflowChecksum } from 'n8n-workflow';
 import { CollaborationService } from '../collaboration/collaboration.service';
 
+import { WorkflowCreationService } from './workflow-creation.service';
 import { WorkflowExecutionService } from './workflow-execution.service';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowRequest } from './workflow.request';
@@ -68,6 +69,7 @@ export class WorkflowsController {
 		private readonly namingService: NamingService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowService: WorkflowService,
+		private readonly workflowCreationService: WorkflowCreationService,
 		private readonly workflowExecutionService: WorkflowExecutionService,
 		private readonly license: License,
 		private readonly mailer: UserManagementMailer,
@@ -97,7 +99,7 @@ export class WorkflowsController {
 		// triggerCount, versionCounter, isArchived, etc. are never set from user input
 		Object.assign(newWorkflow, body);
 
-		const savedWorkflow = await this.workflowService.createWorkflow(req.user, newWorkflow, {
+		const savedWorkflow = await this.workflowCreationService.createWorkflow(req.user, newWorkflow, {
 			tagIds: body.tags,
 			parentFolderId: body.parentFolderId,
 			projectId: body.projectId,
@@ -105,7 +107,12 @@ export class WorkflowsController {
 			uiContext: body.uiContext,
 		});
 
-		const savedWorkflowWithMetaData = this.workflowService.addMetadataToWorkflow(savedWorkflow);
+		const savedWorkflowWithMetaData =
+			this.enterpriseWorkflowService.addOwnerAndSharings(savedWorkflow);
+		// @ts-expect-error: This is added as part of addOwnerAndSharings but
+		// shouldn't be returned to the frontend
+		delete savedWorkflowWithMetaData.shared;
+
 		const checksum = await calculateWorkflowChecksum(savedWorkflow);
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, savedWorkflow.id);
 
