@@ -1,0 +1,44 @@
+import { describe, it, mock, before } from 'node:test';
+import assert from 'node:assert/strict';
+
+/**
+ * Run these tests by running
+ *
+ * node --test --experimental-test-module-mocks ./.github/scripts/backport-pr.test.mjs
+ * */
+
+// mock.module must be called before the module under test is imported,
+// because static imports are hoisted and resolve before any code runs.
+mock.module('./github-helpers.mjs', {
+	namedExports: {
+		ensureEnvVar: () => {}, // no-op
+		readPrLabels: () => {}, // no-op
+		resolveRcBranchForTrack: (track) => {
+			switch (track) {
+				case 'beta':
+					return 'release-candidate/2.10.1';
+				case 'stable':
+					return 'release-candidate/2.9.4';
+			}
+			return undefined;
+		}, // no-op
+		writeGithubOutput: () => {}, //no-op
+	},
+});
+
+let labelsToReleaseCandidateBranches;
+before(async () => {
+	({ labelsToReleaseCandidateBranches } = await import('./backport-pr.mjs'));
+});
+
+describe('Backport PR', () => {
+	it('Finds backport branches for pointer tag labels', () => {
+		const labels = new Set(['Backport to Beta', 'Backport to Stable']);
+		/** @type { Set<string> } */
+		const result = labelsToReleaseCandidateBranches(labels);
+
+		assert.equal(result.size, 2);
+		assert.ok(result.has('release-candidate/2.10.1'));
+		assert.ok(result.has('release-candidate/2.9.4'));
+	});
+});
