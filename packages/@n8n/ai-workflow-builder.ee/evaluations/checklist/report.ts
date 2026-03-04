@@ -132,7 +132,7 @@ function renderResultRow(result: AgentResult, index: number): string {
 						result.workflowJson
 							? `<div class="detail-section">
 						<h4>Workflow Preview</h4>
-						<n8n-demo workflow='${escapeHtml(result.workflowJson)}'></n8n-demo>
+						<n8n-demo tidyup="true" workflow='${escapeHtml(result.workflowJson)}'></n8n-demo>
 					</div>`
 							: ''
 					}
