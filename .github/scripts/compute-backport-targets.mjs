@@ -23,22 +23,28 @@ export function labelsToReleaseCandidateBranches(labels) {
 	// Backport by tag map includes mapping of label to git tag to resolve
 	for (const [label, tag] of Object.entries(BACKPORT_BY_TAG_MAP)) {
 		// Check if backport label is present
-		if (labels.has(label)) {
-			const branch = resolveRcBranchForTrack(tag);
-			// Make sure our backport branch exists
-			if (branch) {
-				targets.add(branch);
-			}
+		if (!labels.has(label)) {
+			continue;
 		}
+
+		const branch = resolveRcBranchForTrack(tag);
+		// Make sure our backport branch exists
+		if (!branch) {
+			continue;
+		}
+
+		targets.add(branch);
 	}
 
 	// Backport by branch map includes mapping of label to git branch. This is used for
 	// older versions of n8n. v1, etc.
 	for (const [label, branch] of Object.entries(BACKPORT_BY_BRANCH_MAP)) {
 		// Check if backport label is present
-		if (labels.has(label)) {
-			targets.add(branch);
+		if (!labels.has(label)) {
+			continue;
 		}
+
+		targets.add(branch);
 	}
 
 	return targets;

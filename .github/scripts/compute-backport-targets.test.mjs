@@ -13,25 +13,27 @@ mock.module('./github-helpers.mjs', {
 	namedExports: {
 		ensureEnvVar: () => {}, // no-op
 		readPrLabels: () => {}, // no-op
-		resolveRcBranchForTrack: (track) => {
-			switch (track) {
-				case 'beta':
-					return 'release-candidate/2.10.1';
-				case 'stable':
-					return 'release-candidate/2.9.4';
-			}
-			return undefined;
-		}, // no-op
+		resolveRcBranchForTrack: mockResolveRcBranchForTrack,
 		writeGithubOutput: () => {}, //no-op
 	},
 });
+
+function mockResolveRcBranchForTrack(track) {
+	switch (track) {
+		case 'beta':
+			return 'release-candidate/2.10.1';
+		case 'stable':
+			return 'release-candidate/2.9.4';
+	}
+	return undefined;
+}
 
 let labelsToReleaseCandidateBranches;
 before(async () => {
 	({ labelsToReleaseCandidateBranches } = await import('./compute-backport-targets.mjs'));
 });
 
-describe('Backport PR', () => {
+describe('Compute backport targets', () => {
 	it('Finds backport branches for pointer tag labels', () => {
 		const labels = new Set(['Backport to Beta', 'Backport to Stable']);
 		/** @type { Set<string> } */
