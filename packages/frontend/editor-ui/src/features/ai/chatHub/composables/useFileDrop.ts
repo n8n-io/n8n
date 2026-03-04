@@ -3,8 +3,10 @@ import { ref, toValue, type MaybeRef } from 'vue';
 export function useFileDrop(
 	canAcceptFiles: MaybeRef<boolean>,
 	onFilesDropped: (files: File[]) => void,
+	acceptedTypes?: MaybeRef<string[]>,
 ) {
 	const isDragging = ref(false);
+	const isDraggingUnsupported = ref(false);
 
 	function handleDragEnter(e: DragEvent) {
 		if (!toValue(canAcceptFiles)) {
@@ -14,6 +16,14 @@ export function useFileDrop(
 		// Check if dragging files (not text or other content)
 		if (e.dataTransfer?.types.includes('Files')) {
 			isDragging.value = true;
+
+			const accepted = toValue(acceptedTypes);
+			if (accepted && e.dataTransfer.items) {
+				const fileItems = Array.from(e.dataTransfer.items).filter((i) => i.kind === 'file');
+				isDraggingUnsupported.value =
+					fileItems.length > 0 &&
+					fileItems.every((i) => i.type !== '' && !accepted.includes(i.type));
+			}
 		}
 	}
 
@@ -31,6 +41,7 @@ export function useFileDrop(
 		}
 
 		isDragging.value = false;
+		isDraggingUnsupported.value = false;
 	}
 
 	function handleDragOver(e: DragEvent) {
@@ -46,6 +57,7 @@ export function useFileDrop(
 		e.preventDefault();
 		e.stopPropagation();
 		isDragging.value = false;
+		isDraggingUnsupported.value = false;
 
 		if (!toValue(canAcceptFiles)) {
 			return;
@@ -91,6 +103,7 @@ export function useFileDrop(
 
 	return {
 		isDragging,
+		isDraggingUnsupported,
 		handleDragEnter,
 		handleDragLeave,
 		handleDragOver,

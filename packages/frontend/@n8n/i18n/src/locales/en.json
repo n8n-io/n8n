@@ -454,6 +454,8 @@
 	"chatHub.agent.editor.success.create": "Agent created successfully",
 	"chatHub.agent.editor.success.update": "Agent updated successfully",
 	"chatHub.agent.editor.success.delete": "Agent deleted successfully",
+	"chatHub.agent.editor.dropOverlay.addFile": "Add file to agent",
+	"chatHub.agent.editor.dropOverlay.unsupportedFileType": "File type not supported. Only PDF files are accepted.",
 	"chatHub.agent.editor.semanticSearch.notReady": "To upload PDF documents, contact your instance owner to configure semantic search in {settingsLink}.",
 	"chatHub.agent.editor.semanticSearch.notReady.canConfigure": "To upload PDF documents, configure semantic search in {settingsLink}.",
 	"chatHub.agent.editor.semanticSearch.settingsLink": "chat settings",

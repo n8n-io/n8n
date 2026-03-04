@@ -380,7 +380,7 @@ function removeFile(row: FileRow) {
 	}
 }
 
-const fileDrop = useFileDrop(true, onFilesDropped);
+const fileDrop = useFileDrop(true, onFilesDropped, ['application/pdf']);
 </script>
 
 <template>
@@ -402,14 +402,27 @@ const fileDrop = useFileDrop(true, onFilesDropped);
 		<template #content>
 			<div :class="$style.contentWrapper">
 				<div v-if="fileDrop.isDragging.value" :class="$style.dropOverlay">
-					<N8nText size="large" color="text-dark">Add file to agent</N8nText>
+					<N8nText v-if="fileDrop.isDraggingUnsupported.value" size="large" color="text-dark">{{
+						i18n.baseText('chatHub.agent.editor.dropOverlay.unsupportedFileType')
+					}}</N8nText>
+					<N8nText v-else size="large" color="text-dark">{{
+						i18n.baseText('chatHub.agent.editor.dropOverlay.addFile')
+					}}</N8nText>
 				</div>
 				<div
 					:class="[$style.content, { [$style.isDraggingFile]: fileDrop.isDragging.value }]"
-					@dragenter="fileDrop.handleDragEnter"
-					@dragleave="fileDrop.handleDragLeave"
-					@dragover="fileDrop.handleDragOver"
-					@drop="fileDrop.handleDrop"
+					@dragenter="
+						chatStore.semanticSearchReadiness.isReady ? fileDrop.handleDragEnter($event) : undefined
+					"
+					@dragleave="
+						chatStore.semanticSearchReadiness.isReady ? fileDrop.handleDragLeave($event) : undefined
+					"
+					@dragover="
+						chatStore.semanticSearchReadiness.isReady ? fileDrop.handleDragOver($event) : undefined
+					"
+					@drop="
+						chatStore.semanticSearchReadiness.isReady ? fileDrop.handleDrop($event) : undefined
+					"
 				>
 					<N8nInputLabel
 						input-name="agent-name"
@@ -564,6 +577,7 @@ const fileDrop = useFileDrop(true, onFilesDropped);
 							icon="plus"
 							variant="subtle"
 							:class="$style.addFileButton"
+							:disabled="!chatStore.semanticSearchReadiness.isReady"
 							@click="handleClickUploadArea"
 						>
 							Add file
