@@ -108,7 +108,7 @@ export const computeTimelineEntries = (items: WorkflowHistory[]): TimelineEntry[
 	return entries;
 };
 
-export const getActiveVersionId = (workflow: IWorkflowDb | null): string | undefined => {
+export const getPublishedVersionId = (workflow: IWorkflowDb | null): string | undefined => {
 	if (!workflow) {
 		return;
 	}

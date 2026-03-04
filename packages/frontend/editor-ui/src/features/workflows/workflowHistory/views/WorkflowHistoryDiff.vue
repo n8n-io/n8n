@@ -37,7 +37,7 @@ const targetLabel = ref('');
 const selectedSourceVersionId = ref(props.sourceWorkflowVersionId);
 const selectedTargetVersionId = ref(props.targetWorkflowVersionId);
 const currentWorkflowVersionId = ref<string>();
-const activeWorkflowVersionId = ref<string | undefined>();
+const publishedWorkflowVersionId = ref<string | undefined>();
 
 // Stale response guard: only apply results from the most recent load request.
 const loadRequestId = ref(0);
@@ -45,7 +45,7 @@ const loadRequestId = ref(0);
 const { getVersionLabelById, versionOptions } = useWorkflowHistoryVersionOptions({
 	availableVersions: computed(() => props.availableVersions),
 	currentWorkflowVersionId,
-	activeWorkflowVersionId,
+	publishedWorkflowVersionId,
 	selectedVersionIds: computed(() => [
 		selectedSourceVersionId.value,
 		selectedTargetVersionId.value,
@@ -84,7 +84,7 @@ const loadComparedVersions = async (sourceVersionId: string, targetVersionId: st
 		}
 
 		currentWorkflowVersionId.value = workflow.versionId;
-		activeWorkflowVersionId.value = workflow.activeVersionId ?? undefined;
+		publishedWorkflowVersionId.value = workflow.activeVersionId ?? undefined;
 
 		const workflowWithoutPinData: IWorkflowDb = omit(workflow, 'pinData');
 

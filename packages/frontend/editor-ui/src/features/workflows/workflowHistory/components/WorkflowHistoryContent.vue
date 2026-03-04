@@ -27,7 +27,7 @@ const props = defineProps<{
 	workflow: IWorkflowDb | null;
 	workflowVersion: WorkflowVersion | null;
 	actions: Array<UserAction<IUser>>;
-	isVersionActive?: boolean;
+	isPublished?: boolean;
 	isListLoading?: boolean;
 	isFirstItemShown?: boolean;
 }>();
@@ -90,7 +90,7 @@ const actions = computed(() => {
 		filteredActions = filteredActions.filter((action) => action.value !== 'restore');
 	}
 
-	if (props.isVersionActive) {
+	if (props.isPublished) {
 		filteredActions = filteredActions.filter((action) => action.value !== 'publish');
 	} else {
 		filteredActions = filteredActions.filter((action) => action.value !== 'unpublish');

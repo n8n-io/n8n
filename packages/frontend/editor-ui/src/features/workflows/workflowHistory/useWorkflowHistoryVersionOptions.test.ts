@@ -1,29 +1,7 @@
 import { computed, ref } from 'vue';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { WorkflowHistory } from '@n8n/rest-api-client/api/workflowHistory';
 import { useWorkflowHistoryVersionOptions } from './useWorkflowHistoryVersionOptions';
-
-vi.mock('@n8n/i18n', () => ({
-	useI18n: () => ({
-		baseText: (key: string, options?: { interpolate?: Record<string, string> }) => {
-			if (key === 'workflowHistory.item.currentChanges') {
-				return 'Current changes';
-			}
-			if (key === 'workflowHistory.item.publishedBy') {
-				return 'Published by';
-			}
-			if (key === 'workflowHistory.item.active') {
-				return 'Active';
-			}
-			if (key === 'workflowHistory.item.createdAt') {
-				const date = options?.interpolate?.date ?? '';
-				const time = options?.interpolate?.time ?? '';
-				return `${date} at ${time}`;
-			}
-			return key;
-		},
-	}),
-}));
 
 const createHistoryVersion = (overrides: Partial<WorkflowHistory> = {}): WorkflowHistory => ({
 	versionId: 'version-1',
@@ -46,7 +24,7 @@ describe('useWorkflowHistoryVersionOptions', () => {
 		const { versionOptions } = useWorkflowHistoryVersionOptions({
 			availableVersions,
 			currentWorkflowVersionId: ref('v-current'),
-			activeWorkflowVersionId: ref(undefined),
+			publishedWorkflowVersionId: ref(undefined),
 			selectedVersionIds: computed(() => ['v-current', 'v-loaded']),
 			resolveUserDisplayName: () => null,
 		});
@@ -59,7 +37,7 @@ describe('useWorkflowHistoryVersionOptions', () => {
 		expect(optionsById.has('v-loaded')).toBe(true);
 	});
 
-	it('marks active version and exposes publish info', () => {
+	it('marks published version and exposes publish info', () => {
 		const availableVersions = computed(() => [
 			createHistoryVersion({
 				versionId: 'v-published',
@@ -79,12 +57,12 @@ describe('useWorkflowHistoryVersionOptions', () => {
 		const { versionOptions } = useWorkflowHistoryVersionOptions({
 			availableVersions,
 			currentWorkflowVersionId: ref(undefined),
-			activeWorkflowVersionId: ref('v-published'),
+			publishedWorkflowVersionId: ref('v-published'),
 			selectedVersionIds: computed(() => ['v-published']),
 			resolveUserDisplayName: (userId) => (userId === 'user-1' ? 'John Doe' : null),
 		});
 
-		expect(versionOptions.value[0].status).toBe('active');
+		expect(versionOptions.value[0].status).toBe('published');
 		expect(versionOptions.value[0].publishInfo).toEqual({
 			publishedBy: 'John Doe',
 			publishedAt: '2026-02-25T16:19:43.000Z',

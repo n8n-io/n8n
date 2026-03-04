@@ -15,8 +15,8 @@ const props = withDefaults(
 	defineProps<{
 		label: string;
 		publishInfo: {
-			publishedBy: string | null;
 			publishedAt: string;
+			publishedBy: string | null;
 		};
 		status?: WorkflowHistoryVersionStatus;
 		placement?: N8nTooltipProps['placement'];
@@ -45,7 +45,10 @@ const publishedByDetails = usePublishedByDetails(toRef(props, 'publishInfo'));
 			<div :class="$style.tooltipContentTitle">
 				<WorkflowVersionStatusIndicator :status="props.status" />
 				<N8nText size="small" :bold="true">
-					{{ props.label }} ({{ i18n.baseText('workflows.published') }})
+					{{ props.label }}
+					<template v-if="props.status === 'published'">
+						({{ i18n.baseText('workflows.published') }})
+					</template>
 				</N8nText>
 			</div>
 			<N8nText size="small" :class="$style.tooltipSecondaryText">

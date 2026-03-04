@@ -10,4 +10,4 @@ export type WorkflowHistoryAction = {
 	};
 };
 
-export type WorkflowHistoryVersionStatus = 'active' | 'latest' | 'default';
+export type WorkflowHistoryVersionStatus = 'published' | 'latest' | 'default';

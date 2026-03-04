@@ -28,7 +28,7 @@ const props = defineProps<{
 	evaluatedPruneTimeInHours: number;
 	shouldUpgrade?: boolean;
 	isListLoading?: boolean;
-	activeVersionId?: string;
+	publishedVersionId?: string;
 	isWorkflowDiffsEnabled?: boolean;
 }>();
 
@@ -86,7 +86,7 @@ const getActions = (item: WorkflowHistory, index: number) => {
 		filteredActions = filteredActions.filter((action) => action.value !== 'restore');
 	}
 
-	if (item.versionId === props.activeVersionId) {
+	if (item.versionId === props.publishedVersionId) {
 		filteredActions = filteredActions.filter((action) => action.value !== 'publish');
 	} else {
 		filteredActions = filteredActions.filter((action) => action.value !== 'unpublish');
@@ -217,7 +217,7 @@ const pruneTimeDisplay = computed(() => {
 					:item="versionEntry.item"
 					:compare-with="getItemToCompareWith(versionEntry.item, versionEntry.originalIndex)"
 					:is-selected="versionEntry.item.versionId === props.selectedItem?.versionId"
-					:is-version-active="versionEntry.item.versionId === props.activeVersionId"
+					:is-published="versionEntry.item.versionId === props.publishedVersionId"
 					:actions="getActions(versionEntry.item, versionEntry.originalIndex)"
 					:is-workflow-diffs-enabled="props.isWorkflowDiffsEnabled"
 					:is-grouped="true"
@@ -235,7 +235,7 @@ const pruneTimeDisplay = computed(() => {
 				:item="entry.item"
 				:compare-with="getItemToCompareWith(entry.item, entry.originalIndex)"
 				:is-selected="entry.item.versionId === props.selectedItem?.versionId"
-				:is-version-active="entry.item.versionId === props.activeVersionId"
+				:is-published="entry.item.versionId === props.publishedVersionId"
 				:actions="getActions(entry.item, entry.originalIndex)"
 				:is-workflow-diffs-enabled="props.isWorkflowDiffsEnabled"
 				@action="onAction"

@@ -8,13 +8,6 @@ import {
 } from './utils';
 import { workflowHistoryDataFactory } from './__tests__/utils';
 
-vi.mock('@n8n/i18n', () => ({
-	useI18n: () => ({
-		baseText: (key: string) =>
-			key === 'workflowHistory.item.currentChanges' ? 'Current changes' : key,
-	}),
-}));
-
 const createNamedItem = (overrides: Partial<WorkflowHistory> = {}): WorkflowHistory => ({
 	...workflowHistoryDataFactory(),
 	name: 'Named Version',

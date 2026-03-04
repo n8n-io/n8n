@@ -30,14 +30,14 @@ const props = withDefaults(
 		compareWith?: { name: string; versionId: WorkflowVersionId } | null;
 		actions: Array<UserAction<IUser>>;
 		isSelected?: boolean;
-		isVersionActive?: boolean;
+		isPublished?: boolean;
 		isGrouped?: boolean;
 		isWorkflowDiffsEnabled?: boolean;
 	}>(),
 	{
 		compareWith: null,
 		isSelected: false,
-		isVersionActive: false,
+		isPublished: false,
 		isGrouped: false,
 		isWorkflowDiffsEnabled: false,
 	},
@@ -81,19 +81,12 @@ const versionName = computed(() => {
 });
 
 const versionStatus = computed<WorkflowHistoryVersionStatus>(() => {
-	if (props.isVersionActive) {
-		return 'active';
+	if (props.isPublished) {
+		return 'published';
 	}
 
 	return props.index === 0 ? 'latest' : 'default';
 });
-
-const versionPublishInfo = computed(() => {
-	const publishInfo = getLastPublishedVersion(props.item.workflowPublishHistory);
-	return publishInfo;
-});
-
-const isPublishedVersion = computed(() => Boolean(versionPublishInfo.value));
 
 const getPublishedUserName = (userId: string | undefined | null) => {
 	if (!userId) {
@@ -104,17 +97,19 @@ const getPublishedUserName = (userId: string | undefined | null) => {
 };
 
 const wrapperProps = computed(() => {
-	if (!versionPublishInfo.value) {
+	const lastPublishedVersion = getLastPublishedVersion(props.item.workflowPublishHistory);
+	if (!lastPublishedVersion) {
 		return null;
 	}
 
-	const publishedBy = getPublishedUserName(versionPublishInfo.value.userId);
+	const publishedBy = getPublishedUserName(lastPublishedVersion.userId);
 	return {
 		label: versionName.value,
 		status: versionStatus.value,
 		publishInfo: {
 			publishedBy,
-			publishedAt: versionPublishInfo.value.createdAt,
+			publishedAt: lastPublishedVersion.createdAt,
+			isCurrentlyPublished: props.isPublished,
 		},
 	};
 });
@@ -192,7 +187,7 @@ onMounted(() => {
 					<div :class="$style.mainRow">
 						<N8nText size="small" :bold="true" color="text-dark" :class="$style.mainLine">
 							{{ versionName }}
-							<template v-if="isPublishedVersion">
+							<template v-if="props.isPublished">
 								({{ i18n.baseText('workflowHistory.item.active') }})
 							</template>
 						</N8nText>

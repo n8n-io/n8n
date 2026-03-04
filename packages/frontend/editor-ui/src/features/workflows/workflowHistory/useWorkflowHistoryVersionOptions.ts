@@ -18,7 +18,7 @@ export type WorkflowHistoryVersionOption = {
 type UseWorkflowHistoryVersionOptionsParams = {
 	availableVersions: ComputedRef<WorkflowHistory[]>;
 	currentWorkflowVersionId: Ref<string | undefined>;
-	activeWorkflowVersionId: Ref<string | undefined>;
+	publishedWorkflowVersionId: Ref<string | undefined>;
 	selectedVersionIds: ComputedRef<string[]>;
 	resolveUserDisplayName: (userId: string | undefined | null) => string | null;
 };
@@ -26,7 +26,7 @@ type UseWorkflowHistoryVersionOptionsParams = {
 export const useWorkflowHistoryVersionOptions = ({
 	availableVersions,
 	currentWorkflowVersionId,
-	activeWorkflowVersionId,
+	publishedWorkflowVersionId,
 	selectedVersionIds,
 	resolveUserDisplayName,
 }: UseWorkflowHistoryVersionOptionsParams) => {
@@ -45,8 +45,8 @@ export const useWorkflowHistoryVersionOptions = ({
 	};
 
 	const getVersionStatusById = (versionId: string): WorkflowHistoryVersionStatus => {
-		if (versionId === activeWorkflowVersionId.value) {
-			return 'active';
+		if (versionId === publishedWorkflowVersionId.value) {
+			return 'published';
 		}
 
 		const isLatest = versionId === currentWorkflowVersionId.value;

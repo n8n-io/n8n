@@ -12,11 +12,11 @@ withDefaults(
 </script>
 
 <template>
-	<span :class="[$style.dot, $style[`dot-${status}`]]" />
+	<span :class="[$style.indicator, $style[`indicator-${status}`]]" />
 </template>
 
 <style module lang="scss">
-.dot {
+.indicator {
 	display: inline-block;
 	width: var(--spacing--2xs);
 	height: var(--spacing--2xs);
@@ -24,15 +24,15 @@ withDefaults(
 	flex-shrink: 0;
 }
 
-.dot-active {
+.indicator-published {
 	background-color: var(--color--mint-600);
 }
 
-.dot-latest {
+.indicator-latest {
 	background-color: var(--color--yellow-500);
 }
 
-.dot-default {
+.indicator-default {
 	border: var(--border);
 	border-color: var(--color--text--tint-2);
 }
