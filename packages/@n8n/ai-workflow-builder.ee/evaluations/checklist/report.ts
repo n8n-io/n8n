@@ -108,12 +108,6 @@ function renderResultRow(result: AgentResult, index: number): string {
 
 	const promptHash = simpleHash(result.prompt);
 
-	// Collect all tool calls across iterations
-	const allToolCalls = result.iterations.flatMap((iter) => iter.toolCalls);
-	const toolCallSummary = allToolCalls
-		.map((tc) => `<span class="badge badge-tool">${escapeHtml(tc.name)}</span>`)
-		.join(' ');
-
 	return `
 		<tr class="result-row" data-complexity="${result.complexity ?? 'medium'}" data-tags="${escapeHtml((result.tags ?? []).join(','))}" data-prompt-hash="${promptHash}" onclick="toggleDetail('detail-${index}', '${promptHash}')">
 			<td><span class="badge badge-complexity-${result.complexity ?? 'medium'}">${(result.complexity ?? 'medium').toUpperCase()}</span></td>
@@ -122,14 +116,13 @@ function renderResultRow(result: AgentResult, index: number): string {
 			<td class="${successClass}">${result.success ? 'PASS' : 'FAIL'}</td>
 			<td class="${scoreClass}">${passedCount}/${totalCount} (${formatScore(result.checklistScore)})</td>
 			<td>${result.iterations.length}</td>
-			<td class="tool-calls-cell">${toolCallSummary || '<span class="no-tools">-</span>'}</td>
 			<td>${formatDuration(result.totalTimeMs)}</td>
 			<td>${result.totalInputTokens.toLocaleString()}</td>
 			<td>${result.totalOutputTokens.toLocaleString()}</td>
 			<td>${result.linesOfCode}</td>
 		</tr>
 		<tr id="detail-${index}" class="detail-row" data-complexity="${result.complexity ?? 'medium'}" data-prompt-hash="${promptHash}" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -177,8 +170,8 @@ function renderResultRow(result: AgentResult, index: number): string {
 										&middot; ${iter.inputTokens.toLocaleString()} in
 										&middot; ${iter.outputTokens.toLocaleString()} out
 										&middot; ${iter.thinkingTokens.toLocaleString()} thinking
-										&middot; ${iter.toolCalls.length} tool call${iter.toolCalls.length !== 1 ? 's' : ''}
 									</span>
+									<span class="iter-tools">${iter.toolCalls.map((tc) => `<span class="badge badge-tool">${escapeHtml(tc.name)}</span>`).join(' ')}</span>
 								</summary>
 								<div class="iteration-tools">
 									${iter.toolCalls.length > 0 ? iter.toolCalls.map((tc, tci) => renderToolCallDetail(tc, tci, `detail-${index}-iter-${iter.iterationNumber}`)).join('') : '<div class="no-tools">No tool calls</div>'}
@@ -236,7 +229,6 @@ function renderRunSection(run: Run, runIndex: number): string {
 							<th>Success</th>
 							<th>Score</th>
 							<th>Iterations</th>
-							<th>Tool Calls</th>
 							<th>Time</th>
 							<th>In Tokens</th>
 							<th>Out Tokens</th>
@@ -332,6 +324,7 @@ export function generateReport(runs: Run[]): string {
 	.iteration-detail[open] > summary { border-bottom: 1px solid #30363d; }
 	.iter-num { font-weight: 600; color: #f0f6fc; min-width: 24px; }
 	.iter-meta { color: #8b949e; }
+	.iter-tools { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: 4px; }
 	.iteration-tools { padding: 8px; }
 	.tool-call-detail { margin: 4px 0; border: 1px solid #21262d; border-radius: 4px; }
 	.tool-call-detail > summary { padding: 6px 10px; cursor: pointer; font-size: 12px; font-family: monospace; display: flex; align-items: center; gap: 8px; }

@@ -68,6 +68,7 @@
 	.iteration-detail[open] > summary { border-bottom: 1px solid #30363d; }
 	.iter-num { font-weight: 600; color: #f0f6fc; min-width: 24px; }
 	.iter-meta { color: #8b949e; }
+	.iter-tools { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: 4px; }
 	.iteration-tools { padding: 8px; }
 	.tool-call-detail { margin: 4px 0; border: 1px solid #21262d; border-radius: 4px; }
 	.tool-call-detail > summary { padding: 6px 10px; cursor: pointer; font-size: 12px; font-family: monospace; display: flex; align-items: center; gap: 8px; }
@@ -91,7 +92,7 @@
 </head>
 <body>
 <h1>n8n Code Builder — Checklist Eval Report</h1>
-<p class="subtitle">Generated 3/4/2026, 1:49:58 PM — 3 run(s)</p>
+<p class="subtitle">Generated 3/4/2026, 2:13:31 PM — 3 run(s)</p>
 
 <div class="summary-grid">
 	<div class="summary-card">
@@ -150,7 +151,6 @@
 							<th>Success</th>
 							<th>Score</th>
 							<th>Iterations</th>
-							<th>Tool Calls</th>
 							<th>Time</th>
 							<th>In Tokens</th>
 							<th>Out Tokens</th>
@@ -166,14 +166,13 @@
 			<td class="good">PASS</td>
 			<td class="good">5/5 (100%)</td>
 			<td>3</td>
-			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span></td>
 			<td>19.1s</td>
 			<td>16</td>
 			<td>933</td>
 			<td>103</td>
 		</tr>
 		<tr id="detail-0" class="detail-row" data-complexity="simple" data-prompt-hash="qpldu8" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -433,8 +432,8 @@
 										&middot; 3 in
 										&middot; 134 out
 										&middot; 0 thinking
-										&middot; 0 tool calls
 									</span>
+									<span class="iter-tools"></span>
 								</summary>
 								<div class="iteration-tools">
 									<div class="no-tools">No tool calls</div>
@@ -448,8 +447,8 @@
 										&middot; 7 in
 										&middot; 103 out
 										&middot; 0 thinking
-										&middot; 2 tool calls
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-0-iter-2-tc-0">
@@ -779,8 +778,8 @@ Found 1 nodes:
 										&middot; 6 in
 										&middot; 696 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-0-iter-3-tc-0">
@@ -1281,14 +1280,13 @@ export type SetV34ManualNode = {
 			<td class="good">PASS</td>
 			<td class="good">5/5 (100%)</td>
 			<td>3</td>
-			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span></td>
 			<td>18.2s</td>
 			<td>16</td>
 			<td>1,013</td>
 			<td>124</td>
 		</tr>
 		<tr id="detail-1" class="detail-row" data-complexity="simple" data-prompt-hash="7sx6yi" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -1590,8 +1588,8 @@ export type SetV34ManualNode = {
 										&middot; 3 in
 										&middot; 138 out
 										&middot; 0 thinking
-										&middot; 0 tool calls
 									</span>
+									<span class="iter-tools"></span>
 								</summary>
 								<div class="iteration-tools">
 									<div class="no-tools">No tool calls</div>
@@ -1605,8 +1603,8 @@ export type SetV34ManualNode = {
 										&middot; 7 in
 										&middot; 114 out
 										&middot; 0 thinking
-										&middot; 2 tool calls
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-1-iter-2-tc-0">
@@ -2069,8 +2067,8 @@ Found 5 nodes:
 										&middot; 6 in
 										&middot; 761 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-1-iter-3-tc-0">
@@ -2638,14 +2636,13 @@ export type SetV34ManualNode = {
 			<td class="good">PASS</td>
 			<td class="good">5/6 (83%)</td>
 			<td>4</td>
-			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span></td>
 			<td>25.6s</td>
 			<td>21</td>
 			<td>1,585</td>
 			<td>189</td>
 		</tr>
 		<tr id="detail-2" class="detail-row" data-complexity="simple" data-prompt-hash="8a51hd" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -3082,8 +3079,8 @@ export type SetV34ManualNode = {
 										&middot; 3 in
 										&middot; 92 out
 										&middot; 0 thinking
-										&middot; 0 tool calls
 									</span>
+									<span class="iter-tools"></span>
 								</summary>
 								<div class="iteration-tools">
 									<div class="no-tools">No tool calls</div>
@@ -3097,8 +3094,8 @@ export type SetV34ManualNode = {
 										&middot; 6 in
 										&middot; 65 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_suggested_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-2-iter-2-tc-0">
@@ -3253,8 +3250,8 @@ Suggested nodes:
 										&middot; 6 in
 										&middot; 174 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-2-iter-3-tc-0">
@@ -3703,8 +3700,8 @@ Found 5 nodes:
 										&middot; 6 in
 										&middot; 1,254 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-2-iter-4-tc-0">
@@ -4525,14 +4522,13 @@ export type SetV34ManualNode = {
 			<td class="good">PASS</td>
 			<td class="good">3/3 (100%)</td>
 			<td>3</td>
-			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span></td>
 			<td>15.6s</td>
 			<td>16</td>
 			<td>900</td>
 			<td>101</td>
 		</tr>
 		<tr id="detail-3" class="detail-row" data-complexity="simple" data-prompt-hash="86xo6i" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -4778,8 +4774,8 @@ export type SetV34ManualNode = {
 										&middot; 3 in
 										&middot; 141 out
 										&middot; 0 thinking
-										&middot; 0 tool calls
 									</span>
+									<span class="iter-tools"></span>
 								</summary>
 								<div class="iteration-tools">
 									<div class="no-tools">No tool calls</div>
@@ -4793,8 +4789,8 @@ export type SetV34ManualNode = {
 										&middot; 7 in
 										&middot; 108 out
 										&middot; 0 thinking
-										&middot; 2 tool calls
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-3-iter-2-tc-0">
@@ -5228,8 +5224,8 @@ Found 5 nodes:
 										&middot; 6 in
 										&middot; 651 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-3-iter-3-tc-0">
@@ -5921,14 +5917,13 @@ export type CodeV2RunOnceForAllItemsNode = {
 			<td class="good">PASS</td>
 			<td class="good">9/9 (100%)</td>
 			<td>3</td>
-			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span></td>
 			<td>29.5s</td>
 			<td>16</td>
 			<td>1,642</td>
 			<td>151</td>
 		</tr>
 		<tr id="detail-4" class="detail-row" data-complexity="simple" data-prompt-hash="k7mx19" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -6304,8 +6299,8 @@ export type CodeV2RunOnceForAllItemsNode = {
 										&middot; 3 in
 										&middot; 136 out
 										&middot; 0 thinking
-										&middot; 0 tool calls
 									</span>
+									<span class="iter-tools"></span>
 								</summary>
 								<div class="iteration-tools">
 									<div class="no-tools">No tool calls</div>
@@ -6319,8 +6314,8 @@ export type CodeV2RunOnceForAllItemsNode = {
 										&middot; 7 in
 										&middot; 113 out
 										&middot; 0 thinking
-										&middot; 2 tool calls
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-4-iter-2-tc-0">
@@ -6725,8 +6720,8 @@ Found 5 nodes:
 										&middot; 6 in
 										&middot; 1,393 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-4-iter-3-tc-0">
@@ -7307,14 +7302,13 @@ export type RespondToWebhookV15Node = RespondToWebhookV15ParamsNode;
 			<td class="good">PASS</td>
 			<td class="good">9/10 (90%)</td>
 			<td>4</td>
-			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span></td>
 			<td>36.7s</td>
 			<td>19</td>
 			<td>2,673</td>
 			<td>145</td>
 		</tr>
 		<tr id="detail-5" class="detail-row" data-complexity="simple" data-prompt-hash="2vv4o8" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -7683,8 +7677,8 @@ export type RespondToWebhookV15Node = RespondToWebhookV15ParamsNode;
 										&middot; 3 in
 										&middot; 100 out
 										&middot; 0 thinking
-										&middot; 0 tool calls
 									</span>
+									<span class="iter-tools"></span>
 								</summary>
 								<div class="iteration-tools">
 									<div class="no-tools">No tool calls</div>
@@ -7698,8 +7692,8 @@ export type RespondToWebhookV15Node = RespondToWebhookV15ParamsNode;
 										&middot; 6 in
 										&middot; 68 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_suggested_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-5-iter-2-tc-0">
@@ -7772,8 +7766,8 @@ Suggested nodes:
 										&middot; 5 in
 										&middot; 135 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-5-iter-3-tc-0">
@@ -8312,8 +8306,8 @@ Found 5 nodes:
 										&middot; 5 in
 										&middot; 2,370 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-5-iter-4-tc-0">
@@ -8978,14 +8972,13 @@ export type HtmlV12Node = HtmlV12ParamsNode;
 			<td class="good">PASS</td>
 			<td class="good">7/7 (100%)</td>
 			<td>10</td>
-			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">validate_workflow</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span> <span class="badge badge-tool">str_replace_based_edit_tool</span></td>
 			<td>44.5s</td>
 			<td>32</td>
 			<td>2,413</td>
 			<td>187</td>
 		</tr>
 		<tr id="detail-6" class="detail-row" data-complexity="simple" data-prompt-hash="s48qsl" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -9423,8 +9416,8 @@ export type HtmlV12Node = HtmlV12ParamsNode;
 										&middot; 3 in
 										&middot; 115 out
 										&middot; 0 thinking
-										&middot; 0 tool calls
 									</span>
+									<span class="iter-tools"></span>
 								</summary>
 								<div class="iteration-tools">
 									<div class="no-tools">No tool calls</div>
@@ -9438,8 +9431,8 @@ export type HtmlV12Node = HtmlV12ParamsNode;
 										&middot; 7 in
 										&middot; 137 out
 										&middot; 0 thinking
-										&middot; 2 tool calls
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-6-iter-2-tc-0">
@@ -10116,8 +10109,8 @@ Found 5 nodes:
 										&middot; 6 in
 										&middot; 1,148 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-6-iter-3-tc-0">
@@ -10755,8 +10748,8 @@ export type IfV23Node = IfV23ParamsNode;
 										&middot; 5 in
 										&middot; 269 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-6-iter-4-tc-0">
@@ -10776,8 +10769,8 @@ export type IfV23Node = IfV23ParamsNode;
 										&middot; 4 in
 										&middot; 56 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-6-iter-5-tc-0">
@@ -10797,8 +10790,8 @@ export type IfV23Node = IfV23ParamsNode;
 										&middot; 3 in
 										&middot; 79 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">validate_workflow</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-6-iter-6-tc-0">
@@ -10818,8 +10811,8 @@ export type IfV23Node = IfV23ParamsNode;
 										&middot; 2 in
 										&middot; 55 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-6-iter-7-tc-0">
@@ -10839,8 +10832,8 @@ export type IfV23Node = IfV23ParamsNode;
 										&middot; 1 in
 										&middot; 83 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-6-iter-8-tc-0">
@@ -10917,8 +10910,8 @@ Found 5 nodes:
 										&middot; 1 in
 										&middot; 415 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-6-iter-9-tc-0">
@@ -10981,8 +10974,8 @@ export type CodeV2RunOnceForAllItemsNode = {
 										&middot; 0 in
 										&middot; 56 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-6-iter-10-tc-0">
@@ -11195,14 +11188,13 @@ export type CodeV2RunOnceForAllItemsNode = {
 			<td class="good">PASS</td>
 			<td class="good">8/8 (100%)</td>
 			<td>5</td>
-			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span></td>
 			<td>28.2s</td>
 			<td>25</td>
 			<td>1,503</td>
 			<td>116</td>
 		</tr>
 		<tr id="detail-7" class="detail-row" data-complexity="simple" data-prompt-hash="3hrxmc" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -11503,8 +11495,8 @@ export type CodeV2RunOnceForAllItemsNode = {
 										&middot; 3 in
 										&middot; 145 out
 										&middot; 0 thinking
-										&middot; 0 tool calls
 									</span>
+									<span class="iter-tools"></span>
 								</summary>
 								<div class="iteration-tools">
 									<div class="no-tools">No tool calls</div>
@@ -11518,8 +11510,8 @@ export type CodeV2RunOnceForAllItemsNode = {
 										&middot; 7 in
 										&middot; 125 out
 										&middot; 0 thinking
-										&middot; 2 tool calls
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-7-iter-2-tc-0">
@@ -12099,8 +12091,8 @@ Found 1 nodes:
 										&middot; 6 in
 										&middot; 900 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-7-iter-3-tc-0">
@@ -12532,8 +12524,8 @@ export type LcToolCodeV13Node = LcToolCodeV13ParamsNode;
 										&middot; 5 in
 										&middot; 277 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-7-iter-4-tc-0">
@@ -12553,8 +12545,8 @@ export type LcToolCodeV13Node = LcToolCodeV13ParamsNode;
 										&middot; 4 in
 										&middot; 56 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-7-iter-5-tc-0">
@@ -12696,14 +12688,13 @@ export type LcToolCodeV13Node = LcToolCodeV13ParamsNode;
 			<td class="good">PASS</td>
 			<td class="good">8/8 (100%)</td>
 			<td>4</td>
-			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span></td>
 			<td>31.4s</td>
 			<td>19</td>
 			<td>2,484</td>
 			<td>242</td>
 		</tr>
 		<tr id="detail-8" class="detail-row" data-complexity="medium" data-prompt-hash="nc2vq" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -13256,8 +13247,8 @@ export type LcToolCodeV13Node = LcToolCodeV13ParamsNode;
 										&middot; 3 in
 										&middot; 79 out
 										&middot; 0 thinking
-										&middot; 0 tool calls
 									</span>
+									<span class="iter-tools"></span>
 								</summary>
 								<div class="iteration-tools">
 									<div class="no-tools">No tool calls</div>
@@ -13271,8 +13262,8 @@ export type LcToolCodeV13Node = LcToolCodeV13ParamsNode;
 										&middot; 6 in
 										&middot; 64 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_suggested_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-8-iter-2-tc-0">
@@ -13345,8 +13336,8 @@ Suggested nodes:
 										&middot; 5 in
 										&middot; 142 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-8-iter-3-tc-0">
@@ -13632,8 +13623,8 @@ Found 1 nodes:
 										&middot; 5 in
 										&middot; 2,199 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-8-iter-4-tc-0">
@@ -14750,14 +14741,13 @@ export type DataTableV11RowInsertNode = {
 			<td class="good">PASS</td>
 			<td class="good">9/9 (100%)</td>
 			<td>7</td>
-			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">validate_workflow</span> <span class="badge badge-tool">str_replace_based_edit_tool</span></td>
 			<td>1.0m</td>
 			<td>30</td>
 			<td>3,542</td>
 			<td>181</td>
 		</tr>
 		<tr id="detail-9" class="detail-row" data-complexity="medium" data-prompt-hash="lnfior" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -15193,8 +15183,8 @@ export type DataTableV11RowInsertNode = {
 										&middot; 3 in
 										&middot; 137 out
 										&middot; 0 thinking
-										&middot; 0 tool calls
 									</span>
+									<span class="iter-tools"></span>
 								</summary>
 								<div class="iteration-tools">
 									<div class="no-tools">No tool calls</div>
@@ -15208,8 +15198,8 @@ export type DataTableV11RowInsertNode = {
 										&middot; 7 in
 										&middot; 125 out
 										&middot; 0 thinking
-										&middot; 2 tool calls
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-9-iter-2-tc-0">
@@ -15799,8 +15789,8 @@ Found 2 nodes:
 										&middot; 6 in
 										&middot; 2,593 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-9-iter-3-tc-0">
@@ -16232,8 +16222,8 @@ export type LcToolCodeV13Node = LcToolCodeV13ParamsNode;
 										&middot; 5 in
 										&middot; 292 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-9-iter-4-tc-0">
@@ -16253,8 +16243,8 @@ export type LcToolCodeV13Node = LcToolCodeV13ParamsNode;
 										&middot; 4 in
 										&middot; 56 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-9-iter-5-tc-0">
@@ -16274,8 +16264,8 @@ export type LcToolCodeV13Node = LcToolCodeV13ParamsNode;
 										&middot; 3 in
 										&middot; 283 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">validate_workflow</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-9-iter-6-tc-0">
@@ -16295,8 +16285,8 @@ export type LcToolCodeV13Node = LcToolCodeV13ParamsNode;
 										&middot; 2 in
 										&middot; 56 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-9-iter-7-tc-0">
@@ -16503,14 +16493,13 @@ export type LcToolCodeV13Node = LcToolCodeV13ParamsNode;
 			<td class="good">PASS</td>
 			<td class="good">14/14 (100%)</td>
 			<td>4</td>
-			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span></td>
 			<td>42.2s</td>
 			<td>21</td>
 			<td>2,687</td>
 			<td>330</td>
 		</tr>
 		<tr id="detail-10" class="detail-row" data-complexity="medium" data-prompt-hash="s0g0ok" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -17269,8 +17258,8 @@ export type LcToolCodeV13Node = LcToolCodeV13ParamsNode;
 										&middot; 3 in
 										&middot; 85 out
 										&middot; 0 thinking
-										&middot; 0 tool calls
 									</span>
+									<span class="iter-tools"></span>
 								</summary>
 								<div class="iteration-tools">
 									<div class="no-tools">No tool calls</div>
@@ -17284,8 +17273,8 @@ export type LcToolCodeV13Node = LcToolCodeV13ParamsNode;
 										&middot; 6 in
 										&middot; 85 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_suggested_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-10-iter-2-tc-0">
@@ -17406,8 +17395,8 @@ Suggested nodes:
 										&middot; 6 in
 										&middot; 244 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-10-iter-3-tc-0">
@@ -17951,8 +17940,8 @@ Found 5 nodes:
 										&middot; 6 in
 										&middot; 2,273 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-10-iter-4-tc-0">
@@ -19045,14 +19034,13 @@ export type SetV34ManualNode = {
 			<td class="good">PASS</td>
 			<td class="good">12/13 (92%)</td>
 			<td>3</td>
-			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span></td>
 			<td>43.3s</td>
 			<td>16</td>
 			<td>3,166</td>
 			<td>346</td>
 		</tr>
 		<tr id="detail-11" class="detail-row" data-complexity="medium" data-prompt-hash="kfgq1q" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -19838,8 +19826,8 @@ export type SetV34ManualNode = {
 										&middot; 3 in
 										&middot; 147 out
 										&middot; 0 thinking
-										&middot; 0 tool calls
 									</span>
+									<span class="iter-tools"></span>
 								</summary>
 								<div class="iteration-tools">
 									<div class="no-tools">No tool calls</div>
@@ -19853,8 +19841,8 @@ export type SetV34ManualNode = {
 										&middot; 7 in
 										&middot; 151 out
 										&middot; 0 thinking
-										&middot; 2 tool calls
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-11-iter-2-tc-0">
@@ -20479,8 +20467,8 @@ Found 5 nodes:
 										&middot; 6 in
 										&middot; 2,868 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-11-iter-3-tc-0">
@@ -21914,14 +21902,13 @@ export type SlackV24MessagePostNode = {
 			<td class="good">PASS</td>
 			<td class="good">9/10 (90%)</td>
 			<td>3</td>
-			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span></td>
 			<td>28.8s</td>
 			<td>16</td>
 			<td>2,415</td>
 			<td>299</td>
 		</tr>
 		<tr id="detail-12" class="detail-row" data-complexity="medium" data-prompt-hash="752an1" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -22598,8 +22585,8 @@ export type SlackV24MessagePostNode = {
 										&middot; 3 in
 										&middot; 129 out
 										&middot; 0 thinking
-										&middot; 0 tool calls
 									</span>
+									<span class="iter-tools"></span>
 								</summary>
 								<div class="iteration-tools">
 									<div class="no-tools">No tool calls</div>
@@ -22613,8 +22600,8 @@ export type SlackV24MessagePostNode = {
 										&middot; 7 in
 										&middot; 125 out
 										&middot; 0 thinking
-										&middot; 2 tool calls
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-12-iter-2-tc-0">
@@ -22907,8 +22894,8 @@ Found 2 nodes:
 										&middot; 6 in
 										&middot; 2,161 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-12-iter-3-tc-0">
@@ -23685,14 +23672,13 @@ export type SetV34ManualNode = {
 			<td class="good">PASS</td>
 			<td class="good">9/9 (100%)</td>
 			<td>5</td>
-			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">batch_str_replace</span></td>
 			<td>47.4s</td>
 			<td>25</td>
 			<td>3,227</td>
 			<td>351</td>
 		</tr>
 		<tr id="detail-13" class="detail-row" data-complexity="medium" data-prompt-hash="otdo27" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -24468,8 +24454,8 @@ export type SetV34ManualNode = {
 										&middot; 3 in
 										&middot; 131 out
 										&middot; 0 thinking
-										&middot; 0 tool calls
 									</span>
+									<span class="iter-tools"></span>
 								</summary>
 								<div class="iteration-tools">
 									<div class="no-tools">No tool calls</div>
@@ -24483,8 +24469,8 @@ export type SetV34ManualNode = {
 										&middot; 7 in
 										&middot; 189 out
 										&middot; 0 thinking
-										&middot; 2 tool calls
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-13-iter-2-tc-0">
@@ -25214,8 +25200,8 @@ Found 2 nodes:
 										&middot; 6 in
 										&middot; 2,254 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-13-iter-3-tc-0">
@@ -26383,8 +26369,8 @@ export type HttpRequestV44Node = HttpRequestV44ParamsNode;
 										&middot; 5 in
 										&middot; 597 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-13-iter-4-tc-0">
@@ -26404,8 +26390,8 @@ export type HttpRequestV44Node = HttpRequestV44ParamsNode;
 										&middot; 4 in
 										&middot; 56 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">batch_str_replace</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-13-iter-5-tc-0">
@@ -26803,14 +26789,13 @@ export type HttpRequestV44Node = HttpRequestV44ParamsNode;
 			<td class="good">PASS</td>
 			<td class="good">8/9 (89%)</td>
 			<td>7</td>
-			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span> <span class="badge badge-tool">batch_str_replace</span></td>
 			<td>37.2s</td>
 			<td>32</td>
 			<td>2,352</td>
 			<td>220</td>
 		</tr>
 		<tr id="detail-14" class="detail-row" data-complexity="medium" data-prompt-hash="i8zalw" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -27324,8 +27309,8 @@ export type HttpRequestV44Node = HttpRequestV44ParamsNode;
 										&middot; 3 in
 										&middot; 146 out
 										&middot; 0 thinking
-										&middot; 0 tool calls
 									</span>
+									<span class="iter-tools"></span>
 								</summary>
 								<div class="iteration-tools">
 									<div class="no-tools">No tool calls</div>
@@ -27339,8 +27324,8 @@ export type HttpRequestV44Node = HttpRequestV44ParamsNode;
 										&middot; 7 in
 										&middot; 131 out
 										&middot; 0 thinking
-										&middot; 2 tool calls
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-14-iter-2-tc-0">
@@ -27693,8 +27678,8 @@ Found 1 nodes:
 										&middot; 6 in
 										&middot; 1,779 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-14-iter-3-tc-0">
@@ -28195,8 +28180,8 @@ export type RespondToWebhookV15Node = RespondToWebhookV15ParamsNode;
 										&middot; 5 in
 										&middot; 56 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-14-iter-4-tc-0">
@@ -28216,8 +28201,8 @@ export type RespondToWebhookV15Node = RespondToWebhookV15ParamsNode;
 										&middot; 4 in
 										&middot; 67 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-14-iter-5-tc-0">
@@ -28268,8 +28253,8 @@ Found 4 nodes:
 										&middot; 4 in
 										&middot; 117 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-14-iter-6-tc-0">
@@ -28345,8 +28330,8 @@ export type SplitOutV1Node = SplitOutV1ParamsNode;
 										&middot; 3 in
 										&middot; 56 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">batch_str_replace</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-14-iter-7-tc-0">
@@ -28595,14 +28580,13 @@ export type SplitOutV1Node = SplitOutV1ParamsNode;
 			<td class="good">PASS</td>
 			<td class="good">9/10 (90%)</td>
 			<td>4</td>
-			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span></td>
 			<td>29.9s</td>
 			<td>20</td>
 			<td>1,901</td>
 			<td>213</td>
 		</tr>
 		<tr id="detail-15" class="detail-row" data-complexity="medium" data-prompt-hash="3rt7qo" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -29107,8 +29091,8 @@ export type SplitOutV1Node = SplitOutV1ParamsNode;
 										&middot; 3 in
 										&middot; 159 out
 										&middot; 0 thinking
-										&middot; 0 tool calls
 									</span>
+									<span class="iter-tools"></span>
 								</summary>
 								<div class="iteration-tools">
 									<div class="no-tools">No tool calls</div>
@@ -29122,8 +29106,8 @@ export type SplitOutV1Node = SplitOutV1ParamsNode;
 										&middot; 7 in
 										&middot; 66 out
 										&middot; 0 thinking
-										&middot; 2 tool calls
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-15-iter-2-tc-0">
@@ -29743,8 +29727,8 @@ Found 1 nodes:
 										&middot; 5 in
 										&middot; 169 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-15-iter-3-tc-0">
@@ -29997,8 +29981,8 @@ Found 5 nodes:
 										&middot; 5 in
 										&middot; 1,507 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-15-iter-4-tc-0">
@@ -31163,14 +31147,13 @@ export type SetV34ManualNode = {
 			<td class="good">PASS</td>
 			<td class="good">11/13 (85%)</td>
 			<td>3</td>
-			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span></td>
 			<td>47.7s</td>
 			<td>16</td>
 			<td>2,975</td>
 			<td>387</td>
 		</tr>
 		<tr id="detail-16" class="detail-row" data-complexity="medium" data-prompt-hash="wxja1e" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -32038,8 +32021,8 @@ export type SetV34ManualNode = {
 										&middot; 3 in
 										&middot; 167 out
 										&middot; 0 thinking
-										&middot; 0 tool calls
 									</span>
+									<span class="iter-tools"></span>
 								</summary>
 								<div class="iteration-tools">
 									<div class="no-tools">No tool calls</div>
@@ -32053,8 +32036,8 @@ export type SetV34ManualNode = {
 										&middot; 7 in
 										&middot; 160 out
 										&middot; 0 thinking
-										&middot; 2 tool calls
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-16-iter-2-tc-0">
@@ -33212,8 +33195,8 @@ Found 5 nodes:
 										&middot; 6 in
 										&middot; 2,648 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-16-iter-3-tc-0">
@@ -34771,14 +34754,13 @@ export type AggregateV1Node = AggregateV1ParamsNode;
 			<td class="good">PASS</td>
 			<td class="good">9/9 (100%)</td>
 			<td>4</td>
-			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span></td>
 			<td>28.7s</td>
 			<td>19</td>
 			<td>1,884</td>
 			<td>259</td>
 		</tr>
 		<tr id="detail-17" class="detail-row" data-complexity="medium" data-prompt-hash="jblus6" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -35370,8 +35352,8 @@ export type AggregateV1Node = AggregateV1ParamsNode;
 										&middot; 3 in
 										&middot; 90 out
 										&middot; 0 thinking
-										&middot; 0 tool calls
 									</span>
+									<span class="iter-tools"></span>
 								</summary>
 								<div class="iteration-tools">
 									<div class="no-tools">No tool calls</div>
@@ -35385,8 +35367,8 @@ export type AggregateV1Node = AggregateV1ParamsNode;
 										&middot; 6 in
 										&middot; 70 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_suggested_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-17-iter-2-tc-0">
@@ -35459,8 +35441,8 @@ Suggested nodes:
 										&middot; 5 in
 										&middot; 156 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-17-iter-3-tc-0">
@@ -35929,8 +35911,8 @@ Found 1 nodes:
 										&middot; 5 in
 										&middot; 1,568 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-17-iter-4-tc-0">
@@ -36693,14 +36675,13 @@ export type SetV34ManualNode = {
 			<td class="good">PASS</td>
 			<td class="good">12/12 (100%)</td>
 			<td>5</td>
-			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">batch_str_replace</span></td>
 			<td>42.0s</td>
 			<td>25</td>
 			<td>2,920</td>
 			<td>368</td>
 		</tr>
 		<tr id="detail-18" class="detail-row" data-complexity="medium" data-prompt-hash="ssj7te" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -37525,8 +37506,8 @@ export type SetV34ManualNode = {
 										&middot; 3 in
 										&middot; 151 out
 										&middot; 0 thinking
-										&middot; 0 tool calls
 									</span>
+									<span class="iter-tools"></span>
 								</summary>
 								<div class="iteration-tools">
 									<div class="no-tools">No tool calls</div>
@@ -37540,8 +37521,8 @@ export type SetV34ManualNode = {
 										&middot; 7 in
 										&middot; 202 out
 										&middot; 0 thinking
-										&middot; 2 tool calls
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-18-iter-2-tc-0">
@@ -38494,8 +38475,8 @@ Found 5 nodes:
 										&middot; 6 in
 										&middot; 2,337 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-18-iter-3-tc-0">
@@ -39664,8 +39645,8 @@ export type SlackV24MessagePostNode = {
 										&middot; 5 in
 										&middot; 174 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-18-iter-4-tc-0">
@@ -39685,8 +39666,8 @@ export type SlackV24MessagePostNode = {
 										&middot; 4 in
 										&middot; 56 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">batch_str_replace</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-18-iter-5-tc-0">
@@ -40083,14 +40064,13 @@ export type SlackV24MessagePostNode = {
 			<td class="good">PASS</td>
 			<td class="good">12/12 (100%)</td>
 			<td>7</td>
-			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span> <span class="badge badge-tool">batch_str_replace</span></td>
 			<td>1.2m</td>
 			<td>32</td>
 			<td>3,992</td>
 			<td>329</td>
 		</tr>
 		<tr id="detail-19" class="detail-row" data-complexity="medium" data-prompt-hash="1ra5o2" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -40837,8 +40817,8 @@ export type SlackV24MessagePostNode = {
 										&middot; 3 in
 										&middot; 149 out
 										&middot; 0 thinking
-										&middot; 0 tool calls
 									</span>
+									<span class="iter-tools"></span>
 								</summary>
 								<div class="iteration-tools">
 									<div class="no-tools">No tool calls</div>
@@ -40852,8 +40832,8 @@ export type SlackV24MessagePostNode = {
 										&middot; 7 in
 										&middot; 266 out
 										&middot; 0 thinking
-										&middot; 2 tool calls
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-19-iter-2-tc-0">
@@ -41679,8 +41659,8 @@ Found 5 nodes:
 										&middot; 6 in
 										&middot; 2,579 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-19-iter-3-tc-0">
@@ -42858,8 +42838,8 @@ export type GmailV22LabelCreateNode = {
 										&middot; 5 in
 										&middot; 57 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-19-iter-4-tc-0">
@@ -42879,8 +42859,8 @@ export type GmailV22LabelCreateNode = {
 										&middot; 4 in
 										&middot; 89 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-19-iter-5-tc-0">
@@ -42905,8 +42885,8 @@ No nodes found. Try a different search term.</code></pre></details></div>
 										&middot; 4 in
 										&middot; 796 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-19-iter-6-tc-0">
@@ -42978,8 +42958,8 @@ export type GmailV22MessageRemoveLabelsNode = {
 										&middot; 3 in
 										&middot; 56 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">batch_str_replace</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-19-iter-7-tc-0">
@@ -43396,14 +43376,13 @@ export type GmailV22MessageRemoveLabelsNode = {
 			<td class="good">PASS</td>
 			<td class="ok">10/15 (67%)</td>
 			<td>7</td>
-			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">batch_str_replace</span></td>
 			<td>1.9m</td>
 			<td>27</td>
 			<td>8,581</td>
 			<td>1078</td>
 		</tr>
 		<tr id="detail-20" class="detail-row" data-complexity="complex" data-prompt-hash="pd6lgt" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -45663,8 +45642,8 @@ export type GmailV22MessageRemoveLabelsNode = {
 										&middot; 3 in
 										&middot; 95 out
 										&middot; 0 thinking
-										&middot; 0 tool calls
 									</span>
+									<span class="iter-tools"></span>
 								</summary>
 								<div class="iteration-tools">
 									<div class="no-tools">No tool calls</div>
@@ -45678,8 +45657,8 @@ export type GmailV22MessageRemoveLabelsNode = {
 										&middot; 6 in
 										&middot; 116 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_suggested_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-20-iter-2-tc-0">
@@ -45856,8 +45835,8 @@ Suggested nodes:
 										&middot; 5 in
 										&middot; 62 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-20-iter-3-tc-0">
@@ -48111,8 +48090,8 @@ Found 5 nodes:
 										&middot; 4 in
 										&middot; 456 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-20-iter-4-tc-0">
@@ -48330,8 +48309,8 @@ Found 5 nodes:
 										&middot; 4 in
 										&middot; 6,206 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-20-iter-5-tc-0">
@@ -51045,8 +51024,8 @@ export type HubspotV22ContactUpsertNode = {
 										&middot; 3 in
 										&middot; 1,590 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-20-iter-6-tc-0">
@@ -51066,8 +51045,8 @@ export type HubspotV22ContactUpsertNode = {
 										&middot; 2 in
 										&middot; 56 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">batch_str_replace</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-20-iter-7-tc-0">
@@ -52298,14 +52277,13 @@ export type HubspotV22ContactUpsertNode = {
 			<td class="good">PASS</td>
 			<td class="good">10/11 (91%)</td>
 			<td>7</td>
-			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span></td>
 			<td>1.1m</td>
 			<td>28</td>
 			<td>5,137</td>
 			<td>466</td>
 		</tr>
 		<tr id="detail-21" class="detail-row" data-complexity="complex" data-prompt-hash="xtbnri" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -53321,8 +53299,8 @@ export type HubspotV22ContactUpsertNode = {
 										&middot; 3 in
 										&middot; 80 out
 										&middot; 0 thinking
-										&middot; 0 tool calls
 									</span>
+									<span class="iter-tools"></span>
 								</summary>
 								<div class="iteration-tools">
 									<div class="no-tools">No tool calls</div>
@@ -53336,8 +53314,8 @@ export type HubspotV22ContactUpsertNode = {
 										&middot; 6 in
 										&middot; 90 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_suggested_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-21-iter-2-tc-0">
@@ -53425,8 +53403,8 @@ Suggested nodes:
 										&middot; 5 in
 										&middot; 221 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-21-iter-3-tc-0">
@@ -54114,8 +54092,8 @@ Found 2 nodes:
 										&middot; 5 in
 										&middot; 3,574 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-21-iter-4-tc-0">
@@ -55219,8 +55197,8 @@ export type HtmlV12Node = HtmlV12ParamsNode;
 										&middot; 4 in
 										&middot; 473 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-21-iter-5-tc-0">
@@ -55240,8 +55218,8 @@ export type HtmlV12Node = HtmlV12ParamsNode;
 										&middot; 3 in
 										&middot; 643 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-21-iter-6-tc-0">
@@ -55261,8 +55239,8 @@ export type HtmlV12Node = HtmlV12ParamsNode;
 										&middot; 2 in
 										&middot; 56 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-21-iter-7-tc-0">
@@ -55754,14 +55732,13 @@ export type HtmlV12Node = HtmlV12ParamsNode;
 			<td class="good">PASS</td>
 			<td class="good">15/16 (94%)</td>
 			<td>6</td>
-			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">batch_str_replace</span></td>
 			<td>2.8m</td>
 			<td>26</td>
 			<td>13,513</td>
 			<td>1509</td>
 		</tr>
 		<tr id="detail-22" class="detail-row" data-complexity="complex" data-prompt-hash="3sc72m" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -58888,8 +58865,8 @@ export type HtmlV12Node = HtmlV12ParamsNode;
 										&middot; 3 in
 										&middot; 106 out
 										&middot; 0 thinking
-										&middot; 0 tool calls
 									</span>
+									<span class="iter-tools"></span>
 								</summary>
 								<div class="iteration-tools">
 									<div class="no-tools">No tool calls</div>
@@ -58903,8 +58880,8 @@ export type HtmlV12Node = HtmlV12ParamsNode;
 										&middot; 6 in
 										&middot; 111 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_suggested_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-22-iter-2-tc-0">
@@ -59113,8 +59090,8 @@ Suggested nodes:
 										&middot; 5 in
 										&middot; 374 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-22-iter-3-tc-0">
@@ -60683,8 +60660,8 @@ Found 1 nodes:
 										&middot; 5 in
 										&middot; 8,533 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-22-iter-4-tc-0">
@@ -63172,8 +63149,8 @@ export type LcOutputParserStructuredV13Node = LcOutputParserStructuredV13ParamsN
 										&middot; 4 in
 										&middot; 4,333 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-22-iter-5-tc-0">
@@ -63193,8 +63170,8 @@ export type LcOutputParserStructuredV13Node = LcOutputParserStructuredV13ParamsN
 										&middot; 3 in
 										&middot; 56 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">batch_str_replace</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-22-iter-6-tc-0">
@@ -65004,14 +64981,13 @@ export type LcOutputParserStructuredV13Node = LcOutputParserStructuredV13ParamsN
 			<td class="good">PASS</td>
 			<td class="good">9/10 (90%)</td>
 			<td>8</td>
-			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">batch_str_replace</span></td>
 			<td>1.8m</td>
 			<td>27</td>
 			<td>6,870</td>
 			<td>341</td>
 		</tr>
 		<tr id="detail-23" class="detail-row" data-complexity="complex" data-prompt-hash="lk6r3k" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -65772,8 +65748,8 @@ export type LcOutputParserStructuredV13Node = LcOutputParserStructuredV13ParamsN
 										&middot; 3 in
 										&middot; 120 out
 										&middot; 0 thinking
-										&middot; 0 tool calls
 									</span>
+									<span class="iter-tools"></span>
 								</summary>
 								<div class="iteration-tools">
 									<div class="no-tools">No tool calls</div>
@@ -65787,8 +65763,8 @@ export type LcOutputParserStructuredV13Node = LcOutputParserStructuredV13ParamsN
 										&middot; 6 in
 										&middot; 85 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_suggested_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-23-iter-2-tc-0">
@@ -65951,8 +65927,8 @@ Suggested nodes:
 										&middot; 5 in
 										&middot; 82 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-23-iter-3-tc-0">
@@ -66887,8 +66863,8 @@ Found 5 nodes:
 										&middot; 4 in
 										&middot; 77 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-23-iter-4-tc-0">
@@ -66963,8 +66939,8 @@ Found 4 nodes:
 										&middot; 3 in
 										&middot; 221 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-23-iter-5-tc-0">
@@ -67019,8 +66995,8 @@ Found 1 nodes:
 										&middot; 3 in
 										&middot; 3,458 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-23-iter-6-tc-0">
@@ -68074,8 +68050,8 @@ export type AggregateV1Node = AggregateV1ParamsNode;
 										&middot; 2 in
 										&middot; 2,771 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-23-iter-7-tc-0">
@@ -68095,8 +68071,8 @@ export type AggregateV1Node = AggregateV1ParamsNode;
 										&middot; 1 in
 										&middot; 56 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">batch_str_replace</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-23-iter-8-tc-0">
@@ -68637,14 +68613,13 @@ export type AggregateV1Node = AggregateV1ParamsNode;
 			<td class="good">PASS</td>
 			<td class="good">9/9 (100%)</td>
 			<td>5</td>
-			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span></td>
 			<td>47.4s</td>
 			<td>25</td>
 			<td>3,328</td>
 			<td>244</td>
 		</tr>
 		<tr id="detail-24" class="detail-row" data-complexity="complex" data-prompt-hash="s6b705" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -69206,8 +69181,8 @@ export type AggregateV1Node = AggregateV1ParamsNode;
 										&middot; 3 in
 										&middot; 135 out
 										&middot; 0 thinking
-										&middot; 0 tool calls
 									</span>
+									<span class="iter-tools"></span>
 								</summary>
 								<div class="iteration-tools">
 									<div class="no-tools">No tool calls</div>
@@ -69221,8 +69196,8 @@ export type AggregateV1Node = AggregateV1ParamsNode;
 										&middot; 7 in
 										&middot; 125 out
 										&middot; 0 thinking
-										&middot; 2 tool calls
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-24-iter-2-tc-0">
@@ -69883,8 +69858,8 @@ Found 5 nodes:
 										&middot; 6 in
 										&middot; 2,720 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-24-iter-3-tc-0">
@@ -70316,8 +70291,8 @@ export type LcToolCodeV13Node = LcToolCodeV13ParamsNode;
 										&middot; 5 in
 										&middot; 292 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-24-iter-4-tc-0">
@@ -70337,8 +70312,8 @@ export type LcToolCodeV13Node = LcToolCodeV13ParamsNode;
 										&middot; 4 in
 										&middot; 56 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-24-iter-5-tc-0">
@@ -70608,14 +70583,13 @@ export type LcToolCodeV13Node = LcToolCodeV13ParamsNode;
 			<td class="good">PASS</td>
 			<td class="good">13/13 (100%)</td>
 			<td>6</td>
-			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">batch_str_replace</span></td>
 			<td>1.8m</td>
 			<td>26</td>
 			<td>11,025</td>
 			<td>598</td>
 		</tr>
 		<tr id="detail-25" class="detail-row" data-complexity="complex" data-prompt-hash="ap2dbf" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -71905,8 +71879,8 @@ export type LcToolCodeV13Node = LcToolCodeV13ParamsNode;
 										&middot; 3 in
 										&middot; 78 out
 										&middot; 0 thinking
-										&middot; 0 tool calls
 									</span>
+									<span class="iter-tools"></span>
 								</summary>
 								<div class="iteration-tools">
 									<div class="no-tools">No tool calls</div>
@@ -71920,8 +71894,8 @@ export type LcToolCodeV13Node = LcToolCodeV13ParamsNode;
 										&middot; 6 in
 										&middot; 77 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_suggested_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-25-iter-2-tc-0">
@@ -71994,8 +71968,8 @@ Suggested nodes:
 										&middot; 5 in
 										&middot; 243 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-25-iter-3-tc-0">
@@ -72596,8 +72570,8 @@ Found 2 nodes:
 										&middot; 5 in
 										&middot; 5,388 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-25-iter-4-tc-0">
@@ -73389,8 +73363,8 @@ export type SetV34ManualNode = {
 										&middot; 4 in
 										&middot; 5,183 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-25-iter-5-tc-0">
@@ -73410,8 +73384,8 @@ export type SetV34ManualNode = {
 										&middot; 3 in
 										&middot; 56 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">batch_str_replace</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-25-iter-6-tc-0">
@@ -74338,14 +74312,13 @@ export type SetV34ManualNode = {
 			<td class="good">PASS</td>
 			<td class="good">9/9 (100%)</td>
 			<td>5</td>
-			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">batch_str_replace</span></td>
 			<td>46.5s</td>
 			<td>25</td>
 			<td>3,772</td>
 			<td>280</td>
 		</tr>
 		<tr id="detail-26" class="detail-row" data-complexity="complex" data-prompt-hash="xfeian" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -74979,8 +74952,8 @@ export type SetV34ManualNode = {
 										&middot; 3 in
 										&middot; 152 out
 										&middot; 0 thinking
-										&middot; 0 tool calls
 									</span>
+									<span class="iter-tools"></span>
 								</summary>
 								<div class="iteration-tools">
 									<div class="no-tools">No tool calls</div>
@@ -74994,8 +74967,8 @@ export type SetV34ManualNode = {
 										&middot; 7 in
 										&middot; 189 out
 										&middot; 0 thinking
-										&middot; 2 tool calls
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-26-iter-2-tc-0">
@@ -76010,8 +75983,8 @@ Found 5 nodes:
 										&middot; 6 in
 										&middot; 1,860 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-26-iter-3-tc-0">
@@ -77422,8 +77395,8 @@ export type SetV34ManualNode = {
 										&middot; 5 in
 										&middot; 1,515 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-26-iter-4-tc-0">
@@ -77443,8 +77416,8 @@ export type SetV34ManualNode = {
 										&middot; 4 in
 										&middot; 56 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">batch_str_replace</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-26-iter-5-tc-0">
@@ -77882,14 +77855,13 @@ export type SetV34ManualNode = {
 			<td class="good">PASS</td>
 			<td class="good">12/12 (100%)</td>
 			<td>4</td>
-			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span></td>
 			<td>52.1s</td>
 			<td>21</td>
 			<td>4,147</td>
 			<td>582</td>
 		</tr>
 		<tr id="detail-27" class="detail-row" data-complexity="complex" data-prompt-hash="nfxqg2" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -79142,8 +79114,8 @@ export type SetV34ManualNode = {
 										&middot; 3 in
 										&middot; 84 out
 										&middot; 0 thinking
-										&middot; 0 tool calls
 									</span>
+									<span class="iter-tools"></span>
 								</summary>
 								<div class="iteration-tools">
 									<div class="no-tools">No tool calls</div>
@@ -79157,8 +79129,8 @@ export type SetV34ManualNode = {
 										&middot; 6 in
 										&middot; 82 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_suggested_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-27-iter-2-tc-0">
@@ -79307,8 +79279,8 @@ Suggested nodes:
 										&middot; 6 in
 										&middot; 229 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-27-iter-3-tc-0">
@@ -80041,8 +80013,8 @@ Found 5 nodes:
 										&middot; 6 in
 										&middot; 3,752 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-27-iter-4-tc-0">
@@ -81967,14 +81939,13 @@ export type DataTableV11RowInsertNode = {
 			<td class="good">PASS</td>
 			<td class="good">12/13 (92%)</td>
 			<td>4</td>
-			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span></td>
 			<td>40.8s</td>
 			<td>21</td>
 			<td>2,996</td>
 			<td>334</td>
 		</tr>
 		<tr id="detail-28" class="detail-row" data-complexity="complex" data-prompt-hash="fzh2lr" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -82736,8 +82707,8 @@ export type DataTableV11RowInsertNode = {
 										&middot; 3 in
 										&middot; 83 out
 										&middot; 0 thinking
-										&middot; 0 tool calls
 									</span>
+									<span class="iter-tools"></span>
 								</summary>
 								<div class="iteration-tools">
 									<div class="no-tools">No tool calls</div>
@@ -82751,8 +82722,8 @@ export type DataTableV11RowInsertNode = {
 										&middot; 6 in
 										&middot; 72 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_suggested_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-28-iter-2-tc-0">
@@ -82864,8 +82835,8 @@ Suggested nodes:
 										&middot; 6 in
 										&middot; 173 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-28-iter-3-tc-0">
@@ -83582,8 +83553,8 @@ Found 5 nodes:
 										&middot; 6 in
 										&middot; 2,668 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-28-iter-4-tc-0">
@@ -85064,14 +85035,13 @@ export type SetV34ManualNode = {
 			<td class="good">PASS</td>
 			<td class="good">12/12 (100%)</td>
 			<td>6</td>
-			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">batch_str_replace</span></td>
 			<td>1.2m</td>
 			<td>26</td>
 			<td>6,391</td>
 			<td>745</td>
 		</tr>
 		<tr id="detail-29" class="detail-row" data-complexity="complex" data-prompt-hash="66jx3z" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -86650,8 +86620,8 @@ export type SetV34ManualNode = {
 										&middot; 3 in
 										&middot; 85 out
 										&middot; 0 thinking
-										&middot; 0 tool calls
 									</span>
+									<span class="iter-tools"></span>
 								</summary>
 								<div class="iteration-tools">
 									<div class="no-tools">No tool calls</div>
@@ -86665,8 +86635,8 @@ export type SetV34ManualNode = {
 										&middot; 6 in
 										&middot; 78 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_suggested_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-29-iter-2-tc-0">
@@ -86796,8 +86766,8 @@ Suggested nodes:
 										&middot; 5 in
 										&middot; 195 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-29-iter-3-tc-0">
@@ -87763,8 +87733,8 @@ Found 2 nodes:
 										&middot; 5 in
 										&middot; 5,705 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-29-iter-4-tc-0">
@@ -88745,8 +88715,8 @@ export type DataTableV11RowInsertNode = {
 										&middot; 4 in
 										&middot; 272 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-29-iter-5-tc-0">
@@ -88766,8 +88736,8 @@ export type DataTableV11RowInsertNode = {
 										&middot; 3 in
 										&middot; 56 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">batch_str_replace</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-29-iter-6-tc-0">
@@ -89566,14 +89536,13 @@ export type DataTableV11RowInsertNode = {
 			<td class="good">PASS</td>
 			<td class="good">13/13 (100%)</td>
 			<td>18</td>
-			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span> <span class="badge badge-tool">batch_str_replace</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span></td>
 			<td>2.5m</td>
 			<td>41</td>
 			<td>9,223</td>
 			<td>507</td>
 		</tr>
 		<tr id="detail-30" class="detail-row" data-complexity="complex" data-prompt-hash="1050lm" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -90681,8 +90650,8 @@ export type DataTableV11RowInsertNode = {
 										&middot; 3 in
 										&middot; 149 out
 										&middot; 0 thinking
-										&middot; 0 tool calls
 									</span>
+									<span class="iter-tools"></span>
 								</summary>
 								<div class="iteration-tools">
 									<div class="no-tools">No tool calls</div>
@@ -90696,8 +90665,8 @@ export type DataTableV11RowInsertNode = {
 										&middot; 7 in
 										&middot; 61 out
 										&middot; 0 thinking
-										&middot; 2 tool calls
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-30-iter-2-tc-0">
@@ -91224,8 +91193,8 @@ Found 2 nodes:
 										&middot; 6 in
 										&middot; 262 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-30-iter-3-tc-0">
@@ -91428,8 +91397,8 @@ Found 1 nodes:
 										&middot; 6 in
 										&middot; 3,626 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-30-iter-4-tc-0">
@@ -92198,8 +92167,8 @@ export type AggregateV1Node = AggregateV1ParamsNode;
 										&middot; 5 in
 										&middot; 56 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-30-iter-5-tc-0">
@@ -92219,8 +92188,8 @@ export type AggregateV1Node = AggregateV1ParamsNode;
 										&middot; 4 in
 										&middot; 67 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-30-iter-6-tc-0">
@@ -92271,8 +92240,8 @@ Found 4 nodes:
 										&middot; 4 in
 										&middot; 510 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-30-iter-7-tc-0">
@@ -92348,8 +92317,8 @@ export type SplitOutV1Node = SplitOutV1ParamsNode;
 										&middot; 3 in
 										&middot; 103 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">batch_str_replace</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-30-iter-8-tc-0">
@@ -92404,8 +92373,8 @@ export default workflow('batch-import-workflow', 'Batch Product Import')
 										&middot; 2 in
 										&middot; 530 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-30-iter-9-tc-0">
@@ -92425,8 +92394,8 @@ export default workflow('batch-import-workflow', 'Batch Product Import')
 										&middot; 1 in
 										&middot; 540 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-30-iter-10-tc-0">
@@ -92446,8 +92415,8 @@ export default workflow('batch-import-workflow', 'Batch Product Import')
 										&middot; 0 in
 										&middot; 542 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-30-iter-11-tc-0">
@@ -92467,8 +92436,8 @@ export default workflow('batch-import-workflow', 'Batch Product Import')
 										&middot; 0 in
 										&middot; 103 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-30-iter-12-tc-0">
@@ -92488,8 +92457,8 @@ export default workflow('batch-import-workflow', 'Batch Product Import')
 										&middot; 0 in
 										&middot; 554 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-30-iter-13-tc-0">
@@ -92509,8 +92478,8 @@ export default workflow('batch-import-workflow', 'Batch Product Import')
 										&middot; 0 in
 										&middot; 554 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-30-iter-14-tc-0">
@@ -92530,8 +92499,8 @@ export default workflow('batch-import-workflow', 'Batch Product Import')
 										&middot; 0 in
 										&middot; 506 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-30-iter-15-tc-0">
@@ -92551,8 +92520,8 @@ export default workflow('batch-import-workflow', 'Batch Product Import')
 										&middot; 0 in
 										&middot; 473 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-30-iter-16-tc-0">
@@ -92572,8 +92541,8 @@ export default workflow('batch-import-workflow', 'Batch Product Import')
 										&middot; 0 in
 										&middot; 531 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-30-iter-17-tc-0">
@@ -92593,8 +92562,8 @@ export default workflow('batch-import-workflow', 'Batch Product Import')
 										&middot; 0 in
 										&middot; 56 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-30-iter-18-tc-0">
@@ -93127,14 +93096,13 @@ export default workflow('batch-import-workflow', 'Batch Product Import')
 			<td class="good">PASS</td>
 			<td class="good">14/14 (100%)</td>
 			<td>7</td>
-			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span> <span class="badge badge-tool">get_node_types</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span></td>
 			<td>1.1m</td>
 			<td>32</td>
 			<td>4,394</td>
 			<td>451</td>
 		</tr>
 		<tr id="detail-31" class="detail-row" data-complexity="complex" data-prompt-hash="iae5lg" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -94135,8 +94103,8 @@ export default workflow('batch-import-workflow', 'Batch Product Import')
 										&middot; 3 in
 										&middot; 91 out
 										&middot; 0 thinking
-										&middot; 0 tool calls
 									</span>
+									<span class="iter-tools"></span>
 								</summary>
 								<div class="iteration-tools">
 									<div class="no-tools">No tool calls</div>
@@ -94150,8 +94118,8 @@ export default workflow('batch-import-workflow', 'Batch Product Import')
 										&middot; 6 in
 										&middot; 83 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_suggested_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-31-iter-2-tc-0">
@@ -94283,8 +94251,8 @@ Suggested nodes:
 										&middot; 6 in
 										&middot; 374 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-31-iter-3-tc-0">
@@ -95161,8 +95129,8 @@ Found 5 nodes:
 										&middot; 5 in
 										&middot; 78 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-31-iter-4-tc-0">
@@ -96577,8 +96545,8 @@ Error: Node 'n8n-nodes-base.set' requires mode discriminator. Available modes: m
 										&middot; 5 in
 										&middot; 2,712 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-31-iter-5-tc-0">
@@ -96695,8 +96663,8 @@ export type SetV34ManualNode = {
 										&middot; 4 in
 										&middot; 1,000 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-31-iter-6-tc-0">
@@ -96716,8 +96684,8 @@ export type SetV34ManualNode = {
 										&middot; 3 in
 										&middot; 56 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-31-iter-7-tc-0">
@@ -97215,7 +97183,6 @@ export type SetV34ManualNode = {
 							<th>Success</th>
 							<th>Score</th>
 							<th>Iterations</th>
-							<th>Tool Calls</th>
 							<th>Time</th>
 							<th>In Tokens</th>
 							<th>Out Tokens</th>
@@ -97231,14 +97198,13 @@ export type SetV34ManualNode = {
 			<td class="good">PASS</td>
 			<td class="good">5/5 (100%)</td>
 			<td>3</td>
-			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span></td>
 			<td>19.8s</td>
 			<td>16</td>
 			<td>1,013</td>
 			<td>124</td>
 		</tr>
 		<tr id="detail-1000" class="detail-row" data-complexity="simple" data-prompt-hash="7sx6yi" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -97540,8 +97506,8 @@ export type SetV34ManualNode = {
 										&middot; 3 in
 										&middot; 138 out
 										&middot; 0 thinking
-										&middot; 0 tool calls
 									</span>
+									<span class="iter-tools"></span>
 								</summary>
 								<div class="iteration-tools">
 									<div class="no-tools">No tool calls</div>
@@ -97555,8 +97521,8 @@ export type SetV34ManualNode = {
 										&middot; 7 in
 										&middot; 114 out
 										&middot; 0 thinking
-										&middot; 2 tool calls
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-1000-iter-2-tc-0">
@@ -98019,8 +97985,8 @@ Found 5 nodes:
 										&middot; 6 in
 										&middot; 761 out
 										&middot; 0 thinking
-										&middot; 1 tool call
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-1000-iter-3-tc-0">
@@ -98609,7 +98575,6 @@ export type SetV34ManualNode = {
 							<th>Success</th>
 							<th>Score</th>
 							<th>Iterations</th>
-							<th>Tool Calls</th>
 							<th>Time</th>
 							<th>In Tokens</th>
 							<th>Out Tokens</th>
@@ -98625,14 +98590,13 @@ export type SetV34ManualNode = {
 			<td class="good">PASS</td>
 			<td class="good">5/5 (100%)</td>
 			<td>3</td>
-			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span> <span class="badge badge-tool">get_node_types</span></td>
 			<td>17.4s</td>
 			<td>16</td>
 			<td>1,013</td>
 			<td>124</td>
 		</tr>
 		<tr id="detail-2000" class="detail-row" data-complexity="simple" data-prompt-hash="7sx6yi" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -98934,8 +98898,8 @@ export type SetV34ManualNode = {
 										&middot; 3 in
 										&middot; 138 out
 										&middot; 0 thinking
-										&middot; 0 tool calls
 									</span>
+									<span class="iter-tools"></span>
 								</summary>
 								<div class="iteration-tools">
 									<div class="no-tools">No tool calls</div>
@@ -98949,8 +98913,8 @@ export type SetV34ManualNode = {
 										&middot; 7 in
 										&middot; 114 out
 										&middot; 0 thinking
-										&middot; 4 tool calls
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-2000-iter-2-tc-0">
@@ -98988,8 +98952,8 @@ export type SetV34ManualNode = {
 										&middot; 6 in
 										&middot; 761 out
 										&middot; 0 thinking
-										&middot; 2 tool calls
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span> <span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-2000-iter-3-tc-0">
@@ -99145,14 +99109,13 @@ export type SetV34ManualNode = {
 			<td class="good">PASS</td>
 			<td class="good">3/3 (100%)</td>
 			<td>3</td>
-			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span> <span class="badge badge-tool">get_node_types</span></td>
 			<td>16.0s</td>
 			<td>16</td>
 			<td>866</td>
 			<td>98</td>
 		</tr>
 		<tr id="detail-2001" class="detail-row" data-complexity="simple" data-prompt-hash="86xo6i" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -99392,8 +99355,8 @@ export type SetV34ManualNode = {
 										&middot; 3 in
 										&middot; 141 out
 										&middot; 0 thinking
-										&middot; 0 tool calls
 									</span>
+									<span class="iter-tools"></span>
 								</summary>
 								<div class="iteration-tools">
 									<div class="no-tools">No tool calls</div>
@@ -99407,8 +99370,8 @@ export type SetV34ManualNode = {
 										&middot; 7 in
 										&middot; 108 out
 										&middot; 0 thinking
-										&middot; 4 tool calls
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-2001-iter-2-tc-0">
@@ -99446,8 +99409,8 @@ export type SetV34ManualNode = {
 										&middot; 6 in
 										&middot; 617 out
 										&middot; 0 thinking
-										&middot; 2 tool calls
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span> <span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-2001-iter-3-tc-0">
@@ -99577,14 +99540,13 @@ export type SetV34ManualNode = {
 			<td class="good">PASS</td>
 			<td class="good">7/7 (100%)</td>
 			<td>14</td>
-			<td class="tool-calls-cell"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">get_node_types</span> <span class="badge badge-tool">get_node_types</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">validate_workflow</span> <span class="badge badge-tool">validate_workflow</span> <span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span></td>
 			<td>1.3m</td>
 			<td>34</td>
 			<td>4,965</td>
 			<td>199</td>
 		</tr>
 		<tr id="detail-2002" class="detail-row" data-complexity="simple" data-prompt-hash="s48qsl" style="display:none">
-			<td colspan="11">
+			<td colspan="10">
 				<div class="detail-content">
 					<div class="detail-section">
 						<h4>Prompt</h4>
@@ -100046,8 +100008,8 @@ export type SetV34ManualNode = {
 										&middot; 3 in
 										&middot; 115 out
 										&middot; 0 thinking
-										&middot; 0 tool calls
 									</span>
+									<span class="iter-tools"></span>
 								</summary>
 								<div class="iteration-tools">
 									<div class="no-tools">No tool calls</div>
@@ -100061,8 +100023,8 @@ export type SetV34ManualNode = {
 										&middot; 7 in
 										&middot; 137 out
 										&middot; 0 thinking
-										&middot; 4 tool calls
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">get_suggested_nodes</span> <span class="badge badge-tool">search_nodes</span> <span class="badge badge-tool">search_nodes</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-2002-iter-2-tc-0">
@@ -100100,8 +100062,8 @@ export type SetV34ManualNode = {
 										&middot; 6 in
 										&middot; 1,171 out
 										&middot; 0 thinking
-										&middot; 2 tool calls
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">get_node_types</span> <span class="badge badge-tool">get_node_types</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-2002-iter-3-tc-0">
@@ -100127,8 +100089,8 @@ export type SetV34ManualNode = {
 										&middot; 5 in
 										&middot; 284 out
 										&middot; 0 thinking
-										&middot; 2 tool calls
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-2002-iter-4-tc-0">
@@ -100154,8 +100116,8 @@ export type SetV34ManualNode = {
 										&middot; 4 in
 										&middot; 103 out
 										&middot; 0 thinking
-										&middot; 2 tool calls
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-2002-iter-5-tc-0">
@@ -100181,8 +100143,8 @@ export type SetV34ManualNode = {
 										&middot; 3 in
 										&middot; 103 out
 										&middot; 0 thinking
-										&middot; 2 tool calls
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-2002-iter-6-tc-0">
@@ -100208,8 +100170,8 @@ export type SetV34ManualNode = {
 										&middot; 3 in
 										&middot; 726 out
 										&middot; 0 thinking
-										&middot; 2 tool calls
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-2002-iter-7-tc-0">
@@ -100235,8 +100197,8 @@ export type SetV34ManualNode = {
 										&middot; 2 in
 										&middot; 79 out
 										&middot; 0 thinking
-										&middot; 2 tool calls
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-2002-iter-8-tc-0">
@@ -100262,8 +100224,8 @@ export type SetV34ManualNode = {
 										&middot; 1 in
 										&middot; 1,429 out
 										&middot; 0 thinking
-										&middot; 2 tool calls
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-2002-iter-9-tc-0">
@@ -100289,8 +100251,8 @@ export type SetV34ManualNode = {
 										&middot; 0 in
 										&middot; 307 out
 										&middot; 0 thinking
-										&middot; 2 tool calls
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-2002-iter-10-tc-0">
@@ -100316,8 +100278,8 @@ export type SetV34ManualNode = {
 										&middot; 0 in
 										&middot; 296 out
 										&middot; 0 thinking
-										&middot; 2 tool calls
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-2002-iter-11-tc-0">
@@ -100343,8 +100305,8 @@ export type SetV34ManualNode = {
 										&middot; 0 in
 										&middot; 56 out
 										&middot; 0 thinking
-										&middot; 2 tool calls
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-2002-iter-12-tc-0">
@@ -100370,8 +100332,8 @@ export type SetV34ManualNode = {
 										&middot; 0 in
 										&middot; 103 out
 										&middot; 0 thinking
-										&middot; 2 tool calls
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">validate_workflow</span> <span class="badge badge-tool">validate_workflow</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-2002-iter-13-tc-0">
@@ -100397,8 +100359,8 @@ export type SetV34ManualNode = {
 										&middot; 0 in
 										&middot; 56 out
 										&middot; 0 thinking
-										&middot; 2 tool calls
 									</span>
+									<span class="iter-tools"><span class="badge badge-tool">str_replace_based_edit_tool</span> <span class="badge badge-tool">str_replace_based_edit_tool</span></span>
 								</summary>
 								<div class="iteration-tools">
 									<details class="tool-call-detail" id="detail-2002-iter-14-tc-0">
