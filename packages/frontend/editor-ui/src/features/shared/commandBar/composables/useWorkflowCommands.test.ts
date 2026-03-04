@@ -289,7 +289,7 @@ describe('useWorkflowCommands', () => {
 		});
 
 		it('should not show publish/unpublish commands when workflow is archived', () => {
-			mockWorkflowsStore.workflow.isArchived = true;
+			mockWorkflowDocumentStore.setIsArchived(true);
 
 			const { commands } = useWorkflowCommands();
 			const publishCommand = commands.value.find((cmd) => cmd.id === 'publish-workflow');
@@ -394,7 +394,7 @@ describe('useWorkflowCommands', () => {
 
 	describe('lifecycle commands', () => {
 		it('should show archive command when workflow is not archived', () => {
-			mockWorkflowsStore.workflow.isArchived = false;
+			mockWorkflowDocumentStore.setIsArchived(false);
 
 			const { commands } = useWorkflowCommands();
 			const archiveCommand = commands.value.find((cmd) => cmd.id === 'archive-workflow');
@@ -405,7 +405,7 @@ describe('useWorkflowCommands', () => {
 		});
 
 		it('should show unarchive and delete commands when workflow is archived', () => {
-			mockWorkflowsStore.workflow.isArchived = true;
+			mockWorkflowDocumentStore.setIsArchived(true);
 
 			const { commands } = useWorkflowCommands();
 			const archiveCommand = commands.value.find((cmd) => cmd.id === 'archive-workflow');
@@ -438,7 +438,7 @@ describe('useWorkflowCommands', () => {
 		});
 
 		it('should handle unarchive workflow', async () => {
-			mockWorkflowsStore.workflow.isArchived = true;
+			mockWorkflowDocumentStore.setIsArchived(true);
 
 			const { commands } = useWorkflowCommands();
 			const unarchiveCommand = commands.value.find((cmd) => cmd.id === 'unarchive-workflow');
@@ -449,7 +449,7 @@ describe('useWorkflowCommands', () => {
 		});
 
 		it('should handle delete workflow', async () => {
-			mockWorkflowsStore.workflow.isArchived = true;
+			mockWorkflowDocumentStore.setIsArchived(true);
 
 			const { commands } = useWorkflowCommands();
 			const deleteCommand = commands.value.find((cmd) => cmd.id === 'delete-workflow');

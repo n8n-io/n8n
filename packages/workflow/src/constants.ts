@@ -103,6 +103,19 @@ export const MEMORY_BUFFER_WINDOW_NODE_TYPE = '@n8n/n8n-nodes-langchain.memoryBu
 export const GUARDRAILS_NODE_TYPE = '@n8n/n8n-nodes-langchain.guardrails';
 export const MCP_CLIENT_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpClientTool';
 export const MCP_CLIENT_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpClient';
+export const ANTHROPIC_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.anthropic';
+export const OLLAMA_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.ollama';
+export const GOOGLE_GEMINI_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.googleGemini';
+
+export const AI_VENDOR_NODE_TYPES = [
+	OPENAI_LANGCHAIN_NODE_TYPE,
+	ANTHROPIC_LANGCHAIN_NODE_TYPE,
+	OLLAMA_LANGCHAIN_NODE_TYPE,
+	GOOGLE_GEMINI_LANGCHAIN_NODE_TYPE,
+];
+
+export const LANGCHAIN_LM_NODE_TYPE_PREFIX = '@n8n/n8n-nodes-langchain.lm';
+
 export const CHAT_HUB_VECTOR_STORE_PG_VECTOR_NODE_TYPE =
 	'@n8n/n8n-nodes-langchain.chatHubVectorStorePGVector';
 export const CHAT_HUB_VECTOR_STORE_QDRANT_NODE_TYPE =

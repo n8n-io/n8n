@@ -121,12 +121,13 @@ jobs:
       - name: Run Claude
         id: claude
         continue-on-error: true
-        uses: anthropics/claude-code-action@1b8ee3b94104046d71fde52ec3557651ad8c0d71 # v1
+        uses: anthropics/claude-code-action@d668cc452deb931732f24c6b1bbf24d97bc0c586 # v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ steps.generate_token.outputs.token }}
           prompt: ${{ env.CLAUDE_PROMPT }}
           show_full_output: ${{ inputs.suppress_output != true }}
+          display_report: false
           settings: |
             {
               "permissions": {
@@ -163,19 +164,11 @@ jobs:
       - name: Summary
         if: always()
         env:
-          INPUT_TASK: ${{ inputs.task }}
           CLAUDE_OUTCOME: ${{ steps.claude.outcome }}
           CLAUDE_SESSION_ID: ${{ steps.claude.outputs.session_id }}
-          SUPPRESS_OUTPUT: ${{ inputs.suppress_output }}
         run: |
           {
-            echo "## Claude Task Runner Summary"
-            echo ""
-            if [ "$SUPPRESS_OUTPUT" = "true" ]; then
-              echo "**Task:** _(output suppressed)_"
-            else
-              echo "**Task:** $INPUT_TASK"
-            fi
+            echo "## Claude Task Runner"
             echo "**Branch:** ${BRANCH_NAME:-N/A}"
             echo "**Claude outcome:** $CLAUDE_OUTCOME"
             if [ -n "$CLAUDE_SESSION_ID" ]; then

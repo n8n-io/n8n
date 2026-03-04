@@ -245,7 +245,7 @@
 
 	--text-color: light-dark(var(--color--neutral-900), var(--color--neutral-white));
 	--text-color--subtle: light-dark(var(--color--neutral-700), var(--color--neutral-200));
-	--text-color--subtler: light-dark(var(--color--neutral-500), var(--color--neutral-300));
+	--text-color--subtler: light-dark(var(--color--neutral-500), var(--color--neutral-400));
 
 	--background--success: light-dark(var(--color--green-50), var(--color--green-950));
 	--border-color--success: light-dark(var(--color--green-200), var(--color--green-800));
@@ -277,6 +277,10 @@
 	/* stylelint-enable @n8n/css-var-naming */
 
 	// Secondary tokens
+
+	--color--text: light-dark(var(--color--neutral-900), var(--color--neutral-white));
+	--color--text--subtle: light-dark(var(--color--neutral-700), var(--color--neutral-200));
+	--color--text--subtler: light-dark(var(--color--neutral-500), var(--color--neutral-400));
 
 	// LangChain
 	--lm-chat--messages--color--background: var(--color--background);

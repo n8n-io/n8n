@@ -970,7 +970,6 @@ export function useWorkflowHelpers() {
 	async function initState(workflowData: IWorkflowDb, overrideWorkflowState?: WorkflowState) {
 		const ws = overrideWorkflowState ?? workflowState;
 		workflowsListStore.addWorkflow(workflowData);
-		workflowsStore.setIsArchived(workflowData.isArchived);
 		workflowsStore.setDescription(workflowData.description);
 		ws.setWorkflowId(workflowData.id);
 		ws.setWorkflowName({
@@ -1041,6 +1040,7 @@ export function useWorkflowHelpers() {
 		if (workflowData.checksum) {
 			workflowDocumentStore.setChecksum(workflowData.checksum);
 		}
+		workflowDocumentStore.setIsArchived(workflowData.isArchived);
 		workflowDocumentStore.setMeta(workflowData.meta);
 		workflowDocumentStore.setScopes(workflowData.scopes ?? []);
 		tagsStore.upsertTags(tags);
