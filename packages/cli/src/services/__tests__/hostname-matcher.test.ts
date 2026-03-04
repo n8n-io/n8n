@@ -12,9 +12,9 @@ describe('HostnameMatcher', () => {
 			expect(matcher.matches('deep.sub.example.com')).toBe(true);
 		});
 
-		it('should match the bare domain', () => {
+		it('should not match the bare domain', () => {
 			const matcher = new HostnameMatcher(['*.example.com']);
-			expect(matcher.matches('example.com')).toBe(true);
+			expect(matcher.matches('example.com')).toBe(false);
 		});
 
 		it('should not match unrelated domains', () => {
@@ -43,6 +43,12 @@ describe('HostnameMatcher', () => {
 			expect(matcher.matches('API.EXAMPLE.COM')).toBe(true);
 			expect(matcher.matches('api.example.com')).toBe(true);
 		});
+	});
+
+	it('should trim configured patterns', () => {
+		const matcher = new HostnameMatcher([' *.example.com ', ' exact.example.com ']);
+		expect(matcher.matches('api.example.com')).toBe(true);
+		expect(matcher.matches('exact.example.com')).toBe(true);
 	});
 
 	it('should return false when no patterns are configured', () => {

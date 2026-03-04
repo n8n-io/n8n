@@ -12,7 +12,7 @@ export const SSRF_DEFAULT_BLOCKED_IP_RANGES: readonly string[] = Object.freeze([
 	'192.168.0.0/16',
 	// Loopback
 	'127.0.0.0/8',
-	'::1',
+	'::1/128',
 	// Link-local
 	'169.254.0.0/16',
 	'fe80::/10',

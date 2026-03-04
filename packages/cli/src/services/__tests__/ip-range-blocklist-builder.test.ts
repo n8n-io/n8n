@@ -10,19 +10,28 @@ describe('buildBlocklist', () => {
 		expect(blocklist.check('8.8.8.8', 'ipv4')).toBe(false);
 	});
 
-	it('should build a blocklist from single IP addresses', () => {
-		const { blocklist, issues } = buildBlocklist(['127.0.0.1', '::1']);
+	it('should build a blocklist from single-host CIDR ranges', () => {
+		const { blocklist, issues } = buildBlocklist(['127.0.0.1/32', '::1/128']);
 
 		expect(issues).toEqual([]);
 		expect(blocklist.check('127.0.0.1', 'ipv4')).toBe(true);
 		expect(blocklist.check('::1', 'ipv6')).toBe(true);
 	});
 
+	it('should reject single IP entries without CIDR suffix', () => {
+		const { issues } = buildBlocklist(['127.0.0.1', '::1']);
+
+		expect(issues).toEqual([
+			{ entry: '127.0.0.1', error: 'Invalid CIDR notation' },
+			{ entry: '::1', error: 'Invalid CIDR notation' },
+		]);
+	});
+
 	it('should report issues for invalid entries with structured error and entry', () => {
 		const { issues } = buildBlocklist(['not-an-ip', '10.0.0.0/abc', '999.999.999.999/8']);
 
 		expect(issues).toHaveLength(3);
-		expect(issues[0]).toEqual({ entry: 'not-an-ip', error: 'Invalid IP address' });
+		expect(issues[0]).toEqual({ entry: 'not-an-ip', error: 'Invalid CIDR notation' });
 		expect(issues[1]).toEqual({ entry: '10.0.0.0/abc', error: 'Invalid CIDR notation' });
 		expect(issues[2]).toEqual({ entry: '999.999.999.999/8', error: 'Invalid CIDR notation' });
 	});
@@ -44,10 +53,18 @@ describe('buildBlocklist', () => {
 	});
 
 	it('should handle mixed valid and invalid entries', () => {
-		const { blocklist, issues } = buildBlocklist(['10.0.0.0/8', 'garbage', '::1']);
+		const { blocklist, issues } = buildBlocklist(['10.0.0.0/8', 'garbage', '::1/128']);
 
 		expect(issues).toHaveLength(1);
-		expect(issues[0]).toEqual({ entry: 'garbage', error: 'Invalid IP address' });
+		expect(issues[0]).toEqual({ entry: 'garbage', error: 'Invalid CIDR notation' });
+		expect(blocklist.check('10.0.0.1', 'ipv4')).toBe(true);
+		expect(blocklist.check('::1', 'ipv6')).toBe(true);
+	});
+
+	it('should trim entries and ignore empty ones', () => {
+		const { blocklist, issues } = buildBlocklist([' 10.0.0.0/8 ', ' ::1/128 ', '   ']);
+
+		expect(issues).toEqual([]);
 		expect(blocklist.check('10.0.0.1', 'ipv4')).toBe(true);
 		expect(blocklist.check('::1', 'ipv6')).toBe(true);
 	});

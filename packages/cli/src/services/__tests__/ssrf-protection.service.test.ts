@@ -12,8 +12,7 @@ function createConfig(overrides: Partial<SsrfProtectionConfig> = {}): SsrfProtec
 
 function createMockDnsResolver(): jest.Mocked<DnsResolver> {
 	return {
-		resolve: jest.fn().mockResolvedValue([]),
-		resolveAll: jest.fn().mockResolvedValue([]),
+		lookup: jest.fn().mockResolvedValue([]),
 	} as unknown as jest.Mocked<DnsResolver>;
 }
 
@@ -135,7 +134,7 @@ describe('SsrfProtectionService', () => {
 
 			it('should allow a specific blocked IP in the allowlist', () => {
 				const { service } = createService({
-					allowedIpRanges: ['127.0.0.1'] as unknown as SsrfProtectionConfig['allowedIpRanges'],
+					allowedIpRanges: ['127.0.0.1/32'] as unknown as SsrfProtectionConfig['allowedIpRanges'],
 				});
 
 				expect(service.validateIp('127.0.0.1')).toEqual({ allowed: true });
@@ -199,7 +198,7 @@ describe('SsrfProtectionService', () => {
 
 		it('should resolve hostnames and validate resolved IPs', async () => {
 			const dnsResolver = createMockDnsResolver();
-			dnsResolver.resolveAll.mockResolvedValue(['93.184.216.34']);
+			dnsResolver.lookup.mockResolvedValue(['93.184.216.34']);
 
 			const { service } = createService({}, dnsResolver);
 			const result = await service.validateUrl('http://example.com/api');
@@ -209,7 +208,7 @@ describe('SsrfProtectionService', () => {
 
 		it('should block if hostname resolves to blocked IP', async () => {
 			const dnsResolver = createMockDnsResolver();
-			dnsResolver.resolveAll.mockResolvedValue(['10.0.0.1']);
+			dnsResolver.lookup.mockResolvedValue(['10.0.0.1']);
 
 			const { service } = createService({}, dnsResolver);
 			const result = await service.validateUrl('http://malicious.com/');
@@ -223,7 +222,7 @@ describe('SsrfProtectionService', () => {
 
 		it('should block if any resolved IP is blocked', async () => {
 			const dnsResolver = createMockDnsResolver();
-			dnsResolver.resolveAll.mockResolvedValue(['93.184.216.34', '127.0.0.1']);
+			dnsResolver.lookup.mockResolvedValue(['93.184.216.34', '127.0.0.1']);
 
 			const { service } = createService({}, dnsResolver);
 			const result = await service.validateUrl('http://multi-ip.example.com/');
@@ -237,7 +236,7 @@ describe('SsrfProtectionService', () => {
 
 		it('should block if any resolved IP is blocked across IPv4/IPv6', async () => {
 			const dnsResolver = createMockDnsResolver();
-			dnsResolver.resolveAll.mockResolvedValue(['93.184.216.34', '::1']);
+			dnsResolver.lookup.mockResolvedValue(['93.184.216.34', '::1']);
 
 			const { service } = createService({}, dnsResolver);
 			const result = await service.validateUrl('http://mixed-family.example.com/');
@@ -251,7 +250,7 @@ describe('SsrfProtectionService', () => {
 
 		it('should fail when DNS resolution returns no results', async () => {
 			const dnsResolver = createMockDnsResolver();
-			dnsResolver.resolveAll.mockResolvedValue([]);
+			dnsResolver.lookup.mockResolvedValue([]);
 
 			const { service } = createService({}, dnsResolver);
 			const result = await service.validateUrl('http://nonexistent.example.com/');
@@ -263,9 +262,20 @@ describe('SsrfProtectionService', () => {
 			});
 		});
 
+		it('should bubble up DNS resolver errors', async () => {
+			const dnsResolver = createMockDnsResolver();
+			dnsResolver.lookup.mockRejectedValue(new Error('ENOTFOUND'));
+
+			const { service } = createService({}, dnsResolver);
+
+			await expect(service.validateUrl('http://nonexistent.example.com/')).rejects.toThrow(
+				'ENOTFOUND',
+			);
+		});
+
 		it('should bypass IP checks when hostname is in allowlist', async () => {
 			const dnsResolver = createMockDnsResolver();
-			dnsResolver.resolveAll.mockResolvedValue(['10.0.0.1']);
+			dnsResolver.lookup.mockResolvedValue(['10.0.0.1']);
 
 			const { service } = createService(
 				{
@@ -280,7 +290,7 @@ describe('SsrfProtectionService', () => {
 
 			expect(result).toEqual({ allowed: true });
 			// DNS should not have been called since hostname matched
-			expect(dnsResolver.resolveAll).not.toHaveBeenCalled();
+			expect(dnsResolver.lookup).not.toHaveBeenCalled();
 		});
 
 		it('should accept URL objects', async () => {
@@ -295,13 +305,13 @@ describe('SsrfProtectionService', () => {
 
 		it('should use DNS resolver for hostname lookups', async () => {
 			const dnsResolver = createMockDnsResolver();
-			dnsResolver.resolveAll.mockResolvedValue(['93.184.216.34']);
+			dnsResolver.lookup.mockResolvedValue(['93.184.216.34']);
 
 			const { service } = createService({}, dnsResolver);
 			const result = await service.validateUrl('http://cached.example.com/');
 
 			expect(result).toEqual({ allowed: true });
-			expect(dnsResolver.resolveAll).toHaveBeenCalledWith('cached.example.com');
+			expect(dnsResolver.lookup).toHaveBeenCalledWith('cached.example.com', { all: true });
 		});
 	});
 
@@ -320,7 +330,7 @@ describe('SsrfProtectionService', () => {
 
 		it('should block redirect chains from public to private', async () => {
 			const dnsResolver = createMockDnsResolver();
-			dnsResolver.resolveAll.mockResolvedValue(['93.184.216.34']);
+			dnsResolver.lookup.mockResolvedValue(['93.184.216.34']);
 
 			const { service } = createService({}, dnsResolver);
 
@@ -349,7 +359,7 @@ describe('SsrfProtectionService', () => {
 	describe('createSecureLookup', () => {
 		it('should resolve and validate IPs at connection time', (done) => {
 			const dnsResolver = createMockDnsResolver();
-			dnsResolver.resolveAll.mockResolvedValue(['93.184.216.34']);
+			dnsResolver.lookup.mockResolvedValue(['93.184.216.34']);
 
 			const { service } = createService({}, dnsResolver);
 			const lookup = service.createSecureLookup();
@@ -364,7 +374,7 @@ describe('SsrfProtectionService', () => {
 
 		it('should reject blocked IPs during lookup', (done) => {
 			const dnsResolver = createMockDnsResolver();
-			dnsResolver.resolveAll.mockResolvedValue(['10.0.0.1']);
+			dnsResolver.lookup.mockResolvedValue(['10.0.0.1']);
 
 			const { service } = createService({}, dnsResolver);
 			const lookup = service.createSecureLookup();
@@ -379,7 +389,7 @@ describe('SsrfProtectionService', () => {
 
 		it('should return all addresses when all=true', (done) => {
 			const dnsResolver = createMockDnsResolver();
-			dnsResolver.resolveAll.mockResolvedValue(['93.184.216.34', '93.184.216.35']);
+			dnsResolver.lookup.mockResolvedValue(['93.184.216.34', '93.184.216.35']);
 
 			const { service } = createService({}, dnsResolver);
 			const lookup = service.createSecureLookup();
@@ -396,7 +406,7 @@ describe('SsrfProtectionService', () => {
 
 		it('should respect family=6 and return only IPv6 addresses', (done) => {
 			const dnsResolver = createMockDnsResolver();
-			dnsResolver.resolveAll.mockResolvedValue(['93.184.216.34', '2606:4700::6810:85e5']);
+			dnsResolver.lookup.mockResolvedValue(['2606:4700::6810:85e5']);
 
 			const { service } = createService({}, dnsResolver);
 			const lookup = service.createSecureLookup();
@@ -405,13 +415,17 @@ describe('SsrfProtectionService', () => {
 				expect(lookupError).toBeNull();
 				expect(address).toBe('2606:4700::6810:85e5');
 				expect(family).toBe(6);
+				expect(dnsResolver.lookup).toHaveBeenCalledWith('dualstack.example.com', {
+					all: false,
+					family: 6,
+				});
 				done();
 			});
 		});
 
 		it('should fail when requested family has no resolved addresses', (done) => {
 			const dnsResolver = createMockDnsResolver();
-			dnsResolver.resolveAll.mockResolvedValue(['93.184.216.34']);
+			dnsResolver.lookup.mockResolvedValue([]);
 
 			const { service } = createService({}, dnsResolver);
 			const lookup = service.createSecureLookup();
@@ -420,13 +434,17 @@ describe('SsrfProtectionService', () => {
 				expect(lookupError).toBeTruthy();
 				expect(address).toEqual([]);
 				expect(family).toBeUndefined();
+				expect(dnsResolver.lookup).toHaveBeenCalledWith('ipv4-only.example.com', {
+					all: false,
+					family: 6,
+				});
 				done();
 			});
 		});
 
 		it('should allow hostnames in the allowlist without IP validation', (done) => {
 			const dnsResolver = createMockDnsResolver();
-			dnsResolver.resolveAll.mockResolvedValue(['10.0.0.1']);
+			dnsResolver.lookup.mockResolvedValue(['10.0.0.1']);
 
 			const { service } = createService(
 				{
@@ -447,7 +465,7 @@ describe('SsrfProtectionService', () => {
 
 		it('should pass empty array and undefined family on error', (done) => {
 			const dnsResolver = createMockDnsResolver();
-			dnsResolver.resolveAll.mockResolvedValue([]);
+			dnsResolver.lookup.mockResolvedValue([]);
 
 			const { service } = createService({}, dnsResolver);
 			const lookup = service.createSecureLookup();
@@ -491,7 +509,7 @@ describe('SsrfProtectionService', () => {
 			it('should block decimal IP representation via DNS resolution', async () => {
 				// 2130706433 = 127.0.0.1 in decimal — URL constructor treats it as hostname
 				const dnsResolver = createMockDnsResolver();
-				dnsResolver.resolveAll.mockResolvedValue(['127.0.0.1']);
+				dnsResolver.lookup.mockResolvedValue(['127.0.0.1']);
 
 				const { service } = createService({}, dnsResolver);
 				const result = await service.validateUrl('http://2130706433/');
@@ -535,7 +553,7 @@ describe('SsrfProtectionService', () => {
 		describe('DNS rebinding prevention (TOCTOU)', () => {
 			it('should validate IPs at connection time via secure lookup', (done) => {
 				const dnsResolver = createMockDnsResolver();
-				dnsResolver.resolveAll.mockResolvedValueOnce(['10.0.0.1']);
+				dnsResolver.lookup.mockResolvedValueOnce(['10.0.0.1']);
 
 				const { service } = createService({}, dnsResolver);
 				const lookup = service.createSecureLookup();
@@ -599,7 +617,7 @@ describe('SsrfProtectionService', () => {
 				resolvedBlockedIpRanges: ['not-a-valid-range'],
 			});
 
-			expect(mockLogger.warn).toHaveBeenCalledWith('Invalid IP address: not-a-valid-range');
+			expect(mockLogger.warn).toHaveBeenCalledWith('Invalid CIDR notation: not-a-valid-range');
 		});
 	});
 });

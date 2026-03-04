@@ -1,123 +1,95 @@
 import { Service } from '@n8n/di';
 import { promises as dns } from 'node:dns';
+import type { LookupOptions } from 'node:dns';
 
 import { InMemoryDnsCache } from './in-memory-dns-cache.service';
+
+export type DnsLookupOptions = Pick<LookupOptions, 'all' | 'family' | 'order'>;
+
+type RequiredLookupOptions = Required<DnsLookupOptions>;
+
+/** We don't get the TTL for the records from `dns.lookup`, so we use a short, conservative TTL */
+const LOOKUP_CACHE_TTL_SECONDS = 1;
 
 /**
  * DNS resolver that caches results via {@link InMemoryDnsCache}.
  *
- * Resolves A records first, falling back to AAAA if no A records exist.
- * TTL is derived from the minimum TTL across all returned records.
+ * Since `dns.lookup` does not expose record TTLs, cache entries are stored
+ * with a short, conservative TTL.
  *
- * Concurrent resolve calls for the same hostname are coalesced so only
- * one DNS query is in-flight at a time per hostname.
+ * Concurrent resolve calls for the same hostname and options are coalesced so
+ * only one DNS query is in-flight at a time per cache key.
  */
 @Service()
 export class DnsResolver {
-	private readonly inFlightByHostname = new Map<string, Promise<string[]>>();
+	private readonly inFlightByCacheKey = new Map<string, Promise<string[]>>();
 
 	constructor(private readonly dnsCache: InMemoryDnsCache) {}
 
 	/**
-	 * Resolve a hostname using A records first, then AAAA as fallback.
+	 * Lookup a hostname with `dns.lookup`-style options.
 	 */
-	async resolve(hostname: string): Promise<string[]> {
-		return await this.resolveWithCache(hostname, async () => await this.doResolve(hostname));
-	}
+	async lookup(hostname: string, options: DnsLookupOptions = {}): Promise<string[]> {
+		const normalized = this.normalizeOptions(options);
+		const cacheKey = this.buildCacheKey(hostname, normalized);
 
-	/**
-	 * Resolve a hostname across both A and AAAA records.
-	 */
-	async resolveAll(hostname: string): Promise<string[]> {
-		return await this.resolveWithCache(
-			`all:${hostname}`,
-			async () => await this.doResolveAll(hostname),
-		);
-	}
-
-	private async resolveWithCache(
-		cacheKey: string,
-		resolver: () => Promise<string[]>,
-	): Promise<string[]> {
 		const cached = await this.dnsCache.get(cacheKey);
 		if (cached) return cached;
 
-		const existing = this.inFlightByHostname.get(cacheKey);
+		const existing = this.inFlightByCacheKey.get(cacheKey);
 		if (existing) return await existing;
 
-		const promise = resolver();
-		this.inFlightByHostname.set(cacheKey, promise);
+		const resolvePromise = (async () => {
+			const addresses = await this.doLookup(hostname, normalized);
+			if (addresses.length > 0) {
+				await this.dnsCache.set(cacheKey, addresses, LOOKUP_CACHE_TTL_SECONDS);
+			}
 
-		return await promise.finally(() => {
-			this.inFlightByHostname.delete(cacheKey);
+			return addresses;
+		})();
+
+		this.inFlightByCacheKey.set(cacheKey, resolvePromise);
+
+		return await resolvePromise.finally(() => {
+			this.inFlightByCacheKey.delete(cacheKey);
 		});
 	}
 
-	private async doResolve(hostname: string): Promise<string[]> {
-		const ipv4Result = await this.resolveIpv4(hostname);
-		if (ipv4Result.length > 0) {
-			return ipv4Result;
+	private async doLookup(hostname: string, options: RequiredLookupOptions): Promise<string[]> {
+		if (options.all) {
+			const records = await dns.lookup(hostname, {
+				all: true,
+				family: options.family,
+				order: options.order,
+			});
+			return [...new Set(records.map((record) => record.address))];
 		}
 
-		return await this.resolveIpv6(hostname);
+		const record = await dns.lookup(hostname, {
+			all: false,
+			family: options.family,
+			order: options.order,
+		});
+
+		return [record.address];
 	}
 
-	private async doResolveAll(hostname: string): Promise<string[]> {
-		const [ipv4Result, ipv6Result] = await Promise.all([
-			this.resolveIpv4Internal(hostname, null),
-			this.resolveIpv6Internal(hostname, null),
-		]);
-		const combined = [...new Set([...ipv4Result.records, ...ipv6Result.records])];
-		if (combined.length === 0) {
-			return [];
-		}
-
-		const minTtlInSecs = Math.max(1, Math.min(...[...ipv4Result.ttls, ...ipv6Result.ttls]));
-		await this.dnsCache.set(`all:${hostname}`, combined, minTtlInSecs);
-		return combined;
+	private buildCacheKey(hostname: string, options: RequiredLookupOptions): string {
+		return `${hostname}|all:${options.all ? '1' : '0'}|family:${options.family}|order:${options.order}`;
 	}
 
-	private async resolveIpv4(hostname: string): Promise<string[]> {
-		const result = await this.resolveIpv4Internal(hostname, hostname);
-		return result.records;
-	}
-
-	private async resolveIpv4Internal(
-		hostname: string,
-		cacheKey: string | null,
-	): Promise<{ records: string[]; ttls: number[] }> {
-		try {
-			const records = await dns.resolve4(hostname, { ttl: true });
-			const minTtlInSecs = Math.max(1, Math.min(...records.map((r) => r.ttl)));
-			const ips = records.map((r) => r.address);
-			if (cacheKey !== null) {
-				await this.dnsCache.set(cacheKey, ips, minTtlInSecs);
-			}
-			return { records: ips, ttls: records.map((r) => r.ttl) };
-		} catch {
-			return { records: [], ttls: [] };
-		}
-	}
-
-	private async resolveIpv6(hostname: string): Promise<string[]> {
-		const result = await this.resolveIpv6Internal(hostname, hostname);
-		return result.records;
-	}
-
-	private async resolveIpv6Internal(
-		hostname: string,
-		cacheKey: string | null,
-	): Promise<{ records: string[]; ttls: number[] }> {
-		try {
-			const records = await dns.resolve6(hostname, { ttl: true });
-			const minTtlInSecs = Math.max(1, Math.min(...records.map((r) => r.ttl)));
-			const ips = records.map((r) => r.address);
-			if (cacheKey !== null) {
-				await this.dnsCache.set(cacheKey, ips, minTtlInSecs);
-			}
-			return { records: ips, ttls: records.map((r) => r.ttl) };
-		} catch {
-			return { records: [], ttls: [] };
-		}
+	private normalizeOptions(options: DnsLookupOptions): RequiredLookupOptions {
+		const all = options.all === true;
+		const familyInput = options.family;
+		const family =
+			familyInput === 4 || familyInput === 6 || familyInput === 0
+				? familyInput
+				: familyInput === 'IPv4'
+					? 4
+					: familyInput === 'IPv6'
+						? 6
+						: 0;
+		const order = options.order ?? 'verbatim';
+		return { all, family, order };
 	}
 }
