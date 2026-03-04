@@ -26,7 +26,6 @@ export const setupBrokerTestServer = (
 ): TestTaskBrokerServer => {
 	const runnerConfig = Container.get(TaskRunnersConfig);
 	Object.assign(runnerConfig, config);
-	runnerConfig.enabled = true;
 	runnerConfig.port = 0; // Use any port
 
 	const taskBrokerServer = Container.get(TaskBrokerServer);
