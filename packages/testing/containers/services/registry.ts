@@ -10,6 +10,7 @@ import { mysqlService } from './mysql';
 import { ngrok } from './ngrok';
 import { createObservabilityHelper } from './observability';
 import { postgres } from './postgres';
+import { postgresExporter } from './postgres-exporter';
 import { proxy, createProxyHelper } from './proxy';
 import { redis } from './redis';
 import { taskRunner } from './task-runner';
@@ -39,6 +40,7 @@ export const services: Record<ServiceName, Service<ServiceResult>> = {
 	mysql: mysqlService,
 	localstack,
 	kent,
+	postgresExporter,
 };
 
 export const helperFactories: Partial<HelperFactories> = {

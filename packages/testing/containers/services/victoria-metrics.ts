@@ -84,6 +84,17 @@ export const victoriaMetrics: Service<VictoriaMetricsResult> = {
 			});
 		}
 
+		// Add postgres-exporter scrape target when it will be started
+		const services = ctx.config.services ?? [];
+		if (ctx.usePostgres && services.includes('victoriaMetrics')) {
+			scrapeTargets.push({
+				job: 'postgres',
+				instance: 'postgres',
+				host: 'postgres-exporter',
+				port: 9187,
+			});
+		}
+
 		return { scrapeTargets };
 	},
 
