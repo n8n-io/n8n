@@ -683,7 +683,7 @@ const tags = computed(
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
 				<DependencyPill
-					v-if="workflowHasDependencies"
+					v-if="true || workflowHasDependencies"
 					:count="dependencyCount"
 					:tooltip-text="
 						locale.baseText('workflows.dependencies.tooltip', {

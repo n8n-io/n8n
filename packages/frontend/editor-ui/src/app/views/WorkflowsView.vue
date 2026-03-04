@@ -678,7 +678,10 @@ const fetchWorkflows = async () => {
 		workflowsAndFolders.value = fetchedResources;
 
 		// Async-fetch dependencies for visible workflows (fire-and-forget)
-		const workflowIds = fetchedResources.filter((r) => r.resource === 'workflow').map((r) => r.id);
+		// in the overview page we don't have a resource type
+		const workflowIds = fetchedResources
+			.filter((r) => r.resource === 'workflow' || r.resource === undefined)
+			.map((r) => r.id);
 		if (workflowIds.length > 0) {
 			void fetchDependencies(workflowIds);
 		}
