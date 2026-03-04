@@ -9,6 +9,7 @@ import { Readable } from 'node:stream';
 import picocolors from 'picocolors';
 
 import { ResponseError } from './errors/response-errors/abstract/response.error';
+import { AuthenticatedRequest, User } from '@n8n/db';
 
 export function sendSuccessResponse(
 	res: Response,
@@ -164,10 +165,12 @@ export function send<T, R extends Request, S extends Response>(
 			if (!res.headersSent) sendSuccessResponse(res, data, raw);
 		} catch (e) {
 			const error = ensureError(e);
+			const user = (req as Request & { user?: User }).user;
 			reportError(error, {
 				extra: {
 					method: req.method,
-					url: req.originalUrl,
+					path: req.path,
+					user: user ? { id: user.id } : undefined,
 				},
 			});
 
