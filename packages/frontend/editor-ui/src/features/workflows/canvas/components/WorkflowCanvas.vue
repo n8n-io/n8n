@@ -144,11 +144,8 @@ defineExpose({
 </script>
 
 <template>
-	<div
-		:class="{ [$style.wrapper]: true, [$style.split]: view === 'split' }"
-		data-test-id="canvas-wrapper"
-	>
-		<div v-if="view !== 'canvas'" id="chat" :class="$style.chat">
+	<div :class="[$style.wrapper, $style[view]]" data-test-id="canvas-wrapper">
+		<div id="chat" :class="$style.chat">
 			<AskAssistantBuild ref="askAssistantBuildRef">
 				<!--
 				<template v-if="canToggleModes" #header>
@@ -157,7 +154,7 @@ defineExpose({
 				-->
 			</AskAssistantBuild>
 		</div>
-		<div v-if="view !== 'chat'" id="canvas" :class="$style.canvas">
+		<div id="canvas" :class="$style.canvas">
 			<Canvas
 				v-if="workflow"
 				:id="id"
@@ -171,7 +168,7 @@ defineExpose({
 				v-bind="$attrs"
 			/>
 		</div>
-		<slot />
+		<slot v-if="view !== 'chat'" />
 
 		<div :class="$style['switcher']">
 			<N8nIconButton
@@ -207,10 +204,23 @@ defineExpose({
 	height: 100%;
 	overflow: hidden;
 
+	&.chat {
+		.canvas {
+			width: 0;
+		}
+	}
+	&.canvas {
+		.chat {
+			width: 0;
+		}
+	}
 	&.split {
 		.chat,
 		.canvas {
 			width: 50%;
+		}
+		.chat {
+			border-right: 1px solid var(--color--foreground);
 		}
 	}
 }

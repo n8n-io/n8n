@@ -577,7 +577,7 @@ defineExpose({
 				<ExecuteMessage v-if="showExecuteMessage" @workflow-executed="onWorkflowExecuted" />
 			</template>
 			<template #placeholder>
-				<BuildModeEmptyState />
+				<!--<BuildModeEmptyState />-->
 			</template>
 			<template #custom-message="{ message }">
 				<!-- Always render questions message; when answered, collapse to intro text only -->
