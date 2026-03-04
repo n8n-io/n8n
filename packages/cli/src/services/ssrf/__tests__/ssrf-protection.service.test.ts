@@ -438,7 +438,7 @@ describe('SsrfProtectionService', () => {
 
 			lookup('ipv4-only.example.com', { all: false, family: 6 }, (lookupError, address, family) => {
 				expect(lookupError).toBeTruthy();
-				expect(address).toEqual([]);
+				expect(address).toBe('');
 				expect(family).toBeUndefined();
 				expect(dnsResolver.lookup).toHaveBeenCalledWith('ipv4-only.example.com', {
 					all: false,
@@ -469,14 +469,29 @@ describe('SsrfProtectionService', () => {
 			});
 		});
 
-		it('should pass empty array and undefined family on error', (done) => {
+		it('should pass empty string and undefined family on non-all lookup errors', (done) => {
 			const dnsResolver = createMockDnsResolver();
-			dnsResolver.lookup.mockResolvedValue([]);
+			dnsResolver.lookup.mockRejectedValue(new Error('ENOTFOUND'));
 
 			const { service } = createService({}, dnsResolver);
 			const lookup = service.createSecureLookup();
 
 			lookup('failing.example.com', { all: false }, (lookupError, address, family) => {
+				expect(lookupError).toBeTruthy();
+				expect(address).toBe('');
+				expect(family).toBeUndefined();
+				done();
+			});
+		});
+
+		it('should pass empty array and undefined family on all=true lookup errors', (done) => {
+			const dnsResolver = createMockDnsResolver();
+			dnsResolver.lookup.mockRejectedValue(new Error('ENOTFOUND'));
+
+			const { service } = createService({}, dnsResolver);
+			const lookup = service.createSecureLookup();
+
+			lookup('failing.example.com', { all: true }, (lookupError, address, family) => {
 				expect(lookupError).toBeTruthy();
 				expect(address).toEqual([]);
 				expect(family).toBeUndefined();

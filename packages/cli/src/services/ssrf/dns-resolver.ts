@@ -4,10 +4,18 @@ import type { LookupAddress, LookupOptions } from 'node:dns';
 
 import { InMemoryDnsCache } from './in-memory-dns-cache.service';
 
-export type DnsLookupOptions = Pick<LookupOptions, 'all' | 'family' | 'order' | 'hints'>;
+export type DnsLookupOptions = Pick<
+	LookupOptions,
+	'all' | 'family' | 'order' | 'verbatim' | 'hints'
+>;
 
-type NormalizedLookupOptions = Required<Omit<DnsLookupOptions, 'hints'>> &
-	Pick<LookupOptions, 'hints'>;
+interface NormalizedLookupOptions {
+	all: boolean;
+	family: 4 | 6 | 0;
+	order?: LookupOptions['order'];
+	verbatim?: boolean;
+	hints?: number;
+}
 
 /** We don't get the TTL for the records from `dns.lookup`, so we use a short, conservative TTL */
 const LOOKUP_CACHE_TTL_SECONDS = 1;
@@ -65,6 +73,7 @@ export class DnsResolver {
 				all: true,
 				family: options.family,
 				order: options.order,
+				verbatim: options.verbatim,
 				hints: options.hints,
 			});
 			return records;
@@ -74,6 +83,7 @@ export class DnsResolver {
 			all: false,
 			family: options.family,
 			order: options.order,
+			verbatim: options.verbatim,
 			hints: options.hints,
 		});
 
@@ -81,14 +91,17 @@ export class DnsResolver {
 	}
 
 	private buildCacheKey(hostname: string, options: NormalizedLookupOptions): string {
-		return `${hostname}|a:${options.all ? '1' : '0'}|f:${options.family}|o:${options.order}|h:${options.hints ?? 0}`;
+		const order = options.order ?? '-';
+		const verbatim = options.verbatim === undefined ? '-' : options.verbatim ? '1' : '0';
+		return `${hostname}|a:${options.all ? '1' : '0'}|f:${options.family}|o:${order}|v:${verbatim}|h:${options.hints ?? 0}`;
 	}
 
 	private normalizeOptions(options: DnsLookupOptions): NormalizedLookupOptions {
 		const all = options.all === true;
 		const family = this.normalizeIpFamily(options.family);
-		const order = options.order ?? 'verbatim';
-		return { all, family, order, hints: options.hints };
+		const order = options.order;
+		const verbatim = options.verbatim;
+		return { all, family, order, verbatim, hints: options.hints };
 	}
 
 	private normalizeIpFamily(family: DnsLookupOptions['family']): 4 | 6 | 0 {

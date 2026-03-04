@@ -1,10 +1,10 @@
 import { Logger } from '@n8n/backend-common';
 import { SsrfProtectionConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { ensureError } from 'n8n-workflow';
 import type { LookupAddress, LookupOptions } from 'node:dns';
 import { isIP } from 'node:net';
 import type { BlockList, LookupFunction } from 'node:net';
-import { ensureError } from 'n8n-workflow';
 
 import { DnsResolver } from './dns-resolver';
 import { HostnameMatcher } from './hostname-matcher';
@@ -145,7 +145,7 @@ export class SsrfProtectionService {
 				const first = resolved[0];
 				onResult(null, first.address, first.family);
 			} catch (error) {
-				onResult(ensureError(error), [], undefined);
+				onResult(ensureError(error), options.all ? [] : '', undefined);
 			}
 		};
 	}
