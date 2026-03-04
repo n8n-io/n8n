@@ -176,6 +176,21 @@ describe('WorkflowBuilderSessionRepository', () => {
 			});
 		});
 
+		it('should fall back to update on concurrent insert conflict', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 0 } as never);
+			entityManager.insert.mockRejectedValueOnce(new Error('unique constraint'));
+			entityManager.update.mockResolvedValueOnce({ affected: 1 } as never);
+
+			await repository.saveSession(validThreadId, {
+				messages: [],
+				previousSummary: 'Summary',
+				updatedAt: new Date(),
+			});
+
+			expect(entityManager.update).toHaveBeenCalledTimes(2);
+			expect(entityManager.insert).toHaveBeenCalledTimes(1);
+		});
+
 		it('should set previousSummary to null when undefined', async () => {
 			entityManager.update.mockResolvedValueOnce({ affected: 1 } as never);
 

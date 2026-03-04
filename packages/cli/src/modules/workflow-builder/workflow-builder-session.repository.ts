@@ -49,7 +49,12 @@ export class WorkflowBuilderSessionRepository
 		const result = await this.update({ workflowId, userId }, { messages, previousSummary });
 
 		if (result.affected === 0) {
-			await this.insert({ id: randomUUID(), workflowId, userId, messages, previousSummary });
+			try {
+				await this.insert({ id: randomUUID(), workflowId, userId, messages, previousSummary });
+			} catch {
+				// Unique constraint violation from a concurrent insert — row now exists, update it
+				await this.update({ workflowId, userId }, { messages, previousSummary });
+			}
 		}
 	}
 
