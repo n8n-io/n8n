@@ -1185,6 +1185,92 @@ describe('RunData', () => {
 		});
 	});
 
+	describe('redacted execution state', () => {
+		it('should render data-redacted slot when execution is redacted and node has run', () => {
+			const { queryByTestId } = render({
+				defaultRunItems: [{ json: {} }],
+				displayMode: 'table',
+				redactionInfo: { isRedacted: true, reason: 'workflow_redaction_policy', canReveal: true },
+			});
+
+			expect(queryByTestId('data-redacted-slot')).toBeInTheDocument();
+		});
+
+		it('should NOT render data-redacted slot when execution is not redacted', () => {
+			const { queryByTestId } = render({
+				defaultRunItems: [{ json: { name: 'Test' } }],
+				displayMode: 'table',
+			});
+
+			expect(queryByTestId('data-redacted-slot')).not.toBeInTheDocument();
+		});
+
+		it('should show pinned data instead of redacted state when data is pinned', () => {
+			const { queryByTestId } = render({
+				defaultRunItems: [{ json: {} }],
+				displayMode: 'table',
+				pinnedData: [{ json: { name: 'Pinned' } }],
+				redactionInfo: { isRedacted: true, reason: 'workflow_redaction_policy', canReveal: true },
+			});
+
+			// Pinned data takes priority — redacted slot should NOT render
+			expect(queryByTestId('data-redacted-slot')).not.toBeInTheDocument();
+		});
+
+		it('should render data-redacted slot with dynamic_credentials reason', () => {
+			const { queryByTestId } = render({
+				defaultRunItems: [{ json: {} }],
+				displayMode: 'table',
+				redactionInfo: { isRedacted: true, reason: 'dynamic_credentials', canReveal: false },
+			});
+
+			expect(queryByTestId('data-redacted-slot')).toBeInTheDocument();
+		});
+
+		it('should hide edit button when execution is redacted', () => {
+			const { queryByTestId } = render({
+				defaultRunItems: [{ json: {} }],
+				displayMode: 'table',
+				redactionInfo: { isRedacted: true, reason: 'workflow_redaction_policy', canReveal: true },
+			});
+
+			expect(queryByTestId('ndv-edit-pinned-data')).not.toBeInTheDocument();
+		});
+
+		it('should show error view instead of redacted state when node has run error', () => {
+			const { queryByTestId, getByTestId } = render({
+				displayMode: 'table',
+				paneType: 'output',
+				runs: [
+					{
+						startTime: Date.now(),
+						executionIndex: 0,
+						executionTime: 1,
+						data: {
+							main: [[{ json: {} }]],
+						},
+						source: [null],
+						error: {
+							level: 'error',
+							message: 'Test error',
+							node: {
+								name: 'Test Node',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 3,
+								position: [0, 0],
+							},
+						} as never,
+					},
+				],
+				redactionInfo: { isRedacted: true, reason: 'workflow_redaction_policy', canReveal: true },
+			});
+
+			// Error takes priority over redacted state
+			expect(queryByTestId('data-redacted-slot')).not.toBeInTheDocument();
+			expect(getByTestId('node-error-view')).toBeInTheDocument();
+		});
+	});
+
 	// Default values for the render function
 	const nodes = [
 		{
@@ -1208,6 +1294,7 @@ describe('RunData', () => {
 		runs,
 		overrideOutputs,
 		lastSuccessfulExecution,
+		redactionInfo,
 	}: {
 		defaultRunItems?: INodeExecutionData[];
 		workflowId?: string;
@@ -1218,6 +1305,7 @@ describe('RunData', () => {
 		metadata?: ITaskMetadata;
 		runs?: ITaskData[];
 		overrideOutputs?: number[];
+		redactionInfo?: { isRedacted: boolean; reason: string; canReveal: boolean };
 		lastSuccessfulExecution?: {
 			id: string;
 			finished: boolean;
@@ -1273,6 +1361,7 @@ describe('RunData', () => {
 									'Test Node': runs ?? [defaultRun],
 								},
 							},
+							...(redactionInfo ? { redactionInfo } : {}),
 						},
 					},
 					lastSuccessfulExecution: lastSuccessfulExecution ?? null,
@@ -1366,6 +1455,9 @@ describe('RunData', () => {
 				executingMessage: '',
 				noDataInBranchMessage: '',
 				overrideOutputs,
+			},
+			slots: {
+				'data-redacted': '<div data-test-id="data-redacted-slot">Data is redacted</div>',
 			},
 			pinia,
 		});

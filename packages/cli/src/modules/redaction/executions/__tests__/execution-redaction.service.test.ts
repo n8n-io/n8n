@@ -55,6 +55,7 @@ describe('ExecutionRedactionService', () => {
 			policy?: 'none' | 'all' | 'non-manual';
 			workflowSettingsPolicy?: 'none' | 'all' | 'non-manual';
 			withRuntimeData?: boolean;
+			withDynamicCredentials?: boolean;
 		} = {},
 	): RedactableExecution => {
 		const {
@@ -63,6 +64,7 @@ describe('ExecutionRedactionService', () => {
 			policy,
 			workflowSettingsPolicy,
 			withRuntimeData = true,
+			withDynamicCredentials = false,
 		} = overrides;
 
 		const executionData: IRunExecutionData['executionData'] = {
@@ -79,6 +81,14 @@ describe('ExecutionRedactionService', () => {
 				establishedAt: Date.now(),
 				source: mode,
 				redaction: { version: 1 as const, policy },
+				...(withDynamicCredentials ? { credentials: 'encrypted-credential-context' } : {}),
+			};
+		} else if (withDynamicCredentials) {
+			executionData.runtimeData = {
+				version: 1 as const,
+				establishedAt: Date.now(),
+				source: mode,
+				credentials: 'encrypted-credential-context',
 			};
 		}
 
@@ -471,6 +481,85 @@ describe('ExecutionRedactionService', () => {
 		it('defaults to none when both runtimeData and workflow settings are missing', async () => {
 			const execution = makeExecution({ withRuntimeData: false, mode: 'trigger' });
 			await service.processExecution(execution, { user: mockUser });
+			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('dynamic credentials forced redaction', () => {
+		it('includes FullItemRedactionStrategy even when policy is none', async () => {
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				withDynamicCredentials: true,
+			});
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
+		});
+
+		it('passes userCanReveal: false regardless of permissions', async () => {
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(
+				new Set(['workflow-123']),
+			);
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				withDynamicCredentials: true,
+			});
+			await service.processExecution(execution, { user: mockUser });
+
+			const [, context] = fullItemRedactionStrategy.apply.mock.calls[0];
+			expect(context.userCanReveal).toBe(false);
+		});
+
+		it('overrides redactionInfo reason to dynamic_credentials', async () => {
+			// Simulate FullItemRedactionStrategy setting redactionInfo
+			fullItemRedactionStrategy.apply.mockImplementation(async (exec) => {
+				exec.data.redactionInfo = {
+					isRedacted: true,
+					reason: 'user_requested',
+					canReveal: false,
+				};
+			});
+
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				withDynamicCredentials: true,
+			});
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(execution.data.redactionInfo).toEqual({
+				isRedacted: true,
+				reason: 'dynamic_credentials',
+				canReveal: false,
+			});
+		});
+
+		it('throws ForbiddenError on reveal path', async () => {
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(
+				new Set(['workflow-123']),
+			);
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				withDynamicCredentials: true,
+			});
+
+			await expect(
+				service.processExecution(execution, { user: mockUser, redactExecutionData: false }),
+			).rejects.toThrow(ForbiddenError);
+		});
+
+		it('does not force-redact when execution has no dynamic credentials', async () => {
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				withDynamicCredentials: false,
+			});
+			await service.processExecution(execution, { user: mockUser });
+
+			// policy=none, no dynamic creds → no FullItemRedactionStrategy
 			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
 		});
 	});

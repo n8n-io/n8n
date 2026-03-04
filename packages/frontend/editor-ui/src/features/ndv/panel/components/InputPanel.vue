@@ -5,6 +5,7 @@ import { CRON_NODE_TYPE, INTERVAL_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from '@/
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { waitingNodeTooltip } from '@/features/execution/executions/executions.utils';
+import { useExecutionRedaction } from '@/features/execution/executions/composables/useExecutionRedaction';
 import uniqBy from 'lodash/uniqBy';
 import {
 	type INodeInputConfiguration,
@@ -26,7 +27,14 @@ import { type SearchShortcut } from '@/features/workflows/canvas/canvas.types';
 import { useRouter } from 'vue-router';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 
-import { N8nIcon, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nIcon,
+	N8nLink,
+	N8nRadioButtons,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 type MappingMode = 'debugging' | 'mapping';
 
@@ -100,6 +108,7 @@ const workflowsStore = useWorkflowsStore();
 const workflowState = injectWorkflowState();
 const router = useRouter();
 const { runWorkflow } = useRunWorkflow({ router });
+const { canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
 
 const activeNode = computed(() => workflowsStore.getNodeByName(props.activeNodeName));
 
@@ -650,6 +659,34 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 		<template #recovered-artificial-output-data>
 			<NDVEmptyState :title="i18n.baseText('executionDetails.executionFailed.recoveredNodeTitle')">
 				{{ i18n.baseText('executionDetails.executionFailed.recoveredNodeMessage') }}
+			</NDVEmptyState>
+		</template>
+
+		<template #data-redacted>
+			<NDVEmptyState
+				icon="lock"
+				:title="i18n.baseText('ndv.input.redacted.title')"
+				data-test-id="ndv-data-redacted"
+			>
+				<template v-if="isDynamicCredentials">
+					{{ i18n.baseText('ndv.redacted.dynamicCredentials.description') }}
+				</template>
+				<template v-else>
+					<I18nT keypath="ndv.redacted.description" tag="span" scope="global">
+						<template #link>
+							<N8nLink size="small">{{ i18n.baseText('ndv.redacted.description.link') }}</N8nLink>
+						</template>
+					</I18nT>
+				</template>
+				<template v-if="canReveal" #actions>
+					<N8nButton
+						:label="i18n.baseText('ndv.redacted.revealButton')"
+						type="secondary"
+						size="small"
+						data-test-id="ndv-reveal-redacted-data"
+						@click="revealData"
+					/>
+				</template>
 			</NDVEmptyState>
 		</template>
 	</RunData>

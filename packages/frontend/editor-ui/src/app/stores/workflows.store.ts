@@ -1534,8 +1534,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		);
 	}
 
-	async function fetchExecutionDataById(executionId: string): Promise<IExecutionResponse | null> {
-		return await workflowsApi.getExecutionData(rootStore.restApiContext, executionId);
+	async function fetchExecutionDataById(
+		executionId: string,
+		queryParams?: { redactExecutionData?: boolean },
+	): Promise<IExecutionResponse | null> {
+		return await workflowsApi.getExecutionData(rootStore.restApiContext, executionId, queryParams);
 	}
 
 	function deleteExecution(execution: ExecutionSummary): void {

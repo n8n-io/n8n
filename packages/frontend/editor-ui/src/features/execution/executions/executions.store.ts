@@ -190,11 +190,15 @@ export const useExecutionsStore = defineStore('executions', () => {
 		}
 	}
 
-	async function fetchExecution(id: string): Promise<IExecutionResponse | undefined> {
+	async function fetchExecution(
+		id: string,
+		queryParams?: { redactExecutionData?: boolean },
+	): Promise<IExecutionResponse | undefined> {
 		const response = await makeRestApiRequest<IExecutionFlattedResponse>(
 			rootStore.restApiContext,
 			'GET',
 			`/executions/${id}`,
+			queryParams,
 		);
 
 		return response ? unflattenExecutionData(response) : undefined;

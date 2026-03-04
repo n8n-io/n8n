@@ -101,11 +101,16 @@ export async function getExecutions(
 	return await makeRestApiRequest(context, 'GET', '/executions', { filter, ...options });
 }
 
-export async function getExecutionData(context: IRestApiContext, executionId: string) {
+export async function getExecutionData(
+	context: IRestApiContext,
+	executionId: string,
+	queryParams?: { redactExecutionData?: boolean },
+) {
 	return await makeRestApiRequest<IExecutionResponse | null>(
 		context,
 		'GET',
 		`/executions/${executionId}`,
+		queryParams,
 	);
 }
 

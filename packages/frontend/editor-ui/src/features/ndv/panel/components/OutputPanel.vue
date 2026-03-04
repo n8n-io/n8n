@@ -18,10 +18,18 @@ import { CanvasNodeDirtiness } from '@/features/workflows/canvas/canvas.types';
 import { type IRunDataDisplayMode } from '@/Interface';
 import { I18nT } from 'vue-i18n';
 import { useExecutionData } from '@/features/execution/executions/composables/useExecutionData';
+import { useExecutionRedaction } from '@/features/execution/executions/composables/useExecutionRedaction';
 import NDVEmptyState from '@/features/ndv/panel/components/NDVEmptyState.vue';
 import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 
-import { N8nIcon, N8nRadioButtons, N8nSpinner, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nIcon,
+	N8nLink,
+	N8nRadioButtons,
+	N8nSpinner,
+	N8nText,
+} from '@n8n/design-system';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 // Types
 
@@ -107,6 +115,7 @@ const node = computed(() => {
 	return ndvStore.activeNode ?? undefined;
 });
 const { hasNodeRun, workflowExecution, workflowRunData } = useExecutionData({ node });
+const { canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
 
 const isTriggerNode = computed(() => {
 	return !!node.value && nodeTypesStore.isTriggerNode(node.value.type);
@@ -488,6 +497,34 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 		<template #recovered-artificial-output-data>
 			<NDVEmptyState :title="i18n.baseText('executionDetails.executionFailed.recoveredNodeTitle')">
 				{{ i18n.baseText('executionDetails.executionFailed.recoveredNodeMessage') }}
+			</NDVEmptyState>
+		</template>
+
+		<template #data-redacted>
+			<NDVEmptyState
+				icon="lock"
+				:title="i18n.baseText('ndv.output.redacted.title')"
+				data-test-id="ndv-data-redacted"
+			>
+				<template v-if="isDynamicCredentials">
+					{{ i18n.baseText('ndv.redacted.dynamicCredentials.description') }}
+				</template>
+				<template v-else>
+					<I18nT keypath="ndv.redacted.description" tag="span" scope="global">
+						<template #link>
+							<N8nLink size="small">{{ i18n.baseText('ndv.redacted.description.link') }}</N8nLink>
+						</template>
+					</I18nT>
+				</template>
+				<template v-if="canReveal" #actions>
+					<N8nButton
+						:label="i18n.baseText('ndv.redacted.revealButton')"
+						type="secondary"
+						size="small"
+						data-test-id="ndv-reveal-redacted-data"
+						@click="revealData"
+					/>
+				</template>
 			</NDVEmptyState>
 		</template>
 

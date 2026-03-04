@@ -183,6 +183,7 @@ defineSlots<{
 	'node-not-run': {};
 	'no-output-data': {};
 	'recovered-artificial-output-data': {};
+	'data-redacted': {};
 }>();
 
 const emit = defineEmits<{
@@ -423,6 +424,10 @@ const dataCount = computed(() =>
 
 const isTrimmedManualExecutionDataItem = computed(() =>
 	workflowRunData.value ? hasTrimmedRunData(workflowRunData.value) : false,
+);
+
+const isExecutionRedacted = computed(
+	() => workflowExecution.value?.redactionInfo?.isRedacted === true && !pinnedData.hasData.value,
 );
 
 const unfilteredDataCount = computed(() =>
@@ -1527,7 +1532,13 @@ defineExpose({ enterEditMode });
 				<N8nIconButton
 					variant="subtle"
 					size="small"
-					v-if="!props.disableEdit && canPinData && !isReadOnlyRoute && !readOnlyEnv"
+					v-if="
+						!props.disableEdit &&
+						canPinData &&
+						!isReadOnlyRoute &&
+						!readOnlyEnv &&
+						!isExecutionRedacted
+					"
 					v-show="!editMode.enabled"
 					:title="i18n.baseText('runData.editOutput')"
 					:circle="false"
@@ -1792,6 +1803,10 @@ defineExpose({ enterEditMode });
 					:compact="compact"
 					show-details
 				/>
+			</div>
+
+			<div v-else-if="hasNodeRun && isExecutionRedacted" :class="$style.center">
+				<slot name="data-redacted"></slot>
 			</div>
 
 			<div v-else-if="shouldShowNoDataInBranch" :class="$style.center">
