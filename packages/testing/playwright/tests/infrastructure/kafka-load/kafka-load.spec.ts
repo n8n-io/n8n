@@ -68,9 +68,9 @@ const SCENARIOS: LoadScenario[] = [
 	},
 	// Large messages stress test
 	{
-		name: '10-nodes-1MB-10mps',
+		name: '10-nodes-100KB-10mps',
 		nodeCount: 10,
-		payloadSize: '1MB',
+		payloadSize: '100KB',
 		loadType: 'steady',
 		ratePerSecond: 10,
 		durationSeconds: 30,

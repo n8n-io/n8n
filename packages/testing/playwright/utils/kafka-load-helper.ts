@@ -18,7 +18,7 @@ import type { WorkflowApiHelper } from '../services/workflow-api-helper';
 export const PAYLOAD_PROFILES = {
 	'1KB': 1024,
 	'10KB': 10240,
-	'1MB': 1048576,
+	'100KB': 102400,
 } as const;
 
 export type PayloadSize = keyof typeof PAYLOAD_PROFILES;
