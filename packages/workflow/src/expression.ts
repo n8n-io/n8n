@@ -200,14 +200,6 @@ export class Expression {
 	}
 
 	/**
-	 * Check if VM evaluator is configured but not initialized.
-	 * @private
-	 */
-	private static isVmNotInitialized(): boolean {
-		return this.expressionEngine === 'vm' && !IS_FRONTEND && !this.vmEvaluator;
-	}
-
-	/**
 	 * Initialize the VM evaluator (if feature flag is enabled).
 	 * Should be called once during application startup.
 	 * Only available in Node.js environments (not in browser).
@@ -518,15 +510,14 @@ export class Expression {
 	}
 
 	private renderExpression(expression: string, data: IWorkflowDataProxyData) {
-		// Safety check: If VM engine is configured but not initialized
-		if (Expression.isVmNotInitialized()) {
-			throw new UnexpectedError(
-				'N8N_EXPRESSION_ENGINE=vm is enabled but VM evaluator is not initialized. Call Expression.initializeVmEvaluator() during application startup.',
-			);
-		}
+		// Use VM evaluator if engine is set to 'vm' and we're not in the browser
+		if (Expression.expressionEngine === 'vm' && !IS_FRONTEND) {
+			if (!Expression.vmEvaluator) {
+				throw new UnexpectedError(
+					'N8N_EXPRESSION_ENGINE=vm is enabled but VM evaluator is not initialized. Call Expression.initializeVmEvaluator() during application startup.',
+				);
+			}
 
-		// Use VM evaluator if available
-		if (Expression.shouldUseVm() && Expression.vmEvaluator) {
 			try {
 				const result = Expression.vmEvaluator.evaluate(expression, data);
 				return result as string | null | (() => unknown);
