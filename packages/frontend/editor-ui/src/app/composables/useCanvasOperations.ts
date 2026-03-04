@@ -2788,7 +2788,7 @@ export function useCanvasOperations() {
 			) {
 				nodeSaveData.credentials = filterAllowedCredentials(
 					nodeSaveData.credentials,
-					workflowsStore.usedCredentials,
+					workflowDocumentStore?.usedCredentials ?? {},
 				);
 			}
 

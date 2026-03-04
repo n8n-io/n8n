@@ -136,7 +136,7 @@ function hasActiveNodeUsingCredential(nodes: INodeUi[], credentialId: string): b
  *
  */
 const shouldShowFreeAiCreditsWarning = computed((): boolean => {
-	const usedCredentials = workflowsStore?.usedCredentials;
+	const usedCredentials = workflowDocumentStore.value?.usedCredentials;
 	if (!usedCredentials) return false;
 
 	const managedOpenAiCredentialId = findManagedOpenAiCredentialId(usedCredentials);
