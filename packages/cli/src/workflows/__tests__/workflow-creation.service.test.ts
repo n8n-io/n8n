@@ -147,7 +147,7 @@ describe('WorkflowCreationService', () => {
 			projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
 			licenseStateMock.isSharingLicensed.mockReturnValue(false);
 			userHasScopesMock.mockResolvedValue(false);
-			setupTransactionMocks();
+			const { transactionManager } = setupTransactionMocks();
 
 			const user = mock<User>();
 			const newWorkflow = new WorkflowEntity();
@@ -169,6 +169,9 @@ describe('WorkflowCreationService', () => {
 				false,
 				{ projectId: 'project-1' },
 			);
+
+			const savedEntity = transactionManager.save.mock.calls[0][0] as WorkflowEntity;
+			expect(savedEntity.settings?.redactionPolicy).toBeUndefined();
 		});
 
 		it('should preserve redactionPolicy when user has scope', async () => {
