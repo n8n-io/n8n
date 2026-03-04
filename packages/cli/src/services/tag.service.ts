@@ -56,6 +56,7 @@ export class TagService {
 						isArchived: false,
 					}),
 				)
+				.orderBy('tag.name', 'ASC')
 				.getMany();
 
 			return tags as GetAllResult<T>;
@@ -63,6 +64,7 @@ export class TagService {
 
 		return await (this.tagRepository.find({
 			select: ['id', 'name', 'createdAt', 'updatedAt'],
+			order: { name: 'ASC' },
 		}) as Promise<GetAllResult<T>>);
 	}
 

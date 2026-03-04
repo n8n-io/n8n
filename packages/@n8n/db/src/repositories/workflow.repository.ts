@@ -10,6 +10,7 @@ import type {
 	FindManyOptions,
 	FindOptionsRelations,
 	EntityManager,
+	FindOneOptions,
 } from '@n8n/typeorm';
 import { PROJECT_ROOT, UserError } from 'n8n-workflow';
 
@@ -130,6 +131,16 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			where: { id: workflowId },
 			relations: { shared: { project: true }, activeVersion: true },
 		});
+	}
+
+	async findOneWithOrderedTags(findOptions: FindOneOptions<WorkflowEntity>) {
+		const workflow = await this.findOne(findOptions);
+
+		if (workflow?.tags) {
+			workflow.tags = workflow.tags.sort((a, b) => a.name.localeCompare(b.name));
+		}
+
+		return workflow;
 	}
 
 	async findByIds(workflowIds: string[], { fields }: { fields?: string[] } = {}) {
@@ -668,6 +679,12 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			| ListQueryDb.Workflow.Plain[]
 			| ListQueryDb.Workflow.WithSharing[];
 
+		workflows.forEach((workflow) => {
+			if (workflow.tags?.length) {
+				workflow.tags.sort((a, b) => a.name.localeCompare(b.name));
+			}
+		});
+
 		return workflows;
 	}
 
@@ -682,6 +699,12 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			ListQueryDb.Workflow.Plain[] | ListQueryDb.Workflow.WithSharing[],
 			number,
 		];
+
+		workflows.forEach((workflow) => {
+			if (workflow.tags?.length) {
+				workflow.tags.sort((a, b) => a.name.localeCompare(b.name));
+			}
+		});
 
 		return { workflows, count };
 	}
@@ -1218,7 +1241,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	private applyTagsRelation(qb: SelectQueryBuilder<WorkflowEntity>): void {
 		qb.leftJoin('workflow.tags', 'tags')
 			.addSelect(['tags.id', 'tags.name'])
-			.addOrderBy('tags.createdAt', 'ASC');
+			.addOrderBy('tags.name', 'ASC');
 	}
 
 	private applySorting(qb: SelectQueryBuilder<WorkflowEntity>, sortBy?: string): void {

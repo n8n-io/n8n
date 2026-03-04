@@ -60,4 +60,32 @@ describe('SharedWorkflowRepository', () => {
 			expect(result).toBe(12);
 		});
 	});
+
+	describe('findWorkflowWithOptions', () => {
+		it('should sort workflow tags alphabetically by name', async () => {
+			const sharedWorkflow = {
+				workflow: {
+					tags: [
+						{ id: 'tag2', name: 'beta' },
+						{ id: 'tag1', name: 'Alpha' },
+						{ id: 'tag3', name: 'charlie' },
+					],
+				},
+			} as SharedWorkflow;
+
+			const findOneSpy = jest
+				.spyOn(sharedWorkflowRepository.manager, 'findOne')
+				.mockResolvedValue(sharedWorkflow);
+
+			const result = await sharedWorkflowRepository.findWorkflowWithOptions('workflow1', {
+				includeTags: true,
+			});
+
+			const tagNames = result?.workflow.tags?.map((tag) => tag.name);
+			const expectedOrder = [...(tagNames ?? [])].sort((a, b) => a.localeCompare(b));
+
+			expect(tagNames).toEqual(expectedOrder);
+			expect(findOneSpy).toHaveBeenCalled();
+		});
+	});
 });

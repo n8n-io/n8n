@@ -59,7 +59,6 @@ import { hasSharing } from '@/requests';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
-import { TagService } from '@/services/tag.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { getBase as getWorkflowExecutionData } from '@/workflow-execute-additional-data';
 
@@ -76,7 +75,6 @@ export class WorkflowService {
 		private readonly workflowTagMappingRepository: WorkflowTagMappingRepository,
 		private readonly binaryDataService: BinaryDataService,
 		private readonly ownershipService: OwnershipService,
-		private readonly tagService: TagService,
 		private readonly workflowHistoryService: WorkflowHistoryService,
 		private readonly externalHooks: ExternalHooks,
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
@@ -464,7 +462,7 @@ export class WorkflowService {
 
 		// We sadly get nothing back from "update". Neither if it updated a record
 		// nor the new value. So query now the hopefully updated entry.
-		const updatedWorkflow = await this.workflowRepository.findOne({
+		const updatedWorkflow = await this.workflowRepository.findOneWithOrderedTags({
 			where: { id: workflowId },
 			relations,
 		});
@@ -475,11 +473,6 @@ export class WorkflowService {
 			);
 		}
 
-		if (updatedWorkflow.tags?.length && tagIds?.length) {
-			updatedWorkflow.tags = this.tagService.sortByRequestOrder(updatedWorkflow.tags, {
-				requestOrder: tagIds,
-			});
-		}
 		await this.externalHooks.run('workflow.afterUpdate', [updatedWorkflow]);
 
 		const settingsChangesDetail = this.calculateSettingsChanges(

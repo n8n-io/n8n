@@ -266,6 +266,31 @@ describe('WorkflowRepository', () => {
 		});
 	});
 
+	describe('getManyAndCount', () => {
+		it('should sort tags alphabetically within each workflow', async () => {
+			const workflowIds = ['workflow1'];
+			const workflows = [
+				{
+					id: 'workflow1',
+					tags: [
+						{ id: 'tag2', name: 'beta' },
+						{ id: 'tag1', name: 'Alpha' },
+						{ id: 'tag3', name: 'charlie' },
+					],
+				},
+			] as WorkflowEntity[];
+
+			queryBuilder.getManyAndCount.mockResolvedValue([workflows, 1]);
+
+			const result = await workflowRepository.getManyAndCount(workflowIds);
+
+			const tagNames = result.workflows[0].tags?.map((tag) => tag.name);
+			const expectedOrder = [...(tagNames ?? [])].sort((a, b) => a.localeCompare(b));
+
+			expect(tagNames).toEqual(expectedOrder);
+		});
+	});
+
 	describe('applyActiveVersionRelation', () => {
 		it('should join activeVersion relation when select.activeVersion is true', async () => {
 			const workflowIds = ['workflow1'];

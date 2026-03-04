@@ -67,7 +67,6 @@ import * as ResponseHelper from '@/response-helper';
 import { FolderService } from '@/services/folder.service';
 import { NamingService } from '@/services/naming.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { TagService } from '@/services/tag.service';
 import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
 import * as WorkflowHelpers from '@/workflow-helpers';
@@ -80,7 +79,6 @@ export class WorkflowsController {
 		private readonly tagRepository: TagRepository,
 		private readonly enterpriseWorkflowService: EnterpriseWorkflowService,
 		private readonly workflowHistoryService: WorkflowHistoryService,
-		private readonly tagService: TagService,
 		private readonly namingService: NamingService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowService: WorkflowService,
@@ -244,12 +242,6 @@ export class WorkflowsController {
 		if (!savedWorkflow) {
 			this.logger.error('Failed to create workflow', { userId: req.user.id });
 			throw new InternalServerError('Failed to save workflow');
-		}
-
-		if (tagIds && !this.globalConfig.tags.disabled && savedWorkflow.tags) {
-			savedWorkflow.tags = this.tagService.sortByRequestOrder(savedWorkflow.tags, {
-				requestOrder: tagIds,
-			});
 		}
 
 		const savedWorkflowWithMetaData =

@@ -179,7 +179,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 			em = this.manager,
 		} = options;
 
-		return await em.findOne(SharedWorkflow, {
+		const sharedWorkflow = await em.findOne(SharedWorkflow, {
 			where: {
 				workflowId,
 				...where,
@@ -193,5 +193,13 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 				},
 			},
 		});
+
+		if (sharedWorkflow?.workflow?.tags) {
+			sharedWorkflow.workflow.tags = sharedWorkflow.workflow.tags.sort((a, b) =>
+				a.name.localeCompare(b.name),
+			);
+		}
+
+		return sharedWorkflow;
 	}
 }
