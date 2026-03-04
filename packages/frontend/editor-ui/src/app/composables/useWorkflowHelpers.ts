@@ -982,7 +982,6 @@ export function useWorkflowHelpers() {
 			name: null,
 			description: null,
 		});
-		ws.setWorkflowScopes(workflowData.scopes);
 
 		if ('activeVersion' in workflowData) {
 			workflowsStore.setWorkflowActiveVersion(workflowData.activeVersion ?? null);
@@ -1043,6 +1042,7 @@ export function useWorkflowHelpers() {
 			workflowDocumentStore.setChecksum(workflowData.checksum);
 		}
 		workflowDocumentStore.setMeta(workflowData.meta);
+		workflowDocumentStore.setScopes(workflowData.scopes ?? []);
 		tagsStore.upsertTags(tags);
 
 		return { workflowDocumentStore };

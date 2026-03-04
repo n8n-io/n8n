@@ -4848,10 +4848,7 @@ describe('useCanvasOperations', () => {
 				},
 			};
 
-			const getNewWorkflowDataAndMakeShareable = vi.spyOn(
-				workflowState,
-				'getNewWorkflowDataAndMakeShareable',
-			);
+			const getNewWorkflowData = vi.spyOn(workflowState, 'getNewWorkflowData');
 
 			const { importTemplate } = useCanvasOperations();
 
@@ -4874,10 +4871,7 @@ describe('useCanvasOperations', () => {
 				disabled: false,
 			});
 			expect(workflowsStore.setNodePristine).toHaveBeenCalledWith(nodeB.name, true);
-			expect(getNewWorkflowDataAndMakeShareable).toHaveBeenCalledWith(
-				templateName,
-				projectsStore.currentProjectId,
-			);
+			expect(getNewWorkflowData).toHaveBeenCalledWith(templateName, projectsStore.currentProjectId);
 		});
 	});
 	describe('replaceNodeParameters', () => {
@@ -5521,19 +5515,13 @@ describe('useCanvasOperations', () => {
 				workflow: { nodes: [], connections: {} },
 			});
 
-			const getNewWorkflowDataAndMakeShareable = vi.spyOn(
-				workflowState,
-				'getNewWorkflowDataAndMakeShareable',
-			);
+			const getNewWorkflowData = vi.spyOn(workflowState, 'getNewWorkflowData');
 
 			const { openWorkflowTemplate } = useCanvasOperations();
 			await openWorkflowTemplate('template-id');
 
 			expect(templatesStore.getFixedWorkflowTemplate).toHaveBeenCalledWith('template-id');
-			expect(getNewWorkflowDataAndMakeShareable).toHaveBeenCalledWith(
-				'Template Name',
-				'test-project-id',
-			);
+			expect(getNewWorkflowData).toHaveBeenCalledWith('Template Name', 'test-project-id');
 
 			expect(telemetry.track).toHaveBeenCalledWith('User inserted workflow template', {
 				source: 'workflow',
@@ -5589,18 +5577,12 @@ describe('useCanvasOperations', () => {
 				meta: { templateId: 'template-id' },
 			};
 
-			const getNewWorkflowDataAndMakeShareable = vi.spyOn(
-				workflowState,
-				'getNewWorkflowDataAndMakeShareable',
-			);
+			const getNewWorkflowData = vi.spyOn(workflowState, 'getNewWorkflowData');
 
 			const { openWorkflowTemplateFromJSON } = useCanvasOperations();
 			await openWorkflowTemplateFromJSON(template);
 
-			expect(getNewWorkflowDataAndMakeShareable).toHaveBeenCalledWith(
-				'Template Name',
-				'test-project-id',
-			);
+			expect(getNewWorkflowData).toHaveBeenCalledWith('Template Name', 'test-project-id');
 
 			expect(router.replace).toHaveBeenCalledWith({
 				name: VIEWS.NEW_WORKFLOW,
