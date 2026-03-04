@@ -1,0 +1,106 @@
+import { CredentialsEntity } from '@n8n/db';
+import { Service } from '@n8n/di';
+import { Logger } from '@n8n/backend-common';
+import type {
+	CredentialGateResult,
+	CredentialGateStatus,
+	DynamicCredentialGateProxyProvider,
+	IExecutionContext,
+} from 'n8n-workflow';
+
+import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
+import { CreateCsrfStateData, OauthService } from '@/oauth/oauth.service';
+
+import { ExecutionContextService } from 'n8n-core';
+import { CredentialResolverWorkflowService } from './credential-resolver-workflow.service';
+
+@Service()
+export class CredentialGateProxyService implements DynamicCredentialGateProxyProvider {
+	constructor(
+		private readonly credentialResolverWorkflowService: CredentialResolverWorkflowService,
+		private readonly executionContextService: ExecutionContextService,
+		private readonly oauthService: OauthService,
+		private readonly enterpriseCredentialsService: EnterpriseCredentialsService,
+		private readonly logger: Logger,
+	) {}
+
+	async checkCredentialGate(
+		workflowId: string,
+		executionContext: IExecutionContext,
+	): Promise<CredentialGateResult> {
+		const plaintext = this.executionContextService.decryptExecutionContext(executionContext);
+
+		if (!plaintext.credentials) {
+			throw new Error('No credential context found in execution context');
+		}
+
+		const statuses = await this.credentialResolverWorkflowService.getWorkflowStatus(
+			workflowId,
+			plaintext.credentials,
+		);
+
+		const credentials: CredentialGateStatus[] = await Promise.all(
+			statuses.map(async (status) => {
+				const gateStatus: CredentialGateStatus = {
+					credentialId: status.credentialId,
+					credentialName: status.credentialName,
+					credentialType: status.credentialType,
+					resolverId: status.resolverId,
+					status: status.status,
+				};
+
+				if (status.status === 'missing') {
+					gateStatus.authorizationUrl = await this.generateAuthorizationUrl(
+						status.credentialId,
+						status.resolverId,
+						plaintext.credentials!,
+					);
+				}
+
+				return gateStatus;
+			}),
+		);
+
+		const readyToExecute = credentials.every((c) => c.status === 'configured');
+
+		return { readyToExecute, credentials };
+	}
+
+	private async generateAuthorizationUrl(
+		credentialId: string,
+		resolverId: string,
+		credentialContext: { identity?: string; metadata?: Record<string, unknown> },
+	): Promise<string | undefined> {
+		const credential = await this.enterpriseCredentialsService.getOne(credentialId);
+		if (!credential) return undefined;
+
+		const csrfData: CreateCsrfStateData = {
+			cid: credential.id,
+			origin: 'dynamic-credential',
+			authorizationHeader: credentialContext.identity ? `Bearer ${credentialContext.identity}` : '',
+			authMetadata: credentialContext.metadata,
+			credentialResolverId: resolverId,
+		};
+
+		const callerData: [CredentialsEntity, CreateCsrfStateData] = [credential, csrfData];
+
+		let authorizationUrl: string | undefined;
+
+		if (credential.type.toLowerCase().includes('oauth2')) {
+			authorizationUrl = await this.oauthService.generateAOauth2AuthUri(...callerData);
+		} else if (credential.type.toLowerCase().includes('oauth1')) {
+			authorizationUrl = await this.oauthService.generateAOauth1AuthUri(...callerData);
+		}
+
+		this.logger.debug('Credential gate generated authorization URL', {
+			credentialId,
+			credentialType: credential.type,
+			resolverId,
+			hasUrl: !!authorizationUrl,
+			// Log URL with state stripped for comparison with controller-generated URLs
+			urlWithoutState: authorizationUrl ? authorizationUrl.replace(/&?state=[^&]+/, '') : undefined,
+		});
+
+		return authorizationUrl;
+	}
+}
