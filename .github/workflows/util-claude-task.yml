@@ -30,7 +30,7 @@ on:
         description: 'Suppress console output and job summary'
         required: false
         type: boolean
-        default: false
+        default: true
       ref:
         description: 'Git ref (branch/tag/SHA) to check out and work on'
         required: false
