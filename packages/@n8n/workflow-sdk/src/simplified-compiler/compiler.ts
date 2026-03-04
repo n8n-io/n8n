@@ -11,6 +11,7 @@
  */
 
 import * as acorn from 'acorn';
+import { v4 as uuid } from 'uuid';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -809,7 +810,7 @@ function groupConsecutiveComments(comments: acorn.Comment[]): acorn.Comment[][] 
 // ─── Node Generation ─────────────────────────────────────────────────────────
 
 function generateId(): string {
-	return crypto.randomUUID();
+	return uuid();
 }
 
 function generateWorkflow(

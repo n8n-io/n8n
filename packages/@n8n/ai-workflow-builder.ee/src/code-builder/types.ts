@@ -129,4 +129,6 @@ export interface CodeBuilderAgentConfig {
 	 * Whether to generate pin data for new nodes. Defaults to true.
 	 */
 	generatePinData?: boolean;
+	/** Whether to use simplified JS syntax for first-generation workflows. */
+	useSimplifiedSyntax?: boolean;
 }

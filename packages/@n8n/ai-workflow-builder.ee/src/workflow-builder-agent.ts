@@ -115,6 +115,8 @@ export interface BuilderFeatureFlags {
 	enableIntrospection?: boolean;
 	/** Enable merged ask/build experience with assistant subgraph (default: false). */
 	mergeAskBuild?: boolean;
+	/** Enable simplified JS syntax for first-generation workflows. */
+	simplifiedCode?: boolean;
 }
 
 export interface ChatPayload {
@@ -321,6 +323,7 @@ export class WorkflowBuilderAgent {
 			},
 			onTelemetryEvent: this.onTelemetryEvent,
 			generatePinData: payload.featureFlags?.pinData ?? true,
+			useSimplifiedSyntax: payload.featureFlags?.simplifiedCode,
 		});
 
 		yield* codeWorkflowBuilder.chat(payload, userId ?? 'unknown', abortSignal);

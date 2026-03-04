@@ -7,7 +7,12 @@
  */
 
 import type { Logger } from '@n8n/backend-common';
-import { parseWorkflowCodeToBuilder, validateWorkflow, workflow } from '@n8n/workflow-sdk';
+import {
+	compileWorkflowJS,
+	parseWorkflowCodeToBuilder,
+	validateWorkflow,
+	workflow,
+} from '@n8n/workflow-sdk';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import type { ParseAndValidateResult, ValidationWarning } from '../types';
@@ -20,6 +25,8 @@ export interface ParseValidateHandlerConfig {
 	logger?: Logger;
 	/** Whether to generate pin data for new nodes. Defaults to true. */
 	generatePinData?: boolean;
+	/** Whether to use the simplified JS compiler instead of SDK parser. */
+	useSimplifiedSyntax?: boolean;
 }
 
 /**
@@ -40,10 +47,12 @@ interface ValidationIssue {
 export class ParseValidateHandler {
 	private logger?: Logger;
 	private generatePinData: boolean;
+	private useSimplifiedSyntax: boolean;
 
 	constructor(config: ParseValidateHandlerConfig = {}) {
 		this.logger = config.logger;
 		this.generatePinData = config.generatePinData ?? true;
+		this.useSimplifiedSyntax = config.useSimplifiedSyntax ?? false;
 	}
 
 	/**
@@ -124,6 +133,15 @@ export class ParseValidateHandler {
 		code: string,
 		currentWorkflow?: WorkflowJSON,
 	): Promise<ParseAndValidateResult> {
+		// Use simplified compiler when enabled
+		if (this.useSimplifiedSyntax) {
+			const result = compileWorkflowJS(code);
+			if (result.errors.length > 0) {
+				throw new Error(result.errors.map((e) => `Line ${e.line ?? '?'}: ${e.message}`).join('\n'));
+			}
+			return { workflow: result.workflow as WorkflowJSON, warnings: [] };
+		}
+
 		// Strip import statements before parsing - SDK functions are available as globals
 		const codeToParse = stripImportStatements(code);
 

@@ -18,6 +18,7 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import { TEXT_EDITOR_TOOL, VALIDATE_TOOL, BATCH_STR_REPLACE_TOOL } from '../constants';
 import { buildCodeBuilderPrompt, type HistoryContext } from '../prompts';
+import { buildSimplifiedCodeBuilderPrompt } from '../prompts/simplified-prompt';
 import { TextEditorHandler } from './text-editor-handler';
 import { TextEditorToolHandler } from './text-editor-tool-handler';
 import type { TextEditorCommand } from './text-editor.types';
@@ -52,6 +53,8 @@ export interface ChatSetupHandlerConfig {
 	getErrorContext: GetErrorContextFn;
 	nodeTypeParser?: NodeTypeParser;
 	logger?: Logger;
+	/** Use simplified JS syntax prompt for first-generation workflows */
+	useSimplifiedSyntax?: boolean;
 }
 
 /**
@@ -99,6 +102,7 @@ export class ChatSetupHandler {
 	private getErrorContext: GetErrorContextFn;
 	private nodeTypeParser?: NodeTypeParser;
 	private logger?: Logger;
+	private useSimplifiedSyntax?: boolean;
 
 	constructor(config: ChatSetupHandlerConfig) {
 		this.llm = config.llm;
@@ -107,6 +111,7 @@ export class ChatSetupHandler {
 		this.parseAndValidate = config.parseAndValidate;
 		this.getErrorContext = config.getErrorContext;
 		this.nodeTypeParser = config.nodeTypeParser;
+		this.useSimplifiedSyntax = config.useSimplifiedSyntax;
 		this.logger = config.logger;
 	}
 
@@ -136,18 +141,25 @@ export class ChatSetupHandler {
 		// Check if text editor mode should be enabled
 		const textEditorEnabled = this.shouldEnableTextEditor();
 
-		// Build prompt
-		const prompt = buildCodeBuilderPrompt(workflowForCodeContext, historyContext, {
-			enableTextEditor: textEditorEnabled,
-			executionSchema: payload.workflowContext?.executionSchema,
-			executionData: payload.workflowContext?.executionData,
-			expressionValues: payload.workflowContext?.expressionValues,
-			preGeneratedCode: preGeneratedWorkflowCode,
-			valuesExcluded: payload.workflowContext?.valuesExcluded,
-			pinnedNodes: payload.workflowContext?.pinnedNodes,
-			planOutput: payload.planOutput,
-			preSearchResults,
-		});
+		// Build prompt — use simplified prompt for first-generation when flag is set
+		const isFirstGeneration = !workflowForCodeContext;
+		const useSimplified = this.useSimplifiedSyntax && isFirstGeneration;
+
+		const prompt = useSimplified
+			? buildSimplifiedCodeBuilderPrompt(workflowForCodeContext, historyContext, {
+					planOutput: payload.planOutput,
+				})
+			: buildCodeBuilderPrompt(workflowForCodeContext, historyContext, {
+					enableTextEditor: textEditorEnabled,
+					executionSchema: payload.workflowContext?.executionSchema,
+					executionData: payload.workflowContext?.executionData,
+					expressionValues: payload.workflowContext?.expressionValues,
+					preGeneratedCode: preGeneratedWorkflowCode,
+					valuesExcluded: payload.workflowContext?.valuesExcluded,
+					pinnedNodes: payload.workflowContext?.pinnedNodes,
+					planOutput: payload.planOutput,
+					preSearchResults,
+				});
 
 		// Bind tools to LLM (exclude get_suggested_nodes when plan provides node suggestions)
 		const llmWithTools = this.bindToolsToLlm(textEditorEnabled, !!payload.planOutput);

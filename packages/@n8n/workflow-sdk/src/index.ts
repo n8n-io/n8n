@@ -179,6 +179,16 @@ export {
 	type SerializerPlugin,
 } from './workflow-builder/plugins';
 
+// Simplified JS compiler (http.*/ai.*/trigger.* syntax → WorkflowJSON)
+export { compileWorkflowJS, COMPILER_EXAMPLES } from './simplified-compiler';
+export type {
+	CompilerResult,
+	CompilerError,
+	CompilerExample,
+	WorkflowJSON as SimplifiedWorkflowJSON,
+	WorkflowNode as SimplifiedWorkflowNode,
+} from './simplified-compiler';
+
 // Node type constants
 export {
 	NODE_TYPES,

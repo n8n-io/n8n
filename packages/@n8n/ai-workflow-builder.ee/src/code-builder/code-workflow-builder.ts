@@ -71,6 +71,11 @@ export interface CodeWorkflowBuilderConfig {
 	 * Whether to generate pin data for new nodes. Defaults to true.
 	 */
 	generatePinData?: boolean;
+	/**
+	 * Whether to use simplified JS syntax for first-generation workflows.
+	 * When true and the canvas is empty, uses simplified prompt and compiler instead of SDK format.
+	 */
+	useSimplifiedSyntax?: boolean;
 }
 
 /**
@@ -100,6 +105,7 @@ export class CodeWorkflowBuilder {
 			runMetadata: config.runMetadata,
 			onTelemetryEvent: config.onTelemetryEvent,
 			generatePinData: config.generatePinData,
+			useSimplifiedSyntax: config.useSimplifiedSyntax,
 		});
 
 		this.logger = config.logger;

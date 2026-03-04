@@ -17,184 +17,43 @@ import {
 import { N8nOption, N8nSelect } from '@n8n/design-system';
 import { codeEditorTheme } from '@/features/shared/editors/components/CodeNodeEditor/theme';
 import { editorKeymap } from '@/features/shared/editors/plugins/codemirror/keymap';
-import { compileWorkflowJS, type CompilerResult, type WorkflowJSON } from './compiler';
 
-const EXAMPLES = [
-	{
-		label: 'Simple API Call',
-		code: `// @workflow "Simple API Call"
-trigger.manual()
+interface CompilerError {
+	message: string;
+	line?: number;
+	column?: number;
+}
 
-// Fetch users from the API
-const users = await http.get('https://jsonplaceholder.typicode.com/users');
+interface WorkflowNode {
+	id: string;
+	name: string;
+	type: string;
+	typeVersion: number;
+	position: [number, number];
+	parameters: Record<string, unknown>;
+}
 
-// Extract names and emails
-const contacts = users.map(u => ({
-  name: u.name,
-  email: u.email,
-  company: u.company.name,
-}));
+interface WorkflowJSON {
+	id: string;
+	name: string;
+	nodes: WorkflowNode[];
+	connections: Record<string, unknown>;
+}
 
-// Send results
-await http.post('https://httpbin.org/post', { contacts });
-`,
-	},
-	{
-		label: 'ETL Pipeline',
-		code: `// @workflow "ETL Pipeline"
-trigger.schedule({ every: '1h' })
+interface CompilerResult {
+	workflow: WorkflowJSON;
+	errors: CompilerError[];
+}
 
-// Extract: fetch raw data from multiple sources
-const users = await http.get('https://jsonplaceholder.typicode.com/users');
-const todos = await http.get('https://jsonplaceholder.typicode.com/todos');
+interface CompilerExample {
+	label: string;
+	code: string;
+}
 
-// Transform: enrich users with task completion rates
-const enriched = users.map(u => {
-  const userTodos = todos.filter(t => t.userId === u.id);
-  const completed = userTodos.filter(t => t.completed).length;
-  return {
-    name: u.name,
-    email: u.email,
-    city: u.address.city,
-    totalTasks: userTodos.length,
-    completedTasks: completed,
-    completionRate: Math.round((completed / userTodos.length) * 100),
-  };
-});
-
-// Transform: segment users by performance
-const highPerformers = enriched.filter(u => u.completionRate >= 70);
-const needsAttention = enriched.filter(u => u.completionRate < 30);
-
-// Load: send enriched data to the data warehouse
-await http.post('https://httpbin.org/post', {
-  enriched,
-  segments: { highPerformers, needsAttention },
-  processedAt: new Date().toISOString(),
-});
-`,
-	},
-	{
-		label: 'AI Content Pipeline',
-		code: `// @workflow "AI Content Pipeline"
-trigger.manual()
-
-// Fetch trending topics
-const posts = await http.get('https://jsonplaceholder.typicode.com/posts');
-
-// Pick the top 5 most discussed topics
-const topPosts = posts.slice(0, 5).map(p => p.title);
-
-// Generate a blog draft with AI
-const draft = await ai.chat('gpt-4o', 'Write a short blog post covering these topics: ' + topPosts.join(', '));
-
-// Generate social media snippets
-const social = await ai.chat('gpt-4o-mini', 'Turn this into 3 tweet-sized summaries: ' + draft);
-
-// Publish the content
-await http.post('https://httpbin.org/post', { draft, social });
-`,
-	},
-	{
-		label: 'Webhook Processor',
-		code: `// @workflow "Webhook Processor"
-trigger.webhook({ method: 'POST', path: '/orders' })
-
-// Validate the incoming order
-const order = await http.get('https://jsonplaceholder.typicode.com/posts/1');
-
-// Calculate totals
-const items = [
-  { name: 'Widget A', qty: 3, price: 9.99 },
-  { name: 'Widget B', qty: 1, price: 24.50 },
-];
-const subtotal = items.reduce((sum, i) => sum + i.qty * i.price, 0);
-const tax = Math.round(subtotal * 0.08 * 100) / 100;
-const total = subtotal + tax;
-
-// Build the invoice
-const invoice = {
-  orderId: order.id,
-  items,
-  subtotal,
-  tax,
-  total,
-  currency: 'USD',
-};
-
-// Send to payment processor
-await http.post('https://httpbin.org/post', { invoice });
-
-// Notify the customer
-await http.post('https://httpbin.org/post', {
-  to: 'customer@example.com',
-  subject: 'Order confirmed',
-  body: 'Your order total is $' + total.toFixed(2),
-});
-`,
-	},
-	{
-		label: 'AI Data Enrichment',
-		code: `// @workflow "AI Data Enrichment"
-trigger.schedule({ cron: '0 9 * * 1' })
-
-// Fetch this week's support tickets
-const tickets = await http.get('https://jsonplaceholder.typicode.com/comments');
-
-// Categorize tickets with AI
-const categories = await ai.chat('gpt-4o-mini', 'Classify each ticket into bug/feature/question: ' + JSON.stringify(tickets.slice(0, 10)));
-
-// Summarize the week for leadership
-const report = await ai.chat('gpt-4o', 'Write a weekly support summary from these categories: ' + categories);
-
-// Post the report to Slack
-await http.post('https://httpbin.org/post', {
-  channel: '#support-weekly',
-  text: report,
-});
-`,
-	},
-	{
-		label: 'Multi-Step Integration',
-		code: `// @workflow "CRM Sync"
-trigger.schedule({ every: '30m' })
-
-// Fetch new leads from the marketing platform
-const leads = await http.get('https://jsonplaceholder.typicode.com/users');
-
-// Fetch existing CRM contacts
-const existing = await http.get('https://jsonplaceholder.typicode.com/comments');
-
-// Find leads not yet in the CRM
-const existingEmails = new Set(existing.map(c => c.email));
-const newLeads = leads.filter(l => !existingEmails.has(l.email));
-
-// Score each new lead
-const scored = newLeads.map(lead => ({
-  name: lead.name,
-  email: lead.email,
-  company: lead.company.name,
-  score: lead.company.bs.split(' ').length * 10,
-  source: 'marketing',
-}));
-
-// Filter to high-value leads only
-const highValue = scored.filter(l => l.score >= 20);
-
-// Push high-value leads to the CRM
-await http.post('https://httpbin.org/post', { leads: highValue });
-
-// Notify the sales team
-await http.post('https://httpbin.org/post', {
-  channel: '#sales',
-  text: highValue.length + ' new high-value leads synced to CRM',
-});
-`,
-	},
-];
-
-const selectedExample = ref(EXAMPLES[0].label);
-const code = ref(EXAMPLES[0].code);
+const EXAMPLES = ref<CompilerExample[]>([]);
+const examplesLoading = ref(true);
+const selectedExample = ref('');
+const code = ref('');
 const compilerResult = ref<CompilerResult | null>(null);
 const activeTab = ref<'json' | 'errors'>('json');
 const bottomPanelOpen = ref(false);
@@ -205,7 +64,7 @@ const iframeReady = ref(false);
 const pendingWorkflow = ref<WorkflowJSON | null>(null);
 
 function onSelectExample(label: string) {
-	const example = EXAMPLES.find((ex) => ex.label === label);
+	const example = EXAMPLES.value.find((ex) => ex.label === label);
 	if (!example) return;
 	selectedExample.value = label;
 	code.value = example.code;
@@ -214,20 +73,50 @@ function onSelectExample(label: string) {
 			changes: { from: 0, to: editor.value.state.doc.length, insert: example.code },
 		});
 	}
-	compile();
+	void compile();
 }
 
 // Compile on code change (debounced)
 const debouncedCompile = useDebounceFn(() => {
-	compile();
+	void compile();
 }, 500);
 
-function compile() {
-	const result = compileWorkflowJS(code.value);
-	compilerResult.value = result;
+async function compile() {
+	try {
+		const response = await fetch(`${window.BASE_PATH ?? '/'}rest/temporary/parse-code`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ code: code.value }),
+		});
+		const result = (await response.json()) as { data: CompilerResult };
+		compilerResult.value = result.data;
 
-	if (result.errors.length === 0) {
-		sendToPreview(result.workflow);
+		if (result.data.errors.length === 0) {
+			sendToPreview(result.data.workflow);
+		}
+	} catch {
+		// Network error — show as compiler error
+		compilerResult.value = {
+			workflow: { id: 'compiled', name: 'Error', nodes: [], connections: {} },
+			errors: [{ message: 'Failed to reach compiler API' }],
+		};
+	}
+}
+
+async function fetchExamples() {
+	try {
+		const response = await fetch(`${window.BASE_PATH ?? '/'}rest/temporary/examples`);
+		const result = (await response.json()) as { data: CompilerExample[] };
+		EXAMPLES.value = result.data;
+		if (result.data.length > 0) {
+			selectedExample.value = result.data[0].label;
+			code.value = result.data[0].code;
+		}
+	} catch {
+		// Fallback: empty examples
+		EXAMPLES.value = [];
+	} finally {
+		examplesLoading.value = false;
 	}
 }
 
@@ -312,8 +201,11 @@ const extensions = computed<Extension[]>(() => [
 	}),
 ]);
 
-onMounted(() => {
+onMounted(async () => {
 	window.addEventListener('message', onMessage);
+
+	// Fetch examples from API
+	await fetchExamples();
 
 	// Create CodeMirror editor
 	if (editorRef.value) {
@@ -328,7 +220,7 @@ onMounted(() => {
 	}
 
 	// Initial compile
-	compile();
+	await compile();
 });
 
 onBeforeUnmount(() => {
