@@ -99,6 +99,8 @@ export const createCreateWorkflowFromCodeTool = (
 			const workflowJson = result.workflow;
 
 			// 2. Create workflow entity
+			// TODO: Once the following ticket is implemented, we car rely on the workflows service to create and save workflows
+			// https://linear.app/n8n/issue/ADO-4898/feature-move-create-workflow-from-controller-to-service
 			const newWorkflow = new WorkflowEntity();
 			Object.assign(newWorkflow, {
 				name: name ?? workflowJson.name ?? 'Untitled Workflow',

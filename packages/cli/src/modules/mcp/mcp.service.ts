@@ -79,10 +79,10 @@ export class McpService {
 		const server = new McpServer(
 			{
 				name: 'n8n MCP Server',
-				version: '1.0.0',
+				version: builderEnabled ? '1.1.0' : '1.0.0',
 			},
 			{
-				...(builderEnabled && { instructions: getMcpInstructions() }),
+				instructions: getMcpInstructions(builderEnabled),
 			},
 		);
 

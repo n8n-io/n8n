@@ -16,8 +16,10 @@ import {
 	CODE_BUILDER_VALIDATE_TOOL,
 } from './constants';
 
-export function getMcpInstructions(): string {
-	return `n8n is a workflow automation platform. This MCP server provides tools to build n8n workflows programmatically using the n8n Workflow SDK.
+export function getMcpInstructions(isBuilderEnabled: boolean): string {
+	const INTRO = 'This is the official MCP server for n8n, a workflow automation platform.';
+
+	const BUILDER_INSTRUCTIONS = `This MCP server provides tools to build n8n workflows programmatically using the n8n Workflow SDK.
 
 To build n8n workflows, follow these steps in order:
 
@@ -36,4 +38,6 @@ To build n8n workflows, follow these steps in order:
 7. Create: Call ${MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName} with the validated code to save the workflow to n8n. Include a short \`description\` (1-2 sentences) summarizing what the workflow does — this helps users find and understand their workflows.
 
 To update an existing workflow, delete it with ${MCP_DELETE_WORKFLOW_TOOL.toolName} and recreate it using the steps above.`;
+
+	return isBuilderEnabled ? `${INTRO}\n\n${BUILDER_INSTRUCTIONS}` : INTRO;
 }
