@@ -123,6 +123,7 @@ interface TranspilerContext {
 	source: string;
 	nodes: EmittedNode[];
 	varSourceMap: Map<string, string>;
+	varSourceKind: Map<string, 'io' | 'code'>;
 	httpCounter: number;
 	codeCounter: number;
 	ifCounter: number;
@@ -364,6 +365,7 @@ function transpileCallback(
 		source,
 		nodes: [],
 		varSourceMap: new Map(),
+		varSourceKind: new Map(),
 		httpCounter: nodeOffset,
 		codeCounter: nodeOffset,
 		ifCounter: nodeOffset,
@@ -394,6 +396,7 @@ function transpileCallback(
 		for (const param of cb.callbackParams) {
 			if (param !== 'respond') {
 				ctx.varSourceMap.set(param, triggerNode.nodeName);
+				ctx.varSourceKind.set(param, 'io');
 			}
 		}
 	}
@@ -494,6 +497,11 @@ function walkStatements(
 			continue;
 		}
 
+		// Skip bare return statements — they are early exits with no n8n equivalent
+		if (stmt.type === 'ReturnStatement' && !stmt.argument) {
+			continue;
+		}
+
 		// Accumulate code statements
 		const stmtSource = ctx.source.slice(stmt.start, stmt.end);
 		ctx.pendingCode.push(stmtSource.trim());
@@ -512,21 +520,30 @@ function processIOCall(ctx: TranspilerContext, ioCall: IOCall): void {
 			skipExecuteOnce: ctx.inLoopBody,
 		});
 		ctx.nodes.push(httpNode);
-		if (ioCall.assignedVar) ctx.varSourceMap.set(ioCall.assignedVar, httpNode.nodeName);
+		if (ioCall.assignedVar) {
+			ctx.varSourceMap.set(ioCall.assignedVar, httpNode.nodeName);
+			ctx.varSourceKind.set(ioCall.assignedVar, 'io');
+		}
 		ctx.prevVar = httpVar;
 	} else if (ioCall.type === 'ai') {
 		ctx.httpCounter++;
 		const aiVar = `ai${ctx.httpCounter}`;
 		const aiNode = generateAiSDK(ioCall, aiVar);
 		ctx.nodes.push(aiNode);
-		if (ioCall.assignedVar) ctx.varSourceMap.set(ioCall.assignedVar, aiNode.nodeName);
+		if (ioCall.assignedVar) {
+			ctx.varSourceMap.set(ioCall.assignedVar, aiNode.nodeName);
+			ctx.varSourceKind.set(ioCall.assignedVar, 'io');
+		}
 		ctx.prevVar = aiVar;
 	} else if (ioCall.type === 'workflow') {
 		ctx.wfCounter++;
 		const wfVar = `wf${ctx.wfCounter}`;
 		const wfNode = generateWorkflowRunSDK(ioCall, wfVar);
 		ctx.nodes.push(wfNode);
-		if (ioCall.assignedVar) ctx.varSourceMap.set(ioCall.assignedVar, wfNode.nodeName);
+		if (ioCall.assignedVar) {
+			ctx.varSourceMap.set(ioCall.assignedVar, wfNode.nodeName);
+			ctx.varSourceKind.set(ioCall.assignedVar, 'io');
+		}
 		ctx.prevVar = wfVar;
 	}
 }
@@ -582,6 +599,174 @@ function processRespondCall(ctx: TranspilerContext, stmt: AcornNode): void {
 	ctx.prevVar = respondVar;
 }
 
+// ─── IF Condition Helpers ────────────────────────────────────────────────────
+
+interface IfConditionEntry {
+	leftValue: string;
+	rightValue: string;
+	operator: { type: string; operation: string; singleValue?: boolean };
+}
+
+/** Extract the root identifier name from an AST node (Identifier or MemberExpression). */
+function extractRootIdentifier(astNode: AcornNode): string | null {
+	if (astNode.type === 'Identifier') return astNode.name ?? null;
+	if (astNode.type === 'MemberExpression' && astNode.object) {
+		return extractRootIdentifier(astNode.object);
+	}
+	return null;
+}
+
+/** Extract the full property chain from a MemberExpression as a dot-separated string. */
+function extractPropertyChain(astNode: AcornNode): string {
+	if (astNode.type === 'Identifier') return astNode.name ?? '';
+	if (astNode.type === 'MemberExpression' && astNode.object && astNode.property) {
+		const obj = extractPropertyChain(astNode.object);
+		const prop = astNode.property.name ?? String(astNode.property.value ?? '');
+		return obj ? `${obj}.${prop}` : prop;
+	}
+	return '';
+}
+
+/**
+ * Resolve an AST node to an n8n expression string.
+ * - Identifier / MemberExpression → `={{ $('NodeName').item.json.path }}`
+ * - Literal → plain value as string
+ */
+function resolveExpressionFromAST(astNode: AcornNode, ctx: TranspilerContext): string {
+	if (astNode.type === 'Literal') {
+		return String(astNode.value ?? '');
+	}
+
+	if (astNode.type === 'Identifier' || astNode.type === 'MemberExpression') {
+		const root = extractRootIdentifier(astNode);
+		if (!root) return ctx.source.slice(astNode.start, astNode.end);
+
+		const sourceNode = ctx.varSourceMap.get(root);
+		if (!sourceNode) return ctx.source.slice(astNode.start, astNode.end);
+
+		const kind = ctx.varSourceKind.get(root) ?? 'code';
+		const chain = extractPropertyChain(astNode);
+
+		if (kind === 'io') {
+			// IO node: variable IS the $json, so strip the root identifier
+			const propsAfterRoot = chain.includes('.') ? chain.slice(chain.indexOf('.') + 1) : '';
+			const jsonPath = propsAfterRoot ? `.${propsAfterRoot}` : '';
+			return `={{ $('${sourceNode}').item.json${jsonPath} }}`;
+		}
+		// Code node: variable is wrapped inside $json, keep full chain
+		return `={{ $('${sourceNode}').item.json.${chain} }}`;
+	}
+
+	// Fallback: use raw source
+	return ctx.source.slice(astNode.start, astNode.end);
+}
+
+/** Infer the operator type from a right-hand Literal value. */
+function inferTypeFromLiteral(astNode: AcornNode): string {
+	if (astNode.type === 'Literal') {
+		if (typeof astNode.value === 'number') return 'number';
+		if (typeof astNode.value === 'boolean') return 'boolean';
+	}
+	return 'string';
+}
+
+/** Map a JS binary operator to an IF node v2 operator object. */
+function mapBinaryOperator(
+	op: string,
+	rightNode: AcornNode,
+): { type: string; operation: string; singleValue?: boolean } {
+	const rhsType = inferTypeFromLiteral(rightNode);
+
+	// Boolean literal comparisons
+	if (rightNode.type === 'Literal' && typeof rightNode.value === 'boolean') {
+		return {
+			type: 'boolean',
+			operation: rightNode.value ? 'true' : 'false',
+			singleValue: true,
+		};
+	}
+
+	const opMap: Record<string, string> = {
+		'===': 'equals',
+		'==': 'equals',
+		'!==': 'notEquals',
+		'!=': 'notEquals',
+		'>': 'gt',
+		'<': 'lt',
+		'>=': 'gte',
+		'<=': 'lte',
+	};
+
+	const operation = opMap[op];
+	if (!operation) return { type: 'string', operation: 'equals' };
+
+	return { type: rhsType, operation };
+}
+
+/** Parse a single condition operand (not a LogicalExpression) into an IfConditionEntry. */
+function parseSingleCondition(astNode: AcornNode, ctx: TranspilerContext): IfConditionEntry {
+	// UnaryExpression: !x → notExists
+	if (astNode.type === 'UnaryExpression' && astNode.operator === '!' && astNode.argument) {
+		return {
+			leftValue: resolveExpressionFromAST(astNode.argument, ctx),
+			rightValue: '',
+			operator: { type: 'string', operation: 'notExists', singleValue: true },
+		};
+	}
+
+	// BinaryExpression: a === b, a !== b, a > b, etc.
+	if (astNode.type === 'BinaryExpression' && astNode.left && astNode.right && astNode.operator) {
+		const left = resolveExpressionFromAST(astNode.left, ctx);
+		const right = resolveExpressionFromAST(astNode.right, ctx);
+		const operator = mapBinaryOperator(astNode.operator, astNode.right);
+		return { leftValue: left, rightValue: right, operator };
+	}
+
+	// Truthiness: bare identifier or member expression
+	return {
+		leftValue: resolveExpressionFromAST(astNode, ctx),
+		rightValue: '',
+		operator: { type: 'string', operation: 'exists', singleValue: true },
+	};
+}
+
+/** Collect all conditions and determine combinator from an AST test node. */
+function collectConditions(
+	astNode: AcornNode,
+	ctx: TranspilerContext,
+): { conditions: IfConditionEntry[]; combinator: 'and' | 'or' } {
+	if (astNode.type === 'LogicalExpression' && astNode.left && astNode.right && astNode.operator) {
+		const combinator = astNode.operator === '||' ? 'or' : 'and';
+		const leftResult = collectConditions(astNode.left, ctx);
+		const rightResult = collectConditions(astNode.right, ctx);
+		return {
+			conditions: [...leftResult.conditions, ...rightResult.conditions],
+			combinator,
+		};
+	}
+	return { conditions: [parseSingleCondition(astNode, ctx)], combinator: 'and' };
+}
+
+/**
+ * Build the `conditions` parameter object for an IF node v2.2 from an AST test node.
+ * Returns a JSON string suitable for embedding in SDK code.
+ */
+function buildIfConditionsParam(testNode: AcornNode, ctx: TranspilerContext): string {
+	const { conditions, combinator } = collectConditions(testNode, ctx);
+
+	const conditionsObj = {
+		options: { caseSensitive: true, leftValue: '' },
+		conditions: conditions.map((c) => ({
+			leftValue: c.leftValue,
+			rightValue: c.rightValue,
+			operator: c.operator,
+		})),
+		combinator,
+	};
+
+	return JSON.stringify(conditionsObj);
+}
+
 // ─── If/Else Processing ──────────────────────────────────────────────────────
 
 function processIfStatement(
@@ -594,7 +779,6 @@ function processIfStatement(
 
 	const myIfNum = ctx.ifCounter;
 	const ifVar = `if${myIfNum}`;
-	const testSource = ctx.source.slice(stmt.test!.start, stmt.test!.end);
 
 	// Process true branch
 	const trueBranch = transpileBranch(ctx, stmt.consequent as AcornNode, comments);
@@ -621,8 +805,8 @@ function processIfStatement(
 	}
 
 	// Emit ifElse node
-	const conditionStr = testSource.replace(/'/g, "\\'");
-	let sdkCode = `const ${ifVar} = ifElse({ version: 2.2, config: { name: 'IF ${myIfNum}', parameters: { conditions: { options: { leftValue: '${conditionStr}' } } }, executeOnce: true } })`;
+	const conditionsParam = buildIfConditionsParam(stmt.test!, ctx);
+	let sdkCode = `const ${ifVar} = ifElse({ version: 2.2, config: { name: 'IF ${myIfNum}', parameters: { conditions: ${conditionsParam} }, executeOnce: true } })`;
 
 	if (trueBranch.chainExpr) {
 		sdkCode += `\n  .onTrue(${trueBranch.chainExpr})`;
@@ -678,6 +862,7 @@ function createBranchContext(parentCtx: TranspilerContext): TranspilerContext {
 		source: parentCtx.source,
 		nodes: [],
 		varSourceMap: new Map(parentCtx.varSourceMap),
+		varSourceKind: new Map(parentCtx.varSourceKind),
 		httpCounter: parentCtx.httpCounter,
 		codeCounter: parentCtx.codeCounter,
 		ifCounter: parentCtx.ifCounter,
@@ -887,6 +1072,7 @@ function processForOfStatement(
 
 	// Map loop variable to $json (the splitter outputs individual items)
 	ctx.varSourceMap.set(loopVar, splitterName);
+	ctx.varSourceKind.set(loopVar, 'code');
 
 	// Walk loop body with inLoopBody=true (skips executeOnce on emitted nodes)
 	const branchCtx = createBranchContext(ctx);
@@ -997,7 +1183,10 @@ function processPromiseAll(
 			const httpVar = `http${ctx.httpCounter}`;
 			const httpNode = generateHttpSDK(ioCall, httpVar);
 			ctx.nodes.push(httpNode);
-			if (ioCall.assignedVar) ctx.varSourceMap.set(ioCall.assignedVar, httpNode.nodeName);
+			if (ioCall.assignedVar) {
+				ctx.varSourceMap.set(ioCall.assignedVar, httpNode.nodeName);
+				ctx.varSourceKind.set(ioCall.assignedVar, 'io');
+			}
 			fanOutVars.push(httpVar);
 		}
 	}
@@ -1373,6 +1562,7 @@ function flushPendingCode(ctx: TranspilerContext): void {
 
 	for (const v of declaredVars) {
 		ctx.varSourceMap.set(v, nodeName);
+		ctx.varSourceKind.set(v, 'code');
 	}
 
 	ctx.pendingCode = [];

@@ -48,7 +48,7 @@ const http2 = node({
 }
 });
 
-const if1 = ifElse({ version: 2.2, config: { name: 'IF 1', parameters: { conditions: { options: { leftValue: 'event.status === \'confirmed\'' } } }, executeOnce: true } })
+const if1 = ifElse({ version: 2.2, config: { name: 'IF 1', parameters: { conditions: {"options":{"caseSensitive":true,"leftValue":""},"conditions":[{"leftValue":"={{ $('Split events').item.json.event.status }}","rightValue":"confirmed","operator":{"type":"string","operation":"equals"}}],"combinator":"and"} }, executeOnce: true } })
   .onTrue(http2);
 
 const http3 = node({
@@ -66,7 +66,7 @@ const http3 = node({
 }
 });
 
-const if2 = ifElse({ version: 2.2, config: { name: 'IF 2', parameters: { conditions: { options: { leftValue: 'event.status === \'cancelled\'' } } }, executeOnce: true } })
+const if2 = ifElse({ version: 2.2, config: { name: 'IF 2', parameters: { conditions: {"options":{"caseSensitive":true,"leftValue":""},"conditions":[{"leftValue":"={{ $('Split events').item.json.event.status }}","rightValue":"cancelled","operator":{"type":"string","operation":"equals"}}],"combinator":"and"} }, executeOnce: true } })
   .onTrue(http3);
 
 export default workflow('compiled', 'Compiled Workflow')
