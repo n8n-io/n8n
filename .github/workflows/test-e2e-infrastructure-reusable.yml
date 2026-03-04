@@ -21,4 +21,5 @@ jobs:
       test-command: pnpm --filter=n8n-playwright test:infrastructure
       shards: 1
       workers: 1
+      timeout-minutes: 60
     secrets: inherit
