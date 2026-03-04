@@ -739,26 +739,34 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getParameterInputWithIssues(parameterPath: string) {
+		const bracketToDotPath = parameterPath.replace(/\[(\d+)\]/g, '.$1');
 		const nestedPath = parameterPath.includes('.')
 			? parameterPath.split('.').slice(1).join('.')
 			: '';
+		const nestedBracketToDotPath = nestedPath.replace(/\[(\d+)\]/g, '.$1');
+		const parameterPaths = Array.from(
+			new Set(
+				[
+					parameterPath,
+					bracketToDotPath,
+					nestedPath,
+					nestedBracketToDotPath,
+				].filter((path) => path.length > 0),
+			),
+		);
 
-		// Prefer stable structural selectors first. Tooltip text is localized and can
-		// change, so keep those as a fallback for older NDV variants.
-		const selectors = [
-			`[data-parameter-path="${parameterPath}"] [data-test-id="parameter-issues"]`,
-			`[data-parameter-path="${parameterPath}"][data-test-id="parameter-issues"]`,
-			`[data-test-id="parameter-input-field"][title*="${parameterPath}"][title*="has issues"]`,
-			`[title*="${parameterPath}"][title*="has issues"]`,
-		];
-
-		if (nestedPath) {
-			selectors.push(`[data-parameter-path="${nestedPath}"] [data-test-id="parameter-issues"]`);
-			selectors.push(`[data-parameter-path="${nestedPath}"][data-test-id="parameter-issues"]`);
-			selectors.push(
-				`[data-test-id="parameter-input-field"][title*="${nestedPath}"][title*="has issues"]`,
-			);
-			selectors.push(`[title*="${nestedPath}"][title*="has issues"]`);
+		// Prefer structural selectors first and keep tooltip matching as a
+		// fallback for NDV variants that do not expose test IDs for issues.
+		const selectors: string[] = [];
+		for (const path of parameterPaths) {
+			selectors.push(`[data-parameter-path="${path}"] [data-test-id="parameter-issues"]`);
+			selectors.push(`[data-parameter-path="${path}"][data-test-id="parameter-issues"]`);
+			selectors.push(`[data-parameter-path="${path}"].has-issues`);
+			selectors.push(`[data-parameter-path^="${path}."] [data-test-id="parameter-issues"]`);
+			selectors.push(`[data-parameter-path^="${path}."][data-test-id="parameter-issues"]`);
+			selectors.push(`[data-parameter-path^="${path}."].has-issues`);
+			selectors.push(`[data-test-id="parameter-input-field"][title*="${path}"][title*="has issues"]`);
+			selectors.push(`[title*="${path}"][title*="has issues"]`);
 		}
 
 		return this.page.locator(selectors.join(', ')).first();
