@@ -1352,7 +1352,7 @@ export class SourceControlImportService {
 
 				// Check for name collision: a local table with the same name but different ID
 				const existingByName = await this.dataTableRepository.findOne({
-					where: { name: dataTable.name },
+					where: { name: dataTable.name, projectId: targetProjectId },
 					select: ['id'],
 				});
 				if (existingByName && existingByName.id !== dataTable.id) {
