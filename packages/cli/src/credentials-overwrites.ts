@@ -148,7 +148,7 @@ export class CredentialsOverwrites {
 		// the overwrite value). Since overwrites are never persisted to the DB,
 		// any non-empty stored value that differs from the overwrite is user-set.
 		if (this.globalConfig.credentials.overwrite.skipTypes.includes(type)) {
-			const customizedField = Object.keys(overwrites).find((key) => {
+			const isFieldCustomized = (key: string) => {
 				const storedValue = data[key];
 				return (
 					storedValue !== null &&
@@ -156,8 +156,8 @@ export class CredentialsOverwrites {
 					storedValue !== '' &&
 					storedValue !== overwrites[key]
 				);
-			});
-			if (customizedField !== undefined) {
+			};
+			if (Object.keys(overwrites).some(isFieldCustomized)) {
 				return data;
 			}
 		}
