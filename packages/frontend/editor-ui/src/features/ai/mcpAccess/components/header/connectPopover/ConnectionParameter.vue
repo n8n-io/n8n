@@ -40,7 +40,7 @@ const handleCopy = async (value: string) => {
 				{{ props.label }}
 			</label>
 			<div v-if="props.infoTip" :class="$style['info-tip']">
-				<N8nInfoTip type="tooltip" size="small">
+				<N8nInfoTip type="tooltip" size="small" :enterable="false">
 					{{ props.infoTip }}
 				</N8nInfoTip>
 			</div>
