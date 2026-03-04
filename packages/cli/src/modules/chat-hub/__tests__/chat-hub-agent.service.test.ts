@@ -6,8 +6,14 @@ import { v4 as uuid } from 'uuid';
 import type { ChatHubAgent } from '../chat-hub-agent.entity';
 import type { ChatHubAgentRepository } from '../chat-hub-agent.repository';
 import { ChatHubAgentService } from '../chat-hub-agent.service';
+import type { ChatHubAttachmentService } from '../chat-hub.attachment.service';
 import type { ChatHubCredentialsService } from '../chat-hub-credentials.service';
+import type { ChatHubExecutionService } from '../chat-hub-execution.service';
+import type { ChatHubSettingsService } from '../chat-hub.settings.service';
 import type { ChatHubToolService } from '../chat-hub-tool.service';
+import type { ChatHubWorkflowService } from '../chat-hub-workflow.service';
+import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
@@ -37,6 +43,12 @@ describe('ChatHubAgentService', () => {
 
 	const agentRepository = mock<ChatHubAgentRepository>();
 	const credentialsService = mock<ChatHubCredentialsService>();
+	const attachmentService = mock<ChatHubAttachmentService>();
+	const workflowService = mock<ChatHubWorkflowService>();
+	const executionService = mock<ChatHubExecutionService>();
+	const workflowExecutionService = mock<WorkflowExecutionService>();
+	const settingsService = mock<ChatHubSettingsService>();
+	const dynamicNodeParametersService = mock<DynamicNodeParametersService>();
 	const toolService = mock<ChatHubToolService>();
 	const mockUser = mock<User>({ id: mockUserId });
 
@@ -46,7 +58,18 @@ describe('ChatHubAgentService', () => {
 		jest.resetAllMocks();
 		logger.scoped.mockReturnValue(logger);
 
-		service = new ChatHubAgentService(logger, agentRepository, credentialsService, toolService);
+		service = new ChatHubAgentService(
+			logger,
+			agentRepository,
+			credentialsService,
+			attachmentService,
+			workflowService,
+			executionService,
+			workflowExecutionService,
+			settingsService,
+			dynamicNodeParametersService,
+			toolService,
+		);
 	});
 
 	describe('createAgent', () => {

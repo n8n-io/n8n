@@ -274,7 +274,10 @@ export class ChatHubAgentService {
 	}
 
 	private async deleteEmbeddings(userId: string, agentId: string): Promise<void> {
-		const settings = await this.ensureSemanticSearchOptions();
+		const settings = await this.chatHubSettingsService.getSemanticSearchOptions();
+		if (!settings) {
+			return;
+		}
 		const additionalData = await getBase({ userId });
 
 		await this.dynamicNodeParametersService.getActionResult(
