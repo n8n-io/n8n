@@ -599,15 +599,23 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	async function fetchLastSuccessfulExecution() {
-		const workflowPermissions = getResourcePermissions(workflow.value.scopes).workflow;
+		const workflowDocumentStore = workflowId.value
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value))
+			: undefined;
+		const workflowPermissions = getResourcePermissions(workflowDocumentStore?.scopes).workflow;
 
 		try {
+			const wfId = workflow.value.id;
+			const workflowDocumentStore = wfId
+				? useWorkflowDocumentStore(createWorkflowDocumentId(wfId))
+				: undefined;
+
 			if (
 				isNewWorkflow.value ||
 				sourceControlStore.preferences.branchReadOnly ||
 				uiStore.isReadOnlyView ||
 				!workflowPermissions.update ||
-				workflow.value.isArchived
+				workflowDocumentStore?.isArchived
 			) {
 				return;
 			}
@@ -739,13 +747,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowInactive(id);
 
 		if (id === workflow.value.id) {
-			setIsArchived(true);
 			setWorkflowVersionData({
 				versionId: updatedWorkflow.versionId,
 				name: versionData.value?.name ?? null,
 				description: versionData.value?.description ?? null,
 			});
 			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
+			workflowDocumentStore.setIsArchived(true);
 			workflowDocumentStore.setChecksum(updatedWorkflow.checksum!);
 		}
 	}
@@ -754,7 +762,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const updatedWorkflow = await workflowsListStore.unarchiveWorkflowInList(id);
 
 		if (id === workflow.value.id) {
-			setIsArchived(false);
 			setWorkflowVersionData({
 				versionId: updatedWorkflow.versionId,
 				name: versionData.value?.name ?? null,
@@ -762,6 +769,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			});
 
 			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
+			workflowDocumentStore.setIsArchived(false);
 			workflowDocumentStore.setChecksum(updatedWorkflow.checksum!);
 		}
 	}
@@ -780,10 +788,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function setWorkflowInactive(targetWorkflowId: string) {
 		workflowsListStore.setWorkflowInactiveInCache(targetWorkflowId);
-	}
-
-	function setIsArchived(isArchived: boolean) {
-		workflow.value.isArchived = isArchived;
 	}
 
 	function setDescription(description: string | undefined | null) {
@@ -1756,7 +1760,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		unarchiveWorkflow,
 		setWorkflowActive,
 		setWorkflowInactive,
-		setIsArchived,
 		setDescription,
 		getDuplicateCurrentWorkflowName,
 		setWorkflowExecutionRunData,

@@ -58,6 +58,7 @@ export function useSettingsItems() {
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.PROJECT_ROLES_SETTINGS),
 				route: { to: { name: VIEWS.PROJECT_ROLES_SETTINGS } },
+				new: true,
 			},
 			{
 				id: 'settings-api',

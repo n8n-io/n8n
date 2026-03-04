@@ -58,6 +58,7 @@ import {
 	createPairwiseEvaluator,
 	createSimilarityEvaluator,
 	createExecutionEvaluator,
+	createBinaryChecksEvaluator,
 	type RunConfig,
 	type TestCase,
 	type Evaluator,
@@ -195,8 +196,9 @@ function createEvaluators(params: {
 	judgeLlm: ResolvedStageLLMs['judge'];
 	parsedNodeTypes: Parameters<typeof createProgrammaticEvaluator>[0];
 	numJudges: number;
+	checks?: string[];
 }): Array<Evaluator<EvaluationContext>> {
-	const { suite, judgeLlm, parsedNodeTypes, numJudges } = params;
+	const { suite, judgeLlm, parsedNodeTypes, numJudges, checks } = params;
 	const evaluators: Array<Evaluator<EvaluationContext>> = [];
 
 	switch (suite) {
@@ -213,6 +215,15 @@ function createEvaluators(params: {
 			break;
 		case 'similarity':
 			evaluators.push(createSimilarityEvaluator());
+			break;
+		case 'binary-checks':
+			evaluators.push(
+				createBinaryChecksEvaluator({
+					nodeTypes: parsedNodeTypes,
+					llm: judgeLlm,
+					checks,
+				}),
+			);
 			break;
 	}
 
@@ -503,6 +514,7 @@ export async function runV2Evaluation(): Promise<void> {
 		judgeLlm: env.llms.judge,
 		parsedNodeTypes: env.parsedNodeTypes,
 		numJudges: args.numJudges,
+		checks: args.checks,
 	});
 
 	// Execution evaluator runs for all suites — validates workflows execute with pin data
@@ -541,7 +553,7 @@ export async function runV2Evaluation(): Promise<void> {
 		suite: args.suite,
 		timeoutMs: args.timeoutMs,
 		context: { llmCallLimiter },
-		passThreshold: args.suite === 'introspection' ? 0 : undefined,
+		passThreshold: args.suite === 'introspection' || args.suite === 'binary-checks' ? 0 : undefined,
 		pinDataGenerator,
 	};
 
