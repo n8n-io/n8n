@@ -19,14 +19,6 @@ describe('CacheService (Mock)', () => {
 			expect(store.get).toHaveBeenCalledWith('key');
 		});
 
-		test('getMany', async () => {
-			await cacheService.getMany([]);
-			expect(store.mget).not.toHaveBeenCalled();
-
-			await cacheService.getMany(['key1', 'key2']);
-			expect(store.mget).toHaveBeenCalledWith('key1', 'key2');
-		});
-
 		test('set', async () => {
 			await cacheService.set('', '');
 			expect(store.set).not.toHaveBeenCalled();

@@ -213,8 +213,8 @@ for (const backend of ['memory', 'redis'] as const) {
 					['key2', 'value2'],
 				]);
 
-				const promise = cacheService.getMany(['key1', 'key2']);
-				await expect(promise).resolves.toStrictEqual(['value1', 'value2']);
+				await expect(cacheService.get('key1')).resolves.toBe('value1');
+				await expect(cacheService.get('key2')).resolves.toBe('value2');
 			});
 
 			test('should set multiple number values', async () => {
@@ -223,26 +223,14 @@ for (const backend of ['memory', 'redis'] as const) {
 					['key2', 456],
 				]);
 
-				const promise = cacheService.getMany(['key1', 'key2']);
-				await expect(promise).resolves.toStrictEqual([123, 456]);
+				await expect(cacheService.get('key1')).resolves.toBe(123);
+				await expect(cacheService.get('key2')).resolves.toBe(456);
 			});
 
 			test('should disregard zero-length keys', async () => {
 				await cacheService.setMany([['', 'value1']]);
 
 				await expect(cacheService.get('')).resolves.toBeUndefined();
-			});
-		});
-
-		describe('getMany', () => {
-			test('should return undefined on missing result', async () => {
-				await cacheService.setMany([
-					['key1', 123],
-					['key2', 456],
-				]);
-
-				const promise = cacheService.getMany(['key2', 'key3']);
-				await expect(promise).resolves.toStrictEqual([456, undefined]);
 			});
 		});
 

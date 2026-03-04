@@ -4,7 +4,6 @@ import { Container, Service } from '@n8n/di';
 import { caching } from 'cache-manager';
 import { jsonStringify, UserError } from 'n8n-workflow';
 
-import { MalformedRefreshValueError } from '@/errors/cache-errors/malformed-refresh-value.error';
 import { UncacheableValueError } from '@/errors/cache-errors/uncacheable-value.error';
 import { REDIS_TTL_KEY_MISSING } from '@/services/cache/cache.constants';
 import type {
@@ -205,52 +204,6 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 
 			const refreshValue = await refreshFn(key);
 			await this.set(key, refreshValue);
-
-			return refreshValue;
-		}
-
-		return fallbackValue;
-	}
-
-	async getMany<T = unknown[]>(
-		keys: string[],
-		{
-			fallbackValue,
-			refreshFn,
-		}: {
-			fallbackValue?: T[];
-			refreshFn?: (keys: string[]) => Promise<T[]>;
-		} = {},
-	) {
-		if (!this.cache) await this.init();
-
-		if (keys.length === 0) return [];
-
-		const values = await this.cache.store.mget(...keys);
-
-		if (values !== undefined) {
-			this.emit('metrics.cache.hit');
-
-			return values as T[];
-		}
-
-		this.emit('metrics.cache.miss');
-
-		if (refreshFn) {
-			this.emit('metrics.cache.update');
-
-			const refreshValue: T[] = await refreshFn(keys);
-
-			if (keys.length !== refreshValue.length) {
-				throw new MalformedRefreshValueError();
-			}
-
-			const newValue: Array<[key: string, value: unknown]> = keys.map((key, i) => [
-				key,
-				refreshValue[i],
-			]);
-
-			await this.setMany(newValue);
 
 			return refreshValue;
 		}
