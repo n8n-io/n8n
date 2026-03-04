@@ -31,30 +31,15 @@ const code1 = node({
 		.sort(function (a, b) {
 			return b.priceChangePercent - a.priceChangePercent;
 		});
-let message = '';\nreturn [{ json: { significant, message } }];`,
+let message = '';
+for (const coin of significant) {
+		message += coin.symbol + ': ' + coin.priceChangePercent + '%\n';
+	}\nreturn [{ json: { significant, message, coin } }];`,
 			mode: 'runOnceForAllItems',
 		},
 		executeOnce: true,
 	},
 });
-
-const code2 = node({
-	type: 'n8n-nodes-base.code',
-	version: 2,
-	config: {
-		name: 'Code 2',
-		parameters: {
-			jsCode: `// From: Code 1\nconst message = $('Code 1').all().map(i => i.json);\nmessage += coin.symbol + ': ' + coin.priceChangePercent + '%\n';\nreturn [{ json: {} }];`,
-			mode: 'runOnceForAllItems',
-		},
-		executeOnce: true,
-	},
-});
-
-const sib1 = splitInBatches({
-	version: 3,
-	config: { name: 'Loop 1', parameters: { batchSize: 1 }, executeOnce: true },
-}).to(code2);
 
 const http2 = node({
 	type: 'n8n-nodes-base.httpRequest',
@@ -83,6 +68,4 @@ const if1 = ifElse({
 	},
 }).onTrue(http2);
 
-export default workflow('compiled', 'Compiled Workflow').add(
-	t0.to(http1).to(code1).to(sib1).to(if1),
-);
+export default workflow('compiled', 'Compiled Workflow').add(t0.to(http1).to(code1).to(if1));

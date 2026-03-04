@@ -36,6 +36,20 @@ const code1 = node({
 	},
 });
 
+const code2 = node({
+	type: 'n8n-nodes-base.code',
+	version: 2,
+	config: {
+		name: 'Split leads',
+		parameters: {
+			jsCode: `const newLeads = $('Code 1').all().map(i => i.json);
+return newLeads.map(lead => ({ json: lead }));`,
+			mode: 'runOnceForAllItems',
+		},
+		executeOnce: true,
+	},
+});
+
 const http2 = node({
 	type: 'n8n-nodes-base.httpRequest',
 	version: 4.2,
@@ -52,7 +66,6 @@ const http2 = node({
 			authentication: 'genericCredentialType',
 			genericAuthType: 'oAuth2Api',
 		},
-		executeOnce: true,
 		credentials: { oAuth2Api: { name: 'Gmail', id: '' } },
 	},
 });
@@ -73,16 +86,10 @@ const http3 = node({
 			authentication: 'genericCredentialType',
 			genericAuthType: 'oAuth2Api',
 		},
-		executeOnce: true,
 		credentials: { oAuth2Api: { name: 'Google Sheets', id: '' } },
 	},
 });
 
-const sib1 = splitInBatches({
-	version: 3,
-	config: { name: 'Loop 1', parameters: { batchSize: 1 }, executeOnce: true },
-}).to(http2.to(http3));
-
 export default workflow('compiled', 'Compiled Workflow').add(
-	t0.to(http1).to(code1).to(http2).to(http3).to(sib1),
+	t0.to(http1).to(code1).to(code2).to(http2).to(http3),
 );

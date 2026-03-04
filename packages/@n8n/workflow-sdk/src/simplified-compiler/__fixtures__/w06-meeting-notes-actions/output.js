@@ -132,5 +132,5 @@ const respond2 = node({
 });
 
 export default workflow('compiled', 'Compiled Workflow').add(
-	t0.to(respond1).to(code1).to(if1).to(code2).to(ai1).to(http2).to(respond2),
+	t0.to(if1).to(code2).to(ai1).to(http2).to(respond2),
 );

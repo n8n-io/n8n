@@ -100,14 +100,12 @@ const if2 = ifElse({
 const if1 = ifElse({
 	version: 2.2,
 	config: {
-		name: 'IF 2',
+		name: 'IF 1',
 		parameters: { conditions: { options: { leftValue: 'msg.message.text' } } },
 		executeOnce: true,
 	},
 })
 	.onTrue(http1)
-	.onFalse(http2.to(http3).to(http4).to(if2));
+	.onFalse(if2);
 
-export default workflow('compiled', 'Compiled Workflow').add(
-	t0.to(code1).to(http1).to(http2).to(http3).to(http4).to(if2).to(if1),
-);
+export default workflow('compiled', 'Compiled Workflow').add(t0.to(code1).to(if1));

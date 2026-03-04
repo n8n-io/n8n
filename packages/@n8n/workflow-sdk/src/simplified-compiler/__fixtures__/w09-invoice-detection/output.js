@@ -89,6 +89,4 @@ const if1 = ifElse({
 	},
 }).onTrue(http3);
 
-export default workflow('compiled', 'Compiled Workflow').add(
-	t0.to(http1).to(ai2).to(http3).to(if1),
-);
+export default workflow('compiled', 'Compiled Workflow').add(t0.to(http1).to(ai2).to(if1));

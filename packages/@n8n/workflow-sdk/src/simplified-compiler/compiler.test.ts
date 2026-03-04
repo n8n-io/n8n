@@ -404,7 +404,7 @@ onManual(async () => {
 	});
 
 	describe('Phase 8: loops', () => {
-		it('should emit SplitInBatches', () => {
+		it('should use native per-item processing for for...of with IO', () => {
 			const result = transpileWorkflowJS(`
 onManual(async () => {
   const items = await http.get('/items');
@@ -412,7 +412,49 @@ onManual(async () => {
 });
 `);
 			expect(result.errors).toHaveLength(0);
-			expect(result.code).toContain('splitInBatches(');
+			// Should NOT use SplitInBatches
+			expect(result.code).not.toContain('splitInBatches(');
+			// Should have a splitter Code node
+			expect(result.code).toContain("type: 'n8n-nodes-base.code'");
+			// Loop body HTTP node should NOT have executeOnce
+			// Find the POST node config — it should lack executeOnce
+			const postNodeMatch = result.code.match(
+				/const http\d+ = node\(\{[^}]*"method": "POST"[\s\S]*?\}\);/,
+			);
+			expect(postNodeMatch).toBeTruthy();
+			expect(postNodeMatch![0]).not.toContain('"executeOnce"');
+		});
+
+		it('should keep for...of without IO in Code node', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const items = await http.get('/items');
+  let message = '';
+  for (const item of items) { message += item.name; }
+  await http.post('/result', { message });
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			// No SplitInBatches, no aggregate — loop stays in Code node jsCode
+			expect(result.code).not.toContain('splitInBatches(');
+			expect(result.code).not.toContain('n8n-nodes-base.aggregate');
+			expect(result.code).toContain('message += item.name');
+		});
+
+		it('should add aggregate node when code follows a for...of loop', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const items = await http.get('/items');
+  for (const item of items) { await http.post('/process', item); }
+  await http.post('/done', { finished: true });
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).not.toContain('splitInBatches(');
+			// Should have an aggregate node to collect results
+			expect(result.code).toContain("type: 'n8n-nodes-base.aggregate'");
+			// Post-loop node should have executeOnce (back to normal)
+			expect(result.code).toContain('/done');
 		});
 	});
 

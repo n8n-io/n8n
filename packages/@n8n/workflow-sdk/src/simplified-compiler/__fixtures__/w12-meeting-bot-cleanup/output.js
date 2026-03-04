@@ -21,6 +21,20 @@ const http1 = node({
 	},
 });
 
+const code1 = node({
+	type: 'n8n-nodes-base.code',
+	version: 2,
+	config: {
+		name: 'Split events',
+		parameters: {
+			jsCode: `const events = $('GET www.googleapis.com/calendar/v3/ca...').all().map(i => i.json);
+return events.map(event => ({ json: event }));`,
+			mode: 'runOnceForAllItems',
+		},
+		executeOnce: true,
+	},
+});
+
 const http2 = node({
 	type: 'n8n-nodes-base.httpRequest',
 	version: 4.2,
@@ -37,7 +51,6 @@ const http2 = node({
 			authentication: 'genericCredentialType',
 			genericAuthType: 'httpHeaderAuth',
 		},
-		executeOnce: true,
 		credentials: { httpHeaderAuth: { name: 'Vexa API', id: '' } },
 	},
 });
@@ -63,7 +76,6 @@ const http3 = node({
 			authentication: 'genericCredentialType',
 			genericAuthType: 'httpHeaderAuth',
 		},
-		executeOnce: true,
 		credentials: { httpHeaderAuth: { name: 'Vexa API', id: '' } },
 	},
 });
@@ -77,9 +89,6 @@ const if2 = ifElse({
 	},
 }).onTrue(http3);
 
-const sib1 = splitInBatches({
-	version: 3,
-	config: { name: 'Loop 1', parameters: { batchSize: 1 }, executeOnce: true },
-}).to(if1.to(if2));
-
-export default workflow('compiled', 'Compiled Workflow').add(t0.to(http1).to(sib1));
+export default workflow('compiled', 'Compiled Workflow').add(
+	t0.to(http1).to(code1).to(if1).to(if2),
+);

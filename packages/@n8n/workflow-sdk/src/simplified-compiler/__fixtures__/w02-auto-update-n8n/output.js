@@ -86,6 +86,4 @@ const if1 = ifElse({
 	.onTrue(http3)
 	.onFalse(http4);
 
-export default workflow('compiled', 'Compiled Workflow').add(
-	t0.to(http1).to(http2).to(http3).to(http4).to(if1),
-);
+export default workflow('compiled', 'Compiled Workflow').add(t0.to(http1).to(http2).to(if1));

@@ -78,13 +78,13 @@ const if2 = ifElse({
 const if1 = ifElse({
 	version: 2.2,
 	config: {
-		name: 'IF 2',
+		name: 'IF 1',
 		parameters: { conditions: { options: { leftValue: "priority === 'cost'" } } },
 		executeOnce: true,
 	},
 })
 	.onTrue(code2)
-	.onFalse(code3.to(code4).to(if2));
+	.onFalse(if2);
 
 const code5 = node({
 	type: 'n8n-nodes-base.code',
@@ -155,15 +155,5 @@ const respond1 = node({
 });
 
 export default workflow('compiled', 'Compiled Workflow').add(
-	t0
-		.to(code1)
-		.to(code2)
-		.to(code3)
-		.to(code4)
-		.to(if2)
-		.to(if1)
-		.to(code5)
-		.to(ai1)
-		.to(code6)
-		.to(respond1),
+	t0.to(code1).to(if1).to(code5).to(ai1).to(code6).to(respond1),
 );

@@ -112,8 +112,9 @@ interface EmittedNode {
 		| 'workflow'
 		| 'ifElse'
 		| 'switchCase'
-		| 'splitInBatches';
+		| 'aggregate';
 	nodeName: string;
+	branchOnly?: boolean;
 }
 
 // ─── Transpiler Context ──────────────────────────────────────────────────────
@@ -135,6 +136,10 @@ interface TranspilerContext {
 	callbackParams: string[];
 	errors: CompilerError[];
 	hasOnErrorAnnotation: boolean;
+	inLoopBody: boolean;
+	loopCounter: number;
+	aggCounter: number;
+	needsAggregate: boolean;
 }
 
 // ─── Main Transpiler ─────────────────────────────────────────────────────────
@@ -372,6 +377,10 @@ function transpileCallback(
 		callbackParams: cb.callbackParams,
 		errors,
 		hasOnErrorAnnotation: false,
+		inLoopBody: false,
+		loopCounter: nodeOffset,
+		aggCounter: nodeOffset,
+		needsAggregate: false,
 	};
 
 	// Generate trigger node
@@ -396,7 +405,7 @@ function transpileCallback(
 	flushPendingCode(ctx);
 
 	// Build chain expression
-	const nodeVars = ctx.nodes.map((n) => n.varName);
+	const nodeVars = ctx.nodes.filter((n) => !n.branchOnly).map((n) => n.varName);
 	let chainExpr: string;
 	if (nodeVars.length <= 1) {
 		chainExpr = nodeVars[0] ?? triggerVar;
@@ -418,6 +427,12 @@ function walkStatements(
 	comments: Array<{ type: string; value: string; start: number; end: number }>,
 ): void {
 	for (const stmt of statements) {
+		// If a for...of loop preceded this statement and had IO, insert aggregate
+		if (ctx.needsAggregate && hasNonTrivialEffect(stmt, ctx.source)) {
+			emitAggregateNode(ctx);
+			ctx.needsAggregate = false;
+		}
+
 		// Check for @onError continue annotation in preceding comments
 		const stmtComments = comments.filter(
 			(c) => c.end <= stmt.start && c.value.trim() === '@onError continue',
@@ -493,7 +508,9 @@ function processIOCall(ctx: TranspilerContext, ioCall: IOCall): void {
 	if (ioCall.type === 'http') {
 		ctx.httpCounter++;
 		const httpVar = `http${ctx.httpCounter}`;
-		const httpNode = generateHttpSDK(ioCall, httpVar);
+		const httpNode = generateHttpSDK(ioCall, httpVar, {
+			skipExecuteOnce: ctx.inLoopBody,
+		});
 		ctx.nodes.push(httpNode);
 		if (ioCall.assignedVar) ctx.varSourceMap.set(ioCall.assignedVar, httpNode.nodeName);
 		ctx.prevVar = httpVar;
@@ -575,7 +592,8 @@ function processIfStatement(
 	flushPendingCode(ctx);
 	ctx.ifCounter++;
 
-	const ifVar = `if${ctx.ifCounter}`;
+	const myIfNum = ctx.ifCounter;
+	const ifVar = `if${myIfNum}`;
 	const testSource = ctx.source.slice(stmt.test!.start, stmt.test!.end);
 
 	// Process true branch
@@ -599,12 +617,12 @@ function processIfStatement(
 	// Emit all branch nodes
 	const allBranchNodes = [...trueBranch.nodes, ...(falseBranch?.nodes ?? [])];
 	for (const bn of allBranchNodes) {
-		ctx.nodes.push(bn);
+		ctx.nodes.push({ ...bn, branchOnly: true });
 	}
 
 	// Emit ifElse node
 	const conditionStr = testSource.replace(/'/g, "\\'");
-	let sdkCode = `const ${ifVar} = ifElse({ version: 2.2, config: { name: 'IF ${ctx.ifCounter}', parameters: { conditions: { options: { leftValue: '${conditionStr}' } } }, executeOnce: true } })`;
+	let sdkCode = `const ${ifVar} = ifElse({ version: 2.2, config: { name: 'IF ${myIfNum}', parameters: { conditions: { options: { leftValue: '${conditionStr}' } } }, executeOnce: true } })`;
 
 	if (trueBranch.chainExpr) {
 		sdkCode += `\n  .onTrue(${trueBranch.chainExpr})`;
@@ -614,7 +632,7 @@ function processIfStatement(
 	}
 	sdkCode += ';';
 
-	ctx.nodes.push({ varName: ifVar, sdkCode, kind: 'ifElse', nodeName: `IF ${ctx.ifCounter}` });
+	ctx.nodes.push({ varName: ifVar, sdkCode, kind: 'ifElse', nodeName: `IF ${myIfNum}` });
 	ctx.prevVar = ifVar;
 }
 
@@ -645,6 +663,8 @@ const COUNTER_KEYS = [
 	'sibCounter',
 	'respondCounter',
 	'wfCounter',
+	'loopCounter',
+	'aggCounter',
 ] as const;
 
 function syncCounters(target: TranspilerContext, source: TranspilerContext): void {
@@ -671,12 +691,17 @@ function createBranchContext(parentCtx: TranspilerContext): TranspilerContext {
 		callbackParams: parentCtx.callbackParams,
 		errors: parentCtx.errors,
 		hasOnErrorAnnotation: false,
+		inLoopBody: parentCtx.inLoopBody,
+		loopCounter: parentCtx.loopCounter,
+		aggCounter: parentCtx.aggCounter,
+		needsAggregate: false,
 	};
 }
 
 function buildBranchChain(nodes: EmittedNode[]): string {
-	if (nodes.length === 0) return '';
-	const vars = nodes.map((n) => n.varName);
+	const chainNodes = nodes.filter((n) => !n.branchOnly);
+	if (chainNodes.length === 0) return '';
+	const vars = chainNodes.map((n) => n.varName);
 	let chain = vars[0];
 	for (let i = 1; i < vars.length; i++) {
 		chain += `.to(${vars[i]})`;
@@ -727,7 +752,7 @@ function processSwitchStatement(
 
 	// Emit case nodes
 	for (const cn of allCaseNodes) {
-		ctx.nodes.push(cn);
+		ctx.nodes.push({ ...cn, branchOnly: true });
 	}
 
 	// Emit switchCase
@@ -748,21 +773,125 @@ function processSwitchStatement(
 	ctx.prevVar = switchVar;
 }
 
+// ─── Aggregate Node ─────────────────────────────────────────────────────────
+
+function hasNonTrivialEffect(stmt: AcornNode, source: string): boolean {
+	// Returns true if the statement has IO calls or control flow that produces nodes
+	if (extractIOCall(stmt, source)) return true;
+	if (isRespondCall(stmt)) return true;
+	if (stmt.type === 'IfStatement' || stmt.type === 'SwitchStatement') return true;
+	if (stmt.type === 'TryStatement') return true;
+	if (isPromiseAll(stmt)) return true;
+	if (findNestedIO(stmt, source).length > 0) return true;
+	return false;
+}
+
+function emitAggregateNode(ctx: TranspilerContext): void {
+	flushPendingCode(ctx);
+	ctx.aggCounter++;
+	const aggVar = `agg${ctx.aggCounter}`;
+	const aggName = `Aggregate ${ctx.aggCounter}`;
+
+	const sdkCode = `const ${aggVar} = node({
+  type: 'n8n-nodes-base.aggregate', version: 1,
+  config: {
+    name: '${aggName}',
+    parameters: {
+      aggregate: 'aggregateAllItemData',
+      destinationFieldName: 'data',
+      include: 'allFieldsExceptBinary'
+    }
+  }
+});`;
+
+	ctx.nodes.push({
+		varName: aggVar,
+		sdkCode,
+		kind: 'aggregate',
+		nodeName: aggName,
+	});
+	ctx.prevVar = aggVar;
+}
+
 // ─── For-Of Processing ───────────────────────────────────────────────────────
+
+function loopBodyHasIO(bodyNode: AcornNode, source: string): boolean {
+	const stmts = bodyNode.type === 'BlockStatement' && bodyNode.body ? bodyNode.body : [bodyNode];
+	for (const s of stmts) {
+		if (findNestedIO(s, source).length > 0) return true;
+	}
+	return false;
+}
 
 function processForOfStatement(
 	ctx: TranspilerContext,
 	stmt: AcornNode,
 	comments: Array<{ type: string; value: string; start: number; end: number }>,
 ): void {
-	flushPendingCode(ctx);
-	ctx.sibCounter++;
-
-	const sibVar = `sib${ctx.sibCounter}`;
-
-	// Process loop body
 	const bodyNode = (stmt as unknown as { body: AcornNode }).body;
+
+	// Case 3: No IO in loop body → keep as plain JS in Code node
+	if (!loopBodyHasIO(bodyNode, ctx.source)) {
+		const loopSource = ctx.source.slice(stmt.start, stmt.end);
+		ctx.pendingCode.push(loopSource);
+		return;
+	}
+
+	// Case 1 & 2: Loop body has IO → splitter + per-item nodes
+	flushPendingCode(ctx);
+	ctx.loopCounter++;
+
+	// Extract loop variable name and iterable
+	const leftNode = (stmt as unknown as { left: AcornNode }).left;
+	const loopVar =
+		leftNode.type === 'VariableDeclaration' && leftNode.declarations?.[0]
+			? (leftNode.declarations[0].id?.name ?? 'item')
+			: (leftNode.name ?? 'item');
+
+	const rightNode = (stmt as unknown as { right: AcornNode }).right;
+	const iterableName = rightNode.name ?? '';
+
+	// Emit splitter Code node — splits array into individual n8n items
+	ctx.codeCounter++;
+	const splitterVar = `code${ctx.codeCounter}`;
+	const splitterName = `Split ${loopVar}s`;
+
+	// Build reference to the source array
+	const sourceNodeName = ctx.varSourceMap.get(iterableName);
+	const refLine = sourceNodeName
+		? `const ${iterableName} = $('${sourceNodeName}').all().map(i => i.json);\n`
+		: '';
+	// If iterable is a property access (e.g. items from a previous code node returning { items: [...] }),
+	// we output the whole array. If it's a direct variable, output items.map(x => ({ json: x }))
+	const jsCode = `${refLine}return ${iterableName}.map(${loopVar} => ({ json: ${loopVar} }));`;
+
+	const splitterSdk = `const ${splitterVar} = node({
+  type: 'n8n-nodes-base.code', version: 2,
+  config: {
+    name: '${splitterName}',
+    parameters: {
+      jsCode: \`${jsCode.replace(/`/g, '\\`')}\`,
+      mode: 'runOnceForAllItems'
+    },
+    executeOnce: true
+  }
+});`;
+
+	ctx.nodes.push({
+		varName: splitterVar,
+		sdkCode: splitterSdk,
+		kind: 'code',
+		nodeName: splitterName,
+	});
+	ctx.prevVar = splitterVar;
+
+	// Map loop variable to $json (the splitter outputs individual items)
+	ctx.varSourceMap.set(loopVar, splitterName);
+
+	// Walk loop body with inLoopBody=true (skips executeOnce on emitted nodes)
 	const branchCtx = createBranchContext(ctx);
+	branchCtx.inLoopBody = true;
+	branchCtx.prevVar = splitterVar;
 	const bodyStmts =
 		bodyNode.type === 'BlockStatement' && bodyNode.body ? bodyNode.body : [bodyNode];
 	walkStatements(branchCtx, bodyStmts, comments);
@@ -772,17 +901,13 @@ function processForOfStatement(
 		ctx.nodes.push(bn);
 	}
 
-	const bodyChain = buildBranchChain(branchCtx.nodes);
+	// Update prevVar to last node in loop body
+	if (branchCtx.nodes.length > 0) {
+		ctx.prevVar = branchCtx.nodes[branchCtx.nodes.length - 1].varName;
+	}
 
-	const sdkCode = `const ${sibVar} = splitInBatches({ version: 3, config: { name: 'Loop ${ctx.sibCounter}', parameters: { batchSize: 1 }, executeOnce: true } })${bodyChain ? `.to(${bodyChain})` : ''};`;
-
-	ctx.nodes.push({
-		varName: sibVar,
-		sdkCode,
-		kind: 'splitInBatches',
-		nodeName: `Loop ${ctx.sibCounter}`,
-	});
-	ctx.prevVar = sibVar;
+	// Mark that we need an aggregate if there's more code after this loop
+	ctx.needsAggregate = true;
 
 	syncCounters(ctx, branchCtx);
 }
@@ -1317,7 +1442,11 @@ function mapWebhookOptions(options: Record<string, unknown>): Record<string, unk
 	return params;
 }
 
-function generateHttpSDK(io: IOCall, varName: string): EmittedNode {
+function generateHttpSDK(
+	io: IOCall,
+	varName: string,
+	options?: { skipExecuteOnce?: boolean },
+): EmittedNode {
 	const method = io.method.toUpperCase();
 	const url = io.url ?? '{{dynamic URL}}';
 
@@ -1371,8 +1500,10 @@ function generateHttpSDK(io: IOCall, varName: string): EmittedNode {
 	const configObj: Record<string, unknown> = {
 		name: io.nodeName,
 		parameters: params,
-		executeOnce: true,
 	};
+	if (!options?.skipExecuteOnce) {
+		configObj.executeOnce = true;
+	}
 	if (io.onError) {
 		configObj.onError = io.onError;
 	}
@@ -1562,8 +1693,8 @@ function generateSDKCode(allNodes: EmittedNode[], allChains: string[]): string {
 			case 'switchCase':
 				usedFactories.add('switchCase');
 				break;
-			case 'splitInBatches':
-				usedFactories.add('splitInBatches');
+			case 'aggregate':
+				usedFactories.add('node');
 				break;
 		}
 	}
