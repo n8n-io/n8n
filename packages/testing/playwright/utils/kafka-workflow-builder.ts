@@ -1,3 +1,6 @@
+import type { IConnections, INode, IWorkflowBase } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
+
 /**
  * Node output modes for controlling execution data volume per node.
  * - `noop`: NoOp nodes — minimal output, tests pure engine overhead.
@@ -47,7 +50,7 @@ function buildCodeNodeParams(size: Exclude<NodeOutputSize, 'noop'>) {
  *   This tests realistic DB write pressure since n8n stores all node outputs
  *   as a single accumulated blob per execution.
  */
-export function buildKafkaTriggeredWorkflow(options: KafkaWorkflowOptions) {
+export function buildKafkaTriggeredWorkflow(options: KafkaWorkflowOptions): Partial<IWorkflowBase> {
 	const {
 		topic,
 		groupId,
@@ -57,11 +60,8 @@ export function buildKafkaTriggeredWorkflow(options: KafkaWorkflowOptions) {
 		nodeOutputSize = 'noop',
 	} = options;
 
-	const nodes: Array<Record<string, unknown>> = [];
-	const connections: Record<
-		string,
-		{ main: Array<Array<{ node: string; type: string; index: number }>> }
-	> = {};
+	const nodes: INode[] = [];
+	const connections: IConnections = {};
 
 	nodes.push({
 		id: 'trigger',
@@ -105,11 +105,12 @@ export function buildKafkaTriggeredWorkflow(options: KafkaWorkflowOptions) {
 				type: 'n8n-nodes-base.noOp',
 				typeVersion: 1,
 				position: [i * 200, 0] as [number, number],
+				parameters: {},
 			});
 		}
 
 		connections[previousNodeName] = {
-			main: [[{ node: nodeName, type: 'main', index: 0 }]],
+			[NodeConnectionTypes.Main]: [[{ node: nodeName, type: NodeConnectionTypes.Main, index: 0 }]],
 		};
 		previousNodeName = nodeName;
 	}

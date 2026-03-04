@@ -1,8 +1,17 @@
+/**
+ * Kafka load test helpers — consumer-group-lag completion tracking.
+ *
+ * Use this approach when you need per-message tracking and duration statistics
+ * from the REST API. Better for load tests measuring individual execution performance.
+ *
+ * For sustained throughput measurement with per-interval sampling, use
+ * `throughput-helper.ts` instead.
+ */
 import type { TestInfo } from '@playwright/test';
-import type { KafkaHelper, MetricsHelper } from 'n8n-containers';
+import type { KafkaHelper } from 'n8n-containers';
 
-import type { WorkflowApiHelper } from '../services/workflow-api-helper';
 import { attachMetric } from './performance-helper';
+import type { WorkflowApiHelper } from '../services/workflow-api-helper';
 
 // --- Payload sizes ---
 
@@ -186,41 +195,6 @@ function buildMetrics(
 		p95DurationMs: percentile(durations, 95),
 		p99DurationMs: percentile(durations, 99),
 	};
-}
-
-// --- Memory collection ---
-
-const HEAP_USED_QUERY = 'n8n_nodejs_heap_size_used_bytes / 1024 / 1024';
-const RSS_QUERY = 'n8n_process_resident_memory_bytes / 1024 / 1024';
-
-/**
- * Waits for VictoriaMetrics to have scraped at least one data point,
- * then returns the current memory metrics.
- */
-export async function collectMemoryMetrics(
-	metrics: MetricsHelper,
-	options: { waitForScrape?: boolean } = {},
-): Promise<{ heapUsedMB: number; rssMB: number }> {
-	if (options.waitForScrape) {
-		// Wait up to 15s for VictoriaMetrics to have a real scrape
-		await metrics.waitForMetric(HEAP_USED_QUERY, {
-			timeoutMs: 15_000,
-			intervalMs: 2000,
-			predicate: (results) => results.length > 0 && results[0].value > 0,
-		});
-	}
-	try {
-		const [heapResult, rssResult] = await Promise.all([
-			metrics.query(HEAP_USED_QUERY),
-			metrics.query(RSS_QUERY),
-		]);
-		return {
-			heapUsedMB: heapResult[0]?.value ?? 0,
-			rssMB: rssResult[0]?.value ?? 0,
-		};
-	} catch {
-		return { heapUsedMB: 0, rssMB: 0 };
-	}
 }
 
 // --- Result reporting ---

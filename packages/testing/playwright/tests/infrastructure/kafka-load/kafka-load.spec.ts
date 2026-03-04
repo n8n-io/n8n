@@ -5,12 +5,11 @@ import {
 	publishAtRate,
 	preloadQueue,
 	waitForExecutions,
-	collectMemoryMetrics,
 	attachLoadTestResults,
 	type PayloadSize,
 } from '../../../utils/kafka-load-helper';
 import { buildKafkaTriggeredWorkflow } from '../../../utils/kafka-workflow-builder';
-import { attachMetric } from '../../../utils/performance-helper';
+import { attachMetric, collectMemorySnapshot } from '../../../utils/performance-helper';
 
 // Resource profile: override via env for different hardware profiles
 const RESOURCE_MEMORY = parseFloat(process.env.KAFKA_LOAD_MEMORY ?? '2');
@@ -117,14 +116,15 @@ test.describe(
 					nodeCount: scenario.nodeCount,
 				});
 
-				const { workflowId, createdWorkflow } =
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					await api.workflows.createWorkflowFromDefinition(workflowDef as any, {
+				const { workflowId, createdWorkflow } = await api.workflows.createWorkflowFromDefinition(
+					workflowDef,
+					{
 						makeUnique: true,
-					});
+					},
+				);
 
 				// Baseline memory
-				const memBefore = await collectMemoryMetrics(obs.metrics);
+				const memBefore = await collectMemorySnapshot(obs.metrics);
 				console.log(
 					`[LOAD] Baseline: heap=${memBefore.heapUsedMB.toFixed(1)}MB rss=${memBefore.rssMB.toFixed(1)}MB`,
 				);
@@ -172,7 +172,7 @@ test.describe(
 				});
 
 				// Final memory
-				const memAfter = await collectMemoryMetrics(obs.metrics);
+				const memAfter = await collectMemorySnapshot(obs.metrics);
 
 				// Attach results
 				await attachLoadTestResults(testInfo, scenario.name, metrics, memAfter);

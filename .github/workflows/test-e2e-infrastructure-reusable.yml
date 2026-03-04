@@ -1,0 +1,21 @@
+name: 'Test: E2E Infrastructure'
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'packages/testing/playwright/tests/infrastructure/**'
+      - 'packages/testing/playwright/utils/kafka-*'
+      - 'packages/testing/playwright/utils/throughput-*'
+      - 'packages/testing/containers/services/**'
+      - '.github/workflows/test-e2e-infrastructure-reusable.yml'
+
+jobs:
+  build-and-test-infrastructure:
+    uses: ./.github/workflows/test-e2e-reusable.yml
+    with:
+      test-mode: docker-build
+      test-command: pnpm --filter=n8n-playwright test:infrastructure
+      shards: 1
+    secrets: inherit

@@ -1,3 +1,12 @@
+/**
+ * Throughput benchmark helpers — VictoriaMetrics counter-based completion tracking.
+ *
+ * Use this approach when you need sustained throughput measurement with per-interval
+ * sampling. Better for benchmarks measuring aggregate throughput over time.
+ *
+ * For per-message tracking via consumer group lag with REST API duration statistics,
+ * use `kafka-load-helper.ts` instead.
+ */
 import type { TestInfo } from '@playwright/test';
 import type { MetricsHelper } from 'n8n-containers';
 
@@ -30,8 +39,6 @@ export interface MemorySnapshot {
 
 const WORKFLOW_SUCCESS_QUERY = 'n8n_workflow_success_total';
 const QUEUE_COMPLETED_QUERY = 'n8n_scaling_mode_queue_jobs_completed';
-const HEAP_USED_QUERY = 'n8n_nodejs_heap_size_used_bytes / 1024 / 1024';
-const RSS_QUERY = 'n8n_process_resident_memory_bytes / 1024 / 1024';
 
 // --- Throughput measurement ---
 
@@ -164,23 +171,6 @@ function calculateThroughput(
 		peakActionsPerSec: peakExecPerSec * nodeCount,
 		samples,
 	};
-}
-
-// --- Memory collection ---
-
-export async function collectMemoryFromMetrics(metrics: MetricsHelper): Promise<MemorySnapshot> {
-	try {
-		const [heapResult, rssResult] = await Promise.all([
-			metrics.query(HEAP_USED_QUERY),
-			metrics.query(RSS_QUERY),
-		]);
-		return {
-			heapUsedMB: heapResult[0]?.value ?? 0,
-			rssMB: rssResult[0]?.value ?? 0,
-		};
-	} catch {
-		return { heapUsedMB: 0, rssMB: 0 };
-	}
 }
 
 // --- Result reporting ---

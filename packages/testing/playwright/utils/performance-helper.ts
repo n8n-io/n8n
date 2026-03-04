@@ -30,6 +30,35 @@ export async function getAllPerformanceMetrics(page: Page) {
 	});
 }
 
+/**
+ * Queries VictoriaMetrics for current heap and RSS memory of the n8n process.
+ * Optionally waits for at least one scrape before reading.
+ */
+export async function collectMemorySnapshot(
+	metrics: MetricsHelper,
+	options: { waitForScrape?: boolean } = {},
+): Promise<{ heapUsedMB: number; rssMB: number }> {
+	if (options.waitForScrape) {
+		await metrics.waitForMetric(HEAP_USED_QUERY, {
+			timeoutMs: 15_000,
+			intervalMs: 2000,
+			predicate: (results) => results.length > 0 && results[0].value > 0,
+		});
+	}
+	try {
+		const [heapResult, rssResult] = await Promise.all([
+			metrics.query(HEAP_USED_QUERY),
+			metrics.query(RSS_QUERY),
+		]);
+		return {
+			heapUsedMB: heapResult[0]?.value ?? 0,
+			rssMB: rssResult[0]?.value ?? 0,
+		};
+	} catch {
+		return { heapUsedMB: 0, rssMB: 0 };
+	}
+}
+
 /** Attach a performance metric for collection by the metrics reporter */
 export async function attachMetric(
 	testInfo: TestInfo,

@@ -1,19 +1,18 @@
 import { nanoid } from 'nanoid';
 
-import { test, expect } from '../../fixtures/base';
+import { test, expect } from '../../../fixtures/base';
 import { BASE_PERFORMANCE_PLANS } from 'n8n-containers/performance-plans';
-import { preloadQueue, type PayloadSize } from '../../utils/kafka-load-helper';
+import { preloadQueue, type PayloadSize } from '../../../utils/kafka-load-helper';
 import {
 	buildKafkaTriggeredWorkflow,
 	type NodeOutputSize,
-} from '../../utils/kafka-workflow-builder';
-import { attachMetric } from '../../utils/performance-helper';
+} from '../../../utils/kafka-workflow-builder';
+import { attachMetric, collectMemorySnapshot } from '../../../utils/performance-helper';
 import {
 	waitForThroughput,
 	getBaselineCounter,
-	collectMemoryFromMetrics,
 	attachThroughputResults,
-} from '../../utils/throughput-helper';
+} from '../../../utils/throughput-helper';
 
 const plan = BASE_PERFORMANCE_PLANS.enterprise;
 const MESSAGE_COUNT = parseInt(process.env.BENCHMARK_MESSAGES ?? '0', 10);
@@ -41,7 +40,7 @@ interface ThroughputScenario {
 
 const SCENARIOS: ThroughputScenario[] = [
 	{
-		name: 'kafka-1node-1k',
+		name: 'kafka-1-node-1KB-1k',
 		nodeCount: 1,
 		messageCount: 1_000,
 		payloadSize: '1KB',
@@ -50,7 +49,7 @@ const SCENARIOS: ThroughputScenario[] = [
 		timeoutMs: 120_000,
 	},
 	{
-		name: 'kafka-10nodes-5k',
+		name: 'kafka-10-nodes-1KB-5k',
 		nodeCount: 10,
 		messageCount: 5_000,
 		payloadSize: '1KB',
@@ -59,7 +58,7 @@ const SCENARIOS: ThroughputScenario[] = [
 		timeoutMs: 300_000,
 	},
 	{
-		name: 'kafka-30nodes-5k',
+		name: 'kafka-30-nodes-1KB-5k',
 		nodeCount: 30,
 		messageCount: 5_000,
 		payloadSize: '1KB',
@@ -68,7 +67,7 @@ const SCENARIOS: ThroughputScenario[] = [
 		timeoutMs: 300_000,
 	},
 	{
-		name: 'kafka-60nodes-5k',
+		name: 'kafka-60-nodes-1KB-5k',
 		nodeCount: 60,
 		messageCount: 5_000,
 		payloadSize: '1KB',
@@ -77,7 +76,7 @@ const SCENARIOS: ThroughputScenario[] = [
 		timeoutMs: 600_000,
 	},
 	{
-		name: 'kafka-10nodes-10kb-5k',
+		name: 'kafka-10-nodes-1KB-10kb-out-5k',
 		nodeCount: 10,
 		messageCount: 5_000,
 		payloadSize: '1KB',
@@ -86,7 +85,7 @@ const SCENARIOS: ThroughputScenario[] = [
 		timeoutMs: 300_000,
 	},
 	{
-		name: 'kafka-10nodes-100kb-5k',
+		name: 'kafka-10-nodes-1KB-100kb-out-5k',
 		nodeCount: 10,
 		messageCount: 5_000,
 		payloadSize: '1KB',
@@ -138,11 +137,12 @@ test.describe(
 					nodeOutputSize: scenario.nodeOutputSize,
 				});
 
-				const { workflowId, createdWorkflow } =
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					await api.workflows.createWorkflowFromDefinition(workflowDef as any, {
+				const { workflowId, createdWorkflow } = await api.workflows.createWorkflowFromDefinition(
+					workflowDef,
+					{
 						makeUnique: true,
-					});
+					},
+				);
 
 				// 4. Preload queue
 				const publishResult = await preloadQueue(kafka, topic, {
@@ -164,7 +164,7 @@ test.describe(
 				const baselineCounter = await getBaselineCounter(obs.metrics);
 
 				// 6. Collect baseline memory
-				const memBefore = await collectMemoryFromMetrics(obs.metrics);
+				const memBefore = await collectMemorySnapshot(obs.metrics);
 
 				// 7. Activate workflow and wait for consumer group
 				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
@@ -183,7 +183,7 @@ test.describe(
 				});
 
 				// 9. Collect final memory
-				const memAfter = await collectMemoryFromMetrics(obs.metrics);
+				const memAfter = await collectMemorySnapshot(obs.metrics);
 
 				// 10. Attach results
 				await attachThroughputResults(testInfo, scenario.name, result, memAfter);
