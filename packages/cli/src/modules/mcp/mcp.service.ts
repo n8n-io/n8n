@@ -75,13 +75,14 @@ export class McpService {
 
 	async getServer(user: User) {
 		const { McpServer } = await import('@modelcontextprotocol/sdk/server/mcp.js');
+		const builderEnabled = this.globalConfig.endpoints.mcpBuilderEnabled;
 		const server = new McpServer(
 			{
 				name: 'n8n MCP Server',
 				version: '1.0.0',
 			},
 			{
-				instructions: getMcpInstructions(),
+				...(builderEnabled && { instructions: getMcpInstructions() }),
 			},
 		);
 
@@ -131,7 +132,18 @@ export class McpService {
 			workflowDetailsTool.handler,
 		);
 
-		// Workflow builder tools
+		// Workflow builder tools (enabled via N8N_MCP_BUILDER_ENABLED)
+		if (builderEnabled) {
+			await this.registerBuilderTools(server, user);
+		}
+
+		return server;
+	}
+
+	private async registerBuilderTools(
+		server: InstanceType<typeof import('@modelcontextprotocol/sdk/server/mcp.js')['McpServer']>,
+		user: User,
+	) {
 		await this.workflowBuilderToolsService.initialize();
 
 		const searchNodesTool = createSearchWorkflowNodesTool(
@@ -214,8 +226,6 @@ export class McpService {
 				registeredSdkRefTool.enable();
 			}
 		};
-
-		return server;
 	}
 
 	// #region Queue Mode Support
