@@ -1,3 +1,14 @@
+## [1.123.23](https://github.com/n8n-io/n8n/compare/n8n@1.123.22...n8n@1.123.23) (2026-03-04)
+
+
+### Bug Fixes
+
+* Backport transitive dependency bumps to 1.x ([#26260](https://github.com/n8n-io/n8n/issues/26260)) ([aef8c80](https://github.com/n8n-io/n8n/commit/aef8c80491dc74ac8cef13b6bfdab375ba0a69dd))
+* **editor:** Replace jsonpath with jsonpath-plus to resolve CVE ([#26408](https://github.com/n8n-io/n8n/issues/26408)) ([10aa98f](https://github.com/n8n-io/n8n/commit/10aa98fceb8937bcd7a64a9c1ba3ca625f6ee6e6))
+* Fix 14 security issues in jsonpath, mailparser, mysql2 and 9 more ([#26363](https://github.com/n8n-io/n8n/issues/26363)) ([9b1d456](https://github.com/n8n-io/n8n/commit/9b1d4564e7cfb2f7c07fce3d7ca61ffa525aba43))
+
+
+
 ## [1.123.22](https://github.com/n8n-io/n8n/compare/n8n@1.123.21...n8n@1.123.22) (2026-02-25)
 
 
