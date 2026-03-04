@@ -127,7 +127,13 @@ export class Column {
 	}
 
 	/**
-	 * @deprecated, use autoGenerate2 instead
+	 * @deprecated Use `autoGenerate2` for integer columns. For UUID columns,
+	 * avoid both `autoGenerate` and `autoGenerate2` — they cause TypeORM to
+	 * emit `DEFAULT uuid_generate_v4()`, which requires the `uuid-ossp`
+	 * extension in the `public` schema. This fails on managed Postgres
+	 * services like Supabase where the extension lives in a different schema.
+	 * Instead, use `column('id').uuid.primary.notNull` and generate UUIDs in
+	 * application code via `@BeforeInsert()` + `randomUUID()`.
 	 **/
 	get autoGenerate() {
 		this.isGenerated = true;
@@ -135,8 +141,15 @@ export class Column {
 	}
 
 	/**
-	 * Prefers `identity` over `increment` (which turns to `serial` for pg)
+	 * Prefers `identity` over `increment` (which turns to `serial` for pg).
 	 * See https://wiki.postgresql.org/wiki/Don%27t_Do_This#Don.27t_use_serial
+	 *
+	 * WARNING: For UUID columns, this has the same problem as `autoGenerate`
+	 * — TypeORM emits `DEFAULT uuid_generate_v4()`, which fails on managed
+	 * Postgres services (e.g. Supabase) where the `uuid-ossp` extension is
+	 * not in the `public` schema. For UUID primary keys, use
+	 * `column('id').uuid.primary.notNull` and generate UUIDs in application
+	 * code via `@BeforeInsert()` + `randomUUID()`.
 	 **/
 	get autoGenerate2() {
 		this.isGenerated2 = true;
