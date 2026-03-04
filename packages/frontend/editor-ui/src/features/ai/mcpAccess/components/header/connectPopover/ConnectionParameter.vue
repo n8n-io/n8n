@@ -98,12 +98,17 @@ const handleCopy = async (value: string) => {
 	gap: var(--spacing--4xs);
 
 	.info-tip {
-		display: none;
+		visibility: hidden;
 		cursor: pointer;
+		padding-top: 1px;
+
+		:global(.n8n-info-tip) {
+			display: flex;
+		}
 	}
 
-	&:hover .info-tip {
-		display: block;
+	&:hover .info-tip span {
+		visibility: visible;
 	}
 }
 
