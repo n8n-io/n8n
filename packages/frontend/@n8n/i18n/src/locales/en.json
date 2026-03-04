@@ -432,7 +432,7 @@
 	"chatHub.agent.editor.description.label": "Description",
 	"chatHub.agent.editor.description.placeholder": "Enter agent description (optional)",
 	"chatHub.agent.editor.systemPrompt.label": "System Prompt",
-	"chatHub.agent.editor.systemPrompt.placeholder": "Enter system prompt",
+	"chatHub.agent.editor.systemPrompt.placeholder": "Enter system prompt (optional)",
 	"chatHub.agent.editor.model.label": "Model",
 	"chatHub.agent.editor.tools.label": "Tools",
 	"chatHub.agent.editor.loading": "Loading agent...",
