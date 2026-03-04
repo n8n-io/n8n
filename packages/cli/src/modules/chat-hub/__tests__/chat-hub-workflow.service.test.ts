@@ -1,10 +1,12 @@
 import type { Logger } from '@n8n/backend-common';
-import type { WorkflowRepository, SharedWorkflowRepository } from '@n8n/db';
+import type { WorkflowRepository, SharedWorkflowRepository, User } from '@n8n/db';
+import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import type { Cipher, BinaryDataService } from 'n8n-core';
 import { type IBinaryData, type INode, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
-import type { ChatHubAgentService } from '../chat-hub-agent.service';
+import type { ChatHubAgent } from '../chat-hub-agent.entity';
+import type { ChatHubAgentRepository } from '../chat-hub-agent.repository';
 import type { ChatHubCredentialsService } from '../chat-hub-credentials.service';
 import type { ChatHubAuthenticationMetadata } from '../chat-hub-extractor';
 import { ChatHubMessage } from '../chat-hub-message.entity';
@@ -15,6 +17,8 @@ import { ChatHubAttachmentService } from '../chat-hub.attachment.service';
 import type { ChatHubSettingsService } from '../chat-hub.settings.service';
 import type { ChatHubMessageRepository } from '../chat-message.repository';
 
+import { NODE_NAMES } from '../chat-hub.constants';
+
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 describe('ChatHubWorkflowService', () => {
@@ -23,7 +27,7 @@ describe('ChatHubWorkflowService', () => {
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const binaryDataService = mock<BinaryDataService>();
 	const messageRepository = mock<ChatHubMessageRepository>();
-	const chatHubAgentService = mock<ChatHubAgentService>();
+	const chatHubAgentRepository = mock<ChatHubAgentRepository>();
 	const chatHubSettingsService = mock<ChatHubSettingsService>();
 	const chatHubCredentialsService = mock<ChatHubCredentialsService>();
 	const chatHubToolService = mock<ChatHubToolService>();
@@ -57,7 +61,7 @@ describe('ChatHubWorkflowService', () => {
 			workflowRepository,
 			sharedWorkflowRepository,
 			chatHubAttachmentService,
-			chatHubAgentService,
+			chatHubAgentRepository,
 			chatHubSettingsService,
 			chatHubCredentialsService,
 			chatHubToolService,
@@ -100,6 +104,7 @@ describe('ChatHubWorkflowService', () => {
 					undefined,
 					[],
 					'UTC',
+					null,
 					defaultExecutionMetadata,
 				);
 
@@ -154,6 +159,7 @@ describe('ChatHubWorkflowService', () => {
 					undefined,
 					[],
 					'UTC',
+					null,
 					defaultExecutionMetadata,
 				);
 
@@ -219,6 +225,7 @@ describe('ChatHubWorkflowService', () => {
 					undefined,
 					[],
 					'UTC',
+					null,
 					defaultExecutionMetadata,
 				);
 
@@ -265,6 +272,7 @@ describe('ChatHubWorkflowService', () => {
 					undefined,
 					[],
 					'UTC',
+					null,
 					defaultExecutionMetadata,
 				);
 
@@ -320,6 +328,7 @@ describe('ChatHubWorkflowService', () => {
 					undefined,
 					[],
 					'UTC',
+					null,
 					defaultExecutionMetadata,
 				);
 
@@ -379,6 +388,7 @@ describe('ChatHubWorkflowService', () => {
 					undefined,
 					[],
 					'UTC',
+					null,
 					defaultExecutionMetadata,
 				);
 
@@ -461,6 +471,7 @@ describe('ChatHubWorkflowService', () => {
 					undefined,
 					[],
 					'UTC',
+					null,
 					defaultExecutionMetadata,
 				);
 
@@ -538,6 +549,7 @@ describe('ChatHubWorkflowService', () => {
 					undefined,
 					[],
 					'UTC',
+					null,
 					defaultExecutionMetadata,
 				);
 
@@ -596,6 +608,7 @@ describe('ChatHubWorkflowService', () => {
 					undefined,
 					[],
 					'UTC',
+					null,
 					defaultExecutionMetadata,
 				);
 
@@ -643,6 +656,7 @@ describe('ChatHubWorkflowService', () => {
 					undefined,
 					[],
 					'UTC',
+					null,
 					defaultExecutionMetadata,
 				);
 
@@ -876,6 +890,133 @@ describe('ChatHubWorkflowService', () => {
 				},
 			]);
 			expect(result[0].data.main[0]![0].binary).toHaveProperty('data0');
+		});
+	});
+
+	describe('system message building', () => {
+		async function getAgentNodeSystemMessage(agent: ChatHubAgent): Promise<string> {
+			const serviceWithRepo = new ChatHubWorkflowService(
+				logger,
+				workflowRepository,
+				sharedWorkflowRepository,
+				chatHubAttachmentService,
+				chatHubAgentRepository,
+				chatHubSettingsService,
+				chatHubCredentialsService,
+				chatHubToolService,
+				workflowFinderService,
+				mockCipher,
+			);
+
+			const mockTrx = mock<EntityManager>();
+			mockTrx.save.mockImplementation(
+				async (entity) => ({ ...(entity as object), id: 'workflow-123' }) as any,
+			);
+
+			chatHubAgentRepository.getOneById.mockResolvedValue(agent);
+			chatHubToolService.getToolDefinitionsForAgent.mockResolvedValue([]);
+			chatHubSettingsService.getSemanticSearchOptions.mockResolvedValue(null);
+			chatHubSettingsService.ensureModelIsAllowed.mockResolvedValue(undefined);
+			chatHubCredentialsService.findPersonalProject.mockResolvedValue({ id: 'project-789' } as any);
+			jest.spyOn(serviceWithRepo, 'getSystemMessageMetadata').mockReturnValue('__metadata__');
+
+			const result = await serviceWithRepo.prepareReplyWorkflow(
+				{ id: 'user-123' } as User,
+				'session-456' as any,
+				{},
+				{ provider: 'custom-agent', agentId: 'agent-1' } as any,
+				[],
+				'Hello',
+				[],
+				[],
+				'UTC',
+				mockTrx,
+				defaultExecutionMetadata,
+			);
+
+			const agentNode = result.workflowData.nodes.find((n) => n.name === NODE_NAMES.REPLY_AGENT);
+			return (agentNode?.parameters?.options as any)?.systemMessage;
+		}
+
+		it('should include agent system prompt and file list in the AI Agent node system message', async () => {
+			const agent = mock<ChatHubAgent>({
+				id: 'agent-1',
+				provider: 'openai',
+				model: 'gpt-4',
+				credentialId: 'cred-1',
+				systemPrompt: `You are a product expert assistant.
+When answering questions, follow these rules:
+- Be concise and accurate
+- Always cite which document you used
+- If unsure, say so explicitly
+- Never invent information`,
+				files: [
+					{
+						id: 'k1',
+						type: 'embedding',
+						provider: 'openai',
+						fileName: 'technical-spec.pdf',
+						mimeType: 'application/pdf',
+					},
+					{
+						id: 'k2',
+						type: 'embedding',
+						provider: 'openai',
+						fileName: 'product-roadmap.pdf',
+						mimeType: 'application/pdf',
+					},
+					{
+						id: 'k3',
+						type: 'embedding',
+						provider: 'openai',
+						fileName: 'onboarding-guide.pdf',
+						mimeType: 'application/pdf',
+					},
+				],
+			});
+
+			expect(await getAgentNodeSystemMessage(agent)).toMatchInlineSnapshot(`
+"Combine provided tools and knowledge to answer questions.
+
+__metadata__
+
+## Instructions from the user
+
+> You are a product expert assistant.
+> When answering questions, follow these rules:
+> - Be concise and accurate
+> - Always cite which document you used
+> - If unsure, say so explicitly
+> - Never invent information
+
+## Your Knowledge
+
+You have access to the following files as a searchable knowledge base:
+
+- technical-spec.pdf
+- product-roadmap.pdf
+- onboarding-guide.pdf
+
+Use the vector store tool to search the content of these files when answering questions that may be related to them.
+Do not proactively mention these files to the user."
+`);
+		});
+
+		it('should omit instruction and knowledge sections when system prompt is empty and no files', async () => {
+			const agent = mock<ChatHubAgent>({
+				id: 'agent-1',
+				provider: 'openai',
+				model: 'gpt-4',
+				credentialId: 'cred-1',
+				systemPrompt: '',
+				files: [],
+			});
+
+			expect(await getAgentNodeSystemMessage(agent)).toMatchInlineSnapshot(`
+"Combine provided tools and knowledge to answer questions.
+
+__metadata__"
+`);
 		});
 	});
 });
