@@ -47,9 +47,11 @@ export class HostnameMatcher {
 				) {
 					return true;
 				}
+				continue;
+			}
 
-				// Direct match
-			} else if (normalizedHostname === pattern.value) {
+			// Direct match
+			if (normalizedHostname === pattern.value) {
 				return true;
 			}
 		}

@@ -490,8 +490,9 @@ describe('SsrfProtectionService', () => {
 			it('should handle percent-encoded hostnames', async () => {
 				const { service } = createService();
 
-				// URL constructor normalizes percent-encoding
-				const result = await service.validateUrl('http://127.0.0.1/');
+				// %31%32%37%2e%30%2e%30%2e%31 = 127.0.0.1 percent-encoded
+				// URL constructor normalizes this back to 127.0.0.1
+				const result = await service.validateUrl('http://%31%32%37%2e%30%2e%30%2e%31/');
 				expect(result).toEqual({
 					allowed: false,
 					reason: 'IP address is blocked',

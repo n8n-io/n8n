@@ -4,6 +4,7 @@ import { Service } from '@n8n/di';
 import type { LookupAddress, LookupOptions } from 'node:dns';
 import { isIP } from 'node:net';
 import type { BlockList } from 'node:net';
+import { ensureError } from 'n8n-workflow';
 
 import { DnsResolver } from './dns-resolver';
 import { HostnameMatcher } from './hostname-matcher';
@@ -134,19 +135,20 @@ export class SsrfProtectionService {
 			family?: number,
 		) => void,
 	) => void {
-		return (hostname, options, onResult) => {
-			this.secureLookupAsync(hostname, options)
-				.then((resolved) => {
-					if (options.all) {
-						onResult(null, resolved);
-					} else {
-						const first = resolved[0];
-						onResult(null, first.address, first.family);
-					}
-				})
-				.catch((error: Error) => {
-					onResult(error, [], undefined);
-				});
+		return async (hostname, options, onResult) => {
+			try {
+				const resolved = await this.secureLookupAsync(hostname, options);
+
+				if (options.all) {
+					onResult(null, resolved);
+					return;
+				}
+
+				const first = resolved[0];
+				onResult(null, first.address, first.family);
+			} catch (error) {
+				onResult(ensureError(error), [], undefined);
+			}
 		};
 	}
 

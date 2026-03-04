@@ -29,7 +29,7 @@ describe('DnsResolver', () => {
 		const result = await resolver.lookup('example.com');
 
 		expect(result).toEqual([{ address: '1.2.3.4', family: 4 }]);
-		expect(cache.get).toHaveBeenCalledWith('example.com|a:0|f:0|o:verbatim');
+		expect(cache.get).toHaveBeenCalledWith('example.com|a:0|f:0|o:verbatim|h:0');
 		expect(mockedDns.lookup).not.toHaveBeenCalled();
 	});
 
@@ -48,7 +48,7 @@ describe('DnsResolver', () => {
 			hints: undefined,
 		});
 		expect(cache.set).toHaveBeenCalledWith(
-			'example.com|a:0|f:0|o:verbatim',
+			'example.com|a:0|f:0|o:verbatim|h:0',
 			[{ address: '93.184.216.34', family: 4 }],
 			1,
 		);
@@ -77,7 +77,7 @@ describe('DnsResolver', () => {
 			hints: undefined,
 		});
 		expect(cache.set).toHaveBeenCalledWith(
-			'dualstack.example.com|a:1|f:0|o:verbatim',
+			'dualstack.example.com|a:1|f:0|o:verbatim|h:0',
 			[
 				{ address: '93.184.216.34', family: 4 },
 				{ address: '2606:4700::6810:85e5', family: 6 },
@@ -103,7 +103,7 @@ describe('DnsResolver', () => {
 			hints: undefined,
 		});
 		expect(cache.set).toHaveBeenCalledWith(
-			'ipv6.example.com|a:1|f:6|o:verbatim',
+			'ipv6.example.com|a:1|f:6|o:verbatim|h:0',
 			[{ address: '2606:4700::6810:85e5', family: 6 }],
 			1,
 		);
@@ -122,7 +122,7 @@ describe('DnsResolver', () => {
 			order: 'ipv4first',
 			hints: undefined,
 		});
-		expect(cache.get).toHaveBeenCalledWith('ordered.example.com|a:0|f:0|o:ipv4first');
+		expect(cache.get).toHaveBeenCalledWith('ordered.example.com|a:0|f:0|o:ipv4first|h:0');
 	});
 
 	it('should normalize unsupported family values to 0', async () => {
@@ -138,7 +138,7 @@ describe('DnsResolver', () => {
 			order: 'verbatim',
 			hints: undefined,
 		});
-		expect(cache.get).toHaveBeenCalledWith('example.com|a:0|f:0|o:verbatim');
+		expect(cache.get).toHaveBeenCalledWith('example.com|a:0|f:0|o:verbatim|h:0');
 	});
 
 	it('should bubble up lookup errors', async () => {
@@ -160,8 +160,8 @@ describe('DnsResolver', () => {
 		await resolver.lookup('cache-key.example.com');
 		await resolver.lookup('cache-key.example.com', { all: true, family: 4 });
 
-		expect(cache.get).toHaveBeenCalledWith('cache-key.example.com|a:0|f:0|o:verbatim');
-		expect(cache.get).toHaveBeenCalledWith('cache-key.example.com|a:1|f:4|o:verbatim');
+		expect(cache.get).toHaveBeenCalledWith('cache-key.example.com|a:0|f:0|o:verbatim|h:0');
+		expect(cache.get).toHaveBeenCalledWith('cache-key.example.com|a:1|f:4|o:verbatim|h:0');
 	});
 
 	describe('in-flight deduplication', () => {

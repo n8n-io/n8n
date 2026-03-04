@@ -81,7 +81,7 @@ export class DnsResolver {
 	}
 
 	private buildCacheKey(hostname: string, options: NormalizedLookupOptions): string {
-		return `${hostname}|a:${options.all ? '1' : '0'}|f:${options.family}|o:${options.order}`;
+		return `${hostname}|a:${options.all ? '1' : '0'}|f:${options.family}|o:${options.order}|h:${options.hints ?? 0}`;
 	}
 
 	private normalizeOptions(options: DnsLookupOptions): NormalizedLookupOptions {
