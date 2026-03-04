@@ -1265,50 +1265,65 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		addMessage(data.sessionId, message);
 	}
 
-	const semanticSearchReadiness = computed((): SemanticSearchReadiness => {
-		let vectorStoreIssue: SemanticSearchCredentialIssue | undefined;
-		let embeddingIssue: SemanticSearchCredentialIssue | undefined;
-
+	const vectorStoreIssue = computed<SemanticSearchCredentialIssue | undefined>(() => {
 		const isSharingEnabled =
 			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing];
 		const semanticSearch = settingsStore.moduleSettings['chat-hub']?.semanticSearch;
 		const vectorStoreCredentialId = semanticSearch?.vectorStore.credentialId ?? '';
-		const embeddingCredentialId = semanticSearch?.embeddingModel.credentialId ?? '';
 		const vectorStoreCredential = credentialsStore.getCredentialById(vectorStoreCredentialId);
-		const embeddingCredential = credentialsStore.getCredentialById(embeddingCredentialId);
 
 		if (!vectorStoreCredentialId) {
-			vectorStoreIssue = 'unspecified';
-		} else if (
+			return 'unspecified';
+		}
+
+		if (
 			!vectorStoreCredential ||
 			!semanticSearch?.vectorStore.provider ||
 			vectorStoreCredential?.type !==
 				VECTOR_STORE_PROVIDER_CREDENTIAL_TYPE_MAP[semanticSearch?.vectorStore.provider]
 		) {
-			vectorStoreIssue = 'notFound';
-		} else if (isSharingEnabled && !vectorStoreCredential.isGlobal) {
-			vectorStoreIssue = 'notShared';
+			return 'notFound';
 		}
 
+		if (isSharingEnabled && !vectorStoreCredential.isGlobal) {
+			return 'notShared';
+		}
+
+		return undefined;
+	});
+
+	const embeddingIssue = computed<SemanticSearchCredentialIssue | undefined>(() => {
+		const isSharingEnabled =
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing];
+		const semanticSearch = settingsStore.moduleSettings['chat-hub']?.semanticSearch;
+		const embeddingCredentialId = semanticSearch?.embeddingModel.credentialId ?? '';
+		const embeddingCredential = credentialsStore.getCredentialById(embeddingCredentialId);
+
 		if (!embeddingCredentialId) {
-			embeddingIssue = 'unspecified';
-		} else if (
+			return 'unspecified';
+		}
+
+		if (
 			!embeddingCredential ||
 			!semanticSearch?.embeddingModel.provider ||
 			embeddingCredential?.type !==
 				PROVIDER_CREDENTIAL_TYPE_MAP[semanticSearch?.embeddingModel.provider]
 		) {
-			embeddingIssue = 'notFound';
-		} else if (isSharingEnabled && !embeddingCredential.isGlobal) {
-			embeddingIssue = 'notShared';
+			return 'notFound';
 		}
 
-		return {
-			isReady: !vectorStoreIssue && !embeddingIssue,
-			vectorStoreIssue,
-			embeddingIssue,
-		};
+		if (isSharingEnabled && !embeddingCredential.isGlobal) {
+			return 'notShared';
+		}
+
+		return undefined;
 	});
+
+	const semanticSearchReadiness = computed<SemanticSearchReadiness>(() => ({
+		isReady: !vectorStoreIssue.value && !embeddingIssue.value,
+		vectorStoreIssue: vectorStoreIssue.value,
+		embeddingIssue: embeddingIssue.value,
+	}));
 
 	return {
 		/**

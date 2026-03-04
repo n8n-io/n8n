@@ -171,7 +171,7 @@ export class ChatHubAttachmentService {
 		return await this.binaryDataService.getAsBuffer(binaryData);
 	}
 
-	async storeAgentAttachmentFromBuffer(
+	async storeTemporaryExecutionFile(
 		workflowId: string,
 		buffer: Buffer,
 		mimeType: string,

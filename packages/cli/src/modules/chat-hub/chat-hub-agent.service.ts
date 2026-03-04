@@ -320,10 +320,10 @@ export class ChatHubAgentService {
 		files: Express.Multer.File[],
 	): Promise<ChatHubAgentDto> {
 		const agent = await this.getAgentById(agentId, user.id);
-		const newFiles = await this.processNewFilesFromMulter(user, agentId, files);
+		const items = await this.indexFilesAsKnowledgeItems(user, agentId, files);
 
 		const updatedAgent = await this.chatAgentRepository.updateAgent(agentId, {
-			files: agent.files.concat(newFiles),
+			files: agent.files.concat(items),
 		});
 
 		const toolIds = await this.chatHubToolService.getToolIdsForAgent(agentId);
@@ -348,7 +348,7 @@ export class ChatHubAgentService {
 		this.logger.debug(`Deleted file "${fileName}" from agent ${agentId} by user ${user.id}`);
 	}
 
-	private async processNewFilesFromMulter(
+	private async indexFilesAsKnowledgeItems(
 		user: User,
 		agentId: string,
 		files: Express.Multer.File[],
@@ -370,10 +370,14 @@ export class ChatHubAgentService {
 			// With disk storage file.buffer is undefined; read from the temp path instead.
 			const buffer = file.buffer ?? (await readFile(file.path));
 			if (file.path) {
-				await unlink(file.path).catch(() => {});
+				await unlink(file.path).catch((error) => {
+					this.logger.warn(`Could not unlink file in temporary path. File: ${originalName}`, {
+						error,
+					});
+				});
 			}
 
-			const storedFile = await this.chatHubAttachmentService.storeAgentAttachmentFromBuffer(
+			const storedFile = await this.chatHubAttachmentService.storeTemporaryExecutionFile(
 				workflowId,
 				buffer,
 				file.mimetype,
