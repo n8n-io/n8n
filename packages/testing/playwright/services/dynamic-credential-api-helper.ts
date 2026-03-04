@@ -66,13 +66,6 @@ export class DynamicCredentialApiHelper {
 		return result.data ?? result;
 	}
 
-	async deleteResolver(id: string): Promise<void> {
-		const response = await this.api.request.delete(`/rest/credential-resolvers/${id}`);
-		if (!response.ok()) {
-			throw new TestError(`Failed to delete credential resolver: ${await response.text()}`);
-		}
-	}
-
 	// ===== Execution status =====
 
 	/**
@@ -193,32 +186,4 @@ export class DynamicCredentialApiHelper {
 	}
 
 	// ===== Revoke =====
-
-	/**
-	 * DELETE /rest/credentials/:credentialId/revoke?resolverId=:resolverId
-	 *
-	 * Revokes stored credential data for the current user identity.
-	 */
-	async revokeCredential(
-		credentialId: string,
-		resolverId: string,
-		options?: { bearerToken?: string; endpointToken?: string },
-	): Promise<void> {
-		const headers: Record<string, string> = {};
-		if (options?.bearerToken) {
-			headers['Authorization'] = `Bearer ${options.bearerToken}`;
-		}
-		if (options?.endpointToken) {
-			headers['X-Authorization'] = options.endpointToken;
-		}
-
-		const response = await this.api.request.delete(
-			`/rest/credentials/${credentialId}/revoke?resolverId=${encodeURIComponent(resolverId)}`,
-			{ headers },
-		);
-
-		if (response.status() !== 204 && !response.ok()) {
-			throw new TestError(`Failed to revoke credential: ${await response.text()}`);
-		}
-	}
 }

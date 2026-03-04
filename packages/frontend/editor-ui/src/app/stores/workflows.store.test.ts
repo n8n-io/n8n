@@ -1458,6 +1458,10 @@ describe('useWorkflowsStore', () => {
 				timezone: 'UTC',
 			};
 
+			// Also populate the document store since updateWorkflowSetting reads from it
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('w1'));
+			workflowDocumentStore.setSettings({ executionOrder: 'v1', timezone: 'UTC' });
+
 			const makeRestApiRequestSpy = vi.spyOn(apiUtils, 'makeRestApiRequest').mockResolvedValue(
 				createTestWorkflow({
 					id: 'w1',
@@ -1489,8 +1493,9 @@ describe('useWorkflowsStore', () => {
 			// Assert returned value and store updates
 			expect(result.versionId).toBe('v1');
 			expect(workflowsStore.workflow.versionId).toBe('v1');
-			expect(workflowsStore.workflow.settings).toEqual({
+			expect(workflowDocumentStore.settings).toEqual({
 				executionOrder: 'v1',
+				binaryMode: 'separate',
 				timezone: 'UTC',
 				executionTimeout: 10,
 			});
@@ -2214,8 +2219,12 @@ describe('useWorkflowsStore', () => {
 			// Add workflow to workflowsById to simulate it being loaded from backend
 			workflowsListStore.addWorkflow(testWorkflow);
 
-			// Verify the mock is set up correctly
-			expect(workflowsStore.workflow.scopes).toContain('workflow:update');
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(testWorkflow.id),
+			);
+			workflowDocumentStore.setScopes(testWorkflow.scopes ?? []);
+
+			expect(workflowDocumentStore.scopes).toContain('workflow:update');
 			expect(workflowsStore.workflow.id).toBe('workflow-123');
 			expect(workflowsStore.workflow.isArchived).toBe(false);
 
@@ -2243,6 +2252,11 @@ describe('useWorkflowsStore', () => {
 			// Add workflow to workflowsById to simulate it being loaded from backend
 			workflowsListStore.addWorkflow(testWorkflow);
 
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(testWorkflow.id),
+			);
+			workflowDocumentStore.setScopes(testWorkflow.scopes ?? []);
+
 			vi.mocked(workflowsApi).getLastSuccessfulExecution.mockResolvedValue(null);
 
 			await workflowsStore.fetchLastSuccessfulExecution();
@@ -2266,6 +2280,11 @@ describe('useWorkflowsStore', () => {
 			workflowsStore.workflow = testWorkflow;
 			// Add workflow to workflowsById to simulate it being loaded from backend
 			workflowsListStore.addWorkflow(testWorkflow);
+
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(testWorkflow.id),
+			);
+			workflowDocumentStore.setScopes(testWorkflow.scopes ?? []);
 
 			const error = new Error('API Error');
 			vi.mocked(workflowsApi).getLastSuccessfulExecution.mockRejectedValue(error);

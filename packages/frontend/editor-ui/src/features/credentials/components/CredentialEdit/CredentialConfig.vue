@@ -283,7 +283,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 			<FreeAiCreditsCallout :credential-type-name="credentialType?.name" />
 
 			<CredentialModeSelector
-				v-if="canWrite && isNewCredential"
+				v-if="canWrite"
 				:credential-type="credentialType"
 				:use-custom-oauth="useCustomOauth"
 				:show-managed-oauth-options="managedOauthAvailable"

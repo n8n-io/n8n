@@ -21,7 +21,9 @@ import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/ty
 import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
 import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
+import type { SuggestedPrompt } from '@n8n/api-types';
 import type { CredentialsMap } from '../chat.types';
+import SuggestedPromptsEditor from './SuggestedPromptsEditor.vue';
 import ToolsSelector from './ToolsSelector.vue';
 import { personalAgentDefaultIcon, isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
 import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
@@ -55,6 +57,7 @@ const agents = ref<ChatModelsResponse>(emptyChatModelsResponse);
 const isLoadingAgents = ref(false);
 const nameInputRef = useTemplateRef('nameInput');
 const icon = ref<AgentIconOrEmoji>(personalAgentDefaultIcon);
+const suggestedPrompts = ref<SuggestedPrompt[]>([]);
 
 const agentSelectedCredentials = ref<CredentialsMap>({});
 const credentialIdForSelectedModelProvider = computed(
@@ -124,6 +127,7 @@ watch(
 		description.value = agent.description ?? '';
 		systemPrompt.value = agent.systemPrompt;
 		selectedModel.value = { provider: agent.provider, model: agent.model };
+		suggestedPrompts.value = agent.suggestedPrompts;
 		toolIds.value = agent.toolIds ?? [];
 
 		if (agent.credentialId) {
@@ -190,6 +194,8 @@ async function onSave() {
 		assert(selectedModel.value);
 		assert(credentialIdForSelectedModelProvider.value);
 
+		const filteredPrompts = suggestedPrompts.value.filter((p) => p.text.trim().length > 0);
+
 		const payload = {
 			name: name.value.trim(),
 			description: description.value.trim() || undefined,
@@ -198,6 +204,7 @@ async function onSave() {
 			credentialId: credentialIdForSelectedModelProvider.value,
 			toolIds: toolIds.value,
 			icon: icon.value,
+			suggestedPrompts: filteredPrompts.length > 0 ? filteredPrompts : undefined,
 		};
 
 		if (isEditMode.value && props.data.agentId) {
@@ -327,6 +334,15 @@ async function onDelete() {
 					/>
 				</N8nInputLabel>
 
+				<N8nInputLabel
+					input-name="agent-suggested-prompts"
+					:label="i18n.baseText('chatHub.agent.editor.suggestedPrompts.label')"
+					:tooltip-text="i18n.baseText('chatHub.agent.editor.suggestedPrompts.tooltip')"
+					:show-tooltip="true"
+				>
+					<SuggestedPromptsEditor v-model="suggestedPrompts" />
+				</N8nInputLabel>
+
 				<div :class="$style.row">
 					<N8nInputLabel
 						input-name="agent-model"
@@ -402,7 +418,7 @@ async function onDelete() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
-	padding: var(--spacing--sm) 0;
+	padding: var(--spacing--sm) var(--spacing--4xs);
 }
 
 .input {
