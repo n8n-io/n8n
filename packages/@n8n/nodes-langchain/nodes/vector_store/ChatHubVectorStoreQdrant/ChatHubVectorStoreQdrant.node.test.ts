@@ -183,5 +183,17 @@ describe('ChatHubVectorStoreQdrant', () => {
 				},
 			});
 		});
+
+		it('should delete all user documents when filter is empty', async () => {
+			mockClient.delete.mockResolvedValue(undefined);
+
+			await capturedDeleteDocuments.call(makeContext('user-789'), { filter: {} });
+
+			expect(mockClient.delete).toHaveBeenCalledWith('chat_hub', {
+				filter: {
+					must: [{ key: 'metadata.userId', match: { value: 'user-789' } }],
+				},
+			});
+		});
 	});
 });

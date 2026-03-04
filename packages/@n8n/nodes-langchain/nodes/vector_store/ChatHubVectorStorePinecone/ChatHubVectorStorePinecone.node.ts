@@ -7,7 +7,7 @@ import type {
 	INodeProperties,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { jsonParse, NodeOperationError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import { getUserScopedSlot } from '../shared/userScoped';
 import { createVectorStoreNode, metadataFilterField } from '@n8n/ai-utilities';
 
@@ -44,15 +44,8 @@ async function deleteDocuments(
 	payload: IDataObject | string | undefined,
 ): Promise<NodeParameterValueType> {
 	const { filter } = (typeof payload === 'string' ? jsonParse(payload) : (payload ?? {})) as {
-		filter: Record<string, string | string[]>;
+		filter?: Record<string, string | string[]>;
 	};
-
-	if (!filter || Object.keys(filter).length === 0) {
-		throw new NodeOperationError(
-			this.getNode(),
-			'deleteDocuments requires at least one filter field.',
-		);
-	}
 
 	const credentials = await this.getCredentials<ChatHubVectorStorePineconeApiCredentials>(
 		'chatHubVectorStorePineconeApi',
@@ -63,7 +56,13 @@ async function deleteDocuments(
 	const pineconeIndex = client.Index(credentials.pineconeIndex);
 	const namespace = pineconeIndex.namespace(namespaceName);
 
-	await namespace.deleteMany({ filter });
+	if (!filter || Object.keys(filter).length === 0) {
+		// The namespace is user-scoped (one namespace per user), so deleting all is safe
+		// and avoids leaving empty ghost namespaces after user deletion.
+		await namespace.deleteAll();
+	} else {
+		await namespace.deleteMany({ filter });
+	}
 
 	return null;
 }

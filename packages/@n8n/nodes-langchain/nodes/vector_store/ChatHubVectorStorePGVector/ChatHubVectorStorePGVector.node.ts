@@ -12,7 +12,7 @@ import type {
 	INodeProperties,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { jsonParse, NodeOperationError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import type pg from 'pg';
 import { getUserScopedSlot } from '../shared/userScoped';
 import { ExtendedPGVectorStore } from '../VectorStorePGVector/VectorStorePGVector.node';
@@ -40,17 +40,20 @@ async function deleteDocuments(
 		typeof payload === 'string' ? jsonParse(payload) : (payload ?? {})
 	) as { filter: Record<string, string | string[]>; metadataColumnName?: string };
 
-	if (!filter || Object.keys(filter).length === 0) {
-		throw new NodeOperationError(
-			this.getNode(),
-			'deleteDocuments requires at least one filter field.',
-		);
-	}
-
 	const credentials = await this.getCredentials<ChatHubVectorStorePGVectorApiCredentials>(
 		'chatHubVectorStorePGVectorApi',
 	);
 	const tableName = getUserScopedSlot(this, credentials.tableNamePrefix);
+
+	const pgConf = await configurePostgres.call(this, credentials as PostgresNodeCredentials);
+	const pool = pgConf.db.$pool as unknown as pg.Pool;
+
+	if (!filter || Object.keys(filter).length === 0) {
+		// The table is user-scoped (one table per user), so dropping it is safe
+		// and avoids leaving empty ghost tables after user deletion.
+		await pool.query(`DROP TABLE IF EXISTS "${tableName}"`);
+		return null;
+	}
 
 	const conditions: string[] = [];
 	const values: Array<string | string[]> = [];
@@ -64,9 +67,6 @@ async function deleteDocuments(
 		values.push(value);
 		paramIndex++;
 	}
-
-	const pgConf = await configurePostgres.call(this, credentials as PostgresNodeCredentials);
-	const pool = pgConf.db.$pool as unknown as pg.Pool;
 	await pool.query(`DELETE FROM "${tableName}" WHERE ${conditions.join(' AND ')}`, values);
 
 	return null;

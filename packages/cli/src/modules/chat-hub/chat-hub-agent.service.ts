@@ -243,6 +243,29 @@ export class ChatHubAgentService {
 		}
 	}
 
+	async deleteAllEmbeddingsForUser(userId: string): Promise<void> {
+		const options = await this.chatHubSettingsService.getSemanticSearchOptions();
+		if (!options) {
+			return;
+		}
+
+		const additionalData = await getBase({ userId });
+
+		await this.dynamicNodeParametersService.getActionResult(
+			'deleteDocuments',
+			'',
+			additionalData,
+			{ name: options.vectorStore.nodeType, version: 1 },
+			{},
+			JSON.stringify({ filter: {} }),
+			{
+				[options.vectorStore.credentialType]: { id: options.vectorStore.credentialId, name: '' },
+			},
+		);
+
+		this.logger.debug(`Deleted all embeddings for user ${userId} from vector store`);
+	}
+
 	private async deleteEmbeddings(userId: string, agentId: string): Promise<void> {
 		const settings = await this.ensureSemanticSearchOptions();
 		const additionalData = await getBase({ userId });

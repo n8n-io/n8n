@@ -9,6 +9,9 @@ export class ChatHubModule implements ModuleInterface {
 	async init() {
 		await import('./chat-hub.controller');
 		await import('./chat-hub.settings.controller');
+		const { ChatHubEventRelay } = await import('./chat-hub-event-relay.service');
+
+		Container.get(ChatHubEventRelay);
 
 		// In queue mode, only workers process Chat hub execution lifecycle events.
 		// Skip initializing the watcher on main instance to avoid unnecessary event subscriptions.

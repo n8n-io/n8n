@@ -2,7 +2,6 @@ import type { QdrantLibArgs } from '@langchain/qdrant';
 import { QdrantVectorStore } from '@langchain/qdrant';
 import {
 	jsonParse,
-	NodeOperationError,
 	type IDataObject,
 	type ILoadOptionsFunctions,
 	type NodeParameterValueType,
@@ -41,16 +40,9 @@ async function deleteDocuments(
 	this: ILoadOptionsFunctions,
 	payload: IDataObject | string | undefined,
 ): Promise<NodeParameterValueType> {
-	const { filter } = (typeof payload === 'string' ? jsonParse(payload) : (payload ?? {})) as {
-		filter: Record<string, string | string[]>;
+	const { filter = {} } = (typeof payload === 'string' ? jsonParse(payload) : (payload ?? {})) as {
+		filter?: Record<string, string | string[]>;
 	};
-
-	if (!filter || Object.keys(filter).length === 0) {
-		throw new NodeOperationError(
-			this.getNode(),
-			'deleteDocuments requires at least one filter field.',
-		);
-	}
 
 	const credentials = await this.getCredentials<ChatHubVectorStoreQdrantApiCredentials>(
 		'chatHubVectorStoreQdrantApi',
