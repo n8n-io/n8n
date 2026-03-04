@@ -121,6 +121,10 @@ export class NodeDefinedFieldRedactionStrategy implements IExecutionRedactionStr
 		}
 	}
 
+	private isRecord(value: unknown): value is Record<string, unknown> {
+		return typeof value === 'object' && value !== null;
+	}
+
 	private redactPath(obj: Record<string, unknown>, path: string): void {
 		const segments = path.split('.');
 		let current: Record<string, unknown> = obj;
@@ -128,11 +132,11 @@ export class NodeDefinedFieldRedactionStrategy implements IExecutionRedactionStr
 		for (let i = 0; i < segments.length - 1; i++) {
 			const segment = segments[i];
 			const next = current[segment];
-			if (next === null || next === undefined || typeof next !== 'object') {
+			if (!this.isRecord(next)) {
 				// Fail fast — path does not exist, nothing to redact
 				return;
 			}
-			current = next as Record<string, unknown>;
+			current = next;
 		}
 
 		const lastSegment = segments[segments.length - 1];
