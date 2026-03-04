@@ -504,6 +504,59 @@ describe('CommunityPackagesService', () => {
 				'Installation of unverified community packages is forbidden!',
 			);
 		});
+
+		test('should call verifyIntegrity when checksum is provided', async () => {
+			const PACKAGE_NAME = 'n8n-nodes-test';
+			const VERSION = '1.0.0';
+			const CHECKSUM = 'sha512-test-checksum';
+
+			config.unverifiedEnabled = true;
+			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+
+			// verifyIntegrity calls axios.get first - return matching integrity
+			mocked(axios.get).mockResolvedValueOnce({
+				data: { dist: { integrity: CHECKSUM } },
+			});
+			// checkIfVersionExistsOrThrow calls axios.get - just needs to succeed
+			mocked(axios.get).mockResolvedValueOnce({ data: {} });
+
+			// downloadPackage mocks
+			const tarballName = `${PACKAGE_NAME}-${VERSION}.tgz`;
+			mocked(executeNpmCommand).mockImplementation(async (args: string[]) => {
+				if (args[0] === 'pack') return tarballName;
+				return 'Done';
+			});
+			mocked(execFile).mockImplementation(((...args: Parameters<typeof execFile>) => {
+				const actualCallback = args[args.length - 1] as ExecFileCallback;
+				actualCallback(null, 'Done', '');
+			}) as typeof execFile);
+			mocked(readFile).mockResolvedValue(
+				JSON.stringify({
+					name: PACKAGE_NAME,
+					version: VERSION,
+					dependencies: {},
+				}),
+			);
+			mocked(writeFile).mockResolvedValue(undefined);
+			loadNodesAndCredentials.loadPackage.mockResolvedValue(
+				mock<PackageDirectoryLoader>({
+					loadedNodes: [{ name: 'a-node', version: 1 }],
+				}),
+			);
+			loadNodesAndCredentials.unloadPackage.mockResolvedValue(undefined);
+			installedPackageRepository.saveInstalledPackageWithNodes.mockResolvedValue(
+				mock<InstalledPackages>({ packageName: PACKAGE_NAME }),
+			);
+			publisher.publishCommand.mockResolvedValue(undefined);
+
+			await communityPackagesService.installPackage(PACKAGE_NAME, VERSION, CHECKSUM);
+
+			// verifyIntegrity should have been called (axios.get for integrity check)
+			expect(axios.get).toHaveBeenCalledWith(
+				expect.stringContaining(PACKAGE_NAME),
+				expect.objectContaining({ timeout: expect.any(Number) }),
+			);
+		});
 	});
 
 	describe('ensurePackageJson', () => {
