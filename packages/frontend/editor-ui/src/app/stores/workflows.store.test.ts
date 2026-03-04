@@ -2227,6 +2227,7 @@ describe('useWorkflowsStore', () => {
 			workflowsListStore.addWorkflow(testWorkflow);
 
 			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			workflowDocumentStore.setScopes(testWorkflow.scopes ?? []);
 
 			// Verify the mock is set up correctly
 			expect(workflowsStore.workflow.scopes).toContain('workflow:update');
