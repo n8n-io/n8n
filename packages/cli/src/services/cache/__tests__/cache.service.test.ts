@@ -184,6 +184,7 @@ for (const backend of ['memory', 'redis'] as const) {
 						['"true"', true],
 						['"false"', false],
 						['an object', { foo: 'bar' }],
+						['an empty object', {}],
 					])('should treat a key as cache hit when value is %s', async (_type, valueToSet) => {
 						const refreshFn = createRefreshFn();
 
