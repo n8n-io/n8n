@@ -3,6 +3,12 @@ import { describe, expect, it } from 'vitest';
 import type { WorkflowHistory } from '@n8n/rest-api-client/api/workflowHistory';
 import { useWorkflowHistoryVersionOptions } from './useWorkflowHistoryVersionOptions';
 
+vi.mock('@n8n/i18n', () => ({
+	useI18n: () => ({
+		baseText: (key: string) => key,
+	}),
+}));
+
 const createHistoryVersion = (overrides: Partial<WorkflowHistory> = {}): WorkflowHistory => ({
 	versionId: 'version-1',
 	authors: 'Author One',

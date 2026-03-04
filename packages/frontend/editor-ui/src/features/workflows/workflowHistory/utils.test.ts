@@ -8,6 +8,12 @@ import {
 } from './utils';
 import { workflowHistoryDataFactory } from './__tests__/utils';
 
+vi.mock('@n8n/i18n', () => ({
+	useI18n: () => ({
+		baseText: (key: string) => key,
+	}),
+}));
+
 const createNamedItem = (overrides: Partial<WorkflowHistory> = {}): WorkflowHistory => ({
 	...workflowHistoryDataFactory(),
 	name: 'Named Version',
@@ -222,7 +228,7 @@ describe('getVersionLabel', () => {
 			currentVersionId: 'v1',
 		});
 
-		expect(result).toBe('Current changes');
+		expect(result).toBe('workflowHistory.item.currentChanges');
 	});
 
 	it('returns generated label when version has no name', () => {
