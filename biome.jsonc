@@ -29,7 +29,9 @@
 		"attributePosition": "auto",
 		"ignore": [
 			// Handled by prettier
-			"**/*.vue"
+			"**/*.vue",
+			// Fixture outputs must match compiler output exactly
+			"**/__fixtures__/**/output.js"
 		]
 	},
 	"organizeImports": { "enabled": false },
