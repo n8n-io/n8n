@@ -2,7 +2,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const table = 'project_secrets_provider_access';
 
-export class AddRoleColumnToProjectSecretsProviderAccess1771500000003
+export class AddRoleColumnToProjectSecretsProviderAccess1772619247761
 	implements ReversibleMigration
 {
 	async up({ schemaBuilder: { addColumns, column } }: MigrationContext) {
