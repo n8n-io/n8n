@@ -56,7 +56,7 @@ const warningTooltip = computed<string | undefined>(() => {
 				{{ item.isNew ? item.mimeType : i18n.baseText('chatHub.agent.editor.files.indexed') }}
 			</N8nText>
 		</div>
-		<N8nIconButton icon="x" size="small" variant="ghost" @click.stop="emit('remove')" />
+		<N8nIconButton icon="trash-2" size="small" variant="subtle" @click.stop="emit('remove')" />
 	</div>
 </template>
 

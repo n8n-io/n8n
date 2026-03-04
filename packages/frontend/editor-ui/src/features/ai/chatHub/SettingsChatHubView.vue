@@ -99,7 +99,7 @@ onMounted(async () => {
 			{{ i18n.baseText('settings.chatHub') }}
 		</N8nHeading>
 		<ChatProvidersTable
-			:data-test-d="'chat-providers-table'"
+			data-test-id="chat-providers-table"
 			:settings="chatStore.settings"
 			:loading="chatStore.settingsLoading"
 			:disabled="disabled"
