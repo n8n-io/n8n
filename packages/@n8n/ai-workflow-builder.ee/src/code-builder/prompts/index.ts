@@ -26,8 +26,6 @@ function escapeCurlyBrackets(text: string): string {
 
 /**
  * Expression context reference - documents variables available inside expr()
- *
- * NOTE: Raw curly braces — escaped for LangChain at prompt assembly time.
  */
 export const EXPRESSION_REFERENCE = `Available variables inside \`expr('{{ ... }}')\`:
 
@@ -62,8 +60,6 @@ Dynamic data from other nodes — \`$()\` MUST always be inside \`{{ }}\`, never
 
 /**
  * Additional SDK functions not covered by main workflow patterns
- *
- * NOTE: Raw curly braces — escaped for LangChain at prompt assembly time.
  */
 export const ADDITIONAL_FUNCTIONS = `Additional SDK functions:
 
@@ -97,13 +93,9 @@ All your reasoning and analysis should happen in your internal thinking process 
 
 /**
  * Workflow rules - strict constraints for code generation
- *
- * NOTE: Raw curly braces — escaped for LangChain at prompt assembly time.
  */
 /**
  * Coding guidelines - strict rules for writing workflow code
- *
- * NOTE: Raw curly braces — escaped for LangChain at prompt assembly time.
  */
 export const CODING_GUIDELINES = `Rules:
 - Use exact parameter names and structures from the type definitions.
@@ -125,8 +117,6 @@ export const CODING_GUIDELINES = `Rules:
 
 /**
  * Design guidance - architectural decisions for workflow construction
- *
- * NOTE: Raw curly braces — escaped for LangChain at prompt assembly time.
  */
 export const DESIGN_GUIDANCE = `Design guidance:
 - **Trace item counts**: For each connection A → B, if A returns N items, should B run N times or just once? If B doesn't need A's items (e.g., it fetches from an independent source), either set \`executeOnce: true\` on B or use parallel branches + Merge to combine results.
@@ -144,8 +134,6 @@ export const WORKFLOW_RULES = `Follow these rules strictly when generating workf
 
 /**
  * Workflow patterns - condensed examples
- *
- * NOTE: Raw curly braces — escaped for LangChain at prompt assembly time.
  */
 export const WORKFLOW_PATTERNS = `<linear_chain>
 \`\`\`javascript
