@@ -207,8 +207,8 @@ export class ErrorReporter {
 			...(isTracingEnabled ? { tracesSampleRate } : {}),
 			...(isProfilingEnabled ? { profilesSampleRate, profileLifecycle: 'trace' } : {}),
 			beforeSend: this.beforeSend.bind(this) as NodeOptions['beforeSend'],
-			ignoreTransactions: [`GET ${healthEndpoint}`, 'GET /metrics'],
-			ignoreSpans: [`GET ${healthEndpoint}`, 'GET /metrics'],
+			ignoreTransactions: [`GET ${healthEndpoint}`, 'GET /metrics', 'SET search_path TO'],
+			ignoreSpans: [`GET ${healthEndpoint}`, 'GET /metrics', 'SET search_path TO'],
 			integrations: (integrations) => [
 				...integrations.filter(({ name }) => enabledIntegrations.has(name)),
 				rewriteFramesIntegration({ root: '/' }),

@@ -1,8 +1,3 @@
-/** Primitive Colors
-/** The primitives should not be used directly in components and other UI elements.
-/** They can be only mapped to tokens.
-/** Tokens should be used instead in components and other UI elements **/
-
 @mixin primitives {
 	--color--white-alpha-100: hsla(220, 1%, 100%, 0.1);
 	--color--white-alpha-200: hsla(220, 1%, 100%, 0.15);
@@ -207,6 +202,26 @@
 	--radius--xl: 1.5rem; /** 24px **/
 	--radius--2xl: 2rem; /** 32px **/
 	--radius--full: 9999px;
+
+	--height--5xs: 0.5rem; /** 8px **/
+	--height--4xs: 0.75rem; /** 12px **/
+	--height--3xs: 1rem; /** 16px **/
+	--height--2xs: 1.25rem; /** 20px **/
+	--height--xs: 1.5rem; /** 24px **/
+	--height--sm: 1.75rem; /** 28px **/
+	--height--md: 2rem; /** 32px **/
+	--height--lg: 2.25rem; /** 36px **/
+	--height--xl: 2.5rem; /** 40px **/
+	--height--2xl: 3rem; /** 48px **/
+	--height--3xl: 3.5rem; /** 56px **/
+	--height--4xl: 4rem; /** 64px **/
+	--height--5xl: 6rem; /** 96px **/
+
+	--duration--snappy: 0.15;
+	--duration--base: 0.3;
+	--easing--ease-out: cubic-bezier(0.215, 0.61, 0.355, 1);
+	--easing--ease-in: cubic-bezier(0.55, 0.055, 0.675, 0.19);
+	--easing--ease-in-out: cubic-bezier(0.645, 0.045, 0.355, 1);
 }
 
 :root {

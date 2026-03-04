@@ -118,14 +118,18 @@ export function stripReleasePrefixes(tag) {
 }
 
 /**
- * @returns { string[] }
- * */
-export function readPrLabels() {
-	const eventPath = ensureEnvVar('GITHUB_EVENT_PATH');
-
-	const event = JSON.parse(fs.readFileSync(eventPath, 'utf8'));
+ * @param {any} [pullRequest] Optional pull request object. If not provided, reads from GITHUB_EVENT_PATH
+ *
+ * @returns {string[]}
+ */
+export function readPrLabels(pullRequest) {
+	if (!pullRequest) {
+		const eventPath = ensureEnvVar('GITHUB_EVENT_PATH');
+		const event = JSON.parse(fs.readFileSync(eventPath, 'utf8'));
+		pullRequest = event.pull_request;
+	}
 	/** @type { string[] | { name: string }[] } */
-	const labels = event?.pull_request?.labels ?? [];
+	const labels = pullRequest?.labels ?? [];
 
 	return labels.map((l) => (typeof l === 'string' ? l : l?.name)).filter(Boolean);
 }
@@ -226,4 +230,20 @@ export function listTagsPointingAt(commit) {
 		.split('\n')
 		.map((s) => s.trim())
 		.filter(Boolean);
+}
+
+/**
+ * @param {string} branch
+ */
+export function remoteBranchExists(branch) {
+	const res = trySh('git', ['ls-remote', '--heads', 'origin', branch]);
+	return res.ok && res.out.length > 0;
+}
+
+/**
+ * @param {string} ref
+ */
+export function localRefExists(ref) {
+	const res = trySh('git', ['show-ref', '--verify', '--quiet', ref]);
+	return res.ok;
 }

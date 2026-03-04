@@ -8,6 +8,7 @@ export type * from './user';
 export type * from './api-keys';
 export type * from './community-node-types';
 export type * from './quick-connect';
+export * from './instance-registry-types';
 export {
 	chatHubConversationModelSchema,
 	type ChatModelDto,
@@ -46,6 +47,7 @@ export {
 	type ChatHubConversationResponse,
 	type ChatHubConversationsResponse,
 	type ChatHubAgentDto,
+	type ChatHubAgentKnowledgeItem,
 	ChatHubCreateAgentRequest,
 	ChatHubUpdateAgentRequest,
 	type AgentIconOrEmoji,
@@ -151,6 +153,7 @@ export {
 	type DataTableCreateColumnSchema,
 	type DataTableListFilter,
 	type DataTableListOptions,
+	type DataTableListSortBy,
 	dateTimeSchema,
 	dataTableColumnNameSchema,
 } from './schemas/data-table.schema';

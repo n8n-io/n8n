@@ -250,6 +250,15 @@ export class DataTableRepository extends Repository<DataTable> {
 				.orderBy('datatable_name_lower', direction);
 		} else if (['createdAt', 'updatedAt'].includes(field)) {
 			query.orderBy(`dataTable.${field}`, direction);
+		} else if (field === 'size') {
+			query
+				.leftJoin(
+					`(${this.getDataTableSizeQuery()})`,
+					'size_data',
+					`size_data.table_name = '${toTableName('')}' || dataTable.id`,
+				)
+				.addSelect('size_data.table_bytes', 'size')
+				.orderBy('size', direction);
 		}
 	}
 
@@ -322,12 +331,11 @@ export class DataTableRepository extends Repository<DataTable> {
 		};
 	}
 
-	private async getAllDataTablesSizeMap(): Promise<Map<string, number>> {
+	private getDataTableSizeQuery() {
 		const dbType = this.globalConfig.database.type;
 		const tablePattern = toTableName('%');
 
 		let sql = '';
-
 		switch (dbType) {
 			case 'sqlite':
 				sql = `
@@ -353,17 +361,20 @@ export class DataTableRepository extends Repository<DataTable> {
       `;
 				break;
 			}
-
-			default:
-				return new Map<string, number>();
 		}
+
+		return sql;
+	}
+
+	private async getAllDataTablesSizeMap(): Promise<Map<string, number>> {
+		const sql = this.getDataTableSizeQuery();
+		const sizeMap = new Map<string, number>();
+		if (sql === '') return sizeMap;
 
 		const result = (await this.query(sql)) as Array<{
 			table_name: string;
 			table_bytes: number | string | null;
 		}>;
-
-		const sizeMap = new Map<string, number>();
 
 		for (const row of result) {
 			if (row.table_bytes !== null && row.table_name) {
