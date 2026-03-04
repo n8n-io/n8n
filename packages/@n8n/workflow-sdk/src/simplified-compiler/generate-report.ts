@@ -155,11 +155,18 @@ ${cards}
 </html>`;
 }
 
-const entries = processFixtures();
-writeFileSync(REPORT_PATH, generateHtml(entries));
+export function generateReport(): void {
+	const entries = processFixtures();
+	writeFileSync(REPORT_PATH, generateHtml(entries));
+}
 
-const passing = entries.filter((e) => !e.skip && !e.error).length;
-const skipped = entries.filter((e) => e.skip).length;
-const errors = entries.filter((e) => e.error).length;
-console.log(`Report generated: ${REPORT_PATH}`);
-console.log(`  ${passing} passing, ${skipped} skipped, ${errors} errors`);
+// Run as standalone script
+if (require.main === module) {
+	generateReport();
+	const entries = processFixtures();
+	const passing = entries.filter((e) => !e.skip && !e.error).length;
+	const skipped = entries.filter((e) => e.skip).length;
+	const errors = entries.filter((e) => e.error).length;
+	console.log(`Report generated: ${REPORT_PATH}`);
+	console.log(`  ${passing} passing, ${skipped} skipped, ${errors} errors`);
+}

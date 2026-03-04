@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
 import { transpileWorkflowJS } from './compiler';
+import { generateReport } from './generate-report';
 
 // ─── Fixture helpers ────────────────────────────────────────────────────────
 
@@ -33,6 +34,10 @@ function loadFixtures(): Fixture[] {
 }
 
 describe('transpileWorkflowJS', () => {
+	afterAll(() => {
+		generateReport();
+	});
+
 	describe('Phase 1: core transpiler', () => {
 		it('should produce valid SDK code for simple workflow', () => {
 			const result = transpileWorkflowJS(`
