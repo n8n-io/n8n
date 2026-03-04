@@ -811,7 +811,12 @@ export class RoutingNode {
 				const params: Record<string, unknown> = {};
 				for (const paramName of Object.keys(node.parameters)) {
 					try {
-						params[paramName] = executeSingleFunctions.getNodeParameter(paramName);
+						const prop = nodeType.description.properties.find((p) => p.name === paramName);
+						const shouldExtractValue =
+							prop?.extractValue !== undefined || prop?.type === 'resourceLocator';
+						params[paramName] = executeSingleFunctions.getNodeParameter(paramName, undefined, {
+							extractValue: shouldExtractValue,
+						});
 					} catch {
 						params[paramName] = node.parameters[paramName];
 					}

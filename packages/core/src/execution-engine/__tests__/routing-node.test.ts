@@ -19,7 +19,7 @@ import type {
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { Workflow, createEmptyRunExecutionData } from 'n8n-workflow';
+import { Workflow, createEmptyRunExecutionData, isResourceLocatorValue } from 'n8n-workflow';
 import type { ICredentialsDecrypted } from 'n8n-workflow/src';
 
 import * as executionContexts from '@/execution-engine/node-execution-context';
@@ -54,9 +54,17 @@ const getExecuteSingleFunctions = (
 ) =>
 	mock<executionContexts.ExecuteSingleContext>({
 		getItemIndex: () => itemIndex,
-		getNodeParameter: (parameterName: string) =>
-			workflow.expression.getParameterValue(
-				get(node.parameters, parameterName),
+		getNodeParameter: (
+			parameterName: string,
+			_fallbackValue?: unknown,
+			options?: { extractValue?: boolean },
+		) => {
+			const rawValue = get(node.parameters, parameterName);
+			if (options?.extractValue && isResourceLocatorValue(rawValue)) {
+				return rawValue.value;
+			}
+			return workflow.expression.getParameterValue(
+				rawValue,
 				runExecutionData,
 				runIndex,
 				itemIndex,
@@ -64,7 +72,8 @@ const getExecuteSingleFunctions = (
 				[],
 				'internal',
 				{},
-			),
+			);
+		},
 		getWorkflow: () => ({
 			id: workflow.id,
 			name: workflow.name,
@@ -894,6 +903,46 @@ describe('RoutingNode', () => {
 					requestOperations: {},
 				},
 			},
+			{
+				description:
+					'$parameter, routing.request.url extracts value from resourceLocator parameter via $parameter',
+				input: {
+					nodeParameters: {
+						site: { __rl: true, mode: 'id', value: 'site1' },
+					},
+					nodeTypeProperties: {
+						displayName: 'Site',
+						name: 'site',
+						type: 'resourceLocator',
+						default: { mode: 'list', value: '' },
+						modes: [
+							{
+								displayName: 'By ID',
+								name: 'id',
+								type: 'string',
+							},
+						],
+						routing: {
+							request: {
+								method: 'GET',
+								url: '=/sites/{{ $parameter["site"] }}/items',
+							},
+						},
+					},
+				},
+				output: {
+					options: {
+						method: 'GET',
+						url: '/sites/site1/items',
+						qs: {},
+						body: {},
+						headers: {},
+					},
+					preSend: [],
+					postReceive: [],
+					requestOperations: {},
+				},
+			},
 		];
 
 		const nodeTypes = NodeTypes();
@@ -940,6 +989,7 @@ describe('RoutingNode', () => {
 					mode,
 					connectionInputData,
 					runExecutionData,
+					nodeType,
 				});
 				const routingNode = new RoutingNode(executeFunctions, nodeType);
 
