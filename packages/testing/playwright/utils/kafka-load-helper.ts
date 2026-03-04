@@ -139,8 +139,10 @@ export async function waitForExecutions(
 				const durations = await sampleExecutionDurations(workflowApi, workflowId);
 				return buildMetrics(expectedCount, 0, durationMs, durations);
 			}
-		} catch (err) {
-			console.log(`[LOAD] Lag check error: ${err instanceof Error ? err.message : String(err)}`);
+		} catch (error) {
+			console.log(
+				`[LOAD] Lag check error: ${error instanceof Error ? error.message : String(error)}`,
+			);
 		}
 
 		await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));

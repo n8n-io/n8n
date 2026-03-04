@@ -1,6 +1,5 @@
-import { appendFileSync } from 'fs';
-
 import type { Reporter, TestCase, TestResult } from '@playwright/test/reporter';
+import { appendFileSync } from 'fs';
 
 interface BenchmarkRow {
 	trigger: string;

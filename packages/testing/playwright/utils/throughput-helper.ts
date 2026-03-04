@@ -94,8 +94,10 @@ export async function waitForThroughput(
 			if (completed >= expectedCount) {
 				break;
 			}
-		} catch (err) {
-			console.log(`[THROUGHPUT] Query error: ${err instanceof Error ? err.message : String(err)}`);
+		} catch (error) {
+			console.log(
+				`[THROUGHPUT] Query error: ${error instanceof Error ? error.message : String(error)}`,
+			);
 		}
 	}
 

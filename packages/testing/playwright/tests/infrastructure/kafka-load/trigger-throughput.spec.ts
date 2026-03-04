@@ -1,7 +1,8 @@
+import type { MetricsHelper } from 'n8n-containers';
+import { BASE_PERFORMANCE_PLANS } from 'n8n-containers/performance-plans';
 import { nanoid } from 'nanoid';
 
 import { test, expect } from '../../../fixtures/base';
-import { BASE_PERFORMANCE_PLANS } from 'n8n-containers/performance-plans';
 import { preloadQueue, type PayloadSize } from '../../../utils/kafka-load-helper';
 import {
 	buildKafkaTriggeredWorkflow,
@@ -94,6 +95,36 @@ const SCENARIOS: ThroughputScenario[] = [
 	},
 ];
 
+async function collectDiagnostics(metrics: MetricsHelper, durationMs: number) {
+	const fmt = (v: number | undefined, unit = '') =>
+		v !== undefined ? `${v.toFixed(2)}${unit}` : 'N/A';
+
+	// Use the test duration (with padding) as the rate window so we capture
+	// the full burst rather than just the tail end after completion.
+	const windowSecs = Math.ceil(durationMs / 1000) + 30;
+	const window = `${windowSecs}s`;
+
+	// Try both with and without _total suffix — varies by exporter version
+	const [eventLoopLag, pgTxA, pgTxB, pgInsA, pgInsB, pgActive] = await Promise.all([
+		metrics.query('n8n_nodejs_eventloop_lag_seconds').catch(() => []),
+		metrics.query(`rate(pg_stat_database_xact_commit_total[${window}])`).catch(() => []),
+		metrics.query(`rate(pg_stat_database_xact_commit[${window}])`).catch(() => []),
+		metrics.query(`rate(pg_stat_database_tup_inserted_total[${window}])`).catch(() => []),
+		metrics.query(`rate(pg_stat_database_tup_inserted[${window}])`).catch(() => []),
+		metrics.query('pg_stat_activity_count').catch(() => []),
+	]);
+
+	const pgTxRate = pgTxA.length > 0 ? pgTxA : pgTxB;
+	const pgInsertRate = pgInsA.length > 0 ? pgInsA : pgInsB;
+
+	return {
+		eventLoopLag: fmt(eventLoopLag[0]?.value, 's'),
+		pgTxRate: fmt(pgTxRate[0]?.value, ' tx/s'),
+		pgInsertRate: fmt(pgInsertRate[0]?.value, ' rows/s'),
+		pgActiveConnections: fmt(pgActive[0]?.value),
+	};
+}
+
 test.describe(
 	'Trigger Throughput Benchmarks @capability:kafka @capability:observability @mode:postgres',
 	{
@@ -167,6 +198,7 @@ test.describe(
 				await kafka.waitForConsumerGroup(groupId, { timeoutMs: 30_000 });
 
 				// 8. Wait for throughput
+				// eslint-disable-next-line playwright/no-conditional-in-test
 				const nodeLabel = scenario.nodeOutputSize === 'noop' ? 'noop' : scenario.nodeOutputSize;
 				console.log(
 					`[BENCH] Draining ${messageCount} messages through ${scenario.nodeCount}-node (${nodeLabel}) workflow (timeout: ${scenario.timeoutMs}ms)`,
@@ -181,7 +213,17 @@ test.describe(
 				// 9. Attach results
 				await attachThroughputResults(testInfo, scenario.name, result);
 
-				// 10. Summary
+				// 10. Diagnostics — query PG and event loop metrics
+				const diagnostics = await collectDiagnostics(obs.metrics, result.durationMs);
+				console.log(
+					`[DIAGNOSTICS] ${scenario.name}\n` +
+						`  Event Loop Lag: ${diagnostics.eventLoopLag}\n` +
+						`  PG Transactions/s: ${diagnostics.pgTxRate}\n` +
+						`  PG Rows Inserted/s: ${diagnostics.pgInsertRate}\n` +
+						`  PG Active Connections: ${diagnostics.pgActiveConnections}`,
+				);
+
+				// 11. Summary
 				console.log(
 					`[BENCH RESULT] ${scenario.name}\n` +
 						`  Plan: enterprise (${plan.memory}GB RAM, ${plan.cpu} CPU)\n` +

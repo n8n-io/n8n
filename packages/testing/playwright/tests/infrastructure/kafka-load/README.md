@@ -15,13 +15,13 @@ Measures per-execution latency (p50/p95/p99) and completion rate under realistic
 | `10-nodes-1KB-10mps` | Baseline — sustain a modest steady stream |
 | `30-nodes-10KB-100mps` | Scale pressure — larger workflows + heavier payloads at 10x rate |
 | `60-nodes-1KB-preload-10k` | Burst capacity — drain a backlog with no pacing |
-| `10-nodes-100KB-10mps` | Payload weight — does message size affect latency or memory? |
+| `10-nodes-100KB-10mps` | Payload weight — does message size affect latency? |
 
 ### Throughput (`trigger-throughput.spec.ts`)
 
 **Question: "What's the throughput ceiling and what degrades it?"**
 
-Measures sustained exec/s and actions/s via VictoriaMetrics counters. Preloads all messages before activating the workflow to measure maximum drain rate.
+Measures sustained exec/s and actions/s via VictoriaMetrics counters. Preloads all messages before activating the workflow to measure maximum drain rate. Collects Postgres and event loop diagnostics after each run.
 
 | Scenario | What it tests |
 |----------|---------------|
@@ -51,17 +51,20 @@ BENCHMARK_MESSAGES=50000 pnpm --filter=n8n-playwright test:infrastructure
 A benchmark summary table prints at the end of every run and appears in the GitHub Actions job summary:
 
 ```
-│ Trigger │ Suite      │ Scenario                 │ exec/s │ actions/s │  p50 │  p95 │  p99 │ Heap Δ MB │
-├─────────┼────────────┼──────────────────────────┼────────┼───────────┼──────┼──────┼──────┼───────────┤
-│ kafka   │ load       │ 10-nodes-1KB-10mps       │   90.6 │         — │  3ms │  5ms │ 13ms │    +171.7 │
-│ kafka   │ throughput │ 10-nodes-1KB-5k          │  142.8 │    1427.6 │    — │    — │    — │    +268.5 │
+│ Trigger │ Suite      │ Scenario                 │ exec/s │ actions/s │   p50 │   p95 │   p99 │
+├─────────┼────────────┼──────────────────────────┼────────┼───────────┼───────┼───────┼───────┤
+│ kafka   │ load       │ 10-nodes-1KB-10mps       │   90.6 │         — │   3ms │   5ms │  13ms │
+│ kafka   │ throughput │ 10-nodes-1KB-5k          │  142.8 │    1427.6 │     — │     — │     — │
 ```
 
 - **exec/s**: Workflow executions per second
-- **actions/s**: Total node executions per second (exec/s * node count)
+- **actions/s**: Total node executions per second (exec/s × node count)
 - **p50/p95/p99**: Per-execution duration percentiles (load suite only)
-- **Heap Δ MB**: Heap memory change during the test
+
+Throughput tests also log Postgres diagnostics (tx/s, rows inserted/s, active connections) and Node.js event loop lag to the console for bottleneck analysis.
 
 ## Architecture
 
-Both suites share the same container stack: Kafka + Postgres + VictoriaMetrics + Vector. Tests run sequentially (1 worker) to avoid resource contention. Each test creates unique topics and credentials via `nanoid()` for logical isolation.
+Both suites share the same container stack: n8n + Kafka + Postgres + postgres-exporter + VictoriaMetrics + Vector. Tests run sequentially (1 worker) to avoid resource contention. Each test creates unique topics and credentials via `nanoid()` for logical isolation.
+
+Currently all tests run in **direct mode** (single n8n process). The container infrastructure supports queue mode with workers — see `capability.workers` in the fixtures.

@@ -123,6 +123,7 @@ test.describe(
 
 				let expectedExecutions: number;
 
+				// eslint-disable-next-line playwright/no-conditional-in-test
 				if (scenario.loadType === 'preloaded') {
 					// Preloaded: publish all messages before activating
 					const publishResult = await preloadQueue(kafka, topic, {

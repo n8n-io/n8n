@@ -30,10 +30,10 @@ function buildCodeNodeParams(size: Exclude<NodeOutputSize, 'noop'>) {
 	// The Code node outputs the incoming item plus a `payload` field of the target size.
 	const code = [
 		`const size = ${bytes};`,
-		`const pad = 'x'.repeat(size);`,
-		`return $input.all().map(item => ({`,
-		`  json: { ...item.json, payload: pad }`,
-		`}));`,
+		"const pad = 'x'.repeat(size);",
+		'return $input.all().map(item => ({',
+		'  json: { ...item.json, payload: pad }',
+		'}));',
 	].join('\n');
 
 	return {
