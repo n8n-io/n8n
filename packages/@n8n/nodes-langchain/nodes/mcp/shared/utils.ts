@@ -179,21 +179,25 @@ function createAuthFetch(
 			},
 		});
 
-		if (response.status === 401 && onUnauthorized) {
-			const refreshedHeaders = await onUnauthorized(headers);
-			if (refreshedHeaders) {
-				headers = refreshedHeaders;
-				return await proxyFetch(input, {
-					...init,
-					headers: {
-						...(init?.headers as Record<string, string> | undefined),
-						...headers,
-					},
-				});
-			}
+		// Early return if not 401 or no handler
+		if (response.status !== 401 || !onUnauthorized) {
+			return response;
 		}
 
-		return response;
+		// Try to refresh and retry
+		const refreshedHeaders = await onUnauthorized(headers);
+		if (!refreshedHeaders) {
+			return response;
+		}
+
+		headers = refreshedHeaders;
+		return await proxyFetch(input, {
+			...init,
+			headers: {
+				...(init?.headers as Record<string, string> | undefined),
+				...headers,
+			},
+		});
 	};
 }
 
