@@ -624,9 +624,7 @@ export class SourceControlStatusService {
 
 		for (const local of dataTablesLocal) {
 			const nameCollision = dataTablesRemote.find(
-				(remote) =>
-					(remote.id === local.id && remote.name !== local.name) ||
-					(remote.id !== local.id && remote.name === local.name),
+				(remote) => remote.id !== local.id && remote.name === local.name,
 			);
 			if (!nameCollision) {
 				continue;
