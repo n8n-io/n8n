@@ -76,6 +76,15 @@ const SCENARIOS: ThroughputScenario[] = [
 		timeoutMs: 600_000,
 	},
 	{
+		name: '10-nodes-100KB-noop-5k',
+		nodeCount: 10,
+		messageCount: 5_000,
+		payloadSize: '100KB',
+		nodeOutputSize: 'noop',
+		partitions: 3,
+		timeoutMs: 300_000,
+	},
+	{
 		name: '10-nodes-1KB-10kb-out-5k',
 		nodeCount: 10,
 		messageCount: 5_000,

@@ -73,8 +73,12 @@ export async function preloadQueue(
 		value: { ...payload, index: i },
 	}));
 
+	// Scale batch size down for large payloads to stay under Kafka's message.max.bytes
+	const payloadBytes = PAYLOAD_PROFILES[payloadSize];
+	const batchSize = payloadBytes >= 10240 ? 5 : 1000;
+
 	const startTime = Date.now();
-	await kafka.publishBatch(topic, messages, { batchSize: 1000 });
+	await kafka.publishBatch(topic, messages, { batchSize });
 
 	return { totalPublished: messageCount, publishDurationMs: Date.now() - startTime };
 }
