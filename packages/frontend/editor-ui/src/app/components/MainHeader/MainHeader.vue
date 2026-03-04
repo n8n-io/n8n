@@ -75,6 +75,7 @@ const workflow = computed(() => workflowsStore.workflow);
 const workflowId = injectStrict(WorkflowIdKey);
 const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
 const workflowTags = computed(() => workflowDocumentStore?.value?.tags ?? []);
+const workflowIsArchived = computed(() => workflowDocumentStore?.value?.isArchived ?? false);
 const onWorkflowPage = computed(() => !!(route.meta.nodeView || route.meta.keepWorkflowAlive));
 
 const isEnterprise = computed(
@@ -257,7 +258,10 @@ function hideGithubButton() {
 }
 
 async function onWorkflowDeactivated() {
-	if (settingsStore.isModuleActive('mcp') && workflow.value.settings?.availableInMCP) {
+	if (
+		settingsStore.isModuleActive('mcp') &&
+		workflowDocumentStore?.value?.settings?.availableInMCP
+	) {
 		try {
 			// Fetch the updated workflow to get the latest settings after backend processing
 			const updatedWorkflow = await workflowsListStore.fetchWorkflow(workflow.value.id);
@@ -285,10 +289,8 @@ async function onWorkflowDeactivated() {
 					:id="workflow.id"
 					:tags="workflowTags"
 					:name="workflow.name"
-					:meta="workflow.meta"
-					:scopes="workflow.scopes"
 					:current-folder="parentFolderForBreadcrumbs"
-					:is-archived="workflow.isArchived"
+					:is-archived="workflowIsArchived"
 					:description="workflow.description"
 					@workflow:deactivated="onWorkflowDeactivated"
 				/>

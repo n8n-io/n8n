@@ -79,10 +79,14 @@ export function useWorkflowSaving({
 			cancel?: () => Promise<void>;
 		} = {},
 	) {
+		const workflowDocumentStore = workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined;
+
 		if (
 			!uiStore.stateIsDirty ||
-			workflowsStore.workflow.isArchived ||
-			!getResourcePermissions(workflowsStore.workflow.scopes).workflow.update
+			workflowDocumentStore?.isArchived ||
+			!getResourcePermissions(workflowDocumentStore?.scopes ?? []).workflow.update
 		) {
 			next();
 			return;
@@ -252,7 +256,7 @@ export function useWorkflowSaving({
 
 				uiStore.removeActiveAction('workflowSaving');
 
-				if (error.errorCode === 100) {
+				if (error.errorCode === 409) {
 					telemetry.track('User attempted to save locked workflow', {
 						workflowId: currentWorkflow,
 						sharing_role: getWorkflowProjectRole(currentWorkflow),

@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { RuntimeBridge, BridgeConfig } from '../types';
+import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
 
 // Get __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -38,9 +39,8 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 	constructor(config: BridgeConfig = {}) {
 		this.config = {
-			memoryLimit: config.memoryLimit ?? 128,
-			timeout: config.timeout ?? 5000,
-			debug: config.debug ?? false,
+			...DEFAULT_BRIDGE_CONFIG,
+			...config,
 		};
 
 		// Create isolate with memory limit
@@ -322,6 +322,9 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			let arr: unknown = data;
 			for (const key of path) {
 				arr = (arr as Record<string, unknown>)?.[key];
+				if (arr === undefined || arr === null) {
+					return undefined;
+				}
 			}
 
 			if (!Array.isArray(arr)) {
@@ -449,6 +452,15 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			return result;
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
+			if (errorMessage.includes('Script execution timed out')) {
+				throw new TimeoutError(`Expression timed out after ${this.config.timeout}ms`, {});
+			}
+			if (errorMessage.includes('memory limit')) {
+				throw new MemoryLimitError(
+					`Expression exceeded memory limit of ${this.config.memoryLimit}MB`,
+					{},
+				);
+			}
 			throw new Error(`Expression evaluation failed: ${errorMessage}`);
 		}
 	}

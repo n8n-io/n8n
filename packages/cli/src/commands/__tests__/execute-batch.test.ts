@@ -44,7 +44,7 @@ dbConnection.migrate.mockResolvedValue(undefined);
 mockInstance(AuthRolesService);
 mockInstance(BinaryDataRepository);
 
-test('should start a task runner when task runners are enabled', async () => {
+test('should start a task runner', async () => {
 	// arrange
 
 	const workflow = mock<WorkflowEntity>({
@@ -74,7 +74,7 @@ test('should start a task runner when task runners are enabled', async () => {
 	Container.set(
 		GlobalConfig,
 		mock<GlobalConfig>({
-			taskRunners: { enabled: true },
+			taskRunners: {},
 			nodes: {},
 		}),
 	);
