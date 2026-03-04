@@ -104,7 +104,7 @@ describe('GenericFunctions', () => {
 				expect.objectContaining({
 					method: 'GET',
 					headers: { 'User-Agent': 'n8n' },
-					url: `/repos/test-owner/test-repo/contents/README.md`,
+					url: '/repos/test-owner/test-repo/contents/README.md',
 					baseURL: 'https://api.github.com',
 					qs: { ref: 'main' },
 				}),

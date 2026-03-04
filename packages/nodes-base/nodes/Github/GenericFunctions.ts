@@ -26,7 +26,7 @@ export async function githubApiRequest(
 	const credentials = await this.getCredentials(credentialType);
 	const baseUrl = (credentials.server as string) || 'https://api.github.com';
 
-	return httpClient(this)
+	return await httpClient(this)
 		.baseUrl(baseUrl)
 		.endpoint(endpoint)
 		.method(method)
@@ -82,7 +82,7 @@ export async function githubApiRequestAllItems(
 	const credentials = await this.getCredentials(credentialType);
 	const baseUrl = (credentials.server as string) || 'https://api.github.com';
 
-	return httpClient(this)
+	return await httpClient(this)
 		.baseUrl(baseUrl)
 		.endpoint(endpoint)
 		.method(method)

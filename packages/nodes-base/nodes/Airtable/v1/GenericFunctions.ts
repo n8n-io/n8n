@@ -58,7 +58,7 @@ export async function apiRequest(
 
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
 
-	return httpClient(this)
+	return await httpClient(this)
 		.baseUrl('https://api.airtable.com/v0')
 		.endpoint(`/${endpoint}`)
 		.method(method)
