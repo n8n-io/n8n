@@ -1,3 +1,4 @@
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import { ProjectRepository, SharedWorkflowRepository, User, WorkflowRepository } from '@n8n/db';
@@ -140,10 +141,7 @@ export class McpService {
 		return server;
 	}
 
-	private async registerBuilderTools(
-		server: InstanceType<typeof import('@modelcontextprotocol/sdk/server/mcp.js')['McpServer']>,
-		user: User,
-	) {
+	private async registerBuilderTools(server: InstanceType<typeof McpServer>, user: User) {
 		await this.workflowBuilderToolsService.initialize();
 
 		const searchNodesTool = createSearchWorkflowNodesTool(
