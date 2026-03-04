@@ -219,8 +219,19 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(workflo
 }
 
 export async function getVariables(workflowId?: string, projectId?: string): Promise<IDataObject> {
-	const [variables, project] = await Promise.all([
-		Container.get(VariablesService).getAllCached(),
+	const variablesService = Container.get(VariablesService);
+
+	// Get variables from cache
+	let variables = await variablesService.getAllCached();
+
+	// If cache returns empty array, verify against database
+	// This handles the case where Redis cache is stale
+	if (variables.length === 0) {
+		// Force refresh from database to ensure we have the latest data
+		variables = await variablesService.refreshCache();
+	}
+
+	const [project] = await Promise.all([
 		// If projectId is not provided, try to get it from workflow
 		workflowId && !projectId
 			? Container.get(OwnershipService).getWorkflowProjectCached(workflowId)

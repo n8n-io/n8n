@@ -144,6 +144,69 @@ for (const backend of ['memory', 'redis'] as const) {
 
 				await expect(cacheService.get(nonAsciiKey)).resolves.toBe('value');
 			});
+
+			test('should validate cached value and refresh if invalid', async () => {
+				// Set an empty array in cache
+				await cacheService.set('testArray', []);
+
+				// Get with validation that rejects empty arrays
+				const result = await cacheService.get<string[]>('testArray', {
+					validateFn: (value) => Array.isArray(value) && value.length > 0,
+					refreshFn: async () => ['item1', 'item2'],
+				});
+
+				// Should have refreshed and returned new value
+				expect(result).toEqual(['item1', 'item2']);
+
+				// Cache should now contain the refreshed value
+				const cachedValue = await cacheService.get('testArray');
+				expect(cachedValue).toEqual(['item1', 'item2']);
+			});
+
+			test('should use cached value if validation passes', async () => {
+				// Set a non-empty array in cache
+				await cacheService.set('testArray', ['existing1', 'existing2']);
+
+				const refreshFn = jest.fn().mockResolvedValue(['new1', 'new2']);
+
+				// Get with validation that accepts non-empty arrays
+				const result = await cacheService.get<string[]>('testArray', {
+					validateFn: (value) => Array.isArray(value) && value.length > 0,
+					refreshFn,
+				});
+
+				// Should use cached value without calling refreshFn
+				expect(result).toEqual(['existing1', 'existing2']);
+				expect(refreshFn).not.toHaveBeenCalled();
+			});
+
+			test('should fall back to fallback value if validation fails and no refreshFn', async () => {
+				// Set an empty array in cache
+				await cacheService.set('testArray', []);
+
+				// Get with validation but no refreshFn
+				const result = await cacheService.get<string[]>('testArray', {
+					validateFn: (value) => Array.isArray(value) && value.length > 0,
+					fallbackValue: ['fallback1', 'fallback2'],
+				});
+
+				// Should return fallback value
+				expect(result).toEqual(['fallback1', 'fallback2']);
+			});
+
+			test('should handle validation with complex objects', async () => {
+				// Set an object with missing required field
+				await cacheService.set('testObject', { name: 'test' });
+
+				// Get with validation that requires 'value' field
+				const result = await cacheService.get<{ name: string; value: string }>('testObject', {
+					validateFn: (obj) => obj && 'value' in obj,
+					refreshFn: async () => ({ name: 'test', value: 'refreshed' }),
+				});
+
+				// Should have refreshed
+				expect(result).toEqual({ name: 'test', value: 'refreshed' });
+			});
 		});
 
 		describe('delete', () => {
