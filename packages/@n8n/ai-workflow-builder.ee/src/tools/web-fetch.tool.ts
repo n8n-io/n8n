@@ -21,6 +21,7 @@ import {
 
 interface WebFetchState {
 	approvedDomains?: string[];
+	allDomainsApproved?: boolean;
 	webFetchCount?: number;
 	messages?: BaseMessage[];
 }
@@ -32,7 +33,7 @@ interface WebFetchResumeValue {
 }
 
 type ApprovalResult =
-	| { approved: true; action: 'allow_once' | 'allow_domain' }
+	| { approved: true; action: 'allow_once' | 'allow_domain' | 'allow_all' }
 	| { approved: false; message: string };
 
 /**
@@ -62,7 +63,11 @@ function requestDomainApproval(domain: string, url: string): ApprovalResult {
 		};
 	}
 
-	if (resumeValue.action !== 'allow_once' && resumeValue.action !== 'allow_domain') {
+	if (
+		resumeValue.action !== 'allow_once' &&
+		resumeValue.action !== 'allow_domain' &&
+		resumeValue.action !== 'allow_all'
+	) {
 		return { approved: false, message: 'Invalid approval action. Please try again.' };
 	}
 
@@ -72,6 +77,11 @@ function requestDomainApproval(domain: string, url: string): ApprovalResult {
 export const WEB_FETCH_TOOL: BuilderToolBase = {
 	toolName: 'web_fetch',
 	displayTitle: 'Fetching web content',
+	getCustomDisplayTitle: (args: Record<string, unknown>) => {
+		const url = typeof args.url === 'string' ? args.url : '';
+		if (!url) return 'Fetching web content';
+		return `Fetching ${url}`;
+	},
 };
 
 const webFetchSchema = z.object({
@@ -85,10 +95,15 @@ export function createWebFetchTool() {
 	const dynamicTool = tool(
 		// eslint-disable-next-line complexity
 		async (input: unknown, config) => {
+			const parsedArgs = typeof input === 'object' && input !== null ? input : {};
+			const customTitle = WEB_FETCH_TOOL.getCustomDisplayTitle?.(
+				parsedArgs as Record<string, unknown>,
+			);
 			const reporter = createProgressReporter(
 				config,
 				WEB_FETCH_TOOL.toolName,
 				WEB_FETCH_TOOL.displayTitle,
+				customTitle,
 			);
 
 			try {
@@ -132,8 +147,9 @@ export function createWebFetchTool() {
 				const host = normalizeHost(url);
 				let userAction: string | undefined;
 				let redirectUserAction: string | undefined;
+				const allDomainsApproved = state.allDomainsApproved === true;
 
-				if (!isAllowedDomain(host) && !approvedDomains.includes(host)) {
+				if (!allDomainsApproved && !isAllowedDomain(host) && !approvedDomains.includes(host)) {
 					const approval = requestDomainApproval(host, url);
 					if (!approval.approved) {
 						reporter.error({ message: approval.message });
@@ -159,6 +175,14 @@ export function createWebFetchTool() {
 				if (fetchResult.status === 'redirect_new_host' && fetchResult.finalUrl) {
 					const newHost = normalizeHost(fetchResult.finalUrl);
 
+					// Update progress title to show the redirected URL
+					const redirectTitle = WEB_FETCH_TOOL.getCustomDisplayTitle?.({
+						url: fetchResult.finalUrl,
+					});
+					if (redirectTitle) {
+						reporter.setCustomTitle(redirectTitle);
+					}
+
 					// Check SSRF on redirected URL
 					const redirectBlocked = await isBlockedUrl(fetchResult.finalUrl);
 					if (redirectBlocked) {
@@ -170,7 +194,11 @@ export function createWebFetchTool() {
 					}
 
 					// If new host not in allowlist and not already approved, ask user
-					if (!isAllowedDomain(newHost) && !approvedDomains.includes(newHost)) {
+					if (
+						!allDomainsApproved &&
+						!isAllowedDomain(newHost) &&
+						!approvedDomains.includes(newHost)
+					) {
 						const approval = requestDomainApproval(newHost, fetchResult.finalUrl);
 						if (!approval.approved) {
 							reporter.error({ message: approval.message });
@@ -230,12 +258,17 @@ export function createWebFetchTool() {
 					webFetchCount: webFetchCount + 1,
 				};
 
-				// Add to approved domains when user chose "allow_domain"
+				// Handle "allow_all" — approve all domains globally
+				if (userAction === 'allow_all' || redirectUserAction === 'allow_all') {
+					stateUpdates.allDomainsApproved = true;
+				}
+
+				// Add to approved domains when user chose "allow_domain" or "allow_all"
 				const newApprovedDomains: string[] = [];
-				if (userAction === 'allow_domain') {
+				if (userAction === 'allow_domain' || userAction === 'allow_all') {
 					newApprovedDomains.push(host);
 				}
-				if (redirectUserAction === 'allow_domain') {
+				if (redirectUserAction === 'allow_domain' || redirectUserAction === 'allow_all') {
 					newApprovedDomains.push(normalizeHost(fetchResult.finalUrl ?? url));
 				}
 				if (newApprovedDomains.length > 0) {

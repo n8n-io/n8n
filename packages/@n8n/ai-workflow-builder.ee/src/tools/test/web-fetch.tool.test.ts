@@ -659,5 +659,106 @@ describe('web_fetch tool', () => {
 
 			expect(content).toContain('web_fetch_result');
 		});
+
+		it('should accept allow_all action and set allDomainsApproved', async () => {
+			mockIsBlockedUrl.mockResolvedValue(false);
+			mockInterrupt.mockImplementation((payload: { requestId: string }) => ({
+				requestId: payload.requestId,
+				url: 'https://example.com/page',
+				action: 'allow_all',
+			}));
+
+			mockFetchUrl.mockResolvedValue({
+				status: 'success',
+				body: '<html><body><p>Content</p></body></html>',
+				finalUrl: 'https://example.com/page',
+				httpStatus: 200,
+				contentType: 'text/html',
+			});
+
+			mockExtractReadableContent.mockReturnValue({
+				title: 'Test',
+				content: 'Content',
+				truncated: false,
+			});
+
+			const { tool } = createWebFetchTool();
+			const command = await tool.invoke({ url: 'https://example.com/page' }, mockConfig);
+			const content = getMessageContent(command);
+			const stateUpdates = getStateUpdates(command);
+
+			expect(content).toContain('web_fetch_result');
+			expect(stateUpdates.allDomainsApproved).toBe(true);
+			expect(stateUpdates.approvedDomains).toEqual(['example.com']);
+		});
+	});
+
+	describe('allDomainsApproved bypass', () => {
+		it('should skip domain approval interrupt when allDomainsApproved is true', async () => {
+			mockIsBlockedUrl.mockResolvedValue(false);
+			mockGetCurrentTaskInput.mockReturnValue({
+				approvedDomains: [],
+				allDomainsApproved: true,
+				webFetchCount: 0,
+				messages: [],
+			});
+
+			mockFetchUrl.mockResolvedValue({
+				status: 'success',
+				body: '<html><body><p>Content</p></body></html>',
+				finalUrl: 'https://example.com/page',
+				httpStatus: 200,
+				contentType: 'text/html',
+			});
+
+			mockExtractReadableContent.mockReturnValue({
+				title: 'Test',
+				content: 'Content',
+				truncated: false,
+			});
+
+			const { tool } = createWebFetchTool();
+			const command = await tool.invoke({ url: 'https://example.com/page' }, mockConfig);
+			const content = getMessageContent(command);
+
+			expect(mockInterrupt).not.toHaveBeenCalled();
+			expect(content).toContain('web_fetch_result');
+		});
+
+		it('should skip redirect domain approval when allDomainsApproved is true', async () => {
+			mockIsBlockedUrl.mockResolvedValue(false);
+			mockGetCurrentTaskInput.mockReturnValue({
+				approvedDomains: ['example.com'],
+				allDomainsApproved: true,
+				webFetchCount: 0,
+				messages: [],
+			});
+
+			mockFetchUrl
+				.mockResolvedValueOnce({
+					status: 'redirect_new_host',
+					finalUrl: 'https://other-domain.com/page',
+				})
+				.mockResolvedValueOnce({
+					status: 'success',
+					body: '<html><body><p>Redirected</p></body></html>',
+					finalUrl: 'https://other-domain.com/page',
+					httpStatus: 200,
+					contentType: 'text/html',
+				});
+
+			mockExtractReadableContent.mockReturnValue({
+				title: 'Test',
+				content: 'Redirected content',
+				truncated: false,
+			});
+
+			const { tool } = createWebFetchTool();
+			const command = await tool.invoke({ url: 'https://example.com/redirect' }, mockConfig);
+			const content = getMessageContent(command);
+
+			expect(mockInterrupt).not.toHaveBeenCalled();
+			expect(content).toContain('web_fetch_result');
+		});
 	});
 });

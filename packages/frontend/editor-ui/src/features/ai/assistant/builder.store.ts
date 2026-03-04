@@ -96,7 +96,7 @@ interface WorkflowBuilderJourneyEventProperties {
 	mode?: 'plan' | 'build';
 	domain?: string;
 	url?: string;
-	decision?: 'allow_once' | 'allow_domain' | 'deny';
+	decision?: 'allow_once' | 'allow_domain' | 'allow_all' | 'deny';
 	status?: string;
 }
 

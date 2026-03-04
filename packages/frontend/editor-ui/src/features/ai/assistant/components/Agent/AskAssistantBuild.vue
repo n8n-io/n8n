@@ -261,7 +261,7 @@ async function onWebFetchDecision(payload: {
 	requestId: string;
 	url: string;
 	domain: string;
-	action: 'allow_once' | 'allow_domain' | 'deny';
+	action: 'allow_once' | 'allow_domain' | 'allow_all' | 'deny';
 }) {
 	builderStore.trackWorkflowBuilderJourney('web_fetch_decision', {
 		domain: payload.domain,
@@ -269,15 +269,17 @@ async function onWebFetchDecision(payload: {
 		decision: payload.action,
 	});
 
+	const textMap: Record<string, string> = {
+		deny: i18n.baseText('aiAssistant.builder.webFetch.deny'),
+		allow_once: i18n.baseText('aiAssistant.builder.webFetch.allowOnce'),
+		allow_domain: i18n.baseText('aiAssistant.builder.webFetch.allowDomain', {
+			interpolate: { domain: payload.domain },
+		}),
+		allow_all: i18n.baseText('aiAssistant.builder.webFetch.allowAll'),
+	};
+
 	await builderStore.sendChatMessage({
-		text:
-			payload.action === 'deny'
-				? i18n.baseText('aiAssistant.builder.webFetch.deny')
-				: payload.action === 'allow_domain'
-					? i18n.baseText('aiAssistant.builder.webFetch.allowDomain', {
-							interpolate: { domain: payload.domain },
-						})
-					: i18n.baseText('aiAssistant.builder.webFetch.allowOnce'),
+		text: textMap[payload.action],
 		resumeData: payload,
 		skipUserMessage: true,
 	});

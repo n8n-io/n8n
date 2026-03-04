@@ -350,7 +350,8 @@ export class AiWorkflowBuilderService {
 				afterMessageId: pendingHitl.triggeringMessageId,
 				url: pendingHitl.value.url,
 				domain: pendingHitl.value.domain,
-				decision: (decision.action as 'allow_once' | 'allow_domain' | 'deny') ?? 'deny',
+				decision:
+					(decision.action as 'allow_once' | 'allow_domain' | 'allow_all' | 'deny') ?? 'deny',
 			});
 		}
 	}
