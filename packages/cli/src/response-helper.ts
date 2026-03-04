@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { inDevelopment, Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
+import type { ReportingOptions } from '@n8n/errors';
 import type { Request, Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
-import { FORM_TRIGGER_PATH_IDENTIFIER, NodeApiError } from 'n8n-workflow';
+import { ensureError, FORM_TRIGGER_PATH_IDENTIFIER, NodeApiError } from 'n8n-workflow';
 import { Readable } from 'node:stream';
 import picocolors from 'picocolors';
 
@@ -138,9 +139,9 @@ export function sendErrorResponse(res: Response, error: Error) {
 export const isUniqueConstraintError = (error: Error) =>
 	['unique', 'duplicate'].some((s) => error.message.toLowerCase().includes(s));
 
-export function reportError(error: Error) {
+export function reportError(error: Error, options?: ReportingOptions) {
 	if (!(error instanceof ResponseError) || error.httpStatusCode > 404) {
-		Container.get(ErrorReporter).error(error);
+		Container.get(ErrorReporter).error(error, options);
 	}
 }
 
@@ -161,16 +162,19 @@ export function send<T, R extends Request, S extends Response>(
 			const data = await processFunction(req, res);
 
 			if (!res.headersSent) sendSuccessResponse(res, data, raw);
-		} catch (error) {
-			if (error instanceof Error) {
-				reportError(error);
+		} catch (e) {
+			const error = ensureError(e);
+			reportError(error, {
+				extra: {
+					method: req.method,
+					url: req.originalUrl,
+				},
+			});
 
-				if (isUniqueConstraintError(error)) {
-					error.message = 'There is already an entry with this name';
-				}
+			if (isUniqueConstraintError(error)) {
+				error.message = 'There is already an entry with this name';
 			}
 
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			sendErrorResponse(res, error);
 		}
 	};
