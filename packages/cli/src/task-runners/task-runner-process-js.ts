@@ -56,7 +56,7 @@ export class JsTaskRunnerProcess extends TaskRunnerProcessBase {
 		const envVars: Record<string, string | undefined> = {
 			// system environment
 			PATH: process.env.PATH,
-			HOME: process.env.HOME,
+			HOME: process.env.HOME ?? process.env.USERPROFILE,
 			NODE_PATH: process.env.NODE_PATH,
 
 			// n8n

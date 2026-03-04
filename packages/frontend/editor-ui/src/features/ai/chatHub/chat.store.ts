@@ -808,6 +808,8 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		const baseModel = agents.value?.[customAgent.provider]?.models.find(
 			(model) => model.name === customAgent.model,
 		);
+		const suggestedPrompts = customAgent.suggestedPrompts.filter((p) => p.text.trim().length > 0);
+
 		const agent: ChatModelDto = {
 			model: {
 				provider: 'custom-agent' as const,
@@ -820,11 +822,13 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			updatedAt: customAgent.updatedAt,
 			metadata: baseModel?.metadata ?? {
 				capabilities: { functionCalling: false },
-				inputModalities: [],
+				allowFileUploads: false,
+				allowedFilesMimeTypes: '',
 				available: true,
 			},
 			groupName: null,
 			groupIcon: null,
+			...(suggestedPrompts.length > 0 ? { suggestedPrompts } : {}),
 		};
 		agents.value?.['custom-agent'].models.push(agent);
 		customAgents.value[customAgent.id] = customAgent;
@@ -845,9 +849,19 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 
 		// Update the agent in models as well
 		if (agents.value?.['custom-agent']) {
+			const updatedSuggestedPrompts = customAgent.suggestedPrompts.filter(
+				(p) => p.text.trim().length > 0,
+			);
+
 			agents.value['custom-agent'].models = agents.value['custom-agent'].models.map((model) =>
 				'agentId' in model && model.agentId === agentId
-					? { ...model, name: customAgent.name }
+					? {
+							...model,
+							name: customAgent.name,
+							...(updatedSuggestedPrompts.length > 0
+								? { suggestedPrompts: updatedSuggestedPrompts }
+								: { suggestedPrompts: undefined }),
+						}
 					: model,
 			);
 		}

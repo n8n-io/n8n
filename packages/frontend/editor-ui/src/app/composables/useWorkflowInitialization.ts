@@ -85,16 +85,18 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		}
 	}
 
-	const workflowId = computed(() => {
-		const name = route.params.name;
-		return (Array.isArray(name) ? name[0] : name) ?? '';
-	});
-
 	const isNewWorkflowRoute = computed(() => route.query.new === 'true');
 	const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
 	const isTemplateRoute = computed(() => route.name === VIEWS.TEMPLATE_IMPORT);
 	const isOnboardingRoute = computed(() => route.name === VIEWS.WORKFLOW_ONBOARDING);
 	const isDebugRoute = computed(() => route.name === VIEWS.EXECUTION_DEBUG);
+
+	const workflowId = computed(() => {
+		if (isDemoRoute.value) return 'demo';
+
+		const name = route.params.name;
+		return (Array.isArray(name) ? name[0] : name) ?? '';
+	});
 
 	async function loadCredentials() {
 		let options: { workflowId: string } | { projectId: string };
@@ -263,7 +265,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 
 		const parentFolderId = route.query.parentFolderId as string | undefined;
 
-		await workflowState.getNewWorkflowDataAndMakeShareable(
+		await workflowState.getNewWorkflowData(
 			undefined,
 			projectsStore.currentProjectId,
 			parentFolderId,
@@ -271,11 +273,19 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 
 		workflowState.setWorkflowId(workflowId.value);
 
-		// Create document store for new workflow (empty tags)
+		// Create document store for new workflow
 		const workflowDocumentId = createWorkflowDocumentId(workflowId.value);
 		currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
+		const homeProject = projectsStore.currentProject ?? projectsStore.personalProject ?? null;
+		currentWorkflowDocumentStore.value.setHomeProject(homeProject);
 
 		await projectsStore.refreshCurrentProject();
+
+		const { currentProject, personalProject } = projectsStore;
+		currentWorkflowDocumentStore.value.setScopes(
+			currentProject?.scopes ?? personalProject?.scopes ?? [],
+		);
+
 		await fetchAndSetParentFolder(parentFolderId);
 
 		uiStore.nodeViewInitialized = true;

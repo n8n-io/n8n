@@ -81,8 +81,20 @@ describe('variable-names', () => {
 			expect(toVarName('workflow')).toBe('workflow_node');
 		});
 
-		it('handles empty string', () => {
-			expect(toVarName('')).toBe('');
+		it('handles empty string with hash fallback', () => {
+			expect(toVarName('')).toBe('node_0');
+		});
+
+		it('handles non-ASCII names with hash fallback', () => {
+			const result = toVarName('ニュース整形');
+			expect(result).toMatch(/^node_[a-z0-9]+$/);
+			// Should be deterministic
+			expect(toVarName('ニュース整形')).toBe(result);
+		});
+
+		it('handles single special character with hash fallback', () => {
+			const result = toVarName('/');
+			expect(result).toMatch(/^node_[a-z0-9]+$/);
 		});
 	});
 
