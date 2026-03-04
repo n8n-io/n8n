@@ -88,9 +88,7 @@ export class ImpactAnalyzer {
 		// Lazy method usage index — only built if a file needs method-level resolution
 		let methodIndex: MethodUsageIndex | undefined = precomputedIndex;
 		const getMethodIndex = (): MethodUsageIndex => {
-			if (!methodIndex) {
-				methodIndex = new MethodUsageAnalyzer(this.project).buildIndex();
-			}
+			methodIndex ??= new MethodUsageAnalyzer(this.project).buildIndex();
 			return methodIndex;
 		};
 
