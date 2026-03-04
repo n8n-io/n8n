@@ -1,4 +1,5 @@
 import { AIMessage, HumanMessage } from '@langchain/core/messages';
+import { QueryFailedError } from '@n8n/typeorm';
 import { mockClear } from 'jest-mock-extended';
 
 import { mockEntityManager } from '@test/mocking';
@@ -178,7 +179,9 @@ describe('WorkflowBuilderSessionRepository', () => {
 
 		it('should fall back to update on concurrent insert conflict', async () => {
 			entityManager.update.mockResolvedValueOnce({ affected: 0 } as never);
-			entityManager.insert.mockRejectedValueOnce(new Error('unique constraint'));
+			entityManager.insert.mockRejectedValueOnce(
+				new QueryFailedError('INSERT', [], new Error('unique constraint')),
+			);
 			entityManager.update.mockResolvedValueOnce({ affected: 1 } as never);
 
 			await repository.saveSession(validThreadId, {
@@ -189,6 +192,19 @@ describe('WorkflowBuilderSessionRepository', () => {
 
 			expect(entityManager.update).toHaveBeenCalledTimes(2);
 			expect(entityManager.insert).toHaveBeenCalledTimes(1);
+		});
+
+		it('should rethrow non-query errors from insert', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 0 } as never);
+			entityManager.insert.mockRejectedValueOnce(new Error('connection lost'));
+
+			await expect(
+				repository.saveSession(validThreadId, {
+					messages: [],
+					previousSummary: 'Summary',
+					updatedAt: new Date(),
+				}),
+			).rejects.toThrow('connection lost');
 		});
 
 		it('should set previousSummary to null when undefined', async () => {
