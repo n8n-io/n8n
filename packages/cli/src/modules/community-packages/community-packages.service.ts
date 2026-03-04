@@ -401,10 +401,21 @@ export class CommunityPackagesService {
 		this.checkInstallPermissions(shouldValidateChecksum);
 
 		if (options.checksum) {
-			await verifyIntegrity(packageName, packageVersion, this.getNpmRegistry(), options.checksum);
+			await verifyIntegrity(
+				packageName,
+				packageVersion,
+				this.getNpmRegistry(),
+				options.checksum,
+				this.npmOverrides,
+			);
 		}
 
-		await checkIfVersionExistsOrThrow(packageName, packageVersion, this.getNpmRegistry());
+		await checkIfVersionExistsOrThrow(
+			packageName,
+			packageVersion,
+			this.getNpmRegistry(),
+			this.npmOverrides,
+		);
 
 		try {
 			await this.downloadPackage(packageName, packageVersion);

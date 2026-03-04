@@ -121,6 +121,7 @@ export async function verifyIntegrity(
 	version: string,
 	registryUrl: string,
 	expectedIntegrity: string,
+	npmOverrides?: { cacheArgs: string[]; env: Record<string, string> },
 ) {
 	const url = `${sanitizeRegistryUrl(registryUrl)}/${encodeURIComponent(packageName)}`;
 
@@ -143,8 +144,9 @@ export async function verifyIntegrity(
 					'dist.integrity',
 					`--registry=${sanitizeRegistryUrl(registryUrl)}`,
 					'--json',
+					...(npmOverrides?.cacheArgs ?? []),
 				],
-				{ doNotHandleError: true },
+				{ doNotHandleError: true, env: npmOverrides?.env },
 			);
 
 			const integrity = jsonParse(stdout);
@@ -169,6 +171,7 @@ export async function checkIfVersionExistsOrThrow(
 	packageName: string,
 	version: string,
 	registryUrl: string,
+	npmOverrides?: { cacheArgs: string[]; env: Record<string, string> },
 ): Promise<true> {
 	const url = `${sanitizeRegistryUrl(registryUrl)}/${encodeURIComponent(packageName)}`;
 
@@ -184,8 +187,9 @@ export async function checkIfVersionExistsOrThrow(
 					'version',
 					`--registry=${sanitizeRegistryUrl(registryUrl)}`,
 					'--json',
+					...(npmOverrides?.cacheArgs ?? []),
 				],
-				{ doNotHandleError: true },
+				{ doNotHandleError: true, env: npmOverrides?.env },
 			);
 
 			const versionInfo = jsonParse(stdout);
