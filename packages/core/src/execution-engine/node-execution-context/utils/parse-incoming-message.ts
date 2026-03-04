@@ -4,7 +4,12 @@ function parseHeaderParameters(parameters: string[]): Record<string, string> {
 	return parameters.reduce(
 		(acc, param) => {
 			const [key, value] = param.split('=');
-			let decodedValue = decodeURIComponent(value).trim();
+			let decodedValue: string;
+			try {
+				decodedValue = decodeURIComponent(value).trim();
+			} catch {
+				decodedValue = value.trim();
+			}
 			if (decodedValue.startsWith('"') && decodedValue.endsWith('"')) {
 				decodedValue = decodedValue.slice(1, -1);
 			}
