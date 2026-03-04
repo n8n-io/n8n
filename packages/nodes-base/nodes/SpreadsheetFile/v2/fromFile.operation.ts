@@ -144,6 +144,7 @@ export async function execute(
 				if (binaryData.id) {
 					const stream = await this.helpers.getBinaryStream(binaryData.id);
 					await new Promise<void>((resolve, reject) => {
+						stream.on('error', reject);
 						parser.on('error', reject);
 						parser.on('end', resolve);
 						stream.pipe(parser);
