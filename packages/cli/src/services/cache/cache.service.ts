@@ -345,11 +345,11 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 	 */
 	private async isValueAMissingKeyPlaceholder(key: string, value: unknown): Promise<boolean> {
 		// Memory cache uses `undefined` for misses and [] can be a valid cached value, so this check is only needed for Redis cache.
-		if (!this.isRedis() || !Array.isArray(value) || value.length > 0) {
-			return false;
+		if (this.isRedis() && Array.isArray(value) && value.length === 0) {
+			const ttl = await this.cache.store.ttl(key);
+			return ttl === REDIS_TTL_KEY_MISSING;
 		}
 
-		const ttl = await this.cache.store.ttl(key);
-		return ttl === REDIS_TTL_KEY_MISSING;
+		return false;
 	}
 }
