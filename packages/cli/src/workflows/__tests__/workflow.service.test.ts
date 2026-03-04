@@ -1,5 +1,4 @@
-import type { User } from '@n8n/db';
-import type { WorkflowEntity } from '@n8n/db';
+import type { User, WorkflowEntity } from '@n8n/db';
 import type { Scope } from '@n8n/permissions';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';

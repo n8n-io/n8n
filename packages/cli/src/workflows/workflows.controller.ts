@@ -113,8 +113,9 @@ export class WorkflowsController {
 		// shouldn't be returned to the frontend
 		delete savedWorkflowWithMetaData.shared;
 
-		const checksum = await calculateWorkflowChecksum(savedWorkflow);
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, savedWorkflow.id);
+
+		const checksum = await calculateWorkflowChecksum(savedWorkflow);
 
 		return { ...savedWorkflowWithMetaData, scopes, checksum };
 	}
