@@ -27,7 +27,6 @@ import { inject } from 'vue';
 import * as workflowsApi from '@/app/api/workflows';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { isEmpty } from '@/app/utils/typesUtils';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { clearPopupWindowState } from '@/features/execution/executions/executions.utils';
 import { DEFAULT_SETTINGS } from '@/app/stores/workflowDocument/useWorkflowDocumentSettings';
 import { useDocumentTitle } from './useDocumentTitle';
@@ -162,27 +161,6 @@ export function useWorkflowState() {
 		setWorkflowName({ newName: workflowData.name, setStateDirty: false });
 
 		return workflowData;
-	}
-
-	function makeNewWorkflowShareable() {
-		const { currentProject, personalProject } = useProjectsStore();
-		const scopes = currentProject?.scopes ?? personalProject?.scopes ?? [];
-
-		ws.workflow.scopes = scopes;
-	}
-
-	async function getNewWorkflowDataAndMakeShareable(
-		name?: string,
-		projectId?: string,
-		parentFolderId?: string,
-	): Promise<INewWorkflowData> {
-		const workflowData = await getNewWorkflowData(name, projectId, parentFolderId);
-		makeNewWorkflowShareable();
-		return workflowData;
-	}
-
-	function setWorkflowScopes(scopes: IWorkflowDb['scopes']): void {
-		ws.workflow.scopes = scopes;
 	}
 
 	////
@@ -437,8 +415,7 @@ export function useWorkflowState() {
 		setWorkflowName,
 		setWorkflowProperty,
 		setActiveExecutionId,
-		getNewWorkflowDataAndMakeShareable,
-		setWorkflowScopes,
+		getNewWorkflowData,
 
 		// Execution
 		markExecutionAsStopped,

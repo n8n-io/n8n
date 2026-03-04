@@ -32,7 +32,9 @@ import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/ty
 import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
 import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
+import type { SuggestedPrompt } from '@n8n/api-types';
 import type { CredentialsMap } from '../chat.types';
+import SuggestedPromptsEditor from './SuggestedPromptsEditor.vue';
 import ToolsSelector from './ToolsSelector.vue';
 import { personalAgentDefaultIcon, isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
 import { CHAT_SETTINGS_VIEW } from '@/features/ai/chatHub/constants';
@@ -103,6 +105,7 @@ const allFiles = computed<FileRow[]>(() => [
 		index,
 	})),
 ]);
+const suggestedPrompts = ref<SuggestedPrompt[]>([]);
 
 const agentSelectedCredentials = ref<CredentialsMap>({});
 const credentialIdForSelectedModelProvider = computed(
@@ -173,6 +176,7 @@ watch(
 		savedFiles.value = agent.files;
 		newFiles.value = [];
 		removedFileNames.value = [];
+		suggestedPrompts.value = agent.suggestedPrompts;
 		toolIds.value = agent.toolIds ?? [];
 
 		if (agent.credentialId) {
@@ -239,6 +243,8 @@ async function onSave() {
 		assert(selectedModel.value);
 		assert(credentialIdForSelectedModelProvider.value);
 
+		const filteredPrompts = suggestedPrompts.value.filter((p) => p.text.trim().length > 0);
+
 		const payload = {
 			name: name.value.trim(),
 			description: description.value.trim() || undefined,
@@ -247,6 +253,7 @@ async function onSave() {
 			credentialId: credentialIdForSelectedModelProvider.value,
 			toolIds: toolIds.value,
 			icon: icon.value,
+			suggestedPrompts: filteredPrompts.length > 0 ? filteredPrompts : undefined,
 		};
 
 		if (isEditMode.value && props.data.agentId) {
@@ -452,6 +459,15 @@ const fileDrop = useFileDrop(true, onFilesDropped);
 							:rows="6"
 							:class="$style.input"
 						/>
+					</N8nInputLabel>
+
+					<N8nInputLabel
+						input-name="agent-suggested-prompts"
+						:label="i18n.baseText('chatHub.agent.editor.suggestedPrompts.label')"
+						:tooltip-text="i18n.baseText('chatHub.agent.editor.suggestedPrompts.tooltip')"
+						:show-tooltip="true"
+					>
+						<SuggestedPromptsEditor v-model="suggestedPrompts" />
 					</N8nInputLabel>
 
 					<div :class="$style.row">

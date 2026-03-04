@@ -55,6 +55,8 @@ export class ChatHubAgentService {
 	}
 
 	convertAgentEntityToModel(agent: ChatHubAgent): ChatModelDto {
+		const suggestedPrompts = agent.suggestedPrompts.filter((p) => p.text.trim().length > 0);
+
 		return {
 			name: agent.name,
 			description: agent.description ?? null,
@@ -68,6 +70,7 @@ export class ChatHubAgentService {
 			metadata: getModelMetadata(agent.provider, agent.model),
 			groupName: null,
 			groupIcon: null,
+			...(suggestedPrompts.length > 0 ? { suggestedPrompts } : {}),
 		};
 	}
 
@@ -101,6 +104,7 @@ export class ChatHubAgentService {
 			name: data.name,
 			description: data.description ?? null,
 			icon: data.icon,
+			suggestedPrompts: data.suggestedPrompts ?? [],
 			systemPrompt: data.systemPrompt,
 			ownerId: user.id,
 			credentialId: data.credentialId,
@@ -138,6 +142,8 @@ export class ChatHubAgentService {
 		if (updates.name !== undefined) updateData.name = updates.name;
 		if (updates.description !== undefined) updateData.description = updates.description ?? null;
 		if (updates.icon !== undefined) updateData.icon = updates.icon;
+		if (updates.suggestedPrompts !== undefined)
+			updateData.suggestedPrompts = updates.suggestedPrompts ?? [];
 		if (updates.systemPrompt !== undefined) updateData.systemPrompt = updates.systemPrompt;
 		if (updates.credentialId !== undefined) updateData.credentialId = updates.credentialId ?? null;
 		if (updates.provider !== undefined) updateData.provider = updates.provider;
@@ -161,6 +167,7 @@ export class ChatHubAgentService {
 			name: agent.name,
 			description: agent.description,
 			icon: agent.icon,
+			suggestedPrompts: agent.suggestedPrompts,
 			systemPrompt: agent.systemPrompt,
 			ownerId: agent.ownerId,
 			credentialId: agent.credentialId,

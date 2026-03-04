@@ -7,7 +7,7 @@ import type {
 	INodeProperties,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse, NodeOperationError } from 'n8n-workflow';
 import { getUserScopedSlot } from '../shared/userScoped';
 import { createVectorStoreNode, metadataFilterField } from '@n8n/ai-utilities';
 
