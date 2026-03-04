@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 /**
  * Run these tests by running
  *
- * node --test --experimental-test-module-mocks ./.github/scripts/backport-pr.test.mjs
+ * node --test --experimental-test-module-mocks ./.github/scripts/compute-backport-targets.test.mjs
  * */
 
 // mock.module must be called before the module under test is imported,
@@ -28,7 +28,7 @@ mock.module('./github-helpers.mjs', {
 
 let labelsToReleaseCandidateBranches;
 before(async () => {
-	({ labelsToReleaseCandidateBranches } = await import('./backport-pr.mjs'));
+	({ labelsToReleaseCandidateBranches } = await import('./compute-backport-targets.mjs'));
 });
 
 describe('Backport PR', () => {
@@ -40,5 +40,21 @@ describe('Backport PR', () => {
 		assert.equal(result.size, 2);
 		assert.ok(result.has('release-candidate/2.10.1'));
 		assert.ok(result.has('release-candidate/2.9.4'));
+	});
+
+	it("Doesn't parse other labes to backport branches", () => {
+		const labels = new Set(['n8n team', 'release']);
+		/** @type { Set<string> } */
+		const result = labelsToReleaseCandidateBranches(labels);
+
+		assert.equal(result.size, 0);
+	});
+
+	it("Doesn't parse malformed backport labels", () => {
+		const labels = new Set(['Backport to Fork', 'Backport to my Home']);
+		/** @type { Set<string> } */
+		const result = labelsToReleaseCandidateBranches(labels);
+
+		assert.equal(result.size, 0);
 	});
 });
