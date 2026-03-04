@@ -64,6 +64,20 @@ describe('InMemoryDnsCache', () => {
 			expect(await cache.get('example.com')).toBeUndefined();
 		});
 
+		it('should cap TTL at dnsCacheMaxTtlSeconds', async () => {
+			const cache = new InMemoryDnsCache(createConfig({ dnsCacheMaxTtlSeconds: 5 }));
+
+			// Request a 60s TTL, but max is 5s
+			await cache.set('example.com', [addr('1.2.3.4')], 60);
+
+			// Should still be cached before max TTL
+			advanceTime(4_000);
+			expect(await cache.get('example.com')).toEqual([addr('1.2.3.4')]);
+
+			// Should be expired after max TTL
+			advanceTime(1_001);
+			expect(await cache.get('example.com')).toBeUndefined();
+		});
 		it('should throw when TTL is not greater than zero', async () => {
 			const cache = new InMemoryDnsCache(createConfig());
 
