@@ -134,14 +134,6 @@ export class McpService {
 		// Workflow builder tools
 		await this.workflowBuilderToolsService.initialize();
 
-		// SDK reference tool — serves as a fallback for clients that don't support MCP resources.
-		const sdkRefTool = createGetWorkflowSdkReferenceTool(user, this.telemetry);
-		const registeredSdkRefTool = server.registerTool(
-			sdkRefTool.name,
-			sdkRefTool.config,
-			sdkRefTool.handler,
-		);
-
 		const searchNodesTool = createSearchWorkflowNodesTool(
 			user,
 			this.workflowBuilderToolsService,
@@ -203,12 +195,23 @@ export class McpService {
 			}),
 		);
 
-		// After the client completes initialization, remove the SDK reference tool
-		// if the client supports resources (since the resource provides the same content).
+		// SDK reference tool — serves as a fallback for clients that don't support MCP resources.
+		// Registered as disabled; enabled after initialization only if the client lacks resource support.
+		const sdkRefTool = createGetWorkflowSdkReferenceTool(user, this.telemetry);
+		const registeredSdkRefTool = server.registerTool(
+			sdkRefTool.name,
+			sdkRefTool.config,
+			sdkRefTool.handler,
+		);
+		registeredSdkRefTool.disable();
+
+		// After initialization, enable the SDK reference tool only if the client
+		// does not support resources. Clients with resource support get the same
+		// content via the MCP resource registered above, making the tool redundant.
 		server.server.oninitialized = () => {
 			const capabilities = server.server.getClientCapabilities();
-			if (capabilities && 'resources' in capabilities) {
-				registeredSdkRefTool.remove();
+			if (!capabilities || !('resources' in capabilities)) {
+				registeredSdkRefTool.enable();
 			}
 		};
 
