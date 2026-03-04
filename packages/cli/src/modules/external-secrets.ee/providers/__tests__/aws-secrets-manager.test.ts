@@ -121,6 +121,82 @@ describe('AwsSecretsManager', () => {
 		expect(awsSecretsManager.getSecret('secret24')).toBe('secret24-value');
 	});
 
+	it('should parse JSON secret values into objects for dot-notation traversal', async () => {
+		context.settings = {
+			region,
+			authMethod: 'iamUser',
+			accessKeyId,
+			secretAccessKey,
+		};
+
+		await awsSecretsManager.init(context);
+
+		const jsonSecret = JSON.stringify({ clientId: 'my-client-id', clientSecret: 'my-secret' });
+
+		listSecretsSpy.mockImplementation(async () => {
+			return {
+				SecretList: [{ Name: 'salesforce' }, { Name: 'plaintext' }],
+			};
+		});
+
+		batchGetSpy.mockImplementation(async () => {
+			return {
+				SecretValues: [
+					{ Name: 'salesforce', SecretString: jsonSecret },
+					{ Name: 'plaintext', SecretString: 'just-a-string' },
+				],
+			};
+		});
+
+		await awsSecretsManager.update();
+
+		// JSON secret should be parsed into an object
+		const parsed = awsSecretsManager.getSecret('salesforce');
+		expect(typeof parsed).toBe('object');
+		expect(parsed).toEqual({ clientId: 'my-client-id', clientSecret: 'my-secret' });
+
+		// Plain text secret should remain a string
+		const plain = awsSecretsManager.getSecret('plaintext');
+		expect(typeof plain).toBe('string');
+		expect(plain).toBe('just-a-string');
+	});
+
+	it('should keep non-object JSON values as strings', async () => {
+		context.settings = {
+			region,
+			authMethod: 'iamUser',
+			accessKeyId,
+			secretAccessKey,
+		};
+
+		await awsSecretsManager.init(context);
+
+		listSecretsSpy.mockImplementation(async () => {
+			return {
+				SecretList: [{ Name: 'array' }, { Name: 'number' }, { Name: 'quoted' }],
+			};
+		});
+
+		batchGetSpy.mockImplementation(async () => {
+			return {
+				SecretValues: [
+					{ Name: 'array', SecretString: '["a","b"]' },
+					{ Name: 'number', SecretString: '42' },
+					{ Name: 'quoted', SecretString: '"hello"' },
+				],
+			};
+		});
+
+		await awsSecretsManager.update();
+
+		// Arrays should remain as strings (not traversable)
+		expect(awsSecretsManager.getSecret('array')).toBe('["a","b"]');
+		// Numbers should remain as strings
+		expect(awsSecretsManager.getSecret('number')).toBe('42');
+		// Quoted strings should remain as strings
+		expect(awsSecretsManager.getSecret('quoted')).toBe('"hello"');
+	});
+
 	it('should handle pagination in listing secrets', async () => {
 		context.settings = {
 			region,

@@ -1,12 +1,14 @@
 import type { SecretsManager, SecretsManagerClientConfig } from '@aws-sdk/client-secrets-manager';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import type { INodeProperties } from 'n8n-workflow';
+import type { IDataObject, INodeProperties } from 'n8n-workflow';
 
 import { DOCS_HELP_NOTICE } from '../constants';
 import { UnknownAuthTypeError } from '../errors/unknown-auth-type.error';
 import { SecretsProvider } from '../types';
 import type { SecretsProviderSettings } from '../types';
+
+type SecretValue = string | IDataObject;
 
 type Secret = {
 	secretName: string;
@@ -95,7 +97,7 @@ export class AwsSecretsManager extends SecretsProvider {
 		},
 	];
 
-	private cachedSecrets: Record<string, string> = {};
+	private cachedSecrets: Record<string, SecretValue> = {};
 
 	private client: SecretsManager;
 
@@ -148,16 +150,14 @@ export class AwsSecretsManager extends SecretsProvider {
 	async update() {
 		const secrets = await this.fetchAllSecrets();
 
-		const supportedSecrets = secrets;
-
 		this.cachedSecrets = Object.fromEntries(
-			supportedSecrets.map((s) => [s.secretName, s.secretValue]),
+			secrets.map((s) => [s.secretName, this.parseSecretValue(s.secretValue)]),
 		);
 
 		this.logger.debug('AWS Secrets Manager provider secrets updated');
 	}
 
-	getSecret(name: string) {
+	getSecret(name: string): SecretValue {
 		return this.cachedSecrets[name];
 	}
 
@@ -167,6 +167,23 @@ export class AwsSecretsManager extends SecretsProvider {
 
 	getSecretNames() {
 		return Object.keys(this.cachedSecrets);
+	}
+
+	/**
+	 * Attempt to parse a secret value as JSON. If the value is a valid JSON object,
+	 * return the parsed object to enable dot-notation traversal via the secrets proxy
+	 * (e.g. `$secrets.aws.mySecret.clientId`). Otherwise, return the raw string.
+	 */
+	private parseSecretValue(value: string): SecretValue {
+		try {
+			const parsed: unknown = JSON.parse(value);
+			if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+				return parsed as IDataObject;
+			}
+			return value;
+		} catch {
+			return value;
+		}
 	}
 
 	private assertAuthType(context: AwsSecretsManagerContext) {
