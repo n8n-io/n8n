@@ -1,4 +1,4 @@
-import { ref, shallowReadonly } from 'vue';
+import { ref, readonly } from 'vue';
 import { createEventHook } from '@vueuse/core';
 import { CHANGE_ACTION } from './types';
 import type { ChangeAction, ChangeEvent } from './types';
@@ -32,7 +32,7 @@ export function useWorkflowDocumentUsedCredentials() {
 	}
 
 	return {
-		usedCredentials: shallowReadonly(usedCredentials),
+		usedCredentials: readonly(usedCredentials),
 		setUsedCredentials,
 		onUsedCredentialsChange: onUsedCredentialsChange.on,
 	};
