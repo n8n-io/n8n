@@ -36,6 +36,11 @@ vi.mock('@/features/workflows/canvas/canvas.eventBus', () => ({
 	},
 }));
 
+vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
+	...(await importOriginal()),
+	injectWorkflowDocumentStore: vi.fn().mockReturnValue(null),
+}));
+
 const mockGenerateMergedNodesAndActionsFn = vi.fn().mockReturnValue({ mergedNodes: [] });
 
 vi.mock('@/features/shared/nodeCreator/composables/useActionsGeneration', () => ({

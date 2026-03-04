@@ -2975,7 +2975,7 @@ export function useCanvasOperations() {
 			workflowsStore.setConnections(workflow.connections);
 		}
 		await addNodes(convertedNodes ?? [], { keepPristine: true });
-		await workflowState.getNewWorkflowDataAndMakeShareable(name, projectsStore.currentProjectId);
+		await workflowState.getNewWorkflowData(name, projectsStore.currentProjectId);
 	}
 
 	function tryToOpenSubworkflowInNewTab(nodeId: string): boolean {
