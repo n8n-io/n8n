@@ -27,6 +27,7 @@ Measures sustained exec/s and actions/s via VictoriaMetrics counters. Preloads a
 |----------|---------------|
 | `1-node-1KB-1k` | Pure trigger overhead — minimal workflow |
 | `10/30/60-nodes-1KB-5k` | Node count scaling curve — where does throughput cliff? |
+| `10-nodes-100KB-noop-5k` | Large input, noop output — isolates input deserialization cost |
 | `10-nodes-1KB-10kb-out-5k` | DB write pressure (moderate) — 10KB output per node |
 | `10-nodes-1KB-100kb-out-5k` | DB write pressure (heavy) — 100KB output per node |
 
