@@ -4,14 +4,20 @@ import { mock } from 'jest-mock-extended';
 
 import type { NodeTypes } from '@/node-types';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
+import type { ScheduleValidationService } from 'n8n-core';
 
 describe('WorkflowValidationService', () => {
 	let service: WorkflowValidationService;
 	let mockWorkflowRepository: ReturnType<typeof mock<WorkflowRepository>>;
+	let mockScheduleValidationService: ReturnType<typeof mock<ScheduleValidationService>>;
 
 	beforeEach(() => {
 		mockWorkflowRepository = mock<WorkflowRepository>();
-		service = new WorkflowValidationService(mockWorkflowRepository);
+		mockScheduleValidationService = mock<ScheduleValidationService>();
+		service = new WorkflowValidationService(
+			mockWorkflowRepository,
+			mockScheduleValidationService,
+		);
 	});
 
 	describe('validateSubWorkflowReferences', () => {
@@ -342,6 +348,72 @@ describe('WorkflowValidationService', () => {
 			const result = service.validateForActivation(nodes, connections, mockNodeTypes);
 
 			expect(result.isValid).toBe(true);
+		});
+
+		it('should return invalid when Schedule Trigger has interval below minimum', () => {
+			const nodes = {
+				'Schedule Trigger': createNode('Schedule Trigger', 'n8n-nodes-base.scheduleTrigger', {
+					parameters: {
+						rule: {
+							interval: [{ field: 'seconds', secondsInterval: 30 }],
+						},
+					},
+				}),
+			};
+			const connections: IConnections = {};
+
+			mockNodeTypes.getByNameAndVersion.mockReturnValue(createMockNodeType([], [], true));
+
+			mockScheduleValidationService.validateScheduleInterval.mockImplementation(() => {
+				throw new Error('Schedule interval too short. Minimum allowed: 300s, current: 30s');
+			});
+
+			const result = service.validateForActivation(nodes, connections, mockNodeTypes);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain('Node "Schedule Trigger"');
+			expect(result.error).toContain('Schedule interval too short');
+		});
+
+		it('should return valid when Schedule Trigger has interval at or above minimum', () => {
+			const nodes = {
+				'Schedule Trigger': createNode('Schedule Trigger', 'n8n-nodes-base.scheduleTrigger', {
+					parameters: {
+						rule: {
+							interval: [{ field: 'minutes', minutesInterval: 5 }],
+						},
+					},
+				}),
+			};
+			const connections: IConnections = {};
+
+			mockNodeTypes.getByNameAndVersion.mockReturnValue(createMockNodeType([], [], true));
+
+			const result = service.validateForActivation(nodes, connections, mockNodeTypes);
+
+			expect(result.isValid).toBe(true);
+			expect(mockScheduleValidationService.validateScheduleInterval).toHaveBeenCalled();
+		});
+
+		it('should return invalid when Interval node has interval below minimum', () => {
+			const nodes = {
+				Interval: createNode('Interval', 'n8n-nodes-base.interval', {
+					parameters: { interval: 60, unit: 'seconds' },
+				}),
+			};
+			const connections: IConnections = {};
+
+			mockNodeTypes.getByNameAndVersion.mockReturnValue(createMockNodeType([], [], true));
+
+			mockScheduleValidationService.validateScheduleInterval.mockImplementation(() => {
+				throw new Error('Schedule interval too short. Minimum allowed: 300s, current: 60s');
+			});
+
+			const result = service.validateForActivation(nodes, connections, mockNodeTypes);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain('Node "Interval"');
+			expect(result.error).toContain('Schedule interval too short');
 		});
 
 		it('should return invalid when connected node is missing required credential', () => {

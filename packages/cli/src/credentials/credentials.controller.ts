@@ -321,6 +321,10 @@ export class CredentialsController {
 	@Licensed('feat:sharing')
 	@Put('/:credentialId/share')
 	async shareCredentials(req: CredentialRequest.Share) {
+		if (this.globalConfig.credentials.disableSharing) {
+			throw new BadRequestError('Credential sharing is disabled on this instance.');
+		}
+
 		const { credentialId } = req.params;
 		const { shareWithIds } = req.body;
 

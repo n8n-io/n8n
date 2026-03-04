@@ -13,6 +13,7 @@ import type { INode, INodes, IConnections, INodeType } from 'n8n-workflow';
 
 import { STARTING_NODES } from '@/constants';
 import type { NodeTypes } from '@/node-types';
+import { ScheduleValidationService, type ScheduleInterval } from 'n8n-core';
 
 export interface WorkflowValidationResult {
 	isValid: boolean;
@@ -35,7 +36,10 @@ export interface WorkflowStatus {
 
 @Service()
 export class WorkflowValidationService {
-	constructor(private readonly workflowRepository: WorkflowRepository) {}
+	constructor(
+		private readonly workflowRepository: WorkflowRepository,
+		private readonly scheduleValidationService: ScheduleValidationService,
+	) {}
 
 	/**
 	 * Validates node configuration (credentials, parameters) for connected and enabled nodes.
@@ -179,6 +183,104 @@ export class WorkflowValidationService {
 
 		if (!configValidation.isValid) {
 			return configValidation;
+		}
+
+		// Validate schedule trigger intervals against N8N_MIN_SCHEDULE_INTERVAL_SECONDS
+		const scheduleValidation = this.validateScheduleIntervals(nodesArray);
+
+		if (!scheduleValidation.isValid) {
+			return scheduleValidation;
+		}
+
+		return { isValid: true };
+	}
+
+	/**
+	 * Validates that Schedule Trigger and Interval nodes respect N8N_MIN_SCHEDULE_INTERVAL_SECONDS.
+	 * Public so ActiveWorkflowManager can enforce at runtime (e.g. when loading from DB on startup).
+	 */
+	validateScheduleIntervalsForNodes(nodes: INode[]): WorkflowValidationResult {
+		return this.validateScheduleIntervals(nodes);
+	}
+
+	private validateScheduleIntervals(nodes: INode[]): WorkflowValidationResult {
+		try {
+			for (const node of nodes) {
+				if (node.disabled) continue;
+
+				if (node.type === 'n8n-nodes-base.scheduleTrigger') {
+					const result = this.validateScheduleTriggerNode(node);
+					if (!result.isValid) return result;
+				} else if (node.type === 'n8n-nodes-base.interval') {
+					const result = this.validateIntervalNode(node);
+					if (!result.isValid) return result;
+				}
+			}
+
+			return { isValid: true };
+		} catch (error) {
+			return {
+				isValid: false,
+				error: `Schedule validation failed: ${ensureError(error).message}`,
+			};
+		}
+	}
+
+	private validateScheduleTriggerNode(node: INode): WorkflowValidationResult {
+		const rule = node.parameters?.rule as { interval?: ScheduleInterval[] } | undefined;
+		const intervals = rule?.interval;
+
+		if (!Array.isArray(intervals) || intervals.length === 0) {
+			return { isValid: true };
+		}
+
+		for (let i = 0; i < intervals.length; i++) {
+			try {
+				const interval = intervals[i];
+				if (interval.field === 'cronExpression') {
+					const expression =
+						typeof interval.expression === 'string'
+							? interval.expression
+							: String(interval.expression ?? '');
+					if (expression) {
+						this.scheduleValidationService.validateCronExpression(expression);
+					}
+				} else {
+					this.scheduleValidationService.validateScheduleInterval(interval);
+				}
+			} catch (error) {
+				return {
+					isValid: false,
+					error: `Node "${node.name}": ${ensureError(error).message}`,
+				};
+			}
+		}
+
+		return { isValid: true };
+	}
+
+	private validateIntervalNode(node: INode): WorkflowValidationResult {
+		const interval = node.parameters?.interval as number | undefined;
+		const unit = (node.parameters?.unit as string) || 'seconds';
+
+		if (typeof interval !== 'number' || interval <= 0) {
+			return { isValid: true };
+		}
+
+		try {
+			const scheduleInterval: ScheduleInterval =
+				unit === 'seconds'
+					? { field: 'seconds', secondsInterval: interval }
+					: unit === 'minutes'
+						? { field: 'minutes', minutesInterval: interval }
+						: { field: 'hours', hoursInterval: interval };
+
+			this.scheduleValidationService.validateScheduleInterval(scheduleInterval);
+		} catch (error) {
+			return {
+				isValid: false,
+				error: `Node "${node.name}": ${ensureError(error).message}`,
+			};
 		}
 
 		return { isValid: true };
