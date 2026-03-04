@@ -315,10 +315,12 @@ export class ActiveWorkflowManager {
 		const dbWebhooks = await this.webhookService.findAllWebhooks();
 		if (!dbWebhooks?.length) return;
 
-		const activeIds = new Set(this.activeWorkflows.allActiveWorkflows());
+		// Use DB active workflow IDs instead of in-memory set, because
+		// webhook-only workflows are not added to the in-memory active list
+		const activeDbIds = new Set(await this.workflowRepository.getAllActiveIds());
 
 		const orphanedWorkflowIds = [
-			...new Set(dbWebhooks.filter((w) => !activeIds.has(w.workflowId)).map((w) => w.workflowId)),
+			...new Set(dbWebhooks.filter((w) => !activeDbIds.has(w.workflowId)).map((w) => w.workflowId)),
 		];
 
 		if (orphanedWorkflowIds.length > 0) {
