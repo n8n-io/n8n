@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 
-import { N8nButton, N8nText } from '@n8n/design-system';
+import { N8nActionDropdown, N8nButton, N8nIconButton, N8nText } from '@n8n/design-system';
+import type { ActionDropdownItem } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
 
 import type { WebFetchApproval } from '../../assistant.types';
+
+type WebFetchAction = 'allow_once' | 'allow_domain' | 'allow_all' | 'deny';
 
 interface Props {
 	data: WebFetchApproval.MessageData;
@@ -20,24 +23,26 @@ const emit = defineEmits<{
 			requestId: string;
 			url: string;
 			domain: string;
-			action: 'allow_once' | 'allow_domain' | 'deny';
+			action: WebFetchAction;
 		},
 	];
 }>();
 
 const decided = ref(false);
-const decisionLabel = ref('');
 
-function onDecision(action: 'allow_once' | 'allow_domain' | 'deny') {
+const dropdownItems: Array<ActionDropdownItem<'allow_once' | 'allow_all'>> = [
+	{
+		id: 'allow_once',
+		label: i18n.baseText('aiAssistant.builder.webFetch.allowOnce'),
+	},
+	{
+		id: 'allow_all',
+		label: i18n.baseText('aiAssistant.builder.webFetch.allowAll'),
+	},
+];
+
+function onDecision(action: WebFetchAction) {
 	decided.value = true;
-	decisionLabel.value =
-		action === 'deny'
-			? i18n.baseText('aiAssistant.builder.webFetch.deny')
-			: action === 'allow_domain'
-				? i18n.baseText('aiAssistant.builder.webFetch.allowDomain', {
-						interpolate: { domain: props.data.domain },
-					})
-				: i18n.baseText('aiAssistant.builder.webFetch.allowOnce');
 
 	emit('decision', {
 		requestId: props.data.requestId,
@@ -46,44 +51,59 @@ function onDecision(action: 'allow_once' | 'allow_domain' | 'deny') {
 		action,
 	});
 }
+
+function onDropdownSelect(action: 'allow_once' | 'allow_all') {
+	onDecision(action);
+}
 </script>
 
 <template>
-	<div :class="$style.container">
+	<div v-if="!decided" :class="$style.container">
 		<N8nText :class="$style.prompt" size="small">
 			{{ i18n.baseText('aiAssistant.builder.webFetch.prompt') }}
 		</N8nText>
-		<N8nText :class="$style.url" tag="code" size="small">
-			{{ data.url }}
-		</N8nText>
-		<div v-if="!decided" :class="$style.actions">
-			<N8nButton
-				size="small"
-				type="secondary"
-				:disabled="disabled"
-				@click="onDecision('allow_once')"
-			>
-				{{ i18n.baseText('aiAssistant.builder.webFetch.allowOnce') }}
-			</N8nButton>
-			<N8nButton
-				size="small"
-				type="secondary"
-				:disabled="disabled"
-				@click="onDecision('allow_domain')"
-			>
-				{{
-					i18n.baseText('aiAssistant.builder.webFetch.allowDomain', {
-						interpolate: { domain: data.domain },
-					})
-				}}
-			</N8nButton>
-			<N8nButton size="small" type="tertiary" :disabled="disabled" @click="onDecision('deny')">
-				{{ i18n.baseText('aiAssistant.builder.webFetch.deny') }}
-			</N8nButton>
+		<div :class="$style.urlBox">
+			<N8nText :class="$style.urlText" tag="code" size="small">
+				{{ data.url }}
+			</N8nText>
 		</div>
-		<N8nText v-else :class="$style.decided" size="small" color="text-light">
-			{{ decisionLabel }}
-		</N8nText>
+		<div :class="$style.actions">
+			<div :class="$style.splitButton">
+				<N8nButton
+					variant="solid"
+					:class="$style.splitButtonMain"
+					:label="i18n.baseText('aiAssistant.builder.webFetch.alwaysAllow')"
+					:aria-label="i18n.baseText('aiAssistant.builder.webFetch.alwaysAllow')"
+					:disabled="disabled"
+					data-test-id="approve-web-fetch-button"
+					@click="onDecision('allow_domain')"
+				/>
+				<N8nActionDropdown
+					:items="dropdownItems"
+					:class="$style.splitButtonDropdown"
+					:disabled="disabled"
+					placement="bottom-end"
+					data-test-id="web-fetch-approval-dropdown"
+					@select="onDropdownSelect"
+				>
+					<template #activator>
+						<N8nIconButton
+							variant="solid"
+							icon="chevron-down"
+							:class="$style.splitButtonCaret"
+							:disabled="disabled"
+							aria-label="More approval options"
+						/>
+					</template>
+				</N8nActionDropdown>
+			</div>
+			<N8nButton
+				variant="outline"
+				:disabled="disabled"
+				:label="i18n.baseText('aiAssistant.builder.webFetch.deny')"
+				@click="onDecision('deny')"
+			/>
+		</div>
 	</div>
 </template>
 
@@ -91,33 +111,57 @@ function onDecision(action: 'allow_once' | 'allow_domain' | 'deny') {
 .container {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--xs);
 	padding: var(--spacing--xs);
 	margin-bottom: var(--spacing--sm);
 	border: var(--border);
-	border-radius: var(--radius--lg);
-	background-color: var(--color--background);
+	border-radius: var(--spacing--3xs);
+	background-color: white;
+	overflow: clip;
 }
 
 .prompt {
-	font-weight: var(--font-weight--bold);
+	font-weight: 500;
+	color: var(--color--text);
 }
 
-.url {
-	word-break: break-all;
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	background-color: var(--color--foreground--tint-2);
-	border-radius: var(--radius);
-	font-size: var(--font-size--2xs);
+.urlBox {
+	background-color: var(--color--neutral-125);
+	border-radius: var(--spacing--4xs);
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	overflow: hidden;
+}
+
+.urlText {
+	color: var(--color--text);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	display: block;
 }
 
 .actions {
 	display: flex;
 	gap: var(--spacing--2xs);
-	flex-wrap: wrap;
+	align-items: center;
 }
 
-.decided {
-	font-style: italic;
+.splitButton {
+	display: flex;
+	position: relative;
+}
+
+.splitButtonMain {
+	border-top-right-radius: 0;
+	border-bottom-right-radius: 0;
+}
+
+.splitButtonDropdown {
+	display: flex;
+}
+
+.splitButtonCaret {
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
+	border-left: 1px solid rgba(255, 255, 255, 0.4);
 }
 </style>

@@ -61,7 +61,7 @@ export type PlanDecision = 'approve' | 'reject' | 'modify';
  * Command.update messages don't survive in the parent checkpoint when
  * a subgraph node interrupts multiple times, so we store them here.
  */
-export type WebFetchDecision = 'allow_once' | 'allow_domain' | 'deny';
+export type WebFetchDecision = 'allow_once' | 'allow_domain' | 'allow_all' | 'deny';
 
 export type HITLHistoryEntry =
 	| {
