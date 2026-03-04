@@ -8,6 +8,8 @@ on:
       - 'packages/testing/playwright/tests/infrastructure/**'
       - 'packages/testing/playwright/utils/kafka-*'
       - 'packages/testing/playwright/utils/throughput-*'
+      - 'packages/testing/playwright/utils/performance-helper.ts'
+      - 'packages/testing/playwright/reporters/benchmark-summary-reporter.ts'
       - 'packages/testing/containers/services/**'
       - '.github/workflows/test-e2e-infrastructure-reusable.yml'
 

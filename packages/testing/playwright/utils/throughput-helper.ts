@@ -123,7 +123,7 @@ export async function getBaselineCounter(
 function calculateThroughput(
 	samples: ThroughputSample[],
 	nodeCount: number,
-	_startTime: number,
+	startTime: number,
 ): ThroughputResult {
 	if (samples.length === 0) {
 		return {
@@ -144,13 +144,13 @@ function calculateThroughput(
 	const totalCompleted = lastSample.completed;
 	const durationMs = firstActive
 		? lastSample.timestamp - firstActive.timestamp
-		: lastSample.timestamp - _startTime;
+		: lastSample.timestamp - startTime;
 
 	// Per-interval rates (delta / interval seconds)
 	const intervalRates: number[] = [];
 	for (let i = 0; i < samples.length; i++) {
 		const intervalMs =
-			i === 0 ? samples[0].timestamp - _startTime : samples[i].timestamp - samples[i - 1].timestamp;
+			i === 0 ? samples[0].timestamp - startTime : samples[i].timestamp - samples[i - 1].timestamp;
 		if (intervalMs > 0 && samples[i].delta > 0) {
 			intervalRates.push((samples[i].delta / intervalMs) * 1000);
 		}

@@ -123,26 +123,29 @@ export async function waitForExecutions(
 	let lastLag = -1;
 
 	while (Date.now() < deadline) {
+		let lagInfo;
 		try {
-			const lagInfo = await kafkaHelper.getConsumerGroupLag(groupId, topic);
-
-			if (lagInfo.totalLag !== lastLag) {
-				const consumed = expectedCount - lagInfo.totalLag;
-				console.log(`[LOAD] Consumed: ${consumed}/${expectedCount} (lag=${lagInfo.totalLag})`);
-				lastLag = lagInfo.totalLag;
-			}
-
-			if (lagInfo.totalLag === 0) {
-				// All messages consumed - wait briefly for last execution to finish
-				await new Promise((resolve) => setTimeout(resolve, 3000));
-				const durationMs = Date.now() - startTime;
-				const durations = await sampleExecutionDurations(workflowApi, workflowId);
-				return buildMetrics(expectedCount, 0, durationMs, durations);
-			}
+			lagInfo = await kafkaHelper.getConsumerGroupLag(groupId, topic);
 		} catch (error) {
 			console.log(
 				`[LOAD] Lag check error: ${error instanceof Error ? error.message : String(error)}`,
 			);
+			await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+			continue;
+		}
+
+		if (lagInfo.totalLag !== lastLag) {
+			const consumed = expectedCount - lagInfo.totalLag;
+			console.log(`[LOAD] Consumed: ${consumed}/${expectedCount} (lag=${lagInfo.totalLag})`);
+			lastLag = lagInfo.totalLag;
+		}
+
+		if (lagInfo.totalLag === 0) {
+			// All messages consumed - wait briefly for last execution to finish
+			await new Promise((resolve) => setTimeout(resolve, 3000));
+			const durationMs = Date.now() - startTime;
+			const durations = await sampleExecutionDurations(workflowApi, workflowId);
+			return buildMetrics(expectedCount, 0, durationMs, durations);
 		}
 
 		await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));

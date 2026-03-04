@@ -6,7 +6,7 @@ import type { PostgresResult } from './postgres';
 import type { Service, ServiceResult, StartContext } from './types';
 
 const HOSTNAME = 'postgres-exporter';
-const EXPORTER_PORT = 9187;
+export const EXPORTER_PORT = 9187;
 
 export interface PostgresExporterMeta {
 	host: string;

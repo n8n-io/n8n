@@ -2,6 +2,7 @@ import type { StartedNetwork } from 'testcontainers';
 import { GenericContainer, Wait } from 'testcontainers';
 
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
+import { EXPORTER_PORT } from './postgres-exporter';
 import type { HelperContext, Service, ServiceResult, StartContext } from './types';
 
 const VICTORIA_METRICS_HTTP_PORT = 8428;
@@ -91,7 +92,7 @@ export const victoriaMetrics: Service<VictoriaMetricsResult> = {
 				job: 'postgres',
 				instance: 'postgres',
 				host: 'postgres-exporter',
-				port: 9187,
+				port: EXPORTER_PORT,
 			});
 		}
 

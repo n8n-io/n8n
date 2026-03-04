@@ -102,12 +102,12 @@ class BenchmarkSummaryReporter implements Reporter {
 		});
 
 		const pad = (s: string, w: number) => s.padStart(w);
-		const padLeft = (s: string, w: number) => s.padEnd(w);
+		const padRight = (s: string, w: number) => s.padEnd(w);
 
 		const headerParts = [
-			padLeft('Trigger', triggerWidth),
-			padLeft('Suite', suiteWidth),
-			padLeft('Scenario', scenarioWidth),
+			padRight('Trigger', triggerWidth),
+			padRight('Suite', suiteWidth),
+			padRight('Scenario', scenarioWidth),
 			...COLUMNS.map((col, i) => pad(col.header, colWidths[i])),
 		];
 
@@ -121,9 +121,9 @@ class BenchmarkSummaryReporter implements Reporter {
 
 		for (const row of this.rows) {
 			const parts = [
-				padLeft(row.trigger, triggerWidth),
-				padLeft(row.suite, suiteWidth),
-				padLeft(row.scenario, scenarioWidth),
+				padRight(row.trigger, triggerWidth),
+				padRight(row.suite, suiteWidth),
+				padRight(row.scenario, scenarioWidth),
 				...COLUMNS.map((col, i) => pad(this.resolveColumn(row, col), colWidths[i])),
 			];
 			console.log(`│ ${parts.join(' │ ')} │`);

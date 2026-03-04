@@ -180,7 +180,10 @@ test.describe(
 						`p99: ${metrics.p99DurationMs.toFixed(0)}ms`,
 				);
 
-				// Soft assertions - at least some executions should complete
+				// Lenient threshold (50%) — load tests use steady-rate publishing where
+				// the system may still be draining when the timeout expires.
+				// Throughput tests use a stricter 95% threshold since all messages
+				// are preloaded and the test waits for the counter to reach the target.
 				expect(metrics.totalCompleted).toBeGreaterThan(0);
 				expect(metrics.totalCompleted).toBeGreaterThanOrEqual(Math.floor(expectedExecutions * 0.5));
 
