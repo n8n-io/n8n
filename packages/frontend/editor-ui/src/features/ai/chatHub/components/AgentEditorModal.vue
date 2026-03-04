@@ -80,7 +80,7 @@ const nameInputRef = useTemplateRef('nameInput');
 const icon = ref<AgentIconOrEmoji>(personalAgentDefaultIcon);
 const savedFiles = ref<ChatHubAgentKnowledgeItem[]>([]);
 const newFiles = ref<File[]>([]);
-const removedFileNames = ref<string[]>([]);
+const removedFileKnowledgeIds = ref<string[]>([]);
 const fileInputRef = useTemplateRef<HTMLInputElement>('fileInput');
 
 const currentEmbeddingProvider = computed(
@@ -175,7 +175,7 @@ watch(
 		selectedModel.value = { provider: agent.provider, model: agent.model };
 		savedFiles.value = agent.files;
 		newFiles.value = [];
-		removedFileNames.value = [];
+		removedFileKnowledgeIds.value = [];
 		suggestedPrompts.value = agent.suggestedPrompts;
 		toolIds.value = agent.toolIds ?? [];
 
@@ -261,7 +261,7 @@ async function onSave() {
 				props.data.agentId,
 				payload,
 				newFiles.value,
-				removedFileNames.value,
+				removedFileKnowledgeIds.value,
 				props.data.credentials,
 			);
 			toast.showMessage({
@@ -359,7 +359,7 @@ function handleFileSelect(event: Event) {
 function removeExistingFile(index: number) {
 	const file = savedFiles.value[index];
 	if (file) {
-		removedFileNames.value = [...removedFileNames.value, file.fileName];
+		removedFileKnowledgeIds.value = [...removedFileKnowledgeIds.value, file.id];
 	}
 	savedFiles.value = savedFiles.value.filter((_, i) => i !== index);
 }

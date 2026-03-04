@@ -218,12 +218,12 @@ export const uploadAgentFilesApi = async (
 export const deleteAgentFileApi = async (
 	context: IRestApiContext,
 	agentId: string,
-	fileName: string,
+	fileKnowledgeId: string,
 ): Promise<void> => {
 	await makeRestApiRequest(
 		context,
 		'DELETE',
-		`/chat/agents/${agentId}/files/${encodeURIComponent(fileName)}`,
+		`/chat/agents/${agentId}/files/${encodeURIComponent(fileKnowledgeId)}`,
 	);
 };
 

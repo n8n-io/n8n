@@ -338,10 +338,10 @@ export class ChatHubAgentService {
 		return this.toDto(updatedAgent, toolIds);
 	}
 
-	async deleteAgentFile(agentId: string, user: User, fileName: string): Promise<void> {
+	async deleteAgentFile(agentId: string, user: User, fileKnowledgeId: string): Promise<void> {
 		const agent = await this.getAgentById(agentId, user.id);
 
-		const fileItem = agent.files.find((f) => f.fileName === fileName);
+		const fileItem = agent.files.find((f) => f.id === fileKnowledgeId);
 		if (!fileItem) {
 			throw new NotFoundError('File not found');
 		}
@@ -349,10 +349,12 @@ export class ChatHubAgentService {
 		await this.deleteEmbeddingsByKnowledgeIds(user, agentId, [fileItem.id]);
 
 		await this.chatAgentRepository.updateAgent(agentId, {
-			files: agent.files.filter((f) => f.fileName !== fileName),
+			files: agent.files.filter((f) => f.id !== fileKnowledgeId),
 		});
 
-		this.logger.debug(`Deleted file "${fileName}" from agent ${agentId} by user ${user.id}`);
+		this.logger.debug(
+			`Deleted file "${fileItem.fileName}" from agent ${agentId} by user ${user.id}`,
+		);
 	}
 
 	private async indexFilesAsKnowledgeItems(

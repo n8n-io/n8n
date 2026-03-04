@@ -376,15 +376,15 @@ export class ChatHubController {
 		return await this.chatAgentService.addFilesToAgent(agentId, req.user, files);
 	}
 
-	@Delete('/agents/:agentId/files/:fileName')
+	@Delete('/agents/:agentId/files/:fileKnowledgeId')
 	@GlobalScope('chatHubAgent:update')
 	async deleteAgentFile(
 		req: AuthenticatedRequest,
 		res: Response,
 		@Param('agentId') agentId: string,
-		@Param('fileName') fileName: string,
+		@Param('fileKnowledgeId') fileKnowledgeId: string,
 	): Promise<void> {
-		await this.chatAgentService.deleteAgentFile(agentId, req.user, fileName);
+		await this.chatAgentService.deleteAgentFile(agentId, req.user, fileKnowledgeId);
 		res.status(204).send();
 	}
 

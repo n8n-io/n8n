@@ -861,13 +861,13 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		agentId: string,
 		payload: ChatHubUpdateAgentRequest,
 		newFiles: File[],
-		filesToDelete: string[],
+		fileKnowledgeIdsToDelete: string[],
 		credentials: CredentialsMap,
 	): Promise<ChatHubAgentDto> {
 		await updateAgentApi(rootStore.restApiContext, agentId, payload);
 
-		for (const fileName of filesToDelete) {
-			await deleteAgentFileApi(rootStore.restApiContext, agentId, fileName);
+		for (const fileKnowledgeId of fileKnowledgeIdsToDelete) {
+			await deleteAgentFileApi(rootStore.restApiContext, agentId, fileKnowledgeId);
 		}
 
 		if (newFiles.length > 0) {
