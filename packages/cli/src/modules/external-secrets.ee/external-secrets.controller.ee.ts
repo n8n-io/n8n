@@ -43,7 +43,7 @@ export class ExternalSecretsController {
 	}
 
 	@Post('/providers/:provider/test')
-	@GlobalScope('externalSecretsProvider:read')
+	@GlobalScope('externalSecretsProvider:update')
 	async testProviderSettings(req: ExternalSecretsRequest.TestProviderSettings, res: Response) {
 		const providerName = req.params.provider;
 		const result = await this.secretsService.testProviderSettings(providerName, req.body);
