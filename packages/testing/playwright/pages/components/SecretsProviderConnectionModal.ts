@@ -70,6 +70,10 @@ export class SecretsProviderConnectionModal extends BaseModal {
 		return this.container.getByTestId('connection-success-callout');
 	}
 
+	getErrorBanner(): Locator {
+		return this.container.getByTestId('connection-error-banner');
+	}
+
 	/**
 	 * Switches to the Scope/Sharing tab.
 	 * Only available in edit mode (requires forProjects feature flag + canShareGlobally permission).

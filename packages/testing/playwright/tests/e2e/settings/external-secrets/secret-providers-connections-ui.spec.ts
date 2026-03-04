@@ -13,6 +13,8 @@ const LOCALSTACK_AWS_SETTINGS = {
 	secretAccessKey: 'test',
 } as const;
 
+const INVALID_AWS_SETTINGS_REGION = 'us-east/1';
+
 test.describe(
 	'Secret Providers Connections UI @capability:external-secrets @licensed',
 	{
@@ -104,11 +106,11 @@ test.describe(
 		});
 
 		/**
-		 * Creates a global connection via the UI settings page, scopes it to a project
-		 * via the Sharing tab, then verifies the connection appears in the project settings
-		 * and can be referenced from a project credential.
+		 * Creates a global connection via the UI settings page,
+		 * creates a connection with invalid region then saves it and verifies that the error banner is shown.
+		 * Scopes it to a project and verifies that the connection appears in the project settings and can be referenced from a project credential.
 		 */
-		test('should create a connection, scope it to a project, and use it in a project credential', async ({
+		test('should create a connection, recover a wrong setting, scope it to a project, and use it in a project credential', async ({
 			n8n,
 			services,
 		}) => {
@@ -130,7 +132,7 @@ test.describe(
 			await n8n.secretsProviderConnectionModal.selectProviderType('AWS Secrets Manager');
 			await n8n.secretsProviderConnectionModal.fillProviderField(
 				'region',
-				LOCALSTACK_AWS_SETTINGS.region,
+				INVALID_AWS_SETTINGS_REGION,
 			);
 			await n8n.secretsProviderConnectionModal.fillProviderField(
 				'accessKeyId',
@@ -139,6 +141,15 @@ test.describe(
 			await n8n.secretsProviderConnectionModal.fillProviderField(
 				'secretAccessKey',
 				LOCALSTACK_AWS_SETTINGS.secretAccessKey,
+			);
+
+			await n8n.secretsProviderConnectionModal.save();
+			await expect(n8n.secretsProviderConnectionModal.getErrorBanner()).toBeVisible();
+			await expect(n8n.secretsProviderConnectionModal.getSuccessCallout()).toBeHidden();
+
+			await n8n.secretsProviderConnectionModal.fillProviderField(
+				'region',
+				LOCALSTACK_AWS_SETTINGS.region,
 			);
 
 			await n8n.secretsProviderConnectionModal.save();
