@@ -30,13 +30,13 @@ describe('DnsResolver', () => {
 
 	it('should return cached IPs when available', async () => {
 		const cache = createMockCache();
-		cache.get.mockResolvedValue(['1.2.3.4']);
+		cache.get.mockResolvedValue([{ address: '1.2.3.4', family: 4 }]);
 		const resolver = new DnsResolver(cache);
 
 		const result = await resolver.lookup('example.com');
 
-		expect(result).toEqual(['1.2.3.4']);
-		expect(cache.get).toHaveBeenCalledWith('example.com|all:0|family:0|order:verbatim');
+		expect(result).toEqual([{ address: '1.2.3.4', family: 4 }]);
+		expect(cache.get).toHaveBeenCalledWith('example.com|a:0|f:0|o:verbatim');
 		expect(mockedDns.lookup).not.toHaveBeenCalled();
 	});
 
@@ -47,15 +47,16 @@ describe('DnsResolver', () => {
 
 		const result = await resolver.lookup('example.com');
 
-		expect(result).toEqual(['93.184.216.34']);
+		expect(result).toEqual([{ address: '93.184.216.34', family: 4 }]);
 		expect(mockedDns.lookup).toHaveBeenCalledWith('example.com', {
 			all: false,
 			family: 0,
 			order: 'verbatim',
+			hints: undefined,
 		});
 		expect(cache.set).toHaveBeenCalledWith(
-			'example.com|all:0|family:0|order:verbatim',
-			['93.184.216.34'],
+			'example.com|a:0|f:0|o:verbatim',
+			[{ address: '93.184.216.34', family: 4 }],
 			1,
 		);
 	});
@@ -72,15 +73,22 @@ describe('DnsResolver', () => {
 
 		const result = await resolver.lookup('dualstack.example.com', { all: true });
 
-		expect(result).toEqual(['93.184.216.34', '2606:4700::6810:85e5']);
+		expect(result).toEqual([
+			{ address: '93.184.216.34', family: 4 },
+			{ address: '2606:4700::6810:85e5', family: 6 },
+		]);
 		expect(mockedDns.lookup).toHaveBeenCalledWith('dualstack.example.com', {
 			all: true,
 			family: 0,
 			order: 'verbatim',
+			hints: undefined,
 		});
 		expect(cache.set).toHaveBeenCalledWith(
-			'dualstack.example.com|all:1|family:0|order:verbatim',
-			['93.184.216.34', '2606:4700::6810:85e5'],
+			'dualstack.example.com|a:1|f:0|o:verbatim',
+			[
+				{ address: '93.184.216.34', family: 4 },
+				{ address: '2606:4700::6810:85e5', family: 6 },
+			],
 			1,
 		);
 	});
@@ -94,15 +102,16 @@ describe('DnsResolver', () => {
 
 		const result = await resolver.lookup('ipv6.example.com', { all: true, family: 6 });
 
-		expect(result).toEqual(['2606:4700::6810:85e5']);
+		expect(result).toEqual([{ address: '2606:4700::6810:85e5', family: 6 }]);
 		expect(mockedDns.lookup).toHaveBeenCalledWith('ipv6.example.com', {
 			all: true,
 			family: 6,
 			order: 'verbatim',
+			hints: undefined,
 		});
 		expect(cache.set).toHaveBeenCalledWith(
-			'ipv6.example.com|all:1|family:6|order:verbatim',
-			['2606:4700::6810:85e5'],
+			'ipv6.example.com|a:1|f:6|o:verbatim',
+			[{ address: '2606:4700::6810:85e5', family: 6 }],
 			1,
 		);
 	});
@@ -118,8 +127,9 @@ describe('DnsResolver', () => {
 			all: false,
 			family: 0,
 			order: 'ipv4first',
+			hints: undefined,
 		});
-		expect(cache.get).toHaveBeenCalledWith('ordered.example.com|all:0|family:0|order:ipv4first');
+		expect(cache.get).toHaveBeenCalledWith('ordered.example.com|a:0|f:0|o:ipv4first');
 	});
 
 	it('should normalize unsupported family values to 0', async () => {
@@ -133,8 +143,9 @@ describe('DnsResolver', () => {
 			all: false,
 			family: 0,
 			order: 'verbatim',
+			hints: undefined,
 		});
-		expect(cache.get).toHaveBeenCalledWith('example.com|all:0|family:0|order:verbatim');
+		expect(cache.get).toHaveBeenCalledWith('example.com|a:0|f:0|o:verbatim');
 	});
 
 	it('should bubble up lookup errors', async () => {
@@ -156,8 +167,8 @@ describe('DnsResolver', () => {
 		await resolver.lookup('cache-key.example.com');
 		await resolver.lookup('cache-key.example.com', { all: true, family: 4 });
 
-		expect(cache.get).toHaveBeenCalledWith('cache-key.example.com|all:0|family:0|order:verbatim');
-		expect(cache.get).toHaveBeenCalledWith('cache-key.example.com|all:1|family:4|order:verbatim');
+		expect(cache.get).toHaveBeenCalledWith('cache-key.example.com|a:0|f:0|o:verbatim');
+		expect(cache.get).toHaveBeenCalledWith('cache-key.example.com|a:1|f:4|o:verbatim');
 	});
 
 	describe('in-flight deduplication', () => {
@@ -172,8 +183,8 @@ describe('DnsResolver', () => {
 			]);
 
 			expect(mockedDns.lookup).toHaveBeenCalledTimes(1);
-			expect(result1).toEqual(['1.2.3.4']);
-			expect(result2).toEqual(['1.2.3.4']);
+			expect(result1).toEqual([{ address: '1.2.3.4', family: 4 }]);
+			expect(result2).toEqual([{ address: '1.2.3.4', family: 4 }]);
 		});
 
 		it('should not coalesce concurrent calls for different option sets', async () => {
@@ -193,7 +204,9 @@ describe('DnsResolver', () => {
 
 		it('should allow new resolve after in-flight completes', async () => {
 			const cache = createMockCache();
-			cache.get.mockResolvedValueOnce(undefined).mockResolvedValueOnce(['1.2.3.4']);
+			cache.get
+				.mockResolvedValueOnce(undefined)
+				.mockResolvedValueOnce([{ address: '1.2.3.4', family: 4 }]);
 			mockedDns.lookup.mockResolvedValue({ address: '1.2.3.4', family: 4 });
 			const resolver = new DnsResolver(cache);
 
@@ -212,7 +225,7 @@ describe('DnsResolver', () => {
 
 			mockedDns.lookup.mockResolvedValueOnce({ address: '1.2.3.4', family: 4 });
 			const result2 = await resolver.lookup('failing.example.com');
-			expect(result2).toEqual(['1.2.3.4']);
+			expect(result2).toEqual([{ address: '1.2.3.4', family: 4 }]);
 		});
 	});
 });

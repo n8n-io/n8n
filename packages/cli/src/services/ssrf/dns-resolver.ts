@@ -1,12 +1,13 @@
 import { Service } from '@n8n/di';
 import { promises as dns } from 'node:dns';
-import type { LookupOptions } from 'node:dns';
+import type { LookupAddress, LookupOptions } from 'node:dns';
 
 import { InMemoryDnsCache } from './in-memory-dns-cache.service';
 
-export type DnsLookupOptions = Pick<LookupOptions, 'all' | 'family' | 'order'>;
+export type DnsLookupOptions = Pick<LookupOptions, 'all' | 'family' | 'order' | 'hints'>;
 
-type RequiredLookupOptions = Required<DnsLookupOptions>;
+type NormalizedLookupOptions = Required<Omit<DnsLookupOptions, 'hints'>> &
+	Pick<LookupOptions, 'hints'>;
 
 /** We don't get the TTL for the records from `dns.lookup`, so we use a short, conservative TTL */
 const LOOKUP_CACHE_TTL_SECONDS = 1;
@@ -22,14 +23,14 @@ const LOOKUP_CACHE_TTL_SECONDS = 1;
  */
 @Service()
 export class DnsResolver {
-	private readonly inFlightByCacheKey = new Map<string, Promise<string[]>>();
+	private readonly inFlightByCacheKey = new Map<string, Promise<LookupAddress[]>>();
 
 	constructor(private readonly dnsCache: InMemoryDnsCache) {}
 
 	/**
 	 * Lookup a hostname with `dns.lookup`-style options.
 	 */
-	async lookup(hostname: string, options: DnsLookupOptions = {}): Promise<string[]> {
+	async lookup(hostname: string, options: DnsLookupOptions = {}): Promise<LookupAddress[]> {
 		const normalized = this.normalizeOptions(options);
 		const cacheKey = this.buildCacheKey(hostname, normalized);
 
@@ -39,7 +40,7 @@ export class DnsResolver {
 		const existing = this.inFlightByCacheKey.get(cacheKey);
 		if (existing) return await existing;
 
-		const resolvePromise = (async () => {
+		const lookupPromise = (async () => {
 			const addresses = await this.doLookup(hostname, normalized);
 			if (addresses.length > 0) {
 				await this.dnsCache.set(cacheKey, addresses, LOOKUP_CACHE_TTL_SECONDS);
@@ -48,48 +49,58 @@ export class DnsResolver {
 			return addresses;
 		})();
 
-		this.inFlightByCacheKey.set(cacheKey, resolvePromise);
+		this.inFlightByCacheKey.set(cacheKey, lookupPromise);
 
-		return await resolvePromise.finally(() => {
+		return await lookupPromise.finally(() => {
 			this.inFlightByCacheKey.delete(cacheKey);
 		});
 	}
 
-	private async doLookup(hostname: string, options: RequiredLookupOptions): Promise<string[]> {
+	private async doLookup(
+		hostname: string,
+		options: NormalizedLookupOptions,
+	): Promise<LookupAddress[]> {
 		if (options.all) {
 			const records = await dns.lookup(hostname, {
 				all: true,
 				family: options.family,
 				order: options.order,
+				hints: options.hints,
 			});
-			return [...new Set(records.map((record) => record.address))];
+			return records;
 		}
 
 		const record = await dns.lookup(hostname, {
 			all: false,
 			family: options.family,
 			order: options.order,
+			hints: options.hints,
 		});
 
-		return [record.address];
+		return [record];
 	}
 
-	private buildCacheKey(hostname: string, options: RequiredLookupOptions): string {
-		return `${hostname}|all:${options.all ? '1' : '0'}|family:${options.family}|order:${options.order}`;
+	private buildCacheKey(hostname: string, options: NormalizedLookupOptions): string {
+		return `${hostname}|a:${options.all ? '1' : '0'}|f:${options.family}|o:${options.order}`;
 	}
 
-	private normalizeOptions(options: DnsLookupOptions): RequiredLookupOptions {
+	private normalizeOptions(options: DnsLookupOptions): NormalizedLookupOptions {
 		const all = options.all === true;
-		const familyInput = options.family;
-		const family =
-			familyInput === 4 || familyInput === 6 || familyInput === 0
-				? familyInput
-				: familyInput === 'IPv4'
-					? 4
-					: familyInput === 'IPv6'
-						? 6
-						: 0;
+		const family = this.normalizeIpFamily(options.family);
 		const order = options.order ?? 'verbatim';
-		return { all, family, order };
+		return { all, family, order, hints: options.hints };
+	}
+
+	private normalizeIpFamily(family: DnsLookupOptions['family']): 4 | 6 | 0 {
+		if (family === 4 || family === 6 || family === 0) {
+			return family;
+		}
+		if (family === 'IPv4') {
+			return 4;
+		}
+		if (family === 'IPv6') {
+			return 6;
+		}
+		return 0;
 	}
 }

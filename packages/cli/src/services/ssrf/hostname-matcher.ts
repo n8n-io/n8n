@@ -39,13 +39,16 @@ export class HostnameMatcher {
 
 		for (const pattern of this.parsed) {
 			if (pattern.isWildcard) {
-				// Subdomain match: "api.example.com" ends with ".example.com" and is longer than just the suffix
+				// Subdomain match: "api.example.com" ends with ".example.com" and
+				// is longer than just the suffix
 				if (
 					normalizedHostname.endsWith(pattern.suffix) &&
 					normalizedHostname.length > pattern.suffix.length
 				) {
 					return true;
 				}
+
+				// Direct match
 			} else if (normalizedHostname === pattern.value) {
 				return true;
 			}

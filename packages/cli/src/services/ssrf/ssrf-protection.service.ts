@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { SsrfProtectionConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import type { LookupOptions } from 'node:dns';
+import type { LookupAddress, LookupOptions } from 'node:dns';
 import { isIP } from 'node:net';
 import type { BlockList } from 'node:net';
 
@@ -9,16 +9,10 @@ import { DnsResolver } from './dns-resolver';
 import { HostnameMatcher } from './hostname-matcher';
 import { buildBlocklist } from './ip-range-blocklist-builder';
 import { SsrfBlockedIpError } from './ssrf-blocked-ip.error';
-import { SsrfDnsResolutionError } from './ssrf-dns-resolution.error';
-
-interface ResolvedAddress {
-	address: string;
-	family: number;
-}
 
 export type SsrfCheckResult =
 	| { allowed: true }
-	| { allowed: false; reason: string; ip?: string; hostname?: string };
+	| { allowed: false; reason: string; ip?: string; hostname?: string; url?: string };
 
 /**
  * Validates outbound HTTP requests against configurable blocklists and allowlists
@@ -32,6 +26,8 @@ export type SsrfCheckResult =
  */
 @Service()
 export class SsrfProtectionService {
+	private readonly logger: Logger;
+
 	private readonly blockedIps: BlockList;
 
 	private readonly allowedIps: BlockList;
@@ -41,14 +37,24 @@ export class SsrfProtectionService {
 	constructor(
 		private readonly ssrfConfig: SsrfProtectionConfig,
 		private readonly dnsResolver: DnsResolver,
-		private readonly logger: Logger,
+		logger: Logger,
 	) {
+		this.logger = logger.scoped('ssrf-protection');
+
 		const blocked = buildBlocklist(this.ssrfConfig.resolvedBlockedIpRanges);
-		for (const issue of blocked.issues) this.logger.warn(`${issue.error}: ${issue.entry}`);
+		for (const issue of blocked.issues) {
+			this.logger.warn(
+				`Invalid value '${issue.entry}' in N8N_SSRF_BLOCKED_IP_RANGES: ${issue.error}`,
+			);
+		}
 		this.blockedIps = blocked.blocklist;
 
 		const allowed = buildBlocklist(this.ssrfConfig.allowedIpRanges);
-		for (const issue of allowed.issues) this.logger.warn(`${issue.error}: ${issue.entry}`);
+		for (const issue of allowed.issues) {
+			this.logger.warn(
+				`Invalid value '${issue.entry}' in N8N_SSRF_ALLOWED_IP_RANGES: ${issue.error}`,
+			);
+		}
 		this.allowedIps = allowed.blocklist;
 
 		this.allowedHostnameMatcher = new HostnameMatcher(this.ssrfConfig.allowedHostnames);
@@ -61,7 +67,10 @@ export class SsrfProtectionService {
 	async validateUrl(url: string | URL): Promise<SsrfCheckResult> {
 		const parsed = this.tryParseUrl(url);
 		if (!parsed) {
-			return { allowed: false, reason: 'Invalid URL' };
+			this.logger.debug('Failed to parse URL for SSRF validation', {
+				url,
+			});
+			return { allowed: false, reason: 'Invalid URL', url: url ? String(url) : undefined };
 		}
 
 		const { hostname } = parsed;
@@ -72,7 +81,7 @@ export class SsrfProtectionService {
 
 		const cleanIp = this.normalizeIpInHostname(hostname);
 		if (isIP(cleanIp)) {
-			return this.validateIp(cleanIp);
+			return this.validateAddress(cleanIp);
 		}
 
 		// Resolve hostname via DNS and validate all IPs
@@ -82,7 +91,7 @@ export class SsrfProtectionService {
 		}
 
 		for (const ip of ips) {
-			const result = this.validateIp(ip);
+			const result = this.validateAddress(ip.address);
 			if (!result.allowed) {
 				return result;
 			}
@@ -94,7 +103,7 @@ export class SsrfProtectionService {
 	/**
 	 * Validate a single IP address against the allowlist and blocklist.
 	 */
-	validateIp(ip: string): SsrfCheckResult {
+	validateAddress(ip: string): SsrfCheckResult {
 		const family = this.getIpFamily(ip);
 		if (family === null) {
 			return { allowed: false, reason: 'Invalid IP address', ip };
@@ -121,7 +130,7 @@ export class SsrfProtectionService {
 		options: LookupOptions,
 		onResult: (
 			error: NodeJS.ErrnoException | null,
-			address: string | ResolvedAddress[],
+			address: string | LookupAddress[],
 			family?: number,
 		) => void,
 	) => void {
@@ -129,17 +138,13 @@ export class SsrfProtectionService {
 			this.secureLookupAsync(hostname, options)
 				.then((resolved) => {
 					if (options.all) {
-						onResult(null, resolved.address);
+						onResult(null, resolved);
 					} else {
-						const first = resolved.address[0];
+						const first = resolved[0];
 						onResult(null, first.address, first.family);
 					}
 				})
-				.catch((cause: Error) => {
-					const error = Object.assign(new Error(cause.message), {
-						code: 'ENOTFOUND',
-						hostname,
-					}) as NodeJS.ErrnoException;
+				.catch((error: Error) => {
 					onResult(error, [], undefined);
 				});
 		};
@@ -163,36 +168,21 @@ export class SsrfProtectionService {
 	private async secureLookupAsync(
 		hostname: string,
 		options: LookupOptions,
-	): Promise<{ address: ResolvedAddress[]; family: number }> {
-		const ips = await this.lookupOrThrow(hostname, options);
+	): Promise<LookupAddress[]> {
+		const resolved = await this.dnsResolver.lookup(hostname, options);
 
-		if (!this.allowedHostnameMatcher.matches(hostname)) {
-			for (const ip of ips) {
-				const result = this.validateIp(ip);
-				if (!result.allowed) {
-					throw new SsrfBlockedIpError(ip);
-				}
+		if (this.allowedHostnameMatcher.matches(hostname)) {
+			return resolved;
+		}
+
+		for (const ip of resolved) {
+			const result = this.validateAddress(ip.address);
+			if (!result.allowed) {
+				throw new SsrfBlockedIpError(ip.address, hostname);
 			}
 		}
 
-		const resolved = ips.map((ip) => this.toResolvedAddress(ip));
-
-		return { address: resolved, family: resolved[0].family };
-	}
-
-	private async lookupOrThrow(hostname: string, options: LookupOptions): Promise<string[]> {
-		let ips: string[];
-		try {
-			ips = await this.dnsResolver.lookup(hostname, options);
-		} catch (error) {
-			throw new SsrfDnsResolutionError(hostname, { cause: error });
-		}
-
-		if (ips.length === 0) {
-			throw new SsrfDnsResolutionError(hostname);
-		}
-
-		return ips;
+		return resolved;
 	}
 
 	private tryParseUrl(url: string | URL): URL | null {
@@ -208,12 +198,5 @@ export class SsrfProtectionService {
 		if (version === 4) return 'ipv4';
 		if (version === 6) return 'ipv6';
 		return null;
-	}
-
-	private toResolvedAddress(ip: string): ResolvedAddress {
-		return {
-			address: ip,
-			family: isIP(ip) === 6 ? 6 : 4,
-		};
 	}
 }
