@@ -32,6 +32,14 @@ export const chatHubLLMProviderSchema = z.enum([
 ]);
 export type ChatHubLLMProvider = z.infer<typeof chatHubLLMProviderSchema>;
 
+export interface ChatHubAgentKnowledgeItem {
+	id: string;
+	type: 'embedding';
+	provider: ChatHubLLMProvider;
+	fileName: string;
+	mimeType: string;
+}
+
 /**
  * Schema for icon or emoji representation
  */
@@ -475,6 +483,7 @@ export interface ChatHubAgentDto {
 	credentialId: string | null;
 	provider: ChatHubLLMProvider;
 	model: string;
+	files: ChatHubAgentKnowledgeItem[];
 	toolIds: string[];
 	createdAt: string;
 	updatedAt: string;

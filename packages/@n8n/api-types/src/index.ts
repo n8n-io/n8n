@@ -47,6 +47,7 @@ export {
 	type ChatHubConversationResponse,
 	type ChatHubConversationsResponse,
 	type ChatHubAgentDto,
+	type ChatHubAgentKnowledgeItem,
 	ChatHubCreateAgentRequest,
 	ChatHubUpdateAgentRequest,
 	type AgentIconOrEmoji,
