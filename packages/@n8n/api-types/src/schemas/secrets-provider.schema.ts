@@ -75,6 +75,7 @@ export const secretProviderConnectionSchema = z.object({
 	settings: z.object({}).catchall(z.any()) satisfies z.ZodType<IDataObject>,
 	secretsCount: z.number(),
 	secrets: z.array(secretSummarySchema).optional(),
+	scopes: z.array(z.string()).optional(),
 	createdAt: z.string(),
 	updatedAt: z.string(),
 });

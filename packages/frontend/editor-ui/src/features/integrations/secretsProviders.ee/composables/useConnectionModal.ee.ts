@@ -7,6 +7,7 @@ import { useRBACStore } from '@/app/stores/rbac.store';
 import { useToast } from '@/app/composables/useToast';
 import { i18n } from '@n8n/i18n';
 import type { Scope } from '@n8n/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { isComponentPublicInstance } from '@/app/utils/typeGuards';
@@ -115,20 +116,17 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		return project?.scopes?.includes(scope) ?? false;
 	};
 
+	// Scoped mode and connection-level permissions
+	const isScopedMode = computed(() => !!options.projectId);
+	const connectionScopes = ref<Scope[]>([]);
+	const connectionPermissions = computed(() => {
+		return getResourcePermissions(connectionScopes.value).externalSecretsProvider;
+	});
+
 	// Permission checks
 	const canCreateProjectScoped = computed(() => {
 		if (!options.projectId) return false;
 		return hasProjectScope(options.projectId, 'externalSecretsProvider:create');
-	});
-
-	const canUpdateProjectScoped = computed(() => {
-		// Can update if user has update permission within the scope of the original project
-		// This allows removing project from scope
-		if (originalProjectIds.value.length === 0) return false;
-
-		return originalProjectIds.value.every((id) =>
-			hasProjectScope(id, 'externalSecretsProvider:update'),
-		);
 	});
 
 	const canCreate = computed(
@@ -136,18 +134,22 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	);
 
 	const canUpdate = computed(() => {
-		return rbacStore.hasScope('externalSecretsProvider:update') || canUpdateProjectScoped.value;
-	});
+		// In project-scoped mode, the loaded connection scope take precedence
+		// The connection scope already includes global, project, and sharing role permissions
+		if (isScopedMode.value) {
+			return connectionPermissions.value.update;
+		}
 
-	const canDeleteProjectScoped = computed(() => {
-		if (originalProjectIds.value.length === 0) return false;
-		return originalProjectIds.value.every((id) =>
-			hasProjectScope(id, 'externalSecretsProvider:delete'),
-		);
+		return rbacStore.hasScope('externalSecretsProvider:update');
 	});
 
 	const canDelete = computed(() => {
-		return rbacStore.hasScope('externalSecretsProvider:delete') || canDeleteProjectScoped.value;
+		// In project-scoped mode, the loaded connection scope take precedence
+		// The connection scope already includes global, project, and sharing role permissions
+		if (isScopedMode.value) {
+			return connectionPermissions.value.delete;
+		}
+		return rbacStore.hasScope('externalSecretsProvider:delete');
 	});
 
 	const canShareGlobally = computed(() => {
@@ -155,7 +157,6 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		return rbacStore.hasScope('externalSecretsProvider:update');
 	});
 
-	// Computed - State
 	const isEditMode = computed(() => !!providerKey.value);
 
 	const providerTypeOptions = computed(() => {
@@ -320,9 +321,8 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		if (!providerKey.value) return;
 
 		try {
-			const { name, type, settings, projects, secretsCount } = await connection.getConnection(
-				providerKey.value,
-			);
+			const { name, type, settings, projects, secretsCount, scopes } =
+				await connection.getConnection(providerKey.value);
 
 			connectionName.value = name;
 			originalConnectionName.value = name;
@@ -336,6 +336,10 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 			isSharedGlobally.value = projectIds.value.length === 0;
 			originalProjectIds.value = [...projectIds.value];
 			originalIsSharedGlobally.value = isSharedGlobally.value;
+
+			if (scopes) {
+				connectionScopes.value = scopes as Scope[];
+			}
 
 			selectedProviderType.value = providerTypes.value.find(
 				(providerType) => providerType.type === type,
@@ -491,11 +495,9 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		}
 	}
 
-	const isScopedMode = computed(() => !!options.projectId);
-
-	const isReadOnly = computed(
-		() => isScopedMode.value && isSharedGlobally.value && isEditMode.value,
-	);
+	const isReadOnly = computed(() => {
+		return isScopedMode.value && isEditMode.value && !canUpdate.value;
+	});
 
 	return {
 		// State refs

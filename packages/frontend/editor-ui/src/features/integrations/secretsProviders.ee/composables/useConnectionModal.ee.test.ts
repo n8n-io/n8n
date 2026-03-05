@@ -390,7 +390,7 @@ describe('useConnectionModal', () => {
 			expect(modal.canSave.value).toBe(true);
 		});
 
-		it('should allow update with project-scoped permission', async () => {
+		it('should not allow update with only project-scoped permission in non-scoped mode', async () => {
 			mockHasScope.mockReturnValue(false);
 
 			mockProjectsStore.myProjects = [
@@ -419,7 +419,9 @@ describe('useConnectionModal', () => {
 			await modal.loadConnection();
 			modal.updateSettings('region', 'us-west-2');
 
-			expect(modal.canSave.value).toBe(true);
+			// In non-scoped mode, only global scope grants update permission
+			// since the global API controller requires @GlobalScope
+			expect(modal.canSave.value).toBe(false);
 		});
 
 		it('should not allow update without any permission', async () => {

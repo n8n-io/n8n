@@ -73,7 +73,13 @@ export class SecretProvidersProjectController {
 			// When creating a connection for a project, the project owns the connection
 			'secretsProviderConnection:owner',
 		);
-		return this.connectionsService.toPublicConnection(savedConnection);
+		const connection = this.connectionsService.toPublicConnection(savedConnection);
+		const scopes = await this.accessCheckService.getConnectionScopesForProject(
+			req.user,
+			body.providerKey,
+			projectId,
+		);
+		return { ...connection, scopes };
 	}
 
 	@Get('/:projectId/connections')
@@ -91,17 +97,23 @@ export class SecretProvidersProjectController {
 	@Get('/:projectId/connections/:providerKey')
 	@ProjectScope('externalSecretsProvider:read')
 	async getConnection(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('projectId') projectId: string,
 		@Param('providerKey') providerKey: string,
 	): Promise<SecretProviderConnection> {
 		this.logger.debug('Getting connection for project', { projectId, providerKey });
-		const connection = await this.connectionsService.getConnectionAccessibleFromProject(
+		const connectionEntity = await this.connectionsService.getConnectionAccessibleFromProject(
 			providerKey,
 			projectId,
 		);
-		return this.connectionsService.toPublicConnection(connection);
+		const connection = this.connectionsService.toPublicConnection(connectionEntity);
+		const scopes = await this.accessCheckService.getConnectionScopesForProject(
+			req.user,
+			providerKey,
+			projectId,
+		);
+		return { ...connection, scopes };
 	}
 
 	@Patch('/:projectId/connections/:providerKey')
@@ -121,12 +133,18 @@ export class SecretProvidersProjectController {
 			user: req.user,
 		});
 		const { projectIds: _, ...updates } = body;
-		const connection = await this.connectionsService.updateConnection(
+		const updated = await this.connectionsService.updateConnection(
 			providerKey,
 			updates,
 			req.user.id,
 		);
-		return this.connectionsService.toPublicConnection(connection);
+		const connection = this.connectionsService.toPublicConnection(updated);
+		const scopes = await this.accessCheckService.getConnectionScopesForProject(
+			req.user,
+			providerKey,
+			projectId,
+		);
+		return { ...connection, scopes };
 	}
 
 	@Delete('/:projectId/connections/:providerKey')
