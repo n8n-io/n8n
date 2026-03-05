@@ -289,5 +289,5 @@ export async function getPullRequestById(pullRequestId) {
 		pull_number: pullRequestId,
 	});
 
-	return pullRequest;
+	return pullRequest.data;
 }
