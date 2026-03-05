@@ -15,7 +15,7 @@ import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createSearchWorkflowsTool } from './tools/search-workflows.tool';
 import { createCreateWorkflowFromCodeTool } from './tools/workflow-builder/create-workflow-from-code.tool';
-import { createDeleteWorkflowTool } from './tools/workflow-builder/delete-workflow.tool';
+import { createArchiveWorkflowTool } from './tools/workflow-builder/delete-workflow.tool';
 import { createGetSuggestedWorkflowNodesTool } from './tools/workflow-builder/get-suggested-workflow-nodes.tool';
 import { createGetWorkflowNodeTypesTool } from './tools/workflow-builder/get-workflow-node-types.tool';
 import { createGetWorkflowSdkReferenceTool } from './tools/workflow-builder/get-workflow-sdk-reference.tool';
@@ -178,8 +178,8 @@ export class McpService {
 		);
 		server.registerTool(createTool.name, createTool.config, createTool.handler);
 
-		const deleteTool = createDeleteWorkflowTool(user, this.workflowService, this.telemetry);
-		server.registerTool(deleteTool.name, deleteTool.config, deleteTool.handler);
+		const archiveTool = createArchiveWorkflowTool(user, this.workflowService, this.telemetry);
+		server.registerTool(archiveTool.name, archiveTool.config, archiveTool.handler);
 
 		// SDK reference as MCP resource — preferred over the tool for clients that support resources.
 		server.resource(

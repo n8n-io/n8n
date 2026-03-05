@@ -3,29 +3,29 @@ import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
-import { MCP_DELETE_WORKFLOW_TOOL } from './constants';
+import { MCP_ARCHIVE_WORKFLOW_TOOL } from './constants';
 
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 const inputSchema = {
-	workflowId: z.string().describe('The ID of the workflow to delete'),
+	workflowId: z.string().describe('The ID of the workflow to archive'),
 } satisfies z.ZodRawShape;
 
 /**
- * MCP tool that deletes (archives) a workflow in n8n by ID.
+ * MCP tool that archives a workflow in n8n by ID.
  */
-export const createDeleteWorkflowTool = (
+export const createArchiveWorkflowTool = (
 	user: User,
 	workflowService: WorkflowService,
 	telemetry: Telemetry,
 ): ToolDefinition<typeof inputSchema> => ({
-	name: MCP_DELETE_WORKFLOW_TOOL.toolName,
+	name: MCP_ARCHIVE_WORKFLOW_TOOL.toolName,
 	config: {
-		description: 'Delete (archive) a workflow in n8n by its ID.',
+		description: 'Archive a workflow in n8n by its ID.',
 		inputSchema,
 		annotations: {
-			title: MCP_DELETE_WORKFLOW_TOOL.displayTitle,
+			title: MCP_ARCHIVE_WORKFLOW_TOOL.displayTitle,
 			readOnlyHint: false,
 			destructiveHint: true,
 			idempotentHint: true,
@@ -35,7 +35,7 @@ export const createDeleteWorkflowTool = (
 	handler: async ({ workflowId }: { workflowId: string }) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
-			tool_name: MCP_DELETE_WORKFLOW_TOOL.toolName,
+			tool_name: MCP_ARCHIVE_WORKFLOW_TOOL.toolName,
 			parameters: { workflowId },
 		};
 
@@ -43,7 +43,7 @@ export const createDeleteWorkflowTool = (
 			const workflow = await workflowService.archive(user, workflowId, { skipArchived: true });
 
 			if (!workflow) {
-				throw new Error("Workflow not found or you don't have permission to delete it.");
+				throw new Error("Workflow not found or you don't have permission to archive it.");
 			}
 
 			telemetryPayload.results = {
@@ -58,7 +58,7 @@ export const createDeleteWorkflowTool = (
 						type: 'text',
 						text: JSON.stringify(
 							{
-								deleted: true,
+								archived: true,
 								workflowId,
 								name: workflow.name,
 							},

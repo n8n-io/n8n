@@ -1,13 +1,13 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 
-import { createDeleteWorkflowTool } from '../tools/workflow-builder/delete-workflow.tool';
+import { createArchiveWorkflowTool } from '../tools/workflow-builder/delete-workflow.tool';
 
 import { Telemetry } from '@/telemetry';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 jest.mock('@n8n/ai-workflow-builder', () => ({
-	MCP_DELETE_WORKFLOW_TOOL: { toolName: 'delete_workflow', displayTitle: 'Delete Workflow' },
+	MCP_ARCHIVE_WORKFLOW_TOOL: { toolName: 'archive_workflow', displayTitle: 'Archive Workflow' },
 	CODE_BUILDER_VALIDATE_TOOL: { toolName: 'validate_workflow_code', displayTitle: 'Validate' },
 	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL: {
 		toolName: 'create_workflow_from_code',
@@ -23,7 +23,7 @@ jest.mock('@n8n/ai-workflow-builder', () => ({
 const parseResult = (result: { content: Array<{ type: string; text?: string }> }) =>
 	JSON.parse((result.content[0] as { type: 'text'; text: string }).text) as Record<string, unknown>;
 
-describe('delete-workflow MCP tool', () => {
+describe('archive-workflow MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	let workflowService: WorkflowService;
 	let telemetry: Telemetry;
@@ -37,13 +37,13 @@ describe('delete-workflow MCP tool', () => {
 		});
 	});
 
-	const createTool = () => createDeleteWorkflowTool(user, workflowService, telemetry);
+	const createTool = () => createArchiveWorkflowTool(user, workflowService, telemetry);
 
 	describe('smoke tests', () => {
 		test('creates tool with correct name and destructiveHint=true', () => {
 			const tool = createTool();
 
-			expect(tool.name).toBe('delete_workflow');
+			expect(tool.name).toBe('archive_workflow');
 			expect(tool.config).toBeDefined();
 			expect(tool.config.annotations).toEqual(
 				expect.objectContaining({
@@ -58,7 +58,7 @@ describe('delete-workflow MCP tool', () => {
 	});
 
 	describe('handler tests', () => {
-		test('successfully deletes workflow and returns expected response', async () => {
+		test('successfully archives workflow and returns expected response', async () => {
 			(workflowService.archive as jest.Mock).mockResolvedValue({
 				id: 'wf-1',
 				name: 'My Workflow',
@@ -68,13 +68,13 @@ describe('delete-workflow MCP tool', () => {
 			const result = await tool.handler({ workflowId: 'wf-1' }, {} as never);
 
 			const response = parseResult(result);
-			expect(response.deleted).toBe(true);
+			expect(response.archived).toBe(true);
 			expect(response.workflowId).toBe('wf-1');
 			expect(response.name).toBe('My Workflow');
 			expect(result.isError).toBeUndefined();
 		});
 
-		test('returns error when workflow not found or no permission', async () => {
+		test('returns error when workflow not found or no permission to archive', async () => {
 			(workflowService.archive as jest.Mock).mockResolvedValue(null);
 
 			const tool = createTool();
@@ -83,7 +83,7 @@ describe('delete-workflow MCP tool', () => {
 			const response = parseResult(result);
 			expect(result.isError).toBe(true);
 			expect(response.error).toContain('not found or');
-			expect(response.error).toContain('permission');
+			expect(response.error).toContain('permission to archive');
 		});
 
 		test('returns error when service throws', async () => {
@@ -112,7 +112,7 @@ describe('delete-workflow MCP tool', () => {
 				'User called mcp tool',
 				expect.objectContaining({
 					user_id: 'user-1',
-					tool_name: 'delete_workflow',
+					tool_name: 'archive_workflow',
 					results: expect.objectContaining({
 						success: true,
 						data: expect.objectContaining({ workflowId: 'wf-1' }),
@@ -131,7 +131,7 @@ describe('delete-workflow MCP tool', () => {
 				'User called mcp tool',
 				expect.objectContaining({
 					user_id: 'user-1',
-					tool_name: 'delete_workflow',
+					tool_name: 'archive_workflow',
 					results: expect.objectContaining({
 						success: false,
 						error: 'Unexpected error',
