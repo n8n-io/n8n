@@ -1,9 +1,5 @@
-import type {
-	IRunExecutionData,
-	NodeApiError,
-	NodeOperationError,
-	ExecutionError,
-} from 'n8n-workflow';
+import type { IRunExecutionData, ExecutionError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import type { RedactableExecution } from '@/executions/execution-redaction';
 import type { RedactionContext } from '../../execution-redaction.interfaces';
@@ -202,113 +198,221 @@ describe('FullItemRedactionStrategy', () => {
 	});
 
 	describe('error redaction', () => {
-		const makeNodeApiError = (httpCode: string | null = '404') =>
-			({ name: 'NodeApiError', message: 'API error', httpCode }) as unknown as NodeApiError;
+		const mockNode = {
+			id: 'node-1',
+			name: 'Test Node',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 1,
+			position: [0, 0] as [number, number],
+			parameters: {},
+		};
 
-		const makeNodeOperationError = () =>
-			({ name: 'NodeOperationError', message: 'Op error' }) as unknown as NodeOperationError;
+		// Plain-object helpers representing post-DB-deserialization scenarios.
+		// Errors loaded from the database are plain objects, not class instances,
+		// because flatted deserialization does not reconstruct class prototypes.
+		const makePlainNodeApiError = (httpCode: string | null = '404') =>
+			({ name: 'NodeApiError', message: 'API error', httpCode }) as unknown as ExecutionError;
 
-		const makeExecutionError = (name: string) =>
-			({ name, message: 'error' }) as unknown as ExecutionError;
+		const makePlainNodeOperationError = () =>
+			({ name: 'NodeOperationError', message: 'Op error' }) as unknown as ExecutionError;
 
-		it('redacts item-level NodeApiError and stores type + httpCode in item.redaction.error', async () => {
-			const execution = makeExecution({
-				NodeA: [
-					{
-						startTime: 0,
-						executionIndex: 0,
-						executionTime: 0,
-						executionStatus: 'error',
-						source: [],
-						data: { main: [[{ json: {}, error: makeNodeApiError('404') }]] },
-					},
-				],
+		describe('item-level', () => {
+			it('deletes item.error and stores safe metadata in item.redaction.error for NodeApiError', async () => {
+				const error = new NodeApiError(mockNode, { message: 'Bad Gateway' }, { httpCode: '502' });
+				const execution = makeExecution({
+					NodeA: [
+						{
+							startTime: 0,
+							executionIndex: 0,
+							executionTime: 0,
+							executionStatus: 'error',
+							source: [],
+							data: { main: [[{ json: { x: 1 }, error }]] },
+						},
+					],
+				});
+
+				await strategy.apply(execution, makeContext());
+
+				const item = execution.data.resultData.runData.NodeA[0].data!.main[0]![0];
+				expect(item.error).toBeUndefined();
+				expect(item.redaction?.error).toEqual({ type: 'NodeApiError', httpCode: '502' });
 			});
 
-			await strategy.apply(execution, makeContext());
+			it('stores only type (no httpCode) for NodeOperationError', async () => {
+				const error = new NodeOperationError(mockNode, 'Something failed');
+				const execution = makeExecution({
+					NodeA: [
+						{
+							startTime: 0,
+							executionIndex: 0,
+							executionTime: 0,
+							executionStatus: 'error',
+							source: [],
+							data: { main: [[{ json: {}, error }]] },
+						},
+					],
+				});
 
-			const item = execution.data.resultData.runData.NodeA[0].data!.main[0]![0];
-			expect(item.error).toBeUndefined();
-			expect(item.redaction?.error).toEqual({ type: 'NodeApiError', httpCode: '404' });
-		});
+				await strategy.apply(execution, makeContext());
 
-		it('redacts item-level NodeOperationError without httpCode', async () => {
-			const execution = makeExecution({
-				NodeA: [
-					{
-						startTime: 0,
-						executionIndex: 0,
-						executionTime: 0,
-						executionStatus: 'error',
-						source: [],
-						data: { main: [[{ json: {}, error: makeNodeOperationError() }]] },
-					},
-				],
+				const item = execution.data.resultData.runData.NodeA[0].data!.main[0]![0];
+				expect(item.error).toBeUndefined();
+				expect(item.redaction?.error).toEqual({ type: 'NodeOperationError' });
+				expect(item.redaction?.error).not.toHaveProperty('httpCode');
 			});
 
-			await strategy.apply(execution, makeContext());
+			it('does not set item.redaction.error when item has no error', async () => {
+				const execution = makeExecution({
+					NodeA: [
+						{
+							startTime: 0,
+							executionIndex: 0,
+							executionTime: 0,
+							executionStatus: 'success',
+							source: [],
+							data: { main: [[{ json: { x: 1 } }]] },
+						},
+					],
+				});
 
-			const item = execution.data.resultData.runData.NodeA[0].data!.main[0]![0];
-			expect(item.error).toBeUndefined();
-			expect(item.redaction?.error).toEqual({ type: 'NodeOperationError' });
-			expect(item.redaction?.error).not.toHaveProperty('httpCode');
-		});
+				await strategy.apply(execution, makeContext());
 
-		it('redacts task-level error into taskData.redactedError', async () => {
-			const error = makeExecutionError('NodeApiError');
-			(error as unknown as { httpCode: string | null }).httpCode = null;
-
-			const execution = makeExecution({
-				NodeA: [
-					{
-						startTime: 0,
-						executionIndex: 0,
-						executionTime: 0,
-						executionStatus: 'error',
-						source: [],
-						error,
-					},
-				],
+				const item = execution.data.resultData.runData.NodeA[0].data!.main[0]![0];
+				expect(item.redaction).not.toHaveProperty('error');
 			});
 
-			await strategy.apply(execution, makeContext());
+			it('handles post-DB-deserialization plain-object NodeApiError (duck typing)', async () => {
+				const execution = makeExecution({
+					NodeA: [
+						{
+							startTime: 0,
+							executionIndex: 0,
+							executionTime: 0,
+							executionStatus: 'error',
+							source: [],
+							data: { main: [[{ json: {}, error: makePlainNodeApiError('404') }]] },
+						},
+					],
+				});
 
-			const taskData = execution.data.resultData.runData.NodeA[0];
-			expect(taskData.error).toBeUndefined();
-			expect(taskData.redactedError).toEqual({ type: 'NodeApiError', httpCode: null });
+				await strategy.apply(execution, makeContext());
+
+				const item = execution.data.resultData.runData.NodeA[0].data!.main[0]![0];
+				expect(item.error).toBeUndefined();
+				expect(item.redaction?.error).toEqual({ type: 'NodeApiError', httpCode: '404' });
+			});
 		});
 
-		it('redacts workflow-level error into resultData.redactedError', async () => {
-			const execution = makeExecution({});
-			(execution.data.resultData as unknown as Record<string, unknown>).error =
-				makeExecutionError('NodeOperationError');
+		describe('task-level', () => {
+			it('moves taskData.error to taskData.redactedError', async () => {
+				const error = new NodeApiError(mockNode, { message: 'Forbidden' }, { httpCode: '403' });
+				const execution = makeExecution({
+					NodeA: [
+						{
+							startTime: 0,
+							executionIndex: 0,
+							executionTime: 0,
+							executionStatus: 'error',
+							source: [],
+							data: { main: [[{ json: {} }]] },
+							error,
+						},
+					],
+				});
 
-			await strategy.apply(execution, makeContext());
+				await strategy.apply(execution, makeContext());
 
-			expect(execution.data.resultData.error).toBeUndefined();
-			expect(execution.data.resultData.redactedError).toEqual({ type: 'NodeOperationError' });
-			expect(execution.data.resultData.redactedError).not.toHaveProperty('httpCode');
-		});
-
-		it('does not set redactedError when there is no error', async () => {
-			const execution = makeExecution({
-				NodeA: [
-					{
-						startTime: 0,
-						executionIndex: 0,
-						executionTime: 0,
-						executionStatus: 'success',
-						source: [],
-						data: { main: [[{ json: { x: 1 } }]] },
-					},
-				],
+				const taskData = execution.data.resultData.runData.NodeA[0];
+				expect(taskData.error).toBeUndefined();
+				expect(taskData.redactedError).toEqual({ type: 'NodeApiError', httpCode: '403' });
 			});
 
-			await strategy.apply(execution, makeContext());
+			it('does not set redactedError when task has no error', async () => {
+				const execution = makeExecution({
+					NodeA: [
+						{
+							startTime: 0,
+							executionIndex: 0,
+							executionTime: 0,
+							executionStatus: 'success',
+							source: [],
+							data: { main: [[{ json: {} }]] },
+						},
+					],
+				});
 
-			const taskData = execution.data.resultData.runData.NodeA[0];
-			expect(taskData.redactedError).toBeUndefined();
-			expect(execution.data.resultData.redactedError).toBeUndefined();
+				await strategy.apply(execution, makeContext());
+
+				expect(execution.data.resultData.runData.NodeA[0].redactedError).toBeUndefined();
+			});
+
+			it('sets httpCode: null for post-DB plain-object NodeApiError with null httpCode', async () => {
+				// Exercises the `?? null` fallback in redactError when httpCode is null or absent.
+				const execution = makeExecution({
+					NodeA: [
+						{
+							startTime: 0,
+							executionIndex: 0,
+							executionTime: 0,
+							executionStatus: 'error',
+							source: [],
+							error: makePlainNodeApiError(null),
+						},
+					],
+				});
+
+				await strategy.apply(execution, makeContext());
+
+				const taskData = execution.data.resultData.runData.NodeA[0];
+				expect(taskData.error).toBeUndefined();
+				expect(taskData.redactedError).toEqual({ type: 'NodeApiError', httpCode: null });
+			});
+		});
+
+		describe('workflow-level', () => {
+			it('moves resultData.error to resultData.redactedError for NodeOperationError', async () => {
+				const error = new NodeOperationError(mockNode, 'Workflow operation failed');
+				const execution = makeExecution({});
+				execution.data.resultData.error = error;
+
+				await strategy.apply(execution, makeContext());
+
+				expect(execution.data.resultData.error).toBeUndefined();
+				expect(execution.data.resultData.redactedError).toEqual({ type: 'NodeOperationError' });
+				expect(execution.data.resultData.redactedError).not.toHaveProperty('httpCode');
+			});
+
+			it('handles post-DB-deserialization plain-object NodeOperationError', async () => {
+				const execution = makeExecution({});
+				(execution.data.resultData as unknown as Record<string, unknown>).error =
+					makePlainNodeOperationError();
+
+				await strategy.apply(execution, makeContext());
+
+				expect(execution.data.resultData.error).toBeUndefined();
+				expect(execution.data.resultData.redactedError).toEqual({ type: 'NodeOperationError' });
+				expect(execution.data.resultData.redactedError).not.toHaveProperty('httpCode');
+			});
+
+			it('does not set redactedError when resultData has no error', async () => {
+				const execution = makeExecution({
+					NodeA: [
+						{
+							startTime: 0,
+							executionIndex: 0,
+							executionTime: 0,
+							executionStatus: 'success',
+							source: [],
+							data: { main: [[{ json: {} }]] },
+						},
+					],
+				});
+
+				await strategy.apply(execution, makeContext());
+
+				expect(execution.data.resultData.redactedError).toBeUndefined();
+			});
 		});
 	});
 

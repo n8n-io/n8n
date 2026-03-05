@@ -71,13 +71,19 @@ export class FullItemRedactionStrategy implements IExecutionRedactionStrategy {
 		delete item.error;
 		item.json = {};
 		delete item.binary;
+
 		item.redaction = {
 			redacted: true,
 			reason,
-			...(redactedError && { error: redactedError }),
+			...(redactedError !== undefined && { error: redactedError }),
 		};
 	}
 
+	/**
+	 * Extracts safe, non-PII technical metadata from any execution error.
+	 * Preserves: error name (type classification), HTTP status code from NodeApiError.
+	 * Omits: message, description, cause, context — may contain PII or credential data.
+	 */
 	private redactError(error: ExecutionError): IRedactedErrorInfo {
 		const result: IRedactedErrorInfo = { type: error.name };
 		if (error.name === 'NodeApiError') {
