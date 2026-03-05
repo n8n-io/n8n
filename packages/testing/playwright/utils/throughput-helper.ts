@@ -74,7 +74,7 @@ export async function waitForThroughput(
 
 		let results;
 		try {
-			results = await metrics.query(metricQuery);
+			results = await metrics.query(`last_over_time(${metricQuery}[1m])`);
 		} catch (error) {
 			console.log(
 				`[THROUGHPUT] Query error: ${error instanceof Error ? error.message : String(error)}`,
@@ -126,7 +126,7 @@ export async function getBaselineCounter(
 	metricQuery: string = WORKFLOW_SUCCESS_QUERY,
 ): Promise<number> {
 	try {
-		const results = await metrics.query(metricQuery);
+		const results = await metrics.query(`last_over_time(${metricQuery}[1m])`);
 		return results.length > 0 ? results.reduce((sum, r) => sum + r.value, 0) : 0;
 	} catch {
 		return 0;

@@ -1,5 +1,4 @@
 import type { Project } from '@playwright/test';
-import { BASE_PERFORMANCE_PLANS } from 'n8n-containers/performance-plans';
 import type { N8NConfig } from 'n8n-containers/stack';
 
 import {
@@ -38,13 +37,19 @@ const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 // Each profile represents a real-world n8n deployment configuration.
 // ONE test file runs in ALL profiles — adding a profile auto-expands coverage.
 
-const BENCHMARK_WORKER_COUNT = parseInt(process.env.KAFKA_LOAD_WORKERS ?? '2', 10);
-const benchmarkPlan = BASE_PERFORMANCE_PLANS.enterprise;
+const BENCHMARK_WORKER_COUNT = parseInt(process.env.KAFKA_LOAD_WORKERS ?? '3', 10);
+
+// Resource profiles matching realistic AWS instance types:
+// Main: m5.large (2 vCPU, 8GB RAM) — matches staging main
+// Workers: t3.medium (2 vCPU, 4GB RAM) — matches staging worker limits
+const BENCHMARK_MAIN_RESOURCES = { memory: 8, cpu: 2 };
+const BENCHMARK_WORKER_RESOURCES = { memory: 4, cpu: 2 };
 
 const BENCHMARK_BASE_CONFIG: N8NConfig = {
 	services: ['kafka', 'victoriaLogs', 'victoriaMetrics', 'vector'],
 	postgres: true,
-	resourceQuota: { memory: benchmarkPlan.memory, cpu: benchmarkPlan.cpu },
+	resourceQuota: BENCHMARK_MAIN_RESOURCES,
+	workerResourceQuota: BENCHMARK_WORKER_RESOURCES,
 	env: {
 		N8N_METRICS_INCLUDE_MESSAGE_EVENT_BUS_METRICS: 'true',
 	},
@@ -80,7 +85,7 @@ const BENCHMARK_PROFILES: Array<{ name: string; config: N8NConfig }> = [
 			env: {
 				...BENCHMARK_BASE_CONFIG.env,
 				N8N_METRICS_INCLUDE_QUEUE_METRICS: 'true',
-				N8N_LOG_LEVEL: 'error',
+				N8N_LOG_LEVEL: 'info',
 				DB_POSTGRESDB_POOL_SIZE: '20',
 				N8N_CONCURRENCY_PRODUCTION_LIMIT: '20',
 				EXECUTIONS_DATA_SAVE_ON_SUCCESS: 'none',
