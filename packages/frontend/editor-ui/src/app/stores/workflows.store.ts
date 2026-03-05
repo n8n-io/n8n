@@ -22,7 +22,6 @@ import type {
 	IExecutionsListResponse,
 	IExecutionFlattedResponse,
 } from '@/features/execution/executions/executions.types';
-import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import type { IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import type { WorkflowDataCreate, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { defineStore } from 'pinia';
@@ -135,7 +134,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	);
 
 	const versionData = ref<WorkflowVersionData | null>(null);
-	const usedCredentials = ref<Record<string, IUsedCredential>>({});
 
 	const currentWorkflowExecutions = ref<ExecutionSummary[]>([]);
 	const workflowExecutionData = ref<IExecutionResponse | null>(null);
@@ -605,12 +603,17 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const workflowPermissions = getResourcePermissions(workflowDocumentStore?.scopes).workflow;
 
 		try {
+			const wfId = workflow.value.id;
+			const workflowDocumentStore = wfId
+				? useWorkflowDocumentStore(createWorkflowDocumentId(wfId))
+				: undefined;
+
 			if (
 				isNewWorkflow.value ||
 				sourceControlStore.preferences.branchReadOnly ||
 				uiStore.isReadOnlyView ||
 				!workflowPermissions.update ||
-				workflow.value.isArchived
+				workflowDocumentStore?.isArchived
 			) {
 				return;
 			}
@@ -634,14 +637,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function resetWorkflow() {
 		workflow.value = createEmptyWorkflow();
-	}
-
-	function setUsedCredentials(data: IUsedCredential[]) {
-		workflow.value.usedCredentials = data;
-		usedCredentials.value = data.reduce<{ [name: string]: IUsedCredential }>((accu, credential) => {
-			accu[credential.id] = credential;
-			return accu;
-		}, {});
 	}
 
 	function setWorkflowActiveVersion(version: WorkflowHistory | null) {
@@ -742,13 +737,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowInactive(id);
 
 		if (id === workflow.value.id) {
-			setIsArchived(true);
 			setWorkflowVersionData({
 				versionId: updatedWorkflow.versionId,
 				name: versionData.value?.name ?? null,
 				description: versionData.value?.description ?? null,
 			});
 			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
+			workflowDocumentStore.setIsArchived(true);
 			workflowDocumentStore.setChecksum(updatedWorkflow.checksum!);
 		}
 	}
@@ -757,7 +752,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const updatedWorkflow = await workflowsListStore.unarchiveWorkflowInList(id);
 
 		if (id === workflow.value.id) {
-			setIsArchived(false);
 			setWorkflowVersionData({
 				versionId: updatedWorkflow.versionId,
 				name: versionData.value?.name ?? null,
@@ -765,6 +759,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			});
 
 			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
+			workflowDocumentStore.setIsArchived(false);
 			workflowDocumentStore.setChecksum(updatedWorkflow.checksum!);
 		}
 	}
@@ -783,10 +778,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function setWorkflowInactive(targetWorkflowId: string) {
 		workflowsListStore.setWorkflowInactiveInCache(targetWorkflowId);
-	}
-
-	function setIsArchived(isArchived: boolean) {
-		workflow.value.isArchived = isArchived;
 	}
 
 	function setDescription(description: string | undefined | null) {
@@ -1682,7 +1673,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	return {
 		workflow,
 		versionData,
-		usedCredentials,
 		currentWorkflowExecutions,
 		workflowExecutionData,
 		workflowExecutionPairedItemMappings,
@@ -1746,7 +1736,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getActivationError,
 		resetWorkflow,
 		addNodeExecutionStartedData,
-		setUsedCredentials,
 		setWorkflowActiveVersion,
 		setWorkflowVersionData,
 		replaceInvalidWorkflowCredentials,
@@ -1755,7 +1744,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		unarchiveWorkflow,
 		setWorkflowActive,
 		setWorkflowInactive,
-		setIsArchived,
 		setDescription,
 		getDuplicateCurrentWorkflowName,
 		setWorkflowExecutionRunData,

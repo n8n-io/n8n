@@ -77,7 +77,7 @@ export function useWorkflowCommands(): CommandGroup {
 	const isReadOnly = computed(
 		() => sourceControlStore.preferences.branchReadOnly || collaborationStore.shouldBeReadOnly,
 	);
-	const isArchived = computed(() => workflowsStore.workflow.isArchived);
+	const isArchived = computed(() => workflowDocumentStore.value.isArchived);
 
 	const workflowPermissions = computed(
 		() => getResourcePermissions(workflowDocumentStore.value.scopes).workflow,
