@@ -13,5 +13,7 @@ export class SsrfBlockedIpError extends UserError {
 		});
 
 		this.name = 'SsrfBlockedIpError';
+		this.ip = ip;
+		this.hostname = hostname;
 	}
 }
