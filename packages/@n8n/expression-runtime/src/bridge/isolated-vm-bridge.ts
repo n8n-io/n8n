@@ -13,7 +13,6 @@ const BUNDLE_RELATIVE_PATH = path.join('dist', 'bundle', 'runtime.iife.js');
  * This works regardless of where the compiled output lives:
  *   - `src/bridge/`               (vitest running against source)
  *   - `dist/cjs/bridge/`          (CJS build)
- *   - `dist/esm/bridge/`          (ESM build)
  */
 async function readRuntimeBundle(): Promise<string> {
 	let dir = __dirname;
