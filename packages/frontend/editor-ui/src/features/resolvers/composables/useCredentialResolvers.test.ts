@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { isVNode } from 'vue';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useCredentialResolvers } from './useCredentialResolvers';
@@ -198,23 +199,29 @@ describe('useCredentialResolvers', () => {
 			);
 		});
 
-		it('should include affected workflow names in confirm message', async () => {
-			vi.mocked(restApiClient.getCredentialResolverWorkflows).mockResolvedValue([
+		it('should pass affected workflows as VNode to confirm message', async () => {
+			const workflows = [
 				{ id: 'wf-1', name: 'My Workflow' },
 				{ id: 'wf-2', name: 'Other Workflow' },
-			]);
+			];
+			vi.mocked(restApiClient.getCredentialResolverWorkflows).mockResolvedValue(workflows);
 			mockConfirm.mockResolvedValue(MODAL_CANCEL);
 
 			const { deleteResolver } = useCredentialResolvers();
 
 			await deleteResolver(mockResolvers[0]);
 
-			const confirmMessage = mockConfirm.mock.calls[0][0] as string;
-			expect(confirmMessage).toContain('My Workflow');
-			expect(confirmMessage).toContain('Other Workflow');
+			const confirmMessage = mockConfirm.mock.calls[0][0];
+			expect(isVNode(confirmMessage)).toBe(true);
+			expect(confirmMessage.props).toEqual(
+				expect.objectContaining({
+					resolverName: 'Test Resolver',
+					affectedWorkflows: workflows,
+				}),
+			);
 		});
 
-		it('should fall back to standard confirm when affected workflows fetch fails', async () => {
+		it('should fall back to string message when affected workflows fetch fails', async () => {
 			vi.mocked(restApiClient.getCredentialResolverWorkflows).mockRejectedValue(
 				new Error('Network error'),
 			);
@@ -224,14 +231,13 @@ describe('useCredentialResolvers', () => {
 
 			await deleteResolver(mockResolvers[0]);
 
-			// Should still show confirm dialog (no crash)
 			expect(mockConfirm).toHaveBeenCalled();
-			const confirmMessage = mockConfirm.mock.calls[0][0] as string;
-			// Standard message without workflow list
-			expect(confirmMessage).not.toContain('<ul>');
+			const confirmMessage = mockConfirm.mock.calls[0][0];
+			// Should be a plain string, not a VNode
+			expect(typeof confirmMessage).toBe('string');
 		});
 
-		it('should cap displayed workflows and show "and more" for many affected workflows', async () => {
+		it('should pass all affected workflows to VNode including overflow', async () => {
 			const manyWorkflows = Array.from({ length: 8 }, (_, i) => ({
 				id: `wf-${i}`,
 				name: `Workflow ${i}`,
@@ -243,14 +249,10 @@ describe('useCredentialResolvers', () => {
 
 			await deleteResolver(mockResolvers[0]);
 
-			const confirmMessage = mockConfirm.mock.calls[0][0] as string;
-			// Should show first 5 workflows
-			expect(confirmMessage).toContain('Workflow 0');
-			expect(confirmMessage).toContain('Workflow 4');
-			// Should NOT show the 6th workflow directly
-			expect(confirmMessage).not.toContain('<li><strong>Workflow 5</strong></li>');
-			// Should show "and 3 more..."
-			expect(confirmMessage).toContain('and 3 more');
+			const confirmMessage = mockConfirm.mock.calls[0][0];
+			expect(isVNode(confirmMessage)).toBe(true);
+			// Component receives all workflows; truncation is handled in the template
+			expect(confirmMessage.props?.affectedWorkflows).toHaveLength(8);
 		});
 	});
 

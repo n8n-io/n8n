@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { h, ref } from 'vue';
 import type {
 	CredentialResolver,
 	CredentialResolverAffectedWorkflow,
@@ -16,9 +16,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { CREDENTIAL_RESOLVER_EDIT_MODAL_KEY, MODAL_CONFIRM } from '@/app/constants';
-import { escapeHtml } from 'xss';
-
-const MAX_DISPLAYED_WORKFLOWS = 5;
+import ResolverDeleteConfirmMessage from '@/features/resolvers/components/ResolverDeleteConfirmMessage.vue';
 
 export interface ModalCallbacks {
 	onSave?: (resolverId: string) => void | Promise<void>;
@@ -58,36 +56,6 @@ export function useCredentialResolvers() {
 		}
 	};
 
-	const buildDeleteMessage = (
-		resolver: CredentialResolver,
-		affectedWorkflows: CredentialResolverAffectedWorkflow[],
-	): string => {
-		if (affectedWorkflows.length === 0) {
-			return i18n.baseText('credentialResolverEdit.confirmMessage.deleteResolver.message', {
-				interpolate: { savedResolverName: resolver.name },
-			});
-		}
-
-		const displayed = affectedWorkflows.slice(0, MAX_DISPLAYED_WORKFLOWS);
-		const remaining = affectedWorkflows.length - displayed.length;
-
-		const workflowList = displayed
-			.map((w) => `<li><strong>${escapeHtml(w.name)}</strong></li>`)
-			.join('');
-
-		let messageHtml = i18n.baseText(
-			'credentialResolverEdit.confirmMessage.deleteResolver.messageWithWorkflows',
-			{ interpolate: { savedResolverName: resolver.name } },
-		);
-		messageHtml += `<ul>${workflowList}</ul>`;
-
-		if (remaining > 0) {
-			messageHtml += `<p>${i18n.baseText('credentialResolverEdit.confirmMessage.deleteResolver.andMore', { interpolate: { count: String(remaining) } })}</p>`;
-		}
-
-		return messageHtml;
-	};
-
 	const confirmAndDeleteResolver = async (resolver: CredentialResolver): Promise<boolean> => {
 		let affectedWorkflows: CredentialResolverAffectedWorkflow[] = [];
 		try {
@@ -100,8 +68,18 @@ export function useCredentialResolvers() {
 			console.warn('Failed to fetch affected workflows for resolver deletion', error);
 		}
 
+		const confirmMessage =
+			affectedWorkflows.length > 0
+				? h(ResolverDeleteConfirmMessage, {
+						resolverName: resolver.name,
+						affectedWorkflows,
+					})
+				: i18n.baseText('credentialResolverEdit.confirmMessage.deleteResolver.message', {
+						interpolate: { savedResolverName: resolver.name },
+					});
+
 		const deleteConfirmed = await message.confirm(
-			buildDeleteMessage(resolver, affectedWorkflows),
+			confirmMessage,
 			i18n.baseText('credentialResolverEdit.confirmMessage.deleteResolver.headline'),
 			{
 				confirmButtonText: i18n.baseText(
