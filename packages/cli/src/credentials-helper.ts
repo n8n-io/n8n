@@ -43,6 +43,7 @@ import { CredentialNotFoundError } from './errors/credential-not-found.error';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 
 const mockNode = {
 	name: '',
@@ -87,6 +88,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 		private readonly secretsProviderConnectionRepository: SecretsProviderConnectionRepository,
 		private readonly licenseState: LicenseState,
+		private readonly externalSecretsConfig: ExternalSecretsConfig,
 	) {
 		super();
 	}
@@ -387,7 +389,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 			return decryptedDataOriginal;
 		}
 
-		if (this.licenseState.isExternalSecretsLicensed()) {
+		if (
+			this.licenseState.isExternalSecretsLicensed() &&
+			this.externalSecretsConfig.externalSecretsForProjects
+		) {
 			const accessibleProviderKeys =
 				await this.secretsProviderConnectionRepository.findAllAccessibleProviderKeysByCredentialId(
 					credentialsEntity.id,

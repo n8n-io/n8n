@@ -26,6 +26,7 @@ import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy
 import { CredentialsHelper } from '@/credentials-helper';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 
 describe('CredentialsHelper', () => {
 	const nodeTypes = mock<INodeTypes>();
@@ -33,6 +34,7 @@ describe('CredentialsHelper', () => {
 	const credentialsRepository = mock<CredentialsRepository>();
 	const secretsProviderRepository = mock<SecretsProviderConnectionRepository>();
 	const licenseState = mock<LicenseState>();
+	const externalSecretsConfig = mock<ExternalSecretsConfig>();
 	const mockLogger = mock<any>();
 	// Use a real instance of DynamicCredentialsProxy so setResolverProvider works
 	const dynamicCredentialProxy = new DynamicCredentialsProxy(mockLogger);
@@ -48,6 +50,7 @@ describe('CredentialsHelper', () => {
 		dynamicCredentialProxy,
 		secretsProviderRepository,
 		licenseState,
+		externalSecretsConfig,
 	);
 
 	describe('getCredentials', () => {
@@ -602,10 +605,12 @@ describe('CredentialsHelper', () => {
 			credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntityForLicense);
 			secretsProviderRepository.findAllAccessibleProviderKeysByCredentialId.mockResolvedValue([]);
 			mockAdditionalDataForLicense.externalSecretProviderKeysAccessibleByCredential = undefined;
+			externalSecretsConfig.externalSecretsForProjects = false;
 		});
 
 		test('should set externalSecretProviderKeysAccessibleByCredential on additionalData when externalSecrets is licensed', async () => {
 			licenseState.isExternalSecretsLicensed.mockReturnValue(true);
+			externalSecretsConfig.externalSecretsForProjects = true;
 			secretsProviderRepository.findAllAccessibleProviderKeysByCredentialId.mockResolvedValue([
 				'secret_key_1',
 				'secret_key_2',
@@ -628,6 +633,7 @@ describe('CredentialsHelper', () => {
 
 		test('should not query secretsProviderRepository or set externalSecretProviderKeysAccessibleByCredential when externalSecrets is not licensed', async () => {
 			licenseState.isExternalSecretsLicensed.mockReturnValue(false);
+			externalSecretsConfig.externalSecretsForProjects = false;
 
 			await credentialsHelper.getDecrypted(
 				mockAdditionalDataForLicense,
@@ -769,6 +775,7 @@ describe('CredentialsHelper', () => {
 				proxyWithoutProvider,
 				secretsProviderRepository,
 				licenseState,
+				externalSecretsConfig,
 			);
 
 			const result = await helperWithoutProvider.getDecrypted(
