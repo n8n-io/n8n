@@ -13,8 +13,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { findPlaceholderDetails } from '@/features/ai/assistant/composables/useBuilderTodos';
-
-const MANUAL_TRIGGER_TYPE = 'n8n-nodes-base.manualTrigger';
+import { MANUAL_TRIGGER_NODE_TYPE } from '@/app/constants/nodeTypes';
 
 /**
  * Composable for managing builder setup wizard cards.
@@ -40,7 +39,7 @@ export function useBuilderSetupCards() {
 		const result = new Map<string, string[]>();
 
 		for (const node of workflowsStore.allNodes) {
-			if (node.type === MANUAL_TRIGGER_TYPE || node.disabled) continue;
+			if (node.type === MANUAL_TRIGGER_NODE_TYPE || node.disabled) continue;
 
 			const placeholders = findPlaceholderDetails(node.parameters);
 			if (placeholders.length > 0) {
@@ -86,7 +85,7 @@ export function useBuilderSetupCards() {
 
 	// Filter out manual trigger cards
 	const cards = computed<SetupCardItem[]>(() =>
-		baseCards.value.filter((card) => card.state.node.type !== MANUAL_TRIGGER_TYPE),
+		baseCards.value.filter((card) => card.state.node.type !== MANUAL_TRIGGER_NODE_TYPE),
 	);
 
 	const totalCards = computed(() => cards.value.length);
