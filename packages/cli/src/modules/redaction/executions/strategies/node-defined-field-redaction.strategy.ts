@@ -40,16 +40,21 @@ export class NodeDefinedFieldRedactionStrategy implements IExecutionRedactionStr
 			if (!fieldPaths?.length) continue;
 
 			for (const taskData of runData[nodeName]) {
-				if (taskData.data) {
-					for (const outputs of Object.values(taskData.data)) {
-						for (const items of outputs) {
-							if (items) {
-								for (const item of items) {
-									this.redactFields(item, fieldPaths);
-								}
-							}
-						}
-					}
+				if (!taskData.data) continue;
+				this.redactTaskDataOutputs(taskData.data, fieldPaths);
+			}
+		}
+	}
+
+	/**
+	 * Redacts sensitive fields across all outputs in a task's data connections.
+	 */
+	private redactTaskDataOutputs(connections: ITaskDataConnections, fieldPaths: string[]): void {
+		for (const outputs of Object.values(connections)) {
+			for (const items of outputs) {
+				if (!items) continue;
+				for (const item of items) {
+					this.redactFields(item, fieldPaths);
 				}
 			}
 		}
