@@ -87,18 +87,18 @@ describe('Compute backport targets', () => {
 		assert.ok(labels.has('Backport to Beta'));
 	});
 
-	it('Should throw when passed pull request id with #', () => {
+	it('Should throw when passed pull request id with #', async () => {
 		process.env.PULL_REQUEST_ID = '#123';
-		assert.rejects(getLabels);
+		await assert.rejects(getLabels);
 	});
 
-	it('Should not throw when passed pull request id with just a number', () => {
+	it('Should not throw when passed pull request id with just a number', async () => {
 		process.env.PULL_REQUEST_ID = '123';
-		assert.doesNotReject(getLabels);
+		await assert.doesNotReject(getLabels);
 	});
 
-	it('Should throw when passed pull request id with other than numbers included', () => {
+	it('Should throw when passed pull request id with other than numbers included', async () => {
 		process.env.PULL_REQUEST_ID = 'abc-123';
-		assert.rejects(getLabels);
+		await assert.rejects(getLabels);
 	});
 });
