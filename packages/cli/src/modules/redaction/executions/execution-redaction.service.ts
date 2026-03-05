@@ -7,9 +7,11 @@ import type {
 	ExecutionRedactionOptions,
 } from '@/executions/execution-redaction';
 import {
-	INodeExecutionData,
-	ITaskDataConnections,
-	WorkflowExecuteMode,
+	type ExecutionError,
+	type INodeExecutionData,
+	type IRedactedErrorInfo,
+	type ITaskDataConnections,
+	type WorkflowExecuteMode,
 	WorkflowSettings,
 } from 'n8n-workflow';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -135,17 +137,27 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	 */
 	private applyRedaction(execution: IExecutionDb, reason: string, canReveal: boolean): void {
 		const runData = execution.data.resultData.runData;
-		if (!runData) return;
-
-		for (const nodeName of Object.keys(runData)) {
-			for (const taskData of runData[nodeName]) {
-				if (taskData.data) {
-					this.redactConnections(taskData.data, reason);
-				}
-				if (taskData.inputOverride) {
-					this.redactConnections(taskData.inputOverride, reason);
+		if (runData) {
+			for (const nodeName of Object.keys(runData)) {
+				for (const taskData of runData[nodeName]) {
+					if (taskData.data) {
+						this.redactConnections(taskData.data, reason);
+					}
+					if (taskData.inputOverride) {
+						this.redactConnections(taskData.inputOverride, reason);
+					}
+					if (taskData.error) {
+						taskData.redactedError = this.redactError(taskData.error);
+						delete taskData.error;
+					}
 				}
 			}
+		}
+
+		const resultData = execution.data.resultData;
+		if (resultData.error) {
+			resultData.redactedError = this.redactError(resultData.error);
+			delete resultData.error;
 		}
 
 		execution.data.redactionInfo = { isRedacted: true, reason, canReveal };
@@ -173,9 +185,37 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	private redactItem(item: INodeExecutionData, reason: string): void {
 		item.json = {};
 		delete item.binary;
+
+		const redactedError = item.error ? this.redactError(item.error) : undefined;
+		delete item.error;
+
 		item.redaction = {
 			redacted: true,
 			reason,
+			...(redactedError !== undefined && { error: redactedError }),
 		};
+	}
+
+	/**
+	 * Extracts safe, non-PII technical metadata from any execution error for
+	 * inclusion in the redaction marker. Handles both live class instances and
+	 * deserialized plain objects (after DB round-trip via flatted.stringify/parse).
+	 *
+	 * Uses error.name (survives serialization) instead of error.constructor.name
+	 * (returns 'Object' for plain objects) and name-based checks instead of
+	 * instanceof (fails for plain objects).
+	 *
+	 * Preserves: error name (type classification), HTTP status code
+	 * from NodeApiError (numeric code only, null if absent or unknown).
+	 * Omits: message, description, messages[], cause, context, errorResponse
+	 * — all of which may contain PII or sensitive credential data.
+	 */
+	private redactError(error: ExecutionError): IRedactedErrorInfo {
+		const result: IRedactedErrorInfo = { type: error.name };
+		if (error.name === 'NodeApiError') {
+			result.httpCode =
+				('httpCode' in error ? (error as { httpCode: string | null }).httpCode : null) ?? null;
+		}
+		return result;
 	}
 }
