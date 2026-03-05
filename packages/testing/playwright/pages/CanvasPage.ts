@@ -179,6 +179,10 @@ export class CanvasPage extends BasePage {
 		return this.page.locator('.rename-prompt');
 	}
 
+	getRenameInput(): Locator {
+		return this.getRenamePrompt().locator('input');
+	}
+
 	/**
 	 * Get the names of all pinned nodes on the canvas.
 	 * @returns An array of node names.

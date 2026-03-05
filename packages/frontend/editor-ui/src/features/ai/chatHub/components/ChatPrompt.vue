@@ -493,10 +493,6 @@ defineExpose({
 	flex-direction: column;
 	gap: var(--spacing--md);
 	transition: border-color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
-	--input--border-color: transparent;
-	--input--border-color--hover: transparent;
-	--input--border-color--focus: transparent;
-	--input--color--background: transparent;
 
 	&:focus-within,
 	&:hover:has(textarea:not(:disabled)) {
@@ -508,6 +504,28 @@ defineExpose({
 		line-height: 1.5em;
 		resize: none;
 		padding: 0 !important;
+		box-shadow: none;
+
+		&:focus {
+			outline-width: 0;
+		}
+	}
+
+	/** NOTE (@heymynameisrob): Resets default Input styles for focus and border **/
+	:global(.n8n-input__wrapper) {
+		--input--shadow: 0 0 0 0 transparent;
+		--input--shadow--hover: 0 0 0 0 transparent;
+		--input--shadow--focus: 0 0 0 0 transparent;
+		--input--border-color: transparent;
+		--input--border-color--hover: transparent;
+		--input--border-color--focus: transparent;
+		--input--border--shadow: 0 0 0 0 transparent;
+		--input--border--shadow--hover: 0 0 0 0 transparent;
+		--input--border--shadow--focus: 0 0 0 0 transparent;
+
+		&:focus-within {
+			outline: none;
+		}
 	}
 
 	:global(.n8n-input) > div {

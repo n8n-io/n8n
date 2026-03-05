@@ -105,7 +105,7 @@ const largeData = [
 const evaluate = (expr: string, data: typeof smallData | typeof largeData) =>
 	workflow.expression.getParameterValue(expr, null, 0, 0, 'node', data, 'manual', {});
 
-describe('Hot Path', () => {
+describe('Expression: Hot Path', () => {
 	// Baseline: simplest possible expression
 	bench('simple property access', () => {
 		evaluate('={{ $json.name }}', smallData);
@@ -122,7 +122,7 @@ describe('Hot Path', () => {
 	});
 });
 
-describe('Cold Start', () => {
+describe('Expression: Cold Start', () => {
 	// Answers: "What's the WASM sandbox init cost comparison?"
 	bench('first evaluation (fresh workflow)', () => {
 		const fresh = createWorkflow();
@@ -144,7 +144,7 @@ describe('Cold Start', () => {
 	});
 });
 
-describe('Data Transfer', () => {
+describe('Expression: Data Transfer', () => {
 	// Answers: "What's the overhead of data moving between wasm and node?"
 	bench('small context (100 items)', () => {
 		evaluate('={{ $json.items.map(i => i.id) }}', smallData);

@@ -3,7 +3,7 @@ import type { StoryFn } from '@storybook/vue3-vite';
 import N8nTag from './Tag.vue';
 
 export default {
-	title: 'Atoms/Tag',
+	title: 'Core/Tag',
 	component: N8nTag,
 	argTypes: {
 		text: {

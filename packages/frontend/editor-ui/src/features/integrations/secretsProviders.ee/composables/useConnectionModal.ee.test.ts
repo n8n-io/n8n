@@ -208,7 +208,8 @@ describe('useConnectionModal', () => {
 		beforeEach(() => {
 			mockModuleSettings['external-secrets'] = {
 				multipleConnections: true,
-				forProjects: false,
+				forProjects: true,
+				roleBasedAccess: false,
 			};
 		});
 		it('should not provide option to create new infisical connection if multipleConnections is enabled', () => {

@@ -112,7 +112,11 @@ function parseResponseData(responseBody: { data: { data: string } }): IRunExecut
 	return parse(responseBody.data.data) as IRunExecutionData;
 }
 
-function assertRedacted(data: IRunExecutionData, expectedReason = 'workflow_redaction_policy') {
+function assertRedacted(
+	data: IRunExecutionData,
+	expectedReason = 'workflow_redaction_policy',
+	expectedCanReveal = true,
+) {
 	const items = data.resultData.runData['Test Node'][0].data!.main[0]!;
 	expect(items.length).toBeGreaterThan(0);
 	for (const item of items) {
@@ -120,6 +124,11 @@ function assertRedacted(data: IRunExecutionData, expectedReason = 'workflow_reda
 		expect(item.binary).toBeUndefined();
 		expect(item.redaction).toEqual({ redacted: true, reason: expectedReason });
 	}
+	expect(data.redactionInfo).toEqual({
+		isRedacted: true,
+		reason: expectedReason,
+		canReveal: expectedCanReveal,
+	});
 }
 
 function assertNotRedacted(data: IRunExecutionData) {
@@ -128,6 +137,7 @@ function assertNotRedacted(data: IRunExecutionData) {
 	for (const item of items) {
 		expect(item.json).toEqual(expect.objectContaining({ secret: 'sensitive-value' }));
 	}
+	expect(data.redactionInfo).toBeUndefined();
 }
 
 // ---------------------------------------------------------------------------
@@ -336,6 +346,29 @@ describe('GET /executions/:id — Execution Redaction', () => {
 				.get(`/executions/${execution.id}`)
 				.query({ redactExecutionData: 'false' })
 				.expect(403);
+		});
+
+		test('project editor without execution:reveal scope can still reveal when policy allows it (policy=none)', async () => {
+			testServer.license.enable('feat:sharing');
+
+			const teamProject = await createTeamProject();
+			await linkUserToProject(member, teamProject, 'project:editor');
+
+			const workflow = await createWorkflow({}, teamProject);
+			// policy='none' means policyAllowsReveal=true — no permission check needed
+			const execution = await createExecutionWithRedaction({
+				workflow,
+				mode: 'trigger',
+				policy: 'none',
+			});
+
+			const response = await testServer
+				.authAgentFor(member)
+				.get(`/executions/${execution.id}`)
+				.query({ redactExecutionData: 'false' })
+				.expect(200);
+
+			assertNotRedacted(parseResponseData(response.body));
 		});
 	});
 
