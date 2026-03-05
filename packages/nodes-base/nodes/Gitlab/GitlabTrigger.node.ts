@@ -9,7 +9,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeApiError } from 'n8n-workflow';
 
-import { gitlabApiRequest } from './GenericFunctions';
+import { gitlabApiRequest, gitlabApiRequestAllItems } from './GenericFunctions';
 
 const GITLAB_EVENTS = [
 	{
@@ -199,7 +199,7 @@ export class GitlabTrigger implements INodeType {
 							return true;
 						}
 					} catch (error) {
-						if (error.cause?.httpCode === '404' || error.description?.includes('404')) {
+						if (error.httpCode === '404' || error.httpCode === 404) {
 							// Webhook does not exist, clear the stored ID
 							delete webhookData.webhookId;
 							delete webhookData.webhookEvents;
@@ -215,35 +215,38 @@ export class GitlabTrigger implements INodeType {
 				const hooksEndpoint = `/projects/${path}/hooks`;
 
 				try {
-					const webhooks = await gitlabApiRequest.call(this, 'GET', hooksEndpoint, {});
+					const webhooks = await gitlabApiRequestAllItems.call(this, 'GET', hooksEndpoint, {});
 
 					// Look for a webhook with matching URL
 					for (const webhook of webhooks as IDataObject[]) {
-						if (webhook.url === webhookUrl) {
-							// Found a webhook with our URL
-							// Check if events match
-							const webhookEvents = new Set<string>();
-							for (const [key, value] of Object.entries(webhook)) {
-								if (key.endsWith('_events') && value === true) {
-									const eventName = key.replace('_events', '');
-									webhookEvents.add(eventName);
-								}
-							}
-
-							const expectedEvents = new Set(eventsArray);
-
-							// Check if the webhook has the same events configured
-							const eventsMatch =
-								webhookEvents.size === expectedEvents.size &&
-								[...expectedEvents].every((event) => webhookEvents.has(event));
-
-							if (eventsMatch) {
-								// Webhook exists with same URL and events, store the ID
-								webhookData.webhookId = webhook.id as string;
-								webhookData.webhookEvents = eventsArray;
-								return true;
+						if (webhook.url !== webhookUrl) {
+							continue;
+						}
+						// Found a webhook with our URL
+						// Check if events match
+						const webhookEvents = new Set<string>();
+						for (const [key, value] of Object.entries(webhook)) {
+							if (key.endsWith('_events') && value === true) {
+								const eventName = key.replace('_events', '');
+								webhookEvents.add(eventName);
 							}
 						}
+
+						const expectedEvents = new Set(eventsArray);
+
+						// Check if the webhook has the same events configured
+						const eventsMatch =
+							webhookEvents.size === expectedEvents.size &&
+							[...expectedEvents].every((event) => webhookEvents.has(event));
+
+						if (!eventsMatch) {
+							continue;
+						}
+
+						// Webhook exists with same URL and events, store the ID
+						webhookData.webhookId = webhook.id as string;
+						webhookData.webhookEvents = eventsArray;
+						return true;
 					}
 				} catch (error) {
 					// If we can't list webhooks, throw the error
