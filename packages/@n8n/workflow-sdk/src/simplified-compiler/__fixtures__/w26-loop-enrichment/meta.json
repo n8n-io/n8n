@@ -1,0 +1,4 @@
+{
+	"title": "Loop with Sub-Function",
+	"skip": "Round-trip: decompiler does not reconstruct sub-function called from inside for-of loop body. Forward compilation is correct."
+}

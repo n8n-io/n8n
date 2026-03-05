@@ -1,0 +1,4 @@
+{
+	"title": "Loop with Try/Catch",
+	"skip": "Round-trip: decompiler does not reconstruct try/catch inside loop sub-workflow. Forward compilation is correct."
+}

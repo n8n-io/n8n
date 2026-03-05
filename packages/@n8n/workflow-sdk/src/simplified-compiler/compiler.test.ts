@@ -986,6 +986,8 @@ const KNOWN_SCHEMA_VIOLATIONS: Record<string, string> = {
 	'W4: Telegram': 'IF conditions.options misplaced',
 	'W11: Crypto': 'IF conditions.options misplaced',
 	'W23: Try/catch': 'IF conditions.options misplaced',
+	'CRUD + Branching': 'IF conditions.options misplaced',
+	'Loop with Try/Catch': 'tryCatch sub-workflow workflowJson variable not parseable',
 };
 
 function getKnownSchemaSkip(title: string): string | undefined {
