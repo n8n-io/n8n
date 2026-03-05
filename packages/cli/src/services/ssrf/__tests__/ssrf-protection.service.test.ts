@@ -48,7 +48,7 @@ describe('SsrfProtectionService', () => {
 				['192.168.255.255', '192.168.0.0/16'],
 			])('should block %s (in %s)', (ip) => {
 				const { service } = createService();
-				const result = service.validateAddress(ip);
+				const result = service.validateIp(ip);
 				expect(result).toEqual({ allowed: false, reason: 'IP address is blocked', ip });
 			});
 		});
@@ -58,7 +58,7 @@ describe('SsrfProtectionService', () => {
 				'should block IPv4 loopback %s',
 				(ip) => {
 					const { service } = createService();
-					expect(service.validateAddress(ip)).toEqual({
+					expect(service.validateIp(ip)).toEqual({
 						allowed: false,
 						reason: 'IP address is blocked',
 						ip,
@@ -68,7 +68,7 @@ describe('SsrfProtectionService', () => {
 
 			it('should block IPv6 loopback ::1', () => {
 				const { service } = createService();
-				expect(service.validateAddress('::1')).toEqual({
+				expect(service.validateIp('::1')).toEqual({
 					allowed: false,
 					reason: 'IP address is blocked',
 					ip: '::1',
@@ -79,7 +79,7 @@ describe('SsrfProtectionService', () => {
 		describe('blocked link-local addresses', () => {
 			it('should block IPv4 link-local 169.254.1.1', () => {
 				const { service } = createService();
-				expect(service.validateAddress('169.254.1.1')).toEqual({
+				expect(service.validateIp('169.254.1.1')).toEqual({
 					allowed: false,
 					reason: 'IP address is blocked',
 					ip: '169.254.1.1',
@@ -88,7 +88,7 @@ describe('SsrfProtectionService', () => {
 
 			it('should block IPv6 link-local fe80::1', () => {
 				const { service } = createService();
-				expect(service.validateAddress('fe80::1')).toEqual({
+				expect(service.validateIp('fe80::1')).toEqual({
 					allowed: false,
 					reason: 'IP address is blocked',
 					ip: 'fe80::1',
@@ -101,7 +101,7 @@ describe('SsrfProtectionService', () => {
 				'should block special address %s',
 				(ip) => {
 					const { service } = createService();
-					expect(service.validateAddress(ip)).toEqual({
+					expect(service.validateIp(ip)).toEqual({
 						allowed: false,
 						reason: 'IP address is blocked',
 						ip,
@@ -115,7 +115,7 @@ describe('SsrfProtectionService', () => {
 				'should allow public IP %s',
 				(ip) => {
 					const { service } = createService();
-					expect(service.validateAddress(ip)).toEqual({ allowed: true });
+					expect(service.validateIp(ip)).toEqual({ allowed: true });
 				},
 			);
 		});
@@ -126,7 +126,7 @@ describe('SsrfProtectionService', () => {
 					allowedIpRanges: ['10.0.0.0/8'] as unknown as SsrfProtectionConfig['allowedIpRanges'],
 				});
 
-				expect(service.validateAddress('10.0.0.1')).toEqual({ allowed: true });
+				expect(service.validateIp('10.0.0.1')).toEqual({ allowed: true });
 			});
 
 			it('should allow a specific blocked IP in the allowlist', () => {
@@ -134,9 +134,9 @@ describe('SsrfProtectionService', () => {
 					allowedIpRanges: ['127.0.0.1/32'] as unknown as SsrfProtectionConfig['allowedIpRanges'],
 				});
 
-				expect(service.validateAddress('127.0.0.1')).toEqual({ allowed: true });
+				expect(service.validateIp('127.0.0.1')).toEqual({ allowed: true });
 				// Other loopback IPs should still be blocked
-				expect(service.validateAddress('127.0.0.2')).toEqual({
+				expect(service.validateIp('127.0.0.2')).toEqual({
 					allowed: false,
 					reason: 'IP address is blocked',
 					ip: '127.0.0.2',
@@ -146,7 +146,7 @@ describe('SsrfProtectionService', () => {
 
 		it('should return invalid for non-IP strings', () => {
 			const { service } = createService();
-			expect(service.validateAddress('not-an-ip')).toEqual({
+			expect(service.validateIp('not-an-ip')).toEqual({
 				allowed: false,
 				reason: 'Invalid IP address',
 				ip: 'not-an-ip',
@@ -318,17 +318,13 @@ describe('SsrfProtectionService', () => {
 		});
 	});
 
-	describe('validateRedirect', () => {
-		it('should validate redirect targets through the same flow', async () => {
+	describe('validateRedirectSync', () => {
+		it('should block direct-IP redirect targets', () => {
 			const { service } = createService();
 
-			const result = await service.validateRedirect('http://127.0.0.1/admin');
-
-			expect(result).toEqual({
-				allowed: false,
-				reason: 'IP address is blocked',
-				ip: '127.0.0.1',
-			});
+			expect(() => service.validateRedirectSync('http://127.0.0.1/admin')).toThrow(
+				'IP address is blocked',
+			);
 		});
 
 		it('should block redirect chains from public to private', async () => {
@@ -342,20 +338,15 @@ describe('SsrfProtectionService', () => {
 			expect(initial).toEqual({ allowed: true });
 
 			// Redirect target is private (blocked)
-			const redirect = await service.validateRedirect('http://192.168.1.1/admin');
-			expect(redirect).toEqual({
-				allowed: false,
-				reason: 'IP address is blocked',
-				ip: '192.168.1.1',
-			});
+			expect(() => service.validateRedirectSync('http://192.168.1.1/admin')).toThrow(
+				'IP address is blocked',
+			);
 		});
 
-		it('should reject invalid redirect URLs', async () => {
+		it('should ignore invalid redirect URLs', () => {
 			const { service } = createService();
 
-			const result = await service.validateRedirect('not-a-url');
-
-			expect(result).toEqual({ allowed: false, reason: 'Invalid URL', url: 'not-a-url' });
+			expect(() => service.validateRedirectSync('not-a-url')).not.toThrow();
 		});
 	});
 
@@ -547,7 +538,7 @@ describe('SsrfProtectionService', () => {
 			it('should block ::ffff:127.0.0.1', () => {
 				const { service } = createService();
 
-				const result = service.validateAddress('::ffff:127.0.0.1');
+				const result = service.validateIp('::ffff:127.0.0.1');
 
 				expect(result).toEqual({
 					allowed: false,
@@ -558,7 +549,7 @@ describe('SsrfProtectionService', () => {
 
 			it('should block ::ffff:10.0.0.1', () => {
 				const { service } = createService();
-				expect(service.validateAddress('::ffff:10.0.0.1')).toEqual({
+				expect(service.validateIp('::ffff:10.0.0.1')).toEqual({
 					allowed: false,
 					reason: 'IP address is blocked',
 					ip: '::ffff:10.0.0.1',
@@ -567,7 +558,7 @@ describe('SsrfProtectionService', () => {
 
 			it('should allow ::ffff: with public IP', () => {
 				const { service } = createService();
-				expect(service.validateAddress('::ffff:8.8.8.8')).toEqual({ allowed: true });
+				expect(service.validateIp('::ffff:8.8.8.8')).toEqual({ allowed: true });
 			});
 		});
 
@@ -588,33 +579,27 @@ describe('SsrfProtectionService', () => {
 		});
 
 		describe('redirect chains', () => {
-			it('should block redirect from public to private IP', async () => {
+			it('should block redirect from public to private IP', () => {
 				const { service } = createService();
 
-				const redirect = await service.validateRedirect('http://10.0.0.1/internal');
-				expect(redirect).toEqual({
-					allowed: false,
-					reason: 'IP address is blocked',
-					ip: '10.0.0.1',
-				});
+				expect(() => service.validateRedirectSync('http://10.0.0.1/internal')).toThrow(
+					'IP address is blocked',
+				);
 			});
 
-			it('should block redirect to loopback', async () => {
+			it('should block redirect to loopback', () => {
 				const { service } = createService();
 
-				const redirect = await service.validateRedirect('http://[::1]/admin');
-				expect(redirect).toEqual({
-					allowed: false,
-					reason: 'IP address is blocked',
-					ip: '::1',
-				});
+				expect(() => service.validateRedirectSync('http://[::1]/admin')).toThrow(
+					'IP address is blocked',
+				);
 			});
 		});
 
 		describe('IPv6 unique local addresses', () => {
 			it('should block fc00:: addresses', () => {
 				const { service } = createService();
-				expect(service.validateAddress('fc00::1')).toEqual({
+				expect(service.validateIp('fc00::1')).toEqual({
 					allowed: false,
 					reason: 'IP address is blocked',
 					ip: 'fc00::1',
@@ -623,7 +608,7 @@ describe('SsrfProtectionService', () => {
 
 			it('should block fd00:: addresses', () => {
 				const { service } = createService();
-				expect(service.validateAddress('fd00::1')).toEqual({
+				expect(service.validateIp('fd00::1')).toEqual({
 					allowed: false,
 					reason: 'IP address is blocked',
 					ip: 'fd00::1',

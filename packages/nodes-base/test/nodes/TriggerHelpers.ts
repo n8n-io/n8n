@@ -5,7 +5,7 @@ import get from 'lodash/get';
 import merge from 'lodash/merge';
 import set from 'lodash/set';
 import { PollContext, returnJsonArray } from 'n8n-core';
-import type { InstanceSettings, ExecutionLifecycleHooks } from 'n8n-core';
+import type { InstanceSettings, ExecutionLifecycleHooks, SsrfBridge } from 'n8n-core';
 import { ScheduledTaskManager } from 'n8n-core/dist/execution-engine/scheduled-task-manager';
 import {
 	createDeferredPromise,
@@ -263,6 +263,12 @@ export async function testPollingTriggerNode(
 				},
 			}),
 			hooks: mock<ExecutionLifecycleHooks>(),
+			ssrfBridge: {
+				validateIp: jest.fn().mockReturnValue({ allowed: true }),
+				validateUrl: jest.fn().mockResolvedValue({ allowed: true }),
+				validateRedirectSync: jest.fn(),
+				createSecureLookup: jest.fn().mockReturnValue(jest.fn()),
+			} as SsrfBridge,
 		}),
 		mode,
 		'init',

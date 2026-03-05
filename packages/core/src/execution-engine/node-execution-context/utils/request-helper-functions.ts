@@ -30,6 +30,7 @@ import {
 	NodeApiError,
 	NodeOperationError,
 	NodeSslError,
+	UserError,
 	isObjectEmpty,
 	ExecutionBaseError,
 	jsonParse,
@@ -66,6 +67,7 @@ import clientOAuth1 from 'oauth-1.0a';
 import { stringify } from 'qs';
 import { Readable } from 'stream';
 
+import type { SsrfBridge } from '@/execution-engine';
 import { createHttpProxyAgent, createHttpsProxyAgent } from '@/http-proxy';
 import type { IResponseError } from '@/interfaces';
 
@@ -89,12 +91,8 @@ axios.defaults.proxy = false;
 
 function validateUrl(url?: string): boolean {
 	if (!url) return false;
-	try {
-		new URL(url);
-		return true;
-	} catch {
-		return false;
-	}
+
+	return tryParseUrl(url) !== null;
 }
 
 function isIgnoreStatusErrorConfig(
@@ -145,6 +143,7 @@ function setAxiosAgents(
 	config: AxiosRequestConfig,
 	agentOptions?: AgentOptions,
 	proxyConfig?: IHttpRequestOptions['proxy'] | string,
+	secureLookup?: ReturnType<SsrfBridge['createSecureLookup']>,
 ): void {
 	if (config.httpAgent || config.httpsAgent) return;
 
@@ -154,8 +153,14 @@ function setAxiosAgents(
 
 	if (!targetUrl) return;
 
-	config.httpAgent = createHttpProxyAgent(customProxyUrl, targetUrl, agentOptions);
-	config.httpsAgent = createHttpsProxyAgent(customProxyUrl, targetUrl, agentOptions);
+	// Inject secureLookup only for non-proxy agents. When a proxy is used,
+	// the lookup option applies to resolving the proxy server hostname, not
+	// the target. Pre-request validateUrl covers the proxy path.
+	const effectiveOptions =
+		secureLookup && !customProxyUrl ? { ...agentOptions, lookup: secureLookup } : agentOptions;
+
+	config.httpAgent = createHttpProxyAgent(customProxyUrl, targetUrl, effectiveOptions);
+	config.httpsAgent = createHttpsProxyAgent(customProxyUrl, targetUrl, effectiveOptions);
 }
 
 function applyVendorHeaders(config: AxiosRequestConfig) {
@@ -210,18 +215,31 @@ const getBeforeRedirectFn =
 		axiosConfig: AxiosRequestConfig,
 		proxyConfig: IHttpRequestOptions['proxy'] | string | undefined,
 		sendCredentialsOnCrossOriginRedirect: boolean,
+		ssrfBridge?: SsrfBridge,
 	) =>
 	(redirectedRequest: Record<string, any>) => {
-		const redirectAgentOptions = {
+		// SSRF: validate redirect target synchronously for direct-IP URIs.
+		// Hostname-based redirect targets are caught by secureLookup on the agent.
+		if (ssrfBridge) {
+			ssrfBridge.validateRedirectSync(redirectedRequest.href);
+		}
+
+		const redirectAgentOptions: AgentOptions = {
 			...agentOptions,
 			servername: redirectedRequest.hostname,
 		};
 		const customProxyUrl = getUrlFromProxyConfig(proxyConfig);
 
+		// Inject secureLookup into redirect agents for non-proxy paths
+		const effectiveRedirectOptions =
+			ssrfBridge && !customProxyUrl
+				? { ...redirectAgentOptions, lookup: ssrfBridge.createSecureLookup() }
+				: redirectAgentOptions;
+
 		// Create both agents and set them
 		const targetUrl = redirectedRequest.href;
-		const httpAgent = createHttpProxyAgent(customProxyUrl, targetUrl, redirectAgentOptions);
-		const httpsAgent = createHttpsProxyAgent(customProxyUrl, targetUrl, redirectAgentOptions);
+		const httpAgent = createHttpProxyAgent(customProxyUrl, targetUrl, effectiveRedirectOptions);
+		const httpsAgent = createHttpsProxyAgent(customProxyUrl, targetUrl, effectiveRedirectOptions);
 
 		redirectedRequest.agent = redirectedRequest.href.startsWith('https://')
 			? httpsAgent
@@ -368,7 +386,7 @@ async function generateContentLengthHeader(config: AxiosRequestConfig) {
  * @deprecated This is only used by legacy request helpers, that are also deprecated
  */
 // eslint-disable-next-line complexity
-export async function parseRequestObject(requestObject: IRequestOptions) {
+export async function parseRequestObject(requestObject: IRequestOptions, ssrfBridge?: SsrfBridge) {
 	const axiosConfig: AxiosRequestConfig = {};
 
 	if (requestObject.headers !== undefined) {
@@ -603,13 +621,15 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 		axiosConfig.timeout = requestObject.timeout;
 	}
 
-	setAxiosAgents(axiosConfig, agentOptions, requestObject.proxy);
+	const secureLookup = ssrfBridge?.createSecureLookup();
+	setAxiosAgents(axiosConfig, agentOptions, requestObject.proxy, secureLookup);
 
 	axiosConfig.beforeRedirect = getBeforeRedirectFn(
 		agentOptions,
 		axiosConfig,
 		requestObject.proxy,
 		requestObject.sendCredentialsOnCrossOriginRedirect ?? true,
+		ssrfBridge,
 	);
 
 	if (requestObject.useStream) {
@@ -678,7 +698,11 @@ export async function proxyRequestToAxios(
 		configObject = uriOrObject ?? {};
 	}
 
-	axiosConfig = Object.assign(axiosConfig, await parseRequestObject(configObject));
+	const ssrfBridge = additionalData?.ssrfBridge;
+	const url = resolveLegacyRequestUrl(configObject);
+	await validateUrlSsrf(url, ssrfBridge);
+
+	axiosConfig = Object.assign(axiosConfig, await parseRequestObject(configObject, ssrfBridge));
 
 	try {
 		const response = await invokeAxios(axiosConfig, configObject.auth);
@@ -748,7 +772,10 @@ export async function proxyRequestToAxios(
 	}
 }
 
-export function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): AxiosRequestConfig {
+export function convertN8nRequestToAxios(
+	n8nRequest: IHttpRequestOptions,
+	ssrfBridge?: SsrfBridge,
+): AxiosRequestConfig {
 	// Destructure properties with the same name first.
 	const { headers, method, timeout, auth, proxy, url } = n8nRequest;
 
@@ -788,13 +815,15 @@ export function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): Axios
 	if (n8nRequest.skipSslCertificateValidation === true) {
 		agentOptions.rejectUnauthorized = false;
 	}
-	setAxiosAgents(axiosRequest, agentOptions, proxy);
+	const secureLookup = ssrfBridge?.createSecureLookup();
+	setAxiosAgents(axiosRequest, agentOptions, proxy, secureLookup);
 
 	axiosRequest.beforeRedirect = getBeforeRedirectFn(
 		agentOptions,
 		axiosRequest,
 		n8nRequest.proxy,
 		n8nRequest.sendCredentialsOnCrossOriginRedirect ?? true,
+		ssrfBridge,
 	);
 
 	if (n8nRequest.arrayFormat !== undefined) {
@@ -868,6 +897,33 @@ export function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): Axios
 	return axiosRequest;
 }
 
+function tryParseUrl(url: string): URL | null {
+	try {
+		return new URL(url);
+	} catch {
+		return null;
+	}
+}
+
+/** Validates a URL against SSRF protection rules. Throws UserError if blocked. */
+async function validateUrlSsrf(url: string | undefined, ssrfBridge?: SsrfBridge): Promise<void> {
+	if (!ssrfBridge || !url) return;
+
+	const parsed = tryParseUrl(url);
+	if (!parsed) return;
+
+	const result = await ssrfBridge.validateUrl(parsed);
+	if (!result.allowed) {
+		throw new UserError(`SSRF protection blocked request to ${url}: ${result.reason}`);
+	}
+}
+
+function resolveLegacyRequestUrl(requestObject: IRequestOptions): string | undefined {
+	const rawUrl = requestObject.uri?.toString() ?? requestObject.url?.toString();
+	const baseURL = requestObject.baseURL?.toString();
+	return buildTargetUrl(rawUrl, baseURL) ?? rawUrl;
+}
+
 const NoBodyHttpMethods = ['GET', 'HEAD', 'OPTIONS'];
 
 /** Remove empty request body on GET, HEAD, and OPTIONS requests */
@@ -878,12 +934,16 @@ export const removeEmptyBody = (requestOptions: IHttpRequestOptions | IRequestOp
 	}
 };
 
-export async function httpRequest(
+async function httpRequestImpl(
 	requestOptions: IHttpRequestOptions,
+	ssrfBridge?: SsrfBridge,
 ): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {
 	removeEmptyBody(requestOptions);
 
-	const axiosRequest = convertN8nRequestToAxios(requestOptions);
+	const url = buildTargetUrl(requestOptions.url, requestOptions.baseURL) ?? requestOptions.url;
+	await validateUrlSsrf(url, ssrfBridge);
+
+	const axiosRequest = convertN8nRequestToAxios(requestOptions, ssrfBridge);
 	if (
 		axiosRequest.data === undefined ||
 		(axiosRequest.method !== undefined && axiosRequest.method.toUpperCase() === 'GET')
@@ -903,6 +963,13 @@ export async function httpRequest(
 	}
 
 	return result.data;
+}
+
+/** Module-level export for internal/system calls (no SSRF protection). */
+export async function httpRequest(
+	requestOptions: IHttpRequestOptions,
+): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {
+	return await httpRequestImpl(requestOptions);
 }
 
 export function applyPaginationRequestData(
@@ -1400,7 +1467,7 @@ export async function httpRequestWithAuthentication(
 			workflow,
 			node,
 		);
-		return await httpRequest(requestOptions);
+		return await httpRequestImpl(requestOptions, additionalData.ssrfBridge);
 	} catch (error) {
 		// if there is a pre authorization method defined and
 		// the method failed due to unauthorized request
@@ -1434,7 +1501,7 @@ export async function httpRequestWithAuthentication(
 					);
 				}
 				// retry the request
-				return await httpRequest(requestOptions);
+				return await httpRequestImpl(requestOptions, additionalData.ssrfBridge);
 			} catch (error) {
 				throw new NodeApiError(this.getNode(), error);
 			}
@@ -1804,7 +1871,8 @@ export const getRequestHelperFunctions = (
 	}
 
 	return {
-		httpRequest,
+		httpRequest: async (requestOptions: IHttpRequestOptions) =>
+			await httpRequestImpl(requestOptions, additionalData.ssrfBridge),
 		requestWithAuthenticationPaginated,
 		async httpRequestWithAuthentication(
 			this,

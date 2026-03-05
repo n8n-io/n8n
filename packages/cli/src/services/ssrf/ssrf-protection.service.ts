@@ -82,7 +82,7 @@ export class SsrfProtectionService {
 
 		const cleanIp = this.normalizeIpInHostname(hostname);
 		if (isIP(cleanIp)) {
-			return this.validateAddress(cleanIp);
+			return this.validateIp(cleanIp);
 		}
 
 		// Resolve hostname via DNS and validate all IPs
@@ -92,7 +92,7 @@ export class SsrfProtectionService {
 		}
 
 		for (const ip of ips) {
-			const result = this.validateAddress(ip.address);
+			const result = this.validateIp(ip.address);
 			if (!result.allowed) {
 				return result;
 			}
@@ -104,7 +104,7 @@ export class SsrfProtectionService {
 	/**
 	 * Validate a single IP address against the allowlist and blocklist.
 	 */
-	validateAddress(ip: string): SsrfCheckResult {
+	validateIp(ip: string): SsrfCheckResult {
 		const family = this.getIpFamily(ip);
 		if (family === null) {
 			return { allowed: false, reason: 'Invalid IP address', ip };
@@ -151,15 +151,31 @@ export class SsrfProtectionService {
 	}
 
 	/**
-	 * Validate a redirect target URL through the same validation flow.
+	 * Synchronous redirect validation for use in axios beforeRedirect callback.
+	 * Validates direct-IP redirect targets immediately. Hostname-based redirect
+	 * targets are covered by the secureLookup on the redirect agent.
+	 * Throws SsrfBlockedIpError if the redirect target is blocked.
 	 */
-	async validateRedirect(redirectUrl: string): Promise<SsrfCheckResult> {
-		return await this.validateUrl(redirectUrl);
+	validateRedirectSync(url: string): void {
+		const parsed = this.tryParseUrl(url);
+		if (!parsed) return;
+
+		const { hostname } = parsed;
+
+		if (this.allowedHostnameMatcher.matches(hostname)) return;
+
+		const cleanIp = this.normalizeIpInHostname(hostname);
+		if (isIP(cleanIp)) {
+			const result = this.validateIp(cleanIp);
+			if (!result.allowed) {
+				throw new SsrfBlockedIpError(cleanIp, hostname);
+			}
+		}
 	}
 
 	/**
 	 * Normalize IPv6 bracket notation from a URL hostname.
-	 * E.g. `[::1]` → `::1`, `127.0.0.1` → `127.0.0.1`.
+	 * E.g. `[::1]` -> `::1`, `127.0.0.1` -> `127.0.0.1`.
 	 */
 	private normalizeIpInHostname(hostname: string): string {
 		return hostname.startsWith('[') && hostname.endsWith(']') ? hostname.slice(1, -1) : hostname;
@@ -176,7 +192,7 @@ export class SsrfProtectionService {
 		}
 
 		for (const ip of resolved) {
-			const result = this.validateAddress(ip.address);
+			const result = this.validateIp(ip.address);
 			if (!result.allowed) {
 				throw new SsrfBlockedIpError(ip.address, hostname);
 			}
