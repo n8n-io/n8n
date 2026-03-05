@@ -671,7 +671,7 @@ onMounted(async () => {
 
 	let resolversLoaded = false;
 	try {
-		const promises = [
+		const promises: Array<Promise<unknown>> = [
 			workflowsListStore.fetchWorkflow(workflowId.value),
 			loadWorkflows(),
 			loadSaveDataErrorExecutionOptions(),
@@ -684,7 +684,7 @@ onMounted(async () => {
 
 		if (isCredentialResolverEnabled.value && canListCredentialResolvers) {
 			promises.push(
-				loadCredentialResolvers().then((success): void => {
+				loadCredentialResolvers().then((success) => {
 					resolversLoaded = success;
 				}),
 				loadCredentialResolverTypes(),
