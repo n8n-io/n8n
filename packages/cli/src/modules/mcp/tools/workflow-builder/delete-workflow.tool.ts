@@ -40,7 +40,7 @@ export const createDeleteWorkflowTool = (
 		};
 
 		try {
-			const workflow = await workflowService.archive(user, workflowId);
+			const workflow = await workflowService.archive(user, workflowId, { skipArchived: true });
 
 			if (!workflow) {
 				throw new Error("Workflow not found or you don't have permission to delete it.");
