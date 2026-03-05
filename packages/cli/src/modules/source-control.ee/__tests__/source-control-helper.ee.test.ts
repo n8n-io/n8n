@@ -1007,6 +1007,25 @@ describe('Source Control Helper', () => {
 			expect(result.password).toBe('local-password');
 		});
 
+		it('should preserve oauthTokenData from local even though it is removed from remote', () => {
+			const local = {
+				apiKey: 'local-secret-123',
+				oauthTokenData: { access_token: 'some-token', refresh_token: 'some-refresh-token' },
+			};
+			const remote = {
+				apiKey: '', // Plain string sanitized to empty
+			} as ICredentialDataDecryptedObject;
+
+			const result = mergeRemoteCrendetialDataIntoLocalCredentialData({ local, remote });
+
+			// Local oauthTokenData should be explicitly copied over
+			expect(result.apiKey).toBe('local-secret-123');
+			expect(result.oauthTokenData).toEqual({
+				access_token: 'some-token',
+				refresh_token: 'some-refresh-token',
+			});
+		});
+
 		it('should recursively merge nested objects', () => {
 			const local = {
 				auth: {
