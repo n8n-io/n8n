@@ -31,6 +31,7 @@ import { ScalingModeConfig } from './configs/scaling-mode.config';
 import { SecurityConfig } from './configs/security.config';
 import { SentryConfig } from './configs/sentry.config';
 import { SsoConfig } from './configs/sso.config';
+import { SsrfProtectionConfig } from './configs/ssrf-protection.config';
 import { TagsConfig } from './configs/tags.config';
 import { TemplatesConfig } from './configs/templates.config';
 import { UserManagementConfig } from './configs/user-management.config';
@@ -48,6 +49,10 @@ export { sampleRateSchema } from './configs/sentry.config';
 export type { TaskRunnerMode } from './configs/runners.config';
 export { TaskRunnersConfig } from './configs/runners.config';
 export { SecurityConfig } from './configs/security.config';
+export {
+	SsrfProtectionConfig,
+	SSRF_DEFAULT_BLOCKED_IP_RANGES,
+} from './configs/ssrf-protection.config';
 export { ExecutionsConfig } from './configs/executions.config';
 export { LOG_SCOPES } from './configs/logging.config';
 export type { LogScope } from './configs/logging.config';
@@ -186,6 +191,9 @@ export class GlobalConfig {
 
 	@Nested
 	sso: SsoConfig;
+
+	@Nested
+	ssrfProtection: SsrfProtectionConfig;
 
 	/** Default locale for the UI. */
 	@Env('N8N_DEFAULT_LOCALE')
