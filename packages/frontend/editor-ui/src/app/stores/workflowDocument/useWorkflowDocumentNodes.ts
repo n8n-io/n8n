@@ -36,8 +36,11 @@ export interface WorkflowDocumentNodesDeps {
 
 // --- Composable ---
 
-// TODO: Inject workflowsStore as a dep once the facade owns its own refs (Phase C).
-// Direct import is an intentional deviation during the delegation/migration phase.
+// TODO: This composable currently delegates to workflowsStore for reads and writes.
+// The long-term goal is to remove workflowsStore entirely — workflow and
+// workflowObject will become private state owned by workflowDocumentStore.
+// Once that happens, the direct import (and the import-cycle warning it causes)
+// will go away.
 export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	const workflowsStore = useWorkflowsStore();
 
@@ -71,7 +74,7 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	}
 
 	// -----------------------------------------------------------------------
-	// Apply methods — CRDT entry point in Phase C. Today they just delegate.
+	// Apply methods — will become the CRDT entry point. Today they delegate.
 	// -----------------------------------------------------------------------
 
 	function applySetNodes(nodes: INodeUi[]) {
@@ -298,13 +301,7 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		}
 	}
 
-	function removeAllNodes(data: { setStateDirty: boolean; removePinData: boolean }): void {
-		if (data.setStateDirty) {
-			void onStateDirty.trigger();
-		}
-
-		// TODO: handle data.removePinData — needs store-level orchestration to call setPinData({})
-
+	function removeAllNodes(): void {
 		workflowsStore.workflow.nodes.splice(0, workflowsStore.workflow.nodes.length);
 		workflowsStore.workflowObject.setNodes(workflowsStore.workflow.nodes);
 		workflowsStore.nodeMetadata = {};

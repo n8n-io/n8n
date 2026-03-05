@@ -176,9 +176,20 @@ describe('useWorkflowDocumentNodes', () => {
 			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
 			workflowDocumentNodes.setNodes([createNode({ name: 'A' }), createNode({ name: 'B' })]);
 
-			workflowDocumentNodes.removeAllNodes({ setStateDirty: false, removePinData: false });
+			workflowDocumentNodes.removeAllNodes();
 
 			expect(workflowDocumentNodes.allNodes.value).toHaveLength(0);
+		});
+
+		it('removeAllNodes clears nodeMetadata', () => {
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([createNode({ name: 'A' })]);
+
+			expect(workflowsStore.nodeMetadata).toHaveProperty('A');
+
+			workflowDocumentNodes.removeAllNodes();
+
+			expect(workflowsStore.nodeMetadata).toEqual({});
 		});
 	});
 
@@ -222,6 +233,14 @@ describe('useWorkflowDocumentNodes', () => {
 			workflowDocumentNodes.setNodeValue({ name: 'Target', key: 'disabled', value: true });
 
 			expect(workflowDocumentNodes.getNodeByName('Target')?.disabled).toBe(true);
+		});
+
+		it('setNodeValue throws when node not found', () => {
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+
+			expect(() =>
+				workflowDocumentNodes.setNodeValue({ name: 'NonExistent', key: 'disabled', value: true }),
+			).toThrow('could not be found');
 		});
 
 		it('setNodePositionById updates position readable via getNodeById', () => {
@@ -523,24 +542,13 @@ describe('useWorkflowDocumentNodes', () => {
 			expect(dirtySpy).toHaveBeenCalledOnce();
 		});
 
-		it('removeAllNodes fires onStateDirty when setStateDirty is true', () => {
+		it('removeAllNodes does not fire onStateDirty (initialization path)', () => {
 			const dirtySpy = vi.fn();
 
 			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
 			workflowDocumentNodes.setNodes([createNode()]);
 			workflowDocumentNodes.onStateDirty(dirtySpy);
-			workflowDocumentNodes.removeAllNodes({ setStateDirty: true, removePinData: false });
-
-			expect(dirtySpy).toHaveBeenCalledOnce();
-		});
-
-		it('removeAllNodes does not fire onStateDirty when setStateDirty is false', () => {
-			const dirtySpy = vi.fn();
-
-			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
-			workflowDocumentNodes.setNodes([createNode()]);
-			workflowDocumentNodes.onStateDirty(dirtySpy);
-			workflowDocumentNodes.removeAllNodes({ setStateDirty: false, removePinData: false });
+			workflowDocumentNodes.removeAllNodes();
 
 			expect(dirtySpy).not.toHaveBeenCalled();
 		});

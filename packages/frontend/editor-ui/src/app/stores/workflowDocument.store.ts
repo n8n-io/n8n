@@ -75,8 +75,20 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			getNodeType: (typeName, version) => nodeTypesStore.getNodeType(typeName, version),
 		});
 
-		// Cross-cut: wire the nodes facade's dirty signal to UI store
+		// --- Cross-cut orchestration ---
+		// Each composable is self-contained and unaware of its siblings. This
+		// store is where cross-concern side effects are wired. When adding new
+		// composables (e.g. connections), check workflowsStore for hidden
+		// cross-cuts that need to surface here. Known future ones:
+		//   - removeNode → unpinNodeData (currently in workflowsStore.removeNode)
+		//   - removeAllNodes → removeAllConnections (when connections composable exists)
+
 		onStateDirty(() => useUIStore().markStateDirty());
+
+		function removeAllNodes() {
+			workflowDocumentNodes.removeAllNodes();
+			workflowDocumentPinData.setPinData({});
+		}
 
 		return {
 			workflowId,
@@ -94,6 +106,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentParentFolder,
 			...workflowDocumentUsedCredentials,
 			...workflowDocumentNodes,
+			removeAllNodes,
 		};
 	})();
 }
