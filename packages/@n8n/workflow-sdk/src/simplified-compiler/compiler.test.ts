@@ -482,7 +482,7 @@ onManual(async () => {
 			expect(result.code).toContain("mode: 'rules'");
 			expect(result.code).toContain('"values":');
 			expect(result.code).toContain('"operation":"equals"');
-			expect(result.code).toContain('"leftValue":"={{ $json.priority }}"');
+			expect(result.code).toContain('.first().json.priority }}"');
 			expect(result.code).toContain('"rightValue":"critical"');
 			expect(result.code).toContain('"rightValue":"high"');
 			expect(result.code).toContain('"fallbackOutput":"extra"');
@@ -733,11 +733,7 @@ function normalizeSDK(code: string): string {
 
 function getRoundTripSkipReason(title: string): string | undefined {
 	const skipReasons: Record<string, string> = {
-		W2: 'Decompiler loses $() expression references in if-conditions',
-		W4: 'Decompiler adds extra path segment in member expressions',
 		W6: 'Promise.all with nested IIFEs not supported',
-		W8: 'Decompiler adds extra path segment in respond body expressions',
-		W9: 'Decompiler loses $() expression references in if-conditions',
 	};
 
 	for (const [prefix, reason] of Object.entries(skipReasons)) {

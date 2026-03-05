@@ -23,7 +23,7 @@ const http1 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"chat_id\":\"={{ $json.msg.message.chat.id }}\",\"text\":\"={{ $json.msg.message.text }}\"}"
+      "jsonBody": "{\"chat_id\":\"={{ $('Code 1').first().json.msg.message.chat.id }}\",\"text\":\"={{ $('Code 1').first().json.msg.message.text }}\"}"
     },
     "executeOnce": true
   }
@@ -53,7 +53,7 @@ const http3 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"file\":\"={{ $json.file.result.file_path }}\",\"model\":\"whisper-1\"}",
+      "jsonBody": "{\"file\":\"={{ $('GET api.telegram.org/bot/getFile').first().json.result.file_path }}\",\"model\":\"whisper-1\"}",
       "authentication": "genericCredentialType",
       "genericAuthType": "httpHeaderAuth"
     },
@@ -73,7 +73,7 @@ const http4 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"chat_id\":\"={{ $json.msg.message.chat.id }}\",\"text\":\"={{ $json.transcription.text }}\"}"
+      "jsonBody": "{\"chat_id\":\"={{ $('Code 1').first().json.msg.message.chat.id }}\",\"text\":\"={{ $('POST api.openai.com/v1/audio/transcri...').first().json.text }}\"}"
     },
     "executeOnce": true
   }

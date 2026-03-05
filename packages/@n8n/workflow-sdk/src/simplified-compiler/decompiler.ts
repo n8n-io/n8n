@@ -104,6 +104,13 @@ export function decompileWorkflowSDK(sdkCode: string): DecompilerResult {
 
 	recoverVariableNames(ctx);
 	collectCodeNodeVars(ctx);
+
+	// Add all recovered variable names to codeNodeVars so they are
+	// recognized as workflow variables (not webhook body properties)
+	for (const varName of ctx.nodeNameToVar.values()) {
+		ctx.codeNodeVars.add(varName);
+	}
+
 	detectLoopPatterns(ctx);
 
 	// Step 5: Decompile each chain
@@ -379,6 +386,26 @@ function recoverVariableNames(ctx: DecompilerContext): void {
 		if (assignments?.length === 1) {
 			const nodeName = node.config.name as string;
 			ctx.nodeNameToVar.set(nodeName, assignments[0].name);
+		}
+	}
+
+	// Scan all node configs for $('NodeName') references to register missing mappings.
+	// Uses the SDK variable name for nodes not already covered by Code/Set node recovery.
+	const configRefPattern = /\$\('([^']+)'\)/g;
+	for (const [, node] of ctx.nodes) {
+		const configStr = JSON.stringify(node.config);
+		let refMatch: RegExpExecArray | null;
+		while ((refMatch = configRefPattern.exec(configStr)) !== null) {
+			const referencedName = refMatch[1];
+			if (ctx.nodeNameToVar.has(referencedName)) continue;
+			// Find the ParsedNode with this config.name (skip triggers)
+			for (const [sdkVar, n] of ctx.nodes) {
+				if (n.factory === 'trigger') continue;
+				if (n.config.name === referencedName) {
+					ctx.nodeNameToVar.set(referencedName, sdkVar);
+					break;
+				}
+			}
 		}
 	}
 }
@@ -981,6 +1008,14 @@ function resolveExpression(value: string, _ctx: DecompilerContext): string | nul
 		if (_ctx.codeNodeVars.has(firstProp)) return propPath;
 		const varName = _ctx.nodeNameToVar.get(nodeName);
 		if (varName) return `${varName}.${propPath}`;
+		// Check if referenced node is the webhook trigger → prefix with body.
+		if (_ctx.triggerType === 'webhook') {
+			for (const [, n] of _ctx.nodes) {
+				if (n.factory === 'trigger' && n.nodeType === 'n8n-nodes-base.webhook') {
+					return `body.${propPath}`;
+				}
+			}
+		}
 		return propPath;
 	}
 
@@ -1445,6 +1480,14 @@ function resolveConditionExpr(value: string, ctx: DecompilerContext): string {
 		if (ctx.codeNodeVars.has(firstProp)) return propPath;
 		const varName = ctx.nodeNameToVar.get(match[1]);
 		if (varName) return `${varName}.${propPath}`;
+		// Check if referenced node is the webhook trigger → prefix with body.
+		if (ctx.triggerType === 'webhook') {
+			for (const [, n] of ctx.nodes) {
+				if (n.factory === 'trigger' && n.nodeType === 'n8n-nodes-base.webhook') {
+					return `body.${propPath}`;
+				}
+			}
+		}
 		return propPath;
 	}
 
@@ -1532,6 +1575,14 @@ function emitForOfLoop(
 	const mapMatch = /return (\w+)\.map\((\w+) => \(\{ json: \2 \}\)\)/.exec(jsCode);
 	const loopVar = mapMatch?.[2] ?? 'item';
 	const iterableVar = mapMatch?.[1] ?? 'items';
+
+	// Register loop variable for the splitter so expressions inside the loop
+	// resolve $('SplitterName') to the loop iteration variable
+	const splitterNodeName = (splitter.config.name as string) ?? '';
+	if (splitterNodeName) {
+		ctx.nodeNameToVar.set(splitterNodeName, loopVar);
+		ctx.codeNodeVars.add(loopVar);
+	}
 
 	emit(ctx, `for (const ${loopVar} of ${iterableVar}) {`);
 	ctx.indent++;

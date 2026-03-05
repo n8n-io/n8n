@@ -147,6 +147,30 @@ interface TranspilerContext {
 	needsAggregate: boolean;
 }
 
+// ─── Expression Resolution ──────────────────────────────────────────────────
+
+/**
+ * Replace `$json.varName` / `$json.varName.prop` expressions in a string
+ * with explicit `$('NodeName').first().json` references using the compiler's
+ * variable-source tracking.
+ */
+function resolveJsonRefs(str: string, ctx: TranspilerContext): string {
+	return str.replace(
+		/\$json\.(\w+)((?:\.\w+|\[\w+\])*)/g,
+		(match: string, root: string, rest: string) => {
+			const sourceNode = ctx.varSourceMap.get(root);
+			if (!sourceNode) return match;
+			const kind = ctx.varSourceKind.get(root) ?? 'code';
+			if (kind === 'io') {
+				// IO node output: variable IS the json, strip root
+				return `$('${sourceNode}').first().json${rest}`;
+			}
+			// Code node output: variable is inside json, keep root
+			return `$('${sourceNode}').first().json.${root}${rest}`;
+		},
+	);
+}
+
 // ─── Main Transpiler ─────────────────────────────────────────────────────────
 
 export function transpileWorkflowJS(source: string): TranspilerResult {
@@ -527,7 +551,7 @@ function processIOCall(ctx: TranspilerContext, ioCall: IOCall): void {
 	if (ioCall.type === 'http') {
 		ctx.httpCounter++;
 		const httpVar = `http${ctx.httpCounter}`;
-		const httpNode = generateHttpSDK(ioCall, httpVar, {
+		const httpNode = generateHttpSDK(ioCall, httpVar, ctx, {
 			skipExecuteOnce: ctx.inLoopBody,
 		});
 		ctx.nodes.push(httpNode);
@@ -578,9 +602,9 @@ function processRespondCall(ctx: TranspilerContext, stmt: AcornNode): void {
 	}
 	if (respondArgs.body) {
 		if (typeof respondArgs.body === 'object') {
-			params.responseBody = JSON.stringify(respondArgs.body);
+			params.responseBody = resolveJsonRefs(JSON.stringify(respondArgs.body), ctx);
 		} else {
-			params.responseBody = respondArgs.body;
+			params.responseBody = resolveJsonRefs(String(respondArgs.body), ctx);
 		}
 	}
 	if (respondArgs.headers) {
@@ -911,11 +935,14 @@ function buildBranchChain(nodes: EmittedNode[]): string {
 // ─── Switch Processing ───────────────────────────────────────────────────────
 
 /**
- * Resolve a discriminant AST node to a `={{ $json.property }}` expression.
- * Extracts the property chain, drops the root variable name (since the Switch
- * node receives data as `$json`), and prefixes with `$json`.
+ * Resolve a discriminant AST node to an n8n expression.
+ * Uses `resolveExpressionFromAST` for explicit `$('NodeName')` references,
+ * falling back to `$json.property` when the source node is unknown.
  */
-function buildJsonExpression(astNode: AcornNode): string {
+function buildJsonExpression(astNode: AcornNode, ctx: TranspilerContext): string {
+	const resolved = resolveExpressionFromAST(astNode, ctx);
+	if (resolved && resolved.startsWith('={{')) return resolved;
+	// Fallback: strip root variable, use $json
 	const chain = extractPropertyChain(astNode);
 	const dotIdx = chain.indexOf('.');
 	const jsonPath = dotIdx >= 0 ? chain.slice(dotIdx + 1) : '';
@@ -932,8 +959,8 @@ function processSwitchStatement(
 
 	const switchVar = `sw${ctx.switchCounter}`;
 
-	// Build $json expression from discriminant (e.g. body.action → $json.action)
-	const discExpr = stmt.discriminant ? buildJsonExpression(stmt.discriminant) : '={{ $json }}';
+	// Build expression from discriminant (e.g. body.action → $('NodeName').first().json.action)
+	const discExpr = stmt.discriminant ? buildJsonExpression(stmt.discriminant, ctx) : '={{ $json }}';
 
 	const cases = stmt.cases ?? [];
 	const caseBranches: Array<{ index: number; chainExpr: string }> = [];
@@ -1141,7 +1168,7 @@ function processForOfStatement(
 
 	// Map loop variable to $json (the splitter outputs individual items)
 	ctx.varSourceMap.set(loopVar, splitterName);
-	ctx.varSourceKind.set(loopVar, 'code');
+	ctx.varSourceKind.set(loopVar, 'io');
 
 	// Walk loop body with inLoopBody=true (skips executeOnce on emitted nodes)
 	const branchCtx = createBranchContext(ctx);
@@ -1254,7 +1281,7 @@ function processPromiseAll(
 		if (ioCall) {
 			ctx.httpCounter++;
 			const httpVar = `http${ctx.httpCounter}`;
-			const httpNode = generateHttpSDK(ioCall, httpVar);
+			const httpNode = generateHttpSDK(ioCall, httpVar, ctx);
 			ctx.nodes.push(httpNode);
 			if (ioCall.assignedVar) {
 				ctx.varSourceMap.set(ioCall.assignedVar, httpNode.nodeName);
@@ -1864,6 +1891,7 @@ function mapWebhookOptions(options: Record<string, unknown>): Record<string, unk
 function generateHttpSDK(
 	io: IOCall,
 	varName: string,
+	ctx: TranspilerContext,
 	options?: { skipExecuteOnce?: boolean },
 ): EmittedNode {
 	const method = io.method.toUpperCase();
@@ -1876,12 +1904,12 @@ function generateHttpSDK(
 			params.sendBody = true;
 			params.contentType = 'json';
 			params.specifyBody = 'json';
-			params.jsonBody = `={{ $json.${io.bodyExpression} }}`;
+			params.jsonBody = resolveJsonRefs(`={{ $json.${io.bodyExpression} }}`, ctx);
 		} else if (io.body) {
 			params.sendBody = true;
 			params.contentType = 'json';
 			params.specifyBody = 'json';
-			params.jsonBody = JSON.stringify(io.body);
+			params.jsonBody = resolveJsonRefs(JSON.stringify(io.body), ctx);
 		}
 	}
 

@@ -114,7 +114,7 @@ const respond1 = node({
     "parameters": {
       "respondWith": "json",
       "responseCode": 200,
-      "responseBody": "{\"enriched_data\":\"={{ $json.aiResponse }}\",\"metrics\":{\"provider\":\"={{ $json.provider }}\",\"model\":\"={{ $json.model }}\",\"processing_time_ms\":\"={{ $json.processingTime }}\"}}",
+      "responseBody": "{\"enriched_data\":\"={{ $('AI: AI Chat').first().json }}\",\"metrics\":{\"provider\":\"={{ $('Code 1').first().json.provider }}\",\"model\":\"={{ $json.model }}\",\"processing_time_ms\":\"={{ $('Code 6').first().json.processingTime }}\"}}",
       "responseHeaders": {
         "Content-Type": "application/json"
       }

@@ -116,7 +116,7 @@ const http3 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"message\":\"new\",\"content\":\"={{ $json.wfJson }}\"}",
+      "jsonBody": "{\"message\":\"new\",\"content\":\"={{ $('Code 4').first().json.wfJson }}\"}",
       "authentication": "genericCredentialType",
       "genericAuthType": "httpHeaderAuth"
     }
@@ -135,7 +135,7 @@ const http4 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"message\":\"updated\",\"content\":\"={{ $json.wfJson }}\",\"sha\":\"={{ $json.existing.sha }}\"}",
+      "jsonBody": "{\"message\":\"updated\",\"content\":\"={{ $('Code 4').first().json.wfJson }}\",\"sha\":\"={{ $('Code 4').first().json.existing.sha }}\"}",
       "authentication": "genericCredentialType",
       "genericAuthType": "httpHeaderAuth"
     }

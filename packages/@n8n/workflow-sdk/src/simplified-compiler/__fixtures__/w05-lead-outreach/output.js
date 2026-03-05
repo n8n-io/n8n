@@ -54,7 +54,7 @@ const http2 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"to\":\"={{ $json.lead[1] }}\",\"subject\":\"Hello\",\"body\":\"Your outreach message here...\"}",
+      "jsonBody": "{\"to\":\"={{ $('Split leads').first().json[1] }}\",\"subject\":\"Hello\",\"body\":\"Your outreach message here...\"}",
       "authentication": "genericCredentialType",
       "genericAuthType": "oAuth2Api"
     }
