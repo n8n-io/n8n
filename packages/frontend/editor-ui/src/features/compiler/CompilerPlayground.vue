@@ -62,6 +62,8 @@ const editorRef = ref<HTMLDivElement>();
 const editor = ref<EditorView | null>(null);
 const iframeReady = ref(false);
 const pendingWorkflow = ref<WorkflowJSON | null>(null);
+const executing = ref(false);
+const executionLink = ref<{ workflowId: string; executionId: string } | null>(null);
 
 function onSelectExample(label: string) {
 	const example = EXAMPLES.value.find((ex) => ex.label === label);
@@ -81,7 +83,30 @@ const debouncedCompile = useDebounceFn(() => {
 	void compile();
 }, 500);
 
+async function executeWorkflow() {
+	if (!compilerResult.value?.workflow || errorCount.value > 0) return;
+	executing.value = true;
+	executionLink.value = null;
+	try {
+		const response = await fetch(`${window.BASE_PATH ?? '/'}rest/temporary/execute-workflow`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			credentials: 'include',
+			body: JSON.stringify({ workflow: compilerResult.value.workflow }),
+		});
+		const result = (await response.json()) as {
+			data: { workflowId: string; executionId: string; success: boolean };
+		};
+		executionLink.value = result.data;
+	} catch {
+		// Network error
+	} finally {
+		executing.value = false;
+	}
+}
+
 async function compile() {
+	executionLink.value = null;
 	try {
 		const response = await fetch(`${window.BASE_PATH ?? '/'}rest/temporary/parse-code`, {
 			method: 'POST',
@@ -255,6 +280,21 @@ onBeforeUnmount(() => {
 						+ {{ stickyCount }} sticky note{{ stickyCount !== 1 ? 's' : '' }}
 					</template>
 				</span>
+				<button
+					:class="$style.runBtn"
+					:disabled="executing || errorCount > 0"
+					@click="executeWorkflow"
+				>
+					{{ executing ? 'Running...' : 'Run' }}
+				</button>
+				<a
+					v-if="executionLink"
+					:class="$style.executionLink"
+					:href="`/workflow/${executionLink.workflowId}/executions/${executionLink.executionId}`"
+					target="_blank"
+				>
+					View Execution
+				</a>
 			</div>
 		</div>
 
@@ -376,6 +416,36 @@ onBeforeUnmount(() => {
 	border-radius: var(--radius);
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--bold);
+}
+
+.runBtn {
+	padding: var(--spacing--4xs) var(--spacing--xs);
+	border: none;
+	border-radius: var(--radius);
+	background: var(--color--primary);
+	color: #fff;
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--bold);
+	cursor: pointer;
+
+	&:hover:not(:disabled) {
+		background: var(--color--primary--shade-1);
+	}
+
+	&:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+}
+
+.executionLink {
+	font-size: var(--font-size--2xs);
+	color: var(--color--primary);
+	text-decoration: none;
+
+	&:hover {
+		text-decoration: underline;
+	}
 }
 
 .main {
