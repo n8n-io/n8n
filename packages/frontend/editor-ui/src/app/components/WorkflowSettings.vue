@@ -667,6 +667,7 @@ onMounted(async () => {
 
 	isLoading.value = true;
 
+	let resolversLoaded = false;
 	try {
 		const promises = [
 			workflowsListStore.fetchWorkflow(workflowId.value),
@@ -680,7 +681,12 @@ onMounted(async () => {
 		];
 
 		if (isCredentialResolverEnabled.value && canListCredentialResolvers) {
-			promises.push(loadCredentialResolvers(), loadCredentialResolverTypes());
+			promises.push(
+				loadCredentialResolvers().then((success) => {
+					resolversLoaded = success;
+				}),
+				loadCredentialResolverTypes(),
+			);
 		}
 
 		await Promise.all(promises);
@@ -740,8 +746,10 @@ onMounted(async () => {
 	workflowSettings.value = workflowSettingsData;
 
 	// Clear stale credential resolver references (resolver was deleted externally)
+	// Only clear if resolvers loaded successfully — on API failure the list is empty
+	// and we must not falsely treat a valid ID as stale.
 	if (
-		isCredentialResolverEnabled.value &&
+		resolversLoaded &&
 		workflowSettingsData.credentialResolverId &&
 		!credentialResolvers.value.some((r) => r.id === workflowSettingsData.credentialResolverId)
 	) {
