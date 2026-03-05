@@ -452,7 +452,7 @@ export function isCodeDiffMessage(
 export function isWorkflowUpdatedMessage(
 	msg: ChatRequest.MessageResponse,
 ): msg is ChatUI.WorkflowUpdatedMessage {
-	return 'type' in msg && msg.type === 'workflow-updated' && 'codeSnippet' in msg;
+	return 'type' in msg && msg.type === 'workflow-updated';
 }
 
 export function isToolMessage(msg: ChatRequest.MessageResponse): msg is ChatRequest.ToolMessage {

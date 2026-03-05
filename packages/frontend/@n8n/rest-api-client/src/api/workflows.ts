@@ -13,6 +13,7 @@ export interface WorkflowMetadata {
 export interface WorkflowData {
 	id?: string;
 	name?: string;
+	description?: string | null;
 	active?: boolean;
 	nodes: INode[];
 	connections: IConnections;

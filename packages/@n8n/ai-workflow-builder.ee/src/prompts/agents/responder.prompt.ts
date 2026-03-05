@@ -133,9 +133,10 @@ const WORKFLOW_DESCRIPTION = `REQUIRED: At the very end of every response, when 
 This description MUST:
 1. Follow the chronological order of execution — from the trigger through to the final action
 2. Wrap every portion of text that relates to one or more specific steps in a <highlight ref=""> tag
-   - The ref attribute must contain a comma-separated list of the exact node IDs involved
-   - Example: <highlight ref="25e7ea5e-9140-4696-bfc7-eb98c2474b98,09827f67-266f-4623-bece-04a3bbd17644">I fetch data from the API on a schedule</highlight>
-3. Cover every step — every node ID must appear in at least one highlight tag
+   - The ref attribute must contain a comma-separated list of the exact node names involved
+   - Node names come from the "name" property on each node object in the workflowJSON
+   - Example: <highlight ref="Schedule Trigger,HTTP Request">I fetch data from the API on a schedule</highlight>
+3. Cover every step — every node name must appear in at least one highlight tag
 4. Be written in natural, first-person prose — describe what "I" do, not what a workflow, node, or system does
 
 VOICE AND LANGUAGE RULES:
@@ -162,36 +163,33 @@ TRIGGER HIGHLIGHTS — always include the trigger condition inside the highlight
 - Manual triggers: highlight "manually" or "on demand"
 
 BAD (trigger condition left outside the highlight):
-  Every day at 9am, I <highlight ref="abc">check for new data</highlight>.
+  Every day at 9am, I <highlight ref="Schedule Trigger">check for new data</highlight>.
 
 GOOD (trigger condition is part of the highlight):
-  <highlight ref="abc">Every day at 9am</highlight>, I <highlight ref="def">fetch data from the API</highlight>.
+  <highlight ref="Schedule Trigger">Every day at 9am</highlight>, I <highlight ref="HTTP Request">fetch data from the API</highlight>.
 
 BAD (whole sentence highlighted):
-  <highlight ref="def">If the result meets the condition, I send a summary email.</highlight>
+  <highlight ref="IF"><If the result meets the condition, I send a summary email.</highlight>
 
 GOOD (only the key action highlighted, condition text outside):
-  If the result is positive, I <highlight ref="def">send a summary email</highlight>; otherwise I <highlight ref="ghi">post to Slack</highlight>.
+  If the result is positive, I <highlight ref="Gmail">send a summary email</highlight>; otherwise I <highlight ref="Slack">post to Slack</highlight>.
 
 Format:
 <workflow-description>
 [Chronological first-person prose with tight highlight tags around key actions only]
 </workflow-description>
 
-Example (for: Schedule Trigger → HTTP Request → IF → Gmail / Slack):
+Example (for nodes named: "Schedule Trigger", "HTTP Request", "IF", "Gmail", "Slack"):
 <workflow-description>
-<highlight ref="$SCHEDULE_TRIGGER_ID">Every day at 9am</highlight>, I <highlight ref="$HTTP_REQUEST_ID">fetch the latest data from the external API</highlight>. Depending on the result, I either <highlight ref="$GMAIL_ID">send a summary email</highlight> or <highlight ref="$SLACK_ID">post a notification to Slack</highlight>.
+<highlight ref="Schedule Trigger">Every day at 9am</highlight>, I <highlight ref="HTTP Request">fetch the latest data from the external API</highlight>. Depending on the result, I either <highlight ref="Gmail">send a summary email</highlight> or <highlight ref="Slack">post a notification to Slack</highlight>.
 </workflow-description>
-
-NOTE: The IDs above ($SCHEDULE_TRIGGER_ID, $HTTP_REQUEST_ID, etc.) are placeholders showing the pattern.
-In your actual response, replace them with the real UUID values from the workflowJSON context.
 
 RULES:
 - Always place this at the very end, after all other content
 - If nothing has been built yet, omit the <workflow-description> block entirely
 - Do NOT add a heading — the tags are sufficient
-- CRITICAL: Use the exact node IDs (UUIDs) from the workflowJSON provided in your context — look them up from the actual node objects; never invent or guess IDs
-- Multiple related steps can share one highlight when they form a logical unit
+- CRITICAL: Use the exact node names from the workflowJSON — read the "name" property from each node object; never invent or guess names
+- Multiple related steps can share one highlight when they form a logical unit: ref="Node A,Node B"
 - The IF node ref belongs on the condition clause (e.g., "Depending on the result"), not on the outcome actions`;
 
 export interface ResponderPromptOptions {

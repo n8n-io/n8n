@@ -171,6 +171,9 @@ const showExecuteMessage = computed(() => {
 const creditsQuota = computed(() => builderStore.creditsQuota);
 const creditsRemaining = computed(() => builderStore.creditsRemaining);
 const showAskOwnerTooltip = computed(() => !usersStore.isInstanceOwner);
+const nodeNameToId = computed(() =>
+	Object.fromEntries(workflowsStore.workflow.nodes.map((n) => [n.name, n.id])),
+);
 
 // Use different completion message for code-builder
 const thinkingCompletionMessage = computed(() =>
@@ -594,8 +597,9 @@ defineExpose({
 				<WorkflowDescription
 					v-if="props.workflowDescription"
 					:content="props.workflowDescription"
+					:node-name-to-id="nodeNameToId"
 				/>
-				<BuildModeEmptyState />
+				<BuildModeEmptyState v-else />
 			</template>
 			<template #custom-message="{ message }">
 				<!-- Always render questions message; when answered, collapse to intro text only -->

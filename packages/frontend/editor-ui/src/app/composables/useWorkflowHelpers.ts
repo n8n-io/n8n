@@ -605,6 +605,7 @@ export function useWorkflowHelpers() {
 			tags: [...workflowDocumentStore.tags],
 			versionId: workflowsStore.workflow.versionId,
 			meta: workflowDocumentStore.meta,
+			description: workflowsStore.workflow.description,
 		};
 
 		const workflowId = workflowsStore.workflowId;

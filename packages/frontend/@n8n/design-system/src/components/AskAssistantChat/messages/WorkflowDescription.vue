@@ -3,11 +3,12 @@ import { computed } from 'vue';
 
 const props = defineProps<{
 	content: string;
+	nodeNameToId?: Record<string, string>;
 }>();
 
 interface HighlightSegment {
 	type: 'highlight';
-	nodeIds: string[];
+	nodeNames: string[];
 	text: string;
 	colorIndex: number;
 }
@@ -39,13 +40,13 @@ const segments = computed((): Segment[] => {
 			const text = props.content.slice(lastIndex, match.index);
 			if (text.trim()) result.push({ type: 'text', text });
 		}
-		const nodeIds = match[1]
+		const nodeNames = match[1]
 			.split(',')
 			.map((s) => s.trim())
 			.filter(Boolean);
 		result.push({
 			type: 'highlight',
-			nodeIds,
+			nodeNames,
 			text: match[2],
 			colorIndex: colorIndex++ % HIGHLIGHT_COLORS.length,
 		});
@@ -60,9 +61,11 @@ const segments = computed((): Segment[] => {
 	return result;
 });
 
-function setNodeHighlight(nodeIds: string[], color: string, active: boolean): void {
-	for (const id of nodeIds) {
-		document.querySelectorAll<HTMLElement>(`[data-id="${id}"]`).forEach((el) => {
+function setNodeHighlight(nodeNames: string[], color: string, active: boolean): void {
+	for (const name of nodeNames) {
+		const id = props.nodeNameToId?.[name];
+		const selector = id ? `[data-id="${id}"]` : `[data-node-name="${name}"]`;
+		document.querySelectorAll<HTMLElement>(selector).forEach((el) => {
 			if (active) {
 				el.style.outline = `2px dashed ${color}`;
 				el.style.outlineOffset = '4px';
@@ -86,9 +89,14 @@ function setNodeHighlight(nodeIds: string[], color: string, active: boolean): vo
 			<span
 				v-else
 				:class="$style.highlight"
+				:data-ref="segment.nodeNames.join(',')"
 				:style="{ '--highlight--color': HIGHLIGHT_COLORS[segment.colorIndex] }"
-				@mouseenter="setNodeHighlight(segment.nodeIds, HIGHLIGHT_COLORS[segment.colorIndex], true)"
-				@mouseleave="setNodeHighlight(segment.nodeIds, HIGHLIGHT_COLORS[segment.colorIndex], false)"
+				@mouseenter="
+					setNodeHighlight(segment.nodeNames, HIGHLIGHT_COLORS[segment.colorIndex], true)
+				"
+				@mouseleave="
+					setNodeHighlight(segment.nodeNames, HIGHLIGHT_COLORS[segment.colorIndex], false)
+				"
 				>{{ segment.text }}</span
 			>
 		</template>
