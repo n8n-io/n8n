@@ -15,9 +15,9 @@ describe('getAdditionalKeys', () => {
 		webhookWaitingBaseUrl: 'https://webhook.test',
 		formWaitingBaseUrl: 'https://form.test',
 		variables: { testVar: 'value' },
-		externalSecrets: { externalSecretsProxy },
+		externalSecretsProxy,
 	});
-	additionalData.externalSecrets.providerKeysAccessibleByCredential =
+	additionalData.externalSecretProviderKeysAccessibleByCredential =
 		providerKeysAccessibleByCredential;
 
 	const runExecutionData = mock<IRunExecutionData>({

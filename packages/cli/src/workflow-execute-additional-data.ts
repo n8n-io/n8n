@@ -497,7 +497,7 @@ export async function getBase({
 
 			return executionData?.data;
 		},
-		externalSecrets: { externalSecretsProxy: Container.get(ExternalSecretsProxy) },
+		externalSecretsProxy: Container.get(ExternalSecretsProxy),
 		async startRunnerTask(
 			additionalData: IWorkflowExecuteAdditionalData,
 			jobType: string,

@@ -23,8 +23,7 @@ function buildSecretsValueProxy(value: IDataObject): unknown {
 }
 
 export function getSecretsProxy(additionalData: IWorkflowExecuteAdditionalData): IDataObject {
-	const { externalSecretsProxy, providerKeysAccessibleByCredential } =
-		additionalData.externalSecrets;
+	const { externalSecretsProxy, externalSecretProviderKeysAccessibleByCredential } = additionalData;
 	return new Proxy(
 		{},
 		{
@@ -33,7 +32,7 @@ export function getSecretsProxy(additionalData: IWorkflowExecuteAdditionalData):
 					return {};
 				}
 				if (
-					!providerKeysAccessibleByCredential?.has(providerName) ||
+					!externalSecretProviderKeysAccessibleByCredential?.has(providerName) ||
 					!externalSecretsProxy.hasProvider(providerName)
 				) {
 					throw new ExpressionError('Could not load secrets', {

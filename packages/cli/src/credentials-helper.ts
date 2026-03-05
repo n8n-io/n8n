@@ -390,7 +390,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			await this.secretsProviderConnectionRepository.findAllAccessibleProviderKeysByCredentialId(
 				credentialsEntity.id,
 			);
-		additionalData.externalSecrets.providerKeysAccessibleByCredential = new Set(
+		additionalData.externalSecretProviderKeysAccessibleByCredential = new Set(
 			accessibleProviderKeys,
 		);
 
