@@ -1,5 +1,5 @@
 {
 	"title": "W10: Bluray preorder Discord (multiple triggers + shared pipeline)",
 	"templateId": 6830,
-	"skip": "Top-level async functions with IO calls are not inlined into callbacks. The compiler treats the function as a plain declaration without recognizing IO calls inside it. Need shared pipeline detection: when multiple onX() callbacks call the same top-level function, generate pipeline nodes once and connect all triggers to the shared chain. (Phase 12 in transpiler plan)"
+	"skip": "Round-trip indentation mismatch: multi-line object literal inside Code node jsCode loses tab indentation through decompile/recompile. The forward compilation is correct — the sub-function checkBlurays() compiles to Execute Workflow nodes. This is a cosmetic Code node content issue, not a structural problem."
 }

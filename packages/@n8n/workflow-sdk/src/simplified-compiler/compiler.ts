@@ -169,7 +169,10 @@ interface TranspilerContext {
 	functionDefs: Map<string, FunctionDef>;
 	compiledFunctions: Map<string, CompiledFunction>;
 	compiledLoopBodies: CompiledFunction[];
+	compiledTryCatchBodies: CompiledFunction[];
 	execCounter: number;
+	tryCatchCounter: number;
+	errorConnections: Array<{ sourceVar: string; catchChainStartVar: string }>;
 }
 
 // ─── Expression Resolution ──────────────────────────────────────────────────
@@ -289,9 +292,11 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 	const allNodes: EmittedNode[] = [];
 	const allChains: string[] = [];
 	const allLoopBodies: CompiledFunction[] = [];
+	const allTryCatchBodies: CompiledFunction[] = [];
+	const allErrorConnections: Array<{ sourceVar: string; catchChainStartVar: string }> = [];
 
 	for (const cb of callbacks) {
-		const { nodes, chainExpr, loopBodies } = transpileCallback(
+		const { nodes, chainExpr, loopBodies, tryCatchBodies, errorConnections } = transpileCallback(
 			cb,
 			source,
 			allNodes.length,
@@ -303,10 +308,19 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 		allNodes.push(...nodes);
 		allChains.push(chainExpr);
 		allLoopBodies.push(...loopBodies);
+		allTryCatchBodies.push(...tryCatchBodies);
+		allErrorConnections.push(...errorConnections);
 	}
 
 	// Step 6: Generate final SDK code
-	const code = generateSDKCode(allNodes, allChains, compiledFunctions, allLoopBodies);
+	const code = generateSDKCode(
+		allNodes,
+		allChains,
+		compiledFunctions,
+		allLoopBodies,
+		allTryCatchBodies,
+		allErrorConnections,
+	);
 	return { code, errors };
 }
 
@@ -805,7 +819,10 @@ function compileFunctionToSDK(
 		functionDefs,
 		compiledFunctions,
 		compiledLoopBodies: [],
+		compiledTryCatchBodies: [],
 		execCounter: 0,
+		tryCatchCounter: 0,
+		errorConnections: [],
 	};
 
 	// Generate executeWorkflowTrigger as first node
@@ -883,7 +900,13 @@ function transpileCallback(
 	errors: CompilerError[],
 	functionDefs?: Map<string, FunctionDef>,
 	compiledFunctions?: Map<string, CompiledFunction>,
-): { nodes: EmittedNode[]; chainExpr: string; loopBodies: CompiledFunction[] } {
+): {
+	nodes: EmittedNode[];
+	chainExpr: string;
+	loopBodies: CompiledFunction[];
+	tryCatchBodies: CompiledFunction[];
+	errorConnections: Array<{ sourceVar: string; catchChainStartVar: string }>;
+} {
 	const ctx: TranspilerContext = {
 		source,
 		nodes: [],
@@ -909,7 +932,10 @@ function transpileCallback(
 		functionDefs: functionDefs ?? new Map(),
 		compiledFunctions: compiledFunctions ?? new Map(),
 		compiledLoopBodies: [],
+		compiledTryCatchBodies: [],
 		execCounter: nodeOffset,
+		tryCatchCounter: nodeOffset,
+		errorConnections: [],
 	};
 
 	// Generate trigger node
@@ -946,7 +972,13 @@ function transpileCallback(
 		}
 	}
 
-	return { nodes: ctx.nodes, chainExpr, loopBodies: ctx.compiledLoopBodies };
+	return {
+		nodes: ctx.nodes,
+		chainExpr,
+		loopBodies: ctx.compiledLoopBodies,
+		tryCatchBodies: ctx.compiledTryCatchBodies,
+		errorConnections: ctx.errorConnections,
+	};
 }
 
 // ─── Statement Walking ───────────────────────────────────────────────────────
@@ -1378,6 +1410,7 @@ const COUNTER_KEYS = [
 	'setCounter',
 	'loopCounter',
 	'execCounter',
+	'tryCatchCounter',
 ] as const;
 
 function syncCounters(target: TranspilerContext, source: TranspilerContext): void {
@@ -1412,7 +1445,10 @@ function createBranchContext(parentCtx: TranspilerContext): TranspilerContext {
 		functionDefs: parentCtx.functionDefs,
 		compiledFunctions: parentCtx.compiledFunctions,
 		compiledLoopBodies: parentCtx.compiledLoopBodies,
+		compiledTryCatchBodies: parentCtx.compiledTryCatchBodies,
 		execCounter: parentCtx.execCounter,
+		tryCatchCounter: parentCtx.tryCatchCounter,
+		errorConnections: parentCtx.errorConnections,
 	};
 }
 
@@ -1732,7 +1768,10 @@ function compileLoopBodyAsSubWorkflow(
 		functionDefs: parentCtx.functionDefs,
 		compiledFunctions: parentCtx.compiledFunctions,
 		compiledLoopBodies: parentCtx.compiledLoopBodies,
+		compiledTryCatchBodies: parentCtx.compiledTryCatchBodies,
 		execCounter: 0,
+		tryCatchCounter: 0,
+		errorConnections: [],
 	};
 
 	// Generate executeWorkflowTrigger as first node
@@ -1802,41 +1841,368 @@ function processTryStatement(
 	stmt: AcornNode,
 	comments: Array<{ type: string; value: string; start: number; end: number }>,
 ): void {
-	// Process try block statements — mark nodes with onError
 	const tryBlock = stmt.block;
-	if (tryBlock?.type === 'BlockStatement' && tryBlock.body) {
-		// Walk try body, but annotate all IO calls with onError
-		for (const tryStmt of tryBlock.body) {
-			const ioCall = extractIOCall(tryStmt, ctx.source);
-			if (ioCall) {
-				ioCall.onError = 'continueErrorOutput';
-				processIOCall(ctx, ioCall);
-			} else {
-				const nestedIO = findNestedIO(tryStmt, ctx.source);
-				if (nestedIO.length > 0) {
-					for (const nio of nestedIO) {
-						nio.onError = 'continueErrorOutput';
-						processIOCall(ctx, nio);
-					}
-				} else {
-					const stmtSource = ctx.source.slice(tryStmt.start, tryStmt.end);
-					const tryBaseIndent = getBaseIndent(ctx.source, tryStmt.start);
-					ctx.pendingStatements.push({
-						source: dedentSource(stmtSource, tryBaseIndent),
-						ast: tryStmt,
-					});
-				}
+	if (!tryBlock?.body) return;
+
+	const tryBodyStmts =
+		tryBlock.type === 'BlockStatement' && tryBlock.body ? tryBlock.body : [tryBlock];
+
+	// Check if catch body has statements
+	const catchStmts = getCatchStatements(stmt);
+	const hasCatchBody = catchStmts.length > 0;
+
+	// Count IO calls in try body
+	const ioCount = countIOInBody(tryBlock, ctx.source);
+
+	if (ioCount <= 1) {
+		// Case 1/2: Single or no IO in try body → inline with onError markers
+		processTryBodyInline(ctx, tryBodyStmts, comments);
+
+		if (hasCatchBody) {
+			// Route error output to catch chain
+			const tryNodeVar = ctx.prevVar;
+			const catchBranch = transpileBranch(ctx, buildBlockFromStmts(catchStmts), comments);
+
+			for (const bn of catchBranch.nodes) {
+				ctx.nodes.push({ ...bn, branchOnly: true });
+			}
+
+			if (catchBranch.chainExpr) {
+				ctx.errorConnections.push({
+					sourceVar: tryNodeVar,
+					catchChainStartVar: catchBranch.chainExpr,
+				});
+			}
+		}
+		// else: empty catch → existing behavior (onError set, no error connection)
+	} else {
+		// Case 3: Multi-IO in try body → wrap in __tryCatch_ sub-workflow
+		flushPendingCode(ctx);
+		ctx.tryCatchCounter++;
+
+		const subWfName = `__tryCatch_${ctx.tryCatchCounter}`;
+
+		// Collect captured outer-scope variables used in try body
+		const capturedVars = collectCapturedVariables(tryBodyStmts, ctx.varSourceMap);
+
+		// Compile try body as sub-workflow
+		const compiled = compileTryCatchBodyAsSubWorkflow(
+			subWfName,
+			tryBlock,
+			capturedVars,
+			ctx,
+			comments,
+		);
+		ctx.compiledTryCatchBodies.push(compiled);
+
+		// Emit Set node for captured variables (if any)
+		if (capturedVars.length > 0) {
+			ctx.setCounter++;
+			const setVar = `set${ctx.setCounter}`;
+			const setName = `Set ${subWfName} params`;
+
+			const assignments = capturedVars.map((cv, i) => ({
+				id: `assign_${i}`,
+				name: cv.name,
+				type: 'string',
+				value: resolveExpressionFromAST(cv.astNode, ctx),
+			}));
+
+			const configObj = {
+				name: setName,
+				parameters: { options: {}, assignments: { assignments } },
+				executeOnce: true,
+			};
+
+			const configStr = JSON.stringify(configObj, null, 2)
+				.split('\n')
+				.map((line, i) => (i === 0 ? line : '  ' + line))
+				.join('\n');
+
+			const sdkCode = `const ${setVar} = node({
+  type: 'n8n-nodes-base.set', version: 3.4,
+  config: ${configStr}
+});`;
+
+			ctx.nodes.push({ varName: setVar, sdkCode, kind: 'set', nodeName: setName });
+			ctx.prevVar = setVar;
+		}
+
+		// Emit Execute Workflow node
+		ctx.execCounter++;
+		const execVar = `exec${ctx.execCounter}`;
+
+		const execConfig: Record<string, unknown> = {
+			name: subWfName,
+			parameters: {
+				source: 'parameter',
+				workflowJson: `__BUILDER_REF__${compiled.builderVarName}`,
+				options: {},
+			},
+			onError: 'continueErrorOutput',
+			executeOnce: true,
+		};
+
+		let execConfigStr = JSON.stringify(execConfig, null, 2)
+			.split('\n')
+			.map((line, i) => (i === 0 ? line : '    ' + line))
+			.join('\n');
+		// Replace the JSON-serialized builder ref with the actual variable reference
+		execConfigStr = execConfigStr.replace(
+			`"__BUILDER_REF__${compiled.builderVarName}"`,
+			compiled.builderVarName,
+		);
+
+		const sdkCode = `const ${execVar} = node({
+  type: 'n8n-nodes-base.executeWorkflow', version: 1.3,
+  config: ${execConfigStr}
+});`;
+
+		ctx.nodes.push({
+			varName: execVar,
+			sdkCode,
+			kind: 'workflow',
+			nodeName: subWfName,
+		});
+		ctx.prevVar = execVar;
+
+		if (hasCatchBody) {
+			const catchBranch = transpileBranch(ctx, buildBlockFromStmts(catchStmts), comments);
+			for (const bn of catchBranch.nodes) {
+				ctx.nodes.push({ ...bn, branchOnly: true });
+			}
+			if (catchBranch.chainExpr) {
+				ctx.errorConnections.push({
+					sourceVar: execVar,
+					catchChainStartVar: catchBranch.chainExpr,
+				});
 			}
 		}
 	}
+}
 
-	// Process catch block
-	if (stmt.handler) {
-		const handlerBody = (stmt.handler as AcornNode).body as unknown as AcornNode;
-		if (handlerBody?.type === 'BlockStatement' && handlerBody.body) {
-			walkStatements(ctx, handlerBody.body, comments);
+/** Extract catch block statements from a TryStatement node. */
+function getCatchStatements(stmt: AcornNode): AcornNode[] {
+	if (!stmt.handler) return [];
+	const handlerBody = (stmt.handler as AcornNode).body as unknown as AcornNode;
+	if (handlerBody?.type === 'BlockStatement' && handlerBody.body) {
+		return handlerBody.body;
+	}
+	return [];
+}
+
+/** Build a synthetic BlockStatement-like node from an array of statements. */
+function buildBlockFromStmts(stmts: AcornNode[]): AcornNode {
+	return {
+		type: 'BlockStatement',
+		body: stmts,
+		start: stmts[0]?.start ?? 0,
+		end: stmts[stmts.length - 1]?.end ?? 0,
+	};
+}
+
+/** Process try body inline (single IO or no IO) — marks IO nodes with onError. */
+function processTryBodyInline(
+	ctx: TranspilerContext,
+	stmts: AcornNode[],
+	comments: Array<{ type: string; value: string; start: number; end: number }>,
+): void {
+	for (const tryStmt of stmts) {
+		const ioCall = extractIOCall(tryStmt, ctx.source);
+		if (ioCall) {
+			ioCall.onError = 'continueErrorOutput';
+			processIOCall(ctx, ioCall);
+		} else {
+			const nestedIO = findNestedIO(tryStmt, ctx.source);
+			if (nestedIO.length > 0) {
+				for (const nio of nestedIO) {
+					nio.onError = 'continueErrorOutput';
+					processIOCall(ctx, nio);
+				}
+			} else if (tryStmt.type === 'IfStatement') {
+				processIfStatement(ctx, tryStmt, comments);
+			} else {
+				const stmtSource = ctx.source.slice(tryStmt.start, tryStmt.end);
+				const tryBaseIndent = getBaseIndent(ctx.source, tryStmt.start);
+				ctx.pendingStatements.push({
+					source: dedentSource(stmtSource, tryBaseIndent),
+					ast: tryStmt,
+				});
+			}
 		}
 	}
+}
+
+interface CapturedVariable {
+	name: string;
+	astNode: AcornNode;
+}
+
+/** Walk try body AST for Identifier references that exist in varSourceMap (outer scope). */
+function collectCapturedVariables(
+	stmts: AcornNode[],
+	varSourceMap: Map<string, string>,
+): CapturedVariable[] {
+	const found = new Map<string, AcornNode>();
+
+	function walk(node: AcornNode): void {
+		if (!node) return;
+
+		if (node.type === 'Identifier' && node.name) {
+			if (varSourceMap.has(node.name) && !found.has(node.name)) {
+				found.set(node.name, node);
+			}
+		}
+
+		// Recurse into child nodes
+		if (node.body && Array.isArray(node.body)) {
+			for (const child of node.body) walk(child);
+		}
+		if (node.expression) walk(node.expression);
+		if (node.argument) walk(node.argument);
+		if (node.init) walk(node.init);
+		if (node.declarations) {
+			for (const d of node.declarations) walk(d);
+		}
+		if (node.arguments) {
+			for (const a of node.arguments) walk(a);
+		}
+		if (node.consequent) {
+			if (Array.isArray(node.consequent)) {
+				for (const c of node.consequent) walk(c);
+			} else {
+				walk(node.consequent);
+			}
+		}
+		if (node.alternate) walk(node.alternate);
+		if (node.left) walk(node.left);
+		if (node.right) walk(node.right);
+		if (node.test) walk(node.test);
+		if (node.object) walk(node.object);
+		if (node.property) walk(node.property as AcornNode);
+		if (node.callee) walk(node.callee);
+		if (node.elements) {
+			for (const e of node.elements) if (e) walk(e);
+		}
+		if (node.properties) {
+			for (const p of node.properties) {
+				if (p.value) walk(p.value as unknown as AcornNode);
+			}
+		}
+		if (node.block) walk(node.block);
+		if (node.handler) walk(node.handler as unknown as AcornNode);
+	}
+
+	for (const s of stmts) walk(s);
+
+	return Array.from(found.entries()).map(([name, astNode]) => ({ name, astNode }));
+}
+
+/**
+ * Compile a try body into an inline sub-workflow for wrapping in Execute Workflow.
+ * Similar to compileLoopBodyAsSubWorkflow but for try/catch.
+ */
+function compileTryCatchBodyAsSubWorkflow(
+	subWfName: string,
+	bodyNode: AcornNode,
+	capturedVars: CapturedVariable[],
+	parentCtx: TranspilerContext,
+	comments: Array<{ type: string; value: string; start: number; end: number }>,
+): CompiledFunction {
+	const prefix = `tc_${subWfName.replace(/__/g, '')}`;
+	const triggerNodeName = 'When Executed by Another Workflow';
+
+	const ctx: TranspilerContext = {
+		source: parentCtx.source,
+		nodes: [],
+		varSourceMap: new Map(parentCtx.varSourceMap),
+		varSourceKind: new Map(parentCtx.varSourceKind),
+		httpCounter: 0,
+		codeCounter: 0,
+		ifCounter: 0,
+		switchCounter: 0,
+		sibCounter: 0,
+		respondCounter: 0,
+		wfCounter: 0,
+		setCounter: 0,
+		pendingStatements: [],
+		prevVar: '',
+		triggerType: 'manual',
+		callbackParams: [],
+		errors: parentCtx.errors,
+		hasOnErrorAnnotation: false,
+		consumedComments: parentCtx.consumedComments,
+		inLoopBody: false,
+		loopCounter: 0,
+		functionDefs: parentCtx.functionDefs,
+		compiledFunctions: parentCtx.compiledFunctions,
+		compiledLoopBodies: [],
+		compiledTryCatchBodies: [],
+		execCounter: 0,
+		tryCatchCounter: 0,
+		errorConnections: [],
+	};
+
+	// Generate executeWorkflowTrigger as first node
+	const triggerVar = `${prefix}_t0`;
+	const triggerSdk = `const ${triggerVar} = trigger({ type: 'n8n-nodes-base.executeWorkflowTrigger', version: 1.1, config: { parameters: { inputSource: 'passthrough' } } });`;
+	ctx.nodes.push({
+		varName: triggerVar,
+		sdkCode: triggerSdk,
+		kind: 'trigger',
+		nodeName: triggerNodeName,
+	});
+	ctx.prevVar = triggerVar;
+
+	// Seed captured variables → trigger node with 'code' kind
+	for (const cv of capturedVars) {
+		ctx.varSourceMap.set(cv.name, triggerNodeName);
+		ctx.varSourceKind.set(cv.name, 'code');
+	}
+
+	// Walk try body
+	const bodyStmts =
+		bodyNode.type === 'BlockStatement' && bodyNode.body ? bodyNode.body : [bodyNode];
+	walkStatements(ctx, bodyStmts, comments);
+	flushPendingCode(ctx);
+
+	// Prefix non-trigger node variables
+	const renames = new Map<string, string>();
+	for (const node of ctx.nodes) {
+		if (node.varName === triggerVar) continue;
+		renames.set(node.varName, `${prefix}_${node.varName}`);
+	}
+	for (const node of ctx.nodes) {
+		if (node.varName === triggerVar) continue;
+		for (const [oldVar, newVar] of renames) {
+			node.sdkCode = node.sdkCode.replaceAll(`(${oldVar})`, `(${newVar})`);
+			node.sdkCode = node.sdkCode.replace(`const ${oldVar} `, `const ${newVar} `);
+		}
+		node.varName = renames.get(node.varName) ?? node.varName;
+	}
+
+	// Build chain expression
+	const nodeVars = ctx.nodes.filter((n) => !n.branchOnly).map((n) => n.varName);
+	let chainExpr: string;
+	if (nodeVars.length <= 1) {
+		chainExpr = nodeVars[0] ?? triggerVar;
+	} else {
+		chainExpr = nodeVars[0];
+		for (let i = 1; i < nodeVars.length; i++) {
+			chainExpr += `.to(${nodeVars[i]})`;
+		}
+	}
+
+	const nodeDeclarations = ctx.nodes.map((n) => n.sdkCode);
+	const builderVarName = `${subWfName.replace(/-/g, '_')}Workflow`;
+	const builderDeclaration = `const ${builderVarName} = workflow('${subWfName}', '${subWfName}')\n  .add(${chainExpr});`;
+
+	return {
+		nodeDeclarations,
+		builderDeclaration,
+		builderVarName,
+		triggerNodeName,
+	};
 }
 
 // ─── Nested IO Detection ─────────────────────────────────────────────────────
@@ -2624,6 +2990,8 @@ function generateSDKCode(
 	allChains: string[],
 	compiledFunctions?: Map<string, CompiledFunction>,
 	compiledLoopBodies?: CompiledFunction[],
+	compiledTryCatchBodies?: CompiledFunction[],
+	errorConnections?: Array<{ sourceVar: string; catchChainStartVar: string }>,
 ): string {
 	const lines: string[] = [];
 
@@ -2662,7 +3030,8 @@ function generateSDKCode(
 	// Sub-workflow declarations: compiled functions
 	const hasSubWorkflows =
 		(compiledFunctions && compiledFunctions.size > 0) ||
-		(compiledLoopBodies && compiledLoopBodies.length > 0);
+		(compiledLoopBodies && compiledLoopBodies.length > 0) ||
+		(compiledTryCatchBodies && compiledTryCatchBodies.length > 0);
 
 	if (compiledFunctions && compiledFunctions.size > 0) {
 		for (const [name, compiled] of compiledFunctions) {
@@ -2689,6 +3058,19 @@ function generateSDKCode(
 		}
 	}
 
+	// Sub-workflow declarations: try/catch bodies
+	if (compiledTryCatchBodies && compiledTryCatchBodies.length > 0) {
+		for (const compiled of compiledTryCatchBodies) {
+			lines.push(`// --- Try/catch sub-workflow ---`);
+			for (const decl of compiled.nodeDeclarations) {
+				lines.push(decl);
+				lines.push('');
+			}
+			lines.push(compiled.builderDeclaration);
+			lines.push('');
+		}
+	}
+
 	if (hasSubWorkflows) {
 		lines.push('// --- Main workflow ---');
 	}
@@ -2697,6 +3079,14 @@ function generateSDKCode(
 	for (const n of allNodes) {
 		lines.push(n.sdkCode);
 		lines.push('');
+	}
+
+	// Error connections
+	if (errorConnections && errorConnections.length > 0) {
+		for (const ec of errorConnections) {
+			lines.push(`${ec.sourceVar}.onError(${ec.catchChainStartVar});`);
+			lines.push('');
+		}
 	}
 
 	// Workflow builder

@@ -123,7 +123,7 @@ Assert: normalizeSDK(SDK₁) === normalizeSDK(SDK₂)
 | `examples.ts` | Pre-built DSL examples for UI quick-start templates |
 | `generate-report.ts` | HTML report generator for fixture validation results |
 | `index.ts` | Public exports: `transpileWorkflowJS`, `decompileWorkflowSDK`, `COMPILER_EXAMPLES` |
-| `__fixtures__/w01-w22/` | Test fixtures (real workflow patterns, w18-w22 are sub-functions) |
+| `__fixtures__/w01-w24/` | Test fixtures (real workflow patterns, w18-w22 sub-functions, w23-w24 try/catch error connections) |
 
 **Decompile pipeline (in `src/codegen/`):**
 
@@ -214,7 +214,7 @@ Validates existing fixtures through the full compilation pipeline (transpile, ge
 
 ## Round-Trip Coverage
 
-21/22 fixtures pass round-trip (95%). Only W10 is skipped — it requires the compiler to inline top-level async functions with IO calls into each trigger callback (Phase 12 enhancement, not a decompiler issue).
+23/24 fixtures pass round-trip (96%). W10 is skipped due to a cosmetic Code node jsCode indentation mismatch in multi-line object literals (not a structural issue — the forward compilation produces correct Execute Workflow sub-functions).
 
 ## Sub-Function Compiler Architecture
 
@@ -263,10 +263,31 @@ When a `for...of` loop body has multiple IO calls, n8n's execution model causes 
 - **Loop body emission**: `detectForOfPattern()` detects splitter → Execute Workflow with `_loop_` sub-workflow, returns `loopBodyCode` field.
 - **Indentation**: Loop body code from `stripTriggerWrapper` is already at correct relative indentation. Do NOT strip additional tabs (a previous bug caused nested function bodies to lose indentation).
 
-## Decompiler: try/catch Reconstruction
+## Try/Catch with Error Connections
 
-When an HTTP/AI node has `"onError": "continueErrorOutput"`, the decompiler wraps the call in `try { ... } catch {}`. Key details:
+The compiler supports three cases for `try { ... } catch { ... }`:
 
+| Try body | Catch body | Strategy |
+|----------|-----------|----------|
+| 1 IO node | empty `catch {}` | Mark node with `onError: continueErrorOutput`, no error connection |
+| 1 IO node | non-empty | Mark node with `onError: continueErrorOutput` + `.onError(catchChain)` |
+| 2+ IO nodes | any | Wrap try body in `__tryCatch_N` sub-workflow, Execute Workflow node with `.onError(catchChain)` if catch non-empty |
+
+### Compiler Side
+- **`processTryStatement()`**: Three-way branching based on `countIOInBody()` and whether catch body has statements
+- **Error connections**: `ctx.errorConnections` array tracks `{ sourceVar, catchChainStartVar }` pairs. Emitted as `sourceVar.onError(catchChainStartVar);` in `generateSDKCode()` after node declarations.
+- **Catch nodes as branch-only**: Catch chain nodes marked `branchOnly: true` (same pattern as if/else branches) so they don't appear in the main `.to()` chain
+- **Multi-node try body**: Compiled via `compileTryCatchBodyAsSubWorkflow()` — same pattern as `compileLoopBodyAsSubWorkflow()`. Sub-workflow name `__tryCatch_N`, variable prefix `tc_tryCatch_N_`.
+- **Variable capture**: `collectCapturedVariables()` walks try body AST for `Identifier` references present in `varSourceMap`. Captured vars passed via Set node before the Execute Workflow node.
+- **Empty catch optimization**: When catch body is empty (any IO count), `onError: continueErrorOutput` is set but no error connection or catch chain is emitted.
+
+### Decompiler Side
+- **Single-node try with error handler**: `visitLeaf()` checks `leaf.errorHandler` + `onError === 'continueErrorOutput'`. Sets `ctx.suppressTryCatch = true` to prevent `emitHttpNode`/`emitAiNode` from adding their own `try/catch {}`, then wraps: `try { <node> } catch { <error handler> }`.
+- **Multi-node try (`__tryCatch_` sub-workflow)**: `detectSubFunctions()` checks if inner workflow id starts with `__tryCatch_`. Decompiles inner workflow body, stores in `tryCatchBodies` map. `visitLeaf()` detects the exec node, emits `try { <decompiled body> } catch { <error handler> }`.
+- **Set node skipping**: Set nodes for `__tryCatch_N` params are skipped via `isSubFunctionSetNode()` (same pattern as sub-function Set nodes).
+- **`suppressTryCatch` flag**: Added to `SimplifiedGenContext`. When true, `emitHttpNode`/`emitAiNode` skip their own `try/catch` wrapping but still use assignment syntax (`x = await` instead of `const x = await`).
+
+### Pre-existing try/catch (empty catch)
 - **Variable name recovery**: `computeVariableAssignments()` checks the predecessor Code node for `let X = null;` and uses `X` as the variable name instead of the default `data`. This prevents duplicate declarations.
 - **Code node awareness**: When `codeNodeVars.has(assignedVar)` is true, `emitHttpNode()`/`emitAiNode()` skip emitting `let X = null;` since the Code node already declares it.
 - **`continueRegularOutput`** emits `// @onError continue` annotation (different pattern, no try/catch).

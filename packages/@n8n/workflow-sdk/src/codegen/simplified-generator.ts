@@ -47,6 +47,13 @@ interface LoopBodyInfo {
 	execNodeName: string;
 }
 
+/** Maps exec node name → decompiled try body code for __tryCatch_ sub-workflows */
+interface TryCatchBodyInfo {
+	body: string;
+	execNodeName: string;
+	setNodeNames: Set<string>;
+}
+
 interface SimplifiedGenContext {
 	indent: number;
 	lines: string[];
@@ -58,6 +65,10 @@ interface SimplifiedGenContext {
 	execToFunc: ExecToFuncMap;
 	/** Maps exec node name → loop body info for _loop_ sub-workflows */
 	loopBodies: Map<string, LoopBodyInfo>;
+	/** Maps exec node name → try/catch body info for __tryCatch_ sub-workflows */
+	tryCatchBodies: Map<string, TryCatchBodyInfo>;
+	/** Set by visitLeaf to suppress inner try/catch in emitHttpNode/emitAiNode */
+	suppressTryCatch: boolean;
 }
 
 function emit(ctx: SimplifiedGenContext, text: string): void {
@@ -83,7 +94,7 @@ export function generateSimplifiedCode(
 		}
 	}
 	const codeNodeVars = collectCodeNodeVars(graph);
-	const { subFunctions, execToFunc, loopBodies } = detectSubFunctions(graph);
+	const { subFunctions, execToFunc, loopBodies, tryCatchBodies } = detectSubFunctions(graph);
 
 	const ctx: SimplifiedGenContext = {
 		indent: 0,
@@ -95,6 +106,8 @@ export function generateSimplifiedCode(
 		subFunctions,
 		execToFunc,
 		loopBodies,
+		tryCatchBodies,
+		suppressTryCatch: false,
 	};
 
 	// Emit sub-function declarations first
@@ -118,10 +131,12 @@ function detectSubFunctions(graph: SemanticGraph): {
 	subFunctions: Map<string, SubFunctionInfo>;
 	execToFunc: ExecToFuncMap;
 	loopBodies: Map<string, LoopBodyInfo>;
+	tryCatchBodies: Map<string, TryCatchBodyInfo>;
 } {
 	const subFunctions = new Map<string, SubFunctionInfo>();
 	const execToFunc: ExecToFuncMap = new Map();
 	const loopBodies = new Map<string, LoopBodyInfo>();
+	const tryCatchBodies = new Map<string, TryCatchBodyInfo>();
 
 	for (const node of graph.nodes.values()) {
 		if (node.type !== 'n8n-nodes-base.executeWorkflow') continue;
@@ -158,6 +173,26 @@ function detectSubFunctions(graph: SemanticGraph): {
 				loopVar,
 				body,
 				execNodeName: node.name,
+			});
+			continue;
+		}
+
+		// Check if this is a compiler-generated try/catch body sub-workflow
+		if (funcName.startsWith('__tryCatch_')) {
+			const innerGraph = buildSemanticGraph(innerJson);
+			annotateGraph(innerGraph);
+			const innerTree = buildCompositeTree(innerGraph, { extractBranchDownstream: true });
+			const innerCode = generateSimplifiedCode(innerTree, innerJson, innerGraph);
+			const body = stripTriggerWrapper(innerCode.trim());
+
+			// Collect Set node names for this try/catch exec node
+			const setNodeNames = new Set<string>();
+			collectSetNodeNames(node, graph, setNodeNames);
+
+			tryCatchBodies.set(node.name, {
+				body,
+				execNodeName: node.name,
+				setNodeNames,
 			});
 			continue;
 		}
@@ -212,11 +247,12 @@ function detectSubFunctions(graph: SemanticGraph): {
 		});
 	}
 
-	return { subFunctions, execToFunc, loopBodies };
+	return { subFunctions, execToFunc, loopBodies, tryCatchBodies };
 }
 
 function isSubFunctionSetNode(setNodeName: string): boolean {
 	// Match "Set <funcName> params" or "Set <funcName> params 1" (deduped)
+	// Also matches "Set __tryCatch_N params" for try/catch sub-workflows
 	return /^Set .+ params( \d+)?$/.test(setNodeName);
 }
 
@@ -698,10 +734,39 @@ function visitLeaf(leaf: LeafNode, ctx: SimplifiedGenContext): void {
 		for (const fn of ctx.subFunctions.values()) {
 			if (fn.setNodeNames.has(node.name)) return;
 		}
+		// Skip Set nodes for try/catch sub-workflows
+		for (const tc of ctx.tryCatchBodies.values()) {
+			if (tc.setNodeNames.has(node.name)) return;
+		}
 	}
 
 	// Skip loop body Execute Workflow nodes — handled by for-of pattern
 	if (node.type === 'n8n-nodes-base.executeWorkflow' && ctx.loopBodies.has(node.name)) {
+		return;
+	}
+
+	// Handle __tryCatch_ sub-workflow exec nodes: emit try { body } catch { errorHandler }
+	if (node.type === 'n8n-nodes-base.executeWorkflow' && ctx.tryCatchBodies.has(node.name)) {
+		const tcInfo = ctx.tryCatchBodies.get(node.name)!;
+		emit(ctx, 'try {');
+		ctx.indent++;
+		for (const line of tcInfo.body.split('\n')) {
+			if (line.trim() === '') {
+				emit(ctx, '');
+			} else {
+				emit(ctx, line);
+			}
+		}
+		ctx.indent--;
+		if (leaf.errorHandler) {
+			emit(ctx, '} catch {');
+			ctx.indent++;
+			visitComposite(leaf.errorHandler, ctx);
+			ctx.indent--;
+			emit(ctx, '}');
+		} else {
+			emit(ctx, '} catch {}');
+		}
 		return;
 	}
 
@@ -715,6 +780,37 @@ function visitLeaf(leaf: LeafNode, ctx: SimplifiedGenContext): void {
 		}
 	}
 
+	// Handle single-node try/catch with error handler at the visitLeaf level
+	const onError = node.json.onError as string | undefined;
+	const hasErrorHandler = leaf.errorHandler && onError === 'continueErrorOutput';
+
+	if (hasErrorHandler) {
+		// Suppress the inner try/catch wrapping in emitHttpNode/emitAiNode
+		ctx.suppressTryCatch = true;
+
+		// Emit try { <node call> } catch { <error handler> }
+		const assignedVar = ctx.nodeNameToVarName.get(node.name);
+		if (assignedVar && !ctx.codeNodeVars.has(assignedVar)) {
+			emit(ctx, `let ${assignedVar} = null;`);
+		}
+		emit(ctx, 'try {');
+		ctx.indent++;
+		emitLeafByType(node, ctx);
+		ctx.indent--;
+		emit(ctx, '} catch {');
+		ctx.indent++;
+		visitComposite(leaf.errorHandler!, ctx);
+		ctx.indent--;
+		emit(ctx, '}');
+
+		ctx.suppressTryCatch = false;
+		return;
+	}
+
+	emitLeafByType(node, ctx);
+}
+
+function emitLeafByType(node: SemanticNode, ctx: SimplifiedGenContext): void {
 	switch (node.type) {
 		case 'n8n-nodes-base.aggregate':
 			// Aggregate nodes are compiler artifacts — skip silently
@@ -767,7 +863,7 @@ function emitHttpNode(node: SemanticNode, ctx: SimplifiedGenContext): void {
 
 	// onError annotation
 	const onError = node.json.onError as string | undefined;
-	const isTryCatch = onError === 'continueErrorOutput';
+	const isTryCatch = onError === 'continueErrorOutput' && !ctx.suppressTryCatch;
 	if (onError === 'continueRegularOutput') {
 		emit(ctx, '// @onError continue');
 	}
@@ -782,7 +878,7 @@ function emitHttpNode(node: SemanticNode, ctx: SimplifiedGenContext): void {
 	}
 
 	const prefix =
-		isTryCatch && assignedVar
+		(isTryCatch || ctx.suppressTryCatch) && assignedVar
 			? `${assignedVar} = await `
 			: assignedVar
 				? `const ${assignedVar} = await `
@@ -1137,7 +1233,7 @@ function emitAiNode(node: SemanticNode, ctx: SimplifiedGenContext): void {
 
 	// onError annotation
 	const onError = node.json.onError as string | undefined;
-	const isTryCatch = onError === 'continueErrorOutput';
+	const isTryCatch = onError === 'continueErrorOutput' && !ctx.suppressTryCatch;
 	if (onError === 'continueRegularOutput') {
 		emit(ctx, '// @onError continue');
 	}
@@ -1154,7 +1250,7 @@ function emitAiNode(node: SemanticNode, ctx: SimplifiedGenContext): void {
 	}
 
 	const prefix =
-		isTryCatch && assignedVar
+		(isTryCatch || ctx.suppressTryCatch) && assignedVar
 			? `${assignedVar} = await `
 			: assignedVar
 				? `const ${assignedVar} = await `

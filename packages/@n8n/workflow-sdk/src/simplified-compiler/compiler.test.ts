@@ -601,6 +601,90 @@ onManual(async () => {
 			expect(result.code).toContain('ifElse(');
 		});
 
+		it('should route catch body to error output for single-node try', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  try { await http.get('https://api.example.com'); }
+  catch { await http.post('/error', { msg: 'failed' }); }
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain('"onError": "continueErrorOutput"');
+			// Should produce .onError() connection
+			expect(result.code).toContain('.onError(');
+			// Catch node should NOT be in the main .to() chain
+			const mainChain = result.code.match(/\.add\(([^)]+)\)/)?.[1] ?? '';
+			expect(mainChain).not.toContain('catch_');
+		});
+
+		it('should wrap multi-node try body in __tryCatch sub-workflow', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  try {
+    const users = await http.get('https://api.example.com/users');
+    await http.post('https://api.example.com/process', users);
+  } catch {
+    await http.post('/error', { msg: 'pipeline failed' });
+  }
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			// Should create a __tryCatch_ sub-workflow
+			expect(result.code).toContain('__tryCatch_');
+			expect(result.code).toContain('executeWorkflowTrigger');
+			expect(result.code).toContain('"source": "parameter"');
+			// The exec node should have onError
+			expect(result.code).toContain('"onError": "continueErrorOutput"');
+			// Should produce .onError() connection
+			expect(result.code).toContain('.onError(');
+		});
+
+		it('should pass captured outer variables to multi-node try sub-workflow', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const config = { endpoint: 'https://api.com' };
+  try {
+    const data = await http.get(config.endpoint + '/users');
+    await http.post(config.endpoint + '/process', data);
+  } catch { await http.post('/error'); }
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain('__tryCatch_');
+			// Set node should capture config variable
+			expect(result.code).toContain('Set __tryCatch_');
+			expect(result.code).toContain('config');
+		});
+
+		it('should keep empty catch behavior unchanged for single node', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  try { await http.get('https://api.example.com'); }
+  catch {}
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain('"onError": "continueErrorOutput"');
+			// No .onError() connection for empty catch
+			expect(result.code).not.toContain('.onError(');
+		});
+
+		it('should keep empty catch behavior unchanged for multi-node try', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  try {
+    const data = await http.get('https://api.example.com');
+    await http.post('/process', data);
+  } catch {}
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			// Multi-node try with empty catch → sub-workflow but no error connection
+			expect(result.code).toContain('__tryCatch_');
+			expect(result.code).toContain('"onError": "continueErrorOutput"');
+			expect(result.code).not.toContain('.onError(');
+		});
+
 		it('should support @onError continue annotation', () => {
 			const result = transpileWorkflowJS(`
 onManual(async () => {
