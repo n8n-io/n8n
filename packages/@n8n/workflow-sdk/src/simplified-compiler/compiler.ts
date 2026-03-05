@@ -10,6 +10,9 @@
  */
 
 import * as acorn from 'acorn';
+import { AUTH_TYPE_TO_CREDENTIAL } from '../shared/credential-mapping';
+import { toScheduleRule } from '../shared/schedule-mapping';
+import { CALLBACK_TO_TRIGGER, TRIGGER_TYPES } from '../shared/trigger-mapping';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -295,14 +298,7 @@ function findCallbacks(ast: AcornNode): CallbackInfo[] {
 		const name = callee.name ?? '';
 		const args = expr.arguments ?? [];
 
-		const triggerMap: Record<string, CallbackInfo['triggerType']> = {
-			onManual: 'manual',
-			onWebhook: 'webhook',
-			onSchedule: 'schedule',
-			onError: 'error',
-		};
-
-		const triggerType = triggerMap[name];
+		const triggerType = CALLBACK_TO_TRIGGER[name] as CallbackInfo['triggerType'] | undefined;
 		if (!triggerType) continue;
 
 		let callbackFn: AcornNode | undefined;
@@ -1868,14 +1864,8 @@ function flushPendingCode(ctx: TranspilerContext): void {
 // ─── SDK Code Generation ─────────────────────────────────────────────────────
 
 function generateTriggerSDK(cb: CallbackInfo, varName: string): EmittedNode {
-	const triggerTypeMap: Record<string, { type: string; version: number }> = {
-		manual: { type: 'n8n-nodes-base.manualTrigger', version: 1 },
-		webhook: { type: 'n8n-nodes-base.webhook', version: 2 },
-		schedule: { type: 'n8n-nodes-base.scheduleTrigger', version: 1.2 },
-		error: { type: 'n8n-nodes-base.errorTrigger', version: 1 },
-	};
-
-	const triggerInfo = triggerTypeMap[cb.triggerType] ?? triggerTypeMap.manual;
+	const triggerEntry = TRIGGER_TYPES[cb.triggerType] ?? TRIGGER_TYPES.manual;
+	const triggerInfo = { type: triggerEntry.nodeType, version: triggerEntry.version };
 	const configParams = mapTriggerParams(cb);
 
 	// If webhook callback has `respond` param, set responseMode
@@ -1900,24 +1890,7 @@ function mapTriggerParams(cb: CallbackInfo): Record<string, unknown> {
 }
 
 function mapScheduleOptions(options: Record<string, unknown>): Record<string, unknown> {
-	if (typeof options.every === 'string') {
-		const match = (options.every as string).match(/^(\d+)\s*(s|m|h|d|w)$/);
-		if (match) {
-			const value = parseInt(match[1], 10);
-			const unitMap: Record<string, Record<string, unknown>> = {
-				s: { field: 'seconds', secondsInterval: value },
-				m: { field: 'minutes', minutesInterval: value },
-				h: { field: 'hours', hoursInterval: value },
-				d: { field: 'days', daysInterval: value },
-				w: { field: 'weeks', weeksInterval: value },
-			};
-			return { rule: { interval: [unitMap[match[2]]] } };
-		}
-	}
-	if (typeof options.cron === 'string') {
-		return { rule: { interval: [{ field: 'cronExpression', expression: options.cron }] } };
-	}
-	return { rule: { interval: [{ field: 'days', daysInterval: 1 }] } };
+	return toScheduleRule(options);
 }
 
 function mapWebhookOptions(options: Record<string, unknown>): Record<string, unknown> {
@@ -1973,12 +1946,7 @@ function generateHttpSDK(
 	// Credentials
 	let credentialsStr = '';
 	if (io.credentials) {
-		const authTypeMap: Record<string, string> = {
-			bearer: 'httpHeaderAuth',
-			basic: 'httpBasicAuth',
-			oauth2: 'oAuth2Api',
-		};
-		const credType = authTypeMap[io.credentials.type] ?? 'httpHeaderAuth';
+		const credType = AUTH_TYPE_TO_CREDENTIAL[io.credentials.type] ?? 'httpHeaderAuth';
 		params.authentication = 'genericCredentialType';
 		params.genericAuthType = credType;
 		credentialsStr = `, credentials: { ${credType}: { name: '${io.credentials.credential}', id: '' } }`;

@@ -20,6 +20,9 @@ import type {
 } from './composite-tree';
 import type { SemanticGraph, SemanticNode } from './types';
 import type { WorkflowJSON } from '../types/base';
+import { CREDENTIAL_TO_AUTH_TYPE } from '../shared/credential-mapping';
+import { fromScheduleRule } from '../shared/schedule-mapping';
+import { NODE_TYPE_TO_TRIGGER, TRIGGER_TYPES } from '../shared/trigger-mapping';
 
 // ─── Context ─────────────────────────────────────────────────────────────────
 
@@ -335,10 +338,8 @@ function isMultiLine(node: SemanticNode, ctx: SimplifiedGenContext): boolean {
 }
 
 function setTriggerType(node: SemanticNode, ctx: SimplifiedGenContext): void {
-	if (node.type === 'n8n-nodes-base.webhook') ctx.triggerType = 'webhook';
-	else if (node.type === 'n8n-nodes-base.scheduleTrigger') ctx.triggerType = 'schedule';
-	else if (node.type === 'n8n-nodes-base.errorTrigger') ctx.triggerType = 'error';
-	else ctx.triggerType = 'manual';
+	const key = NODE_TYPE_TO_TRIGGER[node.type] ?? 'manual';
+	ctx.triggerType = key as typeof ctx.triggerType;
 }
 
 // ─── Leaf ────────────────────────────────────────────────────────────────────
@@ -558,31 +559,15 @@ function reverseCredentials(node: SemanticNode): string | null {
 	const params = node.json.parameters ?? {};
 	const genericAuthType = params.genericAuthType as string | undefined;
 
-	let authType: string;
-	let credName: string;
+	// Try genericAuthType first, then fall back to checking credential keys
+	const credType =
+		(genericAuthType && credentials[genericAuthType] ? genericAuthType : null) ??
+		Object.keys(credentials).find((k) => CREDENTIAL_TO_AUTH_TYPE[k]) ??
+		null;
+	if (!credType) return null;
 
-	if (genericAuthType === 'httpHeaderAuth' && credentials.httpHeaderAuth) {
-		authType = 'bearer';
-		credName = credentials.httpHeaderAuth.name;
-	} else if (genericAuthType === 'httpBasicAuth' && credentials.httpBasicAuth) {
-		authType = 'basic';
-		credName = credentials.httpBasicAuth.name;
-	} else if (genericAuthType === 'oAuth2Api' && credentials.oAuth2Api) {
-		authType = 'oauth2';
-		credName = credentials.oAuth2Api.name;
-	} else if (credentials.httpHeaderAuth) {
-		authType = 'bearer';
-		credName = credentials.httpHeaderAuth.name;
-	} else if (credentials.httpBasicAuth) {
-		authType = 'basic';
-		credName = credentials.httpBasicAuth.name;
-	} else if (credentials.oAuth2Api) {
-		authType = 'oauth2';
-		credName = credentials.oAuth2Api.name;
-	} else {
-		return null;
-	}
-
+	const authType = CREDENTIAL_TO_AUTH_TYPE[credType];
+	const credName = credentials[credType].name;
 	return `{ auth: { type: '${authType}', credential: '${credName}' } }`;
 }
 
@@ -1079,57 +1064,41 @@ function emitTriggerHeader(
 	hasRespond = false,
 ): void {
 	const params = node.json.parameters ?? {};
+	const triggerKey = NODE_TYPE_TO_TRIGGER[node.type] ?? 'manual';
+	const { callbackName } = TRIGGER_TYPES[triggerKey];
 
-	switch (node.type) {
-		case 'n8n-nodes-base.manualTrigger':
-			emit(ctx, 'onManual(async () => {');
+	switch (triggerKey) {
+		case 'manual':
+			emit(ctx, `${callbackName}(async () => {`);
 			break;
 
-		case 'n8n-nodes-base.scheduleTrigger': {
+		case 'schedule': {
 			const schedule = reverseScheduleParams(params);
-			emit(ctx, `onSchedule(${schedule}, async () => {`);
+			emit(ctx, `${callbackName}(${schedule}, async () => {`);
 			break;
 		}
 
-		case 'n8n-nodes-base.webhook': {
+		case 'webhook': {
 			const method = (params.httpMethod as string) ?? 'POST';
 			const path = (params.path as string) ?? '/';
 			const cbParams = hasRespond ? '{ body, respond }' : '{ body }';
-			emit(ctx, `onWebhook({ method: '${method}', path: '${path}' }, async (${cbParams}) => {`);
+			emit(
+				ctx,
+				`${callbackName}({ method: '${method}', path: '${path}' }, async (${cbParams}) => {`,
+			);
 			break;
 		}
 
-		case 'n8n-nodes-base.errorTrigger':
-			emit(ctx, 'onError(async ({ error, workflow }) => {');
+		case 'error':
+			emit(ctx, `${callbackName}(async ({ error, workflow }) => {`);
 			break;
 
 		default:
-			emit(ctx, 'onManual(async () => {');
+			emit(ctx, `${TRIGGER_TYPES.manual.callbackName}(async () => {`);
 			break;
 	}
 }
 
 function reverseScheduleParams(params: Record<string, unknown>): string {
-	const rule = params.rule as { interval?: Array<Record<string, unknown>> };
-	if (!rule?.interval?.[0]) return "{ every: '1h' }";
-
-	const interval = rule.interval[0];
-	const field = interval.field as string;
-
-	switch (field) {
-		case 'hours':
-			return `{ every: '${interval.hoursInterval}h' }`;
-		case 'minutes':
-			return `{ every: '${interval.minutesInterval}m' }`;
-		case 'seconds':
-			return `{ every: '${interval.secondsInterval}s' }`;
-		case 'days':
-			return `{ every: '${interval.daysInterval}d' }`;
-		case 'weeks':
-			return `{ every: '${interval.weeksInterval}w' }`;
-		case 'cronExpression':
-			return `{ cron: '${interval.expression}' }`;
-		default:
-			return "{ every: '1h' }";
-	}
+	return fromScheduleRule(params);
 }
