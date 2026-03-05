@@ -39,6 +39,8 @@ export class KafkaTrigger implements INodeType {
 		},
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],
+		preventTestWhileActive: true,
+		triggerConflictConditions: { parametersCombination: ['groupId', 'topic'] },
 		credentials: [
 			{
 				name: 'kafka',

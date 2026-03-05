@@ -2359,6 +2359,18 @@ export interface IBuilderHint {
 	relatedNodes?: IRelatedNode[];
 }
 
+/**
+ * Conditions that define when a workflow's trigger would be in conflict with another active workflow's trigger.
+ *
+ * parameter: A single parameter that must be unique across active workflows (e.g., "eventName")
+ *
+ * parametersCombination: A combination of parameters that together must be unique (e.g., ["eventName", "resource"])
+ */
+export type TriggerConflictCondition = {
+	parameter?: string;
+	parametersCombination?: string[];
+};
+
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number | number[];
 	defaults: NodeDefaults;
@@ -2396,8 +2408,21 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	 */
 	skipNameGeneration?: boolean;
 	features?: NodeFeaturesDefinition;
+
 	/** Hints for workflow-sdk type generation, including explicit AI input requirements */
 	builderHint?: IBuilderHint;
+
+	/**
+	 * Triggers that cannot run test executions while the workflow is active.
+	 */
+	preventTestWhileActive?: boolean;
+
+	/**
+	 * Parameters that must be unique across all active workflows
+	 *
+	 * Activation of a workflow will be blocked if another active workflow has the same value for the specified parameter(s)
+	 */
+	triggerConflictConditions?: TriggerConflictCondition;
 }
 
 export type TriggerPanelDefinition = {
