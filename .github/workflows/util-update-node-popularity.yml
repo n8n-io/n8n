@@ -99,5 +99,4 @@ jobs:
         run: |
           gh pr merge "${{ needs.update-popularity.outputs.pull-request-number }}" \
             --auto \
-            --squash \
             --repo "${{ github.repository }}"
