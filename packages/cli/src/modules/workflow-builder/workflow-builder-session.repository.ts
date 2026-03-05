@@ -10,7 +10,7 @@ import {
 	type StoredSession,
 } from '@n8n/ai-workflow-builder';
 import { Service } from '@n8n/di';
-import { DataSource, QueryFailedError, Repository } from '@n8n/typeorm';
+import { DataSource, Repository } from '@n8n/typeorm';
 
 import { WorkflowBuilderSession } from './workflow-builder-session.entity';
 
@@ -46,20 +46,12 @@ export class WorkflowBuilderSessionRepository
 		const messages = mapChatMessagesToStoredMessages(data.messages);
 		const previousSummary = data.previousSummary ?? null;
 
-		const result = await this.update({ workflowId, userId }, { messages, previousSummary });
-
-		if (result.affected === 0) {
-			try {
-				await this.insert({ id: randomUUID(), workflowId, userId, messages, previousSummary });
-			} catch (error) {
-				if (error instanceof QueryFailedError) {
-					// Unique constraint violation from a concurrent insert — row now exists, update it
-					await this.update({ workflowId, userId }, { messages, previousSummary });
-				} else {
-					throw error;
-				}
-			}
-		}
+		await this.createQueryBuilder()
+			.insert()
+			.into(WorkflowBuilderSession)
+			.values({ id: randomUUID(), workflowId, userId, messages, previousSummary })
+			.orUpdate(['messages', 'previousSummary'], ['workflowId', 'userId'])
+			.execute();
 	}
 
 	async deleteSession(threadId: string): Promise<void> {

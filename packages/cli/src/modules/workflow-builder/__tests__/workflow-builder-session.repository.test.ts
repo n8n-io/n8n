@@ -1,5 +1,4 @@
 import { AIMessage, HumanMessage } from '@langchain/core/messages';
-import { QueryFailedError } from '@n8n/typeorm';
 import { mockClear } from 'jest-mock-extended';
 
 import { mockEntityManager } from '@test/mocking';
@@ -28,17 +27,30 @@ describe('WorkflowBuilderSessionRepository', () => {
 	const entityManager = mockEntityManager(WorkflowBuilderSession);
 	let repository: WorkflowBuilderSessionRepository;
 
+	const mockExecute = jest.fn().mockResolvedValue(undefined);
+	const mockQueryBuilder = {
+		insert: jest.fn().mockReturnThis(),
+		into: jest.fn().mockReturnThis(),
+		values: jest.fn().mockReturnThis(),
+		orUpdate: jest.fn().mockReturnThis(),
+		execute: mockExecute,
+	};
+
 	beforeEach(() => {
 		mockClear(entityManager.findOne);
-		mockClear(entityManager.update);
-		mockClear(entityManager.insert);
 		mockClear(entityManager.delete);
+		mockExecute.mockClear();
+		mockQueryBuilder.insert.mockClear().mockReturnThis();
+		mockQueryBuilder.into.mockClear().mockReturnThis();
+		mockQueryBuilder.values.mockClear().mockReturnThis();
+		mockQueryBuilder.orUpdate.mockClear().mockReturnThis();
 
 		// Create repository with mocked data source
 		const mockDataSource = {
 			manager: entityManager,
 		};
 		repository = new WorkflowBuilderSessionRepository(mockDataSource as never);
+		jest.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQueryBuilder as never);
 	});
 
 	describe('parseThreadId', () => {
@@ -136,9 +148,8 @@ describe('WorkflowBuilderSessionRepository', () => {
 	describe('saveSession', () => {
 		const validThreadId = 'workflow-wf123-user-user456';
 
-		it('should update existing session with serialized messages', async () => {
+		it('should upsert session with serialized messages', async () => {
 			const messages = [new HumanMessage('Hello'), new AIMessage('Hi there!')];
-			entityManager.update.mockResolvedValueOnce({ affected: 1 } as never);
 
 			await repository.saveSession(validThreadId, {
 				messages,
@@ -146,81 +157,29 @@ describe('WorkflowBuilderSessionRepository', () => {
 				updatedAt: new Date(),
 			});
 
-			expect(entityManager.update).toHaveBeenCalledWith(
-				WorkflowBuilderSession,
-				{ workflowId: 'wf123', userId: 'user456' },
-				{
-					messages: expect.any(Array),
-					previousSummary: 'Summary',
-				},
-			);
-			expect(entityManager.insert).not.toHaveBeenCalled();
-		});
-
-		it('should insert new session when no existing row', async () => {
-			const messages = [new HumanMessage('Hello')];
-			entityManager.update.mockResolvedValueOnce({ affected: 0 } as never);
-			entityManager.insert.mockResolvedValueOnce(undefined as never);
-
-			await repository.saveSession(validThreadId, {
-				messages,
-				previousSummary: 'Summary',
-				updatedAt: new Date(),
-			});
-
-			expect(entityManager.insert).toHaveBeenCalledWith(WorkflowBuilderSession, {
+			expect(mockQueryBuilder.into).toHaveBeenCalledWith(WorkflowBuilderSession);
+			expect(mockQueryBuilder.values).toHaveBeenCalledWith({
 				id: expect.any(String),
 				workflowId: 'wf123',
 				userId: 'user456',
 				messages: expect.any(Array),
 				previousSummary: 'Summary',
 			});
-		});
-
-		it('should fall back to update on concurrent insert conflict', async () => {
-			entityManager.update.mockResolvedValueOnce({ affected: 0 } as never);
-			entityManager.insert.mockRejectedValueOnce(
-				new QueryFailedError('INSERT', [], new Error('unique constraint')),
+			expect(mockQueryBuilder.orUpdate).toHaveBeenCalledWith(
+				['messages', 'previousSummary'],
+				['workflowId', 'userId'],
 			);
-			entityManager.update.mockResolvedValueOnce({ affected: 1 } as never);
-
-			await repository.saveSession(validThreadId, {
-				messages: [],
-				previousSummary: 'Summary',
-				updatedAt: new Date(),
-			});
-
-			expect(entityManager.update).toHaveBeenCalledTimes(2);
-			expect(entityManager.insert).toHaveBeenCalledTimes(1);
-		});
-
-		it('should rethrow non-query errors from insert', async () => {
-			entityManager.update.mockResolvedValueOnce({ affected: 0 } as never);
-			entityManager.insert.mockRejectedValueOnce(new Error('connection lost'));
-
-			await expect(
-				repository.saveSession(validThreadId, {
-					messages: [],
-					previousSummary: 'Summary',
-					updatedAt: new Date(),
-				}),
-			).rejects.toThrow('connection lost');
+			expect(mockExecute).toHaveBeenCalled();
 		});
 
 		it('should set previousSummary to null when undefined', async () => {
-			entityManager.update.mockResolvedValueOnce({ affected: 1 } as never);
-
 			await repository.saveSession(validThreadId, {
 				messages: [],
 				updatedAt: new Date(),
 			});
 
-			expect(entityManager.update).toHaveBeenCalledWith(
-				WorkflowBuilderSession,
-				{ workflowId: 'wf123', userId: 'user456' },
-				expect.objectContaining({
-					previousSummary: null,
-				}),
+			expect(mockQueryBuilder.values).toHaveBeenCalledWith(
+				expect.objectContaining({ previousSummary: null }),
 			);
 		});
 
