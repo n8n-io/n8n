@@ -173,6 +173,31 @@ pushd packages/@n8n/workflow-sdk && pnpm test decompiler-debug.test.ts && popd
 - **Fixture naming**: `w01-descriptive-name/` with `meta.json`, `input.js`, `output.js`
 - **Adding new fixtures**: create dir, add the three files, fixture auto-discovered by `loadFixtures()`
 
+## Skills
+
+### generate-simplified-code
+
+Location: `sdk-v3/.claude/skills/generate-simplified-code/SKILL.md`
+
+Generates simplified DSL code from an n8n workflow template. Invoked with `/generate-simplified-code <templateId|url|path>`. Claude reads the template JSON, analyzes nodes/connections/expressions, writes the DSL, then compiles and validates the result.
+
+### validate-compiler-fixture
+
+Location: `sdk-v3/.claude/skills/validate-compiler-fixture/SKILL.md`
+
+Validates existing fixtures through the full compilation pipeline (transpile, generate, structural checks). Referenced by `generate-simplified-code` for its optional "save as fixture" step.
+
+### Maintenance
+
+**When DSL syntax changes, the `generate-simplified-code` skill MUST be updated.** Key sections to keep in sync:
+- Node type -> DSL mapping table (Step 2c)
+- HTTP method signatures and auth handling (Step 2d)
+- Credential type reverse mapping (Step 2d)
+- AI agent options (Step 2e)
+- IF/Switch condition mapping (Steps 2f, 2g)
+- Schedule conversion table (Step 2a)
+- Unsupported patterns list (Step 3)
+
 ## Updating This Document
 
 **Every new session working on the simplified-compiler MUST update this CLAUDE.md with learnings before finishing.** This is a living document.
