@@ -24,7 +24,7 @@ export function useExecutionRedaction() {
 	async function revealData() {
 		const warningHtml = [
 			`<p>${i18n.baseText('ndv.redacted.revealModal.warning')}</p>`,
-			'<ul style="text-align: left; margin-top: 8px;">',
+			'<ul style="text-align: left; margin-top: var(--spacing--2xs);">',
 			`<li>${i18n.baseText('ndv.redacted.revealModal.logged')}</li>`,
 			`<li>${i18n.baseText('ndv.redacted.revealModal.legitimate')}</li>`,
 			`<li>${i18n.baseText('ndv.redacted.revealModal.policy')}</li>`,
