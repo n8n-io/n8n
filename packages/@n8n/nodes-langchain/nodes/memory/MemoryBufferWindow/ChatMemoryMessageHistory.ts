@@ -113,18 +113,25 @@ export class ChatMemoryMessageHistory extends BaseChatMessageHistory {
 
 		if (message.type === 'human' && message instanceof HumanMessage) {
 			await this.memoryService.addHumanMessage(content);
-		} else if (message.type === 'ai' && message instanceof AIMessage) {
+			return;
+		}
+
+		if (message.type === 'ai' && message instanceof AIMessage) {
 			const toolCalls = message.tool_calls ?? [];
 			await this.memoryService.addAIMessage(content, toolCalls);
-		} else if (message.type === 'tool' && message instanceof ToolMessage) {
-			const toolMessage = message as ToolMessage;
-			await this.memoryService.addToolMessage(
-				toolMessage.tool_call_id,
-				toolMessage.name ?? 'unknown',
-				{}, // Input not available from ToolMessage
-				typeof toolMessage.content === 'string' ? toolMessage.content : toolMessage.content,
-			);
+			return;
 		}
+
+		if (message.type === 'tool' && message instanceof ToolMessage) {
+			await this.memoryService.addToolMessage(
+				message.tool_call_id,
+				message.name ?? 'unknown',
+				{}, // Input not available from ToolMessage
+				typeof message.content === 'string' ? message.content : message.content,
+			);
+			return;
+		}
+
 		// System messages are not saved in conversation history
 	}
 
