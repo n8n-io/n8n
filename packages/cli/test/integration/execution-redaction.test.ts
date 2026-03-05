@@ -732,4 +732,49 @@ describe('GET /api/v1/executions — Execution Redaction', () => {
 		expect(response.body.data).toHaveLength(1);
 		expect(response.body.data[0].data).toBeUndefined();
 	});
+
+	test('batch: multiple executions across multiple workflows — each redacted independently', async () => {
+		const workflow1 = await createWorkflow({}, publicApiMember);
+		const workflow2 = await createWorkflow({}, publicApiMember);
+
+		// workflow1: policy "non-manual", trigger → should be redacted
+		await createExecutionWithRedaction({
+			workflow: workflow1,
+			mode: 'trigger',
+			policy: 'non-manual',
+		});
+		// workflow1: policy "non-manual", manual → should NOT be redacted
+		await createExecutionWithRedaction({
+			workflow: workflow1,
+			mode: 'manual',
+			policy: 'non-manual',
+		});
+		// workflow2: policy "none", trigger → should NOT be redacted
+		await createExecutionWithRedaction({ workflow: workflow2, mode: 'trigger', policy: 'none' });
+		// workflow2: policy "all", webhook → should be redacted
+		await createExecutionWithRedaction({ workflow: workflow2, mode: 'webhook', policy: 'all' });
+
+		const response = await testServer
+			.publicApiAgentFor(publicApiMember)
+			.get('/executions?includeData=true')
+			.expect(200);
+
+		expect(response.body.data).toHaveLength(4);
+
+		const results = response.body.data as Array<{
+			workflowId: string;
+			mode: string;
+			data: IRunExecutionData;
+		}>;
+
+		const wf1Trigger = results.find((e) => e.workflowId === workflow1.id && e.mode === 'trigger');
+		const wf1Manual = results.find((e) => e.workflowId === workflow1.id && e.mode === 'manual');
+		const wf2Trigger = results.find((e) => e.workflowId === workflow2.id && e.mode === 'trigger');
+		const wf2Webhook = results.find((e) => e.workflowId === workflow2.id && e.mode === 'webhook');
+
+		assertRedacted(wf1Trigger!.data, 'workflow_redaction_policy', false);
+		assertNotRedacted(wf1Manual!.data);
+		assertNotRedacted(wf2Trigger!.data);
+		assertRedacted(wf2Webhook!.data, 'workflow_redaction_policy', false);
+	});
 });

@@ -23,4 +23,12 @@ export class ExecutionRedactionServiceProxy implements ExecutionRedaction {
 		}
 		return await this.executionRedaction.processExecution(execution, options);
 	}
+
+	async processExecutions(
+		executions: RedactableExecution[],
+		options: ExecutionRedactionOptions,
+	): Promise<void> {
+		if (!this.executionRedaction) return;
+		await this.executionRedaction.processExecutions(executions, options);
+	}
 }

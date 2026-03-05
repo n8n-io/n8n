@@ -20,4 +20,9 @@ export interface ExecutionRedaction {
 		execution: RedactableExecution,
 		options: ExecutionRedactionOptions,
 	): Promise<RedactableExecution>;
+
+	processExecutions(
+		executions: RedactableExecution[],
+		options: ExecutionRedactionOptions,
+	): Promise<void>;
 }

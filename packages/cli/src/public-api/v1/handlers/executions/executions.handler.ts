@@ -164,14 +164,10 @@ export = {
 				await Container.get(ExecutionRepository).getExecutionsCountForPublicApi(filters);
 
 			if (includeData) {
-				const redactionProxy = Container.get(ExecutionRedactionServiceProxy);
-				await Promise.all(
-					executions.filter(isRedactableExecution).map(
-						async (execution) =>
-							await redactionProxy.processExecution(execution, {
-								user: req.user,
-							}),
-					),
+				const redactableExecutions = executions.filter(isRedactableExecution);
+				await Container.get(ExecutionRedactionServiceProxy).processExecutions(
+					redactableExecutions,
+					{ user: req.user },
 				);
 			}
 
