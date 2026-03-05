@@ -22,7 +22,7 @@ jest.mock('@n8n/ai-workflow-builder', () => ({
 		toolName: 'create_workflow_from_code',
 		displayTitle: 'Create Workflow from Code',
 	},
-	MCP_DELETE_WORKFLOW_TOOL: { toolName: 'delete_workflow', displayTitle: 'Delete Workflow' },
+	MCP_ARCHIVE_WORKFLOW_TOOL: { toolName: 'archive_workflow', displayTitle: 'Archive Workflow' },
 	CODE_BUILDER_SEARCH_NODES_TOOL: { toolName: 'search', displayTitle: 'Search' },
 	CODE_BUILDER_GET_NODE_TYPES_TOOL: { toolName: 'get', displayTitle: 'Get' },
 	CODE_BUILDER_GET_SUGGESTED_NODES_TOOL: { toolName: 'suggest', displayTitle: 'Suggest' },

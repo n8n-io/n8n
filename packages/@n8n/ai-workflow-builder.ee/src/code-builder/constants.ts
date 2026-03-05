@@ -119,9 +119,9 @@ export const MCP_CREATE_WORKFLOW_FROM_CODE_TOOL: BuilderToolBase = {
 	displayTitle: 'Creating workflow from code',
 };
 
-export const MCP_DELETE_WORKFLOW_TOOL: BuilderToolBase = {
-	toolName: 'delete_workflow',
-	displayTitle: 'Deleting workflow',
+export const MCP_ARCHIVE_WORKFLOW_TOOL: BuilderToolBase = {
+	toolName: 'archive_workflow',
+	displayTitle: 'Archiving workflow',
 };
 
 export const MCP_UPDATE_WORKFLOW_TOOL: BuilderToolBase = {
