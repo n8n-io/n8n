@@ -140,6 +140,8 @@ interface CompiledFunction {
 	builderVarName: string;
 	/** Trigger node name in the sub-workflow */
 	triggerNodeName: string;
+	/** Error connections within this sub-workflow (e.g. exec1.onError(http1)) */
+	errorConnections: Array<{ sourceVar: string; catchChainStartVar: string }>;
 }
 
 // ─── Transpiler Context ──────────────────────────────────────────────────────
@@ -863,6 +865,12 @@ function compileFunctionToSDK(
 		node.varName = renames.get(node.varName) ?? node.varName;
 	}
 
+	// Rename error connection variables to match prefixed names
+	for (const ec of ctx.errorConnections) {
+		ec.sourceVar = renames.get(ec.sourceVar) ?? ec.sourceVar;
+		ec.catchChainStartVar = renames.get(ec.catchChainStartVar) ?? ec.catchChainStartVar;
+	}
+
 	// Build chain expression
 	const nodeVars = ctx.nodes.filter((n) => !n.branchOnly).map((n) => n.varName);
 	let chainExpr: string;
@@ -887,6 +895,7 @@ function compileFunctionToSDK(
 		builderDeclaration,
 		builderVarName,
 		triggerNodeName,
+		errorConnections: ctx.errorConnections,
 	};
 }
 
@@ -1817,6 +1826,12 @@ function compileLoopBodyAsSubWorkflow(
 		node.varName = renames.get(node.varName) ?? node.varName;
 	}
 
+	// Rename error connection variables to match prefixed names
+	for (const ec of ctx.errorConnections) {
+		ec.sourceVar = renames.get(ec.sourceVar) ?? ec.sourceVar;
+		ec.catchChainStartVar = renames.get(ec.catchChainStartVar) ?? ec.catchChainStartVar;
+	}
+
 	// Build chain expression
 	const nodeVars = ctx.nodes.filter((n) => !n.branchOnly).map((n) => n.varName);
 	let chainExpr: string;
@@ -1838,6 +1853,7 @@ function compileLoopBodyAsSubWorkflow(
 		builderDeclaration,
 		builderVarName,
 		triggerNodeName,
+		errorConnections: ctx.errorConnections,
 	};
 }
 
@@ -2188,6 +2204,12 @@ function compileTryCatchBodyAsSubWorkflow(
 		node.varName = renames.get(node.varName) ?? node.varName;
 	}
 
+	// Rename error connection variables to match prefixed names
+	for (const ec of ctx.errorConnections) {
+		ec.sourceVar = renames.get(ec.sourceVar) ?? ec.sourceVar;
+		ec.catchChainStartVar = renames.get(ec.catchChainStartVar) ?? ec.catchChainStartVar;
+	}
+
 	// Build chain expression
 	const nodeVars = ctx.nodes.filter((n) => !n.branchOnly).map((n) => n.varName);
 	let chainExpr: string;
@@ -2209,6 +2231,7 @@ function compileTryCatchBodyAsSubWorkflow(
 		builderDeclaration,
 		builderVarName,
 		triggerNodeName,
+		errorConnections: ctx.errorConnections,
 	};
 }
 
@@ -3049,6 +3072,31 @@ function generateSDKCode(
 				lines.push(decl);
 				lines.push('');
 			}
+			if (compiled.errorConnections.length > 0) {
+				for (const ec of compiled.errorConnections) {
+					lines.push(`${ec.sourceVar}.onError(${ec.catchChainStartVar});`);
+				}
+				lines.push('');
+			}
+			lines.push(compiled.builderDeclaration);
+			lines.push('');
+		}
+	}
+
+	// Sub-workflow declarations: try/catch bodies (before loop bodies, since loops may reference them)
+	if (compiledTryCatchBodies && compiledTryCatchBodies.length > 0) {
+		for (const compiled of compiledTryCatchBodies) {
+			lines.push(`// --- Try/catch sub-workflow ---`);
+			for (const decl of compiled.nodeDeclarations) {
+				lines.push(decl);
+				lines.push('');
+			}
+			if (compiled.errorConnections.length > 0) {
+				for (const ec of compiled.errorConnections) {
+					lines.push(`${ec.sourceVar}.onError(${ec.catchChainStartVar});`);
+				}
+				lines.push('');
+			}
 			lines.push(compiled.builderDeclaration);
 			lines.push('');
 		}
@@ -3062,17 +3110,10 @@ function generateSDKCode(
 				lines.push(decl);
 				lines.push('');
 			}
-			lines.push(compiled.builderDeclaration);
-			lines.push('');
-		}
-	}
-
-	// Sub-workflow declarations: try/catch bodies
-	if (compiledTryCatchBodies && compiledTryCatchBodies.length > 0) {
-		for (const compiled of compiledTryCatchBodies) {
-			lines.push(`// --- Try/catch sub-workflow ---`);
-			for (const decl of compiled.nodeDeclarations) {
-				lines.push(decl);
+			if (compiled.errorConnections.length > 0) {
+				for (const ec of compiled.errorConnections) {
+					lines.push(`${ec.sourceVar}.onError(${ec.catchChainStartVar});`);
+				}
 				lines.push('');
 			}
 			lines.push(compiled.builderDeclaration);

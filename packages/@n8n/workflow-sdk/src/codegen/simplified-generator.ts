@@ -1538,8 +1538,17 @@ function visitSwitchCase(node: SwitchCaseCompositeNode, ctx: SimplifiedGenContex
 			emit(ctx, 'default:');
 		} else {
 			const rule = values[caseIdx];
-			const testValue = rule?.conditions?.conditions?.[0]?.rightValue;
-			const formattedValue = testValue !== undefined ? `'${testValue}'` : `'case${caseIdx}'`;
+			const cond = rule?.conditions?.conditions?.[0];
+			const testValue = cond?.rightValue;
+			const operatorType = cond?.operator?.type ?? 'string';
+			let formattedValue: string;
+			if (testValue === undefined) {
+				formattedValue = `'case${caseIdx}'`;
+			} else if (operatorType === 'boolean' || operatorType === 'number') {
+				formattedValue = testValue;
+			} else {
+				formattedValue = `'${testValue}'`;
+			}
 			emit(ctx, `case ${formattedValue}:`);
 		}
 

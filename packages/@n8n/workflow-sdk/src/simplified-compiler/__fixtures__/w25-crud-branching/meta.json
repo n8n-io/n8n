@@ -1,4 +1,3 @@
 {
-	"title": "CRUD + Branching + Error Handling",
-	"skip": "Round-trip: decompiler loses catch handler body in try/catch with single IO node. Forward compilation is correct."
+	"title": "CRUD + Branching + Error Handling"
 }
