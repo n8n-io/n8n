@@ -1,6 +1,6 @@
 import type {
 	DataTableProxyProvider,
-	DynamicCredentialGateProxyProvider,
+	DynamicCredentialCheckProxyProvider,
 	IExecutionContext,
 	IWorkflowSettings,
 	Result,
@@ -36,7 +36,7 @@ declare module 'n8n-workflow' {
 		/** SSRF protection bridge — present only when N8N_SSRF_PROTECTION_ENABLED=true */
 		ssrfBridge?: SsrfBridge;
 		'data-table'?: { dataTableProxyProvider: DataTableProxyProvider };
-		'dynamic-credentials'?: { credentialGateProxy: DynamicCredentialGateProxyProvider };
+		'dynamic-credentials'?: { credentialCheckProxy: DynamicCredentialCheckProxyProvider };
 		// Project ID is currently only added on the additionalData if the user
 		// has data table listing permission for that project. We should consider
 		// that only data tables belonging to their respective projects are shown.

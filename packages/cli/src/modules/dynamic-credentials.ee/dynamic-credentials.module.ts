@@ -52,8 +52,10 @@ export class DynamicCredentialsModule implements ModuleInterface {
 		if (!isFeatureFlagEnabled()) {
 			return {};
 		}
-		const { CredentialGateProxyService } = await import('./services/credential-gate-proxy.service');
-		return { credentialGateProxy: Container.get(CredentialGateProxyService) };
+		const { CredentialCheckProxyService } = await import(
+			'./services/credential-check-proxy.service'
+		);
+		return { credentialCheckProxy: Container.get(CredentialCheckProxyService) };
 	}
 
 	@OnShutdown()

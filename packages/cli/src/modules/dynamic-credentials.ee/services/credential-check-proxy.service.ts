@@ -2,9 +2,9 @@ import { CredentialsEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Logger } from '@n8n/backend-common';
 import type {
-	CredentialGateResult,
-	CredentialGateStatus,
-	DynamicCredentialGateProxyProvider,
+	CredentialCheckResult,
+	CredentialCheckStatus,
+	DynamicCredentialCheckProxyProvider,
 	IExecutionContext,
 } from 'n8n-workflow';
 
@@ -15,7 +15,7 @@ import { ExecutionContextService } from 'n8n-core';
 import { CredentialResolverWorkflowService } from './credential-resolver-workflow.service';
 
 @Service()
-export class CredentialGateProxyService implements DynamicCredentialGateProxyProvider {
+export class CredentialCheckProxyService implements DynamicCredentialCheckProxyProvider {
 	constructor(
 		private readonly credentialResolverWorkflowService: CredentialResolverWorkflowService,
 		private readonly executionContextService: ExecutionContextService,
@@ -24,10 +24,10 @@ export class CredentialGateProxyService implements DynamicCredentialGateProxyPro
 		private readonly logger: Logger,
 	) {}
 
-	async checkCredentialGate(
+	async checkCredentialStatus(
 		workflowId: string,
 		executionContext: IExecutionContext,
-	): Promise<CredentialGateResult> {
+	): Promise<CredentialCheckResult> {
 		const plaintext = this.executionContextService.decryptExecutionContext(executionContext);
 
 		if (!plaintext.credentials) {
@@ -39,9 +39,9 @@ export class CredentialGateProxyService implements DynamicCredentialGateProxyPro
 			plaintext.credentials,
 		);
 
-		const credentials: CredentialGateStatus[] = await Promise.all(
+		const credentials: CredentialCheckStatus[] = await Promise.all(
 			statuses.map(async (status) => {
-				const gateStatus: CredentialGateStatus = {
+				const checkStatus: CredentialCheckStatus = {
 					credentialId: status.credentialId,
 					credentialName: status.credentialName,
 					credentialType: status.credentialType,
@@ -50,14 +50,14 @@ export class CredentialGateProxyService implements DynamicCredentialGateProxyPro
 				};
 
 				if (status.status === 'missing') {
-					gateStatus.authorizationUrl = await this.generateAuthorizationUrl(
+					checkStatus.authorizationUrl = await this.generateAuthorizationUrl(
 						status.credentialId,
 						status.resolverId,
 						plaintext.credentials!,
 					);
 				}
 
-				return gateStatus;
+				return checkStatus;
 			}),
 		);
 
@@ -92,7 +92,7 @@ export class CredentialGateProxyService implements DynamicCredentialGateProxyPro
 			authorizationUrl = await this.oauthService.generateAOauth1AuthUri(...callerData);
 		}
 
-		this.logger.debug('Credential gate generated authorization URL', {
+		this.logger.debug('Credential check generated authorization URL', {
 			credentialId,
 			credentialType: credential.type,
 			resolverId,
