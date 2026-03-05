@@ -61,6 +61,7 @@ const settingsStore = useSettingsStore();
 const i18n = useI18n();
 
 const canConfigureVectorStore = computed(() => usersStore.isInstanceOwner);
+const canUploadFiles = computed(() => chatStore.semanticSearchReadiness.isReadyForCurrentUser);
 const toast = useToast();
 const message = useMessage();
 const uiStore = useUIStore();
@@ -411,18 +412,10 @@ const fileDrop = useFileDrop(true, onFilesDropped, ['application/pdf']);
 				</div>
 				<div
 					:class="[$style.content, { [$style.isDraggingFile]: fileDrop.isDragging.value }]"
-					@dragenter="
-						chatStore.semanticSearchReadiness.isReady ? fileDrop.handleDragEnter($event) : undefined
-					"
-					@dragleave="
-						chatStore.semanticSearchReadiness.isReady ? fileDrop.handleDragLeave($event) : undefined
-					"
-					@dragover="
-						chatStore.semanticSearchReadiness.isReady ? fileDrop.handleDragOver($event) : undefined
-					"
-					@drop="
-						chatStore.semanticSearchReadiness.isReady ? fileDrop.handleDrop($event) : undefined
-					"
+					@dragenter="canUploadFiles ? fileDrop.handleDragEnter($event) : undefined"
+					@dragleave="canUploadFiles ? fileDrop.handleDragLeave($event) : undefined"
+					@dragover="canUploadFiles ? fileDrop.handleDragOver($event) : undefined"
+					@drop="canUploadFiles ? fileDrop.handleDrop($event) : undefined"
 				>
 					<N8nInputLabel
 						input-name="agent-name"
@@ -540,7 +533,7 @@ const fileDrop = useFileDrop(true, onFilesDropped, ['application/pdf']);
 							@change="handleFileSelect"
 						/>
 						<N8nCallout
-							v-if="!chatStore.semanticSearchReadiness.isReady"
+							v-if="!canUploadFiles"
 							theme="info"
 							icon="info"
 							:class="$style.vectorStoreCallout"
@@ -571,7 +564,7 @@ const fileDrop = useFileDrop(true, onFilesDropped, ['application/pdf']);
 								v-for="item in allFiles"
 								:key="item.id"
 								:item="item"
-								:semantic-search-ready="chatStore.semanticSearchReadiness.isReady"
+								:semantic-search-ready="canUploadFiles"
 								:current-embedding-provider="currentEmbeddingProvider"
 								@remove="removeFile(item)"
 							/>
@@ -581,7 +574,7 @@ const fileDrop = useFileDrop(true, onFilesDropped, ['application/pdf']);
 							icon="plus"
 							variant="subtle"
 							:class="$style.addFileButton"
-							:disabled="!chatStore.semanticSearchReadiness.isReady"
+							:disabled="!canUploadFiles"
 							@click="handleClickUploadArea"
 						>
 							Add file

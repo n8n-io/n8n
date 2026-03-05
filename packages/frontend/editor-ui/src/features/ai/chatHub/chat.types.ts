@@ -126,7 +126,7 @@ export interface FetchOptions {
 export type SemanticSearchCredentialIssue = 'unspecified' | 'notFound' | 'notShared';
 
 export interface SemanticSearchReadiness {
-	isReady: boolean;
+	isReadyForCurrentUser: boolean;
 	vectorStoreIssue?: SemanticSearchCredentialIssue;
 	embeddingIssue?: SemanticSearchCredentialIssue;
 }

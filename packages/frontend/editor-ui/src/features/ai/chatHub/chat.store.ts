@@ -1333,7 +1333,9 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	});
 
 	const semanticSearchReadiness = computed<SemanticSearchReadiness>(() => ({
-		isReady: !vectorStoreIssue.value && !embeddingIssue.value,
+		isReadyForCurrentUser:
+			(!vectorStoreIssue.value || vectorStoreIssue.value === 'notShared') &&
+			(!embeddingIssue.value || embeddingIssue.value === 'notShared'),
 		vectorStoreIssue: vectorStoreIssue.value,
 		embeddingIssue: embeddingIssue.value,
 	}));
