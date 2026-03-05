@@ -1,22 +1,14 @@
-import { h, ref } from 'vue';
-import type {
-	CredentialResolver,
-	CredentialResolverAffectedWorkflow,
-	CredentialResolverType,
-} from '@n8n/api-types';
-import {
-	getCredentialResolvers,
-	getCredentialResolverTypes,
-	getCredentialResolverWorkflows,
-	deleteCredentialResolver,
-} from '@n8n/rest-api-client';
+import { ref } from 'vue';
+import type { CredentialResolver, CredentialResolverType } from '@n8n/api-types';
+import { getCredentialResolvers, getCredentialResolverTypes } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
-import { CREDENTIAL_RESOLVER_EDIT_MODAL_KEY, MODAL_CONFIRM } from '@/app/constants';
-import ResolverDeleteConfirmMessage from '@/features/resolvers/components/ResolverDeleteConfirmMessage.vue';
+import {
+	CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
+	CREDENTIAL_RESOLVER_DELETE_MODAL_KEY,
+} from '@/app/constants';
 
 export interface ModalCallbacks {
 	onSave?: (resolverId: string) => void | Promise<void>;
@@ -26,14 +18,12 @@ export interface ModalCallbacks {
 export function useCredentialResolvers() {
 	const rootStore = useRootStore();
 	const uiStore = useUIStore();
-	const message = useMessage();
 	const toast = useToast();
 	const i18n = useI18n();
 
 	const resolvers = ref<CredentialResolver[]>([]);
 	const resolverTypes = ref<CredentialResolverType[]>([]);
 	const isLoading = ref(false);
-	const isDeleting = ref(false);
 
 	const fetchResolvers = async (): Promise<boolean> => {
 		try {
@@ -53,60 +43,6 @@ export function useCredentialResolvers() {
 			resolverTypes.value = await getCredentialResolverTypes(rootStore.restApiContext);
 		} catch (error) {
 			toast.showError(error, i18n.baseText('credentialResolverEdit.error.loadTypes'));
-		}
-	};
-
-	const confirmAndDeleteResolver = async (resolver: CredentialResolver): Promise<boolean> => {
-		let affectedWorkflows: CredentialResolverAffectedWorkflow[] = [];
-		try {
-			affectedWorkflows = await getCredentialResolverWorkflows(
-				rootStore.restApiContext,
-				resolver.id,
-			);
-		} catch (error) {
-			// Fall back to standard confirm dialog if fetching affected workflows fails
-			console.warn('Failed to fetch affected workflows for resolver deletion', error);
-		}
-
-		const confirmMessage =
-			affectedWorkflows.length > 0
-				? h(ResolverDeleteConfirmMessage, {
-						resolverName: resolver.name,
-						affectedWorkflows,
-					})
-				: i18n.baseText('credentialResolverEdit.confirmMessage.deleteResolver.message', {
-						interpolate: { savedResolverName: resolver.name },
-					});
-
-		const deleteConfirmed = await message.confirm(
-			confirmMessage,
-			i18n.baseText('credentialResolverEdit.confirmMessage.deleteResolver.headline'),
-			{
-				confirmButtonText: i18n.baseText(
-					'credentialResolverEdit.confirmMessage.deleteResolver.confirmButtonText',
-				),
-			},
-		);
-
-		if (deleteConfirmed !== MODAL_CONFIRM) {
-			return false;
-		}
-
-		try {
-			isDeleting.value = true;
-			await deleteCredentialResolver(rootStore.restApiContext, resolver.id);
-
-			toast.showMessage({
-				title: i18n.baseText('credentialResolverEdit.deleteSuccess.title'),
-				type: 'success',
-			});
-
-			return true;
-		} catch (error) {
-			toast.showError(error, i18n.baseText('credentialResolverEdit.error.delete'));
-			return false;
-		} finally {
-			isDeleting.value = false;
 		}
 	};
 
@@ -130,20 +66,32 @@ export function useCredentialResolvers() {
 		});
 	};
 
+	const openDeleteModal = (
+		resolver: CredentialResolver,
+		onConfirm?: () => void | Promise<void>,
+	): void => {
+		uiStore.openModalWithData({
+			name: CREDENTIAL_RESOLVER_DELETE_MODAL_KEY,
+			data: {
+				resolver,
+				onConfirm: onConfirm ?? fetchResolvers,
+			},
+		});
+	};
+
 	return {
 		// State
 		resolvers,
 		resolverTypes,
 		isLoading,
-		isDeleting,
 
 		// Actions
 		fetchResolvers,
 		fetchResolverTypes,
-		deleteResolver: confirmAndDeleteResolver,
 
 		// Modal helpers
 		openCreateModal,
 		openEditModal,
+		openDeleteModal,
 	};
 }

@@ -25,9 +25,9 @@ const {
 	isLoading,
 	fetchResolvers,
 	fetchResolverTypes,
-	deleteResolver,
 	openCreateModal,
 	openEditModal,
+	openDeleteModal,
 } = useCredentialResolvers();
 
 // TODO: use actual docs link when available
@@ -69,20 +69,17 @@ function editResolver(resolver: CredentialResolver) {
 	openEditModal(resolver.id);
 }
 
-async function handleDeleteResolver(resolver: CredentialResolver) {
-	const deleted = await deleteResolver(resolver);
-	if (deleted) {
-		void fetchResolvers();
-	}
+function handleDeleteResolver(resolver: CredentialResolver) {
+	openDeleteModal(resolver);
 }
 
-async function onAction(action: string, resolver: CredentialResolver) {
+function onAction(action: string, resolver: CredentialResolver) {
 	switch (action) {
 		case RESOLVER_LIST_ITEM_ACTIONS.EDIT:
 			editResolver(resolver);
 			break;
 		case RESOLVER_LIST_ITEM_ACTIONS.DELETE:
-			await handleDeleteResolver(resolver);
+			handleDeleteResolver(resolver);
 			break;
 	}
 }
