@@ -157,6 +157,10 @@ export class SecretProvidersProjectController {
 		return await this.connectionsService.testConnection(providerKey, req.user.id);
 	}
 
+	/**
+	 * @deprecated There should not be an operation to reload all vault for a given project.
+	 * That operation would be too heavy and could cause performance issues.
+	 */
 	@Post('/:projectId/reload')
 	@ProjectScope('externalSecretsProvider:sync')
 	async reloadConnectionSecrets(
