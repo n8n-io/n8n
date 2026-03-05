@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
+import { LicenseState } from '@n8n/backend-common';
 import type { CredentialsEntity, ICredentialsDb } from '@n8n/db';
 import { CredentialsRepository, SecretsProviderConnectionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -85,6 +86,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 		private readonly secretsProviderConnectionRepository: SecretsProviderConnectionRepository,
+		private readonly licenseState: LicenseState,
 	) {
 		super();
 	}
@@ -385,14 +387,15 @@ export class CredentialsHelper extends ICredentialsHelper {
 			return decryptedDataOriginal;
 		}
 
-		// Add: "is external secrets licensed", maybe some caching based on the current execution id?
-		const accessibleProviderKeys =
-			await this.secretsProviderConnectionRepository.findAllAccessibleProviderKeysByCredentialId(
-				credentialsEntity.id,
+		if (this.licenseState.isExternalSecretsLicensed()) {
+			const accessibleProviderKeys =
+				await this.secretsProviderConnectionRepository.findAllAccessibleProviderKeysByCredentialId(
+					credentialsEntity.id,
+				);
+			additionalData.externalSecretProviderKeysAccessibleByCredential = new Set(
+				accessibleProviderKeys,
 			);
-		additionalData.externalSecretProviderKeysAccessibleByCredential = new Set(
-			accessibleProviderKeys,
-		);
+		}
 
 		return await this.applyDefaultsAndOverwrites(
 			additionalData,

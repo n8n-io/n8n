@@ -1,3 +1,4 @@
+import type { LicenseState } from '@n8n/backend-common';
 import {
 	CredentialsEntity,
 	type SecretsProviderConnectionRepository,
@@ -31,6 +32,7 @@ describe('CredentialsHelper', () => {
 	const mockNodesAndCredentials = mock<LoadNodesAndCredentials>();
 	const credentialsRepository = mock<CredentialsRepository>();
 	const secretsProviderRepository = mock<SecretsProviderConnectionRepository>();
+	const licenseState = mock<LicenseState>();
 	const mockLogger = mock<any>();
 	// Use a real instance of DynamicCredentialsProxy so setResolverProvider works
 	const dynamicCredentialProxy = new DynamicCredentialsProxy(mockLogger);
@@ -45,6 +47,7 @@ describe('CredentialsHelper', () => {
 		credentialsRepository,
 		dynamicCredentialProxy,
 		secretsProviderRepository,
+		licenseState,
 	);
 
 	describe('getCredentials', () => {
@@ -578,9 +581,71 @@ describe('CredentialsHelper', () => {
 		});
 	});
 
-	describe('getDecrypted - credential resolution integration', () => {
-		// TODO: add unit tests for setting providerKeysAccessibleByCredential on additionalData.externalSecrets
+	describe('getDecrypted - externalSecrets license check', () => {
+		const mockAdditionalDataForLicense = mock<IWorkflowExecuteAdditionalData>();
 
+		const nodeCredentials: INodeCredentialsDetails = {
+			id: 'cred-license-test',
+			name: 'License Test Credential',
+		};
+
+		const mockCredentialEntityForLicense = {
+			id: 'cred-license-test',
+			name: 'License Test Credential',
+			type: 'testApi',
+			data: cipher.encrypt({ apiKey: 'test' }),
+			isResolvable: false,
+		} as CredentialsEntity;
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+			credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntityForLicense);
+			secretsProviderRepository.findAllAccessibleProviderKeysByCredentialId.mockResolvedValue([]);
+			mockAdditionalDataForLicense.externalSecretProviderKeysAccessibleByCredential = undefined;
+		});
+
+		test('should set externalSecretProviderKeysAccessibleByCredential on additionalData when externalSecrets is licensed', async () => {
+			licenseState.isExternalSecretsLicensed.mockReturnValue(true);
+			secretsProviderRepository.findAllAccessibleProviderKeysByCredentialId.mockResolvedValue([
+				'secret_key_1',
+				'secret_key_2',
+			]);
+
+			await credentialsHelper.getDecrypted(
+				mockAdditionalDataForLicense,
+				nodeCredentials,
+				'testApi',
+				'manual',
+			);
+
+			expect(
+				secretsProviderRepository.findAllAccessibleProviderKeysByCredentialId,
+			).toHaveBeenCalledWith('cred-license-test');
+			expect(mockAdditionalDataForLicense.externalSecretProviderKeysAccessibleByCredential).toEqual(
+				new Set(['secret_key_1', 'secret_key_2']),
+			);
+		});
+
+		test('should not query secretsProviderRepository or set externalSecretProviderKeysAccessibleByCredential when externalSecrets is not licensed', async () => {
+			licenseState.isExternalSecretsLicensed.mockReturnValue(false);
+
+			await credentialsHelper.getDecrypted(
+				mockAdditionalDataForLicense,
+				nodeCredentials,
+				'testApi',
+				'manual',
+			);
+
+			expect(
+				secretsProviderRepository.findAllAccessibleProviderKeysByCredentialId,
+			).not.toHaveBeenCalled();
+			expect(
+				mockAdditionalDataForLicense.externalSecretProviderKeysAccessibleByCredential,
+			).toBeUndefined();
+		});
+	});
+
+	describe('getDecrypted - credential resolution integration', () => {
 		const mockCredentialResolutionProvider = {
 			resolveIfNeeded: jest.fn(),
 		};
@@ -703,6 +768,7 @@ describe('CredentialsHelper', () => {
 				credentialsRepository,
 				proxyWithoutProvider,
 				secretsProviderRepository,
+				licenseState,
 			);
 
 			const result = await helperWithoutProvider.getDecrypted(
