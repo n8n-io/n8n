@@ -4,8 +4,8 @@ import { Container, Service } from '@n8n/di';
 import { caching } from 'cache-manager';
 import { jsonStringify, UserError } from 'n8n-workflow';
 
-import { MalformedRefreshValueError } from '@/errors/cache-errors/malformed-refresh-value.error';
 import { UncacheableValueError } from '@/errors/cache-errors/uncacheable-value.error';
+import { REDIS_TTL_KEY_MISSING } from '@/services/cache/cache.constants';
 import type {
 	TaggedRedisCache,
 	TaggedMemoryCache,
@@ -102,7 +102,7 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 	async set(key: string, value: unknown, ttl?: number) {
 		if (!this.cache) await this.init();
 
-		if (!key || !value) return;
+		if (!key || value === undefined || value === null) return;
 
 		if (this.cache.kind === 'redis' && !this.cache.store.isCacheable(value)) {
 			throw new UncacheableValueError(key);
@@ -189,7 +189,9 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 
 		const value = await this.cache.store.get<T>(key);
 
-		if (value !== undefined) {
+		const hasValue = value !== undefined;
+		const cacheHit = hasValue && !(await this.isValueAMissingKeyPlaceholder(key, value));
+		if (cacheHit) {
 			this.emit('metrics.cache.hit');
 
 			return value;
@@ -202,52 +204,6 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 
 			const refreshValue = await refreshFn(key);
 			await this.set(key, refreshValue);
-
-			return refreshValue;
-		}
-
-		return fallbackValue;
-	}
-
-	async getMany<T = unknown[]>(
-		keys: string[],
-		{
-			fallbackValue,
-			refreshFn,
-		}: {
-			fallbackValue?: T[];
-			refreshFn?: (keys: string[]) => Promise<T[]>;
-		} = {},
-	) {
-		if (!this.cache) await this.init();
-
-		if (keys.length === 0) return [];
-
-		const values = await this.cache.store.mget(...keys);
-
-		if (values !== undefined) {
-			this.emit('metrics.cache.hit');
-
-			return values as T[];
-		}
-
-		this.emit('metrics.cache.miss');
-
-		if (refreshFn) {
-			this.emit('metrics.cache.update');
-
-			const refreshValue: T[] = await refreshFn(keys);
-
-			if (keys.length !== refreshValue.length) {
-				throw new MalformedRefreshValueError();
-			}
-
-			const newValue: Array<[key: string, value: unknown]> = keys.map((key, i) => [
-				key,
-				refreshValue[i],
-			]);
-
-			await this.setMany(newValue);
 
 			return refreshValue;
 		}
@@ -378,5 +334,22 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		delete hashObject[hashKey];
 
 		await this.cache.store.set(cacheKey, hashObject);
+	}
+
+	/**
+	 * Check if a value is a Redis missing key placeholder.
+	 * After a cache loss (e.g. Redis restart), some adapters may return [] for a missing key.
+	 * @param key - The key to check.
+	 * @param value - The value to check.
+	 * @returns True if the value is a Redis missing key placeholder, false otherwise.
+	 */
+	private async isValueAMissingKeyPlaceholder(key: string, value: unknown): Promise<boolean> {
+		// Memory cache uses `undefined` for misses and [] can be a valid cached value, so this check is only needed for Redis cache.
+		if (this.isRedis() && Array.isArray(value) && value.length === 0) {
+			const ttl = await this.cache.store.ttl(key);
+			return ttl === REDIS_TTL_KEY_MISSING;
+		}
+
+		return false;
 	}
 }

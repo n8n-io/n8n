@@ -284,7 +284,6 @@ describe('GlobalConfig', () => {
 			},
 		},
 		taskRunners: {
-			enabled: true,
 			mode: 'internal',
 			path: '/runners',
 			authToken: '',
@@ -427,9 +426,10 @@ describe('GlobalConfig', () => {
 		},
 		ssrfProtection: {
 			enabled: false,
-			blockedIpRanges: 'default',
+			blockedIpRanges: [...SSRF_DEFAULT_BLOCKED_IP_RANGES],
 			allowedIpRanges: [],
 			allowedHostnames: [],
+			dnsCacheMaxTtlSeconds: 300,
 			dnsCacheMaxSize: 1024 * 1024,
 			resolvedBlockedIpRanges: [...SSRF_DEFAULT_BLOCKED_IP_RANGES],
 		},
@@ -588,7 +588,6 @@ describe('GlobalConfig', () => {
 				),
 			);
 
-			expect(globalConfig.taskRunners.enabled).toEqual(true);
 			expect(globalConfig.database.type).toEqual('postgresdb');
 		});
 

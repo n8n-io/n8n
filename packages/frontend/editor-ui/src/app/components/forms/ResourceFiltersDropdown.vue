@@ -8,7 +8,14 @@ import ProjectSharing from '@/features/collaboration/projects/components/Project
 import type { BaseFilters } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
 
-import { N8nBadge, N8nButton, N8nInputLabel, N8nLink, N8nPopover } from '@n8n/design-system';
+import {
+	N8nBadge,
+	N8nButton,
+	N8nInputLabel,
+	N8nLink,
+	N8nPopover,
+	N8nTooltip,
+} from '@n8n/design-system';
 type IResourceFiltersType = Record<string, boolean | string | string[]>;
 
 const props = withDefaults(
@@ -114,33 +121,38 @@ onBeforeMount(async () => {
 </script>
 
 <template>
-	<N8nPopover width="304px" :content-class="$style['popover-content']">
+	<N8nPopover width="304px" :content-class="$style['popover-content']" align="end">
 		<template #trigger>
-			<N8nButton
-				variant="outline"
-				icon="funnel"
-				size="small"
-				:iconOnly="shouldBeIconButton"
-				:active="hasFilters"
-				:aria-label="i18n.baseText('forms.resourceFiltersDropdown.filters')"
-				:class="{
-					[$style['filter-button']]: true,
-					[$style['no-label']]: justIcon && filtersLength === 0,
-				}"
-				data-test-id="resources-list-filters-trigger"
-			>
-				<N8nBadge
-					v-if="filtersLength > 0"
-					:class="$style['filter-button-count']"
-					data-test-id="resources-list-filters-count"
-					theme="primary"
-				>
-					{{ filtersLength }}
-				</N8nBadge>
-				<span v-if="!justIcon" :class="$style['filter-button-text']">
-					{{ i18n.baseText('forms.resourceFiltersDropdown.filters') }}
-				</span>
-			</N8nButton>
+			<span :class="$style['trigger-wrapper']">
+				<N8nTooltip>
+					<template #content> Filters </template>
+					<N8nButton
+						variant="outline"
+						icon="funnel"
+						size="medium"
+						:iconOnly="shouldBeIconButton"
+						:active="hasFilters"
+						:aria-label="i18n.baseText('forms.resourceFiltersDropdown.filters')"
+						:class="{
+							[$style['filter-button']]: true,
+							[$style['no-label']]: justIcon && filtersLength === 0,
+						}"
+						data-test-id="resources-list-filters-trigger"
+					>
+						<N8nBadge
+							v-if="filtersLength > 0"
+							:class="$style['filter-button-count']"
+							data-test-id="resources-list-filters-count"
+							theme="primary"
+						>
+							{{ filtersLength }}
+						</N8nBadge>
+						<span v-if="!justIcon" :class="$style['filter-button-text']">
+							{{ i18n.baseText('forms.resourceFiltersDropdown.filters') }}
+						</span>
+					</N8nButton>
+				</N8nTooltip>
+			</span>
 		</template>
 		<template #content>
 			<div :class="$style['filters-dropdown']" data-test-id="resources-list-filters-dropdown">
@@ -176,16 +188,6 @@ onBeforeMount(async () => {
 
 <style lang="scss" module>
 .filter-button {
-	height: 30px;
-	align-items: center;
-
-	&.no-label {
-		width: 30px;
-		span + span {
-			margin: 0;
-		}
-	}
-
 	.filter-button-count > span {
 		font-size: var(--font-size--3xs);
 		font-weight: var(--font-weight--semibold);
@@ -211,5 +213,13 @@ onBeforeMount(async () => {
 
 .popover-content {
 	padding: var(--spacing--sm);
+}
+
+.trigger-wrapper {
+	display: inline-flex;
+
+	&[data-state='open'] button {
+		background-color: var(--button--color--background-active);
+	}
 }
 </style>
