@@ -6065,38 +6065,6 @@
 		"type": "node"
 	},
 	{
-		"uuid": "5322bb7d-abe2-4e8b-857e-5f588b523c9d",
-		"key": "n8n-nodes-base.line",
-		"subcategory": "*",
-		"properties": {
-			"displayName": "Line",
-			"defaults": {
-				"name": "Line"
-			},
-			"description": "Consume Line API",
-			"name": "n8n-nodes-base.line",
-			"group": ["input"],
-			"iconUrl": "icons/n8n-nodes-base/dist/nodes/Line/line.png",
-			"outputs": ["main"],
-			"codex": {
-				"categories": ["Communication"],
-				"resources": {
-					"primaryDocumentation": [
-						{
-							"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.line/"
-						}
-					],
-					"credentialDocumentation": [
-						{
-							"url": "https://docs.n8n.io/integrations/builtin/credentials/line/"
-						}
-					]
-				}
-			}
-		},
-		"type": "node"
-	},
-	{
 		"uuid": "47f6ea94-148b-4241-adbf-96668d29e54f",
 		"key": "n8n-nodes-base.linear",
 		"subcategory": "*",
