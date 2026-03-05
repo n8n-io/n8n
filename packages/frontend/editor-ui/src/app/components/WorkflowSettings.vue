@@ -470,7 +470,9 @@ const handleEditResolver = async () => {
 	if (!workflowSettings.value.credentialResolverId) return;
 
 	openEditModal(workflowSettings.value.credentialResolverId, {
-		onSave: loadCredentialResolvers,
+		onSave: async () => {
+			await loadCredentialResolvers();
+		},
 		onDelete: async (deletedResolverId: string) => {
 			await loadCredentialResolvers();
 			if (workflowSettings.value.credentialResolverId === deletedResolverId) {
@@ -667,7 +669,7 @@ onMounted(async () => {
 		];
 		if (isCredentialResolverEnabled.value) {
 			promises.push(
-				loadCredentialResolvers().then((success) => {
+				loadCredentialResolvers().then((success): void => {
 					resolversLoaded = success;
 				}),
 				loadCredentialResolverTypes(),
