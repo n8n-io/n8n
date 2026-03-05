@@ -93,7 +93,7 @@ describe('WorkflowHistoryVersionSelect', () => {
 					{
 						value: 'v-1',
 						label: 'Published Version',
-						status: 'active',
+						status: 'published',
 						createdAt: '2026-02-25T16:19:43.000Z',
 						publishInfo: {
 							publishedBy: 'John Doe',
