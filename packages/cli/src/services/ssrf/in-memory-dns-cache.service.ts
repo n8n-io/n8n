@@ -1,10 +1,11 @@
-import assert from 'node:assert';
 import { SsrfProtectionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import type { MemoryCache } from 'cache-manager';
 import { caching } from 'cache-manager';
 import { jsonStringify } from 'n8n-workflow';
+import assert from 'node:assert';
+import { LookupAddress } from 'node:dns';
 
 /**
  * In-memory DNS cache backed by LRU eviction and per-entry TTL.
@@ -33,22 +34,21 @@ export class InMemoryDnsCache {
 		return this.cache;
 	}
 
-	async get(hostname: string): Promise<string[] | undefined> {
+	async get(hostname: string): Promise<LookupAddress[] | undefined> {
 		const cache = await this.ensureCache();
-		return await cache.get<string[]>(hostname);
+		return await cache.get<LookupAddress[]>(hostname);
 	}
 
 	/**
 	 * @param hostname The hostname to cache
 	 * @param ips Resolved IP addresses
-	 * @param ttl TTL in seconds (will be capped at dnsCacheMaxTtlSeconds)
+	 * @param ttl TTL in seconds
 	 */
-	async set(hostname: string, ips: string[], ttl: number): Promise<void> {
+	async set(hostname: string, ips: LookupAddress[], ttl: number): Promise<void> {
 		assert(ttl > 0, 'DNS cache TTL must be greater than 0');
 
 		const cache = await this.ensureCache();
-		const cappedTtlSeconds = Math.min(ttl, this.ssrfConfig.dnsCacheMaxTtlSeconds);
-		const ttlMs = cappedTtlSeconds * Time.seconds.toMilliseconds;
+		const ttlMs = ttl * Time.seconds.toMilliseconds;
 		await cache.set(hostname, ips, ttlMs);
 	}
 
