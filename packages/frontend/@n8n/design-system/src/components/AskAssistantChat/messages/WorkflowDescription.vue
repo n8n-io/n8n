@@ -64,11 +64,15 @@ function setNodeHighlight(nodeIds: string[], color: string, active: boolean): vo
 	for (const id of nodeIds) {
 		document.querySelectorAll<HTMLElement>(`[data-id="${id}"]`).forEach((el) => {
 			if (active) {
-				el.style.outline = `2px solid ${color}`;
-				el.style.outlineOffset = '3px';
+				el.style.outline = `2px dashed ${color}`;
+				el.style.outlineOffset = '4px';
+				el.style.borderRadius = '8px';
+				el.style.transition = 'outline 0.15s ease';
 			} else {
 				el.style.outline = '';
 				el.style.outlineOffset = '';
+				el.style.borderRadius = '';
+				el.style.transition = '';
 			}
 		});
 	}
@@ -104,5 +108,11 @@ function setNodeHighlight(nodeIds: string[], color: string, active: boolean): vo
 .highlight {
 	border-bottom: 2px dashed var(--highlight--color);
 	cursor: default;
+	display: inline-block;
+	transition: transform 0.15s ease;
+
+	&:hover {
+		transform: translate3d(0, -1px, 4px);
+	}
 }
 </style>

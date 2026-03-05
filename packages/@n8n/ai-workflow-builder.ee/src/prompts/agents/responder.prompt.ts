@@ -128,33 +128,64 @@ Be specific: identify WHICH instruction section caused the issue (e.g., "workflo
 
 This data is critical for improving the system prompts and documentation.`;
 
-const WORKFLOW_DESCRIPTION = `REQUIRED: At the very end of every response, when a workflow exists (has nodes), include a human-readable workflow description section.
+const WORKFLOW_DESCRIPTION = `REQUIRED: At the very end of every response, when an automation exists (has steps), include a natural-language description section.
 
 This description MUST:
-1. Follow the chronological order of the workflow — from trigger to final output nodes
-2. Wrap every portion of text that relates to one or more specific nodes in a <highlight ref=""> tag
-   - The ref attribute must contain a comma-separated list of the exact node ids involved
-   - Example: <highlight ref="25e7ea5e-9140-4696-bfc7-eb98c2474b98,09827f67-266f-4623-bece-04a3bbd17644">The workflow starts by fetching data on a schedule</highlight>
-3. Cover all nodes in the workflow — every node must appear in at least one highlight tag
-4. Be written in plain, human-readable prose (not bullet points, not headers)
+1. Follow the chronological order of execution — from the trigger through to the final action
+2. Wrap every portion of text that relates to one or more specific steps in a <highlight ref=""> tag
+   - The ref attribute must contain a comma-separated list of the exact node IDs involved
+   - Example: <highlight ref="25e7ea5e-9140-4696-bfc7-eb98c2474b98,09827f67-266f-4623-bece-04a3bbd17644">I fetch data from the API on a schedule</highlight>
+3. Cover every step — every node ID must appear in at least one highlight tag
+4. Be written in natural, first-person prose — describe what "I" do, not what a workflow, node, or system does
+
+VOICE AND LANGUAGE RULES:
+- Use first-person: "I check...", "I send...", "I wait until..." — never "the workflow", "the node", "the system"
+- Never use technical terms: forbidden words include "node", "workflow", "trigger", "step", "automation", "integration"
+- Describe the business action, not the tool: "I send an email" not "the Gmail node sends"
+- For conditional branches, say "if ... I do X, otherwise I do Y"
+- For schedules, say "Every day at 9am, I..." or "Whenever a form is submitted, I..."
+
+HIGHLIGHT SCOPE RULES:
+- A highlight must cover only the key action or subject of a step — NOT the whole sentence
+- Pure connective filler ("and then", "after that", "so") stays OUTSIDE the highlight
+- Target length: 2–6 words per highlight (a verb phrase, trigger condition, or specific object)
+- Think of the highlight as a label for the step, not a container for the whole sentence
+
+TRIGGER HIGHLIGHTS — always include the trigger condition inside the highlight:
+- The trigger defines WHEN or HOW something starts — that is core business logic and must be highlighted
+- Schedule triggers: highlight the full timing expression — "every day at 9am", "every Monday at 8am"
+- Webhook/form triggers: highlight the event — "a form is submitted", "a webhook is received"
+- Manual triggers: highlight "manually" or "on demand"
+
+BAD (trigger condition left outside the highlight):
+  Every day at 9am, I <highlight ref="abc">check for new data</highlight>.
+
+GOOD (trigger condition is part of the highlight):
+  <highlight ref="abc">Every day at 9am</highlight>, I <highlight ref="def">fetch data from the API</highlight>.
+
+BAD (whole sentence highlighted):
+  <highlight ref="def">If the result meets the condition, I send a summary email.</highlight>
+
+GOOD (only the key action highlighted, condition text outside):
+  If the result is positive, I <highlight ref="def">send a summary email</highlight>; otherwise I <highlight ref="ghi">post to Slack</highlight>.
 
 Format:
 <workflow-description>
-[Chronological prose description with highlight tags]
+[Chronological first-person prose with tight highlight tags around key actions only]
 </workflow-description>
 
-Example (for a workflow: Schedule Trigger → HTTP Request → IF → Gmail / Slack):
+Example (for: Schedule Trigger → HTTP Request → IF → Gmail / Slack):
 <workflow-description>
-<highlight ref="09827f67-266f-4623-bece-04a3bbd17644">The workflow runs automatically every day at 9am.</highlight> <highlight ref="25e7ea5e-9140-4696-b192-eb98c2474b38">It fetches the latest data from the external API.</highlight> <highlight ref="32a4cd53-9140-4696-bfc7-eb98c2471234">Depending on the result, it takes one of two paths:</highlight> <highlight ref="25e7ea5e-9140-4696-1234-eb98c2474b98">if the condition is met, it sends a summary email,</highlight> <highlight ref="25e7ea5e-1234-4696-5678-eb98c2474b98">otherwise it posts a notification to Slack.</highlight>
+<highlight ref="09827f67-266f-4623-bece-04a3bbd17644">Every day at 9am</highlight>, I <highlight ref="25e7ea5e-9140-4696-b192-eb98c2474b38">fetch the latest data from the external API</highlight>. Depending on the result, I either <highlight ref="25e7ea5e-9140-4696-1234-eb98c2474b98">send a summary email</highlight> or <highlight ref="25e7ea5e-1234-4696-5678-eb98c2474b98">post a notification to Slack</highlight>.
 </workflow-description>
 
 RULES:
 - Always place this at the very end, after all other content
-- If there is no workflow (no nodes), omit the <workflow-description> block entirely
-- Do NOT add a heading like "Workflow Description" — the tags are sufficient
-- Use the exact node IDs (UUIDs) as they appear in the workflow context — never use node names in ref
-- Multiple nodes can share a single highlight when they form a logical unit (e.g., an AI Agent with its Chat Model)
-- Keep each highlight segment short (one phrase or sentence) so the underline is easy to read`;
+- If nothing has been built yet, omit the <workflow-description> block entirely
+- Do NOT add a heading — the tags are sufficient
+- Use the exact node IDs (UUIDs) from the workflow context — never use node names in ref
+- Multiple related steps can share one highlight when they form a logical unit
+- The IF node ref belongs on the condition clause (e.g., "Depending on the result"), not on the outcome actions`;
 
 export interface ResponderPromptOptions {
 	/** Enable introspection tool section in the prompt. */
