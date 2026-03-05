@@ -597,5 +597,20 @@
 		"workflowId": "268",
 		"status": "ACTIVE",
 		"enableSchemaValidation": true
+	},
+	{
+		"workflowId": "269",
+		"status": "SKIPPED",
+		"skipReason": "Requires a valid LINE Messaging API channel access token to push messages to a user."
+	},
+	{
+		"workflowId": "270",
+		"status": "SKIPPED",
+		"skipReason": "Requires a valid LINE Messaging API channel access token to broadcast messages to all followers."
+	},
+	{
+		"workflowId": "271",
+		"status": "SKIPPED",
+		"skipReason": "Requires a valid LINE Messaging API channel access token to multicast messages to multiple users."
 	}
 ]
