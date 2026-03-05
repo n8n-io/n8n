@@ -10,8 +10,7 @@ const http1 = node({
       "options": {}
     },
     "executeOnce": true
-  },
-  metadata: { varName: 'latest' }
+  }
 });
 
 const http2 = node({
@@ -27,8 +26,7 @@ const http2 = node({
     },
     "executeOnce": true
   , credentials: { httpHeaderAuth: { name: 'n8n API', id: '' } }
-},
-  metadata: { varName: 'local' }
+}
 });
 
 const http3 = node({

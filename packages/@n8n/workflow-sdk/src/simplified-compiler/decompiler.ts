@@ -353,16 +353,7 @@ function extractChains(ast: AcornNode): string[][] {
 // ─── Variable Name Recovery ─────────────────────────────────────────────────
 
 function recoverVariableNames(ctx: DecompilerContext): void {
-	// Primary: read metadata.varName (stored by the compiler for round-trip fidelity)
-	for (const [, node] of ctx.nodes) {
-		const varName = node.metadata?.varName as string;
-		const nodeName = node.config.name as string;
-		if (varName && nodeName) {
-			ctx.nodeNameToVar.set(nodeName, varName);
-		}
-	}
-
-	// Fallback: scan Code nodes for $('NodeName') references
+	// Scan Code nodes for $('NodeName') references to recover original variable names
 	for (const [, node] of ctx.nodes) {
 		if (node.nodeType !== 'n8n-nodes-base.code') continue;
 
@@ -372,7 +363,6 @@ function recoverVariableNames(ctx: DecompilerContext): void {
 		const refPattern = /const (\w+) = \$\('([^']+)'\)\.all\(\)\.map\(i => i\.json\)/g;
 		let match: RegExpExecArray | null;
 		while ((match = refPattern.exec(jsCode)) !== null) {
-			// Don't overwrite metadata-based recovery
 			if (!ctx.nodeNameToVar.has(match[2])) {
 				ctx.nodeNameToVar.set(match[2], match[1]);
 			}
@@ -395,13 +385,9 @@ function recoverVariableNames(ctx: DecompilerContext): void {
 
 // ─── Code Node Variable Collection ──────────────────────────────────────────
 
-/** Collect variable names from Code node return statements, assignments, and node metadata.varName */
+/** Collect variable names from Code node return statements and assignments. */
 function collectCodeNodeVars(ctx: DecompilerContext): void {
 	for (const [, node] of ctx.nodes) {
-		// Collect metadata.varName from all nodes (HTTP, AI, workflow, etc.)
-		const varName = node.metadata?.varName as string;
-		if (varName) ctx.codeNodeVars.add(varName);
-
 		// Collect variables from Code node bodies
 		if (node.nodeType !== 'n8n-nodes-base.code') continue;
 		const jsCode = (node.config.parameters?.jsCode as string) ?? '';
@@ -535,8 +521,6 @@ function decompileNodes(varNames: string[], ctx: DecompilerContext, inLoop: bool
 
 		// Handle splitter → for-of loop
 		if (ctx.loopSplitters.has(varName)) {
-			const splitterNode = ctx.nodes.get(varName);
-			if (splitterNode?.metadata?.blankLineBefore) emit(ctx, '');
 			const consumed = emitForOfLoop(varName, varNames, i, ctx);
 			i += consumed;
 			prevWasMultiLine = true;
@@ -1128,10 +1112,6 @@ function emitAiNode(node: ParsedNode, ctx: DecompilerContext): void {
 	const prompt = (params.text as string) ?? '';
 	const subnodes = node.config.subnodes as Record<string, unknown> | undefined;
 
-	// Extract model — use metadata.modelVarRef if the original used a variable reference
-	const modelVarRef = node.metadata?.modelVarRef as string | undefined;
-	const promptVarRef = node.metadata?.promptVarRef as string | undefined;
-
 	let model = 'gpt-4o-mini';
 	if (subnodes?.model) {
 		// biome-ignore lint/suspicious/noExplicitAny: dynamic subnode structure
@@ -1185,8 +1165,8 @@ function emitAiNode(node: ParsedNode, ctx: DecompilerContext): void {
 	const hasOutputParser = !!subnodes?.outputParser;
 	const hasOptions = options.length > 0 || hasOutputParser;
 
-	const modelStr = modelVarRef ?? `'${model}'`;
-	const promptStr = promptVarRef ?? `'${prompt}'`;
+	const modelStr = `'${model}'`;
+	const promptStr = `'${prompt}'`;
 
 	if (!hasOptions) {
 		emit(ctx, `${prefix}ai.chat(${modelStr}, ${promptStr});`);
@@ -1379,11 +1359,6 @@ function emitIfElseNode(node: ParsedNode, ctx: DecompilerContext, isElseIf: bool
 	// Emit true branch
 	if (node.branches?.onTrue) {
 		decompileNodes(node.branches.onTrue, ctx, false);
-	}
-
-	// Guard clause: emit return after true branch content
-	if (node.metadata?.guardClause) {
-		emit(ctx, 'return;');
 	}
 
 	ctx.indent--;

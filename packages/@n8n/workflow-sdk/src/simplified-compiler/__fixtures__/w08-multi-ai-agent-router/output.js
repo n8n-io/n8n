@@ -92,8 +92,7 @@ const ai1 = node({
       })
     },
     executeOnce: true
-  },
-  metadata: { varName: 'aiResponse', modelVarRef: 'model', promptVarRef: 'prompt' }
+  }
 });
 
 const code6 = node({

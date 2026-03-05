@@ -58,6 +58,7 @@ type AcornNode = acorn.Node & {
 	block?: AcornNode;
 	handler?: AcornNode;
 	param?: AcornNode;
+	computed?: boolean;
 	discriminant?: AcornNode;
 	leadingComments?: Array<{ type: string; value: string }>;
 };
@@ -83,8 +84,6 @@ interface IOCall {
 	options?: Record<string, unknown>;
 	model?: string;
 	prompt?: string;
-	modelVarRef?: string; // variable name when model is a variable reference, not a literal
-	promptVarRef?: string; // variable name when prompt is a variable reference, not a literal
 	nodeName: string;
 	// AI-specific subnodes
 	aiTools?: Array<Record<string, unknown>>;
@@ -816,18 +815,9 @@ function processIfStatement(
 		ctx.nodes.push({ ...bn, branchOnly: true });
 	}
 
-	// Detect guard clause: true branch ends with bare return, no false branch
-	const consequent = stmt.consequent as AcornNode;
-	const bodyStmts =
-		consequent.type === 'BlockStatement' && consequent.body ? consequent.body : [consequent];
-	const lastBodyStmt = bodyStmts[bodyStmts.length - 1];
-	const isGuardClause =
-		lastBodyStmt?.type === 'ReturnStatement' && !lastBodyStmt.argument && !stmt.alternate;
-
 	// Emit ifElse node
 	const conditionsParam = buildIfConditionsParam(stmt.test!, ctx);
-	const metaStr = isGuardClause ? ', metadata: { guardClause: true }' : '';
-	let sdkCode = `const ${ifVar} = ifElse({ version: 2.2, config: { name: 'IF ${myIfNum}', parameters: { conditions: ${conditionsParam} }, executeOnce: true }${metaStr} })`;
+	let sdkCode = `const ${ifVar} = ifElse({ version: 2.2, config: { name: 'IF ${myIfNum}', parameters: { conditions: ${conditionsParam} }, executeOnce: true } })`;
 
 	if (trueBranch.chainExpr) {
 		sdkCode += `\n  .onTrue(${trueBranch.chainExpr})`;
@@ -1115,18 +1105,6 @@ function processForOfStatement(
 	const rightNode = (stmt as unknown as { right: AcornNode }).right;
 	const iterableName = rightNode.name ?? '';
 
-	// Check if there was a blank line before this for-of in the original source
-	let blankLineBefore = false;
-	{
-		let pos = stmt.start - 1;
-		let newlineCount = 0;
-		while (pos >= 0 && ' \t\n\r'.includes(ctx.source[pos])) {
-			if (ctx.source[pos] === '\n') newlineCount++;
-			pos--;
-		}
-		blankLineBefore = newlineCount >= 2;
-	}
-
 	// Emit splitter Code node — splits array into individual n8n items
 	ctx.codeCounter++;
 	const splitterVar = `code${ctx.codeCounter}`;
@@ -1141,7 +1119,6 @@ function processForOfStatement(
 	// we output the whole array. If it's a direct variable, output items.map(x => ({ json: x }))
 	const jsCode = `${refLine}return ${iterableName}.map(${loopVar} => ({ json: ${loopVar} }));`;
 
-	const metadataStr = blankLineBefore ? `,\n  metadata: { blankLineBefore: true }` : '';
 	const splitterSdk = `const ${splitterVar} = node({
   type: 'n8n-nodes-base.code', version: 2,
   config: {
@@ -1151,7 +1128,7 @@ function processForOfStatement(
       mode: 'runOnceForAllItems'
     },
     executeOnce: true
-  }${metadataStr}
+  }
 });`;
 
 	ctx.nodes.push({
@@ -1478,10 +1455,6 @@ function extractAiCall(callNode: AcornNode, _source: string): IOCall {
 	const args = callNode.arguments ?? [];
 	const model = args[0] ? extractStringLiteral(args[0]) : undefined;
 	const prompt = args[1] ? extractStringLiteral(args[1]) : undefined;
-	const modelVarRef =
-		!model && args[0]?.type === 'Identifier' ? (args[0].name as string) : undefined;
-	const promptVarRef =
-		!prompt && args[1]?.type === 'Identifier' ? (args[1].name as string) : undefined;
 	const options = args[2] ? extractObjectLiteral(args[2]) : undefined;
 
 	// Parse AI subnodes from options
@@ -1510,8 +1483,6 @@ function extractAiCall(callNode: AcornNode, _source: string): IOCall {
 		assignedVar: null,
 		model,
 		prompt,
-		modelVarRef,
-		promptVarRef,
 		nodeName: nodeName.length > 40 ? nodeName.slice(0, 37) + '...' : nodeName,
 		aiTools,
 		aiOutputParser,
@@ -1968,11 +1939,9 @@ function generateHttpSDK(
 		finalConfig = configStr.slice(0, -1) + credentialsStr + '\n}';
 	}
 
-	const metadataStr = io.assignedVar ? `,\n  metadata: { varName: '${io.assignedVar}' }` : '';
-
 	const sdkCode = `const ${varName} = node({
   type: 'n8n-nodes-base.httpRequest', version: 4.2,
-  config: ${finalConfig}${metadataStr}
+  config: ${finalConfig}
 });`;
 
 	return { varName, sdkCode, kind: 'http', nodeName: io.nodeName };
@@ -2033,12 +2002,6 @@ function generateAiSDK(io: IOCall, varName: string): EmittedNode {
 	const subnodeBlock = subnodeParts.join(',\n');
 	const onErrorStr = io.onError ? `,\n    onError: '${io.onError}'` : '';
 
-	const metaEntries: string[] = [];
-	if (io.assignedVar) metaEntries.push(`varName: '${io.assignedVar}'`);
-	if (io.modelVarRef) metaEntries.push(`modelVarRef: '${io.modelVarRef}'`);
-	if (io.promptVarRef) metaEntries.push(`promptVarRef: '${io.promptVarRef}'`);
-	const metadataStr = metaEntries.length > 0 ? `,\n  metadata: { ${metaEntries.join(', ')} }` : '';
-
 	const sdkCode = `const ${varName} = node({
   type: '@n8n/n8n-nodes-langchain.agent', version: 3.1,
   config: {
@@ -2052,7 +2015,7 @@ function generateAiSDK(io: IOCall, varName: string): EmittedNode {
 ${subnodeBlock}
     },
     executeOnce: true${onErrorStr}
-  }${metadataStr}
+  }
 });`;
 
 	return { varName, sdkCode, kind: 'ai', nodeName: io.nodeName };
@@ -2060,8 +2023,6 @@ ${subnodeBlock}
 
 function generateWorkflowRunSDK(io: IOCall, varName: string): EmittedNode {
 	const wfName = io.workflowName ?? 'Sub-Workflow';
-
-	const metadataStr = io.assignedVar ? `,\n  metadata: { varName: '${io.assignedVar}' }` : '';
 
 	const sdkCode = `const ${varName} = node({
   type: 'n8n-nodes-base.executeWorkflow', version: 1.2,
@@ -2071,7 +2032,7 @@ function generateWorkflowRunSDK(io: IOCall, varName: string): EmittedNode {
       workflowId: { __rl: true, mode: 'name', value: '${wfName}' }
     },
     executeOnce: true
-  }${metadataStr}
+  }
 });`;
 
 	return { varName, sdkCode, kind: 'workflow', nodeName: io.nodeName };

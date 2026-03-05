@@ -27,8 +27,7 @@ const ai1 = node({
       })
     },
     executeOnce: true
-  },
-  metadata: { varName: 'answer' }
+  }
 });
 
 const respond1 = node({

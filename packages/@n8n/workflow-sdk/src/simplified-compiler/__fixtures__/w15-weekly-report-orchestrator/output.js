@@ -8,8 +8,7 @@ const wf1 = node({
       workflowId: { __rl: true, mode: 'name', value: 'Generate Sales Report' }
     },
     executeOnce: true
-  },
-  metadata: { varName: 'salesReport' }
+  }
 });
 
 const wf2 = node({
@@ -20,8 +19,7 @@ const wf2 = node({
       workflowId: { __rl: true, mode: 'name', value: 'Generate Support Report' }
     },
     executeOnce: true
-  },
-  metadata: { varName: 'supportReport' }
+  }
 });
 
 const http1 = node({

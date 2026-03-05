@@ -13,8 +13,7 @@ const http1 = node({
     },
     "executeOnce": true
   , credentials: { oAuth2Api: { name: 'Gmail', id: '' } }
-},
-  metadata: { varName: 'emails' }
+}
 });
 
 const ai2 = node({
@@ -38,8 +37,7 @@ const ai2 = node({
     },
     executeOnce: true,
     onError: 'continueRegularOutput'
-  },
-  metadata: { varName: 'analysis' }
+  }
 });
 
 const http3 = node({

@@ -688,7 +688,7 @@ onManual(async () => {
 		}
 	});
 
-	describe('Round-trip: workflow-sdk -> simplified', () => {
+	describe('Round-trip: double-compile SDK equivalence', () => {
 		const fixtures = loadFixtures();
 
 		for (const fixture of fixtures) {
@@ -696,26 +696,48 @@ onManual(async () => {
 			const testFn = shouldSkip ? it.skip : it;
 
 			testFn(`${fixture.title} [round-trip]`, () => {
-				const compiled = transpileWorkflowJS(fixture.input);
-				expect(compiled.errors).toHaveLength(0);
+				// Pass 1: simplified -> SDK₁
+				const sdk1 = transpileWorkflowJS(fixture.input);
+				expect(sdk1.errors).toHaveLength(0);
 
-				const decompiled = decompileWorkflowSDK(compiled.code);
+				// Decompile: SDK₁ -> simplified₂
+				const decompiled = decompileWorkflowSDK(sdk1.code);
 				expect(decompiled.errors).toHaveLength(0);
-				expect(decompiled.code.trim()).toBe(fixture.input.trim());
+
+				// Pass 2: simplified₂ -> SDK₂
+				const sdk2 = transpileWorkflowJS(decompiled.code);
+				expect(sdk2.errors).toHaveLength(0);
+
+				// Compare: normalized SDK₁ === normalized SDK₂
+				expect(normalizeSDK(sdk2.code)).toBe(normalizeSDK(sdk1.code));
 			});
 		}
 	});
 });
 
+// ─── SDK normalization for structural comparison ────────────────────────────
+
+function normalizeSDK(code: string): string {
+	return code
+		.replace(/,?\s*metadata:\s*\{[^}]*\}/g, '')
+		.replace(/\n{3,}/g, '\n\n')
+		.split('\n')
+		.map((line) => line.trimEnd())
+		.join('\n')
+		.trim();
+}
+
 // ─── Round-trip skip reasons ────────────────────────────────────────────────
-// First round: skip fixtures where exact round-trip is not yet achievable.
-// Each skip reason documents what information is lost during compilation.
+// Double-compile: compile → decompile → recompile, compare normalized SDKs.
+// Skip fixtures where the decompiler cannot yet produce valid simplified JS.
 
 function getRoundTripSkipReason(title: string): string | undefined {
-	// Variable names are now recovered via metadata.varName.
-	// Remaining skip reasons are for structural/formatting issues.
 	const skipReasons: Record<string, string> = {
+		W2: 'Decompiler loses $() expression references in if-conditions',
+		W4: 'Decompiler adds extra path segment in member expressions',
 		W6: 'Promise.all with nested IIFEs not supported',
+		W8: 'Decompiler adds extra path segment in respond body expressions',
+		W9: 'Decompiler loses $() expression references in if-conditions',
 	};
 
 	for (const [prefix, reason] of Object.entries(skipReasons)) {

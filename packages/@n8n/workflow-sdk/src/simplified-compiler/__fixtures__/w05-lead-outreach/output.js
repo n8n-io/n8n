@@ -13,8 +13,7 @@ const http1 = node({
     },
     "executeOnce": true
   , credentials: { oAuth2Api: { name: 'Google Sheets', id: '' } }
-},
-  metadata: { varName: 'leads' }
+}
 });
 
 const code1 = node({
@@ -41,8 +40,7 @@ return newLeads.map(lead => ({ json: lead }));`,
       mode: 'runOnceForAllItems'
     },
     executeOnce: true
-  },
-  metadata: { blankLineBefore: true }
+  }
 });
 
 const http2 = node({

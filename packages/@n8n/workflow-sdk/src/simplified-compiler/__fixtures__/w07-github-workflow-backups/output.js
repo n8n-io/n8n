@@ -45,8 +45,7 @@ const http2 = node({
     },
     "executeOnce": true
   , credentials: { httpHeaderAuth: { name: 'n8n API', id: '' } }
-},
-  metadata: { varName: 'workflows' }
+}
 });
 
 const code2 = node({
@@ -73,8 +72,7 @@ return recent.map(wf => ({ json: wf }));`,
       mode: 'runOnceForAllItems'
     },
     executeOnce: true
-  },
-  metadata: { blankLineBefore: true }
+  }
 });
 
 const code4 = node({

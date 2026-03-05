@@ -39,8 +39,7 @@ const http2 = node({
       "options": {}
     },
     "executeOnce": true
-  },
-  metadata: { varName: 'file' }
+  }
 });
 
 const http3 = node({
@@ -60,8 +59,7 @@ const http3 = node({
     },
     "executeOnce": true
   , credentials: { httpHeaderAuth: { name: 'OpenAI API', id: '' } }
-},
-  metadata: { varName: 'transcription' }
+}
 });
 
 const http4 = node({

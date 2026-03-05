@@ -10,8 +10,7 @@ const http1 = node({
       "options": {}
     },
     "executeOnce": true
-  },
-  metadata: { varName: 'tickers' }
+  }
 });
 
 const code1 = node({
