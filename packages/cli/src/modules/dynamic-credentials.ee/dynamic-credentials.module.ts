@@ -48,6 +48,14 @@ export class DynamicCredentialsModule implements ModuleInterface {
 		return [DynamicCredentialResolver, DynamicCredentialEntry, DynamicCredentialUserEntry];
 	}
 
+	async context() {
+		if (!isFeatureFlagEnabled()) {
+			return {};
+		}
+		const { CredentialGateProxyService } = await import('./services/credential-gate-proxy.service');
+		return { credentialGateProxy: Container.get(CredentialGateProxyService) };
+	}
+
 	@OnShutdown()
 	async shutdown() {}
 }
