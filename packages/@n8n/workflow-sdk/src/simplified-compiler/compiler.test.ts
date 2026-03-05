@@ -3,6 +3,9 @@ import { join } from 'path';
 import { transpileWorkflowJS } from './compiler';
 import { decompileWorkflowSDK } from './decompiler';
 import { generateReport } from './generate-report';
+import { parseWorkflowCodeToBuilder } from '../codegen/parse-workflow-code';
+import { validateWorkflow } from '../validation';
+import { setupTestSchemas, teardownTestSchemas } from '../validation/test-schema-setup';
 
 // ─── Fixture helpers ────────────────────────────────────────────────────────
 
@@ -968,3 +971,51 @@ function normalizeSDK(code: string): string {
 function getRoundTripSkipReason(_title: string): string | undefined {
 	return undefined;
 }
+
+// ─── Schema validation: compiled SDK matches node parameter schemas ──────────
+
+// Known schema violations in existing fixtures (to be fixed separately).
+// Each entry maps fixture title substring to the reason.
+const KNOWN_SCHEMA_VIOLATIONS: Record<string, string> = {
+	'W6: Meeting notes': 'outputParser subnode without hasOutputParser=true',
+	'W9: Invoice detection': 'outputParser subnode without hasOutputParser=true',
+	'W3: UltraVox': 'respond node: responseCode/responseHeaders misplaced (should be under options)',
+	'W8: Multi-AI': 'respond + IF conditions.options misplaced',
+	'W14: Content moderation': 'respond node: responseCode misplaced',
+	'W16: AI support': 'respond node: responseCode misplaced',
+	'W4: Telegram': 'IF conditions.options misplaced',
+	'W11: Crypto': 'IF conditions.options misplaced',
+	'W23: Try/catch': 'IF conditions.options misplaced',
+};
+
+function getKnownSchemaSkip(title: string): string | undefined {
+	for (const [key, reason] of Object.entries(KNOWN_SCHEMA_VIOLATIONS)) {
+		if (title.includes(key)) return `Known schema issue: ${reason}`;
+	}
+	return undefined;
+}
+
+describe('Schema validation: compiled SDK matches node schemas', () => {
+	beforeAll(setupTestSchemas, 120_000);
+	afterAll(teardownTestSchemas);
+
+	const fixtures = loadFixtures();
+
+	for (const fixture of fixtures) {
+		const knownSkip = getKnownSchemaSkip(fixture.title);
+		const shouldSkip = fixture.skip ?? knownSkip;
+		const testFn = shouldSkip ? it.skip : it;
+
+		testFn(`${fixture.title} [schema]`, () => {
+			const sdk = transpileWorkflowJS(fixture.input);
+			expect(sdk.errors).toHaveLength(0);
+
+			const builder = parseWorkflowCodeToBuilder(sdk.code);
+			const json = builder.toJSON();
+			const result = validateWorkflow(json, { strictSchema: true });
+
+			const schemaWarnings = result.warnings.filter((w) => w.code === 'INVALID_PARAMETER');
+			expect(schemaWarnings).toEqual([]);
+		});
+	}
+});
