@@ -172,9 +172,15 @@ const handleCopy = async (value: string) => {
 	button {
 		border: none;
 		border-radius: 0;
+		box-shadow: none;
 
 		&:hover {
 			border-color: inherit;
+			box-shadow: none;
+		}
+
+		&:active {
+			box-shadow: none;
 		}
 	}
 
