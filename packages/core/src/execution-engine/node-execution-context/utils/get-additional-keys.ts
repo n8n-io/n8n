@@ -17,13 +17,9 @@ import {
 import { getSecretsProxy } from './get-secrets-proxy';
 
 function appendResumeToken(url: string, token: string): string {
-	try {
-		const urlObj = new URL(url);
-		urlObj.searchParams.set(WAITING_TOKEN_QUERY_PARAM, token);
-		return urlObj.toString();
-	} catch {
-		return url;
-	}
+	const urlObj = new URL(url);
+	urlObj.searchParams.set(WAITING_TOKEN_QUERY_PARAM, token);
+	return urlObj.toString();
 }
 
 /** Returns the additional keys for Expressions and Function-Nodes */

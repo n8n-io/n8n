@@ -3,15 +3,20 @@ import type express from 'express';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import { getWebhookSandboxCSP, WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
-import { FORM_NODE_TYPE, WAITING_FORMS_EXECUTION_STATUS, type Workflow } from 'n8n-workflow';
+import {
+	FORM_NODE_TYPE,
+	WAITING_FORMS_EXECUTION_STATUS,
+	type IWorkflowBase,
+	type Workflow,
+} from 'n8n-workflow';
 
 import type { WaitingWebhookRequest } from '../webhook.types';
 
 import { WaitingForms } from '@/webhooks/waiting-forms';
 
 class TestWaitingForms extends WaitingForms {
-	exposeGetWorkflow(execution: IExecutionResponse): Workflow {
-		return this.getWorkflow(execution);
+	exposeCreateWorkflow(workflowData: IWorkflowBase): Workflow {
+		return this.createWorkflow(workflowData);
 	}
 
 	exposeValidateToken(
@@ -379,7 +384,7 @@ describe('WaitingForms', () => {
 				},
 			});
 
-			const workflow = waitingForms.exposeGetWorkflow(execution);
+			const workflow = waitingForms.exposeCreateWorkflow(execution.workflowData);
 
 			expect(workflow.active).toBe(true);
 		});
@@ -401,7 +406,7 @@ describe('WaitingForms', () => {
 				},
 			});
 
-			const workflow = waitingForms.exposeGetWorkflow(execution);
+			const workflow = waitingForms.exposeCreateWorkflow(execution.workflowData);
 
 			expect(workflow.active).toBe(false);
 		});
@@ -423,7 +428,7 @@ describe('WaitingForms', () => {
 				},
 			});
 
-			const workflow = waitingForms.exposeGetWorkflow(execution);
+			const workflow = waitingForms.exposeCreateWorkflow(execution.workflowData);
 
 			expect(workflow.active).toBe(true);
 		});
@@ -445,7 +450,7 @@ describe('WaitingForms', () => {
 				},
 			});
 
-			const workflow = waitingForms.exposeGetWorkflow(execution);
+			const workflow = waitingForms.exposeCreateWorkflow(execution.workflowData);
 
 			expect(workflow.active).toBe(false);
 		});
