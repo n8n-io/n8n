@@ -16,9 +16,20 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'schedule' && github.repository == 'n8n-io/n8n')
     runs-on: ubuntu-latest
+    outputs:
+      pull-request-number: ${{ steps.create-pr.outputs.pull-request-number }}
     steps:
+      - name: Generate GitHub App Token
+        id: generate-token
+        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          token: ${{ steps.generate-token.outputs.token }}
 
       - name: Setup Node.js and Dependencies
         uses: ./.github/actions/setup-nodejs
@@ -48,9 +59,10 @@ jobs:
 
       - name: Create Pull Request
         if: steps.check-changes.outputs.has_changes == 'true'
+        id: create-pr
         uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e # v7.0.8
         with:
-          branch-token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ steps.generate-token.outputs.token }}
           commit-message: 'chore: Update node popularity data'
           title: 'chore: Update node popularity data'
           body: |
@@ -62,6 +74,16 @@ jobs:
           branch: update-node-popularity
           base: master
           delete-branch: true
-          reviewers: Matsuuu
           author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
           committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+
+  approve-and-automerge:
+    needs: [update-popularity]
+    if: |
+      needs.update-popularity.outputs.pull-request-number != '' &&
+      (github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'schedule' && github.repository == 'n8n-io/n8n'))
+    uses: ./.github/workflows/util-approve-and-set-automerge.yml
+    secrets: inherit
+    with:
+      pull-request-number: ${{ needs.update-popularity.outputs.pull-request-number }}

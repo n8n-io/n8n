@@ -10,7 +10,10 @@ import { useWorkflowDocumentPinData } from './workflowDocument/useWorkflowDocume
 import { useWorkflowDocumentScopes } from './workflowDocument/useWorkflowDocumentScopes';
 import { useWorkflowDocumentSettings } from './workflowDocument/useWorkflowDocumentSettings';
 import { useWorkflowDocumentTags } from './workflowDocument/useWorkflowDocumentTags';
+import { useWorkflowDocumentIsArchived } from './workflowDocument/useWorkflowDocumentIsArchived';
 import { useWorkflowDocumentTimestamps } from './workflowDocument/useWorkflowDocumentTimestamps';
+import { useWorkflowDocumentParentFolder } from './workflowDocument/useWorkflowDocumentParentFolder';
+import { useWorkflowDocumentUsedCredentials } from './workflowDocument/useWorkflowDocumentUsedCredentials';
 
 export {
 	getPinDataSize,
@@ -57,10 +60,13 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		const workflowDocumentChecksum = useWorkflowDocumentChecksum();
 		const workflowDocumentMeta = useWorkflowDocumentMeta();
 		const workflowDocumentTags = useWorkflowDocumentTags();
+		const workflowDocumentIsArchived = useWorkflowDocumentIsArchived();
 		const workflowDocumentPinData = useWorkflowDocumentPinData();
 		const workflowDocumentScopes = useWorkflowDocumentScopes();
 		const workflowDocumentTimestamps = useWorkflowDocumentTimestamps();
 		const workflowDocumentSettings = useWorkflowDocumentSettings();
+		const workflowDocumentParentFolder = useWorkflowDocumentParentFolder();
+		const workflowDocumentUsedCredentials = useWorkflowDocumentUsedCredentials();
 
 		return {
 			workflowId,
@@ -68,12 +74,15 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentActive,
 			...workflowDocumentHomeProject,
 			...workflowDocumentChecksum,
+			...workflowDocumentIsArchived,
 			...workflowDocumentMeta,
 			...workflowDocumentSettings,
 			...workflowDocumentTags,
 			...workflowDocumentPinData,
 			...workflowDocumentScopes,
 			...workflowDocumentTimestamps,
+			...workflowDocumentParentFolder,
+			...workflowDocumentUsedCredentials,
 		};
 	})();
 }

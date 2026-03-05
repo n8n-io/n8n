@@ -970,7 +970,6 @@ export function useWorkflowHelpers() {
 	async function initState(workflowData: IWorkflowDb, overrideWorkflowState?: WorkflowState) {
 		const ws = overrideWorkflowState ?? workflowState;
 		workflowsListStore.addWorkflow(workflowData);
-		workflowsStore.setIsArchived(workflowData.isArchived);
 		workflowsStore.setDescription(workflowData.description);
 		ws.setWorkflowId(workflowData.id);
 		ws.setWorkflowName({
@@ -1005,10 +1004,6 @@ export function useWorkflowHelpers() {
 			}
 		}
 
-		if (workflowData.usedCredentials) {
-			workflowsStore.setUsedCredentials(workflowData.usedCredentials);
-		}
-
 		if (workflowData.sharedWithProjects) {
 			workflowsEEStore.setWorkflowSharedWith({
 				workflowId: workflowData.id,
@@ -1041,7 +1036,10 @@ export function useWorkflowHelpers() {
 		if (workflowData.checksum) {
 			workflowDocumentStore.setChecksum(workflowData.checksum);
 		}
+		workflowDocumentStore.setIsArchived(workflowData.isArchived);
+		workflowDocumentStore.setUsedCredentials(workflowData.usedCredentials ?? []);
 		workflowDocumentStore.setMeta(workflowData.meta);
+		workflowDocumentStore.setParentFolder(workflowData.parentFolder ?? null);
 		workflowDocumentStore.setScopes(workflowData.scopes ?? []);
 		tagsStore.upsertTags(tags);
 

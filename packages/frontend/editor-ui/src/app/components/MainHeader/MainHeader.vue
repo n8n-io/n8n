@@ -75,6 +75,7 @@ const workflow = computed(() => workflowsStore.workflow);
 const workflowId = injectStrict(WorkflowIdKey);
 const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
 const workflowTags = computed(() => workflowDocumentStore?.value?.tags ?? []);
+const workflowIsArchived = computed(() => workflowDocumentStore?.value?.isArchived ?? false);
 const onWorkflowPage = computed(() => !!(route.meta.nodeView || route.meta.keepWorkflowAlive));
 
 const isEnterprise = computed(
@@ -92,13 +93,12 @@ const showGitHubButton = computed(
 );
 
 const parentFolderForBreadcrumbs = computed<FolderShortInfo | undefined>(() => {
-	if (!workflow.value.parentFolder) {
-		return undefined;
-	}
+	const folder = workflowDocumentStore?.value?.parentFolder;
+	if (!folder) return undefined;
 	return {
-		id: workflow.value.parentFolder.id,
-		name: workflow.value.parentFolder.name,
-		parentFolder: workflow.value.parentFolder.parentFolderId ?? undefined,
+		id: folder.id,
+		name: folder.name,
+		parentFolder: folder.parentFolderId ?? undefined,
 	};
 });
 
@@ -289,7 +289,7 @@ async function onWorkflowDeactivated() {
 					:tags="workflowTags"
 					:name="workflow.name"
 					:current-folder="parentFolderForBreadcrumbs"
-					:is-archived="workflow.isArchived"
+					:is-archived="workflowIsArchived"
 					:description="workflow.description"
 					@workflow:deactivated="onWorkflowDeactivated"
 				/>

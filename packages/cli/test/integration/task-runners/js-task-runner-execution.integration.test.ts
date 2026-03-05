@@ -31,7 +31,6 @@ jest.spyOn(PyTaskRunnerProcess, 'checkRequirements').mockResolvedValue('python')
 describe('JS TaskRunner execution on internal mode', () => {
 	const runnerConfig = Container.get(TaskRunnersConfig);
 	runnerConfig.mode = 'internal';
-	runnerConfig.enabled = true;
 	runnerConfig.port = 45678;
 
 	const taskRunnerModule = Container.get(TaskRunnerModule);
