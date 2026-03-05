@@ -596,6 +596,9 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 				color="text-dark"
 				data-test-id="credentials-label"
 			>
+				<template v-if="$slots['label-postfix']" #options>
+					<slot name="label-postfix" />
+				</template>
 				<div v-if="readonly">
 					<N8nInput
 						:model-value="getSelectedName(type.name)"

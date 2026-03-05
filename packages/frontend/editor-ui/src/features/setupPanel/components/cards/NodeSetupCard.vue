@@ -12,8 +12,8 @@ import type { NodeSetupState } from '@/features/setupPanel/setupPanel.types';
 import type { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useCardNodeHighlight } from '@/features/setupPanel/composables/useCardNodeHighlight';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import SetupCard from '@/features/setupPanel/components/cards/SetupCard.vue';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
@@ -183,10 +183,15 @@ const onValueChanged = (parameterData: IUpdateInformation) => {
 	nodeHelpers.updateNodesParameterIssues();
 };
 
-const { onSharedNodesHintEnter, onSharedNodesHintLeave } = useCardNodeHighlight(
-	computed(() => props.state.node.id),
-	computed(() => (props.state.allNodesUsingCredential ?? []).map((n) => n.id)),
-);
+const setupPanelStore = useSetupPanelStore();
+
+const onSharedNodesHintEnter = () => {
+	setupPanelStore.setHighlightedNodes((props.state.allNodesUsingCredential ?? []).map((n) => n.id));
+};
+
+const onSharedNodesHintLeave = () => {
+	setupPanelStore.setHighlightedNodes([props.state.node.id]);
+};
 
 const allParametersAddressed = ref(
 	// When template parameters exist but there are no current issues,
@@ -263,29 +268,32 @@ const cardComplete = computed(() => {
 		</template>
 		<div v-if="!isTriggerOnly" :class="$style.content">
 			<div v-if="state.showCredentialPicker" :class="$style['credential-container']">
-				<N8nTooltip v-if="nodeNames.length > 1" placement="top">
-					<template #content>
-						{{ nodeNamesTooltip }}
-					</template>
-					<span
-						data-test-id="node-setup-card-nodes-hint"
-						:class="$style['nodes-hint']"
-						@mouseenter="onSharedNodesHintEnter"
-						@mouseleave="onSharedNodesHintLeave"
-					>
-						{{
-							i18n.baseText('setupPanel.usedInNodes', {
-								interpolate: { count: String(nodeNames.length) },
-							})
-						}}
-					</span>
-				</N8nTooltip>
 				<NodeCredentials
 					:node="state.node"
 					:override-cred-type="state.credentialType ?? ''"
 					hide-issues
 					@credential-selected="onCredentialSelected"
-				/>
+				>
+					<template v-if="nodeNames.length > 1" #label-postfix>
+						<N8nTooltip placement="top">
+							<template #content>
+								{{ nodeNamesTooltip }}
+							</template>
+							<span
+								data-test-id="node-setup-card-nodes-hint"
+								:class="$style['nodes-hint']"
+								@mouseenter="onSharedNodesHintEnter"
+								@mouseleave="onSharedNodesHintLeave"
+							>
+								{{
+									i18n.baseText('setupPanel.usedInNodes', {
+										interpolate: { count: String(nodeNames.length) },
+									})
+								}}
+							</span>
+						</N8nTooltip>
+					</template>
+				</NodeCredentials>
 			</div>
 
 			<ParameterInputList
@@ -320,10 +328,5 @@ const cardComplete = computed(() => {
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--tint-1);
 	cursor: default;
-	display: none;
-
-	.credential-container:hover & {
-		display: flex;
-	}
 }
 </style>

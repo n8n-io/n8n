@@ -367,18 +367,21 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	});
 
 	/**
-	 * Trigger states — one entry per trigger node that is NOT covered by a credential card.
-	 * Triggers with credentials are embedded into the credential card instead.
+	 * Trigger states — one entry per trigger node that is NOT already covered
+	 * by a credential card (credentialTypeStates) or a node card (nodeStates).
 	 */
 	const triggerStates = computed(() => {
 		// Only the first trigger can get a standalone trigger card.
-		// Check if it's already embedded in a credential card.
 		if (!firstTriggerName.value) return [];
 
-		const isFirstTriggerEmbedded = credentialTypeStates.value.some((credState) =>
+		// Check if it's already covered by a credential-type card or a node card.
+		const isInCredentialCards = credentialTypeStates.value.some((credState) =>
 			credState.nodes.some((node) => isTriggerNode(node) && node.name === firstTriggerName.value),
 		);
-		if (isFirstTriggerEmbedded) return [];
+		const isInNodeCards = nodeStates.value.some(
+			(state) => state.node.name === firstTriggerName.value,
+		);
+		if (isInCredentialCards || isInNodeCards) return [];
 
 		return nodesRequiringSetup.value
 			.filter(({ isTrigger, node }) => isTrigger && node.name === firstTriggerName.value)

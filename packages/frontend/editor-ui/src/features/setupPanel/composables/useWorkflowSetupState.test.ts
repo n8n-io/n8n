@@ -261,8 +261,8 @@ describe('useWorkflowSetupState', () => {
 
 		it('should produce only trigger card for trigger without credentials', () => {
 			const triggerNode = createNode({
-				name: 'ManualTrigger',
-				type: 'n8n-nodes-base.manualTrigger',
+				name: 'ScheduleTrigger',
+				type: 'n8n-nodes-base.scheduleTrigger',
 			});
 			workflowsStore.allNodes = [triggerNode];
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
@@ -277,8 +277,8 @@ describe('useWorkflowSetupState', () => {
 		it('should sort cards by primary node execution order, interleaving credential and trigger cards', () => {
 			// Trigger comes before regular node in execution order
 			const triggerNode = createNode({
-				name: 'ManualTrigger',
-				type: 'n8n-nodes-base.manualTrigger',
+				name: 'ScheduleTrigger',
+				type: 'n8n-nodes-base.scheduleTrigger',
 				position: [0, 0],
 			});
 			const regularNode = createNode({
@@ -288,7 +288,7 @@ describe('useWorkflowSetupState', () => {
 			});
 			workflowsStore.allNodes = [triggerNode, regularNode];
 			nodeTypesStore.isTriggerNode = vi.fn(
-				(type: string) => type === 'n8n-nodes-base.manualTrigger',
+				(type: string) => type === 'n8n-nodes-base.scheduleTrigger',
 			);
 			mockGetNodeTypeDisplayableCredentials.mockImplementation((_store, node) => {
 				if ((node as INodeUi).name === 'Regular') return [{ name: 'testApi' }];
@@ -299,13 +299,13 @@ describe('useWorkflowSetupState', () => {
 			});
 			workflowsStore.getNodeByName = vi.fn((name: string) => {
 				if (name === 'Regular') return regularNode;
-				if (name === 'ManualTrigger') return triggerNode;
+				if (name === 'ScheduleTrigger') return triggerNode;
 				return null;
 			});
 
 			const { setupCards } = useWorkflowSetupState();
 
-			// Trigger card first (ManualTrigger at index 0 in execution order),
+			// Trigger card first (ScheduleTrigger at index 0 in execution order),
 			// then credential card (Regular at index 1)
 			expect(setupCards.value).toHaveLength(2);
 			expect(setupCards.value[0].state.isTrigger).toBe(true);
@@ -506,8 +506,8 @@ describe('useWorkflowSetupState', () => {
 	describe('triggerStates', () => {
 		it('should mark trigger without credentials as complete after execution', () => {
 			const triggerNode = createNode({
-				name: 'ManualTrigger',
-				type: 'n8n-nodes-base.manualTrigger',
+				name: 'ScheduleTrigger',
+				type: 'n8n-nodes-base.scheduleTrigger',
 			});
 			workflowsStore.allNodes = [triggerNode];
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
@@ -540,8 +540,8 @@ describe('useWorkflowSetupState', () => {
 
 		it('should mark trigger without credentials and no execution as incomplete', () => {
 			const triggerNode = createNode({
-				name: 'ManualTrigger',
-				type: 'n8n-nodes-base.manualTrigger',
+				name: 'ScheduleTrigger',
+				type: 'n8n-nodes-base.scheduleTrigger',
 			});
 			workflowsStore.allNodes = [triggerNode];
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
@@ -1066,8 +1066,8 @@ describe('useWorkflowSetupState', () => {
 
 		it('should return total number of setup cards', () => {
 			const triggerNode = createNode({
-				name: 'ManualTrigger',
-				type: 'n8n-nodes-base.manualTrigger',
+				name: 'ScheduleTrigger',
+				type: 'n8n-nodes-base.scheduleTrigger',
 				position: [0, 0],
 			});
 			const regularNode = createNode({
@@ -1077,7 +1077,7 @@ describe('useWorkflowSetupState', () => {
 			});
 			workflowsStore.allNodes = [triggerNode, regularNode];
 			nodeTypesStore.isTriggerNode = vi.fn(
-				(type: string) => type === 'n8n-nodes-base.manualTrigger',
+				(type: string) => type === 'n8n-nodes-base.scheduleTrigger',
 			);
 			mockGetNodeTypeDisplayableCredentials.mockImplementation((_store, node) => {
 				if ((node as INodeUi).name === 'Regular') return [{ name: 'testApi' }];
@@ -1087,7 +1087,7 @@ describe('useWorkflowSetupState', () => {
 				displayName: 'Test',
 			});
 			workflowsStore.getNodeByName = vi.fn((name: string) => {
-				if (name === 'ManualTrigger') return triggerNode;
+				if (name === 'ScheduleTrigger') return triggerNode;
 				if (name === 'Regular') return regularNode;
 				return null;
 			});

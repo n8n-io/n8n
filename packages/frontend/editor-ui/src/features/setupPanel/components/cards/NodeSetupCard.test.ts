@@ -9,15 +9,40 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import type { INodeUi } from '@/Interface';
 
-vi.mock('@/features/credentials/components/CredentialPicker/CredentialPicker.vue', () => ({
+vi.mock('@/features/credentials/components/NodeCredentials.vue', () => ({
 	default: {
 		template:
-			'<div data-test-id="credential-picker">' +
-			'<button data-test-id="select-btn" @click="$emit(\'credentialSelected\', \'cred-456\')">Select</button>' +
-			'<button data-test-id="deselect-btn" @click="$emit(\'credentialDeselected\')">Deselect</button>' +
+			'<div data-test-id="node-credentials">' +
+			'<slot name="label-postfix" />' +
+			'<button data-test-id="select-btn" @click="onSelect">Select</button>' +
+			'<button data-test-id="deselect-btn" @click="onDeselect">Deselect</button>' +
 			'</div>',
-		props: ['appName', 'credentialType', 'selectedCredentialId', 'createButtonVariant'],
-		emits: ['credentialSelected', 'credentialDeselected'],
+		props: ['node', 'overrideCredType', 'readonly', 'showAll', 'hideIssues'],
+		emits: ['credentialSelected'],
+		setup(
+			props: {
+				node: { name: string; credentials?: Record<string, unknown> };
+				overrideCredType: string;
+			},
+			{ emit }: { emit: (event: string, payload: unknown) => void },
+		) {
+			return {
+				onSelect: () =>
+					emit('credentialSelected', {
+						name: props.node.name,
+						properties: {
+							credentials: {
+								[props.overrideCredType]: { id: 'cred-456', name: 'Test Credential' },
+							},
+						},
+					}),
+				onDeselect: () =>
+					emit('credentialSelected', {
+						name: props.node.name,
+						properties: { credentials: {} },
+					}),
+			};
+		},
 	},
 }));
 
@@ -178,7 +203,7 @@ describe('NodeSetupCard', () => {
 					props: { state: createCredentialState({ showCredentialPicker: true }), expanded: true },
 				});
 
-				expect(getByTestId('credential-picker')).toBeInTheDocument();
+				expect(getByTestId('node-credentials')).toBeInTheDocument();
 			});
 
 			it('should not render credential picker when showCredentialPicker is false', () => {
@@ -186,7 +211,7 @@ describe('NodeSetupCard', () => {
 					props: { state: createCredentialState({ showCredentialPicker: false }), expanded: true },
 				});
 
-				expect(queryByTestId('credential-picker')).not.toBeInTheDocument();
+				expect(queryByTestId('node-credentials')).not.toBeInTheDocument();
 			});
 
 			it('should not render content when collapsed', () => {
@@ -194,15 +219,15 @@ describe('NodeSetupCard', () => {
 					props: { state: createCredentialState(), expanded: false },
 				});
 
-				expect(queryByTestId('credential-picker')).not.toBeInTheDocument();
+				expect(queryByTestId('node-credentials')).not.toBeInTheDocument();
 			});
 
-			it('should render credential label when showCredentialPicker is true', () => {
+			it('should render credential section when showCredentialPicker is true', () => {
 				const { getByTestId } = renderComponent({
 					props: { state: createCredentialState({ showCredentialPicker: true }), expanded: true },
 				});
 
-				expect(getByTestId('node-setup-card-label')).toBeInTheDocument();
+				expect(getByTestId('node-credentials')).toBeInTheDocument();
 			});
 
 			it('should show nodes hint when credential is used by multiple nodes', () => {
@@ -690,7 +715,7 @@ describe('NodeSetupCard', () => {
 					},
 				});
 
-				expect(queryByTestId('credential-picker')).not.toBeInTheDocument();
+				expect(queryByTestId('node-credentials')).not.toBeInTheDocument();
 			});
 
 			it('should render execute button for parameter-only nodes', () => {
