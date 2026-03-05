@@ -1,7 +1,6 @@
-// --- Sub-workflow: checkBlurays ---
-const fn_checkBlurays_t0 = trigger({ type: 'n8n-nodes-base.executeWorkflowTrigger', version: 1.1, config: { parameters: { inputSource: 'passthrough' } } });
+const t0 = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
 
-const fn_checkBlurays_code1 = node({
+const code1 = node({
   type: 'n8n-nodes-base.code', version: 2,
   config: {
     name: 'Code 1',
@@ -19,7 +18,7 @@ const formattedDate = today.toLocaleDateString('en-US', {
   }
 });
 
-const fn_checkBlurays_http1 = node({
+const http1 = node({
   type: 'n8n-nodes-base.httpRequest', version: 4.2,
   config: {
     "name": "GET www.blu-ray.com/movies/movies.php",
@@ -32,7 +31,7 @@ const fn_checkBlurays_http1 = node({
   }
 });
 
-const fn_checkBlurays_code2 = node({
+const code2 = node({
   type: 'n8n-nodes-base.code', version: 2,
   config: {
     name: 'Code 2',
@@ -52,7 +51,7 @@ for (const item of todaysItems) {
   }
 });
 
-const fn_checkBlurays_http2 = node({
+const http2 = node({
   type: 'n8n-nodes-base.httpRequest', version: 4.2,
   config: {
     "name": "POST discord.com/api/webhooks/WEBHOOK...",
@@ -69,40 +68,8 @@ const fn_checkBlurays_http2 = node({
   }
 });
 
-const checkBluraysWorkflow = workflow('checkBlurays', 'checkBlurays')
-  .add(fn_checkBlurays_t0.to(fn_checkBlurays_code1).to(fn_checkBlurays_http1).to(fn_checkBlurays_code2).to(fn_checkBlurays_http2));
-
-// --- Main workflow ---
-const t0 = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
-
-const exec1 = node({
-  type: 'n8n-nodes-base.executeWorkflow', version: 1.3,
-  config: {
-    name: 'checkBlurays',
-    parameters: {
-      source: 'parameter',
-      workflowJson: checkBluraysWorkflow,
-      options: {}
-    },
-    executeOnce: true
-  }
-});
-
-const t2 = trigger({ type: 'n8n-nodes-base.scheduleTrigger', version: 1.2, config: { parameters: {"rule":{"interval":[{"field":"cronExpression","expression":"0 23 * * *"}]}} } });
-
-const exec3 = node({
-  type: 'n8n-nodes-base.executeWorkflow', version: 1.3,
-  config: {
-    name: 'checkBlurays',
-    parameters: {
-      source: 'parameter',
-      workflowJson: checkBluraysWorkflow,
-      options: {}
-    },
-    executeOnce: true
-  }
-});
+const t5 = trigger({ type: 'n8n-nodes-base.scheduleTrigger', version: 1.2, config: { parameters: {"rule":{"interval":[{"field":"cronExpression","expression":"0 23 * * *"}]}} } });
 
 export default workflow('compiled', 'Compiled Workflow')
-  .add(t0.to(exec1))
-  .add(t2.to(exec3));
+  .add(t0.to(code1).to(http1).to(code2).to(http2))
+  .add(t5.to(code1));

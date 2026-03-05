@@ -17,6 +17,7 @@ import type {
 	IfElseCompositeNode,
 	SwitchCaseCompositeNode,
 	SplitInBatchesCompositeNode,
+	VariableReference,
 } from './composite-tree';
 import type { SemanticGraph, SemanticNode } from './types';
 import type { WorkflowJSON } from '../types/base';
@@ -116,13 +117,119 @@ export function generateSimplifiedCode(
 		ctx.lines.push('');
 	}
 
-	for (let i = 0; i < tree.roots.length; i++) {
-		if (i > 0) ctx.lines.push('');
-		visitComposite(tree.roots[i], ctx);
+	// Detect shared pipeline: multiple trigger roots converging on same downstream chain
+	const sharedPipeline = detectSharedPipeline(tree);
+
+	if (sharedPipeline) {
+		// Emit the shared chain as a function declaration
+		const { functionName, fullChainRoot, triggerRoots } = sharedPipeline;
+		emit(ctx, `async function ${functionName}() {`);
+		ctx.indent++;
+		// Emit the body (chain nodes after the trigger)
+		const chain = fullChainRoot as ChainNode;
+		emitChainBody(chain.nodes, 1, ctx); // skip trigger (index 0)
+		ctx.indent--;
+		emit(ctx, '}');
+		ctx.lines.push('');
+
+		// Emit each trigger callback calling the shared function
+		for (let i = 0; i < triggerRoots.length; i++) {
+			if (i > 0) ctx.lines.push('');
+			const root = triggerRoots[i] as ChainNode;
+			const triggerLeaf = root.nodes[0] as LeafNode;
+			setTriggerType(triggerLeaf.node, ctx);
+			emitTriggerHeader(triggerLeaf.node, ctx, false);
+			ctx.indent++;
+			emit(ctx, `await ${functionName}();`);
+			ctx.indent--;
+			emit(ctx, '});');
+		}
+	} else {
+		for (let i = 0; i < tree.roots.length; i++) {
+			if (i > 0) ctx.lines.push('');
+			visitComposite(tree.roots[i], ctx);
+		}
 	}
 
 	const code = ctx.lines.join('\n');
 	return code.endsWith('\n') ? code : `${code}\n`;
+}
+
+// ─── Shared Pipeline Detection ───────────────────────────────────────────────
+
+interface SharedPipelineInfo {
+	functionName: string;
+	/** The root that has the full chain (trigger + pipeline nodes) */
+	fullChainRoot: CompositeNode;
+	/** All trigger roots in order (including the full chain root) */
+	triggerRoots: CompositeNode[];
+}
+
+/**
+ * Detect shared pipeline: multiple trigger roots converging on the same downstream chain.
+ *
+ * Pattern: root A is Chain([Trigger, ...pipeline nodes])
+ *          root B is Chain([Trigger, VarRef(X)]) where X is the first pipeline node in root A
+ *
+ * When detected, the pipeline body should be extracted as an async function
+ * and each trigger callback should call it.
+ */
+function detectSharedPipeline(tree: CompositeTree): SharedPipelineInfo | null {
+	if (tree.roots.length < 2) return null;
+
+	// Find the "full chain" root: a chain starting with a trigger and having 2+ nodes
+	let fullChainRoot: ChainNode | null = null;
+	let fullChainIndex = -1;
+	let firstPipelineNodeName = '';
+
+	for (let i = 0; i < tree.roots.length; i++) {
+		const root = tree.roots[i];
+		if (root.kind !== 'chain') continue;
+		const chain = root as ChainNode;
+		if (chain.nodes.length < 2) continue;
+		const first = chain.nodes[0];
+		if (first.kind !== 'leaf' || !isTrigger(first.node)) continue;
+		// This is a trigger chain with downstream nodes - candidate for full chain
+		const second = chain.nodes[1];
+		if (second.kind === 'leaf') {
+			fullChainRoot = chain;
+			fullChainIndex = i;
+			firstPipelineNodeName = second.node.name;
+			break;
+		}
+	}
+
+	if (!fullChainRoot || !firstPipelineNodeName) return null;
+
+	// Check other roots: they must be Chain([Trigger, VarRef(firstPipelineNodeName)])
+	const varRefRoots: number[] = [];
+	for (let i = 0; i < tree.roots.length; i++) {
+		if (i === fullChainIndex) continue;
+		const root = tree.roots[i];
+		if (root.kind !== 'chain') return null; // all roots must be chains
+		const chain = root as ChainNode;
+		if (chain.nodes.length !== 2) return null;
+		const first = chain.nodes[0];
+		if (first.kind !== 'leaf' || !isTrigger(first.node)) return null;
+		const second = chain.nodes[1];
+		if (second.kind !== 'varRef') return null;
+		if ((second as VariableReference).nodeName !== firstPipelineNodeName) return null;
+		varRefRoots.push(i);
+	}
+
+	if (varRefRoots.length === 0) return null;
+
+	// Collect all trigger roots in order (full chain first, then varRef roots)
+	const triggerRoots: CompositeNode[] = [tree.roots[fullChainIndex]];
+	for (const idx of varRefRoots) {
+		triggerRoots.push(tree.roots[idx]);
+	}
+
+	return {
+		functionName: 'pipeline',
+		fullChainRoot,
+		triggerRoots,
+	};
 }
 
 // ─── Sub-Function Detection ──────────────────────────────────────────────────

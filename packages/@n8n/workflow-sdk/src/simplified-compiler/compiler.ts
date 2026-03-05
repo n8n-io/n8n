@@ -272,7 +272,17 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 		}
 	}
 
-	// Step 4.5: Compile sub-functions in topological order (callees first)
+	// Step 4.5a: Detect shared pipelines (must run before sub-function compilation)
+	const sharedPipelines = detectSharedPipelines(functionDefs, callbacks);
+
+	// Save shared pipeline function defs before removing from functionDefs
+	const sharedPipelineDefs = new Map<string, FunctionDef>();
+	for (const name of sharedPipelines.keys()) {
+		sharedPipelineDefs.set(name, functionDefs.get(name)!);
+		functionDefs.delete(name);
+	}
+
+	// Step 4.5b: Compile remaining sub-functions in topological order (callees first)
 	const compiledFunctions = new Map<string, CompiledFunction>();
 	if (functionDefs.size > 0) {
 		const sortedNames = topologicalSortFunctions(functionDefs, source);
@@ -297,7 +307,50 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 	const allTryCatchBodies: CompiledFunction[] = [];
 	const allErrorConnections: Array<{ sourceVar: string; catchChainStartVar: string }> = [];
 
-	for (const cb of callbacks) {
+	// Track compiled shared pipelines: fnName → first pipeline node var
+	const compiledSharedPipelineFirstNode = new Map<string, string>();
+
+	for (let i = 0; i < callbacks.length; i++) {
+		const cb = callbacks[i];
+
+		// Check if this callback calls a shared pipeline function
+		const sharedFnName = extractSolePipelineCall(cb.callbackBody, sharedPipelineDefs);
+		if (sharedFnName && sharedPipelines.has(sharedFnName)) {
+			if (!compiledSharedPipelineFirstNode.has(sharedFnName)) {
+				// First callback: inline the function body
+				const fnDef = sharedPipelineDefs.get(sharedFnName)!;
+				const inlinedCb: CallbackInfo = { ...cb, callbackBody: fnDef.body };
+				const { nodes, chainExpr, loopBodies, tryCatchBodies, errorConnections } =
+					transpileCallback(
+						inlinedCb,
+						source,
+						allNodes.length,
+						comments,
+						errors,
+						functionDefs,
+						compiledFunctions,
+					);
+				// First non-trigger node is the pipeline entry point
+				const pipelineNodes = nodes.filter((n) => n.kind !== 'trigger');
+				if (pipelineNodes.length > 0) {
+					compiledSharedPipelineFirstNode.set(sharedFnName, pipelineNodes[0].varName);
+				}
+				allNodes.push(...nodes);
+				allChains.push(chainExpr);
+				allLoopBodies.push(...loopBodies);
+				allTryCatchBodies.push(...tryCatchBodies);
+				allErrorConnections.push(...errorConnections);
+			} else {
+				// Subsequent callback: just create trigger, connect to shared chain
+				const triggerVar = `t${allNodes.length}`;
+				const triggerNode = generateTriggerSDK(cb, triggerVar);
+				const firstPipelineVar = compiledSharedPipelineFirstNode.get(sharedFnName)!;
+				allNodes.push(triggerNode);
+				allChains.push(`${triggerVar}.to(${firstPipelineVar})`);
+			}
+			continue;
+		}
+
 		const { nodes, chainExpr, loopBodies, tryCatchBodies, errorConnections } = transpileCallback(
 			cb,
 			source,
@@ -488,6 +541,65 @@ function extractFunctionDeclarations(ast: AcornNode): Map<string, FunctionDef> {
 	}
 
 	return functions;
+}
+
+// ─── Shared Pipeline Detection ───────────────────────────────────────────────
+
+/**
+ * Extract a sole function call from a callback body.
+ * Matches: callback body is exactly one statement: `await fnName()`
+ * where fnName is a known function with no parameters.
+ */
+function extractSolePipelineCall(
+	body: AcornNode[],
+	functionDefs: Map<string, FunctionDef>,
+): string | null {
+	if (body.length !== 1) return null;
+	const stmt = body[0];
+	if (stmt.type !== 'ExpressionStatement' || !stmt.expression) return null;
+	const expr = stmt.expression;
+	if (expr.type !== 'AwaitExpression' || !expr.argument) return null;
+	const call = expr.argument;
+	if (call.type !== 'CallExpression' || !call.callee) return null;
+	if (call.callee.type !== 'Identifier') return null;
+	const name = call.callee.name ?? '';
+	if (!functionDefs.has(name)) return null;
+	const fnDef = functionDefs.get(name)!;
+	// Only parameterless functions qualify
+	if (fnDef.params.length > 0) return null;
+	// No arguments passed
+	if ((call.arguments ?? []).length > 0) return null;
+	return name;
+}
+
+/**
+ * Detect shared pipeline functions: parameterless functions called from 2+
+ * callbacks where each callback body is solely `await fnName()`.
+ * Returns map of function name → callback indices.
+ */
+function detectSharedPipelines(
+	functionDefs: Map<string, FunctionDef>,
+	callbacks: CallbackInfo[],
+): Map<string, number[]> {
+	const candidates = new Map<string, number[]>();
+
+	for (let i = 0; i < callbacks.length; i++) {
+		const fnName = extractSolePipelineCall(callbacks[i].callbackBody, functionDefs);
+		if (!fnName) continue;
+		if (!candidates.has(fnName)) {
+			candidates.set(fnName, []);
+		}
+		candidates.get(fnName)!.push(i);
+	}
+
+	// Keep only functions called from 2+ callbacks
+	for (const [name, indices] of candidates) {
+		if (indices.length < 2) {
+			candidates.delete(name);
+		}
+	}
+
+	return candidates;
 }
 
 /**

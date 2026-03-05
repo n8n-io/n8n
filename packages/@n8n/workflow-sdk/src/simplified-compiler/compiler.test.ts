@@ -726,6 +726,28 @@ onSchedule({ every: '1h' }, async () => {
 			expect((result.code.match(/trigger\(/g) || []).length).toBe(2);
 			expect((result.code.match(/\.add\(/g) || []).length).toBe(2);
 		});
+
+		it('should inline shared pipeline when multiple callbacks call same parameterless function', () => {
+			const result = transpileWorkflowJS(`
+async function process() {
+  const data = await http.get('/data');
+  await http.post('/result', { data });
+}
+onManual(async () => { await process(); });
+onSchedule({ every: '1h' }, async () => { await process(); });
+`);
+			expect(result.errors).toHaveLength(0);
+			// Should NOT have executeWorkflow nodes (inlined, not sub-workflow)
+			expect(result.code).not.toContain('executeWorkflow');
+			expect(result.code).not.toContain('executeWorkflowTrigger');
+			// Should have 2 triggers and 2 .add() calls
+			expect((result.code.match(/trigger\(/g) || []).length).toBe(2);
+			expect((result.code.match(/\.add\(/g) || []).length).toBe(2);
+			// First chain: trigger + full pipeline
+			expect(result.code).toContain('.add(t0.to(http1).to(http2))');
+			// Second chain: trigger connects to same first pipeline node (http1)
+			expect(result.code).toMatch(/\.add\(t\d+\.to\(http1\)\)/);
+		});
 	});
 
 	describe('Phase 13: AI subnodes', () => {
