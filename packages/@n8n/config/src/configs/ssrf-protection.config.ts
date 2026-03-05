@@ -14,7 +14,7 @@ export const SSRF_DEFAULT_BLOCKED_IP_RANGES: readonly string[] = Object.freeze([
 	'192.168.0.0/16',
 	// Loopback
 	'127.0.0.0/8',
-	'::1',
+	'::1/128',
 	// Link-local
 	'169.254.0.0/16',
 	'fe80::/10',
@@ -80,14 +80,4 @@ export class SsrfProtectionConfig {
 	/** Maximum DNS cache size in bytes (LRU eviction). Default: 1 MB. */
 	@Env('N8N_SSRF_DNS_CACHE_MAX_SIZE')
 	dnsCacheMaxSize: number = 1024 * 1024;
-
-	/**
-	 * Resolved list of blocked IP ranges used at runtime.
-	 * Kept for compatibility with SSRF protection runtime consumers.
-	 */
-	resolvedBlockedIpRanges: readonly string[] = [...SSRF_DEFAULT_BLOCKED_IP_RANGES];
-
-	sanitize() {
-		this.resolvedBlockedIpRanges = [...this.blockedIpRanges];
-	}
 }

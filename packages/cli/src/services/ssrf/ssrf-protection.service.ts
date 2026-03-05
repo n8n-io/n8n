@@ -42,7 +42,7 @@ export class SsrfProtectionService {
 	) {
 		this.logger = logger.scoped('ssrf-protection');
 
-		const blocked = buildIpRangeList(this.ssrfConfig.resolvedBlockedIpRanges);
+		const blocked = buildIpRangeList(this.ssrfConfig.blockedIpRanges);
 		for (const issue of blocked.issues) {
 			this.logger.warn(
 				`Invalid value '${issue.entry}' in N8N_SSRF_BLOCKED_IP_RANGES: ${issue.error}`,

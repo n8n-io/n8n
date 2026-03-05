@@ -23,7 +23,6 @@ describe('SsrfProtectionConfig', () => {
 			process.env = {};
 			const config = Container.get(SsrfProtectionConfig);
 			expect(config.blockedIpRanges).toEqual(SSRF_DEFAULT_BLOCKED_IP_RANGES);
-			expect(config.resolvedBlockedIpRanges).toEqual(SSRF_DEFAULT_BLOCKED_IP_RANGES);
 		});
 
 		test('allowedIpRanges is empty array', () => {
@@ -64,17 +63,12 @@ describe('SsrfProtectionConfig', () => {
 			process.env = { N8N_SSRF_BLOCKED_IP_RANGES: 'default' };
 			const config = Container.get(SsrfProtectionConfig);
 			expect(config.blockedIpRanges).toEqual(SSRF_DEFAULT_BLOCKED_IP_RANGES);
-			expect(config.resolvedBlockedIpRanges).toEqual(SSRF_DEFAULT_BLOCKED_IP_RANGES);
 		});
 
 		test('expands "default" and appends custom ranges', () => {
 			process.env = { N8N_SSRF_BLOCKED_IP_RANGES: 'default,100.0.0.0/8' };
 			const config = Container.get(SsrfProtectionConfig);
 			expect(config.blockedIpRanges).toEqual([...SSRF_DEFAULT_BLOCKED_IP_RANGES, '100.0.0.0/8']);
-			expect(config.resolvedBlockedIpRanges).toEqual([
-				...SSRF_DEFAULT_BLOCKED_IP_RANGES,
-				'100.0.0.0/8',
-			]);
 		});
 
 		test('matches "default" case-insensitively', () => {
@@ -87,7 +81,6 @@ describe('SsrfProtectionConfig', () => {
 			process.env = { N8N_SSRF_BLOCKED_IP_RANGES: '10.0.0.0/8,192.168.0.0/16' };
 			const config = Container.get(SsrfProtectionConfig);
 			expect(config.blockedIpRanges).toEqual(['10.0.0.0/8', '192.168.0.0/16']);
-			expect(config.resolvedBlockedIpRanges).toEqual(['10.0.0.0/8', '192.168.0.0/16']);
 		});
 
 		test('trims whitespace in custom CIDRs', () => {
@@ -105,7 +98,6 @@ describe('SsrfProtectionConfig', () => {
 		test('handles a single CIDR', () => {
 			process.env = { N8N_SSRF_BLOCKED_IP_RANGES: '10.0.0.0/8' };
 			expect(Container.get(SsrfProtectionConfig).blockedIpRanges).toEqual(['10.0.0.0/8']);
-			expect(Container.get(SsrfProtectionConfig).resolvedBlockedIpRanges).toEqual(['10.0.0.0/8']);
 		});
 	});
 

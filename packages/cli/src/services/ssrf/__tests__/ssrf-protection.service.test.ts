@@ -7,7 +7,6 @@ import { SsrfProtectionService } from '../ssrf-protection.service';
 
 function createConfig(overrides: Partial<SsrfProtectionConfig> = {}): SsrfProtectionConfig {
 	const config = new SsrfProtectionConfig();
-	config.sanitize();
 	Object.assign(config, overrides);
 	return config;
 }
@@ -636,7 +635,7 @@ describe('SsrfProtectionService', () => {
 	describe('warning logs', () => {
 		it('should log a warning for invalid IP range entries', () => {
 			createService({
-				resolvedBlockedIpRanges: ['not-a-valid-range'],
+				blockedIpRanges: ['not-a-valid-range'],
 			});
 
 			expect(mockScopedLogger.warn).toHaveBeenCalledWith(
