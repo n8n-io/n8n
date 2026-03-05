@@ -1,32 +1,45 @@
 /**
  * Impact Analyzer
  *
- * Analyzes the impact of file changes - which tests need to run?
- * Uses import graph tracing with facade-aware property-based search.
+ * Analyzes the impact of file changes — which tests need to run?
+ *
+ * Decision flow per changed file:
+ *   - New file / all methods added → SKIP (can't break existing tests)
+ *   - Has modified/removed methods → METHOD-LEVEL (MethodUsageAnalyzer lookup)
+ *   - No method changes detected (imports, types, comments) → PROPERTY-LEVEL fallback
+ *
+ * Method-level uses MethodUsageAnalyzer (fixture-pattern text search).
+ * Property-level uses import graph tracing with facade-aware search.
  */
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { type Project, type SourceFile } from 'ts-morph';
 
-import { type FileDiffResult } from './ast-diff-analyzer.js';
+import { type FileDiffResult, type MethodChange } from './ast-diff-analyzer.js';
 import { FacadeResolver } from './facade-resolver.js';
+import { MethodUsageAnalyzer, type MethodUsageIndex } from './method-usage-analyzer.js';
 import { getRootDir, findFilesRecursive, getRelativePath, isTestFile } from '../utils/paths.js';
 
-function isAdditiveOnly(diff: FileDiffResult): boolean {
-	if (diff.changedMethods.length === 0) return false;
-	return diff.changedMethods.every((m) => m.changeType === 'added');
+export type ResolutionStrategy = 'method-level' | 'property-level' | 'skipped';
+
+export interface AnalyzeOptions {
+	diffs?: FileDiffResult[];
+	methodUsageIndex?: MethodUsageIndex;
 }
 
 export interface ImpactResult {
 	changedFiles: string[];
 	affectedFiles: string[];
 	affectedTests: string[];
-	graph: Record<string, string[]>; // file -> files that depend on it
+	graph: Record<string, string[]>;
+	strategies: Record<string, ResolutionStrategy>;
 }
 
 /**
- * Analyze the impact of file changes - what tests need to run?
+ * Analyze the impact of file changes — what tests need to run?
+ *
+ * Single entry point used by both TCR and CI orchestration.
  */
 export class ImpactAnalyzer {
 	private root: string;
@@ -39,90 +52,195 @@ export class ImpactAnalyzer {
 
 	/**
 	 * Given a list of changed files, determine which test files are affected.
-	 * When diffs are provided, files with only additive changes (new methods)
-	 * skip dependency tracing — new exports can't break existing consumers.
+	 *
+	 * Uses method-level precision when AST diffs show modified/removed methods,
+	 * falls back to property-level import graph tracing otherwise.
 	 */
-	analyze(changedFiles: string[], diffs?: FileDiffResult[]): ImpactResult {
-		const absolutePaths = changedFiles.map((f) =>
-			path.isAbsolute(f) ? f : path.join(this.root, f),
-		);
+	analyze(changedFiles: string[], options: AnalyzeOptions = {}): ImpactResult {
+		const { diffs: precomputedDiffs, methodUsageIndex: precomputedIndex } = options;
 
-		const diffMap = new Map<string, FileDiffResult>();
-		if (diffs) {
-			for (const diff of diffs) {
-				diffMap.set(diff.filePath, diff);
-			}
-		}
-
-		const affectedSet = new Set<string>();
+		const affectedTests = new Set<string>();
+		const affectedFilesSet = new Set<string>();
+		const strategies: Record<string, ResolutionStrategy> = {};
 		const graph: Record<string, string[]> = {};
 
-		// For each changed file, find all files that depend on it
-		for (const filePath of absolutePaths) {
-			const sourceFile = this.project.getSourceFile(filePath);
-			if (!sourceFile) {
-				console.warn(`Warning: File not found in project: ${filePath}`);
-				continue;
-			}
+		// Separate test files from source files
+		const sourceFiles: string[] = [];
+		const testFiles: string[] = [];
 
-			const relativePath = getRelativePath(filePath);
-
-			// If the changed file is itself a test, it's affected
-			if (isTestFile(relativePath)) {
-				affectedSet.add(filePath);
-			}
-
-			// If we have diff info and all changes are additive, skip dependency tracing.
-			// New exports can't break existing consumers.
-			const diff = diffMap.get(filePath);
-			if (diff && isAdditiveOnly(diff)) {
-				continue;
-			}
-
-			// Find property names this file exposes (for property-based search)
-			const propertyNames = this.extractPropertyNames(sourceFile);
-
-			const dependents = this.findAllDependents(sourceFile, new Set(), propertyNames);
-
-			graph[relativePath] = dependents.map((f) => getRelativePath(f));
-
-			for (const dep of dependents) {
-				affectedSet.add(dep);
+		for (const file of changedFiles) {
+			const relative = this.toRelative(file);
+			if (isTestFile(relative)) {
+				testFiles.push(relative);
+			} else if (file.endsWith('.ts')) {
+				sourceFiles.push(file);
 			}
 		}
 
-		// Convert to relative paths and filter
-		const allAffected = Array.from(affectedSet).map((f) => getRelativePath(f));
-		const affectedTests = allAffected
-			.filter((f) => isTestFile(f))
-			.sort((a, b) => a.localeCompare(b));
+		// Include directly changed test files
+		for (const testFile of testFiles) {
+			affectedTests.add(testFile);
+		}
+
+		// Build diff map from pre-computed diffs (no diffs = property-level for all files)
+		const diffMap = this.buildDiffMap(precomputedDiffs);
+
+		// Lazy method usage index — only built if a file needs method-level resolution
+		let methodIndex: MethodUsageIndex | undefined = precomputedIndex;
+		const getMethodIndex = (): MethodUsageIndex => {
+			methodIndex ??= new MethodUsageAnalyzer(this.project).buildIndex();
+			return methodIndex;
+		};
+
+		for (const file of sourceFiles) {
+			const abs = this.toAbsolute(file);
+			const relative = this.toRelative(file);
+			const diff = diffMap.get(abs);
+
+			if (!diff) {
+				// No diff available — conservative property-level fallback
+				strategies[relative] = 'property-level';
+				this.resolvePropertyLevel(file, affectedTests, affectedFilesSet, graph);
+				continue;
+			}
+
+			// New file or all methods added → skip (can't break existing tests)
+			if (diff.isNewFile || this.isAllAdditive(diff)) {
+				strategies[relative] = 'skipped';
+				this.addTestsUsingNewMethods(
+					diff.changedMethods.filter((m) => m.changeType === 'added'),
+					testFiles,
+					affectedTests,
+				);
+				continue;
+			}
+
+			// Has modified/removed methods → method-level resolution
+			const modifiedOrRemoved = diff.changedMethods.filter((m) => m.changeType !== 'added');
+			if (modifiedOrRemoved.length > 0) {
+				strategies[relative] = 'method-level';
+				const methodTests: string[] = [];
+				for (const change of modifiedOrRemoved) {
+					const key = `${change.className}.${change.methodName}`;
+					const usages = getMethodIndex().methods[key] ?? [];
+					for (const usage of usages) {
+						affectedTests.add(usage.testFile);
+						affectedFilesSet.add(usage.testFile);
+						methodTests.push(usage.testFile);
+					}
+				}
+				if (methodTests.length > 0) {
+					graph[relative] = [...new Set(methodTests)].sort((a, b) => a.localeCompare(b));
+				}
+				// Also check for new methods referenced by changed test files
+				const addedMethods = diff.changedMethods.filter((m) => m.changeType === 'added');
+				this.addTestsUsingNewMethods(addedMethods, testFiles, affectedTests);
+				continue;
+			}
+
+			// No method changes detected (imports, types, comments) → property-level fallback
+			strategies[relative] = 'property-level';
+			this.resolvePropertyLevel(file, affectedTests, affectedFilesSet, graph);
+		}
 
 		return {
-			changedFiles: absolutePaths.map((f) => getRelativePath(f)),
-			affectedFiles: allAffected.sort((a, b) => a.localeCompare(b)),
-			affectedTests,
+			changedFiles: changedFiles.map((f) => this.toRelative(f)),
+			affectedFiles: Array.from(affectedFilesSet).sort((a, b) => a.localeCompare(b)),
+			affectedTests: Array.from(affectedTests).sort((a, b) => a.localeCompare(b)),
 			graph,
+			strategies,
 		};
 	}
 
+	// --- Strategy Helpers ---
+
+	private resolvePropertyLevel(
+		file: string,
+		affectedTests: Set<string>,
+		affectedFilesSet: Set<string>,
+		graph: Record<string, string[]>,
+	): void {
+		const abs = this.toAbsolute(file);
+		const relative = this.toRelative(file);
+		const sourceFile = this.project.getSourceFile(abs);
+		if (!sourceFile) return;
+
+		const propertyNames = this.extractPropertyNames(sourceFile);
+		const dependents = this.findAllDependents(sourceFile, new Set(), propertyNames);
+
+		const depRelative = dependents.map((f) => getRelativePath(f));
+		graph[relative] = depRelative;
+
+		for (const dep of depRelative) {
+			affectedFilesSet.add(dep);
+			if (isTestFile(dep)) {
+				affectedTests.add(dep);
+			}
+		}
+	}
+
+	private buildDiffMap(precomputedDiffs?: FileDiffResult[]): Map<string, FileDiffResult> {
+		const map = new Map<string, FileDiffResult>();
+
+		if (precomputedDiffs) {
+			for (const diff of precomputedDiffs) {
+				map.set(diff.filePath, diff);
+			}
+		}
+
+		return map;
+	}
+
+	private static escapeRegex(value: string): string {
+		return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	}
+
+	private isAllAdditive(diff: FileDiffResult): boolean {
+		if (diff.changedMethods.length === 0) return false;
+		return diff.changedMethods.every((m) => m.changeType === 'added');
+	}
+
+	private addTestsUsingNewMethods(
+		addedMethods: MethodChange[],
+		changedTestFiles: string[],
+		affectedTests: Set<string>,
+	): void {
+		if (addedMethods.length === 0 || changedTestFiles.length === 0) return;
+
+		for (const testFile of changedTestFiles) {
+			const fullPath = path.join(this.root, testFile);
+			const sourceFile = this.project.getSourceFile(fullPath);
+			if (!sourceFile) continue;
+
+			const content = sourceFile.getFullText();
+			for (const method of addedMethods) {
+				const methodPattern = new RegExp(
+					`\\.${ImpactAnalyzer.escapeRegex(method.methodName)}\\s*\\(`,
+				);
+				if (methodPattern.test(content)) {
+					affectedTests.add(testFile);
+					break;
+				}
+			}
+		}
+	}
+
+	// --- Import Graph Tracing (property-level internals) ---
+
 	/**
 	 * Extract property names that a file's exports are exposed as in the facade
-	 * Uses the pre-built facade property map for accurate lookup
 	 */
 	private extractPropertyNames(file: SourceFile): string[] {
 		const names: string[] = [];
 
-		// Get exported class names and look up their property names in facade
 		for (const classDecl of file.getClasses()) {
 			if (classDecl.isExported()) {
 				const className = classDecl.getName();
 				if (className) {
-					// Look up actual property name(s) from facade
 					const facadeProps = this.facade.getPropertiesForClass(className);
 					if (facadeProps.length > 0) {
 						names.push(...facadeProps);
 					} else {
-						// Fallback to camelCase conversion if not in facade
 						const propertyName = className.charAt(0).toLowerCase() + className.slice(1);
 						names.push(propertyName);
 					}
@@ -134,8 +252,8 @@ export class ImpactAnalyzer {
 	}
 
 	/**
-	 * Find all files that depend on a source file
-	 * Stops at facades and switches to property-based search
+	 * Find all files that depend on a source file.
+	 * Stops at facades and switches to property-based search.
 	 */
 	private findAllDependents(
 		file: SourceFile,
@@ -149,25 +267,19 @@ export class ImpactAnalyzer {
 		visited.add(filePath);
 
 		const dependents: string[] = [];
-
-		// Get direct dependents (files that import this file)
 		const directDependents = file.getReferencingSourceFiles();
 
 		for (const dep of directDependents) {
 			const depPath = dep.getFilePath();
 
-			// If we hit a facade, stop import tracing and switch to property search
 			if (this.facade.isFacade(depPath)) {
-				// Resolve through multi-hop chains (page → facade → composable → test)
 				const testsUsingProperty = this.resolvePropertyToTests(propertyNames, visited);
 				dependents.push(...testsUsingProperty);
 				continue;
 			}
 
-			// Not a facade - continue normal import tracing
 			dependents.push(depPath);
 
-			// For the next level, track what property this file is exposed as
 			const nextPropertyNames = this.extractPropertyNames(dep);
 			const combinedProperties = [...propertyNames, ...nextPropertyNames];
 
@@ -178,11 +290,6 @@ export class ImpactAnalyzer {
 		return dependents;
 	}
 
-	/**
-	 * Find all .ts files that use the given property names via text search.
-	 * Searches the entire project root (not just tests/) to catch composables,
-	 * helpers, and other intermediaries between the facade and tests.
-	 */
 	private findConsumersUsingProperties(propertyNames: string[]): string[] {
 		if (propertyNames.length === 0) {
 			return [];
@@ -190,15 +297,12 @@ export class ImpactAnalyzer {
 
 		const matchingFiles = new Set<string>();
 		const facadePath = this.facade.getFacadePath();
-
-		// Word-boundary regex: matches .name followed by any non-identifier char
-		const patterns = propertyNames.map((name) => new RegExp(`\\.${name}(?![a-zA-Z0-9_])`));
-
-		// Search all .ts files in the project root
+		const patterns = propertyNames.map(
+			(name) => new RegExp(`\\.${ImpactAnalyzer.escapeRegex(name)}(?![a-zA-Z0-9_])`),
+		);
 		const allFiles = findFilesRecursive(this.root, '.ts');
 
 		for (const file of allFiles) {
-			// Skip the facade itself — it declares properties, doesn't consume them
 			if (file === facadePath) continue;
 
 			try {
@@ -217,17 +321,6 @@ export class ImpactAnalyzer {
 		return Array.from(matchingFiles);
 	}
 
-	/**
-	 * Resolve property names to affected test files, following multi-hop chains.
-	 *
-	 * When a page changes and we hit the facade, the consumers might be:
-	 * 1. Test files → add directly to results
-	 * 2. Composables/helpers on the facade → extract THEIR property names, recurse
-	 * 3. Non-facade files → import-trace via findAllDependents
-	 *
-	 * Example chain: MfaLoginPage → facade(mfaLogin) → MfaComposer(mfaLogin.*) →
-	 *   facade(mfaComposer) → test(n8n.mfaComposer.*)
-	 */
 	private resolvePropertyToTests(
 		propertyNames: string[],
 		visited: Set<string>,
@@ -237,7 +330,6 @@ export class ImpactAnalyzer {
 		const tests: string[] = [];
 
 		for (const consumer of consumers) {
-			// Guard against cyclic property chains (A→B→A)
 			if (resolvedConsumers.has(consumer)) continue;
 			resolvedConsumers.add(consumer);
 
@@ -248,14 +340,11 @@ export class ImpactAnalyzer {
 				continue;
 			}
 
-			// Non-test consumer (composable, helper, etc.)
 			const sourceFile = this.project.getSourceFile(consumer);
 			if (!sourceFile) continue;
 
-			// Check if this file is exposed on the facade
 			const consumerPropertyNames = this.extractPropertyNames(sourceFile);
 			if (consumerPropertyNames.length > 0) {
-				// File is on the facade — recurse with its property names
 				const transitiveTests = this.resolvePropertyToTests(
 					consumerPropertyNames,
 					visited,
@@ -263,13 +352,28 @@ export class ImpactAnalyzer {
 				);
 				tests.push(...transitiveTests);
 			} else {
-				// Not on the facade — fall back to import tracing
 				const dependents = this.findAllDependents(sourceFile, visited, []);
 				tests.push(...dependents);
 			}
 		}
 
 		return tests;
+	}
+
+	// --- Path Helpers ---
+
+	private toRelative(filePath: string): string {
+		if (path.isAbsolute(filePath)) {
+			return getRelativePath(filePath);
+		}
+		return filePath;
+	}
+
+	private toAbsolute(filePath: string): string {
+		if (path.isAbsolute(filePath)) {
+			return filePath;
+		}
+		return path.join(this.root, filePath);
 	}
 }
 
