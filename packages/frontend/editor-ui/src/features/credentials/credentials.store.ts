@@ -26,7 +26,7 @@ import type {
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, ref, type DeepReadonly } from 'vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -192,7 +192,13 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	});
 
 	const getCredentialOwnerName = computed(() => {
-		return (credential: ICredentialsResponse | IUsedCredential | undefined): string => {
+		return (
+			credential:
+				| ICredentialsResponse
+				| IUsedCredential
+				| DeepReadonly<IUsedCredential>
+				| undefined,
+		): string => {
 			const { name, email } = splitName(credential?.homeProject?.name ?? '');
 
 			return name

@@ -257,7 +257,7 @@ export function useWorkflowExtraction() {
 			},
 			settings: { executionOrder: 'v1' },
 			projectId: workflowDocumentStore?.value?.homeProject?.id,
-			parentFolderId: workflowsStore.workflow.parentFolder?.id ?? undefined,
+			parentFolderId: workflowDocumentStore?.value?.parentFolder?.id ?? undefined,
 		};
 	}
 
