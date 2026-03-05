@@ -780,7 +780,6 @@ describe('DynamicCredentialService', () => {
 					staticData,
 					additionalData.executionContext,
 					undefined,
-					false,
 				);
 
 				// Verify the resolver was called with resolved config
@@ -874,7 +873,6 @@ describe('DynamicCredentialService', () => {
 					staticData,
 					additionalData.executionContext,
 					undefined,
-					false,
 				);
 
 				// Verify only global expressions were resolved, runtime expressions remain as-is

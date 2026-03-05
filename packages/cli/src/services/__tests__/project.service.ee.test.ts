@@ -12,7 +12,6 @@ import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
-import type { CacheService } from '../cache/cache.service';
 import { ProjectService } from '../project.service.ee';
 import type { RoleService } from '../role.service';
 
@@ -22,7 +21,6 @@ describe('ProjectService', () => {
 	const projectRelationRepository = mock<ProjectRelationRepository>({ manager });
 	const roleService = mock<RoleService>();
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
-	const cacheService = mock<CacheService>();
 	const moduleRegistry = mock<ModuleRegistry>({ entities: [] });
 	const projectService = new ProjectService(
 		mock(),
@@ -30,7 +28,6 @@ describe('ProjectService', () => {
 		projectRelationRepository,
 		roleService,
 		sharedCredentialsRepository,
-		cacheService,
 		mock(),
 		moduleRegistry,
 	);

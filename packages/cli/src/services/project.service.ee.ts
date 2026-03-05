@@ -29,7 +29,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { CacheService } from './cache/cache.service';
 import { RoleService } from './role.service';
 
 export class TeamProjectOverQuotaError extends UserError {
@@ -69,7 +68,6 @@ export class ProjectService {
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly roleService: RoleService,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
-		private readonly cacheService: CacheService,
 		private readonly licenseState: LicenseState,
 		private readonly moduleRegistry: ModuleRegistry,
 	) {}

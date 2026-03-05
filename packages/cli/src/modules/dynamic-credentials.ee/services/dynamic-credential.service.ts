@@ -48,7 +48,6 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 	 * @param credentialsResolveMetadata The credential resolve metadata
 	 * @param staticData The decrypted static credential data
 	 * @param additionalData Additional workflow execution data for context and settings
-	 * @param canUseExternalSecrets Whether the credential can use external secrets for expression resolution
 	 * @returns Resolved credential data (either dynamic or static)
 	 * @throws {CredentialResolutionError} If resolution fails and fallback is not allowed
 	 */
