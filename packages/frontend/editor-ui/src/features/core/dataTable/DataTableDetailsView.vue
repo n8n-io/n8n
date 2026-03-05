@@ -27,6 +27,8 @@ import {
 	N8nIcon,
 	N8nTooltip,
 } from '@n8n/design-system';
+import DependencyPill from '@/app/components/DependencyPill.vue';
+import { useResourceDependents } from '@/app/composables/useResourceDependents';
 
 type Props = {
 	id: string;
@@ -42,8 +44,20 @@ const documentTitle = useDocumentTitle();
 
 const dataTableStore = useDataTableStore();
 const sourceControlStore = useSourceControlStore();
+const { fetchDependents, getDependents, hasDependents } = useResourceDependents();
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
+
+const dataTableHasDependents = computed(() => hasDependents(props.id));
+const dependentDependencies = computed(
+	() =>
+		getDependents(props.id)?.map((d) => ({
+			type: 'workflowParent',
+			id: d.id,
+			name: d.name,
+			projectId: d.projectId,
+		})) ?? [],
+);
 
 const loading = ref(false);
 const saving = ref(false);
@@ -75,6 +89,7 @@ const initialize = async () => {
 		await showErrorAndGoBackToList(error);
 	} finally {
 		loading.value = false;
+		void fetchDependents([props.id], 'dataTableId');
 	}
 };
 
@@ -162,6 +177,11 @@ onBeforeUnmount(() => {
 					<N8nText>{{ i18n.baseText('generic.saving') }}...</N8nText>
 				</div>
 				<div :class="$style.actions">
+					<DependencyPill
+						v-if="dataTableHasDependents"
+						:dependencies="dependentDependencies"
+						data-test-id="data-table-details-dependents"
+					/>
 					<N8nInput
 						v-model="searchQuery"
 						data-test-id="data-table-search-input"

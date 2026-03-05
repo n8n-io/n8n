@@ -18,7 +18,6 @@ vi.mock('vue-router', () => {
 });
 
 let capturedSelectHandler: ((value: string) => void) | undefined;
-let capturedSearchHandler: ((term: string) => void) | undefined;
 let capturedItems: unknown[] = [];
 
 vi.mock('@n8n/design-system/v2/components/DropdownMenu', () => ({
@@ -39,7 +38,6 @@ vi.mock('@n8n/design-system/v2/components/DropdownMenu', () => ({
 		setup(props: { items: unknown[] }, { emit }: { emit: (e: string, v: string) => void }) {
 			capturedItems = props.items;
 			capturedSelectHandler = (value: string) => emit('select', value);
-			capturedSearchHandler = (term: string) => emit('search', term);
 		},
 		template: '<div data-test-id="mock-dropdown"><slot name="trigger" /></div>',
 	},
@@ -64,7 +62,6 @@ describe('DependencyPill', () => {
 		router = vueRouter.useRouter();
 		windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
 		capturedSelectHandler = undefined;
-		capturedSearchHandler = undefined;
 		capturedItems = [];
 	});
 
