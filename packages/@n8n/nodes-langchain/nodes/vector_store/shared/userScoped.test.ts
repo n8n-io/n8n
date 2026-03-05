@@ -1,67 +1,68 @@
 import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
 
 import { ensureUserId, getUserScopedSlot } from './userScoped';
 
 const mockNode = { name: 'TestNode', type: 'test' } as any;
 
 describe('getUserScopedSlot', () => {
-	it('should return prefix_userId', () => {
+	it('should return prefix_userId', async () => {
 		const context = mock<IExecuteFunctions>();
-		context.getUserId.mockReturnValue('user123');
+		context.getUserId.mockResolvedValue('user123');
 		context.getNode.mockReturnValue(mockNode);
 
-		expect(getUserScopedSlot(context, 'my_table')).toBe('my_table_user123');
+		await expect(getUserScopedSlot(context, 'my_table')).resolves.toBe('my_table_user123');
 	});
 
-	it('should replace all hyphens in userId with underscores', () => {
+	it('should replace all hyphens in userId with underscores', async () => {
 		const context = mock<IExecuteFunctions>();
-		context.getUserId.mockReturnValue('abc-def-123-xyz');
+		context.getUserId.mockResolvedValue('abc-def-123-xyz');
 		context.getNode.mockReturnValue(mockNode);
 
-		expect(getUserScopedSlot(context, 'ns')).toBe('ns_abc_def_123_xyz');
+		await expect(getUserScopedSlot(context, 'ns')).resolves.toBe('ns_abc_def_123_xyz');
 	});
 
-	it('should replace non-alphanumeric characters in prefix with underscores', () => {
+	it('should replace non-alphanumeric characters in prefix with underscores', async () => {
 		const context = mock<IExecuteFunctions>();
-		context.getUserId.mockReturnValue('user123');
+		context.getUserId.mockResolvedValue('user123');
 		context.getNode.mockReturnValue(mockNode);
 
-		expect(getUserScopedSlot(context, 'my-table.name')).toBe('my_table_name_user123');
+		await expect(getUserScopedSlot(context, 'my-table.name')).resolves.toBe(
+			'my_table_name_user123',
+		);
 	});
 
-	it('should sanitize both prefix and userId together', () => {
+	it('should sanitize both prefix and userId together', async () => {
 		const context = mock<IExecuteFunctions>();
-		context.getUserId.mockReturnValue('abc-def-123');
+		context.getUserId.mockResolvedValue('abc-def-123');
 		context.getNode.mockReturnValue(mockNode);
 
-		expect(getUserScopedSlot(context, 'my.prefix')).toBe('my_prefix_abc_def_123');
+		await expect(getUserScopedSlot(context, 'my.prefix')).resolves.toBe('my_prefix_abc_def_123');
 	});
 
-	it('should throw NodeOperationError when userId is not available', () => {
+	it('should reject when getUserId rejects', async () => {
 		const context = mock<IExecuteFunctions>();
-		context.getUserId.mockReturnValue(undefined as any);
+		context.getUserId.mockRejectedValue(new Error('No identity'));
 		context.getNode.mockReturnValue(mockNode);
 
-		expect(() => getUserScopedSlot(context, 'ns')).toThrow(NodeOperationError);
+		await expect(getUserScopedSlot(context, 'ns')).rejects.toThrow('No identity');
 	});
 });
 
 describe('ensureUserId', () => {
-	it('should return the userId from context', () => {
+	it('should return the userId from context', async () => {
 		const context = mock<IExecuteFunctions>();
-		context.getUserId.mockReturnValue('user-123');
+		context.getUserId.mockResolvedValue('user-123');
 		context.getNode.mockReturnValue(mockNode);
 
-		expect(ensureUserId(context)).toBe('user-123');
+		await expect(ensureUserId(context)).resolves.toBe('user-123');
 	});
 
-	it('should throw NodeOperationError when userId is empty string', () => {
+	it('should reject when getUserId rejects', async () => {
 		const context = mock<IExecuteFunctions>();
-		context.getUserId.mockReturnValue('');
+		context.getUserId.mockRejectedValue(new Error('No identity'));
 		context.getNode.mockReturnValue(mockNode);
 
-		expect(() => ensureUserId(context)).toThrow(NodeOperationError);
+		await expect(ensureUserId(context)).rejects.toThrow('No identity');
 	});
 });

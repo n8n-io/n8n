@@ -46,6 +46,7 @@ import { cleanupParameterData } from './utils/cleanup-parameter-data';
 import { ensureType } from './utils/ensure-type';
 import { extractValue } from './utils/extract-value';
 import { getAdditionalKeys } from './utils/get-additional-keys';
+import { getUserIdentityHelperFunction } from './utils/user-identity-helper-functions';
 import { validateValueAgainstSchema } from './utils/validate-value-against-schema';
 import { generateUrlSignature, prepareUrlForSigning } from '../../utils/signature-helpers';
 
@@ -76,8 +77,8 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return this.additionalData.executionId!;
 	}
 
-	getUserId() {
-		return this.additionalData.userId;
+	async getUserId(): Promise<string> {
+		return await getUserIdentityHelperFunction(this.additionalData, this.runExecutionData)();
 	}
 
 	getNode(): INode {

@@ -1,5 +1,4 @@
 import type { IExecuteFunctions, ILoadOptionsFunctions, ISupplyDataFunctions } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
 
 /**
  * Derives a user-scoped slot name from the credential prefix and the current user ID.
@@ -10,27 +9,17 @@ import { NodeOperationError } from 'n8n-workflow';
  * @returns `{sanitisedPrefix}_{sanitisedUserId}`
  * @throws NodeOperationError when no authenticated user is available
  */
-export function getUserScopedSlot(
+export async function getUserScopedSlot(
 	context: IExecuteFunctions | ISupplyDataFunctions | ILoadOptionsFunctions,
 	prefix: string,
-	itemIndex?: number,
-): string {
-	const userId = ensureUserId(context, itemIndex);
+	_itemIndex?: number,
+): Promise<string> {
+	const userId = await ensureUserId(context);
 	return `${prefix}_${userId}`.replace(/[^a-zA-Z0-9_]/g, '_');
 }
 
-export function ensureUserId(
+export async function ensureUserId(
 	context: IExecuteFunctions | ISupplyDataFunctions | ILoadOptionsFunctions,
-	itemIndex?: number,
-): string {
-	const userId = context.getUserId();
-	if (!userId) {
-		throw new NodeOperationError(
-			context.getNode(),
-			'User ID is not available. This node requires an authenticated user session.',
-			{ itemIndex },
-		);
-	}
-
-	return userId;
+): Promise<string> {
+	return await context.getUserId();
 }

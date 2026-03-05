@@ -32,6 +32,7 @@ import type { NodeOperationError } from './errors/node-operation.error';
 import type { WorkflowActivationError } from './errors/workflow-activation.error';
 import type { WorkflowOperationError } from './errors/workflow-operation.error';
 import type {
+	ICredentialContext,
 	IExecutionContext,
 	WorkflowExecuteModeValues as WorkflowExecuteMode,
 } from './execution-context';
@@ -944,6 +945,10 @@ export type NodeTypeAndVersion = {
 	parameters?: INodeParameters;
 };
 
+export interface UserIdentityResolverProvider {
+	resolveUserId(credentialContext: ICredentialContext): Promise<string>;
+}
+
 export interface FunctionsBase {
 	logger: Logger;
 	getCredentials<T extends object = ICredentialDataDecryptedObject>(
@@ -960,7 +965,7 @@ export interface FunctionsBase {
 	getRestApiUrl(): string;
 	getInstanceBaseUrl(): string;
 	getInstanceId(): string;
-	getUserId(): string | undefined;
+	getUserId(): Promise<string>;
 	/** Get the waiting resume url signed with the signature token */
 	getSignedResumeUrl(parameters?: Record<string, string>): string;
 	/** Set requirement in the execution for signature token validation */

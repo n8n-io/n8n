@@ -47,7 +47,7 @@ async function deleteDocuments(
 	const credentials = await this.getCredentials<ChatHubVectorStoreQdrantApiCredentials>(
 		'chatHubVectorStoreQdrantApi',
 	);
-	const userId = ensureUserId(this);
+	const userId = await ensureUserId(this);
 	const client = createQdrantClient(credentials);
 
 	await ensurePayloadIndexes(client, credentials.collectionName);
@@ -94,7 +94,7 @@ export class ChatHubVectorStoreQdrant extends createVectorStoreNode<QdrantVector
 		const credentials = await context.getCredentials<ChatHubVectorStoreQdrantApiCredentials>(
 			'chatHubVectorStoreQdrantApi',
 		);
-		const userId = ensureUserId(context);
+		const userId = await ensureUserId(context);
 		const client = createQdrantClient(credentials);
 		const config: QdrantLibArgs = { client, collectionName: credentials.collectionName };
 
@@ -143,7 +143,7 @@ export class ChatHubVectorStoreQdrant extends createVectorStoreNode<QdrantVector
 		const credentials = await context.getCredentials<ChatHubVectorStoreQdrantApiCredentials>(
 			'chatHubVectorStoreQdrantApi',
 		);
-		const userId = ensureUserId(context);
+		const userId = await ensureUserId(context);
 		const client = createQdrantClient(credentials);
 		const config: QdrantLibArgs = { client, collectionName: credentials.collectionName };
 

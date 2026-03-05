@@ -50,7 +50,7 @@ async function deleteDocuments(
 	const credentials = await this.getCredentials<ChatHubVectorStorePineconeApiCredentials>(
 		'chatHubVectorStorePineconeApi',
 	);
-	const namespaceName = getUserScopedSlot(this, credentials.namespacePrefix);
+	const namespaceName = await getUserScopedSlot(this, credentials.namespacePrefix);
 
 	const client = new Pinecone({ apiKey: credentials.apiKey });
 	const pineconeIndex = client.Index(credentials.pineconeIndex);
@@ -92,7 +92,7 @@ export class ChatHubVectorStorePinecone extends createVectorStoreNode<PineconeSt
 		const credentials = await context.getCredentials<ChatHubVectorStorePineconeApiCredentials>(
 			'chatHubVectorStorePineconeApi',
 		);
-		const namespaceName = getUserScopedSlot(context, credentials.namespacePrefix, itemIndex);
+		const namespaceName = await getUserScopedSlot(context, credentials.namespacePrefix, itemIndex);
 
 		const client = new Pinecone({ apiKey: credentials.apiKey });
 		const pineconeIndex = client.Index(credentials.pineconeIndex);
@@ -109,7 +109,7 @@ export class ChatHubVectorStorePinecone extends createVectorStoreNode<PineconeSt
 		const credentials = await context.getCredentials<ChatHubVectorStorePineconeApiCredentials>(
 			'chatHubVectorStorePineconeApi',
 		);
-		const namespaceName = getUserScopedSlot(context, credentials.namespacePrefix, itemIndex);
+		const namespaceName = await getUserScopedSlot(context, credentials.namespacePrefix, itemIndex);
 
 		const client = new Pinecone({ apiKey: credentials.apiKey });
 

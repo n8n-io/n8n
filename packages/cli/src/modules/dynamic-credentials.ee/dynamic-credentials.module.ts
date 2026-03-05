@@ -1,5 +1,5 @@
 import { LICENSE_FEATURES } from '@n8n/constants';
-import type { ModuleInterface } from '@n8n/decorators';
+import type { ModuleContext, ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
@@ -46,6 +46,13 @@ export class DynamicCredentialsModule implements ModuleInterface {
 		);
 
 		return [DynamicCredentialResolver, DynamicCredentialEntry, DynamicCredentialUserEntry];
+	}
+
+	async context(): Promise<ModuleContext> {
+		const { UserIdentityResolverService } = await import(
+			'./services/user-identity-resolver.service'
+		);
+		return { userIdentityResolver: Container.get(UserIdentityResolverService) };
 	}
 
 	@OnShutdown()

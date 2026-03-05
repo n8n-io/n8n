@@ -61,7 +61,7 @@ describe('ChatHubVectorStoreQdrant', () => {
 
 	function makeContext(userId: string) {
 		return {
-			getUserId: jest.fn().mockReturnValue(userId),
+			getUserId: jest.fn().mockResolvedValue(userId),
 			getCredentials: jest.fn().mockResolvedValue(credentials),
 			getNode: jest.fn().mockReturnValue(mockNode),
 			logger: mockLogger,

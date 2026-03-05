@@ -43,7 +43,7 @@ async function deleteDocuments(
 	const credentials = await this.getCredentials<ChatHubVectorStorePGVectorApiCredentials>(
 		'chatHubVectorStorePGVectorApi',
 	);
-	const tableName = getUserScopedSlot(this, credentials.tableNamePrefix);
+	const tableName = await getUserScopedSlot(this, credentials.tableNamePrefix);
 
 	const pgConf = await configurePostgres.call(this, credentials as PostgresNodeCredentials);
 	const pool = pgConf.db.$pool as unknown as pg.Pool;
@@ -142,7 +142,7 @@ export class ChatHubVectorStorePGVector extends createVectorStoreNode({
 		const credentials = await context.getCredentials<ChatHubVectorStorePGVectorApiCredentials>(
 			'chatHubVectorStorePGVectorApi',
 		);
-		const tableName = getUserScopedSlot(context, credentials.tableNamePrefix, itemIndex);
+		const tableName = await getUserScopedSlot(context, credentials.tableNamePrefix, itemIndex);
 		const pgConf = await configurePostgres.call(context, credentials as PostgresNodeCredentials);
 		const pool = pgConf.db.$pool as unknown as pg.Pool;
 
@@ -159,7 +159,7 @@ export class ChatHubVectorStorePGVector extends createVectorStoreNode({
 		const credentials = await context.getCredentials<ChatHubVectorStorePGVectorApiCredentials>(
 			'chatHubVectorStorePGVectorApi',
 		);
-		const tableName = getUserScopedSlot(context, credentials.tableNamePrefix, itemIndex);
+		const tableName = await getUserScopedSlot(context, credentials.tableNamePrefix, itemIndex);
 		const pgConf = await configurePostgres.call(context, credentials as PostgresNodeCredentials);
 		const pool = pgConf.db.$pool as unknown as pg.Pool;
 
