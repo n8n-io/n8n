@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
 import {
 	CredentialResolverValidationError,
 	type CredentialResolverConfiguration,
@@ -168,52 +168,6 @@ describe('DynamicCredentialResolverService', () => {
 
 			expect(mockRepository.create).not.toHaveBeenCalled();
 			expect(mockRepository.save).not.toHaveBeenCalled();
-		});
-
-		it('should pass canUseExternalSecrets=true to validation for users with externalSecret:list permission', async () => {
-			const config: CredentialResolverConfiguration = { prefix: 'test-prefix' };
-			const savedEntity = createMockEntity();
-			const mockUser = createMockUser(GLOBAL_OWNER_ROLE); // Owner has externalSecret:list
-
-			mockRegistry.getResolverByTypename.mockReturnValue(mockResolverImplementation);
-			mockResolverImplementation.validateOptions.mockResolvedValue(undefined);
-			mockCipher.encrypt.mockReturnValue('encrypted-config-data');
-			mockRepository.create.mockReturnValue(savedEntity);
-			mockRepository.save.mockResolvedValue(savedEntity);
-			mockCipher.decrypt.mockReturnValue(JSON.stringify(config));
-
-			await service.create({
-				name: 'Test Resolver',
-				type: 'test.resolver',
-				config,
-				user: mockUser,
-			});
-
-			// Verify expression service was called with canUseExternalSecrets=true
-			expect(mockExpressionService.resolve).toHaveBeenCalledWith(config, true);
-		});
-
-		it('should pass canUseExternalSecrets=false to validation for users without externalSecret:list permission', async () => {
-			const config: CredentialResolverConfiguration = { prefix: 'test-prefix' };
-			const savedEntity = createMockEntity();
-			const mockUser = createMockUser(GLOBAL_MEMBER_ROLE); // Member doesn't have externalSecret:list
-
-			mockRegistry.getResolverByTypename.mockReturnValue(mockResolverImplementation);
-			mockResolverImplementation.validateOptions.mockResolvedValue(undefined);
-			mockCipher.encrypt.mockReturnValue('encrypted-config-data');
-			mockRepository.create.mockReturnValue(savedEntity);
-			mockRepository.save.mockResolvedValue(savedEntity);
-			mockCipher.decrypt.mockReturnValue(JSON.stringify(config));
-
-			await service.create({
-				name: 'Test Resolver',
-				type: 'test.resolver',
-				config,
-				user: mockUser,
-			});
-
-			// Verify expression service was called with canUseExternalSecrets=false
-			expect(mockExpressionService.resolve).toHaveBeenCalledWith(config, false);
 		});
 	});
 
@@ -390,44 +344,6 @@ describe('DynamicCredentialResolverService', () => {
 			).rejects.toThrow(CredentialResolverValidationError);
 
 			expect(mockRepository.save).not.toHaveBeenCalled();
-		});
-
-		it('should pass canUseExternalSecrets=true to validation for users with externalSecret:list permission on update', async () => {
-			const entity = createMockEntity();
-			const newConfig: CredentialResolverConfiguration = { prefix: 'new-prefix' };
-			const updatedEntity = createMockEntity({ config: 'new-encrypted-config' });
-			const mockUser = createMockUser(GLOBAL_OWNER_ROLE); // Owner has externalSecret:list
-
-			mockRepository.findOneBy.mockResolvedValue(entity);
-			mockRegistry.getResolverByTypename.mockReturnValue(mockResolverImplementation);
-			mockResolverImplementation.validateOptions.mockResolvedValue(undefined);
-			mockCipher.encrypt.mockReturnValue('new-encrypted-config');
-			mockRepository.save.mockResolvedValue(updatedEntity);
-			mockCipher.decrypt.mockReturnValue(JSON.stringify(newConfig));
-
-			await service.update('resolver-id-123', { config: newConfig, user: mockUser });
-
-			// Verify expression service was called with canUseExternalSecrets=true
-			expect(mockExpressionService.resolve).toHaveBeenCalledWith(newConfig, true);
-		});
-
-		it('should pass canUseExternalSecrets=false to validation for users without externalSecret:list permission on update', async () => {
-			const entity = createMockEntity();
-			const newConfig: CredentialResolverConfiguration = { prefix: 'new-prefix' };
-			const updatedEntity = createMockEntity({ config: 'new-encrypted-config' });
-			const mockUser = createMockUser(GLOBAL_MEMBER_ROLE); // Member doesn't have externalSecret:list
-
-			mockRepository.findOneBy.mockResolvedValue(entity);
-			mockRegistry.getResolverByTypename.mockReturnValue(mockResolverImplementation);
-			mockResolverImplementation.validateOptions.mockResolvedValue(undefined);
-			mockCipher.encrypt.mockReturnValue('new-encrypted-config');
-			mockRepository.save.mockResolvedValue(updatedEntity);
-			mockCipher.decrypt.mockReturnValue(JSON.stringify(newConfig));
-
-			await service.update('resolver-id-123', { config: newConfig, user: mockUser });
-
-			// Verify expression service was called with canUseExternalSecrets=false
-			expect(mockExpressionService.resolve).toHaveBeenCalledWith(newConfig, false);
 		});
 
 		it('should call deleteAllSecrets when clearCredentials is true', async () => {

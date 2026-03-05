@@ -52,7 +52,6 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 	 * @param credentialsResolveMetadata The credential resolve metadata
 	 * @param staticData The decrypted static credential data
 	 * @param additionalData Additional workflow execution data for context and settings
-	 * @param canUseExternalSecrets Whether the credential can use external secrets for expression resolution
 	 * @returns Resolved credential data (either dynamic or static)
 	 * @throws {CredentialResolutionError} If resolution fails and fallback is not allowed
 	 */
@@ -61,7 +60,6 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		staticData: ICredentialDataDecryptedObject,
 		executionContext?: IExecutionContext,
 		workflowSettings?: IWorkflowSettings,
-		canUseExternalSecrets?: boolean,
 	): Promise<CredentialResolutionResult> {
 		// Determine which resolver ID to use: credential's own resolver or workflow's fallback
 		const resolverId =
@@ -111,10 +109,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			const parsedConfig = jsonParse<Record<string, unknown>>(decryptedConfig);
 
 			// Resolve expressions in resolver configuration using global data only
-			const resolverConfig = await this.expressionService.resolve(
-				parsedConfig,
-				canUseExternalSecrets ?? false,
-			);
+			const resolverConfig = await this.expressionService.resolve(parsedConfig);
 
 			// Attempt dynamic resolution
 			const dynamicData = await resolver.getSecret(

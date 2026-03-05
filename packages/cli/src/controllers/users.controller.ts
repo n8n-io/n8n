@@ -44,7 +44,6 @@ import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { UserRequest } from '@/requests';
 import { FolderService } from '@/services/folder.service';
-import { ProjectService } from '@/services/project.service.ee';
 import { UserService } from '@/services/user.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { JwtService } from '@/services/jwt.service';
@@ -63,7 +62,6 @@ export class UsersController {
 		private readonly projectRepository: ProjectRepository,
 		private readonly workflowService: WorkflowService,
 		private readonly credentialsService: CredentialsService,
-		private readonly projectService: ProjectService,
 		private readonly eventService: EventService,
 		private readonly folderService: FolderService,
 		private readonly jwtService: JwtService,
@@ -297,8 +295,6 @@ export class UsersController {
 					trx,
 				);
 			});
-
-			await this.projectService.clearCredentialCanUseExternalSecretsCache(transfereeProject.id);
 		}
 
 		const [ownedSharedWorkflows, ownedSharedCredentials] = await Promise.all([
@@ -384,13 +380,6 @@ export class UsersController {
 			targetUserNewRole: payload.newRoleName,
 			publicApi: false,
 		});
-
-		const projects = await this.projectService.getUserOwnedOrAdminProjects(targetUser.id);
-		await Promise.all(
-			projects.map(
-				async (p) => await this.projectService.clearCredentialCanUseExternalSecretsCache(p.id),
-			),
-		);
 
 		return { success: true };
 	}

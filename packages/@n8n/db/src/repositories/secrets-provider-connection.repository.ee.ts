@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import { Brackets, DataSource, Repository } from '@n8n/typeorm';
 
-import { SecretsProviderConnection } from '../entities';
+import { SecretsProviderConnection, SharedCredentials } from '../entities';
 
 @Service()
 export class SecretsProviderConnectionRepository extends Repository<SecretsProviderConnection> {
@@ -126,6 +126,41 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 			.getMany();
 
 		return projectConnections.concat(globalConnections);
+	}
+
+	/**
+	 * Returns the providerKeys of all project-scoped and global providers
+	 * accessible to the owner project of the provided credential ID.
+	 *
+	 * Optimized to return only the providerKey strings (the only field the
+	 * caller needs) and to return early when the table is empty.
+	 */
+	async findAllAccessibleProviderKeysByCredentialId(credentialId: string): Promise<string[]> {
+		if (!(await this.exists())) return [];
+
+		const ownerProjectSubquery = this.manager
+			.createQueryBuilder()
+			.subQuery()
+			.select('sc.projectId')
+			.from(SharedCredentials, 'sc')
+			.where('sc.credentialsId = :credentialId')
+			.andWhere('sc.role = :ownerRole')
+			.getQuery();
+
+		// Only selects providerKey data from table
+		const rows = await this.createQueryBuilder('connection')
+			.select('connection.providerKey', 'providerKey')
+			.leftJoin('connection.projectAccess', 'access')
+			.where(
+				new Brackets((qb) => {
+					qb.where('access.secretsProviderConnectionId IS NULL') // Global
+						.orWhere(`access.projectId IN ${ownerProjectSubquery}`); // Owner project
+				}),
+			)
+			.setParameters({ credentialId, ownerRole: 'credential:owner' })
+			.getRawMany<{ providerKey: string }>();
+
+		return rows.map((row: { providerKey: string }) => row.providerKey);
 	}
 
 	/**
