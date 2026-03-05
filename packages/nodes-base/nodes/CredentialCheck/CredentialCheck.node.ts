@@ -6,17 +6,17 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-export class CredentialGate implements INodeType {
+export class CredentialCheck implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Credential Gate',
-		name: 'credentialGate',
+		displayName: 'Credential Check',
+		name: 'credentialCheck',
 		icon: 'fa:key',
 		group: ['transform'],
 		version: 1,
 		description:
 			'Checks dynamic credential status and routes to Ready or Not Ready based on availability',
 		defaults: {
-			name: 'Credential Gate',
+			name: 'Credential Check',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
@@ -40,14 +40,14 @@ export class CredentialGate implements INodeType {
 			throw new NodeOperationError(this.getNode(), 'Could not determine the workflow ID.');
 		}
 
-		if (!this.helpers.checkCredentialGate) {
+		if (!this.helpers.checkCredentialStatus) {
 			throw new NodeOperationError(
 				this.getNode(),
-				'Credential gate functionality is not available. Ensure the dynamic credentials module is enabled.',
+				'Credential check functionality is not available. Ensure the dynamic credentials module is enabled.',
 			);
 		}
 
-		const result = await this.helpers.checkCredentialGate(workflowId, executionContext);
+		const result = await this.helpers.checkCredentialStatus(workflowId, executionContext);
 
 		if (result.readyToExecute) {
 			return [items, []];
@@ -56,7 +56,7 @@ export class CredentialGate implements INodeType {
 		const notReadyItems: INodeExecutionData[] = items.map((item) => ({
 			json: {
 				...item.json,
-				credentialGateResult: result,
+				credentialCheckResult: result,
 			},
 			pairedItem: item.pairedItem,
 		}));

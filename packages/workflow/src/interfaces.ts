@@ -1013,7 +1013,7 @@ export type DataTableProxyFunctions = {
 	getDataTableProxy?(dataTableId: string): Promise<IDataTableProjectService>;
 };
 
-export type CredentialGateStatus = {
+export type CredentialCheckStatus = {
 	credentialId: string;
 	credentialName: string;
 	credentialType: string;
@@ -1023,24 +1023,24 @@ export type CredentialGateStatus = {
 	revokeUrl?: string;
 };
 
-export type CredentialGateResult = {
+export type CredentialCheckResult = {
 	readyToExecute: boolean;
-	credentials: CredentialGateStatus[];
+	credentials: CredentialCheckStatus[];
 };
 
-export type DynamicCredentialGateProxyProvider = {
-	checkCredentialGate(
+export type DynamicCredentialCheckProxyProvider = {
+	checkCredentialStatus(
 		workflowId: string,
 		executionContext: IExecutionContext,
-	): Promise<CredentialGateResult>;
+	): Promise<CredentialCheckResult>;
 };
 
-export type CredentialGateProxyFunctions = {
+export type CredentialCheckProxyFunctions = {
 	// Optional to account for situations where the dynamic-credentials module is disabled
-	checkCredentialGate?(
+	checkCredentialStatus?(
 		workflowId: string,
 		executionContext: IExecutionContext,
-	): Promise<CredentialGateResult>;
+	): Promise<CredentialCheckResult>;
 };
 
 type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
@@ -1110,7 +1110,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			FileSystemHelperFunctions &
 			SSHTunnelFunctions &
 			DataTableProxyFunctions &
-			CredentialGateProxyFunctions & {
+			CredentialCheckProxyFunctions & {
 				normalizeItems(items: INodeExecutionData | INodeExecutionData[]): INodeExecutionData[];
 				constructExecutionMetaData(
 					inputData: INodeExecutionData[],

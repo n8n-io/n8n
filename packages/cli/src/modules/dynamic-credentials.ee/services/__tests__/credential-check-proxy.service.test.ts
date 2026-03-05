@@ -7,7 +7,7 @@ import type { Logger } from '@n8n/backend-common';
 import { CredentialsEntity } from '@n8n/db';
 
 import type { CredentialResolverWorkflowService } from '../credential-resolver-workflow.service';
-import { CredentialGateProxyService } from '../credential-gate-proxy.service';
+import { CredentialCheckProxyService } from '../credential-check-proxy.service';
 
 const createMockCredentialEntity = (
 	overrides: Partial<CredentialsEntity> = {},
@@ -29,8 +29,8 @@ const createMockCredentialEntity = (
 	return cred;
 };
 
-describe('CredentialGateProxyService', () => {
-	let service: CredentialGateProxyService;
+describe('CredentialCheckProxyService', () => {
+	let service: CredentialCheckProxyService;
 	let mockCredentialResolverWorkflowService: jest.Mocked<CredentialResolverWorkflowService>;
 	let mockExecutionContextService: jest.Mocked<ExecutionContextService>;
 	let mockOauthService: jest.Mocked<OauthService>;
@@ -79,7 +79,7 @@ describe('CredentialGateProxyService', () => {
 			debug: jest.fn(),
 		} as unknown as jest.Mocked<Logger>;
 
-		service = new CredentialGateProxyService(
+		service = new CredentialCheckProxyService(
 			mockCredentialResolverWorkflowService,
 			mockExecutionContextService,
 			mockOauthService,
@@ -88,7 +88,7 @@ describe('CredentialGateProxyService', () => {
 		);
 	});
 
-	describe('checkCredentialGate', () => {
+	describe('checkCredentialStatus', () => {
 		it('should return readyToExecute:true when all credentials are configured', async () => {
 			mockCredentialResolverWorkflowService.getWorkflowStatus.mockResolvedValue([
 				{
@@ -100,7 +100,7 @@ describe('CredentialGateProxyService', () => {
 				},
 			]);
 
-			const result = await service.checkCredentialGate('workflow-1', executionContext);
+			const result = await service.checkCredentialStatus('workflow-1', executionContext);
 
 			expect(result.readyToExecute).toBe(true);
 			expect(result.credentials).toHaveLength(1);
@@ -125,7 +125,7 @@ describe('CredentialGateProxyService', () => {
 				'https://accounts.google.com/o/oauth2/auth?...',
 			);
 
-			const result = await service.checkCredentialGate('workflow-1', executionContext);
+			const result = await service.checkCredentialStatus('workflow-1', executionContext);
 
 			expect(result.readyToExecute).toBe(false);
 			expect(result.credentials).toHaveLength(1);
@@ -163,7 +163,7 @@ describe('CredentialGateProxyService', () => {
 				'https://api.twitter.com/oauth/authorize?...',
 			);
 
-			const result = await service.checkCredentialGate('workflow-1', executionContext);
+			const result = await service.checkCredentialStatus('workflow-1', executionContext);
 
 			expect(result.credentials[0].authorizationUrl).toBe(
 				'https://api.twitter.com/oauth/authorize?...',
@@ -180,7 +180,7 @@ describe('CredentialGateProxyService', () => {
 				credentials: undefined,
 			} as PlaintextExecutionContext);
 
-			await expect(service.checkCredentialGate('workflow-1', executionContext)).rejects.toThrow(
+			await expect(service.checkCredentialStatus('workflow-1', executionContext)).rejects.toThrow(
 				'No credential context found in execution context',
 			);
 		});
@@ -207,7 +207,7 @@ describe('CredentialGateProxyService', () => {
 			mockEnterpriseCredentialsService.getOne.mockResolvedValue(mockCredential);
 			mockOauthService.generateAOauth2AuthUri.mockResolvedValue('https://auth.example.com');
 
-			const result = await service.checkCredentialGate('workflow-1', executionContext);
+			const result = await service.checkCredentialStatus('workflow-1', executionContext);
 
 			expect(result.readyToExecute).toBe(false);
 			expect(result.credentials).toHaveLength(2);
@@ -230,7 +230,7 @@ describe('CredentialGateProxyService', () => {
 
 			mockEnterpriseCredentialsService.getOne.mockResolvedValue(null);
 
-			const result = await service.checkCredentialGate('workflow-1', executionContext);
+			const result = await service.checkCredentialStatus('workflow-1', executionContext);
 
 			expect(result.readyToExecute).toBe(false);
 			expect(result.credentials[0].authorizationUrl).toBeUndefined();
@@ -239,7 +239,7 @@ describe('CredentialGateProxyService', () => {
 		it('should return readyToExecute:true for empty credentials list', async () => {
 			mockCredentialResolverWorkflowService.getWorkflowStatus.mockResolvedValue([]);
 
-			const result = await service.checkCredentialGate('workflow-1', executionContext);
+			const result = await service.checkCredentialStatus('workflow-1', executionContext);
 
 			expect(result.readyToExecute).toBe(true);
 			expect(result.credentials).toHaveLength(0);
