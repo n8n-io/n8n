@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import {
 	mapChatMessagesToStoredMessages,
 	mapStoredMessagesToChatMessages,
@@ -42,16 +43,15 @@ export class WorkflowBuilderSessionRepository
 
 	async saveSession(threadId: string, data: StoredSession): Promise<void> {
 		const { workflowId, userId } = this.parseThreadId(threadId);
+		const messages = mapChatMessagesToStoredMessages(data.messages);
+		const previousSummary = data.previousSummary ?? null;
 
-		await this.upsert(
-			{
-				workflowId,
-				userId,
-				messages: mapChatMessagesToStoredMessages(data.messages),
-				previousSummary: data.previousSummary ?? null,
-			},
-			['workflowId', 'userId'],
-		);
+		await this.createQueryBuilder()
+			.insert()
+			.into(WorkflowBuilderSession)
+			.values({ id: randomUUID(), workflowId, userId, messages, previousSummary })
+			.orUpdate(['messages', 'previousSummary'], ['workflowId', 'userId'])
+			.execute();
 	}
 
 	async deleteSession(threadId: string): Promise<void> {
