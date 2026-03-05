@@ -193,7 +193,9 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		const latestNode = findLast(
 			workflowsStore.workflow.nodes,
 			(node) => node.type === updateInformation.key,
-		) as INodeUi;
+		);
+		if (!latestNode) return;
+
 		const nodeType = deps.getNodeType(latestNode.type);
 		if (!nodeType) return;
 
@@ -206,9 +208,7 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 			nodeType,
 		);
 
-		if (latestNode) {
-			setNodeParameters({ value: nodeParams, name: latestNode.name }, true);
-		}
+		setNodeParameters({ value: nodeParams, name: latestNode.name }, true);
 	}
 
 	function setNodeValue(updateInformation: IUpdateInformation): void {
