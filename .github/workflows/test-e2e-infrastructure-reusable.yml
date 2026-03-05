@@ -29,7 +29,7 @@ jobs:
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       test-mode: docker-build
-      test-command: pnpm --filter=n8n-playwright test:all --project='${{ matrix.profile }}:infrastructure' --grep '10-nodes-10KB-10kb-out-5k' --workers=1
+      test-command: pnpm --filter=n8n-playwright test:all --project='${{ matrix.profile }}:infrastructure' --workers=1
       shards: 1
       runner: ${{ matrix.runner }}
     secrets: inherit
