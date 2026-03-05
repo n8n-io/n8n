@@ -16,7 +16,11 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import SetupCard from '@/features/setupPanel/components/cards/SetupCard.vue';
-import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
+import {
+	ExpressionLocalResolveContextSymbol,
+	HTTP_REQUEST_NODE_TYPE,
+	HTTP_REQUEST_TOOL_NODE_TYPE,
+} from '@/app/constants';
 import { useExpressionResolveCtx } from '@/features/workflows/canvas/experimental/composables/useExpressionResolveCtx';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -49,6 +53,12 @@ provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
 
 const nodeType = computed(() =>
 	nodeTypesStore.getNodeType(props.state.node.type, props.state.node.typeVersion),
+);
+
+const isHttpRequestNode = computed(
+	() =>
+		props.state.node.type === HTTP_REQUEST_NODE_TYPE ||
+		props.state.node.type === HTTP_REQUEST_TOOL_NODE_TYPE,
 );
 
 const hasCredential = computed(() => !!props.state.credentialType);
@@ -271,6 +281,7 @@ const cardComplete = computed(() => {
 				<NodeCredentials
 					:node="state.node"
 					:override-cred-type="state.credentialType ?? ''"
+					:skip-auto-select="isHttpRequestNode"
 					hide-issues
 					@credential-selected="onCredentialSelected"
 				>

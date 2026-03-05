@@ -28,6 +28,7 @@ import {
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 	MANUAL_TRIGGER_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
+	HTTP_REQUEST_TOOL_NODE_TYPE,
 } from '@/app/constants';
 
 import { sortNodesByExecutionOrder } from '@/app/utils/workflowUtils';
@@ -794,7 +795,12 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 
 		for (const credState of credStates) {
 			if (credState.selectedCredentialId) continue;
-			if (credState.nodes.some((n) => n.type === HTTP_REQUEST_NODE_TYPE)) continue;
+			if (
+				credState.nodes.some(
+					(n) => n.type === HTTP_REQUEST_NODE_TYPE || n.type === HTTP_REQUEST_TOOL_NODE_TYPE,
+				)
+			)
+				continue;
 			const available = credentialsStore.getCredentialsByType(credState.credentialType);
 			if (available.length === 0) continue;
 			const mostRecent = available.reduce(
@@ -807,7 +813,11 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 
 		for (const nodeState of nStates) {
 			if (!nodeState.credentialType || nodeState.selectedCredentialId) continue;
-			if (nodeState.node.type === HTTP_REQUEST_NODE_TYPE) continue;
+			if (
+				nodeState.node.type === HTTP_REQUEST_NODE_TYPE ||
+				nodeState.node.type === HTTP_REQUEST_TOOL_NODE_TYPE
+			)
+				continue;
 			const available = credentialsStore.getCredentialsByType(nodeState.credentialType);
 			if (available.length === 0) continue;
 			const mostRecent = available.reduce(
