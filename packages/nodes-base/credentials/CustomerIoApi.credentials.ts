@@ -71,12 +71,7 @@ export class CustomerIoApi implements ICredentialType {
 			).toString('base64');
 			// @ts-ignore
 			Object.assign(requestOptions.headers, { Authorization: `Basic ${basicAuthKey}` });
-		} else if (
-			url.hostname === 'beta-api.customer.io' ||
-			url.hostname === 'beta-api-eu.customer.io' ||
-			url.hostname === 'api.customer.io' ||
-			url.hostname === 'api-eu.customer.io'
-		) {
+		} else if (url.hostname === 'api.customer.io' || url.hostname === 'api-eu.customer.io') {
 			// @ts-ignore
 			Object.assign(requestOptions.headers, {
 				Authorization: `Bearer ${credentials.appApiKey as string}`,
