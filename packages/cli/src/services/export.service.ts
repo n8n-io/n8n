@@ -162,62 +162,69 @@ export class ExportService {
 			let fileIndex = 1;
 			let currentFileEntityCount = 0;
 
-			do {
-				/*
-				 * use raw SQL query to avoid typeorm limitations,
-				 * typeorm repositories do not return joining table entries
-				 */
-				const formattedTableName = this.dataSource.driver.escape(tableName);
-				const pageEntities = await this.dataSource.query(
-					`SELECT ${columns} FROM ${formattedTableName} LIMIT ${pageSize} OFFSET ${offset}`,
-				);
-
-				// If no entities returned, we've reached the end
-				if (pageEntities.length === 0) {
-					this.logger.info(`      No more entities available at offset ${offset}`);
-					hasNextPage = false;
-					break;
-				}
-
-				// Determine which file to write to based on current entity count
-				const targetFileIndex = Math.floor(totalEntityCount / entitiesPerFile) + 1;
-				const fileName =
-					targetFileIndex === 1 ? `${entityName}.jsonl` : `${entityName}.${targetFileIndex}.jsonl`;
-				const filePath = safeJoinPath(outputDir, fileName);
-
-				// If we've moved to a new file, log the completion of the previous file
-				if (targetFileIndex > fileIndex) {
-					this.logger.info(`   ✅ Completed file ${fileIndex}: ${currentFileEntityCount} entities`);
-					fileIndex = targetFileIndex;
-					currentFileEntityCount = 0;
-				}
-
-				// Append all entities in this page as JSONL (one JSON object per line)
-				const entitiesJsonl: string = pageEntities
-					.map((entity: unknown) => JSON.stringify(entity))
-					.join('\n');
-				await appendFile(
-					filePath,
-					this.cipher.encrypt(entitiesJsonl, customEncryptionKey) + '\n',
-					'utf8',
-				);
-
-				totalEntityCount += pageEntities.length;
-				currentFileEntityCount += pageEntities.length;
-				offset += pageEntities.length;
-
-				this.logger.info(
-					`      Fetched page containing ${pageEntities.length} entities (page size: ${pageSize}, offset: ${offset - pageEntities.length}, total processed: ${totalEntityCount})`,
-				);
-
-				// If we got fewer entities than requested, we've reached the end
-				if (pageEntities.length < pageSize) {
-					this.logger.info(
-						`      Reached end of dataset (got ${pageEntities.length} < ${pageSize} requested)`,
+			try {
+				do {
+					/*
+					 * use raw SQL query to avoid typeorm limitations,
+					 * typeorm repositories do not return joining table entries
+					 */
+					const formattedTableName = this.dataSource.driver.escape(tableName);
+					const pageEntities = await this.dataSource.query(
+						`SELECT ${columns} FROM ${formattedTableName} LIMIT ${pageSize} OFFSET ${offset}`,
 					);
-					hasNextPage = false;
-				}
-			} while (hasNextPage);
+
+					// If no entities returned, we've reached the end
+					if (pageEntities.length === 0) {
+						this.logger.info(`      No more entities available at offset ${offset}`);
+						hasNextPage = false;
+						break;
+					}
+
+					// Determine which file to write to based on current entity count
+					const targetFileIndex = Math.floor(totalEntityCount / entitiesPerFile) + 1;
+					const fileName =
+						targetFileIndex === 1 ? `${entityName}.jsonl` : `${entityName}.${targetFileIndex}.jsonl`;
+					const filePath = safeJoinPath(outputDir, fileName);
+
+					// If we've moved to a new file, log the completion of the previous file
+					if (targetFileIndex > fileIndex) {
+						this.logger.info(`   ✅ Completed file ${fileIndex}: ${currentFileEntityCount} entities`);
+						fileIndex = targetFileIndex;
+						currentFileEntityCount = 0;
+					}
+
+					// Append all entities in this page as JSONL (one JSON object per line)
+					const entitiesJsonl: string = pageEntities
+						.map((entity: unknown) => JSON.stringify(entity))
+						.join('\n');
+					await appendFile(
+						filePath,
+						this.cipher.encrypt(entitiesJsonl, customEncryptionKey) + '\n',
+						'utf8',
+					);
+
+					totalEntityCount += pageEntities.length;
+					currentFileEntityCount += pageEntities.length;
+					offset += pageEntities.length;
+
+					this.logger.info(
+						`      Fetched page containing ${pageEntities.length} entities (page size: ${pageSize}, offset: ${offset - pageEntities.length}, total processed: ${totalEntityCount})`,
+					);
+
+					// If we got fewer entities than requested, we've reached the end
+					if (pageEntities.length < pageSize) {
+						this.logger.info(
+							`      Reached end of dataset (got ${pageEntities.length} < ${pageSize} requested)`,
+						);
+						hasNextPage = false;
+					}
+				} while (hasNextPage);
+			} catch (error) {
+				// Table may not exist (e.g., secrets_provider_connection in non-enterprise editions)
+				this.logger.warn(
+					`   ⚠️  Table ${tableName} not accessible: ${error instanceof Error ? error.message : 'Unknown error'}. Skipping...`,
+				);
+			}
 
 			// Log completion of the final file
 			if (currentFileEntityCount > 0) {
