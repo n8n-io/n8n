@@ -48,6 +48,7 @@ import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useCredentialResolvers } from '@/features/resolvers/composables/useCredentialResolvers';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
 
@@ -60,6 +61,15 @@ const telemetry = useTelemetry();
 const { isEligibleForMcpAccess, trackMcpAccessEnabledForWorkflow, mcpTriggerMap } = useMcp();
 const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
 const { isEnabled: isCredentialResolverEnabled } = useDynamicCredentials();
+const canListCredentialResolvers = hasPermission(['rbac'], {
+	rbac: { scope: 'credentialResolver:list' },
+});
+const canCreateCredentialResolver = hasPermission(['rbac'], {
+	rbac: { scope: 'credentialResolver:create' },
+});
+const canUpdateCredentialResolver = hasPermission(['rbac'], {
+	rbac: { scope: 'credentialResolver:update' },
+});
 
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
@@ -659,7 +669,7 @@ onMounted(async () => {
 			loadWorkflowCallerPolicyOptions(),
 		];
 
-		if (isCredentialResolverEnabled.value) {
+		if (isCredentialResolverEnabled.value && canListCredentialResolvers) {
 			promises.push(loadCredentialResolvers(), loadCredentialResolverTypes());
 		}
 
@@ -857,7 +867,9 @@ onBeforeUnmount(() => {
 								:placeholder="i18n.baseText('workflowSettings.credentialResolver.placeholder')"
 								filterable
 								clearable
-								:disabled="readOnlyEnv || !workflowPermissions.update"
+								:disabled="
+									readOnlyEnv || !workflowPermissions.update || !canListCredentialResolvers
+								"
 								:limit-popper-width="true"
 								data-test-id="workflow-settings-credential-resolver"
 							>
@@ -868,7 +880,7 @@ onBeforeUnmount(() => {
 									:value="resolver.id"
 								>
 								</N8nOption>
-								<template #footer>
+								<template v-if="canCreateCredentialResolver" #footer>
 									<button
 										type="button"
 										:class="$style['create-new-button']"
@@ -882,7 +894,7 @@ onBeforeUnmount(() => {
 								</template>
 							</N8nSelect>
 							<N8nIconButton
-								v-if="isSelectedResolverEditable"
+								v-if="isSelectedResolverEditable && canUpdateCredentialResolver"
 								variant="ghost"
 								icon="pen"
 								size="small"
