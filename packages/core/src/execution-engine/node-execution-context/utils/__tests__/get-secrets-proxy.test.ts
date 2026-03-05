@@ -44,6 +44,18 @@ describe('getSecretsProxy', () => {
 			expect(() => (proxy.providerName as IDataObject).secretName).toThrow(ExpressionError);
 		});
 
+		// for easy backwards compatibility, we keep the same behaviour as before when no externalSecretProviderKeysAccessibleByCredential existed
+		it('should return the value from the ExternalSecretsProxy if externalSecretProviderKeysAccessibleByCredential is undefined', () => {
+			additionalData.externalSecretProviderKeysAccessibleByCredential = undefined;
+			externalSecretsProxy.hasProvider.mockReturnValue(true);
+			externalSecretsProxy.hasSecret.mockReturnValue(true);
+			externalSecretsProxy.getSecret.mockReturnValue('secretValue');
+
+			const proxy = getSecretsProxy(additionalData);
+
+			expect((proxy.providerName as IDataObject).secretName).toBe('secretValue');
+		});
+
 		it('should return the value from the ExternalSecretsProxy', () => {
 			additionalData.externalSecretProviderKeysAccessibleByCredential = new Set(['providerName']);
 			externalSecretsProxy.hasProvider.mockReturnValue(true);

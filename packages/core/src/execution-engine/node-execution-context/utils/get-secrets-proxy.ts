@@ -31,10 +31,13 @@ export function getSecretsProxy(additionalData: IWorkflowExecuteAdditionalData):
 				if (typeof providerName !== 'string') {
 					return {};
 				}
-				if (
-					!externalSecretProviderKeysAccessibleByCredential?.has(providerName) ||
-					!externalSecretsProxy.hasProvider(providerName)
-				) {
+				// TODO: require externalSecretProviderKeysAccessibleByCredential to be defined to be able
+				// to access projects. This needs manual validation that all palces that call getSecretsProxy
+				// also set externalSecretProviderKeysAccessibleByCredential beforehand
+				const credentialHasAccessToProvider =
+					!externalSecretProviderKeysAccessibleByCredential ||
+					externalSecretProviderKeysAccessibleByCredential.has(providerName);
+				if (!credentialHasAccessToProvider || !externalSecretsProxy.hasProvider(providerName)) {
 					throw new ExpressionError('Could not load secrets', {
 						description:
 							'The credential in use pulls secrets from an external store that is not reachable',
