@@ -43,12 +43,14 @@ const outputSchema = {
 	name: z.string().describe('The name of the created workflow'),
 	nodeCount: z.number().describe('The number of nodes in the workflow'),
 	url: z.string().describe('The URL to open the workflow in n8n'),
-	autoAssignedCredentials: z.array(
-		z.object({
-			nodeName: z.string().describe('The name of the node that had credentials auto-assigned'),
-			credentialName: z.string().describe('The name of the credential that was auto-assigned'),
-		}),
-		).describe('List of credentials that were automatically assigned to nodes'),
+	autoAssignedCredentials: z
+		.array(
+			z.object({
+				nodeName: z.string().describe('The name of the node that had credentials auto-assigned'),
+				credentialName: z.string().describe('The name of the credential that was auto-assigned'),
+			}),
+		)
+		.describe('List of credentials that were automatically assigned to nodes'),
 	note: z
 		.string()
 		.optional()
