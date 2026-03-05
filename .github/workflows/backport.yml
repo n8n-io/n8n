@@ -1,6 +1,12 @@
 on:
   pull_request:
     types: [closed]
+  workflow_dispatch:
+    inputs:
+      pull-request-id:
+        description: 'The ID number of the pull request (e.g. 3342). No #, no extra letters.'
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -8,7 +14,9 @@ permissions:
 
 jobs:
   backport:
-    if: github.event.pull_request.merged == true
+    if: |
+      github.event.pull_request.merged == true ||
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-slim
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -23,6 +31,8 @@ jobs:
 
       - name: Compute backport targets
         id: targets
+        env:
+          PULL_REQUEST_ID: ${{ inputs.pull-request-id }}
         run: node .github/scripts/compute-backport-targets.mjs
 
       - name: Backport
@@ -30,7 +40,7 @@ jobs:
         uses: korthout/backport-action@c656f5d5851037b2b38fb5db2691a03fa229e3b2 # v4.0.1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          source_pr_number: ${{ github.event.pull_request.number }}
+          source_pr_number: ${{ github.event.pull_request.number || inputs.pull-request-id }}
           target_branches: ${{ steps.targets.outputs.target_branches }}
           pull_description: |-
             # Description
