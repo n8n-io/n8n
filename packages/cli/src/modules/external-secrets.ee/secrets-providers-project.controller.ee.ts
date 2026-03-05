@@ -25,6 +25,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { sendErrorResponse } from '@/response-helper';
 
 import { ExternalSecretsConfig } from './external-secrets.config';
+import { SecretsProviderAccessCheckService } from './secret-provider-access-check.service.ee';
 import { SecretsProvidersConnectionsService } from './secrets-providers-connections.service.ee';
 
 @RestController('/secret-providers/projects')
@@ -33,6 +34,7 @@ export class SecretProvidersProjectController {
 		private readonly config: ExternalSecretsConfig,
 		private readonly logger: Logger,
 		private readonly connectionsService: SecretsProvidersConnectionsService,
+		private readonly accessCheckService: SecretsProviderAccessCheckService,
 	) {
 		this.logger = this.logger.scoped('external-secrets');
 	}
@@ -112,7 +114,9 @@ export class SecretProvidersProjectController {
 		@Body body: UpdateSecretsProviderConnectionDto,
 	): Promise<SecretProviderConnection> {
 		this.logger.debug('Updating connection for project', { projectId, providerKey });
-		await this.connectionsService.getConnectionForProject(providerKey, projectId);
+		await this.accessCheckService.assertConnectionAccess(providerKey, projectId, [
+			'externalSecretsProvider:update',
+		]);
 		const { projectIds: _, ...updates } = body;
 		const connection = await this.connectionsService.updateConnection(
 			providerKey,
@@ -131,6 +135,9 @@ export class SecretProvidersProjectController {
 		@Param('providerKey') providerKey: string,
 	) {
 		this.logger.debug('Deleting connection for project', { projectId, providerKey });
+		await this.accessCheckService.assertConnectionAccess(providerKey, projectId, [
+			'externalSecretsProvider:delete',
+		]);
 		await this.connectionsService.deleteConnectionForProject(providerKey, projectId);
 		res.status(204).send();
 	}
@@ -144,7 +151,9 @@ export class SecretProvidersProjectController {
 		@Param('providerKey') providerKey: string,
 	): Promise<TestSecretProviderConnectionResponse> {
 		this.logger.debug('Testing connection for project', { projectId, providerKey });
-		await this.connectionsService.getConnectionAccessibleFromProject(providerKey, projectId);
+		await this.accessCheckService.assertConnectionAccess(providerKey, projectId, [
+			'externalSecretsProvider:update',
+		]);
 		return await this.connectionsService.testConnection(providerKey, req.user.id);
 	}
 
