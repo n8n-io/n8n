@@ -1,11 +1,11 @@
 import { test, expect } from '../../../fixtures/base';
 
-test.describe
-	.serial('Environment Feature Flags', {
-	annotation: [
-		{ type: 'owner', description: 'Adore' },
-	],
-}, () => {
+test.describe.serial(
+	'Environment Feature Flags',
+	{
+		annotation: [{ type: 'owner', description: 'Adore' }],
+	},
+	() => {
 		test('should set feature flags at runtime and load it back in envFeatureFlags from backend settings', async ({
 			api,
 		}) => {
@@ -45,4 +45,5 @@ test.describe
 			expect(currentFlags).toBeInstanceOf(Object);
 			expect(currentFlags.data['N8N_ENV_FEAT_TEST']).toBeUndefined();
 		});
-	});
+	},
+);

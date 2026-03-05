@@ -156,6 +156,7 @@ export const GLOBAL_MEMBER_SCOPES: Scope[] = [
 	'chatHubAgent:delete',
 	'chatHubAgent:list',
 	'apiKey:manage',
+	'credentialResolver:list',
 ];
 
 export const GLOBAL_CHAT_USER_SCOPES: Scope[] = [

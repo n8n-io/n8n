@@ -27,14 +27,12 @@ export { createGetSuggestedNodesTool } from './tools/get-suggested-nodes.tool';
 export { stripImportStatements, SDK_IMPORT_STATEMENT } from './utils/extract-code';
 
 // SDK reference content (raw, unescaped curly braces)
+export { WORKFLOW_PATTERNS } from './prompts';
 export {
 	EXPRESSION_REFERENCE,
-	WORKFLOW_PATTERNS,
 	ADDITIONAL_FUNCTIONS,
 	WORKFLOW_RULES,
-	CODING_GUIDELINES,
-	DESIGN_GUIDANCE,
-} from './prompts';
+} from '../shared/prompt-constants';
 
 // Tool name constants (shared between code builder agent and MCP server)
 export {

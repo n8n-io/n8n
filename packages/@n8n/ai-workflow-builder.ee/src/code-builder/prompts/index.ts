@@ -12,6 +12,11 @@ import type { IRunExecutionData, NodeExecutionSchema } from 'n8n-workflow';
 
 import type { PlanOutput } from '../../types/planning';
 import { formatPlanAsText } from '../../utils/plan-helpers';
+import {
+	EXPRESSION_REFERENCE,
+	ADDITIONAL_FUNCTIONS,
+	WORKFLOW_RULES,
+} from '../../shared/prompt-constants';
 import type { ExpressionValue } from '../../workflow-builder-agent';
 import { formatCodeWithLineNumbers } from '../handlers/text-editor-handler';
 import { type ConversationEntry, entryToString } from '../utils/code-builder-session';
@@ -25,60 +30,6 @@ function escapeCurlyBrackets(text: string): string {
 }
 
 /**
- * Expression context reference - documents variables available inside expr()
- */
-export const EXPRESSION_REFERENCE = `Available variables inside \`expr('{{ ... }}')\`:
-
-- \`$json\` — current item's JSON data from the immediate predecessor node
-- \`$('NodeName').item.json\` — access any node's output by name
-- \`$input.first()\` — first item from immediate predecessor
-- \`$input.all()\` — all items from immediate predecessor
-- \`$input.item\` — current item being processed
-- \`$binary\` — binary data of current item from immediate predecessor
-- \`$now\` — current date/time (Luxon DateTime). Example: \`$now.toISO()\`
-- \`$today\` — start of today (Luxon DateTime). Example: \`$today.plus(1, 'days')\`
-- \`$itemIndex\` — index of current item being processed
-- \`$runIndex\` — current run index
-- \`$execution.id\` — unique execution ID
-- \`$execution.mode\` — 'test' or 'production'
-- \`$workflow.id\` — workflow ID
-- \`$workflow.name\` — workflow name
-
-String composition — variables MUST always be inside \`{{ }}\`, never outside as JS variables:
-
-- \`expr('Hello {{ $json.name }}, welcome!')\` — variable embedded in text
-- \`expr('Report for {{ $now.toFormat("MMMM d, yyyy") }} - {{ $json.title }}')\` — multiple variables with method call
-- \`expr('{{ $json.firstName }} {{ $json.lastName }}')\` — combining multiple fields
-- \`expr('Total: {{ $json.items.length }} items, updated {{ $now.toISO() }}')\` — expressions with method calls
-- \`expr('Status: {{ $json.count > 0 ? "active" : "empty" }}')\` — inline ternary
-
-Dynamic data from other nodes — \`$()\` MUST always be inside \`{{ }}\`, never used as plain JavaScript:
-
-- WRONG: \`expr('{{ ' + JSON.stringify($('Source').all().map(i => i.json.name)) + ' }}')\` — $() outside {{ }}
-- CORRECT: \`expr('{{ $("Source").all().map(i => ({ option: i.json.name })) }}')\` — $() inside {{ }}
-- CORRECT: \`expr('{{ { "fields": [{ "values": $("Fetch Projects").all().map(i => ({ option: i.json.name })) }] } }}')\` — complex JSON inside {{ }}`;
-
-/**
- * Additional SDK functions not covered by main workflow patterns
- */
-export const ADDITIONAL_FUNCTIONS = `Additional SDK functions:
-
-- \`placeholder('hint')\` — marks a parameter value for user input. Use directly as the parameter value — never wrap in \`expr()\`, objects, or arrays.
-  Example: \`parameters: { url: placeholder('Your API URL (e.g. https://api.example.com/v1)') }\`
-
-- \`sticky('content', nodes?, config?)\` — creates a sticky note on the canvas.
-  Example: \`sticky('## Data Processing', [httpNode, setNode], { color: 2 })\`
-
-- \`.output(n)\` — selects a specific output index for multi-output nodes. IF and Switch have dedicated methods (\`onTrue/onFalse\`, \`onCase\`), but \`.output(n)\` works as a generic alternative.
-  Example: \`classifier.output(1).to(categoryB)\`
-
-- \`.onError(handler)\` — connects a node's error output to a handler node. Requires \`onError: 'continueErrorOutput'\` in the node config.
-  Example: \`httpNode.onError(errorHandler)\` (with \`config: { onError: 'continueErrorOutput' }\`)
-
-- Additional subnode factories (all follow the same pattern as \`languageModel()\` and \`tool()\`):
-  \`memory()\`, \`outputParser()\`, \`embeddings()\`, \`vectorStore()\`, \`retriever()\`, \`documentLoader()\`, \`textSplitter()\``;
-
-/**
  * Role and capabilities of the agent
  */
 const ROLE =
@@ -90,47 +41,6 @@ const ROLE =
 const RESPONSE_STYLE = `**Be extremely concise in your visible responses.** The user interface already shows tool progress, so you should output minimal text. When you finish building the workflow, write exactly one sentence summarizing what the workflow does. Nothing more.
 
 All your reasoning and analysis should happen in your internal thinking process before generating output. Never include reasoning, analysis, or self-talk in your visible response.`;
-
-/**
- * Workflow rules - strict constraints for code generation
- */
-/**
- * Coding guidelines - strict rules for writing workflow code
- */
-export const CODING_GUIDELINES = `Rules:
-- Use exact parameter names and structures from the type definitions.
-- Use unique variable names — never reuse builder function names (e.g. \`node\`, \`trigger\`) as variable names
-- Use descriptive node names (Good: "Fetch Weather Data", "Check Temperature"; Bad: "HTTP Request", "Set", "If")
-- Credentials: \`credentials: { slackApi: newCredential('Slack Bot') }\` — type must match what the node expects
-- Expressions: use \`expr()\` for any \`{{ }}\` syntax  — always use single or double quotes, NOT backtick template literals
-  - e.g. \`expr('Hello {{ $json.name }}')\` or \`expr("{{ $('Node').item.json.field }}")\`
-  - For multiline expressions, use string concatenation: \`expr('Line 1\\n' + 'Line 2 {{ $json.value }}')\`
-  - WRONG: \`expr('Daily Digest - ' + $now.toFormat('MMMM d') + '\\n' + $json.output)\` — $now and $json are outside {{ }}
-  - CORRECT: \`expr('Daily Digest - {{ $now.toFormat("MMMM d") }}\\n{{ $json.output }}')\` — variables inside {{ }}
-  - WRONG: \`expr('{{ ' + JSON.stringify($('Node').all().map(i => i.json)) + ' }}')\` — $() used as JavaScript
-  - CORRECT: \`expr('{{ $("Node").all().map(i => i.json) }}')\` — $() inside {{ }} evaluated at runtime
-- Placeholders: use \`placeholder('hint')\` directly as the parameter value, not inside \`expr()\`, objects, or arrays, etc.
-- Every node MUST have an \`output\` property with sample data — following nodes depend on it for expressions
-- String quoting: When a string value contains an apostrophe, use double quotes for that string.
-  Example: \`output: [{{ text: "I've arrived" }}]\`
-- Do NOT add or edit comments. Comments are ignored and not shared with user. Use sticky(...) to provide guidance.`;
-
-/**
- * Design guidance - architectural decisions for workflow construction
- */
-export const DESIGN_GUIDANCE = `Design guidance:
-- **Trace item counts**: For each connection A → B, if A returns N items, should B run N times or just once? If B doesn't need A's items (e.g., it fetches from an independent source), either set \`executeOnce: true\` on B or use parallel branches + Merge to combine results.
-- **Handling convergence after branches**: When a node receives data from multiple paths (after Switch, IF, Merge): use optional chaining \`expr('{{ $json.data?.approved ?? $json.status }}')\`, reference a node that ALWAYS runs \`expr("{{ $('Webhook').item.json.field }}")\`, or normalize data before convergence with Set nodes.
-- **Prefer dedicated integration nodes** over HTTP Request when search results show one is available.
-- **Pay attention to @builderHint annotations** in the type definitions — they provide critical guidance on how to correctly configure node parameters.`;
-
-export const WORKFLOW_RULES = `Follow these rules strictly when generating workflows:
-
-1. **Always use newCredential() for authentication**
-   - When a node needs credentials, always use \`newCredential('Name')\` in the credentials config
-   - NEVER use placeholder strings, fake API keys, or hardcoded auth values
-   - Example: \`credentials: { slackApi: newCredential('Slack Bot') }\`
-   - The credential type must match what the node expects`;
 
 /**
  * Workflow patterns - condensed examples

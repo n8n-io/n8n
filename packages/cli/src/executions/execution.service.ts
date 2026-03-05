@@ -151,6 +151,8 @@ export class ExecutionService {
 			{
 				user: req.user,
 				redactExecutionData,
+				ipAddress: req.ip ?? '',
+				userAgent: req.headers['user-agent'] ?? '',
 			},
 		);
 
