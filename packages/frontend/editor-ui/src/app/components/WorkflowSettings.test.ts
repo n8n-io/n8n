@@ -1,4 +1,5 @@
 import { nextTick, reactive } from 'vue';
+import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import type { MockInstance } from 'vitest';
 import { waitFor, within } from '@testing-library/vue';
@@ -8,6 +9,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import { getDropdownItems, mockedStore, type MockedStore } from '@/__tests__/utils';
 import { EnterpriseEditionFeature } from '@/app/constants';
+import { useRBACStore } from '@/app/stores/rbac.store';
 import WorkflowSettingsVue from '@/app/components/WorkflowSettings.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -610,6 +612,10 @@ describe('WorkflowSettingsVue', () => {
 		beforeEach(() => {
 			vi.mocked(restApiClient.getCredentialResolvers).mockResolvedValue(mockResolvers);
 			vi.mocked(restApiClient.getCredentialResolverTypes).mockResolvedValue(mockResolverTypes);
+			const rbacStore = useRBACStore();
+			rbacStore.addGlobalScope('credentialResolver:list');
+			rbacStore.addGlobalScope('credentialResolver:create');
+			rbacStore.addGlobalScope('credentialResolver:update');
 		});
 
 		it('should render credential resolver dropdown', async () => {
@@ -770,6 +776,70 @@ describe('WorkflowSettingsVue', () => {
 
 			const { getByTestId } = createComponent({ pinia });
 			await nextTick();
+
+			const dropdownContainer = getByTestId('workflow-settings-credential-resolver');
+			const input = dropdownContainer.querySelector('input');
+			expect(input).toBeDisabled();
+		});
+	});
+
+	describe('Credential Resolver RBAC', () => {
+		const mockResolvers = [
+			{
+				id: 'resolver-1',
+				name: 'Test Resolver 1',
+				type: 'editable-type',
+				config: '{}',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			},
+		];
+
+		const mockResolverTypes = [
+			{
+				name: 'editable-type',
+				displayName: 'Editable Resolver',
+				options: [{ name: 'url', type: 'string', displayName: 'URL', default: '' }],
+			},
+		];
+
+		beforeEach(() => {
+			vi.mocked(restApiClient.getCredentialResolvers).mockResolvedValue(mockResolvers);
+			vi.mocked(restApiClient.getCredentialResolverTypes).mockResolvedValue(mockResolverTypes);
+		});
+
+		it('should not show "Create new" button when user lacks credentialResolver:create scope', async () => {
+			const rbacStore = useRBACStore();
+			rbacStore.addGlobalScope('credentialResolver:list');
+			rbacStore.addGlobalScope('credentialResolver:update');
+
+			const { queryByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(
+				queryByTestId('workflow-settings-credential-resolver-create-new'),
+			).not.toBeInTheDocument();
+		});
+
+		it('should show "Create new" button when user has credentialResolver:create scope', async () => {
+			const rbacStore = useRBACStore();
+			rbacStore.addGlobalScope('credentialResolver:list');
+			rbacStore.addGlobalScope('credentialResolver:create');
+
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(getByTestId('workflow-settings-credential-resolver-create-new')).toBeInTheDocument();
+		});
+
+		it('should not fetch resolvers and should disable dropdown when user lacks credentialResolver:list scope', async () => {
+			// No scopes added — user has no credentialResolver:list
+
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(restApiClient.getCredentialResolvers).not.toHaveBeenCalled();
+			expect(restApiClient.getCredentialResolverTypes).not.toHaveBeenCalled();
 
 			const dropdownContainer = getByTestId('workflow-settings-credential-resolver');
 			const input = dropdownContainer.querySelector('input');
