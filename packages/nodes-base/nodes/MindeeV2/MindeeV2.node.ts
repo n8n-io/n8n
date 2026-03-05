@@ -262,7 +262,7 @@ export class MindeeV2 implements INodeType {
 					await buildRequestBody(this, i, params, form);
 					const headers = {
 						...form.getHeaders?.(),
-						'User-Agent': `mindee-n8n@v${this.getNode().typeVersion ?? 'unknown'}`,
+						'User-Agent': `mindee-api-n8n@v${this.getNode().typeVersion ?? 'unknown'}`,
 					} as IDataObject;
 					const enqueue = await mindeeApiRequest.call(this, 'POST', API_URL, form, {}, headers);
 					const pollingUrl = extractPollingUrl(this, enqueue);
