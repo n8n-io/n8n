@@ -38,7 +38,14 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
  * with trigger nodes getting their own dedicated cards (test button only).
  * @param nodes Optional sub-set of nodes to check (defaults to full workflow)
  */
-export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
+export const useWorkflowSetupState = (
+	nodes?: Ref<INodeUi[]>,
+	options?: {
+		/** Additional parameter names per node that should be shown in setup cards
+		 * (e.g., parameters with placeholder values from the AI builder). */
+		additionalParametersByNode?: Ref<Map<string, string[]>>;
+	},
+) => {
 	const workflowsStore = useWorkflowsStore();
 	const credentialsStore = useCredentialsStore();
 	const nodeTypesStore = useNodeTypesStore();
@@ -94,23 +101,32 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 
 	/**
 	 * Combined map of node name → parameter names that should always be shown.
-	 * Merges synchronous resource locator detection with async template results.
+	 * Merges synchronous resource locator detection, async template results,
+	 * and any additional parameters (e.g., placeholder params from the builder).
 	 */
 	const templateParametersByNode = computed(() => {
 		const merged = new Map<string, string[]>();
+
+		const mergeInto = (source: Map<string, string[]>) => {
+			for (const [nodeName, params] of source) {
+				const existing = merged.get(nodeName);
+				if (existing) {
+					const combined = new Set([...existing, ...params]);
+					merged.set(nodeName, Array.from(combined));
+				} else {
+					merged.set(nodeName, [...params]);
+				}
+			}
+		};
 
 		for (const [nodeName, params] of resourceLocatorsByNode.value) {
 			merged.set(nodeName, [...params]);
 		}
 
-		for (const [nodeName, params] of templateMissingParams.value) {
-			const existing = merged.get(nodeName);
-			if (existing) {
-				const combined = new Set([...existing, ...params]);
-				merged.set(nodeName, Array.from(combined));
-			} else {
-				merged.set(nodeName, [...params]);
-			}
+		mergeInto(templateMissingParams.value);
+
+		if (options?.additionalParametersByNode?.value) {
+			mergeInto(options.additionalParametersByNode.value);
 		}
 
 		return merged;

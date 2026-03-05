@@ -76,7 +76,13 @@ export type WorkflowBuilderJourneyEventType =
 	| 'user_opened_review_changes'
 	| 'user_closed_review_changes'
 	| 'user_expanded_review_changes'
-	| 'user_collapsed_review_changes';
+	| 'user_collapsed_review_changes'
+	| 'setup_wizard_shown'
+	| 'setup_wizard_step_navigated'
+	| 'setup_wizard_step_skipped'
+	| 'setup_wizard_step_completed'
+	| 'setup_wizard_all_complete'
+	| 'setup_wizard_node_unpinned';
 
 interface WorkflowBuilderJourneyEventProperties {
 	node_type?: string;
@@ -88,6 +94,11 @@ interface WorkflowBuilderJourneyEventProperties {
 	no_versions_reverted?: number;
 	completion_type?: 'workflow-ready' | 'input-needed';
 	mode?: 'plan' | 'build';
+	step?: number;
+	total?: number;
+	card_type?: 'credential' | 'parameter' | 'both' | 'trigger';
+	direction?: 'next' | 'prev';
+	unpinned_nodes?: string[];
 }
 
 interface WorkflowBuilderJourneyPayload extends ITelemetryTrackProperties {
@@ -144,6 +155,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 	// Track whether a successful full execution has occurred in this session
 	const hasHadSuccessfulExecution = ref(false);
+
+	// Setup wizard state
+	const wizardCurrentStep = ref(0);
+	const wizardClearedPlaceholders = ref(new Set<string>());
 
 	// Track whether AI Builder made edits since last save (resets after each save)
 	const aiBuilderMadeEdits = ref(false);
@@ -321,6 +336,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		loadedSessionsForWorkflowId.value = undefined;
 		hasHadSuccessfulExecution.value = false;
 		builderMode.value = 'build';
+		wizardCurrentStep.value = 0;
+		wizardClearedPlaceholders.value.clear();
 	}
 
 	/**
@@ -473,6 +490,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		const userMessageId = currentStreamingMessage.value?.userMessageId;
 		const { revertVersion } = currentStreamingMessage.value ?? {};
 		currentStreamingMessage.value = undefined;
+
+		// Reset wizard state when streaming ends with a workflow update (AI changed the workflow)
+		if (userMessageId && hasWorkflowUpdateInCurrentBatch(userMessageId)) {
+			wizardCurrentStep.value = 0;
+			wizardClearedPlaceholders.value.clear();
+		}
 
 		// Only show "Restore version" on user messages that triggered a workflow modification.
 		// During planning or question phases no workflow changes happen, so skip it.
@@ -1249,6 +1272,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		hasTodosHiddenByPinnedData,
 		hasHadSuccessfulExecution,
 		lastUserMessageId,
+		wizardCurrentStep,
+		wizardClearedPlaceholders,
 
 		// Methods
 		unpinAllNodes,

@@ -11,6 +11,7 @@ import { useRouter } from 'vue-router';
 
 import NodeIssueItem from './NodeIssueItem.vue';
 import CredentialsSetupCard from './CredentialsSetupCard.vue';
+import BuilderSetupWizard from './BuilderSetupWizard.vue';
 import CanvasRunWorkflowButton from '@/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { isChatNode } from '@/app/utils/aiUtils';
@@ -19,6 +20,8 @@ import { N8nTooltip, N8nIcon, N8nButton } from '@n8n/design-system';
 import { nextTick } from 'vue';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { SETUP_CREDENTIALS_MODAL_KEY } from '@/app/constants';
+import { AI_BUILDER_SETUP_WIZARD_EXPERIMENT } from '@/app/constants/experiments';
+import { usePostHog } from '@/app/stores/posthog.store';
 import type { WorkflowValidationIssue } from '@/Interface';
 
 interface Emits {
@@ -37,6 +40,13 @@ const i18n = useI18n();
 const logsStore = useLogsStore();
 const toast = useToast();
 const builderStore = useBuilderStore();
+const posthogStore = usePostHog();
+
+const isWizardVariant = computed(
+	() =>
+		posthogStore.getVariant(AI_BUILDER_SETUP_WIZARD_EXPERIMENT.name) ===
+		AI_BUILDER_SETUP_WIZARD_EXPERIMENT.variant,
+);
 
 // Workflow execution composable
 const { runWorkflow } = useRunWorkflow({ router });
@@ -236,7 +246,12 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+	<!-- Wizard variant -->
+	<BuilderSetupWizard v-if="isWizardVariant" @workflow-executed="emit('workflowExecuted')" />
+
+	<!-- Control variant (existing behavior) -->
 	<div
+		v-else
 		ref="containerRef"
 		:class="$style.container"
 		role="region"
