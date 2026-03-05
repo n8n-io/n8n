@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { inDevelopment, Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
+import { QueryFailedError } from '@n8n/typeorm';
 import type { Request, Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
 import { FORM_TRIGGER_PATH_IDENTIFIER, NodeApiError } from 'n8n-workflow';
@@ -135,8 +136,52 @@ export function sendErrorResponse(res: Response, error: Error) {
 	res.status(httpStatusCode).json(response);
 }
 
-export const isUniqueConstraintError = (error: Error) =>
-	['unique', 'duplicate'].some((s) => error.message.toLowerCase().includes(s));
+/**
+ * Checks if the given error is a database unique constraint violation.
+ * Only matches actual database errors, not validation errors that happen
+ * to contain words like "unique" or "duplicate" in user content.
+ *
+ * @see https://github.com/n8n-io/n8n/issues/25012
+ */
+export const isUniqueConstraintError = (error: Error): boolean => {
+	// Only QueryFailedError from database operations should be considered
+	if (!(error instanceof QueryFailedError)) {
+		return false;
+	}
+
+	const driverError = error.driverError as { code?: string; errno?: number } | undefined;
+
+	// SQLite: SQLITE_CONSTRAINT error with UNIQUE in message
+	if (
+		driverError?.code === 'SQLITE_CONSTRAINT' ||
+		driverError?.code === 'SQLITE_CONSTRAINT_UNIQUE'
+	) {
+		return true;
+	}
+
+	// PostgreSQL: Error code 23505 is unique_violation
+	if (driverError?.code === '23505') {
+		return true;
+	}
+
+	// MySQL/MariaDB: ER_DUP_ENTRY error code 1062
+	if (driverError?.code === 'ER_DUP_ENTRY' || driverError?.errno === 1062) {
+		return true;
+	}
+
+	// Fallback: Check for specific database constraint error patterns in the raw message
+	// These patterns are database-generated, not user content
+	const constraintPatterns = [
+		'unique constraint',
+		'duplicate key value',
+		'duplicate entry',
+		'sqlite_constraint_unique',
+		'violates unique constraint',
+	];
+
+	const lowerMessage = error.message.toLowerCase();
+	return constraintPatterns.some((pattern) => lowerMessage.includes(pattern));
+};
 
 export function reportError(error: Error) {
 	if (!(error instanceof ResponseError) || error.httpStatusCode > 404) {
