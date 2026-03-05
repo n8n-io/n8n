@@ -934,7 +934,7 @@ export const removeEmptyBody = (requestOptions: IHttpRequestOptions | IRequestOp
 	}
 };
 
-export async function httpRequestWithSsrfProtection(
+export async function httpRequest(
 	requestOptions: IHttpRequestOptions,
 	ssrfBridge?: SsrfBridge,
 ): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {
@@ -1460,7 +1460,7 @@ export async function httpRequestWithAuthentication(
 			workflow,
 			node,
 		);
-		return await httpRequestWithSsrfProtection(requestOptions, additionalData.ssrfBridge);
+		return await httpRequest(requestOptions, additionalData.ssrfBridge);
 	} catch (error) {
 		// if there is a pre authorization method defined and
 		// the method failed due to unauthorized request
@@ -1494,7 +1494,7 @@ export async function httpRequestWithAuthentication(
 					);
 				}
 				// retry the request
-				return await httpRequestWithSsrfProtection(requestOptions, additionalData.ssrfBridge);
+				return await httpRequest(requestOptions, additionalData.ssrfBridge);
 			} catch (error) {
 				throw new NodeApiError(this.getNode(), error);
 			}
@@ -1865,7 +1865,7 @@ export const getRequestHelperFunctions = (
 
 	return {
 		httpRequest: async (requestOptions: IHttpRequestOptions) =>
-			await httpRequestWithSsrfProtection(requestOptions, additionalData.ssrfBridge),
+			await httpRequest(requestOptions, additionalData.ssrfBridge),
 		requestWithAuthenticationPaginated,
 		async httpRequestWithAuthentication(
 			this,
