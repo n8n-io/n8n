@@ -58,6 +58,7 @@ describe('Secret Providers Completions API', () => {
 	let memberWithoutCustomRoleAgent: SuperAgentTest;
 
 	let customSecretListRole: Role;
+	let customNoSecretRole: Role;
 	let customProjectA: Project;
 	let customProjectB: Project;
 
@@ -103,10 +104,17 @@ describe('Secret Providers Completions API', () => {
 			description: 'Can list external secrets',
 		});
 
+		customNoSecretRole = await createCustomRoleWithScopeSlugs(['workflow:list'], {
+			roleType: 'project',
+			displayName: 'Custom No Secret Access',
+			description: 'Cannot list external secrets',
+		});
+
 		customProjectA = await createTeamProject('Custom Project A', owner);
 		customProjectB = await createTeamProject('Custom Project B', owner);
 
 		await linkUserToProject(memberWithCustomRole, customProjectA, customSecretListRole.slug);
+		await linkUserToProject(memberWithoutCustomRole, customProjectB, customNoSecretRole.slug);
 	});
 
 	beforeEach(async () => {
