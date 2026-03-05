@@ -100,5 +100,4 @@ jobs:
           gh pr merge "${{ needs.update-popularity.outputs.pull-request-number }}" \
             --auto \
             --squash \
-            --delete-branch \
             --repo "${{ github.repository }}"
