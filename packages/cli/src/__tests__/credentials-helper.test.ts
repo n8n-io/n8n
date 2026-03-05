@@ -1,4 +1,8 @@
-import { CredentialsEntity, type CredentialsRepository } from '@n8n/db';
+import {
+	CredentialsEntity,
+	SecretsProviderConnectionRepository,
+	type CredentialsRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { EntityNotFoundError } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
@@ -26,6 +30,7 @@ describe('CredentialsHelper', () => {
 	const nodeTypes = mock<INodeTypes>();
 	const mockNodesAndCredentials = mock<LoadNodesAndCredentials>();
 	const credentialsRepository = mock<CredentialsRepository>();
+	const secretsProviderRepository = mock<SecretsProviderConnectionRepository>();
 	const mockLogger = mock<any>();
 	// Use a real instance of DynamicCredentialsProxy so setResolverProvider works
 	const dynamicCredentialProxy = new DynamicCredentialsProxy(mockLogger);
@@ -38,9 +43,8 @@ describe('CredentialsHelper', () => {
 		new CredentialTypes(mockNodesAndCredentials),
 		mock(),
 		credentialsRepository,
-		mock(),
-		mock(),
 		dynamicCredentialProxy,
+		secretsProviderRepository,
 	);
 
 	describe('getCredentials', () => {
@@ -575,6 +579,8 @@ describe('CredentialsHelper', () => {
 	});
 
 	describe('getDecrypted - credential resolution integration', () => {
+		// TODO: add unit tests for setting providerKeysAccessibleByCredential on additionalData.externalSecrets
+
 		const mockCredentialResolutionProvider = {
 			resolveIfNeeded: jest.fn(),
 		};
@@ -644,7 +650,6 @@ describe('CredentialsHelper', () => {
 				{ apiKey: 'static-key' },
 				mockAdditionalData.executionContext,
 				mockAdditionalData.workflowSettings,
-				false, // canUseExternalSecrets
 			);
 			expect(result).toEqual(resolvedData);
 		});
@@ -667,7 +672,6 @@ describe('CredentialsHelper', () => {
 
 			const call = mockCredentialResolutionProvider.resolveIfNeeded.mock.calls[0];
 			expect(call[2]).toBe(mockAdditionalData.executionContext);
-			expect(call[4]).toBe(false); // canUseExternalSecrets
 		});
 
 		test('should pass workflowSettings from additionalData to resolver', async () => {
@@ -688,7 +692,6 @@ describe('CredentialsHelper', () => {
 
 			const call = mockCredentialResolutionProvider.resolveIfNeeded.mock.calls[0];
 			expect(call[3]).toBe(mockAdditionalData.workflowSettings);
-			expect(call[4]).toBe(false); // canUseExternalSecrets
 		});
 
 		test('should skip resolution when credentialResolutionProvider is not set', async () => {
@@ -698,9 +701,8 @@ describe('CredentialsHelper', () => {
 				new CredentialTypes(mockNodesAndCredentials),
 				mock(),
 				credentialsRepository,
-				mock(),
-				mock(),
 				proxyWithoutProvider,
+				secretsProviderRepository,
 			);
 
 			const result = await helperWithoutProvider.getDecrypted(
@@ -868,7 +870,6 @@ describe('CredentialsHelper', () => {
 			const call = mockCredentialResolutionProvider.resolveIfNeeded.mock.calls[0];
 			expect(call[2]).toBe(additionalDataWithoutSettings.executionContext);
 			expect(call[3]).toBeUndefined(); // workflowSettings
-			expect(call[4]).toBe(false); // canUseExternalSecrets
 		});
 	});
 });

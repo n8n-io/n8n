@@ -3,11 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 import type { CredentialsEntity, ICredentialsDb } from '@n8n/db';
-import {
-	CredentialsRepository,
-	SharedCredentialsRepository,
-	SecretsProviderConnectionRepository,
-} from '@n8n/db';
+import { CredentialsRepository, SecretsProviderConnectionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { EntityNotFoundError } from '@n8n/typeorm';
@@ -43,7 +39,6 @@ import {
 import { RESPONSE_ERROR_MESSAGES } from './constants';
 import { DynamicCredentialsProxy } from './credentials/dynamic-credentials-proxy';
 import { CredentialNotFoundError } from './errors/credential-not-found.error';
-import { CacheService } from './services/cache/cache.service';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
@@ -88,8 +83,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 		private readonly credentialTypes: CredentialTypes,
 		private readonly credentialsOverwrites: CredentialsOverwrites,
 		private readonly credentialsRepository: CredentialsRepository,
-		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
-		private readonly cacheService: CacheService,
 		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 		private readonly secretsProviderConnectionRepository: SecretsProviderConnectionRepository,
 	) {
@@ -392,7 +385,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			return decryptedDataOriginal;
 		}
 
-		// Is external secrets licensed
+		// Add: "is external secrets licensed", maybe some caching based on the current execution id?
 		const externalSecretProvidersForCredential =
 			await this.secretsProviderConnectionRepository.findAllAccessibleByCredentialId(
 				credentialsEntity.id,

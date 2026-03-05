@@ -711,7 +711,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				userId: undefined,
 				setExecutionStatus: expect.any(Function),
 				variables: mockVariables,
-				externalSecretsProxy,
+				externalSecrets: { externalSecretsProxy },
 				startRunnerTask: expect.any(Function),
 				logAiEvent: expect.any(Function),
 			});
