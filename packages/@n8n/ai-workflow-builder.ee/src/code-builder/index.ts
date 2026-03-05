@@ -32,8 +32,6 @@ export {
 	WORKFLOW_PATTERNS,
 	ADDITIONAL_FUNCTIONS,
 	WORKFLOW_RULES,
-	CODING_GUIDELINES,
-	DESIGN_GUIDANCE,
 } from './prompts';
 
 // Tool name constants (shared between code builder agent and MCP server)
