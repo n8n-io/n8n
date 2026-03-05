@@ -174,7 +174,7 @@ describe('builder-tools', () => {
 		// get_node_parameter, validate_structure, validate_configuration,
 		// get_execution_schema, get_execution_logs, get_expression_data_mapping,
 		// get_workflow_overview, get_node_context
-		const BASE_TOOL_COUNT = 23;
+		const BASE_TOOL_COUNT = 22;
 
 		it('should return base tools when no feature flags are provided', () => {
 			const tools = getBuilderToolsForDisplay({

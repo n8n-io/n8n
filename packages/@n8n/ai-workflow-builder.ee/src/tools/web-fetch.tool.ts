@@ -119,7 +119,9 @@ export function createWebFetchTool() {
 					const message =
 						'This URL cannot be fetched because it points to a private or internal address.';
 					reporter.error({ message });
-					return createSuccessResponse(config, message);
+					return createSuccessResponse(config, message, {
+						fetchedUrlContent: [{ url, status: 'error' as const, title: '', content: message }],
+					});
 				}
 
 				// 2. Read state for approved domains, fetch count, and messages
@@ -153,7 +155,11 @@ export function createWebFetchTool() {
 					const approval = requestDomainApproval(host, url);
 					if (!approval.approved) {
 						reporter.error({ message: approval.message });
-						return createSuccessResponse(config, approval.message);
+						return createSuccessResponse(config, approval.message, {
+							fetchedUrlContent: [
+								{ url, status: 'error' as const, title: '', content: approval.message },
+							],
+						});
 					}
 					userAction = approval.action;
 				}
@@ -168,6 +174,7 @@ export function createWebFetchTool() {
 					reporter.error({ message });
 					return createSuccessResponse(config, message, {
 						webFetchCount: webFetchCount + 1,
+						fetchedUrlContent: [{ url, status: 'error' as const, title: '', content: message }],
 					});
 				}
 
@@ -190,6 +197,7 @@ export function createWebFetchTool() {
 						reporter.error({ message });
 						return createSuccessResponse(config, message, {
 							webFetchCount: webFetchCount + 1,
+							fetchedUrlContent: [{ url, status: 'error' as const, title: '', content: message }],
 						});
 					}
 
@@ -204,6 +212,9 @@ export function createWebFetchTool() {
 							reporter.error({ message: approval.message });
 							return createSuccessResponse(config, approval.message, {
 								webFetchCount: webFetchCount + 1,
+								fetchedUrlContent: [
+									{ url, status: 'error' as const, title: '', content: approval.message },
+								],
 							});
 						}
 						redirectUserAction = approval.action;
@@ -216,6 +227,7 @@ export function createWebFetchTool() {
 						reporter.error({ message });
 						return createSuccessResponse(config, message, {
 							webFetchCount: webFetchCount + 1,
+							fetchedUrlContent: [{ url, status: 'error' as const, title: '', content: message }],
 						});
 					}
 
@@ -229,6 +241,7 @@ export function createWebFetchTool() {
 					reporter.error({ message });
 					return createSuccessResponse(config, message, {
 						webFetchCount: webFetchCount + 1,
+						fetchedUrlContent: [{ url, status: 'error' as const, title: '', content: message }],
 					});
 				}
 
@@ -256,6 +269,14 @@ export function createWebFetchTool() {
 				// 8. Build state updates
 				const stateUpdates: Record<string, unknown> = {
 					webFetchCount: webFetchCount + 1,
+					fetchedUrlContent: [
+						{
+							url,
+							status: 'success' as const,
+							title: extracted.title,
+							content: extracted.content,
+						},
+					],
 				};
 
 				// Handle "allow_all" — approve all domains globally
@@ -308,7 +329,16 @@ export function createWebFetchTool() {
 					},
 				);
 				reporter.error(toolError);
-				return createErrorResponse(config, toolError);
+				return createErrorResponse(config, toolError, {
+					fetchedUrlContent: [
+						{
+							url: (input as { url?: string })?.url ?? '',
+							status: 'error' as const,
+							title: '',
+							content: toolError.message,
+						},
+					],
+				});
 			}
 		},
 		{

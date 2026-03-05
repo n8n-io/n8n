@@ -29,8 +29,6 @@ import { RENAME_NODE_TOOL } from './rename-node.tool';
 import { UPDATING_NODE_PARAMETER_TOOL } from './update-node-parameters.tool';
 import { VALIDATE_CONFIGURATION_TOOL } from './validate-configuration.tool';
 import { VALIDATE_STRUCTURE_TOOL } from './validate-structure.tool';
-import { WEB_FETCH_TOOL } from './web-fetch.tool';
-
 /**
  * Return display information for tools
  * Without the actual LangChain implementation
@@ -43,7 +41,7 @@ export function getBuilderToolsForDisplay({
 	nodeTypes: INodeTypeDescription[];
 	featureFlags?: BuilderFeatureFlags;
 }): BuilderToolBase[] {
-	const tools: BuilderToolBase[] = [GET_DOCUMENTATION_TOOL, WEB_FETCH_TOOL];
+	const tools: BuilderToolBase[] = [GET_DOCUMENTATION_TOOL];
 
 	// Conditionally add workflow examples tool based on feature flag
 	// Only enabled when flag is explicitly true
