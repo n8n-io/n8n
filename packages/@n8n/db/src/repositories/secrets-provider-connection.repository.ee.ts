@@ -129,12 +129,15 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 	}
 
 	/**
-	 * Returns all available project-scoped and global providers
-	 * matching the project ID of the provided credential ID.
+	 * Returns the providerKeys of all project-scoped and global providers
+	 * accessible to the owner project of the provided credential ID.
+	 *
+	 * Optimized to return only the providerKey strings (the only field the
+	 * caller needs) and to return early when the table is empty.
 	 */
-	async findAllAccessibleByCredentialId(
-		credentialId: string,
-	): Promise<SecretsProviderConnection[]> {
+	async findAllAccessibleProviderKeysByCredentialId(credentialId: string): Promise<string[]> {
+		if (!(await this.exists())) return [];
+
 		const ownerProjectSubquery = this.manager
 			.createQueryBuilder()
 			.subQuery()
@@ -144,9 +147,10 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 			.andWhere('sc.role = :ownerRole')
 			.getQuery();
 
-		return await this.createQueryBuilder('connection')
-			.leftJoinAndSelect('connection.projectAccess', 'access')
-			.leftJoinAndSelect('access.project', 'project')
+		// Only selects providerKey data from table
+		const rows = await this.createQueryBuilder('connection')
+			.select('connection.providerKey', 'providerKey')
+			.leftJoin('connection.projectAccess', 'access')
 			.where(
 				new Brackets((qb) => {
 					qb.where('access.secretsProviderConnectionId IS NULL') // Global
@@ -154,7 +158,9 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 				}),
 			)
 			.setParameters({ credentialId, ownerRole: 'credential:owner' })
-			.getMany();
+			.getRawMany<{ providerKey: string }>();
+
+		return rows.map((row: { providerKey: string }) => row.providerKey);
 	}
 
 	/**

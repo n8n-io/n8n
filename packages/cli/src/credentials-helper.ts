@@ -386,12 +386,12 @@ export class CredentialsHelper extends ICredentialsHelper {
 		}
 
 		// Add: "is external secrets licensed", maybe some caching based on the current execution id?
-		const externalSecretProvidersForCredential =
-			await this.secretsProviderConnectionRepository.findAllAccessibleByCredentialId(
+		const accessibleProviderKeys =
+			await this.secretsProviderConnectionRepository.findAllAccessibleProviderKeysByCredentialId(
 				credentialsEntity.id,
 			);
 		additionalData.externalSecrets.providerKeysAccessibleByCredential = new Set(
-			externalSecretProvidersForCredential.map((connection) => connection.providerKey),
+			accessibleProviderKeys,
 		);
 
 		return await this.applyDefaultsAndOverwrites(
