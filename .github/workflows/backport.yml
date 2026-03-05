@@ -35,6 +35,7 @@ jobs:
         id: targets
         env:
           PULL_REQUEST_ID: ${{ inputs.pull-request-id }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node .github/scripts/compute-backport-targets.mjs
 
       - name: Backport
