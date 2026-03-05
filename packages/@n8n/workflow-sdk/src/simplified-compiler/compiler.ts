@@ -512,12 +512,6 @@ function walkStatements(
 			continue;
 		}
 
-		// Check for Promise.all
-		if (isPromiseAll(stmt)) {
-			processPromiseAll(ctx, stmt, comments);
-			continue;
-		}
-
 		// Check for nested IO in unrecognized structures
 		const nestedIO = findNestedIO(stmt, ctx.source);
 		if (nestedIO.length > 0) {
@@ -1057,7 +1051,6 @@ function hasNonTrivialEffect(stmt: AcornNode, source: string): boolean {
 	if (isRespondCall(stmt)) return true;
 	if (stmt.type === 'IfStatement' || stmt.type === 'SwitchStatement') return true;
 	if (stmt.type === 'TryStatement') return true;
-	if (isPromiseAll(stmt)) return true;
 	if (findNestedIO(stmt, source).length > 0) return true;
 	return false;
 }
@@ -1235,107 +1228,6 @@ function processTryStatement(
 			walkStatements(ctx, handlerBody.body, comments);
 		}
 	}
-}
-
-// ─── Promise.all Processing ──────────────────────────────────────────────────
-
-function isPromiseAll(stmt: AcornNode): boolean {
-	if (stmt.type !== 'ExpressionStatement' || !stmt.expression) return false;
-	const expr = stmt.expression;
-	const callExpr = expr.type === 'AwaitExpression' ? expr.argument : expr;
-	if (!callExpr || callExpr.type !== 'CallExpression') return false;
-
-	const callee = callExpr.callee;
-	return (
-		callee?.type === 'MemberExpression' &&
-		callee.object?.type === 'Identifier' &&
-		callee.object.name === 'Promise' &&
-		callee.property?.type === 'Identifier' &&
-		callee.property.name === 'all'
-	);
-}
-
-function processPromiseAll(
-	ctx: TranspilerContext,
-	stmt: AcornNode,
-	_comments: Array<{ type: string; value: string; start: number; end: number }>,
-): void {
-	flushPendingCode(ctx);
-
-	const expr = stmt.expression!;
-	const callExpr = expr.type === 'AwaitExpression' ? expr.argument! : expr;
-	const args = callExpr.arguments ?? [];
-	const arrayArg = args[0];
-
-	if (!arrayArg || arrayArg.type !== 'ArrayExpression' || !arrayArg.elements) return;
-
-	const prevVar = ctx.prevVar;
-	const fanOutVars: string[] = [];
-
-	for (const element of arrayArg.elements) {
-		if (!element) continue;
-
-		// Handle direct http.* calls
-		const ioCall = extractIOCallFromExpression(element, ctx.source);
-		if (ioCall) {
-			ctx.httpCounter++;
-			const httpVar = `http${ctx.httpCounter}`;
-			const httpNode = generateHttpSDK(ioCall, httpVar, ctx);
-			ctx.nodes.push(httpNode);
-			if (ioCall.assignedVar) {
-				ctx.varSourceMap.set(ioCall.assignedVar, httpNode.nodeName);
-				ctx.varSourceKind.set(ioCall.assignedVar, 'io');
-			}
-			fanOutVars.push(httpVar);
-			continue;
-		}
-
-		// Handle IIFEs: (async () => { ... })()
-		const callee = element.type === 'CallExpression' ? element.callee : null;
-		if (
-			callee &&
-			(callee.type === 'ArrowFunctionExpression' || callee.type === 'FunctionExpression')
-		) {
-			// callee.body is a single BlockStatement for function expressions
-			const fnBody = callee.body as unknown as AcornNode;
-			if (fnBody?.type === 'BlockStatement' && fnBody.body) {
-				const branchCtx = createBranchContext(ctx);
-				branchCtx.prevVar = prevVar;
-				walkStatements(branchCtx, fnBody.body, _comments);
-				flushPendingCode(branchCtx);
-
-				for (const bn of branchCtx.nodes) {
-					ctx.nodes.push(bn);
-				}
-				if (branchCtx.nodes.length > 0) {
-					fanOutVars.push(branchCtx.nodes[branchCtx.nodes.length - 1].varName);
-				}
-				syncCounters(ctx, branchCtx);
-			}
-		}
-	}
-
-	// Rewrite the chain to fan out from prevVar
-	if (fanOutVars.length > 0) {
-		// Remove prevVar's last .to() and add fan-out
-		const prevNodeIdx = ctx.nodes.findIndex((n) => n.varName === prevVar);
-		if (prevNodeIdx >= 0) {
-			// The chain expression will handle the fan-out
-			ctx.prevVar = fanOutVars[fanOutVars.length - 1];
-		}
-	}
-}
-
-function extractIOCallFromExpression(expr: AcornNode, source: string): IOCall | null {
-	// Handle: http.post('/a', d) (without await)
-	if (expr.type === 'CallExpression') {
-		return matchIOCallNode(expr, source);
-	}
-	// Handle: await http.post('/a', d)
-	if (expr.type === 'AwaitExpression' && expr.argument) {
-		return matchIOCallNode(expr.argument, source);
-	}
-	return null;
 }
 
 // ─── Nested IO Detection ─────────────────────────────────────────────────────

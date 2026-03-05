@@ -86,6 +86,18 @@ const http2 = node({
 }
 });
 
+const agg1 = node({
+  type: 'n8n-nodes-base.aggregate', version: 1,
+  config: {
+    name: 'Aggregate 1',
+    parameters: {
+      aggregate: 'aggregateAllItemData',
+      destinationFieldName: 'data',
+      include: 'allFieldsExceptBinary'
+    }
+  }
+});
+
 const code3 = node({
   type: 'n8n-nodes-base.code', version: 2,
   config: {
@@ -116,6 +128,18 @@ const http3 = node({
     }
   , credentials: { oAuth2Api: { name: 'Gmail', id: '' } }
 }
+});
+
+const agg2 = node({
+  type: 'n8n-nodes-base.aggregate', version: 1,
+  config: {
+    name: 'Aggregate 2',
+    parameters: {
+      aggregate: 'aggregateAllItemData',
+      destinationFieldName: 'data',
+      include: 'allFieldsExceptBinary'
+    }
+  }
 });
 
 const http4 = node({
@@ -152,4 +176,4 @@ const respond2 = node({
 });
 
 export default workflow('compiled', 'Compiled Workflow')
-  .add(t0.to(if1).to(code1).to(ai1).to(code2).to(http2).to(code3).to(http3).to(http4).to(respond2));
+  .add(t0.to(if1).to(code1).to(ai1).to(code2).to(http2).to(agg1).to(code3).to(http3).to(agg2).to(http4).to(respond2));

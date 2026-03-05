@@ -146,7 +146,6 @@ Assert: normalizeSDK(SDK₁) === normalizeSDK(SDK₂)
 | **If/else** | `if (cond) { ... } else { ... }` | ifElse node with branches |
 | **Switch** | `switch (expr) { case: ... }` | switchCase node |
 | **Loops** | `for (const x of items) { ... }` | Splitter Code + aggregate |
-| **Parallel** | `await Promise.all([...])` | Fan-out with `.to()` |
 | **Try/catch** | `try { ... } catch { ... }` | onError behavior on nodes |
 | **Variables** | `const x = "value"` | Set node (static assignments) |
 | **Code** | Any other JS statements | Code node with `jsCode` |

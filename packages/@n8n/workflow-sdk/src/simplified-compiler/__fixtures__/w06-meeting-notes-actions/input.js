@@ -16,38 +16,34 @@ onWebhook({ method: 'POST', path: '/google-meet-automation' }, async ({ body, re
 		},
 	});
 
-	await Promise.all([
-		(async () => {
-			for (const item of analysis.action_items) {
-				await http.post(
-					'https://tasks.googleapis.com/tasks/v1/lists/TASKLIST/tasks',
-					{
-						title: item.description,
-					},
-					{ auth: { type: 'oauth2', credential: 'Google Tasks' } },
-				);
-			}
-		})(),
-		(async () => {
-			for (const email of analysis.follow_up_emails) {
-				await http.post(
-					'https://gmail.googleapis.com/gmail/v1/users/me/messages/send',
-					{
-						to: email.recipient,
-						subject: email.subject,
-					},
-					{ auth: { type: 'oauth2', credential: 'Gmail' } },
-				);
-			}
-		})(),
-		http.post(
-			'https://docs.googleapis.com/v1/documents',
+	for (const item of analysis.action_items) {
+		await http.post(
+			'https://tasks.googleapis.com/tasks/v1/lists/TASKLIST/tasks',
 			{
-				title: 'Meeting Summary',
+				title: item.description,
 			},
-			{ auth: { type: 'oauth2', credential: 'Google Docs' } },
-		),
-	]);
+			{ auth: { type: 'oauth2', credential: 'Google Tasks' } },
+		);
+	}
+
+	for (const email of analysis.follow_up_emails) {
+		await http.post(
+			'https://gmail.googleapis.com/gmail/v1/users/me/messages/send',
+			{
+				to: email.recipient,
+				subject: email.subject,
+			},
+			{ auth: { type: 'oauth2', credential: 'Gmail' } },
+		);
+	}
+
+	await http.post(
+		'https://docs.googleapis.com/v1/documents',
+		{
+			title: 'Meeting Summary',
+		},
+		{ auth: { type: 'oauth2', credential: 'Google Docs' } },
+	);
 
 	respond({ status: 200, body: { status: 'success' } });
 });

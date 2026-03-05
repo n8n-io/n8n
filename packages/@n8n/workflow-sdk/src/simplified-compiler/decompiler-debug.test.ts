@@ -19,8 +19,7 @@ const fixtures = readdirSync(fixturesDir)
 	.filter((f) => !['w07-github-workflow-backups', 'w10-bluray-preorder-discord'].includes(f))
 	.sort();
 
-// These fixtures fail due to generator-level issues (code content, expression references)
-const skipFixtures = new Set(['w06-meeting-notes-actions', 'w08-multi-ai-agent-router']);
+const skipFixtures = new Set<string>();
 
 for (const name of fixtures) {
 	const testFn = skipFixtures.has(name) ? it.skip : it;

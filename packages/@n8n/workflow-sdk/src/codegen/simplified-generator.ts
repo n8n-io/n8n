@@ -272,22 +272,32 @@ function detectForOfPattern(
 	if (current.node.type !== 'n8n-nodes-base.code') return null;
 
 	const jsCode = (current.node.json.parameters?.jsCode as string) ?? '';
-	// Check if code ends with return items.map(x => ({ json: x }))
-	const mapReturn = /return (\w+)\.map\((\w+)\s*=>\s*\(\{ json: \2 \}\)\);?\s*$/.exec(jsCode);
+	// Check if code ends with return items.map(x => ({ json: x })) or analysis.action_items.map(...)
+	const mapReturn = /return (.+?)\.map\((\w+)\s*=>\s*\(\{ json: \2 \}\)\);?\s*$/.exec(jsCode);
 	if (!mapReturn) return null;
 
 	const iterable = mapReturn[1];
 	const itemVar = mapReturn[2];
 
-	// All remaining nodes after the splitter are the loop body
+	// Loop body starts after the splitter and ends before the aggregate node
 	if (index + 1 >= nodes.length) return null;
+
+	// Find the aggregate node that marks end of loop body
+	let loopEnd = nodes.length - 1;
+	for (let j = index + 1; j < nodes.length; j++) {
+		const n = nodes[j];
+		if (n.kind === 'leaf' && n.node.type === 'n8n-nodes-base.aggregate') {
+			loopEnd = j - 1;
+			break;
+		}
+	}
 
 	return {
 		iterable,
 		itemVar,
 		splitterNodeName: current.node.name,
 		loopStart: index + 1,
-		loopEnd: nodes.length - 1,
+		loopEnd,
 	};
 }
 
@@ -356,6 +366,9 @@ function visitLeaf(leaf: LeafNode, ctx: SimplifiedGenContext): void {
 	}
 
 	switch (node.type) {
+		case 'n8n-nodes-base.aggregate':
+			// Aggregate nodes are compiler artifacts — skip silently
+			return;
 		case 'n8n-nodes-base.httpRequest':
 			emitHttpNode(node, ctx);
 			break;
@@ -614,6 +627,11 @@ function emitCodeNode(node: SemanticNode, ctx: SimplifiedGenContext): void {
 		if (importMatch) {
 			const localVar = importMatch[1];
 			const sourceName = importMatch[2];
+			// Drop code-to-code imports — they're compiler artifacts
+			const referencedNode = ctx.graph.nodes.get(sourceName);
+			if (referencedNode && referencedNode.type === 'n8n-nodes-base.code') {
+				continue;
+			}
 			const upstreamVar = ctx.nodeNameToVarName.get(sourceName);
 			if (upstreamVar && upstreamVar !== localVar) {
 				userLines.push(`const ${localVar} = ${upstreamVar};`);
@@ -623,7 +641,7 @@ function emitCodeNode(node: SemanticNode, ctx: SimplifiedGenContext): void {
 		}
 		if (/^return \[\{ json: \{.*\} \}\];?$/.test(line.trim())) continue;
 		// Strip return items.map(x => ({ json: x })) — this becomes a for-of loop
-		if (/^return \w+\.map\(\w+ => \(\{ json: \w+ \}\)\);?$/.test(line.trim())) continue;
+		if (/^return .+?\.map\(\w+ => \(\{ json: \w+ \}\)\);?$/.test(line.trim())) continue;
 		userLines.push(line);
 	}
 
@@ -814,37 +832,32 @@ function extractConditionString(node: SemanticNode, ctx: SimplifiedGenContext): 
 	const version = options?.version ?? 2;
 
 	if (version >= 2) {
-		const conditions = params.conditions as {
+		const condBlock = params.conditions as {
 			options?: { caseSensitive?: boolean; leftValue?: string };
 			conditions?: Array<{
 				leftValue?: string;
 				rightValue?: string;
-				operator?: { type?: string; operation?: string };
+				operator?: { type?: string; operation?: string; singleValue?: boolean };
 			}>;
+			combinator?: string;
 		};
-		if (conditions?.conditions?.[0]) {
-			const cond = conditions.conditions[0];
-			const left = resolveConditionExpr(cond.leftValue, ctx);
-			const op = cond.operator as {
-				type?: string;
-				operation?: string;
-				singleValue?: boolean;
-			};
+		const condList = condBlock?.conditions;
+		if (condList?.length) {
+			const combinator = condBlock.combinator === 'or' ? ' || ' : ' && ';
+			const parts = condList.map((cond) => {
+				const left = resolveConditionExpr(cond.leftValue, ctx);
+				const op = cond.operator;
 
-			// Unary operators (exists/notExists)
-			if (op?.singleValue || op?.operation === 'exists') {
-				return left;
-			}
-			if (op?.operation === 'notExists') {
-				return `!${left}`;
-			}
+				// Unary operators — check operation first, then singleValue
+				if (op?.operation === 'notExists') return `!${left}`;
+				if (op?.operation === 'exists' || op?.singleValue) return left;
 
-			const right = resolveConditionExpr(cond.rightValue, ctx);
-			const jsOp = mapOperator(op?.type ?? '', op?.operation ?? '');
-			if (jsOp === '.includes') {
-				return `${left}.includes(${right})`;
-			}
-			return `${left} ${jsOp} ${right}`;
+				const right = resolveConditionExpr(cond.rightValue, ctx);
+				const jsOp = mapOperator(op?.type ?? '', op?.operation ?? '');
+				if (jsOp === '.includes') return `${left}.includes(${right})`;
+				return `${left} ${jsOp} ${right}`;
+			});
+			return parts.length === 1 ? parts[0] : parts.join(combinator);
 		}
 	}
 
@@ -1041,7 +1054,7 @@ function extractLoopIterableInfo(
 
 			if (sourceNode.type === 'n8n-nodes-base.code') {
 				const jsCode = (sourceNode.json.parameters?.jsCode as string) ?? '';
-				const returnMatch = /return (\w+)\.map\((\w+)\s*=>\s*\(\{ json: \2 \}\)\);?/.exec(jsCode);
+				const returnMatch = /return (.+?)\.map\((\w+)\s*=>\s*\(\{ json: \2 \}\)\);?/.exec(jsCode);
 				if (returnMatch) {
 					return { iterable: returnMatch[1], itemVar: returnMatch[2] };
 				}

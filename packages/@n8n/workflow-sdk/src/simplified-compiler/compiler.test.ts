@@ -395,60 +395,6 @@ onManual(async () => {
 		});
 	});
 
-	describe('Phase 7: Promise.all', () => {
-		it('should fan out to parallel nodes', () => {
-			const result = transpileWorkflowJS(`
-onManual(async () => {
-  const d = await http.get('https://api.example.com');
-  await Promise.all([http.post('/a', d), http.post('/b', d)]);
-});
-`);
-			expect(result.errors).toHaveLength(0);
-			// Multiple .to() calls from previous node
-			expect(result.code).toMatch(/\.to\(http\d+\).*\.to\(http\d+\)/s);
-		});
-
-		it('should extract IO calls from IIFEs in Promise.all', () => {
-			const result = transpileWorkflowJS(`
-onManual(async () => {
-  const data = await http.get('https://api.example.com');
-  await Promise.all([
-    (async () => {
-      for (const item of data) {
-        await http.post('https://api.example.com/process', { id: item.id });
-      }
-    })(),
-    http.post('https://api.example.com/notify', { done: true }),
-  ]);
-});
-`);
-			expect(result.errors).toHaveLength(0);
-			// Should have the IIFE's HTTP POST node
-			expect(result.code).toContain('"url": "https://api.example.com/process"');
-			// Should have the direct HTTP POST node
-			expect(result.code).toContain('"url": "https://api.example.com/notify"');
-			// The for-of loop should produce a splitter Code node
-			expect(result.code).toContain('Split items');
-		});
-
-		it('should handle IIFE with FunctionExpression syntax', () => {
-			const result = transpileWorkflowJS(`
-onManual(async () => {
-  const d = await http.get('https://api.example.com');
-  await Promise.all([
-    (async function() {
-      await http.post('https://api.example.com/a', d);
-    })(),
-    http.post('https://api.example.com/b', d),
-  ]);
-});
-`);
-			expect(result.errors).toHaveLength(0);
-			expect(result.code).toContain('"url": "https://api.example.com/a"');
-			expect(result.code).toContain('"url": "https://api.example.com/b"');
-		});
-	});
-
 	describe('Phase 8: loops', () => {
 		it('should use native per-item processing for for...of with IO', () => {
 			const result = transpileWorkflowJS(`
@@ -809,7 +755,6 @@ function normalizeSDK(code: string): string {
 
 function getRoundTripSkipReason(title: string): string | undefined {
 	const skipReasons: Record<string, string> = {
-		W6: 'Promise.all with nested IIFEs not supported',
 		W7: 'try/catch onError pattern + notExists condition not reconstructable by decompiler',
 	};
 
