@@ -35,11 +35,6 @@ describe('SsrfProtectionConfig', () => {
 			expect(Container.get(SsrfProtectionConfig).allowedHostnames).toEqual([]);
 		});
 
-		test('dnsCacheMaxTtlSeconds is 300', () => {
-			process.env = {};
-			expect(Container.get(SsrfProtectionConfig).dnsCacheMaxTtlSeconds).toBe(300);
-		});
-
 		test('dnsCacheMaxSize is 1048576', () => {
 			process.env = {};
 			expect(Container.get(SsrfProtectionConfig).dnsCacheMaxSize).toBe(1048576);
@@ -132,34 +127,9 @@ describe('SsrfProtectionConfig', () => {
 	});
 
 	describe('numeric fields', () => {
-		test('overrides dnsCacheMaxTtlSeconds from env', () => {
-			process.env = { N8N_SSRF_DNS_CACHE_MAX_TTL_SECONDS: '600' };
-			expect(Container.get(SsrfProtectionConfig).dnsCacheMaxTtlSeconds).toBe(600);
-		});
-
 		test('overrides dnsCacheMaxSize from env', () => {
 			process.env = { N8N_SSRF_DNS_CACHE_MAX_SIZE: '2097152' };
 			expect(Container.get(SsrfProtectionConfig).dnsCacheMaxSize).toBe(2097152);
-		});
-
-		test('falls back to default for invalid dnsCacheMaxTtlSeconds', () => {
-			const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
-
-			process.env = { N8N_SSRF_DNS_CACHE_MAX_TTL_SECONDS: 'notanumber' };
-			expect(Container.get(SsrfProtectionConfig).dnsCacheMaxTtlSeconds).toBe(300);
-			expect(consoleWarnSpy).toHaveBeenCalled();
-
-			consoleWarnSpy.mockRestore();
-		});
-
-		test('falls back to default for non-positive dnsCacheMaxTtlSeconds', () => {
-			const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
-
-			process.env = { N8N_SSRF_DNS_CACHE_MAX_TTL_SECONDS: '0' };
-			expect(Container.get(SsrfProtectionConfig).dnsCacheMaxTtlSeconds).toBe(300);
-			expect(consoleWarnSpy).toHaveBeenCalled();
-
-			consoleWarnSpy.mockRestore();
 		});
 
 		test('falls back to default for invalid dnsCacheMaxSize', () => {
