@@ -67,7 +67,15 @@ const http2 = node({
       "authentication": "genericCredentialType",
       "genericAuthType": "oAuth2Api"
     },
-    "executeOnce": true
+    "executeOnce": true,
+    "pinData": [
+      {
+        "data": {
+          "id": "1234567890",
+          "text": "AI researchers announced a breakthrough..."
+        }
+      }
+    ]
   , credentials: { oAuth2Api: { name: 'Twitter OAuth2', id: '' } }
 }
 });

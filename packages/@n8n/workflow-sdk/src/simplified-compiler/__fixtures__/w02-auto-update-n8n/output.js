@@ -55,7 +55,13 @@ const http3 = node({
       "specifyBody": "json",
       "jsonBody": "{\"latestVersion\":\"={{ $('GET registry.npmjs.org/n8n/latest').first().json.version }}\",\"currentVersion\":\"={{ $('GET 0.0.0.0/rest/settings').first().json.data.versionCli }}\"}"
     },
-    "executeOnce": true
+    "executeOnce": true,
+    "pinData": [
+      {
+        "success": true,
+        "message": "Update initiated"
+      }
+    ]
   }
 });
 

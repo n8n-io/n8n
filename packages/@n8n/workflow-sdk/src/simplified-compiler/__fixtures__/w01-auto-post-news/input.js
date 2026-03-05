@@ -15,6 +15,7 @@ onSchedule({ every: '21h' }, async () => {
 		{ auth: { type: 'bearer', credential: 'Perplexity API' } },
 	);
 
+	/** @example [{ data: { id: "1234567890", text: "AI researchers announced a breakthrough..." } }] */
 	await http.post(
 		'https://api.twitter.com/2/tweets',
 		{ text: result.choices[0].message.content },

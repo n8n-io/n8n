@@ -46,7 +46,12 @@ const respond1 = node({
         }
       }
     },
-    "executeOnce": true
+    "executeOnce": true,
+    "pinData": [
+      {
+        "success": true
+      }
+    ]
   }
 });
 

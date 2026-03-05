@@ -1217,21 +1217,24 @@ function walkStatements(
 			continue;
 		}
 
-		// Clear pending pin data if statement was not an IO call
-		ctx.pendingPinData = undefined;
-
 		// Check for sub-function calls: await funcName(args) or const x = await funcName(args)
 		const fnCall = extractFunctionCall(stmt, ctx);
 		if (fnCall) {
+			ctx.pendingPinData = undefined;
 			processFunctionCall(ctx, fnCall);
 			continue;
 		}
 
 		// Check for respond() call
 		if (isRespondCall(stmt)) {
-			processRespondCall(ctx, stmt);
+			const respondPinData = ctx.pendingPinData;
+			ctx.pendingPinData = undefined;
+			processRespondCall(ctx, stmt, respondPinData);
 			continue;
 		}
+
+		// Clear pending pin data if statement was not an IO call or respond
+		ctx.pendingPinData = undefined;
 
 		// Check for structured control flow
 		if (stmt.type === 'IfStatement') {
@@ -1316,7 +1319,7 @@ function processIOCall(ctx: TranspilerContext, ioCall: IOCall): void {
 	}
 }
 
-function processRespondCall(ctx: TranspilerContext, stmt: AcornNode): void {
+function processRespondCall(ctx: TranspilerContext, stmt: AcornNode, pinData?: unknown[]): void {
 	flushPendingCode(ctx);
 
 	const expr = stmt.expression!;
@@ -1352,11 +1355,15 @@ function processRespondCall(ctx: TranspilerContext, stmt: AcornNode): void {
 		params.options = options;
 	}
 
-	const configStr = JSON.stringify(
-		{ name: `Respond ${ctx.respondCounter}`, parameters: params, executeOnce: true },
-		null,
-		2,
-	)
+	const configObj: Record<string, unknown> = {
+		name: `Respond ${ctx.respondCounter}`,
+		parameters: params,
+		executeOnce: true,
+	};
+	if (pinData) {
+		configObj.pinData = pinData;
+	}
+	const configStr = JSON.stringify(configObj, null, 2)
 		.split('\n')
 		.map((line, i) => (i === 0 ? line : '  ' + line))
 		.join('\n');

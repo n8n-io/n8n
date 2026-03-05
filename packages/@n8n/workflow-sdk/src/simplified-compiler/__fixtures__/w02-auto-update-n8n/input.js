@@ -7,6 +7,7 @@ onSchedule({ cron: '0 5 * * *' }, async () => {
 		auth: { type: 'bearer', credential: 'n8n API' },
 	});
 
+	/** @example [{ success: true, message: "Update initiated" }] */
 	await http.post('https://my-server/api/exec', {
 		latestVersion: latest.version,
 		currentVersion: local.data.versionCli,

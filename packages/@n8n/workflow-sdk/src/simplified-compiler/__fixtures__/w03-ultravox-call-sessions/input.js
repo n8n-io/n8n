@@ -11,6 +11,7 @@ onWebhook({ method: 'POST', path: '/call-session' }, async ({ body, respond }) =
 		{ auth: { type: 'bearer', credential: 'UltraVox API' } },
 	);
 
+	/** @example [{ success: true }] */
 	respond({
 		status: 200,
 		headers: { 'Content-Type': 'text/xml' },

@@ -1300,6 +1300,12 @@ function emitRespondNode(node: SemanticNode, ctx: SimplifiedGenContext): void {
 		}
 	}
 
+	// Emit @example pin data annotation
+	const respondPinData = ctx.workflowPinData[node.name];
+	if (respondPinData) {
+		emit(ctx, `/** @example ${JSON.stringify(respondPinData)} */`);
+	}
+
 	emit(ctx, `respond({ ${args.join(', ')} });`);
 }
 
