@@ -55,6 +55,11 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	private arrayElementRef?: ivm.Reference;
 	private callFunctionRef?: ivm.Reference;
 
+	// Pre-resolved reference to resetDataProxies() inside the isolate.
+	// Using applySync on a stored reference avoids the per-call
+	// ScriptCompiler::Compile() cost that evalSync incurs.
+	private resetDataProxiesRef?: ivm.Reference;
+
 	constructor(config: BridgeConfig = {}) {
 		this.config = {
 			...DEFAULT_BRIDGE_CONFIG,
@@ -101,6 +106,11 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 		// Inject E() error handler needed by tournament-generated try-catch code
 		await this.injectErrorHandler();
+
+		// Store a reference to resetDataProxies for efficient per-call invocation
+		this.resetDataProxiesRef = await this.context.global.get('resetDataProxies', {
+			reference: true,
+		});
 
 		this.initialized = true;
 
@@ -250,18 +260,14 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * @throws {Error} If context not initialized or reset fails
 	 */
 	private resetDataProxies(timezone?: string): void {
-		if (!this.context) {
+		if (!this.resetDataProxiesRef) {
 			throw new Error('Context not initialized');
 		}
 
 		try {
-			// Call the resetDataProxies function in the isolate
-			// This function is loaded as part of the runtime bundle
-			if (timezone) {
-				this.context.evalSync(`resetDataProxies(${JSON.stringify(timezone)})`);
-			} else {
-				this.context.evalSync('resetDataProxies()');
-			}
+			this.resetDataProxiesRef.applySync(null, [timezone ?? null], {
+				arguments: { copy: true },
+			});
 
 			if (this.config.debug) {
 				console.log('[IsolatedVmBridge] Data proxies reset successfully');
