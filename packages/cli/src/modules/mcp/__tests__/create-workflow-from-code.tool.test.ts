@@ -93,8 +93,12 @@ describe('create-workflow-from-code MCP tool', () => {
 	});
 
 	const nodeTypes = mockInstance(NodeTypes);
-	const credentialsService = mockInstance(CredentialsService);
-	const projectRepository = mockInstance(ProjectRepository);
+	const credentialsService = mockInstance(CredentialsService, {
+		getCredentialsAUserCanUseInAWorkflow: jest.fn().mockResolvedValue([]),
+	});
+	const projectRepository = mockInstance(ProjectRepository, {
+		getPersonalProjectForUserOrFail: jest.fn().mockResolvedValue({ id: 'personal-project-1' }),
+	});
 
 	const createTool = () =>
 		createCreateWorkflowFromCodeTool(
