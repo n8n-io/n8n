@@ -97,18 +97,15 @@ describe('Secret Providers Completions API', () => {
 		projectWithConnections = await createTeamProject('With Connections', owner);
 		projectWithoutConnections = await createTeamProject('Without Connections', owner);
 
-		// Create custom role with externalSecret:list scope
 		customSecretListRole = await createCustomRoleWithScopeSlugs(['externalSecret:list'], {
 			roleType: 'project',
 			displayName: 'Custom Secret Lister',
 			description: 'Can list external secrets',
 		});
 
-		// Create two projects for custom role testing
 		customProjectA = await createTeamProject('Custom Project A', owner);
 		customProjectB = await createTeamProject('Custom Project B', owner);
 
-		// Link memberWithCustomRole to customProjectA with the custom role
 		await linkUserToProject(memberWithCustomRole, customProjectA, customSecretListRole.slug);
 	});
 
@@ -143,13 +140,13 @@ describe('Secret Providers Completions API', () => {
 				}
 			});
 
-			it('should allow member with custom externalSecret:list role in any project', async () => {
+			it('should allow member with custom externalSecret:list role to list global secrets', async () => {
 				await memberWithCustomRoleAgent
 					.get('/secret-providers/completions/secrets/global')
 					.expect(200);
 			});
 
-			it('should deny member without custom externalSecret:list role in any project', async () => {
+			it('should deny member without custom externalSecret:list role to list global secrets', async () => {
 				const response = await memberWithoutCustomRoleAgent
 					.get('/secret-providers/completions/secrets/global')
 					.expect(403);
@@ -287,13 +284,13 @@ describe('Secret Providers Completions API', () => {
 				}
 			});
 
-			it('should allow member with custom externalSecret:list role in the target project', async () => {
+			it('should allow member with custom externalSecret:list role to list project secrets', async () => {
 				await memberWithCustomRoleAgent
 					.get(`/secret-providers/completions/secrets/project/${customProjectA.id}`)
 					.expect(200);
 			});
 
-			it('should deny member with custom externalSecret:list role in a different project', async () => {
+			it('should deny member with custom externalSecret:list role to list project secrets in a different project', async () => {
 				const response = await memberWithCustomRoleAgent
 					.get(`/secret-providers/completions/secrets/project/${customProjectB.id}`)
 					.expect(403);
