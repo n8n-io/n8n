@@ -51,7 +51,7 @@ export const createUpdateWorkflowTool = (
 			title: MCP_UPDATE_WORKFLOW_TOOL.displayTitle,
 			readOnlyHint: false,
 			destructiveHint: true,
-			idempotentHint: false,
+			idempotentHint: true,
 			openWorldHint: false,
 		},
 	},

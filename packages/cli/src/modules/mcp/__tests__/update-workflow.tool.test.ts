@@ -142,7 +142,7 @@ describe('update-workflow MCP tool', () => {
 				expect.objectContaining({
 					readOnlyHint: false,
 					destructiveHint: true,
-					idempotentHint: false,
+					idempotentHint: true,
 					openWorldHint: false,
 				}),
 			);
