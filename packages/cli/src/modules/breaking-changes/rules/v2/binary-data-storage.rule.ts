@@ -1,7 +1,7 @@
 import { ExecutionsConfig } from '@n8n/config';
+import { BreakingChangeRule } from '@n8n/decorators';
 import { BinaryDataConfig } from 'n8n-core';
 
-import { BreakingChangeRule } from '@n8n/decorators';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,

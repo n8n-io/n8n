@@ -1,8 +1,8 @@
+import { BreakingChangeRule } from '@n8n/decorators';
 import { constants } from 'node:fs';
 import { access } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { BreakingChangeRule } from '@n8n/decorators';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeInstanceRule,

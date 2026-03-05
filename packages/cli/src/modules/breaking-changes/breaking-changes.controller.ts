@@ -8,9 +8,9 @@ import {
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, RestController, GlobalScope, Query, Post, Param } from '@n8n/decorators';
 
-import { BreakingChangeService } from './breaking-changes.service';
-
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
+import { BreakingChangeService } from './breaking-changes.service';
 
 @RestController('/breaking-changes')
 export class BreakingChangesController {

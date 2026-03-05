@@ -8,6 +8,7 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import { WorkflowRepository, WorkflowStatisticsRepository } from '@n8n/db';
+import { BreakingChangeRuleMetadata } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import { ErrorReporter } from 'n8n-core';
@@ -15,7 +16,6 @@ import type { INode } from 'n8n-workflow';
 
 import { CacheService } from '@/services/cache/cache.service';
 
-import { BreakingChangeRuleMetadata } from '@n8n/decorators';
 import { RuleRegistry } from './breaking-changes.rule-registry.service';
 import type {
 	IBreakingChangeBatchWorkflowRule,
@@ -58,8 +58,8 @@ export class BreakingChangeService {
 	registerRules() {
 		const ruleMetadata = Container.get(BreakingChangeRuleMetadata);
 		const ruleInstances = ruleMetadata
-			.getClasses()
-			.map((ruleClass) => Container.get<IBreakingChangeRule>(ruleClass));
+			.getEntries()
+			.map((entry) => Container.get(entry.class) as IBreakingChangeRule);
 		this.ruleRegistry.registerAll(ruleInstances);
 	}
 

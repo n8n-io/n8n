@@ -14,7 +14,7 @@ describe('Breaking change rules auto-discovery', () => {
 		const metadata = Container.get(BreakingChangeRuleMetadata);
 
 		for (const entry of metadata.getEntries()) {
-			const rule = Container.get<IBreakingChangeRule>(entry.class);
+			const rule = Container.get(entry.class) as IBreakingChangeRule;
 
 			expect(rule.id).toBeTruthy();
 
@@ -31,7 +31,7 @@ describe('Breaking change rules auto-discovery', () => {
 		const metadata = Container.get(BreakingChangeRuleMetadata);
 		const ids = metadata
 			.getEntries()
-			.map((entry) => Container.get<IBreakingChangeRule>(entry.class).id);
+			.map((entry) => (Container.get(entry.class) as IBreakingChangeRule).id);
 
 		expect(new Set(ids).size).toBe(ids.length);
 	});
