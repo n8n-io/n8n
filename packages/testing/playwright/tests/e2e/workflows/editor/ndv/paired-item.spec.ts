@@ -7,7 +7,7 @@ test.describe(
 	},
 	() => {
 		test('maps paired input and output items', async ({ n8n }) => {
-			await n8n.start.fromImportedWorkflow('Test_workflow_5.json');
+			await n8n.start.fromImportedWorkflow('multi-branch-data-transform.json');
 			await n8n.canvas.clickZoomToFitButton();
 
 			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
@@ -79,7 +79,7 @@ test.describe(
 		});
 
 		test('maps paired input and output items based on selected input node', async ({ n8n }) => {
-			await n8n.start.fromImportedWorkflow('Test_workflow_5.json');
+			await n8n.start.fromImportedWorkflow('multi-branch-data-transform.json');
 			await n8n.canvas.clickZoomToFitButton();
 			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
 				'Workflow executed successfully',
@@ -123,7 +123,7 @@ test.describe(
 		});
 
 		test('maps paired input and output items based on selected run', async ({ n8n }) => {
-			await n8n.start.fromImportedWorkflow('Test_workflow_5.json');
+			await n8n.start.fromImportedWorkflow('multi-branch-data-transform.json');
 			await n8n.canvas.clickZoomToFitButton();
 			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
 				'Workflow executed successfully',
@@ -184,7 +184,7 @@ test.describe(
 		});
 
 		test('can pair items between input and output across branches and runs', async ({ n8n }) => {
-			await n8n.start.fromImportedWorkflow('Test_workflow_5.json');
+			await n8n.start.fromImportedWorkflow('multi-branch-data-transform.json');
 			await n8n.canvas.clickZoomToFitButton();
 			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
 				'Workflow executed successfully',

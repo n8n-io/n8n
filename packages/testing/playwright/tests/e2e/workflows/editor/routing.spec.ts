@@ -11,7 +11,7 @@ test.describe(
 	},
 	() => {
 		test('should ask to save unsaved changes before leaving route', async ({ n8n }) => {
-			await n8n.start.fromImportedWorkflow('Test_workflow_1.json');
+			await n8n.start.fromImportedWorkflow('manual-trigger-with-code.json');
 			await n8n.canvas.addNode(EDIT_FIELDS_SET_NODE_NAME, { closeNDV: true });
 
 			await n8n.sideBar.clickHomeButton();
@@ -28,7 +28,7 @@ test.describe(
 			await n8n.goHome();
 			await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
 
-			await n8n.canvas.importWorkflow('Test_workflow_1.json', 'Test Workflow');
+			await n8n.canvas.importWorkflow('manual-trigger-with-code.json', 'Test Workflow');
 
 			await n8n.canvas.addNode(EDIT_FIELDS_SET_NODE_NAME, { closeNDV: false });
 
@@ -43,7 +43,7 @@ test.describe(
 		});
 
 		test('should correct route when opening and closing NDV', async ({ n8n }) => {
-			await n8n.start.fromImportedWorkflow('Test_workflow_1.json');
+			await n8n.start.fromImportedWorkflow('manual-trigger-with-code.json');
 
 			const baselineUrl = n8n.page.url();
 
@@ -57,7 +57,7 @@ test.describe(
 		});
 
 		test('should open ndv via URL', async ({ n8n }) => {
-			await n8n.start.fromImportedWorkflow('Test_workflow_1.json');
+			await n8n.start.fromImportedWorkflow('manual-trigger-with-code.json');
 
 			await n8n.canvas.addNode(EDIT_FIELDS_SET_NODE_NAME, { closeNDV: false });
 			const ndvUrl = n8n.page.url();
@@ -75,7 +75,7 @@ test.describe(
 		test('should open show warning and drop nodeId from URL if it contained an unknown nodeId', async ({
 			n8n,
 		}) => {
-			await n8n.start.fromImportedWorkflow('Test_workflow_1.json');
+			await n8n.start.fromImportedWorkflow('manual-trigger-with-code.json');
 
 			await n8n.canvas.addNode(EDIT_FIELDS_SET_NODE_NAME, { closeNDV: false });
 			const ndvUrl = n8n.page.url();

@@ -2,7 +2,7 @@ import { test, expect } from '../../../fixtures/base';
 import type { TestRequirements } from '../../../Types';
 
 const requirements: TestRequirements = {
-	workflow: 'Test_workflow_1.json',
+	workflow: 'manual-trigger-with-code.json',
 	storage: {
 		N8N_EXPERIMENT_OVERRIDES: JSON.stringify({ ndv_in_focus_panel: 'variant' }),
 	},

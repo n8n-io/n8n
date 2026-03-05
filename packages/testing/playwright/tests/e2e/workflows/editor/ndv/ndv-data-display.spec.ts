@@ -155,7 +155,7 @@ test.describe(
 
 		test.describe('Run Data & Selectors', () => {
 			test('can link and unlink run selectors between input and output', async ({ n8n }) => {
-				await n8n.start.fromImportedWorkflow('Test_workflow_5.json');
+				await n8n.start.fromImportedWorkflow('multi-branch-data-transform.json');
 				await n8n.canvas.clickZoomToFitButton();
 				await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
 					'Workflow executed successfully',
