@@ -48,8 +48,7 @@ export class InMemoryDnsCache {
 		assert(ttl > 0, 'DNS cache TTL must be greater than 0');
 
 		const cache = await this.ensureCache();
-		const cappedTtlSeconds = Math.min(ttl, this.ssrfConfig.dnsCacheMaxTtlSeconds);
-		const ttlMs = cappedTtlSeconds * Time.seconds.toMilliseconds;
+		const ttlMs = ttl * Time.seconds.toMilliseconds;
 		await cache.set(hostname, ips, ttlMs);
 	}
 
