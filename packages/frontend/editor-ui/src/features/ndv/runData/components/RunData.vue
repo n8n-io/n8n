@@ -253,7 +253,7 @@ const { isSubNodeType } = useNodeType({
 	node,
 });
 
-const isArchivedWorkflow = computed(() => workflowsStore.workflow.isArchived);
+const isArchivedWorkflow = computed(() => workflowDocumentStore?.value?.isArchived ?? false);
 const isReadOnlyRoute = computed(() => route.meta.readOnlyCanvas === true);
 const isWaitNodeWaiting = computed(() => {
 	return (
@@ -390,7 +390,9 @@ const workflowRunErrorAsNodeError = computed(() => {
 	return selfTaskData?.error as NodeError;
 });
 
-const hasRunError = computed(() => node.value && !!workflowRunErrorAsNodeError.value);
+const hasRunError = computed(
+	() => node.value && !isPaneTypeInput.value && !!workflowRunErrorAsNodeError.value,
+);
 
 const executionHints = computed(() => {
 	if (hasNodeRun.value) {
@@ -590,7 +592,7 @@ const parentNodeOutputData = computed(() => {
 
 const parentNodePinnedData = computed(() => {
 	const parentNode = props.workflowObject.getParentNodesByDepth(node.value?.name ?? '')[0];
-	return workflowDocumentStore?.pinData?.[parentNode?.name || ''] ?? [];
+	return workflowDocumentStore?.value?.pinData?.[parentNode?.name || ''] ?? [];
 });
 
 const showPinButton = computed(

@@ -67,6 +67,7 @@ const isDisabled = computed(
 				:loading="isWorkflowSaving"
 				data-test-id="workflow-history-button"
 				icon="history"
+				:aria-label="locale.baseText('workflowHistory.title')"
 				size="medium"
 			/>
 		</component>

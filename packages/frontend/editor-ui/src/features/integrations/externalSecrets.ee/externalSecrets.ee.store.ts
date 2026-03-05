@@ -7,7 +7,6 @@ import * as externalSecretsApi from '@n8n/rest-api-client';
 import { connectProvider } from '@n8n/rest-api-client';
 import { useRBACStore } from '@/app/stores/rbac.store';
 import type { ExternalSecretsProvider } from '@n8n/api-types';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 /**
  * Transforms flat dot-notated secret keys into a nested object structure.
@@ -62,7 +61,10 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 	const rbacStore = useRBACStore();
-	const { check: checkDevFeatureFlag } = useEnvFeatureFlag();
+
+	const externalSecretsModuleSettings = computed(
+		() => settingsStore.moduleSettings['external-secrets'],
+	);
 
 	const state = reactive({
 		providers: [] as ExternalSecretsProvider[],
@@ -86,7 +88,7 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 	);
 	const globalSecretsAsObject = computed(() => transformSecretsToNestedObject(secrets.value));
 	const secretsAsObject = computed(() => {
-		if (checkDevFeatureFlag.value('EXTERNAL_SECRETS_FOR_PROJECTS')) {
+		if (externalSecretsModuleSettings.value?.forProjects) {
 			/**
 			 * This combines secrets from both global and project scopes.
 			 * Note: The backend enforces that provider names are unique across scopes, preventing conflicts.
@@ -102,9 +104,8 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 	async function fetchGlobalSecrets() {
 		if (rbacStore.hasScope('externalSecret:list')) {
 			try {
-				const betaFeatureEnabled =
-					checkDevFeatureFlag.value('EXTERNAL_SECRETS_FOR_PROJECTS') ||
-					checkDevFeatureFlag.value('EXTERNAL_SECRETS_MULTIPLE_CONNECTIONS');
+				const moduleConfig = externalSecretsModuleSettings.value;
+				const betaFeatureEnabled = moduleConfig?.forProjects || moduleConfig?.multipleConnections;
 				state.secrets = betaFeatureEnabled
 					? await externalSecretsApi.getGlobalExternalSecrets(rootStore.restApiContext)
 					: await externalSecretsApi.getExternalSecrets(rootStore.restApiContext);
@@ -115,7 +116,7 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 	}
 
 	async function fetchProjectSecrets(projectId: string) {
-		if (!checkDevFeatureFlag.value('EXTERNAL_SECRETS_FOR_PROJECTS')) {
+		if (!externalSecretsModuleSettings.value?.forProjects) {
 			// project-scoped secrets are still under development. Only available behind feature flag
 			return;
 		}

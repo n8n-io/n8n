@@ -32,6 +32,7 @@ export const LOG_SCOPES = [
 	'source-control',
 	'dynamic-credentials',
 	'workflow-history-compaction',
+	'ssrf-protection',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];

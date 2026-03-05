@@ -146,6 +146,9 @@ import { ExpandProviderIdColumnLength1770000000000 } from '../common/17700000000
 import { CreateWorkflowBuilderSessionTable1770220686000 } from '../common/1770220686000-CreateWorkflowBuilderSessionTable';
 import { AddScalingFieldsToTestRun1771417407753 } from '../common/1771417407753-AddScalingFieldsToTestRun';
 import { MigrateExternalSecretsToEntityStorage1771500000000 } from '../common/1771500000000-MigrateExternalSecretsToEntityStorage';
+import { AddUnshareScopeToCustomRoles1771500000001 } from '../common/1771500000001-AddUnshareScopeToCustomRoles';
+import { AddFilesColumnToChatHubAgents1771500000002 } from '../common/1771500000002-AddFilesColumnToChatHubAgents';
+import { AddSuggestedPromptsToAgentTable1772000000000 } from '../common/1772000000000-AddSuggestedPromptsToAgentTable';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -297,4 +300,7 @@ export const postgresMigrations: Migration[] = [
 	CreateWorkflowBuilderSessionTable1770220686000,
 	AddScalingFieldsToTestRun1771417407753,
 	MigrateExternalSecretsToEntityStorage1771500000000,
+	AddUnshareScopeToCustomRoles1771500000001,
+	AddFilesColumnToChatHubAgents1771500000002,
+	AddSuggestedPromptsToAgentTable1772000000000,
 ];

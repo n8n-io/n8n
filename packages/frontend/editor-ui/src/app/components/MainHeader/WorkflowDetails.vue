@@ -56,9 +56,6 @@ const props = defineProps<{
 	id: IWorkflowDb['id'];
 	tags: readonly string[];
 	name: IWorkflowDb['name'];
-	meta: IWorkflowDb['meta'];
-	scopes: IWorkflowDb['scopes'];
-	active: IWorkflowDb['active'];
 	currentFolder?: FolderShortInfo;
 	isArchived: IWorkflowDb['isArchived'];
 	description?: IWorkflowDb['description'];
@@ -106,7 +103,9 @@ const isNewWorkflow = computed(() => {
 	return !workflowsStore.isWorkflowSaved[props.id];
 });
 
-const workflowPermissions = computed(() => getResourcePermissions(props.scopes).workflow);
+const workflowPermissions = computed(
+	() => getResourcePermissions(workflowDocumentStore?.value?.scopes).workflow,
+);
 
 const readOnly = computed(
 	() => sourceControlStore.preferences.branchReadOnly || collaborationStore.shouldBeReadOnly,
@@ -221,7 +220,7 @@ function onNameSubmit(name: string) {
 }
 
 async function handleArchiveWorkflow() {
-	if (props.active) {
+	if (workflowDocumentStore?.value?.active) {
 		const archiveConfirmed = await message.confirm(
 			locale.baseText('mainSidebar.confirmMessage.workflowArchive.message', {
 				interpolate: { workflowName: props.name },
@@ -245,8 +244,12 @@ async function handleArchiveWorkflow() {
 
 	try {
 		const expectedChecksum =
-			props.id === workflowsStore.workflowId ? workflowsStore.workflowChecksum : undefined;
+			props.id === workflowsStore.workflowId ? workflowDocumentStore?.value?.checksum : undefined;
 		await workflowsStore.archiveWorkflow(props.id, expectedChecksum);
+		workflowDocumentStore?.value?.setActiveState({
+			activeVersionId: null,
+			activeVersion: null,
+		});
 	} catch (error) {
 		toast.showError(error, locale.baseText('generic.archiveWorkflowError'));
 		return;
@@ -454,7 +457,6 @@ onBeforeUnmount(() => {
 				ref="workflowHeaderActions"
 				:tags="tags"
 				:name="name"
-				:meta="meta"
 				:is-archived="isArchived"
 				:is-new-workflow="isNewWorkflow"
 				:workflow-permissions="workflowPermissions"

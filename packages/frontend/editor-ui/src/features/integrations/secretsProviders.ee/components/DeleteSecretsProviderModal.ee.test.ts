@@ -14,6 +14,7 @@ vi.mock('@n8n/rest-api-client', async () => {
 	return {
 		...actual,
 		deleteSecretProviderConnection: vi.fn(),
+		deleteProjectSecretProviderConnection: vi.fn(),
 	};
 });
 
@@ -142,6 +143,40 @@ describe('DeleteSecretsProviderModal', () => {
 			rootStore.restApiContext,
 			'aws-prod',
 		);
+		expect(onConfirm).toHaveBeenCalled();
+	});
+
+	it('should call deleteProjectSecretProviderConnection when projectId is provided', async () => {
+		const onConfirm = vi.fn();
+		const rootStore = useRootStore();
+		vi.mocked(secretsProviderApi.deleteProjectSecretProviderConnection).mockResolvedValue();
+
+		const { getByTestId, findByTestId } = renderComponent({
+			pinia,
+			props: {
+				modalName: DELETE_SECRETS_PROVIDER_MODAL_KEY,
+				data: {
+					providerKey: 'aws-prod',
+					providerName: 'aws-prod',
+					secretsCount: 5,
+					projectId: 'project-123',
+					onConfirm,
+				},
+			},
+		});
+
+		const input = await findByTestId('delete-confirmation-input');
+		await userEvent.type(input, 'aws-prod');
+
+		const deleteButton = getByTestId('confirm-delete-button');
+		await userEvent.click(deleteButton);
+
+		expect(secretsProviderApi.deleteProjectSecretProviderConnection).toHaveBeenCalledWith(
+			rootStore.restApiContext,
+			'project-123',
+			'aws-prod',
+		);
+		expect(secretsProviderApi.deleteSecretProviderConnection).not.toHaveBeenCalled();
 		expect(onConfirm).toHaveBeenCalled();
 	});
 

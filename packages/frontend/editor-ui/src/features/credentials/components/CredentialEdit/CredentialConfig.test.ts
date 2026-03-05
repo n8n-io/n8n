@@ -1,13 +1,22 @@
 import CredentialConfig from './CredentialConfig.vue';
 import { screen } from '@testing-library/vue';
-import type { ICredentialDataDecryptedObject, ICredentialType } from 'n8n-workflow';
+import type {
+	ICredentialDataDecryptedObject,
+	ICredentialType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { createTestingPinia } from '@pinia/testing';
 import type { RenderOptions } from '@/__tests__/render';
 import { createComponentRenderer } from '@/__tests__/render';
 import { STORES } from '@n8n/stores';
 import { vi } from 'vitest';
 import { useCredentialsStore } from '../../credentials.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { mockedStore } from '@/__tests__/utils';
 import { addCredentialTranslation } from '@n8n/i18n';
+import type { INodeUi } from '@/Interface';
 
 vi.mock('@n8n/i18n', async () => {
 	const actual = await vi.importActual('@n8n/i18n');
@@ -324,6 +333,279 @@ describe('CredentialConfig', () => {
 
 			expect(screen.getByTestId('dynamic-credentials-section')).toBeInTheDocument();
 			expect(screen.getByTestId('dynamic-credentials-toggle')).toBeInTheDocument();
+		});
+	});
+
+	describe('OAuth Redirect URL', () => {
+		const writePermissions = {
+			create: true,
+			update: true,
+			read: true,
+			delete: true,
+			share: true,
+			list: true,
+			move: true,
+		};
+
+		it('should show redirect URL for OAuth credentials without managed OAuth', () => {
+			renderComponent({
+				pinia: createTestingPinia({
+					initialState: {
+						[STORES.SETTINGS]: {
+							settings: { enterprise: { sharing: false, externalSecrets: false } },
+						},
+						[STORES.ROOT]: {
+							oauthCallbackUrls: { oauth2: 'https://example.com/callback' },
+						},
+					},
+				}),
+				props: {
+					isManaged: false,
+					mode: 'new',
+					credentialType: mockCredentialType,
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					isOAuthType: true,
+					managedOauthAvailable: false,
+					useCustomOauth: false,
+					credentialPermissions: writePermissions,
+				},
+			});
+
+			expect(screen.getByTestId('copy-input')).toBeInTheDocument();
+		});
+
+		it('should show redirect URL when managed OAuth is available but user chose custom', () => {
+			renderComponent({
+				pinia: createTestingPinia({
+					initialState: {
+						[STORES.SETTINGS]: {
+							settings: { enterprise: { sharing: false, externalSecrets: false } },
+						},
+						[STORES.ROOT]: {
+							oauthCallbackUrls: { oauth2: 'https://example.com/callback' },
+						},
+					},
+				}),
+				props: {
+					isManaged: false,
+					mode: 'new',
+					credentialType: mockCredentialType,
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					isOAuthType: true,
+					managedOauthAvailable: true,
+					useCustomOauth: true,
+					credentialPermissions: writePermissions,
+				},
+			});
+
+			expect(screen.getByTestId('copy-input')).toBeInTheDocument();
+		});
+
+		it('should not show redirect URL when using managed OAuth', () => {
+			renderComponent({
+				pinia: createTestingPinia({
+					initialState: {
+						[STORES.SETTINGS]: {
+							settings: { enterprise: { sharing: false, externalSecrets: false } },
+						},
+						[STORES.ROOT]: {
+							oauthCallbackUrls: { oauth2: 'https://example.com/callback' },
+						},
+					},
+				}),
+				props: {
+					isManaged: false,
+					mode: 'new',
+					credentialType: mockCredentialType,
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					isOAuthType: true,
+					managedOauthAvailable: true,
+					useCustomOauth: false,
+					credentialPermissions: writePermissions,
+				},
+			});
+
+			expect(screen.queryByTestId('copy-input')).not.toBeInTheDocument();
+		});
+
+		it('should not show redirect URL for non-OAuth credentials', () => {
+			renderComponent({
+				props: {
+					isManaged: false,
+					mode: 'new',
+					credentialType: mockCredentialType,
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					isOAuthType: false,
+					managedOauthAvailable: false,
+					useCustomOauth: false,
+					credentialPermissions: writePermissions,
+				},
+			});
+
+			expect(screen.queryByTestId('copy-input')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('Mode Selector visibility', () => {
+		const dropboxApiType: ICredentialType = {
+			name: 'dropboxApi',
+			displayName: 'Dropbox API',
+			properties: [
+				{ displayName: 'Access Token', name: 'accessToken', type: 'string', default: '' },
+			],
+		};
+
+		const dropboxOAuth2ApiType: ICredentialType = {
+			name: 'dropboxOAuth2Api',
+			extends: ['oAuth2Api'],
+			displayName: 'Dropbox OAuth2 API',
+			properties: [],
+		};
+
+		const twoAuthNodeType = {
+			displayName: 'Dropbox',
+			name: 'n8n-nodes-base.dropbox',
+			group: ['input'],
+			version: 1,
+			description: 'Access data on Dropbox',
+			defaults: { name: 'Dropbox' },
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
+			credentials: [
+				{
+					name: 'dropboxApi',
+					required: true,
+					displayOptions: { show: { authentication: ['accessToken'] } },
+				},
+				{
+					name: 'dropboxOAuth2Api',
+					required: true,
+					displayOptions: { show: { authentication: ['oAuth2'] } },
+				},
+			],
+			properties: [
+				{
+					displayName: 'Authentication',
+					name: 'authentication',
+					type: 'options',
+					options: [
+						{ name: 'Access Token', value: 'accessToken' },
+						{ name: 'OAuth2', value: 'oAuth2' },
+					],
+					default: 'accessToken',
+				},
+			],
+		} as unknown as INodeTypeDescription;
+
+		const writePermissions = {
+			create: true,
+			update: true,
+			read: true,
+			delete: true,
+			share: true,
+			list: true,
+			move: true,
+		};
+
+		function setupMultiAuthStores() {
+			const pinia = createTestingPinia({
+				stubActions: false,
+				initialState: {
+					[STORES.SETTINGS]: {
+						settings: { enterprise: { sharing: false, externalSecrets: false } },
+					},
+				},
+			});
+
+			const ndvStore = mockedStore(useNDVStore);
+			ndvStore.activeNode = {
+				parameters: { authentication: 'accessToken' },
+				type: 'n8n-nodes-base.dropbox',
+				typeVersion: 1,
+				position: [0, 0],
+				id: 'test-node-id',
+				name: 'Test Node',
+				credentials: {},
+			} as INodeUi;
+
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.setNodeTypes([twoAuthNodeType]);
+
+			const credStore = useCredentialsStore();
+			credStore.state.credentialTypes = {
+				dropboxApi: dropboxApiType,
+				dropboxOAuth2Api: dropboxOAuth2ApiType,
+			};
+
+			return pinia;
+		}
+
+		it('should show mode selector for existing credential with update permission', () => {
+			const pinia = setupMultiAuthStores();
+
+			renderComponent({
+				pinia,
+				props: {
+					isManaged: false,
+					mode: 'edit',
+					credentialId: 'existing-cred-123',
+					credentialType: dropboxApiType,
+					credentialProperties: dropboxApiType.properties,
+					credentialData: {} as ICredentialDataDecryptedObject,
+					credentialPermissions: writePermissions,
+				},
+			});
+
+			expect(screen.getByTestId('credential-mode-selector')).toBeInTheDocument();
+		});
+
+		it('should show mode selector for new credential with create permission', () => {
+			const pinia = setupMultiAuthStores();
+
+			renderComponent({
+				pinia,
+				props: {
+					isManaged: false,
+					mode: 'new',
+					credentialType: dropboxApiType,
+					credentialProperties: dropboxApiType.properties,
+					credentialData: {} as ICredentialDataDecryptedObject,
+					credentialPermissions: writePermissions,
+				},
+			});
+
+			expect(screen.getByTestId('credential-mode-selector')).toBeInTheDocument();
+		});
+
+		it('should not show mode selector for existing credential without update permission', () => {
+			const pinia = setupMultiAuthStores();
+
+			renderComponent({
+				pinia,
+				props: {
+					isManaged: false,
+					mode: 'edit',
+					credentialId: 'existing-cred-123',
+					credentialType: dropboxApiType,
+					credentialProperties: dropboxApiType.properties,
+					credentialData: {} as ICredentialDataDecryptedObject,
+					credentialPermissions: {
+						create: false,
+						update: false,
+						read: true,
+						delete: false,
+						share: false,
+						list: true,
+						move: false,
+					},
+				},
+			});
+
+			expect(screen.queryByTestId('credential-mode-selector')).not.toBeInTheDocument();
 		});
 	});
 });

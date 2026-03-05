@@ -278,7 +278,7 @@ describe('Send and Wait utils tests', () => {
 
 			expect(mockSetHeader).toHaveBeenCalledWith(
 				'Content-Security-Policy',
-				'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
+				'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
 			);
 
 			expect(mockRender).toHaveBeenCalledWith('form-trigger', {
@@ -364,7 +364,7 @@ describe('Send and Wait utils tests', () => {
 
 			expect(mockSetHeader).toHaveBeenCalledWith(
 				'Content-Security-Policy',
-				'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
+				'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
 			);
 
 			expect(mockRender).toHaveBeenCalledWith('form-trigger', {
@@ -483,6 +483,34 @@ describe('Send and Wait utils tests', () => {
 					'user-agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
 				},
 				query: { approved: 'false' },
+			} as any);
+
+			const send = jest.fn();
+
+			mockWebhookFunctions.getResponseObject.mockReturnValue({
+				send,
+			} as any);
+
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					responseType: 'approval',
+				};
+				return params[parameterName];
+			});
+
+			const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+			expect(send).toHaveBeenCalledWith('');
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('should return noWebhookResponse if user-agent is Microsoft Teams link preview service (SkypeSpaces)', async () => {
+			mockWebhookFunctions.getRequestObject.mockReturnValue({
+				method: 'GET',
+				headers: {
+					'user-agent': 'SkypeSpaces/1.0a$*+',
+				},
+				query: { approved: 'true' },
 			} as any);
 
 			const send = jest.fn();

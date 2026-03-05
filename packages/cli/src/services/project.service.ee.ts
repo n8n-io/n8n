@@ -29,7 +29,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { CacheService } from './cache/cache.service';
 import { RoleService } from './role.service';
 
 export class TeamProjectOverQuotaError extends UserError {
@@ -69,7 +68,6 @@ export class ProjectService {
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly roleService: RoleService,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
-		private readonly cacheService: CacheService,
 		private readonly licenseState: LicenseState,
 		private readonly moduleRegistry: ModuleRegistry,
 	) {}
@@ -300,7 +298,6 @@ export class ProjectService {
 		const newRelations = relations.filter(
 			(relation) => !project.projectRelations.some((r) => r.userId === relation.userId),
 		);
-		await this.clearCredentialCanUseExternalSecretsCache(projectId);
 
 		return { project, newRelations };
 	}
@@ -399,7 +396,6 @@ export class ProjectService {
 			added.push(...toInsert);
 		}
 
-		await this.clearCredentialCanUseExternalSecretsCache(projectId);
 		return { project, added, conflicts };
 	}
 
@@ -469,21 +465,6 @@ export class ProjectService {
 		}
 
 		await this.projectRelationRepository.update({ projectId, userId }, { role: { slug: role } });
-	}
-
-	async clearCredentialCanUseExternalSecretsCache(projectId: string) {
-		const shares = await this.sharedCredentialsRepository.find({
-			where: {
-				projectId,
-				role: 'credential:owner',
-			},
-			select: ['credentialsId'],
-		});
-		if (shares.length) {
-			await this.cacheService.deleteMany(
-				shares.map((share) => `credential-can-use-secrets:${share.credentialsId}`),
-			);
-		}
 	}
 
 	async pruneRelations(em: EntityManager, project: Project) {

@@ -19,7 +19,11 @@ import {
 } from 'vue';
 import type { ChatMessage } from '../chat.types';
 import ChatMessageActions from './ChatMessageActions.vue';
-import { unflattenModel, splitMarkdownIntoChunks } from '@/features/ai/chatHub/chat.utils';
+import {
+	unflattenModel,
+	splitMarkdownIntoChunks,
+	enrichMimeTypesWithExtensions,
+} from '@/features/ai/chatHub/chat.utils';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import ChatFile from '@n8n/chat/components/ChatFile.vue';
 import { buildChatAttachmentUrl } from '@/features/ai/chatHub/chat.api';
@@ -45,6 +49,7 @@ const {
 	minHeight,
 	cachedAgentDisplayName,
 	cachedAgentIcon,
+	acceptedMimeTypes,
 } = defineProps<{
 	message: ChatMessage;
 	compact: boolean;
@@ -53,6 +58,7 @@ const {
 	hasSessionStreaming: boolean;
 	cachedAgentDisplayName: string | null;
 	cachedAgentIcon: AgentIconOrEmoji | null;
+	acceptedMimeTypes: string;
 	/**
 	 * minHeight allows scrolling agent's response to the top while it is being generated
 	 */
@@ -168,6 +174,8 @@ const mergedAttachments = computed(() => [
 	),
 	...newFiles.value.map<MergedAttachment>((file, index) => ({ isNew: true, file, index })),
 ]);
+
+const enrichedAcceptedMimeTypes = computed(() => enrichMimeTypesWithExtensions(acceptedMimeTypes));
 
 const hideMessage = computed(() => {
 	return (
@@ -328,6 +336,7 @@ onBeforeMount(() => {
 				type="file"
 				data-test-id="message-edit-file-input"
 				:class="$style.fileInput"
+				:accept="enrichedAcceptedMimeTypes"
 				multiple
 				@change="handleFileSelect"
 			/>
