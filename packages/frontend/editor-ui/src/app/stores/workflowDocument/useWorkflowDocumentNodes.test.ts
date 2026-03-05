@@ -1,17 +1,17 @@
 /**
- * Integration tests for the useWorkflowDocumentNodes facade.
+ * Integration tests for useWorkflowDocumentNodes.
  *
  * These tests use a real Pinia store (createPinia, not createTestingPinia) so
  * that every write goes through the actual workflowsStore and every read comes
- * back through the facade's public API. This "round-trip" pattern (write → read
- * back → assert) is intentional:
+ * back through the public API. This "round-trip" pattern (write → read back →
+ * assert) is intentional:
  *
  *  - It catches regressions when consumers migrate from workflowsStore to
  *    workflowDocumentStore — the round-trip proves both paths produce the same
  *    result.
- *  - It survives internal refactors. When the facade's internals change (e.g.
- *    owning its own refs instead of delegating), these tests stay unchanged
- *    because they only exercise the public contract.
+ *  - It survives internal refactors. When the internals change (e.g. owning
+ *    its own refs instead of delegating), these tests stay unchanged because
+ *    they only exercise the public contract.
  *  - Delegation-style tests (expect(store.method).toHaveBeenCalled()) would
  *    need to be rewritten every time internals change; round-trips do not.
  */
@@ -51,66 +51,66 @@ describe('useWorkflowDocumentNodes', () => {
 			const nodeA = createNode({ name: 'A' });
 			const nodeB = createNode({ name: 'B' });
 
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.setNodes([nodeA, nodeB]);
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([nodeA, nodeB]);
 
-			expect(facade.allNodes.value).toHaveLength(2);
-			expect(facade.allNodes.value.map((n) => n.name)).toEqual(['A', 'B']);
+			expect(workflowDocumentNodes.allNodes.value).toHaveLength(2);
+			expect(workflowDocumentNodes.allNodes.value.map((n) => n.name)).toEqual(['A', 'B']);
 		});
 
 		it('nodes set via setNodes are readable via getNodeById', () => {
 			const node = createNode({ name: 'A' });
 
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.setNodes([node]);
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
 
-			expect(facade.getNodeById(node.id)).toBeDefined();
-			expect(facade.getNodeById(node.id)?.name).toBe('A');
+			expect(workflowDocumentNodes.getNodeById(node.id)).toBeDefined();
+			expect(workflowDocumentNodes.getNodeById(node.id)?.name).toBe('A');
 		});
 
 		it('nodes set via setNodes are readable via getNodeByName', () => {
 			const node = createNode({ name: 'MyNode' });
 
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.setNodes([node]);
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
 
-			expect(facade.getNodeByName('MyNode')).toBeDefined();
-			expect(facade.getNodeByName('MyNode')?.id).toBe(node.id);
+			expect(workflowDocumentNodes.getNodeByName('MyNode')).toBeDefined();
+			expect(workflowDocumentNodes.getNodeByName('MyNode')?.id).toBe(node.id);
 		});
 
 		it('nodes set via setNodes are readable via getNodes', () => {
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.setNodes([createNode({ name: 'A' }), createNode({ name: 'B' })]);
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([createNode({ name: 'A' }), createNode({ name: 'B' })]);
 
-			const nodes = facade.getNodes();
+			const nodes = workflowDocumentNodes.getNodes();
 			expect(nodes).toHaveLength(2);
 		});
 
 		it('nodes set via setNodes are readable via nodesByName', () => {
 			const node = createNode({ name: 'Alpha' });
 
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.setNodes([node]);
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
 
-			expect(facade.nodesByName.value).toHaveProperty('Alpha');
-			expect(facade.nodesByName.value.Alpha.id).toBe(node.id);
+			expect(workflowDocumentNodes.nodesByName.value).toHaveProperty('Alpha');
+			expect(workflowDocumentNodes.nodesByName.value.Alpha.id).toBe(node.id);
 		});
 
 		it('canvasNames reflects set nodes', () => {
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.setNodes([createNode({ name: 'X' }), createNode({ name: 'Y' })]);
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([createNode({ name: 'X' }), createNode({ name: 'Y' })]);
 
-			expect(facade.canvasNames.value).toEqual(new Set(['X', 'Y']));
+			expect(workflowDocumentNodes.canvasNames.value).toEqual(new Set(['X', 'Y']));
 		});
 
 		it('getNodesByIds returns matching nodes', () => {
 			const nodeA = createNode({ name: 'A' });
 			const nodeB = createNode({ name: 'B' });
 
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.setNodes([nodeA, nodeB]);
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([nodeA, nodeB]);
 
-			const result = facade.getNodesByIds([nodeA.id]);
+			const result = workflowDocumentNodes.getNodesByIds([nodeA.id]);
 			expect(result).toHaveLength(1);
 			expect(result[0].name).toBe('A');
 		});
@@ -118,12 +118,12 @@ describe('useWorkflowDocumentNodes', () => {
 		it('findNodeByPartialId matches partial id', () => {
 			const node = createNode({ name: 'FindMe' });
 
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.setNodes([node]);
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
 
 			// Use first 8 chars of UUID as partial
 			const partial = node.id.slice(0, 8);
-			const found = facade.findNodeByPartialId(partial);
+			const found = workflowDocumentNodes.findNodeByPartialId(partial);
 			expect(found?.name).toBe('FindMe');
 		});
 	});
@@ -132,20 +132,20 @@ describe('useWorkflowDocumentNodes', () => {
 		it('node added via addNode is readable via allNodes', () => {
 			const node = createNode({ name: 'Added' });
 
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.addNode(node);
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.addNode(node);
 
-			expect(facade.allNodes.value).toHaveLength(1);
-			expect(facade.allNodes.value[0].name).toBe('Added');
+			expect(workflowDocumentNodes.allNodes.value).toHaveLength(1);
+			expect(workflowDocumentNodes.allNodes.value[0].name).toBe('Added');
 		});
 
 		it('node added via addNode is readable via getNodeById', () => {
 			const node = createNode({ name: 'Added' });
 
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.addNode(node);
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.addNode(node);
 
-			expect(facade.getNodeById(node.id)?.name).toBe('Added');
+			expect(workflowDocumentNodes.getNodeById(node.id)?.name).toBe('Added');
 		});
 	});
 
@@ -154,31 +154,31 @@ describe('useWorkflowDocumentNodes', () => {
 			const nodeA = createNode({ name: 'A' });
 			const nodeB = createNode({ name: 'B' });
 
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.setNodes([nodeA, nodeB]);
-			facade.removeNode(nodeA);
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([nodeA, nodeB]);
+			workflowDocumentNodes.removeNode(nodeA);
 
-			expect(facade.allNodes.value).toHaveLength(1);
-			expect(facade.allNodes.value[0].name).toBe('B');
+			expect(workflowDocumentNodes.allNodes.value).toHaveLength(1);
+			expect(workflowDocumentNodes.allNodes.value[0].name).toBe('B');
 		});
 
 		it('removeNodeById removes node from allNodes', () => {
 			const node = createNode({ name: 'ToRemove' });
 
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.setNodes([node]);
-			facade.removeNodeById(node.id);
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.removeNodeById(node.id);
 
-			expect(facade.allNodes.value).toHaveLength(0);
+			expect(workflowDocumentNodes.allNodes.value).toHaveLength(0);
 		});
 
 		it('removeAllNodes empties all nodes', () => {
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.setNodes([createNode({ name: 'A' }), createNode({ name: 'B' })]);
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([createNode({ name: 'A' }), createNode({ name: 'B' })]);
 
-			facade.removeAllNodes({ setStateDirty: false, removePinData: false });
+			workflowDocumentNodes.removeAllNodes({ setStateDirty: false, removePinData: false });
 
-			expect(facade.allNodes.value).toHaveLength(0);
+			expect(workflowDocumentNodes.allNodes.value).toHaveLength(0);
 		});
 	});
 
@@ -186,93 +186,96 @@ describe('useWorkflowDocumentNodes', () => {
 		it('setNodeParameters updates parameters readable via getNodeByName', () => {
 			const node = createNode({ name: 'Target', parameters: { old: 'value' } });
 
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.setNodes([node]);
-			facade.setNodeParameters({ name: 'Target', value: { new: 'value' } });
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.setNodeParameters({ name: 'Target', value: { new: 'value' } });
 
-			expect(facade.getNodeByName('Target')?.parameters).toEqual({ new: 'value' });
+			expect(workflowDocumentNodes.getNodeByName('Target')?.parameters).toEqual({ new: 'value' });
 		});
 
 		it('setNodeParameters with append merges parameters', () => {
 			const node = createNode({ name: 'Target', parameters: { existing: 'keep' } });
 
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.setNodes([node]);
-			facade.setNodeParameters({ name: 'Target', value: { added: 'new' } }, true);
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.setNodeParameters({ name: 'Target', value: { added: 'new' } }, true);
 
-			expect(facade.getNodeByName('Target')?.parameters).toEqual({
+			expect(workflowDocumentNodes.getNodeByName('Target')?.parameters).toEqual({
 				existing: 'keep',
 				added: 'new',
 			});
 		});
 
 		it('setNodeParameters throws when node not found', () => {
-			const facade = useWorkflowDocumentNodes(deps);
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
 
-			expect(() => facade.setNodeParameters({ name: 'NonExistent', value: {} })).toThrow(
-				'could not be found',
-			);
+			expect(() =>
+				workflowDocumentNodes.setNodeParameters({ name: 'NonExistent', value: {} }),
+			).toThrow('could not be found');
 		});
 
 		it('setNodeValue updates a property readable via getNodeByName', () => {
 			const node = createNode({ name: 'Target' });
 
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.setNodes([node]);
-			facade.setNodeValue({ name: 'Target', key: 'disabled', value: true });
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.setNodeValue({ name: 'Target', key: 'disabled', value: true });
 
-			expect(facade.getNodeByName('Target')?.disabled).toBe(true);
+			expect(workflowDocumentNodes.getNodeByName('Target')?.disabled).toBe(true);
 		});
 
 		it('setNodePositionById updates position readable via getNodeById', () => {
 			const node = createNode({ name: 'Mover' });
 
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.setNodes([node]);
-			facade.setNodePositionById(node.id, [300, 400]);
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.setNodePositionById(node.id, [300, 400]);
 
-			expect(facade.getNodeById(node.id)?.position).toEqual([300, 400]);
+			expect(workflowDocumentNodes.getNodeById(node.id)?.position).toEqual([300, 400]);
 		});
 
 		it('updateNodeById updates node readable via getNodeById', () => {
 			const node = createNode({ name: 'Target' });
 
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.setNodes([node]);
-			const result = facade.updateNodeById(node.id, { disabled: true });
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			const result = workflowDocumentNodes.updateNodeById(node.id, { disabled: true });
 
 			expect(result).toBe(true);
-			expect(facade.getNodeById(node.id)?.disabled).toBe(true);
+			expect(workflowDocumentNodes.getNodeById(node.id)?.disabled).toBe(true);
 		});
 
 		it('updateNodeById returns false when node not found', () => {
-			const facade = useWorkflowDocumentNodes(deps);
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
 
-			expect(facade.updateNodeById('nonexistent', { disabled: true })).toBe(false);
+			expect(workflowDocumentNodes.updateNodeById('nonexistent', { disabled: true })).toBe(false);
 		});
 
 		it('updateNodeProperties updates properties readable via getNodeByName', () => {
 			const node = createNode({ name: 'Target' });
 
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.setNodes([node]);
-			facade.updateNodeProperties({ name: 'Target', properties: { disabled: true } });
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.updateNodeProperties({
+				name: 'Target',
+				properties: { disabled: true },
+			});
 
-			expect(facade.getNodeByName('Target')?.disabled).toBe(true);
+			expect(workflowDocumentNodes.getNodeByName('Target')?.disabled).toBe(true);
 		});
 
 		it('setNodeIssue adds issue readable via getNodeByName', () => {
 			const node = createNode({ name: 'Target' });
 
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.setNodes([node]);
-			facade.setNodeIssue({
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.setNodeIssue({
 				node: 'Target',
 				type: 'parameters',
 				value: { param: ['Missing required parameter'] },
 			});
 
-			expect(facade.getNodeByName('Target')?.issues).toEqual({
+			expect(workflowDocumentNodes.getNodeByName('Target')?.issues).toEqual({
 				parameters: { param: ['Missing required parameter'] },
 			});
 		});
@@ -284,11 +287,11 @@ describe('useWorkflowDocumentNodes', () => {
 				credentials: { cred: ['Invalid'] },
 			};
 
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.setNodes([node]);
-			facade.setNodeIssue({ node: 'Target', type: 'parameters', value: null });
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.setNodeIssue({ node: 'Target', type: 'parameters', value: null });
 
-			const issues = facade.getNodeByName('Target')?.issues;
+			const issues = workflowDocumentNodes.getNodeByName('Target')?.issues;
 			expect(issues).toEqual({ credentials: { cred: ['Invalid'] } });
 			expect(issues).not.toHaveProperty('parameters');
 		});
@@ -297,13 +300,13 @@ describe('useWorkflowDocumentNodes', () => {
 			const nodeA = createNode({ name: 'A', issues: { parameters: { x: ['err'] } } });
 			const nodeB = createNode({ name: 'B', issues: { credentials: { y: ['err'] } } });
 
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.setNodes([nodeA, nodeB]);
-			const result = facade.resetAllNodesIssues();
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([nodeA, nodeB]);
+			const result = workflowDocumentNodes.resetAllNodesIssues();
 
 			expect(result).toBe(true);
-			expect(facade.getNodeByName('A')?.issues).toBeUndefined();
-			expect(facade.getNodeByName('B')?.issues).toBeUndefined();
+			expect(workflowDocumentNodes.getNodeByName('A')?.issues).toBeUndefined();
+			expect(workflowDocumentNodes.getNodeByName('B')?.issues).toBeUndefined();
 		});
 
 		it('setLastNodeParameters does nothing when node type is not found', () => {
@@ -313,16 +316,16 @@ describe('useWorkflowDocumentNodes', () => {
 				parameters: { old: 'value' },
 			});
 
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.setNodes([node]);
-			facade.setLastNodeParameters({
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.setLastNodeParameters({
 				key: 'n8n-nodes-base.set',
 				name: '',
 				value: { new: 'value' },
 			});
 
 			// getNodeType returns null (default mock), so parameters should not change
-			expect(facade.getNodeByName('Target')?.parameters).toEqual({ old: 'value' });
+			expect(workflowDocumentNodes.getNodeByName('Target')?.parameters).toEqual({ old: 'value' });
 		});
 
 		it('setLastNodeParameters finds latest node by type and sets parameters', () => {
@@ -340,9 +343,9 @@ describe('useWorkflowDocumentNodes', () => {
 				getNodeType: vi.fn().mockReturnValue(mockNodeType),
 			});
 
-			const facade = useWorkflowDocumentNodes(customDeps);
-			facade.setNodes([node]);
-			facade.setLastNodeParameters({
+			const workflowDocumentNodes = useWorkflowDocumentNodes(customDeps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.setLastNodeParameters({
 				key: 'n8n-nodes-base.set',
 				name: '',
 				value: { value: 'hello' },
@@ -356,11 +359,11 @@ describe('useWorkflowDocumentNodes', () => {
 		it('setNodeValue does not update parametersLastUpdatedAt for position changes', () => {
 			const node = createNode({ name: 'Target' });
 
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.setNodes([node]);
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
 
 			const tsBefore = workflowsStore.nodeMetadata.Target.parametersLastUpdatedAt;
-			facade.setNodeValue({ name: 'Target', key: 'position', value: [300, 400] });
+			workflowDocumentNodes.setNodeValue({ name: 'Target', key: 'position', value: [300, 400] });
 
 			expect(workflowsStore.nodeMetadata.Target.parametersLastUpdatedAt).toBe(tsBefore);
 		});
@@ -368,10 +371,10 @@ describe('useWorkflowDocumentNodes', () => {
 		it('setNodeValue updates parametersLastUpdatedAt for non-position changes', () => {
 			const node = createNode({ name: 'Target' });
 
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.setNodes([node]);
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
 
-			facade.setNodeValue({ name: 'Target', key: 'disabled', value: true });
+			workflowDocumentNodes.setNodeValue({ name: 'Target', key: 'disabled', value: true });
 
 			expect(workflowsStore.nodeMetadata.Target.parametersLastUpdatedAt).toBeGreaterThan(0);
 		});
@@ -379,18 +382,18 @@ describe('useWorkflowDocumentNodes', () => {
 		it('resetParametersLastUpdatedAt updates timestamp', () => {
 			const node = createNode({ name: 'Target' });
 
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.setNodes([node]);
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
 
-			facade.resetParametersLastUpdatedAt('Target');
+			workflowDocumentNodes.resetParametersLastUpdatedAt('Target');
 
 			expect(workflowsStore.nodeMetadata.Target.parametersLastUpdatedAt).toBeGreaterThan(0);
 		});
 
 		it('resetParametersLastUpdatedAt creates metadata entry if missing', () => {
-			const facade = useWorkflowDocumentNodes(deps);
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
 
-			facade.resetParametersLastUpdatedAt('NewNode');
+			workflowDocumentNodes.resetParametersLastUpdatedAt('NewNode');
 
 			expect(workflowsStore.nodeMetadata.NewNode).toBeDefined();
 			expect(workflowsStore.nodeMetadata.NewNode.parametersLastUpdatedAt).toBeGreaterThan(0);
@@ -401,9 +404,9 @@ describe('useWorkflowDocumentNodes', () => {
 		it('setNodes does not fire onNodesChange (initialization path)', () => {
 			const hookSpy = vi.fn();
 
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.onNodesChange(hookSpy);
-			facade.setNodes([createNode()]);
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.onNodesChange(hookSpy);
+			workflowDocumentNodes.setNodes([createNode()]);
 
 			expect(hookSpy).not.toHaveBeenCalled();
 		});
@@ -412,9 +415,9 @@ describe('useWorkflowDocumentNodes', () => {
 			const hookSpy = vi.fn();
 			const node = createNode();
 
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.onNodesChange(hookSpy);
-			facade.addNode(node);
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.onNodesChange(hookSpy);
+			workflowDocumentNodes.addNode(node);
 
 			expect(hookSpy).toHaveBeenCalledWith({
 				action: 'add',
@@ -426,10 +429,10 @@ describe('useWorkflowDocumentNodes', () => {
 			const hookSpy = vi.fn();
 			const node = createNode({ name: 'Target' });
 
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.setNodes([node]);
-			facade.onNodesChange(hookSpy);
-			facade.removeNode(node);
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.onNodesChange(hookSpy);
+			workflowDocumentNodes.removeNode(node);
 
 			expect(hookSpy).toHaveBeenCalledWith({
 				action: 'delete',
@@ -441,10 +444,10 @@ describe('useWorkflowDocumentNodes', () => {
 			const hookSpy = vi.fn();
 			const node = createNode({ name: 'Target' });
 
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.setNodes([node]);
-			facade.onNodesChange(hookSpy);
-			facade.removeNodeById(node.id);
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.onNodesChange(hookSpy);
+			workflowDocumentNodes.removeNodeById(node.id);
 
 			expect(hookSpy).toHaveBeenCalledWith({
 				action: 'delete',
@@ -455,9 +458,9 @@ describe('useWorkflowDocumentNodes', () => {
 		it('addNode fires onStateDirty', () => {
 			const dirtySpy = vi.fn();
 
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.onStateDirty(dirtySpy);
-			facade.addNode(createNode());
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.onStateDirty(dirtySpy);
+			workflowDocumentNodes.addNode(createNode());
 
 			expect(dirtySpy).toHaveBeenCalledOnce();
 		});
@@ -466,10 +469,10 @@ describe('useWorkflowDocumentNodes', () => {
 			const dirtySpy = vi.fn();
 			const node = createNode();
 
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.setNodes([node]);
-			facade.onStateDirty(dirtySpy);
-			facade.removeNode(node);
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.onStateDirty(dirtySpy);
+			workflowDocumentNodes.removeNode(node);
 
 			expect(dirtySpy).toHaveBeenCalledOnce();
 		});
@@ -478,10 +481,10 @@ describe('useWorkflowDocumentNodes', () => {
 			const dirtySpy = vi.fn();
 			const node = createNode();
 
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.setNodes([node]);
-			facade.onStateDirty(dirtySpy);
-			facade.removeNodeById(node.id);
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.onStateDirty(dirtySpy);
+			workflowDocumentNodes.removeNodeById(node.id);
 
 			expect(dirtySpy).toHaveBeenCalledOnce();
 		});
@@ -489,9 +492,9 @@ describe('useWorkflowDocumentNodes', () => {
 		it('setNodes does not fire onStateDirty (initialization path)', () => {
 			const dirtySpy = vi.fn();
 
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.onStateDirty(dirtySpy);
-			facade.setNodes([createNode()]);
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.onStateDirty(dirtySpy);
+			workflowDocumentNodes.setNodes([createNode()]);
 
 			expect(dirtySpy).not.toHaveBeenCalled();
 		});
@@ -500,10 +503,10 @@ describe('useWorkflowDocumentNodes', () => {
 			const dirtySpy = vi.fn();
 			const node = createNode({ name: 'Target', parameters: { old: 'value' } });
 
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.setNodes([node]);
-			facade.onStateDirty(dirtySpy);
-			facade.setNodeParameters({ name: 'Target', value: { new: 'value' } });
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.onStateDirty(dirtySpy);
+			workflowDocumentNodes.setNodeParameters({ name: 'Target', value: { new: 'value' } });
 
 			expect(dirtySpy).toHaveBeenCalledOnce();
 		});
@@ -512,10 +515,10 @@ describe('useWorkflowDocumentNodes', () => {
 			const dirtySpy = vi.fn();
 			const node = createNode({ name: 'Target' });
 
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.setNodes([node]);
-			facade.onStateDirty(dirtySpy);
-			facade.setNodeValue({ name: 'Target', key: 'disabled', value: true });
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.onStateDirty(dirtySpy);
+			workflowDocumentNodes.setNodeValue({ name: 'Target', key: 'disabled', value: true });
 
 			expect(dirtySpy).toHaveBeenCalledOnce();
 		});
@@ -523,10 +526,10 @@ describe('useWorkflowDocumentNodes', () => {
 		it('removeAllNodes fires onStateDirty when setStateDirty is true', () => {
 			const dirtySpy = vi.fn();
 
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.setNodes([createNode()]);
-			facade.onStateDirty(dirtySpy);
-			facade.removeAllNodes({ setStateDirty: true, removePinData: false });
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([createNode()]);
+			workflowDocumentNodes.onStateDirty(dirtySpy);
+			workflowDocumentNodes.removeAllNodes({ setStateDirty: true, removePinData: false });
 
 			expect(dirtySpy).toHaveBeenCalledOnce();
 		});
@@ -534,10 +537,10 @@ describe('useWorkflowDocumentNodes', () => {
 		it('removeAllNodes does not fire onStateDirty when setStateDirty is false', () => {
 			const dirtySpy = vi.fn();
 
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.setNodes([createNode()]);
-			facade.onStateDirty(dirtySpy);
-			facade.removeAllNodes({ setStateDirty: false, removePinData: false });
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([createNode()]);
+			workflowDocumentNodes.onStateDirty(dirtySpy);
+			workflowDocumentNodes.removeAllNodes({ setStateDirty: false, removePinData: false });
 
 			expect(dirtySpy).not.toHaveBeenCalled();
 		});
@@ -545,9 +548,9 @@ describe('useWorkflowDocumentNodes', () => {
 		it('removeNodeById uses empty name when node not found', () => {
 			const hookSpy = vi.fn();
 
-			const facade = useWorkflowDocumentNodes(deps);
-			facade.onNodesChange(hookSpy);
-			facade.removeNodeById('nonexistent');
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.onNodesChange(hookSpy);
+			workflowDocumentNodes.removeNodeById('nonexistent');
 
 			expect(hookSpy).toHaveBeenCalledWith({
 				action: 'delete',
