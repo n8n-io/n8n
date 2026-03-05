@@ -136,7 +136,7 @@ export class WaitingForms extends WaitingWebhooks {
 	}
 
 	private handleStatusRequest(
-		execution: IExecutionResponse | null,
+		execution: IExecutionResponse | undefined,
 		suffix: string | undefined,
 		req: WaitingWebhookRequest,
 		res: express.Response,
