@@ -89,6 +89,8 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	const i18n = useI18n();
 
 	const agents = ref<ChatModelsResponse | null>(null);
+	let pendingAgentsFetch: Promise<ChatModelsResponse> | null = null;
+
 	const customAgents = ref<Partial<Record<string, ChatHubAgentDto>>>({});
 	const sessions = ref<{
 		byId: Partial<Record<string, ChatHubSessionDto>>;
@@ -338,10 +340,14 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	}
 
 	async function fetchAgents(credentialMap: CredentialsMap, options: FetchOptions = {}) {
+		pendingAgentsFetch ??= fetchChatModelsApi(rootStore.restApiContext, {
+			credentials: credentialMap,
+		}).finally(() => {
+			pendingAgentsFetch = null;
+		});
+
 		[agents.value] = await Promise.all([
-			fetchChatModelsApi(rootStore.restApiContext, {
-				credentials: credentialMap,
-			}),
+			pendingAgentsFetch,
 			new Promise((r) => setTimeout(r, options.minLoadingTime ?? 0)),
 		]);
 		return agents.value;
@@ -802,6 +808,8 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		const baseModel = agents.value?.[customAgent.provider]?.models.find(
 			(model) => model.name === customAgent.model,
 		);
+		const suggestedPrompts = customAgent.suggestedPrompts.filter((p) => p.text.trim().length > 0);
+
 		const agent: ChatModelDto = {
 			model: {
 				provider: 'custom-agent' as const,
@@ -814,11 +822,13 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			updatedAt: customAgent.updatedAt,
 			metadata: baseModel?.metadata ?? {
 				capabilities: { functionCalling: false },
-				inputModalities: [],
+				allowFileUploads: false,
+				allowedFilesMimeTypes: '',
 				available: true,
 			},
 			groupName: null,
 			groupIcon: null,
+			...(suggestedPrompts.length > 0 ? { suggestedPrompts } : {}),
 		};
 		agents.value?.['custom-agent'].models.push(agent);
 		customAgents.value[customAgent.id] = customAgent;
@@ -839,9 +849,19 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 
 		// Update the agent in models as well
 		if (agents.value?.['custom-agent']) {
+			const updatedSuggestedPrompts = customAgent.suggestedPrompts.filter(
+				(p) => p.text.trim().length > 0,
+			);
+
 			agents.value['custom-agent'].models = agents.value['custom-agent'].models.map((model) =>
 				'agentId' in model && model.agentId === agentId
-					? { ...model, name: customAgent.name }
+					? {
+							...model,
+							name: customAgent.name,
+							...(updatedSuggestedPrompts.length > 0
+								? { suggestedPrompts: updatedSuggestedPrompts }
+								: { suggestedPrompts: undefined }),
+						}
 					: model,
 			);
 		}

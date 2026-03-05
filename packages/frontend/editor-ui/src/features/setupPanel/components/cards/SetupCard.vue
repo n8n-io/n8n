@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
+import { ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const props = withDefaults(
 	defineProps<{
 		isComplete: boolean;
+		loading?: boolean;
 		cardTestId: string;
 		title: string;
 		showFooter?: boolean;
@@ -16,6 +18,7 @@ const props = withDefaults(
 		telemetryPayload?: Record<string, unknown>;
 	}>(),
 	{
+		loading: false,
 		showFooter: true,
 		showCallout: false,
 		telemetryPayload: () => ({}),
@@ -27,6 +30,7 @@ const expanded = defineModel<boolean>('expanded', { default: false });
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const hadManualInteraction = ref(false);
 
@@ -41,26 +45,16 @@ const onHeaderClick = () => {
 watch(
 	() => props.isComplete,
 	(isComplete) => {
-		if (isComplete) {
-			expanded.value = false;
-
-			if (hadManualInteraction.value) {
-				telemetry.track('User completed setup step', {
-					template_id: workflowsStore.workflow.meta?.templateId,
-					workflow_id: workflowsStore.workflowId,
-					...props.telemetryPayload,
-				});
-				hadManualInteraction.value = false;
-			}
+		if (isComplete && hadManualInteraction.value) {
+			telemetry.track('User completed setup step', {
+				template_id: workflowDocumentStore?.value?.meta?.templateId,
+				workflow_id: workflowsStore.workflowId,
+				...props.telemetryPayload,
+			});
+			hadManualInteraction.value = false;
 		}
 	},
 );
-
-onMounted(() => {
-	if (props.isComplete) {
-		expanded.value = false;
-	}
-});
 
 defineExpose({ markInteracted });
 </script>
@@ -79,7 +73,15 @@ defineExpose({ markInteracted });
 	>
 		<header :data-test-id="`${cardTestId}-header`" :class="$style.header" @click="onHeaderClick">
 			<N8nIcon
-				v-if="!expanded && isComplete"
+				v-if="!expanded && loading && !isComplete"
+				:data-test-id="`${cardTestId}-loading-icon`"
+				icon="spinner"
+				:spin="true"
+				:class="$style['loading-icon']"
+				size="medium"
+			/>
+			<N8nIcon
+				v-else-if="!expanded && isComplete"
 				:data-test-id="`${cardTestId}-complete-icon`"
 				icon="check"
 				:class="$style['complete-icon']"
@@ -109,6 +111,7 @@ defineExpose({ markInteracted });
 					</div>
 				</div>
 			</Transition>
+			<slot name="webhook-urls" />
 			<slot />
 
 			<footer v-if="showFooter" :class="$style.footer">
@@ -130,7 +133,7 @@ defineExpose({ markInteracted });
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
-	background-color: var(--color--background--light-2);
+	background-color: var(--color--background--light-3);
 	border: var(--border);
 	border-radius: var(--radius);
 
@@ -177,6 +180,19 @@ defineExpose({ markInteracted });
 
 .complete-icon {
 	color: var(--color--success);
+
+	.header & {
+		display: flex;
+		justify-content: center;
+		width: var(--spacing--sm);
+	}
+}
+
+.loading-icon {
+	color: var(--color--text--tint-1);
+	display: flex;
+	justify-content: center;
+	width: var(--spacing--sm);
 }
 
 .footer {
@@ -198,10 +214,15 @@ defineExpose({ markInteracted });
 	}
 
 	.card-title {
-		color: var(--color--text--tint-1);
+		color: var(--color--text);
 		overflow: hidden;
 		white-space: nowrap;
 		text-overflow: ellipsis;
+		transition: color 100ms ease;
+	}
+
+	&:hover .card-title {
+		color: var(--color--text--shade-1);
 	}
 }
 

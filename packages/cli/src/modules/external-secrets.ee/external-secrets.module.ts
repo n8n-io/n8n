@@ -22,6 +22,17 @@ export class ExternalSecretsModule implements ModuleInterface {
 		externalSecretsProxy.setManager(externalSecretsManager);
 	}
 
+	async settings() {
+		const { ExternalSecretsConfig } = await import('./external-secrets.config');
+		const config = Container.get(ExternalSecretsConfig);
+
+		return {
+			multipleConnections: config.externalSecretsMultipleConnections,
+			forProjects: config.externalSecretsForProjects,
+			roleBasedAccess: config.externalSecretsRoleBasedAccess,
+		};
+	}
+
 	@OnShutdown()
 	async shutdown() {
 		const { ExternalSecretsManager } = await import('./external-secrets-manager.ee');

@@ -245,6 +245,7 @@ watch(
 					v-if="!props.static && !(project.id === GLOBAL_GROUP.id && !canShareGlobally)"
 					native-type="button"
 					icon="trash-2"
+					:aria-label="locale.baseText('generic.delete')"
 					:disabled="props.readonly"
 					data-test-id="project-sharing-remove"
 					@click="onRoleAction(project, 'remove')"

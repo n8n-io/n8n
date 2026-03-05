@@ -5,6 +5,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { fetchChatModelsApi } from '@/features/ai/chatHub/chat.api';
+import Modal from '@/app/components/Modal.vue';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
 import {
 	emptyChatModelsResponse,
@@ -15,24 +16,14 @@ import {
 	type ChatHubProvider,
 	type ChatModelDto,
 } from '@n8n/api-types';
-import {
-	N8nButton,
-	N8nDialogClose,
-	N8nDialogFooter,
-	N8nDialogHeader,
-	N8nDialogTitle,
-	N8nHeading,
-	N8nIconPicker,
-	N8nInput,
-	N8nInputLabel,
-	N8nDialog,
-	N8nSpinner,
-} from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nIconPicker, N8nInput, N8nInputLabel } from '@n8n/design-system';
 import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
 import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
+import type { SuggestedPrompt } from '@n8n/api-types';
 import type { CredentialsMap } from '../chat.types';
+import SuggestedPromptsEditor from './SuggestedPromptsEditor.vue';
 import ToolsSelector from './ToolsSelector.vue';
 import { personalAgentDefaultIcon, isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
 import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
@@ -66,6 +57,7 @@ const agents = ref<ChatModelsResponse>(emptyChatModelsResponse);
 const isLoadingAgents = ref(false);
 const nameInputRef = useTemplateRef('nameInput');
 const icon = ref<AgentIconOrEmoji>(personalAgentDefaultIcon);
+const suggestedPrompts = ref<SuggestedPrompt[]>([]);
 
 const agentSelectedCredentials = ref<CredentialsMap>({});
 const credentialIdForSelectedModelProvider = computed(
@@ -135,6 +127,7 @@ watch(
 		description.value = agent.description ?? '';
 		systemPrompt.value = agent.systemPrompt;
 		selectedModel.value = { provider: agent.provider, model: agent.model };
+		suggestedPrompts.value = agent.suggestedPrompts;
 		toolIds.value = agent.toolIds ?? [];
 
 		if (agent.credentialId) {
@@ -201,6 +194,8 @@ async function onSave() {
 		assert(selectedModel.value);
 		assert(credentialIdForSelectedModelProvider.value);
 
+		const filteredPrompts = suggestedPrompts.value.filter((p) => p.text.trim().length > 0);
+
 		const payload = {
 			name: name.value.trim(),
 			description: description.value.trim() || undefined,
@@ -209,6 +204,7 @@ async function onSave() {
 			credentialId: credentialIdForSelectedModelProvider.value,
 			toolIds: toolIds.value,
 			icon: icon.value,
+			suggestedPrompts: filteredPrompts.length > 0 ? filteredPrompts : undefined,
 		};
 
 		if (isEditMode.value && props.data.agentId) {
@@ -270,30 +266,23 @@ async function onDelete() {
 </script>
 
 <template>
-	<N8nDialog :open="true" size="xlarge" @update:open="closeDialog">
-		<template v-if="isLoadingAgent">
-			<div :class="$style.loader">
-				<N8nSpinner />
+	<Modal :name="modalName" width="640px" :loading="isLoadingAgent">
+		<template #header>
+			<div :class="$style.header">
+				<N8nHeading tag="h2" size="large">{{ title }}</N8nHeading>
+				<N8nButton
+					v-if="isEditMode"
+					variant="subtle"
+					icon="trash-2"
+					:class="$style.deleteButton"
+					:disabled="isDeleting"
+					:loading="isDeleting"
+					@click="onDelete"
+				/>
 			</div>
 		</template>
-		<template v-else>
-			<N8nDialogHeader>
-				<div :class="$style.header">
-					<N8nDialogTitle>
-						<N8nHeading tag="h2" size="large">{{ title }}</N8nHeading>
-					</N8nDialogTitle>
-					<N8nButton
-						v-if="isEditMode"
-						variant="subtle"
-						icon="trash-2"
-						:class="$style.deleteButton"
-						:disabled="isDeleting"
-						:loading="isDeleting"
-						@click="onDelete"
-					/>
-				</div>
-			</N8nDialogHeader>
-			<div data-agent-editor-modal :class="$style.content">
+		<template #content>
+			<div :class="$style.content">
 				<N8nInputLabel
 					input-name="agent-name"
 					:label="i18n.baseText('chatHub.agent.editor.name.label')"
@@ -345,6 +334,15 @@ async function onDelete() {
 					/>
 				</N8nInputLabel>
 
+				<N8nInputLabel
+					input-name="agent-suggested-prompts"
+					:label="i18n.baseText('chatHub.agent.editor.suggestedPrompts.label')"
+					:tooltip-text="i18n.baseText('chatHub.agent.editor.suggestedPrompts.tooltip')"
+					:show-tooltip="true"
+				>
+					<SuggestedPromptsEditor v-model="suggestedPrompts" />
+				</N8nInputLabel>
+
 				<div :class="$style.row">
 					<N8nInputLabel
 						input-name="agent-model"
@@ -377,7 +375,9 @@ async function onDelete() {
 								:disabled-tooltip="
 									canSelectTools
 										? undefined
-										: i18n.baseText('chatHub.tools.selector.disabled.tooltip')
+										: selectedModel
+											? i18n.baseText('chatHub.tools.selector.disabled.tooltip')
+											: i18n.baseText('chatHub.tools.selector.disabled.noModel.tooltip')
 								"
 								:checked-tool-ids="toolIds"
 								@toggle="handleToggleAgentTool"
@@ -386,19 +386,19 @@ async function onDelete() {
 					</N8nInputLabel>
 				</div>
 			</div>
+		</template>
 
-			<N8nDialogFooter>
-				<N8nDialogClose as-child>
-					<N8nButton variant="subtle">
-						{{ i18n.baseText('chatHub.tools.editor.cancel') }}
-					</N8nButton>
-				</N8nDialogClose>
+		<template #footer>
+			<div :class="$style.footer">
+				<N8nButton variant="subtle" @click="closeDialog">
+					{{ i18n.baseText('chatHub.tools.editor.cancel') }}
+				</N8nButton>
 				<N8nButton variant="solid" :disabled="!isValid || isSaving" @click="onSave">
 					{{ saveButtonLabel }}
 				</N8nButton>
-			</N8nDialogFooter>
+			</div>
 		</template>
-	</N8nDialog>
+	</Modal>
 </template>
 
 <style lang="scss" module>
@@ -418,7 +418,7 @@ async function onDelete() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
-	padding: var(--spacing--sm) 0;
+	padding: var(--spacing--sm) var(--spacing--4xs);
 }
 
 .input {
@@ -445,16 +445,9 @@ async function onDelete() {
 	width: fit-content;
 }
 
-.loader {
+.footer {
 	display: flex;
-	justify-content: center;
-	align-items: center;
-	min-height: 200px;
-}
-</style>
-
-<style lang="scss">
-[role='dialog']:has([data-agent-editor-modal]) {
-	background-color: var(--dialog--color--background);
+	justify-content: flex-end;
+	gap: var(--spacing--2xs);
 }
 </style>

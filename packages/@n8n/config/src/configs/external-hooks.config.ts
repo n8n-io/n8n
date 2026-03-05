@@ -3,7 +3,7 @@ import { Config, Env } from '../decorators';
 
 @Config
 export class ExternalHooksConfig {
-	/** Files containing external hooks. Multiple files can be separated by colon (":") */
+	/** Paths to files that define external lifecycle hooks. Colon-separated for multiple files. */
 	@Env('EXTERNAL_HOOK_FILES')
 	files: ColonSeparatedStringArray = [];
 }

@@ -7,6 +7,7 @@ import BetaTag from '../BetaTag/BetaTag.vue';
 import N8nIcon from '../N8nIcon';
 import type { IconName } from '../N8nIcon/icons';
 import N8nRoute from '../N8nRoute';
+import N8nTag from '../N8nTag';
 import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip';
 
@@ -134,6 +135,12 @@ const tooltipPlacement = computed(() => {
 						{{ item.label }}
 					</N8nText>
 					<BetaTag v-if="!compact && item.beta" />
+					<N8nTag
+						v-if="!compact && item.new"
+						:clickable="false"
+						text="New"
+						:class="$style.newTag"
+					/>
 				</div>
 				<N8nIcon v-if="item.children && !compact" icon="chevron-right" color="text-light" />
 			</N8nRoute>
@@ -242,5 +249,18 @@ const tooltipPlacement = computed(() => {
 	gap: var(--spacing--3xs);
 	flex: 1;
 	min-width: 0;
+}
+
+.newTag {
+	background-color: var(--color--foreground--shade-2);
+	color: var(--color--background);
+	border-color: var(--color--foreground--shade-2);
+	font-size: var(--font-size--3xs);
+	font-weight: var(--font-weight--bold);
+	padding: var(--spacing--5xs) var(--spacing--4xs);
+	border-radius: var(--spacing--sm);
+	min-height: auto;
+	height: auto;
+	line-height: 1;
 }
 </style>

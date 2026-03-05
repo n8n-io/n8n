@@ -85,7 +85,6 @@ vi.mock('@/app/stores/workflows.store', () => {
 		incomingConnectionsByNodeName: vi.fn(),
 		outgoingConnectionsByNodeName: vi.fn(),
 		private: {
-			setWorkflowSettings: vi.fn(),
 			setActiveExecutionId: vi.fn((id: string | null | undefined) => {
 				storeState.activeExecutionId = id;
 			}),
@@ -709,7 +708,7 @@ describe('useRunWorkflow({ router })', () => {
 					},
 				],
 				triggerToStartFrom: undefined,
-				workflowData,
+				workflowId: workflowData.id,
 			});
 			expect(result).toEqual(mockExecutionResponse);
 			expect(setWorkflowExecutionData).toHaveBeenCalledTimes(1);
@@ -1089,10 +1088,7 @@ describe('useRunWorkflow({ router })', () => {
 					data: undefined,
 					name: 'foo',
 				},
-				workflowData: {
-					id: 'workflowId',
-					nodes: [],
-				},
+				workflowId: 'workflowId',
 			});
 		});
 
