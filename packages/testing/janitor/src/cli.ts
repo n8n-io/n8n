@@ -65,8 +65,8 @@ import { toJSON, toConsole, printFixResults } from './core/reporter.js';
 import { TcrExecutor, formatTcrResultConsole, formatTcrResultJSON } from './core/tcr-executor.js';
 import { TestDiscoveryAnalyzer } from './core/test-discovery-analyzer.js';
 import { createDefaultRunner } from './index.js';
-import { resolveInputPaths } from './utils/paths.js';
 import type { RunOptions } from './types.js';
+import { resolveInputPaths } from './utils/paths.js';
 
 async function loadConfig(configPath?: string): Promise<JanitorConfig> {
 	const cwd = process.cwd();
