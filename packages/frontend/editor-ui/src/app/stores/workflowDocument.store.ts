@@ -16,6 +16,7 @@ import { useWorkflowDocumentParentFolder } from './workflowDocument/useWorkflowD
 import { useWorkflowDocumentUsedCredentials } from './workflowDocument/useWorkflowDocumentUsedCredentials';
 import { useWorkflowDocumentNodes } from './workflowDocument/useWorkflowDocumentNodes';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 export {
 	getPinDataSize,
@@ -69,7 +70,10 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		const workflowDocumentSettings = useWorkflowDocumentSettings();
 		const workflowDocumentParentFolder = useWorkflowDocumentParentFolder();
 		const workflowDocumentUsedCredentials = useWorkflowDocumentUsedCredentials();
-		const { onStateDirty, ...workflowDocumentNodes } = useWorkflowDocumentNodes();
+		const nodeTypesStore = useNodeTypesStore();
+		const { onStateDirty, ...workflowDocumentNodes } = useWorkflowDocumentNodes({
+			getNodeType: (typeName, version) => nodeTypesStore.getNodeType(typeName, version),
+		});
 
 		// Cross-cut: wire the nodes facade's dirty signal to UI store
 		onStateDirty(() => useUIStore().markStateDirty());
