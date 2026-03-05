@@ -63,6 +63,9 @@ const telemetry = useTelemetry();
 const { isEligibleForMcpAccess, trackMcpAccessEnabledForWorkflow, mcpTriggerMap } = useMcp();
 const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
 const { isEnabled: isCredentialResolverEnabled } = useDynamicCredentials();
+const canListCredentialResolvers = hasPermission(['rbac'], {
+	rbac: { scope: 'credentialResolver:list' },
+});
 const canCreateCredentialResolver = hasPermission(['rbac'], {
 	rbac: { scope: 'credentialResolver:create' },
 });
@@ -672,7 +675,7 @@ onMounted(async () => {
 			loadWorkflowCallerPolicyOptions(),
 		];
 
-		if (isCredentialResolverEnabled.value) {
+		if (isCredentialResolverEnabled.value && canListCredentialResolvers) {
 			promises.push(loadCredentialResolvers(), loadCredentialResolverTypes());
 		}
 
@@ -871,7 +874,9 @@ onBeforeUnmount(() => {
 								:placeholder="i18n.baseText('workflowSettings.credentialResolver.placeholder')"
 								filterable
 								clearable
-								:disabled="readOnlyEnv || !workflowPermissions.update"
+								:disabled="
+									readOnlyEnv || !workflowPermissions.update || !canListCredentialResolvers
+								"
 								:limit-popper-width="true"
 								data-test-id="workflow-settings-credential-resolver"
 							>

@@ -621,6 +621,7 @@ describe('WorkflowSettingsVue', () => {
 			vi.mocked(restApiClient.getCredentialResolvers).mockResolvedValue(mockResolvers);
 			vi.mocked(restApiClient.getCredentialResolverTypes).mockResolvedValue(mockResolverTypes);
 			const rbacStore = useRBACStore();
+			rbacStore.addGlobalScope('credentialResolver:list');
 			rbacStore.addGlobalScope('credentialResolver:create');
 			rbacStore.addGlobalScope('credentialResolver:update');
 		});
@@ -820,6 +821,7 @@ describe('WorkflowSettingsVue', () => {
 
 		it('should not show "Create new" button when user lacks credentialResolver:create scope', async () => {
 			const rbacStore = useRBACStore();
+			rbacStore.addGlobalScope('credentialResolver:list');
 			rbacStore.addGlobalScope('credentialResolver:update');
 
 			const { queryByTestId } = createComponent({ pinia });
@@ -832,6 +834,7 @@ describe('WorkflowSettingsVue', () => {
 
 		it('should show "Create new" button when user has credentialResolver:create scope', async () => {
 			const rbacStore = useRBACStore();
+			rbacStore.addGlobalScope('credentialResolver:list');
 			rbacStore.addGlobalScope('credentialResolver:create');
 
 			const { getByTestId } = createComponent({ pinia });
@@ -843,6 +846,7 @@ describe('WorkflowSettingsVue', () => {
 		it('should not show "Edit" button when user lacks credentialResolver:update scope', async () => {
 			workflowDocumentStore.setSettings({ credentialResolverId: 'resolver-1' });
 			const rbacStore = useRBACStore();
+			rbacStore.addGlobalScope('credentialResolver:list');
 			rbacStore.addGlobalScope('credentialResolver:create');
 
 			const { queryByTestId } = createComponent({ pinia });
@@ -854,6 +858,7 @@ describe('WorkflowSettingsVue', () => {
 		it('should show "Edit" button when user has credentialResolver:update scope and editable resolver is selected', async () => {
 			workflowDocumentStore.setSettings({ credentialResolverId: 'resolver-1' });
 			const rbacStore = useRBACStore();
+			rbacStore.addGlobalScope('credentialResolver:list');
 			rbacStore.addGlobalScope('credentialResolver:update');
 
 			const { getByTestId } = createComponent({ pinia });
@@ -862,6 +867,20 @@ describe('WorkflowSettingsVue', () => {
 			await waitFor(() => {
 				expect(getByTestId('workflow-settings-credential-resolver-edit')).toBeInTheDocument();
 			});
+		});
+
+		it('should not fetch resolvers and should disable dropdown when user lacks credentialResolver:list scope', async () => {
+			// No scopes added — user has no credentialResolver:list
+
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(restApiClient.getCredentialResolvers).not.toHaveBeenCalled();
+			expect(restApiClient.getCredentialResolverTypes).not.toHaveBeenCalled();
+
+			const dropdownContainer = getByTestId('workflow-settings-credential-resolver');
+			const input = dropdownContainer.querySelector('input');
+			expect(input).toBeDisabled();
 		});
 	});
 
