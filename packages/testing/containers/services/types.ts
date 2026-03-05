@@ -22,6 +22,7 @@ export const SERVICE_NAMES = [
 	'mysql',
 	'localstack',
 	'kent',
+	'postgresExporter',
 ] as const;
 
 export type ServiceName = (typeof SERVICE_NAMES)[number];

@@ -8,6 +8,7 @@
     "test:e2e": "playwright test --project=*e2e*",
     "test:performance": "playwright test --project=performance",
     "test:infrastructure": "playwright test --project='*:infrastructure'",
+    "test:benchmark": "playwright test --project='benchmark-*'",
     "test:container:sqlite": "playwright test --project='sqlite:*'",
     "test:container:sqlite:e2e": "playwright test --project='sqlite:e2e'",
     "test:container:postgres": "playwright test --project='postgres:*'",
