@@ -142,6 +142,10 @@ const handleCopy = async (value: string) => {
 			--input--border--shadow: 0 0 0 0 transparent;
 			--input--border--shadow--hover: 0 0 0 0 transparent;
 			--input--border--shadow--focus: 0 0 0 0 transparent;
+
+			&:focus-within {
+				outline: none;
+			}
 		}
 	}
 
