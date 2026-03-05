@@ -49,8 +49,6 @@ const parseBlockedIpRanges = (input: string): string[] => {
 
 const blockedIpRangesSchema = z.string().transform(parseBlockedIpRanges);
 
-const positiveNumberSchema = z.coerce.number().gt(0);
-
 @Config
 export class SsrfProtectionConfig {
 	/** Whether SSRF protection is enabled for nodes making HTTP requests to user-controllable targets. */
@@ -72,10 +70,6 @@ export class SsrfProtectionConfig {
 	/** Comma-separated hostname patterns to allow. Supports wildcards: *.n8n.internal */
 	@Env('N8N_SSRF_ALLOWED_HOSTNAMES')
 	allowedHostnames: CommaSeparatedStringArray<string> = [];
-
-	/** Maximum DNS cache TTL in seconds. Default: 300. */
-	@Env('N8N_SSRF_DNS_CACHE_MAX_TTL_SECONDS', positiveNumberSchema)
-	dnsCacheMaxTtlSeconds: number = 300;
 
 	/** Maximum DNS cache size in bytes (LRU eviction). Default: 1 MB. */
 	@Env('N8N_SSRF_DNS_CACHE_MAX_SIZE')
