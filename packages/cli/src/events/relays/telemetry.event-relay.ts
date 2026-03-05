@@ -1239,7 +1239,7 @@ export class TelemetryEventRelay extends EventRelay {
 			{
 				user_role: targetUserNewRole,
 			},
-			userId,
+			targetUserId,
 		);
 
 		this.telemetry.track('User changed role', {

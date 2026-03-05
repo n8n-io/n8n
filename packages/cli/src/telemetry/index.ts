@@ -63,33 +63,40 @@ export class Telemetry {
 		private readonly errorReporter: ErrorReporter,
 	) {}
 
-	// PostHog groupIdentify only accept flat objects with string or number values, function sanitizes objects to match that format.
+	// PostHog groupIdentify only accepts flat objects with string or number values, function sanitizes objects to match that format.
 	sanitizeTelemetryProperties(
 		obj: Record<string, any>,
-		prefix = '',
+		depth = 0,
+		maxDepth = 10,
 	): Record<string, string | number> {
 		try {
 			const result: Record<string, string | number> = {};
 
 			for (const [key, value] of Object.entries(obj)) {
-				const newKey = prefix ? `${prefix}.${key}` : key;
-
 				if (value === null || value === undefined) {
 					continue;
 				} else if (typeof value === 'boolean') {
-					result[newKey] = value ? 'true' : 'false';
+					result[key] = value ? 'true' : 'false';
 				} else if (typeof value === 'number') {
-					result[newKey] = value;
+					result[key] = value;
 				} else if (typeof value === 'string') {
-					result[newKey] = value;
+					result[key] = value;
 				} else if (Array.isArray(value)) {
-					result[newKey] = JSON.stringify(value);
+					result[key] = JSON.stringify(value);
 				} else if (typeof value === 'object' && value.constructor === Object) {
-					// Recursively flatten nested objects
-					Object.assign(
-						result,
-						this.sanitizeTelemetryProperties(value as Record<string, unknown>, newKey),
-					);
+					if (depth >= maxDepth) {
+						result[key] = JSON.stringify(value);
+					} else {
+						// Recursively flatten nested objects
+						Object.assign(
+							result,
+							this.sanitizeTelemetryProperties(
+								value as Record<string, unknown>,
+								depth + 1,
+								maxDepth,
+							),
+						);
+					}
 				} else {
 					continue;
 				}
