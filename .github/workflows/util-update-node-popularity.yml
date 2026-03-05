@@ -69,33 +69,12 @@ jobs:
           committer: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
 
   approve-and-automerge:
+    needs: [update-popularity]
     if: |
       needs.update-popularity.outputs.pull-request-number != '' &&
       (github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'schedule' && github.repository == 'n8n-io/n8n'))
-    runs-on: ubuntu-slim
-    environment: release
-    needs: [update-popularity]
-    steps:
-      - name: Generate GitHub App Token
-        id: generate-token
-        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
-        with:
-          app-id: ${{ secrets.N8N_RELEASE_HELPER_APP_ID }}
-          private-key: ${{ secrets.N8N_RELEASE_HELPER_PRIVATE_KEY }}
-
-      - name: Approve PR (as the App)
-        env:
-          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
-        run: |
-          gh pr review "${{ needs.update-popularity.outputs.pull-request-number }}" \
-            --approve \
-            --repo "${{ github.repository }}"
-
-      - name: Enable auto-merge (merge when checks pass)
-        env:
-          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
-        run: |
-          gh pr merge "${{ needs.update-popularity.outputs.pull-request-number }}" \
-            --auto \
-            --repo "${{ github.repository }}"
+    uses: ./.github/workflows/util-approve-and-set-automerge.yml
+    secrets: inherit
+    with:
+      pull-request-number: ${{ needs.update-popularity.outputs.pull-request-number }}
