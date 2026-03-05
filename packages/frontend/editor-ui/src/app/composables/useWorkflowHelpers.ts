@@ -1039,6 +1039,7 @@ export function useWorkflowHelpers() {
 		workflowDocumentStore.setIsArchived(workflowData.isArchived);
 		workflowDocumentStore.setUsedCredentials(workflowData.usedCredentials ?? []);
 		workflowDocumentStore.setMeta(workflowData.meta);
+		workflowDocumentStore.setParentFolder(workflowData.parentFolder ?? null);
 		workflowDocumentStore.setScopes(workflowData.scopes ?? []);
 		tagsStore.upsertTags(tags);
 
