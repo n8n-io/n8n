@@ -23,7 +23,6 @@ const UI_OPERATIONS = {
 		'update',
 		'create',
 		'publish',
-		'unpublish',
 		'move',
 		'delete',
 		'updateRedactionSetting',
