@@ -14,6 +14,10 @@ import {
 	WORKFLOW_RULES,
 } from '@n8n/ai-workflow-builder';
 
+// NOTE: CODING_GUIDELINES and DESIGN_GUIDANCE are MCP-only constants defined
+// below. They are NOT shared with the code-builder agent (which has its own
+// inline copy in its step-by-step prompt).
+
 const CODING_GUIDELINES = `Rules:
 - Use exact parameter names and structures from the type definitions.
 - Use unique variable names — never reuse builder function names (e.g. \`node\`, \`trigger\`) as variable names
