@@ -8,6 +8,11 @@ declare module 'n8n-workflow' {
 		hooks?: ExecutionLifecycleHooks;
 		externalSecrets: {
 			externalSecretsProxy: ExternalSecretsProxy;
+			/**
+			 * The providerKeys of the external secret connections
+			 * that are either global or shared with the project
+			 * that owns the credential to decrypt.
+			 */
 			providerKeysAccessibleByCredential?: Set<string>;
 		};
 
