@@ -82,8 +82,8 @@ export class WorkflowBuilderToolsService {
 				if (fs.existsSync(nodeDefsDir)) {
 					dirs.push(nodeDefsDir);
 				}
-			} catch {
-				// Package not installed, skip
+			} catch (error) {
+				this.logger.debug(`Could not resolve node definitions for ${packageId}`, { error });
 			}
 		}
 		return dirs;
