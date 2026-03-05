@@ -5,7 +5,7 @@ export class HumanticAiApi implements ICredentialType {
 
 	displayName = 'Humantic AI API';
 
-	documentationUrl = 'humanticAi';
+	documentationUrl = 'humanticai';
 
 	properties: INodeProperties[] = [
 		{

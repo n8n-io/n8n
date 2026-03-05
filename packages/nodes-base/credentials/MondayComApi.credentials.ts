@@ -10,7 +10,7 @@ export class MondayComApi implements ICredentialType {
 
 	displayName = 'Monday.com API';
 
-	documentationUrl = 'mondayCom';
+	documentationUrl = 'mondaycom';
 
 	properties: INodeProperties[] = [
 		{

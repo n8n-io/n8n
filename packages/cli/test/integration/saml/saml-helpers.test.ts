@@ -1,7 +1,7 @@
 import { getPersonalProject, testDb } from '@n8n/backend-test-utils';
 
-import * as helpers from '@/sso.ee/saml/saml-helpers';
-import type { SamlUserAttributes } from '@/sso.ee/saml/types';
+import * as helpers from '@/modules/sso-saml/saml-helpers';
+import type { SamlUserAttributes } from '@/modules/sso-saml/types';
 
 beforeAll(async () => {
 	await testDb.init();
@@ -22,6 +22,7 @@ describe('sso/saml/samlHelpers', () => {
 				lastName: 'Nathaniel',
 				email: 'nathan@n8n.io',
 				userPrincipalName: 'Huh?',
+				n8nInstanceRole: 'n8n_instance_role',
 			};
 
 			//

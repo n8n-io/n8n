@@ -7,12 +7,16 @@ import isEmpty from 'lodash/isEmpty';
 import type {
 	ICredentialDataDecryptedObject,
 	IRun,
-	IRunExecutionData,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
 	WorkflowTestData,
 } from 'n8n-workflow';
-import { createDeferredPromise, UnexpectedError, Workflow } from 'n8n-workflow';
+import {
+	createDeferredPromise,
+	createRunExecutionData,
+	UnexpectedError,
+	Workflow,
+} from 'n8n-workflow';
 import nock from 'nock';
 import { readFileSync, mkdtempSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -43,11 +47,14 @@ export class NodeTestHarness {
 
 	private readonly packagePaths: string[];
 
+	private nodesLoadedPromise: Promise<void> | undefined;
+
 	constructor({ additionalPackagePaths }: TestHarnessOptions = {}) {
 		this.testDir = path.dirname(callsites()[1].getFileName()!);
 		this.packagePaths = additionalPackagePaths ?? [];
 		this.packagePaths.unshift(this.packageDir);
 
+		beforeAll(() => this.ensureNodesLoaded(), 30_000);
 		beforeEach(() => nock.disableNetConnect());
 	}
 
@@ -180,10 +187,19 @@ export class NodeTestHarness {
 		);
 	}
 
+	private async ensureNodesLoaded() {
+		if (!this.nodesLoadedPromise) {
+			this.nodesLoadedPromise = (async () => {
+				const loadNodesAndCredentials = new LoadNodesAndCredentials(this.packagePaths);
+				Container.set(LoadNodesAndCredentials, loadNodesAndCredentials);
+				await loadNodesAndCredentials.init();
+			})();
+		}
+		return this.nodesLoadedPromise;
+	}
+
 	private async executeWorkflow(testData: WorkflowTestData) {
-		const loadNodesAndCredentials = new LoadNodesAndCredentials(this.packagePaths);
-		Container.set(LoadNodesAndCredentials, loadNodesAndCredentials);
-		await loadNodesAndCredentials.init();
+		await this.ensureNodesLoaded();
 		const nodeTypes = Container.get(NodeTypes);
 		const credentialsHelper = Container.get(CredentialsHelper);
 		credentialsHelper.setCredentials(testData.credentials ?? {});
@@ -215,18 +231,13 @@ export class NodeTestHarness {
 			hooks,
 			// Get from node.parameters
 			currentNodeParameters: undefined,
+			parentCallbackManager: undefined,
 		});
 		additionalData.credentialsHelper = credentialsHelper;
 
 		let executionData: IRun;
-		const runExecutionData: IRunExecutionData = {
-			resultData: {
-				runData: {},
-			},
+		const runExecutionData = createRunExecutionData({
 			executionData: {
-				metadata: {},
-				contextData: {},
-				waitingExecution: {},
 				waitingExecutionSource: null,
 				nodeExecutionStack: [
 					{
@@ -238,7 +249,7 @@ export class NodeTestHarness {
 					},
 				],
 			},
-		};
+		});
 
 		const workflowExecute = new WorkflowExecute(additionalData, executionMode, runExecutionData);
 		executionData = await workflowExecute.processRunExecutionData(workflowInstance);
@@ -317,6 +328,7 @@ export class NodeTestHarness {
 						} else {
 							for (const key in binary) {
 								delete binary[key].directory;
+								delete binary[key].bytes;
 							}
 						}
 					}

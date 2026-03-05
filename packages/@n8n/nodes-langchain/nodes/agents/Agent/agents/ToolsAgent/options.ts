@@ -9,6 +9,10 @@ export const commonOptions: INodeProperties[] = [
 		type: 'string',
 		default: SYSTEM_MESSAGE,
 		description: 'The message that will be sent to the agent before the conversation starts',
+		builderHint: {
+			message:
+				"Must include: agent's purpose, exact names of connected tools, and response instructions",
+		},
 		typeOptions: {
 			rows: 6,
 		},

@@ -160,6 +160,14 @@ Validates:
 - Common integration issues
 - Cloud publication readiness
 
+### Cloud support
+
+```bash
+npx n8n-node cloud-support
+```
+
+Manage n8n Cloud publication eligibility. In strict mode, your node must use the default ESLint config and pass all community node rules to be eligible for n8n Cloud publication.
+
 Fix issues automatically:
 
 ```bash

@@ -6,15 +6,15 @@ import pytest
 from src.nanoid import nanoid
 
 from tests.integration.conftest import create_task_settings
-from tests.fixtures.test_constants import HEALTH_CHECK_URL
 
 
 @pytest.mark.asyncio
 async def test_health_check_server_responds(broker, manager):
+    health_check_url = manager.get_health_check_url()
     async with aiohttp.ClientSession() as session:
         for _ in range(10):
             try:
-                response = await session.get(HEALTH_CHECK_URL)
+                response = await session.get(health_check_url)
                 if response.status == 200:
                     assert await response.text() == "OK"
                     return
@@ -35,6 +35,6 @@ async def test_health_check_server_ressponds_mid_execution(broker, manager):
     await asyncio.sleep(0.3)
 
     async with aiohttp.ClientSession() as session:
-        response = await session.get(HEALTH_CHECK_URL)
+        response = await session.get(manager.get_health_check_url())
         assert response.status == 200
         assert await response.text() == "OK"

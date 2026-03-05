@@ -1,18 +1,24 @@
 import { ExecutionRepository } from '@n8n/db';
 import type { IExecutionResponse, Project } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ExecuteContext } from 'n8n-core';
+import { ExecuteContext, isEngineRequest } from 'n8n-core';
 import type {
 	IBinaryKeyData,
 	INodeExecutionData,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import { Workflow, BINARY_ENCODING } from 'n8n-workflow';
+import {
+	Workflow,
+	BINARY_ENCODING,
+	UnexpectedError,
+	CHAT_TOOL_NODE_TYPE,
+	NodeConnectionTypes,
+} from 'n8n-workflow';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { WorkflowRunner } from '@/workflow-runner';
-
+import { NotFoundError } from '../errors/response-errors/not-found.error';
+import * as WorkflowExecuteAdditionalData from '../workflow-execute-additional-data';
+import { preserveInputOverride } from '../workflow-helpers';
+import { WorkflowRunner } from '../workflow-runner';
 import type { ChatMessage } from './chat-service.types';
 import { NodeTypes } from '../node-types';
 import { OwnershipService } from '../services/ownership.service';
@@ -91,7 +97,7 @@ export class ChatExecutionManager {
 		const workflow = this.getWorkflow(execution);
 		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
 		const node = workflow.getNode(lastNodeExecuted);
-		const additionalData = await WorkflowExecuteAdditionalData.getBase();
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({ workflowId: workflow.id });
 		const executionData = execution.data.executionData?.nodeExecutionStack[0];
 
 		if (!node || !executionData) return null;
@@ -130,10 +136,26 @@ export class ChatExecutionManager {
 	private async getRunData(execution: IExecutionResponse, message: ChatMessage) {
 		const { workflowData, mode: executionMode, data: runExecutionData } = execution;
 
-		runExecutionData.executionData!.nodeExecutionStack[0].data.main = (await this.runNode(
-			execution,
-			message,
-		)) ?? [[{ json: message }]];
+		const result = await this.runNode(execution, message);
+
+		if (isEngineRequest(result)) {
+			throw new UnexpectedError("Can't handle actions inside the chat trigger.");
+		}
+
+		runExecutionData.executionData!.nodeExecutionStack[0].data.main = result ?? [
+			[{ json: message }],
+		];
+
+		if (runExecutionData.executionData!.nodeExecutionStack[0].node.type === CHAT_TOOL_NODE_TYPE) {
+			runExecutionData.waitTill = undefined;
+			runExecutionData.executionData!.nodeExecutionStack[0].node.disabled = true;
+			runExecutionData.executionData!.nodeExecutionStack[0].node.rewireOutputLogTo =
+				NodeConnectionTypes.AiTool;
+
+			const lastNodeExecuted = runExecutionData.resultData.lastNodeExecuted as string;
+			const runDataArray = runExecutionData.resultData.runData[lastNodeExecuted];
+			if (runDataArray?.length) preserveInputOverride(runDataArray);
+		}
 
 		let project: Project | undefined = undefined;
 		try {

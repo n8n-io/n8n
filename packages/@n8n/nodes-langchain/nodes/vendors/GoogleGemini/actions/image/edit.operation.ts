@@ -4,6 +4,7 @@ import { updateDisplayOptions } from 'n8n-workflow';
 import type { GenerateContentResponse } from '../../helpers/interfaces';
 import { uploadFile } from '../../helpers/utils';
 import { apiRequest } from '../../transport';
+import { modelRLC } from '../descriptions';
 
 interface ImagesParameter {
 	values?: Array<{ binaryPropertyName?: string }>;
@@ -74,6 +75,7 @@ function isGenerateContentResponse(response: unknown): response is GenerateConte
 }
 
 const properties: INodeProperties[] = [
+	modelRLC('imageEditModelSearch'),
 	{
 		displayName: 'Prompt',
 		name: 'prompt',
@@ -142,6 +144,11 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const prompt = this.getNodeParameter('prompt', i, '');
+	let model = this.getNodeParameter('modelId', i, '', { extractValue: true }) as string;
+	if (!model) {
+		model = 'models/gemini-2.5-flash-image-preview';
+	}
+
 	const binaryPropertyOutput = this.getNodeParameter('options.binaryPropertyOutput', i, 'edited');
 	const outputKey = typeof binaryPropertyOutput === 'string' ? binaryPropertyOutput : 'data';
 
@@ -168,7 +175,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		fileParts.push({ fileData: { fileUri: uploaded.fileUri, mimeType: uploaded.mimeType } });
 	}
 
-	const model = 'models/gemini-2.5-flash-image-preview';
 	const generationConfig = {
 		responseModalities: ['IMAGE'],
 	};

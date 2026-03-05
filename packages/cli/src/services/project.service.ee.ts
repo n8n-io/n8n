@@ -1,6 +1,5 @@
 import type { CreateProjectDto, ProjectType, UpdateProjectDto } from '@n8n/api-types';
-import { LicenseState } from '@n8n/backend-common';
-import { DatabaseConfig } from '@n8n/config';
+import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import {
@@ -14,12 +13,11 @@ import {
 import { Container, Service } from '@n8n/di';
 import {
 	hasGlobalScope,
-	rolesWithScope,
 	type Scope,
-	type ProjectRole,
 	AssignableProjectRole,
 	PROJECT_OWNER_ROLE_SLUG,
 	PROJECT_ADMIN_ROLE_SLUG,
+	isAssignableProjectRoleSlug,
 } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
@@ -31,7 +29,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { CacheService } from './cache/cache.service';
 import { RoleService } from './role.service';
 
 export class TeamProjectOverQuotaError extends UserError {
@@ -43,7 +40,7 @@ export class TeamProjectOverQuotaError extends UserError {
 }
 
 export class UnlicensedProjectRoleError extends UserError {
-	constructor(role: ProjectRole | AssignableProjectRole) {
+	constructor(role: AssignableProjectRole) {
 		super(`Your instance is not licensed to use role "${role}".`);
 	}
 }
@@ -71,9 +68,8 @@ export class ProjectService {
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly roleService: RoleService,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
-		private readonly cacheService: CacheService,
 		private readonly licenseState: LicenseState,
-		private readonly databaseConfig: DatabaseConfig,
+		private readonly moduleRegistry: ModuleRegistry,
 	) {}
 
 	private get workflowService() {
@@ -91,6 +87,12 @@ export class ProjectService {
 	private get folderService() {
 		return import('@/services/folder.service').then(({ FolderService }) =>
 			Container.get(FolderService),
+		);
+	}
+
+	private get dataTableService() {
+		return import('@/modules/data-table/data-table.service').then(({ DataTableService }) =>
+			Container.get(DataTableService),
 		);
 	}
 
@@ -116,11 +118,12 @@ export class ProjectService {
 			targetProject = await this.getProjectWithScope(user, migrateToProject, [
 				'credential:create',
 				'workflow:create',
+				'dataTable:create',
 			]);
 
 			if (!targetProject) {
 				throw new NotFoundError(
-					`Could not find project to migrate to. ID: ${targetProject}. You may lack permissions to create workflow and credentials in the target project.`,
+					`Could not find project to migrate to. ID: ${targetProject}. You may lack permissions to create workflow, credentials or data tables in the target project.`,
 				);
 			}
 		}
@@ -177,10 +180,21 @@ export class ProjectService {
 		// 5. delete shared workflows into this project
 		// Cascading deletes take care of this.
 
-		// 6. delete project
+		// 6. delete or migrate associated data tables
+		if (this.moduleRegistry.isActive('data-table')) {
+			const dataTableService = await this.dataTableService;
+
+			if (targetProject) {
+				await dataTableService.transferDataTablesByProjectId(project.id, targetProject.id);
+			} else {
+				await dataTableService.deleteDataTableByProjectId(project.id);
+			}
+		}
+
+		// 7. delete project
 		await this.projectRepository.remove(project);
 
-		// 7. delete project relations
+		// 8. delete project relations
 		// Cascading deletes take care of this.
 	}
 
@@ -219,7 +233,7 @@ export class ProjectService {
 
 		const project = await trx.save(
 			Project,
-			this.projectRepository.create({ ...data, type: 'team' }),
+			this.projectRepository.create({ ...data, type: 'team', creatorId: adminUser.id }),
 		);
 
 		// Link admin
@@ -229,21 +243,11 @@ export class ProjectService {
 	}
 
 	async createTeamProject(adminUser: User, data: CreateProjectDto): Promise<Project> {
-		if (this.databaseConfig.isLegacySqlite) {
-			// Using transaction in the sqlite legacy driver can cause data loss, so
-			// we avoid this here.
-			return await this.createTeamProjectWithEntityManager(
-				adminUser,
-				data,
-				this.projectRepository.manager,
-			);
-		} else {
-			// This needs to be SERIALIZABLE otherwise the count would not block a
-			// concurrent transaction and we could insert multiple projects.
-			return await this.projectRepository.manager.transaction('SERIALIZABLE', async (trx) => {
-				return await this.createTeamProjectWithEntityManager(adminUser, data, trx);
-			});
-		}
+		// This needs to be SERIALIZABLE otherwise the count would not block a
+		// concurrent transaction and we could insert multiple projects.
+		return await this.projectRepository.manager.transaction('SERIALIZABLE', async (trx) => {
+			return await this.createTeamProjectWithEntityManager(adminUser, data, trx);
+		});
 	}
 
 	async updateProject(
@@ -294,7 +298,6 @@ export class ProjectService {
 		const newRelations = relations.filter(
 			(relation) => !project.projectRelations.some((r) => r.userId === relation.userId),
 		);
-		await this.clearCredentialCanUseExternalSecretsCache(projectId);
 
 		return { project, newRelations };
 	}
@@ -333,6 +336,67 @@ export class ProjectService {
 				role: { slug: relation.role },
 			})),
 		);
+	}
+
+	/**
+	 * Add users with conflict semantics:
+	 * - Adds users that are not already members
+	 * - No-ops for users already in the project with the same role
+	 * - Reports conflicts for users already in the project with a different role (no change)
+	 */
+	async addUsersWithConflictSemantics(
+		projectId: string,
+		relations: Array<{ userId: string; role: AssignableProjectRole }>,
+	): Promise<{
+		project: Project;
+		added: Array<{ userId: string; role: AssignableProjectRole }>;
+		conflicts: Array<{
+			userId: string;
+			currentRole: AssignableProjectRole;
+			requestedRole: AssignableProjectRole;
+		}>;
+	}> {
+		const project = await this.getTeamProjectWithRelations(projectId);
+		this.checkRolesLicensed(project, relations);
+
+		// Validate roles exist
+		await this.roleService.checkRolesExist(
+			relations.map((r) => r.role),
+			'project',
+		);
+
+		const existingByUserId = new Map(project.projectRelations.map((r) => [r.userId, r]));
+		const added: Array<{ userId: string; role: AssignableProjectRole }> = [];
+		const conflicts: Array<{
+			userId: string;
+			currentRole: AssignableProjectRole;
+			requestedRole: AssignableProjectRole;
+		}> = [];
+
+		for (const rel of relations) {
+			const existing = existingByUserId.get(rel.userId);
+			if (!existing) continue; // will be inserted below
+			const current = existing.role?.slug;
+			if (current && current !== rel.role && isAssignableProjectRoleSlug(current)) {
+				conflicts.push({ userId: rel.userId, currentRole: current, requestedRole: rel.role });
+			}
+		}
+
+		// Insert only non-existing users
+		const toInsert = relations.filter((rel) => !existingByUserId.has(rel.userId));
+		if (toInsert.length > 0) {
+			// Use insert to avoid accidental upsert of different role
+			await this.projectRelationRepository.insert(
+				toInsert.map((v) => ({
+					projectId: project.id,
+					userId: v.userId,
+					role: { slug: v.role },
+				})),
+			);
+			added.push(...toInsert);
+		}
+
+		return { project, added, conflicts };
 	}
 
 	private async getTeamProjectWithRelations(projectId: string) {
@@ -393,22 +457,14 @@ export class ProjectService {
 			throw new ProjectNotFoundError(projectId);
 		}
 
-		await this.projectRelationRepository.update({ projectId, userId }, { role: { slug: role } });
-	}
-
-	async clearCredentialCanUseExternalSecretsCache(projectId: string) {
-		const shares = await this.sharedCredentialsRepository.find({
-			where: {
-				projectId,
-				role: 'credential:owner',
-			},
-			select: ['credentialsId'],
-		});
-		if (shares.length) {
-			await this.cacheService.deleteMany(
-				shares.map((share) => `credential-can-use-secrets:${share.credentialsId}`),
-			);
+		// License check: only allow change to roles that are licensed
+		const currentRelation = project.projectRelations.find((r) => r.userId === userId);
+		const currentRole = currentRelation?.role?.slug;
+		if (currentRole !== role && !this.roleService.isRoleLicensed(role)) {
+			throw new UnlicensedProjectRoleError(role);
 		}
+
+		await this.projectRelationRepository.update({ projectId, userId }, { role: { slug: role } });
 	}
 
 	async pruneRelations(em: EntityManager, project: Project) {
@@ -422,7 +478,6 @@ export class ProjectService {
 	) {
 		await em.insert(
 			ProjectRelation,
-			// @ts-ignore CAT-957
 			relations.map((v) =>
 				this.projectRelationRepository.create({
 					projectId: project.id,
@@ -445,7 +500,7 @@ export class ProjectService {
 		};
 
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
-			const projectRoles = rolesWithScope('project', scopes);
+			const projectRoles = await this.roleService.rolesWithScope('project', scopes);
 
 			where = {
 				...where,
@@ -459,6 +514,28 @@ export class ProjectService {
 		return await em.findOne(Project, {
 			where,
 		});
+	}
+
+	async getProjectIdsWithScope(user: User, scopes: Scope[], projectIds?: string[]) {
+		const where: FindOptionsWhere<Project> = {};
+		if (projectIds) {
+			where.id = In(projectIds);
+		}
+
+		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
+			const projectRoles = await this.roleService.rolesWithScope('project', scopes);
+			where.type = 'team';
+			where.projectRelations = {
+				role: In(projectRoles),
+				userId: user.id,
+			};
+		}
+
+		const projects = await this.projectRepository.find({
+			where,
+			select: ['id'],
+		});
+		return projects.map((p) => p.id);
 	}
 
 	/**

@@ -114,7 +114,8 @@ export class ObjectStoreService {
 				params.ContentType = metadata.mimeType;
 			}
 
-			this.logger.debug('Sending PUT request to S3', { params });
+			const { Body: _body, ...logParams } = params;
+			this.logger.debug('Sending PUT request to S3', { params: logParams });
 			const command = new PutObjectCommand(params);
 			return await this.s3Client.send(command);
 		} catch (e) {

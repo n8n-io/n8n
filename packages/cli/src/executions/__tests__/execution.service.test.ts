@@ -1,18 +1,22 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { IExecutionResponse, ExecutionRepository } from '@n8n/db';
+import { GlobalConfig } from '@n8n/config';
+import type { IExecutionDb, IExecutionResponse, ExecutionRepository, User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
-import { WorkflowOperationError } from 'n8n-workflow';
+import type { IRun, IRunExecutionData } from 'n8n-workflow';
+import { ManualExecutionCancelledError, WorkflowOperationError } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
-import config from '@/config';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
+import type { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';
 import type { ExecutionRequest } from '@/executions/execution.types';
 import { ScalingService } from '@/scaling/scaling.service';
 import type { Job } from '@/scaling/scaling.types';
 import type { WaitTracker } from '@/wait-tracker';
+import type { WorkflowRunner } from '@/workflow-runner';
 
 describe('ExecutionService', () => {
 	const scalingService = mockInstance(ScalingService);
@@ -20,9 +24,11 @@ describe('ExecutionService', () => {
 	const executionRepository = mock<ExecutionRepository>();
 	const waitTracker = mock<WaitTracker>();
 	const concurrencyControl = mock<ConcurrencyControlService>();
+	const globalConfig = Container.get(GlobalConfig);
+	const executionRedactionServiceProxy = mock<ExecutionRedactionServiceProxy>();
 
 	const executionService = new ExecutionService(
-		mock(),
+		globalConfig,
 		mock(),
 		activeExecutions,
 		mock(),
@@ -30,16 +36,75 @@ describe('ExecutionService', () => {
 		executionRepository,
 		mock(),
 		mock(),
+		mock(),
 		waitTracker,
 		mock(),
 		concurrencyControl,
 		mock(),
 		mock(),
+		mock(),
+		executionRedactionServiceProxy,
 	);
 
 	beforeEach(() => {
-		config.set('executions.mode', 'regular');
+		globalConfig.executions.mode = 'regular';
 		jest.clearAllMocks();
+	});
+
+	describe('findOne', () => {
+		it('should parse redactExecutionData from query string and pass to redaction proxy', async () => {
+			/**
+			 * Arrange
+			 */
+			const execution = mock<IExecutionResponse>({ id: '123', data: { resultData: {} } });
+			executionRepository.findIfSharedUnflatten.mockResolvedValue(execution);
+			executionRedactionServiceProxy.processExecution.mockResolvedValue(execution);
+
+			const req = mock<ExecutionRequest.GetOne>({
+				params: { id: '123' },
+				query: { redactExecutionData: 'true' } as unknown as Record<string, string>,
+			});
+
+			/**
+			 * Act
+			 */
+			await executionService.findOne(req, ['workflow-1']);
+
+			/**
+			 * Assert
+			 */
+			expect(executionRedactionServiceProxy.processExecution).toHaveBeenCalledWith(
+				execution,
+				expect.objectContaining({ redactExecutionData: true }),
+			);
+		});
+
+		it('should leave redactExecutionData undefined when query param is absent', async () => {
+			/**
+			 * Arrange
+			 */
+			const execution = mock<IExecutionResponse>({ id: '123', data: { resultData: {} } });
+			executionRepository.findIfSharedUnflatten.mockResolvedValue(execution);
+			executionRedactionServiceProxy.processExecution.mockResolvedValue(execution);
+
+			const req = mock<ExecutionRequest.GetOne>({
+				params: { id: '123' },
+				query: {},
+			});
+
+			/**
+			 * Act
+			 */
+			await executionService.findOne(req, ['workflow-1']);
+
+			/**
+			 * Assert
+			 */
+			expect(executionRedactionServiceProxy.processExecution).toHaveBeenCalledWith(
+				execution,
+				expect.objectContaining({ redactExecutionData: undefined }),
+			);
+		});
 	});
 
 	describe('retry', () => {
@@ -61,6 +126,155 @@ describe('ExecutionService', () => {
 			 * Assert
 			 */
 			await expect(retry).rejects.toThrow(AbortedExecutionRetryError);
+		});
+
+		it('should apply redaction to the retry response', async () => {
+			/**
+			 * Arrange
+			 */
+			const workflowRunner = mock<WorkflowRunner>();
+			const localExecutionRedactionProxy = mock<ExecutionRedactionServiceProxy>();
+			const localExecutionService = new ExecutionService(
+				globalConfig,
+				mock(),
+				activeExecutions,
+				mock(),
+				mock(),
+				executionRepository,
+				mock(),
+				mock(),
+				mock(),
+				waitTracker,
+				workflowRunner,
+				concurrencyControl,
+				mock(),
+				mock(),
+				mock(),
+				localExecutionRedactionProxy,
+			);
+
+			const mockUser = mock<User>({ id: 'user-1' });
+			const sourceExecution = mock<IExecutionResponse>({
+				workflowId: 'workflow-1',
+				mode: 'trigger',
+				finished: false,
+				status: 'error',
+				data: {
+					executionData: {
+						nodeExecutionStack: [],
+						waitingExecution: {},
+						waitingExecutionSource: {},
+					},
+					resultData: { runData: {} },
+				},
+				workflowData: { id: 'workflow-1', settings: {} } as IExecutionDb['workflowData'],
+			});
+			executionRepository.findWithUnflattenedData.mockResolvedValue(sourceExecution);
+
+			const retriedExecutionId = 'retried-123';
+			workflowRunner.run.mockResolvedValue(retriedExecutionId);
+
+			const retriedRunData = mock<IRunExecutionData>({ resultData: { runData: {} } });
+			const retriedRun = mock<IRun>({
+				data: retriedRunData,
+				mode: 'trigger',
+				startedAt: new Date(),
+				finished: true,
+				status: 'success',
+				waitTill: null,
+			});
+			activeExecutions.getPostExecutePromise.mockResolvedValue(retriedRun);
+
+			localExecutionRedactionProxy.processExecution.mockImplementation(async (exec) => exec);
+
+			const req = mock<ExecutionRequest.Retry>({
+				params: { id: 'original-123' },
+				user: mockUser,
+				body: { loadWorkflow: false },
+				query: {},
+			});
+
+			/**
+			 * Act
+			 */
+			await localExecutionService.retry(req, ['workflow-1']);
+
+			/**
+			 * Assert
+			 */
+			expect(localExecutionRedactionProxy.processExecution).toHaveBeenCalledWith(
+				expect.objectContaining({ id: retriedExecutionId }),
+				expect.objectContaining({ user: mockUser, redactExecutionData: undefined }),
+			);
+		});
+	});
+
+	describe('getLastSuccessfulExecution', () => {
+		it('should return the redacted last successful execution for a workflow', async () => {
+			/**
+			 * Arrange
+			 */
+			const workflowId = 'workflow-123';
+			const mockUser = mock<User>();
+			const mockExecution = mock<IExecutionResponse>({
+				id: 'execution-456',
+				workflowId,
+				mode: 'trigger',
+				startedAt: new Date('2025-01-15T10:00:00Z'),
+				stoppedAt: new Date('2025-01-15T10:05:00Z'),
+				status: 'success',
+			});
+			executionRepository.findMultipleExecutions.mockResolvedValue([mockExecution]);
+			executionRedactionServiceProxy.processExecution.mockResolvedValue(mockExecution);
+
+			/**
+			 * Act
+			 */
+			const result = await executionService.getLastSuccessfulExecution(workflowId, mockUser);
+
+			/**
+			 * Assert
+			 */
+			expect(result).toEqual(mockExecution);
+			expect(executionRepository.findMultipleExecutions).toHaveBeenCalledWith(
+				{
+					select: ['id', 'mode', 'startedAt', 'stoppedAt', 'workflowId'],
+					where: {
+						workflowId,
+						status: 'success',
+					},
+					order: { id: 'DESC' },
+					take: 1,
+				},
+				{
+					includeData: true,
+					unflattenData: true,
+				},
+			);
+			expect(executionRedactionServiceProxy.processExecution).toHaveBeenCalledWith(mockExecution, {
+				user: mockUser,
+				redactExecutionData: undefined,
+			});
+		});
+
+		it('should return undefined when no successful execution exists', async () => {
+			/**
+			 * Arrange
+			 */
+			const workflowId = 'workflow-with-no-success';
+			const mockUser = mock<User>();
+			executionRepository.findMultipleExecutions.mockResolvedValue([]);
+
+			/**
+			 * Act
+			 */
+			const result = await executionService.getLastSuccessfulExecution(workflowId, mockUser);
+
+			/**
+			 * Assert
+			 */
+			expect(result).toBeUndefined();
+			expect(executionRedactionServiceProxy.processExecution).not.toHaveBeenCalled();
 		});
 	});
 
@@ -125,7 +339,10 @@ describe('ExecutionService', () => {
 				 * Assert
 				 */
 				expect(concurrencyControl.remove).not.toHaveBeenCalled();
-				expect(activeExecutions.stopExecution).toHaveBeenCalledWith(execution.id);
+				expect(activeExecutions.stopExecution).toHaveBeenCalledWith(
+					execution.id,
+					expect.any(ManualExecutionCancelledError),
+				);
 				expect(waitTracker.stopExecution).not.toHaveBeenCalled();
 				expect(executionRepository.stopDuringRun).toHaveBeenCalledWith(execution);
 			});
@@ -152,7 +369,10 @@ describe('ExecutionService', () => {
 				 * Assert
 				 */
 				expect(concurrencyControl.remove).not.toHaveBeenCalled();
-				expect(activeExecutions.stopExecution).toHaveBeenCalledWith(execution.id);
+				expect(activeExecutions.stopExecution).toHaveBeenCalledWith(
+					execution.id,
+					expect.any(ManualExecutionCancelledError),
+				);
 				expect(waitTracker.stopExecution).toHaveBeenCalledWith(execution.id);
 				expect(executionRepository.stopDuringRun).toHaveBeenCalledWith(execution);
 			});
@@ -194,7 +414,7 @@ describe('ExecutionService', () => {
 					/**
 					 * Arrange
 					 */
-					config.set('executions.mode', 'queue');
+					globalConfig.executions.mode = 'queue';
 					const execution = mock<IExecutionResponse>({
 						id: '123',
 						mode: 'manual',
@@ -221,7 +441,10 @@ describe('ExecutionService', () => {
 					 * Assert
 					 */
 					expect(stopInRegularModeSpy).not.toHaveBeenCalled();
-					expect(activeExecutions.stopExecution).toHaveBeenCalledWith(execution.id);
+					expect(activeExecutions.stopExecution).toHaveBeenCalledWith(
+						execution.id,
+						expect.any(ManualExecutionCancelledError),
+					);
 					expect(executionRepository.stopDuringRun).toHaveBeenCalledWith(execution);
 
 					expect(concurrencyControl.remove).not.toHaveBeenCalled();
@@ -235,7 +458,7 @@ describe('ExecutionService', () => {
 					/**
 					 * Arrange
 					 */
-					config.set('executions.mode', 'queue');
+					globalConfig.executions.mode = 'queue';
 					const execution = mock<IExecutionResponse>({ id: '123', status: 'running' });
 					executionRepository.findWithUnflattenedData.mockResolvedValue(execution);
 					waitTracker.has.mockReturnValue(false);
@@ -264,7 +487,7 @@ describe('ExecutionService', () => {
 					/**
 					 * Arrange
 					 */
-					config.set('executions.mode', 'queue');
+					globalConfig.executions.mode = 'queue';
 					const execution = mock<IExecutionResponse>({ id: '123', status: 'waiting' });
 					executionRepository.findWithUnflattenedData.mockResolvedValue(execution);
 					waitTracker.has.mockReturnValue(true);
@@ -288,6 +511,38 @@ describe('ExecutionService', () => {
 					expect(executionRepository.stopDuringRun).toHaveBeenCalled();
 				});
 			});
+		});
+	});
+	describe('stopMany', () => {
+		it('should call stop function for the given filters', async () => {
+			executionRepository.findByStopExecutionsFilter.mockResolvedValue(
+				['1', '2', '3'].map((id) => ({ id })),
+			);
+			const stopFn = jest.fn();
+			executionService.stop = stopFn;
+
+			const filters = {
+				workflowId: '1',
+				startedAfter: new Date().toISOString(),
+				startedBefore: new Date().toISOString(),
+				status: ['running'],
+			} satisfies ExecutionRequest.StopMany['body']['filter'];
+
+			const shared = ['A'];
+
+			/**
+			 * Act
+			 */
+			await executionService.stopMany(filters, shared);
+
+			/**
+			 * Assert
+			 */
+			expect(stopFn).toBeCalledTimes(3);
+			expect(stopFn).toBeCalledWith('1', shared);
+			expect(stopFn).toBeCalledWith('2', shared);
+			expect(stopFn).toBeCalledWith('3', shared);
+			expect(executionRepository.findByStopExecutionsFilter).toBeCalledWith(filters);
 		});
 	});
 });

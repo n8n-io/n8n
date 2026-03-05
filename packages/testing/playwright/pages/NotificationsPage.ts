@@ -43,18 +43,6 @@ export class NotificationsPage {
 	}
 
 	/**
-	 * Gets the main container locator for a notification by searching in both title and content,
-	 * filtered to a specific node name. This is useful when multiple notifications might be present
-	 * and you want to ensure you're checking the right one for a specific node.
-	 * @param text The text or a regular expression to find within the notification's title or content.
-	 * @param nodeName The name of the node to filter notifications for.
-	 * @returns A Locator for the notification container element.
-	 */
-	getNotificationByTitleOrContentForNode(text: string | RegExp, nodeName: string): Locator {
-		return this.page.getByRole('alert').filter({ hasText: text }).filter({ hasText: nodeName });
-	}
-
-	/**
 	 * Clicks the close button on the FIRST notification matching the text.
 	 * Fast execution with short timeouts for snappy notifications.
 	 * @param text The text of the notification to close.
@@ -77,74 +65,6 @@ export class NotificationsPage {
 			await notification.waitFor({ state: 'hidden', timeout: 1000 });
 			return true;
 		} catch (error) {
-			return false;
-		}
-	}
-
-	/**
-	 * Closes ALL currently visible notifications that match the given text.
-	 * Uses aggressive polling for fast cleanup.
-	 * @param text The text of the notifications to close.
-	 * @param options Optional configuration
-	 */
-	async closeAllNotificationsWithText(
-		text: string | RegExp,
-		options: { timeout?: number; maxRetries?: number } = {},
-	): Promise<number> {
-		const { maxRetries = 15 } = options;
-		let closedCount = 0;
-		let retries = 0;
-
-		while (retries < maxRetries) {
-			try {
-				const notifications = this.getNotificationByTitle(text);
-				const count = await notifications.count();
-
-				if (count === 0) {
-					break;
-				}
-
-				// Close the first visible notification quickly
-				const firstNotification = notifications.first();
-				if (await firstNotification.isVisible({ timeout: 200 })) {
-					const closeBtn = firstNotification.locator('.el-notification__closeBtn');
-					await closeBtn.click({ timeout: 300 });
-
-					// Brief wait for disappearance, then continue
-					await firstNotification.waitFor({ state: 'hidden', timeout: 500 }).catch(() => {});
-					closedCount++;
-				} else {
-					// If not visible, likely already gone
-					break;
-				}
-			} catch (error) {
-				// Continue quickly on any error
-				break;
-			}
-
-			retries++;
-		}
-
-		return closedCount;
-	}
-
-	/**
-	 * Check if a notification is visible based on text.
-	 * Fast check with short timeout.
-	 * @param text The text to search for in notification title.
-	 * @param options Optional configuration
-	 */
-	async isNotificationVisible(
-		text: string | RegExp,
-		options: { timeout?: number } = {},
-	): Promise<boolean> {
-		const { timeout = 500 } = options;
-
-		try {
-			const notification = this.getNotificationByTitle(text).first();
-			await notification.waitFor({ state: 'visible', timeout });
-			return true;
-		} catch {
 			return false;
 		}
 	}
@@ -176,9 +96,11 @@ export class NotificationsPage {
 		options: { timeout?: number } = {},
 	): Promise<boolean> {
 		const { timeout = 3000 } = options;
-		await this.waitForNotification(text, { timeout });
-		await this.closeNotificationByText(text, { timeout });
-		return true;
+		const isVisible = await this.waitForNotification(text, { timeout });
+		if (!isVisible) {
+			return false;
+		}
+		return await this.closeNotificationByText(text, { timeout });
 	}
 
 	/**
@@ -191,57 +113,6 @@ export class NotificationsPage {
 			return await titles.allTextContents();
 		} catch {
 			return [];
-		}
-	}
-
-	/**
-	 * Wait for all notifications to disappear.
-	 * Fast check with short timeout.
-	 * @param options Optional configuration
-	 */
-	async waitForAllNotificationsToDisappear(options: { timeout?: number } = {}): Promise<boolean> {
-		const { timeout = 2000 } = options;
-
-		try {
-			// Wait for no alerts to be visible
-			await this.page.getByRole('alert').first().waitFor({
-				state: 'detached',
-				timeout,
-			});
-			return true;
-		} catch {
-			// Check if any are still visible
-			const count = await this.getNotificationCount();
-			return count === 0;
-		}
-	}
-
-	/**
-	 * Get the count of visible notifications.
-	 * @param text Optional text to filter notifications
-	 */
-	async getNotificationCount(text?: string | RegExp): Promise<number> {
-		try {
-			const notifications = text ? this.getNotificationByTitle(text) : this.page.getByRole('alert');
-			return await notifications.count();
-		} catch {
-			return 0;
-		}
-	}
-
-	/**
-	 * Quick utility to close any notification and continue.
-	 * Uses the most aggressive timeouts for maximum speed.
-	 * @param text The text of the notification to close.
-	 */
-	async quickClose(text: string | RegExp): Promise<void> {
-		try {
-			const notification = this.getNotificationByTitle(text).first();
-			if (await notification.isVisible({ timeout: 100 })) {
-				await notification.locator('.el-notification__closeBtn').click({ timeout: 200 });
-			}
-		} catch {
-			// Silent fail for speed
 		}
 	}
 
@@ -276,9 +147,5 @@ export class NotificationsPage {
 
 	getWarningNotifications(): Locator {
 		return this.page.locator('.el-notification:has(.el-notification--warning)');
-	}
-
-	getInfoNotifications(): Locator {
-		return this.page.locator('.el-notification:has(.el-notification--info)');
 	}
 }

@@ -4,11 +4,11 @@ import N8nInputLabel from './InputLabel.vue';
 import N8nInput from '../N8nInput';
 
 export default {
-	title: 'Atoms/Input Label',
+	title: 'Core/Input Label',
 	component: N8nInputLabel,
 	argTypes: {},
 	parameters: {
-		backgrounds: { default: '--color-background-light' },
+		backgrounds: { default: '--color--background--light-2' },
 	},
 };
 

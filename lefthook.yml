@@ -26,3 +26,15 @@ pre-commit:
       skip:
         - merge
         - rebase
+    workspace_deps_check:
+      glob: '**/package.json'
+      run: node scripts/check-workspace-deps.mjs {staged_files}
+      skip:
+        - merge
+        - rebase
+    playwright_janitor:
+      glob: 'packages/testing/playwright/**/*.ts'
+      run: |
+        files=$(echo {staged_files} | tr ' ' ',')
+        pnpm --filter=n8n-playwright janitor --files="$files"
+      skip: true  # Disabled for now - enable when baseline is committed

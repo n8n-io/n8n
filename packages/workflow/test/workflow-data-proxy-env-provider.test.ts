@@ -7,6 +7,8 @@ describe('createEnvProviderState', () => {
 	});
 
 	it('should return the state with process available and env access allowed', () => {
+		process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE = 'false';
+
 		expect(createEnvProviderState()).toEqual({
 			isProcessAvailable: true,
 			isEnvAccessBlocked: false,
@@ -17,6 +19,14 @@ describe('createEnvProviderState', () => {
 	it('should block env access when N8N_BLOCK_ENV_ACCESS_IN_NODE is set to "true"', () => {
 		process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE = 'true';
 
+		expect(createEnvProviderState()).toEqual({
+			isProcessAvailable: true,
+			isEnvAccessBlocked: true,
+			env: {},
+		});
+	});
+
+	it('should block env access when N8N_BLOCK_ENV_ACCESS_IN_NODE is not set', () => {
 		expect(createEnvProviderState()).toEqual({
 			isProcessAvailable: true,
 			isEnvAccessBlocked: true,
@@ -42,12 +52,18 @@ describe('createEnvProviderState', () => {
 });
 
 describe('createEnvProvider', () => {
+	afterEach(() => {
+		delete process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE;
+	});
+
 	it('should return true when checking for a property using "has"', () => {
 		const proxy = createEnvProvider(0, 0, createEnvProviderState());
 		expect('someProperty' in proxy).toBe(true);
 	});
 
 	it('should return the value from process.env if access is allowed', () => {
+		process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE = 'false';
+
 		process.env.TEST_ENV_VAR = 'test_value';
 		const proxy = createEnvProvider(0, 0, createEnvProviderState());
 		expect(proxy.TEST_ENV_VAR).toBe('test_value');
@@ -57,9 +73,9 @@ describe('createEnvProvider', () => {
 		vi.useFakeTimers({ now: new Date() });
 
 		const originalProcess = global.process;
-		// @ts-expect-error process is read-only
-		global.process = undefined;
 		try {
+			// @ts-expect-error process is read-only
+			global.process = undefined;
 			const proxy = createEnvProvider(1, 1, createEnvProviderState());
 
 			expect(() => proxy.someEnvVar).toThrowError(
@@ -70,22 +86,27 @@ describe('createEnvProvider', () => {
 			);
 		} finally {
 			global.process = originalProcess;
+			vi.useRealTimers();
 		}
-
-		vi.useRealTimers();
 	});
 
 	it('should throw ExpressionError when env access is blocked', () => {
-		process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE = 'true';
-		const proxy = createEnvProvider(1, 1, createEnvProviderState());
+		vi.useFakeTimers({ now: new Date() });
 
-		expect(() => proxy.someEnvVar).toThrowError(
-			new ExpressionError('access to env vars denied', {
-				causeDetailed:
-					'If you need access please contact the administrator to remove the environment variable ‘N8N_BLOCK_ENV_ACCESS_IN_NODE‘',
-				runIndex: 1,
-				itemIndex: 1,
-			}),
-		);
+		try {
+			process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE = 'true';
+			const proxy = createEnvProvider(1, 1, createEnvProviderState());
+
+			expect(() => proxy.someEnvVar).toThrowError(
+				new ExpressionError('access to env vars denied', {
+					causeDetailed:
+						'If you need access please contact the administrator to remove the environment variable ‘N8N_BLOCK_ENV_ACCESS_IN_NODE‘',
+					runIndex: 1,
+					itemIndex: 1,
+				}),
+			);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 });

@@ -1,78 +1,17 @@
 {
     "type": "object",
     "properties": {
-        "agreedToTerms": {
-            "type": "boolean"
-        },
-        "archived": {
-            "type": "boolean"
-        },
-        "changePasswordAtNextLogin": {
-            "type": "boolean"
-        },
         "creationTime": {
-            "type": "string"
-        },
-        "customerId": {
-            "type": "string"
-        },
-        "emails": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "address": {
-                        "type": "string"
-                    },
-                    "primary": {
-                        "type": "boolean"
-                    }
-                }
-            }
-        },
-        "etag": {
             "type": "string"
         },
         "id": {
             "type": "string"
         },
-        "includeInGlobalAddressList": {
-            "type": "boolean"
-        },
-        "ipWhitelisted": {
-            "type": "boolean"
-        },
         "isAdmin": {
-            "type": "boolean"
-        },
-        "isDelegatedAdmin": {
-            "type": "boolean"
-        },
-        "isEnforcedIn2Sv": {
-            "type": "boolean"
-        },
-        "isEnrolledIn2Sv": {
-            "type": "boolean"
-        },
-        "isMailboxSetup": {
             "type": "boolean"
         },
         "kind": {
             "type": "string"
-        },
-        "languages": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "languageCode": {
-                        "type": "string"
-                    },
-                    "preference": {
-                        "type": "string"
-                    }
-                }
-            }
         },
         "lastLoginTime": {
             "type": "string"
@@ -91,46 +30,12 @@
                 }
             }
         },
-        "organizations": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "customType": {
-                        "type": "string"
-                    },
-                    "primary": {
-                        "type": "boolean"
-                    },
-                    "title": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
-        "orgUnitPath": {
-            "type": "string"
-        },
         "primaryEmail": {
             "type": "string"
-        },
-        "relations": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "type": {
-                        "type": "string"
-                    },
-                    "value": {
-                        "type": "string"
-                    }
-                }
-            }
         },
         "suspended": {
             "type": "boolean"
         }
     },
-    "version": 3
+    "version": 4
 }

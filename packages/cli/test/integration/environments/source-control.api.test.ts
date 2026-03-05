@@ -3,8 +3,8 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { SourceControlPreferencesService } from '@/environments.ee/source-control/source-control-preferences.service.ee';
-import { SourceControlService } from '@/environments.ee/source-control/source-control.service.ee';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
 import { Telemetry } from '@/telemetry';
 
 import { createUser } from '../shared/db/users';

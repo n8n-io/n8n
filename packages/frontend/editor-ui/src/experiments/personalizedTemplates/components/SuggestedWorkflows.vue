@@ -6,6 +6,6 @@
 
 <style lang="scss" module>
 .suggested-workflows {
-	margin-top: var(--spacing-xs);
+	margin-top: var(--spacing--xs);
 }
 </style>

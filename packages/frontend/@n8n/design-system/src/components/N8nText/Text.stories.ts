@@ -3,7 +3,7 @@ import type { StoryFn } from '@storybook/vue3-vite';
 import N8nText from './Text.vue';
 
 export default {
-	title: 'Atoms/Text',
+	title: 'Core/Text',
 	component: N8nText,
 	argTypes: {
 		size: {

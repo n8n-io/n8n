@@ -7,8 +7,8 @@ export class FocusPanel {
 	 * Accessors
 	 */
 
-	getHeader(): Locator {
-		return this.root.locator('header');
+	getHeaderNodeName(): Locator {
+		return this.root.locator('header').getByTestId('inline-edit-preview');
 	}
 
 	getParameterInputField(path: string): Locator {
@@ -19,6 +19,6 @@ export class FocusPanel {
 
 	getMapper(): Locator {
 		// find from the entire page because the mapper is rendered as portal
-		return this.root.page().getByRole('tooltip').getByTestId('ndv-input-panel');
+		return this.root.page().getByRole('dialog').getByTestId('ndv-input-panel');
 	}
 }

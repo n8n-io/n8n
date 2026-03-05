@@ -72,17 +72,18 @@ describe('POST /forgot-password', () => {
 			.expect(500);
 	});
 
-	test('should fail if SAML is authentication method', async () => {
+	test('should return 200 even if SAML is authentication method to prevent user enumeration', async () => {
 		await setCurrentAuthenticationMethod('saml');
 		const member = await createUser({
 			email: 'test@test.com',
 			role: { slug: 'global:member' },
 		});
 
+		// Returns 200 to prevent email enumeration, but no reset email is sent
 		await testServer.authlessAgent
 			.post('/forgot-password')
 			.send({ email: member.email })
-			.expect(403);
+			.expect(200);
 
 		await setCurrentAuthenticationMethod('email');
 	});

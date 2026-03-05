@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
-import { inTest, Logger } from '@n8n/backend-common';
+import { inTest, Logger, safeJoinPath } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { once as eventOnce } from 'events';
@@ -8,7 +8,7 @@ import { createReadStream, existsSync, rmSync } from 'fs';
 import remove from 'lodash/remove';
 import { InstanceSettings } from 'n8n-core';
 import { EventMessageTypeNames, jsonParse } from 'n8n-workflow';
-import path, { parse } from 'path';
+import { parse } from 'path';
 import readline from 'readline';
 import { Worker } from 'worker_threads';
 
@@ -84,7 +84,7 @@ export class MessageEventBusLogWriter {
 		if (!MessageEventBusLogWriter.instance) {
 			MessageEventBusLogWriter.instance = new MessageEventBusLogWriter();
 			MessageEventBusLogWriter.options = {
-				logFullBasePath: path.join(
+				logFullBasePath: safeJoinPath(
 					options?.logBasePath ?? Container.get(InstanceSettings).n8nFolder,
 					options?.logBaseName ?? Container.get(GlobalConfig).eventBus.logWriter.logBaseName,
 				),
@@ -142,7 +142,7 @@ export class MessageEventBusLogWriter {
 			workerFileName =
 				'./dist/eventbus/message-event-bus-writer/message-event-bus-log-writer-worker.js';
 		} else {
-			workerFileName = path.join(parsedName.dir, `${parsedName.name}-worker${parsedName.ext}`);
+			workerFileName = safeJoinPath(parsedName.dir, `${parsedName.name}-worker${parsedName.ext}`);
 		}
 		this._worker = new Worker(workerFileName);
 		if (this.worker) {

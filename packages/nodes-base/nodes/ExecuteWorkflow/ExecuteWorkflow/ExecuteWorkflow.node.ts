@@ -317,7 +317,9 @@ export class ExecuteWorkflow implements INodeType {
 								parentExecution: {
 									executionId: workflowProxy.$execution.id,
 									workflowId: workflowProxy.$workflow.id,
+									shouldResume: waitForSubWorkflow,
 								},
+								executionMode: this.getMode(),
 							},
 						);
 						const workflowResult = executionResult.data as INodeExecutionData[][];
@@ -349,7 +351,9 @@ export class ExecuteWorkflow implements INodeType {
 								parentExecution: {
 									executionId: workflowProxy.$execution.id,
 									workflowId: workflowProxy.$workflow.id,
+									shouldResume: waitForSubWorkflow,
 								},
+								executionMode: this.getMode(),
 							},
 						);
 
@@ -416,7 +420,9 @@ export class ExecuteWorkflow implements INodeType {
 						parentExecution: {
 							executionId: workflowProxy.$execution.id,
 							workflowId: workflowProxy.$workflow.id,
+							shouldResume: waitForSubWorkflow,
 						},
+						executionMode: this.getMode(),
 					},
 				);
 

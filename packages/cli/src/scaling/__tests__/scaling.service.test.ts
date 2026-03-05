@@ -5,7 +5,7 @@ import { Container } from '@n8n/di';
 import * as BullModule from 'bull';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
-import { ApplicationError, ExecutionCancelledError } from 'n8n-workflow';
+import { ApplicationError, ManualExecutionCancelledError } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
 
@@ -70,7 +70,7 @@ describe('ScalingService', () => {
 		QUEUE_NAME,
 		{
 			prefix: globalConfig.queue.bull.prefix,
-			settings: globalConfig.queue.bull.settings,
+			settings: { ...globalConfig.queue.bull.settings, maxStalledCount: 0 },
 			createClient: expect.any(Function),
 		},
 	];
@@ -296,7 +296,7 @@ describe('ScalingService', () => {
 
 			expect(job.progress).toHaveBeenCalledWith({ kind: 'abort-job' });
 			expect(job.discard).toHaveBeenCalled();
-			expect(job.moveToFailed).toHaveBeenCalledWith(new ExecutionCancelledError('123'), true);
+			expect(job.moveToFailed).toHaveBeenCalledWith(new ManualExecutionCancelledError('123'), true);
 			expect(result).toBe(true);
 		});
 
@@ -360,6 +360,71 @@ describe('ScalingService', () => {
 				content: 'test',
 			});
 		});
+
+		it('should resolve responsePromise with empty response when job-finished has success=true', async () => {
+			const activeExecutions = mock<ActiveExecutions>();
+			scalingService = new ScalingService(
+				mockLogger(),
+				mock(),
+				activeExecutions,
+				jobProcessor,
+				globalConfig,
+				mock(),
+				instanceSettings,
+				mock(),
+			);
+
+			await scalingService.setupQueue();
+
+			const messageHandler = queue.on.mock.calls.find(
+				([event]) => (event as string) === 'global:progress',
+			)?.[1] as (jobId: JobId, msg: unknown) => void;
+
+			const jobFinishedMessage = {
+				kind: 'job-finished',
+				executionId: 'exec-123',
+				workerId: 'worker-456',
+				success: true,
+			};
+
+			messageHandler('job-789', jobFinishedMessage);
+
+			expect(activeExecutions.resolveResponsePromise).toHaveBeenCalledWith('exec-123', {});
+		});
+
+		it('should resolve responsePromise with error response when job-finished has success=false', async () => {
+			const activeExecutions = mock<ActiveExecutions>();
+			scalingService = new ScalingService(
+				mockLogger(),
+				mock(),
+				activeExecutions,
+				jobProcessor,
+				globalConfig,
+				mock(),
+				instanceSettings,
+				mock(),
+			);
+
+			await scalingService.setupQueue();
+
+			const messageHandler = queue.on.mock.calls.find(
+				([event]) => (event as string) === 'global:progress',
+			)?.[1] as (jobId: JobId, msg: unknown) => void;
+
+			const jobFinishedMessage = {
+				kind: 'job-finished',
+				executionId: 'exec-123',
+				workerId: 'worker-456',
+				success: false,
+			};
+
+			messageHandler('job-789', jobFinishedMessage);
+
+			expect(activeExecutions.resolveResponsePromise).toHaveBeenCalledWith('exec-123', {
+				body: { message: 'Workflow execution failed' },
+				statusCode: 500,
+			});
+		});
 	});
 
 	describe('recoverFromQueue', () => {
@@ -391,6 +456,54 @@ describe('ScalingService', () => {
 			await scalingService.recoverFromQueue();
 
 			expect(executionRepository.markAsCrashed).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('MCP response handling', () => {
+		it('should process mcp-response messages without throwing', async () => {
+			await scalingService.setupQueue();
+
+			const messageHandler = queue.on.mock.calls.find(
+				([event]) => (event as string) === 'global:progress',
+			)?.[1] as (jobId: JobId, msg: unknown) => void;
+			expect(messageHandler).toBeDefined();
+
+			const mcpResponseMessage = {
+				kind: 'mcp-response',
+				executionId: 'exec-123',
+				mcpType: 'service',
+				sessionId: 'session-456',
+				messageId: 'msg-789',
+				response: { success: true },
+				workerId: 'worker-abc',
+			};
+
+			// Should not throw - all mains receive and try to process MCP responses
+			// Only the one with the pending response/session will handle it successfully
+			// The handler is async but we verify it doesn't throw synchronously
+			expect(() => messageHandler('job-999', mcpResponseMessage)).not.toThrow();
+		});
+
+		it('should handle mcp-response for trigger type', async () => {
+			await scalingService.setupQueue();
+
+			const messageHandler = queue.on.mock.calls.find(
+				([event]) => (event as string) === 'global:progress',
+			)?.[1] as (jobId: JobId, msg: unknown) => void;
+			expect(messageHandler).toBeDefined();
+
+			const mcpTriggerResponseMessage = {
+				kind: 'mcp-response',
+				executionId: 'exec-456',
+				mcpType: 'trigger',
+				sessionId: 'session-trigger',
+				messageId: 'msg-trigger',
+				response: { toolResult: 'test-data' },
+				workerId: 'worker-xyz',
+			};
+
+			// Should not throw for trigger type either
+			expect(() => messageHandler('job-trigger', mcpTriggerResponseMessage)).not.toThrow();
 		});
 	});
 });

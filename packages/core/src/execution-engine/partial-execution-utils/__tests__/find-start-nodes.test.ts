@@ -624,5 +624,46 @@ describe('findStartNodes', () => {
 			expect(startNodes.size).toBe(1);
 			expect(startNodes).toContainEqual(afterLoop);
 		});
+
+		// 	                      done (empty)
+		//                      ┌────►
+		// ┌─────────┐1 ┌────┐1 │
+		// │ trigger ┼──►loop┼─┬┘  ►►
+		// └─────────┘  └────┘ │  ┌────────┐
+		//                     └─►│in loop │
+		//                        └────────┘
+		test('if a loop node does not actually form a loop in the graph, it uses loop output instead of done output', () => {
+			// ARRANGE
+			const trigger = createNodeData({ name: 'trigger' });
+			const loop = createNodeData({ name: 'loop', type: 'n8n-nodes-base.splitInBatches' });
+			const inLoop = createNodeData({ name: 'inLoop' });
+			const graph = new DirectedGraph().addNodes(trigger, loop, inLoop).addConnections(
+				{ from: trigger, to: loop },
+				// Note: loop connects to inLoop via output 1, but there's no connection
+				// back to loop, so it's not actually a loop
+				{ from: loop, outputIndex: 1, to: inLoop },
+			);
+			const runData: IRunData = {
+				[trigger.name]: [toITaskData([{ data: { name: 'trigger' } }])],
+				// The loop node has data on output 1 (the first output), but not on output 0 (done)
+				[loop.name]: [toITaskData([{ outputIndex: 1, data: { name: 'loop' } }])],
+			};
+
+			// ACT
+			const startNodes = findStartNodes({
+				graph,
+				trigger,
+				destination: inLoop,
+				runData,
+				pinData: {},
+			});
+
+			// ASSERT
+			// Because the loop node doesn't form an actual loop, it should check output 1
+			// for run data (not output 0). Since output 1 has data, the loop node should
+			// not be a start node, and we should continue to inLoop.
+			expect(startNodes.size).toBe(1);
+			expect(startNodes).toContainEqual(inLoop);
+		});
 	});
 });

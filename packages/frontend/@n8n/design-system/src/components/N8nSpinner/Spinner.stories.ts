@@ -3,7 +3,7 @@ import type { StoryFn } from '@storybook/vue3-vite';
 import N8nSpinner from './Spinner.vue';
 
 export default {
-	title: 'Atoms/Spinner',
+	title: 'Core/Spinner',
 	component: N8nSpinner,
 	argTypes: {
 		size: {

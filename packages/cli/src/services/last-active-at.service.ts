@@ -14,15 +14,13 @@ export class LastActiveAtService {
 		private readonly logger: Logger,
 	) {}
 
-	async middleware(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+	async middleware(req: AuthenticatedRequest, _res: Response, next: NextFunction) {
 		if (req.user) {
 			this.updateLastActiveIfStale(req.user.id).catch((error: unknown) => {
 				this.logger.error('Failed to update last active timestamp', { error });
 			});
-			next();
-		} else {
-			res.status(401).json({ status: 'error', message: 'Unauthorized' });
 		}
+		next();
 	}
 
 	async updateLastActiveIfStale(userId: string) {

@@ -9,9 +9,9 @@ import {
 	type IExecuteFunctions,
 	type ISupplyDataFunctions,
 } from 'n8n-workflow';
-import { metadataFilterField } from '@utils/sharedFields';
+import { metadataFilterField, createVectorStoreNode } from '@n8n/ai-utilities';
 
-import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
+import { validateAndResolveMongoCredentials } from 'n8n-nodes-base/dist/nodes/MongoDb/GenericFunctions';
 
 /**
  * Constants for the name of the credentials and Node parameters.
@@ -165,9 +165,13 @@ type IFunctionsContext = IExecuteFunctions | ISupplyDataFunctions | ILoadOptions
  * @param context - The context.
  * @returns the MongoClient for the node.
  */
-export async function getMongoClient(context: any, version: number) {
+export async function getMongoClient(
+	context: IExecuteFunctions | ISupplyDataFunctions | ILoadOptionsFunctions,
+	version: number,
+) {
 	const credentials = await context.getCredentials(MONGODB_CREDENTIALS);
-	const connectionString = credentials.connectionString as string;
+	const node = context.getNode();
+	const { connectionString } = validateAndResolveMongoCredentials(node, credentials);
 	if (
 		!mongoConfig.client ||
 		mongoConfig.connectionString !== connectionString ||

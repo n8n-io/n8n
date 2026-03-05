@@ -109,6 +109,8 @@ function getThStyle(column: DatatableColumn) {
 			</tbody>
 		</N8nTableBase>
 
+		<slot name="postdata" />
+
 		<div class="pagination">
 			<N8nPagination
 				v-if="totalPages > 1"
@@ -155,7 +157,7 @@ function getThStyle(column: DatatableColumn) {
 	align-items: center;
 	bottom: 0;
 	overflow: visible;
-	margin-top: var(--spacing-s);
+	margin-top: var(--spacing--sm);
 }
 
 .pageSizeSelector {

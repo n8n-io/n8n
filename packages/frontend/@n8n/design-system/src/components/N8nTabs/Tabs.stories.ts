@@ -5,11 +5,11 @@ import N8nTabs from './Tabs.vue';
 import type { TabOptions } from '../../types/tabs';
 
 export default {
-	title: 'Atoms/Tabs',
+	title: 'Core/Tabs',
 	component: N8nTabs,
 	argTypes: {},
 	parameters: {
-		backgrounds: { default: '--color-background-xlight' },
+		backgrounds: { default: '--color--background--light-3' },
 	},
 };
 

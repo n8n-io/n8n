@@ -119,12 +119,15 @@ defineExpose({ forceFocus, forceCancel });
 				:class="$style.inlineRenamePreview"
 				:style="computedInlineStyles"
 			/>
+			<!-- Stop propagation for space key to prevent VueFlow from intercepting it -->
+			<!-- when modifier keys (like Shift) are pressed. See: https://github.com/bcakmakoglu/vue-flow/issues/1999 -->
 			<EditableInput
 				ref="input"
 				:class="$style.inlineRenameInput"
 				data-test-id="inline-edit-input"
 				:style="computedInlineStyles"
 				@input="onInput($event.target.value)"
+				@keydown.space.stop
 			/>
 		</EditableArea>
 	</EditableRoot>
@@ -139,12 +142,12 @@ defineExpose({ forceFocus, forceCancel });
 	&::after {
 		content: '';
 		position: absolute;
-		top: calc(var(--spacing-4xs) * -1);
-		left: calc(var(--spacing-3xs) * -1);
-		width: calc(100% + var(--spacing-xs));
-		height: calc(100% + var(--spacing-2xs));
-		border-radius: var(--border-radius-base);
-		background-color: var(--color-foreground-xlight);
+		top: calc(var(--spacing--4xs) * -1);
+		left: calc(var(--spacing--3xs) * -1);
+		width: calc(100% + var(--spacing--xs));
+		height: calc(100% + var(--spacing--2xs));
+		border-radius: var(--radius);
+		background-color: var(--color--foreground--tint-2);
 		opacity: 0;
 		z-index: 0;
 		transition: all 0.1s ease-in-out;
@@ -153,7 +156,7 @@ defineExpose({ forceFocus, forceCancel });
 	&[data-focused],
 	&:hover {
 		&::after {
-			border: 1px solid var(--color-foreground-base);
+			border: 1px solid var(--color--foreground);
 			opacity: 1;
 		}
 	}
@@ -161,7 +164,7 @@ defineExpose({ forceFocus, forceCancel });
 	&[data-focused] {
 		cursor: text;
 		&::after {
-			border: 1px solid var(--color-secondary);
+			border: 1px solid var(--color--secondary);
 		}
 	}
 }

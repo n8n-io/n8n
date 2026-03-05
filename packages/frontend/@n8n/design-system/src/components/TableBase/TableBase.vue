@@ -19,9 +19,9 @@
 .n8nTable {
 	height: 100%;
 	border-radius: 8px;
-	border: 1px solid var(--color-foreground-base);
+	border: 1px solid var(--color--foreground);
 	overflow: hidden;
-	font-size: var(--font-size-s);
+	font-size: var(--font-size--sm);
 
 	table {
 		width: 100%;
@@ -42,15 +42,15 @@
 	}
 
 	th {
-		background-color: var(--color-background-light-base);
-		color: var(--color-text-base);
+		background-color: var(--color--background--light-1);
+		color: var(--color--text);
 		font-weight: 600;
 		font-size: 12px;
 		padding: 0 8px;
 		text-transform: capitalize;
 		height: 36px;
 		white-space: nowrap;
-		border-bottom: 1px solid var(--color-foreground-base);
+		border-bottom: 1px solid var(--color--foreground);
 
 		&:first-child {
 			padding-left: 16px;
@@ -62,7 +62,7 @@
 
 	tbody > tr {
 		&:hover {
-			background-color: var(--color-background-light);
+			background-color: var(--color--background--light-2);
 		}
 
 		&:last-child > td {
@@ -71,15 +71,15 @@
 	}
 
 	tr {
-		background-color: var(--color-background-xlight);
+		background-color: var(--color--background--light-3);
 	}
 
 	td {
-		color: var(--color-text-dark);
+		color: var(--color--text--shade-1);
 		padding: 0 8px;
 		height: 48px;
 
-		border-bottom: 1px solid var(--color-foreground-base);
+		border-bottom: 1px solid var(--color--foreground);
 
 		&:first-child {
 			padding-left: 16px;

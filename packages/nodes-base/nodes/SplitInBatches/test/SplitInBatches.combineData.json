@@ -11,11 +11,42 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "const newItems = [];\n\nfor (let i=0;i<10;i++) {\n  newItems.push({json:{i}});\n}\n\nreturn newItems;"
+				"data": [
+					{
+						"i": 0
+					},
+					{
+						"i": 1
+					},
+					{
+						"i": 2
+					},
+					{
+						"i": 3
+					},
+					{
+						"i": 4
+					},
+					{
+						"i": 5
+					},
+					{
+						"i": 6
+					},
+					{
+						"i": 7
+					},
+					{
+						"i": 8
+					},
+					{
+						"i": 9
+					}
+				]
 			},
 			"id": "3962fba9-8f67-4b16-b2a2-69fc4b374fc8",
 			"name": "Create Test Data",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [1080, 400]
 		},

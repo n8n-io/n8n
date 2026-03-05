@@ -1,3 +1,4 @@
+import { RoleCacheService } from '@/services/role-cache.service';
 import { Role, RoleRepository, Scope, ScopeRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope as ScopeType } from '@n8n/permissions';
@@ -7,10 +8,11 @@ import type { Scope as ScopeType } from '@n8n/permissions';
  */
 export async function createRole(overrides: Partial<Role> = {}): Promise<Role> {
 	const roleRepository = Container.get(RoleRepository);
+	const roleCacheService = Container.get(RoleCacheService);
 
 	const defaultRole: Partial<Role> = {
 		slug: `test-role-${Math.random().toString(36).substring(7)}`,
-		displayName: 'Test Role',
+		displayName: `Test Role ${Math.random().toString(36).substring(7)}`,
 		description: 'A test role for integration testing',
 		systemRole: false,
 		roleType: 'project',
@@ -20,7 +22,11 @@ export async function createRole(overrides: Partial<Role> = {}): Promise<Role> {
 	const roleData = { ...defaultRole, ...overrides };
 	const role = Object.assign(new Role(), roleData);
 
-	return await roleRepository.save(role);
+	const createdRole = await roleRepository.save(role);
+
+	// Force refresh the role cache to include the newly created role (important when running concurrent tests)
+	await roleCacheService.refreshCache();
+	return createdRole;
 }
 
 /**
@@ -42,6 +48,32 @@ export async function createCustomRoleWithScopes(
 	scopes: Scope[],
 	overrides: Partial<Role> = {},
 ): Promise<Role> {
+	return await createRole({
+		scopes,
+		systemRole: false,
+		...overrides,
+	});
+}
+
+/**
+ * Creates a custom role with specific scope slugs (using existing permission system scopes)
+ */
+export async function createCustomRoleWithScopeSlugs(
+	scopeSlugs: string[],
+	overrides: Partial<Role> = {},
+): Promise<Role> {
+	const scopeRepository = Container.get(ScopeRepository);
+
+	// Find existing scopes by their slugs
+	const scopes = await scopeRepository.findByList(scopeSlugs);
+
+	if (scopes.length !== scopeSlugs.length) {
+		const missingScopes = scopeSlugs.filter((slug) => !scopes.some((scope) => scope.slug === slug));
+		throw new Error(
+			`Could not find all scopes. Expected ${scopeSlugs.length}, found ${scopes.length}, missing: ${missingScopes.join(', ')}`,
+		);
+	}
+
 	return await createRole({
 		scopes,
 		systemRole: false,
@@ -138,11 +170,7 @@ export async function cleanupRolesAndScopes(): Promise<void> {
 		.getMany();
 
 	for (const role of testRoles) {
-		try {
-			await roleRepository.delete({ slug: role.slug });
-		} catch (error) {
-			// Ignore errors for system roles or roles with dependencies
-		}
+		await roleRepository.delete({ slug: role.slug });
 	}
 
 	// Delete test scopes
@@ -152,10 +180,6 @@ export async function cleanupRolesAndScopes(): Promise<void> {
 		.getMany();
 
 	for (const scope of testScopes) {
-		try {
-			await scopeRepository.delete({ slug: scope.slug });
-		} catch (error) {
-			// Ignore errors for scopes with dependencies
-		}
+		await scopeRepository.delete({ slug: scope.slug });
 	}
 }

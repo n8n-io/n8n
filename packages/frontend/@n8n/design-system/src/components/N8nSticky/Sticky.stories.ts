@@ -4,7 +4,7 @@ import { action } from 'storybook/actions';
 import N8nSticky from './Sticky.vue';
 
 export default {
-	title: 'Atoms/Sticky',
+	title: 'Core/Sticky',
 	component: N8nSticky,
 	argTypes: {
 		content: {
@@ -63,7 +63,7 @@ Sticky.args = {
 	height: 160,
 	width: 150,
 	modelValue:
-		"## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/sticky-notes/)",
+		"## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/components/sticky-notes/)",
 	minHeight: 80,
 	minWidth: 150,
 	readOnly: false,

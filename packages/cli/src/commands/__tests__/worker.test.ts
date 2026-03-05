@@ -10,13 +10,41 @@ import { Worker } from '../worker';
 
 mockInstance(RedisClientService);
 mockInstance(PubSubRegistry);
-mockInstance(Subscriber);
+const mockSubscriber = mockInstance(Subscriber);
 mockInstance(WorkerStatusService);
 
-test('should instantiate WorkerStatusService during orchestration setup', async () => {
-	const containerGetSpy = jest.spyOn(Container, 'get');
+describe('Worker', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
 
-	await new Worker().initOrchestration();
+	describe('initOrchestration', () => {
+		it('should instantiate WorkerStatusService during orchestration setup', async () => {
+			const containerGetSpy = jest.spyOn(Container, 'get');
 
-	expect(containerGetSpy).toHaveBeenCalledWith(WorkerStatusService);
+			await new Worker().initOrchestration();
+
+			expect(containerGetSpy).toHaveBeenCalledWith(WorkerStatusService);
+		});
+
+		it('should get command channel and subscribe to it', async () => {
+			const mockCommandChannel = 'n8n:n8n.commands';
+			mockSubscriber.getCommandChannel.mockReturnValue(mockCommandChannel);
+			mockSubscriber.subscribe.mockResolvedValue(undefined);
+
+			await new Worker().initOrchestration();
+
+			expect(mockSubscriber.getCommandChannel).toHaveBeenCalled();
+			expect(mockSubscriber.subscribe).toHaveBeenCalledWith(mockCommandChannel);
+		});
+
+		it('should initialize PubSubRegistry', async () => {
+			const pubSubRegistry = Container.get(PubSubRegistry);
+			const initSpy = jest.spyOn(pubSubRegistry, 'init');
+
+			await new Worker().initOrchestration();
+
+			expect(initSpy).toHaveBeenCalled();
+		});
+	});
 });

@@ -7,15 +7,22 @@ import type {
 	INodeExecutionData,
 	INodeParameters,
 	INodeTypes,
-	IRunExecutionData,
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { createEnvProviderState, NodeConnectionTypes, Workflow } from 'n8n-workflow';
+import {
+	createEnvProviderState,
+	createRunExecutionData,
+	NodeConnectionTypes,
+	Workflow,
+} from 'n8n-workflow';
 
 import { LocalTaskRequester } from '@/task-runners/task-managers/local-task-requester';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
+import { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py';
+
+jest.spyOn(PyTaskRunnerProcess, 'checkRequirements').mockResolvedValue('python');
 
 /**
  * Integration tests for the JS TaskRunner execution. Starts the TaskRunner
@@ -24,7 +31,6 @@ import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 describe('JS TaskRunner execution on internal mode', () => {
 	const runnerConfig = Container.get(TaskRunnersConfig);
 	runnerConfig.mode = 'internal';
-	runnerConfig.enabled = true;
 	runnerConfig.port = 45678;
 
 	const taskRunnerModule = Container.get(TaskRunnerModule);
@@ -101,7 +107,7 @@ describe('JS TaskRunner execution on internal mode', () => {
 			main: [inputData],
 		};
 
-		const runExecutionData: IRunExecutionData = {
+		const runExecutionData = createRunExecutionData({
 			startData: {},
 			resultData: {
 				runData: {
@@ -127,7 +133,7 @@ describe('JS TaskRunner execution on internal mode', () => {
 				waitingExecution: {},
 				waitingExecutionSource: {},
 			},
-		};
+		});
 
 		return {
 			additionalData: mock<IWorkflowExecuteAdditionalData>(),
@@ -199,6 +205,8 @@ describe('JS TaskRunner execution on internal mode', () => {
 		beforeAll(async () => {
 			process.env.NODE_FUNCTION_ALLOW_BUILTIN = 'crypto';
 			process.env.NODE_FUNCTION_ALLOW_EXTERNAL = 'moment';
+			const { TaskBroker } = await import('@/task-runners/task-broker/task-broker.service');
+			Container.get(TaskBroker).stopDraining();
 			await taskRunnerModule.start();
 		});
 

@@ -12,6 +12,7 @@ import type {
 	workflowSharingRoleSchema,
 	assignableProjectRoleSchema,
 } from './schemas.ee';
+import { PROJECT_OWNER_ROLE_SLUG } from './constants.ee';
 import { ALL_API_KEY_SCOPES } from './scope-information';
 
 export type ScopeInformation = {
@@ -62,6 +63,18 @@ export type TeamProjectRole = z.infer<typeof teamRoleSchema>;
 export type ProjectRole = z.infer<typeof systemProjectRoleSchema>;
 export type AssignableProjectRole = z.infer<typeof assignableProjectRoleSchema>;
 
+/**
+ * Type guard for assignable project role slugs.
+ *
+ * Custom project roles are supported. We consider any slug that:
+ * - starts with the `project:` prefix, and
+ * - is not the personal owner role
+ * to be an assignable project role.
+ */
+export function isAssignableProjectRoleSlug(slug: string): slug is AssignableProjectRole {
+	return slug.startsWith('project:') && slug !== PROJECT_OWNER_ROLE_SLUG;
+}
+
 /** Union of all possible role types in the system */
 export type AllRoleTypes = GlobalRole | ProjectRole | WorkflowSharingRole | CredentialSharingRole;
 
@@ -106,7 +119,7 @@ type AllApiKeyScopesObject = {
 
 export type ApiKeyScope = AllApiKeyScopesObject[PublicApiKeyResources];
 
-export function isApiKeyScope(scope: Scope): scope is ApiKeyScope {
+export function isApiKeyScope(scope: Scope | ApiKeyScope): scope is ApiKeyScope {
 	// We are casting with as for runtime type checking
 	return ALL_API_KEY_SCOPES.has(scope as ApiKeyScope);
 }

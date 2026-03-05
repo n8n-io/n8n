@@ -24,8 +24,28 @@ export const ALL_SCOPES = buildResourceScopes();
 export const ALL_API_KEY_SCOPES = buildApiKeyScopes();
 
 export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
+	'aiAssistant:manage': {
+		displayName: 'Manage AI Usage',
+		description: 'Allows managing AI Usage settings.',
+	},
 	'annotationTag:create': {
 		displayName: 'Create Annotation Tag',
 		description: 'Allows creating new annotation tags.',
+	},
+	'workflow:publish': {
+		displayName: 'Publish Workflow',
+		description: 'Allows publishing workflows.',
+	},
+	'workflow:unpublish': {
+		displayName: 'Unpublish Workflow',
+		description: 'Allows unpublishing workflows.',
+	},
+	'workflow:unshare': {
+		displayName: 'Unshare Workflow',
+		description: 'Allows removing workflow shares.',
+	},
+	'credential:unshare': {
+		displayName: 'Unshare Credential',
+		description: 'Allows removing credential shares.',
 	},
 };

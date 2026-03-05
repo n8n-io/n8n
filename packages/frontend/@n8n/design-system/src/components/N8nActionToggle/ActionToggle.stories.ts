@@ -4,7 +4,7 @@ import { action } from 'storybook/actions';
 import N8nActionToggle from './ActionToggle.vue';
 
 export default {
-	title: 'Atoms/ActionToggle',
+	title: 'Core/ActionToggle',
 	component: N8nActionToggle,
 	argTypes: {
 		placement: {
@@ -17,7 +17,7 @@ export default {
 		},
 	},
 	parameters: {
-		backgrounds: { default: '--color-background-light' },
+		backgrounds: { default: '--color--background--light-2' },
 	},
 };
 

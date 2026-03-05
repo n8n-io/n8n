@@ -1,23 +1,30 @@
 import type { Locator } from '@playwright/test';
-import { nanoid } from 'nanoid';
 
 import { BasePage } from './BasePage';
 import { ROUTES } from '../config/constants';
 import { resolveFromRoot } from '../utils/path-helper';
+import { ConvertToSubworkflowModal } from './components/ConvertToSubworkflowModal';
 import { CredentialModal } from './components/CredentialModal';
 import { FocusPanel } from './components/FocusPanel';
 import { LogsPanel } from './components/LogsPanel';
+import { NodeCreator } from './components/NodeCreator';
+import { SaveChangesModal } from './components/SaveChangesModal';
 import { StickyComponent } from './components/StickyComponent';
+import { TagsManagerModal } from './components/TagsManagerModal';
 
 export class CanvasPage extends BasePage {
 	readonly sticky = new StickyComponent(this.page);
 	readonly logsPanel = new LogsPanel(this.page.getByTestId('logs-panel'));
 	readonly focusPanel = new FocusPanel(this.page.getByTestId('focus-panel'));
 	readonly credentialModal = new CredentialModal(this.page.getByTestId('editCredential-modal'));
-
-	saveWorkflowButton(): Locator {
-		return this.page.getByRole('button', { name: 'Save' });
-	}
+	readonly nodeCreator = new NodeCreator(this.page);
+	readonly saveChangesModal = new SaveChangesModal(this.page.locator('.el-overlay'));
+	readonly tagsManagerModal = new TagsManagerModal(
+		this.page.getByRole('dialog').filter({ hasText: 'Manage tags' }),
+	);
+	readonly convertToSubworkflowModal = new ConvertToSubworkflowModal(
+		this.page.getByRole('dialog').filter({ hasText: 'Convert' }),
+	);
 
 	nodeCreatorItemByName(text: string): Locator {
 		return this.page.getByTestId('node-creator-item-name').getByText(text, { exact: true });
@@ -27,17 +34,9 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('node-creator-item-name').getByText(subItemText, { exact: true });
 	}
 
-	getNthCreatorItem(index: number): Locator {
-		return this.page.getByTestId('node-creator-item').nth(index);
-	}
-
 	getNodeCreatorHeader(text?: string) {
 		const header = this.page.getByTestId('nodes-list-header');
 		return text ? header.filter({ hasText: text }) : header.first();
-	}
-
-	async selectNodeCreatorItemByText(nodeName: string) {
-		await this.page.getByText(nodeName).click();
 	}
 
 	nodeByName(nodeName: string): Locator {
@@ -70,10 +69,6 @@ export class CanvasPage extends BasePage {
 
 	async clickNodeCreatorPlusButton(): Promise<void> {
 		await this.clickByTestId('node-creator-plus-button');
-	}
-
-	async clickSaveWorkflowButton(): Promise<void> {
-		await this.saveWorkflowButton().click();
 	}
 
 	async fillNodeCreatorSearchBar(text: string): Promise<void> {
@@ -114,10 +109,15 @@ export class CanvasPage extends BasePage {
 			closeNDV?: boolean;
 			action?: string;
 			trigger?: string;
+			fromNode?: string;
 		},
 	): Promise<void> {
-		// Always start with canvas plus button
-		await this.clickNodeCreatorPlusButton();
+		if (options?.fromNode) {
+			await this.clickNodePlusEndpoint(options.fromNode);
+		} else {
+			// Always start with canvas plus button
+			await this.clickNodeCreatorPlusButton();
+		}
 
 		// Search for and select the node, works on exact name match only
 		await this.fillNodeCreatorSearchBar(nodeName);
@@ -143,7 +143,7 @@ export class CanvasPage extends BasePage {
 			await this.nodeCreatorSubItem(options.trigger).click();
 		}
 		if (options?.closeNDV) {
-			await this.page.getByTestId('back-to-canvas').click();
+			await this.page.getByTestId('ndv-close-button').click();
 		}
 	}
 
@@ -151,34 +151,36 @@ export class CanvasPage extends BasePage {
 		await this.nodeDeleteButton(nodeName).click();
 	}
 
-	async saveWorkflow(): Promise<void> {
-		await this.clickSaveWorkflowButton();
+	async waitForSaveWorkflowCompleted() {
+		return await this.page.waitForResponse(
+			(response) =>
+				response.url().includes('/rest/workflows') &&
+				(response.request().method() === 'POST' || response.request().method() === 'PATCH'),
+			{ timeout: 2000 }, // Wait longer than autosave debounce (1500ms)
+		);
 	}
 
-	getExecuteWorkflowButton(): Locator {
-		return this.page.getByTestId('execute-workflow-button');
+	getExecuteWorkflowButton(triggerNodeName?: string): Locator {
+		const testId = triggerNodeName
+			? `execute-workflow-button-${triggerNodeName}`
+			: 'execute-workflow-button';
+		return this.page.getByTestId(testId);
 	}
 
-	async clickExecuteWorkflowButton(): Promise<void> {
-		await this.page.getByTestId('execute-workflow-button').click();
-	}
-
-	async clickDebugInEditorButton(): Promise<void> {
-		await this.page.getByRole('button', { name: 'Debug in editor' }).click();
-	}
-
-	async pinNode(nodeName: string): Promise<void> {
-		await this.nodeByName(nodeName).click({ button: 'right' });
-		await this.page.getByTestId('context-menu').getByText('Pin').click();
-	}
-
-	async unpinNode(nodeName: string): Promise<void> {
-		await this.nodeByName(nodeName).click({ button: 'right' });
-		await this.page.getByText('Unpin').click();
+	async clickExecuteWorkflowButton(triggerNodeName?: string): Promise<void> {
+		await this.getExecuteWorkflowButton(triggerNodeName).click();
 	}
 
 	async openNode(nodeName: string): Promise<void> {
 		await this.nodeByName(nodeName).dblclick();
+	}
+
+	getRenamePrompt(): Locator {
+		return this.page.locator('.rename-prompt');
+	}
+
+	getRenameInput(): Locator {
+		return this.getRenamePrompt().locator('input');
 	}
 
 	/**
@@ -251,10 +253,6 @@ export class CanvasPage extends BasePage {
 		await this.clickByTestId('workflow-menu-item-import-from-url');
 	}
 
-	async clickImportFromFile(): Promise<void> {
-		await this.clickByTestId('workflow-menu-item-import-from-file');
-	}
-
 	async fillImportURLInput(url: string): Promise<void> {
 		await this.getImportURLInput().fill(url);
 	}
@@ -271,21 +269,24 @@ export class CanvasPage extends BasePage {
 		await this.page.locator('body').click({ position: { x: 0, y: 0 } });
 	}
 
-	getWorkflowTags() {
-		return this.page.getByTestId('workflow-tags').locator('.el-tag');
-	}
-	async activateWorkflow() {
-		const switchElement = this.page.getByTestId('workflow-activate-switch');
-		const statusElement = this.page.getByTestId('workflow-activator-status');
-
+	async publishWorkflow(): Promise<void> {
 		const responsePromise = this.page.waitForResponse(
 			(response) =>
-				response.url().includes('/rest/workflows/') && response.request().method() === 'PATCH',
+				response.url().includes('/rest/workflows/') &&
+				response.url().includes('/activate') &&
+				response.request().method() === 'POST',
 		);
 
-		await switchElement.click();
-		await statusElement.locator('span').filter({ hasText: 'Active' }).waitFor({ state: 'visible' });
+		await this.getOpenPublishModalButton().click();
+		await this.getPublishButton().click();
+
 		await responsePromise;
+	}
+
+	async openShareModal(): Promise<void> {
+		await this.clickByTestId('workflow-menu');
+		await this.clickByTestId('workflow-menu-item-share');
+		await this.page.getByTestId('workflowShare-modal').waitFor({ state: 'visible' });
 	}
 
 	async clickZoomToFitButton(): Promise<void> {
@@ -299,38 +300,111 @@ export class CanvasPage extends BasePage {
 		return this.nodeByName(nodeName).getByTestId('node-issues');
 	}
 
-	/**
-	 * Add tags to the workflow
-	 * @param count - The number of tags to add
-	 * @returns An array of tag names
-	 */
-	async addTags(count: number = 1): Promise<string[]> {
-		const tags: string[] = [];
-
-		for (let i = 0; i < count; i++) {
-			const tag = `tag-${nanoid(8)}-${i}`;
-			tags.push(tag);
-
-			if (i === 0) {
-				await this.clickByText('Add tag');
-			} else {
-				await this.page
-					.getByTestId('tags-dropdown')
-					.getByText(tags[i - 1])
-					.click();
-			}
-
-			await this.page.getByRole('combobox').first().fill(tag);
-			await this.page.getByRole('combobox').first().press('Enter');
-		}
-
-		await this.page.click('body');
-
-		return tags;
+	async clickCreateTagButton(): Promise<void> {
+		await this.page.getByTestId('new-tag-link').click();
 	}
 
-	getWorkflowSaveButton(): Locator {
-		return this.page.getByTestId('workflow-save-button');
+	async clickNthTagPill(index: number): Promise<void> {
+		await this.page.getByTestId('workflow-tags-container').locator('.el-tag').nth(index).click();
+	}
+
+	async clickWorkflowTagsArea(): Promise<void> {
+		await this.page.getByTestId('workflow-tags').click();
+	}
+
+	async clickWorkflowTagsContainer(): Promise<void> {
+		await this.page.getByTestId('workflow-tags-dropdown').click();
+	}
+
+	getTagPills(): Locator {
+		return this.page
+			.getByTestId('workflow-tags-container')
+			.locator('.el-tag:not(.count-container)');
+	}
+
+	getSavedWorkflowTagPills(): Locator {
+		return this.page.getByTestId('workflow-tags').locator('.n8n-tag:not(.count-container)');
+	}
+
+	getWorkflowTagsElement(): Locator {
+		return this.page.getByTestId('workflow-tags');
+	}
+
+	getWorkflowTagsDropdown(): Locator {
+		return this.page.getByTestId('workflow-tags-dropdown');
+	}
+
+	getTagCloseButton(): Locator {
+		return this.getWorkflowTagsDropdown().locator('.el-tag__close');
+	}
+
+	async typeInTagInput(text: string): Promise<void> {
+		const input = this.page.getByTestId('workflow-tags-container').locator('input').first();
+		await input.fill(text);
+	}
+
+	async openTagManagerModal(): Promise<void> {
+		await this.clickCreateTagButton();
+		await this.page.getByTestId('tags-dropdown').click();
+		await this.page.locator('.manage-tags').click();
+	}
+
+	async pressEnterToCreateTag(): Promise<void> {
+		const responsePromise = this.waitForRestResponse('/rest/tags', 'POST');
+		await this.page.keyboard.press('Enter');
+		await responsePromise;
+	}
+
+	// Tag dropdown getters
+	getVisibleDropdown(): Locator {
+		return this.page.locator('.el-select-dropdown:visible');
+	}
+
+	getTagItemsInDropdown(): Locator {
+		return this.getVisibleDropdown().locator('[data-test-id="tag"].tag');
+	}
+
+	getTagItemInDropdownByName(name: string): Locator {
+		return this.getVisibleDropdown().locator(`[data-test-id="tag"].tag:has-text("${name}")`);
+	}
+
+	getSelectedTagItems(): Locator {
+		return this.getVisibleDropdown().locator('[data-test-id="tag"].tag.selected');
+	}
+
+	getOpenPublishModalButton(): Locator {
+		return this.page.getByTestId('workflow-open-publish-modal-button');
+	}
+
+	getPublishButton(): Locator {
+		return this.page.getByTestId('workflow-publish-button');
+	}
+
+	getPublishedIndicator(): Locator {
+		return this.page.getByRole('button', { name: 'Published' });
+	}
+
+	getLoadingMask(): Locator {
+		return this.page.locator('.el-loading-mask');
+	}
+
+	getNodeViewLoader(): Locator {
+		return this.page.getByTestId('node-view-loader');
+	}
+
+	getWorkflowIdFromUrl(): string {
+		const url = new URL(this.page.url());
+		const workflowId = url.pathname.split('/workflow/')[1]?.split('/')[0];
+		if (!workflowId) throw new Error('Workflow ID not found in URL');
+		return workflowId;
+	}
+
+	/**
+	 * Get the "Set up template" button that appears when credential setup is incomplete
+	 * @returns Locator for the setup workflow credentials button
+	 */
+	getSetupWorkflowCredentialsButton(): Locator {
+		return this.page.getByRole('button', { name: 'Set up template' });
 	}
 
 	// Production Checklist methods
@@ -374,10 +448,6 @@ export class CanvasPage extends BasePage {
 		await this.getProductionChecklistIgnoreAllButton().click();
 	}
 
-	async clickProductionChecklistAction(actionText: string): Promise<void> {
-		await this.getProductionChecklistActionItem(actionText).click();
-	}
-
 	async duplicateNode(nodeName: string): Promise<void> {
 		await this.nodeByName(nodeName).click({ button: 'right' });
 		await this.page.getByTestId('context-menu').getByText('Duplicate').click();
@@ -411,6 +481,10 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('node-creator-category-item');
 	}
 
+	getFirstAction(): Locator {
+		return this.page.locator('[data-keyboard-nav-type="action"]').first();
+	}
+
 	selectedNodes(): Locator {
 		return this.page
 			.locator('[data-test-id="canvas-node"]')
@@ -426,6 +500,14 @@ export class CanvasPage extends BasePage {
 		return this.nodeToolbar(nodeName).getByTestId('execute-node-button');
 	}
 
+	getArchivedTag(): Locator {
+		return this.page.getByTestId('workflow-archived-tag');
+	}
+
+	getNodeCreatorPlusButton(): Locator {
+		return this.page.getByTestId('node-creator-plus-button');
+	}
+
 	canvasPane(): Locator {
 		return this.page.getByTestId('canvas-wrapper');
 	}
@@ -436,6 +518,10 @@ export class CanvasPage extends BasePage {
 
 	toggleFocusPanelButton(): Locator {
 		return this.page.getByTestId('toggle-focus-panel-button');
+	}
+
+	stopExecutionButton(): Locator {
+		return this.page.getByTestId('stop-execution-button');
 	}
 
 	// Actions
@@ -456,6 +542,8 @@ export class CanvasPage extends BasePage {
 	}
 
 	async selectAll(): Promise<void> {
+		// Establish proper selection context first
+		await this.getCanvasNodes().first().click();
 		await this.page.keyboard.press('ControlOrMeta+a');
 	}
 
@@ -467,8 +555,8 @@ export class CanvasPage extends BasePage {
 		await this.canvasPane().click({ position: { x: 10, y: 10 } });
 	}
 
-	getNodeLeftPosition(nodeLocator: Locator): Promise<number> {
-		return nodeLocator.evaluate((el) => el.getBoundingClientRect().left);
+	async openCanvasContextMenu(): Promise<void> {
+		await this.canvasPane().click({ button: 'right', position: { x: 10, y: 10 } });
 	}
 
 	// Connection helpers
@@ -554,11 +642,6 @@ export class CanvasPage extends BasePage {
 		await this.openNewWorkflow();
 	}
 
-	async addNodeWithSubItem(searchText: string, subItemText: string): Promise<void> {
-		await this.addNode(searchText);
-		await this.nodeCreatorSubItem(subItemText).click();
-	}
-
 	async openNewWorkflow() {
 		await this.page.goto(ROUTES.NEW_WORKFLOW_PAGE);
 	}
@@ -579,6 +662,14 @@ export class CanvasPage extends BasePage {
 		await this.nodeByName(nodeName).click({ button: 'right' });
 	}
 
+	async rightClickCanvas(): Promise<void> {
+		await this.canvasBody().click({ button: 'right' });
+	}
+
+	getContextMenuItem(itemId: string): Locator {
+		return this.page.getByTestId(`context-menu-item-${itemId}`);
+	}
+
 	async clickContextMenuAction(actionText: string): Promise<void> {
 		await this.page.getByTestId('context-menu').getByText(actionText).click();
 	}
@@ -588,8 +679,12 @@ export class CanvasPage extends BasePage {
 		await this.clickContextMenuAction('execute');
 	}
 
+	clearExecutionDataButton(): Locator {
+		return this.page.getByTestId('clear-execution-data-button');
+	}
+
 	async clearExecutionData(): Promise<void> {
-		await this.page.getByTestId('clear-execution-data-button').click();
+		await this.clearExecutionDataButton().click();
 	}
 
 	getManualChatModal(): Locator {
@@ -610,16 +705,8 @@ export class CanvasPage extends BasePage {
 			.last();
 	}
 
-	getNodesWithSpinner(): Locator {
-		return this.page.getByTestId('canvas-node').filter({
-			has: this.page.locator('[data-icon=refresh-cw]'),
-		});
-	}
-
 	getWaitingNodes(): Locator {
-		return this.page.getByTestId('canvas-node').filter({
-			has: this.page.locator('[data-icon=clock]'),
-		});
+		return this.page.locator('[data-test-id="canvas-node"].waiting');
 	}
 
 	/**
@@ -636,6 +723,15 @@ export class CanvasPage extends BasePage {
 			.getByTestId('context-menu')
 			.getByTestId('context-menu-item-toggle_activation')
 			.click();
+	}
+
+	/**
+	 * Toggle node enabled/disabled state using keyboard shortcut
+	 * @param nodeName - The name of the node to toggle
+	 */
+	async toggleNodeEnabled(nodeName: string): Promise<void> {
+		await this.nodeByName(nodeName).click();
+		await this.page.keyboard.press('d');
 	}
 
 	// Chat open/close buttons (manual chat)
@@ -675,9 +771,17 @@ export class CanvasPage extends BasePage {
 			| 'ai_vectorRetriever'
 			| 'ai_vectorStore',
 		parentNodeName: string,
-		{ closeNDV = false, exactMatch = false }: { closeNDV?: boolean; exactMatch?: boolean } = {},
+		{
+			closeNDV = false,
+			exactMatch = false,
+			subcategory,
+		}: { closeNDV?: boolean; exactMatch?: boolean; subcategory?: string } = {},
 	): Promise<void> {
 		await this.getInputPlusEndpointByType(parentNodeName, endpointType).click();
+
+		if (subcategory) {
+			await this.nodeCreator.navigateToSubcategory(subcategory);
+		}
 
 		if (exactMatch) {
 			await this.nodeCreatorNodeItems().getByText(childNodeName, { exact: true }).click();
@@ -694,6 +798,14 @@ export class CanvasPage extends BasePage {
 		await this.page.getByTestId('radio-button-executions').click();
 	}
 
+	getZoomInButton(): Locator {
+		return this.page.getByTestId('zoom-in-button');
+	}
+
+	getResetZoomButton(): Locator {
+		return this.page.getByTestId('reset-zoom-button');
+	}
+
 	async clickZoomInButton(): Promise<void> {
 		await this.clickByTestId('zoom-in-button');
 	}
@@ -708,7 +820,9 @@ export class CanvasPage extends BasePage {
 	 */
 	async getCanvasZoomLevel(): Promise<number> {
 		return await this.page.evaluate(() => {
-			const canvasViewport = document.querySelector('.vue-flow__viewport');
+			const canvasViewport = document.querySelector(
+				'.vue-flow__transformationpane.vue-flow__container',
+			);
 			if (canvasViewport) {
 				const transform = window.getComputedStyle(canvasViewport).transform;
 				if (transform && transform !== 'none') {
@@ -735,5 +849,150 @@ export class CanvasPage extends BasePage {
 
 	getNodeWarningStatusIndicator(nodeName: string): Locator {
 		return this.nodeByName(nodeName).getByTestId('canvas-node-status-warning');
+	}
+
+	getNodeRunningStatusIndicator(nodeName: string): Locator {
+		return this.page.locator(
+			`[data-test-id="canvas-node"][data-node-name="${nodeName}"].running, [data-test-id="canvas-node"][data-node-name="${nodeName}"].waiting`,
+		);
+	}
+
+	getSuccessEdges(): Locator {
+		return this.page.locator('[data-edge-status="success"]');
+	}
+
+	getAllNodeSuccessIndicators(): Locator {
+		return this.page.getByTestId('canvas-node-status-success');
+	}
+
+	getCanvasHandlePlusWrapperByName(nodeName: string): Locator {
+		return this.page
+			.locator(
+				`[data-test-id="canvas-node-output-handle"][data-node-name="${nodeName}"] [data-test-id="canvas-handle-plus-wrapper"]`,
+			)
+			.first();
+	}
+
+	stopExecutionWaitingForWebhookButton(): Locator {
+		return this.page.getByTestId('stop-execution-waiting-for-webhook-button');
+	}
+
+	getExecuteWorkflowButtonSpinner(): Locator {
+		return this.getExecuteWorkflowButton().locator('.n8n-spinner');
+	}
+
+	getCanvasPlusButton(): Locator {
+		return this.page.getByTestId('canvas-plus-button');
+	}
+
+	async hitUndo(): Promise<void> {
+		await this.page.keyboard.press('ControlOrMeta+z');
+		// Wait for canvas to redraw after undo
+		// eslint-disable-next-line playwright/no-wait-for-timeout
+		await this.page.waitForTimeout(100);
+	}
+
+	async hitRedo(): Promise<void> {
+		await this.page.keyboard.press('ControlOrMeta+Shift+z');
+		// Wait for canvas to redraw after redo
+		// eslint-disable-next-line playwright/no-wait-for-timeout
+		await this.page.waitForTimeout(100);
+	}
+
+	async hitExecuteWorkflow(): Promise<void> {
+		await this.page.keyboard.press('ControlOrMeta+Enter');
+	}
+
+	async getNodePosition(nodeName: string): Promise<{ x: number; y: number }> {
+		const node = this.nodeByName(nodeName);
+		const boundingBox = await node.boundingBox();
+		if (!boundingBox) throw new Error(`Node ${nodeName} not found or not visible`);
+		return { x: boundingBox.x, y: boundingBox.y };
+	}
+
+	async dragNodeToRelativePosition(
+		nodeName: string,
+		deltaX: number,
+		deltaY: number,
+	): Promise<void> {
+		const node = this.nodeByName(nodeName);
+		const currentBox = await node.boundingBox();
+		if (!currentBox) throw new Error(`Node ${nodeName} not found`);
+
+		// Calculate center of node for drag start
+		const startX = currentBox.x + currentBox.width / 2;
+		const startY = currentBox.y + currentBox.height / 2;
+
+		// Use mouse events for precise control
+		await this.page.mouse.move(startX, startY);
+		await this.page.mouse.down();
+		await this.page.mouse.move(startX + deltaX, startY + deltaY, { steps: 10 });
+		await this.page.mouse.up();
+	}
+
+	async deleteNodeFromContextMenu(nodeName: string): Promise<void> {
+		await this.nodeByName(nodeName).click({ button: 'right' });
+		await this.page.getByTestId('context-menu').getByText('Delete').click();
+	}
+
+	async hitDeleteAllNodes(): Promise<void> {
+		await this.selectAll();
+		await this.page.keyboard.press('Backspace');
+	}
+
+	getNodeInputHandles(nodeName: string): Locator {
+		return this.page.locator(
+			`[data-test-id="canvas-node-input-handle"][data-node-name="${nodeName}"]`,
+		);
+	}
+
+	getNodeOutputHandle(nodeName: string, outputIndex = 0): Locator {
+		return this.page.locator(
+			`[data-test-id="canvas-node-output-handle"][data-node-name="${nodeName}"][data-index="${outputIndex}"]`,
+		);
+	}
+
+	getNodeInputHandle(nodeName: string, inputIndex = 0): Locator {
+		return this.page.locator(
+			`[data-test-id="canvas-node-input-handle"][data-node-name="${nodeName}"][data-index="${inputIndex}"]`,
+		);
+	}
+
+	async connectNodesByDrag(
+		sourceNode: string,
+		targetNode: string,
+		sourceIndex = 0,
+		targetIndex = 0,
+	): Promise<void> {
+		const outputHandle = this.getNodeOutputHandle(sourceNode, sourceIndex);
+		const inputHandle = this.getNodeInputHandle(targetNode, targetIndex);
+		await outputHandle.dragTo(inputHandle);
+	}
+
+	getConnectionLabelBetweenNodes(sourceNode: string, targetNode: string): Locator {
+		return this.page.locator(
+			`[data-test-id="edge-label"][data-source-node-name="${sourceNode}"][data-target-node-name="${targetNode}"]`,
+		);
+	}
+
+	getWorkflowName(): Locator {
+		return this.page.getByTestId('workflow-name-input');
+	}
+
+	// Workflow History methods
+	getWorkflowHistoryButton(): Locator {
+		return this.page.getByTestId('workflow-history-button');
+	}
+
+	getWorkflowHistoryCloseButton(): Locator {
+		return this.page.getByTestId('workflow-history-close-button');
+	}
+
+	async openWorkflowHistory(): Promise<void> {
+		await this.getWorkflowHistoryButton().click();
+	}
+
+	async closeWorkflowHistory(): Promise<void> {
+		await this.getWorkflowHistoryCloseButton().click();
 	}
 }

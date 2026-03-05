@@ -10,7 +10,6 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import {
 	FolderRepository,
@@ -40,7 +39,6 @@ import * as utils from './shared/utils/';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { getWorkflowById } from '@/public-api/v1/handlers/workflows/workflows.service';
-import { CacheService } from '@/services/cache/cache.service';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['project'],
@@ -140,6 +138,97 @@ describe('GET /projects/', () => {
 		).toBe(true);
 		expect(respProjects.find((p) => p.id === teamProject1.id)).not.toBeUndefined();
 		expect(respProjects.find((p) => p.id === teamProject2.id)).not.toBeUndefined();
+	});
+});
+
+describe('Project members endpoints', () => {
+	test('POST /projects/:projectId/users adds a member and emits telemetry', async () => {
+		const owner = await createOwner();
+		const member = await createUser();
+		const project = await createTeamProject('Team Project', owner);
+
+		const ownerAgent = testServer.authAgentFor(owner);
+		const res = await ownerAgent
+			.post(`/projects/${project.id}/users`)
+			.send({ relations: [{ userId: member.id, role: 'project:viewer' }] });
+
+		expect(res.status).toBe(201);
+		const relations = await getProjectRelations({ projectId: project.id });
+		expect(relations.some((r) => r.userId === member.id && r.role.slug === 'project:viewer')).toBe(
+			true,
+		);
+	});
+
+	test('POST /projects/:projectId/users returns 409 for existing member with different role', async () => {
+		const owner = await createOwner();
+		const member = await createUser();
+		const project = await createTeamProject('Team Project', owner);
+
+		// First add as viewer
+		await linkUserToProject(member, project, 'project:viewer');
+
+		const ownerAgent = testServer.authAgentFor(owner);
+		const res = await ownerAgent
+			.post(`/projects/${project.id}/users`)
+			.send({ relations: [{ userId: member.id, role: 'project:editor' }] });
+
+		expect(res.status).toBe(409);
+		const relations = await getProjectRelations({ projectId: project.id });
+		expect(relations.some((r) => r.userId === member.id && r.role.slug === 'project:viewer')).toBe(
+			true,
+		);
+	});
+
+	test('POST /projects/:projectId/users returns 200 when member already exists with same role (no-op)', async () => {
+		const owner = await createOwner();
+		const member = await createUser();
+		const project = await createTeamProject('Team Project', owner);
+
+		// First add as viewer
+		await linkUserToProject(member, project, 'project:viewer');
+
+		const ownerAgent = testServer.authAgentFor(owner);
+		const res = await ownerAgent
+			.post(`/projects/${project.id}/users`)
+			.send({ relations: [{ userId: member.id, role: 'project:viewer' }] });
+
+		expect(res.status).toBe(200);
+		const relations = await getProjectRelations({ projectId: project.id });
+		expect(relations.some((r) => r.userId === member.id && r.role.slug === 'project:viewer')).toBe(
+			true,
+		);
+	});
+
+	test("PATCH /projects/:projectId/users/:userId changes a member's role", async () => {
+		const owner = await createOwner();
+		const member = await createUser();
+		const project = await createTeamProject('Team Project', owner);
+		await linkUserToProject(member, project, 'project:viewer');
+
+		const ownerAgent = testServer.authAgentFor(owner);
+		const res = await ownerAgent
+			.patch(`/projects/${project.id}/users/${member.id}`)
+			.send({ role: 'project:editor' });
+
+		expect(res.status).toBe(204);
+		const relations = await getProjectRelations({ projectId: project.id });
+		expect(relations.some((r) => r.userId === member.id && r.role.slug === 'project:editor')).toBe(
+			true,
+		);
+	});
+
+	test('DELETE /projects/:projectId/users/:userId removes a member', async () => {
+		const owner = await createOwner();
+		const member = await createUser();
+		const project = await createTeamProject('Team Project', owner);
+		await linkUserToProject(member, project, 'project:viewer');
+
+		const ownerAgent = testServer.authAgentFor(owner);
+		const res = await ownerAgent.delete(`/projects/${project.id}/users/${member.id}`);
+
+		expect(res.status).toBe(204);
+		const relations = await getProjectRelations({ projectId: project.id });
+		expect(relations.some((r) => r.userId === member.id)).toBe(false);
 	});
 });
 
@@ -460,42 +549,29 @@ describe('POST /projects/', () => {
 		expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(2);
 	});
 
-	const globalConfig = Container.get(GlobalConfig);
-	// Preventing this relies on transactions and we can't use them with the
-	// sqlite legacy driver due to data loss risks.
-	if (!globalConfig.database.isLegacySqlite) {
-		test('should respect the quota when trying to create multiple projects in parallel (no race conditions)', async () => {
-			expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(0);
-			const maxTeamProjects = 3;
-			testServer.license.setQuota('quota:maxTeamProjects', maxTeamProjects);
-			const ownerUser = await createOwner();
-			const ownerAgent = testServer.authAgentFor(ownerUser);
-			await expect(
-				Container.get(ProjectRepository).count({ where: { type: 'team' } }),
-			).resolves.toBe(0);
+	test('should respect the quota when trying to create multiple projects in parallel (no race conditions)', async () => {
+		expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(0);
+		const maxTeamProjects = 3;
+		testServer.license.setQuota('quota:maxTeamProjects', maxTeamProjects);
+		const ownerUser = await createOwner();
+		const ownerAgent = testServer.authAgentFor(ownerUser);
+		await expect(Container.get(ProjectRepository).count({ where: { type: 'team' } })).resolves.toBe(
+			0,
+		);
 
-			await Promise.all([
-				ownerAgent.post('/projects/').send({ name: 'Test Team Project 1' }),
-				ownerAgent.post('/projects/').send({ name: 'Test Team Project 2' }),
-				ownerAgent.post('/projects/').send({ name: 'Test Team Project 3' }),
-				ownerAgent.post('/projects/').send({ name: 'Test Team Project 4' }),
-				ownerAgent.post('/projects/').send({ name: 'Test Team Project 5' }),
-				ownerAgent.post('/projects/').send({ name: 'Test Team Project 6' }),
-			]);
+		await Promise.all([
+			ownerAgent.post('/projects/').send({ name: 'Test Team Project 1' }),
+			ownerAgent.post('/projects/').send({ name: 'Test Team Project 2' }),
+			ownerAgent.post('/projects/').send({ name: 'Test Team Project 3' }),
+			ownerAgent.post('/projects/').send({ name: 'Test Team Project 4' }),
+			ownerAgent.post('/projects/').send({ name: 'Test Team Project 5' }),
+			ownerAgent.post('/projects/').send({ name: 'Test Team Project 6' }),
+		]);
 
-			// Some of the calls above will interleave and may fail with a deadlock
-			// error on MySQL (this is not an issue on PG or MariaDB).
-			// That can lead to less projects being created than the quota allows.
-			// So we're only checking here that we didn't create more projects than
-			// are allowed instead of checking for a specific number.
-			// We only want to prevent that this endpoint is exploited. A normal user
-			// using the FE would almost never hit this and if they do they can retry
-			// the action. No need to implement rety logic in the controller.
-			await expect(
-				Container.get(ProjectRepository).count({ where: { type: 'team' } }),
-			).resolves.toBeLessThanOrEqual(maxTeamProjects);
-		});
-	}
+		await expect(Container.get(ProjectRepository).count({ where: { type: 'team' } })).resolves.toBe(
+			maxTeamProjects,
+		);
+	});
 });
 
 describe('PATCH /projects/:projectId', () => {
@@ -554,7 +630,7 @@ describe('PATCH /projects/:projectId', () => {
 				createTeamProject(undefined, testUser1),
 				createTeamProject(undefined, testUser2),
 			]);
-			const [credential1, credential2] = await Promise.all([
+			const [_credential1, credential2] = await Promise.all([
 				saveCredential(randomCredentialPayload(), {
 					role: 'credential:owner',
 					project: teamProject1,
@@ -575,11 +651,9 @@ describe('PATCH /projects/:projectId', () => {
 
 			const memberAgent = testServer.authAgentFor(testUser1);
 
-			const deleteSpy = jest.spyOn(Container.get(CacheService), 'deleteMany');
-			const resp = await memberAgent.patch(`/projects/${teamProject1.id}`).send({
-				name: teamProject1.name,
+			// Add two members to teamProject1
+			const addResp = await memberAgent.post(`/projects/${teamProject1.id}/users`).send({
 				relations: [
-					{ userId: testUser1.id, role: 'project:admin' },
 					{ userId: testUser3.id, role: 'project:editor' },
 					{ userId: ownerUser.id, role: 'project:viewer' },
 				] as Array<{
@@ -587,10 +661,7 @@ describe('PATCH /projects/:projectId', () => {
 					role: ProjectRole;
 				}>,
 			});
-			expect(resp.status).toBe(200);
-
-			expect(deleteSpy).toBeCalledWith([`credential-can-use-secrets:${credential1.id}`]);
-			deleteSpy.mockClear();
+			expect(addResp.status).toBe(201);
 
 			const [tp1Relations, tp2Relations] = await Promise.all([
 				getProjectRelations({ projectId: teamProject1.id }),
@@ -687,13 +758,9 @@ describe('PATCH /projects/:projectId', () => {
 
 				await testServer
 					.authAgentFor(projectAdmin)
-					.patch(`/projects/${teamProject.id}`)
+					.post(`/projects/${teamProject.id}/users`)
 					.send({
-						name: teamProject.name,
-						relations: [
-							{ userId: projectAdmin.id, role: 'project:admin' },
-							{ userId: userToBeInvited.id, role },
-						] as Array<{
+						relations: [{ userId: userToBeInvited.id, role }] as Array<{
 							userId: string;
 							role: ProjectRole;
 						}>,
@@ -727,17 +794,9 @@ describe('PATCH /projects/:projectId', () => {
 
 			const memberAgent = testServer.authAgentFor(testUser2);
 
-			const resp = await memberAgent.patch(`/projects/${teamProject.id}`).send({
-				name: teamProject.name,
-				relations: [
-					{ userId: testUser2.id, role: 'project:admin' },
-					{ userId: testUser1.id, role: 'project:editor' },
-					{ userId: testUser3.id, role: 'project:editor' },
-				] as Array<{
-					userId: string;
-					role: ProjectRole;
-				}>,
-			});
+			const resp = await memberAgent
+				.patch(`/projects/${teamProject.id}/users/${testUser1.id}`)
+				.send({ role: 'project:editor' });
 			expect(resp.status).toBe(400);
 
 			const tpRelations = await getProjectRelations({ projectId: teamProject.id });
@@ -764,18 +823,14 @@ describe('PATCH /projects/:projectId', () => {
 
 			const memberAgent = testServer.authAgentFor(testUser2);
 
-			const resp = await memberAgent.patch(`/projects/${teamProject.id}`).send({
-				name: teamProject.name,
-				relations: [
-					{ userId: testUser1.id, role: 'project:viewer' },
-					{ userId: testUser2.id, role: 'project:admin' },
-					{ userId: testUser3.id, role: 'project:admin' },
-				] as Array<{
-					userId: string;
-					role: ProjectRole;
-				}>,
-			});
-			expect(resp.status).toBe(200);
+			const resp1 = await memberAgent
+				.patch(`/projects/${teamProject.id}/users/${testUser2.id}`)
+				.send({ role: 'project:admin' });
+			expect(resp1.status).toBe(204);
+			const resp2 = await memberAgent
+				.patch(`/projects/${teamProject.id}/users/${testUser3.id}`)
+				.send({ role: 'project:admin' });
+			expect(resp2.status).toBe(204);
 
 			const tpRelations = await getProjectRelations({ projectId: teamProject.id });
 			expect(tpRelations.length).toBe(3);
@@ -795,11 +850,8 @@ describe('PATCH /projects/:projectId', () => {
 
 			const memberAgent = testServer.authAgentFor(testUser1);
 
-			const resp = await memberAgent.patch(`/projects/${personalProject.id}`).send({
-				relations: [
-					{ userId: testUser1.id, role: PROJECT_OWNER_ROLE_SLUG },
-					{ userId: testUser2.id, role: 'project:admin' },
-				] as Array<{
+			const resp = await memberAgent.post(`/projects/${personalProject.id}/users`).send({
+				relations: [{ userId: testUser2.id, role: 'project:admin' }] as Array<{
 					userId: string;
 					role: ProjectRole;
 				}>,

@@ -226,6 +226,34 @@ const onWebhookCallProperties = updateDisplayOptions(displayOnWebhook, [
 
 const webhookPath = '={{$parameter["options"]["webhookSuffix"] || ""}}';
 
+const waitingTooltip = (
+	parameters: { resume: string; options?: Record<string, string> },
+	resumeUrl: string,
+	formResumeUrl: string,
+) => {
+	const resume = parameters.resume;
+
+	if (['webhook', 'form'].includes(resume as string)) {
+		const { webhookSuffix } = (parameters.options ?? {}) as { webhookSuffix: string };
+		const suffix = webhookSuffix && typeof webhookSuffix !== 'object' ? `/${webhookSuffix}` : '';
+
+		let message = '';
+		const url = `${resume === 'form' ? formResumeUrl : resumeUrl}${suffix}`;
+
+		if (resume === 'form') {
+			message = 'Execution will continue when form is submitted on ';
+		}
+
+		if (resume === 'webhook') {
+			message = 'Execution will continue when webhook is received on ';
+		}
+
+		return `${message}<a href="${url}" target="_blank">${url}</a>`;
+	}
+
+	return 'Execution will continue when wait time is over';
+};
+
 export class Wait extends Webhook {
 	authPropertyName = 'incomingAuthentication';
 
@@ -244,6 +272,7 @@ export class Wait extends Webhook {
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
 		credentials: credentialsProperty(this.authPropertyName),
+		waitingNodeTooltip: `={{ (${waitingTooltip})($parameter, $execution.resumeUrl, $execution.resumeFormUrl) }}`,
 		webhooks: [
 			{
 				...defaultWebhookDescription,
@@ -276,6 +305,10 @@ export class Wait extends Webhook {
 				displayName: 'Resume',
 				name: 'resume',
 				type: 'options',
+				builderHint: {
+					message:
+						'For user approval workflows, consider using nodes with operation: "sendAndWait" (e.g., email, Slack) instead of Wait node. If using "webhook", the URL will be generated at runtime and can be referenced with {{ $execution.resumeUrl }}.',
+				},
 				options: [
 					{
 						name: 'After Time Interval',
@@ -541,9 +574,12 @@ export class Wait extends Webhook {
 		if (waitValue < 65000) {
 			// If wait time is shorter than 65 seconds leave execution active because
 			// we just check the database every 60 seconds.
-			return await new Promise((resolve) => {
+			return await new Promise((resolve, _reject) => {
 				const timer = setTimeout(() => resolve([context.getInputData()]), waitValue);
-				context.onExecutionCancellation(() => clearTimeout(timer));
+				context.onExecutionCancellation(() => {
+					clearTimeout(timer);
+					resolve([context.getInputData()]);
+				});
 			});
 		}
 

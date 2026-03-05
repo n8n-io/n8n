@@ -1,0 +1,79 @@
+get:
+  x-eov-operation-id: getDataTable
+  x-eov-operation-handler: v1/handlers/data-tables/data-tables.handler
+  tags:
+    - DataTable
+  summary: Get a data table
+  description: Retrieve a specific data table by ID.
+  operationId: get-data-table
+  parameters:
+    - $ref: '../schemas/parameters/dataTableId.yml'
+  responses:
+    '200':
+      description: Successfully retrieved data table
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/dataTable.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'
+  security:
+    - ApiKeyAuth: []
+
+patch:
+  x-eov-operation-id: updateDataTable
+  x-eov-operation-handler: v1/handlers/data-tables/data-tables.handler
+  tags:
+    - DataTable
+  summary: Update a data table
+  description: Update a data table's name.
+  operationId: update-data-table
+  parameters:
+    - $ref: '../schemas/parameters/dataTableId.yml'
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../schemas/updateDataTableRequest.yml'
+        example:
+          name: 'updated-customers'
+  responses:
+    '200':
+      description: Data table updated successfully
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/dataTable.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'
+    '409':
+      $ref: '../../../../shared/spec/responses/conflict.yml'
+  security:
+    - ApiKeyAuth: []
+
+delete:
+  x-eov-operation-id: deleteDataTable
+  x-eov-operation-handler: v1/handlers/data-tables/data-tables.handler
+  tags:
+    - DataTable
+  summary: Delete a data table
+  description: Delete a data table. This will also delete all rows in the table.
+  operationId: delete-data-table
+  parameters:
+    - $ref: '../schemas/parameters/dataTableId.yml'
+  responses:
+    '204':
+      description: Data table deleted successfully
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'
+  security:
+    - ApiKeyAuth: []

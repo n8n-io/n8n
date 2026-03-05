@@ -11,7 +11,10 @@ import * as send from './send.operation';
 import * as sendAndWait from './sendAndWait.operation';
 import { smtpConnectionTest } from './utils';
 import { sendAndWaitWebhooksDescription } from '../../../utils/sendAndWait/descriptions';
-import { sendAndWaitWebhook } from '../../../utils/sendAndWait/utils';
+import {
+	SEND_AND_WAIT_WAITING_TOOLTIP,
+	sendAndWaitWebhook,
+} from '../../../utils/sendAndWait/utils';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Send Email',
@@ -34,6 +37,7 @@ export const versionDescription: INodeTypeDescription = {
 			testedBy: 'smtpConnectionTest',
 		},
 	],
+	waitingNodeTooltip: SEND_AND_WAIT_WAITING_TOOLTIP,
 	webhooks: sendAndWaitWebhooksDescription,
 	properties: [
 		{
@@ -67,6 +71,11 @@ export const versionDescription: INodeTypeDescription = {
 					action: 'Send message and wait for response',
 				},
 			],
+			displayOptions: {
+				show: {
+					resource: ['email'],
+				},
+			},
 		},
 		...send.description,
 		...sendAndWait.description,

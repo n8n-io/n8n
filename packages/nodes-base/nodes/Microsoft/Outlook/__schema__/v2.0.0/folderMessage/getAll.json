@@ -27,6 +27,22 @@
         "conversationId": {
             "type": "string"
         },
+        "from": {
+            "type": "object",
+            "properties": {
+                "emailAddress": {
+                    "type": "object",
+                    "properties": {
+                        "address": {
+                            "type": "string"
+                        },
+                        "name": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "hasAttachments": {
             "type": "boolean"
         },
@@ -35,7 +51,32 @@
         },
         "receivedDateTime": {
             "type": "string"
+        },
+        "sentDateTime": {
+            "type": "string"
+        },
+        "subject": {
+            "type": "string"
+        },
+        "toRecipients": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "emailAddress": {
+                        "type": "object",
+                        "properties": {
+                            "address": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
-    "version": 6
+    "version": 8
 }

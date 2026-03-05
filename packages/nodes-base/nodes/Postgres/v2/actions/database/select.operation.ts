@@ -1,8 +1,9 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
+import {
+	tryToParseNumber,
+	type IDataObject,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	type INodeProperties,
 } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
@@ -14,9 +15,13 @@ import type {
 	QueryValues,
 	QueryWithValues,
 	SortRule,
-	WhereClause,
 } from '../../helpers/interfaces';
-import { addSortRules, addWhereClauses, replaceEmptyStringsByNulls } from '../../helpers/utils';
+import {
+	addSortRules,
+	addWhereClauses,
+	getWhereClauses,
+	replaceEmptyStringsByNulls,
+} from '../../helpers/utils';
 import {
 	combineConditionsCollection,
 	optionsCollection,
@@ -104,8 +109,7 @@ export async function execute(
 			query = `SELECT $${values.length}:name FROM $1:name.$2:name`;
 		}
 
-		const whereClauses =
-			((this.getNodeParameter('where', i, []) as IDataObject).values as WhereClause[]) || [];
+		const whereClauses = getWhereClauses(this, i);
 
 		const combineConditions = this.getNodeParameter('combineConditions', i, 'AND') as string;
 
@@ -125,13 +129,15 @@ export async function execute(
 
 		const returnAll = this.getNodeParameter('returnAll', i, false);
 		if (!returnAll) {
-			const limit = this.getNodeParameter('limit', i, 50);
-			query += ` LIMIT ${limit}`;
+			const limitRaw = this.getNodeParameter('limit', i, 50);
+			const limit = tryToParseNumber(limitRaw);
+			values.push(limit);
+			query += ` LIMIT $${values.length}`;
 		}
 
 		const queryWithValues = { query, values };
 		queries.push(queryWithValues);
 	}
 
-	return await runQueries(queries, items, nodeOptions);
+	return await runQueries(queries, nodeOptions);
 }

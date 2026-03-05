@@ -2,12 +2,12 @@
 /* eslint-disable @typescript-eslint/no-this-alias */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 
+import { ApplicationError } from '@n8n/errors';
 import * as jmespath from 'jmespath';
 import { DateTime, Duration, Interval, Settings } from 'luxon';
 
 import { augmentArray, augmentObject } from './augment-object';
-import { AGENT_LANGCHAIN_NODE_TYPE, SCRIPTING_NODE_TYPES } from './constants';
-import { ApplicationError } from '@n8n/errors';
+import { AGENT_LANGCHAIN_NODE_TYPE, SCRIPTING_NODE_TYPES, BINARY_MODE_COMBINED } from './constants';
 import { ExpressionError, type ExpressionErrorOptions } from './errors/expression.error';
 import { getGlobalState } from './global-state';
 import { NodeConnectionTypes } from './interfaces';
@@ -17,7 +17,6 @@ import type {
 	INodeExecutionData,
 	INodeParameters,
 	IPairedItemData,
-	IRunExecutionData,
 	ISourceData,
 	ITaskData,
 	IWorkflowDataProxyAdditionalKeys,
@@ -26,9 +25,11 @@ import type {
 	WorkflowExecuteMode,
 	ProxyInput,
 	INode,
+	INodeType,
 } from './interfaces';
 import * as NodeHelpers from './node-helpers';
 import { createResultError, createResultOk } from './result';
+import type { IRunExecutionData } from './run-execution-data/run-execution-data';
 import { isResourceLocatorValue } from './type-guards';
 import { deepCopy, isObjectEmpty } from './utils';
 import type { Workflow } from './workflow';
@@ -87,6 +88,26 @@ export class WorkflowDataProxy {
 
 		this.timezone = workflow.settings?.timezone ?? getGlobalState().defaultTimezone;
 		Settings.defaultZone = this.timezone;
+	}
+
+	/**
+	 * Returns execution data, conditionally extracting only 'json' from the item based on workflow 'binaryMode' setting.
+	 * When binary mode is 'combined', this method returns only the 'json' from the item unless 'fullItem' is true.
+	 *
+	 * @private
+	 * @param {INodeExecutionData | INodeExecutionData[]} data - The execution data to process
+	 * @param {boolean} fullItem - If true, always returns the complete item data
+	 * @returns The full execution data or only the json property, depending on workflow 'binaryMode' setting
+	 */
+	private returnExecutionData(data: INodeExecutionData | INodeExecutionData[], fullItem = false) {
+		if (fullItem) return data;
+		if (this.workflow.settings?.binaryMode !== BINARY_MODE_COMBINED) return data;
+
+		if (Array.isArray(data)) {
+			return data.map((i) => i.json);
+		}
+
+		return data.json;
 	}
 
 	/**
@@ -165,7 +186,16 @@ export class WorkflowDataProxy {
 	}
 
 	private buildAgentToolInfo(node: INode) {
-		const nodeType = this.workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		const nodeType: INodeType | undefined = this.workflow.nodeTypes.getByNameAndVersion(
+			node.type,
+			node.typeVersion,
+		);
+		if (!nodeType) {
+			return {
+				name: node.name,
+				type: node.type,
+			};
+		}
 		const type = nodeType.description.displayName;
 		const params = NodeHelpers.getNodeParameters(
 			nodeType.description.properties,
@@ -794,19 +824,6 @@ export class WorkflowDataProxy {
 			});
 		};
 
-		const createInvalidPairedItemError = ({ nodeName }: { nodeName: string }) => {
-			return createExpressionError("Can't get data for expression", {
-				messageTemplate: 'Expression info invalid',
-				functionality: 'pairedItem',
-				functionOverrides: {
-					message: "Can't get data",
-				},
-				nodeCause: nodeName,
-				descriptionKey: 'pairedItemInvalidInfo',
-				type: 'paired_item_invalid_info',
-			});
-		};
-
 		const createMissingPairedItemError = (
 			nodeCause: string,
 			usedMethodName: PairedItemMethod = PAIRED_ITEM_METHOD.PAIRED_ITEM,
@@ -962,7 +979,7 @@ export class WorkflowDataProxy {
 			// Done: reached the destination node in the ancestry chain
 			if (sourceData.previousNode === destinationNodeName) {
 				if (pairedItem.item >= outputData.length) {
-					throw createInvalidPairedItemError({ nodeName: sourceData.previousNode });
+					throw createMissingPairedItemError(sourceData.previousNode, usedMethodName);
 				}
 
 				return item;
@@ -1040,10 +1057,20 @@ export class WorkflowDataProxy {
 					},
 				);
 			}
-			const inputData =
-				that.runExecutionData?.resultData.runData[that.activeNodeName]?.[runIndex].inputOverride;
-			const placeholdersDataInputData =
-				inputData?.[NodeConnectionTypes.AiTool]?.[0]?.[itemIndex].json;
+
+			const resultData =
+				that.runExecutionData?.resultData?.runData?.[that.activeNodeName]?.[runIndex];
+			let inputData;
+			let placeholdersDataInputData;
+
+			if (!resultData) {
+				inputData = this.connectionInputData?.[runIndex];
+				placeholdersDataInputData = inputData?.json;
+			} else {
+				inputData =
+					that.runExecutionData?.resultData.runData[that.activeNodeName]?.[runIndex].inputOverride;
+				placeholdersDataInputData = inputData?.[NodeConnectionTypes.AiTool]?.[0]?.[itemIndex].json;
+			}
 
 			if (!placeholdersDataInputData) {
 				throw new ExpressionError('No execution data available', {
@@ -1059,11 +1086,37 @@ export class WorkflowDataProxy {
 				defaultValue
 			);
 		};
+		const handleTool = (throwOnError = true) => {
+			const fallbackValue = that.additionalKeys?.['$tool'];
+			try {
+				const toolName = handleFromAi('tool', '');
+				const toolParameters = handleFromAi('toolParameters', '');
+				return {
+					name: toolName ?? fallbackValue?.name,
+					parameters: toolParameters ?? fallbackValue?.parameters,
+				};
+			} catch (error) {
+				const isNoExecutionDataError =
+					error instanceof ExpressionError && error.context.type === 'no_execution_data';
+				// always suppress no_execution_data error
+				// $tool can get accessed in some cases where no execution data is available, e.g. task runners
+				if (isNoExecutionDataError) {
+					return fallbackValue;
+				}
+				if (throwOnError) {
+					throw error;
+				}
+				return undefined;
+			}
+		};
 
 		const base = {
-			$: (nodeName: string) => {
+			$: (nodeName?: string, resolveFullItem?: boolean) => {
 				if (!nodeName) {
-					throw createExpressionError('When calling $(), please specify a node');
+					nodeName = (that.prevNodeGetter() as { name: string }).name;
+					if (!nodeName) {
+						throw createExpressionError('When calling $(), please specify a node');
+					}
 				}
 
 				const referencedNode = that.workflow.getNode(nodeName);
@@ -1136,9 +1189,22 @@ export class WorkflowDataProxy {
 									const parentMainInputNode = that.workflow.getParentMainInputNode(activeNode);
 									contextNode = parentMainInputNode?.name ?? contextNode;
 								}
-								const parentNodes = that.workflow.getParentNodes(contextNode);
-								if (!parentNodes.includes(nodeName)) {
-									throw createNoConnectionError(nodeName);
+								// Check if the node has any children and check parents for them instead of the activeNodeName
+								const children = that.workflow.getChildNodes(that.activeNodeName, 'ALL_NON_MAIN');
+								if (children.length === 0) {
+									// Node has no children, check parent of context node
+									const parents = that.workflow.getParentNodes(contextNode);
+									if (!parents.includes(nodeName)) {
+										throw createNoConnectionError(nodeName);
+									}
+								} else {
+									// Node has children, check parent of children
+									const parents = children.flatMap((child) =>
+										that.workflow.getParentNodes(child, 'ALL'),
+									);
+									if (!parents.includes(nodeName)) {
+										throw createNoConnectionError(nodeName);
+									}
 								}
 
 								ensureNodeExecutionData();
@@ -1161,7 +1227,7 @@ export class WorkflowDataProxy {
 										);
 
 										if (pinnedData) {
-											return pinnedData[itemIndex];
+											return that.returnExecutionData(pinnedData[itemIndex], resolveFullItem);
 										}
 									}
 
@@ -1209,7 +1275,10 @@ export class WorkflowDataProxy {
 										that.executeData.source.main[pairedItem.input || 0] ??
 										that.executeData.source.main[0];
 
-									return getPairedItem(nodeName, sourceData, pairedItem, property);
+									return that.returnExecutionData(
+										getPairedItem(nodeName, sourceData, pairedItem, property),
+										resolveFullItem,
+									);
 								};
 
 								if (property === PAIRED_ITEM_METHOD.ITEM) {
@@ -1232,7 +1301,8 @@ export class WorkflowDataProxy {
 										branchIndex,
 										runIndex,
 									});
-									if (executionData[0]) return executionData[0];
+									if (executionData[0])
+										return that.returnExecutionData(executionData[0], resolveFullItem);
 									return undefined;
 								};
 							}
@@ -1252,7 +1322,10 @@ export class WorkflowDataProxy {
 									});
 									if (!executionData.length) return undefined;
 									if (executionData[executionData.length - 1]) {
-										return executionData[executionData.length - 1];
+										return that.returnExecutionData(
+											executionData[executionData.length - 1],
+											resolveFullItem,
+										);
 									}
 									return undefined;
 								};
@@ -1266,7 +1339,15 @@ export class WorkflowDataProxy {
 										that.workflow.getNodeConnectionIndexes(that.activeNodeName, nodeName)
 											?.sourceIndex ??
 										0;
-									return that.getNodeExecutionOrPinnedData({ nodeName, branchIndex, runIndex });
+
+									return that.returnExecutionData(
+										that.getNodeExecutionOrPinnedData({
+											nodeName,
+											branchIndex,
+											runIndex,
+										}),
+										resolveFullItem,
+									);
 								};
 							}
 							if (property === 'context') {
@@ -1304,7 +1385,7 @@ export class WorkflowDataProxy {
 					}
 
 					if (property === 'item') {
-						return that.connectionInputData[that.itemIndex];
+						return that.returnExecutionData(that.connectionInputData[that.itemIndex]);
 					}
 					if (property === 'first') {
 						return (...args: unknown[]) => {
@@ -1314,7 +1395,7 @@ export class WorkflowDataProxy {
 
 							const result = that.connectionInputData;
 							if (result[0]) {
-								return result[0];
+								return that.returnExecutionData(result[0]);
 							}
 							return undefined;
 						};
@@ -1327,7 +1408,7 @@ export class WorkflowDataProxy {
 
 							const result = that.connectionInputData;
 							if (result.length && result[result.length - 1]) {
-								return result[result.length - 1];
+								return that.returnExecutionData(result[result.length - 1]);
 							}
 							return undefined;
 						};
@@ -1336,7 +1417,7 @@ export class WorkflowDataProxy {
 						return () => {
 							const result = that.connectionInputData;
 							if (result.length) {
-								return result;
+								return that.returnExecutionData(result);
 							}
 							return [];
 						};
@@ -1396,6 +1477,7 @@ export class WorkflowDataProxy {
 					that.contextNodeName,
 				);
 			},
+			// this is legacy syntax that is not documented
 			$item: (itemIndex: number, runIndex?: number) => {
 				const defaultReturnRunIndex = runIndex === undefined ? -1 : runIndex;
 				const dataProxy = new WorkflowDataProxy(
@@ -1419,6 +1501,7 @@ export class WorkflowDataProxy {
 			// Make sure mis-capitalized $fromAI is handled correctly even though we don't auto-complete it
 			$fromai: handleFromAi,
 			$fromAi: handleFromAi,
+			// this is a legacy syntax that is not documented
 			$items: (nodeName?: string, outputIndex?: number, runIndex?: number) => {
 				if (nodeName === undefined) {
 					nodeName = (that.prevNodeGetter() as { name: string }).name;
@@ -1438,6 +1521,7 @@ export class WorkflowDataProxy {
 
 				return that.getNodeExecutionData(nodeName, false, outputIndex, runIndex);
 			},
+			$tool: {}, // Placeholder
 			$json: {}, // Placeholder
 			$node: this.nodeGetter(),
 			$self: this.selfGetter(),
@@ -1478,12 +1562,21 @@ export class WorkflowDataProxy {
 			get(target, name, receiver) {
 				if (name === 'isProxy') return true;
 
-				if (['$data', '$json'].includes(name as string)) {
+				const JSON_ACCESS_KEYS = ['$data', '$json'];
+
+				if (that.workflow.settings?.binaryMode === BINARY_MODE_COMBINED) {
+					JSON_ACCESS_KEYS.push('$item');
+				}
+
+				if (typeof name === 'string' && JSON_ACCESS_KEYS.includes(name)) {
 					return that.nodeDataGetter(that.contextNodeName, true, throwOnMissingExecutionData)?.json;
 				}
 				if (name === '$binary') {
 					return that.nodeDataGetter(that.contextNodeName, true, throwOnMissingExecutionData)
 						?.binary;
+				}
+				if (name === '$tool') {
+					return handleTool(throwOnMissingExecutionData);
 				}
 
 				return Reflect.get(target, name, receiver);

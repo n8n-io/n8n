@@ -1,8 +1,11 @@
-import { expect, type Locator } from '@playwright/test';
+import { expect } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { VariableModal } from './components/VariableModal';
 
 export class VariablesPage extends BasePage {
+	readonly variableModal = new VariableModal(this.page.getByTestId('variableModal-modal'));
+
 	getUnavailableResourcesList() {
 		return this.page.getByTestId('unavailable-resources-list');
 	}
@@ -11,12 +14,8 @@ export class VariablesPage extends BasePage {
 		return this.page.getByTestId('resources-list');
 	}
 
-	getEmptyResourcesList() {
-		return this.page.getByTestId('empty-resources-list');
-	}
-
 	getEmptyResourcesListNewVariableButton() {
-		return this.getEmptyResourcesList().locator('button');
+		return this.page.getByRole('button', { name: 'Add first variable' });
 	}
 
 	getSearchBar() {
@@ -24,45 +23,48 @@ export class VariablesPage extends BasePage {
 	}
 
 	getCreateVariableButton() {
-		return this.page.getByTestId('resources-list-add');
+		return this.page.getByTestId('add-resource-variable');
 	}
 
 	getVariablesRows() {
 		return this.page.getByTestId('variables-row');
 	}
 
-	getVariablesEditableRows() {
-		return this.page.getByTestId('variables-row').filter({ has: this.page.locator('input') });
+	getNoVariablesFoundMessage() {
+		return this.page.getByText('No variables found');
 	}
 
 	getVariableRow(key: string) {
 		return this.getVariablesRows().filter({ hasText: key });
 	}
 
-	getEditableRowCancelButton(row: Locator) {
-		return row.getByTestId('variable-row-cancel-button');
-	}
+	/**
+	 * Create a variable with the key,
+	 * @param key - The key of the variable
+	 * @param value - The value of the variable
+	 */
 
-	getEditableRowSaveButton(row: Locator) {
-		return row.getByTestId('variable-row-save-button');
-	}
-
-	async createVariable(key: string, value: string) {
-		await this.getCreateVariableButton().click();
-
-		const editingRow = this.getVariablesEditableRows().first();
-		await this.setRowValue(editingRow, 'key', key);
-		await this.setRowValue(editingRow, 'value', value);
-		await this.saveRowEditing(editingRow);
+	async createVariableFromModal(
+		key: string,
+		value: string,
+		{ shouldSave }: { shouldSave: boolean } = { shouldSave: true },
+	) {
+		await this.variableModal.waitForModal();
+		await this.variableModal.addVariable(key, value, { shouldSave });
 	}
 
 	async createVariableFromEmptyState(key: string, value: string) {
 		await this.getEmptyResourcesListNewVariableButton().click();
+		await this.createVariableFromModal(key, value);
+	}
 
-		const editingRow = this.getVariablesEditableRows().first();
-		await this.setRowValue(editingRow, 'key', key);
-		await this.setRowValue(editingRow, 'value', value);
-		await this.saveRowEditing(editingRow);
+	async createVariable(
+		key: string,
+		value: string,
+		{ shouldSave }: { shouldSave: boolean } = { shouldSave: true },
+	) {
+		await this.getCreateVariableButton().click();
+		await this.createVariableFromModal(key, value, { shouldSave });
 	}
 
 	async deleteVariable(key: string) {
@@ -75,22 +77,13 @@ export class VariablesPage extends BasePage {
 		await modal.locator('.btn--confirm').click();
 	}
 
-	async editRow(key: string) {
+	async editVariable(
+		key: string,
+		newValue: string,
+		{ shouldSave }: { shouldSave: boolean } = { shouldSave: true },
+	) {
 		const row = this.getVariableRow(key);
 		await row.getByTestId('variable-row-edit-button').click();
-	}
-
-	async setRowValue(row: Locator, field: 'key' | 'value', value: string) {
-		const input = row.getByTestId(`variable-row-${field}-input`).locator('input, textarea');
-		await input.selectText();
-		await input.fill(value);
-	}
-
-	async saveRowEditing(row: Locator) {
-		await this.getEditableRowSaveButton(row).click();
-	}
-
-	async cancelRowEditing(row: Locator) {
-		await this.getEditableRowCancelButton(row).click();
+		await this.createVariableFromModal(key, newValue, { shouldSave });
 	}
 }

@@ -2,6 +2,8 @@ import { tool } from '@langchain/core/tools';
 import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
+import type { BuilderToolBase } from '@/utils/stream-processor';
+
 import { ValidationError, ToolExecutionError } from '../errors';
 import { NodeSearchEngine } from './engines/node-search-engine';
 import { createProgressReporter, createBatchProgressReporter } from './helpers/progress';
@@ -108,15 +110,22 @@ function buildResponseMessage(
 	return responseContent;
 }
 
+export const NODE_SEARCH_TOOL: BuilderToolBase = {
+	toolName: 'search_nodes',
+	displayTitle: 'Searching nodes',
+};
+
 /**
  * Factory function to create the node search tool
  */
 export function createNodeSearchTool(nodeTypes: INodeTypeDescription[]) {
-	const DISPLAY_TITLE = 'Searching nodes';
-
 	const dynamicTool = tool(
 		(input, config) => {
-			const reporter = createProgressReporter(config, 'search_nodes', DISPLAY_TITLE);
+			const reporter = createProgressReporter(
+				config,
+				NODE_SEARCH_TOOL.toolName,
+				NODE_SEARCH_TOOL.displayTitle,
+			);
 
 			try {
 				// Validate input using Zod schema
@@ -178,7 +187,7 @@ export function createNodeSearchTool(nodeTypes: INodeTypeDescription[]) {
 				const toolError = new ToolExecutionError(
 					error instanceof Error ? error.message : 'Unknown error occurred',
 					{
-						toolName: 'search_nodes',
+						toolName: NODE_SEARCH_TOOL.toolName,
 						cause: error instanceof Error ? error : undefined,
 					},
 				);
@@ -187,7 +196,7 @@ export function createNodeSearchTool(nodeTypes: INodeTypeDescription[]) {
 			}
 		},
 		{
-			name: 'search_nodes',
+			name: NODE_SEARCH_TOOL.toolName,
 			description: `Search for n8n nodes by name or find sub-nodes that output specific connection types. Use this before adding nodes to find the correct node types.
 
 Search modes:
@@ -215,6 +224,6 @@ You can search for multiple different criteria at once by providing an array of 
 
 	return {
 		tool: dynamicTool,
-		displayTitle: DISPLAY_TITLE,
+		...NODE_SEARCH_TOOL,
 	};
 }

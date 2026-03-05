@@ -1,17 +1,27 @@
 {
   "name": "@n8n/codemirror-lang",
-  "version": "0.3.0",
+  "version": "0.5.0",
   "description": "Language support package for CodeMirror 6 in n8n",
-  "private": true,
   "sideEffects": false,
+  "license": "MIT",
+  "author": {
+    "name": "Iván Ovejero",
+    "email": "ivov.src@gmail.com",
+    "url": "https://ivov.dev"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/n8n-io/n8n",
+    "directory": "packages/@n8n/codemirror-lang"
+  },
   "main": "dist/index.js",
   "module": "src/index.ts",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "require": "./dist/index.js",
-      "import": "./src/index.ts",
-      "types": "./dist/index.d.ts"
+      "import": "./src/index.ts"
     },
     "./*": "./*"
   },
@@ -21,19 +31,22 @@
     "generate:expressions:grammar": "lezer-generator --typeScript --output src/expressions/grammar.ts src/expressions/expressions.grammar",
     "generate": "pnpm generate:expressions:grammar && pnpm format",
     "build": "tsc -p tsconfig.build.json",
-    "test": "jest",
+    "test": "vitest run",
+    "test:unit": "vitest run",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "format": "biome format --write src test",
     "format:check": "biome ci src test"
   },
   "peerDependencies": {
-    "@codemirror/language": "*",
-    "@lezer/highlight": "*",
-    "@lezer/lr": "^1.4.0"
+    "@codemirror/language": "catalog:",
+    "@lezer/highlight": "catalog:",
+    "@lezer/lr": "catalog:"
   },
   "devDependencies": {
+    "@lezer/generator": "catalog:",
     "@n8n/typescript-config": "workspace:*",
-    "@lezer/generator": "^1.7.0"
+    "@n8n/vitest-config": "workspace:*",
+    "vitest": "catalog:"
   }
 }
