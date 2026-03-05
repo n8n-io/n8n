@@ -13,7 +13,8 @@ const http1 = node({
     },
     "executeOnce": true
   , credentials: { oAuth2Api: { name: 'Google Sheets', id: '' } }
-}
+},
+  metadata: { varName: 'leads' }
 });
 
 const code1 = node({
@@ -22,8 +23,8 @@ const code1 = node({
     name: 'Code 1',
     parameters: {
       jsCode: `// From: GET sheets.googleapis.com/v4/spreadsh...\nconst leads = $('GET sheets.googleapis.com/v4/spreadsh...').all().map(i => i.json);\nconst newLeads = leads.values.filter(function (row) {
-		return row[2] === 'New';
-	});\nreturn [{ json: { newLeads } }];`,
+	return row[2] === 'New';
+});\nreturn [{ json: { newLeads } }];`,
       mode: 'runOnceForAllItems'
     },
     executeOnce: true
@@ -40,7 +41,8 @@ return newLeads.map(lead => ({ json: lead }));`,
       mode: 'runOnceForAllItems'
     },
     executeOnce: true
-  }
+  },
+  metadata: { blankLineBefore: true }
 });
 
 const http2 = node({
@@ -54,7 +56,7 @@ const http2 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"to\":\"={{$json}}\",\"subject\":\"Hello\",\"body\":\"Your outreach message here...\"}",
+      "jsonBody": "{\"to\":\"={{ $json.lead[1] }}\",\"subject\":\"Hello\",\"body\":\"Your outreach message here...\"}",
       "authentication": "genericCredentialType",
       "genericAuthType": "oAuth2Api"
     }
@@ -73,7 +75,7 @@ const http3 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"values\":[null]}",
+      "jsonBody": "{\"values\":[[\"Contacted\"]]}",
       "authentication": "genericCredentialType",
       "genericAuthType": "oAuth2Api"
     }

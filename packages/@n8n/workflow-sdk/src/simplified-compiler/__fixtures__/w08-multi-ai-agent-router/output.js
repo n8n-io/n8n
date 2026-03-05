@@ -7,6 +7,7 @@ const code1 = node({
     parameters: {
       jsCode: `// From: Start\nconst body = $('Start').all().map(i => i.json);\nconst inputData = body.data;
 const priority = body.priority || 'balanced';
+
 const complexity = inputData.length < 500 ? 1 : inputData.length < 2000 ? 2 : 3;
 let provider, model;\nreturn [{ json: { inputData, priority, complexity, provider } }];`,
       mode: 'runOnceForAllItems'
@@ -91,7 +92,8 @@ const ai1 = node({
       })
     },
     executeOnce: true
-  }
+  },
+  metadata: { varName: 'aiResponse', modelVarRef: 'model', promptVarRef: 'prompt' }
 });
 
 const code6 = node({

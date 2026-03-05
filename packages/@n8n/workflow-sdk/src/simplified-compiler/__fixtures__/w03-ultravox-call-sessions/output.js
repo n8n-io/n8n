@@ -17,7 +17,8 @@ const http1 = node({
     },
     "executeOnce": true
   , credentials: { httpHeaderAuth: { name: 'UltraVox API', id: '' } }
-}
+},
+  metadata: { varName: 'session' }
 });
 
 const respond1 = node({

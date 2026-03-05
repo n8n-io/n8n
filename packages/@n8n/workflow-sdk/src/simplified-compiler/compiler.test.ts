@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
 import { transpileWorkflowJS } from './compiler';
+import { decompileWorkflowSDK } from './decompiler';
 import { generateReport } from './generate-report';
 
 // ─── Fixture helpers ────────────────────────────────────────────────────────
@@ -509,7 +510,7 @@ onManual(async () => {
 });
 `);
 			expect(result.errors).toHaveLength(0);
-			expect(result.code).toContain('"onError": "continueRegularOutput"');
+			expect(result.code).toContain("onError: 'continueRegularOutput'");
 		});
 	});
 
@@ -683,15 +684,42 @@ onManual(async () => {
 				const result = transpileWorkflowJS(fixture.input);
 				expect(result.errors).toHaveLength(0);
 				expect(result.code).toBe(fixture.expectedOutput);
+			});
+		}
+	});
 
-				// followup here
-				// workflow-sdk -> simplified
-				// const simplifiedAgain = compileToSimplifiedJS(result.code);
-				// validate simplified === original input
-				// expect(simplifiedAgain.code).toBe(fixture.input);
+	describe('Round-trip: workflow-sdk -> simplified', () => {
+		const fixtures = loadFixtures();
 
-				// first round: skip the test the failing, and skip reason
+		for (const fixture of fixtures) {
+			const shouldSkip = fixture.skip ?? getRoundTripSkipReason(fixture.title);
+			const testFn = shouldSkip ? it.skip : it;
+
+			testFn(`${fixture.title} [round-trip]`, () => {
+				const compiled = transpileWorkflowJS(fixture.input);
+				expect(compiled.errors).toHaveLength(0);
+
+				const decompiled = decompileWorkflowSDK(compiled.code);
+				expect(decompiled.errors).toHaveLength(0);
+				expect(decompiled.code.trim()).toBe(fixture.input.trim());
 			});
 		}
 	});
 });
+
+// ─── Round-trip skip reasons ────────────────────────────────────────────────
+// First round: skip fixtures where exact round-trip is not yet achievable.
+// Each skip reason documents what information is lost during compilation.
+
+function getRoundTripSkipReason(title: string): string | undefined {
+	// Variable names are now recovered via metadata.varName.
+	// Remaining skip reasons are for structural/formatting issues.
+	const skipReasons: Record<string, string> = {
+		W6: 'Promise.all with nested IIFEs not supported',
+	};
+
+	for (const [prefix, reason] of Object.entries(skipReasons)) {
+		if (title.includes(prefix + ':')) return reason;
+	}
+	return undefined;
+}

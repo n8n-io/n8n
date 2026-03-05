@@ -83,6 +83,8 @@ interface IOCall {
 	options?: Record<string, unknown>;
 	model?: string;
 	prompt?: string;
+	modelVarRef?: string; // variable name when model is a variable reference, not a literal
+	promptVarRef?: string; // variable name when prompt is a variable reference, not a literal
 	nodeName: string;
 	// AI-specific subnodes
 	aiTools?: Array<Record<string, unknown>>;
@@ -139,6 +141,7 @@ interface TranspilerContext {
 	callbackParams: string[];
 	errors: CompilerError[];
 	hasOnErrorAnnotation: boolean;
+	consumedComments: Set<number>; // tracks consumed comment start positions
 	inLoopBody: boolean;
 	loopCounter: number;
 	aggCounter: number;
@@ -382,6 +385,7 @@ function transpileCallback(
 		callbackParams: cb.callbackParams,
 		errors,
 		hasOnErrorAnnotation: false,
+		consumedComments: new Set(),
 		inLoopBody: false,
 		loopCounter: nodeOffset,
 		aggCounter: nodeOffset,
@@ -441,10 +445,14 @@ function walkStatements(
 
 		// Check for @onError continue annotation in preceding comments
 		const stmtComments = comments.filter(
-			(c) => c.end <= stmt.start && c.value.trim() === '@onError continue',
+			(c) =>
+				c.end <= stmt.start &&
+				c.value.trim() === '@onError continue' &&
+				!ctx.consumedComments.has(c.start),
 		);
 		if (stmtComments.length > 0) {
 			ctx.hasOnErrorAnnotation = true;
+			for (const c of stmtComments) ctx.consumedComments.add(c.start);
 		}
 
 		const ioCall = extractIOCall(stmt, ctx.source);
@@ -505,9 +513,10 @@ function walkStatements(
 			continue;
 		}
 
-		// Accumulate code statements
+		// Accumulate code statements — dedent to strip callback-body indentation
 		const stmtSource = ctx.source.slice(stmt.start, stmt.end);
-		ctx.pendingStatements.push({ source: stmtSource.trim(), ast: stmt });
+		const baseIndent = getBaseIndent(ctx.source, stmt.start);
+		ctx.pendingStatements.push({ source: dedentSource(stmtSource, baseIndent), ast: stmt });
 	}
 }
 
@@ -807,9 +816,18 @@ function processIfStatement(
 		ctx.nodes.push({ ...bn, branchOnly: true });
 	}
 
+	// Detect guard clause: true branch ends with bare return, no false branch
+	const consequent = stmt.consequent as AcornNode;
+	const bodyStmts =
+		consequent.type === 'BlockStatement' && consequent.body ? consequent.body : [consequent];
+	const lastBodyStmt = bodyStmts[bodyStmts.length - 1];
+	const isGuardClause =
+		lastBodyStmt?.type === 'ReturnStatement' && !lastBodyStmt.argument && !stmt.alternate;
+
 	// Emit ifElse node
 	const conditionsParam = buildIfConditionsParam(stmt.test!, ctx);
-	let sdkCode = `const ${ifVar} = ifElse({ version: 2.2, config: { name: 'IF ${myIfNum}', parameters: { conditions: ${conditionsParam} }, executeOnce: true } })`;
+	const metaStr = isGuardClause ? ', metadata: { guardClause: true }' : '';
+	let sdkCode = `const ${ifVar} = ifElse({ version: 2.2, config: { name: 'IF ${myIfNum}', parameters: { conditions: ${conditionsParam} }, executeOnce: true }${metaStr} })`;
 
 	if (trueBranch.chainExpr) {
 		sdkCode += `\n  .onTrue(${trueBranch.chainExpr})`;
@@ -881,6 +899,7 @@ function createBranchContext(parentCtx: TranspilerContext): TranspilerContext {
 		callbackParams: parentCtx.callbackParams,
 		errors: parentCtx.errors,
 		hasOnErrorAnnotation: false,
+		consumedComments: parentCtx.consumedComments,
 		inLoopBody: parentCtx.inLoopBody,
 		loopCounter: parentCtx.loopCounter,
 		aggCounter: parentCtx.aggCounter,
@@ -1077,7 +1096,8 @@ function processForOfStatement(
 	// Case 3: No IO in loop body → keep as plain JS in Code node
 	if (!loopBodyHasIO(bodyNode, ctx.source)) {
 		const loopSource = ctx.source.slice(stmt.start, stmt.end);
-		ctx.pendingStatements.push({ source: loopSource, ast: stmt });
+		const baseIndent = getBaseIndent(ctx.source, stmt.start);
+		ctx.pendingStatements.push({ source: dedentSource(loopSource, baseIndent), ast: stmt });
 		return;
 	}
 
@@ -1095,6 +1115,18 @@ function processForOfStatement(
 	const rightNode = (stmt as unknown as { right: AcornNode }).right;
 	const iterableName = rightNode.name ?? '';
 
+	// Check if there was a blank line before this for-of in the original source
+	let blankLineBefore = false;
+	{
+		let pos = stmt.start - 1;
+		let newlineCount = 0;
+		while (pos >= 0 && ' \t\n\r'.includes(ctx.source[pos])) {
+			if (ctx.source[pos] === '\n') newlineCount++;
+			pos--;
+		}
+		blankLineBefore = newlineCount >= 2;
+	}
+
 	// Emit splitter Code node — splits array into individual n8n items
 	ctx.codeCounter++;
 	const splitterVar = `code${ctx.codeCounter}`;
@@ -1109,6 +1141,7 @@ function processForOfStatement(
 	// we output the whole array. If it's a direct variable, output items.map(x => ({ json: x }))
 	const jsCode = `${refLine}return ${iterableName}.map(${loopVar} => ({ json: ${loopVar} }));`;
 
+	const metadataStr = blankLineBefore ? `,\n  metadata: { blankLineBefore: true }` : '';
 	const splitterSdk = `const ${splitterVar} = node({
   type: 'n8n-nodes-base.code', version: 2,
   config: {
@@ -1118,7 +1151,7 @@ function processForOfStatement(
       mode: 'runOnceForAllItems'
     },
     executeOnce: true
-  }
+  }${metadataStr}
 });`;
 
 	ctx.nodes.push({
@@ -1182,7 +1215,11 @@ function processTryStatement(
 					}
 				} else {
 					const stmtSource = ctx.source.slice(tryStmt.start, tryStmt.end);
-					ctx.pendingStatements.push({ source: stmtSource.trim(), ast: tryStmt });
+					const tryBaseIndent = getBaseIndent(ctx.source, tryStmt.start);
+					ctx.pendingStatements.push({
+						source: dedentSource(stmtSource, tryBaseIndent),
+						ast: tryStmt,
+					});
 				}
 			}
 		}
@@ -1441,6 +1478,10 @@ function extractAiCall(callNode: AcornNode, _source: string): IOCall {
 	const args = callNode.arguments ?? [];
 	const model = args[0] ? extractStringLiteral(args[0]) : undefined;
 	const prompt = args[1] ? extractStringLiteral(args[1]) : undefined;
+	const modelVarRef =
+		!model && args[0]?.type === 'Identifier' ? (args[0].name as string) : undefined;
+	const promptVarRef =
+		!prompt && args[1]?.type === 'Identifier' ? (args[1].name as string) : undefined;
 	const options = args[2] ? extractObjectLiteral(args[2]) : undefined;
 
 	// Parse AI subnodes from options
@@ -1469,6 +1510,8 @@ function extractAiCall(callNode: AcornNode, _source: string): IOCall {
 		assignedVar: null,
 		model,
 		prompt,
+		modelVarRef,
+		promptVarRef,
 		nodeName: nodeName.length > 40 ? nodeName.slice(0, 37) + '...' : nodeName,
 		aiTools,
 		aiOutputParser,
@@ -1506,6 +1549,19 @@ function extractStringLiteral(node: AcornNode): string | undefined {
 	return undefined;
 }
 
+function extractArrayElements(elements: AcornNode[]): unknown[] {
+	return elements.map((el: AcornNode) => {
+		if (el.type === 'ObjectExpression') return extractObjectLiteral(el);
+		if (el.type === 'Literal') return el.value;
+		if (el.type === 'ArrayExpression' && el.elements) return extractArrayElements(el.elements);
+		if (el.type === 'MemberExpression') {
+			const chain = extractMemberChain(el);
+			return chain ? `={{ $json.${chain} }}` : '={{$json}}';
+		}
+		return extractStringLiteral(el);
+	});
+}
+
 function extractObjectLiteral(node: AcornNode): Record<string, unknown> | undefined {
 	if (node.type !== 'ObjectExpression' || !node.properties) return undefined;
 
@@ -1522,11 +1578,10 @@ function extractObjectLiteral(node: AcornNode): Record<string, unknown> | undefi
 				} else if (valNode.type === 'ObjectExpression') {
 					obj[key] = extractObjectLiteral(valNode);
 				} else if (valNode.type === 'ArrayExpression' && valNode.elements) {
-					obj[key] = valNode.elements.map((el: AcornNode) => {
-						if (el.type === 'ObjectExpression') return extractObjectLiteral(el);
-						if (el.type === 'Literal') return el.value;
-						return extractStringLiteral(el);
-					});
+					obj[key] = extractArrayElements(valNode.elements);
+				} else if (valNode.type === 'MemberExpression') {
+					const chain = extractMemberChain(valNode);
+					obj[key] = chain ? `={{ $json.${chain} }}` : '={{$json}}';
 				} else {
 					const strVal = extractStringLiteral(valNode);
 					obj[key] = strVal ?? '={{$json}}';
@@ -1535,6 +1590,24 @@ function extractObjectLiteral(node: AcornNode): Record<string, unknown> | undefi
 		}
 	}
 	return obj;
+}
+
+/** Serialize a MemberExpression AST node into a dotted property chain string. */
+function extractMemberChain(node: AcornNode): string | null {
+	if (node.type === 'Identifier') return node.name as string;
+	if (node.type === 'MemberExpression') {
+		const obj = extractMemberChain(node.object as AcornNode);
+		if (!obj) return null;
+		if (node.computed) {
+			if (node.property?.type === 'Literal') {
+				return `${obj}[${JSON.stringify(node.property.value)}]`;
+			}
+			return null;
+		}
+		const prop = node.property?.name as string;
+		return prop ? `${obj}.${prop}` : null;
+	}
+	return null;
 }
 
 // ─── Variable Analysis ───────────────────────────────────────────────────────
@@ -1555,6 +1628,34 @@ function findReferencedVars(code: string, varSourceMap: Map<string, string>): Va
 		}
 	}
 	return refs;
+}
+
+/** Compute the tab indentation at position `pos` by scanning backwards. */
+function getBaseIndent(fullSource: string, pos: number): number {
+	let indent = 0;
+	let p = pos - 1;
+	while (p >= 0 && fullSource[p] === '\t') {
+		indent++;
+		p--;
+	}
+	// Only count if we hit a newline (or start of string) — i.e. these tabs are leading
+	if (p >= 0 && fullSource[p] !== '\n' && fullSource[p] !== '\r') return 0;
+	return indent;
+}
+
+/** Strip `baseIndent` tabs from continuation lines of a sliced source snippet. */
+function dedentSource(source: string, baseIndent: number): string {
+	if (baseIndent <= 0) return source.trim();
+	const lines = source.split('\n');
+	return lines
+		.map((line, i) => {
+			if (i === 0) return line; // First line already has no leading indent (sliced from AST start)
+			if (!line.trim()) return '';
+			const tabs = line.match(/^\t*/)?.[0].length ?? 0;
+			return line.slice(Math.min(baseIndent, tabs));
+		})
+		.join('\n')
+		.trim();
 }
 
 function findDeclaredVars(code: string): string[] {
@@ -1662,7 +1763,19 @@ function flushPendingCode(ctx: TranspilerContext): void {
 
 	ctx.codeCounter++;
 	const codeVar = `code${ctx.codeCounter}`;
-	const codeSource = ctx.pendingStatements.map((s) => s.source).join('\n');
+	// Join statements, preserving blank lines that existed in the original source
+	const codeParts: string[] = [];
+	for (let i = 0; i < ctx.pendingStatements.length; i++) {
+		if (i > 0) {
+			const prevEnd = ctx.pendingStatements[i - 1].ast.end;
+			const curStart = ctx.pendingStatements[i].ast.start;
+			const gap = ctx.source.slice(prevEnd, curStart);
+			const newlines = (gap.match(/\n/g) || []).length;
+			codeParts.push(newlines >= 2 ? '\n\n' : '\n');
+		}
+		codeParts.push(ctx.pendingStatements[i].source);
+	}
+	const codeSource = codeParts.join('');
 	const referencedVars = findReferencedVars(codeSource, ctx.varSourceMap);
 	const jsCodeLines: string[] = [];
 
@@ -1674,7 +1787,12 @@ function flushPendingCode(ctx: TranspilerContext): void {
 		jsCodeLines.push(`const ${varName} = $('${sourceNode}').all().map(i => i.json);`);
 	}
 
-	jsCodeLines.push(codeSource);
+	// Escape backslashes and backticks in user code for safe embedding in template literal
+	const escapedCodeSource = codeSource
+		.replace(/\\/g, '\\\\')
+		.replace(/`/g, '\\`')
+		.replace(/\$\{/g, '\\${');
+	jsCodeLines.push(escapedCodeSource);
 
 	const declaredVars = findDeclaredVars(codeSource);
 	if (declaredVars.length > 0) {
@@ -1850,9 +1968,11 @@ function generateHttpSDK(
 		finalConfig = configStr.slice(0, -1) + credentialsStr + '\n}';
 	}
 
+	const metadataStr = io.assignedVar ? `,\n  metadata: { varName: '${io.assignedVar}' }` : '';
+
 	const sdkCode = `const ${varName} = node({
   type: 'n8n-nodes-base.httpRequest', version: 4.2,
-  config: ${finalConfig}
+  config: ${finalConfig}${metadataStr}
 });`;
 
 	return { varName, sdkCode, kind: 'http', nodeName: io.nodeName };
@@ -1878,6 +1998,7 @@ function generateAiSDK(io: IOCall, varName: string): EmittedNode {
 			const toolType = mapToolType(t.type as string);
 			const toolConfig: Record<string, unknown> = {};
 			if (t.name) toolConfig.name = t.name;
+			if (t.url) toolConfig.url = t.url;
 			if (t.code) toolConfig.jsCode = t.code;
 			return `tool({
           type: '${toolType}', version: 1,
@@ -1912,6 +2033,12 @@ function generateAiSDK(io: IOCall, varName: string): EmittedNode {
 	const subnodeBlock = subnodeParts.join(',\n');
 	const onErrorStr = io.onError ? `,\n    onError: '${io.onError}'` : '';
 
+	const metaEntries: string[] = [];
+	if (io.assignedVar) metaEntries.push(`varName: '${io.assignedVar}'`);
+	if (io.modelVarRef) metaEntries.push(`modelVarRef: '${io.modelVarRef}'`);
+	if (io.promptVarRef) metaEntries.push(`promptVarRef: '${io.promptVarRef}'`);
+	const metadataStr = metaEntries.length > 0 ? `,\n  metadata: { ${metaEntries.join(', ')} }` : '';
+
 	const sdkCode = `const ${varName} = node({
   type: '@n8n/n8n-nodes-langchain.agent', version: 3.1,
   config: {
@@ -1925,7 +2052,7 @@ function generateAiSDK(io: IOCall, varName: string): EmittedNode {
 ${subnodeBlock}
     },
     executeOnce: true${onErrorStr}
-  }
+  }${metadataStr}
 });`;
 
 	return { varName, sdkCode, kind: 'ai', nodeName: io.nodeName };
@@ -1933,6 +2060,8 @@ ${subnodeBlock}
 
 function generateWorkflowRunSDK(io: IOCall, varName: string): EmittedNode {
 	const wfName = io.workflowName ?? 'Sub-Workflow';
+
+	const metadataStr = io.assignedVar ? `,\n  metadata: { varName: '${io.assignedVar}' }` : '';
 
 	const sdkCode = `const ${varName} = node({
   type: 'n8n-nodes-base.executeWorkflow', version: 1.2,
@@ -1942,7 +2071,7 @@ function generateWorkflowRunSDK(io: IOCall, varName: string): EmittedNode {
       workflowId: { __rl: true, mode: 'name', value: '${wfName}' }
     },
     executeOnce: true
-  }
+  }${metadataStr}
 });`;
 
 	return { varName, sdkCode, kind: 'workflow', nodeName: io.nodeName };

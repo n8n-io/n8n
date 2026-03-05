@@ -13,7 +13,7 @@ const respond1 = node({
   }
 });
 
-const if1 = ifElse({ version: 2.2, config: { name: 'IF 1', parameters: { conditions: {"options":{"caseSensitive":true,"leftValue":""},"conditions":[{"leftValue":"={{ $('Start').first().json.meetingTitle }}","rightValue":"","operator":{"type":"string","operation":"notExists","singleValue":true}},{"leftValue":"={{ $('Start').first().json.meetingNotes }}","rightValue":"","operator":{"type":"string","operation":"notExists","singleValue":true}}],"combinator":"or"} }, executeOnce: true } })
+const if1 = ifElse({ version: 2.2, config: { name: 'IF 1', parameters: { conditions: {"options":{"caseSensitive":true,"leftValue":""},"conditions":[{"leftValue":"={{ $('Start').first().json.meetingTitle }}","rightValue":"","operator":{"type":"string","operation":"notExists","singleValue":true}},{"leftValue":"={{ $('Start').first().json.meetingNotes }}","rightValue":"","operator":{"type":"string","operation":"notExists","singleValue":true}}],"combinator":"or"} }, executeOnce: true }, metadata: { guardClause: true } })
   .onTrue(respond1);
 
 const code1 = node({
@@ -22,9 +22,9 @@ const code1 = node({
     name: 'Code 1',
     parameters: {
       jsCode: `// From: Start\nconst body = $('Start').all().map(i => i.json);\nconst meeting = {
-		notes: body.meetingNotes,
-		title: body.meetingTitle,
-	};\nreturn [{ json: { meeting } }];`,
+	notes: body.meetingNotes,
+	title: body.meetingTitle,
+};\nreturn [{ json: { meeting } }];`,
       mode: 'runOnceForAllItems'
     },
     executeOnce: true
@@ -51,7 +51,8 @@ const ai1 = node({
       })
     },
     executeOnce: true
-  }
+  },
+  metadata: { varName: 'analysis' }
 });
 
 const http2 = node({

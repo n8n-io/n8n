@@ -13,7 +13,8 @@ const http1 = node({
     },
     "executeOnce": true
   , credentials: { httpBasicAuth: { name: 'App API', id: '' } }
-}
+},
+  metadata: { varName: 'items' }
 });
 
 const code1 = node({

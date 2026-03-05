@@ -23,7 +23,7 @@ const http1 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"chat_id\":\"={{$json}}\",\"text\":\"={{$json}}\"}"
+      "jsonBody": "{\"chat_id\":\"={{ $json.msg.message.chat.id }}\",\"text\":\"={{ $json.msg.message.text }}\"}"
     },
     "executeOnce": true
   }
@@ -39,7 +39,8 @@ const http2 = node({
       "options": {}
     },
     "executeOnce": true
-  }
+  },
+  metadata: { varName: 'file' }
 });
 
 const http3 = node({
@@ -53,13 +54,14 @@ const http3 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"file\":\"={{$json}}\",\"model\":\"whisper-1\"}",
+      "jsonBody": "{\"file\":\"={{ $json.file.result.file_path }}\",\"model\":\"whisper-1\"}",
       "authentication": "genericCredentialType",
       "genericAuthType": "httpHeaderAuth"
     },
     "executeOnce": true
   , credentials: { httpHeaderAuth: { name: 'OpenAI API', id: '' } }
-}
+},
+  metadata: { varName: 'transcription' }
 });
 
 const http4 = node({
@@ -73,7 +75,7 @@ const http4 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"chat_id\":\"={{$json}}\",\"text\":\"={{$json}}\"}"
+      "jsonBody": "{\"chat_id\":\"={{ $json.msg.message.chat.id }}\",\"text\":\"={{ $json.transcription.text }}\"}"
     },
     "executeOnce": true
   }

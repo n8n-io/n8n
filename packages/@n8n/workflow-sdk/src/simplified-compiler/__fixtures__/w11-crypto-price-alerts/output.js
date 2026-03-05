@@ -10,7 +10,8 @@ const http1 = node({
       "options": {}
     },
     "executeOnce": true
-  }
+  },
+  metadata: { varName: 'tickers' }
 });
 
 const code1 = node({
@@ -19,16 +20,17 @@ const code1 = node({
     name: 'Code 1',
     parameters: {
       jsCode: `// From: GET api.binance.com/api/v1/ticker/24hr\nconst tickers = $('GET api.binance.com/api/v1/ticker/24hr').all().map(i => i.json);\nconst significant = tickers
-		.filter(function (coin) {
-			return Math.abs(parseFloat(coin.priceChangePercent)) >= 15;
-		})
-		.sort(function (a, b) {
-			return b.priceChangePercent - a.priceChangePercent;
-		});
+	.filter(function (coin) {
+		return Math.abs(parseFloat(coin.priceChangePercent)) >= 15;
+	})
+	.sort(function (a, b) {
+		return b.priceChangePercent - a.priceChangePercent;
+	});
+
 let message = '';
 for (const coin of significant) {
-		message += coin.symbol + ': ' + coin.priceChangePercent + '%\n';
-	}\nreturn [{ json: { significant, message, coin } }];`,
+	message += coin.symbol + ': ' + coin.priceChangePercent + '%\\n';
+}\nreturn [{ json: { significant, message, coin } }];`,
       mode: 'runOnceForAllItems'
     },
     executeOnce: true

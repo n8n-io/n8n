@@ -16,7 +16,7 @@ const ai1 = node({
       }),
       tools: [tool({
           type: '@n8n/n8n-nodes-langchain.toolHttpRequest', version: 1,
-          config: { parameters: {"name":"Knowledge Base"} }
+          config: { parameters: {"name":"Knowledge Base","url":"https://api.kb.com/search"} }
         }), tool({
           type: '@n8n/n8n-nodes-langchain.toolCode', version: 1,
           config: { parameters: {"name":"Ticket Lookup","jsCode":"return lookupTicket(query)"} }
@@ -27,7 +27,8 @@ const ai1 = node({
       })
     },
     executeOnce: true
-  }
+  },
+  metadata: { varName: 'answer' }
 });
 
 const respond1 = node({

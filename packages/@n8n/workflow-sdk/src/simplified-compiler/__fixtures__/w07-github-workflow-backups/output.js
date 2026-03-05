@@ -45,7 +45,8 @@ const http2 = node({
     },
     "executeOnce": true
   , credentials: { httpHeaderAuth: { name: 'n8n API', id: '' } }
-}
+},
+  metadata: { varName: 'workflows' }
 });
 
 const code2 = node({
@@ -54,8 +55,8 @@ const code2 = node({
     name: 'Code 2',
     parameters: {
       jsCode: `// From: GET localhost/api/v1/workflows\nconst workflows = $('GET localhost/api/v1/workflows').all().map(i => i.json);\nconst recent = workflows.filter(function (w) {
-		return new Date(w.updatedAt) >= new Date(Date.now() - 86400000);
-	});\nreturn [{ json: { recent } }];`,
+	return new Date(w.updatedAt) >= new Date(Date.now() - 86400000);
+});\nreturn [{ json: { recent } }];`,
       mode: 'runOnceForAllItems'
     },
     executeOnce: true
@@ -72,7 +73,8 @@ return recent.map(wf => ({ json: wf }));`,
       mode: 'runOnceForAllItems'
     },
     executeOnce: true
-  }
+  },
+  metadata: { blankLineBefore: true }
 });
 
 const code4 = node({
@@ -81,20 +83,24 @@ const code4 = node({
     name: 'Code 4',
     parameters: {
       jsCode: `// From: Code 1\nconst config = $('Code 1').all().map(i => i.json);\nconst workflows = $('GET localhost/api/v1/workflows').all().map(i => i.json);\nconst wf = $('Split wfs').all().map(i => i.json);\nconst filePath = config.path + '/' + wf.name + '.json';
+
 function sortKeys(obj) {
-			return Object.keys(obj)
-				.sort()
-				.reduce(function (acc, k) {
-					acc[k] = obj[k];
-					return acc;
-				}, {});
-		}
+	return Object.keys(obj)
+		.sort()
+		.reduce(function (acc, k) {
+			acc[k] = obj[k];
+			return acc;
+		}, {});
+}
+
 const wfJson = JSON.stringify(sortKeys(wf), null, 2);
+
 let existing = null;
+
 existing = await http.get(
-				'https://api.github.com/repos/myuser/n8n-workflows/contents/' + filePath,
-				{ auth: { type: 'bearer', credential: 'GitHub' } },
-			);\nreturn [{ json: { filePath, wfJson, existing } }];`,
+	'https://api.github.com/repos/myuser/n8n-workflows/contents/' + filePath,
+	{ auth: { type: 'bearer', credential: 'GitHub' } },
+);\nreturn [{ json: { filePath, wfJson, existing } }];`,
       mode: 'runOnceForAllItems'
     },
     executeOnce: true
@@ -131,7 +137,7 @@ const http4 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"message\":\"updated\",\"content\":\"={{ $json.wfJson }}\",\"sha\":\"={{$json}}\"}",
+      "jsonBody": "{\"message\":\"updated\",\"content\":\"={{ $json.wfJson }}\",\"sha\":\"={{ $json.existing.sha }}\"}",
       "authentication": "genericCredentialType",
       "genericAuthType": "httpHeaderAuth"
     }

@@ -38,7 +38,8 @@ const http1 = node({
     },
     "executeOnce": true
   , credentials: { httpHeaderAuth: { name: 'Perplexity API', id: '' } }
-}
+},
+  metadata: { varName: 'result' }
 });
 
 const http2 = node({

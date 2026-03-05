@@ -13,7 +13,8 @@ const http1 = node({
     },
     "executeOnce": true
   , credentials: { oAuth2Api: { name: 'Google Calendar', id: '' } }
-}
+},
+  metadata: { varName: 'events' }
 });
 
 const code1 = node({
@@ -26,7 +27,8 @@ return events.map(event => ({ json: event }));`,
       mode: 'runOnceForAllItems'
     },
     executeOnce: true
-  }
+  },
+  metadata: { blankLineBefore: true }
 });
 
 const http2 = node({
