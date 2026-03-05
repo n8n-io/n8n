@@ -7,6 +7,12 @@ const ruleTester = new RuleTester();
 ruleTester.run('no-http-request-with-manual-auth', NoHttpRequestWithManualAuthRule, {
 	valid: [
 		{
+			name: 'httpRequest and getCredentials at module top level (no function scope)',
+			code: `
+const credentials = await this.getCredentials('myApi');
+const result = await this.helpers.httpRequest({ url: 'https://api.example.com' });`,
+		},
+		{
 			name: 'httpRequest without getCredentials (unauthenticated call)',
 			code: `
 async function makeRequest() {
