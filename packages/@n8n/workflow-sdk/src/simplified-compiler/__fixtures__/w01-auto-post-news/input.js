@@ -16,7 +16,7 @@ onSchedule({ every: '21h' }, async () => {
 
 	await http.post(
 		'https://api.twitter.com/2/tweets',
-		{ text: 'Latest AI news summary' },
+		{ text: result.choices[0].message.content },
 		{ auth: { type: 'oauth2', credential: 'Twitter OAuth2' } },
 	);
 });

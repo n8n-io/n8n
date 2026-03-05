@@ -52,7 +52,7 @@ const http2 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"text\":\"Latest AI news summary\"}",
+      "jsonBody": "{\"text\":\"={{ $('POST api.perplexity.ai/chat/completions').first().json.choices[0].message.content }}\"}",
       "authentication": "genericCredentialType",
       "genericAuthType": "oAuth2Api"
     },
