@@ -50,8 +50,6 @@ export class CreateTable extends TableOperation {
 
 	private checks = new Set<TableCheck>();
 
-	private enumChecks: Array<{ columnName: string; values: string[] }> = [];
-
 	withColumns(...columns: Column[]) {
 		this.columns.push(...columns);
 		return this;
@@ -87,12 +85,6 @@ export class CreateTable extends TableOperation {
 		return this;
 	}
 
-	/** @deprecated Declare enum checks on the column instead: `column('name').varchar().withEnumCheck([...])` */
-	withEnumCheck(columnName: string, values: string[]) {
-		this.enumChecks.push({ columnName, values });
-		return this;
-	}
-
 	withForeignKey(
 		columnName: string,
 		ref: {
@@ -125,19 +117,8 @@ export class CreateTable extends TableOperation {
 			uniqueConstraints,
 			foreignKeys,
 			checks,
-			enumChecks,
 		} = this;
 
-		// Legacy table-level enum checks
-		for (const { columnName, values } of enumChecks) {
-			const checkName = `CHK_${prefix}${name}_${columnName}`;
-			const escapedColumnName = driver.escape(columnName);
-			const escapedValues = values.map((v) => `'${v.replace(/'/g, "''")}'`).join(', ');
-			const expression = `${escapedColumnName} IN (${escapedValues})`;
-			checks.add(new TableCheck({ name: checkName, expression }));
-		}
-
-		// Column-level enum checks
 		for (const check of buildEnumChecks(columns, prefix, name, driver)) {
 			checks.add(check);
 		}
