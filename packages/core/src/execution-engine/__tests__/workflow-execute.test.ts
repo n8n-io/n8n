@@ -2998,6 +2998,7 @@ describe('WorkflowExecute', () => {
 						waitingExecutionSource: {},
 						runtimeData: { version: 1, establishedAt: 1763723652184, source: 'manual' },
 					},
+					resumeToken: runHook.mock.lastCall[1][0].data?.resumeToken,
 				},
 			};
 

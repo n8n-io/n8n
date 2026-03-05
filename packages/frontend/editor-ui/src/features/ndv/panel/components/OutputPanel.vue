@@ -469,7 +469,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 
 		<template #node-waiting>
 			<NDVEmptyState :title="i18n.baseText('ndv.output.waitNodeWaiting.title')" wide>
-				<span v-n8n-html="waitingNodeTooltip(node, workflowObject)" />
+				<span v-n8n-html="waitingNodeTooltip(node, workflowObject, runTaskData?.metadata)" />
 			</NDVEmptyState>
 		</template>
 

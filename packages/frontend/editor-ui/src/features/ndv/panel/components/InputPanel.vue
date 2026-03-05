@@ -243,9 +243,15 @@ const activeNodeType = computed(() => {
 
 const waitingMessage = computed(() => {
 	const parentNode = parentNodes.value[0];
-	return (
-		parentNode &&
-		waitingNodeTooltip(workflowsStore.getNodeByName(parentNode.name), props.workflowObject)
+	if (!parentNode) return '';
+
+	const runData = workflowsStore.getWorkflowExecution?.data?.resultData?.runData;
+	const parentRunData = runData?.[parentNode.name]?.[0];
+
+	return waitingNodeTooltip(
+		workflowsStore.getNodeByName(parentNode.name),
+		props.workflowObject,
+		parentRunData?.metadata,
 	);
 });
 

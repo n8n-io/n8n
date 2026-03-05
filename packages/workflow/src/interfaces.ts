@@ -962,8 +962,6 @@ export interface FunctionsBase {
 	getInstanceId(): string;
 	/** Get the waiting resume url signed with the signature token */
 	getSignedResumeUrl(parameters?: Record<string, string>): string;
-	/** Set requirement in the execution for signature token validation */
-	setSignatureValidationRequired(): void;
 	getChildNodes(
 		nodeName: string,
 		options?: { includeNodeParameters?: boolean },
@@ -2682,6 +2680,18 @@ export interface ITaskMetadata {
 		/** Time saved in minutes */
 		minutes: number;
 	};
+
+	/**
+	 * Signed URL for resuming form-based waiting executions.
+	 * Contains token for security validation.
+	 */
+	resumeFormUrl?: string;
+
+	/**
+	 * Signed URL for resuming webhook-based waiting executions.
+	 * Contains token for security validation.
+	 */
+	resumeUrl?: string;
 }
 
 /** The data that gets returned when a node execution starts */

@@ -57,6 +57,7 @@ export {
 	isCommunityPackageName,
 	dedupe,
 	sanitizeFilename,
+	generateSecureToken,
 } from './utils';
 export {
 	isINodeProperties,
