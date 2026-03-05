@@ -56,9 +56,13 @@ const executeButtonTooltip = computed(() =>
 	!isAllComplete.value ? i18n.baseText('aiAssistant.builder.executeMessage.validationTooltip') : '',
 );
 
+const lastStepCompleted = ref(false);
+
 const showCard = computed(
 	() => currentCard.value && !(isAllComplete.value && builderStore.wizardHasExecutedWorkflow),
 );
+
+const showWizard = computed(() => !lastStepCompleted.value);
 
 const isHovering = ref(false);
 
@@ -186,12 +190,22 @@ function onCredentialDeselected(payload: { credentialType: string; nodeName: str
 }
 
 function onStepExecuted() {
+	const card = currentCard.value;
+	if (!card?.state.isComplete) return;
+
+	const isLastStep = currentStepIndex.value >= totalCards.value - 1;
+
+	if (isLastStep) {
+		// Last step executed successfully — dismiss the wizard
+		lastStepCompleted.value = true;
+		return;
+	}
+
 	// Auto-advance after step execution if the card is now complete.
 	// Only for cards with parameters — credential-only cards are already
 	// handled by the composable's auto-advance watcher.
-	const card = currentCard.value;
 	const hasParams = (card?.state.templateParameterNames?.length ?? 0) > 0;
-	if (hasParams && card?.state.isComplete && currentStepIndex.value < totalCards.value - 1) {
+	if (hasParams) {
 		setTimeout(() => goToNext(), 300);
 	}
 }
@@ -209,6 +223,7 @@ onBeforeUnmount(() => {
 
 <template>
 	<div
+		v-if="showWizard"
 		data-test-id="builder-setup-wizard"
 		:class="$style.container"
 		role="region"

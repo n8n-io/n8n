@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ref } from 'vue';
+import { fireEvent } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -36,8 +37,16 @@ vi.mock('@/features/ai/assistant/composables/useBuilderSetupCards', () => ({
 
 vi.mock('./BuilderSetupCard.vue', () => ({
 	default: {
-		template: '<div data-test-id="builder-setup-card" />',
+		template: '<div data-test-id="builder-setup-card" @click="$emit(\'stepExecuted\')" />',
 		props: ['state', 'stepIndex', 'totalCards', 'firstTriggerName'],
+		emits: [
+			'stepExecuted',
+			'goToNext',
+			'goToPrev',
+			'continueCurrent',
+			'credentialSelected',
+			'credentialDeselected',
+		],
 	},
 }));
 
@@ -214,5 +223,46 @@ describe('BuilderSetupWizard', () => {
 
 		const { queryByTestId } = render();
 		expect(queryByTestId('builder-setup-card')).not.toBeInTheDocument();
+	});
+
+	it('dismisses wizard when last step is executed successfully', async () => {
+		mockCurrentCard.value = {
+			state: {
+				node: triggerNode,
+				parameterIssues: {},
+				isTrigger: true,
+				isComplete: true,
+			},
+		};
+		mockTotalCards.value = 1;
+		mockCurrentStepIndex.value = 0;
+
+		const { getByTestId, queryByTestId } = render();
+		expect(getByTestId('builder-setup-wizard')).toBeInTheDocument();
+
+		// Click the mock card to trigger stepExecuted
+		await fireEvent.click(getByTestId('builder-setup-card'));
+
+		expect(queryByTestId('builder-setup-wizard')).not.toBeInTheDocument();
+	});
+
+	it('does not dismiss wizard when a non-last step is executed', async () => {
+		mockCurrentCard.value = {
+			state: {
+				node: triggerNode,
+				parameterIssues: {},
+				isTrigger: true,
+				isComplete: true,
+			},
+		};
+		mockTotalCards.value = 3;
+		mockCurrentStepIndex.value = 0;
+
+		const { getByTestId } = render();
+
+		// Click the mock card to trigger stepExecuted
+		await fireEvent.click(getByTestId('builder-setup-card'));
+
+		expect(getByTestId('builder-setup-wizard')).toBeInTheDocument();
 	});
 });
