@@ -1,4 +1,5 @@
 import type { Project } from '@playwright/test';
+import { BASE_PERFORMANCE_PLANS } from 'n8n-containers/performance-plans';
 import type { N8NConfig } from 'n8n-containers/stack';
 
 import {
@@ -33,6 +34,61 @@ const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 	},
 ];
 
+// --- Benchmark profiles ---
+// Each profile represents a real-world n8n deployment configuration.
+// ONE test file runs in ALL profiles — adding a profile auto-expands coverage.
+
+const BENCHMARK_WORKER_COUNT = parseInt(process.env.KAFKA_LOAD_WORKERS ?? '2', 10);
+const benchmarkPlan = BASE_PERFORMANCE_PLANS.enterprise;
+
+const BENCHMARK_BASE_CONFIG: N8NConfig = {
+	services: ['kafka', 'victoriaLogs', 'victoriaMetrics', 'vector'],
+	postgres: true,
+	resourceQuota: { memory: benchmarkPlan.memory, cpu: benchmarkPlan.cpu },
+	env: {
+		N8N_METRICS_INCLUDE_MESSAGE_EVENT_BUS_METRICS: 'true',
+	},
+};
+
+const BENCHMARK_PROFILES: Array<{ name: string; config: N8NConfig }> = [
+	{
+		name: 'direct',
+		config: {
+			...BENCHMARK_BASE_CONFIG,
+			env: {
+				...BENCHMARK_BASE_CONFIG.env,
+				DB_POSTGRESDB_POOL_SIZE: '20',
+			},
+		},
+	},
+	{
+		name: 'queue',
+		config: {
+			...BENCHMARK_BASE_CONFIG,
+			workers: BENCHMARK_WORKER_COUNT,
+			env: {
+				...BENCHMARK_BASE_CONFIG.env,
+				N8N_METRICS_INCLUDE_QUEUE_METRICS: 'true',
+			},
+		},
+	},
+	{
+		name: 'queue-tuned',
+		config: {
+			...BENCHMARK_BASE_CONFIG,
+			workers: BENCHMARK_WORKER_COUNT,
+			env: {
+				...BENCHMARK_BASE_CONFIG.env,
+				N8N_METRICS_INCLUDE_QUEUE_METRICS: 'true',
+				N8N_LOG_LEVEL: 'error',
+				DB_POSTGRESDB_POOL_SIZE: '20',
+				N8N_CONCURRENCY_PRODUCTION_LIMIT: '20',
+				EXECUTIONS_DATA_SAVE_ON_SUCCESS: 'none',
+			},
+		},
+	},
+];
+
 export function getProjects(): Project[] {
 	const isLocal = !!getBackendUrl();
 	const projects: Project[] = [];
@@ -64,6 +120,18 @@ export function getProjects(): Project[] {
 					use: { containerConfig: config },
 				},
 			);
+		}
+
+		for (const { name, config } of BENCHMARK_PROFILES) {
+			projects.push({
+				name: `benchmark-${name}:infrastructure`,
+				testDir: './tests/infrastructure',
+				grep: /@benchmark/,
+				workers: 1,
+				timeout: 600_000,
+				retries: 0,
+				use: { containerConfig: config },
+			});
 		}
 	}
 
