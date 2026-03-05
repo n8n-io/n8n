@@ -8,7 +8,7 @@ import { Get, Post, RestController } from '@n8n/decorators';
 import type { Request } from 'express';
 import type { IConnections, INode, IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import { createRunExecutionData } from 'n8n-workflow';
-import { transpileWorkflowJS, COMPILER_EXAMPLES } from '@n8n/workflow-sdk';
+import { transpileWorkflowJS, parseWorkflowCode, COMPILER_EXAMPLES } from '@n8n/workflow-sdk';
 
 import { ActiveExecutions } from '@/active-executions';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -32,7 +32,22 @@ export class TemporaryController {
 	@Post('/parse-code', { skipAuth: true })
 	async parseCode(req: Request) {
 		const { code } = req.body as { code: string };
-		return transpileWorkflowJS(code);
+		const transpiled = transpileWorkflowJS(code);
+		if (transpiled.errors.length > 0) {
+			return {
+				workflow: { id: 'compiled', name: 'Error', nodes: [], connections: {} },
+				errors: transpiled.errors,
+			};
+		}
+		try {
+			const workflow = parseWorkflowCode(transpiled.code);
+			return { workflow, errors: [] };
+		} catch (e) {
+			return {
+				workflow: { id: 'compiled', name: 'Error', nodes: [], connections: {} },
+				errors: [{ message: e instanceof Error ? e.message : 'Failed to generate workflow JSON' }],
+			};
+		}
 	}
 
 	@Get('/examples', { skipAuth: true })

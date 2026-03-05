@@ -195,12 +195,12 @@ const jsonOutput = computed(() => {
 
 const errorCount = computed(() => compilerResult.value?.errors.length ?? 0);
 const nodeCount = computed(() => {
-	if (!compilerResult.value) return 0;
+	if (!compilerResult.value?.workflow) return 0;
 	return compilerResult.value.workflow.nodes.filter((n) => n.type !== 'n8n-nodes-base.stickyNote')
 		.length;
 });
 const stickyCount = computed(() => {
-	if (!compilerResult.value) return 0;
+	if (!compilerResult.value?.workflow) return 0;
 	return compilerResult.value.workflow.nodes.filter((n) => n.type === 'n8n-nodes-base.stickyNote')
 		.length;
 });
