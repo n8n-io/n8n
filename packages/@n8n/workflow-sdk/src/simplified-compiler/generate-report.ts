@@ -15,6 +15,11 @@ interface FixtureMeta {
 	skip?: string;
 }
 
+interface SubWorkflowEntry {
+	name: string;
+	workflowJson: string;
+}
+
 interface ReportEntry {
 	title: string;
 	templateId: number;
@@ -23,11 +28,46 @@ interface ReportEntry {
 	input: string;
 	sdkOutput?: string;
 	workflowJson?: string;
+	subWorkflows?: SubWorkflowEntry[];
 	error?: string;
 }
 
 const FIXTURES_DIR = join(__dirname, '__fixtures__');
 const REPORT_PATH = join(FIXTURES_DIR, 'report.html');
+
+interface WorkflowNode {
+	type: string;
+	name: string;
+	parameters?: Record<string, unknown>;
+}
+
+function extractSubWorkflows(workflowJson: { nodes?: WorkflowNode[] }): SubWorkflowEntry[] {
+	const seen = new Set<string>();
+	const results: SubWorkflowEntry[] = [];
+
+	function walk(wf: { nodes?: WorkflowNode[] }) {
+		for (const n of wf.nodes ?? []) {
+			if (
+				n.type === 'n8n-nodes-base.executeWorkflow' &&
+				typeof n.parameters?.workflowJson === 'string'
+			) {
+				const parsed = JSON.parse(n.parameters.workflowJson as string) as {
+					name?: string;
+					nodes?: WorkflowNode[];
+				};
+				const key = parsed.name ?? n.name;
+				if (!seen.has(key)) {
+					seen.add(key);
+					results.push({ name: key, workflowJson: JSON.stringify(parsed, null, 2) });
+					walk(parsed);
+				}
+			}
+		}
+	}
+
+	walk(workflowJson);
+	return results;
+}
 
 function processFixtures(): ReportEntry[] {
 	const dirs = readdirSync(FIXTURES_DIR)
@@ -61,7 +101,8 @@ function processFixtures(): ReportEntry[] {
 			// Write workflow.json to the fixture directory
 			writeFileSync(join(dirPath, 'workflow.json'), jsonStr + '\n');
 
-			entries.push({ ...base, sdkOutput: result.code, workflowJson: jsonStr });
+			const subWorkflows = extractSubWorkflows(workflowJson);
+			entries.push({ ...base, sdkOutput: result.code, workflowJson: jsonStr, subWorkflows });
 		} catch (err) {
 			entries.push({ ...base, error: err instanceof Error ? err.message : String(err) });
 		}
@@ -120,7 +161,18 @@ function generateHtml(entries: ReportEntry[]): string {
       </details>`
 					: ''
 			}
-      ${demoComponent ? `<div class="demo">${demoComponent}</div>` : ''}
+      ${demoComponent ? `<div class="demo">${(entry.subWorkflows ?? []).length > 0 ? '<h3 class="demo-label">Main Workflow</h3>' : ''}${demoComponent}</div>` : ''}
+      ${
+				(entry.subWorkflows ?? [])
+					.map(
+						(sw) =>
+							`<div class="demo sub-workflow">
+        <h3 class="demo-label sub-workflow-label">Sub-workflow: ${escapeHtml(sw.name)}</h3>
+        <n8n-demo tidyup="true" workflow='${sw.workflowJson.replace(/'/g, '&#39;')}'></n8n-demo>
+      </div>`,
+					)
+					.join('\n') || ''
+			}
     </div>`;
 		})
 		.join('\n');
@@ -153,6 +205,9 @@ function generateHtml(entries: ReportEntry[]): string {
     summary { cursor: pointer; font-size: 13px; font-weight: 600; color: #555; padding: 4px 0; }
     .code { background: #1e1e2e; color: #cdd6f4; padding: 16px; border-radius: 6px; overflow-x: auto; font-size: 13px; line-height: 1.5; margin-top: 8px; }
     .demo { margin-top: 12px; }
+    .demo-label { font-size: 13px; font-weight: 600; color: #555; margin-bottom: 8px; }
+    .sub-workflow { margin-top: 16px; padding-top: 12px; border-top: 1px dashed #ddd; }
+    .sub-workflow-label { color: #7c5cfc; }
     n8n-demo { width: 100%; min-height: 300px; display: block; }
   </style>
 </head>
