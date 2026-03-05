@@ -1,5 +1,5 @@
 import { Time } from '@n8n/constants';
-import type { User, WorkflowRepository } from '@n8n/db';
+import type { User } from '@n8n/db';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
@@ -32,6 +32,7 @@ import type {
 	UserCalledMCPToolEventPayload,
 } from '../mcp.types';
 import { findMcpSupportedTrigger } from '../mcp.utils';
+import { getMcpWorkflow, type FoundWorkflow } from './workflow-validation.utils';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { McpService } from '@/modules/mcp/mcp.service';
@@ -41,6 +42,8 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 
 const WORKFLOW_EXECUTION_TIMEOUT_MS = 5 * Time.minutes.toMilliseconds; // 5 minutes
 const ERROR_KEYS_TO_IGNORE = ['stack', 'node'];
+
+export { type FoundWorkflow };
 
 const inputSchema = z.object({
 	workflowId: z.string().describe('The ID of the workflow to execute'),
@@ -94,8 +97,6 @@ type ExecuteWorkflowOutput = {
 	error?: unknown;
 };
 
-type FoundWorkflow = NonNullable<Awaited<ReturnType<WorkflowFinderService['findWorkflowForUser']>>>;
-
 const outputSchema = {
 	success: z.boolean(),
 	executionId: z.string().nullable().optional(),
@@ -106,7 +107,6 @@ const outputSchema = {
 export const createExecuteWorkflowTool = (
 	user: User,
 	workflowFinderService: WorkflowFinderService,
-	workflowRepository: WorkflowRepository,
 	activeExecutions: ActiveExecutions,
 	workflowRunner: WorkflowRunner,
 	telemetry: Telemetry,
@@ -136,7 +136,6 @@ export const createExecuteWorkflowTool = (
 			const output = await executeWorkflow(
 				user,
 				workflowFinderService,
-				workflowRepository,
 				activeExecutions,
 				workflowRunner,
 				mcpService,
@@ -213,7 +212,6 @@ export const createExecuteWorkflowTool = (
 export const executeWorkflow = async (
 	user: User,
 	workflowFinderService: WorkflowFinderService,
-	workflowRepository: WorkflowRepository,
 	activeExecutions: ActiveExecutions,
 	workflowRunner: WorkflowRunner,
 	mcpService: McpService,
@@ -221,11 +219,12 @@ export const executeWorkflow = async (
 	inputs?: z.infer<typeof inputSchema>['inputs'],
 	executionMode: z.infer<typeof inputSchema>['executionMode'] = 'production',
 ): Promise<ExecuteWorkflowOutput> => {
-	const workflow = await getExecutableWorkflow(
-		workflowFinderService,
-		workflowRepository,
-		user,
+	const workflow = await getMcpWorkflow(
 		workflowId,
+		user,
+		['workflow:execute'],
+		workflowFinderService,
+		{ includeActiveVersion: true },
 	);
 	const runData = await buildRunData(
 		workflow,
@@ -246,53 +245,6 @@ export const executeWorkflow = async (
 		result: data.data.resultData,
 		error: data.data.resultData?.error,
 	};
-};
-
-const getExecutableWorkflow = async (
-	workflowFinderService: WorkflowFinderService,
-	workflowRepository: WorkflowRepository,
-	user: User,
-	workflowId: string,
-): Promise<FoundWorkflow> => {
-	// Check if user has permission to access the workflow
-	const workflow = await workflowFinderService.findWorkflowForUser(
-		workflowId,
-		user,
-		['workflow:execute'],
-		{ includeActiveVersion: true },
-	);
-
-	if (!workflow) {
-		const workflowExists = await workflowRepository.existsBy({ id: workflowId });
-		if (!workflowExists) {
-			throw new WorkflowAccessError(
-				`Workflow with ID '${workflowId}' does not exist`,
-				'workflow_does_not_exist',
-			);
-		}
-
-		// Workflow exists but user doesn't have permission
-		throw new WorkflowAccessError(
-			`You don't have permission to execute workflow '${workflowId}'`,
-			'no_permission',
-		);
-	}
-
-	if (workflow.isArchived) {
-		throw new WorkflowAccessError(
-			`Workflow '${workflowId}' is archived and cannot be executed`,
-			'workflow_archived',
-		);
-	}
-
-	if (!workflow.settings?.availableInMCP) {
-		throw new WorkflowAccessError(
-			'Workflow is not available for execution via MCP. Enable access in the workflow settings to make it available.',
-			'not_available_in_mcp',
-		);
-	}
-
-	return workflow;
 };
 
 const getVersionDataForExecution = (

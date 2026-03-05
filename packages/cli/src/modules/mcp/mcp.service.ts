@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
-import { User, WorkflowRepository } from '@n8n/db';
+import { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import {
@@ -59,7 +59,6 @@ export class McpService {
 		private readonly executionsConfig: ExecutionsConfig,
 		_instanceSettings: InstanceSettings,
 		private readonly workflowFinderService: WorkflowFinderService,
-		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowService: WorkflowService,
 		private readonly urlService: UrlService,
 		private readonly credentialsService: CredentialsService,
@@ -101,7 +100,6 @@ export class McpService {
 		const executeWorkflowTool = createExecuteWorkflowTool(
 			user,
 			this.workflowFinderService,
-			this.workflowRepository,
 			this.activeExecutions,
 			this.workflowRunner,
 			this.telemetry,
