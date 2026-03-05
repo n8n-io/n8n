@@ -2,7 +2,7 @@ import type { BreakingChangeAffectedWorkflow, BreakingChangeRecommendation } fro
 import type { WorkflowEntity } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 
-import { BreakingChangeRule } from '../../breaking-change-rule.decorator';
+import { BreakingChangeRule } from '@n8n/decorators';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeWorkflowRule,

@@ -21,8 +21,6 @@ breaking-changes/
          file-access.rule.ts
          ...
       index.ts                # Side-effect imports for all rules
-   breaking-change-rule.decorator.ts        # @BreakingChangeRule decorator
-   breaking-changes.rule-metadata.service.ts # Decorator-based registration metadata
    breaking-changes.service.ts              # Detection orchestration
    breaking-changes.rule-registry.service.ts # Rule management
    breaking-changes.controller.ts           # REST API
@@ -31,10 +29,11 @@ breaking-changes/
 
 ### Registration
 
-Rules are registered at startup using the `@BreakingChangeRule` decorator
-(following the same pattern as `@BackendModule` / `ModuleMetadata`).
+Rules are registered at startup using the `@BreakingChangeRule` decorator from
+`@n8n/decorators` (following the same pattern as `@BackendModule` / `ModuleMetadata`).
 Each rule file is explicitly imported in `rules/index.ts` as a side-effect
-import, which triggers the decorator and registers the rule class.
+import, which triggers the decorator and registers the rule class. Because the
+decorator lives in `@n8n/decorators`, rules can be defined anywhere in the codebase.
 
 ```
 Module.init()
@@ -172,7 +171,7 @@ import type { BreakingChangeAffectedWorkflow, BreakingChangeRecommendation } fro
 import type { WorkflowEntity } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 
-import { BreakingChangeRule } from '../../breaking-change-rule.decorator';
+import { BreakingChangeRule } from '@n8n/decorators';
 import type {
   BreakingChangeRuleMetadata,
   IBreakingChangeWorkflowRule,
@@ -235,7 +234,7 @@ export class MyWorkflowRule implements IBreakingChangeWorkflowRule {
 Create `rules/v2/my-instance-rule.rule.ts`:
 
 ```typescript
-import { BreakingChangeRule } from '../../breaking-change-rule.decorator';
+import { BreakingChangeRule } from '@n8n/decorators';
 import type {
   BreakingChangeRuleMetadata,
   IBreakingChangeInstanceRule,

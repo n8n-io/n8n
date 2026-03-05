@@ -7,7 +7,7 @@ import type { WorkflowEntity } from '@n8n/db';
 import type { INode, INodeParameters } from 'n8n-workflow';
 import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
-import { BreakingChangeRule } from '../../breaking-change-rule.decorator';
+import { BreakingChangeRule } from '@n8n/decorators';
 import type {
 	BatchWorkflowDetectionReport,
 	BreakingChangeRuleMetadata,

@@ -2,7 +2,7 @@ import { BreakingChangeRecommendation } from '@n8n/api-types';
 import { WorkflowEntity } from '@n8n/db';
 import { INode } from 'n8n-workflow';
 
-import { BreakingChangeRule } from '../../breaking-change-rule.decorator';
+import { BreakingChangeRule } from '@n8n/decorators';
 import type {
 	BreakingChangeRuleMetadata,
 	IBreakingChangeWorkflowRule,

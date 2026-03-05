@@ -1,11 +1,8 @@
-import type { BreakingChangeVersion } from '@n8n/api-types';
 import { Service, type Constructable } from '@n8n/di';
 
-import type { IBreakingChangeRule } from './types';
-
 type RuleEntry = {
-	class: Constructable<IBreakingChangeRule>;
-	version: BreakingChangeVersion;
+	class: Constructable;
+	version: string;
 };
 
 @Service()

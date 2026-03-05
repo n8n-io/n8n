@@ -15,7 +15,7 @@ import type { INode } from 'n8n-workflow';
 
 import { CacheService } from '@/services/cache/cache.service';
 
-import { BreakingChangeRuleMetadata } from './breaking-changes.rule-metadata.service';
+import { BreakingChangeRuleMetadata } from '@n8n/decorators';
 import { RuleRegistry } from './breaking-changes.rule-registry.service';
 import type {
 	IBreakingChangeBatchWorkflowRule,

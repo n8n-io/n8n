@@ -1,13 +1,13 @@
+import { BreakingChangeRuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
-import { BreakingChangeRuleMetadata } from '../breaking-changes.rule-metadata.service';
 import '../rules';
 import type { IBreakingChangeRule } from '../types';
 
 describe('Breaking change rules auto-discovery', () => {
-	it('should register all rules', () => {
+	it('should register all 16 v2 rules', () => {
 		const metadata = Container.get(BreakingChangeRuleMetadata);
-		expect(metadata.getEntries().length).toBeGreaterThan(0);
+		expect(metadata.getEntries()).toHaveLength(16);
 	});
 
 	it('should resolve all registered rules with valid metadata from the DI container', () => {

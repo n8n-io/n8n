@@ -15,7 +15,6 @@ import './v2/removed-nodes.rule';
 import './v2/settings-file-permissions.rule';
 import './v2/start-node-removed.rule';
 import './v2/task-runner-docker-image.rule';
-import './v2/task-runners.rule';
 import './v2/tunnel-option.rule';
 import './v2/wait-node-subworkflow.rule';
 import './v2/workflow-hooks-deprecated.rule';
