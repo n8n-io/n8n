@@ -40,6 +40,37 @@ export class PostHogClient {
 		});
 	}
 
+	groupIdentify({
+		instanceId,
+		distinctId,
+		properties,
+	}: {
+		instanceId: string;
+		distinctId?: string;
+		properties: Record<string, string | number> | undefined;
+	}): void {
+		if (!instanceId) return;
+
+		this.postHog?.groupIdentify({
+			groupType: 'company', // NOTE : Aliased as "instance" on PostHog dashboard
+			groupKey: instanceId,
+			properties,
+			...(distinctId && { distinctId }),
+		});
+	}
+
+	identify({
+		distinctId,
+		properties,
+	}: { distinctId: string; properties: Record<string | number, any> | undefined }): void {
+		if (!distinctId) return;
+
+		this.postHog?.identify({
+			distinctId,
+			properties: properties ?? undefined,
+		});
+	}
+
 	async getFeatureFlags(user: Pick<PublicUser, 'id' | 'createdAt'>): Promise<FeatureFlags> {
 		if (!this.postHog) return {};
 

@@ -1,3 +1,4 @@
+import { LicenseState } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import {
 	CredentialsRepository,
@@ -52,6 +53,7 @@ export class TelemetryEventRelay extends EventRelay {
 		readonly eventService: EventService,
 		private readonly telemetry: Telemetry,
 		private readonly license: License,
+		private readonly licenseState: LicenseState,
 		private readonly globalConfig: GlobalConfig,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly binaryDataConfig: BinaryDataConfig,
@@ -1050,10 +1052,60 @@ export class TelemetryEventRelay extends EventRelay {
 			},
 		};
 
+		const versionParts = getSemanticVersioning(N8N_VERSION);
+
+		// Instance information available at group level on PostHog & Rudderstack
+		const telemetryInstanceInfo = {
+			// Main instance settings
+			n8n_host: this.globalConfig.host,
+			version_cli: N8N_VERSION,
+			version_cli_major: versionParts.major,
+			version_cli_minor: versionParts.minor,
+			version_cli_patch: versionParts.patch,
+			release_channel: this.globalConfig.generic.releaseChannel,
+			executions_mode: this.globalConfig.executions.mode,
+			n8n_deployment_type: this.globalConfig.deployment.type,
+			db_type: this.globalConfig.database.type,
+
+			// Location settings
+			timezone: this.globalConfig.generic.timezone,
+			default_locale: this.globalConfig.defaultLocale,
+
+			// Feature settings
+			personalization_enabled: this.globalConfig.personalization.enabled,
+			multi_main_setup_enabled: this.globalConfig.multiMainSetup.enabled,
+			task_runners_mode: this.globalConfig.taskRunners.mode,
+			templates_enabled: this.globalConfig.templates.enabled,
+			ai_enabled: this.globalConfig.ai.enabled,
+
+			// Licensing
+			license: {
+				plan_name: this.license.getPlanName(),
+				tenant_id: this.globalConfig.license.tenantId,
+				auto_renewal_enabled: this.globalConfig.license.autoRenewalEnabled,
+				has_activation_key: !!this.globalConfig.license.activationKey,
+				expiry_date: this.license.getExpiryDate()?.toISOString(),
+				termination_date: this.license.getTerminationDate()?.toISOString(),
+				expiring_in_days: this.license.getExpiringInDays(),
+				terminating_in_days: this.license.getTerminatingInDays(),
+				features: this.getLicenseFeatures(),
+			},
+
+			// Misc instance settings
+			smtp_set_up: this.globalConfig.userManagement.emails.mode === 'smtp',
+			ldap_allowed: authenticationMethod === 'ldap',
+			saml_enabled: authenticationMethod === 'saml',
+		};
+
 		const firstWorkflow = await this.workflowRepository.findOne({
 			select: ['createdAt'],
 			order: { createdAt: 'ASC' },
 			where: {},
+		});
+
+		// Inject instance info on telemetry instance group
+		this.telemetry.groupIdentify({
+			traits: this.telemetry.sanitizeTelemetryProperties(telemetryInstanceInfo),
 		});
 
 		this.telemetry.identify(info);
@@ -1061,6 +1113,57 @@ export class TelemetryEventRelay extends EventRelay {
 			...info,
 			earliest_workflow_created: firstWorkflow?.createdAt,
 		});
+	}
+
+	private getLicenseFeatures() {
+		return {
+			// Features
+			customRoles: this.licenseState.isCustomRolesLicensed(),
+			dynamicCredentials: this.licenseState.isDynamicCredentialsLicensed(),
+			personalSpacePolicy: this.licenseState.isPersonalSpacePolicyLicensed(),
+			sharing: this.licenseState.isSharingLicensed(),
+			logStreaming: this.licenseState.isLogStreamingLicensed(),
+			ldap: this.licenseState.isLdapLicensed(),
+			saml: this.licenseState.isSamlLicensed(),
+			oidc: this.licenseState.isOidcLicensed(),
+			mfaEnforcement: this.licenseState.isMFAEnforcementLicensed(),
+			apiKeyScopes: this.licenseState.isApiKeyScopesLicensed(),
+			aiAssistant: this.licenseState.isAiAssistantLicensed(),
+			askAi: this.licenseState.isAskAiLicensed(),
+			aiCredits: this.licenseState.isAiCreditsLicensed(),
+			advancedExecutionFilters: this.licenseState.isAdvancedExecutionFiltersLicensed(),
+			advancedPermissions: this.licenseState.isAdvancedPermissionsLicensed(),
+			debugInEditor: this.licenseState.isDebugInEditorLicensed(),
+			binaryDataS3: this.licenseState.isBinaryDataS3Licensed(),
+			multiMain: this.licenseState.isMultiMainLicensed(),
+			variables: this.licenseState.isVariablesLicensed(),
+			sourceControl: this.licenseState.isSourceControlLicensed(),
+			externalSecrets: this.licenseState.isExternalSecretsLicensed(),
+			apiDisabled: this.licenseState.isAPIDisabled(),
+			workerView: this.licenseState.isWorkerViewLicensed(),
+			projectRoleAdmin: this.licenseState.isProjectRoleAdminLicensed(),
+			projectRoleEditor: this.licenseState.isProjectRoleEditorLicensed(),
+			projectRoleViewer: this.licenseState.isProjectRoleViewerLicensed(),
+			customNpmRegistry: this.licenseState.isCustomNpmRegistryLicensed(),
+			folders: this.licenseState.isFoldersLicensed(),
+			insightsSummary: this.licenseState.isInsightsSummaryLicensed(),
+			insightsDashboard: this.licenseState.isInsightsDashboardLicensed(),
+			insightsHourlyData: this.licenseState.isInsightsHourlyDataLicensed(),
+			workflowDiffs: this.licenseState.isWorkflowDiffsLicensed(),
+			provisioning: this.licenseState.isProvisioningLicensed(),
+
+			// Quotas
+			maxUsers: this.licenseState.getMaxUsers(),
+			maxActiveWorkflows: this.licenseState.getMaxActiveWorkflows(),
+			maxVariables: this.licenseState.getMaxVariables(),
+			maxAiCredits: this.licenseState.getMaxAiCredits(),
+			workflowHistoryPruneQuota: this.licenseState.getWorkflowHistoryPruneQuota(),
+			insightsMaxHistory: this.licenseState.getInsightsMaxHistory(),
+			insightsRetentionMaxAge: this.licenseState.getInsightsRetentionMaxAge(),
+			insightsRetentionPruneInterval: this.licenseState.getInsightsRetentionPruneInterval(),
+			maxTeamProjects: this.licenseState.getMaxTeamProjects(),
+			maxWorkflowsWithEvaluations: this.licenseState.getMaxWorkflowsWithEvaluations(),
+		};
 	}
 
 	private sessionStarted({ pushRef }: RelayEventMap['session-started']) {
@@ -1072,6 +1175,11 @@ export class TelemetryEventRelay extends EventRelay {
 	}
 
 	private async instanceOwnerSetup({ userId }: RelayEventMap['instance-owner-setup']) {
+		// Attach owner to instance group on telemetry
+		this.telemetry.groupIdentify({
+			userId,
+		});
+
 		this.telemetry.track('Owner finished instance setup', { user_id: userId });
 	}
 
@@ -1127,6 +1235,13 @@ export class TelemetryEventRelay extends EventRelay {
 		targetUserNewRole,
 		publicApi,
 	}: RelayEventMap['user-changed-role']) {
+		this.telemetry.identify(
+			{
+				user_role: targetUserNewRole,
+			},
+			userId,
+		);
+
 		this.telemetry.track('User changed role', {
 			user_id: userId,
 			target_user_id: targetUserId,
@@ -1194,6 +1309,14 @@ export class TelemetryEventRelay extends EventRelay {
 	}
 
 	private userUpdated({ user, fieldsChanged }: RelayEventMap['user-updated']) {
+		this.telemetry.identify(
+			{
+				user_role: user?.role?.slug,
+				user_email: user.email,
+			},
+			user.id,
+		);
+
 		this.telemetry.track('User changed personal settings', {
 			user_id: user.id,
 			fields_changed: fieldsChanged,
@@ -1216,6 +1339,13 @@ export class TelemetryEventRelay extends EventRelay {
 			target_user_id: targetUserId,
 			migration_user_id: migrationUserId,
 		});
+
+		this.telemetry.identify(
+			{
+				deleted: true,
+			},
+			targetUserId,
+		);
 	}
 
 	private userInvited({
@@ -1241,9 +1371,16 @@ export class TelemetryEventRelay extends EventRelay {
 			was_disabled_ldap_user: wasDisabledLdapUser,
 			...(this.globalConfig.deployment.type === 'cloud' && {
 				user_email: user.email,
-				user_role: user.role,
+				user_role: user?.role?.slug,
 			}),
 		};
+
+		this.telemetry.identify(payload, user.id);
+
+		// Attach new instance user to instance group on telemetry
+		this.telemetry.groupIdentify({
+			userId: user.id,
+		});
 
 		this.telemetry.track('User signed up', payload);
 	}
@@ -1443,4 +1580,34 @@ export class TelemetryEventRelay extends EventRelay {
 	}
 
 	// #endregion
+}
+
+function getSemanticVersioning(versionCli: string): {
+	major: number;
+	minor: number;
+	patch: number;
+} {
+	try {
+		if (!versionCli || typeof versionCli !== 'string') {
+			return { major: 0, minor: 0, patch: 0 };
+		}
+
+		// Remove any pre-release or build metadata (e.g "2.11.0-beta.1" -> "2.11.0")
+		const cleanVersion = versionCli.split('-')[0] ?? '';
+		const parts = cleanVersion.split('.');
+
+		const parseVersion = (part: string | undefined): number => {
+			if (!part) return 0;
+			const parsed = parseInt(part, 10);
+			return Number.isNaN(parsed) ? 0 : parsed;
+		};
+
+		return {
+			major: parseVersion(parts[0]),
+			minor: parseVersion(parts[1]),
+			patch: parseVersion(parts[2]),
+		};
+	} catch (e) {
+		return { major: 0, minor: 0, patch: 0 };
+	}
 }
