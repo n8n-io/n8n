@@ -425,7 +425,7 @@ const onNodeExecute = () => {
 						@execute="onNodeExecute"
 					/>
 				</div>
-				<div v-else>
+				<div v-else :class="$style.action">
 					<N8nText tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
 						listeningTitle
 					}}</N8nText>
