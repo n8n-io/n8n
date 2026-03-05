@@ -41,7 +41,7 @@ Migrate files from direct `workflowsStore` / `workflowState` node access to `wor
 | `workflowState.resetAllNodesIssues()` | `.resetAllNodesIssues()` |
 | `workflowState.setLastNodeParameters(...)` | `.setLastNodeParameters(...)` |
 | `workflowState.resetParametersLastUpdatedAt(...)` | `.resetParametersLastUpdatedAt(...)` |
-| `workflowState.updateNodeAtIndex(idx, data)` | No 1:1 mapping — review each call site and use the appropriate facade method (`updateNodeById`, `updateNodeProperties`, `setNodeIssue`, etc.) |
+| `workflowState.updateNodeAtIndex(idx, data)` | `.updateNodeById(id, data)` — same semantics, pass node ID instead of index. `updateNodeAtIndex` exists in the facade as an internal helper but is not exposed publicly. |
 
 ## Migration guidelines
 
