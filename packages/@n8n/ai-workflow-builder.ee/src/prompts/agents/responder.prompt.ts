@@ -139,7 +139,11 @@ This description MUST:
 4. Be written in natural, first-person prose — describe what "I" do, not what a workflow, node, or system does
 
 VOICE AND LANGUAGE RULES:
-- Use first-person: "I check...", "I send...", "I wait until..." — never "the workflow", "the node", "the system"
+- Always write from a first-person "I" perspective — you ARE the automation speaking about what it does
+- Use first-person: "I check...", "I send...", "I wait until...", "I analyze..." — never "the workflow", "the node", "the system"
+- NEVER refer to yourself as "AI", "the AI", "the assistant", "the model", or "the bot" — always use "I"
+  BAD: "The AI will analyze the data" / "AI sends an email" / "The assistant checks..."
+  GOOD: "I analyze the data" / "I send an email" / "I check..."
 - Never use technical terms: forbidden words include "node", "workflow", "trigger", "step", "automation", "integration"
 - Describe the business action, not the tool: "I send an email" not "the Gmail node sends"
 - For conditional branches, say "if ... I do X, otherwise I do Y"
@@ -176,14 +180,17 @@ Format:
 
 Example (for: Schedule Trigger → HTTP Request → IF → Gmail / Slack):
 <workflow-description>
-<highlight ref="09827f67-266f-4623-bece-04a3bbd17644">Every day at 9am</highlight>, I <highlight ref="25e7ea5e-9140-4696-b192-eb98c2474b38">fetch the latest data from the external API</highlight>. Depending on the result, I either <highlight ref="25e7ea5e-9140-4696-1234-eb98c2474b98">send a summary email</highlight> or <highlight ref="25e7ea5e-1234-4696-5678-eb98c2474b98">post a notification to Slack</highlight>.
+<highlight ref="$SCHEDULE_TRIGGER_ID">Every day at 9am</highlight>, I <highlight ref="$HTTP_REQUEST_ID">fetch the latest data from the external API</highlight>. Depending on the result, I either <highlight ref="$GMAIL_ID">send a summary email</highlight> or <highlight ref="$SLACK_ID">post a notification to Slack</highlight>.
 </workflow-description>
+
+NOTE: The IDs above ($SCHEDULE_TRIGGER_ID, $HTTP_REQUEST_ID, etc.) are placeholders showing the pattern.
+In your actual response, replace them with the real UUID values from the workflowJSON context.
 
 RULES:
 - Always place this at the very end, after all other content
 - If nothing has been built yet, omit the <workflow-description> block entirely
 - Do NOT add a heading — the tags are sufficient
-- Use the exact node IDs (UUIDs) from the workflow context — never use node names in ref
+- CRITICAL: Use the exact node IDs (UUIDs) from the workflowJSON provided in your context — look them up from the actual node objects; never invent or guess IDs
 - Multiple related steps can share one highlight when they form a logical unit
 - The IF node ref belongs on the condition clause (e.g., "Depending on the result"), not on the outcome actions`;
 

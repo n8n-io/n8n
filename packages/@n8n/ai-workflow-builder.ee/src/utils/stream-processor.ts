@@ -267,6 +267,8 @@ function processWorkflowNameUpdate(update: unknown): StreamOutput | null {
 	return { messages: [workflowUpdateChunk] };
 }
 
+const WORKFLOW_DESCRIPTION_REGEX = /<workflow-description>([\s\S]*?)<\/workflow-description>/;
+
 /** Handle agent node message update */
 function processAgentNodeUpdate(nodeName: string, update: unknown): StreamOutput | null {
 	if (!shouldEmitFromNode(nodeName)) return null;
@@ -283,6 +285,18 @@ function processAgentNodeUpdate(nodeName: string, update: unknown): StreamOutput
 		type: 'message',
 		text: content,
 	};
+
+	// Extract workflow description and emit as a separate workflow update chunk
+	const descriptionMatch = WORKFLOW_DESCRIPTION_REGEX.exec(content);
+	if (descriptionMatch) {
+		const descriptionChunk: WorkflowUpdateChunk = {
+			role: 'assistant',
+			type: 'workflow-updated',
+			description: descriptionMatch[1].trim(),
+		};
+		return { messages: [messageChunk, descriptionChunk] };
+	}
+
 	return { messages: [messageChunk] };
 }
 

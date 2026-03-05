@@ -5,6 +5,7 @@ import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/wo
 import { useHistoryStore } from '@/app/stores/history.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { AutoSaveState, VIEWS } from '@/app/constants';
 import { computed, watch, ref, nextTick, useSlots } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -36,7 +37,7 @@ import { useChatPanelStateStore } from '@/features/ai/assistant/chatPanelState.s
 import { useReviewChanges } from '@/features/ai/assistant/composables/useReviewChanges';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 
-import { N8nAskAssistantChat, N8nInfoTip } from '@n8n/design-system';
+import { N8nAskAssistantChat, N8nInfoTip, WorkflowDescription } from '@n8n/design-system';
 import BuildModeEmptyState from './BuildModeEmptyState.vue';
 import {
 	isPlanModePlanMessage,
@@ -49,6 +50,10 @@ import PlanModeSelector from './PlanModeSelector.vue';
 import PlanQuestionsMessage from './PlanQuestionsMessage.vue';
 import UserAnswersMessage from './UserAnswersMessage.vue';
 
+const props = defineProps<{
+	workflowDescription?: string | null;
+}>();
+
 const emit = defineEmits<{
 	close: [];
 }>();
@@ -59,6 +64,7 @@ const workflowHistoryStore = useWorkflowHistoryStore();
 const historyStore = useHistoryStore();
 const collaborationStore = useCollaborationStore();
 const workflowAutosaveStore = useWorkflowSaveStore();
+const uiStore = useUIStore();
 const telemetry = useTelemetry();
 const slots = useSlots();
 const workflowsStore = useWorkflowsStore();
@@ -375,6 +381,14 @@ watch(
 
 			processedWorkflowUpdates.value.add(msg.id);
 
+			// Save description when provided by the responder agent
+			if (msg.description) {
+				workflowsStore.setDescription(msg.description);
+				uiStore.markStateDirty();
+			}
+
+			if (!msg.codeSnippet) continue;
+
 			const workflowData = parseWorkflowJson(msg.codeSnippet);
 			if (!workflowData) continue;
 
@@ -577,6 +591,10 @@ defineExpose({
 				<ExecuteMessage v-if="showExecuteMessage" @workflow-executed="onWorkflowExecuted" />
 			</template>
 			<template #placeholder>
+				<WorkflowDescription
+					v-if="props.workflowDescription"
+					:content="props.workflowDescription"
+				/>
 				<BuildModeEmptyState />
 			</template>
 			<template #custom-message="{ message }">

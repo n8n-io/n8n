@@ -140,7 +140,7 @@ describe('TextEditorToolHandler', () => {
 			// Should yield a WorkflowUpdateChunk for progressive canvas rendering
 			const workflowChunks = chunks.flatMap((c) => c.messages ?? []).filter(isWorkflowUpdateChunk);
 			expect(workflowChunks).toHaveLength(1);
-			expect(jsonParse(workflowChunks[0].codeSnippet)).toEqual(mockWorkflow);
+			expect(jsonParse(workflowChunks[0].codeSnippet!)).toEqual(mockWorkflow);
 		});
 
 		it('should auto-validate after create and return workflowReady false on warnings', async () => {
@@ -179,7 +179,7 @@ describe('TextEditorToolHandler', () => {
 			// Should still yield a WorkflowUpdateChunk even with warnings
 			const workflowChunks = chunks.flatMap((c) => c.messages ?? []).filter(isWorkflowUpdateChunk);
 			expect(workflowChunks).toHaveLength(1);
-			expect(jsonParse(workflowChunks[0].codeSnippet)).toEqual(mockWorkflow);
+			expect(jsonParse(workflowChunks[0].codeSnippet!)).toEqual(mockWorkflow);
 		});
 
 		it('should auto-validate after create and return workflowReady false on parse error', async () => {
@@ -444,7 +444,7 @@ describe('TextEditorToolHandler', () => {
 			// Should yield a WorkflowUpdateChunk
 			const workflowChunks = chunks.flatMap((c) => c.messages ?? []).filter(isWorkflowUpdateChunk);
 			expect(workflowChunks).toHaveLength(1);
-			expect(jsonParse(workflowChunks[0].codeSnippet)).toEqual(mockWorkflow);
+			expect(jsonParse(workflowChunks[0].codeSnippet!)).toEqual(mockWorkflow);
 		});
 
 		it('should yield WorkflowUpdateChunk after successful str_replace when parse succeeds', async () => {
@@ -475,7 +475,7 @@ describe('TextEditorToolHandler', () => {
 
 			const workflowChunks = chunks.flatMap((c) => c.messages ?? []).filter(isWorkflowUpdateChunk);
 			expect(workflowChunks).toHaveLength(1);
-			expect(jsonParse(workflowChunks[0].codeSnippet)).toEqual(mockWorkflow);
+			expect(jsonParse(workflowChunks[0].codeSnippet!)).toEqual(mockWorkflow);
 
 			// Tool message should NOT contain parse error
 			expect(messages).toHaveLength(1);
@@ -510,7 +510,7 @@ describe('TextEditorToolHandler', () => {
 
 			const workflowChunks = chunks.flatMap((c) => c.messages ?? []).filter(isWorkflowUpdateChunk);
 			expect(workflowChunks).toHaveLength(1);
-			expect(jsonParse(workflowChunks[0].codeSnippet)).toEqual(mockWorkflow);
+			expect(jsonParse(workflowChunks[0].codeSnippet!)).toEqual(mockWorkflow);
 		});
 
 		it('should append parse error to tool message when parse fails after str_replace', async () => {
@@ -581,7 +581,7 @@ describe('TextEditorToolHandler', () => {
 
 			const workflowChunks = (result.chunk?.messages ?? []).filter(isWorkflowUpdateChunk);
 			expect(workflowChunks).toHaveLength(1);
-			expect(jsonParse(workflowChunks[0].codeSnippet)).toEqual(mockWorkflow);
+			expect(jsonParse(workflowChunks[0].codeSnippet!)).toEqual(mockWorkflow);
 		});
 
 		it('should return parseError on parse failure', async () => {

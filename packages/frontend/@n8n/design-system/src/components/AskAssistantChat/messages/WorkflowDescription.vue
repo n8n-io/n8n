@@ -107,8 +107,7 @@ function setNodeHighlight(nodeIds: string[], color: string, active: boolean): vo
 
 .highlight {
 	border-bottom: 2px dashed var(--highlight--color);
-	cursor: default;
-	display: inline-block;
+	cursor: pointer;
 	transition: transform 0.15s ease;
 
 	&:hover {

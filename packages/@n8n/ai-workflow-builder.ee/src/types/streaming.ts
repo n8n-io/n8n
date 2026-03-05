@@ -26,8 +26,10 @@ export interface ToolProgressChunk {
 export interface WorkflowUpdateChunk {
 	role: 'assistant';
 	type: 'workflow-updated';
-	/** JSON-stringified workflow */
-	codeSnippet: string;
+	/** JSON-stringified workflow (absent when only updating description) */
+	codeSnippet?: string;
+	/** Workflow description extracted from responder message */
+	description?: string | null;
 	/** Number of agentic loop iterations required */
 	iterationCount?: number;
 	/** Source code that generated the workflow (only populated during evaluations) */

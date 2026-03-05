@@ -3,7 +3,9 @@ import type { IWorkflowBase, INode, IConnections } from 'n8n-workflow';
 /**
  * Simplified workflow representation containing only nodes and connections
  */
-export type SimpleWorkflow = Pick<IWorkflowBase, 'name' | 'nodes' | 'connections'>;
+export type SimpleWorkflow = Pick<IWorkflowBase, 'name' | 'nodes' | 'connections'> & {
+	description?: string | null;
+};
 
 /**
  * Workflow operation types that can be applied to the workflow state

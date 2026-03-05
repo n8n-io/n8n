@@ -80,7 +80,8 @@ export namespace ChatUI {
 	export interface WorkflowUpdatedMessage {
 		role: 'assistant';
 		type: 'workflow-updated';
-		codeSnippet: string;
+		codeSnippet?: string;
+		description?: string | null;
 	}
 
 	export interface ToolMessage {

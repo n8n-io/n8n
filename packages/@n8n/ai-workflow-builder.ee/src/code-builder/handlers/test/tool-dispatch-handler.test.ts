@@ -728,7 +728,7 @@ describe('ToolDispatchHandler', () => {
 
 			const workflowChunks = chunks.flatMap((c) => c.messages ?? []).filter(isWorkflowUpdateChunk);
 			expect(workflowChunks).toHaveLength(1);
-			expect(jsonParse(workflowChunks[0].codeSnippet)).toEqual(mockWorkflow);
+			expect(jsonParse(workflowChunks[0].codeSnippet!)).toEqual(mockWorkflow);
 		});
 
 		it('should append parse error to tool message when parse fails after batch_str_replace', async () => {

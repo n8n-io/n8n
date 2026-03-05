@@ -146,7 +146,7 @@ defineExpose({
 <template>
 	<div :class="[$style.wrapper, $style[`mode-${view}`]]" data-test-id="canvas-wrapper">
 		<div id="chat" :class="$style.chat">
-			<AskAssistantBuild ref="askAssistantBuildRef">
+			<AskAssistantBuild ref="askAssistantBuildRef" :workflow-description="workflow.description">
 				<!--
 				<template v-if="canToggleModes" #header>
 					<HubSwitcher :is-build-mode="isBuildMode" @toggle="toggleAssistantMode" />
