@@ -9,6 +9,7 @@ import type { MockInstance } from 'vitest';
 import {
 	autocompletableNodeNames,
 	expressionWithFirstItem,
+	splitBaseTail,
 	stripExcessParens,
 	isAllowedInDotNotation,
 } from './utils';
@@ -186,6 +187,45 @@ describe('completion utils', () => {
 			}
 
 			expect(view.state.doc.toString()).toEqual(expected);
+		});
+	});
+
+	describe('splitBaseTail', () => {
+		const parse = (input: string) => javascriptLanguage.parser.parse(input);
+
+		describe('standard dot access', () => {
+			it('should return base and empty tail for: $json.', () => {
+				expect(splitBaseTail(parse('$json.'), '$json.')).toEqual(['$json', '']);
+			});
+
+			it('should return base and partial tail for: $json.fo', () => {
+				expect(splitBaseTail(parse('$json.fo'), '$json.fo')).toEqual(['$json', 'fo']);
+			});
+		});
+
+		describe('optional chaining access', () => {
+			it('should return base and empty tail for: $json?.', () => {
+				expect(splitBaseTail(parse('$json?.'), '$json?.')).toEqual(['$json', '']);
+			});
+
+			it('should return base and partial tail for: $json?.fo', () => {
+				expect(splitBaseTail(parse('$json?.fo'), '$json?.fo')).toEqual(['$json', 'fo']);
+			});
+
+			it('should handle chained optional access: $json?.foo.', () => {
+				expect(splitBaseTail(parse('$json?.foo.'), '$json?.foo.')).toEqual(['$json?.foo', '']);
+			});
+
+			it('should handle chained optional access with partial tail: $json?.foo.ba', () => {
+				expect(splitBaseTail(parse('$json?.foo.ba'), '$json?.foo.ba')).toEqual([
+					'$json?.foo',
+					'ba',
+				]);
+			});
+
+			it('should handle double optional chaining: $json?.foo?.', () => {
+				expect(splitBaseTail(parse('$json?.foo?.'), '$json?.foo?.')).toEqual(['$json?.foo', '']);
+			});
 		});
 	});
 
