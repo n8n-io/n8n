@@ -1,4 +1,5 @@
 import type { Driver, TableColumnOptions } from '@n8n/typeorm';
+import assert from 'node:assert';
 
 export class Column {
 	private type:
@@ -127,15 +128,10 @@ export class Column {
 	}
 
 	/**
-	 * @deprecated Use `autoGenerate2` for integer columns. For UUID columns,
-	 * avoid both `autoGenerate` and `autoGenerate2` — they cause TypeORM to
-	 * emit `DEFAULT uuid_generate_v4()`, which requires the `uuid-ossp`
-	 * extension in the `public` schema. This fails on managed Postgres
-	 * services like Supabase where the extension lives in a different schema.
-	 * Instead, use `column('id').uuid.primary.notNull` and generate UUIDs in
-	 * application code via `@BeforeInsert()` + `randomUUID()`.
+	 * @deprecated Use `autoGenerate2` instead
 	 **/
 	get autoGenerate() {
+		this.assertCanAutogenerate('autoGenerate');
 		this.isGenerated = true;
 		return this;
 	}
@@ -143,15 +139,9 @@ export class Column {
 	/**
 	 * Prefers `identity` over `increment` (which turns to `serial` for pg).
 	 * See https://wiki.postgresql.org/wiki/Don%27t_Do_This#Don.27t_use_serial
-	 *
-	 * WARNING: For UUID columns, this has the same problem as `autoGenerate`
-	 * — TypeORM emits `DEFAULT uuid_generate_v4()`, which fails on managed
-	 * Postgres services (e.g. Supabase) where the `uuid-ossp` extension is
-	 * not in the `public` schema. For UUID primary keys, use
-	 * `column('id').uuid.primary.notNull` and generate UUIDs in application
-	 * code via `@BeforeInsert()` + `randomUUID()`.
 	 **/
 	get autoGenerate2() {
+		this.assertCanAutogenerate('autoGenerate2');
 		this.isGenerated2 = true;
 		return this;
 	}
@@ -218,13 +208,15 @@ export class Column {
 		}
 
 		if (isGenerated) {
+			this.assertCanAutogenerate('autoGenerate');
 			options.isGenerated = true;
-			options.generationStrategy = type === 'uuid' ? 'uuid' : 'increment';
+			options.generationStrategy = 'increment';
 		}
 
 		if (isGenerated2) {
+			this.assertCanAutogenerate('autoGenerate2');
 			options.isGenerated = true;
-			options.generationStrategy = type === 'uuid' ? 'uuid' : 'identity';
+			options.generationStrategy = 'identity';
 		}
 
 		if (isPrimary || isGenerated || isGenerated2) {
@@ -246,5 +238,12 @@ export class Column {
 		}
 
 		return options;
+	}
+
+	private assertCanAutogenerate(method: string) {
+		assert(
+			this.type !== 'uuid',
+			`${method} on UUID columns emits DEFAULT uuid_generate_v4(), which fails on managed Postgres (e.g. Supabase). Use column.uuid.primary.notNull and generate UUIDs in application code instead.`,
+		);
 	}
 }
