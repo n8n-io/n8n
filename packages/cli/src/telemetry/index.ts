@@ -252,11 +252,6 @@ export class Telemetry {
 		const { instanceId } = this.instanceSettings;
 		if (!instanceId) return;
 
-		console.log('-- groupIdentify called --');
-		console.log('instanceId:', instanceId);
-		console.log('userId:', userId);
-		console.log('traits:', traits);
-
 		if (this.postHog) {
 			this.postHog.groupIdentify({
 				...(userId && { distinctId: `${userId}#${instanceId}` }),
@@ -283,11 +278,6 @@ export class Telemetry {
 	): void {
 		const { instanceId } = this.instanceSettings;
 		if (!instanceId) return;
-
-		console.log('-- identify called --');
-		console.log('instanceId:', instanceId);
-		console.log('userId:', userId);
-		console.log('traits:', traits);
 
 		if (this.rudderStack) {
 			this.rudderStack.identify({
