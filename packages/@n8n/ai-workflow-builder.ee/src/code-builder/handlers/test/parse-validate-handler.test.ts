@@ -10,9 +10,10 @@ import { ParseValidateHandler } from '../parse-validate-handler';
 // Mock the workflow-sdk module
 jest.mock('@n8n/workflow-sdk', () => ({
 	parseWorkflowCodeToBuilder: jest.fn(),
+	parseWorkflowCode: jest.fn(),
 	validateWorkflow: jest.fn(),
 	workflow: { fromJSON: jest.fn() },
-	compileWorkflowJS: jest.fn(),
+	transpileWorkflowJS: jest.fn(),
 	stripImportStatements: jest.fn((code: string) => code),
 }));
 
@@ -22,9 +23,11 @@ const mockValidateWorkflow = validateWorkflow as jest.Mock;
 const mockFromJSON = workflow.fromJSON as jest.Mock;
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { compileWorkflowJS: mockCompileWorkflowJS } = require('@n8n/workflow-sdk') as {
-	compileWorkflowJS: jest.Mock;
-};
+const { transpileWorkflowJS: mockTranspileWorkflowJS, parseWorkflowCode: mockParseWorkflowCode } =
+	require('@n8n/workflow-sdk') as {
+		transpileWorkflowJS: jest.Mock;
+		parseWorkflowCode: jest.Mock;
+	};
 
 describe('ParseValidateHandler', () => {
 	let handler: ParseValidateHandler;
@@ -328,7 +331,7 @@ describe('ParseValidateHandler', () => {
 			simplifiedHandler = new ParseValidateHandler({ useSimplifiedSyntax: true });
 		});
 
-		it('should use compileWorkflowJS when useSimplifiedSyntax is enabled', async () => {
+		it('should use transpileWorkflowJS when useSimplifiedSyntax is enabled', async () => {
 			const mockWorkflow = {
 				id: 'test',
 				name: 'Compiled',
@@ -336,14 +339,18 @@ describe('ParseValidateHandler', () => {
 				connections: {},
 			};
 
-			mockCompileWorkflowJS.mockReturnValue({
-				workflow: mockWorkflow,
+			mockTranspileWorkflowJS.mockReturnValue({
+				code: 'const sdk = workflow("test", "Compiled");',
 				errors: [],
 			});
+			mockParseWorkflowCode.mockReturnValue(mockWorkflow);
 
 			const result = await simplifiedHandler.parseAndValidate('trigger.manual()');
 
-			expect(mockCompileWorkflowJS).toHaveBeenCalledWith('trigger.manual()');
+			expect(mockTranspileWorkflowJS).toHaveBeenCalledWith('trigger.manual()');
+			expect(mockParseWorkflowCode).toHaveBeenCalledWith(
+				'const sdk = workflow("test", "Compiled");',
+			);
 			expect(result.workflow).toEqual(mockWorkflow);
 			expect(result.warnings).toHaveLength(0);
 			// Should NOT use the SDK parser
@@ -351,8 +358,8 @@ describe('ParseValidateHandler', () => {
 		});
 
 		it('should throw when simplified compiler returns errors', async () => {
-			mockCompileWorkflowJS.mockReturnValue({
-				workflow: { nodes: [], connections: {} },
+			mockTranspileWorkflowJS.mockReturnValue({
+				code: '',
 				errors: [
 					{ line: 3, message: 'Unexpected token' },
 					{ line: null, message: 'Missing trigger' },
@@ -364,7 +371,7 @@ describe('ParseValidateHandler', () => {
 			);
 		});
 
-		it('should not use compileWorkflowJS when useSimplifiedSyntax is false', async () => {
+		it('should not use transpileWorkflowJS when useSimplifiedSyntax is false', async () => {
 			const mockBuilder = {
 				regenerateNodeIds: jest.fn(),
 				validate: jest.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
@@ -378,7 +385,7 @@ describe('ParseValidateHandler', () => {
 			// Default handler has useSimplifiedSyntax: false
 			await handler.parseAndValidate('const w = {}');
 
-			expect(mockCompileWorkflowJS).not.toHaveBeenCalled();
+			expect(mockTranspileWorkflowJS).not.toHaveBeenCalled();
 			expect(mockParseWorkflowCodeToBuilder).toHaveBeenCalled();
 		});
 	});
