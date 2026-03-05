@@ -1,8 +1,23 @@
+/**
+ * Integration tests for the useWorkflowDocumentNodes facade.
+ *
+ * These tests use a real Pinia store (createPinia, not createTestingPinia) so
+ * that every write goes through the actual workflowsStore and every read comes
+ * back through the facade's public API. This "round-trip" pattern (write → read
+ * back → assert) is intentional:
+ *
+ *  - It catches regressions when consumers migrate from workflowsStore to
+ *    workflowDocumentStore — the round-trip proves both paths produce the same
+ *    result.
+ *  - It survives internal refactors. When the facade's internals change (e.g.
+ *    owning its own refs instead of delegating), these tests stay unchanged
+ *    because they only exercise the public contract.
+ *  - Delegation-style tests (expect(store.method).toHaveBeenCalled()) would
+ *    need to be rewritten every time internals change; round-trips do not.
+ */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { setActivePinia } from 'pinia';
-import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia, createPinia } from 'pinia';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { mockedStore } from '@/__tests__/utils';
 import { createTestNode } from '@/__tests__/mocks';
 import type { INodeUi } from '@/Interface';
 import {
@@ -22,342 +37,312 @@ function createDeps(overrides: Partial<WorkflowDocumentNodesDeps> = {}): Workflo
 }
 
 describe('useWorkflowDocumentNodes', () => {
-	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let deps: WorkflowDocumentNodesDeps;
 
 	beforeEach(() => {
-		setActivePinia(createTestingPinia());
-		workflowsStore = mockedStore(useWorkflowsStore);
+		setActivePinia(createPinia());
+		workflowsStore = useWorkflowsStore();
 		deps = createDeps();
-
-		// Provide workflowObject.setNodes for updateNodeAtIndex
-		workflowsStore.workflowObject = { setNodes: vi.fn() } as unknown as ReturnType<
-			typeof useWorkflowsStore
-		>['workflowObject'];
 	});
 
-	describe('read API delegation', () => {
-		it('getNodeById delegates to workflowsStore.getNodeById', () => {
-			const node = createNode();
-			workflowsStore.getNodeById.mockReturnValue(node);
-
-			const { getNodeById } = useWorkflowDocumentNodes(deps);
-			const result = getNodeById('node-1');
-
-			expect(result).toBe(node);
-			expect(workflowsStore.getNodeById).toHaveBeenCalledWith('node-1');
-		});
-
-		it('getNodeByName delegates to workflowsStore.getNodeByName', () => {
-			const node = createNode();
-			workflowsStore.getNodeByName.mockReturnValue(node);
-
-			const { getNodeByName } = useWorkflowDocumentNodes(deps);
-			const result = getNodeByName('Test Node');
-
-			expect(result).toBe(node);
-			expect(workflowsStore.getNodeByName).toHaveBeenCalledWith('Test Node');
-		});
-
-		it('getNodes delegates to workflowsStore.getNodes', () => {
-			const nodes = [createNode()];
-			workflowsStore.getNodes.mockReturnValue(nodes);
-
-			const { getNodes } = useWorkflowDocumentNodes(deps);
-			const result = getNodes();
-
-			expect(result).toBe(nodes);
-			expect(workflowsStore.getNodes).toHaveBeenCalled();
-		});
-
-		it('findNodeByPartialId delegates to workflowsStore.findNodeByPartialId', () => {
-			const node = createNode();
-			workflowsStore.findNodeByPartialId.mockReturnValue(node);
-
-			const { findNodeByPartialId } = useWorkflowDocumentNodes(deps);
-			const result = findNodeByPartialId('node');
-
-			expect(result).toBe(node);
-			expect(workflowsStore.findNodeByPartialId).toHaveBeenCalledWith('node');
-		});
-
-		it('getNodesByIds delegates to workflowsStore.getNodesByIds', () => {
-			const nodes = [createNode()];
-			workflowsStore.getNodesByIds.mockReturnValue(nodes);
-
-			const { getNodesByIds } = useWorkflowDocumentNodes(deps);
-			const result = getNodesByIds(['node-1']);
-
-			expect(result).toBe(nodes);
-			expect(workflowsStore.getNodesByIds).toHaveBeenCalledWith(['node-1']);
-		});
-	});
-
-	describe('computed properties', () => {
-		it('allNodes reflects workflowsStore.allNodes', () => {
-			const nodes = [createNode({ name: 'A' }), createNode({ name: 'B' })];
-			workflowsStore.allNodes = nodes;
-
-			const { allNodes } = useWorkflowDocumentNodes(deps);
-
-			expect(allNodes.value).toEqual(nodes);
-		});
-
-		it('nodesByName reflects workflowsStore.nodesByName', () => {
+	describe('round-trip: setNodes → read', () => {
+		it('nodes set via setNodes are readable via allNodes', () => {
 			const nodeA = createNode({ name: 'A' });
-			workflowsStore.nodesByName = { A: nodeA };
+			const nodeB = createNode({ name: 'B' });
 
-			const { nodesByName } = useWorkflowDocumentNodes(deps);
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.setNodes([nodeA, nodeB]);
 
-			expect(nodesByName.value).toEqual({ A: nodeA });
+			expect(facade.allNodes.value).toHaveLength(2);
+			expect(facade.allNodes.value.map((n) => n.name)).toEqual(['A', 'B']);
 		});
 
-		it('canvasNames returns a Set of all node names', () => {
-			const nodes = [createNode({ name: 'A' }), createNode({ name: 'B' })];
-			workflowsStore.allNodes = nodes;
+		it('nodes set via setNodes are readable via getNodeById', () => {
+			const node = createNode({ name: 'A' });
 
-			const { canvasNames } = useWorkflowDocumentNodes(deps);
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.setNodes([node]);
 
-			expect(canvasNames.value).toEqual(new Set(['A', 'B']));
+			expect(facade.getNodeById(node.id)).toBeDefined();
+			expect(facade.getNodeById(node.id)?.name).toBe('A');
+		});
+
+		it('nodes set via setNodes are readable via getNodeByName', () => {
+			const node = createNode({ name: 'MyNode' });
+
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.setNodes([node]);
+
+			expect(facade.getNodeByName('MyNode')).toBeDefined();
+			expect(facade.getNodeByName('MyNode')?.id).toBe(node.id);
+		});
+
+		it('nodes set via setNodes are readable via getNodes', () => {
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.setNodes([createNode({ name: 'A' }), createNode({ name: 'B' })]);
+
+			const nodes = facade.getNodes();
+			expect(nodes).toHaveLength(2);
+		});
+
+		it('nodes set via setNodes are readable via nodesByName', () => {
+			const node = createNode({ name: 'Alpha' });
+
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.setNodes([node]);
+
+			expect(facade.nodesByName.value).toHaveProperty('Alpha');
+			expect(facade.nodesByName.value.Alpha.id).toBe(node.id);
+		});
+
+		it('canvasNames reflects set nodes', () => {
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.setNodes([createNode({ name: 'X' }), createNode({ name: 'Y' })]);
+
+			expect(facade.canvasNames.value).toEqual(new Set(['X', 'Y']));
+		});
+
+		it('getNodesByIds returns matching nodes', () => {
+			const nodeA = createNode({ name: 'A' });
+			const nodeB = createNode({ name: 'B' });
+
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.setNodes([nodeA, nodeB]);
+
+			const result = facade.getNodesByIds([nodeA.id]);
+			expect(result).toHaveLength(1);
+			expect(result[0].name).toBe('A');
+		});
+
+		it('findNodeByPartialId matches partial id', () => {
+			const node = createNode({ name: 'FindMe' });
+
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.setNodes([node]);
+
+			// Use first 8 chars of UUID as partial
+			const partial = node.id.slice(0, 8);
+			const found = facade.findNodeByPartialId(partial);
+			expect(found?.name).toBe('FindMe');
 		});
 	});
 
-	describe('write API delegation', () => {
-		it('setNodes delegates to workflowsStore.setNodes', () => {
-			const nodes = [createNode()];
+	describe('round-trip: addNode → read', () => {
+		it('node added via addNode is readable via allNodes', () => {
+			const node = createNode({ name: 'Added' });
 
-			const { setNodes } = useWorkflowDocumentNodes(deps);
-			setNodes(nodes);
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.addNode(node);
 
-			expect(workflowsStore.setNodes).toHaveBeenCalledWith(nodes);
+			expect(facade.allNodes.value).toHaveLength(1);
+			expect(facade.allNodes.value[0].name).toBe('Added');
 		});
 
-		it('addNode delegates to workflowsStore.addNode', () => {
-			const node = createNode();
+		it('node added via addNode is readable via getNodeById', () => {
+			const node = createNode({ name: 'Added' });
 
-			const { addNode } = useWorkflowDocumentNodes(deps);
-			addNode(node);
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.addNode(node);
 
-			expect(workflowsStore.addNode).toHaveBeenCalledWith(node);
-		});
-
-		it('removeNode delegates to workflowsStore.removeNode', () => {
-			const node = createNode();
-
-			const { removeNode } = useWorkflowDocumentNodes(deps);
-			removeNode(node);
-
-			expect(workflowsStore.removeNode).toHaveBeenCalledWith(node);
-		});
-
-		it('removeNodeById delegates to workflowsStore.removeNodeById', () => {
-			const { removeNodeById } = useWorkflowDocumentNodes(deps);
-			removeNodeById('node-1');
-
-			expect(workflowsStore.removeNodeById).toHaveBeenCalledWith('node-1');
+			expect(facade.getNodeById(node.id)?.name).toBe('Added');
 		});
 	});
 
-	describe('node mutation', () => {
-		it('setNodeParameters updates node parameters', () => {
-			const node = createNode({ parameters: { old: 'value' } });
-			workflowsStore.workflow.nodes = [node];
-			workflowsStore.nodeMetadata = {
-				'Test Node': { pristine: true, parametersLastUpdatedAt: 0 },
-			};
+	describe('round-trip: removeNode → read', () => {
+		it('removeNode removes node from allNodes', () => {
+			const nodeA = createNode({ name: 'A' });
+			const nodeB = createNode({ name: 'B' });
 
-			const { setNodeParameters } = useWorkflowDocumentNodes(deps);
-			setNodeParameters({ name: 'Test Node', value: { new: 'value' } });
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.setNodes([nodeA, nodeB]);
+			facade.removeNode(nodeA);
 
-			expect(node.parameters).toEqual({ new: 'value' });
+			expect(facade.allNodes.value).toHaveLength(1);
+			expect(facade.allNodes.value[0].name).toBe('B');
+		});
+
+		it('removeNodeById removes node from allNodes', () => {
+			const node = createNode({ name: 'ToRemove' });
+
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.setNodes([node]);
+			facade.removeNodeById(node.id);
+
+			expect(facade.allNodes.value).toHaveLength(0);
+		});
+
+		it('removeAllNodes empties all nodes', () => {
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.setNodes([createNode({ name: 'A' }), createNode({ name: 'B' })]);
+
+			facade.removeAllNodes({ setStateDirty: false, removePinData: false });
+
+			expect(facade.allNodes.value).toHaveLength(0);
+		});
+	});
+
+	describe('round-trip: mutations → read', () => {
+		it('setNodeParameters updates parameters readable via getNodeByName', () => {
+			const node = createNode({ name: 'Target', parameters: { old: 'value' } });
+
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.setNodes([node]);
+			facade.setNodeParameters({ name: 'Target', value: { new: 'value' } });
+
+			expect(facade.getNodeByName('Target')?.parameters).toEqual({ new: 'value' });
 		});
 
 		it('setNodeParameters with append merges parameters', () => {
-			const node = createNode({ parameters: { existing: 'keep' } });
-			workflowsStore.workflow.nodes = [node];
-			workflowsStore.nodeMetadata = {
-				'Test Node': { pristine: true, parametersLastUpdatedAt: 0 },
-			};
+			const node = createNode({ name: 'Target', parameters: { existing: 'keep' } });
 
-			const { setNodeParameters } = useWorkflowDocumentNodes(deps);
-			setNodeParameters({ name: 'Test Node', value: { added: 'new' } }, true);
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.setNodes([node]);
+			facade.setNodeParameters({ name: 'Target', value: { added: 'new' } }, true);
 
-			expect(node.parameters).toEqual({ existing: 'keep', added: 'new' });
+			expect(facade.getNodeByName('Target')?.parameters).toEqual({
+				existing: 'keep',
+				added: 'new',
+			});
 		});
 
 		it('setNodeParameters throws when node not found', () => {
-			workflowsStore.workflow.nodes = [];
+			const facade = useWorkflowDocumentNodes(deps);
 
-			const { setNodeParameters } = useWorkflowDocumentNodes(deps);
-
-			expect(() => setNodeParameters({ name: 'NonExistent', value: {} })).toThrow(
+			expect(() => facade.setNodeParameters({ name: 'NonExistent', value: {} })).toThrow(
 				'could not be found',
 			);
 		});
 
-		it('setNodeValue updates a node property', () => {
-			const node = createNode();
-			workflowsStore.workflow.nodes = [node];
-			workflowsStore.nodeMetadata = {
-				'Test Node': { pristine: true, parametersLastUpdatedAt: 0 },
-			};
+		it('setNodeValue updates a property readable via getNodeByName', () => {
+			const node = createNode({ name: 'Target' });
 
-			const { setNodeValue } = useWorkflowDocumentNodes(deps);
-			setNodeValue({ name: 'Test Node', key: 'disabled', value: true });
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.setNodes([node]);
+			facade.setNodeValue({ name: 'Target', key: 'disabled', value: true });
 
-			expect(node.disabled).toBe(true);
+			expect(facade.getNodeByName('Target')?.disabled).toBe(true);
 		});
 
-		it('setNodeValue does not update parametersLastUpdatedAt for position changes', () => {
-			const node = createNode();
-			workflowsStore.workflow.nodes = [node];
-			workflowsStore.nodeMetadata = {
-				'Test Node': { pristine: true, parametersLastUpdatedAt: 42 },
-			};
+		it('setNodePositionById updates position readable via getNodeById', () => {
+			const node = createNode({ name: 'Mover' });
 
-			const { setNodeValue } = useWorkflowDocumentNodes(deps);
-			setNodeValue({ name: 'Test Node', key: 'position', value: [300, 400] });
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.setNodes([node]);
+			facade.setNodePositionById(node.id, [300, 400]);
 
-			expect(workflowsStore.nodeMetadata['Test Node'].parametersLastUpdatedAt).toBe(42);
+			expect(facade.getNodeById(node.id)?.position).toEqual([300, 400]);
 		});
 
-		it('setNodePositionById finds node by id and sets position', () => {
-			const node = createNode({ id: 'abc-123' });
-			workflowsStore.workflow.nodes = [node];
-			workflowsStore.nodeMetadata = {
-				'Test Node': { pristine: true, parametersLastUpdatedAt: 0 },
-			};
+		it('updateNodeById updates node readable via getNodeById', () => {
+			const node = createNode({ name: 'Target' });
 
-			const { setNodePositionById } = useWorkflowDocumentNodes(deps);
-			setNodePositionById('abc-123', [300, 400]);
-
-			expect(node.position).toEqual([300, 400]);
-		});
-
-		it('updateNodeById updates a node by its id', () => {
-			const node = createNode({ id: 'abc-123' });
-			workflowsStore.workflow.nodes = [node];
-
-			const { updateNodeById } = useWorkflowDocumentNodes(deps);
-			const result = updateNodeById('abc-123', { disabled: true });
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.setNodes([node]);
+			const result = facade.updateNodeById(node.id, { disabled: true });
 
 			expect(result).toBe(true);
-			expect(node.disabled).toBe(true);
+			expect(facade.getNodeById(node.id)?.disabled).toBe(true);
 		});
 
 		it('updateNodeById returns false when node not found', () => {
-			workflowsStore.workflow.nodes = [];
+			const facade = useWorkflowDocumentNodes(deps);
 
-			const { updateNodeById } = useWorkflowDocumentNodes(deps);
-			const result = updateNodeById('nonexistent', { disabled: true });
-
-			expect(result).toBe(false);
+			expect(facade.updateNodeById('nonexistent', { disabled: true })).toBe(false);
 		});
 
-		it('updateNodeProperties updates multiple properties', () => {
-			const node = createNode();
-			workflowsStore.workflow.nodes = [node];
+		it('updateNodeProperties updates properties readable via getNodeByName', () => {
+			const node = createNode({ name: 'Target' });
 
-			const { updateNodeProperties } = useWorkflowDocumentNodes(deps);
-			updateNodeProperties({
-				name: 'Test Node',
-				properties: { disabled: true },
-			});
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.setNodes([node]);
+			facade.updateNodeProperties({ name: 'Target', properties: { disabled: true } });
 
-			expect(node.disabled).toBe(true);
+			expect(facade.getNodeByName('Target')?.disabled).toBe(true);
 		});
 
-		it('setNodeIssue adds an issue to a node', () => {
-			const node = createNode();
-			workflowsStore.workflow.nodes = [node];
+		it('setNodeIssue adds issue readable via getNodeByName', () => {
+			const node = createNode({ name: 'Target' });
 
-			const { setNodeIssue } = useWorkflowDocumentNodes(deps);
-			setNodeIssue({
-				node: 'Test Node',
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.setNodes([node]);
+			facade.setNodeIssue({
+				node: 'Target',
 				type: 'parameters',
 				value: { param: ['Missing required parameter'] },
 			});
 
-			expect(node.issues).toEqual({
+			expect(facade.getNodeByName('Target')?.issues).toEqual({
 				parameters: { param: ['Missing required parameter'] },
 			});
 		});
 
-		it('setNodeIssue removes an issue from a node', () => {
-			const node = createNode();
+		it('setNodeIssue removes issue readable via getNodeByName', () => {
+			const node = createNode({ name: 'Target' });
 			node.issues = {
 				parameters: { param: ['Missing'] },
 				credentials: { cred: ['Invalid'] },
 			};
-			workflowsStore.workflow.nodes = [node];
 
-			const { setNodeIssue } = useWorkflowDocumentNodes(deps);
-			setNodeIssue({
-				node: 'Test Node',
-				type: 'parameters',
-				value: null,
-			});
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.setNodes([node]);
+			facade.setNodeIssue({ node: 'Target', type: 'parameters', value: null });
 
-			expect(node.issues).toEqual({ credentials: { cred: ['Invalid'] } });
-			expect(node.issues).not.toHaveProperty('parameters');
-		});
-
-		it('removeAllNodes clears all nodes and metadata', () => {
-			workflowsStore.workflow.nodes = [createNode(), createNode({ id: 'node-2', name: 'B' })];
-			workflowsStore.nodeMetadata = { 'Test Node': { pristine: true }, B: { pristine: true } };
-
-			const { removeAllNodes } = useWorkflowDocumentNodes(deps);
-			removeAllNodes({ setStateDirty: true, removePinData: false });
-
-			expect(workflowsStore.workflow.nodes).toHaveLength(0);
-			expect(workflowsStore.nodeMetadata).toEqual({});
-			expect(workflowsStore.workflowObject.setNodes).toHaveBeenCalledWith([]);
+			const issues = facade.getNodeByName('Target')?.issues;
+			expect(issues).toEqual({ credentials: { cred: ['Invalid'] } });
+			expect(issues).not.toHaveProperty('parameters');
 		});
 
 		it('resetAllNodesIssues clears issues on all nodes', () => {
-			const nodeA = createNode({ issues: { parameters: { x: ['err'] } } });
-			const nodeB = createNode({
-				id: 'node-2',
-				name: 'B',
-				issues: { credentials: { y: ['err'] } },
-			});
-			workflowsStore.workflow.nodes = [nodeA, nodeB];
+			const nodeA = createNode({ name: 'A', issues: { parameters: { x: ['err'] } } });
+			const nodeB = createNode({ name: 'B', issues: { credentials: { y: ['err'] } } });
 
-			const { resetAllNodesIssues } = useWorkflowDocumentNodes(deps);
-			const result = resetAllNodesIssues();
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.setNodes([nodeA, nodeB]);
+			const result = facade.resetAllNodesIssues();
 
 			expect(result).toBe(true);
-			expect(nodeA.issues).toBeUndefined();
-			expect(nodeB.issues).toBeUndefined();
+			expect(facade.getNodeByName('A')?.issues).toBeUndefined();
+			expect(facade.getNodeByName('B')?.issues).toBeUndefined();
+		});
+
+		it('setLastNodeParameters does nothing when node type is not found', () => {
+			const node = createNode({
+				name: 'Target',
+				type: 'n8n-nodes-base.set',
+				parameters: { old: 'value' },
+			});
+
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.setNodes([node]);
+			facade.setLastNodeParameters({
+				key: 'n8n-nodes-base.set',
+				name: '',
+				value: { new: 'value' },
+			});
+
+			// getNodeType returns null (default mock), so parameters should not change
+			expect(facade.getNodeByName('Target')?.parameters).toEqual({ old: 'value' });
 		});
 
 		it('setLastNodeParameters finds latest node by type and sets parameters', () => {
 			const node = createNode({
+				name: 'Target',
 				type: 'n8n-nodes-base.set',
 				parameters: { existing: 'keep' },
 			});
-			workflowsStore.workflow.nodes = [node];
-			workflowsStore.nodeMetadata = {
-				'Test Node': { pristine: true, parametersLastUpdatedAt: 0 },
-			};
 
 			const mockNodeType = {
-				properties: [
-					{
-						displayName: 'Value',
-						name: 'value',
-						type: 'string' as const,
-						default: '',
-					},
-				],
+				properties: [{ displayName: 'Value', name: 'value', type: 'string' as const, default: '' }],
 			};
 
 			const customDeps = createDeps({
 				getNodeType: vi.fn().mockReturnValue(mockNodeType),
 			});
 
-			const { setLastNodeParameters } = useWorkflowDocumentNodes(customDeps);
-			setLastNodeParameters({
+			const facade = useWorkflowDocumentNodes(customDeps);
+			facade.setNodes([node]);
+			facade.setLastNodeParameters({
 				key: 'n8n-nodes-base.set',
 				name: '',
 				value: { value: 'hello' },
@@ -365,41 +350,47 @@ describe('useWorkflowDocumentNodes', () => {
 
 			expect(customDeps.getNodeType).toHaveBeenCalledWith('n8n-nodes-base.set');
 		});
+	});
 
-		it('setLastNodeParameters does nothing when node type is not found', () => {
-			const node = createNode({ type: 'n8n-nodes-base.set', parameters: { old: 'value' } });
-			workflowsStore.workflow.nodes = [node];
-			workflowsStore.nodeMetadata = {
-				'Test Node': { pristine: true, parametersLastUpdatedAt: 0 },
-			};
+	describe('dirty tracking', () => {
+		it('setNodeValue does not update parametersLastUpdatedAt for position changes', () => {
+			const node = createNode({ name: 'Target' });
 
-			const { setLastNodeParameters } = useWorkflowDocumentNodes(deps);
-			setLastNodeParameters({
-				key: 'n8n-nodes-base.set',
-				name: '',
-				value: { new: 'value' },
-			});
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.setNodes([node]);
 
-			// getNodeType returns null (default mock), so parameters should not change
-			expect(node.parameters).toEqual({ old: 'value' });
+			const tsBefore = workflowsStore.nodeMetadata.Target.parametersLastUpdatedAt;
+			facade.setNodeValue({ name: 'Target', key: 'position', value: [300, 400] });
+
+			expect(workflowsStore.nodeMetadata.Target.parametersLastUpdatedAt).toBe(tsBefore);
+		});
+
+		it('setNodeValue updates parametersLastUpdatedAt for non-position changes', () => {
+			const node = createNode({ name: 'Target' });
+
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.setNodes([node]);
+
+			facade.setNodeValue({ name: 'Target', key: 'disabled', value: true });
+
+			expect(workflowsStore.nodeMetadata.Target.parametersLastUpdatedAt).toBeGreaterThan(0);
 		});
 
 		it('resetParametersLastUpdatedAt updates timestamp', () => {
-			workflowsStore.nodeMetadata = {
-				'Test Node': { pristine: true, parametersLastUpdatedAt: 0 },
-			};
+			const node = createNode({ name: 'Target' });
 
-			const { resetParametersLastUpdatedAt } = useWorkflowDocumentNodes(deps);
-			resetParametersLastUpdatedAt('Test Node');
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.setNodes([node]);
 
-			expect(workflowsStore.nodeMetadata['Test Node'].parametersLastUpdatedAt).toBeGreaterThan(0);
+			facade.resetParametersLastUpdatedAt('Target');
+
+			expect(workflowsStore.nodeMetadata.Target.parametersLastUpdatedAt).toBeGreaterThan(0);
 		});
 
 		it('resetParametersLastUpdatedAt creates metadata entry if missing', () => {
-			workflowsStore.nodeMetadata = {};
+			const facade = useWorkflowDocumentNodes(deps);
 
-			const { resetParametersLastUpdatedAt } = useWorkflowDocumentNodes(deps);
-			resetParametersLastUpdatedAt('NewNode');
+			facade.resetParametersLastUpdatedAt('NewNode');
 
 			expect(workflowsStore.nodeMetadata.NewNode).toBeDefined();
 			expect(workflowsStore.nodeMetadata.NewNode.parametersLastUpdatedAt).toBeGreaterThan(0);
@@ -409,11 +400,10 @@ describe('useWorkflowDocumentNodes', () => {
 	describe('events', () => {
 		it('setNodes does not fire onNodesChange (initialization path)', () => {
 			const hookSpy = vi.fn();
-			const nodes = [createNode()];
 
-			const { setNodes, onNodesChange } = useWorkflowDocumentNodes(deps);
-			onNodesChange(hookSpy);
-			setNodes(nodes);
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.onNodesChange(hookSpy);
+			facade.setNodes([createNode()]);
 
 			expect(hookSpy).not.toHaveBeenCalled();
 		});
@@ -422,9 +412,9 @@ describe('useWorkflowDocumentNodes', () => {
 			const hookSpy = vi.fn();
 			const node = createNode();
 
-			const { addNode, onNodesChange } = useWorkflowDocumentNodes(deps);
-			onNodesChange(hookSpy);
-			addNode(node);
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.onNodesChange(hookSpy);
+			facade.addNode(node);
 
 			expect(hookSpy).toHaveBeenCalledWith({
 				action: 'add',
@@ -434,40 +424,40 @@ describe('useWorkflowDocumentNodes', () => {
 
 		it('removeNode fires onNodesChange with delete action', () => {
 			const hookSpy = vi.fn();
-			const node = createNode({ id: 'abc-123', name: 'Test Node' });
+			const node = createNode({ name: 'Target' });
 
-			const { removeNode, onNodesChange } = useWorkflowDocumentNodes(deps);
-			onNodesChange(hookSpy);
-			removeNode(node);
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.setNodes([node]);
+			facade.onNodesChange(hookSpy);
+			facade.removeNode(node);
 
 			expect(hookSpy).toHaveBeenCalledWith({
 				action: 'delete',
-				payload: { name: 'Test Node', id: 'abc-123' },
+				payload: { name: 'Target', id: node.id },
 			});
 		});
 
 		it('removeNodeById fires onNodesChange with delete action', () => {
 			const hookSpy = vi.fn();
-			const node = createNode({ id: 'abc-123', name: 'Test Node' });
-			workflowsStore.getNodeById.mockReturnValue(node);
+			const node = createNode({ name: 'Target' });
 
-			const { removeNodeById, onNodesChange } = useWorkflowDocumentNodes(deps);
-			onNodesChange(hookSpy);
-			removeNodeById('abc-123');
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.setNodes([node]);
+			facade.onNodesChange(hookSpy);
+			facade.removeNodeById(node.id);
 
 			expect(hookSpy).toHaveBeenCalledWith({
 				action: 'delete',
-				payload: { name: 'Test Node', id: 'abc-123' },
+				payload: { name: 'Target', id: node.id },
 			});
 		});
 
 		it('addNode fires onStateDirty', () => {
 			const dirtySpy = vi.fn();
-			const node = createNode();
 
-			const { addNode, onStateDirty } = useWorkflowDocumentNodes(deps);
-			onStateDirty(dirtySpy);
-			addNode(node);
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.onStateDirty(dirtySpy);
+			facade.addNode(createNode());
 
 			expect(dirtySpy).toHaveBeenCalledOnce();
 		});
@@ -476,20 +466,22 @@ describe('useWorkflowDocumentNodes', () => {
 			const dirtySpy = vi.fn();
 			const node = createNode();
 
-			const { removeNode, onStateDirty } = useWorkflowDocumentNodes(deps);
-			onStateDirty(dirtySpy);
-			removeNode(node);
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.setNodes([node]);
+			facade.onStateDirty(dirtySpy);
+			facade.removeNode(node);
 
 			expect(dirtySpy).toHaveBeenCalledOnce();
 		});
 
 		it('removeNodeById fires onStateDirty', () => {
 			const dirtySpy = vi.fn();
-			workflowsStore.getNodeById.mockReturnValue(createNode({ id: 'abc-123' }));
+			const node = createNode();
 
-			const { removeNodeById, onStateDirty } = useWorkflowDocumentNodes(deps);
-			onStateDirty(dirtySpy);
-			removeNodeById('abc-123');
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.setNodes([node]);
+			facade.onStateDirty(dirtySpy);
+			facade.removeNodeById(node.id);
 
 			expect(dirtySpy).toHaveBeenCalledOnce();
 		});
@@ -497,74 +489,65 @@ describe('useWorkflowDocumentNodes', () => {
 		it('setNodes does not fire onStateDirty (initialization path)', () => {
 			const dirtySpy = vi.fn();
 
-			const { setNodes, onStateDirty } = useWorkflowDocumentNodes(deps);
-			onStateDirty(dirtySpy);
-			setNodes([createNode()]);
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.onStateDirty(dirtySpy);
+			facade.setNodes([createNode()]);
 
 			expect(dirtySpy).not.toHaveBeenCalled();
 		});
 
 		it('setNodeParameters fires onStateDirty when parameters change', () => {
 			const dirtySpy = vi.fn();
-			const node = createNode({ parameters: { old: 'value' } });
-			workflowsStore.workflow.nodes = [node];
-			workflowsStore.nodeMetadata = {
-				'Test Node': { pristine: true, parametersLastUpdatedAt: 0 },
-			};
+			const node = createNode({ name: 'Target', parameters: { old: 'value' } });
 
-			const { setNodeParameters, onStateDirty } = useWorkflowDocumentNodes(deps);
-			onStateDirty(dirtySpy);
-			setNodeParameters({ name: 'Test Node', value: { new: 'value' } });
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.setNodes([node]);
+			facade.onStateDirty(dirtySpy);
+			facade.setNodeParameters({ name: 'Target', value: { new: 'value' } });
 
 			expect(dirtySpy).toHaveBeenCalledOnce();
 		});
 
 		it('setNodeValue fires onStateDirty when value changes', () => {
 			const dirtySpy = vi.fn();
-			const node = createNode();
-			workflowsStore.workflow.nodes = [node];
-			workflowsStore.nodeMetadata = {
-				'Test Node': { pristine: true, parametersLastUpdatedAt: 0 },
-			};
+			const node = createNode({ name: 'Target' });
 
-			const { setNodeValue, onStateDirty } = useWorkflowDocumentNodes(deps);
-			onStateDirty(dirtySpy);
-			setNodeValue({ name: 'Test Node', key: 'disabled', value: true });
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.setNodes([node]);
+			facade.onStateDirty(dirtySpy);
+			facade.setNodeValue({ name: 'Target', key: 'disabled', value: true });
 
 			expect(dirtySpy).toHaveBeenCalledOnce();
 		});
 
 		it('removeAllNodes fires onStateDirty when setStateDirty is true', () => {
 			const dirtySpy = vi.fn();
-			workflowsStore.workflow.nodes = [createNode()];
-			workflowsStore.nodeMetadata = { 'Test Node': { pristine: true } };
 
-			const { removeAllNodes, onStateDirty } = useWorkflowDocumentNodes(deps);
-			onStateDirty(dirtySpy);
-			removeAllNodes({ setStateDirty: true, removePinData: false });
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.setNodes([createNode()]);
+			facade.onStateDirty(dirtySpy);
+			facade.removeAllNodes({ setStateDirty: true, removePinData: false });
 
 			expect(dirtySpy).toHaveBeenCalledOnce();
 		});
 
 		it('removeAllNodes does not fire onStateDirty when setStateDirty is false', () => {
 			const dirtySpy = vi.fn();
-			workflowsStore.workflow.nodes = [createNode()];
-			workflowsStore.nodeMetadata = { 'Test Node': { pristine: true } };
 
-			const { removeAllNodes, onStateDirty } = useWorkflowDocumentNodes(deps);
-			onStateDirty(dirtySpy);
-			removeAllNodes({ setStateDirty: false, removePinData: false });
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.setNodes([createNode()]);
+			facade.onStateDirty(dirtySpy);
+			facade.removeAllNodes({ setStateDirty: false, removePinData: false });
 
 			expect(dirtySpy).not.toHaveBeenCalled();
 		});
 
 		it('removeNodeById uses empty name when node not found', () => {
 			const hookSpy = vi.fn();
-			workflowsStore.getNodeById.mockReturnValue(undefined);
 
-			const { removeNodeById, onNodesChange } = useWorkflowDocumentNodes(deps);
-			onNodesChange(hookSpy);
-			removeNodeById('nonexistent');
+			const facade = useWorkflowDocumentNodes(deps);
+			facade.onNodesChange(hookSpy);
+			facade.removeNodeById('nonexistent');
 
 			expect(hookSpy).toHaveBeenCalledWith({
 				action: 'delete',
