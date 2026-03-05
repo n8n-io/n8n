@@ -8,6 +8,7 @@ import type {
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
 } from '@/features/execution/executions/executions.types';
+import type { ExecutionRedactionQueryDto } from '@n8n/api-types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	ExecutionFilters,
@@ -104,7 +105,7 @@ export async function getExecutions(
 export async function getExecutionData(
 	context: IRestApiContext,
 	executionId: string,
-	queryParams?: { redactExecutionData?: boolean },
+	queryParams?: ExecutionRedactionQueryDto,
 ) {
 	return await makeRestApiRequest<IExecutionResponse | null>(
 		context,
