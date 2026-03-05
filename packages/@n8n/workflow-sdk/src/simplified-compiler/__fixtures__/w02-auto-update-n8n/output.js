@@ -40,32 +40,11 @@ const http3 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"command\":\"echo \\\"true\\\" > n8n/check_update.txt\"}"
+      "jsonBody": "{\"latestVersion\":\"={{ $('GET registry.npmjs.org/n8n/latest').first().json.version }}\",\"currentVersion\":\"={{ $('GET 0.0.0.0/rest/settings').first().json.data.versionCli }}\"}"
     },
     "executeOnce": true
   }
 });
-
-const http4 = node({
-  type: 'n8n-nodes-base.httpRequest', version: 4.2,
-  config: {
-    "name": "POST my-server/api/exec",
-    "parameters": {
-      "method": "POST",
-      "url": "https://my-server/api/exec",
-      "options": {},
-      "sendBody": true,
-      "contentType": "json",
-      "specifyBody": "json",
-      "jsonBody": "{\"command\":\"echo \\\"false\\\" > n8n/check_update.txt\"}"
-    },
-    "executeOnce": true
-  }
-});
-
-const if1 = ifElse({ version: 2.2, config: { name: 'IF 1', parameters: { conditions: {"options":{"caseSensitive":true,"leftValue":""},"conditions":[{"leftValue":"={{ $('GET registry.npmjs.org/n8n/latest').first().json.version }}","rightValue":"={{ $('GET 0.0.0.0/rest/settings').first().json.data.versionCli }}","operator":{"type":"string","operation":"notEquals"}}],"combinator":"and"} }, executeOnce: true } })
-  .onTrue(http3)
-  .onFalse(http4);
 
 export default workflow('compiled', 'Compiled Workflow')
-  .add(t0.to(http1).to(http2).to(if1));
+  .add(t0.to(http1).to(http2).to(http3));

@@ -1,4 +1,4 @@
 {
-	"title": "W2: Auto-update n8n (schedule cron + if/else with IO in both branches)",
+	"title": "W2: Auto-update n8n (schedule cron + expression references in HTTP body)",
 	"templateId": 4335
 }

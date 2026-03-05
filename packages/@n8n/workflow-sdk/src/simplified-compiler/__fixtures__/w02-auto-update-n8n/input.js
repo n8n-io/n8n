@@ -5,13 +5,8 @@ onSchedule({ cron: '0 5 * * *' }, async () => {
 		auth: { type: 'bearer', credential: 'n8n API' },
 	});
 
-	if (latest.version !== local.data.versionCli) {
-		await http.post('https://my-server/api/exec', {
-			command: 'echo "true" > n8n/check_update.txt',
-		});
-	} else {
-		await http.post('https://my-server/api/exec', {
-			command: 'echo "false" > n8n/check_update.txt',
-		});
-	}
+	await http.post('https://my-server/api/exec', {
+		latestVersion: latest.version,
+		currentVersion: local.data.versionCli,
+	});
 });
