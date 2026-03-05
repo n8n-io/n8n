@@ -13,6 +13,7 @@ const mockConnection = {
 	createConnection: vi.fn(),
 	updateConnection: vi.fn(),
 	testConnection: vi.fn(),
+	setConnectionState: vi.fn(),
 	isLoading: ref(false),
 	connectionState: ref('initializing'),
 };
@@ -184,6 +185,7 @@ describe('useConnectionModal', () => {
 				id: 'existing-id',
 				name: 'existingKey',
 				type: 'awsSecretsManager',
+				state: 'connected',
 				settings: { region: 'us-east-1' },
 			});
 
@@ -249,6 +251,7 @@ describe('useConnectionModal', () => {
 				id: 'infisical-id',
 				name: 'infisical-connection',
 				type: 'infisical',
+				state: 'connected',
 				settings: {},
 			});
 
@@ -273,6 +276,7 @@ describe('useConnectionModal', () => {
 				id: 'test-id',
 				name: 'testConnection',
 				type: 'awsSecretsManager',
+				state: 'connected',
 				settings: { region: 'us-east-1' },
 			});
 
@@ -304,6 +308,7 @@ describe('useConnectionModal', () => {
 				id: 'test-id',
 				name: 'testConnection',
 				type: 'awsSecretsManager',
+				state: 'connected',
 				settings: { region: 'us-east-1' },
 				projects: [],
 			});
@@ -343,6 +348,7 @@ describe('useConnectionModal', () => {
 				id: 'existing-id',
 				name: 'existingKey',
 				type: 'awsSecretsManager',
+				state: 'connected',
 				settings: { region: 'us-east-1' },
 			});
 
@@ -380,6 +386,7 @@ describe('useConnectionModal', () => {
 				id: 'existing-id',
 				name: 'existingKey',
 				type: 'awsSecretsManager',
+				state: 'connected',
 				settings: { region: 'us-east-1' },
 			});
 
@@ -411,6 +418,7 @@ describe('useConnectionModal', () => {
 				id: 'existing-id',
 				name: 'existingKey',
 				type: 'awsSecretsManager',
+				state: 'connected',
 				settings: { region: 'us-east-1' },
 				projects: [{ id: 'project-1', name: 'Project 1' }],
 			});
@@ -445,6 +453,7 @@ describe('useConnectionModal', () => {
 				id: 'existing-id',
 				name: 'existingKey',
 				type: 'awsSecretsManager',
+				state: 'connected',
 				settings: { region: 'us-east-1' },
 				projects: [{ id: 'project-1', name: 'Project 1' }],
 			});
@@ -487,6 +496,7 @@ describe('useConnectionModal', () => {
 				id: 'existing-id',
 				name: 'existingKey',
 				type: 'awsSecretsManager',
+				state: 'connected',
 				settings: { region: 'us-east-1' },
 				projects: [{ id: 'project-1', name: 'Project 1' }],
 			});
@@ -528,6 +538,7 @@ describe('useConnectionModal', () => {
 				id: 'existing-id',
 				name: 'existingKey',
 				type: 'awsSecretsManager',
+				state: 'connected',
 				settings: { region: 'us-east-1' },
 				projects: [
 					{ id: 'project-1', name: 'Project 1' },
@@ -541,6 +552,43 @@ describe('useConnectionModal', () => {
 
 			// Should fail because project-2 doesn't have update permission
 			expect(modal.canSave.value).toBe(false);
+		});
+	});
+
+	describe('connection test on load', () => {
+		it('should test connection on load when user has update permission', async () => {
+			const options = { ...defaultOptions, providerKey: ref('testKey') };
+			mockConnection.getConnection.mockResolvedValue({
+				id: 'test-id',
+				name: 'testConnection',
+				type: 'awsSecretsManager',
+				state: 'connected',
+				settings: { region: 'us-east-1' },
+			});
+
+			const modal = useConnectionModal(options);
+			await modal.loadConnection();
+
+			expect(mockConnection.testConnection).toHaveBeenCalledWith('testKey');
+		});
+
+		it('should skip test and use GET state when user lacks update permission', async () => {
+			mockHasScope.mockReturnValue(false);
+
+			const options = { ...defaultOptions, providerKey: ref('testKey') };
+			mockConnection.getConnection.mockResolvedValue({
+				id: 'test-id',
+				name: 'testConnection',
+				type: 'awsSecretsManager',
+				state: 'connected',
+				settings: { region: 'us-east-1' },
+			});
+
+			const modal = useConnectionModal(options);
+			await modal.loadConnection();
+
+			expect(mockConnection.testConnection).not.toHaveBeenCalled();
+			expect(mockConnection.setConnectionState).toHaveBeenCalledWith('connected');
 		});
 	});
 
@@ -670,6 +718,7 @@ describe('useConnectionModal', () => {
 				id: 'test-id',
 				name: 'testConnection',
 				type: 'awsSecretsManager',
+				state: 'connected',
 				settings: { region: 'us-east-1' },
 				projects: [{ id: 'project-1', name: 'Project 1' }],
 			});
@@ -688,6 +737,7 @@ describe('useConnectionModal', () => {
 				id: 'existing-id',
 				name: 'existingKey',
 				type: 'awsSecretsManager',
+				state: 'connected',
 				settings: { region: 'us-east-1' },
 			});
 

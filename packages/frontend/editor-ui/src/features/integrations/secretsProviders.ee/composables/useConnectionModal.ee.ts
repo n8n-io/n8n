@@ -321,7 +321,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		if (!providerKey.value) return;
 
 		try {
-			const { name, type, settings, projects, secretsCount, scopes } =
+			const { name, type, state, settings, projects, secretsCount, scopes } =
 				await connection.getConnection(providerKey.value);
 
 			connectionName.value = name;
@@ -344,7 +344,12 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 			selectedProviderType.value = providerTypes.value.find(
 				(providerType) => providerType.type === type,
 			);
-			await connection.testConnection(providerKey.value);
+
+			connection.setConnectionState(state);
+
+			if (canUpdate.value) {
+				await connection.testConnection(providerKey.value);
+			}
 		} catch (error) {
 			toast.showError(error, i18n.baseText('generic.error'), error?.response?.data?.data.error);
 		}
@@ -366,11 +371,15 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 			projectIds: scopeProjectIds,
 		};
 
-		const { secretsCount } = await connection.createConnection(connectionData);
+		const { secretsCount, scopes } = await connection.createConnection(connectionData);
 
 		// Transition to edit mode after successful creation
 		providerKey.value = connectionName.value.trim();
 		providerSecretsCount.value = secretsCount;
+
+		if (scopes) {
+			connectionScopes.value = scopes as Scope[];
+		}
 
 		// Update saved state
 		originalSettings.value = { ...connectionSettings.value };
@@ -401,12 +410,19 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 
 		const hasSettingsChanges = settingsUpdated.value;
 
-		const { secretsCount, projects } = await connection.updateConnection(
+		const { secretsCount, projects, scopes, state } = await connection.updateConnection(
 			providerKey.value,
 			updateData,
 		);
 
 		providerSecretsCount.value = secretsCount;
+
+		if (scopes) {
+			connectionScopes.value = scopes as Scope[];
+		}
+		if (state) {
+			connection.setConnectionState(state);
+		}
 
 		// Update saved state
 		originalSettings.value = { ...connectionSettings.value };
