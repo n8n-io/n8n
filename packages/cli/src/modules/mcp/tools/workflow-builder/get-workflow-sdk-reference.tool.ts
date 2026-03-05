@@ -29,6 +29,10 @@ const inputSchema = {
 		),
 } satisfies z.ZodRawShape;
 
+const outputSchema = {
+	reference: z.string().describe('SDK reference documentation content for the requested section'),
+} satisfies z.ZodRawShape;
+
 /**
  * MCP tool that returns the n8n Workflow SDK reference documentation.
  * This should be called first when building workflows to learn the SDK patterns and syntax.
@@ -42,6 +46,7 @@ export const createGetWorkflowSdkReferenceTool = (
 		description:
 			'Get the n8n Workflow SDK reference documentation including patterns, expression syntax, and rules. Call this FIRST before building workflows to learn the SDK.',
 		inputSchema,
+		outputSchema,
 		annotations: {
 			title: MCP_GET_SDK_REFERENCE_TOOL.displayTitle,
 			readOnlyHint: true,
@@ -64,6 +69,7 @@ export const createGetWorkflowSdkReferenceTool = (
 
 		return {
 			content: [{ type: 'text', text: content }],
+			structuredContent: { reference: content },
 		};
 	},
 });

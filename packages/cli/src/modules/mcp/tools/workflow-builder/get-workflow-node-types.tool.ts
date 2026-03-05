@@ -26,6 +26,10 @@ const inputSchema = {
 		),
 } satisfies z.ZodRawShape;
 
+const outputSchema = {
+	definitions: z.string().describe('TypeScript type definitions for the requested nodes'),
+} satisfies z.ZodRawShape;
+
 type NodeRequest =
 	| string
 	| {
@@ -50,6 +54,7 @@ export const createGetWorkflowNodeTypesTool = (
 		description:
 			'Get TypeScript type definitions for n8n nodes. Returns exact parameter names and structures. MUST be called before writing workflow code — guessing parameter names creates invalid workflows. Include discriminators (resource/operation/mode) from search results.',
 		inputSchema,
+		outputSchema,
 		annotations: {
 			title: CODE_BUILDER_GET_NODE_TYPES_TOOL.displayTitle,
 			readOnlyHint: true,
@@ -76,6 +81,7 @@ export const createGetWorkflowNodeTypesTool = (
 
 			return {
 				content: [{ type: 'text', text: result }],
+				structuredContent: { definitions: result },
 			};
 		} catch (error) {
 			telemetryPayload.results = {

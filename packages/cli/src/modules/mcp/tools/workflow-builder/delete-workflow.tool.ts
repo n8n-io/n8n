@@ -12,6 +12,12 @@ const inputSchema = {
 	workflowId: z.string().describe('The ID of the workflow to archive'),
 } satisfies z.ZodRawShape;
 
+const outputSchema = {
+	archived: z.boolean().describe('Whether the workflow was archived'),
+	workflowId: z.string().describe('The ID of the archived workflow'),
+	name: z.string().describe('The name of the archived workflow'),
+} satisfies z.ZodRawShape;
+
 /**
  * MCP tool that archives a workflow in n8n by ID.
  */
@@ -24,6 +30,7 @@ export const createArchiveWorkflowTool = (
 	config: {
 		description: 'Archive a workflow in n8n by its ID.',
 		inputSchema,
+		outputSchema,
 		annotations: {
 			title: MCP_ARCHIVE_WORKFLOW_TOOL.displayTitle,
 			readOnlyHint: false,
@@ -52,21 +59,15 @@ export const createArchiveWorkflowTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
+			const output = {
+				archived: true,
+				workflowId,
+				name: workflow.name,
+			};
+
 			return {
-				content: [
-					{
-						type: 'text',
-						text: JSON.stringify(
-							{
-								archived: true,
-								workflowId,
-								name: workflow.name,
-							},
-							null,
-							2,
-						),
-					},
-				],
+				content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
+				structuredContent: output,
 			};
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
@@ -77,13 +78,11 @@ export const createArchiveWorkflowTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
+			const output = { error: errorMessage };
+
 			return {
-				content: [
-					{
-						type: 'text',
-						text: JSON.stringify({ error: errorMessage }, null, 2),
-					},
-				],
+				content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
+				structuredContent: output,
 				isError: true,
 			};
 		}

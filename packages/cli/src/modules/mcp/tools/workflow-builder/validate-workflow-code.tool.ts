@@ -16,6 +16,13 @@ const inputSchema = {
 		),
 } satisfies z.ZodRawShape;
 
+const outputSchema = {
+	valid: z.boolean().describe('Whether the workflow code is valid'),
+	nodeCount: z.number().optional().describe('The number of nodes in the workflow (if valid)'),
+	warnings: z.array(z.string()).optional().describe('Validation warnings (if any)'),
+	errors: z.array(z.string()).optional().describe('Validation errors (if invalid)'),
+} satisfies z.ZodRawShape;
+
 /**
  * MCP tool that validates n8n Workflow SDK code.
  * Parses and validates the code, returning the workflow JSON if valid or errors if not.
@@ -29,6 +36,7 @@ export const createValidateWorkflowCodeTool = (
 		description:
 			'Validate n8n Workflow SDK code. Parses the code into a workflow and checks for errors. Returns the workflow JSON if valid, or detailed error messages to fix. Always validate before creating a workflow.',
 		inputSchema,
+		outputSchema,
 		annotations: {
 			title: CODE_BUILDER_VALIDATE_TOOL.displayTitle,
 			readOnlyHint: true,
@@ -72,6 +80,7 @@ export const createValidateWorkflowCodeTool = (
 
 			return {
 				content: [{ type: 'text', text: JSON.stringify(response, null, 2) }],
+				structuredContent: response,
 			};
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
@@ -82,20 +91,14 @@ export const createValidateWorkflowCodeTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
+			const output = {
+				valid: false,
+				errors: [errorMessage],
+			};
+
 			return {
-				content: [
-					{
-						type: 'text',
-						text: JSON.stringify(
-							{
-								valid: false,
-								errors: [errorMessage],
-							},
-							null,
-							2,
-						),
-					},
-				],
+				content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
+				structuredContent: output,
 				isError: true,
 			};
 		}
