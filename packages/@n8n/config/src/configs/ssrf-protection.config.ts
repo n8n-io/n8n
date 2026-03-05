@@ -14,7 +14,7 @@ export const SSRF_DEFAULT_BLOCKED_IP_RANGES: readonly string[] = Object.freeze([
 	'192.168.0.0/16',
 	// Loopback
 	'127.0.0.0/8',
-	'::1',
+	'::1/128',
 	// Link-local
 	'169.254.0.0/16',
 	'fe80::/10',
@@ -33,10 +33,6 @@ export const SSRF_DEFAULT_BLOCKED_IP_RANGES: readonly string[] = Object.freeze([
 /**
  * Parses comma-separated blocked ranges, expands `default` (case-insensitive)
  * to the built-in blocked ranges, and removes duplicates while preserving order.
- *
- * @example
- * parseBlockedIpRanges('default,100.0.0.0/8')
- * // returns [...SSRF_DEFAULT_BLOCKED_IP_RANGES, '100.0.0.0/8']
  */
 const parseBlockedIpRanges = (input: string): string[] => {
 	const values = input
@@ -52,8 +48,6 @@ const parseBlockedIpRanges = (input: string): string[] => {
 };
 
 const blockedIpRangesSchema = z.string().transform(parseBlockedIpRanges);
-
-const positiveNumberSchema = z.coerce.number().gt(0);
 
 @Config
 export class SsrfProtectionConfig {
@@ -76,10 +70,6 @@ export class SsrfProtectionConfig {
 	/** Comma-separated hostname patterns to allow. Supports wildcards: *.n8n.internal */
 	@Env('N8N_SSRF_ALLOWED_HOSTNAMES')
 	allowedHostnames: CommaSeparatedStringArray<string> = [];
-
-	/** Maximum DNS cache TTL in seconds. Default: 300. */
-	@Env('N8N_SSRF_DNS_CACHE_MAX_TTL_SECONDS', positiveNumberSchema)
-	dnsCacheMaxTtlSeconds: number = 300;
 
 	/** Maximum DNS cache size in bytes (LRU eviction). Default: 1 MB. */
 	@Env('N8N_SSRF_DNS_CACHE_MAX_SIZE')
