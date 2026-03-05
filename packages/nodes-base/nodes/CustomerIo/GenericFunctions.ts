@@ -14,7 +14,7 @@ export async function customerIoApiRequest(
 	endpoint: string,
 	body: object,
 	baseApi?: string,
-	_query?: IDataObject,
+	query?: IDataObject,
 ) {
 	const credentials = await this.getCredentials('customerIoApi');
 	const options: IHttpRequestOptions = {
@@ -24,7 +24,7 @@ export async function customerIoApiRequest(
 		method,
 		body,
 		url: '',
-		qs: _query,
+		qs: query,
 		json: true,
 	};
 
