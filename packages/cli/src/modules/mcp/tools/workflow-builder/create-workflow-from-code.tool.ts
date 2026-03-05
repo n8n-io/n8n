@@ -109,13 +109,14 @@ export const createCreateWorkflowFromCodeTool = (
 				effectiveProjectId = personalProject.id;
 			}
 
-			const credentialAssignments = await autoPopulateNodeCredentials(
-				newWorkflow,
-				user,
-				nodeTypes,
-				credentialsService,
-				effectiveProjectId,
-			);
+			const { assignments: credentialAssignments, skippedHttpNodes } =
+				await autoPopulateNodeCredentials(
+					newWorkflow,
+					user,
+					nodeTypes,
+					credentialsService,
+					effectiveProjectId,
+				);
 
 			const savedWorkflow = await workflowCreationService.createWorkflow(user, newWorkflow, {
 				projectId,
@@ -133,21 +134,23 @@ export const createCreateWorkflowFromCodeTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
+			const response: Record<string, unknown> = {
+				workflowId: savedWorkflow.id,
+				name: savedWorkflow.name,
+				nodeCount: savedWorkflow.nodes.length,
+				url: workflowUrl,
+				autoAssignedCredentials: credentialAssignments,
+			};
+
+			if (skippedHttpNodes.length > 0) {
+				response.note = `HTTP Request nodes (${skippedHttpNodes.join(', ')}) were skipped during credential auto-assignment. Their credentials must be configured manually.`;
+			}
+
 			return {
 				content: [
 					{
 						type: 'text',
-						text: JSON.stringify(
-							{
-								workflowId: savedWorkflow.id,
-								name: savedWorkflow.name,
-								nodeCount: savedWorkflow.nodes.length,
-								url: workflowUrl,
-								autoAssignedCredentials: credentialAssignments,
-							},
-							null,
-							2,
-						),
+						text: JSON.stringify(response, null, 2),
 					},
 				],
 			};

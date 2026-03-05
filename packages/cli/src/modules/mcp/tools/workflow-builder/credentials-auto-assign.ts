@@ -11,13 +11,24 @@ export interface CredentialAssignment {
 	credentialType: string;
 }
 
+export interface AutoAssignResult {
+	assignments: CredentialAssignment[];
+	skippedHttpNodes: string[];
+}
+
+const HTTP_NODE_TYPES = new Set([
+	'n8n-nodes-base.httpRequest',
+	'@n8n/n8n-nodes-langchain.toolHttpRequest',
+	'n8n-nodes-base.httpRequestTool',
+]);
+
 /**
  * Auto-populates missing credentials on workflow nodes by assigning
  * a credential of the matching type that the user can actually use
  * in the target project. Only credentials accessible to both the user
  * and the project are considered, preventing cross-project assignments.
  *
- * Mutates `workflow.nodes` in place and returns a list of assignments made.
+ * HTTP Request nodes are skipped for security
  */
 export async function autoPopulateNodeCredentials(
 	workflow: IWorkflowBase,
@@ -25,13 +36,11 @@ export async function autoPopulateNodeCredentials(
 	nodeTypes: NodeTypes,
 	credentialsService: CredentialsService,
 	projectId: string,
-): Promise<CredentialAssignment[]> {
-	// Fetch only credentials the user can use in this specific project
+): Promise<AutoAssignResult> {
 	const usableCredentials = await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
 		projectId,
 	});
 
-	// Group by type
 	const credentialsByType = new Map<string, Array<{ id: string; name: string }>>();
 	for (const cred of usableCredentials) {
 		const list = credentialsByType.get(cred.type) ?? [];
@@ -40,16 +49,21 @@ export async function autoPopulateNodeCredentials(
 	}
 
 	const assignments: CredentialAssignment[] = [];
+	const skippedHttpNodes: string[] = [];
 
 	for (const node of workflow.nodes) {
 		if (node.disabled) continue;
+
+		if (HTTP_NODE_TYPES.has(node.type)) {
+			skippedHttpNodes.push(node.name);
+			continue;
+		}
 
 		let nodeTypeDescription: INodeTypeDescription;
 		try {
 			const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 			nodeTypeDescription = nodeType.description;
 		} catch {
-			// Unknown node type — skip silently to avoid blocking workflow creation
 			continue;
 		}
 
@@ -69,7 +83,6 @@ export async function autoPopulateNodeCredentials(
 			) ?? node.parameters;
 
 		for (const credDesc of credentialDescriptions) {
-			// Check if this credential type applies given the node's current parameters
 			const shouldDisplay = NodeHelpers.displayParameter(
 				nodeParametersWithDefaults,
 				credDesc,
@@ -78,14 +91,11 @@ export async function autoPopulateNodeCredentials(
 			);
 			if (!shouldDisplay) continue;
 
-			// Skip if node already has a valid credential ID for this type
 			const existing = node.credentials?.[credDesc.name];
 			if (existing?.id) continue;
 
-			// Find a usable credential of this type
 			const candidates = credentialsByType.get(credDesc.name);
 			if (!candidates?.length) continue;
-
 			// Assign the first available credential
 			node.credentials = node.credentials ?? {};
 			node.credentials[credDesc.name] = {
@@ -101,5 +111,5 @@ export async function autoPopulateNodeCredentials(
 		}
 	}
 
-	return assignments;
+	return { assignments, skippedHttpNodes };
 }
