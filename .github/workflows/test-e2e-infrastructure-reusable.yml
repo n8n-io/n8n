@@ -1,0 +1,28 @@
+name: 'Test: E2E Infrastructure'
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'packages/testing/playwright/tests/infrastructure/**'
+      - 'packages/testing/playwright/utils/kafka-*'
+      - 'packages/testing/playwright/utils/throughput-*'
+      - 'packages/testing/playwright/utils/performance-helper.ts'
+      - 'packages/testing/playwright/reporters/benchmark-summary-reporter.ts'
+      - 'packages/testing/containers/services/**'
+      - '.github/workflows/test-e2e-infrastructure-reusable.yml'
+
+jobs:
+  benchmark:
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [benchmark-direct, benchmark-queue]
+    uses: ./.github/workflows/test-e2e-reusable.yml
+    with:
+      test-mode: docker-build
+      test-command: pnpm --filter=n8n-playwright test:all --project='${{ matrix.profile }}:infrastructure' --grep '10-nodes-10KB-10kb-out-5k'
+      shards: 1
+      workers: 1
+    secrets: inherit

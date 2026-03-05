@@ -115,6 +115,52 @@ export class KafkaHelper {
 		});
 	}
 
+	async publishBatch(
+		topic: string,
+		messages: Array<{ value: string | object; key?: string }>,
+		options: { batchSize?: number } = {},
+	): Promise<void> {
+		if (!this.producer) {
+			this.producer = this.kafka.producer();
+			await this.producer.connect();
+		}
+
+		const { batchSize = 1000 } = options;
+		const kafkaMessages = messages.map((m) => ({
+			key: m.key,
+			value: typeof m.value === 'string' ? m.value : JSON.stringify(m.value),
+		}));
+
+		for (let i = 0; i < kafkaMessages.length; i += batchSize) {
+			const chunk = kafkaMessages.slice(i, i + batchSize);
+			await this.producer.send({ topic, messages: chunk });
+		}
+	}
+
+	async getConsumerGroupLag(
+		groupId: string,
+		topic: string,
+	): Promise<{ totalLag: number; partitions: Array<{ partition: number; lag: number }> }> {
+		const admin = this.kafka.admin();
+		try {
+			await admin.connect();
+			const offsets = await admin.fetchOffsets({ groupId, topics: [topic] });
+			const topicOffsets = await admin.fetchTopicOffsets(topic);
+
+			const consumerPartitions = offsets.find((o) => o.topic === topic)?.partitions ?? [];
+			const partitions = topicOffsets.map((tp) => {
+				const committed = consumerPartitions.find((p) => p.partition === tp.partition);
+				const lag = parseInt(tp.high, 10) - parseInt(committed?.offset ?? '0', 10);
+				return { partition: tp.partition, lag };
+			});
+			const totalLag = partitions.reduce((sum, p) => sum + p.lag, 0);
+
+			return { totalLag, partitions };
+		} finally {
+			await admin.disconnect();
+		}
+	}
+
 	async consume(
 		topic: string,
 		options: {
