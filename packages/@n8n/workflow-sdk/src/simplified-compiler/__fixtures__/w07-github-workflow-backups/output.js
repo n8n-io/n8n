@@ -1,3 +1,99 @@
+// --- Loop body sub-workflow ---
+const loop_wf_t0 = trigger({ type: 'n8n-nodes-base.executeWorkflowTrigger', version: 1.1, config: { parameters: { inputSource: 'passthrough' } } });
+
+const loop_wf_code1 = node({
+  type: 'n8n-nodes-base.code', version: 2,
+  config: {
+    name: 'Code 1',
+    parameters: {
+      jsCode: `// From: Code 1\nconst config = $('Code 1').all().map(i => i.json);\nconst wf = $('When Executed by Another Workflow').all().map(i => i.json);\nconst filePath = config.path + '/' + wf.name + '.json';
+
+function sortKeys(obj) {
+	return Object.keys(obj)
+		.sort()
+		.reduce(function (acc, k) {
+			acc[k] = obj[k];
+			return acc;
+		}, {});
+}
+
+const wfJson = JSON.stringify(sortKeys(wf), null, 2);
+
+let existing = null;\nreturn [{ json: { filePath, wfJson, existing } }];`,
+      mode: 'runOnceForAllItems'
+    },
+    executeOnce: true
+  }
+});
+
+const loop_wf_http1 = node({
+  type: 'n8n-nodes-base.httpRequest', version: 4.2,
+  config: {
+    "name": "GET Request",
+    "parameters": {
+      "method": "GET",
+      "url": "{{dynamic URL}}",
+      "options": {},
+      "authentication": "genericCredentialType",
+      "genericAuthType": "httpHeaderAuth"
+    },
+    "executeOnce": true,
+    "onError": "continueErrorOutput"
+  , credentials: { httpHeaderAuth: { name: 'GitHub', id: '' } }
+}
+});
+
+const loop_wf_http2 = node({
+  type: 'n8n-nodes-base.httpRequest', version: 4.2,
+  config: {
+    "name": "PUT Request",
+    "parameters": {
+      "method": "PUT",
+      "url": "{{dynamic URL}}",
+      "options": {},
+      "sendBody": true,
+      "contentType": "json",
+      "specifyBody": "json",
+      "jsonBody": "{\"message\":\"new\",\"content\":\"={{ $('Code 1').first().json.wfJson }}\"}",
+      "authentication": "genericCredentialType",
+      "genericAuthType": "httpHeaderAuth"
+    },
+    "executeOnce": true
+  , credentials: { httpHeaderAuth: { name: 'GitHub', id: '' } }
+}
+});
+
+const loop_wf_http3 = node({
+  type: 'n8n-nodes-base.httpRequest', version: 4.2,
+  config: {
+    "name": "PUT Request",
+    "parameters": {
+      "method": "PUT",
+      "url": "{{dynamic URL}}",
+      "options": {},
+      "sendBody": true,
+      "contentType": "json",
+      "specifyBody": "json",
+      "jsonBody": "{\"message\":\"updated\",\"content\":\"={{ $('Code 1').first().json.wfJson }}\",\"sha\":\"={{ $('GET Request').first().json.sha }}\"}",
+      "authentication": "genericCredentialType",
+      "genericAuthType": "httpHeaderAuth"
+    },
+    "executeOnce": true
+  , credentials: { httpHeaderAuth: { name: 'GitHub', id: '' } }
+}
+});
+
+const loop_wf_if2 = ifElse({ version: 2.2, config: { name: 'IF 2', parameters: { conditions: {"options":{"caseSensitive":true,"leftValue":""},"conditions":[{"leftValue":"={{ $('Code 1').first().json.wfJson }}","rightValue":"={{ $('GET Request').first().json.content }}","operator":{"type":"string","operation":"notEquals"}}],"combinator":"and"} }, executeOnce: true } })
+  .onTrue(loop_wf_http3);
+
+const loop_wf_if1 = ifElse({ version: 2.2, config: { name: 'IF 1', parameters: { conditions: {"options":{"caseSensitive":true,"leftValue":""},"conditions":[{"leftValue":"={{ $('GET Request').first().json }}","rightValue":"","operator":{"type":"string","operation":"notExists","singleValue":true}}],"combinator":"and"} }, executeOnce: true } })
+  .onTrue(loop_wf_http2)
+  .onFalse(loop_wf_if2);
+
+const _loop_wfWorkflow = workflow('_loop_wf', '_loop_wf')
+  .add(loop_wf_t0.to(loop_wf_code1).to(loop_wf_http1).to(loop_wf_if1));
+
+// --- Main workflow ---
 const t0 = trigger({ type: 'n8n-nodes-base.scheduleTrigger', version: 1.2, config: { parameters: {"rule":{"interval":[{"field":"hours","hoursInterval":24}]}} } });
 
 const http1 = node({
@@ -75,105 +171,19 @@ return recent.map(wf => ({ json: wf }));`,
   }
 });
 
-const code4 = node({
-  type: 'n8n-nodes-base.code', version: 2,
+const exec1 = node({
+  type: 'n8n-nodes-base.executeWorkflow', version: 1.3,
   config: {
-    name: 'Code 4',
+    name: 'Loop wfs',
     parameters: {
-      jsCode: `// From: Code 1\nconst config = $('Code 1').all().map(i => i.json);\nconst wf = $('Split wfs').all().map(i => i.json);\nconst filePath = config.path + '/' + wf.name + '.json';
-
-function sortKeys(obj) {
-	return Object.keys(obj)
-		.sort()
-		.reduce(function (acc, k) {
-			acc[k] = obj[k];
-			return acc;
-		}, {});
-}
-
-const wfJson = JSON.stringify(sortKeys(wf), null, 2);
-
-let existing = null;\nreturn [{ json: { filePath, wfJson, existing } }];`,
-      mode: 'runOnceForAllItems'
-    },
-    executeOnce: true
+      source: 'parameter',
+      workflowJson: _loop_wfWorkflow,
+      options: {}
+    }
   }
 });
 
 const http3 = node({
-  type: 'n8n-nodes-base.httpRequest', version: 4.2,
-  config: {
-    "name": "GET Request",
-    "parameters": {
-      "method": "GET",
-      "url": "{{dynamic URL}}",
-      "options": {},
-      "authentication": "genericCredentialType",
-      "genericAuthType": "httpHeaderAuth"
-    },
-    "onError": "continueErrorOutput"
-  , credentials: { httpHeaderAuth: { name: 'GitHub', id: '' } }
-}
-});
-
-const http4 = node({
-  type: 'n8n-nodes-base.httpRequest', version: 4.2,
-  config: {
-    "name": "PUT Request",
-    "parameters": {
-      "method": "PUT",
-      "url": "{{dynamic URL}}",
-      "options": {},
-      "sendBody": true,
-      "contentType": "json",
-      "specifyBody": "json",
-      "jsonBody": "{\"message\":\"new\",\"content\":\"={{ $('Code 4').first().json.wfJson }}\"}",
-      "authentication": "genericCredentialType",
-      "genericAuthType": "httpHeaderAuth"
-    }
-  , credentials: { httpHeaderAuth: { name: 'GitHub', id: '' } }
-}
-});
-
-const http5 = node({
-  type: 'n8n-nodes-base.httpRequest', version: 4.2,
-  config: {
-    "name": "PUT Request",
-    "parameters": {
-      "method": "PUT",
-      "url": "{{dynamic URL}}",
-      "options": {},
-      "sendBody": true,
-      "contentType": "json",
-      "specifyBody": "json",
-      "jsonBody": "{\"message\":\"updated\",\"content\":\"={{ $('Code 4').first().json.wfJson }}\",\"sha\":\"={{ $('GET Request').first().json.sha }}\"}",
-      "authentication": "genericCredentialType",
-      "genericAuthType": "httpHeaderAuth"
-    }
-  , credentials: { httpHeaderAuth: { name: 'GitHub', id: '' } }
-}
-});
-
-const if2 = ifElse({ version: 2.2, config: { name: 'IF 2', parameters: { conditions: {"options":{"caseSensitive":true,"leftValue":""},"conditions":[{"leftValue":"={{ $('Code 4').first().json.wfJson }}","rightValue":"={{ $('GET Request').first().json.content }}","operator":{"type":"string","operation":"notEquals"}}],"combinator":"and"} }, executeOnce: true } })
-  .onTrue(http5);
-
-const if1 = ifElse({ version: 2.2, config: { name: 'IF 1', parameters: { conditions: {"options":{"caseSensitive":true,"leftValue":""},"conditions":[{"leftValue":"={{ $('GET Request').first().json }}","rightValue":"","operator":{"type":"string","operation":"notExists","singleValue":true}}],"combinator":"and"} }, executeOnce: true } })
-  .onTrue(http4)
-  .onFalse(if2);
-
-const agg1 = node({
-  type: 'n8n-nodes-base.aggregate', version: 1,
-  config: {
-    name: 'Aggregate 1',
-    parameters: {
-      aggregate: 'aggregateAllItemData',
-      destinationFieldName: 'data',
-      include: 'allFieldsExceptBinary'
-    }
-  }
-});
-
-const http6 = node({
   type: 'n8n-nodes-base.httpRequest', version: 4.2,
   config: {
     "name": "POST slack.com/api/chat.postMessage",
@@ -194,4 +204,4 @@ const http6 = node({
 });
 
 export default workflow('compiled', 'Compiled Workflow')
-  .add(t0.to(http1).to(code1).to(http2).to(code2).to(code3).to(code4).to(http3).to(if1).to(agg1).to(http6));
+  .add(t0.to(http1).to(code1).to(http2).to(code2).to(code3).to(exec1).to(http3));

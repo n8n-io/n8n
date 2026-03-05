@@ -116,8 +116,7 @@ interface EmittedNode {
 		| 'respond'
 		| 'workflow'
 		| 'ifElse'
-		| 'switchCase'
-		| 'aggregate';
+		| 'switchCase';
 	nodeName: string;
 	branchOnly?: boolean;
 }
@@ -167,10 +166,9 @@ interface TranspilerContext {
 	consumedComments: Set<number>; // tracks consumed comment start positions
 	inLoopBody: boolean;
 	loopCounter: number;
-	aggCounter: number;
-	needsAggregate: boolean;
 	functionDefs: Map<string, FunctionDef>;
 	compiledFunctions: Map<string, CompiledFunction>;
+	compiledLoopBodies: CompiledFunction[];
 	execCounter: number;
 }
 
@@ -290,9 +288,10 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 	// Step 5: Transpile each callback
 	const allNodes: EmittedNode[] = [];
 	const allChains: string[] = [];
+	const allLoopBodies: CompiledFunction[] = [];
 
 	for (const cb of callbacks) {
-		const { nodes, chainExpr } = transpileCallback(
+		const { nodes, chainExpr, loopBodies } = transpileCallback(
 			cb,
 			source,
 			allNodes.length,
@@ -303,10 +302,11 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 		);
 		allNodes.push(...nodes);
 		allChains.push(chainExpr);
+		allLoopBodies.push(...loopBodies);
 	}
 
 	// Step 6: Generate final SDK code
-	const code = generateSDKCode(allNodes, allChains, compiledFunctions);
+	const code = generateSDKCode(allNodes, allChains, compiledFunctions, allLoopBodies);
 	return { code, errors };
 }
 
@@ -802,10 +802,9 @@ function compileFunctionToSDK(
 		consumedComments: new Set(),
 		inLoopBody: false,
 		loopCounter: 0,
-		aggCounter: 0,
-		needsAggregate: false,
 		functionDefs,
 		compiledFunctions,
+		compiledLoopBodies: [],
 		execCounter: 0,
 	};
 
@@ -884,7 +883,7 @@ function transpileCallback(
 	errors: CompilerError[],
 	functionDefs?: Map<string, FunctionDef>,
 	compiledFunctions?: Map<string, CompiledFunction>,
-): { nodes: EmittedNode[]; chainExpr: string } {
+): { nodes: EmittedNode[]; chainExpr: string; loopBodies: CompiledFunction[] } {
 	const ctx: TranspilerContext = {
 		source,
 		nodes: [],
@@ -907,10 +906,9 @@ function transpileCallback(
 		consumedComments: new Set(),
 		inLoopBody: false,
 		loopCounter: nodeOffset,
-		aggCounter: nodeOffset,
-		needsAggregate: false,
 		functionDefs: functionDefs ?? new Map(),
 		compiledFunctions: compiledFunctions ?? new Map(),
+		compiledLoopBodies: [],
 		execCounter: nodeOffset,
 	};
 
@@ -948,7 +946,7 @@ function transpileCallback(
 		}
 	}
 
-	return { nodes: ctx.nodes, chainExpr };
+	return { nodes: ctx.nodes, chainExpr, loopBodies: ctx.compiledLoopBodies };
 }
 
 // ─── Statement Walking ───────────────────────────────────────────────────────
@@ -959,12 +957,6 @@ function walkStatements(
 	comments: Array<{ type: string; value: string; start: number; end: number }>,
 ): void {
 	for (const stmt of statements) {
-		// If a for...of loop preceded this statement and had IO, insert aggregate
-		if (ctx.needsAggregate && hasNonTrivialEffect(stmt, ctx.source)) {
-			emitAggregateNode(ctx);
-			ctx.needsAggregate = false;
-		}
-
 		// Check for @onError continue annotation in preceding comments
 		const stmtComments = comments.filter(
 			(c) =>
@@ -1385,7 +1377,6 @@ const COUNTER_KEYS = [
 	'wfCounter',
 	'setCounter',
 	'loopCounter',
-	'aggCounter',
 	'execCounter',
 ] as const;
 
@@ -1418,10 +1409,9 @@ function createBranchContext(parentCtx: TranspilerContext): TranspilerContext {
 		consumedComments: parentCtx.consumedComments,
 		inLoopBody: parentCtx.inLoopBody,
 		loopCounter: parentCtx.loopCounter,
-		aggCounter: parentCtx.aggCounter,
-		needsAggregate: false,
 		functionDefs: parentCtx.functionDefs,
 		compiledFunctions: parentCtx.compiledFunctions,
+		compiledLoopBodies: parentCtx.compiledLoopBodies,
 		execCounter: parentCtx.execCounter,
 	};
 }
@@ -1558,45 +1548,6 @@ function processSwitchStatement(
 	ctx.prevVar = switchVar;
 }
 
-// ─── Aggregate Node ─────────────────────────────────────────────────────────
-
-function hasNonTrivialEffect(stmt: AcornNode, source: string): boolean {
-	// Returns true if the statement has IO calls or control flow that produces nodes
-	if (extractIOCall(stmt, source)) return true;
-	if (isRespondCall(stmt)) return true;
-	if (stmt.type === 'IfStatement' || stmt.type === 'SwitchStatement') return true;
-	if (stmt.type === 'TryStatement') return true;
-	if (findNestedIO(stmt, source).length > 0) return true;
-	return false;
-}
-
-function emitAggregateNode(ctx: TranspilerContext): void {
-	flushPendingCode(ctx);
-	ctx.aggCounter++;
-	const aggVar = `agg${ctx.aggCounter}`;
-	const aggName = `Aggregate ${ctx.aggCounter}`;
-
-	const sdkCode = `const ${aggVar} = node({
-  type: 'n8n-nodes-base.aggregate', version: 1,
-  config: {
-    name: '${aggName}',
-    parameters: {
-      aggregate: 'aggregateAllItemData',
-      destinationFieldName: 'data',
-      include: 'allFieldsExceptBinary'
-    }
-  }
-});`;
-
-	ctx.nodes.push({
-		varName: aggVar,
-		sdkCode,
-		kind: 'aggregate',
-		nodeName: aggName,
-	});
-	ctx.prevVar = aggVar;
-}
-
 // ─── For-Of Processing ───────────────────────────────────────────────────────
 
 function loopBodyHasIO(bodyNode: AcornNode, source: string): boolean {
@@ -1607,6 +1558,16 @@ function loopBodyHasIO(bodyNode: AcornNode, source: string): boolean {
 	return false;
 }
 
+function countIOInBody(bodyNode: AcornNode, source: string): number {
+	const stmts = bodyNode.type === 'BlockStatement' && bodyNode.body ? bodyNode.body : [bodyNode];
+	let count = 0;
+	for (const s of stmts) {
+		// findNestedIO handles both direct IO (extractIOCall) and nested IO in if/for/try
+		count += findNestedIO(s, source).length;
+	}
+	return count;
+}
+
 function processForOfStatement(
 	ctx: TranspilerContext,
 	stmt: AcornNode,
@@ -1614,7 +1575,7 @@ function processForOfStatement(
 ): void {
 	const bodyNode = (stmt as unknown as { body: AcornNode }).body;
 
-	// Case 3: No IO in loop body → keep as plain JS in Code node
+	// Case 1: No IO in loop body → keep as plain JS in Code node
 	if (!loopBodyHasIO(bodyNode, ctx.source)) {
 		const loopSource = ctx.source.slice(stmt.start, stmt.end);
 		const baseIndent = getBaseIndent(ctx.source, stmt.start);
@@ -1622,7 +1583,7 @@ function processForOfStatement(
 		return;
 	}
 
-	// Case 1 & 2: Loop body has IO → splitter + per-item nodes
+	// Common setup: splitter node
 	flushPendingCode(ctx);
 	ctx.loopCounter++;
 
@@ -1673,32 +1634,165 @@ function processForOfStatement(
 	});
 	ctx.prevVar = splitterVar;
 
-	// Map loop variable to $json (the splitter outputs individual items)
-	ctx.varSourceMap.set(loopVar, splitterName);
+	const ioCount = countIOInBody(bodyNode, ctx.source);
+
+	if (ioCount <= 1) {
+		// Case 2: Single IO in loop → splitter + inline per-item node (current approach)
+		ctx.varSourceMap.set(loopVar, splitterName);
+		ctx.varSourceKind.set(loopVar, 'io');
+
+		const branchCtx = createBranchContext(ctx);
+		branchCtx.inLoopBody = true;
+		branchCtx.prevVar = splitterVar;
+		const bodyStmts =
+			bodyNode.type === 'BlockStatement' && bodyNode.body ? bodyNode.body : [bodyNode];
+		walkStatements(branchCtx, bodyStmts, comments);
+		flushPendingCode(branchCtx);
+
+		for (const bn of branchCtx.nodes) {
+			ctx.nodes.push(bn);
+		}
+
+		if (branchCtx.nodes.length > 0) {
+			ctx.prevVar = branchCtx.nodes[branchCtx.nodes.length - 1].varName;
+		}
+
+		syncCounters(ctx, branchCtx);
+	} else {
+		// Case 3: Multi-IO in loop → splitter + Execute Sub-Workflow
+		const compiled = compileLoopBodyAsSubWorkflow(loopVar, bodyNode, ctx, comments);
+		ctx.compiledLoopBodies.push(compiled);
+
+		// Emit Execute Workflow node — no executeOnce, runs per item
+		ctx.execCounter++;
+		const execVar = `exec${ctx.execCounter}`;
+		const execName = `Loop ${loopVar}s`;
+
+		const sdkCode = `const ${execVar} = node({
+  type: 'n8n-nodes-base.executeWorkflow', version: 1.3,
+  config: {
+    name: '${execName}',
+    parameters: {
+      source: 'parameter',
+      workflowJson: ${compiled.builderVarName},
+      options: {}
+    }
+  }
+});`;
+
+		ctx.nodes.push({
+			varName: execVar,
+			sdkCode,
+			kind: 'workflow',
+			nodeName: execName,
+		});
+		ctx.prevVar = execVar;
+	}
+}
+
+/**
+ * Compile a loop body into an inline sub-workflow for the Execute Workflow node.
+ * Follows the same pattern as compileFunctionToSDK, but:
+ * - Trigger is executeWorkflowTrigger in passthrough mode
+ * - Loop variable is seeded as 'io' kind pointing to the trigger
+ * - Sub-workflow name is `_loop_<loopVar>` (decompiler hint)
+ */
+function compileLoopBodyAsSubWorkflow(
+	loopVar: string,
+	bodyNode: AcornNode,
+	parentCtx: TranspilerContext,
+	comments: Array<{ type: string; value: string; start: number; end: number }>,
+): CompiledFunction {
+	const subWfName = `_loop_${loopVar}`;
+	const prefix = `loop_${loopVar}`;
+	const triggerNodeName = 'When Executed by Another Workflow';
+
+	const ctx: TranspilerContext = {
+		source: parentCtx.source,
+		nodes: [],
+		varSourceMap: new Map(parentCtx.varSourceMap),
+		varSourceKind: new Map(parentCtx.varSourceKind),
+		httpCounter: 0,
+		codeCounter: 0,
+		ifCounter: 0,
+		switchCounter: 0,
+		sibCounter: 0,
+		respondCounter: 0,
+		wfCounter: 0,
+		setCounter: 0,
+		pendingStatements: [],
+		prevVar: '',
+		triggerType: 'manual',
+		callbackParams: [],
+		errors: parentCtx.errors,
+		hasOnErrorAnnotation: false,
+		consumedComments: parentCtx.consumedComments,
+		inLoopBody: false,
+		loopCounter: 0,
+		functionDefs: parentCtx.functionDefs,
+		compiledFunctions: parentCtx.compiledFunctions,
+		compiledLoopBodies: parentCtx.compiledLoopBodies,
+		execCounter: 0,
+	};
+
+	// Generate executeWorkflowTrigger as first node
+	const triggerVar = `${prefix}_t0`;
+	const triggerSdk = `const ${triggerVar} = trigger({ type: 'n8n-nodes-base.executeWorkflowTrigger', version: 1.1, config: { parameters: { inputSource: 'passthrough' } } });`;
+	ctx.nodes.push({
+		varName: triggerVar,
+		sdkCode: triggerSdk,
+		kind: 'trigger',
+		nodeName: triggerNodeName,
+	});
+	ctx.prevVar = triggerVar;
+
+	// Seed loop variable → trigger node (io kind, so lead.email → $('trigger').first().json.email)
+	ctx.varSourceMap.set(loopVar, triggerNodeName);
 	ctx.varSourceKind.set(loopVar, 'io');
 
-	// Walk loop body with inLoopBody=true (skips executeOnce on emitted nodes)
-	const branchCtx = createBranchContext(ctx);
-	branchCtx.inLoopBody = true;
-	branchCtx.prevVar = splitterVar;
+	// Walk loop body
 	const bodyStmts =
 		bodyNode.type === 'BlockStatement' && bodyNode.body ? bodyNode.body : [bodyNode];
-	walkStatements(branchCtx, bodyStmts, comments);
-	flushPendingCode(branchCtx);
+	walkStatements(ctx, bodyStmts, comments);
+	flushPendingCode(ctx);
 
-	for (const bn of branchCtx.nodes) {
-		ctx.nodes.push(bn);
+	// Prefix non-trigger node variables to avoid collision with main workflow
+	const renames = new Map<string, string>();
+	for (const node of ctx.nodes) {
+		if (node.varName === triggerVar) continue;
+		renames.set(node.varName, `${prefix}_${node.varName}`);
+	}
+	for (const node of ctx.nodes) {
+		if (node.varName === triggerVar) continue;
+		for (const [oldVar, newVar] of renames) {
+			node.sdkCode = node.sdkCode.replaceAll(`(${oldVar})`, `(${newVar})`);
+			node.sdkCode = node.sdkCode.replace(`const ${oldVar} `, `const ${newVar} `);
+		}
+		node.varName = renames.get(node.varName) ?? node.varName;
 	}
 
-	// Update prevVar to last node in loop body
-	if (branchCtx.nodes.length > 0) {
-		ctx.prevVar = branchCtx.nodes[branchCtx.nodes.length - 1].varName;
+	// Build chain expression
+	const nodeVars = ctx.nodes.filter((n) => !n.branchOnly).map((n) => n.varName);
+	let chainExpr: string;
+	if (nodeVars.length <= 1) {
+		chainExpr = nodeVars[0] ?? triggerVar;
+	} else {
+		chainExpr = nodeVars[0];
+		for (let i = 1; i < nodeVars.length; i++) {
+			chainExpr += `.to(${nodeVars[i]})`;
+		}
 	}
 
-	// Mark that we need an aggregate if there's more code after this loop
-	ctx.needsAggregate = true;
+	const nodeDeclarations = ctx.nodes.map((n) => n.sdkCode);
+	const builderVarName = `${subWfName.replace(/-/g, '_')}Workflow`;
+	const builderDeclaration = `const ${builderVarName} = workflow('${subWfName}', '${subWfName}')\n  .add(${chainExpr});`;
 
-	syncCounters(ctx, branchCtx);
+	return {
+		nodeDeclarations,
+		builderDeclaration,
+		builderVarName,
+		triggerNodeName,
+	};
 }
 
 // ─── Try/Catch Processing ────────────────────────────────────────────────────
@@ -2529,6 +2623,7 @@ function generateSDKCode(
 	allNodes: EmittedNode[],
 	allChains: string[],
 	compiledFunctions?: Map<string, CompiledFunction>,
+	compiledLoopBodies?: CompiledFunction[],
 ): string {
 	const lines: string[] = [];
 
@@ -2561,13 +2656,14 @@ function generateSDKCode(
 			case 'switchCase':
 				usedFactories.add('switchCase');
 				break;
-			case 'aggregate':
-				usedFactories.add('node');
-				break;
 		}
 	}
 
-	// Sub-workflow declarations (before main workflow nodes)
+	// Sub-workflow declarations: compiled functions
+	const hasSubWorkflows =
+		(compiledFunctions && compiledFunctions.size > 0) ||
+		(compiledLoopBodies && compiledLoopBodies.length > 0);
+
 	if (compiledFunctions && compiledFunctions.size > 0) {
 		for (const [name, compiled] of compiledFunctions) {
 			lines.push(`// --- Sub-workflow: ${name} ---`);
@@ -2578,6 +2674,22 @@ function generateSDKCode(
 			lines.push(compiled.builderDeclaration);
 			lines.push('');
 		}
+	}
+
+	// Sub-workflow declarations: loop bodies
+	if (compiledLoopBodies && compiledLoopBodies.length > 0) {
+		for (const compiled of compiledLoopBodies) {
+			lines.push(`// --- Loop body sub-workflow ---`);
+			for (const decl of compiled.nodeDeclarations) {
+				lines.push(decl);
+				lines.push('');
+			}
+			lines.push(compiled.builderDeclaration);
+			lines.push('');
+		}
+	}
+
+	if (hasSubWorkflows) {
 		lines.push('// --- Main workflow ---');
 	}
 

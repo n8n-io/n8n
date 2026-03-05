@@ -40,6 +40,13 @@ interface SubFunctionInfo {
 /** Maps exec node name → function name for quick lookup */
 type ExecToFuncMap = Map<string, string>;
 
+/** Maps exec node name → decompiled loop body code for _loop_ sub-workflows */
+interface LoopBodyInfo {
+	loopVar: string;
+	body: string;
+	execNodeName: string;
+}
+
 interface SimplifiedGenContext {
 	indent: number;
 	lines: string[];
@@ -49,6 +56,8 @@ interface SimplifiedGenContext {
 	codeNodeVars: Set<string>;
 	subFunctions: Map<string, SubFunctionInfo>;
 	execToFunc: ExecToFuncMap;
+	/** Maps exec node name → loop body info for _loop_ sub-workflows */
+	loopBodies: Map<string, LoopBodyInfo>;
 }
 
 function emit(ctx: SimplifiedGenContext, text: string): void {
@@ -65,10 +74,16 @@ export function generateSimplifiedCode(
 	tree: CompositeTree,
 	_json: WorkflowJSON,
 	graph: SemanticGraph,
+	options?: { preSeededVarNames?: Map<string, string> },
 ): string {
 	const nodeNameToVarName = computeVariableAssignments(graph);
+	if (options?.preSeededVarNames) {
+		for (const [k, v] of options.preSeededVarNames) {
+			nodeNameToVarName.set(k, v);
+		}
+	}
 	const codeNodeVars = collectCodeNodeVars(graph);
-	const { subFunctions, execToFunc } = detectSubFunctions(graph);
+	const { subFunctions, execToFunc, loopBodies } = detectSubFunctions(graph);
 
 	const ctx: SimplifiedGenContext = {
 		indent: 0,
@@ -79,6 +94,7 @@ export function generateSimplifiedCode(
 		codeNodeVars,
 		subFunctions,
 		execToFunc,
+		loopBodies,
 	};
 
 	// Emit sub-function declarations first
@@ -101,9 +117,11 @@ export function generateSimplifiedCode(
 function detectSubFunctions(graph: SemanticGraph): {
 	subFunctions: Map<string, SubFunctionInfo>;
 	execToFunc: ExecToFuncMap;
+	loopBodies: Map<string, LoopBodyInfo>;
 } {
 	const subFunctions = new Map<string, SubFunctionInfo>();
 	const execToFunc: ExecToFuncMap = new Map();
+	const loopBodies = new Map<string, LoopBodyInfo>();
 
 	for (const node of graph.nodes.values()) {
 		if (node.type !== 'n8n-nodes-base.executeWorkflow') continue;
@@ -121,6 +139,29 @@ function detectSubFunctions(graph: SemanticGraph): {
 
 		// Use inner workflow id as the canonical function name (stable across deduped node names)
 		const funcName = innerJson.id ?? node.name;
+
+		// Check if this is a compiler-generated loop body sub-workflow
+		if (funcName.startsWith('_loop_')) {
+			const loopVar = funcName.replace('_loop_', '');
+
+			// Decompile the sub-workflow body, pre-seeding the trigger node → loop variable mapping
+			const innerGraph = buildSemanticGraph(innerJson);
+			annotateGraph(innerGraph);
+			const innerTree = buildCompositeTree(innerGraph, { extractBranchDownstream: true });
+			const preSeededVarNames = new Map([['When Executed by Another Workflow', loopVar]]);
+			const innerCode = generateSimplifiedCode(innerTree, innerJson, innerGraph, {
+				preSeededVarNames,
+			});
+			const body = stripTriggerWrapper(innerCode.trim());
+
+			loopBodies.set(node.name, {
+				loopVar,
+				body,
+				execNodeName: node.name,
+			});
+			continue;
+		}
+
 		execToFunc.set(node.name, funcName);
 
 		if (subFunctions.has(funcName)) {
@@ -171,7 +212,7 @@ function detectSubFunctions(graph: SemanticGraph): {
 		});
 	}
 
-	return { subFunctions, execToFunc };
+	return { subFunctions, execToFunc, loopBodies };
 }
 
 function isSubFunctionSetNode(setNodeName: string): boolean {
@@ -464,15 +505,30 @@ function emitChainBody(nodes: CompositeNode[], start: number, ctx: SimplifiedGen
 			ctx.nodeNameToVarName.set(loopInfo.splitterNodeName, loopInfo.itemVar);
 			emit(ctx, `for (const ${loopInfo.itemVar} of ${loopInfo.iterable}) {`);
 			ctx.indent++;
-			for (let j = loopInfo.loopStart; j <= loopInfo.loopEnd; j++) {
-				if (j > loopInfo.loopStart) {
-					const prev = nodes[j - 1];
-					if (prev.kind === 'leaf' && isMultiLine(prev.node, ctx)) {
+
+			if (loopInfo.loopBodyCode) {
+				// Multi-IO loop: emit decompiled sub-workflow body inline
+				// Body is already at correct relative indentation from stripTriggerWrapper
+				for (const line of loopInfo.loopBodyCode.split('\n')) {
+					if (line.trim() === '') {
 						emit(ctx, '');
+					} else {
+						emit(ctx, line);
 					}
 				}
-				visitComposite(nodes[j], ctx);
+			} else {
+				// Single-IO loop: emit inline nodes
+				for (let j = loopInfo.loopStart; j <= loopInfo.loopEnd; j++) {
+					if (j > loopInfo.loopStart) {
+						const prev = nodes[j - 1];
+						if (prev.kind === 'leaf' && isMultiLine(prev.node, ctx)) {
+							emit(ctx, '');
+						}
+					}
+					visitComposite(nodes[j], ctx);
+				}
 			}
+
 			ctx.indent--;
 			emit(ctx, '}');
 			i = loopInfo.loopEnd + 1;
@@ -494,12 +550,14 @@ interface ForOfPatternInfo {
 	splitterNodeName: string;
 	loopStart: number;
 	loopEnd: number;
+	/** If set, the loop body is an inline sub-workflow (multi-IO) */
+	loopBodyCode?: string;
 }
 
 function detectForOfPattern(
 	nodes: CompositeNode[],
 	index: number,
-	_ctx: SimplifiedGenContext,
+	ctx: SimplifiedGenContext,
 ): ForOfPatternInfo | null {
 	const current = nodes[index];
 	if (current.kind !== 'leaf') return null;
@@ -513,18 +571,54 @@ function detectForOfPattern(
 	const iterable = mapReturn[1];
 	const itemVar = mapReturn[2];
 
-	// Loop body starts after the splitter and ends before the aggregate node
+	// Loop body starts after the splitter
 	if (index + 1 >= nodes.length) return null;
 
-	// Find the aggregate node that marks end of loop body
-	let loopEnd = nodes.length - 1;
+	// Check if next node is an Execute Workflow with a _loop_ sub-workflow
+	const nextNode = nodes[index + 1];
+	if (nextNode.kind === 'leaf' && nextNode.node.type === 'n8n-nodes-base.executeWorkflow') {
+		const loopBody = ctx.loopBodies.get(nextNode.node.name);
+		if (loopBody) {
+			return {
+				iterable,
+				itemVar: loopBody.loopVar,
+				splitterNodeName: current.node.name,
+				loopStart: index + 1,
+				loopEnd: index + 1,
+				loopBodyCode: loopBody.body,
+			};
+		}
+	}
+
+	// Old pattern: loop body = consecutive non-executeOnce nodes after the splitter,
+	// or nodes up to an aggregate node (legacy)
+	let loopEnd = index; // default: no loop body nodes
 	for (let j = index + 1; j < nodes.length; j++) {
 		const n = nodes[j];
+		// Aggregate nodes are legacy end-of-loop markers
 		if (n.kind === 'leaf' && n.node.type === 'n8n-nodes-base.aggregate') {
-			loopEnd = j - 1;
+			// loopEnd stays at the node before the aggregate
+			break;
+		}
+		// Per-item nodes lack executeOnce — they're part of the loop body
+		if (n.kind === 'leaf' && !n.node.json.executeOnce) {
+			loopEnd = j;
+		} else if (n.kind === 'ifElse' || n.kind === 'switchCase') {
+			// Control flow nodes inside loops also lack executeOnce marker
+			// Check if any contained node lacks executeOnce
+			const ifNode = n.kind === 'ifElse' ? n.ifNode : undefined;
+			if (ifNode && !ifNode.json.executeOnce) {
+				loopEnd = j;
+			} else {
+				break;
+			}
+		} else {
+			// Hit an executeOnce node → end of loop body
 			break;
 		}
 	}
+
+	if (loopEnd < index + 1) return null; // No loop body found
 
 	return {
 		iterable,
@@ -604,6 +698,11 @@ function visitLeaf(leaf: LeafNode, ctx: SimplifiedGenContext): void {
 		for (const fn of ctx.subFunctions.values()) {
 			if (fn.setNodeNames.has(node.name)) return;
 		}
+	}
+
+	// Skip loop body Execute Workflow nodes — handled by for-of pattern
+	if (node.type === 'n8n-nodes-base.executeWorkflow' && ctx.loopBodies.has(node.name)) {
+		return;
 	}
 
 	// Emit sub-function calls for ExecuteWorkflow nodes with inline workflowJson

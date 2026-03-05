@@ -449,7 +449,7 @@ onManual(async () => {
 			expect(result.code).toContain("$('");
 		});
 
-		it('should add aggregate node when code follows a for...of loop', () => {
+		it('should NOT add aggregate node when code follows a single-IO for...of loop', () => {
 			const result = transpileWorkflowJS(`
 onManual(async () => {
   const items = await http.get('/items');
@@ -458,11 +458,89 @@ onManual(async () => {
 });
 `);
 			expect(result.errors).toHaveLength(0);
-			expect(result.code).not.toContain('splitInBatches(');
-			// Should have an aggregate node to collect results
-			expect(result.code).toContain("type: 'n8n-nodes-base.aggregate'");
+			// No aggregate — executeOnce on post-loop nodes handles it
+			expect(result.code).not.toContain("type: 'n8n-nodes-base.aggregate'");
 			// Post-loop node should have executeOnce (back to normal)
 			expect(result.code).toContain('/done');
+		});
+
+		it('should wrap multi-IO loop body in Execute Sub-Workflow', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const items = await http.get('/items');
+  for (const item of items) {
+    await http.post('/step1', item);
+    await http.get('/step2');
+  }
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			// Should have an Execute Workflow node (not inline per-item nodes)
+			expect(result.code).toContain("type: 'n8n-nodes-base.executeWorkflow'");
+			// Sub-workflow should have executeWorkflowTrigger
+			expect(result.code).toContain("type: 'n8n-nodes-base.executeWorkflowTrigger'");
+			// Sub-workflow name should start with _loop_
+			expect(result.code).toContain("'_loop_item'");
+			// Execute Workflow node should NOT have executeOnce (runs per item)
+			const execMatch = result.code.match(
+				/const exec\d+ = node\(\{[\s\S]*?executeWorkflow[\s\S]*?\}\);/,
+			);
+			expect(execMatch).toBeTruthy();
+			expect(execMatch![0]).not.toContain('executeOnce');
+			// No aggregate node
+			expect(result.code).not.toContain("type: 'n8n-nodes-base.aggregate'");
+		});
+
+		it('should keep single-IO loop body inline (no sub-workflow)', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const items = await http.get('/items');
+  for (const item of items) {
+    await http.post('/process', item);
+  }
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			// Single IO: should NOT use Execute Workflow
+			expect(result.code).not.toContain("type: 'n8n-nodes-base.executeWorkflow'");
+			// Should have the splitter + inline HTTP node
+			expect(result.code).toContain('Split items');
+			expect(result.code).toContain('"method": "POST"');
+		});
+
+		it('should reference loop var from trigger inside sub-workflow', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const leads = await http.get('/leads');
+  for (const lead of leads) {
+    await http.post('/email', { to: lead.email });
+    await http.put('/status', { id: lead.id, status: 'contacted' });
+  }
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			// Inside the sub-workflow, the loop var should reference the trigger node
+			expect(result.code).toContain("$('When Executed by Another Workflow')");
+		});
+
+		it('should handle post-loop code after multi-IO loop without aggregate', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const items = await http.get('/items');
+  for (const item of items) {
+    await http.post('/step1', item);
+    await http.get('/step2');
+  }
+  await http.post('/done', { finished: true });
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			// No aggregate needed
+			expect(result.code).not.toContain("type: 'n8n-nodes-base.aggregate'");
+			// Post-loop node should have executeOnce
+			expect(result.code).toContain('/done');
+			// Main chain should go: ... splitter → exec → post-loop-http
+			expect(result.code).toContain("type: 'n8n-nodes-base.executeWorkflow'");
 		});
 	});
 

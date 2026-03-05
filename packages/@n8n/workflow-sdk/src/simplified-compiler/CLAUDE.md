@@ -37,7 +37,8 @@ n8n nodes natively return arrays of items (e.g., `[{json: {...}}, {json: {...}},
 - **Single-item by default** — `const result = await http.get(...)` gives a single object. The compiler sets `executeOnce: true` and references use `.first().json` (e.g., `$('HTTP 1').first().json.name`).
 - **Multi-item with `.all()`** — when code needs the full array, references use `.all()` (e.g., `$('HTTP 1').all()`).
 - **Loops for iteration** — `for (const item of items)` emits a splitter Code node for per-item processing.
-- **Automatic aggregation** — after loops with IO calls, the compiler inserts an aggregate node to collect results back into a single stream.
+- **Loop body isolation** — multi-IO loop bodies are wrapped in Execute Sub-Workflow nodes to prevent item multiplication (see below).
+- **No aggregate nodes** — post-loop nodes use `executeOnce: true` and reference data by node name (`$('NodeName').first().json`), making aggregation unnecessary.
 
 The LLM writes normal JS (single values, for-of loops) and the compiler handles n8n's item-list plumbing.
 
@@ -61,7 +62,7 @@ Source JS string
 Key tracking during compilation:
 - `varSourceMap`: variable name -> source node name (for expression resolution)
 - `varSourceKind`: variable -> `'io'` | `'code'` (determines reference style)
-- Counters: `http`, `code`, `if`, `switch`, `loop`, `agg`, `respond`, `wf`, `set`
+- Counters: `http`, `code`, `if`, `switch`, `loop`, `respond`, `wf`, `set`
 
 ### Decompile: SDK -> Simplified JS
 
@@ -236,6 +237,31 @@ Sub-functions (`async function fn(params) { ... }` + `await fn(args)`) compile t
 - **Trigger wrapper stripping**: `stripTriggerWrapper()` removes the `onManual(async () => { ... })` wrapper that the inner `executeWorkflowTrigger` produces
 - **Nested function hoisting**: `extractNestedFunctions()` extracts nested `async function` declarations from function bodies and hoists them to top level
 - **Call emission**: Set nodes skipped, exec nodes emit `await functionName(args)` with resolved argument expressions
+
+## Loop Body Sub-Workflow Architecture
+
+When a `for...of` loop body has multiple IO calls, n8n's execution model causes item multiplication (each IO node's output feeds the next, multiplying items). The compiler solves this by wrapping multi-IO loop bodies in Execute Sub-Workflow nodes.
+
+### Three-Way Branching in `processForOfStatement`
+
+| IO count in body | Strategy | Pattern |
+|-----------------|----------|---------|
+| 0 | Plain Code node | Loop body inlined as JS in a single Code node |
+| 1 | Splitter → single node | Splitter Code node + the IO node (no sub-workflow needed) |
+| 2+ | Splitter → Execute Sub-Workflow | Splitter Code node + Execute Workflow node with inline `_loop_<var>` sub-workflow |
+
+### Compiler Side
+- **`countIOInBody()`**: Uses only `findNestedIO()` (not `extractIOCall` — they overlap and cause double-counting)
+- **`compileLoopBodyAsSubWorkflow()`**: Creates a sub-workflow with `executeWorkflowTrigger` in passthrough mode. Loop variable seeded as `'io'` kind pointing to trigger node. Variable prefix `loop_<var>_` avoids collision.
+- **Execute Workflow node**: Emitted WITHOUT `executeOnce` (runs per item from splitter)
+- **Sub-workflow name**: `_loop_<loopVar>` (naming convention as decompiler hint)
+- **No aggregate nodes**: Removed entirely. Post-loop nodes use `executeOnce: true` and `$('NodeName').first().json`.
+
+### Decompiler Side
+- **Detection**: `detectSubFunctions()` checks if inner workflow id starts with `_loop_`. Populates `loopBodies` map (separate from `subFunctions`).
+- **Pre-seeded variable mapping**: `generateSimplifiedCode` accepts optional `preSeededVarNames` to map `'When Executed by Another Workflow'` → loop variable name. Without this, expressions like `$('When Executed by Another Workflow').first().json.prop` resolve to just `prop` instead of `loopVar.prop`.
+- **Loop body emission**: `detectForOfPattern()` detects splitter → Execute Workflow with `_loop_` sub-workflow, returns `loopBodyCode` field.
+- **Indentation**: Loop body code from `stripTriggerWrapper` is already at correct relative indentation. Do NOT strip additional tabs (a previous bug caused nested function bodies to lose indentation).
 
 ## Decompiler: try/catch Reconstruction
 

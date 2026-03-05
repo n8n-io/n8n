@@ -1,3 +1,50 @@
+// --- Loop body sub-workflow ---
+const loop_lead_t0 = trigger({ type: 'n8n-nodes-base.executeWorkflowTrigger', version: 1.1, config: { parameters: { inputSource: 'passthrough' } } });
+
+const loop_lead_http1 = node({
+  type: 'n8n-nodes-base.httpRequest', version: 4.2,
+  config: {
+    "name": "POST gmail.googleapis.com/gmail/v1/us...",
+    "parameters": {
+      "method": "POST",
+      "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+      "options": {},
+      "sendBody": true,
+      "contentType": "json",
+      "specifyBody": "json",
+      "jsonBody": "{\"to\":\"={{ $('When Executed by Another Workflow').first().json[1] }}\",\"subject\":\"Hello\",\"body\":\"Your outreach message here...\"}",
+      "authentication": "genericCredentialType",
+      "genericAuthType": "oAuth2Api"
+    },
+    "executeOnce": true
+  , credentials: { oAuth2Api: { name: 'Gmail', id: '' } }
+}
+});
+
+const loop_lead_http2 = node({
+  type: 'n8n-nodes-base.httpRequest', version: 4.2,
+  config: {
+    "name": "PUT sheets.googleapis.com/v4/spreadsh...",
+    "parameters": {
+      "method": "PUT",
+      "url": "https://sheets.googleapis.com/v4/spreadsheets/SPREADSHEET_ID/values/Sheet1",
+      "options": {},
+      "sendBody": true,
+      "contentType": "json",
+      "specifyBody": "json",
+      "jsonBody": "{\"values\":[[\"Contacted\"]]}",
+      "authentication": "genericCredentialType",
+      "genericAuthType": "oAuth2Api"
+    },
+    "executeOnce": true
+  , credentials: { oAuth2Api: { name: 'Google Sheets', id: '' } }
+}
+});
+
+const _loop_leadWorkflow = workflow('_loop_lead', '_loop_lead')
+  .add(loop_lead_t0.to(loop_lead_http1).to(loop_lead_http2));
+
+// --- Main workflow ---
 const t0 = trigger({ type: 'n8n-nodes-base.scheduleTrigger', version: 1.2, config: { parameters: {"rule":{"interval":[{"field":"days","daysInterval":1}]}} } });
 
 const http1 = node({
@@ -43,43 +90,17 @@ return newLeads.map(lead => ({ json: lead }));`,
   }
 });
 
-const http2 = node({
-  type: 'n8n-nodes-base.httpRequest', version: 4.2,
+const exec1 = node({
+  type: 'n8n-nodes-base.executeWorkflow', version: 1.3,
   config: {
-    "name": "POST gmail.googleapis.com/gmail/v1/us...",
-    "parameters": {
-      "method": "POST",
-      "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
-      "options": {},
-      "sendBody": true,
-      "contentType": "json",
-      "specifyBody": "json",
-      "jsonBody": "{\"to\":\"={{ $('Split leads').first().json[1] }}\",\"subject\":\"Hello\",\"body\":\"Your outreach message here...\"}",
-      "authentication": "genericCredentialType",
-      "genericAuthType": "oAuth2Api"
+    name: 'Loop leads',
+    parameters: {
+      source: 'parameter',
+      workflowJson: _loop_leadWorkflow,
+      options: {}
     }
-  , credentials: { oAuth2Api: { name: 'Gmail', id: '' } }
-}
-});
-
-const http3 = node({
-  type: 'n8n-nodes-base.httpRequest', version: 4.2,
-  config: {
-    "name": "PUT sheets.googleapis.com/v4/spreadsh...",
-    "parameters": {
-      "method": "PUT",
-      "url": "https://sheets.googleapis.com/v4/spreadsheets/SPREADSHEET_ID/values/Sheet1",
-      "options": {},
-      "sendBody": true,
-      "contentType": "json",
-      "specifyBody": "json",
-      "jsonBody": "{\"values\":[[\"Contacted\"]]}",
-      "authentication": "genericCredentialType",
-      "genericAuthType": "oAuth2Api"
-    }
-  , credentials: { oAuth2Api: { name: 'Google Sheets', id: '' } }
-}
+  }
 });
 
 export default workflow('compiled', 'Compiled Workflow')
-  .add(t0.to(http1).to(code1).to(code2).to(http2).to(http3));
+  .add(t0.to(http1).to(code1).to(code2).to(exec1));

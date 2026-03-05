@@ -35,27 +35,23 @@ interface ReportEntry {
 const FIXTURES_DIR = join(__dirname, '__fixtures__');
 const REPORT_PATH = join(FIXTURES_DIR, 'report.html');
 
-interface WorkflowNode {
-	type: string;
-	name: string;
-	parameters?: Record<string, unknown>;
+interface LooseWorkflow {
+	name?: string;
+	nodes?: Array<{ type: string; name?: string; parameters?: Record<string, unknown> }>;
 }
 
-function extractSubWorkflows(workflowJson: { nodes?: WorkflowNode[] }): SubWorkflowEntry[] {
+function extractSubWorkflows(workflowJson: LooseWorkflow): SubWorkflowEntry[] {
 	const seen = new Set<string>();
 	const results: SubWorkflowEntry[] = [];
 
-	function walk(wf: { nodes?: WorkflowNode[] }) {
+	function walk(wf: LooseWorkflow) {
 		for (const n of wf.nodes ?? []) {
 			if (
 				n.type === 'n8n-nodes-base.executeWorkflow' &&
 				typeof n.parameters?.workflowJson === 'string'
 			) {
-				const parsed = JSON.parse(n.parameters.workflowJson as string) as {
-					name?: string;
-					nodes?: WorkflowNode[];
-				};
-				const key = parsed.name ?? n.name;
+				const parsed = JSON.parse(n.parameters.workflowJson as string) as LooseWorkflow;
+				const key = parsed.name ?? n.name ?? 'unknown';
 				if (!seen.has(key)) {
 					seen.add(key);
 					results.push({ name: key, workflowJson: JSON.stringify(parsed, null, 2) });
