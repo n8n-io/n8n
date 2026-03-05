@@ -1,9 +1,29 @@
-import type { TableForeignKeyOptions, TableIndexOptions, QueryRunner } from '@n8n/typeorm';
+import type { Driver, TableForeignKeyOptions, TableIndexOptions, QueryRunner } from '@n8n/typeorm';
 import { Table, TableCheck, TableColumn, TableForeignKey, TableUnique } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 import LazyPromise from 'p-lazy';
 
 import { Column } from './column';
+
+function buildEnumChecks(
+	columns: Column[],
+	prefix: string,
+	tableName: string,
+	driver: Driver,
+): TableCheck[] {
+	const checks: TableCheck[] = [];
+	for (const column of columns) {
+		const enumCheck = column.getEnumCheck();
+		if (enumCheck) {
+			const checkName = `CHK_${prefix}${tableName}_${enumCheck.columnName}`;
+			const escapedColumnName = driver.escape(enumCheck.columnName);
+			const escapedValues = enumCheck.values.map((v) => `'${v.replace(/'/g, "''")}'`).join(', ');
+			const expression = `${escapedColumnName} IN (${escapedValues})`;
+			checks.push(new TableCheck({ name: checkName, expression }));
+		}
+	}
+	return checks;
+}
 
 abstract class TableOperation<R = void> extends LazyPromise<R> {
 	abstract execute(queryRunner: QueryRunner): Promise<R>;
@@ -29,8 +49,6 @@ export class CreateTable extends TableOperation {
 	private foreignKeys = new Set<TableForeignKeyOptions>();
 
 	private checks = new Set<TableCheck>();
-
-	private enumChecks: Array<{ columnName: string; values: string[] }> = [];
 
 	withColumns(...columns: Column[]) {
 		this.columns.push(...columns);
@@ -67,11 +85,6 @@ export class CreateTable extends TableOperation {
 		return this;
 	}
 
-	withEnumCheck(columnName: string, values: string[]) {
-		this.enumChecks.push({ columnName, values });
-		return this;
-	}
-
 	withForeignKey(
 		columnName: string,
 		ref: {
@@ -104,15 +117,10 @@ export class CreateTable extends TableOperation {
 			uniqueConstraints,
 			foreignKeys,
 			checks,
-			enumChecks,
 		} = this;
 
-		for (const { columnName, values } of enumChecks) {
-			const checkName = `CHK_${prefix}${name}_${columnName}`;
-			const escapedColumnName = driver.escape(columnName);
-			const escapedValues = values.map((v) => `'${v.replace(/'/g, "''")}'`).join(', ');
-			const expression = `${escapedColumnName} IN (${escapedValues})`;
-			checks.add(new TableCheck({ name: checkName, expression }));
+		for (const check of buildEnumChecks(columns, prefix, name, driver)) {
+			checks.add(check);
 		}
 
 		return await queryRunner.createTable(
@@ -149,10 +157,20 @@ export class AddColumns extends TableOperation {
 	async execute(queryRunner: QueryRunner) {
 		const { driver } = queryRunner.connection;
 		const { tableName, prefix, columns } = this;
-		return await queryRunner.addColumns(
-			`${prefix}${tableName}`,
+		const fullTableName = `${prefix}${tableName}`;
+
+		await queryRunner.addColumns(
+			fullTableName,
 			columns.map((c) => new TableColumn(c.toOptions(driver))),
 		);
+
+		const enumChecks = buildEnumChecks(columns, prefix, tableName, driver);
+		for (const check of enumChecks) {
+			const escapedTable = driver.escape(fullTableName);
+			await queryRunner.query(
+				`ALTER TABLE ${escapedTable} ADD CONSTRAINT ${driver.escape(check.name!)} CHECK (${check.expression})`,
+			);
+		}
 	}
 }
 
