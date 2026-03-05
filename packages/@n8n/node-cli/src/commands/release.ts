@@ -29,32 +29,33 @@ export default class Release extends Command {
 						NPM_CONFIG_PROVENANCE: 'true',
 					},
 				});
-			} else {
-				await runCommand(
-					'release-it',
-					[
-						'-n',
-						'--git.requireBranch main',
-						'--git.requireCleanWorkingDir',
-						'--git.requireUpstream',
-						'--git.requireCommits',
-						'--git.commit',
-						'--git.tag',
-						'--git.push',
-						'--git.changelog="npx auto-changelog --stdout --unreleased --commit-limit false -u --hide-credit"',
-						'--github.release',
-						`--hooks.before:init="${pm} run lint && ${pm} run build"`,
-						'--hooks.after:bump="npx auto-changelog -p"',
-					],
-					{
-						stdio: 'inherit',
-						context: 'local',
-						env: {
-							RELEASE_MODE: 'true',
-						},
-					},
-				);
+				return;
 			}
+
+			await runCommand(
+				'release-it',
+				[
+					'-n',
+					'--git.requireBranch main',
+					'--git.requireCleanWorkingDir',
+					'--git.requireUpstream',
+					'--git.requireCommits',
+					'--git.commit',
+					'--git.tag',
+					'--git.push',
+					'--git.changelog="npx auto-changelog --stdout --unreleased --commit-limit false -u --hide-credit"',
+					'--github.release',
+					`--hooks.before:init="${pm} run lint && ${pm} run build"`,
+					'--hooks.after:bump="npx auto-changelog -p"',
+				],
+				{
+					stdio: 'inherit',
+					context: 'local',
+					env: {
+						RELEASE_MODE: 'true',
+					},
+				},
+			);
 		} catch (error) {
 			if (error instanceof ChildProcessError) {
 				if (error.signal) {
