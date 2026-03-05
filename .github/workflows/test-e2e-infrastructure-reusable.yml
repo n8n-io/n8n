@@ -13,16 +13,49 @@ on:
       - 'packages/testing/containers/services/**'
       - '.github/workflows/test-e2e-infrastructure-reusable.yml'
 
+env:
+  TEST_IMAGE_N8N: n8nio/n8n:nightly
+
 jobs:
   benchmark:
+    name: ${{ matrix.profile }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    permissions:
+      packages: read
+      contents: read
     strategy:
       fail-fast: false
       matrix:
-        profile: [benchmark-direct, benchmark-queue]
-    uses: ./.github/workflows/test-e2e-reusable.yml
-    with:
-      test-mode: docker-build
-      test-command: pnpm --filter=n8n-playwright test:all --project='${{ matrix.profile }}:infrastructure' --grep '10-nodes-10KB-10kb-out-5k'
-      shards: 1
-      workers: 1
-    secrets: inherit
+        include:
+          - profile: benchmark-direct
+            runner: blacksmith-4vcpu-ubuntu-2204
+          - profile: benchmark-queue
+            runner: blacksmith-8vcpu-ubuntu-2204
+          - profile: benchmark-queue-tuned
+            runner: blacksmith-8vcpu-ubuntu-2204
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-nodejs
+
+      - name: Install Browsers
+        run: pnpm turbo run install-browsers --filter=n8n-playwright
+
+      - name: Login to GHCR
+        uses: ./.github/actions/docker-registry-login
+
+      - name: Build test image
+        run: node packages/testing/playwright/scripts/build-test-image.mjs ${{ env.TEST_IMAGE_N8N }}
+
+      - name: Pre-pull Test Container Images
+        run: npx tsx packages/testing/containers/pull-test-images.ts || true
+
+      - name: Run Benchmarks
+        run: pnpm --filter=n8n-playwright test:all --project='${{ matrix.profile }}:infrastructure' --grep '10-nodes-10KB-10kb-out-5k' --workers=1
+        env:
+          N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
+          N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
+          N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
