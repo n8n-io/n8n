@@ -734,6 +734,7 @@ function normalizeSDK(code: string): string {
 function getRoundTripSkipReason(title: string): string | undefined {
 	const skipReasons: Record<string, string> = {
 		W6: 'Promise.all with nested IIFEs not supported',
+		W7: 'try/catch onError pattern + notExists condition not reconstructable by decompiler',
 	};
 
 	for (const [prefix, reason] of Object.entries(skipReasons)) {

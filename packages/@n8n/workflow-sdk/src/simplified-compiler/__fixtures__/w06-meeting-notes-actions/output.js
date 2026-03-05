@@ -54,7 +54,71 @@ const ai1 = node({
   }
 });
 
+const code2 = node({
+  type: 'n8n-nodes-base.code', version: 2,
+  config: {
+    name: 'Split items',
+    parameters: {
+      jsCode: `const analysis = $('AI: Analyze these meeting notes').all().map(i => i.json);
+return analysis.action_items.map(item => ({ json: item }));`,
+      mode: 'runOnceForAllItems'
+    },
+    executeOnce: true
+  }
+});
+
 const http2 = node({
+  type: 'n8n-nodes-base.httpRequest', version: 4.2,
+  config: {
+    "name": "POST tasks.googleapis.com/tasks/v1/li...",
+    "parameters": {
+      "method": "POST",
+      "url": "https://tasks.googleapis.com/tasks/v1/lists/TASKLIST/tasks",
+      "options": {},
+      "sendBody": true,
+      "contentType": "json",
+      "specifyBody": "json",
+      "jsonBody": "{\"title\":\"={{ $('Split items').first().json.description }}\"}",
+      "authentication": "genericCredentialType",
+      "genericAuthType": "oAuth2Api"
+    }
+  , credentials: { oAuth2Api: { name: 'Google Tasks', id: '' } }
+}
+});
+
+const code3 = node({
+  type: 'n8n-nodes-base.code', version: 2,
+  config: {
+    name: 'Split emails',
+    parameters: {
+      jsCode: `const analysis = $('AI: Analyze these meeting notes').all().map(i => i.json);
+return analysis.follow_up_emails.map(email => ({ json: email }));`,
+      mode: 'runOnceForAllItems'
+    },
+    executeOnce: true
+  }
+});
+
+const http3 = node({
+  type: 'n8n-nodes-base.httpRequest', version: 4.2,
+  config: {
+    "name": "POST gmail.googleapis.com/gmail/v1/us...",
+    "parameters": {
+      "method": "POST",
+      "url": "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+      "options": {},
+      "sendBody": true,
+      "contentType": "json",
+      "specifyBody": "json",
+      "jsonBody": "{\"to\":\"={{ $('Split emails').first().json.recipient }}\",\"subject\":\"={{ $('Split emails').first().json.subject }}\"}",
+      "authentication": "genericCredentialType",
+      "genericAuthType": "oAuth2Api"
+    }
+  , credentials: { oAuth2Api: { name: 'Gmail', id: '' } }
+}
+});
+
+const http4 = node({
   type: 'n8n-nodes-base.httpRequest', version: 4.2,
   config: {
     "name": "POST docs.googleapis.com/v1/documents",
@@ -88,4 +152,4 @@ const respond2 = node({
 });
 
 export default workflow('compiled', 'Compiled Workflow')
-  .add(t0.to(if1).to(code1).to(ai1).to(http2).to(respond2));
+  .add(t0.to(if1).to(code1).to(ai1).to(code2).to(http2).to(code3).to(http3).to(http4).to(respond2));

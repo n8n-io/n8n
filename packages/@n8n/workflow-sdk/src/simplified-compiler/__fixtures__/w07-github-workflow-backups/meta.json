@@ -1,5 +1,4 @@
 {
 	"title": "W7: GitHub workflow backups (schedule + loop + try/catch + nested if/else + helper fn)",
-	"templateId": 5851,
-	"skip": "Assignment expressions in try blocks not recognized as IO calls. `existing = await http.get(...)` is an AssignmentExpression, but extractIOCall() only handles VariableDeclaration and bare ExpressionStatement. Need to add AssignmentExpression support so onError annotation propagates correctly."
+	"templateId": 5851
 }

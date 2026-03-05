@@ -80,7 +80,7 @@ const code4 = node({
   config: {
     name: 'Code 4',
     parameters: {
-      jsCode: `// From: Code 1\nconst config = $('Code 1').all().map(i => i.json);\nconst workflows = $('GET localhost/api/v1/workflows').all().map(i => i.json);\nconst wf = $('Split wfs').all().map(i => i.json);\nconst filePath = config.path + '/' + wf.name + '.json';
+      jsCode: `// From: Code 1\nconst config = $('Code 1').all().map(i => i.json);\nconst wf = $('Split wfs').all().map(i => i.json);\nconst filePath = config.path + '/' + wf.name + '.json';
 
 function sortKeys(obj) {
 	return Object.keys(obj)
@@ -93,12 +93,7 @@ function sortKeys(obj) {
 
 const wfJson = JSON.stringify(sortKeys(wf), null, 2);
 
-let existing = null;
-
-existing = await http.get(
-	'https://api.github.com/repos/myuser/n8n-workflows/contents/' + filePath,
-	{ auth: { type: 'bearer', credential: 'GitHub' } },
-);\nreturn [{ json: { filePath, wfJson, existing } }];`,
+let existing = null;\nreturn [{ json: { filePath, wfJson, existing } }];`,
       mode: 'runOnceForAllItems'
     },
     executeOnce: true
@@ -106,6 +101,22 @@ existing = await http.get(
 });
 
 const http3 = node({
+  type: 'n8n-nodes-base.httpRequest', version: 4.2,
+  config: {
+    "name": "GET Request",
+    "parameters": {
+      "method": "GET",
+      "url": "{{dynamic URL}}",
+      "options": {},
+      "authentication": "genericCredentialType",
+      "genericAuthType": "httpHeaderAuth"
+    },
+    "onError": "continueErrorOutput"
+  , credentials: { httpHeaderAuth: { name: 'GitHub', id: '' } }
+}
+});
+
+const http4 = node({
   type: 'n8n-nodes-base.httpRequest', version: 4.2,
   config: {
     "name": "PUT Request",
@@ -124,7 +135,7 @@ const http3 = node({
 }
 });
 
-const http4 = node({
+const http5 = node({
   type: 'n8n-nodes-base.httpRequest', version: 4.2,
   config: {
     "name": "PUT Request",
@@ -135,7 +146,7 @@ const http4 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"message\":\"updated\",\"content\":\"={{ $('Code 4').first().json.wfJson }}\",\"sha\":\"={{ $('Code 4').first().json.existing.sha }}\"}",
+      "jsonBody": "{\"message\":\"updated\",\"content\":\"={{ $('Code 4').first().json.wfJson }}\",\"sha\":\"={{ $('GET Request').first().json.sha }}\"}",
       "authentication": "genericCredentialType",
       "genericAuthType": "httpHeaderAuth"
     }
@@ -143,11 +154,11 @@ const http4 = node({
 }
 });
 
-const if2 = ifElse({ version: 2.2, config: { name: 'IF 2', parameters: { conditions: {"options":{"caseSensitive":true,"leftValue":""},"conditions":[{"leftValue":"={{ $('Code 4').first().json.wfJson }}","rightValue":"={{ $('Code 4').first().json.existing.content }}","operator":{"type":"string","operation":"notEquals"}}],"combinator":"and"} }, executeOnce: true } })
-  .onTrue(http4);
+const if2 = ifElse({ version: 2.2, config: { name: 'IF 2', parameters: { conditions: {"options":{"caseSensitive":true,"leftValue":""},"conditions":[{"leftValue":"={{ $('Code 4').first().json.wfJson }}","rightValue":"={{ $('GET Request').first().json.content }}","operator":{"type":"string","operation":"notEquals"}}],"combinator":"and"} }, executeOnce: true } })
+  .onTrue(http5);
 
-const if1 = ifElse({ version: 2.2, config: { name: 'IF 1', parameters: { conditions: {"options":{"caseSensitive":true,"leftValue":""},"conditions":[{"leftValue":"={{ $('Code 4').first().json.existing }}","rightValue":"","operator":{"type":"string","operation":"notExists","singleValue":true}}],"combinator":"and"} }, executeOnce: true } })
-  .onTrue(http3)
+const if1 = ifElse({ version: 2.2, config: { name: 'IF 1', parameters: { conditions: {"options":{"caseSensitive":true,"leftValue":""},"conditions":[{"leftValue":"={{ $('GET Request').first().json }}","rightValue":"","operator":{"type":"string","operation":"notExists","singleValue":true}}],"combinator":"and"} }, executeOnce: true } })
+  .onTrue(http4)
   .onFalse(if2);
 
 const agg1 = node({
@@ -162,7 +173,7 @@ const agg1 = node({
   }
 });
 
-const http5 = node({
+const http6 = node({
   type: 'n8n-nodes-base.httpRequest', version: 4.2,
   config: {
     "name": "POST slack.com/api/chat.postMessage",
@@ -183,4 +194,4 @@ const http5 = node({
 });
 
 export default workflow('compiled', 'Compiled Workflow')
-  .add(t0.to(http1).to(code1).to(http2).to(code2).to(code3).to(code4).to(if1).to(agg1).to(http5));
+  .add(t0.to(http1).to(code1).to(http2).to(code2).to(code3).to(code4).to(http3).to(if1).to(agg1).to(http6));

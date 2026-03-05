@@ -1130,7 +1130,11 @@ function processForOfStatement(
 			: (leftNode.name ?? 'item');
 
 	const rightNode = (stmt as unknown as { right: AcornNode }).right;
-	const iterableName = rightNode.name ?? '';
+	const iterableChain = extractPropertyChain(rightNode);
+	const iterableRoot =
+		rightNode.type === 'Identifier'
+			? (rightNode.name ?? '')
+			: (extractRootIdentifier(rightNode) ?? '');
 
 	// Emit splitter Code node — splits array into individual n8n items
 	ctx.codeCounter++;
@@ -1138,13 +1142,12 @@ function processForOfStatement(
 	const splitterName = `Split ${loopVar}s`;
 
 	// Build reference to the source array
-	const sourceNodeName = ctx.varSourceMap.get(iterableName);
+	const sourceNodeName = ctx.varSourceMap.get(iterableRoot);
 	const refLine = sourceNodeName
-		? `const ${iterableName} = $('${sourceNodeName}').all().map(i => i.json);\n`
+		? `const ${iterableRoot} = $('${sourceNodeName}').all().map(i => i.json);\n`
 		: '';
-	// If iterable is a property access (e.g. items from a previous code node returning { items: [...] }),
-	// we output the whole array. If it's a direct variable, output items.map(x => ({ json: x }))
-	const jsCode = `${refLine}return ${iterableName}.map(${loopVar} => ({ json: ${loopVar} }));`;
+	// Use the full property chain for the iterable (e.g. analysis.action_items)
+	const jsCode = `${refLine}return ${iterableChain}.map(${loopVar} => ({ json: ${loopVar} }));`;
 
 	const splitterSdk = `const ${splitterVar} = node({
   type: 'n8n-nodes-base.code', version: 2,
@@ -1288,6 +1291,31 @@ function processPromiseAll(
 				ctx.varSourceKind.set(ioCall.assignedVar, 'io');
 			}
 			fanOutVars.push(httpVar);
+			continue;
+		}
+
+		// Handle IIFEs: (async () => { ... })()
+		const callee = element.type === 'CallExpression' ? element.callee : null;
+		if (
+			callee &&
+			(callee.type === 'ArrowFunctionExpression' || callee.type === 'FunctionExpression')
+		) {
+			// callee.body is a single BlockStatement for function expressions
+			const fnBody = callee.body as unknown as AcornNode;
+			if (fnBody?.type === 'BlockStatement' && fnBody.body) {
+				const branchCtx = createBranchContext(ctx);
+				branchCtx.prevVar = prevVar;
+				walkStatements(branchCtx, fnBody.body, _comments);
+				flushPendingCode(branchCtx);
+
+				for (const bn of branchCtx.nodes) {
+					ctx.nodes.push(bn);
+				}
+				if (branchCtx.nodes.length > 0) {
+					fanOutVars.push(branchCtx.nodes[branchCtx.nodes.length - 1].varName);
+				}
+				syncCounters(ctx, branchCtx);
+			}
 		}
 	}
 
@@ -1381,6 +1409,18 @@ function extractIOCall(stmt: AcornNode, source: string): IOCall | null {
 		const expr = stmt.expression;
 		if (expr.type === 'AwaitExpression' && expr.argument) {
 			return matchIOCallNode(expr.argument, source);
+		}
+		// existing = await http.get(...) / result = await workflow.run(...)
+		if (
+			expr.type === 'AssignmentExpression' &&
+			expr.right?.type === 'AwaitExpression' &&
+			expr.right.argument
+		) {
+			const io = matchIOCallNode(expr.right.argument, source);
+			if (io) {
+				io.assignedVar = expr.left?.name ?? null;
+				return io;
+			}
 		}
 	}
 
