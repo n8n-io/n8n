@@ -188,6 +188,15 @@ export class OAuth2Api implements ICredentialType {
 			default: '',
 		},
 		{
+			displayName: 'Token Expired Status Code',
+			name: 'tokenExpiredStatusCode',
+			type: 'number',
+			default: 401,
+			description:
+				'HTTP status code that indicates the token has expired. Some APIs return 403 instead of 401.',
+			doNotInherit: true,
+		},
+		{
 			displayName: 'Ignore SSL Issues (Insecure)',
 			name: 'ignoreSSLIssues',
 			type: 'boolean',
