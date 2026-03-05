@@ -7,6 +7,7 @@
     "p-limit": "3.1.0",
     "picocolors": "1.0.1",
     "semver": "7.5.4",
-    "tempfile": "5.0.0"
+    "tempfile": "5.0.0",
+    "@actions/github": "9.0.0"
   }
 }

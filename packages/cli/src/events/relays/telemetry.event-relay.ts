@@ -809,7 +809,9 @@ export class TelemetryEventRelay extends EventRelay {
 			is_manual: false,
 			version_cli: N8N_VERSION,
 			success: false,
-			used_dynamic_credentials: !!runData?.data?.executionData?.runtimeData?.credentials,
+			used_dynamic_credentials: Object.values(runData?.data?.resultData?.runData ?? {}).some(
+				(taskDataList) => taskDataList.some((taskData) => taskData.usedDynamicCredentials),
+			),
 		};
 
 		if (userId) {

@@ -1470,6 +1470,7 @@ const { width } = useElementSize(credNameRef);
 	flex: 1;
 	overflow: auto;
 	padding-bottom: 100px;
+	padding-inline: var(--spacing--4xs);
 }
 
 .credName {
