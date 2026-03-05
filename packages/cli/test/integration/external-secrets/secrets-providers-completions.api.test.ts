@@ -265,6 +265,78 @@ describe('Secret Providers Completions API', () => {
 		});
 	});
 
+	describe('GET /secret-providers/completions/secrets/global/:projectId', () => {
+		describe('Authorization', () => {
+			const FORBIDDEN_MESSAGE = 'User is missing a scope required to perform this action';
+			let agents: Record<string, SuperAgentTest>;
+
+			beforeAll(() => {
+				agents = {
+					owner: ownerAgent,
+					admin: adminAgent,
+					member: memberAgent,
+				};
+			});
+
+			test.each([
+				{ role: 'owner', allowed: true },
+				{ role: 'admin', allowed: true },
+				{ role: 'member', allowed: false },
+			])(
+				'should allow=$allowed for $role to list global secrets for project',
+				async ({ role, allowed }) => {
+					const response = await agents[role]
+						.get(`/secret-providers/completions/secrets/global/${projectWithConnections.id}`)
+						.expect(allowed ? 200 : 403);
+
+					if (!allowed) {
+						expect(response.body.message).toBe(FORBIDDEN_MESSAGE);
+					}
+				},
+			);
+
+			it('should allow member with custom externalSecret:list role to list global secrets for project', async () => {
+				await memberWithCustomRoleAgent
+					.get(`/secret-providers/completions/secrets/global/${customProjectA.id}`)
+					.expect(200);
+			});
+
+			it('should deny member with custom externalSecret:list role for different project', async () => {
+				const response = await memberWithCustomRoleAgent
+					.get(`/secret-providers/completions/secrets/global/${customProjectB.id}`)
+					.expect(403);
+
+				expect(response.body.message).toBe(FORBIDDEN_MESSAGE);
+			});
+		});
+
+		describe('response shape', () => {
+			it('should return same global secrets data as GET /secrets/global', async () => {
+				const GlobalProvider = createDummyProvider({
+					name: 'global_provider',
+					secrets: { globalSecret1: 'value1', globalSecret2: 'value2' },
+				});
+				mockProvidersInstance.setProviders({ global_provider: GlobalProvider });
+				await connectionRepository.save(
+					connectionRepository.create({
+						providerKey: 'global-conn',
+						type: 'global_provider',
+						encryptedSettings: JSON.stringify({ mocked: 'mocked' }),
+					}),
+				);
+				await resetManager();
+
+				const response = await ownerAgent
+					.get(`/secret-providers/completions/secrets/global/${projectWithConnections.id}`)
+					.expect(200);
+
+				expect(response.body.data).toEqual({
+					'global-conn': ['globalSecret1', 'globalSecret2'],
+				});
+			});
+		});
+	});
+
 	describe('GET /secret-providers/completions/secrets/project/:projectId', () => {
 		describe('Authorization', () => {
 			const FORBIDDEN_MESSAGE = 'User is missing a scope required to perform this action';

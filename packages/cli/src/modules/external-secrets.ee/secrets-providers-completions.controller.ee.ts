@@ -80,6 +80,22 @@ export class SecretProvidersCompletionsController {
 		return this.connectionsService.toSecretCompletionsResponse(connections);
 	}
 
+	/**
+	 * Global secrets in project context: same data as listGlobalSecrets but
+	 * authorized via @ProjectScope so project editors/admins can list global secrets.
+	 */
+	@Get('/secrets/global/:projectId')
+	@ProjectScope('externalSecret:list')
+	async listGlobalSecretsForProject(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('projectId') projectId: string,
+	): Promise<SecretCompletionsResponse> {
+		this.logger.debug('Listing global secrets for project', { projectId });
+		const connections = await this.connectionsService.getGlobalCompletions();
+		return this.connectionsService.toSecretCompletionsResponse(connections);
+	}
+
 	@Get('/secrets/project/:projectId')
 	@ProjectScope('externalSecret:list')
 	async listProjectSecrets(
