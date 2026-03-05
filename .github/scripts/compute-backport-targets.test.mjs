@@ -1,6 +1,6 @@
 import { describe, it, mock, before } from 'node:test';
 import assert from 'node:assert/strict';
-import { getPullRequestById, readPrLabels } from './github-helpers.mjs';
+import { readPrLabels } from './github-helpers.mjs';
 
 /**
  * Run these tests by running
@@ -13,14 +13,14 @@ import { getPullRequestById, readPrLabels } from './github-helpers.mjs';
 mock.module('./github-helpers.mjs', {
 	namedExports: {
 		ensureEnvVar: () => {}, // no-op
-		readPrLabels: readPrLabels, // no-op
+		readPrLabels: readPrLabels,
 		resolveRcBranchForTrack: mockResolveRcBranchForTrack,
 		writeGithubOutput: () => {}, //no-op
 		getPullRequestById: () => {
 			return {
 				labels: ['n8n team', 'Backport to Beta'],
 			};
-		}, //no-op
+		},
 	},
 });
 
