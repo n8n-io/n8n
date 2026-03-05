@@ -24,8 +24,14 @@ const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
-const { setupCards, isAllComplete, setCredential, unsetCredential, firstTriggerName } =
-	useWorkflowSetupState();
+const {
+	setupCards,
+	isAllComplete,
+	setCredential,
+	unsetCredential,
+	firstTriggerName,
+	autoAppliedCredentialIds,
+} = useWorkflowSetupState();
 
 watch(isAllComplete, (allComplete) => {
 	if (allComplete) {
@@ -128,9 +134,20 @@ watch(
 
 				if (card.state.isComplete && !wasComplete && !cardsWithTextParameters.has(key)) {
 					expandedStates[key] = false;
-					const nextUncompleted = cards.find((c, j) => j > i && !c.state.isComplete);
-					if (nextUncompleted) {
-						expandedStates[cardKey(nextUncompleted)] = true;
+
+					// When auto-applied credentials complete a card, only open the next card
+					// if all other cards are already collapsed (don't disrupt user's current work).
+					const wasAutoApplied =
+						!!card.state.selectedCredentialId &&
+						autoAppliedCredentialIds.value.has(card.state.selectedCredentialId);
+					const allOthersCollapsed =
+						!wasAutoApplied || cards.every((c, j) => j === i || !expandedStates[cardKey(c)]);
+
+					if (allOthersCollapsed) {
+						const nextUncompleted = cards.find((c, j) => j > i && !c.state.isComplete);
+						if (nextUncompleted) {
+							expandedStates[cardKey(nextUncompleted)] = true;
+						}
 					}
 					break;
 				}

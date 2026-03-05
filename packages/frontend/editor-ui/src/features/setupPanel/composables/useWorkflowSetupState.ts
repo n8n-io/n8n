@@ -769,6 +769,12 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	};
 
 	/**
+	 * Credential IDs that were auto-applied on initial load (not manually selected by the user).
+	 * Used by SetupPanelCards to suppress auto-expanding the next card when these complete.
+	 */
+	const autoAppliedCredentialIds = ref(new Set<string>());
+
+	/**
 	 * Auto-select the most recently updated credential for each credential type
 	 * that doesn't already have one assigned.
 	 * Runs once on initial load to pre-fill credential pickers.
@@ -787,6 +793,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 				(best, current) => (best.updatedAt > current.updatedAt ? best : current),
 				available[0],
 			);
+			autoAppliedCredentialIds.value.add(mostRecent.id);
 			setCredential(credState.credentialType, mostRecent.id);
 		}
 
@@ -798,6 +805,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 				(best, current) => (best.updatedAt > current.updatedAt ? best : current),
 				available[0],
 			);
+			autoAppliedCredentialIds.value.add(mostRecent.id);
 			setCredential(nodeState.credentialType, mostRecent.id, nodeState.node.name);
 		}
 	};
@@ -868,6 +876,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		totalCardsRequiringSetup,
 		isAllComplete,
 		nodesWithMissingParameters,
+		autoAppliedCredentialIds,
 		setCredential,
 		unsetCredential,
 	};
