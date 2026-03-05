@@ -2,6 +2,7 @@
 import { DynamicStructuredTool, StructuredTool, Tool } from '@langchain/core/tools';
 import type {
 	AINodeConnectionType,
+	ChatNodeMessageWithButtons,
 	CloseFunction,
 	GenericValue,
 	IDataObject,
@@ -179,6 +180,7 @@ function mapResult(result?: NodeOutput) {
 		| Array<IDataObject | GenericValue | GenericValue[] | IDataObject[]>
 		| undefined;
 	let nodeHasMixedJsonAndBinaryData = false;
+	let sendMessage: ChatNodeMessageWithButtons | string | undefined = undefined;
 
 	if (result === undefined) {
 		response = undefined;
@@ -192,9 +194,15 @@ function mapResult(result?: NodeOutput) {
 			nodeHasMixedJsonAndBinaryData = true;
 		}
 		response = result?.[0]?.flatMap((item) => item.json);
+
+		// Chat node always returns single item with sendMessage property
+		// alongside json, this is used to send a bot message to the chat
+		if (result?.[0]?.[0]?.sendMessage) {
+			sendMessage = result?.[0]?.[0]?.sendMessage;
+		}
 	}
 
-	return { response, nodeHasMixedJsonAndBinaryData };
+	return { response, nodeHasMixedJsonAndBinaryData, sendMessage };
 }
 
 export function makeHandleToolInvocation(
@@ -255,7 +263,7 @@ export function makeHandleToolInvocation(
 				// Execute the sub-node with the proxied context
 				const result = await nodeType.execute?.call(context as unknown as IExecuteFunctions);
 
-				const { response, nodeHasMixedJsonAndBinaryData } = mapResult(result);
+				const { response, nodeHasMixedJsonAndBinaryData, sendMessage } = mapResult(result);
 
 				// If the node returned some binary data, but also useful data we just log a warning instead of overriding the result
 				if (nodeHasMixedJsonAndBinaryData) {
@@ -266,7 +274,7 @@ export function makeHandleToolInvocation(
 
 				// Add output data to the context
 				context.addOutputData(NodeConnectionTypes.AiTool, localRunIndex, [
-					[{ json: { response } }],
+					[{ json: { response }, sendMessage }],
 				]);
 
 				// Return the stringified results
