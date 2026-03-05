@@ -1,7 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
-import { User, WorkflowRepository } from '@n8n/db';
+import { ProjectRepository, User, WorkflowRepository } from '@n8n/db';
 import { InstanceSettings } from 'n8n-core';
 import type { IRun } from 'n8n-workflow';
 import { createEmptyRunExecutionData, ManualExecutionCancelledError } from 'n8n-workflow';
@@ -11,6 +11,7 @@ import { WorkflowBuilderToolsService } from '../tools/workflow-builder/workflow-
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { NodeTypes } from '@/node-types';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { UrlService } from '@/services/url.service';
@@ -56,6 +57,8 @@ describe('McpService', () => {
 			mockInstance(ProjectService),
 			mockInstance(WorkflowBuilderToolsService),
 			mockInstance(WorkflowCreationService),
+			mockInstance(NodeTypes),
+			mockInstance(ProjectRepository),
 		);
 	});
 
@@ -89,6 +92,8 @@ describe('McpService', () => {
 				mockInstance(ProjectService),
 				mockInstance(WorkflowBuilderToolsService),
 				mockInstance(WorkflowCreationService),
+				mockInstance(NodeTypes),
+				mockInstance(ProjectRepository),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);
@@ -287,6 +292,8 @@ describe('McpService', () => {
 				mockInstance(ProjectService),
 				workflowBuilderToolsService,
 				mockInstance(WorkflowCreationService),
+				mockInstance(NodeTypes),
+				mockInstance(ProjectRepository),
 			);
 
 			const server = await service.getServer(user);
@@ -322,6 +329,8 @@ describe('McpService', () => {
 				mockInstance(ProjectService),
 				workflowBuilderToolsService,
 				mockInstance(WorkflowCreationService),
+				mockInstance(NodeTypes),
+				mockInstance(ProjectRepository),
 			);
 
 			const server = await service.getServer(user);

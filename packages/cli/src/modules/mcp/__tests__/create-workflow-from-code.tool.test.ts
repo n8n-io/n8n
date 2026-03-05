@@ -1,9 +1,11 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import { User, WorkflowEntity } from '@n8n/db';
+import { ProjectRepository, User, WorkflowEntity } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 
 import { createCreateWorkflowFromCodeTool } from '../tools/workflow-builder/create-workflow-from-code.tool';
 
+import { CredentialsService } from '@/credentials/credentials.service';
+import { NodeTypes } from '@/node-types';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
@@ -90,8 +92,20 @@ describe('create-workflow-from-code MCP tool', () => {
 		mockStripImportStatements.mockImplementation((code: string) => code);
 	});
 
+	const nodeTypes = mockInstance(NodeTypes);
+	const credentialsService = mockInstance(CredentialsService);
+	const projectRepository = mockInstance(ProjectRepository);
+
 	const createTool = () =>
-		createCreateWorkflowFromCodeTool(user, workflowCreationService, urlService, telemetry);
+		createCreateWorkflowFromCodeTool(
+			user,
+			workflowCreationService,
+			urlService,
+			telemetry,
+			nodeTypes,
+			credentialsService,
+			projectRepository,
+		);
 
 	// Helper to call handler with proper typing (optional fields default to undefined)
 	const callHandler = async (
