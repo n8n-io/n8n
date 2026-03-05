@@ -9,6 +9,7 @@ import { getAdditionalKeys } from '../get-additional-keys';
 
 describe('getAdditionalKeys', () => {
 	const externalSecretsProxy = mock<ExternalSecretsProxy>();
+	const providerKeysAccessibleByCredential = new Set(['provider1']);
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({
 		executionId: '123',
 		webhookWaitingBaseUrl: 'https://webhook.test',
@@ -16,6 +17,8 @@ describe('getAdditionalKeys', () => {
 		variables: { testVar: 'value' },
 		externalSecrets: { externalSecretsProxy },
 	});
+	additionalData.externalSecrets.providerKeysAccessibleByCredential =
+		providerKeysAccessibleByCredential;
 
 	const runExecutionData = mock<IRunExecutionData>({
 		resultData: {
