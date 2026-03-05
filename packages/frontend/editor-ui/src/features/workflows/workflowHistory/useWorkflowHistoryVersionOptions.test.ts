@@ -37,7 +37,7 @@ describe('useWorkflowHistoryVersionOptions', () => {
 
 		const optionsById = new Map(versionOptions.value.map((option) => [option.value, option]));
 
-		expect(optionsById.get('v-current')?.label).toBe('Current changes');
+		expect(optionsById.get('v-current')?.label).toBe('workflow.version.currentChanges');
 		expect(optionsById.get('v-old')?.label).toBe('Version v-old');
 		expect(optionsById.get('v-loaded')?.label).toBe('Version v-loaded');
 		expect(optionsById.has('v-loaded')).toBe(true);
