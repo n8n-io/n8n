@@ -14,6 +14,8 @@ import { useWorkflowDocumentIsArchived } from './workflowDocument/useWorkflowDoc
 import { useWorkflowDocumentTimestamps } from './workflowDocument/useWorkflowDocumentTimestamps';
 import { useWorkflowDocumentParentFolder } from './workflowDocument/useWorkflowDocumentParentFolder';
 import { useWorkflowDocumentUsedCredentials } from './workflowDocument/useWorkflowDocumentUsedCredentials';
+import { useWorkflowDocumentNodes } from './workflowDocument/useWorkflowDocumentNodes';
+import { useUIStore } from '@/app/stores/ui.store';
 
 export {
 	getPinDataSize,
@@ -67,6 +69,10 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		const workflowDocumentSettings = useWorkflowDocumentSettings();
 		const workflowDocumentParentFolder = useWorkflowDocumentParentFolder();
 		const workflowDocumentUsedCredentials = useWorkflowDocumentUsedCredentials();
+		const { onStateDirty, ...workflowDocumentNodes } = useWorkflowDocumentNodes();
+
+		// Cross-cut: wire the nodes facade's dirty signal to UI store
+		onStateDirty(() => useUIStore().markStateDirty());
 
 		return {
 			workflowId,
@@ -83,6 +89,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentTimestamps,
 			...workflowDocumentParentFolder,
 			...workflowDocumentUsedCredentials,
+			...workflowDocumentNodes,
 		};
 	})();
 }
