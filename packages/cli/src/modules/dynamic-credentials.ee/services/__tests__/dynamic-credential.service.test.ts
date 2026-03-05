@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { AuthenticatedRequest } from '@n8n/db';
 import { CredentialResolverDataNotFoundError, type ICredentialResolver } from '@n8n/decorators';
 import type { Response } from 'express';
 import type { Cipher } from 'n8n-core';
@@ -19,10 +20,13 @@ import type { DynamicCredentialResolver } from '../../database/entities/credenti
 import type { DynamicCredentialResolverRepository } from '../../database/repositories/credential-resolver.repository';
 import type { DynamicCredentialsConfig } from '../../dynamic-credentials.config';
 import { CredentialResolutionError } from '../../errors/credential-resolution.error';
+import { CredentialResolverNotConfiguredError } from '../../errors/credential-resolver-not-configured.error';
+import { CredentialResolverNotFoundError } from '../../errors/credential-resolver-not-found.error';
+import { MissingExecutionContextError } from '../../errors/missing-execution-context.error';
+import { IdentifierValidationError } from '../../credential-resolvers/identifiers/identifier-interface';
 import type { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service';
 import { DynamicCredentialService } from '../dynamic-credential.service';
 import type { ResolverConfigExpressionService } from '../resolver-config-expression.service';
-import type { AuthenticatedRequest } from '@n8n/db';
 
 describe('DynamicCredentialService', () => {
 	let service: DynamicCredentialService;
@@ -243,7 +247,7 @@ describe('DynamicCredentialService', () => {
 
 				await expect(
 					service.resolveIfNeeded(credentialsEntity, staticData, undefined),
-				).rejects.toThrow(CredentialResolutionError);
+				).rejects.toThrow(CredentialResolverNotFoundError);
 
 				await expect(
 					service.resolveIfNeeded(credentialsEntity, staticData, undefined),
@@ -267,7 +271,7 @@ describe('DynamicCredentialService', () => {
 						additionalData.executionContext,
 						undefined,
 					),
-				).rejects.toThrow(CredentialResolutionError);
+				).rejects.toThrow(CredentialResolverNotConfiguredError);
 			});
 
 			it('credential has no resolver ID', async () => {
@@ -278,7 +282,7 @@ describe('DynamicCredentialService', () => {
 
 				await expect(
 					service.resolveIfNeeded(credentialsEntity, staticData, undefined),
-				).rejects.toThrow(CredentialResolutionError);
+				).rejects.toThrow(CredentialResolverNotConfiguredError);
 			});
 
 			it('resolver instance is not found in registry', async () => {
@@ -290,7 +294,7 @@ describe('DynamicCredentialService', () => {
 
 				await expect(
 					service.resolveIfNeeded(credentialsEntity, staticData, undefined),
-				).rejects.toThrow(CredentialResolutionError);
+				).rejects.toThrow(CredentialResolverNotFoundError);
 			});
 
 			it('execution context is missing', async () => {
@@ -303,7 +307,7 @@ describe('DynamicCredentialService', () => {
 
 				await expect(
 					service.resolveIfNeeded(credentialsEntity, staticData, undefined),
-				).rejects.toThrow(CredentialResolutionError);
+				).rejects.toThrow(MissingExecutionContextError);
 
 				await expect(
 					service.resolveIfNeeded(credentialsEntity, staticData, undefined),
@@ -344,12 +348,14 @@ describe('DynamicCredentialService', () => {
 						additionalData.executionContext,
 						undefined,
 					),
+					// Internal error message must NOT be exposed to the user
 				).rejects.toThrow('Failed to resolve dynamic credentials for "Test Credential"');
 
 				expect(mockLogger.debug).toHaveBeenCalledWith(
 					'Dynamic credential resolution failed',
 					expect.objectContaining({
 						credentialId: 'cred-123',
+						error: 'Resolution failed',
 					}),
 				);
 			});
@@ -385,7 +391,7 @@ describe('DynamicCredentialService', () => {
 			it('resolver throws CredentialResolverDataNotFoundError', async () => {
 				const credentialsEntity = createMockCredentialsMetadata();
 				const resolverEntity = createMockResolverEntity();
-				const mockResolver = createMockResolver(false, true); // Throws DataNotFoundError
+				const mockResolver = createMockResolver(false, true); // Throws CredentialResolverDataNotFoundError
 				const executionContext = createMockExecutionContext('encrypted-credentials');
 				const credentialContext = createMockCredentialContext();
 				const additionalData = createMockAdditionalData('exec-123', {}, executionContext);
@@ -403,7 +409,42 @@ describe('DynamicCredentialService', () => {
 						additionalData.executionContext,
 						undefined,
 					),
-				).rejects.toThrow(CredentialResolutionError);
+				).rejects.toThrow(
+					'Failed to resolve dynamic credentials for "Test Credential": No data found available for the requested credential and context combination.',
+				);
+			});
+
+			it('resolver throws IdentifierValidationError', async () => {
+				const credentialsEntity = createMockCredentialsMetadata();
+				const resolverEntity = createMockResolverEntity();
+				const executionContext = createMockExecutionContext('encrypted-credentials');
+				const credentialContext = createMockCredentialContext();
+				const additionalData = createMockAdditionalData('exec-123', {}, executionContext);
+				const mockResolver: jest.Mocked<ICredentialResolver> = {
+					metadata: { name: 'test-resolver-1.0', description: 'Test resolver' },
+					getSecret: jest
+						.fn()
+						.mockRejectedValue(new IdentifierValidationError('Token is not active')),
+					setSecret: jest.fn(),
+					validateOptions: jest.fn(),
+				};
+
+				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
+				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
+				mockCipher.decrypt
+					.mockReturnValueOnce(JSON.stringify(credentialContext))
+					.mockReturnValueOnce(JSON.stringify({ prefix: 'test' }));
+
+				await expect(
+					service.resolveIfNeeded(
+						credentialsEntity,
+						staticData,
+						additionalData.executionContext,
+						undefined,
+					),
+				).rejects.toThrow(
+					'Failed to resolve dynamic credentials for "Test Credential": Token is not active',
+				);
 			});
 		});
 

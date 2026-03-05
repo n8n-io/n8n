@@ -102,8 +102,7 @@ if (matrixMode) {
 				maxShardTime = Math.max(maxShardTime, totalTime);
 				const testMins = (shard.testTime / 60_000).toFixed(1);
 				const totalMins = (totalTime / 60_000).toFixed(1);
-				const caps =
-					shard.capabilities.length > 0 ? ` [${shard.capabilities.join(', ')}]` : '';
+				const caps = shard.capabilities.length > 0 ? ` [${shard.capabilities.join(', ')}]` : '';
 				console.error(
 					`  Shard ${shard.shard}: ${shard.specs.length} specs, ${testMins} min test + ${(overhead / 1000).toFixed(0)}s startup = ${totalMins} min${caps}`,
 				);

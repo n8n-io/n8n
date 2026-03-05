@@ -1,4 +1,6 @@
 import { Logger } from '@n8n/backend-common';
+import { AuthenticatedRequest } from '@n8n/db';
+import { CredentialResolverError } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { NextFunction, Response } from 'express';
 import { Cipher } from 'n8n-core';
@@ -23,7 +25,9 @@ import type {
 import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
 import { DynamicCredentialsConfig } from '../dynamic-credentials.config';
 import { CredentialResolutionError } from '../errors/credential-resolution.error';
-import { AuthenticatedRequest } from '@n8n/db';
+import { CredentialResolverNotConfiguredError } from '../errors/credential-resolver-not-configured.error';
+import { CredentialResolverNotFoundError } from '../errors/credential-resolver-not-found.error';
+import { MissingExecutionContextError } from '../errors/missing-execution-context.error';
 
 /**
  * Service for resolving credentials dynamically via configured resolvers.
@@ -69,7 +73,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		}
 
 		if (!resolverId) {
-			return this.handleMissingResolver(credentialsResolveMetadata, resolverId);
+			return this.handleResolverNotConfigured(credentialsResolveMetadata);
 		}
 
 		// Load resolver configuration
@@ -78,14 +82,14 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		});
 
 		if (!resolverEntity) {
-			return this.handleMissingResolver(credentialsResolveMetadata, resolverId);
+			return this.handleResolverNotFound(credentialsResolveMetadata, resolverId);
 		}
 
 		// Get resolver instance from registry
 		const resolver = this.resolverRegistry.getResolverByTypename(resolverEntity.type);
 
 		if (!resolver) {
-			return this.handleMissingResolver(credentialsResolveMetadata, resolverId);
+			return this.handleResolverNotFound(credentialsResolveMetadata, resolverId);
 		}
 
 		// Build credential context from execution context
@@ -165,8 +169,11 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 	}
 
 	/**
-	 * Handles resolution errors by always throwing.
-	 * Dynamic credentials must resolve successfully — no silent fallback to static data.
+	 * Throws when resolution fails inside getSecret().
+	 * - CredentialResolutionError subtypes (e.g. IdentifierValidationError)
+	 *   → rethrown with credential name prepended to the message
+	 * - CredentialResolverDataNotFoundError → rethrown with credential name prepended to the message
+	 * - Anything else → generic CredentialResolutionError (no internal detail surfaced)
 	 */
 	private handleResolutionError(
 		credentialsResolveMetadata: CredentialResolveMetadata,
@@ -181,6 +188,16 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			error: error instanceof Error ? error.message : String(error),
 		});
 
+		// Known errors from both the CLI and resolver SDK layers.
+		// User-facing, safe to propagate details.
+		if (error instanceof CredentialResolutionError || error instanceof CredentialResolverError) {
+			throw new CredentialResolutionError(
+				`Failed to resolve dynamic credentials for "${credentialsResolveMetadata.name}": ${error.message}`,
+				{ cause: error },
+			);
+		}
+
+		// Internal errors (network, crypto, DB, config validation) must not leak details to the user.
 		throw new CredentialResolutionError(
 			`Failed to resolve dynamic credentials for "${credentialsResolveMetadata.name}"`,
 			{ cause: error },
@@ -188,12 +205,27 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 	}
 
 	/**
-	 * Handles missing resolver by always throwing.
-	 * Dynamic credentials must have a valid resolver — no silent fallback to static data.
+	 * Throws when the credential is resolvable but no resolver ID is configured
+	 * on the credential or the workflow settings.
 	 */
-	private handleMissingResolver(
+	private handleResolverNotConfigured(
 		credentialsResolveMetadata: CredentialResolveMetadata,
-		resolverId?: string,
+	): never {
+		this.logger.debug('No resolver configured for dynamic credential', {
+			credentialId: credentialsResolveMetadata.id,
+			credentialName: credentialsResolveMetadata.name,
+		});
+
+		throw new CredentialResolverNotConfiguredError(credentialsResolveMetadata.name);
+	}
+
+	/**
+	 * Throws when a resolver ID is set but the entity no longer exists in the DB
+	 * or the resolver type is not registered.
+	 */
+	private handleResolverNotFound(
+		credentialsResolveMetadata: CredentialResolveMetadata,
+		resolverId: string,
 	): never {
 		this.logger.debug('Resolver not found for dynamic credential', {
 			credentialId: credentialsResolveMetadata.id,
@@ -202,14 +234,11 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			resolverSource: credentialsResolveMetadata.resolverId ? 'credential' : 'workflow',
 		});
 
-		throw new CredentialResolutionError(
-			`Resolver "${resolverId ?? 'unknown'}" not found for credential "${credentialsResolveMetadata.name}"`,
-		);
+		throw new CredentialResolverNotFoundError(credentialsResolveMetadata.name, resolverId);
 	}
 
 	/**
-	 * Handles missing execution context by always throwing.
-	 * Dynamic credentials require an execution context — no silent fallback to static data.
+	 * Throws when no execution context (or credentials field within it) is available.
 	 */
 	private handleMissingContext(credentialsResolveMetadata: CredentialResolveMetadata): never {
 		this.logger.debug('No execution context available for dynamic credential', {
@@ -217,9 +246,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			credentialName: credentialsResolveMetadata.name,
 		});
 
-		throw new CredentialResolutionError(
-			`Cannot resolve dynamic credentials without execution context for "${credentialsResolveMetadata.name}"`,
-		);
+		throw new MissingExecutionContextError(credentialsResolveMetadata.name);
 	}
 
 	/**

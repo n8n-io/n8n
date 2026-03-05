@@ -10,6 +10,7 @@ export const secretsProviderTypeSchema = z.enum([
 	'vault',
 	'azureKeyVault',
 	'infisical',
+	'onePassword',
 ]);
 export type SecretsProviderType = z.infer<typeof secretsProviderTypeSchema>;
 

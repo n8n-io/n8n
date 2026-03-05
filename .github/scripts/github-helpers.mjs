@@ -1,5 +1,7 @@
+import { getOctokit } from '@actions/github';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import path from 'node:path';
 import semver from 'semver';
 
 export const RELEASE_TRACKS = /** @type { const } */ ([
@@ -117,6 +119,14 @@ export function stripReleasePrefixes(tag) {
 	);
 }
 
+export function getEventFromGithubEventPath() {
+	let eventPath = ensureEnvVar('GITHUB_EVENT_PATH');
+	if (!path.isAbsolute(eventPath)) {
+		eventPath = import.meta.dirname + '/' + eventPath;
+	}
+	return JSON.parse(fs.readFileSync(eventPath, 'utf8'));
+}
+
 /**
  * @param {any} [pullRequest] Optional pull request object. If not provided, reads from GITHUB_EVENT_PATH
  *
@@ -124,8 +134,7 @@ export function stripReleasePrefixes(tag) {
  */
 export function readPrLabels(pullRequest) {
 	if (!pullRequest) {
-		const eventPath = ensureEnvVar('GITHUB_EVENT_PATH');
-		const event = JSON.parse(fs.readFileSync(eventPath, 'utf8'));
+		const event = getEventFromGithubEventPath();
 		pullRequest = event.pull_request;
 	}
 	/** @type { string[] | { name: string }[] } */
@@ -246,4 +255,39 @@ export function remoteBranchExists(branch) {
 export function localRefExists(ref) {
 	const res = trySh('git', ['show-ref', '--verify', '--quiet', ref]);
 	return res.ok;
+}
+
+/**
+ * Initializes octokit with GITHUB_TOKEN from env vars.
+ *
+ * Also ensures the existence of useful environment variables.
+ * */
+export function initGithub() {
+	const token = ensureEnvVar('GITHUB_TOKEN');
+	const repoFullName = ensureEnvVar('GITHUB_REPOSITORY');
+
+	const [owner, repo] = repoFullName.split('/');
+
+	const octokit = getOctokit(token);
+
+	return {
+		octokit,
+		owner,
+		repo,
+	};
+}
+
+/**
+ * @param {number} pullRequestId
+ */
+export async function getPullRequestById(pullRequestId) {
+	const { octokit, owner, repo } = initGithub();
+
+	const pullRequest = await octokit.rest.pulls.get({
+		owner,
+		repo,
+		pull_number: pullRequestId,
+	});
+
+	return pullRequest.data;
 }
