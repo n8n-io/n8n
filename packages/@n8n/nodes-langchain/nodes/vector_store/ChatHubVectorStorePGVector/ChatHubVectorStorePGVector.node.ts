@@ -59,7 +59,7 @@ async function deleteDocuments(
 	const values: Array<string | string[]> = [];
 	let paramIndex = 1;
 	for (const [key, value] of Object.entries(filter)) {
-		const escapedKey = `"${key.replace(/"/g, '""')}"`;
+		const escapedKey = `"${key.replace(/'/g, "''")}"`;
 		if (Array.isArray(value)) {
 			conditions.push(`metadata->>${escapedKey} = ANY($${paramIndex}::text[])`);
 		} else {
