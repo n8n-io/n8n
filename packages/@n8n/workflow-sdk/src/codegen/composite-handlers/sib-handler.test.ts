@@ -49,6 +49,8 @@ function createBuildContext(graph: SemanticGraph): BuildContext {
 			downstreamChain: CompositeNode | null;
 		}>,
 		deferredMergeNodes: new Set<string>(),
+		pendingDownstream: null,
+		extractBranchDownstream: false,
 	};
 }
 

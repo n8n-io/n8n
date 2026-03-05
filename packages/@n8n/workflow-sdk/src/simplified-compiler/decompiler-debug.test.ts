@@ -19,13 +19,8 @@ const fixtures = readdirSync(fixturesDir)
 	.filter((f) => !['w07-github-workflow-backups', 'w10-bluray-preorder-discord'].includes(f))
 	.sort();
 
-// These fixtures fail due to composite-builder structural issues, not the generator
-const skipFixtures = new Set([
-	'w06-meeting-notes-actions',
-	'w08-multi-ai-agent-router',
-	'w12-meeting-bot-cleanup',
-	'w14-content-moderation-router',
-]);
+// These fixtures fail due to generator-level issues (code content, expression references)
+const skipFixtures = new Set(['w06-meeting-notes-actions', 'w08-multi-ai-agent-router']);
 
 for (const name of fixtures) {
 	const testFn = skipFixtures.has(name) ? it.skip : it;

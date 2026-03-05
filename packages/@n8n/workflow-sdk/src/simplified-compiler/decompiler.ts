@@ -31,7 +31,7 @@ export function decompileWorkflowSDK(sdkCode: string): DecompilerResult {
 		const json = parseWorkflowCode(sdkCode);
 		const graph = buildSemanticGraph(json);
 		annotateGraph(graph);
-		const tree = buildCompositeTree(graph);
+		const tree = buildCompositeTree(graph, { extractBranchDownstream: true });
 		const code = generateSimplifiedCode(tree, json, graph);
 		return { code, errors: [] };
 	} catch (e) {

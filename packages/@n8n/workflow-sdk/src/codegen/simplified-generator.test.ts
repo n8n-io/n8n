@@ -11,7 +11,7 @@ import type { WorkflowJSON } from '../types/base';
 function toSimplified(json: WorkflowJSON): string {
 	const graph = buildSemanticGraph(json);
 	annotateGraph(graph);
-	const tree = buildCompositeTree(graph);
+	const tree = buildCompositeTree(graph, { extractBranchDownstream: true });
 	return generateSimplifiedCode(tree, json, graph);
 }
 
@@ -328,7 +328,7 @@ function decompileViaCompositeTree(sdkCode: string): string {
 	const json = parseWorkflowCode(sdkCode);
 	const graph = buildSemanticGraph(json);
 	annotateGraph(graph);
-	const tree = buildCompositeTree(graph);
+	const tree = buildCompositeTree(graph, { extractBranchDownstream: true });
 	return generateSimplifiedCode(tree, json, graph);
 }
 
