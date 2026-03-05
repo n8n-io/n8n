@@ -1137,9 +1137,23 @@ function emitCodeNode(node: SemanticNode, ctx: SimplifiedGenContext): void {
 
 function emitRespondNode(node: SemanticNode, ctx: SimplifiedGenContext): void {
 	const params = node.json.parameters ?? {};
-	const status = (params.responseCode as number) ?? 200;
+	const options = (params.options ?? {}) as Record<string, unknown>;
+	const status = (options.responseCode as number) ?? (params.responseCode as number) ?? 200;
 	const bodyStr = params.responseBody as string | undefined;
-	const headers = params.responseHeaders as Record<string, string> | undefined;
+
+	// Read headers from options.responseHeaders fixedCollection format, with fallback to legacy flat format
+	let headers: Record<string, string> | undefined;
+	const optHeaders = options.responseHeaders as
+		| { entries?: Array<{ name: string; value: string }> }
+		| undefined;
+	if (optHeaders?.entries && optHeaders.entries.length > 0) {
+		headers = {};
+		for (const entry of optHeaders.entries) {
+			headers[entry.name] = entry.value;
+		}
+	} else {
+		headers = params.responseHeaders as Record<string, string> | undefined;
+	}
 
 	const args: string[] = [`status: ${status}`];
 

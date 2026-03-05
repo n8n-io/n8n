@@ -6,14 +6,16 @@ const respond1 = node({
     "name": "Respond 1",
     "parameters": {
       "respondWith": "json",
-      "responseCode": 400,
-      "responseBody": "{\"status\":\"error\",\"message\":\"Missing required fields\"}"
+      "responseBody": "{\"status\":\"error\",\"message\":\"Missing required fields\"}",
+      "options": {
+        "responseCode": 400
+      }
     },
     "executeOnce": true
   }
 });
 
-const if1 = ifElse({ version: 2.2, config: { name: 'IF 1', parameters: { conditions: {"options":{"caseSensitive":true,"leftValue":""},"conditions":[{"leftValue":"={{ $('Start').first().json.meetingTitle }}","rightValue":"","operator":{"type":"string","operation":"notExists","singleValue":true}},{"leftValue":"={{ $('Start').first().json.meetingNotes }}","rightValue":"","operator":{"type":"string","operation":"notExists","singleValue":true}}],"combinator":"or"} }, executeOnce: true } })
+const if1 = ifElse({ version: 2.2, config: { name: 'IF 1', parameters: { conditions: {"conditions":[{"leftValue":"={{ $('Start').first().json.meetingTitle }}","rightValue":"","operator":{"type":"string","operation":"notExists","singleValue":true}},{"leftValue":"={{ $('Start').first().json.meetingNotes }}","rightValue":"","operator":{"type":"string","operation":"notExists","singleValue":true}}],"combinator":"or"} }, executeOnce: true } })
   .onTrue(respond1);
 
 const code1 = node({
@@ -38,7 +40,8 @@ const ai1 = node({
     parameters: {
       promptType: 'define',
       text: 'Analyze these meeting notes',
-      options: {}
+      options: {},
+      hasOutputParser: true
     },
     subnodes: {
       model: languageModel({
@@ -144,8 +147,10 @@ const respond2 = node({
     "name": "Respond 2",
     "parameters": {
       "respondWith": "json",
-      "responseCode": 200,
-      "responseBody": "{\"status\":\"success\"}"
+      "responseBody": "{\"status\":\"success\"}",
+      "options": {
+        "responseCode": 200
+      }
     },
     "executeOnce": true
   }

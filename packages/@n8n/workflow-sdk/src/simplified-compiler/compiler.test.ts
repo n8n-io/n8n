@@ -977,16 +977,9 @@ function getRoundTripSkipReason(_title: string): string | undefined {
 // Known schema violations in existing fixtures (to be fixed separately).
 // Each entry maps fixture title substring to the reason.
 const KNOWN_SCHEMA_VIOLATIONS: Record<string, string> = {
-	'W6: Meeting notes': 'outputParser subnode without hasOutputParser=true',
-	'W9: Invoice detection': 'outputParser subnode without hasOutputParser=true',
-	'W3: UltraVox': 'respond node: responseCode/responseHeaders misplaced (should be under options)',
-	'W8: Multi-AI': 'respond + IF conditions.options misplaced',
-	'W14: Content moderation': 'respond node: responseCode misplaced',
-	'W16: AI support': 'respond node: responseCode misplaced',
-	'W4: Telegram': 'IF conditions.options misplaced',
-	'W11: Crypto': 'IF conditions.options misplaced',
-	'W23: Try/catch': 'IF conditions.options misplaced',
-	'CRUD + Branching': 'IF conditions.options misplaced',
+	'W6: Meeting notes':
+		'outputParser parameters.schema unknown field; Google Gemini LM model parameters',
+	'W9: Invoice detection': 'outputParser parameters.schema unknown field',
 	'Loop with Try/Catch': 'tryCatch sub-workflow workflowJson variable not parseable',
 };
 

@@ -35,7 +35,7 @@ const fn_classify_http2 = node({
   }
 });
 
-const fn_classify_if1 = ifElse({ version: 2.2, config: { name: 'IF 1', parameters: { conditions: {"options":{"caseSensitive":true,"leftValue":""},"conditions":[{"leftValue":"={{ $('When Executed by Another Workflow').first().json.priority }}","rightValue":"high","operator":{"type":"string","operation":"equals"}}],"combinator":"and"} }, executeOnce: true } })
+const fn_classify_if1 = ifElse({ version: 2.2, config: { name: 'IF 1', parameters: { conditions: {"conditions":[{"leftValue":"={{ $('When Executed by Another Workflow').first().json.priority }}","rightValue":"high","operator":{"type":"string","operation":"equals"}}],"combinator":"and"} }, executeOnce: true } })
   .onTrue(fn_classify_http1)
   .onFalse(fn_classify_http2);
 

@@ -23,7 +23,8 @@ const ai2 = node({
     parameters: {
       promptType: 'define',
       text: 'Determine if this email is invoice-related. Return valid JSON.',
-      options: {}
+      options: {},
+      hasOutputParser: true
     },
     subnodes: {
       model: languageModel({
@@ -60,7 +61,7 @@ const http3 = node({
 }
 });
 
-const if1 = ifElse({ version: 2.2, config: { name: 'IF 1', parameters: { conditions: {"options":{"caseSensitive":true,"leftValue":""},"conditions":[{"leftValue":"={{ $('AI: Determine if this email is inv').first().json.is_invoice }}","rightValue":"","operator":{"type":"string","operation":"exists","singleValue":true}}],"combinator":"and"} }, executeOnce: true } })
+const if1 = ifElse({ version: 2.2, config: { name: 'IF 1', parameters: { conditions: {"conditions":[{"leftValue":"={{ $('AI: Determine if this email is inv').first().json.is_invoice }}","rightValue":"","operator":{"type":"string","operation":"exists","singleValue":true}}],"combinator":"and"} }, executeOnce: true } })
   .onTrue(http3);
 
 export default workflow('compiled', 'Compiled Workflow')

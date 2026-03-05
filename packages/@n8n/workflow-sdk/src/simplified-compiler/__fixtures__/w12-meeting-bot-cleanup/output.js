@@ -21,7 +21,7 @@ const loop_event_http1 = node({
 }
 });
 
-const loop_event_if1 = ifElse({ version: 2.2, config: { name: 'IF 1', parameters: { conditions: {"options":{"caseSensitive":true,"leftValue":""},"conditions":[{"leftValue":"={{ $('When Executed by Another Workflow').first().json.status }}","rightValue":"confirmed","operator":{"type":"string","operation":"equals"}}],"combinator":"and"} }, executeOnce: true } })
+const loop_event_if1 = ifElse({ version: 2.2, config: { name: 'IF 1', parameters: { conditions: {"conditions":[{"leftValue":"={{ $('When Executed by Another Workflow').first().json.status }}","rightValue":"confirmed","operator":{"type":"string","operation":"equals"}}],"combinator":"and"} }, executeOnce: true } })
   .onTrue(loop_event_http1);
 
 const loop_event_http2 = node({
@@ -40,7 +40,7 @@ const loop_event_http2 = node({
 }
 });
 
-const loop_event_if2 = ifElse({ version: 2.2, config: { name: 'IF 2', parameters: { conditions: {"options":{"caseSensitive":true,"leftValue":""},"conditions":[{"leftValue":"={{ $('When Executed by Another Workflow').first().json.status }}","rightValue":"cancelled","operator":{"type":"string","operation":"equals"}}],"combinator":"and"} }, executeOnce: true } })
+const loop_event_if2 = ifElse({ version: 2.2, config: { name: 'IF 2', parameters: { conditions: {"conditions":[{"leftValue":"={{ $('When Executed by Another Workflow').first().json.status }}","rightValue":"cancelled","operator":{"type":"string","operation":"equals"}}],"combinator":"and"} }, executeOnce: true } })
   .onTrue(loop_event_http2);
 
 const _loop_eventWorkflow = workflow('_loop_event', '_loop_event')

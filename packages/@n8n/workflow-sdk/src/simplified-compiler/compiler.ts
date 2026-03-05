@@ -1122,9 +1122,6 @@ function processRespondCall(ctx: TranspilerContext, stmt: AcornNode): void {
 		respondWith: 'json',
 	};
 
-	if (respondArgs.status) {
-		params.responseCode = respondArgs.status;
-	}
 	if (respondArgs.body) {
 		if (typeof respondArgs.body === 'object') {
 			params.responseBody = resolveJsonRefs(JSON.stringify(respondArgs.body), ctx);
@@ -1132,8 +1129,19 @@ function processRespondCall(ctx: TranspilerContext, stmt: AcornNode): void {
 			params.responseBody = resolveJsonRefs(String(respondArgs.body), ctx);
 		}
 	}
+
+	const options: Record<string, unknown> = {};
+	if (respondArgs.status) {
+		options.responseCode = respondArgs.status;
+	}
 	if (respondArgs.headers) {
-		params.responseHeaders = respondArgs.headers;
+		const headerObj = respondArgs.headers as Record<string, string>;
+		options.responseHeaders = {
+			entries: Object.entries(headerObj).map(([name, value]) => ({ name, value })),
+		};
+	}
+	if (Object.keys(options).length > 0) {
+		params.options = options;
 	}
 
 	const configStr = JSON.stringify(
@@ -1315,7 +1323,6 @@ function buildIfConditionsParam(testNode: AcornNode, ctx: TranspilerContext): st
 	const { conditions, combinator } = collectConditions(testNode, ctx);
 
 	const conditionsObj = {
-		options: { caseSensitive: true, leftValue: '' },
 		conditions: conditions.map((c) => ({
 			leftValue: c.leftValue,
 			rightValue: c.rightValue,
@@ -2905,6 +2912,8 @@ function generateAiSDK(io: IOCall, varName: string): EmittedNode {
 	const subnodeBlock = subnodeParts.join(',\n');
 	const onErrorStr = io.onError ? `,\n    onError: '${io.onError}'` : '';
 
+	const hasOutputParser = io.aiOutputParser ? ',\n      hasOutputParser: true' : '';
+
 	const sdkCode = `const ${varName} = node({
   type: '@n8n/n8n-nodes-langchain.agent', version: 3.1,
   config: {
@@ -2912,7 +2921,7 @@ function generateAiSDK(io: IOCall, varName: string): EmittedNode {
     parameters: {
       promptType: 'define',
       text: '${prompt.replace(/'/g, "\\'")}',
-      options: {}
+      options: {}${hasOutputParser}
     },
     subnodes: {
 ${subnodeBlock}

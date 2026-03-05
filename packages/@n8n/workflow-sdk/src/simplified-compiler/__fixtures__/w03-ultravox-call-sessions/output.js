@@ -26,10 +26,17 @@ const respond1 = node({
     "name": "Respond 1",
     "parameters": {
       "respondWith": "json",
-      "responseCode": 200,
       "responseBody": "<Response><Stream keepCallAlive=\"true\">joinUrl</Stream></Response>",
-      "responseHeaders": {
-        "Content-Type": "text/xml"
+      "options": {
+        "responseCode": 200,
+        "responseHeaders": {
+          "entries": [
+            {
+              "name": "Content-Type",
+              "value": "text/xml"
+            }
+          ]
+        }
       }
     },
     "executeOnce": true

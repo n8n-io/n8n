@@ -36,8 +36,10 @@ const respond1 = node({
     "name": "Respond 1",
     "parameters": {
       "respondWith": "json",
-      "responseCode": 200,
-      "responseBody": "{\"answer\":\"response sent\"}"
+      "responseBody": "{\"answer\":\"response sent\"}",
+      "options": {
+        "responseCode": 200
+      }
     },
     "executeOnce": true
   }
