@@ -90,7 +90,7 @@ export class ChatHubWorkflowService {
 	}
 
 	async deleteChatWorkflow(workflowId: string): Promise<void> {
-		if (process.env.SKIP_CHAT_WORKFLOW_CLEANUP !== 'true') {
+		if (process.env.N8N_SKIP_CHAT_WORKFLOW_CLEANUP !== 'true') {
 			await this.workflowRepository.delete(workflowId);
 		}
 	}
