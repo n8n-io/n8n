@@ -1,0 +1,144 @@
+# Node Migration Recipe
+
+Migrate files from direct `workflowsStore` / `workflowState` node access to `workflowDocumentStore`.
+
+## API Mapping
+
+### Read accessors
+
+| Before | After (`workflowDocumentStore`) |
+|---|---|
+| `workflowsStore.allNodes` | `.allNodes` |
+| `workflowsStore.nodesByName` | `.nodesByName` |
+| `workflowsStore.getNodeById(id)` | `.getNodeById(id)` |
+| `workflowsStore.getNodeByName(name)` | `.getNodeByName(name)` |
+| `workflowsStore.getNodes()` | `.getNodes()` |
+| `workflowsStore.getNodesByIds(ids)` | `.getNodesByIds(ids)` |
+| `workflowsStore.workflow.nodes` (direct — includes `.find()`, `.findIndex()`, `.length`, `.map()`, `= [...]` assignment) | `.allNodes` (for reads), `.setNodes()` (for assignment) |
+| `workflowsStore.canvasNames` | `.canvasNames` |
+| `workflowsStore.findNodeByPartialId(id)` | `.findNodeByPartialId(id)` |
+
+### Collection mutations
+
+| Before | After (`workflowDocumentStore`) |
+|---|---|
+| `workflowsStore.setNodes(nodes)` | `.setNodes(nodes)` |
+| `workflowsStore.addNode(node)` | `.addNode(node)` |
+| `workflowsStore.removeNode(node)` | `.removeNode(node)` |
+| `workflowsStore.removeNodeById(id)` | `.removeNodeById(id)` |
+| `workflowState.removeAllNodes(opts)` | `.removeAllNodes(opts)` |
+
+### Per-node mutations
+
+| Before | After (`workflowDocumentStore`) |
+|---|---|
+| `workflowState.setNodeParameters(...)` | `.setNodeParameters(...)` |
+| `workflowState.setNodeValue(...)` | `.setNodeValue(...)` |
+| `workflowState.setNodePositionById(...)` | `.setNodePositionById(...)` |
+| `workflowState.updateNodeProperties(...)` | `.updateNodeProperties(...)` |
+| `workflowState.updateNodeById(...)` | `.updateNodeById(...)` |
+| `workflowState.setNodeIssue(...)` | `.setNodeIssue(...)` |
+| `workflowState.resetAllNodesIssues()` | `.resetAllNodesIssues()` |
+| `workflowState.setLastNodeParameters(...)` | `.setLastNodeParameters(...)` |
+| `workflowState.resetParametersLastUpdatedAt(...)` | `.resetParametersLastUpdatedAt(...)` |
+| `workflowState.updateNodeAtIndex(idx, data)` | No 1:1 mapping — review each call site and use the appropriate facade method (`updateNodeById`, `updateNodeProperties`, `setNodeIssue`, etc.) |
+
+## Migration guidelines
+
+- **Migrate all guarded APIs per file together.** When migrating a file, replace ALL `workflowsStore` reads AND `workflowState` mutations in one pass. Don't leave some calls on the old API — partial migrations make the code harder to follow and the ESLint warnings will remain.
+- **Each ticket lists both surfaces.** The "Facade methods used" section covers `workflowsStore` reads; the "`workflowState` migration" section covers per-node mutations. Both need to move to `workflowDocumentStore`.
+
+## Access Patterns
+
+### 1. Vue components inside WorkflowLayout
+
+Components rendered inside the `WorkflowLayout` tree (canvas, NDV, node settings, etc.) use the injected store:
+
+```ts
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+
+const workflowDocumentStore = injectWorkflowDocumentStore();
+
+// Usage — inject returns ShallowRef<Store | null>, so ?.value?. chain
+workflowDocumentStore?.value?.allNodes ?? []
+workflowDocumentStore?.value?.getNodeById(id)
+workflowDocumentStore?.value?.getNodeByName(name)
+```
+
+### 2. Pinia stores and composables outside WorkflowLayout
+
+Code outside the WorkflowLayout tree (stores, standalone composables, utils) uses a computed accessor:
+
+```ts
+import { useWorkflowDocumentStore, createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+
+const workflowDocumentStore = computed(() =>
+  workflowsStore.workflowId
+    ? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+    : undefined,
+);
+
+// Usage — computed wraps the store, so .value?. chain
+workflowDocumentStore.value?.allNodes ?? []
+workflowDocumentStore.value?.getNodeById(id)
+workflowDocumentStore.value?.getNodeByName(name)
+```
+
+## Test Patterns
+
+### Component / composable tests (inside WorkflowLayout)
+
+Mock `injectWorkflowDocumentStore` and return a real store:
+
+```ts
+import { injectWorkflowDocumentStore, useWorkflowDocumentStore, createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+
+vi.mock('@/app/stores/workflowDocument.store', async () => {
+  const actual = await vi.importActual('@/app/stores/workflowDocument.store');
+  return { ...actual, injectWorkflowDocumentStore: vi.fn() };
+});
+
+beforeEach(() => {
+  workflowsStore.workflow.id = 'test-workflow';
+  vi.mocked(injectWorkflowDocumentStore).mockReturnValue(
+    shallowRef(useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))),
+  );
+});
+```
+
+### Store tests (computed pattern)
+
+Mock the store factory:
+
+```ts
+const { mockDocumentStore } = vi.hoisted(() => ({
+  mockDocumentStore: {
+    allNodes: [],
+    getNodeById: vi.fn(),
+    getNodeByName: vi.fn(),
+    // ... only the methods your test needs
+  },
+}));
+
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+  useWorkflowDocumentStore: vi.fn().mockReturnValue(mockDocumentStore),
+  createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
+}));
+```
+
+### Fixing `mockedStore` + `allNodes` detachment
+
+If tests use `mockedStore(useWorkflowsStore)`, the `allNodes` computed gets detached from `workflow.nodes`. Fix by wiring it back:
+
+```ts
+Object.defineProperty(workflowsStore, 'allNodes', {
+  get: () => workflowsStore.workflow.nodes,
+  configurable: true,
+});
+```
+
+## What NOT to migrate
+
+- **`workflowsStore.workflowObject`** (39 files) — provides indirect node access via `Workflow` class methods (`.getNode()`, `.nodes`, `.getParentNodes()`, etc.). This is intentionally NOT migrated until both nodes **and** connections move to `workflowDocumentStore`. No ESLint guard for this — it's accepted tech debt.
+- **Execution-related methods** (e.g., `renameNodeSelectedAndExecution`, `removeNodeExecutionDataById`) — these are not node document state
+- **`workflowState.executingNode`** and other execution-state properties — these are not node document state
