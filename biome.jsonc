@@ -30,8 +30,9 @@
 		"ignore": [
 			// Handled by prettier
 			"**/*.vue",
-			// Fixture outputs must match compiler output exactly
-			"**/__fixtures__/**/output.js"
+			// Fixture inputs/outputs must match compiler expectations exactly
+			"**/__fixtures__/**/output.js",
+			"**/__fixtures__/**/input.js"
 		]
 	},
 	"organizeImports": { "enabled": false },

@@ -68,7 +68,7 @@ const code1 = node({
   config: {
     name: 'Code 1',
     parameters: {
-      jsCode: `// From: GET jsonplaceholder.typicode.com/todos\nconst todos = $('GET jsonplaceholder.typicode.com/todos').all().map(i => i.json);\nconst pending = todos.filter(t => !t.completed && t.id <= 10);
+      jsCode: `// From: GET jsonplaceholder.typicode.com/todos\nconst todos = $('GET jsonplaceholder.typicode.com/todos').all().map(i => i.json);\nconst pending = todos.filter((t) => !t.completed && t.id <= 10);
 
 for (const task of pending) {
 	await enrichUser(task.userId);
