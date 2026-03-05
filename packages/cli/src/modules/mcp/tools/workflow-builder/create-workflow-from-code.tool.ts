@@ -1,10 +1,14 @@
 import { type User, WorkflowEntity } from '@n8n/db';
+import { ProjectRepository } from '@n8n/db';
 import z from 'zod';
 
+import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
+import { autoPopulateNodeCredentials } from './credentials-auto-assign';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
-import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
 
+import type { CredentialsService } from '@/credentials/credentials.service';
+import type { NodeTypes } from '@/node-types';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowCreationService } from '@/workflows/workflow-creation.service';
@@ -44,6 +48,9 @@ export const createCreateWorkflowFromCodeTool = (
 	workflowCreationService: WorkflowCreationService,
 	urlService: UrlService,
 	telemetry: Telemetry,
+	nodeTypes: NodeTypes,
+	credentialsService: CredentialsService,
+	projectRepository: ProjectRepository,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName,
 	config: {
@@ -94,6 +101,21 @@ export const createCreateWorkflowFromCodeTool = (
 				pinData: workflowJson.pinData,
 				meta: { ...workflowJson.meta, aiBuilderAssisted: true },
 			});
+
+			// Resolve the effective project ID — default to the user's personal project
+			let effectiveProjectId = projectId;
+			if (!effectiveProjectId) {
+				const personalProject = await projectRepository.getPersonalProjectForUserOrFail(user.id);
+				effectiveProjectId = personalProject.id;
+			}
+
+			await autoPopulateNodeCredentials(
+				newWorkflow,
+				user,
+				nodeTypes,
+				credentialsService,
+				effectiveProjectId,
+			);
 
 			const savedWorkflow = await workflowCreationService.createWorkflow(user, newWorkflow, {
 				projectId,
