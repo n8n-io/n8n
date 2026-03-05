@@ -149,6 +149,8 @@ When you need a node that wasn't discovered:
 Do not guess node type names. Node type names must exactly match the format shown in discovery context (e.g., "n8n-nodes-base.webhook", not "webhook" or "splitOut").
 </discovered_nodes>`;
 
+const FETCHED_URL_CONTENT = `If the DISCOVERY CONTEXT includes a "Fetched URL Content" section, it contains web page content that the Discovery Agent retrieved from URLs the user provided. Use this content to inform your node configuration — for example, API endpoints, field names, data shapes, or authentication details found in the documentation. If a fetched URL is marked [FAILED], the content could not be retrieved — configure the node based on available information instead.`;
+
 const AI_CONNECTIONS = `AI capability connections flow from sub-node TO parent (reversed from normal data flow) because sub-nodes provide capabilities that the parent consumes.
 
 Connection patterns:
@@ -722,7 +724,7 @@ const RESPONSE_FORMAT = `After validation passes, stop and output a brief comple
 
 The Responder agent will generate the user-facing summary, so keep your output minimal: "Workflow complete." or a single sentence noting any issues encountered.
 
-If any tool calls failed during the build (e.g. web_fetch could not retrieve content), mention that briefly in your completion message so the Responder can inform the user. Example: "Workflow complete. Note: could not fetch content from [url] — configured the node based on available information instead."`;
+If the Discovery Agent could not fetch content from a URL the user provided (shown as [FAILED] in the discovery context), mention that briefly in your completion message so the Responder can inform the user. Example: "Workflow complete. Note: could not fetch content from [url] — configured the node based on available information instead."`;
 
 /** Instance URL template variable for webhooks */
 export const INSTANCE_URL_PROMPT = `<instance_url>
@@ -735,23 +737,6 @@ const COMMON_MISTAKES = `
 - SUBSTITUTING MODEL NAMES: Use the exact model name the user specifies—never substitute with a different model. New models exist beyond your training cutoff, and users may use custom endpoints with arbitrary model names.
 - Ignoring user-specified parameter values: If the user specifies a parameter value, use it exactly even if unfamiliar. Trust the user's knowledge of current systems.
 - PUTTING API KEYS ANYWHERE: Never put API keys, tokens, or secrets in URLs, headers, or body—not even as placeholders. n8n handles authentication through its credential system. For HTTP Request nodes, omit auth parameters from the URL entirely.`;
-
-// === WEB FETCH TOOL ===
-
-const WEB_FETCH_TOOL_PROMPT = `Use web_fetch when:
-- User pastes a URL to documentation, API reference, or external resource
-- You need documentation to configure an HTTP Request node or similar
-- A node references an external URL that may contain relevant configuration details
-
-The tool will request user approval before fetching. After approval, it returns
-the page's readable text content. Use this content to inform node configuration.
-
-Constraints (backend-enforced):
-- Only fetch URLs the user has explicitly provided or that exist in workflow node parameters.
-- Do NOT autonomously browse, search, or follow links from fetched content.
-- Maximum 3 fetches per conversation turn.
-- Redirects to a different host require separate approval.
-- PDFs are not supported.`;
 
 // === EXAMPLE TOOLS (conditional) ===
 
@@ -811,6 +796,7 @@ export function buildBuilderPrompt(
 			// Structure
 			.section('node_creation', NODE_CREATION)
 			.section('use_discovered_nodes', USE_DISCOVERED_NODES)
+			.section('fetched_url_content', FETCHED_URL_CONTENT)
 			.section('ai_connections', AI_CONNECTIONS)
 			.section('connection_types', CONNECTION_TYPES)
 			.section('initial_parameters', INITIAL_PARAMETERS)
@@ -832,8 +818,6 @@ export function buildBuilderPrompt(
 			.section('node_settings', NODE_SETTINGS)
 			// Context and investigation tools
 			.section('workflow_context_tools', WORKFLOW_CONTEXT_TOOLS)
-			// Web fetch tool
-			.section('web_fetch_tool', WEB_FETCH_TOOL_PROMPT)
 			// Example tools reference (conditional)
 			.sectionIf(includeExamples, 'example_tools', EXAMPLE_TOOLS)
 			// Introspection tool reference (conditional)

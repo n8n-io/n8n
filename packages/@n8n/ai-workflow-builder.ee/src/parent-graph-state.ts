@@ -130,4 +130,10 @@ export const ParentGraphState = Annotation.Root({
 		reducer: (_x, y) => y,
 		default: () => 0,
 	}),
+
+	// Web Fetch: Whether all domains are approved (allow-all mode)
+	allDomainsApproved: Annotation<boolean>({
+		reducer: (x, y) => y ?? x,
+		default: () => false,
+	}),
 });

@@ -322,7 +322,7 @@ export async function fetchUrl(url: string, signal?: AbortSignal): Promise<Fetch
 export function extractReadableContent(html: string, url: string): ExtractedContent {
 	const virtualConsole = new VirtualConsole();
 	const dom = new JSDOM(html, { url, virtualConsole });
-	const article = new Readability(dom.window.document, { keepClasses: false }).parse();
+	const article = new Readability(dom.window.document, { keepClasses: true }).parse();
 
 	const title = article?.title ?? '';
 	const articleHtml = article?.content ?? '';

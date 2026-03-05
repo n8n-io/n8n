@@ -109,9 +109,9 @@ function buildTriagePrompt(
 1. **build_workflow** — The user wants to create, modify, configure, or change a workflow.
    This includes any action request: adding nodes, setting up nodes, configuring parameters,
    connecting nodes, or any instruction that implies "do this to my workflow".
-   ALWAYS use build_workflow when the message contains a URL (http:// or https://) — the builder
-   has web_fetch to retrieve page contents, the assistant cannot. This applies whether the user
-   asks to fetch the URL, references it as documentation, or provides it for context.
+   ALWAYS use build_workflow when the message contains a URL (http:// or https://) — the build
+   process includes web_fetch to retrieve page contents, the assistant cannot. This applies whether
+   the user asks to fetch the URL, references it as documentation, or provides it for context.
    You may include a brief transition before calling (e.g., "Let me build that for you.").
 
 2. **ask_assistant** — The user has a pure knowledge question about n8n concepts, needs help
