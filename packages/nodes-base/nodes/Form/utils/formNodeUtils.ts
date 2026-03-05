@@ -8,7 +8,7 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 } from 'n8n-workflow';
 
-import { renderForm } from './utils';
+import { handleNewlines, renderForm, sanitizeHtml } from './utils';
 
 export const renderFormNode = async (
 	context: IWebhookFunctions,
@@ -29,6 +29,11 @@ export const renderFormNode = async (
 		title = context.evaluateExpression(`{{ $('${trigger?.name}').params.formTitle }}`) as string;
 	}
 
+<<<<<<< HEAD
+=======
+	const description = handleNewlines(sanitizeHtml(options.formDescription ?? ''));
+
+>>>>>>> f1a074f946 (fix(Form Node): Improve form rendering consistency (#26540))
 	let buttonLabel = options.buttonLabel;
 	if (!buttonLabel) {
 		buttonLabel =
