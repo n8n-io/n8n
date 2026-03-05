@@ -122,6 +122,27 @@ interface EmittedNode {
 	branchOnly?: boolean;
 }
 
+// ─── Function Definitions ────────────────────────────────────────────────────
+
+interface FunctionDef {
+	name: string;
+	params: string[];
+	body: AcornNode[];
+	hasReturn: boolean;
+	node: AcornNode;
+}
+
+interface CompiledFunction {
+	/** SDK code lines for the sub-workflow nodes */
+	nodeDeclarations: string[];
+	/** SDK code for the workflow builder variable */
+	builderDeclaration: string;
+	/** Variable name for the workflow builder (e.g. processOrderWorkflow) */
+	builderVarName: string;
+	/** Trigger node name in the sub-workflow */
+	triggerNodeName: string;
+}
+
 // ─── Transpiler Context ──────────────────────────────────────────────────────
 
 interface TranspilerContext {
@@ -148,6 +169,9 @@ interface TranspilerContext {
 	loopCounter: number;
 	aggCounter: number;
 	needsAggregate: boolean;
+	functionDefs: Map<string, FunctionDef>;
+	compiledFunctions: Map<string, CompiledFunction>;
+	execCounter: number;
 }
 
 // ─── Expression Resolution ──────────────────────────────────────────────────
@@ -210,6 +234,18 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 		return { code: '', errors };
 	}
 
+	// Step 2.5: Extract top-level async function declarations (sub-functions)
+	const functionDefs = extractFunctionDeclarations(ast);
+
+	// Check for recursive calls
+	if (functionDefs.size > 0) {
+		const recursionError = detectRecursion(functionDefs, source);
+		if (recursionError) {
+			errors.push({ message: recursionError, category: 'validation' });
+			return { code: '', errors };
+		}
+	}
+
 	// Step 3: Find onX() callbacks
 	const callbacks = findCallbacks(ast);
 	if (callbacks.length === 0) {
@@ -233,18 +269,44 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 		}
 	}
 
+	// Step 4.5: Compile sub-functions in topological order (callees first)
+	const compiledFunctions = new Map<string, CompiledFunction>();
+	if (functionDefs.size > 0) {
+		const sortedNames = topologicalSortFunctions(functionDefs, source);
+		for (const name of sortedNames) {
+			const fnDef = functionDefs.get(name)!;
+			const compiled = compileFunctionToSDK(
+				fnDef,
+				source,
+				comments,
+				functionDefs,
+				compiledFunctions,
+				errors,
+			);
+			compiledFunctions.set(name, compiled);
+		}
+	}
+
 	// Step 5: Transpile each callback
 	const allNodes: EmittedNode[] = [];
 	const allChains: string[] = [];
 
 	for (const cb of callbacks) {
-		const { nodes, chainExpr } = transpileCallback(cb, source, allNodes.length, comments, errors);
+		const { nodes, chainExpr } = transpileCallback(
+			cb,
+			source,
+			allNodes.length,
+			comments,
+			errors,
+			functionDefs,
+			compiledFunctions,
+		);
 		allNodes.push(...nodes);
 		allChains.push(chainExpr);
 	}
 
 	// Step 6: Generate final SDK code
-	const code = generateSDKCode(allNodes, allChains);
+	const code = generateSDKCode(allNodes, allChains, compiledFunctions);
 	return { code, errors };
 }
 
@@ -349,6 +411,195 @@ function extractCallbackParams(fnNode: AcornNode): string[] {
 	return [];
 }
 
+// ─── Function Extraction ─────────────────────────────────────────────────────
+
+function extractFunctionDeclarations(ast: AcornNode): Map<string, FunctionDef> {
+	const functions = new Map<string, FunctionDef>();
+	if (!ast.body) return functions;
+
+	// First pass: collect all top-level async function declarations
+	for (const stmt of ast.body) {
+		if (stmt.type !== 'FunctionDeclaration') continue;
+		if (!stmt.id?.name) continue;
+
+		const isAsync = (stmt as unknown as { async?: boolean }).async;
+		if (!isAsync) continue;
+
+		const body = stmt.body as unknown as AcornNode;
+		if (body?.type !== 'BlockStatement' || !body.body) continue;
+
+		const params = (stmt.params ?? [])
+			.map((p: AcornNode) => p.name ?? '')
+			.filter((n: string) => n.length > 0);
+
+		const hasReturn = body.body.some((s: AcornNode) => s.type === 'ReturnStatement');
+
+		functions.set(stmt.id.name, {
+			name: stmt.id.name,
+			params,
+			body: body.body,
+			hasReturn,
+			node: stmt,
+		});
+	}
+
+	// Second pass: only keep functions that have IO calls or call other known functions
+	// (needed for recursion detection and sub-workflow compilation)
+	const toRemove: string[] = [];
+	for (const [name, def] of functions) {
+		let hasIO = false;
+		for (const s of def.body) {
+			if (findNestedIO(s, '').length > 0) {
+				hasIO = true;
+				break;
+			}
+			if (extractIOCall(s, '')) {
+				hasIO = true;
+				break;
+			}
+		}
+		if (hasIO) continue;
+
+		// Check if it calls other known functions
+		const calls = new Set<string>();
+		findFunctionCalls(def.body, functions, '', calls);
+		if (calls.size === 0) {
+			toRemove.push(name);
+		}
+	}
+	for (const name of toRemove) {
+		functions.delete(name);
+	}
+
+	return functions;
+}
+
+/**
+ * Build a call graph from function definitions and detect cycles (recursion).
+ * Returns an error message if recursion is found, or null if clean.
+ */
+function detectRecursion(functions: Map<string, FunctionDef>, source: string): string | null {
+	// Build adjacency list: function name -> called function names
+	const callGraph = new Map<string, Set<string>>();
+	for (const [name, def] of functions) {
+		const calls = new Set<string>();
+		findFunctionCalls(def.body, functions, source, calls);
+		callGraph.set(name, calls);
+	}
+
+	// DFS cycle detection
+	const visited = new Set<string>();
+	const inStack = new Set<string>();
+
+	function dfs(name: string): boolean {
+		if (inStack.has(name)) return true; // cycle found
+		if (visited.has(name)) return false;
+		visited.add(name);
+		inStack.add(name);
+		for (const callee of callGraph.get(name) ?? []) {
+			if (dfs(callee)) return true;
+		}
+		inStack.delete(name);
+		return false;
+	}
+
+	for (const name of functions.keys()) {
+		if (dfs(name)) {
+			return `Recursive function calls are not supported: '${name}' is involved in a call cycle.`;
+		}
+	}
+	return null;
+}
+
+/**
+ * Find all function calls within statements that reference known function definitions.
+ */
+function findFunctionCalls(
+	stmts: AcornNode[],
+	functions: Map<string, FunctionDef>,
+	_source: string,
+	result: Set<string>,
+): void {
+	for (const stmt of stmts) {
+		walkASTForFunctionCalls(stmt, functions, result);
+	}
+}
+
+function walkASTForFunctionCalls(
+	node: AcornNode,
+	functions: Map<string, FunctionDef>,
+	result: Set<string>,
+): void {
+	if (!node) return;
+
+	// Check for await fnName(...)
+	if (node.type === 'CallExpression' && node.callee?.type === 'Identifier') {
+		const name = node.callee.name ?? '';
+		if (functions.has(name)) {
+			result.add(name);
+		}
+	}
+
+	// Recurse into child nodes
+	if (node.type === 'AwaitExpression' && node.argument) {
+		walkASTForFunctionCalls(node.argument, functions, result);
+	}
+	if (node.body && Array.isArray(node.body)) {
+		for (const child of node.body) walkASTForFunctionCalls(child, functions, result);
+	}
+	if (node.expression) walkASTForFunctionCalls(node.expression, functions, result);
+	if (node.argument) walkASTForFunctionCalls(node.argument, functions, result);
+	if (node.init) walkASTForFunctionCalls(node.init, functions, result);
+	if (node.declarations) {
+		for (const d of node.declarations) walkASTForFunctionCalls(d, functions, result);
+	}
+	if (node.consequent) {
+		if (Array.isArray(node.consequent)) {
+			for (const c of node.consequent) walkASTForFunctionCalls(c, functions, result);
+		} else {
+			walkASTForFunctionCalls(node.consequent, functions, result);
+		}
+	}
+	if (node.alternate) walkASTForFunctionCalls(node.alternate, functions, result);
+	if (node.block) walkASTForFunctionCalls(node.block, functions, result);
+	if (node.handler)
+		walkASTForFunctionCalls(node.handler as unknown as AcornNode, functions, result);
+	if (node.cases) {
+		for (const c of node.cases) walkASTForFunctionCalls(c, functions, result);
+	}
+}
+
+/**
+ * Topological sort of function definitions by their call dependencies.
+ * Returns function names in order: callees before callers.
+ */
+function topologicalSortFunctions(functions: Map<string, FunctionDef>, source: string): string[] {
+	const callGraph = new Map<string, Set<string>>();
+	for (const [name, def] of functions) {
+		const calls = new Set<string>();
+		findFunctionCalls(def.body, functions, source, calls);
+		callGraph.set(name, calls);
+	}
+
+	const sorted: string[] = [];
+	const visited = new Set<string>();
+
+	function visit(name: string): void {
+		if (visited.has(name)) return;
+		visited.add(name);
+		for (const dep of callGraph.get(name) ?? []) {
+			visit(dep);
+		}
+		sorted.push(name);
+	}
+
+	for (const name of functions.keys()) {
+		visit(name);
+	}
+
+	return sorted;
+}
+
 // ─── Respond Detection ───────────────────────────────────────────────────────
 
 function hasRespondCall(stmts: AcornNode[], source: string): boolean {
@@ -376,6 +627,253 @@ function isRespondCall(stmt: AcornNode): boolean {
 	return false;
 }
 
+// ─── Function Call Handling ───────────────────────────────────────────────────
+
+interface FunctionCallInfo {
+	functionName: string;
+	args: AcornNode[];
+	assignedVar: string | null;
+}
+
+/**
+ * Check if a statement is a call to a known sub-function.
+ * Matches: `await fnName(args)` or `const x = await fnName(args)`
+ */
+function extractFunctionCall(stmt: AcornNode, ctx: TranspilerContext): FunctionCallInfo | null {
+	if (ctx.functionDefs.size === 0) return null;
+
+	// const x = await fnName(...)
+	if (stmt.type === 'VariableDeclaration' && stmt.declarations) {
+		for (const decl of stmt.declarations) {
+			if (decl.init?.type === 'AwaitExpression' && decl.init.argument) {
+				const call = decl.init.argument;
+				if (call.type === 'CallExpression' && call.callee?.type === 'Identifier') {
+					const name = call.callee.name ?? '';
+					if (ctx.functionDefs.has(name)) {
+						return {
+							functionName: name,
+							args: call.arguments ?? [],
+							assignedVar: decl.id?.name ?? null,
+						};
+					}
+				}
+			}
+		}
+	}
+
+	// await fnName(...)
+	if (stmt.type === 'ExpressionStatement' && stmt.expression) {
+		const expr = stmt.expression;
+		if (expr.type === 'AwaitExpression' && expr.argument) {
+			const call = expr.argument;
+			if (call.type === 'CallExpression' && call.callee?.type === 'Identifier') {
+				const name = call.callee.name ?? '';
+				if (ctx.functionDefs.has(name)) {
+					return {
+						functionName: name,
+						args: call.arguments ?? [],
+						assignedVar: null,
+					};
+				}
+			}
+		}
+	}
+
+	return null;
+}
+
+/**
+ * Process a sub-function call: emit Set node for params + Execute Workflow node.
+ */
+function processFunctionCall(ctx: TranspilerContext, fnCall: FunctionCallInfo): void {
+	flushPendingCode(ctx);
+
+	const compiled = ctx.compiledFunctions.get(fnCall.functionName);
+	if (!compiled) return;
+
+	const fnDef = ctx.functionDefs.get(fnCall.functionName);
+	if (!fnDef) return;
+
+	// Emit Set node to map arguments to function params
+	if (fnDef.params.length > 0 && fnCall.args.length > 0) {
+		ctx.setCounter++;
+		const setVar = `set${ctx.setCounter}`;
+		const setName = `Set ${fnCall.functionName} params`;
+
+		const assignments = fnDef.params
+			.map((param, i) => {
+				if (i >= fnCall.args.length) return null;
+				const argValue = resolveExpressionFromAST(fnCall.args[i], ctx);
+				return {
+					id: `assign_${i}`,
+					name: param,
+					type: 'string',
+					value: argValue,
+				};
+			})
+			.filter((a): a is NonNullable<typeof a> => a !== null);
+
+		const configObj = {
+			name: setName,
+			parameters: {
+				options: {},
+				assignments: { assignments },
+			},
+			executeOnce: true,
+		};
+
+		const configStr = JSON.stringify(configObj, null, 2)
+			.split('\n')
+			.map((line, i) => (i === 0 ? line : '  ' + line))
+			.join('\n');
+
+		const sdkCode = `const ${setVar} = node({
+  type: 'n8n-nodes-base.set', version: 3.4,
+  config: ${configStr}
+});`;
+
+		ctx.nodes.push({ varName: setVar, sdkCode, kind: 'set', nodeName: setName });
+		ctx.prevVar = setVar;
+	}
+
+	// Emit Execute Workflow node
+	ctx.execCounter++;
+	const execVar = `exec${ctx.execCounter}`;
+	const execName = fnCall.functionName;
+
+	const sdkCode = `const ${execVar} = node({
+  type: 'n8n-nodes-base.executeWorkflow', version: 1.3,
+  config: {
+    name: '${execName}',
+    parameters: {
+      source: 'parameter',
+      workflowJson: ${compiled.builderVarName},
+      options: {}
+    },
+    executeOnce: true
+  }
+});`;
+
+	ctx.nodes.push({ varName: execVar, sdkCode, kind: 'workflow', nodeName: execName });
+
+	// Track return value if assigned
+	if (fnCall.assignedVar) {
+		ctx.varSourceMap.set(fnCall.assignedVar, execName);
+		ctx.varSourceKind.set(fnCall.assignedVar, 'io');
+	}
+
+	ctx.prevVar = execVar;
+}
+
+/**
+ * Compile a function definition into a sub-workflow SDK representation.
+ */
+function compileFunctionToSDK(
+	fnDef: FunctionDef,
+	source: string,
+	comments: Array<{ type: string; value: string; start: number; end: number }>,
+	functionDefs: Map<string, FunctionDef>,
+	compiledFunctions: Map<string, CompiledFunction>,
+	errors: CompilerError[],
+): CompiledFunction {
+	const prefix = `fn_${fnDef.name}`;
+	const triggerNodeName = 'When Executed by Another Workflow';
+
+	// Create a context for compiling the function body
+	const ctx: TranspilerContext = {
+		source,
+		nodes: [],
+		varSourceMap: new Map(),
+		varSourceKind: new Map(),
+		httpCounter: 0,
+		codeCounter: 0,
+		ifCounter: 0,
+		switchCounter: 0,
+		sibCounter: 0,
+		respondCounter: 0,
+		wfCounter: 0,
+		setCounter: 0,
+		pendingStatements: [],
+		prevVar: '',
+		triggerType: 'manual',
+		callbackParams: [],
+		errors,
+		hasOnErrorAnnotation: false,
+		consumedComments: new Set(),
+		inLoopBody: false,
+		loopCounter: 0,
+		aggCounter: 0,
+		needsAggregate: false,
+		functionDefs,
+		compiledFunctions,
+		execCounter: 0,
+	};
+
+	// Generate executeWorkflowTrigger as first node
+	const triggerVar = `${prefix}_t0`;
+	const triggerSdk = `const ${triggerVar} = trigger({ type: 'n8n-nodes-base.executeWorkflowTrigger', version: 1.1, config: { parameters: { inputSource: 'passthrough' } } });`;
+	ctx.nodes.push({
+		varName: triggerVar,
+		sdkCode: triggerSdk,
+		kind: 'trigger',
+		nodeName: triggerNodeName,
+	});
+	ctx.prevVar = triggerVar;
+
+	// Seed varSourceMap with function parameters → trigger node
+	// Use 'code' kind so expressions resolve to $('trigger').first().json.paramName
+	for (const param of fnDef.params) {
+		ctx.varSourceMap.set(param, triggerNodeName);
+		ctx.varSourceKind.set(param, 'code');
+	}
+
+	// Walk function body
+	walkStatements(ctx, fnDef.body, comments);
+	flushPendingCode(ctx);
+
+	// Prefix all non-trigger node variable names to avoid collisions with main workflow
+	// Two-pass: collect renames first, then apply across all sdkCode
+	const renames = new Map<string, string>();
+	for (const node of ctx.nodes) {
+		if (node.varName === triggerVar) continue;
+		renames.set(node.varName, `${prefix}_${node.varName}`);
+	}
+	for (const node of ctx.nodes) {
+		if (node.varName === triggerVar) continue;
+		for (const [oldVar, newVar] of renames) {
+			node.sdkCode = node.sdkCode.replaceAll(`(${oldVar})`, `(${newVar})`);
+			node.sdkCode = node.sdkCode.replace(`const ${oldVar} `, `const ${newVar} `);
+		}
+		node.varName = renames.get(node.varName) ?? node.varName;
+	}
+
+	// Build chain expression
+	const nodeVars = ctx.nodes.filter((n) => !n.branchOnly).map((n) => n.varName);
+	let chainExpr: string;
+	if (nodeVars.length <= 1) {
+		chainExpr = nodeVars[0] ?? triggerVar;
+	} else {
+		chainExpr = nodeVars[0];
+		for (let i = 1; i < nodeVars.length; i++) {
+			chainExpr += `.to(${nodeVars[i]})`;
+		}
+	}
+
+	// Build node declarations
+	const nodeDeclarations = ctx.nodes.map((n) => n.sdkCode);
+
+	// Build workflow builder declaration
+	const builderVarName = `${fnDef.name}Workflow`;
+	const builderDeclaration = `const ${builderVarName} = workflow('${fnDef.name}', '${fnDef.name}')\n  .add(${chainExpr});`;
+
+	return {
+		nodeDeclarations,
+		builderDeclaration,
+		builderVarName,
+		triggerNodeName,
+	};
+}
+
 // ─── Callback Transpilation ──────────────────────────────────────────────────
 
 function transpileCallback(
@@ -384,6 +882,8 @@ function transpileCallback(
 	nodeOffset: number,
 	comments: Array<{ type: string; value: string; start: number; end: number }>,
 	errors: CompilerError[],
+	functionDefs?: Map<string, FunctionDef>,
+	compiledFunctions?: Map<string, CompiledFunction>,
 ): { nodes: EmittedNode[]; chainExpr: string } {
 	const ctx: TranspilerContext = {
 		source,
@@ -409,6 +909,9 @@ function transpileCallback(
 		loopCounter: nodeOffset,
 		aggCounter: nodeOffset,
 		needsAggregate: false,
+		functionDefs: functionDefs ?? new Map(),
+		compiledFunctions: compiledFunctions ?? new Map(),
+		execCounter: nodeOffset,
 	};
 
 	// Generate trigger node
@@ -485,6 +988,13 @@ function walkStatements(
 			continue;
 		}
 
+		// Check for sub-function calls: await funcName(args) or const x = await funcName(args)
+		const fnCall = extractFunctionCall(stmt, ctx);
+		if (fnCall) {
+			processFunctionCall(ctx, fnCall);
+			continue;
+		}
+
 		// Check for respond() call
 		if (isRespondCall(stmt)) {
 			processRespondCall(ctx, stmt);
@@ -521,8 +1031,9 @@ function walkStatements(
 			continue;
 		}
 
-		// Skip bare return statements — they are early exits with no n8n equivalent
-		if (stmt.type === 'ReturnStatement' && !stmt.argument) {
+		// Skip return statements — bare returns are early exits, return <expr> in
+		// sub-function bodies just passes through the last node's output
+		if (stmt.type === 'ReturnStatement') {
 			continue;
 		}
 
@@ -875,6 +1386,7 @@ const COUNTER_KEYS = [
 	'setCounter',
 	'loopCounter',
 	'aggCounter',
+	'execCounter',
 ] as const;
 
 function syncCounters(target: TranspilerContext, source: TranspilerContext): void {
@@ -908,6 +1420,9 @@ function createBranchContext(parentCtx: TranspilerContext): TranspilerContext {
 		loopCounter: parentCtx.loopCounter,
 		aggCounter: parentCtx.aggCounter,
 		needsAggregate: false,
+		functionDefs: parentCtx.functionDefs,
+		compiledFunctions: parentCtx.compiledFunctions,
+		execCounter: parentCtx.execCounter,
 	};
 }
 
@@ -2010,7 +2525,11 @@ function mapMemoryType(type: string): string {
 
 // ─── Final SDK Code Assembly ─────────────────────────────────────────────────
 
-function generateSDKCode(allNodes: EmittedNode[], allChains: string[]): string {
+function generateSDKCode(
+	allNodes: EmittedNode[],
+	allChains: string[],
+	compiledFunctions?: Map<string, CompiledFunction>,
+): string {
 	const lines: string[] = [];
 
 	// Determine imports
@@ -2046,6 +2565,20 @@ function generateSDKCode(allNodes: EmittedNode[], allChains: string[]): string {
 				usedFactories.add('node');
 				break;
 		}
+	}
+
+	// Sub-workflow declarations (before main workflow nodes)
+	if (compiledFunctions && compiledFunctions.size > 0) {
+		for (const [name, compiled] of compiledFunctions) {
+			lines.push(`// --- Sub-workflow: ${name} ---`);
+			for (const decl of compiled.nodeDeclarations) {
+				lines.push(decl);
+				lines.push('');
+			}
+			lines.push(compiled.builderDeclaration);
+			lines.push('');
+		}
+		lines.push('// --- Main workflow ---');
 	}
 
 	// Node declarations

@@ -122,7 +122,7 @@ Assert: normalizeSDK(SDK₁) === normalizeSDK(SDK₂)
 | `examples.ts` | Pre-built DSL examples for UI quick-start templates |
 | `generate-report.ts` | HTML report generator for fixture validation results |
 | `index.ts` | Public exports: `transpileWorkflowJS`, `decompileWorkflowSDK`, `COMPILER_EXAMPLES` |
-| `__fixtures__/w01-w17/` | Test fixtures (real workflow patterns) |
+| `__fixtures__/w01-w22/` | Test fixtures (real workflow patterns, w18-w22 are sub-functions) |
 
 **Decompile pipeline (in `src/codegen/`):**
 
@@ -147,6 +147,7 @@ Assert: normalizeSDK(SDK₁) === normalizeSDK(SDK₂)
 | **Switch** | `switch (expr) { case: ... }` | switchCase node |
 | **Loops** | `for (const x of items) { ... }` | Splitter Code + aggregate |
 | **Try/catch** | `try { ... } catch { ... }` | onError behavior on nodes |
+| **Sub-functions** | `async function fn(params) { ... }` then `await fn(args)` | Execute Workflow node with inline `workflowJson` |
 | **Variables** | `const x = "value"` | Set node (static assignments) |
 | **Code** | Any other JS statements | Code node with `jsCode` |
 | **Credentials** | `{ auth: { type: 'bearer', credential: 'My Key' } }` | Node credentials config |
@@ -180,6 +181,7 @@ pushd packages/@n8n/workflow-sdk && pnpm test decompiler-debug.test.ts && popd
 
 - **Node variable naming**: `t0` (trigger), `http1`, `code1`, `if1`, `switch1`, `set1`, `agg1`, `respond1`, `wf1`
 - **No n8n expressions in DSL**: plain JS variables only — compiler resolves to `={{ $('NodeName').first().json.path }}`
+- **Never use `$json` in generated expressions**: always use explicit `$('NodeName').first().json.prop` references. This ensures expressions are unambiguous and don't depend on predecessor ordering.
 - **`executeOnce: true`** on all non-trigger nodes (single-item semantics)
 - **Fixture naming**: `w01-descriptive-name/` with `meta.json`, `input.js`, `output.js`
 - **Adding new fixtures**: create dir, add the three files, fixture auto-discovered by `loadFixtures()`
@@ -211,7 +213,29 @@ Validates existing fixtures through the full compilation pipeline (transpile, ge
 
 ## Round-Trip Coverage
 
-16/17 fixtures pass round-trip (94%). Only W10 is skipped — it requires the compiler to inline top-level async functions with IO calls into each trigger callback (Phase 12 enhancement, not a decompiler issue).
+21/22 fixtures pass round-trip (95%). Only W10 is skipped — it requires the compiler to inline top-level async functions with IO calls into each trigger callback (Phase 12 enhancement, not a decompiler issue).
+
+## Sub-Function Compiler Architecture
+
+Sub-functions (`async function fn(params) { ... }` + `await fn(args)`) compile to Execute Workflow nodes with inline `workflowJson`.
+
+### Compiler Side
+- **Function detection**: `extractFunctionDeclarations()` finds top-level `async function` declarations with IO calls or calls to other known functions
+- **Recursion detection**: DFS cycle detection on the call graph → error with `category: 'validation'`
+- **Compilation order**: Topological sort (callees first) so inner function builders are available when compiling outer functions
+- **Variable prefixing**: Sub-workflow node variables prefixed with `fn_<name>_` to avoid collision with main workflow. Two-pass rename: collect all renames first, then apply across all sdkCode (including `.onTrue()`/`.onFalse()` references)
+- **Parameter passing**: Function arguments compiled to a Set node before the Execute Workflow node. Params seeded in `varSourceMap` with `'code'` kind pointing to `executeWorkflowTrigger`
+- **Return values**: `const x = await fn(...)` maps `x` to the exec node name with `'io'` kind
+- **WorkflowBuilder serialization**: Duck-typing (`toJSON` + `add`) in `json-serializer.ts` detects WorkflowBuilder instances in node parameters and converts them to `JSON.stringify(value.toJSON())`
+
+### Decompiler Side
+- **Detection**: `detectSubFunctions()` finds `executeWorkflow` nodes with `source: "parameter"` + `workflowJson` string
+- **Dedup key**: Inner workflow's `id` field (not exec node name, which gets deduped by n8n like `processOrder 1`)
+- **Set node pattern**: `isSubFunctionSetNode()` matches `"Set <name> params"` or `"Set <name> params N"` (deduped)
+- **Recursive decompile**: Inner workflow JSON parsed → `buildSemanticGraph` → `annotateGraph` → `buildCompositeTree` → `generateSimplifiedCode`
+- **Trigger wrapper stripping**: `stripTriggerWrapper()` removes the `onManual(async () => { ... })` wrapper that the inner `executeWorkflowTrigger` produces
+- **Nested function hoisting**: `extractNestedFunctions()` extracts nested `async function` declarations from function bodies and hoists them to top level
+- **Call emission**: Set nodes skipped, exec nodes emit `await functionName(args)` with resolved argument expressions
 
 ## Decompiler: try/catch Reconstruction
 

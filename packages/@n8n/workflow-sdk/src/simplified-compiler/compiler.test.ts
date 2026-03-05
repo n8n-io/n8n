@@ -690,6 +690,56 @@ onManual(async () => {
 		});
 	});
 
+	describe('Phase 16: sub-functions', () => {
+		it('should detect function declarations and emit executeWorkflow', () => {
+			const result = transpileWorkflowJS(`
+async function processOrder(orderId) {
+  await http.get('https://api.com/' + orderId);
+}
+onManual(async () => {
+  await processOrder('123');
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain('executeWorkflow');
+			expect(result.code).toContain('executeWorkflowTrigger');
+		});
+
+		it('should error on recursive function calls', () => {
+			const result = transpileWorkflowJS(`
+async function loop(n) { await loop(n - 1); }
+onManual(async () => { await loop(5); });
+`);
+			expect(result.errors.length).toBeGreaterThan(0);
+			expect(result.errors[0].message).toContain('ecursive');
+		});
+
+		it('should error on indirect recursion', () => {
+			const result = transpileWorkflowJS(`
+async function a() { await b(); }
+async function b() { await a(); }
+onManual(async () => { await a(); });
+`);
+			expect(result.errors.length).toBeGreaterThan(0);
+		});
+
+		it('should ignore non-async helper functions inside callbacks', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const data = await http.get('/data');
+  function sortKeys(obj) {
+    return Object.keys(obj).sort().reduce((a, k) => ({ ...a, [k]: obj[k] }), {});
+  }
+  const sorted = sortKeys(data);
+});
+`);
+			// Non-async, no IO → stays in Code node (Phase 14 behavior)
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain('sortKeys');
+			expect(result.code).not.toContain('executeWorkflow');
+		});
+	});
+
 	// ─── Real-world workflow validation ──────────────────────────────────────
 	// Fixture-driven tests: each .txt file in __fixtures__/ contains a title,
 	// input DSL, and expected output separated by === markers. Files with a

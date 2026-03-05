@@ -1,3 +1,4 @@
+import { workflow, trigger, node } from '../../../index';
 import { jsonSerializer } from './json-serializer';
 import type { SerializerContext } from '../types';
 
@@ -91,6 +92,60 @@ describe('jsonSerializer', () => {
 			const result = jsonSerializer.serialize(ctx);
 
 			expect(result.connections).toEqual({});
+		});
+	});
+
+	describe('WorkflowBuilder parameter resolution', () => {
+		it('serializes WorkflowBuilder parameter values to JSON strings', () => {
+			const subWf = workflow('sub', 'Sub Workflow').add(
+				trigger({
+					type: 'n8n-nodes-base.executeWorkflowTrigger',
+					version: 1.1,
+					config: { parameters: { inputSource: 'passthrough' } },
+				}),
+			);
+
+			const wf = workflow('main', 'Main').add(
+				node({
+					type: 'n8n-nodes-base.executeWorkflow',
+					version: 1.3,
+					config: {
+						name: 'Run Sub',
+						parameters: {
+							source: 'parameter',
+							workflowJson: subWf,
+						},
+					},
+				}),
+			);
+
+			const json = wf.toJSON();
+			const execNode = json.nodes.find((n) => n.type === 'n8n-nodes-base.executeWorkflow');
+			expect(execNode).toBeDefined();
+			expect(typeof execNode!.parameters!.workflowJson).toBe('string');
+			const parsed = JSON.parse(execNode!.parameters!.workflowJson as string);
+			expect(parsed.nodes).toBeDefined();
+			expect(parsed.connections).toBeDefined();
+		});
+
+		it('preserves non-WorkflowBuilder parameter values unchanged', () => {
+			const wf = workflow('main', 'Main').add(
+				node({
+					type: 'n8n-nodes-base.executeWorkflow',
+					version: 1.3,
+					config: {
+						name: 'Run Sub',
+						parameters: {
+							source: 'parameter',
+							workflowJson: '{"nodes":[],"connections":{}}',
+						},
+					},
+				}),
+			);
+
+			const json = wf.toJSON();
+			const execNode = json.nodes.find((n) => n.type === 'n8n-nodes-base.executeWorkflow');
+			expect(execNode!.parameters!.workflowJson).toBe('{"nodes":[],"connections":{}}');
 		});
 	});
 });

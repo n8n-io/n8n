@@ -23,8 +23,22 @@ import type { WorkflowJSON } from '../types/base';
 import { CREDENTIAL_TO_AUTH_TYPE } from '../shared/credential-mapping';
 import { fromScheduleRule } from '../shared/schedule-mapping';
 import { NODE_TYPE_TO_TRIGGER, TRIGGER_TYPES } from '../shared/trigger-mapping';
+import { buildSemanticGraph } from './semantic-graph';
+import { annotateGraph } from './graph-annotator';
+import { buildCompositeTree } from './composite-builder';
 
 // ─── Context ─────────────────────────────────────────────────────────────────
+
+interface SubFunctionInfo {
+	name: string;
+	params: string[];
+	body: string;
+	setNodeNames: Set<string>;
+	execNodeNames: Set<string>;
+}
+
+/** Maps exec node name → function name for quick lookup */
+type ExecToFuncMap = Map<string, string>;
 
 interface SimplifiedGenContext {
 	indent: number;
@@ -33,6 +47,8 @@ interface SimplifiedGenContext {
 	nodeNameToVarName: Map<string, string>;
 	triggerType: 'manual' | 'webhook' | 'schedule' | 'error' | '';
 	codeNodeVars: Set<string>;
+	subFunctions: Map<string, SubFunctionInfo>;
+	execToFunc: ExecToFuncMap;
 }
 
 function emit(ctx: SimplifiedGenContext, text: string): void {
@@ -52,6 +68,7 @@ export function generateSimplifiedCode(
 ): string {
 	const nodeNameToVarName = computeVariableAssignments(graph);
 	const codeNodeVars = collectCodeNodeVars(graph);
+	const { subFunctions, execToFunc } = detectSubFunctions(graph);
 
 	const ctx: SimplifiedGenContext = {
 		indent: 0,
@@ -60,7 +77,15 @@ export function generateSimplifiedCode(
 		nodeNameToVarName,
 		triggerType: '',
 		codeNodeVars,
+		subFunctions,
+		execToFunc,
 	};
+
+	// Emit sub-function declarations first
+	for (const fn of subFunctions.values()) {
+		emitSubFunctionDeclaration(fn, ctx);
+		ctx.lines.push('');
+	}
 
 	for (let i = 0; i < tree.roots.length; i++) {
 		if (i > 0) ctx.lines.push('');
@@ -69,6 +94,195 @@ export function generateSimplifiedCode(
 
 	const code = ctx.lines.join('\n');
 	return code.endsWith('\n') ? code : `${code}\n`;
+}
+
+// ─── Sub-Function Detection ──────────────────────────────────────────────────
+
+function detectSubFunctions(graph: SemanticGraph): {
+	subFunctions: Map<string, SubFunctionInfo>;
+	execToFunc: ExecToFuncMap;
+} {
+	const subFunctions = new Map<string, SubFunctionInfo>();
+	const execToFunc: ExecToFuncMap = new Map();
+
+	for (const node of graph.nodes.values()) {
+		if (node.type !== 'n8n-nodes-base.executeWorkflow') continue;
+		const params = node.json.parameters ?? {};
+		if (params.source !== 'parameter') continue;
+		const workflowJsonStr = params.workflowJson as string | undefined;
+		if (!workflowJsonStr || typeof workflowJsonStr !== 'string') continue;
+
+		let innerJson: WorkflowJSON;
+		try {
+			innerJson = JSON.parse(workflowJsonStr) as WorkflowJSON;
+		} catch {
+			continue;
+		}
+
+		// Use inner workflow id as the canonical function name (stable across deduped node names)
+		const funcName = innerJson.id ?? node.name;
+		execToFunc.set(node.name, funcName);
+
+		if (subFunctions.has(funcName)) {
+			// Already processed — just register this call site
+			const fn = subFunctions.get(funcName)!;
+			fn.execNodeNames.add(node.name);
+			collectSetNodeNames(node, graph, fn.setNodeNames);
+			continue;
+		}
+
+		// Parse inner workflow and decompile recursively
+		const innerGraph = buildSemanticGraph(innerJson);
+		annotateGraph(innerGraph);
+		const innerTree = buildCompositeTree(innerGraph, { extractBranchDownstream: true });
+		const innerCode = generateSimplifiedCode(innerTree, innerJson, innerGraph);
+
+		// Strip trigger wrapper from inner code
+		const body = stripTriggerWrapper(innerCode.trim());
+
+		// Find the preceding Set node to extract parameter names
+		const fnParams: string[] = [];
+		const setNodeNames = new Set<string>();
+		collectSetNodeNames(node, graph, setNodeNames);
+
+		// Extract param names from the first Set node found
+		for (const setName of setNodeNames) {
+			const setNode = graph.nodes.get(setName);
+			if (!setNode) continue;
+			const assignments = (
+				setNode.json.parameters?.assignments as {
+					assignments?: Array<{ name: string }>;
+				}
+			)?.assignments;
+			if (assignments) {
+				for (const a of assignments) {
+					fnParams.push(a.name);
+				}
+			}
+			break; // Only need params from one call site
+		}
+
+		subFunctions.set(funcName, {
+			name: funcName,
+			params: fnParams,
+			body,
+			setNodeNames,
+			execNodeNames: new Set([node.name]),
+		});
+	}
+
+	return { subFunctions, execToFunc };
+}
+
+function isSubFunctionSetNode(setNodeName: string): boolean {
+	// Match "Set <funcName> params" or "Set <funcName> params 1" (deduped)
+	return /^Set .+ params( \d+)?$/.test(setNodeName);
+}
+
+function collectSetNodeNames(
+	execNode: SemanticNode,
+	graph: SemanticGraph,
+	setNodeNames: Set<string>,
+): void {
+	for (const sources of execNode.inputSources.values()) {
+		for (const source of sources) {
+			const predNode = graph.nodes.get(source.from);
+			if (!predNode || predNode.type !== 'n8n-nodes-base.set') continue;
+			if (isSubFunctionSetNode(predNode.name)) {
+				setNodeNames.add(predNode.name);
+			}
+		}
+	}
+}
+
+function stripTriggerWrapper(code: string): string {
+	// Find the trigger wrapper — may have function declarations before it
+	const triggerIdx = code.search(/^on\w+\(/m);
+	if (triggerIdx === -1) return code;
+
+	// Extract any function declarations before the trigger
+	const prefix = code.slice(0, triggerIdx).trim();
+	const triggerPart = code.slice(triggerIdx);
+
+	// Match onManual/onWebhook/onSchedule/onError(async (...) => {\n...\n});
+	const wrapperPattern = /^on\w+\([^)]*(?:\([^)]*\))?\s*=>\s*\{([\s\S]*)\}\);?\s*$/;
+	const match = wrapperPattern.exec(triggerPart);
+	if (!match) return code;
+
+	// De-indent the body by one level
+	const bodyLines = match[1].split('\n');
+	const stripped: string[] = [];
+	for (const line of bodyLines) {
+		if (line.startsWith('\t')) {
+			stripped.push(line.slice(1));
+		} else {
+			stripped.push(line);
+		}
+	}
+
+	const body = stripped.join('\n').trim();
+	return prefix ? `${prefix}\n${body}` : body;
+}
+
+function emitSubFunctionDeclaration(fn: SubFunctionInfo, ctx: SimplifiedGenContext): void {
+	// Extract nested function declarations to hoist them before this function
+	const { nestedFunctions, bodyWithoutNested } = extractNestedFunctions(fn.body);
+
+	// Emit nested functions first (hoisted to top level)
+	for (const nested of nestedFunctions) {
+		for (const line of nested.split('\n')) {
+			emit(ctx, line);
+		}
+		ctx.lines.push('');
+	}
+
+	const paramStr = fn.params.join(', ');
+	emit(ctx, `async function ${fn.name}(${paramStr}) {`);
+	ctx.indent++;
+	for (const line of bodyWithoutNested.split('\n')) {
+		if (line.trim()) {
+			emit(ctx, line.trim());
+		}
+	}
+	ctx.indent--;
+	emit(ctx, '}');
+}
+
+function extractNestedFunctions(body: string): {
+	nestedFunctions: string[];
+	bodyWithoutNested: string;
+} {
+	const lines = body.split('\n');
+	const nestedFunctions: string[] = [];
+	const remainingLines: string[] = [];
+	let i = 0;
+
+	while (i < lines.length) {
+		if (/^async function \w+\(/.test(lines[i].trim())) {
+			// Collect the entire function declaration
+			const funcLines: string[] = [lines[i]];
+			let braceDepth = 0;
+			for (const ch of lines[i]) {
+				if (ch === '{') braceDepth++;
+				if (ch === '}') braceDepth--;
+			}
+			i++;
+			while (i < lines.length && braceDepth > 0) {
+				funcLines.push(lines[i]);
+				for (const ch of lines[i]) {
+					if (ch === '{') braceDepth++;
+					if (ch === '}') braceDepth--;
+				}
+				i++;
+			}
+			nestedFunctions.push(funcLines.join('\n'));
+		} else {
+			remainingLines.push(lines[i]);
+			i++;
+		}
+	}
+
+	return { nestedFunctions, bodyWithoutNested: remainingLines.join('\n').trim() };
 }
 
 // ─── Variable Assignment Pre-computation ─────────────────────────────────────
@@ -385,6 +599,23 @@ function visitLeaf(leaf: LeafNode, ctx: SimplifiedGenContext): void {
 		return;
 	}
 
+	// Skip Set nodes that are sub-function parameter setups
+	if (node.type === 'n8n-nodes-base.set') {
+		for (const fn of ctx.subFunctions.values()) {
+			if (fn.setNodeNames.has(node.name)) return;
+		}
+	}
+
+	// Emit sub-function calls for ExecuteWorkflow nodes with inline workflowJson
+	if (node.type === 'n8n-nodes-base.executeWorkflow') {
+		const funcName = ctx.execToFunc.get(node.name);
+		const fn = funcName ? ctx.subFunctions.get(funcName) : undefined;
+		if (fn) {
+			emitSubFunctionCall(node, fn, ctx);
+			return;
+		}
+	}
+
 	switch (node.type) {
 		case 'n8n-nodes-base.aggregate':
 			// Aggregate nodes are compiler artifacts — skip silently
@@ -516,11 +747,15 @@ function emitAttachedBodyCall(
 }
 
 function formatJsonBody(jsonStr: string, ctx: SimplifiedGenContext): string {
+	// Try resolving as expression first (e.g. ={{ $('Node').first().json }})
+	const resolved = resolveExpression(jsonStr, ctx);
+	if (resolved !== null) return resolved;
+
 	try {
 		const parsed = JSON.parse(jsonStr) as Record<string, unknown>;
 		return formatObjectWithExpressions(parsed, ctx);
 	} catch {
-		return `'${jsonStr}'`;
+		return `'${jsonStr.replace(/'/g, "\\'")}'`;
 	}
 }
 
@@ -857,6 +1092,38 @@ function emitWorkflowNode(node: SemanticNode, ctx: SimplifiedGenContext): void {
 	const prefix = assignedVar ? `const ${assignedVar} = await ` : 'await ';
 
 	emit(ctx, `${prefix}workflow.run('${workflowId}');`);
+}
+
+function emitSubFunctionCall(
+	node: SemanticNode,
+	fn: SubFunctionInfo,
+	ctx: SimplifiedGenContext,
+): void {
+	// Find the preceding Set node to extract argument values
+	const args: string[] = [];
+	for (const sources of node.inputSources.values()) {
+		for (const source of sources) {
+			const predNode = ctx.graph.nodes.get(source.from);
+			if (!predNode || predNode.type !== 'n8n-nodes-base.set') continue;
+			if (!fn.setNodeNames.has(predNode.name)) continue;
+
+			const assignments = (
+				predNode.json.parameters?.assignments as {
+					assignments?: Array<{ name: string; value: unknown }>;
+				}
+			)?.assignments;
+			if (assignments) {
+				for (const a of assignments) {
+					const resolved = resolveExpression(String(a.value), ctx);
+					args.push(resolved ?? formatLiteral(a.value, 'string'));
+				}
+			}
+		}
+	}
+
+	const assignedVar = ctx.nodeNameToVarName.get(node.name);
+	const prefix = assignedVar ? `const ${assignedVar} = await ` : 'await ';
+	emit(ctx, `${prefix}${fn.name}(${args.join(', ')});`);
 }
 
 // ─── If/Else ─────────────────────────────────────────────────────────────────
