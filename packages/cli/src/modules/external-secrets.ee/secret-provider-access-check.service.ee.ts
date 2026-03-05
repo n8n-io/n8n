@@ -92,10 +92,8 @@ export class SecretsProviderAccessCheckService {
 			},
 		});
 
-		if (!access) {
-			// Connection is global (not shared with this project) — only global scopes apply
-			return [...globalScopes].sort();
-		}
+		// For global connections (no project access entry), treat as read-only (user role)
+		const sharingRoleSlug = access?.role ?? 'secretsProviderConnection:user';
 
 		const userProjectRelations = await this.projectService.getProjectRelationsForUser(user);
 		const projectRelation = userProjectRelations.find((pr) => pr.projectId === projectId);
@@ -103,7 +101,7 @@ export class SecretsProviderAccessCheckService {
 			? projectRelation.role.scopes.map((s) => s.slug)
 			: [];
 
-		const sharingRole = await this.roleService.getRole(access.role);
+		const sharingRole = await this.roleService.getRole(sharingRoleSlug);
 		const sharingScopes = sharingRole.scopes as Scope[];
 
 		const mergedScopes = combineScopes(
