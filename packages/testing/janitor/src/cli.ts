@@ -176,7 +176,8 @@ async function runImpact(options: CliOptions): Promise<void> {
 		return;
 	}
 
-	// Analyze impact
+	// No diffs passed — all files use conservative property-level resolution.
+	// Method-level precision requires pre-computed AST diffs (used by TCR flow).
 	const analyzer = new ImpactAnalyzer(project);
 	const result = analyzer.analyze(changedFiles);
 

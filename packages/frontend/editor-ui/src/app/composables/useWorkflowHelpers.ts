@@ -1004,10 +1004,6 @@ export function useWorkflowHelpers() {
 			}
 		}
 
-		if (workflowData.usedCredentials) {
-			workflowsStore.setUsedCredentials(workflowData.usedCredentials);
-		}
-
 		if (workflowData.sharedWithProjects) {
 			workflowsEEStore.setWorkflowSharedWith({
 				workflowId: workflowData.id,
@@ -1041,6 +1037,7 @@ export function useWorkflowHelpers() {
 			workflowDocumentStore.setChecksum(workflowData.checksum);
 		}
 		workflowDocumentStore.setIsArchived(workflowData.isArchived);
+		workflowDocumentStore.setUsedCredentials(workflowData.usedCredentials ?? []);
 		workflowDocumentStore.setMeta(workflowData.meta);
 		workflowDocumentStore.setScopes(workflowData.scopes ?? []);
 		tagsStore.upsertTags(tags);

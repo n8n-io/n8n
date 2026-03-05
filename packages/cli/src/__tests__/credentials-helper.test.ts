@@ -738,7 +738,7 @@ describe('CredentialsHelper', () => {
 			expect(result).not.toEqual({ apiKey: 'static-key' });
 		});
 
-		test('should skip resolution when executionContext is missing', async () => {
+		test('should skip resolution when executionContext is missing (manual mode)', async () => {
 			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
 			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({
 				data: { apiKey: 'resolved' },
@@ -785,7 +785,7 @@ describe('CredentialsHelper', () => {
 			expect(result).toEqual(dynamicData);
 		});
 
-		test('should skip resolution when credentials context is missing', async () => {
+		test('should skip resolution when credentials context is missing (manual mode)', async () => {
 			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
 			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({
 				data: { apiKey: 'resolved' },
@@ -811,7 +811,7 @@ describe('CredentialsHelper', () => {
 				true,
 			);
 
-			// Resolution should not happen when credentials context is missing
+			// Resolution should not happen when credentials context is missing in manual mode
 			expect(mockCredentialResolutionProvider.resolveIfNeeded).not.toHaveBeenCalled();
 			// Should return static decrypted data
 			expect(result).toEqual({ apiKey: 'static-key' });
@@ -842,6 +842,85 @@ describe('CredentialsHelper', () => {
 
 			expect(mockCredentialResolutionProvider.resolveIfNeeded).not.toHaveBeenCalled();
 			expect(result).toEqual({ apiKey: 'static-key' });
+		});
+
+		test('should throw when dynamic credential cannot be resolved in non-manual mode (no execution context)', async () => {
+			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+
+			const { CredentialResolutionError } = await import(
+				'@/modules/dynamic-credentials.ee/errors/credential-resolution.error'
+			);
+
+			const resolvableCredentialEntity = {
+				...mockCredentialEntity,
+				isResolvable: true,
+				resolverId: 'resolver-123',
+			} as CredentialsEntity;
+
+			credentialsRepository.findOneByOrFail.mockResolvedValue(resolvableCredentialEntity);
+			mockCredentialResolutionProvider.resolveIfNeeded.mockRejectedValue(
+				new CredentialResolutionError(
+					'Cannot resolve dynamic credentials without execution context for "Test Credentials"',
+				),
+			);
+
+			await expect(
+				credentialsHelper.getDecrypted(
+					{ ...mockAdditionalData, executionContext: undefined },
+					nodeCredentials,
+					credentialType,
+					'webhook',
+					undefined,
+					true,
+				),
+			).rejects.toThrow(CredentialResolutionError);
+
+			expect(mockCredentialResolutionProvider.resolveIfNeeded).toHaveBeenCalledTimes(1);
+		});
+
+		test('should throw when dynamic credential cannot be resolved in non-manual mode (no credentials in context)', async () => {
+			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+
+			const { CredentialResolutionError } = await import(
+				'@/modules/dynamic-credentials.ee/errors/credential-resolution.error'
+			);
+
+			const resolvableCredentialEntity = {
+				...mockCredentialEntity,
+				isResolvable: true,
+				resolverId: 'resolver-123',
+			} as CredentialsEntity;
+
+			credentialsRepository.findOneByOrFail.mockResolvedValue(resolvableCredentialEntity);
+			mockCredentialResolutionProvider.resolveIfNeeded.mockRejectedValue(
+				new CredentialResolutionError(
+					'Cannot resolve dynamic credentials without execution context for "Test Credentials"',
+				),
+			);
+
+			const additionalDataWithEmptyContext = {
+				...mockAdditionalData,
+				executionContext: {
+					version: 1 as const,
+					establishedAt: Date.now(),
+					source: 'webhook' as const,
+					// credentials is undefined
+				},
+			};
+
+			await expect(
+				credentialsHelper.getDecrypted(
+					additionalDataWithEmptyContext,
+					nodeCredentials,
+					credentialType,
+					'webhook',
+					undefined,
+					true,
+				),
+			).rejects.toThrow(CredentialResolutionError);
+
+			// Verify static credentials were NOT used as a fallback
+			expect(mockCredentialResolutionProvider.resolveIfNeeded).toHaveBeenCalledTimes(1);
 		});
 
 		test('should handle missing workflowSettings gracefully', async () => {
