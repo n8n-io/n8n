@@ -14,6 +14,7 @@ import { THROUGHPUT_SCENARIOS } from '../scenarios/throughput-scenarios';
 
 export interface ThroughputConfig {
 	plan: { memory: number; cpu: number };
+	workerPlan?: { memory: number; cpu: number };
 	messageCountOverride?: number;
 	pollIntervalMs?: number;
 }
@@ -27,18 +28,21 @@ interface ProfileInfo {
 function deriveProfile(
 	testInfo: { project: { name: string; use: Record<string, unknown> } },
 	plan: { memory: number; cpu: number },
+	workerPlan?: { memory: number; cpu: number },
 ): ProfileInfo {
 	const name = testInfo.project.name.replace(':infrastructure', '').replace('benchmark-', '');
 	const workers =
 		(testInfo.project.use as { containerConfig?: { workers?: number } }).containerConfig?.workers ??
 		0;
 
+	const wp = workerPlan ?? plan;
 	const resourceSummary =
 		workers > 0
 			? `  Mode: queue (1 main + ${workers} workers)\n` +
-				`  Plan: enterprise (${plan.memory}GB RAM, ${plan.cpu} CPU per container, ` +
-				`${1 + workers} containers = ${(plan.memory * (1 + workers)).toFixed(1)}GB total)`
-			: `  Plan: enterprise (${plan.memory}GB RAM, ${plan.cpu} CPU)`;
+				`  Main: ${plan.memory}GB RAM, ${plan.cpu} CPU\n` +
+				`  Workers: ${wp.memory}GB RAM, ${wp.cpu} CPU each\n` +
+				`  Total: ${(plan.memory + wp.memory * workers).toFixed(1)}GB RAM, ${plan.cpu + wp.cpu * workers} CPU`
+			: `  Resources: ${plan.memory}GB RAM, ${plan.cpu} CPU`;
 
 	return { name, workers, resourceSummary };
 }
@@ -97,7 +101,7 @@ async function collectDiagnostics(metrics: MetricsHelper, durationMs: number) {
 }
 
 export function registerThroughputTests(config: ThroughputConfig) {
-	const { plan, messageCountOverride = 0, pollIntervalMs } = config;
+	const { plan, workerPlan, messageCountOverride = 0, pollIntervalMs } = config;
 
 	test.describe(
 		'Throughput Benchmarks @benchmark',
@@ -110,7 +114,7 @@ export function registerThroughputTests(config: ThroughputConfig) {
 
 				// eslint-disable-next-line playwright/valid-title
 				test(scenario.name, async ({ api, services }, testInfo) => {
-					const profile = deriveProfile(testInfo, plan);
+					const profile = deriveProfile(testInfo, plan, workerPlan);
 
 					test.setTimeout(scenario.timeoutMs + 120_000);
 
