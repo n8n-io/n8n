@@ -255,22 +255,93 @@ describe('ExportService', () => {
 			expect(mockLogger.info).toHaveBeenCalledWith('      No more entities available at offset 0');
 			// Migrations file will be created even if empty, so we expect it to be called
 			expect(appendFile).toHaveBeenCalledWith(
-				'/test/output/migrations.jsonl',
+				expect.stringContaining('migrations.jsonl'),
 				expect.any(String),
 				'utf8',
 			);
 		});
 
-		it('should handle database errors gracefully', async () => {
+		it('should handle per-table database errors gracefully and continue', async () => {
 			const outputDir = '/test/output';
 
-			jest.mocked(mockDataSource.query).mockRejectedValue(new Error('Database connection failed'));
+			// First call is migrations (fails as usual), then User table fails,
+			// but Workflow table succeeds with data
+			jest
+				.mocked(mockDataSource.query)
+				.mockImplementationOnce(async (query: string) => {
+					if (query.includes('migrations')) {
+						throw new Error('Table not found');
+					}
+					return [];
+				})
+				.mockRejectedValueOnce(new Error('relation "user" does not exist')) // User table fails
+				.mockResolvedValueOnce([]) // Workflow table succeeds (empty)
+				.mockResolvedValueOnce([]); // Execution Data (excluded or empty)
 			jest.mocked(readdir).mockResolvedValue([]);
 
-			// The service will throw the error since it's not caught
-			await expect(exportService.exportEntities(outputDir)).rejects.toThrow(
-				'Database connection failed',
+			// Should NOT throw - per-table errors are caught
+			await exportService.exportEntities(outputDir);
+
+			// Should log a warning for the failing table
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('Failed to export table'),
+				expect.objectContaining({ error: expect.any(Error) }),
 			);
+
+			// Should still complete successfully
+			expect(mockLogger.info).toHaveBeenCalledWith('✅ Task completed successfully! \n');
+		});
+
+		it('should skip missing tables like secrets_provider_connection and continue export', async () => {
+			const outputDir = '/test/output';
+
+			// Add secrets_provider_connection to entity metadata
+			// @ts-expect-error Accessing private property for testing
+			mockDataSource.entityMetadatas = [
+				{
+					name: 'User',
+					tableName: 'user',
+					columns: [{ databaseName: 'id' }, { databaseName: 'email' }],
+				},
+				{
+					name: 'SecretsProviderConnection',
+					tableName: 'secrets_provider_connection',
+					columns: [{ databaseName: 'id' }, { databaseName: 'providerKey' }],
+				},
+				{
+					name: 'Workflow',
+					tableName: 'workflow_entity',
+					columns: [{ databaseName: 'id' }, { databaseName: 'name' }],
+				},
+			];
+
+			const mockUsers = [{ id: 1, email: 'test@example.com' }];
+
+			jest
+				.mocked(mockDataSource.query)
+				.mockImplementationOnce(async () => {
+					// Migrations table check fails
+					throw new Error('Table not found');
+				})
+				.mockResolvedValueOnce(mockUsers) // User table (one page is enough if small)
+				.mockRejectedValueOnce(
+					new Error('relation "secrets_provider_connection" does not exist'),
+				) // secrets_provider_connection fails
+				.mockResolvedValueOnce([]) // Workflow table (empty)
+			jest.mocked(readdir).mockResolvedValue([]);
+
+			// Should complete without throwing
+			await exportService.exportEntities(outputDir);
+
+			// Should warn about secrets_provider_connection
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('secrets_provider_connection'),
+				expect.objectContaining({ error: expect.any(Error) }),
+			);
+
+			// Should still export user data and complete
+			expect(appendFile).toHaveBeenCalled();
+			expect(mockLogger.info).toHaveBeenCalledWith('✅ Task completed successfully! \n');
 		});
 
 		it('should handle file system errors gracefully', async () => {
@@ -292,10 +363,10 @@ describe('ExportService', () => {
 			// @ts-expect-error Accessing private method for testing
 			await exportService.clearExistingEntityFiles(outputDir, 'user');
 
-			expect(rm).toHaveBeenCalledWith('/test/output/user.jsonl');
-			expect(rm).toHaveBeenCalledWith('/test/output/user.2.jsonl');
-			expect(rm).not.toHaveBeenCalledWith('/test/output/workflow.jsonl');
-			expect(rm).not.toHaveBeenCalledWith('/test/output/other.txt');
+			expect(rm).toHaveBeenCalledWith(expect.stringContaining('user.jsonl'));
+			expect(rm).toHaveBeenCalledWith(expect.stringContaining('user.2.jsonl'));
+			expect(rm).not.toHaveBeenCalledWith(expect.stringContaining('workflow.jsonl'));
+			expect(rm).not.toHaveBeenCalledWith(expect.stringContaining('other.txt'));
 		});
 
 		it('should handle no existing files gracefully', async () => {
@@ -363,7 +434,7 @@ describe('ExportService', () => {
 
 			// Verify migrations file was created
 			expect(appendFile).toHaveBeenCalledWith(
-				'/test/output/migrations.jsonl',
+				expect.stringContaining('migrations.jsonl'),
 				expect.any(String),
 				'utf8',
 			);
