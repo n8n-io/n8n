@@ -94,12 +94,16 @@ export function sortNodesByExecutionOrder<T extends ExecutionOrderItem>(
 
 		// DFS through all workflow connections from this trigger
 		const dfs = (name: string) => {
-			// Follow outgoing connections (main flow + any source-side connections)
-			const sourceConns = connectionsBySourceNode[name];
-			if (sourceConns) {
-				for (const type of Object.keys(sourceConns)) {
-					for (const outputs of sourceConns[type]) {
-						for (const conn of outputs ?? []) {
+			// First, discover AI sub-nodes connected to this node's non-main inputs
+			// (e.g. tools, memory, language models connected via ai_tool, ai_memory, etc.)
+			// These are visited before main-flow successors so that child nodes
+			// (tool, model) appear right after their parent (agent) in the order.
+			const destConns = connectionsByDestinationNode[name];
+			if (destConns) {
+				for (const type of Object.keys(destConns)) {
+					if (type === 'main') continue;
+					for (const inputs of destConns[type]) {
+						for (const conn of inputs ?? []) {
 							if (visited.has(conn.node)) continue;
 							visitNode(conn.node);
 							dfs(conn.node);
@@ -108,14 +112,12 @@ export function sortNodesByExecutionOrder<T extends ExecutionOrderItem>(
 				}
 			}
 
-			// Discover AI sub-nodes connected to this node's non-main inputs
-			// (e.g. tools, memory, language models connected via ai_tool, ai_memory, etc.)
-			const destConns = connectionsByDestinationNode[name];
-			if (destConns) {
-				for (const type of Object.keys(destConns)) {
-					if (type === 'main') continue;
-					for (const inputs of destConns[type]) {
-						for (const conn of inputs ?? []) {
+			// Then follow outgoing connections (main flow + any source-side connections)
+			const sourceConns = connectionsBySourceNode[name];
+			if (sourceConns) {
+				for (const type of Object.keys(sourceConns)) {
+					for (const outputs of sourceConns[type]) {
+						for (const conn of outputs ?? []) {
 							if (visited.has(conn.node)) continue;
 							visitNode(conn.node);
 							dfs(conn.node);

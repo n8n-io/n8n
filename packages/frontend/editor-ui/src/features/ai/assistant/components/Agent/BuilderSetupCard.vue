@@ -146,14 +146,14 @@ const onCredentialDeselected = () => {
 };
 
 const onValueChanged = (parameterData: IUpdateInformation) => {
-	const key = parameterData.name.startsWith('parameters.')
-		? parameterData.name
-		: `parameters.${parameterData.name}`;
-
-	workflowState.setNodeValue({
+	workflowState.updateNodeProperties({
 		name: props.state.node.name,
-		key,
-		value: parameterData.value,
+		properties: {
+			parameters: {
+				...props.state.node.parameters,
+				[parameterData.name]: parameterData.value,
+			},
+		},
 	});
 	nodeHelpers.updateNodesParameterIssues();
 };

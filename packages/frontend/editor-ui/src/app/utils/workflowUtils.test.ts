@@ -338,7 +338,7 @@ describe('workflowUtils', () => {
 				connectionsByDestination,
 			);
 
-			expect(result.map((n) => n.node.name)).toEqual(['Agent', 'Downstream', 'Tool']);
+			expect(result.map((n) => n.node.name)).toEqual(['Agent', 'Tool', 'Downstream']);
 		});
 
 		it('should not follow main connections from connectionsByDestinationNode', () => {
