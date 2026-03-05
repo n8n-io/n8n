@@ -15,6 +15,7 @@ import {
 	WorkflowSettings,
 } from 'n8n-workflow';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const MANUAL_MODES: ReadonlySet<WorkflowExecuteMode> = new Set(['manual']);
@@ -28,6 +29,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	constructor(
 		private readonly logger: Logger,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly eventService: EventService,
 	) {}
 
 	/**
@@ -60,6 +62,14 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 			const allowed =
 				this.policyAllowsReveal(execution) || (await this.canUserReveal(options.user, execution));
 			if (allowed) {
+				this.eventService.emit('execution-data-revealed', {
+					user: options.user,
+					executionId: execution.id,
+					workflowId: execution.workflowId,
+					ipAddress: options.ipAddress ?? '',
+					userAgent: options.userAgent ?? '',
+					redactionPolicy: this.resolvePolicy(execution),
+				});
 				return execution;
 			} else {
 				throw new ForbiddenError();

@@ -9,9 +9,11 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { ExpressionError, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { mock } from 'jest-mock-extended';
 
 import type { ExecutionRedactionOptions } from '@/executions/execution-redaction';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import type { EventService } from '@/events/event.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { ExecutionRedactionService } from '../execution-redaction.service';
@@ -19,6 +21,7 @@ import { ExecutionRedactionService } from '../execution-redaction.service';
 describe('ExecutionRedactionService', () => {
 	const logger = mockInstance(Logger);
 	const workflowFinderService = mockInstance(WorkflowFinderService);
+	const eventService = mock<EventService>();
 	let service: ExecutionRedactionService;
 
 	const mockUser = {
@@ -31,7 +34,7 @@ describe('ExecutionRedactionService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		service = new ExecutionRedactionService(logger, workflowFinderService);
+		service = new ExecutionRedactionService(logger, workflowFinderService, eventService);
 		// Default: user lacks execution:reveal scope → canReveal: false
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
 	});
@@ -298,6 +301,42 @@ describe('ExecutionRedactionService', () => {
 			};
 
 			await expect(service.processExecution(execution, options)).rejects.toThrow(ForbiddenError);
+		});
+
+		it('should emit execution-data-revealed when user is allowed to reveal', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue({ id: 'workflow-123' } as never);
+
+			const execution = createMockExecution({ policy: 'all', mode: 'trigger', withRunData: true });
+			const options: ExecutionRedactionOptions = {
+				user: mockUser,
+				redactExecutionData: false,
+				ipAddress: '1.2.3.4',
+				userAgent: 'TestAgent/1.0',
+			};
+
+			await service.processExecution(execution, options);
+
+			expect(eventService.emit).toHaveBeenCalledWith('execution-data-revealed', {
+				user: mockUser,
+				executionId: execution.id,
+				workflowId: execution.workflowId,
+				ipAddress: '1.2.3.4',
+				userAgent: 'TestAgent/1.0',
+				redactionPolicy: 'all',
+			});
+		});
+
+		it('should not emit execution-data-revealed when user is forbidden', async () => {
+			// workflowFinderService returns null (default in beforeEach) → no permission
+			const execution = createMockExecution({ policy: 'all', mode: 'trigger' });
+			const options: ExecutionRedactionOptions = {
+				user: mockUser,
+				redactExecutionData: false,
+			};
+
+			await expect(service.processExecution(execution, options)).rejects.toThrow(ForbiddenError);
+
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 	});
 
