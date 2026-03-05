@@ -8,6 +8,9 @@ export default defineConfig(
 			'unicorn/filename-case': ['error', { case: 'kebabCase' }],
 			complexity: ['error', 23],
 
+			// TODO: Replace ApplicationError and plain Error with UnexpectedError/OperationalError/UserError
+			'n8n-local-rules/no-plain-errors': 'warn',
+
 			// TODO: remove these
 			'no-empty': 'warn',
 			'id-denylist': 'warn',

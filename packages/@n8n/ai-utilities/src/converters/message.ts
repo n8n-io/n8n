@@ -1,5 +1,5 @@
 import * as LangchainMessages from '@langchain/core/messages';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
 import type * as N8nMessages from '../types/message';
 import type { Message } from '../types/message';
@@ -250,7 +250,7 @@ export function fromLcMessage(msg: LangchainMessages.BaseMessage): N8nMessages.M
 			name: msg.name,
 		};
 	}
-	throw new Error(`Provided message is not a valid Langchain message: ${JSON.stringify(msg)}`);
+	throw new UnexpectedError(`Provided message is not a valid Langchain message: ${JSON.stringify(msg)}`);
 }
 
 export function toLcContent(block: N8nMessages.MessageContent): LangchainMessages.ContentBlock {
@@ -314,7 +314,7 @@ export function toLcContent(block: N8nMessages.MessageContent): LangchainMessage
 			value: block.value,
 		} as LangchainMessages.ContentBlock.NonStandard;
 	}
-	throw new Error(`Failed to convert to Langchain content block: ${JSON.stringify(block)}`);
+	throw new UnexpectedError(`Failed to convert to Langchain content block: ${JSON.stringify(block)}`);
 }
 
 export function toLcMessage(message: Message): LangchainMessages.BaseMessage {
@@ -353,7 +353,7 @@ export function toLcMessage(message: Message): LangchainMessages.BaseMessage {
 		case 'tool': {
 			const toolResult = message.content.find(isN8nToolResultBlock);
 			if (!toolResult) {
-				throw new Error('Tool message is missing a tool-result content block');
+				throw new UnexpectedError('Tool message is missing a tool-result content block');
 			}
 			const content =
 				typeof toolResult.result === 'string'

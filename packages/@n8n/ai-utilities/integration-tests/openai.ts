@@ -1,4 +1,5 @@
 import type { JSONSchema7 } from 'json-schema';
+import { UnexpectedError } from 'n8n-workflow';
 import type { IHttpRequestMethods } from 'n8n-workflow';
 
 import {
@@ -183,7 +184,7 @@ function genericMessagesToResponsesInput(messages: Message[]): {
 					});
 				} else if (contentPart.type === 'tool-call') {
 					if (!contentPart.toolCallId) {
-						throw new Error('Tool call ID is required');
+						throw new UnexpectedError('Tool call ID is required');
 					}
 					inputItems.push({
 						type: 'function_call',
@@ -246,7 +247,7 @@ function genericToolToResponsesTool(tool: Tool): OpenAITool {
 				...tool.args,
 			};
 		}
-		throw new Error(`Unsupported provider tool: ${tool.name}`);
+		throw new UnexpectedError(`Unsupported provider tool: ${tool.name}`);
 	}
 	const parameters = getParametersJsonSchema(tool);
 	return {
@@ -282,7 +283,7 @@ function parseResponsesOutput(output: ResponsesOutputItem[]): {
 					argumentsRaw: item.arguments,
 				});
 			} catch (e) {
-				throw new Error(`Failed to parse function call arguments: ${item.arguments}`);
+				throw new UnexpectedError(`Failed to parse function call arguments: ${item.arguments}`);
 			}
 		}
 	}

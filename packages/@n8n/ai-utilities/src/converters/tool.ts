@@ -2,6 +2,7 @@ import type { FunctionDefinition } from '@langchain/core/language_models/base';
 import type * as LangchainChatModels from '@langchain/core/language_models/chat_models';
 import type * as LangchainTools from '@langchain/core/tools';
 import type { JSONSchema7 } from 'json-schema';
+import { UnexpectedError } from 'n8n-workflow';
 import { ZodSchema, type ZodTypeAny } from 'zod';
 import zodToJsonSchema from 'zod-to-json-schema';
 
@@ -48,7 +49,7 @@ export function fromLcTool(tool: LangchainChatModels.BindToolsInput): N8nTools.T
 		};
 	}
 
-	throw new Error(`Unable to convert tool to N8nTool: ${JSON.stringify(tool)}`);
+	throw new UnexpectedError(`Unable to convert tool to N8nTool: ${JSON.stringify(tool)}`);
 }
 
 export function getParametersJsonSchema(tool: N8nTools.FunctionTool): JSONSchema7 {

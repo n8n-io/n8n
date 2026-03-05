@@ -50,6 +50,19 @@ export const baseConfig = tseslint.config(
 			// ******************************************************************
 
 			// ----------------------------------
+			//        @typescript-eslint
+			// ----------------------------------
+
+			/**
+			 * https://typescript-eslint.io/rules/no-explicit-any/
+			 *
+			 * NEVER use `any` type — use proper types or `unknown`.
+			 * Promoted from `warn` (tseslint default) to `error` across all packages.
+			 * See AGENTS.md for guidance.
+			 */
+			'@typescript-eslint/no-explicit-any': 'error',
+
+			// ----------------------------------
 			//              ESLint
 			// ----------------------------------
 
@@ -408,10 +421,24 @@ export const baseConfig = tseslint.config(
 		},
 	},
 	{
+		// Discourage `as` type casting in non-test code.
+		// In test files, `as` is acceptable per AGENTS.md.
+		ignores: ['test/**/*.ts', '**/__tests__/*.ts', '**/*.test.ts', '**/*.cy.ts'],
+		rules: {
+			'@typescript-eslint/consistent-type-assertions': [
+				'warn',
+				{
+					assertionStyle: 'never',
+				},
+			],
+		},
+	},
+	{
 		// Rules for unit tests
 		files: ['test/**/*.ts', '**/__tests__/*.ts', '**/*.test.ts', '**/*.cy.ts'],
 		rules: {
 			'n8n-local-rules/no-plain-errors': 'off',
+			'@typescript-eslint/no-explicit-any': 'warn',
 			'@typescript-eslint/unbound-method': 'off',
 			'n8n-local-rules/no-skipped-tests': process.env.NODE_ENV === 'development' ? 'warn' : 'error',
 		},

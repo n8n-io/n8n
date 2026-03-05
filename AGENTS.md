@@ -122,21 +122,26 @@ const parents = getParentNodes(connectionsByDestination, 'NodeName', 'main', 1);
 const children = getChildNodes(workflow.connections, 'NodeName', 'main', 1);
 ```
 
-### TypeScript Best Practices
-- **NEVER use `any` type** - use proper types or `unknown`
-- **Avoid type casting with `as`** - use type guards or type predicates instead (except in test code where `as` is acceptable)
-- **Define shared interfaces in `@n8n/api-types`** package for FE/BE communication
+### Golden Rules
 
-### Error Handling
-- Don't use `ApplicationError` class in CLI and nodes for throwing errors,
-  because it's deprecated. Use `UnexpectedError`, `OperationalError` or
-  `UserError` instead.
-- Import from appropriate error classes in each package
+Mechanically enforced rules for code quality. Most are backed by lint rules
+that fire automatically — the error message tells you how to fix it.
 
-### Frontend Development
-- **All UI text must use i18n** - add translations to `@n8n/i18n` package
-- **Use CSS variables directly** - never hardcode spacing as px values
-- **data-testid must be a single value** (no spaces or multiple values)
+**Full reference with enforcement details:**
+[`docs/principles/golden-rules.md`](docs/principles/golden-rules.md)
+
+Quick summary:
+- **No `any` type** — use proper types or `unknown` (`error`, `warn` in tests)
+- **No `as` casting** — use type guards instead (`warn`, except test files)
+- **Shared FE/BE types in `@n8n/api-types`** — not in individual packages
+- **No `ApplicationError`** — it's deprecated. Use `UnexpectedError`,
+  `OperationalError`, or `UserError` (`error`)
+- **All UI text via i18n** — use `$t('key')` or `i18n.baseText('key')` (`warn`)
+- **CSS variables only** — never hardcode px values
+- **Single `data-testid` value** — no spaces (`error`)
+- **Use workflow traversal utils** — don't write custom graph traversal
+- **Respect package boundaries** — packages must not import from layers above
+  them (`error` lint rule + structural test)
 
 When implementing CSS, refer to @packages/frontend/CLAUDE.md for guidelines on
 CSS variables and styling conventions.

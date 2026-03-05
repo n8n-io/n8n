@@ -22,6 +22,8 @@ export default defineConfig([
 			'@typescript-eslint/naming-convention': 'off',
 			// Allow default exports for ESLint plugin
 			'import-x/no-default-export': 'off',
+			// ESLint plugin — no dependency on n8n-workflow where error classes live
+			'n8n-local-rules/no-plain-errors': 'off',
 		},
 	},
 ]);

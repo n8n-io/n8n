@@ -56,6 +56,8 @@ export default defineConfig(globalIgnores(['test-fixtures/**', 'scripts/**']), n
 				format: ['UPPER_CASE', 'PascalCase'],
 			},
 		],
+		// TODO: Replace plain Error throws with UnexpectedError/OperationalError/UserError
+		'n8n-local-rules/no-plain-errors': 'warn',
 		// Disable this rule - it conflicts with legitimate use of literal ${} in strings
 		// (e.g., testing code that contains template literals with ${$json.x})
 		'n8n-local-rules/no-interpolation-in-regular-string': 'off',

@@ -6,6 +6,8 @@ import { NoUselessCatchThrowRule } from './no-useless-catch-throw.js';
 import { NoSkippedTestsRule } from './no-skipped-tests.js';
 import { NoInterpolationInRegularStringRule } from './no-interpolation-in-regular-string.js';
 import { NoPlainErrorsRule } from './no-plain-errors.js';
+import { NoHardcodedUiTextRule } from './no-hardcoded-ui-text.js';
+import { NoInvalidDataTestidRule } from './no-invalid-data-testid.js';
 import { NoDynamicImportTemplateRule } from './no-dynamic-import-template.js';
 import { MisplacedN8nTypeormImportRule } from './misplaced-n8n-typeorm-import.js';
 import { NoTypeUnsafeEventEmitterRule } from './no-type-unsafe-event-emitter.js';
@@ -16,6 +18,7 @@ import type { AnyRuleModule } from '@typescript-eslint/utils/ts-eslint';
 import { NoArgumentSpreadRule } from './no-argument-spread.js';
 import { NoInternalPackageImportRule } from './no-internal-package-import.js';
 import { NoImportEnterpriseEditionRule } from './no-import-enterprise-edition.js';
+import { NoCrossBoundaryImportRule } from './no-cross-boundary-import.js';
 import { NoTypeOnlyImportInDiRule } from './no-type-only-import-in-di.js';
 
 export const rules = {
@@ -27,6 +30,8 @@ export const rules = {
 	'no-skipped-tests': NoSkippedTestsRule,
 	'no-interpolation-in-regular-string': NoInterpolationInRegularStringRule,
 	'no-plain-errors': NoPlainErrorsRule,
+	'no-hardcoded-ui-text': NoHardcodedUiTextRule,
+	'no-invalid-data-testid': NoInvalidDataTestidRule,
 	'no-dynamic-import-template': NoDynamicImportTemplateRule,
 	'misplaced-n8n-typeorm-import': MisplacedN8nTypeormImportRule,
 	'no-type-unsafe-event-emitter': NoTypeUnsafeEventEmitterRule,
@@ -36,5 +41,6 @@ export const rules = {
 	'no-argument-spread': NoArgumentSpreadRule,
 	'no-internal-package-import': NoInternalPackageImportRule,
 	'no-import-enterprise-edition': NoImportEnterpriseEditionRule,
+	'no-cross-boundary-import': NoCrossBoundaryImportRule,
 	'no-type-only-import-in-di': NoTypeOnlyImportInDiRule,
 } satisfies Record<string, AnyRuleModule>;

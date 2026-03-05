@@ -3,6 +3,9 @@ import { defineConfig } from 'eslint/config';
 
 export default defineConfig(frontendConfig, {
 	rules: {
+		// Chat widget — no dependency on n8n-workflow where error classes live
+		'n8n-local-rules/no-plain-errors': 'off',
+
 		// TODO: Remove these
 		'no-empty': 'warn',
 		'@typescript-eslint/require-await': 'warn',
