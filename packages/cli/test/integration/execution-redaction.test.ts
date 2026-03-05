@@ -14,7 +14,12 @@ import { ConcurrencyControlService } from '@/concurrency/concurrency-control.ser
 import { WaitTracker } from '@/wait-tracker';
 
 import { createExecution } from './shared/db/executions';
-import { createMember, createOwner } from './shared/db/users';
+import {
+	createMember,
+	createMemberWithApiKey,
+	createOwner,
+	createOwnerWithApiKey,
+} from './shared/db/users';
 import { setupTestServer } from './shared/utils';
 
 // Must be set before setupTestServer() so RedactionModule.init() wires the real service
@@ -27,18 +32,22 @@ mockInstance(ConcurrencyControlService, {
 });
 
 const testServer = setupTestServer({
-	endpointGroups: ['executions'],
+	endpointGroups: ['executions', 'workflows', 'publicApi'],
 	modules: ['redaction'],
 });
 
 let owner: User;
 let member: User;
+let publicApiOwner: User;
+let publicApiMember: User;
 
 beforeEach(async () => {
 	await testDb.truncate(['ExecutionEntity', 'WorkflowEntity', 'SharedWorkflow']);
 	testServer.license.reset();
 	owner = await createOwner();
 	member = await createMember();
+	publicApiOwner = await createOwnerWithApiKey();
+	publicApiMember = await createMemberWithApiKey();
 });
 
 // ---------------------------------------------------------------------------
@@ -460,5 +469,312 @@ describe('GET /executions/:id — Execution Redaction', () => {
 			expect(data.resultData.redactedError).toEqual({ type: 'NodeOperationError' });
 			expect(data.resultData.redactedError).not.toHaveProperty('httpCode');
 		});
+	});
+});
+
+// ---------------------------------------------------------------------------
+// GET /workflows/:workflowId/executions/last-successful — Execution Redaction
+// ---------------------------------------------------------------------------
+
+describe('GET /workflows/:workflowId/executions/last-successful — Execution Redaction', () => {
+	describe('policy-based redaction (no query param)', () => {
+		test('policy "none" with trigger mode — returns unredacted', async () => {
+			const workflow = await createWorkflow({}, owner);
+			await createExecutionWithRedaction({ workflow, mode: 'trigger', policy: 'none' });
+
+			const response = await testServer
+				.authAgentFor(owner)
+				.get(`/workflows/${workflow.id}/executions/last-successful`)
+				.expect(200);
+
+			assertNotRedacted(response.body.data.data as IRunExecutionData);
+		});
+
+		test('policy "non-manual" with trigger mode — returns redacted', async () => {
+			const workflow = await createWorkflow({}, owner);
+			await createExecutionWithRedaction({ workflow, mode: 'trigger', policy: 'non-manual' });
+
+			const response = await testServer
+				.authAgentFor(owner)
+				.get(`/workflows/${workflow.id}/executions/last-successful`)
+				.expect(200);
+
+			assertRedacted(response.body.data.data as IRunExecutionData);
+		});
+
+		test('policy "non-manual" with manual mode — returns unredacted', async () => {
+			const workflow = await createWorkflow({}, owner);
+			await createExecutionWithRedaction({ workflow, mode: 'manual', policy: 'non-manual' });
+
+			const response = await testServer
+				.authAgentFor(owner)
+				.get(`/workflows/${workflow.id}/executions/last-successful`)
+				.expect(200);
+
+			assertNotRedacted(response.body.data.data as IRunExecutionData);
+		});
+
+		test('policy "all" with trigger mode — returns redacted', async () => {
+			const workflow = await createWorkflow({}, owner);
+			await createExecutionWithRedaction({ workflow, mode: 'trigger', policy: 'all' });
+
+			const response = await testServer
+				.authAgentFor(owner)
+				.get(`/workflows/${workflow.id}/executions/last-successful`)
+				.expect(200);
+
+			assertRedacted(response.body.data.data as IRunExecutionData);
+		});
+	});
+
+	describe('explicit redactExecutionData=true query param', () => {
+		test('always redacts even when policy is "none"', async () => {
+			const workflow = await createWorkflow({}, owner);
+			await createExecutionWithRedaction({ workflow, mode: 'trigger', policy: 'none' });
+
+			const response = await testServer
+				.authAgentFor(owner)
+				.get(`/workflows/${workflow.id}/executions/last-successful`)
+				.query({ redactExecutionData: 'true' })
+				.expect(200);
+
+			assertRedacted(response.body.data.data as IRunExecutionData, 'user_requested');
+		});
+	});
+
+	describe('explicit redactExecutionData=false query param (reveal)', () => {
+		test('owner can reveal unredacted data when policy is "all"', async () => {
+			const workflow = await createWorkflow({}, owner);
+			await createExecutionWithRedaction({ workflow, mode: 'trigger', policy: 'all' });
+
+			const response = await testServer
+				.authAgentFor(owner)
+				.get(`/workflows/${workflow.id}/executions/last-successful`)
+				.query({ redactExecutionData: 'false' })
+				.expect(200);
+
+			assertNotRedacted(response.body.data.data as IRunExecutionData);
+		});
+	});
+
+	test('returns null when no successful execution exists', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.get(`/workflows/${workflow.id}/executions/last-successful`)
+			.expect(200);
+
+		expect(response.body.data).toBeNull();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/executions/:id — Execution Redaction
+// ---------------------------------------------------------------------------
+
+describe('GET /api/v1/executions/:id — Execution Redaction', () => {
+	describe('policy-based redaction (includeData=true)', () => {
+		test('policy "none" with trigger mode — returns unredacted', async () => {
+			const workflow = await createWorkflow({}, publicApiMember);
+			const execution = await createExecutionWithRedaction({
+				workflow,
+				mode: 'trigger',
+				policy: 'none',
+			});
+
+			const response = await testServer
+				.publicApiAgentFor(publicApiMember)
+				.get(`/executions/${execution.id}?includeData=true`)
+				.expect(200);
+
+			assertNotRedacted(response.body.data as IRunExecutionData);
+		});
+
+		test('policy "non-manual" with trigger mode — redacts for member (canReveal=false)', async () => {
+			const workflow = await createWorkflow({}, publicApiMember);
+			const execution = await createExecutionWithRedaction({
+				workflow,
+				mode: 'trigger',
+				policy: 'non-manual',
+			});
+
+			const response = await testServer
+				.publicApiAgentFor(publicApiMember)
+				.get(`/executions/${execution.id}?includeData=true`)
+				.expect(200);
+
+			assertRedacted(response.body.data as IRunExecutionData, 'workflow_redaction_policy', false);
+		});
+
+		test('policy "non-manual" with trigger mode — redacts for owner (canReveal=true)', async () => {
+			const workflow = await createWorkflow({}, publicApiOwner);
+			const execution = await createExecutionWithRedaction({
+				workflow,
+				mode: 'trigger',
+				policy: 'non-manual',
+			});
+
+			const response = await testServer
+				.publicApiAgentFor(publicApiOwner)
+				.get(`/executions/${execution.id}?includeData=true`)
+				.expect(200);
+
+			assertRedacted(response.body.data as IRunExecutionData, 'workflow_redaction_policy', true);
+		});
+
+		test('policy "non-manual" with manual mode — returns unredacted', async () => {
+			const workflow = await createWorkflow({}, publicApiMember);
+			const execution = await createExecutionWithRedaction({
+				workflow,
+				mode: 'manual',
+				policy: 'non-manual',
+			});
+
+			const response = await testServer
+				.publicApiAgentFor(publicApiMember)
+				.get(`/executions/${execution.id}?includeData=true`)
+				.expect(200);
+
+			assertNotRedacted(response.body.data as IRunExecutionData);
+		});
+
+		test('policy "all" with trigger mode — redacts for member (canReveal=false)', async () => {
+			const workflow = await createWorkflow({}, publicApiMember);
+			const execution = await createExecutionWithRedaction({
+				workflow,
+				mode: 'trigger',
+				policy: 'all',
+			});
+
+			const response = await testServer
+				.publicApiAgentFor(publicApiMember)
+				.get(`/executions/${execution.id}?includeData=true`)
+				.expect(200);
+
+			assertRedacted(response.body.data as IRunExecutionData, 'workflow_redaction_policy', false);
+		});
+
+		test('includeData=false — returns execution without data field', async () => {
+			const workflow = await createWorkflow({}, publicApiMember);
+			const execution = await createExecutionWithRedaction({
+				workflow,
+				mode: 'trigger',
+				policy: 'all',
+			});
+
+			const response = await testServer
+				.publicApiAgentFor(publicApiMember)
+				.get(`/executions/${execution.id}`)
+				.expect(200);
+
+			expect(response.body.data).toBeUndefined();
+		});
+	});
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/executions — Execution Redaction
+// ---------------------------------------------------------------------------
+
+describe('GET /api/v1/executions — Execution Redaction', () => {
+	test('policy "non-manual" with trigger mode — redacts all executions in list', async () => {
+		const workflow = await createWorkflow({}, publicApiMember);
+		await createExecutionWithRedaction({
+			workflow,
+			mode: 'trigger',
+			policy: 'non-manual',
+		});
+
+		const response = await testServer
+			.publicApiAgentFor(publicApiMember)
+			.get('/executions?includeData=true')
+			.expect(200);
+
+		expect(response.body.data).toHaveLength(1);
+		assertRedacted(
+			response.body.data[0].data as IRunExecutionData,
+			'workflow_redaction_policy',
+			false,
+		);
+	});
+
+	test('policy "none" — list returns unredacted when includeData=true', async () => {
+		const workflow = await createWorkflow({}, publicApiMember);
+		await createExecutionWithRedaction({
+			workflow,
+			mode: 'trigger',
+			policy: 'none',
+		});
+
+		const response = await testServer
+			.publicApiAgentFor(publicApiMember)
+			.get('/executions?includeData=true')
+			.expect(200);
+
+		expect(response.body.data).toHaveLength(1);
+		assertNotRedacted(response.body.data[0].data as IRunExecutionData);
+	});
+
+	test('includeData=false — returns executions without data field', async () => {
+		const workflow = await createWorkflow({}, publicApiMember);
+		await createExecutionWithRedaction({
+			workflow,
+			mode: 'trigger',
+			policy: 'all',
+		});
+
+		const response = await testServer
+			.publicApiAgentFor(publicApiMember)
+			.get('/executions')
+			.expect(200);
+
+		expect(response.body.data).toHaveLength(1);
+		expect(response.body.data[0].data).toBeUndefined();
+	});
+
+	test('batch: multiple executions across multiple workflows — each redacted independently', async () => {
+		const workflow1 = await createWorkflow({}, publicApiMember);
+		const workflow2 = await createWorkflow({}, publicApiMember);
+
+		// workflow1: policy "non-manual", trigger → should be redacted
+		await createExecutionWithRedaction({
+			workflow: workflow1,
+			mode: 'trigger',
+			policy: 'non-manual',
+		});
+		// workflow1: policy "non-manual", manual → should NOT be redacted
+		await createExecutionWithRedaction({
+			workflow: workflow1,
+			mode: 'manual',
+			policy: 'non-manual',
+		});
+		// workflow2: policy "none", trigger → should NOT be redacted
+		await createExecutionWithRedaction({ workflow: workflow2, mode: 'trigger', policy: 'none' });
+		// workflow2: policy "all", webhook → should be redacted
+		await createExecutionWithRedaction({ workflow: workflow2, mode: 'webhook', policy: 'all' });
+
+		const response = await testServer
+			.publicApiAgentFor(publicApiMember)
+			.get('/executions?includeData=true')
+			.expect(200);
+
+		expect(response.body.data).toHaveLength(4);
+
+		const results = response.body.data as Array<{
+			workflowId: string;
+			mode: string;
+			data: IRunExecutionData;
+		}>;
+
+		const wf1Trigger = results.find((e) => e.workflowId === workflow1.id && e.mode === 'trigger');
+		const wf1Manual = results.find((e) => e.workflowId === workflow1.id && e.mode === 'manual');
+		const wf2Trigger = results.find((e) => e.workflowId === workflow2.id && e.mode === 'trigger');
+		const wf2Webhook = results.find((e) => e.workflowId === workflow2.id && e.mode === 'webhook');
+
+		assertRedacted(wf1Trigger!.data, 'workflow_redaction_policy', false);
+		assertNotRedacted(wf1Manual!.data);
+		assertNotRedacted(wf2Trigger!.data);
+		assertRedacted(wf2Webhook!.data, 'workflow_redaction_policy', false);
 	});
 });
