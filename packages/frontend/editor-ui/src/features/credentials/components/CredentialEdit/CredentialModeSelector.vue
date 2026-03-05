@@ -4,7 +4,7 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
 import { computed } from 'vue';
-import { N8nButton, N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import {
 	N8nDropdownMenu,
 	type DropdownMenuItemProps,
@@ -147,41 +147,15 @@ function isSelected(option: CredentialModeOption): boolean {
 }
 
 const showSelector = computed(() => options.value.length >= 2);
-const showDropdown = computed(() => options.value.length > 2);
 const selectedOption = computed(() => {
-	const selected = options.value.find((option) => isSelected(option.value)) ?? null;
-	return selected;
-});
-
-const otherOption = computed(() => {
-	if (showDropdown.value) return null;
-	return options.value.find((option) => !isSelected(option.value)) ?? null;
+	return options.value.find((option) => isSelected(option.value)) ?? null;
 });
 
 const headingText = computed(() => {
 	if (props.isQuickConnectMode) {
 		return i18n.baseText('credentialEdit.credentialConfig.quickConnectTitle');
 	}
-
-	if (options.value.length > 2) {
-		return i18n.baseText('credentialEdit.credentialConfig.setupCredential');
-	}
-
-	if (props.showManagedOauthOptions) {
-		if (props.useCustomOauth) {
-			return i18n.baseText('credentialEdit.credentialConfig.oauthModeCustomTitle');
-		}
-		return i18n.baseText('credentialEdit.credentialConfig.oauthModeManagedTitle');
-	}
-
-	const authName = selectedAuthType.value?.name;
-	if (!authName) {
-		return i18n.baseText('credentialEdit.credentialConfig.setupCredential');
-	}
-
-	return i18n.baseText('credentialEdit.credentialConfig.genericTitle', {
-		interpolate: { credential: authName },
-	});
+	return i18n.baseText('credentialEdit.credentialConfig.setupCredential');
 });
 
 const menuItems = computed<Array<DropdownMenuItemProps<CredentialModeOption>>>(() => {
@@ -196,12 +170,6 @@ function onOptionChange(value: CredentialModeOption): void {
 	if (isSelected(value)) return;
 	emit('update:authType', value);
 }
-
-function switchToOther(): void {
-	if (otherOption.value) {
-		onOptionChange(otherOption.value.value);
-	}
-}
 </script>
 
 <template>
@@ -211,20 +179,7 @@ function switchToOther(): void {
 				{{ headingText }}
 			</N8nText>
 
-			<N8nLink
-				v-if="otherOption"
-				theme="secondary"
-				underline
-				size="small"
-				:class="$style.switchLink"
-				data-test-id="credential-mode-switch-link"
-				@click="switchToOther"
-			>
-				{{ otherOption?.name }}
-			</N8nLink>
-
 			<N8nDropdownMenu
-				v-else
 				:items="menuItems"
 				placement="bottom-end"
 				:extra-popper-class="$style.dropdownContent"
@@ -247,18 +202,6 @@ function switchToOther(): void {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-}
-
-.switchLink {
-	--link--color--secondary: var(--color--text);
-
-	&:hover,
-	&:focus,
-	&:active {
-		:global(span) {
-			color: var(--color--text--shade-1);
-		}
-	}
 }
 
 .dropdownContent {

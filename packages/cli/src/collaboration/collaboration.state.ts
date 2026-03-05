@@ -63,11 +63,12 @@ export class CollaborationState {
 			return [];
 		}
 
-		const activeCollaborators = this.cacheHashToCollaborators(cacheValue);
-		const [expired, stillActive] = this.splitToExpiredAndStillActive(activeCollaborators);
+		const { valid, invalid } = this.parseCacheHashToCollaborators(cacheValue);
+		const [expired, stillActive] = this.splitToExpiredAndStillActive(valid);
 
-		if (expired.length > 0) {
-			void this.removeExpiredCollaborators(workflowId, expired);
+		const toRemove = [...expired, ...invalid];
+		if (toRemove.length > 0) {
+			void this.removeExpiredCollaborators(workflowId, toRemove);
 		}
 
 		// Deduplicate by userId - keep the most recent entry for each user
@@ -113,15 +114,36 @@ export class CollaborationState {
 		);
 	}
 
-	private cacheHashToCollaborators(workflowCacheEntry: WorkflowCacheHash): CacheEntry[] {
-		return Object.entries(workflowCacheEntry).map(([clientId, value]) => {
-			const [userId, lastSeen] = value.split('|');
-			return {
-				userId,
-				lastSeen,
-				clientId,
-			};
-		});
+	private parseCacheHashToCollaborators(workflowCacheEntry: WorkflowCacheHash): {
+		valid: CacheEntry[];
+		invalid: CacheEntry[];
+	} {
+		const valid: CacheEntry[] = [];
+		const invalid: CacheEntry[] = [];
+
+		for (const [clientId, value] of Object.entries(workflowCacheEntry)) {
+			const parts = value.split('|');
+
+			// Handle old format (pre-tab-scoped collaboration) where value was just a timestamp
+			// Old: { "userId": "2026-02-26T21:23:36.318Z" }
+			// New: { "clientId": "userId|2026-02-26T21:23:36.318Z" }
+			if (parts.length === 1) {
+				invalid.push({
+					clientId,
+					userId: '', // Not needed for deletion
+					lastSeen: value,
+				});
+			} else {
+				const [userId, lastSeen] = parts;
+				valid.push({
+					userId,
+					lastSeen,
+					clientId,
+				});
+			}
+		}
+
+		return { valid, invalid };
 	}
 
 	private hasSessionExpired(lastSeenString: Iso8601DateTimeString) {

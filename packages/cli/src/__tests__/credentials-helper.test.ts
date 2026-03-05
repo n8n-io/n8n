@@ -605,7 +605,6 @@ describe('CredentialsHelper', () => {
 			type: credentialType,
 			data: cipher.encrypt({ apiKey: 'static-key' }),
 			isResolvable: false,
-			resolvableAllowFallback: false,
 		} as CredentialsEntity;
 
 		beforeEach(() => {
@@ -619,14 +618,17 @@ describe('CredentialsHelper', () => {
 			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
 
 			const resolvedData = { apiKey: 'dynamic-key' };
-			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue(resolvedData);
+			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({
+				data: resolvedData,
+				isDynamic: true,
+			});
 			credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntity);
 
 			const result = await credentialsHelper.getDecrypted(
 				mockAdditionalData,
 				nodeCredentials,
 				credentialType,
-				'manual',
+				'trigger',
 				undefined, // executeData
 				true, // raw = true to get the resolved data directly
 			);
@@ -638,7 +640,6 @@ describe('CredentialsHelper', () => {
 					isResolvable: false,
 					type: 'testApi',
 					resolverId: undefined,
-					resolvableAllowFallback: false,
 				},
 				{ apiKey: 'static-key' },
 				mockAdditionalData.executionContext,
@@ -650,13 +651,16 @@ describe('CredentialsHelper', () => {
 
 		test('should pass executionContext from additionalData to resolver', async () => {
 			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
-			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({ apiKey: 'resolved' });
+			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({
+				data: { apiKey: 'resolved' },
+				isDynamic: false,
+			});
 
 			await credentialsHelper.getDecrypted(
 				mockAdditionalData,
 				nodeCredentials,
 				credentialType,
-				'manual',
+				'trigger',
 				undefined,
 				true,
 			);
@@ -668,13 +672,16 @@ describe('CredentialsHelper', () => {
 
 		test('should pass workflowSettings from additionalData to resolver', async () => {
 			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
-			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({ apiKey: 'resolved' });
+			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({
+				data: { apiKey: 'resolved' },
+				isDynamic: false,
+			});
 
 			await credentialsHelper.getDecrypted(
 				mockAdditionalData,
 				nodeCredentials,
 				credentialType,
-				'manual',
+				'trigger',
 				undefined,
 				true,
 			);
@@ -713,13 +720,16 @@ describe('CredentialsHelper', () => {
 			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
 
 			const dynamicData = { apiKey: 'dynamic-key', extraField: 'extra-value' };
-			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue(dynamicData);
+			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({
+				data: dynamicData,
+				isDynamic: true,
+			});
 
 			const result = await credentialsHelper.getDecrypted(
 				mockAdditionalData,
 				nodeCredentials,
 				credentialType,
-				'manual',
+				'trigger',
 				undefined,
 				true,
 			);
@@ -730,7 +740,10 @@ describe('CredentialsHelper', () => {
 
 		test('should skip resolution when executionContext is missing', async () => {
 			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
-			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({ apiKey: 'resolved' });
+			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({
+				data: { apiKey: 'resolved' },
+				isDynamic: false,
+			});
 
 			const additionalDataWithoutContext = {
 				...mockAdditionalData,
@@ -750,9 +763,34 @@ describe('CredentialsHelper', () => {
 			expect(result).toEqual({ apiKey: 'static-key' });
 		});
 
+		test('should resolve in manual mode when credentials context is present (test webhook with identity extractor)', async () => {
+			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+			const dynamicData = { apiKey: 'dynamic-key' };
+			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({
+				data: dynamicData,
+				isDynamic: true,
+			});
+
+			// mockAdditionalData has credentials context set — simulates a test webhook run
+			const result = await credentialsHelper.getDecrypted(
+				mockAdditionalData,
+				nodeCredentials,
+				credentialType,
+				'manual',
+				undefined,
+				true,
+			);
+
+			expect(mockCredentialResolutionProvider.resolveIfNeeded).toHaveBeenCalled();
+			expect(result).toEqual(dynamicData);
+		});
+
 		test('should skip resolution when credentials context is missing', async () => {
 			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
-			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({ apiKey: 'resolved' });
+			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({
+				data: { apiKey: 'resolved' },
+				isDynamic: false,
+			});
 
 			const additionalDataWithoutCredentials = {
 				...mockAdditionalData,
@@ -779,9 +817,39 @@ describe('CredentialsHelper', () => {
 			expect(result).toEqual({ apiKey: 'static-key' });
 		});
 
+		test('should skip resolution in a subworkflow when rootExecutionMode is manual', async () => {
+			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
+			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({
+				data: { apiKey: 'dynamic-key' },
+				isDynamic: true,
+			});
+
+			// Simulates a subworkflow: local mode is 'integrated' but root was 'manual'
+			const subworkflowAdditionalData = {
+				...mockAdditionalData,
+				executionContext: undefined,
+				rootExecutionMode: 'manual' as const,
+			};
+
+			const result = await credentialsHelper.getDecrypted(
+				subworkflowAdditionalData,
+				nodeCredentials,
+				credentialType,
+				'integrated',
+				undefined,
+				true,
+			);
+
+			expect(mockCredentialResolutionProvider.resolveIfNeeded).not.toHaveBeenCalled();
+			expect(result).toEqual({ apiKey: 'static-key' });
+		});
+
 		test('should handle missing workflowSettings gracefully', async () => {
 			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
-			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({ apiKey: 'resolved' });
+			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({
+				data: { apiKey: 'resolved' },
+				isDynamic: false,
+			});
 
 			const additionalDataWithoutSettings = {
 				...mockAdditionalData,
@@ -792,7 +860,7 @@ describe('CredentialsHelper', () => {
 				additionalDataWithoutSettings,
 				nodeCredentials,
 				credentialType,
-				'manual',
+				'trigger',
 				undefined,
 				true,
 			);

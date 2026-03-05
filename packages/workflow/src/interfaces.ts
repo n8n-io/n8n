@@ -2701,6 +2701,8 @@ export interface ITaskData extends ITaskStartedData {
 	inputOverride?: ITaskDataConnections;
 	error?: ExecutionError;
 	metadata?: ITaskMetadata;
+	/** True when at least one credential used by this node was resolved dynamically */
+	usedDynamicCredentials?: boolean;
 }
 
 export interface ISourceData {
@@ -2917,6 +2919,12 @@ export interface IWorkflowExecuteAdditionalData {
 	variables: IDataObject;
 	logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => void;
 	parentCallbackManager?: CallbackManager;
+	/**
+	 * The execution mode of the root (top-level) workflow. Used to propagate manual
+	 * mode context into subworkflows so credential resolution can fall back to static
+	 * data consistently across the entire execution tree.
+	 */
+	rootExecutionMode?: WorkflowExecuteMode;
 	startRunnerTask<T, E = unknown>(
 		additionalData: IWorkflowExecuteAdditionalData,
 		jobType: string,
@@ -2937,6 +2945,11 @@ export interface IWorkflowExecuteAdditionalData {
 	): Promise<Result<T, E>>;
 	getRunnerStatus?(taskType: string): { available: true } | { available: false; reason?: string };
 	validateCookieAuth?: (cookieValue: string) => Promise<void>;
+	/**
+	 * Mutable flag set to true during a node's execution if any credential was resolved
+	 * dynamically. Reset to false by the execution engine before each node runs.
+	 */
+	currentNodeUsedDynamicCredentials?: boolean;
 }
 
 export type WorkflowActivateMode =
@@ -3131,6 +3144,7 @@ export interface INodeGraphItem {
 	package_version?: string; // only for community nodes
 	used_guardrails?: string[]; // only for @n8n/n8n-nodes-langchain.guardrails
 	mcp_client_auth_method?: string; // for @n8n/n8n-nodes-langchain.mcpClientTool and @n8n/n8n-nodes-langchain.mcpClient
+	ai_model?: string; // AI model for model nodes and standalone AI nodes
 }
 
 export interface INodeNameIndex {

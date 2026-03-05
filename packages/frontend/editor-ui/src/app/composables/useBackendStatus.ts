@@ -59,6 +59,10 @@ export function useBackendStatus() {
 	});
 
 	onMounted(() => {
+		if (settingsStore.isPreviewMode) {
+			return;
+		}
+
 		// Initial health check and start polling
 		void updateOnlineStatus();
 		startHeartbeat();
