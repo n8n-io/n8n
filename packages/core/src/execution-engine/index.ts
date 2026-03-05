@@ -1,4 +1,9 @@
-import type { DataTableProxyProvider, IExecutionContext, IWorkflowSettings } from 'n8n-workflow';
+import type {
+	DataTableProxyProvider,
+	DynamicCredentialGateProxyProvider,
+	IExecutionContext,
+	IWorkflowSettings,
+} from 'n8n-workflow';
 
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
 import type { ExternalSecretsProxy } from './external-secrets-proxy';
@@ -8,6 +13,7 @@ declare module 'n8n-workflow' {
 		hooks?: ExecutionLifecycleHooks;
 		externalSecretsProxy: ExternalSecretsProxy;
 		'data-table'?: { dataTableProxyProvider: DataTableProxyProvider };
+		'dynamic-credentials'?: { credentialGateProxy: DynamicCredentialGateProxyProvider };
 		// Project ID is currently only added on the additionalData if the user
 		// has data table listing permission for that project. We should consider
 		// that only data tables belonging to their respective projects are shown.
@@ -35,4 +41,5 @@ export * from './workflow-execute';
 export * from './execution-context-hook-registry.service';
 export { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
 export { ExternalSecretsProxy, type IExternalSecretsManager } from './external-secrets-proxy';
+export { ExecutionContextService } from './execution-context.service';
 export { isEngineRequest } from './requests-response';
