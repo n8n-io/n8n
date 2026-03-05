@@ -53,6 +53,13 @@ export class SecretProvidersCompletionsController {
 		next();
 	}
 
+	/**
+	 * Global secrets are needed by anyone who can use secrets in any context,
+	 * so access is granted if the user has `externalSecret:list` either globally
+	 * or in at least one project (e.g. via a custom project role).
+	 * There's no specific project for global secrets,
+	 * so we can't use the @ProjectScope decorator here.
+	 */
 	@Get('/secrets/global')
 	async listGlobalSecrets(
 		req: AuthenticatedRequest,
