@@ -220,46 +220,14 @@ describe('update-workflow MCP tool', () => {
 			);
 		});
 
-		test('returns error when workflow not found', async () => {
+		test('propagates errors from getMcpWorkflow', async () => {
 			findWorkflowMock.mockResolvedValue(null);
 
 			const result = await callHandler({ workflowId: 'wf-missing', code: 'const wf = ...' });
 
 			const response = parseResult(result);
 			expect(result.isError).toBe(true);
-			expect(response.error).toContain('not found');
-		});
-
-		test('returns error when workflow is not available in MCP', async () => {
-			findWorkflowMock.mockResolvedValue(
-				Object.assign(new WorkflowEntity(), {
-					id: 'wf-1',
-					name: 'Non-MCP Workflow',
-					settings: { availableInMCP: false },
-				}),
-			);
-
-			const result = await callHandler({ workflowId: 'wf-1', code: 'const wf = ...' });
-
-			const response = parseResult(result);
-			expect(result.isError).toBe(true);
-			expect(response.error).toContain('not available in MCP');
-		});
-
-		test('returns error when workflow has no settings', async () => {
-			findWorkflowMock.mockResolvedValue(
-				Object.assign(new WorkflowEntity(), {
-					id: 'wf-1',
-					name: 'No Settings Workflow',
-					settings: null,
-				}),
-			);
-
-			const result = await callHandler({ workflowId: 'wf-1', code: 'const wf = ...' });
-
-			const response = parseResult(result);
-			expect(result.isError).toBe(true);
-			expect(response.error).toContain('not available in MCP');
+			expect(response.error).toBe("Workflow not found or you don't have permission to access it.");
 		});
 
 		test('returns error when parse fails', async () => {

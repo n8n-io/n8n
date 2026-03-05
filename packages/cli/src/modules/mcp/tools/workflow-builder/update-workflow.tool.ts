@@ -10,6 +10,8 @@ import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
+import { getMcpWorkflow } from '../workflow-validation.utils';
+
 const inputSchema = {
 	workflowId: z.string().describe('The ID of the workflow to update'),
 	code: z
@@ -74,19 +76,7 @@ export const createUpdateWorkflowTool = (
 
 		try {
 			// Fetch the workflow to check if it's available in MCP
-			const existingWorkflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
-				'workflow:update',
-			]);
-
-			if (!existingWorkflow) {
-				throw new Error("Workflow not found or you don't have permission to update it.");
-			}
-
-			if (!existingWorkflow.settings?.availableInMCP) {
-				throw new Error(
-					'This workflow is not available in MCP. Only workflows created via MCP can be updated.',
-				);
-			}
+			await getMcpWorkflow(workflowId, user, ['workflow:update'], workflowFinderService);
 
 			const { ParseValidateHandler, stripImportStatements } = await import(
 				'@n8n/ai-workflow-builder'
