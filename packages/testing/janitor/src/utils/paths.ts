@@ -96,6 +96,28 @@ export function getRelativePath(absolutePath: string): string {
 }
 
 /**
+ * Normalize user-provided file paths to absolute paths.
+ *
+ * Handles three input formats:
+ *   1. Absolute paths → returned as-is
+ *   2. Repo-root-relative paths (e.g. from `git diff`) → resolved against gitRoot
+ *   3. rootDir-relative paths → resolved against rootDir
+ *
+ * The heuristic: resolve against gitRoot first. If the result falls within
+ * rootDir, it's a repo-root-relative path. Otherwise treat it as rootDir-relative.
+ */
+export function resolveInputPaths(files: string[], gitRoot: string): string[] {
+	const root = getRootDir();
+
+	return files.map((f) => {
+		if (path.isAbsolute(f)) return f;
+		const fromGitRoot = path.resolve(gitRoot, f);
+		if (fromGitRoot.startsWith(root)) return fromGitRoot;
+		return path.resolve(root, f);
+	});
+}
+
+/**
  * Recursively find files matching a suffix in a directory
  */
 export function findFilesRecursive(dir: string, suffix: string): string[] {

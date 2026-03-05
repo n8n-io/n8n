@@ -363,10 +363,7 @@ export class ImpactAnalyzer {
 	// --- Path Helpers ---
 
 	private toRelative(filePath: string): string {
-		if (path.isAbsolute(filePath)) {
-			return getRelativePath(filePath);
-		}
-		return filePath;
+		return getRelativePath(this.toAbsolute(filePath));
 	}
 
 	private toAbsolute(filePath: string): string {

@@ -1324,6 +1324,94 @@ test('uses pinia store', async ({ app }) => {
 		});
 	});
 
+	describe('Path Normalization', () => {
+		it('normalizes absolute paths to rootDir-relative in results', () => {
+			project.createSourceFile(
+				'/test-root/pages/CanvasPage.ts',
+				`
+export class CanvasPage { async addNode() {} }
+`,
+			);
+
+			project.createSourceFile(
+				'/test-root/tests/canvas.spec.ts',
+				`
+import { CanvasPage } from '../pages/CanvasPage';
+test('canvas test', () => {});
+`,
+			);
+
+			const analyzer = new ImpactAnalyzer(project);
+			// Pass absolute paths (as getChangedFiles returns)
+			const result = analyzer.analyze(['/test-root/pages/CanvasPage.ts']);
+
+			expect(result.changedFiles).toContain('pages/CanvasPage.ts');
+			expect(result.affectedTests).toContain('tests/canvas.spec.ts');
+			// Must not contain absolute paths
+			expect(result.changedFiles.every((f) => !f.startsWith('/'))).toBe(true);
+			expect(result.affectedTests.every((f) => !f.startsWith('/'))).toBe(true);
+		});
+
+		it('normalizes rootDir-relative paths consistently', () => {
+			project.createSourceFile(
+				'/test-root/pages/CanvasPage.ts',
+				`
+export class CanvasPage { async addNode() {} }
+`,
+			);
+
+			project.createSourceFile(
+				'/test-root/tests/canvas.spec.ts',
+				`
+import { CanvasPage } from '../pages/CanvasPage';
+test('canvas test', () => {});
+`,
+			);
+
+			const analyzer = new ImpactAnalyzer(project);
+			// Pass rootDir-relative paths (existing convention)
+			const result = analyzer.analyze(['pages/CanvasPage.ts']);
+
+			expect(result.changedFiles).toContain('pages/CanvasPage.ts');
+			expect(result.affectedTests).toContain('tests/canvas.spec.ts');
+		});
+
+		it('produces same output format regardless of absolute vs relative input', () => {
+			project.createSourceFile(
+				'/test-root/pages/CanvasPage.ts',
+				`
+export class CanvasPage { async addNode() {} }
+`,
+			);
+
+			project.createSourceFile(
+				'/test-root/tests/canvas.spec.ts',
+				`
+import { CanvasPage } from '../pages/CanvasPage';
+test('canvas test', () => {});
+`,
+			);
+
+			const analyzer = new ImpactAnalyzer(project);
+
+			const resultAbsolute = analyzer.analyze(['/test-root/pages/CanvasPage.ts']);
+			const resultRelative = analyzer.analyze(['pages/CanvasPage.ts']);
+
+			expect(resultAbsolute.changedFiles).toEqual(resultRelative.changedFiles);
+			expect(resultAbsolute.affectedTests).toEqual(resultRelative.affectedTests);
+		});
+
+		it('normalizes absolute test file paths in affectedTests', () => {
+			project.createSourceFile('/test-root/tests/example.spec.ts', "test('example', () => {});");
+
+			const analyzer = new ImpactAnalyzer(project);
+			const result = analyzer.analyze(['/test-root/tests/example.spec.ts']);
+
+			expect(result.changedFiles).toContain('tests/example.spec.ts');
+			expect(result.affectedTests).toContain('tests/example.spec.ts');
+		});
+	});
+
 	describe('Edge Cases', () => {
 		it('handles file not found gracefully', () => {
 			const analyzer = new ImpactAnalyzer(project);
