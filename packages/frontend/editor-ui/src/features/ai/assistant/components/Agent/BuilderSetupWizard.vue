@@ -56,12 +56,8 @@ const executeButtonTooltip = computed(() =>
 	!isAllComplete.value ? i18n.baseText('aiAssistant.builder.executeMessage.validationTooltip') : '',
 );
 
-// Tracks whether the wizard's own "Execute Workflow" button triggered a successful run.
-// Per-node "Test step" executions should NOT hide the wizard.
-const hasExecutedWorkflow = ref(false);
-
 const showCard = computed(
-	() => currentCard.value && !(isAllComplete.value && hasExecutedWorkflow.value),
+	() => currentCard.value && !(isAllComplete.value && builderStore.wizardHasExecutedWorkflow),
 );
 
 const isHovering = ref(false);
@@ -76,13 +72,16 @@ function onMouseLeave() {
 }
 
 // Highlight the active card's node only while hovering over the wizard
-watch([isHovering, () => currentCard.value?.state.node.id], ([hovering, nodeId]) => {
-	if (hovering && nodeId && showCard.value) {
-		setupPanelStore.setHighlightedNodes([nodeId]);
-	} else {
-		setupPanelStore.clearHighlightedNodes();
-	}
-});
+watch(
+	[isHovering, () => currentCard.value?.state.node.id, showCard],
+	([hovering, nodeId, visible]) => {
+		if (hovering && nodeId && visible) {
+			setupPanelStore.setHighlightedNodes([nodeId]);
+		} else {
+			setupPanelStore.clearHighlightedNodes();
+		}
+	},
+);
 
 const descriptionText = computed(() => {
 	if (!isAllComplete.value) {
@@ -120,7 +119,6 @@ const ensureExecutionWatcher = () => {
 			stopExecutionWatcher();
 
 			if (status !== 'canceled') {
-				hasExecutedWorkflow.value = true;
 				emit('workflowExecuted');
 			}
 		},
@@ -130,6 +128,7 @@ const ensureExecutionWatcher = () => {
 async function onExecute() {
 	if (!isAllComplete.value) return;
 
+	builderStore.wizardHasExecutedWorkflow = true;
 	ensureExecutionWatcher();
 
 	const selectedTriggerNode =

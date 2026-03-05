@@ -107,6 +107,11 @@ describe('BuilderSetupWizard', () => {
 		Object.defineProperty(workflowsStore, 'executionWaitingForWebhook', { get: () => false });
 		Object.defineProperty(builderStore, 'hasNoCreditsRemaining', { get: () => false });
 		Object.defineProperty(builderStore, 'hasTodosHiddenByPinnedData', { get: () => false });
+		Object.defineProperty(builderStore, 'wizardHasExecutedWorkflow', {
+			value: false,
+			writable: true,
+			configurable: true,
+		});
 		builderStore.trackWorkflowBuilderJourney = vi.fn();
 	});
 
@@ -177,7 +182,7 @@ describe('BuilderSetupWizard', () => {
 		);
 	});
 
-	it('shows card when all complete (no workflow execution yet)', () => {
+	it('shows card when all complete but workflow not executed yet', () => {
 		mockCurrentCard.value = {
 			state: {
 				node: triggerNode,
@@ -188,9 +193,26 @@ describe('BuilderSetupWizard', () => {
 		};
 		mockTotalCards.value = 1;
 		mockIsAllComplete.value = true;
+		builderStore.wizardHasExecutedWorkflow = false;
 
 		const { getByTestId } = render();
-		// Card stays visible because the wizard's Execute Workflow button hasn't been used
 		expect(getByTestId('builder-setup-card')).toBeInTheDocument();
+	});
+
+	it('hides card when all complete and workflow has been executed', () => {
+		mockCurrentCard.value = {
+			state: {
+				node: triggerNode,
+				parameterIssues: {},
+				isTrigger: true,
+				isComplete: true,
+			},
+		};
+		mockTotalCards.value = 1;
+		mockIsAllComplete.value = true;
+		builderStore.wizardHasExecutedWorkflow = true;
+
+		const { queryByTestId } = render();
+		expect(queryByTestId('builder-setup-card')).not.toBeInTheDocument();
 	});
 });

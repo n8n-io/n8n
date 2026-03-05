@@ -153,12 +153,13 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		error: 0,
 	});
 
-	// Track whether a successful full execution has occurred in this session
+	// Track whether any successful execution (full workflow or per-node) has occurred in this session
 	const hasHadSuccessfulExecution = ref(false);
 
 	// Setup wizard state
 	const wizardCurrentStep = ref(0);
 	const wizardClearedPlaceholders = ref(new Set<string>());
+	const wizardHasExecutedWorkflow = ref(false);
 
 	// Track whether AI Builder made edits since last save (resets after each save)
 	const aiBuilderMadeEdits = ref(false);
@@ -338,6 +339,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		builderMode.value = 'build';
 		wizardCurrentStep.value = 0;
 		wizardClearedPlaceholders.value.clear();
+		wizardHasExecutedWorkflow.value = false;
 	}
 
 	/**
@@ -495,6 +497,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		if (userMessageId && hasWorkflowUpdateInCurrentBatch(userMessageId)) {
 			wizardCurrentStep.value = 0;
 			wizardClearedPlaceholders.value.clear();
+			wizardHasExecutedWorkflow.value = false;
 		}
 
 		// Only show "Restore version" on user messages that triggered a workflow modification.
@@ -1274,6 +1277,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		lastUserMessageId,
 		wizardCurrentStep,
 		wizardClearedPlaceholders,
+		wizardHasExecutedWorkflow,
 
 		// Methods
 		unpinAllNodes,
