@@ -3,6 +3,8 @@ import type { IExecutionDb, User } from '@n8n/db';
 
 export type ExecutionRedactionOptions = {
 	user: User;
+	ipAddress?: string;
+	userAgent?: string;
 } & Pick<ExecutionRedactionQueryDto, 'redactExecutionData'>;
 
 export interface ExecutionRedaction {
