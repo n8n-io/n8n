@@ -10,13 +10,13 @@ import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import type { IRunExecutionData, NodeExecutionSchema } from 'n8n-workflow';
 
-import type { PlanOutput } from '../../types/planning';
-import { formatPlanAsText } from '../../utils/plan-helpers';
 import {
 	EXPRESSION_REFERENCE,
 	ADDITIONAL_FUNCTIONS,
 	WORKFLOW_RULES,
 } from '../../shared/prompt-constants';
+import type { PlanOutput } from '../../types/planning';
+import { formatPlanAsText } from '../../utils/plan-helpers';
 import type { ExpressionValue } from '../../workflow-builder-agent';
 import { formatCodeWithLineNumbers } from '../handlers/text-editor-handler';
 import { type ConversationEntry, entryToString } from '../utils/code-builder-session';
