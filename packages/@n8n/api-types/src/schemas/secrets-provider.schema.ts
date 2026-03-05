@@ -45,6 +45,7 @@ export type SecretsProviderConnectionTestState = z.infer<
 const projectSummarySchema = z.object({
 	id: z.string(),
 	name: z.string(),
+	role: z.string().optional(),
 });
 
 /**

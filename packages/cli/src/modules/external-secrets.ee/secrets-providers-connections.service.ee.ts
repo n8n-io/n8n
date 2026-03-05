@@ -235,6 +235,7 @@ export class SecretsProvidersConnectionsService {
 			projects: connection.projectAccess.map((access) => ({
 				id: access.project.id,
 				name: access.project.name,
+				role: access.role,
 			})),
 			createdAt: connection.createdAt.toISOString(),
 			updatedAt: connection.updatedAt.toISOString(),
@@ -260,6 +261,7 @@ export class SecretsProvidersConnectionsService {
 			projects: connection.projectAccess.map((access) => ({
 				id: access.project.id,
 				name: access.project.name,
+				role: access.role,
 			})),
 			settings: redactedSettings,
 			createdAt: connection.createdAt.toISOString(),

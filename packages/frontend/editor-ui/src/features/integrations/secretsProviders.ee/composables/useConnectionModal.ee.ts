@@ -13,7 +13,7 @@ import type { ProjectSharingData } from '@/features/collaboration/projects/proje
 import { isComponentPublicInstance } from '@/app/utils/typeGuards';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
-export type ConnectionProjectSummary = { id: string; name: string };
+export type ConnectionProjectSummary = { id: string; name: string; role?: string };
 
 const CONNECTION_NAME_REGEX = /^[a-zA-Z][a-zA-Z0-9]*$/;
 interface UseConnectionModalOptions {
