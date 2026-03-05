@@ -1,12 +1,33 @@
 import type { DataTableProxyProvider, IExecutionContext, IWorkflowSettings } from 'n8n-workflow';
+import type { LookupAddress, LookupOptions } from 'node:dns';
 
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
 import type { ExternalSecretsProxy } from './external-secrets-proxy';
+
+/**
+ * Narrow interface for SSRF protection, satisfied structurally by SsrfProtectionService.
+ * Defined here so packages/core can use it without importing from packages/cli.
+ */
+export interface SsrfBridge {
+	validateUrl(url: string | URL): Promise<{ allowed: boolean; reason?: string }>;
+	validateRedirectSync(url: string): void;
+	createSecureLookup(): (
+		hostname: string,
+		options: LookupOptions,
+		onResult: (
+			error: NodeJS.ErrnoException | null,
+			address: string | LookupAddress[],
+			family?: number,
+		) => void,
+	) => void;
+}
 
 declare module 'n8n-workflow' {
 	interface IWorkflowExecuteAdditionalData {
 		hooks?: ExecutionLifecycleHooks;
 		externalSecretsProxy: ExternalSecretsProxy;
+		/** SSRF protection bridge — present only when N8N_SSRF_PROTECTION_ENABLED=true */
+		ssrfBridge?: SsrfBridge;
 		'data-table'?: { dataTableProxyProvider: DataTableProxyProvider };
 		// Project ID is currently only added on the additionalData if the user
 		// has data table listing permission for that project. We should consider

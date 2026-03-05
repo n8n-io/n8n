@@ -151,10 +151,26 @@ export class SsrfProtectionService {
 	}
 
 	/**
-	 * Validate a redirect target URL through the same validation flow.
+	 * Synchronous redirect validation for use in axios beforeRedirect callback.
+	 * Validates direct-IP redirect targets immediately. Hostname-based redirect
+	 * targets are covered by the secureLookup on the redirect agent.
+	 * Throws SsrfBlockedIpError if the redirect target is blocked.
 	 */
-	async validateRedirect(redirectUrl: string): Promise<SsrfCheckResult> {
-		return await this.validateUrl(redirectUrl);
+	validateRedirectSync(url: string): void {
+		const parsed = this.tryParseUrl(url);
+		if (!parsed) return;
+
+		const { hostname } = parsed;
+
+		if (this.allowedHostnameMatcher.matches(hostname)) return;
+
+		const cleanIp = this.normalizeIpInHostname(hostname);
+		if (isIP(cleanIp)) {
+			const result = this.validateAddress(cleanIp);
+			if (!result.allowed) {
+				throw new SsrfBlockedIpError(cleanIp, hostname);
+			}
+		}
 	}
 
 	/**

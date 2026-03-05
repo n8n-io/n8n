@@ -318,17 +318,13 @@ describe('SsrfProtectionService', () => {
 		});
 	});
 
-	describe('validateRedirect', () => {
-		it('should validate redirect targets through the same flow', async () => {
+	describe('validateRedirectSync', () => {
+		it('should block direct-IP redirect targets', () => {
 			const { service } = createService();
 
-			const result = await service.validateRedirect('http://127.0.0.1/admin');
-
-			expect(result).toEqual({
-				allowed: false,
-				reason: 'IP address is blocked',
-				ip: '127.0.0.1',
-			});
+			expect(() => service.validateRedirectSync('http://127.0.0.1/admin')).toThrow(
+				'IP address is blocked',
+			);
 		});
 
 		it('should block redirect chains from public to private', async () => {
@@ -342,20 +338,15 @@ describe('SsrfProtectionService', () => {
 			expect(initial).toEqual({ allowed: true });
 
 			// Redirect target is private (blocked)
-			const redirect = await service.validateRedirect('http://192.168.1.1/admin');
-			expect(redirect).toEqual({
-				allowed: false,
-				reason: 'IP address is blocked',
-				ip: '192.168.1.1',
-			});
+			expect(() => service.validateRedirectSync('http://192.168.1.1/admin')).toThrow(
+				'IP address is blocked',
+			);
 		});
 
-		it('should reject invalid redirect URLs', async () => {
+		it('should ignore invalid redirect URLs', () => {
 			const { service } = createService();
 
-			const result = await service.validateRedirect('not-a-url');
-
-			expect(result).toEqual({ allowed: false, reason: 'Invalid URL', url: 'not-a-url' });
+			expect(() => service.validateRedirectSync('not-a-url')).not.toThrow();
 		});
 	});
 
@@ -588,26 +579,20 @@ describe('SsrfProtectionService', () => {
 		});
 
 		describe('redirect chains', () => {
-			it('should block redirect from public to private IP', async () => {
+			it('should block redirect from public to private IP', () => {
 				const { service } = createService();
 
-				const redirect = await service.validateRedirect('http://10.0.0.1/internal');
-				expect(redirect).toEqual({
-					allowed: false,
-					reason: 'IP address is blocked',
-					ip: '10.0.0.1',
-				});
+				expect(() => service.validateRedirectSync('http://10.0.0.1/internal')).toThrow(
+					'IP address is blocked',
+				);
 			});
 
-			it('should block redirect to loopback', async () => {
+			it('should block redirect to loopback', () => {
 				const { service } = createService();
 
-				const redirect = await service.validateRedirect('http://[::1]/admin');
-				expect(redirect).toEqual({
-					allowed: false,
-					reason: 'IP address is blocked',
-					ip: '::1',
-				});
+				expect(() => service.validateRedirectSync('http://[::1]/admin')).toThrow(
+					'IP address is blocked',
+				);
 			});
 		});
 
