@@ -407,6 +407,46 @@ onManual(async () => {
 			// Multiple .to() calls from previous node
 			expect(result.code).toMatch(/\.to\(http\d+\).*\.to\(http\d+\)/s);
 		});
+
+		it('should extract IO calls from IIFEs in Promise.all', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const data = await http.get('https://api.example.com');
+  await Promise.all([
+    (async () => {
+      for (const item of data) {
+        await http.post('https://api.example.com/process', { id: item.id });
+      }
+    })(),
+    http.post('https://api.example.com/notify', { done: true }),
+  ]);
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			// Should have the IIFE's HTTP POST node
+			expect(result.code).toContain('"url": "https://api.example.com/process"');
+			// Should have the direct HTTP POST node
+			expect(result.code).toContain('"url": "https://api.example.com/notify"');
+			// The for-of loop should produce a splitter Code node
+			expect(result.code).toContain('Split items');
+		});
+
+		it('should handle IIFE with FunctionExpression syntax', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const d = await http.get('https://api.example.com');
+  await Promise.all([
+    (async function() {
+      await http.post('https://api.example.com/a', d);
+    })(),
+    http.post('https://api.example.com/b', d),
+  ]);
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain('"url": "https://api.example.com/a"');
+			expect(result.code).toContain('"url": "https://api.example.com/b"');
+		});
 	});
 
 	describe('Phase 8: loops', () => {
@@ -445,6 +485,22 @@ onManual(async () => {
 			expect(result.code).not.toContain('splitInBatches(');
 			expect(result.code).not.toContain('n8n-nodes-base.aggregate');
 			expect(result.code).toContain('message += item.name');
+		});
+
+		it('should handle MemberExpression iterables in for...of', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const response = await http.get('https://api.example.com/data');
+  for (const item of response.results) {
+    await http.post('https://api.example.com/process', { id: item.id });
+  }
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			// Splitter should reference the full property chain
+			expect(result.code).toContain('response.results.map(item');
+			// Splitter should reference the source node for the root variable
+			expect(result.code).toContain("$('");
 		});
 
 		it('should add aggregate node when code follows a for...of loop', () => {
@@ -499,6 +555,26 @@ onManual(async () => {
 `);
 			expect(result.errors).toHaveLength(0);
 			expect(result.code).toContain('"onError": "continueErrorOutput"');
+		});
+
+		it('should recognize AssignmentExpression as IO call in try block', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  let existing = null;
+  try {
+    existing = await http.get('https://api.example.com/check');
+  } catch {}
+  if (!existing) {
+    await http.post('https://api.example.com/create', { name: 'new' });
+  }
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			// The assignment should be extracted as a separate HTTP node with onError
+			expect(result.code).toContain('"onError": "continueErrorOutput"');
+			expect(result.code).toContain('"method": "GET"');
+			// Should produce an IF node referencing the GET result
+			expect(result.code).toContain('ifElse(');
 		});
 
 		it('should support @onError continue annotation', () => {
