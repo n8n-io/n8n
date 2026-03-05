@@ -35,6 +35,13 @@ const inputSchema = {
 		),
 } satisfies z.ZodRawShape;
 
+const outputSchema = {
+	workflowId: z.string().describe('The ID of the created workflow'),
+	name: z.string().describe('The name of the created workflow'),
+	nodeCount: z.number().describe('The number of nodes in the workflow'),
+	url: z.string().describe('The URL to open the workflow in n8n'),
+} satisfies z.ZodRawShape;
+
 /**
  * MCP tool that creates a workflow in n8n from validated SDK code.
  * Parses the code, validates it, and saves the resulting workflow.
@@ -49,6 +56,7 @@ export const createCreateWorkflowFromCodeTool = (
 	config: {
 		description: `Create a workflow in n8n from validated SDK code. Parses the code into a workflow and saves it. Always validate with ${CODE_BUILDER_VALIDATE_TOOL.toolName} first.`,
 		inputSchema,
+		outputSchema,
 		annotations: {
 			title: MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.displayTitle,
 			readOnlyHint: false,
@@ -111,22 +119,16 @@ export const createCreateWorkflowFromCodeTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
+			const output = {
+				workflowId: savedWorkflow.id,
+				name: savedWorkflow.name,
+				nodeCount: savedWorkflow.nodes.length,
+				url: workflowUrl,
+			};
+
 			return {
-				content: [
-					{
-						type: 'text',
-						text: JSON.stringify(
-							{
-								workflowId: savedWorkflow.id,
-								name: savedWorkflow.name,
-								nodeCount: savedWorkflow.nodes.length,
-								url: workflowUrl,
-							},
-							null,
-							2,
-						),
-					},
-				],
+				content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
+				structuredContent: output,
 			};
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
@@ -137,13 +139,11 @@ export const createCreateWorkflowFromCodeTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
+			const output = { error: errorMessage };
+
 			return {
-				content: [
-					{
-						type: 'text',
-						text: JSON.stringify({ error: errorMessage }, null, 2),
-					},
-				],
+				content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
+				structuredContent: output,
 				isError: true,
 			};
 		}

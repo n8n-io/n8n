@@ -18,6 +18,12 @@ const inputSchema = {
 		),
 } satisfies z.ZodRawShape;
 
+const outputSchema = {
+	suggestions: z
+		.string()
+		.describe('Curated node recommendations with pattern hints and configuration guidance'),
+} satisfies z.ZodRawShape;
+
 /**
  * MCP tool that returns curated node recommendations by workflow technique category.
  */
@@ -31,6 +37,7 @@ export const createGetSuggestedWorkflowNodesTool = (
 		description:
 			'Get curated node recommendations for workflow technique categories. Returns recommended nodes with pattern hints and configuration guidance. Use after analyzing what kind of workflow to build.',
 		inputSchema,
+		outputSchema,
 		annotations: {
 			title: CODE_BUILDER_GET_SUGGESTED_NODES_TOOL.displayTitle,
 			readOnlyHint: true,
@@ -60,6 +67,7 @@ export const createGetSuggestedWorkflowNodesTool = (
 
 			return {
 				content: [{ type: 'text', text: result }],
+				structuredContent: { suggestions: result },
 			};
 		} catch (error) {
 			telemetryPayload.results = {

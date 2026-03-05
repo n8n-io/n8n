@@ -18,6 +18,12 @@ const inputSchema = {
 		),
 } satisfies z.ZodRawShape;
 
+const outputSchema = {
+	results: z
+		.string()
+		.describe('Search results with matching node IDs, discriminators, and related nodes'),
+} satisfies z.ZodRawShape;
+
 /**
  * MCP tool that searches for n8n nodes by keyword.
  * Wraps the code-builder's search tool.
@@ -32,6 +38,7 @@ export const createSearchWorkflowNodesTool = (
 		description:
 			'Search for n8n nodes by service name, trigger type, or utility function. Returns node IDs, discriminators (resource/operation/mode), and related nodes needed for get_workflow_node_types.',
 		inputSchema,
+		outputSchema,
 		annotations: {
 			title: CODE_BUILDER_SEARCH_NODES_TOOL.displayTitle,
 			readOnlyHint: true,
@@ -58,6 +65,7 @@ export const createSearchWorkflowNodesTool = (
 
 			return {
 				content: [{ type: 'text', text: result }],
+				structuredContent: { results: result },
 			};
 		} catch (error) {
 			telemetryPayload.results = {
