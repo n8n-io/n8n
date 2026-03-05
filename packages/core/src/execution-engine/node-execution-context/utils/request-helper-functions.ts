@@ -934,7 +934,7 @@ export const removeEmptyBody = (requestOptions: IHttpRequestOptions | IRequestOp
 	}
 };
 
-async function httpRequestImpl(
+export async function httpRequestWithSsrfProtection(
 	requestOptions: IHttpRequestOptions,
 	ssrfBridge?: SsrfBridge,
 ): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {
@@ -963,13 +963,6 @@ async function httpRequestImpl(
 	}
 
 	return result.data;
-}
-
-/** Module-level export for internal/system calls (no SSRF protection). */
-export async function httpRequest(
-	requestOptions: IHttpRequestOptions,
-): Promise<IN8nHttpFullResponse | IN8nHttpResponse> {
-	return await httpRequestImpl(requestOptions);
 }
 
 export function applyPaginationRequestData(
@@ -1467,7 +1460,7 @@ export async function httpRequestWithAuthentication(
 			workflow,
 			node,
 		);
-		return await httpRequestImpl(requestOptions, additionalData.ssrfBridge);
+		return await httpRequestWithSsrfProtection(requestOptions, additionalData.ssrfBridge);
 	} catch (error) {
 		// if there is a pre authorization method defined and
 		// the method failed due to unauthorized request
@@ -1501,7 +1494,7 @@ export async function httpRequestWithAuthentication(
 					);
 				}
 				// retry the request
-				return await httpRequestImpl(requestOptions, additionalData.ssrfBridge);
+				return await httpRequestWithSsrfProtection(requestOptions, additionalData.ssrfBridge);
 			} catch (error) {
 				throw new NodeApiError(this.getNode(), error);
 			}
@@ -1872,7 +1865,7 @@ export const getRequestHelperFunctions = (
 
 	return {
 		httpRequest: async (requestOptions: IHttpRequestOptions) =>
-			await httpRequestImpl(requestOptions, additionalData.ssrfBridge),
+			await httpRequestWithSsrfProtection(requestOptions, additionalData.ssrfBridge),
 		requestWithAuthenticationPaginated,
 		async httpRequestWithAuthentication(
 			this,
