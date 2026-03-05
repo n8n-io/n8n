@@ -112,7 +112,7 @@ export function resolveInputPaths(files: string[], gitRoot: string): string[] {
 	return files.map((f) => {
 		if (path.isAbsolute(f)) return f;
 		const fromGitRoot = path.resolve(gitRoot, f);
-		if (fromGitRoot.startsWith(root)) return fromGitRoot;
+		if (fromGitRoot.startsWith(root + path.sep) || fromGitRoot === root) return fromGitRoot;
 		return path.resolve(root, f);
 	});
 }

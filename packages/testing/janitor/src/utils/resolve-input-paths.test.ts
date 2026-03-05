@@ -82,6 +82,16 @@ describe('resolveInputPaths', () => {
 		expect(result).toEqual([path.resolve(rootDir, 'some-other-package/utils.ts')]);
 	});
 
+	it('does not match sibling directories sharing a prefix with rootDir', () => {
+		// "playwright-utils" shares the prefix "playwright" with rootDir
+		const files = ['packages/testing/playwright-utils/helper.ts'];
+		const result = resolveInputPaths(files, gitRoot);
+
+		// Should NOT match rootDir (/repo/packages/testing/playwright)
+		// Should fall back to rootDir-relative resolution
+		expect(result).toEqual([path.resolve(rootDir, 'packages/testing/playwright-utils/helper.ts')]);
+	});
+
 	it('handles empty input', () => {
 		expect(resolveInputPaths([], gitRoot)).toEqual([]);
 	});
