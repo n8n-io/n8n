@@ -28,8 +28,13 @@ test.describe('Webhook Origin Isolation', {
 		'respond-to-webhook-json-as-text-html',
 	];
 
+<<<<<<< HEAD
 	const expectedCSP =
 		'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols';
+=======
+		const expectedCSP =
+			'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols';
+>>>>>>> f1a074f946 (fix(Form Node): Improve form rendering consistency (#26540))
 
 	for (const webhookPath of webhookPaths) {
 		test(`Webhook responses should include the correct response headers for ${webhookPath}`, async ({
