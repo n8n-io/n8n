@@ -1,3 +1,4 @@
+import type { Locator } from '@playwright/test';
 import { expect } from '@playwright/test';
 
 import { BasePage } from './BasePage';
@@ -110,4 +111,20 @@ export class ProjectSettingsPage extends BasePage {
 	async selectFirstEmoji() {
 		await this.page.getByTestId('icon-picker-emoji').first().click();
 	}
+
+	getExternalSecretsSection(): Locator {
+		return this.page.getByTestId('external-secrets-section');
+	}
+
+	/**
+	 * The data table listing project-scoped secret provider connections.
+	 */
+	getExternalSecretsTable(): Locator {
+		return this.page.getByTestId('external-secrets-table');
+	}
+
+	getExternalSecretsTableRow(name: string): Locator {
+		return this.getExternalSecretsTable().getByText(name);
+	}
+
 }

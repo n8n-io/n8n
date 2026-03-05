@@ -27,6 +27,7 @@ import {
 	showOrchestrateHelp,
 } from './cli/index.js';
 import { setConfig, getConfig, defineConfig, type JanitorConfig } from './config.js';
+import { diffFileMethods } from './core/ast-diff-analyzer.js';
 import {
 	generateBaseline,
 	saveBaseline,
@@ -176,9 +177,17 @@ async function runImpact(options: CliOptions): Promise<void> {
 		return;
 	}
 
+	// Compute AST diffs for additive-only narrowing
+	const diffs = changedFiles
+		.filter((f) => f.endsWith('.ts') && !f.endsWith('.spec.ts'))
+		.map((f) => {
+			const abs = path.isAbsolute(f) ? f : path.resolve(config.rootDir, f);
+			return diffFileMethods(abs);
+		});
+
 	// Analyze impact
 	const analyzer = new ImpactAnalyzer(project);
-	const result = analyzer.analyze(changedFiles);
+	const result = analyzer.analyze(changedFiles, diffs);
 
 	// Output
 	if (options.json) {
@@ -447,8 +456,15 @@ async function runOrchestrate(options: CliOptions): Promise<void> {
 			console.error('Impact: No changed files detected. Returning empty orchestration.');
 			specs = [];
 		} else {
+			const diffs = changedFiles
+				.filter((f) => f.endsWith('.ts') && !f.endsWith('.spec.ts'))
+				.map((f) => {
+					const abs = path.isAbsolute(f) ? f : path.resolve(config.rootDir, f);
+					return diffFileMethods(abs);
+				});
+
 			const impactAnalyzer = new ImpactAnalyzer(project);
-			const impactResult = impactAnalyzer.analyze(changedFiles);
+			const impactResult = impactAnalyzer.analyze(changedFiles, diffs);
 			const affectedSet = new Set(impactResult.affectedTests);
 			const totalBefore = specs.length;
 			specs = specs.filter((s) => affectedSet.has(s.path));
