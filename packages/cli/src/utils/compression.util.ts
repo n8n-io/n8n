@@ -1,7 +1,7 @@
 import * as fflate from 'fflate';
 import { readFile, readdir, writeFile, mkdir } from 'fs/promises';
 import * as path from 'path';
-import { createWriteStream, createReadStream } from 'fs';
+import { createWriteStream } from 'fs';
 import { safeJoinPath } from '@n8n/backend-common';
 
 // Reuse the same compression levels as the Compression node
@@ -115,79 +115,33 @@ export async function compressFolder(
 }
 
 /**
- * Decompress a ZIP archive to a folder using streaming
- * Reuses the same patterns as the Compression node but with streaming approach
+ * Decompress a ZIP archive to a folder
  */
 export async function decompressFolder(sourcePath: string, outputDir: string): Promise<void> {
-	// Ensure output directory exists
 	await mkdir(outputDir, { recursive: true });
 
-	return await new Promise<void>(async (resolve, reject) => {
-		let filesToProcess = 0;
+	const zipData = new Uint8Array(await readFile(sourcePath));
 
-		const unzip = new fflate.Unzip((stream) => {
-			if (!stream.name.endsWith('/')) {
-				filesToProcess++;
+	return new Promise<void>((resolve, reject) => {
+		fflate.unzip(zipData, async (err, files) => {
+			if (err) {
+				reject(err);
+				return;
+			}
 
-				const chunks: Uint8Array[] = [];
-				let totalLength = 0;
+			try {
+				for (const [fileName, fileData] of Object.entries(files)) {
+					if (fileName.endsWith('/')) continue;
 
-				// Sanitize path to prevent zip slip attacks
-				const filePath = sanitizePath(stream.name, outputDir);
-				const dirPath = path.dirname(filePath);
-
-				// Create directory if it doesn't exist
-				mkdir(dirPath, { recursive: true }).catch((error) => {
-					if (error.code !== 'EEXIST') {
-						reject(error);
-					}
-				});
-
-				stream.ondata = async (error, chunk, final) => {
-					if (error) {
-						reject(error);
-						return;
-					}
-
-					chunks.push(chunk);
-					totalLength += chunk.length;
-
-					if (final) {
-						const finalBuffer = new Uint8Array(totalLength);
-						let offset = 0;
-						for (const chunk of chunks) {
-							finalBuffer.set(chunk, offset);
-							offset += chunk.length;
-						}
-						await writeFile(filePath, Buffer.from(finalBuffer));
-
-						filesToProcess--;
-
-						if (filesToProcess === 0) {
-							resolve();
-						}
-					}
-				};
-
-				stream.start();
+					const filePath = sanitizePath(fileName, outputDir);
+					await mkdir(path.dirname(filePath), { recursive: true });
+					await writeFile(filePath, Buffer.from(fileData));
+				}
+				resolve();
+			} catch (writeError) {
+				reject(writeError);
 			}
 		});
-
-		unzip.register(fflate.AsyncUnzipInflate);
-
-		// Create readable stream
-		const zipStream = createReadStream(sourcePath);
-
-		for await (const chunk of zipStream) {
-			unzip.push(chunk as Uint8Array);
-		}
-
-		zipStream.on('error', reject);
-
-		// If no files were processed (e.g., only directories), resolve immediately
-		if (filesToProcess === 0) {
-			resolve();
-		}
 	});
 }
 
