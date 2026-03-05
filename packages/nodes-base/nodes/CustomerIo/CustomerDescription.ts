@@ -13,12 +13,6 @@ export const customerOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Find by Email',
-				value: 'findEmail',
-				description: 'Find a customer by Email',
-				action: 'Find a customer by Email',
-			},
-			{
 				name: 'Create or Update',
 				value: 'upsert',
 				description:
@@ -30,6 +24,12 @@ export const customerOperations: INodeProperties[] = [
 				value: 'delete',
 				description: 'Delete a customer',
 				action: 'Delete a customer',
+			},
+			{
+				name: 'Find by Email',
+				value: 'findEmail',
+				description: 'Find a customer by Email',
+				action: 'Find a customer by Email',
 			},
 		],
 		default: 'upsert',
@@ -62,7 +62,8 @@ export const customerFields: INodeProperties[] = [
 		name: 'email',
 		type: 'string',
 		required: true,
-		default: 'john.smith@example.com',
+		default: '',
+		placeholder: 'name@email.com',
 		displayOptions: {
 			show: {
 				resource: ['customer'],
