@@ -50,8 +50,8 @@ export const createUpdateWorkflowTool = (
 		annotations: {
 			title: MCP_UPDATE_WORKFLOW_TOOL.displayTitle,
 			readOnlyHint: false,
-			destructiveHint: false,
-			idempotentHint: true,
+			destructiveHint: true,
+			idempotentHint: false,
 			openWorldHint: false,
 		},
 	},
