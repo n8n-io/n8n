@@ -103,7 +103,6 @@ export const createUpdateWorkflowTool = (
 				...(description !== undefined ? { description } : {}),
 				nodes: workflowJson.nodes,
 				connections: workflowJson.connections,
-				settings: workflowJson.settings,
 				pinData: workflowJson.pinData,
 				meta: { ...workflowJson.meta, aiBuilderAssisted: true },
 			});

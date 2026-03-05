@@ -57,7 +57,7 @@ const mockWorkflowJson = {
 	name: 'Updated Workflow',
 	nodes: mockNodes,
 	connections: {},
-	settings: {},
+	settings: { saveManualExecutions: true },
 	pinData: {},
 	meta: {},
 };
@@ -141,8 +141,8 @@ describe('update-workflow MCP tool', () => {
 			expect(tool.config.annotations).toEqual(
 				expect.objectContaining({
 					readOnlyHint: false,
-					destructiveHint: false,
-					idempotentHint: true,
+					destructiveHint: true,
+					idempotentHint: false,
 					openWorldHint: false,
 				}),
 			);
@@ -167,12 +167,18 @@ describe('update-workflow MCP tool', () => {
 
 			const passedWorkflow = updateMock.mock.calls[0][1] as WorkflowEntity;
 			expect(passedWorkflow).toBeInstanceOf(WorkflowEntity);
-			expect(passedWorkflow.settings).toEqual(mockWorkflowJson.settings);
 			expect(passedWorkflow.meta).toEqual(
 				expect.objectContaining({
 					aiBuilderAssisted: true,
 				}),
 			);
+		});
+
+		test('ignores settings from parsed code', async () => {
+			await callHandler({ workflowId: 'wf-1', code: 'const wf = ...' });
+
+			const passedWorkflow = updateMock.mock.calls[0][1] as WorkflowEntity;
+			expect(passedWorkflow.settings).toBeUndefined();
 		});
 
 		test('uses provided name over code name', async () => {
