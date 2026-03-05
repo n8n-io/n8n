@@ -1,9 +1,4 @@
-import {
-	AuthenticatedRequest,
-	ProjectRepository,
-	SharedWorkflowRepository,
-	WorkflowRepository,
-} from '@n8n/db';
+import { ProjectRepository, SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
 import { Get, Post, RestController } from '@n8n/decorators';
 import type { Request } from 'express';
 import type { IConnections, INode, IWorkflowExecutionDataProcess } from 'n8n-workflow';
@@ -11,6 +6,7 @@ import { createRunExecutionData } from 'n8n-workflow';
 import { transpileWorkflowJS, parseWorkflowCode, COMPILER_EXAMPLES } from '@n8n/workflow-sdk';
 
 import { ActiveExecutions } from '@/active-executions';
+import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowRunner } from '@/workflow-runner';
 
 interface PlaygroundWorkflowJSON {
@@ -27,6 +23,7 @@ export class TemporaryController {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly projectRepository: ProjectRepository,
+		private readonly ownershipService: OwnershipService,
 	) {}
 
 	@Post('/parse-code', { skipAuth: true })
@@ -55,9 +52,12 @@ export class TemporaryController {
 		return COMPILER_EXAMPLES;
 	}
 
-	@Post('/execute-workflow')
-	async executeWorkflow(req: AuthenticatedRequest) {
+	@Post('/execute-workflow', { skipAuth: true })
+	async executeWorkflow(req: Request) {
 		const { workflow } = req.body as { workflow: PlaygroundWorkflowJSON };
+
+		// Use instance owner for DB operations (playground skips auth)
+		const owner = await this.ownershipService.getInstanceOwner();
 
 		// Find trigger node
 		const triggerNode = workflow.nodes.find(
@@ -76,10 +76,8 @@ export class TemporaryController {
 		});
 		const savedWorkflow = await this.workflowRepository.save(newWorkflow);
 
-		// Link to user's personal project
-		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
-			req.user.id,
-		);
+		// Link to owner's personal project
+		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(owner.id);
 		await this.sharedWorkflowRepository.save(
 			this.sharedWorkflowRepository.create({
 				role: 'workflow:owner',
@@ -94,7 +92,7 @@ export class TemporaryController {
 		const runData: IWorkflowExecutionDataProcess = {
 			executionMode: 'manual',
 			workflowData: savedWorkflow,
-			userId: req.user.id,
+			userId: owner.id,
 			startNodes: [{ name: triggerNode.name, sourceData: null }],
 			pinData,
 			executionData: createRunExecutionData({
