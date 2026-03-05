@@ -16,7 +16,7 @@ function normalizeSDK(code: string): string {
 const fixturesDir = join(__dirname, '__fixtures__');
 const fixtures = readdirSync(fixturesDir)
 	.filter((f) => statSync(join(fixturesDir, f)).isDirectory())
-	.filter((f) => !['w07-github-workflow-backups', 'w10-bluray-preorder-discord'].includes(f))
+	.filter((f) => !['w10-bluray-preorder-discord'].includes(f))
 	.sort();
 
 const skipFixtures = new Set<string>();

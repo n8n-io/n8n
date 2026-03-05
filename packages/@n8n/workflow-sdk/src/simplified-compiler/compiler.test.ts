@@ -753,13 +753,6 @@ function normalizeSDK(code: string): string {
 // Double-compile: compile → decompile → recompile, compare normalized SDKs.
 // Skip fixtures where the decompiler cannot yet produce valid simplified JS.
 
-function getRoundTripSkipReason(title: string): string | undefined {
-	const skipReasons: Record<string, string> = {
-		W7: 'try/catch onError pattern + notExists condition not reconstructable by decompiler',
-	};
-
-	for (const [prefix, reason] of Object.entries(skipReasons)) {
-		if (title.includes(prefix + ':')) return reason;
-	}
+function getRoundTripSkipReason(_title: string): string | undefined {
 	return undefined;
 }

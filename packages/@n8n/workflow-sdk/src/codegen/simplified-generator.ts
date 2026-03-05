@@ -133,6 +133,26 @@ function computeVariableAssignments(graph: SemanticGraph): Map<string, string> {
 		}
 	}
 
+	// Override variable names for try/catch (continueErrorOutput) nodes:
+	// If the predecessor Code node has `let X = null;` then use X as the variable name
+	for (const node of graph.nodes.values()) {
+		const onError = node.json.onError as string | undefined;
+		if (onError !== 'continueErrorOutput') continue;
+
+		for (const sources of node.inputSources.values()) {
+			for (const source of sources) {
+				const predNode = graph.nodes.get(source.from);
+				if (!predNode || predNode.type !== 'n8n-nodes-base.code') continue;
+
+				const jsCode = (predNode.json.parameters?.jsCode as string) ?? '';
+				const nullInitMatch = /let (\w+) = null;/.exec(jsCode);
+				if (!nullInitMatch) continue;
+
+				nodeNameToVarName.set(node.name, nullInitMatch[1]);
+			}
+		}
+	}
+
 	return nodeNameToVarName;
 }
 
@@ -417,11 +437,26 @@ function emitHttpNode(node: SemanticNode, ctx: SimplifiedGenContext): void {
 
 	// onError annotation
 	const onError = node.json.onError as string | undefined;
+	const isTryCatch = onError === 'continueErrorOutput';
 	if (onError === 'continueRegularOutput') {
 		emit(ctx, '// @onError continue');
 	}
 
-	const prefix = assignedVar ? `const ${assignedVar} = await ` : 'await ';
+	// try/catch pattern: emit variable declaration before try block
+	if (isTryCatch) {
+		if (assignedVar && !ctx.codeNodeVars.has(assignedVar)) {
+			emit(ctx, `let ${assignedVar} = null;`);
+		}
+		emit(ctx, 'try {');
+		ctx.indent++;
+	}
+
+	const prefix =
+		isTryCatch && assignedVar
+			? `${assignedVar} = await `
+			: assignedVar
+				? `const ${assignedVar} = await `
+				: 'await ';
 	const fnCall = `http.${method}`;
 
 	const inline = `${prefix}${fnCall}(${args.join(', ')});`;
@@ -445,6 +480,11 @@ function emitHttpNode(node: SemanticNode, ctx: SimplifiedGenContext): void {
 		}
 	} else {
 		emit(ctx, inline);
+	}
+
+	if (isTryCatch) {
+		ctx.indent--;
+		emit(ctx, '} catch {}');
 	}
 }
 
@@ -763,18 +803,39 @@ function emitAiNode(node: SemanticNode, ctx: SimplifiedGenContext): void {
 
 	// onError annotation
 	const onError = node.json.onError as string | undefined;
+	const isTryCatch = onError === 'continueErrorOutput';
 	if (onError === 'continueRegularOutput') {
 		emit(ctx, '// @onError continue');
 	}
 
 	const assignedVar = ctx.nodeNameToVarName.get(node.name);
-	const prefix = assignedVar ? `const ${assignedVar} = await ` : 'await ';
+
+	// try/catch pattern
+	if (isTryCatch) {
+		if (assignedVar && !ctx.codeNodeVars.has(assignedVar)) {
+			emit(ctx, `let ${assignedVar} = null;`);
+		}
+		emit(ctx, 'try {');
+		ctx.indent++;
+	}
+
+	const prefix =
+		isTryCatch && assignedVar
+			? `${assignedVar} = await `
+			: assignedVar
+				? `const ${assignedVar} = await `
+				: 'await ';
 
 	if (options.length > 0) {
 		const optStr = `{ ${options.join(', ')} }`;
 		emit(ctx, `${prefix}ai.chat('${model}', '${prompt}', ${optStr});`);
 	} else {
 		emit(ctx, `${prefix}ai.chat('${model}', '${prompt}');`);
+	}
+
+	if (isTryCatch) {
+		ctx.indent--;
+		emit(ctx, '} catch {}');
 	}
 }
 
