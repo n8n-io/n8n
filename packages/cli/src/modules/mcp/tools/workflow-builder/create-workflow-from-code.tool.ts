@@ -109,7 +109,7 @@ export const createCreateWorkflowFromCodeTool = (
 				effectiveProjectId = personalProject.id;
 			}
 
-			await autoPopulateNodeCredentials(
+			const credentialAssignments = await autoPopulateNodeCredentials(
 				newWorkflow,
 				user,
 				nodeTypes,
@@ -143,6 +143,7 @@ export const createCreateWorkflowFromCodeTool = (
 								name: savedWorkflow.name,
 								nodeCount: savedWorkflow.nodes.length,
 								url: workflowUrl,
+								autoAssignedCredentials: credentialAssignments,
 							},
 							null,
 							2,

@@ -5,13 +5,19 @@ import { NodeHelpers } from 'n8n-workflow';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { NodeTypes } from '@/node-types';
 
+export interface CredentialAssignment {
+	nodeName: string;
+	credentialName: string;
+	credentialType: string;
+}
+
 /**
  * Auto-populates missing credentials on workflow nodes by assigning
  * a credential of the matching type that the user can actually use
  * in the target project. Only credentials accessible to both the user
  * and the project are considered, preventing cross-project assignments.
  *
- * Mutates `workflow.nodes` in place.
+ * Mutates `workflow.nodes` in place and returns a list of assignments made.
  */
 export async function autoPopulateNodeCredentials(
 	workflow: IWorkflowBase,
@@ -19,7 +25,7 @@ export async function autoPopulateNodeCredentials(
 	nodeTypes: NodeTypes,
 	credentialsService: CredentialsService,
 	projectId: string,
-): Promise<void> {
+): Promise<CredentialAssignment[]> {
 	// Fetch only credentials the user can use in this specific project
 	const usableCredentials = await credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
 		projectId,
@@ -32,6 +38,8 @@ export async function autoPopulateNodeCredentials(
 		list.push({ id: cred.id, name: cred.name });
 		credentialsByType.set(cred.type, list);
 	}
+
+	const assignments: CredentialAssignment[] = [];
 
 	for (const node of workflow.nodes) {
 		if (node.disabled) continue;
@@ -84,6 +92,14 @@ export async function autoPopulateNodeCredentials(
 				id: candidates[0].id,
 				name: candidates[0].name,
 			};
+
+			assignments.push({
+				nodeName: node.name,
+				credentialName: candidates[0].name,
+				credentialType: credDesc.name,
+			});
 		}
 	}
+
+	return assignments;
 }
