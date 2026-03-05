@@ -303,6 +303,6 @@ export const postgresMigrations: Migration[] = [
 	MigrateExternalSecretsToEntityStorage1771500000000,
 	AddUnshareScopeToCustomRoles1771500000001,
 	AddFilesColumnToChatHubAgents1771500000002,
-	AddRoleColumnToProjectSecretsProviderAccess1772619247761,
 	AddSuggestedPromptsToAgentTable1772000000000,
+	AddRoleColumnToProjectSecretsProviderAccess1772619247761,
 ];
