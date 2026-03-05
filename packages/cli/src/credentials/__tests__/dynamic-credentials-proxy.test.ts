@@ -87,7 +87,6 @@ describe('DynamicCredentialsProxy', () => {
 				staticData,
 				undefined,
 				undefined,
-				undefined,
 			);
 		});
 
