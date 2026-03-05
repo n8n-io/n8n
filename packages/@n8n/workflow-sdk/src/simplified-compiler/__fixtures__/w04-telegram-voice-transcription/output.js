@@ -1,4 +1,4 @@
-const t0 = trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: { parameters: {"httpMethod":"POST","path":"/telegram-bot"} } });
+const t0 = trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: { parameters: {"httpMethod":"POST","path":"/telegram-bot"}, pinData: [{"body":{"message":{"chat":{"id":123456},"text":"Hello bot","voice":null}}}] } });
 
 const code1 = node({
   type: 'n8n-nodes-base.code', version: 2,

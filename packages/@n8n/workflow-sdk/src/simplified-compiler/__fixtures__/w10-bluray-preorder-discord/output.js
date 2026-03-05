@@ -1,4 +1,4 @@
-const t0 = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
+const t0 = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { pinData: [{"triggered":true}] } });
 
 const code1 = node({
   type: 'n8n-nodes-base.code', version: 2,
@@ -27,7 +27,12 @@ const http1 = node({
       "url": "https://www.blu-ray.com/movies/movies.php?show=newpreorders",
       "options": {}
     },
-    "executeOnce": true
+    "executeOnce": true,
+    "pinData": [
+      {
+        "data": "<html><body><table><tr><td>Alien (1979)</td><td>January 15, 2025</td></tr></table></body></html>"
+      }
+    ]
   }
 });
 

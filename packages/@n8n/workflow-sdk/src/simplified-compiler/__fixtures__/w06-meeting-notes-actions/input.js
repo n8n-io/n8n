@@ -1,3 +1,4 @@
+/** @example [{ body: { meetingTitle: "Q3 Planning", meetingNotes: "Discussed roadmap priorities and budget allocation" } }] */
 onWebhook({ method: 'POST', path: '/google-meet-automation' }, async ({ body, respond }) => {
 	if (!body.meetingTitle || !body.meetingNotes) {
 		respond({ status: 400, body: { status: 'error', message: 'Missing required fields' } });
@@ -9,6 +10,7 @@ onWebhook({ method: 'POST', path: '/google-meet-automation' }, async ({ body, re
 		title: body.meetingTitle,
 	};
 
+	/** @example [{ action_items: [{ description: "Review Q3 budget" }, { description: "Update roadmap" }], follow_up_emails: [{ recipient: "team@company.com", subject: "Meeting Action Items" }], summary: "Discussed Q3 priorities and roadmap updates" }] */
 	const analysis = await ai.chat('gemini-pro', 'Analyze these meeting notes', {
 		outputParser: {
 			type: 'structured',

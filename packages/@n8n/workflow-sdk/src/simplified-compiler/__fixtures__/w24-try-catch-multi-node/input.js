@@ -1,3 +1,4 @@
+/** @example [{ triggered: true }] */
 onManual(async () => {
 	try {
 		const users = await http.get('https://api.example.com/users');

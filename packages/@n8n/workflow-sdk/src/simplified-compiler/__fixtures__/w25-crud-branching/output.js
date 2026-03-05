@@ -34,7 +34,15 @@ const http1 = node({
       "specifyBody": "json",
       "jsonBody": "{\"title\":\"Test Post\",\"body\":\"auto-generated\",\"userId\":1}"
     },
-    "executeOnce": true
+    "executeOnce": true,
+    "pinData": [
+      {
+        "id": 101,
+        "title": "Test Post",
+        "body": "auto-generated",
+        "userId": 1
+      }
+    ]
   }
 });
 
@@ -47,7 +55,15 @@ const http2 = node({
       "url": "{{dynamic URL}}",
       "options": {}
     },
-    "executeOnce": true
+    "executeOnce": true,
+    "pinData": [
+      {
+        "id": 101,
+        "title": "Test Post",
+        "body": "auto-generated",
+        "userId": 1
+      }
+    ]
   }
 });
 
@@ -188,7 +204,15 @@ const http10 = node({
       "url": "https://jsonplaceholder.typicode.com/todos/1",
       "options": {}
     },
-    "executeOnce": true
+    "executeOnce": true,
+    "pinData": [
+      {
+        "userId": 1,
+        "id": 1,
+        "title": "delectus aut autem",
+        "completed": true
+      }
+    ]
   }
 });
 

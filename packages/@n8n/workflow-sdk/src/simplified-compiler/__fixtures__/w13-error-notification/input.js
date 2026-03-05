@@ -1,3 +1,4 @@
+/** @example [{ error: { message: "Connection timeout" }, workflow: { name: "Data Sync", id: "wf_123" } }] */
 onError(async ({ error, workflow }) => {
 	await http.post(
 		'https://api.pagerduty.com/incidents',

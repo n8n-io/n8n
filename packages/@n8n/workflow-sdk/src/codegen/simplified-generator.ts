@@ -70,6 +70,8 @@ interface SimplifiedGenContext {
 	tryCatchBodies: Map<string, TryCatchBodyInfo>;
 	/** Set by visitLeaf to suppress inner try/catch in emitHttpNode/emitAiNode */
 	suppressTryCatch: boolean;
+	/** Workflow-level pin data keyed by node name */
+	workflowPinData: Record<string, unknown[]>;
 }
 
 function emit(ctx: SimplifiedGenContext, text: string): void {
@@ -109,6 +111,7 @@ export function generateSimplifiedCode(
 		loopBodies,
 		tryCatchBodies,
 		suppressTryCatch: false,
+		workflowPinData: (_json.pinData as Record<string, unknown[]>) ?? {},
 	};
 
 	// Emit sub-function declarations first
@@ -962,6 +965,12 @@ function emitLeafByType(node: SemanticNode, ctx: SimplifiedGenContext): void {
 // ─── HTTP Node ───────────────────────────────────────────────────────────────
 
 function emitHttpNode(node: SemanticNode, ctx: SimplifiedGenContext): void {
+	// Emit @example pin data annotation if present
+	const pinData = ctx.workflowPinData[node.name];
+	if (pinData) {
+		emit(ctx, `/** @example ${JSON.stringify(pinData)} */`);
+	}
+
 	const params = node.json.parameters ?? {};
 	const method = ((params.method as string) ?? 'GET').toLowerCase();
 	const url = (params.url as string) ?? '';
@@ -1297,6 +1306,12 @@ function emitRespondNode(node: SemanticNode, ctx: SimplifiedGenContext): void {
 // ─── AI Node ─────────────────────────────────────────────────────────────────
 
 function emitAiNode(node: SemanticNode, ctx: SimplifiedGenContext): void {
+	// Emit @example pin data annotation if present
+	const pinData = ctx.workflowPinData[node.name];
+	if (pinData) {
+		emit(ctx, `/** @example ${JSON.stringify(pinData)} */`);
+	}
+
 	const params = node.json.parameters ?? {};
 	const prompt = (params.text as string) ?? '';
 
@@ -1746,6 +1761,14 @@ function emitTriggerHeader(
 	const params = node.json.parameters ?? {};
 	const triggerKey = NODE_TYPE_TO_TRIGGER[node.type] ?? 'manual';
 	const { callbackName } = TRIGGER_TYPES[triggerKey];
+
+	// Emit @example pin data annotation for non-schedule triggers
+	if (triggerKey !== 'schedule') {
+		const pinData = ctx.workflowPinData[node.name];
+		if (pinData) {
+			emit(ctx, `/** @example ${JSON.stringify(pinData)} */`);
+		}
+	}
 
 	switch (triggerKey) {
 		case 'manual':

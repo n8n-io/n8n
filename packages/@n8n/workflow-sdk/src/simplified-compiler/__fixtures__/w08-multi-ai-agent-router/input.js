@@ -1,3 +1,4 @@
+/** @example [{ body: { data: "Quarterly revenue grew 15% YoY", priority: "balanced" } }] */
 onWebhook({ method: 'POST', path: '/ai-pipeline' }, async ({ body, respond }) => {
 	const inputData = body.data;
 	const priority = body.priority || 'balanced';
@@ -19,6 +20,7 @@ onWebhook({ method: 'POST', path: '/ai-pipeline' }, async ({ body, respond }) =>
 	const startTime = Date.now();
 	const prompt = 'Analyze and enrich this data';
 
+	/** @example [{ output: "The data shows a 15% increase in user engagement over the past quarter, driven primarily by mobile traffic." }] */
 	const aiResponse = await ai.chat(model, prompt);
 
 	const processingTime = Date.now() - startTime;

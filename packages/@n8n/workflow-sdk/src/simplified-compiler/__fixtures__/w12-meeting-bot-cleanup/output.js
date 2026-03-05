@@ -60,7 +60,17 @@ const http1 = node({
       "authentication": "genericCredentialType",
       "genericAuthType": "oAuth2Api"
     },
-    "executeOnce": true
+    "executeOnce": true,
+    "pinData": [
+      {
+        "id": "evt_001",
+        "status": "confirmed",
+        "summary": "Team Standup",
+        "start": {
+          "dateTime": "2024-01-15T10:00:00Z"
+        }
+      }
+    ]
   , credentials: { oAuth2Api: { name: 'Google Calendar', id: '' } }
 }
 });

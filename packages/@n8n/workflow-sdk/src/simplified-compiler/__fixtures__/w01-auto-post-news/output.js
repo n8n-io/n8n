@@ -36,7 +36,18 @@ const http1 = node({
       "authentication": "genericCredentialType",
       "genericAuthType": "httpHeaderAuth"
     },
-    "executeOnce": true
+    "executeOnce": true,
+    "pinData": [
+      {
+        "choices": [
+          {
+            "message": {
+              "content": "AI researchers announced a breakthrough in protein folding prediction..."
+            }
+          }
+        ]
+      }
+    ]
   , credentials: { httpHeaderAuth: { name: 'Perplexity API', id: '' } }
 }
 });

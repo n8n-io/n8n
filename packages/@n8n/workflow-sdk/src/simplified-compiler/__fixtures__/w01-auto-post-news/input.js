@@ -1,6 +1,7 @@
 onSchedule({ every: '21h' }, async () => {
 	const searchInput = "What's the latest news in artificial intelligence?";
 
+	/** @example [{ choices: [{ message: { content: "AI researchers announced a breakthrough in protein folding prediction..." } }] }] */
 	const result = await http.post(
 		'https://api.perplexity.ai/chat/completions',
 		{

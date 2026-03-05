@@ -9,7 +9,24 @@ const http1 = node({
       "url": "https://api.binance.com/api/v1/ticker/24hr",
       "options": {}
     },
-    "executeOnce": true
+    "executeOnce": true,
+    "pinData": [
+      {
+        "symbol": "BTCUSDT",
+        "priceChangePercent": "16.5",
+        "lastPrice": "68432.10"
+      },
+      {
+        "symbol": "ETHUSDT",
+        "priceChangePercent": "-2.1",
+        "lastPrice": "3521.80"
+      },
+      {
+        "symbol": "SOLUSDT",
+        "priceChangePercent": "22.3",
+        "lastPrice": "142.55"
+      }
+    ]
   }
 });
 

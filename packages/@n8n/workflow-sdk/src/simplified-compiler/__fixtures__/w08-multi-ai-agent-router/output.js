@@ -1,4 +1,4 @@
-const t0 = trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: { parameters: {"httpMethod":"POST","path":"/ai-pipeline","responseMode":"responseNode"} } });
+const t0 = trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: { parameters: {"httpMethod":"POST","path":"/ai-pipeline","responseMode":"responseNode"}, pinData: [{"body":{"data":"Quarterly revenue grew 15% YoY","priority":"balanced"}}] } });
 
 const code1 = node({
   type: 'n8n-nodes-base.code', version: 2,
@@ -91,7 +91,8 @@ const ai1 = node({
         config: { parameters: { model: { __rl: true, mode: 'id', value: 'gpt-4o-mini' }, options: {} } }
       })
     },
-    executeOnce: true
+    executeOnce: true,
+    pinData: [{"output":"The data shows a 15% increase in user engagement over the past quarter, driven primarily by mobile traffic."}]
   }
 });
 

@@ -20,6 +20,11 @@ interface SubWorkflowEntry {
 	workflowJson: string;
 }
 
+interface PinDataEntry {
+	nodeName: string;
+	data: unknown[];
+}
+
 interface ReportEntry {
 	title: string;
 	templateId: number;
@@ -29,6 +34,7 @@ interface ReportEntry {
 	sdkOutput?: string;
 	workflowJson?: string;
 	subWorkflows?: SubWorkflowEntry[];
+	pinData?: PinDataEntry[];
 	error?: string;
 }
 
@@ -98,7 +104,22 @@ function processFixtures(): ReportEntry[] {
 			writeFileSync(join(dirPath, 'workflow.json'), jsonStr + '\n');
 
 			const subWorkflows = extractSubWorkflows(workflowJson);
-			entries.push({ ...base, sdkOutput: result.code, workflowJson: jsonStr, subWorkflows });
+
+			// Extract pin data
+			const pinDataMap = (workflowJson as Record<string, unknown>).pinData as
+				| Record<string, unknown[]>
+				| undefined;
+			const pinData: PinDataEntry[] = pinDataMap
+				? Object.entries(pinDataMap).map(([nodeName, data]) => ({ nodeName, data }))
+				: [];
+
+			entries.push({
+				...base,
+				sdkOutput: result.code,
+				workflowJson: jsonStr,
+				subWorkflows,
+				pinData: pinData.length > 0 ? pinData : undefined,
+			});
 		} catch (err) {
 			entries.push({ ...base, error: err instanceof Error ? err.message : String(err) });
 		}
@@ -157,6 +178,16 @@ function generateHtml(entries: ReportEntry[]): string {
       </details>`
 					: ''
 			}
+      ${
+				(entry.pinData ?? []).length > 0
+					? `<details>
+        <summary>Pin Data <span class="pin-count">${entry.pinData!.length} node${entry.pinData!.length > 1 ? 's' : ''}</span></summary>
+        <div class="pin-data-list">
+          ${entry.pinData!.map((pd) => `<div class="pin-data-item"><div class="pin-node-name">${escapeHtml(pd.nodeName)}</div><pre class="code pin-code"><code>${escapeHtml(JSON.stringify(pd.data, null, 2))}</code></pre></div>`).join('\n          ')}
+        </div>
+      </details>`
+					: ''
+			}
       ${demoComponent ? `<div class="demo">${(entry.subWorkflows ?? []).length > 0 ? '<h3 class="demo-label">Main Workflow</h3>' : ''}${demoComponent}</div>` : ''}
       ${
 				(entry.subWorkflows ?? [])
@@ -204,6 +235,11 @@ function generateHtml(entries: ReportEntry[]): string {
     .demo-label { font-size: 13px; font-weight: 600; color: #555; margin-bottom: 8px; }
     .sub-workflow { margin-top: 16px; padding-top: 12px; border-top: 1px dashed #ddd; }
     .sub-workflow-label { color: #7c5cfc; }
+    .pin-count { font-size: 11px; font-weight: 400; color: #888; margin-left: 4px; }
+    .pin-data-list { margin-top: 8px; }
+    .pin-data-item { margin-bottom: 12px; }
+    .pin-node-name { font-size: 12px; font-weight: 600; color: #7c5cfc; margin-bottom: 4px; padding: 2px 0; }
+    .pin-code { font-size: 12px; padding: 12px; }
     n8n-demo { width: 100%; min-height: 300px; display: block; }
   </style>
 </head>

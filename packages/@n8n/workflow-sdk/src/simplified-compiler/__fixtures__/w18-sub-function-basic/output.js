@@ -35,7 +35,7 @@ const processOrderWorkflow = workflow('processOrder', 'processOrder')
   .add(fn_processOrder_t0.to(fn_processOrder_http1).to(fn_processOrder_http2));
 
 // --- Main workflow ---
-const t0 = trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: { parameters: {"httpMethod":"POST","path":"/orders"} } });
+const t0 = trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: { parameters: {"httpMethod":"POST","path":"/orders"}, pinData: [{"body":{"id":"ORD-123","product":"Widget Pro","quantity":5}}] } });
 
 const set1 = node({
   type: 'n8n-nodes-base.set', version: 3.4,
@@ -95,7 +95,13 @@ const http5 = node({
       "url": "https://api.com/pending",
       "options": {}
     },
-    "executeOnce": true
+    "executeOnce": true,
+    "pinData": [
+      {
+        "orderId": "ORD-456",
+        "status": "pending"
+      }
+    ]
   }
 });
 

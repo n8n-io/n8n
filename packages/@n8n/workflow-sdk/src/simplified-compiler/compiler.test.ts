@@ -927,6 +927,161 @@ onManual(async () => {
 		});
 	});
 
+	describe('Phase 17: pin data via @example annotation', () => {
+		it('should emit pinData in config when @example precedes http call', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  /** @example [{ id: 1, name: 'Alice' }] */
+  const users = await http.get('https://api.example.com/users');
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain('pinData');
+			expect(result.code).toContain('"id": 1');
+			expect(result.code).toContain('"name": "Alice"');
+		});
+
+		it('should emit pinData for multi-line @example', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  /**
+   * @example [
+   *   { id: 1, name: 'Alice' },
+   *   { id: 2, name: 'Bob' }
+   * ]
+   */
+  const users = await http.get('https://api.example.com/users');
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain('pinData');
+			expect(result.code).toContain('"id": 2');
+			expect(result.code).toContain('"name": "Bob"');
+		});
+
+		it('should silently ignore malformed @example JSON', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  /** @example [{ broken json */
+  const users = await http.get('https://api.example.com/users');
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).not.toContain('pinData');
+		});
+
+		it('should round-trip: compile with pinData → decompile → recompile produces same SDK', () => {
+			// Pass 1: simplified → SDK₁
+			const sdk1 = transpileWorkflowJS(`
+onManual(async () => {
+  /** @example [{ id: 1, name: 'Alice' }] */
+  const users = await http.get('https://api.example.com/users');
+  await http.post('https://api.example.com/result', { data: users });
+});
+`);
+			expect(sdk1.errors).toHaveLength(0);
+			expect(sdk1.code).toContain('pinData');
+
+			// Decompile: SDK₁ → simplified₂
+			const decompiled = decompileWorkflowSDK(sdk1.code);
+			expect(decompiled.errors).toHaveLength(0);
+			expect(decompiled.code).toContain('@example');
+
+			// Pass 2: simplified₂ → SDK₂
+			const sdk2 = transpileWorkflowJS(decompiled.code);
+			expect(sdk2.errors).toHaveLength(0);
+
+			// Compare: normalized SDK₁ === normalized SDK₂
+			expect(normalizeSDK(sdk2.code)).toBe(normalizeSDK(sdk1.code));
+		});
+
+		it('should not consume @example for non-IO statements', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  /** @example [{ id: 1 }] */
+  const x = 42;
+  await http.get('https://api.example.com/users');
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			// The @example should not attach to the http call since
+			// there's a non-IO statement between them
+			expect(result.code).not.toContain('pinData');
+		});
+	});
+
+	describe('Phase 18: trigger pin data via @example annotation', () => {
+		it('should emit pinData in trigger config when @example precedes onWebhook', () => {
+			const result = transpileWorkflowJS(`
+/** @example [{ body: { orderId: 123, customer: "Alice" } }] */
+onWebhook({ method: 'POST', path: '/orders' }, async ({ body }) => {
+  await http.post('https://api.example.com/process', body);
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			// pinData must be on the trigger() line, not an HTTP node
+			const triggerLine = result.code.split('\n').find((l: string) => l.includes('trigger('));
+			expect(triggerLine).toContain('pinData');
+			expect(triggerLine).toContain('"orderId":123');
+			expect(triggerLine).toContain('"customer":"Alice"');
+			// The HTTP node should NOT have pinData
+			const httpLine = result.code.split('\n').find((l: string) => l.includes('node('));
+			expect(httpLine).not.toContain('pinData');
+		});
+
+		it('should emit pinData in trigger config when @example precedes onManual', () => {
+			const result = transpileWorkflowJS(`
+/** @example [{ id: 1, name: "Alice" }] */
+onManual(async () => {
+  await http.post('https://api.example.com/process', { test: true });
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			const triggerLine = result.code.split('\n').find((l: string) => l.includes('trigger('));
+			expect(triggerLine).toContain('pinData');
+			expect(triggerLine).toContain('"id":1');
+			expect(triggerLine).toContain('"name":"Alice"');
+		});
+
+		it('should NOT emit pinData when @example precedes onSchedule', () => {
+			const result = transpileWorkflowJS(`
+/** @example [{ id: 1, name: "Alice" }] */
+onSchedule({ every: '1h' }, async () => {
+  await http.get('https://api.example.com/users');
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			const triggerLine = result.code.split('\n').find((l: string) => l.includes('trigger('));
+			expect(triggerLine).not.toContain('pinData');
+		});
+
+		it('should round-trip: trigger pinData compile → decompile → recompile', () => {
+			const sdk1 = transpileWorkflowJS(`
+/** @example [{ id: 1, name: "Alice" }] */
+onManual(async () => {
+  await http.get('https://api.example.com/users');
+});
+`);
+			expect(sdk1.errors).toHaveLength(0);
+			const triggerLine = sdk1.code.split('\n').find((l: string) => l.includes('trigger('));
+			expect(triggerLine).toContain('pinData');
+
+			const decompiled = decompileWorkflowSDK(sdk1.code);
+			expect(decompiled.errors).toHaveLength(0);
+			expect(decompiled.code).toContain('@example');
+			// @example should be before the onManual line
+			const lines = decompiled.code.split('\n');
+			const exampleIdx = lines.findIndex((l: string) => l.includes('@example'));
+			const manualIdx = lines.findIndex((l: string) => l.includes('onManual'));
+			expect(exampleIdx).toBeLessThan(manualIdx);
+
+			const sdk2 = transpileWorkflowJS(decompiled.code);
+			expect(sdk2.errors).toHaveLength(0);
+
+			expect(normalizeSDK(sdk2.code)).toBe(normalizeSDK(sdk1.code));
+		});
+	});
+
 	// ─── Real-world workflow validation ──────────────────────────────────────
 	// Fixture-driven tests: each .txt file in __fixtures__/ contains a title,
 	// input DSL, and expected output separated by === markers. Files with a

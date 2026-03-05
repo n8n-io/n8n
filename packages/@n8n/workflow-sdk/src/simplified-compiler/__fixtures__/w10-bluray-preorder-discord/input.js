@@ -7,6 +7,7 @@ async function checkBlurays() {
 		timeZone: 'America/New_York',
 	});
 
+	/** @example [{ data: "<html><body><table><tr><td>Alien (1979)</td><td>January 15, 2025</td></tr></table></body></html>" }] */
 	const page = await http.get('https://www.blu-ray.com/movies/movies.php?show=newpreorders');
 
 	const links = extractLinks(page);
@@ -24,6 +25,7 @@ async function checkBlurays() {
 	});
 }
 
+/** @example [{ triggered: true }] */
 onManual(async () => {
 	await checkBlurays();
 });

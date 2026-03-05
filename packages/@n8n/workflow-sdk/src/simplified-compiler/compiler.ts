@@ -73,6 +73,7 @@ interface CallbackInfo {
 	triggerOptions: Record<string, unknown>;
 	callbackBody: AcornNode[];
 	callbackParams: string[];
+	pinData?: unknown[];
 }
 
 // ─── IO Call ─────────────────────────────────────────────────────────────────
@@ -100,6 +101,8 @@ interface IOCall {
 	credentials?: { type: string; credential: string };
 	// Error handling
 	onError?: string;
+	// Pin data (mock output)
+	pinData?: unknown[];
 }
 
 // ─── Emitted Node ────────────────────────────────────────────────────────────
@@ -175,6 +178,7 @@ interface TranspilerContext {
 	execCounter: number;
 	tryCatchCounter: number;
 	errorConnections: Array<{ sourceVar: string; catchChainStartVar: string }>;
+	pendingPinData?: unknown[];
 }
 
 // ─── Expression Resolution ──────────────────────────────────────────────────
@@ -249,8 +253,9 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 		}
 	}
 
-	// Step 3: Find onX() callbacks
-	const callbacks = findCallbacks(ast);
+	// Step 3: Find onX() callbacks (with @example pin data parsing)
+	const consumedComments = new Set<number>();
+	const callbacks = findCallbacks(ast, comments, consumedComments);
 	if (callbacks.length === 0) {
 		errors.push({
 			message:
@@ -329,6 +334,7 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 						errors,
 						functionDefs,
 						compiledFunctions,
+						consumedComments,
 					);
 				// First non-trigger node is the pipeline entry point
 				const pipelineNodes = nodes.filter((n) => n.kind !== 'trigger');
@@ -359,6 +365,7 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 			errors,
 			functionDefs,
 			compiledFunctions,
+			consumedComments,
 		);
 		allNodes.push(...nodes);
 		allChains.push(chainExpr);
@@ -414,23 +421,40 @@ function findLegacyTrigger(ast: AcornNode): string | null {
 
 // ─── Callback Detection ──────────────────────────────────────────────────────
 
-function findCallbacks(ast: AcornNode): CallbackInfo[] {
+function findCallbacks(
+	ast: AcornNode,
+	comments: Array<{ type: string; value: string; start: number; end: number }>,
+	consumedComments: Set<number>,
+): CallbackInfo[] {
 	const callbacks: CallbackInfo[] = [];
 	if (!ast.body) return callbacks;
 
+	let prevStmtEnd = 0;
 	for (const stmt of ast.body) {
-		if (stmt.type !== 'ExpressionStatement' || !stmt.expression) continue;
+		if (stmt.type !== 'ExpressionStatement' || !stmt.expression) {
+			prevStmtEnd = stmt.end ?? prevStmtEnd;
+			continue;
+		}
 		const expr = stmt.expression;
-		if (expr.type !== 'CallExpression' || !expr.callee) continue;
+		if (expr.type !== 'CallExpression' || !expr.callee) {
+			prevStmtEnd = stmt.end ?? prevStmtEnd;
+			continue;
+		}
 
 		const callee = expr.callee;
-		if (callee.type !== 'Identifier') continue;
+		if (callee.type !== 'Identifier') {
+			prevStmtEnd = stmt.end ?? prevStmtEnd;
+			continue;
+		}
 
 		const name = callee.name ?? '';
 		const args = expr.arguments ?? [];
 
 		const triggerType = CALLBACK_TO_TRIGGER[name] as CallbackInfo['triggerType'] | undefined;
-		if (!triggerType) continue;
+		if (!triggerType) {
+			prevStmtEnd = stmt.end ?? prevStmtEnd;
+			continue;
+		}
 
 		let callbackFn: AcornNode | undefined;
 		let triggerOptions: Record<string, unknown> = {};
@@ -442,14 +466,49 @@ function findCallbacks(ast: AcornNode): CallbackInfo[] {
 			callbackFn = args[1];
 		}
 
-		if (!callbackFn) continue;
+		if (!callbackFn) {
+			prevStmtEnd = stmt.end ?? prevStmtEnd;
+			continue;
+		}
 
 		const fnBody = extractFunctionBody(callbackFn);
-		if (!fnBody) continue;
+		if (!fnBody) {
+			prevStmtEnd = stmt.end ?? prevStmtEnd;
+			continue;
+		}
 
 		const cbParams = extractCallbackParams(callbackFn);
 
-		callbacks.push({ triggerType, triggerOptions, callbackBody: fnBody, callbackParams: cbParams });
+		// Parse @example pin data annotation for non-schedule triggers.
+		// Only match comments between previous top-level statement and current one
+		// to avoid consuming comments inside function bodies.
+		let pinData: unknown[] | undefined;
+		if (triggerType !== 'schedule') {
+			const exampleComments = comments.filter(
+				(c) =>
+					c.type === 'Block' &&
+					c.start >= prevStmtEnd &&
+					c.end <= stmt.start &&
+					c.value.includes('@example') &&
+					!consumedComments.has(c.start),
+			);
+			if (exampleComments.length > 0) {
+				const comment = exampleComments[exampleComments.length - 1];
+				const parsed = parseExampleAnnotation(comment.value);
+				if (parsed) pinData = parsed;
+				for (const c of exampleComments) consumedComments.add(c.start);
+			}
+		}
+
+		callbacks.push({
+			triggerType,
+			triggerOptions,
+			callbackBody: fnBody,
+			callbackParams: cbParams,
+			pinData,
+		});
+
+		prevStmtEnd = stmt.end ?? prevStmtEnd;
 	}
 
 	return callbacks;
@@ -1023,6 +1082,7 @@ function transpileCallback(
 	errors: CompilerError[],
 	functionDefs?: Map<string, FunctionDef>,
 	compiledFunctions?: Map<string, CompiledFunction>,
+	initialConsumedComments?: Set<number>,
 ): {
 	nodes: EmittedNode[];
 	chainExpr: string;
@@ -1049,7 +1109,7 @@ function transpileCallback(
 		callbackParams: cb.callbackParams,
 		errors,
 		hasOnErrorAnnotation: false,
-		consumedComments: new Set(),
+		consumedComments: initialConsumedComments ? new Set(initialConsumedComments) : new Set(),
 		inLoopBody: false,
 		loopCounter: nodeOffset,
 		functionDefs: functionDefs ?? new Map(),
@@ -1124,6 +1184,23 @@ function walkStatements(
 			for (const c of stmtComments) ctx.consumedComments.add(c.start);
 		}
 
+		// Check for @example pin data annotation in preceding block comments
+		const exampleComments = comments.filter(
+			(c) =>
+				c.type === 'Block' &&
+				c.end <= stmt.start &&
+				c.value.includes('@example') &&
+				!ctx.consumedComments.has(c.start),
+		);
+		if (exampleComments.length > 0) {
+			const comment = exampleComments[exampleComments.length - 1];
+			const pinData = parseExampleAnnotation(comment.value);
+			if (pinData) {
+				ctx.pendingPinData = pinData;
+			}
+			for (const c of exampleComments) ctx.consumedComments.add(c.start);
+		}
+
 		const ioCall = extractIOCall(stmt, ctx.source);
 		if (ioCall) {
 			// Apply @onError annotation
@@ -1131,9 +1208,17 @@ function walkStatements(
 				ioCall.onError = 'continueRegularOutput';
 				ctx.hasOnErrorAnnotation = false;
 			}
+			// Apply @example pin data annotation
+			if (ctx.pendingPinData) {
+				ioCall.pinData = ctx.pendingPinData;
+				ctx.pendingPinData = undefined;
+			}
 			processIOCall(ctx, ioCall);
 			continue;
 		}
+
+		// Clear pending pin data if statement was not an IO call
+		ctx.pendingPinData = undefined;
 
 		// Check for sub-function calls: await funcName(args) or const x = await funcName(args)
 		const fnCall = extractFunctionCall(stmt, ctx);
@@ -2694,6 +2779,43 @@ function findReferencedVars(code: string, varSourceMap: Map<string, string>): Va
 	return refs;
 }
 
+/**
+ * Parse a JSDoc @example annotation value as a JSON array.
+ * Input is the raw block comment value (everything between /* and *​/).
+ * Supports both strict JSON and relaxed JS object literals (unquoted keys, single-quoted values).
+ * Returns the parsed array or null if malformed.
+ */
+function parseExampleAnnotation(commentValue: string): unknown[] | null {
+	// Strip JSDoc * prefixes from each line and join
+	const cleaned = commentValue
+		.split('\n')
+		.map((line) => line.replace(/^\s*\*\s?/, ''))
+		.join('\n');
+
+	// Find @example tag and extract everything after it
+	const idx = cleaned.indexOf('@example');
+	if (idx === -1) return null;
+
+	let jsonStr = cleaned.slice(idx + '@example'.length).trim();
+	if (!jsonStr) return null;
+
+	// Normalize relaxed JS syntax to valid JSON:
+	// 1. Quote unquoted keys: { key: value } → { "key": value }
+	jsonStr = jsonStr.replace(/([{,]\s*)([a-zA-Z_$][\w$]*)(\s*:)/g, '$1"$2"$3');
+	// 2. Replace single-quoted strings with double-quoted
+	jsonStr = jsonStr.replace(/'([^'\\]*(?:\\.[^'\\]*)*)'/g, '"$1"');
+
+	try {
+		const parsed: unknown = JSON.parse(jsonStr);
+		if (Array.isArray(parsed)) return parsed;
+		// Wrap single objects in array
+		if (typeof parsed === 'object' && parsed !== null) return [parsed];
+		return null;
+	} catch {
+		return null;
+	}
+}
+
 /** Compute the tab indentation at position `pos` by scanning backwards. */
 function getBaseIndent(fullSource: string, pos: number): number {
 	let indent = 0;
@@ -2903,10 +3025,15 @@ function generateTriggerSDK(cb: CallbackInfo, varName: string): EmittedNode {
 		configParams.responseMode = 'responseNode';
 	}
 
-	const paramsStr =
-		Object.keys(configParams).length > 0 ? `parameters: ${JSON.stringify(configParams)}` : '';
+	const configParts: string[] = [];
+	if (Object.keys(configParams).length > 0) {
+		configParts.push(`parameters: ${JSON.stringify(configParams)}`);
+	}
+	if (cb.pinData) {
+		configParts.push(`pinData: ${JSON.stringify(cb.pinData)}`);
+	}
 
-	const configBody = paramsStr ? `{ ${paramsStr} }` : '{}';
+	const configBody = configParts.length > 0 ? `{ ${configParts.join(', ')} }` : '{}';
 	const nodeName = 'Start';
 	const sdkCode = `const ${varName} = trigger({ type: '${triggerInfo.type}', version: ${triggerInfo.version}, config: ${configBody} });`;
 
@@ -2992,6 +3119,9 @@ function generateHttpSDK(
 	if (io.onError) {
 		configObj.onError = io.onError;
 	}
+	if (io.pinData) {
+		configObj.pinData = io.pinData;
+	}
 
 	const configStr = JSON.stringify(configObj, null, 2)
 		.split('\n')
@@ -3067,6 +3197,7 @@ function generateAiSDK(io: IOCall, varName: string): EmittedNode {
 
 	const subnodeBlock = subnodeParts.join(',\n');
 	const onErrorStr = io.onError ? `,\n    onError: '${io.onError}'` : '';
+	const pinDataStr = io.pinData ? `,\n    pinData: ${JSON.stringify(io.pinData)}` : '';
 
 	const hasOutputParser = io.aiOutputParser ? ',\n      hasOutputParser: true' : '';
 
@@ -3082,7 +3213,7 @@ function generateAiSDK(io: IOCall, varName: string): EmittedNode {
     subnodes: {
 ${subnodeBlock}
     },
-    executeOnce: true${onErrorStr}
+    executeOnce: true${onErrorStr}${pinDataStr}
   }
 });`;
 

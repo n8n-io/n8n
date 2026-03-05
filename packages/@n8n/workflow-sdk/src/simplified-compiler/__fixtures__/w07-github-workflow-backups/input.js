@@ -10,6 +10,7 @@ onSchedule({ every: '24h' }, async () => {
 
 	const config = { owner: 'myuser', repo: 'n8n-workflows', path: 'workflows' };
 
+	/** @example [{ id: 1, name: "Daily Report", updatedAt: "2024-01-15T10:00:00Z", nodes: [] }, { id: 2, name: "Lead Sync", updatedAt: "2024-01-14T08:00:00Z", nodes: [] }] */
 	const workflows = await http.get('http://localhost:5678/api/v1/workflows', {
 		auth: { type: 'bearer', credential: 'n8n API' },
 	});

@@ -1,4 +1,5 @@
 onSchedule({ every: '1m' }, async () => {
+	/** @example [{ id: "evt_001", status: "confirmed", summary: "Team Standup", start: { dateTime: "2024-01-15T10:00:00Z" } }] */
 	const events = await http.get('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
 		auth: { type: 'oauth2', credential: 'Google Calendar' },
 	});

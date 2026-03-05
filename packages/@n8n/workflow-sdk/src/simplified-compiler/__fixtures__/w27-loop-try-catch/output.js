@@ -106,7 +106,19 @@ const http1 = node({
       "url": "https://jsonplaceholder.typicode.com/users",
       "options": {}
     },
-    "executeOnce": true
+    "executeOnce": true,
+    "pinData": [
+      {
+        "id": 1,
+        "name": "Leanne Graham",
+        "email": "leanne@april.biz"
+      },
+      {
+        "id": 2,
+        "name": "Ervin Howell",
+        "email": "ervin@melissa.tv"
+      }
+    ]
   }
 });
 

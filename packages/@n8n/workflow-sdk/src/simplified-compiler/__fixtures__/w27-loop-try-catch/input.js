@@ -1,4 +1,5 @@
 onSchedule({ every: '1h' }, async () => {
+	/** @example [{ id: 1, name: "Leanne Graham", email: "leanne@april.biz" }, { id: 2, name: "Ervin Howell", email: "ervin@melissa.tv" }] */
 	const users = await http.get('https://jsonplaceholder.typicode.com/users');
 
 	const active = users.filter((u) => u.id <= 5);

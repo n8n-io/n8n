@@ -22,7 +22,7 @@ const notifyTeamWorkflow = workflow('notifyTeam', 'notifyTeam')
   .add(fn_notifyTeam_t0.to(fn_notifyTeam_http1));
 
 // --- Main workflow ---
-const t0 = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
+const t0 = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { pinData: [{"triggered":true}] } });
 
 const http1 = node({
   type: 'n8n-nodes-base.httpRequest', version: 4.2,
@@ -33,7 +33,14 @@ const http1 = node({
       "url": "https://api.example.com/status",
       "options": {}
     },
-    "executeOnce": true
+    "executeOnce": true,
+    "pinData": [
+      {
+        "summary": "All systems operational",
+        "uptime": "99.97%",
+        "lastIncident": "2024-01-10"
+      }
+    ]
   }
 });
 

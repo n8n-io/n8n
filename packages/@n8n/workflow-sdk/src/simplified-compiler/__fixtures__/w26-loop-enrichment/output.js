@@ -59,7 +59,27 @@ const http1 = node({
       "url": "https://jsonplaceholder.typicode.com/todos",
       "options": {}
     },
-    "executeOnce": true
+    "executeOnce": true,
+    "pinData": [
+      {
+        "userId": 1,
+        "id": 1,
+        "title": "delectus aut autem",
+        "completed": false
+      },
+      {
+        "userId": 3,
+        "id": 5,
+        "title": "laboriosam mollitia",
+        "completed": true
+      },
+      {
+        "userId": 2,
+        "id": 8,
+        "title": "quo adipisci enim",
+        "completed": false
+      }
+    ]
   }
 });
 

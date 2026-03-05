@@ -1,3 +1,4 @@
+/** @example [{ body: { message: { chat: { id: 123456 }, text: "Hello bot", voice: null } } }] */
 onWebhook({ method: 'POST', path: '/telegram-bot' }, async ({ body }) => {
 	const msg = body;
 

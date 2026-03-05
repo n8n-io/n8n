@@ -9,7 +9,13 @@ const http1 = node({
       "url": "https://registry.npmjs.org/n8n/latest",
       "options": {}
     },
-    "executeOnce": true
+    "executeOnce": true,
+    "pinData": [
+      {
+        "version": "1.62.1",
+        "name": "n8n"
+      }
+    ]
   }
 });
 
@@ -24,7 +30,14 @@ const http2 = node({
       "authentication": "genericCredentialType",
       "genericAuthType": "httpHeaderAuth"
     },
-    "executeOnce": true
+    "executeOnce": true,
+    "pinData": [
+      {
+        "data": {
+          "versionCli": "1.61.0"
+        }
+      }
+    ]
   , credentials: { httpHeaderAuth: { name: 'n8n API', id: '' } }
 }
 });

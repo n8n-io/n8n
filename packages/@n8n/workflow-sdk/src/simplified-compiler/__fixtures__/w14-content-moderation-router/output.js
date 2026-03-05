@@ -1,4 +1,4 @@
-const t0 = trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: { parameters: {"httpMethod":"POST","path":"/moderate","responseMode":"responseNode"} } });
+const t0 = trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: { parameters: {"httpMethod":"POST","path":"/moderate","responseMode":"responseNode"}, pinData: [{"body":{"action":"approve","postId":"post_789","moderator":"admin@cms.com"}}] } });
 
 const http1 = node({
   type: 'n8n-nodes-base.httpRequest', version: 4.2,

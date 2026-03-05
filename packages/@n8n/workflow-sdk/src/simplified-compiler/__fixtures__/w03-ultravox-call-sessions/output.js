@@ -1,4 +1,4 @@
-const t0 = trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: { parameters: {"httpMethod":"POST","path":"/call-session","responseMode":"responseNode"} } });
+const t0 = trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: { parameters: {"httpMethod":"POST","path":"/call-session","responseMode":"responseNode"}, pinData: [{"body":{"callerId":"+15551234567","department":"support"}}] } });
 
 const http1 = node({
   type: 'n8n-nodes-base.httpRequest', version: 4.2,
@@ -15,7 +15,14 @@ const http1 = node({
       "authentication": "genericCredentialType",
       "genericAuthType": "httpHeaderAuth"
     },
-    "executeOnce": true
+    "executeOnce": true,
+    "pinData": [
+      {
+        "callId": "call_abc123",
+        "joinUrl": "wss://voice.ultravox.ai/session/abc123",
+        "status": "created"
+      }
+    ]
   , credentials: { httpHeaderAuth: { name: 'UltraVox API', id: '' } }
 }
 });

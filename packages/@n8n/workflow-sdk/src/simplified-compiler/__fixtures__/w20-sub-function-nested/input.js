@@ -8,6 +8,7 @@ async function processAndNotify(itemId) {
 	await http.post('https://slack.com/notify', { data: enriched });
 }
 
+/** @example [{ triggered: true }] */
 onManual(async () => {
 	await processAndNotify('item1');
 });

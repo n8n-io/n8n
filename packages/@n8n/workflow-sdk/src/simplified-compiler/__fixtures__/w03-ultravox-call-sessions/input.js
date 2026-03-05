@@ -1,4 +1,6 @@
+/** @example [{ body: { callerId: "+15551234567", department: "support" } }] */
 onWebhook({ method: 'POST', path: '/call-session' }, async ({ body, respond }) => {
+	/** @example [{ callId: "call_abc123", joinUrl: "wss://voice.ultravox.ai/session/abc123", status: "created" }] */
 	const session = await http.post(
 		'https://api.ultravox.ai/api/calls',
 		{

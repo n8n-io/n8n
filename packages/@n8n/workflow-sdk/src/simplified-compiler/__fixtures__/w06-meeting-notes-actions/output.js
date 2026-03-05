@@ -1,4 +1,4 @@
-const t0 = trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: { parameters: {"httpMethod":"POST","path":"/google-meet-automation","responseMode":"responseNode"} } });
+const t0 = trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: { parameters: {"httpMethod":"POST","path":"/google-meet-automation","responseMode":"responseNode"}, pinData: [{"body":{"meetingTitle":"Q3 Planning","meetingNotes":"Discussed roadmap priorities and budget allocation"}}] } });
 
 const respond1 = node({
   type: 'n8n-nodes-base.respondToWebhook', version: 1.1,
@@ -53,7 +53,8 @@ const ai1 = node({
         config: { parameters: {"schema":{"action_items":"array","follow_up_emails":"array","summary":"string"}} }
       })
     },
-    executeOnce: true
+    executeOnce: true,
+    pinData: [{"action_items":[{"description":"Review Q3 budget"},{"description":"Update roadmap"}],"follow_up_emails":[{"recipient":"team@company.com","subject":"Meeting Action Items"}],"summary":"Discussed Q3 priorities and roadmap updates"}]
   }
 });
 

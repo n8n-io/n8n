@@ -1,4 +1,4 @@
-const t0 = trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: { parameters: {"httpMethod":"POST","path":"/support","responseMode":"responseNode"} } });
+const t0 = trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: { parameters: {"httpMethod":"POST","path":"/support","responseMode":"responseNode"}, pinData: [{"body":{"question":"How do I reset my password?","userId":"user_42"}}] } });
 
 const ai1 = node({
   type: '@n8n/n8n-nodes-langchain.agent', version: 3.1,
@@ -26,7 +26,8 @@ const ai1 = node({
         config: { parameters: {"contextWindowLength":10} }
       })
     },
-    executeOnce: true
+    executeOnce: true,
+    pinData: [{"output":"Based on our knowledge base, you can resolve this by going to Settings > Account > Reset Password. If the issue persists, please contact support@company.com."}]
   }
 });
 

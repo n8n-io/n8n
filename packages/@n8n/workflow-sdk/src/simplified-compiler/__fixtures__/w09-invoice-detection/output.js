@@ -11,7 +11,17 @@ const http1 = node({
       "authentication": "genericCredentialType",
       "genericAuthType": "oAuth2Api"
     },
-    "executeOnce": true
+    "executeOnce": true,
+    "pinData": [
+      {
+        "id": "msg_001",
+        "threadId": "thread_001",
+        "labelIds": [
+          "UNREAD",
+          "INBOX"
+        ]
+      }
+    ]
   , credentials: { oAuth2Api: { name: 'Gmail', id: '' } }
 }
 });
@@ -37,7 +47,8 @@ const ai2 = node({
       })
     },
     executeOnce: true,
-    onError: 'continueRegularOutput'
+    onError: 'continueRegularOutput',
+    pinData: [{"is_invoice":true,"due_date":"2024-03-15","amount_due":1500,"sender":"vendor@company.com","subject":"Invoice #INV-2024-0042"}]
   }
 });
 

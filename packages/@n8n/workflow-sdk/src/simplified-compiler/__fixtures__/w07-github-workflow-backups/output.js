@@ -139,7 +139,21 @@ const http2 = node({
       "authentication": "genericCredentialType",
       "genericAuthType": "httpHeaderAuth"
     },
-    "executeOnce": true
+    "executeOnce": true,
+    "pinData": [
+      {
+        "id": 1,
+        "name": "Daily Report",
+        "updatedAt": "2024-01-15T10:00:00Z",
+        "nodes": []
+      },
+      {
+        "id": 2,
+        "name": "Lead Sync",
+        "updatedAt": "2024-01-14T08:00:00Z",
+        "nodes": []
+      }
+    ]
   , credentials: { httpHeaderAuth: { name: 'n8n API', id: '' } }
 }
 });

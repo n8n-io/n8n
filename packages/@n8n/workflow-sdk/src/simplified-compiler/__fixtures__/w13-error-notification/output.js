@@ -1,4 +1,4 @@
-const t0 = trigger({ type: 'n8n-nodes-base.errorTrigger', version: 1, config: {} });
+const t0 = trigger({ type: 'n8n-nodes-base.errorTrigger', version: 1, config: { pinData: [{"error":{"message":"Connection timeout"},"workflow":{"name":"Data Sync","id":"wf_123"}}] } });
 
 const http1 = node({
   type: 'n8n-nodes-base.httpRequest', version: 4.2,

@@ -1,4 +1,5 @@
 onSchedule({ every: '1d' }, async () => {
+	/** @example [{ values: [["John", "john@test.com", "New"], ["Jane", "jane@test.com", "Contacted"], ["Bob", "bob@test.com", "New"]] }] */
 	const leads = await http.get(
 		'https://sheets.googleapis.com/v4/spreadsheets/SPREADSHEET_ID/values/Sheet1',
 		{ auth: { type: 'oauth2', credential: 'Google Sheets' } },

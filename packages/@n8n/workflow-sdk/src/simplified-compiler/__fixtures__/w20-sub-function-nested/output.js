@@ -75,7 +75,7 @@ const processAndNotifyWorkflow = workflow('processAndNotify', 'processAndNotify'
   .add(fn_processAndNotify_t0.to(fn_processAndNotify_set1).to(fn_processAndNotify_exec1).to(fn_processAndNotify_http1));
 
 // --- Main workflow ---
-const t0 = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
+const t0 = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { pinData: [{"triggered":true}] } });
 
 const set1 = node({
   type: 'n8n-nodes-base.set', version: 3.4,
