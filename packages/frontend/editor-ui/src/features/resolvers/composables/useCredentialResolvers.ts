@@ -95,8 +95,9 @@ export function useCredentialResolvers() {
 				rootStore.restApiContext,
 				resolver.id,
 			);
-		} catch {
+		} catch (error) {
 			// Fall back to standard confirm dialog if fetching affected workflows fails
+			console.warn('Failed to fetch affected workflows for resolver deletion', error);
 		}
 
 		const deleteConfirmed = await message.confirm(

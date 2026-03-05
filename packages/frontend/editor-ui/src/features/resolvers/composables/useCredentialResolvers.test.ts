@@ -250,7 +250,7 @@ describe('useCredentialResolvers', () => {
 			// Should NOT show the 6th workflow directly
 			expect(confirmMessage).not.toContain('<li><strong>Workflow 5</strong></li>');
 			// Should show "and 3 more..."
-			expect(confirmMessage).toContain('3');
+			expect(confirmMessage).toContain('and 3 more');
 		});
 	});
 
