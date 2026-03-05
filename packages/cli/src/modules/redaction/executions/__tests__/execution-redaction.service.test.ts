@@ -102,6 +102,7 @@ describe('ExecutionRedactionService', () => {
 			: {};
 
 		return {
+			id: 'execution-123',
 			mode,
 			workflowId,
 			data: {

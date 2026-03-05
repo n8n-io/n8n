@@ -101,7 +101,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 			for (const execution of executions) {
 				this.eventService.emit('execution-data-revealed', {
 					user: options.user,
-					executionId: (execution as { id?: string }).id ?? '',
+					executionId: execution.id ?? '',
 					workflowId: execution.workflowId,
 					ipAddress: options.ipAddress ?? '',
 					userAgent: options.userAgent ?? '',
