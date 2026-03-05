@@ -6,10 +6,10 @@ import type { INodeProperties } from 'n8n-workflow';
 
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
-import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
+import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import type { NodeSetupState } from '@/features/setupPanel/setupPanel.types';
-import type { INodeUi, IUpdateInformation } from '@/Interface';
+import type { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useCardNodeHighlight } from '@/features/setupPanel/composables/useCardNodeHighlight';
@@ -145,23 +145,25 @@ const telemetryPayload = computed(() => {
 	};
 });
 
-const onCredentialSelected = (credentialId: string) => {
+const onCredentialSelected = (updateInfo: INodeUpdatePropertiesInformation) => {
 	if (!props.state.credentialType) return;
 	setupCard.value?.markInteracted();
-	emit('credentialSelected', {
-		credentialType: props.state.credentialType,
-		credentialId,
-		nodeName: props.state.node.name,
-	});
-};
 
-const onCredentialDeselected = () => {
-	if (!props.state.credentialType) return;
-	setupCard.value?.markInteracted();
-	emit('credentialDeselected', {
-		credentialType: props.state.credentialType,
-		nodeName: props.state.node.name,
-	});
+	const credentialData = updateInfo.properties.credentials?.[props.state.credentialType];
+	const credentialId = typeof credentialData === 'string' ? undefined : credentialData?.id;
+
+	if (credentialId) {
+		emit('credentialSelected', {
+			credentialType: props.state.credentialType,
+			credentialId,
+			nodeName: props.state.node.name,
+		});
+	} else {
+		emit('credentialDeselected', {
+			credentialType: props.state.credentialType,
+			nodeName: props.state.node.name,
+		});
+	}
 };
 
 const onValueChanged = (parameterData: IUpdateInformation) => {
@@ -261,41 +263,28 @@ const cardComplete = computed(() => {
 		</template>
 		<div v-if="!isTriggerOnly" :class="$style.content">
 			<div v-if="state.showCredentialPicker" :class="$style['credential-container']">
-				<div :class="$style['credential-label-row']">
-					<label
-						data-test-id="node-setup-card-label"
-						:for="`credential-picker-${state.credentialType}`"
-						:class="$style['credential-label']"
+				<N8nTooltip v-if="nodeNames.length > 1" placement="top">
+					<template #content>
+						{{ nodeNamesTooltip }}
+					</template>
+					<span
+						data-test-id="node-setup-card-nodes-hint"
+						:class="$style['nodes-hint']"
+						@mouseenter="onSharedNodesHintEnter"
+						@mouseleave="onSharedNodesHintLeave"
 					>
-						{{ i18n.baseText('setupPanel.credentialLabel') }}
-					</label>
-					<N8nTooltip v-if="nodeNames.length > 1" placement="top">
-						<template #content>
-							{{ nodeNamesTooltip }}
-						</template>
-						<span
-							data-test-id="node-setup-card-nodes-hint"
-							:class="$style['nodes-hint']"
-							@mouseenter="onSharedNodesHintEnter"
-							@mouseleave="onSharedNodesHintLeave"
-						>
-							{{
-								i18n.baseText('setupPanel.usedInNodes', {
-									interpolate: { count: String(nodeNames.length) },
-								})
-							}}
-						</span>
-					</N8nTooltip>
-				</div>
-				<CredentialPicker
-					create-button-variant="subtle"
-					:class="$style['credential-picker']"
-					:app-name="state.credentialDisplayName ?? ''"
-					:credential-type="state.credentialType ?? ''"
-					:selected-credential-id="state.selectedCredentialId ?? null"
-					edit-icon-only
+						{{
+							i18n.baseText('setupPanel.usedInNodes', {
+								interpolate: { count: String(nodeNames.length) },
+							})
+						}}
+					</span>
+				</N8nTooltip>
+				<NodeCredentials
+					:node="state.node"
+					:override-cred-type="state.credentialType ?? ''"
+					hide-issues
 					@credential-selected="onCredentialSelected"
-					@credential-deselected="onCredentialDeselected"
 				/>
 			</div>
 
@@ -327,17 +316,6 @@ const cardComplete = computed(() => {
 	gap: var(--spacing--3xs);
 }
 
-.credential-label-row {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-}
-
-.credential-label {
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--shade-1);
-}
-
 .nodes-hint {
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--tint-1);
@@ -347,9 +325,5 @@ const cardComplete = computed(() => {
 	.credential-container:hover & {
 		display: flex;
 	}
-}
-
-.credential-picker {
-	flex: 1;
 }
 </style>
