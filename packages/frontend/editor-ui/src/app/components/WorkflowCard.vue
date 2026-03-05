@@ -6,7 +6,6 @@ import {
 	VIEWS,
 	WORKFLOW_SHARE_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
-	WORKFLOW_DEPENDENCIES_MODAL_KEY,
 } from '@/app/constants';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
 import { useMessage } from '@/app/composables/useMessage';
@@ -308,7 +307,6 @@ const isResolverMissing = computed(() => {
 });
 
 const workflowHasDependencies = computed(() => hasDependencies(props.data.id));
-const dependencyCount = computed(() => getDependencies(props.data.id)?.length ?? 0);
 
 async function onClick(event?: KeyboardEvent | PointerEvent) {
 	if (event?.ctrlKey || event?.metaKey) {
@@ -555,17 +553,6 @@ const fetchHiddenBreadCrumbsItems = async () => {
 	}
 };
 
-function openDependenciesModal() {
-	uiStore.openModalWithData({
-		name: WORKFLOW_DEPENDENCIES_MODAL_KEY,
-		data: {
-			workflowId: props.data.id,
-			workflowName: props.data.name,
-			dependencies: getDependencies(props.data.id) ?? [],
-		},
-	});
-}
-
 function moveResource() {
 	uiStore.openModalWithData({
 		name: PROJECT_MOVE_RESOURCE_MODAL,
@@ -684,14 +671,8 @@ const tags = computed(
 			<div :class="$style.cardActions" @click.stop>
 				<DependencyPill
 					v-if="true || workflowHasDependencies"
-					:count="dependencyCount"
-					:tooltip-text="
-						locale.baseText('workflows.dependencies.tooltip', {
-							interpolate: { count: String(dependencyCount) },
-						})
-					"
+					:dependencies="getDependencies(data.id) ?? []"
 					data-test-id="workflow-card-dependencies"
-					@click="openDependenciesModal"
 				/>
 				<ProjectCardBadge
 					v-if="showOwnershipBadge"

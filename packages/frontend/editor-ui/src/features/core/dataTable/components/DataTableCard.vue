@@ -13,8 +13,6 @@ import type { DataTableResource } from '../types';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useResourceDependents } from '@/app/composables/useResourceDependents';
-import { useUIStore } from '@/app/stores/ui.store';
-import { RESOURCE_DEPENDENTS_MODAL_KEY } from '@/app/constants';
 
 type Props = {
 	dataTable: DataTableResource;
@@ -25,7 +23,6 @@ type Props = {
 const i18n = useI18n();
 const dataTableStore = useDataTableStore();
 const projectsStore = useProjectsStore();
-const uiStore = useUIStore();
 const { hasDependents, getDependents } = useResourceDependents();
 
 const props = withDefaults(defineProps<Props>(), {
@@ -50,17 +47,15 @@ const getDataTableSize = computed(() => {
 });
 
 const dataTableHasDependents = computed(() => hasDependents(props.dataTable.id));
-const dependentCount = computed(() => getDependents(props.dataTable.id)?.length ?? 0);
-
-function openDependentsModal() {
-	uiStore.openModalWithData({
-		name: RESOURCE_DEPENDENTS_MODAL_KEY,
-		data: {
-			resourceName: props.dataTable.name,
-			dependents: getDependents(props.dataTable.id) ?? [],
-		},
-	});
-}
+const dependentDependencies = computed(
+	() =>
+		getDependents(props.dataTable.id)?.map((d) => ({
+			type: 'workflowParent',
+			id: d.id,
+			name: d.name,
+			projectId: d.projectId,
+		})) ?? [],
+);
 </script>
 <template>
 	<div data-test-id="data-table-card">
@@ -135,14 +130,8 @@ function openDependentsModal() {
 					<div :class="$style['card-actions']" @click.stop>
 						<DependencyPill
 							v-if="dataTableHasDependents"
-							:count="dependentCount"
-							:tooltip-text="
-								i18n.baseText('resourceDependents.tooltip', {
-									interpolate: { count: String(dependentCount) },
-								})
-							"
+							:dependencies="dependentDependencies"
 							data-test-id="data-table-card-dependents"
-							@click="openDependentsModal"
 						/>
 						<ProjectCardBadge
 							v-if="props.showOwnershipBadge"

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import dateformat from 'dateformat';
-import { MODAL_CONFIRM, RESOURCE_DEPENDENTS_MODAL_KEY } from '@/app/constants';
+import { MODAL_CONFIRM } from '@/app/constants';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
 import { useResourceDependents } from '@/app/composables/useResourceDependents';
 import { useMessage } from '@/app/composables/useMessage';
@@ -95,20 +95,18 @@ const formattedCreatedAtDate = computed(() => {
 });
 
 const credentialHasDependents = computed(() => hasDependents(props.data.id));
-const dependentCount = computed(() => getDependents(props.data.id)?.length ?? 0);
+const dependentDependencies = computed(
+	() =>
+		getDependents(props.data.id)?.map((d) => ({
+			type: 'workflowParent',
+			id: d.id,
+			name: d.name,
+			projectId: d.projectId,
+		})) ?? [],
+);
 
 function onClick() {
 	emit('click', props.data.id);
-}
-
-function openDependentsModal() {
-	uiStore.openModalWithData({
-		name: RESOURCE_DEPENDENTS_MODAL_KEY,
-		data: {
-			resourceName: props.data.name,
-			dependents: getDependents(props.data.id) ?? [],
-		},
-	});
 }
 
 async function onAction(action: string) {
@@ -204,14 +202,8 @@ function moveResource() {
 			<div :class="$style.cardActions" @click.stop>
 				<DependencyPill
 					v-if="credentialHasDependents"
-					:count="dependentCount"
-					:tooltip-text="
-						locale.baseText('resourceDependents.tooltip', {
-							interpolate: { count: String(dependentCount) },
-						})
-					"
+					:dependencies="dependentDependencies"
 					data-test-id="credential-card-dependents"
-					@click="openDependentsModal"
 				/>
 				<ProjectCardBadge
 					:class="$style.cardBadge"

@@ -3707,6 +3707,8 @@
 	"workflows.dependencies.type.dataTables": "Data Tables",
 	"workflows.dependencies.type.subWorkflows": "Sub-workflows",
 	"workflows.dependencies.type.parentWorkflows": "Used by workflows",
+	"workflows.dependencies.search.placeholder": "Search...",
+	"workflows.dependencies.search.empty": "No matching dependencies",
 	"resourceDependents.tooltip": "Used by {count} workflows",
 	"resourceDependents.modal.title": "Used by workflows",
 	"resourceDependents.type.workflows": "Workflows",
