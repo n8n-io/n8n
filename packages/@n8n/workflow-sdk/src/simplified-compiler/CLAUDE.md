@@ -214,7 +214,7 @@ Validates existing fixtures through the full compilation pipeline (transpile, ge
 
 ## Round-Trip Coverage
 
-23/24 fixtures pass round-trip (96%). W10 is skipped due to a cosmetic Code node jsCode indentation mismatch in multi-line object literals (not a structural issue — the forward compilation produces correct Execute Workflow sub-functions).
+24/24 fixtures pass round-trip (100%). W10 indentation bug was fixed by preserving relative indentation in `emitSubFunctionDeclaration` (was using `line.trim()` which stripped all leading whitespace).
 
 ## Sub-Function Compiler Architecture
 
@@ -272,6 +272,12 @@ The compiler supports three cases for `try { ... } catch { ... }`:
 | 1 IO node | empty `catch {}` | Mark node with `onError: continueErrorOutput`, no error connection |
 | 1 IO node | non-empty | Mark node with `onError: continueErrorOutput` + `.onError(catchChain)` |
 | 2+ IO nodes | any | Wrap try body in `__tryCatch_N` sub-workflow, Execute Workflow node with `.onError(catchChain)` if catch non-empty |
+
+### Error Connection Serialization (`main[1]` vs `error`)
+- **`continueErrorOutput` nodes**: Error connections use `main` connection type at **output index 1** (not `error` connection type). This matches n8n's runtime expectation: success at `main[0]`, error at `main[1]`.
+- **Regular error connections** (e.g., IfElseBuilder): Use `error` connection type at output index 0 (separate from `main`).
+- **Builder's `.onError()`** (`node-builder.ts`): Automatically checks `config.onError === 'continueErrorOutput'` to determine which pattern to use.
+- **Decompiler normalization**: `semantic-registry.ts:getOutputName()` normalizes `main[1]` → `'error'` for `continueErrorOutput` nodes, so the decompiler sees a uniform representation.
 
 ### Compiler Side
 - **`processTryStatement()`**: Three-way branching based on `countIOInBody()` and whether catch body has statements

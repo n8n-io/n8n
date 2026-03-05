@@ -711,4 +711,74 @@ describe('Node Builder', () => {
 			expect(mergeNode.config.position).toEqual([100, 200]);
 		});
 	});
+
+	describe('onError()', () => {
+		it('should use main connectionType at outputIndex 1 when node has continueErrorOutput', () => {
+			const source = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: {
+					name: 'HTTP Request',
+					onError: 'continueErrorOutput',
+				},
+			});
+			const errorHandler = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Error Handler' },
+			});
+
+			source.onError(errorHandler);
+
+			const connections = source.getConnections();
+			expect(connections).toHaveLength(1);
+			expect(connections[0].connectionType).toBe('main');
+			expect(connections[0].outputIndex).toBe(1);
+			expect(connections[0].target).toBe(errorHandler);
+		});
+
+		it('should use error connectionType at outputIndex 0 when node has no continueErrorOutput', () => {
+			const source = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'HTTP Request' },
+			});
+			const errorHandler = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Error Handler' },
+			});
+
+			source.onError(errorHandler);
+
+			const connections = source.getConnections();
+			expect(connections).toHaveLength(1);
+			expect(connections[0].connectionType).toBe('error');
+			expect(connections[0].outputIndex).toBe(0);
+		});
+
+		it('should use main connectionType for executeWorkflow node with continueErrorOutput', () => {
+			const source = node({
+				type: 'n8n-nodes-base.executeWorkflow',
+				version: 1.3,
+				config: {
+					name: 'Execute Workflow',
+					onError: 'continueErrorOutput',
+				},
+			});
+			const errorHandler = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Error Handler' },
+			});
+
+			source.onError(errorHandler);
+
+			const connections = source.getConnections();
+			expect(connections).toHaveLength(1);
+			expect(connections[0].connectionType).toBe('main');
+			expect(connections[0].outputIndex).toBe(1);
+			expect(connections[0].target).toBe(errorHandler);
+		});
+	});
 });

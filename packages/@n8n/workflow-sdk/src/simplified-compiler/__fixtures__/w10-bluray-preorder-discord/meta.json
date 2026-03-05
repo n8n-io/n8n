@@ -1,5 +1,4 @@
 {
 	"title": "W10: Bluray preorder Discord (multiple triggers + shared pipeline)",
-	"templateId": 6830,
-	"skip": "Round-trip indentation mismatch: multi-line object literal inside Code node jsCode loses tab indentation through decompile/recompile. The forward compilation is correct — the sub-function checkBlurays() compiles to Execute Workflow nodes. This is a cosmetic Code node content issue, not a structural problem."
+	"templateId": 6830
 }

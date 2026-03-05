@@ -316,11 +316,25 @@ function emitSubFunctionDeclaration(fn: SubFunctionInfo, ctx: SimplifiedGenConte
 	const paramStr = fn.params.join(', ');
 	emit(ctx, `async function ${fn.name}(${paramStr}) {`);
 	ctx.indent++;
-	for (const line of bodyWithoutNested.split('\n')) {
+
+	// Strip base indentation but preserve relative indentation (like emitCodeNode)
+	const bodyLines = bodyWithoutNested.split('\n');
+	let minIndent = Infinity;
+	for (const line of bodyLines) {
+		if (!line.trim()) continue;
+		const leadingTabs = line.match(/^\t*/)?.[0].length ?? 0;
+		if (leadingTabs < minIndent) minIndent = leadingTabs;
+	}
+	if (!Number.isFinite(minIndent)) minIndent = 0;
+
+	for (const line of bodyLines) {
 		if (line.trim()) {
-			emit(ctx, line.trim());
+			emit(ctx, line.slice(minIndent));
+		} else {
+			emit(ctx, '');
 		}
 	}
+
 	ctx.indent--;
 	emit(ctx, '}');
 }
