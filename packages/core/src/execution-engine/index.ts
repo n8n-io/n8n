@@ -1,5 +1,5 @@
 import type { DataTableProxyProvider, IExecutionContext, IWorkflowSettings } from 'n8n-workflow';
-import type { LookupAddress, LookupOptions } from 'node:dns';
+import type { LookupFunction } from 'node:net';
 
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
 import type { ExternalSecretsProxy } from './external-secrets-proxy';
@@ -11,15 +11,7 @@ import type { ExternalSecretsProxy } from './external-secrets-proxy';
 export interface SsrfBridge {
 	validateUrl(url: string | URL): Promise<{ allowed: boolean; reason?: string }>;
 	validateRedirectSync(url: string): void;
-	createSecureLookup(): (
-		hostname: string,
-		options: LookupOptions,
-		onResult: (
-			error: NodeJS.ErrnoException | null,
-			address: string | LookupAddress[],
-			family?: number,
-		) => void,
-	) => void;
+	createSecureLookup(): LookupFunction;
 }
 
 declare module 'n8n-workflow' {
