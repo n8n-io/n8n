@@ -212,13 +212,6 @@ const initialize = async () => {
 		overview.isProjectsSubPage &&
 		route?.params?.projectId === projectsStore.personalProject?.id;
 
-	// this ensures that the data for secrets is there when user types secret expressions
-	const externalSecretRequests = [externalSecretsStore.fetchGlobalSecrets()];
-	const shouldFetchProjectSecrets = route?.params?.projectId !== projectsStore.personalProject?.id;
-	if (shouldFetchProjectSecrets && typeof route?.params?.projectId === 'string') {
-		externalSecretRequests.push(externalSecretsStore.fetchProjectSecrets(route.params.projectId));
-	}
-
 	const loadPromises = [
 		credentialsStore.fetchAllCredentials({
 			projectId: route?.params?.projectId as string | undefined,
@@ -228,7 +221,6 @@ const initialize = async () => {
 			externalSecretsStore: filters.value.externalSecretsStore,
 		}),
 		credentialsStore.fetchCredentialTypes(false),
-		...externalSecretRequests,
 		nodeTypesStore.loadNodeTypesIfNotLoaded(),
 		isVarsEnabled ? useEnvironmentsStore().fetchAllVariables() : Promise.resolve(), // for expression resolution
 	];
