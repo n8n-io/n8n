@@ -1819,7 +1819,7 @@ const onNameSubmit = async (name: string) => {
 				</template>
 				<N8nButton
 					variant="outline"
-					size="small"
+					size="medium"
 					iconOnly
 					icon="folder-plus"
 					:aria-label="i18n.baseText('workflows.addFolder')"
@@ -2228,11 +2228,6 @@ const onNameSubmit = async (name: string) => {
 	gap: var(--spacing--2xl);
 	align-items: center;
 	justify-content: center;
-}
-
-.add-folder-button {
-	width: 30px;
-	height: 30px;
 }
 
 .breadcrumbs-container {

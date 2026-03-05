@@ -39,84 +39,86 @@ async function executeChatAndWaitForResponse(n8n: n8nPage, message: string) {
 }
 
 test.use({ capability: 'proxy' });
-test.describe('Langchain Integration @capability:proxy', {
-	annotation: [
-		{ type: 'owner', description: 'AI' },
-	],
-}, () => {
-	test.beforeEach(async ({ n8n, services }) => {
-		await services.proxy.clearAllExpectations();
-		await services.proxy.loadExpectations('langchain');
-		await n8n.canvas.openNewWorkflow();
-	});
-
-	test.describe('Auto-add Behavior', () => {
-		test('should auto-add chat trigger and basic LLM chain when adding LLM node', async ({
-			n8n,
-		}) => {
-			await n8n.canvas.addNode(AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, { closeNDV: true });
-
-			await expect(
-				n8n.canvas.connectionBetweenNodes(
-					CHAT_TRIGGER_NODE_DISPLAY_NAME,
-					BASIC_LLM_CHAIN_NODE_NAME,
-				),
-			).toBeAttached();
-
-			await expect(
-				n8n.canvas.connectionBetweenNodes(
-					AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
-					BASIC_LLM_CHAIN_NODE_NAME,
-				),
-			).toBeAttached();
-
-			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(3);
+test.describe(
+	'Langchain Integration @capability:proxy',
+	{
+		annotation: [{ type: 'owner', description: 'AI' }],
+	},
+	() => {
+		test.beforeEach(async ({ n8n, services }) => {
+			await services.proxy.clearAllExpectations();
+			await services.proxy.loadExpectations('langchain');
+			await n8n.canvas.openNewWorkflow();
 		});
 
-		test('should not auto-add nodes if AI nodes are already present', async ({ n8n }) => {
-			await n8n.canvas.addNode(AGENT_NODE_NAME, { closeNDV: true });
+		test.describe('Auto-add Behavior', () => {
+			test('should auto-add chat trigger and basic LLM chain when adding LLM node', async ({
+				n8n,
+			}) => {
+				await n8n.canvas.addNode(AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, { closeNDV: true });
 
-			await n8n.canvas.addNode(AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, { closeNDV: true });
+				await expect(
+					n8n.canvas.connectionBetweenNodes(
+						CHAT_TRIGGER_NODE_DISPLAY_NAME,
+						BASIC_LLM_CHAIN_NODE_NAME,
+					),
+				).toBeAttached();
 
-			await expect(
-				n8n.canvas.connectionBetweenNodes(CHAT_TRIGGER_NODE_DISPLAY_NAME, AGENT_NODE_NAME),
-			).toBeAttached();
+				await expect(
+					n8n.canvas.connectionBetweenNodes(
+						AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
+						BASIC_LLM_CHAIN_NODE_NAME,
+					),
+				).toBeAttached();
 
-			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(3);
-		});
-
-		test('should not auto-add nodes if ChatTrigger is already present', async ({ n8n }) => {
-			await n8n.canvas.addNode(MANUAL_CHAT_TRIGGER_NODE_NAME, {
-				closeNDV: true,
-				trigger: 'On new Chat event',
+				await expect(n8n.canvas.getCanvasNodes()).toHaveCount(3);
 			});
 
-			await n8n.canvas.addNode(AGENT_NODE_NAME, { closeNDV: true });
+			test('should not auto-add nodes if AI nodes are already present', async ({ n8n }) => {
+				await n8n.canvas.addNode(AGENT_NODE_NAME, { closeNDV: true });
 
-			await n8n.canvas.addNode(AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, { closeNDV: true });
+				await n8n.canvas.addNode(AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, { closeNDV: true });
 
-			await expect(
-				n8n.canvas.connectionBetweenNodes(CHAT_TRIGGER_NODE_DISPLAY_NAME, AGENT_NODE_NAME),
-			).toBeAttached();
+				await expect(
+					n8n.canvas.connectionBetweenNodes(CHAT_TRIGGER_NODE_DISPLAY_NAME, AGENT_NODE_NAME),
+				).toBeAttached();
 
-			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(3);
+				await expect(n8n.canvas.getCanvasNodes()).toHaveCount(3);
+			});
+
+			test('should not auto-add nodes if ChatTrigger is already present', async ({ n8n }) => {
+				await n8n.canvas.addNode(MANUAL_CHAT_TRIGGER_NODE_NAME, {
+					closeNDV: true,
+					trigger: 'On new Chat event',
+				});
+
+				await n8n.canvas.addNode(AGENT_NODE_NAME, { closeNDV: true });
+
+				await n8n.canvas.addNode(AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME, { closeNDV: true });
+
+				await expect(
+					n8n.canvas.connectionBetweenNodes(CHAT_TRIGGER_NODE_DISPLAY_NAME, AGENT_NODE_NAME),
+				).toBeAttached();
+
+				await expect(n8n.canvas.getCanvasNodes()).toHaveCount(3);
+			});
 		});
-	});
 
-	test.describe('Chat Execution and Interaction', () => {
-		test('should be able to open and execute Basic LLM Chain node', async ({ n8n }) => {
-			await n8n.canvas.addNode(BASIC_LLM_CHAIN_NODE_NAME, { closeNDV: true });
+		test.describe('Chat Execution and Interaction', () => {
+			test('should be able to open and execute Basic LLM Chain node', async ({ n8n }) => {
+				await n8n.canvas.addNode(BASIC_LLM_CHAIN_NODE_NAME, { closeNDV: true });
 
-			await addOpenAILanguageModelWithCredentials(n8n, BASIC_LLM_CHAIN_NODE_NAME);
+				await addOpenAILanguageModelWithCredentials(n8n, BASIC_LLM_CHAIN_NODE_NAME);
 
-			await n8n.canvas.openNode(BASIC_LLM_CHAIN_NODE_NAME);
-			const inputMessage = 'Hello!';
+				await n8n.canvas.openNode(BASIC_LLM_CHAIN_NODE_NAME);
+				const inputMessage = 'Hello!';
 
-			await n8n.ndv.execute();
-			await executeChatAndWaitForResponse(n8n, inputMessage);
+				await n8n.ndv.execute();
+				await executeChatAndWaitForResponse(n8n, inputMessage);
 
-			// Verify chat message appears
-			await expect(n8n.canvas.getManualChatLatestBotMessage()).toBeVisible();
+				// Verify chat message appears
+				await expect(n8n.canvas.getManualChatLatestBotMessage()).toBeVisible();
+			});
 		});
-	});
-});
+	},
+);

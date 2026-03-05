@@ -10,7 +10,6 @@ import { QueueWorkerMaxStalledCountRule } from './queue-worker-max-stalled-count
 import { RemovedNodesRule } from './removed-nodes.rule';
 import { SettingsFilePermissionsRule } from './settings-file-permissions.rule';
 import { TaskRunnerDockerImageRule } from './task-runner-docker-image.rule';
-import { TaskRunnersRule } from './task-runners.rule';
 import { TunnelOptionRule } from './tunnel-option.rule';
 import { StartNodeRemovedRule } from './start-node-removed.rule';
 import { WaitNodeSubworkflowRule } from './wait-node-subworkflow.rule';
@@ -33,7 +32,6 @@ const v2Rules = [
 	QueueWorkerMaxStalledCountRule,
 	TunnelOptionRule,
 	SettingsFilePermissionsRule,
-	TaskRunnersRule,
 	TaskRunnerDockerImageRule,
 	BinaryDataStorageRule,
 ];
