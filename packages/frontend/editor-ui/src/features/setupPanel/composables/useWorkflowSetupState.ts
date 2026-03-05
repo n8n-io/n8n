@@ -24,7 +24,11 @@ import {
 	buildTriggerSetupState,
 	getNodeParametersIssues,
 } from '@/features/setupPanel/setupPanel.utils';
-import { PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/app/constants';
+import {
+	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+	MANUAL_TRIGGER_NODE_TYPE,
+	HTTP_REQUEST_NODE_TYPE,
+} from '@/app/constants';
 
 import { sortNodesByExecutionOrder } from '@/app/utils/workflowUtils';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
@@ -223,7 +227,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	 */
 	const nodesRequiringSetup = computed(() => {
 		const nodesForSetup = sourceNodes.value
-			.filter((node) => !node.disabled)
+			.filter((node) => !node.disabled && node.type !== MANUAL_TRIGGER_NODE_TYPE)
 			.map((node) => ({
 				node,
 				credentialTypes: getNodeCredentialTypes(nodeTypesStore, node),
@@ -787,6 +791,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 
 		for (const credState of credStates) {
 			if (credState.selectedCredentialId) continue;
+			if (credState.nodes.some((n) => n.type === HTTP_REQUEST_NODE_TYPE)) continue;
 			const available = credentialsStore.getCredentialsByType(credState.credentialType);
 			if (available.length === 0) continue;
 			const mostRecent = available.reduce(
@@ -799,6 +804,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 
 		for (const nodeState of nStates) {
 			if (!nodeState.credentialType || nodeState.selectedCredentialId) continue;
+			if (nodeState.node.type === HTTP_REQUEST_NODE_TYPE) continue;
 			const available = credentialsStore.getCredentialsByType(nodeState.credentialType);
 			if (available.length === 0) continue;
 			const mostRecent = available.reduce(
