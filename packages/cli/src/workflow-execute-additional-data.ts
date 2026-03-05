@@ -33,6 +33,7 @@ import type {
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
+import { UserIdentityResolverService } from '@/auth/user-identity-resolver.service';
 import { CredentialsHelper } from '@/credentials-helper';
 import { EventService } from '@/events/event.service';
 import type { AiEventMap, AiEventPayload } from '@/events/maps/ai.event-map';
@@ -538,6 +539,7 @@ export async function getBase({
 		logAiEvent: (eventName: keyof AiEventMap, payload: AiEventPayload) =>
 			eventService.emit(eventName, payload),
 		getRunnerStatus: (taskType: string) => Container.get(TaskRequester).getRunnerStatus(taskType),
+		userIdentityResolver: Container.get(UserIdentityResolverService),
 	};
 
 	for (const [moduleName, moduleContext] of Container.get(ModuleRegistry).context.entries()) {

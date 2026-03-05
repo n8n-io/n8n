@@ -2956,6 +2956,7 @@ export interface IWorkflowExecuteAdditionalData {
 	 * dynamically. Reset to false by the execution engine before each node runs.
 	 */
 	currentNodeUsedDynamicCredentials?: boolean;
+	userIdentityResolver?: UserIdentityResolverProvider;
 }
 
 export type WorkflowActivateMode =
