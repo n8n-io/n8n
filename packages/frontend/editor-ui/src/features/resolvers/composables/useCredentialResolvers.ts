@@ -16,6 +16,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { CREDENTIAL_RESOLVER_EDIT_MODAL_KEY, MODAL_CONFIRM } from '@/app/constants';
+import { escapeHtml } from 'xss';
 
 const MAX_DISPLAYED_WORKFLOWS = 5;
 
@@ -36,12 +37,14 @@ export function useCredentialResolvers() {
 	const isLoading = ref(false);
 	const isDeleting = ref(false);
 
-	const fetchResolvers = async (): Promise<void> => {
+	const fetchResolvers = async (): Promise<boolean> => {
 		try {
 			isLoading.value = true;
 			resolvers.value = await getCredentialResolvers(rootStore.restApiContext);
+			return true;
 		} catch (error) {
 			toast.showError(error, i18n.baseText('workflowSettings.showError.fetchSettings.title'));
+			return false;
 		} finally {
 			isLoading.value = false;
 		}
@@ -68,7 +71,9 @@ export function useCredentialResolvers() {
 		const displayed = affectedWorkflows.slice(0, MAX_DISPLAYED_WORKFLOWS);
 		const remaining = affectedWorkflows.length - displayed.length;
 
-		const workflowList = displayed.map((w) => `<li><strong>${w.name}</strong></li>`).join('');
+		const workflowList = displayed
+			.map((w) => `<li><strong>${escapeHtml(w.name)}</strong></li>`)
+			.join('');
 
 		let messageHtml = i18n.baseText(
 			'credentialResolverEdit.confirmMessage.deleteResolver.messageWithWorkflows',
