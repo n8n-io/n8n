@@ -4,6 +4,11 @@ import { computed } from 'vue';
 const props = defineProps<{
 	content: string;
 	nodeNameToId?: Record<string, string>;
+	executingNodeNames?: string[];
+}>();
+
+const emit = defineEmits<{
+	centerOn: [nodeNames: string[]];
 }>();
 
 interface HighlightSegment {
@@ -61,6 +66,11 @@ const segments = computed((): Segment[] => {
 	return result;
 });
 
+function isRunning(segment: HighlightSegment): boolean {
+	if (!props.executingNodeNames?.length) return false;
+	return segment.nodeNames.some((name) => props.executingNodeNames!.includes(name));
+}
+
 function setNodeHighlight(nodeNames: string[], color: string, active: boolean): void {
 	for (const name of nodeNames) {
 		const id = props.nodeNameToId?.[name];
@@ -88,11 +98,12 @@ function setNodeHighlight(nodeNames: string[], color: string, active: boolean): 
 			<span v-if="segment.type === 'text'">{{ segment.text }}</span>
 			<span
 				v-else
-				:class="$style.highlight"
+				:class="[$style.highlight, { [$style.running]: isRunning(segment) }]"
 				:data-ref="segment.nodeNames.join(',')"
 				:style="{ '--highlight--color': HIGHLIGHT_COLORS[segment.colorIndex] }"
 				@mouseenter="
-					setNodeHighlight(segment.nodeNames, HIGHLIGHT_COLORS[segment.colorIndex], true)
+					setNodeHighlight(segment.nodeNames, HIGHLIGHT_COLORS[segment.colorIndex], true);
+					emit('centerOn', segment.nodeNames);
 				"
 				@mouseleave="
 					setNodeHighlight(segment.nodeNames, HIGHLIGHT_COLORS[segment.colorIndex], false)
@@ -114,12 +125,26 @@ function setNodeHighlight(nodeNames: string[], color: string, active: boolean): 
 }
 
 .highlight {
+	position: relative;
 	border-bottom: 2px dashed var(--highlight--color);
 	cursor: pointer;
 	transition: transform 0.15s ease;
 
 	&:hover {
 		transform: translate3d(0, -1px, 4px);
+	}
+
+	&.running {
+		animation: highlight-running 0.5s ease-in-out infinite alternate;
+	}
+}
+
+@keyframes highlight-running {
+	from {
+		border-bottom-color: var(--highlight--color);
+	}
+	to {
+		border-bottom-color: var(--canvas--color--background, transparent);
 	}
 }
 </style>

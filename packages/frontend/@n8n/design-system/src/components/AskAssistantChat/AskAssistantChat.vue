@@ -56,7 +56,7 @@ const emit = defineEmits<{
 	showVersion: [versionId: string];
 }>();
 
-const onClose = () => emit('close');
+// const onClose = () => emit('close');
 
 const props = withDefaults(defineProps<Props>(), {
 	user: () => ({
@@ -685,7 +685,7 @@ defineExpose({
 	position: relative;
 	display: grid;
 	grid-template-rows: 1fr auto;
-	max-width: 80vw;
+	max-width: min(80vw, 600px);
 	margin: 0 auto;
 }
 

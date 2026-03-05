@@ -6,6 +6,7 @@ import { useHistoryStore } from '@/app/stores/history.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useWorkflowStateStore } from '@/app/stores/workflowState.store';
 import { AutoSaveState, VIEWS } from '@/app/constants';
 import { computed, watch, ref, nextTick, useSlots } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -65,6 +66,7 @@ const historyStore = useHistoryStore();
 const collaborationStore = useCollaborationStore();
 const workflowAutosaveStore = useWorkflowSaveStore();
 const uiStore = useUIStore();
+const workflowStateStore = useWorkflowStateStore();
 const telemetry = useTelemetry();
 const slots = useSlots();
 const workflowsStore = useWorkflowsStore();
@@ -174,6 +176,11 @@ const showAskOwnerTooltip = computed(() => !usersStore.isInstanceOwner);
 const nodeNameToId = computed(() =>
 	Object.fromEntries(workflowsStore.workflow.nodes.map((n) => [n.name, n.id])),
 );
+const executingNodeNames = computed(() =>
+	workflowsStore.workflow.nodes
+		.filter((n) => workflowStateStore.executingNode.isNodeExecuting(n.name))
+		.map((n) => n.name),
+);
 
 // Use different completion message for code-builder
 const thinkingCompletionMessage = computed(() =>
@@ -209,6 +216,11 @@ const { showReviewChanges, nodeChanges, isExpanded, toggleExpanded, openDiffView
 
 function onSelectChangedNode(nodeId: string) {
 	canvasEventBus.emit('nodes:select', { ids: [nodeId], panIntoView: true });
+}
+
+function onDescriptionCenterOn(nodeNames: string[]) {
+	const id = nodeNames.map((name) => nodeNameToId.value[name]).find(Boolean);
+	if (id) canvasEventBus.emit('nodes:select', { ids: [id], panIntoView: true });
 }
 
 const codeDiffWorkflowState = injectWorkflowState();
@@ -598,6 +610,8 @@ defineExpose({
 					v-if="props.workflowDescription"
 					:content="props.workflowDescription"
 					:node-name-to-id="nodeNameToId"
+					:executing-node-names="executingNodeNames"
+					@center-on="onDescriptionCenterOn"
 				/>
 				<BuildModeEmptyState v-else />
 			</template>

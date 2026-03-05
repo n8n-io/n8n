@@ -146,7 +146,7 @@ function openCommandBar(event: MouseEvent) {
 </script>
 
 <template>
-	<div v-if="!createNodeActive" :class="$style.nodeButtonsWrapper">
+	<div v-if="!createNodeActive" :class="$style.nodeButtonsWrapper" id="nodeButtonsWrapper">
 		<NodeCreatorShortcutCoachmark :visible="shouldShowCoachmark" @dismiss="onDismissCoachmark">
 			<KeyboardShortcutTooltip
 				:label="i18n.baseText('nodeView.openNodesPanel')"

@@ -168,7 +168,7 @@ defineExpose({
 				v-bind="$attrs"
 			/>
 		</div>
-		<slot v-if="view !== 'chat'" />
+		<slot />
 
 		<div :class="$style['switcher']">
 			<N8nIconButton
@@ -207,6 +207,9 @@ defineExpose({
 	&.mode-chat {
 		.canvas {
 			width: 0;
+		}
+		:global(#nodeButtonsWrapper) {
+			display: none;
 		}
 	}
 	&.mode-canvas {
