@@ -6,6 +6,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import * as externalSecretsApi from '@n8n/rest-api-client';
 import { connectProvider } from '@n8n/rest-api-client';
 import { useRBACStore } from '@/app/stores/rbac.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ExternalSecretsProvider } from '@n8n/api-types';
 
 /**
@@ -61,6 +62,7 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 	const rbacStore = useRBACStore();
+	const projectsStore = useProjectsStore();
 
 	const externalSecretsModuleSettings = computed(
 		() => settingsStore.moduleSettings['external-secrets'],
@@ -101,8 +103,15 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 		return globalSecretsAsObject.value;
 	});
 
+	function hasAccessToGlobalSecrets() {
+		if (rbacStore.hasScope('externalSecret:list')) return true;
+
+		// When a user has access to any project, they should be able to use global secrets
+		return projectsStore.myProjects.some((p) => p.scopes?.includes('externalSecret:list') === true);
+	}
+
 	async function fetchGlobalSecrets() {
-		if (rbacStore.hasScope('externalSecret:list')) {
+		if (hasAccessToGlobalSecrets()) {
 			try {
 				const moduleConfig = externalSecretsModuleSettings.value;
 				const betaFeatureEnabled = moduleConfig?.forProjects || moduleConfig?.multipleConnections;
@@ -121,7 +130,14 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 			return;
 		}
 
-		if (rbacStore.hasScope('externalSecret:list')) {
+		const project =
+			projectsStore.currentProject?.id === projectId
+				? projectsStore.currentProject
+				: projectsStore.myProjects.find((p) => p.id === projectId);
+		if (
+			rbacStore.hasScope('externalSecret:list') ||
+			project?.scopes?.includes('externalSecret:list') === true
+		) {
 			try {
 				state.projectSecrets = await externalSecretsApi.getProjectExternalSecrets(
 					rootStore.restApiContext,

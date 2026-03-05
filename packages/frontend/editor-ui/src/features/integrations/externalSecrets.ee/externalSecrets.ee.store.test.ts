@@ -59,6 +59,16 @@ vi.mock('@/app/stores/rbac.store', () => ({
 	useRBACStore: vi.fn(() => mockRBACStore),
 }));
 
+// Configurable projects store mock
+const mockProjectsStore = {
+	myProjects: [] as Array<{ id: string; scopes?: string[] }>,
+	currentProject: null as { id: string; scopes?: string[] } | null,
+};
+
+vi.mock('@/features/collaboration/projects/projects.store', () => ({
+	useProjectsStore: vi.fn(() => mockProjectsStore),
+}));
+
 // Mock settings store
 vi.mock('@/app/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({
@@ -159,6 +169,8 @@ describe('externalSecretsStore', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
+		mockProjectsStore.myProjects = [];
+		mockProjectsStore.currentProject = null;
 		// Reset to defaults
 		clearModuleSettings();
 		setHasPermission(true);
@@ -274,7 +286,7 @@ describe('externalSecretsStore', () => {
 			expect(store.state.secrets).toEqual(mockGlobalSecrets);
 		});
 
-		it('should not fetch secrets when user lacks permission', async () => {
+		it('should not fetch secrets when user lacks permission globally and in all projects', async () => {
 			setHasPermission(false);
 			const store = useExternalSecretsStore();
 
@@ -284,6 +296,19 @@ describe('externalSecretsStore', () => {
 			expect(getExternalSecrets).not.toHaveBeenCalled();
 			expect(getGlobalExternalSecrets).not.toHaveBeenCalled();
 			expect(store.state.secrets).toEqual({});
+		});
+
+		it('should fetch secrets when user has externalSecret:list scope in a project but not globally', async () => {
+			clearModuleSettings();
+			mockRBACStore.hasScope.mockReturnValue(false);
+			mockProjectsStore.myProjects = [{ id: 'project-123', scopes: ['externalSecret:list'] }];
+			getExternalSecrets.mockResolvedValue(mockGlobalSecrets);
+			const store = useExternalSecretsStore();
+
+			await store.fetchGlobalSecrets();
+
+			expect(getExternalSecrets).toHaveBeenCalledWith(expect.anything());
+			expect(store.state.secrets).toEqual(mockGlobalSecrets);
 		});
 
 		it('should set secrets to empty object on API error (no module settings)', async () => {
@@ -337,12 +362,29 @@ describe('externalSecretsStore', () => {
 		it('should not fetch when forProjects is enabled but user lacks permission', async () => {
 			setModuleSettings({ forProjects: true });
 			setHasPermission(false);
+			mockProjectsStore.myProjects = [{ id: 'project-123', scopes: [] }];
 			const store = useExternalSecretsStore();
 
 			await store.fetchProjectSecrets('project-123');
 
 			expect(getProjectExternalSecrets).not.toHaveBeenCalled();
 			expect(store.state.projectSecrets).toEqual({});
+		});
+
+		it('should fetch project secrets when user has scope in project but not globally', async () => {
+			setModuleSettings({ forProjects: true });
+			mockRBACStore.hasScope.mockReturnValue(false);
+			mockProjectsStore.currentProject = {
+				id: 'project-123',
+				scopes: ['externalSecret:list'],
+			};
+			getProjectExternalSecrets.mockResolvedValue(mockProjectSecrets);
+			const store = useExternalSecretsStore();
+
+			await store.fetchProjectSecrets('project-123');
+
+			expect(getProjectExternalSecrets).toHaveBeenCalledWith(expect.anything(), 'project-123');
+			expect(store.state.projectSecrets).toEqual(mockProjectSecrets);
 		});
 
 		it('should set projectSecrets to empty object on API error', async () => {
