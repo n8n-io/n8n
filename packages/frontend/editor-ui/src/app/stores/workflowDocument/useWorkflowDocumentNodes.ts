@@ -57,20 +57,19 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	 * @returns `true` if the object was changed
 	 */
 	function updateNodeAtIndex(nodeIndex: number, nodeData: Partial<INodeUi>): boolean {
-		if (nodeIndex !== -1) {
-			const node = workflowsStore.workflow.nodes[nodeIndex];
-			const existingData = pick<Partial<INodeUi>>(node, Object.keys(nodeData));
-			const changed = !isEqual(existingData, nodeData);
+		if (nodeIndex === -1) return false;
 
-			if (changed) {
-				Object.assign(node, nodeData);
-				workflowsStore.workflow.nodes[nodeIndex] = node;
-				workflowsStore.workflowObject.setNodes(workflowsStore.workflow.nodes);
-			}
+		const node = workflowsStore.workflow.nodes[nodeIndex];
+		const existingData = pick<Partial<INodeUi>>(node, Object.keys(nodeData));
+		const changed = !isEqual(existingData, nodeData);
 
-			return changed;
+		if (changed) {
+			Object.assign(node, nodeData);
+			workflowsStore.workflow.nodes[nodeIndex] = node;
+			workflowsStore.workflowObject.setNodes(workflowsStore.workflow.nodes);
 		}
-		return false;
+
+		return changed;
 	}
 
 	// -----------------------------------------------------------------------
