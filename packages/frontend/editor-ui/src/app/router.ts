@@ -934,6 +934,14 @@ export const routes: RouteRecordRaw[] = [
 			},
 		},
 	},
+	{
+		path: '/code-engine',
+		name: VIEWS.CODE_ENGINE,
+		component: async () => await import('@/app/views/CodeEngineView.vue'),
+		meta: {
+			middleware: ['authenticated'],
+		},
+	},
 	...projectsRoutes,
 	{
 		path: '/entity-not-found/:entityType(credential|workflow)',

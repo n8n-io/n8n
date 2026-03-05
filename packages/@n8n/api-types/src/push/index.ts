@@ -1,5 +1,6 @@
 import type { BuilderCreditsPushMessage } from './builder-credits';
 import type { ChatHubPushMessage } from './chat-hub';
+import type { CodeEnginePushMessage } from './code-engine';
 import type { CollaborationPushMessage } from './collaboration';
 import type { DebugPushMessage } from './debug';
 import type { ExecutionPushMessage } from './execution';
@@ -17,7 +18,8 @@ export type PushMessage =
 	| CollaborationPushMessage
 	| DebugPushMessage
 	| BuilderCreditsPushMessage
-	| ChatHubPushMessage;
+	| ChatHubPushMessage
+	| CodeEnginePushMessage;
 
 export type PushType = PushMessage['type'];
 

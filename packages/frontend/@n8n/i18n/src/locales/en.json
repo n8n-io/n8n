@@ -4862,5 +4862,15 @@
 	"focusedNodes.mentionPlaceholder": "Search nodes...",
 	"focusedNodes.mentionTooltip": "Mention a node",
 	"focusedNodes.allNodes": "All nodes",
-	"focusedNodes.unconfirmedTooltip": "Add as context for the assistant"
+	"focusedNodes.unconfirmedTooltip": "Add as context for the assistant",
+	"codeEngine.title": "Code Engine",
+	"codeEngine.analyze": "Analyze",
+	"codeEngine.run": "Run",
+	"codeEngine.executionTrace": "Execution Trace",
+	"codeEngine.noGraph": "Write code and click Analyze to see the graph",
+	"codeEngine.waitingForWebhook": "Waiting for webhook call...",
+	"codeEngine.webhookTimedOut": "Webhook timed out. Click Run to try again.",
+	"codeEngine.examples.placeholder": "Select an example...",
+	"codeEngine.examples.postOrders": "POST /orders — Route by type",
+	"codeEngine.examples.getProducts": "GET /products — Filter by category"
 }
