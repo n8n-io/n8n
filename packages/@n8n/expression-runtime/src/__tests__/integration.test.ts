@@ -208,6 +208,14 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 		// Midnight UTC = 9am in Tokyo (JST = UTC+9)
 		expect(result).toBe('09:00 +09:00');
 	});
+
+	it('should throw on invalid timezone', async () => {
+		const data = { $json: { x: 1 } };
+
+		expect(() => evaluator.evaluate('{{ $json.x }}', data, { timezone: 'Not/A/Timezone' })).toThrow(
+			'Invalid timezone: "Not/A/Timezone"',
+		);
+	});
 });
 
 describe('Integration: IsolatedVmBridge error handling', () => {

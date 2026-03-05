@@ -1,4 +1,4 @@
-import { Settings } from 'luxon';
+import { IANAZone, Settings } from 'luxon';
 
 import { extend, extendOptional } from '../extensions/extend';
 
@@ -25,6 +25,9 @@ import { createDeepLazyProxy } from './lazy-proxy';
  */
 export function resetDataProxies(timezone?: string): void {
 	if (timezone) {
+		if (!IANAZone.isValidZone(timezone)) {
+			throw new Error(`Invalid timezone: "${timezone}"`);
+		}
 		Settings.defaultZone = timezone;
 	}
 
