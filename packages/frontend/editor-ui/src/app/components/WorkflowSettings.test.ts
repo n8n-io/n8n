@@ -16,7 +16,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import * as restApiClient from '@n8n/rest-api-client';
 import { mock } from 'vitest-mock-extended';
-import { BINARY_MODE_COMBINED, type IWorkflowSettings } from 'n8n-workflow';
+import { BINARY_MODE_COMBINED } from 'n8n-workflow';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -789,22 +789,21 @@ describe('WorkflowSettingsVue', () => {
 		});
 
 		it('should clear stale credentialResolverId when resolver no longer exists', async () => {
-			workflowsStore.workflowSettings = {
+			workflowDocumentStore.setSettings({
 				credentialResolverId: 'deleted-resolver-id',
-			} as IWorkflowSettings;
+			});
 
-			createComponent({ pinia });
+			const { getByTestId } = createComponent({ pinia });
 			await nextTick();
 
 			await waitFor(() => {
 				expect(restApiClient.getCredentialResolvers).toHaveBeenCalled();
 			});
 
-			// The stale ID should be cleared since it doesn't match any loaded resolver
-			expect((workflowsStore.workflowSettings as IWorkflowSettings).credentialResolverId).toBe(
-				'deleted-resolver-id',
-			);
-			// Note: the clearing happens on the local workflowSettings copy, not the store
+			// The stale ID should be cleared — dropdown shows no selected value
+			const dropdown = getByTestId('workflow-settings-credential-resolver');
+			const input = dropdown.querySelector('input') as HTMLInputElement;
+			expect(input.value).toBe('');
 		});
 	});
 
