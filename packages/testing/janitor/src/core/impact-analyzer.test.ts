@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import type { FileDiffResult } from './ast-diff-analyzer.js';
 import { ImpactAnalyzer } from './impact-analyzer.js';
+import type { MethodUsageIndex } from './method-usage-analyzer.js';
 import { setConfig, resetConfig, defineConfig } from '../config.js';
 
 /**
@@ -856,30 +857,13 @@ test('uses api', () => {});
 			];
 
 			const analyzer = new ImpactAnalyzer(project);
-			const result = analyzer.analyze(['services/api-helper.ts'], diffs);
+			const result = analyzer.analyze(['services/api-helper.ts'], { diffs });
 
 			// No transitive tests affected — the change is purely additive
 			expect(result.affectedTests).toEqual([]);
 		});
 
-		it('traces normally when a method is modified', () => {
-			project.createSourceFile(
-				'/test-root/services/api-helper.ts',
-				`
-export class ApiHelper {
-  async getWorkflows() {}
-}
-`,
-			);
-
-			project.createSourceFile(
-				'/test-root/tests/api.spec.ts',
-				`
-import { ApiHelper } from '../services/api-helper';
-test('uses api', () => {});
-`,
-			);
-
+		it('finds affected tests via method-level when a method is modified', () => {
 			const diffs: FileDiffResult[] = [
 				{
 					filePath: '/test-root/services/api-helper.ts',
@@ -892,31 +876,30 @@ test('uses api', () => {});
 				},
 			];
 
+			const methodUsageIndex: MethodUsageIndex = {
+				methods: {
+					'ApiHelper.getWorkflows': [
+						{
+							testFile: 'tests/api.spec.ts',
+							line: 1,
+							column: 1,
+							fullCall: 'ApiHelper.getWorkflows()',
+						},
+					],
+				},
+				fixtureMapping: {},
+				timestamp: new Date().toISOString(),
+				testFilesAnalyzed: 1,
+			};
+
 			const analyzer = new ImpactAnalyzer(project);
-			const result = analyzer.analyze(['services/api-helper.ts'], diffs);
+			const result = analyzer.analyze(['services/api-helper.ts'], { diffs, methodUsageIndex });
 
 			expect(result.affectedTests).toContain('tests/api.spec.ts');
+			expect(result.strategies['services/api-helper.ts']).toBe('method-level');
 		});
 
-		it('traces normally when changes are mixed (added + modified)', () => {
-			project.createSourceFile(
-				'/test-root/services/api-helper.ts',
-				`
-export class ApiHelper {
-  async getWorkflows() {}
-  async newMethod() {}
-}
-`,
-			);
-
-			project.createSourceFile(
-				'/test-root/tests/api.spec.ts',
-				`
-import { ApiHelper } from '../services/api-helper';
-test('uses api', () => {});
-`,
-			);
-
+		it('finds affected tests via method-level when changes are mixed (added + modified)', () => {
 			const diffs: FileDiffResult[] = [
 				{
 					filePath: '/test-root/services/api-helper.ts',
@@ -930,10 +913,27 @@ test('uses api', () => {});
 				},
 			];
 
+			const methodUsageIndex: MethodUsageIndex = {
+				methods: {
+					'ApiHelper.getWorkflows': [
+						{
+							testFile: 'tests/api.spec.ts',
+							line: 1,
+							column: 1,
+							fullCall: 'ApiHelper.getWorkflows()',
+						},
+					],
+				},
+				fixtureMapping: {},
+				timestamp: new Date().toISOString(),
+				testFilesAnalyzed: 1,
+			};
+
 			const analyzer = new ImpactAnalyzer(project);
-			const result = analyzer.analyze(['services/api-helper.ts'], diffs);
+			const result = analyzer.analyze(['services/api-helper.ts'], { diffs, methodUsageIndex });
 
 			expect(result.affectedTests).toContain('tests/api.spec.ts');
+			expect(result.strategies['services/api-helper.ts']).toBe('method-level');
 		});
 
 		it('traces normally when no diffs are provided (backwards-compatible)', () => {
@@ -992,10 +992,335 @@ test('uses api', () => {});
 			];
 
 			const analyzer = new ImpactAnalyzer(project);
-			const result = analyzer.analyze(['services/api-helper.ts'], diffs);
+			const result = analyzer.analyze(['services/api-helper.ts'], { diffs });
 
 			// Empty changedMethods = conservative, still traces
 			expect(result.affectedTests).toContain('tests/api.spec.ts');
+		});
+	});
+
+	describe('Method-Level Resolution', () => {
+		function createMethodUsageIndex(
+			methods: Record<string, Array<{ testFile: string }>>,
+		): MethodUsageIndex {
+			const index: MethodUsageIndex = {
+				methods: {},
+				fixtureMapping: {},
+				timestamp: new Date().toISOString(),
+				testFilesAnalyzed: 0,
+			};
+
+			for (const [key, usages] of Object.entries(methods)) {
+				index.methods[key] = usages.map((u) => ({
+					testFile: u.testFile,
+					line: 1,
+					column: 1,
+					fullCall: `${key}()`,
+				}));
+			}
+
+			return index;
+		}
+
+		it('returns 0 affected tests for removed unused method', () => {
+			const diffs: FileDiffResult[] = [
+				{
+					filePath: '/test-root/pages/SomePage.ts',
+					changedMethods: [
+						{ className: 'SomePage', methodName: 'unusedMethod', changeType: 'removed' },
+					],
+					isNewFile: false,
+					isDeletedFile: false,
+					parseTimeMs: 0,
+				},
+			];
+
+			const methodIndex = createMethodUsageIndex({});
+
+			const analyzer = new ImpactAnalyzer(project);
+			const result = analyzer.analyze(['pages/SomePage.ts'], {
+				diffs,
+				methodUsageIndex: methodIndex,
+			});
+
+			expect(result.affectedTests).toEqual([]);
+			expect(result.strategies['pages/SomePage.ts']).toBe('method-level');
+		});
+
+		it('returns exactly the tests using a modified method', () => {
+			const diffs: FileDiffResult[] = [
+				{
+					filePath: '/test-root/pages/CanvasPage.ts',
+					changedMethods: [
+						{ className: 'CanvasPage', methodName: 'addNode', changeType: 'modified' },
+					],
+					isNewFile: false,
+					isDeletedFile: false,
+					parseTimeMs: 0,
+				},
+			];
+
+			const methodIndex = createMethodUsageIndex({
+				'CanvasPage.addNode': [
+					{ testFile: 'tests/canvas-crud.spec.ts' },
+					{ testFile: 'tests/canvas-drag.spec.ts' },
+				],
+				'CanvasPage.deleteNode': [{ testFile: 'tests/canvas-delete.spec.ts' }],
+			});
+
+			const analyzer = new ImpactAnalyzer(project);
+			const result = analyzer.analyze(['pages/CanvasPage.ts'], {
+				diffs,
+				methodUsageIndex: methodIndex,
+			});
+
+			expect(result.affectedTests).toEqual([
+				'tests/canvas-crud.spec.ts',
+				'tests/canvas-drag.spec.ts',
+			]);
+			expect(result.affectedFiles).toContain('tests/canvas-crud.spec.ts');
+			expect(result.affectedFiles).toContain('tests/canvas-drag.spec.ts');
+			expect(result.strategies['pages/CanvasPage.ts']).toBe('method-level');
+		});
+
+		it('only returns tests using modified methods when changes are mixed', () => {
+			const diffs: FileDiffResult[] = [
+				{
+					filePath: '/test-root/pages/CanvasPage.ts',
+					changedMethods: [
+						{ className: 'CanvasPage', methodName: 'newMethod', changeType: 'added' },
+						{ className: 'CanvasPage', methodName: 'addNode', changeType: 'modified' },
+					],
+					isNewFile: false,
+					isDeletedFile: false,
+					parseTimeMs: 0,
+				},
+			];
+
+			const methodIndex = createMethodUsageIndex({
+				'CanvasPage.addNode': [{ testFile: 'tests/canvas.spec.ts' }],
+				'CanvasPage.deleteNode': [{ testFile: 'tests/canvas-delete.spec.ts' }],
+			});
+
+			const analyzer = new ImpactAnalyzer(project);
+			const result = analyzer.analyze(['pages/CanvasPage.ts'], {
+				diffs,
+				methodUsageIndex: methodIndex,
+			});
+
+			expect(result.affectedTests).toEqual(['tests/canvas.spec.ts']);
+			expect(result.strategies['pages/CanvasPage.ts']).toBe('method-level');
+		});
+
+		it('includes changed test file alongside method-level results', () => {
+			const diffs: FileDiffResult[] = [
+				{
+					filePath: '/test-root/pages/CanvasPage.ts',
+					changedMethods: [
+						{ className: 'CanvasPage', methodName: 'addNode', changeType: 'modified' },
+					],
+					isNewFile: false,
+					isDeletedFile: false,
+					parseTimeMs: 0,
+				},
+			];
+
+			const methodIndex = createMethodUsageIndex({
+				'CanvasPage.addNode': [{ testFile: 'tests/canvas.spec.ts' }],
+			});
+
+			const analyzer = new ImpactAnalyzer(project);
+			const result = analyzer.analyze(['pages/CanvasPage.ts', 'tests/other.spec.ts'], {
+				diffs,
+				methodUsageIndex: methodIndex,
+			});
+
+			expect(result.affectedTests).toContain('tests/canvas.spec.ts');
+			expect(result.affectedTests).toContain('tests/other.spec.ts');
+		});
+
+		it('skips new files (cannot break existing tests)', () => {
+			const diffs: FileDiffResult[] = [
+				{
+					filePath: '/test-root/pages/BrandNewPage.ts',
+					changedMethods: [
+						{ className: 'BrandNewPage', methodName: 'doThing', changeType: 'added' },
+					],
+					isNewFile: true,
+					isDeletedFile: false,
+					parseTimeMs: 0,
+				},
+			];
+
+			const methodIndex = createMethodUsageIndex({});
+
+			const analyzer = new ImpactAnalyzer(project);
+			const result = analyzer.analyze(['pages/BrandNewPage.ts'], {
+				diffs,
+				methodUsageIndex: methodIndex,
+			});
+
+			expect(result.affectedTests).toEqual([]);
+			expect(result.strategies['pages/BrandNewPage.ts']).toBe('skipped');
+		});
+
+		it('unions affected tests from multiple files with different strategies', () => {
+			const diffs: FileDiffResult[] = [
+				{
+					filePath: '/test-root/pages/CanvasPage.ts',
+					changedMethods: [
+						{ className: 'CanvasPage', methodName: 'addNode', changeType: 'modified' },
+					],
+					isNewFile: false,
+					isDeletedFile: false,
+					parseTimeMs: 0,
+				},
+				{
+					filePath: '/test-root/pages/NewPage.ts',
+					changedMethods: [{ className: 'NewPage', methodName: 'newMethod', changeType: 'added' }],
+					isNewFile: false,
+					isDeletedFile: false,
+					parseTimeMs: 0,
+				},
+			];
+
+			const methodIndex = createMethodUsageIndex({
+				'CanvasPage.addNode': [{ testFile: 'tests/canvas.spec.ts' }],
+			});
+
+			const analyzer = new ImpactAnalyzer(project);
+			const result = analyzer.analyze(
+				['pages/CanvasPage.ts', 'pages/NewPage.ts', 'tests/direct.spec.ts'],
+				{ diffs, methodUsageIndex: methodIndex },
+			);
+
+			expect(result.affectedTests).toContain('tests/canvas.spec.ts');
+			expect(result.affectedTests).toContain('tests/direct.spec.ts');
+			expect(result.strategies['pages/CanvasPage.ts']).toBe('method-level');
+			expect(result.strategies['pages/NewPage.ts']).toBe('skipped');
+		});
+
+		it('falls back to property-level for deleted files', () => {
+			const diffs: FileDiffResult[] = [
+				{
+					filePath: '/test-root/pages/DeletedPage.ts',
+					changedMethods: [],
+					isNewFile: false,
+					isDeletedFile: true,
+					parseTimeMs: 0,
+				},
+			];
+
+			const methodIndex = createMethodUsageIndex({});
+
+			const analyzer = new ImpactAnalyzer(project);
+			const result = analyzer.analyze(['pages/DeletedPage.ts'], {
+				diffs,
+				methodUsageIndex: methodIndex,
+			});
+
+			expect(result.strategies['pages/DeletedPage.ts']).toBe('property-level');
+		});
+
+		it('includes changed test file that references a newly added method', () => {
+			project.createSourceFile(
+				'/test-root/tests/new-feature.spec.ts',
+				`
+test('uses new method', async ({ app }) => {
+  await app.canvas.brandNewMethod();
+});
+`,
+			);
+
+			const diffs: FileDiffResult[] = [
+				{
+					filePath: '/test-root/pages/CanvasPage.ts',
+					changedMethods: [
+						{ className: 'CanvasPage', methodName: 'brandNewMethod', changeType: 'added' },
+					],
+					isNewFile: false,
+					isDeletedFile: false,
+					parseTimeMs: 0,
+				},
+			];
+
+			const methodIndex = createMethodUsageIndex({});
+
+			const analyzer = new ImpactAnalyzer(project);
+			const result = analyzer.analyze(['pages/CanvasPage.ts', 'tests/new-feature.spec.ts'], {
+				diffs,
+				methodUsageIndex: methodIndex,
+			});
+
+			expect(result.affectedTests).toContain('tests/new-feature.spec.ts');
+		});
+	});
+
+	describe('Regex Escaping', () => {
+		function emptyMethodIndex(): MethodUsageIndex {
+			return {
+				methods: {},
+				fixtureMapping: {},
+				timestamp: new Date().toISOString(),
+				testFilesAnalyzed: 0,
+			};
+		}
+
+		it('does not throw on method names with regex metacharacters', () => {
+			const diffs: FileDiffResult[] = [
+				{
+					filePath: '/test-root/pages/StorePage.ts',
+					changedMethods: [
+						{ className: 'StorePage', methodName: '$reset', changeType: 'added' },
+						{ className: 'StorePage', methodName: '$patch', changeType: 'added' },
+					],
+					isNewFile: true,
+					isDeletedFile: false,
+					parseTimeMs: 0,
+				},
+			];
+
+			const analyzer = new ImpactAnalyzer(project);
+
+			expect(() =>
+				analyzer.analyze(['pages/StorePage.ts'], {
+					diffs,
+					methodUsageIndex: emptyMethodIndex(),
+				}),
+			).not.toThrow();
+		});
+
+		it('matches method names containing $ when properly escaped', () => {
+			project.createSourceFile(
+				'/test-root/tests/pinia.spec.ts',
+				`
+test('uses pinia store', async ({ app }) => {
+  await app.store.$reset();
+});
+`,
+			);
+
+			const diffs: FileDiffResult[] = [
+				{
+					filePath: '/test-root/pages/StorePage.ts',
+					changedMethods: [{ className: 'StorePage', methodName: '$reset', changeType: 'added' }],
+					isNewFile: false,
+					isDeletedFile: false,
+					parseTimeMs: 0,
+				},
+			];
+
+			const analyzer = new ImpactAnalyzer(project);
+
+			// tests/pinia.spec.ts is both a changed test file AND references .$reset()
+			// Without escaping, $ would be treated as end-of-line anchor and fail to match
+			const result = analyzer.analyze(['pages/StorePage.ts', 'tests/pinia.spec.ts'], {
+				diffs,
+				methodUsageIndex: emptyMethodIndex(),
+			});
+
+			expect(result.affectedTests).toContain('tests/pinia.spec.ts');
+			expect(result.strategies['pages/StorePage.ts']).toBe('skipped');
 		});
 	});
 
