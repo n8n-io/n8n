@@ -151,6 +151,18 @@ Assert: normalizeSDK(SDK₁) === normalizeSDK(SDK₂)
 | **Code** | Any other JS statements | Code node with `jsCode` |
 | **Credentials** | `{ auth: { type: 'bearer', credential: 'My Key' } }` | Node credentials config |
 
+## Development Process
+
+**Always use the TDD skill before making changes.** Every plan and implementation must follow the red/green pattern:
+
+1. **Red** — Write a failing test that defines the expected behavior
+2. **Green** — Implement the minimum code to make it pass
+3. **Refactor** — Clean up if needed
+
+**Plans must reflect this structure.** Each plan step should be a red/green cycle — not "implement X" but "add test for X (red), then implement X (green)". The plan itself is a sequence of test-then-implement pairs.
+
+This applies to bug fixes, new features, and any code changes in the compiler/decompiler.
+
 ## Commands
 
 ```bash
@@ -196,6 +208,18 @@ Validates existing fixtures through the full compilation pipeline (transpile, ge
 - IF/Switch condition mapping (Steps 2f, 2g)
 - Schedule conversion table (Step 2a)
 - Unsupported patterns list (Step 3)
+
+## Round-Trip Coverage
+
+16/17 fixtures pass round-trip (94%). Only W10 is skipped — it requires the compiler to inline top-level async functions with IO calls into each trigger callback (Phase 12 enhancement, not a decompiler issue).
+
+## Decompiler: try/catch Reconstruction
+
+When an HTTP/AI node has `"onError": "continueErrorOutput"`, the decompiler wraps the call in `try { ... } catch {}`. Key details:
+
+- **Variable name recovery**: `computeVariableAssignments()` checks the predecessor Code node for `let X = null;` and uses `X` as the variable name instead of the default `data`. This prevents duplicate declarations.
+- **Code node awareness**: When `codeNodeVars.has(assignedVar)` is true, `emitHttpNode()`/`emitAiNode()` skip emitting `let X = null;` since the Code node already declares it.
+- **`continueRegularOutput`** emits `// @onError continue` annotation (different pattern, no try/catch).
 
 ## Updating This Document
 
