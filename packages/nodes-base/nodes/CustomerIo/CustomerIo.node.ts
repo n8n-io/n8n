@@ -1,6 +1,9 @@
 import type {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IExecuteFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -32,6 +35,7 @@ export class CustomerIo implements INodeType {
 			{
 				name: 'customerIoApi',
 				required: true,
+				testedBy: 'testCustomerIoApi',
 			},
 		],
 		properties: [
@@ -73,6 +77,59 @@ export class CustomerIo implements INodeType {
 			...segmentOperations,
 			...segmentFields,
 		],
+	};
+
+	methods = {
+		credentialTest: {
+			async testCustomerIoApi(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
+				const { trackingApiKey, trackingSiteId, appApiKey, region } = credential.data as {
+					trackingApiKey: string;
+					trackingSiteId: string;
+					appApiKey: string;
+					region: string;
+				};
+
+				const basicAuth = Buffer.from(`${trackingSiteId}:${trackingApiKey}`).toString('base64');
+				try {
+					await this.helpers.request({
+						method: 'GET',
+						uri: `https://${region}/api/v1/accounts/region`,
+						headers: { Authorization: `Basic ${basicAuth}` },
+						json: true,
+					});
+				} catch (err) {
+					return {
+						status: 'Error',
+						message: `Tracking API credentials are invalid: ${(err as Error).message}`,
+					};
+				}
+
+				const hasAppKey = !!appApiKey;
+
+				if (hasAppKey) {
+					const appHost =
+						region === 'track-eu.customer.io' ? 'api-eu.customer.io' : 'api.customer.io';
+					try {
+						await this.helpers.request({
+							method: 'GET',
+							uri: `https://${appHost}/v1/workspaces`,
+							headers: { Authorization: `Bearer ${appApiKey}` },
+							json: true,
+						});
+					} catch (err) {
+						return {
+							status: 'Error',
+							message: `App API key is invalid: ${(err as Error).message}`,
+						};
+					}
+				}
+
+				return { status: 'OK', message: 'Authentication successful!' };
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -205,6 +262,7 @@ export class CustomerIo implements INodeType {
 						responseData = await customerIoApiRequest.call(this, 'GET', endpoint, body, 'app', {
 							email,
 						});
+						responseData = responseData.results;
 					}
 
 					if (operation === 'delete') {
