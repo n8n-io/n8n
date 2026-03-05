@@ -1,9 +1,10 @@
-import type { IExecutionDb, User } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
 import type {
 	ExecutionRedaction,
 	ExecutionRedactionOptions,
+	RedactableExecution,
 } from '@/executions/execution-redaction';
 import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 
@@ -12,7 +13,7 @@ describe('ExecutionRedactionServiceProxy', () => {
 
 	const mockUser = { id: 'user-123' } as User;
 
-	const createMockExecution = (): IExecutionDb => mock<IExecutionDb>({ id: 'execution-123' });
+	const createMockExecution = (): RedactableExecution => mock<RedactableExecution>();
 
 	const createOptions = (
 		overrides: Partial<ExecutionRedactionOptions> = {},

@@ -1,10 +1,10 @@
 import { Logger } from '@n8n/backend-common';
-import { type IExecutionDb, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import type {
 	ExecutionRedaction,
 	ExecutionRedactionOptions,
+	RedactableExecution,
 } from '@/executions/execution-redaction';
 import {
 	type ExecutionError,
@@ -22,7 +22,6 @@ const MANUAL_MODES: ReadonlySet<WorkflowExecuteMode> = new Set(['manual']);
 
 /**
  * Service responsible for redacting sensitive data from executions.
- * This service acts as a facade and delegates to the redaction module.
  */
 @Service()
 export class ExecutionRedactionService implements ExecutionRedaction {
@@ -32,84 +31,103 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		private readonly eventService: EventService,
 	) {}
 
-	/**
-	 * Initializes the execution redaction service.
-	 * This is a stub implementation that will be extended when the redaction module is fully implemented.
-	 */
 	async init(): Promise<void> {
 		this.logger.debug('Initializing ExecutionRedactionService...');
 	}
 
 	/**
-	 * Main entry point for redaction logic.
-	 * Processes an execution and applies redaction based on the provided options.
-	 *
-	 * @param execution - The execution to process
-	 * @param options - Options for redaction processing
-	 * @returns The processed execution (currently returns unmodified execution as stub)
+	 * Thin wrapper around `processExecutions` for single-execution callers.
 	 */
 	async processExecution(
-		execution: IExecutionDb,
+		execution: RedactableExecution,
 		options: ExecutionRedactionOptions,
-	): Promise<IExecutionDb> {
+	): Promise<RedactableExecution> {
+		await this.processExecutions([execution], options);
+		return execution;
+	}
+
+	/**
+	 * Processes a list of executions and applies redaction based on the provided options.
+	 * Resolves all user reveal permissions in a single DB query regardless of list size.
+	 *
+	 * @param executions - The executions to process (mutated in place)
+	 * @param options - Options for redaction processing
+	 */
+	async processExecutions(
+		executions: RedactableExecution[],
+		options: ExecutionRedactionOptions,
+	): Promise<void> {
+		if (executions.length === 0) return;
+
 		if (options.redactExecutionData === true) {
-			// user wants redacted data, this is always fine!
-			const canReveal =
-				this.policyAllowsReveal(execution) || (await this.canUserReveal(options.user, execution));
-			this.applyRedaction(execution, 'user_requested', canReveal);
-		} else if (options.redactExecutionData === false) {
-			// user wants unredacted data — allowed if the policy permits it or the user has the scope
-			const allowed =
-				this.policyAllowsReveal(execution) || (await this.canUserReveal(options.user, execution));
-			if (allowed) {
+			// User explicitly wants redacted data — apply to all, but set canReveal correctly.
+			// canReveal = policyAllowsReveal OR user has execution:reveal scope.
+			// Only query DB for executions where policy doesn't already allow reveal.
+			const needsCheck = executions.filter((e) => !this.policyAllowsReveal(e));
+			let revealableIds = new Set<string>();
+			if (needsCheck.length > 0) {
+				const uniqueWorkflowIds = [...new Set(needsCheck.map((e) => e.workflowId))];
+				revealableIds = await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
+					uniqueWorkflowIds,
+					options.user,
+					['execution:reveal'],
+				);
+			}
+			for (const execution of executions) {
+				const canReveal =
+					this.policyAllowsReveal(execution) || revealableIds.has(execution.workflowId);
+				this.applyRedaction(execution, 'user_requested', canReveal);
+			}
+			return;
+		}
+
+		if (options.redactExecutionData === false) {
+			// User explicitly wants unredacted data — allowed if the policy or scope permits it.
+			const needsCheck = executions.filter((e) => !this.policyAllowsReveal(e));
+			if (needsCheck.length > 0) {
+				const uniqueWorkflowIds = [...new Set(needsCheck.map((e) => e.workflowId))];
+				const revealableIds = await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
+					uniqueWorkflowIds,
+					options.user,
+					['execution:reveal'],
+				);
+				for (const execution of needsCheck) {
+					if (!revealableIds.has(execution.workflowId)) {
+						throw new ForbiddenError();
+					}
+				}
+			}
+			// Emit audit event for every execution the caller was permitted to reveal.
+			for (const execution of executions) {
 				this.eventService.emit('execution-data-revealed', {
 					user: options.user,
-					executionId: execution.id,
+					executionId: execution.id ?? '',
 					workflowId: execution.workflowId,
 					ipAddress: options.ipAddress ?? '',
 					userAgent: options.userAgent ?? '',
 					redactionPolicy: this.resolvePolicy(execution),
 				});
-				return execution;
-			} else {
-				throw new ForbiddenError();
 			}
-		} else {
-			// this should be the default case, we act based on the policy
-			const policy = this.resolvePolicy(execution);
-
-			// The policy is no redaction, so we just return the execution.
-			if (policy === 'none') {
-				return execution;
-			}
-
-			// The policy is to redact, non manual executions, so we return only if the mode is manual
-			if (policy === 'non-manual' && MANUAL_MODES.has(execution.mode)) {
-				return execution;
-			}
-
-			const canReveal =
-				this.policyAllowsReveal(execution) || (await this.canUserReveal(options.user, execution));
-			this.applyRedaction(execution, 'workflow_redaction_policy', canReveal);
+			return;
 		}
 
-		return execution;
-	}
+		// Default: policy-driven redaction. Skip executions where the policy allows reveal.
+		const needsRedaction = executions.filter((e) => !this.policyAllowsReveal(e));
+		if (needsRedaction.length === 0) return;
 
-	/**
-	 * Checks whether a user is allowed to view unredacted execution data.
-	 *
-	 * Uses the `execution:reveal` scope which is granted to:
-	 * - Global owners and admins (via global role)
-	 * - Project admins and personal project owners (via project role)
-	 */
-	private async canUserReveal(user: User, execution: IExecutionDb): Promise<boolean> {
-		const workflow = await this.workflowFinderService.findWorkflowForUser(
-			execution.workflowId,
-			user,
+		const uniqueWorkflowIds = [...new Set(needsRedaction.map((e) => e.workflowId))];
+		const revealableIds = await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
+			uniqueWorkflowIds,
+			options.user,
 			['execution:reveal'],
 		);
-		return workflow !== null;
+		for (const execution of needsRedaction) {
+			this.applyRedaction(
+				execution,
+				'workflow_redaction_policy',
+				revealableIds.has(execution.workflowId),
+			);
+		}
 	}
 
 	/**
@@ -120,7 +138,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	 *   - policy === 'non-manual' AND the execution mode is manual: manual executions are
 	 *     exempt from this policy, so the data is still accessible to all.
 	 */
-	private policyAllowsReveal(execution: IExecutionDb): boolean {
+	private policyAllowsReveal(execution: RedactableExecution): boolean {
 		const policy = this.resolvePolicy(execution);
 		return policy === 'none' || (policy === 'non-manual' && MANUAL_MODES.has(execution.mode));
 	}
@@ -129,10 +147,9 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	 * Resolves the effective redaction policy for an execution.
 	 *
 	 * Prefers the policy captured in `runtimeData.redaction` at execution time,
-	 * falls back to `workflowData.settings` for older
-	 * executions, and defaults to 'none'.
+	 * falls back to `workflowData.settings` for older executions, and defaults to 'none'.
 	 */
-	private resolvePolicy(execution: IExecutionDb): WorkflowSettings.RedactionPolicy {
+	private resolvePolicy(execution: RedactableExecution): WorkflowSettings.RedactionPolicy {
 		return (
 			execution.data.executionData?.runtimeData?.redaction?.policy ??
 			execution.workflowData.settings?.redactionPolicy ??
@@ -145,7 +162,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	 * redaction marker and removing binary data. Also sets `execution.data.redactionInfo`
 	 * with metadata about the redaction.
 	 */
-	private applyRedaction(execution: IExecutionDb, reason: string, canReveal: boolean): void {
+	private applyRedaction(execution: RedactableExecution, reason: string, canReveal: boolean): void {
 		const runData = execution.data.resultData.runData;
 		if (runData) {
 			for (const nodeName of Object.keys(runData)) {
@@ -189,8 +206,6 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 
 	/**
 	 * Redacts all json and binary data from a single node execution data item.
-	 * This is the default "full" redaction strategy. Future strategies (field-level,
-	 * pattern-based) can replace this function without changing the traversal logic.
 	 */
 	private redactItem(item: INodeExecutionData, reason: string): void {
 		item.json = {};
