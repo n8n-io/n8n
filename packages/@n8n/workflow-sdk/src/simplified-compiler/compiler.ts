@@ -729,14 +729,16 @@ function processFunctionCall(ctx: TranspilerContext, fnCall: FunctionCallInfo): 
 			})
 			.filter((a): a is NonNullable<typeof a> => a !== null);
 
-		const configObj = {
+		const configObj: Record<string, unknown> = {
 			name: setName,
 			parameters: {
 				options: {},
 				assignments: { assignments },
 			},
-			executeOnce: true,
 		};
+		if (!ctx.inLoopBody) {
+			configObj.executeOnce = true;
+		}
 
 		const configStr = JSON.stringify(configObj, null, 2)
 			.split('\n')
@@ -757,6 +759,7 @@ function processFunctionCall(ctx: TranspilerContext, fnCall: FunctionCallInfo): 
 	const execVar = `exec${ctx.execCounter}`;
 	const execName = fnCall.functionName;
 
+	const execOnceStr = ctx.inLoopBody ? '' : ',\n    executeOnce: true';
 	const sdkCode = `const ${execVar} = node({
   type: 'n8n-nodes-base.executeWorkflow', version: 1.3,
   config: {
@@ -765,8 +768,7 @@ function processFunctionCall(ctx: TranspilerContext, fnCall: FunctionCallInfo): 
       source: 'parameter',
       workflowJson: ${compiled.builderVarName},
       options: {}
-    },
-    executeOnce: true
+    }${execOnceStr}
   }
 });`;
 
@@ -1620,6 +1622,23 @@ function countIOInBody(bodyNode: AcornNode, source: string): number {
 	return count;
 }
 
+function loopBodyHasFunctionCall(bodyNode: AcornNode, ctx: TranspilerContext): boolean {
+	const stmts = bodyNode.type === 'BlockStatement' && bodyNode.body ? bodyNode.body : [bodyNode];
+	for (const s of stmts) {
+		if (extractFunctionCall(s, ctx) !== null) return true;
+	}
+	return false;
+}
+
+function countFunctionCallsInBody(bodyNode: AcornNode, ctx: TranspilerContext): number {
+	const stmts = bodyNode.type === 'BlockStatement' && bodyNode.body ? bodyNode.body : [bodyNode];
+	let count = 0;
+	for (const s of stmts) {
+		if (extractFunctionCall(s, ctx) !== null) count++;
+	}
+	return count;
+}
+
 function processForOfStatement(
 	ctx: TranspilerContext,
 	stmt: AcornNode,
@@ -1627,8 +1646,8 @@ function processForOfStatement(
 ): void {
 	const bodyNode = (stmt as unknown as { body: AcornNode }).body;
 
-	// Case 1: No IO in loop body → keep as plain JS in Code node
-	if (!loopBodyHasIO(bodyNode, ctx.source)) {
+	// Case 1: No IO and no function calls in loop body → keep as plain JS in Code node
+	if (!loopBodyHasIO(bodyNode, ctx.source) && !loopBodyHasFunctionCall(bodyNode, ctx)) {
 		const loopSource = ctx.source.slice(stmt.start, stmt.end);
 		const baseIndent = getBaseIndent(ctx.source, stmt.start);
 		ctx.pendingStatements.push({ source: dedentSource(loopSource, baseIndent), ast: stmt });
@@ -1687,8 +1706,10 @@ function processForOfStatement(
 	ctx.prevVar = splitterVar;
 
 	const ioCount = countIOInBody(bodyNode, ctx.source);
+	const fnCallCount = countFunctionCallsInBody(bodyNode, ctx);
+	const effectiveIO = ioCount + fnCallCount;
 
-	if (ioCount <= 1) {
+	if (effectiveIO <= 1) {
 		// Case 2: Single IO in loop → splitter + inline per-item node (current approach)
 		ctx.varSourceMap.set(loopVar, splitterName);
 		ctx.varSourceKind.set(loopVar, 'io');

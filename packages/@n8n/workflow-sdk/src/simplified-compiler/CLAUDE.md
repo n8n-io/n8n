@@ -123,7 +123,7 @@ Assert: normalizeSDK(SDK₁) === normalizeSDK(SDK₂)
 | `examples.ts` | Pre-built DSL examples for UI quick-start templates |
 | `generate-report.ts` | HTML report generator for fixture validation results |
 | `index.ts` | Public exports: `transpileWorkflowJS`, `decompileWorkflowSDK`, `COMPILER_EXAMPLES` |
-| `__fixtures__/w01-w24/` | Test fixtures (real workflow patterns, w18-w22 sub-functions, w23-w24 try/catch error connections) |
+| `__fixtures__/w01-w27/` | Test fixtures (real workflow patterns, w18-w22 sub-functions, w23-w24 try/catch, w25 CRUD+branching, w26 loop+sub-fn, w27 loop+try/catch) |
 
 **Decompile pipeline (in `src/codegen/`):**
 
@@ -214,7 +214,7 @@ Validates existing fixtures through the full compilation pipeline (transpile, ge
 
 ## Round-Trip Coverage
 
-24/24 fixtures pass round-trip (100%). W10 indentation bug was fixed by preserving relative indentation in `emitSubFunctionDeclaration` (was using `line.trim()` which stripped all leading whitespace).
+27/27 fixtures pass round-trip (100%). Previous fixes: W10 indentation (preserve relative indentation in `emitSubFunctionDeclaration`), W25/W26/W27 (see below).
 
 ## Sub-Function Compiler Architecture
 
@@ -244,14 +244,18 @@ When a `for...of` loop body has multiple IO calls, n8n's execution model causes 
 
 ### Three-Way Branching in `processForOfStatement`
 
-| IO count in body | Strategy | Pattern |
-|-----------------|----------|---------|
-| 0 | Plain Code node | Loop body inlined as JS in a single Code node |
-| 1 | Splitter → single node | Splitter Code node + the IO node (no sub-workflow needed) |
+The effective IO count includes both direct IO calls and sub-function calls (`await fn(args)`). Sub-function calls are counted by `countFunctionCallsInBody()` using `extractFunctionCall()`.
+
+| Effective IO count | Strategy | Pattern |
+|-------------------|----------|---------|
+| 0 (no IO, no fn calls) | Plain Code node | Loop body inlined as JS in a single Code node |
+| 1 | Splitter → single node | Splitter Code node + the IO node or function call (no sub-workflow needed) |
 | 2+ | Splitter → Execute Sub-Workflow | Splitter Code node + Execute Workflow node with inline `_loop_<var>` sub-workflow |
 
 ### Compiler Side
 - **`countIOInBody()`**: Uses only `findNestedIO()` (not `extractIOCall` — they overlap and cause double-counting)
+- **`loopBodyHasFunctionCall()` / `countFunctionCallsInBody()`**: Detect sub-function calls in loop body using `extractFunctionCall()`. These count as "effective IO" for the Case 1/2/3 decision.
+- **`ctx.inLoopBody` and `executeOnce`**: When `ctx.inLoopBody` is true, Set nodes and Execute Workflow nodes for function calls are emitted WITHOUT `executeOnce` (they run per item from splitter).
 - **`compileLoopBodyAsSubWorkflow()`**: Creates a sub-workflow with `executeWorkflowTrigger` in passthrough mode. Loop variable seeded as `'io'` kind pointing to trigger node. Variable prefix `loop_<var>_` avoids collision.
 - **Execute Workflow node**: Emitted WITHOUT `executeOnce` (runs per item from splitter)
 - **Sub-workflow name**: `_loop_<loopVar>` (naming convention as decompiler hint)
@@ -297,6 +301,19 @@ The compiler supports three cases for `try { ... } catch { ... }`:
 - **Variable name recovery**: `computeVariableAssignments()` checks the predecessor Code node for `let X = null;` and uses `X` as the variable name instead of the default `data`. This prevents duplicate declarations.
 - **Code node awareness**: When `codeNodeVars.has(assignedVar)` is true, `emitHttpNode()`/`emitAiNode()` skip emitting `let X = null;` since the Code node already declares it.
 - **`continueRegularOutput`** emits `// @onError continue` annotation (different pattern, no try/catch).
+
+## W25/W26/W27 Round-Trip Fixes
+
+### W25: CRUD + Branching + Error Handling
+Two bugs prevented round-trip:
+1. **Builder instance identity** (`workflow-builder.ts`): `addConnectionTargetNodes` and `addSingleNodeConnectionTargets` used `!nodes.has(targetNode.name)` to guard against adding duplicate nodes. With multiple nodes sharing the same name (e.g., 6x "POST httpbin.org/post"), different instances were incorrectly skipped. Fixed with `isInstanceInGraph()` which checks by instance reference (`===`), not by name.
+2. **Switch case operator types** (`simplified-generator.ts`): `visitSwitchCase` always wrapped case values in quotes (`'true'`), making them string literals. When the operator type is `boolean` or `number`, values must be emitted without quotes to preserve type during round-trip.
+
+### W26: Loop with Sub-Function
+**Sub-function calls in loops counted as "0 IO"**: `processForOfStatement` only counted direct IO calls (`http.*`, `ai.*`). A sub-function call (`await enrichUser(...)`) was invisible, causing the loop body to be inlined as opaque JS in a Code node. The decompiler can't reconstruct function calls from opaque Code node `jsCode`. Fixed by adding `loopBodyHasFunctionCall()` / `countFunctionCallsInBody()` and treating function calls as effective IO. Also ensured Set/ExecuteWorkflow nodes respect `ctx.inLoopBody` to skip `executeOnce`.
+
+### W27: Loop with Try/Catch
+**Error connections lost in sub-workflow**: `compileLoopBodyAsSubWorkflow()` creates a local `errorConnections: []` context. Error connections pushed during `processTryStatement` were trapped in the local context and never returned. Fixed by propagating `errorConnections` through `CompiledFunction` interface and emitting them in `generateSDKCode()`.
 
 ## Updating This Document
 
