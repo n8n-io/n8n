@@ -75,32 +75,51 @@ describe('AddRoleColumnToProjectSecretsProviderAccess Migration', () => {
 		});
 
 		async function insertPrerequisiteData(context: TestMigrationContext) {
+			const now = new Date();
 			const projectTable = context.escape.tableName('project');
-			await context.queryRunner.query(
-				`INSERT INTO ${projectTable} ("id", "name", "type", "createdAt", "updatedAt") VALUES ('test-proj', 'Test', 'team', datetime('now'), datetime('now'))`,
+			await context.runQuery(
+				`INSERT INTO ${projectTable} ("id", "name", "type", "createdAt", "updatedAt") VALUES (:id, :name, :type, :createdAt, :updatedAt)`,
+				{ id: 'test-proj', name: 'Test', type: 'team', createdAt: now, updatedAt: now },
 			);
 			const connectionTable = context.escape.tableName('secrets_provider_connection');
-			await context.queryRunner.query(
-				`INSERT INTO ${connectionTable} ("providerKey", "type", "encryptedSettings", "isEnabled", "createdAt", "updatedAt") VALUES ('test-key', 'vault', '{}', 0, datetime('now'), datetime('now'))`,
+			await context.runQuery(
+				`INSERT INTO ${connectionTable} ("providerKey", "type", "encryptedSettings", "isEnabled", "createdAt", "updatedAt") VALUES (:providerKey, :type, :encryptedSettings, :isEnabled, :createdAt, :updatedAt)`,
+				{
+					providerKey: 'test-key',
+					type: 'vault',
+					encryptedSettings: '{}',
+					isEnabled: false,
+					createdAt: now,
+					updatedAt: now,
+				},
 			);
-			const [{ id: connId }] = await context.queryRunner.query(
-				`SELECT "id" FROM ${connectionTable} WHERE "providerKey" = 'test-key'`,
+			const [{ id: connId }] = await context.runQuery<Array<{ id: number }>>(
+				`SELECT "id" FROM ${connectionTable} WHERE "providerKey" = :providerKey`,
+				{ providerKey: 'test-key' },
 			);
-			return connId as number;
+			return connId;
+		}
+
+		async function insertAccess(context: TestMigrationContext, connId: number, role: string) {
+			const now = new Date();
+			const accessTable = context.escape.tableName(table);
+			await context.runQuery(
+				`INSERT INTO ${accessTable} ("secretsProviderConnectionId", "projectId", "role", "createdAt", "updatedAt") VALUES (:connId, :projectId, :role, :createdAt, :updatedAt)`,
+				{ connId, projectId: 'test-proj', role, createdAt: now, updatedAt: now },
+			);
 		}
 
 		it('should accept valid role values', async () => {
 			await runSingleMigration(MIGRATION_NAME);
 			const context = createTestMigrationContext(dataSource);
 			const connId = await insertPrerequisiteData(context);
+
+			await insertAccess(context, connId, 'secretsProviderConnection:owner');
+
 			const accessTable = context.escape.tableName(table);
-
-			await context.queryRunner.query(
-				`INSERT INTO ${accessTable} ("secretsProviderConnectionId", "projectId", "role", "createdAt", "updatedAt") VALUES (${connId}, 'test-proj', 'secretsProviderConnection:owner', datetime('now'), datetime('now'))`,
-			);
-
-			const rows = await context.queryRunner.query(
-				`SELECT "role" FROM ${accessTable} WHERE "projectId" = 'test-proj'`,
+			const rows = await context.runQuery<Array<{ role: string }>>(
+				`SELECT "role" FROM ${accessTable} WHERE "projectId" = :projectId`,
+				{ projectId: 'test-proj' },
 			);
 			expect(rows).toHaveLength(1);
 			expect(rows[0].role).toBe('secretsProviderConnection:owner');
@@ -112,13 +131,8 @@ describe('AddRoleColumnToProjectSecretsProviderAccess Migration', () => {
 			await runSingleMigration(MIGRATION_NAME);
 			const context = createTestMigrationContext(dataSource);
 			const connId = await insertPrerequisiteData(context);
-			const accessTable = context.escape.tableName(table);
 
-			await expect(
-				context.queryRunner.query(
-					`INSERT INTO ${accessTable} ("secretsProviderConnectionId", "projectId", "role", "createdAt", "updatedAt") VALUES (${connId}, 'test-proj', 'invalid-role', datetime('now'), datetime('now'))`,
-				),
-			).rejects.toThrow();
+			await expect(insertAccess(context, connId, 'invalid-role')).rejects.toThrow();
 
 			await context.queryRunner.release();
 		});
