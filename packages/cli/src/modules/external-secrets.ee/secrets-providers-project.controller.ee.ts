@@ -114,9 +114,12 @@ export class SecretProvidersProjectController {
 		@Body body: UpdateSecretsProviderConnectionDto,
 	): Promise<SecretProviderConnection> {
 		this.logger.debug('Updating connection for project', { projectId, providerKey });
-		await this.accessCheckService.assertConnectionAccess(providerKey, projectId, [
-			'externalSecretsProvider:update',
-		]);
+		await this.accessCheckService.assertConnectionAccess({
+			providerKey,
+			projectId,
+			requiredScopes: ['externalSecretsProvider:update'],
+			user: req.user,
+		});
 		const { projectIds: _, ...updates } = body;
 		const connection = await this.connectionsService.updateConnection(
 			providerKey,
@@ -129,15 +132,18 @@ export class SecretProvidersProjectController {
 	@Delete('/:projectId/connections/:providerKey')
 	@ProjectScope('externalSecretsProvider:delete')
 	async deleteConnection(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		res: Response,
 		@Param('projectId') projectId: string,
 		@Param('providerKey') providerKey: string,
 	) {
 		this.logger.debug('Deleting connection for project', { projectId, providerKey });
-		await this.accessCheckService.assertConnectionAccess(providerKey, projectId, [
-			'externalSecretsProvider:delete',
-		]);
+		await this.accessCheckService.assertConnectionAccess({
+			providerKey,
+			projectId,
+			requiredScopes: ['externalSecretsProvider:delete'],
+			user: req.user,
+		});
 		await this.connectionsService.deleteConnectionForProject(providerKey, projectId);
 		res.status(204).send();
 	}
@@ -151,9 +157,12 @@ export class SecretProvidersProjectController {
 		@Param('providerKey') providerKey: string,
 	): Promise<TestSecretProviderConnectionResponse> {
 		this.logger.debug('Testing connection for project', { projectId, providerKey });
-		await this.accessCheckService.assertConnectionAccess(providerKey, projectId, [
-			'externalSecretsProvider:update',
-		]);
+		await this.accessCheckService.assertConnectionAccess({
+			providerKey,
+			projectId,
+			requiredScopes: ['externalSecretsProvider:update'],
+			user: req.user,
+		});
 		return await this.connectionsService.testConnection(providerKey, req.user.id);
 	}
 
