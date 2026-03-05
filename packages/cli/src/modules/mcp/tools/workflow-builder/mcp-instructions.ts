@@ -8,6 +8,7 @@
 
 import {
 	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL,
+	MCP_UPDATE_WORKFLOW_TOOL,
 	MCP_DELETE_WORKFLOW_TOOL,
 	CODE_BUILDER_GET_NODE_TYPES_TOOL,
 	MCP_GET_SDK_REFERENCE_TOOL,
@@ -37,7 +38,9 @@ To build n8n workflows, follow these steps in order:
 
 7. Create: Call ${MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName} with the validated code to save the workflow to n8n. Include a short \`description\` (1-2 sentences) summarizing what the workflow does — this helps users find and understand their workflows.
 
-To update an existing workflow, delete it with ${MCP_DELETE_WORKFLOW_TOOL.toolName} and recreate it using the steps above.`;
+8. Update: Call ${MCP_UPDATE_WORKFLOW_TOOL.toolName} with the workflow ID and validated code. Follow steps 2-6 to prepare the new code, then call update instead of create.
+
+9. Delete: Call ${MCP_DELETE_WORKFLOW_TOOL.toolName} with the workflow ID to delete a workflow.`;
 
 	return isBuilderEnabled ? `${INTRO}\n\n${BUILDER_INSTRUCTIONS}` : INTRO;
 }

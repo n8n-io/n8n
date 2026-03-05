@@ -123,3 +123,8 @@ export const MCP_DELETE_WORKFLOW_TOOL: BuilderToolBase = {
 	toolName: 'delete_workflow',
 	displayTitle: 'Deleting workflow',
 };
+
+export const MCP_UPDATE_WORKFLOW_TOOL: BuilderToolBase = {
+	toolName: 'update_workflow',
+	displayTitle: 'Updating workflow',
+};
