@@ -79,9 +79,14 @@ export async function linearApiRequestAllItems(
 ): Promise<IDataObject[]> {
 	const returnData: IDataObject[] = [];
 
+	const variables: IDataObject = {
+		...body.variables,
+		first: limit && limit < 50 ? limit : 50,
+		after: null,
+	};
+	const requestBody = { ...body, variables };
+
 	let responseData;
-	body.variables.first = limit && limit < 50 ? limit : 50;
-	body.variables.after = null;
 
 	const propertyPath = propertyName.split('.');
 	const nodesPath = [...propertyPath, 'nodes'];
@@ -89,10 +94,10 @@ export async function linearApiRequestAllItems(
 	const hasNextPagePath = [...propertyPath, 'pageInfo', 'hasNextPage'];
 
 	do {
-		responseData = await linearApiRequest.call(this, body);
+		responseData = await linearApiRequest.call(this, requestBody);
 		const nodes = get(responseData, nodesPath) as IDataObject[];
 		returnData.push(...nodes);
-		body.variables.after = get(responseData, endCursorPath);
+		requestBody.variables.after = get(responseData, endCursorPath);
 		if (limit && returnData.length >= limit) {
 			return returnData;
 		}
