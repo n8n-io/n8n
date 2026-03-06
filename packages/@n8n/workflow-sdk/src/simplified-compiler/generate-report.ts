@@ -8,6 +8,13 @@ import { readdirSync, readFileSync, writeFileSync, statSync, existsSync } from '
 import { join } from 'path';
 import { transpileWorkflowJS } from './compiler';
 import { parseWorkflowCodeToBuilder } from '../codegen/parse-workflow-code';
+import type { Expectations } from './expectation-matcher';
+
+interface ExpectationMismatch {
+	path: string;
+	expected: unknown;
+	actual: unknown;
+}
 
 interface FixtureMeta {
 	title: string;
@@ -71,6 +78,7 @@ interface ExecutionEntry {
 	nodeOutputs?: NodeOutputMap;
 	subWorkflows?: SubWorkflowExecutionEntry[];
 	nockTrace?: NockTraceEntry;
+	expectationMismatches?: ExpectationMismatch[];
 }
 
 interface ReportEntry {
@@ -84,6 +92,7 @@ interface ReportEntry {
 	subWorkflows?: SubWorkflowEntry[];
 	pinData?: PinDataEntry[];
 	execution?: ExecutionEntry;
+	expectations?: Expectations;
 	error?: string;
 }
 
@@ -143,7 +152,18 @@ function processFixtures(): ReportEntry[] {
 		const meta = JSON.parse(readFileSync(join(dirPath, 'meta.json'), 'utf-8')) as FixtureMeta;
 		const input = readFileSync(join(dirPath, 'input.js'), 'utf-8').trim();
 		const execution = executionMap[dirName];
-		const base = { title: meta.title, templateId: meta.templateId, dirName, input, execution };
+		const expectationsPath = join(dirPath, 'expectations.json');
+		const expectations = existsSync(expectationsPath)
+			? (JSON.parse(readFileSync(expectationsPath, 'utf-8')) as Expectations)
+			: undefined;
+		const base = {
+			title: meta.title,
+			templateId: meta.templateId,
+			dirName,
+			input,
+			execution,
+			expectations,
+		};
 
 		if (meta.skip) {
 			entries.push({ ...base, skip: meta.skip });
@@ -197,7 +217,7 @@ function escapeHtml(str: string): string {
 		.replace(/"/g, '&quot;');
 }
 
-function renderExecutionSection(execution: ExecutionEntry): string {
+function renderExecutionSection(execution: ExecutionEntry, expectations?: Expectations): string {
 	if (execution.status === 'skip') {
 		return `<details>
         <summary>Execution Output <span class="exec-badge exec-skip">SKIPPED</span></summary>
@@ -207,15 +227,24 @@ function renderExecutionSection(execution: ExecutionEntry): string {
 
 	const executedNodes = execution.executedNodes ?? [];
 	const nodeOutputs = execution.nodeOutputs ?? {};
-	const statusClass = execution.status === 'pass' ? 'exec-pass' : 'exec-error';
-	const statusLabel = execution.status === 'pass' ? 'PASS' : 'ERROR';
+	const hasMismatches = (execution.expectationMismatches ?? []).length > 0;
+	const effectiveStatus = hasMismatches ? 'error' : execution.status;
+	const statusClass = effectiveStatus === 'pass' ? 'exec-pass' : 'exec-error';
+	const statusLabel = effectiveStatus === 'pass' ? 'PASS' : hasMismatches ? 'EXPECT FAIL' : 'ERROR';
 
 	const errorBlock = execution.error
 		? `<div class="exec-error-msg">${escapeHtml(execution.error)}</div>`
 		: '';
 
+	const mismatches = execution.expectationMismatches;
 	const nockRequests = execution.nockTrace?.requests;
-	const nodeRows = renderNodePipeline(executedNodes, nodeOutputs, nockRequests);
+	const nodeRows = renderNodePipeline(
+		executedNodes,
+		nodeOutputs,
+		nockRequests,
+		mismatches,
+		expectations,
+	);
 
 	const subWorkflowSections = (execution.subWorkflows ?? [])
 		.map((sw) => {
@@ -242,7 +271,7 @@ function renderExecutionSection(execution: ExecutionEntry): string {
       </details>`;
 }
 
-function renderNockRequestDetail(req: NockRequestRecord): string {
+function renderNockRequestDetail(req: NockRequestRecord, expectBadge = '', diffBlock = ''): string {
 	const reqHeaders =
 		req.requestHeaders && Object.keys(req.requestHeaders).length > 0
 			? `<div class="nock-req-section"><span class="nock-req-label">Request Headers</span><pre class="code nock-req-body"><code>${escapeHtml(
@@ -268,11 +297,12 @@ function renderNockRequestDetail(req: NockRequestRecord): string {
 			? `<div class="nock-req-section"><span class="nock-req-label">Response Body</span><pre class="code nock-req-body"><code>${escapeHtml(typeof req.responseBody === 'string' ? req.responseBody : JSON.stringify(req.responseBody, null, 2))}</code></pre></div>`
 			: '';
 	return `<details class="nock-req-detail">
-          <summary><span class="nock-req-method">${escapeHtml(req.method)}</span> <span class="nock-req-url">${escapeHtml(req.url)}</span> <span class="nock-req-status nock-status-${req.responseStatus < 400 ? 'ok' : 'err'}">${req.responseStatus}</span></summary>
+          <summary><span class="nock-req-method">${escapeHtml(req.method)}</span> <span class="nock-req-url">${escapeHtml(req.url)}</span> <span class="nock-req-status nock-status-${req.responseStatus < 400 ? 'ok' : 'err'}">${req.responseStatus}</span> ${expectBadge}</summary>
           <div class="nock-req-panels">
             <div class="nock-req-panel"><h5 class="nock-panel-title">Request</h5>${reqHeaders}${reqBody}</div>
             <div class="nock-req-panel"><h5 class="nock-panel-title">Response <span class="nock-req-status nock-status-${req.responseStatus < 400 ? 'ok' : 'err'}">${req.responseStatus}</span></h5>${resHeaders}${resBody}</div>
           </div>
+          ${diffBlock}
         </details>`;
 }
 
@@ -298,6 +328,34 @@ function renderNockSummary(trace: NockTraceEntry): string {
       </details>`;
 }
 
+function renderExpectBadge(
+	entityPath: string,
+	mismatches: ExpectationMismatch[] | undefined,
+	hasExpectation: boolean,
+): string {
+	if (!hasExpectation) return '';
+	const relevant = (mismatches ?? []).filter((m) => m.path.startsWith(entityPath));
+	if (relevant.length === 0) {
+		return '<span class="expect-badge expect-pass">expected</span>';
+	}
+	return `<span class="expect-badge expect-fail">${relevant.length} mismatch${relevant.length !== 1 ? 'es' : ''}</span>`;
+}
+
+function renderMismatchDiff(
+	entityPath: string,
+	mismatches: ExpectationMismatch[] | undefined,
+): string {
+	const relevant = (mismatches ?? []).filter((m) => m.path.startsWith(entityPath));
+	if (relevant.length === 0) return '';
+	const rows = relevant
+		.map(
+			(m) =>
+				`<tr><td class="diff-path">${escapeHtml(m.path)}</td><td class="diff-expected">${escapeHtml(JSON.stringify(m.expected))}</td><td class="diff-actual">${escapeHtml(JSON.stringify(m.actual))}</td></tr>`,
+		)
+		.join('\n');
+	return `<details class="diff-details"><summary class="diff-summary">Expectation Diff</summary><table class="diff-table"><thead><tr><th>Path</th><th>Expected</th><th>Actual</th></tr></thead><tbody>${rows}</tbody></table></details>`;
+}
+
 function renderOutputBlock(items: unknown[]): string {
 	const outputJson = JSON.stringify(items, null, 2);
 	const truncated = outputJson.length > 2000;
@@ -305,7 +363,12 @@ function renderOutputBlock(items: unknown[]): string {
 	return `<pre class="code exec-output"><code>${escapeHtml(displayJson)}</code></pre>`;
 }
 
-function renderSingleNode(nodeName: string, info: NodeExecutionInfo | undefined): string {
+function renderSingleNode(
+	nodeName: string,
+	info: NodeExecutionInfo | undefined,
+	mismatches?: ExpectationMismatch[],
+	hasExpectation?: boolean,
+): string {
 	const outputs = info?.outputs ?? [];
 	const nodeError = info?.error;
 	const hasError = !!nodeError;
@@ -320,6 +383,9 @@ function renderSingleNode(nodeName: string, info: NodeExecutionInfo | undefined)
 	} else {
 		statusBadge = '<span class="exec-no-output">no output</span>';
 	}
+
+	const expectBadge = renderExpectBadge(`nodes[${nodeName}]`, mismatches, !!hasExpectation);
+	const diffBlock = renderMismatchDiff(`nodes[${nodeName}]`, mismatches);
 
 	const errorBlock = hasError ? `<div class="exec-node-error">${escapeHtml(nodeError)}</div>` : '';
 
@@ -342,9 +408,11 @@ function renderSingleNode(nodeName: string, info: NodeExecutionInfo | undefined)
             <span class="${dotClass}"></span>
             <span class="exec-node-name">${escapeHtml(nodeName)}</span>
             ${statusBadge}
+            ${expectBadge}
           </div>
           ${errorBlock}
           ${outputBlocks}
+          ${diffBlock}
         </div>`;
 }
 
@@ -352,9 +420,18 @@ function renderNodePipeline(
 	nodeNames: string[],
 	nodeOutputs: NodeOutputMap,
 	nockRequests?: NockRequestRecord[],
+	mismatches?: ExpectationMismatch[],
+	expectations?: Expectations,
 ): string {
+	const nodeExpKeys = expectations?.nodes ? new Set(Object.keys(expectations.nodes)) : undefined;
+	const reqExpKeys = expectations?.requests
+		? new Set(Object.keys(expectations.requests))
+		: undefined;
+
 	if (!nockRequests || nockRequests.length === 0) {
-		return nodeNames.map((name) => renderSingleNode(name, nodeOutputs[name])).join('\n');
+		return nodeNames
+			.map((name) => renderSingleNode(name, nodeOutputs[name], mismatches, nodeExpKeys?.has(name)))
+			.join('\n');
 	}
 
 	// Build a unified timeline: nodes by startTime, nock requests by timestamp
@@ -375,12 +452,28 @@ function renderNodePipeline(
 
 	timeline.sort((a, b) => a.time - b.time);
 
+	// Track occurrence counts for nock request keys
+	const nockOccurrences = new Map<string, number>();
+
 	return timeline
 		.map((entry) => {
 			if (entry.kind === 'node') {
-				return renderSingleNode(entry.name, nodeOutputs[entry.name]);
+				return renderSingleNode(
+					entry.name,
+					nodeOutputs[entry.name],
+					mismatches,
+					nodeExpKeys?.has(entry.name),
+				);
 			}
-			return `<div class="exec-node nock-inline">${renderNockRequestDetail(entry.request)}</div>`;
+			const req = entry.request;
+			const baseKey = `${req.method} ${req.url}`;
+			const count = (nockOccurrences.get(baseKey) ?? 0) + 1;
+			nockOccurrences.set(baseKey, count);
+			const reqKey = count === 1 ? baseKey : `${baseKey}#${count}`;
+			const hasReqExp = reqExpKeys?.has(reqKey) ?? false;
+			const reqBadge = renderExpectBadge(`requests[${reqKey}]`, mismatches, hasReqExp);
+			const reqDiff = renderMismatchDiff(`requests[${reqKey}]`, mismatches);
+			return `<div class="exec-node nock-inline">${renderNockRequestDetail(req, reqBadge, reqDiff)}</div>`;
 		})
 		.join('\n');
 }
@@ -402,7 +495,9 @@ function generateHtml(entries: ReportEntry[]): string {
 				? `<div class="error-msg">${escapeHtml(entry.error)}</div>`
 				: '';
 
-			const executionSection = entry.execution ? renderExecutionSection(entry.execution) : '';
+			const executionSection = entry.execution
+				? renderExecutionSection(entry.execution, entry.expectations)
+				: '';
 
 			return `
     <div class="card">
@@ -556,6 +651,19 @@ function generateHtml(entries: ReportEntry[]): string {
     .nock-req-label { font-size: 10px; font-weight: 600; color: #888; display: block; margin-bottom: 2px; }
     .nock-req-body { font-size: 11px; padding: 6px 10px; margin-top: 2px; max-height: 150px; overflow-y: auto; }
     .nock-inline { border-left: 2px solid #28a745; margin-left: 2px; padding-left: 10px; }
+
+    /* Expectation badge + diff styles */
+    .expect-badge { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 3px; margin-left: 6px; vertical-align: middle; }
+    .expect-pass { background: #d4edda; color: #155724; }
+    .expect-fail { background: #f8d7da; color: #721c24; }
+    .diff-details { margin-top: 6px; }
+    .diff-summary { font-size: 11px; color: #721c24; }
+    .diff-table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 11px; }
+    .diff-table th { text-align: left; padding: 4px 8px; background: #f0f0f0; border: 1px solid #ddd; font-weight: 600; }
+    .diff-table td { padding: 4px 8px; border: 1px solid #ddd; font-family: monospace; }
+    .diff-path { color: #555; }
+    .diff-expected { color: #155724; background: #f0fff0; }
+    .diff-actual { color: #721c24; background: #fff0f0; }
   </style>
 </head>
 <body>

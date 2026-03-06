@@ -128,8 +128,10 @@ Assert: normalizeSDK(SDK₁) === normalizeSDK(SDK₂)
 | `decompiler.ts` | Thin wrapper: SDK -> simplified JS (orchestrates codegen pipeline) |
 | `compiler.test.ts` | Forward tests (18 phases) + round-trip tests |
 | `decompiler-debug.test.ts` | Debug test for decompile round-trips with diff logging |
+| `expectation-matcher.ts` | Execution expectation matching: `deepPartialMatch`, `deepExactMatch`, `matchRequests`, `matchNodes`, `checkExpectations` |
+| `expectation-matcher.test.ts` | 40 unit tests for expectation matchers |
 | `examples.ts` | Pre-built DSL examples for UI quick-start templates |
-| `generate-report.ts` | HTML report generator for fixture validation results |
+| `generate-report.ts` | HTML report generator for fixture validation results + expectation badges/diffs |
 | `index.ts` | Public exports: `transpileWorkflowJS`, `decompileWorkflowSDK`, `COMPILER_EXAMPLES` |
 | `__fixtures__/w01-w27/` | Test fixtures (real workflow patterns, w18-w22 sub-functions, w23-w24 try/catch, w25 CRUD+branching, w26 loop+sub-fn, w27 loop+try/catch) |
 
@@ -559,6 +561,62 @@ Wired into `buildAdditionalData()` via `credentialsHelper` override.
 ### Proxy `set` Trap
 
 The `additionalData` Proxy now has a `set` trap because `_getCredentials()` writes `additionalData.executionContext = this.getExecutionContext()` during credential resolution. Without the `set` trap, this write fails silently and credential resolution breaks.
+
+## Execution Expectations
+
+Optional `expectations.json` files per fixture define expected request bodies and node output items. After execution, mismatches are collected and the test fails if any exist. The HTML report shows inline match/mismatch badges with diff tables.
+
+### File Map
+
+| File | Purpose |
+|------|---------|
+| `expectation-matcher.ts` | `deepPartialMatch`, `deepExactMatch`, `matchRequests`, `matchNodes`, `checkExpectations` |
+| `expectation-matcher.test.ts` | 40 unit tests for all matcher functions |
+| `__fixtures__/<dir>/expectations.json` | Per-fixture expected values (optional) |
+
+### expectations.json Schema
+
+```json
+{
+  "requests": {
+    "POST api.example.com/data": {
+      "requestBody": { "model": "gpt-4", "temperature": 0.3 },
+      "requestHeaders": { "authorization": "Bearer tok" }
+    },
+    "POST httpbin.org/post#2": {
+      "requestBody": { "status": "done" }
+    }
+  },
+  "nodes": {
+    "Set searchInput": {
+      "items": [{ "searchInput": "hello" }]
+    }
+  }
+}
+```
+
+- **`requests`**: keyed by `"METHOD url"`. `#N` suffix for Nth duplicate (1-indexed after first).
+- **`nodes`**: keyed by node name. `items` = shorthand for output index 0.
+- Both sections optional. Only specified entries are checked.
+
+### Matching Rules
+
+- **`requestBody`**: **exact match** via `deepExactMatch` — all keys in expected must be in actual AND all keys in actual must be in expected. No extra keys allowed. `{}` does NOT match `{text: "hello"}`.
+- **`requestHeaders`**: **partial match** via `deepPartialMatch` — only checks specified headers. Extra headers in actual (like `accept`, `user-agent`, `host`) are ignored. This is necessary because HTTP requests always have many auto-generated headers.
+- **`nodes.items`**: **partial match** via `deepPartialMatch` — only checks specified fields. Extra keys in actual items are ignored.
+- **Arrays**: element-by-element. For exact match, actual cannot have more elements. For partial, actual can have more.
+- **Mismatch format**: `{ path: string, expected: unknown, actual: unknown }`.
+- **Collect all**: don't fail-fast, gather every mismatch so the test shows everything at once.
+
+### Integration
+
+- **`fixture-loader.ts`**: Detects `expectations.json` → sets `hasExpectations: true`, loads `expectations` on the `Fixture` object.
+- **`execution.test.ts`**: After execution, calls `checkExpectations()` if fixture has expectations. Stores `expectationMismatches` in execution data JSON. Asserts `toHaveLength(0)`.
+- **`generate-report.ts`**: Reads `expectationMismatches` from execution data. Shows green "expected" badge when all match, red "N mismatch(es)" badge when mismatches exist. Execution section shows "EXPECT FAIL" (red) when mismatches present even if workflow execution itself succeeded. Collapsed diff table shows Path | Expected | Actual for each mismatch.
+
+### Current Expectation Status
+
+w01 and w25 have `expectations.json` with correct resolved values. Both currently **fail** because the execution harness sends unresolved n8n expressions (e.g., `={{ $('NodeName').first().json.prop }}`) as literal request body strings instead of resolved values. This documents the gap — expressions in HTTP request bodies are not resolved in the test environment.
 
 ## Updating This Document
 

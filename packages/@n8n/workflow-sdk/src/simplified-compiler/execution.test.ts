@@ -11,46 +11,14 @@ import {
 	extractPinData,
 	patchFilterConditions,
 } from './execution-utils';
+import { checkExpectations } from './expectation-matcher';
+import type { ExpectationMismatch } from './expectation-matcher';
 
 // ---------------------------------------------------------------------------
 // Skip map: fixtures that fail execution (grouped by root cause)
 // ---------------------------------------------------------------------------
 
-const SKIP_REASONS: Record<string, string> = {
-	// Code node refs upstream node without pin data → undefined.ok
-	w04: 'Code node refs upstream without pin data (undefined.ok)',
-	w05: 'Code node refs upstream without pin data (undefined.ok)',
-	w08: 'Code node refs upstream without pin data (undefined.ok)',
-	w10: 'Code node refs upstream without pin data (undefined.ok)',
-	w11: 'Code node refs upstream without pin data (undefined.ok)',
-	w12: 'Code node refs upstream without pin data (undefined.ok)',
-	w17: 'Code node refs upstream without pin data (undefined.ok)',
-	w23: 'Code node refs upstream without pin data (undefined.ok)',
-	w26: 'Code node uses .first().json for array response (todos.filter not a function)',
-	w27: 'Code node uses .first().json for array response (users.filter not a function)',
-
-	// IF/Switch node gets undefined input (missing pin data on predecessor)
-	w06: 'IF node gets undefined input (missing pin data on predecessor)',
-	w09: 'IF node gets undefined input (missing pin data on predecessor)',
-	w14: 'Switch node gets undefined input (missing pin data on predecessor)',
-
-	// Execute Workflow by name (source: database) — needs real DB lookup
-	w15: 'Execute Workflow by name (source: database) — no DB in test harness',
-
-	// HTTP node with credentials — credentialsHelper stub unsupported
-	w07: 'HTTP node with credentials — credentialsHelper stub unsupported',
-
-	// w25: now uses nock interceptors (removed from skip list)
-
-	// Sub-workflow nodes reference upstream without pin data
-	w18: 'Sub-workflow node refs upstream without pin data',
-	w20: 'Sub-workflow node refs upstream without pin data',
-	w21: 'Sub-workflow node refs upstream without pin data',
-	w22: 'Sub-workflow node refs upstream without pin data',
-
-	// Try/catch sub-workflow makes real HTTP request (no pin data)
-	w24: 'Try/catch sub-workflow HTTP node has no pin data',
-};
+const SKIP_REASONS: Record<string, string> = {};
 
 function getSkipReason(dir: string): string | undefined {
 	// Extract the w## prefix from dir name like "w04-telegram-voice-transcription"
@@ -108,6 +76,7 @@ interface FixtureExecutionEntry {
 	nodeOutputs?: NodeOutputMap;
 	subWorkflows?: SubWorkflowExecutionEntry[];
 	nockTrace?: NockTraceEntry;
+	expectationMismatches?: ExpectationMismatch[];
 }
 
 const executionData: Record<string, FixtureExecutionEntry> = {};
@@ -323,6 +292,12 @@ describe('Fixture execution with pin data', () => {
 				};
 			});
 
+			// Step 7: Check expectations if present
+			let expectationMismatches: ExpectationMismatch[] | undefined;
+			if (fixture.hasExpectations && fixture.expectations) {
+				expectationMismatches = checkExpectations(fixture.expectations, nockRequests, nodeOutputs);
+			}
+
 			executionData[fixture.dir] = {
 				status: result.success ? 'pass' : 'error',
 				error: result.error,
@@ -330,9 +305,13 @@ describe('Fixture execution with pin data', () => {
 				nodeOutputs,
 				subWorkflows: subWorkflows && subWorkflows.length > 0 ? subWorkflows : undefined,
 				nockTrace,
+				expectationMismatches,
 			};
 
 			expect(result.success).toBe(true);
+			if (expectationMismatches) {
+				expect(expectationMismatches).toHaveLength(0);
+			}
 		});
 	}
 });
