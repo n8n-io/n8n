@@ -10,7 +10,7 @@ import {
 	reloadSecretProviderConnectionResponseSchema,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { SecretsProviderConnection } from '@n8n/db';
+import type { SecretsProviderConnection, User } from '@n8n/db';
 import {
 	ProjectSecretsProviderAccessRepository,
 	SecretsProviderConnectionRepository,
@@ -28,6 +28,7 @@ import { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-s
 import { RedactionService } from '@/modules/external-secrets.ee/redaction.service.ee';
 
 import { ExternalSecretsProviderRegistry } from './provider-registry.service';
+import { hasGlobalScope } from '@n8n/permissions';
 
 @Service()
 export class SecretsProvidersConnectionsService {
@@ -361,6 +362,30 @@ export class SecretsProvidersConnectionsService {
 			success: allSucceeded,
 			providers,
 		});
+	}
+
+	async deleteConnectionsByProjectId(user: User, projectId: string): Promise<void> {
+		const accessEntries = await this.projectAccessRepository.findByProjectId(projectId);
+
+		for (const access of accessEntries) {
+			if (
+				hasGlobalScope(user, 'externalSecretsProvider:delete') ||
+				access.role === 'secretsProviderConnection:owner'
+			) {
+				// Delete the connection entirely; DB cascade removes the access entry too
+				await this.repository.delete({ id: access.secretsProviderConnectionId });
+			} else {
+				// Remove only this project's access and disable the connection
+				await this.projectAccessRepository.delete({
+					projectId,
+					secretsProviderConnectionId: access.secretsProviderConnectionId,
+				});
+				await this.repository.update(
+					{ id: access.secretsProviderConnectionId },
+					{ isEnabled: false },
+				);
+			}
+		}
 	}
 
 	private encryptConnectionSettings(settings: IDataObject): string {
