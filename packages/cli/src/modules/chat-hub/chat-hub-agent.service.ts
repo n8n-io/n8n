@@ -244,7 +244,10 @@ export class ChatHubAgentService {
 			);
 
 			await this.chatHubExecutionService.waitForExecutionCompletion(execution.executionId);
-			await this.chatHubExecutionService.ensureWasSuccessfulOrThrow(execution.executionId);
+			await this.chatHubExecutionService.ensureWasSuccessfulOrThrow(
+				execution.executionId,
+				'Could not insert documents',
+			);
 		} finally {
 			await this.chatHubWorkflowService.deleteChatWorkflow(workflowId);
 		}
