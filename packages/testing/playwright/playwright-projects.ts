@@ -42,8 +42,8 @@ const BENCHMARK_WORKER_COUNT = parseInt(process.env.KAFKA_LOAD_WORKERS ?? '3', 1
 // Resource profiles matching realistic AWS instance types:
 // Main: m5.large (2 vCPU, 8GB RAM) — matches staging main
 // Workers: t3.medium (2 vCPU, 4GB RAM) — matches staging worker limits
-const BENCHMARK_MAIN_RESOURCES = { memory: 8, cpu: 2 };
-const BENCHMARK_WORKER_RESOURCES = { memory: 4, cpu: 2 };
+export const BENCHMARK_MAIN_RESOURCES = { memory: 8, cpu: 2 };
+export const BENCHMARK_WORKER_RESOURCES = { memory: 4, cpu: 2 };
 
 const BENCHMARK_BASE_CONFIG: N8NConfig = {
 	services: ['kafka', 'victoriaLogs', 'victoriaMetrics', 'vector'],

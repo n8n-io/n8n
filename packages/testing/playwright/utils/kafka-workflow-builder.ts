@@ -1,5 +1,7 @@
-import type { IConnections, INode, IWorkflowBase } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import type { IWorkflowBase } from 'n8n-workflow';
+import { nanoid } from 'nanoid';
+
+import { workflow, trigger, node } from '../../../@n8n/workflow-sdk/src';
 
 /**
  * Node output modes for controlling execution data volume per node.
@@ -26,32 +28,44 @@ const OUTPUT_SIZE_BYTES: Record<Exclude<NodeOutputSize, 'noop'>, number> = {
 	'1MB': 1_000_000,
 };
 
-function buildSetNodeParams(size: Exclude<NodeOutputSize, 'noop'>) {
-	const bytes = OUTPUT_SIZE_BYTES[size];
-	return {
-		assignments: {
-			assignments: [
-				{
-					id: 'payload',
-					name: 'payload',
-					value: `={{ 'x'.repeat(${bytes}) }}`,
-					type: 'string',
+function createChainNode(index: number, outputSize: NodeOutputSize) {
+	if (outputSize === 'noop') {
+		return node({
+			type: 'n8n-nodes-base.noOp',
+			version: 1,
+			config: { name: `NoOp ${index}` },
+		});
+	}
+
+	return node({
+		type: 'n8n-nodes-base.set',
+		version: 3.4,
+		config: {
+			name: `Set ${index}`,
+			parameters: {
+				assignments: {
+					assignments: [
+						{
+							id: 'payload',
+							name: 'payload',
+							value: `={{ 'x'.repeat(${OUTPUT_SIZE_BYTES[outputSize]}) }}`,
+							type: 'string',
+						},
+					],
 				},
-			],
+				includeOtherFields: true,
+				options: {},
+			},
 		},
-		includeOtherFields: true,
-		options: {},
-	};
+	});
 }
 
 /**
- * Generates a workflow with a KafkaTrigger followed by N chained nodes.
- * Node type depends on `nodeOutputSize`:
- * - `noop` (default): NoOp nodes with minimal output — tests pure engine overhead.
- * - `10KB`/`100KB`/`1MB`: Set nodes that add a padding field at that size.
- *   This tests realistic DB write pressure since n8n stores all node outputs
- *   as a single accumulated blob per execution. Uses Set nodes instead of Code
- *   nodes to avoid external task runner dependency, enabling clean multi-worker benchmarks.
+ * Generates a workflow: KafkaTrigger → N chained nodes.
+ *
+ * `nodeOutputSize` controls what those N nodes do:
+ * - `noop` (default): NoOp nodes — tests pure engine overhead.
+ * - `10KB`/`100KB`/`1MB`: Set nodes that pad output — tests DB write pressure.
  */
 export function buildKafkaTriggeredWorkflow(options: KafkaWorkflowOptions): Partial<IWorkflowBase> {
 	const {
@@ -63,68 +77,35 @@ export function buildKafkaTriggeredWorkflow(options: KafkaWorkflowOptions): Part
 		nodeOutputSize = 'noop',
 	} = options;
 
-	const nodes: INode[] = [];
-	const connections: IConnections = {};
-
-	nodes.push({
-		id: 'trigger',
-		name: 'Kafka Trigger',
+	const kafkaTrigger = trigger({
 		type: 'n8n-nodes-base.kafkaTrigger',
-		typeVersion: 1.1,
-		position: [0, 0] as [number, number],
-		parameters: {
-			topic,
-			groupId,
-			options: {
-				fromBeginning: true,
-				jsonParseMessage: true,
-				parallelProcessing: true,
-				sessionTimeout: 60000,
-				heartbeatInterval: 3000,
+		version: 1.1,
+		config: {
+			name: 'Kafka Trigger',
+			parameters: {
+				topic,
+				groupId,
+				options: {
+					fromBeginning: true,
+					jsonParseMessage: true,
+					parallelProcessing: true,
+					sessionTimeout: 60000,
+					heartbeatInterval: 3000,
+				},
 			},
-		},
-		credentials: {
-			kafka: { id: credentialId, name: credentialName },
+			credentials: {
+				kafka: { id: credentialId, name: credentialName },
+			},
 		},
 	});
 
-	const useSetNode = nodeOutputSize !== 'noop';
-	let previousNodeName = 'Kafka Trigger';
+	const [first, ...rest] = Array.from({ length: nodeCount }, (_, i) =>
+		createChainNode(i + 1, nodeOutputSize),
+	);
 
-	for (let i = 1; i <= nodeCount; i++) {
-		const nodeName = useSetNode ? `Set ${i}` : `NoOp ${i}`;
+	const label = nodeOutputSize === 'noop' ? 'noop' : `${nodeOutputSize}/node`;
+	const wf = workflow(nanoid(), `Kafka Load Test (${nodeCount} nodes, ${label})`);
+	wf.add(rest.reduce((chain, n) => chain.to(n), kafkaTrigger.to(first)));
 
-		if (useSetNode) {
-			nodes.push({
-				id: String(i + 1),
-				name: nodeName,
-				type: 'n8n-nodes-base.set',
-				typeVersion: 3.4,
-				position: [i * 200, 0] as [number, number],
-				parameters: buildSetNodeParams(nodeOutputSize),
-			});
-		} else {
-			nodes.push({
-				id: String(i + 1),
-				name: nodeName,
-				type: 'n8n-nodes-base.noOp',
-				typeVersion: 1,
-				position: [i * 200, 0] as [number, number],
-				parameters: {},
-			});
-		}
-
-		connections[previousNodeName] = {
-			[NodeConnectionTypes.Main]: [[{ node: nodeName, type: NodeConnectionTypes.Main, index: 0 }]],
-		};
-		previousNodeName = nodeName;
-	}
-
-	const label = useSetNode ? `${nodeOutputSize}/node` : 'noop';
-	return {
-		name: `Kafka Load Test (${nodeCount} nodes, ${label})`,
-		nodes,
-		connections,
-		active: false,
-	};
+	return wf.toJSON() as Partial<IWorkflowBase>;
 }
