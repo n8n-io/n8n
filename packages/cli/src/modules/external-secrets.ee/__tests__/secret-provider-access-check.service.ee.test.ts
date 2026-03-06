@@ -82,29 +82,10 @@ describe('SecretsProviderAccessCheckService', () => {
 			expect(roleService.rolesWithScope).not.toHaveBeenCalled();
 		});
 
-		it('should pass for global connections when user has the global scope', async () => {
-			// No project access record (global connection)
+		it('should throw NotFoundError for global connections even with global scope', async () => {
+			// assertConnectionAccess requires a project access record —
+			// global connections must be handled at the controller level
 			projectAccessRepository.findOne.mockResolvedValue(null);
-			connectionRepository.isProviderAvailableInProject.mockResolvedValue(true);
-
-			await expect(
-				service.assertConnectionAccess({
-					providerKey,
-					projectId,
-					requiredScope: 'externalSecretsProvider:update',
-					user: adminUser,
-				}),
-			).resolves.toBeUndefined();
-
-			expect(connectionRepository.isProviderAvailableInProject).toHaveBeenCalledWith(
-				providerKey,
-				projectId,
-			);
-		});
-
-		it('should throw NotFoundError for non-existent connections even with global scope', async () => {
-			projectAccessRepository.findOne.mockResolvedValue(null);
-			connectionRepository.isProviderAvailableInProject.mockResolvedValue(false);
 
 			await expect(
 				service.assertConnectionAccess({
