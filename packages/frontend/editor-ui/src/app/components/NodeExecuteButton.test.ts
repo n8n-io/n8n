@@ -33,6 +33,10 @@ import {
 	useWorkflowState,
 	type WorkflowState,
 } from '@/app/composables/useWorkflowState';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({}),
@@ -384,7 +388,10 @@ describe('NodeExecuteButton', () => {
 				name: 'test',
 				value: 'Test',
 			}));
-		const updateNodePropertiesSpy = vi.spyOn(workflowState, 'updateNodeProperties');
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		const updateNodePropertiesSpy = vi.spyOn(workflowDocumentStore, 'updateNodeProperties');
 		const node = mockNode({
 			name: 'test-node',
 			type: AI_TRANSFORM_NODE_TYPE,

@@ -1804,7 +1804,10 @@ describe('useCanvasOperations', () => {
 				createTestNode({ id: '2', name: 'B' }),
 			];
 			workflowsStore.getNodesByIds.mockReturnValue(nodes);
-			const updateNodePropertiesSpy = vi.spyOn(workflowState, 'updateNodeProperties');
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			const updateNodePropertiesSpy = vi.spyOn(workflowDocumentStore, 'updateNodeProperties');
 
 			const { toggleNodesDisabled } = useCanvasOperations();
 			toggleNodesDisabled([nodes[0].id, nodes[1].id], {
@@ -1827,7 +1830,10 @@ describe('useCanvasOperations', () => {
 			const nodeName = 'testNode';
 			const node = createTestNode({ name: nodeName });
 			workflowsStore.getNodeByName.mockReturnValue(node);
-			const updateNodePropertiesSpy = vi.spyOn(workflowState, 'updateNodeProperties');
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			const updateNodePropertiesSpy = vi.spyOn(workflowDocumentStore, 'updateNodeProperties');
 
 			const { revertToggleNodeDisabled } = useCanvasOperations();
 			revertToggleNodeDisabled(nodeName);

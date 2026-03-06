@@ -51,6 +51,7 @@ Migrate files from direct `workflowsStore` / `workflowState` node access to `wor
 - **Consolidate existing inline `useWorkflowDocumentStore()` calls.** Some files may already have partial migrations (e.g. for `usedCredentials` or `pinData`). When you add the computed accessor, consolidate all inline calls into the single computed. Pinia deduplicates store instances by ID, so this is always safe.
 - **Remove dead `workflowState` parameters after migration.** If a composable accepts `workflowState` only for node mutations (e.g. `setNodeIssue`, `updateNodeProperties`), migrating those to `workflowDocumentStore` makes the parameter dead. Remove it from the signature and update all callers. Keep `workflowState` only if the composable still uses non-node-document properties like `executingNode`.
 - **Update callers when signatures change.** Removing a parameter or changing a composable's signature is a cascading change — grep for all call sites and update them. Check both production code and tests.
+- **Fix downstream test spies.** Tests for *consumers* of a migrated composable may spy on `workflowState.updateNodeProperties` (or similar) to assert behavior. After migration, the composable calls `workflowDocumentStore` instead, so those spies see zero calls. Grep for the method name across all test files — not just the ones for the file you migrated.
 
 ## Access Patterns
 
@@ -174,3 +175,7 @@ Object.defineProperty(workflowsStore, 'allNodes', {
 - **`workflowsStore.workflowObject`** (39 files) — provides indirect node access via `Workflow` class methods (`.getNode()`, `.nodes`, `.getParentNodes()`, etc.). This is intentionally NOT migrated until both nodes **and** connections move to `workflowDocumentStore`. No ESLint guard for this — it's accepted tech debt.
 - **Execution-related methods** (e.g., `renameNodeSelectedAndExecution`, `removeNodeExecutionDataById`) — these are not node document state
 - **`workflowState.executingNode`** and other execution-state properties — these are not node document state
+
+## Maintaining this recipe
+
+Update this file when a migration reveals a new pattern, edge case, or pitfall that would save the next person time. Don't add noise — only document something if you had to figure it out and it wasn't already covered above.
