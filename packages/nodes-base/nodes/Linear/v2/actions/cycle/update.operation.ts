@@ -87,11 +87,13 @@ export async function execute(
 			};
 
 			const responseData = await linearApiRequest.call(this, body);
-			const cycle = (responseData as { data: { cycleUpdate: { cycle: IDataObject } } }).data
-				.cycleUpdate?.cycle;
+			const cycleUpdate = (
+				responseData as { data: { cycleUpdate: { success: boolean; cycle: IDataObject } } }
+			).data.cycleUpdate;
+			const result = cycleUpdate?.cycle ?? (cycleUpdate as unknown as IDataObject);
 
 			returnData.push(
-				...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(cycle), {
+				...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(result), {
 					itemData: { item: i },
 				}),
 			);
