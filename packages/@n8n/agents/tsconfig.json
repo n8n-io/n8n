@@ -6,5 +6,6 @@
 		"baseUrl": "src",
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
 	},
-	"include": ["src/**/*.ts"]
+	"include": ["src/**/*.ts"],
+	"exclude": ["dist/**/*", "node_modules/**/*", "playground/**/*"]
 }

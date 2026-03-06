@@ -7,6 +7,7 @@ import {
 	chunksOfType,
 	createAgentWithAddTool,
 	getModel,
+	findTextContent,
 } from './helpers';
 import { Agent, Tool } from '../../index';
 
@@ -30,9 +31,9 @@ describe('streamText integration', () => {
 		}
 
 		const result = await getResult();
-		expect(result.text).toBeTruthy();
-		expect(result.tokens.input).toBeGreaterThan(0);
-		expect(result.tokens.output).toBeGreaterThan(0);
+		expect(findTextContent(result.messages)).toBeTruthy();
+		expect(result.usage?.promptTokens).toBeGreaterThan(0);
+		expect(result.usage?.completionTokens).toBeGreaterThan(0);
 	});
 
 	it('executes a tool and streams tool events', async () => {
@@ -58,7 +59,7 @@ describe('streamText integration', () => {
 		expect(textChunks.length).toBeGreaterThan(0);
 
 		const result = await getResult();
-		expect(result.text).toContain('5');
+		expect(findTextContent(result.messages)).toContain('5');
 	});
 
 	it('streams tool-call-delta chunks with argsTextDelta', async () => {

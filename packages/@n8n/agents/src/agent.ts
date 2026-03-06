@@ -5,7 +5,6 @@ import type { Message } from './message';
 import { AgentRun } from './run';
 import { MastraAdapter } from './runtime/mastra-adapter';
 import type {
-	AgentResult,
 	BuiltAgent,
 	BuiltGuardrail,
 	BuiltMemory,
@@ -17,10 +16,10 @@ import type {
 	RunOptions,
 } from './types';
 
-/** Normalize input to a Message array — accepts a plain string or pre-formed messages. */
-function toMessages(input: string | Message[]): Message[] {
-	if (Array.isArray(input)) return input;
-	return [{ role: 'user', content: [{ type: 'text', text: input }] }];
+/** Convert a plain string prompt into a Message array. */
+function toMessages(prompt: string | Message[]): Message[] {
+	if (Array.isArray(prompt)) return prompt;
+	return [{ role: 'user', content: [{ type: 'text', text: prompt }] }];
 }
 
 /**
@@ -230,14 +229,7 @@ export class Agent {
 	}
 
 	/** Stream text from the agent. Lazy-builds on first call. */
-	async streamText(
-		input: string | Message[],
-		options?: RunOptions,
-	): Promise<{
-		textStream: ReadableStream<string>;
-		fullStream: ReadableStream<unknown>;
-		getResult: () => Promise<AgentResult>;
-	}> {
+	async streamText(input: string | Message[], options?: RunOptions) {
 		return await this.ensureBuilt().streamText(toMessages(input), options);
 	}
 
@@ -312,7 +304,10 @@ export class Agent {
 						const result = await agentAdapter.generate([
 							{ role: 'user', content: [{ type: 'text', text: toolPrompt }] },
 						]);
-						return { response: result.text };
+						const textResponse = result.messages[0].content
+							.map((c) => (c.type === 'text' ? (c as { text: string }).text : ''))
+							.join('\n');
+						return { response: textResponse };
 					},
 				});
 

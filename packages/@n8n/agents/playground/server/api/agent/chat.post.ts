@@ -1,6 +1,6 @@
 import { getActiveAgent } from '../../utils/agent-runtime';
 import { createSSE } from '../../utils/sse';
-import type { Message } from '@n8n/agents';
+import type { Message, StreamChunk } from '@n8n/agents';
 
 interface HistoryMessage {
 	role: 'user' | 'assistant';
@@ -12,23 +12,6 @@ interface ChatRequest {
 	message: string;
 	files?: Array<{ name: string; type: string; data: string }>;
 	history?: HistoryMessage[];
-}
-
-interface StreamChunk {
-	type: string;
-	runId?: string;
-	payload?: {
-		text?: string;
-		toolName?: string;
-		toolCallId?: string;
-		args?: unknown;
-		result?: unknown;
-		providerMetadata?: unknown;
-		providerExecuted?: unknown;
-		error?: {
-			message?: string;
-		};
-	};
 }
 
 /**
@@ -116,54 +99,61 @@ export default defineEventHandler(async (event) => {
 				resourceId: 'playground-user',
 			});
 
-			// Prefer fullStream (interleaved text + tool events), fall back to textStream
-			const useFullStream = streamResult.fullStream !== undefined;
-			const reader = useFullStream
-				? streamResult.fullStream.getReader()
-				: streamResult.textStream.getReader();
+			const reader = streamResult.fullStream.getReader();
 
 			while (true) {
 				const { done, value } = await reader.read();
 				if (done) break;
 
-				if (!useFullStream) {
-					sse.send({ text: value });
-					continue;
-				}
-
 				const chunk = value as StreamChunk;
 
-				if (chunk.type === 'text-delta' && chunk.payload?.text) {
-					sse.send({ text: chunk.payload.text });
-				} else if (chunk.type === 'tool-call' && chunk.payload?.toolName) {
-					sse.send({ toolCall: { tool: chunk.payload.toolName, input: chunk.payload.args } });
-				} else if (chunk.type === 'tool-call-approval' && chunk.payload?.toolName) {
+				// Debug: log all chunk types to server console
+				if (chunk.type !== 'text-delta') {
+					console.log('[stream chunk]', chunk.type, JSON.stringify(chunk).slice(0, 200));
+				}
+
+				if (chunk.type === 'text-delta' && 'delta' in chunk && chunk.delta) {
+					sse.send({ text: chunk.delta });
+				} else if (chunk.type === 'reasoning-delta' && 'delta' in chunk && chunk.delta) {
+					sse.send({ text: chunk.delta });
+				} else if (chunk.type === 'content' && 'content' in chunk) {
+					const c = chunk.content;
+					if (c.type === 'tool-call') {
+						sse.send({ toolCall: { tool: c.toolName, input: c.input } });
+					} else if (c.type === 'tool-result') {
+						sse.send({ toolResult: { tool: c.toolName, output: c.result } });
+					} else if (c.type === 'text') {
+						sse.send({ text: c.text });
+					} else if (c.type === 'file') {
+						const raw = c.data;
+						const data =
+							typeof raw === 'string'
+								? raw
+								: Buffer.from(raw instanceof ArrayBuffer ? new Uint8Array(raw) : raw).toString(
+										'base64',
+									);
+						sse.send({
+							file: {
+								data,
+								mediaType: c.mediaType ?? 'application/octet-stream',
+							},
+						});
+					} else {
+						sse.send({ text: 'Received unknown content type: ' + c.type });
+					}
+				} else if (chunk.type === 'tool-call-approval' && 'tool' in chunk) {
 					sse.send({
 						approval: {
-							runId: chunk.runId,
-							toolCallId: chunk.payload.toolCallId,
-							tool: chunk.payload.toolName,
-							input: chunk.payload.args,
+							toolCallId: chunk.toolCallId,
+							tool: chunk.tool,
+							input: chunk.input,
 						},
 					});
-				} else if (chunk.type === 'tool-result' && chunk.payload?.toolName) {
-					sse.send({ toolResult: { tool: chunk.payload.toolName, output: chunk.payload.result } });
-				} else if (chunk.type === 'error') {
-					sse.send({ text: chunk.payload?.error?.message ?? 'Unknown error' });
-				}
-			}
-
-			// Always call getResult() to finalize the stream — this triggers
-			// saveToolResultsToMemory() for tools with .storeResults() enabled.
-			if (streamResult.getResult) {
-				try {
-					const result = await streamResult.getResult();
-					// If we used textStream fallback, send tool calls from the result
-					if (!useFullStream && result.toolCalls.length > 0) {
-						sse.send({ toolCalls: result.toolCalls });
-					}
-				} catch {
-					// ignore — stream may have already been consumed
+				} else if (chunk.type === 'error' && 'error' in chunk) {
+					const err = chunk.error;
+					sse.send({
+						text: err instanceof Error ? err.message : String(err ?? 'Unknown error'),
+					});
 				}
 			}
 		} else {
@@ -172,8 +162,11 @@ export default defineEventHandler(async (event) => {
 				resourceId: 'playground-user',
 			});
 			const result = await run.result;
-			sse.send({ text: result.text });
-			if (result.toolCalls.length > 0) {
+			const textResponse = result.messages[0].content
+				.map((c) => (c.type === 'text' ? (c as { text: string }).text : ''))
+				.join('\n');
+			sse.send({ text: textResponse });
+			if ((result.toolCalls?.length ?? 0) > 0) {
 				sse.send({ toolCalls: result.toolCalls });
 			}
 		}

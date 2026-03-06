@@ -17,15 +17,30 @@
 		</div>
 		<div v-else class="w-7 shrink-0" />
 		<div class="flex-1 min-w-0">
-			<div v-if="msg.files?.length" class="flex gap-2 mb-2 flex-wrap">
-				<div
-					v-for="file in msg.files"
-					:key="file.name"
-					class="flex items-center gap-1.5 px-2 py-1 bg-gray-800 rounded text-xs text-gray-300"
-				>
-					<span>📎</span>
-					<span>{{ file.name }}</span>
-				</div>
+			<div v-if="msg.files?.length" class="flex gap-2 mb-2 flex-wrap items-start">
+				<template v-for="(file, fileIdx) in msg.files" :key="fileIdx">
+					<img
+						v-if="file.type.startsWith('image/')"
+						:src="`data:${file.type};base64,${file.data}`"
+						:alt="file.name"
+						class="max-w-full max-h-64 rounded border border-gray-700 object-contain"
+					/>
+					<div
+						v-else
+						class="flex items-center gap-1.5 px-2 py-1 bg-gray-800 rounded text-xs text-gray-300"
+					>
+						<span>📎</span>
+						<a
+							v-if="msg.role === 'assistant'"
+							:href="`data:${file.type};base64,${file.data}`"
+							:download="file.name"
+							class="hover:text-blue-300 underline"
+						>
+							{{ file.name }}
+						</a>
+						<span v-else>{{ file.name }}</span>
+					</div>
+				</template>
 			</div>
 			<div v-if="msg.content" class="prose prose-invert prose-sm max-w-none" v-html="rendered" />
 

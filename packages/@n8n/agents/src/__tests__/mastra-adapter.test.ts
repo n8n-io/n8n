@@ -115,9 +115,9 @@ describe('MastraAdapter', () => {
 			{},
 		);
 		expect(result).toEqual({
-			text: 'mock response',
+			messages: [{ role: 'assistant', content: [{ type: 'text', text: 'mock response' }] }],
 			toolCalls: [],
-			tokens: { input: 10, output: 5 },
+			usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
 			steps: 1,
 		});
 	});
@@ -187,7 +187,8 @@ describe('MastraAdapter', () => {
 				output: { data: 'found' },
 			},
 		]);
-		expect(result.tokens).toEqual({ input: 20, output: 15 });
+		expect(result.usage?.promptTokens).toBe(20);
+		expect(result.usage?.completionTokens).toBe(15);
 		expect(result.steps).toBe(2);
 	});
 });

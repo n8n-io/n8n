@@ -461,7 +461,9 @@ async function handleTestResponse(
 	let buffer = '';
 	let accumulated = '';
 	const toolCalls: Array<{ tool: string; input: unknown; output: unknown }> = [];
+	const serverFiles: Array<{ name: string; type: string; data: string }> = [];
 	let pendingToolCall: { tool: string; input: unknown } | undefined;
+	let needsNewline = false;
 
 	while (true) {
 		const { done, value } = await reader.read();
@@ -494,12 +496,13 @@ async function handleTestResponse(
 				const approval = data.approval as PendingApproval;
 				loading.value = false;
 
-				if (accumulated.trim() || toolCalls.length > 0) {
+				if (accumulated.trim() || toolCalls.length > 0 || serverFiles.length > 0) {
 					// There's content before the approval — finalize it, push approval as new message
 					messages.value[assistantIndex] = {
 						...messages.value[assistantIndex],
 						content: accumulated,
 						toolCalls: toolCalls.length > 0 ? [...toolCalls] : undefined,
+						files: serverFiles.length > 0 ? [...serverFiles] : undefined,
 					};
 					messages.value.push({
 						role: 'assistant',
@@ -518,6 +521,15 @@ async function handleTestResponse(
 			} else if (data.toolCalls) {
 				// Legacy: batch tool calls (fallback path)
 				toolCalls.push(...(data.toolCalls as typeof toolCalls));
+			} else if (data.file) {
+				const f = data.file as { data: string; mediaType: string };
+				const ext = f.mediaType?.split('/')[1] ?? 'bin';
+				const name = `file.${ext}`;
+				serverFiles.push({
+					name,
+					type: f.mediaType ?? 'application/octet-stream',
+					data: f.data,
+				});
 			}
 		}
 
@@ -525,13 +537,14 @@ async function handleTestResponse(
 			...messages.value[assistantIndex],
 			content: accumulated,
 			toolCalls: toolCalls.length > 0 ? [...toolCalls] : undefined,
+			files: serverFiles.length > 0 ? [...serverFiles] : undefined,
 		};
 		scrollToBottom();
 	}
 
 	loading.value = false;
 
-	if (!accumulated.trim() && toolCalls.length === 0) {
+	if (!accumulated.trim() && toolCalls.length === 0 && serverFiles.length === 0) {
 		// Remove the empty placeholder if nothing was streamed
 		messages.value.splice(assistantIndex, 1);
 	} else {
@@ -539,6 +552,7 @@ async function handleTestResponse(
 			...messages.value[assistantIndex],
 			content: accumulated,
 			toolCalls: toolCalls.length > 0 ? [...toolCalls] : undefined,
+			files: serverFiles.length > 0 ? [...serverFiles] : undefined,
 		};
 	}
 }

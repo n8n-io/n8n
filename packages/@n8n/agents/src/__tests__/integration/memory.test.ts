@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { z } from 'zod';
 
-import { describeIf, getModel } from './helpers';
+import { describeIf, findTextContent, getModel } from './helpers';
 import { Agent, Memory, Tool } from '../../index';
 
 const describe = describeIf('anthropic');
@@ -20,12 +20,12 @@ describe('memory integration', () => {
 
 		const run1 = agent.run('My favorite color is purple. Just acknowledge this.', options);
 		const result1 = await run1.result;
-		expect(result1.text).toBeTruthy();
+		expect(findTextContent(result1.messages)).toBeTruthy();
 
 		const run2 = agent.run('What is my favorite color?', options);
 		const result2 = await run2.result;
 
-		expect(result2.text.toLowerCase()).toContain('purple');
+		expect(findTextContent(result2.messages)?.toLowerCase()).toContain('purple');
 	});
 
 	it('isolates separate threads', async () => {
@@ -53,7 +53,7 @@ describe('memory integration', () => {
 		});
 		const result2 = await run2.result;
 
-		expect(result2.text.toLowerCase()).not.toContain('alpha-7');
+		expect(findTextContent(result2.messages)?.toLowerCase()).not.toContain('alpha-7');
 	});
 
 	it('recalls tool results when .storeResults() is enabled (via run)', async () => {
@@ -87,8 +87,8 @@ describe('memory integration', () => {
 		// Turn 1: trigger the tool via run()
 		const run1 = agent.run('How many widgets do we have in stock?', options);
 		const result1 = await run1.result;
-		expect(result1.text).toBeTruthy();
-		expect(result1.toolCalls.length).toBeGreaterThan(0);
+		expect(findTextContent(result1.messages)).toBeTruthy();
+		expect(result1.toolCalls?.length).toBeGreaterThan(0);
 
 		// Turn 2: ask about the tool result without re-triggering the tool
 		const run2 = agent.run(
@@ -97,8 +97,8 @@ describe('memory integration', () => {
 		);
 		const result2 = await run2.result;
 
-		expect(result2.text.toLowerCase()).toContain('building-7');
-		expect(result2.toolCalls.length).toBe(0);
+		expect(findTextContent(result2.messages)?.toLowerCase()).toContain('building-7');
+		expect(result2.toolCalls?.length).toBe(0);
 	});
 
 	it('recalls tool results when .storeResults() is enabled (via streamText)', async () => {
@@ -138,7 +138,7 @@ describe('memory integration', () => {
 			if (done) break;
 		}
 		const result1 = await stream1.getResult();
-		expect(result1.toolCalls.length).toBeGreaterThan(0);
+		expect(result1.toolCalls?.length).toBeGreaterThan(0);
 
 		// Turn 2: ask about the tool result
 		const run2 = agent.run(
@@ -147,7 +147,7 @@ describe('memory integration', () => {
 		);
 		const result2 = await run2.result;
 
-		expect(result2.text.toLowerCase()).toContain('building-7');
-		expect(result2.toolCalls.length).toBe(0);
+		expect(findTextContent(result2.messages)?.toLowerCase()).toContain('building-7');
+		expect(result2.toolCalls?.length).toBe(0);
 	});
 });

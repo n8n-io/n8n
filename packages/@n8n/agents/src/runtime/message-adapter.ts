@@ -16,6 +16,7 @@ import type {
 	ContentFile,
 	ContentToolCall,
 	ContentToolResult,
+	ContentInvalidToolCall,
 } from '../message';
 
 // --- Type guards for our MessageContent blocks ---
@@ -40,6 +41,10 @@ function isContentToolResult(block: MessageContent): block is ContentToolResult 
 	return block.type === 'tool-result';
 }
 
+function isContentInvalidToolCall(block: MessageContent): block is ContentInvalidToolCall {
+	return block.type === 'invalid-tool-call';
+}
+
 function tryParseJson(input: string): unknown {
 	try {
 		return JSON.parse(input);
@@ -48,82 +53,102 @@ function tryParseJson(input: string): unknown {
 	}
 }
 
+type MastraContentPart = TextPart | ReasoningPart | FilePart | ToolCallPart | ToolResultPart;
+/**
+ * Map n8n MessageContent blocks to Mastra content parts.
+ */
+export function toMastraContent(content: MessageContent[]): MastraContentPart[] {
+	return content.flatMap((block): MastraContentPart[] => {
+		if (isContentText(block)) {
+			return [{ type: 'text', text: block.text }];
+		}
+		if (isContentReasoning(block)) {
+			return [{ type: 'reasoning', text: block.text }];
+		}
+		if (isContentFile(block)) {
+			return [
+				{
+					type: 'file',
+					data: block.data,
+					mimeType: block.mediaType ?? 'application/octet-stream',
+				},
+			];
+		}
+		if (isContentToolCall(block)) {
+			return [
+				{
+					type: 'tool-call',
+					toolCallId: block.toolCallId ?? '',
+					toolName: block.toolName,
+					args: tryParseJson(block.input),
+				},
+			];
+		}
+		if (isContentToolResult(block)) {
+			return [
+				{
+					type: 'tool-result',
+					toolCallId: block.toolCallId,
+					toolName: block.toolName,
+					result: block.result,
+					isError: block.isError,
+				},
+			];
+		}
+		if (isContentInvalidToolCall(block)) {
+			return [
+				{
+					type: 'tool-result',
+					toolCallId: block.toolCallId ?? '',
+					toolName: block.name ?? 'unknown',
+					result: block.error ?? 'Invalid tool call',
+					isError: true,
+				},
+			];
+		}
+
+		// TODO: citation, provider, and other unknown types: no Mastra equivalent, convert to closest equivalent
+		return [];
+	});
+}
+
 export function toMastraMessage(msg: Message): CoreMessage {
+	const parts = toMastraContent(msg.content);
+
 	switch (msg.role) {
 		case 'system': {
-			const text = msg.content
-				.filter(isContentText)
-				.map((b) => b.text)
+			const text = parts
+				.filter(isMastraTextPart)
+				.map((p) => p.text)
 				.join('');
 			return { role: 'system', content: text };
 		}
 
-		case 'user': {
-			const parts = msg.content.flatMap((block): Array<Record<string, unknown>> => {
-				if (isContentText(block)) {
-					return [{ type: 'text', text: block.text }];
-				}
-				if (isContentFile(block)) {
-					return [
-						{
-							type: 'file',
-							data: block.data,
-							mimeType: block.mediaType ?? 'application/octet-stream',
-						},
-					];
-				}
-				return [];
-			});
+		case 'user':
 			return {
 				role: 'user',
-				content: parts.length > 0 ? parts : '',
-			} as unknown as CoreMessage;
-		}
-
+				content: parts.filter(
+					(p): p is TextPart | FilePart => p.type === 'text' || p.type === 'file',
+				),
+			};
 		case 'assistant': {
-			const parts = msg.content.flatMap((block): Array<Record<string, unknown>> => {
-				if (isContentText(block)) {
-					return [{ type: 'text', text: block.text }];
-				}
-				if (isContentReasoning(block)) {
-					return [{ type: 'reasoning', text: block.text }];
-				}
-				if (isContentToolCall(block)) {
-					return [
-						{
-							type: 'tool-call',
-							toolCallId: block.toolCallId ?? '',
-							toolName: block.toolName,
-							args: tryParseJson(block.input),
-						},
-					];
-				}
-				if (isContentFile(block)) {
-					return [
-						{
-							type: 'file',
-							data: block.data,
-							mimeType: block.mediaType ?? 'application/octet-stream',
-						},
-					];
-				}
-				return [];
-			});
 			return {
-				role: 'assistant',
-				content: parts.length > 0 ? parts : '',
-			} as unknown as CoreMessage;
+				role: msg.role,
+				content: parts.filter(
+					(p): p is TextPart | FilePart | ToolCallPart | ReasoningPart =>
+						p.type === 'text' ||
+						p.type === 'file' ||
+						p.type === 'tool-call' ||
+						p.type === 'reasoning',
+				),
+			};
 		}
 
 		case 'tool': {
-			const parts = msg.content.filter(isContentToolResult).map((block) => ({
-				type: 'tool-result',
-				toolCallId: block.toolCallId,
-				toolName: block.toolName,
-				result: block.result,
-				isError: block.isError,
-			}));
-			return { role: 'tool', content: parts } as unknown as CoreMessage;
+			return {
+				role: 'tool',
+				content: parts.filter((p): p is ToolResultPart => p.type === 'tool-result'),
+			};
 		}
 	}
 }

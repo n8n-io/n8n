@@ -11,6 +11,7 @@ export type {
 	RunState,
 	RunOptions,
 	AgentResult,
+	StreamChunk,
 	ToolContext,
 	CheckpointStore,
 	RunSnapshot,
@@ -27,4 +28,15 @@ export { configure } from './configure';
 export { providerTools } from './provider-tools';
 export { verify } from './verify';
 export type { VerifyResult } from './verify';
-export type { Message } from './message';
+export type {
+	ContentCitation,
+	ContentFile,
+	ContentMetadata,
+	ContentReasoning,
+	ContentText,
+	ContentToolCall,
+	ContentToolResult,
+	Message,
+	MessageContent,
+	MessageRole,
+} from './message';

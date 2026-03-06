@@ -1,7 +1,7 @@
 import { describe as _describe } from 'vitest';
 import { z } from 'zod';
 
-import { Agent, Tool } from '../../index';
+import { Agent, Tool, type Message } from '../../index';
 
 export interface StreamChunk {
 	type: string;
@@ -137,3 +137,9 @@ export function createAgentWithMixedTools(provider: 'anthropic' | 'openai'): Age
 		.tool(deleteTool)
 		.checkpoint('memory');
 }
+
+export const findTextContent = (messages: Message[]): string | undefined => {
+	return messages
+		.find((m) => m.content.find((c) => c.type === 'text'))
+		?.content.find((c) => c.type === 'text')?.text;
+};

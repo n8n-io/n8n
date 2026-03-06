@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { Agent } from '../agent';
 import { Network } from '../network';
+import { findTextContent } from './integration/helpers';
 
 /** Exposes protected build() for testing. */
 class TestableAgent extends Agent {
@@ -90,6 +91,6 @@ describe('Network', () => {
 
 		const run = network.run('Research something');
 		const result = await run.result;
-		expect(result.text).toBe('mock response');
+		expect(findTextContent(result.messages)).toBe('mock response');
 	});
 });

@@ -9,17 +9,6 @@ interface BuildRequest {
 	sessionId: string;
 }
 
-interface StreamChunk {
-	type: string;
-	payload?: {
-		text?: string;
-		toolName?: string;
-		toolCallId?: string;
-		args?: unknown;
-		result?: unknown;
-	};
-}
-
 export default defineEventHandler(async (event) => {
 	const body = await readBody<BuildRequest>(event);
 
@@ -74,24 +63,25 @@ export default defineEventHandler(async (event) => {
 			const { done, value } = await reader.read();
 			if (done) break;
 
-			const chunk = value as StreamChunk;
+			const chunk = value;
 
 			if (chunk.type === 'text-delta' && chunk.payload?.text) {
 				explanationText += chunk.payload.text;
 				sse.send({ text: chunk.payload.text });
 			} else if (chunk.type === 'tool-call' && chunk.payload?.toolName) {
 				sse.send({ toolCall: { tool: chunk.payload.toolName, input: chunk.payload.args } });
-			} else if (chunk.type === 'tool-result' && chunk.payload?.toolName) {
-				sse.send({
-					toolResult: { tool: chunk.payload.toolName, output: chunk.payload.result },
-				});
-
-				// When set_code completes, send the code to the editor
-				if (chunk.payload.toolName === 'set_code') {
-					const code = getLastSetCode();
-					if (code) {
-						sse.send({ code });
-						clearLastSetCode();
+			} else if (chunk.type === 'content') {
+				const content = chunk.content;
+				if (content.type === 'text') {
+					explanationText += content.text;
+					sse.send({ text: content.text });
+				} else if (content.type === 'tool-result') {
+					if (content.toolName === 'set_code') {
+						const code = getLastSetCode();
+						if (code) {
+							sse.send({ code });
+							clearLastSetCode();
+						}
 					}
 				}
 			}

@@ -15,7 +15,13 @@ import type {
 	BuiltMemory,
 	RunOptions,
 	CheckpointStore,
+	FinishReason,
+	StreamChunk,
+	TokenUsage,
 } from '../types';
+
+/** Map from tool name to optional toMessage (output) -> Message. Used to incorporate tool messages in results. */
+type ToolToMessageMap = Map<string, (output: unknown) => Message | undefined>;
 
 /**
  * Configuration accepted by the MastraAdapter.
@@ -33,6 +39,201 @@ export interface MastraAdapterConfig {
 }
 
 /**
+ * Shape of chunks emitted by Mastra's fullStream (internal; not from node_modules types).
+ * Used as the input type for the stream transform so we output our StreamChunk type.
+ */
+interface MastraStreamChunk {
+	type: string;
+	runId?: string;
+	payload?: {
+		text?: string;
+		toolName?: string;
+		toolCallId?: string;
+		args?: unknown;
+		result?: unknown;
+		providerMetadata?: Record<string, unknown>;
+		error?: { message?: string };
+		inputTokens?: number;
+		outputTokens?: number;
+		finishReason?: string;
+	};
+}
+
+/**
+ * Build our custom AgentResult from normalized generate/stream result fields.
+ * When toolToMessageMap is provided, appends Messages from tools that define _toMessage (output -> Message).
+ */
+function toAgentResult(
+	params: {
+		text: string;
+		toolCalls: Array<{ tool: string; input: unknown; output: unknown }>;
+		inputTokens: number;
+		outputTokens: number;
+		steps: number;
+		output?: unknown;
+	},
+	toolToMessageMap?: ToolToMessageMap,
+): AgentResult {
+	const { text, toolCalls, inputTokens, outputTokens, steps, output } = params;
+	const usage: TokenUsage = {
+		promptTokens: inputTokens,
+		completionTokens: outputTokens,
+		totalTokens: inputTokens + outputTokens,
+	};
+	const content: Array<{ type: 'text'; text: string }> = text ? [{ type: 'text', text }] : [];
+	const messages: Message[] = [{ role: 'assistant', content }];
+
+	if (toolToMessageMap && toolCalls.length > 0) {
+		for (const tc of toolCalls) {
+			const toMessage = toolToMessageMap.get(tc.tool);
+			if (toMessage && tc.output !== undefined) {
+				try {
+					const toolMessage = toMessage(tc.output);
+					if (toolMessage) {
+						messages.push(toolMessage);
+					}
+				} catch {
+					// Skip this tool message on error
+				}
+			}
+		}
+	}
+
+	return {
+		messages,
+		usage,
+		rawResponse: output,
+		toolCalls,
+		steps,
+		output,
+	};
+}
+
+/**
+ * TransformStream that converts Mastra stream chunks to our StreamChunk type.
+ * When toolToMessageMap is provided, tool-result chunks may produce additional content chunks from tools' _toMessage.
+ */
+function createMastraToStreamChunkTransform(
+	toolToMessageMap?: ToolToMessageMap,
+): TransformStream<MastraStreamChunk, StreamChunk> {
+	return new TransformStream<MastraStreamChunk, StreamChunk>({
+		transform(chunk, controller) {
+			const payload = chunk.payload;
+			const providerMetadata = payload?.providerMetadata;
+
+			if (chunk.type === 'text-delta' && payload?.text !== undefined) {
+				controller.enqueue({
+					...(providerMetadata && { providerMetadata }),
+					type: 'text-delta',
+					delta: payload.text,
+				});
+				return;
+			}
+			if (chunk.type === 'reasoning-delta' && payload?.text !== undefined) {
+				controller.enqueue({
+					...(providerMetadata && { providerMetadata }),
+					type: 'reasoning-delta',
+					delta: payload.text,
+				});
+				return;
+			}
+			if (chunk.type === 'tool-call-delta') {
+				controller.enqueue({
+					...(providerMetadata && { providerMetadata }),
+					type: 'tool-call-delta',
+					...(payload?.toolName && { name: payload.toolName }),
+					...(typeof payload?.args === 'string' && { argumentsDelta: payload.args }),
+				});
+				return;
+			}
+			if (chunk.type === 'tool-call' && payload?.toolName) {
+				controller.enqueue({
+					...(providerMetadata && { providerMetadata }),
+					type: 'content',
+					content: {
+						...(providerMetadata && { providerMetadata }),
+						type: 'tool-call',
+						toolName: payload.toolName,
+						toolCallId: payload.toolCallId,
+						input:
+							typeof payload.args === 'string' ? payload.args : JSON.stringify(payload.args ?? {}),
+					},
+				});
+				return;
+			}
+			if (chunk.type === 'tool-result' && payload?.toolName) {
+				controller.enqueue({
+					...(providerMetadata && { providerMetadata }),
+					type: 'content',
+					content: {
+						...(providerMetadata && { providerMetadata }),
+						type: 'tool-result',
+						toolName: payload.toolName,
+						toolCallId: payload.toolCallId ?? '',
+						result: payload.result,
+						input:
+							typeof payload.args === 'string' ? payload.args : JSON.stringify(payload.args ?? {}),
+					},
+				});
+				// If this tool defines toMessage, emit its message as content chunks so the stream incorporates them
+				const toMessage = toolToMessageMap?.get(payload.toolName);
+				if (toMessage && payload.result !== undefined) {
+					try {
+						const toolMessage = toMessage(payload.result);
+						if (toolMessage?.content?.length) {
+							for (const block of toolMessage.content) {
+								controller.enqueue({
+									type: 'content',
+									content: block,
+								});
+							}
+						}
+					} catch {
+						// Skip emitting tool message on error
+					}
+				}
+				return;
+			}
+			if (chunk.type === 'error') {
+				controller.enqueue({
+					...(providerMetadata && { providerMetadata }),
+					type: 'error',
+					error: payload?.error ?? new Error('Stream error'),
+				});
+				return;
+			}
+			if (chunk.type === 'tool-call-approval' && payload?.toolName) {
+				controller.enqueue({
+					...(providerMetadata && { providerMetadata }),
+					type: 'tool-call-approval',
+					toolCallId: payload.toolCallId,
+					tool: payload.toolName,
+					input: payload.args,
+				});
+				return;
+			}
+			if (chunk.type === 'finish' || chunk.type === 'step-finish') {
+				const finishReason: FinishReason = (payload?.finishReason as FinishReason) ?? 'stop';
+				const usage: TokenUsage | undefined =
+					payload?.inputTokens !== undefined || payload?.outputTokens !== undefined
+						? {
+								promptTokens: payload?.inputTokens ?? 0,
+								completionTokens: payload?.outputTokens ?? 0,
+								totalTokens: (payload?.inputTokens ?? 0) + (payload?.outputTokens ?? 0),
+							}
+						: undefined;
+				controller.enqueue({
+					...(providerMetadata && { providerMetadata }),
+					type: 'finish',
+					finishReason,
+					...(usage && { usage }),
+				});
+			}
+		},
+	});
+}
+
+/**
  * Internal adapter that translates n8n builder types into Mastra Agent
  * constructor calls and normalizes generate results.
  *
@@ -44,28 +245,26 @@ export class MastraAdapter {
 
 	private readonly structuredOutputSchema?: z.ZodType;
 
-	private readonly approvalToolNames: string[];
+	private readonly hasToolApproval: boolean;
 
+	private readonly toolToMessageMap: ToolToMessageMap;
 	private readonly storeResultsToolNames: Set<string>;
-
 	private readonly hasMemory: boolean;
-
 	constructor(config: MastraAdapterConfig) {
 		if (!config.model) {
 			throw new Error(`Agent "${config.name}" requires a model`);
 		}
 
-		this.hasMemory = !!config.memory;
-
 		// Convert BuiltTool array to the Record<string, tool> map Mastra expects
 		const tools: Record<string, unknown> = {};
-		this.approvalToolNames = [];
+		this.hasToolApproval = false;
 		this.storeResultsToolNames = new Set();
+		this.hasMemory = !!config.memory;
 		if (config.tools) {
 			for (const tool of config.tools) {
 				tools[tool.name] = tool._mastraTool;
 				if (tool._approval) {
-					this.approvalToolNames.push(tool.name);
+					this.hasToolApproval = true;
 				}
 				if (tool._storeResults) {
 					this.storeResultsToolNames.add(tool.name);
@@ -76,6 +275,15 @@ export class MastraAdapter {
 		if (config.providerTools) {
 			for (const pt of config.providerTools) {
 				tools[pt.name] = pt._providerTool;
+			}
+		}
+
+		this.toolToMessageMap = new Map<string, (output: unknown) => Message | undefined>();
+		if (config.tools) {
+			for (const tool of config.tools) {
+				if (tool._toMessage) {
+					this.toolToMessageMap.set(tool.name, tool._toMessage);
+				}
 			}
 		}
 
@@ -106,6 +314,7 @@ export class MastraAdapter {
 				storage: store,
 			});
 
+			// Mastra constructor calls __registerMastra on the agent, injecting storage
 			void mastra;
 		}
 
@@ -124,8 +333,8 @@ export class MastraAdapter {
 		input: Message[],
 		options?: RunOptions,
 	): Promise<{
+		fullStream: ReadableStream<StreamChunk>;
 		textStream: ReadableStream<string>;
-		fullStream: ReadableStream<unknown>;
 		getResult: () => Promise<AgentResult>;
 	}> {
 		const memoryOptions =
@@ -142,65 +351,37 @@ export class MastraAdapter {
 		if (this.structuredOutputSchema) {
 			streamOptions.structuredOutput = { schema: this.structuredOutputSchema };
 		}
-		if (this.approvalToolNames.length > 0) {
+		if (this.hasToolApproval) {
 			streamOptions.requireToolApproval = true;
 		}
 
 		const mastraInput = Array.isArray(input) ? toMastraMessages(input) : input;
 		const output = await this.mastraAgent.stream(mastraInput, streamOptions);
 
-		// Collect tool results from the stream for storeResults persistence.
-		// We can't rely on getResult().toolCalls for the streaming path since
-		// Mastra may return empty tool calls there.
 		const streamToolResults: Array<{ tool: string; input: unknown; output: unknown }> = [];
-
-		// Wrap the fullStream to auto-approve tools that aren't in the approval list.
-		// When Mastra pauses for approval on a non-approval tool, we immediately
-		// approve it and splice the resumed stream into the output.
-		const approvalSet = new Set(this.approvalToolNames);
-		const mastraAgent = this.mastraAgent;
-		const wrappedFullStream = new ReadableStream({
-			async start(controller) {
-				const processStream = async (stream: ReadableStream<unknown>) => {
-					const reader = stream.getReader();
-					while (true) {
-						const { done, value } = await reader.read();
-						if (done) break;
-						const chunk = value as {
-							type?: string;
-							runId?: string;
-							payload?: { toolName?: string; toolCallId?: string };
-						};
+		const storeToolNames = this.storeResultsToolNames;
+		const fullStream = (output.fullStream as ReadableStream<MastraStreamChunk>)
+			.pipeThrough(createMastraToStreamChunkTransform(this.toolToMessageMap))
+			.pipeThrough(
+				new TransformStream<StreamChunk, StreamChunk>({
+					transform(chunk, controller) {
 						if (
-							chunk.type === 'tool-call-approval' &&
-							chunk.payload?.toolName &&
-							!approvalSet.has(chunk.payload.toolName)
+							chunk.type === 'content' &&
+							chunk.content.type === 'tool-result' &&
+							storeToolNames.has(chunk.content.toolName)
 						) {
-							// Auto-approve this tool and continue with the resumed stream
-							const resumed = await mastraAgent.approveToolCall({
-								runId: chunk.runId ?? '',
-								toolCallId: chunk.payload.toolCallId,
+							streamToolResults.push({
+								tool: chunk.content.toolName,
+								input: chunk.content.input,
+								output: chunk.content.result,
 							});
-							const resumedOutput = resumed as unknown as { fullStream?: ReadableStream<unknown> };
-							if (resumedOutput.fullStream) {
-								await processStream(resumedOutput.fullStream);
-							}
-							return; // original stream is done after suspension
 						}
-						controller.enqueue(value);
-					}
-				};
-				try {
-					await processStream(output.fullStream as ReadableStream<unknown>);
-					controller.close();
-				} catch (error) {
-					controller.error(error);
-				}
-			},
-		});
+						controller.enqueue(chunk);
+					},
+				}),
+			);
 
 		const getResult = async (): Promise<AgentResult> => {
-			// Wait for the stream to fully complete — some fields may be promises or arrays
 			const [text, usage, parsedObject, rawToolCalls, rawToolResults] = await Promise.all([
 				output.text,
 				output.usage,
@@ -234,16 +415,17 @@ export class MastraAdapter {
 
 			const steps = await output.steps;
 
-			const streamResult: AgentResult = {
-				text: text ?? '',
-				toolCalls: mergedToolCalls.length > 0 ? mergedToolCalls : streamToolResults,
-				tokens: {
-					input: usage?.inputTokens ?? 0,
-					output: usage?.outputTokens ?? 0,
+			const streamResult = toAgentResult(
+				{
+					text: text ?? '',
+					toolCalls: mergedToolCalls,
+					inputTokens: usage?.inputTokens ?? 0,
+					outputTokens: usage?.outputTokens ?? 0,
+					steps: steps?.length ?? 0,
+					output: parsedObject,
 				},
-				steps: steps?.length ?? 0,
-				output: parsedObject,
-			};
+				this.toolToMessageMap,
+			);
 
 			// Use stream-collected tool results for saving (more reliable than
 			// getResult().toolCalls which can be empty in the streaming path)
@@ -255,39 +437,10 @@ export class MastraAdapter {
 
 			return streamResult;
 		};
-		// Wrap the output stream to collect tool results for storeResults persistence.
-		const baseStream =
-			this.approvalToolNames.length > 0
-				? wrappedFullStream
-				: (output.fullStream as ReadableStream<unknown>);
-
-		const storeToolNames = this.storeResultsToolNames;
-		const tappedStream = baseStream.pipeThrough(
-			new TransformStream({
-				transform(chunk, controller) {
-					const c = chunk as {
-						type?: string;
-						payload?: { toolName?: string; args?: unknown; result?: unknown };
-					};
-					if (
-						c.type === 'tool-result' &&
-						c.payload?.toolName &&
-						storeToolNames.has(c.payload.toolName)
-					) {
-						streamToolResults.push({
-							tool: c.payload.toolName,
-							input: c.payload.args,
-							output: c.payload.result,
-						});
-					}
-					controller.enqueue(chunk);
-				},
-			}),
-		);
 
 		return {
+			fullStream,
 			textStream: output.textStream as ReadableStream<string>,
-			fullStream: tappedStream,
 			getResult,
 		};
 	}
@@ -310,7 +463,7 @@ export class MastraAdapter {
 		if (this.structuredOutputSchema) {
 			executionOptions.structuredOutput = { schema: this.structuredOutputSchema };
 		}
-		if (this.approvalToolNames.length > 0) {
+		if (this.hasToolApproval) {
 			executionOptions.requireToolApproval = true;
 		}
 
@@ -337,17 +490,17 @@ export class MastraAdapter {
 			input: tc.input,
 			output: toolResults[idx]?.output ?? tc.output,
 		}));
-		const agentResult: AgentResult = {
-			text: output.text ?? '',
-			toolCalls: mergedToolCalls,
-			tokens: {
-				input: output.usage?.inputTokens ?? 0,
-				output: output.usage?.outputTokens ?? 0,
+		const agentResult = toAgentResult(
+			{
+				text: output.text ?? '',
+				toolCalls: mergedToolCalls,
+				inputTokens: output.usage?.inputTokens ?? 0,
+				outputTokens: output.usage?.outputTokens ?? 0,
+				steps: output.steps?.length ?? 0,
+				output: (output as unknown as { object?: unknown }).object,
 			},
-			steps: output.steps?.length ?? 0,
-			output: (output as unknown as { object?: unknown }).object,
-		};
-
+			this.toolToMessageMap,
+		);
 		await this.saveToolResultsToMemory(agentResult, options);
 
 		return agentResult;
@@ -368,7 +521,8 @@ export class MastraAdapter {
 		}
 
 		const toolSummaries: string[] = [];
-		for (const tc of result.toolCalls) {
+		const toolCalls = result.toolCalls ?? [];
+		for (const tc of toolCalls) {
 			if (this.storeResultsToolNames.has(tc.tool)) {
 				const outputStr =
 					typeof tc.output === 'string' ? tc.output : JSON.stringify(tc.output, null, 2);
@@ -413,15 +567,11 @@ export class MastraAdapter {
 		toolCallId?: string,
 	): Promise<{ fullStream: ReadableStream<unknown> }> {
 		const output = await this.mastraAgent.approveToolCall({ runId, toolCallId });
-		const typedOutput = output as unknown as { fullStream?: ReadableStream<unknown> };
+		const fullStream = (output.fullStream as ReadableStream<MastraStreamChunk>).pipeThrough(
+			createMastraToStreamChunkTransform(this.toolToMessageMap),
+		);
 		return {
-			fullStream:
-				typedOutput.fullStream ??
-				new ReadableStream({
-					start(c) {
-						c.close();
-					},
-				}),
+			fullStream,
 		};
 	}
 
@@ -433,15 +583,11 @@ export class MastraAdapter {
 		toolCallId?: string,
 	): Promise<{ fullStream: ReadableStream<unknown> }> {
 		const output = await this.mastraAgent.declineToolCall({ runId, toolCallId });
-		const typedOutput = output as unknown as { fullStream?: ReadableStream<unknown> };
+		const fullStream = (output.fullStream as ReadableStream<MastraStreamChunk>).pipeThrough(
+			createMastraToStreamChunkTransform(this.toolToMessageMap),
+		);
 		return {
-			fullStream:
-				typedOutput.fullStream ??
-				new ReadableStream({
-					start(c) {
-						c.close();
-					},
-				}),
+			fullStream,
 		};
 	}
 }

@@ -1,6 +1,8 @@
 import { createTool } from '@mastra/core/tools';
 import type { z } from 'zod';
 
+import type { Message, MessageContent } from './message';
+import { toMastraContent } from './runtime/message-adapter';
 import type { BuiltTool, ToolContext } from './types';
 
 type ZodObjectSchema = z.ZodObject<z.ZodRawShape>;
@@ -37,6 +39,10 @@ export class Tool<
 
 	private approval?: boolean | ((input: z.infer<TInput>) => boolean | Promise<boolean>);
 
+	// TODO: allow returning an array of messages
+	private toMessageFn?: (output: z.infer<TOutput>) => Message;
+
+	private toModelOutputFn?: (output: z.infer<TOutput>) => MessageContent[];
 	private persistResults = false;
 
 	constructor(name: string) {
@@ -83,6 +89,16 @@ export class Tool<
 		return this;
 	}
 
+	toMessage(toMessage: (output: z.infer<TOutput>) => Message): this {
+		this.toMessageFn = toMessage;
+		return this;
+	}
+
+	toModelOutput(toModelOutput: (output: z.infer<TOutput>) => MessageContent[]): this {
+		this.toModelOutputFn = toModelOutput;
+		return this;
+	}
+
 	/**
 	 * Store this tool's results in conversation memory so the LLM can
 	 * reference them in future turns. Without this, tool results are only
@@ -118,11 +134,40 @@ export class Tool<
 
 		const needsApproval = this.approval !== undefined && this.approval !== false;
 
+		const toMessage = this.toMessageFn
+			? (output: unknown): Message | undefined => {
+					// mastra generates an additional tool call result
+					// skip it, because it's not a real tool output
+					const isDummyToolOutput =
+						typeof output === 'object' &&
+						output !== null &&
+						'providerExecuted' in output &&
+						'toolName' in output &&
+						Object.keys(output).length === 2;
+					if (isDummyToolOutput) {
+						return undefined;
+					}
+					return this.toMessageFn!(output as z.infer<TOutput>);
+				}
+			: undefined;
+
+		const toModelOutput = this.toModelOutputFn
+			? (output: unknown): Record<string, unknown> | undefined => {
+					const content = this.toModelOutputFn!(output as z.infer<TOutput>);
+					const mastraContent = toMastraContent(content);
+					return {
+						type: 'content',
+						value: mastraContent,
+					};
+				}
+			: undefined;
+
 		const mastraTool = createTool({
 			id: this.name,
 			description: this.desc,
 			inputSchema: this.inputSchema,
 			outputSchema: this.outputSchema,
+			...(toModelOutput ? { toModelOutput } : {}),
 			...(needsApproval ? { requireApproval: true } : {}),
 			execute: async (inputData, _context) => {
 				const toolCtx: ToolContext = {
@@ -140,6 +185,7 @@ export class Tool<
 			description: this.desc,
 			_mastraTool: mastraTool,
 			_approval: this.approval as BuiltTool['_approval'],
+			_toMessage: toMessage,
 			_storeResults: this.persistResults || undefined,
 		};
 	}

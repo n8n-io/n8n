@@ -1,10 +1,11 @@
 import { AgentRun } from '../run';
 import type { AgentResult } from '../types';
+import { findTextContent } from './integration/helpers';
 
 const makeResult = (text = 'ok'): AgentResult => ({
-	text,
+	messages: [{ role: 'assistant', content: [{ type: 'text', text }] }],
 	toolCalls: [],
-	tokens: { input: 0, output: 0 },
+	usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
 	steps: 0,
 });
 
@@ -17,7 +18,7 @@ describe('AgentRun', () => {
 	it('should transition to completed when result resolves', async () => {
 		const run = new AgentRun(Promise.resolve(makeResult('done')));
 		const result = await run.result;
-		expect(result.text).toBe('done');
+		expect(findTextContent(result.messages)).toBe('done');
 		expect(run.state).toBe('completed');
 	});
 

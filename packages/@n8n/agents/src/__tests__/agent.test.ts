@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention, @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment */
 import { Agent } from '../agent';
 import type { BuiltTool, BuiltMemory, BuiltGuardrail, BuiltScorer } from '../types';
+import { findTextContent } from './integration/helpers';
 
 /** Exposes protected build() for testing. */
 class TestableAgent extends Agent {
@@ -151,8 +152,8 @@ describe('Agent', () => {
 			const run = agent.run('Hello!');
 			const result = await run.result;
 
-			expect(result.text).toBe('mock response');
-			expect(result.tokens).toEqual({ input: 10, output: 5 });
+			expect(findTextContent(result.messages)).toBe('mock response');
+			expect(result.usage).toEqual({ promptTokens: 10, completionTokens: 5, totalTokens: 15 });
 			expect(result.steps).toBe(1);
 		});
 
@@ -209,7 +210,7 @@ describe('Agent', () => {
 			expect(run.state).toBe('running');
 
 			const result = await run.result;
-			expect(result.text).toBe('mock response');
+			expect(findTextContent(result.messages)).toBe('mock response');
 		});
 	});
 

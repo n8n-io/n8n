@@ -118,6 +118,11 @@ export type ContentToolResult = ContentMetadata & {
 	result: unknown;
 
 	/**
+	 * The input of the tool call.
+	 */
+	input: unknown;
+
+	/**
 	 * Optional flag if the result is an error or an error message.
 	 */
 	isError?: boolean;

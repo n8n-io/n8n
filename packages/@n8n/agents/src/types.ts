@@ -11,7 +11,7 @@ export interface ProviderDefinedTool {
 	args: Record<string, unknown>;
 }
 
-import type { Message } from './message';
+import type { ContentMetadata, Message, MessageContent } from './message';
 
 // --- Run States ---
 
@@ -85,14 +85,81 @@ export interface RunOptions {
 
 // --- Agent Result ---
 
-export interface AgentResult<TOutput = unknown> {
-	text: string;
-	toolCalls: Array<{ tool: string; input: unknown; output: unknown }>;
-	tokens: { input: number; output: number };
-	steps: number;
-	/** Structured output parsed from the response (when structuredOutput is configured). */
-	output?: TOutput;
+export type FinishReason = 'stop' | 'length' | 'content-filter' | 'tool-calls' | 'error' | 'other';
+
+export type TokenUsage<T extends Record<string, unknown> = Record<string, unknown>> = {
+	promptTokens: number;
+	completionTokens: number;
+	totalTokens: number;
+	inputTokenDetails?: {
+		cacheRead?: number;
+	};
+	outputTokenDetails?: {
+		reasoning?: number;
+	};
+	additionalMetadata?: T;
+};
+
+export interface AgentResult {
+	id?: string;
+	finishReason?: FinishReason;
+	usage?: TokenUsage;
+	/**
+	 * The generated message
+	 */
+	messages: Message[];
+	/**
+	 * Metadata about the response from the provider
+	 */
+	providerMetadata?: Record<string, unknown>;
+	rawResponse?: unknown;
+	/** Tool calls made during the run (with merged results when available). */
+	toolCalls?: Array<{ tool: string; input: unknown; output: unknown }>;
+	/** Number of agent steps (e.g. turns with tool use). */
+	steps?: number;
+	/** Parsed structured output when structuredOutput schema is set. */
+	output?: unknown;
 }
+
+export type StreamChunk = ContentMetadata &
+	(
+		| {
+				type: 'text-delta';
+				id?: string;
+				delta: string;
+		  }
+		| {
+				type: 'reasoning-delta';
+				id?: string;
+				delta: string;
+		  }
+		| {
+				type: 'tool-call-delta';
+				id?: string;
+				name?: string;
+				argumentsDelta?: string;
+		  }
+		| {
+				type: 'finish';
+				finishReason: FinishReason;
+				usage?: TokenUsage;
+		  }
+		| {
+				type: 'error';
+				error: unknown;
+		  }
+		| {
+				type: 'content';
+				content: MessageContent;
+				id?: string;
+		  }
+		| {
+				type: 'tool-call-approval';
+				toolCallId?: string;
+				tool?: string;
+				input?: unknown;
+		  }
+	);
 
 // --- Tool Context ---
 
@@ -112,6 +179,7 @@ export interface BuiltTool {
 	readonly description: string;
 	/** @internal */ readonly _mastraTool: unknown;
 	/** @internal */ readonly _approval?: boolean | ((input: unknown) => boolean | Promise<boolean>);
+	/** @internal */ readonly _toMessage?: (output: unknown) => Message | undefined;
 	/** @internal */ readonly _storeResults?: boolean;
 }
 
@@ -147,8 +215,8 @@ export interface BuiltAgent {
 		input: Message[],
 		options?: RunOptions,
 	): Promise<{
+		fullStream: ReadableStream<StreamChunk>;
 		textStream: ReadableStream<string>;
-		fullStream: ReadableStream<unknown>;
 		getResult: () => Promise<AgentResult>;
 	}>;
 	asTool(description: string): BuiltTool;
