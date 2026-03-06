@@ -709,7 +709,7 @@ describe('execute-workflow MCP tool', () => {
 				expect(result).toMatchObject({
 					status: 'error',
 					executionId: 'exec-error',
-					message: 'Workflow execution failed',
+					error: 'Workflow execution failed',
 				});
 			});
 
@@ -755,7 +755,7 @@ describe('execute-workflow MCP tool', () => {
 				expect(result).toMatchObject({
 					status: 'error',
 					executionId: 'exec-data-error',
-					message: 'Node execution failed',
+					error: 'Node execution failed',
 				});
 			});
 

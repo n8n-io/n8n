@@ -91,7 +91,7 @@ const inputSchema = z.object({
 type ExecuteWorkflowOutput = {
 	executionId: string | null;
 	status: 'success' | 'error' | 'running' | 'waiting' | 'canceled' | 'crashed' | 'new' | 'unknown';
-	message?: string;
+	error?: string;
 };
 
 const outputSchema = {
@@ -99,10 +99,7 @@ const outputSchema = {
 	status: z
 		.enum(['success', 'error', 'running', 'waiting', 'canceled', 'crashed', 'new', 'unknown'])
 		.describe('The status of the execution'),
-	message: z
-		.string()
-		.optional()
-		.describe('Additional information about the execution (e.g., error message)'),
+	error: z.string().optional().describe('Error message if the execution failed'),
 } satisfies z.ZodRawShape;
 
 export const createExecuteWorkflowTool = (
@@ -152,8 +149,8 @@ export const createExecuteWorkflowTool = (
 					status: output.status,
 				},
 			};
-			if (output.status === 'error' && output.message) {
-				telemetryPayload.results.error = output.message;
+			if (output.status === 'error' && output.error) {
+				telemetryPayload.results.error = output.error;
 			}
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
@@ -182,7 +179,7 @@ export const createExecuteWorkflowTool = (
 			const output: ExecuteWorkflowOutput = {
 				executionId: isTimeout ? error.executionId : null,
 				status: 'error',
-				message: isTimeout
+				error: isTimeout
 					? `Workflow execution timed out after ${WORKFLOW_EXECUTION_TIMEOUT_MS / Time.milliseconds.toSeconds} seconds (Enforced MCP timeout)`
 					: (error.message ?? `${error.constructor.name}: (no message)`),
 			};
@@ -241,7 +238,7 @@ export const executeWorkflow = async (
 	return {
 		executionId,
 		status: hasError ? 'error' : data.status,
-		message: hasError
+		error: hasError
 			? (data.data.resultData?.error?.message ?? 'Execution completed with errors')
 			: undefined,
 	};

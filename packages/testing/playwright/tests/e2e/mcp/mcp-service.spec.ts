@@ -274,9 +274,8 @@ test.describe(
 				const { apiKey } = await api.rotateMcpApiKey();
 				const result = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId);
 
-				expect(result.success).toBe(true);
+				expect(result.status).toBe('success');
 				expect(result.executionId).toBeTruthy();
-				expect(result.result).toBeDefined();
 			});
 
 			test('should return error for non-existent workflow', async ({ api }) => {
@@ -285,7 +284,7 @@ test.describe(
 
 				const result = await api.mcp.internalMcpExecuteWorkflow(apiKey, fakeWorkflowId);
 
-				expect(result.success).toBe(false);
+				expect(result.status).toBe('error');
 				expect(result.error).toBeTruthy();
 			});
 
@@ -298,7 +297,7 @@ test.describe(
 				const { apiKey } = await api.rotateMcpApiKey();
 				const result = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId);
 
-				expect(result.success).toBe(false);
+				expect(result.status).toBe('error');
 				expect(result.error).toBeTruthy();
 			});
 
@@ -317,7 +316,7 @@ test.describe(
 					},
 				});
 
-				expect(result.success).toBe(true);
+				expect(result.status).toBe('success');
 				expect(result.executionId).toBeTruthy();
 			});
 		});

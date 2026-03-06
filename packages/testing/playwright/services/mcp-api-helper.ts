@@ -118,10 +118,9 @@ export interface WorkflowDetailsResult {
 
 /** Response from execute_workflow tool */
 export interface ExecuteWorkflowResult {
-	success: boolean;
 	executionId: string | null;
-	result?: unknown;
-	error?: unknown;
+	status: 'success' | 'error' | 'running' | 'waiting' | 'canceled' | 'crashed' | 'new' | 'unknown';
+	error?: string;
 }
 
 /**
@@ -954,21 +953,13 @@ export class McpApiHelper {
 				return JSON.parse(text) as ExecuteWorkflowResult;
 			} catch {
 				if (result.isError) {
-					return {
-						success: false,
-						executionId: null,
-						error: text,
-					};
+					return { executionId: null, status: 'error', error: text };
 				}
 				throw new Error(`Invalid JSON response from execute_workflow: ${text}`);
 			}
 		}
 		if (result?.isError) {
-			return {
-				success: false,
-				executionId: null,
-				error: JSON.stringify(result),
-			};
+			return { executionId: null, status: 'error', error: JSON.stringify(result) };
 		}
 		throw new Error(
 			`Unexpected response format from execute_workflow: ${JSON.stringify(result ?? body)}`,
