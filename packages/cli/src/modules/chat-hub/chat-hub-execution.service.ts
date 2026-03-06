@@ -680,7 +680,7 @@ export class ChatHubExecutionService {
 			return error.description ?? error.message;
 		}
 
-		for (const nodeRuns of Object.values(nodeRunData)) {
+		for (const nodeRuns of Object.values(nodeRunData ?? {})) {
 			for (const nodeRun of nodeRuns) {
 				if (nodeRun.error) {
 					return nodeRun.error.description ?? nodeRun.error.message;
