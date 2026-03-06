@@ -21,10 +21,17 @@ export async function workflowFailedToActivate(
 
 	const toast = useToast();
 	const i18n = useI18n();
-	toast.showError(
-		new Error(data.errorMessage),
-		i18n.baseText('workflowActivator.showError.title', {
-			interpolate: { newStateName: 'activated' },
-		}) + ':',
-	);
+	const node = data.nodeId ? workflowsStore.getNodeById(data.nodeId) : undefined;
+	const title = i18n.baseText('workflowActivator.showError.title', {
+		interpolate: { newStateName: 'activated' },
+	});
+	const nodeMessage = node
+		? i18n.baseText('workflowActivator.showError.nodeError', {
+				interpolate: { nodeName: node.name },
+			})
+		: undefined;
+	toast.showError(new Error(data.errorMessage), title, {
+		message: nodeMessage,
+		description: data.errorDescription,
+	});
 }

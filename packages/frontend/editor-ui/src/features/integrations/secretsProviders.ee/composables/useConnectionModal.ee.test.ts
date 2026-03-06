@@ -552,7 +552,9 @@ describe('useConnectionModal', () => {
 
 			await modal.loadConnection();
 
-			expect(mockShowError).toHaveBeenCalledWith(error, expect.any(String), undefined);
+			expect(mockShowError).toHaveBeenCalledWith(error, expect.any(String), {
+				message: undefined,
+			});
 		});
 
 		it('should handle error with response data when loading connection', async () => {
@@ -573,11 +575,9 @@ describe('useConnectionModal', () => {
 
 			await modal.loadConnection();
 
-			expect(mockShowError).toHaveBeenCalledWith(
-				error,
-				expect.any(String),
-				'Detailed error message',
-			);
+			expect(mockShowError).toHaveBeenCalledWith(error, expect.any(String), {
+				message: 'Detailed error message',
+			});
 		});
 
 		it('should handle error when saving connection', async () => {
@@ -593,7 +593,9 @@ describe('useConnectionModal', () => {
 			const result = await saveConnection();
 
 			expect(result).toBe(false);
-			expect(mockShowError).toHaveBeenCalledWith(error, expect.any(String), undefined);
+			expect(mockShowError).toHaveBeenCalledWith(error, expect.any(String), {
+				message: undefined,
+			});
 			expect(isSaving.value).toBe(false);
 		});
 
