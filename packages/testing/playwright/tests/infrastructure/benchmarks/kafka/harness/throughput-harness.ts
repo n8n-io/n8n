@@ -47,6 +47,11 @@ function deriveProfile(
 	return { name, workers, resourceSummary };
 }
 
+function sumValues(results: Array<{ value: number }>): number | undefined {
+	if (results.length === 0) return undefined;
+	return results.reduce((sum, r) => sum + r.value, 0);
+}
+
 async function collectDiagnostics(metrics: MetricsHelper, durationMs: number) {
 	const fmt = (v: number | undefined, unit = '') =>
 		v !== undefined ? `${v.toFixed(2)}${unit}` : 'N/A';
@@ -89,14 +94,14 @@ async function collectDiagnostics(metrics: MetricsHelper, durationMs: number) {
 	const pgInsertRate = pgInsA.length > 0 ? pgInsA : pgInsB;
 
 	return {
-		eventLoopLag: fmt(eventLoopLag[0]?.value, 's'),
-		pgTxRate: fmt(pgTxRate[0]?.value, ' tx/s'),
-		pgInsertRate: fmt(pgInsertRate[0]?.value, ' rows/s'),
-		pgActiveConnections: fmt(pgActive[0]?.value),
-		queueWaiting: fmt(queueWaiting[0]?.value),
-		queueActive: fmt(queueActive[0]?.value),
-		queueCompletedRate: fmt(queueCompletedRate[0]?.value, ' jobs/s'),
-		queueFailedRate: fmt(queueFailedRate[0]?.value, ' jobs/s'),
+		eventLoopLag: fmt(sumValues(eventLoopLag), 's'),
+		pgTxRate: fmt(sumValues(pgTxRate), ' tx/s'),
+		pgInsertRate: fmt(sumValues(pgInsertRate), ' rows/s'),
+		pgActiveConnections: fmt(sumValues(pgActive)),
+		queueWaiting: fmt(sumValues(queueWaiting)),
+		queueActive: fmt(sumValues(queueActive)),
+		queueCompletedRate: fmt(sumValues(queueCompletedRate), ' jobs/s'),
+		queueFailedRate: fmt(sumValues(queueFailedRate), ' jobs/s'),
 	};
 }
 
@@ -155,76 +160,77 @@ export function registerThroughputTests(config: ThroughputConfig) {
 						},
 					);
 
-					// 4. Preload queue
-					const publishResult = await preloadQueue(kafka, topic, {
-						messageCount,
-						payloadSize: scenario.payloadSize,
-					});
-					console.log(
-						`[BENCH-${profile.name}] Preloaded ${publishResult.totalPublished} messages in ${publishResult.publishDurationMs}ms`,
-					);
+					try {
+						// 4. Preload queue
+						const publishResult = await preloadQueue(kafka, topic, {
+							messageCount,
+							payloadSize: scenario.payloadSize,
+						});
+						console.log(
+							`[BENCH-${profile.name}] Preloaded ${publishResult.totalPublished} messages in ${publishResult.publishDurationMs}ms`,
+						);
 
-					// 5. Wait for VictoriaMetrics to be scraping n8n, then record baseline
-					await obs.metrics.waitForMetric('n8n_version_info', {
-						timeoutMs: 30_000,
-						intervalMs: 2000,
-						predicate: (results) => results.length > 0,
-					});
-					const baselineCounter = await getBaselineCounter(obs.metrics, WORKFLOW_SUCCESS_QUERY);
+						// 5. Wait for VictoriaMetrics to be scraping n8n, then record baseline
+						await obs.metrics.waitForMetric('n8n_version_info', {
+							timeoutMs: 30_000,
+							intervalMs: 2000,
+							predicate: (results) => results.length > 0,
+						});
+						const baselineCounter = await getBaselineCounter(obs.metrics, WORKFLOW_SUCCESS_QUERY);
 
-					// 6. Activate workflow and wait for consumer group
-					await api.workflows.activate(workflowId, createdWorkflow.versionId!);
-					await kafka.waitForConsumerGroup(groupId, { timeoutMs: 30_000 });
+						// 6. Activate workflow and wait for consumer group
+						await api.workflows.activate(workflowId, createdWorkflow.versionId!);
+						await kafka.waitForConsumerGroup(groupId, { timeoutMs: 30_000 });
 
-					// 7. Wait for throughput
-					console.log(
-						`[BENCH-${profile.name}] Draining ${messageCount} messages through ${scenario.nodeCount}-node (${scenario.nodeOutputSize}) workflow (timeout: ${scenario.timeoutMs}ms)`,
-					);
-					const result = await waitForThroughput(obs.metrics, {
-						expectedCount: messageCount,
-						nodeCount: scenario.nodeCount,
-						timeoutMs: scenario.timeoutMs,
-						baselineValue: baselineCounter,
-						metricQuery: WORKFLOW_SUCCESS_QUERY,
-						pollIntervalMs,
-					});
+						// 7. Wait for throughput
+						console.log(
+							`[BENCH-${profile.name}] Draining ${messageCount} messages through ${scenario.nodeCount}-node (${scenario.nodeOutputSize}) workflow (timeout: ${scenario.timeoutMs}ms)`,
+						);
+						const result = await waitForThroughput(obs.metrics, {
+							expectedCount: messageCount,
+							nodeCount: scenario.nodeCount,
+							timeoutMs: scenario.timeoutMs,
+							baselineValue: baselineCounter,
+							metricQuery: WORKFLOW_SUCCESS_QUERY,
+							pollIntervalMs,
+						});
 
-					// 8. Attach results (use scenario.name as label so the benchmark-summary-reporter
-					// can extract metrics via extractMetricSuffix which strips the test title prefix)
-					await attachThroughputResults(testInfo, scenario.name, result);
+						// 8. Attach results (use scenario.name as label so the benchmark-summary-reporter
+						// can extract metrics via extractMetricSuffix which strips the test title prefix)
+						await attachThroughputResults(testInfo, scenario.name, result);
 
-					// 9. Diagnostics
-					const diagnostics = await collectDiagnostics(obs.metrics, result.durationMs);
-					console.log(
-						`[DIAG-${profile.name}] ${scenario.name}\n` +
-							`  Event Loop Lag: ${diagnostics.eventLoopLag}\n` +
-							`  PG Transactions/s: ${diagnostics.pgTxRate}\n` +
-							`  PG Rows Inserted/s: ${diagnostics.pgInsertRate}\n` +
-							`  PG Active Connections: ${diagnostics.pgActiveConnections}\n` +
-							`  Queue Waiting: ${diagnostics.queueWaiting}\n` +
-							`  Queue Active: ${diagnostics.queueActive}\n` +
-							`  Queue Completed/s: ${diagnostics.queueCompletedRate}\n` +
-							`  Queue Failed/s: ${diagnostics.queueFailedRate}`,
-					);
+						// 9. Diagnostics
+						const diagnostics = await collectDiagnostics(obs.metrics, result.durationMs);
+						console.log(
+							`[DIAG-${profile.name}] ${scenario.name}\n` +
+								`  Event Loop Lag: ${diagnostics.eventLoopLag}\n` +
+								`  PG Transactions/s: ${diagnostics.pgTxRate}\n` +
+								`  PG Rows Inserted/s: ${diagnostics.pgInsertRate}\n` +
+								`  PG Active Connections: ${diagnostics.pgActiveConnections}\n` +
+								`  Queue Waiting: ${diagnostics.queueWaiting}\n` +
+								`  Queue Active: ${diagnostics.queueActive}\n` +
+								`  Queue Completed/s: ${diagnostics.queueCompletedRate}\n` +
+								`  Queue Failed/s: ${diagnostics.queueFailedRate}`,
+						);
 
-					// 10. Summary
-					console.log(
-						`[BENCH-${profile.name} RESULT] ${profile.name}-${scenario.name}\n` +
-							`  Profile: ${profile.name}\n` +
-							`${profile.resourceSummary}\n` +
-							`  Nodes: ${scenario.nodeCount} (${scenario.nodeOutputSize}) | Messages: ${messageCount}\n` +
-							`  Completed: ${result.totalCompleted}/${messageCount}\n` +
-							`  Throughput: ${result.avgExecPerSec.toFixed(1)} exec/s | ${result.actionsPerSec.toFixed(1)} actions/s\n` +
-							`  Peak: ${result.peakExecPerSec.toFixed(1)} exec/s | ${result.peakActionsPerSec.toFixed(1)} actions/s\n` +
-							`  Duration: ${(result.durationMs / 1000).toFixed(1)}s`,
-					);
+						// 10. Summary
+						console.log(
+							`[BENCH-${profile.name} RESULT] ${profile.name}-${scenario.name}\n` +
+								`  Profile: ${profile.name}\n` +
+								`${profile.resourceSummary}\n` +
+								`  Nodes: ${scenario.nodeCount} (${scenario.nodeOutputSize}) | Messages: ${messageCount}\n` +
+								`  Completed: ${result.totalCompleted}/${messageCount}\n` +
+								`  Throughput: ${result.avgExecPerSec.toFixed(1)} exec/s | ${result.actionsPerSec.toFixed(1)} actions/s\n` +
+								`  Peak: ${result.peakExecPerSec.toFixed(1)} exec/s | ${result.peakActionsPerSec.toFixed(1)} actions/s\n` +
+								`  Duration: ${(result.durationMs / 1000).toFixed(1)}s`,
+						);
 
-					// 11. Assertions
-					expect(result.totalCompleted).toBeGreaterThan(0);
-					expect(result.totalCompleted).toBeGreaterThanOrEqual(Math.floor(messageCount * 0.8));
-
-					// 12. Cleanup
-					await api.workflows.deactivate(workflowId);
+						// 11. Assertions
+						expect(result.totalCompleted).toBeGreaterThan(0);
+						expect(result.totalCompleted).toBeGreaterThanOrEqual(Math.floor(messageCount * 0.8));
+					} finally {
+						await api.workflows.deactivate(workflowId);
+					}
 				});
 			}
 		},

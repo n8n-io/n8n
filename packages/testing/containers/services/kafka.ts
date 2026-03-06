@@ -125,7 +125,7 @@ export class KafkaHelper {
 			await this.producer.connect();
 		}
 
-		const { batchSize = 1000 } = options;
+		const batchSize = Math.max(1, options.batchSize ?? 1000);
 		const kafkaMessages = messages.map((m) => ({
 			key: m.key,
 			value: typeof m.value === 'string' ? m.value : JSON.stringify(m.value),

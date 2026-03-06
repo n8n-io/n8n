@@ -67,67 +67,69 @@ export function registerLoadTests(config: LoadConfig) {
 						},
 					);
 
-					let expectedExecutions: number;
+					try {
+						let expectedExecutions: number;
 
-					// eslint-disable-next-line playwright/no-conditional-in-test
-					if (scenario.loadType === 'preloaded') {
-						const publishResult = await preloadQueue(kafka, topic, {
-							messageCount: scenario.messageCount!,
-							payloadSize: scenario.payloadSize,
-						});
+						// eslint-disable-next-line playwright/no-conditional-in-test
+						if (scenario.loadType === 'preloaded') {
+							const publishResult = await preloadQueue(kafka, topic, {
+								messageCount: scenario.messageCount!,
+								payloadSize: scenario.payloadSize,
+							});
+							console.log(
+								`[${logPrefix}] Preloaded ${publishResult.totalPublished} messages in ${publishResult.publishDurationMs}ms`,
+							);
+							expectedExecutions = scenario.messageCount!;
+
+							await api.workflows.activate(workflowId, createdWorkflow.versionId!);
+							await kafka.waitForConsumerGroup(groupId, { timeoutMs: 30_000 });
+						} else {
+							await api.workflows.activate(workflowId, createdWorkflow.versionId!);
+							await kafka.waitForConsumerGroup(groupId, { timeoutMs: 30_000 });
+
+							const publishResult = await publishAtRate(kafka, topic, {
+								ratePerSecond: scenario.ratePerSecond!,
+								durationSeconds: scenario.durationSeconds!,
+								payloadSize: scenario.payloadSize,
+							});
+							console.log(
+								`[${logPrefix}] Published ${publishResult.totalPublished} messages in ${publishResult.actualDurationMs}ms`,
+							);
+							expectedExecutions = publishResult.totalPublished;
+						}
+
 						console.log(
-							`[${logPrefix}] Preloaded ${publishResult.totalPublished} messages in ${publishResult.publishDurationMs}ms`,
+							`[${logPrefix}] Waiting for ${expectedExecutions} executions (timeout: ${scenario.timeoutMs}ms)`,
 						);
-						expectedExecutions = scenario.messageCount!;
-
-						await api.workflows.activate(workflowId, createdWorkflow.versionId!);
-						await kafka.waitForConsumerGroup(groupId, { timeoutMs: 30_000 });
-					} else {
-						await api.workflows.activate(workflowId, createdWorkflow.versionId!);
-						await kafka.waitForConsumerGroup(groupId, { timeoutMs: 30_000 });
-
-						const publishResult = await publishAtRate(kafka, topic, {
-							ratePerSecond: scenario.ratePerSecond!,
-							durationSeconds: scenario.durationSeconds!,
-							payloadSize: scenario.payloadSize,
+						const metrics = await waitForExecutions(api.workflows, workflowId, kafka, {
+							expectedCount: expectedExecutions,
+							groupId,
+							topic,
+							timeoutMs: scenario.timeoutMs,
 						});
+
+						const resultLabel = `${scenario.name}${testSuffix}`;
+						await attachLoadTestResults(testInfo, resultLabel, metrics);
+
 						console.log(
-							`[${logPrefix}] Published ${publishResult.totalPublished} messages in ${publishResult.actualDurationMs}ms`,
+							`[${logPrefix} RESULT] ${resultLabel}\n` +
+								`  Resources: ${resourceLabel}\n` +
+								`  Completed: ${metrics.totalCompleted}/${expectedExecutions}\n` +
+								`  Errors: ${metrics.totalErrors}\n` +
+								`  Throughput: ${metrics.throughputPerSecond.toFixed(2)} exec/s\n` +
+								`  Duration avg: ${metrics.avgDurationMs.toFixed(0)}ms | ` +
+								`p50: ${metrics.p50DurationMs.toFixed(0)}ms | ` +
+								`p95: ${metrics.p95DurationMs.toFixed(0)}ms | ` +
+								`p99: ${metrics.p99DurationMs.toFixed(0)}ms`,
 						);
-						expectedExecutions = publishResult.totalPublished;
+
+						expect(metrics.totalCompleted).toBeGreaterThan(0);
+						expect(metrics.totalCompleted).toBeGreaterThanOrEqual(
+							Math.floor(expectedExecutions * 0.5),
+						);
+					} finally {
+						await api.workflows.deactivate(workflowId);
 					}
-
-					console.log(
-						`[${logPrefix}] Waiting for ${expectedExecutions} executions (timeout: ${scenario.timeoutMs}ms)`,
-					);
-					const metrics = await waitForExecutions(api.workflows, workflowId, kafka, {
-						expectedCount: expectedExecutions,
-						groupId,
-						topic,
-						timeoutMs: scenario.timeoutMs,
-					});
-
-					const resultLabel = `${scenario.name}${testSuffix}`;
-					await attachLoadTestResults(testInfo, resultLabel, metrics);
-
-					console.log(
-						`[${logPrefix} RESULT] ${resultLabel}\n` +
-							`  Resources: ${resourceLabel}\n` +
-							`  Completed: ${metrics.totalCompleted}/${expectedExecutions}\n` +
-							`  Errors: ${metrics.totalErrors}\n` +
-							`  Throughput: ${metrics.throughputPerSecond.toFixed(2)} exec/s\n` +
-							`  Duration avg: ${metrics.avgDurationMs.toFixed(0)}ms | ` +
-							`p50: ${metrics.p50DurationMs.toFixed(0)}ms | ` +
-							`p95: ${metrics.p95DurationMs.toFixed(0)}ms | ` +
-							`p99: ${metrics.p99DurationMs.toFixed(0)}ms`,
-					);
-
-					expect(metrics.totalCompleted).toBeGreaterThan(0);
-					expect(metrics.totalCompleted).toBeGreaterThanOrEqual(
-						Math.floor(expectedExecutions * 0.5),
-					);
-
-					await api.workflows.deactivate(workflowId);
 				});
 			}
 		},

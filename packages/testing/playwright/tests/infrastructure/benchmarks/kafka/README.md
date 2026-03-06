@@ -81,7 +81,7 @@ pnpm --filter=n8n-playwright test:benchmark --project="benchmark-queue:*"
 pnpm --filter=n8n-playwright test:benchmark --project="benchmark-queue-tuned:*"
 
 # Specific scenario in specific profile
-pnpm --filter=n8n-playwright test:benchmark --project="benchmark-queue:*" --grep "10-nodes-1KB-5k"
+pnpm --filter=n8n-playwright test:benchmark --project="benchmark-queue:*" --grep "10-nodes-10KB-10kb-out-5k"
 
 # Custom message count
 BENCHMARK_MESSAGES=50000 pnpm --filter=n8n-playwright test:benchmark
