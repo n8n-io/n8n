@@ -1,8 +1,9 @@
-import * as fflate from 'fflate';
-import { readFile, readdir, writeFile, mkdir } from 'fs/promises';
+import { createWriteStream, createReadStream, mkdirSync } from 'fs';
+import { readFile, readdir, mkdir } from 'fs/promises';
 import * as path from 'path';
-import { createWriteStream } from 'fs';
+
 import { safeJoinPath } from '@n8n/backend-common';
+import * as fflate from 'fflate';
 
 // Reuse the same compression levels as the Compression node
 const ALREADY_COMPRESSED = [
@@ -115,32 +116,73 @@ export async function compressFolder(
 }
 
 /**
- * Decompress a ZIP archive to a folder
+ * Decompress a ZIP archive to a folder using streaming.
+ * Uses UnzipInflate (synchronous, no worker threads) to avoid EOF errors
+ * in containerised environments, and pipes chunks directly to write streams
+ * to keep memory usage low even for multi-GB archives.
  */
 export async function decompressFolder(sourcePath: string, outputDir: string): Promise<void> {
 	await mkdir(outputDir, { recursive: true });
 
-	const zipData = new Uint8Array(await readFile(sourcePath));
+	return await new Promise<void>((resolve, reject) => {
+		let pendingWrites = 0;
+		let streamFinished = false;
 
-	return new Promise<void>((resolve, reject) => {
-		fflate.unzip(zipData, async (err, files) => {
-			if (err) {
-				reject(err);
+		function checkDone() {
+			if (streamFinished && pendingWrites === 0) {
+				resolve();
+			}
+		}
+
+		const unzip = new fflate.Unzip((stream) => {
+			if (stream.name.endsWith('/')) return;
+
+			pendingWrites++;
+			const filePath = sanitizePath(stream.name, outputDir);
+			mkdirSync(path.dirname(filePath), { recursive: true });
+
+			const writeStream = createWriteStream(filePath);
+			writeStream.on('error', reject);
+
+			stream.ondata = (error, chunk, final) => {
+				if (error) {
+					reject(error instanceof Error ? error : new Error(String(error)));
+					return;
+				}
+				writeStream.write(Buffer.from(chunk));
+				if (final) {
+					writeStream.end(() => {
+						pendingWrites--;
+						checkDone();
+					});
+				}
+			};
+
+			stream.start();
+		});
+
+		// UnzipInflate is synchronous (no worker threads), reliable in all environments
+		unzip.register(fflate.UnzipInflate);
+
+		const zipStream = createReadStream(sourcePath);
+		zipStream.on('error', reject);
+		zipStream.on('data', (chunk: Buffer) => {
+			try {
+				unzip.push(new Uint8Array(chunk));
+			} catch (error) {
+				reject(error instanceof Error ? error : new Error(String(error)));
+			}
+		});
+		zipStream.on('end', () => {
+			try {
+				// Signal end-of-stream so fflate parses the central directory
+				unzip.push(new Uint8Array(0), true);
+			} catch (error) {
+				reject(error instanceof Error ? error : new Error(String(error)));
 				return;
 			}
-
-			try {
-				for (const [fileName, fileData] of Object.entries(files)) {
-					if (fileName.endsWith('/')) continue;
-
-					const filePath = sanitizePath(fileName, outputDir);
-					await mkdir(path.dirname(filePath), { recursive: true });
-					await writeFile(filePath, Buffer.from(fileData));
-				}
-				resolve();
-			} catch (writeError) {
-				reject(writeError);
-			}
+			streamFinished = true;
+			checkDone();
 		});
 	});
 }
