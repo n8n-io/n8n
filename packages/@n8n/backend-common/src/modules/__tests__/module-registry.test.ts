@@ -37,6 +37,7 @@ describe('eligibleModules', () => {
 			'quick-connect',
 			'workflow-builder',
 			'redaction',
+			'instance-registry',
 		]);
 	});
 
@@ -60,6 +61,7 @@ describe('eligibleModules', () => {
 			'quick-connect',
 			'workflow-builder',
 			'redaction',
+			'instance-registry',
 		]);
 	});
 

@@ -160,14 +160,11 @@ export class OauthService {
 		decryptedData: ICredentialDataDecryptedObject,
 		additionalData: IWorkflowExecuteAdditionalData,
 	) {
-		const canUseExternalSecrets =
-			await this.credentialsHelper.credentialCanUseExternalSecrets(credential);
 		return (await this.credentialsHelper.applyDefaultsAndOverwrites(
 			additionalData,
 			decryptedData,
 			credential.type,
 			'internal',
-			canUseExternalSecrets,
 			undefined,
 			undefined,
 		)) as unknown as T;
@@ -617,6 +614,7 @@ export class OauthService {
 		oauthTokenData: ICredentialDataDecryptedObject,
 		authHeader: string,
 		credentialResolverId: string,
+		authMetadata: Record<string, unknown> = {},
 	) {
 		const credentials = new Credentials(credential, credential.type, credential.data);
 		credentials.updateData(oauthTokenData, ['csrfSecret']);
@@ -632,8 +630,7 @@ export class OauthService {
 		await this.dynamicCredentialsProxy.storeIfNeeded(
 			credentialStoreMetadata,
 			oauthTokenData,
-			//  todo parse this
-			{ version: 1, identity: authHeader },
+			{ version: 1, identity: authHeader, metadata: authMetadata },
 			credentials.getData(),
 			{ credentialResolverId },
 		);

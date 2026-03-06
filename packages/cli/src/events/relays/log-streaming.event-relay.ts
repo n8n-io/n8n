@@ -82,6 +82,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'execution-started-during-bootup': (event) => this.executionStartedDuringBootup(event),
 			'execution-cancelled': (event) => this.executionCancelled(event),
 			'execution-deleted': (event) => this.executionDeleted(event),
+			'execution-data-revealed': (event) => this.executionDataRevealed(event),
 			'ai-messages-retrieved-from-memory': (event) => this.aiMessagesRetrievedFromMemory(event),
 			'ai-message-added-to-memory': (event) => this.aiMessageAddedToMemory(event),
 			'ai-output-parsed': (event) => this.aiOutputParsed(event),
@@ -740,6 +741,21 @@ export class LogStreamingEventRelay extends EventRelay {
 				executionIds,
 				...(deleteBefore && { deleteBefore: deleteBefore.toISOString() }),
 			},
+		});
+	}
+
+	@Redactable()
+	private executionDataRevealed({
+		user,
+		executionId,
+		workflowId,
+		ipAddress,
+		userAgent,
+		redactionPolicy,
+	}: RelayEventMap['execution-data-revealed']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.execution.data.revealed',
+			payload: { ...user, executionId, workflowId, ipAddress, userAgent, redactionPolicy },
 		});
 	}
 

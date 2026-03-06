@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import jp from 'jsonpath';
+import { JSONPath } from 'jsonpath-plus';
 import type { INodeUi } from '@/Interface';
 import { NodeConnectionTypes, type IDataObject, type IRunExecutionData } from 'n8n-workflow';
 import { clearJsonKey, convertPath } from '@/app/utils/typesUtils';
@@ -91,7 +91,7 @@ function getJsonValue(): string {
 		const jsonPath = normalisedJsonPath.value.startsWith('$')
 			? normalisedJsonPath.value
 			: `$${normalisedJsonPath.value}`;
-		selectedValue = jp.query(props.jsonData, jsonPath)[0];
+		selectedValue = JSONPath({ path: jsonPath, json: props.jsonData })[0];
 	}
 
 	let value = '';

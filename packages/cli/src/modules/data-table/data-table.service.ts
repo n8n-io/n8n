@@ -13,6 +13,7 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import { ProjectRelationRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { hasGlobalScope } from '@n8n/permissions';
 import { DateTime } from 'luxon';
 import type {
 	DataTableColumnJsType,
@@ -722,26 +723,30 @@ export class DataTableService {
 			async () => await this.dataTableRepository.findDataTablesSize(),
 		);
 
-		const roles = await this.roleService.rolesWithScope('project', ['dataTable:listProject']);
+		let dataTables: DataTableInfoById;
+		if (hasGlobalScope(user, 'dataTable:listProject')) {
+			dataTables = allSizeData.dataTables;
+		} else {
+			const roles = await this.roleService.rolesWithScope('project', ['dataTable:listProject']);
 
-		const accessibleProjectIds = await this.projectRelationRepository.getAccessibleProjectsByRoles(
-			user.id,
-			roles,
-		);
+			const accessibleProjectIds =
+				await this.projectRelationRepository.getAccessibleProjectsByRoles(user.id, roles);
 
-		const accessibleProjectIdsSet = new Set(accessibleProjectIds);
+			const accessibleProjectIdsSet = new Set(accessibleProjectIds);
 
-		// Filter the cached data based on user's accessible projects
-		const accessibleDataTables: DataTableInfoById = Object.fromEntries(
-			Object.entries(allSizeData.dataTables).filter(([, dataTableInfo]) =>
-				accessibleProjectIdsSet.has(dataTableInfo.projectId),
-			),
-		);
+			// Filter the cached data based on user's accessible projects
+			const accessibleDataTables: DataTableInfoById = Object.fromEntries(
+				Object.entries(allSizeData.dataTables).filter(([, dataTableInfo]) =>
+					accessibleProjectIdsSet.has(dataTableInfo.projectId),
+				),
+			);
+			dataTables = accessibleDataTables;
+		}
 
 		return {
 			totalBytes: allSizeData.totalBytes,
 			quotaStatus: this.dataTableSizeValidator.sizeToState(allSizeData.totalBytes),
-			dataTables: accessibleDataTables,
+			dataTables,
 		};
 	}
 

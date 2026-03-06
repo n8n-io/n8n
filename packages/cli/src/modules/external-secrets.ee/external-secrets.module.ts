@@ -29,6 +29,7 @@ export class ExternalSecretsModule implements ModuleInterface {
 		return {
 			multipleConnections: config.externalSecretsMultipleConnections,
 			forProjects: config.externalSecretsForProjects,
+			roleBasedAccess: config.externalSecretsRoleBasedAccess,
 		};
 	}
 

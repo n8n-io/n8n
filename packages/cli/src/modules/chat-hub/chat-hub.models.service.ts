@@ -782,9 +782,8 @@ export class ChatHubModelsService {
 			return null;
 		}
 
-		const inputModalities = this.chatHubWorkflowService.parseInputModalities(
-			chatTriggerParams.options,
-		);
+		const { allowFileUploads, allowedFilesMimeTypes } =
+			this.chatHubWorkflowService.resolveWorkflowAttachmentPolicy(activeVersion.nodes ?? []);
 
 		const agentName =
 			chatTriggerParams.agentName && chatTriggerParams.agentName.trim().length > 0
@@ -805,7 +804,8 @@ export class ChatHubModelsService {
 			createdAt: activeVersion.createdAt ? activeVersion.createdAt.toISOString() : null,
 			updatedAt: activeVersion.updatedAt ? activeVersion.updatedAt.toISOString() : null,
 			metadata: {
-				inputModalities,
+				allowFileUploads,
+				allowedFilesMimeTypes,
 				capabilities: {
 					functionCalling: false,
 				},

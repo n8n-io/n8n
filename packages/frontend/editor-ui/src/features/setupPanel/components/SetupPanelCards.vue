@@ -8,6 +8,7 @@ import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import type { SetupCardItem } from '@/features/setupPanel/setupPanel.types';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const props = withDefaults(
 	defineProps<{
@@ -21,13 +22,14 @@ const props = withDefaults(
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const { setupCards, isAllComplete, setCredential, unsetCredential, firstTriggerName } =
 	useWorkflowSetupState();
 
 watch(isAllComplete, (allComplete) => {
 	if (allComplete) {
 		telemetry.track('User completed all setup steps', {
-			template_id: workflowsStore.workflow.meta?.templateId,
+			template_id: workflowDocumentStore?.value?.meta?.templateId,
 			workflow_id: workflowsStore.workflowId,
 		});
 	}
