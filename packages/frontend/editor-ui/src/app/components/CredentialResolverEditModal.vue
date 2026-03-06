@@ -69,7 +69,8 @@ const hasEverMadeNonNameChange = ref(false);
 const {
 	resolverTypes: availableTypes,
 	fetchResolverTypes: loadResolverTypes,
-	openDeleteModal,
+	deleteResolver: deleteResolverFromComposable,
+	isDeleting,
 } = useCredentialResolvers();
 
 const isEditMode = computed(() => !!props.data?.resolverId);
@@ -340,9 +341,10 @@ const onTabSelect = (tabId: string) => {
 	activeTab.value = tabId;
 };
 
-const deleteResolver = () => {
+const deleteResolver = async () => {
 	if (!props.data?.resolverId) return;
 
+	// Create a resolver object for the composable
 	const resolver: CredentialResolver = {
 		id: props.data.resolverId,
 		name: resolverName.value,
@@ -352,13 +354,15 @@ const deleteResolver = () => {
 		updatedAt: new Date(),
 	};
 
-	openDeleteModal(resolver, async () => {
+	const deleted = await deleteResolverFromComposable(resolver);
+
+	if (deleted) {
 		hasUnsavedChanges.value = false;
 		if (props.data?.onDelete) {
-			props.data.onDelete(props.data.resolverId!);
+			props.data.onDelete(props.data.resolverId);
 		}
 		modalBus.emit('close');
-	});
+	}
 };
 
 onMounted(async () => {
@@ -417,6 +421,7 @@ onMounted(async () => {
 						:title="i18n.baseText('credentialResolverEdit.delete')"
 						icon="trash-2"
 						:disabled="isSaving"
+						:loading="isDeleting"
 						data-test-id="credential-resolver-delete-button"
 						@click="deleteResolver"
 					/>
