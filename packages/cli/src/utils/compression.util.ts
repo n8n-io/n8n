@@ -2,6 +2,7 @@ import { createWriteStream, mkdirSync } from 'fs';
 import type { FileHandle } from 'fs/promises';
 import { open, readFile, readdir, mkdir } from 'fs/promises';
 import * as path from 'path';
+import { Readable } from 'stream';
 import { pipeline } from 'stream/promises';
 import { createInflateRaw } from 'zlib';
 import { safeJoinPath } from '@n8n/backend-common';
@@ -241,6 +242,30 @@ async function readCentralDirectory(
 }
 
 /**
+ * Yield chunks of a file using positioned reads (pread), without moving the
+ * FileHandle cursor or adding listeners to it. Safe to call concurrently/sequentially
+ * on the same handle and on network filesystems (NFS/EFS).
+ */
+async function* readFileChunks(
+	fh: FileHandle,
+	offset: number,
+	size: number,
+	chunkSize = 64 * 1024,
+): AsyncGenerator<Buffer> {
+	let pos = offset;
+	let remaining = size;
+	while (remaining > 0) {
+		const toRead = Math.min(remaining, chunkSize);
+		const buf = Buffer.allocUnsafe(toRead);
+		const { bytesRead } = await fh.read(buf, 0, toRead, pos);
+		if (bytesRead === 0) break;
+		yield bytesRead === toRead ? buf : buf.subarray(0, bytesRead);
+		pos += bytesRead;
+		remaining -= bytesRead;
+	}
+}
+
+/**
  * Read the local file header to find where the compressed data actually starts.
  * The local header may have different extra field lengths than the central directory.
  */
@@ -286,11 +311,7 @@ export async function decompressFolder(sourcePath: string, outputDir: string): P
 			// Use the already-open file handle to avoid re-opening the file and
 			// seeking to a large offset on each entry, which can fail on network
 			// filesystems (NFS/EFS) common in Kubernetes environments.
-			const readStream = fh.createReadStream({
-				start: Number(dataOffset),
-				end: Number(dataOffset) + compressedSize - 1,
-				autoClose: false,
-			});
+			const readStream = Readable.from(readFileChunks(fh, Number(dataOffset), compressedSize));
 			const writeStream = createWriteStream(filePath);
 
 			if (entry.compressionMethod === COMPRESSION_DEFLATE) {
