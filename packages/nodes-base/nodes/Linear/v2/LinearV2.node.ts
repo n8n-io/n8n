@@ -8,7 +8,6 @@ import type {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
-	JsonObject,
 	IDataObject,
 } from 'n8n-workflow';
 
@@ -44,12 +43,12 @@ export class LinearV2 implements INodeType {
 				try {
 					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
 				} catch (error) {
-					const { error: err } = error as JsonObject;
-					const errors = (err as IDataObject).errors as [{ extensions: { code: string } }];
-					const authenticationError = Boolean(
-						errors?.filter((e) => e.extensions.code === 'AUTHENTICATION_ERROR').length,
-					);
-					if (authenticationError) {
+					const apiErrors = (
+						error as { error?: { errors?: Array<{ extensions?: { code?: string } }> } }
+					)?.error?.errors;
+					const isAuthError =
+						apiErrors?.some((e) => e?.extensions?.code === 'AUTHENTICATION_ERROR') ?? false;
+					if (isAuthError) {
 						return {
 							status: 'Error',
 							message: 'The security token included in the request is invalid',
