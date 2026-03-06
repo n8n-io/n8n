@@ -227,6 +227,27 @@ function goToUpgrade() {
 						</span>
 					</N8nLink>
 				</N8nText>
+				<div
+					v-if="isRoleBasedAccessEnabled"
+					:class="$style.systemRolesToggle"
+					class="mt-xl"
+					data-test-id="external-secrets-system-roles-toggle"
+				>
+					<div :class="$style.systemRolesToggleInfo">
+						<N8nText :bold="true" size="small">
+							{{ i18n.baseText('settings.externalSecrets.systemRoles.title') }}
+						</N8nText>
+						<N8nText size="small" color="text-light">
+							{{ i18n.baseText('settings.externalSecrets.systemRoles.description') }}
+						</N8nText>
+					</div>
+					<ElSwitch
+						:model-value="systemRolesEnabled"
+						:loading="systemRolesToggleLoading"
+						data-test-id="external-secrets-system-roles-switch"
+						@update:model-value="onSystemRolesToggle"
+					/>
+				</div>
 				<N8nButton
 					v-if="hasActiveProviders && secretsProviders.canCreate.value"
 					:class="$style.addButton"
@@ -270,27 +291,6 @@ function goToUpgrade() {
 					@share="handleShare"
 					@reload="handleReload"
 					@delete="handleDelete"
-				/>
-			</div>
-			<div
-				v-if="isRoleBasedAccessEnabled"
-				:class="$style.systemRolesToggle"
-				class="mt-xl"
-				data-test-id="external-secrets-system-roles-toggle"
-			>
-				<div :class="$style.systemRolesToggleInfo">
-					<N8nText :bold="true" size="small">
-						{{ i18n.baseText('settings.externalSecrets.systemRoles.title') }}
-					</N8nText>
-					<N8nText size="small" color="text-light">
-						{{ i18n.baseText('settings.externalSecrets.systemRoles.description') }}
-					</N8nText>
-				</div>
-				<ElSwitch
-					:model-value="systemRolesEnabled"
-					:loading="systemRolesToggleLoading"
-					data-test-id="external-secrets-system-roles-switch"
-					@update:model-value="onSystemRolesToggle"
 				/>
 			</div>
 		</div>
