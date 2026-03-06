@@ -9,7 +9,7 @@ processing and manipulating it. Besides that there are credentials - entities
 that store sensitive information on how to connect to external services and
 APIs. A node can require some credentials to be used. Community nodes are a way
 for anyone to create such nodes and add them to be used in n8n. All community
-nodes are named in a format: `n8n-node-<n>` or `@org/n8n-node-<n>`.
+nodes are named in a format: `n8n-nodes-<n>` or `@org/n8n-nodes-<n>`.
 Community nodes can also be submitted for approval to be used on n8n Cloud
 version. In that case there are rules that the node needs to follow in order to
 be approved
