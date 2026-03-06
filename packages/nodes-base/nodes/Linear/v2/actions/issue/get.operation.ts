@@ -36,9 +36,9 @@ export async function execute(
 	const returnData: INodeExecutionData[] = [];
 
 	for (let i = 0; i < items.length; i++) {
-		try {
-			const issueId = this.getNodeParameter('issueId', i) as string;
+		const issueId = this.getNodeParameter('issueId', i) as string;
 
+		try {
 			const body = {
 				query: `query Issue($issueId: String!) {
 					issue(id: $issueId) {

@@ -43,10 +43,10 @@ export async function execute(
 	const returnData: INodeExecutionData[] = [];
 
 	for (let i = 0; i < items.length; i++) {
-		try {
-			const commentId = this.getNodeParameter('commentId', i) as string;
-			const body = this.getNodeParameter('body', i) as string;
+		const commentId = this.getNodeParameter('commentId', i) as string;
+		const body = this.getNodeParameter('body', i) as string;
 
+		try {
 			const requestBody = {
 				query: `mutation CommentUpdate($commentId: String!, $body: String!) {
 					commentUpdate(id: $commentId, input: { body: $body }) {

@@ -106,10 +106,10 @@ export async function execute(
 	const returnData: INodeExecutionData[] = [];
 
 	for (let i = 0; i < items.length; i++) {
-		try {
-			const issueId = this.getNodeParameter('issueId', i) as string;
-			const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+		const issueId = this.getNodeParameter('issueId', i) as string;
+		const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
+		try {
 			const body = {
 				query: `mutation IssueUpdate(
 					$issueId: String!,
