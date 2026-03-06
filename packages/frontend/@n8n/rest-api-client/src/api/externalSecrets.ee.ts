@@ -11,7 +11,6 @@ export const getExternalSecrets = async (
 
 /**
  * @deprecated use getGlobalExternalSecretsForProject instead
- * @beta still under development
  */
 export const getGlobalExternalSecrets = async (
 	context: IRestApiContext,
