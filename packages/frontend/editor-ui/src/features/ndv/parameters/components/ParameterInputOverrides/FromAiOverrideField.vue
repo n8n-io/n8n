@@ -55,7 +55,7 @@ const emit = defineEmits<{
 
 .overrideCloseButton {
 	border: 0;
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	margin-left: auto;
 	padding: 0 var(--spacing--2xs);
 	align-self: stretch;
