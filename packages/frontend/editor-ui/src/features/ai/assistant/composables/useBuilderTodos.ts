@@ -114,11 +114,21 @@ export function formatPlaceholderPath(path: string[]): string {
 }
 
 /**
- * Checks if a value is a placeholder value
+ * Checks if a value contains a placeholder
  */
 export function isPlaceholderValue(value: unknown): boolean {
 	if (typeof value !== 'string') return false;
 	return !!value.match(PLACEHOLDER_REGEX);
+}
+
+/**
+ * Checks if a string value is entirely a single placeholder (not embedded in other content).
+ * Returns true for "<__PLACEHOLDER_VALUE__label__>" but false for
+ * "some code <__PLACEHOLDER_VALUE__label__> more code".
+ */
+export function isFullPlaceholderValue(value: unknown): boolean {
+	if (typeof value !== 'string') return false;
+	return value.trim().startsWith(PLACEHOLDER_PREFIX) && value.trim().endsWith(PLACEHOLDER_SUFFIX);
 }
 
 /**

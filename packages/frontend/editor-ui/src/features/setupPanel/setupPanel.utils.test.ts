@@ -45,7 +45,22 @@ describe('setupPanel.utils', () => {
 			expect(result).toEqual(['openAiApi', 'slackApi']);
 		});
 
-		it('should include credential types from node issues', () => {
+		it('should include credential types from node issues when displayable', () => {
+			const node = createNode({
+				issues: {
+					credentials: {
+						httpHeaderAuth: ['Credentials not set'],
+					},
+				},
+			});
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+
+			const result = getNodeCredentialTypes(mockNodeTypeProvider, node);
+
+			expect(result).toContain('httpHeaderAuth');
+		});
+
+		it('should exclude credential types from node issues when not displayable', () => {
 			const node = createNode({
 				issues: {
 					credentials: {
@@ -56,10 +71,23 @@ describe('setupPanel.utils', () => {
 
 			const result = getNodeCredentialTypes(mockNodeTypeProvider, node);
 
-			expect(result).toContain('httpHeaderAuth');
+			expect(result).not.toContain('httpHeaderAuth');
 		});
 
-		it('should include credential types from assigned credentials', () => {
+		it('should include credential types from assigned credentials when displayable', () => {
+			const node = createNode({
+				credentials: {
+					slackApi: { id: 'cred-1', name: 'My Slack' },
+				},
+			});
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'slackApi' }]);
+
+			const result = getNodeCredentialTypes(mockNodeTypeProvider, node);
+
+			expect(result).toContain('slackApi');
+		});
+
+		it('should exclude credential types from assigned credentials when not displayable', () => {
 			const node = createNode({
 				credentials: {
 					slackApi: { id: 'cred-1', name: 'My Slack' },
@@ -68,7 +96,7 @@ describe('setupPanel.utils', () => {
 
 			const result = getNodeCredentialTypes(mockNodeTypeProvider, node);
 
-			expect(result).toContain('slackApi');
+			expect(result).not.toContain('slackApi');
 		});
 
 		it('should deduplicate credential types from all sources', () => {

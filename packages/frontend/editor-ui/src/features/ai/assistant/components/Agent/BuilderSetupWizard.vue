@@ -132,9 +132,6 @@ const ensureExecutionWatcher = () => {
 async function onExecute() {
 	if (!isAllComplete.value) return;
 
-	builderStore.wizardHasExecutedWorkflow = true;
-	ensureExecutionWatcher();
-
 	const selectedTriggerNode =
 		workflowsStore.selectedTriggerNodeName ?? availableTriggerNodes.value[0]?.name;
 	const selectedTriggerNodeType = selectedTriggerNode
@@ -155,6 +152,12 @@ async function onExecute() {
 	if (selectedTriggerNode) {
 		runOptions.triggerNode = selectedTriggerNode;
 	}
+
+	// Set post-execution state only after confirming we will actually start a run.
+	// Must be set before runWorkflow() so the execution watcher and UI state
+	// are ready when the run begins.
+	builderStore.wizardHasExecutedWorkflow = true;
+	ensureExecutionWatcher();
 
 	await runWorkflow(runOptions);
 }
@@ -204,7 +207,9 @@ function onStepExecuted() {
 	// Auto-advance after step execution if the card is now complete.
 	// Only for cards with parameters — credential-only cards are already
 	// handled by the composable's auto-advance watcher.
-	const hasParams = (card?.state.templateParameterNames?.length ?? 0) > 0;
+	const hasParams =
+		(card?.state.templateParameterNames?.length ?? 0) > 0 ||
+		Object.keys(card?.state.parameterIssues ?? {}).length > 0;
 	if (hasParams) {
 		setTimeout(() => goToNext(), 300);
 	}

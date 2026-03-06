@@ -23,18 +23,26 @@ export function getNodeCredentialTypes(
 	const credentialTypes = new Set<string>();
 
 	const displayableCredentials = getNodeTypeDisplayableCredentials(nodeTypeProvider, node);
-	for (const cred of displayableCredentials) {
-		credentialTypes.add(cred.name);
+	const displayableNames = new Set(displayableCredentials.map((c) => c.name));
+	for (const name of displayableNames) {
+		credentialTypes.add(name);
 	}
 
+	// Only include credential issues and assigned credentials that are currently
+	// displayable. Credentials behind displayOptions (e.g. webhook auth modes)
+	// should not surface when their controlling parameter doesn't match.
 	const credentialIssues = node.issues?.credentials ?? {};
 	for (const credType of Object.keys(credentialIssues)) {
-		credentialTypes.add(credType);
+		if (displayableNames.has(credType)) {
+			credentialTypes.add(credType);
+		}
 	}
 
 	if (node.credentials) {
 		for (const credType of Object.keys(node.credentials)) {
-			credentialTypes.add(credType);
+			if (displayableNames.has(credType)) {
+				credentialTypes.add(credType);
+			}
 		}
 	}
 

@@ -12,7 +12,10 @@ import {
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
-import { findPlaceholderDetails } from '@/features/ai/assistant/composables/useBuilderTodos';
+import {
+	findPlaceholderDetails,
+	isFullPlaceholderValue,
+} from '@/features/ai/assistant/composables/useBuilderTodos';
 import { MANUAL_TRIGGER_NODE_TYPE } from '@/app/constants/nodeTypes';
 
 /**
@@ -143,6 +146,17 @@ export function useBuilderSetupCards() {
 				if (target !== null && target !== undefined && typeof target === 'object') {
 					const lastKey = placeholder.path[placeholder.path.length - 1];
 					const arrayMatch = /^\[(\d+)]$/.exec(lastKey);
+					let currentValue: unknown;
+					if (arrayMatch && Array.isArray(target)) {
+						currentValue = (target as unknown[])[Number(arrayMatch[1])];
+					} else {
+						currentValue = (target as Record<string, unknown>)[lastKey];
+					}
+
+					// Only clear fields whose entire value is a placeholder.
+					// Mixed-content fields (e.g. code with embedded placeholders) are left intact.
+					if (!isFullPlaceholderValue(currentValue)) continue;
+
 					if (arrayMatch && Array.isArray(target)) {
 						(target as unknown[])[Number(arrayMatch[1])] = '';
 					} else if (lastKey in (target as Record<string, unknown>)) {
@@ -245,7 +259,9 @@ export function useBuilderSetupCards() {
 				if (builderStore.wizardHasExecutedWorkflow) return;
 
 				const card = currentCard.value;
-				const hasParams = (card?.state.templateParameterNames?.length ?? 0) > 0;
+				const hasParams =
+					(card?.state.templateParameterNames?.length ?? 0) > 0 ||
+					Object.keys(card?.state.parameterIssues ?? {}).length > 0;
 				if (!hasParams) {
 					setTimeout(() => goToNext(), 300);
 				}

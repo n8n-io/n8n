@@ -226,12 +226,12 @@ watch(
 			>
 				<div
 					v-if="props.editIconOnly"
-					:class="$style.editIcon"
+					:class="[$style.editIcon, { [$style.editIconDisabled]: !credentialPermissions.update }]"
 					data-test-id="credential-edit-button"
 				>
 					<N8nIcon
 						icon="pen"
-						class="clickable"
+						:class="{ clickable: credentialPermissions.update }"
 						:title="i18n.baseText('nodeCredentials.updateCredential')"
 						@click="editCredential()"
 					/>
@@ -245,7 +245,7 @@ watch(
 					:title="i18n.baseText('nodeCredentials.updateCredential')"
 					data-test-id="credential-edit-button"
 					:disabled="!credentialPermissions.update"
-					@click="editCredential()"
+					@click="credentialPermissions.update && editCredential()"
 				/>
 			</N8nTooltip>
 
@@ -306,6 +306,16 @@ watch(
 	&:hover,
 	&:focus {
 		color: var(--color--primary);
+	}
+}
+
+.editIconDisabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+
+	&:hover,
+	&:focus {
+		color: var(--color--text);
 	}
 }
 
