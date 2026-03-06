@@ -14,6 +14,17 @@ import type { INode, INodeTypeDescription, Workflow } from 'n8n-workflow';
 import { AI_MCP_TOOL_NODE_TYPE } from '../constants';
 import { mock } from 'vitest-mock-extended';
 
+const { mockDocumentStore } = vi.hoisted(() => ({
+	mockDocumentStore: {
+		getNodeByName: vi.fn(),
+	},
+}));
+
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	useWorkflowDocumentStore: vi.fn().mockReturnValue(mockDocumentStore),
+	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
+}));
+
 describe('useToolParameters', () => {
 	let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 	let projectsStore: MockedStore<typeof useProjectsStore>;
@@ -377,7 +388,7 @@ describe('useToolParameters', () => {
 			});
 
 			workflowsStore.workflowObject = mockWorkflow;
-			workflowsStore.getNodeByName = vi.fn().mockImplementation((name: string) => {
+			mockDocumentStore.getNodeByName.mockImplementation((name: string) => {
 				if (name === 'Connected Tool') return connectedTool;
 				return null;
 			});
@@ -430,7 +441,7 @@ describe('useToolParameters', () => {
 			});
 
 			workflowsStore.workflowObject = mockWorkflow;
-			workflowsStore.getNodeByName = vi.fn().mockImplementation((name: string) => {
+			mockDocumentStore.getNodeByName.mockImplementation((name: string) => {
 				if (name === 'Connected Tool') return connectedTool;
 				return null;
 			});

@@ -15,6 +15,10 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { usePinnedData } from '@/app/composables/usePinnedData';
@@ -99,6 +103,12 @@ export function useNodeExecution(
 	const ndvStore = useNDVStore();
 	const uiStore = useUIStore();
 	const workflowState = injectWorkflowState();
+
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 
 	const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
 
@@ -289,7 +299,7 @@ export function useNodeExecution(
 			}
 
 			// Update node with generated code
-			workflowState.updateNodeProperties({
+			workflowDocumentStore.value?.updateNodeProperties({
 				name: nodeRef.value.name,
 				properties: {
 					parameters: {

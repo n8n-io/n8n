@@ -31,6 +31,7 @@ import {
 
 const {
 	mockWorkflowsStore,
+	mockDocumentStore,
 	mockNodeTypesStore,
 	mockNdvStore,
 	mockRunWorkflow,
@@ -46,6 +47,9 @@ const {
 		checkIfNodeHasChatParent: vi.fn(),
 		getNodeByName: vi.fn(),
 		removeTestWebhook: vi.fn(),
+	},
+	mockDocumentStore: {
+		updateNodeProperties: vi.fn(),
 	},
 	mockNodeTypesStore: {
 		getNodeType: vi.fn(),
@@ -81,6 +85,11 @@ vi.mock('vue-router', async (importOriginal) => {
 
 vi.mock('@/app/stores/workflows.store', () => ({
 	useWorkflowsStore: vi.fn().mockReturnValue(mockWorkflowsStore),
+}));
+
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	useWorkflowDocumentStore: vi.fn().mockReturnValue(mockDocumentStore),
+	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
 }));
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({
@@ -189,6 +198,7 @@ describe('useNodeExecution', () => {
 		mockWorkflowsStore.checkIfNodeHasChatParent.mockReturnValue(false);
 		mockWorkflowsStore.removeTestWebhook.mockReset();
 		mockWorkflowsStore.getNodeByName.mockReset();
+		mockDocumentStore.updateNodeProperties.mockReset();
 
 		mockNodeTypesStore.getNodeType.mockReturnValue(null);
 		mockNodeTypesStore.isTriggerNode.mockReturnValue(false);
@@ -755,7 +765,6 @@ describe('useNodeExecution', () => {
 				name: `parameters.${AI_TRANSFORM_JS_CODE}`,
 				value: 'return items;',
 			});
-			vi.spyOn(workflowState, 'updateNodeProperties').mockImplementation(() => {});
 			const node = ref(
 				createTestNode({
 					name: 'AI Transform',
@@ -768,7 +777,7 @@ describe('useNodeExecution', () => {
 			const result = await execute();
 
 			expect(generateCodeForAiTransform).toHaveBeenCalled();
-			expect(workflowState.updateNodeProperties).toHaveBeenCalled();
+			expect(mockDocumentStore.updateNodeProperties).toHaveBeenCalled();
 			expect(result).toBe('executed');
 		});
 
@@ -777,7 +786,6 @@ describe('useNodeExecution', () => {
 				name: `parameters.${AI_TRANSFORM_JS_CODE}`,
 				value: 'return items;',
 			});
-			vi.spyOn(workflowState, 'updateNodeProperties').mockImplementation(() => {});
 			const onCodeGenerated = vi.fn();
 			const node = ref(
 				createTestNode({

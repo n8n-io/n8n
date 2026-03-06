@@ -67,14 +67,11 @@ vi.mock('@/stores/pushConnection.store', () => ({
 }));
 
 // Use a mutable reference so the mock always returns the current workflowState
-const workflowStateRef: { current: WorkflowState | undefined } = { current: undefined };
-
 vi.mock('@/app/composables/useNodeHelpers', async (importOriginal) => {
 	const actual = await importOriginal<typeof useNodeHelpersModule>();
 	return {
 		...actual,
-		useNodeHelpers: (opts = {}) =>
-			actual.useNodeHelpers({ ...opts, workflowState: workflowStateRef.current }),
+		useNodeHelpers: () => actual.useNodeHelpers(),
 	};
 });
 
@@ -123,7 +120,6 @@ describe('LogsPanel', () => {
 
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowState = useWorkflowState();
-		workflowStateRef.current = workflowState;
 		workflowState.setWorkflowExecutionData(null);
 
 		logsStore = mockedStore(useLogsStore);

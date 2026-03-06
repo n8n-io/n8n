@@ -415,12 +415,15 @@ export function handleExecutionFinishedWithSuccessOrOther(
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowObject = workflowsStore.workflowObject;
 	const workflowName = workflowObject.name ?? '';
+	const workflowDocumentStore = workflowsStore.workflowId
+		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+		: undefined;
 
 	useDocumentTitle().setDocumentTitle(workflowName, 'IDLE');
 
 	const workflowExecution = workflowsStore.getWorkflowExecution;
 	if (workflowExecution?.executedNode) {
-		const node = workflowsStore.getNodeByName(workflowExecution.executedNode);
+		const node = workflowDocumentStore?.getNodeByName(workflowExecution.executedNode) ?? null;
 		const nodeType = node && nodeTypesStore.getNodeType(node.type, node.typeVersion);
 		const nodeOutput =
 			workflowExecution.data?.resultData?.runData?.[workflowExecution.executedNode];
@@ -467,7 +470,7 @@ export function setRunExecutionData(
 	workflowState: WorkflowState,
 ) {
 	const workflowsStore = useWorkflowsStore();
-	const nodeHelpers = useNodeHelpers({ workflowState });
+	const nodeHelpers = useNodeHelpers();
 	const runDataExecutedErrorMessage = getRunDataExecutedErrorMessage(execution);
 	const workflowExecution = workflowsStore.getWorkflowExecution;
 

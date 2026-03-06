@@ -47,7 +47,6 @@ import { useTelemetry } from './useTelemetry';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { injectWorkflowState, type WorkflowState } from './useWorkflowState';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -63,15 +62,20 @@ declare namespace HttpRequestNode {
 	}
 }
 
-export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
+export function useNodeHelpers() {
 	const credentialsStore = useCredentialsStore();
 	const historyStore = useHistoryStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
-	const workflowState = opts.workflowState ?? injectWorkflowState();
 	const settingsStore = useSettingsStore();
 	const i18n = useI18n();
 	const canvasStore = useCanvasStore();
+
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 
 	const isInsertingNodes = ref(false);
 	const credentialsUpdated = ref(false);
@@ -156,10 +160,7 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 			return [];
 		}
 
-		const workflowDocumentStore = workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined;
-		const usedCredentials = workflowDocumentStore?.usedCredentials ?? {};
+		const usedCredentials = workflowDocumentStore.value?.usedCredentials ?? {};
 
 		return Object.values(credentials)
 			.map(({ id }) => id)
@@ -194,10 +195,7 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 		workflow: Workflow,
 		ignoreIssues?: string[],
 	): INodeIssues | null {
-		const workflowDocumentStore = workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined;
-		const pinDataNodeNames = Object.keys(workflowDocumentStore?.pinData ?? {});
+		const pinDataNodeNames = Object.keys(workflowDocumentStore.value?.pinData ?? {});
 
 		let nodeIssues: INodeIssues | null = null;
 		ignoreIssues = ignoreIssues ?? [];
@@ -290,7 +288,7 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 
 		const nodeInputIssues = getNodeInputIssues(workflowObject.value, node, nodeType);
 
-		workflowState.setNodeIssue({
+		workflowDocumentStore.value?.setNodeIssue({
 			node: node.name,
 			type: 'input',
 			value: nodeInputIssues?.input ? nodeInputIssues.input : null,
@@ -298,7 +296,7 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 	}
 
 	function updateNodesInputIssues() {
-		const nodes = workflowsStore.allNodes;
+		const nodes = workflowDocumentStore.value?.allNodes ?? [];
 
 		for (const node of nodes) {
 			updateNodeInputIssues(node);
@@ -306,10 +304,10 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 	}
 
 	function updateNodesExecutionIssues() {
-		const nodes = workflowsStore.allNodes;
+		const nodes = workflowDocumentStore.value?.allNodes ?? [];
 
 		for (const node of nodes) {
-			workflowState.setNodeIssue({
+			workflowDocumentStore.value?.setNodeIssue({
 				node: node.name,
 				type: 'execution',
 				value: hasNodeExecutionIssues(node) ? true : null,
@@ -318,7 +316,7 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 	}
 
 	function updateNodesParameterIssues() {
-		const nodes = workflowsStore.allNodes;
+		const nodes = workflowDocumentStore.value?.allNodes ?? [];
 
 		for (const node of nodes) {
 			updateNodeParameterIssues(node);
@@ -326,7 +324,7 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 	}
 
 	function updateNodeCredentialIssuesByName(name: string): void {
-		const node = workflowsStore.getNodeByName(name);
+		const node = workflowDocumentStore.value?.getNodeByName(name) ?? null;
 
 		if (node) {
 			updateNodeCredentialIssues(node);
@@ -341,7 +339,7 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 			newIssues = fullNodeIssues.credentials!;
 		}
 
-		workflowState.setNodeIssue({
+		workflowDocumentStore.value?.setNodeIssue({
 			node: node.name,
 			type: 'credentials',
 			value: newIssues,
@@ -349,7 +347,7 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 	}
 
 	function updateNodeParameterIssuesByName(name: string): void {
-		const node = workflowsStore.getNodeByName(name);
+		const node = workflowDocumentStore.value?.getNodeByName(name) ?? null;
 
 		if (node) {
 			updateNodeParameterIssues(node);
@@ -376,7 +374,7 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 			newIssues = fullNodeIssues.parameters!;
 		}
 
-		workflowState.setNodeIssue({
+		workflowDocumentStore.value?.setNodeIssue({
 			node: node.name,
 			type: 'parameters',
 			value: newIssues,
@@ -426,9 +424,6 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 		nodeType?: INodeTypeDescription,
 	): INodeIssues | null {
 		const localNodeType = nodeType ?? nodeTypesStore.getNodeType(node.type, node.typeVersion);
-		const workflowDocumentStore = workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined;
 		if (node.disabled) {
 			// Node is disabled
 			return null;
@@ -467,7 +462,7 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 			// Prevents HTTP Request node from being unusable if a sharee does not have direct
 			// access to a credential
 			const isCredentialUsedInWorkflow =
-				workflowDocumentStore?.usedCredentials?.[
+				workflowDocumentStore.value?.usedCredentials?.[
 					node.credentials?.[nodeCredentialType]?.id as string
 				];
 
@@ -553,7 +548,7 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 
 				if (nameMatches.length === 0) {
 					const isCredentialUsedInWorkflow =
-						workflowDocumentStore?.usedCredentials?.[selectedCredentials.id as string];
+						workflowDocumentStore.value?.usedCredentials?.[selectedCredentials.id as string];
 
 					if (
 						!isCredentialUsedInWorkflow &&
@@ -606,13 +601,13 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 	}
 
 	function updateNodesCredentialsIssues() {
-		const nodes = workflowsStore.allNodes;
+		const nodes = workflowDocumentStore.value?.allNodes ?? [];
 		let issues: INodeIssues | null;
 
 		for (const node of nodes) {
 			issues = getNodeCredentialIssues(node);
 
-			workflowState.setNodeIssue({
+			workflowDocumentStore.value?.setNodeIssue({
 				node: node.name,
 				type: 'credentials',
 				value: issues?.credentials ?? null,
@@ -744,7 +739,7 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 				workflow_id: workflowsStore.workflowId,
 			});
 
-			workflowState.updateNodeProperties(updateInformation);
+			workflowDocumentStore.value?.updateNodeProperties(updateInformation);
 			workflowsStore.clearNodeExecutionData(node.name);
 			updateNodeParameterIssues(node);
 			updateNodeCredentialIssues(node);

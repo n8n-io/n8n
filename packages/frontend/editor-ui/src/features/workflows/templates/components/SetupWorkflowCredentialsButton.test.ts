@@ -90,10 +90,12 @@ const EMPTY_WORKFLOW = {
 };
 
 function setDocumentStoreMeta(meta: Record<string, unknown>) {
-	const docStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId));
+	const workflowDocumentStore = useWorkflowDocumentStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	);
 	// Note: createTestingPinia() stubs actions by default, so setMeta() won't work
-	Object.defineProperty(docStore, 'meta', { value: meta, configurable: true });
-	workflowDocumentStoreRef.value = docStore;
+	Object.defineProperty(workflowDocumentStore, 'meta', { value: meta, configurable: true });
+	workflowDocumentStoreRef.value = workflowDocumentStore;
 }
 
 describe('SetupWorkflowCredentialsButton', () => {
