@@ -4115,6 +4115,39 @@ describe('POST /workflows/:workflowId/deactivate', () => {
 		expect(response.statusCode).toBe(403);
 	});
 
+	test('owner should be able to deactivate workflows not shared with them', async () => {
+		// Member creates and activates their own workflow
+		const memberPersonalProject = await getPersonalProject(member);
+		const workflow = await createActiveWorkflow({}, memberPersonalProject);
+
+		// Verify workflow is active
+		expect(workflow.active).toBe(true);
+		expect(workflow.activeVersionId).not.toBeNull();
+
+		// Verify owner doesn't have explicit access to this workflow
+		const sharedWorkflowRepo = Container.get(SharedWorkflowRepository);
+		const ownerPersonalProject = await getPersonalProject(owner);
+		const sharedWithOwner = await sharedWorkflowRepo.findOne({
+			where: {
+				projectId: ownerPersonalProject.id,
+				workflowId: workflow.id,
+			},
+		});
+		expect(sharedWithOwner).toBeNull();
+
+		// Owner should be able to deactivate the workflow despite not having explicit access
+		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/deactivate`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.active).toBe(false);
+		expect(response.body.data.activeVersionId).toBeNull();
+
+		// Verify workflow is deactivated in database
+		const workflowAfter = await workflowRepository.findOne({ where: { id: workflow.id } });
+		expect(workflowAfter?.active).toBe(false);
+		expect(workflowAfter?.activeVersionId).toBeNull();
+	});
+
 	test('should return 403 when user lacks workflow:publish permission', async () => {
 		// Create a custom role with workflow:update but not workflow:publish
 		const customRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update'], {

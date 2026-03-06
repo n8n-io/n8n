@@ -1212,6 +1212,39 @@ describe('POST /workflows/:id/deactivate', () => {
 
 		expect(await workflowRepository.isActive(workflow.id)).toBe(false);
 	});
+
+	test('owner should be able to deactivate workflows not shared with them', async () => {
+		// Member creates and activates their own workflow
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+		await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
+
+		// Verify workflow is active
+		const workflowBefore = await workflowRepository.findOne({ where: { id: workflow.id } });
+		expect(workflowBefore?.active).toBe(true);
+		expect(workflowBefore?.activeVersionId).toBe(workflow.versionId);
+
+		// Verify owner doesn't have explicit access to this workflow
+		const sharedWithOwner = await Container.get(SharedWorkflowRepository).findOne({
+			where: {
+				projectId: ownerPersonalProject.id,
+				workflowId: workflow.id,
+			},
+		});
+		expect(sharedWithOwner).toBeNull();
+
+		// Owner should be able to deactivate the workflow despite not having explicit access
+		const deactivateResponse = await authOwnerAgent.post(`/workflows/${workflow.id}/deactivate`);
+
+		expect(deactivateResponse.statusCode).toBe(200);
+		expect(deactivateResponse.body.active).toBe(false);
+		expect(deactivateResponse.body.activeVersionId).toBe(null);
+
+		// Verify workflow is deactivated in database
+		const workflowAfter = await workflowRepository.findOne({ where: { id: workflow.id } });
+		expect(workflowAfter?.active).toBe(false);
+		expect(workflowAfter?.activeVersionId).toBeNull();
+		expect(await workflowRepository.isActive(workflow.id)).toBe(false);
+	});
 });
 
 describe('POST /workflows', () => {
