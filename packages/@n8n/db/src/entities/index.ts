@@ -17,6 +17,7 @@ import { ProcessedData } from './processed-data';
 import { Project } from './project';
 import { ProjectRelation } from './project-relation';
 import { ProjectSecretsProviderAccess } from './project-secrets-provider-access';
+import type { SecretsProviderAccessRole } from './project-secrets-provider-access';
 import { Role } from './role';
 import { Scope } from './scope';
 import { SecretsProviderConnection } from './secrets-provider-connection';
@@ -75,6 +76,7 @@ export {
 	TestCaseExecution,
 	ExecutionEntity,
 	ProjectSecretsProviderAccess,
+	type SecretsProviderAccessRole,
 	SecretsProviderConnection,
 };
 
