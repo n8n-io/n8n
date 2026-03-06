@@ -109,8 +109,8 @@ test.describe(
 					'execute_workflow',
 					'get_execution',
 					'get_workflow_details',
-					'search_workflows',
 					'publish_workflow',
+					'search_workflows',
 					'unpublish_workflow',
 				]);
 			});
