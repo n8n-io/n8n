@@ -6,6 +6,7 @@ import { FORM_NODE_TYPE, WAITING_FORMS_EXECUTION_STATUS, type Workflow } from 'n
 
 import type { WaitingWebhookRequest } from '../webhook.types';
 
+import type { UrlService } from '@/services/url.service';
 import { WaitingForms } from '@/webhooks/waiting-forms';
 
 class TestWaitingForms extends WaitingForms {
@@ -16,7 +17,16 @@ class TestWaitingForms extends WaitingForms {
 
 describe('WaitingForms', () => {
 	const executionRepository = mock<ExecutionRepository>();
-	const waitingForms = new TestWaitingForms(mock(), mock(), executionRepository, mock(), mock());
+	const urlService = mock<UrlService>();
+	urlService.getWebhookBaseUrl.mockReturnValue('http://localhost:5678/');
+	const waitingForms = new TestWaitingForms(
+		mock(),
+		mock(),
+		executionRepository,
+		mock(),
+		mock(),
+		urlService,
+	);
 
 	beforeEach(() => {
 		jest.restoreAllMocks();
@@ -228,7 +238,7 @@ describe('WaitingForms', () => {
 			expect(res.send).toHaveBeenCalledWith(execution.status);
 		});
 
-		it('should set CORS headers when origin header is present for status endpoint', async () => {
+		it('should set CORS headers to instance origin when origin is "null" for status endpoint', async () => {
 			const execution = mock<IExecutionResponse>({
 				status: 'success',
 			});
@@ -246,7 +256,10 @@ describe('WaitingForms', () => {
 
 			await waitingForms.executeWebhook(req, res);
 
-			expect(res.setHeader).toHaveBeenCalledWith('Access-Control-Allow-Origin', '*');
+			expect(res.setHeader).toHaveBeenCalledWith(
+				'Access-Control-Allow-Origin',
+				'http://localhost:5678',
+			);
 		});
 
 		it('should not override existing Access-Control-Allow-Origin header', async () => {
@@ -271,7 +284,7 @@ describe('WaitingForms', () => {
 
 			expect(res.setHeader).not.toHaveBeenCalledWith('Access-Control-Allow-Origin', '*');
 		});
-		it('should set CORS headers to wildcard when origin header is missing for status endpoint', async () => {
+		it('should set CORS headers to instance origin when origin header is missing for status endpoint', async () => {
 			const execution = mock<IExecutionResponse>({
 				status: 'success',
 			});
@@ -289,7 +302,10 @@ describe('WaitingForms', () => {
 
 			await waitingForms.executeWebhook(req, res);
 
-			expect(res.setHeader).toHaveBeenCalledWith('Access-Control-Allow-Origin', '*');
+			expect(res.setHeader).toHaveBeenCalledWith(
+				'Access-Control-Allow-Origin',
+				'http://localhost:5678',
+			);
 		});
 
 		it('should not set CORS headers for non-status endpoints', async () => {

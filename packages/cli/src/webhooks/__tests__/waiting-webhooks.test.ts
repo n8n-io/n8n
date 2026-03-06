@@ -7,6 +7,7 @@ import type { IWorkflowBase, Workflow } from 'n8n-workflow';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { UrlService } from '@/services/url.service';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import type { WebhookService } from '@/webhooks/webhook.service';
@@ -26,12 +27,15 @@ describe('WaitingWebhooks', () => {
 	const mockInstanceSettings = mock<InstanceSettings>({
 		hmacSignatureSecret: SIGNING_SECRET,
 	});
+	const urlService = mock<UrlService>();
+	urlService.getWebhookBaseUrl.mockReturnValue('http://localhost:5678/');
 	const waitingWebhooks = new TestWaitingWebhooks(
 		mock(),
 		mock(),
 		executionRepository,
 		mockWebhookService,
 		mockInstanceSettings,
+		urlService,
 	);
 
 	beforeEach(() => {

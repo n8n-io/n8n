@@ -98,7 +98,7 @@ export class WaitingForms extends WaitingWebhooks {
 				}
 			}
 
-			applyCors(req, res);
+			applyCors(req, res, this.instanceOrigin);
 
 			res.send(status);
 			return { noWebhookResponse: true };
@@ -147,7 +147,7 @@ export class WaitingForms extends WaitingWebhooks {
 			}
 		}
 
-		applyCors(req, res);
+		applyCors(req, res, this.instanceOrigin);
 
 		return await this.getWebhookExecutionData({
 			execution,
