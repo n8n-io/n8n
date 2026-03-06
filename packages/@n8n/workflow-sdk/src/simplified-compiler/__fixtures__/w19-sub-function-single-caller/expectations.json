@@ -1,0 +1,9 @@
+{
+	"nodes": {
+		"GET api.example.com/status": {
+			"items": [
+				{ "summary": "All systems operational", "uptime": "99.97%", "lastIncident": "2024-01-10" }
+			]
+		}
+	}
+}

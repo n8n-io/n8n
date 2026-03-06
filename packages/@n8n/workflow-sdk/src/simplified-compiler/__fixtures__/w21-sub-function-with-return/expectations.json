@@ -1,0 +1,7 @@
+{
+	"nodes": {
+		"GET Request": {
+			"items": [{ "name": "Test Dataset", "version": 2 }]
+		}
+	}
+}

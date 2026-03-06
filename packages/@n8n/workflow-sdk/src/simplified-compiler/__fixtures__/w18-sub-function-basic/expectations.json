@@ -1,0 +1,7 @@
+{
+	"nodes": {
+		"GET api.com/pending": {
+			"items": [{ "orderId": "ORD-456", "status": "pending" }]
+		}
+	}
+}

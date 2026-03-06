@@ -33,14 +33,7 @@ const http1 = node({
       "url": "https://api.example.com/status",
       "options": {}
     },
-    "executeOnce": true,
-    "pinData": [
-      {
-        "summary": "All systems operational",
-        "uptime": "99.97%",
-        "lastIncident": "2024-01-10"
-      }
-    ]
+    "executeOnce": true
   }
 });
 

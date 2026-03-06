@@ -15,14 +15,7 @@ const http1 = node({
       "authentication": "genericCredentialType",
       "genericAuthType": "httpHeaderAuth"
     },
-    "executeOnce": true,
-    "pinData": [
-      {
-        "callId": "call_abc123",
-        "joinUrl": "wss://voice.ultravox.ai/session/abc123",
-        "status": "created"
-      }
-    ]
+    "executeOnce": true
   , credentials: { httpHeaderAuth: { name: 'UltraVox API', id: '' } }
 }
 });

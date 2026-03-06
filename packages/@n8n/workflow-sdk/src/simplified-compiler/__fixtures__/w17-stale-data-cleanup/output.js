@@ -11,21 +11,7 @@ const http1 = node({
       "authentication": "genericCredentialType",
       "genericAuthType": "httpBasicAuth"
     },
-    "executeOnce": true,
-    "pinData": [
-      {
-        "id": 101,
-        "name": "Old Campaign",
-        "status": "stale",
-        "lastAccessed": "2023-06-15"
-      },
-      {
-        "id": 202,
-        "name": "Expired Report",
-        "status": "stale",
-        "lastAccessed": "2023-05-01"
-      }
-    ]
+    "executeOnce": true
   , credentials: { httpBasicAuth: { name: 'App API', id: '' } }
 }
 });

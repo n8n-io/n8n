@@ -1,0 +1,7 @@
+{
+	"nodes": {
+		"GET jsonplaceholder.typicode.com/users": {
+			"items": [{ "id": 1, "name": "Leanne Graham" }]
+		}
+	}
+}

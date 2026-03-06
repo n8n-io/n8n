@@ -10,7 +10,6 @@ onWebhook({ method: 'POST', path: '/orders' }, async ({ body }) => {
 });
 
 onSchedule({ every: '1h' }, async () => {
-	/** @example [{ orderId: "ORD-456", status: "pending" }] */
 	const orders = await http.get('https://api.com/pending');
 	await processOrder(orders.orderId);
 });

@@ -1,0 +1,7 @@
+{
+	"nodes": {
+		"PATCH api.cms.com/posts/update": {
+			"items": [{ "id": "post_789", "status": "published" }]
+		}
+	}
+}

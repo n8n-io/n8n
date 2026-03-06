@@ -95,13 +95,7 @@ const http5 = node({
       "url": "https://api.com/pending",
       "options": {}
     },
-    "executeOnce": true,
-    "pinData": [
-      {
-        "orderId": "ORD-456",
-        "status": "pending"
-      }
-    ]
+    "executeOnce": true
   }
 });
 

@@ -1,0 +1,7 @@
+{
+	"nodes": {
+		"GET api.com/item": {
+			"items": [{ "id": "task_001", "priority": "high", "name": "Critical Fix" }]
+		}
+	}
+}

@@ -11,17 +11,7 @@ const http1 = node({
       "authentication": "genericCredentialType",
       "genericAuthType": "oAuth2Api"
     },
-    "executeOnce": true,
-    "pinData": [
-      {
-        "id": "msg_001",
-        "threadId": "thread_001",
-        "labelIds": [
-          "UNREAD",
-          "INBOX"
-        ]
-      }
-    ]
+    "executeOnce": true
   , credentials: { oAuth2Api: { name: 'Gmail', id: '' } }
 }
 });

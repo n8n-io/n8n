@@ -15,15 +15,7 @@ const http1 = node({
       "authentication": "genericCredentialType",
       "genericAuthType": "httpBasicAuth"
     },
-    "executeOnce": true,
-    "pinData": [
-      {
-        "incident": {
-          "id": "P123ABC",
-          "status": "triggered"
-        }
-      }
-    ]
+    "executeOnce": true
   , credentials: { httpBasicAuth: { name: 'PagerDuty', id: '' } }
 }
 });

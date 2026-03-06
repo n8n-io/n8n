@@ -54,14 +54,7 @@ const http1 = node({
       "url": "https://api.com/item",
       "options": {}
     },
-    "executeOnce": true,
-    "pinData": [
-      {
-        "id": "task_001",
-        "priority": "high",
-        "name": "Critical Fix"
-      }
-    ]
+    "executeOnce": true
   }
 });
 

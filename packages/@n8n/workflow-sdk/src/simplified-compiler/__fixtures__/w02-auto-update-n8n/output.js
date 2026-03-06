@@ -9,13 +9,7 @@ const http1 = node({
       "url": "https://registry.npmjs.org/n8n/latest",
       "options": {}
     },
-    "executeOnce": true,
-    "pinData": [
-      {
-        "version": "1.62.1",
-        "name": "n8n"
-      }
-    ]
+    "executeOnce": true
   }
 });
 
@@ -30,14 +24,7 @@ const http2 = node({
       "authentication": "genericCredentialType",
       "genericAuthType": "httpHeaderAuth"
     },
-    "executeOnce": true,
-    "pinData": [
-      {
-        "data": {
-          "versionCli": "1.61.0"
-        }
-      }
-    ]
+    "executeOnce": true
   , credentials: { httpHeaderAuth: { name: 'n8n API', id: '' } }
 }
 });
@@ -55,13 +42,7 @@ const http3 = node({
       "specifyBody": "json",
       "jsonBody": "{\"latestVersion\":\"={{ $('GET registry.npmjs.org/n8n/latest').first().json.version }}\",\"currentVersion\":\"={{ $('GET 0.0.0.0/rest/settings').first().json.data.versionCli }}\"}"
     },
-    "executeOnce": true,
-    "pinData": [
-      {
-        "success": true,
-        "message": "Update initiated"
-      }
-    ]
+    "executeOnce": true
   }
 });
 

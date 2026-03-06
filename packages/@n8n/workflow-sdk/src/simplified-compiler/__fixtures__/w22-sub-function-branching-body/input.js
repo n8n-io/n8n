@@ -7,7 +7,6 @@ async function classify(priority) {
 }
 
 onManual(async () => {
-	/** @example [{ id: "task_001", priority: "high", name: "Critical Fix" }] */
 	const item = await http.get('https://api.com/item');
 	await classify(item.priority);
 });

@@ -58,28 +58,7 @@ const http1 = node({
       "authentication": "genericCredentialType",
       "genericAuthType": "oAuth2Api"
     },
-    "executeOnce": true,
-    "pinData": [
-      {
-        "values": [
-          [
-            "John",
-            "john@test.com",
-            "New"
-          ],
-          [
-            "Jane",
-            "jane@test.com",
-            "Contacted"
-          ],
-          [
-            "Bob",
-            "bob@test.com",
-            "New"
-          ]
-        ]
-      }
-    ]
+    "executeOnce": true
   , credentials: { oAuth2Api: { name: 'Google Sheets', id: '' } }
 }
 });

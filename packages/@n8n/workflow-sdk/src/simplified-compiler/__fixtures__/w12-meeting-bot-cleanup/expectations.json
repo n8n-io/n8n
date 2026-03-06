@@ -1,0 +1,14 @@
+{
+	"nodes": {
+		"GET www.googleapis.com/calendar/v3/ca...": {
+			"items": [
+				{
+					"id": "evt_001",
+					"status": "confirmed",
+					"summary": "Team Standup",
+					"start": { "dateTime": "2024-01-15T10:00:00Z" }
+				}
+			]
+		}
+	}
+}

@@ -27,12 +27,7 @@ const http1 = node({
       "url": "https://www.blu-ray.com/movies/movies.php?show=newpreorders",
       "options": {}
     },
-    "executeOnce": true,
-    "pinData": [
-      {
-        "data": "<html><body><table><tr><td>Alien (1979)</td><td>January 15, 2025</td></tr></table></body></html>"
-      }
-    ]
+    "executeOnce": true
   }
 });
 
