@@ -258,7 +258,6 @@ describe('OauthService', () => {
 				'internal',
 				undefined,
 				undefined,
-				undefined,
 			);
 		});
 	});
@@ -1103,7 +1102,6 @@ describe('OauthService', () => {
 				'internal',
 				undefined,
 				undefined,
-				undefined,
 			);
 		});
 
@@ -1129,7 +1127,6 @@ describe('OauthService', () => {
 				'internal',
 				undefined,
 				undefined,
-				undefined,
 			);
 		});
 
@@ -1153,7 +1150,6 @@ describe('OauthService', () => {
 				{ clientId: 'client-id', scope: 'old-scope' },
 				credential.type,
 				'internal',
-				undefined,
 				undefined,
 				undefined,
 			);

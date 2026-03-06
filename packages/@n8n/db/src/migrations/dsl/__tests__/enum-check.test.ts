@@ -122,7 +122,7 @@ describe('CreateTable with column-level enum checks', () => {
 });
 
 describe('AddColumns with column-level enum checks', () => {
-	it('should run ALTER TABLE ADD CONSTRAINT for columns with enum checks', async () => {
+	it('should call createCheckConstraints for columns with enum checks', async () => {
 		const { queryRunner } = createMocks();
 
 		await new AddColumns(
@@ -133,19 +133,22 @@ describe('AddColumns with column-level enum checks', () => {
 		);
 
 		expect(queryRunner.addColumns).toHaveBeenCalledTimes(1);
-		expect(queryRunner.query).toHaveBeenCalledTimes(1);
-		expect(queryRunner.query).toHaveBeenCalledWith(
-			'ALTER TABLE "n8n_test_table" ADD CONSTRAINT "CHK_n8n_test_table_status" CHECK ("status" IN (\'active\', \'inactive\'))',
-		);
+		expect(queryRunner.createCheckConstraints).toHaveBeenCalledTimes(1);
+		expect(queryRunner.createCheckConstraints).toHaveBeenCalledWith('n8n_test_table', [
+			expect.objectContaining({
+				name: 'CHK_n8n_test_table_status',
+				expression: "\"status\" IN ('active', 'inactive')",
+			}),
+		]);
 	});
 
-	it('should not run ALTER TABLE when no columns have enum checks', async () => {
+	it('should not call createCheckConstraints when no columns have enum checks', async () => {
 		const { queryRunner } = createMocks();
 
 		await new AddColumns('test_table', [new Column('name').varchar(100)], '', queryRunner);
 
 		expect(queryRunner.addColumns).toHaveBeenCalledTimes(1);
-		expect(queryRunner.query).not.toHaveBeenCalled();
+		expect(queryRunner.createCheckConstraints).not.toHaveBeenCalled();
 	});
 
 	it('should handle multiple columns with enum checks', async () => {
@@ -161,14 +164,16 @@ describe('AddColumns with column-level enum checks', () => {
 			queryRunner,
 		);
 
-		expect(queryRunner.query).toHaveBeenCalledTimes(2);
-		expect(queryRunner.query).toHaveBeenNthCalledWith(
-			1,
-			'ALTER TABLE "test_table" ADD CONSTRAINT "CHK_test_table_status" CHECK ("status" IN (\'active\', \'inactive\'))',
-		);
-		expect(queryRunner.query).toHaveBeenNthCalledWith(
-			2,
-			'ALTER TABLE "test_table" ADD CONSTRAINT "CHK_test_table_role" CHECK ("role" IN (\'admin\', \'user\'))',
-		);
+		expect(queryRunner.createCheckConstraints).toHaveBeenCalledTimes(1);
+		expect(queryRunner.createCheckConstraints).toHaveBeenCalledWith('test_table', [
+			expect.objectContaining({
+				name: 'CHK_test_table_status',
+				expression: "\"status\" IN ('active', 'inactive')",
+			}),
+			expect.objectContaining({
+				name: 'CHK_test_table_role',
+				expression: "\"role\" IN ('admin', 'user')",
+			}),
+		]);
 	});
 });
