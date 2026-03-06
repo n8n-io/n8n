@@ -1,4 +1,4 @@
-import type { IRunExecutionData, ExecutionError } from 'n8n-workflow';
+import type { IRunExecutionData } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import type { RedactableExecution } from '@/executions/execution-redaction';
@@ -211,10 +211,10 @@ describe('FullItemRedactionStrategy', () => {
 		// Errors loaded from the database are plain objects, not class instances,
 		// because flatted deserialization does not reconstruct class prototypes.
 		const makePlainNodeApiError = (httpCode: string | null = '404') =>
-			({ name: 'NodeApiError', message: 'API error', httpCode }) as unknown as ExecutionError;
+			({ name: 'NodeApiError', message: 'API error', httpCode }) as unknown as NodeApiError;
 
 		const makePlainNodeOperationError = () =>
-			({ name: 'NodeOperationError', message: 'Op error' }) as unknown as ExecutionError;
+			({ name: 'NodeOperationError', message: 'Op error' }) as unknown as NodeOperationError;
 
 		describe('item-level', () => {
 			it('deletes item.error and stores safe metadata in item.redaction.error for NodeApiError', async () => {
