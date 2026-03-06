@@ -3,6 +3,7 @@ import {
 	ArchiveWorkflowDto,
 	CreateWorkflowDto,
 	DeactivateWorkflowDto,
+	ExecutionRedactionQueryDtoSchema,
 	ImportWorkflowFromUrlDto,
 	ROLE,
 	TransferWorkflowBodyDto,
@@ -652,11 +653,20 @@ export class WorkflowsController {
 	@Get('/:workflowId/executions/last-successful')
 	@ProjectScope('workflow:read')
 	async getLastSuccessfulExecution(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: unknown,
 		@Param('workflowId') workflowId: string,
 	) {
-		const lastExecution = await this.executionService.getLastSuccessfulExecution(workflowId);
+		const redactQuery = ExecutionRedactionQueryDtoSchema.safeParse(req.query);
+		const redactExecutionData = redactQuery.success
+			? redactQuery.data.redactExecutionData
+			: undefined;
+
+		const lastExecution = await this.executionService.getLastSuccessfulExecution(
+			workflowId,
+			req.user,
+			redactExecutionData,
+		);
 
 		return lastExecution ?? null;
 	}

@@ -1,5 +1,13 @@
 <script setup lang="ts">
-import { computed, ref, h, onMounted, onBeforeUnmount, useTemplateRef } from 'vue';
+import {
+	computed,
+	ref,
+	h,
+	onMounted,
+	onBeforeUnmount,
+	useTemplateRef,
+	type DeepReadonly,
+} from 'vue';
 import type { VNode } from 'vue';
 import Modal from '@/app/components/Modal.vue';
 import { WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
@@ -111,7 +119,7 @@ onBeforeUnmount(() => {
 });
 
 function findManagedOpenAiCredentialId(
-	usedCredentials: Record<string, IUsedCredential>,
+	usedCredentials: DeepReadonly<Record<string, IUsedCredential>>,
 ): string | undefined {
 	return Object.keys(usedCredentials).find((credentialId) => {
 		const credential = credentialsStore.state.credentials[credentialId];
@@ -136,7 +144,7 @@ function hasActiveNodeUsingCredential(nodes: INodeUi[], credentialId: string): b
  *
  */
 const shouldShowFreeAiCreditsWarning = computed((): boolean => {
-	const usedCredentials = workflowsStore?.usedCredentials;
+	const usedCredentials = workflowDocumentStore.value?.usedCredentials;
 	if (!usedCredentials) return false;
 
 	const managedOpenAiCredentialId = findManagedOpenAiCredentialId(usedCredentials);
