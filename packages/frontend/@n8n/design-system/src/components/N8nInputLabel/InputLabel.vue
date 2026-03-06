@@ -175,7 +175,7 @@ const addTargetBlank = (html: string) =>
 		transition: opacity 100ms ease-in; // transition on hover in
 	}
 }
-.withOptions:hover {
+.withOptions {
 	.title > span {
 		text-overflow: ellipsis;
 		overflow: hidden;

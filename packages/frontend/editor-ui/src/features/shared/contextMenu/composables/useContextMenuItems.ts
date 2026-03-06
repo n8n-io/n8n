@@ -6,6 +6,7 @@ import {
 } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
@@ -49,6 +50,7 @@ type Item = ActionDropdownItem<ContextMenuAction>;
 
 export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): ComputedRef<Item[]> {
 	const uiStore = useUIStore();
+	const settingsStore = useSettingsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
@@ -164,6 +166,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 
 		const aiActions: Item[] = [
 			!onlyStickies &&
+				settingsStore.isAiAssistantOrBuilderEnabled &&
 				focusedNodesStore.isFeatureEnabled && {
 					id: 'focus_ai_on_selected',
 					divided: true,

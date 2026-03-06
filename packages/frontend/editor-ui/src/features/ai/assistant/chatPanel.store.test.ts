@@ -15,9 +15,12 @@ import { ASSISTANT_ENABLED_VIEWS, BUILDER_ENABLED_VIEWS } from './constants';
 import { VIEWS } from '@/app/constants';
 import { reactive, nextTick } from 'vue';
 import { mockedStore } from '@/__tests__/utils';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { defaultSettings } from '@/__tests__/defaults';
 import type { ICredentialType } from 'n8n-workflow';
 import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
+import merge from 'lodash-es/merge';
 
 // Mock vue-router
 const mockRoute = reactive({ name: VIEWS.WORKFLOW });
@@ -48,6 +51,13 @@ describe('chatPanel.store', () => {
 			createTestingPinia({
 				createSpy: vi.fn,
 				stubActions: false, // Don't stub actions so actual store logic runs
+			}),
+		);
+
+		const settingsStore = useSettingsStore();
+		settingsStore.setSettings(
+			merge({}, defaultSettings, {
+				aiAssistant: { enabled: true, setup: true },
 			}),
 		);
 

@@ -36,6 +36,7 @@ describe('CredentialsOverwrites - Integration Tests', () => {
 				persistence: true, // Enable persistence for integration tests
 				endpointAuthToken: 'integration-test-token',
 				endpoint: 'integration-credentials-overwrite',
+				skipTypes: [],
 			},
 		};
 
