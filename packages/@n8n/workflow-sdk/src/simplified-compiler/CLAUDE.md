@@ -225,6 +225,12 @@ Validates existing fixtures through the full compilation pipeline (transpile, ge
 
 27/27 fixtures pass round-trip (100%). Previous fixes: W10 indentation (preserve relative indentation in `emitSubFunctionDeclaration`), W25/W26/W27 (see below).
 
+## Schema Validation Coverage
+
+27/27 fixtures pass schema validation (100%). `KNOWN_SCHEMA_VIOLATIONS` is empty — no skips.
+
+**Key insight**: Nested sub-workflow WorkflowBuilder references (e.g., `workflowJson: __tryCatch_1Workflow` inside a loop body sub-workflow) are handled automatically by `resolveWorkflowBuilderValues()` in `json-serializer.ts`. It duck-types WorkflowBuilder instances (`toJSON` + `add` methods) at any nesting depth and converts them to `JSON.stringify(value.toJSON())`. The W27 schema skip was removed after confirming this works — the identical pattern already passes in W20 (nested sub-functions) and W24 (try/catch multi-node).
+
 ## Sub-Function Compiler Architecture
 
 Sub-functions (`async function fn(params) { ... }` + `await fn(args)`) compile to Execute Workflow nodes with inline `workflowJson`.
