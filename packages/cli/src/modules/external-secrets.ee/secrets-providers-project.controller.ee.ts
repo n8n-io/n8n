@@ -135,7 +135,7 @@ export class SecretProvidersProjectController {
 		await this.accessCheckService.assertConnectionAccess({
 			providerKey,
 			projectId,
-			requiredScopes: ['externalSecretsProvider:update'],
+			requiredScope: 'externalSecretsProvider:update',
 			user: req.user,
 		});
 
@@ -168,7 +168,7 @@ export class SecretProvidersProjectController {
 		await this.accessCheckService.assertConnectionAccess({
 			providerKey,
 			projectId,
-			requiredScopes: ['externalSecretsProvider:delete'],
+			requiredScope: 'externalSecretsProvider:delete',
 			user: req.user,
 		});
 
@@ -186,16 +186,12 @@ export class SecretProvidersProjectController {
 	): Promise<TestSecretProviderConnectionResponse> {
 		this.logger.debug('Testing connection for project', { projectId, providerKey });
 
-		const isAvailable = await this.accessCheckService.isProviderAvailableInProject(
+		await this.accessCheckService.assertConnectionAccess({
 			providerKey,
 			projectId,
-		);
-
-		if (!isAvailable) {
-			throw new NotFoundError(
-				`Connection with key "${providerKey}" not found in project "${projectId}"`,
-			);
-		}
+			requiredScope: 'externalSecretsProvider:update',
+			user: req.user,
+		});
 
 		return await this.connectionsService.testConnection(providerKey, req.user.id);
 	}

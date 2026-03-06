@@ -26,20 +26,20 @@ export class SecretsProviderAccessCheckService {
 	}
 
 	/**
-	 * Asserts that the project's sharing role on a connection grants all the required scopes.
-	 * Throws ForbiddenError if the project's access role does not have the required scopes.
+	 * Asserts that the project's sharing role on a connection grants the required scope.
+	 * Throws ForbiddenError if the project's access role does not have the required scope.
 	 *
-	 * Users with global scopes covering all required scopes bypass the project role check.
+	 * Users with the global scope bypass the project role check.
 	 */
 	async assertConnectionAccess({
 		providerKey,
 		projectId,
-		requiredScopes,
+		requiredScope,
 		user,
 	}: {
 		providerKey: string;
 		projectId: string;
-		requiredScopes: Scope[];
+		requiredScope: Scope;
 		user: User;
 	}): Promise<void> {
 		const access = await this.projectAccessRepository.findOne({
@@ -55,14 +55,13 @@ export class SecretsProviderAccessCheckService {
 			);
 		}
 
-		if (hasGlobalScope(user, requiredScopes)) {
+		if (hasGlobalScope(user, requiredScope)) {
 			return;
 		}
 
-		const validRoles = await this.roleService.rolesWithScope(
-			'secretsProviderConnection',
-			requiredScopes,
-		);
+		const validRoles = await this.roleService.rolesWithScope('secretsProviderConnection', [
+			requiredScope,
+		]);
 
 		if (!validRoles.includes(access.role)) {
 			throw new ForbiddenError(
