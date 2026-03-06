@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
-import { ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
+import { ExecutionRepository, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import {
@@ -12,6 +12,7 @@ import {
 } from 'n8n-workflow';
 
 import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
+import { createGetExecutionTool } from './tools/get-execution.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createPublishWorkflowTool } from './tools/publish-workflow.tool';
 import { createSearchWorkflowsTool } from './tools/search-workflows.tool';
@@ -76,6 +77,7 @@ export class McpService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly projectRepository: ProjectRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly executionRepository: ExecutionRepository,
 	) {}
 
 	async getServer(user: User) {
@@ -116,6 +118,14 @@ export class McpService {
 			executeWorkflowTool.config,
 			executeWorkflowTool.handler,
 		);
+
+		const getExecutionTool = createGetExecutionTool(
+			user,
+			this.executionRepository,
+			this.workflowFinderService,
+			this.telemetry,
+		);
+		server.registerTool(getExecutionTool.name, getExecutionTool.config, getExecutionTool.handler);
 
 		const workflowDetailsTool = createWorkflowDetailsTool(
 			user,
