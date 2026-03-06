@@ -2,12 +2,10 @@ import { defaultSettings } from '@/__tests__/defaults';
 import { createComponentRenderer, type RenderOptions } from '@/__tests__/render';
 import { getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { cleanup, screen, waitFor, within } from '@testing-library/vue';
-import { computed } from 'vue';
 import merge from 'lodash/merge';
 import Assignment from './Assignment.vue';
 import { flushPromises } from '@vue/test-utils';
@@ -27,11 +25,6 @@ const DEFAULT_SETUP: RenderOptions<typeof Assignment> = {
 			value: '',
 		},
 		issues: [],
-	},
-	global: {
-		provide: {
-			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
-		},
 	},
 };
 

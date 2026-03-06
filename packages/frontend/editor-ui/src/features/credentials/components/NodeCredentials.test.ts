@@ -1,4 +1,4 @@
-import { shallowRef, computed } from 'vue';
+import { shallowRef } from 'vue';
 import { describe, it, vi } from 'vitest';
 import { screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
