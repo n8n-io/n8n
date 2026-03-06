@@ -162,4 +162,45 @@ describe('Project deletion with external secrets', () => {
 		});
 		expect(deletedAccessEntries).toHaveLength(0);
 	});
+
+	test('instance admin deletes project with multiple connection access entries: all connections are removed', async () => {
+		const instanceAdmin = await createAdmin();
+		const project = await createTeamProject(
+			'Team Project With Multiple Connections',
+			instanceAdmin,
+		);
+
+		await testServer
+			.authAgentFor(instanceAdmin)
+			.post('/secret-providers/connections')
+			.send({
+				providerKey: 'multi-delete-connection-1',
+				type: 'awsSecretsManager',
+				projectIds: [project.id],
+				settings: { region: 'us-east-1' },
+			})
+			.expect(200);
+
+		await testServer
+			.authAgentFor(instanceAdmin)
+			.post('/secret-providers/connections')
+			.send({
+				providerKey: 'multi-delete-connection-2',
+				type: 'awsSecretsManager',
+				projectIds: [project.id],
+				settings: { region: 'us-east-1' },
+			})
+			.expect(200);
+
+		await testServer.authAgentFor(instanceAdmin).delete(`/projects/${project.id}`).expect(200);
+
+		const deletedConnection1 = await connectionRepository.findOneBy({
+			providerKey: 'multi-delete-connection-1',
+		});
+		const deletedConnection2 = await connectionRepository.findOneBy({
+			providerKey: 'multi-delete-connection-2',
+		});
+		expect(deletedConnection1).toBeNull();
+		expect(deletedConnection2).toBeNull();
+	});
 });

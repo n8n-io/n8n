@@ -371,15 +371,18 @@ export class SecretsProvidersConnectionsService {
 	 */
 	async cleanupConnectionsForProjectDeletion(projectId: string, user: User): Promise<void> {
 		const accessEntries = await this.projectAccessRepository.findByProjectId(projectId);
+		const providerKeysToSync = new Set<string>();
 
 		for (const access of accessEntries) {
+			providerKeysToSync.add(access.secretsProviderConnection.providerKey);
+
 			if (
 				hasGlobalScope(user, 'externalSecretsProvider:delete') ||
 				access.role === 'secretsProviderConnection:owner'
 			) {
 				// Delete the connection entirely; DB cascade removes the access entry too
 				await this.repository.delete({ id: access.secretsProviderConnectionId });
-				return;
+				continue;
 			}
 
 			// Remove only this project's access and disable the connection
@@ -391,6 +394,10 @@ export class SecretsProvidersConnectionsService {
 				{ id: access.secretsProviderConnectionId },
 				{ isEnabled: false },
 			);
+		}
+
+		for (const providerKey of providerKeysToSync) {
+			await this.externalSecretsManager.syncProviderConnection(providerKey);
 		}
 	}
 
