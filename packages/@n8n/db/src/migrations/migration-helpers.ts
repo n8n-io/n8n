@@ -212,7 +212,7 @@ export const wrapMigration = (migration: Migration) => {
 			async up(this: BaseMigration, queryRunner: QueryRunner) {
 				logMigrationStart(migration.name);
 				const context = createContext(queryRunner, migration);
-				if (this.transaction === false) {
+				if (this.withFKsDisabled === true) {
 					await runDisablingForeignKeys(this, context, up);
 				} else {
 					await up.call(this, context);
@@ -227,7 +227,7 @@ export const wrapMigration = (migration: Migration) => {
 		Object.assign(migration.prototype, {
 			async down(this: BaseMigration, queryRunner: QueryRunner) {
 				const context = createContext(queryRunner, migration);
-				if (this.transaction === false) {
+				if (this.withFKsDisabled === true) {
 					await runDisablingForeignKeys(this, context, down);
 				} else {
 					await down.call(this, context);
