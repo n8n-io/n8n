@@ -45,8 +45,13 @@ Migrate files from direct `workflowsStore` / `workflowState` node access to `wor
 
 ## Migration guidelines
 
+- **Always name the variable `workflowDocumentStore`.** Never abbreviate to `docStore`, `wds`, `documentStore`, or any other shorthand. The canonical name is `workflowDocumentStore` — in production code, tests, and local variables alike. This keeps the codebase grep-friendly and avoids confusion with other stores.
 - **Migrate all guarded APIs per file together.** When migrating a file, replace ALL `workflowsStore` reads AND `workflowState` mutations in one pass. Don't leave some calls on the old API — partial migrations make the code harder to follow and the ESLint warnings will remain.
 - **Each ticket lists both surfaces.** The "Facade methods used" section covers `workflowsStore` reads; the "`workflowState` migration" section covers per-node mutations. Both need to move to `workflowDocumentStore`.
+- **Consolidate existing inline `useWorkflowDocumentStore()` calls.** Some files may already have partial migrations (e.g. for `usedCredentials` or `pinData`). When you add the computed accessor, consolidate all inline calls into the single computed. Pinia deduplicates store instances by ID, so this is always safe.
+- **Remove dead `workflowState` parameters after migration.** If a composable accepts `workflowState` only for node mutations (e.g. `setNodeIssue`, `updateNodeProperties`), migrating those to `workflowDocumentStore` makes the parameter dead. Remove it from the signature and update all callers. Keep `workflowState` only if the composable still uses non-node-document properties like `executingNode`.
+- **Update callers when signatures change.** Removing a parameter or changing a composable's signature is a cascading change — grep for all call sites and update them. Check both production code and tests.
+- **Fix downstream test spies.** Tests for *consumers* of a migrated composable may spy on `workflowState.updateNodeProperties` (or similar) to assert behavior. After migration, the composable calls `workflowDocumentStore` instead, so those spies see zero calls. Grep for the method name across all test files — not just the ones for the file you migrated.
 
 ## Access Patterns
 
@@ -83,6 +88,34 @@ workflowDocumentStore.value?.allNodes ?? []
 workflowDocumentStore.value?.getNodeById(id)
 workflowDocumentStore.value?.getNodeByName(name)
 ```
+
+### 3. Standalone exported functions (no reactive context)
+
+Some files export plain functions (not composables or components) that are called imperatively — e.g. push connection handlers. These have no Vue reactive setup context, so `computed()` won't work. Construct the store inline at call time:
+
+```ts
+import { useWorkflowDocumentStore, createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+
+function handleSomeEvent() {
+  const workflowsStore = useWorkflowsStore();
+  const workflowDocumentStore = workflowsStore.workflowId
+    ? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+    : undefined;
+
+  const node = workflowDocumentStore?.getNodeByName(name) ?? null;
+}
+```
+
+### Fallback values
+
+Since `workflowDocumentStore` can be `undefined` (no workflow loaded), always provide a fallback:
+
+| Return type | Fallback |
+|---|---|
+| Array (`.allNodes`, `.getNodes()`, `.getNodesByIds()`) | `?? []` |
+| Single node (`.getNodeById()`, `.getNodeByName()`, `.findNodeByPartialId()`) | `?? null` |
+| Map/Record (`.nodesByName`, `.canvasNames`) | `?? {}` |
+| Void mutations (`.setNodeIssue()`, `.updateNodeProperties()`, etc.) | Optional chaining only (`?.`) — no fallback needed |
 
 ## Test Patterns
 
@@ -142,3 +175,7 @@ Object.defineProperty(workflowsStore, 'allNodes', {
 - **`workflowsStore.workflowObject`** (39 files) — provides indirect node access via `Workflow` class methods (`.getNode()`, `.nodes`, `.getParentNodes()`, etc.). This is intentionally NOT migrated until both nodes **and** connections move to `workflowDocumentStore`. No ESLint guard for this — it's accepted tech debt.
 - **Execution-related methods** (e.g., `renameNodeSelectedAndExecution`, `removeNodeExecutionDataById`) — these are not node document state
 - **`workflowState.executingNode`** and other execution-state properties — these are not node document state
+
+## Maintaining this recipe
+
+Update this file when a migration reveals a new pattern, edge case, or pitfall that would save the next person time. Don't add noise — only document something if you had to figure it out and it wasn't already covered above.
