@@ -289,6 +289,7 @@ export async function decompressFolder(sourcePath: string, outputDir: string): P
 			const readStream = fh.createReadStream({
 				start: Number(dataOffset),
 				end: Number(dataOffset) + compressedSize - 1,
+				autoClose: false,
 			});
 			const writeStream = createWriteStream(filePath);
 
