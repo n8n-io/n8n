@@ -394,8 +394,11 @@ describe('CredentialEdit', () => {
 				id: 'personal-project',
 				name: 'Personal',
 				type: 'personal',
+				icon: null,
 				createdAt: '',
 				updatedAt: '',
+				relations: [],
+				scopes: [],
 			};
 
 			renderComponent({
@@ -419,8 +422,11 @@ describe('CredentialEdit', () => {
 				id: 'personal-project',
 				name: 'Personal',
 				type: 'personal',
+				icon: null,
 				createdAt: '',
 				updatedAt: '',
+				relations: [],
+				scopes: [],
 			};
 
 			const { getByTestId } = renderComponent({
