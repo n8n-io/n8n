@@ -489,7 +489,7 @@ describe('externalSecretsStore', () => {
 	});
 
 	describe('reloadProvider()', () => {
-		it('should reload provider and refetch secrets when updated', async () => {
+		it('should reload provider and refetch secrets when updated (legacy mode)', async () => {
 			reloadProvider.mockResolvedValue({ updated: true });
 			getExternalSecrets.mockResolvedValue(mockGlobalSecrets);
 			setHasPermission(true);
@@ -511,6 +511,81 @@ describe('externalSecretsStore', () => {
 			expect(reloadProvider).toHaveBeenCalledWith(expect.anything(), 'vault');
 			expect(getExternalSecrets).not.toHaveBeenCalled();
 			expect(result).toBe(false);
+		});
+
+		it('should not refetch secrets when updated but a new module feature is enabled', async () => {
+			setModuleSettings({ roleBasedAccess: true });
+			reloadProvider.mockResolvedValue({ updated: true });
+			const store = useExternalSecretsStore();
+
+			const result = await store.reloadProvider('aws-secrets-manager');
+
+			expect(getExternalSecrets).not.toHaveBeenCalled();
+			expect(getGlobalExternalSecrets).not.toHaveBeenCalled();
+			expect(getGlobalExternalSecretsForProject).not.toHaveBeenCalled();
+			expect(result).toBe(true);
+		});
+	});
+
+	describe('updateProviderConnected()', () => {
+		it('should connect provider and refetch secrets in legacy mode', async () => {
+			clearModuleSettings();
+			connectProvider.mockResolvedValue(undefined);
+			getExternalSecrets.mockResolvedValue(mockGlobalSecrets);
+			setHasPermission(true);
+			const store = useExternalSecretsStore();
+			store.state.providers = [createMockProvider({ connected: false })];
+
+			await store.updateProviderConnected('aws-secrets-manager', true);
+
+			expect(connectProvider).toHaveBeenCalledWith(expect.anything(), 'aws-secrets-manager', true);
+			expect(getExternalSecrets).toHaveBeenCalled();
+		});
+
+		it('should not refetch secrets when a new module feature is enabled', async () => {
+			setModuleSettings({ forProjects: true });
+			connectProvider.mockResolvedValue(undefined);
+			const store = useExternalSecretsStore();
+			store.state.providers = [createMockProvider({ connected: false })];
+
+			await store.updateProviderConnected('aws-secrets-manager', true);
+
+			expect(connectProvider).toHaveBeenCalledWith(expect.anything(), 'aws-secrets-manager', true);
+			expect(getExternalSecrets).not.toHaveBeenCalled();
+			expect(getGlobalExternalSecrets).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('updateProvider()', () => {
+		it('should update provider and refetch secrets in legacy mode', async () => {
+			clearModuleSettings();
+			updateProvider.mockResolvedValue(undefined);
+			getExternalSecrets.mockResolvedValue(mockGlobalSecrets);
+			setHasPermission(true);
+			const store = useExternalSecretsStore();
+			store.state.providers = [createMockProvider()];
+
+			await store.updateProvider('aws-secrets-manager', { data: { region: 'eu-west-1' } });
+
+			expect(updateProvider).toHaveBeenCalledWith(expect.anything(), 'aws-secrets-manager', {
+				region: 'eu-west-1',
+			});
+			expect(getExternalSecrets).toHaveBeenCalled();
+		});
+
+		it('should not refetch secrets when a new module feature is enabled', async () => {
+			setModuleSettings({ multipleConnections: true });
+			updateProvider.mockResolvedValue(undefined);
+			const store = useExternalSecretsStore();
+			store.state.providers = [createMockProvider()];
+
+			await store.updateProvider('aws-secrets-manager', { data: { region: 'eu-west-1' } });
+
+			expect(updateProvider).toHaveBeenCalledWith(expect.anything(), 'aws-secrets-manager', {
+				region: 'eu-west-1',
+			});
+			expect(getExternalSecrets).not.toHaveBeenCalled();
+			expect(getGlobalExternalSecrets).not.toHaveBeenCalled();
 		});
 	});
 

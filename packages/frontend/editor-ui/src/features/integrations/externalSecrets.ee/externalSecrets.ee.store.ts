@@ -80,6 +80,15 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 		() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.ExternalSecrets],
 	);
 
+	// True if none of the new external secrets features are enabled.
+	// Used to decide whether to fetch secrets via legacy/global methods rather than project-scoped APIs.
+	const isLegacyMode = computed(
+		() =>
+			!externalSecretsModuleSettings.value?.roleBasedAccess &&
+			!externalSecretsModuleSettings.value?.forProjects &&
+			!externalSecretsModuleSettings.value?.multipleConnections,
+	);
+
 	const secrets = computed(() => state.secrets);
 	const projectSecrets = computed(() => state.projectSecrets);
 	const providers = computed(() => state.providers);
@@ -196,7 +205,7 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 
 	async function reloadProvider(id: string) {
 		const { updated } = await externalSecretsApi.reloadProvider(rootStore.restApiContext, id);
-		if (updated) {
+		if (updated && isLegacyMode.value) {
 			await fetchGlobalSecrets();
 		}
 
@@ -251,13 +260,17 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 
 	async function updateProviderConnected(id: string, value: boolean) {
 		await connectProvider(rootStore.restApiContext, id, value);
-		await fetchGlobalSecrets();
+		if (isLegacyMode.value) {
+			await fetchGlobalSecrets();
+		}
 		updateStoredProvider(id, { connected: value, state: value ? 'connected' : 'initializing' });
 	}
 
 	async function updateProvider(id: string, { data }: Partial<ExternalSecretsProvider>) {
 		await externalSecretsApi.updateProvider(rootStore.restApiContext, id, data);
-		await fetchGlobalSecrets();
+		if (isLegacyMode.value) {
+			await fetchGlobalSecrets();
+		}
 		updateStoredProvider(id, { data });
 	}
 
