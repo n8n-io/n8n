@@ -385,13 +385,6 @@ onMounted(async () => {
 
 	const forceManual = isCredentialModalState(modalState) && modalState.forceManualMode === true;
 
-	// Fire secrets fetch in parallel with credential loading; failures are non-fatal —
-	// missing secrets are preferable to a broken modal.
-	const projectId = projectsStore.currentProjectId ?? projectsStore.personalProject?.id;
-	const secretsPromise = projectId
-		? externalSecretsStore.fetchSecretsForProject(projectId).catch(() => {})
-		: Promise.resolve();
-
 	if (props.mode === 'new' && credentialTypeName.value) {
 		credentialName.value = await credentialsStore.getNewCredentialName({
 			credentialTypeName: defaultCredentialTypeName.value,
@@ -405,7 +398,11 @@ onMounted(async () => {
 		await loadCurrentCredential();
 	}
 
-	await secretsPromise;
+	const projectId = projectsStore.currentProjectId ?? projectsStore.personalProject?.id;
+	if (projectId) {
+		// Failures are non-fatal — missing secrets are preferable to a broken modal.
+		await externalSecretsStore.fetchSecretsForProject(projectId).catch(() => {});
+	}
 
 	setCredentialPropertyDefaults();
 
