@@ -1,11 +1,14 @@
 import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 
+import * as attachment from './attachment';
 import * as comment from './comment';
+import * as cycle from './cycle';
 import * as issue from './issue';
 import * as label from './label';
 import * as project from './project';
 import * as team from './team';
 import * as user from './user';
+import * as workflowState from './workflowState';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Linear',
@@ -65,8 +68,16 @@ export const versionDescription: INodeTypeDescription = {
 			noDataExpression: true,
 			options: [
 				{
+					name: 'Attachment',
+					value: 'attachment',
+				},
+				{
 					name: 'Comment',
 					value: 'comment',
+				},
+				{
+					name: 'Cycle',
+					value: 'cycle',
 				},
 				{
 					name: 'Issue',
@@ -88,14 +99,21 @@ export const versionDescription: INodeTypeDescription = {
 					name: 'User',
 					value: 'user',
 				},
+				{
+					name: 'Workflow State',
+					value: 'workflowState',
+				},
 			],
 			default: 'issue',
 		},
+		...attachment.description,
 		...comment.description,
+		...cycle.description,
 		...issue.description,
 		...label.description,
 		...project.description,
 		...team.description,
 		...user.description,
+		...workflowState.description,
 	],
 };
