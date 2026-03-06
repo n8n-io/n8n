@@ -1,0 +1,79 @@
+import type {
+	ICredentialDataDecryptedObject,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
+	IExecuteFunctions,
+	INodeCredentialTestResult,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeBaseDescription,
+	INodeTypeDescription,
+	JsonObject,
+	IDataObject,
+} from 'n8n-workflow';
+
+import { router } from './actions/router';
+import { versionDescription } from './actions/versionDescription';
+import {
+	getTeams,
+	getUsers,
+	getStates,
+	getLabels,
+	getProjects,
+	getCycles,
+} from '../shared/methods/loadOptions';
+import { validateCredentials } from '../shared/GenericFunctions';
+
+export class LinearV2 implements INodeType {
+	description: INodeTypeDescription;
+
+	constructor(baseDescription: INodeTypeBaseDescription) {
+		this.description = {
+			...baseDescription,
+			...versionDescription,
+			usableAsTool: true,
+		};
+	}
+
+	methods = {
+		credentialTest: {
+			async linearApiTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
+				try {
+					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
+				} catch (error) {
+					const { error: err } = error as JsonObject;
+					const errors = (err as IDataObject).errors as [{ extensions: { code: string } }];
+					const authenticationError = Boolean(
+						errors?.filter((e) => e.extensions.code === 'AUTHENTICATION_ERROR').length,
+					);
+					if (authenticationError) {
+						return {
+							status: 'Error',
+							message: 'The security token included in the request is invalid',
+						};
+					}
+				}
+
+				return {
+					status: 'OK',
+					message: 'Connection successful!',
+				};
+			},
+		},
+		loadOptions: {
+			getTeams,
+			getUsers,
+			getStates,
+			getLabels,
+			getProjects,
+			getCycles,
+		},
+	};
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		return await router.call(this);
+	}
+}
