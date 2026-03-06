@@ -354,6 +354,7 @@ $menu_width: 180px;
 	border: var(--border);
 	background-color: var(--color--background--light-2);
 	box-shadow: var(--shadow);
+	z-index: 9999;
 }
 
 .items-container {

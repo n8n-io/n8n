@@ -14,17 +14,11 @@ import { useAskModeCoachmark } from '../composables/useAskModeCoachmark';
 import { usePopOutWindow } from '@/features/execution/logs/composables/usePopOutWindow';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
-import {
-	N8nFloatingWindow,
-	N8nIconButton,
-	N8nResizeWrapper,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { N8nFloatingWindow, N8nResizeWrapper, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import HubSwitcher from '@/features/ai/assistant/components/HubSwitcher.vue';
 import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
-import CanvasChatSessionDropdown from '@/features/ai/chatHub/components/CanvasChatSessionDropdown.vue';
+import CanvasChatFloatingMenu from '@/features/ai/chatHub/components/CanvasChatFloatingMenu.vue';
 import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
 
 const i18n = useI18n();
@@ -218,51 +212,16 @@ onBeforeUnmount(() => {
 					</span>
 				</template>
 				<template #header-actions>
-					<CanvasChatSessionDropdown
+					<CanvasChatFloatingMenu
 						v-if="canvasChatHubRef?.sessionId"
 						:session-id="canvasChatHubRef.sessionId"
-						:session-title="canvasChatHubRef.sessionIdText"
 						:workflow-id="workflowsStore.workflowId"
+						:can-pop-out="canPopOut"
 						@select-session="canvasChatHubRef.handleSelectSession"
+						@copy-session-id="canvasChatHubRef.copySessionId()"
+						@new-session="canvasChatHubRef.handleNewSession()"
+						@pop-out="onPopOut"
 					/>
-					<N8nTooltip v-if="canvasChatHubRef?.sessionId" placement="bottom">
-						<template #content>
-							{{ canvasChatHubRef.sessionId }}
-							<br />
-							{{ i18n.baseText('chat.window.session.id.copy') }}
-						</template>
-						<N8nIconButton
-							icon="copy"
-							variant="ghost"
-							size="small"
-							data-test-id="canvas-chat-session-id"
-							@click="canvasChatHubRef.copySessionId()"
-						/>
-					</N8nTooltip>
-					<N8nTooltip v-if="canvasChatHubRef" placement="bottom">
-						<template #content>
-							{{ i18n.baseText('chat.window.session.resetSession') }}
-						</template>
-						<N8nIconButton
-							icon="undo-2"
-							variant="ghost"
-							size="small"
-							data-test-id="canvas-chat-hub-new-session"
-							@click="canvasChatHubRef.handleNewSession()"
-						/>
-					</N8nTooltip>
-					<N8nTooltip v-if="canPopOut" placement="bottom">
-						<template #content>
-							{{ i18n.baseText('runData.panel.actions.popOut') }}
-						</template>
-						<N8nIconButton
-							icon="external-link"
-							variant="ghost"
-							size="small"
-							data-test-id="canvas-chat-hub-pop-out"
-							@click="onPopOut"
-						/>
-					</N8nTooltip>
 				</template>
 				<CanvasChatHubPanel
 					ref="canvasChatHubRef"

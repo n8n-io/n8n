@@ -263,7 +263,7 @@ onBeforeUnmount(() => {
 				<slot name="header-icon" />
 				<slot name="header" />
 			</div>
-			<div :class="$style.headerRight">
+			<div :class="$style.headerRight" @mousedown.stop>
 				<slot name="header-actions" />
 				<N8nIconButton
 					icon="x"
