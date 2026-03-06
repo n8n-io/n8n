@@ -385,6 +385,15 @@ onMounted(async () => {
 
 	const forceManual = isCredentialModalState(modalState) && modalState.forceManualMode === true;
 
+	const projectId = projectsStore.currentProjectId ?? projectsStore.personalProject?.id;
+	if (projectId) {
+		try {
+			await externalSecretsStore.fetchSecretsForProject(projectId);
+		} catch {
+			// Secrets fetch failure should not block the credential modal
+		}
+	}
+
 	if (props.mode === 'new' && credentialTypeName.value) {
 		credentialName.value = await credentialsStore.getNewCredentialName({
 			credentialTypeName: defaultCredentialTypeName.value,
@@ -396,15 +405,6 @@ onMounted(async () => {
 		};
 	} else {
 		await loadCurrentCredential();
-	}
-
-	const projectId = projectsStore.currentProjectId ?? projectsStore.personalProject?.id;
-	if (projectId) {
-		try {
-			await externalSecretsStore.fetchSecretsForProject(projectId);
-		} catch {
-			// Secrets fetch failure should not block the credential modal
-		}
 	}
 
 	setCredentialPropertyDefaults();
