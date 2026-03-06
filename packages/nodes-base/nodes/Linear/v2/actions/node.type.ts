@@ -10,6 +10,9 @@ type NodeMap = {
 	cycle: 'create' | 'get' | 'getAll' | 'update' | 'delete' | 'archive';
 	attachment: 'create' | 'get' | 'getAll' | 'delete';
 	workflowState: 'get' | 'getAll';
+	document: 'create' | 'get' | 'getAll' | 'update' | 'delete';
+	roadmap: 'create' | 'get' | 'getAll' | 'update' | 'delete';
+	teamMembership: 'create' | 'getAll' | 'delete';
 };
 
 export type Linear = AllEntities<NodeMap>;

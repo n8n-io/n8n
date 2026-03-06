@@ -3,10 +3,13 @@ import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 import * as attachment from './attachment';
 import * as comment from './comment';
 import * as cycle from './cycle';
+import * as document from './document';
 import * as issue from './issue';
 import * as label from './label';
 import * as project from './project';
+import * as roadmap from './roadmap';
 import * as team from './team';
+import * as teamMembership from './teamMembership';
 import * as user from './user';
 import * as workflowState from './workflowState';
 
@@ -80,6 +83,10 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'cycle',
 				},
 				{
+					name: 'Document',
+					value: 'document',
+				},
+				{
 					name: 'Issue',
 					value: 'issue',
 				},
@@ -92,8 +99,16 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'project',
 				},
 				{
+					name: 'Roadmap',
+					value: 'roadmap',
+				},
+				{
 					name: 'Team',
 					value: 'team',
+				},
+				{
+					name: 'Team Membership',
+					value: 'teamMembership',
 				},
 				{
 					name: 'User',
@@ -109,10 +124,13 @@ export const versionDescription: INodeTypeDescription = {
 		...attachment.description,
 		...comment.description,
 		...cycle.description,
+		...document.description,
 		...issue.description,
 		...label.description,
 		...project.description,
+		...roadmap.description,
 		...team.description,
+		...teamMembership.description,
 		...user.description,
 		...workflowState.description,
 	],
