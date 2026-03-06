@@ -400,8 +400,7 @@ onMounted(async () => {
 
 	const projectId = projectsStore.currentProjectId ?? projectsStore.personalProject?.id;
 	if (projectId) {
-		// Failures are non-fatal — missing secrets are preferable to a broken modal.
-		await externalSecretsStore.fetchSecretsForProject(projectId).catch(() => {});
+		await externalSecretsStore.fetchSecretsForProject(projectId);
 	}
 
 	setCredentialPropertyDefaults();
