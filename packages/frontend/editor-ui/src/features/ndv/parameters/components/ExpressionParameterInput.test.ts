@@ -4,9 +4,17 @@ import { type TestingPinia, createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { setActivePinia } from 'pinia';
+import { computed } from 'vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 describe('ExpressionParameterInput', () => {
-	const renderComponent = createComponentRenderer(ExpressionParameterInput);
+	const renderComponent = createComponentRenderer(ExpressionParameterInput, {
+		global: {
+			provide: {
+				[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+			},
+		},
+	});
 	let pinia: TestingPinia;
 
 	beforeEach(() => {

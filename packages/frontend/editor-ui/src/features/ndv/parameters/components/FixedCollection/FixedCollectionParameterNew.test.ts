@@ -1,12 +1,13 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import FixedCollectionParameterNew, { type Props } from './FixedCollectionParameterNew.vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { setActivePinia } from 'pinia';
-import { nextTick } from 'vue';
+import { computed, nextTick } from 'vue';
 import { flushPromises } from '@vue/test-utils';
 
 describe('FixedCollectionParameterNew.vue', () => {
@@ -68,6 +69,11 @@ describe('FixedCollectionParameterNew.vue', () => {
 
 	const renderComponent = createComponentRenderer(FixedCollectionParameterNew, {
 		props: baseProps,
+		global: {
+			provide: {
+				[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+			},
+		},
 	});
 
 	describe('Top-level multiple values', () => {
@@ -678,6 +684,11 @@ describe('FixedCollectionParameterNew.vue', () => {
 
 		const renderHideOptionalFields = createComponentRenderer(FixedCollectionParameterNew, {
 			props: hideOptionalFieldsProps,
+			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+				},
+			},
 		});
 
 		it('renders the optional values picker when hideOptionalFields is true', () => {
@@ -840,6 +851,11 @@ describe('FixedCollectionParameterNew.vue', () => {
 
 			const renderWithArrayField = createComponentRenderer(FixedCollectionParameterNew, {
 				props: propsWithArrayField,
+				global: {
+					provide: {
+						[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+					},
+				},
 			});
 
 			const { container } = renderWithArrayField();
@@ -914,6 +930,11 @@ describe('FixedCollectionParameterNew.vue', () => {
 
 			const renderWithArrayFieldDefault = createComponentRenderer(FixedCollectionParameterNew, {
 				props: propsWithArrayFieldDefault,
+				global: {
+					provide: {
+						[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+					},
+				},
 			});
 
 			const { container } = renderWithArrayFieldDefault();

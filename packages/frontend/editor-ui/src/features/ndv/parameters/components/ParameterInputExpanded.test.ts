@@ -6,7 +6,8 @@ import { createTestNodeProperties } from '@/__tests__/mocks';
 import ParameterInputExpanded from './ParameterInputExpanded.vue';
 import type { INodePropertyCollection } from 'n8n-workflow';
 import userEvent from '@testing-library/user-event';
-import { nextTick } from 'vue';
+import { nextTick, computed } from 'vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
@@ -64,6 +65,11 @@ describe('ParameterInputExpanded.vue', () => {
 
 	const renderComponent = createComponentRenderer(ParameterInputExpanded, {
 		pinia: mockPinia,
+		global: {
+			provide: {
+				[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow'),
+			},
+		},
 	});
 
 	describe('FixedCollectionParameter', () => {

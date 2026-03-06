@@ -13,7 +13,6 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	getAppNameFromNodeName,
 	getMainAuthField,
@@ -45,6 +44,7 @@ import {
 	watch,
 } from 'vue';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { computedAsync, onClickOutside, type VueInstance } from '@vueuse/core';
 import {
@@ -159,7 +159,7 @@ const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
-const workflowsStore = useWorkflowsStore();
+const workflowId = useInjectWorkflowId();
 const projectsStore = useProjectsStore();
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 
@@ -701,7 +701,7 @@ function onModeSelected(value: string): void {
 function trackEvent(event: string, params?: { [key: string]: string }): void {
 	telemetry.track(event, {
 		instance_id: rootStore.instanceId,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowId.value,
 		node_type: props.node?.type,
 		resource: props.node?.parameters.resource,
 		operation: props.node?.parameters.operation,

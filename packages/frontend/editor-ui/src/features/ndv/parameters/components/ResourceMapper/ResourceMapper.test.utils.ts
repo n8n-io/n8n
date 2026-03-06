@@ -1,8 +1,10 @@
 import type { RenderOptions } from '@/__tests__/render';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import type ResourceMapper from './ResourceMapper.vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
+import { computed } from 'vue';
 import merge from 'lodash/merge';
 import type { ResourceMapperFields, ResourceMapperValue } from 'n8n-workflow';
 
@@ -98,6 +100,11 @@ export const DEFAULT_SETUP: RenderOptions<typeof ResourceMapper> = {
 			},
 		},
 	}),
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
+	},
 	props: {
 		path: 'parameters.columns',
 		dependentParametersValues: 'gid=0',

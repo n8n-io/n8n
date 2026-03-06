@@ -2,11 +2,13 @@ import { createTestNode, createTestNodeProperties } from '@/__tests__/mocks';
 import { createComponentRenderer, type RenderOptions } from '@/__tests__/render';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import * as workFlowHelpers from '@/app/composables/useWorkflowHelpers';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { cleanup, waitFor, within } from '@testing-library/vue';
+import { computed } from 'vue';
 import get from 'lodash/get';
 import type { FilterOptionsValue, FilterTypeOptions, FilterValue } from 'n8n-workflow';
 import FilterConditions from './FilterConditions.vue';
@@ -46,7 +48,16 @@ const DEFAULT_SETUP = {
 	},
 } satisfies RenderOptions<typeof FilterConditions>;
 
-const renderComponent = createComponentRenderer(FilterConditions, DEFAULT_SETUP);
+const DEFAULT_PROVIDE = {
+	[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+};
+
+const renderComponent = createComponentRenderer(FilterConditions, {
+	...DEFAULT_SETUP,
+	global: {
+		provide: DEFAULT_PROVIDE,
+	},
+});
 
 describe('FilterConditions.vue', () => {
 	beforeEach(cleanup);

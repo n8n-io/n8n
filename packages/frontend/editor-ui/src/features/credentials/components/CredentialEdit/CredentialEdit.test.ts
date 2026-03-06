@@ -10,6 +10,8 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import type { ICredentialsResponse } from '../../credentials.types';
 import { within, waitFor } from '@testing-library/vue';
 import type { ICredentialType } from 'n8n-workflow';
+import { computed } from 'vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 vi.mock('vue-router', async () => ({
 	...(await vi.importActual('vue-router')),
@@ -193,6 +195,11 @@ const googleBigQueryOAuth2Api: ICredentialType = {
 };
 
 const renderComponent = createComponentRenderer(CredentialEdit, {
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
+	},
 	pinia: createTestingPinia({
 		initialState: {
 			[STORES.UI]: {

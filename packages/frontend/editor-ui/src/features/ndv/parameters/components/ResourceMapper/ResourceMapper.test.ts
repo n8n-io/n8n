@@ -12,7 +12,9 @@ import type { MockInstance } from 'vitest';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ResourceMapperTypeOptions } from 'n8n-workflow';
 import { createTestNode, createTestNodeProperties } from '@/__tests__/mocks';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { createTestingPinia } from '@pinia/testing';
+import { computed } from 'vue';
 import {
 	WORKFLOW_INPUTS_TEST_PARAMETER,
 	WORKFLOW_INPUTS_TEST_NODE,
@@ -459,6 +461,9 @@ describe('ResourceMapper::Workflow Inputs', () => {
 			teleported: false,
 		},
 		global: {
+			provide: {
+				[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+			},
 			stubs: {
 				ParameterInputFull: { template: '<div data-test-id="field-input"></div>' },
 			},

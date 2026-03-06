@@ -1,8 +1,10 @@
 import { createComponentRenderer, type RenderOptions } from '@/__tests__/render';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, within } from '@testing-library/vue';
+import { computed } from 'vue';
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 import AssignmentCollection from './AssignmentCollection.vue';
 import { STORES } from '@n8n/stores';
@@ -33,6 +35,11 @@ const DEFAULT_SETUP: RenderOptions<typeof AssignmentCollection> = {
 		},
 		parameter: createTestNodeProperties({ name: 'fields', displayName: 'Fields To Set' }),
 		value: {} as AssignmentCollectionValue,
+	},
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
 	},
 };
 

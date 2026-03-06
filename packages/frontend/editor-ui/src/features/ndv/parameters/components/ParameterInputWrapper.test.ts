@@ -1,9 +1,11 @@
 import { renderComponent } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import ParameterInputWrapper from './ParameterInputWrapper.vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { STORES } from '@n8n/stores';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { waitFor } from '@testing-library/vue';
+import { computed } from 'vue';
 import { createTestNodeProperties } from '@/__tests__/mocks';
 
 vi.mock('@/app/composables/useWorkflowHelpers', () => {
@@ -32,6 +34,9 @@ describe('ParameterInputWrapper.vue', () => {
 				isForCredential: true,
 			},
 			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+				},
 				mocks: {
 					$ndvStore: {
 						activeNode: vi.fn(() => ({ test: 'test' })),

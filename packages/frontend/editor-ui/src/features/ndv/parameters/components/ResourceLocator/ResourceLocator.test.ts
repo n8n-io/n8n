@@ -3,6 +3,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import ResourceLocator from './ResourceLocator.vue';
 import { createTestingPinia } from '@pinia/testing';
@@ -68,6 +69,9 @@ const renderComponent = createComponentRenderer(ResourceLocator, {
 		isValueExpression: false,
 	},
 	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
 		stubs: {
 			ResourceLocatorDropdown: false,
 			ExpressionParameterInput: true,
