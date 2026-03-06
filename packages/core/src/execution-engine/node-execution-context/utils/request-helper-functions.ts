@@ -1024,9 +1024,13 @@ export async function requestOAuth2(
 	}
 	if (isN8nRequest) {
 		return await this.helpers.httpRequest(newRequestOptions).catch(async (error: AxiosError) => {
-			if (error.response?.status === 401) {
+			const tokenExpiredStatus = oAuth2Options?.tokenExpiredStatusCode ?? 401;
+			if (
+				error.response?.status === tokenExpiredStatus ||
+				(tokenExpiredStatus !== 401 && error.response?.status === 401)
+			) {
 				this.logger.debug(
-					`OAuth2 token for "${credentialsType}" used by node "${node.name}" expired. Should revalidate.`,
+					`OAuth2 token for "${credentialsType}" used by node "${node.name}" expired (status: ${error.response?.status}). Should revalidate.`,
 				);
 				const tokenRefreshOptions: IDataObject = {};
 				if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
@@ -1098,14 +1102,18 @@ export async function requestOAuth2(
 			if (
 				requestOptions.resolveWithFullResponse === true &&
 				requestOptions.simple === false &&
-				response.statusCode === tokenExpiredStatusCode
+				(response.statusCode === tokenExpiredStatusCode ||
+					(tokenExpiredStatusCode !== 401 && response.statusCode === 401))
 			) {
 				throw response;
 			}
 			return response;
 		})
 		.catch(async (error: IResponseError) => {
-			if (error.statusCode === tokenExpiredStatusCode) {
+			if (
+				error.statusCode === tokenExpiredStatusCode ||
+				(tokenExpiredStatusCode !== 401 && error.statusCode === 401)
+			) {
 				// Token is probably not valid anymore. So try refresh it.
 				const tokenRefreshOptions: IDataObject = {};
 				if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
