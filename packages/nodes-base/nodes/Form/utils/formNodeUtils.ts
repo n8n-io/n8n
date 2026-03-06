@@ -29,11 +29,8 @@ export const renderFormNode = async (
 		title = context.evaluateExpression(`{{ $('${trigger?.name}').params.formTitle }}`) as string;
 	}
 
-<<<<<<< HEAD
-=======
 	const description = handleNewlines(sanitizeHtml(options.formDescription ?? ''));
 
->>>>>>> f1a074f946 (fix(Form Node): Improve form rendering consistency (#26540))
 	let buttonLabel = options.buttonLabel;
 	if (!buttonLabel) {
 		buttonLabel =
@@ -50,7 +47,7 @@ export const renderFormNode = async (
 		context,
 		res,
 		formTitle: title,
-		formDescription: options.formDescription,
+		formDescription: description,
 		formFields: fields,
 		responseMode: 'responseNode',
 		mode,
