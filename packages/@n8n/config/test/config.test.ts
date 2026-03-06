@@ -117,6 +117,7 @@ describe('GlobalConfig', () => {
 				endpoint: '',
 				endpointAuthToken: '',
 				persistence: false,
+				skipTypes: [],
 			},
 		},
 		userManagement: {
