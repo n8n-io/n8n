@@ -336,11 +336,11 @@ describe('Workflow Builder', () => {
 			const json = wf.toJSON();
 			expect(json.nodes).toHaveLength(3);
 
-			// Check HTTP node has main output and separate error output
+			// Check HTTP node has main output and error output moved to main[1]
 			expect(json.connections['HTTP']?.main[0]).toHaveLength(1);
 			expect(json.connections['HTTP']?.main[0]?.[0]?.node).toBe('Success');
-			expect(json.connections['HTTP']?.error?.[0]).toHaveLength(1);
-			expect(json.connections['HTTP']?.error?.[0]?.[0]?.node).toBe('Error Handler');
+			expect(json.connections['HTTP']?.main[1]).toHaveLength(1);
+			expect(json.connections['HTTP']?.main[1]?.[0]?.node).toBe('Error Handler');
 		});
 
 		it('should calculate correct error output index for IF nodes', () => {
@@ -380,7 +380,7 @@ describe('Workflow Builder', () => {
 
 			expect(json.connections['IF']?.main[0]?.[0]?.node).toBe('True');
 			expect(json.connections['IF']?.main[1]?.[0]?.node).toBe('False');
-			expect(json.connections['IF']?.error?.[0]?.[0]?.node).toBe('Error');
+			expect(json.connections['IF']?.main[2]?.[0]?.node).toBe('Error');
 		});
 
 		it('should return this (not handler) for proper chaining with .to()', () => {
@@ -412,8 +412,8 @@ describe('Workflow Builder', () => {
 			// Trigger should connect to Slack (not Telegram)
 			expect(json.connections['Start']?.main[0]?.[0]?.node).toBe('Send Slack');
 
-			// Slack's error output should connect to Telegram via error connection type
-			expect(json.connections['Send Slack']?.error?.[0]?.[0]?.node).toBe('Error Alert');
+			// Slack's error output should connect to Telegram via main[1]
+			expect(json.connections['Send Slack']?.main[1]?.[0]?.node).toBe('Error Alert');
 		});
 
 		it('should add nodes from nested .onError() chains', () => {
@@ -461,10 +461,10 @@ describe('Workflow Builder', () => {
 			expect(nodeNames).toContain('Downstream');
 			expect(json.nodes).toHaveLength(5);
 
-			// http1 error output → http2 (via error connection type)
-			expect(json.connections['HTTP 1']?.error?.[0]?.[0]?.node).toBe('HTTP 2');
-			// http2 error output → errorFinal (via error connection type)
-			expect(json.connections['HTTP 2']?.error?.[0]?.[0]?.node).toBe('Error Final');
+			// http1 error output → http2 (via main[1])
+			expect(json.connections['HTTP 1']?.main[1]?.[0]?.node).toBe('HTTP 2');
+			// http2 error output → errorFinal (via main[1])
+			expect(json.connections['HTTP 2']?.main[1]?.[0]?.node).toBe('Error Final');
 			// errorFinal → downstream
 			expect(json.connections['Error Final']?.main[0]?.[0]?.node).toBe('Downstream');
 		});
@@ -498,7 +498,7 @@ describe('Workflow Builder', () => {
 			const json = wf.toJSON();
 
 			expect(json.nodes).toHaveLength(4);
-			expect(json.connections['HTTP']?.error?.[0]?.[0]?.node).toBe('IF');
+			expect(json.connections['HTTP']?.main[1]?.[0]?.node).toBe('IF');
 			expect(json.connections['IF']?.main[0]?.[0]?.node).toBe('True Handler');
 			expect(json.connections['IF']?.main[1]?.[0]?.node).toBe('False Handler');
 		});
@@ -532,7 +532,7 @@ describe('Workflow Builder', () => {
 			const json = wf.toJSON();
 
 			expect(json.nodes).toHaveLength(4);
-			expect(json.connections['HTTP']?.error?.[0]?.[0]?.node).toBe('Switch');
+			expect(json.connections['HTTP']?.main[1]?.[0]?.node).toBe('Switch');
 			expect(json.connections['Switch']?.main[0]?.[0]?.node).toBe('Case 0');
 			expect(json.connections['Switch']?.main[1]?.[0]?.node).toBe('Case 1');
 		});
@@ -567,7 +567,7 @@ describe('Workflow Builder', () => {
 			const json = wf.toJSON();
 
 			expect(json.nodes).toHaveLength(4);
-			expect(json.connections['HTTP']?.error?.[0]?.[0]?.node).toBe('SIB');
+			expect(json.connections['HTTP']?.main[1]?.[0]?.node).toBe('SIB');
 			expect(json.connections['SIB']?.main[0]?.[0]?.node).toBe('Done');
 			expect(json.connections['SIB']?.main[1]?.[0]?.node).toBe('Each');
 		});
@@ -606,7 +606,7 @@ describe('Workflow Builder', () => {
 
 			expect(json.nodes).toHaveLength(5);
 			expect(json.connections['Start']?.main[0]?.[0]?.node).toBe('HTTP');
-			expect(json.connections['HTTP']?.error?.[0]?.[0]?.node).toBe('IF');
+			expect(json.connections['HTTP']?.main[1]?.[0]?.node).toBe('IF');
 			expect(json.connections['IF']?.main[0]?.[0]?.node).toBe('True Handler');
 			expect(json.connections['IF']?.main[1]?.[0]?.node).toBe('False Handler');
 		});
@@ -645,7 +645,7 @@ describe('Workflow Builder', () => {
 			const json = wf.toJSON();
 
 			expect(json.nodes).toHaveLength(5);
-			expect(json.connections['HTTP']?.error?.[0]?.[0]?.node).toBe('Log');
+			expect(json.connections['HTTP']?.main[1]?.[0]?.node).toBe('Log');
 			expect(json.connections['Log']?.main[0]?.[0]?.node).toBe('IF');
 			expect(json.connections['IF']?.main[0]?.[0]?.node).toBe('True Handler');
 			expect(json.connections['IF']?.main[1]?.[0]?.node).toBe('False Handler');

@@ -139,10 +139,13 @@ function serializeNode(
 
 /**
  * Serialize connections for a single node.
+ * When onError is 'continueErrorOutput', error[0] connections are moved to main[N]
+ * where N is the next available main output index. This matches n8n canvas expectations.
  */
 function serializeNodeConnections(
 	graphNode: GraphNode,
 	nodeName: string | undefined,
+	onError?: string,
 ): IConnections[string] | undefined {
 	// Check if node has any connections
 	let hasConnections = false;
@@ -182,6 +185,27 @@ function serializeNodeConnections(
 		return undefined;
 	}
 
+	// Transform error[0] → main[N] for continueErrorOutput nodes.
+	// N = max(existingMainOutputs, 1) since every node has at least 1 main output slot.
+	if (onError === 'continueErrorOutput' && nodeConnections.error) {
+		const mainOutputs = nodeConnections.main ?? [];
+		const nextIndex = Math.max(mainOutputs.length, 1);
+		const errorTargets = nodeConnections.error[0];
+		if (errorTargets && errorTargets.length > 0) {
+			if (!nodeConnections.main) {
+				nodeConnections.main = [];
+			}
+			// Fill gaps with empty arrays to avoid sparse arrays
+			for (let i = 0; i < nextIndex; i++) {
+				if (!nodeConnections.main[i]) {
+					nodeConnections.main[i] = [];
+				}
+			}
+			nodeConnections.main[nextIndex] = errorTargets;
+		}
+		delete nodeConnections.error;
+	}
+
 	return nodeConnections;
 }
 
@@ -212,7 +236,11 @@ export const jsonSerializer: SerializerPlugin<WorkflowJSON> = {
 
 			// Serialize connections
 			const nodeName = serializedNode.name;
-			const nodeConns = serializeNodeConnections(graphNode, nodeName);
+			const nodeConns = serializeNodeConnections(
+				graphNode,
+				nodeName,
+				graphNode.instance.config.onError,
+			);
 			if (nodeConns && nodeName !== undefined) {
 				connections[nodeName] = nodeConns;
 			}
