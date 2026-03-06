@@ -29,6 +29,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates=20230311+deb12u1 \
         curl=7.88.1-10+deb12u14 \
         gnupg=2.2.40-1.1+deb12u2 \
+        openssl=3.0.18-1~deb12u2 \
         tini=0.19.0-1+b3 \
         graphicsmagick=1.4+really1.3.40-4+deb12u1 \
         git=1:2.39.5-0+deb12u3 \
