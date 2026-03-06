@@ -1,4 +1,5 @@
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
@@ -14,6 +15,7 @@ describe('ChatMemoryCleanupService', () => {
 	) => {
 		return new ChatMemoryCleanupService(
 			mockLogger(),
+			mock<GlobalConfig>(),
 			mock<InstanceSettings>(instanceSettings),
 			memoryRepository ?? mock<ChatMemoryRepository>(),
 			memorySessionRepository ?? mock<ChatMemorySessionRepository>(),

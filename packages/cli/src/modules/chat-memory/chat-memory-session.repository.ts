@@ -54,9 +54,13 @@ export class ChatMemorySessionRepository extends Repository<ChatMemorySession> {
 	 * Delete a memory session by session key.
 	 * Note: This will cascade delete all memory entries.
 	 */
-	async deleteBySessionKey(sessionKey: string, trx?: EntityManager): Promise<void> {
+	async deleteBySessionKey(
+		sessionKey: string,
+		projectId: string,
+		trx?: EntityManager,
+	): Promise<void> {
 		const em = trx ?? this.manager;
-		await em.delete(ChatMemorySession, { sessionKey });
+		await em.delete(ChatMemorySession, { sessionKey, projectId });
 	}
 
 	/**

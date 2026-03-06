@@ -13,7 +13,7 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { parseMessage } from '@n8n/chat-hub';
 import { GlobalConfig } from '@n8n/config';
-import { ExecutionRepository, User } from '@n8n/db';
+import { ExecutionRepository, ProjectRepository, User } from '@n8n/db';
 import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
@@ -50,6 +50,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 @Service()
@@ -70,6 +71,8 @@ export class ChatHubService {
 		private readonly chatHubToolService: ChatHubToolService,
 		private readonly chatHubWorkflowService: ChatHubWorkflowService,
 		private readonly chatMemorySessionRepository: ChatMemorySessionRepository,
+		private readonly ownershipService: OwnershipService,
+		private readonly projectRepository: ProjectRepository,
 		private readonly globalConfig: GlobalConfig,
 	) {
 		this.logger = this.logger.scoped('chat-hub');
@@ -319,11 +322,36 @@ export class ChatHubService {
 	 */
 	async deleteSession(userId: string, sessionId: ChatSessionId) {
 		await this.messageRepository.manager.transaction(async (trx) => {
-			await this.ensureConversation(userId, sessionId, trx);
+			const session = await this.getSessionOrFail(userId, sessionId, trx);
+			const projectId = await this.resolveSessionProjectId(userId, session, trx);
 			await this.chatHubAttachmentService.deleteAllBySessionId(sessionId, trx);
-			await this.chatMemorySessionRepository.deleteBySessionKey(sessionId, trx);
+			await this.chatMemorySessionRepository.deleteBySessionKey(sessionId, projectId, trx);
 			await this.sessionRepository.deleteChatHubSession(sessionId, trx);
 		});
+	}
+
+	private async getSessionOrFail(userId: string, sessionId: string, trx?: EntityManager) {
+		const session = await this.sessionRepository.getOneById(sessionId, userId, trx);
+		if (!session) throw new NotFoundError('Chat session not found');
+		return session;
+	}
+
+	/**
+	 * Resolves session's project ID by first checking if session is linked to a workflow,
+	 * then falling back to user's personal project otherwise (for base LLM sessions).
+	 * Used to guard against removing memory linked to projects if the user's current session doesn't link to them.
+	 */
+	private async resolveSessionProjectId(
+		userId: string,
+		session: ChatHubSession,
+		trx?: EntityManager,
+	) {
+		if (session.workflowId) {
+			const project = await this.ownershipService.getWorkflowProjectCached(session.workflowId);
+			return project.id;
+		}
+		const project = await this.projectRepository.getPersonalProjectForUserOrFail(userId, trx);
+		return project.id;
 	}
 
 	private async ensureValidModel(user: User, model: ChatHubConversationModel, trx?: EntityManager) {
