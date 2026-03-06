@@ -27,8 +27,8 @@ jobs:
         id: generate-token
         uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
         with:
-          app-id: ${{ secrets.N8N_RELEASE_HELPER_APP_ID }}
-          private-key: ${{ secrets.N8N_RELEASE_HELPER_PRIVATE_KEY }}
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
 
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
