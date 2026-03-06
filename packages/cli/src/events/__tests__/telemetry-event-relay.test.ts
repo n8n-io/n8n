@@ -1,5 +1,6 @@
 import type { NodeTypes } from '@/node-types';
 import { mockInstance } from '@n8n/backend-test-utils';
+import type { LicenseState } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import {
 	type CredentialsEntity,
@@ -35,6 +36,7 @@ const flushPromises = async () => await new Promise((resolve) => setImmediate(re
 describe('TelemetryEventRelay', () => {
 	const telemetry = mock<Telemetry>();
 	const license = mock<License>();
+	const licenseState = mock<LicenseState>();
 	const globalConfig = mock<GlobalConfig>({
 		deployment: {
 			type: 'default',
@@ -87,6 +89,7 @@ describe('TelemetryEventRelay', () => {
 			eventService,
 			telemetry,
 			license,
+			licenseState,
 			globalConfig,
 			instanceSettings,
 			binaryDataConfig,
@@ -112,6 +115,7 @@ describe('TelemetryEventRelay', () => {
 				eventService,
 				telemetry,
 				license,
+				licenseState,
 				globalConfig,
 				instanceSettings,
 				binaryDataConfig,
@@ -136,6 +140,7 @@ describe('TelemetryEventRelay', () => {
 				eventService,
 				telemetry,
 				license,
+				licenseState,
 				globalConfig,
 				instanceSettings,
 				binaryDataConfig,
