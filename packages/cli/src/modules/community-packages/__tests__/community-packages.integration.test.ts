@@ -129,9 +129,10 @@ describe('GET /community-packages', () => {
 
 		await authAgent.get('/community-packages').expect(200);
 
-		const args = [['outdated', '--json'], { doNotHandleError: true, cwd: expect.any(String) }];
-
-		expect(mockedExecuteNpmCommand).toHaveBeenCalledWith(...args);
+		expect(mockedExecuteNpmCommand).toHaveBeenCalledWith(
+			expect.arrayContaining(['outdated', '--json']),
+			expect.objectContaining({ doNotHandleError: true, cwd: expect.any(String) }),
+		);
 	});
 
 	test('should report package updates if available', async () => {

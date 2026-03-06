@@ -26,7 +26,7 @@ import { InstalledNodes } from '../installed-nodes.entity';
 import { InstalledNodesRepository } from '../installed-nodes.repository';
 import { InstalledPackages } from '../installed-packages.entity';
 import { InstalledPackagesRepository } from '../installed-packages.repository';
-import { executeNpmCommand } from '../npm-utils';
+import { executeNpmCommand, getNpmOverrides } from '../npm-utils';
 
 jest.mock('node:fs/promises');
 jest.mock('node:child_process');
@@ -344,6 +344,7 @@ describe('CommunityPackagesService', () => {
 		const testBlockPackageDir = `${testBlockDownloadDir}/node_modules/${PACKAGE_NAME}`;
 		const testBlockTarballName = `${PACKAGE_NAME}-latest.tgz`;
 		const testBlockRegistry = config.registry;
+		const testBlockNpmOverrides = getNpmOverrides(testBlockDownloadDir);
 		const testBlockNpmInstallArgs = [
 			'--audit=false',
 			'--fund=false',
@@ -423,14 +424,20 @@ describe('CommunityPackagesService', () => {
 			expect(executeNpmCommand).toHaveBeenCalledTimes(2);
 			expect(executeNpmCommand).toHaveBeenNthCalledWith(
 				1,
-				['pack', `${PACKAGE_NAME}@latest`, `--registry=${testBlockRegistry}`, '--quiet'],
-				{ cwd: testBlockDownloadDir },
+				[
+					'pack',
+					`${PACKAGE_NAME}@latest`,
+					`--registry=${testBlockRegistry}`,
+					'--quiet',
+					...testBlockNpmOverrides.cacheArgs,
+				],
+				{ cwd: testBlockDownloadDir, env: testBlockNpmOverrides.env },
 			);
 
 			expect(executeNpmCommand).toHaveBeenNthCalledWith(
 				2,
-				['install', ...testBlockNpmInstallArgs.split(' ')],
-				{ cwd: testBlockPackageDir },
+				['install', ...testBlockNpmInstallArgs.split(' '), ...testBlockNpmOverrides.cacheArgs],
+				{ cwd: testBlockPackageDir, env: testBlockNpmOverrides.env },
 			);
 
 			// Check execFile was called only for tar command
@@ -495,6 +502,59 @@ describe('CommunityPackagesService', () => {
 			config.registry = 'https://registry.npmjs.org';
 			await expect(communityPackagesService.installPackage('package', '0.1.0')).rejects.toThrow(
 				'Installation of unverified community packages is forbidden!',
+			);
+		});
+
+		test('should call verifyIntegrity when checksum is provided', async () => {
+			const PACKAGE_NAME = 'n8n-nodes-test';
+			const VERSION = '1.0.0';
+			const CHECKSUM = 'sha512-test-checksum';
+
+			config.unverifiedEnabled = true;
+			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+
+			// verifyIntegrity calls axios.get first - return matching integrity
+			mocked(axios.get).mockResolvedValueOnce({
+				data: { dist: { integrity: CHECKSUM } },
+			});
+			// checkIfVersionExistsOrThrow calls axios.get - just needs to succeed
+			mocked(axios.get).mockResolvedValueOnce({ data: {} });
+
+			// downloadPackage mocks
+			const tarballName = `${PACKAGE_NAME}-${VERSION}.tgz`;
+			mocked(executeNpmCommand).mockImplementation(async (args: string[]) => {
+				if (args[0] === 'pack') return tarballName;
+				return 'Done';
+			});
+			mocked(execFile).mockImplementation(((...args: Parameters<typeof execFile>) => {
+				const actualCallback = args[args.length - 1] as ExecFileCallback;
+				actualCallback(null, 'Done', '');
+			}) as typeof execFile);
+			mocked(readFile).mockResolvedValue(
+				JSON.stringify({
+					name: PACKAGE_NAME,
+					version: VERSION,
+					dependencies: {},
+				}),
+			);
+			mocked(writeFile).mockResolvedValue(undefined);
+			loadNodesAndCredentials.loadPackage.mockResolvedValue(
+				mock<PackageDirectoryLoader>({
+					loadedNodes: [{ name: 'a-node', version: 1 }],
+				}),
+			);
+			loadNodesAndCredentials.unloadPackage.mockResolvedValue(undefined);
+			installedPackageRepository.saveInstalledPackageWithNodes.mockResolvedValue(
+				mock<InstalledPackages>({ packageName: PACKAGE_NAME }),
+			);
+			publisher.publishCommand.mockResolvedValue(undefined);
+
+			await communityPackagesService.installPackage(PACKAGE_NAME, VERSION, CHECKSUM);
+
+			// verifyIntegrity should have been called (axios.get for integrity check)
+			expect(axios.get).toHaveBeenCalledWith(
+				expect.stringContaining(PACKAGE_NAME),
+				expect.objectContaining({ timeout: expect.any(Number) }),
 			);
 		});
 	});

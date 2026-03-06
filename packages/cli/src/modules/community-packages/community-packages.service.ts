@@ -30,7 +30,12 @@ import { CommunityPackagesConfig } from './community-packages.config';
 import type { CommunityPackages } from './community-packages.types';
 import { InstalledPackages } from './installed-packages.entity';
 import { InstalledPackagesRepository } from './installed-packages.repository';
-import { checkIfVersionExistsOrThrow, executeNpmCommand, verifyIntegrity } from './npm-utils';
+import {
+	checkIfVersionExistsOrThrow,
+	executeNpmCommand,
+	getNpmOverrides,
+	verifyIntegrity,
+} from './npm-utils';
 
 const asyncExecFile = promisify(execFile);
 
@@ -58,6 +63,8 @@ export class CommunityPackagesService {
 	missingPackages: string[] = [];
 
 	private readonly downloadFolder = this.instanceSettings.nodesDownloadDir;
+
+	private readonly npmOverrides = getNpmOverrides(this.downloadFolder);
 
 	private readonly packageJsonPath = join(this.downloadFolder, 'package.json');
 
@@ -394,10 +401,21 @@ export class CommunityPackagesService {
 		this.checkInstallPermissions(shouldValidateChecksum);
 
 		if (options.checksum) {
-			await verifyIntegrity(packageName, packageVersion, this.getNpmRegistry(), options.checksum);
+			await verifyIntegrity(
+				packageName,
+				packageVersion,
+				this.getNpmRegistry(),
+				options.checksum,
+				this.npmOverrides,
+			);
 		}
 
-		await checkIfVersionExistsOrThrow(packageName, packageVersion, this.getNpmRegistry());
+		await checkIfVersionExistsOrThrow(
+			packageName,
+			packageVersion,
+			this.getNpmRegistry(),
+			this.npmOverrides,
+		);
 
 		try {
 			await this.downloadPackage(packageName, packageVersion);
@@ -500,8 +518,14 @@ export class CommunityPackagesService {
 		// TODO: make sure that this works for scoped packages as well
 		// if (packageName.startsWith('@') && packageName.includes('/')) {}
 		const tarOutput = await executeNpmCommand(
-			['pack', `${packageName}@${packageVersion}`, `--registry=${registry}`, '--quiet'],
-			{ cwd: this.downloadFolder },
+			[
+				'pack',
+				`${packageName}@${packageVersion}`,
+				`--registry=${registry}`,
+				'--quiet',
+				...this.npmOverrides.cacheArgs,
+			],
+			{ cwd: this.downloadFolder, env: this.npmOverrides.env },
 		);
 
 		const tarballName = tarOutput?.trim();
@@ -530,9 +554,10 @@ export class CommunityPackagesService {
 			} = JSON.parse(packageJsonContent);
 			await writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
 
-			await executeNpmCommand(['install', ...this.getNpmInstallArgs()], {
-				cwd: packageDirectory,
-			});
+			await executeNpmCommand(
+				['install', ...this.getNpmInstallArgs(), ...this.npmOverrides.cacheArgs],
+				{ cwd: packageDirectory, env: this.npmOverrides.env },
+			);
 			await this.updatePackageJsonDependency(packageName, packageJson.version);
 		} finally {
 			await rm(join(this.downloadFolder, tarballName));

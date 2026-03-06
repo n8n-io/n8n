@@ -2,6 +2,7 @@ import { NPM_COMMAND_TOKENS, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import axios from 'axios';
 import { jsonParse, UnexpectedError, LoggerProxy } from 'n8n-workflow';
 import { execFile } from 'node:child_process';
+import { join } from 'node:path';
 import { promisify } from 'node:util';
 
 const asyncExecFile = promisify(execFile);
@@ -18,7 +19,20 @@ const NPM_ERROR_PATTERNS = {
 
 interface NpmCommandOptions {
 	cwd?: string;
+	env?: Record<string, string>;
 	doNotHandleError?: boolean;
+}
+
+/**
+ * Returns npm CLI args and environment overrides to redirect npm's cache and
+ * temp directories into the given base directory. This keeps all npm writes
+ * on the user volume, enabling `readOnlyRootFilesystem` deployments.
+ */
+export function getNpmOverrides(nodesDownloadDir: string) {
+	return {
+		cacheArgs: [`--cache=${join(nodesDownloadDir, '.npm-cache')}`],
+		env: { TMPDIR: join(nodesDownloadDir, '.tmp') },
+	};
 }
 
 function isDnsError(error: unknown): boolean {
@@ -55,11 +69,14 @@ export async function executeNpmCommand(
 	args: string[],
 	options: NpmCommandOptions = {},
 ): Promise<string> {
-	const { cwd, doNotHandleError } = options;
+	const { cwd, env, doNotHandleError } = options;
 
 	try {
-		const { stdout } = await asyncExecFile('npm', args, cwd ? { cwd } : undefined);
-		return typeof stdout === 'string' ? stdout : stdout.toString();
+		const { stdout } = await asyncExecFile('npm', args, {
+			...(cwd && { cwd }),
+			...(env && { env: { ...process.env, ...env } }),
+		});
+		return stdout;
 	} catch (error) {
 		if (doNotHandleError) {
 			throw error;
@@ -104,6 +121,7 @@ export async function verifyIntegrity(
 	version: string,
 	registryUrl: string,
 	expectedIntegrity: string,
+	npmOverrides?: { cacheArgs: string[]; env: Record<string, string> },
 ) {
 	const url = `${sanitizeRegistryUrl(registryUrl)}/${encodeURIComponent(packageName)}`;
 
@@ -128,8 +146,9 @@ export async function verifyIntegrity(
 					'dist.integrity',
 					`--registry=${sanitizeRegistryUrl(registryUrl)}`,
 					'--json',
+					...(npmOverrides?.cacheArgs ?? []),
 				],
-				{ doNotHandleError: true },
+				{ doNotHandleError: true, env: npmOverrides?.env },
 			);
 
 			const integrity = jsonParse(stdout);
@@ -156,6 +175,7 @@ export async function checkIfVersionExistsOrThrow(
 	packageName: string,
 	version: string,
 	registryUrl: string,
+	npmOverrides?: { cacheArgs: string[]; env: Record<string, string> },
 ): Promise<true> {
 	const url = `${sanitizeRegistryUrl(registryUrl)}/${encodeURIComponent(packageName)}`;
 
@@ -171,8 +191,9 @@ export async function checkIfVersionExistsOrThrow(
 					'version',
 					`--registry=${sanitizeRegistryUrl(registryUrl)}`,
 					'--json',
+					...(npmOverrides?.cacheArgs ?? []),
 				],
-				{ doNotHandleError: true },
+				{ doNotHandleError: true, env: npmOverrides?.env },
 			);
 
 			const versionInfo = jsonParse(stdout);
