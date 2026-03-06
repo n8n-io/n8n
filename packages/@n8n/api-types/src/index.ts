@@ -72,6 +72,10 @@ export {
 	ChatHubUpdateToolRequest,
 	ALWAYS_BLOCKED_CHAT_HUB_TOOL_TYPES,
 	CHAT_USER_BLOCKED_CHAT_HUB_TOOL_TYPES,
+	type ChatMemorySizeStatus,
+	type ChatMemorySizeResult,
+	ChatMemoryClearRequest,
+	type ChatMemoryClearResult,
 } from './chat-hub';
 
 export type {

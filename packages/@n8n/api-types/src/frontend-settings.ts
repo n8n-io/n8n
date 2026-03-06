@@ -123,6 +123,9 @@ export interface FrontendSettings {
 	dataTables: {
 		maxSize: number;
 	};
+	chatMemory: {
+		maxSize: number;
+	};
 	personalizationSurveyEnabled: boolean;
 	defaultLocale: string;
 	userManagement: IUserManagementSettings;

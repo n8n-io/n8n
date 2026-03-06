@@ -21,7 +21,7 @@ export class DataTableConfig {
 	 * Reduces database load when validating size repeatedly.
 	 */
 	@Env('N8N_DATA_TABLES_SIZE_CHECK_CACHE_DURATION_MS')
-	sizeCheckCacheDuration: number = 5 * 1000;
+	sizeCheckCacheDuration: number = 60 * 1000;
 
 	/**
 	 * Maximum file size in bytes for CSV uploads to data tables.

@@ -79,6 +79,7 @@ export class ChatHubMessageRepository extends Repository<ChatHubMessage> {
 		content,
 		model,
 		retryOfMessageId,
+		turnId,
 		status,
 	}: {
 		id: ChatMessageId;
@@ -89,6 +90,7 @@ export class ChatHubMessageRepository extends Repository<ChatHubMessage> {
 		executionId?: string;
 		retryOfMessageId: ChatMessageId | null;
 		editOfMessageId?: ChatMessageId;
+		turnId?: ChatMessageId | null;
 		status?: ChatHubMessageStatus;
 	}) {
 		await this.createChatMessage({
@@ -101,6 +103,7 @@ export class ChatHubMessageRepository extends Repository<ChatHubMessage> {
 			status,
 			content,
 			retryOfMessageId,
+			turnId: turnId ?? null,
 			...model,
 		});
 	}

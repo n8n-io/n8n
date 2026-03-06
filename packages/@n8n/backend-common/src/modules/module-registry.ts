@@ -40,6 +40,7 @@ export class ModuleRegistry {
 		'source-control',
 		'dynamic-credentials',
 		'chat-hub',
+		'chat-memory',
 		'sso-oidc',
 		'sso-saml',
 		'log-streaming',

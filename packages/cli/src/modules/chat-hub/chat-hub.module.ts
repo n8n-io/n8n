@@ -1,6 +1,6 @@
 import { ExecutionsConfig } from '@n8n/config';
 import type { ModuleInterface } from '@n8n/decorators';
-import { BackendModule, OnShutdown } from '@n8n/decorators';
+import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
@@ -35,7 +35,4 @@ export class ChatHubModule implements ModuleInterface {
 
 		return [ChatHubSession, ChatHubMessage, ChatHubAgent, ChatHubTool];
 	}
-
-	@OnShutdown()
-	async shutdown() {}
 }

@@ -13,6 +13,7 @@ export const MODULE_NAMES = [
 	'source-control',
 	'dynamic-credentials',
 	'chat-hub',
+	'chat-memory',
 	'sso-oidc',
 	'sso-saml',
 	'log-streaming',
