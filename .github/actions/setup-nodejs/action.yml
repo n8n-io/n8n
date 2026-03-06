@@ -38,6 +38,7 @@ runs:
     # To avoid setup-node cache failure.
     # see: https://github.com/actions/setup-node/issues/1137
     - name: Verify PNPM Cache Directory
+      shell: bash
       run: |
         PNPM_STORE_PATH="$( pnpm store path --silent )"
         if [ ! -d "$PNPM_STORE_PATH" ]; then
