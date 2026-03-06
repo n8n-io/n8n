@@ -85,8 +85,7 @@ export async function execute(
 					[responseData] as IRecord[],
 					options.downloadFields as string[],
 				);
-				legacyFlattenRecordOutputs(itemWithAttachments, nodeVersion);
-				returnData.push(...itemWithAttachments);
+				returnData.push(...legacyFlattenRecordOutputs(itemWithAttachments, nodeVersion));
 				continue;
 			}
 

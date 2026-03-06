@@ -96,10 +96,10 @@ export const flattenOutput = (record: IDataObject) => {
 	};
 };
 
-export function legacyFlattenRecordOutputs(items: INodeExecutionData[], nodeVersion: number) {
-	if (nodeVersion < 2.2) {
-		for (const item of items) {
-			item.json = flattenOutput(item.json);
-		}
-	}
+export function legacyFlattenRecordOutputs(
+	items: INodeExecutionData[],
+	nodeVersion: number,
+): INodeExecutionData[] {
+	if (nodeVersion >= 2.2) return items;
+	return items.map((item) => ({ ...item, json: flattenOutput(item.json) }));
 }

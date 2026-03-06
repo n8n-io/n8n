@@ -210,8 +210,7 @@ export async function execute(
 					options.downloadFields as string[],
 					fallbackPairedItems || [{ item: i }],
 				);
-				legacyFlattenRecordOutputs(itemWithAttachments, nodeVersion);
-				returnData.push(...itemWithAttachments);
+				returnData.push(...legacyFlattenRecordOutputs(itemWithAttachments, nodeVersion));
 				continue;
 			}
 
