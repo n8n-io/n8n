@@ -243,7 +243,7 @@ export const executeWorkflow = async (
 		status: hasError ? 'error' : data.status,
 		message: hasError
 			? (data.data.resultData?.error?.message ?? 'Execution completed with errors')
-			: 'Execution completed successfully',
+			: undefined,
 	};
 };
 

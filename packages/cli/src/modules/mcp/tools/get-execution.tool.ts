@@ -29,8 +29,10 @@ const outputSchema = {
 			waitTill: z.string().nullable().optional(),
 		})
 		.passthrough()
-		.describe('Execution metadata'),
+		.nullable()
+		.describe('Execution metadata, or null if an error occurred'),
 	data: z.unknown().optional().describe('Full execution result data'),
+	error: z.string().optional().describe('Error message if the request failed'),
 } satisfies z.ZodRawShape;
 
 export const createGetExecutionTool = (
