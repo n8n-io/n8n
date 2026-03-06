@@ -293,6 +293,7 @@ async function getDataOffset(fh: FileHandle, localHeaderOffset: bigint): Promise
 export async function decompressFolder(sourcePath: string, outputDir: string): Promise<void> {
 	await mkdir(outputDir, { recursive: true });
 
+	const absoluteSourcePath = path.resolve(sourcePath);
 	const fh = await open(sourcePath, 'r');
 	try {
 		const { size: fileSize } = await fh.stat();
@@ -303,6 +304,11 @@ export async function decompressFolder(sourcePath: string, outputDir: string): P
 			if (entry.name.endsWith('/')) continue;
 
 			const filePath = sanitizePath(entry.name, outputDir);
+
+			// Skip if this entry would overwrite the source ZIP file itself.
+			// This happens when the ZIP was created inside the output directory and
+			// ended up including itself as a 0-byte entry.
+			if (filePath === absoluteSourcePath) continue;
 			mkdirSync(path.dirname(filePath), { recursive: true });
 
 			const dataOffset = await getDataOffset(fh, entry.localHeaderOffset);
