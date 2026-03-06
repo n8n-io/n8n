@@ -1266,4 +1266,133 @@ describe('Request Helper Functions', () => {
 			).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('httpRequest with binary redirects', () => {
+		const baseUrl = 'https://api.example.com';
+		const cdnUrl = 'https://cdn.example.net';
+
+		beforeEach(() => {
+			nock.cleanAll();
+		});
+
+		afterEach(() => {
+			nock.cleanAll();
+		});
+
+		it('should handle binary download with cross-origin redirect', async () => {
+			const binaryData = Buffer.from('test-binary-data');
+
+			// Mock HEAD request for redirect resolution
+			nock(baseUrl)
+				.head('/file/123')
+				.reply(302, '', { Location: `${cdnUrl}/content/file.bin` });
+
+			nock(cdnUrl).head('/content/file.bin').reply(200);
+
+			// Mock actual GET request
+			nock(cdnUrl).get('/content/file.bin').reply(200, binaryData, {
+				'Content-Type': 'application/octet-stream',
+			});
+
+			const requestOptions: IHttpRequestOptions = {
+				url: `${baseUrl}/file/123`,
+				method: 'GET',
+				returnFullResponse: false,
+			};
+
+			// This should trigger binary-safe handling
+			requestOptions.encoding = 'arraybuffer';
+
+			const result = await httpRequest(requestOptions);
+
+			expect(Buffer.from(result as ArrayBuffer)).toEqual(binaryData);
+		});
+
+		it('should strip Authorization header on cross-origin binary redirect', async () => {
+			const binaryData = Buffer.from('secure-content');
+
+			// HEAD request with auth
+			nock(baseUrl)
+				.head('/secure/file')
+				.matchHeader('Authorization', 'Bearer secret')
+				.reply(302, '', { Location: `${cdnUrl}/public/file.bin` });
+
+			nock(cdnUrl).head('/public/file.bin').reply(200);
+
+			// GET request should NOT have Authorization header
+			nock(cdnUrl)
+				.get('/public/file.bin')
+				.matchHeader('Authorization', (val) => val === undefined)
+				.reply(200, binaryData);
+
+			const requestOptions: IHttpRequestOptions = {
+				url: `${baseUrl}/secure/file`,
+				method: 'GET',
+				headers: {
+					Authorization: 'Bearer secret',
+				},
+				returnFullResponse: false,
+			};
+
+			requestOptions.encoding = 'arraybuffer';
+
+			const result = await httpRequest(requestOptions);
+
+			expect(Buffer.from(result as ArrayBuffer)).toEqual(binaryData);
+		});
+
+		it('should keep Authorization header for same-origin binary redirect', async () => {
+			const binaryData = Buffer.from('same-origin-content');
+
+			nock(baseUrl)
+				.head('/file/old')
+				.matchHeader('Authorization', 'Bearer token')
+				.reply(302, '', { Location: `${baseUrl}/file/new` });
+
+			nock(baseUrl)
+				.head('/file/new')
+				.matchHeader('Authorization', 'Bearer token')
+				.reply(200);
+
+			nock(baseUrl)
+				.get('/file/new')
+				.matchHeader('Authorization', 'Bearer token')
+				.reply(200, binaryData);
+
+			const requestOptions: IHttpRequestOptions = {
+				url: `${baseUrl}/file/old`,
+				method: 'GET',
+				headers: {
+					Authorization: 'Bearer token',
+				},
+				returnFullResponse: false,
+			};
+
+			requestOptions.encoding = 'arraybuffer';
+
+			const result = await httpRequest(requestOptions);
+
+			expect(Buffer.from(result as ArrayBuffer)).toEqual(binaryData);
+		});
+
+		it('should NOT use binary-safe handling for JSON responses', async () => {
+			const jsonData = { message: 'success' };
+
+			// For JSON, normal axios redirect handling is fine
+			nock(baseUrl).get('/api/data').reply(302, '', { Location: `${cdnUrl}/data.json` });
+
+			nock(cdnUrl).get('/data.json').reply(200, jsonData);
+
+			const requestOptions: IHttpRequestOptions = {
+				url: `${baseUrl}/api/data`,
+				method: 'GET',
+				json: true,
+				returnFullResponse: false,
+			};
+
+			const result = await httpRequest(requestOptions);
+
+			expect(result).toEqual(jsonData);
+		});
+	});
 });
