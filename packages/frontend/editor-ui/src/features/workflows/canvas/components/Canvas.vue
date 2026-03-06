@@ -145,6 +145,7 @@ const props = withDefaults(
 		loading?: boolean;
 		suppressInteraction?: boolean;
 		hideControls?: boolean;
+		initialViewport?: ViewportTransform | null;
 	}>(),
 	{
 		id: 'canvas',
@@ -959,7 +960,11 @@ onUnmounted(() => {
 });
 
 onPaneReady(async () => {
-	await onFitView();
+	if (props.initialViewport) {
+		await setViewport(props.initialViewport);
+	} else {
+		await onFitView();
+	}
 	isPaneReady.value = true;
 });
 
