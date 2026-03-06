@@ -4,6 +4,9 @@ import { getNodeTypeDisplayableCredentials } from '@/app/utils/nodes/nodeTransfo
 import { HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { isExpression } from '@/app/utils/expressions';
 
+export const isHttpRequestNodeType = (nodeType: string): boolean =>
+	nodeType === HTTP_REQUEST_NODE_TYPE || nodeType === HTTP_REQUEST_TOOL_NODE_TYPE;
+
 import type {
 	CredentialTypeSetupState,
 	TriggerSetupState,
@@ -101,8 +104,7 @@ export function groupCredentialsByType(
 			// target different APIs even when using the same credential type.
 			// Expression URLs are resolved when possible (e.g. static expressions or those
 			// using only environment variables). Unresolvable expressions get their own card.
-			const isHttpRequest =
-				node.type === HTTP_REQUEST_NODE_TYPE || node.type === HTTP_REQUEST_TOOL_NODE_TYPE;
+			const isHttpRequest = isHttpRequestNodeType(node.type);
 			const url = node.parameters.url;
 
 			let mapKey: string;

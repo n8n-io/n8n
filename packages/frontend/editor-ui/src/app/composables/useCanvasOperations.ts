@@ -189,6 +189,7 @@ export function useCanvasOperations() {
 	const experimentalNdvStore = useExperimentalNdvStore();
 	const templatesStore = useTemplatesStore();
 	const focusPanelStore = useFocusPanelStore();
+	const setupPanelStore = useSetupPanelStore();
 
 	const i18n = useI18n();
 	const toast = useToast();
@@ -2971,7 +2972,7 @@ export function useCanvasOperations() {
 	}) {
 		let convertedNodes = workflow.nodes?.map(workflowsStore.convertTemplateNodeToNodeUi);
 
-		if (useSetupPanelStore().isFeatureEnabled && convertedNodes) {
+		if (setupPanelStore.isFeatureEnabled && convertedNodes) {
 			convertedNodes = clearAllNodeResourceLocatorValues(convertedNodes);
 		}
 
@@ -3107,6 +3108,13 @@ export function useCanvasOperations() {
 		});
 	}
 
+	function openSetupPanelIfEnabled() {
+		if (setupPanelStore.isFeatureEnabled) {
+			focusPanelStore.openFocusPanel();
+			focusPanelStore.setSelectedTab('setup');
+		}
+	}
+
 	async function openWorkflowTemplate(templateId: string) {
 		resetWorkspace();
 
@@ -3151,11 +3159,7 @@ export function useCanvasOperations() {
 		);
 		workflowDocumentStore.addToMeta({ templateId: `${templateId}` });
 
-		if (useSetupPanelStore().isFeatureEnabled) {
-			const focusPanelStore = useFocusPanelStore();
-			focusPanelStore.openFocusPanel();
-			focusPanelStore.setSelectedTab('setup');
-		}
+		openSetupPanelIfEnabled();
 
 		canvasStore.stopLoading();
 
@@ -3206,11 +3210,7 @@ export function useCanvasOperations() {
 		);
 		workflowDocumentStore.addToMeta({ templateId: `${templateId}` });
 
-		if (useSetupPanelStore().isFeatureEnabled) {
-			const focusPanelStore = useFocusPanelStore();
-			focusPanelStore.openFocusPanel();
-			focusPanelStore.setSelectedTab('setup');
-		}
+		openSetupPanelIfEnabled();
 
 		canvasStore.stopLoading();
 

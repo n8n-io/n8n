@@ -73,6 +73,7 @@ const focusPanelStore = useFocusPanelStore();
 const workflowsStore = useWorkflowsStore();
 const workflowState = injectWorkflowState();
 const nodeTypesStore = useNodeTypesStore();
+const setupPanelStore = useSetupPanelStore();
 const telemetry = useTelemetry();
 const nodeSettingsParameters = useNodeSettingsParameters();
 const environmentsStore = useEnvironmentsStore();
@@ -320,8 +321,6 @@ function optionSelected(command: string) {
 }
 
 function closeFocusPanel() {
-	const setupPanelStore = useSetupPanelStore();
-
 	if (
 		(experimentalNdvStore.isNdvInFocusPanelEnabled || setupPanelStore.isFeatureEnabled) &&
 		resolvedParameter.value

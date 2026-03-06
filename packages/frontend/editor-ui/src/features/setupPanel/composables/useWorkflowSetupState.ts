@@ -21,15 +21,11 @@ import {
 	getNodeCredentialTypes,
 	groupCredentialsByType,
 	isCredentialCardComplete,
+	isHttpRequestNodeType,
 	buildTriggerSetupState,
 	getNodeParametersIssues,
 } from '@/features/setupPanel/setupPanel.utils';
-import {
-	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-	MANUAL_TRIGGER_NODE_TYPE,
-	HTTP_REQUEST_NODE_TYPE,
-	HTTP_REQUEST_TOOL_NODE_TYPE,
-} from '@/app/constants';
+import { PLACEHOLDER_FILLED_AT_EXECUTION_TIME, MANUAL_TRIGGER_NODE_TYPE } from '@/app/constants';
 
 import { sortNodesByExecutionOrder } from '@/app/utils/workflowUtils';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
@@ -238,7 +234,9 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 			.filter(
 				({ credentialTypes, isTrigger, parameterIssues, node }) =>
 					seenNodes.has(node.id) ||
-					0 < credentialTypes.length + +isTrigger + Object.keys(parameterIssues).length ||
+					credentialTypes.length > 0 ||
+					isTrigger ||
+					Object.keys(parameterIssues).length > 0 ||
 					nodeHasTemplateParams(node.name),
 			);
 
@@ -654,6 +652,35 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	}
 
 	/**
+	 * Resolves the node names affected by a credential operation.
+	 * Checks credentialTypeStates first (grouped cards), then falls back to
+	 * nodeStates (per-node cards with parameter issues).
+	 * Snapshots credentialTypeStates to avoid reactivity issues during mutations.
+	 */
+	const getAffectedNodeNames = (credentialType: string, sourceNodeName?: string): string[] => {
+		const allCredStates = credentialTypeStates.value;
+		const credState = sourceNodeName
+			? allCredStates.find(
+					(s) =>
+						s.credentialType === credentialType && s.nodes.some((n) => n.name === sourceNodeName),
+				)
+			: allCredStates.find((s) => s.credentialType === credentialType);
+
+		if (credState) return credState.nodes.map((n) => n.name);
+
+		if (!sourceNodeName) return [];
+
+		const allNStates = nodeStates.value;
+		const sourceEntry = allNStates.find(
+			(s) => s.credentialType === credentialType && s.node.name === sourceNodeName,
+		);
+		if (sourceEntry?.allNodesUsingCredential) {
+			return sourceEntry.allNodesUsingCredential.map((n) => n.name);
+		}
+		return [sourceNodeName];
+	};
+
+	/**
 	 * Sets a credential for nodes.
 	 * When sourceNodeName is provided, it first tries to find the matching credential card
 	 * (needed when multiple HTTP Request nodes produce separate cards with the same credential type).
@@ -672,9 +699,9 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 
 		void testCredentialInBackground(credentialId, credential.name, credentialType);
 
-		const assignCredentialToNode = (nodeName: string) => {
+		for (const nodeName of getAffectedNodeNames(credentialType, sourceNodeName)) {
 			const node = workflowsStore.getNodeByName(nodeName);
-			if (!node) return;
+			if (!node) continue;
 			workflowState.updateNodeProperties({
 				name: nodeName,
 				properties: {
@@ -684,39 +711,6 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 					},
 				},
 			});
-		};
-
-		// Capture the computed snapshot once before any mutations.
-		// assignCredentialToNode modifies the store, which recomputes credentialTypeStates.value
-		// with new object references — breaking the === identity check in the auto-assign loop.
-		const allCredStates = credentialTypeStates.value;
-
-		const credState = sourceNodeName
-			? allCredStates.find(
-					(s) =>
-						s.credentialType === credentialType && s.nodes.some((n) => n.name === sourceNodeName),
-				)
-			: allCredStates.find((s) => s.credentialType === credentialType);
-
-		if (credState) {
-			for (const stateNode of credState.nodes) {
-				assignCredentialToNode(stateNode.name);
-			}
-		} else if (sourceNodeName) {
-			// Node is handled by nodeStates (has parameter issues).
-			// Propagate the credential to all nodes sharing this credential type
-			// so that resource locators on other nodes can access the credential.
-			const allNStates = nodeStates.value;
-			const sourceEntry = allNStates.find(
-				(s) => s.credentialType === credentialType && s.node.name === sourceNodeName,
-			);
-			if (sourceEntry?.allNodesUsingCredential) {
-				for (const node of sourceEntry.allNodesUsingCredential) {
-					assignCredentialToNode(node.name);
-				}
-			} else {
-				assignCredentialToNode(sourceNodeName);
-			}
 		}
 
 		nodeHelpers.updateNodesCredentialsIssues();
@@ -730,9 +724,9 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	 * falls back to updating that specific node directly.
 	 */
 	const unsetCredential = (credentialType: string, sourceNodeName?: string): void => {
-		const removeCredentialFromNode = (nodeName: string) => {
+		for (const nodeName of getAffectedNodeNames(credentialType, sourceNodeName)) {
 			const node = workflowsStore.getNodeByName(nodeName);
-			if (!node) return;
+			if (!node) continue;
 
 			const updatedCredentials = { ...node.credentials };
 			delete updatedCredentials[credentialType];
@@ -743,33 +737,6 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 					credentials: updatedCredentials,
 				},
 			});
-		};
-
-		const credState = sourceNodeName
-			? credentialTypeStates.value.find(
-					(s) =>
-						s.credentialType === credentialType && s.nodes.some((n) => n.name === sourceNodeName),
-				)
-			: credentialTypeStates.value.find((s) => s.credentialType === credentialType);
-
-		if (credState) {
-			for (const stateNode of credState.nodes) {
-				removeCredentialFromNode(stateNode.name);
-			}
-		} else if (sourceNodeName) {
-			// Node is handled by nodeStates (has parameter issues).
-			// Propagate removal to all nodes sharing this credential type.
-			const allNStates = nodeStates.value;
-			const sourceEntry = allNStates.find(
-				(s) => s.credentialType === credentialType && s.node.name === sourceNodeName,
-			);
-			if (sourceEntry?.allNodesUsingCredential) {
-				for (const node of sourceEntry.allNodesUsingCredential) {
-					removeCredentialFromNode(node.name);
-				}
-			} else {
-				removeCredentialFromNode(sourceNodeName);
-			}
 		}
 
 		nodeHelpers.updateNodesCredentialsIssues();
@@ -787,6 +754,22 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	 * that doesn't already have one assigned.
 	 * Runs once on initial load to pre-fill credential pickers.
 	 */
+	const tryAutoApplyCredential = (
+		credentialType: string,
+		nodeTypes: string[],
+		sourceNodeName?: string,
+	): void => {
+		if (nodeTypes.some(isHttpRequestNodeType)) return;
+		const available = credentialsStore.getCredentialsByType(credentialType);
+		if (available.length === 0) return;
+		const mostRecent = available.reduce(
+			(best, current) => (best.updatedAt > current.updatedAt ? best : current),
+			available[0],
+		);
+		autoAppliedCredentialIds.value.add(mostRecent.id);
+		setCredential(credentialType, mostRecent.id, sourceNodeName);
+	};
+
 	const autoSelectCredentials = (): void => {
 		// Snapshot both arrays before iterating — setCredential mutates the store,
 		// which recomputes these computed values mid-loop.
@@ -795,37 +778,15 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 
 		for (const credState of credStates) {
 			if (credState.selectedCredentialId) continue;
-			if (
-				credState.nodes.some(
-					(n) => n.type === HTTP_REQUEST_NODE_TYPE || n.type === HTTP_REQUEST_TOOL_NODE_TYPE,
-				)
-			)
-				continue;
-			const available = credentialsStore.getCredentialsByType(credState.credentialType);
-			if (available.length === 0) continue;
-			const mostRecent = available.reduce(
-				(best, current) => (best.updatedAt > current.updatedAt ? best : current),
-				available[0],
+			tryAutoApplyCredential(
+				credState.credentialType,
+				credState.nodes.map((n) => n.type),
 			);
-			autoAppliedCredentialIds.value.add(mostRecent.id);
-			setCredential(credState.credentialType, mostRecent.id);
 		}
 
 		for (const nodeState of nStates) {
 			if (!nodeState.credentialType || nodeState.selectedCredentialId) continue;
-			if (
-				nodeState.node.type === HTTP_REQUEST_NODE_TYPE ||
-				nodeState.node.type === HTTP_REQUEST_TOOL_NODE_TYPE
-			)
-				continue;
-			const available = credentialsStore.getCredentialsByType(nodeState.credentialType);
-			if (available.length === 0) continue;
-			const mostRecent = available.reduce(
-				(best, current) => (best.updatedAt > current.updatedAt ? best : current),
-				available[0],
-			);
-			autoAppliedCredentialIds.value.add(mostRecent.id);
-			setCredential(nodeState.credentialType, mostRecent.id, nodeState.node.name);
+			tryAutoApplyCredential(nodeState.credentialType, [nodeState.node.type], nodeState.node.name);
 		}
 	};
 

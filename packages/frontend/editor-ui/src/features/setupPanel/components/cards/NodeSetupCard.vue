@@ -2,7 +2,7 @@
 import { computed, ref, watch, provide } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
-import type { INodeProperties } from 'n8n-workflow';
+import { MANUAL_TRIGGER_NODE_TYPE, type INodeProperties } from 'n8n-workflow';
 
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
@@ -16,11 +16,8 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import SetupCard from '@/features/setupPanel/components/cards/SetupCard.vue';
-import {
-	ExpressionLocalResolveContextSymbol,
-	HTTP_REQUEST_NODE_TYPE,
-	HTTP_REQUEST_TOOL_NODE_TYPE,
-} from '@/app/constants';
+import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
+import { isHttpRequestNodeType } from '@/features/setupPanel/setupPanel.utils';
 import { useExpressionResolveCtx } from '@/features/workflows/canvas/experimental/composables/useExpressionResolveCtx';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -38,6 +35,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const setupPanelStore = useSetupPanelStore();
 const nodeTypesStore = useNodeTypesStore();
 const credentialsStore = useCredentialsStore();
 const nodeHelpers = useNodeHelpers();
@@ -55,11 +53,7 @@ const nodeType = computed(() =>
 	nodeTypesStore.getNodeType(props.state.node.type, props.state.node.typeVersion),
 );
 
-const isHttpRequestNode = computed(
-	() =>
-		props.state.node.type === HTTP_REQUEST_NODE_TYPE ||
-		props.state.node.type === HTTP_REQUEST_TOOL_NODE_TYPE,
-);
+const isHttpRequestNode = computed(() => isHttpRequestNodeType(props.state.node.type));
 
 const hasCredential = computed(() => !!props.state.credentialType);
 
@@ -68,7 +62,7 @@ const hasCredential = computed(() => !!props.state.credentialType);
 // - Non-triggers: only nodes with main or aiTool inputs (not AI sub-nodes like memory, model, etc.).
 const executableNode = computed(() => {
 	if (props.state.isTrigger) {
-		if (!props.firstTriggerName) return null;
+		if (!props.firstTriggerName || props.state.node.type === MANUAL_TRIGGER_NODE_TYPE) return null;
 		return props.state.node.name === props.firstTriggerName ? props.state.node : null;
 	}
 	if (!nodeHelpers.isNodeExecutable(props.state.node, true, [])) return null;
@@ -156,7 +150,7 @@ const telemetryPayload = computed(() => {
 });
 
 const onCredentialSelected = (updateInfo: INodeUpdatePropertiesInformation) => {
-	if (!props.state.credentialType) return;
+	if (!props.state.credentialType) throw new Error('Unexpected credential selection');
 	setupCard.value?.markInteracted();
 
 	const credentialData = updateInfo.properties.credentials?.[props.state.credentialType];
@@ -193,8 +187,6 @@ const onValueChanged = (parameterData: IUpdateInformation) => {
 	nodeHelpers.updateNodesParameterIssues();
 };
 
-const setupPanelStore = useSetupPanelStore();
-
 const onSharedNodesHintEnter = () => {
 	setupPanelStore.setHighlightedNodes((props.state.allNodesUsingCredential ?? []).map((n) => n.id));
 };
@@ -228,6 +220,10 @@ const cardComplete = computed(() => {
 	}
 	return props.state.isComplete;
 });
+
+const highlightNodeIds = computed(() => {
+	return (props.state.allNodesUsingCredential ?? [props.state.node]).map(({ id }) => id);
+});
 </script>
 
 <template>
@@ -242,7 +238,7 @@ const cardComplete = computed(() => {
 		:is-trigger="state.isTrigger"
 		:is-testing-credential="isTestingCredential"
 		:telemetry-payload="telemetryPayload"
-		:highlight-node-ids="[state.node.id]"
+		:highlight-node-ids="highlightNodeIds"
 		card-test-id="node-setup-card"
 	>
 		<template #icon>
