@@ -14,7 +14,7 @@ const emit = defineEmits<{
 
 <template>
 	<div :class="$style.contentOverrideContainer" data-test-id="fromAI-override-field">
-		<div :class="[$style.iconStars, , $style.noCornersRight]">
+		<div :class="[$style.iconStars, $style.noCornersRight]">
 			<AiStarsIcon />
 		</div>
 		<div :class="$style.overrideInput">
