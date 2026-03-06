@@ -148,12 +148,20 @@ export function useWorkflowActivate() {
 				await handleWebhookConflictError(error);
 				return { success: false, errorHandled: true };
 			} else {
-				toast.showError(
-					error,
-					i18n.baseText('workflowActivator.showError.title', {
-						interpolate: { newStateName: 'published' },
-					}) + ':',
-				);
+				const nodeId = error.meta?.nodeId as string | undefined;
+				const node = nodeId ? workflowsStore.getNodeById(nodeId) : undefined;
+				const title = i18n.baseText('workflowActivator.showError.title', {
+					interpolate: { newStateName: 'published' },
+				});
+				const nodeMessage = node
+					? i18n.baseText('workflowActivator.showError.nodeError', {
+							interpolate: { nodeName: node.name },
+						})
+					: undefined;
+				toast.showError(error, title, {
+					message: nodeMessage,
+					description: error.meta?.description as string | undefined,
+				});
 
 				// Only update workflow state to inactive if this is not a validation error
 				if (!error.meta?.validationError) {
@@ -164,7 +172,7 @@ export function useWorkflowActivate() {
 					});
 				}
 			}
-			return { success: false };
+			return { success: false, errorHandled: true };
 		} finally {
 			updatingWorkflowActivation.value = false;
 		}

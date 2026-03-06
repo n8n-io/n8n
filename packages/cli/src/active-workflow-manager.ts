@@ -37,6 +37,8 @@ import type {
 	WorkflowId,
 } from 'n8n-workflow';
 import {
+	NodeApiError,
+	NodeError,
 	Workflow,
 	WorkflowActivationError,
 	WebhookPathTakenError,
@@ -64,6 +66,17 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 import { formatWorkflow } from '@/workflows/workflow.formatter';
+
+function getErrorNodeId(error: unknown): string | undefined {
+	if (error instanceof NodeError) return error.node.id;
+	if (error instanceof WorkflowActivationError) return error.node?.id;
+	return undefined;
+}
+
+function getErrorDescription(error: unknown): string | undefined {
+	if (error instanceof NodeApiError) return error.description ?? undefined;
+	return undefined;
+}
 
 interface QueuedActivation {
 	activationMode: WorkflowActivateMode;
@@ -726,13 +739,17 @@ export class ActiveWorkflowManager {
 	handleDisplayWorkflowActivationError({
 		workflowId,
 		errorMessage,
+		errorDescription,
+		nodeId,
 	}: {
 		workflowId: string;
 		errorMessage: string;
+		errorDescription?: string;
+		nodeId?: string;
 	}) {
 		this.push.broadcast({
 			type: 'workflowFailedToActivate',
-			data: { workflowId, errorMessage },
+			data: { workflowId, errorMessage, errorDescription, nodeId },
 		});
 	}
 
@@ -759,17 +776,19 @@ export class ActiveWorkflowManager {
 		} catch (e) {
 			const error = ensureError(e);
 			const { message } = error;
+			const nodeId = getErrorNodeId(e);
+			const errorDescription = getErrorDescription(e);
 
 			await this.workflowRepository.update(workflowId, { active: false, activeVersionId: null });
 
 			this.push.broadcast({
 				type: 'workflowFailedToActivate',
-				data: { workflowId, errorMessage: message },
+				data: { workflowId, errorMessage: message, nodeId, errorDescription },
 			});
 
 			await this.publisher.publishCommand({
 				command: 'display-workflow-activation-error',
-				payload: { workflowId, errorMessage: message },
+				payload: { workflowId, errorMessage: message, nodeId, errorDescription },
 			}); // instruct followers to show activation error in UI
 		}
 	}

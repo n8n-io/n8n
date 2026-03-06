@@ -33,8 +33,10 @@ import { FileLocation, BinaryDataService } from 'n8n-core';
 import type { INode, INodes, IWorkflowSettings, JsonValue, IConnections } from 'n8n-workflow';
 import {
 	NodeApiError,
+	NodeError,
 	PROJECT_ROOT,
 	Workflow,
+	WorkflowActivationError,
 	assert,
 	calculateWorkflowChecksum,
 } from 'n8n-workflow';
@@ -47,6 +49,7 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { WorkflowActivationBadRequestError } from '@/errors/response-errors/workflow-activation-bad-request.error';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { EventService } from '@/events/event.service';
@@ -66,6 +69,12 @@ import { getBase as getWorkflowExecutionData } from '@/workflow-execute-addition
 import { WorkflowValidationService } from './workflow-validation.service';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
+
+function getErrorNodeId(error: unknown): string | undefined {
+	if (error instanceof NodeError) return error.node.id;
+	if (error instanceof WorkflowActivationError) return error.node?.id;
+	return undefined;
+}
 
 @Service()
 export class WorkflowService {
@@ -534,11 +543,14 @@ export class WorkflowService {
 			workflow.activeVersionId = rollbackPayload.activeVersionId;
 			workflow.activeVersion = rollbackPayload.activeVersion;
 
-			const message =
-				error instanceof NodeApiError
-					? (error.description ?? error.message)
-					: (error as Error).message;
-			throw new BadRequestError(message);
+			const message = (error as Error).message;
+			const description =
+				error instanceof NodeApiError ? (error.description ?? undefined) : undefined;
+
+			throw new WorkflowActivationBadRequestError(message, {
+				nodeId: getErrorNodeId(error),
+				description,
+			});
 		} finally {
 			if (didPublish) {
 				assert(workflow.activeVersionId !== null);

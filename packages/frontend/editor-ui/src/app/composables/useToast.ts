@@ -130,9 +130,7 @@ export function useToast() {
 		return notification;
 	}
 
-	function collapsableDetails({ description, node }: NotificationErrorWithNodeAndDescription) {
-		if (!description) return '';
-
+	function collapsableDetails(description: string) {
 		const errorDescription =
 			description.length > 500 ? `${description.slice(0, 500)}...` : description;
 
@@ -145,21 +143,32 @@ export function useToast() {
 					>
 						${i18n.baseText('showMessage.showDetails')}
 					</summary>
-					<p>${node.name}: ${errorDescription}</p>
+					<p>${errorDescription}</p>
 				</details>
 			`;
 	}
 
-	function showError(e: Error | unknown, title: string, message?: string) {
+	function showError(
+		e: Error | unknown,
+		title: string,
+		options?: { message?: string; description?: string },
+	) {
 		const error = e as NotificationErrorWithNodeAndDescription;
+		const message = options?.message;
+		const description = options?.description ?? error.description;
+		const nodeLine =
+			!message && error.node?.name
+				? `${i18n.baseText('workflowActivator.showError.nodeError', { interpolate: { nodeName: error.node.name } })}<br/>`
+				: '';
 		const messageLine = message ? `${message}<br/>` : '';
 		showMessage(
 			{
 				title,
 				message: `
 					${messageLine}
+					${nodeLine}
 					<i>${error.message}</i>
-					${collapsableDetails(error)}`,
+					${description ? collapsableDetails(description) : ''}`,
 				type: 'error',
 				duration: 0,
 			},
