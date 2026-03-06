@@ -379,17 +379,18 @@ export class SecretsProvidersConnectionsService {
 			) {
 				// Delete the connection entirely; DB cascade removes the access entry too
 				await this.repository.delete({ id: access.secretsProviderConnectionId });
-			} else {
-				// Remove only this project's access and disable the connection
-				await this.projectAccessRepository.delete({
-					projectId,
-					secretsProviderConnectionId: access.secretsProviderConnectionId,
-				});
-				await this.repository.update(
-					{ id: access.secretsProviderConnectionId },
-					{ isEnabled: false },
-				);
+				return;
 			}
+
+			// Remove only this project's access and disable the connection
+			await this.projectAccessRepository.delete({
+				projectId,
+				secretsProviderConnectionId: access.secretsProviderConnectionId,
+			});
+			await this.repository.update(
+				{ id: access.secretsProviderConnectionId },
+				{ isEnabled: false },
+			);
 		}
 	}
 
