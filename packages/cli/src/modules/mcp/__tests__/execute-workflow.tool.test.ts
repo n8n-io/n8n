@@ -176,6 +176,102 @@ describe('execute-workflow MCP tool', () => {
 				);
 			});
 
+			test('includes workflow pinData for manual executions', async () => {
+				const workflowPinData = {
+					SomeNode: [{ json: { pinned: 'data' } }],
+					AnotherNode: [{ json: { more: 'pinned' } }],
+				};
+				const workflow = createWorkflow({
+					activeVersionId: null,
+					settings: { availableInMCP: true },
+					pinData: workflowPinData,
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'WebhookNode',
+							type: WEBHOOK_NODE_TYPE,
+							typeVersion: 1,
+							position: [0, 0],
+							disabled: false,
+							parameters: {},
+						} as INode,
+					],
+				});
+				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
+				(workflowRunner.run as jest.Mock).mockResolvedValue('execution-id');
+				(activeExecutions.getPostExecutePromise as jest.Mock).mockResolvedValue({
+					status: 'success',
+					data: { resultData: { runData: {} } },
+				});
+
+				await executeWorkflow(
+					user,
+					workflowFinderService,
+					activeExecutions,
+					workflowRunner,
+					mcpService,
+					'manual-workflow-with-pindata',
+					{ type: 'webhook', webhookData: { method: 'POST', body: { test: 'input' } } },
+					'manual',
+				);
+
+				const runCall = (workflowRunner.run as jest.Mock).mock
+					.calls[0][0] as IWorkflowExecutionDataProcess;
+
+				expect(runCall.pinData).toMatchObject({
+					WebhookNode: [{ json: { headers: {}, query: {}, body: { test: 'input' } } }], // Trigger pin data
+					SomeNode: [{ json: { pinned: 'data' } }], // Workflow pin data
+					AnotherNode: [{ json: { more: 'pinned' } }], // Workflow pin data
+				});
+			});
+
+			test('does not include workflow pinData for production executions', async () => {
+				const workflowPinData = {
+					SomeNode: [{ json: { pinned: 'data' } }],
+				};
+				const workflow = createWorkflow({
+					activeVersionId: uuid(),
+					settings: { availableInMCP: true },
+					pinData: workflowPinData,
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'WebhookNode',
+							type: WEBHOOK_NODE_TYPE,
+							typeVersion: 1,
+							position: [0, 0],
+							disabled: false,
+							parameters: {},
+						} as INode,
+					],
+				});
+				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
+				(workflowRunner.run as jest.Mock).mockResolvedValue('execution-id');
+				(activeExecutions.getPostExecutePromise as jest.Mock).mockResolvedValue({
+					status: 'success',
+					data: { resultData: { runData: {} } },
+				});
+
+				await executeWorkflow(
+					user,
+					workflowFinderService,
+					activeExecutions,
+					workflowRunner,
+					mcpService,
+					'production-workflow-with-pindata',
+					undefined,
+					'production',
+				);
+
+				const runCall = (workflowRunner.run as jest.Mock).mock
+					.calls[0][0] as IWorkflowExecutionDataProcess;
+
+				expect(runCall.pinData).toMatchObject({
+					WebhookNode: [{ json: { headers: {}, query: {}, body: {} } }],
+				});
+				expect(runCall.pinData).not.toHaveProperty('SomeNode');
+			});
+
 			test('throws error when workflow has unsupported trigger nodes', async () => {
 				const workflow = createWorkflow({
 					activeVersionId: uuid(),
