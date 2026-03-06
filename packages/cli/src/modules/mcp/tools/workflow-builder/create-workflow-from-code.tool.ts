@@ -1,10 +1,13 @@
-import { type User, WorkflowEntity } from '@n8n/db';
+import { type User, type ProjectRepository, WorkflowEntity } from '@n8n/db';
 import z from 'zod';
 
+import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
+import { autoPopulateNodeCredentials } from './credentials-auto-assign';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
-import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
 
+import type { CredentialsService } from '@/credentials/credentials.service';
+import type { NodeTypes } from '@/node-types';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowCreationService } from '@/workflows/workflow-creation.service';
@@ -40,6 +43,20 @@ const outputSchema = {
 	name: z.string().describe('The name of the created workflow'),
 	nodeCount: z.number().describe('The number of nodes in the workflow'),
 	url: z.string().describe('The URL to open the workflow in n8n'),
+	autoAssignedCredentials: z
+		.array(
+			z.object({
+				nodeName: z.string().describe('The name of the node that had credentials auto-assigned'),
+				credentialName: z.string().describe('The name of the credential that was auto-assigned'),
+			}),
+		)
+		.describe('List of credentials that were automatically assigned to nodes'),
+	note: z
+		.string()
+		.optional()
+		.describe(
+			'Additional notes about the workflow creation, such as any nodes that were skipped during credential auto-assignment.',
+		),
 } satisfies z.ZodRawShape;
 
 /**
@@ -51,6 +68,9 @@ export const createCreateWorkflowFromCodeTool = (
 	workflowCreationService: WorkflowCreationService,
 	urlService: UrlService,
 	telemetry: Telemetry,
+	nodeTypes: NodeTypes,
+	credentialsService: CredentialsService,
+	projectRepository: ProjectRepository,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName,
 	config: {
@@ -103,6 +123,22 @@ export const createCreateWorkflowFromCodeTool = (
 				meta: { ...workflowJson.meta, aiBuilderAssisted: true },
 			});
 
+			// Resolve the effective project ID — default to the user's personal project
+			let effectiveProjectId = projectId;
+			if (!effectiveProjectId) {
+				const personalProject = await projectRepository.getPersonalProjectForUserOrFail(user.id);
+				effectiveProjectId = personalProject.id;
+			}
+
+			const { assignments: credentialAssignments, skippedHttpNodes } =
+				await autoPopulateNodeCredentials(
+					newWorkflow,
+					user,
+					nodeTypes,
+					credentialsService,
+					effectiveProjectId,
+				);
+
 			const savedWorkflow = await workflowCreationService.createWorkflow(user, newWorkflow, {
 				projectId,
 			});
@@ -124,6 +160,10 @@ export const createCreateWorkflowFromCodeTool = (
 				name: savedWorkflow.name,
 				nodeCount: savedWorkflow.nodes.length,
 				url: workflowUrl,
+				autoAssignedCredentials: credentialAssignments,
+				note: skippedHttpNodes.length
+					? `HTTP Request nodes (${skippedHttpNodes.join(', ')}) were skipped during credential auto-assignment. Their credentials must be configured manually.`
+					: undefined,
 			};
 
 			return {

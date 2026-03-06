@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
-import { User } from '@n8n/db';
+import { ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import {
@@ -28,6 +28,7 @@ import { WorkflowBuilderToolsService } from './tools/workflow-builder/workflow-b
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { NodeTypes } from '@/node-types';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { UrlService } from '@/services/url.service';
@@ -70,6 +71,9 @@ export class McpService {
 		private readonly projectService: ProjectService,
 		private readonly workflowBuilderToolsService: WorkflowBuilderToolsService,
 		private readonly workflowCreationService: WorkflowCreationService,
+		private readonly nodeTypes: NodeTypes,
+		private readonly projectRepository: ProjectRepository,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 	) {}
 
 	async getServer(user: User) {
@@ -174,6 +178,9 @@ export class McpService {
 			this.workflowCreationService,
 			this.urlService,
 			this.telemetry,
+			this.nodeTypes,
+			this.credentialsService,
+			this.projectRepository,
 		);
 		server.registerTool(createTool.name, createTool.config, createTool.handler);
 
@@ -186,6 +193,9 @@ export class McpService {
 			this.workflowService,
 			this.urlService,
 			this.telemetry,
+			this.nodeTypes,
+			this.credentialsService,
+			this.sharedWorkflowRepository,
 		);
 		server.registerTool(updateTool.name, updateTool.config, updateTool.handler);
 

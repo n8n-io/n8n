@@ -1,13 +1,22 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import { User, WorkflowEntity } from '@n8n/db';
+import { SharedWorkflowRepository, User, WorkflowEntity } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 
 import { createUpdateWorkflowTool } from '../tools/workflow-builder/update-workflow.tool';
 
+import { CredentialsService } from '@/credentials/credentials.service';
+import { NodeTypes } from '@/node-types';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+
+// Mock credentials auto-assign
+const mockAutoPopulateNodeCredentials = jest.fn();
+jest.mock('../tools/workflow-builder/credentials-auto-assign', () => ({
+	autoPopulateNodeCredentials: (...args: unknown[]) =>
+		mockAutoPopulateNodeCredentials(...args) as unknown,
+}));
 
 // Mock dynamic imports
 const mockParseAndValidate = jest.fn();
@@ -74,6 +83,9 @@ describe('update-workflow MCP tool', () => {
 	let updateMock: jest.Mock;
 	let urlService: UrlService;
 	let telemetry: Telemetry;
+	let nodeTypes: NodeTypes;
+	let credentialsService: CredentialsService;
+	let sharedWorkflowRepository: SharedWorkflowRepository;
 
 	const mockExistingWorkflow = Object.assign(new WorkflowEntity(), {
 		id: 'wf-1',
@@ -102,13 +114,28 @@ describe('update-workflow MCP tool', () => {
 		telemetry = mockInstance(Telemetry, {
 			track: jest.fn(),
 		});
+		nodeTypes = mockInstance(NodeTypes);
+		credentialsService = mockInstance(CredentialsService);
+		sharedWorkflowRepository = mockInstance(SharedWorkflowRepository, {
+			findOneOrFail: jest.fn().mockResolvedValue({ projectId: 'project-1' }),
+		});
 
 		mockParseAndValidate.mockResolvedValue({ workflow: mockWorkflowJson });
 		mockStripImportStatements.mockImplementation((code: string) => code);
+		mockAutoPopulateNodeCredentials.mockResolvedValue({ assignments: [], skippedHttpNodes: [] });
 	});
 
 	const createTool = () =>
-		createUpdateWorkflowTool(user, workflowFinderService, workflowService, urlService, telemetry);
+		createUpdateWorkflowTool(
+			user,
+			workflowFinderService,
+			workflowService,
+			urlService,
+			telemetry,
+			nodeTypes,
+			credentialsService,
+			sharedWorkflowRepository,
+		);
 
 	// Helper to call handler with proper typing (optional fields default to undefined)
 	const callHandler = async (
@@ -159,6 +186,7 @@ describe('update-workflow MCP tool', () => {
 			expect(response.name).toBeDefined();
 			expect(response.nodeCount).toBe(2);
 			expect(response.url).toBe('https://n8n.example.com/workflow/wf-1');
+			expect(response.autoAssignedCredentials).toEqual([]);
 			expect(result.isError).toBeUndefined();
 		});
 
@@ -274,6 +302,49 @@ describe('update-workflow MCP tool', () => {
 						error: 'Parse failed',
 					}),
 				}),
+			);
+		});
+
+		test('calls autoPopulateNodeCredentials with correct arguments', async () => {
+			await callHandler({ workflowId: 'wf-1', code: 'const wf = ...' });
+
+			expect(mockAutoPopulateNodeCredentials).toHaveBeenCalledWith(
+				expect.any(WorkflowEntity),
+				user,
+				nodeTypes,
+				credentialsService,
+				'project-1',
+			);
+		});
+
+		test('includes auto-assigned credentials in response', async () => {
+			mockAutoPopulateNodeCredentials.mockResolvedValue({
+				assignments: [
+					{ nodeName: 'Webhook', credentialName: 'My Cred', credentialType: 'webhookAuth' },
+				],
+				skippedHttpNodes: [],
+			});
+
+			const result = await callHandler({ workflowId: 'wf-1', code: 'const wf = ...' });
+
+			const response = parseResult(result);
+			expect(response.autoAssignedCredentials).toEqual([
+				{ nodeName: 'Webhook', credentialName: 'My Cred', credentialType: 'webhookAuth' },
+			]);
+			expect(response.note).toBeUndefined();
+		});
+
+		test('includes note about skipped HTTP nodes', async () => {
+			mockAutoPopulateNodeCredentials.mockResolvedValue({
+				assignments: [],
+				skippedHttpNodes: ['HTTP Request', 'HTTP Request1'],
+			});
+
+			const result = await callHandler({ workflowId: 'wf-1', code: 'const wf = ...' });
+
+			const response = parseResult(result);
+			expect(response.note).toBe(
+				'HTTP Request nodes (HTTP Request, HTTP Request1) were skipped during credential auto-assignment. Their credentials must be configured manually.',
 			);
 		});
 	});
