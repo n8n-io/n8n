@@ -78,15 +78,31 @@ const agentDisplayName = computed(() => {
 	return workflowsStore.workflowName || 'Workflow';
 });
 
-// Auto-select the current workflow as the n8n agent
-const selectedModel = computed<ChatModelDto | null>(() => {
+const workflowAgent = computed<ChatModelDto | null>(() => {
 	const workflowId = workflowsStore.workflowId;
 	if (!workflowId) return null;
 
-	return chatStore.getAgent(
+	const agent = chatStore.getAgent(
 		{ provider: 'n8n', workflowId },
 		{ name: agentDisplayName.value, icon: null },
 	);
+
+	const options = chatTriggerNode.value?.parameters?.options as Record<string, unknown> | undefined;
+	if (options) {
+		return {
+			...agent,
+			metadata: {
+				...agent.metadata,
+				allowFileUploads: options.allowFileUploads === true,
+				allowedFilesMimeTypes:
+					typeof options.allowedFilesMimeTypes === 'string'
+						? options.allowedFilesMimeTypes
+						: agent.metadata.allowedFilesMimeTypes,
+			},
+		};
+	}
+
+	return agent;
 });
 
 const chatMessages = computed(() => chatStore.getActiveMessages(sessionId.value));
@@ -206,12 +222,12 @@ async function onStop() {
 }
 
 async function handleRegenerateMessage(message: ChatMessageType) {
-	if (isResponding.value || message.type !== 'ai' || !selectedModel.value) return;
+	if (isResponding.value || message.type !== 'ai' || !workflowAgent.value) return;
 
 	await chatStore.regenerateMessage(
 		sessionId.value,
 		message.id,
-		selectedModel.value,
+		workflowAgent.value,
 		{} as ChatHubSendMessageRequest['credentials'],
 	);
 }
@@ -243,7 +259,7 @@ defineExpose({
 	>
 		<div v-if="!props.floating" :class="$style.header">
 			<div :class="$style.headerTitle">
-				<ChatAgentAvatar :agent="selectedModel" size="sm" />
+				<ChatAgentAvatar :agent="workflowAgent" size="sm" />
 				<N8nText size="medium" :bold="true" :class="$style.headerTitleText">
 					{{ agentDisplayName }}
 				</N8nText>
@@ -325,7 +341,7 @@ defineExpose({
 				ref="scrollable"
 				:class="{ [$style.scrollable]: true, [$style.isNewSession]: isNewSession }"
 			>
-				<ChatGreetings v-if="isNewSession" :selected-agent="selectedModel" />
+				<ChatGreetings v-if="isNewSession" :selected-agent="workflowAgent" />
 
 				<div v-else role="log" aria-live="polite" :class="$style.messageList">
 					<ChatMessage
@@ -336,8 +352,8 @@ defineExpose({
 						:is-editing="false"
 						:is-edit-submitting="false"
 						:has-session-streaming="isResponding"
-						:cached-agent-display-name="selectedModel?.name ?? null"
-						:cached-agent-icon="selectedModel?.icon ?? null"
+						:cached-agent-display-name="workflowAgent?.name ?? null"
+						:cached-agent-icon="workflowAgent?.icon ?? null"
 						@regenerate="handleRegenerateMessage"
 					/>
 				</div>
@@ -355,7 +371,7 @@ defineExpose({
 					<ChatPrompt
 						ref="inputRef"
 						:class="$style.prompt"
-						:selected-model="selectedModel"
+						:selected-model="workflowAgent"
 						:checked-tool-ids="[]"
 						:messaging-state="messagingState"
 						:is-tools-selectable="false"
