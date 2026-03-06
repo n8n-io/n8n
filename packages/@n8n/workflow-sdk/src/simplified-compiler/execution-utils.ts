@@ -362,6 +362,37 @@ function buildAdditionalData(
 }
 
 // ---------------------------------------------------------------------------
+// Sub-workflow error detection
+// ---------------------------------------------------------------------------
+
+interface SubWorkflowErrorInfo {
+	workflowName: string;
+	nodeName: string;
+	error: string;
+}
+
+function findSubWorkflowError(
+	subWorkflowRuns: SubWorkflowRunEntry[],
+): SubWorkflowErrorInfo | undefined {
+	for (const entry of subWorkflowRuns) {
+		const runData = entry.run?.data?.resultData?.runData;
+		if (!runData) continue;
+		for (const [nodeName, taskDataArr] of Object.entries(runData)) {
+			for (const taskData of taskDataArr) {
+				if (taskData.error) {
+					return {
+						workflowName: entry.name,
+						nodeName,
+						error: taskData.error.message,
+					};
+				}
+			}
+		}
+	}
+	return undefined;
+}
+
+// ---------------------------------------------------------------------------
 // executeWorkflow — compile + run with pin data
 // ---------------------------------------------------------------------------
 
@@ -445,9 +476,23 @@ export async function executeWorkflow(
 			}
 		}
 
+		// Check sub-workflow runs for node-level errors
+		const subWorkflowError = findSubWorkflowError(subWorkflowRuns);
+
+		const mainSuccess = !hasError && result.status === 'success';
+		const overallSuccess = mainSuccess && !subWorkflowError;
+
+		let finalError = hasError
+			? ((resultError as Error)?.message ?? String(resultError))
+			: undefined;
+		if (!finalError && subWorkflowError) {
+			finalError = `Sub-workflow "${subWorkflowError.workflowName}" node "${subWorkflowError.nodeName}": ${subWorkflowError.error}`;
+			errorNode = errorNode ?? subWorkflowError.nodeName;
+		}
+
 		return {
-			success: !hasError && result.status === 'success',
-			error: hasError ? ((resultError as Error)?.message ?? String(resultError)) : undefined,
+			success: overallSuccess,
+			error: finalError,
 			errorNode,
 			durationMs: Date.now() - startTime,
 			executedNodes,

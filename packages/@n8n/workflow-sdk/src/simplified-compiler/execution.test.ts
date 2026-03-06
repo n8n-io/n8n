@@ -36,6 +36,15 @@ const SKIP_REASONS: Record<string, string> = {
 
 	// HTTP expression URLs reference upstream node outputs without pin data
 	w25: 'HTTP expression URLs reference upstream without pin data',
+
+	// Sub-workflow nodes reference upstream without pin data
+	w18: 'Sub-workflow node refs upstream without pin data',
+	w20: 'Sub-workflow node refs upstream without pin data',
+	w21: 'Sub-workflow node refs upstream without pin data',
+	w22: 'Sub-workflow node refs upstream without pin data',
+
+	// Try/catch sub-workflow makes real HTTP request (no pin data)
+	w24: 'Try/catch sub-workflow HTTP node has no pin data',
 };
 
 function getSkipReason(dir: string): string | undefined {
