@@ -499,9 +499,10 @@ function computeVariableAssignments(graph: SemanticGraph): Map<string, string> {
 	}
 
 	// First pass: collect code node imports to determine upstream variable names
-	// e.g. const tickers = $('GET api...').all().map(i => i.json)
+	// e.g. const tickers = $('GET api...').all().map(i => i.json) or $('...').first().json
 	const codeImportNames = new Map<string, string>(); // node name → local var name
-	const importPattern = /const (\w+) = \$\('([^']+)'\)\.all\(\)\.map\(i => i\.json\)/g;
+	const importPattern =
+		/const (\w+) = \$\('([^']+)'\)\.(?:all\(\)\.map\(i => i\.json\)|first\(\)\.json)/g;
 	for (const node of graph.nodes.values()) {
 		if (node.type !== 'n8n-nodes-base.code') continue;
 		const jsCode = (node.json.parameters?.jsCode as string) ?? '';
@@ -1220,10 +1221,11 @@ function emitCodeNode(node: SemanticNode, ctx: SimplifiedGenContext): void {
 
 	for (const line of lines) {
 		if (line.startsWith('// From:')) continue;
-		// Replace $('NodeName').all().map(i => i.json) with upstream variable reference
-		const importMatch = /^const (\w+) = \$\('([^']+)'\)\.all\(\)\.map\(i => i\.json\);?$/.exec(
-			line.trim(),
-		);
+		// Replace $('NodeName').all().map(i => i.json) or $('NodeName').first().json with upstream variable reference
+		const importMatch =
+			/^const (\w+) = \$\('([^']+)'\)\.(?:all\(\)\.map\(i => i\.json\)|first\(\)\.json);?$/.exec(
+				line.trim(),
+			);
 		if (importMatch) {
 			const localVar = importMatch[1];
 			const sourceName = importMatch[2];

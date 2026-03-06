@@ -5,7 +5,7 @@ const code1 = node({
   config: {
     name: 'Code 1',
     parameters: {
-      jsCode: `// From: Start\nconst body = $('Start').all().map(i => i.json);\nconst msg = body;\nreturn [{ json: { msg } }];`,
+      jsCode: `// From: Webhook\nconst body = $('Webhook').first().json;\nconst msg = body;\nreturn [{ json: { msg } }];`,
       mode: 'runOnceForAllItems'
     },
     executeOnce: true

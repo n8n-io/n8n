@@ -2771,15 +2771,20 @@ function extractMemberChain(node: AcornNode): string | null {
 interface VarReference {
 	varName: string;
 	sourceNode: string;
+	kind?: 'io' | 'code';
 }
 
-function findReferencedVars(code: string, varSourceMap: Map<string, string>): VarReference[] {
+function findReferencedVars(
+	code: string,
+	varSourceMap: Map<string, string>,
+	varSourceKind?: Map<string, 'io' | 'code'>,
+): VarReference[] {
 	const refs: VarReference[] = [];
 	const seen = new Set<string>();
 	for (const [varName, sourceNode] of varSourceMap) {
 		const regex = new RegExp(`\\b${varName}\\b`);
 		if (regex.test(code) && !seen.has(varName)) {
-			refs.push({ varName, sourceNode });
+			refs.push({ varName, sourceNode, kind: varSourceKind?.get(varName) });
 			seen.add(varName);
 		}
 	}
@@ -2969,15 +2974,21 @@ function flushPendingCode(ctx: TranspilerContext): void {
 		codeParts.push(ctx.pendingStatements[i].source);
 	}
 	const codeSource = codeParts.join('');
-	const referencedVars = findReferencedVars(codeSource, ctx.varSourceMap);
+	const referencedVars = findReferencedVars(codeSource, ctx.varSourceMap, ctx.varSourceKind);
 	const jsCodeLines: string[] = [];
 
 	if (referencedVars.length > 0) {
 		jsCodeLines.push(`// From: ${referencedVars[0].sourceNode}`);
 	}
 
-	for (const { varName, sourceNode } of referencedVars) {
-		jsCodeLines.push(`const ${varName} = $('${sourceNode}').all().map(i => i.json);`);
+	for (const { varName, sourceNode, kind } of referencedVars) {
+		// Use .first().json for IO-kind vars (webhook params, IO call results) for single-item access
+		// Use .all().map() for code-kind vars (variables from Code nodes) for array access
+		if (kind === 'io') {
+			jsCodeLines.push(`const ${varName} = $('${sourceNode}').first().json;`);
+		} else {
+			jsCodeLines.push(`const ${varName} = $('${sourceNode}').all().map(i => i.json);`);
+		}
 	}
 
 	// Escape backslashes and backticks in user code for safe embedding in template literal
@@ -3041,7 +3052,13 @@ function generateTriggerSDK(cb: CallbackInfo, varName: string): EmittedNode {
 	}
 
 	const configBody = configParts.length > 0 ? `{ ${configParts.join(', ')} }` : '{}';
-	const nodeName = 'Start';
+	// Derive node name from trigger type the same way the SDK builder does
+	const typeParts = triggerInfo.type.split('.');
+	const rawName = typeParts[typeParts.length - 1];
+	const nodeName = rawName
+		.replace(/([a-z])([A-Z])/g, '$1 $2')
+		.replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+		.replace(/^./, (s) => s.toUpperCase());
 	const sdkCode = `const ${varName} = trigger({ type: '${triggerInfo.type}', version: ${triggerInfo.version}, config: ${configBody} });`;
 
 	return { varName, sdkCode, kind: 'trigger', nodeName };

@@ -127,7 +127,7 @@ const code1 = node({
   config: {
     name: 'Code 1',
     parameters: {
-      jsCode: `// From: GET jsonplaceholder.typicode.com/users\nconst users = $('GET jsonplaceholder.typicode.com/users').all().map(i => i.json);\nconst active = users.filter((u) => u.id <= 5);\nreturn [{ json: { active } }];`,
+      jsCode: `// From: GET jsonplaceholder.typicode.com/users\nconst users = $('GET jsonplaceholder.typicode.com/users').first().json;\nconst active = users.filter((u) => u.id <= 5);\nreturn [{ json: { active } }];`,
       mode: 'runOnceForAllItems'
     },
     executeOnce: true

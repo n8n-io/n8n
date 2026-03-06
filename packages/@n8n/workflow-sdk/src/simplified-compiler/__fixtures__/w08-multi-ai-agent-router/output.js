@@ -5,7 +5,7 @@ const code1 = node({
   config: {
     name: 'Code 1',
     parameters: {
-      jsCode: `// From: Start\nconst body = $('Start').all().map(i => i.json);\nconst inputData = body.data;
+      jsCode: `// From: Webhook\nconst body = $('Webhook').first().json;\nconst inputData = body.data;
 const priority = body.priority || 'balanced';
 
 const complexity = inputData.length < 500 ? 1 : inputData.length < 2000 ? 2 : 3;

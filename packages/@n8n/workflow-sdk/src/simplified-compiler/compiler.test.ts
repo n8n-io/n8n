@@ -63,7 +63,7 @@ onManual(async () => {
 });
 `);
 			expect(result.code).toContain("$('");
-			expect(result.code).toContain('.all()');
+			expect(result.code).toContain('.first().json');
 			expect(result.code).not.toContain('$input');
 		});
 
@@ -159,7 +159,7 @@ onManual(async () => {
 `);
 			// Code node should reference previous HTTP node via $()
 			expect(result.code).toContain("$('");
-			expect(result.code).toContain('.all()');
+			expect(result.code).toContain('.first().json');
 		});
 
 		it('should generate workflow export', () => {
@@ -263,8 +263,8 @@ onWebhook({ method: 'POST', path: '/orders' }, async ({ body }) => {
 });
 `);
 			expect(result.errors).toHaveLength(0);
-			// body should reference Start (trigger)
-			expect(result.code).toContain("$('Start')");
+			// body should reference Webhook (trigger node name)
+			expect(result.code).toContain("$('Webhook')");
 		});
 	});
 

@@ -35,7 +35,7 @@ const code1 = node({
   config: {
     name: 'Code 1',
     parameters: {
-      jsCode: `// From: GET api.binance.com/api/v1/ticker/24hr\nconst tickers = $('GET api.binance.com/api/v1/ticker/24hr').all().map(i => i.json);\nconst significant = tickers
+      jsCode: `// From: GET api.binance.com/api/v1/ticker/24hr\nconst tickers = $('GET api.binance.com/api/v1/ticker/24hr').first().json;\nconst significant = tickers
 	.filter(function (coin) {
 		return Math.abs(parseFloat(coin.priceChangePercent)) >= 15;
 	})

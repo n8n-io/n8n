@@ -41,7 +41,7 @@ const code2 = node({
   config: {
     name: 'Code 2',
     parameters: {
-      jsCode: `// From: Code 1\nconst formattedDate = $('Code 1').all().map(i => i.json);\nconst page = $('GET www.blu-ray.com/movies/movies.php').all().map(i => i.json);\nconst links = extractLinks(page);
+      jsCode: `// From: Code 1\nconst formattedDate = $('Code 1').all().map(i => i.json);\nconst page = $('GET www.blu-ray.com/movies/movies.php').first().json;\nconst links = extractLinks(page);
 const todaysItems = links.filter(function (link) {
 	return link.date === formattedDate;
 });

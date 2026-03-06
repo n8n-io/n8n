@@ -49,7 +49,7 @@ const set1 = node({
             "id": "assign_0",
             "name": "orderId",
             "type": "string",
-            "value": "={{ $('Start').first().json.id }}"
+            "value": "={{ $('Webhook').first().json.id }}"
           }
         ]
       }

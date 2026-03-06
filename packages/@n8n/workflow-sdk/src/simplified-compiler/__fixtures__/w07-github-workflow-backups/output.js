@@ -6,7 +6,7 @@ const loop_wf_code1 = node({
   config: {
     name: 'Code 1',
     parameters: {
-      jsCode: `// From: Code 1\nconst config = $('Code 1').all().map(i => i.json);\nconst wf = $('When Executed by Another Workflow').all().map(i => i.json);\nconst filePath = config.path + '/' + wf.name + '.json';
+      jsCode: `// From: Code 1\nconst config = $('Code 1').all().map(i => i.json);\nconst wf = $('When Executed by Another Workflow').first().json;\nconst filePath = config.path + '/' + wf.name + '.json';
 
 function sortKeys(obj) {
 	return Object.keys(obj)
@@ -163,7 +163,7 @@ const code2 = node({
   config: {
     name: 'Code 2',
     parameters: {
-      jsCode: `// From: GET localhost/api/v1/workflows\nconst workflows = $('GET localhost/api/v1/workflows').all().map(i => i.json);\nconst recent = workflows.filter(function (w) {
+      jsCode: `// From: GET localhost/api/v1/workflows\nconst workflows = $('GET localhost/api/v1/workflows').first().json;\nconst recent = workflows.filter(function (w) {
 	return new Date(w.updatedAt) >= new Date(Date.now() - 86400000);
 });\nreturn [{ json: { recent } }];`,
       mode: 'runOnceForAllItems'
