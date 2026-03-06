@@ -364,7 +364,12 @@ export class SecretsProvidersConnectionsService {
 		});
 	}
 
-	async deleteConnectionsByProjectId(user: User, projectId: string): Promise<void> {
+	/**
+	 * Cleans up external-secrets connections when a project is deleted.
+	 * - Deletes connection if requester has global delete scope or project access is owner.
+	 * - Otherwise removes this project's access and disables the connection.
+	 */
+	async cleanupConnectionsForProjectDeletion(projectId: string, user: User): Promise<void> {
 		const accessEntries = await this.projectAccessRepository.findByProjectId(projectId);
 
 		for (const access of accessEntries) {
