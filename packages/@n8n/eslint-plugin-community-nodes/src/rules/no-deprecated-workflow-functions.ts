@@ -1,7 +1,6 @@
-import type { TSESTree } from '@typescript-eslint/utils';
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 
-import { createRule } from '../utils/index.js';
+import { createRule, isThisHelpersAccess } from '../utils/index.js';
 
 const DEPRECATED_FUNCTIONS = {
 	request: 'httpRequest',
@@ -166,21 +165,6 @@ export const NoDeprecatedWorkflowFunctionsRule = createRule({
 		};
 	},
 });
-
-/**
- * Check if the MemberExpression follows the this.helpers.* pattern
- */
-function isThisHelpersAccess(node: TSESTree.MemberExpression): boolean {
-	if (node.object?.type === AST_NODE_TYPES.MemberExpression) {
-		const outerObject = node.object;
-		return (
-			outerObject.object?.type === AST_NODE_TYPES.ThisExpression &&
-			outerObject.property?.type === AST_NODE_TYPES.Identifier &&
-			outerObject.property.name === 'helpers'
-		);
-	}
-	return false;
-}
 
 function getDeprecationMessage(functionName: string): string {
 	switch (functionName) {

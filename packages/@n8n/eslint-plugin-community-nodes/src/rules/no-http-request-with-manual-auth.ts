@@ -17,9 +17,8 @@
  */
 
 import type { TSESTree } from '@typescript-eslint/utils';
-import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 
-import { createRule } from '../utils/index.js';
+import { createRule, isThisHelpersMethodCall, isThisMethodCall } from '../utils/index.js';
 
 type FunctionScope = {
 	getCredentialsCall: TSESTree.CallExpression | null;
@@ -77,28 +76,3 @@ export const NoHttpRequestWithManualAuthRule = createRule({
 		};
 	},
 });
-
-/** Matches: this.methodName(...) */
-function isThisMethodCall(node: TSESTree.CallExpression, method: string): boolean {
-	return (
-		node.callee.type === AST_NODE_TYPES.MemberExpression &&
-		node.callee.object.type === AST_NODE_TYPES.ThisExpression &&
-		node.callee.property.type === AST_NODE_TYPES.Identifier &&
-		node.callee.property.name === method
-	);
-}
-
-/** Matches: this.helpers.methodName(...) */
-function isThisHelpersMethodCall(node: TSESTree.CallExpression, method: string): boolean {
-	const { callee } = node;
-	if (callee.type !== AST_NODE_TYPES.MemberExpression) return false;
-	if (callee.property.type !== AST_NODE_TYPES.Identifier || callee.property.name !== method)
-		return false;
-	const helpers = callee.object;
-	return (
-		helpers.type === AST_NODE_TYPES.MemberExpression &&
-		helpers.object.type === AST_NODE_TYPES.ThisExpression &&
-		helpers.property.type === AST_NODE_TYPES.Identifier &&
-		helpers.property.name === 'helpers'
-	);
-}
