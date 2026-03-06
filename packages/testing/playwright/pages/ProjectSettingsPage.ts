@@ -126,5 +126,4 @@ export class ProjectSettingsPage extends BasePage {
 	getExternalSecretsTableRow(name: string): Locator {
 		return this.getExternalSecretsTable().getByText(name);
 	}
-
 }
