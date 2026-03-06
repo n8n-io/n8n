@@ -1,0 +1,46 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`v2/components/DropdownMenuSearch > rendering > should render correctly 1`] = `
+<div
+  class="search-container"
+>
+  <!--v-if-->
+  <input
+    class="search-input"
+    placeholder="Search..."
+    type="text"
+    value=""
+  />
+  <!--v-if-->
+</div>
+`;
+
+exports[`v2/components/DropdownMenuSearch > rendering > should render with custom placeholder 1`] = `
+<div
+  class="search-container"
+>
+  <!--v-if-->
+  <input
+    class="search-input"
+    placeholder="Type to filter..."
+    type="text"
+    value=""
+  />
+  <!--v-if-->
+</div>
+`;
+
+exports[`v2/components/DropdownMenuSearch > rendering > should render with value 1`] = `
+<div
+  class="search-container"
+>
+  <!--v-if-->
+  <input
+    class="search-input"
+    placeholder="Search..."
+    type="text"
+    value="search term"
+  />
+  <!--v-if-->
+</div>
+`;

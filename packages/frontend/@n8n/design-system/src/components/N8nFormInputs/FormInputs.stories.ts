@@ -1,14 +1,14 @@
-import { action } from '@storybook/addon-actions';
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
+import { action } from 'storybook/actions';
 
 import N8nFormInputs from './FormInputs.vue';
 
 export default {
-	title: 'Modules/FormInputs',
+	title: 'Core/FormInputs',
 	component: N8nFormInputs,
 	argTypes: {},
 	parameters: {
-		backgrounds: { default: '--color-background-light' },
+		backgrounds: { default: '--color--background--light-2' },
 	},
 };
 

@@ -1,6 +1,6 @@
-import { UpdateProjectDto } from '../update-project.dto';
+import { UpdateProjectWithRelationsDto } from '../update-project.dto';
 
-describe('UpdateProjectDto', () => {
+describe('UpdateProjectWithRelationsDto', () => {
 	describe('Valid requests', () => {
 		test.each([
 			{
@@ -70,7 +70,7 @@ describe('UpdateProjectDto', () => {
 				},
 			},
 		])('should pass validation for $name', ({ request }) => {
-			const result = UpdateProjectDto.safeParse(request);
+			const result = UpdateProjectWithRelationsDto.safeParse(request);
 			expect(result.success).toBe(true);
 		});
 	});
@@ -120,7 +120,7 @@ describe('UpdateProjectDto', () => {
 					relations: [
 						{
 							userId: 'user-123',
-							role: 'invalid-role',
+							role: 'project:personalOwner',
 						},
 					],
 				},
@@ -137,7 +137,7 @@ describe('UpdateProjectDto', () => {
 				expectedErrorPath: ['description'],
 			},
 		])('should fail validation for $name', ({ request, expectedErrorPath }) => {
-			const result = UpdateProjectDto.safeParse(request);
+			const result = UpdateProjectWithRelationsDto.safeParse(request);
 
 			expect(result.success).toBe(false);
 

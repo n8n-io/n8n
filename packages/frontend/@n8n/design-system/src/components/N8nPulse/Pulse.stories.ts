@@ -1,13 +1,13 @@
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
 
 import N8nPulse from './Pulse.vue';
 
 export default {
-	title: 'Atoms/Pulse',
+	title: 'Core/Pulse',
 	component: N8nPulse,
 	argTypes: {},
 	parameters: {
-		backgrounds: { default: '--color-background-light' },
+		backgrounds: { default: '--color--background--light-2' },
 	},
 };
 

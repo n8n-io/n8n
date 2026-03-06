@@ -1,6 +1,6 @@
 import type { GlobalRole, Scope } from '../../types.ee';
 import { hasGlobalScope } from '../has-global-scope.ee';
-import { createAuthPrinicipal } from './utils';
+import { createAuthPrincipal } from './utils';
 
 describe('hasGlobalScope', () => {
 	describe('single scope checks', () => {
@@ -8,11 +8,12 @@ describe('hasGlobalScope', () => {
 			{ role: 'global:owner', scope: 'workflow:create', expected: true },
 			{ role: 'global:admin', scope: 'user:delete', expected: true },
 			{ role: 'global:member', scope: 'workflow:read', expected: false },
+			{ role: 'global:chatUser', scope: 'workflow:read', expected: false },
 			{ role: 'non:existent', scope: 'workflow:read', expected: false },
 		] as Array<{ role: GlobalRole; scope: Scope; expected: boolean }>)(
 			'$role with $scope -> $expected',
 			({ role, scope, expected }) => {
-				expect(hasGlobalScope(createAuthPrinicipal(role), scope)).toBe(expected);
+				expect(hasGlobalScope(createAuthPrincipal(role), scope)).toBe(expected);
 			},
 		);
 	});
@@ -20,7 +21,7 @@ describe('hasGlobalScope', () => {
 	describe('multiple scopes', () => {
 		test('oneOf mode (default)', () => {
 			expect(
-				hasGlobalScope(createAuthPrinicipal('global:member'), [
+				hasGlobalScope(createAuthPrincipal('global:member'), [
 					'tag:create',
 					'user:list',
 					// a member cannot create users
@@ -32,7 +33,7 @@ describe('hasGlobalScope', () => {
 		test('allOf mode', () => {
 			expect(
 				hasGlobalScope(
-					createAuthPrinicipal('global:member'),
+					createAuthPrincipal('global:member'),
 					[
 						'tag:create',
 						'user:list',
@@ -46,6 +47,6 @@ describe('hasGlobalScope', () => {
 	});
 
 	test('edge cases', () => {
-		expect(hasGlobalScope(createAuthPrinicipal('global:owner'), [])).toBe(false);
+		expect(hasGlobalScope(createAuthPrincipal('global:owner'), [])).toBe(false);
 	});
 });

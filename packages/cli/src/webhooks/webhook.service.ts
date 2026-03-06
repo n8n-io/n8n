@@ -3,7 +3,7 @@ import type { WebhookEntity } from '@n8n/db';
 import { WebhookRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { HookContext, WebhookContext } from 'n8n-core';
-import { Node, NodeHelpers, UnexpectedError } from 'n8n-workflow';
+import { ensureError, Node, NodeHelpers, UnexpectedError } from 'n8n-workflow';
 import type {
 	IHttpRequestMethods,
 	INode,
@@ -46,14 +46,28 @@ export class WebhookService {
 	private async findCached(method: Method, path: string) {
 		const cacheKey = `webhook:${method}-${path}`;
 
-		const cachedStaticWebhook = await this.cacheService.get(cacheKey);
+		let cachedStaticWebhook;
+		try {
+			cachedStaticWebhook = await this.cacheService.get(cacheKey);
+		} catch (error) {
+			this.logger.warn('Failed to query webhook cache', {
+				error: ensureError(error).message,
+			});
+			cachedStaticWebhook = undefined;
+		}
 
 		if (cachedStaticWebhook) return this.webhookRepository.create(cachedStaticWebhook);
 
 		const dbStaticWebhook = await this.findStaticWebhook(method, path);
 
 		if (dbStaticWebhook) {
-			void this.cacheService.set(cacheKey, dbStaticWebhook);
+			try {
+				await this.cacheService.set(cacheKey, dbStaticWebhook);
+			} catch (error) {
+				this.logger.warn('Failed to cache webhook', {
+					error: ensureError(error).message,
+				});
+			}
 			return dbStaticWebhook;
 		}
 
@@ -112,7 +126,13 @@ export class WebhookService {
 	}
 
 	async storeWebhook(webhook: WebhookEntity) {
-		void this.cacheService.set(webhook.cacheKey, webhook);
+		try {
+			await this.cacheService.set(webhook.cacheKey, webhook);
+		} catch (error) {
+			this.logger.warn('Failed to cache webhook', {
+				error: ensureError(error).message,
+			});
+		}
 
 		await this.webhookRepository.upsert(webhook, ['method', 'webhookPath']);
 	}
@@ -157,6 +177,12 @@ export class WebhookService {
 		if (path === '' || path === ':' || path === '/:') return false;
 
 		return path.startsWith(':') || path.includes('/:');
+	}
+
+	getWebhookPath(webhook: IWebhookData): string {
+		return [webhook.path.includes(':') ? webhook.webhookId : undefined, webhook.path]
+			.filter((part) => !!part)
+			.join('/');
 	}
 
 	/**
@@ -274,6 +300,80 @@ export class WebhookService {
 		}
 
 		return returnData;
+	}
+
+	private async _findWebhookConflicts(
+		workflow: Workflow,
+		checkEntries: Array<{
+			node: INode;
+			webhooks: IWebhookData[];
+		}>,
+	) {
+		const conflicts: Array<{
+			trigger: INode;
+			conflict: Partial<WebhookEntity>;
+		}> = [];
+
+		// store processed webhooks in a map -> O(1) remaining webhooks local conflict checks
+		const processedWebhooks: Map<string, IWebhookData> = new Map();
+		const webhookToKey = (webhook: IWebhookData) =>
+			`${webhook.httpMethod} ${this.getWebhookPath(webhook)}`;
+
+		for (const { node, webhooks } of checkEntries) {
+			for (const webhook of webhooks) {
+				const webhookKey = webhookToKey(webhook);
+				const conflict = processedWebhooks.get(webhookKey)!;
+				if (conflict) {
+					// another node with the same webhook was already processed
+					conflicts.push({
+						trigger: node,
+						conflict: {
+							workflowId: workflow.id,
+							webhookPath: conflict.path,
+							method: conflict.httpMethod,
+							node: conflict.node,
+							webhookId: conflict.webhookId,
+						},
+					});
+					continue;
+				}
+
+				const potentialConflict = await this.findWebhook(
+					webhook.httpMethod,
+					this.getWebhookPath(webhook),
+				);
+
+				if (potentialConflict && potentialConflict.workflowId !== workflow.id) {
+					conflicts.push({
+						trigger: node,
+						conflict: potentialConflict,
+					});
+					continue;
+				}
+
+				processedWebhooks.set(webhookKey, webhook);
+			}
+		}
+
+		return conflicts;
+	}
+
+	/**
+	 * Analyzes all webhooks within the provided workflow. Returns all nodes that have a webhook conflict either
+	 * within the same workflow or with other published workflows.
+	 * @param workflow Workflow
+	 * @param additionalData Workflow execution data
+	 * @returns list of all nodes with existing webhook conflicts
+	 */
+	async findWebhookConflicts(workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData) {
+		const checkEntries = Object.values(workflow.nodes)
+			.map((node) => ({
+				node,
+				webhooks: this.getNodeWebhooks(workflow, node, additionalData, true),
+			}))
+			.filter(({ webhooks }) => webhooks.length !== 0);
+
+		return await this._findWebhookConflicts(workflow, checkEntries);
 	}
 
 	async createWebhookIfNotExists(

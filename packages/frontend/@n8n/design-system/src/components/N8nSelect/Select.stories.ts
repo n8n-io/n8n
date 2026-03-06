@@ -1,12 +1,12 @@
-import { action } from '@storybook/addon-actions';
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
+import { action } from 'storybook/actions';
 
 import N8nSelect from './Select.vue';
 import N8nIcon from '../N8nIcon';
 import N8nOption from '../N8nOption';
 
 export default {
-	title: 'Atoms/Select',
+	title: 'Core/Select',
 	component: N8nSelect,
 	argTypes: {
 		disabled: {
@@ -37,7 +37,7 @@ export default {
 		},
 	},
 	parameters: {
-		backgrounds: { default: '--color-background-light' },
+		backgrounds: { default: '--color--background--light-2' },
 	},
 };
 

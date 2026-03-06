@@ -14,7 +14,8 @@ export class Perplexity implements INodeType {
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
-		description: 'Interact with the Perplexity API to generate AI responses with citations',
+		description:
+			' AI-powered answer engine that provides accurate, trusted, and real-time answers to any question. Generates AI responses with citations',
 		defaults: {
 			name: 'Perplexity',
 		},

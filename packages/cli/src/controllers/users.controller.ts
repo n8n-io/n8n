@@ -1,6 +1,8 @@
 import {
 	RoleChangeRequestDto,
 	SettingsUpdateRequestDto,
+	userDetailSchema,
+	userBaseSchema,
 	UsersListFilterDto,
 	usersListSchema,
 } from '@n8n/api-types';
@@ -28,7 +30,9 @@ import {
 	Body,
 	Param,
 	Query,
+	Post,
 } from '@n8n/decorators';
+import { hasGlobalScope } from '@n8n/permissions';
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
@@ -40,10 +44,10 @@ import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { UserRequest } from '@/requests';
 import { FolderService } from '@/services/folder.service';
-import { ProjectService } from '@/services/project.service.ee';
 import { UserService } from '@/services/user.service';
 import { WorkflowService } from '@/workflows/workflow.service';
-import { hasGlobalScope } from '@n8n/permissions';
+import { JwtService } from '@/services/jwt.service';
+import { UrlService } from '@/services/url.service';
 
 @RestController('/users')
 export class UsersController {
@@ -58,9 +62,10 @@ export class UsersController {
 		private readonly projectRepository: ProjectRepository,
 		private readonly workflowService: WorkflowService,
 		private readonly credentialsService: CredentialsService,
-		private readonly projectService: ProjectService,
 		private readonly eventService: EventService,
 		private readonly folderService: FolderService,
+		private readonly jwtService: JwtService,
+		private readonly urlService: UrlService,
 	) {}
 
 	static ERROR_MESSAGES = {
@@ -74,6 +79,7 @@ export class UsersController {
 	private removeSupplementaryFields(
 		publicUsers: Array<Partial<PublicUser>>,
 		listQueryOptions: UsersListFilterDto,
+		currentUser: User,
 	) {
 		const { select } = listQueryOptions;
 
@@ -93,7 +99,12 @@ export class UsersController {
 			}
 		}
 
-		return publicUsers;
+		const usersSeesAllDetails = hasGlobalScope(currentUser, 'user:create');
+		return publicUsers.map((user) => {
+			return usersSeesAllDetails || user.id === currentUser.id
+				? userDetailSchema.parse(user)
+				: userBaseSchema.parse(user);
+		});
 	}
 
 	@Get('/')
@@ -104,7 +115,6 @@ export class UsersController {
 		@Query listQueryOptions: UsersListFilterDto,
 	) {
 		const userQuery = this.userRepository.buildUserQuery(listQueryOptions);
-
 		const response = await userQuery.getManyAndCount();
 
 		const [users, count] = response;
@@ -124,7 +134,7 @@ export class UsersController {
 					...user,
 					projectRelations: u.projectRelations?.map((pr) => ({
 						id: pr.projectId,
-						role: pr.role, // normalize role for frontend
+						role: pr.role.slug, // normalize role for frontend
 						name: pr.project.name,
 					})),
 				};
@@ -133,7 +143,7 @@ export class UsersController {
 
 		return usersListSchema.parse({
 			count,
-			items: this.removeSupplementaryFields(publicUsers, listQueryOptions),
+			items: this.removeSupplementaryFields(publicUsers, listQueryOptions, req.user),
 		});
 	}
 
@@ -157,6 +167,34 @@ export class UsersController {
 
 		const link = this.authService.generatePasswordResetUrl(user);
 		return { link };
+	}
+
+	@Post('/:id/invite-link')
+	@GlobalScope('user:generateInviteLink')
+	async generateInviteLink(req: AuthenticatedRequest<{ id: string }, {}, {}, {}>, _res: Response) {
+		const inviterId = req.user.id;
+		const inviteeId = req.params.id;
+
+		const targetUser = await this.userRepository.findOne({ where: { id: inviteeId } });
+
+		if (!targetUser) {
+			throw new NotFoundError('User to generate invite link for not found');
+		}
+
+		const token = this.jwtService.sign(
+			{
+				inviterId,
+				inviteeId,
+			},
+			{
+				expiresIn: '90d',
+			},
+		);
+
+		const baseUrl = this.urlService.getInstanceBaseUrl();
+		const inviteLink = `${baseUrl}/signup?token=${token}`;
+
+		return { link: inviteLink };
 	}
 
 	@Patch('/:id/settings')
@@ -257,8 +295,6 @@ export class UsersController {
 					trx,
 				);
 			});
-
-			await this.projectService.clearCredentialCanUseExternalSecretsCache(transfereeProject.id);
 		}
 
 		const [ownedSharedWorkflows, ownedSharedCredentials] = await Promise.all([
@@ -336,7 +372,7 @@ export class UsersController {
 			throw new ForbiddenError(NO_OWNER_ON_OWNER);
 		}
 
-		await this.userService.changeUserRole(req.user, targetUser, payload);
+		await this.userService.changeUserRole(targetUser, payload);
 
 		this.eventService.emit('user-changed-role', {
 			userId: req.user.id,
@@ -344,13 +380,6 @@ export class UsersController {
 			targetUserNewRole: payload.newRoleName,
 			publicApi: false,
 		});
-
-		const projects = await this.projectService.getUserOwnedOrAdminProjects(targetUser.id);
-		await Promise.all(
-			projects.map(
-				async (p) => await this.projectService.clearCredentialCanUseExternalSecretsCache(p.id),
-			),
-		);
 
 		return { success: true };
 	}

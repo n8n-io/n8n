@@ -1,6 +1,6 @@
-import { AgentExecutor } from 'langchain/agents';
-import type { OpenAIToolType } from 'langchain/dist/experimental/openai_assistant/schema';
-import { OpenAIAssistantRunnable } from 'langchain/experimental/openai_assistant';
+import { AgentExecutor } from '@langchain/classic/agents';
+import type { OpenAIToolType } from '@langchain/classic/dist/experimental/openai_assistant/schema';
+import { OpenAIAssistantRunnable } from '@langchain/classic/experimental/openai_assistant';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
@@ -10,10 +10,13 @@ import type {
 } from 'n8n-workflow';
 import { OpenAI as OpenAIClient } from 'openai';
 
-import { getConnectedTools } from '@utils/helpers';
+import { getConnectedTools, mergeCustomHeaders } from '@utils/helpers';
 import { getTracingConfig } from '@utils/tracing';
 
 import { formatToOpenAIAssistantTool } from './utils';
+import { Container } from '@n8n/di';
+import { AiConfig } from '@n8n/config';
+import { checkDomainRestrictions } from '@utils/checkDomainRestrictions';
 
 export class OpenAiAssistant implements INodeType {
 	description: INodeTypeDescription = {
@@ -48,6 +51,11 @@ export class OpenAiAssistant implements INodeType {
 			{ type: NodeConnectionTypes.AiTool, displayName: 'Tools' },
 		],
 		outputs: [NodeConnectionTypes.Main],
+		builderHint: {
+			inputs: {
+				ai_tool: { required: false },
+			},
+		},
 		credentials: [
 			{
 				name: 'openAiApi',
@@ -339,11 +347,19 @@ export class OpenAiAssistant implements INodeType {
 					throw new NodeOperationError(this.getNode(), 'The ‘text‘ parameter is empty.');
 				}
 
+				const { openAiDefaultHeaders } = Container.get(AiConfig);
+				const defaultHeaders = mergeCustomHeaders(credentials, openAiDefaultHeaders ?? {});
+
+				if (options.baseURL) {
+					checkDomainRestrictions(this, credentials, options.baseURL);
+				}
+
 				const client = new OpenAIClient({
 					apiKey: credentials.apiKey as string,
 					maxRetries: options.maxRetries ?? 2,
 					timeout: options.timeout ?? 10000,
 					baseURL: options.baseURL,
+					defaultHeaders,
 				});
 				let agent;
 				const nativeToolsParsed: OpenAIToolType = nativeTools.map((tool) => ({ type: tool }));

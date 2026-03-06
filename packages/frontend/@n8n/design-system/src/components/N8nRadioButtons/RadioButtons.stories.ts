@@ -1,10 +1,10 @@
-import { action } from '@storybook/addon-actions';
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
+import { action } from 'storybook/actions';
 
 import N8nRadioButtons from './RadioButtons.vue';
 
 export default {
-	title: 'Atoms/RadioButtons',
+	title: 'Core/RadioButtons',
 	component: N8nRadioButtons,
 	argTypes: {
 		size: {
@@ -13,7 +13,7 @@ export default {
 		},
 	},
 	parameters: {
-		backgrounds: { default: '--color-background-xlight' },
+		backgrounds: { default: '--color--background--light-3' },
 	},
 };
 

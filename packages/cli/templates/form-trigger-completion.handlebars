@@ -115,7 +115,7 @@
 					<div class='card'>
 						<div class='header'>
 							<h1>{{title}}</h1>
-							<p>{{{message}}}</p>
+							<p style="white-space: pre-line;">{{{message}}}</p>
 						</div>
 					</div>
 					{{#if appendAttribution}}
@@ -230,10 +230,7 @@
 					} catch (e) {}
 
 					if (json?.redirectURL) {
-							const url = json.redirectURL.includes("://")
-									? json.redirectURL
-									: "https://" + json.redirectURL;
-							window.location.replace(url);
+							window.location.replace(json.redirectURL);
 					}
 			})
 			.catch(function (error) {

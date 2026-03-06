@@ -20,7 +20,7 @@ export class ExecuteWorkflow implements INodeType {
 		icon: 'fa:sign-in-alt',
 		iconColor: 'orange-red',
 		group: ['transform'],
-		version: [1, 1.1, 1.2],
+		version: [1, 1.1, 1.2, 1.3],
 		subtitle: '={{"Workflow: " + $parameter["workflowId"]}}',
 		description: 'Execute another workflow',
 		defaults: {
@@ -317,7 +317,9 @@ export class ExecuteWorkflow implements INodeType {
 								parentExecution: {
 									executionId: workflowProxy.$execution.id,
 									workflowId: workflowProxy.$workflow.id,
+									shouldResume: waitForSubWorkflow,
 								},
+								executionMode: this.getMode(),
 							},
 						);
 						const workflowResult = executionResult.data as INodeExecutionData[][];
@@ -349,7 +351,9 @@ export class ExecuteWorkflow implements INodeType {
 								parentExecution: {
 									executionId: workflowProxy.$execution.id,
 									workflowId: workflowProxy.$workflow.id,
+									shouldResume: waitForSubWorkflow,
 								},
+								executionMode: this.getMode(),
 							},
 						);
 
@@ -369,11 +373,16 @@ export class ExecuteWorkflow implements INodeType {
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {
-						if (returnData[i] === undefined) {
-							returnData[i] = [];
-						}
+						const nodeVersion = this.getNode().typeVersion;
+						// In versions < 1.3 using the "Continue (using error output)" mode
+						// the node would return items in extra "error branches" instead of
+						// returning an array of items on the error output. These branches weren't really shown correctly on the UI.
+						// In the fixed >= 1.3 versions the errors are now all output into the single error output as an array of error items.
+						const outputIndex = nodeVersion >= 1.3 ? 0 : i;
+
+						returnData[outputIndex] ??= [];
 						const metadata = parseErrorMetadata(error);
-						returnData[i].push({
+						returnData[outputIndex].push({
 							json: { error: error.message },
 							pairedItem: { item: i },
 							metadata,
@@ -411,7 +420,9 @@ export class ExecuteWorkflow implements INodeType {
 						parentExecution: {
 							executionId: workflowProxy.$execution.id,
 							workflowId: workflowProxy.$workflow.id,
+							shouldResume: waitForSubWorkflow,
 						},
+						executionMode: this.getMode(),
 					},
 				);
 

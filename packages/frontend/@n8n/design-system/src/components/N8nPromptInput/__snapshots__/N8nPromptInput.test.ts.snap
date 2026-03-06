@@ -1,0 +1,183 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`N8nPromptInput > rendering > should render correctly with default props 1`] = `
+<div>
+  
+  <div
+    class="wrapper"
+  >
+    <div
+      class="container"
+      style="min-height: 80px;"
+    >
+      <!-- Warning banner when character limit is reached -->
+      <!--v-if-->
+      <!-- Use ScrollArea when content exceeds max height -->
+      <div
+        class="scrollAreaWrapper"
+        max-height="180px"
+        type="auto"
+      >
+        
+        <!-- Chips row (above textarea) -->
+        <!--v-if-->
+        <!-- Textarea -->
+        <textarea
+          class="multilineTextarea ignore-key-press-node-creator ignore-key-press-canvas"
+          maxlength="5000"
+          placeholder=""
+          style="height: 24px; overflow-y: hidden;"
+        />
+        
+      </div>
+      <div
+        class="bottomActions"
+      >
+        <!-- Slot for bottom actions chips (e.g., unconfirmed node chips) -->
+        <!--v-if-->
+        
+        
+        <button
+          aria-disabled="true"
+          aria-label="Send"
+          aria-live="polite"
+          class="button button solid small iconOnly disabled sendButton"
+          data-test-id="send-message-button"
+          disabled=""
+          type="button"
+        >
+          <transition-stub
+            appear="false"
+            css="true"
+            name="n8n-button-fade"
+            persisted="false"
+          >
+            <!--v-if-->
+          </transition-stub>
+          <div
+            class="button-inner"
+          >
+            
+            <svg
+              aria-hidden="true"
+              class="n8n-icon"
+              data-icon="arrow-up"
+              focusable="false"
+              height="16px"
+              role="img"
+              viewBox="0 0 24 24"
+              width="16px"
+            >
+              <path
+                d="m5 12l7-7l7 7m-7 7V5"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+              />
+            </svg>
+            
+            
+            
+            
+          </div>
+        </button>
+      </div>
+    </div>
+    <!-- Credits bar below input -->
+    <!--v-if-->
+  </div>
+  
+</div>
+`;
+
+exports[`N8nPromptInput > rendering > should render streaming state without disabling textarea 1`] = `
+<div>
+  
+  <div
+    class="wrapper"
+  >
+    <div
+      class="container"
+      style="min-height: 80px;"
+    >
+      <!-- Warning banner when character limit is reached -->
+      <!--v-if-->
+      <!-- Use ScrollArea when content exceeds max height -->
+      <div
+        class="scrollAreaWrapper"
+        max-height="180px"
+        type="auto"
+      >
+        
+        <!-- Chips row (above textarea) -->
+        <!--v-if-->
+        <!-- Textarea -->
+        <textarea
+          class="multilineTextarea ignore-key-press-node-creator ignore-key-press-canvas"
+          maxlength="5000"
+          placeholder=""
+          style="height: 24px; overflow-y: hidden;"
+        />
+        
+      </div>
+      <div
+        class="bottomActions"
+      >
+        <!-- Slot for bottom actions chips (e.g., unconfirmed node chips) -->
+        <!--v-if-->
+        
+        
+        <button
+          aria-label="Stop"
+          aria-live="polite"
+          class="button button solid small iconOnly stopButton"
+          data-test-id="send-message-button"
+          type="button"
+        >
+          <transition-stub
+            appear="false"
+            css="true"
+            name="n8n-button-fade"
+            persisted="false"
+          >
+            <!--v-if-->
+          </transition-stub>
+          <div
+            class="button-inner"
+          >
+            
+            <svg
+              aria-hidden="true"
+              class="n8n-icon"
+              data-icon="filled-square"
+              fill="currentColor"
+              focusable="false"
+              height="12px"
+              overflow="hidden"
+              role="img"
+              viewBox="0 0 10 10"
+              width="12px"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <rect
+                height="10"
+                rx="2"
+                ry="2"
+                width="10"
+              />
+            </svg>
+            
+            
+            
+          </div>
+        </button>
+      </div>
+    </div>
+    <!-- Credits bar below input -->
+    <!--v-if-->
+  </div>
+  
+</div>
+`;

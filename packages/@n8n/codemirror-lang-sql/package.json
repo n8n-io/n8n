@@ -1,0 +1,59 @@
+{
+  "name": "@n8n/codemirror-lang-sql",
+  "version": "1.5.0",
+  "description": "SQL + n8n expression language support for CodeMirror 6",
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "test": "vitest run",
+    "generate:sql:grammar": "lezer-generator --typeScript --output src/grammar.sql.ts src/sql.grammar",
+    "generate": "pnpm generate:sql:grammar && pnpm format",
+    "build": "tsc -p tsconfig.build.json",
+    "test:unit": "vitest run",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix",
+    "format": "biome format --write src test",
+    "format:check": "biome ci src test",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "editor",
+    "code"
+  ],
+  "author": {
+    "name": "Iván Ovejero",
+    "email": "ivov.src@gmail.com",
+    "url": "https://ivov.dev"
+  },
+  "main": "dist/index.js",
+  "module": "src/index.ts",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "import": "./src/index.ts"
+    },
+    "./*": "./*"
+  },
+  "sideEffects": false,
+  "license": "MIT",
+  "dependencies": {
+    "@codemirror/autocomplete": "catalog:",
+    "@codemirror/language": "catalog:",
+    "@codemirror/state": "catalog:",
+    "@lezer/highlight": "catalog:",
+    "@lezer/lr": "catalog:",
+    "@n8n/codemirror-lang": "workspace:*"
+  },
+  "devDependencies": {
+    "@lezer/generator": "catalog:",
+    "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
+    "vitest": "catalog:"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/n8n-io/n8n",
+    "directory": "packages/@n8n/codemirror-lang-sql"
+  }
+}

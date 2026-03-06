@@ -14,7 +14,11 @@ export class ProjectRepository extends Repository<Project> {
 		const em = entityManager ?? this.manager;
 
 		return await em.findOne(Project, {
-			where: { type: 'personal', projectRelations: { userId, role: 'project:personalOwner' } },
+			where: {
+				type: 'personal',
+				creatorId: userId,
+			},
+			relations: ['projectRelations.role'],
 		});
 	}
 
@@ -22,10 +26,14 @@ export class ProjectRepository extends Repository<Project> {
 		const em = entityManager ?? this.manager;
 
 		return await em.findOneOrFail(Project, {
-			where: { type: 'personal', projectRelations: { userId, role: 'project:personalOwner' } },
+			where: {
+				type: 'personal',
+				creatorId: userId,
+			},
 		});
 	}
 
+	// This returns personal projects of ALL users OR shared projects of the user
 	async getAccessibleProjects(userId: string) {
 		return await this.find({
 			where: [

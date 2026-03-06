@@ -2253,7 +2253,7 @@
 					],
 					"credentialDocumentation": [
 						{
-							"url": "https://docs.n8n.io/integrations/credentials/sendemail/"
+							"url": "https://docs.n8n.io/integrations/builtin/credentials/sendemail/"
 						}
 					]
 				}
@@ -12574,7 +12574,7 @@
 					],
 					"credentialDocumentation": [
 						{
-							"url": "https://docs.n8n.io/integrations/credentials/facebookapp/"
+							"url": "https://docs.n8n.io/integrations/builtin/credentials/facebookapp/"
 						}
 					]
 				}
@@ -12606,7 +12606,7 @@
 					],
 					"credentialDocumentation": [
 						{
-							"url": "https://docs.n8n.io/integrations/credentials/facebookleadads/"
+							"url": "https://docs.n8n.io/integrations/builtin/credentials/facebookleadads/"
 						}
 					]
 				}

@@ -1,9 +1,9 @@
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
 
 import N8nTree from './Tree.vue';
 
 export default {
-	title: 'Atoms/Tree',
+	title: 'Core/Tree',
 	component: N8nTree,
 };
 

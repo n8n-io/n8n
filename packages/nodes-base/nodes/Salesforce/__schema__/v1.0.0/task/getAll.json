@@ -1,12 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "AccountId": {
-            "type": "string"
-        },
-        "ActivityDate__c": {
-            "type": "string"
-        },
         "attributes": {
             "type": "object",
             "properties": {
@@ -20,13 +14,7 @@
         },
         "Id": {
             "type": "string"
-        },
-        "Type": {
-            "type": "null"
-        },
-        "WhatId": {
-            "type": "string"
         }
     },
-    "version": 3
+    "version": 5
 }

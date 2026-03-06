@@ -77,7 +77,7 @@ export function createPage({
 		: 'none';
 	const sanitizedShowWelcomeScreen = !!showWelcomeScreen;
 	const sanitizedAllowFileUploads = !!allowFileUploads;
-	const sanitizedAllowedFilesMimeTypes = allowedFilesMimeTypes?.toString() ?? '';
+	const sanitizedAllowedFilesMimeTypes = sanitizeUserInput(allowedFilesMimeTypes?.toString() ?? '');
 	const sanitizedCustomCss = sanitizeHtml(`<style>${customCss?.toString() ?? ''}</style>`, {
 		allowedTags: ['style'],
 		allowedAttributes: false,
@@ -151,12 +151,11 @@ export function createPage({
 						metadata: metadata,
 						webhookConfig: {
 							headers: {
-								'Content-Type': 'application/json',
 								'X-Instance-Id': '${instanceId}',
 							}
 						},
 						allowFileUploads: ${sanitizedAllowFileUploads},
-						allowedFilesMimeTypes: '${sanitizedAllowedFilesMimeTypes}',
+						allowedFilesMimeTypes: ${JSON.stringify(sanitizedAllowedFilesMimeTypes)},
 						i18n: {
 							${Object.keys(sanitizedI18nConfig).length ? `en: ${JSON.stringify(sanitizedI18nConfig)},` : ''}
 						},

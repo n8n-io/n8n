@@ -5,30 +5,34 @@ import { Service } from '@n8n/di';
 import axios from 'axios';
 import type { PackageDirectoryLoader } from 'n8n-core';
 import { InstanceSettings } from 'n8n-core';
-import { jsonParse, UnexpectedError, UserError, type PublicInstalledPackage } from 'n8n-workflow';
-import { exec } from 'node:child_process';
+import {
+	ensureError,
+	jsonParse,
+	UnexpectedError,
+	UserError,
+	type PublicInstalledPackage,
+} from 'n8n-workflow';
+import { execFile } from 'node:child_process';
 import { access, constants, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
+import { valid } from 'semver';
 
-import {
-	NODE_PACKAGE_PREFIX,
-	NPM_COMMAND_TOKENS,
-	NPM_PACKAGE_STATUS_GOOD,
-	RESPONSE_ERROR_MESSAGES,
-	UNKNOWN_FAILURE_REASON,
-} from '@/constants';
+import { NODE_PACKAGE_PREFIX, NPM_PACKAGE_STATUS_GOOD, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { toError } from '@/utils';
 
+import { getCommunityNodeTypes, type StrapiCommunityNodeType } from './community-node-types-utils';
 import { CommunityPackagesConfig } from './community-packages.config';
 import type { CommunityPackages } from './community-packages.types';
 import { InstalledPackages } from './installed-packages.entity';
 import { InstalledPackagesRepository } from './installed-packages.repository';
-import { isVersionExists, verifyIntegrity } from './npm-utils';
+import { checkIfVersionExistsOrThrow, executeNpmCommand, verifyIntegrity } from './npm-utils';
+
+const asyncExecFile = promisify(execFile);
 
 const DEFAULT_REGISTRY = 'https://registry.npmjs.org';
 const NPM_COMMON_ARGS = ['--audit=false', '--fund=false'];
@@ -39,23 +43,7 @@ const NPM_INSTALL_ARGS = [
 	'--package-lock=false',
 ];
 
-const {
-	PACKAGE_NAME_NOT_PROVIDED,
-	DISK_IS_FULL,
-	PACKAGE_FAILED_TO_INSTALL,
-	PACKAGE_VERSION_NOT_FOUND,
-	PACKAGE_NOT_FOUND,
-} = RESPONSE_ERROR_MESSAGES;
-
-const {
-	NPM_PACKAGE_NOT_FOUND_ERROR,
-	NPM_NO_VERSION_AVAILABLE,
-	NPM_DISK_NO_SPACE,
-	NPM_DISK_INSUFFICIENT_SPACE,
-	NPM_PACKAGE_VERSION_NOT_FOUND_ERROR,
-} = NPM_COMMAND_TOKENS;
-
-const asyncExec = promisify(exec);
+const { PACKAGE_NAME_NOT_PROVIDED } = RESPONSE_ERROR_MESSAGES;
 
 const INVALID_OR_SUSPICIOUS_PACKAGE_NAME = /[^0-9a-z@\-._/]/;
 
@@ -145,48 +133,13 @@ export class CommunityPackagesService {
 			? packageNameWithoutScope.split('@')[1]
 			: undefined;
 
+		if (version && !valid(version)) {
+			throw new UnexpectedError(`Invalid version: ${version}`);
+		}
+
 		const packageName = version ? rawString.replace(`@${version}`, '') : rawString;
 
 		return { packageName, scope, version, rawString };
-	}
-
-	/** @deprecated */
-	async executeNpmCommand(command: string, options?: { doNotHandleError?: boolean }) {
-		const execOptions = {
-			cwd: this.downloadFolder,
-			env: {
-				NODE_PATH: process.env.NODE_PATH,
-				PATH: process.env.PATH,
-				APPDATA: process.env.APPDATA,
-				NODE_ENV: 'production',
-			},
-		};
-
-		try {
-			const commandResult = await asyncExec(command, execOptions);
-
-			return commandResult.stdout;
-		} catch (error) {
-			if (options?.doNotHandleError) throw error;
-
-			const errorMessage = error instanceof Error ? error.message : UNKNOWN_FAILURE_REASON;
-
-			const map = {
-				[NPM_PACKAGE_NOT_FOUND_ERROR]: PACKAGE_NOT_FOUND,
-				[NPM_NO_VERSION_AVAILABLE]: PACKAGE_NOT_FOUND,
-				[NPM_PACKAGE_VERSION_NOT_FOUND_ERROR]: PACKAGE_VERSION_NOT_FOUND,
-				[NPM_DISK_NO_SPACE]: DISK_IS_FULL,
-				[NPM_DISK_INSUFFICIENT_SPACE]: DISK_IS_FULL,
-			};
-
-			Object.entries(map).forEach(([npmMessage, n8nMessage]) => {
-				if (errorMessage.includes(npmMessage)) throw new UnexpectedError(n8nMessage);
-			});
-
-			this.logger.warn('npm command failed', { errorMessage });
-
-			throw new UnexpectedError(PACKAGE_FAILED_TO_INSTALL);
-		}
 	}
 
 	matchPackagesWithUpdates(
@@ -312,19 +265,67 @@ export class CommunityPackagesService {
 
 		const { reinstallMissing } = this.config;
 		if (reinstallMissing) {
-			this.logger.info('Attempting to reinstall missing packages', { missingPackages });
-			try {
-				// Optimistic approach - stop if any installation fails
-				for (const missingPackage of missingPackages) {
-					await this.installPackage(missingPackage.packageName, missingPackage.version);
+			this.logger.info('Attempting to reinstall missing packages', {
+				missingPackages: [...missingPackages],
+			});
+			const environment = process.env.ENVIRONMENT === 'staging' ? 'staging' : 'production';
 
-					missingPackages.delete(missingPackage);
-				}
-				this.logger.info('Packages reinstalled successfully. Resuming regular initialization.');
-				await this.loadNodesAndCredentials.postProcessLoaders();
+			const packageNames = [...missingPackages].map((p) => p.packageName);
+
+			let vettedPackages: StrapiCommunityNodeType[] = [];
+			try {
+				vettedPackages = await getCommunityNodeTypes(
+					environment,
+					{
+						filters: {
+							packageName: {
+								$in: packageNames,
+							},
+						},
+						fields: ['packageName', 'npmVersion', 'checksum', 'nodeVersions'],
+					},
+					this.config.aiNodeSdkVersion,
+				);
 			} catch (error) {
-				this.logger.error('n8n was unable to install the missing packages.');
+				this.logger.error(
+					`Failed to fetch community packages from Strapi: ${ensureError(error).message}`,
+				);
 			}
+
+			for (const missingPackage of missingPackages) {
+				try {
+					const vettedPackage = vettedPackages.find(
+						(p) => p.packageName === missingPackage.packageName,
+					);
+
+					let checksum: string | undefined;
+					if (vettedPackage) {
+						// Get the checksum if the required version is latest
+						if (vettedPackage.npmVersion === missingPackage.version) {
+							checksum = vettedPackage.checksum;
+						} else {
+							// Get the checksum if the required version is not latest
+							checksum = vettedPackage.nodeVersions?.find(
+								(v) => v.npmVersion === missingPackage.version,
+							)?.checksum;
+						}
+					}
+
+					await this.installPackage(missingPackage.packageName, missingPackage.version, checksum);
+					missingPackages.delete(missingPackage);
+				} catch (error) {
+					this.logger.error(
+						`Failed to reinstall community package ${missingPackage.packageName}: ${ensureError(error).message}`,
+					);
+				}
+			}
+
+			if (missingPackages.size === 0) {
+				this.logger.info('Packages reinstalled successfully. Resuming regular initialization.');
+			}
+
+			await this.loadNodesAndCredentials.postProcessLoaders();
+			this.loadNodesAndCredentials.releaseTypes();
 		} else {
 			this.logger.warn(
 				'n8n detected that some packages are missing. For more information, visit https://docs.n8n.io/integrations/community-nodes/troubleshooting/',
@@ -371,9 +372,7 @@ export class CommunityPackagesService {
 	}
 
 	private getNpmInstallArgs() {
-		return [...NPM_COMMON_ARGS, ...NPM_INSTALL_ARGS, `--registry=${this.getNpmRegistry()}`].join(
-			' ',
-		);
+		return [...NPM_COMMON_ARGS, ...NPM_INSTALL_ARGS, `--registry=${this.getNpmRegistry()}`];
 	}
 
 	private checkInstallPermissions(checksumProvided: boolean) {
@@ -398,7 +397,7 @@ export class CommunityPackagesService {
 			await verifyIntegrity(packageName, packageVersion, this.getNpmRegistry(), options.checksum);
 		}
 
-		await isVersionExists(packageName, packageVersion, this.getNpmRegistry());
+		await checkIfVersionExistsOrThrow(packageName, packageVersion, this.getNpmRegistry());
 
 		try {
 			await this.downloadPackage(packageName, packageVersion);
@@ -417,7 +416,9 @@ export class CommunityPackagesService {
 			// Remove this package since loading it failed
 			try {
 				await this.deletePackageDirectory(packageName);
-			} catch {}
+			} catch {
+				// Ignore cleanup errors
+			}
 			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_LOADING_FAILED, { cause: error });
 		}
 
@@ -433,6 +434,7 @@ export class CommunityPackagesService {
 					payload: { packageName, packageVersion },
 				});
 				await this.loadNodesAndCredentials.postProcessLoaders();
+				this.loadNodesAndCredentials.releaseTypes();
 				this.logger.info(`Community package installed: ${packageName}`);
 				return installedPackage;
 			} catch (error) {
@@ -445,7 +447,9 @@ export class CommunityPackagesService {
 			// Remove this package since it contains no loadable nodes
 			try {
 				await this.deletePackageDirectory(packageName);
-			} catch {}
+			} catch {
+				// Ignore cleanup errors
+			}
 			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES);
 		}
 	}
@@ -466,8 +470,10 @@ export class CommunityPackagesService {
 
 	private async installOrUpdateNpmPackage(packageName: string, packageVersion: string) {
 		await this.downloadPackage(packageName, packageVersion);
+		await this.loadNodesAndCredentials.unloadPackage(packageName);
 		await this.loadNodesAndCredentials.loadPackage(packageName);
 		await this.loadNodesAndCredentials.postProcessLoaders();
+		this.loadNodesAndCredentials.releaseTypes();
 		this.logger.info(`Community package installed: ${packageName}`);
 	}
 
@@ -475,6 +481,7 @@ export class CommunityPackagesService {
 		await this.deletePackageDirectory(packageName);
 		await this.loadNodesAndCredentials.unloadPackage(packageName);
 		await this.loadNodesAndCredentials.postProcessLoaders();
+		this.loadNodesAndCredentials.releaseTypes();
 		this.logger.info(`Community package uninstalled: ${packageName}`);
 	}
 
@@ -492,18 +499,19 @@ export class CommunityPackagesService {
 
 		// TODO: make sure that this works for scoped packages as well
 		// if (packageName.startsWith('@') && packageName.includes('/')) {}
-
-		const { stdout: tarOutput } = await asyncExec(
-			`npm pack ${packageName}@${packageVersion} --registry=${registry} --quiet`,
+		const tarOutput = await executeNpmCommand(
+			['pack', `${packageName}@${packageVersion}`, `--registry=${registry}`, '--quiet'],
 			{ cwd: this.downloadFolder },
 		);
 
 		const tarballName = tarOutput?.trim();
 
 		try {
-			await asyncExec(`tar -xzf ${tarballName} -C ${packageDirectory} --strip-components=1`, {
-				cwd: this.downloadFolder,
-			});
+			await asyncExecFile(
+				'tar',
+				['-xzf', tarballName, '-C', packageDirectory, '--strip-components=1'],
+				{ cwd: this.downloadFolder },
+			);
 
 			// Strip dev, optional, and peer dependencies before running `npm install`
 			const packageJsonPath = `${packageDirectory}/package.json`;
@@ -522,7 +530,9 @@ export class CommunityPackagesService {
 			} = JSON.parse(packageJsonContent);
 			await writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
 
-			await asyncExec(`npm install ${this.getNpmInstallArgs()}`, { cwd: packageDirectory });
+			await executeNpmCommand(['install', ...this.getNpmInstallArgs()], {
+				cwd: packageDirectory,
+			});
 			await this.updatePackageJsonDependency(packageName, packageJson.version);
 		} finally {
 			await rm(join(this.downloadFolder, tarballName));

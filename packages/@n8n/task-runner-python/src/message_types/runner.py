@@ -1,8 +1,9 @@
 from dataclasses import dataclass
-from typing import List, Literal, Union, Any, Dict
+from typing import Literal, Any
 
-from ..constants import (
+from src.constants import (
     RUNNER_INFO,
+    RUNNER_RPC_CALL,
     RUNNER_TASK_ACCEPTED,
     RUNNER_TASK_DONE,
     RUNNER_TASK_ERROR,
@@ -14,7 +15,7 @@ from ..constants import (
 @dataclass
 class RunnerInfo:
     name: str
-    types: List[str]
+    types: list[str]
     type: Literal["runner:info"] = RUNNER_INFO
 
 
@@ -42,22 +43,32 @@ class RunnerTaskRejected:
 @dataclass
 class RunnerTaskDone:
     task_id: str
-    data: Dict[str, Any]
+    data: dict[str, Any]
     type: Literal["runner:taskdone"] = RUNNER_TASK_DONE
 
 
 @dataclass
 class RunnerTaskError:
     task_id: str
-    error: Dict[str, Any]
+    error: dict[str, Any]
     type: Literal["runner:taskerror"] = RUNNER_TASK_ERROR
 
 
-RunnerMessage = Union[
-    RunnerInfo,
-    RunnerTaskOffer,
-    RunnerTaskAccepted,
-    RunnerTaskRejected,
-    RunnerTaskDone,
-    RunnerTaskError,
-]
+@dataclass
+class RunnerRpcCall:
+    call_id: str
+    task_id: str
+    name: str
+    params: list[Any]
+    type: Literal["runner:rpc"] = RUNNER_RPC_CALL
+
+
+RunnerMessage = (
+    RunnerInfo
+    | RunnerTaskOffer
+    | RunnerTaskAccepted
+    | RunnerTaskRejected
+    | RunnerTaskDone
+    | RunnerTaskError
+    | RunnerRpcCall
+)

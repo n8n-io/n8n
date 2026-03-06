@@ -1,10 +1,10 @@
-import { action } from '@storybook/addon-actions';
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
+import { action } from 'storybook/actions';
 
 import N8nInputNumber from './InputNumber.vue';
 
 export default {
-	title: 'Atoms/Input Number',
+	title: 'Core/Input Number',
 	component: N8nInputNumber,
 	argTypes: {
 		placeholder: {
@@ -45,7 +45,7 @@ export default {
 		},
 	},
 	parameters: {
-		backgrounds: { default: '--color-background-light' },
+		backgrounds: { default: '--color--background--light-2' },
 	},
 };
 

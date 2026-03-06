@@ -20,6 +20,8 @@ import type { ExecutionMetadata } from './execution-metadata';
 import { WorkflowEntity } from './workflow-entity';
 import { idStringifier } from '../utils/transformers';
 
+export type ExecutionDataStorageLocation = 'db' | 'fs';
+
 @Entity()
 @Index(['workflowId', 'id'])
 @Index(['waitTill', 'id'])
@@ -32,7 +34,7 @@ export class ExecutionEntity {
 	id: string;
 
 	/**
-	 * Whether the execution finished sucessfully.
+	 * Whether the execution finished successfully.
 	 *
 	 * @deprecated Use `status` instead
 	 */
@@ -76,6 +78,12 @@ export class ExecutionEntity {
 
 	@DateTimeColumn({ nullable: true })
 	waitTill: Date | null;
+
+	/**
+	 * Where the execution data is stored at: 'db' (database), 'fs' (filesystem), or 's3'.
+	 */
+	@Column({ type: 'varchar', length: 2, nullable: false, default: 'db' })
+	storedAt: ExecutionDataStorageLocation;
 
 	@OneToMany('ExecutionMetadata', 'execution')
 	metadata: ExecutionMetadata[];

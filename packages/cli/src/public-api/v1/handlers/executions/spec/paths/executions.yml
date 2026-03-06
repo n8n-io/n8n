@@ -13,7 +13,7 @@ get:
       required: false
       schema:
         type: string
-        enum: ['error', 'success', 'waiting']
+        enum: ['canceled', 'error', 'running', 'success', 'waiting']
     - name: workflowId
       in: query
       description: Workflow to filter the executions by.

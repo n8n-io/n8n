@@ -18,6 +18,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	IWorkflowExecutionCustomData,
 	NodeConnectionType,
+	NodeFeatures,
 	NodeInputConnections,
 	NodeParameterValueType,
 	NodeTypeAndVersion,
@@ -77,6 +78,10 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		});
 	}
 
+	getExecutionContext() {
+		return this.runExecutionData?.executionData?.runtimeData;
+	}
+
 	getExecutionId() {
 		return this.additionalData.executionId!;
 	}
@@ -120,9 +125,20 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return output;
 	}
 
-	getParentNodes(nodeName: string, options?: { includeNodeParameters?: boolean }) {
+	getParentNodes(
+		nodeName: string,
+		options?: {
+			includeNodeParameters?: boolean;
+			connectionType?: NodeConnectionType;
+			depth?: number;
+		},
+	) {
 		const output: NodeTypeAndVersion[] = [];
-		const nodeNames = this.workflow.getParentNodes(nodeName);
+		const nodeNames = this.workflow.getParentNodes(
+			nodeName,
+			options?.connectionType,
+			options?.depth,
+		);
 
 		for (const n of nodeNames) {
 			const node = this.workflow.nodes[n];
@@ -158,9 +174,38 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	}
 
 	@Memoized
+	get workflowSettings() {
+		return Object.freeze(structuredClone(this.workflow.settings));
+	}
+
+	getWorkflowSettings() {
+		return this.workflowSettings;
+	}
+
+	@Memoized
 	get nodeType() {
 		const { type, typeVersion } = this.node;
 		return this.workflow.nodeTypes.getByNameAndVersion(type, typeVersion);
+	}
+
+	/**
+	 * Gets the feature flags for the current node version.
+	 * Uses declarative features from the node type description.
+	 * @private
+	 */
+	@Memoized
+	private get nodeFeatures(): NodeFeatures {
+		const description = this.nodeType.description;
+		return NodeHelpers.getNodeFeatures(description.features, this.node.typeVersion);
+	}
+
+	/**
+	 * Checks if a feature is enabled for the current node version.
+	 * @param featureName - The name of the feature to check
+	 * @returns true if the feature is enabled, false otherwise
+	 */
+	isNodeFeatureEnabled(featureName: string): boolean {
+		return this.nodeFeatures[featureName] ?? false;
 	}
 
 	@Memoized
@@ -367,6 +412,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		// 	) as string;
 		// }
 
+		additionalData.executionContext = this.getExecutionContext();
 		const decryptedDataObject = await additionalData.credentialsHelper.getDecrypted(
 			additionalData,
 			nodeCredentials,

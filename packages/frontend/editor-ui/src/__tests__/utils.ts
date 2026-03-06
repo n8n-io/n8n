@@ -3,7 +3,6 @@ import userEvent from '@testing-library/user-event';
 import type { ISettingsState } from '@/Interface';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 import { defaultSettings } from './defaults';
-import { APP_MODALS_ELEMENT_ID } from '@/constants';
 import type { Mock } from 'vitest';
 import type { Store, StoreDefinition } from 'pinia';
 import type { ComputedRef } from 'vue';
@@ -96,23 +95,6 @@ export const getSelectedDropdownValue = async (items: NodeListOf<Element>) => {
 };
 
 /**
- * Create a container for teleported modals
- *
- * More info: https://test-utils.vuejs.org/guide/advanced/teleport#Mounting-the-Component
- * @returns {HTMLElement} appModals
- */
-export const createAppModals = () => {
-	const appModals = document.createElement('div');
-	appModals.id = APP_MODALS_ELEMENT_ID;
-	document.body.appendChild(appModals);
-	return appModals;
-};
-
-export const cleanupAppModals = () => {
-	document.body.innerHTML = '';
-};
-
-/**
  * Typescript helper for mocking pinia store actions return value
  *
  * @see https://pinia.vuejs.org/cookbook/testing.html#Mocking-the-returned-value-of-an-action
@@ -154,4 +136,76 @@ export const useEmitters = <T extends string>() => {
 			emitters[name] = { emit: emitter };
 		},
 	};
+};
+
+/**
+ * Helper to get the visible tooltip content container.
+ * Queries the tooltip by its CSS class which is applied by N8nTooltip component.
+ * This is the semantic approach since .n8n-tooltip is the design system class.
+ *
+ * Usage: const tooltip = getTooltip(); expect(tooltip).toHaveTextContent('...');
+ */
+export const getTooltip = () => {
+	const tooltip = document.querySelector('.n8n-tooltip');
+	if (!tooltip) {
+		throw new Error('Unable to find tooltip with class .n8n-tooltip');
+	}
+	return tooltip as HTMLElement;
+};
+
+/**
+ * Query version that returns null if not found
+ */
+export const queryTooltip = () => document.querySelector('.n8n-tooltip') as HTMLElement | null;
+
+/**
+ * Get a within() wrapper for querying inside the tooltip
+ */
+export const withinTooltip = () => within(getTooltip());
+
+/**
+ * Triggers tooltip hover by dispatching a proper pointermove event.
+ * Works with Reka UI tooltips in JSDOM by setting correct pointerType.
+ *
+ * Automatically finds the actual tooltip trigger element (with data-grace-area-trigger)
+ * if the passed element is a parent container.
+ *
+ * Requires PointerEvent polyfill in setup.ts (already configured).
+ *
+ * @example
+ * const button = getByRole('button');
+ * await hoverTooltipTrigger(button);
+ * await waitFor(() => expect(getTooltip()).toHaveTextContent('Expected text'));
+ */
+export const hoverTooltipTrigger = async (element: Element): Promise<void> => {
+	// Find actual tooltip trigger - check element, children, then ancestors
+	let trigger: Element = element;
+
+	if (element.hasAttribute('data-grace-area-trigger')) {
+		trigger = element;
+	} else {
+		// Check children first
+		const childTrigger = element.querySelector('[data-grace-area-trigger]');
+		if (childTrigger) {
+			trigger = childTrigger;
+		} else {
+			// Check ancestors
+			const ancestorTrigger = element.closest('[data-grace-area-trigger]');
+			if (ancestorTrigger) {
+				trigger = ancestorTrigger;
+			}
+		}
+	}
+
+	const event = new PointerEvent('pointermove', {
+		bubbles: true,
+		cancelable: true,
+		pointerType: 'mouse',
+		clientX: 100,
+		clientY: 100,
+	});
+
+	trigger.dispatchEvent(event);
+	// Allow Vue reactivity and Reka UI to process
+	await new Promise((r) => setTimeout(r, 10));
 };

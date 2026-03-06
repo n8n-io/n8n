@@ -16,15 +16,15 @@
         "displayName": {
             "type": "string"
         },
-        "employeeHireDate": {
-            "type": "string"
-        },
         "id": {
             "type": "string"
+        },
+        "preferredLanguage": {
+            "type": "null"
         },
         "userPrincipalName": {
             "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }

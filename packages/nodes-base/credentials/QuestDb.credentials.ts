@@ -5,7 +5,7 @@ export class QuestDb implements ICredentialType {
 
 	displayName = 'QuestDB';
 
-	documentationUrl = 'questDb';
+	documentationUrl = 'questdb';
 
 	properties: INodeProperties[] = [
 		{

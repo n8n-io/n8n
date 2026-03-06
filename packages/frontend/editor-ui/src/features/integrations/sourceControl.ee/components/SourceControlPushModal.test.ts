@@ -1,0 +1,1605 @@
+import { within, waitFor } from '@testing-library/dom';
+import userEvent from '@testing-library/user-event';
+import { createComponentRenderer } from '@/__tests__/render';
+import SourceControlPushModal from './SourceControlPushModal.vue';
+import { createTestingPinia } from '@pinia/testing';
+import { createEventBus } from '@n8n/utils/event-bus';
+import type { SourceControlledFile } from '@n8n/api-types';
+import { useSourceControlStore } from '../sourceControl.store';
+import { mockedStore } from '@/__tests__/utils';
+import { VIEWS } from '@/app/constants';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
+import { reactive } from 'vue';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { defaultSettings } from '@/__tests__/defaults';
+
+const eventBus = createEventBus();
+
+// Create a reactive route mock to avoid Vue warnings
+const mockRoute = reactive({
+	name: '',
+	params: {},
+	fullPath: '',
+	query: {},
+});
+
+const mockRouterInstance = {
+	back: vi.fn(),
+	push: vi.fn(),
+	replace: vi.fn(),
+	go: vi.fn(),
+	currentRoute: { value: mockRoute },
+};
+
+vi.mock('vue-router', () => ({
+	useRoute: () => mockRoute,
+	useRouter: () => mockRouterInstance,
+	RouterLink: {
+		template: '<a><slot></slot></a>',
+		props: ['to', 'target'],
+	},
+}));
+
+vi.mock('@/app/composables/useTelemetry', () => {
+	const track = vi.fn();
+	return {
+		useTelemetry: () => {
+			return {
+				track,
+			};
+		},
+	};
+});
+
+vi.mock('@/app/composables/useLoadingService', () => ({
+	useLoadingService: () => ({
+		startLoading: vi.fn(),
+		stopLoading: vi.fn(),
+		setLoadingText: vi.fn(),
+	}),
+}));
+
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => ({
+		showMessage: vi.fn(),
+		showError: vi.fn(),
+		showSuccess: vi.fn(),
+		showToast: vi.fn(),
+		clear: vi.fn(),
+	}),
+}));
+
+let telemetry: ReturnType<typeof useTelemetry>;
+
+const DynamicScrollerStub = {
+	props: {
+		items: Array,
+		minItemSize: Number,
+		class: String,
+		itemClass: String,
+	},
+	template:
+		'<div><template v-for="(item, index) in items" :key="index"><slot v-bind="{ item, index, active: false }"></slot></template></div>',
+	methods: {
+		scrollToItem: vi.fn(),
+	},
+};
+
+const DynamicScrollerItemStub = {
+	props: {
+		item: Object,
+		active: Boolean,
+		sizeDependencies: Array,
+		dataIndex: Number,
+	},
+	template: '<slot></slot>',
+};
+
+const projects = [
+	{
+		id: '1',
+		name: 'Nathan member',
+		type: 'personal',
+	},
+	{
+		id: '2',
+		name: 'Other project',
+		type: 'team',
+	},
+] as const;
+
+const renderModal = createComponentRenderer(SourceControlPushModal, {
+	global: {
+		stubs: {
+			DynamicScroller: DynamicScrollerStub,
+			DynamicScrollerItem: DynamicScrollerItemStub,
+			Modal: {
+				template: `
+					<div>
+						<slot name="header" />
+						<slot name="title" />
+						<slot name="content" />
+						<slot name="footer" />
+					</div>
+				`,
+			},
+			RouterLink: {
+				template: '<a><slot /></a>',
+				props: ['to'],
+			},
+		},
+	},
+});
+
+describe('SourceControlPushModal', () => {
+	let sourceControlStore: ReturnType<typeof mockedStore<typeof useSourceControlStore>>;
+	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
+	let pinia: ReturnType<typeof createTestingPinia>;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		telemetry = useTelemetry();
+
+		// Reset route mock to default values
+		mockRoute.name = 'default';
+		mockRoute.params = {};
+		mockRoute.fullPath = '/';
+
+		// Setup store with default mock to prevent automatic data loading
+		pinia = createTestingPinia();
+		sourceControlStore = mockedStore(useSourceControlStore);
+		sourceControlStore.getAggregatedStatus.mockResolvedValue([]);
+
+		settingsStore = mockedStore(useSettingsStore);
+		settingsStore.settings.enterprise = defaultSettings.enterprise;
+	});
+
+	it('mounts', async () => {
+		sourceControlStore.getAggregatedStatus.mockResolvedValue([]);
+
+		const { getByText } = renderModal({
+			pinia,
+			props: {
+				data: {
+					eventBus,
+					status: [], // Provide initial status to prevent auto-loading
+				},
+			},
+		});
+
+		await waitFor(() => {
+			expect(getByText('Commit and push changes')).toBeInTheDocument();
+		});
+	});
+
+	it('should toggle checkboxes', async () => {
+		const status: SourceControlledFile[] = [
+			{
+				id: 'gTbbBkkYTnNyX1jD',
+				name: 'My workflow 1',
+				type: 'workflow',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '/home/user/.n8n/git/workflows/gTbbBkkYTnNyX1jD.json',
+				updatedAt: '2024-09-20T10:31:40.000Z',
+			},
+			{
+				id: 'JIGKevgZagmJAnM6',
+				name: 'My workflow 2',
+				type: 'workflow',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '/home/user/.n8n/git/workflows/JIGKevgZagmJAnM6.json',
+				updatedAt: '2024-09-20T14:42:51.968Z',
+			},
+		];
+
+		sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+		const { getByTestId, getAllByTestId, getByText } = renderModal({
+			pinia,
+			props: {
+				data: {
+					eventBus,
+					status,
+				},
+			},
+		});
+
+		// Wait for modal content to be visible (v-if="!isLoading" check passes)
+		await waitFor(() => {
+			expect(getByText('Commit and push changes')).toBeInTheDocument();
+		});
+
+		await waitFor(() => {
+			const files = getAllByTestId('source-control-push-modal-file-checkbox');
+			expect(files).toHaveLength(2);
+		});
+
+		const files = getAllByTestId('source-control-push-modal-file-checkbox');
+
+		await userEvent.click(files[0]);
+		expect(files[0]).toBeChecked();
+		expect(files[1]).not.toBeChecked();
+
+		await userEvent.click(files[0]);
+		expect(files[0]).not.toBeChecked();
+		expect(files[1]).not.toBeChecked();
+
+		await userEvent.click(files[1]);
+		expect(files[0]).not.toBeChecked();
+		expect(files[1]).toBeChecked();
+
+		await userEvent.click(files[1]);
+		expect(files[0]).not.toBeChecked();
+		expect(files[1]).not.toBeChecked();
+
+		await userEvent.click(files[0]);
+		expect(files[0]).toBeChecked();
+		expect(files[1]).not.toBeChecked();
+
+		await userEvent.click(files[1]);
+		expect(files[0]).toBeChecked();
+		expect(files[1]).toBeChecked();
+
+		await userEvent.click(files[1]);
+		expect(files[0]).toBeChecked();
+		expect(files[1]).not.toBeChecked();
+
+		await userEvent.click(getByTestId('source-control-push-modal-toggle-all'));
+		expect(files[0]).toBeChecked();
+		expect(files[1]).toBeChecked();
+
+		await userEvent.click(files[0]);
+		await userEvent.click(files[1]);
+		expect(files[0]).not.toBeChecked();
+		expect(files[1]).not.toBeChecked();
+		expect(getByTestId('source-control-push-modal-toggle-all')).not.toBeChecked();
+
+		await userEvent.click(files[0]);
+		await userEvent.click(files[1]);
+		expect(files[0]).toBeChecked();
+		expect(files[1]).toBeChecked();
+		expect(getByTestId('source-control-push-modal-toggle-all')).toBeChecked();
+
+		await userEvent.click(getByTestId('source-control-push-modal-toggle-all'));
+		expect(files[0]).not.toBeChecked();
+		expect(files[1]).not.toBeChecked();
+	});
+
+	it('should push all entities besides workflows and credentials', async () => {
+		const status: SourceControlledFile[] = [
+			{
+				id: 'gTbbBkkYTnNyX1jD',
+				name: 'credential',
+				type: 'credential',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '',
+				updatedAt: '2024-09-20T10:31:40.000Z',
+			},
+			{
+				id: 'JIGKevgZagmJAnM6',
+				name: 'variables',
+				type: 'variables',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '',
+				updatedAt: '2024-09-20T14:42:51.968Z',
+			},
+			{
+				id: 'data-table-1',
+				name: 'Customer Data',
+				type: 'datatable',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '/Users/raul/.n8n/git/data_tables.json',
+				updatedAt: '2024-12-04T11:29:22.095Z',
+			},
+			{
+				id: 'mappings',
+				name: 'tags',
+				type: 'tags',
+				status: 'modified',
+				location: 'local',
+				conflict: false,
+				file: '/Users/raul/.n8n/git/tags.json',
+				updatedAt: '2024-12-04T11:29:22.095Z',
+			},
+			{
+				id: 'mappings',
+				name: 'folders',
+				type: 'folders',
+				status: 'modified',
+				location: 'local',
+				conflict: false,
+				file: '/Users/raul/.n8n/git/folders.json',
+				updatedAt: '2024-12-04T11:29:22.095Z',
+			},
+			{
+				id: 'project-1',
+				name: 'Team Project 1',
+				type: 'project',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '/projects/project-1.json',
+				updatedAt: '2025-01-09T13:12:24.586Z',
+			},
+		];
+
+		sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+		const { getByTestId, getByRole, getByText } = renderModal({
+			pinia,
+			props: {
+				data: {
+					eventBus,
+					status,
+				},
+			},
+		});
+
+		// Wait for modal content to be visible
+		await waitFor(() => {
+			expect(getByText('Commit and push changes')).toBeInTheDocument();
+		});
+
+		await waitFor(() => {
+			const submitButton = getByTestId('source-control-push-modal-submit');
+			expect(submitButton).toBeDisabled();
+		});
+
+		const submitButton = getByTestId('source-control-push-modal-submit');
+		const commitMessage = 'commit message';
+
+		expect(getByRole('alert').textContent).toContain(
+			[
+				'Changes to variables, tags, folders and projects',
+				'Variables : at least one new or modified.',
+				'Tags : at least one new or modified.',
+				'Folders : at least one new or modified.',
+				'Projects : at least one new or modified.',
+			].join(' '),
+		);
+
+		await userEvent.type(getByTestId('source-control-push-modal-commit'), commitMessage);
+
+		expect(submitButton).not.toBeDisabled();
+		await userEvent.click(submitButton);
+
+		expect(sourceControlStore.pushWorkfolder).toHaveBeenCalledWith(
+			expect.objectContaining({
+				commitMessage,
+				// All files including credentials should be pushed (credentials now selected by default)
+				fileNames: expect.arrayContaining(status),
+				force: true,
+			}),
+		);
+	});
+
+	it('should allow selecting currentWorkflow and enable commit', async () => {
+		const status: SourceControlledFile[] = [
+			{
+				id: 'gTbbBkkYTnNyX1jD',
+				name: 'My workflow 1',
+				type: 'workflow',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '/home/user/.n8n/git/workflows/gTbbBkkYTnNyX1jD.json',
+				updatedAt: '2024-09-20T10:31:40.000Z',
+			},
+			{
+				id: 'JIGKevgZagmJAnM6',
+				name: 'My workflow 2',
+				type: 'workflow',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '/home/user/.n8n/git/workflows/JIGKevgZagmJAnM6.json',
+				updatedAt: '2024-09-20T14:42:51.968Z',
+			},
+		];
+
+		sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+		mockRoute.name = VIEWS.WORKFLOW;
+		mockRoute.params = { name: 'gTbbBkkYTnNyX1jD' };
+
+		const { getByTestId, getAllByTestId, getByText } = renderModal({
+			pinia,
+			props: {
+				data: {
+					eventBus,
+					status,
+				},
+			},
+		});
+
+		// Wait for modal content to be visible
+		await waitFor(() => {
+			expect(getByText('Commit and push changes')).toBeInTheDocument();
+		});
+
+		await waitFor(() => {
+			const files = getAllByTestId('source-control-push-modal-file-checkbox');
+			expect(files).toHaveLength(2);
+		});
+
+		const files = getAllByTestId('source-control-push-modal-file-checkbox');
+
+		// The current workflow should be auto-selected now that we fixed the regression
+		expect(files[0]).toBeChecked();
+		expect(files[1]).not.toBeChecked();
+
+		await userEvent.type(getByTestId('source-control-push-modal-commit'), 'message');
+		const submitButton = getByTestId('source-control-push-modal-submit');
+		expect(submitButton).not.toBeDisabled();
+	});
+
+	it('should have all credentials selected by default', async () => {
+		const status: SourceControlledFile[] = [
+			{
+				id: 'workflow-1',
+				name: 'My workflow',
+				type: 'workflow',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '/home/user/.n8n/git/workflows/workflow-1.json',
+				updatedAt: '2024-09-20T10:30:00.000Z',
+			},
+			{
+				id: 'cred-1',
+				name: 'My credential 1',
+				type: 'credential',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '/home/user/.n8n/git/credentials/cred-1.json',
+				updatedAt: '2024-09-20T10:31:40.000Z',
+			},
+			{
+				id: 'cred-2',
+				name: 'My credential 2',
+				type: 'credential',
+				status: 'modified',
+				location: 'local',
+				conflict: false,
+				file: '/home/user/.n8n/git/credentials/cred-2.json',
+				updatedAt: '2024-09-20T14:42:51.968Z',
+			},
+		];
+
+		sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+		const { getByTestId, getAllByTestId, getByText } = renderModal({
+			pinia,
+			props: {
+				data: {
+					eventBus,
+					status,
+				},
+			},
+		});
+
+		// Wait for modal content to be visible
+		await waitFor(() => {
+			expect(getByText('Commit and push changes')).toBeInTheDocument();
+		});
+
+		await waitFor(() => {
+			const workflows = getAllByTestId('source-control-push-modal-file-checkbox');
+			expect(workflows).toHaveLength(1);
+		});
+
+		// Switch to credentials tab
+		const credentialsTab = getByTestId('source-control-push-modal-tab-credential');
+		await userEvent.click(credentialsTab);
+
+		await waitFor(() => {
+			const credentials = getAllByTestId('source-control-push-modal-file-checkbox');
+			expect(credentials).toHaveLength(2);
+		});
+
+		const credentials = getAllByTestId('source-control-push-modal-file-checkbox');
+
+		// All credentials should be selected by default
+		expect(credentials[0]).toBeChecked();
+		expect(credentials[1]).toBeChecked();
+
+		// Verify the tab shows correct count
+		expect(credentialsTab?.textContent).toContain('2 / 2 selected');
+	});
+
+	it('should show credentials in a different tab', async () => {
+		const status: SourceControlledFile[] = [
+			{
+				id: 'gTbbBkkYTnNyX1jD',
+				name: 'My workflow 1',
+				type: 'workflow',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '/home/user/.n8n/git/workflows/gTbbBkkYTnNyX1jD.json',
+				updatedAt: '2024-09-20T10:31:40.000Z',
+			},
+			{
+				id: 'JIGKevgZagmJAnM6',
+				name: 'My workflow 2',
+				type: 'workflow',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '/home/user/.n8n/git/workflows/JIGKevgZagmJAnM6.json',
+				updatedAt: '2024-09-20T14:42:51.968Z',
+			},
+			{
+				id: 'JIGKevgZagmJAnM6',
+				name: 'My credential',
+				type: 'credential',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '/home/user/.n8n/git/workflows/JIGKevgZagmJAnM6.json',
+				updatedAt: '2024-09-20T14:42:51.968Z',
+			},
+		];
+
+		sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+		const { getByTestId, getAllByTestId, getByText } = renderModal({
+			pinia,
+			props: {
+				data: {
+					eventBus,
+					status,
+				},
+			},
+		});
+
+		// Wait for modal content to be visible
+		await waitFor(() => {
+			expect(getByText('Commit and push changes')).toBeInTheDocument();
+		});
+
+		await waitFor(() => {
+			const workflows = getAllByTestId('source-control-push-modal-file-checkbox');
+			expect(workflows).toHaveLength(2);
+		});
+
+		const credentialsTab = getByTestId('source-control-push-modal-tab-credential');
+
+		await userEvent.click(credentialsTab);
+
+		const credentials = getAllByTestId('source-control-push-modal-file-checkbox');
+		expect(credentials).toHaveLength(1);
+		expect(credentials[0].parentElement).toHaveTextContent('My credential');
+		// Credentials should be selected by default
+		expect(credentials[0]).toBeChecked();
+	});
+
+	describe('Data Tables tab', () => {
+		it('should have all data tables selected by default', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'workflow-1',
+					name: 'My workflow',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/workflow-1.json',
+					updatedAt: '2024-09-20T10:30:00.000Z',
+				},
+				{
+					id: 'dt-1',
+					name: 'Customer Data',
+					type: 'datatable',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/datatables/dt-1.json',
+					updatedAt: '2024-09-20T10:31:40.000Z',
+				},
+				{
+					id: 'dt-2',
+					name: 'Product Catalog',
+					type: 'datatable',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/datatables/dt-2.json',
+					updatedAt: '2024-09-20T14:42:51.968Z',
+				},
+			];
+
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+			const { getByTestId, getAllByTestId, getByText } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			// Wait for modal content to be visible
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				const workflows = getAllByTestId('source-control-push-modal-file-checkbox');
+				expect(workflows).toHaveLength(1);
+			});
+
+			// Switch to data tables tab
+			const dataTablesTab = getByTestId('source-control-push-modal-tab-datatable');
+			await userEvent.click(dataTablesTab);
+
+			await waitFor(() => {
+				const dataTables = getAllByTestId('source-control-push-modal-file-checkbox');
+				expect(dataTables).toHaveLength(2);
+			});
+
+			const dataTables = getAllByTestId('source-control-push-modal-file-checkbox');
+
+			// All data tables should be selected by default
+			expect(dataTables[0]).toBeChecked();
+			expect(dataTables[1]).toBeChecked();
+
+			// Verify the tab shows correct count
+			expect(dataTablesTab?.textContent).toContain('2 / 2 selected');
+		});
+
+		it('should show data tables in a different tab', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'wf-1',
+					name: 'My workflow',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/wf-1.json',
+					updatedAt: '2024-09-20T10:31:40.000Z',
+				},
+				{
+					id: 'dt-1',
+					name: 'Customer Data',
+					type: 'datatable',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/datatables/dt-1.json',
+					updatedAt: '2024-09-20T14:42:51.968Z',
+				},
+			];
+
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+			const { getByTestId, getAllByTestId, getByText } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			// Wait for modal content to be visible
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				const workflows = getAllByTestId('source-control-push-modal-file-checkbox');
+				expect(workflows).toHaveLength(1);
+			});
+
+			const dataTablesTab = getByTestId('source-control-push-modal-tab-datatable');
+
+			await userEvent.click(dataTablesTab);
+
+			const dataTables = getAllByTestId('source-control-push-modal-file-checkbox');
+			expect(dataTables).toHaveLength(1);
+			expect(dataTables[0].parentElement).toHaveTextContent('Customer Data');
+			// Data tables should be selected by default
+			expect(dataTables[0]).toBeChecked();
+		});
+
+		it('should toggle data table selection', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'wf-1',
+					name: 'My workflow',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/wf-1.json',
+					updatedAt: '2024-09-20T10:30:00.000Z',
+				},
+				{
+					id: 'dt-1',
+					name: 'Customer Data',
+					type: 'datatable',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/datatables/dt-1.json',
+					updatedAt: '2024-09-20T10:31:40.000Z',
+				},
+				{
+					id: 'dt-2',
+					name: 'Product Catalog',
+					type: 'datatable',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/datatables/dt-2.json',
+					updatedAt: '2024-09-20T14:42:51.968Z',
+				},
+			];
+
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+			const { getByTestId, getAllByTestId, getByText } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				const workflows = getAllByTestId('source-control-push-modal-file-checkbox');
+				expect(workflows).toHaveLength(1);
+			});
+
+			const dataTablesTab = getByTestId('source-control-push-modal-tab-datatable');
+			await userEvent.click(dataTablesTab);
+
+			await waitFor(() => {
+				const dataTables = getAllByTestId('source-control-push-modal-file-checkbox');
+				expect(dataTables).toHaveLength(2);
+			});
+
+			const dataTables = getAllByTestId('source-control-push-modal-file-checkbox');
+
+			// Both should be checked initially
+			expect(dataTables[0]).toBeChecked();
+			expect(dataTables[1]).toBeChecked();
+
+			// Uncheck first data table
+			await userEvent.click(dataTables[0]);
+			expect(dataTables[0]).not.toBeChecked();
+			expect(dataTables[1]).toBeChecked();
+
+			// Check it again
+			await userEvent.click(dataTables[0]);
+			expect(dataTables[0]).toBeChecked();
+			expect(dataTables[1]).toBeChecked();
+		});
+
+		it('should toggle all data tables with select-all button', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'wf-1',
+					name: 'My workflow',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/wf-1.json',
+					updatedAt: '2024-09-20T10:30:00.000Z',
+				},
+				{
+					id: 'dt-1',
+					name: 'Customer Data',
+					type: 'datatable',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/datatables/dt-1.json',
+					updatedAt: '2024-09-20T10:31:40.000Z',
+				},
+				{
+					id: 'dt-2',
+					name: 'Product Catalog',
+					type: 'datatable',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/datatables/dt-2.json',
+					updatedAt: '2024-09-20T14:42:51.968Z',
+				},
+			];
+
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+			const { getByTestId, getAllByTestId, getByText } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				const workflows = getAllByTestId('source-control-push-modal-file-checkbox');
+				expect(workflows).toHaveLength(1);
+			});
+
+			const dataTablesTab = getByTestId('source-control-push-modal-tab-datatable');
+			await userEvent.click(dataTablesTab);
+
+			await waitFor(() => {
+				const dataTables = getAllByTestId('source-control-push-modal-file-checkbox');
+				expect(dataTables).toHaveLength(2);
+			});
+
+			const dataTables = getAllByTestId('source-control-push-modal-file-checkbox');
+
+			// Both should be checked initially
+			expect(dataTables[0]).toBeChecked();
+			expect(dataTables[1]).toBeChecked();
+
+			// Unselect all
+			await userEvent.click(getByTestId('source-control-push-modal-toggle-all'));
+			expect(dataTables[0]).not.toBeChecked();
+			expect(dataTables[1]).not.toBeChecked();
+
+			// Select all again
+			await userEvent.click(getByTestId('source-control-push-modal-toggle-all'));
+			expect(dataTables[0]).toBeChecked();
+			expect(dataTables[1]).toBeChecked();
+		});
+
+		it('should filter data tables by name', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'wf-1',
+					name: 'My workflow',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/wf-1.json',
+					updatedAt: '2024-09-20T10:30:00.000Z',
+				},
+				{
+					id: 'dt-1',
+					name: 'Customer Data',
+					type: 'datatable',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/datatables/dt-1.json',
+					updatedAt: '2024-09-20T10:31:40.000Z',
+				},
+				{
+					id: 'dt-2',
+					name: 'Product Catalog',
+					type: 'datatable',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/datatables/dt-2.json',
+					updatedAt: '2024-09-20T14:42:51.968Z',
+				},
+			];
+
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+			const { getByTestId, getAllByTestId, getByText } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				const workflows = getAllByTestId('source-control-push-modal-file-checkbox');
+				expect(workflows).toHaveLength(1);
+			});
+
+			const dataTablesTab = getByTestId('source-control-push-modal-tab-datatable');
+			await userEvent.click(dataTablesTab);
+
+			await waitFor(() => {
+				expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(2);
+			});
+
+			await userEvent.type(getByTestId('source-control-push-search'), 'Customer');
+			await waitFor(() => {
+				expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(1);
+				expect(telemetry.track).toHaveBeenCalledWith('User searched workflows in commit modal', {
+					search: 'Customer',
+				});
+			});
+		});
+
+		it('should include selected data tables in push payload', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'wf-1',
+					name: 'My workflow',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/wf-1.json',
+					updatedAt: '2024-09-20T10:30:00.000Z',
+				},
+				{
+					id: 'dt-1',
+					name: 'Customer Data',
+					type: 'datatable',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/datatables/dt-1.json',
+					updatedAt: '2024-09-20T10:31:40.000Z',
+				},
+				{
+					id: 'dt-2',
+					name: 'Product Catalog',
+					type: 'datatable',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/datatables/dt-2.json',
+					updatedAt: '2024-09-20T14:42:51.968Z',
+				},
+				{
+					id: 'variables',
+					name: 'variables',
+					type: 'variables',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/variables.json',
+					updatedAt: '2024-09-20T14:42:51.968Z',
+				},
+			];
+
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+			const { getByTestId, getAllByTestId, getByText } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				const workflows = getAllByTestId('source-control-push-modal-file-checkbox');
+				expect(workflows).toHaveLength(1);
+			});
+
+			const submitButton = getByTestId('source-control-push-modal-submit');
+			const commitMessage = 'commit message';
+
+			await userEvent.type(getByTestId('source-control-push-modal-commit'), commitMessage);
+
+			expect(submitButton).not.toBeDisabled();
+			await userEvent.click(submitButton);
+
+			expect(sourceControlStore.pushWorkfolder).toHaveBeenCalledWith(
+				expect.objectContaining({
+					commitMessage,
+					// Should include both data tables (auto-selected) and variables
+					fileNames: expect.arrayContaining([
+						expect.objectContaining({ id: 'dt-1', type: 'datatable' }),
+						expect.objectContaining({ id: 'dt-2', type: 'datatable' }),
+						expect.objectContaining({ id: 'variables', type: 'variables' }),
+					]),
+					force: true,
+				}),
+			);
+		});
+
+		it('should only push selected data tables when some are unchecked', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'wf-1',
+					name: 'My workflow',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/wf-1.json',
+					updatedAt: '2024-09-20T10:30:00.000Z',
+				},
+				{
+					id: 'dt-1',
+					name: 'Customer Data',
+					type: 'datatable',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/datatables/dt-1.json',
+					updatedAt: '2024-09-20T10:31:40.000Z',
+				},
+				{
+					id: 'dt-2',
+					name: 'Product Catalog',
+					type: 'datatable',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/datatables/dt-2.json',
+					updatedAt: '2024-09-20T14:42:51.968Z',
+				},
+			];
+
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+			const { getByTestId, getAllByTestId, getByText } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				const workflows = getAllByTestId('source-control-push-modal-file-checkbox');
+				expect(workflows).toHaveLength(1);
+			});
+
+			const dataTablesTab = getByTestId('source-control-push-modal-tab-datatable');
+			await userEvent.click(dataTablesTab);
+
+			await waitFor(() => {
+				const dataTables = getAllByTestId('source-control-push-modal-file-checkbox');
+				expect(dataTables).toHaveLength(2);
+			});
+
+			const dataTables = getAllByTestId('source-control-push-modal-file-checkbox');
+
+			// Uncheck second data table (dt-2 is displayed first due to sorting by updatedAt desc)
+			await userEvent.click(dataTables[0]);
+
+			const submitButton = getByTestId('source-control-push-modal-submit');
+			const commitMessage = 'commit message';
+
+			await userEvent.type(getByTestId('source-control-push-modal-commit'), commitMessage);
+
+			expect(submitButton).not.toBeDisabled();
+			await userEvent.click(submitButton);
+
+			expect(sourceControlStore.pushWorkfolder).toHaveBeenCalledWith(
+				expect.objectContaining({
+					commitMessage,
+					// Should only include dt-1, not dt-2
+					fileNames: expect.arrayContaining([
+						expect.objectContaining({ id: 'dt-1', type: 'datatable' }),
+					]),
+					force: true,
+				}),
+			);
+
+			// Ensure dt-2 is NOT in the payload
+			const callArgs = sourceControlStore.pushWorkfolder.mock.calls[0][0];
+			const dt2InPayload = callArgs.fileNames.some((f: SourceControlledFile) => f.id === 'dt-2');
+			expect(dt2InPayload).toBe(false);
+		});
+	});
+
+	describe('filters', () => {
+		it('should filter by name', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'gTbbBkkYTnNyX1jD',
+					name: 'My workflow 1',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/gTbbBkkYTnNyX1jD.json',
+					updatedAt: '2024-09-20T10:31:40.000Z',
+				},
+				{
+					id: 'JIGKevgZagmJAnM6',
+					name: 'My workflow 2',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/JIGKevgZagmJAnM6.json',
+					updatedAt: '2024-09-20T14:42:51.968Z',
+				},
+			];
+
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+			const { getByTestId, getAllByTestId, getByText } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			// Wait for modal content to be visible
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(2);
+			});
+
+			await userEvent.type(getByTestId('source-control-push-search'), '1');
+			await waitFor(() => {
+				expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(1);
+				expect(telemetry.track).toHaveBeenCalledWith('User searched workflows in commit modal', {
+					search: '1',
+				});
+			});
+		});
+
+		it('should filter by status', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'gTbbBkkYTnNyX1jD',
+					name: 'Created Workflow',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/gTbbBkkYTnNyX1jD.json',
+					updatedAt: '2024-09-20T10:31:40.000Z',
+				},
+				{
+					id: 'JIGKevgZagmJAnM6',
+					name: 'Modified workflow',
+					type: 'workflow',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/JIGKevgZagmJAnM6.json',
+					updatedAt: '2024-09-20T14:42:51.968Z',
+				},
+			];
+
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+			const { getByTestId, getAllByTestId, getByText } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			// Wait for modal content to be visible
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(2);
+			});
+
+			await userEvent.click(getByTestId('source-control-filter-dropdown'));
+
+			expect(getByTestId('source-control-status-filter')).toBeVisible();
+
+			await userEvent.click(getByTestId('source-control-status-filter'));
+
+			const menu = getAllByTestId('source-control-status-filter-option')[0]
+				.parentElement as HTMLElement;
+
+			await userEvent.click(within(menu).getByText('New'));
+			await waitFor(() => {
+				const items = getAllByTestId('source-control-push-modal-file-checkbox');
+				expect(items[0].parentElement).toHaveTextContent('Created Workflow');
+				expect(telemetry.track).toHaveBeenCalledWith('User filtered by status in commit modal', {
+					status: 'created',
+				});
+			});
+		});
+
+		test.each([
+			['credential', 'Credentials'],
+			['workflow', 'Workflows'],
+		])('should filter %s by project', async (entity, name) => {
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.availableProjects = projects as unknown as ProjectListItem[];
+
+			const status: SourceControlledFile[] = [
+				{
+					id: 'gTbbBkkYTnNyX1jD',
+					name: `My ${name} 1`,
+					type: entity as SourceControlledFile['type'],
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/gTbbBkkYTnNyX1jD.json',
+					updatedAt: '2024-09-20T10:31:40.000Z',
+					owner: {
+						type: projects[0].type,
+						projectId: projects[0].id,
+						projectName: projects[0].name as string,
+					},
+				},
+				{
+					id: 'JIGKevgZagmJAnM6',
+					name: `My ${name} 1`,
+					type: entity as SourceControlledFile['type'],
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/JIGKevgZagmJAnM6.json',
+					updatedAt: '2024-09-20T14:42:51.968Z',
+					owner: {
+						type: projects[1].type,
+						projectId: projects[1].id,
+						projectName: projects[1].name as string,
+					},
+				},
+			];
+
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+			const { getByTestId, getAllByTestId, getByText, getByRole } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			// Wait for modal content to be visible
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				const tab = getByTestId(`source-control-push-modal-tab-${entity}`);
+				expect(tab).toBeInTheDocument();
+			});
+
+			const tab = getByTestId(`source-control-push-modal-tab-${entity}`);
+
+			await userEvent.click(tab);
+
+			await waitFor(() => {
+				expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(2);
+			});
+
+			await userEvent.click(getByTestId('source-control-filter-dropdown'));
+
+			expect(getByTestId('source-control-push-modal-project-search')).toBeVisible();
+
+			await userEvent.click(getByTestId('source-control-push-modal-project-search'));
+
+			expect(getAllByTestId('project-sharing-info')).toHaveLength(2);
+
+			await userEvent.click(getAllByTestId('project-sharing-info')[0]);
+
+			expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(1);
+			expect(getByRole('checkbox', { name: new RegExp(`My ${name} 1`) })).toBeInTheDocument();
+		});
+
+		it('should reset', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'JIGKevgZagmJAnM6',
+					name: 'Modified workflow',
+					type: 'workflow',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/JIGKevgZagmJAnM6.json',
+					updatedAt: '2024-09-20T14:42:51.968Z',
+				},
+			];
+
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+			const { getByTestId, getAllByTestId, queryAllByTestId, getByText } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			// Wait for modal content to be visible
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(1);
+			});
+
+			await userEvent.click(getByTestId('source-control-filter-dropdown'));
+
+			expect(getByTestId('source-control-status-filter')).toBeVisible();
+
+			await userEvent.click(
+				within(getByTestId('source-control-status-filter')).getByRole('combobox'),
+			);
+
+			await waitFor(() =>
+				expect(getAllByTestId('source-control-status-filter-option')[0]).toBeVisible(),
+			);
+
+			const menu = getAllByTestId('source-control-status-filter-option')[0]
+				.parentElement as HTMLElement;
+
+			await userEvent.click(within(menu).getByText('New'));
+			await waitFor(() => {
+				expect(queryAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(0);
+				expect(getByTestId('source-control-filters-reset')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByTestId('source-control-filters-reset'));
+
+			const items = getAllByTestId('source-control-push-modal-file-checkbox');
+			expect(items).toHaveLength(1);
+		});
+	});
+
+	describe('workflow diff button', () => {
+		beforeEach(() => {
+			settingsStore.settings.enterprise.workflowDiffs = true;
+			vi.clearAllMocks();
+		});
+
+		it('should set workflowStatus url param when diff button is clicked for created workflow', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'workflow-2',
+					name: 'New workflow',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/workflow-2.json',
+					updatedAt: '2024-09-20T10:31:40.000Z',
+				},
+			];
+
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+			const { getByTestId, getByText, getAllByTestId } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(1);
+			});
+
+			const compareButton = getByTestId('source-control-workflow-diff-button');
+			await userEvent.click(compareButton);
+
+			expect(mockRouterInstance.push).toHaveBeenCalledWith({
+				query: expect.objectContaining({
+					diff: 'workflow-2',
+					workflowStatus: 'created',
+					direction: 'push',
+				}),
+			});
+		});
+	});
+
+	describe('Enter key behavior', () => {
+		it('should trigger commit and push when Enter is pressed and submit is enabled', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'gTbbBkkYTnNyX1jD',
+					name: 'variables',
+					type: 'variables',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '',
+					updatedAt: '2024-09-20T10:31:40.000Z',
+				},
+			];
+
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+			const { getByTestId, getByText } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			// Wait for modal content to be visible
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				expect(getByTestId('source-control-push-modal-commit')).toBeInTheDocument();
+			});
+
+			const commitInput = getByTestId('source-control-push-modal-commit');
+			const commitMessage = 'Test commit message';
+
+			await userEvent.type(commitInput, commitMessage);
+
+			expect(getByTestId('source-control-push-modal-submit')).not.toBeDisabled();
+
+			await userEvent.type(commitInput, '{enter}');
+
+			expect(sourceControlStore.pushWorkfolder).toHaveBeenCalledWith(
+				expect.objectContaining({
+					commitMessage,
+					fileNames: expect.arrayContaining([status[0]]),
+				}),
+			);
+		});
+
+		it('should not trigger commit when Enter is pressed with empty commit message', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'gTbbBkkYTnNyX1jD',
+					name: 'variables',
+					type: 'variables',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '',
+					updatedAt: '2024-09-20T10:31:40.000Z',
+				},
+			];
+
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+			const { getByTestId, getByText } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			// Wait for modal content to be visible
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				expect(getByTestId('source-control-push-modal-commit')).toBeInTheDocument();
+			});
+
+			const commitInput = getByTestId('source-control-push-modal-commit');
+
+			expect(getByTestId('source-control-push-modal-submit')).toBeDisabled();
+
+			await userEvent.type(commitInput, '{enter}');
+
+			expect(sourceControlStore.pushWorkfolder).not.toHaveBeenCalled();
+		});
+
+		it('should not trigger commit when Enter is pressed with no items selected', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'gTbbBkkYTnNyX1jD',
+					name: 'My workflow',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/gTbbBkkYTnNyX1jD.json',
+					updatedAt: '2024-09-20T10:31:40.000Z',
+				},
+			];
+
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+			mockRoute.name = 'SOME_OTHER_VIEW';
+			mockRoute.params = { name: 'differentId' };
+
+			const { getByTestId, getAllByTestId, getByText } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			// Wait for modal content to be visible
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				const files = getAllByTestId('source-control-push-modal-file-checkbox');
+				expect(files).toHaveLength(1);
+			});
+
+			const commitInput = getByTestId('source-control-push-modal-commit');
+			const commitMessage = 'Test commit message';
+
+			const files = getAllByTestId('source-control-push-modal-file-checkbox');
+			expect(files[0]).not.toBeChecked();
+
+			await userEvent.type(commitInput, commitMessage);
+
+			expect(getByTestId('source-control-push-modal-submit')).toBeDisabled();
+
+			await userEvent.type(commitInput, '{enter}');
+
+			expect(sourceControlStore.pushWorkfolder).not.toHaveBeenCalled();
+		});
+	});
+});

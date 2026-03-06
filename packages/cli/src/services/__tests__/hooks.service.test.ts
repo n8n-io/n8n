@@ -6,6 +6,7 @@ import type {
 	WorkflowRepository,
 	UserRepository,
 } from '@n8n/db';
+import { IsNull, Not } from '@n8n/typeorm';
 import RudderStack from '@rudderstack/rudder-sdk-node';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
@@ -100,7 +101,7 @@ describe('HooksService', () => {
 
 	it('hooksService.workflowsCount should call workflowRepository.count', async () => {
 		// ARRANGE
-		const filter = { where: { active: true } };
+		const filter = { where: { activeVersionId: Not(IsNull()) } };
 
 		// ACT
 		await hooksService.workflowsCount(filter);

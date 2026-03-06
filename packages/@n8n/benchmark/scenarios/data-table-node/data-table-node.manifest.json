@@ -1,0 +1,10 @@
+{
+	"$schema": "../scenario.schema.json",
+	"name": "DataTableNode",
+	"description": "A Data table node that first inserts 100 items and then reads them from the table. The data is returned with RespondToWebhook Node.",
+	"scenarioData": {
+		"workflowFiles": ["data-table-node.json"],
+		"dataTableFile": "data-table.json"
+	},
+	"scriptPath": "data-table-node.script.js"
+}

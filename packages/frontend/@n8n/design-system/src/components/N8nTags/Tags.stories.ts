@@ -1,9 +1,9 @@
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
 
 import N8nTags from './Tags.vue';
 
 export default {
-	title: 'Atoms/Tags',
+	title: 'Core/Tags',
 	component: N8nTags,
 	argTypes: {},
 };

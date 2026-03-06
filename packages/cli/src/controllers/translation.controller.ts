@@ -1,16 +1,16 @@
+import { NODES_BASE_DIR } from '@/constants';
+import { safeJoinPath } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Get, RestController } from '@n8n/decorators';
 import type { Request } from 'express';
 import { access } from 'fs/promises';
-import { join } from 'path';
 
-import { NODES_BASE_DIR } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 
 export const CREDENTIAL_TRANSLATIONS_DIR = 'n8n-nodes-base/dist/credentials/translations';
-export const NODE_HEADERS_PATH = join(NODES_BASE_DIR, 'dist/nodes/headers');
+export const NODE_HEADERS_PATH = safeJoinPath(NODES_BASE_DIR, 'dist/nodes/headers');
 
 export declare namespace TranslationRequest {
 	export type Credential = Request<{}, {}, {}, { credentialType: string }>;
@@ -31,7 +31,7 @@ export class TranslationController {
 			throw new BadRequestError(`Invalid Credential type: "${credentialType}"`);
 
 		const { defaultLocale } = this.globalConfig;
-		const translationPath = join(
+		const translationPath = safeJoinPath(
 			CREDENTIAL_TRANSLATIONS_DIR,
 			defaultLocale,
 			`${credentialType}.json`,

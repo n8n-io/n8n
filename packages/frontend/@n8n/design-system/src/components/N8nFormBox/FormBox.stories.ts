@@ -1,14 +1,14 @@
-import { action } from '@storybook/addon-actions';
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
+import { action } from 'storybook/actions';
 
 import N8nFormBox from './FormBox.vue';
 
 export default {
-	title: 'Modules/FormBox',
+	title: 'Core/FormBox',
 	component: N8nFormBox,
 	argTypes: {},
 	parameters: {
-		backgrounds: { default: '--color-background-light' },
+		backgrounds: { default: '--color--background--light-2' },
 	},
 };
 

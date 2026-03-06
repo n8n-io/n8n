@@ -1,9 +1,9 @@
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
 
 import N8nPagination from './Pagination.vue';
 
 export default {
-	title: 'Atoms/Pagination',
+	title: 'Core/Pagination',
 	component: N8nPagination,
 };
 

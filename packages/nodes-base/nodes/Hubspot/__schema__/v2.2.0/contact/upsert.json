@@ -1,0 +1,12 @@
+{
+    "type": "object",
+    "properties": {
+        "isNew": {
+            "type": "boolean"
+        },
+        "vid": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}

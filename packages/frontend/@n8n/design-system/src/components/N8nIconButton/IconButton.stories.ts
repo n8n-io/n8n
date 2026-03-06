@@ -1,10 +1,10 @@
-import { action } from '@storybook/addon-actions';
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
+import { action } from 'storybook/actions';
 
 import N8nIconButton from './IconButton.vue';
 
 export default {
-	title: 'Atoms/Icon Button',
+	title: 'Core/Icon Button',
 	component: N8nIconButton,
 	argTypes: {
 		type: {
@@ -19,7 +19,7 @@ export default {
 		},
 	},
 	parameters: {
-		backgrounds: { default: '--color-background-light' },
+		backgrounds: { default: '--color--background--light-2' },
 	},
 };
 

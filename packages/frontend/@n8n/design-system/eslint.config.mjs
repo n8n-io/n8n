@@ -1,3 +1,5 @@
+import storybook from 'eslint-plugin-storybook';
+
 import { defineConfig } from 'eslint/config';
 import { frontendConfig } from '@n8n/eslint-config/frontend';
 
@@ -5,7 +7,7 @@ export default defineConfig(
 	frontendConfig,
 	{
 		rules: {
-			'vue/no-undef-components': 'error',
+			'vue/no-undef-components': ['error', { ignorePatterns: ['N8nDropdownMenuItem'] }],
 
 			// TODO: Remove these
 			'import-x/no-default-export': 'warn',
@@ -49,4 +51,5 @@ export default defineConfig(
 			],
 		},
 	},
+	storybook.configs['flat/recommended'],
 );

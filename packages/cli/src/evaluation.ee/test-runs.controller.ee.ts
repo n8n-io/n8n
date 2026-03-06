@@ -2,12 +2,10 @@ import { TestCaseExecutionRepository, TestRunRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { Delete, Get, Post, RestController } from '@n8n/decorators';
 import express from 'express';
-import { InstanceSettings } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { NotImplementedError } from '@/errors/response-errors/not-implemented.error';
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { TestRunsRequest } from '@/evaluation.ee/test-runs.types.ee';
 import { listQueryMiddleware } from '@/middlewares';
@@ -22,7 +20,6 @@ export class TestRunsController {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly testCaseExecutionRepository: TestCaseExecutionRepository,
 		private readonly testRunnerService: TestRunnerService,
-		private readonly instanceSettings: InstanceSettings,
 		private readonly telemetry: Telemetry,
 	) {}
 
@@ -90,10 +87,6 @@ export class TestRunsController {
 
 	@Post('/:workflowId/test-runs/:id/cancel')
 	async cancel(req: TestRunsRequest.Cancel, res: express.Response) {
-		if (this.instanceSettings.isMultiMain) {
-			throw new NotImplementedError('Cancelling test runs is not yet supported in multi-main mode');
-		}
-
 		const { id: testRunId } = req.params;
 
 		// Check test definition and test run exist

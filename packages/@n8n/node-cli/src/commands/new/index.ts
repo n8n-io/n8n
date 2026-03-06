@@ -1,17 +1,23 @@
-import { confirm, intro, isCancel, note, outro, spinner } from '@clack/prompts';
+import { confirm, intro, isCancel, log, note, outro, spinner } from '@clack/prompts';
 import { Args, Command, Flags } from '@oclif/core';
 import { camelCase } from 'change-case';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import picocolors from 'picocolors';
 
-import { declarativeTemplatePrompt, nodeNamePrompt, nodeTypePrompt } from './prompts';
+import {
+	chatModelTypePrompt,
+	declarativeTemplatePrompt,
+	nodeNamePrompt,
+	nodeTypePrompt,
+	programmaticNodeTypePrompt,
+} from './prompts';
 import { createIntro } from './utils';
 import type { TemplateData, TemplateWithRun } from '../../template/core';
 import { getTemplate, isTemplateName, isTemplateType, templates } from '../../template/templates';
+import { ChildProcessError, runCommand } from '../../utils/child-process';
 import { delayAtLeast, folderExists } from '../../utils/filesystem';
-import { tryReadGitUser } from '../../utils/git';
-import { detectPackageManager, installDependencies } from '../../utils/package-manager';
+import { initGit, tryReadGitUser } from '../../utils/git';
+import { detectPackageManager } from '../../utils/package-manager';
 import { onCancel } from '../../utils/prompts';
 import { validateNodeName } from '../../utils/validation';
 
@@ -33,7 +39,15 @@ export default class New extends Command {
 		}),
 		'skip-install': Flags.boolean({ description: 'Skip installing dependencies' }),
 		template: Flags.string({
-			options: ['declarative/github-issues', 'declarative/custom', 'programmatic/example'] as const,
+			options: [
+				'declarative/github-issues',
+				'declarative/custom',
+				'programmatic/example',
+				'programmatic/openai-chat-model',
+				'programmatic/custom-chat-model',
+				'programmatic/custom-chat-model-example',
+				'programmatic/custom-chat-memory',
+			] as const,
 		}),
 	};
 
@@ -41,7 +55,7 @@ export default class New extends Command {
 		const { flags, args } = await this.parse(New);
 		const [typeFlag, templateFlag] = flags.template?.split('/') ?? [];
 
-		intro(picocolors.inverse(createIntro()));
+		intro(await createIntro());
 
 		const nodeName = args.name ?? (await nodeNamePrompt());
 		const invalidNodeNameError = validateNodeName(nodeName);
@@ -77,10 +91,27 @@ export default class New extends Command {
 		} else if (type === 'declarative') {
 			const chosenTemplate = await declarativeTemplatePrompt();
 			template = getTemplate('declarative', chosenTemplate) as TemplateWithRun;
+		} else if (type === 'programmatic') {
+			const programmaticNodeType = await programmaticNodeTypePrompt();
+
+			if (programmaticNodeType === 'basic') {
+				template = templates.programmatic.example;
+			} else if (programmaticNodeType === 'chatModel') {
+				const chatModelType = await chatModelTypePrompt();
+				if (chatModelType === 'openaiCompatible') {
+					template = templates.programmatic.openaiChatModel as TemplateWithRun;
+				} else if (chatModelType === 'custom') {
+					template = templates.programmatic.customChatModel as TemplateWithRun;
+				} else if (chatModelType === 'customExample') {
+					template = templates.programmatic.customChatModelExample as TemplateWithRun;
+				}
+			} else if (programmaticNodeType === 'chatMemory') {
+				template = templates.programmatic.customChatMemory as TemplateWithRun;
+			}
 		}
 
 		const config = (await template.prompts?.()) ?? {};
-		const packageManager = detectPackageManager() ?? 'npm';
+		const packageManager = (await detectPackageManager()) ?? 'npm';
 		const templateData: TemplateData = {
 			destinationPath: destination,
 			nodePackageName: nodeName,
@@ -99,22 +130,59 @@ export default class New extends Command {
 		await delayAtLeast(template.run(templateData), 1000);
 		copyingSpinner.stop('Files copied');
 
+		const gitSpinner = spinner();
+		gitSpinner.start('Initializing git repository');
+
+		try {
+			await initGit(destination);
+
+			gitSpinner.stop('Git repository initialized');
+		} catch (error: unknown) {
+			if (error instanceof ChildProcessError) {
+				gitSpinner.stop(
+					`Could not initialize git repository: ${error.message}`,
+					error.code ?? undefined,
+				);
+				process.exit(error.code ?? 1);
+			} else {
+				throw error;
+			}
+		}
+
 		if (!flags['skip-install']) {
 			const installingSpinner = spinner();
 			installingSpinner.start('Installing dependencies');
 
 			try {
-				await delayAtLeast(installDependencies({ dir: destination, packageManager }), 1000);
+				await delayAtLeast(
+					runCommand(packageManager, ['install'], {
+						cwd: destination,
+						printOutput: ({ stdout, stderr }) => {
+							log.error(stdout.concat(stderr).toString());
+						},
+					}),
+					1000,
+				);
 			} catch (error: unknown) {
-				installingSpinner.stop('Could not install dependencies', 1);
-				return process.exit(1);
+				if (error instanceof ChildProcessError) {
+					installingSpinner.stop(
+						`Could not install dependencies: ${error.message}`,
+						error.code ?? undefined,
+					);
+					process.exit(error.code ?? 1);
+				} else {
+					throw error;
+				}
 			}
 
 			installingSpinner.stop('Dependencies installed');
 		}
 
 		note(
-			`Need help? Check out the docs: https://docs.n8n.io/integrations/creating-nodes/build/${type}-style-node/`,
+			`cd ./${nodeName} && ${packageManager} run dev
+
+📚 Documentation: https://docs.n8n.io/integrations/creating-nodes/build/${type}-style-node/
+💬 Community: https://community.n8n.io`,
 			'Next Steps',
 		);
 

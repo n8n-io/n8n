@@ -1,13 +1,13 @@
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
 
 import N8nSelectableList from './SelectableList.vue';
 
 export default {
-	title: 'Modules/SelectableList',
+	title: 'Core/SelectableList',
 	component: N8nSelectableList,
 	argTypes: {},
 	parameters: {
-		backgrounds: { default: '--color-background-light' },
+		backgrounds: { default: '--color--background--light-2' },
 	},
 };
 

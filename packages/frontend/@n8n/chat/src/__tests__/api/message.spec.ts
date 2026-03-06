@@ -325,6 +325,51 @@ describe('sendMessageStreaming', () => {
 		expect(onEndMessage).toHaveBeenCalledWith('node-1', 0);
 	});
 
+	it('should strip Content-Type header when uploading files even if set in webhookConfig', async () => {
+		const optionsWithContentType: ChatOptions = {
+			...mockOptions,
+			webhookConfig: {
+				headers: { 'Content-Type': 'application/json', 'X-Custom': 'value' },
+			},
+		};
+
+		const mockResponse = {
+			ok: true,
+			status: 200,
+			body: new ReadableStream({
+				start(controller) {
+					controller.enqueue(new TextEncoder().encode('{"type":"end"}\n'));
+					controller.close();
+				},
+			}),
+			headers: new Headers(),
+		} as Response;
+
+		vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
+
+		await sendMessageStreaming(
+			'test',
+			[new File([''], 'test.txt')],
+			'session',
+			optionsWithContentType,
+			{
+				onChunk: vi.fn(),
+				onEndMessage: vi.fn(),
+				onBeginMessage: vi.fn(),
+			},
+		);
+
+		// Content-Type must be excluded for FormData (browser sets it with boundary)
+		// Other custom headers should still be included
+		expect(fetch).toHaveBeenCalledWith(
+			expect.any(String),
+			expect.objectContaining({
+				headers: { Accept: 'text/plain', 'X-Custom': 'value' },
+				body: expect.any(FormData),
+			}),
+		);
+	});
+
 	it('should handle HTTP errors', async () => {
 		const mockResponse = {
 			ok: false,
@@ -480,6 +525,99 @@ describe('sendMessageStreaming', () => {
 					source: 'chat-widget',
 				},
 			}),
+		});
+	});
+
+	describe('async handlers', () => {
+		it('should support async onEndMessage handler', async () => {
+			const onEndMessage = vi.fn().mockImplementation(async () => {
+				await new Promise((resolve) => setTimeout(resolve, 10));
+			});
+
+			const chunks = [
+				{
+					type: 'begin',
+					metadata: { nodeId: 'node-1', nodeName: 'Test Node', timestamp: Date.now() },
+				},
+				{
+					type: 'end',
+					metadata: { nodeId: 'node-1', nodeName: 'Test Node', timestamp: Date.now() },
+				},
+			];
+			const encoder = new TextEncoder();
+			const stream = new ReadableStream({
+				start(controller) {
+					chunks.forEach((chunk) => {
+						const data = JSON.stringify(chunk) + '\n';
+						controller.enqueue(encoder.encode(data));
+					});
+					controller.close();
+				},
+			});
+
+			const mockResponse = {
+				ok: true,
+				status: 200,
+				body: stream,
+				headers: new Headers(),
+			} as Response;
+
+			vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
+
+			await sendMessageStreaming('Test message', [], 'test-session-id', mockOptions, {
+				onChunk: vi.fn(),
+				onEndMessage,
+				onBeginMessage: vi.fn(),
+			});
+
+			expect(onEndMessage).toHaveBeenCalledWith('node-1', undefined);
+		});
+
+		it('should await async onEndMessage on error chunks', async () => {
+			const onEndMessage = vi.fn().mockImplementation(async () => {
+				await new Promise((resolve) => setTimeout(resolve, 10));
+			});
+
+			const chunks = [
+				{
+					type: 'begin',
+					metadata: { nodeId: 'node-1', nodeName: 'Test Node', timestamp: Date.now() },
+				},
+				{
+					type: 'error',
+					content: 'Something went wrong',
+					metadata: { nodeId: 'node-1', nodeName: 'Test Node', timestamp: Date.now() },
+				},
+			];
+			const encoder = new TextEncoder();
+			const stream = new ReadableStream({
+				start(controller) {
+					chunks.forEach((chunk) => {
+						const data = JSON.stringify(chunk) + '\n';
+						controller.enqueue(encoder.encode(data));
+					});
+					controller.close();
+				},
+			});
+
+			const mockResponse = {
+				ok: true,
+				status: 200,
+				body: stream,
+				headers: new Headers(),
+			} as Response;
+
+			vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
+
+			const onChunk = vi.fn();
+			await sendMessageStreaming('Test message', [], 'test-session-id', mockOptions, {
+				onChunk,
+				onEndMessage,
+				onBeginMessage: vi.fn(),
+			});
+
+			expect(onChunk).toHaveBeenCalledWith('Error: Something went wrong', 'node-1', undefined);
+			expect(onEndMessage).toHaveBeenCalledWith('node-1', undefined);
 		});
 	});
 });

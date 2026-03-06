@@ -19,7 +19,7 @@ const node: INode = {
 	typeVersion: 3,
 	position: [42, 42],
 	parameters: {
-		mode: 'manual',
+		mode: 'raw',
 		fields: {
 			values: [],
 		},
@@ -129,7 +129,7 @@ describe('test Set2, rawMode/json Mode', () => {
 			const output = await execute.call(fakeExecuteFunction, item, 0, options, {}, node);
 
 			expect(output).toEqual({
-				json: { error: "The 'JSON Output' in item 0 contains invalid JSON" },
+				json: { error: "The 'JSON Output' in item 0 does not contain a valid JSON object" },
 				pairedItem: { item: 0 },
 			});
 		});

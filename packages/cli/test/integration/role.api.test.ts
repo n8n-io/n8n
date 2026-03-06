@@ -1,15 +1,17 @@
-import { getRoleScopes } from '@n8n/permissions';
-import type {
-	GlobalRole,
-	ProjectRole,
-	CredentialSharingRole,
-	WorkflowSharingRole,
-	Scope,
-} from '@n8n/permissions';
+import { ALL_ROLES } from '@n8n/permissions';
+import type { Role, Scope } from '@n8n/permissions';
 
 import { createMember } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
+import { Container } from '@n8n/di';
+import { AuthRolesService, SettingsRepository } from '@n8n/db';
+import { SecuritySettingsService } from '@/services/security-settings.service';
+import {
+	PROJECT_SCOPE_MAP,
+	PERSONAL_SPACE_SHARING_SETTING,
+	PERSONAL_SPACE_PUBLISHING_SETTING,
+} from '@n8n/permissions';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['role'],
@@ -18,116 +20,36 @@ const testServer = utils.setupTestServer({
 let memberAgent: SuperAgentTest;
 
 const expectedCategories = ['global', 'project', 'credential', 'workflow'] as const;
-let expectedGlobalRoles: Array<{
-	name: string;
-	role: GlobalRole;
-	scopes: Scope[];
-	licensed: boolean;
-	description: string;
-}>;
-let expectedProjectRoles: Array<{
-	name: string;
-	role: ProjectRole;
-	scopes: Scope[];
-	licensed: boolean;
-	description: string;
-}>;
-let expectedCredentialRoles: Array<{
-	name: string;
-	role: CredentialSharingRole;
-	scopes: Scope[];
-	description: string;
-	licensed: boolean;
-}>;
-let expectedWorkflowRoles: Array<{
-	name: string;
-	role: WorkflowSharingRole;
-	scopes: Scope[];
-	licensed: boolean;
-	description: string;
-}>;
+let expectedGlobalRoles: Role[];
+let expectedCredentialRoles: Role[];
+let expectedWorkflowRoles: Role[];
+
+function checkForRole(role: Role, roles: Role[]) {
+	const returnedRole = roles.find((r) => r.slug === role.slug);
+	expect(returnedRole).toBeDefined();
+	role.scopes.sort();
+	returnedRole!.scopes.sort();
+	returnedRole!.licensed = role.licensed;
+	expect(returnedRole).toEqual({
+		...role,
+		createdAt: expect.any(String),
+		updatedAt: expect.any(String),
+	});
+}
+
+function checkForScopes(roleSlug: string, scopes: Scope[], response: Role[]) {
+	const role = response.find((r) => r.slug === roleSlug);
+	expect(role).toBeDefined();
+	role!.scopes.sort();
+	expect(role!.scopes).toEqual(scopes.sort());
+}
 
 beforeAll(async () => {
 	memberAgent = testServer.authAgentFor(await createMember());
 
-	expectedGlobalRoles = [
-		{
-			name: 'Owner',
-			role: 'global:owner',
-			scopes: getRoleScopes('global:owner'),
-			licensed: true,
-			description: 'Owner',
-		},
-		{
-			name: 'Admin',
-			role: 'global:admin',
-			scopes: getRoleScopes('global:admin'),
-			licensed: false,
-			description: 'Admin',
-		},
-		{
-			name: 'Member',
-			role: 'global:member',
-			scopes: getRoleScopes('global:member'),
-			licensed: true,
-			description: 'Member',
-		},
-	];
-	expectedProjectRoles = [
-		{
-			name: 'Project Owner',
-			role: 'project:personalOwner',
-			scopes: getRoleScopes('project:personalOwner'),
-			licensed: true,
-			description: 'Project Owner',
-		},
-		{
-			name: 'Project Admin',
-			role: 'project:admin',
-			scopes: getRoleScopes('project:admin'),
-			licensed: false,
-			description: 'Project Admin',
-		},
-		{
-			name: 'Project Editor',
-			role: 'project:editor',
-			scopes: getRoleScopes('project:editor'),
-			licensed: false,
-			description: 'Project Editor',
-		},
-	];
-	expectedCredentialRoles = [
-		{
-			name: 'Credential Owner',
-			role: 'credential:owner',
-			scopes: getRoleScopes('credential:owner'),
-			licensed: true,
-			description: 'Credential Owner',
-		},
-		{
-			name: 'Credential User',
-			role: 'credential:user',
-			scopes: getRoleScopes('credential:user'),
-			licensed: true,
-			description: 'Credential User',
-		},
-	];
-	expectedWorkflowRoles = [
-		{
-			name: 'Workflow Owner',
-			role: 'workflow:owner',
-			scopes: getRoleScopes('workflow:owner'),
-			licensed: true,
-			description: 'Workflow Owner',
-		},
-		{
-			name: 'Workflow Editor',
-			role: 'workflow:editor',
-			scopes: getRoleScopes('workflow:editor'),
-			licensed: true,
-			description: 'Workflow Editor',
-		},
-	];
+	expectedGlobalRoles = ALL_ROLES.global;
+	expectedCredentialRoles = ALL_ROLES.credential;
+	expectedWorkflowRoles = ALL_ROLES.workflow;
 });
 
 describe('GET /roles/', () => {
@@ -147,18 +69,86 @@ describe('GET /roles/', () => {
 		const resp = await memberAgent.get('/roles/');
 
 		expect(resp.status).toBe(200);
+		expect(Array.isArray(resp.body.data.global)).toBe(true);
 		for (const role of expectedGlobalRoles) {
-			expect(resp.body.data.global).toContainEqual(role);
+			checkForRole(role, resp.body.data.global);
 		}
 	});
 
-	test('should return fixed project roles', async () => {
-		const resp = await memberAgent.get('/roles/');
+	describe('Project roles', () => {
+		let securitySettingsService: SecuritySettingsService;
+		let settingsRepository: SettingsRepository;
 
-		expect(resp.status).toBe(200);
-		for (const role of expectedProjectRoles) {
-			expect(resp.body.data.project).toContainEqual(role);
-		}
+		beforeEach(async () => {
+			securitySettingsService = Container.get(SecuritySettingsService);
+			settingsRepository = Container.get(SettingsRepository);
+			await settingsRepository.delete({ key: PERSONAL_SPACE_PUBLISHING_SETTING.key });
+			await settingsRepository.delete({ key: PERSONAL_SPACE_SHARING_SETTING.key });
+			await Container.get(AuthRolesService).init();
+		});
+
+		test('should default to adding sharing and publishing scopes when no security settings are set', async () => {
+			const resp = await memberAgent.get('/roles/');
+			expect(resp.status).toBe(200);
+			checkForScopes(
+				'project:personalOwner',
+				[
+					...PROJECT_SCOPE_MAP['project:personalOwner'],
+					...(PERSONAL_SPACE_SHARING_SETTING.scopes as Scope[]),
+					...(PERSONAL_SPACE_PUBLISHING_SETTING.scopes as Scope[]),
+				],
+				resp.body.data.project,
+			);
+		});
+
+		test('should match fixed scopes when security settings are all explicitly disabled', async () => {
+			await securitySettingsService.setPersonalSpaceSetting(
+				PERSONAL_SPACE_PUBLISHING_SETTING,
+				false,
+			);
+			await securitySettingsService.setPersonalSpaceSetting(PERSONAL_SPACE_SHARING_SETTING, false);
+			const resp = await memberAgent.get('/roles/');
+
+			expect(resp.status).toBe(200);
+			for (const role of ALL_ROLES.project) {
+				checkForRole(role, resp.body.data.project);
+			}
+		});
+
+		test('should return the list with project:personalOwner - workflow:publish scope when the personal project publish security setting is explicitly enabled', async () => {
+			await securitySettingsService.setPersonalSpaceSetting(
+				PERSONAL_SPACE_PUBLISHING_SETTING,
+				true,
+			);
+			const resp = await memberAgent.get('/roles/');
+
+			expect(resp.status).toBe(200);
+			checkForScopes(
+				'project:personalOwner',
+				[
+					...PROJECT_SCOPE_MAP['project:personalOwner'],
+					...(PERSONAL_SPACE_PUBLISHING_SETTING.scopes as Scope[]),
+					...(PERSONAL_SPACE_SHARING_SETTING.scopes as Scope[]),
+				],
+				resp.body.data.project,
+			);
+		});
+
+		test('should return the list with project:personalOwner - sharing scopes when the personal project sharing security setting is explicitly enabled', async () => {
+			await securitySettingsService.setPersonalSpaceSetting(PERSONAL_SPACE_SHARING_SETTING, true);
+			const resp = await memberAgent.get('/roles/');
+
+			expect(resp.status).toBe(200);
+			checkForScopes(
+				'project:personalOwner',
+				[
+					...PROJECT_SCOPE_MAP['project:personalOwner'],
+					...(PERSONAL_SPACE_PUBLISHING_SETTING.scopes as Scope[]),
+					...(PERSONAL_SPACE_SHARING_SETTING.scopes as Scope[]),
+				],
+				resp.body.data.project,
+			);
+		});
 	});
 
 	test('should return fixed credential sharing roles', async () => {
@@ -166,7 +156,7 @@ describe('GET /roles/', () => {
 
 		expect(resp.status).toBe(200);
 		for (const role of expectedCredentialRoles) {
-			expect(resp.body.data.credential).toContainEqual(role);
+			checkForRole(role, resp.body.data.credential);
 		}
 	});
 
@@ -175,7 +165,7 @@ describe('GET /roles/', () => {
 
 		expect(resp.status).toBe(200);
 		for (const role of expectedWorkflowRoles) {
-			expect(resp.body.data.workflow).toContainEqual(role);
+			checkForRole(role, resp.body.data.workflow);
 		}
 	});
 });

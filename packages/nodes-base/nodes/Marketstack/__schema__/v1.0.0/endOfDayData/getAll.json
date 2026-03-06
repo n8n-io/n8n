@@ -4,11 +4,11 @@
         "date": {
             "type": "string"
         },
-        "dividend": {
-            "type": "integer"
-        },
         "exchange": {
             "type": "string"
+        },
+        "split_factor": {
+            "type": "integer"
         },
         "symbol": {
             "type": "string"
@@ -17,5 +17,5 @@
             "type": "integer"
         }
     },
-    "version": 2
+    "version": 4
 }

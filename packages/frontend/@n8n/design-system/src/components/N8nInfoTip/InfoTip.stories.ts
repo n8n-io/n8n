@@ -1,9 +1,9 @@
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
 
 import N8nInfoTip from './InfoTip.vue';
 
 export default {
-	title: 'Atoms/InfoTip',
+	title: 'Core/InfoTip',
 	component: N8nInfoTip,
 };
 

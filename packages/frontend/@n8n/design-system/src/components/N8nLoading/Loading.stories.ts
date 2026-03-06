@@ -1,9 +1,9 @@
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
 
 import N8nLoading from './Loading.vue';
 
 export default {
-	title: 'Atoms/Loading',
+	title: 'Core/Loading',
 	component: N8nLoading,
 	argTypes: {
 		animated: {

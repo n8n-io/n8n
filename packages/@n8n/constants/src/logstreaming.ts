@@ -1,0 +1,12 @@
+import { Time } from './time';
+
+export const LOGSTREAMING_DEFAULT_MAX_FREE_SOCKETS = 5;
+export const LOGSTREAMING_DEFAULT_MAX_SOCKETS = 50;
+export const LOGSTREAMING_DEFAULT_MAX_TOTAL_SOCKETS = 100;
+export const LOGSTREAMING_DEFAULT_SOCKET_TIMEOUT_MS = 5 * Time.seconds.toMilliseconds;
+
+export const LOGSTREAMING_CB_DEFAULT_MAX_DURATION_MS = 3 * Time.minutes.toMilliseconds;
+export const LOGSTREAMING_CB_DEFAULT_MAX_FAILURES = 5;
+export const LOGSTREAMING_CB_DEFAULT_HALF_OPEN_REQUESTS = 2;
+export const LOGSTREAMING_CB_DEFAULT_FAILURE_WINDOW_MS = 1 * Time.minutes.toMilliseconds;
+export const LOGSTREAMING_CB_DEFAULT_CONCURRENT_HALF_OPEN_REQUESTS = 1;

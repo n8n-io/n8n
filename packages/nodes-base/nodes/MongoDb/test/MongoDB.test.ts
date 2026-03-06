@@ -3,7 +3,11 @@ import { Collection, MongoClient } from 'mongodb';
 import type { INodeParameters, WorkflowTestData } from 'n8n-workflow';
 
 MongoClient.connect = async function () {
-	const client = new MongoClient('mongodb://localhost:27017');
+	const driverInfo = {
+		name: 'n8n_crud',
+		version: '1.2',
+	};
+	const client = new MongoClient('mongodb://localhost:27017', { driverInfo });
 	return client;
 };
 
@@ -90,7 +94,11 @@ describe('MongoDB CRUD Node', () => {
 		);
 
 		it('calls the spy with the expected arguments', function () {
-			expect(spy).toBeCalledWith({ name: 'my-index', definition: { mappings: {} } });
+			expect(spy).toBeCalledWith({
+				name: 'my-index',
+				definition: { mappings: {} },
+				type: 'vectorSearch',
+			});
 		});
 	});
 

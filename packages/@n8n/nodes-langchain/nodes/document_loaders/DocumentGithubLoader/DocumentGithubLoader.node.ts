@@ -1,8 +1,8 @@
 import { GithubRepoLoader } from '@langchain/community/document_loaders/web/github';
 import type { TextSplitter } from '@langchain/textsplitters';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
-import { logWrapper } from '@utils/logWrapper';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
+
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -13,6 +13,7 @@ import {
 	type INodeInputConfiguration,
 } from 'n8n-workflow';
 
+/* istanbul ignore next */
 function getInputs(parameters: IDataObject) {
 	const inputs: INodeInputConfiguration[] = [];
 
@@ -39,6 +40,7 @@ export class DocumentGithubLoader implements INodeType {
 		version: [1, 1.1],
 		defaultVersion: 1.1,
 		description: 'Use GitHub data as input to this chain',
+		hidden: true,
 		defaults: {
 			name: 'GitHub Document Loader',
 		},
@@ -67,6 +69,14 @@ export class DocumentGithubLoader implements INodeType {
 
 		outputs: [NodeConnectionTypes.AiDocument],
 		outputNames: ['Document'],
+		builderHint: {
+			inputs: {
+				ai_textSplitter: {
+					required: true,
+					displayOptions: { show: { textSplittingMode: ['custom'] } },
+				},
+			},
+		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiVectorStore]),
 			{

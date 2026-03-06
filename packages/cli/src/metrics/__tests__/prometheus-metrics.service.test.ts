@@ -1,6 +1,8 @@
+import { readFileSync } from 'node:fs';
+
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { WorkflowRepository } from '@n8n/db';
+import type { WorkflowRepository, LicenseMetricsRepository } from '@n8n/db';
 import type express from 'express';
 import promBundle from 'express-prom-bundle';
 import { mock } from 'jest-mock-extended';
@@ -8,7 +10,6 @@ import type { InstanceSettings } from 'n8n-core';
 import { EventMessageTypeNames } from 'n8n-workflow';
 import promClient from 'prom-client';
 
-import config from '@/config';
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import type { EventService } from '@/events/event.service';
 
@@ -20,8 +21,11 @@ const mockMiddleware = (
 	next: express.NextFunction,
 ) => next();
 
+jest.mock('node:fs', () => ({ readFileSync: jest.fn() }));
 jest.mock('prom-client');
 jest.mock('express-prom-bundle', () => jest.fn(() => mockMiddleware));
+
+const mockedReadFileSync = jest.mocked(readFileSync);
 
 describe('PrometheusMetricsService', () => {
 	let globalConfig: GlobalConfig;
@@ -30,6 +34,7 @@ describe('PrometheusMetricsService', () => {
 	let eventService: EventService;
 	let instanceSettings: InstanceSettings;
 	let workflowRepository: WorkflowRepository;
+	let licenseMetricsRepository: LicenseMetricsRepository;
 	let prometheusMetricsService: PrometheusMetricsService;
 
 	beforeEach(() => {
@@ -49,6 +54,9 @@ describe('PrometheusMetricsService', () => {
 					includeApiStatusCodeLabel: false,
 					includeQueueMetrics: false,
 					includeWorkflowNameLabel: false,
+					includeWorkflowStatistics: false,
+					activeWorkflowCountInterval: 30,
+					workflowStatisticsInterval: 30,
 				},
 				rest: 'rest',
 				form: 'form',
@@ -58,6 +66,9 @@ describe('PrometheusMetricsService', () => {
 				webhookTest: 'webhook-test',
 				webhookWaiting: 'webhook-waiting',
 			},
+			executions: {
+				mode: 'regular',
+			},
 		});
 
 		app = mock<express.Application>();
@@ -65,6 +76,7 @@ describe('PrometheusMetricsService', () => {
 		eventService = mock<EventService>();
 		instanceSettings = mock<InstanceSettings>({ instanceType: 'main' });
 		workflowRepository = mock<WorkflowRepository>();
+		licenseMetricsRepository = mock<LicenseMetricsRepository>();
 
 		prometheusMetricsService = new PrometheusMetricsService(
 			mock(),
@@ -73,10 +85,15 @@ describe('PrometheusMetricsService', () => {
 			eventService,
 			instanceSettings,
 			workflowRepository,
+			licenseMetricsRepository,
 		);
 
 		promClient.Counter.prototype.inc = jest.fn();
 		(promClient.validateMetricName as jest.Mock).mockReturnValue(true);
+
+		mockedReadFileSync.mockImplementation(() => {
+			throw new Error('ENOENT: no such file or directory');
+		});
 	});
 
 	afterEach(() => {
@@ -95,6 +112,7 @@ describe('PrometheusMetricsService', () => {
 				customGlobalConfig,
 				mock(),
 				instanceSettings,
+				mock(),
 				mock(),
 			);
 
@@ -202,7 +220,7 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		it('should set up queue metrics if enabled', async () => {
-			config.set('executions.mode', 'queue');
+			globalConfig.executions.mode = 'queue';
 			prometheusMetricsService.enableMetric('queue');
 
 			await prometheusMetricsService.init(app);
@@ -233,7 +251,7 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		it('should not set up queue metrics if enabled but not on scaling mode', async () => {
-			config.set('executions.mode', 'regular');
+			globalConfig.executions.mode = 'regular';
 			prometheusMetricsService.enableMetric('queue');
 
 			await prometheusMetricsService.init(app);
@@ -244,7 +262,7 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		it('should not set up queue metrics if enabled and on scaling mode but instance is not main', async () => {
-			config.set('executions.mode', 'queue');
+			globalConfig.executions.mode = 'queue';
 			prometheusMetricsService.enableMetric('queue');
 			// @ts-expect-error private field
 			instanceSettings.instanceType = 'worker';
@@ -559,6 +577,87 @@ describe('PrometheusMetricsService', () => {
 				(call) => call[0]?.name === 'n8n_instance_role_leader',
 			);
 			expect(hasInstanceRoleMetric).toBe(false);
+		});
+	});
+
+	describe('PSS metric', () => {
+		const findPssGaugeConfig = () => {
+			const calls = (promClient.Gauge as jest.Mock).mock.calls;
+			return calls.find((call) => call[0]?.name === 'n8n_process_pss_bytes')?.[0];
+		};
+
+		it('should not set up PSS metric when default metrics are disabled', async () => {
+			await prometheusMetricsService.init(app);
+
+			expect(findPssGaugeConfig()).toBeUndefined();
+		});
+
+		it('should not set up PSS metric when smaps_rollup is not readable', async () => {
+			prometheusMetricsService.enableMetric('default');
+
+			await prometheusMetricsService.init(app);
+
+			expect(findPssGaugeConfig()).toBeUndefined();
+		});
+
+		it('should set up PSS metric when default metrics enabled and smaps_rollup is readable', async () => {
+			prometheusMetricsService.enableMetric('default');
+			mockedReadFileSync.mockReturnValue('Pss:    12345 kB' as never);
+
+			await prometheusMetricsService.init(app);
+
+			const config = findPssGaugeConfig();
+			expect(config).toMatchObject({
+				name: 'n8n_process_pss_bytes',
+				help: 'Proportional Set Size of the process in bytes.',
+			});
+			expect(config.collect).toBeDefined();
+		});
+
+		it('should parse Pss value and convert kB to bytes in collect callback', async () => {
+			prometheusMetricsService.enableMetric('default');
+			mockedReadFileSync.mockReturnValue(
+				'Rss:   100000 kB\nPss:    12345 kB\nShared_Clean:  5000 kB' as never,
+			);
+
+			await prometheusMetricsService.init(app);
+
+			const config = findPssGaugeConfig();
+			const mockSet = jest.fn();
+			config.collect.call({ set: mockSet });
+
+			expect(mockSet).toHaveBeenCalledWith(12345 * 1024);
+		});
+
+		it('should not set gauge value when Pss line is not found in smaps_rollup', async () => {
+			prometheusMetricsService.enableMetric('default');
+			mockedReadFileSync.mockReturnValue('some content without pss' as never);
+
+			await prometheusMetricsService.init(app);
+
+			const config = findPssGaugeConfig();
+			const mockSet = jest.fn();
+			config.collect.call({ set: mockSet });
+
+			expect(mockSet).not.toHaveBeenCalled();
+		});
+
+		it('should silently handle readFileSync failure in collect callback', async () => {
+			prometheusMetricsService.enableMetric('default');
+			// Availability check succeeds
+			mockedReadFileSync.mockReturnValueOnce('Pss:    1 kB' as never);
+
+			await prometheusMetricsService.init(app);
+
+			// Subsequent reads in collect callback fail
+			mockedReadFileSync.mockImplementation(() => {
+				throw new Error('EACCES: permission denied');
+			});
+
+			const config = findPssGaugeConfig();
+			const mockSet = jest.fn();
+			expect(() => config.collect.call({ set: mockSet })).not.toThrow();
+			expect(mockSet).not.toHaveBeenCalled();
 		});
 	});
 });

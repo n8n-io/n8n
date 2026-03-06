@@ -1,106 +1,188 @@
-name: Build, unit test and lint branch
+name: 'CI: Pull Requests (Build, Test, Lint)'
 
 on:
   pull_request:
-    branches:
-      - '**'
-      - '!release/*'
+  merge_group:
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.event.merge_group.head_sha || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   install-and-build:
     name: Install & Build
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
     env:
-      NODE_OPTIONS: '--max-old-space-size=3072'
+      NODE_OPTIONS: '--max-old-space-size=6144'
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      BUILD_STATS_WEBHOOK_URL: ${{ secrets.BUILD_STATS_WEBHOOK_URL }}
+      BUILD_STATS_WEBHOOK_USER: ${{ secrets.BUILD_STATS_WEBHOOK_USER }}
+      BUILD_STATS_WEBHOOK_PASSWORD: ${{ secrets.BUILD_STATS_WEBHOOK_PASSWORD }}
     outputs:
-      frontend_changed: ${{ steps.paths-filter.outputs.frontend == 'true' }}
-      non_python_changed: ${{ steps.paths-filter.outputs.non-python == 'true' }}
+      ci: ${{ fromJSON(steps.ci-filter.outputs.results).ci == true }}
+      unit: ${{ fromJSON(steps.ci-filter.outputs.results).unit == true }}
+      e2e: ${{ fromJSON(steps.ci-filter.outputs.results).e2e == true }}
+      workflows: ${{ fromJSON(steps.ci-filter.outputs.results).workflows == true }}
+      db: ${{ fromJSON(steps.ci-filter.outputs.results).db == true }}
+      design_system: ${{ fromJSON(steps.ci-filter.outputs.results)['design-system'] == true }}
+      performance: ${{ fromJSON(steps.ci-filter.outputs.results).performance == true }}
+      commit_sha: ${{ steps.commit-sha.outputs.sha }}
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          # Use merge_group SHA when in merge queue, otherwise PR merge ref
+          ref: ${{ github.event_name == 'merge_group' && github.event.merge_group.head_sha || format('refs/pull/{0}/merge', github.event.pull_request.number) }}
 
-      - name: Check for frontend changes
-        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
-        id: paths-filter
+      - name: Capture commit SHA for cache consistency
+        id: commit-sha
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Check for relevant changes
+        uses: ./.github/actions/ci-filter
+        id: ci-filter
         with:
+          mode: filter
           filters: |
-            frontend:
-              - packages/frontend/**
-              - packages/@n8n/design-system/**
-              - packages/@n8n/chat/**
-              - packages/@n8n/codemirror-lang/**
-              - .bundlemonrc.json
-              - .github/workflows/ci-pull-requests.yml
-            non-python:
-              - '**'
-              - '!packages/@n8n/task-runner-python/**'
+            ci:
+              **
+              !packages/@n8n/task-runner-python/**
+              !.github/**
+            unit:
+              **
+              !packages/@n8n/task-runner-python/**
+              !packages/testing/playwright/**
+              !.github/**
+            e2e:
+              .github/workflows/test-e2e-*.yml
+              .github/scripts/cleanup-ghcr-images.mjs
+              packages/testing/playwright/**
+              packages/testing/containers/**
+            workflows: .github/**
+            design-system:
+              packages/frontend/@n8n/design-system/**
+              packages/frontend/@n8n/chat/**
+              packages/frontend/@n8n/storybook/**
+              .github/workflows/test-visual-chromatic.yml
+            performance:
+              packages/testing/performance/**
+              packages/workflow/src/**
+              .github/workflows/test-bench-reusable.yml
+            db:
+              packages/cli/src/databases/**
+              packages/cli/src/modules/*/database/**
+              packages/cli/src/modules/**/*.entity.ts
+              packages/cli/src/modules/**/*.repository.ts
+              packages/cli/test/integration/**
+              packages/cli/test/migration/**
+              packages/cli/test/shared/db/**
+              packages/@n8n/db/**
+              packages/cli/**/__tests__/**
+              packages/testing/containers/services/postgres.ts
+              .github/workflows/test-db-reusable.yml
+
       - name: Setup and Build
-        if: steps.paths-filter.outputs.non-python == 'true'
-        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
+        if: fromJSON(steps.ci-filter.outputs.results).ci
+        uses: ./.github/actions/setup-nodejs
 
       - name: Run format check
-        if: steps.paths-filter.outputs.non-python == 'true'
+        if: fromJSON(steps.ci-filter.outputs.results).ci
         run: pnpm format:check
-
-      - name: Run typecheck
-        if: steps.paths-filter.outputs.non-python == 'true'
-        run: pnpm typecheck
-
-      - name: Upload Frontend Build Artifacts
-        if: steps.paths-filter.outputs.frontend == 'true'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: editor-ui-dist
-          path: packages/frontend/editor-ui/dist/
-          retention-days: 1
-
-  bundle-size-check:
-    name: Bundle Size Check
-    needs: install-and-build
-    if: needs.install-and-build.outputs.frontend_changed == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-        with:
-          ref: refs/pull/${{ github.event.pull_request.number }}/merge
-
-      - name: Setup pnpm CLI
-        uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: '22.x'
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Download Frontend Build Artifacts
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          name: editor-ui-dist
-          path: packages/frontend/editor-ui/dist/
-
-      - name: BundleMon
-        uses: lironer/bundlemon-action@cadbdd58f86faf1900725ef69d455444124b3748 # v1.3.0
 
   unit-test:
     name: Unit tests
-    if: needs.install-and-build.outputs.non_python_changed == 'true'
-    uses: ./.github/workflows/units-tests-reusable.yml
+    if: needs.install-and-build.outputs.unit == 'true'
+    uses: ./.github/workflows/test-unit-reusable.yml
     needs: install-and-build
     with:
-      ref: refs/pull/${{ github.event.pull_request.number }}/merge
+      ref: ${{ needs.install-and-build.outputs.commit_sha }}
       collectCoverage: true
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      BUILD_STATS_WEBHOOK_URL: ${{ secrets.BUILD_STATS_WEBHOOK_URL }}
+      BUILD_STATS_WEBHOOK_USER: ${{ secrets.BUILD_STATS_WEBHOOK_USER }}
+      BUILD_STATS_WEBHOOK_PASSWORD: ${{ secrets.BUILD_STATS_WEBHOOK_PASSWORD }}
+
+  typecheck:
+    name: Typecheck
+    if: needs.install-and-build.outputs.ci == 'true'
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    needs: install-and-build
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ needs.install-and-build.outputs.commit_sha }}
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: pnpm typecheck
 
   lint:
     name: Lint
-    if: needs.install-and-build.outputs.non_python_changed == 'true'
-    uses: ./.github/workflows/linting-reusable.yml
+    if: needs.install-and-build.outputs.ci == 'true'
+    uses: ./.github/workflows/test-linting-reusable.yml
     needs: install-and-build
     with:
-      ref: refs/pull/${{ github.event.pull_request.number }}/merge
+      ref: ${{ needs.install-and-build.outputs.commit_sha }}
+
+  e2e-tests:
+    name: E2E Tests
+    needs: install-and-build
+    if: (needs.install-and-build.outputs.ci == 'true' || needs.install-and-build.outputs.e2e == 'true') && github.repository == 'n8n-io/n8n'
+    uses: ./.github/workflows/test-e2e-ci-reusable.yml
+    with:
+      branch: ${{ needs.install-and-build.outputs.commit_sha }}
+      playwright-only: ${{ needs.install-and-build.outputs.e2e == 'true' && needs.install-and-build.outputs.unit == 'false' }}
+    secrets: inherit
+
+  db-tests:
+    name: DB Tests
+    needs: install-and-build
+    if: needs.install-and-build.outputs.db == 'true'
+    uses: ./.github/workflows/test-db-reusable.yml
+    with:
+      ref: ${{ needs.install-and-build.outputs.commit_sha }}
+
+  performance:
+    name: Performance
+    needs: install-and-build
+    if: needs.install-and-build.outputs.performance == 'true' && github.event_name != 'merge_group'
+    uses: ./.github/workflows/test-bench-reusable.yml
+    with:
+      ref: ${{ needs.install-and-build.outputs.commit_sha }}
+
+  security-checks:
+    name: Security Checks
+    needs: install-and-build
+    if: needs.install-and-build.outputs.workflows == 'true'
+    uses: ./.github/workflows/sec-ci-reusable.yml
+    with:
+      ref: ${{ needs.install-and-build.outputs.commit_sha }}
+    secrets: inherit
+
+  chromatic:
+    name: Chromatic
+    needs: install-and-build
+    if: needs.install-and-build.outputs.design_system == 'true'
+    uses: ./.github/workflows/test-visual-chromatic.yml
+    with:
+      ref: ${{ needs.install-and-build.outputs.commit_sha }}
+    secrets: inherit
+
+  # This job is required by GitHub branch protection rules.
+  # PRs cannot be merged unless this job passes.
+  required-checks:
+    name: Required Checks
+    needs: [install-and-build, unit-test, typecheck, lint, e2e-tests, db-tests, performance, security-checks, chromatic]
+    if: always()
+    runs-on: ubuntu-slim
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          sparse-checkout: .github/actions/ci-filter
+          sparse-checkout-cone-mode: false
+      - name: Validate required checks
+        uses: ./.github/actions/ci-filter
+        with:
+          mode: validate
+          job-results: ${{ toJSON(needs) }}

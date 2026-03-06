@@ -5,8 +5,8 @@
 			"parameters": {},
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [0, 300],
-			"id": "5a1fb2b5-9262-4511-9247-727111edca0f",
+			"position": [-32, 464],
+			"id": "246376de-5cc4-4fd2-9671-0a45b8bff10d",
 			"name": "When clicking ‘Execute workflow’"
 		},
 		{
@@ -23,13 +23,13 @@
 			},
 			"type": "n8n-nodes-base.wordpress",
 			"typeVersion": 1,
-			"position": [220, 0],
-			"id": "28b998b4-0ff7-4abb-bd3f-e6d62eeacb51",
+			"position": [192, 80],
+			"id": "36cf31d4-ad52-4bbc-8abf-bd384b6968f7",
 			"name": "Page > Create",
 			"credentials": {
 				"wordpressApi": {
-					"id": "vNOAnwp9mSIq39cD",
-					"name": "nodeqa"
+					"id": "f5S0ZnKe8cDEPpjx",
+					"name": "Wordpress (localhost)"
 				}
 			}
 		},
@@ -42,13 +42,13 @@
 			},
 			"type": "n8n-nodes-base.wordpress",
 			"typeVersion": 1,
-			"position": [220, 200],
-			"id": "b32743c1-3f56-4ac0-8071-e3f4beb9af15",
+			"position": [192, 272],
+			"id": "236d9c67-319b-435f-94e1-1719f2752a72",
 			"name": "Page > Get",
 			"credentials": {
 				"wordpressApi": {
-					"id": "vNOAnwp9mSIq39cD",
-					"name": "nodeqa"
+					"id": "f5S0ZnKe8cDEPpjx",
+					"name": "Wordpress (localhost)"
 				}
 			}
 		},
@@ -61,13 +61,13 @@
 			},
 			"type": "n8n-nodes-base.wordpress",
 			"typeVersion": 1,
-			"position": [220, 400],
-			"id": "5e5eacfd-58cd-49e0-b129-46ae235ec139",
+			"position": [192, 464],
+			"id": "b1a3788f-9c81-4591-8a4c-e138612d3fb2",
 			"name": "Page > Get Many",
 			"credentials": {
 				"wordpressApi": {
-					"id": "vNOAnwp9mSIq39cD",
-					"name": "nodeqa"
+					"id": "f5S0ZnKe8cDEPpjx",
+					"name": "Wordpress (localhost)"
 				}
 			}
 		},
@@ -84,13 +84,13 @@
 			},
 			"type": "n8n-nodes-base.wordpress",
 			"typeVersion": 1,
-			"position": [220, 600],
-			"id": "441a92ae-5c9f-411e-866c-dbb820950246",
+			"position": [192, 848],
+			"id": "cac71c1a-3367-4d5b-ba8d-d2285934be4e",
 			"name": "Page > Update",
 			"credentials": {
 				"wordpressApi": {
-					"id": "vNOAnwp9mSIq39cD",
-					"name": "nodeqa"
+					"id": "f5S0ZnKe8cDEPpjx",
+					"name": "Wordpress (localhost)"
 				}
 			}
 		},
@@ -98,33 +98,62 @@
 			"parameters": {},
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [440, 0],
-			"id": "840c6389-3a8e-43a2-bf51-cb463896e907",
+			"position": [416, 80],
+			"id": "bb846050-d39c-4e34-ad64-a97ccbbef256",
 			"name": "Create Response"
 		},
 		{
 			"parameters": {},
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [440, 200],
-			"id": "b659b27b-fa95-4cbf-b80e-5956ea03ac83",
+			"position": [416, 272],
+			"id": "9634f881-592c-4165-8f9c-5a1aad5f76ee",
 			"name": "Get Response"
 		},
 		{
 			"parameters": {},
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [440, 400],
-			"id": "d33fbb73-4204-43db-a88c-0b00cd65de3f",
+			"position": [416, 464],
+			"id": "4343c931-3ded-4505-950c-43ba56929692",
 			"name": "Get Many Response"
 		},
 		{
 			"parameters": {},
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [440, 600],
-			"id": "a50396a0-8838-4051-afa8-8ea13e4e75e4",
+			"position": [416, 848],
+			"id": "e159e8fa-a9c9-4f54-a941-29dc7983fd3a",
 			"name": "Update Response"
+		},
+		{
+			"parameters": {
+				"resource": "page",
+				"operation": "getAll",
+				"limit": 1,
+				"options": {
+					"before": "2026-01-01T00:00:00"
+				}
+			},
+			"type": "n8n-nodes-base.wordpress",
+			"typeVersion": 1,
+			"position": [192, 656],
+			"id": "a08d9d51-e97f-4ea7-b189-d109b77e9f57",
+			"name": "Page > Get Many (With Filters)",
+			"credentials": {
+				"wordpressApi": {
+					"id": "f5S0ZnKe8cDEPpjx",
+					"name": "Wordpress (localhost)"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [416, 656],
+			"id": "18c8cd20-de15-4ceb-9d6f-e4279532fe3c",
+			"name": "Get Many Response (With Filters)"
 		}
 	],
 	"pinData": {
@@ -539,6 +568,96 @@
 					}
 				}
 			}
+		],
+		"Get Many Response (With Filters)": [
+			{
+				"json": {
+					"id": 2,
+					"date": "2025-03-27T18:05:01",
+					"date_gmt": "2025-03-27T18:05:01",
+					"guid": {
+						"rendered": "https://myblog.com/?page_id=2"
+					},
+					"modified": "2025-03-27T18:05:01",
+					"modified_gmt": "2025-03-27T18:05:01",
+					"slug": "sample-page",
+					"status": "publish",
+					"type": "page",
+					"link": "https://myblog.com/sample-page/",
+					"title": {
+						"rendered": "Sample Page"
+					},
+					"content": {
+						"rendered": "\n<p>This is an example page. It&#8217;s different from a blog post because it will stay in one place and will show up in your site navigation (in most themes). Most people start with an About page that introduces them to potential site visitors. It might say something like this:</p>\n\n\n\n<blockquote class=\"wp-block-quote is-layout-flow wp-block-quote-is-layout-flow\"><p>Hi there! I&#8217;m a bike messenger by day, aspiring actor by night, and this is my website. I live in Los Angeles, have a great dog named Jack, and I like pi&#241;a coladas. (And gettin&#8217; caught in the rain.)</p></blockquote>\n\n\n\n<p>&#8230;or something like this:</p>\n\n\n\n<blockquote class=\"wp-block-quote is-layout-flow wp-block-quote-is-layout-flow\"><p>The XYZ Doohickey Company was founded in 1971, and has been providing quality doohickeys to the public ever since. Located in Gotham City, XYZ employs over 2,000 people and does all kinds of awesome things for the Gotham community.</p></blockquote>\n\n\n\n<p>As a new WordPress user, you should go to <a href=\"https://myblog.com/wp-admin/\">your dashboard</a> to delete this page and create new pages for your content. Have fun!</p>\n",
+						"protected": false
+					},
+					"excerpt": {
+						"rendered": "<p>This is an example page. It&#8217;s different from a blog post because it will stay in one place and will show up in your site navigation (in most themes). Most people start with an About page that introduces them to potential site visitors. It might say something like this: Hi there! I&#8217;m a bike messenger [&hellip;]</p>\n",
+						"protected": false
+					},
+					"author": 1,
+					"featured_media": 0,
+					"parent": 0,
+					"menu_order": 0,
+					"comment_status": "closed",
+					"ping_status": "open",
+					"template": "",
+					"meta": {
+						"footnotes": ""
+					},
+					"class_list": ["post-2", "page", "type-page", "status-publish", "hentry"],
+					"_links": {
+						"self": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/pages/2",
+								"targetHints": {
+									"allow": ["GET", "POST", "PUT", "PATCH", "DELETE"]
+								}
+							}
+						],
+						"collection": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/pages"
+							}
+						],
+						"about": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/types/page"
+							}
+						],
+						"author": [
+							{
+								"embeddable": true,
+								"href": "https://myblog.com/wp-json/wp/v2/users/1"
+							}
+						],
+						"replies": [
+							{
+								"embeddable": true,
+								"href": "https://myblog.com/wp-json/wp/v2/comments?post=2"
+							}
+						],
+						"version-history": [
+							{
+								"count": 0,
+								"href": "https://myblog.com/wp-json/wp/v2/pages/2/revisions"
+							}
+						],
+						"wp:attachment": [
+							{
+								"href": "https://myblog.com/wp-json/wp/v2/media?parent=2"
+							}
+						],
+						"curies": [
+							{
+								"name": "wp",
+								"href": "https://api.w.org/{rel}",
+								"templated": true
+							}
+						]
+					}
+				}
+			}
 		]
 	},
 	"connections": {
@@ -562,6 +681,11 @@
 					},
 					{
 						"node": "Page > Update",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Page > Get Many (With Filters)",
 						"type": "main",
 						"index": 0
 					}
@@ -611,17 +735,28 @@
 					}
 				]
 			]
+		},
+		"Page > Get Many (With Filters)": {
+			"main": [
+				[
+					{
+						"node": "Get Many Response (With Filters)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
 		}
 	},
 	"active": false,
 	"settings": {
 		"executionOrder": "v1"
 	},
-	"versionId": "b20521c7-44b4-430b-9dab-72488f7b2d02",
+	"versionId": "b76bf6d6-3a62-4e01-938a-f63e55ef236b",
 	"meta": {
 		"templateCredsSetupCompleted": true,
-		"instanceId": "0fa937d34dcabeff4bd6480d3b42cc95edf3bc20e6810819086ef1ce2623639d"
+		"instanceId": "eeda9e3069aca300d1dfceeb64beb5b53d715db44a50461bbc5cb0cf6daa01e3"
 	},
-	"id": "QuWF8XwVEfFBCWjj",
+	"id": "W7kWl5BZvsrmZeVw",
 	"tags": []
 }

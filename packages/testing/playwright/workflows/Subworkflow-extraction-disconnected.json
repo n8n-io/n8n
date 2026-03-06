@@ -1,0 +1,75 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, -5],
+			"id": "41b93a1d-ca68-49c1-b252-323e57f58ba9",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "624c7310-e17a-4075-922f-3b57952e3dfa",
+							"name": "x",
+							"value": "={{ $json.x + 'a' }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [220, -5],
+			"id": "afd95339-62f5-4efd-bcaa-637cec90ab0f",
+			"name": "Edit Fields Connected"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "624c7310-e17a-4075-922f-3b57952e3dfa",
+							"name": "x",
+							"value": "={{ $json.x + 'al' }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [440, 120],
+			"id": "c279107f-08c2-4be6-9016-d19215cfeb9e",
+			"name": "Edit Fields Disconnected"
+		}
+	],
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields Connected",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"When clicking 'Execute workflow'": [
+			{
+				"x": "l"
+			}
+		]
+	},
+	"meta": {
+		"instanceId": "d30ee1956588565f63beb4b8b589790a4701843b47fcd9e8d6d5527fe47872c3"
+	}
+}

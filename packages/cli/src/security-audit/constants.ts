@@ -109,7 +109,7 @@ export const INSTANCE_REPORT = {
  * URLs
  */
 
-export const ENV_VARS_DOCS_URL = 'https://docs.n8n.io/reference/environment-variables.html';
+export const ENV_VARS_DOCS_URL = 'https://docs.n8n.io/hosting/configuration/environment-variables/';
 
 export const DB_QUERY_PARAMS_DOCS_URL =
 	'https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.postgres#use-query-parameters';

@@ -1,0 +1,185 @@
+{
+	"name": "merge inputs paired items",
+	"nodes": [
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "ad1d6260-3c25-49e6-a526-b6a6232d8a61",
+							"name": "Branch 1 Field",
+							"value": "Branch 1 Value",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [-220, 20],
+			"id": "769d7a98-bc7a-4aa8-9d05-b7c4b7e58d65",
+			"name": "Branch 1"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "ad1d6260-3c25-49e6-a526-b6a6232d8a61",
+							"name": "Branch 2 Field",
+							"value": "Branch 2 Value",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [-220, 220],
+			"id": "9a18c73a-5a27-4927-83fa-c3fe442ed7d1",
+			"name": "Branch 2"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "ad1d6260-3c25-49e6-a526-b6a6232d8a61",
+							"name": "Branch 3 Field",
+							"value": "Branch 3 Value",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [-220, 420],
+			"id": "3bfa4793-877b-42d3-9b01-10d83a32d26a",
+			"name": "Branch 3"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-560, 220],
+			"id": "c773e03a-a260-4e02-ae80-6b473ea03398",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "8a674ec9-1167-424b-8d99-7878707ab111",
+							"name": "=item_{{ $itemIndex }}",
+							"value": "={{ $(`Branch ${$itemIndex + 1}`).item.json[`Branch ${$itemIndex + 1} Field`]}}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [420, 220],
+			"id": "052f4630-5c8f-4847-8288-134e207f0917",
+			"name": "Edit Fields"
+		},
+		{
+			"parameters": {
+				"numberInputs": 3
+			},
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3,
+			"position": [200, 220],
+			"id": "7bd63947-1a31-44bc-bc04-5e7fd8d3852b",
+			"name": "Merge V3, dynamic inputs"
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Branch 1": {
+			"main": [
+				[
+					{
+						"node": "Merge V3, dynamic inputs",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Branch 2": {
+			"main": [
+				[
+					{
+						"node": "Merge V3, dynamic inputs",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Branch 3": {
+			"main": [
+				[
+					{
+						"node": "Merge V3, dynamic inputs",
+						"type": "main",
+						"index": 2
+					}
+				]
+			]
+		},
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Branch 1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Branch 2",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Branch 3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge V3, dynamic inputs": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [[]]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "4990b19f-2b5f-4095-8ace-12579a08478a",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "be251a83c052a9862eeac953816fbb1464f89dfbf79d7ac490a8e336a8cc8bfd"
+	},
+	"id": "9JwaG8aehuYypPc6",
+	"tags": []
+}

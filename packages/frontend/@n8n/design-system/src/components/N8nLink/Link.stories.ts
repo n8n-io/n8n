@@ -1,10 +1,10 @@
-import { action } from '@storybook/addon-actions';
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
+import { action } from 'storybook/actions';
 
 import N8nLink from './Link.vue';
 
 export default {
-	title: 'Atoms/Link',
+	title: 'Core/Link',
 	component: N8nLink,
 	argTypes: {
 		size: {

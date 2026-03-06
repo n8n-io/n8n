@@ -1,9 +1,9 @@
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
 
 import N8nHeading from './Heading.vue';
 
 export default {
-	title: 'Atoms/Heading',
+	title: 'Core/Heading',
 	component: N8nHeading,
 	argTypes: {
 		size: {

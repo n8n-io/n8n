@@ -93,7 +93,7 @@ describe('AddUsersToProjectDto', () => {
 					relations: [
 						{
 							userId: 'user-123',
-							role: 'invalid-role',
+							role: '',
 						},
 					],
 				},

@@ -6,10 +6,9 @@ const properties: INodeProperties[] = [
 		displayName: 'Model',
 		name: 'model',
 		type: 'options',
-		default: 'r1-1776',
+		default: 'sonar',
 		required: true,
 		options: [
-			{ name: 'R1-1776', value: 'r1-1776' },
 			{ name: 'Sonar', value: 'sonar' },
 			{ name: 'Sonar Deep Research', value: 'sonar-deep-research' },
 			{ name: 'Sonar Pro', value: 'sonar-pro' },

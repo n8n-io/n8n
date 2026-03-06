@@ -3,6 +3,7 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
 import { STORES } from './constants';
+import { getConfigFromMetaTag } from './metaTagConfig';
 
 const { VUE_APP_URL_BASE_API } = import.meta.env;
 
@@ -30,16 +31,25 @@ export type RootStoreState = {
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
 	instanceId: string;
-	binaryDataMode: 'default' | 'filesystem' | 's3';
+	binaryDataMode: 'default' | 'filesystem' | 's3' | 'database';
 };
 
 export const useRootStore = defineStore(STORES.ROOT, () => {
+	// Generate or retrieve client ID from sessionStorage
+	const getClientId = (): string => {
+		const storageKey = 'n8n-client-id';
+		const existingId = sessionStorage.getItem(storageKey);
+		if (existingId) {
+			return existingId;
+		}
+		const newId = randomString(10).toLowerCase();
+		sessionStorage.setItem(storageKey, newId);
+		return newId;
+	};
+
 	const state = ref<RootStoreState>({
 		baseUrl: VUE_APP_URL_BASE_API ?? window.BASE_PATH,
-		restEndpoint:
-			!window.REST_ENDPOINT || window.REST_ENDPOINT === '{{REST_ENDPOINT}}'
-				? 'rest'
-				: window.REST_ENDPOINT,
+		restEndpoint: getConfigFromMetaTag('rest-endpoint') ?? 'rest',
 		defaultLocale: 'en',
 		endpointForm: 'form',
 		endpointFormTest: 'form-test',
@@ -55,7 +65,7 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		versionCli: '0.0.0',
 		oauthCallbackUrls: {},
 		n8nMetadata: {},
-		pushRef: randomString(10).toLowerCase(),
+		pushRef: getClientId(),
 		urlBaseWebhook: 'http://localhost:5678/',
 		urlBaseEditor: 'http://localhost:5678',
 		instanceId: '',

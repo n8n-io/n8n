@@ -1,10 +1,10 @@
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
 import { ElMenu } from 'element-plus';
 
 import N8nMenuItem from '.';
 
 export default {
-	title: 'Atoms/MenuItem',
+	title: 'Core/MenuItem',
 	component: N8nMenuItem,
 };
 
@@ -57,6 +57,16 @@ withSecondaryIconTooltip.args = {
 				bindTo: 'secondaryIcon',
 			},
 		},
+	},
+};
+
+export const withBetaTag = template.bind({});
+withBetaTag.args = {
+	item: {
+		id: 'workflows',
+		icon: 'home',
+		label: 'Workflows',
+		beta: true,
 	},
 };
 

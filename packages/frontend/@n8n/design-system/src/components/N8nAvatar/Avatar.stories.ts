@@ -1,9 +1,9 @@
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
 
 import N8nAvatar from './Avatar.vue';
 
 export default {
-	title: 'Atoms/Avatar',
+	title: 'Core/Avatar',
 	component: N8nAvatar,
 	argTypes: {
 		size: {

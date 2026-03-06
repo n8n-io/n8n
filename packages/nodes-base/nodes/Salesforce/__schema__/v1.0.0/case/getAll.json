@@ -12,15 +12,15 @@
                 }
             }
         },
-        "CaseNumber": {
+        "Id": {
             "type": "string"
         },
-        "Id": {
+        "OwnerId": {
             "type": "string"
         },
         "Status": {
             "type": "string"
         }
     },
-    "version": 2
+    "version": 4
 }
