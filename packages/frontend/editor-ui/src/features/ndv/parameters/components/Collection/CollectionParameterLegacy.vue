@@ -226,7 +226,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 					variant="subtle"
 					:label="getPlaceholderText"
 					data-test-id="collection-parameter-add"
-					@click="optionSelected(parameter.options[0].name)"
+					@click="optionSelected(parameter.options![0].name)"
 				/>
 				<div v-else :class="$style.addOption">
 					<N8nSelect
