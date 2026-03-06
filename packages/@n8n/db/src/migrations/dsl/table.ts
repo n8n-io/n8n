@@ -166,19 +166,7 @@ export class AddColumns extends TableOperation {
 
 		const enumChecks = buildEnumChecks(columns, prefix, tableName, driver);
 		if (enumChecks.length > 0) {
-			const isSqlite = 'sqlite' in driver;
-			if (isSqlite) {
-				// SQLite does not support ALTER TABLE ... ADD CONSTRAINT ... CHECK,
-				// but TypeORM handles it via table recreation
-				await queryRunner.createCheckConstraints(fullTableName, enumChecks);
-			} else {
-				for (const check of enumChecks) {
-					const escapedTable = driver.escape(fullTableName);
-					await queryRunner.query(
-						`ALTER TABLE ${escapedTable} ADD CONSTRAINT ${driver.escape(check.name!)} CHECK (${check.expression})`,
-					);
-				}
-			}
+			await queryRunner.createCheckConstraints(fullTableName, enumChecks);
 		}
 	}
 }
