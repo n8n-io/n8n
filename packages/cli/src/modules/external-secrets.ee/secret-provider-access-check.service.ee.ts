@@ -42,10 +42,6 @@ export class SecretsProviderAccessCheckService {
 		requiredScopes: Scope[];
 		user: User;
 	}): Promise<void> {
-		if (hasGlobalScope(user, requiredScopes)) {
-			return;
-		}
-
 		const access = await this.projectAccessRepository.findOne({
 			where: {
 				secretsProviderConnection: { providerKey },
@@ -57,6 +53,10 @@ export class SecretsProviderAccessCheckService {
 			throw new NotFoundError(
 				`Connection with key "${providerKey}" not found in project "${projectId}"`,
 			);
+		}
+
+		if (hasGlobalScope(user, requiredScopes)) {
+			return;
 		}
 
 		const validRoles = await this.roleService.rolesWithScope(

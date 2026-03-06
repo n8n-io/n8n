@@ -22,6 +22,7 @@ import {
 import type { NextFunction, Request, Response } from 'express';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { sendErrorResponse } from '@/response-helper';
 
 import { ExternalSecretsConfig } from './external-secrets.config';
@@ -185,12 +186,16 @@ export class SecretProvidersProjectController {
 	): Promise<TestSecretProviderConnectionResponse> {
 		this.logger.debug('Testing connection for project', { projectId, providerKey });
 
-		await this.accessCheckService.assertConnectionAccess({
+		const isAvailable = await this.accessCheckService.isProviderAvailableInProject(
 			providerKey,
 			projectId,
-			requiredScopes: ['externalSecretsProvider:update'],
-			user: req.user,
-		});
+		);
+
+		if (!isAvailable) {
+			throw new NotFoundError(
+				`Connection with key "${providerKey}" not found in project "${projectId}"`,
+			);
+		}
 
 		return await this.connectionsService.testConnection(providerKey, req.user.id);
 	}

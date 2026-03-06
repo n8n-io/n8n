@@ -509,7 +509,7 @@ describe('Secret Providers Project API', () => {
 				.expect(404);
 		});
 
-		test('should return 404 for a global connection (cannot update global from project context)', async () => {
+		test('should return 404 for a global connection from project context', async () => {
 			await createProviderConnection('global-update', []);
 
 			await ownerAgent
