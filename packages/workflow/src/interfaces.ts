@@ -359,6 +359,7 @@ export interface ICredentialType {
 	properties: INodeProperties[];
 	documentationUrl?: string;
 	__overwrittenProperties?: string[];
+	__skipManagedCreation?: boolean;
 	authenticate?: IAuthenticate;
 	preAuthentication?: (
 		this: IHttpRequestHelper,
@@ -1391,6 +1392,21 @@ export interface INodeExecutionRedactionInfo {
 	error?: IRedactedErrorInfo;
 }
 
+/**
+ * Marker placed on an `item.json` field when it has been redacted by a
+ * node-declared field redaction strategy.  A typed object (not `null` or a
+ * string) so consumers can distinguish intentional redaction from absent data.
+ *
+ * `canReveal` controls whether the UI should offer an option to unmask the
+ * value.  For credential-equivalent fields (e.g. auth headers) this is always
+ * `false`; future strategies may produce `true` for less-sensitive fields.
+ */
+export interface IRedactedFieldMarker {
+	__redacted: true;
+	reason: 'node_defined_field';
+	canReveal: boolean;
+}
+
 export interface INodeExecutionData {
 	[key: string]:
 		| IDataObject
@@ -2416,6 +2432,13 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	features?: NodeFeaturesDefinition;
 	/** Hints for workflow-sdk type generation, including explicit AI input requirements */
 	builderHint?: IBuilderHint;
+	/**
+	 * Dot-notation paths relative to `item.json` that contain
+	 * credential-equivalent sensitive data (e.g. `'headers.authorization'`).
+	 * These fields are always redacted regardless of workflow policy or user
+	 * permissions and are never revealable.
+	 */
+	sensitiveOutputFields?: string[];
 }
 
 export type TriggerPanelDefinition = {
