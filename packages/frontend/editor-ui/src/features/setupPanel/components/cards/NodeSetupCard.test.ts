@@ -653,8 +653,10 @@ describe('NodeSetupCard', () => {
 
 		describe('node highlighting', () => {
 			it('should highlight only the node itself on card hover', async () => {
+				const node = createTestNode({ id: 'node-1', name: 'OpenAI' }) as INodeUi;
 				const state = createCredentialState({
-					node: createTestNode({ id: 'node-1', name: 'OpenAI' }) as INodeUi,
+					node,
+					allNodesUsingCredential: [node],
 				});
 
 				const { getByTestId } = renderComponent({
