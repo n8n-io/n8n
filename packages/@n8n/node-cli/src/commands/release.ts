@@ -1,4 +1,4 @@
-import { intro } from '@clack/prompts';
+import { intro, log } from '@clack/prompts';
 import { Command } from '@oclif/core';
 
 import { ChildProcessError, runCommand } from '../utils/child-process';
@@ -51,6 +51,10 @@ For token-based auth (fallback):
 				});
 				return;
 			}
+
+			log.warning(
+				'Starting May 1 2026, n8n requires community nodes to be published via GitHub Actions with npm provenance.\nRun `n8n-node release --help` to learn how to set this up.',
+			);
 
 			await runCommand(
 				'release-it',
