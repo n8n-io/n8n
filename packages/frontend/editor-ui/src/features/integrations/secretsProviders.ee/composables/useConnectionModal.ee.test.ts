@@ -704,6 +704,54 @@ describe('useConnectionModal', () => {
 		});
 	});
 
+	describe('project-scoped creation', () => {
+		it('should transition to editable edit mode after creating a connection', async () => {
+			mockHasScope.mockReturnValue(false);
+
+			const projectId = 'project-1';
+			mockProjectsStore.myProjects = [
+				{
+					id: projectId,
+					name: 'Project 1',
+					type: 'team',
+					createdAt: '',
+					updatedAt: '',
+					icon: null,
+					role: 'owner',
+					scopes: ['externalSecretsProvider:create', 'externalSecretsProvider:update'],
+				},
+			];
+
+			mockConnection.createConnection.mockResolvedValue({
+				id: 'new-id',
+				name: 'newVault',
+				type: 'awsSecretsManager',
+				settings: { region: 'us-east-1' },
+				secretsCount: 0,
+				scopes: [
+					'externalSecretsProvider:read',
+					'externalSecretsProvider:update',
+					'externalSecretsProvider:delete',
+				],
+				projects: [{ id: projectId, name: 'Project 1', role: 'secretsProviderConnection:owner' }],
+			});
+
+			const modal = useConnectionModal({
+				...defaultOptions,
+				projectId,
+			});
+
+			modal.selectProviderType('awsSecretsManager');
+			modal.connectionName.value = 'newVault';
+
+			await modal.saveConnection();
+
+			expect(modal.isEditMode.value).toBe(true);
+			expect(modal.isReadOnly.value).toBe(false);
+			expect(modal.canUpdate.value).toBe(true);
+		});
+	});
+
 	describe('scope management', () => {
 		it('should limit project IDs to one when setting scope', () => {
 			const { setScopeState, projectIds } = useConnectionModal(defaultOptions);

@@ -377,7 +377,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 			projectIds: scopeProjectIds,
 		};
 
-		const { secretsCount, scopes } = await connection.createConnection(connectionData);
+		const { secretsCount, scopes, projects } = await connection.createConnection(connectionData);
 
 		// Transition to edit mode after successful creation
 		providerKey.value = connectionName.value.trim();
@@ -385,6 +385,10 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 
 		if (scopes) {
 			connectionScopes.value = scopes as Scope[];
+		}
+
+		if (projects) {
+			connectionProjects.value = projects;
 		}
 
 		// Update saved state
