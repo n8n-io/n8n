@@ -8,6 +8,7 @@ import {
 	PERSONAL_SPACE_PUBLISHING_SETTING,
 	PROJECT_OWNER_ROLE_SLUG,
 	PERSONAL_SPACE_SHARING_SETTING,
+	EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING,
 } from '@n8n/permissions';
 
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -134,11 +135,35 @@ export class AuthRolesService {
 		return scopes;
 	}
 
+	private async getExternalSecretsSystemRolesScopes(
+		roleSlug: string,
+		tx: EntityManager,
+	): Promise<string[]> {
+		const settingRow = await tx.findOneBy(Settings, {
+			key: EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING.key,
+		});
+
+		if (settingRow?.value !== 'true') {
+			return [];
+		}
+
+		const roleScopeMap = EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING.roleScopeMap;
+		const scopesForRole = roleScopeMap[roleSlug];
+
+		if (scopesForRole) {
+			this.logger.debug(
+				`${EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING.key} is enabled - allowing ${scopesForRole.join(', ')} scopes to ${roleSlug} role`,
+			);
+			return scopesForRole;
+		}
+
+		return [];
+	}
+
 	/**
 	 * Modifies the expected scopes for a role based on settings.
-	 * Currently only applies to project:personalOwner role.
-	 * Uses a "closed first" approach: workflow:publish is not in the base definition
-	 * and is added when the setting is enabled.
+	 * Uses a "closed first" approach: certain scopes are not in the base definition
+	 * and are added when the corresponding setting is enabled.
 	 */
 	private async updateScopesBasedOnSettings(
 		roleSlug: string,
@@ -150,6 +175,9 @@ export class AuthRolesService {
 		if (roleSlug === PROJECT_OWNER_ROLE_SLUG) {
 			scopes.push(...(await this.getPersonalOwnerSettingsScopes(tx)));
 		}
+
+		// External secrets system roles scopes
+		scopes.push(...(await this.getExternalSecretsSystemRolesScopes(roleSlug, tx)));
 		return scopes;
 	}
 
