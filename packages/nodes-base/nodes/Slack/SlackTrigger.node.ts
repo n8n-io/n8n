@@ -368,9 +368,11 @@ export class SlackTrigger implements INodeType {
 		}
 
 		// Check if user should be ignored
+		// For message_changed events, user ID is in event.message.user instead of event.user
 		if (options.userIds) {
 			const userIds = options.userIds as string[];
-			if (userIds.includes(req.body.event.user)) {
+			const userId = req.body.event.user ?? req.body.event.message?.user;
+			if (userId && userIds.includes(userId)) {
 				return {};
 			}
 		}
