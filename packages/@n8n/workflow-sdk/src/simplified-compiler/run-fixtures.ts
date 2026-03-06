@@ -11,7 +11,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import type { INode } from 'n8n-workflow';
+import type { IConnections, INode } from 'n8n-workflow';
 import { transpileWorkflowJS } from './compiler';
 import { parseWorkflowCode } from '../codegen/parse-workflow-code';
 import { executeWorkflow, extractPinData } from './execution-utils';
@@ -65,7 +65,7 @@ async function run() {
 			{
 				name: dir,
 				nodes: workflowJson.nodes as unknown as INode[],
-				connections: workflowJson.connections,
+				connections: workflowJson.connections as unknown as IConnections,
 			},
 			pinData,
 		);
@@ -78,7 +78,7 @@ async function run() {
 			if (result.errorNode) console.log(`  Failed at: ${result.errorNode}`);
 			console.log(`  Executed: [${result.executedNodes.join(', ')}]`);
 
-			const nodeNames = workflowJson.nodes.map((n) => n.name);
+			const nodeNames = workflowJson.nodes.map((n) => n.name).filter((n): n is string => !!n);
 			const pinned = Object.keys(pinData);
 			const unpinned = nodeNames.filter((n) => !pinned.includes(n));
 			if (unpinned.length > 0) {

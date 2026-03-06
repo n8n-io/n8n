@@ -1,7 +1,7 @@
 import { writeFileSync } from 'fs';
 import { join } from 'path';
 import nock from 'nock';
-import type { INode, IPinData, IRunData } from 'n8n-workflow';
+import type { IConnections, INode, IPinData, IRunData } from 'n8n-workflow';
 import { transpileWorkflowJS } from './compiler';
 import { parseWorkflowCode } from '../codegen/parse-workflow-code';
 import { loadFixtures } from './fixture-loader';
@@ -266,7 +266,7 @@ describe('Fixture execution with pin data', () => {
 				{
 					name: fixture.dir,
 					nodes: workflowJson.nodes as unknown as INode[],
-					connections: workflowJson.connections,
+					connections: workflowJson.connections as unknown as IConnections,
 				},
 				pinData,
 			);

@@ -199,7 +199,7 @@ function processFixtures(): ReportEntry[] {
 			const subWorkflows = extractSubWorkflows(workflowJson);
 
 			// Extract pin data
-			const pinDataMap = (workflowJson as Record<string, unknown>).pinData as
+			const pinDataMap = (workflowJson as unknown as Record<string, unknown>).pinData as
 				| Record<string, unknown[]>
 				| undefined;
 			const pinData: PinDataEntry[] = pinDataMap

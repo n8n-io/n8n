@@ -2831,7 +2831,7 @@ function resolveUrlExpression(node: AcornNode, ctx: TranspilerContext): string |
 		if (part.type === 'Literal' && typeof part.value === 'string') {
 			return `'${part.value}'`;
 		}
-		if (part.type === 'BinaryExpression' && part.operator === '+') {
+		if (part.type === 'BinaryExpression' && part.operator === '+' && part.left && part.right) {
 			const left = resolvePart(part.left);
 			const right = resolvePart(part.right);
 			if (left && right) return `${left} + ${right}`;
@@ -2846,6 +2846,7 @@ function resolveUrlExpression(node: AcornNode, ctx: TranspilerContext): string |
 		return `'${resolved}'`;
 	}
 
+	if (!node.left || !node.right) return undefined;
 	const left = resolvePart(node.left);
 	const right = resolvePart(node.right);
 	if (left && right) return `={{ ${left} + ${right} }}`;
