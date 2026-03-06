@@ -7,6 +7,13 @@ declare module 'n8n-workflow' {
 	interface IWorkflowExecuteAdditionalData {
 		hooks?: ExecutionLifecycleHooks;
 		externalSecretsProxy: ExternalSecretsProxy;
+		/**
+		 * The providerKeys of the external secret connections
+		 * that are either global or shared with the project
+		 * that owns the credential to decrypt.
+		 */
+		externalSecretProviderKeysAccessibleByCredential?: Set<string>;
+
 		'data-table'?: { dataTableProxyProvider: DataTableProxyProvider };
 		// Project ID is currently only added on the additionalData if the user
 		// has data table listing permission for that project. We should consider

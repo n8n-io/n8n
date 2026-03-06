@@ -391,7 +391,7 @@ defineExpose({ focus, blur, select });
 	--input--font-size: var(--font-size--sm);
 	--input--padding: var(--spacing--xs);
 
-	--input--color--background: light-dark(var(--color--neutral-white), var(--color--neutral-800));
+	--input--color--background: light-dark(var(--color--neutral-white), transparent);
 	--input--shadow: 0 0 0 0 transparent;
 	--input--shadow--hover: 0 0 0 0 transparent;
 	--input--shadow--focus: 0 0 0 0 transparent;
