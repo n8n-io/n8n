@@ -179,7 +179,7 @@ export async function decompressFolder(sourcePath: string, outputDir: string): P
 			}
 		});
 
-		unzip.register(fflate.AsyncUnzipInflate);
+		unzip.register(fflate.UnzipInflate); // synchronous — no worker threads (required in K8s)
 
 		// Create readable stream
 		const zipStream = createReadStream(sourcePath);
