@@ -55,6 +55,7 @@ export class LinearV2 implements INodeType {
 							message: 'The security token included in the request is invalid',
 						};
 					}
+					throw error;
 				}
 
 				return {
