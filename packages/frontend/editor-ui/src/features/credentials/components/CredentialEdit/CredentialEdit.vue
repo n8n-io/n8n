@@ -40,6 +40,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { sendUserEvent, type DynamicNotification } from '@n8n/rest-api-client/api/cloudPlans';
 import { isExpression, isTestableExpression } from '@/app/utils/expressions';
@@ -86,6 +87,7 @@ const workflowsStore = useWorkflowsStore();
 const workflowState = injectWorkflowState();
 const nodeTypesStore = useNodeTypesStore();
 const projectsStore = useProjectsStore();
+const externalSecretsStore = useExternalSecretsStore();
 
 const nodeHelpers = useNodeHelpers();
 const externalHooks = useExternalHooks();
@@ -383,6 +385,13 @@ onMounted(async () => {
 
 	const forceManual = isCredentialModalState(modalState) && modalState.forceManualMode === true;
 
+	// Fire secrets fetch in parallel with credential loading; failures are non-fatal —
+	// missing secrets are preferable to a broken modal.
+	const projectId = projectsStore.currentProjectId ?? projectsStore.personalProject?.id;
+	const secretsPromise = projectId
+		? externalSecretsStore.fetchSecretsForProject(projectId).catch(() => {})
+		: Promise.resolve();
+
 	if (props.mode === 'new' && credentialTypeName.value) {
 		credentialName.value = await credentialsStore.getNewCredentialName({
 			credentialTypeName: defaultCredentialTypeName.value,
@@ -395,6 +404,8 @@ onMounted(async () => {
 	} else {
 		await loadCurrentCredential();
 	}
+
+	await secretsPromise;
 
 	setCredentialPropertyDefaults();
 
