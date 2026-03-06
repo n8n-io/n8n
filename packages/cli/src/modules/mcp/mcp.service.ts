@@ -15,6 +15,7 @@ import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createPublishWorkflowTool } from './tools/publish-workflow.tool';
 import { createSearchWorkflowsTool } from './tools/search-workflows.tool';
+import { createUnpublishWorkflowTool } from './tools/unpublish-workflow.tool';
 import { createCreateWorkflowFromCodeTool } from './tools/workflow-builder/create-workflow-from-code.tool';
 import { createArchiveWorkflowTool } from './tools/workflow-builder/delete-workflow.tool';
 import { createUpdateWorkflowTool } from './tools/workflow-builder/update-workflow.tool';
@@ -145,6 +146,18 @@ export class McpService {
 			publishWorkflowTool.name,
 			publishWorkflowTool.config,
 			publishWorkflowTool.handler,
+		);
+
+		const unpublishWorkflowTool = createUnpublishWorkflowTool(
+			user,
+			this.workflowFinderService,
+			this.workflowService,
+			this.telemetry,
+		);
+		server.registerTool(
+			unpublishWorkflowTool.name,
+			unpublishWorkflowTool.config,
+			unpublishWorkflowTool.handler,
 		);
 
 		// Workflow builder tools (enabled via N8N_MCP_BUILDER_ENABLED)
