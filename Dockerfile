@@ -18,21 +18,29 @@ ARG N8N_VERSION=latest
 # Node.js major version — N|Solid tracks the same LTS lines as Node.js
 ARG NODE_MAJOR=22
 
+# Enable pipefail so that pipe failures are caught and the build stops.
+# /bin/sh on Debian (dash) supports -o pipefail; use bash explicitly if not.
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
 # ─── System dependencies ──────────────────────────────────────────────────────
+# Versions pinned to current debian:bookworm-slim package versions for
+# reproducible builds. Update with `apt-cache show <pkg>` when upgrading.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        ca-certificates \
-        curl \
-        gnupg \
-        tini \
-        graphicsmagick \
-        git \
-        openssh-client \
-        tzdata \
+        ca-certificates=20230311+deb12u1 \
+        curl=7.88.1-10+deb12u14 \
+        gnupg=2.2.40-1.1+deb12u2 \
+        tini=0.19.0-1+b3 \
+        graphicsmagick=1.4+really1.3.40-4+deb12u1 \
+        git=1:2.39.5-0+deb12u3 \
+        openssh-client=1:9.2p1-2+deb12u7 \
+        tzdata=2025b-0+deb12u2 \
     && rm -rf /var/lib/apt/lists/*
 
 # ─── Install N|Solid runtime from NodeSource ─────────────────────────────────
 # N|Solid is a hardened, drop-in replacement for Node.js with built-in
 # OpenTelemetry / observability support (no code changes required).
+# nsolid is intentionally unpinned — it tracks the NodeSource LTS channel
+# selected by NODE_MAJOR (updated via the setup script above).
 RUN curl -fsSL https://deb.nodesource.com/setup_${NODE_MAJOR}.x | bash - \
     && apt-get install -y --no-install-recommends nsolid \
     && rm -rf /var/lib/apt/lists/*
