@@ -35,6 +35,7 @@ const props = defineProps<{
 	showCreditsClaimedCallout: boolean;
 	showDynamicCredentialsMissingCallout: boolean;
 	aiCreditsQuota: string;
+	compact?: boolean;
 }>();
 
 const chatStore = useChatStore();
@@ -354,7 +355,13 @@ defineExpose({
 			/>
 
 			<div
-				:class="[{ [$style.calloutVisible]: calloutVisible }, $style.inputWrapper]"
+				:class="[
+					$style.inputWrapper,
+					{
+						[$style.calloutVisible]: calloutVisible,
+						[$style.compact]: props.compact,
+					},
+				]"
 				@click="handleClickInputWrapper"
 			>
 				<div v-if="attachments.length > 0" :class="$style.attachments">
@@ -368,35 +375,19 @@ defineExpose({
 					/>
 				</div>
 
-				<N8nInput
-					ref="inputRef"
-					v-model="message"
-					type="textarea"
-					:placeholder="placeholder"
-					autocomplete="off"
-					:autosize="{ minRows: 1, maxRows: 6 }"
-					autofocus
-					:disabled="messagingState !== 'idle'"
-					@keydown="handleKeydownTextarea"
-				/>
-
-				<div :class="$style.footer">
-					<div :class="$style.tools">
-						<ToolsSelector
-							:class="$style.toolsButton"
-							:checked-tool-ids="checkedToolIds"
-							:custom-agent-id="customAgentId"
-							:disabled="messagingState !== 'idle' || !isToolsSelectable"
-							:disabled-tooltip="
-								isToolsSelectable
-									? undefined
-									: selectedModel
-										? i18n.baseText('chatHub.tools.selector.disabled.tooltip')
-										: i18n.baseText('chatHub.tools.selector.disabled.noModel.tooltip')
-							"
-							@toggle="handleToolToggle"
-						/>
-					</div>
+				<!-- Compact mode: single row with inline actions -->
+				<div v-if="props.compact" :class="$style.compactRow">
+					<N8nInput
+						ref="inputRef"
+						v-model="message"
+						type="textarea"
+						:placeholder="placeholder"
+						autocomplete="off"
+						:autosize="{ minRows: 1, maxRows: 3 }"
+						autofocus
+						:disabled="messagingState !== 'idle'"
+						@keydown="handleKeydownTextarea"
+					/>
 					<div :class="$style.actions">
 						<N8nTooltip
 							:content="
@@ -449,6 +440,91 @@ defineExpose({
 						/>
 					</div>
 				</div>
+
+				<!-- Normal mode: textarea + footer with tools and actions -->
+				<template v-else>
+					<N8nInput
+						ref="inputRef"
+						v-model="message"
+						type="textarea"
+						:placeholder="placeholder"
+						autocomplete="off"
+						:autosize="{ minRows: 1, maxRows: 6 }"
+						autofocus
+						:disabled="messagingState !== 'idle'"
+						@keydown="handleKeydownTextarea"
+					/>
+
+					<div :class="$style.footer">
+						<div :class="$style.tools">
+							<ToolsSelector
+								:class="$style.toolsButton"
+								:checked-tool-ids="checkedToolIds"
+								:custom-agent-id="customAgentId"
+								:disabled="messagingState !== 'idle' || !isToolsSelectable"
+								:disabled-tooltip="
+									isToolsSelectable
+										? undefined
+										: selectedModel
+											? i18n.baseText('chatHub.tools.selector.disabled.tooltip')
+											: i18n.baseText('chatHub.tools.selector.disabled.noModel.tooltip')
+								"
+								@toggle="handleToolToggle"
+							/>
+						</div>
+						<div :class="$style.actions">
+							<N8nTooltip
+								:content="
+									!canUploadFiles
+										? i18n.baseText('chatHub.chat.prompt.button.attach.disabled')
+										: i18n.baseText('chatHub.chat.prompt.button.attach')
+								"
+								:disabled="canUploadFiles && messagingState === 'idle'"
+								placement="top"
+							>
+								<N8nIconButton
+									variant="ghost"
+									:disabled="messagingState !== 'idle' || !canUploadFiles"
+									icon="paperclip"
+									icon-size="large"
+									@click.stop="onAttach"
+								/>
+							</N8nTooltip>
+							<N8nIconButton
+								v-if="speechInput.isSupported"
+								variant="outline"
+								:title="
+									speechInput.isListening.value
+										? i18n.baseText('chatHub.chat.prompt.button.stopRecording')
+										: i18n.baseText('chatHub.chat.prompt.button.voiceInput')
+								"
+								:disabled="messagingState !== 'idle'"
+								:icon="speechInput.isListening.value ? 'square' : 'mic'"
+								:class="{ [$style.recording]: speechInput.isListening.value }"
+								icon-size="large"
+								@click.stop="onMic"
+							/>
+							<N8nIconButton
+								v-if="messagingState !== 'receiving'"
+								type="submit"
+								:disabled="messagingState !== 'idle' || !message.trim()"
+								:title="i18n.baseText('chatHub.chat.prompt.button.send')"
+								:loading="messagingState === 'waitingFirstChunk'"
+								icon="arrow-up"
+								icon-size="large"
+								@click.stop
+							/>
+							<N8nIconButton
+								v-else
+								native-type="button"
+								:title="i18n.baseText('chatHub.chat.prompt.button.stopGenerating')"
+								icon="square"
+								icon-size="large"
+								@click.stop="onStop"
+							/>
+						</div>
+					</div>
+				</template>
 			</div>
 		</div>
 	</form>
@@ -536,6 +612,34 @@ defineExpose({
 	&.calloutVisible {
 		border-radius: 0 0 16px 16px;
 		border-top: 0;
+	}
+
+	&.compact {
+		border-radius: var(--radius--xl);
+		padding: var(--spacing--xs);
+		gap: var(--spacing--xs);
+		box-shadow:
+			0 4px 4px 0 rgba(0, 0, 0, 0.04),
+			0 1px 2px 0 rgba(0, 0, 0, 0.08),
+			0 0 0 1px rgba(0, 0, 0, 0.1);
+		border: none;
+		background-color: var(--color--background--light-2);
+
+		& textarea {
+			font-size: var(--font-size--md);
+		}
+	}
+}
+
+.compactRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	width: 100%;
+
+	:global(.n8n-input) {
+		flex: 1;
+		min-width: 0;
 	}
 }
 

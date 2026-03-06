@@ -361,6 +361,7 @@ defineExpose({
 						:is-tools-selectable="false"
 						:is-new-session="isNewSession"
 						:show-credits-claimed-callout="false"
+						:compact="props.floating"
 						ai-credits-quota="0"
 						@submit="onSubmit"
 						@stop="onStop"
@@ -482,6 +483,16 @@ defineExpose({
 	left: auto;
 	box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.15);
 	border-radius: 50%;
+}
+
+.floating {
+	.promptContainer {
+		padding-block: var(--spacing--sm);
+	}
+
+	.prompt {
+		padding-inline: var(--spacing--sm);
+	}
 }
 
 .fullscreen {

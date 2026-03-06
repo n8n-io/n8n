@@ -268,7 +268,7 @@ onBeforeUnmount(() => {
 				<N8nIconButton
 					icon="x"
 					variant="ghost"
-					size="small"
+					size="medium"
 					data-test-id="floating-window-close"
 					@click="emit('close')"
 				/>
@@ -289,11 +289,14 @@ $corner-size: 12px;
 	z-index: 299; // above canvas, below modals (300+)
 	display: flex;
 	flex-direction: column;
-	border-radius: var(--radius--xl);
+	border-radius: 16px;
 	background-color: var(--color--background--light-2);
 	box-shadow:
-		0 8px 32px 0 rgba(0, 0, 0, 0.16),
-		0 0 0 1px rgba(0, 0, 0, 0.06);
+		0 2px 5px 0 rgba(0, 0, 0, 0.06),
+		0 10px 10px 0 rgba(0, 0, 0, 0.05),
+		0 22px 13px 0 rgba(0, 0, 0, 0.03),
+		0 40px 16px 0 rgba(0, 0, 0, 0.01);
+	border: 1px solid rgba(0, 0, 0, 0.1);
 	overflow: hidden;
 
 	&.interacting {
@@ -305,12 +308,12 @@ $corner-size: 12px;
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: 0 var(--spacing--sm);
-	height: 52px;
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	height: 48px;
 	flex-shrink: 0;
 	cursor: grab;
-	background-color: var(--color--background--light-3);
-	border-bottom: var(--border);
+	background-color: var(--color--background--light-2);
+	border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 
 	&:active {
 		cursor: grabbing;
@@ -320,14 +323,14 @@ $corner-size: 12px;
 .headerLeft {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--3xs);
 	min-width: 0;
 }
 
 .headerRight {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--2xs);
 	flex-shrink: 0;
 }
 
