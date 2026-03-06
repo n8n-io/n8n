@@ -64,6 +64,7 @@ export async function execute(
 	table: string,
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
+	const nodeVersion = this.getNode().typeVersion;
 
 	for (let i = 0; i < items.length; i++) {
 		let id;
@@ -80,14 +81,23 @@ export async function execute(
 					[responseData] as IRecord[],
 					options.downloadFields as string[],
 				);
+				if (nodeVersion < 2.2) {
+					for (const item of itemWithAttachments) {
+						item.json = flattenOutput(item.json);
+					}
+				}
 				returnData.push(...itemWithAttachments);
 				continue;
 			}
 
-			const executionData = this.helpers.constructExecutionMetaData(
-				wrapData(flattenOutput(responseData as IDataObject)),
-				{ itemData: { item: i } },
-			);
+			const output =
+				nodeVersion < 2.2
+					? flattenOutput(responseData as IDataObject)
+					: (responseData as IDataObject);
+
+			const executionData = this.helpers.constructExecutionMetaData(wrapData(output), {
+				itemData: { item: i },
+			});
 
 			returnData.push(...executionData);
 		} catch (error) {

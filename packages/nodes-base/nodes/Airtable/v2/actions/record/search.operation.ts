@@ -210,6 +210,11 @@ export async function execute(
 					options.downloadFields as string[],
 					fallbackPairedItems || [{ item: i }],
 				);
+				if (nodeVersion < 2.2) {
+					for (const item of itemWithAttachments) {
+						item.json = flattenOutput(item.json);
+					}
+				}
 				returnData.push(...itemWithAttachments);
 				continue;
 			}
@@ -217,7 +222,7 @@ export async function execute(
 			let records = responseData.records;
 
 			records = (records as IDataObject[]).map((record) => ({
-				json: flattenOutput(record),
+				json: nodeVersion < 2.2 ? flattenOutput(record) : record,
 			})) as INodeExecutionData[];
 
 			const itemData = fallbackPairedItems || [{ item: i }];

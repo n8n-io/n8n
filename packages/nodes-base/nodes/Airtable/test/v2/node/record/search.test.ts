@@ -47,7 +47,7 @@ jest.mock('../../../../v2/transport', () => {
 });
 
 describe('Test AirtableV2, search operation', () => {
-	it('should return all records', async () => {
+	it('should return all records using nested fields structure for v2.2', async () => {
 		const nodeParameters = {
 			operation: 'search',
 			filterByFormula: 'foo',
@@ -97,7 +97,7 @@ describe('Test AirtableV2, search operation', () => {
 
 		expect(result).toHaveLength(2);
 		expect(result[0]).toEqual({
-			json: { id: 'recYYY', foo: 'foo 2', bar: 'bar 2' },
+			json: { id: 'recYYY', fields: { foo: 'foo 2', bar: 'bar 2' } },
 			pairedItem: [
 				{
 					item: 0,
@@ -106,7 +106,7 @@ describe('Test AirtableV2, search operation', () => {
 		});
 	});
 
-	it('should return all records', async () => {
+	it('should return limited records using nested fields structure for v2.2', async () => {
 		const nodeParameters = {
 			operation: 'search',
 			filterByFormula: 'foo',
@@ -137,6 +137,38 @@ describe('Test AirtableV2, search operation', () => {
 			'appYoLbase/tblltable',
 			{},
 			{ fields: ['foo', 'bar'], filterByFormula: 'foo', maxRecords: 1 },
+		);
+
+		expect(result).toHaveLength(1);
+		expect(result[0]).toEqual({
+			json: { id: 'recYYY', fields: { foo: 'foo 2', bar: 'bar 2' } },
+			pairedItem: [
+				{
+					item: 0,
+				},
+			],
+		});
+	});
+
+	it('should flatten output for v2', async () => {
+		const nodeParameters = {
+			operation: 'search',
+			filterByFormula: 'foo',
+			returnAll: false,
+			limit: 1,
+			options: {
+				fields: ['foo', 'bar'],
+			},
+			sort: {},
+		};
+
+		const items = [{ json: {} }];
+
+		const result = await search.execute.call(
+			createMockExecuteFunction(nodeParameters, 2),
+			items,
+			'appYoLbase',
+			'tblltable',
 		);
 
 		expect(result).toHaveLength(1);
