@@ -33,6 +33,7 @@ import { useInstalledCommunityPackage } from '@/features/settings/communityNodes
 import { useNodeCredentialOptions } from '@/features/credentials/composables/useNodeCredentialOptions';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { importCurlEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
@@ -131,13 +132,14 @@ const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
 const workflowState = injectWorkflowState();
 const workflowDocumentStore = computed(() =>
-	workflowsStore.workflowId
-		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+	workflowId.value
+		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value))
 		: undefined,
 );
 const credentialsStore = useCredentialsStore();
 const historyStore = useHistoryStore();
 
+const workflowId = useInjectWorkflowId();
 const telemetry = useTelemetry();
 const nodeHelpers = useNodeHelpers();
 const externalHooks = useExternalHooks();
@@ -571,7 +573,7 @@ const onFeatureRequestClick = () => {
 	if (node.value) {
 		telemetry.track('User clicked ndv link', {
 			node_type: node.value.type,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowId.value,
 			push_ref: props.pushRef,
 			pane: NodeConnectionTypes.Main,
 			type: 'i-wish-this-node-would',

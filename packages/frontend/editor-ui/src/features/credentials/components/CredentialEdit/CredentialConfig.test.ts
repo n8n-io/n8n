@@ -11,6 +11,8 @@ import type { RenderOptions } from '@/__tests__/render';
 import { createComponentRenderer } from '@/__tests__/render';
 import { STORES } from '@n8n/stores';
 import { vi } from 'vitest';
+import { computed } from 'vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { useCredentialsStore } from '../../credentials.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -33,6 +35,11 @@ const mockCredentialType: ICredentialType = {
 };
 
 const defaultRenderOptions: RenderOptions<typeof CredentialConfig> = {
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
+	},
 	pinia: createTestingPinia({
 		initialState: {
 			[STORES.SETTINGS]: {

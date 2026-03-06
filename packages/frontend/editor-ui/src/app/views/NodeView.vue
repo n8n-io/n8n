@@ -135,8 +135,7 @@ import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimenta
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useActivityDetection } from '@/app/composables/useActivityDetection';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
-import { injectStrict } from '@/app/utils/injectStrict';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import { N8nCallout, N8nCanvasThinkingPill, N8nCanvasCollaborationPill } from '@n8n/design-system';
@@ -266,7 +265,7 @@ const isLoading = ref(true);
 const readOnlyNotification = ref<null | { visible: boolean }>(null);
 const fallbackNodes = ref<INodeUi[]>([]);
 
-const workflowId = injectStrict(WorkflowIdKey);
+const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const routeNodeId = computed(() => {
 	const nodeId = route.params.nodeId;
@@ -1055,7 +1054,7 @@ async function onRunWorkflowToNode(id: string) {
 		});
 	} else {
 		trackRunWorkflowToNode(node);
-		agentRequestStore.clearAgentRequests(workflowsStore.workflowId, node.id);
+		agentRequestStore.clearAgentRequests(workflowId.value, node.id);
 
 		void runWorkflow({
 			destinationNode: { nodeName: node.name, mode: 'inclusive' },
@@ -1105,7 +1104,7 @@ async function onCopyProductionUrl(id: string) {
 function trackRunWorkflowToNode(node: INodeUi) {
 	const telemetryPayload = {
 		node_type: node.type,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowId.value,
 		source: 'canvas',
 		push_ref: ndvStore.pushRef,
 	};
@@ -1643,7 +1642,7 @@ onBeforeRouteLeave(async (to, from, next) => {
 	await workflowSaving.promptSaveUnsavedWorkflowChanges(next, {
 		async confirm() {
 			if (from.name === VIEWS.NEW_WORKFLOW) {
-				const savedWorkflowId = workflowsStore.workflowId;
+				const savedWorkflowId = workflowId.value;
 				await router.replace({
 					name: VIEWS.WORKFLOW,
 					params: { name: savedWorkflowId },

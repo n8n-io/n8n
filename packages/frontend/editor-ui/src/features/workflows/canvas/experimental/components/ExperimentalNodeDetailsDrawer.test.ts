@@ -6,7 +6,8 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
 import ExperimentalNodeDetailsDrawer from './ExperimentalNodeDetailsDrawer.vue';
-import { nextTick } from 'vue';
+import { computed, nextTick } from 'vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { fireEvent } from '@testing-library/vue';
 import {
 	injectWorkflowState,
@@ -22,7 +23,13 @@ vi.mock('@/app/composables/useWorkflowState', async () => {
 	};
 });
 
-const renderComponent = createComponentRenderer(ExperimentalNodeDetailsDrawer);
+const renderComponent = createComponentRenderer(ExperimentalNodeDetailsDrawer, {
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
+	},
+});
 
 describe('ExperimentalNodeDetailsDrawer', () => {
 	let pinia: ReturnType<typeof createTestingPinia>;

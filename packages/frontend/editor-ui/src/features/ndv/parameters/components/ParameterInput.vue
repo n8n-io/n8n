@@ -68,6 +68,7 @@ import { useDebounce } from '@/app/composables/useDebounce';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
@@ -168,6 +169,7 @@ const nodeHelpers = useNodeHelpers();
 const { debounce } = useDebounce();
 const workflowHelpers = useWorkflowHelpers();
 const nodeSettingsParameters = useNodeSettingsParameters();
+const workflowId = useInjectWorkflowId();
 const telemetry = useTelemetry();
 
 const credentialsStore = useCredentialsStore();
@@ -773,7 +775,7 @@ async function loadRemoteParameterOptions() {
 			currentNodeParameters: resolvedNodeParameters,
 			credentials: node.value.credentials,
 			projectId: projectsStore.currentProjectId,
-			workflowId: workflowsStore.workflowId,
+			workflowId: workflowId.value,
 		});
 
 		remoteParameterOptions.value = remoteParameterOptions.value.concat(options);
@@ -813,7 +815,7 @@ function trackExpressionEditOpen() {
 			parameter_name: props.parameter.displayName,
 			parameter_field_type: props.parameter.type,
 			new_expression: !isModelValueExpression.value,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowId.value,
 			push_ref: ndvStore.pushRef,
 			source: props.eventSource ?? 'ndv',
 		});
@@ -946,7 +948,7 @@ function trackWorkflowInputModeEvent(value: string) {
 	};
 	telemetry.track('User chose input data mode', {
 		option: telemetryValuesMap[value],
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowId.value,
 		node_id: node.value?.id,
 	});
 }
@@ -1019,7 +1021,7 @@ function valueChanged(untypedValue: unknown) {
 
 	if (props.parameter.name === 'operation' || props.parameter.name === 'mode') {
 		telemetry.track('User set node operation or mode', {
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowId.value,
 			node_type: node.value?.type,
 			resource: node.value?.parameters.resource,
 			is_custom: value === CUSTOM_API_CALL_KEY,

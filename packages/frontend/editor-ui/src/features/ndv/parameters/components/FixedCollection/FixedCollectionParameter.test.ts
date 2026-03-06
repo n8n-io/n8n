@@ -1,9 +1,11 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import FixedCollectionParameter, { type Props } from './FixedCollectionParameter.vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
+import { computed } from 'vue';
 import { COLLECTION_OVERHAUL_EXPERIMENT } from '@/app/constants';
 import { usePostHog, type PosthogStore } from '@/app/stores/posthog.store';
 import userEvent from '@testing-library/user-event';
@@ -64,7 +66,14 @@ describe('FixedCollectionParameter.vue (Wrapper)', () => {
 		isReadOnly: false,
 	};
 
-	const renderComponent = createComponentRenderer(FixedCollectionParameter, { props });
+	const renderComponent = createComponentRenderer(FixedCollectionParameter, {
+		props,
+		global: {
+			provide: {
+				[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+			},
+		},
+	});
 
 	beforeEach(() => {
 		vi.clearAllMocks();

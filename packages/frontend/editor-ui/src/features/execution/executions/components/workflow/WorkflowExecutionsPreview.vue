@@ -9,8 +9,7 @@ import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/app/constants';
-import { injectStrict } from '@/app/utils/injectStrict';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -45,7 +44,7 @@ const executionDebugging = useExecutionDebugging();
 const workflowsListStore = useWorkflowsListStore();
 const settingsStore = useSettingsStore();
 const retryDropdownRef = ref<RetryDropdownRef | null>(null);
-const workflowId = injectStrict(WorkflowIdKey);
+const workflowId = useInjectWorkflowId();
 const workflowPermissions = computed(
 	() =>
 		getResourcePermissions(workflowsListStore.getWorkflowById(workflowId.value)?.scopes).workflow,
