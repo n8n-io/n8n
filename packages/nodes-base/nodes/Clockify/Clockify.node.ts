@@ -658,6 +658,21 @@ export class Clockify implements INodeType {
 							body.estimate = `PT${hour}H${minute}M`;
 						}
 
+						if (!body.name) {
+							// The Clockify API requires `name` in every PUT /tasks request body.
+							// If the user did not set a new name, fetch the existing task
+							// to preserve its current name.
+							// See: https://docs.clockify.me/#tag/Task/operation/updateTask
+							const { name } = await clockifyApiRequest.call(
+								this,
+								'GET',
+								`/workspaces/${workspaceId}/projects/${projectId}/tasks/${taskId}`,
+								{},
+								qs,
+							);
+							body.name = name;
+						}
+
 						responseData = await clockifyApiRequest.call(
 							this,
 							'PUT',
