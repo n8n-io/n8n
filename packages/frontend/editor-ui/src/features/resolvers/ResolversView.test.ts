@@ -8,19 +8,24 @@ import userEvent from '@testing-library/user-event';
 import ResolversView from './ResolversView.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import {
-	CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
-	CREDENTIAL_RESOLVER_DELETE_MODAL_KEY,
-} from '@/app/constants';
+import { CREDENTIAL_RESOLVER_EDIT_MODAL_KEY, MODAL_CONFIRM, MODAL_CANCEL } from '@/app/constants';
 import * as restApiClient from '@n8n/rest-api-client';
 import type { CredentialResolver, CredentialResolverType } from '@n8n/api-types';
 
+const mockConfirm = vi.fn();
 const mockShowError = vi.fn();
+const mockShowMessage = vi.fn();
+
+vi.mock('@/app/composables/useMessage', () => ({
+	useMessage: () => ({
+		confirm: mockConfirm,
+	}),
+}));
 
 vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({
 		showError: mockShowError,
-		showMessage: vi.fn(),
+		showMessage: mockShowMessage,
 	}),
 }));
 
@@ -222,8 +227,9 @@ describe('ResolversView', () => {
 			});
 		});
 
-		it('should open delete modal when clicking delete action', async () => {
+		it('should show confirmation dialog when deleting a resolver', async () => {
 			vi.mocked(restApiClient.getCredentialResolvers).mockResolvedValue([mockResolvers[0]]);
+			mockConfirm.mockResolvedValue(MODAL_CANCEL);
 
 			const { container, getByText } = renderComponent({ pinia });
 
@@ -231,8 +237,34 @@ describe('ResolversView', () => {
 				expect(getByText('Test Resolver')).toBeInTheDocument();
 			});
 
+			// Find and click the action toggle button
 			const actionToggle = container.querySelector('[data-test-id="action-toggle"]');
 			expect(actionToggle).toBeInTheDocument();
+			await userEvent.click(actionToggle!);
+
+			// Wait for dropdown to appear and click delete
+			await waitFor(() => {
+				const deleteOption = getByText('Delete');
+				expect(deleteOption).toBeInTheDocument();
+			});
+			await userEvent.click(getByText('Delete'));
+
+			expect(mockConfirm).toHaveBeenCalled();
+		});
+
+		it('should delete resolver when confirmed', async () => {
+			vi.mocked(restApiClient.getCredentialResolvers).mockResolvedValue([mockResolvers[0]]);
+			vi.mocked(restApiClient.deleteCredentialResolver).mockResolvedValue(undefined);
+			mockConfirm.mockResolvedValue(MODAL_CONFIRM);
+
+			const { container, getByText } = renderComponent({ pinia });
+
+			await waitFor(() => {
+				expect(getByText('Test Resolver')).toBeInTheDocument();
+			});
+
+			// Find and click the action toggle button
+			const actionToggle = container.querySelector('[data-test-id="action-toggle"]');
 			await userEvent.click(actionToggle!);
 
 			await waitFor(() => {
@@ -240,12 +272,70 @@ describe('ResolversView', () => {
 			});
 			await userEvent.click(getByText('Delete'));
 
-			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
-				name: CREDENTIAL_RESOLVER_DELETE_MODAL_KEY,
-				data: {
-					resolver: mockResolvers[0],
-					onConfirm: expect.any(Function),
-				},
+			await waitFor(() => {
+				expect(restApiClient.deleteCredentialResolver).toHaveBeenCalledWith(
+					rootStore.restApiContext,
+					'resolver-1',
+				);
+			});
+
+			expect(mockShowMessage).toHaveBeenCalledWith({
+				title: expect.any(String),
+				type: 'success',
+			});
+		});
+
+		it('should not delete resolver when cancelled', async () => {
+			vi.mocked(restApiClient.getCredentialResolvers).mockResolvedValue([mockResolvers[0]]);
+			mockConfirm.mockResolvedValue(MODAL_CANCEL);
+
+			const { container, getByText } = renderComponent({ pinia });
+
+			await waitFor(() => {
+				expect(getByText('Test Resolver')).toBeInTheDocument();
+			});
+
+			// Find and click the action toggle button
+			const actionToggle = container.querySelector('[data-test-id="action-toggle"]');
+			await userEvent.click(actionToggle!);
+
+			await waitFor(() => {
+				expect(getByText('Delete')).toBeInTheDocument();
+			});
+			await userEvent.click(getByText('Delete'));
+
+			await waitFor(() => {
+				expect(mockConfirm).toHaveBeenCalled();
+			});
+
+			expect(restApiClient.deleteCredentialResolver).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('Error handling', () => {
+		it('should show error toast when delete fails', async () => {
+			vi.mocked(restApiClient.getCredentialResolvers).mockResolvedValue([mockResolvers[0]]);
+			const error = new Error('Delete failed');
+			vi.mocked(restApiClient.deleteCredentialResolver).mockRejectedValue(error);
+			mockConfirm.mockResolvedValue(MODAL_CONFIRM);
+
+			const { container, getByText } = renderComponent({ pinia });
+
+			await waitFor(() => {
+				expect(getByText('Test Resolver')).toBeInTheDocument();
+			});
+
+			// Find and click the action toggle button
+			const actionToggle = container.querySelector('[data-test-id="action-toggle"]');
+			await userEvent.click(actionToggle!);
+
+			await waitFor(() => {
+				expect(getByText('Delete')).toBeInTheDocument();
+			});
+			await userEvent.click(getByText('Delete'));
+
+			await waitFor(() => {
+				expect(mockShowError).toHaveBeenCalledWith(error, expect.any(String));
 			});
 		});
 	});
