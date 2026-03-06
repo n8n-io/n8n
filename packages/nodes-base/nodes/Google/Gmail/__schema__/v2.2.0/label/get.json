@@ -1,27 +1,27 @@
 {
     "type": "object",
     "properties": {
-        "creation": {
+        "id": {
             "type": "string"
         },
-        "docstatus": {
+        "messagesTotal": {
             "type": "integer"
         },
-        "idx": {
+        "messagesUnread": {
             "type": "integer"
-        },
-        "modified": {
-            "type": "string"
-        },
-        "modified_by": {
-            "type": "string"
         },
         "name": {
             "type": "string"
         },
-        "owner": {
+        "threadsTotal": {
+            "type": "integer"
+        },
+        "threadsUnread": {
+            "type": "integer"
+        },
+        "type": {
             "type": "string"
         }
     },
-    "version": 2
+    "version": 1
 }
