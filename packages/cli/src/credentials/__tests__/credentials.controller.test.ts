@@ -20,6 +20,7 @@ import type { CredentialsFinderService } from '../credentials-finder.service';
 import { CredentialsController } from '../credentials.controller';
 import { CredentialsService } from '../credentials.service';
 import * as validation from '../validation';
+import * as checkAccess from '@/permissions.ee/check-access';
 import { createNewCredentialsPayload, createdCredentialsWithScopes } from './credentials.test-data';
 
 describe('CredentialsController', () => {
@@ -461,6 +462,7 @@ describe('CredentialsController', () => {
 		});
 
 		it('should throw error when editing external secret expression without permission', async () => {
+			jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
 			const memberReq = {
 				user: { id: 'member-id', role: GLOBAL_MEMBER_ROLE },
 				params: { credentialId },
@@ -494,6 +496,7 @@ describe('CredentialsController', () => {
 		});
 
 		it('should throw error when adding new external secret expression without permission', async () => {
+			jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
 			const memberReq = {
 				user: { id: 'member-id', role: GLOBAL_MEMBER_ROLE },
 				params: { credentialId },

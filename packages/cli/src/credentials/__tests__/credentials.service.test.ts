@@ -10,7 +10,11 @@ import type {
 import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { CREDENTIAL_ERRORS, CredentialDataError, Credentials, type ErrorReporter } from 'n8n-core';
-import { CREDENTIAL_EMPTY_VALUE, type ICredentialType } from 'n8n-workflow';
+import {
+	CREDENTIAL_EMPTY_VALUE,
+	type ICredentialDataDecryptedObject,
+	type ICredentialType,
+} from 'n8n-workflow';
 
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import type { CredentialTypes } from '@/credential-types';
@@ -21,6 +25,7 @@ import type { CredentialsHelper } from '@/credentials-helper';
 import type { ExternalHooks } from '@/external-hooks';
 import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
+import * as checkAccess from '@/permissions.ee/check-access';
 import type { CredentialsTester } from '@/services/credentials-tester.service';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
@@ -1671,6 +1676,7 @@ describe('CredentialsService', () => {
 
 		describe('external secrets', () => {
 			it('should prevent use of external secret expression when required permission is missing', async () => {
+				jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
 				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
 				const payload = {
 					name: 'Test Credential',
@@ -2060,9 +2066,8 @@ describe('CredentialsService', () => {
 				},
 			]);
 
-			const data = { apiKey: undefined };
+			const data = { apiKey: undefined } as unknown as ICredentialDataDecryptedObject;
 
-			// @ts-expect-error - Testing edge case with undefined value
 			await expect(
 				service.checkCredentialData('apiCredential', data, ownerUser, testProjectId),
 			).rejects.toThrow('The field "apiKey" is mandatory for credentials of type "apiCredential"');

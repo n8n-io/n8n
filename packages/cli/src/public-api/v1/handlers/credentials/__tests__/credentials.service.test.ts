@@ -523,6 +523,7 @@ describe('CredentialsService', () => {
 			});
 
 			it('should throw error when external secret store referenced in expression is not shared with current project', async () => {
+				jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 				const existingCredential = mock<CredentialsEntity>({
 					id: 'UdGtZBYb2TLDgSHy',
 					name: 'Test Credential',
@@ -597,6 +598,7 @@ describe('CredentialsService', () => {
 			});
 
 			it('should allow user with permission to add external secret expression', async () => {
+				jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 				const existingCredential = mock<CredentialsEntity>({
 					id: 'cred-id',
 					name: 'Test Credential',
