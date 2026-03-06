@@ -49,14 +49,27 @@ export class SecretsProviderAccessCheckService {
 			},
 		});
 
+		// Users with global scope bypass the project role check,
+		// but we still verify the connection is available in the project.
+		if (hasGlobalScope(user, requiredScope)) {
+			if (!access) {
+				const isAvailable = await this.connectionRepository.isProviderAvailableInProject(
+					providerKey,
+					projectId,
+				);
+				if (!isAvailable) {
+					throw new NotFoundError(
+						`Connection with key "${providerKey}" not found in project "${projectId}"`,
+					);
+				}
+			}
+			return;
+		}
+
 		if (!access) {
 			throw new NotFoundError(
 				`Connection with key "${providerKey}" not found in project "${projectId}"`,
 			);
-		}
-
-		if (hasGlobalScope(user, requiredScope)) {
-			return;
 		}
 
 		const validRoles = await this.roleService.rolesWithScope('secretsProviderConnection', [

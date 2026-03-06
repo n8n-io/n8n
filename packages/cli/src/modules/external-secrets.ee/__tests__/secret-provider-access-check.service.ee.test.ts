@@ -65,12 +65,11 @@ describe('SecretsProviderAccessCheckService', () => {
 			).rejects.toThrow(NotFoundError);
 		});
 
-		it('should pass when user has the global scope', async () => {
+		it('should pass when user has the global scope and access record exists', async () => {
 			projectAccessRepository.findOne.mockResolvedValue({
 				role: 'secretsProviderConnection:user',
 			} as never);
 
-			// Admin users have global scopes that bypass role checks
 			await expect(
 				service.assertConnectionAccess({
 					providerKey,
@@ -80,8 +79,41 @@ describe('SecretsProviderAccessCheckService', () => {
 				}),
 			).resolves.toBeUndefined();
 
-			// Should not check roles since global scope bypasses
 			expect(roleService.rolesWithScope).not.toHaveBeenCalled();
+		});
+
+		it('should pass for global connections when user has the global scope', async () => {
+			// No project access record (global connection)
+			projectAccessRepository.findOne.mockResolvedValue(null);
+			connectionRepository.isProviderAvailableInProject.mockResolvedValue(true);
+
+			await expect(
+				service.assertConnectionAccess({
+					providerKey,
+					projectId,
+					requiredScope: 'externalSecretsProvider:update',
+					user: adminUser,
+				}),
+			).resolves.toBeUndefined();
+
+			expect(connectionRepository.isProviderAvailableInProject).toHaveBeenCalledWith(
+				providerKey,
+				projectId,
+			);
+		});
+
+		it('should throw NotFoundError for non-existent connections even with global scope', async () => {
+			projectAccessRepository.findOne.mockResolvedValue(null);
+			connectionRepository.isProviderAvailableInProject.mockResolvedValue(false);
+
+			await expect(
+				service.assertConnectionAccess({
+					providerKey,
+					projectId,
+					requiredScope: 'externalSecretsProvider:update',
+					user: adminUser,
+				}),
+			).rejects.toThrow(NotFoundError);
 		});
 
 		it('should pass when the access role has the required scope', async () => {
