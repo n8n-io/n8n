@@ -6,10 +6,12 @@ import { test, expect } from '../../../fixtures/base';
  * E2E tests for the Internal MCP Service (/mcp-server/http).
  *
  * This tests the built-in MCP server that exposes n8n workflows to external
- * MCP clients (like Claude AI). It provides 3 tools:
+ * MCP clients (like Claude AI). It provides 5 tools:
  * - search_workflows: Search for workflows available in MCP
  * - get_workflow_details: Get detailed information about a workflow
  * - execute_workflow: Execute a workflow and get results
+ * - publish_workflow: Publish (activate) a workflow
+ * - unpublish_workflow: Unpublish (deactivate) a workflow
  *
  * Authentication is via Bearer token (MCP API key).
  *
@@ -95,14 +97,20 @@ test.describe(
 		});
 
 		test.describe('tools/list', () => {
-			test('should return all 3 built-in tools', async ({ api }) => {
+			test('should return all 5 built-in tools', async ({ api }) => {
 				const { apiKey } = await api.rotateMcpApiKey();
 				const tools = await api.mcp.internalMcpListTools(apiKey);
 
-				expect(tools).toHaveLength(3);
+				expect(tools).toHaveLength(5);
 
 				const toolNames = tools.map((t) => t.name).sort();
-				expect(toolNames).toEqual(['execute_workflow', 'get_workflow_details', 'search_workflows']);
+				expect(toolNames).toEqual([
+					'execute_workflow',
+					'get_workflow_details',
+					'publish_workflow',
+					'search_workflows',
+					'unpublish_workflow',
+				]);
 			});
 
 			test('should include proper tool descriptions and schemas', async ({ api }) => {
@@ -319,6 +327,36 @@ test.describe(
 
 				expect(result.success).toBe(true);
 				expect(result.executionId).toBeTruthy();
+			});
+		});
+
+		test.describe('publish_workflow', () => {
+			test('should publish a workflow successfully', async ({ api }) => {
+				const { workflowId } = await api.workflows.importWorkflowFromFile(
+					'mcp-service/mcp-available-basic.json',
+				);
+
+				const { apiKey } = await api.rotateMcpApiKey();
+				const result = await api.mcp.internalMcpPublishWorkflow(apiKey, workflowId);
+
+				expect(result.success).toBe(true);
+				expect(result.workflowId).toBe(workflowId);
+				expect(result.activeVersionId).toBeTruthy();
+			});
+		});
+
+		test.describe('unpublish_workflow', () => {
+			test('should unpublish a workflow successfully', async ({ api }) => {
+				const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
+					'mcp-service/mcp-available-basic.json',
+				);
+				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
+
+				const { apiKey } = await api.rotateMcpApiKey();
+				const result = await api.mcp.internalMcpUnpublishWorkflow(apiKey, workflowId);
+
+				expect(result.success).toBe(true);
+				expect(result.workflowId).toBe(workflowId);
 			});
 		});
 
