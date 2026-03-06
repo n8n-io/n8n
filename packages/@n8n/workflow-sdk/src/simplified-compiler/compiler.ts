@@ -1020,7 +1020,7 @@ function compileFunctionToSDK(
 
 	// Generate executeWorkflowTrigger as first node
 	const triggerVar = `${prefix}_t0`;
-	const triggerSdk = `const ${triggerVar} = trigger({ type: 'n8n-nodes-base.executeWorkflowTrigger', version: 1.1, config: { parameters: { inputSource: 'passthrough' } } });`;
+	const triggerSdk = `const ${triggerVar} = trigger({ type: 'n8n-nodes-base.executeWorkflowTrigger', version: 1.1, config: { name: '${triggerNodeName}', parameters: { inputSource: 'passthrough' } } });`;
 	ctx.nodes.push({
 		varName: triggerVar,
 		sdkCode: triggerSdk,
@@ -1151,7 +1151,7 @@ function transpileCallback(
 		for (const param of cb.callbackParams) {
 			if (param !== 'respond') {
 				ctx.varSourceMap.set(param, triggerNode.nodeName);
-				ctx.varSourceKind.set(param, 'io');
+				ctx.varSourceKind.set(param, 'aggregate');
 			}
 		}
 	}
@@ -1944,9 +1944,20 @@ function processForOfStatement(
 
 	// Build reference to the source array
 	const sourceNodeName = ctx.varSourceMap.get(iterableRoot);
-	const refLine = sourceNodeName
-		? `const ${iterableRoot} = $('${sourceNodeName}').all().map(i => i.json);\n`
-		: '';
+	const sourceKind = ctx.varSourceKind.get(iterableRoot) ?? 'code';
+	let refLine = '';
+	if (sourceNodeName) {
+		if (sourceKind === 'io') {
+			// IO node: variable IS the $json (e.g., AI agent result)
+			refLine = `const ${iterableRoot} = $('${sourceNodeName}').first().json;\n`;
+		} else if (sourceKind === 'aggregate') {
+			// Aggregate kind: variable is nested inside $json under its name
+			refLine = `const ${iterableRoot} = $('${sourceNodeName}').first().json.${iterableRoot};\n`;
+		} else {
+			// Code kind: use .all().map() to get item json array
+			refLine = `const ${iterableRoot} = $('${sourceNodeName}').all().map(i => i.json);\n`;
+		}
+	}
 	// Use the full property chain for the iterable (e.g. analysis.action_items)
 	const jsCode = `${refLine}return ${iterableChain}.map(${loopVar} => ({ json: ${loopVar} }));`;
 
@@ -2079,7 +2090,7 @@ function compileLoopBodyAsSubWorkflow(
 
 	// Generate executeWorkflowTrigger as first node
 	const triggerVar = `${prefix}_t0`;
-	const triggerSdk = `const ${triggerVar} = trigger({ type: 'n8n-nodes-base.executeWorkflowTrigger', version: 1.1, config: { parameters: { inputSource: 'passthrough' } } });`;
+	const triggerSdk = `const ${triggerVar} = trigger({ type: 'n8n-nodes-base.executeWorkflowTrigger', version: 1.1, config: { name: '${triggerNodeName}', parameters: { inputSource: 'passthrough' } } });`;
 	ctx.nodes.push({
 		varName: triggerVar,
 		sdkCode: triggerSdk,
@@ -2459,7 +2470,7 @@ function compileTryCatchBodyAsSubWorkflow(
 
 	// Generate executeWorkflowTrigger as first node
 	const triggerVar = `${prefix}_t0`;
-	const triggerSdk = `const ${triggerVar} = trigger({ type: 'n8n-nodes-base.executeWorkflowTrigger', version: 1.1, config: { parameters: { inputSource: 'passthrough' } } });`;
+	const triggerSdk = `const ${triggerVar} = trigger({ type: 'n8n-nodes-base.executeWorkflowTrigger', version: 1.1, config: { name: '${triggerNodeName}', parameters: { inputSource: 'passthrough' } } });`;
 	ctx.nodes.push({
 		varName: triggerVar,
 		sdkCode: triggerSdk,
@@ -3033,7 +3044,15 @@ function findDeclaredVars(code: string): string[] {
 			vars.push(match[2]);
 		}
 	}
-	return vars;
+
+	// Exclude for-of/for-in loop variables (they're scoped to the loop, not available in return)
+	const forLoopVarRegex = /\bfor\s*\(\s*(?:const|let|var)\s+(\w+)\s+(?:of|in)\b/g;
+	const loopVars = new Set<string>();
+	let loopMatch;
+	while ((loopMatch = forLoopVarRegex.exec(code)) !== null) {
+		loopVars.add(loopMatch[1]);
+	}
+	return vars.filter((v) => !loopVars.has(v));
 }
 
 // ─── Static Assignment Detection ─────────────────────────────────────────────

@@ -1,5 +1,5 @@
 // --- Sub-workflow: fetchData ---
-const fn_fetchData_t0 = trigger({ type: 'n8n-nodes-base.executeWorkflowTrigger', version: 1.1, config: { parameters: { inputSource: 'passthrough' } } });
+const fn_fetchData_t0 = trigger({ type: 'n8n-nodes-base.executeWorkflowTrigger', version: 1.1, config: { name: 'When Executed by Another Workflow', parameters: { inputSource: 'passthrough' } } });
 
 const fn_fetchData_http1 = node({
   type: 'n8n-nodes-base.httpRequest', version: 4.2,

@@ -1,5 +1,5 @@
 // --- Loop body sub-workflow ---
-const loop_event_t0 = trigger({ type: 'n8n-nodes-base.executeWorkflowTrigger', version: 1.1, config: { parameters: { inputSource: 'passthrough' } } });
+const loop_event_t0 = trigger({ type: 'n8n-nodes-base.executeWorkflowTrigger', version: 1.1, config: { name: 'When Executed by Another Workflow', parameters: { inputSource: 'passthrough' } } });
 
 const loop_event_http1 = node({
   type: 'n8n-nodes-base.httpRequest', version: 4.2,
@@ -82,7 +82,7 @@ const code1 = node({
   config: {
     name: 'Split events',
     parameters: {
-      jsCode: `const events = $('Collect events').all().map(i => i.json);
+      jsCode: `const events = $('Collect events').first().json.events;
 return events.map(event => ({ json: event }));`,
       mode: 'runOnceForAllItems'
     },

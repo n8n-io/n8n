@@ -33,7 +33,7 @@ const code1 = node({
   config: {
     name: 'Split items',
     parameters: {
-      jsCode: `const items = $('Collect items').all().map(i => i.json);
+      jsCode: `const items = $('Collect items').first().json.items;
 return items.map(item => ({ json: item }));`,
       mode: 'runOnceForAllItems'
     },

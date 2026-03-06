@@ -585,6 +585,27 @@ export function patchFilterConditions(
 	for (const node of nodes) {
 		if (node.parameters) {
 			patchFilterOptionsRecursive(node.parameters);
+
+			// Also patch sub-workflow nodes inside workflowJson parameters
+			const wfJson = node.parameters.workflowJson;
+			if (typeof wfJson === 'string') {
+				try {
+					const subWf = JSON.parse(wfJson) as {
+						nodes?: Array<{ parameters?: Record<string, unknown> }>;
+					};
+					if (subWf.nodes) {
+						patchFilterConditions(subWf.nodes);
+						node.parameters.workflowJson = JSON.stringify(subWf);
+					}
+				} catch {
+					// Not valid JSON, skip
+				}
+			} else if (typeof wfJson === 'object' && wfJson !== null) {
+				const subWf = wfJson as { nodes?: Array<{ parameters?: Record<string, unknown> }> };
+				if (subWf.nodes) {
+					patchFilterConditions(subWf.nodes);
+				}
+			}
 		}
 	}
 }

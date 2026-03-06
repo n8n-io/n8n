@@ -1,5 +1,5 @@
 // --- Loop body sub-workflow ---
-const loop_wf_t0 = trigger({ type: 'n8n-nodes-base.executeWorkflowTrigger', version: 1.1, config: { parameters: { inputSource: 'passthrough' } } });
+const loop_wf_t0 = trigger({ type: 'n8n-nodes-base.executeWorkflowTrigger', version: 1.1, config: { name: 'When Executed by Another Workflow', parameters: { inputSource: 'passthrough' } } });
 
 const loop_wf_code1 = node({
   type: 'n8n-nodes-base.code', version: 2,

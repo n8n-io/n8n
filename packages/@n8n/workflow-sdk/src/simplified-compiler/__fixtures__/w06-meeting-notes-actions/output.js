@@ -15,7 +15,7 @@ const respond1 = node({
   }
 });
 
-const if1 = ifElse({ version: 2.2, config: { name: 'IF 1', parameters: { conditions: {"conditions":[{"leftValue":"={{ $('Webhook').first().json.meetingTitle }}","rightValue":"","operator":{"type":"string","operation":"notExists","singleValue":true}},{"leftValue":"={{ $('Webhook').first().json.meetingNotes }}","rightValue":"","operator":{"type":"string","operation":"notExists","singleValue":true}}],"combinator":"or"} }, executeOnce: true } })
+const if1 = ifElse({ version: 2.2, config: { name: 'IF 1', parameters: { conditions: {"conditions":[{"leftValue":"={{ $('Webhook').first().json.body.meetingTitle }}","rightValue":"","operator":{"type":"string","operation":"notExists","singleValue":true}},{"leftValue":"={{ $('Webhook').first().json.body.meetingNotes }}","rightValue":"","operator":{"type":"string","operation":"notExists","singleValue":true}}],"combinator":"or"} }, executeOnce: true } })
   .onTrue(respond1);
 
 const code1 = node({
@@ -23,7 +23,7 @@ const code1 = node({
   config: {
     name: 'Code 1',
     parameters: {
-      jsCode: `// From: Webhook\nconst body = $('Webhook').first().json;\nconst meeting = {
+      jsCode: `// From: Webhook\nconst body = $('Webhook').first().json.body;\nconst meeting = {
 	notes: body.meetingNotes,
 	title: body.meetingTitle,
 };\nreturn [{ json: { meeting } }];`,
@@ -63,7 +63,7 @@ const code2 = node({
   config: {
     name: 'Split items',
     parameters: {
-      jsCode: `const analysis = $('AI: Analyze these meeting notes').all().map(i => i.json);
+      jsCode: `const analysis = $('AI: Analyze these meeting notes').first().json;
 return analysis.action_items.map(item => ({ json: item }));`,
       mode: 'runOnceForAllItems'
     },
@@ -95,7 +95,7 @@ const code3 = node({
   config: {
     name: 'Split emails',
     parameters: {
-      jsCode: `const analysis = $('AI: Analyze these meeting notes').all().map(i => i.json);
+      jsCode: `const analysis = $('AI: Analyze these meeting notes').first().json;
 return analysis.follow_up_emails.map(email => ({ json: email }));`,
       mode: 'runOnceForAllItems'
     },

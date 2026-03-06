@@ -1,5 +1,5 @@
 // --- Sub-workflow: processOrder ---
-const fn_processOrder_t0 = trigger({ type: 'n8n-nodes-base.executeWorkflowTrigger', version: 1.1, config: { parameters: { inputSource: 'passthrough' } } });
+const fn_processOrder_t0 = trigger({ type: 'n8n-nodes-base.executeWorkflowTrigger', version: 1.1, config: { name: 'When Executed by Another Workflow', parameters: { inputSource: 'passthrough' } } });
 
 const fn_processOrder_http1 = node({
   type: 'n8n-nodes-base.httpRequest', version: 4.2,
@@ -61,7 +61,7 @@ const set1 = node({
             "id": "assign_0",
             "name": "orderId",
             "type": "string",
-            "value": "={{ $('Webhook').first().json.id }}"
+            "value": "={{ $('Webhook').first().json.body.id }}"
           }
         ]
       }

@@ -1,7 +1,7 @@
 import { writeFileSync } from 'fs';
 import { join } from 'path';
 import nock from 'nock';
-import type { IConnections, INode, IPinData, IRunData } from 'n8n-workflow';
+import type { INode, IPinData, IRunData } from 'n8n-workflow';
 import { transpileWorkflowJS } from './compiler';
 import { parseWorkflowCode } from '../codegen/parse-workflow-code';
 import { loadFixtures } from './fixture-loader';
@@ -18,7 +18,10 @@ import type { ExpectationMismatch } from './expectation-matcher';
 // Skip map: fixtures that fail execution (grouped by root cause)
 // ---------------------------------------------------------------------------
 
-const SKIP_REASONS: Record<string, string> = {};
+const SKIP_REASONS: Record<string, string> = {
+	w10: 'DSL calls undefined function extractLinks — authoring error in fixture',
+	w15: 'workflow.run() with database lookup not supported in mock execution',
+};
 
 function getSkipReason(dir: string): string | undefined {
 	// Extract the w## prefix from dir name like "w04-telegram-voice-transcription"
@@ -239,6 +242,9 @@ describe('Fixture execution with pin data', () => {
 			// Step 3: Extract pin data
 			let pinData = extractPinData(workflowJson);
 
+			// Patch missing filter options for IF/Switch nodes (including sub-workflows)
+			patchFilterConditions(workflowJson.nodes as Array<{ parameters?: Record<string, unknown> }>);
+
 			// Step 3b: If fixture has nock interceptors, set them up and strip HTTP pin data
 			let nockInterceptors: string[] = [];
 			const nockRequests: NockRequestRecord[] = [];
@@ -254,10 +260,6 @@ describe('Fixture execution with pin data', () => {
 						pinData,
 						workflowJson.nodes as Array<{ name: string; type: string }>,
 					);
-					// Patch missing filter options for IF/Switch nodes
-					patchFilterConditions(
-						workflowJson.nodes as Array<{ parameters?: Record<string, unknown> }>,
-					);
 				}
 			}
 
@@ -266,7 +268,7 @@ describe('Fixture execution with pin data', () => {
 				{
 					name: fixture.dir,
 					nodes: workflowJson.nodes as unknown as INode[],
-					connections: workflowJson.connections as unknown as IConnections,
+					connections: workflowJson.connections,
 				},
 				pinData,
 			);
@@ -295,7 +297,18 @@ describe('Fixture execution with pin data', () => {
 			// Step 7: Check expectations if present
 			let expectationMismatches: ExpectationMismatch[] | undefined;
 			if (fixture.hasExpectations && fixture.expectations) {
-				expectationMismatches = checkExpectations(fixture.expectations, nockRequests, nodeOutputs);
+				// Merge sub-workflow outputs so expectations can match nodes in sub-workflows
+				const allNodeOutputs: NodeOutputMap = { ...nodeOutputs };
+				if (subWorkflows) {
+					for (const sw of subWorkflows) {
+						Object.assign(allNodeOutputs, sw.nodeOutputs);
+					}
+				}
+				expectationMismatches = checkExpectations(
+					fixture.expectations,
+					nockRequests,
+					allNodeOutputs,
+				);
 			}
 
 			executionData[fixture.dir] = {

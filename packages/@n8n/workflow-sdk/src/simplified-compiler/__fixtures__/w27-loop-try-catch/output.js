@@ -1,5 +1,5 @@
 // --- Try/catch sub-workflow ---
-const tc_tryCatch_1_t0 = trigger({ type: 'n8n-nodes-base.executeWorkflowTrigger', version: 1.1, config: { parameters: { inputSource: 'passthrough' } } });
+const tc_tryCatch_1_t0 = trigger({ type: 'n8n-nodes-base.executeWorkflowTrigger', version: 1.1, config: { name: 'When Executed by Another Workflow', parameters: { inputSource: 'passthrough' } } });
 
 const tc_tryCatch_1_http1 = node({
   type: 'n8n-nodes-base.httpRequest', version: 4.2,
@@ -47,7 +47,7 @@ const __tryCatch_1Workflow = workflow('__tryCatch_1', '__tryCatch_1')
   .add(tc_tryCatch_1_t0.to(tc_tryCatch_1_http1).to(tc_tryCatch_1_agg1).to(tc_tryCatch_1_http2));
 
 // --- Loop body sub-workflow ---
-const loop_user_t0 = trigger({ type: 'n8n-nodes-base.executeWorkflowTrigger', version: 1.1, config: { parameters: { inputSource: 'passthrough' } } });
+const loop_user_t0 = trigger({ type: 'n8n-nodes-base.executeWorkflowTrigger', version: 1.1, config: { name: 'When Executed by Another Workflow', parameters: { inputSource: 'passthrough' } } });
 
 const loop_user_set1 = node({
   type: 'n8n-nodes-base.set', version: 3.4,

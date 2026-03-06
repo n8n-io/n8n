@@ -1,5 +1,5 @@
 // --- Sub-workflow: enrichData ---
-const fn_enrichData_t0 = trigger({ type: 'n8n-nodes-base.executeWorkflowTrigger', version: 1.1, config: { parameters: { inputSource: 'passthrough' } } });
+const fn_enrichData_t0 = trigger({ type: 'n8n-nodes-base.executeWorkflowTrigger', version: 1.1, config: { name: 'When Executed by Another Workflow', parameters: { inputSource: 'passthrough' } } });
 
 const fn_enrichData_http1 = node({
   type: 'n8n-nodes-base.httpRequest', version: 4.2,
@@ -30,7 +30,7 @@ const enrichDataWorkflow = workflow('enrichData', 'enrichData')
   .add(fn_enrichData_t0.to(fn_enrichData_http1).to(fn_enrichData_agg1));
 
 // --- Sub-workflow: processAndNotify ---
-const fn_processAndNotify_t0 = trigger({ type: 'n8n-nodes-base.executeWorkflowTrigger', version: 1.1, config: { parameters: { inputSource: 'passthrough' } } });
+const fn_processAndNotify_t0 = trigger({ type: 'n8n-nodes-base.executeWorkflowTrigger', version: 1.1, config: { name: 'When Executed by Another Workflow', parameters: { inputSource: 'passthrough' } } });
 
 const fn_processAndNotify_set1 = node({
   type: 'n8n-nodes-base.set', version: 3.4,

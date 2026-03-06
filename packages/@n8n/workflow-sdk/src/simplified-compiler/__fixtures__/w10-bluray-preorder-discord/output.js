@@ -56,7 +56,7 @@ const todaysItems = links.filter(function (link) {
 let message = '*New 4k Preorders Today!*\\n';
 for (const item of todaysItems) {
 	message += item.title + '\\n';
-}\nreturn [{ json: { links, todaysItems, message, item } }];`,
+}\nreturn [{ json: { links, todaysItems, message } }];`,
       mode: 'runOnceForAllItems'
     },
     executeOnce: true

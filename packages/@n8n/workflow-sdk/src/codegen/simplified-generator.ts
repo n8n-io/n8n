@@ -1224,6 +1224,8 @@ function resolveExpression(value: string, ctx: SimplifiedGenContext): string | n
 		}
 		if (ctx.triggerType === 'webhook') {
 			if (rawSuffix.startsWith('[')) return `body${rawSuffix}`;
+			const firstSeg = propPath.split('.')[0].split('[')[0];
+			if (firstSeg === 'body') return propPath;
 			return `body.${propPath}`;
 		}
 		return propPath;
@@ -1243,7 +1245,10 @@ function resolveExpression(value: string, ctx: SimplifiedGenContext): string | n
 	if (match) {
 		const prop = match[1];
 		const firstSegment = prop.split('.')[0].split('[')[0];
-		if (ctx.triggerType === 'webhook' && !ctx.codeNodeVars.has(firstSegment)) return `body.${prop}`;
+		if (ctx.triggerType === 'webhook' && !ctx.codeNodeVars.has(firstSegment)) {
+			if (firstSegment === 'body') return prop;
+			return `body.${prop}`;
+		}
 		return prop;
 	}
 
@@ -1679,7 +1684,11 @@ function resolveConditionExpr(value: string | undefined, ctx: SimplifiedGenConte
 			if (varName === firstProp) return propPath;
 			return `${varName}.${propPath}`;
 		}
-		if (ctx.triggerType === 'webhook') return `body.${propPath}`;
+		if (ctx.triggerType === 'webhook') {
+			const firstSeg = propPath.split('.')[0].split('[')[0];
+			if (firstSeg === 'body') return propPath;
+			return `body.${propPath}`;
+		}
 		return propPath;
 	}
 
@@ -1695,7 +1704,10 @@ function resolveConditionExpr(value: string | undefined, ctx: SimplifiedGenConte
 	if (jsonRef) {
 		const prop = jsonRef[1];
 		const firstSegment = prop.split('.')[0].split('[')[0];
-		if (ctx.triggerType === 'webhook' && !ctx.codeNodeVars.has(firstSegment)) return `body.${prop}`;
+		if (ctx.triggerType === 'webhook' && !ctx.codeNodeVars.has(firstSegment)) {
+			if (firstSegment === 'body') return prop;
+			return `body.${prop}`;
+		}
 		return prop;
 	}
 

@@ -41,7 +41,7 @@ const code1 = node({
 let message = '';
 for (const coin of significant) {
 	message += coin.symbol + ': ' + coin.priceChangePercent + '%\\n';
-}\nreturn [{ json: { significant, message, coin } }];`,
+}\nreturn [{ json: { significant, message } }];`,
       mode: 'runOnceForAllItems'
     },
     executeOnce: true
