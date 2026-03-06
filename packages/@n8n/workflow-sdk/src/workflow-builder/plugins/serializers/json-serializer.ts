@@ -23,13 +23,23 @@ import {
 import type { SerializerPlugin, SerializerContext } from '../types';
 
 /**
- * Resolve WorkflowBuilder instances in parameter values to JSON strings.
- * Uses duck-typing (toJSON + add) to detect WorkflowBuilder without importing the class.
+ * Resolve special objects in parameter values:
+ * - PlaceholderImpl (duck-typed via __placeholder + toJSON): calls toJSON() which returns the placeholder string
+ * - WorkflowBuilder (duck-typed via toJSON + add): calls JSON.stringify(toJSON()) to serialize the workflow object
  */
 function resolveWorkflowBuilderValues(obj: Record<string, unknown>): Record<string, unknown> {
 	const result = { ...obj };
 	for (const [key, value] of Object.entries(result)) {
 		if (
+			value &&
+			typeof value === 'object' &&
+			'__placeholder' in value &&
+			'toJSON' in value &&
+			typeof (value as Record<string, unknown>).toJSON === 'function'
+		) {
+			// PlaceholderImpl.toJSON() returns the placeholder string directly
+			result[key] = (value as { toJSON(): unknown }).toJSON();
+		} else if (
 			value &&
 			typeof value === 'object' &&
 			'toJSON' in value &&
