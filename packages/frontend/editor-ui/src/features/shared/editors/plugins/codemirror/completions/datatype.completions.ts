@@ -1514,8 +1514,8 @@ export const objectGlobalOptions = () => {
 };
 
 const regexes = {
-	generalRef: /\$[^$'"]+\.(.*)/, // $input. or $json. or similar ones
-	selectorRef: /\$\(['"][\S\s]+['"]\)\.(.*)/, // $('nodeName').
+	generalRef: /\$[^$'"]+\.(.*)/, // $input. or $json. or $json?. or similar ones
+	selectorRef: /\$\(['"][\S\s]+['"]\)\??\.(.*)/, // $('nodeName'). or $('nodeName')?.
 
 	numberLiteral: /\((\d+)\.?(\d*)\)\.(.*)/, // (123). or (123.4).
 	singleQuoteStringLiteral: /('.*')\.([^'{\s])*/, // 'abc'.
@@ -1523,7 +1523,7 @@ const regexes = {
 	doubleQuoteStringLiteral: /(".*")\.([^"{\s])*/, // "abc".
 	dateLiteral: /\(?new Date\(\(?.*?\)\)?\.(.*)/, // new Date(). or (new Date()).
 	arrayLiteral: /\(?(\[.*\])\)?\.(.*)/, // [1, 2, 3].
-	indexedAccess: /([^"{\s]+\[.+\])\.(.*)/, // 'abc'[0]. or 'abc'.split('')[0] or similar ones
+	indexedAccess: /([^"{\s]+\[.+\])\??\.(.*)/, // 'abc'[0]. or 'abc'[0]?. or similar ones
 	objectLiteral: /\(\{.*\}\)\.(.*)/, // ({}).
 
 	mathGlobal: /Math\.(.*)/, // Math.
