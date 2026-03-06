@@ -1,5 +1,6 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type {
+	ProjectSecretsProviderAccess,
 	ProjectSecretsProviderAccessRepository,
 	SecretsProviderConnection,
 	SecretsProviderConnectionRepository,
@@ -395,19 +396,19 @@ describe('SecretsProvidersConnectionsService', () => {
 			} as unknown as User;
 
 			mockProjectAccessRepository.findByProjectId.mockResolvedValue([
-				{
+				mock<ProjectSecretsProviderAccess>({
 					projectId: 'project-1',
 					role: 'secretsProviderConnection:user',
 					secretsProviderConnectionId: 1,
 					secretsProviderConnection: { providerKey: 'provider-a' },
-				},
-				{
+				}),
+				mock<ProjectSecretsProviderAccess>({
 					projectId: 'project-1',
 					role: 'secretsProviderConnection:user',
 					secretsProviderConnectionId: 2,
 					secretsProviderConnection: { providerKey: 'provider-b' },
-				},
-			] as never);
+				}),
+			]);
 
 			await service.cleanupConnectionsForProjectDeletion('project-1', adminUser);
 
@@ -427,13 +428,13 @@ describe('SecretsProvidersConnectionsService', () => {
 			} as unknown as User;
 
 			mockProjectAccessRepository.findByProjectId.mockResolvedValue([
-				{
+				mock<ProjectSecretsProviderAccess>({
 					projectId: 'project-1',
 					role: 'secretsProviderConnection:user',
 					secretsProviderConnectionId: 5,
 					secretsProviderConnection: { providerKey: 'provider-c' },
-				},
-			] as never);
+				}),
+			]);
 
 			await service.cleanupConnectionsForProjectDeletion('project-1', projectAdmin);
 
