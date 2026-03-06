@@ -3,6 +3,15 @@ import { createRouter, createWebHistory } from 'vue-router';
 
 import IconPicker from '.';
 
+const sharedLoaderMock = vi.hoisted(() => ({
+	loadLucideIconBody: vi.fn(async () => null),
+	loadLucideIconBodies: vi.fn(async (names: string[]) =>
+		Object.fromEntries(names.map((name) => [name, `<path data-icon="${name}" />`])),
+	),
+}));
+
+vi.mock('../N8nIcon/lucideIconLoader', () => sharedLoaderMock);
+
 // Mock the lazy-loaded data modules
 // lucideIconData now exports metadata only (no SVG bodies)
 vi.mock('./lucideIconData', () => ({
@@ -114,6 +123,15 @@ function getTabElement(tabContainer: Element): Element | null {
 describe('IconPicker', () => {
 	beforeEach(() => {
 		localStorage.clear();
+		sharedLoaderMock.loadLucideIconBody.mockClear();
+		sharedLoaderMock.loadLucideIconBodies.mockClear();
+		vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(function (
+			this: HTMLElement,
+		) {
+			if (this.classList?.contains('recycle-scroller-wrapper')) return 280;
+			if (this.classList?.contains('recycle-scroller-item')) return 32;
+			return 32;
+		});
 	});
 
 	it('opens popup and shows icons tab by default', async () => {

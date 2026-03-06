@@ -3,6 +3,7 @@ import { computed, ref, watch, useCssModule } from 'vue';
 
 import type { IconName } from './icons';
 import { deprecatedIconSet, updatedIconSet } from './icons';
+import { loadLucideIconBody } from './lucideIconLoader';
 import { vSvgContent } from './svgContentDirective';
 import type { IconSize, IconColor } from '../../types/icon';
 
@@ -96,20 +97,26 @@ const resolvedComponent = computed(
 );
 
 const fallbackBody = ref<string | null>(null);
+let fallbackRequestId = 0;
 
 watch(
-	() => props.icon,
-	async (iconName) => {
-		if (resolvedComponent.value) {
+	() => [props.icon, resolvedComponent.value] as const,
+	async ([iconName, resolvedIcon]) => {
+		const requestId = ++fallbackRequestId;
+		if (resolvedIcon) {
 			fallbackBody.value = null;
 			return;
 		}
+
 		try {
-			const iconifyMod = await import('@iconify/json/json/lucide.json');
-			const icons: Record<string, { body: string }> = iconifyMod.default?.icons ?? iconifyMod.icons;
-			fallbackBody.value = icons[iconName]?.body ?? null;
+			const body = await loadLucideIconBody(iconName);
+			if (requestId === fallbackRequestId) {
+				fallbackBody.value = body;
+			}
 		} catch {
-			fallbackBody.value = null;
+			if (requestId === fallbackRequestId) {
+				fallbackBody.value = null;
+			}
 		}
 	},
 	{ immediate: true },

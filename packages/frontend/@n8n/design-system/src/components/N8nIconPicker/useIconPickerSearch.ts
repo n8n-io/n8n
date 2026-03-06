@@ -3,7 +3,7 @@ import { computed, type Ref } from 'vue';
 
 import type { EmojiSection, EmojiEntry } from './emojiData';
 import { ICON_CATEGORIES, OTHER_CATEGORY, getPrimaryCategoryKey } from './iconCategories';
-import type { LucideIcon } from './lucideIconData';
+import type { LucideIconMeta } from './lucideIconData';
 
 export interface DisplayEmojiEntry extends EmojiEntry {
 	/** The emoji to display (with skin tone applied if applicable) */
@@ -19,11 +19,11 @@ export interface DisplayEmojiSection {
 export interface IconSection {
 	key: string;
 	labelKey: string;
-	icons: Array<[string, LucideIcon]>;
+	icons: Array<[string, LucideIconMeta]>;
 }
 
 export function useIconPickerSearch(
-	lucideData: Ref<Record<string, LucideIcon> | null>,
+	lucideData: Ref<Record<string, LucideIconMeta> | null>,
 	emojiSectionsData: Ref<EmojiSection[]>,
 	query: Ref<string>,
 	selectedCategory: Ref<string | null>,
@@ -33,7 +33,7 @@ export function useIconPickerSearch(
 	const debouncedQuery = refDebounced(query, delay);
 
 	/** Flat filtered icon list — used when search is active */
-	const filteredIcons = computed<Array<[string, LucideIcon]>>(() => {
+	const filteredIcons = computed<Array<[string, LucideIconMeta]>>(() => {
 		if (!lucideData.value) return [];
 		let entries = Object.entries(lucideData.value);
 
@@ -65,7 +65,7 @@ export function useIconPickerSearch(
 		const entries = Object.entries(lucideData.value);
 
 		// Group icons by their primary category
-		const categoryMap = new Map<string, Array<[string, LucideIcon]>>();
+		const categoryMap = new Map<string, Array<[string, LucideIconMeta]>>();
 		for (const entry of entries) {
 			const catKey = getPrimaryCategoryKey(entry[1].categories);
 			let bucket = categoryMap.get(catKey);
