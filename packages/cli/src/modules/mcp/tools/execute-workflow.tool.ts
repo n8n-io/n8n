@@ -290,8 +290,9 @@ const buildRunData = async (
 	// Generate a unique MCP message ID for this execution (used for queue mode correlation)
 	const mcpMessageId = `mcp-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 
+	const isManualExecution = executionMode === 'manual';
 	const runData: IWorkflowExecutionDataProcess = {
-		executionMode: getExecutionModeForTrigger(triggerNode),
+		executionMode: isManualExecution ? 'manual' : getExecutionModeForTrigger(triggerNode),
 		workflowData: { ...workflow, nodes, connections },
 		userId,
 		// MCP metadata for queue mode support
@@ -304,7 +305,10 @@ const buildRunData = async (
 	// Set the trigger node as the start node and pin data for it
 	// This will enable us to run the workflow from the trigger node with the provided inputs without waiting for an actual trigger event
 	runData.startNodes = [{ name: triggerNode.name, sourceData: null }];
-	runData.pinData = await getPinDataForTrigger(triggerNode, inputs);
+
+	const triggerPinData = await getPinDataForTrigger(triggerNode, inputs);
+	const workflowPinData = isManualExecution ? (workflow.pinData ?? {}) : {};
+	runData.pinData = { ...triggerPinData, ...workflowPinData };
 
 	runData.executionData = createRunExecutionData({
 		startData: {},
