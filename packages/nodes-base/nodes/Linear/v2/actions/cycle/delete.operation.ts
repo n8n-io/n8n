@@ -39,7 +39,7 @@ export async function execute(
 
 			const body = {
 				query: `mutation CycleDelete($cycleId: String!) {
-					cycleArchive(id: $cycleId) {
+					cycleDelete(id: $cycleId) {
 						success
 					}
 				}`,
@@ -47,7 +47,7 @@ export async function execute(
 			};
 
 			const responseData = await linearApiRequest.call(this, body);
-			const result = (responseData as { data: { cycleArchive: IDataObject } }).data.cycleArchive;
+			const result = (responseData as { data: { cycleDelete: IDataObject } }).data.cycleDelete;
 
 			returnData.push(
 				...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(result), {
