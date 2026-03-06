@@ -43,8 +43,7 @@ export const createGetExecutionTool = (
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'get_execution',
 	config: {
-		description:
-			'Get the full details and results of a workflow execution by its ID. Use this after executing a workflow to retrieve the complete output data.',
+		description: 'Get full execution details and results using the execution ID and workflow ID',
 		inputSchema: inputSchema.shape,
 		outputSchema,
 		annotations: {
