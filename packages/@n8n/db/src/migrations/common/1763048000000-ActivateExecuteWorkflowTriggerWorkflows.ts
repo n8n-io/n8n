@@ -189,6 +189,21 @@ export class ActivateExecuteWorkflowTriggerWorkflows1763048000000 implements Irr
 						},
 					);
 				} else {
+					// Ensure a workflow_history record exists for this versionId.
+					// Imported workflows may have a versionId that was never recorded in this instance's history.
+					await runQuery(
+						`INSERT INTO ${historyTableName} (${versionIdColumn}, ${workflowIdColumn}, ${authorsColumn}, ${nodesColumn}, ${connectionsColumn}, ${createdAtColumn}, ${updatedAtColumn}) SELECT :versionId, :workflowId, :authors, :nodes, :connections, :createdAt, :updatedAt WHERE NOT EXISTS (SELECT 1 FROM ${historyTableName} WHERE ${versionIdColumn} = :versionId)`,
+						{
+							versionId: workflow.versionId,
+							workflowId: workflow.id,
+							authors: 'system migration',
+							nodes: JSON.stringify(nodes),
+							connections: workflow.connections,
+							createdAt: new Date(),
+							updatedAt: new Date(),
+						},
+					);
+
 					// No nodes modified, just activate with existing versionId
 					await runQuery(
 						`UPDATE ${tableName} SET ${activeColumn} = :active, ${activeVersionIdColumn} = :versionId WHERE ${idColumn} = :id`,
