@@ -22,6 +22,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
 	close: [];
 	resize: [{ width: number; height: number }];
+	move: [{ x: number; y: number }];
 }>();
 
 const x = ref(0);
@@ -96,6 +97,7 @@ function onDragMouseMove(event: MouseEvent) {
 function onDragMouseUp() {
 	isDragging.value = false;
 	isInteracting.value = false;
+	emit('move', { x: x.value, y: y.value });
 	document.removeEventListener('mousemove', onDragMouseMove);
 	document.removeEventListener('mouseup', onDragMouseUp);
 }
@@ -180,6 +182,7 @@ function onResizeMouseUp() {
 	isResizing.value = false;
 	isInteracting.value = false;
 	emit('resize', { width: currentWidth.value, height: currentHeight.value });
+	emit('move', { x: x.value, y: y.value });
 	document.removeEventListener('mousemove', onResizeMouseMove);
 	document.removeEventListener('mouseup', onResizeMouseUp);
 }

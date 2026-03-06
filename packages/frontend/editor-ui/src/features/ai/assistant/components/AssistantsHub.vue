@@ -4,24 +4,19 @@ import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useDebounce } from '@/app/composables/useDebounce';
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import SlideTransition from '@/app/components/transitions/SlideTransition.vue';
 import AskAssistantBuild from './Agent/AskAssistantBuild.vue';
 import AskAssistantChat from './Chat/AskAssistantChat.vue';
 import AskModeCoachmark from './AskModeCoachmark.vue';
 import CanvasChatHubPanel from '@/features/ai/chatHub/components/CanvasChatHubPanel.vue';
+import CanvasChatFloatingWindow from '@/features/ai/chatHub/components/CanvasChatFloatingWindow.vue';
 import { useAskModeCoachmark } from '../composables/useAskModeCoachmark';
 import { usePopOutWindow } from '@/features/execution/logs/composables/usePopOutWindow';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
-import { N8nFloatingWindow, N8nResizeWrapper, N8nText } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { N8nResizeWrapper } from '@n8n/design-system';
 import HubSwitcher from '@/features/ai/assistant/components/HubSwitcher.vue';
-import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
-import CanvasChatFloatingMenu from '@/features/ai/chatHub/components/CanvasChatFloatingMenu.vue';
-import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
-
-const i18n = useI18n();
 const builderStore = useBuilderStore();
 const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
@@ -52,6 +47,7 @@ watch(
 
 const askAssistantBuildRef = ref<InstanceType<typeof AskAssistantBuild>>();
 const askAssistantChatRef = ref<InstanceType<typeof AskAssistantChat>>();
+const canvasChatFloatingWindowRef = ref<InstanceType<typeof CanvasChatFloatingWindow>>();
 const canvasChatHubRef = ref<InstanceType<typeof CanvasChatHubPanel>>();
 
 const popOutContainer = useTemplateRef<HTMLElement>('popOutContainer');
@@ -62,17 +58,6 @@ const isFullscreen = computed(() => chatPanelStore.isFullscreen);
 const isPoppedOut = computed(() => chatPanelStore.isPoppedOut);
 
 const chatWidth = computed(() => chatPanelStore.width);
-const canPopOut = computed(() => window.parent === window);
-
-const chatTriggerNode = computed(() =>
-	workflowsStore.allNodes.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE),
-);
-
-const agentDisplayName = computed(() => {
-	const triggerName = chatTriggerNode.value?.parameters?.agentName;
-	if (typeof triggerName === 'string' && triggerName.trim()) return triggerName.trim();
-	return workflowsStore.workflowName || 'Workflow';
-});
 
 const popOutWindowTitle = computed(() => `Chat - ${workflowsStore.workflowName || 'Workflow'}`);
 const shouldPopOut = computed(() => isPoppedOut.value && isChatHubMode.value);
@@ -134,24 +119,13 @@ function onPopOut() {
 function onSlideEnterComplete() {
 	slideAnimationComplete.value = true;
 	if (isChatHubMode.value) {
-		canvasChatHubRef.value?.focusInput();
+		canvasChatFloatingWindowRef.value?.focusInput();
 	} else if (isBuildMode.value) {
 		askAssistantBuildRef.value?.focusInput();
 	} else {
 		askAssistantChatRef.value?.focusInput();
 	}
 }
-
-// Focus input when chatHub opens as floating window (no slide transition to trigger @after-enter)
-watch(
-	() => isChatHubMode.value && chatPanelStore.isOpen && !isPoppedOut.value,
-	async (isFloatingOpen) => {
-		if (isFloatingOpen) {
-			await nextTick();
-			canvasChatHubRef.value?.focusInput();
-		}
-	},
-);
 
 const unsubscribeAssistantStore = assistantStore.$onAction(({ name }) => {
 	// When assistant is opened from error or credentials help
@@ -191,45 +165,12 @@ onBeforeUnmount(() => {
 	<div ref="popOutContainer" :class="$style.popOutContainer">
 		<div ref="popOutContent" :class="[$style.popOutContent, { [$style.poppedOut]: isPoppedOut }]">
 			<!-- ChatHub mode: floating window (or pop-out) -->
-			<N8nFloatingWindow
+			<CanvasChatFloatingWindow
 				v-if="isChatHubMode && chatPanelStore.isOpen && !isPoppedOut"
-				:width="chatWidth"
-				:height="700"
-				:min-width="chatPanelStore.activeMinWidth"
-				:min-height="300"
-				data-test-id="canvas-chat-floating-window"
+				ref="canvasChatFloatingWindowRef"
 				@close="onClose"
-			>
-				<template #header-icon>
-					<ChatAgentAvatar :agent="null" size="sm" />
-				</template>
-				<template #header>
-					<N8nText size="medium" :bold="true" :class="$style.floatingHeaderTitle">
-						{{ agentDisplayName }}
-					</N8nText>
-					<span :class="$style.previewBadge">
-						{{ i18n.baseText('chatHub.canvas.previewBadge') }}
-					</span>
-				</template>
-				<template #header-actions>
-					<CanvasChatFloatingMenu
-						v-if="canvasChatHubRef?.sessionId"
-						:session-id="canvasChatHubRef.sessionId"
-						:workflow-id="workflowsStore.workflowId"
-						:can-pop-out="canPopOut"
-						@select-session="canvasChatHubRef.handleSelectSession"
-						@copy-session-id="canvasChatHubRef.copySessionId()"
-						@new-session="canvasChatHubRef.handleNewSession()"
-						@pop-out="onPopOut"
-					/>
-				</template>
-				<CanvasChatHubPanel
-					ref="canvasChatHubRef"
-					:floating="true"
-					@close="onClose"
-					@pop-out="onPopOut"
-				/>
-			</N8nFloatingWindow>
+				@pop-out="onPopOut"
+			/>
 
 			<!-- ChatHub pop-out: rendered in pop-out container without floating window -->
 			<CanvasChatHubPanel
@@ -306,22 +247,5 @@ onBeforeUnmount(() => {
 .assistantContent {
 	flex: 1;
 	overflow: hidden;
-}
-
-.floatingHeaderTitle {
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.previewBadge {
-	flex-shrink: 0;
-	display: inline-block;
-	color: var(--color--secondary);
-	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
-	background-color: var(--color--secondary--tint-2);
-	padding: var(--spacing--5xs) var(--spacing--4xs);
-	border-radius: 16px;
 }
 </style>
