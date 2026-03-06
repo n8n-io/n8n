@@ -40,7 +40,7 @@ const emit = defineEmits<{
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	border-radius: 4px;
+	border-radius: var(--radius--3xs);
 	padding: var(--spacing--xs) var(--spacing--2xs);
 	margin-right: var(--spacing--xs);
 	line-height: unset;
@@ -53,8 +53,7 @@ const emit = defineEmits<{
 }
 
 .clickableChangeCompact {
-	padding: var(--spacing--3xs) var(--spacing--xs) var(--spacing--3xs) 0;
-	margin-left: -4px;
+	padding: var(--spacing--5xs) 0;
 }
 
 .clickableChangeActive {
@@ -63,7 +62,6 @@ const emit = defineEmits<{
 
 .nodeName {
 	flex: 1;
-	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	min-width: 0;

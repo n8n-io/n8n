@@ -177,11 +177,11 @@ onMounted(async () => {
 									<ul v-if="activeTab === 'connectors'" :class="$style.changes">
 										<template v-if="connectionsDiff.size > 0">
 											<li v-for="change in connectionsDiff" :key="change[0]">
-												<div :class="$style.connectorBadge">
+												<div>
 													<DiffBadge :type="change[1].status" />
 												</div>
-												<div style="flex: 1">
-													<ul :class="$style.changesNested">
+												<div>
+													<ul>
 														<WorkflowDiffNodeItem
 															:node-type="change[1].connection.sourceType"
 															:node-name="change[1].connection.source?.name"
@@ -288,7 +288,6 @@ onMounted(async () => {
 
 .tabs {
 	display: flex;
-	flex-direction: row;
 	:global(.n8n-radio-button) {
 		flex: 1;
 	}
@@ -310,29 +309,14 @@ onMounted(async () => {
 		align-items: flex-start;
 		gap: var(--spacing--2xs);
 		padding: 10px 0 var(--spacing--3xs) var(--spacing--2xs);
-
-		> div {
-			min-width: 0;
-		}
 	}
-
-	.changesNested {
-		margin-top: -3px;
-		width: 100%;
-		min-width: 0;
-	}
-}
-
-.connectorBadge {
-	/* Offset changesNested margin-top: -3px so badge aligns with first node icon */
-	padding-top: 3px;
 }
 
 .separator {
 	width: 1px;
 	height: 10px;
 	background-color: var(--color--foreground--shade-2);
-	margin: 0 0 -5px var(--spacing--md);
+	margin-left: var(--spacing--sm);
 	position: relative;
 	z-index: 1;
 }
