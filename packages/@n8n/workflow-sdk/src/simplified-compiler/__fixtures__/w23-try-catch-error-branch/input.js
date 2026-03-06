@@ -1,4 +1,3 @@
-/** @example [{ triggered: true }] */
 onManual(async () => {
 	const config = { endpoint: 'https://api.example.com' };
 

@@ -18,7 +18,7 @@ const fetchDataWorkflow = workflow('fetchData', 'fetchData')
   .add(fn_fetchData_t0.to(fn_fetchData_http1));
 
 // --- Main workflow ---
-const t0 = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { pinData: [{"triggered":true}] } });
+const t0 = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
 
 const set1 = node({
   type: 'n8n-nodes-base.set', version: 3.4,

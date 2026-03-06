@@ -1,13 +1,11 @@
 onSchedule({ cron: '0 9 * * 1' }, async () => {
 	const reportTag = 'weekly-check';
 
-	/** @example [{ id: 101, title: "Test Post", body: "auto-generated", userId: 1 }] */
 	const created = await http.post('https://jsonplaceholder.typicode.com/posts', {
 		title: 'Test Post',
 		body: 'auto-generated',
 		userId: 1,
 	});
-	/** @example [{ id: 101, title: "Test Post", body: "auto-generated", userId: 1 }] */
 	const fetched = await http.get('https://jsonplaceholder.typicode.com/posts/' + created.id);
 	await http.put('https://jsonplaceholder.typicode.com/posts/' + created.id, {
 		title: 'Updated Post',
@@ -32,7 +30,6 @@ onSchedule({ cron: '0 9 * * 1' }, async () => {
 		await http.post('https://httpbin.org/post', { status: 'skipped' });
 	}
 
-	/** @example [{ userId: 1, id: 1, title: "delectus aut autem", completed: true }] */
 	const todo = await http.get('https://jsonplaceholder.typicode.com/todos/1');
 	switch (todo.completed) {
 		case true:

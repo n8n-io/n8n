@@ -25,7 +25,6 @@ async function checkBlurays() {
 	});
 }
 
-/** @example [{ triggered: true }] */
 onManual(async () => {
 	await checkBlurays();
 });

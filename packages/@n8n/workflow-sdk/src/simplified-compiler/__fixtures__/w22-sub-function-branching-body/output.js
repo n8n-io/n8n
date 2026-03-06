@@ -43,7 +43,7 @@ const classifyWorkflow = workflow('classify', 'classify')
   .add(fn_classify_t0.to(fn_classify_if1));
 
 // --- Main workflow ---
-const t0 = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { pinData: [{"triggered":true}] } });
+const t0 = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
 
 const http1 = node({
   type: 'n8n-nodes-base.httpRequest', version: 4.2,

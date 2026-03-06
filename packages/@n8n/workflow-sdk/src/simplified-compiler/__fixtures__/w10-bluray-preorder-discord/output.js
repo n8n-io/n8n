@@ -1,4 +1,4 @@
-const t0 = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { pinData: [{"triggered":true}] } });
+const t0 = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
 
 const code1 = node({
   type: 'n8n-nodes-base.code', version: 2,

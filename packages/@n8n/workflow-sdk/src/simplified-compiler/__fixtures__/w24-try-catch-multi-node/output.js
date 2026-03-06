@@ -35,7 +35,7 @@ const __tryCatch_1Workflow = workflow('__tryCatch_1', '__tryCatch_1')
   .add(tc_tryCatch_1_t0.to(tc_tryCatch_1_http1).to(tc_tryCatch_1_http2));
 
 // --- Main workflow ---
-const t0 = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { pinData: [{"triggered":true}] } });
+const t0 = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
 
 const exec1 = node({
   type: 'n8n-nodes-base.executeWorkflow', version: 1.3,
