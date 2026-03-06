@@ -4,7 +4,7 @@ import { mock } from 'jest-mock-extended';
 import type { DataTable } from '@/modules/data-table/data-table.entity';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 
-import type { ProjectExportContext } from '../../import-export.types';
+import type { ExportScope } from '../../import-export.types';
 import type { PackageWriter } from '../../package-writer';
 import { DataTableExporter } from '../data-table.exporter';
 import type { DataTableSerializer } from '../data-table.serializer';
@@ -14,9 +14,9 @@ describe('DataTableExporter', () => {
 	let mockDataTableRepository: MockProxy<DataTableRepository>;
 	let mockSerializer: MockProxy<DataTableSerializer>;
 	let mockWriter: MockProxy<PackageWriter>;
-	let ctx: ProjectExportContext;
+	let scope: ExportScope;
 
-	const projectTarget = 'projects/billing-550e84';
+	const basePath = 'projects/billing-550e84';
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -27,18 +27,19 @@ describe('DataTableExporter', () => {
 
 		exporter = new DataTableExporter(mockDataTableRepository, mockSerializer);
 
-		ctx = {
+		scope = {
+			basePath,
 			projectId: 'project-1',
-			projectTarget,
-			folderPathMap: new Map(),
 			writer: mockWriter,
+			entityOptions: {},
+			state: { folderPathMap: new Map(), nodesByWorkflow: [] },
 		};
 	});
 
 	it('should return empty array when project has no data tables', async () => {
 		mockDataTableRepository.find.mockResolvedValue([]);
 
-		const entries = await exporter.exportForProject(ctx);
+		const entries = await exporter.export(scope);
 
 		expect(entries).toEqual([]);
 		expect(mockWriter.writeDirectory).not.toHaveBeenCalled();
@@ -65,7 +66,7 @@ describe('DataTableExporter', () => {
 			],
 		});
 
-		const entries = await exporter.exportForProject(ctx);
+		const entries = await exporter.export(scope);
 
 		expect(entries).toHaveLength(1);
 		expect(entries[0].id).toBe(dataTable.id);
@@ -92,7 +93,7 @@ describe('DataTableExporter', () => {
 		mockDataTableRepository.find.mockResolvedValue([dataTable]);
 		mockSerializer.serialize.mockReturnValue(serialized);
 
-		await exporter.exportForProject(ctx);
+		await exporter.export(scope);
 
 		const writtenContent = mockWriter.writeFile.mock.calls[0][1] as string;
 		expect(JSON.parse(writtenContent)).toEqual(serialized);
@@ -109,7 +110,7 @@ describe('DataTableExporter', () => {
 			.mockReturnValueOnce({ id: dataTables[0].id, name: dataTables[0].name, columns: [] })
 			.mockReturnValueOnce({ id: dataTables[1].id, name: dataTables[1].name, columns: [] });
 
-		const entries = await exporter.exportForProject(ctx);
+		const entries = await exporter.export(scope);
 
 		expect(entries).toHaveLength(2);
 		expect(mockWriter.writeDirectory).toHaveBeenCalledTimes(2);
@@ -119,7 +120,7 @@ describe('DataTableExporter', () => {
 	it('should query data tables by project id with columns relation', async () => {
 		mockDataTableRepository.find.mockResolvedValue([]);
 
-		await exporter.exportForProject(ctx);
+		await exporter.export(scope);
 
 		expect(mockDataTableRepository.find).toHaveBeenCalledWith({
 			where: { projectId: 'project-1' },

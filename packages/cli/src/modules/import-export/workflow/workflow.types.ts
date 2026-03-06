@@ -10,9 +10,3 @@ export interface SerializedWorkflow {
 	parentFolderId: string | null;
 	isArchived: boolean;
 }
-
-export interface ManifestWorkflowEntry {
-	id: string;
-	name: string;
-	target: string;
-}

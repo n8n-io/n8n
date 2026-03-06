@@ -9,9 +9,3 @@ export interface SerializedDataTable {
 	name: string;
 	columns: SerializedDataTableColumn[];
 }
-
-export interface ManifestDataTableEntry {
-	id: string;
-	name: string;
-	target: string;
-}

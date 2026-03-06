@@ -4,9 +4,3 @@ export interface SerializedVariable {
 	type: string;
 	value: string;
 }
-
-export interface ManifestVariableEntry {
-	id: string;
-	name: string;
-	target: string;
-}

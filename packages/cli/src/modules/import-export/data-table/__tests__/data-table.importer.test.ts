@@ -3,16 +3,16 @@ import { mock } from 'jest-mock-extended';
 
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 
-import type { ProjectImportContext } from '../../import-export.types';
+import type { ImportScope } from '../../import-export.types';
 import type { PackageReader } from '../../package-reader';
 import { DataTableImporter } from '../data-table.importer';
-import type { ManifestDataTableEntry } from '../data-table.types';
+import type { ManifestEntry } from '../../import-export.types';
 
 describe('DataTableImporter', () => {
 	let importer: DataTableImporter;
 	let mockDataTableRepository: MockProxy<DataTableRepository>;
 	let mockReader: MockProxy<PackageReader>;
-	let ctx: ProjectImportContext;
+	let scope: ImportScope;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -22,23 +22,27 @@ describe('DataTableImporter', () => {
 
 		importer = new DataTableImporter(mockDataTableRepository);
 
-		ctx = {
+		scope = {
 			user: mock(),
-			projectId: 'new-project-1',
-			projectEntry: mock(),
-			folderIdMap: new Map(),
+			targetProjectId: 'new-project-1',
 			reader: mockReader,
+			entityOptions: {},
+			state: {
+				folderIdMap: new Map(),
+				credentialBindings: new Map(),
+				subWorkflowBindings: new Map(),
+			},
 		};
 	});
 
 	it('should do nothing when entries is empty', async () => {
-		await importer.importForProject(ctx, []);
+		await importer.import(scope, []);
 
 		expect(mockDataTableRepository.createDataTable).not.toHaveBeenCalled();
 	});
 
-	it('should create a data table via DataTableRepository', async () => {
-		const entries: ManifestDataTableEntry[] = [
+	it('should create a data table when no existing match', async () => {
+		const entries: ManifestEntry[] = [
 			{ id: 'dt-1', name: 'customers', target: 'projects/billing/data-tables/customers' },
 		];
 
@@ -48,19 +52,39 @@ describe('DataTableImporter', () => {
 		];
 
 		mockReader.readFile.mockReturnValue(JSON.stringify({ id: 'dt-1', name: 'customers', columns }));
+		mockDataTableRepository.findOne.mockResolvedValue(null);
 		mockDataTableRepository.createDataTable.mockResolvedValue(mock());
 
-		await importer.importForProject(ctx, entries);
+		await importer.import(scope, entries);
 
 		expect(mockDataTableRepository.createDataTable).toHaveBeenCalledWith(
 			'new-project-1',
 			'customers',
 			columns,
+			undefined,
 		);
 	});
 
+	it('should skip a data table that already exists in the project', async () => {
+		const entries: ManifestEntry[] = [
+			{ id: 'dt-1', name: 'customers', target: 'projects/billing/data-tables/customers' },
+		];
+
+		mockReader.readFile.mockReturnValue(
+			JSON.stringify({ id: 'dt-1', name: 'customers', columns: [] }),
+		);
+		mockDataTableRepository.findOne.mockResolvedValue({
+			id: 'existing-dt',
+			name: 'customers',
+		} as never);
+
+		await importer.import(scope, entries);
+
+		expect(mockDataTableRepository.createDataTable).not.toHaveBeenCalled();
+	});
+
 	it('should create multiple data tables', async () => {
-		const entries: ManifestDataTableEntry[] = [
+		const entries: ManifestEntry[] = [
 			{ id: 'dt-1', name: 'customers', target: 'projects/billing/data-tables/customers' },
 			{ id: 'dt-2', name: 'orders', target: 'projects/billing/data-tables/orders' },
 		];
@@ -68,9 +92,10 @@ describe('DataTableImporter', () => {
 		mockReader.readFile
 			.mockReturnValueOnce(JSON.stringify({ id: 'dt-1', name: 'customers', columns: [] }))
 			.mockReturnValueOnce(JSON.stringify({ id: 'dt-2', name: 'orders', columns: [] }));
+		mockDataTableRepository.findOne.mockResolvedValue(null);
 		mockDataTableRepository.createDataTable.mockResolvedValue(mock());
 
-		await importer.importForProject(ctx, entries);
+		await importer.import(scope, entries);
 
 		expect(mockDataTableRepository.createDataTable).toHaveBeenCalledTimes(2);
 	});
