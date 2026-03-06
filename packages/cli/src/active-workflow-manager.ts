@@ -37,8 +37,6 @@ import type {
 	WorkflowId,
 } from 'n8n-workflow';
 import {
-	NodeApiError,
-	NodeError,
 	Workflow,
 	WorkflowActivationError,
 	WebhookPathTakenError,
@@ -65,18 +63,8 @@ import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+import { getErrorDescription, getErrorNodeId } from '@/workflows/utils';
 import { formatWorkflow } from '@/workflows/workflow.formatter';
-
-function getErrorNodeId(error: unknown): string | undefined {
-	if (error instanceof NodeError) return error.node.id;
-	if (error instanceof WorkflowActivationError) return error.node?.id;
-	return undefined;
-}
-
-function getErrorDescription(error: unknown): string | undefined {
-	if (error instanceof NodeApiError) return error.description ?? undefined;
-	return undefined;
-}
 
 interface QueuedActivation {
 	activationMode: WorkflowActivateMode;

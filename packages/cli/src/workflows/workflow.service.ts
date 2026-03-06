@@ -31,17 +31,10 @@ import pick from 'lodash/pick';
 import { FileLocation, BinaryDataService } from 'n8n-core';
 
 import type { INode, INodes, IWorkflowSettings, JsonValue, IConnections } from 'n8n-workflow';
-import {
-	NodeApiError,
-	NodeError,
-	PROJECT_ROOT,
-	Workflow,
-	WorkflowActivationError,
-	assert,
-	calculateWorkflowChecksum,
-} from 'n8n-workflow';
+import { PROJECT_ROOT, Workflow, assert, calculateWorkflowChecksum } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import { getErrorDescription, getErrorNodeId } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 
@@ -69,12 +62,6 @@ import { getBase as getWorkflowExecutionData } from '@/workflow-execute-addition
 import { WorkflowValidationService } from './workflow-validation.service';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
-
-function getErrorNodeId(error: unknown): string | undefined {
-	if (error instanceof NodeError) return error.node.id;
-	if (error instanceof WorkflowActivationError) return error.node?.id;
-	return undefined;
-}
 
 @Service()
 export class WorkflowService {
@@ -544,8 +531,7 @@ export class WorkflowService {
 			workflow.activeVersion = rollbackPayload.activeVersion;
 
 			const message = (error as Error).message;
-			const description =
-				error instanceof NodeApiError ? (error.description ?? undefined) : undefined;
+			const description = getErrorDescription(error);
 
 			throw new WorkflowActivationBadRequestError(message, {
 				nodeId: getErrorNodeId(error),
