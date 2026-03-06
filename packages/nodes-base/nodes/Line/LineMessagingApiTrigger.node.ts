@@ -9,7 +9,7 @@ import {
 
 export class LineMessagingApiTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'LINE Messaging API Trigger',
+		displayName: 'LINE Trigger',
 		name: 'lineMessagingApiTrigger',
 		icon: 'file:line.png',
 		group: ['trigger'],
@@ -18,11 +18,11 @@ export class LineMessagingApiTrigger implements INodeType {
 		codex: {
 			categories: ['Communication'],
 			subcategories: {
-				Communication: ['LINE Messaging API'],
-				'LINE Messaging API': ['Triggers'],
+				Communication: ['LINE'],
+				LINE: ['Triggers'],
 			},
 		},
-		defaults: { name: 'LINE Messaging API' },
+		defaults: { name: 'LINE Trigger' },
 		inputs: [],
 		outputs: ['main'],
 		credentials: [{ name: 'lineApi', required: true }],

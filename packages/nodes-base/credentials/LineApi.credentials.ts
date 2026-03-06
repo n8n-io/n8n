@@ -1,8 +1,4 @@
-import {
-	ICredentialTestRequest,
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { ICredentialTestRequest, ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class LineApi implements ICredentialType {
 	name = 'lineApi';

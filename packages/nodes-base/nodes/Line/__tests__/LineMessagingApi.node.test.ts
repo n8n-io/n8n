@@ -1,11 +1,11 @@
 import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 
-import * as GenericFunctions from '../GenericFunctions';
+import * as GenericFunctions from '../MessagingGenericFunctions';
 import { LineMessagingApi } from '../LineMessagingApi.node';
 
-jest.mock('../GenericFunctions', () => {
-	const originalModule = jest.requireActual('../GenericFunctions');
+jest.mock('../MessagingGenericFunctions', () => {
+	const originalModule = jest.requireActual('../MessagingGenericFunctions');
 	return {
 		...originalModule,
 		lineApiRequest: jest.fn(),

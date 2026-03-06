@@ -1,17 +1,18 @@
-import {
+import type {
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { lineApiRequest } from './GenericFunctions';
+import { lineApiRequest } from './MessagingGenericFunctions';
 import { messageOperations, messageFields } from './descriptions/MessageDescription';
 
 export class LineMessagingApi implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'LINE Messaging API',
+		displayName: 'LINE',
 		name: 'lineMessagingApi',
 		icon: 'file:line.png',
 		group: ['input'],
@@ -21,14 +22,14 @@ export class LineMessagingApi implements INodeType {
 		codex: {
 			categories: ['Communication'],
 			subcategories: {
-				Communication: ['LINE Messaging API'],
-				'LINE Messaging API': ['Actions'],
+				Communication: ['LINE'],
+				LINE: ['Actions'],
 			},
 		},
-		defaults: { name: 'LINE Messaging API' },
+		defaults: { name: 'LINE' },
 		usableAsTool: true,
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [{ name: 'lineApi', required: true }],
 		properties: [
 			// ─── Resource ────────────────────────────────────────────────
