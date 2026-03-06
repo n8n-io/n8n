@@ -78,12 +78,6 @@ export const connectProvider = async (
 	});
 };
 
-export const getExternalSecretsSettings = async (
-	context: IRestApiContext,
-): Promise<{ systemRolesEnabled: boolean }> => {
-	return await makeRestApiRequest(context, 'GET', '/external-secrets/settings');
-};
-
 export const updateExternalSecretsSettings = async (
 	context: IRestApiContext,
 	data: { systemRolesEnabled?: boolean },
