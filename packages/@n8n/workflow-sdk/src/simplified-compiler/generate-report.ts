@@ -222,10 +222,6 @@ function generateHtml(entries: ReportEntry[]): string {
 
 			const executionSection = entry.execution ? renderExecutionSection(entry.execution) : '';
 
-			const demoComponent = entry.workflowJson
-				? `<n8n-demo tidyup="true" workflow='${entry.workflowJson.replace(/'/g, '&#39;')}'></n8n-demo>`
-				: '';
-
 			return `
     <div class="card">
       <div class="card-header">
@@ -258,17 +254,25 @@ function generateHtml(entries: ReportEntry[]): string {
 					: ''
 			}
       ${executionSection}
-      ${demoComponent ? `<div class="demo">${(entry.subWorkflows ?? []).length > 0 ? '<h3 class="demo-label">Main Workflow</h3>' : ''}${demoComponent}</div>` : ''}
       ${
-				(entry.subWorkflows ?? [])
+				entry.workflowJson
+					? `<details class="demo-details">
+        <summary>Workflow Preview${(entry.subWorkflows ?? []).length > 0 ? ` <span class="pin-count">${(entry.subWorkflows ?? []).length + 1} workflows</span>` : ''}</summary>
+        <div class="demo">
+          ${(entry.subWorkflows ?? []).length > 0 ? '<h3 class="demo-label">Main Workflow</h3>' : ''}
+          <template class="lazy-demo" data-workflow='${entry.workflowJson.replace(/'/g, '&#39;')}'></template>
+        </div>
+        ${(entry.subWorkflows ?? [])
 					.map(
 						(sw) =>
 							`<div class="demo sub-workflow">
-        <h3 class="demo-label sub-workflow-label">Sub-workflow: ${escapeHtml(sw.name)}</h3>
-        <n8n-demo tidyup="true" workflow='${sw.workflowJson.replace(/'/g, '&#39;')}'></n8n-demo>
-      </div>`,
+          <h3 class="demo-label sub-workflow-label">Sub-workflow: ${escapeHtml(sw.name)}</h3>
+          <template class="lazy-demo" data-workflow='${sw.workflowJson.replace(/'/g, '&#39;')}'></template>
+        </div>`,
 					)
-					.join('\n') || ''
+					.join('\n')}
+      </details>`
+					: ''
 			}
     </div>`;
 		})
@@ -337,6 +341,20 @@ function generateHtml(entries: ReportEntry[]): string {
   <h1>Simplified Compiler - Fixture Report</h1>
   <p style="margin-bottom:20px;color:#666;font-size:14px;">${entries.length} fixtures total &middot; ${entries.filter((e) => !e.skip && !e.error).length} passing &middot; ${entries.filter((e) => e.skip).length} skipped &middot; ${entries.filter((e) => e.error).length} errors${hasExecutionData ? ' &middot; <span style="color:#7c5cfc">execution data available</span>' : ''}</p>
 ${cards}
+<script>
+  document.querySelectorAll('details.demo-details').forEach(details => {
+    details.addEventListener('toggle', function handler() {
+      if (!details.open) return;
+      details.querySelectorAll('template.lazy-demo').forEach(tmpl => {
+        const demo = document.createElement('n8n-demo');
+        demo.setAttribute('tidyup', 'true');
+        demo.setAttribute('workflow', tmpl.dataset.workflow);
+        tmpl.replaceWith(demo);
+      });
+      details.removeEventListener('toggle', handler);
+    });
+  });
+</script>
 </body>
 </html>`;
 }
