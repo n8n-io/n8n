@@ -18,8 +18,6 @@ const SKIP_REASONS: Record<string, string> = {
 	w12: 'Code node refs upstream without pin data (undefined.ok)',
 	w17: 'Code node refs upstream without pin data (undefined.ok)',
 	w23: 'Code node refs upstream without pin data (undefined.ok)',
-	w26: 'Code node refs upstream without pin data (undefined.ok)',
-	w27: 'Code node refs upstream without pin data (undefined.ok)',
 
 	// IF/Switch node gets undefined input (missing pin data on predecessor)
 	w06: 'IF node gets undefined input (missing pin data on predecessor)',
@@ -37,8 +35,12 @@ const SKIP_REASONS: Record<string, string> = {
 	// HTTP node with credentials — credentialsHelper stub unsupported
 	w07: 'HTTP node with credentials — credentialsHelper stub unsupported',
 
-	// Expression in URL not resolved — pin data needed on the HTTP node
-	w25: 'Expression in URL not resolved — missing pin data on HTTP node',
+	// Compiler emits {{dynamic URL}} for concatenated URL expressions — can't resolve at runtime
+	w25: 'Compiler emits {{dynamic URL}} for concatenated URL expressions',
+
+	// Sub-workflow (loop body / sub-function) — executionWaitTill missing
+	w26: 'Execute Workflow node in loop — additionalData.executionWaitTill missing',
+	w27: 'Execute Workflow node in loop — additionalData.executionWaitTill missing',
 };
 
 function getSkipReason(dir: string): string | undefined {
