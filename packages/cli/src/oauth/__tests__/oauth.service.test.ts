@@ -258,7 +258,6 @@ describe('OauthService', () => {
 				'internal',
 				undefined,
 				undefined,
-				undefined,
 			);
 		});
 	});
@@ -980,7 +979,7 @@ describe('OauthService', () => {
 					resolverId: 'resolver-id',
 				},
 				oauthTokenData,
-				{ version: 1, identity: authToken },
+				{ version: 1, identity: authToken, metadata: {} },
 				expect.any(Object),
 				{ credentialResolverId: 'resolver-id' },
 			);
@@ -1103,7 +1102,6 @@ describe('OauthService', () => {
 				'internal',
 				undefined,
 				undefined,
-				undefined,
 			);
 		});
 
@@ -1129,7 +1127,6 @@ describe('OauthService', () => {
 				'internal',
 				undefined,
 				undefined,
-				undefined,
 			);
 		});
 
@@ -1153,7 +1150,6 @@ describe('OauthService', () => {
 				{ clientId: 'client-id', scope: 'old-scope' },
 				credential.type,
 				'internal',
-				undefined,
 				undefined,
 				undefined,
 			);

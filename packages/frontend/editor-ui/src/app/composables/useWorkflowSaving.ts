@@ -79,10 +79,14 @@ export function useWorkflowSaving({
 			cancel?: () => Promise<void>;
 		} = {},
 	) {
+		const workflowDocumentStore = workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined;
+
 		if (
 			!uiStore.stateIsDirty ||
-			workflowsStore.workflow.isArchived ||
-			!getResourcePermissions(workflowsStore.workflow.scopes).workflow.update
+			workflowDocumentStore?.isArchived ||
+			!getResourcePermissions(workflowDocumentStore?.scopes ?? []).workflow.update
 		) {
 			next();
 			return;
@@ -211,7 +215,10 @@ export function useWorkflowSaving({
 				workflowDataRequest.versionId = workflowsStore.workflowVersionId;
 				// Check if AI Builder made edits since last save
 				workflowDataRequest.aiBuilderAssisted = builderStore.getAiBuilderMadeEdits();
-				workflowDataRequest.expectedChecksum = workflowsStore.workflowChecksum;
+				const workflowDocumentStore = useWorkflowDocumentStore(
+					createWorkflowDocumentId(currentWorkflow),
+				);
+				workflowDataRequest.expectedChecksum = workflowDocumentStore.checksum;
 				workflowDataRequest.autosaved = autosaved;
 
 				const workflowData = await workflowsStore.updateWorkflow(
@@ -222,15 +229,12 @@ export function useWorkflowSaving({
 				if (!workflowData.checksum) {
 					throw new Error('Failed to update workflow');
 				}
-				workflowsStore.setWorkflowVersionData(
-					{
-						versionId: workflowData.versionId,
-						name: null,
-						description: null,
-					},
-					workflowData.checksum,
-				);
-				workflowState.setWorkflowProperty('updatedAt', workflowData.updatedAt);
+				workflowsStore.setWorkflowVersionData({
+					versionId: workflowData.versionId,
+					name: null,
+					description: null,
+				});
+				workflowDocumentStore.setUpdatedAt(workflowData.updatedAt);
 
 				// Only mark state clean if no new changes were made during the save
 				if (uiStore.dirtyStateSetCount === dirtyCountBeforeSave) {
@@ -252,7 +256,7 @@ export function useWorkflowSaving({
 
 				uiStore.removeActiveAction('workflowSaving');
 
-				if (error.errorCode === 100) {
+				if (error.errorCode === 409) {
 					telemetry.track('User attempted to save locked workflow', {
 						workflowId: currentWorkflow,
 						sharing_role: getWorkflowProjectRole(currentWorkflow),
@@ -474,16 +478,16 @@ export function useWorkflowSaving({
 				activeVersionId: workflowData.activeVersionId,
 				activeVersion: workflowData.activeVersion ?? null,
 			});
+			if (workflowData.checksum) {
+				workflowDocumentStore.setChecksum(workflowData.checksum);
+			}
 			workflowState.setWorkflowId(workflowData.id);
-			workflowsStore.setWorkflowVersionData(
-				{
-					versionId: workflowData.versionId,
-					name: null,
-					description: null,
-				},
-				workflowData.checksum,
-			);
-			workflowState.setWorkflowProperty('updatedAt', workflowData.updatedAt);
+			workflowsStore.setWorkflowVersionData({
+				versionId: workflowData.versionId,
+				name: null,
+				description: null,
+			});
+			workflowDocumentStore.setUpdatedAt(workflowData.updatedAt);
 
 			// Only update webhook IDs if we explicitly reset them
 			if (resetWebhookUrls) {

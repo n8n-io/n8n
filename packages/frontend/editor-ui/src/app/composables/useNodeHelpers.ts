@@ -156,7 +156,10 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 			return [];
 		}
 
-		const usedCredentials = workflowsStore.usedCredentials;
+		const workflowDocumentStore = workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined;
+		const usedCredentials = workflowDocumentStore?.usedCredentials ?? {};
 
 		return Object.values(credentials)
 			.map(({ id }) => id)
@@ -423,6 +426,9 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 		nodeType?: INodeTypeDescription,
 	): INodeIssues | null {
 		const localNodeType = nodeType ?? nodeTypesStore.getNodeType(node.type, node.typeVersion);
+		const workflowDocumentStore = workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined;
 		if (node.disabled) {
 			// Node is disabled
 			return null;
@@ -461,7 +467,9 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 			// Prevents HTTP Request node from being unusable if a sharee does not have direct
 			// access to a credential
 			const isCredentialUsedInWorkflow =
-				workflowsStore.usedCredentials?.[node.credentials?.[nodeCredentialType]?.id as string];
+				workflowDocumentStore?.usedCredentials?.[
+					node.credentials?.[nodeCredentialType]?.id as string
+				];
 
 			if (
 				selectedCredsDoNotExist(node, nodeCredentialType, stored) &&
@@ -545,7 +553,7 @@ export function useNodeHelpers(opts: { workflowState?: WorkflowState } = {}) {
 
 				if (nameMatches.length === 0) {
 					const isCredentialUsedInWorkflow =
-						workflowsStore.usedCredentials?.[selectedCredentials.id as string];
+						workflowDocumentStore?.usedCredentials?.[selectedCredentials.id as string];
 
 					if (
 						!isCredentialUsedInWorkflow &&

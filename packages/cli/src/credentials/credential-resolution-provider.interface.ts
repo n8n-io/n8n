@@ -10,8 +10,13 @@ export type CredentialResolveMetadata = {
 	/** Credential type (e.g., 'oAuth2Api') */
 	type: string;
 	resolverId?: string;
-	resolvableAllowFallback?: boolean;
 	isResolvable: boolean;
+};
+
+export type CredentialResolutionResult = {
+	data: ICredentialDataDecryptedObject;
+	/** True only when the credential was actually resolved via a dynamic resolver (not a fallback to static data). */
+	isDynamic: boolean;
 };
 
 /**
@@ -26,14 +31,12 @@ export interface ICredentialResolutionProvider {
 	 * @param credentialsResolveMetadata The credential resolve metadata
 	 * @param staticData The decrypted static credential data
 	 * @param additionalData Additional workflow execution data for context and settings
-	 * @param canUseExternalSecrets Whether the credential can use external secrets for expression resolution
-	 * @returns Resolved credential data (either dynamic or static)
+	 * @returns Resolved credential data and a flag indicating whether dynamic resolution occurred
 	 */
 	resolveIfNeeded(
 		credentialsResolveMetadata: CredentialResolveMetadata,
 		staticData: ICredentialDataDecryptedObject,
 		executionContext?: IExecutionContext,
 		workflowSettings?: IWorkflowSettings,
-		canUseExternalSecrets?: boolean,
-	): Promise<ICredentialDataDecryptedObject>;
+	): Promise<CredentialResolutionResult>;
 }

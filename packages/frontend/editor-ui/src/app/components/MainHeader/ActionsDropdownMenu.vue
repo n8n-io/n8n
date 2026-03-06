@@ -48,7 +48,6 @@ const props = defineProps<{
 	name: IWorkflowDb['name'];
 	tags: readonly string[];
 	currentFolder?: FolderShortInfo;
-	meta: IWorkflowDb['meta'];
 }>();
 
 const importFileRef = ref<HTMLInputElement | undefined>();
@@ -271,7 +270,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			const exportData: IWorkflowToShare = {
 				...data,
 				meta: {
-					...props.meta,
+					...data.meta,
 					instanceId: rootStore.instanceId,
 				},
 				tags: (tags ?? []).map((tagId) => {

@@ -85,9 +85,9 @@ export interface SearchWorkflowsResult {
 		createdAt: string | null;
 		updatedAt: string | null;
 		triggerCount: number | null;
-		nodes: Array<{ name: string; type: string }>;
 		scopes: string[];
 		canExecute: boolean;
+		availableInMCP: boolean;
 	}>;
 	count: number;
 }
@@ -849,7 +849,15 @@ export class McpApiHelper {
 
 		// The tool returns structuredContent with the data, or text content with JSON
 		if (result?.content?.[0]?.text) {
-			return JSON.parse(result.content[0].text) as SearchWorkflowsResult;
+			const text = result.content[0].text;
+			try {
+				return JSON.parse(text) as SearchWorkflowsResult;
+			} catch {
+				if (result.isError) {
+					throw new Error(text);
+				}
+				throw new Error(`Invalid JSON response from search_workflows: ${text}`);
+			}
 		}
 		throw new Error(
 			`Unexpected response format from search_workflows: ${JSON.stringify(result ?? body)}`,
@@ -888,7 +896,15 @@ export class McpApiHelper {
 		}
 
 		if (result?.content?.[0]?.text) {
-			return JSON.parse(result.content[0].text) as WorkflowDetailsResult;
+			const text = result.content[0].text;
+			try {
+				return JSON.parse(text) as WorkflowDetailsResult;
+			} catch {
+				if (result.isError) {
+					throw new Error(text);
+				}
+				throw new Error(`Invalid JSON response from get_workflow_details: ${text}`);
+			}
 		}
 		throw new Error(
 			`Unexpected response format from get_workflow_details: ${JSON.stringify(result ?? body)}`,
@@ -933,7 +949,26 @@ export class McpApiHelper {
 		}
 
 		if (result?.content?.[0]?.text) {
-			return JSON.parse(result.content[0].text) as ExecuteWorkflowResult;
+			const text = result.content[0].text;
+			try {
+				return JSON.parse(text) as ExecuteWorkflowResult;
+			} catch {
+				if (result.isError) {
+					return {
+						success: false,
+						executionId: null,
+						error: text,
+					};
+				}
+				throw new Error(`Invalid JSON response from execute_workflow: ${text}`);
+			}
+		}
+		if (result?.isError) {
+			return {
+				success: false,
+				executionId: null,
+				error: JSON.stringify(result),
+			};
 		}
 		throw new Error(
 			`Unexpected response format from execute_workflow: ${JSON.stringify(result ?? body)}`,

@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "2.10.0",
+  "version": "2.11.0",
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -97,6 +97,7 @@
     "@aws-sdk/client-secrets-manager": "3.808.0",
     "@azure/identity": "catalog:",
     "@azure/keyvault-secrets": "4.8.0",
+    "@1password/connect": "1.4.2",
     "@google-cloud/secret-manager": "5.6.0",
     "@n8n/ai-utilities": "workspace:*",
     "@n8n/ai-workflow-builder": "workspace:*",

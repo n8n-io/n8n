@@ -41,6 +41,8 @@ export interface EvaluationContext {
 	generatedCode?: string;
 	/** Pin data for service nodes (used by execution evaluator) */
 	pinData?: IPinData;
+	/** Per-example annotations (e.g., code_necessary) from CSV or LangSmith dataset */
+	annotations?: Record<string, unknown>;
 }
 
 /** Context attached to an individual test case (prompt is provided separately). */
@@ -111,7 +113,8 @@ export type EvaluationSuite =
 	| 'pairwise'
 	| 'programmatic'
 	| 'similarity'
-	| 'introspection';
+	| 'introspection'
+	| 'binary-checks';
 
 /**
  * Configuration for an evaluation run.

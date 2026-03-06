@@ -6,7 +6,7 @@ import N8nButton from '../N8nButton/Button.vue';
 import N8nInput from '../N8nInput/Input.vue';
 
 export default {
-	title: 'Atoms/Popover',
+	title: 'Core/Popover',
 	component: N8nPopover,
 	argTypes: {
 		enableScrolling: {

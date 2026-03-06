@@ -70,3 +70,12 @@ export function shouldResumeImmediately(lastNode: INode) {
 
 	return false;
 }
+
+export function getLastNodeMessage(execution: IExecutionResponse, lastNode: INode) {
+	if (lastNode.type !== CHAT_NODE_TYPE) return '';
+
+	const message =
+		execution.data?.resultData?.runData?.[lastNode.name]?.[0]?.data?.main?.[0]?.[0]?.sendMessage;
+
+	return (message as string) ?? '';
+}

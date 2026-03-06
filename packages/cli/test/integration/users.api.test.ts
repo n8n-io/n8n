@@ -27,7 +27,6 @@ import { v4 as uuid } from 'uuid';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UsersController } from '@/controllers/users.controller';
 import { ExecutionService } from '@/executions/execution.service';
-import { CacheService } from '@/services/cache/cache.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
 import { createFolder } from '@test-integration/db/folders';
@@ -1112,8 +1111,6 @@ describe('DELETE /users/:id', () => {
 			createFolder(transfereePersonalProject, { name: 'folder1' }),
 		]);
 
-		const deleteSpy = jest.spyOn(Container.get(CacheService), 'deleteMany');
-
 		//
 		// ACT
 		//
@@ -1125,14 +1122,6 @@ describe('DELETE /users/:id', () => {
 		//
 		// ASSERT
 		//
-
-		expect(deleteSpy).toBeCalledWith(
-			expect.arrayContaining([
-				`credential-can-use-secrets:${sharedByTransfereeCredential.id}`,
-				`credential-can-use-secrets:${ownedCredential.id}`,
-			]),
-		);
-		deleteSpy.mockClear();
 
 		const userRepository = Container.get(UserRepository);
 		const projectRepository = Container.get(ProjectRepository);
@@ -1271,8 +1260,6 @@ describe('DELETE /users/:id', () => {
 			createFolder(teamProject, { name: 'folder1' }),
 		]);
 
-		const deleteSpy = jest.spyOn(Container.get(CacheService), 'deleteMany');
-
 		//
 		// ACT
 		//
@@ -1284,8 +1271,6 @@ describe('DELETE /users/:id', () => {
 		//
 		// ASSERT
 		//
-
-		deleteSpy.mockClear();
 
 		const sharedWorkflowRepository = Container.get(SharedWorkflowRepository);
 		const sharedCredentialRepository = Container.get(SharedCredentialsRepository);
@@ -1676,13 +1661,9 @@ describe('PATCH /users/:id/role', () => {
 			linkUserToProject(user, project2, 'project:editor'),
 		]);
 
-		const deleteSpy = jest.spyOn(Container.get(CacheService), 'deleteMany');
 		const response = await ownerAgent.patch(`/users/${user.id}/role`).send({
 			newRoleName: 'global:member',
 		});
-
-		expect(deleteSpy).toBeCalledTimes(2);
-		deleteSpy.mockClear();
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data).toStrictEqual({ success: true });

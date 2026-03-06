@@ -459,7 +459,6 @@ describe('Test MergeV3, combineBySql operation', () => {
 				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
 			).rejects.toMatchObject({
 				message: 'Issue while executing query',
-				description: 'File access operations are disabled for security reasons',
 			});
 		});
 
@@ -473,7 +472,6 @@ describe('Test MergeV3, combineBySql operation', () => {
 				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
 			).rejects.toMatchObject({
 				message: 'Issue while executing query',
-				description: 'File access operations are disabled for security reasons',
 			});
 		});
 
@@ -487,7 +485,6 @@ describe('Test MergeV3, combineBySql operation', () => {
 				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
 			).rejects.toMatchObject({
 				message: 'Issue while executing query',
-				description: 'File access operations are disabled for security reasons',
 			});
 		});
 
@@ -501,7 +498,6 @@ describe('Test MergeV3, combineBySql operation', () => {
 				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
 			).rejects.toMatchObject({
 				message: 'Issue while executing query',
-				description: 'File access operations are disabled for security reasons',
 			});
 		});
 
@@ -515,7 +511,6 @@ describe('Test MergeV3, combineBySql operation', () => {
 				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
 			).rejects.toMatchObject({
 				message: 'Issue while executing query',
-				description: 'File access operations are disabled for security reasons',
 			});
 		});
 
@@ -529,7 +524,6 @@ describe('Test MergeV3, combineBySql operation', () => {
 				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
 			).rejects.toMatchObject({
 				message: 'Issue while executing query',
-				description: 'File access operations are disabled for security reasons',
 			});
 		});
 
@@ -543,7 +537,6 @@ describe('Test MergeV3, combineBySql operation', () => {
 				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
 			).rejects.toMatchObject({
 				message: 'Issue while executing query',
-				description: 'File access operations are disabled for security reasons',
 			});
 		});
 
@@ -557,7 +550,6 @@ describe('Test MergeV3, combineBySql operation', () => {
 				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
 			).rejects.toMatchObject({
 				message: 'Issue while executing query',
-				description: 'File access operations are disabled for security reasons',
 			});
 		});
 
@@ -571,7 +563,6 @@ describe('Test MergeV3, combineBySql operation', () => {
 				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
 			).rejects.toMatchObject({
 				message: 'Issue while executing query',
-				description: 'File access operations are disabled for security reasons',
 			});
 		});
 
@@ -585,7 +576,6 @@ describe('Test MergeV3, combineBySql operation', () => {
 				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
 			).rejects.toMatchObject({
 				message: 'Issue while executing query',
-				description: 'File access operations are disabled for security reasons',
 			});
 		});
 
@@ -599,7 +589,6 @@ describe('Test MergeV3, combineBySql operation', () => {
 				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
 			).rejects.toMatchObject({
 				message: 'Issue while executing query',
-				description: 'File access operations are disabled for security reasons',
 			});
 		});
 
@@ -613,7 +602,6 @@ describe('Test MergeV3, combineBySql operation', () => {
 				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
 			).rejects.toMatchObject({
 				message: 'Issue while executing query',
-				description: 'File access operations are disabled for security reasons',
 			});
 		});
 
@@ -627,7 +615,6 @@ describe('Test MergeV3, combineBySql operation', () => {
 				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
 			).rejects.toMatchObject({
 				message: 'Issue while executing query',
-				description: 'File access operations are disabled for security reasons',
 			});
 		});
 
@@ -641,7 +628,6 @@ describe('Test MergeV3, combineBySql operation', () => {
 				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
 			).rejects.toMatchObject({
 				message: 'Issue while executing query',
-				description: 'File access operations are disabled for security reasons',
 			});
 		});
 
@@ -655,7 +641,6 @@ describe('Test MergeV3, combineBySql operation', () => {
 				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
 			).rejects.toMatchObject({
 				message: 'Issue while executing query',
-				description: 'File access operations are disabled for security reasons',
 			});
 		});
 
@@ -669,7 +654,6 @@ describe('Test MergeV3, combineBySql operation', () => {
 				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
 			).rejects.toMatchObject({
 				message: 'Issue while executing query',
-				description: 'File access operations are disabled for security reasons',
 			});
 		});
 
@@ -683,7 +667,6 @@ describe('Test MergeV3, combineBySql operation', () => {
 				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
 			).rejects.toMatchObject({
 				message: 'Issue while executing query',
-				description: 'File access operations are disabled for security reasons',
 			});
 		});
 
@@ -697,7 +680,6 @@ describe('Test MergeV3, combineBySql operation', () => {
 				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
 			).rejects.toMatchObject({
 				message: 'Issue while executing query',
-				description: 'File access operations are disabled for security reasons',
 			});
 		});
 
@@ -711,7 +693,6 @@ describe('Test MergeV3, combineBySql operation', () => {
 				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
 			).rejects.toMatchObject({
 				message: 'Issue while executing query',
-				description: 'File access operations are disabled for security reasons',
 			});
 		});
 
@@ -725,7 +706,6 @@ describe('Test MergeV3, combineBySql operation', () => {
 				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
 			).rejects.toMatchObject({
 				message: 'Issue while executing query',
-				description: 'File access operations are disabled for security reasons',
 			});
 		});
 
@@ -739,7 +719,6 @@ describe('Test MergeV3, combineBySql operation', () => {
 				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
 			).rejects.toMatchObject({
 				message: 'Issue while executing query',
-				description: 'File access operations are disabled for security reasons',
 			});
 		});
 
@@ -753,7 +732,6 @@ describe('Test MergeV3, combineBySql operation', () => {
 				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
 			).rejects.toMatchObject({
 				message: 'Issue while executing query',
-				description: 'File access operations are disabled for security reasons',
 			});
 		});
 
@@ -767,7 +745,6 @@ describe('Test MergeV3, combineBySql operation', () => {
 				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
 			).rejects.toMatchObject({
 				message: 'Issue while executing query',
-				description: 'File access operations are disabled for security reasons',
 			});
 		});
 
@@ -781,7 +758,6 @@ describe('Test MergeV3, combineBySql operation', () => {
 				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
 			).rejects.toMatchObject({
 				message: 'Issue while executing query',
-				description: 'File access operations are disabled for security reasons',
 			});
 		});
 
@@ -795,7 +771,6 @@ describe('Test MergeV3, combineBySql operation', () => {
 				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
 			).rejects.toMatchObject({
 				message: 'Issue while executing query',
-				description: 'File access operations are disabled for security reasons',
 			});
 		});
 
@@ -809,7 +784,6 @@ describe('Test MergeV3, combineBySql operation', () => {
 				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
 			).rejects.toMatchObject({
 				message: 'Issue while executing query',
-				description: 'File access operations are disabled for security reasons',
 			});
 		});
 
@@ -823,7 +797,6 @@ describe('Test MergeV3, combineBySql operation', () => {
 				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
 			).rejects.toMatchObject({
 				message: 'Issue while executing query',
-				description: 'File access operations are disabled for security reasons',
 			});
 		});
 
@@ -837,7 +810,6 @@ describe('Test MergeV3, combineBySql operation', () => {
 				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
 			).rejects.toMatchObject({
 				message: 'Issue while executing query',
-				description: 'File access operations are disabled for security reasons',
 			});
 		});
 
@@ -851,7 +823,6 @@ describe('Test MergeV3, combineBySql operation', () => {
 				mode.combineBySql.execute.call(createMockExecuteFunction(nodeParameters, node), inputsData),
 			).rejects.toMatchObject({
 				message: 'Issue while executing query',
-				description: 'File access operations are disabled for security reasons',
 			});
 		});
 

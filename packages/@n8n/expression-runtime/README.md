@@ -7,14 +7,14 @@ Secure, isolated expression evaluation runtime for n8n workflows.
 **In progress — landing as a series of incremental PRs.**
 
 Implemented so far:
-- ✅ TypeScript interfaces and architecture design
-- ✅ Core architecture documentation
+- ✅ TypeScript interfaces and architecture design (PR 1)
+- ✅ Core architecture documentation (PR 1)
+- ✅ Runtime bundle: extension functions, deep lazy proxy system (PR 2)
+- ✅ `IsolatedVmBridge`: V8 isolate management via `isolated-vm` (PR 3)
+- ✅ `ExpressionEvaluator`: tournament integration, expression code caching (PR 4)
+- ✅ Integration tests (PR 4)
 
 Coming in later PRs:
-- 🚧 Runtime bundle: extension functions, deep lazy proxy system (PR 2)
-- 🚧 `IsolatedVmBridge`: V8 isolate management via `isolated-vm` (PR 3)
-- 🚧 `ExpressionEvaluator`: tournament integration, expression code caching (PR 4)
-- 🚧 Integration tests (PR 4)
 - 🚧 Workflow integration behind `N8N_EXPRESSION_ENGINE=vm` flag (PR 5)
 - 🚧 Web Worker support (Phase 2+)
 - 🚧 Performance optimizations (Phase 3)
@@ -165,7 +165,7 @@ interface RuntimeBridge {
 
 ### Bridge Implementations
 
-- **IsolatedVmBridge**: 🚧 For Node.js backend (isolated-vm with V8 isolates) - coming in PR 3
+- **IsolatedVmBridge**: ✅ For Node.js backend (isolated-vm with V8 isolates)
   - Memory isolation with hard 128MB limit
   - Timeout enforcement (5s default)
   - Deep lazy proxy system for workflow data
@@ -181,13 +181,13 @@ interface RuntimeBridge {
 interface EvaluatorConfig {
   bridge: RuntimeBridge;                   // required
   observability?: ObservabilityProvider;   // optional - interfaces defined, providers not yet implemented
-  hooks?: TournamentHooks;                 // optional - AST security hooks for tournament (PR 4)
+  hooks?: TournamentHooks;                 // optional - AST security hooks for tournament
 }
 
 interface BridgeConfig {
-  memoryLimit?: number;        // Default: 128 MB (PR 3)
-  timeout?: number;            // Default: 5000 ms (PR 3)
-  debug?: boolean;             // Default: false (PR 3)
+  memoryLimit?: number;        // Default: 128 MB
+  timeout?: number;            // Default: 5000 ms
+  debug?: boolean;             // Default: false
 }
 ```
 
