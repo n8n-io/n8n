@@ -3,18 +3,11 @@ import { mock } from 'vitest-mock-extended';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import NodeSettingsTabs from './NodeSettingsTabs.vue';
-import { ref, computed } from 'vue';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { ref } from 'vue';
 import type { ExtendedPublicInstalledPackage } from '@/features/settings/communityNodes/communityNodes.utils';
 import { useInstalledCommunityPackage } from '@/features/settings/communityNodes/composables/useInstalledCommunityPackage';
 
-const renderComponent = createComponentRenderer(NodeSettingsTabs, {
-	global: {
-		provide: {
-			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
-		},
-	},
-});
+const renderComponent = createComponentRenderer(NodeSettingsTabs);
 
 vi.mock('@/features/settings/communityNodes/composables/useInstalledCommunityPackage', () => ({
 	useInstalledCommunityPackage: vi.fn(() => ({
