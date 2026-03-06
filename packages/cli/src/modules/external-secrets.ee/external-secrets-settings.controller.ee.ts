@@ -1,5 +1,5 @@
 import { UpdateExternalSecretsSettingsDto } from '@n8n/api-types';
-import { Body, Get, GlobalScope, Middleware, Post, RestController } from '@n8n/decorators';
+import { Body, GlobalScope, Middleware, Post, RestController } from '@n8n/decorators';
 import type { NextFunction, Request, Response } from 'express';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -25,14 +25,6 @@ export class ExternalSecretsSettingsController {
 			return;
 		}
 		next();
-	}
-
-	@Get('/')
-	@GlobalScope('externalSecretsProvider:read')
-	async getSettings() {
-		return {
-			systemRolesEnabled: await this.settingsService.isSystemRolesEnabled(),
-		};
 	}
 
 	@Post('/')
