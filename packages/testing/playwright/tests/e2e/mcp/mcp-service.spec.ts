@@ -330,6 +330,36 @@ test.describe(
 			});
 		});
 
+		test.describe('publish_workflow', () => {
+			test('should publish a workflow successfully', async ({ api }) => {
+				const { workflowId } = await api.workflows.importWorkflowFromFile(
+					'mcp-service/mcp-available-basic.json',
+				);
+
+				const { apiKey } = await api.rotateMcpApiKey();
+				const result = await api.mcp.internalMcpPublishWorkflow(apiKey, workflowId);
+
+				expect(result.success).toBe(true);
+				expect(result.workflowId).toBe(workflowId);
+				expect(result.activeVersionId).toBeTruthy();
+			});
+		});
+
+		test.describe('unpublish_workflow', () => {
+			test('should unpublish a workflow successfully', async ({ api }) => {
+				const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
+					'mcp-service/mcp-available-basic.json',
+				);
+				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
+
+				const { apiKey } = await api.rotateMcpApiKey();
+				const result = await api.mcp.internalMcpUnpublishWorkflow(apiKey, workflowId);
+
+				expect(result.success).toBe(true);
+				expect(result.workflowId).toBe(workflowId);
+			});
+		});
+
 		test.describe('Error Handling', () => {
 			test('should handle malformed JSON-RPC messages', async ({ api }) => {
 				const { apiKey } = await api.rotateMcpApiKey();

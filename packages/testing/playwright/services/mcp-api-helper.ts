@@ -124,6 +124,21 @@ export interface ExecuteWorkflowResult {
 	error?: unknown;
 }
 
+/** Response from publish_workflow tool */
+export interface PublishWorkflowResult {
+	success: boolean;
+	workflowId: string;
+	activeVersionId: string | null;
+	error?: string;
+}
+
+/** Response from unpublish_workflow tool */
+export interface UnpublishWorkflowResult {
+	success: boolean;
+	workflowId: string;
+	error?: string;
+}
+
 /**
  * Helper class for interacting with MCP Server endpoints.
  * Supports both SSE and Streamable HTTP transports.
@@ -972,6 +987,101 @@ export class McpApiHelper {
 		}
 		throw new Error(
 			`Unexpected response format from execute_workflow: ${JSON.stringify(result ?? body)}`,
+		);
+	}
+
+	/**
+	 * Calls publish_workflow tool on the internal MCP service.
+	 */
+	async internalMcpPublishWorkflow(
+		apiKey: string,
+		workflowId: string,
+		versionId?: string,
+	): Promise<PublishWorkflowResult> {
+		const args: Record<string, unknown> = { workflowId };
+		if (versionId) {
+			args.versionId = versionId;
+		}
+		const message = this.createMessage('tools/call', {
+			name: 'publish_workflow',
+			arguments: args,
+		});
+		const response = await this.internalMcpSendMessage(apiKey, message);
+		const contentType = response.headers()['content-type'] ?? '';
+		const body = await response.text();
+
+		let result: McpToolCallResponse;
+		if (contentType.includes('text/event-stream')) {
+			result = this.parseSSEToolResponse(body);
+		} else {
+			const parsed = JSON.parse(body) as { result?: McpToolCallResponse; error?: unknown };
+			if (parsed.error) {
+				throw new Error(`MCP Error: ${JSON.stringify(parsed.error)}`);
+			}
+			result = parsed.result as McpToolCallResponse;
+		}
+
+		if (result?.content?.[0]?.text) {
+			const text = result.content[0].text;
+			try {
+				return JSON.parse(text) as PublishWorkflowResult;
+			} catch {
+				if (result.isError) {
+					return { success: false, workflowId, activeVersionId: null, error: text };
+				}
+				throw new Error(`Invalid JSON response from publish_workflow: ${text}`);
+			}
+		}
+		if (result?.isError) {
+			return { success: false, workflowId, activeVersionId: null, error: JSON.stringify(result) };
+		}
+		throw new Error(
+			`Unexpected response format from publish_workflow: ${JSON.stringify(result ?? body)}`,
+		);
+	}
+
+	/**
+	 * Calls unpublish_workflow tool on the internal MCP service.
+	 */
+	async internalMcpUnpublishWorkflow(
+		apiKey: string,
+		workflowId: string,
+	): Promise<UnpublishWorkflowResult> {
+		const message = this.createMessage('tools/call', {
+			name: 'unpublish_workflow',
+			arguments: { workflowId },
+		});
+		const response = await this.internalMcpSendMessage(apiKey, message);
+		const contentType = response.headers()['content-type'] ?? '';
+		const body = await response.text();
+
+		let result: McpToolCallResponse;
+		if (contentType.includes('text/event-stream')) {
+			result = this.parseSSEToolResponse(body);
+		} else {
+			const parsed = JSON.parse(body) as { result?: McpToolCallResponse; error?: unknown };
+			if (parsed.error) {
+				throw new Error(`MCP Error: ${JSON.stringify(parsed.error)}`);
+			}
+			result = parsed.result as McpToolCallResponse;
+		}
+
+		if (result?.content?.[0]?.text) {
+			const text = result.content[0].text;
+			try {
+				return JSON.parse(text) as UnpublishWorkflowResult;
+			} catch {
+				if (result.isError) {
+					return { success: false, workflowId, error: text };
+				}
+				throw new Error(`Invalid JSON response from unpublish_workflow: ${text}`);
+			}
+		}
+		if (result?.isError) {
+			return { success: false, workflowId, error: JSON.stringify(result) };
+		}
+		throw new Error(
+			`Unexpected response format from unpublish_workflow: ${JSON.stringify(result ?? body)}`,
 		);
 	}
 }
