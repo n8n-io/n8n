@@ -14,6 +14,18 @@ const fn_processOrder_http1 = node({
   }
 });
 
+const fn_processOrder_agg1 = node({
+  type: 'n8n-nodes-base.code', version: 2,
+  config: {
+    name: 'Collect enriched',
+    parameters: {
+      jsCode: `// @aggregate: enriched\nconst _raw = $('GET Request').all().map(i => i.json);\nconst enriched = _raw.length === 1 ? _raw[0] : _raw;\nreturn [{ json: { enriched } }];`,
+      mode: 'runOnceForAllItems'
+    },
+    executeOnce: true
+  }
+});
+
 const fn_processOrder_http2 = node({
   type: 'n8n-nodes-base.httpRequest', version: 4.2,
   config: {
@@ -25,14 +37,14 @@ const fn_processOrder_http2 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "={{ $('GET Request').first().json }}"
+      "jsonBody": "={{ $('Collect enriched').first().json.enriched }}"
     },
     "executeOnce": true
   }
 });
 
 const processOrderWorkflow = workflow('processOrder', 'processOrder')
-  .add(fn_processOrder_t0.to(fn_processOrder_http1).to(fn_processOrder_http2));
+  .add(fn_processOrder_t0.to(fn_processOrder_http1).to(fn_processOrder_agg1).to(fn_processOrder_http2));
 
 // --- Main workflow ---
 const t0 = trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: { parameters: {"httpMethod":"POST","path":"/orders"}, pinData: [{"body":{"id":"ORD-123","product":"Widget Pro","quantity":5}}] } });
@@ -99,6 +111,18 @@ const http5 = node({
   }
 });
 
+const agg5 = node({
+  type: 'n8n-nodes-base.code', version: 2,
+  config: {
+    name: 'Collect orders 5',
+    parameters: {
+      jsCode: `// @aggregate: orders\nconst _raw = $('GET api.com/pending').all().map(i => i.json);\nconst orders = _raw.length === 1 ? _raw[0] : _raw;\nreturn [{ json: { orders } }];`,
+      mode: 'runOnceForAllItems'
+    },
+    executeOnce: true
+  }
+});
+
 const set5 = node({
   type: 'n8n-nodes-base.set', version: 3.4,
   config: {
@@ -111,7 +135,7 @@ const set5 = node({
             "id": "assign_0",
             "name": "orderId",
             "type": "string",
-            "value": "={{ $('GET api.com/pending').first().json.orderId }}"
+            "value": "={{ $('Collect orders 5').first().json.orders.orderId }}"
           }
         ]
       }
@@ -135,4 +159,4 @@ const exec5 = node({
 
 export default workflow('compiled', 'Compiled Workflow')
   .add(t0.to(set1).to(exec1).to(http1))
-  .add(t4.to(http5).to(set5).to(exec5));
+  .add(t4.to(http5).to(agg5).to(set5).to(exec5));

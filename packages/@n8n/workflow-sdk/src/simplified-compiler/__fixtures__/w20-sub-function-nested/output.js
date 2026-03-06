@@ -14,8 +14,20 @@ const fn_enrichData_http1 = node({
   }
 });
 
+const fn_enrichData_agg1 = node({
+  type: 'n8n-nodes-base.code', version: 2,
+  config: {
+    name: 'Collect result',
+    parameters: {
+      jsCode: `// @aggregate: result\nconst _raw = $('GET Request').all().map(i => i.json);\nconst result = _raw.length === 1 ? _raw[0] : _raw;\nreturn [{ json: { result } }];`,
+      mode: 'runOnceForAllItems'
+    },
+    executeOnce: true
+  }
+});
+
 const enrichDataWorkflow = workflow('enrichData', 'enrichData')
-  .add(fn_enrichData_t0.to(fn_enrichData_http1));
+  .add(fn_enrichData_t0.to(fn_enrichData_http1).to(fn_enrichData_agg1));
 
 // --- Sub-workflow: processAndNotify ---
 const fn_processAndNotify_t0 = trigger({ type: 'n8n-nodes-base.executeWorkflowTrigger', version: 1.1, config: { parameters: { inputSource: 'passthrough' } } });

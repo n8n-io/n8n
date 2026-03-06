@@ -14,8 +14,20 @@ const fn_fetchData_http1 = node({
   }
 });
 
+const fn_fetchData_agg1 = node({
+  type: 'n8n-nodes-base.code', version: 2,
+  config: {
+    name: 'Collect result',
+    parameters: {
+      jsCode: `// @aggregate: result\nconst _raw = $('GET Request').all().map(i => i.json);\nconst result = _raw.length === 1 ? _raw[0] : _raw;\nreturn [{ json: { result } }];`,
+      mode: 'runOnceForAllItems'
+    },
+    executeOnce: true
+  }
+});
+
 const fetchDataWorkflow = workflow('fetchData', 'fetchData')
-  .add(fn_fetchData_t0.to(fn_fetchData_http1));
+  .add(fn_fetchData_t0.to(fn_fetchData_http1).to(fn_fetchData_agg1));
 
 // --- Main workflow ---
 const t0 = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });

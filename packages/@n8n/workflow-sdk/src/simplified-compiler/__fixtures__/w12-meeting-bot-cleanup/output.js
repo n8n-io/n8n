@@ -65,12 +65,24 @@ const http1 = node({
 }
 });
 
+const agg1 = node({
+  type: 'n8n-nodes-base.code', version: 2,
+  config: {
+    name: 'Collect events',
+    parameters: {
+      jsCode: `// @aggregate: events\nconst _raw = $('GET www.googleapis.com/calendar/v3/ca...').all().map(i => i.json);\nconst events = _raw.length === 1 ? _raw[0] : _raw;\nreturn [{ json: { events } }];`,
+      mode: 'runOnceForAllItems'
+    },
+    executeOnce: true
+  }
+});
+
 const code1 = node({
   type: 'n8n-nodes-base.code', version: 2,
   config: {
     name: 'Split events',
     parameters: {
-      jsCode: `const events = $('GET www.googleapis.com/calendar/v3/ca...').all().map(i => i.json);
+      jsCode: `const events = $('Collect events').all().map(i => i.json);
 return events.map(event => ({ json: event }));`,
       mode: 'runOnceForAllItems'
     },
@@ -91,4 +103,4 @@ const exec1 = node({
 });
 
 export default workflow('compiled', 'Compiled Workflow')
-  .add(t0.to(http1).to(code1).to(exec1));
+  .add(t0.to(http1).to(agg1).to(code1).to(exec1));

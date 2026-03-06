@@ -63,12 +63,24 @@ const http1 = node({
 }
 });
 
+const agg1 = node({
+  type: 'n8n-nodes-base.code', version: 2,
+  config: {
+    name: 'Collect leads',
+    parameters: {
+      jsCode: `// @aggregate: leads\nconst _raw = $('GET sheets.googleapis.com/v4/spreadsh...').all().map(i => i.json);\nconst leads = _raw.length === 1 ? _raw[0] : _raw;\nreturn [{ json: { leads } }];`,
+      mode: 'runOnceForAllItems'
+    },
+    executeOnce: true
+  }
+});
+
 const code1 = node({
   type: 'n8n-nodes-base.code', version: 2,
   config: {
     name: 'Code 1',
     parameters: {
-      jsCode: `// From: GET sheets.googleapis.com/v4/spreadsh...\nconst leads = $('GET sheets.googleapis.com/v4/spreadsh...').first().json;\nconst newLeads = leads.values.filter(function (row) {
+      jsCode: `// From: Collect leads\nconst leads = $('Collect leads').first().json.leads;\nconst newLeads = leads.values.filter(function (row) {
 	return row[2] === 'New';
 });\nreturn [{ json: { newLeads } }];`,
       mode: 'runOnceForAllItems'
@@ -103,4 +115,4 @@ const exec1 = node({
 });
 
 export default workflow('compiled', 'Compiled Workflow')
-  .add(t0.to(http1).to(code1).to(code2).to(exec1));
+  .add(t0.to(http1).to(agg1).to(code1).to(code2).to(exec1));

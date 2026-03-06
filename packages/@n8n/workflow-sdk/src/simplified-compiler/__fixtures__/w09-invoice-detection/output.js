@@ -16,6 +16,18 @@ const http1 = node({
 }
 });
 
+const agg1 = node({
+  type: 'n8n-nodes-base.code', version: 2,
+  config: {
+    name: 'Collect emails',
+    parameters: {
+      jsCode: `// @aggregate: emails\nconst _raw = $('GET gmail.googleapis.com/gmail/v1/use...').all().map(i => i.json);\nconst emails = _raw.length === 1 ? _raw[0] : _raw;\nreturn [{ json: { emails } }];`,
+      mode: 'runOnceForAllItems'
+    },
+    executeOnce: true
+  }
+});
+
 const ai2 = node({
   type: '@n8n/n8n-nodes-langchain.agent', version: 3.1,
   config: {
@@ -66,4 +78,4 @@ const if1 = ifElse({ version: 2.2, config: { name: 'IF 1', parameters: { conditi
   .onTrue(http3);
 
 export default workflow('compiled', 'Compiled Workflow')
-  .add(t0.to(http1).to(ai2).to(if1));
+  .add(t0.to(http1).to(agg1).to(ai2).to(if1));

@@ -31,12 +31,24 @@ const http1 = node({
   }
 });
 
+const agg1 = node({
+  type: 'n8n-nodes-base.code', version: 2,
+  config: {
+    name: 'Collect page',
+    parameters: {
+      jsCode: `// @aggregate: page\nconst _raw = $('GET www.blu-ray.com/movies/movies.php').all().map(i => i.json);\nconst page = _raw.length === 1 ? _raw[0] : _raw;\nreturn [{ json: { page } }];`,
+      mode: 'runOnceForAllItems'
+    },
+    executeOnce: true
+  }
+});
+
 const code2 = node({
   type: 'n8n-nodes-base.code', version: 2,
   config: {
     name: 'Code 2',
     parameters: {
-      jsCode: `// From: Code 1\nconst formattedDate = $('Code 1').all().map(i => i.json);\nconst page = $('GET www.blu-ray.com/movies/movies.php').first().json;\nconst links = extractLinks(page);
+      jsCode: `// From: Code 1\nconst formattedDate = $('Code 1').all().map(i => i.json);\nconst page = $('Collect page').first().json.page;\nconst links = extractLinks(page);
 const todaysItems = links.filter(function (link) {
 	return link.date === formattedDate;
 });
@@ -68,8 +80,8 @@ const http2 = node({
   }
 });
 
-const t5 = trigger({ type: 'n8n-nodes-base.scheduleTrigger', version: 1.2, config: { parameters: {"rule":{"interval":[{"field":"cronExpression","expression":"0 23 * * *"}]}} } });
+const t6 = trigger({ type: 'n8n-nodes-base.scheduleTrigger', version: 1.2, config: { parameters: {"rule":{"interval":[{"field":"cronExpression","expression":"0 23 * * *"}]}} } });
 
 export default workflow('compiled', 'Compiled Workflow')
-  .add(t0.to(code1).to(http1).to(code2).to(http2))
-  .add(t5.to(code1));
+  .add(t0.to(code1).to(http1).to(agg1).to(code2).to(http2))
+  .add(t6.to(code1));

@@ -13,12 +13,24 @@ const http1 = node({
   }
 });
 
+const agg1 = node({
+  type: 'n8n-nodes-base.code', version: 2,
+  config: {
+    name: 'Collect tickers',
+    parameters: {
+      jsCode: `// @aggregate: tickers\nconst _raw = $('GET api.binance.com/api/v1/ticker/24hr').all().map(i => i.json);\nconst tickers = _raw.length === 1 ? _raw[0] : _raw;\nreturn [{ json: { tickers } }];`,
+      mode: 'runOnceForAllItems'
+    },
+    executeOnce: true
+  }
+});
+
 const code1 = node({
   type: 'n8n-nodes-base.code', version: 2,
   config: {
     name: 'Code 1',
     parameters: {
-      jsCode: `// From: GET api.binance.com/api/v1/ticker/24hr\nconst tickers = $('GET api.binance.com/api/v1/ticker/24hr').first().json;\nconst significant = tickers
+      jsCode: `// From: Collect tickers\nconst tickers = $('Collect tickers').first().json.tickers;\nconst significant = tickers
 	.filter(function (coin) {
 		return Math.abs(parseFloat(coin.priceChangePercent)) >= 15;
 	})
@@ -57,4 +69,4 @@ const if1 = ifElse({ version: 2.2, config: { name: 'IF 1', parameters: { conditi
   .onTrue(http2);
 
 export default workflow('compiled', 'Compiled Workflow')
-  .add(t0.to(http1).to(code1).to(if1));
+  .add(t0.to(http1).to(agg1).to(code1).to(if1));

@@ -14,6 +14,18 @@ const tc_tryCatch_1_http1 = node({
   }
 });
 
+const tc_tryCatch_1_agg1 = node({
+  type: 'n8n-nodes-base.code', version: 2,
+  config: {
+    name: 'Collect posts',
+    parameters: {
+      jsCode: `// @aggregate: posts\nconst _raw = $('GET Request').all().map(i => i.json);\nconst posts = _raw.length === 1 ? _raw[0] : _raw;\nreturn [{ json: { posts } }];`,
+      mode: 'runOnceForAllItems'
+    },
+    executeOnce: true
+  }
+});
+
 const tc_tryCatch_1_http2 = node({
   type: 'n8n-nodes-base.httpRequest', version: 4.2,
   config: {
@@ -25,14 +37,14 @@ const tc_tryCatch_1_http2 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"user\":\"={{ $('When Executed by Another Workflow').first().json.user.name }}\",\"postCount\":\"={{ $('GET Request').first().json.length }}\"}"
+      "jsonBody": "{\"user\":\"={{ $('When Executed by Another Workflow').first().json.user.name }}\",\"postCount\":\"={{ $('Collect posts').first().json.posts.length }}\"}"
     },
     "executeOnce": true
   }
 });
 
 const __tryCatch_1Workflow = workflow('__tryCatch_1', '__tryCatch_1')
-  .add(tc_tryCatch_1_t0.to(tc_tryCatch_1_http1).to(tc_tryCatch_1_http2));
+  .add(tc_tryCatch_1_t0.to(tc_tryCatch_1_http1).to(tc_tryCatch_1_agg1).to(tc_tryCatch_1_http2));
 
 // --- Loop body sub-workflow ---
 const loop_user_t0 = trigger({ type: 'n8n-nodes-base.executeWorkflowTrigger', version: 1.1, config: { parameters: { inputSource: 'passthrough' } } });
@@ -110,12 +122,24 @@ const http1 = node({
   }
 });
 
+const agg1 = node({
+  type: 'n8n-nodes-base.code', version: 2,
+  config: {
+    name: 'Collect users',
+    parameters: {
+      jsCode: `// @aggregate: users\nconst _raw = $('GET jsonplaceholder.typicode.com/users').all().map(i => i.json);\nconst users = _raw.length === 1 ? _raw[0] : _raw;\nreturn [{ json: { users } }];`,
+      mode: 'runOnceForAllItems'
+    },
+    executeOnce: true
+  }
+});
+
 const code1 = node({
   type: 'n8n-nodes-base.code', version: 2,
   config: {
     name: 'Code 1',
     parameters: {
-      jsCode: `// From: GET jsonplaceholder.typicode.com/users\nconst users = $('GET jsonplaceholder.typicode.com/users').first().json;\nconst active = users.filter((u) => u.id <= 5);\nreturn [{ json: { active } }];`,
+      jsCode: `// From: Collect users\nconst users = $('Collect users').first().json.users;\nconst active = users.filter((u) => u.id <= 5);\nreturn [{ json: { active } }];`,
       mode: 'runOnceForAllItems'
     },
     executeOnce: true
@@ -165,4 +189,4 @@ const http2 = node({
 });
 
 export default workflow('compiled', 'Compiled Workflow')
-  .add(t0.to(http1).to(code1).to(code2).to(exec1).to(http2));
+  .add(t0.to(http1).to(agg1).to(code1).to(code2).to(exec1).to(http2));

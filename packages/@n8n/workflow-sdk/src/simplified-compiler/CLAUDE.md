@@ -41,11 +41,11 @@ Intentionally excluded:
 
 n8n nodes natively return arrays of items (e.g., `[{json: {...}}, {json: {...}}, ...]`). The DSL hides this:
 
-- **Single-item by default** — `const result = await http.get(...)` gives a single object. The compiler sets `executeOnce: true` and references use `.first().json` (e.g., `$('HTTP 1').first().json.name`).
-- **Multi-item with `.all()`** — when code needs the full array, references use `.all()` (e.g., `$('HTTP 1').all()`).
+- **Single-item by default** — `const result = await http.get(...)` gives a single object. The compiler sets `executeOnce: true` on HTTP nodes.
+- **Aggregate Code nodes** — after every HTTP call with an assigned variable, the compiler emits an aggregate Code node (`Collect <varName>`) that collects all items, defensively unwraps single-item responses, and stores the result under the variable name. This ensures both single-object and array responses work correctly for downstream Code nodes and expressions.
 - **Loops for iteration** — `for (const item of items)` emits a splitter Code node for per-item processing.
 - **Loop body isolation** — multi-IO loop bodies are wrapped in Execute Sub-Workflow nodes to prevent item multiplication (see `docs/loop-sub-workflows.md`).
-- **No aggregate nodes** — post-loop nodes use `executeOnce: true` and reference data by node name (`$('NodeName').first().json`), making aggregation unnecessary.
+- **Post-loop aggregation** — post-loop nodes use `executeOnce: true` and reference data by node name (`$('NodeName').first().json`), making further aggregation unnecessary.
 
 The LLM writes normal JS (single values, for-of loops) and the compiler handles n8n's item-list plumbing.
 
@@ -144,6 +144,10 @@ Assert: normalizeSDK(SDK₁) === normalizeSDK(SDK₂)
 | `graph-annotator.ts` | Adds trigger/error markers to graph |
 | `composite-builder.ts` | SemanticGraph -> CompositeTree (abstract chain/ifElse/switchCase) |
 | `simplified-generator.ts` | CompositeTree -> simplified JS string |
+
+## Aggregate Code Node Architecture
+
+See `docs/aggregate-nodes.md` for full details. After every HTTP call with an assigned variable, the compiler emits an aggregate Code node (`Collect <varName>`) that collects all items and defensively unwraps single-item responses. Uses `// @aggregate: <varName>` jsCode marker for decompiler detection. Variable kind `'aggregate'` behaves like `'code'` for expression resolution.
 
 ## Supported Language Features
 

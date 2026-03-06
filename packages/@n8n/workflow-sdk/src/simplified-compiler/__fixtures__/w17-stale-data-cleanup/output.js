@@ -16,12 +16,24 @@ const http1 = node({
 }
 });
 
+const agg1 = node({
+  type: 'n8n-nodes-base.code', version: 2,
+  config: {
+    name: 'Collect items',
+    parameters: {
+      jsCode: `// @aggregate: items\nconst _raw = $('GET api.app.com/items').all().map(i => i.json);\nconst items = _raw.length === 1 ? _raw[0] : _raw;\nreturn [{ json: { items } }];`,
+      mode: 'runOnceForAllItems'
+    },
+    executeOnce: true
+  }
+});
+
 const code1 = node({
   type: 'n8n-nodes-base.code', version: 2,
   config: {
     name: 'Split items',
     parameters: {
-      jsCode: `const items = $('GET api.app.com/items').all().map(i => i.json);
+      jsCode: `const items = $('Collect items').all().map(i => i.json);
 return items.map(item => ({ json: item }));`,
       mode: 'runOnceForAllItems'
     },
@@ -45,4 +57,4 @@ const http2 = node({
 });
 
 export default workflow('compiled', 'Compiled Workflow')
-  .add(t0.to(http1).to(code1).to(http2));
+  .add(t0.to(http1).to(agg1).to(code1).to(http2));

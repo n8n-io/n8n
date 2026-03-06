@@ -13,6 +13,18 @@ const http1 = node({
   }
 });
 
+const agg1 = node({
+  type: 'n8n-nodes-base.code', version: 2,
+  config: {
+    name: 'Collect latest',
+    parameters: {
+      jsCode: `// @aggregate: latest\nconst _raw = $('GET registry.npmjs.org/n8n/latest').all().map(i => i.json);\nconst latest = _raw.length === 1 ? _raw[0] : _raw;\nreturn [{ json: { latest } }];`,
+      mode: 'runOnceForAllItems'
+    },
+    executeOnce: true
+  }
+});
+
 const http2 = node({
   type: 'n8n-nodes-base.httpRequest', version: 4.2,
   config: {
@@ -29,6 +41,18 @@ const http2 = node({
 }
 });
 
+const agg2 = node({
+  type: 'n8n-nodes-base.code', version: 2,
+  config: {
+    name: 'Collect local 2',
+    parameters: {
+      jsCode: `// @aggregate: local\nconst _raw = $('GET 0.0.0.0/rest/settings').all().map(i => i.json);\nconst local = _raw.length === 1 ? _raw[0] : _raw;\nreturn [{ json: { local } }];`,
+      mode: 'runOnceForAllItems'
+    },
+    executeOnce: true
+  }
+});
+
 const http3 = node({
   type: 'n8n-nodes-base.httpRequest', version: 4.2,
   config: {
@@ -40,11 +64,11 @@ const http3 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"latestVersion\":\"={{ $('GET registry.npmjs.org/n8n/latest').first().json.version }}\",\"currentVersion\":\"={{ $('GET 0.0.0.0/rest/settings').first().json.data.versionCli }}\"}"
+      "jsonBody": "{\"latestVersion\":\"={{ $('Collect latest').first().json.latest.version }}\",\"currentVersion\":\"={{ $('Collect local 2').first().json.local.data.versionCli }}\"}"
     },
     "executeOnce": true
   }
 });
 
 export default workflow('compiled', 'Compiled Workflow')
-  .add(t0.to(http1).to(http2).to(http3));
+  .add(t0.to(http1).to(agg1).to(http2).to(agg2).to(http3));

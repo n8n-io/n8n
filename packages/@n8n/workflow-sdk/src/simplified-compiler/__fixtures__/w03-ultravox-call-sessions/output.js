@@ -20,6 +20,18 @@ const http1 = node({
 }
 });
 
+const agg1 = node({
+  type: 'n8n-nodes-base.code', version: 2,
+  config: {
+    name: 'Collect session',
+    parameters: {
+      jsCode: `// @aggregate: session\nconst _raw = $('POST api.ultravox.ai/api/calls').all().map(i => i.json);\nconst session = _raw.length === 1 ? _raw[0] : _raw;\nreturn [{ json: { session } }];`,
+      mode: 'runOnceForAllItems'
+    },
+    executeOnce: true
+  }
+});
+
 const respond1 = node({
   type: 'n8n-nodes-base.respondToWebhook', version: 1.1,
   config: {
@@ -49,4 +61,4 @@ const respond1 = node({
 });
 
 export default workflow('compiled', 'Compiled Workflow')
-  .add(t0.to(http1).to(respond1));
+  .add(t0.to(http1).to(agg1).to(respond1));

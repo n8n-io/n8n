@@ -43,6 +43,18 @@ const loop_wf_http1 = node({
 }
 });
 
+const loop_wf_agg1 = node({
+  type: 'n8n-nodes-base.code', version: 2,
+  config: {
+    name: 'Collect existing',
+    parameters: {
+      jsCode: `// @aggregate: existing\nconst _raw = $('GET Request').all().map(i => i.json);\nconst existing = _raw.length === 1 ? _raw[0] : _raw;\nreturn [{ json: { existing } }];`,
+      mode: 'runOnceForAllItems'
+    },
+    executeOnce: true
+  }
+});
+
 const loop_wf_http2 = node({
   type: 'n8n-nodes-base.httpRequest', version: 4.2,
   config: {
@@ -74,7 +86,7 @@ const loop_wf_http3 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"message\":\"updated\",\"content\":\"={{ $('Code 1').first().json.wfJson }}\",\"sha\":\"={{ $('GET Request').first().json.sha }}\"}",
+      "jsonBody": "{\"message\":\"updated\",\"content\":\"={{ $('Code 1').first().json.wfJson }}\",\"sha\":\"={{ $('Collect existing').first().json.existing.sha }}\"}",
       "authentication": "genericCredentialType",
       "genericAuthType": "httpHeaderAuth"
     },
@@ -83,15 +95,15 @@ const loop_wf_http3 = node({
 }
 });
 
-const loop_wf_if2 = ifElse({ version: 2.2, config: { name: 'IF 2', parameters: { conditions: {"conditions":[{"leftValue":"={{ $('Code 1').first().json.wfJson }}","rightValue":"={{ $('GET Request').first().json.content }}","operator":{"type":"string","operation":"notEquals"}}],"combinator":"and"} }, executeOnce: true } })
+const loop_wf_if2 = ifElse({ version: 2.2, config: { name: 'IF 2', parameters: { conditions: {"conditions":[{"leftValue":"={{ $('Code 1').first().json.wfJson }}","rightValue":"={{ $('Collect existing').first().json.existing.content }}","operator":{"type":"string","operation":"notEquals"}}],"combinator":"and"} }, executeOnce: true } })
   .onTrue(loop_wf_http3);
 
-const loop_wf_if1 = ifElse({ version: 2.2, config: { name: 'IF 1', parameters: { conditions: {"conditions":[{"leftValue":"={{ $('GET Request').first().json }}","rightValue":"","operator":{"type":"string","operation":"notExists","singleValue":true}}],"combinator":"and"} }, executeOnce: true } })
+const loop_wf_if1 = ifElse({ version: 2.2, config: { name: 'IF 1', parameters: { conditions: {"conditions":[{"leftValue":"={{ $('Collect existing').first().json.existing }}","rightValue":"","operator":{"type":"string","operation":"notExists","singleValue":true}}],"combinator":"and"} }, executeOnce: true } })
   .onTrue(loop_wf_http2)
   .onFalse(loop_wf_if2);
 
 const _loop_wfWorkflow = workflow('_loop_wf', '_loop_wf')
-  .add(loop_wf_t0.to(loop_wf_code1).to(loop_wf_http1).to(loop_wf_if1));
+  .add(loop_wf_t0.to(loop_wf_code1).to(loop_wf_http1).to(loop_wf_agg1).to(loop_wf_if1));
 
 // --- Main workflow ---
 const t0 = trigger({ type: 'n8n-nodes-base.scheduleTrigger', version: 1.2, config: { parameters: {"rule":{"interval":[{"field":"hours","hoursInterval":24}]}} } });
@@ -144,12 +156,24 @@ const http2 = node({
 }
 });
 
+const agg1 = node({
+  type: 'n8n-nodes-base.code', version: 2,
+  config: {
+    name: 'Collect workflows',
+    parameters: {
+      jsCode: `// @aggregate: workflows\nconst _raw = $('GET localhost/api/v1/workflows').all().map(i => i.json);\nconst workflows = _raw.length === 1 ? _raw[0] : _raw;\nreturn [{ json: { workflows } }];`,
+      mode: 'runOnceForAllItems'
+    },
+    executeOnce: true
+  }
+});
+
 const code2 = node({
   type: 'n8n-nodes-base.code', version: 2,
   config: {
     name: 'Code 2',
     parameters: {
-      jsCode: `// From: GET localhost/api/v1/workflows\nconst workflows = $('GET localhost/api/v1/workflows').first().json;\nconst recent = workflows.filter(function (w) {
+      jsCode: `// From: Collect workflows\nconst workflows = $('Collect workflows').first().json.workflows;\nconst recent = workflows.filter(function (w) {
 	return new Date(w.updatedAt) >= new Date(Date.now() - 86400000);
 });\nreturn [{ json: { recent } }];`,
       mode: 'runOnceForAllItems'
@@ -204,4 +228,4 @@ const http3 = node({
 });
 
 export default workflow('compiled', 'Compiled Workflow')
-  .add(t0.to(http1).to(code1).to(http2).to(code2).to(code3).to(exec1).to(http3));
+  .add(t0.to(http1).to(code1).to(http2).to(agg1).to(code2).to(code3).to(exec1).to(http3));

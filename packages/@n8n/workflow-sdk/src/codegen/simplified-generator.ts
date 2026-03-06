@@ -500,16 +500,40 @@ function computeVariableAssignments(graph: SemanticGraph): Map<string, string> {
 	}
 
 	// First pass: collect code node imports to determine upstream variable names
-	// e.g. const tickers = $('GET api...').all().map(i => i.json) or $('...').first().json
+	// e.g. const tickers = $('GET api...').all().map(i => i.json) or $('...').first().json[.prop]
 	const codeImportNames = new Map<string, string>(); // node name → local var name
 	const importPattern =
-		/const (\w+) = \$\('([^']+)'\)\.(?:all\(\)\.map\(i => i\.json\)|first\(\)\.json)/g;
+		/const (\w+) = \$\('([^']+)'\)\.(?:all\(\)\.map\(i => i\.json\)|first\(\)\.json(?:\.\w+)?)/g;
 	for (const node of graph.nodes.values()) {
 		if (node.type !== 'n8n-nodes-base.code') continue;
 		const jsCode = (node.json.parameters?.jsCode as string) ?? '';
+		// Skip aggregate Code nodes — handled separately below
+		if (jsCode.startsWith('// @aggregate:')) continue;
 		let importMatch: RegExpExecArray | null;
 		while ((importMatch = importPattern.exec(jsCode)) !== null) {
 			codeImportNames.set(importMatch[2], importMatch[1]);
+		}
+	}
+
+	// Detect aggregate Code nodes: map both aggregate and its predecessor HTTP node to the variable name
+	const aggregatePattern = /^\/\/ @aggregate: (\w+)/;
+	for (const node of graph.nodes.values()) {
+		if (node.type !== 'n8n-nodes-base.code') continue;
+		const jsCode = (node.json.parameters?.jsCode as string) ?? '';
+		const aggMatch = aggregatePattern.exec(jsCode);
+		if (!aggMatch) continue;
+		const varName = pickUniqueName(aggMatch[1]);
+		// Map aggregate node to the variable
+		nodeNameToVarName.set(node.name, varName);
+		// Map the predecessor HTTP node (via graph connections, not jsCode parsing)
+		// This handles duplicate node names correctly
+		for (const sources of node.inputSources.values()) {
+			for (const source of sources) {
+				const predNode = graph.nodes.get(source.from);
+				if (predNode && predNode.type === 'n8n-nodes-base.httpRequest') {
+					nodeNameToVarName.set(predNode.name, varName);
+				}
+			}
 		}
 	}
 
@@ -578,6 +602,8 @@ function collectCodeNodeVars(graph: SemanticGraph): Set<string> {
 	for (const node of graph.nodes.values()) {
 		if (node.type !== 'n8n-nodes-base.code') continue;
 		const jsCode = (node.json.parameters?.jsCode as string) ?? '';
+		// Skip aggregate Code nodes — they are compiler artifacts
+		if (jsCode.startsWith('// @aggregate:')) continue;
 
 		// Collect from return statements
 		const returnMatch = /return \[\{ json: \{ ([^}]+) \} \}\];?$/.exec(jsCode);
@@ -1276,20 +1302,23 @@ function formatLiteral(value: unknown, type?: string): string {
 function emitCodeNode(node: SemanticNode, ctx: SimplifiedGenContext): void {
 	const jsCode = (node.json.parameters?.jsCode as string) ?? '';
 
+	// Skip aggregate Code nodes — they are compiler artifacts for HTTP item collection
+	if (jsCode.startsWith('// @aggregate:')) return;
+
 	const lines = jsCode.split('\n');
 	const userLines: string[] = [];
 
 	for (const line of lines) {
 		if (line.startsWith('// From:')) continue;
-		// Replace $('NodeName').all().map(i => i.json) or $('NodeName').first().json with upstream variable reference
+		// Replace $('NodeName').all().map(i => i.json) or $('NodeName').first().json[.prop] with upstream variable reference
 		const importMatch =
-			/^const (\w+) = \$\('([^']+)'\)\.(?:all\(\)\.map\(i => i\.json\)|first\(\)\.json);?$/.exec(
+			/^const (\w+) = \$\('([^']+)'\)\.(?:all\(\)\.map\(i => i\.json\)|first\(\)\.json(?:\.\w+)?);?$/.exec(
 				line.trim(),
 			);
 		if (importMatch) {
 			const localVar = importMatch[1];
 			const sourceName = importMatch[2];
-			// Drop code-to-code imports — they're compiler artifacts
+			// Drop code-to-code imports (includes aggregate nodes) — they're compiler artifacts
 			const referencedNode = ctx.graph.nodes.get(sourceName);
 			if (referencedNode && referencedNode.type === 'n8n-nodes-base.code') {
 				continue;

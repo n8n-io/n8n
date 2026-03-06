@@ -14,6 +14,18 @@ const tc_tryCatch_1_http1 = node({
   }
 });
 
+const tc_tryCatch_1_agg1 = node({
+  type: 'n8n-nodes-base.code', version: 2,
+  config: {
+    name: 'Collect users',
+    parameters: {
+      jsCode: `// @aggregate: users\nconst _raw = $('GET api.example.com/users').all().map(i => i.json);\nconst users = _raw.length === 1 ? _raw[0] : _raw;\nreturn [{ json: { users } }];`,
+      mode: 'runOnceForAllItems'
+    },
+    executeOnce: true
+  }
+});
+
 const tc_tryCatch_1_http2 = node({
   type: 'n8n-nodes-base.httpRequest', version: 4.2,
   config: {
@@ -25,14 +37,14 @@ const tc_tryCatch_1_http2 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "={{ $('GET api.example.com/users').first().json }}"
+      "jsonBody": "={{ $('Collect users').first().json.users }}"
     },
     "executeOnce": true
   }
 });
 
 const __tryCatch_1Workflow = workflow('__tryCatch_1', '__tryCatch_1')
-  .add(tc_tryCatch_1_t0.to(tc_tryCatch_1_http1).to(tc_tryCatch_1_http2));
+  .add(tc_tryCatch_1_t0.to(tc_tryCatch_1_http1).to(tc_tryCatch_1_agg1).to(tc_tryCatch_1_http2));
 
 // --- Main workflow ---
 const t0 = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });

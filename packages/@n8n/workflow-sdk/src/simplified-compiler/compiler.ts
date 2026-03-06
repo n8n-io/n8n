@@ -134,7 +134,8 @@ interface EmittedNode {
 		| 'respond'
 		| 'workflow'
 		| 'ifElse'
-		| 'switchCase';
+		| 'switchCase'
+		| 'aggregate';
 	nodeName: string;
 	branchOnly?: boolean;
 }
@@ -168,7 +169,7 @@ interface TranspilerContext {
 	source: string;
 	nodes: EmittedNode[];
 	varSourceMap: Map<string, string>;
-	varSourceKind: Map<string, 'io' | 'code'>;
+	varSourceKind: Map<string, 'io' | 'code' | 'aggregate'>;
 	httpCounter: number;
 	codeCounter: number;
 	ifCounter: number;
@@ -177,6 +178,7 @@ interface TranspilerContext {
 	respondCounter: number;
 	wfCounter: number;
 	setCounter: number;
+	aggCounter: number;
 	pendingStatements: Array<{ source: string; ast: AcornNode }>;
 	prevVar: string;
 	triggerType: CallbackInfo['triggerType'];
@@ -997,6 +999,7 @@ function compileFunctionToSDK(
 		respondCounter: 0,
 		wfCounter: 0,
 		setCounter: 0,
+		aggCounter: 0,
 		pendingStatements: [],
 		prevVar: '',
 		triggerType: 'manual',
@@ -1118,6 +1121,7 @@ function transpileCallback(
 		respondCounter: nodeOffset,
 		wfCounter: nodeOffset,
 		setCounter: nodeOffset,
+		aggCounter: nodeOffset,
 		pendingStatements: [],
 		prevVar: '',
 		triggerType: cb.triggerType,
@@ -1307,10 +1311,17 @@ function processIOCall(ctx: TranspilerContext, ioCall: IOCall): void {
 		});
 		ctx.nodes.push(httpNode);
 		if (ioCall.assignedVar) {
-			ctx.varSourceMap.set(ioCall.assignedVar, httpNode.nodeName);
-			ctx.varSourceKind.set(ioCall.assignedVar, 'io');
+			// Emit aggregate Code node to collect HTTP items
+			const aggNode = emitAggregateNode(ioCall.assignedVar, httpNode.nodeName, ctx, {
+				skipExecuteOnce: ctx.inLoopBody,
+			});
+			ctx.nodes.push(aggNode);
+			ctx.varSourceMap.set(ioCall.assignedVar, aggNode.nodeName);
+			ctx.varSourceKind.set(ioCall.assignedVar, 'aggregate');
+			ctx.prevVar = aggNode.varName;
+		} else {
+			ctx.prevVar = httpVar;
 		}
-		ctx.prevVar = httpVar;
 	} else if (ioCall.type === 'ai') {
 		ctx.httpCounter++;
 		const aiVar = `ai${ctx.httpCounter}`;
@@ -1332,6 +1343,40 @@ function processIOCall(ctx: TranspilerContext, ioCall: IOCall): void {
 		}
 		ctx.prevVar = wfVar;
 	}
+}
+
+/**
+ * Emit an aggregate Code node after an HTTP node. Collects all items returned by
+ * the HTTP node, defensively unwraps single-item responses, and stores the result
+ * under the DSL variable name.
+ */
+function emitAggregateNode(
+	varName: string,
+	httpNodeName: string,
+	ctx: TranspilerContext,
+	options?: { skipExecuteOnce?: boolean },
+): EmittedNode {
+	ctx.aggCounter++;
+	const aggVar = `agg${ctx.aggCounter}`;
+	const nodeName =
+		ctx.aggCounter === 1 ? `Collect ${varName}` : `Collect ${varName} ${ctx.aggCounter}`;
+	const escapedHttpNodeName = httpNodeName.replace(/'/g, "\\'");
+	const jsCode = `// @aggregate: ${varName}\\nconst _raw = $('${escapedHttpNodeName}').all().map(i => i.json);\\nconst ${varName} = _raw.length === 1 ? _raw[0] : _raw;\\nreturn [{ json: { ${varName} } }];`;
+
+	const executeOnceStr = options?.skipExecuteOnce ? '' : ',\n    executeOnce: true';
+
+	const sdkCode = `const ${aggVar} = node({
+  type: 'n8n-nodes-base.code', version: 2,
+  config: {
+    name: '${nodeName}',
+    parameters: {
+      jsCode: \`${jsCode}\`,
+      mode: 'runOnceForAllItems'
+    }${executeOnceStr}
+  }
+});`;
+
+	return { varName: aggVar, sdkCode, kind: 'aggregate', nodeName };
 }
 
 function processRespondCall(ctx: TranspilerContext, stmt: AcornNode, pinData?: unknown[]): void {
@@ -1670,6 +1715,7 @@ function createBranchContext(parentCtx: TranspilerContext): TranspilerContext {
 		respondCounter: parentCtx.respondCounter,
 		wfCounter: parentCtx.wfCounter,
 		setCounter: parentCtx.setCounter,
+		aggCounter: parentCtx.aggCounter,
 		pendingStatements: [],
 		prevVar: '',
 		triggerType: parentCtx.triggerType,
@@ -2012,6 +2058,7 @@ function compileLoopBodyAsSubWorkflow(
 		respondCounter: 0,
 		wfCounter: 0,
 		setCounter: 0,
+		aggCounter: 0,
 		pendingStatements: [],
 		prevVar: '',
 		triggerType: 'manual',
@@ -2122,8 +2169,11 @@ function processTryStatement(
 		processTryBodyInline(ctx, tryBodyStmts, comments);
 
 		if (hasCatchBody) {
-			// Route error output to catch chain
-			const tryNodeVar = ctx.prevVar;
+			// Route error output to catch chain — use the node with onError marker, not the aggregate
+			const onErrorNode = [...ctx.nodes]
+				.reverse()
+				.find((n) => n.sdkCode.includes('"onError": "continueErrorOutput"'));
+			const tryNodeVar = onErrorNode?.varName ?? ctx.prevVar;
 			const catchBranch = transpileBranch(ctx, buildBlockFromStmts(catchStmts), comments);
 
 			for (const bn of catchBranch.nodes) {
@@ -2388,6 +2438,7 @@ function compileTryCatchBodyAsSubWorkflow(
 		respondCounter: 0,
 		wfCounter: 0,
 		setCounter: 0,
+		aggCounter: 0,
 		pendingStatements: [],
 		prevVar: '',
 		triggerType: 'manual',
@@ -2882,13 +2933,13 @@ function extractMemberChain(node: AcornNode): string | null {
 interface VarReference {
 	varName: string;
 	sourceNode: string;
-	kind?: 'io' | 'code';
+	kind?: 'io' | 'code' | 'aggregate';
 }
 
 function findReferencedVars(
 	code: string,
 	varSourceMap: Map<string, string>,
-	varSourceKind?: Map<string, 'io' | 'code'>,
+	varSourceKind?: Map<string, 'io' | 'code' | 'aggregate'>,
 ): VarReference[] {
 	const refs: VarReference[] = [];
 	const seen = new Set<string>();
@@ -3095,8 +3146,11 @@ function flushPendingCode(ctx: TranspilerContext): void {
 	for (const { varName, sourceNode, kind } of referencedVars) {
 		// Use .first().json for IO-kind vars (webhook params, IO call results) for single-item access
 		// Use .all().map() for code-kind vars (variables from Code nodes) for array access
+		// Use .first().json.<varName> for aggregate-kind vars (collected HTTP results)
 		if (kind === 'io') {
 			jsCodeLines.push(`const ${varName} = $('${sourceNode}').first().json;`);
+		} else if (kind === 'aggregate') {
+			jsCodeLines.push(`const ${varName} = $('${sourceNode}').first().json.${varName};`);
 		} else {
 			jsCodeLines.push(`const ${varName} = $('${sourceNode}').all().map(i => i.json);`);
 		}

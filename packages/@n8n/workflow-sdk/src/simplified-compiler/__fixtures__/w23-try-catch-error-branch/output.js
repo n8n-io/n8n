@@ -28,6 +28,18 @@ const http1 = node({
   }
 });
 
+const agg1 = node({
+  type: 'n8n-nodes-base.code', version: 2,
+  config: {
+    name: 'Collect data',
+    parameters: {
+      jsCode: `// @aggregate: data\nconst _raw = $('GET api.example.com/users').all().map(i => i.json);\nconst data = _raw.length === 1 ? _raw[0] : _raw;\nreturn [{ json: { data } }];`,
+      mode: 'runOnceForAllItems'
+    },
+    executeOnce: true
+  }
+});
+
 const http2 = node({
   type: 'n8n-nodes-base.httpRequest', version: 4.2,
   config: {
@@ -56,16 +68,16 @@ const http3 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "={{ $('GET api.example.com/users').first().json }}"
+      "jsonBody": "={{ $('Collect data').first().json.data }}"
     },
     "executeOnce": true
   }
 });
 
-const if1 = ifElse({ version: 2.2, config: { name: 'IF 1', parameters: { conditions: {"conditions":[{"leftValue":"={{ $('GET api.example.com/users').first().json }}","rightValue":"","operator":{"type":"string","operation":"exists","singleValue":true}}],"combinator":"and"} }, executeOnce: true } })
+const if1 = ifElse({ version: 2.2, config: { name: 'IF 1', parameters: { conditions: {"conditions":[{"leftValue":"={{ $('Collect data').first().json.data }}","rightValue":"","operator":{"type":"string","operation":"exists","singleValue":true}}],"combinator":"and"} }, executeOnce: true } })
   .onTrue(http3);
 
 http1.onError(http2);
 
 export default workflow('compiled', 'Compiled Workflow')
-  .add(t0.to(code1).to(http1).to(if1));
+  .add(t0.to(code1).to(http1).to(agg1).to(if1));

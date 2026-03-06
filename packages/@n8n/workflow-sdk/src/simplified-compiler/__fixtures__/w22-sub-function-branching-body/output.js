@@ -58,6 +58,18 @@ const http1 = node({
   }
 });
 
+const agg1 = node({
+  type: 'n8n-nodes-base.code', version: 2,
+  config: {
+    name: 'Collect item',
+    parameters: {
+      jsCode: `// @aggregate: item\nconst _raw = $('GET api.com/item').all().map(i => i.json);\nconst item = _raw.length === 1 ? _raw[0] : _raw;\nreturn [{ json: { item } }];`,
+      mode: 'runOnceForAllItems'
+    },
+    executeOnce: true
+  }
+});
+
 const set1 = node({
   type: 'n8n-nodes-base.set', version: 3.4,
   config: {
@@ -70,7 +82,7 @@ const set1 = node({
             "id": "assign_0",
             "name": "priority",
             "type": "string",
-            "value": "={{ $('GET api.com/item').first().json.priority }}"
+            "value": "={{ $('Collect item').first().json.item.priority }}"
           }
         ]
       }
@@ -93,4 +105,4 @@ const exec1 = node({
 });
 
 export default workflow('compiled', 'Compiled Workflow')
-  .add(t0.to(http1).to(set1).to(exec1));
+  .add(t0.to(http1).to(agg1).to(set1).to(exec1));

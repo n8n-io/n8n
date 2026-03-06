@@ -41,6 +41,18 @@ const http1 = node({
 }
 });
 
+const agg1 = node({
+  type: 'n8n-nodes-base.code', version: 2,
+  config: {
+    name: 'Collect result',
+    parameters: {
+      jsCode: `// @aggregate: result\nconst _raw = $('POST api.perplexity.ai/chat/completions').all().map(i => i.json);\nconst result = _raw.length === 1 ? _raw[0] : _raw;\nreturn [{ json: { result } }];`,
+      mode: 'runOnceForAllItems'
+    },
+    executeOnce: true
+  }
+});
+
 const http2 = node({
   type: 'n8n-nodes-base.httpRequest', version: 4.2,
   config: {
@@ -52,7 +64,7 @@ const http2 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"text\":\"={{ $('POST api.perplexity.ai/chat/completions').first().json.choices[0].message.content }}\"}",
+      "jsonBody": "{\"text\":\"={{ $('Collect result').first().json.result.choices[0].message.content }}\"}",
       "authentication": "genericCredentialType",
       "genericAuthType": "oAuth2Api"
     },
@@ -62,4 +74,4 @@ const http2 = node({
 });
 
 export default workflow('compiled', 'Compiled Workflow')
-  .add(t0.to(set1).to(http1).to(http2));
+  .add(t0.to(set1).to(http1).to(agg1).to(http2));

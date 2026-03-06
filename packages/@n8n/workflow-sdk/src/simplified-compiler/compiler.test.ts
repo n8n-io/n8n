@@ -535,7 +535,7 @@ onManual(async () => {
 			expect(result.code).toContain("mode: 'rules'");
 			expect(result.code).toContain('"values":');
 			expect(result.code).toContain('"operation":"equals"');
-			expect(result.code).toContain('.first().json.priority }}"');
+			expect(result.code).toContain('.first().json.t.priority }}"');
 			expect(result.code).toContain('"rightValue":"critical"');
 			expect(result.code).toContain('"rightValue":"high"');
 			expect(result.code).toContain('"fallbackOutput":"extra"');
@@ -716,8 +716,8 @@ onSchedule({ every: '1h' }, async () => { await process(); });
 			// Should have 2 triggers and 2 .add() calls
 			expect((result.code.match(/trigger\(/g) || []).length).toBe(2);
 			expect((result.code.match(/\.add\(/g) || []).length).toBe(2);
-			// First chain: trigger + full pipeline
-			expect(result.code).toContain('.add(t0.to(http1).to(http2))');
+			// First chain: trigger + full pipeline (with aggregate after assigned http)
+			expect(result.code).toContain('.add(t0.to(http1).to(agg1).to(http2))');
 			// Second chain: trigger connects to same first pipeline node (http1)
 			expect(result.code).toMatch(/\.add\(t\d+\.to\(http1\)\)/);
 		});
