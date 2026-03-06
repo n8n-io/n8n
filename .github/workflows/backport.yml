@@ -1,5 +1,7 @@
 name: 'Util: Backport pull request changes'
 
+run-name: Backport pull request ${{ github.event.pull_request.number || inputs.pull-request-id }}
+
 on:
   pull_request:
     types: [closed]
@@ -21,6 +23,13 @@ jobs:
       github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-slim
     steps:
+      - name: Generate GitHub App Token
+        id: generate-token
+        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
+        with:
+          app-id: ${{ secrets.N8N_RELEASE_HELPER_APP_ID }}
+          private-key: ${{ secrets.N8N_RELEASE_HELPER_PRIVATE_KEY }}
+
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
@@ -35,19 +44,23 @@ jobs:
         id: targets
         env:
           PULL_REQUEST_ID: ${{ inputs.pull-request-id }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
         run: node .github/scripts/compute-backport-targets.mjs
 
       - name: Backport
         if: steps.targets.outputs.target_branches != ''
         uses: korthout/backport-action@c656f5d5851037b2b38fb5db2691a03fa229e3b2 # v4.0.1
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ steps.generate-token.outputs.token }}
           source_pr_number: ${{ github.event.pull_request.number || inputs.pull-request-id }}
           target_branches: ${{ steps.targets.outputs.target_branches }}
           pull_description: |-
             # Description
-            Backport of #${pull_number} to `${target_branch}`
+            Backport of #${pull_number} to `${target_branch}`.
+
+            - [ ] Review the changes
+            - [ ] Fix possible conflicts
+            - [ ] Merge to target branch
 
             # Original description
 
