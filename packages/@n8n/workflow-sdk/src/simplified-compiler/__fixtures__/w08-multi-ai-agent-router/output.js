@@ -79,16 +79,16 @@ const prompt = 'Analyze and enrich this data';\nreturn [{ json: { startTime, pro
 const ai1 = node({
   type: '@n8n/n8n-nodes-langchain.agent', version: 3.1,
   config: {
-    name: 'AI: AI Chat',
+    name: 'AI: Analyze and enrich this data',
     parameters: {
       promptType: 'define',
-      text: '',
+      text: 'Analyze and enrich this data',
       options: {}
     },
     subnodes: {
       model: languageModel({
         type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', version: 1.3,
-        config: { parameters: {"model":{"__rl":true,"mode":"id","value":"gpt-4o-mini"},"options":{}} }
+        config: { parameters: {"model":{"__rl":true,"mode":"id","value":"gpt-4o"},"options":{}} }
       })
     },
     executeOnce: true,
@@ -114,7 +114,7 @@ const respond1 = node({
     "name": "Respond 1",
     "parameters": {
       "respondWith": "json",
-      "responseBody": "{\"enriched_data\":\"={{ $('AI: AI Chat').first().json }}\",\"metrics\":{\"provider\":\"={{ $('Code 1').first().json.provider }}\",\"model\":\"={{ $json.model }}\",\"processing_time_ms\":\"={{ $('Code 6').first().json.processingTime }}\"}}",
+      "responseBody": "{\"enriched_data\":\"={{ $('AI: Analyze and enrich this data').first().json }}\",\"metrics\":{\"provider\":\"={{ $('Code 1').first().json.provider }}\",\"model\":\"={{ $json.model }}\",\"processing_time_ms\":\"={{ $('Code 6').first().json.processingTime }}\"}}",
       "options": {
         "responseCode": 200,
         "responseHeaders": {

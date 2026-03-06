@@ -66,10 +66,16 @@ export const COMPILER_EXAMPLES: CompilerExample[] = [
   const topPosts = posts.slice(0, 5).map(p => p.title);
 
   // Generate a blog draft with AI
-  const draft = await ai.chat('gpt-4o', 'Write a short blog post covering these topics: ' + topPosts.join(', '));
+  const draft = await new Agent({
+    prompt: 'Write a short blog post covering these topics: ' + topPosts.join(', '),
+    model: new OpenAiModel({ model: 'gpt-4o' }),
+  }).chat();
 
   // Generate social media snippets
-  const social = await ai.chat('gpt-4o-mini', 'Turn this into 3 tweet-sized summaries: ' + draft);
+  const social = await new Agent({
+    prompt: 'Turn this into 3 tweet-sized summaries: ' + draft,
+    model: new OpenAiModel({ model: 'gpt-4o-mini' }),
+  }).chat();
 
   // Publish the content
   await http.post('https://httpbin.org/post', { draft, social });
@@ -143,9 +149,11 @@ export const COMPILER_EXAMPLES: CompilerExample[] = [
   const tickets = await http.get('https://jsonplaceholder.typicode.com/comments');
 
   // Use AI with a code tool for analysis
-  const result = await ai.chat('gpt-4o', 'Analyze these support tickets and calculate stats: ' + JSON.stringify(tickets.slice(0, 5)), {
-    tools: [{ type: 'code', name: 'calculator', code: 'return items.length * 2' }],
-  });
+  const result = await new Agent({
+    prompt: 'Analyze these support tickets and calculate stats: ' + JSON.stringify(tickets.slice(0, 5)),
+    model: new OpenAiModel({ model: 'gpt-4o' }),
+    tools: [new CodeTool({ jsCode: 'return items.length * 2' })],
+  }).chat();
 
   // Post the analysis
   await http.post('https://httpbin.org/post', { analysis: result });

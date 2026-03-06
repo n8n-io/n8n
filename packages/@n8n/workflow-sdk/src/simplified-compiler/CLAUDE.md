@@ -4,7 +4,7 @@
 
 n8n's Workflow-SDK TypeScript is verbose and configuration-heavy — exact node types, version numbers, parameter structures, credential configs, connection chains. An LLM generating SDK code directly faces high token cost and error rates.
 
-**This project solves that** with a simplified JavaScript DSL that an LLM can generate quickly and naturally. The DSL reads like normal JS — `http.get()`, `ai.chat()`, `if/else`, `for-of` loops — but compiles to a fully valid n8n workflow.
+**This project solves that** with a simplified JavaScript DSL that an LLM can generate quickly and naturally. The DSL reads like normal JS — `http.get()`, `new Agent({...}).chat()`, `if/else`, `for-of` loops — but compiles to a fully valid n8n workflow.
 
 The compiler handles translation to exact n8n node configs. The LLM never needs to know about node types, versions, or parameter schemas.
 

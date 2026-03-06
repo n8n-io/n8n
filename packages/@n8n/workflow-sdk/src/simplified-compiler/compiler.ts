@@ -107,10 +107,6 @@ interface IOCall {
 	aiToolSubnodes?: AiSubnodeInfo[];
 	aiOutputParserSubnode?: AiSubnodeInfo;
 	aiMemorySubnode?: AiSubnodeInfo;
-	// Legacy AI: plain objects from ai.chat() syntax
-	aiTools?: Array<Record<string, unknown>>;
-	aiOutputParser?: Record<string, unknown>;
-	aiMemory?: Record<string, unknown>;
 	// respond-specific
 	respondArgs?: Record<string, unknown>;
 	// workflow.run-specific
@@ -2600,10 +2596,6 @@ function matchIOCallNode(callNode: AcornNode, source: string): IOCall | null {
 		return extractHttpCall(callNode, method, source);
 	}
 
-	if (obj === 'ai' && method === 'chat') {
-		return extractAiCall(callNode, source);
-	}
-
 	if (obj === 'workflow' && method === 'run') {
 		return extractWorkflowRunCall(callNode);
 	}
@@ -2669,45 +2661,6 @@ function extractHttpCall(callNode: AcornNode, method: string, _source: string): 
 		options,
 		nodeName,
 		credentials,
-	};
-}
-
-function extractAiCall(callNode: AcornNode, _source: string): IOCall {
-	const args = callNode.arguments ?? [];
-	const model = args[0] ? extractStringLiteral(args[0]) : undefined;
-	const prompt = args[1] ? extractStringLiteral(args[1]) : undefined;
-	const options = args[2] ? extractObjectLiteral(args[2]) : undefined;
-
-	// Parse AI subnodes from options
-	let aiTools: Array<Record<string, unknown>> | undefined;
-	let aiOutputParser: Record<string, unknown> | undefined;
-	let aiMemory: Record<string, unknown> | undefined;
-
-	if (options) {
-		if (options.tools && Array.isArray(options.tools)) {
-			aiTools = options.tools as Array<Record<string, unknown>>;
-		}
-		if (options.outputParser) {
-			aiOutputParser = options.outputParser as Record<string, unknown>;
-		}
-		if (options.memory) {
-			aiMemory = options.memory as Record<string, unknown>;
-		}
-	}
-
-	const shortPrompt = prompt ? prompt.slice(0, 30) : 'AI Chat';
-	const nodeName = `AI: ${shortPrompt}`;
-
-	return {
-		type: 'ai',
-		method: 'chat',
-		assignedVar: null,
-		model,
-		prompt,
-		nodeName: nodeName.length > 40 ? nodeName.slice(0, 37) + '...' : nodeName,
-		aiTools,
-		aiOutputParser,
-		aiMemory,
 	};
 }
 
@@ -3288,12 +3241,7 @@ function generateHttpSDK(
 }
 
 function generateAiSDK(io: IOCall, varName: string): EmittedNode {
-	// Class-based path: new Agent({...}).chat() etc.
-	if (io.aiRootEntry) {
-		return generateAiClassSDK(io, varName);
-	}
-	// Legacy path: ai.chat('model', 'prompt', { ... })
-	return generateAiLegacySDK(io, varName);
+	return generateAiClassSDK(io, varName);
 }
 
 /**
@@ -3405,93 +3353,6 @@ function generateAiClassSDK(io: IOCall, varName: string): EmittedNode {
 	return { varName, sdkCode, kind: 'ai', nodeName: io.nodeName };
 }
 
-/** Generate SDK from legacy ai.chat() syntax (backward compat) */
-function generateAiLegacySDK(io: IOCall, varName: string): EmittedNode {
-	const model = io.model ?? 'gpt-4o-mini';
-	const prompt = io.prompt ?? '';
-	const modelConfig = mapModelToType(model);
-
-	// Build subnodes
-	const subnodeParts: string[] = [];
-
-	// Language model (always present)
-	const lmParams = JSON.stringify({ model: { __rl: true, mode: 'id', value: model }, options: {} });
-	subnodeParts.push(`      model: languageModel({
-        type: '${modelConfig.type}', version: ${modelConfig.version},
-        config: { parameters: ${lmParams} }
-      })`);
-
-	// Tools
-	if (io.aiTools && io.aiTools.length > 0) {
-		const toolStrs = (io.aiTools as unknown as Array<Record<string, unknown>>).map((t) => {
-			const toolInfo = mapToolType(t.type as string);
-			const toolConfig: Record<string, unknown> = {};
-			if (t.url) toolConfig.url = t.url;
-			if (t.name && toolInfo.nodeType === '@n8n/n8n-nodes-langchain.toolHttpRequest') {
-				toolConfig.name = t.name;
-			}
-			if (t.code) toolConfig.jsCode = t.code;
-			return `tool({
-          type: '${toolInfo.nodeType}', version: ${toolInfo.version},
-          config: { parameters: ${JSON.stringify(toolConfig)} }
-        })`;
-		});
-		subnodeParts.push(`      tools: [${toolStrs.join(', ')}]`);
-	}
-
-	// Output parser
-	if (io.aiOutputParser) {
-		const parserInfo = mapOutputParserType(
-			(io.aiOutputParser as unknown as Record<string, unknown>).type as string,
-		);
-		const parserConfig: Record<string, unknown> = {};
-		const legacyParser = io.aiOutputParser as unknown as Record<string, unknown>;
-		if (legacyParser.schema) parserConfig.schema = legacyParser.schema;
-		subnodeParts.push(`      outputParser: outputParser({
-        type: '${parserInfo.nodeType}', version: ${parserInfo.version},
-        config: { parameters: ${JSON.stringify(parserConfig)} }
-      })`);
-	}
-
-	// Memory
-	if (io.aiMemory) {
-		const memInfo = mapMemoryType(
-			(io.aiMemory as unknown as Record<string, unknown>).type as string,
-		);
-		const memConfig: Record<string, unknown> = {};
-		const legacyMem = io.aiMemory as unknown as Record<string, unknown>;
-		if (legacyMem.contextLength) memConfig.contextWindowLength = legacyMem.contextLength;
-		subnodeParts.push(`      memory: memory({
-        type: '${memInfo.nodeType}', version: ${memInfo.version},
-        config: { parameters: ${JSON.stringify(memConfig)} }
-      })`);
-	}
-
-	const subnodeBlock = subnodeParts.join(',\n');
-	const onErrorStr = io.onError ? `,\n    onError: '${io.onError}'` : '';
-	const pinDataStr = io.pinData ? `,\n    pinData: ${JSON.stringify(io.pinData)}` : '';
-
-	const hasOutputParser = io.aiOutputParser ? ',\n      hasOutputParser: true' : '';
-
-	const sdkCode = `const ${varName} = node({
-  type: '@n8n/n8n-nodes-langchain.agent', version: 3.1,
-  config: {
-    name: '${io.nodeName.replace(/'/g, "\\'")}',
-    parameters: {
-      promptType: 'define',
-      text: '${prompt.replace(/'/g, "\\'")}',
-      options: {}${hasOutputParser}
-    },
-    subnodes: {
-${subnodeBlock}
-    },
-    executeOnce: true${onErrorStr}${pinDataStr}
-  }
-});`;
-
-	return { varName, sdkCode, kind: 'ai', nodeName: io.nodeName };
-}
-
 function generateWorkflowRunSDK(io: IOCall, varName: string): EmittedNode {
 	const wfName = io.workflowName ?? 'Sub-Workflow';
 
@@ -3507,87 +3368,6 @@ function generateWorkflowRunSDK(io: IOCall, varName: string): EmittedNode {
 });`;
 
 	return { varName, sdkCode, kind: 'workflow', nodeName: io.nodeName };
-}
-
-// ─── AI Subnode Type Mapping ─────────────────────────────────────────────────
-
-/** Look up registry entry, return { type, version } with fallback */
-function registryLookup(
-	className: string,
-	fallbackType: string,
-	fallbackVersion: number,
-): { type: string; version: number } {
-	const entry = classNameToEntry(className);
-	return entry
-		? { type: entry.nodeType, version: entry.version }
-		: { type: fallbackType, version: fallbackVersion };
-}
-
-function mapModelToType(model: string): { type: string; version: number } {
-	if (model.includes('gpt') || model.includes('o1') || model.includes('o3')) {
-		return registryLookup('OpenAiModel', '@n8n/n8n-nodes-langchain.lmChatOpenAi', 1.2);
-	}
-	if (model.includes('claude')) {
-		return registryLookup('AnthropicModel', '@n8n/n8n-nodes-langchain.lmChatAnthropic', 1.2);
-	}
-	if (model.includes('gemini')) {
-		return registryLookup('GoogleGeminiModel', '@n8n/n8n-nodes-langchain.lmChatGoogleGemini', 1);
-	}
-	if (model.includes('llama') || model.includes('mixtral')) {
-		return registryLookup('GroqModel', '@n8n/n8n-nodes-langchain.lmChatGroq', 1);
-	}
-	return registryLookup('OpenAiModel', '@n8n/n8n-nodes-langchain.lmChatOpenAi', 1.2);
-}
-
-function mapToolType(type: string): { nodeType: string; version: number } {
-	const classMap: Record<string, string> = {
-		code: 'CodeTool',
-		httpRequest: 'HttpRequestTool',
-	};
-	const className = classMap[type] ?? 'CodeTool';
-	const entry = classNameToEntry(className);
-	if (entry) return { nodeType: entry.nodeType, version: entry.version };
-	const fallbackMap: Record<string, string> = {
-		code: '@n8n/n8n-nodes-langchain.toolCode',
-		httpRequest: '@n8n/n8n-nodes-langchain.toolHttpRequest',
-	};
-	return { nodeType: fallbackMap[type] ?? '@n8n/n8n-nodes-langchain.toolCode', version: 1 };
-}
-
-function mapOutputParserType(type: string): { nodeType: string; version: number } {
-	const classMap: Record<string, string> = {
-		structured: 'StructuredOutputParser',
-		autoFix: 'AutofixingOutputParser',
-	};
-	const className = classMap[type] ?? 'StructuredOutputParser';
-	const entry = classNameToEntry(className);
-	if (entry) return { nodeType: entry.nodeType, version: entry.version };
-	const fallbackMap: Record<string, string> = {
-		structured: '@n8n/n8n-nodes-langchain.outputParserStructured',
-		autoFix: '@n8n/n8n-nodes-langchain.outputParserAutofixing',
-	};
-	return {
-		nodeType: fallbackMap[type] ?? '@n8n/n8n-nodes-langchain.outputParserStructured',
-		version: 1,
-	};
-}
-
-function mapMemoryType(type: string): { nodeType: string; version: number } {
-	const classMap: Record<string, string> = {
-		bufferWindow: 'BufferWindowMemory',
-		postgres: 'PostgresChatMemory',
-	};
-	const className = classMap[type] ?? 'BufferWindowMemory';
-	const entry = classNameToEntry(className);
-	if (entry) return { nodeType: entry.nodeType, version: entry.version };
-	const fallbackMap: Record<string, string> = {
-		bufferWindow: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-		postgres: '@n8n/n8n-nodes-langchain.memoryPostgresChat',
-	};
-	return {
-		nodeType: fallbackMap[type] ?? '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-		version: 1,
-	};
 }
 
 // ─── Final SDK Code Assembly ─────────────────────────────────────────────────

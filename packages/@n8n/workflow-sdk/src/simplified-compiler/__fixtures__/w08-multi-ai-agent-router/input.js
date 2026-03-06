@@ -21,7 +21,10 @@ onWebhook({ method: 'POST', path: '/ai-pipeline' }, async ({ body, respond }) =>
 	const prompt = 'Analyze and enrich this data';
 
 	/** @example [{ output: "The data shows a 15% increase in user engagement over the past quarter, driven primarily by mobile traffic." }] */
-	const aiResponse = await ai.chat(model, prompt);
+	const aiResponse = await new Agent({
+		prompt: 'Analyze and enrich this data',
+		model: new OpenAiModel({ model: 'gpt-4o' }),
+	}).chat();
 
 	const processingTime = Date.now() - startTime;
 

@@ -661,7 +661,10 @@ onManual(async () => {
 			const result = transpileWorkflowJS(`
 onManual(async () => {
   // @onError continue
-  const analysis = await ai.chat('gpt-4o', 'Analyze this email');
+  const analysis = await new Agent({
+    prompt: 'Analyze this email',
+    model: new OpenAiModel({ model: 'gpt-4o' }),
+  }).chat();
   await http.post('/result', analysis);
 });
 `);
