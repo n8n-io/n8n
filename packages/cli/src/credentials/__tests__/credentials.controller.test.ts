@@ -484,13 +484,12 @@ describe('CredentialsController', () => {
 			await expect(credentialsController.updateCredentials(memberReq)).rejects.toThrow(
 				'Lacking permissions to reference external secrets in credentials',
 			);
-			expect(validateExternalSecretsPermissionsSpy).toHaveBeenCalledWith(
-				memberReq.user,
-				memberReq.body.data,
-				{
-					apiKey: '$secrets.oldKey',
-				},
-			);
+			expect(validateExternalSecretsPermissionsSpy).toHaveBeenCalledWith({
+				user: memberReq.user,
+				projectId: existingCredential.shared[0].projectId,
+				dataToSave: memberReq.body.data,
+				decryptedExistingData: { apiKey: '$secrets.oldKey' },
+			});
 			expect(credentialsService.update).not.toHaveBeenCalled();
 		});
 
@@ -514,13 +513,12 @@ describe('CredentialsController', () => {
 			await expect(credentialsController.updateCredentials(memberReq)).rejects.toThrow(
 				'Lacking permissions to reference external secrets in credentials',
 			);
-			expect(validateExternalSecretsPermissionsSpy).toHaveBeenCalledWith(
-				memberReq.user,
-				memberReq.body.data,
-				{
-					apiKey: 'regular-key',
-				},
-			);
+			expect(validateExternalSecretsPermissionsSpy).toHaveBeenCalledWith({
+				user: memberReq.user,
+				projectId: existingCredential.shared[0].projectId,
+				dataToSave: memberReq.body.data,
+				decryptedExistingData: { apiKey: 'regular-key' },
+			});
 			expect(credentialsService.update).not.toHaveBeenCalled();
 		});
 	});
