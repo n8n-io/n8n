@@ -148,6 +148,7 @@ describe('ActivateExecuteWorkflowTriggerWorkflows Migration', () => {
 			disabledExecuteWorkflowTrigger: randomUUID(),
 			disabledErrorTrigger: randomUUID(),
 			invalidJson: randomUUID(),
+			errorTriggerMissingHistory: randomUUID(),
 		};
 
 		beforeAll(async () => {
@@ -431,6 +432,44 @@ describe('ActivateExecuteWorkflowTriggerWorkflows Migration', () => {
 				updatedAt: new Date(),
 			});
 
+			// Insert a workflow whose versionId has no matching workflow_history record,
+			// simulating the case where saveVersion() failed silently during a workflow save.
+			// Only the workflow_entity row is inserted — no history record.
+			{
+				const tableName = context.escape.tableName('workflow_entity');
+				const idColumn = context.escape.columnName('id');
+				const nameColumn = context.escape.columnName('name');
+				const nodesColumn = context.escape.columnName('nodes');
+				const connectionsColumn = context.escape.columnName('connections');
+				const activeColumn = context.escape.columnName('active');
+				const versionIdColumn = context.escape.columnName('versionId');
+				const createdAtColumn = context.escape.columnName('createdAt');
+				const updatedAtColumn = context.escape.columnName('updatedAt');
+
+				await context.runQuery(
+					`INSERT INTO ${tableName} (${idColumn}, ${nameColumn}, ${nodesColumn}, ${connectionsColumn}, ${activeColumn}, ${versionIdColumn}, ${createdAtColumn}, ${updatedAtColumn}) VALUES (:id, :name, :nodes, :connections, :active, :versionId, :createdAt, :updatedAt)`,
+					{
+						id: workflowIds.errorTriggerMissingHistory,
+						name: 'Test Error Trigger Missing History',
+						nodes: JSON.stringify([
+							{
+								id: randomUUID(),
+								name: 'Error Trigger',
+								type: 'n8n-nodes-base.errorTrigger',
+								parameters: {},
+								typeVersion: 1,
+								position: [0, 0],
+							},
+						]),
+						connections: '{}',
+						active: false,
+						versionId: randomUUID(),
+						createdAt: new Date(),
+						updatedAt: new Date(),
+					},
+				);
+			}
+
 			// Insert workflow with invalid JSON containing unescaped control characters
 			// Note: PostgreSQL enforces strict JSON validation and won't allow invalid JSON,
 			// so we skip this test data for PostgreSQL
@@ -591,6 +630,16 @@ describe('ActivateExecuteWorkflowTriggerWorkflows Migration', () => {
 
 			expect(workflow?.active).toBeFalsy();
 			expect(workflow?.activeVersionId).toBeNull();
+
+			await context.queryRunner.release();
+		});
+
+		it('should activate Error Trigger workflow even when its versionId is missing from workflow_history', async () => {
+			const context = createTestMigrationContext(dataSource);
+			const workflow = await getWorkflowById(context, workflowIds.errorTriggerMissingHistory);
+
+			expect(workflow?.active).toBeTruthy();
+			expect(workflow?.activeVersionId).toBeTruthy();
 
 			await context.queryRunner.release();
 		});
