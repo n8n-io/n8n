@@ -203,6 +203,8 @@ export class SsrfProtectionService implements SsrfBridge {
 
 		// Hostname, we need to lookup first and then validate the IP(s)
 		const resolved = await this.dnsResolver.lookup(hostname, options);
+		// The resolves must always return result(s) or throw
+		assert(resolved.length > 0, `DNS lookup for ${hostname} returned no results`);
 
 		if (this.allowedHostnameMatcher.matches(hostname)) {
 			return createResultOk(resolved);
