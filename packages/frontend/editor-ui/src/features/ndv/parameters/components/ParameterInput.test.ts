@@ -22,8 +22,7 @@ import { NodeConnectionTypes, type INodeParameterResourceLocator } from 'n8n-wor
 import type { IWorkflowDb, WorkflowListResource } from '@/Interface';
 import { mock } from 'vitest-mock-extended';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
-import { nextTick, computed } from 'vue';
+import { nextTick } from 'vue';
 
 function getNdvStateMock(): Partial<ReturnType<typeof useNDVStore>> {
 	return {
@@ -120,11 +119,6 @@ vi.mock('@/features/ai/assistant/composables/useBuilderTodos', () => {
 
 const renderComponent = createComponentRenderer(ParameterInput, {
 	pinia: createTestingPinia(),
-	global: {
-		provide: {
-			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
-		},
-	},
 });
 
 const settingsStore = mockedStore(useSettingsStore);

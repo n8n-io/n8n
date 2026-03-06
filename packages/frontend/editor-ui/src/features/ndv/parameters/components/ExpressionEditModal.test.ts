@@ -6,8 +6,6 @@ import { setActivePinia, type Pinia } from 'pinia';
 import { defaultSettings } from '@/__tests__/defaults';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { createTestNodeProperties } from '@/__tests__/mocks';
-import { computed } from 'vue';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -25,13 +23,7 @@ vi.mock('@/app/composables/useWorkflowHelpers', async (importOriginal) => {
 	return { ...actual, resolveParameter: vi.fn(() => 123) };
 });
 
-const renderModal = createComponentRenderer(ExpressionEditModal, {
-	global: {
-		provide: {
-			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
-		},
-	},
-});
+const renderModal = createComponentRenderer(ExpressionEditModal);
 
 describe('ExpressionEditModal', () => {
 	let pinia: Pinia;

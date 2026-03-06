@@ -7,9 +7,9 @@ import ExpressionFunctionIcon from './ExpressionFunctionIcon.vue';
 import InlineExpressionEditorInput from '@/features/shared/editors/components/InlineExpressionEditor/InlineExpressionEditorInput.vue';
 import InlineExpressionEditorOutput from '@/features/shared/editors/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createExpressionTelemetryPayload } from '@/app/utils/telemetryUtils';
 
-import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { dropInExpressionEditor } from '@/features/shared/editors/plugins/codemirror/dragAndDrop';
 import type { Segment } from '@/app/types/expressions';
@@ -59,7 +59,7 @@ const emit = defineEmits<{
 
 const telemetry = useTelemetry();
 const ndvStore = useNDVStore();
-const workflowId = useInjectWorkflowId();
+const workflowsStore = useWorkflowsStore();
 
 const canvas = inject(CanvasKey, undefined);
 const isInExperimentalNdv = useIsInExperimentalNdv();
@@ -108,7 +108,7 @@ function onBlur(event?: FocusEvent | KeyboardEvent) {
 		const telemetryPayload = createExpressionTelemetryPayload(
 			segments.value,
 			props.modelValue,
-			workflowId.value,
+			workflowsStore.workflowId,
 			ndvStore.pushRef,
 			ndvStore.activeNode?.type ?? '',
 		);

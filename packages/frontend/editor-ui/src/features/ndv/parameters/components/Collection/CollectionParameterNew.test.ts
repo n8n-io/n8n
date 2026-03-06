@@ -1,12 +1,11 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import CollectionParameterNew, { type Props } from './CollectionParameterNew.vue';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { setActivePinia } from 'pinia';
-import { computed, nextTick } from 'vue';
+import { nextTick } from 'vue';
 import { flushPromises } from '@vue/test-utils';
 
 describe('CollectionParameterNew.vue', () => {
@@ -70,11 +69,6 @@ describe('CollectionParameterNew.vue', () => {
 
 	const renderComponent = createComponentRenderer(CollectionParameterNew, {
 		props: baseProps,
-		global: {
-			provide: {
-				[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
-			},
-		},
 	});
 
 	describe('Rendering', () => {

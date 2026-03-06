@@ -8,8 +8,6 @@ import { useCredentialsStore } from '../../credentials.store';
 import type { ICredentialsResponse } from '../../credentials.types';
 import { within } from '@testing-library/vue';
 import type { ICredentialType } from 'n8n-workflow';
-import { computed } from 'vue';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 const oAuth2Api: ICredentialType = {
 	name: 'oAuth2Api',
@@ -183,11 +181,6 @@ const googleBigQueryOAuth2Api: ICredentialType = {
 };
 
 const renderComponent = createComponentRenderer(CredentialEdit, {
-	global: {
-		provide: {
-			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
-		},
-	},
 	pinia: createTestingPinia({
 		initialState: {
 			[STORES.UI]: {

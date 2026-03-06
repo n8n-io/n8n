@@ -1,6 +1,5 @@
-import { computed, nextTick } from 'vue';
+import { nextTick } from 'vue';
 import type { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { createTestingPinia } from '@pinia/testing';
 import type { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { useSettingsStore } from '@/app/stores/settings.store';
@@ -75,11 +74,6 @@ const renderComponent = createComponentRenderer(ParameterInputFull, {
 			name: 'myParam',
 			type: 'string',
 		}),
-	},
-	global: {
-		provide: {
-			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
-		},
 	},
 });
 
