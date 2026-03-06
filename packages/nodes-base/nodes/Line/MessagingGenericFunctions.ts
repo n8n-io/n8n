@@ -8,6 +8,7 @@ export async function lineApiRequest(
 	method: 'GET' | 'POST' | 'DELETE',
 	endpoint: string,
 	body?: IDataObject,
+	qs?: IDataObject,
 ): Promise<IDataObject> {
 	try {
 		return await this.helpers.httpRequestWithAuthentication.call(this, 'lineApi', {
@@ -15,6 +16,7 @@ export async function lineApiRequest(
 			url: `${LINE_API}${endpoint}`,
 			headers: method !== 'GET' ? { 'Content-Type': 'application/json' } : undefined,
 			body,
+			qs,
 		});
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);

@@ -8,6 +8,7 @@ import type {
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { lineApiRequest } from './MessagingGenericFunctions';
+import { customApiCallFields } from './descriptions/CustomApiCallDescription';
 import { messageOperations, messageFields } from './descriptions/MessageDescription';
 
 export class LineMessagingApi implements INodeType {
@@ -17,7 +18,7 @@ export class LineMessagingApi implements INodeType {
 		icon: 'file:line.png',
 		group: ['input'],
 		version: 1,
-		subtitle: '={{$parameter["operation"]}}',
+		subtitle: '={{$parameter["resource"] === "customApiCall" ? "Custom API Call" : $parameter["operation"]}}',
 		description: 'Send messages using the LINE Messaging API',
 		codex: {
 			categories: ['Communication'],
@@ -38,12 +39,20 @@ export class LineMessagingApi implements INodeType {
 				name: 'resource',
 				type: 'options',
 				noDataExpression: true,
-				options: [{ name: 'Message', value: 'message', description: 'Send a message to users' }],
+				options: [
+					{ name: 'Message', value: 'message', description: 'Send a message to users' },
+					{
+						name: 'Custom API Call',
+						value: 'customApiCall',
+						description: 'Make a custom authenticated request to the LINE API',
+					},
+				],
 				default: 'message',
 			},
 			// ─── Operations & Fields ──────────────────────────────────────
 			...messageOperations,
 			...messageFields,
+			...customApiCallFields,
 		],
 	};
 
@@ -53,6 +62,39 @@ export class LineMessagingApi implements INodeType {
 
 		for (let i = 0; i < items.length; i++) {
 			try {
+				const resource = this.getNodeParameter('resource', i) as string;
+
+				if (resource === 'customApiCall') {
+					const method = this.getNodeParameter('method', i) as 'GET' | 'POST' | 'DELETE';
+					const endpoint = this.getNodeParameter('endpoint', i) as string;
+
+					const queryParametersRaw = this.getNodeParameter(
+						'queryParameters.parameter',
+						i,
+						[],
+					) as Array<{ name: string; value: string }>;
+					const qs: IDataObject = {};
+					for (const { name, value } of queryParametersRaw) {
+						qs[name] = value;
+					}
+
+					let body: IDataObject | undefined;
+					if (method === 'POST') {
+						const bodyRaw = this.getNodeParameter('body', i, '{}') as string;
+						body = typeof bodyRaw === 'string' ? (JSON.parse(bodyRaw) as IDataObject) : bodyRaw;
+					}
+
+					const res = await lineApiRequest.call(
+						this,
+						method,
+						endpoint,
+						body,
+						Object.keys(qs).length ? qs : undefined,
+					);
+					returnData.push({ json: res ?? {}, pairedItem: { item: i } });
+					continue;
+				}
+
 				const operation = this.getNodeParameter('operation', i) as string;
 				const messagesRaw = this.getNodeParameter('messages', i);
 				const messages =
