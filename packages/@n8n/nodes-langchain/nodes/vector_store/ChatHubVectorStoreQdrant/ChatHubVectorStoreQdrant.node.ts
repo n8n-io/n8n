@@ -98,9 +98,9 @@ export class ChatHubVectorStoreQdrant extends createVectorStoreNode<QdrantVector
 		const client = createQdrantClient(credentials);
 		const config: QdrantLibArgs = { client, collectionName: credentials.collectionName };
 
-		await ensurePayloadIndexes(client, credentials.collectionName);
-
 		const store = await QdrantVectorStore.fromExistingCollection(embeddings, config);
+
+		await ensurePayloadIndexes(client, credentials.collectionName);
 		const originalSearch = store.similaritySearch.bind(store);
 		const originalSearchWithScore = store.similaritySearchWithScore.bind(store);
 		const originalSearchVectorWithScore = store.similaritySearchVectorWithScore.bind(store);
@@ -147,12 +147,12 @@ export class ChatHubVectorStoreQdrant extends createVectorStoreNode<QdrantVector
 		const client = createQdrantClient(credentials);
 		const config: QdrantLibArgs = { client, collectionName: credentials.collectionName };
 
-		await ensurePayloadIndexes(client, credentials.collectionName);
-
 		await QdrantVectorStore.fromDocuments(
 			documents.map((d) => ({ ...d, metadata: { ...d.metadata, userId } })),
 			embeddings,
 			config,
 		);
+
+		await ensurePayloadIndexes(client, credentials.collectionName);
 	},
 }) {}
