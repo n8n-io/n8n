@@ -4,6 +4,10 @@ import { NodeOperationError } from 'n8n-workflow';
 import * as comment from './comment';
 import * as issue from './issue';
 import type { Linear } from './node.type';
+import * as label from './label';
+import * as project from './project';
+import * as team from './team';
+import * as user from './user';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
@@ -20,6 +24,18 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			break;
 		case 'comment':
 			returnData = await comment[linear.operation].execute.call(this, items);
+			break;
+		case 'project':
+			returnData = await project[linear.operation].execute.call(this, items);
+			break;
+		case 'user':
+			returnData = await user[linear.operation].execute.call(this, items);
+			break;
+		case 'team':
+			returnData = await team[linear.operation].execute.call(this, items);
+			break;
+		case 'label':
+			returnData = await label[linear.operation].execute.call(this, items);
 			break;
 		default:
 			throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known`);
