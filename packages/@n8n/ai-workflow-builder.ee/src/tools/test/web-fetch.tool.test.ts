@@ -8,6 +8,7 @@ import {
 	fetchUrl,
 	extractReadableContent,
 	isUrlInUserMessages,
+	isUrlInWorkflowNodes,
 } from '@/tools/utils/web-fetch.utils';
 import { createWebFetchTool, WEB_FETCH_TOOL } from '@/tools/web-fetch.tool';
 
@@ -28,6 +29,7 @@ jest.mock('@/tools/utils/web-fetch.utils', () => ({
 	fetchUrl: jest.fn(),
 	extractReadableContent: jest.fn(),
 	isUrlInUserMessages: jest.fn(),
+	isUrlInWorkflowNodes: jest.fn(),
 }));
 
 const mockIsBlockedUrl = isBlockedUrl as jest.MockedFunction<typeof isBlockedUrl>;
@@ -38,6 +40,9 @@ const mockExtractReadableContent = extractReadableContent as jest.MockedFunction
 const mockNormalizeHost = normalizeHost as jest.MockedFunction<typeof normalizeHost>;
 const mockIsUrlInUserMessages = isUrlInUserMessages as jest.MockedFunction<
 	typeof isUrlInUserMessages
+>;
+const mockIsUrlInWorkflowNodes = isUrlInWorkflowNodes as jest.MockedFunction<
+	typeof isUrlInWorkflowNodes
 >;
 
 function getMessageContent(command: Command): string {
@@ -61,6 +66,7 @@ describe('web_fetch tool', () => {
 		jest.clearAllMocks();
 		mockNormalizeHost.mockImplementation((url: string) => new URL(url).hostname.toLowerCase());
 		mockIsUrlInUserMessages.mockReturnValue(true);
+		mockIsUrlInWorkflowNodes.mockReturnValue(false);
 		mockGetCurrentTaskInput.mockReturnValue({
 			approvedDomains: [],
 			webFetchCount: 0,
@@ -114,6 +120,12 @@ describe('web_fetch tool', () => {
 	});
 
 	describe('approval flow', () => {
+		beforeEach(() => {
+			// URL not from user (so approval is required), but from workflow nodes (so provenance passes)
+			mockIsUrlInUserMessages.mockReturnValue(false);
+			mockIsUrlInWorkflowNodes.mockReturnValue(true);
+		});
+
 		it('should trigger interrupt for unapproved domain', async () => {
 			mockIsBlockedUrl.mockResolvedValue(false);
 			// Make interrupt return an allow_once decision
@@ -573,9 +585,10 @@ describe('web_fetch tool', () => {
 	});
 
 	describe('URL provenance check', () => {
-		it('should reject URLs not found in user messages', async () => {
+		it('should reject URLs not found in user messages or workflow nodes', async () => {
 			mockIsBlockedUrl.mockResolvedValue(false);
 			mockIsUrlInUserMessages.mockReturnValue(false);
+			mockIsUrlInWorkflowNodes.mockReturnValue(false);
 
 			const { tool } = createWebFetchTool();
 			const command = await tool.invoke({ url: 'https://example.com/invented' }, mockConfig);
@@ -587,6 +600,7 @@ describe('web_fetch tool', () => {
 		it('should allow URLs found in user messages', async () => {
 			mockIsBlockedUrl.mockResolvedValue(false);
 			mockIsUrlInUserMessages.mockReturnValue(true);
+			mockIsUrlInWorkflowNodes.mockReturnValue(false);
 			mockGetCurrentTaskInput.mockReturnValue({
 				approvedDomains: ['example.com'],
 				webFetchCount: 0,
@@ -613,9 +627,90 @@ describe('web_fetch tool', () => {
 
 			expect(content).toContain('web_fetch_result');
 		});
+
+		it('should allow URLs found in workflow node parameters', async () => {
+			mockIsBlockedUrl.mockResolvedValue(false);
+			mockIsUrlInUserMessages.mockReturnValue(false);
+			mockIsUrlInWorkflowNodes.mockReturnValue(true);
+			mockGetCurrentTaskInput.mockReturnValue({
+				approvedDomains: [],
+				webFetchCount: 0,
+				messages: [],
+				workflowJSON: {
+					nodes: [{ parameters: { url: 'https://api.example.com/docs' } }],
+				},
+			});
+
+			mockInterrupt.mockImplementation((payload: { requestId: string }) => ({
+				requestId: payload.requestId,
+				url: 'https://api.example.com/docs',
+				action: 'allow_once',
+			}));
+
+			mockFetchUrl.mockResolvedValue({
+				status: 'success',
+				body: '<html><body><p>API docs</p></body></html>',
+				finalUrl: 'https://api.example.com/docs',
+				httpStatus: 200,
+				contentType: 'text/html',
+			});
+
+			mockExtractReadableContent.mockReturnValue({
+				title: 'API Docs',
+				content: 'API documentation content',
+				truncated: false,
+			});
+
+			const { tool } = createWebFetchTool();
+			const command = await tool.invoke({ url: 'https://api.example.com/docs' }, mockConfig);
+			const content = getMessageContent(command);
+
+			expect(content).toContain('web_fetch_result');
+			// Workflow-extracted URLs still require domain approval
+			expect(mockInterrupt).toHaveBeenCalled();
+		});
+
+		it('should skip domain approval for user-sent URLs on non-allowlisted domains', async () => {
+			mockIsBlockedUrl.mockResolvedValue(false);
+			mockIsUrlInUserMessages.mockReturnValue(true);
+			mockIsUrlInWorkflowNodes.mockReturnValue(false);
+			mockGetCurrentTaskInput.mockReturnValue({
+				approvedDomains: [],
+				webFetchCount: 0,
+				messages: [],
+			});
+
+			mockFetchUrl.mockResolvedValue({
+				status: 'success',
+				body: '<html><body><p>Content</p></body></html>',
+				finalUrl: 'https://unknown-site.com/page',
+				httpStatus: 200,
+				contentType: 'text/html',
+			});
+
+			mockExtractReadableContent.mockReturnValue({
+				title: 'Test',
+				content: 'Content',
+				truncated: false,
+			});
+
+			const { tool } = createWebFetchTool();
+			const command = await tool.invoke({ url: 'https://unknown-site.com/page' }, mockConfig);
+			const content = getMessageContent(command);
+
+			// User explicitly sent this URL, so no approval needed
+			expect(mockInterrupt).not.toHaveBeenCalled();
+			expect(content).toContain('web_fetch_result');
+		});
 	});
 
 	describe('approval action validation', () => {
+		beforeEach(() => {
+			// URL not from user (so approval is required), but from workflow nodes (so provenance passes)
+			mockIsUrlInUserMessages.mockReturnValue(false);
+			mockIsUrlInWorkflowNodes.mockReturnValue(true);
+		});
+
 		it('should reject invalid approval action values', async () => {
 			mockIsBlockedUrl.mockResolvedValue(false);
 			mockInterrupt.mockImplementation((payload: { requestId: string }) => ({

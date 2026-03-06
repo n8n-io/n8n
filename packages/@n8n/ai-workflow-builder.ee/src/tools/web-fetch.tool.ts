@@ -17,6 +17,7 @@ import {
 	fetchUrl,
 	extractReadableContent,
 	isUrlInUserMessages,
+	isUrlInWorkflowNodes,
 } from './utils/web-fetch.utils';
 
 interface WebFetchState {
@@ -24,6 +25,8 @@ interface WebFetchState {
 	allDomainsApproved?: boolean;
 	webFetchCount?: number;
 	messages?: BaseMessage[];
+	userRequest?: string;
+	workflowJSON?: { nodes: Array<{ parameters?: Record<string, unknown> }> };
 }
 
 interface WebFetchResumeValue {
@@ -129,11 +132,15 @@ export function createWebFetchTool() {
 				const approvedDomains: string[] = state.approvedDomains ?? [];
 				const webFetchCount: number = state.webFetchCount ?? 0;
 
-				// 2b. URL provenance check — only fetch URLs the user provided
+				// 2b. URL provenance check — only fetch URLs the user provided or from workflow nodes
 				const messages = state.messages ?? [];
-				if (!isUrlInUserMessages(url, messages)) {
+				const workflowJSON = state.workflowJSON ?? { nodes: [] };
+				const urlFromUser = isUrlInUserMessages(url, messages);
+				const urlFromWorkflow = isUrlInWorkflowNodes(url, workflowJSON);
+
+				if (!urlFromUser && !urlFromWorkflow) {
 					const message =
-						'This URL was not provided by the user. Only URLs from the conversation can be fetched.';
+						'This URL was not provided by the user. Only URLs from the conversation or workflow nodes can be fetched.';
 					reporter.error({ message });
 					return createSuccessResponse(config, message);
 				}
@@ -151,7 +158,12 @@ export function createWebFetchTool() {
 				let redirectUserAction: string | undefined;
 				const allDomainsApproved = state.allDomainsApproved === true;
 
-				if (!allDomainsApproved && !isAllowedDomain(host) && !approvedDomains.includes(host)) {
+				if (
+					!allDomainsApproved &&
+					!isAllowedDomain(host) &&
+					!approvedDomains.includes(host) &&
+					!urlFromUser
+				) {
 					const approval = requestDomainApproval(host, url);
 					if (!approval.approved) {
 						reporter.error({ message: approval.message });
@@ -354,7 +366,7 @@ The tool will request user approval before fetching any URL.
 After approval, it returns the page's readable text content.
 
 Constraints:
-- Only URLs that appear in the user's messages can be fetched
+- Only URLs from the user's messages or workflow node parameters can be fetched
 - Only public HTTP/HTTPS URLs
 - Maximum 3 fetches per conversation turn
 - PDFs are not supported
