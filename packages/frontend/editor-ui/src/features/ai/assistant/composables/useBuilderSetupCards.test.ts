@@ -277,6 +277,42 @@ describe('useBuilderSetupCards', () => {
 		expect(mockUnsetCredential).toHaveBeenCalledWith('testType', 'testNode');
 	});
 
+	it('skips to first incomplete card on mount when current card is already complete', async () => {
+		mockSetupCards.value = [
+			createCard({ node: createNode({ name: 'Node 1', id: 'n1' }), isComplete: true }),
+			createCard({ node: createNode({ name: 'Node 2', id: 'n2' }), isComplete: true }),
+			createCard({ node: createNode({ name: 'Node 3', id: 'n3' }), isComplete: false }),
+		];
+
+		const { currentStepIndex } = await getComposable();
+
+		// Should skip past completed cards to the first incomplete one
+		expect(currentStepIndex.value).toBe(2);
+	});
+
+	it('stays on step 0 on mount when first card is incomplete', async () => {
+		mockSetupCards.value = [
+			createCard({ node: createNode({ name: 'Node 1', id: 'n1' }), isComplete: false }),
+			createCard({ node: createNode({ name: 'Node 2', id: 'n2' }), isComplete: true }),
+		];
+
+		const { currentStepIndex } = await getComposable();
+
+		expect(currentStepIndex.value).toBe(0);
+	});
+
+	it('stays on step 0 on mount when all cards are complete', async () => {
+		mockSetupCards.value = [
+			createCard({ node: createNode({ name: 'Node 1', id: 'n1' }), isComplete: true }),
+			createCard({ node: createNode({ name: 'Node 2', id: 'n2' }), isComplete: true }),
+		];
+
+		const { currentStepIndex } = await getComposable();
+
+		// All complete — no incomplete card to skip to, stays at 0
+		expect(currentStepIndex.value).toBe(0);
+	});
+
 	it('does not auto-advance when navigating back to a completed card', async () => {
 		vi.useFakeTimers();
 

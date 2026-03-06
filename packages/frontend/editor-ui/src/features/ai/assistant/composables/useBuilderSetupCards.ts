@@ -1,4 +1,4 @@
-import { computed, watch } from 'vue';
+import { computed, nextTick, watch } from 'vue';
 import type { INodeParameters } from 'n8n-workflow';
 
 import type { SetupCardItem } from '@/features/setupPanel/setupPanel.types';
@@ -59,12 +59,15 @@ export function useBuilderSetupCards() {
 		return result;
 	});
 
-	// Reset persisted placeholder params when wizard state resets
+	// Reset persisted placeholder params when wizard state resets.
+	// Also skip to the first incomplete card after reset (handles AI
+	// updating the workflow without the wizard remounting).
 	watch(
 		() => builderStore.wizardClearedPlaceholders.size,
 		(size) => {
 			if (size === 0) {
 				seenPlaceholderParams.clear();
+				void nextTick(() => skipToFirstIncomplete());
 			}
 		},
 	);
@@ -101,16 +104,31 @@ export function useBuilderSetupCards() {
 		() => cards.value.length === 0 || cards.value.every((card) => card.state.isComplete),
 	);
 
-	// Clamp step index when cards array changes
+	function skipToFirstIncomplete() {
+		const current = cards.value[currentStepIndex.value];
+		if (!current?.state.isComplete) return;
+		const firstIncomplete = cards.value.findIndex((c) => !c.state.isComplete);
+		if (firstIncomplete !== -1) {
+			currentStepIndex.value = firstIncomplete;
+		}
+	}
+
+	// Clamp step index when cards array changes, and on mount skip to
+	// the first incomplete card (handles wizard remounting after AI update
+	// with some cards already complete).
 	watch(
 		() => cards.value.length,
 		(newLength) => {
 			if (newLength === 0) {
 				currentStepIndex.value = 0;
-			} else if (currentStepIndex.value >= newLength) {
+				return;
+			}
+			if (currentStepIndex.value >= newLength) {
 				currentStepIndex.value = newLength - 1;
 			}
+			skipToFirstIncomplete();
 		},
+		{ immediate: true },
 	);
 
 	// Lazy placeholder clearing when a step becomes active
