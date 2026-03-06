@@ -25,9 +25,7 @@ import {
 	toExecutionContextEstablishmentHookParameter,
 } from 'n8n-workflow';
 import os from 'node:os';
-
-import { Telemetry } from '../../telemetry';
-import { EventRelay } from './event-relay';
+import semver from 'semver';
 
 import config from '@/config';
 import { N8N_VERSION } from '@/constants';
@@ -37,6 +35,9 @@ import { determineFinalExecutionStatus } from '@/execution-lifecycle/shared/shar
 import type { IExecutionTrackProperties } from '@/interfaces';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
+
+import { EventRelay } from './event-relay';
+import { Telemetry } from '../../telemetry';
 
 // Max size for node_graph_string to avoid exceeding telemetry payload limits (32 KB), leaving room for other fields
 const MAX_NODE_GRAPH_STRING_SIZE = 24 * 1024;
@@ -1582,32 +1583,22 @@ export class TelemetryEventRelay extends EventRelay {
 	// #endregion
 }
 
-function getSemanticVersioning(versionCli: string): {
-	major: number;
-	minor: number;
-	patch: number;
+export function getSemanticVersioning(versionCli: string): {
+	major: number | null;
+	minor: number | null;
+	patch: number | null;
 } {
 	try {
-		if (!versionCli || typeof versionCli !== 'string') {
-			return { major: 0, minor: 0, patch: 0 };
+		const parsed = semver.parse(versionCli);
+		if (!parsed) {
+			return { major: null, minor: null, patch: null };
 		}
-
-		// Remove any pre-release or build metadata (e.g "2.11.0-beta.1" -> "2.11.0")
-		const cleanVersion = versionCli.split('-')[0] ?? '';
-		const parts = cleanVersion.split('.');
-
-		const parseVersion = (part: string | undefined): number => {
-			if (!part) return 0;
-			const parsed = parseInt(part, 10);
-			return Number.isNaN(parsed) ? 0 : parsed;
-		};
-
 		return {
-			major: parseVersion(parts[0]),
-			minor: parseVersion(parts[1]),
-			patch: parseVersion(parts[2]),
+			major: parsed.major,
+			minor: parsed.minor,
+			patch: parsed.patch,
 		};
 	} catch (e) {
-		return { major: 0, minor: 0, patch: 0 };
+		return { major: null, minor: null, patch: null };
 	}
 }

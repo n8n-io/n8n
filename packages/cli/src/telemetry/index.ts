@@ -261,7 +261,7 @@ export class Telemetry {
 
 		if (this.postHog) {
 			this.postHog.groupIdentify({
-				...(userId && { distinctId: `${userId}#${instanceId}` }),
+				...(userId && { distinctId: `${instanceId}#${userId}` }),
 				instanceId,
 				properties: traits,
 			});
@@ -270,7 +270,7 @@ export class Telemetry {
 		if (this.rudderStack) {
 			this.rudderStack.group({
 				groupId: instanceId,
-				userId: userId ? `${userId}#${instanceId}` : instanceId, // Rudderstack requires a userId for group calls, using instanceId as fallback
+				userId: userId ? `${instanceId}#${userId}` : instanceId, // Rudderstack requires a userId for group calls, using instanceId as fallback
 				traits,
 				context: {
 					ip: '0.0.0.0',
@@ -288,7 +288,7 @@ export class Telemetry {
 
 		if (this.rudderStack) {
 			this.rudderStack.identify({
-				userId: userId ? `${userId}#${instanceId}` : instanceId, // If no userId provided, falling back to instanceId for cross-compatibility
+				userId: userId ? `${instanceId}#${userId}` : instanceId, // If no userId provided, falling back to instanceId for cross-compatibility
 				traits: { ...traits, instanceId },
 				context: {
 					// provide a fake IP address to instruct RudderStack to not use the user's IP address
@@ -299,7 +299,7 @@ export class Telemetry {
 
 		if (this.postHog && userId) {
 			this.postHog.identify({
-				distinctId: `${userId}#${instanceId}`,
+				distinctId: `${instanceId}#${userId}`,
 				properties: traits,
 			});
 		}

@@ -27,7 +27,7 @@ import {
 import { N8N_VERSION } from '@/constants';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
-import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
+import { TelemetryEventRelay, getSemanticVersioning } from '@/events/relays/telemetry.event-relay';
 import type { License } from '@/license';
 import type { Telemetry } from '@/telemetry';
 
@@ -2305,6 +2305,78 @@ describe('TelemetryEventRelay', () => {
 				user_id: 'user456',
 				'2fa_enforcement': false,
 			});
+		});
+	});
+
+	describe('getSemanticVersioning', () => {
+		it('should parse standard semantic version', () => {
+			const result = getSemanticVersioning('2.11.0');
+			expect(result).toEqual({ major: 2, minor: 11, patch: 0 });
+		});
+
+		it('should parse version with pre-release', () => {
+			const result = getSemanticVersioning('2.11.0-beta.1');
+			expect(result).toEqual({ major: 2, minor: 11, patch: 0 });
+		});
+
+		it('should parse version with pre-release rc', () => {
+			const result = getSemanticVersioning('2.11.0-rc.5');
+			expect(result).toEqual({ major: 2, minor: 11, patch: 0 });
+		});
+
+		it('should parse version with build metadata', () => {
+			const result = getSemanticVersioning('2.11.0+build.123');
+			expect(result).toEqual({ major: 2, minor: 11, patch: 0 });
+		});
+
+		it('should parse version with pre-release and build metadata', () => {
+			const result = getSemanticVersioning('2.11.0-alpha.1+build.456');
+			expect(result).toEqual({ major: 2, minor: 11, patch: 0 });
+		});
+
+		it('should handle single digit versions', () => {
+			const result = getSemanticVersioning('1.0.0');
+			expect(result).toEqual({ major: 1, minor: 0, patch: 0 });
+		});
+
+		it('should handle large version numbers', () => {
+			const result = getSemanticVersioning('100.200.300');
+			expect(result).toEqual({ major: 100, minor: 200, patch: 300 });
+		});
+
+		it('should return null for invalid version', () => {
+			const result = getSemanticVersioning('invalid');
+			expect(result).toEqual({ major: null, minor: null, patch: null });
+		});
+
+		it('should return null for empty string', () => {
+			const result = getSemanticVersioning('');
+			expect(result).toEqual({ major: null, minor: null, patch: null });
+		});
+
+		it('should return null for malformed version', () => {
+			const result = getSemanticVersioning('a.b.c');
+			expect(result).toEqual({ major: null, minor: null, patch: null });
+		});
+
+		it('should return null for version with only major.minor', () => {
+			const result = getSemanticVersioning('2.11');
+			expect(result).toEqual({ major: null, minor: null, patch: null });
+		});
+
+		it('should handle errors gracefully', () => {
+			const result = getSemanticVersioning('very.weird.version.string');
+			expect(result).toEqual({ major: null, minor: null, patch: null });
+		});
+
+		it('should parse the current N8N_VERSION', () => {
+			const result = getSemanticVersioning(N8N_VERSION);
+			expect(result.major).not.toBeNull();
+			expect(result.minor).not.toBeNull();
+			expect(result.patch).not.toBeNull();
+			expect(typeof result.major).toBe('number');
+			expect(typeof result.minor).toBe('number');
+			expect(typeof result.patch).toBe('number');
 		});
 	});
 });
