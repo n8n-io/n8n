@@ -1,6 +1,7 @@
 import { extend, extendOptional } from '../extensions/extend';
+import { extendedFunctions } from '../extensions/function-extensions';
 
-import { __sanitize } from './safe-globals';
+import { __sanitize, SafeObject, SafeError } from './safe-globals';
 import { createDeepLazyProxy } from './lazy-proxy';
 
 // ============================================================================
@@ -22,7 +23,7 @@ import { createDeepLazyProxy } from './lazy-proxy';
  * Called from bridge: context.evalSync('resetDataProxies()')
  */
 export function resetDataProxies(): void {
-	// Clear existing __data object
+	// Clear existing __data object.
 	globalThis.__data = {};
 
 	// __sanitize must be on __data because PrototypeSanitizer generates:
@@ -88,6 +89,8 @@ export function resetDataProxies(): void {
 	(globalThis as any).$itemIndex = globalThis.__data.$itemIndex;
 	(globalThis as any).$data = globalThis.__data.$data;
 	(globalThis as any).$env = globalThis.__data.$env;
+
+	Object.assign(globalThis.__data, extendedFunctions);
 
 	// -------------------------------------------------------------------------
 	// Handle function properties (check if value is function metadata)
