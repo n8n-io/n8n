@@ -46,23 +46,8 @@ jobs:
       release-channel: stable
 
   ensure-release-candidate-branches:
-    name: Ensure release-candidate branches
-    if: inputs.release_type != 'rc'
-    runs-on: ubuntu-slim
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-
-      - name: Setup NodeJS
-        uses: ./.github/actions/setup-nodejs
-        with:
-          install-command: npm install --prefix=.github/scripts --no-package-lock
-          build-command: ''
-
-      - name: Ensure release-candidate branches
-        run: node ./.github/scripts/ensure-release-candidate-branches.mjs
+    name: 'Ensure release candidate branches'
+    if: |
+      inputs.release_type != 'rc'
+    uses: ./.github/workflows/util-ensure-release-candidate-branches.yml
+    secrets: inherit
