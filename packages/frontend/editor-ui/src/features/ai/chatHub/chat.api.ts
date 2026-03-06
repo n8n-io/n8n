@@ -18,6 +18,7 @@ import type {
 	ChatProviderSettingsDto,
 	ChatSendMessageResponse,
 	ChatReconnectResponse,
+	WorkflowExecutionStatus,
 	ChatHubUpdateToolRequest,
 	ChatHubToolDto,
 } from '@n8n/api-types';
@@ -242,6 +243,52 @@ export function buildChatAttachmentUrl(
 	attachmentIndex: number,
 ): string {
 	return `${context.baseUrl}/chat/conversations/${sessionId}/messages/${messageId}/attachments/${attachmentIndex}`;
+}
+
+/**
+ * Fetch the execution status for a workflow using dynamic credentials.
+ * Returns credential statuses and whether the workflow is ready to execute.
+ */
+export async function fetchWorkflowExecutionStatus(
+	ctx: IRestApiContext,
+	workflowId: string,
+): Promise<WorkflowExecutionStatus> {
+	return await makeRestApiRequest<WorkflowExecutionStatus>(
+		ctx,
+		'GET',
+		`/workflows/${workflowId}/execution-status?authSource=cookie`,
+	);
+}
+
+/**
+ * Start the OAuth authorization flow for a dynamic credential.
+ * Returns the OAuth provider URL to open in a popup.
+ */
+export async function authorizeDynamicCredential(
+	ctx: IRestApiContext,
+	credentialId: string,
+	resolverId: string,
+): Promise<string> {
+	return await makeRestApiRequest<string>(
+		ctx,
+		'POST',
+		`/credentials/${credentialId}/authorize?resolverId=${encodeURIComponent(resolverId)}&authSource=cookie`,
+	);
+}
+
+/**
+ * Revoke (disconnect) a dynamic credential.
+ */
+export async function revokeDynamicCredential(
+	ctx: IRestApiContext,
+	credentialId: string,
+	resolverId: string,
+): Promise<void> {
+	await makeRestApiRequest(
+		ctx,
+		'DELETE',
+		`/credentials/${credentialId}/revoke?resolverId=${encodeURIComponent(resolverId)}&authSource=cookie`,
+	);
 }
 
 export const fetchToolsApi = async (context: IRestApiContext): Promise<ChatHubToolDto[]> => {

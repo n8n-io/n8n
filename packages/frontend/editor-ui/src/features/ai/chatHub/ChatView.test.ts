@@ -58,6 +58,7 @@ vi.mock('@/app/stores/settings.store', () => ({
 			'chat-hub': createChatHubModuleSettings(),
 		},
 		isChatFeatureEnabled: true,
+		isModuleActive: vi.fn().mockReturnValue(false),
 	}),
 }));
 
@@ -859,7 +860,7 @@ describe('ChatView', () => {
 
 			const attachments = within(humanMessage).getAllByTestId('chat-file');
 			const fileInput = within(humanMessage).getByTestId('message-edit-file-input');
-			const newFile = new File(['new content'], 'new-file.txt', { type: 'text/plain' });
+			const newFile = new File(['new content'], 'new-file.md', { type: 'text/markdown' });
 
 			expect(within(humanMessage).getByRole('textbox')).toHaveValue('Please analyze these files');
 			expect(attachments).toHaveLength(3);
@@ -879,8 +880,8 @@ describe('ChatView', () => {
 					keepAttachmentIndices: [0, 2], // Kept file1.txt (index 0) and file3.jpg (index 2)
 					newAttachments: [
 						expect.objectContaining({
-							fileName: 'new-file.txt',
-							mimeType: 'text/plain',
+							fileName: 'new-file.md',
+							mimeType: 'text/markdown',
 							data: expect.any(String), // base64 data
 						}),
 					],

@@ -14,8 +14,9 @@ The Deep Lazy Proxy is a memory-efficient mechanism for providing workflow data 
 
 ## Architecture
 
-The deep lazy proxy is implemented entirely within `src/runtime/index.ts`, which is
-bundled into `dist/bundle/runtime.iife.js` and injected into the V8 isolate at startup.
+The deep lazy proxy is implemented in `src/runtime/lazy-proxy.ts`, which is bundled
+together with the other runtime modules into `dist/bundle/runtime.iife.js` and injected
+into the V8 isolate at startup.
 
 Key functions exposed on `globalThis` inside the isolate:
 
@@ -206,10 +207,13 @@ creates nested proxies for objects or arrays as needed.
 ### Array iteration is slow for large arrays
 
 ```
-{{ _.sum($json.items) }}
+{{ $json.items.reduce((sum, x) => sum + x, 0) }}
 // items has 10 000 elements → length transferred, then 10 000 callback
 // calls to fetch each element. Prefer accessing specific indices.
 ```
+
+Note: lodash (`_`) is not available in expressions — it is bundled internally for
+use by extension functions but not exposed on `globalThis`.
 
 ## Contributing
 
@@ -223,6 +227,9 @@ When modifying the proxy implementation:
 
 ## Related Files
 
-- Implementation: `packages/@n8n/expression-runtime/src/runtime/index.ts` — proxy system, `resetDataProxies`, `__sanitize`, `SafeObject`, `SafeError`
+- Proxy implementation: `packages/@n8n/expression-runtime/src/runtime/lazy-proxy.ts` — `createDeepLazyProxy`
+- Reset: `packages/@n8n/expression-runtime/src/runtime/reset.ts` — `resetDataProxies`
+- Security globals: `packages/@n8n/expression-runtime/src/runtime/safe-globals.ts` — `SafeObject`, `SafeError`, `__sanitize`
+- Runtime entry: `packages/@n8n/expression-runtime/src/runtime/index.ts` — wires all modules to `globalThis`
 - Bridge: `packages/@n8n/expression-runtime/src/bridge/isolated-vm-bridge.ts` — registers `ivm.Reference` callbacks, loads bundle, calls `resetDataProxies`
 - Build: `packages/@n8n/expression-runtime/esbuild.config.js` — bundles runtime to `dist/bundle/runtime.iife.js`

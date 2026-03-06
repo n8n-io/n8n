@@ -1341,8 +1341,8 @@ describe('PATCH /workflows/:workflowId', () => {
 				.patch(`/workflows/${id}`)
 				.send({ nodes: [], versionId: ownerVersionId, expectedChecksum: ownerChecksum });
 
-			expect(updateAttemptResponse.status).toBe(400);
-			expect(updateAttemptResponse.body.code).toBe(100);
+			expect(updateAttemptResponse.status).toBe(409);
+			expect(updateAttemptResponse.body.code).toBe(409);
 		});
 
 		it('should block member updating workflow nodes on interim update by owner', async () => {
@@ -1379,8 +1379,8 @@ describe('PATCH /workflows/:workflowId', () => {
 				.patch(`/workflows/${id}`)
 				.send({ nodes: [], versionId: memberVersionId, expectedChecksum: memberChecksum });
 
-			expect(updateAttemptResponse.status).toBe(400);
-			expect(updateAttemptResponse.body.code).toBe(100);
+			expect(updateAttemptResponse.status).toBe(409);
+			expect(updateAttemptResponse.body.code).toBe(409);
 		});
 
 		it('should block owner activation on interim activation by member', async () => {
@@ -1410,8 +1410,8 @@ describe('PATCH /workflows/:workflowId', () => {
 				expectedChecksum: ownerChecksum,
 			});
 
-			expect(activationAttemptResponse.status).toBe(400);
-			expect(activationAttemptResponse.body.code).toBe(100);
+			expect(activationAttemptResponse.status).toBe(409);
+			expect(activationAttemptResponse.body.code).toBe(409);
 		});
 
 		it('should block member activation on interim activation by owner', async () => {
@@ -1450,8 +1450,8 @@ describe('PATCH /workflows/:workflowId', () => {
 				expectedChecksum: memberChecksum,
 			});
 
-			expect(updateAttemptResponse.status).toBe(400);
-			expect(updateAttemptResponse.body.code).toBe(100);
+			expect(updateAttemptResponse.status).toBe(409);
+			expect(updateAttemptResponse.body.code).toBe(409);
 		});
 
 		it('should block member updating workflow settings on interim update by owner', async () => {
@@ -1483,8 +1483,8 @@ describe('PATCH /workflows/:workflowId', () => {
 				expectedChecksum: memberChecksum,
 			});
 
-			expect(updateAttemptResponse.status).toBe(400);
-			expect(updateAttemptResponse.body.code).toBe(100);
+			expect(updateAttemptResponse.status).toBe(409);
+			expect(updateAttemptResponse.body.code).toBe(409);
 		});
 
 		it('should block member updating workflow name on interim update by owner', async () => {
@@ -1516,8 +1516,8 @@ describe('PATCH /workflows/:workflowId', () => {
 				expectedChecksum: memberChecksum,
 			});
 
-			expect(updateAttemptResponse.status).toBe(400);
-			expect(updateAttemptResponse.body.code).toBe(100);
+			expect(updateAttemptResponse.status).toBe(409);
+			expect(updateAttemptResponse.body.code).toBe(409);
 		});
 	});
 
@@ -2307,5 +2307,46 @@ describe('POST /workflows/:workflowId/run', () => {
 		expect(response.body).toMatchObject({
 			message: 'User is missing a scope required to perform this action',
 		});
+	});
+
+	test('should always load the workflow from the database, ignoring request workflowData', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:editor');
+
+		const dbNode: INode = {
+			id: uuid(),
+			name: 'Start',
+			type: 'n8n-nodes-base.start',
+			parameters: {},
+			typeVersion: 1,
+			position: [240, 300],
+		};
+
+		const workflow = await createWorkflow({ nodes: [dbNode], connections: {} }, teamProject);
+
+		// Send tampered workflowData with an injected node
+		const tamperedWorkflowData = {
+			...workflow,
+			nodes: [
+				dbNode,
+				{
+					id: uuid(),
+					name: 'Injected',
+					type: 'n8n-nodes-base.noOp',
+					parameters: {},
+					typeVersion: 1,
+					position: [500, 300],
+				},
+			],
+		};
+
+		const response = await authMemberAgent
+			.post(`/workflows/${workflow.id}/run`)
+			.send({ workflowData: tamperedWorkflowData });
+
+		// The endpoint should NOT reject (the DB workflow exists and user has execute scope)
+		// It should use the DB version, not the tampered one
+		expect(response.status).not.toBe(403);
+		expect(response.status).not.toBe(404);
 	});
 });

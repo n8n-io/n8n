@@ -25,9 +25,8 @@ export class SecurityConfig {
 	blockFileAccessToN8nFiles: boolean = true;
 
 	/**
-	 * Blocked file and folder regular expression patterns that `ReadWriteFile` and `ReadBinaryFiles` nodes cant access. Separate multiple patterns with with semicolon `;`.
-	 * - `^(.*\/)*\.git(\/.*)*$`
-	 * Set to empty to not block based on file patterns.
+	 * Regex patterns for files and folders that `ReadWriteFile` and `ReadBinaryFiles` nodes cannot access.
+	 * Separate multiple patterns with semicolons. Default blocks `.git`. Set to empty to disable pattern-based blocking.
 	 */
 	@Env('N8N_BLOCK_FILE_PATTERNS')
 	blockFilePatterns: string = '^(.*\\/)*\\.git(\\/.*)*$';

@@ -14,9 +14,9 @@ mock.module('./github-helpers.mjs', {
 		RELEASE_TRACKS: ['stable', 'beta', 'v1'],
 		resolveReleaseTagForTrack: (track) => {
 			// Always return deterministic data
-			if (track === 'stable') return { version: '2.9.2' };
-			if (track === 'beta') return { version: '2.10.1' };
-			return { version: '1.123.33' };
+			if (track === 'stable') return { version: '2.9.2', tag: 'n8n@2.9.2' };
+			if (track === 'beta') return { version: '2.10.1', tag: 'n8n@2.10.1' };
+			return { version: '1.123.33', tag: 'n8n@1.123.33' };
 		},
 		writeGithubOutput: () => {}, // no-op in tests
 	},

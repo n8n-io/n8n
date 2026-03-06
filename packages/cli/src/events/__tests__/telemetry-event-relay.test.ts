@@ -1644,18 +1644,18 @@ describe('TelemetryEventRelay', () => {
 		});
 
 		it('should track successful workflow execution', async () => {
-			const runData = mock<IRun>({
+			const runData = {
 				finished: true,
 				status: 'success',
 				mode: 'manual',
-				data: { resultData: {} },
-			});
+				data: { resultData: { runData: {} } },
+			} as unknown as IRun;
 
 			const event: RelayEventMap['workflow-post-execute'] = {
 				workflow: mockWorkflowBase,
 				executionId: 'execution123',
 				userId: 'user123',
-				runData: runData as unknown as IRun,
+				runData,
 			};
 
 			eventService.emit('workflow-post-execute', event);

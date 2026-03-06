@@ -15,7 +15,7 @@ type GenericMeta<C> = Omit<Meta<C>, 'component'> & {
 };
 
 const meta = {
-	title: 'Components v2/DropdownMenu',
+	title: 'Experimental/DropdownMenu',
 	component: DropdownMenu,
 	parameters: {
 		docs: {

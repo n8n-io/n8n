@@ -4,7 +4,7 @@ import { action } from 'storybook/actions';
 import N8nSendStopButton from './N8nSendStopButton.vue';
 
 export default {
-	title: 'Atoms/SendStopButton',
+	title: 'Core/SendStopButton',
 	component: N8nSendStopButton,
 	argTypes: {
 		streaming: {

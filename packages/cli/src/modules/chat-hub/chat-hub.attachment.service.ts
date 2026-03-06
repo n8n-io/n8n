@@ -22,6 +22,32 @@ export class ChatHubAttachmentService {
 	) {}
 
 	/**
+	 * Validates that attachments conform to the model's upload policy.
+	 * Throws BadRequestError if uploads are disallowed or a MIME type is rejected.
+	 */
+	validateAttachments(
+		attachments: ChatAttachment[],
+		allowFileUploads: boolean,
+		allowedFilesMimeTypes: string,
+	): void {
+		if (attachments.length === 0) return;
+
+		if (!allowFileUploads) {
+			throw new BadRequestError('File uploads are not allowed for this model');
+		}
+
+		if (allowedFilesMimeTypes === '*/*' || allowedFilesMimeTypes === '') return;
+
+		for (const attachment of attachments) {
+			if (!this.isAllowedMimeType(attachment.mimeType, allowedFilesMimeTypes)) {
+				throw new BadRequestError(
+					`File type "${attachment.mimeType}" is not allowed. Allowed types: ${allowedFilesMimeTypes}`,
+				);
+			}
+		}
+	}
+
+	/**
 	 * Stores attachments through BinaryDataService.
 	 * This populates the 'id' and other metadata for attachments. When external storage is used,
 	 * BinaryDataService replaces base64 data with the storage mode string (e.g., "filesystem-v2").
@@ -143,6 +169,18 @@ export class ChatHubAttachmentService {
 
 	async getAsBuffer(binaryData: IBinaryData): Promise<Buffer<ArrayBufferLike>> {
 		return await this.binaryDataService.getAsBuffer(binaryData);
+	}
+
+	private isAllowedMimeType(mimeType: string, allowedMimeTypes: string): boolean {
+		const patterns = allowedMimeTypes.split(',').map((p) => p.trim());
+		for (const pattern of patterns) {
+			if (pattern === mimeType) return true;
+			if (pattern.endsWith('/*')) {
+				const category = pattern.slice(0, pattern.indexOf('/'));
+				if (mimeType.startsWith(`${category}/`)) return true;
+			}
+		}
+		return false;
 	}
 
 	/**
