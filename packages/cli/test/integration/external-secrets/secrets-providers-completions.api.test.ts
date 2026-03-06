@@ -148,10 +148,12 @@ describe('Secret Providers Completions API', () => {
 				}
 			});
 
-			it('should allow member with custom externalSecret:list role to list global secrets', async () => {
-				await memberWithCustomRoleAgent
+			it('should deny member with custom project-level externalSecret:list role to list global secrets', async () => {
+				const response = await memberWithCustomRoleAgent
 					.get('/secret-providers/completions/secrets/global')
-					.expect(200);
+					.expect(403);
+
+				expect(response.body.message).toBe(FORBIDDEN_MESSAGE);
 			});
 
 			it('should deny member without custom externalSecret:list role to list global secrets', async () => {
