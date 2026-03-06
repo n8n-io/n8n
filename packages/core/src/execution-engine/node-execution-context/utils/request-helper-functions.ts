@@ -1640,6 +1640,13 @@ export const getRequestHelperFunctions = (
 				false,
 			) as object as PaginationOptions['request'];
 
+			// On the first request, use the node's configured URL instead of the Next URL
+			// expression. The Next URL is meant to extract a URL from a response, which
+			// doesn't exist yet on the first iteration (e.g. $response is empty).
+			if (additionalKeys.$pageCount === 0 && paginationOptions.request.url) {
+				delete paginateRequestData.url;
+			}
+
 			const tempRequestOptions = applyPaginationRequestData(requestOptions, paginateRequestData);
 
 			if (!validateUrl(tempRequestOptions.uri as string)) {

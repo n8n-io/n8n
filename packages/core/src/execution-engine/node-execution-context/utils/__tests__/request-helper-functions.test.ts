@@ -5,6 +5,7 @@ import type { Agent as HttpsAgent } from 'https';
 import { mock, mockDeep } from 'jest-mock-extended';
 import type {
 	IAllExecuteFunctions,
+	IExecuteFunctions,
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 	INode,
@@ -22,6 +23,7 @@ import {
 	applyPaginationRequestData,
 	convertN8nRequestToAxios,
 	createFormDataObject,
+	getRequestHelperFunctions,
 	httpRequest,
 	invokeAxios,
 	parseRequestObject,
@@ -1264,6 +1266,121 @@ describe('Request Helper Functions', () => {
 			expect(
 				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
 			).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('requestWithAuthenticationPaginated', () => {
+		test('should use original URL on first request when pagination uses Next URL mode', async () => {
+			const mockGetParameterValue = jest.fn();
+
+			const workflow = {
+				expression: {
+					getParameterValue: mockGetParameterValue,
+				},
+			} as unknown as Workflow;
+
+			const node = {
+				name: 'HTTP Request',
+				typeVersion: 4.1,
+			} as unknown as INode;
+
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
+
+			const { requestWithAuthenticationPaginated } = getRequestHelperFunctions(
+				workflow,
+				node,
+				additionalData,
+			);
+
+			// Simulate expression resolution using $response from additionalKeys
+			mockGetParameterValue.mockImplementation(
+				(
+					parameterValue: unknown,
+					_runExecData: unknown,
+					_runIndex: unknown,
+					_itemIndex: unknown,
+					_nodeName: unknown,
+					_connInputData: unknown,
+					_mode: unknown,
+					additionalKeys: Record<string, any>,
+				) => {
+					if (typeof parameterValue === 'object' && parameterValue !== null) {
+						// Resolving the pagination request object — resolve expression fields
+						const result: Record<string, unknown> = {};
+						for (const [key, value] of Object.entries(parameterValue as Record<string, unknown>)) {
+							if (typeof value === 'string' && value.startsWith('=')) {
+								if (key === 'url') {
+									result[key] = additionalKeys?.$response?.headers?.['next-url'] ?? '';
+								}
+							} else {
+								result[key] = value;
+							}
+						}
+						return result;
+					}
+
+					if (typeof parameterValue === 'string') {
+						// Resolving the continue expression — continue if next-url header exists
+						return !!additionalKeys?.$response?.headers?.['next-url'];
+					}
+
+					return parameterValue;
+				},
+			);
+
+			const mockRequest = jest.fn();
+			// First response: includes next-url header pointing to page 2
+			mockRequest.mockResolvedValueOnce({
+				statusCode: 200,
+				headers: {
+					'content-type': 'application/json',
+					'next-url': 'https://example.com/page2',
+				},
+				body: { data: 'page1' },
+			});
+			// Second response: no next-url header, pagination stops
+			mockRequest.mockResolvedValueOnce({
+				statusCode: 200,
+				headers: { 'content-type': 'application/json' },
+				body: { data: 'page2' },
+			});
+
+			const executeFunctions = {
+				helpers: {
+					request: mockRequest,
+				},
+			} as unknown as IExecuteFunctions;
+
+			const requestOptions: IRequestOptions = {
+				uri: 'https://example.com/api',
+				method: 'GET',
+			};
+
+			const paginationOptions: PaginationOptions = {
+				continue: '={{ !!$response.headers["next-url"] }}',
+				request: {
+					url: '={{ $response.headers["next-url"] }}',
+				},
+				requestInterval: 0,
+				maxRequests: 10,
+			};
+
+			const result = await requestWithAuthenticationPaginated.call(
+				executeFunctions,
+				requestOptions,
+				0,
+				paginationOptions,
+			);
+
+			expect(mockRequest).toHaveBeenCalledTimes(2);
+
+			// First request should use the original URL, not the resolved Next URL expression
+			expect(mockRequest.mock.calls[0][0].uri).toBe('https://example.com/api');
+
+			// Second request should use the Next URL extracted from the first response
+			expect(mockRequest.mock.calls[1][0].uri).toBe('https://example.com/page2');
+
+			expect(result).toHaveLength(2);
 		});
 	});
 });
