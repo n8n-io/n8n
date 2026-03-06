@@ -1,4 +1,4 @@
-import { createWriteStream, createReadStream, mkdirSync } from 'fs';
+import { createWriteStream, mkdirSync } from 'fs';
 import type { FileHandle } from 'fs/promises';
 import { open, readFile, readdir, mkdir } from 'fs/promises';
 import * as path from 'path';
@@ -283,7 +283,10 @@ export async function decompressFolder(sourcePath: string, outputDir: string): P
 			const dataOffset = await getDataOffset(fh, entry.localHeaderOffset);
 			const compressedSize = Number(entry.compressedSize);
 
-			const readStream = createReadStream(sourcePath, {
+			// Use the already-open file handle to avoid re-opening the file and
+			// seeking to a large offset on each entry, which can fail on network
+			// filesystems (NFS/EFS) common in Kubernetes environments.
+			const readStream = fh.createReadStream({
 				start: Number(dataOffset),
 				end: Number(dataOffset) + compressedSize - 1,
 			});
