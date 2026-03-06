@@ -48,9 +48,22 @@ function getSkipReason(dir: string): string | undefined {
 // Execution data collection (written to execution-data.json after all tests)
 // ---------------------------------------------------------------------------
 
+interface NodeOutputEntry {
+	items: unknown[];
+	outputIndex: number;
+}
+
+interface NodeExecutionInfo {
+	outputs: NodeOutputEntry[];
+	error?: string;
+}
+
+type NodeOutputMap = Record<string, NodeExecutionInfo>;
+
 interface SubWorkflowExecutionEntry {
 	name: string;
-	nodeOutputs: Record<string, unknown[]>;
+	executedNodes: string[];
+	nodeOutputs: NodeOutputMap;
 }
 
 interface FixtureExecutionEntry {
@@ -58,22 +71,39 @@ interface FixtureExecutionEntry {
 	error?: string;
 	reason?: string;
 	executedNodes?: string[];
-	nodeOutputs?: Record<string, unknown[]>;
+	nodeOutputs?: NodeOutputMap;
 	subWorkflows?: SubWorkflowExecutionEntry[];
 }
 
 const executionData: Record<string, FixtureExecutionEntry> = {};
 
-function extractNodeOutputs(runData?: IRunData): Record<string, unknown[]> {
-	const outputs: Record<string, unknown[]> = {};
-	if (!runData) return outputs;
+function extractNodeOutputs(runData?: IRunData): NodeOutputMap {
+	const result: NodeOutputMap = {};
+	if (!runData) return result;
 	for (const [nodeName, taskDataArr] of Object.entries(runData)) {
-		const items = taskDataArr[0]?.data?.main?.[0];
-		if (items) {
-			outputs[nodeName] = items.map((item) => item.json);
+		const taskData = taskDataArr[0];
+		if (!taskData) continue;
+
+		const outputs: NodeOutputEntry[] = [];
+		const mainOutputs = taskData.data?.main;
+		if (mainOutputs) {
+			for (let i = 0; i < mainOutputs.length; i++) {
+				const items = mainOutputs[i];
+				if (items && items.length > 0) {
+					outputs.push({
+						items: items.map((item) => item.json),
+						outputIndex: i,
+					});
+				}
+			}
+		}
+
+		const error = taskData.error?.message;
+		if (outputs.length > 0 || error) {
+			result[nodeName] = { outputs, error };
 		}
 	}
-	return outputs;
+	return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -128,10 +158,14 @@ describe('Fixture execution with pin data', () => {
 			const nodeOutputs = extractNodeOutputs(result.run?.data?.resultData?.runData);
 
 			// Step 6: Collect sub-workflow output data
-			const subWorkflows = result.subWorkflowRuns?.map((entry) => ({
-				name: entry.name,
-				nodeOutputs: extractNodeOutputs(entry.run?.data?.resultData?.runData),
-			}));
+			const subWorkflows = result.subWorkflowRuns?.map((entry) => {
+				const runData = entry.run?.data?.resultData?.runData;
+				return {
+					name: entry.name,
+					executedNodes: Object.keys(runData ?? {}),
+					nodeOutputs: extractNodeOutputs(runData),
+				};
+			});
 
 			executionData[fixture.dir] = {
 				status: result.success ? 'pass' : 'error',

@@ -25,9 +25,22 @@ interface PinDataEntry {
 	data: unknown[];
 }
 
+interface NodeOutputEntry {
+	items: unknown[];
+	outputIndex: number;
+}
+
+interface NodeExecutionInfo {
+	outputs: NodeOutputEntry[];
+	error?: string;
+}
+
+type NodeOutputMap = Record<string, NodeExecutionInfo>;
+
 interface SubWorkflowExecutionEntry {
 	name: string;
-	nodeOutputs: Record<string, unknown[]>;
+	executedNodes: string[];
+	nodeOutputs: NodeOutputMap;
 }
 
 interface ExecutionEntry {
@@ -35,7 +48,7 @@ interface ExecutionEntry {
 	error?: string;
 	reason?: string;
 	executedNodes?: string[];
-	nodeOutputs?: Record<string, unknown[]>;
+	nodeOutputs?: NodeOutputMap;
 	subWorkflows?: SubWorkflowExecutionEntry[];
 }
 
@@ -184,7 +197,7 @@ function renderExecutionSection(execution: ExecutionEntry): string {
 
 	const subWorkflowSections = (execution.subWorkflows ?? [])
 		.map((sw) => {
-			const swNodeNames = Object.keys(sw.nodeOutputs);
+			const swNodeNames = sw.executedNodes ?? Object.keys(sw.nodeOutputs);
 			return `<div class="exec-sub-workflow">
           <h4 class="exec-sub-label">Sub-workflow: ${escapeHtml(sw.name)}</h4>
           <div class="exec-pipeline">
@@ -204,23 +217,58 @@ function renderExecutionSection(execution: ExecutionEntry): string {
       </details>`;
 }
 
-function renderNodePipeline(nodeNames: string[], nodeOutputs: Record<string, unknown[]>): string {
+function renderOutputBlock(items: unknown[]): string {
+	const outputJson = JSON.stringify(items, null, 2);
+	const truncated = outputJson.length > 2000;
+	const displayJson = truncated ? outputJson.slice(0, 2000) + '\n  ...' : outputJson;
+	return `<pre class="code exec-output"><code>${escapeHtml(displayJson)}</code></pre>`;
+}
+
+function renderNodePipeline(nodeNames: string[], nodeOutputs: NodeOutputMap): string {
 	return nodeNames
 		.map((nodeName) => {
-			const output = nodeOutputs[nodeName];
-			const hasOutput = output && output.length > 0;
-			const itemCount = output?.length ?? 0;
-			const outputJson = hasOutput ? JSON.stringify(output, null, 2) : '';
-			const truncated = outputJson.length > 2000;
-			const displayJson = truncated ? outputJson.slice(0, 2000) + '\n  ...' : outputJson;
+			const info = nodeOutputs[nodeName];
+			const outputs = info?.outputs ?? [];
+			const nodeError = info?.error;
+			const hasError = !!nodeError;
+			const totalItems = outputs.reduce((sum, o) => sum + o.items.length, 0);
+			const dotClass = hasError ? 'exec-dot exec-dot-error' : 'exec-dot';
+
+			let statusBadge: string;
+			if (hasError) {
+				statusBadge = '<span class="exec-badge exec-error">ERROR</span>';
+			} else if (totalItems > 0) {
+				statusBadge = `<span class="exec-item-count">${totalItems} item${totalItems !== 1 ? 's' : ''}</span>`;
+			} else {
+				statusBadge = '<span class="exec-no-output">no output</span>';
+			}
+
+			const errorBlock = hasError
+				? `<div class="exec-node-error">${escapeHtml(nodeError)}</div>`
+				: '';
+
+			let outputBlocks: string;
+			if (outputs.length === 1) {
+				outputBlocks = renderOutputBlock(outputs[0].items);
+			} else if (outputs.length > 1) {
+				outputBlocks = outputs
+					.map(
+						(o) =>
+							`<div class="exec-output-index"><span class="exec-output-label">Output ${o.outputIndex}</span> <span class="exec-item-count">${o.items.length} item${o.items.length !== 1 ? 's' : ''}</span>${renderOutputBlock(o.items)}</div>`,
+					)
+					.join('\n');
+			} else {
+				outputBlocks = '';
+			}
 
 			return `<div class="exec-node">
           <div class="exec-node-header">
-            <span class="exec-dot"></span>
+            <span class="${dotClass}"></span>
             <span class="exec-node-name">${escapeHtml(nodeName)}</span>
-            ${hasOutput ? `<span class="exec-item-count">${itemCount} item${itemCount !== 1 ? 's' : ''}</span>` : '<span class="exec-no-output">no output</span>'}
+            ${statusBadge}
           </div>
-          ${hasOutput ? `<pre class="code exec-output"><code>${escapeHtml(displayJson)}</code></pre>` : ''}
+          ${errorBlock}
+          ${outputBlocks}
         </div>`;
 		})
 		.join('\n');
@@ -358,6 +406,10 @@ function generateHtml(entries: ReportEntry[]): string {
     .exec-item-count { font-size: 10px; color: #888; background: #f0f0f0; padding: 1px 6px; border-radius: 3px; }
     .exec-no-output { font-size: 10px; color: #aaa; font-style: italic; }
     .exec-output { font-size: 11px; padding: 8px 12px; margin-top: 6px; margin-bottom: 0; line-height: 1.4; max-height: 200px; overflow-y: auto; }
+    .exec-dot-error { background: #dc3545; box-shadow: 0 0 0 1px #dc3545; }
+    .exec-node-error { font-size: 11px; color: #c00; padding: 4px 8px; margin-top: 4px; background: #fff0f0; border-radius: 3px; }
+    .exec-output-index { margin-top: 6px; margin-left: 18px; }
+    .exec-output-label { font-size: 10px; font-weight: 600; color: #666; }
     .exec-sub-workflow { margin-top: 16px; padding-top: 12px; border-top: 1px dashed #e0e0e0; }
     .exec-sub-label { font-size: 12px; font-weight: 600; color: #7c5cfc; margin-bottom: 8px; }
   </style>
