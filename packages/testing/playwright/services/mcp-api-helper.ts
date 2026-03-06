@@ -123,6 +123,23 @@ export interface ExecuteWorkflowResult {
 	error?: string;
 }
 
+/** Response from get_execution tool */
+export interface GetExecutionResult {
+	execution: {
+		id: string;
+		workflowId: string;
+		mode: string;
+		status: string;
+		startedAt: string | null;
+		stoppedAt: string | null;
+		retryOf?: string | null;
+		retrySuccessId?: string | null;
+		waitTill?: string | null;
+	} | null;
+	data?: unknown;
+	error?: string;
+}
+
 /**
  * Helper class for interacting with MCP Server endpoints.
  * Supports both SSE and Streamable HTTP transports.
@@ -963,6 +980,58 @@ export class McpApiHelper {
 		}
 		throw new Error(
 			`Unexpected response format from execute_workflow: ${JSON.stringify(result ?? body)}`,
+		);
+	}
+
+	/**
+	 * Calls get_execution tool on the internal MCP service.
+	 *
+	 * @param apiKey - The MCP API key for authentication
+	 * @param workflowId - The workflow ID the execution belongs to
+	 * @param executionId - The execution ID to retrieve
+	 * @returns Execution details and data
+	 */
+	async internalMcpGetExecution(
+		apiKey: string,
+		workflowId: string,
+		executionId: string,
+	): Promise<GetExecutionResult> {
+		const message = this.createMessage('tools/call', {
+			name: 'get_execution',
+			arguments: { workflowId, executionId },
+		});
+		const response = await this.internalMcpSendMessage(apiKey, message);
+		const contentType = response.headers()['content-type'] ?? '';
+		const body = await response.text();
+
+		// Parse the response (handles both SSE and JSON)
+		let result: McpToolCallResponse;
+		if (contentType.includes('text/event-stream')) {
+			result = this.parseSSEToolResponse(body);
+		} else {
+			const parsed = JSON.parse(body) as { result?: McpToolCallResponse; error?: unknown };
+			if (parsed.error) {
+				throw new Error(`MCP Error: ${JSON.stringify(parsed.error)}`);
+			}
+			result = parsed.result as McpToolCallResponse;
+		}
+
+		if (result?.content?.[0]?.text) {
+			const text = result.content[0].text;
+			try {
+				return JSON.parse(text) as GetExecutionResult;
+			} catch {
+				if (result.isError) {
+					return { execution: null, error: text };
+				}
+				throw new Error(`Invalid JSON response from get_execution: ${text}`);
+			}
+		}
+		if (result?.isError) {
+			return { execution: null, error: JSON.stringify(result) };
+		}
+		throw new Error(
+			`Unexpected response format from get_execution: ${JSON.stringify(result ?? body)}`,
 		);
 	}
 }

@@ -327,6 +327,33 @@ test.describe(
 			});
 		});
 
+		test.describe('get_execution', () => {
+			test('should return full execution data after workflow execution', async ({ api }) => {
+				const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
+					'mcp-service/mcp-available-basic.json',
+				);
+				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
+
+				const { apiKey } = await api.rotateMcpApiKey();
+
+				const execResult = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId);
+				expect(execResult.status).toBe('success');
+				expect(execResult.executionId).toBeTruthy();
+
+				const result = await api.mcp.internalMcpGetExecution(
+					apiKey,
+					workflowId,
+					execResult.executionId!,
+				);
+
+				expect(result.execution).toBeDefined();
+				expect(result.execution!.id).toBe(execResult.executionId);
+				expect(result.execution!.workflowId).toBe(workflowId);
+				expect(result.execution!.status).toBe('success');
+				expect(result.data).toBeDefined();
+			});
+		});
+
 		test.describe('Error Handling', () => {
 			test('should handle malformed JSON-RPC messages', async ({ api }) => {
 				const { apiKey } = await api.rotateMcpApiKey();
