@@ -17,7 +17,9 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        N8N_VERSION: latest
+        # Pin to the latest stable release. Keep in sync with ARG N8N_VERSION in Dockerfile.
+        # Check https://github.com/n8n-io/n8n/releases for newer versions.
+        N8N_VERSION: "2.10.4"
         NODE_MAJOR: "22"
     image: n8n-nsolid:latest
     platform: linux/arm64
@@ -32,8 +34,10 @@ services:
       NSOLID_TAGS: "production,n8n,workflow-automation"
       NSOLID_TRACING_ENABLED: "1"
       NSOLID_OTLP: "otlp"
-      # Override this if you have a local/remote OpenTelemetry collector:
-      NSOLID_OTLP_CONFIG: '{"url":"http://localhost:4318/v1/traces","protocol":"http"}'
+      # Override this if you have a local/remote OpenTelemetry collector.
+      # host.docker.internal resolves to the Docker Desktop host (macOS/Windows).
+      # Linux users: replace with the actual collector address or a sidecar service name.
+      NSOLID_OTLP_CONFIG: '{"url":"http://host.docker.internal:4318/v1/traces","protocol":"http"}'
       # ── n8n settings ───────────────────────────────────────────────────────
       NODE_ENV: production
       # Persist n8n data between restarts

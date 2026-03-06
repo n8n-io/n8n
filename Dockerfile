@@ -14,7 +14,9 @@
 
 FROM debian:bookworm-slim
 
-ARG N8N_VERSION=latest
+# Pin to the latest stable n8n release. Update both here and in docker-compose.yml together.
+# Latest as of 2026-03-06; check https://github.com/n8n-io/n8n/releases for newer versions.
+ARG N8N_VERSION=2.10.4
 # Node.js major version — N|Solid tracks the same LTS lines as Node.js
 ARG NODE_MAJOR=22
 
@@ -40,9 +42,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # ─── Install N|Solid runtime from NodeSource ─────────────────────────────────
 # N|Solid is a hardened, drop-in replacement for Node.js with built-in
 # OpenTelemetry / observability support (no code changes required).
+# Repository is added manually (GPG key + signed-by entry) to avoid the
+# supply-chain risk of executing a remote shell script via curl | bash.
 # nsolid is intentionally unpinned — it tracks the NodeSource LTS channel
-# selected by NODE_MAJOR (updated via the setup script above).
-RUN curl -fsSL https://deb.nodesource.com/setup_${NODE_MAJOR}.x | bash - \
+# selected by NODE_MAJOR.
+RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
+        | gpg --dearmor -o /usr/share/keyrings/nodesource.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/nodesource.gpg] https://deb.nodesource.com/node_${NODE_MAJOR}.x nodistro main" \
+        > /etc/apt/sources.list.d/nodesource.list \
+    && apt-get update \
     && apt-get install -y --no-install-recommends nsolid \
     && rm -rf /var/lib/apt/lists/*
 
@@ -75,7 +83,9 @@ ENV NSOLID_TRACING_ENABLED=1
 ENV NSOLID_OTLP=otlp
 # OTLP endpoint — override at runtime with:
 #   docker run -e NSOLID_OTLP_CONFIG='{"url":"http://<host>:4318/v1/traces","protocol":"http"}' ...
-ENV NSOLID_OTLP_CONFIG='{"url":"http://localhost:4318/v1/traces","protocol":"http"}'
+# host.docker.internal resolves to the Docker Desktop host on macOS/Windows.
+# Linux users: replace with the actual collector IP or use a sidecar service.
+ENV NSOLID_OTLP_CONFIG='{"url":"http://host.docker.internal:4318/v1/traces","protocol":"http"}'
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ─── n8n application settings ────────────────────────────────────────────────
