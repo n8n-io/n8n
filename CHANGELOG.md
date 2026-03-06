@@ -1,3 +1,14 @@
+## [2.11.2](https://github.com/n8n-io/n8n/compare/n8n@2.11.1...n8n@2.11.2) (2026-03-06)
+
+
+### Bug Fixes
+
+* **ai-builder:** Don't use autoGenerate for UUID columns for WFB persistence migration (backport to release-candidate/2.11.x) ([#26589](https://github.com/n8n-io/n8n/issues/26589)) ([d672e4c](https://github.com/n8n-io/n8n/commit/d672e4c1d809cdd508d41281d33b1295d9399e00))
+* **Form Node:** Improve form rendering consistency (backport to release-candidate/2.11.x) ([#26652](https://github.com/n8n-io/n8n/issues/26652)) ([2481969](https://github.com/n8n-io/n8n/commit/2481969032f79b9fe0f0d3cc6b508cd9ee1685ab))
+* Log streaming config works with proxy (backport to release-candidate/2.11.x) ([#26590](https://github.com/n8n-io/n8n/issues/26590)) ([2034f5f](https://github.com/n8n-io/n8n/commit/2034f5f731ae8fab105911d93f897240a93dd666))
+
+
+
 ## [2.11.1](https://github.com/n8n-io/n8n/compare/n8n@2.11.0...n8n@2.11.1) (2026-03-04)
 
 
