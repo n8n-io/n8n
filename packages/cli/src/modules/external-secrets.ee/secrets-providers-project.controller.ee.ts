@@ -64,6 +64,7 @@ export class SecretProvidersProjectController {
 			projectId,
 			providerKey: body.providerKey,
 		});
+
 		const savedConnection = await this.connectionsService.createConnection(
 			{
 				...body,
@@ -73,6 +74,7 @@ export class SecretProvidersProjectController {
 			// When creating a connection for a project, the project owns the connection
 			'secretsProviderConnection:owner',
 		);
+
 		const connection = this.connectionsService.toPublicConnection(savedConnection);
 		const scopes = await this.accessCheckService.getConnectionScopesForProject(
 			req.user,
@@ -107,12 +109,14 @@ export class SecretProvidersProjectController {
 			providerKey,
 			projectId,
 		);
+
 		const connection = this.connectionsService.toPublicConnection(connectionEntity);
 		const scopes = await this.accessCheckService.getConnectionScopesForProject(
 			req.user,
 			providerKey,
 			projectId,
 		);
+
 		return { ...connection, scopes };
 	}
 
@@ -126,18 +130,21 @@ export class SecretProvidersProjectController {
 		@Body body: UpdateSecretsProviderConnectionDto,
 	): Promise<SecretProviderConnection> {
 		this.logger.debug('Updating connection for project', { projectId, providerKey });
+
 		await this.accessCheckService.assertConnectionAccess({
 			providerKey,
 			projectId,
 			requiredScopes: ['externalSecretsProvider:update'],
 			user: req.user,
 		});
+
 		const { projectIds: _, ...updates } = body;
 		const updated = await this.connectionsService.updateConnection(
 			providerKey,
 			updates,
 			req.user.id,
 		);
+
 		const connection = this.connectionsService.toPublicConnection(updated);
 		const scopes = await this.accessCheckService.getConnectionScopesForProject(
 			req.user,
@@ -156,12 +163,14 @@ export class SecretProvidersProjectController {
 		@Param('providerKey') providerKey: string,
 	) {
 		this.logger.debug('Deleting connection for project', { projectId, providerKey });
+
 		await this.accessCheckService.assertConnectionAccess({
 			providerKey,
 			projectId,
 			requiredScopes: ['externalSecretsProvider:delete'],
 			user: req.user,
 		});
+
 		await this.connectionsService.deleteConnectionForProject(providerKey, projectId);
 		res.status(204).send();
 	}
@@ -175,12 +184,14 @@ export class SecretProvidersProjectController {
 		@Param('providerKey') providerKey: string,
 	): Promise<TestSecretProviderConnectionResponse> {
 		this.logger.debug('Testing connection for project', { projectId, providerKey });
+
 		await this.accessCheckService.assertConnectionAccess({
 			providerKey,
 			projectId,
 			requiredScopes: ['externalSecretsProvider:update'],
 			user: req.user,
 		});
+
 		return await this.connectionsService.testConnection(providerKey, req.user.id);
 	}
 
