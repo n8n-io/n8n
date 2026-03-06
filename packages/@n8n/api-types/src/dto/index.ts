@@ -176,3 +176,6 @@ export {
 } from './executions/execution-redaction-query.dto';
 
 export { ExportProjectsRequestDto } from './import-export/export-projects-request.dto';
+export { ExportWorkflowsRequestDto } from './import-export/export-workflows-request.dto';
+export { ExportFoldersRequestDto } from './import-export/export-folders-request.dto';
+export type { AnalyzePackageResponse } from './import-export/analyze-package-response.dto';

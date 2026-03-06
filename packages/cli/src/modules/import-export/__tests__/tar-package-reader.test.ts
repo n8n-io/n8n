@@ -12,14 +12,14 @@ async function streamToBuffer(stream: NodeJS.ReadableStream): Promise<Buffer> {
 describe('TarPackageReader', () => {
 	it('should roundtrip with TarPackageWriter', async () => {
 		const writer = new TarPackageWriter();
-		writer.writeFile('manifest.json', '{"formatVersion":"1"}');
+		writer.writeFile('manifest.json', '{"packageFormatVersion":"1"}');
 		writer.writeDirectory('projects/billing/');
 		writer.writeFile('projects/billing/project.json', '{"id":"p1","name":"billing"}');
 		const buffer = await streamToBuffer(writer.finalize());
 
 		const reader = await TarPackageReader.fromBuffer(buffer);
 
-		expect(reader.readFile('manifest.json')).toBe('{"formatVersion":"1"}');
+		expect(reader.readFile('manifest.json')).toBe('{"packageFormatVersion":"1"}');
 		expect(reader.readFile('projects/billing/project.json')).toBe('{"id":"p1","name":"billing"}');
 	});
 

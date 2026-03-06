@@ -3,9 +3,3 @@ export interface SerializedFolder {
 	name: string;
 	parentFolderId: string | null;
 }
-
-export interface ManifestFolderEntry {
-	id: string;
-	name: string;
-	target: string;
-}

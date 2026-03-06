@@ -64,10 +64,14 @@ export class ImportService {
 		this.dbTags = await this.tagRepository.find();
 	}
 
-	async importWorkflows(workflows: IWorkflowWithVersionMetadata[], projectId: string) {
+	async importWorkflows(
+		workflows: IWorkflowWithVersionMetadata[],
+		projectId: string,
+		entityManager?: EntityManager,
+	) {
 		await this.initRecords();
 
-		const { manager: dbManager } = this.credentialsRepository;
+		const dbManager = entityManager ?? this.credentialsRepository.manager;
 
 		// Check existence and active status of all workflows
 		const workflowIds = workflows.map((w) => w.id).filter((id) => !!id);

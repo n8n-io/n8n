@@ -1,44 +1,57 @@
 import { Service } from '@n8n/di';
 import { CredentialsRepository } from '@n8n/db';
+import { In } from '@n8n/typeorm';
 
-import type { ProjectExportContext } from '../import-export.types';
-import { generateSlug } from '../slug.utils';
-
-import { CredentialSerializer } from './credential.serializer';
-import type { ManifestCredentialEntry } from './credential.types';
+import type { EntityExporter } from '../entity-exporter';
+import { writeEntityFiles } from '../entity-exporter';
+import type { EntityKey, ExportScope, ManifestEntry } from '../import-export.types';
 
 @Service()
-export class CredentialExporter {
-	constructor(
-		private readonly credentialsRepository: CredentialsRepository,
-		private readonly credentialSerializer: CredentialSerializer,
-	) {}
+export class CredentialExporter implements EntityExporter {
+	readonly entityKey: EntityKey = 'credentials';
 
-	async exportForProject(ctx: ProjectExportContext): Promise<ManifestCredentialEntry[]> {
+	constructor(private readonly credentialsRepository: CredentialsRepository) {}
+
+	async export(scope: ExportScope): Promise<ManifestEntry[]> {
+		if (!scope.projectId) return [];
+
 		const credentials = await this.credentialsRepository.find({
-			where: { shared: { projectId: ctx.projectId } },
+			select: { id: true, name: true, type: true },
+			where: { shared: { projectId: scope.projectId } },
 		});
 
 		if (credentials.length === 0) return [];
 
-		const entries: ManifestCredentialEntry[] = [];
+		return this.writeCredentials(credentials, scope);
+	}
 
-		for (const credential of credentials) {
-			const slug = generateSlug(credential.name, credential.id);
-			const target = `${ctx.projectTarget}/credentials/${slug}`;
+	/**
+	 * Export specific credentials by ID. Used by the pipeline to include
+	 * referenced credentials in workflow/folder packages.
+	 */
+	async exportByIds(ids: string[], scope: ExportScope): Promise<ManifestEntry[]> {
+		if (ids.length === 0) return [];
 
-			const serialized = this.credentialSerializer.serialize(credential);
+		const credentials = await this.credentialsRepository.find({
+			select: { id: true, name: true, type: true },
+			where: { id: In(ids) },
+		});
 
-			ctx.writer.writeDirectory(target);
-			ctx.writer.writeFile(`${target}/credential.json`, JSON.stringify(serialized, null, '\t'));
+		if (credentials.length === 0) return [];
 
-			entries.push({
-				id: credential.id,
-				name: credential.name,
-				target,
-			});
-		}
+		return this.writeCredentials(credentials, scope);
+	}
 
-		return entries;
+	private writeCredentials(
+		credentials: Array<{ id: string; name: string; type: string }>,
+		scope: ExportScope,
+	): ManifestEntry[] {
+		return writeEntityFiles(credentials, scope, {
+			resourceDir: 'credentials',
+			filename: 'credential.json',
+			getId: (c) => c.id,
+			getName: (c) => c.name,
+			serialize: (c) => ({ id: c.id, name: c.name, type: c.type }),
+		});
 	}
 }

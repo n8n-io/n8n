@@ -2,41 +2,39 @@ import type { Variables, VariablesRepository } from '@n8n/db';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 
-import type { ProjectExportContext } from '../../import-export.types';
+import type { ExportScope } from '../../import-export.types';
 import type { PackageWriter } from '../../package-writer';
 import { VariableExporter } from '../variable.exporter';
-import type { VariableSerializer } from '../variable.serializer';
 
 describe('VariableExporter', () => {
 	let exporter: VariableExporter;
 	let mockVariablesRepository: MockProxy<VariablesRepository>;
-	let mockSerializer: MockProxy<VariableSerializer>;
 	let mockWriter: MockProxy<PackageWriter>;
-	let ctx: ProjectExportContext;
+	let scope: ExportScope;
 
-	const projectTarget = 'projects/billing-550e84';
+	const basePath = 'projects/billing-550e84';
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 
 		mockVariablesRepository = mock<VariablesRepository>();
-		mockSerializer = mock<VariableSerializer>();
 		mockWriter = mock<PackageWriter>();
 
-		exporter = new VariableExporter(mockVariablesRepository, mockSerializer);
+		exporter = new VariableExporter(mockVariablesRepository);
 
-		ctx = {
+		scope = {
+			basePath,
 			projectId: 'project-1',
-			projectTarget,
-			folderPathMap: new Map(),
 			writer: mockWriter,
+			entityOptions: {},
+			state: { folderPathMap: new Map(), nodesByWorkflow: [] },
 		};
 	});
 
 	it('should return empty array when project has no variables', async () => {
 		mockVariablesRepository.find.mockResolvedValue([]);
 
-		const entries = await exporter.exportForProject(ctx);
+		const entries = await exporter.export(scope);
 
 		expect(entries).toEqual([]);
 		expect(mockWriter.writeDirectory).not.toHaveBeenCalled();
@@ -52,14 +50,8 @@ describe('VariableExporter', () => {
 		} as unknown as Variables;
 
 		mockVariablesRepository.find.mockResolvedValue([variable]);
-		mockSerializer.serialize.mockReturnValue({
-			id: variable.id,
-			key: 'API_BASE_URL',
-			type: 'string',
-			value: 'https://api.example.com',
-		});
 
-		const entries = await exporter.exportForProject(ctx);
+		const entries = await exporter.export(scope);
 
 		expect(entries).toHaveLength(1);
 		expect(entries[0].id).toBe(variable.id);
@@ -82,11 +74,8 @@ describe('VariableExporter', () => {
 		] as unknown as Variables[];
 
 		mockVariablesRepository.find.mockResolvedValue(variables);
-		mockSerializer.serialize
-			.mockReturnValueOnce({ id: variables[0].id, key: 'VAR_A', type: 'string', value: 'a' })
-			.mockReturnValueOnce({ id: variables[1].id, key: 'VAR_B', type: 'string', value: 'b' });
 
-		const entries = await exporter.exportForProject(ctx);
+		const entries = await exporter.export(scope);
 
 		expect(entries).toHaveLength(2);
 		expect(mockWriter.writeDirectory).toHaveBeenCalledTimes(2);
@@ -109,9 +98,8 @@ describe('VariableExporter', () => {
 		};
 
 		mockVariablesRepository.find.mockResolvedValue([variable]);
-		mockSerializer.serialize.mockReturnValue(serialized);
 
-		await exporter.exportForProject(ctx);
+		await exporter.export(scope);
 
 		const writtenContent = mockWriter.writeFile.mock.calls[0][1] as string;
 		expect(JSON.parse(writtenContent)).toEqual(serialized);
@@ -120,7 +108,7 @@ describe('VariableExporter', () => {
 	it('should query variables by project id', async () => {
 		mockVariablesRepository.find.mockResolvedValue([]);
 
-		await exporter.exportForProject(ctx);
+		await exporter.export(scope);
 
 		expect(mockVariablesRepository.find).toHaveBeenCalledWith({
 			where: { project: { id: 'project-1' } },

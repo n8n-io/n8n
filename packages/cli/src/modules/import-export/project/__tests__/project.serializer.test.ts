@@ -5,7 +5,7 @@ import { ProjectSerializer } from '../project.serializer';
 describe('ProjectSerializer', () => {
 	const serializer = new ProjectSerializer();
 
-	const baseProject: Project = {
+	const baseProject = {
 		id: '550e8400-e29b-41d4-a716-446655440000',
 		name: 'billing',
 		type: 'team',
@@ -19,7 +19,7 @@ describe('ProjectSerializer', () => {
 		variables: [],
 		createdAt: new Date('2024-01-01'),
 		updatedAt: new Date('2024-01-02'),
-	} as Project;
+	} as unknown as Project;
 
 	it('should serialize a project with only id and name when no optional fields', () => {
 		const result = serializer.serialize(baseProject);

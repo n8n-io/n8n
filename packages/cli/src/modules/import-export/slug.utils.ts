@@ -33,6 +33,8 @@ const EMOJI_NAMES: Record<string, string> = {
 	'\u{1F4B5}': 'dollar',
 };
 
+const EMOJI_ENTRIES = Object.entries(EMOJI_NAMES);
+
 /**
  * Generates a filesystem-safe slug from a project name and short ID.
  * Format: `{slug}-{shortId}` or just `{shortId}` if name yields empty slug.
@@ -43,7 +45,7 @@ export function generateSlug(name: string, id: string): string {
 	let slug = name;
 
 	// Replace known emojis with their names
-	for (const [emoji, emojiName] of Object.entries(EMOJI_NAMES)) {
+	for (const [emoji, emojiName] of EMOJI_ENTRIES) {
 		slug = slug.replaceAll(emoji, emojiName);
 	}
 

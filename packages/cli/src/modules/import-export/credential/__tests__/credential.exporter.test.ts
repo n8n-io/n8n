@@ -2,41 +2,39 @@ import type { CredentialsEntity, CredentialsRepository } from '@n8n/db';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 
-import type { ProjectExportContext } from '../../import-export.types';
+import type { ExportScope } from '../../import-export.types';
 import type { PackageWriter } from '../../package-writer';
 import { CredentialExporter } from '../credential.exporter';
-import type { CredentialSerializer } from '../credential.serializer';
 
 describe('CredentialExporter', () => {
 	let exporter: CredentialExporter;
 	let mockCredentialsRepository: MockProxy<CredentialsRepository>;
-	let mockSerializer: MockProxy<CredentialSerializer>;
 	let mockWriter: MockProxy<PackageWriter>;
-	let ctx: ProjectExportContext;
+	let scope: ExportScope;
 
-	const projectTarget = 'projects/billing-550e84';
+	const basePath = 'projects/billing-550e84';
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 
 		mockCredentialsRepository = mock<CredentialsRepository>();
-		mockSerializer = mock<CredentialSerializer>();
 		mockWriter = mock<PackageWriter>();
 
-		exporter = new CredentialExporter(mockCredentialsRepository, mockSerializer);
+		exporter = new CredentialExporter(mockCredentialsRepository);
 
-		ctx = {
+		scope = {
+			basePath,
 			projectId: 'project-1',
-			projectTarget,
-			folderPathMap: new Map(),
 			writer: mockWriter,
+			entityOptions: {},
+			state: { folderPathMap: new Map(), nodesByWorkflow: [] },
 		};
 	});
 
 	it('should return empty array when project has no credentials', async () => {
 		mockCredentialsRepository.find.mockResolvedValue([]);
 
-		const entries = await exporter.exportForProject(ctx);
+		const entries = await exporter.export(scope);
 
 		expect(entries).toEqual([]);
 		expect(mockWriter.writeDirectory).not.toHaveBeenCalled();
@@ -51,13 +49,8 @@ describe('CredentialExporter', () => {
 		} as CredentialsEntity;
 
 		mockCredentialsRepository.find.mockResolvedValue([credential]);
-		mockSerializer.serialize.mockReturnValue({
-			id: credential.id,
-			name: credential.name,
-			type: 'slackApi',
-		});
 
-		const entries = await exporter.exportForProject(ctx);
+		const entries = await exporter.export(scope);
 
 		expect(entries).toHaveLength(1);
 		expect(entries[0].id).toBe(credential.id);
@@ -80,11 +73,8 @@ describe('CredentialExporter', () => {
 		] as CredentialsEntity[];
 
 		mockCredentialsRepository.find.mockResolvedValue(credentials);
-		mockSerializer.serialize
-			.mockReturnValueOnce({ id: credentials[0].id, name: 'Slack', type: 'slackApi' })
-			.mockReturnValueOnce({ id: credentials[1].id, name: 'GitHub', type: 'githubApi' });
 
-		const entries = await exporter.exportForProject(ctx);
+		const entries = await exporter.export(scope);
 
 		expect(entries).toHaveLength(2);
 		expect(mockWriter.writeDirectory).toHaveBeenCalledTimes(2);
@@ -100,21 +90,35 @@ describe('CredentialExporter', () => {
 
 		const serialized = { id: credential.id, name: credential.name, type: 'slackApi' };
 		mockCredentialsRepository.find.mockResolvedValue([credential]);
-		mockSerializer.serialize.mockReturnValue(serialized);
 
-		await exporter.exportForProject(ctx);
+		await exporter.export(scope);
 
 		const writtenContent = mockWriter.writeFile.mock.calls[0][1] as string;
 		expect(JSON.parse(writtenContent)).toEqual(serialized);
 	});
 
-	it('should query credentials by project id', async () => {
+	it('should query credentials by project id with select clause excluding data blob', async () => {
 		mockCredentialsRepository.find.mockResolvedValue([]);
 
-		await exporter.exportForProject(ctx);
+		await exporter.export(scope);
 
 		expect(mockCredentialsRepository.find).toHaveBeenCalledWith({
+			select: { id: true, name: true, type: true },
 			where: { shared: { projectId: 'project-1' } },
 		});
+	});
+
+	it('should return empty array when no projectId', async () => {
+		scope = {
+			basePath: '.',
+			writer: mockWriter,
+			entityOptions: {},
+			state: { folderPathMap: new Map(), nodesByWorkflow: [] },
+		};
+
+		const entries = await exporter.export(scope);
+
+		expect(entries).toEqual([]);
+		expect(mockCredentialsRepository.find).not.toHaveBeenCalled();
 	});
 });

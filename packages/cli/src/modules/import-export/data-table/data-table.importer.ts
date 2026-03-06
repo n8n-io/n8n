@@ -1,25 +1,36 @@
 import { Service } from '@n8n/di';
+import { jsonParse } from 'n8n-workflow';
 
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 
-import type { Importer } from '../importer';
-import type { ProjectImportContext } from '../import-export.types';
-import type { ManifestDataTableEntry, SerializedDataTable } from './data-table.types';
+import type { EntityImporter } from '../entity-importer';
+import type { EntityKey, ImportScope, ManifestEntry } from '../import-export.types';
+import type { SerializedDataTable } from './data-table.types';
 
 @Service()
-export class DataTableImporter implements Importer<ManifestDataTableEntry> {
+export class DataTableImporter implements EntityImporter {
+	readonly entityKey: EntityKey = 'dataTables';
+
 	constructor(private readonly dataTableRepository: DataTableRepository) {}
 
-	async importForProject(ctx: ProjectImportContext, entries: ManifestDataTableEntry[]) {
+	async import(scope: ImportScope, entries: ManifestEntry[]) {
 		for (const entry of entries) {
-			const content = ctx.reader.readFile(`${entry.target}/data-table.json`);
-			const dataTable = JSON.parse(content) as SerializedDataTable;
+			const content = scope.reader.readFile(`${entry.target}/data-table.json`);
+			const dataTable: SerializedDataTable = jsonParse(content);
 
-			await this.dataTableRepository.createDataTable(
-				ctx.projectId,
-				dataTable.name,
-				dataTable.columns,
-			);
+			// Skip if a data table with the same name already exists in this project
+			const existing = await this.dataTableRepository.findOne({
+				where: { name: dataTable.name, projectId: scope.targetProjectId },
+			});
+
+			if (!existing) {
+				await this.dataTableRepository.createDataTable(
+					scope.targetProjectId,
+					dataTable.name,
+					dataTable.columns,
+					scope.entityManager,
+				);
+			}
 		}
 	}
 }

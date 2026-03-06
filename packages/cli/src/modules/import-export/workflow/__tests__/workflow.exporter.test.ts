@@ -2,7 +2,7 @@ import type { WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 
-import type { ProjectExportContext } from '../../import-export.types';
+import type { ExportScope } from '../../import-export.types';
 import type { PackageWriter } from '../../package-writer';
 import { WorkflowExporter } from '../workflow.exporter';
 import type { WorkflowSerializer } from '../workflow.serializer';
@@ -12,9 +12,9 @@ describe('WorkflowExporter', () => {
 	let mockWorkflowRepository: MockProxy<WorkflowRepository>;
 	let mockSerializer: MockProxy<WorkflowSerializer>;
 	let mockWriter: MockProxy<PackageWriter>;
-	let ctx: ProjectExportContext;
+	let scope: ExportScope;
 
-	const projectTarget = 'projects/billing-550e84';
+	const basePath = 'projects/billing-550e84';
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -25,20 +25,22 @@ describe('WorkflowExporter', () => {
 
 		exporter = new WorkflowExporter(mockWorkflowRepository, mockSerializer);
 
-		ctx = {
+		scope = {
+			basePath,
 			projectId: 'project-1',
-			projectTarget,
-			folderPathMap: new Map(),
 			writer: mockWriter,
+			entityOptions: {},
+			state: { folderPathMap: new Map(), nodesByWorkflow: [] },
 		};
 	});
 
-	it('should return empty array when project has no workflows', async () => {
+	it('should return empty result when project has no workflows', async () => {
 		mockWorkflowRepository.find.mockResolvedValue([]);
 
-		const entries = await exporter.exportForProject(ctx);
+		const result = await exporter.export(scope);
 
-		expect(entries).toEqual([]);
+		expect(result).toEqual([]);
+		expect(scope.state.nodesByWorkflow).toEqual([]);
 		expect(mockWriter.writeDirectory).not.toHaveBeenCalled();
 		expect(mockWriter.writeFile).not.toHaveBeenCalled();
 	});
@@ -47,8 +49,9 @@ describe('WorkflowExporter', () => {
 		const workflow = {
 			id: 'abc12300-0000-0000-0000-000000000000',
 			name: 'daily-sync',
+			nodes: [{ id: 'n1', type: 'n8n-nodes-base.slack' }],
 			parentFolder: null,
-		} as WorkflowEntity;
+		} as unknown as WorkflowEntity;
 
 		mockWorkflowRepository.find.mockResolvedValue([workflow]);
 		mockSerializer.serialize.mockReturnValue({
@@ -61,12 +64,12 @@ describe('WorkflowExporter', () => {
 			isArchived: false,
 		});
 
-		const entries = await exporter.exportForProject(ctx);
+		const result = await exporter.export(scope);
 
-		expect(entries).toHaveLength(1);
-		expect(entries[0].id).toBe(workflow.id);
-		expect(entries[0].name).toBe('daily-sync');
-		expect(entries[0].target).toBe('projects/billing-550e84/workflows/daily-sync-abc123');
+		expect(result).toHaveLength(1);
+		expect(result[0].id).toBe(workflow.id);
+		expect(result[0].name).toBe('daily-sync');
+		expect(result[0].target).toBe('projects/billing-550e84/workflows/daily-sync-abc123');
 
 		expect(mockWriter.writeDirectory).toHaveBeenCalledWith(
 			'projects/billing-550e84/workflows/daily-sync-abc123',
@@ -77,6 +80,42 @@ describe('WorkflowExporter', () => {
 		);
 	});
 
+	it('should return nodesByWorkflow alongside entries', async () => {
+		const nodes = [
+			{
+				id: 'n1',
+				type: 'n8n-nodes-base.slack',
+				name: 'Slack',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			},
+		];
+		const workflow = {
+			id: 'abc12300-0000-0000-0000-000000000000',
+			name: 'daily-sync',
+			nodes,
+			parentFolder: null,
+		} as unknown as WorkflowEntity;
+
+		mockWorkflowRepository.find.mockResolvedValue([workflow]);
+		mockSerializer.serialize.mockReturnValue({
+			id: workflow.id,
+			name: workflow.name,
+			nodes: [],
+			connections: {},
+			versionId: 'v1',
+			parentFolderId: null,
+			isArchived: false,
+		});
+
+		await exporter.export(scope);
+
+		expect(scope.state.nodesByWorkflow).toHaveLength(1);
+		expect(scope.state.nodesByWorkflow[0].workflowId).toBe(workflow.id);
+		expect(scope.state.nodesByWorkflow[0].nodes).toEqual(nodes);
+	});
+
 	it('should export a workflow inside a folder', async () => {
 		const workflow = {
 			id: 'def45600-0000-0000-0000-000000000000',
@@ -84,7 +123,7 @@ describe('WorkflowExporter', () => {
 			parentFolder: { id: 'folder-1' },
 		} as unknown as WorkflowEntity;
 
-		ctx.folderPathMap.set('folder-1', 'projects/billing-550e84/folders/invoices-folder1');
+		scope.state.folderPathMap.set('folder-1', 'projects/billing-550e84/folders/invoices-folder1');
 
 		mockWorkflowRepository.find.mockResolvedValue([workflow]);
 		mockSerializer.serialize.mockReturnValue({
@@ -97,10 +136,10 @@ describe('WorkflowExporter', () => {
 			isArchived: false,
 		});
 
-		const entries = await exporter.exportForProject(ctx);
+		const result = await exporter.export(scope);
 
-		expect(entries).toHaveLength(1);
-		expect(entries[0].target).toBe(
+		expect(result).toHaveLength(1);
+		expect(result[0].target).toBe(
 			'projects/billing-550e84/folders/invoices-folder1/workflows/invoice-gen-def456',
 		);
 	});
@@ -123,9 +162,9 @@ describe('WorkflowExporter', () => {
 			isArchived: false,
 		});
 
-		const entries = await exporter.exportForProject(ctx);
+		const result = await exporter.export(scope);
 
-		expect(entries[0].target).toBe('projects/billing-550e84/workflows/orphaned-workflow-abc123');
+		expect(result[0].target).toBe('projects/billing-550e84/workflows/orphaned-workflow-abc123');
 	});
 
 	it('should export multiple workflows', async () => {
@@ -163,9 +202,10 @@ describe('WorkflowExporter', () => {
 				isArchived: false,
 			});
 
-		const entries = await exporter.exportForProject(ctx);
+		const result = await exporter.export(scope);
 
-		expect(entries).toHaveLength(2);
+		expect(result).toHaveLength(2);
+		expect(scope.state.nodesByWorkflow).toHaveLength(2);
 		expect(mockWriter.writeDirectory).toHaveBeenCalledTimes(2);
 		expect(mockWriter.writeFile).toHaveBeenCalledTimes(2);
 	});
@@ -190,20 +230,89 @@ describe('WorkflowExporter', () => {
 		mockWorkflowRepository.find.mockResolvedValue([workflow]);
 		mockSerializer.serialize.mockReturnValue(serialized);
 
-		await exporter.exportForProject(ctx);
+		await exporter.export(scope);
 
 		const writtenContent = mockWriter.writeFile.mock.calls[0][1] as string;
 		expect(JSON.parse(writtenContent)).toEqual(serialized);
 	});
 
-	it('should query workflows by project id with parentFolder relation', async () => {
+	it('should query workflows by project id with parentFolder relation and select clause', async () => {
 		mockWorkflowRepository.find.mockResolvedValue([]);
 
-		await exporter.exportForProject(ctx);
+		await exporter.export(scope);
 
 		expect(mockWorkflowRepository.find).toHaveBeenCalledWith({
+			select: ['id', 'name', 'nodes', 'connections', 'settings', 'versionId', 'isArchived'],
 			where: { shared: { projectId: 'project-1' } },
 			relations: ['parentFolder'],
+		});
+	});
+
+	describe('folderIds scope', () => {
+		beforeEach(() => {
+			scope = {
+				basePath: '.',
+				folderIds: ['folder-1', 'folder-2'],
+				writer: mockWriter,
+				entityOptions: {},
+				state: {
+					folderPathMap: new Map([
+						['folder-1', './folders/invoices-folder1'],
+						['folder-2', './folders/invoices-folder1/q1-folder2'],
+					]),
+					nodesByWorkflow: [],
+				},
+			};
+		});
+
+		it('should fetch workflows by folder IDs from folderPathMap', async () => {
+			const workflow = {
+				id: 'abc12300-0000-0000-0000-000000000000',
+				name: 'daily-sync',
+				nodes: [],
+				parentFolder: { id: 'folder-1' },
+			} as unknown as WorkflowEntity;
+
+			mockWorkflowRepository.find.mockResolvedValue([workflow]);
+			mockSerializer.serialize.mockReturnValue({
+				id: workflow.id,
+				name: workflow.name,
+				nodes: [],
+				connections: {},
+				versionId: 'v1',
+				parentFolderId: 'folder-1',
+				isArchived: false,
+			});
+
+			const result = await exporter.export(scope);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].target).toBe('./folders/invoices-folder1/workflows/daily-sync-abc123');
+
+			expect(mockWorkflowRepository.find).toHaveBeenCalledWith(
+				expect.objectContaining({
+					where: { parentFolder: { id: expect.anything() } },
+					relations: ['parentFolder'],
+				}),
+			);
+		});
+
+		it('should return empty when folders have no workflows', async () => {
+			mockWorkflowRepository.find.mockResolvedValue([]);
+
+			const result = await exporter.export(scope);
+
+			expect(result).toEqual([]);
+			expect(scope.state.nodesByWorkflow).toEqual([]);
+		});
+
+		it('should return empty when folderPathMap is empty', async () => {
+			scope.state.folderPathMap = new Map();
+
+			const result = await exporter.export(scope);
+
+			expect(result).toEqual([]);
+			expect(mockWorkflowRepository.find).not.toHaveBeenCalled();
 		});
 	});
 });

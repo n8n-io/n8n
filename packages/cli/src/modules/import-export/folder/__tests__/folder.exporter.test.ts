@@ -2,7 +2,7 @@ import type { Folder, FolderRepository } from '@n8n/db';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 
-import type { ProjectExportContext } from '../../import-export.types';
+import type { ExportScope } from '../../import-export.types';
 import type { PackageWriter } from '../../package-writer';
 import { FolderExporter } from '../folder.exporter';
 import type { FolderSerializer } from '../folder.serializer';
@@ -12,9 +12,9 @@ describe('FolderExporter', () => {
 	let mockFolderRepository: MockProxy<FolderRepository>;
 	let mockSerializer: MockProxy<FolderSerializer>;
 	let mockWriter: MockProxy<PackageWriter>;
-	let ctx: ProjectExportContext;
+	let scope: ExportScope;
 
-	const projectTarget = 'projects/billing-550e84';
+	const basePath = 'projects/billing-550e84';
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -25,20 +25,21 @@ describe('FolderExporter', () => {
 
 		exporter = new FolderExporter(mockFolderRepository, mockSerializer);
 
-		ctx = {
+		scope = {
+			basePath,
 			projectId: 'project-1',
-			projectTarget,
-			folderPathMap: new Map(),
 			writer: mockWriter,
+			entityOptions: {},
+			state: { folderPathMap: new Map(), nodesByWorkflow: [] },
 		};
 	});
 
 	it('should return empty array when project has no folders', async () => {
 		mockFolderRepository.find.mockResolvedValue([]);
 
-		const entries = await exporter.exportForProject(ctx);
+		const result = await exporter.export(scope);
 
-		expect(entries).toEqual([]);
+		expect(result).toEqual([]);
 		expect(mockWriter.writeDirectory).not.toHaveBeenCalled();
 		expect(mockWriter.writeFile).not.toHaveBeenCalled();
 	});
@@ -57,12 +58,12 @@ describe('FolderExporter', () => {
 			parentFolderId: null,
 		});
 
-		const entries = await exporter.exportForProject(ctx);
+		const result = await exporter.export(scope);
 
-		expect(entries).toHaveLength(1);
-		expect(entries[0].id).toBe(folder.id);
-		expect(entries[0].name).toBe('invoices');
-		expect(entries[0].target).toBe('projects/billing-550e84/folders/invoices-aabb11');
+		expect(result).toHaveLength(1);
+		expect(result[0].id).toBe(folder.id);
+		expect(result[0].name).toBe('invoices');
+		expect(result[0].target).toBe('projects/billing-550e84/folders/invoices-aabb11');
 
 		expect(mockWriter.writeDirectory).toHaveBeenCalledWith(
 			'projects/billing-550e84/folders/invoices-aabb11',
@@ -73,7 +74,7 @@ describe('FolderExporter', () => {
 		);
 	});
 
-	it('should populate folderPathMap on context', async () => {
+	it('should return folderPathMap in result', async () => {
 		const folder = {
 			id: 'aabb1100-0000-0000-0000-000000000000',
 			name: 'invoices',
@@ -87,9 +88,9 @@ describe('FolderExporter', () => {
 			parentFolderId: null,
 		});
 
-		await exporter.exportForProject(ctx);
+		await exporter.export(scope);
 
-		expect(ctx.folderPathMap.get(folder.id)).toBe(
+		expect(scope.state.folderPathMap.get(folder.id)).toBe(
 			'projects/billing-550e84/folders/invoices-aabb11',
 		);
 	});
@@ -120,12 +121,12 @@ describe('FolderExporter', () => {
 				parentFolderId: childFolder.parentFolderId,
 			});
 
-		const entries = await exporter.exportForProject(ctx);
+		const result = await exporter.export(scope);
 
-		expect(entries).toHaveLength(2);
+		expect(result).toHaveLength(2);
 
-		const parentEntry = entries.find((e) => e.id === parentFolder.id)!;
-		const childEntry = entries.find((e) => e.id === childFolder.id)!;
+		const parentEntry = result.find((e) => e.id === parentFolder.id)!;
+		const childEntry = result.find((e) => e.id === childFolder.id)!;
 
 		expect(parentEntry.target).toBe('projects/billing-550e84/folders/invoices-aabb11');
 		expect(childEntry.target).toBe(
@@ -144,9 +145,9 @@ describe('FolderExporter', () => {
 			.mockReturnValueOnce({ id: folders[0].id, name: folders[0].name, parentFolderId: null })
 			.mockReturnValueOnce({ id: folders[1].id, name: folders[1].name, parentFolderId: null });
 
-		const entries = await exporter.exportForProject(ctx);
+		const result = await exporter.export(scope);
 
-		expect(entries).toHaveLength(2);
+		expect(result).toHaveLength(2);
 		expect(mockWriter.writeDirectory).toHaveBeenCalledTimes(2);
 		expect(mockWriter.writeFile).toHaveBeenCalledTimes(2);
 	});
@@ -162,7 +163,7 @@ describe('FolderExporter', () => {
 		mockFolderRepository.find.mockResolvedValue([folder]);
 		mockSerializer.serialize.mockReturnValue(serialized);
 
-		await exporter.exportForProject(ctx);
+		await exporter.export(scope);
 
 		const writtenContent = mockWriter.writeFile.mock.calls[0][1] as string;
 		expect(JSON.parse(writtenContent)).toEqual(serialized);
@@ -201,9 +202,9 @@ describe('FolderExporter', () => {
 				parentFolderId: leaf.parentFolderId,
 			});
 
-		const entries = await exporter.exportForProject(ctx);
+		const result = await exporter.export(scope);
 
-		const leafEntry = entries.find((e) => e.id === leaf.id)!;
+		const leafEntry = result.find((e) => e.id === leaf.id)!;
 		expect(leafEntry.target).toBe(
 			'projects/billing-550e84/folders/level-1-aabb11/level-2-ccdd22/level-3-eeff33',
 		);
@@ -212,10 +213,88 @@ describe('FolderExporter', () => {
 	it('should query folders by project id', async () => {
 		mockFolderRepository.find.mockResolvedValue([]);
 
-		await exporter.exportForProject(ctx);
+		await exporter.export(scope);
 
 		expect(mockFolderRepository.find).toHaveBeenCalledWith({
 			where: { homeProject: { id: 'project-1' } },
+		});
+	});
+
+	describe('folderIds scope', () => {
+		beforeEach(() => {
+			scope = {
+				basePath: '.',
+				folderIds: ['folder-1'],
+				writer: mockWriter,
+				entityOptions: {},
+				state: { folderPathMap: new Map(), nodesByWorkflow: [] },
+			};
+		});
+
+		it('should fetch target folders and their descendants', async () => {
+			const parentFolder = {
+				id: 'folder-1',
+				name: 'invoices',
+				parentFolderId: null,
+			} as Folder;
+
+			const childFolder = {
+				id: 'folder-2',
+				name: 'q1',
+				parentFolderId: 'folder-1',
+			} as Folder;
+
+			mockFolderRepository.getAllFolderIdsInHierarchy.mockResolvedValue(['folder-2']);
+			mockFolderRepository.find.mockResolvedValue([parentFolder, childFolder]);
+			mockSerializer.serialize
+				.mockReturnValueOnce({ id: parentFolder.id, name: parentFolder.name, parentFolderId: null })
+				.mockReturnValueOnce({
+					id: childFolder.id,
+					name: childFolder.name,
+					parentFolderId: childFolder.parentFolderId,
+				});
+
+			const result = await exporter.export(scope);
+
+			expect(mockFolderRepository.getAllFolderIdsInHierarchy).toHaveBeenCalledWith('folder-1');
+			expect(result).toHaveLength(2);
+			expect(result.map((e) => e.id).sort()).toEqual(['folder-1', 'folder-2']);
+		});
+
+		it('should deduplicate when parent and child are both selected', async () => {
+			scope.folderIds = ['folder-1', 'folder-2'];
+
+			const parentFolder = { id: 'folder-1', name: 'invoices', parentFolderId: null } as Folder;
+			const childFolder = { id: 'folder-2', name: 'q1', parentFolderId: 'folder-1' } as Folder;
+
+			// folder-1 has child folder-2; folder-2 has no children
+			mockFolderRepository.getAllFolderIdsInHierarchy
+				.mockResolvedValueOnce(['folder-2'])
+				.mockResolvedValueOnce([]);
+
+			mockFolderRepository.find.mockResolvedValue([parentFolder, childFolder]);
+			mockSerializer.serialize
+				.mockReturnValueOnce({ id: parentFolder.id, name: parentFolder.name, parentFolderId: null })
+				.mockReturnValueOnce({
+					id: childFolder.id,
+					name: childFolder.name,
+					parentFolderId: childFolder.parentFolderId,
+				});
+
+			const result = await exporter.export(scope);
+
+			expect(result).toHaveLength(2);
+			// The find should be called with both IDs (deduplicated via Set)
+			expect(mockFolderRepository.find).toHaveBeenCalledTimes(1);
+		});
+
+		it('should return empty when folderIds yields no folders', async () => {
+			mockFolderRepository.getAllFolderIdsInHierarchy.mockResolvedValue([]);
+			mockFolderRepository.find.mockResolvedValue([]);
+
+			const result = await exporter.export(scope);
+
+			expect(result).toEqual([]);
 		});
 	});
 });

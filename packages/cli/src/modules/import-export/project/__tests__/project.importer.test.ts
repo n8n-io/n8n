@@ -1,24 +1,19 @@
-import type { Project, User } from '@n8n/db';
+import type { Project, ProjectRepository, User } from '@n8n/db';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 
 import type { ProjectService } from '@/services/project.service.ee';
 
-import type { DataTableImporter } from '../../data-table/data-table.importer';
-import type { FolderImporter } from '../../folder/folder.importer';
+import type { ImportPipeline } from '../../import-pipeline';
 import type { PackageReader } from '../../package-reader';
-import type { VariableImporter } from '../../variable/variable.importer';
-import type { WorkflowImporter } from '../../workflow/workflow.importer';
 import { ProjectImporter } from '../project.importer';
 import type { ManifestProjectEntry } from '../project.types';
 
 describe('ProjectImporter', () => {
 	let importer: ProjectImporter;
 	let mockProjectService: MockProxy<ProjectService>;
-	let mockFolderImporter: MockProxy<FolderImporter>;
-	let mockWorkflowImporter: MockProxy<WorkflowImporter>;
-	let mockVariableImporter: MockProxy<VariableImporter>;
-	let mockDataTableImporter: MockProxy<DataTableImporter>;
+	let mockProjectRepository: MockProxy<ProjectRepository>;
+	let mockImportPipeline: MockProxy<ImportPipeline>;
 	let mockReader: MockProxy<PackageReader>;
 	let mockUser: MockProxy<User>;
 
@@ -26,20 +21,12 @@ describe('ProjectImporter', () => {
 		jest.clearAllMocks();
 
 		mockProjectService = mock<ProjectService>();
-		mockFolderImporter = mock<FolderImporter>();
-		mockWorkflowImporter = mock<WorkflowImporter>();
-		mockVariableImporter = mock<VariableImporter>();
-		mockDataTableImporter = mock<DataTableImporter>();
+		mockProjectRepository = mock<ProjectRepository>();
+		mockImportPipeline = mock<ImportPipeline>();
 		mockReader = mock<PackageReader>();
 		mockUser = mock<User>();
 
-		importer = new ProjectImporter(
-			mockProjectService,
-			mockFolderImporter,
-			mockWorkflowImporter,
-			mockVariableImporter,
-			mockDataTableImporter,
-		);
+		importer = new ProjectImporter(mockProjectService, mockProjectRepository, mockImportPipeline);
 	});
 
 	const makeEntry = (overrides?: Partial<ManifestProjectEntry>): ManifestProjectEntry => ({
@@ -54,21 +41,54 @@ describe('ProjectImporter', () => {
 		...overrides,
 	});
 
-	it('should create a project and return mapping', async () => {
+	it('should create a project when no existing project matches', async () => {
 		const entry = makeEntry();
 		const createdProject = { id: 'new-project-1', name: 'billing' } as Project;
 
 		mockReader.readFile.mockReturnValue(
 			JSON.stringify({ id: 'source-project-1', name: 'billing' }),
 		);
+		mockProjectRepository.findOne.mockResolvedValue(null);
 		mockProjectService.createTeamProject.mockResolvedValue(createdProject);
 
-		const result = await importer.import([entry], mockReader, mockUser);
+		const result = await importer.import(entry, mockReader, mockUser);
 
-		expect(result.projects).toHaveLength(1);
-		expect(result.projects[0]).toEqual({
+		expect(mockProjectService.createTeamProject).toHaveBeenCalledWith(mockUser, {
+			name: 'billing',
+			icon: undefined,
+		});
+		expect(result).toEqual({
 			sourceId: 'source-project-1',
 			id: 'new-project-1',
+			name: 'billing',
+		});
+	});
+
+	it('should reuse an existing project with the same name', async () => {
+		const entry = makeEntry();
+		const existingProject = { id: 'existing-project-1', name: 'billing' } as Project;
+
+		mockReader.readFile.mockReturnValue(
+			JSON.stringify({
+				id: 'source-project-1',
+				name: 'billing',
+				icon: { type: 'emoji', value: '\u{1F4B0}' },
+				description: 'Billing workflows',
+			}),
+		);
+		mockProjectRepository.findOne.mockResolvedValue(existingProject);
+
+		const result = await importer.import(entry, mockReader, mockUser);
+
+		expect(mockProjectService.createTeamProject).not.toHaveBeenCalled();
+		expect(mockProjectService.updateProject).toHaveBeenCalledWith('existing-project-1', {
+			name: 'billing',
+			icon: { type: 'emoji', value: '\u{1F4B0}' },
+			description: 'Billing workflows',
+		});
+		expect(result).toEqual({
+			sourceId: 'source-project-1',
+			id: 'existing-project-1',
 			name: 'billing',
 		});
 	});
@@ -84,9 +104,10 @@ describe('ProjectImporter', () => {
 				icon: { type: 'emoji', value: '\u{1F4B0}' },
 			}),
 		);
+		mockProjectRepository.findOne.mockResolvedValue(null);
 		mockProjectService.createTeamProject.mockResolvedValue(createdProject);
 
-		await importer.import([entry], mockReader, mockUser);
+		await importer.import(entry, mockReader, mockUser);
 
 		expect(mockProjectService.createTeamProject).toHaveBeenCalledWith(mockUser, {
 			name: 'billing',
@@ -94,7 +115,7 @@ describe('ProjectImporter', () => {
 		});
 	});
 
-	it('should update description separately when present', async () => {
+	it('should update description separately when creating and description present', async () => {
 		const entry = makeEntry();
 		const createdProject = { id: 'new-project-1', name: 'billing' } as Project;
 
@@ -105,30 +126,32 @@ describe('ProjectImporter', () => {
 				description: 'Billing workflows',
 			}),
 		);
+		mockProjectRepository.findOne.mockResolvedValue(null);
 		mockProjectService.createTeamProject.mockResolvedValue(createdProject);
 
-		await importer.import([entry], mockReader, mockUser);
+		await importer.import(entry, mockReader, mockUser);
 
 		expect(mockProjectService.updateProject).toHaveBeenCalledWith('new-project-1', {
 			description: 'Billing workflows',
 		});
 	});
 
-	it('should not call updateProject when description is absent', async () => {
+	it('should not call updateProject when creating and description is absent', async () => {
 		const entry = makeEntry();
 		const createdProject = { id: 'new-project-1', name: 'billing' } as Project;
 
 		mockReader.readFile.mockReturnValue(
 			JSON.stringify({ id: 'source-project-1', name: 'billing' }),
 		);
+		mockProjectRepository.findOne.mockResolvedValue(null);
 		mockProjectService.createTeamProject.mockResolvedValue(createdProject);
 
-		await importer.import([entry], mockReader, mockUser);
+		await importer.import(entry, mockReader, mockUser);
 
 		expect(mockProjectService.updateProject).not.toHaveBeenCalled();
 	});
 
-	it('should call entity importers in correct order', async () => {
+	it('should run the import pipeline with entity entries', async () => {
 		const entry = makeEntry({
 			folders: [{ id: 'f-1', name: 'invoices', target: 'projects/billing/folders/invoices' }],
 			workflows: [{ id: 'wf-1', name: 'sync', target: 'projects/billing/workflows/sync' }],
@@ -143,44 +166,53 @@ describe('ProjectImporter', () => {
 		mockReader.readFile.mockReturnValue(
 			JSON.stringify({ id: 'source-project-1', name: 'billing' }),
 		);
+		mockProjectRepository.findOne.mockResolvedValue(null);
 		mockProjectService.createTeamProject.mockResolvedValue(createdProject);
 
-		const callOrder: string[] = [];
-		mockFolderImporter.importForProject.mockImplementation(async () => {
-			callOrder.push('folders');
-		});
-		mockWorkflowImporter.importForProject.mockImplementation(async () => {
-			callOrder.push('workflows');
-		});
-		mockVariableImporter.importForProject.mockImplementation(async () => {
-			callOrder.push('variables');
-		});
-		mockDataTableImporter.importForProject.mockImplementation(async () => {
-			callOrder.push('dataTables');
-		});
+		await importer.import(entry, mockReader, mockUser);
 
-		await importer.import([entry], mockReader, mockUser);
-
-		expect(callOrder).toEqual(['folders', 'workflows', 'variables', 'dataTables']);
+		expect(mockImportPipeline.importEntities).toHaveBeenCalledWith(
+			expect.objectContaining({
+				user: mockUser,
+				targetProjectId: 'new-project-1',
+			}),
+			{
+				folders: entry.folders,
+				workflows: entry.workflows,
+				credentials: entry.credentials,
+				variables: entry.variables,
+				dataTables: entry.dataTables,
+			},
+			undefined,
+		);
 	});
 
-	it('should import multiple projects', async () => {
-		const entries = [
-			makeEntry({ id: 'p-1', name: 'billing', target: 'projects/billing' }),
-			makeEntry({ id: 'p-2', name: 'marketing', target: 'projects/marketing' }),
-		];
+	it('should pass resolved bindings to import scope', async () => {
+		const entry = makeEntry();
+		const createdProject = { id: 'new-project-1', name: 'billing' } as Project;
 
-		mockReader.readFile
-			.mockReturnValueOnce(JSON.stringify({ id: 'p-1', name: 'billing' }))
-			.mockReturnValueOnce(JSON.stringify({ id: 'p-2', name: 'marketing' }));
+		mockReader.readFile.mockReturnValue(
+			JSON.stringify({ id: 'source-project-1', name: 'billing' }),
+		);
+		mockProjectRepository.findOne.mockResolvedValue(null);
+		mockProjectService.createTeamProject.mockResolvedValue(createdProject);
 
-		mockProjectService.createTeamProject
-			.mockResolvedValueOnce({ id: 'new-1', name: 'billing' } as Project)
-			.mockResolvedValueOnce({ id: 'new-2', name: 'marketing' } as Project);
+		const resolvedBindings = {
+			credentialBindings: new Map([['src-cred', 'tgt-cred']]),
+			subWorkflowBindings: new Map([['src-wf', 'tgt-wf']]),
+		};
 
-		const result = await importer.import(entries, mockReader, mockUser);
+		await importer.import(entry, mockReader, mockUser, resolvedBindings);
 
-		expect(result.projects).toHaveLength(2);
-		expect(mockProjectService.createTeamProject).toHaveBeenCalledTimes(2);
+		expect(mockImportPipeline.importEntities).toHaveBeenCalledWith(
+			expect.objectContaining({
+				state: expect.objectContaining({
+					credentialBindings: resolvedBindings.credentialBindings,
+					subWorkflowBindings: resolvedBindings.subWorkflowBindings,
+				}),
+			}),
+			expect.any(Object),
+			undefined,
+		);
 	});
 });
