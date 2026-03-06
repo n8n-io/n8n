@@ -23,9 +23,9 @@ const emit = defineEmits<{
 <template>
 	<ElDropdownItem
 		:class="{
-			[$style.clickableChange]: true,
-			[$style.clickableChangeCompact]: isCompact,
-			[$style.clickableChangeActive]: isActive,
+			'workflow-diff-node-item': true,
+			'workflow-diff-node-item--compact': isCompact,
+			'workflow-diff-node-item--active': isActive,
 		}"
 		@click.prevent="emit('select')"
 	>
@@ -36,7 +36,7 @@ const emit = defineEmits<{
 </template>
 
 <style module lang="scss">
-.clickableChange {
+:global(.el-dropdown-menu__item.workflow-diff-node-item) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
@@ -52,11 +52,11 @@ const emit = defineEmits<{
 	}
 }
 
-.clickableChangeCompact {
+:global(.el-dropdown-menu__item.workflow-diff-node-item.workflow-diff-node-item--compact) {
 	padding: var(--spacing--5xs) 0;
 }
 
-.clickableChangeActive {
+:global(.el-dropdown-menu__item.workflow-diff-node-item.workflow-diff-node-item--active) {
 	background-color: var(--color--background--light-3);
 }
 
