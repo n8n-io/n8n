@@ -1,4 +1,3 @@
-import get from 'lodash/get';
 import type {
 	IExecuteFunctions,
 	IHookFunctions,
@@ -17,6 +16,9 @@ export async function customerIoApiRequest(
 	_query?: IDataObject,
 ) {
 	const credentials = await this.getCredentials('customerIoApi');
+	const region = credentials.region as string;
+	const isEu = region === 'track-eu.customer.io';
+
 	const options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
@@ -28,30 +30,24 @@ export async function customerIoApiRequest(
 	};
 
 	if (baseApi === 'tracking') {
-		const region = credentials.region;
 		options.url = `https://${region}/api/v1${endpoint}`;
-	} else if (baseApi === 'api') {
-		const region = credentials.region;
-		// Special handling for EU region
-		if (region === 'track-eu.customer.io') {
-			options.url = `https://api-eu.customer.io/v1/api${endpoint}`;
-		} else {
-			options.url = `https://api.customer.io/v1/api${endpoint}`;
-		}
-	} else if (baseApi === 'beta') {
-		options.url = `https://beta-api.customer.io/v1/api${endpoint}`;
+	} else if (baseApi === 'app') {
+		const appHost = isEu ? 'api-eu.customer.io' : 'api.customer.io';
+		options.url = `https://${appHost}/v1${endpoint}`;
 	}
 
 	return await this.helpers.requestWithAuthentication.call(this, 'customerIoApi', options);
 }
 
-export function eventExists(currentEvents: string[], webhookEvents: IDataObject) {
-	for (const currentEvent of currentEvents) {
-		if (get(webhookEvents, [currentEvent.split('.')[0], currentEvent.split('.')[1]]) !== true) {
-			return false;
-		}
-	}
-	return true;
+/** Convert dot-separated event names to underscore-separated API format */
+export function toApiEventName(event: string): string {
+	return event.replaceAll('.', '_');
+}
+
+/** Check if all current events exist in the webhook's event list */
+export function eventExists(currentEvents: string[], webhookEvents: string[]) {
+	const webhookEventSet = new Set(webhookEvents);
+	return currentEvents.every((event) => webhookEventSet.has(toApiEventName(event)));
 }
 
 export function validateJSON(json: string | undefined): any {
