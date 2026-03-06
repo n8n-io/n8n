@@ -1,0 +1,31 @@
+import { readdirSync, readFileSync, statSync } from 'fs';
+import { join } from 'path';
+
+export interface Fixture {
+	dir: string;
+	title: string;
+	input: string;
+	expectedOutput: string;
+	skip?: string;
+}
+
+interface FixtureMeta {
+	title: string;
+	skip?: string;
+}
+
+function loadFixtureFromDir(dirPath: string, dirName: string): Fixture {
+	const meta = JSON.parse(readFileSync(join(dirPath, 'meta.json'), 'utf-8')) as FixtureMeta;
+	const input = readFileSync(join(dirPath, 'input.js'), 'utf-8').trim();
+	const expectedOutput = readFileSync(join(dirPath, 'output.js'), 'utf-8').trim();
+
+	return { dir: dirName, title: meta.title, input, expectedOutput, skip: meta.skip };
+}
+
+export function loadFixtures(): Fixture[] {
+	const dir = join(__dirname, '__fixtures__');
+	return readdirSync(dir)
+		.filter((f) => statSync(join(dir, f)).isDirectory())
+		.sort()
+		.map((f) => loadFixtureFromDir(join(dir, f), f));
+}

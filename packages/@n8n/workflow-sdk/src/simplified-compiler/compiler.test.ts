@@ -1,41 +1,10 @@
-import { readdirSync, readFileSync, statSync } from 'fs';
-import { join } from 'path';
 import { transpileWorkflowJS } from './compiler';
 import { decompileWorkflowSDK } from './decompiler';
 import { generateReport } from './generate-report';
+import { loadFixtures } from './fixture-loader';
 import { parseWorkflowCodeToBuilder } from '../codegen/parse-workflow-code';
 import { validateWorkflow } from '../validation';
 import { setupTestSchemas, teardownTestSchemas } from '../validation/test-schema-setup';
-
-// ─── Fixture helpers ────────────────────────────────────────────────────────
-
-interface Fixture {
-	title: string;
-	input: string;
-	expectedOutput: string;
-	skip?: string;
-}
-
-interface FixtureMeta {
-	title: string;
-	skip?: string;
-}
-
-function loadFixtureFromDir(dirPath: string): Fixture {
-	const meta = JSON.parse(readFileSync(join(dirPath, 'meta.json'), 'utf-8')) as FixtureMeta;
-	const input = readFileSync(join(dirPath, 'input.js'), 'utf-8').trim();
-	const expectedOutput = readFileSync(join(dirPath, 'output.js'), 'utf-8').trim();
-
-	return { title: meta.title, input, expectedOutput, skip: meta.skip };
-}
-
-function loadFixtures(): Fixture[] {
-	const dir = join(__dirname, '__fixtures__');
-	return readdirSync(dir)
-		.filter((f) => statSync(join(dir, f)).isDirectory())
-		.sort()
-		.map((f) => loadFixtureFromDir(join(dir, f)));
-}
 
 describe('transpileWorkflowJS', () => {
 	afterAll(() => {
