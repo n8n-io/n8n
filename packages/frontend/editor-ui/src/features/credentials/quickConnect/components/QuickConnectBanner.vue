@@ -7,7 +7,7 @@ const { text } = defineProps<{
 </script>
 
 <template>
-	<N8nCallout theme="secondary" iconless data-test-id="quick-connect-banner">
-		{{ text }}
+	<N8nCallout v-if="text" theme="secondary" iconless data-test-id="quick-connect-banner">
+		<div v-n8n-html="text"></div>
 	</N8nCallout>
 </template>
