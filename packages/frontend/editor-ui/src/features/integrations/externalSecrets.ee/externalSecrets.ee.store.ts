@@ -157,14 +157,20 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 
 		if (moduleConfig?.roleBasedAccess) {
 			// In principle when roleBasedAccess is enabled, projectId is always provided
-			if (projectId) {
-				await fetchScopedGlobalSecrets(projectId);
+			if (!projectId) {
+				return;
 			}
-		} else if (moduleConfig?.forProjects || moduleConfig?.multipleConnections) {
-			await fetchMultiConnectionsGlobalSecrets();
-		} else {
-			await fetchLegacySecrets();
+
+			await fetchScopedGlobalSecrets(projectId);
+			return;
 		}
+
+		if (moduleConfig?.forProjects || moduleConfig?.multipleConnections) {
+			await fetchMultiConnectionsGlobalSecrets();
+			return;
+		}
+
+		await fetchLegacySecrets();
 	}
 
 	async function fetchProjectSecrets(projectId: string) {
