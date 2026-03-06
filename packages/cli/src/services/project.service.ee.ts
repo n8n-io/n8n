@@ -200,7 +200,10 @@ export class ProjectService {
 		// 7. delete secrets providers connections that are owned by this project
 		if (this.moduleRegistry.isActive('external-secrets')) {
 			const secretsProvidersConnectionsService = await this.secretsProvidersConnectionsService;
-			await secretsProvidersConnectionsService.deleteConnectionsByProjectId(user, project.id);
+			await secretsProvidersConnectionsService.cleanupConnectionsForProjectDeletion(
+				project.id,
+				user,
+			);
 		}
 
 		// 8. delete project
