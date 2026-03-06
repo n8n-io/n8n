@@ -135,11 +135,9 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		try {
 			await Promise.all([loadCredentials(), credentialsStore.fetchCredentialTypes(true)]);
 		} catch (error) {
-			toast.showError(
-				error,
-				i18n.baseText('nodeView.showError.mounted1.title'),
-				i18n.baseText('nodeView.showError.mounted1.message') + ':',
-			);
+			toast.showError(error, i18n.baseText('nodeView.showError.mounted1.title'), {
+				message: i18n.baseText('nodeView.showError.mounted1.message') + ':',
+			});
 		}
 
 		const loadWorkflowFromJSON = route.query.fromJson === 'true';
@@ -230,11 +228,9 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 			}
 			await Promise.all(loadPromises);
 		} catch (error) {
-			toast.showError(
-				error,
-				i18n.baseText('nodeView.showError.mounted1.title'),
-				i18n.baseText('nodeView.showError.mounted1.message') + ':',
-			);
+			toast.showError(error, i18n.baseText('nodeView.showError.mounted1.title'), {
+				message: i18n.baseText('nodeView.showError.mounted1.message') + ':',
+			});
 		}
 	}
 
