@@ -27,9 +27,16 @@ export interface ValidationError {
 	ruleId: string;
 }
 
+export interface RuleResult {
+	ruleId: string;
+	passed: boolean;
+	errors: ValidationError[];
+}
+
 export interface ValidationResult {
 	valid: boolean;
 	errors: ValidationError[];
+	ruleResults: RuleResult[];
 }
 
 // ─── AST Node Type ───────────────────────────────────────────────────────────
@@ -118,6 +125,7 @@ interface AiCallInfo {
 interface RespondCallInfo {
 	statusValue?: unknown; // literal value of status property
 	callbackIndex: number;
+	inConditional: boolean; // true if inside if/else/switch
 	line?: number;
 	column?: number;
 }
@@ -172,6 +180,7 @@ const VALID_SCHEDULE_RE = /^\d+\s*(s|m|h|d|w)$/;
 
 interface WalkContext {
 	callbackIndex: number; // -1 = outside any callback
+	inConditional: boolean;
 }
 
 function collectInfo(program: AcornNode): CollectedInfo {
@@ -186,7 +195,7 @@ function collectInfo(program: AcornNode): CollectedInfo {
 		forOfLoops: [],
 	};
 
-	walkNode(program, info, { callbackIndex: -1 });
+	walkNode(program, info, { callbackIndex: -1, inConditional: false });
 	return info;
 }
 
@@ -269,7 +278,10 @@ function walkNode(node: AcornNode, info: CollectedInfo, ctx: WalkContext): void 
 			) {
 				const bodyNode = callbackArg.body;
 				if (bodyNode) {
-					walkNode(bodyNode as AcornNode, info, { callbackIndex: info.callbacks.length - 1 });
+					walkNode(bodyNode as AcornNode, info, {
+						callbackIndex: info.callbacks.length - 1,
+						inConditional: false,
+					});
 				}
 			}
 			return; // Don't recurse again into children (we handled the body)
@@ -279,6 +291,7 @@ function walkNode(node: AcornNode, info: CollectedInfo, ctx: WalkContext): void 
 		if (name === 'respond') {
 			const respondInfo: RespondCallInfo = {
 				callbackIndex: ctx.callbackIndex,
+				inConditional: ctx.inConditional,
 				line: node.loc?.start.line,
 				column: node.loc?.start.column,
 			};
@@ -328,7 +341,21 @@ function walkNode(node: AcornNode, info: CollectedInfo, ctx: WalkContext): void 
 		info.aiCalls.push(aiCall);
 	}
 
-	// Recurse into child nodes
+	// Recurse into child nodes, propagating inConditional for if/switch bodies
+	if (node.type === 'IfStatement') {
+		const conditionalCtx = { ...ctx, inConditional: true };
+		if (node.test) walkNode(node.test, info, ctx);
+		if (node.consequent) walkNode(node.consequent as AcornNode, info, conditionalCtx);
+		if (node.alternate) walkNode(node.alternate as AcornNode, info, conditionalCtx);
+		return;
+	}
+	if (node.type === 'SwitchStatement') {
+		if (node.discriminant) walkNode(node.discriminant, info, ctx);
+		for (const caseNode of node.cases ?? []) {
+			walkNode(caseNode as AcornNode, info, { ...ctx, inConditional: true });
+		}
+		return;
+	}
 	for (const key of Object.keys(node)) {
 		if (key === 'type' || key === 'loc' || key === 'start' || key === 'end') continue;
 		const child = (node as unknown as Record<string, unknown>)[key];
@@ -682,7 +709,11 @@ function ruleInvalidScheduleFormat(info: CollectedInfo): ValidationError[] {
 function ruleWrongCallbackParams(info: CollectedInfo): ValidationError[] {
 	const errors: ValidationError[] = [];
 	for (const cb of info.callbacks) {
-		if (cb.hasDestructuredParams && cb.callbackName !== 'onWebhook') {
+		if (
+			cb.hasDestructuredParams &&
+			cb.callbackName !== 'onWebhook' &&
+			cb.callbackName !== 'onError'
+		) {
 			errors.push({
 				line: cb.line,
 				column: cb.column,
@@ -831,16 +862,21 @@ function ruleMultipleRespond(info: CollectedInfo): ValidationError[] {
 	}
 	for (const [, calls] of byCallback) {
 		if (calls.length > 1) {
-			// Error on the second respond call
-			errors.push({
-				line: calls[1].line,
-				column: calls[1].column,
-				message: 'Multiple respond() calls in the same callback.',
-				suggestion:
-					'Only one respond() call is allowed per callback. Remove the extra respond() calls.',
-				category: 'structure',
-				ruleId: 'multiple-respond',
-			});
+			// Allow multiple respond() when any are inside conditionals (if/else/switch branches)
+			// Pattern: early-return respond in if + final respond, or respond in each branch
+			const anyInConditional = calls.some((c) => c.inConditional);
+			if (!anyInConditional) {
+				// Error on the second respond call
+				errors.push({
+					line: calls[1].line,
+					column: calls[1].column,
+					message: 'Multiple respond() calls in the same callback.',
+					suggestion:
+						'Only one respond() call is allowed per callback. Remove the extra respond() calls.',
+					category: 'structure',
+					ruleId: 'multiple-respond',
+				});
+			}
 		}
 	}
 	return errors;
@@ -880,23 +916,6 @@ function ruleFunctionArgCountMismatch(info: CollectedInfo): ValidationError[] {
 				suggestion: `Pass all ${decl.paramCount} required argument(s) to ${call.name}().`,
 				category: 'validation',
 				ruleId: 'function-arg-count-mismatch',
-			});
-		}
-	}
-	return errors;
-}
-
-function ruleReturnInSubFunction(info: CollectedInfo): ValidationError[] {
-	const errors: ValidationError[] = [];
-	for (const decl of info.functionDecls) {
-		if (decl.hasIO && decl.hasReturnWithValue) {
-			errors.push({
-				line: decl.line,
-				column: decl.column,
-				message: `Function '${decl.name}' has IO calls and a return value, which is not supported.`,
-				suggestion: `Sub-functions with IO calls compile to sub-workflows. Use 'const result = await ${decl.name}()' to capture the last IO call's result instead of returning a value.`,
-				category: 'structure',
-				ruleId: 'return-in-sub-function',
 			});
 		}
 	}
@@ -983,21 +1002,25 @@ function findIdentifiersAfterLine(
 	return results;
 }
 
-const ALL_RULES: Rule[] = [
-	ruleMissingHttpUrl,
-	ruleInvalidHttpArgs,
-	ruleInvalidAuthType,
-	ruleInvalidScheduleFormat,
-	ruleWrongCallbackParams,
-	ruleInvalidAiClassName,
-	ruleInvalidAiIoMethod,
-	ruleInvalidAiClassProps,
-	ruleMultipleRespond,
-	ruleNonNumericRespondStatus,
-	ruleFunctionArgCountMismatch,
-	ruleReturnInSubFunction,
-	ruleTryCatchWithoutIO,
-	ruleLoopVariableAfterLoop,
+interface NamedRule {
+	ruleId: string;
+	fn: Rule;
+}
+
+const ALL_RULES: NamedRule[] = [
+	{ ruleId: 'missing-http-url', fn: ruleMissingHttpUrl },
+	{ ruleId: 'invalid-http-args', fn: ruleInvalidHttpArgs },
+	{ ruleId: 'invalid-auth-type', fn: ruleInvalidAuthType },
+	{ ruleId: 'invalid-schedule-format', fn: ruleInvalidScheduleFormat },
+	{ ruleId: 'wrong-callback-params', fn: ruleWrongCallbackParams },
+	{ ruleId: 'invalid-ai-class-name', fn: ruleInvalidAiClassName },
+	{ ruleId: 'invalid-ai-io-method', fn: ruleInvalidAiIoMethod },
+	{ ruleId: 'invalid-ai-class-props', fn: ruleInvalidAiClassProps },
+	{ ruleId: 'multiple-respond', fn: ruleMultipleRespond },
+	{ ruleId: 'non-numeric-respond-status', fn: ruleNonNumericRespondStatus },
+	{ ruleId: 'function-arg-count-mismatch', fn: ruleFunctionArgCountMismatch },
+	{ ruleId: 'try-catch-without-io', fn: ruleTryCatchWithoutIO },
+	{ ruleId: 'loop-variable-after-loop', fn: ruleLoopVariableAfterLoop },
 ];
 
 // ─── Main Entry Point ────────────────────────────────────────────────────────
@@ -1014,18 +1037,18 @@ export function validateSimplifiedJS(source: string): ValidationResult {
 	} catch (err: unknown) {
 		if (err instanceof SyntaxError) {
 			const acornErr = err as SyntaxError & { loc?: { line: number; column: number } };
+			const syntaxError: ValidationError = {
+				line: acornErr.loc?.line,
+				column: acornErr.loc?.column,
+				message: acornErr.message,
+				suggestion: 'Fix the syntax error and try again.',
+				category: 'syntax',
+				ruleId: 'syntax-error',
+			};
 			return {
 				valid: false,
-				errors: [
-					{
-						line: acornErr.loc?.line,
-						column: acornErr.loc?.column,
-						message: acornErr.message,
-						suggestion: 'Fix the syntax error and try again.',
-						category: 'syntax',
-						ruleId: 'syntax-error',
-					},
-				],
+				errors: [syntaxError],
+				ruleResults: [{ ruleId: 'syntax-error', passed: false, errors: [syntaxError] }],
 			};
 		}
 		throw err;
@@ -1036,8 +1059,11 @@ export function validateSimplifiedJS(source: string): ValidationResult {
 
 	// Step 3: Validate
 	const errors: ValidationError[] = [];
+	const ruleResults: RuleResult[] = [];
 	for (const rule of ALL_RULES) {
-		errors.push(...rule(info, program));
+		const ruleErrors = rule.fn(info, program);
+		ruleResults.push({ ruleId: rule.ruleId, passed: ruleErrors.length === 0, errors: ruleErrors });
+		errors.push(...ruleErrors);
 	}
 
 	// Sort by line
@@ -1046,5 +1072,6 @@ export function validateSimplifiedJS(source: string): ValidationResult {
 	return {
 		valid: errors.length === 0,
 		errors,
+		ruleResults,
 	};
 }

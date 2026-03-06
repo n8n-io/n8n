@@ -5,6 +5,7 @@ import { loadFixtures } from './fixture-loader';
 import { parseWorkflowCodeToBuilder } from '../codegen/parse-workflow-code';
 import { validateWorkflow } from '../validation';
 import { setupTestSchemas, teardownTestSchemas } from '../validation/test-schema-setup';
+import { validateSimplifiedJS } from './validator';
 
 describe('transpileWorkflowJS', () => {
 	afterAll(() => {
@@ -1211,6 +1212,26 @@ describe('Schema validation: compiled SDK matches node schemas', () => {
 
 			const schemaWarnings = result.warnings.filter((w) => w.code === 'INVALID_PARAMETER');
 			expect(schemaWarnings).toEqual([]);
+		});
+	}
+});
+
+// ─── Pre-compile validation: fixture DSL passes validator ────────────────────
+
+describe('Pre-compile validation: fixture DSL passes validator', () => {
+	const fixtures = loadFixtures();
+
+	for (const fixture of fixtures) {
+		const testFn = fixture.skip ? it.skip : it;
+
+		testFn(`${fixture.title} [validation]`, () => {
+			const result = validateSimplifiedJS(fixture.input);
+			if (result.errors.length > 0) {
+				const errorSummary = result.errors
+					.map((e) => `  [${e.ruleId}] line ${e.line ?? '?'}: ${e.message}`)
+					.join('\n');
+				throw new Error(`Validation errors:\n${errorSummary}`);
+			}
 		});
 	}
 });

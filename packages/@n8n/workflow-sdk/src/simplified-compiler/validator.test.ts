@@ -163,6 +163,16 @@ onWebhook({ method: 'POST', path: '/hook' }, async ({ body }) => {
 			expect(err).toBeUndefined();
 		});
 
+		it('should allow destructured params on onError', () => {
+			const result = validateSimplifiedJS(`
+onError(async ({ error, workflow }) => {
+  await http.post('https://example.com/errors', { error: error.message, workflow: workflow.name });
+});
+`);
+			const err = result.errors.find((e) => e.ruleId === 'wrong-callback-params');
+			expect(err).toBeUndefined();
+		});
+
 		it('should error when onSchedule has destructured params', () => {
 			const result = validateSimplifiedJS(`
 onSchedule({ every: '1h' }, async ({ body }) => {
@@ -278,6 +288,20 @@ onWebhook({ method: 'POST', path: '/hook' }, async ({ body }) => {
 			expect(err).toBeDefined();
 		});
 
+		it('should allow multiple respond() in different if/else branches', () => {
+			const result = validateSimplifiedJS(`
+onWebhook({ method: 'POST', path: '/hook' }, async ({ body }) => {
+  if (body.type === 'a') {
+    respond({ status: 200, body: 'type a' });
+  } else {
+    respond({ status: 400, body: 'other' });
+  }
+});
+`);
+			const err = result.errors.find((e) => e.ruleId === 'multiple-respond');
+			expect(err).toBeUndefined();
+		});
+
 		it('should allow single respond()', () => {
 			const result = validateSimplifiedJS(`
 onWebhook({ method: 'POST', path: '/hook' }, async ({ body }) => {
@@ -339,37 +363,6 @@ onManual(async () => {
 });
 `);
 			const err = result.errors.find((e) => e.ruleId === 'function-arg-count-mismatch');
-			expect(err).toBeUndefined();
-		});
-	});
-
-	describe('return-in-sub-function', () => {
-		it('should error when async fn with IO has return value', () => {
-			const result = validateSimplifiedJS(`
-async function fetchData() {
-  const data = await http.get('https://example.com');
-  return 5;
-}
-onManual(async () => {
-  await fetchData();
-});
-`);
-			expect(result.valid).toBe(false);
-			const err = result.errors.find((e) => e.ruleId === 'return-in-sub-function');
-			expect(err).toBeDefined();
-		});
-
-		it('should allow return without value in fn with IO', () => {
-			const result = validateSimplifiedJS(`
-async function fetchData() {
-  const data = await http.get('https://example.com');
-  return;
-}
-onManual(async () => {
-  await fetchData();
-});
-`);
-			const err = result.errors.find((e) => e.ruleId === 'return-in-sub-function');
 			expect(err).toBeUndefined();
 		});
 	});

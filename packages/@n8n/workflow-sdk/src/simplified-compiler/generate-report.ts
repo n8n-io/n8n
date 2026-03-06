@@ -9,6 +9,7 @@ import { join } from 'path';
 import { transpileWorkflowJS } from './compiler';
 import { parseWorkflowCodeToBuilder } from '../codegen/parse-workflow-code';
 import type { Expectations } from './expectation-matcher';
+import { validateSimplifiedJS, type ValidationError, type RuleResult } from './validator';
 
 interface ExpectationMismatch {
 	path: string;
@@ -93,6 +94,8 @@ interface ReportEntry {
 	pinData?: PinDataEntry[];
 	execution?: ExecutionEntry;
 	expectations?: Expectations;
+	validationErrors: ValidationError[];
+	ruleResults: RuleResult[];
 	error?: string;
 }
 
@@ -165,15 +168,24 @@ function processFixtures(): ReportEntry[] {
 			expectations,
 		};
 
+		// Run pre-compile validation
+		const validation = validateSimplifiedJS(input);
+		const { errors: validationErrors, ruleResults } = validation;
+
 		if (meta.skip) {
-			entries.push({ ...base, skip: meta.skip });
+			entries.push({ ...base, skip: meta.skip, validationErrors, ruleResults });
 			continue;
 		}
 
 		try {
 			const result = transpileWorkflowJS(input);
 			if (result.errors.length > 0) {
-				entries.push({ ...base, error: result.errors.map((e) => e.message).join('; ') });
+				entries.push({
+					...base,
+					validationErrors,
+					ruleResults,
+					error: result.errors.map((e) => e.message).join('; '),
+				});
 				continue;
 			}
 
@@ -200,9 +212,16 @@ function processFixtures(): ReportEntry[] {
 				workflowJson: jsonStr,
 				subWorkflows,
 				pinData: pinData.length > 0 ? pinData : undefined,
+				validationErrors,
+				ruleResults,
 			});
 		} catch (err) {
-			entries.push({ ...base, error: err instanceof Error ? err.message : String(err) });
+			entries.push({
+				...base,
+				validationErrors,
+				ruleResults,
+				error: err instanceof Error ? err.message : String(err),
+			});
 		}
 	}
 
@@ -499,10 +518,48 @@ function generateHtml(entries: ReportEntry[]): string {
 				? renderExecutionSection(entry.execution, entry.expectations)
 				: '';
 
+			const hasValidationErrors = entry.validationErrors.length > 0;
+			const validationBadge = entry.skip
+				? ''
+				: hasValidationErrors
+					? `<span class="badge error">VALIDATION FAIL</span>`
+					: `<span class="badge pass">VALIDATED</span>`;
+
+			const passedCount = entry.ruleResults.filter((r) => r.passed).length;
+			const totalCount = entry.ruleResults.length;
+			const summaryBadge = hasValidationErrors
+				? `<span class="exec-badge exec-error">${passedCount}/${totalCount} passed</span>`
+				: `<span class="exec-badge exec-pass">${totalCount}/${totalCount} passed</span>`;
+
+			const ruleRows = entry.ruleResults
+				.map((r) => {
+					const icon = r.passed ? '✓' : '✗';
+					const rowClass = r.passed ? 'rule-row rule-pass' : 'rule-row rule-fail';
+					const errorDetails =
+						r.errors.length > 0
+							? r.errors
+									.map(
+										(ve) =>
+											`<div class="rule-error-detail">${ve.line ? `<span class="validation-loc">line ${ve.line}</span> ` : ''}<span class="validation-msg">${escapeHtml(ve.message)}</span><div class="validation-suggestion">${escapeHtml(ve.suggestion)}</div></div>`,
+									)
+									.join('')
+							: '';
+					return `<div class="${rowClass}"><span class="rule-icon">${icon}</span><span class="rule-id">${escapeHtml(r.ruleId)}</span>${errorDetails}</div>`;
+				})
+				.join('\n          ');
+
+			const validationSection = `<details${hasValidationErrors ? ' open' : ''}>
+        <summary>Validation ${summaryBadge}</summary>
+        <div class="validation-rules-list">
+          ${ruleRows}
+        </div>
+      </details>`;
+
 			return `
     <div class="card">
       <div class="card-header">
         ${statusBadge}
+        ${validationBadge}
         <h2>${escapeHtml(entry.title)}</h2>
         ${templateLink}
       </div>
@@ -520,6 +577,7 @@ function generateHtml(entries: ReportEntry[]): string {
       </details>`
 					: ''
 			}
+      ${validationSection}
       ${
 				(entry.pinData ?? []).length > 0
 					? `<details>
@@ -664,11 +722,26 @@ function generateHtml(entries: ReportEntry[]): string {
     .diff-path { color: #555; }
     .diff-expected { color: #155724; background: #f0fff0; }
     .diff-actual { color: #721c24; background: #fff0f0; }
+
+    /* Validation styles */
+    .validation-errors { margin-top: 8px; }
+    .validation-error { padding: 6px 10px; margin-bottom: 6px; background: #fff8f8; border-left: 3px solid #dc3545; border-radius: 3px; font-size: 12px; }
+    .validation-rule { font-weight: 600; color: #dc3545; font-family: monospace; font-size: 11px; }
+    .validation-loc { color: #888; font-size: 11px; margin-left: 4px; }
+    .validation-msg { color: #333; margin-left: 4px; }
+    .validation-suggestion { color: #666; font-size: 11px; margin-top: 2px; padding-left: 4px; font-style: italic; }
+    .validation-rules-list { margin-top: 8px; }
+    .rule-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; padding: 3px 8px; font-size: 12px; border-radius: 3px; margin-bottom: 2px; }
+    .rule-pass { color: #155724; }
+    .rule-fail { color: #721c24; background: #fff8f8; border-left: 3px solid #dc3545; }
+    .rule-icon { font-weight: 700; width: 14px; flex-shrink: 0; }
+    .rule-id { font-family: monospace; font-size: 11px; font-weight: 600; }
+    .rule-error-detail { width: 100%; padding-left: 20px; margin-top: 2px; font-size: 11px; }
   </style>
 </head>
 <body>
   <h1>Simplified Compiler - Fixture Report</h1>
-  <p style="margin-bottom:20px;color:#666;font-size:14px;">${entries.length} fixtures total &middot; ${entries.filter((e) => !e.skip && !e.error).length} passing &middot; ${entries.filter((e) => e.skip).length} skipped &middot; ${entries.filter((e) => e.error).length} errors${hasExecutionData ? ' &middot; <span style="color:#7c5cfc">execution data available</span>' : ''}</p>
+  <p style="margin-bottom:20px;color:#666;font-size:14px;">${entries.length} fixtures total &middot; ${entries.filter((e) => !e.skip && !e.error).length} passing &middot; ${entries.filter((e) => e.skip).length} skipped &middot; ${entries.filter((e) => e.error).length} errors &middot; ${entries.filter((e) => e.validationErrors.length > 0).length} validation failures${hasExecutionData ? ' &middot; <span style="color:#7c5cfc">execution data available</span>' : ''}</p>
 ${cards}
 <script>
   document.querySelectorAll('details.demo-details').forEach(details => {
