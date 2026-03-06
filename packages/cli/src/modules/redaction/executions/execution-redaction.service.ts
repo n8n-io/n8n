@@ -59,7 +59,8 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 
 	/**
 	 * Processes a list of executions and applies redaction based on the provided options.
-	 * Resolves all user reveal permissions in a single DB query regardless of list size.
+	 * A single DB query resolves reveal permissions for any number of executions on both
+	 * the redact and reveal paths.
 	 *
 	 * @param executions - The executions to process (mutated in place)
 	 * @param options - Options for redaction processing
@@ -70,48 +71,8 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	): Promise<void> {
 		if (executions.length === 0) return;
 
-		if (options.redactExecutionData === false) {
-			// User explicitly wants unredacted data — allowed if the policy or scope permits it.
-			const needsCheck = executions.filter((e) => !this.policyAllowsReveal(e));
-			if (needsCheck.length > 0) {
-				const uniqueWorkflowIds = [...new Set(needsCheck.map((e) => e.workflowId))];
-				const revealableIds = await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
-					uniqueWorkflowIds,
-					options.user,
-					['execution:reveal'],
-				);
-				for (const execution of needsCheck) {
-					if (!revealableIds.has(execution.workflowId)) {
-						throw new ForbiddenError();
-					}
-				}
-			}
-			// Emit audit event for every execution the caller was permitted to reveal.
-			for (const execution of executions) {
-				this.eventService.emit('execution-data-revealed', {
-					user: options.user,
-					executionId: execution.id ?? '',
-					workflowId: execution.workflowId,
-					ipAddress: options.ipAddress ?? '',
-					userAgent: options.userAgent ?? '',
-					redactionPolicy: this.resolvePolicy(execution),
-				});
-			}
-			// NodeDefinedFieldRedactionStrategy always runs — node-declared sensitive fields
-			// are never revealable, even on the explicit reveal path.
-			for (const execution of executions) {
-				const context: RedactionContext = {
-					user: options.user,
-					redactExecutionData: false,
-					userCanReveal: true,
-				};
-				await this.nodeDefinedFieldRedactionStrategy.apply(execution, context);
-			}
-			return;
-		}
-
-		// Redact path: redactExecutionData === true (explicit) or undefined (policy-driven).
-		// Only query the DB for executions where policy doesn't already allow reveal.
+		// Single DB call shared by both the reveal and redact paths.
+		// Only executions where policy doesn't already grant access need a scope check.
 		const needsCheck = executions.filter((e) => !this.policyAllowsReveal(e));
 		let revealableIds = new Set<string>();
 		if (needsCheck.length > 0) {
@@ -122,6 +83,19 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 				['execution:reveal'],
 			);
 		}
+
+		// Reveal path: validate all permissions atomically before any processing.
+		if (options.redactExecutionData === false) {
+			for (const execution of needsCheck) {
+				if (!revealableIds.has(execution.workflowId)) {
+					throw new ForbiddenError();
+				}
+			}
+		}
+
+		// Unified pipeline execution. buildPipeline excludes FullItemRedactionStrategy on the
+		// reveal path (redactExecutionData === false). NodeDefinedFieldRedactionStrategy
+		// always runs — node-declared sensitive fields are never revealable.
 		for (const execution of executions) {
 			const policyAllowsReveal = this.policyAllowsReveal(execution);
 			const userCanReveal = policyAllowsReveal || revealableIds.has(execution.workflowId);
@@ -135,6 +109,20 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 				await strategy.apply(execution, context);
 			}
 		}
+
+		// Emit audit events after all executions have been successfully processed.
+		if (options.redactExecutionData === false) {
+			for (const execution of executions) {
+				this.eventService.emit('execution-data-revealed', {
+					user: options.user,
+					executionId: execution.id ?? '',
+					workflowId: execution.workflowId,
+					ipAddress: options.ipAddress ?? '',
+					userAgent: options.userAgent ?? '',
+					redactionPolicy: this.resolvePolicy(execution),
+				});
+			}
+		}
 	}
 
 	/**
@@ -143,6 +131,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	 * - `FullItemRedactionStrategy` is included when items should be cleared:
 	 *   explicit redact (`redactExecutionData === true`), policy=all, or
 	 *   policy=non-manual on a non-manual execution mode.
+	 *   It is never included on the reveal path (`redactExecutionData === false`).
 	 * - `NodeDefinedFieldRedactionStrategy` is always appended last — node-declared
 	 *   sensitive fields are never revealable.
 	 */
@@ -155,10 +144,10 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 
 		const policy = this.resolvePolicy(execution);
 		const shouldClearItems =
-			context.redactExecutionData === true ||
-			(!policyAllowsReveal &&
-				(policy === 'all' ||
-					(policy === 'non-manual' && !MANUAL_MODES.has(execution.mode))));
+			context.redactExecutionData !== false &&
+			(context.redactExecutionData === true ||
+				(!policyAllowsReveal &&
+					(policy === 'all' || (policy === 'non-manual' && !MANUAL_MODES.has(execution.mode)))));
 
 		if (shouldClearItems) {
 			pipeline.push(this.fullItemRedactionStrategy);
