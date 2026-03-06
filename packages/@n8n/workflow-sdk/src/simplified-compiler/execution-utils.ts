@@ -6,14 +6,18 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import type {
+	IConnections,
 	IDataObject,
 	IExecuteFunctions,
 	INode,
+	INodeExecutionData,
 	IPinData,
 	IRun,
 	INodeType,
 	INodeTypeDescription,
 	INodeTypes,
+	IRunExecutionData,
+	ITaskData,
 	IVersionedNodeType,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
@@ -175,6 +179,33 @@ export async function resolveImports(): Promise<ResolvedImports> {
 		},
 	]);
 
+	// Disable task runner so Code node uses in-process JavaScriptSandbox
+	// instead of JsTaskRunnerSandbox (which requires a running task broker)
+	try {
+		const diPath = path.join(repoRoot, 'packages', '@n8n', 'di', 'dist', 'di.js');
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		const { Container } = require(diPath) as {
+			Container: { get: (cls: unknown) => { enabled: boolean } };
+		};
+		const configPath = path.join(
+			repoRoot,
+			'packages',
+			'@n8n',
+			'config',
+			'dist',
+			'configs',
+			'runners.config.js',
+		);
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		const { TaskRunnersConfig } = require(configPath) as {
+			TaskRunnersConfig: new () => { enabled: boolean };
+		};
+		const runnersConfig = Container.get(TaskRunnersConfig);
+		runnersConfig.enabled = false;
+	} catch {
+		// If @n8n/di or config not available, Code nodes will attempt task runner path
+	}
+
 	resolvedImports = {
 		WorkflowExecute: weModule.WorkflowExecute as ResolvedImports['WorkflowExecute'],
 		ExecutionLifecycleHooks:
@@ -189,22 +220,144 @@ export async function resolveImports(): Promise<ResolvedImports> {
 // Execution helpers
 // ---------------------------------------------------------------------------
 
-function makeAdditionalDataStub(
-	overrides: Record<string, unknown>,
-): IWorkflowExecuteAdditionalData {
-	return new Proxy({} as IWorkflowExecuteAdditionalData, {
-		get(_target, prop: string) {
-			if (prop in overrides) return overrides[prop];
-			return () => undefined;
-		},
-	});
-}
-
 function findTriggerByGroup(nodes: INode[], nodeTypes: INodeTypes): INode | undefined {
 	return nodes.find((currentNode) => {
 		if (currentNode.disabled) return false;
 		const nt = nodeTypes.getByNameAndVersion(currentNode.type, currentNode.typeVersion);
 		return nt.description.group?.includes('trigger');
+	});
+}
+
+function findSubworkflowStart(nodes: INode[]): INode | undefined {
+	return (
+		nodes.find((n) => n.type === 'n8n-nodes-base.executeWorkflowTrigger') ??
+		nodes.find((n) => ['n8n-nodes-base.manualTrigger', 'n8n-nodes-base.start'].includes(n.type))
+	);
+}
+
+function getLastExecutedNodeData(run: IRun): ITaskData | undefined {
+	const { runData, lastNodeExecuted } = run.data.resultData;
+	if (!lastNodeExecuted || !runData[lastNodeExecuted]) return undefined;
+	return runData[lastNodeExecuted][runData[lastNodeExecuted].length - 1];
+}
+
+// ---------------------------------------------------------------------------
+// Sub-workflow executor
+// ---------------------------------------------------------------------------
+
+interface SubWorkflowRunEntry {
+	name: string;
+	run: IRun;
+}
+
+async function executeSubWorkflow(
+	workflowCode: {
+		nodes: INode[];
+		connections: IConnections;
+		name?: string;
+		id?: string;
+		pinData?: Record<string, IDataObject[]>;
+	},
+	inputData: INodeExecutionData[],
+	imports: ResolvedImports,
+	collector: SubWorkflowRunEntry[],
+): Promise<{ executionId: string; data: Array<INodeExecutionData[] | null> }> {
+	const subId = `sub-${collector.length + 1}`;
+
+	const workflowInstance = new Workflow({
+		id: workflowCode.id ?? subId,
+		nodes: workflowCode.nodes,
+		connections: workflowCode.connections,
+		nodeTypes: imports.nodeTypes,
+		active: false,
+	});
+
+	const startNode = findSubworkflowStart(workflowCode.nodes);
+	if (!startNode) {
+		throw new Error(`Sub-workflow "${workflowCode.name ?? subId}" has no start node`);
+	}
+
+	// Extract pin data from the sub-workflow JSON
+	const pinData = extractPinData(workflowCode);
+
+	const subHooks = new imports.ExecutionLifecycleHooks('integrated', subId, {} as never);
+	const subWaitPromise = createDeferredPromise<IRun>();
+	subHooks.addHandler('workflowExecuteAfter', (fullRunData: unknown) => {
+		subWaitPromise.resolve(fullRunData as IRun);
+	});
+
+	// Build additionalData for sub-workflow (recursive — supports nested sub-workflows)
+	const subAdditionalData = buildAdditionalData(imports, subHooks, subId, collector);
+
+	const subRunData = createRunExecutionData({
+		executionData: {
+			nodeExecutionStack: [{ node: startNode, data: { main: [inputData] }, source: null }],
+		},
+		resultData: { pinData },
+	});
+
+	const subExecute = new imports.WorkflowExecute(subAdditionalData, 'integrated', subRunData);
+	await subExecute.processRunExecutionData(workflowInstance);
+
+	const subRun = await subWaitPromise.promise;
+	collector.push({ name: workflowCode.name ?? subId, run: subRun });
+
+	const lastNodeData = getLastExecutedNodeData(subRun);
+	const outputData = lastNodeData?.data?.main ?? [];
+
+	return { executionId: subId, data: outputData };
+}
+
+// ---------------------------------------------------------------------------
+// additionalData builder (shared between main and sub-workflow execution)
+// ---------------------------------------------------------------------------
+
+function buildAdditionalData(
+	imports: ResolvedImports,
+	hooks: { addHandler: (event: string, handler: (...args: unknown[]) => void) => void },
+	executionId: string,
+	subWorkflowCollector: SubWorkflowRunEntry[],
+): IWorkflowExecuteAdditionalData {
+	// Store sub-workflow run data for getRunExecutionData lookups
+	const subRunDataById = new Map<string, IRunExecutionData>();
+
+	const overrides: Record<string, unknown> = {
+		executionId,
+		hooks,
+		executeWorkflow: async (
+			workflowInfo: {
+				id?: string;
+				code?: { nodes: INode[]; connections: IConnections; name?: string; id?: string };
+			},
+			_additionalData: unknown,
+			options?: { inputData?: INodeExecutionData[]; parentExecution?: unknown },
+		) => {
+			if (!workflowInfo.code) {
+				throw new Error('Sub-workflow execution only supports inline code (source: parameter)');
+			}
+			const result = await executeSubWorkflow(
+				workflowInfo.code,
+				options?.inputData ?? [{ json: {} }],
+				imports,
+				subWorkflowCollector,
+			);
+			// Store the sub-workflow's run data so getRunExecutionData can find it
+			const lastEntry = subWorkflowCollector[subWorkflowCollector.length - 1];
+			if (lastEntry) {
+				subRunDataById.set(result.executionId, lastEntry.run.data);
+			}
+			return result;
+		},
+		getRunExecutionData: async (execId: string): Promise<IRunExecutionData | undefined> => {
+			return subRunDataById.get(execId);
+		},
+	};
+
+	return new Proxy({} as IWorkflowExecuteAdditionalData, {
+		get(_target, prop: string) {
+			if (prop in overrides) return overrides[prop];
+			return () => undefined;
+		},
 	});
 }
 
@@ -219,14 +372,16 @@ export interface ExecutionResult {
 	durationMs: number;
 	executedNodes: string[];
 	run?: IRun;
+	subWorkflowRuns?: SubWorkflowRunEntry[];
 }
 
 export async function executeWorkflow(
-	workflow: { name: string; nodes: INode[]; connections: import('n8n-workflow').IConnections },
+	workflow: { name: string; nodes: INode[]; connections: IConnections },
 	pinData: IPinData,
 ): Promise<ExecutionResult> {
 	const startTime = Date.now();
 	const executedNodes: string[] = [];
+	const subWorkflowRuns: SubWorkflowRunEntry[] = [];
 
 	try {
 		const imports = await resolveImports();
@@ -260,7 +415,7 @@ export async function executeWorkflow(
 			waitPromise.resolve(fullRunData as IRun);
 		});
 
-		const additionalData = makeAdditionalDataStub({ executionId: '1', hooks });
+		const additionalData = buildAdditionalData(imports, hooks, '1', subWorkflowRuns);
 
 		const runExecutionData = createRunExecutionData({
 			executionData: {
@@ -297,6 +452,7 @@ export async function executeWorkflow(
 			durationMs: Date.now() - startTime,
 			executedNodes,
 			run: result,
+			subWorkflowRuns: subWorkflowRuns.length > 0 ? subWorkflowRuns : undefined,
 		};
 	} catch (error) {
 		return {
@@ -304,6 +460,7 @@ export async function executeWorkflow(
 			error: error instanceof Error ? error.message : String(error),
 			durationMs: Date.now() - startTime,
 			executedNodes,
+			subWorkflowRuns: subWorkflowRuns.length > 0 ? subWorkflowRuns : undefined,
 		};
 	}
 }

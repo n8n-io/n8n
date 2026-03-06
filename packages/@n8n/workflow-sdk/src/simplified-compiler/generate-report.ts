@@ -25,12 +25,18 @@ interface PinDataEntry {
 	data: unknown[];
 }
 
+interface SubWorkflowExecutionEntry {
+	name: string;
+	nodeOutputs: Record<string, unknown[]>;
+}
+
 interface ExecutionEntry {
 	status: 'pass' | 'error' | 'skip';
 	error?: string;
 	reason?: string;
 	executedNodes?: string[];
 	nodeOutputs?: Record<string, unknown[]>;
+	subWorkflows?: SubWorkflowExecutionEntry[];
 }
 
 interface ReportEntry {
@@ -174,7 +180,32 @@ function renderExecutionSection(execution: ExecutionEntry): string {
 		? `<div class="exec-error-msg">${escapeHtml(execution.error)}</div>`
 		: '';
 
-	const nodeRows = executedNodes
+	const nodeRows = renderNodePipeline(executedNodes, nodeOutputs);
+
+	const subWorkflowSections = (execution.subWorkflows ?? [])
+		.map((sw) => {
+			const swNodeNames = Object.keys(sw.nodeOutputs);
+			return `<div class="exec-sub-workflow">
+          <h4 class="exec-sub-label">Sub-workflow: ${escapeHtml(sw.name)}</h4>
+          <div class="exec-pipeline">
+            ${renderNodePipeline(swNodeNames, sw.nodeOutputs)}
+          </div>
+        </div>`;
+		})
+		.join('\n');
+
+	return `<details>
+        <summary>Execution Output <span class="exec-badge ${statusClass}">${statusLabel}</span> <span class="exec-count">${executedNodes.length} node${executedNodes.length !== 1 ? 's' : ''}${(execution.subWorkflows ?? []).length > 0 ? ` + ${execution.subWorkflows!.length} sub` : ''}</span></summary>
+        ${errorBlock}
+        <div class="exec-pipeline">
+          ${nodeRows}
+        </div>
+        ${subWorkflowSections}
+      </details>`;
+}
+
+function renderNodePipeline(nodeNames: string[], nodeOutputs: Record<string, unknown[]>): string {
+	return nodeNames
 		.map((nodeName) => {
 			const output = nodeOutputs[nodeName];
 			const hasOutput = output && output.length > 0;
@@ -193,14 +224,6 @@ function renderExecutionSection(execution: ExecutionEntry): string {
         </div>`;
 		})
 		.join('\n');
-
-	return `<details>
-        <summary>Execution Output <span class="exec-badge ${statusClass}">${statusLabel}</span> <span class="exec-count">${executedNodes.length} node${executedNodes.length !== 1 ? 's' : ''}</span></summary>
-        ${errorBlock}
-        <div class="exec-pipeline">
-          ${nodeRows}
-        </div>
-      </details>`;
 }
 
 function generateHtml(entries: ReportEntry[]): string {
@@ -335,6 +358,8 @@ function generateHtml(entries: ReportEntry[]): string {
     .exec-item-count { font-size: 10px; color: #888; background: #f0f0f0; padding: 1px 6px; border-radius: 3px; }
     .exec-no-output { font-size: 10px; color: #aaa; font-style: italic; }
     .exec-output { font-size: 11px; padding: 8px 12px; margin-top: 6px; margin-bottom: 0; line-height: 1.4; max-height: 200px; overflow-y: auto; }
+    .exec-sub-workflow { margin-top: 16px; padding-top: 12px; border-top: 1px dashed #e0e0e0; }
+    .exec-sub-label { font-size: 12px; font-weight: 600; color: #7c5cfc; margin-bottom: 8px; }
   </style>
 </head>
 <body>

@@ -1,6 +1,6 @@
 import { writeFileSync } from 'fs';
 import { join } from 'path';
-import type { INode } from 'n8n-workflow';
+import type { INode, IRunData } from 'n8n-workflow';
 import { transpileWorkflowJS } from './compiler';
 import { parseWorkflowCode } from '../codegen/parse-workflow-code';
 import { loadFixtures } from './fixture-loader';
@@ -20,29 +20,22 @@ const SKIP_REASONS: Record<string, string> = {
 	w12: 'Code node refs upstream without pin data (undefined.ok)',
 	w17: 'Code node refs upstream without pin data (undefined.ok)',
 	w23: 'Code node refs upstream without pin data (undefined.ok)',
+	w26: 'Code node uses .first().json for array response (todos.filter not a function)',
+	w27: 'Code node uses .first().json for array response (users.filter not a function)',
 
 	// IF/Switch node gets undefined input (missing pin data on predecessor)
 	w06: 'IF node gets undefined input (missing pin data on predecessor)',
 	w09: 'IF node gets undefined input (missing pin data on predecessor)',
 	w14: 'Switch node gets undefined input (missing pin data on predecessor)',
 
-	// Execute Workflow node — additionalData.executionWaitTill missing
-	w15: 'Execute Workflow node — additionalData.executionWaitTill missing',
-	w18: 'Execute Workflow node — additionalData.executionWaitTill missing',
-	w19: 'Execute Workflow node — additionalData.executionWaitTill missing',
-	w20: 'Execute Workflow node — additionalData.executionWaitTill missing',
-	w21: 'Execute Workflow node — additionalData.executionWaitTill missing',
-	w22: 'Execute Workflow node — additionalData.executionWaitTill missing',
+	// Execute Workflow by name (source: database) — needs real DB lookup
+	w15: 'Execute Workflow by name (source: database) — no DB in test harness',
 
 	// HTTP node with credentials — credentialsHelper stub unsupported
 	w07: 'HTTP node with credentials — credentialsHelper stub unsupported',
 
-	// Compiler emits {{dynamic URL}} for concatenated URL expressions — can't resolve at runtime
-	w25: 'Compiler emits {{dynamic URL}} for concatenated URL expressions',
-
-	// Sub-workflow (loop body / sub-function) — executionWaitTill missing
-	w26: 'Execute Workflow node in loop — additionalData.executionWaitTill missing',
-	w27: 'Execute Workflow node in loop — additionalData.executionWaitTill missing',
+	// HTTP expression URLs reference upstream node outputs without pin data
+	w25: 'HTTP expression URLs reference upstream without pin data',
 };
 
 function getSkipReason(dir: string): string | undefined {
@@ -55,15 +48,33 @@ function getSkipReason(dir: string): string | undefined {
 // Execution data collection (written to execution-data.json after all tests)
 // ---------------------------------------------------------------------------
 
+interface SubWorkflowExecutionEntry {
+	name: string;
+	nodeOutputs: Record<string, unknown[]>;
+}
+
 interface FixtureExecutionEntry {
 	status: 'pass' | 'error' | 'skip';
 	error?: string;
 	reason?: string;
 	executedNodes?: string[];
 	nodeOutputs?: Record<string, unknown[]>;
+	subWorkflows?: SubWorkflowExecutionEntry[];
 }
 
 const executionData: Record<string, FixtureExecutionEntry> = {};
+
+function extractNodeOutputs(runData?: IRunData): Record<string, unknown[]> {
+	const outputs: Record<string, unknown[]> = {};
+	if (!runData) return outputs;
+	for (const [nodeName, taskDataArr] of Object.entries(runData)) {
+		const items = taskDataArr[0]?.data?.main?.[0];
+		if (items) {
+			outputs[nodeName] = items.map((item) => item.json);
+		}
+	}
+	return outputs;
+}
 
 // ---------------------------------------------------------------------------
 // Test suite
@@ -114,22 +125,20 @@ describe('Fixture execution with pin data', () => {
 			);
 
 			// Step 5: Collect per-node output data
-			const nodeOutputs: Record<string, unknown[]> = {};
-			const runData = result.run?.data?.resultData?.runData;
-			if (runData) {
-				for (const [nodeName, taskDataArr] of Object.entries(runData)) {
-					const items = taskDataArr[0]?.data?.main?.[0];
-					if (items) {
-						nodeOutputs[nodeName] = items.map((item) => item.json);
-					}
-				}
-			}
+			const nodeOutputs = extractNodeOutputs(result.run?.data?.resultData?.runData);
+
+			// Step 6: Collect sub-workflow output data
+			const subWorkflows = result.subWorkflowRuns?.map((entry) => ({
+				name: entry.name,
+				nodeOutputs: extractNodeOutputs(entry.run?.data?.resultData?.runData),
+			}));
 
 			executionData[fixture.dir] = {
 				status: result.success ? 'pass' : 'error',
 				error: result.error,
 				executedNodes: result.executedNodes,
 				nodeOutputs,
+				subWorkflows: subWorkflows && subWorkflows.length > 0 ? subWorkflows : undefined,
 			};
 
 			expect(result.success).toBe(true);

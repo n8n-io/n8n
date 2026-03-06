@@ -44,7 +44,7 @@ const http2 = node({
     "name": "GET Request",
     "parameters": {
       "method": "GET",
-      "url": "{{dynamic URL}}",
+      "url": "={{ 'https://jsonplaceholder.typicode.com/posts/' + $('POST jsonplaceholder.typicode.com/posts').first().json.id }}",
       "options": {}
     },
     "executeOnce": true
@@ -57,7 +57,7 @@ const http3 = node({
     "name": "PUT Request",
     "parameters": {
       "method": "PUT",
-      "url": "{{dynamic URL}}",
+      "url": "={{ 'https://jsonplaceholder.typicode.com/posts/' + $('POST jsonplaceholder.typicode.com/posts').first().json.id }}",
       "options": {},
       "sendBody": true,
       "contentType": "json",
@@ -74,7 +74,7 @@ const http4 = node({
     "name": "PATCH Request",
     "parameters": {
       "method": "PATCH",
-      "url": "{{dynamic URL}}",
+      "url": "={{ 'https://jsonplaceholder.typicode.com/posts/' + $('POST jsonplaceholder.typicode.com/posts').first().json.id }}",
       "options": {},
       "sendBody": true,
       "contentType": "json",
@@ -91,7 +91,7 @@ const http5 = node({
     "name": "DELETE Request",
     "parameters": {
       "method": "DELETE",
-      "url": "{{dynamic URL}}",
+      "url": "={{ 'https://jsonplaceholder.typicode.com/posts/' + $('POST jsonplaceholder.typicode.com/posts').first().json.id }}",
       "options": {}
     },
     "executeOnce": true

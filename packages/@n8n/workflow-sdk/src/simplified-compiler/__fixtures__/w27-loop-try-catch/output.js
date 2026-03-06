@@ -7,7 +7,7 @@ const tc_tryCatch_1_http1 = node({
     "name": "GET Request",
     "parameters": {
       "method": "GET",
-      "url": "{{dynamic URL}}",
+      "url": "={{ 'https://jsonplaceholder.typicode.com/users/' + $('When Executed by Another Workflow').first().json.user.id + '/posts' }}",
       "options": {}
     },
     "executeOnce": true

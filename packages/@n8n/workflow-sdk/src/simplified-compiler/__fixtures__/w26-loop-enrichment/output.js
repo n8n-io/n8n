@@ -7,7 +7,7 @@ const fn_enrichUser_http1 = node({
     "name": "GET Request",
     "parameters": {
       "method": "GET",
-      "url": "{{dynamic URL}}",
+      "url": "={{ 'https://jsonplaceholder.typicode.com/users/' + $('When Executed by Another Workflow').first().json.userId }}",
       "options": {}
     },
     "executeOnce": true
@@ -20,7 +20,7 @@ const fn_enrichUser_http2 = node({
     "name": "GET Request",
     "parameters": {
       "method": "GET",
-      "url": "{{dynamic URL}}",
+      "url": "={{ 'https://jsonplaceholder.typicode.com/users/' + $('When Executed by Another Workflow').first().json.userId + '/posts' }}",
       "options": {}
     },
     "executeOnce": true

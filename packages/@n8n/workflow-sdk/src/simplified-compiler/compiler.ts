@@ -92,6 +92,7 @@ interface IOCall {
 	method: string;
 	assignedVar: string | null;
 	url?: string;
+	urlAstNode?: AcornNode; // Raw BinaryExpression AST for lazy URL resolution
 	body?: Record<string, unknown> | null;
 	bodyExpression?: string;
 	options?: Record<string, unknown>;
@@ -2607,6 +2608,9 @@ function extractHttpCall(callNode: AcornNode, method: string, _source: string): 
 	const args = callNode.arguments ?? [];
 	const url = args[0] ? extractStringLiteral(args[0]) : undefined;
 
+	// Store raw AST node for lazy URL resolution in generateHttpSDK
+	const urlAstNode = !url && args[0]?.type === 'BinaryExpression' ? args[0] : undefined;
+
 	let body: Record<string, unknown> | null = null;
 	let bodyExpression: string | undefined;
 	let options: Record<string, unknown> | undefined;
@@ -2656,6 +2660,7 @@ function extractHttpCall(callNode: AcornNode, method: string, _source: string): 
 		method,
 		assignedVar: null,
 		url,
+		urlAstNode,
 		body,
 		bodyExpression,
 		options,
@@ -2762,6 +2767,39 @@ function extractWorkflowRunCall(callNode: AcornNode): IOCall {
 }
 
 // ─── AST Value Extraction ────────────────────────────────────────────────────
+
+/**
+ * Resolve a BinaryExpression URL into an n8n expression.
+ * E.g. `'https://api.com/posts/' + created.id` →
+ * `={{ 'https://api.com/posts/' + $('POST api.com/posts').first().json.id }}`
+ */
+function resolveUrlExpression(node: AcornNode, ctx: TranspilerContext): string | undefined {
+	if (node.type !== 'BinaryExpression' || node.operator !== '+') return undefined;
+
+	function resolvePart(part: AcornNode): string | undefined {
+		if (part.type === 'Literal' && typeof part.value === 'string') {
+			return `'${part.value}'`;
+		}
+		if (part.type === 'BinaryExpression' && part.operator === '+') {
+			const left = resolvePart(part.left);
+			const right = resolvePart(part.right);
+			if (left && right) return `${left} + ${right}`;
+			return undefined;
+		}
+		// Identifier or MemberExpression — resolve via varSourceMap
+		const resolved = resolveExpressionFromAST(part, ctx);
+		if (resolved.startsWith('={{') && resolved.endsWith('}}')) {
+			// Strip the ={{ }} wrapper to get the bare expression
+			return resolved.slice(3, -2).trim();
+		}
+		return `'${resolved}'`;
+	}
+
+	const left = resolvePart(node.left);
+	const right = resolvePart(node.right);
+	if (left && right) return `={{ ${left} + ${right} }}`;
+	return undefined;
+}
 
 function extractStringLiteral(node: AcornNode): string | undefined {
 	if (node.type === 'Literal' && typeof node.value === 'string') {
@@ -3162,7 +3200,11 @@ function generateHttpSDK(
 	options?: { skipExecuteOnce?: boolean },
 ): EmittedNode {
 	const method = io.method.toUpperCase();
-	const url = io.url ?? '{{dynamic URL}}';
+	// Resolve URL: static string, or lazy-resolve BinaryExpression AST via varSourceMap
+	const url =
+		io.url ??
+		(io.urlAstNode ? resolveUrlExpression(io.urlAstNode, ctx) : undefined) ??
+		'{{dynamic URL}}';
 
 	const params: Record<string, unknown> = { method, url, options: {} };
 

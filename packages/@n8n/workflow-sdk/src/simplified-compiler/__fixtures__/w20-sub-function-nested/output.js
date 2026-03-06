@@ -7,7 +7,7 @@ const fn_enrichData_http1 = node({
     "name": "GET Request",
     "parameters": {
       "method": "GET",
-      "url": "{{dynamic URL}}",
+      "url": "={{ 'https://api.com/enrich/' + $('When Executed by Another Workflow').first().json.id }}",
       "options": {}
     },
     "executeOnce": true

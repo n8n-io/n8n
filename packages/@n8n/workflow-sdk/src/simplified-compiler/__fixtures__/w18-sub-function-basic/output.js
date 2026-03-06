@@ -7,7 +7,7 @@ const fn_processOrder_http1 = node({
     "name": "GET Request",
     "parameters": {
       "method": "GET",
-      "url": "{{dynamic URL}}",
+      "url": "={{ 'https://api.com/orders/' + $('When Executed by Another Workflow').first().json.orderId }}",
       "options": {}
     },
     "executeOnce": true

@@ -966,6 +966,64 @@ function emitLeafByType(node: SemanticNode, ctx: SimplifiedGenContext): void {
 
 // ─── HTTP Node ───────────────────────────────────────────────────────────────
 
+/**
+ * Convert a URL parameter back to a DSL argument.
+ * Plain URLs → `'https://...'`
+ * Expression URLs → `'https://...' + varName.prop`
+ */
+function resolveUrlArg(url: string, ctx: SimplifiedGenContext): string {
+	if (!url.startsWith('={{') || !url.endsWith('}}')) {
+		return `'${url}'`;
+	}
+	// Strip ={{ ... }} wrapper
+	const inner = url.slice(3, -2).trim();
+
+	// Split on top-level + (respecting quotes and parens)
+	const parts = splitOnPlus(inner);
+	if (parts.length < 2) return `'${url}'`;
+
+	const resolved = parts.map((part) => {
+		const trimmed = part.trim();
+		// String literal: 'value'
+		if (trimmed.startsWith("'") && trimmed.endsWith("'")) {
+			return trimmed;
+		}
+		// Node reference: $('NodeName').first().json.prop
+		const ref = resolveExpression(`={{ ${trimmed} }}`, ctx);
+		if (ref !== null) return ref;
+		return trimmed;
+	});
+
+	return resolved.join(' + ');
+}
+
+/** Split an expression string on top-level `+` operators (not inside quotes/parens). */
+function splitOnPlus(expr: string): string[] {
+	const parts: string[] = [];
+	let depth = 0;
+	let inSingle = false;
+	let inDouble = false;
+	let current = '';
+
+	for (let i = 0; i < expr.length; i++) {
+		const ch = expr[i];
+		if (ch === "'" && !inDouble) inSingle = !inSingle;
+		else if (ch === '"' && !inSingle) inDouble = !inDouble;
+		else if (!inSingle && !inDouble) {
+			if (ch === '(' || ch === '[') depth++;
+			else if (ch === ')' || ch === ']') depth--;
+			else if (ch === '+' && depth === 0) {
+				parts.push(current);
+				current = '';
+				continue;
+			}
+		}
+		current += ch;
+	}
+	parts.push(current);
+	return parts;
+}
+
 function emitHttpNode(node: SemanticNode, ctx: SimplifiedGenContext): void {
 	// Emit @example pin data annotation if present
 	const pinData = ctx.workflowPinData[node.name];
@@ -979,7 +1037,8 @@ function emitHttpNode(node: SemanticNode, ctx: SimplifiedGenContext): void {
 
 	const assignedVar = ctx.nodeNameToVarName.get(node.name);
 
-	const args: string[] = [`'${url}'`];
+	const urlArg = resolveUrlArg(url, ctx);
+	const args: string[] = [urlArg];
 
 	// Body
 	const jsonBody = params.jsonBody as string | undefined;

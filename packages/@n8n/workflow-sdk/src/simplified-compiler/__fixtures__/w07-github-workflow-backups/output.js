@@ -32,7 +32,7 @@ const loop_wf_http1 = node({
     "name": "GET Request",
     "parameters": {
       "method": "GET",
-      "url": "{{dynamic URL}}",
+      "url": "={{ 'https://api.github.com/repos/myuser/n8n-workflows/contents/' + $('Code 1').first().json.filePath }}",
       "options": {},
       "authentication": "genericCredentialType",
       "genericAuthType": "httpHeaderAuth"
@@ -49,7 +49,7 @@ const loop_wf_http2 = node({
     "name": "PUT Request",
     "parameters": {
       "method": "PUT",
-      "url": "{{dynamic URL}}",
+      "url": "={{ 'https://api.github.com/repos/myuser/n8n-workflows/contents/' + $('Code 1').first().json.filePath }}",
       "options": {},
       "sendBody": true,
       "contentType": "json",
@@ -69,7 +69,7 @@ const loop_wf_http3 = node({
     "name": "PUT Request",
     "parameters": {
       "method": "PUT",
-      "url": "{{dynamic URL}}",
+      "url": "={{ 'https://api.github.com/repos/myuser/n8n-workflows/contents/' + $('Code 1').first().json.filePath }}",
       "options": {},
       "sendBody": true,
       "contentType": "json",
