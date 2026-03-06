@@ -429,7 +429,6 @@ describe('GlobalConfig', () => {
 			blockedIpRanges: [...SSRF_DEFAULT_BLOCKED_IP_RANGES],
 			allowedIpRanges: [],
 			allowedHostnames: [],
-			dnsCacheMaxTtlSeconds: 300,
 			dnsCacheMaxSize: 1024 * 1024,
 		},
 		redis: {
