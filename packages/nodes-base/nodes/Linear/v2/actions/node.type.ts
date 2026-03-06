@@ -7,6 +7,9 @@ type NodeMap = {
 	user: 'get' | 'getAll' | 'getCurrent';
 	team: 'get' | 'getAll';
 	label: 'create' | 'get' | 'getAll' | 'update' | 'delete';
+	cycle: 'create' | 'get' | 'getAll' | 'update' | 'delete' | 'archive';
+	attachment: 'create' | 'get' | 'getAll' | 'delete';
+	workflowState: 'get' | 'getAll';
 };
 
 export type Linear = AllEntities<NodeMap>;
