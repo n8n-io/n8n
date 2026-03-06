@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 import { getConfig, hasConfig } from '../config.js';
+import { getGitRoot } from './git-operations.js';
 
 /**
  * Get the root directory for the Playwright test suite
@@ -106,12 +107,13 @@ export function getRelativePath(absolutePath: string): string {
  * The heuristic: resolve against gitRoot first. If the result falls within
  * rootDir, it's a repo-root-relative path. Otherwise treat it as rootDir-relative.
  */
-export function resolveInputPaths(files: string[], gitRoot: string): string[] {
+export function resolveInputPaths(files: string[], gitRoot?: string): string[] {
 	const root = getRootDir();
+	const resolvedGitRoot = gitRoot ?? getGitRoot(root);
 
 	return files.map((f) => {
 		if (path.isAbsolute(f)) return f;
-		const fromGitRoot = path.resolve(gitRoot, f);
+		const fromGitRoot = path.resolve(resolvedGitRoot, f);
 		if (fromGitRoot.startsWith(root + path.sep) || fromGitRoot === root) return fromGitRoot;
 		return path.resolve(root, f);
 	});

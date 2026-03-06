@@ -171,8 +171,7 @@ async function runImpact(options: CliOptions): Promise<void> {
 			extensions: ['.ts'],
 		});
 	} else {
-		const { getGitRoot } = await import('./utils/git-operations.js');
-		changedFiles = resolveInputPaths(changedFiles, getGitRoot(config.rootDir));
+		changedFiles = resolveInputPaths(changedFiles);
 	}
 
 	if (changedFiles.length === 0) {
@@ -447,8 +446,7 @@ async function runOrchestrate(options: CliOptions): Promise<void> {
 				targetBranch: options.baseRef,
 			});
 		} else {
-			const { getGitRoot } = await import('./utils/git-operations.js');
-			changedFiles = resolveInputPaths(changedFiles, getGitRoot(config.rootDir));
+			changedFiles = resolveInputPaths(changedFiles);
 		}
 
 		if (changedFiles.length === 0) {
