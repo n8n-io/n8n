@@ -504,6 +504,62 @@ When the URL is an expression (starts with `={{`), `extractHttpCall()` generates
 
 The execution test harness (`execution-utils.ts`) disables the n8n task runner in `resolveImports()` by setting `TaskRunnersConfig.enabled = false` via the DI container. This forces the Code node to use the in-process `JavaScriptSandbox` instead of `JsTaskRunnerSandbox` (which requires a running task broker that doesn't exist in the test environment). Without this, all Code node executions fail with `Cannot read properties of undefined (reading 'ok')`.
 
+## Execution Test: Nock-Based HTTP Mocking
+
+The execution test harness supports nock interceptors for fixtures that need HTTP nodes to actually execute (instead of using pin data). This validates request URLs, methods, and bodies against a mock backend.
+
+### Architecture
+
+| File | Purpose |
+|------|---------|
+| `mock-credentials-helper.ts` | Mock `ICredentialsHelper` returning pre-defined credential data by type |
+| `__fixtures__/<dir>/nock.ts` | Per-fixture nock interceptor setup (exports `setupNock()`) |
+| `execution-utils.ts` | Proxy `set` trap, credential helper wiring, filter conditions patcher |
+| `execution.test.ts` | Nock lifecycle (`afterEach: nock.cleanAll()`), pin data stripping, fixture nock loading |
+| `fixture-loader.ts` | `hasNock` detection via `existsSync(join(dirPath, 'nock.ts'))` |
+
+### How It Works
+
+1. `fixture-loader.ts` detects `nock.ts` in fixture directories → sets `hasNock: true`
+2. Test loads nock module via `require()` and calls `setupNock()`
+3. `stripHttpPinData()` removes pin data for `httpRequest` nodes (so they actually execute via nock)
+4. `patchFilterConditions()` adds missing `options` to IF/Switch filter conditions (see below)
+5. HTTP nodes make requests → nock intercepts and returns mock responses
+6. `afterEach: nock.cleanAll()` prevents cross-test contamination
+
+### Adding a Nock Fixture
+
+1. Create `__fixtures__/<dir>/nock.ts`:
+```typescript
+import nock from 'nock';
+export function setupNock(): void {
+    nock('https://api.example.com').get('/data').reply(200, { result: 'mock' });
+}
+```
+2. Remove the fixture from `SKIP_REASONS` in `execution.test.ts`
+3. Run `pnpm test execution.test.ts` to verify
+
+### Filter Conditions Patching
+
+**Problem**: The compiler emits IF/Switch `conditions` parameters without `options` (`caseSensitive`, `typeValidation`, `version`). The n8n frontend normally resolves these from `typeOptions.filter` expressions when saving a workflow. The execution engine expects them to be present.
+
+**Solution**: `patchFilterConditions()` recursively walks node parameters and adds default filter options (`caseSensitive: true`, `typeValidation: 'loose'`, `version: 2`) to any `FilterValue` object missing `options`. Applied only for nock fixtures (pin-data fixtures skip IF/Switch evaluation).
+
+**Why `loose` type validation**: The compiler may emit `exists` checks with `type: 'string'` where the resolved value is an object (e.g., checking if a response exists). Strict validation rejects this. Loose validation is more appropriate for compiler-generated workflows.
+
+### Mock Credentials Helper
+
+`MockCredentialsHelper` extends `ICredentialsHelper` and returns pre-defined credential data by type:
+- `httpHeaderAuth` → `{ name: 'Authorization', value: 'Bearer test-token' }`
+- `httpBasicAuth` / `httpDigestAuth` → `{ user: 'test-user', password: 'test-pass' }`
+- `oAuth2Api` → valid token structure with `access_token: 'test-oauth2-token'`
+
+Wired into `buildAdditionalData()` via `credentialsHelper` override.
+
+### Proxy `set` Trap
+
+The `additionalData` Proxy now has a `set` trap because `_getCredentials()` writes `additionalData.executionContext = this.getExecutionContext()` during credential resolution. Without the `set` trap, this write fails silently and credential resolution breaks.
+
 ## Updating This Document
 
 **Every new session working on the simplified-compiler MUST update this CLAUDE.md with learnings before finishing.** This is a living document.

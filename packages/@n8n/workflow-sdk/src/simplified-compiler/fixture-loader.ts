@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, statSync } from 'fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
 
 export interface Fixture {
@@ -7,6 +7,7 @@ export interface Fixture {
 	input: string;
 	expectedOutput: string;
 	skip?: string;
+	hasNock: boolean;
 }
 
 interface FixtureMeta {
@@ -18,8 +19,9 @@ function loadFixtureFromDir(dirPath: string, dirName: string): Fixture {
 	const meta = JSON.parse(readFileSync(join(dirPath, 'meta.json'), 'utf-8')) as FixtureMeta;
 	const input = readFileSync(join(dirPath, 'input.js'), 'utf-8').trim();
 	const expectedOutput = readFileSync(join(dirPath, 'output.js'), 'utf-8').trim();
+	const hasNock = existsSync(join(dirPath, 'nock.ts'));
 
-	return { dir: dirName, title: meta.title, input, expectedOutput, skip: meta.skip };
+	return { dir: dirName, title: meta.title, input, expectedOutput, skip: meta.skip, hasNock };
 }
 
 export function loadFixtures(): Fixture[] {

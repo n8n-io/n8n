@@ -1918,6 +1918,9 @@ importers:
       adm-zip:
         specifier: ^0.5.16
         version: 0.5.16
+      nock:
+        specifier: ^14.0.1
+        version: 14.0.1
 
   packages/cli:
     dependencies:
@@ -28290,7 +28293,7 @@ snapshots:
 
   axios-retry@4.5.0(axios@1.13.5):
     dependencies:
-      axios: 1.13.5(debug@4.4.3)
+      axios: 1.13.5
       is-retry-allowed: 2.2.0
 
   axios@1.13.5:

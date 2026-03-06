@@ -33,6 +33,8 @@ interface NodeOutputEntry {
 interface NodeExecutionInfo {
 	outputs: NodeOutputEntry[];
 	error?: string;
+	startTime?: number;
+	executionTime?: number;
 }
 
 type NodeOutputMap = Record<string, NodeExecutionInfo>;
@@ -43,6 +45,24 @@ interface SubWorkflowExecutionEntry {
 	nodeOutputs: NodeOutputMap;
 }
 
+interface NockRequestRecord {
+	timestamp?: number;
+	method: string;
+	url: string;
+	requestHeaders?: Record<string, string>;
+	requestBody?: unknown;
+	responseStatus: number;
+	responseHeaders?: Record<string, string>;
+	responseBody?: unknown;
+}
+
+interface NockTraceEntry {
+	interceptors: string[];
+	consumed: string[];
+	pending: string[];
+	requests?: NockRequestRecord[];
+}
+
 interface ExecutionEntry {
 	status: 'pass' | 'error' | 'skip';
 	error?: string;
@@ -50,6 +70,7 @@ interface ExecutionEntry {
 	executedNodes?: string[];
 	nodeOutputs?: NodeOutputMap;
 	subWorkflows?: SubWorkflowExecutionEntry[];
+	nockTrace?: NockTraceEntry;
 }
 
 interface ReportEntry {
@@ -193,7 +214,8 @@ function renderExecutionSection(execution: ExecutionEntry): string {
 		? `<div class="exec-error-msg">${escapeHtml(execution.error)}</div>`
 		: '';
 
-	const nodeRows = renderNodePipeline(executedNodes, nodeOutputs);
+	const nockRequests = execution.nockTrace?.requests;
+	const nodeRows = renderNodePipeline(executedNodes, nodeOutputs, nockRequests);
 
 	const subWorkflowSections = (execution.subWorkflows ?? [])
 		.map((sw) => {
@@ -207,13 +229,72 @@ function renderExecutionSection(execution: ExecutionEntry): string {
 		})
 		.join('\n');
 
+	const nockSection = execution.nockTrace ? renderNockSummary(execution.nockTrace) : '';
+
 	return `<details>
-        <summary>Execution Output <span class="exec-badge ${statusClass}">${statusLabel}</span> <span class="exec-count">${executedNodes.length} node${executedNodes.length !== 1 ? 's' : ''}${(execution.subWorkflows ?? []).length > 0 ? ` + ${execution.subWorkflows!.length} sub` : ''}</span></summary>
+        <summary>Execution Output <span class="exec-badge ${statusClass}">${statusLabel}</span> <span class="exec-count">${executedNodes.length} node${executedNodes.length !== 1 ? 's' : ''}${(execution.subWorkflows ?? []).length > 0 ? ` + ${execution.subWorkflows!.length} sub` : ''}${execution.nockTrace ? ' · nock' : ''}</span></summary>
         ${errorBlock}
+        ${nockSection}
         <div class="exec-pipeline">
           ${nodeRows}
         </div>
         ${subWorkflowSections}
+      </details>`;
+}
+
+function renderNockRequestDetail(req: NockRequestRecord): string {
+	const reqHeaders =
+		req.requestHeaders && Object.keys(req.requestHeaders).length > 0
+			? `<div class="nock-req-section"><span class="nock-req-label">Request Headers</span><pre class="code nock-req-body"><code>${escapeHtml(
+					Object.entries(req.requestHeaders)
+						.map(([k, v]) => `${k}: ${v}`)
+						.join('\n'),
+				)}</code></pre></div>`
+			: '';
+	const reqBody =
+		req.requestBody != null
+			? `<div class="nock-req-section"><span class="nock-req-label">Request Body</span><pre class="code nock-req-body"><code>${escapeHtml(typeof req.requestBody === 'string' ? req.requestBody : JSON.stringify(req.requestBody, null, 2))}</code></pre></div>`
+			: '';
+	const resHeaders =
+		req.responseHeaders && Object.keys(req.responseHeaders).length > 0
+			? `<div class="nock-req-section"><span class="nock-req-label">Response Headers</span><pre class="code nock-req-body"><code>${escapeHtml(
+					Object.entries(req.responseHeaders)
+						.map(([k, v]) => `${k}: ${v}`)
+						.join('\n'),
+				)}</code></pre></div>`
+			: '';
+	const resBody =
+		req.responseBody != null
+			? `<div class="nock-req-section"><span class="nock-req-label">Response Body</span><pre class="code nock-req-body"><code>${escapeHtml(typeof req.responseBody === 'string' ? req.responseBody : JSON.stringify(req.responseBody, null, 2))}</code></pre></div>`
+			: '';
+	return `<details class="nock-req-detail">
+          <summary><span class="nock-req-method">${escapeHtml(req.method)}</span> <span class="nock-req-url">${escapeHtml(req.url)}</span> <span class="nock-req-status nock-status-${req.responseStatus < 400 ? 'ok' : 'err'}">${req.responseStatus}</span></summary>
+          <div class="nock-req-panels">
+            <div class="nock-req-panel"><h5 class="nock-panel-title">Request</h5>${reqHeaders}${reqBody}</div>
+            <div class="nock-req-panel"><h5 class="nock-panel-title">Response <span class="nock-req-status nock-status-${req.responseStatus < 400 ? 'ok' : 'err'}">${req.responseStatus}</span></h5>${resHeaders}${resBody}</div>
+          </div>
+        </details>`;
+}
+
+function renderNockSummary(trace: NockTraceEntry): string {
+	const consumedSet = new Set(trace.consumed);
+	const rows = trace.interceptors
+		.map((interceptor) => {
+			const hit = consumedSet.has(interceptor);
+			const dotClass = hit ? 'nock-dot nock-dot-hit' : 'nock-dot nock-dot-miss';
+			const label = hit ? 'matched' : 'unused';
+			return `<div class="nock-row"><span class="${dotClass}"></span><span class="nock-url">${escapeHtml(interceptor)}</span><span class="nock-label nock-label-${hit ? 'hit' : 'miss'}">${label}</span></div>`;
+		})
+		.join('\n');
+
+	const allHit = trace.pending.length === 0;
+	const summaryBadge = allHit
+		? `<span class="nock-badge nock-badge-ok">${trace.consumed.length}/${trace.interceptors.length} matched</span>`
+		: `<span class="nock-badge nock-badge-warn">${trace.consumed.length}/${trace.interceptors.length} matched · ${trace.pending.length} unused</span>`;
+
+	return `<details class="nock-trace">
+        <summary>Nock Interceptors ${summaryBadge}</summary>
+        <div class="nock-list">${rows}</div>
       </details>`;
 }
 
@@ -224,44 +305,39 @@ function renderOutputBlock(items: unknown[]): string {
 	return `<pre class="code exec-output"><code>${escapeHtml(displayJson)}</code></pre>`;
 }
 
-function renderNodePipeline(nodeNames: string[], nodeOutputs: NodeOutputMap): string {
-	return nodeNames
-		.map((nodeName) => {
-			const info = nodeOutputs[nodeName];
-			const outputs = info?.outputs ?? [];
-			const nodeError = info?.error;
-			const hasError = !!nodeError;
-			const totalItems = outputs.reduce((sum, o) => sum + o.items.length, 0);
-			const dotClass = hasError ? 'exec-dot exec-dot-error' : 'exec-dot';
+function renderSingleNode(nodeName: string, info: NodeExecutionInfo | undefined): string {
+	const outputs = info?.outputs ?? [];
+	const nodeError = info?.error;
+	const hasError = !!nodeError;
+	const totalItems = outputs.reduce((sum, o) => sum + o.items.length, 0);
+	const dotClass = hasError ? 'exec-dot exec-dot-error' : 'exec-dot';
 
-			let statusBadge: string;
-			if (hasError) {
-				statusBadge = '<span class="exec-badge exec-error">ERROR</span>';
-			} else if (totalItems > 0) {
-				statusBadge = `<span class="exec-item-count">${totalItems} item${totalItems !== 1 ? 's' : ''}</span>`;
-			} else {
-				statusBadge = '<span class="exec-no-output">no output</span>';
-			}
+	let statusBadge: string;
+	if (hasError) {
+		statusBadge = '<span class="exec-badge exec-error">ERROR</span>';
+	} else if (totalItems > 0) {
+		statusBadge = `<span class="exec-item-count">${totalItems} item${totalItems !== 1 ? 's' : ''}</span>`;
+	} else {
+		statusBadge = '<span class="exec-no-output">no output</span>';
+	}
 
-			const errorBlock = hasError
-				? `<div class="exec-node-error">${escapeHtml(nodeError)}</div>`
-				: '';
+	const errorBlock = hasError ? `<div class="exec-node-error">${escapeHtml(nodeError)}</div>` : '';
 
-			let outputBlocks: string;
-			if (outputs.length === 1) {
-				outputBlocks = renderOutputBlock(outputs[0].items);
-			} else if (outputs.length > 1) {
-				outputBlocks = outputs
-					.map(
-						(o) =>
-							`<div class="exec-output-index"><span class="exec-output-label">Output ${o.outputIndex}</span> <span class="exec-item-count">${o.items.length} item${o.items.length !== 1 ? 's' : ''}</span>${renderOutputBlock(o.items)}</div>`,
-					)
-					.join('\n');
-			} else {
-				outputBlocks = '';
-			}
+	let outputBlocks: string;
+	if (outputs.length === 1) {
+		outputBlocks = renderOutputBlock(outputs[0].items);
+	} else if (outputs.length > 1) {
+		outputBlocks = outputs
+			.map(
+				(o) =>
+					`<div class="exec-output-index"><span class="exec-output-label">Output ${o.outputIndex}</span> <span class="exec-item-count">${o.items.length} item${o.items.length !== 1 ? 's' : ''}</span>${renderOutputBlock(o.items)}</div>`,
+			)
+			.join('\n');
+	} else {
+		outputBlocks = '';
+	}
 
-			return `<div class="exec-node">
+	return `<div class="exec-node">
           <div class="exec-node-header">
             <span class="${dotClass}"></span>
             <span class="exec-node-name">${escapeHtml(nodeName)}</span>
@@ -270,6 +346,41 @@ function renderNodePipeline(nodeNames: string[], nodeOutputs: NodeOutputMap): st
           ${errorBlock}
           ${outputBlocks}
         </div>`;
+}
+
+function renderNodePipeline(
+	nodeNames: string[],
+	nodeOutputs: NodeOutputMap,
+	nockRequests?: NockRequestRecord[],
+): string {
+	if (!nockRequests || nockRequests.length === 0) {
+		return nodeNames.map((name) => renderSingleNode(name, nodeOutputs[name])).join('\n');
+	}
+
+	// Build a unified timeline: nodes by startTime, nock requests by timestamp
+	type TimelineEntry =
+		| { kind: 'node'; name: string; time: number }
+		| { kind: 'nock'; request: NockRequestRecord; time: number };
+
+	const timeline: TimelineEntry[] = [];
+
+	for (const name of nodeNames) {
+		const info = nodeOutputs[name];
+		timeline.push({ kind: 'node', name, time: info?.startTime ?? 0 });
+	}
+
+	for (const req of nockRequests) {
+		timeline.push({ kind: 'nock', request: req, time: req.timestamp ?? 0 });
+	}
+
+	timeline.sort((a, b) => a.time - b.time);
+
+	return timeline
+		.map((entry) => {
+			if (entry.kind === 'node') {
+				return renderSingleNode(entry.name, nodeOutputs[entry.name]);
+			}
+			return `<div class="exec-node nock-inline">${renderNockRequestDetail(entry.request)}</div>`;
 		})
 		.join('\n');
 }
@@ -412,6 +523,39 @@ function generateHtml(entries: ReportEntry[]): string {
     .exec-output-label { font-size: 10px; font-weight: 600; color: #666; }
     .exec-sub-workflow { margin-top: 16px; padding-top: 12px; border-top: 1px dashed #e0e0e0; }
     .exec-sub-label { font-size: 12px; font-weight: 600; color: #7c5cfc; margin-bottom: 8px; }
+
+    /* Nock trace styles */
+    .nock-trace { margin: 8px 0 12px; }
+    .nock-trace summary { font-size: 12px; }
+    .nock-badge { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 3px; margin-left: 6px; vertical-align: middle; }
+    .nock-badge-ok { background: #d4edda; color: #155724; }
+    .nock-badge-warn { background: #fff3cd; color: #856404; }
+    .nock-list { margin-top: 6px; padding-left: 8px; }
+    .nock-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 12px; }
+    .nock-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .nock-dot-hit { background: #28a745; }
+    .nock-dot-miss { background: #ffc107; }
+    .nock-url { font-family: monospace; color: #333; }
+    .nock-label { font-size: 10px; padding: 0 4px; border-radius: 2px; }
+    .nock-label-hit { color: #155724; background: #d4edda; }
+    .nock-label-miss { color: #856404; background: #fff3cd; }
+    .nock-requests { margin-top: 8px; padding-left: 8px; }
+    .nock-requests-summary { font-size: 12px; }
+    .nock-requests-list { margin-top: 4px; }
+    .nock-req-detail { margin-bottom: 4px; padding-left: 8px; }
+    .nock-req-detail summary { font-size: 12px; font-family: monospace; gap: 6px; }
+    .nock-req-method { font-weight: 700; color: #7c5cfc; }
+    .nock-req-url { color: #333; }
+    .nock-req-status { font-size: 10px; padding: 0 4px; border-radius: 2px; font-weight: 600; margin-left: 4px; }
+    .nock-status-ok { color: #155724; background: #d4edda; }
+    .nock-status-err { color: #721c24; background: #f8d7da; }
+    .nock-req-panels { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+    .nock-req-panel { min-width: 0; }
+    .nock-panel-title { font-size: 11px; font-weight: 700; color: #555; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+    .nock-req-section { margin-top: 4px; }
+    .nock-req-label { font-size: 10px; font-weight: 600; color: #888; display: block; margin-bottom: 2px; }
+    .nock-req-body { font-size: 11px; padding: 6px 10px; margin-top: 2px; max-height: 150px; overflow-y: auto; }
+    .nock-inline { border-left: 2px solid #28a745; margin-left: 2px; padding-left: 10px; }
   </style>
 </head>
 <body>

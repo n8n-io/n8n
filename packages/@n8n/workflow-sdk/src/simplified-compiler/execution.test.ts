@@ -1,10 +1,16 @@
 import { writeFileSync } from 'fs';
 import { join } from 'path';
-import type { INode, IRunData } from 'n8n-workflow';
+import nock from 'nock';
+import type { INode, IPinData, IRunData } from 'n8n-workflow';
 import { transpileWorkflowJS } from './compiler';
 import { parseWorkflowCode } from '../codegen/parse-workflow-code';
 import { loadFixtures } from './fixture-loader';
-import { resolveImports, executeWorkflow, extractPinData } from './execution-utils';
+import {
+	resolveImports,
+	executeWorkflow,
+	extractPinData,
+	patchFilterConditions,
+} from './execution-utils';
 
 // ---------------------------------------------------------------------------
 // Skip map: fixtures that fail execution (grouped by root cause)
@@ -34,8 +40,7 @@ const SKIP_REASONS: Record<string, string> = {
 	// HTTP node with credentials — credentialsHelper stub unsupported
 	w07: 'HTTP node with credentials — credentialsHelper stub unsupported',
 
-	// HTTP expression URLs reference upstream node outputs without pin data
-	w25: 'HTTP expression URLs reference upstream without pin data',
+	// w25: now uses nock interceptors (removed from skip list)
 
 	// Sub-workflow nodes reference upstream without pin data
 	w18: 'Sub-workflow node refs upstream without pin data',
@@ -65,6 +70,8 @@ interface NodeOutputEntry {
 interface NodeExecutionInfo {
 	outputs: NodeOutputEntry[];
 	error?: string;
+	startTime?: number;
+	executionTime?: number;
 }
 
 type NodeOutputMap = Record<string, NodeExecutionInfo>;
@@ -75,6 +82,24 @@ interface SubWorkflowExecutionEntry {
 	nodeOutputs: NodeOutputMap;
 }
 
+interface NockRequestRecord {
+	timestamp: number;
+	method: string;
+	url: string;
+	requestHeaders: Record<string, string>;
+	requestBody?: unknown;
+	responseStatus: number;
+	responseHeaders: Record<string, string>;
+	responseBody?: unknown;
+}
+
+interface NockTraceEntry {
+	interceptors: string[];
+	consumed: string[];
+	pending: string[];
+	requests: NockRequestRecord[];
+}
+
 interface FixtureExecutionEntry {
 	status: 'pass' | 'error' | 'skip';
 	error?: string;
@@ -82,6 +107,7 @@ interface FixtureExecutionEntry {
 	executedNodes?: string[];
 	nodeOutputs?: NodeOutputMap;
 	subWorkflows?: SubWorkflowExecutionEntry[];
+	nockTrace?: NockTraceEntry;
 }
 
 const executionData: Record<string, FixtureExecutionEntry> = {};
@@ -109,10 +135,97 @@ function extractNodeOutputs(runData?: IRunData): NodeOutputMap {
 
 		const error = taskData.error?.message;
 		if (outputs.length > 0 || error) {
-			result[nodeName] = { outputs, error };
+			result[nodeName] = {
+				outputs,
+				error,
+				startTime: taskData.startTime,
+				executionTime: taskData.executionTime,
+			};
 		}
 	}
 	return result;
+}
+
+// ---------------------------------------------------------------------------
+// Nock helpers
+// ---------------------------------------------------------------------------
+
+interface NockModule {
+	setupNock: () => nock.Scope[] | void;
+}
+
+function loadNockModule(fixtureDir: string): NockModule | undefined {
+	try {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		return require(join(__dirname, '__fixtures__', fixtureDir, 'nock')) as NockModule;
+	} catch {
+		return undefined;
+	}
+}
+
+function parseJsonSafe(str: string): unknown {
+	try {
+		return JSON.parse(str) as unknown;
+	} catch {
+		return str || undefined;
+	}
+}
+
+function rawHeadersToRecord(raw: string[]): Record<string, string> {
+	const result: Record<string, string> = {};
+	for (let i = 0; i < raw.length; i += 2) {
+		result[raw[i].toLowerCase()] = raw[i + 1];
+	}
+	return result;
+}
+
+function attachNockListeners(scopes: nock.Scope[], log: NockRequestRecord[]): void {
+	for (const scope of scopes) {
+		scope.on(
+			'request',
+			(
+				req: { method: string; path: string; headers: Record<string, string> },
+				interceptor: { statusCode: number; body: unknown; rawHeaders: string[] },
+				body: string,
+			) => {
+				const host =
+					(interceptor as unknown as { __nock_scopeHost: string }).__nock_scopeHost ?? '';
+				log.push({
+					timestamp: Date.now(),
+					method: req.method,
+					url: `${host}${req.path}`,
+					requestHeaders: req.headers,
+					requestBody: parseJsonSafe(body),
+					responseStatus: interceptor.statusCode,
+					responseHeaders: rawHeadersToRecord(interceptor.rawHeaders ?? []),
+					responseBody:
+						typeof interceptor.body === 'string'
+							? parseJsonSafe(interceptor.body)
+							: interceptor.body,
+				});
+			},
+		);
+	}
+}
+
+/**
+ * Strip pin data for httpRequest nodes so they execute against nock interceptors.
+ * Keeps pin data for non-HTTP nodes (triggers, AI, Code, etc.).
+ */
+function stripHttpPinData(
+	pinData: IPinData,
+	nodes: Array<{ name: string; type: string }>,
+): IPinData {
+	const httpNodeNames = new Set(
+		nodes.filter((n) => n.type === 'n8n-nodes-base.httpRequest').map((n) => n.name),
+	);
+	const filtered: IPinData = {};
+	for (const [name, data] of Object.entries(pinData)) {
+		if (!httpNodeNames.has(name)) {
+			filtered[name] = data;
+		}
+	}
+	return filtered;
 }
 
 // ---------------------------------------------------------------------------
@@ -129,6 +242,10 @@ describe('Fixture execution with pin data', () => {
 			join(__dirname, '__fixtures__', 'execution-data.json'),
 			JSON.stringify(executionData, null, 2) + '\n',
 		);
+	});
+
+	afterEach(() => {
+		nock.cleanAll();
 	});
 
 	const fixtures = loadFixtures();
@@ -151,7 +268,29 @@ describe('Fixture execution with pin data', () => {
 			const workflowJson = parseWorkflowCode(sdk.code);
 
 			// Step 3: Extract pin data
-			const pinData = extractPinData(workflowJson);
+			let pinData = extractPinData(workflowJson);
+
+			// Step 3b: If fixture has nock interceptors, set them up and strip HTTP pin data
+			let nockInterceptors: string[] = [];
+			const nockRequests: NockRequestRecord[] = [];
+			if (fixture.hasNock) {
+				const nockModule = loadNockModule(fixture.dir);
+				if (nockModule) {
+					const scopes = nockModule.setupNock();
+					if (scopes) {
+						attachNockListeners(scopes, nockRequests);
+					}
+					nockInterceptors = [...nock.pendingMocks()];
+					pinData = stripHttpPinData(
+						pinData,
+						workflowJson.nodes as Array<{ name: string; type: string }>,
+					);
+					// Patch missing filter options for IF/Switch nodes
+					patchFilterConditions(
+						workflowJson.nodes as Array<{ parameters?: Record<string, unknown> }>,
+					);
+				}
+			}
 
 			// Step 4: Execute with pin data
 			const result = await executeWorkflow(
@@ -162,6 +301,14 @@ describe('Fixture execution with pin data', () => {
 				},
 				pinData,
 			);
+
+			// Step 4b: Capture nock trace
+			let nockTrace: NockTraceEntry | undefined;
+			if (nockInterceptors.length > 0) {
+				const pending = nock.pendingMocks();
+				const consumed = nockInterceptors.filter((i) => !pending.includes(i));
+				nockTrace = { interceptors: nockInterceptors, consumed, pending, requests: nockRequests };
+			}
 
 			// Step 5: Collect per-node output data
 			const nodeOutputs = extractNodeOutputs(result.run?.data?.resultData?.runData);
@@ -182,6 +329,7 @@ describe('Fixture execution with pin data', () => {
 				executedNodes: result.executedNodes,
 				nodeOutputs,
 				subWorkflows: subWorkflows && subWorkflows.length > 0 ? subWorkflows : undefined,
+				nockTrace,
 			};
 
 			expect(result.success).toBe(true);

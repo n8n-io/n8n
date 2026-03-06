@@ -36,18 +36,7 @@ const http1 = node({
       "authentication": "genericCredentialType",
       "genericAuthType": "httpHeaderAuth"
     },
-    "executeOnce": true,
-    "pinData": [
-      {
-        "choices": [
-          {
-            "message": {
-              "content": "AI researchers announced a breakthrough in protein folding prediction..."
-            }
-          }
-        ]
-      }
-    ]
+    "executeOnce": true
   , credentials: { httpHeaderAuth: { name: 'Perplexity API', id: '' } }
 }
 });
@@ -67,15 +56,7 @@ const http2 = node({
       "authentication": "genericCredentialType",
       "genericAuthType": "oAuth2Api"
     },
-    "executeOnce": true,
-    "pinData": [
-      {
-        "data": {
-          "id": "1234567890",
-          "text": "AI researchers announced a breakthrough..."
-        }
-      }
-    ]
+    "executeOnce": true
   , credentials: { oAuth2Api: { name: 'Twitter OAuth2', id: '' } }
 }
 });

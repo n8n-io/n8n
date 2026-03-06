@@ -22,6 +22,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 import { createDeferredPromise, createRunExecutionData, NodeHelpers, Workflow } from 'n8n-workflow';
+import { MockCredentialsHelper } from './mock-credentials-helper';
 
 // ---------------------------------------------------------------------------
 // Repo root finder
@@ -324,6 +325,7 @@ function buildAdditionalData(
 	const overrides: Record<string, unknown> = {
 		executionId,
 		hooks,
+		credentialsHelper: new MockCredentialsHelper(),
 		executeWorkflow: async (
 			workflowInfo: {
 				id?: string;
@@ -357,6 +359,10 @@ function buildAdditionalData(
 		get(_target, prop: string) {
 			if (prop in overrides) return overrides[prop];
 			return () => undefined;
+		},
+		set(_target, prop: string, value: unknown) {
+			overrides[prop] = value;
+			return true;
 		},
 	});
 }
@@ -522,4 +528,63 @@ export function extractPinData(workflowJson: { pinData?: Record<string, unknown>
 		}
 	}
 	return pinData;
+}
+
+// ---------------------------------------------------------------------------
+// Filter conditions patcher
+// ---------------------------------------------------------------------------
+
+/**
+ * The compiler emits IF/Switch `conditions` parameters without `options`
+ * (caseSensitive, typeValidation, version) because the n8n frontend normally
+ * resolves those from typeOptions.filter expressions. The execution engine
+ * expects them to be present. This function patches missing options.
+ */
+
+const DEFAULT_FILTER_OPTIONS = {
+	caseSensitive: true,
+	leftValue: '',
+	typeValidation: 'loose' as const,
+	version: 2 as 1 | 2 | 3,
+};
+
+function isFilterValue(
+	obj: unknown,
+): obj is { conditions: unknown[]; combinator: string; options?: unknown } {
+	return (
+		typeof obj === 'object' &&
+		obj !== null &&
+		'conditions' in obj &&
+		Array.isArray((obj as Record<string, unknown>).conditions) &&
+		'combinator' in obj &&
+		typeof (obj as Record<string, unknown>).combinator === 'string'
+	);
+}
+
+function patchFilterOptionsRecursive(obj: unknown): void {
+	if (typeof obj !== 'object' || obj === null) return;
+
+	if (isFilterValue(obj)) {
+		if (!obj.options) {
+			(obj as Record<string, unknown>).options = { ...DEFAULT_FILTER_OPTIONS };
+		}
+	}
+
+	if (Array.isArray(obj)) {
+		for (const item of obj) patchFilterOptionsRecursive(item);
+	} else {
+		for (const value of Object.values(obj as Record<string, unknown>)) {
+			patchFilterOptionsRecursive(value);
+		}
+	}
+}
+
+export function patchFilterConditions(
+	nodes: Array<{ parameters?: Record<string, unknown> }>,
+): void {
+	for (const node of nodes) {
+		if (node.parameters) {
+			patchFilterOptionsRecursive(node.parameters);
+		}
+	}
 }
