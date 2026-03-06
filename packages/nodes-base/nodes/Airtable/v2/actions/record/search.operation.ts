@@ -7,7 +7,7 @@ import type {
 
 import { generatePairedItemData, updateDisplayOptions } from '../../../../../utils/utilities';
 import type { IRecord } from '../../helpers/interfaces';
-import { flattenOutput } from '../../helpers/utils';
+import { flattenOutput, legacyFlattenRecordOutputs } from '../../helpers/utils';
 import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from '../../transport';
 import { viewRLC } from '../common.descriptions';
 
@@ -210,11 +210,7 @@ export async function execute(
 					options.downloadFields as string[],
 					fallbackPairedItems || [{ item: i }],
 				);
-				if (nodeVersion < 2.2) {
-					for (const item of itemWithAttachments) {
-						item.json = flattenOutput(item.json);
-					}
-				}
+				legacyFlattenRecordOutputs(itemWithAttachments, nodeVersion);
 				returnData.push(...itemWithAttachments);
 				continue;
 			}
