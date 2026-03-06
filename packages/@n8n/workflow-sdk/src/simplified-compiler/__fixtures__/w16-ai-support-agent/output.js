@@ -11,18 +11,18 @@ const ai1 = node({
     },
     subnodes: {
       model: languageModel({
-        type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', version: 1.2,
-        config: { parameters: { model: { __rl: true, mode: 'id', value: 'gpt-4o' }, options: {} } }
+        type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', version: 1.3,
+        config: { parameters: {"model":{"__rl":true,"mode":"id","value":"gpt-4o"},"options":{}} }
       }),
       tools: [tool({
-          type: '@n8n/n8n-nodes-langchain.toolHttpRequest', version: 1,
+          type: '@n8n/n8n-nodes-langchain.toolHttpRequest', version: 1.1,
           config: { parameters: {"name":"Knowledge Base","url":"https://api.kb.com/search"} }
         }), tool({
-          type: '@n8n/n8n-nodes-langchain.toolCode', version: 1,
-          config: { parameters: {"name":"Ticket Lookup","jsCode":"return lookupTicket(query)"} }
+          type: '@n8n/n8n-nodes-langchain.toolCode', version: 1.3,
+          config: { parameters: {"jsCode":"return lookupTicket(query)"} }
         })],
       memory: memory({
-        type: '@n8n/n8n-nodes-langchain.memoryBufferWindow', version: 1,
+        type: '@n8n/n8n-nodes-langchain.memoryBufferWindow', version: 1.3,
         config: { parameters: {"contextWindowLength":10} }
       })
     },

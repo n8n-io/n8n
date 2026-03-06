@@ -38,12 +38,12 @@ const ai2 = node({
     },
     subnodes: {
       model: languageModel({
-        type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', version: 1.2,
-        config: { parameters: { model: { __rl: true, mode: 'id', value: 'gpt-4o' }, options: {} } }
+        type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', version: 1.3,
+        config: { parameters: {"model":{"__rl":true,"mode":"id","value":"gpt-4o"},"options":{}} }
       }),
       outputParser: outputParser({
-        type: '@n8n/n8n-nodes-langchain.outputParserStructured', version: 1,
-        config: { parameters: {"schema":{"is_invoice":"boolean","due_date":"string","amount_due":"number","sender":"string","subject":"string"}} }
+        type: '@n8n/n8n-nodes-langchain.outputParserStructured', version: 1.3,
+        config: { parameters: {"schemaType":"fromJson","jsonSchemaExample":"{\"is_invoice\":\"boolean\",\"due_date\":\"string\",\"amount_due\":\"number\",\"sender\":\"string\",\"subject\":\"string\"}"} }
       })
     },
     executeOnce: true,

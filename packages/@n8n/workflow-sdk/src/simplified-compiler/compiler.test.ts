@@ -719,42 +719,98 @@ onSchedule({ every: '1h' }, async () => { await process(); });
 		});
 	});
 
-	describe('Phase 13: AI subnodes', () => {
-		it('should emit agent with tool subnodes', () => {
+	describe('Phase 13: AI class-based syntax', () => {
+		it('should emit agent with OpenAI model via new Agent({...}).chat()', () => {
 			const result = transpileWorkflowJS(`
 onManual(async () => {
-  await ai.chat('gpt-4o', 'Analyze', {
-    tools: [{ type: 'code', name: 'calc', code: 'return 1+1' }],
-  });
+  const result = await new Agent({
+    prompt: 'Analyze this data',
+    model: new OpenAiModel({ model: 'gpt-4o' }),
+  }).chat();
 });
 `);
 			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain("type: '@n8n/n8n-nodes-langchain.agent'");
+			expect(result.code).toContain("text: 'Analyze this data'");
+			expect(result.code).toContain("promptType: 'define'");
 			expect(result.code).toContain('languageModel(');
-			expect(result.code).toContain('tool(');
+			expect(result.code).toContain("type: '@n8n/n8n-nodes-langchain.lmChatOpenAi'");
+			expect(result.code).toContain('"value":"gpt-4o"');
 			expect(result.code).toContain('subnodes');
 		});
 
-		it('should emit outputParser and memory', () => {
+		it('should emit agent with Google Gemini model (passthrough params)', () => {
 			const result = transpileWorkflowJS(`
 onManual(async () => {
-  await ai.chat('gpt-4o', 'Chat', {
-    outputParser: { type: 'structured', schema: { name: 'string' } },
-    memory: { type: 'bufferWindow', contextLength: 5 },
-  });
+  const result = await new Agent({
+    prompt: 'Test',
+    model: new GoogleGeminiModel({ modelName: 'gemini-pro' }),
+  }).chat();
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain("type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini'");
+			expect(result.code).toContain('"modelName":"gemini-pro"');
+		});
+
+		it('should emit agent with tools array', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  await new Agent({
+    prompt: 'Help user',
+    model: new OpenAiModel({ model: 'gpt-4o' }),
+    tools: [
+      new CodeTool({ name: 'calc', description: 'Calculator', jsCode: 'return query * 2' }),
+      new ThinkTool(),
+      new WikipediaTool(),
+    ],
+  }).chat();
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain("type: '@n8n/n8n-nodes-langchain.toolCode'");
+			expect(result.code).toContain("type: '@n8n/n8n-nodes-langchain.toolThink'");
+			expect(result.code).toContain("type: '@n8n/n8n-nodes-langchain.toolWikipedia'");
+			expect(result.code).toContain('"name":"calc"');
+		});
+
+		it('should emit agent with outputParser and memory', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  await new Agent({
+    prompt: 'Chat',
+    model: new OpenAiModel({ model: 'gpt-4o' }),
+    outputParser: new StructuredOutputParser({
+      schemaType: 'fromJson',
+      jsonSchemaExample: '{"items":"array","summary":"string"}',
+    }),
+    memory: new BufferWindowMemory({ contextWindowLength: 10 }),
+  }).chat();
 });
 `);
 			expect(result.errors).toHaveLength(0);
 			expect(result.code).toContain('outputParser(');
+			expect(result.code).toContain("type: '@n8n/n8n-nodes-langchain.outputParserStructured'");
+			expect(result.code).toContain('"schemaType":"fromJson"');
 			expect(result.code).toContain('memory(');
+			expect(result.code).toContain("type: '@n8n/n8n-nodes-langchain.memoryBufferWindow'");
+			expect(result.code).toContain('hasOutputParser: true');
 		});
 
-		it('should map groq models', () => {
+		it('should assign variable from Agent result', () => {
 			const result = transpileWorkflowJS(`
 onManual(async () => {
-  await ai.chat('llama-3.1-70b', 'Test');
+  const answer = await new Agent({
+    prompt: 'What is 2+2?',
+    model: new OpenAiModel({ model: 'gpt-4o' }),
+  }).chat();
+  await http.post('https://example.com/result', { answer: answer });
 });
 `);
-			expect(result.code).toContain('lmChatGroq');
+			expect(result.errors).toHaveLength(0);
+			// The HTTP node should reference the AI node output
+			expect(result.code).toContain("type: '@n8n/n8n-nodes-langchain.agent'");
+			expect(result.code).toContain("type: 'n8n-nodes-base.httpRequest'");
 		});
 	});
 
@@ -1123,9 +1179,6 @@ function getRoundTripSkipReason(_title: string): string | undefined {
 // Known schema violations in existing fixtures (to be fixed separately).
 // Each entry maps fixture title substring to the reason.
 const KNOWN_SCHEMA_VIOLATIONS: Record<string, string> = {
-	'W6: Meeting notes':
-		'outputParser parameters.schema unknown field; Google Gemini LM model parameters',
-	'W9: Invoice detection': 'outputParser parameters.schema unknown field',
 	'Loop with Try/Catch': 'tryCatch sub-workflow workflowJson variable not parseable',
 };
 

@@ -87,8 +87,8 @@ const ai1 = node({
     },
     subnodes: {
       model: languageModel({
-        type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', version: 1.2,
-        config: { parameters: { model: { __rl: true, mode: 'id', value: 'gpt-4o-mini' }, options: {} } }
+        type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', version: 1.3,
+        config: { parameters: {"model":{"__rl":true,"mode":"id","value":"gpt-4o-mini"},"options":{}} }
       })
     },
     executeOnce: true,

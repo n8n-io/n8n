@@ -46,11 +46,11 @@ const ai1 = node({
     subnodes: {
       model: languageModel({
         type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini', version: 1,
-        config: { parameters: { model: { __rl: true, mode: 'id', value: 'gemini-pro' }, options: {} } }
+        config: { parameters: {"modelName":"gemini-pro","options":{}} }
       }),
       outputParser: outputParser({
-        type: '@n8n/n8n-nodes-langchain.outputParserStructured', version: 1,
-        config: { parameters: {"schema":{"action_items":"array","follow_up_emails":"array","summary":"string"}} }
+        type: '@n8n/n8n-nodes-langchain.outputParserStructured', version: 1.3,
+        config: { parameters: {"schemaType":"fromJson","jsonSchemaExample":"{\"action_items\":\"array\",\"follow_up_emails\":\"array\",\"summary\":\"string\"}"} }
       })
     },
     executeOnce: true,

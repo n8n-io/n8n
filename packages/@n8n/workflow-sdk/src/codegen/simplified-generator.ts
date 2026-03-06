@@ -21,6 +21,7 @@ import type {
 } from './composite-tree';
 import type { SemanticGraph, SemanticNode } from './types';
 import type { WorkflowJSON } from '../types/base';
+import { nodeTypeToClassName } from '../shared/ai-node-mapping';
 import { CREDENTIAL_TO_AUTH_TYPE } from '../shared/credential-mapping';
 import { fromScheduleRule } from '../shared/schedule-mapping';
 import { NODE_TYPE_TO_TRIGGER, TRIGGER_TYPES } from '../shared/trigger-mapping';
@@ -1321,73 +1322,70 @@ function emitAiNode(node: SemanticNode, ctx: SimplifiedGenContext): void {
 	}
 
 	const params = node.json.parameters ?? {};
-	const prompt = (params.text as string) ?? '';
+	const rootClassName = nodeTypeToClassName(node.type);
 
-	// Find language model subnode
-	let model = 'gpt-4o-mini';
+	// Determine if this is an Agent node (gets sugar)
+	const isAgent = node.type === '@n8n/n8n-nodes-langchain.agent';
+
+	// Build config fields
+	const configParts: string[] = [];
+
+	// Agent sugar: emit prompt field
+	if (isAgent) {
+		const prompt = (params.text as string) ?? '';
+		configParts.push(`prompt: '${prompt.replace(/'/g, "\\'")}'`);
+	}
+
+	// Model subnode
 	for (const sub of node.subnodes) {
 		if (sub.connectionType === 'ai_languageModel') {
 			const subnodeNode = ctx.graph.nodes.get(sub.subnodeName);
 			if (subnodeNode) {
-				const subParams = subnodeNode.json.parameters ?? {};
-				const modelParam = subParams.model as { value?: string } | string | undefined;
-				if (typeof modelParam === 'object' && modelParam?.value) {
-					model = modelParam.value;
-				} else if (typeof modelParam === 'string') {
-					model = modelParam;
-				}
+				const modelStr = emitSubnodeConstructor(subnodeNode);
+				if (modelStr) configParts.push(`model: ${modelStr}`);
 			}
 		}
 	}
 
-	// Build options for subnodes (outputParser, tools, memory)
-	const options: string[] = [];
-	const tools: string[] = [];
+	// Output parser subnode
 	for (const sub of node.subnodes) {
 		if (sub.connectionType === 'ai_outputParser') {
 			const subnodeNode = ctx.graph.nodes.get(sub.subnodeName);
 			if (subnodeNode) {
-				const subParams = subnodeNode.json.parameters ?? {};
-				if (subnodeNode.type === '@n8n/n8n-nodes-langchain.outputParserStructured') {
-					const schema = subParams.schema as Record<string, unknown> | undefined;
-					if (schema) {
-						const schemaStr = formatSchemaForSimplified(schema);
-						options.push(`outputParser: { type: 'structured', schema: ${schemaStr} }`);
-					}
-				}
+				const parserStr = emitSubnodeConstructor(subnodeNode);
+				if (parserStr) configParts.push(`outputParser: ${parserStr}`);
 			}
 		}
-		if (sub.connectionType === 'ai_tool') {
-			const subnodeNode = ctx.graph.nodes.get(sub.subnodeName);
-			if (subnodeNode) {
-				const subParams = subnodeNode.json.parameters ?? {};
-				if (subnodeNode.type === '@n8n/n8n-nodes-langchain.toolHttpRequest') {
-					const toolName = (subParams.name as string) ?? 'tool';
-					const toolUrl = (subParams.url as string) ?? '';
-					tools.push(`{ type: 'httpRequest', name: '${toolName}', url: '${toolUrl}' }`);
-				} else if (subnodeNode.type === '@n8n/n8n-nodes-langchain.toolCode') {
-					const toolName = (subParams.name as string) ?? 'tool';
-					const jsCode = (subParams.jsCode as string) ?? '';
-					tools.push(
-						`{ type: 'code', name: '${toolName}', code: '${jsCode.replace(/'/g, "\\'")}' }`,
-					);
-				}
-			}
-		}
+	}
+
+	// Memory subnode
+	for (const sub of node.subnodes) {
 		if (sub.connectionType === 'ai_memory') {
 			const subnodeNode = ctx.graph.nodes.get(sub.subnodeName);
 			if (subnodeNode) {
-				const subParams = subnodeNode.json.parameters ?? {};
-				if (subnodeNode.type === '@n8n/n8n-nodes-langchain.memoryBufferWindow') {
-					const contextLength = (subParams.contextWindowLength as number) ?? 5;
-					options.push(`memory: { type: 'bufferWindow', contextLength: ${contextLength} }`);
-				}
+				const memStr = emitSubnodeConstructor(subnodeNode);
+				if (memStr) configParts.push(`memory: ${memStr}`);
 			}
 		}
 	}
-	if (tools.length > 0) {
-		options.push(`tools: [${tools.join(', ')}]`);
+
+	// Tool subnodes
+	const toolStrs: string[] = [];
+	for (const sub of node.subnodes) {
+		if (sub.connectionType === 'ai_tool') {
+			const subnodeNode = ctx.graph.nodes.get(sub.subnodeName);
+			if (subnodeNode) {
+				const toolStr = emitSubnodeConstructor(subnodeNode);
+				if (toolStr) toolStrs.push(toolStr);
+			}
+		}
 	}
+	if (toolStrs.length > 0) {
+		configParts.push(`tools: [\n\t\t${toolStrs.join(',\n\t\t')},\n\t]`);
+	}
+
+	// Determine IO method
+	const ioMethod = isAgent ? 'chat' : getIoMethodForNodeType(node.type);
 
 	// onError annotation
 	const onError = node.json.onError as string | undefined;
@@ -1414,12 +1412,10 @@ function emitAiNode(node: SemanticNode, ctx: SimplifiedGenContext): void {
 				? `const ${assignedVar} = await `
 				: 'await ';
 
-	if (options.length > 0) {
-		const optStr = `{ ${options.join(', ')} }`;
-		emit(ctx, `${prefix}ai.chat('${model}', '${prompt}', ${optStr});`);
-	} else {
-		emit(ctx, `${prefix}ai.chat('${model}', '${prompt}');`);
-	}
+	const className = rootClassName ?? 'Agent';
+	const configStr = configParts.length > 0 ? `{\n\t\t${configParts.join(',\n\t\t')},\n\t}` : '{}';
+
+	emit(ctx, `${prefix}new ${className}(${configStr}).${ioMethod}();`);
 
 	if (isTryCatch) {
 		ctx.indent--;
@@ -1427,12 +1423,46 @@ function emitAiNode(node: SemanticNode, ctx: SimplifiedGenContext): void {
 	}
 }
 
-function formatSchemaForSimplified(schema: Record<string, unknown>): string {
-	const entries = Object.entries(schema).map(([key, val]) => {
-		if (typeof val === 'string') return `${key}: '${val}'`;
-		return `${key}: ${JSON.stringify(val)}`;
-	});
-	return `{ ${entries.join(', ')} }`;
+/** Emit a `new ClassName({...})` string for a subnode */
+function emitSubnodeConstructor(subnodeNode: SemanticNode): string | undefined {
+	const className = nodeTypeToClassName(subnodeNode.type);
+	if (!className) return undefined;
+
+	const subParams = subnodeNode.json.parameters ?? {};
+	const configEntries = Object.entries(subParams)
+		.filter(
+			([k]) =>
+				k !== 'options' ||
+				Object.keys((subParams.options as Record<string, unknown>) ?? {}).length > 0,
+		)
+		.map(([k, v]) => {
+			if (typeof v === 'string') return `${k}: '${v.replace(/'/g, "\\'")}'`;
+			if (typeof v === 'object' && v !== null && '__rl' in (v as Record<string, unknown>)) {
+				// Resource locator pattern: { __rl: true, mode: 'id', value: 'xxx' }
+				// Emit just the value
+				return `${k}: '${((v as Record<string, unknown>).value as string) ?? ''}'`;
+			}
+			return `${k}: ${JSON.stringify(v)}`;
+		});
+
+	if (configEntries.length === 0) {
+		return `new ${className}()`;
+	}
+	return `new ${className}({ ${configEntries.join(', ')} })`;
+}
+
+/** Get the IO method for a root AI node type */
+function getIoMethodForNodeType(nodeType: string): string {
+	const methodMap: Record<string, string> = {
+		'@n8n/n8n-nodes-langchain.agent': 'chat',
+		'@n8n/n8n-nodes-langchain.chainLlm': 'chat',
+		'@n8n/n8n-nodes-langchain.chainRetrievalQa': 'query',
+		'@n8n/n8n-nodes-langchain.chainSummarization': 'summarize',
+		'@n8n/n8n-nodes-langchain.informationExtractor': 'extract',
+		'@n8n/n8n-nodes-langchain.textClassifier': 'classify',
+		'@n8n/n8n-nodes-langchain.sentimentAnalysis': 'analyze',
+	};
+	return methodMap[nodeType] ?? 'chat';
 }
 
 // ─── Workflow Node ───────────────────────────────────────────────────────────

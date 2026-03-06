@@ -10,6 +10,8 @@
  */
 
 import * as acorn from 'acorn';
+import { classNameToEntry, getKnownIoMethods } from '../shared/ai-node-mapping';
+import type { AiNodeEntry } from '../shared/ai-node-mapping';
 import { AUTH_TYPE_TO_CREDENTIAL } from '../shared/credential-mapping';
 import { toScheduleRule } from '../shared/schedule-mapping';
 import { CALLBACK_TO_TRIGGER, TRIGGER_TYPES } from '../shared/trigger-mapping';
@@ -78,6 +80,13 @@ interface CallbackInfo {
 
 // ─── IO Call ─────────────────────────────────────────────────────────────────
 
+/** Parsed subnode from `new ClassName({...})` expression */
+interface AiSubnodeInfo {
+	className: string;
+	entry: AiNodeEntry;
+	config: Record<string, unknown>;
+}
+
 interface IOCall {
 	type: 'http' | 'ai' | 'workflow' | 'respond';
 	method: string;
@@ -89,7 +98,16 @@ interface IOCall {
 	model?: string;
 	prompt?: string;
 	nodeName: string;
-	// AI-specific subnodes
+	// AI class-based: root node info
+	aiRootEntry?: AiNodeEntry;
+	aiRootClassName?: string;
+	aiRootConfig?: Record<string, unknown>;
+	// AI class-based: parsed subnodes (model, tools, outputParser, memory)
+	aiModel?: AiSubnodeInfo;
+	aiToolSubnodes?: AiSubnodeInfo[];
+	aiOutputParserSubnode?: AiSubnodeInfo;
+	aiMemorySubnode?: AiSubnodeInfo;
+	// Legacy AI: plain objects from ai.chat() syntax
 	aiTools?: Array<Record<string, unknown>>;
 	aiOutputParser?: Record<string, unknown>;
 	aiMemory?: Record<string, unknown>;
@@ -2549,6 +2567,24 @@ function matchIOCallNode(callNode: AcornNode, source: string): IOCall | null {
 	if (callNode.type !== 'CallExpression' || !callNode.callee) return null;
 	const callee = callNode.callee;
 
+	// Pattern: new ClassName({...}).method() — AI class-based syntax
+	if (
+		callee.type === 'MemberExpression' &&
+		callee.object?.type === 'NewExpression' &&
+		callee.object.callee?.type === 'Identifier' &&
+		callee.property?.type === 'Identifier'
+	) {
+		const className = callee.object.callee.name ?? '';
+		const ioMethod = callee.property.name ?? '';
+		const knownMethods = getKnownIoMethods();
+		if (knownMethods.has(ioMethod)) {
+			const entry = classNameToEntry(className);
+			if (entry) {
+				return extractAiClassCall(callee.object, ioMethod, entry, className);
+			}
+		}
+	}
+
 	if (
 		callee.type !== 'MemberExpression' ||
 		callee.object?.type !== 'Identifier' ||
@@ -2672,6 +2708,90 @@ function extractAiCall(callNode: AcornNode, _source: string): IOCall {
 		aiTools,
 		aiOutputParser,
 		aiMemory,
+	};
+}
+
+/**
+ * Parse `new ClassName({...})` AST node to extract an AiSubnodeInfo.
+ * Returns undefined if the node isn't a recognized AI class constructor.
+ */
+function parseAiSubnodeExpression(node: AcornNode): AiSubnodeInfo | undefined {
+	if (node.type !== 'NewExpression' || node.callee?.type !== 'Identifier') return undefined;
+	const className = node.callee.name ?? '';
+	const entry = classNameToEntry(className);
+	if (!entry) return undefined;
+	const config = node.arguments?.[0] ? (extractObjectLiteral(node.arguments[0]) ?? {}) : {};
+	return { className, entry, config };
+}
+
+/**
+ * Extract an AI class-based IOCall from `new Agent({...}).chat()` or similar.
+ *
+ * Agent gets sugar: prompt → text, model/tools/outputParser/memory lifted from config as subnodes.
+ * All other root AI nodes: config passed through as-is except for known subnode fields.
+ */
+function extractAiClassCall(
+	newExpr: AcornNode,
+	ioMethod: string,
+	rootEntry: AiNodeEntry,
+	rootClassName: string,
+): IOCall {
+	const configNode = newExpr.arguments?.[0];
+	const rawConfig = configNode ? (extractObjectLiteral(configNode) ?? {}) : {};
+
+	// Parse subnodes from config (model, tools, outputParser, memory)
+	let aiModel: AiSubnodeInfo | undefined;
+	let aiToolSubnodes: AiSubnodeInfo[] | undefined;
+	let aiOutputParserSubnode: AiSubnodeInfo | undefined;
+	let aiMemorySubnode: AiSubnodeInfo | undefined;
+
+	// Extract subnodes from AST (we need AST, not extracted values, to detect new XxxNode(...))
+	if (configNode?.type === 'ObjectExpression' && configNode.properties) {
+		for (const prop of configNode.properties) {
+			const key = prop.key?.name ?? prop.key?.value;
+			const propVal = prop.value as AcornNode | undefined;
+			if (key === 'model' && propVal?.type === 'NewExpression') {
+				aiModel = parseAiSubnodeExpression(propVal);
+			}
+			if (key === 'outputParser' && propVal?.type === 'NewExpression') {
+				aiOutputParserSubnode = parseAiSubnodeExpression(propVal);
+			}
+			if (key === 'memory' && propVal?.type === 'NewExpression') {
+				aiMemorySubnode = parseAiSubnodeExpression(propVal);
+			}
+			if (key === 'tools' && propVal?.type === 'ArrayExpression' && propVal.elements) {
+				aiToolSubnodes = [];
+				for (const el of propVal.elements) {
+					if (el.type === 'NewExpression') {
+						const sub = parseAiSubnodeExpression(el);
+						if (sub) aiToolSubnodes.push(sub);
+					}
+				}
+			}
+		}
+	}
+
+	// Extract prompt for Agent sugar
+	const isAgent = rootEntry.category === 'agent';
+	const prompt = isAgent ? ((rawConfig.prompt as string) ?? '') : '';
+
+	const shortPrompt = prompt ? prompt.slice(0, 30) : 'AI Chat';
+	const nodeName = isAgent ? `AI: ${shortPrompt}` : rootClassName;
+	const truncName = nodeName.length > 40 ? nodeName.slice(0, 37) + '...' : nodeName;
+
+	return {
+		type: 'ai',
+		method: ioMethod,
+		assignedVar: null,
+		prompt,
+		nodeName: truncName,
+		aiRootEntry: rootEntry,
+		aiRootClassName: rootClassName,
+		aiRootConfig: rawConfig,
+		aiModel,
+		aiToolSubnodes,
+		aiOutputParserSubnode,
+		aiMemorySubnode,
 	};
 }
 
@@ -3168,6 +3288,125 @@ function generateHttpSDK(
 }
 
 function generateAiSDK(io: IOCall, varName: string): EmittedNode {
+	// Class-based path: new Agent({...}).chat() etc.
+	if (io.aiRootEntry) {
+		return generateAiClassSDK(io, varName);
+	}
+	// Legacy path: ai.chat('model', 'prompt', { ... })
+	return generateAiLegacySDK(io, varName);
+}
+
+/**
+ * Normalize subnode config for SDK emission.
+ * For model subnodes: wrap `model` field in `__rl` resource locator, ensure `options` exists.
+ * For all subnodes: pass through as-is.
+ */
+function normalizeSubnodeConfig(
+	config: Record<string, unknown>,
+	category: string,
+): Record<string, unknown> {
+	if (category === 'model' || category === 'completionModel') {
+		const result = { ...config };
+		// Wrap model string in __rl resource locator
+		if (typeof result.model === 'string') {
+			result.model = { __rl: true, mode: 'id', value: result.model };
+		}
+		// Ensure options exists (schema expects it)
+		if (!result.options) result.options = {};
+		return result;
+	}
+	return config;
+}
+
+/** Generate SDK from class-based AI syntax (new Agent({...}).chat()) */
+function generateAiClassSDK(io: IOCall, varName: string): EmittedNode {
+	const rootEntry = io.aiRootEntry!;
+	const isAgent = rootEntry.category === 'agent';
+	const prompt = io.prompt ?? '';
+
+	// Build subnodes
+	const subnodeParts: string[] = [];
+
+	// Model subnode
+	if (io.aiModel) {
+		const m = io.aiModel;
+		const normalizedConfig = normalizeSubnodeConfig(m.config, m.entry.category);
+		subnodeParts.push(`      model: languageModel({
+        type: '${m.entry.nodeType}', version: ${m.entry.version},
+        config: { parameters: ${JSON.stringify(normalizedConfig)} }
+      })`);
+	}
+
+	// Tools subnodes
+	if (io.aiToolSubnodes && io.aiToolSubnodes.length > 0) {
+		const toolStrs = io.aiToolSubnodes.map((t) => {
+			return `tool({
+          type: '${t.entry.nodeType}', version: ${t.entry.version},
+          config: { parameters: ${JSON.stringify(t.config)} }
+        })`;
+		});
+		subnodeParts.push(`      tools: [${toolStrs.join(', ')}]`);
+	}
+
+	// Output parser subnode
+	if (io.aiOutputParserSubnode) {
+		const p = io.aiOutputParserSubnode;
+		subnodeParts.push(`      outputParser: outputParser({
+        type: '${p.entry.nodeType}', version: ${p.entry.version},
+        config: { parameters: ${JSON.stringify(p.config)} }
+      })`);
+	}
+
+	// Memory subnode
+	if (io.aiMemorySubnode) {
+		const mem = io.aiMemorySubnode;
+		subnodeParts.push(`      memory: memory({
+        type: '${mem.entry.nodeType}', version: ${mem.entry.version},
+        config: { parameters: ${JSON.stringify(mem.config)} }
+      })`);
+	}
+
+	const subnodeBlock = subnodeParts.join(',\n');
+	const onErrorStr = io.onError ? `,\n    onError: '${io.onError}'` : '';
+	const pinDataStr = io.pinData ? `,\n    pinData: ${JSON.stringify(io.pinData)}` : '';
+	const hasOutputParser = io.aiOutputParserSubnode ? ',\n      hasOutputParser: true' : '';
+
+	// Build parameters
+	let parametersBlock: string;
+	if (isAgent) {
+		// Agent sugar: prompt → text + promptType
+		parametersBlock = `{
+      promptType: 'define',
+      text: '${prompt.replace(/'/g, "\\'")}',
+      options: {}${hasOutputParser}
+    }`;
+	} else {
+		// Non-agent root nodes: passthrough config (minus subnodes)
+		const params = { ...(io.aiRootConfig ?? {}) };
+		delete params.model;
+		delete params.tools;
+		delete params.outputParser;
+		delete params.memory;
+		parametersBlock = JSON.stringify(params);
+	}
+
+	const subnodeSection =
+		subnodeParts.length > 0 ? `,\n    subnodes: {\n${subnodeBlock}\n    }` : '';
+
+	const sdkCode = `const ${varName} = node({
+  type: '${rootEntry.nodeType}', version: ${rootEntry.version},
+  config: {
+    name: '${io.nodeName.replace(/'/g, "\\'")}',
+    parameters: ${parametersBlock}${subnodeSection},
+    executeOnce: true${onErrorStr}${pinDataStr}
+  }
+});`;
+
+	return { varName, sdkCode, kind: 'ai', nodeName: io.nodeName };
+}
+
+/** Generate SDK from legacy ai.chat() syntax (backward compat) */
+function generateAiLegacySDK(io: IOCall, varName: string): EmittedNode {
 	const model = io.model ?? 'gpt-4o-mini';
 	const prompt = io.prompt ?? '';
 	const modelConfig = mapModelToType(model);
@@ -3176,21 +3415,24 @@ function generateAiSDK(io: IOCall, varName: string): EmittedNode {
 	const subnodeParts: string[] = [];
 
 	// Language model (always present)
+	const lmParams = JSON.stringify({ model: { __rl: true, mode: 'id', value: model }, options: {} });
 	subnodeParts.push(`      model: languageModel({
         type: '${modelConfig.type}', version: ${modelConfig.version},
-        config: { parameters: { model: { __rl: true, mode: 'id', value: '${model}' }, options: {} } }
+        config: { parameters: ${lmParams} }
       })`);
 
 	// Tools
 	if (io.aiTools && io.aiTools.length > 0) {
-		const toolStrs = io.aiTools.map((t) => {
-			const toolType = mapToolType(t.type as string);
+		const toolStrs = (io.aiTools as unknown as Array<Record<string, unknown>>).map((t) => {
+			const toolInfo = mapToolType(t.type as string);
 			const toolConfig: Record<string, unknown> = {};
-			if (t.name) toolConfig.name = t.name;
 			if (t.url) toolConfig.url = t.url;
+			if (t.name && toolInfo.nodeType === '@n8n/n8n-nodes-langchain.toolHttpRequest') {
+				toolConfig.name = t.name;
+			}
 			if (t.code) toolConfig.jsCode = t.code;
 			return `tool({
-          type: '${toolType}', version: 1,
+          type: '${toolInfo.nodeType}', version: ${toolInfo.version},
           config: { parameters: ${JSON.stringify(toolConfig)} }
         })`;
 		});
@@ -3199,22 +3441,28 @@ function generateAiSDK(io: IOCall, varName: string): EmittedNode {
 
 	// Output parser
 	if (io.aiOutputParser) {
-		const parserType = mapOutputParserType(io.aiOutputParser.type as string);
+		const parserInfo = mapOutputParserType(
+			(io.aiOutputParser as unknown as Record<string, unknown>).type as string,
+		);
 		const parserConfig: Record<string, unknown> = {};
-		if (io.aiOutputParser.schema) parserConfig.schema = io.aiOutputParser.schema;
+		const legacyParser = io.aiOutputParser as unknown as Record<string, unknown>;
+		if (legacyParser.schema) parserConfig.schema = legacyParser.schema;
 		subnodeParts.push(`      outputParser: outputParser({
-        type: '${parserType}', version: 1,
+        type: '${parserInfo.nodeType}', version: ${parserInfo.version},
         config: { parameters: ${JSON.stringify(parserConfig)} }
       })`);
 	}
 
 	// Memory
 	if (io.aiMemory) {
-		const memType = mapMemoryType(io.aiMemory.type as string);
+		const memInfo = mapMemoryType(
+			(io.aiMemory as unknown as Record<string, unknown>).type as string,
+		);
 		const memConfig: Record<string, unknown> = {};
-		if (io.aiMemory.contextLength) memConfig.contextWindowLength = io.aiMemory.contextLength;
+		const legacyMem = io.aiMemory as unknown as Record<string, unknown>;
+		if (legacyMem.contextLength) memConfig.contextWindowLength = legacyMem.contextLength;
 		subnodeParts.push(`      memory: memory({
-        type: '${memType}', version: 1,
+        type: '${memInfo.nodeType}', version: ${memInfo.version},
         config: { parameters: ${JSON.stringify(memConfig)} }
       })`);
 	}
@@ -3263,44 +3511,83 @@ function generateWorkflowRunSDK(io: IOCall, varName: string): EmittedNode {
 
 // ─── AI Subnode Type Mapping ─────────────────────────────────────────────────
 
-function mapModelToType(model: string): { type: string; version: number } {
-	if (model.includes('gpt') || model.includes('o1') || model.includes('o3')) {
-		return { type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', version: 1.2 };
-	}
-	if (model.includes('claude')) {
-		return { type: '@n8n/n8n-nodes-langchain.lmChatAnthropic', version: 1.2 };
-	}
-	if (model.includes('gemini')) {
-		return { type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini', version: 1 };
-	}
-	if (model.includes('llama') || model.includes('mixtral')) {
-		return { type: '@n8n/n8n-nodes-langchain.lmChatGroq', version: 1 };
-	}
-	return { type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', version: 1.2 };
+/** Look up registry entry, return { type, version } with fallback */
+function registryLookup(
+	className: string,
+	fallbackType: string,
+	fallbackVersion: number,
+): { type: string; version: number } {
+	const entry = classNameToEntry(className);
+	return entry
+		? { type: entry.nodeType, version: entry.version }
+		: { type: fallbackType, version: fallbackVersion };
 }
 
-function mapToolType(type: string): string {
-	const toolTypeMap: Record<string, string> = {
+function mapModelToType(model: string): { type: string; version: number } {
+	if (model.includes('gpt') || model.includes('o1') || model.includes('o3')) {
+		return registryLookup('OpenAiModel', '@n8n/n8n-nodes-langchain.lmChatOpenAi', 1.2);
+	}
+	if (model.includes('claude')) {
+		return registryLookup('AnthropicModel', '@n8n/n8n-nodes-langchain.lmChatAnthropic', 1.2);
+	}
+	if (model.includes('gemini')) {
+		return registryLookup('GoogleGeminiModel', '@n8n/n8n-nodes-langchain.lmChatGoogleGemini', 1);
+	}
+	if (model.includes('llama') || model.includes('mixtral')) {
+		return registryLookup('GroqModel', '@n8n/n8n-nodes-langchain.lmChatGroq', 1);
+	}
+	return registryLookup('OpenAiModel', '@n8n/n8n-nodes-langchain.lmChatOpenAi', 1.2);
+}
+
+function mapToolType(type: string): { nodeType: string; version: number } {
+	const classMap: Record<string, string> = {
+		code: 'CodeTool',
+		httpRequest: 'HttpRequestTool',
+	};
+	const className = classMap[type] ?? 'CodeTool';
+	const entry = classNameToEntry(className);
+	if (entry) return { nodeType: entry.nodeType, version: entry.version };
+	const fallbackMap: Record<string, string> = {
 		code: '@n8n/n8n-nodes-langchain.toolCode',
 		httpRequest: '@n8n/n8n-nodes-langchain.toolHttpRequest',
 	};
-	return toolTypeMap[type] ?? '@n8n/n8n-nodes-langchain.toolCode';
+	return { nodeType: fallbackMap[type] ?? '@n8n/n8n-nodes-langchain.toolCode', version: 1 };
 }
 
-function mapOutputParserType(type: string): string {
-	const parserTypeMap: Record<string, string> = {
+function mapOutputParserType(type: string): { nodeType: string; version: number } {
+	const classMap: Record<string, string> = {
+		structured: 'StructuredOutputParser',
+		autoFix: 'AutofixingOutputParser',
+	};
+	const className = classMap[type] ?? 'StructuredOutputParser';
+	const entry = classNameToEntry(className);
+	if (entry) return { nodeType: entry.nodeType, version: entry.version };
+	const fallbackMap: Record<string, string> = {
 		structured: '@n8n/n8n-nodes-langchain.outputParserStructured',
 		autoFix: '@n8n/n8n-nodes-langchain.outputParserAutofixing',
 	};
-	return parserTypeMap[type] ?? '@n8n/n8n-nodes-langchain.outputParserStructured';
+	return {
+		nodeType: fallbackMap[type] ?? '@n8n/n8n-nodes-langchain.outputParserStructured',
+		version: 1,
+	};
 }
 
-function mapMemoryType(type: string): string {
-	const memoryTypeMap: Record<string, string> = {
+function mapMemoryType(type: string): { nodeType: string; version: number } {
+	const classMap: Record<string, string> = {
+		bufferWindow: 'BufferWindowMemory',
+		postgres: 'PostgresChatMemory',
+	};
+	const className = classMap[type] ?? 'BufferWindowMemory';
+	const entry = classNameToEntry(className);
+	if (entry) return { nodeType: entry.nodeType, version: entry.version };
+	const fallbackMap: Record<string, string> = {
 		bufferWindow: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
 		postgres: '@n8n/n8n-nodes-langchain.memoryPostgresChat',
 	};
-	return memoryTypeMap[type] ?? '@n8n/n8n-nodes-langchain.memoryBufferWindow';
+	return {
+		nodeType: fallbackMap[type] ?? '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+		version: 1,
+	};
 }
 
 // ─── Final SDK Code Assembly ─────────────────────────────────────────────────

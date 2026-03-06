@@ -267,6 +267,11 @@ export interface NodeTypeDescription {
 	documentationUrl?: string;
 	/** Path to schema directory relative to nodes-base/dist/nodes/ (e.g., "Google/Drive") */
 	schemaPath?: string;
+	/** Codex metadata from nodes.json (categories, subcategories, aliases) */
+	codex?: {
+		categories?: string[];
+		subcategories?: Record<string, string[]>;
+	};
 }
 
 export interface DiscriminatorCombination {
@@ -3899,6 +3904,209 @@ async function generateVersionSpecificFiles(
 }
 
 // =============================================================================
+// AI Node Registry Generation
+// =============================================================================
+
+export interface AiNodeRegistryEntry {
+	nodeType: string;
+	version: number;
+	category: string;
+	ioMethod?: string;
+}
+
+/** IO methods for root AI nodes (small hardcoded map — these are DSL verbs) */
+const AI_IO_METHODS: Record<string, string> = {
+	agent: 'chat',
+	chainLlm: 'chat',
+	chainRetrievalQa: 'query',
+	chainSummarization: 'summarize',
+	informationExtractor: 'extract',
+	textClassifier: 'classify',
+	sentimentAnalysis: 'analyze',
+};
+
+/** Subcategory string → registry category */
+const SUBCATEGORY_TO_CATEGORY: Record<string, string> = {
+	'Language Models': 'model',
+	Tools: 'tool',
+	'Output Parsers': 'outputParser',
+	Memory: 'memory',
+	Embeddings: 'embedding',
+	'Vector Stores': 'vectorStore',
+	Retrievers: 'retriever',
+	'Text Splitters': 'textSplitter',
+	'Document Loaders': 'documentLoader',
+	Chains: 'chain',
+	Agents: 'agent',
+};
+
+/** Standalone AI nodes that live under "Chains" subcategory but are their own category */
+const STANDALONE_NODES = new Set(['informationExtractor', 'textClassifier', 'sentimentAnalysis']);
+
+/**
+ * Extract the bare node name (without package prefix).
+ * e.g., "@n8n/n8n-nodes-langchain.lmChatOpenAi" → "lmChatOpenAi"
+ */
+function bareNodeName(fullName: string): string {
+	const dotIdx = fullName.lastIndexOf('.');
+	return dotIdx >= 0 ? fullName.slice(dotIdx + 1) : fullName;
+}
+
+/**
+ * Get the highest version number from a version field (number or number[]).
+ */
+function maxVersion(version: number | number[]): number {
+	return Array.isArray(version) ? Math.max(...version) : version;
+}
+
+/**
+ * Derive a DSL class name from a bare node name and its AI subcategory.
+ *
+ * Naming convention table:
+ * - lmChat* → strip "lmChat" + "Model"     (lmChatOpenAi → OpenAiModel)
+ * - lm* (non-chat) → strip "lm" + "Model"  (lmOllama → OllamaModel)
+ * - tool* → strip "tool" + "Tool"           (toolCode → CodeTool)
+ * - mcpClientTool → "McpTool"
+ * - outputParser* → strip "outputParser" + "OutputParser"
+ * - memory* → strip "memory" + "Memory"
+ * - embeddings* → strip "embeddings" + "Embeddings"
+ * - vectorStore* → strip "vectorStore" + "VectorStore"
+ * - retriever* → strip "retriever" + "Retriever"
+ * - textSplitter* → strip "textSplitter" + "TextSplitter"
+ * - document* → strip "document" + "Loader"
+ * - agent → "Agent"
+ * - chain* → strip "chain" + "Chain"
+ * - standalone (informationExtractor, etc.) → PascalCase as-is
+ * - guardrails → "Guardrails"
+ */
+function deriveClassName(name: string, subcategories: string[]): string {
+	// Special cases
+	if (name === 'agent') return 'Agent';
+	if (name === 'mcpClientTool') return 'McpTool';
+	if (name === 'guardrails') return 'Guardrails';
+
+	// Standalone nodes
+	if (STANDALONE_NODES.has(name)) {
+		return name.charAt(0).toUpperCase() + name.slice(1);
+	}
+
+	// Prefix-based derivation
+	const prefixRules: Array<{ prefix: string; suffix: string }> = [
+		{ prefix: 'lmChat', suffix: 'Model' },
+		{ prefix: 'lm', suffix: 'CompletionModel' },
+		{ prefix: 'tool', suffix: 'Tool' },
+		{ prefix: 'outputParser', suffix: 'OutputParser' },
+		{ prefix: 'memory', suffix: 'Memory' },
+		{ prefix: 'embeddings', suffix: 'Embeddings' },
+		{ prefix: 'vectorStore', suffix: 'VectorStore' },
+		{ prefix: 'retriever', suffix: 'Retriever' },
+		{ prefix: 'textSplitter', suffix: '' },
+		{ prefix: 'document', suffix: '' },
+		{ prefix: 'chain', suffix: 'Chain' },
+	];
+
+	for (const { prefix, suffix } of prefixRules) {
+		if (name.startsWith(prefix) && name.length > prefix.length) {
+			const rest = name.slice(prefix.length);
+			return rest.charAt(0).toUpperCase() + rest.slice(1) + suffix;
+		}
+	}
+
+	// Fallback: PascalCase the name. Check subcategories for hints.
+	if (subcategories.includes('Language Models')) return name + 'Model';
+
+	return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+/**
+ * Detect registry category from AI subcategories and node name.
+ */
+function detectCategory(name: string, subcategories: string[]): string {
+	if (name === 'agent') return 'agent';
+	if (STANDALONE_NODES.has(name)) return 'standalone';
+
+	for (const sub of subcategories) {
+		const cat = SUBCATEGORY_TO_CATEGORY[sub];
+		if (cat) {
+			// Distinguish chat models from completion models
+			if (cat === 'model') {
+				return name.startsWith('lmChat') ? 'model' : 'completionModel';
+			}
+			// Nodes under "Agents" subcategory that aren't the agent node itself
+			if (cat === 'agent' && name !== 'agent') return 'standalone';
+			return cat;
+		}
+	}
+	return 'standalone';
+}
+
+/**
+ * Generate an AI node registry from an array of NodeTypeDescription objects.
+ *
+ * Groups nodes by name, picks the latest version for each, filters to AI nodes,
+ * derives class names and categories, and assigns IO methods.
+ *
+ * @returns Record<className, AiNodeRegistryEntry>
+ */
+export function generateAiNodeRegistry(
+	nodes: NodeTypeDescription[],
+): Record<string, AiNodeRegistryEntry> {
+	// Group by bare name, tracking highest version and full node type
+	const grouped = new Map<
+		string,
+		{ nodeType: string; highestVersion: number; subcategories: string[] }
+	>();
+
+	for (const node of nodes) {
+		const categories = node.codex?.categories ?? [];
+		if (!categories.includes('AI')) continue;
+
+		const name = bareNodeName(node.name);
+		const ver = maxVersion(node.version);
+		const subcats = node.codex?.subcategories?.AI ?? [];
+		const existing = grouped.get(name);
+
+		if (!existing || ver > existing.highestVersion) {
+			grouped.set(name, {
+				nodeType: node.name,
+				highestVersion: ver,
+				subcategories: subcats,
+			});
+		} else if (existing) {
+			// Merge subcategories from all versions
+			for (const s of subcats) {
+				if (!existing.subcategories.includes(s)) {
+					existing.subcategories.push(s);
+				}
+			}
+		}
+	}
+
+	// Build registry
+	const registry: Record<string, AiNodeRegistryEntry> = {};
+
+	for (const [name, info] of grouped) {
+		const className = deriveClassName(name, info.subcategories);
+		const category = detectCategory(name, info.subcategories);
+		const ioMethod = AI_IO_METHODS[name];
+
+		const entry: AiNodeRegistryEntry = {
+			nodeType: info.nodeType,
+			version: info.highestVersion,
+			category,
+		};
+
+		if (ioMethod) {
+			entry.ioMethod = ioMethod;
+		}
+
+		registry[className] = entry;
+	}
+
+	return registry;
+}
+
+// =============================================================================
 // Orchestration - Reusable generation logic
 // =============================================================================
 
@@ -3956,6 +4164,15 @@ export async function orchestrateGeneration(options: GenerationOptions): Promise
 	if (allNodes.length > 0) {
 		const indexContent = generateIndexFile(allNodes);
 		await fs.promises.writeFile(path.join(outputDir, 'index.ts'), indexContent);
+
+		// Generate AI node registry JSON
+		const registry = generateAiNodeRegistry(allNodes);
+		if (Object.keys(registry).length > 0) {
+			await fs.promises.writeFile(
+				path.join(outputDir, 'ai-node-registry.json'),
+				JSON.stringify(registry, null, 2) + '\n',
+			);
+		}
 	}
 
 	return { nodeCount: allNodes.length };

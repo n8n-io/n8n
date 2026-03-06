@@ -11,12 +11,14 @@ onWebhook({ method: 'POST', path: '/google-meet-automation' }, async ({ body, re
 	};
 
 	/** @example [{ action_items: [{ description: "Review Q3 budget" }, { description: "Update roadmap" }], follow_up_emails: [{ recipient: "team@company.com", subject: "Meeting Action Items" }], summary: "Discussed Q3 priorities and roadmap updates" }] */
-	const analysis = await ai.chat('gemini-pro', 'Analyze these meeting notes', {
-		outputParser: {
-			type: 'structured',
-			schema: { action_items: 'array', follow_up_emails: 'array', summary: 'string' },
-		},
-	});
+	const analysis = await new Agent({
+		prompt: 'Analyze these meeting notes',
+		model: new GoogleGeminiModel({ modelName: 'gemini-pro' }),
+		outputParser: new StructuredOutputParser({
+			schemaType: 'fromJson',
+			jsonSchemaExample: '{"action_items":"array","follow_up_emails":"array","summary":"string"}',
+		}),
+	}).chat();
 
 	for (const item of analysis.action_items) {
 		await http.post(
