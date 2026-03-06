@@ -1181,9 +1181,7 @@ function getRoundTripSkipReason(_title: string): string | undefined {
 
 // Known schema violations in existing fixtures (to be fixed separately).
 // Each entry maps fixture title substring to the reason.
-const KNOWN_SCHEMA_VIOLATIONS: Record<string, string> = {
-	'Loop with Try/Catch': 'tryCatch sub-workflow workflowJson variable not parseable',
-};
+const KNOWN_SCHEMA_VIOLATIONS: Record<string, string> = {};
 
 function getKnownSchemaSkip(title: string): string | undefined {
 	for (const [key, reason] of Object.entries(KNOWN_SCHEMA_VIOLATIONS)) {
