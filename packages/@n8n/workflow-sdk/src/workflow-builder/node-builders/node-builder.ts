@@ -275,19 +275,15 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 	}
 
 	onError<T extends NodeInstance<string, string, unknown>>(handler: T | InputTarget): this {
-		const isContinueErrorOutput = this.config.onError === 'continueErrorOutput';
-		const connectionType = isContinueErrorOutput ? 'main' : 'error';
-		const outputIndex = isContinueErrorOutput ? 1 : 0;
-
 		if (isInputTarget(handler)) {
 			this._connections.push({
 				target: handler.node,
-				outputIndex,
+				outputIndex: 0,
 				targetInputIndex: handler.inputIndex,
-				connectionType,
+				connectionType: 'error',
 			});
 		} else {
-			this._connections.push({ target: handler, outputIndex, connectionType });
+			this._connections.push({ target: handler, outputIndex: 0, connectionType: 'error' });
 		}
 		return this;
 	}
