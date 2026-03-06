@@ -360,9 +360,17 @@ export class MastraAdapter {
 				new TransformStream<StreamChunk, StreamChunk>({
 					transform(chunk, controller) {
 						if (chunk.type === 'content' && chunk.content.type === 'tool-result') {
+							let parsedInput: unknown = chunk.content.input;
+							if (typeof parsedInput === 'string') {
+								try {
+									parsedInput = JSON.parse(parsedInput);
+								} catch {
+									// keep as string
+								}
+							}
 							streamToolResults.push({
 								tool: chunk.content.toolName,
-								input: chunk.content.input,
+								input: parsedInput,
 								output: chunk.content.result,
 							});
 						}

@@ -163,11 +163,20 @@ async function drainStreamWithApprovals(
 
 		const chunk = value as StreamChunk;
 
-		// Collect tool results — they arrive as content chunks
+		// Collect tool results — they arrive as content chunks.
+		// The stream transform stringifies input, so parse it back to JSON.
 		if (chunk.type === 'content' && chunk.content.type === 'tool-result') {
+			let parsedInput: unknown = chunk.content.input;
+			if (typeof parsedInput === 'string') {
+				try {
+					parsedInput = JSON.parse(parsedInput);
+				} catch {
+					// keep as string if not valid JSON
+				}
+			}
 			collected.push({
 				tool: chunk.content.toolName,
-				input: chunk.content.input,
+				input: parsedInput,
 				output: chunk.content.result,
 			});
 		}

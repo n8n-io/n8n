@@ -222,4 +222,34 @@ describe('evaluate() integration', () => {
 		expect(results.runs[0].scores['used-list-tool'].pass).toBe(true);
 		expect(results.runs[0].scores['has-output'].pass).toBe(true);
 	});
+
+	it('provides tool call inputs and outputs as JSON objects, not strings', async () => {
+		const agent = createFruitBowlAgent('anthropic');
+
+		const toolTypesEval = new Eval('tool-types')
+			.description('Verify tool call inputs/outputs are JSON objects')
+			.check(({ toolCalls }) => {
+				if (!toolCalls || toolCalls.length === 0) {
+					return { pass: false, reasoning: 'No tool calls' };
+				}
+				for (const tc of toolCalls) {
+					if (typeof tc.input === 'string') {
+						return { pass: false, reasoning: `Tool "${tc.tool}" input is a string: ${tc.input}` };
+					}
+					if (typeof tc.output === 'string') {
+						return { pass: false, reasoning: `Tool "${tc.tool}" output is a string: ${tc.output}` };
+					}
+				}
+				return { pass: true, reasoning: 'All tool inputs/outputs are JSON objects' };
+			});
+
+		const results = await evaluate(agent, {
+			dataset: [{ input: 'Create a fruit bowl with 2 apples' }],
+			evals: [toolTypesEval],
+		});
+
+		expect(results.runs).toHaveLength(1);
+		expect(results.runs[0].scores['tool-types'].pass).toBe(true);
+		expect(results.runs[0].scores['tool-types'].reasoning).toContain('JSON objects');
+	});
 });
