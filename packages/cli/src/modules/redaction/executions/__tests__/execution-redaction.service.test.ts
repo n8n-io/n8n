@@ -146,7 +146,11 @@ describe('ExecutionRedactionService', () => {
 		});
 
 		it('calls FullItemRedactionStrategy only for executions needing redaction in a mixed list', async () => {
-			const noneExecution = makeExecution({ policy: 'none', mode: 'trigger', workflowId: 'wf-none' });
+			const noneExecution = makeExecution({
+				policy: 'none',
+				mode: 'trigger',
+				workflowId: 'wf-none',
+			});
 			const allExecution = makeExecution({ policy: 'all', mode: 'trigger', workflowId: 'wf-all' });
 			const nonManualManual = makeExecution({
 				policy: 'non-manual',
