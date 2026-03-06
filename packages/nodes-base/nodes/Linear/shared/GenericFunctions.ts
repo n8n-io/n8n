@@ -99,7 +99,7 @@ export async function linearApiRequestAllItems(
 		returnData.push(...nodes);
 		requestBody.variables.after = get(responseData, endCursorPath);
 		if (limit && returnData.length >= limit) {
-			return returnData;
+			return returnData.slice(0, limit);
 		}
 	} while (get(responseData, hasNextPagePath));
 
