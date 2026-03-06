@@ -127,6 +127,33 @@ export class SessionManagerService {
 	}
 
 	/**
+	 * Convert a pending HITL interrupt into a formatted message for the session.
+	 */
+	private formatPendingHitlMessage(hitl: HITLInterruptValue): Record<string, unknown> | undefined {
+		if (hitl.type === 'questions') {
+			return {
+				role: 'assistant',
+				type: hitl.type,
+				questions: hitl.questions,
+				...(hitl.introMessage ? { introMessage: hitl.introMessage } : {}),
+			};
+		}
+		if (hitl.type === 'plan') {
+			return { role: 'assistant', type: hitl.type, plan: hitl.plan };
+		}
+		if (hitl.type === 'web_fetch_approval') {
+			return {
+				role: 'assistant',
+				type: hitl.type,
+				requestId: hitl.requestId,
+				url: hitl.url,
+				domain: hitl.domain,
+			};
+		}
+		return undefined;
+	}
+
+	/**
 	 * Append an entry to the HITL interaction history for a thread.
 	 * Called when a questions or plan interrupt is resumed.
 	 */
@@ -426,28 +453,8 @@ export class SessionManagerService {
 
 				const pendingHitl = this.getPendingHitl(threadId);
 				if (pendingHitl) {
-					if (pendingHitl.type === 'questions') {
-						formattedMessages.push({
-							role: 'assistant',
-							type: pendingHitl.type,
-							questions: pendingHitl.questions,
-							...(pendingHitl.introMessage ? { introMessage: pendingHitl.introMessage } : {}),
-						});
-					} else if (pendingHitl.type === 'plan') {
-						formattedMessages.push({
-							role: 'assistant',
-							type: pendingHitl.type,
-							plan: pendingHitl.plan,
-						});
-					} else if (pendingHitl.type === 'web_fetch_approval') {
-						formattedMessages.push({
-							role: 'assistant',
-							type: pendingHitl.type,
-							requestId: pendingHitl.requestId,
-							url: pendingHitl.url,
-							domain: pendingHitl.domain,
-						});
-					}
+					const hitlMessage = this.formatPendingHitlMessage(pendingHitl);
+					if (hitlMessage) formattedMessages.push(hitlMessage);
 				}
 
 				sessions.push({
@@ -486,28 +493,8 @@ export class SessionManagerService {
 
 				const pendingHitl = this.getPendingHitl(threadId);
 				if (pendingHitl) {
-					if (pendingHitl.type === 'questions') {
-						formattedMessages.push({
-							role: 'assistant',
-							type: pendingHitl.type,
-							questions: pendingHitl.questions,
-							...(pendingHitl.introMessage ? { introMessage: pendingHitl.introMessage } : {}),
-						});
-					} else if (pendingHitl.type === 'plan') {
-						formattedMessages.push({
-							role: 'assistant',
-							type: pendingHitl.type,
-							plan: pendingHitl.plan,
-						});
-					} else if (pendingHitl.type === 'web_fetch_approval') {
-						formattedMessages.push({
-							role: 'assistant',
-							type: pendingHitl.type,
-							requestId: pendingHitl.requestId,
-							url: pendingHitl.url,
-							domain: pendingHitl.domain,
-						});
-					}
+					const hitlMessage = this.formatPendingHitlMessage(pendingHitl);
+					if (hitlMessage) formattedMessages.push(hitlMessage);
 				}
 
 				sessions.push({

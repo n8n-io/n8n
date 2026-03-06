@@ -149,7 +149,8 @@ When you need a node that wasn't discovered:
 Do not guess node type names. Node type names must exactly match the format shown in discovery context (e.g., "n8n-nodes-base.webhook", not "webhook" or "splitOut").
 </discovered_nodes>`;
 
-const FETCHED_URL_CONTENT = `If the DISCOVERY CONTEXT includes a "Fetched URL Content" section, it contains web page content that the Discovery Agent retrieved from URLs the user provided. Use this content to inform your node configuration — for example, API endpoints, field names, data shapes, or authentication details found in the documentation. If a fetched URL is marked [FAILED], the content could not be retrieved — configure the node based on available information instead.`;
+const FETCHED_URL_CONTENT =
+	'If the DISCOVERY CONTEXT includes a "Fetched URL Content" section, it contains web page content that the Discovery Agent retrieved from URLs the user provided. Use this content to inform your node configuration — for example, API endpoints, field names, data shapes, or authentication details found in the documentation. If a fetched URL is marked [FAILED], the content could not be retrieved — configure the node based on available information instead.';
 
 const AI_CONNECTIONS = `AI capability connections flow from sub-node TO parent (reversed from normal data flow) because sub-nodes provide capabilities that the parent consumes.
 
