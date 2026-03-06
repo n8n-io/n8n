@@ -76,10 +76,6 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return this.additionalData.executionId!;
 	}
 
-	getUserId() {
-		return this.additionalData.userId;
-	}
-
 	getNode(): INode {
 		return deepCopy(this.node);
 	}
