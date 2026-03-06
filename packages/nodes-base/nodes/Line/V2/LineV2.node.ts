@@ -1,50 +1,44 @@
-import {
+import type {
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
+	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { lineApiRequest } from './GenericFunctions';
 import { messageOperations, messageFields } from './descriptions/MessageDescription';
 
-export class LineMessagingApi implements INodeType {
-	description: INodeTypeDescription = {
-		displayName: 'LINE Messaging API',
-		name: 'lineMessagingApi',
-		icon: 'file:line.png',
-		group: ['input'],
-		version: 1,
-		subtitle: '={{$parameter["operation"]}}',
-		description: 'Send messages using the LINE Messaging API',
-		codex: {
-			categories: ['Communication'],
-			subcategories: {
-				Communication: ['LINE Messaging API'],
-				'LINE Messaging API': ['Actions'],
-			},
-		},
-		defaults: { name: 'LINE Messaging API' },
-		usableAsTool: true,
-		inputs: ['main'],
-		outputs: ['main'],
-		credentials: [{ name: 'lineApi', required: true }],
-		properties: [
-			// ─── Resource ────────────────────────────────────────────────
-			{
-				displayName: 'Resource',
-				name: 'resource',
-				type: 'options',
-				noDataExpression: true,
-				options: [{ name: 'Message', value: 'message', description: 'Send a message to users' }],
-				default: 'message',
-			},
-			// ─── Operations & Fields ──────────────────────────────────────
-			...messageOperations,
-			...messageFields,
-		],
-	};
+export class LineV2 implements INodeType {
+	description: INodeTypeDescription;
+
+	constructor(baseDescription: INodeTypeBaseDescription) {
+		this.description = {
+			...baseDescription,
+			version: 2,
+			subtitle: '={{$parameter["operation"]}}',
+			description: 'Send messages using the LINE Messaging API',
+			defaults: { name: 'Line' },
+			usableAsTool: true,
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
+			credentials: [{ name: 'lineApi', required: true }],
+			properties: [
+				{
+					displayName: 'Resource',
+					name: 'resource',
+					type: 'options',
+					noDataExpression: true,
+					options: [{ name: 'Message', value: 'message', description: 'Send a message to users' }],
+					default: 'message',
+				},
+				...messageOperations,
+				...messageFields,
+			],
+		};
+	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -58,7 +52,6 @@ export class LineMessagingApi implements INodeType {
 					typeof messagesRaw === 'string'
 						? (JSON.parse(messagesRaw) as IDataObject[])
 						: (messagesRaw as IDataObject[]);
-
 				let endpoint: string;
 				let body: IDataObject;
 

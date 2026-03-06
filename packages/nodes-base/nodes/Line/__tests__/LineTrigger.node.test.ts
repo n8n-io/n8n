@@ -4,11 +4,11 @@ import type { Request } from 'express';
 import { mock, mockDeep } from 'jest-mock-extended';
 import type { INode, IWebhookFunctions } from 'n8n-workflow';
 
-import { LineMessagingApiTrigger } from '../LineMessagingApiTrigger.node';
+import { LineTrigger } from '../LineTrigger.node';
 
-describe('LineMessagingApiTrigger node', () => {
+describe('LineTrigger node', () => {
 	const mockWebhookFunctions = mockDeep<IWebhookFunctions>();
-	const trigger = new LineMessagingApiTrigger();
+	const trigger = new LineTrigger();
 
 	const CHANNEL_SECRET = 'test-channel-secret';
 

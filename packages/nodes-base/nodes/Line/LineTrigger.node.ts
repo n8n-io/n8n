@@ -1,5 +1,6 @@
 import { createHmac } from 'crypto';
-import {
+
+import type {
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
@@ -7,22 +8,16 @@ import {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-export class LineMessagingApiTrigger implements INodeType {
+export class LineTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'LINE Messaging API Trigger',
-		name: 'lineMessagingApiTrigger',
+		displayName: 'Line Trigger',
+		name: 'lineTrigger',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:line.png',
 		group: ['trigger'],
 		version: 1,
 		description: 'Starts the workflow when LINE Messaging API webhook events are received',
-		codex: {
-			categories: ['Communication'],
-			subcategories: {
-				Communication: ['LINE Messaging API'],
-				'LINE Messaging API': ['Triggers'],
-			},
-		},
-		defaults: { name: 'LINE Messaging API' },
+		defaults: { name: 'Line Trigger' },
 		inputs: [],
 		outputs: ['main'],
 		credentials: [{ name: 'lineApi', required: true }],
@@ -47,10 +42,10 @@ export class LineMessagingApiTrigger implements INodeType {
 				name: 'events',
 				type: 'multiOptions',
 				options: [
-					{ name: 'Message', value: 'message' },
 					{ name: 'Follow', value: 'follow' },
-					{ name: 'Unfollow', value: 'unfollow' },
+					{ name: 'Message', value: 'message' },
 					{ name: 'Postback', value: 'postback' },
+					{ name: 'Unfollow', value: 'unfollow' },
 				],
 				default: ['message'],
 				description: 'The LINE event types to process',

@@ -1,26 +1,34 @@
 import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 
-import * as GenericFunctions from '../GenericFunctions';
-import { LineMessagingApi } from '../LineMessagingApi.node';
+import * as GenericFunctions from '../V2/GenericFunctions';
+import { LineV2 } from '../V2/LineV2.node';
 
-jest.mock('../GenericFunctions', () => {
-	const originalModule = jest.requireActual('../GenericFunctions');
+jest.mock('../V2/GenericFunctions', () => {
+	const originalModule = jest.requireActual('../V2/GenericFunctions');
 	return {
 		...originalModule,
 		lineApiRequest: jest.fn(),
 	};
 });
 
-describe('LineMessagingApi node', () => {
+describe('LineV2 node', () => {
 	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
 	const lineApiRequestMock = jest.mocked(GenericFunctions.lineApiRequest);
-	const node = new LineMessagingApi();
+	const node = new LineV2({
+		displayName: 'Line',
+		name: 'line',
+		icon: 'file:line.png',
+		group: ['input'],
+		subtitle: '={{$parameter["operation"]}}',
+		description: 'Consume Line API',
+		defaultVersion: 2,
+	});
 
 	beforeEach(() => {
 		jest.resetAllMocks();
 		executeFunctionsMock.getInputData.mockReturnValue([{ json: {} }]);
-		executeFunctionsMock.getNode.mockReturnValue({ typeVersion: 1 } as INode);
+		executeFunctionsMock.getNode.mockReturnValue({ typeVersion: 2 } as INode);
 		executeFunctionsMock.continueOnFail.mockReturnValue(false);
 		lineApiRequestMock.mockResolvedValue({});
 	});
