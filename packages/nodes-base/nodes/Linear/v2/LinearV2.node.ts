@@ -8,7 +8,6 @@ import type {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
-	IDataObject,
 } from 'n8n-workflow';
 
 import { router } from './actions/router';
