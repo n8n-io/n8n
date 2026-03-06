@@ -32,7 +32,7 @@ export {
 	EXPRESSION_REFERENCE,
 	ADDITIONAL_FUNCTIONS,
 	WORKFLOW_RULES,
-} from '../shared/prompt-constants';
+} from '../shared/code-builder-and-mcp-prompt-constants';
 
 // Tool name constants (shared between code builder agent and MCP server)
 export {
@@ -43,4 +43,5 @@ export {
 	MCP_GET_SDK_REFERENCE_TOOL,
 	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL,
 	MCP_ARCHIVE_WORKFLOW_TOOL,
+	MCP_UPDATE_WORKFLOW_TOOL,
 } from './constants';

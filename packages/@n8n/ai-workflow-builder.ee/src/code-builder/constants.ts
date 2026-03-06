@@ -123,3 +123,8 @@ export const MCP_ARCHIVE_WORKFLOW_TOOL: BuilderToolBase = {
 	toolName: 'archive_workflow',
 	displayTitle: 'Archiving workflow',
 };
+
+export const MCP_UPDATE_WORKFLOW_TOOL: BuilderToolBase = {
+	toolName: 'update_workflow',
+	displayTitle: 'Updating workflow',
+};

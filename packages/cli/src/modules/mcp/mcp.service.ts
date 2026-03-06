@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
-import { ProjectRepository, User, WorkflowRepository } from '@n8n/db';
+import { ProjectRepository, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import {
@@ -16,6 +16,7 @@ import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createSearchWorkflowsTool } from './tools/search-workflows.tool';
 import { createCreateWorkflowFromCodeTool } from './tools/workflow-builder/create-workflow-from-code.tool';
 import { createArchiveWorkflowTool } from './tools/workflow-builder/delete-workflow.tool';
+import { createUpdateWorkflowTool } from './tools/workflow-builder/update-workflow.tool';
 import { createGetSuggestedWorkflowNodesTool } from './tools/workflow-builder/get-suggested-workflow-nodes.tool';
 import { createGetWorkflowNodeTypesTool } from './tools/workflow-builder/get-workflow-node-types.tool';
 import { createGetWorkflowSdkReferenceTool } from './tools/workflow-builder/get-workflow-sdk-reference.tool';
@@ -59,7 +60,6 @@ export class McpService {
 		private readonly executionsConfig: ExecutionsConfig,
 		_instanceSettings: InstanceSettings,
 		private readonly workflowFinderService: WorkflowFinderService,
-		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowService: WorkflowService,
 		private readonly urlService: UrlService,
 		private readonly credentialsService: CredentialsService,
@@ -103,7 +103,6 @@ export class McpService {
 		const executeWorkflowTool = createExecuteWorkflowTool(
 			user,
 			this.workflowFinderService,
-			this.workflowRepository,
 			this.activeExecutions,
 			this.workflowRunner,
 			this.telemetry,
@@ -186,6 +185,15 @@ export class McpService {
 
 		const archiveTool = createArchiveWorkflowTool(user, this.workflowService, this.telemetry);
 		server.registerTool(archiveTool.name, archiveTool.config, archiveTool.handler);
+
+		const updateTool = createUpdateWorkflowTool(
+			user,
+			this.workflowFinderService,
+			this.workflowService,
+			this.urlService,
+			this.telemetry,
+		);
+		server.registerTool(updateTool.name, updateTool.config, updateTool.handler);
 
 		// SDK reference as MCP resource — preferred over the tool for clients that support resources.
 		server.resource(
