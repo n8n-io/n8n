@@ -638,6 +638,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			condition.status = 'canceled';
 		} else if (status === 'running') {
 			condition.status = 'running';
+		} else if (status === 'new') {
+			condition.status = 'new';
 		}
 
 		return condition;

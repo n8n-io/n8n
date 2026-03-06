@@ -406,12 +406,14 @@ describe('GET /executions', () => {
 	});
 
 	describe('with query status', () => {
-		type AllowedQueryStatus = 'canceled' | 'error' | 'running' | 'success' | 'waiting';
+		type AllowedQueryStatus = 'canceled' | 'error' | 'new' | 'running' | 'success' | 'waiting';
+
 		test.each`
 			queryStatus   | entityStatus
 			${'canceled'} | ${'canceled'}
 			${'error'}    | ${'error'}
 			${'error'}    | ${'crashed'}
+			${'new'}      | ${'new'}
 			${'running'}  | ${'running'}
 			${'success'}  | ${'success'}
 			${'waiting'}  | ${'waiting'}
