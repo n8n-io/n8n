@@ -67,7 +67,6 @@ function onUpdate(value: boolean | 'indeterminate') {
 .checkbox {
 	display: inline-flex;
 	flex-direction: row;
-	align-items: center;
 	gap: var(--spacing--2xs);
 	cursor: pointer;
 	color: white;

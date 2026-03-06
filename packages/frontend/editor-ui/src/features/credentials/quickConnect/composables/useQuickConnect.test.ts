@@ -592,7 +592,7 @@ describe('useQuickConnect()', () => {
 								mockConfirm.mockResolvedValue(MODAL_CONFIRM);
 							});
 
-							it('shows confirmation dialog with rendered markdown content', async () => {
+							it('shows confirmation dialog with sanitized HTML content', async () => {
 								const { connect } = useQuickConnect();
 								await connect({
 									credentialTypeName: 'firecrawlApi',
@@ -603,9 +603,9 @@ describe('useQuickConnect()', () => {
 
 								expect(mockConfirm).toHaveBeenCalledWith(
 									expect.objectContaining({
+										type: 'span',
 										props: expect.objectContaining({
-											content: 'This is the consent text.',
-											class: 'markdown-structured',
+											innerHTML: 'This is the consent text.',
 										}),
 									}),
 									'nodeCredentials.quickConnect.connectTo',
@@ -633,7 +633,7 @@ describe('useQuickConnect()', () => {
 								);
 							});
 
-							it('passes rendered markdown as confirmationCheckboxMessage when consentCheckbox is set', async () => {
+							it('passes sanitized HTML as confirmationCheckboxMessage when consentCheckbox is set', async () => {
 								settingsStore.moduleSettings['quick-connect'] = {
 									options: [{ ...firecrawlOption, consentCheckbox: 'I agree to the terms' }],
 								};
@@ -651,8 +651,9 @@ describe('useQuickConnect()', () => {
 									expect.any(String),
 									expect.objectContaining({
 										confirmationCheckboxMessage: expect.objectContaining({
+											type: 'span',
 											props: expect.objectContaining({
-												content: 'I agree to the terms',
+												innerHTML: 'I agree to the terms',
 											}),
 										}),
 									}),
@@ -723,8 +724,9 @@ describe('useQuickConnect()', () => {
 
 									expect(mockConfirm).toHaveBeenCalledWith(
 										expect.objectContaining({
+											type: 'span',
 											props: expect.objectContaining({
-												content:
+												innerHTML:
 													'Hello John Doe, your email is john@example.com and full name John Doe',
 											}),
 										}),
@@ -749,8 +751,9 @@ describe('useQuickConnect()', () => {
 
 									expect(mockConfirm).toHaveBeenCalledWith(
 										expect.objectContaining({
+											type: 'span',
 											props: expect.objectContaining({
-												content: 'Hello {user.firstName}',
+												innerHTML: 'Hello {user.firstName}',
 											}),
 										}),
 										expect.any(String),
@@ -781,8 +784,9 @@ describe('useQuickConnect()', () => {
 
 									expect(mockConfirm).toHaveBeenCalledWith(
 										expect.objectContaining({
+											type: 'span',
 											props: expect.objectContaining({
-												content: 'Alice <>',
+												innerHTML: 'Alice ',
 											}),
 										}),
 										expect.any(String),

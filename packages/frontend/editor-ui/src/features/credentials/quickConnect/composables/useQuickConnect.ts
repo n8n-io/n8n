@@ -5,6 +5,7 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { computed, onBeforeUnmount, ref, h } from 'vue';
+import { sanitizeHtml } from '@/app/utils/htmlUtils';
 
 import type { ICredentialsResponse } from '../../credentials.types';
 import { useCredentialOAuth } from '../../composables/useCredentialOAuth';
@@ -14,7 +15,6 @@ import { useI18n } from '@n8n/i18n';
 import { getQuickConnectApiKey } from '../quickConnect.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useMessage } from '@/app/composables/useMessage';
-import { N8nMarkdown } from '@n8n/design-system';
 import { useUsersStore } from '@/features/settings/users/users.store';
 
 export function useQuickConnect() {
@@ -174,10 +174,7 @@ export function useQuickConnect() {
 			try {
 				if (quickConnectOption.consentText) {
 					const confirmed = await message.confirm(
-						h(N8nMarkdown, {
-							content: replaceUserData(quickConnectOption.consentText),
-							class: 'markdown-structured',
-						}),
+						h('span', { innerHTML: sanitizeHtml(replaceUserData(quickConnectOption.consentText)) }),
 						i18n.baseText('nodeCredentials.quickConnect.connectTo', {
 							interpolate: { provider: connectParams.serviceName },
 						}),
@@ -186,9 +183,7 @@ export function useQuickConnect() {
 							confirmButtonText: i18n.baseText('nodeCredentials.quickConnect.consent.confirm'),
 							cancelButtonText: i18n.baseText('nodeCredentials.quickConnect.consent.cancel'),
 							confirmationCheckboxMessage: quickConnectOption.consentCheckbox
-								? h(N8nMarkdown, {
-										content: quickConnectOption.consentCheckbox,
-									})
+								? h('span', { innerHTML: sanitizeHtml(quickConnectOption.consentCheckbox) })
 								: undefined,
 						},
 					);
