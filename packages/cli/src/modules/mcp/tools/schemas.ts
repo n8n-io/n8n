@@ -1,4 +1,4 @@
-import type { IWorkflowSettings, WorkflowFEMeta } from 'n8n-workflow';
+import type { IConnections, INode, IWorkflowSettings, WorkflowFEMeta } from 'n8n-workflow';
 import z from 'zod';
 
 export const nodeSchema = z
@@ -17,6 +17,21 @@ export const workflowSettingsSchema = z
 export const workflowMetaSchema = z
 	.custom<WorkflowFEMeta>((_value): _value is WorkflowFEMeta => true)
 	.nullable();
+
+/**
+ * Zod schema for workflow JSON input/output used by workflow builder MCP tools.
+ * The MCP client holds state — tools accept this as input and return the modified version.
+ */
+export const workflowJsonSchema = z.object({
+	nodes: z
+		.array(z.custom<INode>((_value): _value is INode => true))
+		.describe('Array of workflow nodes'),
+	connections: z
+		.custom<IConnections>((_value): _value is IConnections => true)
+		.describe('Workflow connections object'),
+});
+
+export type WorkflowJson = z.infer<typeof workflowJsonSchema>;
 
 export const workflowDetailsOutputSchema = z.object({
 	workflow: z
