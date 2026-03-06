@@ -123,6 +123,14 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		return getResourcePermissions(connectionScopes.value).externalSecretsProvider;
 	});
 
+	// Whether the current project has the owner role on this connection.
+	// Only owner-role connections should be editable from the project settings page.
+	const isProjectOwned = computed(() => {
+		if (!options.projectId) return false;
+		const projectAccess = connectionProjects.value.find((p) => p.id === options.projectId);
+		return projectAccess?.role === 'secretsProviderConnection:owner';
+	});
+
 	// Permission checks
 	const canCreateProjectScoped = computed(() => {
 		if (!options.projectId) return false;
@@ -134,20 +142,18 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	);
 
 	const canUpdate = computed(() => {
-		// In project-scoped mode, the loaded connection scope take precedence
-		// The connection scope already includes global, project, and sharing role permissions
+		// In project-scoped mode, only allow updates for connections the project owns
 		if (isScopedMode.value) {
-			return connectionPermissions.value.update;
+			return connectionPermissions.value.update && isProjectOwned.value;
 		}
 
 		return rbacStore.hasScope('externalSecretsProvider:update');
 	});
 
 	const canDelete = computed(() => {
-		// In project-scoped mode, the loaded connection scope take precedence
-		// The connection scope already includes global, project, and sharing role permissions
+		// In project-scoped mode, only allow deletes for connections the project owns
 		if (isScopedMode.value) {
-			return connectionPermissions.value.delete;
+			return connectionPermissions.value.delete && isProjectOwned.value;
 		}
 		return rbacStore.hasScope('externalSecretsProvider:delete');
 	});
