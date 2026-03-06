@@ -4,7 +4,7 @@
  *
  * Generated files are gitignored.
  */
-import { readdirSync, readFileSync, writeFileSync, statSync } from 'fs';
+import { readdirSync, readFileSync, writeFileSync, statSync, existsSync } from 'fs';
 import { join } from 'path';
 import { transpileWorkflowJS } from './compiler';
 import { parseWorkflowCodeToBuilder } from '../codegen/parse-workflow-code';
@@ -25,6 +25,14 @@ interface PinDataEntry {
 	data: unknown[];
 }
 
+interface ExecutionEntry {
+	status: 'pass' | 'error' | 'skip';
+	error?: string;
+	reason?: string;
+	executedNodes?: string[];
+	nodeOutputs?: Record<string, unknown[]>;
+}
+
 interface ReportEntry {
 	title: string;
 	templateId: number;
@@ -35,11 +43,13 @@ interface ReportEntry {
 	workflowJson?: string;
 	subWorkflows?: SubWorkflowEntry[];
 	pinData?: PinDataEntry[];
+	execution?: ExecutionEntry;
 	error?: string;
 }
 
 const FIXTURES_DIR = join(__dirname, '__fixtures__');
 const REPORT_PATH = join(FIXTURES_DIR, 'report.html');
+const EXECUTION_DATA_PATH = join(FIXTURES_DIR, 'execution-data.json');
 
 interface LooseWorkflow {
 	name?: string;
@@ -71,18 +81,29 @@ function extractSubWorkflows(workflowJson: LooseWorkflow): SubWorkflowEntry[] {
 	return results;
 }
 
+function loadExecutionData(): Record<string, ExecutionEntry> {
+	if (!existsSync(EXECUTION_DATA_PATH)) return {};
+	try {
+		return JSON.parse(readFileSync(EXECUTION_DATA_PATH, 'utf-8')) as Record<string, ExecutionEntry>;
+	} catch {
+		return {};
+	}
+}
+
 function processFixtures(): ReportEntry[] {
 	const dirs = readdirSync(FIXTURES_DIR)
 		.filter((f) => statSync(join(FIXTURES_DIR, f)).isDirectory())
 		.sort();
 
+	const executionMap = loadExecutionData();
 	const entries: ReportEntry[] = [];
 
 	for (const dirName of dirs) {
 		const dirPath = join(FIXTURES_DIR, dirName);
 		const meta = JSON.parse(readFileSync(join(dirPath, 'meta.json'), 'utf-8')) as FixtureMeta;
 		const input = readFileSync(join(dirPath, 'input.js'), 'utf-8').trim();
-		const base = { title: meta.title, templateId: meta.templateId, dirName, input };
+		const execution = executionMap[dirName];
+		const base = { title: meta.title, templateId: meta.templateId, dirName, input, execution };
 
 		if (meta.skip) {
 			entries.push({ ...base, skip: meta.skip });
@@ -136,6 +157,52 @@ function escapeHtml(str: string): string {
 		.replace(/"/g, '&quot;');
 }
 
+function renderExecutionSection(execution: ExecutionEntry): string {
+	if (execution.status === 'skip') {
+		return `<details>
+        <summary>Execution Output <span class="exec-badge exec-skip">SKIPPED</span></summary>
+        <div class="exec-skip-reason">${escapeHtml(execution.reason ?? 'Unknown reason')}</div>
+      </details>`;
+	}
+
+	const executedNodes = execution.executedNodes ?? [];
+	const nodeOutputs = execution.nodeOutputs ?? {};
+	const statusClass = execution.status === 'pass' ? 'exec-pass' : 'exec-error';
+	const statusLabel = execution.status === 'pass' ? 'PASS' : 'ERROR';
+
+	const errorBlock = execution.error
+		? `<div class="exec-error-msg">${escapeHtml(execution.error)}</div>`
+		: '';
+
+	const nodeRows = executedNodes
+		.map((nodeName) => {
+			const output = nodeOutputs[nodeName];
+			const hasOutput = output && output.length > 0;
+			const itemCount = output?.length ?? 0;
+			const outputJson = hasOutput ? JSON.stringify(output, null, 2) : '';
+			const truncated = outputJson.length > 2000;
+			const displayJson = truncated ? outputJson.slice(0, 2000) + '\n  ...' : outputJson;
+
+			return `<div class="exec-node">
+          <div class="exec-node-header">
+            <span class="exec-dot"></span>
+            <span class="exec-node-name">${escapeHtml(nodeName)}</span>
+            ${hasOutput ? `<span class="exec-item-count">${itemCount} item${itemCount !== 1 ? 's' : ''}</span>` : '<span class="exec-no-output">no output</span>'}
+          </div>
+          ${hasOutput ? `<pre class="code exec-output"><code>${escapeHtml(displayJson)}</code></pre>` : ''}
+        </div>`;
+		})
+		.join('\n');
+
+	return `<details>
+        <summary>Execution Output <span class="exec-badge ${statusClass}">${statusLabel}</span> <span class="exec-count">${executedNodes.length} node${executedNodes.length !== 1 ? 's' : ''}</span></summary>
+        ${errorBlock}
+        <div class="exec-pipeline">
+          ${nodeRows}
+        </div>
+      </details>`;
+}
+
 function generateHtml(entries: ReportEntry[]): string {
 	const cards = entries
 		.map((entry) => {
@@ -152,6 +219,8 @@ function generateHtml(entries: ReportEntry[]): string {
 			const errorNote = entry.error
 				? `<div class="error-msg">${escapeHtml(entry.error)}</div>`
 				: '';
+
+			const executionSection = entry.execution ? renderExecutionSection(entry.execution) : '';
 
 			const demoComponent = entry.workflowJson
 				? `<n8n-demo tidyup="true" workflow='${entry.workflowJson.replace(/'/g, '&#39;')}'></n8n-demo>`
@@ -188,6 +257,7 @@ function generateHtml(entries: ReportEntry[]): string {
       </details>`
 					: ''
 			}
+      ${executionSection}
       ${demoComponent ? `<div class="demo">${(entry.subWorkflows ?? []).length > 0 ? '<h3 class="demo-label">Main Workflow</h3>' : ''}${demoComponent}</div>` : ''}
       ${
 				(entry.subWorkflows ?? [])
@@ -203,6 +273,8 @@ function generateHtml(entries: ReportEntry[]): string {
     </div>`;
 		})
 		.join('\n');
+
+	const hasExecutionData = entries.some((e) => e.execution);
 
 	return `<!DOCTYPE html>
 <html lang="en">
@@ -241,11 +313,29 @@ function generateHtml(entries: ReportEntry[]): string {
     .pin-node-name { font-size: 12px; font-weight: 600; color: #7c5cfc; margin-bottom: 4px; padding: 2px 0; }
     .pin-code { font-size: 12px; padding: 12px; }
     n8n-demo { width: 100%; min-height: 300px; display: block; }
+
+    /* Execution output styles */
+    .exec-badge { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 3px; text-transform: uppercase; margin-left: 6px; vertical-align: middle; }
+    .exec-pass { background: #d4edda; color: #155724; }
+    .exec-error { background: #f8d7da; color: #721c24; }
+    .exec-skip { background: #fff3cd; color: #856404; }
+    .exec-count { font-size: 11px; font-weight: 400; color: #888; margin-left: 4px; }
+    .exec-skip-reason { font-size: 12px; color: #856404; padding: 8px 12px; background: #fffdf0; border-radius: 4px; margin-top: 8px; }
+    .exec-error-msg { font-size: 12px; color: #c00; padding: 8px 12px; background: #fff0f0; border-radius: 4px; margin: 8px 0; }
+    .exec-pipeline { margin-top: 12px; padding-left: 16px; border-left: 2px solid #e0e0e0; }
+    .exec-node { margin-bottom: 16px; position: relative; }
+    .exec-node:last-child { margin-bottom: 4px; }
+    .exec-node-header { display: flex; align-items: center; gap: 8px; }
+    .exec-dot { width: 10px; height: 10px; border-radius: 50%; background: #7c5cfc; margin-left: -21px; flex-shrink: 0; border: 2px solid #fff; box-shadow: 0 0 0 1px #7c5cfc; }
+    .exec-node-name { font-size: 12px; font-weight: 600; color: #333; }
+    .exec-item-count { font-size: 10px; color: #888; background: #f0f0f0; padding: 1px 6px; border-radius: 3px; }
+    .exec-no-output { font-size: 10px; color: #aaa; font-style: italic; }
+    .exec-output { font-size: 11px; padding: 8px 12px; margin-top: 6px; margin-bottom: 0; line-height: 1.4; max-height: 200px; overflow-y: auto; }
   </style>
 </head>
 <body>
   <h1>Simplified Compiler - Fixture Report</h1>
-  <p style="margin-bottom:20px;color:#666;font-size:14px;">${entries.length} fixtures total &middot; ${entries.filter((e) => !e.skip && !e.error).length} passing &middot; ${entries.filter((e) => e.skip).length} skipped &middot; ${entries.filter((e) => e.error).length} errors</p>
+  <p style="margin-bottom:20px;color:#666;font-size:14px;">${entries.length} fixtures total &middot; ${entries.filter((e) => !e.skip && !e.error).length} passing &middot; ${entries.filter((e) => e.skip).length} skipped &middot; ${entries.filter((e) => e.error).length} errors${hasExecutionData ? ' &middot; <span style="color:#7c5cfc">execution data available</span>' : ''}</p>
 ${cards}
 </body>
 </html>`;

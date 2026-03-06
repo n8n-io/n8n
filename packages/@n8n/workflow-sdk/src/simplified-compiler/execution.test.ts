@@ -1,3 +1,5 @@
+import { writeFileSync } from 'fs';
+import { join } from 'path';
 import type { INode } from 'n8n-workflow';
 import { transpileWorkflowJS } from './compiler';
 import { parseWorkflowCode } from '../codegen/parse-workflow-code';
@@ -50,6 +52,20 @@ function getSkipReason(dir: string): string | undefined {
 }
 
 // ---------------------------------------------------------------------------
+// Execution data collection (written to execution-data.json after all tests)
+// ---------------------------------------------------------------------------
+
+interface FixtureExecutionEntry {
+	status: 'pass' | 'error' | 'skip';
+	error?: string;
+	reason?: string;
+	executedNodes?: string[];
+	nodeOutputs?: Record<string, unknown[]>;
+}
+
+const executionData: Record<string, FixtureExecutionEntry> = {};
+
+// ---------------------------------------------------------------------------
 // Test suite
 // ---------------------------------------------------------------------------
 
@@ -58,13 +74,25 @@ describe('Fixture execution with pin data', () => {
 		await resolveImports();
 	}, 120_000);
 
+	afterAll(() => {
+		writeFileSync(
+			join(__dirname, '__fixtures__', 'execution-data.json'),
+			JSON.stringify(executionData, null, 2) + '\n',
+		);
+	});
+
 	const fixtures = loadFixtures();
 
 	for (const fixture of fixtures) {
 		const skipReason = fixture.skip ?? getSkipReason(fixture.dir);
-		const testFn = skipReason ? it.skip : it;
 
-		testFn(`${fixture.title} [execution]`, async () => {
+		if (skipReason) {
+			executionData[fixture.dir] = { status: 'skip', reason: skipReason };
+			it.skip(`${fixture.title} [execution]`, () => {});
+			continue;
+		}
+
+		it(`${fixture.title} [execution]`, async () => {
 			// Step 1: Compile simplified JS → SDK
 			const sdk = transpileWorkflowJS(fixture.input);
 			expect(sdk.errors).toHaveLength(0);
@@ -84,6 +112,25 @@ describe('Fixture execution with pin data', () => {
 				},
 				pinData,
 			);
+
+			// Step 5: Collect per-node output data
+			const nodeOutputs: Record<string, unknown[]> = {};
+			const runData = result.run?.data?.resultData?.runData;
+			if (runData) {
+				for (const [nodeName, taskDataArr] of Object.entries(runData)) {
+					const items = taskDataArr[0]?.data?.main?.[0];
+					if (items) {
+						nodeOutputs[nodeName] = items.map((item) => item.json);
+					}
+				}
+			}
+
+			executionData[fixture.dir] = {
+				status: result.success ? 'pass' : 'error',
+				error: result.error,
+				executedNodes: result.executedNodes,
+				nodeOutputs,
+			};
 
 			expect(result.success).toBe(true);
 		});

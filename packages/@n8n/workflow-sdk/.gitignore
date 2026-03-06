@@ -16,3 +16,4 @@ scripts/*.d.ts
 # Generated fixture artifacts (run generate-report.ts to recreate)
 src/simplified-compiler/__fixtures__/*/workflow.json
 src/simplified-compiler/__fixtures__/report.html
+src/simplified-compiler/__fixtures__/execution-data.json

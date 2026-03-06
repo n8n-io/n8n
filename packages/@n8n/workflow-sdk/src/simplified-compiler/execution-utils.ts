@@ -218,6 +218,7 @@ export interface ExecutionResult {
 	errorNode?: string;
 	durationMs: number;
 	executedNodes: string[];
+	run?: IRun;
 }
 
 export async function executeWorkflow(
@@ -295,6 +296,7 @@ export async function executeWorkflow(
 			errorNode,
 			durationMs: Date.now() - startTime,
 			executedNodes,
+			run: result,
 		};
 	} catch (error) {
 		return {
