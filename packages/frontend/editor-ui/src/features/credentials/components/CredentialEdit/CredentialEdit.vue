@@ -400,7 +400,11 @@ onMounted(async () => {
 
 	const projectId = projectsStore.currentProjectId ?? projectsStore.personalProject?.id;
 	if (projectId) {
-		await externalSecretsStore.fetchSecretsForProject(projectId);
+		try {
+			await externalSecretsStore.fetchSecretsForProject(projectId);
+		} catch {
+			// Secrets fetch failure should not block the credential modal
+		}
 	}
 
 	setCredentialPropertyDefaults();
