@@ -43,6 +43,7 @@
 					v-model="code"
 					@compile-status="onCompileStatus"
 					@compile-error="onCompileError"
+					@compile-evals="onCompileEvals"
 				/>
 			</div>
 			<div class="w-1/2 flex flex-col min-h-0">
@@ -67,6 +68,26 @@
 					>
 						Test
 					</button>
+					<button
+						:class="[
+							'px-3 py-1.5 text-sm rounded-md font-medium transition-colors',
+							chatMode === 'eval'
+								? 'bg-emerald-600 text-white'
+								: evalNames.length
+									? 'text-gray-400 hover:text-gray-200'
+									: 'text-gray-600 cursor-not-allowed',
+						]"
+						:disabled="!evalNames.length"
+						@click="evalNames.length && (chatMode = 'eval')"
+					>
+						Eval
+						<span
+							v-if="evalNames.length"
+							class="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-emerald-800 text-emerald-300"
+						>
+							{{ evalNames.length }}
+						</span>
+					</button>
 					<div class="flex-1" />
 					<button
 						class="text-xs text-gray-500 hover:text-gray-300 transition-colors"
@@ -76,12 +97,14 @@
 					</button>
 				</div>
 				<ChatPane
+					v-if="chatMode !== 'eval'"
 					ref="chatPaneRef"
 					:agent-ready="agentStatus === 'active'"
 					:mode="chatMode"
 					:editor-code="code"
 					@generated="onGenerated"
 				/>
+				<EvalPanel v-if="chatMode === 'eval'" :eval-names="evalNames" />
 			</div>
 		</div>
 	</div>
@@ -94,7 +117,8 @@ const code = ref(localStorage.getItem(EDITOR_STORAGE_KEY) ?? '');
 watch(code, (val) => localStorage.setItem(EDITOR_STORAGE_KEY, val));
 const agentStatus = ref<'idle' | 'compiling' | 'active' | 'error'>('idle');
 const compileError = ref<string | undefined>();
-const chatMode = ref<'build' | 'test'>('build');
+const chatMode = ref<'build' | 'test' | 'eval'>('build');
+const evalNames = ref<string[]>([]);
 const chatPaneRef = ref<InstanceType<typeof ChatPane> | undefined>();
 const editorRef = ref<InstanceType<typeof EditorPane> | undefined>();
 
@@ -122,6 +146,10 @@ function onCompileStatus(status: 'compiling' | 'active' | 'error') {
 
 function onCompileError(error: string | undefined) {
 	compileError.value = error;
+}
+
+function onCompileEvals(names: string[]) {
+	evalNames.value = names;
 }
 
 async function copyError() {

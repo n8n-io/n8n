@@ -1,7 +1,16 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { Agent } from '../agent';
+import type { Message } from '../message';
 import { Network } from '../network';
-import { findTextContent } from './integration/helpers';
+
+function findTextContent(messages: Message[]): string | undefined {
+	for (const msg of messages) {
+		for (const block of msg.content) {
+			if (block.type === 'text') return block.text;
+		}
+	}
+	return undefined;
+}
 
 /** Exposes protected build() for testing. */
 class TestableAgent extends Agent {

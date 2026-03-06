@@ -119,15 +119,17 @@ delegate research to a specialist when the question requires deeper lookup.`,
 // ─── Run ─────────────────────────────────────────────────────────────────
 
 async function main() {
-	const result = await agent.generate({
-		prompt: 'What is the weather in London, and what is our company PTO policy?',
-	});
+	try {
+		const result = await agent.generate({
+			prompt: 'What is the weather in London, and what is our company PTO policy?',
+		});
 
-	console.log(result.text);
-	console.log(`Steps taken: ${result.steps.length}`);
-
-	// Flush traces before exit
-	await sdk.shutdown();
+		console.log(result.text);
+		console.log(`Steps taken: ${result.steps.length}`);
+	} finally {
+		// Flush traces before exit — must run even if generation fails
+		await sdk.shutdown();
+	}
 }
 
 main().catch(console.error);

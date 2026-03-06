@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { z } from 'zod';
 
-import { describeIf, getModel, type StreamChunk } from './helpers';
+import { describeIf, getModel } from './helpers';
 import { Agent, Tool } from '../../index';
 
 const describe = describeIf('anthropic');
@@ -21,7 +21,7 @@ describe('stream timing', () => {
 							code: z.string().describe('The complete source code'),
 						}),
 					)
-					// eslint-disable-next-line @typescript-eslint/require-await
+
 					.handler(async ({ code }) => ({ ok: true, length: code.length })),
 			);
 
@@ -39,8 +39,8 @@ describe('stream timing', () => {
 		while (true) {
 			const { done, value } = await reader.read();
 			if (done) break;
-			const chunk = value as StreamChunk;
-			if (chunk.type === 'tool-call-delta' && chunk.payload?.toolName === 'set_code') {
+			const chunk = value;
+			if (chunk.type === 'tool-call-delta' && (chunk as { name?: string }).name === 'set_code') {
 				deltaReadTimes.push(Date.now() - start);
 			}
 		}

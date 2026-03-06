@@ -114,9 +114,46 @@ Always call the list-credentials tool FIRST to see which credentials are availab
 Use the credential name that matches the model provider (e.g. 'anthropic' for Anthropic models, 'openai' for OpenAI models).
 The execution engine resolves the credential to an API key at build time — never hardcode API keys.
 
+## Evaluations
+
+Agents can have evaluations attached via \`.eval()\`. Two types:
+
+**Deterministic** — a pure function that scores output:
+\`\`\`typescript
+import { Eval } from '@n8n/agents';
+const hasJson = new Eval('has-json')
+  .description('Check output is valid JSON')
+  .check(({ output }) => {
+    try { JSON.parse(output); return { score: 1, reasoning: 'Valid JSON' }; }
+    catch { return { score: 0, reasoning: 'Invalid JSON' }; }
+  });
+\`\`\`
+
+**LLM-as-judge** — uses a model to score (needs .model() + .credential()):
+\`\`\`typescript
+import { evals } from '@n8n/agents';
+const correctness = evals.correctness()
+  .model('anthropic/claude-haiku-4-5')
+  .credential('anthropic');
+\`\`\`
+
+**Built-in evals** (from \`evals\` namespace):
+- \`evals.correctness()\` — LLM judge for factual correctness
+- \`evals.helpfulness()\` — LLM judge for helpfulness
+- \`evals.stringSimilarity()\` — deterministic string similarity
+- \`evals.categorization()\` — deterministic label matching
+- \`evals.containsKeywords()\` — deterministic keyword check
+- \`evals.jsonValidity()\` — deterministic JSON parse check
+- \`evals.toolCallAccuracy()\` — deterministic tool call check
+
+Attach evals to agents: \`agent.eval(correctness).eval(similarity)\`
+Do NOT use Scorer — it is deprecated. Always use Eval or evals.* instead.
+
 ## Important
 
 - Do NOT call .build() on tools or agents — the engine handles this automatically
+- Do NOT use Scorer — it is deprecated, use Eval instead
+- Do NOT use process.env — it is not available in the sandbox. For API keys use .credential(). For any other configuration use const variables at the top of the code
 - Tool handlers are async functions that receive the validated input object
 - Tool .input() and .output() use Zod schemas
 - Agent .instructions() sets the system prompt

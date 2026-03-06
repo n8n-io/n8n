@@ -1,20 +1,9 @@
 import { describe as _describe } from 'vitest';
 import { z } from 'zod';
 
-import { Agent, Tool, type Message } from '../../index';
+import { Agent, Tool, type Message, type StreamChunk } from '../../index';
 
-export interface StreamChunk {
-	type: string;
-	runId?: string;
-	payload?: {
-		text?: string;
-		toolName?: string;
-		toolCallId?: string;
-		args?: unknown;
-		result?: unknown;
-		argsTextDelta?: string;
-	};
-}
+export type { StreamChunk };
 
 /**
  * Returns `describe` or `describe.skip` depending on whether the API key is set.

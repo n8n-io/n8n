@@ -228,6 +228,8 @@ export function fromMastraMessage(msg: MastraDBMessage): Message {
 				toolCallId: part.toolCallId,
 				toolName: part.toolName,
 				result: part.result,
+				input: undefined,
+				...(part.isError ? { isError: true } : {}),
 			});
 		} else if (isMastraFilePart(part)) {
 			const data = part.data instanceof URL ? part.data.toString() : part.data;

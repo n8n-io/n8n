@@ -206,6 +206,7 @@ function createMastraToStreamChunkTransform(
 				controller.enqueue({
 					...(providerMetadata && { providerMetadata }),
 					type: 'tool-call-approval',
+					runId: chunk.runId,
 					toolCallId: payload.toolCallId,
 					tool: payload.toolName,
 					input: payload.args,
@@ -245,8 +246,6 @@ export class MastraAdapter {
 
 	private readonly structuredOutputSchema?: z.ZodType;
 
-	private readonly hasToolApproval: boolean;
-
 	private readonly toolToMessageMap: ToolToMessageMap;
 	private readonly storeResultsToolNames: Set<string>;
 	private readonly hasMemory: boolean;
@@ -257,15 +256,11 @@ export class MastraAdapter {
 
 		// Convert BuiltTool array to the Record<string, tool> map Mastra expects
 		const tools: Record<string, unknown> = {};
-		this.hasToolApproval = false;
 		this.storeResultsToolNames = new Set();
 		this.hasMemory = !!config.memory;
 		if (config.tools) {
 			for (const tool of config.tools) {
 				tools[tool.name] = tool._mastraTool;
-				if (tool._approval) {
-					this.hasToolApproval = true;
-				}
 				if (tool._storeResults) {
 					this.storeResultsToolNames.add(tool.name);
 				}
@@ -351,25 +346,20 @@ export class MastraAdapter {
 		if (this.structuredOutputSchema) {
 			streamOptions.structuredOutput = { schema: this.structuredOutputSchema };
 		}
-		if (this.hasToolApproval) {
-			streamOptions.requireToolApproval = true;
-		}
-
 		const mastraInput = Array.isArray(input) ? toMastraMessages(input) : input;
 		const output = await this.mastraAgent.stream(mastraInput, streamOptions);
 
+		// Collect ALL tool results from the stream. When tools go through
+		// the approval flow, their results arrive on the resumed stream
+		// but the promise-based output.toolCalls/toolResults only capture
+		// results from the original (pre-suspension) stream.
 		const streamToolResults: Array<{ tool: string; input: unknown; output: unknown }> = [];
-		const storeToolNames = this.storeResultsToolNames;
 		const fullStream = (output.fullStream as ReadableStream<MastraStreamChunk>)
 			.pipeThrough(createMastraToStreamChunkTransform(this.toolToMessageMap))
 			.pipeThrough(
 				new TransformStream<StreamChunk, StreamChunk>({
 					transform(chunk, controller) {
-						if (
-							chunk.type === 'content' &&
-							chunk.content.type === 'tool-result' &&
-							storeToolNames.has(chunk.content.toolName)
-						) {
+						if (chunk.type === 'content' && chunk.content.type === 'tool-result') {
 							streamToolResults.push({
 								tool: chunk.content.toolName,
 								input: chunk.content.input,
@@ -462,9 +452,6 @@ export class MastraAdapter {
 		const executionOptions: Record<string, unknown> = { ...memoryOptions };
 		if (this.structuredOutputSchema) {
 			executionOptions.structuredOutput = { schema: this.structuredOutputSchema };
-		}
-		if (this.hasToolApproval) {
-			executionOptions.requireToolApproval = true;
 		}
 
 		const mastraInput = Array.isArray(input) ? toMastraMessages(input) : input;

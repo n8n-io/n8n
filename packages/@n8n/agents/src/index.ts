@@ -4,23 +4,30 @@ export type {
 	BuiltAgent,
 	BuiltMemory,
 	BuiltGuardrail,
-	BuiltScorer,
+	BuiltEval,
 	BuiltNetwork,
 	Run,
 	RunEvent,
 	RunState,
 	RunOptions,
 	AgentResult,
-	StreamChunk,
+	EvalInput,
+	EvalScore,
+	EvalRunResult,
+	EvalResults,
 	ToolContext,
 	CheckpointStore,
 	RunSnapshot,
+	StreamChunk,
 } from './types';
 
 export { Tool } from './tool';
 export { Memory } from './memory';
 export { Guardrail } from './guardrail';
-export { Scorer } from './scorer';
+export { Eval } from './eval';
+export { evaluate } from './evaluate';
+export type { DatasetRow, EvaluateConfig } from './evaluate';
+export * as evals from './evals/index';
 export { AgentRun } from './run';
 export { Agent } from './agent';
 export { Network } from './network';
@@ -28,15 +35,4 @@ export { configure } from './configure';
 export { providerTools } from './provider-tools';
 export { verify } from './verify';
 export type { VerifyResult } from './verify';
-export type {
-	ContentCitation,
-	ContentFile,
-	ContentMetadata,
-	ContentReasoning,
-	ContentText,
-	ContentToolCall,
-	ContentToolResult,
-	Message,
-	MessageContent,
-	MessageRole,
-} from './message';
+export type { Message } from './message';

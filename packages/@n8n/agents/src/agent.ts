@@ -1,15 +1,16 @@
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 
+import type { Eval } from './eval';
 import type { Message } from './message';
 import { AgentRun } from './run';
 import { MastraAdapter } from './runtime/mastra-adapter';
 import type {
 	BuiltAgent,
+	BuiltEval,
 	BuiltGuardrail,
 	BuiltMemory,
 	BuiltProviderTool,
-	BuiltScorer,
 	BuiltTool,
 	CheckpointStore,
 	Run,
@@ -50,14 +51,13 @@ export class Agent {
 
 	private memoryConfig?: BuiltMemory;
 
-	// TODO: Guardrails and scorers are accepted by the builder API for forward
-	// compatibility but not yet wired to the Mastra adapter. They will be
-	// connected when the guardrail/eval pipeline is implemented.
+	// TODO: Guardrails are accepted by the builder API for forward
+	// compatibility but not yet wired to the Mastra adapter.
 	private inputGuardrails: BuiltGuardrail[] = [];
 
 	private outputGuardrails: BuiltGuardrail[] = [];
 
-	private scorers: BuiltScorer[] = [];
+	private agentEvals: BuiltEval[] = [];
 
 	private outputSchema?: z.ZodType;
 
@@ -116,9 +116,10 @@ export class Agent {
 		return this;
 	}
 
-	/** Add a scorer. Accepts a built scorer or a Scorer builder. */
-	scorer(s: BuiltScorer | { build(): BuiltScorer }): this {
-		this.scorers.push('_mastraScorer' in s ? s : s.build());
+	/** Add an eval to run after each agent response. Accepts an Eval builder or BuiltEval. */
+	eval(e: Eval | BuiltEval | { ensureBuilt(): BuiltEval }): this {
+		const built = '_run' in e ? e : (e as Eval).ensureBuilt();
+		this.agentEvals.push(built);
 		return this;
 	}
 
@@ -200,6 +201,11 @@ export class Agent {
 	private ensureBuilt(): BuiltAgent {
 		this._built ??= this.build();
 		return this._built;
+	}
+
+	/** Get the evals attached to this agent. */
+	get evaluations(): BuiltEval[] {
+		return [...this.agentEvals];
 	}
 
 	/** Approve a pending tool call. Returns the resumed stream. Lazy-builds on first call. */

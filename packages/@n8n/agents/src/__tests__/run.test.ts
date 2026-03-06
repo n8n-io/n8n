@@ -1,6 +1,15 @@
+import type { Message } from '../message';
 import { AgentRun } from '../run';
 import type { AgentResult } from '../types';
-import { findTextContent } from './integration/helpers';
+
+function findTextContent(messages: Message[]): string | undefined {
+	for (const msg of messages) {
+		for (const block of msg.content) {
+			if (block.type === 'text') return block.text;
+		}
+	}
+	return undefined;
+}
 
 const makeResult = (text = 'ok'): AgentResult => ({
 	messages: [{ role: 'assistant', content: [{ type: 'text', text }] }],

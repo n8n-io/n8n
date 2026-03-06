@@ -37,8 +37,9 @@ const fetchWeather = tool(
 );
 
 const searchKnowledgeBase = tool(
-	async ({}: { query: string }) => {
+	async ({ query }: { query: string }) => {
 		// Replace with a real vector store / search call
+		console.log(`Searching knowledge base for: ${query}`);
 		return JSON.stringify({
 			results: [
 				{ title: 'PTO Policy', snippet: 'Employees get 25 days PTO per year.' },

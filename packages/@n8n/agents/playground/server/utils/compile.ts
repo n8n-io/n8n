@@ -9,6 +9,7 @@ export interface CompileResult {
 	ok: boolean;
 	error?: string;
 	exported?: unknown;
+	evalNames?: string[];
 }
 
 /**
@@ -39,8 +40,25 @@ class EngineAgent extends agents.Agent {
 	}
 }
 
+/**
+ * Wraps the SDK's Eval class so that `.build()` automatically resolves
+ * credentials for LLM-as-judge evals.
+ */
+class EngineEval extends agents.Eval {
+	protected override build() {
+		const credName = this.declaredCredential;
+		if (credName) {
+			const apiKey = getCredentialKey(credName);
+			if (apiKey) {
+				this.resolvedApiKey = apiKey;
+			}
+		}
+		return super.build();
+	}
+}
+
 /** The module exposed to user code as `require('@n8n/agents')`. */
-const sandboxedAgents = { ...agents, Agent: EngineAgent };
+const sandboxedAgents = { ...agents, Agent: EngineAgent, Eval: EngineEval };
 
 /**
  * Transpile TypeScript source to CJS via esbuild and eval it in a sandbox
@@ -73,9 +91,17 @@ export async function compileSource(source: string): Promise<CompileResult> {
 			throw new Error(`Module "${id}" is not available in the playground`);
 		};
 
-		const fn = new Function('exports', 'require', 'module', 'fetch', 'console', result.code);
+		const fn = new Function(
+			'exports',
+			'require',
+			'module',
+			'fetch',
+			'console',
+			'Buffer',
+			result.code,
+		);
 		const mod = { exports: moduleExports };
-		fn(moduleExports, moduleRequire, mod, fetch, console);
+		fn(moduleExports, moduleRequire, mod, fetch, console, Buffer);
 
 		const exported = mod.exports.default ?? mod.exports;
 
@@ -86,7 +112,13 @@ export async function compileSource(source: string): Promise<CompileResult> {
 			};
 		}
 
-		return { ok: true, exported };
+		// Extract eval names from the agent if it has evaluations attached
+		const evalNames =
+			'evaluations' in exported
+				? (exported as { evaluations: Array<{ name: string }> }).evaluations.map((e) => e.name)
+				: [];
+
+		return { ok: true, exported, evalNames };
 	} catch (e) {
 		return {
 			ok: false,

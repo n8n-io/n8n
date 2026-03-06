@@ -1,12 +1,14 @@
 export function useAgentCompiler() {
 	const status = ref<'idle' | 'compiling' | 'active' | 'error'>('idle');
 	const error = ref<string | null>(null);
+	const evalNames = ref<string[]>([]);
 	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 	async function compile(source: string) {
 		if (!source.trim()) {
 			status.value = 'idle';
 			error.value = null;
+			evalNames.value = [];
 			return;
 		}
 
@@ -14,21 +16,27 @@ export function useAgentCompiler() {
 		error.value = null;
 
 		try {
-			const response = await $fetch<{ ok: boolean; error?: string }>('/api/agent/compile', {
-				method: 'POST',
-				body: { source },
-			});
+			const response = await $fetch<{ ok: boolean; error?: string; evalNames?: string[] }>(
+				'/api/agent/compile',
+				{
+					method: 'POST',
+					body: { source },
+				},
+			);
 
 			if (response.ok) {
 				status.value = 'active';
 				error.value = null;
+				evalNames.value = response.evalNames ?? [];
 			} else {
 				status.value = 'error';
 				error.value = response.error ?? 'Unknown compilation error';
+				evalNames.value = [];
 			}
 		} catch (e) {
 			status.value = 'error';
 			error.value = e instanceof Error ? e.message : 'Failed to compile';
+			evalNames.value = [];
 		}
 	}
 
@@ -37,5 +45,5 @@ export function useAgentCompiler() {
 		debounceTimer = setTimeout(() => compile(source), delay);
 	}
 
-	return { status, error, compile, compileDebounced };
+	return { status, error, evalNames, compile, compileDebounced };
 }

@@ -36,6 +36,18 @@ export function verify(source: string): VerifyResult {
 		errors.push('No default export found. Export an agent as the default: export default agent;');
 	}
 
+	if (/\bScorer\b/.test(source)) {
+		errors.push(
+			"Scorer is deprecated. Use the Eval system instead: new Eval('name').check(...) or evals.correctness()",
+		);
+	}
+
+	if (/process\.env\b/.test(source)) {
+		errors.push(
+			'process.env is not available. Use .credential() for API keys, or const variables for configuration.',
+		);
+	}
+
 	if (!/\.credential\s*\(/.test(source)) {
 		errors.push(
 			"No .credential() found. Every agent must declare a credential (e.g. .credential('anthropic')).",

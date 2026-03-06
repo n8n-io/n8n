@@ -27,6 +27,7 @@ self.MonacoEnvironment = {
 const emit = defineEmits<{
 	'compile-status': ['compiling' | 'active' | 'error'];
 	'compile-error': [string | undefined];
+	'compile-evals': [string[]];
 	'update:modelValue': [string];
 }>();
 
@@ -73,6 +74,13 @@ watch(
 	},
 );
 
+watch(
+	() => compiler.evalNames.value,
+	(names) => {
+		emit('compile-evals', names);
+	},
+);
+
 onMounted(async () => {
 	if (!editorContainer.value) return;
 
@@ -105,6 +113,20 @@ onMounted(async () => {
 	} catch {
 		// Silently fail — editor will work without types
 	}
+
+	// Provide types for globals available in the sandbox
+	monaco.languages.typescript.typescriptDefaults.addExtraLib(
+		`declare const Buffer: {
+	from(data: string | ArrayBuffer | Uint8Array, encoding?: string): Buffer;
+	alloc(size: number, fill?: number): Buffer;
+	isBuffer(obj: unknown): obj is Buffer;
+	concat(list: Uint8Array[], totalLength?: number): Buffer;
+};
+interface Buffer extends Uint8Array {
+	toString(encoding?: string): string;
+}`,
+		'file:///globals.d.ts',
+	);
 
 	monaco.editor.defineTheme('n8n-dark', {
 		base: 'vs-dark',

@@ -27,11 +27,12 @@ export function getSdkTypeDeclarations(): string {
 		'agent.d.ts',
 		'memory.d.ts',
 		'guardrail.d.ts',
-		'scorer.d.ts',
 		'network.d.ts',
 		'run.d.ts',
 		'configure.d.ts',
 		'provider-tools.d.ts',
+		'eval.d.ts',
+		'evaluate.d.ts',
 	];
 
 	const sections = fileNames.map((name) => {
@@ -39,7 +40,20 @@ export function getSdkTypeDeclarations(): string {
 		return `  // --- ${name} ---\n  ${strip(content).split('\n').join('\n  ')}`;
 	});
 
-	cachedSdk = `declare module '@n8n/agents' {\n  import type { z } from 'zod';\n\n${sections.join('\n\n')}\n}`;
+	// Add the evals namespace manually — it's a re-export namespace that
+	// can't be bundled from individual .d.ts files.
+	const evalsNamespace = `  // --- evals namespace ---
+  export namespace evals {
+    function correctness(): Eval;
+    function helpfulness(): Eval;
+    function stringSimilarity(): Eval;
+    function categorization(): Eval;
+    function containsKeywords(): Eval;
+    function jsonValidity(): Eval;
+    function toolCallAccuracy(): Eval;
+  }`;
+
+	cachedSdk = `declare module '@n8n/agents' {\n  import type { z } from 'zod';\n\n${sections.join('\n\n')}\n\n${evalsNamespace}\n}`;
 
 	return cachedSdk;
 }
