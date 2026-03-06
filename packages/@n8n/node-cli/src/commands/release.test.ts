@@ -27,6 +27,7 @@ describe('release command', () => {
 		vi.clearAllMocks();
 		process.env = { ...originalEnv };
 		delete process.env.npm_config_user_agent;
+		delete process.env.GITHUB_ACTIONS;
 	});
 
 	afterEach(() => {
@@ -77,6 +78,52 @@ describe('release command', () => {
 			exitCode: 1,
 			stderr: 'Release failed: Git working directory is not clean',
 		});
+
+		await expect(CommandTester.run('release')).rejects.toThrow('EEXIT: 1');
+	});
+
+	tmpdirTest('CI mode - runs lint, build, then npm publish with provenance', async ({ tmpdir }) => {
+		process.env.GITHUB_ACTIONS = 'true';
+
+		await fs.writeFile(
+			`${tmpdir}/package.json`,
+			JSON.stringify({
+				name: 'test-node',
+				version: '1.0.0',
+				n8n: {
+					nodes: ['dist/nodes/TestNode.node.js'],
+				},
+			}),
+		);
+		await fs.writeFile(`${tmpdir}/pnpm-lock.yaml`, '# pnpm lock file');
+
+		mockSpawn([
+			{ command: 'pnpm', args: ['run', 'lint'], options: { exitCode: 0 } },
+			{ command: 'pnpm', args: ['run', 'build'], options: { exitCode: 0 } },
+			{ command: 'npm', args: ['publish'], options: { exitCode: 0 } },
+		]);
+
+		const result = await CommandTester.run('release');
+
+		expect(result).toBeDefined();
+	});
+
+	tmpdirTest('CI mode - exits with error code on lint failure', async ({ tmpdir }) => {
+		process.env.GITHUB_ACTIONS = 'true';
+
+		await fs.writeFile(
+			`${tmpdir}/package.json`,
+			JSON.stringify({
+				name: 'test-node',
+				version: '1.0.0',
+				n8n: {
+					nodes: ['dist/nodes/TestNode.node.js'],
+				},
+			}),
+		);
+		await fs.writeFile(`${tmpdir}/pnpm-lock.yaml`, '# pnpm lock file');
+
+		mockSpawn([{ command: 'pnpm', args: ['run', 'lint'], options: { exitCode: 1 } }]);
 
 		await expect(CommandTester.run('release')).rejects.toThrow('EEXIT: 1');
 	});

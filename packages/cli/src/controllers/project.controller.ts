@@ -279,7 +279,6 @@ export class ProjectController {
 	) {
 		try {
 			await this.projectsService.changeUserRoleInProject(projectId, userId, body.role);
-			await this.projectsService.clearCredentialCanUseExternalSecretsCache(projectId);
 			const relations = await this.projectsService.getProjectRelations(projectId);
 			this.eventService.emit('team-project-updated', {
 				userId: req.user.id,
@@ -305,7 +304,6 @@ export class ProjectController {
 		@Param('userId') userId: string,
 	) {
 		await this.projectsService.deleteUserFromProject(projectId, userId);
-		await this.projectsService.clearCredentialCanUseExternalSecretsCache(projectId);
 		const relations = await this.projectsService.getProjectRelations(projectId);
 		this.eventService.emit('team-project-updated', {
 			userId: req.user.id,
