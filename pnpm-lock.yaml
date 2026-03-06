@@ -1248,6 +1248,9 @@ importers:
         specifier: 2.3.5
         version: 2.3.5
     devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
       '@types/lodash':
         specifier: 'catalog:'
         version: 4.17.17
@@ -3917,6 +3920,9 @@ importers:
       '@n8n/errors':
         specifier: workspace:*
         version: link:../@n8n/errors
+      '@n8n/expression-runtime':
+        specifier: workspace:*
+        version: link:../@n8n/expression-runtime
       '@n8n/tournament':
         specifier: 1.0.6
         version: 1.0.6
