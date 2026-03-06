@@ -228,7 +228,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	 */
 	const nodesRequiringSetup = computed(() => {
 		const nodesForSetup = sourceNodes.value
-			.filter((node) => !node.disabled && node.type !== MANUAL_TRIGGER_NODE_TYPE)
+			.filter((node) => !node.disabled)
 			.map((node) => ({
 				node,
 				credentialTypes: getNodeCredentialTypes(nodeTypesStore, node),
@@ -572,9 +572,9 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 			isComplete: trigState.isComplete,
 		}));
 
-		const all: SetupCardItem[] = [...credentialCards, ...triggerCards, ...nodeStates.value].map(
-			(state) => ({ state }),
-		);
+		const all: SetupCardItem[] = [...credentialCards, ...triggerCards, ...nodeStates.value]
+			.filter((state) => state.node.type !== MANUAL_TRIGGER_NODE_TYPE)
+			.map((state) => ({ state }));
 
 		const executionOrder = nodesRequiringSetup.value.map(({ node }) => node.name);
 
