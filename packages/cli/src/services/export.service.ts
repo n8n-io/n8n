@@ -148,13 +148,24 @@ export class ExportService {
 
 			this.logger.info(`\n📊 Processing table: ${tableName} (${entityName})`);
 
-			// Clear existing files for this entity
-			await this.clearExistingEntityFiles(outputDir, entityName);
-
 			// Get column information for this table
 			const columnNames = metadata.columns.map((col) => col.databaseName);
 			const columns = columnNames.map(this.dataSource.driver.escape).join(', ');
 			this.logger.info(`   💭 Columns: ${columnNames.join(', ')}`);
+
+			// Check if the table exists before attempting to export
+			const formattedTableName = this.dataSource.driver.escape(tableName);
+			try {
+				await this.dataSource.query(`SELECT 1 FROM ${formattedTableName} LIMIT 1`);
+			} catch {
+				this.logger.info(
+					`   ⚠️  Table ${tableName} does not exist in the database, skipping...`,
+				);
+				continue;
+			}
+
+			// Clear existing files for this entity
+			await this.clearExistingEntityFiles(outputDir, entityName);
 
 			let offset = 0;
 			let totalEntityCount = 0;
@@ -167,7 +178,6 @@ export class ExportService {
 				 * use raw SQL query to avoid typeorm limitations,
 				 * typeorm repositories do not return joining table entries
 				 */
-				const formattedTableName = this.dataSource.driver.escape(tableName);
 				const pageEntities = await this.dataSource.query(
 					`SELECT ${columns} FROM ${formattedTableName} LIMIT ${pageSize} OFFSET ${offset}`,
 				);
