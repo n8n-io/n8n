@@ -15,6 +15,15 @@ class HealthConfig {
 	/** IP address the worker server binds to. Use `::` for all interfaces. */
 	@Env('N8N_WORKER_SERVER_ADDRESS')
 	address: string = '::';
+
+	/**
+	 * How often (in milliseconds) to check worker health and pause/resume queue accordingly.
+	 * Worker will automatically pause queue processing if database or Redis connectivity is lost.
+	 * Set to 0 to disable automatic health monitoring.
+	 * @default 0 (disabled)
+	 */
+	@Env('QUEUE_HEALTH_CHECK_INTERVAL')
+	checkInterval: number = 0;
 }
 
 @Config
