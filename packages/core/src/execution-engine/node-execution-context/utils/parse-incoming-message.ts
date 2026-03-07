@@ -1,10 +1,26 @@
 import type { IncomingMessage } from 'http';
 
+/**
+ * Safely decodes a URI component, returning the original value if decoding fails
+ * (e.g. when the value contains a literal '%' that is not part of a percent-encoded sequence)
+ */
+function safeDecodeURIComponent(value: string): string {
+	try {
+		return decodeURIComponent(value);
+	} catch {
+		return value;
+	}
+}
+
+/**
+ * Parses header parameters (e.g. from Content-Type or Content-Disposition) into a key-value object
+ * @returns {Record<string, string>} Parsed parameter key-value pairs with trimmed, lowercased keys
+ */
 function parseHeaderParameters(parameters: string[]): Record<string, string> {
 	return parameters.reduce(
 		(acc, param) => {
 			const [key, value] = param.split('=');
-			let decodedValue = decodeURIComponent(value).trim();
+			let decodedValue = safeDecodeURIComponent(value).trim();
 			if (decodedValue.startsWith('"') && decodedValue.endsWith('"')) {
 				decodedValue = decodedValue.slice(1, -1);
 			}
