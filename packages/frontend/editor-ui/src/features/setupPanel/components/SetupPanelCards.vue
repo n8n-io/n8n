@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, watch } from 'vue';
 import { useWorkflowSetupState } from '@/features/setupPanel/composables/useWorkflowSetupState';
-import TriggerSetupCard from '@/features/setupPanel/components/cards/TriggerSetupCard.vue';
-import CredentialTypeSetupCard from '@/features/setupPanel/components/cards/CredentialTypeSetupCard.vue';
+import NodeSetupCard from '@/features/setupPanel/components/cards/NodeSetupCard.vue';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -23,8 +22,14 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
-const { setupCards, isAllComplete, setCredential, unsetCredential, firstTriggerName } =
-	useWorkflowSetupState();
+const {
+	setupCards,
+	isAllComplete,
+	setCredential,
+	unsetCredential,
+	firstTriggerName,
+	autoAppliedCredentialIds,
+} = useWorkflowSetupState();
 
 watch(isAllComplete, (allComplete) => {
 	if (allComplete) {
@@ -35,15 +40,16 @@ watch(isAllComplete, (allComplete) => {
 	}
 });
 
-const onCredentialSelected = (
-	payload: { credentialType: string; credentialId: string },
-	sourceNodeName?: string,
-) => {
-	setCredential(payload.credentialType, payload.credentialId, sourceNodeName);
+const onCredentialSelected = (payload: {
+	credentialType: string;
+	credentialId: string;
+	nodeName?: string;
+}) => {
+	setCredential(payload.credentialType, payload.credentialId, payload.nodeName);
 };
 
-const onCredentialDeselected = (credentialType: string, sourceNodeName?: string) => {
-	unsetCredential(credentialType, sourceNodeName);
+const onCredentialDeselected = (payload: { credentialType: string; nodeName?: string }) => {
+	unsetCredential(payload.credentialType, payload.nodeName);
 };
 
 const visibleCards = computed(() => {
@@ -52,43 +58,93 @@ const visibleCards = computed(() => {
 });
 
 const cardKey = (card: SetupCardItem): string => {
-	if (card.type === 'trigger') return `trigger-${card.state.node.id}`;
-	return `credential-${card.state.credentialType}-${card.state.nodes[0]?.name ?? ''}`;
+	return card.state.credentialType
+		? `${card.state.credentialType}-${card.state.node.id}`
+		: `${card.state.node.id}`;
 };
 
 // --- Expanded state management ---
 const expandedStates = reactive<Record<string, boolean>>({});
 const prevCompleteStates = new Map<string, boolean>();
+/** Cards that have parameters — these require manual collapse (user must interact with them) */
+const cardsWithParameters = new Set<string>();
 let initialized = false;
 
 const isCardExpanded = (key: string): boolean => expandedStates[key] ?? false;
 
 const setCardExpanded = (key: string, value: boolean) => {
 	expandedStates[key] = value;
+
+	// When a parameter card is manually collapsed and is complete, auto-advance
+	if (!value) {
+		const cards = setupCards.value;
+		const cardIndex = cards.findIndex((c) => cardKey(c) === key);
+		const card = cards[cardIndex];
+		if (card?.state.isComplete && cardsWithParameters.has(key)) {
+			const nextUncompleted = cards.find((c, j) => j > cardIndex && !c.state.isComplete);
+			if (nextUncompleted) {
+				expandedStates[cardKey(nextUncompleted)] = true;
+			}
+		}
+	}
 };
 
 watch(
 	setupCards,
 	(cards) => {
+		// Track cards that have parameters (persists even after issues resolve).
+		// Parameter cards require manual collapse; credential-only cards auto-collapse.
+		for (const card of cards) {
+			const key = cardKey(card);
+			if (cardsWithParameters.has(key)) continue;
+
+			const templateParamNames = card.state.templateParameterNames ?? [];
+			const issueParamNames = Object.keys(card.state.parameterIssues);
+
+			if (templateParamNames.length > 0 || issueParamNames.length > 0) {
+				cardsWithParameters.add(key);
+			}
+		}
+
 		if (!initialized) {
-			// On first load, expand the first uncompleted card
+			// On first load, expand the first uncompleted card and all with auto-assigned credentials
 			const firstUncompleted = cards.find((c) => !c.state.isComplete);
 			if (firstUncompleted) {
 				expandedStates[cardKey(firstUncompleted)] = true;
 			}
+			for (const card of cards) {
+				const wasAutoApplied =
+					!!card.state.selectedCredentialId &&
+					autoAppliedCredentialIds.value.has(card.state.selectedCredentialId);
+
+				if (wasAutoApplied) expandedStates[cardKey(card)] = true;
+			}
 			initialized = true;
 		} else {
-			// When a card completes, collapse it and auto-expand the next uncompleted card
+			// When a card completes, collapse it and auto-expand the next uncompleted card.
+			// Skip auto-collapse for cards with parameters — those require manual collapse.
+			// Credential-only and trigger-only cards auto-collapse on completion.
 			for (let i = 0; i < cards.length; i++) {
 				const card = cards[i];
 				const key = cardKey(card);
 				const wasComplete = prevCompleteStates.get(key) ?? false;
 
-				if (card.state.isComplete && !wasComplete) {
+				if (card.state.isComplete && !wasComplete && !cardsWithParameters.has(key)) {
 					expandedStates[key] = false;
-					const nextUncompleted = cards.find((c, j) => j > i && !c.state.isComplete);
-					if (nextUncompleted) {
-						expandedStates[cardKey(nextUncompleted)] = true;
+
+					// When auto-applied credentials complete a card, only open the next card
+					// if all other cards are already collapsed (don't disrupt user's current work).
+					const wasAutoApplied =
+						!!card.state.selectedCredentialId &&
+						autoAppliedCredentialIds.value.has(card.state.selectedCredentialId);
+					const allOthersCollapsed =
+						!wasAutoApplied || cards.every((c, j) => j === i || !expandedStates[cardKey(c)]);
+
+					if (allOthersCollapsed) {
+						const nextUncompleted = cards.find((c, j) => j > i && !c.state.isComplete);
+						if (nextUncompleted) {
+							expandedStates[cardKey(nextUncompleted)] = true;
+						}
 					}
 					break;
 				}
@@ -127,23 +183,16 @@ watch(
 			</div>
 		</div>
 		<div v-else :class="$style['card-list']" data-test-id="setup-cards-list">
-			<template v-for="card in visibleCards" :key="cardKey(card)">
-				<TriggerSetupCard
-					v-if="card.type === 'trigger'"
-					:state="card.state"
-					:expanded="isCardExpanded(cardKey(card))"
-					@update:expanded="(val: boolean) => setCardExpanded(cardKey(card), val)"
-				/>
-				<CredentialTypeSetupCard
-					v-else
-					:state="card.state"
-					:first-trigger-name="firstTriggerName"
-					:expanded="isCardExpanded(cardKey(card))"
-					@update:expanded="(val: boolean) => setCardExpanded(cardKey(card), val)"
-					@credential-selected="onCredentialSelected"
-					@credential-deselected="onCredentialDeselected"
-				/>
-			</template>
+			<NodeSetupCard
+				v-for="card in visibleCards"
+				:key="cardKey(card)"
+				:state="card.state"
+				:first-trigger-name="firstTriggerName"
+				:expanded="isCardExpanded(cardKey(card))"
+				@update:expanded="(val: boolean) => setCardExpanded(cardKey(card), val)"
+				@credential-selected="onCredentialSelected"
+				@credential-deselected="onCredentialDeselected"
+			/>
 			<div
 				v-if="isAllComplete"
 				:class="$style['complete-message']"
