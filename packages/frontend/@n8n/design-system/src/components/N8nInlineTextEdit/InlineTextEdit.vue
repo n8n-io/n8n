@@ -31,6 +31,9 @@ const measureSpan = useTemplateRef('measureSpan');
 // Internal editing value
 const editingValue = ref(props.modelValue);
 
+// Composition state for IME input
+const composing = ref(false);
+
 // Content for width calculation
 const displayContent = computed(() => editingValue.value || props.placeholder);
 
@@ -83,6 +86,14 @@ function onStateChange(state: string) {
 	if (state === 'cancel') {
 		editingValue.value = props.modelValue;
 	}
+	// Prevent submit when composing (IME input)
+	// When IME composition is ongoing, reka-ui triggers a submit state
+	// We catch this and force the editable root back into edit mode to prevent focus loss
+	if (state === 'submit' && composing.value) {
+		composing.value = false;
+		// Force the editable root back into edit mode to maintain focus
+		editableRoot.value?.edit();
+	}
 }
 
 defineExpose({ forceFocus, forceCancel });
@@ -128,6 +139,8 @@ defineExpose({ forceFocus, forceCancel });
 				:style="computedInlineStyles"
 				@input="onInput($event.target.value)"
 				@keydown.space.stop
+				@compositionstart="composing = true"
+				@compositionend="composing = false"
 			/>
 		</EditableArea>
 	</EditableRoot>
