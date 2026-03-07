@@ -24,6 +24,7 @@ import { customObjectFields, customObjectOperations } from './CustomObjectDescri
 import { documentFields, documentOperations } from './DocumentDescription';
 import { flowFields, flowOperations } from './FlowDescription';
 import {
+	escapeSoqlString,
 	getQuery,
 	salesforceApiRequest,
 	salesforceApiRequestAllItems,
@@ -389,6 +390,9 @@ export class Salesforce implements INodeType {
 				if (resource === 'customObject') {
 					resource = this.getNodeParameter('customObject', 0) as string;
 				}
+
+				resource = escapeSoqlString(resource as string);
+
 				const qs = {
 					q: `SELECT Id, Name, SobjectType, IsActive FROM RecordType WHERE SobjectType = '${resource}'`,
 				};
