@@ -340,6 +340,14 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
+/**
+ * Checks if the model is a Gemini 3 model that requires thought_signature for tool calls.
+ * Gemini 3 models require thought_signature in functionResponse when using extended thinking.
+ */
+function isGemini3Model(model: string): boolean {
+	return model.includes('gemini-3');
+}
+
 function getToolCalls(response: GenerateContentResponse) {
 	return response.candidates.flatMap((c) => c.content.parts).filter((p) => 'functionCall' in p);
 }
@@ -532,6 +540,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 				}
 			}
 
+			// Check if model requires thought_signature for tool calls (Gemini 3)
+			const requiresThoughtSignature = isGemini3Model(model);
+
 			contents.push({
 				parts: [
 					{
@@ -541,6 +552,13 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 							response: {
 								result: toolResponse,
 							},
+							// Include thought_signature for Gemini 3 models
+							// Use signature from functionCall if present, otherwise generate deterministic one
+							...(requiresThoughtSignature && {
+								thought_signature:
+									functionCall.thought_signature ??
+									`n8n_tool_${functionCall.id ?? functionCall.name}`,
+							}),
 						},
 					},
 				],
