@@ -33,10 +33,12 @@ const BASE_ENV: Record<string, string> = {
 const MAIN_WAIT_STRATEGY = Wait.forAll([
 	Wait.forListeningPorts(),
 	Wait.forHttp('/healthz/readiness', 5678).forStatusCode(200).withStartupTimeout(60_000),
+	Wait.forLogMessage('Editor is now accessible via').withStartupTimeout(60_000),
 ]);
 
 const WORKER_WAIT_STRATEGY = Wait.forAll([
 	Wait.forListeningPorts(),
+	Wait.forLogMessage('n8n worker is now ready').withStartupTimeout(60_000),
 	Wait.forHttp('/healthz/readiness', 5678).forStatusCode(200).withStartupTimeout(60_000),
 ]);
 
