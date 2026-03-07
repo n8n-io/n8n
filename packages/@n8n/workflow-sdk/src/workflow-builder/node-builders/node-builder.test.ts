@@ -711,4 +711,50 @@ describe('Node Builder', () => {
 			expect(mergeNode.config.position).toEqual([100, 200]);
 		});
 	});
+
+	describe('onError()', () => {
+		it('should always use error connectionType at outputIndex 0', () => {
+			const source = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: {
+					name: 'HTTP Request',
+					onError: 'continueErrorOutput',
+				},
+			});
+			const errorHandler = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Error Handler' },
+			});
+
+			source.onError(errorHandler);
+
+			const connections = source.getConnections();
+			expect(connections).toHaveLength(1);
+			expect(connections[0].connectionType).toBe('error');
+			expect(connections[0].outputIndex).toBe(0);
+			expect(connections[0].target).toBe(errorHandler);
+		});
+
+		it('should use error connectionType at outputIndex 0 when node has no continueErrorOutput', () => {
+			const source = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'HTTP Request' },
+			});
+			const errorHandler = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Error Handler' },
+			});
+
+			source.onError(errorHandler);
+
+			const connections = source.getConnections();
+			expect(connections).toHaveLength(1);
+			expect(connections[0].connectionType).toBe('error');
+			expect(connections[0].outputIndex).toBe(0);
+		});
+	});
 });

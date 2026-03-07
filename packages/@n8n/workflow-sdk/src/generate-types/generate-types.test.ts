@@ -87,6 +87,10 @@ interface NodeTypeDescription {
 			}
 		>;
 	};
+	codex?: {
+		categories?: string[];
+		subcategories?: Record<string, string[]>;
+	};
 }
 
 // =============================================================================
@@ -4533,5 +4537,272 @@ describe('orchestrateGeneration', () => {
 		const content = fs.readFileSync(indexFile, 'utf-8');
 		expect(content).toContain('nodeA');
 		expect(content).toContain('nodeB');
+	});
+});
+
+// =============================================================================
+// AI Node Registry Generation
+// =============================================================================
+
+describe('generateAiNodeRegistry', () => {
+	let mod: typeof GenerateTypesModule;
+
+	beforeAll(async () => {
+		mod = await import('../generate-types/generate-types');
+	});
+
+	function makeAiNode(
+		name: string,
+		version: number | number[],
+		subcategories: string[],
+	): NodeTypeDescription {
+		return {
+			name,
+			displayName: name,
+			group: ['transform'],
+			version,
+			properties: [] as NodeProperty[],
+			inputs: ['main'],
+			outputs: ['main'],
+			codex: {
+				categories: ['AI'],
+				subcategories: { AI: subcategories },
+			},
+		};
+	}
+
+	it('should derive class names from Language Model nodes', () => {
+		const nodes = [
+			makeAiNode('@n8n/n8n-nodes-langchain.lmChatOpenAi', [1, 1.1, 1.2, 1.3], ['Language Models']),
+			makeAiNode('@n8n/n8n-nodes-langchain.lmChatGoogleGemini', 1, ['Language Models']),
+			makeAiNode('@n8n/n8n-nodes-langchain.lmChatGroq', 1, ['Language Models']),
+			makeAiNode('@n8n/n8n-nodes-langchain.lmOllama', 1, ['Language Models']),
+		];
+		const registry = mod.generateAiNodeRegistry(nodes);
+
+		expect(registry.OpenAiModel).toEqual({
+			nodeType: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			version: 1.3,
+			category: 'model',
+		});
+		expect(registry.GoogleGeminiModel).toEqual({
+			nodeType: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+			version: 1,
+			category: 'model',
+		});
+		expect(registry.GroqModel).toEqual({
+			nodeType: '@n8n/n8n-nodes-langchain.lmChatGroq',
+			version: 1,
+			category: 'model',
+		});
+		expect(registry.OllamaCompletionModel).toEqual({
+			nodeType: '@n8n/n8n-nodes-langchain.lmOllama',
+			version: 1,
+			category: 'completionModel',
+		});
+	});
+
+	it('should derive class names from Tool nodes', () => {
+		const nodes = [
+			makeAiNode('@n8n/n8n-nodes-langchain.toolCode', [1, 1.1, 1.2, 1.3], ['Tools']),
+			makeAiNode('@n8n/n8n-nodes-langchain.toolHttpRequest', [1, 1.1], ['Tools']),
+			makeAiNode('@n8n/n8n-nodes-langchain.toolThink', [1, 1.1], ['Tools']),
+			makeAiNode('@n8n/n8n-nodes-langchain.mcpClientTool', [1, 1.1, 1.2], ['Tools']),
+			makeAiNode('@n8n/n8n-nodes-langchain.toolWikipedia', 1, ['Tools']),
+		];
+		const registry = mod.generateAiNodeRegistry(nodes);
+
+		expect(registry.CodeTool).toEqual({
+			nodeType: '@n8n/n8n-nodes-langchain.toolCode',
+			version: 1.3,
+			category: 'tool',
+		});
+		expect(registry.HttpRequestTool).toEqual({
+			nodeType: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+			version: 1.1,
+			category: 'tool',
+		});
+		expect(registry.ThinkTool).toEqual({
+			nodeType: '@n8n/n8n-nodes-langchain.toolThink',
+			version: 1.1,
+			category: 'tool',
+		});
+		expect(registry.McpTool).toEqual({
+			nodeType: '@n8n/n8n-nodes-langchain.mcpClientTool',
+			version: 1.2,
+			category: 'tool',
+		});
+		expect(registry.WikipediaTool).toEqual({
+			nodeType: '@n8n/n8n-nodes-langchain.toolWikipedia',
+			version: 1,
+			category: 'tool',
+		});
+	});
+
+	it('should derive class names from Output Parser, Memory, Embeddings nodes', () => {
+		const nodes = [
+			makeAiNode(
+				'@n8n/n8n-nodes-langchain.outputParserStructured',
+				[1, 1.1, 1.2, 1.3],
+				['Output Parsers'],
+			),
+			makeAiNode('@n8n/n8n-nodes-langchain.memoryBufferWindow', [1, 1.1, 1.2, 1.3], ['Memory']),
+			makeAiNode('@n8n/n8n-nodes-langchain.embeddingsOpenAi', [1, 1.1, 1.2], ['Embeddings']),
+		];
+		const registry = mod.generateAiNodeRegistry(nodes);
+
+		expect(registry.StructuredOutputParser).toEqual({
+			nodeType: '@n8n/n8n-nodes-langchain.outputParserStructured',
+			version: 1.3,
+			category: 'outputParser',
+		});
+		expect(registry.BufferWindowMemory).toEqual({
+			nodeType: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+			version: 1.3,
+			category: 'memory',
+		});
+		expect(registry.OpenAiEmbeddings).toEqual({
+			nodeType: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+			version: 1.2,
+			category: 'embedding',
+		});
+	});
+
+	it('should handle Agent, Chains, and Standalone nodes with ioMethod', () => {
+		const nodes = [
+			makeAiNode('@n8n/n8n-nodes-langchain.agent', [3, 3.1], ['Agents', 'Root Nodes']),
+			makeAiNode('@n8n/n8n-nodes-langchain.chainLlm', [1, 1.1, 1.9], ['Chains', 'Root Nodes']),
+			makeAiNode(
+				'@n8n/n8n-nodes-langchain.informationExtractor',
+				[1, 1.1, 1.2],
+				['Chains', 'Root Nodes'],
+			),
+			makeAiNode('@n8n/n8n-nodes-langchain.textClassifier', [1, 1.1], ['Chains', 'Root Nodes']),
+			makeAiNode('@n8n/n8n-nodes-langchain.sentimentAnalysis', [1, 1.1], ['Chains', 'Root Nodes']),
+		];
+		const registry = mod.generateAiNodeRegistry(nodes);
+
+		expect(registry.Agent).toEqual({
+			nodeType: '@n8n/n8n-nodes-langchain.agent',
+			version: 3.1,
+			category: 'agent',
+			ioMethod: 'chat',
+		});
+		expect(registry.LlmChain).toEqual({
+			nodeType: '@n8n/n8n-nodes-langchain.chainLlm',
+			version: 1.9,
+			category: 'chain',
+			ioMethod: 'chat',
+		});
+		expect(registry.InformationExtractor).toEqual({
+			nodeType: '@n8n/n8n-nodes-langchain.informationExtractor',
+			version: 1.2,
+			category: 'standalone',
+			ioMethod: 'extract',
+		});
+		expect(registry.TextClassifier).toEqual({
+			nodeType: '@n8n/n8n-nodes-langchain.textClassifier',
+			version: 1.1,
+			category: 'standalone',
+			ioMethod: 'classify',
+		});
+		expect(registry.SentimentAnalysis).toEqual({
+			nodeType: '@n8n/n8n-nodes-langchain.sentimentAnalysis',
+			version: 1.1,
+			category: 'standalone',
+			ioMethod: 'analyze',
+		});
+	});
+
+	it('should pick latest version when multiple entries exist for same node', () => {
+		// Simulate agent having v1, v2, v3.1 as separate entries (as in nodes.json)
+		const nodes = [
+			makeAiNode('@n8n/n8n-nodes-langchain.agent', [1, 1.1], ['Agents', 'Root Nodes']),
+			makeAiNode('@n8n/n8n-nodes-langchain.agent', [2, 2.1, 2.2], ['Agents', 'Root Nodes']),
+			makeAiNode('@n8n/n8n-nodes-langchain.agent', [3, 3.1], ['Agents', 'Root Nodes']),
+		];
+		const registry = mod.generateAiNodeRegistry(nodes);
+
+		expect(registry.Agent.version).toBe(3.1);
+	});
+
+	it('should skip non-AI nodes', () => {
+		const nodes: NodeTypeDescription[] = [
+			{
+				name: 'n8n-nodes-base.httpRequest',
+				displayName: 'HTTP Request',
+				group: ['transform'],
+				version: [4, 4.1, 4.2],
+				properties: [] as NodeProperty[],
+				inputs: ['main'],
+				outputs: ['main'],
+				// No codex with AI category
+			},
+			makeAiNode('@n8n/n8n-nodes-langchain.toolCode', 1, ['Tools']),
+		];
+		const registry = mod.generateAiNodeRegistry(nodes);
+
+		expect(Object.keys(registry)).toEqual(['CodeTool']);
+	});
+
+	it('should handle Vector Store and Retriever nodes', () => {
+		const nodes = [
+			makeAiNode(
+				'@n8n/n8n-nodes-langchain.vectorStorePinecone',
+				[1, 1.1, 1.2, 1.3],
+				['Vector Stores', 'Tools', 'Root Nodes'],
+			),
+			makeAiNode('@n8n/n8n-nodes-langchain.retrieverVectorStore', 1, ['Retrievers']),
+			makeAiNode('@n8n/n8n-nodes-langchain.textSplitterTokenSplitter', 1, ['Text Splitters']),
+			makeAiNode(
+				'@n8n/n8n-nodes-langchain.documentDefaultDataLoader',
+				[1, 1.1],
+				['Document Loaders'],
+			),
+		];
+		const registry = mod.generateAiNodeRegistry(nodes);
+
+		expect(registry.PineconeVectorStore).toEqual({
+			nodeType: '@n8n/n8n-nodes-langchain.vectorStorePinecone',
+			version: 1.3,
+			category: 'vectorStore',
+		});
+		expect(registry.VectorStoreRetriever).toEqual({
+			nodeType: '@n8n/n8n-nodes-langchain.retrieverVectorStore',
+			version: 1,
+			category: 'retriever',
+		});
+		expect(registry.TokenSplitter).toEqual({
+			nodeType: '@n8n/n8n-nodes-langchain.textSplitterTokenSplitter',
+			version: 1,
+			category: 'textSplitter',
+		});
+		expect(registry.DefaultDataLoader).toEqual({
+			nodeType: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader',
+			version: 1.1,
+			category: 'documentLoader',
+		});
+	});
+
+	it('should handle Guardrails standalone node', () => {
+		const nodes = [
+			makeAiNode(
+				'@n8n/n8n-nodes-langchain.guardrails',
+				[1],
+				['Agents', 'Miscellaneous', 'Root Nodes'],
+			),
+			makeAiNode(
+				'@n8n/n8n-nodes-langchain.guardrails',
+				[2],
+				['Agents', 'Miscellaneous', 'Root Nodes'],
+			),
+		];
+		const registry = mod.generateAiNodeRegistry(nodes);
+
+		expect(registry.Guardrails).toEqual({
+			nodeType: '@n8n/n8n-nodes-langchain.guardrails',
+			version: 2,
+			category: 'standalone',
+		});
 	});
 });

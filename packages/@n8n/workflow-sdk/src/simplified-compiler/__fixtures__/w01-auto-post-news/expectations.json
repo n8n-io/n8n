@@ -1,0 +1,43 @@
+{
+	"requests": {
+		"POST api.perplexity.ai/chat/completions": {
+			"requestBody": {
+				"model": "llama-3.1-sonar-small-128k-online",
+				"messages": [
+					{
+						"role": "system",
+						"content": "You are a social media assistant summarizing tech news..."
+					},
+					{
+						"role": "user",
+						"content": "What's the latest news in artificial intelligence?"
+					}
+				],
+				"temperature": 0.3
+			}
+		},
+		"POST api.twitter.com/2/tweets": {
+			"requestBody": {
+				"text": "AI researchers announced a breakthrough in protein folding prediction..."
+			}
+		}
+	},
+	"nodes": {
+		"Set searchInput": {
+			"items": [{ "searchInput": "What's the latest news in artificial intelligence?" }]
+		},
+		"POST api.perplexity.ai/chat/completions": {
+			"items": [
+				{
+					"choices": [
+						{
+							"message": {
+								"content": "AI researchers announced a breakthrough in protein folding prediction..."
+							}
+						}
+					]
+				}
+			]
+		}
+	}
+}

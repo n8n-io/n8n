@@ -1,0 +1,7 @@
+{
+	"nodes": {
+		"POST api.telegram.org/bot/sendMessage": {
+			"items": [{ "ok": true, "result": { "message_id": 456 } }]
+		}
+	}
+}

@@ -163,6 +163,131 @@ describe('schema-validator', () => {
 			});
 			expect(result.valid).toBe(true);
 		});
+
+		describe('strict mode', () => {
+			it('detects unknown top-level parameter keys', () => {
+				// respondToWebhook v1.1: responseCode belongs under options, not at top level
+				const result = validateNodeConfig(
+					'n8n-nodes-base.respondToWebhook',
+					1.1,
+					{
+						parameters: {
+							respondWith: 'json',
+							responseCode: 200,
+						},
+					},
+					{ strict: true },
+				);
+				expect(result.valid).toBe(false);
+				expect(result.errors).toHaveLength(1);
+				expect(result.errors[0].path).toBe('parameters.responseCode');
+				expect(result.errors[0].message).toContain('Unknown field');
+			});
+
+			it('detects multiple unknown keys at once', () => {
+				const result = validateNodeConfig(
+					'n8n-nodes-base.respondToWebhook',
+					1.1,
+					{
+						parameters: {
+							respondWith: 'json',
+							responseCode: 200,
+							responseHeaders: { 'Content-Type': 'text/xml' },
+						},
+					},
+					{ strict: true },
+				);
+				expect(result.valid).toBe(false);
+				expect(result.errors).toHaveLength(2);
+				const paths = result.errors.map((e) => e.path);
+				expect(paths).toContain('parameters.responseCode');
+				expect(paths).toContain('parameters.responseHeaders');
+			});
+
+			it('passes when all parameter keys are valid', () => {
+				// respondToWebhook v1.1: responseCode correctly nested under options
+				const result = validateNodeConfig(
+					'n8n-nodes-base.respondToWebhook',
+					1.1,
+					{
+						parameters: {
+							respondWith: 'json',
+							responseBody: '{"ok":true}',
+							options: { responseCode: 201 },
+						},
+					},
+					{ strict: true },
+				);
+				expect(result.valid).toBe(true);
+				expect(result.errors).toEqual([]);
+			});
+
+			it('detects nested unknown keys', () => {
+				// httpRequest v4.2: put a bogus key inside options
+				const result = validateNodeConfig(
+					'n8n-nodes-base.httpRequest',
+					4.2,
+					{
+						parameters: {
+							method: 'GET',
+							url: 'https://example.com',
+							options: { bogusField: true },
+						},
+					},
+					{ strict: true },
+				);
+				expect(result.valid).toBe(false);
+				expect(result.errors.some((e) => e.path === 'parameters.options.bogusField')).toBe(true);
+			});
+
+			it('does not flag unknown keys when strict is false', () => {
+				const result = validateNodeConfig(
+					'n8n-nodes-base.respondToWebhook',
+					1.1,
+					{
+						parameters: {
+							respondWith: 'json',
+							responseCode: 200,
+						},
+					},
+					{ strict: false },
+				);
+				expect(result.valid).toBe(true);
+			});
+
+			it('still reports type errors even in strict mode', () => {
+				const result = validateNodeConfig(
+					'n8n-nodes-base.set',
+					2,
+					{
+						parameters: { keepOnlySet: 'not-a-boolean' },
+					},
+					{ strict: true },
+				);
+				expect(result.valid).toBe(false);
+				expect(result.errors[0].path).toContain('keepOnlySet');
+			});
+
+			it('returns valid for missing schema even in strict mode', () => {
+				const result = validateNodeConfig(
+					'non-existent.node',
+					1,
+					{ parameters: { anything: 'goes' } },
+					{ strict: true },
+				);
+				expect(result.valid).toBe(true);
+			});
+
+			it('returns valid when parameters is undefined', () => {
+				const result = validateNodeConfig(
+					'n8n-nodes-base.respondToWebhook',
+					1.1,
+					{},
+					{ strict: true },
+				);
+				expect(result.valid).toBe(true);
+			});
+		});
 	});
 
 	describe('setSchemaBaseDirs', () => {

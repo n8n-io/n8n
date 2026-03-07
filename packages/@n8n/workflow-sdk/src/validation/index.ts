@@ -118,6 +118,8 @@ export interface ValidationOptions {
 	allowNoTrigger?: boolean;
 	/** Enable/disable Zod schema validation (default: true) */
 	validateSchema?: boolean;
+	/** Reject unknown/misplaced parameter keys that Zod would normally strip silently */
+	strictSchema?: boolean;
 	/** Optional node types provider for dynamic input index validation */
 	nodeTypesProvider?: INodeTypes;
 }
@@ -442,7 +444,10 @@ export function validateWorkflow(
 			// A node is a tool if it's connected via ai_tool connection type
 			const isToolNode = node.name ? isToolSubnode(node.name, json) : false;
 
-			const schemaResult = validateNodeConfig(node.type, version, config, { isToolNode });
+			const schemaResult = validateNodeConfig(node.type, version, config, {
+				isToolNode,
+				strict: options.strictSchema,
+			});
 
 			if (!schemaResult.valid) {
 				for (const error of schemaResult.errors) {

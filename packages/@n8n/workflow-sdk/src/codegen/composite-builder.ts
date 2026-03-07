@@ -141,6 +141,19 @@ function buildBranchTargets(
 		return buildFromNode(singleTarget.target, ctx);
 	}
 
+	// When a branch output has multiple targets and none are merge nodes,
+	// the last target is the downstream continuation of the IF/Switch node.
+	// Extract it so the caller can chain it after the composite.
+	// Only active during simplified decompile (extractBranchDownstream flag).
+	if (ctx.extractBranchDownstream && ctx.isBranchContext && targets.length > 1) {
+		const lastTarget = targets[targets.length - 1];
+		const lastNode = ctx.graph.nodes.get(lastTarget.target);
+		if (lastNode && !isMergeType(lastNode.type)) {
+			ctx.pendingDownstream = lastTarget.target;
+			targets = targets.slice(0, -1);
+		}
+	}
+
 	const targetNames = targets.map((t) => t.target);
 
 	// Check for "fan-out with direct merge" pattern:
@@ -334,11 +347,19 @@ function buildIfElse(node: SemanticNode, ctx: BuildContext): IfElseCompositeNode
 	const branchCtx: BuildContext = {
 		...ctx,
 		isBranchContext: true,
+		pendingDownstream: null,
 	};
 
 	// Pass the IF node name so deferred merge connections can reference it
 	const trueBranch = buildBranchTargets(trueBranchTargets, branchCtx, node.name, 0);
+	const trueDownstream = branchCtx.pendingDownstream;
+	branchCtx.pendingDownstream = null;
+
 	const falseBranch = buildBranchTargets(falseBranchTargets, branchCtx, node.name, 1);
+	const falseDownstream = branchCtx.pendingDownstream;
+
+	// Propagate downstream back to parent context (first found wins)
+	ctx.pendingDownstream = trueDownstream ?? falseDownstream;
 
 	// Build error handler if node has error output
 	let errorHandler: CompositeNode | undefined;
@@ -393,7 +414,10 @@ function buildSwitchCase(node: SemanticNode, ctx: BuildContext): SwitchCaseCompo
 	const branchCtx: BuildContext = {
 		...ctx,
 		isBranchContext: true,
+		pendingDownstream: null,
 	};
+
+	let switchDownstream: string | null = null;
 
 	// Iterate through all outputs in order, extracting the case index from the output name
 	// Output names are like "case0", "case1", ..., "fallback"
@@ -430,8 +454,15 @@ function buildSwitchCase(node: SemanticNode, ctx: BuildContext): SwitchCaseCompo
 		}
 		// Use buildBranchTargets with branch context to handle fan-out within each case
 		// Pass the switch node name and output index for deferred merge connections
+		branchCtx.pendingDownstream = null;
 		cases.push(buildBranchTargets(connections, branchCtx, node.name, outputIndex));
+		if (!switchDownstream && branchCtx.pendingDownstream) {
+			switchDownstream = branchCtx.pendingDownstream;
+		}
 	}
+
+	// Propagate downstream back to parent context
+	ctx.pendingDownstream = switchDownstream;
 
 	return {
 		kind: 'switchCase',
@@ -507,6 +538,7 @@ function buildSplitInBatches(
 	const branchCtx: BuildContext = {
 		...ctx,
 		isBranchContext: true,
+		pendingDownstream: null,
 	};
 
 	// Use buildBranchTargets to handle fan-out within each branch
@@ -1139,7 +1171,21 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 			}
 		}
 	} else {
-		// Composite nodes - check for downstream continuation
+		// Composite nodes - check for extracted downstream from branch fan-out
+		const downstream = ctx.pendingDownstream;
+		ctx.pendingDownstream = null;
+		if (downstream && !ctx.visited.has(downstream)) {
+			const nextComposite = buildFromNode(downstream, ctx);
+			if (!ctx.deferredMergeNodes.has(downstream)) {
+				if (nextComposite.kind === 'chain') {
+					return { kind: 'chain', nodes: [compositeNode, ...nextComposite.nodes] };
+				}
+				return { kind: 'chain', nodes: [compositeNode, nextComposite] };
+			}
+			return compositeNode;
+		}
+
+		// Check for downstream continuation via output connections
 		const outputConnections = node.outputs.get('output') ?? node.outputs.get('output0') ?? [];
 		if (outputConnections.length > 0 && compositeType !== 'splitInBatches') {
 			const nextTarget = outputConnections[0].target;
@@ -1193,7 +1239,10 @@ function getDownstreamTargetName(chain: CompositeNode | null): string {
  * @param graph - The annotated semantic graph
  * @returns A composite tree ready for code generation
  */
-export function buildCompositeTree(graph: SemanticGraph): CompositeTree {
+export function buildCompositeTree(
+	graph: SemanticGraph,
+	options?: { extractBranchDownstream?: boolean },
+): CompositeTree {
 	const ctx: BuildContext = {
 		graph,
 		visited: new Set(),
@@ -1202,6 +1251,8 @@ export function buildCompositeTree(graph: SemanticGraph): CompositeTree {
 		deferredConnections: [],
 		deferredMergeDownstreams: [],
 		deferredMergeNodes: new Set(),
+		pendingDownstream: null,
+		extractBranchDownstream: options?.extractBranchDownstream ?? false,
 	};
 
 	const roots: CompositeNode[] = [];

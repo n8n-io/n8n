@@ -363,6 +363,7 @@ export class ToolDispatchHandler {
 						toolCallId: toolCall.id,
 						displayTitle,
 						status: 'completed',
+						result: resultStr,
 					} as ToolProgressChunk,
 				],
 			};
@@ -450,6 +451,7 @@ export class ToolDispatchHandler {
 						toolCallId: toolCall.id,
 						displayTitle,
 						status: 'completed',
+						result: content,
 					} as ToolProgressChunk,
 				],
 			};

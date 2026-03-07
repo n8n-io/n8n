@@ -1,0 +1,65 @@
+{
+  "prompt": "Create a workflow triggered by POST at /approval-request that handles a multi-stage approval process. First, validate the request data. Then send an approval request to the first approver and wait for their webhook response. If approved, send to a second approver and wait again. If the second approver also approves, execute the approved action and notify the requester. If either approver rejects, notify the requester of the rejection with the reason. Track the full approval chain.",
+  "checklist": [
+    {
+      "id": 1,
+      "category": "structure",
+      "item": "Has HTTP POST trigger at /approval-request"
+    },
+    {
+      "id": 2,
+      "category": "structure",
+      "item": "Validates the incoming request data before proceeding"
+    },
+    {
+      "id": 3,
+      "category": "structure",
+      "item": "Sends approval request to a first approver and waits for their webhook response"
+    },
+    {
+      "id": 4,
+      "category": "structure",
+      "item": "Branches based on the first approver's response (approved vs. rejected)"
+    },
+    {
+      "id": 5,
+      "category": "structure",
+      "item": "If first approver approves, sends approval request to a second approver and waits for their webhook response"
+    },
+    {
+      "id": 6,
+      "category": "structure",
+      "item": "Branches based on the second approver's response (approved vs. rejected)"
+    },
+    {
+      "id": 7,
+      "category": "structure",
+      "item": "If both approvers approve, executes the approved action"
+    },
+    {
+      "id": 8,
+      "category": "structure",
+      "item": "If both approvers approve, notifies the requester of the approval"
+    },
+    {
+      "id": 9,
+      "category": "structure",
+      "item": "If either approver rejects, notifies the requester of the rejection"
+    },
+    {
+      "id": 10,
+      "category": "data",
+      "item": "Rejection notification to requester includes the rejection reason provided by the rejecting approver"
+    },
+    {
+      "id": 11,
+      "category": "data",
+      "item": "Tracks the full approval chain, including each approver's decision and any associated metadata"
+    },
+    {
+      "id": 12,
+      "category": "data",
+      "item": "Approval requests sent to each approver include the original request data"
+    }
+  ]
+}

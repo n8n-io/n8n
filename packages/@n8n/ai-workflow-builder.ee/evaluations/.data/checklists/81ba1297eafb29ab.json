@@ -1,0 +1,50 @@
+{
+  "prompt": "Create a workflow triggered by POST at /batch-process that receives an array of customer records with id and name fields. Loop through them in batches of 5, and for each batch call an 'enrichment' subworkflow that adds company data. Collect all enriched records and return the complete list.",
+  "checklist": [
+    {
+      "id": 1,
+      "category": "structure",
+      "item": "Has HTTP POST trigger on /batch-process"
+    },
+    {
+      "id": 2,
+      "category": "structure",
+      "item": "Loops over customer records in batches of 5"
+    },
+    {
+      "id": 3,
+      "category": "structure",
+      "item": "Invokes an 'enrichment' subworkflow for each batch"
+    },
+    {
+      "id": 4,
+      "category": "structure",
+      "item": "Collects all enriched records after processing all batches"
+    },
+    {
+      "id": 5,
+      "category": "structure",
+      "item": "Returns the complete list of enriched records as the HTTP response"
+    },
+    {
+      "id": 6,
+      "category": "data",
+      "item": "Input payload contains an array of customer records with 'id' and 'name' fields"
+    },
+    {
+      "id": 7,
+      "category": "data",
+      "item": "Each batch passed to the enrichment subworkflow contains up to 5 customer records"
+    },
+    {
+      "id": 8,
+      "category": "data",
+      "item": "Enrichment subworkflow adds company data to each customer record"
+    },
+    {
+      "id": 9,
+      "category": "data",
+      "item": "Enriched records from all batches are aggregated into a single complete list before returning"
+    }
+  ]
+}

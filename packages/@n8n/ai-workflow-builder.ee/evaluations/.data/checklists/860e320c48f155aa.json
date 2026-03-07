@@ -1,0 +1,20 @@
+{
+  "prompt": "Create a workflow triggered by a cron schedule every day at 9am that fetches a list of users from an API endpoint and logs the count.",
+  "checklist": [
+    {
+      "id": 1,
+      "category": "structure",
+      "item": "Has a cron/scheduled trigger that runs daily at 9am"
+    },
+    {
+      "id": 2,
+      "category": "structure",
+      "item": "Makes an HTTP request to fetch a list of users from an API endpoint"
+    },
+    {
+      "id": 3,
+      "category": "data",
+      "item": "Logs or outputs the count of users returned from the API"
+    }
+  ]
+}

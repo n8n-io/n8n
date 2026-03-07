@@ -359,6 +359,108 @@ describe('ChatSetupHandler', () => {
 		});
 	});
 
+	describe('simplified syntax prompt selection', () => {
+		it('uses simplified prompt for first generation when useSimplifiedSyntax is true', async () => {
+			const { llm } = createMockLlm();
+			const tools = [createMockTool('search_nodes'), createMockTool('think')];
+
+			const handler = new ChatSetupHandler({
+				llm,
+				tools,
+				enableTextEditorConfig: false,
+				parseAndValidate: jest.fn(),
+				getErrorContext: jest.fn(),
+				useSimplifiedSyntax: true,
+			});
+
+			// No existing workflow = first generation
+			const payload: ChatPayload = {
+				id: 'simplified-1',
+				message: 'Create a simple API workflow',
+			};
+
+			const result = await handler.execute({ payload });
+
+			// Should succeed and return messages
+			expect(result.messages.length).toBeGreaterThan(0);
+			// The system prompt should contain simplified syntax markers
+			const systemContent = JSON.stringify(result.messages[0].content);
+			expect(systemContent).toContain('mandatory_steps');
+			expect(systemContent).toContain('http.get');
+		});
+
+		it('falls back to standard prompt for iteration when useSimplifiedSyntax is true', async () => {
+			const { llm } = createMockLlm();
+			const tools = [createMockTool('search_nodes'), createMockTool('think')];
+
+			const handler = new ChatSetupHandler({
+				llm,
+				tools,
+				enableTextEditorConfig: false,
+				parseAndValidate: jest.fn(),
+				getErrorContext: jest.fn(),
+				useSimplifiedSyntax: true,
+			});
+
+			// Has existing workflow with nodes = iteration, not first generation
+			const payload: ChatPayload = {
+				id: 'simplified-2',
+				message: 'Add error handling',
+				workflowContext: {
+					currentWorkflow: {
+						id: 'w1',
+						name: 'Existing',
+						nodes: [
+							{
+								id: 'n1',
+								name: 'Start',
+								type: 'n8n-nodes-base.manualTrigger',
+								typeVersion: 1,
+								position: [0, 0],
+								parameters: {},
+							},
+						],
+						connections: {},
+					},
+				},
+			};
+
+			const result = await handler.execute({ payload });
+
+			expect(result.messages.length).toBeGreaterThan(0);
+			// Standard prompt should NOT contain simplified-specific markers like http.get examples
+			const systemContent = JSON.stringify(result.messages[0].content);
+			// Standard prompt uses SDK syntax, not simplified http.get/ai.chat globals
+			expect(systemContent).not.toContain('trigger.manual()');
+		});
+
+		it('uses standard prompt when useSimplifiedSyntax is false even for first generation', async () => {
+			const { llm } = createMockLlm();
+			const tools = [createMockTool('search_nodes'), createMockTool('think')];
+
+			const handler = new ChatSetupHandler({
+				llm,
+				tools,
+				enableTextEditorConfig: false,
+				parseAndValidate: jest.fn(),
+				getErrorContext: jest.fn(),
+				useSimplifiedSyntax: false,
+			});
+
+			const payload: ChatPayload = {
+				id: 'standard-1',
+				message: 'Create a workflow',
+			};
+
+			const result = await handler.execute({ payload });
+
+			expect(result.messages.length).toBeGreaterThan(0);
+			const systemContent = JSON.stringify(result.messages[0].content);
+			// Should not contain simplified syntax examples
+			expect(systemContent).not.toContain('trigger.manual()');
+		});
+	});
+
 	describe('extractNodeNamesFromPlan', () => {
 		it('returns full type names (no prefix stripping)', () => {
 			const plan: PlanOutput = {

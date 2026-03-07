@@ -654,7 +654,7 @@ export function validateNodeConfig(
 	nodeType: string,
 	version: number,
 	config: { parameters?: unknown; subnodes?: unknown },
-	options?: { isToolNode?: boolean },
+	options?: { isToolNode?: boolean; strict?: boolean },
 ): SchemaValidationResult {
 	const schemaOrFactory = loadSchema(nodeType, version);
 
@@ -683,6 +683,36 @@ export function validateNodeConfig(
 	const result = schema.safeParse(config);
 
 	if (result.success) {
+		// In strict mode, detect unknown parameter keys that Zod silently stripped.
+		// Only checks the `parameters` subtree — subnodes are excluded because their
+		// config shape (type/version/parameters) is reconstructed by the caller and
+		// may legitimately differ from the schema's expected subnode shape.
+		if (options?.strict) {
+			const originalParams = (config as Record<string, unknown>).parameters;
+			const parsedParams = (result.data as Record<string, unknown>).parameters;
+
+			if (
+				originalParams &&
+				parsedParams &&
+				typeof originalParams === 'object' &&
+				typeof parsedParams === 'object'
+			) {
+				const strippedKeys = findStrippedKeys(
+					originalParams as Record<string, unknown>,
+					parsedParams as Record<string, unknown>,
+					'parameters',
+				);
+				if (strippedKeys.length > 0) {
+					return {
+						valid: false,
+						errors: strippedKeys.map((k) => ({
+							path: k,
+							message: `Unknown field "${k}" in parameters. This field may be misplaced or misspelled.`,
+						})),
+					};
+				}
+			}
+		}
 		return { valid: true, errors: [] };
 	}
 
@@ -690,4 +720,40 @@ export function validateNodeConfig(
 		valid: false,
 		errors: formatZodErrors(result.error.issues),
 	};
+}
+
+/**
+ * Recursively find keys present in original but stripped by Zod's default parse.
+ * Returns dot-path strings for each stripped key (e.g., "parameters.responseCode").
+ */
+function findStrippedKeys(
+	original: Record<string, unknown>,
+	parsed: Record<string, unknown>,
+	prefix = '',
+): string[] {
+	const stripped: string[] = [];
+
+	for (const key of Object.keys(original)) {
+		const path = prefix ? `${prefix}.${key}` : key;
+
+		if (!(key in parsed)) {
+			stripped.push(path);
+		} else if (
+			original[key] !== null &&
+			parsed[key] !== null &&
+			typeof original[key] === 'object' &&
+			typeof parsed[key] === 'object' &&
+			!Array.isArray(original[key])
+		) {
+			stripped.push(
+				...findStrippedKeys(
+					original[key] as Record<string, unknown>,
+					parsed[key] as Record<string, unknown>,
+					path,
+				),
+			);
+		}
+	}
+
+	return stripped;
 }

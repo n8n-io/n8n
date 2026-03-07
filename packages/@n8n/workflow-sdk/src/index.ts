@@ -179,6 +179,14 @@ export {
 	type SerializerPlugin,
 } from './workflow-builder/plugins';
 
+// Simplified JS transpiler (onManual/onWebhook/onSchedule → SDK TypeScript code)
+export { transpileWorkflowJS, COMPILER_EXAMPLES } from './simplified-compiler';
+export type {
+	TranspilerResult,
+	CompilerError,
+	CompilerExample,
+} from './simplified-compiler';
+
 // Node type constants
 export {
 	NODE_TYPES,

@@ -100,6 +100,7 @@ export class CodeBuilderAgent {
 		this.parseValidateHandler = new ParseValidateHandler({
 			logger: config.logger,
 			generatePinData: config.generatePinData,
+			useSimplifiedSyntax: config.useSimplifiedSyntax,
 		});
 
 		// Initialize auto-finalize handler
@@ -156,6 +157,7 @@ export class CodeBuilderAgent {
 				this.parseValidateHandler.getErrorContext(code, errorMessage),
 			nodeTypeParser: this.nodeTypeParser,
 			logger: this.logger,
+			useSimplifiedSyntax: config.useSimplifiedSyntax,
 		});
 
 		// Initialize tool dispatch handler
@@ -318,6 +320,7 @@ export class CodeBuilderAgent {
 							type: 'workflow-updated',
 							codeSnippet: JSON.stringify(workflow, null, 2),
 							iterationCount: iteration,
+							sourceCode: loopResult.sourceCode ?? undefined,
 						} as WorkflowUpdateChunk,
 					],
 				};

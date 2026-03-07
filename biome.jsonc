@@ -29,7 +29,10 @@
 		"attributePosition": "auto",
 		"ignore": [
 			// Handled by prettier
-			"**/*.vue"
+			"**/*.vue",
+			// Fixture inputs/outputs must match compiler expectations exactly
+			"**/__fixtures__/**/output.js",
+			"**/__fixtures__/**/input.js"
 		]
 	},
 	"organizeImports": { "enabled": false },

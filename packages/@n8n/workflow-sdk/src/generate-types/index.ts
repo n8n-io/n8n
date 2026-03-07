@@ -58,6 +58,9 @@ export {
 	orchestrateGeneration,
 	type GenerationOptions,
 	type GenerationResult,
+	// AI Node Registry
+	generateAiNodeRegistry,
+	type AiNodeRegistryEntry,
 } from './generate-types';
 
 // Zod schema generation

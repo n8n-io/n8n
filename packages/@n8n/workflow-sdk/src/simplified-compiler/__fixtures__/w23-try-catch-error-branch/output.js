@@ -1,0 +1,83 @@
+const t0 = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
+
+const code1 = node({
+  type: 'n8n-nodes-base.code', version: 2,
+  config: {
+    name: 'Code 1',
+    parameters: {
+      jsCode: `const config = { endpoint: 'https://api.example.com' };
+
+let data = null;\nreturn [{ json: { config, data } }];`,
+      mode: 'runOnceForAllItems'
+    },
+    executeOnce: true
+  }
+});
+
+const http1 = node({
+  type: 'n8n-nodes-base.httpRequest', version: 4.2,
+  config: {
+    "name": "GET api.example.com/users",
+    "parameters": {
+      "method": "GET",
+      "url": "https://api.example.com/users",
+      "options": {}
+    },
+    "executeOnce": true,
+    "onError": "continueErrorOutput"
+  }
+});
+
+const agg1 = node({
+  type: 'n8n-nodes-base.code', version: 2,
+  config: {
+    name: 'Collect data',
+    parameters: {
+      jsCode: `// @aggregate: data\nconst _raw = $('GET api.example.com/users').all().map(i => i.json);\nconst data = _raw.length === 1 ? _raw[0] : _raw;\nreturn [{ json: { data } }];`,
+      mode: 'runOnceForAllItems'
+    },
+    executeOnce: true
+  }
+});
+
+const http2 = node({
+  type: 'n8n-nodes-base.httpRequest', version: 4.2,
+  config: {
+    "name": "POST hooks.slack.com/error",
+    "parameters": {
+      "method": "POST",
+      "url": "https://hooks.slack.com/error",
+      "options": {},
+      "sendBody": true,
+      "contentType": "json",
+      "specifyBody": "json",
+      "jsonBody": "{\"msg\":\"fetch failed\"}"
+    },
+    "executeOnce": true
+  }
+});
+
+const http3 = node({
+  type: 'n8n-nodes-base.httpRequest', version: 4.2,
+  config: {
+    "name": "POST api.example.com/process",
+    "parameters": {
+      "method": "POST",
+      "url": "https://api.example.com/process",
+      "options": {},
+      "sendBody": true,
+      "contentType": "json",
+      "specifyBody": "json",
+      "jsonBody": "={{ $('Collect data').first().json.data }}"
+    },
+    "executeOnce": true
+  }
+});
+
+const if1 = ifElse({ version: 2.2, config: { name: 'IF 1', parameters: { conditions: {"conditions":[{"leftValue":"={{ $('Collect data').first().json.data }}","rightValue":"","operator":{"type":"string","operation":"exists","singleValue":true}}],"combinator":"and"} }, executeOnce: true } })
+  .onTrue(http3);
+
+http1.onError(http2);
+
+export default workflow('compiled', 'Compiled Workflow')
+  .add(t0.to(code1).to(http1).to(agg1).to(if1));

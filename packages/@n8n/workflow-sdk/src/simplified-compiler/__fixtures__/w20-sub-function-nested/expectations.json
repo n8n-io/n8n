@@ -1,0 +1,7 @@
+{
+	"nodes": {
+		"GET Request": {
+			"items": [{ "id": "item1", "name": "Enriched Item", "score": 95 }]
+		}
+	}
+}

@@ -1,0 +1,50 @@
+{
+  "prompt": "Create a workflow with a POST endpoint at /api/data protected by basic auth that receives a JSON payload with name and value fields, validates both fields are present, stores the record in a 'records' data table, and returns the created record with an insertedCount.",
+  "checklist": [
+    {
+      "id": 1,
+      "category": "structure",
+      "item": "Has HTTP POST endpoint at /api/data"
+    },
+    {
+      "id": 2,
+      "category": "structure",
+      "item": "POST endpoint is protected by basic auth"
+    },
+    {
+      "id": 3,
+      "category": "structure",
+      "item": "Branches based on whether both 'name' and 'value' fields are present in the payload"
+    },
+    {
+      "id": 4,
+      "category": "structure",
+      "item": "Returns an error response when validation fails (missing name or value)"
+    },
+    {
+      "id": 5,
+      "category": "data",
+      "item": "Receives a JSON payload containing 'name' and 'value' fields"
+    },
+    {
+      "id": 6,
+      "category": "data",
+      "item": "Validates that both 'name' and 'value' fields are present and non-empty"
+    },
+    {
+      "id": 7,
+      "category": "data",
+      "item": "Inserts the record with 'name' and 'value' fields into the 'records' data table"
+    },
+    {
+      "id": 8,
+      "category": "data",
+      "item": "Returns the created record data in the response"
+    },
+    {
+      "id": 9,
+      "category": "data",
+      "item": "Response includes an 'insertedCount' field"
+    }
+  ]
+}

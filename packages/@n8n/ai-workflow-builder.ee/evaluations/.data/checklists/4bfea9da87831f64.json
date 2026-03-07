@@ -1,0 +1,60 @@
+{
+  "prompt": "Create a document processing pipeline: triggered by POST at /documents with header auth using X-API-Key. The request body contains a fileId. Read the binary file data, then call an 'ocr-extraction' subworkflow using OCR service credentials to extract text. Store the extracted text in a 'documents' data table with the fileName and pageCount. Then loop through each page of extracted text in batches of 3, running a classification step that categorizes the content. Store each classification in a 'classifications' data table with documentId, pageNumber, and category. Finally, return an HTML summary page showing the document name, total page count, and a list of page classifications.",
+  "checklist": [
+    {
+      "id": 1,
+      "category": "structure",
+      "item": "Has HTTP POST trigger on /documents"
+    },
+    {
+      "id": 2,
+      "category": "structure",
+      "item": "POST endpoint is protected by header auth using X-API-Key"
+    },
+    {
+      "id": 3,
+      "category": "data",
+      "item": "Reads binary file data using the fileId from the request body"
+    },
+    {
+      "id": 4,
+      "category": "structure",
+      "item": "Invokes an 'ocr-extraction' subworkflow to extract text from the file"
+    },
+    {
+      "id": 5,
+      "category": "data",
+      "item": "Retrieves OCR service credentials for the subworkflow call"
+    },
+    {
+      "id": 6,
+      "category": "data",
+      "item": "Stores extracted text in a 'documents' data table with fileName and pageCount fields"
+    },
+    {
+      "id": 7,
+      "category": "structure",
+      "item": "Loops through each page of extracted text in batches of 3"
+    },
+    {
+      "id": 8,
+      "category": "structure",
+      "item": "Runs a classification step for each batch that categorizes page content"
+    },
+    {
+      "id": 9,
+      "category": "data",
+      "item": "Stores each page classification in a 'classifications' data table with documentId, pageNumber, and category fields"
+    },
+    {
+      "id": 10,
+      "category": "structure",
+      "item": "Returns an HTML page as the final response"
+    },
+    {
+      "id": 11,
+      "category": "data",
+      "item": "HTML summary page includes the document name, total page count, and a list of page classifications"
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "prompt": "Create a workflow with a GET endpoint at /status that queries a 'services' data table for system health metrics and returns an HTML dashboard page showing service name, status, and last check time in a styled table.",
+  "checklist": [
+    {
+      "id": 1,
+      "category": "structure",
+      "item": "Has an HTTP GET trigger at the /status path"
+    },
+    {
+      "id": 2,
+      "category": "structure",
+      "item": "Queries a persistent data table named 'services'"
+    },
+    {
+      "id": 3,
+      "category": "structure",
+      "item": "Returns an HTML page as the response"
+    },
+    {
+      "id": 4,
+      "category": "data",
+      "item": "Reads records from the 'services' table to retrieve health metrics"
+    },
+    {
+      "id": 5,
+      "category": "data",
+      "item": "HTML output includes the service name for each record"
+    },
+    {
+      "id": 6,
+      "category": "data",
+      "item": "HTML output includes the status for each record"
+    },
+    {
+      "id": 7,
+      "category": "data",
+      "item": "HTML output includes the last check time for each record"
+    },
+    {
+      "id": 8,
+      "category": "data",
+      "item": "HTML output presents the data in a table layout"
+    },
+    {
+      "id": 9,
+      "category": "data",
+      "item": "The HTML table includes styling (e.g., inline styles or a style block)"
+    },
+    {
+      "id": 10,
+      "category": "structure",
+      "item": "The endpoint responds with an appropriate HTML content-type header"
+    }
+  ]
+}

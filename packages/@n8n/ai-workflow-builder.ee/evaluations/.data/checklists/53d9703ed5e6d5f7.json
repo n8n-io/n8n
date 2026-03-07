@@ -1,0 +1,45 @@
+{
+  "prompt": "Create a multi-step form workflow at /apply: Page 1 collects personal info (name, email, phone). Page 2 collects experience (years of experience as number, current role as text, skills as text). Page 3 collects preferences (desired role as dropdown with options Engineering/Design/Product/Marketing, salary range as text, start date). After all pages, store the complete application in an 'applications' data table and return a confirmation message.",
+  "checklist": [
+    {
+      "id": 1,
+      "category": "structure",
+      "item": "Has a multi-step form trigger at /apply with 3 pages"
+    },
+    {
+      "id": 2,
+      "category": "structure",
+      "item": "After form completion, inserts the application data into the 'applications' data table"
+    },
+    {
+      "id": 3,
+      "category": "structure",
+      "item": "Returns a confirmation message after storing the application"
+    },
+    {
+      "id": 4,
+      "category": "data",
+      "item": "Page 1 collects personal info: name, email, and phone fields"
+    },
+    {
+      "id": 5,
+      "category": "data",
+      "item": "Page 2 collects experience info: years of experience (numeric), current role (text), and skills (text) fields"
+    },
+    {
+      "id": 6,
+      "category": "data",
+      "item": "Page 3 collects preferences: desired role as a dropdown with options Engineering, Design, Product, and Marketing"
+    },
+    {
+      "id": 7,
+      "category": "data",
+      "item": "Page 3 also collects salary range (text) and start date fields"
+    },
+    {
+      "id": 8,
+      "category": "data",
+      "item": "All form fields from all 3 pages (name, email, phone, years of experience, current role, skills, desired role, salary range, start date) are stored in the 'applications' table"
+    }
+  ]
+}

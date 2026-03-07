@@ -752,7 +752,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			// Handle InputTarget - add the referenced node
 			if (isInputTarget(target)) {
 				const inputTargetNode = target.node;
-				if (!nodes.has(inputTargetNode.name)) {
+				if (!this.isInstanceInGraph(nodes, inputTargetNode)) {
 					const actualKey = this.addNodeWithSubnodes(nodes, inputTargetNode);
 					if (actualKey && nameMapping && actualKey !== inputTargetNode.name) {
 						nameMapping.set(inputTargetNode.id, actualKey);
@@ -762,9 +762,11 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				continue;
 			}
 
-			// Add the target node if not already in the map
+			// Add the target node if this exact instance isn't already in the graph.
+			// Must check by instance identity — not name — because different node instances
+			// can share the same configured name (e.g., two "POST httpbin.org/post" nodes).
 			const targetNode = target;
-			if (!nodes.has(targetNode.name)) {
+			if (!this.isInstanceInGraph(nodes, targetNode)) {
 				const actualKey = this.addNodeWithSubnodes(nodes, targetNode);
 				if (actualKey && nameMapping && actualKey !== targetNode.name) {
 					nameMapping.set(targetNode.id, actualKey);
@@ -772,6 +774,21 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				this.addSingleNodeConnectionTargets(nodes, targetNode);
 			}
 		}
+	}
+
+	/**
+	 * Check if a specific node instance is already in the graph (by identity, not by name).
+	 * Two different node instances can share the same configured name — this avoids
+	 * conflating them during the add-node guards.
+	 */
+	private isInstanceInGraph(
+		nodes: Map<string, GraphNode>,
+		instance: NodeInstance<string, string, unknown>,
+	): boolean {
+		for (const graphNode of nodes.values()) {
+			if (graphNode.instance === instance) return true;
+		}
+		return false;
 	}
 
 	/**
@@ -803,16 +820,16 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			// Handle InputTarget - add the referenced node
 			if (isInputTarget(target)) {
 				const inputTargetNode = target.node;
-				if (!nodes.has(inputTargetNode.name)) {
+				if (!this.isInstanceInGraph(nodes, inputTargetNode)) {
 					this.addNodeWithSubnodes(nodes, inputTargetNode);
 					this.addSingleNodeConnectionTargets(nodes, inputTargetNode);
 				}
 				continue;
 			}
 
-			// Add the target node if not already in the map
+			// Add the target node if this exact instance isn't already in the graph
 			const targetNode = target;
-			if (!nodes.has(targetNode.name)) {
+			if (!this.isInstanceInGraph(nodes, targetNode)) {
 				this.addNodeWithSubnodes(nodes, targetNode);
 				this.addSingleNodeConnectionTargets(nodes, targetNode);
 			}

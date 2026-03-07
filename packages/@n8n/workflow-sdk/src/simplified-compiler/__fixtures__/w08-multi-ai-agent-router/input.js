@@ -1,0 +1,39 @@
+/** @example [{ body: { data: "Quarterly revenue grew 15% YoY", priority: "balanced" } }] */
+onWebhook({ method: 'POST', path: '/ai-pipeline' }, async ({ body, respond }) => {
+	const inputData = body.data;
+	const priority = body.priority || 'balanced';
+
+	const complexity = inputData.length < 500 ? 1 : inputData.length < 2000 ? 2 : 3;
+	let provider, model;
+
+	if (priority === 'cost') {
+		provider = 'groq';
+		model = complexity <= 2 ? 'llama-3.1-8b-instant' : 'llama-3.1-70b-versatile';
+	} else if (priority === 'performance') {
+		provider = 'openai';
+		model = 'gpt-4o';
+	} else {
+		provider = 'anthropic';
+		model = 'claude-3-5-sonnet';
+	}
+
+	const startTime = Date.now();
+	const prompt = 'Analyze and enrich this data';
+
+	/** @example [{ output: "The data shows a 15% increase in user engagement over the past quarter, driven primarily by mobile traffic." }] */
+	const aiResponse = await new Agent({
+		prompt: 'Analyze and enrich this data',
+		model: new OpenAiModel({ model: 'gpt-4o' }),
+	}).chat();
+
+	const processingTime = Date.now() - startTime;
+
+	respond({
+		status: 200,
+		headers: { 'Content-Type': 'application/json' },
+		body: {
+			enriched_data: aiResponse,
+			metrics: { provider: provider, model: model, processing_time_ms: processingTime },
+		},
+	});
+});

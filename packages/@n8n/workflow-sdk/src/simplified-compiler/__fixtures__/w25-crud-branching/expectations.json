@@ -1,0 +1,43 @@
+{
+	"requests": {
+		"POST jsonplaceholder.typicode.com/posts": {
+			"requestBody": {
+				"title": "Test Post",
+				"body": "auto-generated",
+				"userId": 1
+			}
+		},
+		"POST httpbin.org/post": {
+			"requestBody": {
+				"title": "Backup Post",
+				"status": "ok"
+			}
+		},
+		"POST httpbin.org/post#2": {
+			"requestBody": {
+				"status": "done",
+				"title": "delectus aut autem"
+			}
+		},
+		"POST httpbin.org/post#3": {
+			"requestBody": {
+				"reportTag": "weekly-check",
+				"result": "complete"
+			}
+		}
+	},
+	"nodes": {
+		"POST jsonplaceholder.typicode.com/posts": {
+			"items": [{ "id": 101, "title": "Test Post" }]
+		},
+		"Code 1": {
+			"items": [{ "backup": null }]
+		},
+		"IF 1": {
+			"items": [{ "id": 1, "title": "Backup Post" }]
+		},
+		"GET jsonplaceholder.typicode.com/todos/1": {
+			"items": [{ "completed": true }]
+		}
+	}
+}

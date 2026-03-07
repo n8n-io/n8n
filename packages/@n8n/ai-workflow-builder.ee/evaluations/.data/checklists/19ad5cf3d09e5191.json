@@ -1,0 +1,70 @@
+{
+  "prompt": "Create a workflow with a cron trigger every hour that fetches pending invoices. For each invoice, check if it is overdue. Overdue invoices get a reminder email sent and their status updated to \"reminded\". Non-overdue invoices within 3 days of due date get a courtesy reminder. All others are skipped. Return a summary of actions taken.",
+  "checklist": [
+    {
+      "id": 1,
+      "category": "structure",
+      "item": "Has a cron trigger that fires every hour"
+    },
+    {
+      "id": 2,
+      "category": "structure",
+      "item": "Fetches pending invoices from a data source"
+    },
+    {
+      "id": 3,
+      "category": "structure",
+      "item": "Loops over each fetched invoice individually"
+    },
+    {
+      "id": 4,
+      "category": "structure",
+      "item": "Branches based on whether the invoice is overdue"
+    },
+    {
+      "id": 5,
+      "category": "structure",
+      "item": "Has a secondary branch for non-overdue invoices: within 3 days of due date vs. all others"
+    },
+    {
+      "id": 6,
+      "category": "structure",
+      "item": "Skips invoices that are neither overdue nor within 3 days of due date"
+    },
+    {
+      "id": 7,
+      "category": "data",
+      "item": "Sends a reminder email for overdue invoices"
+    },
+    {
+      "id": 8,
+      "category": "data",
+      "item": "Updates the status of overdue invoices to 'reminded'"
+    },
+    {
+      "id": 9,
+      "category": "data",
+      "item": "Sends a courtesy reminder email for invoices within 3 days of due date"
+    },
+    {
+      "id": 10,
+      "category": "data",
+      "item": "Evaluates overdue status by comparing the invoice due date against the current date/time"
+    },
+    {
+      "id": 11,
+      "category": "data",
+      "item": "Evaluates proximity to due date using a 3-day threshold from the current date/time"
+    },
+    {
+      "id": 12,
+      "category": "structure",
+      "item": "Returns a summary of actions taken across all processed invoices"
+    },
+    {
+      "id": 13,
+      "category": "data",
+      "item": "Summary includes counts or details of overdue reminders sent, courtesy reminders sent, and invoices skipped"
+    }
+  ]
+}

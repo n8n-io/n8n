@@ -1,0 +1,4 @@
+{
+	"title": "W17: Stale data cleanup (schedule cron + http.get/delete + basic auth + for-of)",
+	"templateId": 0
+}

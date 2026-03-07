@@ -1,0 +1,10 @@
+{
+	"nodes": {
+		"GET registry.npmjs.org/n8n/latest": {
+			"items": [{ "version": "1.62.1", "name": "n8n" }]
+		},
+		"GET 0.0.0.0/rest/settings": {
+			"items": [{ "data": { "versionCli": "1.61.0" } }]
+		}
+	}
+}

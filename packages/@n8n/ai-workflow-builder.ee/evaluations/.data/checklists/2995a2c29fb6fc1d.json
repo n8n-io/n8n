@@ -1,0 +1,75 @@
+{
+  "prompt": "Create a receipt scanning workflow triggered when a new file is created in a specific Google Drive folder. The workflow should download the file from Google Drive via an HTTP request, then extract text from the document using Mistral AI OCR. Pass the extracted markdown text to an AI agent instructed to analyze invoices. The agent should use a structured output parser that expects these specific fields: invoiceNumber, From address, To address, invoiceDate, dueDate, and shortDescription. After parsing, append a row to a Google Sheets spreadsheet containing all the parsed invoice fields plus a link to the original file in Google Drive.",
+  "checklist": [
+    {
+      "id": 1,
+      "category": "structure",
+      "item": "Workflow is triggered when a new file is created in a specific Google Drive folder"
+    },
+    {
+      "id": 2,
+      "category": "structure",
+      "item": "Downloads the file from Google Drive via an HTTP request"
+    },
+    {
+      "id": 3,
+      "category": "structure",
+      "item": "Extracts text from the downloaded file using Mistral AI OCR"
+    },
+    {
+      "id": 4,
+      "category": "structure",
+      "item": "Passes the extracted markdown text to an AI agent configured to analyze invoices"
+    },
+    {
+      "id": 5,
+      "category": "structure",
+      "item": "AI agent uses a structured output parser to extract specific fields from the invoice"
+    },
+    {
+      "id": 6,
+      "category": "structure",
+      "item": "Appends a new row to a spreadsheet after parsing is complete"
+    },
+    {
+      "id": 7,
+      "category": "data",
+      "item": "HTTP request downloads the file using the Google Drive file ID from the trigger event"
+    },
+    {
+      "id": 8,
+      "category": "data",
+      "item": "Mistral AI OCR receives the downloaded file binary data and returns extracted markdown text"
+    },
+    {
+      "id": 9,
+      "category": "data",
+      "item": "Structured output parser expects the field: invoiceNumber"
+    },
+    {
+      "id": 10,
+      "category": "data",
+      "item": "Structured output parser expects the fields: From address and To address"
+    },
+    {
+      "id": 11,
+      "category": "data",
+      "item": "Structured output parser expects the fields: invoiceDate and dueDate"
+    },
+    {
+      "id": 12,
+      "category": "data",
+      "item": "Structured output parser expects the field: shortDescription"
+    },
+    {
+      "id": 13,
+      "category": "data",
+      "item": "Row appended to the spreadsheet includes all parsed invoice fields: invoiceNumber, From address, To address, invoiceDate, dueDate, and shortDescription"
+    },
+    {
+      "id": 14,
+      "category": "data",
+      "item": "Row appended to the spreadsheet includes a link to the original file in Google Drive"
+    }
+  ]
+}

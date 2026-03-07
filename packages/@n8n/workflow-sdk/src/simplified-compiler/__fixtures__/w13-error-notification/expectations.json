@@ -1,0 +1,17 @@
+{
+	"requests": {
+		"POST api.pagerduty.com/incidents": {
+			"requestBody": {
+				"incident": {
+					"title": "Workflow error detected",
+					"body": { "type": "incident_body", "details": "An error occurred" }
+				}
+			}
+		}
+	},
+	"nodes": {
+		"POST api.pagerduty.com/incidents": {
+			"items": [{ "incident": { "id": "P123ABC", "status": "triggered" } }]
+		}
+	}
+}

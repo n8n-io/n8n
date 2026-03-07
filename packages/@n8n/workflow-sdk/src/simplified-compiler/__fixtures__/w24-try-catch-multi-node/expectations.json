@@ -1,0 +1,7 @@
+{
+	"nodes": {
+		"GET api.example.com/users": {
+			"items": [{ "users": [{ "id": 1, "name": "Alice" }] }]
+		}
+	}
+}

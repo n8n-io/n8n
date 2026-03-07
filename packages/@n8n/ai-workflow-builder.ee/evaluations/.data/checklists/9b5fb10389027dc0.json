@@ -1,0 +1,55 @@
+{
+  "prompt": "Create a multi-stage AI pipeline workflow for repurposing YouTube content into short-form clips. First, scrape the YouTube video transcript with timestamps using the Apify integration. Then run four AI processing stages: (1) A title generation step that produces three title variations — SEO-Focused, Curiosity-Driven, and Hybrid — following rules for 40-60 character length and CTR optimization with power words. (2) A thumbnail prompt generation step that transforms rough visual concepts into detailed image generation prompts specifying fonts, colors, and 16:9 aspect ratio. (3) A clip identification step that finds self-contained clips of at least 45 seconds from the transcript with benefit-driven captions and proper start/end boundaries. (4) A description generation step that creates YouTube descriptions with properly formatted chapter timestamps in MM:SS or HH:MM:SS format derived from the transcript. Store all generated outputs in Airtable for coordination.",
+  "checklist": [
+    {
+      "id": 1,
+      "category": "structure",
+      "item": "Scrapes a YouTube video transcript with timestamps using the Apify integration"
+    },
+    {
+      "id": 2,
+      "category": "structure",
+      "item": "Has four sequential AI processing stages after transcript retrieval: title generation, thumbnail prompt generation, clip identification, and description generation"
+    },
+    {
+      "id": 3,
+      "category": "data",
+      "item": "Title generation stage produces exactly three title variations labeled SEO-Focused, Curiosity-Driven, and Hybrid"
+    },
+    {
+      "id": 4,
+      "category": "data",
+      "item": "Title generation stage enforces 40-60 character length rules and CTR optimization using power words"
+    },
+    {
+      "id": 5,
+      "category": "data",
+      "item": "Thumbnail prompt generation stage transforms rough visual concepts into detailed image generation prompts specifying fonts, colors, and 16:9 aspect ratio"
+    },
+    {
+      "id": 6,
+      "category": "data",
+      "item": "Clip identification stage finds self-contained clips of at least 45 seconds from the transcript"
+    },
+    {
+      "id": 7,
+      "category": "data",
+      "item": "Each identified clip includes benefit-driven captions and defined start and end time boundaries derived from the transcript"
+    },
+    {
+      "id": 8,
+      "category": "data",
+      "item": "Description generation stage creates YouTube descriptions with chapter timestamps formatted as MM:SS or HH:MM:SS derived from the transcript"
+    },
+    {
+      "id": 9,
+      "category": "structure",
+      "item": "Stores all generated outputs (titles, thumbnail prompts, clips, descriptions) in a persistent data table for coordination"
+    },
+    {
+      "id": 10,
+      "category": "data",
+      "item": "Transcript data with timestamps retrieved from Apify is passed as input into each of the four AI processing stages"
+    }
+  ]
+}

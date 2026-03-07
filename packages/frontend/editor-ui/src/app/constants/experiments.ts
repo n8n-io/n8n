@@ -97,6 +97,7 @@ export const CODE_WORKFLOW_BUILDER_EXPERIMENT = createExperiment('071_coding_wor
 	control: 'control',
 	codeNoPinData: 'code-no-pin-data',
 	codePinData: 'code-pin-data',
+	simplifiedPinned: 'simplified-pinned',
 });
 
 export const QUICK_CONNECT_EXPERIMENT = createExperiment('073_quick_connect');

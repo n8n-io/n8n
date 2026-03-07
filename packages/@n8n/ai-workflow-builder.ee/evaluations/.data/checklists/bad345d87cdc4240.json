@@ -1,0 +1,30 @@
+{
+  "prompt": "Create a workflow that receives an HTTP POST webhook at /contacts, validates the email field is present, and returns a success response with the contact ID.",
+  "checklist": [
+    {
+      "id": 1,
+      "category": "structure",
+      "item": "Has HTTP POST webhook trigger at /contacts"
+    },
+    {
+      "id": 2,
+      "category": "structure",
+      "item": "Validates that the email field is present in the request body"
+    },
+    {
+      "id": 3,
+      "category": "structure",
+      "item": "Branches based on whether the email field is present or missing"
+    },
+    {
+      "id": 4,
+      "category": "data",
+      "item": "Returns a success response containing the contact ID when email is present"
+    },
+    {
+      "id": 5,
+      "category": "data",
+      "item": "Returns an error or rejection response when email field is missing"
+    }
+  ]
+}

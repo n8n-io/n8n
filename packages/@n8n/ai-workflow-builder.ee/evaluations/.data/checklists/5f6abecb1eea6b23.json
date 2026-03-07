@@ -1,0 +1,70 @@
+{
+  "prompt": "Create a workflow triggered by a form at /expense-report that collects employee name, amount (number), category (dropdown: travel, supplies, software, other), and description. If amount is greater than 500, request manager approval by sending a notification to manager@company.com and waiting for their decision. On approval, store in an 'approved-expenses' data table. On rejection, store in a 'rejected-expenses' data table with the rejection reason. If amount is 500 or less, auto-approve and store directly in the 'approved-expenses' data table.",
+  "checklist": [
+    {
+      "id": 1,
+      "category": "structure",
+      "item": "Has a form trigger at /expense-report"
+    },
+    {
+      "id": 2,
+      "category": "data",
+      "item": "Form has a required 'Employee Name' text field"
+    },
+    {
+      "id": 3,
+      "category": "data",
+      "item": "Form has a required 'Amount' number field"
+    },
+    {
+      "id": 4,
+      "category": "data",
+      "item": "Form has a 'Category' dropdown field with options: travel, supplies, software, other"
+    },
+    {
+      "id": 5,
+      "category": "data",
+      "item": "Form has a 'Description' text field"
+    },
+    {
+      "id": 6,
+      "category": "structure",
+      "item": "Branches based on whether the submitted amount is greater than 500 or 500 and below"
+    },
+    {
+      "id": 7,
+      "category": "structure",
+      "item": "When amount is greater than 500, sends a manager approval notification to manager@company.com and waits for their approval or rejection decision"
+    },
+    {
+      "id": 8,
+      "category": "structure",
+      "item": "Branches on the manager's decision into an approval path and a rejection path"
+    },
+    {
+      "id": 9,
+      "category": "structure",
+      "item": "On manager approval, stores the expense in the 'approved-expenses' data table"
+    },
+    {
+      "id": 10,
+      "category": "structure",
+      "item": "On manager rejection, stores the expense in the 'rejected-expenses' data table"
+    },
+    {
+      "id": 11,
+      "category": "data",
+      "item": "Rejected expense record includes the rejection reason"
+    },
+    {
+      "id": 12,
+      "category": "structure",
+      "item": "When amount is 500 or less, auto-approves and stores the expense directly in the 'approved-expenses' data table without requiring manager approval"
+    },
+    {
+      "id": 13,
+      "category": "data",
+      "item": "Records stored in 'approved-expenses' include employee name, amount, category, and description"
+    }
+  ]
+}

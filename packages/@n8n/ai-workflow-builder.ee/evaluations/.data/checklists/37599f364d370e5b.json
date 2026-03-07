@@ -1,0 +1,50 @@
+{
+  "prompt": "Create a workflow triggered by a POST webhook at /support-tickets. Classify the ticket priority as \"critical\", \"high\", \"medium\", or \"low\" based on the severity field. Critical tickets send an immediate alert and escalate to a manager. High tickets assign to senior support. Medium and low tickets go to the general queue. All tickets get a confirmation email sent.",
+  "checklist": [
+    {
+      "id": 1,
+      "category": "structure",
+      "item": "Has HTTP POST webhook trigger at /support-tickets"
+    },
+    {
+      "id": 2,
+      "category": "structure",
+      "item": "Branches based on ticket priority classification into at least four paths: critical, high, medium, and low"
+    },
+    {
+      "id": 3,
+      "category": "data",
+      "item": "Classifies ticket priority using the severity field from the incoming payload"
+    },
+    {
+      "id": 4,
+      "category": "data",
+      "item": "Priority classification produces one of exactly four values: 'critical', 'high', 'medium', or 'low'"
+    },
+    {
+      "id": 5,
+      "category": "structure",
+      "item": "Critical path sends an immediate alert"
+    },
+    {
+      "id": 6,
+      "category": "structure",
+      "item": "Critical path escalates the ticket to a manager"
+    },
+    {
+      "id": 7,
+      "category": "structure",
+      "item": "High priority path assigns the ticket to senior support"
+    },
+    {
+      "id": 8,
+      "category": "structure",
+      "item": "Medium and low priority paths route the ticket to the general queue"
+    },
+    {
+      "id": 9,
+      "category": "structure",
+      "item": "All ticket paths (critical, high, medium, low) send a confirmation email regardless of priority"
+    }
+  ]
+}

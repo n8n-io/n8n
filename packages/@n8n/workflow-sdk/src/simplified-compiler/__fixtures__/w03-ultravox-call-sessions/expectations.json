@@ -1,0 +1,22 @@
+{
+	"requests": {
+		"POST api.ultravox.ai/api/calls": {
+			"requestBody": {
+				"voice": "c2c5cce4-72ec-4d8b-8cdb-f8a0f6610bd1",
+				"medium": { "plivo": {} },
+				"systemPrompt": "You are a voice assistant for the clinic..."
+			}
+		}
+	},
+	"nodes": {
+		"POST api.ultravox.ai/api/calls": {
+			"items": [
+				{
+					"callId": "call_abc123",
+					"joinUrl": "wss://voice.ultravox.ai/session/abc123",
+					"status": "created"
+				}
+			]
+		}
+	}
+}

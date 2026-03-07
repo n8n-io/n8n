@@ -16,6 +16,7 @@ import { BaseCommand } from './base-command';
 const flagsSchema = z.object({
 	id: z.string().describe('id of the workflow to execute').optional(),
 	rawOutput: z.boolean().describe('Outputs only JSON data, with no other text').optional(),
+	manual: z.boolean().describe('Run in manual mode (enables pin data)').optional(),
 	/**@deprecated */
 	file: z.string().describe('DEPRECATED: Please use --id instead').optional(),
 });
@@ -78,7 +79,7 @@ export class Execute extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		const user = await Container.get(OwnershipService).getInstanceOwner();
 		const runData: IWorkflowExecutionDataProcess = {
-			executionMode: 'cli',
+			executionMode: flags.manual ? 'manual' : 'cli',
 			startNodes: [{ name: startingNode.name, sourceData: null }],
 			workflowData,
 			userId: user.id,

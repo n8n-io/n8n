@@ -1,0 +1,75 @@
+{
+  "prompt": "Create an AI personal assistant workflow triggered by Telegram messages that handles both text and voice inputs. When a voice message arrives, transcribe it to text using OpenAI before processing. The AI agent should have tools for: (1) fetching events from Google Calendar with configurable time range, (2) fetching unread emails from Gmail with date filters, (3) sending emails via Gmail with recipient, subject, and HTML message body, (4) creating tasks in Google Tasks with a title, and (5) getting all tasks from Google Tasks. The agent should be instructed that for email summarization it must include the sender, message date, subject, and a brief summary. For calendar queries, it should filter out events more than one week away and default to today if no date is specified. The agent should use window buffer memory keyed by the sender's ID. The response should be sent back via Telegram with Markdown formatting.",
+  "checklist": [
+    {
+      "id": 1,
+      "category": "structure",
+      "item": "Workflow is triggered by incoming Telegram messages"
+    },
+    {
+      "id": 2,
+      "category": "structure",
+      "item": "Branches based on whether the incoming Telegram message is a voice message or text message"
+    },
+    {
+      "id": 3,
+      "category": "structure",
+      "item": "Voice messages are transcribed to text using OpenAI before being passed to the AI agent"
+    },
+    {
+      "id": 4,
+      "category": "structure",
+      "item": "AI agent has a tool for fetching events from Google Calendar with a configurable time range"
+    },
+    {
+      "id": 5,
+      "category": "structure",
+      "item": "AI agent has a tool for fetching unread emails from Gmail with date filters"
+    },
+    {
+      "id": 6,
+      "category": "structure",
+      "item": "AI agent has a tool for sending emails via Gmail"
+    },
+    {
+      "id": 7,
+      "category": "structure",
+      "item": "AI agent has a tool for creating tasks in Google Tasks with a title"
+    },
+    {
+      "id": 8,
+      "category": "structure",
+      "item": "AI agent has a tool for retrieving all tasks from Google Tasks"
+    },
+    {
+      "id": 9,
+      "category": "structure",
+      "item": "The AI agent's response is sent back to the user via Telegram"
+    },
+    {
+      "id": 10,
+      "category": "data",
+      "item": "When sending an email, the tool accepts recipient, subject, and HTML message body fields"
+    },
+    {
+      "id": 11,
+      "category": "data",
+      "item": "The agent is instructed that email summaries must include the sender, message date, subject, and a brief summary"
+    },
+    {
+      "id": 12,
+      "category": "data",
+      "item": "The agent is instructed to filter out calendar events more than one week away and to default the query date to today when no date is specified"
+    },
+    {
+      "id": 13,
+      "category": "data",
+      "item": "The Telegram response is sent with Markdown formatting enabled"
+    },
+    {
+      "id": 14,
+      "category": "data",
+      "item": "The agent session or memory is keyed by the Telegram sender's ID"
+    }
+  ]
+}

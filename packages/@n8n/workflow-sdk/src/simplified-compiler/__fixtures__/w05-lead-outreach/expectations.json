@@ -1,0 +1,15 @@
+{
+	"nodes": {
+		"GET sheets.googleapis.com/v4/spreadsh...": {
+			"items": [
+				{
+					"values": [
+						["John", "john@test.com", "New"],
+						["Jane", "jane@test.com", "Contacted"],
+						["Bob", "bob@test.com", "New"]
+					]
+				}
+			]
+		}
+	}
+}

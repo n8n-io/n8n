@@ -129,6 +129,7 @@ export namespace ChatRequest {
 		pinData?: boolean;
 		planMode?: boolean;
 		mergeAskBuild?: boolean;
+		simplifiedCode?: boolean;
 	}
 
 	export interface UserChatMessage {

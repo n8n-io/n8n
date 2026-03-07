@@ -50,7 +50,8 @@
     "@n8n/typescript-config": "workspace:*",
     "@types/adm-zip": "^0.5.7",
     "@types/estree": "^1.0.8",
-    "adm-zip": "^0.5.16"
+    "adm-zip": "^0.5.16",
+    "nock": "^14.0.1"
   },
   "dependencies": {
     "acorn": "8.14.0",

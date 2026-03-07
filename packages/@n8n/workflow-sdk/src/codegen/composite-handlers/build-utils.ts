@@ -34,6 +34,12 @@ export interface BuildContext {
 	deferredMergeDownstreams: DeferredMergeDownstream[];
 	/** Merge nodes that have been deferred (to avoid building downstream multiple times) */
 	deferredMergeNodes: Set<string>;
+	/** Downstream node extracted from branch fan-out, to be chained after the composite */
+	pendingDownstream: string | null;
+	/** When true, extract the last target from branch fan-outs as downstream continuation.
+	 * Only used during simplified decompile where .to() after IF/Switch creates a connection
+	 * on the first branch output that should be the chain continuation. */
+	extractBranchDownstream: boolean;
 }
 
 /**
