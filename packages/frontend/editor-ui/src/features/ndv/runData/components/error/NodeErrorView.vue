@@ -473,8 +473,8 @@ async function onAskAssistantClick() {
 
 			<div v-if="isSubNodeError">
 				<N8nButton
+					variant="subtle"
 					icon="arrow-right"
-					type="secondary"
 					:label="i18n.baseText('pushConnection.executionError.openNode')"
 					class="node-error-view__button"
 					data-test-id="node-error-view-open-node-button"
@@ -501,14 +501,7 @@ async function onAskAssistantClick() {
 					placement="left"
 				>
 					<div class="copy-button">
-						<N8nIconButton
-							icon="files"
-							type="secondary"
-							size="small"
-							:text="true"
-							transparent-background="transparent"
-							@click="copyErrorDetails"
-						/>
+						<N8nIconButton variant="ghost" icon="files" size="small" @click="copyErrorDetails" />
 					</div>
 				</N8nTooltip>
 			</div>

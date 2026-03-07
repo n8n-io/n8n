@@ -7,6 +7,8 @@ import type {
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 	JsonValue,
+	WorkflowExecuteMode,
+	WorkflowSettings,
 } from 'n8n-workflow';
 
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
@@ -21,6 +23,11 @@ export type UserLike = {
 	role?: {
 		slug: string;
 	};
+};
+
+export type ProjectSummary = {
+	id: string;
+	name: string;
 };
 
 export type RelayEventMap = {
@@ -112,11 +119,13 @@ export type RelayEventMap = {
 		workflowId: string;
 		workflow: IWorkflowDb;
 		publicApi: boolean;
+		deactivatedVersionId: string | null;
 	};
 
 	'workflow-pre-execute': {
 		executionId: string;
 		data: IWorkflowExecutionDataProcess /* main process */ | IWorkflowBase /* worker */;
+		mode: WorkflowExecuteMode;
 	};
 
 	'workflow-post-execute': {
@@ -147,6 +156,15 @@ export type RelayEventMap = {
 			| 'integrated'
 			| 'evaluation'
 			| 'chat';
+	};
+
+	'workflow-version-updated': {
+		user: UserLike;
+		workflowId: string;
+		workflowName: string;
+		versionId: string;
+		versionName?: string | null;
+		versionDescription?: string | null;
 	};
 
 	// #endregion
@@ -444,6 +462,15 @@ export type RelayEventMap = {
 		deleteBefore?: Date;
 	};
 
+	'execution-data-revealed': {
+		user: UserLike;
+		executionId: string;
+		workflowId: string;
+		ipAddress: string;
+		userAgent: string;
+		redactionPolicy: WorkflowSettings.RedactionPolicy;
+	};
+
 	// #endregion
 
 	// #region Project
@@ -568,6 +595,43 @@ export type RelayEventMap = {
 
 	'external-secrets-provider-reloaded': {
 		vaultType: string;
+	};
+
+	'external-secrets-connection-created': {
+		userId: string;
+		providerKey: string;
+		vaultType: string;
+		projects: ProjectSummary[];
+	};
+
+	'external-secrets-connection-updated': {
+		userId: string;
+		providerKey: string;
+		vaultType: string;
+		projects: ProjectSummary[];
+	};
+
+	'external-secrets-connection-deleted': {
+		userId: string;
+		providerKey: string;
+		vaultType: string;
+		projects: ProjectSummary[];
+	};
+
+	'external-secrets-connection-tested': {
+		userId: string;
+		providerKey: string;
+		vaultType: string;
+		projects: ProjectSummary[];
+		isValid: boolean;
+		errorMessage?: string;
+	};
+
+	'external-secrets-connection-reloaded': {
+		userId: string;
+		providerKey: string;
+		vaultType: string;
+		projects: ProjectSummary[];
 	};
 
 	// #endregion

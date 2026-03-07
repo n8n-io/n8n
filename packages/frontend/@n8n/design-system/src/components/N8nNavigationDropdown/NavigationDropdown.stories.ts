@@ -4,7 +4,7 @@ import { action } from 'storybook/actions';
 import NavigationDropdown from './NavigationDropdown.vue';
 
 export default {
-	title: 'Atoms/NavigationDropdown',
+	title: 'Core/NavigationDropdown',
 	component: NavigationDropdown,
 	argTypes: {},
 };

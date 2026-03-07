@@ -30,7 +30,7 @@ import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 import { FileLocation, BinaryDataService } from 'n8n-core';
 
-import type { INode, INodes, IWorkflowSettings, JsonValue } from 'n8n-workflow';
+import type { INode, INodes, IWorkflowSettings, JsonValue, IConnections } from 'n8n-workflow';
 import {
 	NodeApiError,
 	PROJECT_ROOT,
@@ -42,7 +42,6 @@ import { v4 as uuid } from 'uuid';
 
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
-import { WorkflowSharingService } from './workflow-sharing.service';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
@@ -51,6 +50,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { EventService } from '@/events/event.service';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { NodeTypes } from '@/node-types';
@@ -81,7 +81,6 @@ export class WorkflowService {
 		private readonly externalHooks: ExternalHooks,
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly roleService: RoleService,
-		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly projectService: ProjectService,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly eventService: EventService,
@@ -107,7 +106,6 @@ export class WorkflowService {
 		let count;
 		let workflows;
 		let workflowsAndFolders: WorkflowFolderUnionFull[] = [];
-		let sharedWorkflowIds: string[] = [];
 		let isPersonalProject = false;
 		let personalProjectOwnerId: string | null = null;
 
@@ -122,33 +120,47 @@ export class WorkflowService {
 			personalProjectOwnerId = project.creatorId;
 		}
 
+		// Prepare sharing options for the subquery
+		const sharingOptions: {
+			scopes?: Scope[];
+			projectRoles?: string[];
+			workflowRoles?: string[];
+			isPersonalProject?: boolean;
+			personalProjectOwnerId?: string;
+			onlySharedWithMe?: boolean;
+		} = {};
+
 		if (isPersonalProject && personalProjectOwnerId) {
 			if (personalProjectOwnerId !== user.id && !hasGlobalScope(user, 'workflow:read')) {
 				return { workflows: [], count: 0 };
 			}
-
-			sharedWorkflowIds =
-				await this.workflowSharingService.getOwnedWorkflowsInPersonalProject(
-					personalProjectOwnerId,
-				);
+			sharingOptions.isPersonalProject = true;
+			sharingOptions.personalProjectOwnerId = personalProjectOwnerId;
 		} else if (onlySharedWithMe) {
-			sharedWorkflowIds = await this.workflowSharingService.getSharedWithMeIds(user);
+			sharingOptions.onlySharedWithMe = true;
 		} else {
-			sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(user, {
-				scopes: requiredScopes,
-			});
+			// Get roles from scopes
+			const projectRoles = await this.roleService.rolesWithScope('project', requiredScopes);
+			const workflowRoles = await this.roleService.rolesWithScope('workflow', requiredScopes);
+			sharingOptions.scopes = requiredScopes;
+			sharingOptions.projectRoles = projectRoles;
+			sharingOptions.workflowRoles = workflowRoles;
 		}
 
+		// Use the new subquery-based repository methods
 		if (includeFolders) {
-			[workflowsAndFolders, count] = await this.workflowRepository.getWorkflowsAndFoldersWithCount(
-				sharedWorkflowIds,
-				options,
-			);
+			[workflowsAndFolders, count] =
+				await this.workflowRepository.getWorkflowsAndFoldersWithCountWithSharingSubquery(
+					user,
+					sharingOptions,
+					options,
+				);
 
 			workflows = workflowsAndFolders.filter((wf) => wf.resource === 'workflow');
 		} else {
-			({ workflows, count } = await this.workflowRepository.getManyAndCount(
-				sharedWorkflowIds,
+			({ workflows, count } = await this.workflowRepository.getManyAndCountWithSharingSubquery(
+				user,
+				sharingOptions,
 				options,
 			));
 		}
@@ -350,6 +362,19 @@ export class WorkflowService {
 
 		WorkflowHelpers.addNodeIds(workflowUpdateData);
 
+		// Strip redactionPolicy if user lacks scope and value is changing
+		if (
+			workflowUpdateData.settings?.redactionPolicy !== undefined &&
+			workflowUpdateData.settings.redactionPolicy !== workflow.settings?.redactionPolicy
+		) {
+			const canUpdate = await userHasScopes(user, ['workflow:updateRedactionSetting'], false, {
+				workflowId,
+			});
+			if (!canUpdate) {
+				delete workflowUpdateData.settings.redactionPolicy;
+			}
+		}
+
 		// Merge settings to support partial updates
 		if (workflowUpdateData.settings && workflow.settings) {
 			workflowUpdateData.settings = {
@@ -484,10 +509,6 @@ export class WorkflowService {
 		return updatedWorkflow;
 	}
 
-	/**
-	 * Private helper to add a workflow to the active workflow manager
-	 * @param rollBackOptions - Optional rollback options
-	 */
 	private async _addToActiveWorkflowManager(
 		user: User,
 		workflowId: string,
@@ -506,7 +527,6 @@ export class WorkflowService {
 				activeVersionId: null,
 				activeVersion: null,
 			};
-			const previouslyActiveId = workflow.activeVersionId;
 			await this.workflowRepository.update(workflowId, rollbackPayload);
 
 			// Also set it in the returned data
@@ -514,27 +534,10 @@ export class WorkflowService {
 			workflow.activeVersionId = rollbackPayload.activeVersionId;
 			workflow.activeVersion = rollbackPayload.activeVersion;
 
-			if (!workflow.activeVersionId) {
-				// Emit deactivation event since activation failed
-				this.eventService.emit('workflow-deactivated', {
-					user,
-					workflowId,
-					workflow,
-					publicApi,
-				});
-				assert(previouslyActiveId !== null);
-				await this.workflowPublishHistoryRepository.addRecord({
-					workflowId,
-					versionId: previouslyActiveId,
-					event: 'deactivated',
-					userId: user.id,
-				});
-			}
-			let message;
-			if (error instanceof NodeApiError) message = error.description;
-			message = message ?? (error as Error).message;
-
-			// Now return the original error for UI to display
+			const message =
+				error instanceof NodeApiError
+					? (error.description ?? error.message)
+					: (error as Error).message;
 			throw new BadRequestError(message);
 		} finally {
 			if (didPublish) {
@@ -544,6 +547,13 @@ export class WorkflowService {
 					versionId: workflow.activeVersionId,
 					event: 'activated',
 					userId: user.id,
+				});
+
+				this.eventService.emit('workflow-activated', {
+					user,
+					workflowId,
+					workflow,
+					publicApi,
 				});
 			}
 		}
@@ -625,7 +635,7 @@ export class WorkflowService {
 		}
 
 		const versionIdToActivate = options?.versionId ?? workflow.versionId;
-		const wasActive = workflow.activeVersionId !== null;
+		const previousActiveVersionId = workflow.activeVersionId;
 
 		let versionToActivate: WorkflowHistory;
 		try {
@@ -650,14 +660,29 @@ export class WorkflowService {
 
 		await this._detectWebhookConflicts(workflow, versionToActivate);
 
-		this._validateNodes(workflowId, versionToActivate.nodes);
+		this._validateNodes(workflowId, versionToActivate.nodes, versionToActivate.connections);
+		await this._validateDynamicCredentials(workflowId, versionToActivate.nodes, workflow.settings);
 		await this._validateSubWorkflowReferences(workflowId, versionToActivate.nodes);
 
-		if (wasActive) {
+		if (previousActiveVersionId) {
 			await this.activeWorkflowManager.remove(workflowId);
+
+			this.eventService.emit('workflow-deactivated', {
+				user,
+				workflowId,
+				workflow,
+				publicApi,
+				deactivatedVersionId: previousActiveVersionId,
+			});
+			await this.workflowPublishHistoryRepository.addRecord({
+				workflowId,
+				versionId: previousActiveVersionId,
+				event: 'deactivated',
+				userId: user.id,
+			});
 		}
 
-		const activationMode = wasActive ? 'update' : 'activate';
+		const activationMode = previousActiveVersionId ? 'update' : 'activate';
 
 		await this.workflowRepository.update(workflowId, {
 			activeVersionId: versionIdToActivate,
@@ -674,13 +699,6 @@ export class WorkflowService {
 		if (!workflowForActivation) {
 			throw new NotFoundError(`Workflow with ID "${workflowId}" could not be found.`);
 		}
-
-		this.eventService.emit('workflow-activated', {
-			user,
-			workflowId,
-			workflow: workflowForActivation,
-			publicApi,
-		});
 
 		await this._addToActiveWorkflowManager(
 			user,
@@ -731,7 +749,7 @@ export class WorkflowService {
 		options?: { expectedChecksum?: string; publicApi?: boolean },
 	): Promise<WorkflowEntity> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
-			'workflow:publish',
+			'workflow:unpublish',
 		]);
 
 		if (!workflow) {
@@ -762,9 +780,11 @@ export class WorkflowService {
 			updatedAt: workflow.updatedAt,
 		});
 
+		const deactivatedVersionId = workflow.activeVersionId;
+
 		await this.workflowPublishHistoryRepository.addRecord({
 			workflowId,
-			versionId: workflow.activeVersionId,
+			versionId: deactivatedVersionId,
 			event: 'deactivated',
 			userId: user.id,
 		});
@@ -779,6 +799,7 @@ export class WorkflowService {
 			workflowId,
 			workflow,
 			publicApi: options?.publicApi ?? false,
+			deactivatedVersionId,
 		});
 
 		return workflow;
@@ -1009,20 +1030,21 @@ export class WorkflowService {
 		const currentChecksum = await calculateWorkflowChecksum(dbWorkflow);
 
 		if (expectedChecksum !== currentChecksum) {
-			throw new BadRequestError(
+			throw new ConflictError(
 				'Your most recent changes may be lost, because someone else just updated this workflow. Open this workflow in a new tab to see those new updates.',
-				100,
 			);
 		}
 	}
 
-	_validateNodes(workflowId: string, nodes: INode[]) {
+	_validateNodes(workflowId: string, nodes: INode[], connections: IConnections) {
 		const nodesToValidate = nodes.reduce<INodes>((acc, node) => {
 			acc[node.name] = node;
 			return acc;
 		}, {});
+
 		const validation = this.workflowValidationService.validateForActivation(
 			nodesToValidate,
+			connections,
 			this.nodeTypes,
 		);
 
@@ -1032,6 +1054,28 @@ export class WorkflowService {
 				error: validation.error,
 			});
 			throw new WorkflowValidationError(validation.error ?? 'Workflow validation failed');
+		}
+	}
+
+	private async _validateDynamicCredentials(
+		workflowId: string,
+		nodes: INode[],
+		workflowSettings?: IWorkflowSettings,
+	) {
+		const validation = await this.workflowValidationService.validateDynamicCredentials(
+			nodes,
+			this.nodeTypes,
+			workflowSettings,
+		);
+
+		if (!validation.isValid) {
+			this.logger.warn('Workflow activation failed dynamic credentials validation', {
+				workflowId,
+				error: validation.error,
+			});
+			throw new WorkflowValidationError(
+				validation.error ?? 'Dynamic credentials validation failed',
+			);
 		}
 	}
 

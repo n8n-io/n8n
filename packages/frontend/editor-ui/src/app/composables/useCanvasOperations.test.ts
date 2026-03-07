@@ -62,6 +62,10 @@ import {
 	useWorkflowState,
 	type WorkflowState,
 } from '@/app/composables/useWorkflowState';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 import { useRouter } from 'vue-router';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
@@ -146,6 +150,7 @@ vi.mock('@/app/composables/useWorkflowState', async () => {
 const canPinNodeMock = vi.fn();
 const setDataMock = vi.fn();
 const unsetDataMock = vi.fn();
+const hasDataRef = { value: false };
 const getInputDataWithPinnedMock = vi.fn();
 
 vi.mock('@/app/composables/usePinnedData', () => {
@@ -154,6 +159,7 @@ vi.mock('@/app/composables/usePinnedData', () => {
 			canPinNode: canPinNodeMock,
 			setData: setDataMock,
 			unsetData: unsetDataMock,
+			hasData: hasDataRef,
 		})),
 	};
 });
@@ -1841,6 +1847,7 @@ describe('useCanvasOperations', () => {
 			setDataMock.mockReset();
 			unsetDataMock.mockReset();
 			getInputDataWithPinnedMock.mockReset();
+			hasDataRef.value = false;
 		});
 
 		it('should only pin pinnable nodes when mix of pinnable and non-pinnable nodes are selected', () => {
@@ -1853,9 +1860,6 @@ describe('useCanvasOperations', () => {
 
 			const nodes = [pinnableNode1, nonPinnableNode, pinnableNode2];
 			workflowsStore.getNodesByIds.mockReturnValue(nodes);
-
-			// Initially, none have pinned data
-			workflowsStore.pinDataByNodeName = vi.fn().mockReturnValue(undefined);
 
 			let checkIndex = 0;
 			const nodeOrder: string[] = [];
@@ -1893,13 +1897,8 @@ describe('useCanvasOperations', () => {
 			const nodes = [pinnableNode1, nonPinnableNode, pinnableNode2];
 			workflowsStore.getNodesByIds.mockReturnValue(nodes);
 
-			// Set some initial pinned data for pinnable nodes
-			workflowsStore.pinDataByNodeName = vi.fn().mockImplementation((nodeName: string) => {
-				if (nodeName === 'PinnableNode1' || nodeName === 'PinnableNode2') {
-					return [{ json: { pinned: 'data' } }];
-				}
-				return undefined;
-			});
+			// Indicate all pinnable nodes have pinned data
+			hasDataRef.value = true;
 
 			let checkIndex = 0;
 
@@ -1930,7 +1929,6 @@ describe('useCanvasOperations', () => {
 			const nodes = [nonPinnableNode1, nonPinnableNode2];
 			workflowsStore.getNodesByIds.mockReturnValue(nodes);
 
-			workflowsStore.pinDataByNodeName = vi.fn().mockReturnValue(undefined);
 			canPinNodeMock.mockReturnValue(false);
 
 			const { toggleNodesPinned } = useCanvasOperations();
@@ -3814,6 +3812,83 @@ describe('useCanvasOperations', () => {
 			expect(updateNodeAtIndexSpy).toHaveBeenNthCalledWith(1, 0, workflow.nodes[0]);
 			expect(updateNodeAtIndexSpy).toHaveBeenNthCalledWith(2, 1, workflow.nodes[1]);
 		});
+
+		it('should remove preview token from node type when initializing', () => {
+			const updateNodeAtIndexSpy = vi.spyOn(workflowState, 'updateNodeAtIndex');
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeWithPreview = createTestNode({
+				type: 'n8n-nodes-community.testNode-preview',
+				name: 'testNode',
+			});
+			const workflow = createTestWorkflow({
+				nodes: [nodeWithPreview],
+				connections: {},
+			});
+			workflowsStore.workflow.nodes = [nodeWithPreview];
+			const { initializeUnknownNodes } = useCanvasOperations();
+			initializeUnknownNodes(workflow.nodes);
+
+			expect(updateNodeAtIndexSpy).toHaveBeenCalledTimes(1);
+			const updatedNode = updateNodeAtIndexSpy.mock.calls[0][1];
+			expect(updatedNode.type).toBe('n8n-nodes-community.testNode');
+			expect(updatedNode.type).not.toContain('-preview');
+		});
+	});
+
+	describe('resolveNodeData', () => {
+		it('should resolve node parameters and webhooks for installed nodes', () => {
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.getIsNodeInstalled = vi.fn().mockReturnValue(true);
+
+			const nodeTypeDescription = mockNodeTypeDescription({
+				name: 'n8n-nodes-base.httpRequest',
+				webhooks: [
+					{
+						name: 'default',
+						httpMethod: 'GET',
+						path: 'test',
+						responseMode: 'onReceived',
+					},
+				],
+			});
+
+			const { addNode } = useCanvasOperations();
+			const node = addNode(
+				{
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+				nodeTypeDescription,
+			);
+
+			expect(nodeTypesStore.getIsNodeInstalled).toHaveBeenCalledWith('n8n-nodes-base.httpRequest');
+			expect(node).toBeDefined();
+		});
+
+		it('should skip resolving parameters and webhooks for non-installed nodes', () => {
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.getIsNodeInstalled = vi.fn().mockReturnValue(false);
+
+			const nodeTypeDescription = mockNodeTypeDescription({
+				name: 'n8n-nodes-community.notInstalled',
+			});
+
+			const { addNode } = useCanvasOperations();
+			const node = addNode(
+				{
+					type: 'n8n-nodes-community.notInstalled',
+					typeVersion: 1,
+					position: [100, 100],
+				},
+				nodeTypeDescription,
+			);
+
+			expect(nodeTypesStore.getIsNodeInstalled).toHaveBeenCalledWith(
+				'n8n-nodes-community.notInstalled',
+			);
+			expect(node).toBeDefined();
+		});
 	});
 
 	describe('resetWorkspace', () => {
@@ -4038,8 +4113,11 @@ describe('useCanvasOperations', () => {
 		});
 
 		it('should clear workflow pin data if execution mode is not manual', async () => {
-			const setWorkflowPinDataSpy = vi.spyOn(workflowState, 'setWorkflowPinData');
 			const workflowsStore = mockedStore(useWorkflowsStore);
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			const setPinDataSpy = vi.spyOn(workflowDocumentStore, 'setPinData');
 			const { openExecution } = useCanvasOperations();
 
 			const executionId = '123';
@@ -4057,7 +4135,7 @@ describe('useCanvasOperations', () => {
 
 			await openExecution(executionId);
 
-			expect(setWorkflowPinDataSpy).toHaveBeenCalledWith({});
+			expect(setPinDataSpy).toHaveBeenCalledWith({});
 		});
 		it('should show an error notification for failed executions', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
@@ -4770,19 +4848,12 @@ describe('useCanvasOperations', () => {
 				},
 			};
 
-			const getNewWorkflowDataAndMakeShareable = vi.spyOn(
-				workflowState,
-				'getNewWorkflowDataAndMakeShareable',
-			);
-
-			const addToWorkflowMetadataSpy = vi.spyOn(workflowState, 'addToWorkflowMetadata');
+			const getNewWorkflowData = vi.spyOn(workflowState, 'getNewWorkflowData');
 
 			const { importTemplate } = useCanvasOperations();
 
-			const templateId = 'template-id';
 			const templateName = 'template name';
 			await importTemplate({
-				id: templateId,
 				name: templateName,
 				workflow,
 			});
@@ -4800,13 +4871,7 @@ describe('useCanvasOperations', () => {
 				disabled: false,
 			});
 			expect(workflowsStore.setNodePristine).toHaveBeenCalledWith(nodeB.name, true);
-			expect(getNewWorkflowDataAndMakeShareable).toHaveBeenCalledWith(
-				templateName,
-				projectsStore.currentProjectId,
-			);
-			expect(addToWorkflowMetadataSpy).toHaveBeenCalledWith({
-				templateId,
-			});
+			expect(getNewWorkflowData).toHaveBeenCalledWith(templateName, projectsStore.currentProjectId);
 		});
 	});
 	describe('replaceNodeParameters', () => {
@@ -5450,19 +5515,13 @@ describe('useCanvasOperations', () => {
 				workflow: { nodes: [], connections: {} },
 			});
 
-			const getNewWorkflowDataAndMakeShareable = vi.spyOn(
-				workflowState,
-				'getNewWorkflowDataAndMakeShareable',
-			);
+			const getNewWorkflowData = vi.spyOn(workflowState, 'getNewWorkflowData');
 
 			const { openWorkflowTemplate } = useCanvasOperations();
 			await openWorkflowTemplate('template-id');
 
 			expect(templatesStore.getFixedWorkflowTemplate).toHaveBeenCalledWith('template-id');
-			expect(getNewWorkflowDataAndMakeShareable).toHaveBeenCalledWith(
-				'Template Name',
-				'test-project-id',
-			);
+			expect(getNewWorkflowData).toHaveBeenCalledWith('Template Name', 'test-project-id');
 
 			expect(telemetry.track).toHaveBeenCalledWith('User inserted workflow template', {
 				source: 'workflow',
@@ -5472,6 +5531,13 @@ describe('useCanvasOperations', () => {
 			expect(router.replace).toHaveBeenCalledWith({
 				name: VIEWS.NEW_WORKFLOW,
 				query: { templateId: 'template-id' },
+			});
+
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(useWorkflowsStore().workflowId),
+			);
+			expect(workflowDocumentStore.addToMeta).toHaveBeenCalledWith({
+				templateId: 'template-id',
 			});
 		});
 
@@ -5511,18 +5577,12 @@ describe('useCanvasOperations', () => {
 				meta: { templateId: 'template-id' },
 			};
 
-			const getNewWorkflowDataAndMakeShareable = vi.spyOn(
-				workflowState,
-				'getNewWorkflowDataAndMakeShareable',
-			);
+			const getNewWorkflowData = vi.spyOn(workflowState, 'getNewWorkflowData');
 
 			const { openWorkflowTemplateFromJSON } = useCanvasOperations();
 			await openWorkflowTemplateFromJSON(template);
 
-			expect(getNewWorkflowDataAndMakeShareable).toHaveBeenCalledWith(
-				'Template Name',
-				'test-project-id',
-			);
+			expect(getNewWorkflowData).toHaveBeenCalledWith('Template Name', 'test-project-id');
 
 			expect(router.replace).toHaveBeenCalledWith({
 				name: VIEWS.NEW_WORKFLOW,
@@ -5531,6 +5591,13 @@ describe('useCanvasOperations', () => {
 					projectId: 'test-project-id',
 					parentFolderId: undefined,
 				},
+			});
+
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(useWorkflowsStore().workflowId),
+			);
+			expect(workflowDocumentStore.addToMeta).toHaveBeenCalledWith({
+				templateId: 'template-id',
 			});
 		});
 

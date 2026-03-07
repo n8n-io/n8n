@@ -50,8 +50,10 @@ vi.mock('@/features/workflows/canvas/canvas.utils', () => {
 	};
 });
 
-vi.mock('./nodeCreator.utils', async () => {
+vi.mock('./nodeCreator.utils', async (importOriginal) => {
+	const actual = await importOriginal();
 	return {
+		...(actual as object),
 		prepareCommunityNodeDetailsViewStack: vi.fn(),
 	};
 });

@@ -34,6 +34,18 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 	},
 	'workflow:publish': {
 		displayName: 'Publish Workflow',
-		description: 'Allows publishing and unpublishing workflows.',
+		description: 'Allows publishing workflows.',
+	},
+	'workflow:unpublish': {
+		displayName: 'Unpublish Workflow',
+		description: 'Allows unpublishing workflows.',
+	},
+	'workflow:unshare': {
+		displayName: 'Unshare Workflow',
+		description: 'Allows removing workflow shares.',
+	},
+	'credential:unshare': {
+		displayName: 'Unshare Credential',
+		description: 'Allows removing credential shares.',
 	},
 };

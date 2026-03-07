@@ -3,7 +3,7 @@ import {
 	CreateDataTableDto,
 	UpdateDataTableDto,
 } from '@n8n/api-types';
-import { ProjectRepository } from '@n8n/db';
+import { ProjectRepository, ProjectRelationRepository } from '@n8n/db';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { Container } from '@n8n/di';
 import type express from 'express';
@@ -82,15 +82,40 @@ export = {
 
 				const { offset, limit, filter, sortBy } = payload.data;
 
-				const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
-					req.user.id,
-				);
-
 				const providedFilter = filter ?? {};
+				const { projectId: _ignoredProjectId, ...restFilter } = providedFilter;
+
+				const isGlobalOwnerOrAdmin = ['global:owner', 'global:admin'].includes(req.user.role.slug);
+
+				let finalFilter: any;
+				if (isGlobalOwnerOrAdmin) {
+					finalFilter = restFilter;
+				} else {
+					const personalProject = await Container.get(
+						ProjectRepository,
+					).getPersonalProjectForUserOrFail(req.user.id);
+
+					const projectRelations = await Container.get(ProjectRelationRepository).find({
+						where: { userId: req.user.id },
+						relations: ['project'],
+					});
+
+					const teamProjectIds = projectRelations
+						.filter((rel) => rel.project.type === 'team')
+						.map((rel) => rel.projectId);
+
+					const allAccessibleProjectIds = [personalProject.id, ...teamProjectIds];
+
+					finalFilter = {
+						...restFilter,
+						projectId: allAccessibleProjectIds,
+					};
+				}
+
 				const result = await Container.get(DataTableService).getManyAndCount({
 					skip: offset,
 					take: limit,
-					filter: { ...providedFilter, projectId: project.id },
+					filter: finalFilter,
 					sortBy,
 				});
 

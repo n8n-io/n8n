@@ -40,6 +40,7 @@ describe('processRunExecutionData', () => {
 
 	beforeEach(() => {
 		jest.resetAllMocks();
+		runHook.mockResolvedValue(undefined);
 	});
 
 	test('throws if execution-data is missing', () => {
@@ -280,6 +281,86 @@ describe('processRunExecutionData', () => {
 	});
 
 	describe('waiting tools', () => {
+		test('run() executes requested ai_tool actions when destination is an agent', async () => {
+			// ARRANGE
+			const triggerNode = createNodeData({ name: 'trigger', type: types.passThrough });
+			const toolNode = createNodeData({ name: 'tool', type: types.passThrough });
+			const toolInput = { query: 'test input' };
+
+			const agentNodeType = modifyNode(passThroughNode)
+				.return({
+					actions: [
+						{
+							actionType: 'ExecutionNodeAction',
+							nodeName: toolNode.name,
+							input: toolInput,
+							type: 'ai_tool',
+							id: 'action_1',
+							metadata: {},
+						},
+					],
+					metadata: { requestId: 'test_request' },
+				})
+				.return((response?: EngineResponse) => {
+					return [
+						[
+							{
+								json: {
+									result: 'agent completed',
+									actionResponsesCount: response?.actionResponses.length ?? 0,
+								},
+							},
+						],
+					];
+				})
+				.done();
+
+			const agentNode = createNodeData({ name: 'agent', type: 'agentNodeType' });
+			const customNodeTypes = NodeTypes({
+				...nodeTypeArguments,
+				agentNodeType: { type: agentNodeType, sourcePath: '' },
+			});
+
+			const workflow = new DirectedGraph()
+				.addNodes(triggerNode, agentNode, toolNode)
+				.addConnections(
+					{ from: triggerNode, to: agentNode, type: NodeConnectionTypes.Main },
+					{ from: toolNode, to: agentNode, type: NodeConnectionTypes.AiTool },
+				)
+				.toWorkflow({
+					name: '',
+					active: false,
+					nodeTypes: customNodeTypes,
+					settings: { executionOrder: 'v1' },
+				});
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
+
+			// ACT
+			const result = await workflowExecute.run({
+				workflow,
+				startNode: triggerNode,
+				destinationNode: { nodeName: agentNode.name, mode: 'inclusive' },
+			});
+
+			// ASSERT
+			const runData = result.data.resultData.runData;
+			expect(result.data.resultData.error).toBeUndefined();
+
+			expect(Object.keys(runData)).toEqual(
+				expect.arrayContaining([triggerNode.name, agentNode.name, toolNode.name]),
+			);
+			expect(runData[toolNode.name]).toBeDefined();
+			expect(runData[toolNode.name]).toHaveLength(1);
+			expect(runData[toolNode.name][0].inputOverride?.ai_tool?.[0]?.[0]?.json).toMatchObject(
+				toolInput,
+			);
+
+			const agentRuns = runData[agentNode.name];
+			const agentFinalOutput = agentRuns[agentRuns.length - 1].data?.main?.[0]?.[0]?.json;
+			expect(agentFinalOutput?.actionResponsesCount).toBe(1);
+		});
+
 		test('handles Request objects with actions correctly', async () => {
 			// ARRANGE
 			let response: EngineResponse | undefined;

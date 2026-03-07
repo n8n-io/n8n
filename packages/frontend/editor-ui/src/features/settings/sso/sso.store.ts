@@ -110,7 +110,8 @@ export const useSSOStore = defineStore('sso', () => {
 	const saveSamlConfig = async (config: Partial<SamlPreferences>) =>
 		await ssoApi.saveSamlConfig(rootStore.restApiContext, config);
 
-	const testSamlConfig = async () => await ssoApi.testSamlConfig(rootStore.restApiContext);
+	const testSamlConfig = async (config: Partial<SamlPreferences>) =>
+		await ssoApi.testSamlConfig(rootStore.restApiContext, config);
 
 	/**
 	 * OIDC

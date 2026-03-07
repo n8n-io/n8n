@@ -36,6 +36,7 @@ return 'blacksmith';
 | Telemetry | Source | Metrics |
 |-----------|--------|---------|
 | Build stats | `.github/scripts/send-build-stats.mjs` | Per-package build time, cache hits |
+| Docker stats | `.github/scripts/send-docker-stats.mjs` | Image size, compiled artifact size, docker build time |
 | Container stack | `packages/testing/containers/telemetry.ts` | E2E startup times |
 
 ## Secrets
@@ -44,6 +45,8 @@ return 'blacksmith';
 BUILD_STATS_WEBHOOK_URL
 BUILD_STATS_WEBHOOK_USER
 BUILD_STATS_WEBHOOK_PASSWORD  # Alphanumeric + hyphens only (no $!#@)
+
+DOCKER_STATS_WEBHOOK_URL
 ```
 
 ## Adding New Telemetry

@@ -82,6 +82,7 @@ type Props = {
 	removeFirstParameterMargin?: boolean;
 	removeLastParameterMargin?: boolean;
 	newlyAddedParameters?: Set<string>;
+	layout?: 'inline';
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -564,7 +565,7 @@ watch(
 </script>
 
 <template>
-	<div class="parameter-input-list-wrapper">
+	<div :class="['parameter-input-list-wrapper', { [$style.inlineLayout]: layout === 'inline' }]">
 		<div
 			v-for="(item, index) in parameterItems"
 			:key="item.parameter.name"
@@ -760,14 +761,13 @@ watch(
 					{{ i18n.baseText('parameterInputList.loadingError') }}
 				</N8nText>
 				<N8nIconButton
+					variant="ghost"
 					v-if="
 						hideDelete !== true &&
 						!isReadOnly &&
 						!item.parameter.isNodeSetting &&
 						!isCollectionOverhaulEnabled
 					"
-					type="tertiary"
-					text
 					size="small"
 					icon="trash-2"
 					class="icon-button"
@@ -811,14 +811,13 @@ watch(
 			/>
 			<div v-else-if="credentialsParameterIndex !== index" class="parameter-item">
 				<N8nIconButton
+					variant="ghost"
 					v-if="
 						hideDelete !== true &&
 						!isReadOnly &&
 						!item.parameter.isNodeSetting &&
 						!isCollectionOverhaulEnabled
 					"
-					type="tertiary"
-					text
 					size="small"
 					icon="trash-2"
 					class="icon-button"
@@ -833,7 +832,7 @@ watch(
 					:display-options="item.showOptions"
 					:path="item.path"
 					:is-read-only="isReadOnly || item.isDisabled"
-					:hide-label="false"
+					:hide-label="layout === 'inline'"
 					:node-values="nodeValues"
 					:show-delete="
 						!isReadOnly &&
@@ -936,6 +935,25 @@ watch(
 	> :global(.parameter-item),
 	> :global(.multi-parameter) {
 		margin-bottom: 0;
+	}
+}
+
+.inlineLayout {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+
+	.parameterContainer {
+		flex: 1;
+		min-width: 0;
+
+		&:first-child {
+			flex: 0 0 auto;
+		}
+	}
+
+	:global(.parameter-item) {
+		margin: 0;
 	}
 }
 </style>

@@ -47,6 +47,8 @@ describe('CredentialsController', () => {
 		mock(), // userRepository
 		mock(), // credentialsFinderService
 		mock(), // credentialsHelper
+		mock(), // externalSecretsConfig
+		mock(), // externalSecretsProviderAccessCheckService
 	);
 
 	// Spy on methods that need to be mocked in tests
@@ -148,6 +150,13 @@ describe('CredentialsController', () => {
 			isGlobal: false,
 			isManaged: false,
 			isResolvable: false,
+			shared: [
+				{
+					role: 'credential:owner',
+					projectId: 'WHwt9vP3keCUvmB5',
+					credentialsId: credentialId,
+				} as any,
+			],
 		});
 
 		beforeEach(() => {

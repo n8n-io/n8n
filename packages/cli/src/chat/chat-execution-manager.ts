@@ -7,10 +7,17 @@ import type {
 	INodeExecutionData,
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
-import { Workflow, BINARY_ENCODING, UnexpectedError } from 'n8n-workflow';
+import {
+	Workflow,
+	BINARY_ENCODING,
+	UnexpectedError,
+	CHAT_TOOL_NODE_TYPE,
+	NodeConnectionTypes,
+} from 'n8n-workflow';
 
 import { NotFoundError } from '../errors/response-errors/not-found.error';
 import * as WorkflowExecuteAdditionalData from '../workflow-execute-additional-data';
+import { preserveInputOverride } from '../workflow-helpers';
 import { WorkflowRunner } from '../workflow-runner';
 import type { ChatMessage } from './chat-service.types';
 import { NodeTypes } from '../node-types';
@@ -138,6 +145,17 @@ export class ChatExecutionManager {
 		runExecutionData.executionData!.nodeExecutionStack[0].data.main = result ?? [
 			[{ json: message }],
 		];
+
+		if (runExecutionData.executionData!.nodeExecutionStack[0].node.type === CHAT_TOOL_NODE_TYPE) {
+			runExecutionData.waitTill = undefined;
+			runExecutionData.executionData!.nodeExecutionStack[0].node.disabled = true;
+			runExecutionData.executionData!.nodeExecutionStack[0].node.rewireOutputLogTo =
+				NodeConnectionTypes.AiTool;
+
+			const lastNodeExecuted = runExecutionData.resultData.lastNodeExecuted as string;
+			const runDataArray = runExecutionData.resultData.runData[lastNodeExecuted];
+			if (runDataArray?.length) preserveInputOverride(runDataArray);
+		}
 
 		let project: Project | undefined = undefined;
 		try {

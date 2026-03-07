@@ -537,73 +537,43 @@ describe('WorkflowExecute', () => {
 		});
 	});
 
-	//run tests on json files from specified directory, default 'workflows'
-	//workflows must have pinned data that would be used to test output after execution
-	describe('run test workflows', () => {
-		const tests: WorkflowTestData[] = Helpers.workflowToTests(__dirname);
-
+	describe('run() destination filtering', () => {
 		const executionMode = 'manual';
-		const nodeTypes = Helpers.NodeTypes(Helpers.getNodeTypes(tests));
+		const executionOrder = 'v1';
+		const nodeTypes = Helpers.NodeTypes();
 
-		for (const testData of tests) {
-			test(testData.description, async () => {
-				const workflowInstance = new Workflow({
-					id: 'test',
-					nodes: testData.input.workflowData.nodes,
-					connections: testData.input.workflowData.connections,
-					active: false,
-					nodeTypes,
-					settings: testData.input.workflowData.settings,
-				});
+		test('includes non-main parent nodes in runNodeFilter when destination node is set', async () => {
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const agent = createNodeData({ name: 'agent' });
+			const tool = createNodeData({ name: 'tool' });
 
-				const waitPromise = createDeferredPromise<IRun>();
-				const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, agent, tool)
+				.addConnections(
+					{ from: trigger, to: agent, type: NodeConnectionTypes.Main },
+					{ from: tool, to: agent, type: NodeConnectionTypes.AiTool },
+				)
+				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder } });
 
-				const workflowExecute = new WorkflowExecute(additionalData, executionMode);
+			const workflowExecute = new WorkflowExecute(
+				Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>()),
+				executionMode,
+			);
 
-				const executionData = await workflowExecute.run({ workflow: workflowInstance });
-
-				const result = await waitPromise.promise;
-
-				// Check if the data from WorkflowExecute is identical to data received
-				// by the webhooks
-				expect(executionData).toEqual(result);
-
-				// Check if the output data of the nodes is correct
-				for (const nodeName of Object.keys(testData.output.nodeData)) {
-					if (result.data.resultData.runData[nodeName] === undefined) {
-						throw new ApplicationError('Data for node is missing', { extra: { nodeName } });
-					}
-
-					const resultData = result.data.resultData.runData[nodeName].map((nodeData) => {
-						if (nodeData.data === undefined) {
-							return null;
-						}
-						return nodeData.data.main[0]!.map((entry) => {
-							// remove pairedItem from entry if it is an error output test
-							if (testData.description.includes('error_outputs')) delete entry.pairedItem;
-							return entry;
-						});
-					});
-
-					expect(resultData).toEqual(testData.output.nodeData[nodeName]);
-				}
-
-				// Check if other data has correct value
-				expect(result.finished).toEqual(true);
-				// expect(result.data.executionData!.contextData).toEqual({}); //Fails when test workflow Includes splitInbatches
-				expect(result.data.executionData!.nodeExecutionStack).toEqual([]);
-
-				// Check if execution context was established
-				expect(result.data.executionData!.runtimeData).toBeDefined();
-				expect(result.data.executionData!.runtimeData).toHaveProperty('version', 1);
-				expect(result.data.executionData!.runtimeData).toHaveProperty('establishedAt');
-				expect(result.data.executionData!.runtimeData).toHaveProperty('source');
-				expect(result.data.executionData!.runtimeData!.source).toEqual('manual');
-				expect(typeof result.data.executionData!.runtimeData!.establishedAt).toBe('number');
-				expect(result.data.executionData!.runtimeData!.establishedAt).toBeGreaterThan(0);
+			await workflowExecute.run({
+				workflow,
+				startNode: trigger,
+				destinationNode: { nodeName: agent.name, mode: 'inclusive' },
 			});
-		}
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const runNodeFilter: string[] | undefined = (workflowExecute as any).runExecutionData
+				.startData?.runNodeFilter;
+			expect(runNodeFilter).toBeDefined();
+			expect(runNodeFilter).toContain(trigger.name);
+			expect(runNodeFilter).toContain(agent.name);
+			expect(runNodeFilter).toContain(tool.name);
+		});
 	});
 
 	describe('runPartialWorkflow2', () => {

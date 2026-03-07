@@ -157,21 +157,49 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return {data:[\n  {id: 1},\n  {id: 2},\n  {id: 3},\n  {id: 4},\n]};"
+				"data": {
+					"data": [
+						{
+							"id": 1
+						},
+						{
+							"id": 2
+						},
+						{
+							"id": 3
+						},
+						{
+							"id": 4
+						}
+					]
+				}
 			},
 			"id": "b97e2dd3-8934-4f61-a217-e4251c3c018f",
 			"name": "Code2",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [600, 500]
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  {id: 1},\n  {id: 2},\n  {id: 3},\n  {id: 4},\n];"
+				"data": [
+					{
+						"id": 1
+					},
+					{
+						"id": 2
+					},
+					{
+						"id": 3
+					},
+					{
+						"id": 4
+					}
+				]
 			},
 			"id": "cc63d7e0-0ecb-4aa8-ae15-69c6b32ce6d9",
 			"name": "Code",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [660, 1260]
 		},

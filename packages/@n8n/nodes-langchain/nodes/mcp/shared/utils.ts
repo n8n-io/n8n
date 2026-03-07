@@ -11,7 +11,7 @@ import type {
 } from 'n8n-workflow';
 import { createResultError, createResultOk, NodeOperationError } from 'n8n-workflow';
 
-import { proxyFetch } from '@utils/httpProxyAgent';
+import { proxyFetch } from '@n8n/ai-utilities';
 
 import type { McpAuthenticationOption, McpServerTransport, McpTool } from './types';
 

@@ -35,6 +35,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'workflow-activated': (event) => this.workflowActivated(event),
 			'workflow-deactivated': (event) => this.workflowDeactivated(event),
 			'workflow-saved': (event) => this.workflowSaved(event),
+			'workflow-version-updated': (event) => this.workflowVersionUpdated(event),
 			'workflow-pre-execute': (event) => this.workflowPreExecute(event),
 			'workflow-post-execute': (event) => this.workflowPostExecute(event),
 			'workflow-executed': (event) => this.workflowExecuted(event),
@@ -65,6 +66,15 @@ export class LogStreamingEventRelay extends EventRelay {
 			'external-secrets-provider-settings-saved': (event) =>
 				this.externalSecretsProviderSettingsSaved(event),
 			'external-secrets-provider-reloaded': (event) => this.externalSecretsProviderReloaded(event),
+			'external-secrets-connection-created': (event) =>
+				this.externalSecretsConnectionCreated(event),
+			'external-secrets-connection-updated': (event) =>
+				this.externalSecretsConnectionUpdated(event),
+			'external-secrets-connection-deleted': (event) =>
+				this.externalSecretsConnectionDeleted(event),
+			'external-secrets-connection-tested': (event) => this.externalSecretsConnectionTested(event),
+			'external-secrets-connection-reloaded': (event) =>
+				this.externalSecretsConnectionReloaded(event),
 			'community-package-installed': (event) => this.communityPackageInstalled(event),
 			'community-package-updated': (event) => this.communityPackageUpdated(event),
 			'community-package-deleted': (event) => this.communityPackageDeleted(event),
@@ -72,6 +82,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'execution-started-during-bootup': (event) => this.executionStartedDuringBootup(event),
 			'execution-cancelled': (event) => this.executionCancelled(event),
 			'execution-deleted': (event) => this.executionDeleted(event),
+			'execution-data-revealed': (event) => this.executionDataRevealed(event),
 			'ai-messages-retrieved-from-memory': (event) => this.aiMessagesRetrievedFromMemory(event),
 			'ai-message-added-to-memory': (event) => this.aiMessageAddedToMemory(event),
 			'ai-output-parsed': (event) => this.aiOutputParsed(event),
@@ -151,6 +162,7 @@ export class LogStreamingEventRelay extends EventRelay {
 		user,
 		workflowId,
 		workflow,
+		deactivatedVersionId,
 	}: RelayEventMap['workflow-deactivated']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.workflow.deactivated',
@@ -158,7 +170,7 @@ export class LogStreamingEventRelay extends EventRelay {
 				...user,
 				workflowId,
 				workflowName: workflow.name,
-				activeVersionId: workflow.activeVersionId,
+				deactivatedVersionId,
 			},
 		});
 	}
@@ -176,7 +188,29 @@ export class LogStreamingEventRelay extends EventRelay {
 		});
 	}
 
-	private workflowPreExecute({ data, executionId }: RelayEventMap['workflow-pre-execute']) {
+	@Redactable()
+	private workflowVersionUpdated({
+		user,
+		workflowId,
+		workflowName,
+		versionId,
+		versionName,
+		versionDescription,
+	}: RelayEventMap['workflow-version-updated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.workflow.version.updated',
+			payload: {
+				...user,
+				workflowId,
+				workflowName,
+				versionId,
+				...(versionName !== undefined && { versionName }),
+				...(versionDescription !== undefined && { versionDescription }),
+			},
+		});
+	}
+
+	private workflowPreExecute({ data, executionId, mode }: RelayEventMap['workflow-pre-execute']) {
 		const payload =
 			'executionData' in data
 				? {
@@ -184,6 +218,7 @@ export class LogStreamingEventRelay extends EventRelay {
 						userId: data.userId,
 						workflowId: data.workflowData.id,
 						isManual: data.executionMode === 'manual',
+						mode,
 						workflowName: data.workflowData.name,
 					}
 				: {
@@ -191,6 +226,7 @@ export class LogStreamingEventRelay extends EventRelay {
 						userId: undefined,
 						workflowId: (data as IWorkflowBase).id,
 						isManual: false,
+						mode,
 						workflowName: (data as IWorkflowBase).name,
 					};
 
@@ -208,6 +244,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			executionId,
 			success: !!runData?.finished, // despite the `success` name, this reports `finished` state
 			isManual: runData?.mode === 'manual',
+			mode: runData?.mode,
 			workflowId: workflow.id,
 			workflowName: workflow.name,
 		};
@@ -578,6 +615,51 @@ export class LogStreamingEventRelay extends EventRelay {
 		});
 	}
 
+	private externalSecretsConnectionCreated(
+		payload: RelayEventMap['external-secrets-connection-created'],
+	) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.external-secrets.connection.created',
+			payload,
+		});
+	}
+
+	private externalSecretsConnectionUpdated(
+		payload: RelayEventMap['external-secrets-connection-updated'],
+	) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.external-secrets.connection.updated',
+			payload,
+		});
+	}
+
+	private externalSecretsConnectionDeleted(
+		payload: RelayEventMap['external-secrets-connection-deleted'],
+	) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.external-secrets.connection.deleted',
+			payload,
+		});
+	}
+
+	private externalSecretsConnectionTested(
+		payload: RelayEventMap['external-secrets-connection-tested'],
+	) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.external-secrets.connection.tested',
+			payload,
+		});
+	}
+
+	private externalSecretsConnectionReloaded(
+		payload: RelayEventMap['external-secrets-connection-reloaded'],
+	) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.external-secrets.connection.reloaded',
+			payload,
+		});
+	}
+
 	// #endregion
 
 	// #region Community package
@@ -659,6 +741,21 @@ export class LogStreamingEventRelay extends EventRelay {
 				executionIds,
 				...(deleteBefore && { deleteBefore: deleteBefore.toISOString() }),
 			},
+		});
+	}
+
+	@Redactable()
+	private executionDataRevealed({
+		user,
+		executionId,
+		workflowId,
+		ipAddress,
+		userAgent,
+		redactionPolicy,
+	}: RelayEventMap['execution-data-revealed']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.execution.data.revealed',
+			payload: { ...user, executionId, workflowId, ipAddress, userAgent, redactionPolicy },
 		});
 	}
 

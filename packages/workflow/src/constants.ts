@@ -48,10 +48,7 @@ export const MYSQL_NODE_TYPE = 'n8n-nodes-base.mySql';
 export const MICROSOFT_AGENT365_TRIGGER_NODE_TYPE =
 	'@n8n/n8n-nodes-langchain.microsoftAgent365Trigger';
 export const SCHEDULE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.scheduleTrigger';
-
-// Chat hub (search) tools
-export const JINA_AI_TOOL_NODE_TYPE = 'n8n-nodes-base.jinaAiTool';
-export const SERP_API_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolSerpApi';
+export const DATA_TABLE_TOOL_NODE_TYPE = 'n8n-nodes-base.dataTableTool';
 
 export const STARTING_NODE_TYPES = [
 	MANUAL_TRIGGER_NODE_TYPE,
@@ -106,6 +103,18 @@ export const MEMORY_BUFFER_WINDOW_NODE_TYPE = '@n8n/n8n-nodes-langchain.memoryBu
 export const GUARDRAILS_NODE_TYPE = '@n8n/n8n-nodes-langchain.guardrails';
 export const MCP_CLIENT_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpClientTool';
 export const MCP_CLIENT_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpClient';
+export const ANTHROPIC_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.anthropic';
+export const OLLAMA_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.ollama';
+export const GOOGLE_GEMINI_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.googleGemini';
+
+export const AI_VENDOR_NODE_TYPES = [
+	OPENAI_LANGCHAIN_NODE_TYPE,
+	ANTHROPIC_LANGCHAIN_NODE_TYPE,
+	OLLAMA_LANGCHAIN_NODE_TYPE,
+	GOOGLE_GEMINI_LANGCHAIN_NODE_TYPE,
+];
+
+export const LANGCHAIN_LM_NODE_TYPE_PREFIX = '@n8n/n8n-nodes-langchain.lm';
 
 export const LANGCHAIN_CUSTOM_TOOLS = [
 	CODE_TOOL_LANGCHAIN_NODE_TYPE,

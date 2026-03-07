@@ -453,6 +453,7 @@ const onSelect = (action: string) => {
 							<N8nButton
 								:data-test-id="`add-resource-${selectedMainButtonType}`"
 								v-bind="mainButtonConfig"
+								size="medium"
 								@click="onSelect(selectedMainButtonType)"
 							/>
 						</ProjectCreateResource>

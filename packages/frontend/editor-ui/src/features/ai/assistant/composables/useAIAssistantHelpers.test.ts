@@ -775,9 +775,145 @@ describe('Simplify assistant payloads', () => {
 		expect(simplifiedResultData.runData.TestNode[0].inputOverride).toBeUndefined();
 		expect(simplifiedResultData.runData.TestNode[1].inputOverride).toBeUndefined();
 	});
+
+	it('simplifyResultData: Should keep full error when removeParameterValues is true', () => {
+		const executionData: IRunExecutionData['resultData'] = {
+			runData: {},
+			error: {
+				name: 'NodeOperationError',
+				message: 'Something went wrong',
+				stack: 'Error: Something went wrong\n    at someFunction',
+				node: {
+					id: 'node1',
+					name: 'Test Node',
+					type: 'test.node',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: { sensitiveData: 'secret' },
+				},
+			} as unknown as IRunExecutionData['resultData']['error'],
+			lastNodeExecuted: 'Test Node',
+			metadata: { key: 'value' },
+		};
+
+		const simplifiedResultData = aiAssistantHelpers.simplifyResultData(executionData, {
+			removeParameterValues: true,
+		});
+
+		// Full error should be present for debugging context
+		expect(simplifiedResultData.error).toBeDefined();
+		expect(simplifiedResultData.error?.name).toBe('NodeOperationError');
+		expect(simplifiedResultData.error?.message).toBe('Something went wrong');
+		expect((simplifiedResultData.error as unknown as { node?: unknown })?.node).toBeDefined();
+
+		// Metadata and lastNodeExecuted should still be present
+		expect(simplifiedResultData.lastNodeExecuted).toBe('Test Node');
+		expect(simplifiedResultData.metadata).toEqual({ key: 'value' });
+	});
+
+	it('simplifyResultData: Should remove inputOverride from all task data when removeParameterValues is true', () => {
+		const smallInput = createInputOverride({ data: 'small' });
+		const executionData: IRunExecutionData['resultData'] = {
+			runData: {
+				TestNode: [
+					{
+						hints: [],
+						startTime: 1732882780588,
+						executionIndex: 0,
+						executionTime: 4,
+						source: [],
+						executionStatus: 'success',
+						inputOverride: smallInput,
+						data: {
+							main: [[{ json: {} }]],
+						},
+					},
+				],
+			},
+			pinData: {},
+		};
+
+		const simplifiedResultData = aiAssistantHelpers.simplifyResultData(executionData, {
+			removeParameterValues: true,
+		});
+
+		// inputOverride should be removed regardless of size when removeParameterValues is true
+		expect(simplifiedResultData.runData.TestNode[0].inputOverride).toBeUndefined();
+		// But timing/status should still be present
+		expect(simplifiedResultData.runData.TestNode[0].startTime).toBe(1732882780588);
+		expect(simplifiedResultData.runData.TestNode[0].executionStatus).toBe('success');
+	});
+
+	it('simplifyResultData: Should keep full error in task data when removeParameterValues is true', () => {
+		const executionData: IRunExecutionData['resultData'] = {
+			runData: {
+				TestNode: [
+					{
+						hints: [],
+						startTime: 1732882780588,
+						executionIndex: 0,
+						executionTime: 4,
+						source: [],
+						executionStatus: 'error',
+						error: {
+							name: 'NodeApiError',
+							message: 'API call failed',
+							stack: 'Error: API call failed\n    at apiCall',
+							httpCode: '401',
+							description: 'Unauthorized',
+						} as unknown as IRunExecutionData['resultData']['runData'][string][number]['error'],
+						data: {
+							main: [[{ json: {} }]],
+						},
+					},
+				],
+			},
+			pinData: {},
+		};
+
+		const simplifiedResultData = aiAssistantHelpers.simplifyResultData(executionData, {
+			removeParameterValues: true,
+		});
+
+		// Full error should be preserved for debugging context
+		const taskError = simplifiedResultData.runData.TestNode[0].error;
+		expect(taskError).toBeDefined();
+		expect(taskError?.name).toBe('NodeApiError');
+		expect(taskError?.message).toBe('API call failed');
+		expect((taskError as unknown as { httpCode?: string })?.httpCode).toBe('401');
+		expect((taskError as unknown as { description?: string })?.description).toBe('Unauthorized');
+	});
+
+	it('simplifyResultData: Should keep full error when removeParameterValues is false', () => {
+		const executionData: IRunExecutionData['resultData'] = {
+			runData: {},
+			error: {
+				name: 'NodeOperationError',
+				message: 'Something went wrong',
+				stack: 'Error: Something went wrong\n    at someFunction',
+				node: {
+					id: 'node1',
+					name: 'Test Node',
+					type: 'test.node',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: { sensitiveData: 'secret' },
+				},
+			} as unknown as IRunExecutionData['resultData']['error'],
+		};
+
+		const simplifiedResultData = aiAssistantHelpers.simplifyResultData(executionData, {
+			removeParameterValues: false,
+		});
+
+		// Full error should be present
+		expect(simplifiedResultData.error).toBeDefined();
+		expect(simplifiedResultData.error?.name).toBe('NodeOperationError');
+		expect((simplifiedResultData.error as unknown as { node?: unknown })?.node).toBeDefined();
+	});
 });
 
-describe('processNodeForAssistant - trimParameterValues', () => {
+describe('processNodeForAssistant - excludeParameterValues', () => {
 	let aiAssistantHelpers: ReturnType<typeof useAIAssistantHelpers>;
 
 	beforeEach(() => {
@@ -817,7 +953,7 @@ describe('processNodeForAssistant - trimParameterValues', () => {
 		};
 
 		const processed = await aiAssistantHelpers.processNodeForAssistant(node, [], {
-			trimParameterValues: true,
+			excludeParameterValues: true,
 		});
 
 		expect(processed.parameters).toEqual({
@@ -914,7 +1050,7 @@ describe('processNodeForAssistant - trimParameterValues', () => {
 		};
 
 		const processed = await aiAssistantHelpers.processNodeForAssistant(node, [], {
-			trimParameterValues: true,
+			excludeParameterValues: true,
 		});
 
 		expect(processed.parameters).toEqual({
@@ -1254,6 +1390,7 @@ describe('extractExpressionsFromWorkflow', () => {
 			expression: '={{ "hello world" }}',
 			resolvedValue: 'hello world',
 			nodeType: 'n8n-nodes-base.httpRequest',
+			parameterPath: 'url',
 		});
 	});
 
@@ -1811,5 +1948,121 @@ describe('extractExpressionsFromWorkflow', () => {
 		expect(result['Executed Node 2']).toBeDefined();
 		expect(result['Not Executed']).toBeUndefined();
 		expect(Object.keys(result)).toHaveLength(2);
+	});
+
+	it('Should include parameterPath for simple parameters', async () => {
+		const workflow: IWorkflowDb = {
+			...testWorkflow,
+			nodes: [
+				{
+					parameters: {
+						url: '={{ "hello world" }}',
+					},
+					id: 'node1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					position: [0, 0],
+					typeVersion: 1,
+				},
+			],
+		};
+
+		const result = await aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		expect(result['HTTP Request']).toBeDefined();
+		expect(result['HTTP Request'][0]).toEqual({
+			expression: '={{ "hello world" }}',
+			resolvedValue: 'hello world',
+			nodeType: 'n8n-nodes-base.httpRequest',
+			parameterPath: 'url',
+		});
+	});
+
+	it('Should include parameterPath for nested object parameters', async () => {
+		const workflow: IWorkflowDb = {
+			...testWorkflow,
+			nodes: [
+				{
+					parameters: {
+						headers: {
+							authorization: '={{ "token" }}',
+						},
+					},
+					id: 'node1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					position: [0, 0],
+					typeVersion: 1,
+				},
+			],
+		};
+
+		const result = await aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		expect(result['HTTP Request']).toBeDefined();
+		expect(result['HTTP Request'][0].parameterPath).toBe('headers.authorization');
+	});
+
+	it('Should include parameterPath for array parameters', async () => {
+		const workflow: IWorkflowDb = {
+			...testWorkflow,
+			nodes: [
+				{
+					parameters: {
+						assignments: {
+							assignments: [
+								{
+									id: '1',
+									name: 'field1',
+									value: '={{ "value1" }}',
+									type: 'string',
+								},
+								{
+									id: '2',
+									name: 'field2',
+									value: '={{ "value2" }}',
+									type: 'string',
+								},
+							],
+						},
+					},
+					id: 'node1',
+					name: 'Edit Fields',
+					type: 'n8n-nodes-base.set',
+					position: [0, 0],
+					typeVersion: 1,
+				},
+			],
+		};
+
+		const result = await aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		expect(result['Edit Fields']).toBeDefined();
+		expect(result['Edit Fields'].length).toBe(2);
+		expect(result['Edit Fields'][0].parameterPath).toBe('assignments.assignments[0].value');
+		expect(result['Edit Fields'][1].parameterPath).toBe('assignments.assignments[1].value');
+	});
+
+	it('Should include parameterPath for resource locator values', async () => {
+		const workflow: IWorkflowDb = {
+			...testWorkflow,
+			nodes: [
+				{
+					parameters: {
+						documentId: {
+							__rl: true,
+							value: '={{ "doc-id" }}',
+							mode: 'id',
+						},
+					},
+					id: 'node1',
+					name: 'Google Sheets',
+					type: 'n8n-nodes-base.googleSheets',
+					position: [0, 0],
+					typeVersion: 1,
+				},
+			],
+		};
+
+		const result = await aiAssistantHelpers.extractExpressionsFromWorkflow(workflow);
+		expect(result['Google Sheets']).toBeDefined();
+		expect(result['Google Sheets'][0].parameterPath).toBe('documentId.value');
 	});
 });

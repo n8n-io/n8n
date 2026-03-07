@@ -144,7 +144,7 @@ onBeforeUnmount(() => {
 		<N8nResizeWrapper
 			:width="focusPanelWidth"
 			:supported-directions="['left']"
-			:min-width="300"
+			:min-width="isSetupPanelEnabled ? 420 : 300"
 			:max-width="experimentalNdvStore.isNdvInFocusPanelEnabled ? undefined : 1000"
 			:grid-size="8"
 			:style="{ width: `${focusPanelWidth}px` }"
@@ -154,7 +154,7 @@ onBeforeUnmount(() => {
 				<div v-if="isSetupPanelEnabled">
 					<FocusSidebarTabs v-model="selectedTab" :tab-labels="labelOverrides" />
 				</div>
-				<div v-if="showSetupPanel" :class="$style.content">
+				<div v-if="showSetupPanel" :class="$style['setup-panel-wrapper']">
 					<SetupPanel />
 				</div>
 				<FocusPanel
@@ -186,10 +186,10 @@ onBeforeUnmount(() => {
 	height: 100%;
 }
 
-.content {
+.setup-panel-wrapper {
 	display: flex;
 	flex-direction: column;
-	height: 100%;
+	height: calc(100% - 36px);
 	width: 100%;
 }
 </style>

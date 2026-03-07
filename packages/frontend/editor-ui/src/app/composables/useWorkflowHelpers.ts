@@ -47,6 +47,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { getSourceItems } from '@/app/utils/pairedItemUtils';
+import * as workflowHistoryApi from '@n8n/rest-api-client/api/workflowHistory';
 import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/app/utils/credentialOnlyNodes';
 import { convertWorkflowTagsToIds } from '@/app/utils/workflowUtils';
 import { useI18n } from '@n8n/i18n';
@@ -95,6 +96,9 @@ export async function resolveParameter<T = IDataObject>(
 	}
 
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = workflowsStore.workflowId
+		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+		: undefined;
 
 	return await resolveParameterImpl(
 		parameter,
@@ -103,7 +107,7 @@ export async function resolveParameter<T = IDataObject>(
 		useEnvironmentsStore().variablesAsObject,
 		useNDVStore().activeNode,
 		workflowsStore.workflowExecutionData,
-		workflowsStore.pinnedWorkflowData,
+		workflowDocumentStore?.getPinDataSnapshot(),
 		opts,
 	);
 }
@@ -299,13 +303,7 @@ function resolveParameterImpl<T = IDataObject>(
 export async function resolveRequiredParameters(
 	currentParameter: INodeProperties,
 	parameters: INodeParameters,
-	opts: {
-		connections?: IConnections;
-		targetItem?: TargetItem;
-		inputNodeName?: string;
-		inputRunIndex?: number;
-		inputBranchIndex?: number;
-	} = {},
+	opts: ResolveParameterOptions | ExpressionLocalResolveContext = {},
 ): Promise<IDataObject | null> {
 	const loadOptionsDependsOn = new Set(currentParameter?.typeOptions?.loadOptionsDependsOn ?? []);
 
@@ -420,6 +418,9 @@ export function executeData(
 	parentRunIndex?: number,
 ): IExecuteData {
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = workflowsStore.workflowId
+		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+		: undefined;
 
 	return executeDataImpl(
 		connections,
@@ -427,7 +428,7 @@ export function executeData(
 		currentNode,
 		inputName,
 		runIndex,
-		workflowsStore.pinnedWorkflowData,
+		workflowDocumentStore?.getPinDataSnapshot(),
 		workflowsStore.getWorkflowRunData,
 		parentRunIndex,
 	);
@@ -590,16 +591,20 @@ export function useWorkflowHelpers() {
 			nodes.push(nodeData);
 		}
 
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+
 		const data: WorkflowData = {
 			name: workflowsStore.workflowName,
 			nodes,
-			pinData: workflowsStore.pinnedWorkflowData,
+			pinData: workflowDocumentStore.getPinDataSnapshot(),
 			connections: workflowConnections,
-			active: workflowsStore.isWorkflowActive,
-			settings: workflowsStore.workflow.settings,
-			tags: workflowsStore.workflowTags,
+			active: workflowDocumentStore.active,
+			settings: workflowDocumentStore.settings,
+			tags: [...workflowDocumentStore.tags],
 			versionId: workflowsStore.workflow.versionId,
-			meta: workflowsStore.workflow.meta,
+			meta: workflowDocumentStore.meta,
 		};
 
 		const workflowId = workflowsStore.workflowId;
@@ -867,14 +872,23 @@ export function useWorkflowHelpers() {
 		}
 
 		if (isCurrentWorkflow) {
-			workflowState.setActive(workflow.activeVersionId);
 			uiStore.markStateClean();
 		}
 
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+
 		if (workflow.activeVersion) {
 			workflowsStore.setWorkflowActive(workflowId, workflow.activeVersion, isCurrentWorkflow);
+			workflowDocumentStore.setActiveState({
+				activeVersionId: workflow.activeVersion.versionId,
+				activeVersion: workflow.activeVersion,
+			});
 		} else {
 			workflowsStore.setWorkflowInactive(workflowId);
+			workflowDocumentStore.setActiveState({
+				activeVersionId: null,
+				activeVersion: null,
+			});
 		}
 	}
 
@@ -956,26 +970,38 @@ export function useWorkflowHelpers() {
 	async function initState(workflowData: IWorkflowDb, overrideWorkflowState?: WorkflowState) {
 		const ws = overrideWorkflowState ?? workflowState;
 		workflowsListStore.addWorkflow(workflowData);
-		ws.setActive(workflowData.activeVersionId);
-		workflowsStore.setIsArchived(workflowData.isArchived);
 		workflowsStore.setDescription(workflowData.description);
 		ws.setWorkflowId(workflowData.id);
 		ws.setWorkflowName({
 			newName: workflowData.name,
 			setStateDirty: uiStore.stateIsDirty,
 		});
-		ws.setWorkflowSettings(workflowData.settings ?? {});
-		ws.setWorkflowPinData(workflowData.pinData ?? {});
-		workflowsStore.setWorkflowVersionId(workflowData.versionId, workflowData.checksum);
-		ws.setWorkflowMetadata(workflowData.meta);
-		ws.setWorkflowScopes(workflowData.scopes);
+		workflowsStore.setWorkflowVersionData({
+			versionId: workflowData.versionId,
+			name: null,
+			description: null,
+		});
 
 		if ('activeVersion' in workflowData) {
 			workflowsStore.setWorkflowActiveVersion(workflowData.activeVersion ?? null);
 		}
 
-		if (workflowData.usedCredentials) {
-			workflowsStore.setUsedCredentials(workflowData.usedCredentials);
+		// Fetch current version details if versionId exists
+		if (workflowData.versionId) {
+			try {
+				const versionData = await workflowHistoryApi.getWorkflowVersion(
+					rootStore.restApiContext,
+					workflowData.id,
+					workflowData.versionId,
+				);
+				workflowsStore.setWorkflowVersionData({
+					versionId: versionData.versionId,
+					name: versionData.name,
+					description: versionData.description,
+				});
+			} catch {
+				// Do nothing
+			}
 		}
 
 		if (workflowData.sharedWithProjects) {
@@ -988,10 +1014,33 @@ export function useWorkflowHelpers() {
 		const tags = (workflowData.tags ?? []) as ITag[];
 		const tagIds = convertWorkflowTagsToIds(tags);
 
-		// Initialize workflowDocumentStore with tags (single source of truth)
-		const workflowDocumentId = createWorkflowDocumentId(workflowData.id);
-		const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowData.id),
+		);
+
+		// Sync document store settings → workflowObject (runtime Workflow instance)
+		workflowDocumentStore.onSettingsChange(({ payload }) => {
+			workflowsStore.workflowObject.setSettings(payload.settings);
+		});
+
 		workflowDocumentStore.setTags(tagIds);
+		workflowDocumentStore.setActiveState({
+			activeVersionId: workflowData.activeVersionId,
+			activeVersion: workflowData.activeVersion ?? null,
+		});
+		workflowDocumentStore.setSettings(workflowData.settings ?? {});
+		workflowDocumentStore.setPinData(workflowData.pinData ?? {});
+		workflowDocumentStore.setCreatedAt(workflowData.createdAt);
+		workflowDocumentStore.setUpdatedAt(workflowData.updatedAt);
+		workflowDocumentStore.setHomeProject(workflowData.homeProject ?? null);
+		if (workflowData.checksum) {
+			workflowDocumentStore.setChecksum(workflowData.checksum);
+		}
+		workflowDocumentStore.setIsArchived(workflowData.isArchived);
+		workflowDocumentStore.setUsedCredentials(workflowData.usedCredentials ?? []);
+		workflowDocumentStore.setMeta(workflowData.meta);
+		workflowDocumentStore.setParentFolder(workflowData.parentFolder ?? null);
+		workflowDocumentStore.setScopes(workflowData.scopes ?? []);
 		tagsStore.upsertTags(tags);
 
 		return { workflowDocumentStore };

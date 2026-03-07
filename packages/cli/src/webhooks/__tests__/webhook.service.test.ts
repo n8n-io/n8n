@@ -1,7 +1,13 @@
 import { WebhookEntity } from '@n8n/db';
 import type { WebhookRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
-import type { INode, INodeType, IWebhookData, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import type {
+	INode,
+	INodeProperties,
+	INodeType,
+	IWebhookData,
+	IWorkflowExecuteAdditionalData,
+} from 'n8n-workflow';
 import { Workflow } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -163,14 +169,6 @@ describe('WebhookService', () => {
 				},
 			} as unknown as INode;
 
-			const workflow = new Workflow({
-				id: 'test-workflow',
-				nodes: [node1, node2],
-				connections: {},
-				active: true,
-				nodeTypes,
-			});
-
 			const nodeType = {
 				description: {
 					webhooks: [
@@ -182,10 +180,19 @@ describe('WebhookService', () => {
 							restartWebhook: false,
 						},
 					],
+					properties: [] as INodeProperties[],
 				},
 			} as INodeType;
 
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+
+			const workflow = new Workflow({
+				id: 'test-workflow',
+				nodes: [node1, node2],
+				connections: {},
+				active: true,
+				nodeTypes,
+			});
 
 			webhookRepository.find.mockResolvedValue(mockWebhooks);
 			webhookRepository.findBy.mockResolvedValue([]);
@@ -195,6 +202,70 @@ describe('WebhookService', () => {
 			const conflicts = await webhookService.findWebhookConflicts(workflow, additionalData);
 
 			expect(conflicts).toHaveLength(1);
+		});
+
+		test('should ignore restarting webhooks (wait forms) in conflict checks', async () => {
+			const node1 = {
+				id: '1',
+				webhookId: 'webhook1',
+				name: 'Webhook1',
+				type: 'n8n-nodes-base.wait',
+				disabled: false,
+				parameters: {
+					resume: 'webhook',
+					options: {
+						webhookSuffix: 'same-suffix',
+					},
+				},
+			} as unknown as INode;
+
+			const node2 = {
+				id: '2',
+				webhookId: 'webhook2',
+				name: 'Webhook2',
+				type: 'n8n-nodes-base.wait',
+				disabled: false,
+				parameters: {
+					resume: 'webhook',
+					options: {
+						webhookSuffix: 'same-suffix',
+					},
+				},
+			} as unknown as INode;
+
+			const nodeType = {
+				description: {
+					webhooks: [
+						{
+							name: 'default',
+							httpMethod: 'GET',
+							path: '/webhook',
+							isFullPath: true,
+							restartWebhook: true,
+						},
+					],
+					properties: [] as INodeProperties[],
+				},
+			} as INodeType;
+
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+
+			const workflow = new Workflow({
+				id: 'test-workflow',
+				nodes: [node1, node2],
+				connections: {},
+				active: true,
+				nodeTypes,
+			});
+
+			webhookRepository.find.mockResolvedValue([]);
+			webhookRepository.findBy.mockResolvedValue([]);
+
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
+
+			const conflicts = await webhookService.findWebhookConflicts(workflow, additionalData);
+
+			expect(conflicts).toHaveLength(0);
 		});
 	});
 

@@ -8,9 +8,14 @@ on:
         required: false
         type: string
         default: ''
+      playwright-only:
+        description: 'Only Playwright files changed — run impacted tests only'
+        required: false
+        type: boolean
+        default: false
 
 env:
-  DOCKER_IMAGE: ghcr.io/${{ github.repository }}:pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
+  DOCKER_IMAGE: ghcr.io/${{ github.repository }}:ci-${{ github.run_id }}
 
 jobs:
   prepare:
@@ -22,6 +27,7 @@ jobs:
       contents: read
     outputs:
       matrix: ${{ steps.generate-matrix.outputs.matrix }}
+      skip-tests: ${{ steps.generate-matrix.outputs.skip-tests }}
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -44,12 +50,32 @@ jobs:
         env:
           INCLUDE_TEST_CONTROLLER: 'true'
           IMAGE_BASE_NAME: ghcr.io/${{ github.repository }}
-          IMAGE_TAG: pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
+          IMAGE_TAG: ci-${{ github.run_id }}
           RUNNERS_IMAGE_BASE_NAME: ghcr.io/${{ github.repository_owner }}/runners
+          BUILD_STATS_WEBHOOK_URL: ${{ secrets.BUILD_STATS_WEBHOOK_URL }}
+          BUILD_STATS_WEBHOOK_USER: ${{ secrets.BUILD_STATS_WEBHOOK_USER }}
+          BUILD_STATS_WEBHOOK_PASSWORD: ${{ secrets.BUILD_STATS_WEBHOOK_PASSWORD }}
+          DOCKER_STATS_WEBHOOK_URL: ${{ secrets.DOCKER_STATS_WEBHOOK_URL }}
+
+      - name: Get changed files for impact analysis
+        if: ${{ inputs.playwright-only }}
+        id: changed-files
+        run: |
+          git fetch --depth=1 origin ${{ github.event.pull_request.base.ref || 'master' }}
+          echo "list=$(git diff --name-only FETCH_HEAD HEAD | tr '\n' ',' | sed 's/,$//')" >> "$GITHUB_OUTPUT"
 
       - name: Generate shard matrix
         id: generate-matrix
-        run: echo "matrix=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix 16 --orchestrate)" >> "$GITHUB_OUTPUT"
+        env:
+          CHANGED_FILES: ${{ steps.changed-files.outputs.list }}
+        run: |
+          ARGS=(--matrix 16 --orchestrate)
+          if [[ "${{ inputs.playwright-only }}" == "true" ]]; then
+            ARGS+=(--impact "--files=$CHANGED_FILES")
+          fi
+          MATRIX=$(node packages/testing/playwright/scripts/distribute-tests.mjs "${ARGS[@]}")
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+          echo "skip-tests=$(node -e "process.stdout.write(JSON.parse(process.argv[1])[0]?.skip === true ? 'true' : 'false')" "$MATRIX")" >> "$GITHUB_OUTPUT"
 
   sqlite-sanity:
     needs: [prepare]
@@ -59,7 +85,7 @@ jobs:
     with:
       branch: ${{ inputs.branch }}
       test-mode: docker-pull
-      docker-image: ghcr.io/${{ github.repository }}:pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
+      docker-image: ghcr.io/${{ github.repository }}:ci-${{ github.run_id }}
       test-command: pnpm --filter=n8n-playwright test:container:sqlite:e2e tests/e2e/building-blocks/workflow-entry-points.spec.ts
       shards: 1
       runner: blacksmith-2vcpu-ubuntu-2204
@@ -72,12 +98,12 @@ jobs:
   multi-main-e2e:
     needs: [prepare]
     name: 'Multi-Main: E2E'
-    if: ${{ !github.event.pull_request.head.repo.fork }}
+    if: ${{ !github.event.pull_request.head.repo.fork && needs.prepare.outputs.skip-tests != 'true' }}
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       branch: ${{ inputs.branch }}
       test-mode: docker-pull
-      docker-image: ghcr.io/${{ github.repository }}:pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
+      docker-image: ghcr.io/${{ github.repository }}:ci-${{ github.run_id }}
       test-command: pnpm --filter=n8n-playwright test:container:multi-main:e2e
       shards: 16
       runner: blacksmith-2vcpu-ubuntu-2204
@@ -102,11 +128,12 @@ jobs:
       upload-failure-artifacts: true
 
   # Cleanup ephemeral Docker image from GHCR after tests complete
-  cleanup-docker:
-    name: 'Cleanup Docker Image'
+  # Local runner cleanup is handled by each test shard in test-e2e-reusable.yml
+  cleanup-ghcr:
+    name: 'Cleanup GHCR Image'
     needs: [prepare, multi-main-e2e, sqlite-sanity]
     if: ${{ !failure() && !cancelled() && !github.event.pull_request.head.repo.fork }}
-    runs-on: ubuntu-slim
+    runs-on: blacksmith-2vcpu-ubuntu-2204
     permissions:
       packages: write
       contents: read
@@ -123,11 +150,4 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GHCR_ORG: ${{ github.repository_owner }}
           GHCR_REPO: ${{ github.event.repository.name }}
-        run: |
-          if [ -n "${{ github.event.pull_request.number }}" ]; then
-            echo "PR context: cleaning all images for PR ${{ github.event.pull_request.number }}"
-            node .github/scripts/cleanup-ghcr-images.mjs --pr ${{ github.event.pull_request.number }}
-          else
-            echo "Merge queue context: cleaning image pr--${{ github.run_id }}"
-            node .github/scripts/cleanup-ghcr-images.mjs --tag pr--${{ github.run_id }}
-          fi
+        run: node .github/scripts/cleanup-ghcr-images.mjs --tag ci-${{ github.run_id }}

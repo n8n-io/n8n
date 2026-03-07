@@ -1,5 +1,13 @@
 <script setup lang="ts">
-import { computed, ref, h, onMounted, onBeforeUnmount, useTemplateRef } from 'vue';
+import {
+	computed,
+	ref,
+	h,
+	onMounted,
+	onBeforeUnmount,
+	useTemplateRef,
+	type DeepReadonly,
+} from 'vue';
 import type { VNode } from 'vue';
 import Modal from '@/app/components/Modal.vue';
 import { WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
@@ -8,7 +16,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { N8nHeading, N8nCallout, N8nButton, N8nLink } from '@n8n/design-system';
-import WorkflowPublishForm from '@/app/components/WorkflowPublishForm.vue';
+import WorkflowVersionForm from '@/app/components/WorkflowVersionForm.vue';
 import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
@@ -17,18 +25,25 @@ import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import WorkflowActivationErrorMessage from '@/app/components/WorkflowActivationErrorMessage.vue';
-import { generateVersionName } from '@/features/workflows/workflowHistory/utils';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import { generateVersionLabelFromId } from '@/features/workflows/workflowHistory/utils';
 
 const modalBus = createEventBus();
 const i18n = useI18n();
 
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = computed(() =>
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflow.id)),
+);
 const credentialsStore = useCredentialsStore();
 const { showMessage } = useToast();
 const workflowActivate = useWorkflowActivate();
 const publishing = ref(false);
 
-const publishForm = useTemplateRef<InstanceType<typeof WorkflowPublishForm>>('publishForm');
+const publishForm = useTemplateRef<InstanceType<typeof WorkflowVersionForm>>('publishForm');
 
 const description = ref('');
 const versionName = ref('');
@@ -42,7 +57,9 @@ const containsTrigger = computed((): boolean => {
 });
 
 const wfHasAnyChanges = computed(() => {
-	return workflowsStore.workflow.versionId !== workflowsStore.workflow.activeVersion?.versionId;
+	return (
+		workflowsStore.workflow.versionId !== workflowDocumentStore.value?.activeVersion?.versionId
+	);
 });
 
 const hasNodeIssues = computed(() => workflowsStore.nodesIssuesExist);
@@ -80,9 +97,20 @@ function onModalOpened() {
 }
 
 onMounted(() => {
-	if (!versionName.value && !inputsDisabled.value) {
-		versionName.value = generateVersionName(workflowsStore.workflow.versionId);
+	const versionData = workflowsStore.versionData;
+
+	if (!versionName.value) {
+		if (versionData?.name) {
+			versionName.value = versionData.name;
+		} else {
+			versionName.value = generateVersionLabelFromId(workflowsStore.workflow.versionId);
+		}
 	}
+
+	if (!description.value && versionData?.description) {
+		description.value = versionData.description;
+	}
+
 	modalBus.on('opened', onModalOpened);
 });
 
@@ -91,7 +119,7 @@ onBeforeUnmount(() => {
 });
 
 function findManagedOpenAiCredentialId(
-	usedCredentials: Record<string, IUsedCredential>,
+	usedCredentials: DeepReadonly<Record<string, IUsedCredential>>,
 ): string | undefined {
 	return Object.keys(usedCredentials).find((credentialId) => {
 		const credential = credentialsStore.state.credentials[credentialId];
@@ -116,7 +144,7 @@ function hasActiveNodeUsingCredential(nodes: INodeUi[], credentialId: string): b
  *
  */
 const shouldShowFreeAiCreditsWarning = computed((): boolean => {
-	const usedCredentials = workflowsStore?.usedCredentials;
+	const usedCredentials = workflowDocumentStore.value?.usedCredentials;
 	if (!usedCredentials) return false;
 
 	const managedOpenAiCredentialId = findManagedOpenAiCredentialId(usedCredentials);
@@ -171,6 +199,12 @@ async function handlePublish() {
 	);
 
 	if (success) {
+		workflowsStore.setWorkflowVersionData({
+			versionId: workflowsStore.workflow.versionId,
+			name: versionName.value,
+			description: description.value,
+		});
+
 		// Show AI credits warning if applicable
 		if (shouldShowFreeAiCreditsWarning.value) {
 			showMessage({
@@ -237,7 +271,7 @@ async function handlePublish() {
 				<N8nCallout v-else-if="activeCalloutId === 'noChanges'" theme="warning">
 					{{ i18n.baseText('workflows.publishModal.noChanges') }}
 				</N8nCallout>
-				<WorkflowPublishForm
+				<WorkflowVersionForm
 					ref="publishForm"
 					v-model:version-name="versionName"
 					v-model:description="description"
@@ -248,8 +282,8 @@ async function handlePublish() {
 				/>
 				<div :class="$style.actions">
 					<N8nButton
+						variant="subtle"
 						:disabled="publishing"
-						type="secondary"
 						:label="i18n.baseText('generic.cancel')"
 						data-test-id="workflow-publish-cancel-button"
 						@click="modalBus.emit('close')"

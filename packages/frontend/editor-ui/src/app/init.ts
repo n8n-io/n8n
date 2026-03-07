@@ -158,7 +158,7 @@ export async function initializeAuthenticatedFeatures(
 		void cloudPlanStore
 			.initialize()
 			.then(() => {
-				if (cloudPlanStore.userIsTrialing) {
+				if (cloudPlanStore.shouldShowBanner) {
 					if (cloudPlanStore.trialExpired) {
 						bannersStore.pushBannerToStack('TRIAL_OVER');
 					} else {

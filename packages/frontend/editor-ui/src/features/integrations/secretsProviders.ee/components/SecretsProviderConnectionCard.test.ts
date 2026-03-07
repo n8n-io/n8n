@@ -3,6 +3,8 @@ import { createComponentRenderer } from '@/__tests__/render';
 import SecretsProviderConnectionCard from './SecretsProviderConnectionCard.ee.vue';
 import type { SecretProviderConnection, SecretProviderTypeResponse } from '@n8n/api-types';
 import { DateTime } from 'luxon';
+import { createTestingPinia } from '@pinia/testing';
+import { useRBACStore } from '@/app/stores/rbac.store';
 
 export const MOCK_PROVIDER_TYPES: SecretProviderTypeResponse[] = [
 	{
@@ -34,12 +36,17 @@ export const MOCK_PROVIDER_TYPES: SecretProviderTypeResponse[] = [
 const renderComponent = createComponentRenderer(SecretsProviderConnectionCard);
 
 describe('SecretsProviderConnectionCard', () => {
+	let pinia: ReturnType<typeof createTestingPinia>;
+
+	beforeEach(() => {
+		pinia = createTestingPinia({ stubActions: false });
+	});
 	const mockProvider: SecretProviderConnection = {
 		id: 'test-id-123',
 		name: 'aws-production',
 		type: 'awsSecretsManager',
-		state: 'connected',
 		isEnabled: true,
+		state: 'connected',
 		projects: [],
 		secretsCount: 5,
 		secrets: [
@@ -56,6 +63,7 @@ describe('SecretsProviderConnectionCard', () => {
 	it('should render provider name in header', () => {
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
 		const { getByTestId } = renderComponent({
+			pinia,
 			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
 		});
 
@@ -65,6 +73,7 @@ describe('SecretsProviderConnectionCard', () => {
 	it('should display provider display name', () => {
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
 		const { getByTestId } = renderComponent({
+			pinia,
 			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
 		});
 
@@ -74,6 +83,7 @@ describe('SecretsProviderConnectionCard', () => {
 	it('should render provider image component', () => {
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
 		const { getByTestId } = renderComponent({
+			pinia,
 			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
 		});
 
@@ -89,6 +99,7 @@ describe('SecretsProviderConnectionCard', () => {
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
 
 		const { getByTestId } = renderComponent({
+			pinia,
 			props: { provider: providerWithNoSecrets, providerTypeInfo, canUpdate: true },
 		});
 
@@ -104,6 +115,7 @@ describe('SecretsProviderConnectionCard', () => {
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
 
 		const { getByTestId } = renderComponent({
+			pinia,
 			props: { provider: providerWithOneSecret, providerTypeInfo, canUpdate: true },
 		});
 
@@ -113,6 +125,7 @@ describe('SecretsProviderConnectionCard', () => {
 	it('should display plural "secrets" for count greater than 1', () => {
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
 		const { getByTestId } = renderComponent({
+			pinia,
 			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
 		});
 
@@ -127,6 +140,7 @@ describe('SecretsProviderConnectionCard', () => {
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
 
 		const { getByTestId } = renderComponent({
+			pinia,
 			props: { provider: recentProvider, providerTypeInfo, canUpdate: true },
 		});
 
@@ -142,6 +156,7 @@ describe('SecretsProviderConnectionCard', () => {
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
 
 		const { getByTestId } = renderComponent({
+			pinia,
 			props: { provider: disconnectedProvider, providerTypeInfo, canUpdate: true },
 		});
 
@@ -152,6 +167,7 @@ describe('SecretsProviderConnectionCard', () => {
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
 
 		const { queryByTestId } = renderComponent({
+			pinia,
 			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
 		});
 
@@ -162,6 +178,7 @@ describe('SecretsProviderConnectionCard', () => {
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
 
 		const { getByTestId } = renderComponent({
+			pinia,
 			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
 		});
 
@@ -173,10 +190,54 @@ describe('SecretsProviderConnectionCard', () => {
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
 
 		const { getByTestId } = renderComponent({
+			pinia,
 			props: { provider: mockProvider, providerTypeInfo, canUpdate: false },
 		});
 
 		expect(getByTestId('secrets-provider-action-toggle')).toBeInTheDocument();
 		expect(screen.queryAllByTestId('action-edit').length).toBe(0);
+	});
+
+	it('should show reload action when provider is connected and user has sync scope', () => {
+		const rbacStore = useRBACStore();
+		rbacStore.globalScopes = ['externalSecretsProvider:sync'];
+
+		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
+
+		renderComponent({
+			pinia,
+			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
+		});
+
+		expect(screen.getByTestId('action-reload')).toBeInTheDocument();
+	});
+
+	it('should not show reload action when user lacks sync scope', () => {
+		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
+
+		renderComponent({
+			pinia,
+			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
+		});
+
+		expect(screen.queryByTestId('action-reload')).not.toBeInTheDocument();
+	});
+
+	it('should not show reload action when provider is in error state', () => {
+		const rbacStore = useRBACStore();
+		rbacStore.globalScopes = ['externalSecretsProvider:sync'];
+
+		const errorProvider: SecretProviderConnection = {
+			...mockProvider,
+			state: 'error',
+		};
+		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
+
+		renderComponent({
+			pinia,
+			props: { provider: errorProvider, providerTypeInfo, canUpdate: true },
+		});
+
+		expect(screen.queryByTestId('action-reload')).not.toBeInTheDocument();
 	});
 });

@@ -97,6 +97,7 @@ const menu = computed(() =>
 		isLoading,
 		i18n,
 		settings: settingStore.moduleSettings?.['chat-hub']?.providers ?? {},
+		credentials,
 	}),
 );
 
@@ -196,8 +197,8 @@ defineExpose({
 	>
 		<template #trigger>
 			<N8nButton
+				variant="ghost"
 				:class="$style.dropdownButton"
-				type="secondary"
 				:text="text"
 				data-test-id="chat-model-selector"
 			>
@@ -261,7 +262,8 @@ defineExpose({
 				v-if="item.data?.description"
 				:content="truncateBeforeLast(item.data.description, 200, 0)"
 				:class="ui.class"
-				:popper-class="$style.tooltip"
+				:content-class="$style.tooltip"
+				placement="right"
 			>
 				<N8nIcon icon="info" size="medium" color="text-light" :class="$style.infoIcon" />
 			</N8nTooltip>

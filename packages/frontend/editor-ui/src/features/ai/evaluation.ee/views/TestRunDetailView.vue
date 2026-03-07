@@ -318,8 +318,8 @@ onMounted(async () => {
 			</div>
 			<div :class="$style.runsHeaderButtons">
 				<N8nIconButton
+					variant="subtle"
 					:icon="isAllExpanded ? 'chevrons-down-up' : 'chevrons-up-down'"
-					type="secondary"
 					size="medium"
 					@click="toggleAllExpansion"
 				/>

@@ -28,9 +28,9 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { WorkflowService } from '@/workflows/workflow.service';
-import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
+import { RoleService } from '@/services/role.service';
 
 import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
 import { createOwner, createMember } from '../shared/db/users';
@@ -67,11 +67,10 @@ beforeAll(async () => {
 		workflowHistoryService,
 		mock(),
 		activeWorkflowManager,
-		mock(),
-		Container.get(WorkflowSharingService), // workflowSharingService
+		Container.get(RoleService), // roleService
 		Container.get(ProjectService), // projectService
-		mock(),
-		mock(),
+		mock(), // executionRepository
+		mock(), // eventService
 		globalConfig,
 		mock(),
 		Container.get(WorkflowFinderService),
@@ -86,6 +85,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
 	workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
+	workflowValidationService.validateDynamicCredentials.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
 	webhookServiceMock.findWebhookConflicts.mockResolvedValue([]);
 });
@@ -456,15 +456,15 @@ describe('activateWorkflow()', () => {
 });
 
 describe('deactivateWorkflow()', () => {
-	test('should not deactivate workflow without workflow:publish permission', async () => {
+	test('should not deactivate workflow without workflow:unpublish permission', async () => {
 		const owner = await createOwner();
 		const member = await createMember();
 
-		// custom role with workflow:update but not workflow:publish
+		// custom role with workflow:update but not workflow:unpublish
 		const customRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update'], {
 			roleType: 'project',
 			displayName: 'Custom Workflow Updater',
-			description: 'Can update workflows but not publish them',
+			description: 'Can update workflows but not unpublish them',
 		});
 
 		const project = await createTeamProject('Test Project', owner);

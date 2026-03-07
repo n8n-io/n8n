@@ -9,7 +9,7 @@ import type { IWorkflowDb } from '@n8n/db';
 import { WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { retryUntil } from '@test-integration/retry-until';
-import { ErrorReporter } from 'n8n-core';
+import { ErrorReporter, Tracing } from 'n8n-core';
 import { v4 as uuid } from 'uuid';
 
 import { createOwner } from '../shared/db/users';
@@ -37,6 +37,7 @@ beforeAll(async () => {
 		eventService,
 		Container.get(Logger),
 		Container.get(ErrorReporter),
+		Container.get(Tracing),
 	);
 
 	// Initialize the service to register event listeners

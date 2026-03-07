@@ -81,6 +81,7 @@ const getPropertyPath = (name: string, index?: number): string => {
 const multipleValues = computed(() => !!props.parameter.typeOptions?.multipleValues);
 const hideEmptyMessage = computed(() => !props.parameter.typeOptions?.hideEmptyMessage);
 const sortable = computed(() => !!props.parameter.typeOptions?.sortable);
+const layout = computed(() => props.parameter.typeOptions?.fixedCollection?.layout);
 
 const getPlaceholderText = computed(() => {
 	const placeholder = locale
@@ -459,13 +460,37 @@ function getItemKey(_item: INodeParameters, index: number) {
 					@change="onDragChange(property.name)"
 				>
 					<template #item="{ index }">
-						<div :key="property.name + '-' + index" :class="$style.parameterItem">
+						<div
+							v-if="layout === 'inline'"
+							:key="'inline-' + property.name + '-' + index"
+							:class="$style.inlineItem"
+						>
+							<ParameterInputList
+								:parameters="getVisiblePropertyValues(property, index)"
+								:node-values="nodeValues"
+								:path="getPropertyPath(property.name, index)"
+								:is-read-only="isReadOnly"
+								:is-nested="isNested"
+								:hide-delete="true"
+								layout="inline"
+								:hidden-issues-inputs="hiddenIssuesInputs"
+								@value-changed="valueChanged"
+							/>
+							<N8nIconButton
+								v-if="!isReadOnly"
+								icon="x"
+								variant="ghost"
+								size="small"
+								data-test-id="fixed-collection-delete-inline"
+								@click="deleteOption(property.name, index)"
+							/>
+						</div>
+						<div v-else :key="property.name + '-' + index" :class="$style.parameterItem">
 							<div :class="[$style.parameterItemWrapper, { [$style.borderTopDashed]: index }]">
 								<div v-if="!isReadOnly" :class="[$style.iconButton, $style.defaultTopPadding]">
 									<N8nIconButton
 										v-if="sortable"
-										type="tertiary"
-										text
+										variant="ghost"
 										size="small"
 										icon="grip-vertical"
 										:title="locale.baseText('fixedCollectionParameter.dragItem')"
@@ -474,8 +499,7 @@ function getItemKey(_item: INodeParameters, index: number) {
 								</div>
 								<div v-if="!isReadOnly" :class="[$style.iconButton, $style.extraTopPadding]">
 									<N8nIconButton
-										type="tertiary"
-										text
+										variant="ghost"
 										size="small"
 										icon="trash-2"
 										data-test-id="fixed-collection-delete"
@@ -532,12 +556,25 @@ function getItemKey(_item: INodeParameters, index: number) {
 				</Draggable>
 			</div>
 
+			<div v-else-if="layout === 'inline'" :class="$style.inlineItem">
+				<ParameterInputList
+					:parameters="getVisiblePropertyValues(property)"
+					:node-values="nodeValues"
+					:path="getPropertyPath(property.name)"
+					:is-read-only="isReadOnly"
+					:is-nested="isNested"
+					:hide-delete="true"
+					layout="inline"
+					:hidden-issues-inputs="hiddenIssuesInputs"
+					@value-changed="valueChanged"
+				/>
+			</div>
+
 			<div v-else :class="$style.parameterItem">
 				<div :class="$style.parameterItemWrapper">
 					<div v-if="!isReadOnly" :class="$style.iconButton">
 						<N8nIconButton
-							type="tertiary"
-							text
+							variant="ghost"
 							size="small"
 							icon="trash-2"
 							data-test-id="fixed-collection-delete"
@@ -591,9 +628,9 @@ function getItemKey(_item: INodeParameters, index: number) {
 
 		<div v-if="parameterOptions.length > 0 && !isReadOnly" :class="$style.controls">
 			<N8nButton
+				style="width: 100%"
+				variant="subtle"
 				v-if="parameter.options && parameter.options.length === 1"
-				type="tertiary"
-				block
 				data-test-id="fixed-collection-add"
 				:label="getPlaceholderText"
 				@click="onAddButtonClick(parameter.options[0].name)"
@@ -621,6 +658,26 @@ function getItemKey(_item: INodeParameters, index: number) {
 </template>
 
 <style lang="scss" module>
+.inlineItem {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--5xs) 0;
+
+	> :first-child {
+		flex: 1;
+		min-width: 0;
+	}
+
+	> :last-child {
+		margin-top: 22px;
+	}
+
+	&:last-child {
+		margin-bottom: var(--spacing--xs);
+	}
+}
+
 .fixedCollectionParameter {
 	padding-left: var(--spacing--sm);
 

@@ -18,8 +18,9 @@ import {
 	validCredentialsPropertiesForUpdate,
 } from './credentials.middleware';
 import {
+	buildSharedForCredential,
 	CredentialsIsNotUpdatableError,
-	getCredentials,
+	getCredential,
 	getSharedCredentials,
 	removeCredential,
 	sanitizeCredentials,
@@ -45,17 +46,41 @@ export = {
 			req: CredentialRequest.GetAll,
 			res: express.Response,
 		): Promise<
-			express.Response<{ data: Partial<CredentialsEntity>[]; nextCursor: string | null }>
+			express.Response<{
+				data: Array<{
+					id: string;
+					name: string;
+					type: string;
+					createdAt: Date;
+					updatedAt: Date;
+					shared: ReturnType<typeof buildSharedForCredential>;
+				}>;
+				nextCursor: string | null;
+			}>
 		> => {
 			const offset = Number(req.query.offset) || 0;
 			const limit = Math.min(Number(req.query.limit) || 100, 250);
 
-			const [credentials, count] = await Container.get(CredentialsRepository).findManyAndCount({
+			const repo = Container.get(CredentialsRepository);
+			const [credentials, count] = await repo.findAndCount({
 				take: limit,
 				skip: offset,
+				select: ['id', 'name', 'type', 'createdAt', 'updatedAt'],
+				relations: ['shared', 'shared.project'],
+				order: { createdAt: 'DESC' },
 			});
 
-			const data = sanitizeCredentials(credentials);
+			const data = credentials.map((credential: CredentialsEntity) => {
+				const shared = buildSharedForCredential(credential);
+				return {
+					id: credential.id,
+					name: credential.name,
+					type: credential.type,
+					createdAt: credential.createdAt,
+					updatedAt: credential.updatedAt,
+					shared,
+				};
+			});
 
 			return res.json({
 				data,
@@ -163,7 +188,7 @@ export = {
 					credential = shared.credentials;
 				}
 			} else {
-				credential = (await getCredentials(credentialId)) as CredentialsEntity;
+				credential = (await getCredential(credentialId)) as CredentialsEntity;
 			}
 
 			if (!credential) {

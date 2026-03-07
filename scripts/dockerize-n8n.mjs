@@ -173,8 +173,7 @@ async function main() {
 	const n8nImageSize = await getImageSize(config.n8n.fullImageName);
 	const runnersImageSize = await getImageSize(config.runners.fullImageName);
 
-	// Display summary
-	displaySummary([
+	const imageStats = [
 		{
 			imageName: config.n8n.fullImageName,
 			platform,
@@ -187,7 +186,24 @@ async function main() {
 			size: runnersImageSize,
 			buildTime: runnersBuildTime,
 		},
-	]);
+	];
+
+	// Write docker build manifest for telemetry collection
+	const dockerManifest = {
+		buildTime: new Date().toISOString(),
+		platform,
+		images: imageStats.map(({ imageName, size, buildTime }) => ({
+			imageName,
+			size,
+			buildTime,
+		})),
+	};
+	await fs.writeJson(path.join(config.buildContext, 'docker-build-manifest.json'), dockerManifest, {
+		spaces: 2,
+	});
+
+	// Display summary
+	displaySummary(imageStats);
 }
 
 async function checkPrerequisites() {

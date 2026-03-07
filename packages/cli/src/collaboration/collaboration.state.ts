@@ -3,13 +3,16 @@ import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Workflow } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
 import { CacheService } from '@/services/cache/cache.service';
 
-type WorkflowCacheHash = Record<User['id'], Iso8601DateTimeString>;
+// clientId -> "userId|lastSeen"
+type WorkflowCacheHash = Record<string, string>;
 interface CacheEntry {
 	userId: string;
 	lastSeen: string;
+	clientId: string;
 }
 
 /**
@@ -32,42 +35,52 @@ export class CollaborationState {
 	constructor(private readonly cache: CacheService) {}
 
 	/**
-	 * Mark user active for given workflow
+	 * Mark client (tab) active for given workflow
 	 */
-	async addCollaborator(workflowId: Workflow['id'], userId: User['id']) {
+	async addCollaborator(workflowId: Workflow['id'], userId: User['id'], clientId: string) {
 		const cacheKey = this.formWorkflowCacheKey(workflowId);
 		const cacheEntry: WorkflowCacheHash = {
-			[userId]: new Date().toISOString(),
+			[clientId]: `${userId}|${new Date().toISOString()}`,
 		};
 
 		await this.cache.setHash(cacheKey, cacheEntry);
 	}
 
 	/**
-	 * Remove user from workflow's active users
+	 * Remove client (tab) from workflow's active collaborators
 	 */
-	async removeCollaborator(workflowId: Workflow['id'], userId: User['id']) {
+	async removeCollaborator(workflowId: Workflow['id'], clientId: string) {
 		const cacheKey = this.formWorkflowCacheKey(workflowId);
 
-		await this.cache.deleteFromHash(cacheKey, userId);
+		await this.cache.deleteFromHash(cacheKey, clientId);
 	}
 
 	async getCollaborators(workflowId: Workflow['id']): Promise<CacheEntry[]> {
 		const cacheKey = this.formWorkflowCacheKey(workflowId);
 
-		const cacheValue = await this.cache.getHash<Iso8601DateTimeString>(cacheKey);
+		const cacheValue = await this.cache.getHash<string>(cacheKey);
 		if (!cacheValue) {
 			return [];
 		}
 
-		const activeCollaborators = this.cacheHashToCollaborators(cacheValue);
-		const [expired, stillActive] = this.splitToExpiredAndStillActive(activeCollaborators);
+		const { valid, invalid } = this.parseCacheHashToCollaborators(cacheValue);
+		const [expired, stillActive] = this.splitToExpiredAndStillActive(valid);
 
-		if (expired.length > 0) {
-			void this.removeExpiredCollaborators(workflowId, expired);
+		const toRemove = [...expired, ...invalid];
+		if (toRemove.length > 0) {
+			void this.removeExpiredCollaborators(workflowId, toRemove);
 		}
 
-		return stillActive;
+		// Deduplicate by userId - keep the most recent entry for each user
+		const userMap = new Map<string, CacheEntry>();
+		for (const entry of stillActive) {
+			const existing = userMap.get(entry.userId);
+			if (!existing || new Date(entry.lastSeen) > new Date(existing.lastSeen)) {
+				userMap.set(entry.userId, entry);
+			}
+		}
+
+		return Array.from(userMap.values());
 	}
 
 	private formWorkflowCacheKey(workflowId: Workflow['id']) {
@@ -89,18 +102,48 @@ export class CollaborationState {
 		return [expired, stillActive];
 	}
 
-	private async removeExpiredCollaborators(workflowId: Workflow['id'], expiredUsers: CacheEntry[]) {
+	private async removeExpiredCollaborators(
+		workflowId: Workflow['id'],
+		expiredClients: CacheEntry[],
+	) {
 		const cacheKey = this.formWorkflowCacheKey(workflowId);
 		await Promise.all(
-			expiredUsers.map(async (user) => await this.cache.deleteFromHash(cacheKey, user.userId)),
+			expiredClients.map(
+				async (client) => await this.cache.deleteFromHash(cacheKey, client.clientId),
+			),
 		);
 	}
 
-	private cacheHashToCollaborators(workflowCacheEntry: WorkflowCacheHash): CacheEntry[] {
-		return Object.entries(workflowCacheEntry).map(([userId, lastSeen]) => ({
-			userId,
-			lastSeen,
-		}));
+	private parseCacheHashToCollaborators(workflowCacheEntry: WorkflowCacheHash): {
+		valid: CacheEntry[];
+		invalid: CacheEntry[];
+	} {
+		const valid: CacheEntry[] = [];
+		const invalid: CacheEntry[] = [];
+
+		for (const [clientId, value] of Object.entries(workflowCacheEntry)) {
+			const parts = value.split('|');
+
+			// Handle old format (pre-tab-scoped collaboration) where value was just a timestamp
+			// Old: { "userId": "2026-02-26T21:23:36.318Z" }
+			// New: { "clientId": "userId|2026-02-26T21:23:36.318Z" }
+			if (parts.length === 1) {
+				invalid.push({
+					clientId,
+					userId: '', // Not needed for deletion
+					lastSeen: value,
+				});
+			} else {
+				const [userId, lastSeen] = parts;
+				valid.push({
+					userId,
+					lastSeen,
+					clientId,
+				});
+			}
+		}
+
+		return { valid, invalid };
 	}
 
 	private hasSessionExpired(lastSeenString: Iso8601DateTimeString) {
@@ -114,24 +157,42 @@ export class CollaborationState {
 	 */
 	readonly writeLockTtl = 2 * Time.minutes.toMilliseconds;
 
-	async setWriteLock(workflowId: Workflow['id'], userId: User['id']) {
+	async setWriteLock(workflowId: Workflow['id'], clientId: string, userId: User['id']) {
 		const cacheKey = this.formWriteLockCacheKey(workflowId);
-		await this.cache.set(cacheKey, userId, this.writeLockTtl);
+		const lockData = JSON.stringify({ clientId, userId });
+		await this.cache.set(cacheKey, lockData, this.writeLockTtl);
 	}
 
-	async renewWriteLock(workflowId: Workflow['id'], userId: User['id']) {
+	async renewWriteLock(workflowId: Workflow['id'], clientId: string) {
 		const cacheKey = this.formWriteLockCacheKey(workflowId);
-		const currentHolder = await this.getWriteLock(workflowId);
+		const currentLock = await this.getWriteLock(workflowId);
 
-		if (currentHolder === userId) {
-			await this.cache.set(cacheKey, userId, this.writeLockTtl);
+		if (currentLock?.clientId === clientId) {
+			// Re-store the same lock data with renewed TTL
+			const lockData = JSON.stringify(currentLock);
+			await this.cache.set(cacheKey, lockData, this.writeLockTtl);
 		}
 	}
 
-	async getWriteLock(workflowId: Workflow['id']): Promise<User['id'] | null> {
+	async getWriteLock(
+		workflowId: Workflow['id'],
+	): Promise<{ clientId: string; userId: string } | null> {
 		const cacheKey = this.formWriteLockCacheKey(workflowId);
-		const userId = await this.cache.get<User['id']>(cacheKey);
-		return userId ?? null;
+		const lockData = await this.cache.get<string>(cacheKey);
+
+		if (!lockData) {
+			return null;
+		}
+
+		const parsed = jsonParse<{ clientId: string; userId: string } | null>(lockData, {
+			fallbackValue: null,
+		});
+
+		if (!parsed?.clientId || !parsed?.userId) {
+			return null;
+		}
+
+		return parsed;
 	}
 
 	async releaseWriteLock(workflowId: Workflow['id']) {
@@ -141,5 +202,26 @@ export class CollaborationState {
 
 	private formWriteLockCacheKey(workflowId: Workflow['id']) {
 		return `collaboration:write-lock:${workflowId}`;
+	}
+
+	/**
+	 * Acquire write lock forcefully, stealing from same user's other tab.
+	 *
+	 * @returns true if lock was acquired, false if lock is held by different user
+	 */
+	async acquireWriteLockForce(
+		workflowId: Workflow['id'],
+		clientId: string,
+		userId: User['id'],
+	): Promise<boolean> {
+		const currentLock = await this.getWriteLock(workflowId);
+
+		if (currentLock && currentLock.userId !== userId) {
+			// Different user owns the lock, cannot steal
+			return false;
+		}
+
+		await this.setWriteLock(workflowId, clientId, userId);
+		return true;
 	}
 }

@@ -12,6 +12,15 @@ export const getExternalSecrets = async (
 /**
  * @beta still under development
  */
+export const getGlobalExternalSecrets = async (
+	context: IRestApiContext,
+): Promise<Record<string, string[]>> => {
+	return await makeRestApiRequest(context, 'GET', '/secret-providers/completions/secrets/global');
+};
+
+/**
+ * @beta still under development
+ */
 export const getProjectExternalSecrets = async (
 	context: IRestApiContext,
 	projectId: string,

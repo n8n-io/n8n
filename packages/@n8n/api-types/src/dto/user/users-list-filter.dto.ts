@@ -1,7 +1,7 @@
 import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
-import { Z } from 'zod-class';
 
+import { Z } from '../../zod-class';
 import { createTakeValidator, paginationSchema } from '../pagination/pagination.dto';
 
 export const USERS_LIST_SORT_OPTIONS = [

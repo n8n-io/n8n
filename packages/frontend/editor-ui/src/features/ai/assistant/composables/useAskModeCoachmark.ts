@@ -4,6 +4,8 @@ import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { MERGE_ASK_BUILD_EXPERIMENT } from '@/app/constants/experiments';
 import { BUILDER_ENABLED_VIEWS } from '../constants';
 import type { VIEWS } from '@/app/constants';
 
@@ -18,11 +20,20 @@ export function useAskModeCoachmark() {
 	const settingsStore = useSettingsStore();
 	const route = useRoute();
 	const { isCalloutDismissed, dismissCallout } = useCalloutHelpers();
+	const posthogStore = usePostHog();
 
 	const isBuildMode = computed(() => chatPanelStore.isBuilderModeActive);
 
+	const isMergeAskBuildEnabled = computed(
+		() =>
+			posthogStore.isFeatureEnabled(MERGE_ASK_BUILD_EXPERIMENT.name) &&
+			settingsStore.isAiAssistantEnabled &&
+			builderStore.isAIBuilderEnabled,
+	);
+
 	// Show toggle only when both modes are available in current view
 	const canToggleModes = computed(() => {
+		if (isMergeAskBuildEnabled.value) return false;
 		return (
 			settingsStore.isAiAssistantEnabled &&
 			builderStore.isAIBuilderEnabled &&
@@ -51,6 +62,7 @@ export function useAskModeCoachmark() {
 
 	return {
 		isBuildMode,
+		isMergeAskBuildEnabled,
 		canToggleModes,
 		shouldShowCoachmark,
 		onDismissCoachmark,

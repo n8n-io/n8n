@@ -1,25 +1,20 @@
 import { ChatHubProvider } from '@n8n/api-types';
-import {
-	JsonColumn,
-	WithTimestamps,
-	DateTimeColumn,
-	User,
-	CredentialsEntity,
-	WorkflowEntity,
-} from '@n8n/db';
+import { WithTimestamps, DateTimeColumn, User, CredentialsEntity, WorkflowEntity } from '@n8n/db';
 import {
 	Column,
 	Entity,
 	ManyToOne,
+	ManyToMany,
+	JoinTable,
 	OneToMany,
 	JoinColumn,
 	type Relation,
 	PrimaryGeneratedColumn,
 } from '@n8n/typeorm';
-import type { INode } from 'n8n-workflow';
 
 import type { ChatHubMessage } from './chat-hub-message.entity';
 import type { ChatHubAgent } from './chat-hub-agent.entity';
+import type { ChatHubTool } from './chat-hub-tool.entity';
 
 export interface IChatHubSession {
 	id: string;
@@ -34,7 +29,6 @@ export interface IChatHubSession {
 	workflowId: string | null;
 	agentId: string | null;
 	agentName: string | null;
-	tools: INode[];
 }
 
 @Entity({ name: 'chat_hub_sessions' })
@@ -135,8 +129,13 @@ export class ChatHubSession extends WithTimestamps {
 	messages?: Array<Relation<ChatHubMessage>>;
 
 	/**
-	 * The tools available to the agent as JSON `INode` definitions.
+	 * The tools associated with this session via `chat_hub_session_tools` join table.
 	 */
-	@JsonColumn({ default: '[]' })
-	tools: INode[];
+	@ManyToMany('ChatHubTool')
+	@JoinTable({
+		name: 'chat_hub_session_tools',
+		joinColumn: { name: 'sessionId', referencedColumnName: 'id' },
+		inverseJoinColumn: { name: 'toolId', referencedColumnName: 'id' },
+	})
+	tools?: Relation<ChatHubTool[]>;
 }

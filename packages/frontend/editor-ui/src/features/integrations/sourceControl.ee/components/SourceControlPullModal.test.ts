@@ -380,6 +380,238 @@ describe('SourceControlPullModal', () => {
 		expect(getByText(/Projects \(2\)/)).toBeInTheDocument();
 	});
 
+	describe('Data Tables tab', () => {
+		it('should display data tables tab with correct count', () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'dt-1',
+					name: 'Customer Data',
+					type: 'datatable',
+					status: 'created',
+					location: 'remote',
+					conflict: false,
+					file: '/datatables/dt-1.json',
+					updatedAt: '2025-01-19T10:00:00.000Z',
+				},
+				{
+					id: 'dt-2',
+					name: 'Product Catalog',
+					type: 'datatable',
+					status: 'modified',
+					location: 'remote',
+					conflict: false,
+					file: '/datatables/dt-2.json',
+					updatedAt: '2025-01-19T11:00:00.000Z',
+				},
+			];
+
+			const { getByText } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			// Tab should show "Data Tables" and "2 items"
+			expect(getByText('Data Tables')).toBeInTheDocument();
+			expect(getByText('2 items')).toBeInTheDocument();
+		});
+
+		it('should switch to data tables tab and display items', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'wf-1',
+					name: 'Test Workflow',
+					type: 'workflow',
+					status: 'created',
+					location: 'remote',
+					conflict: false,
+					file: '/workflows/wf-1.json',
+					updatedAt: '2025-01-19T10:00:00.000Z',
+				},
+				{
+					id: 'dt-1',
+					name: 'Customer Data',
+					type: 'datatable',
+					status: 'created',
+					location: 'remote',
+					conflict: false,
+					file: '/datatables/dt-1.json',
+					updatedAt: '2025-01-19T10:00:00.000Z',
+				},
+			];
+
+			const { getByText, queryByText } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			// Should not see data table name initially (on Workflows tab)
+			expect(queryByText('Customer Data')).not.toBeInTheDocument();
+
+			// Click on Data Tables tab
+			const dataTablesTab = getByText('Data Tables').closest('button');
+			if (dataTablesTab) {
+				await userEvent.click(dataTablesTab);
+			}
+
+			// Should now see data table name
+			await waitFor(() => {
+				expect(getByText('Customer Data')).toBeInTheDocument();
+			});
+
+			// Should not see workflow name
+			expect(queryByText('Test Workflow')).not.toBeInTheDocument();
+		});
+
+		it('should sort data tables by status priority and updated date', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'dt-1',
+					name: 'Table A',
+					type: 'datatable',
+					status: 'modified',
+					location: 'remote',
+					conflict: false,
+					file: '/datatables/dt-1.json',
+					updatedAt: '2025-01-19T10:00:00.000Z',
+				},
+				{
+					id: 'dt-2',
+					name: 'Table B',
+					type: 'datatable',
+					status: 'created',
+					location: 'remote',
+					conflict: true,
+					file: '/datatables/dt-2.json',
+					updatedAt: '2025-01-19T11:00:00.000Z',
+				},
+				{
+					id: 'dt-3',
+					name: 'Table C',
+					type: 'datatable',
+					status: 'created',
+					location: 'remote',
+					conflict: false,
+					file: '/datatables/dt-3.json',
+					updatedAt: '2025-01-19T12:00:00.000Z',
+				},
+			];
+
+			const { getByText, getAllByTestId } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			// Click on Data Tables tab
+			const dataTablesTab = getByText('Data Tables').closest('button');
+			if (dataTablesTab) {
+				await userEvent.click(dataTablesTab);
+			}
+
+			await waitFor(() => {
+				const items = getAllByTestId('pull-modal-item');
+				expect(items).toHaveLength(3);
+
+				// Items should be sorted by status priority (created=1, modified=2) then by date DESC
+				// Created items come first, sorted by date (newest first)
+				expect(items[0]).toHaveTextContent('Table C'); // created, newest
+				expect(items[1]).toHaveTextContent('Table B'); // created, older
+				// Then modified items
+				expect(items[2]).toHaveTextContent('Table A'); // modified
+			});
+		});
+
+		it('should show no results message for data tables', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'wf-1',
+					name: 'Test Workflow',
+					type: 'workflow',
+					status: 'created',
+					location: 'remote',
+					conflict: false,
+					file: '/workflows/wf-1.json',
+					updatedAt: '2025-01-19T10:00:00.000Z',
+				},
+			];
+
+			const { getByText, queryByTestId } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			// Click on Data Tables tab (which has 0 items)
+			const dataTablesTab = getByText('Data Tables').closest('button');
+			if (dataTablesTab) {
+				await userEvent.click(dataTablesTab);
+			}
+
+			await waitFor(() => {
+				// Should show no results
+				expect(queryByTestId('pull-modal-item')).not.toBeInTheDocument();
+			});
+		});
+
+		it('should display data table metadata correctly', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'dt-1',
+					name: 'Customer Data',
+					type: 'datatable',
+					status: 'created',
+					location: 'remote',
+					conflict: false,
+					file: '/datatables/dt-1.json',
+					updatedAt: '2025-01-19T10:30:45.000Z',
+				},
+			];
+
+			const { getByText, container } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			// Click on Data Tables tab
+			const dataTablesTab = getByText('Data Tables').closest('button');
+			if (dataTablesTab) {
+				await userEvent.click(dataTablesTab);
+			}
+
+			await waitFor(() => {
+				// Check that the data table name is displayed
+				expect(getByText('Customer Data')).toBeInTheDocument();
+
+				// Check for status badge
+				const badges = container.querySelector('[class*="badges"]');
+				expect(badges).toBeInTheDocument();
+			});
+		});
+	});
+
 	describe('auto-publish badges', () => {
 		it('should not show any badges when "None" is selected', () => {
 			const status: SourceControlledFile[] = [

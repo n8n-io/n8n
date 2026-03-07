@@ -4,7 +4,7 @@ import type { AxiosInstance, AxiosResponse } from 'axios';
 import axios from 'axios';
 import type { IDataObject, INodeProperties } from 'n8n-workflow';
 
-import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '../constants';
+import { DOCS_HELP_NOTICE } from '../constants';
 import { ExternalSecretsConfig } from '../external-secrets.config';
 import type { SecretsProviderSettings } from '../types';
 import { SecretsProvider } from '../types';
@@ -526,15 +526,9 @@ export class VaultProvider extends SecretsProvider {
 
 	getSecretNames(): string[] {
 		const getKeys = ([k, v]: [string, IDataObject]): string[] => {
-			if (!EXTERNAL_SECRETS_NAME_REGEX.test(k)) {
-				return [];
-			}
 			if (typeof v === 'object') {
 				const keys: string[] = [];
 				for (const key of Object.keys(v)) {
-					if (!EXTERNAL_SECRETS_NAME_REGEX.test(key)) {
-						continue;
-					}
 					const value = v[key];
 					if (typeof value === 'object' && value !== null) {
 						keys.push(...getKeys([key, value as IDataObject]).map((ok) => `${k}.${ok}`));

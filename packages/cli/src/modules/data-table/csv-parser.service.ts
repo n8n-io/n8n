@@ -40,14 +40,17 @@ export class CsvParserService {
 		return { rowObject, columnNames: updatedColumnNames };
 	}
 
+	private readonly TYPE_INFERENCE_SAMPLE_SIZE = 100;
+
 	/**
-	 * Parses a CSV file and returns metadata including row count, column count, and inferred column types
+	 * Parses a CSV file and returns metadata including row count, column count, and inferred column types.
+	 * Samples up to 100 rows to find the first non-empty value per column for type inference.
 	 */
 	async parseFile(fileId: string, hasHeaders: boolean = true): Promise<CsvMetadata> {
 		const filePath = safeJoinPath(this.uploadDir, fileId);
 		let rowCount = 0;
-		let firstDataRow: Record<string, string> | null = null;
 		let columnNames: string[] = [];
+		const firstNonEmptyValues = new Map<string, string>();
 
 		return await new Promise((resolve, reject) => {
 			const parser = parse({
@@ -62,17 +65,35 @@ export class CsvParserService {
 				.on('data', (row: Record<string, string> | string[]) => {
 					rowCount++;
 
+					let rowObject: Record<string, string>;
 					if (!hasHeaders && Array.isArray(row)) {
 						const processed = this.processRowWithoutHeaders(row, columnNames);
 						columnNames = processed.columnNames;
-						firstDataRow ??= processed.rowObject;
+						rowObject = processed.rowObject;
 					} else if (!Array.isArray(row)) {
-						firstDataRow ??= row;
+						rowObject = row;
+					} else {
+						return;
+					}
+
+					// Collect first non-empty value per column (sample up to N rows).
+					// `columnNames` is already populated by the `columns` header callback (which fires
+					// before any `data` events) when hasHeaders=true, or built incrementally by
+					// processRowWithoutHeaders on the first row otherwise.
+					if (rowCount <= this.TYPE_INFERENCE_SAMPLE_SIZE) {
+						for (const colName of columnNames) {
+							if (!firstNonEmptyValues.has(colName)) {
+								const value = rowObject[colName];
+								if (value?.trim()) {
+									firstNonEmptyValues.set(colName, value);
+								}
+							}
+						}
 					}
 				})
 				.on('end', () => {
 					const columns = columnNames.map((columnName) => {
-						const detectedType = this.inferColumnType(firstDataRow?.[columnName]);
+						const detectedType = this.inferColumnType(firstNonEmptyValues.get(columnName));
 						return {
 							name: columnName,
 							type: detectedType,
