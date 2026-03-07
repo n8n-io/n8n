@@ -17,6 +17,18 @@ import {
 	jiraSoftwareCloudApiRequest,
 } from './GenericFunctions';
 import type { JiraWebhook } from './types';
+import {
+	validateEventType,
+	validateWebhookPayload,
+	generateEventId,
+	getGlobalDeduplicator,
+	type JiraWebhookPayload,
+} from './JiraWebhookValidator';
+import {
+	validateIssueAgainstJql,
+	extractIssueKey,
+	isIssueRelatedEvent,
+} from './JiraJqlValidator';
 
 export class JiraTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -551,6 +563,91 @@ export class JiraTrigger implements INodeType {
 		const bodyData = this.getBodyData();
 		const queryData = this.getQueryData() as IDataObject;
 		const response = this.getResponseObject();
+
+		// Validate webhook payload structure
+		if (!validateWebhookPayload(bodyData)) {
+			response.status(400).json({
+				message: 'Invalid webhook payload: missing required fields',
+			});
+			return {
+				noWebhookResponse: true,
+			};
+		}
+
+		const payload = bodyData as unknown as JiraWebhookPayload;
+
+		// Get configured events for validation
+		const configuredEvents = this.getNodeParameter('events') as string[];
+
+		// Validate that the incoming event matches configured event types
+		const eventValidation = validateEventType(payload, configuredEvents);
+		if (!eventValidation.isValid) {
+			// Silently ignore events that don't match configured types
+			// This prevents wrong event types from triggering the workflow
+			this.logger.debug(
+				`Jira webhook event rejected: ${eventValidation.reason}`,
+				{
+					webhookEvent: payload.webhookEvent,
+					configuredEvents,
+				},
+			);
+
+			response.status(200).json({ message: 'Event type not configured for this trigger' });
+			return {
+				noWebhookResponse: true,
+			};
+		}
+
+		// Check for duplicate events
+		const eventId = generateEventId(payload);
+		const deduplicator = getGlobalDeduplicator();
+
+		if (deduplicator.isDuplicate(eventId)) {
+			this.logger.debug(
+				`Jira webhook duplicate event detected and ignored: ${eventId}`,
+				{
+					webhookEvent: payload.webhookEvent,
+					issueId: payload.issue?.id,
+					timestamp: payload.timestamp,
+				},
+			);
+
+			response.status(200).json({ message: 'Duplicate event ignored' });
+			return {
+				noWebhookResponse: true,
+			};
+		}
+
+		// Mark this event as processed
+		deduplicator.markProcessed(eventId);
+
+		// Validate JQL filter for issue-related events
+		const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
+		const jqlFilter = additionalFields.filter as string | undefined;
+
+		if (jqlFilter && payload.webhookEvent && isIssueRelatedEvent(payload.webhookEvent)) {
+			const issueKey = extractIssueKey(payload);
+
+			if (issueKey) {
+				const matchesFilter = await validateIssueAgainstJql(this, issueKey, jqlFilter);
+
+				if (!matchesFilter) {
+					this.logger.debug(
+						`Jira webhook event rejected: issue does not match JQL filter`,
+						{
+							issueKey,
+							jqlFilter,
+							webhookEvent: payload.webhookEvent,
+						},
+					);
+
+					response.status(200).json({ message: 'Issue does not match JQL filter' });
+					return {
+						noWebhookResponse: true,
+					};
+				}
+			}
+		}
 
 		let authenticateWebhook = false;
 

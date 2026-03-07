@@ -9,8 +9,14 @@ import type {
 import { testWebhookTriggerNode } from '@test/nodes/TriggerHelpers';
 
 import { JiraTrigger } from '../JiraTrigger.node';
+import { resetGlobalDeduplicator } from '../JiraWebhookValidator';
 
 describe('JiraTrigger', () => {
+	afterEach(() => {
+		// Reset deduplicator between tests
+		resetGlobalDeduplicator();
+	});
+
 	describe('Webhook lifecycle', () => {
 		let staticData: IDataObject;
 
@@ -255,6 +261,289 @@ describe('JiraTrigger', () => {
 			};
 			const { responseData } = await testWebhookTriggerNode(JiraTrigger, {
 				bodyData: event,
+				node: {
+					parameters: {
+						events: ['jira:issue_created'],
+					},
+				},
+			});
+
+			expect(responseData).toEqual({ workflowData: [[{ json: event }]] });
+		});
+
+		test('should reject issue_created event when configured for issue_updated', async () => {
+			const event = {
+				timestamp: 1743524005044,
+				webhookEvent: 'jira:issue_created',
+				issue_event_type_name: 'issue_created',
+				issue: {
+					id: '10018',
+					key: 'TEST-19',
+				},
+			};
+
+			const { responseData } = await testWebhookTriggerNode(JiraTrigger, {
+				bodyData: event,
+				node: {
+					parameters: {
+						events: ['jira:issue_updated'],
+					},
+				},
+			});
+
+			// Should not trigger workflow
+			expect(responseData).toEqual({ noWebhookResponse: true });
+		});
+
+		test('should reject issue_updated event when configured for issue_created', async () => {
+			const event = {
+				timestamp: 1743524005044,
+				webhookEvent: 'jira:issue_updated',
+				issue_event_type_name: 'issue_updated',
+				issue: {
+					id: '10018',
+					key: 'TEST-19',
+				},
+			};
+
+			const { responseData } = await testWebhookTriggerNode(JiraTrigger, {
+				bodyData: event,
+				node: {
+					parameters: {
+						events: ['jira:issue_created'],
+					},
+				},
+			});
+
+			// Should not trigger workflow
+			expect(responseData).toEqual({ noWebhookResponse: true });
+		});
+
+		test('should prevent duplicate executions for the same event', async () => {
+			const event = {
+				timestamp: 1743524005044,
+				webhookEvent: 'jira:issue_created',
+				issue_event_type_name: 'issue_created',
+				issue: {
+					id: '10018',
+					key: 'TEST-19',
+				},
+			};
+
+			// First execution should succeed
+			const { responseData: firstResponse } = await testWebhookTriggerNode(JiraTrigger, {
+				bodyData: event,
+				node: {
+					parameters: {
+						events: ['jira:issue_created'],
+					},
+				},
+			});
+
+			expect(firstResponse).toEqual({ workflowData: [[{ json: event }]] });
+
+			// Second execution with same event should be rejected as duplicate
+			const { responseData: secondResponse } = await testWebhookTriggerNode(JiraTrigger, {
+				bodyData: event,
+				node: {
+					parameters: {
+						events: ['jira:issue_created'],
+					},
+				},
+			});
+
+			expect(secondResponse).toEqual({ noWebhookResponse: true });
+		});
+
+		test('should allow different events even with same issue ID', async () => {
+			const createdEvent = {
+				timestamp: 1743524005044,
+				webhookEvent: 'jira:issue_created',
+				issue_event_type_name: 'issue_created',
+				issue: {
+					id: '10018',
+					key: 'TEST-19',
+				},
+			};
+
+			const updatedEvent = {
+				timestamp: 1743524005045,
+				webhookEvent: 'jira:issue_updated',
+				issue_event_type_name: 'issue_updated',
+				issue: {
+					id: '10018',
+					key: 'TEST-19',
+				},
+			};
+
+			// First event (created)
+			const { responseData: firstResponse } = await testWebhookTriggerNode(JiraTrigger, {
+				bodyData: createdEvent,
+				node: {
+					parameters: {
+						events: ['jira:issue_created', 'jira:issue_updated'],
+					},
+				},
+			});
+
+			expect(firstResponse).toEqual({ workflowData: [[{ json: createdEvent }]] });
+
+			// Second event (updated) - should be allowed because it's a different event type
+			const { responseData: secondResponse } = await testWebhookTriggerNode(JiraTrigger, {
+				bodyData: updatedEvent,
+				node: {
+					parameters: {
+						events: ['jira:issue_created', 'jira:issue_updated'],
+					},
+				},
+			});
+
+			expect(secondResponse).toEqual({ workflowData: [[{ json: updatedEvent }]] });
+		});
+
+		test('should reject events with missing webhookEvent field', async () => {
+			const invalidEvent = {
+				timestamp: 1743524005044,
+				issue: {
+					id: '10018',
+					key: 'TEST-19',
+				},
+			};
+
+			const { responseData } = await testWebhookTriggerNode(JiraTrigger, {
+				bodyData: invalidEvent,
+				node: {
+					parameters: {
+						events: ['jira:issue_created'],
+					},
+				},
+			});
+
+			expect(responseData).toEqual({ noWebhookResponse: true });
+		});
+
+		test('should accept wildcard event configuration', async () => {
+			const event = {
+				timestamp: 1743524005044,
+				webhookEvent: 'jira:issue_created',
+				issue_event_type_name: 'issue_created',
+				issue: {
+					id: '10018',
+					key: 'TEST-19',
+				},
+			};
+
+			const { responseData } = await testWebhookTriggerNode(JiraTrigger, {
+				bodyData: event,
+				node: {
+					parameters: {
+						events: ['*'],
+					},
+				},
+			});
+
+			expect(responseData).toEqual({ workflowData: [[{ json: event }]] });
+		});
+
+		test('should reject event when JQL filter does not match', async () => {
+			const event = {
+				timestamp: 1743524005044,
+				webhookEvent: 'jira:issue_updated',
+				issue_event_type_name: 'issue_updated',
+				issue: {
+					id: '10018',
+					key: 'TEST-19',
+					fields: {
+						project: {
+							key: 'TEST',
+							id: '10000',
+						},
+					},
+				},
+			};
+
+			// Mock the JQL validation to return no matches
+			const { responseData } = await testWebhookTriggerNode(JiraTrigger, {
+				bodyData: event,
+				node: {
+					parameters: {
+						events: ['jira:issue_updated'],
+						additionalFields: {
+							filter: 'project = DIFFERENT',
+						},
+					},
+				},
+				helpers: {
+					requestWithAuthentication: jest.fn().mockResolvedValue({
+						total: 0, // No matches
+						issues: [],
+					}),
+				},
+			});
+
+			expect(responseData).toEqual({ noWebhookResponse: true });
+		});
+
+		test('should accept event when JQL filter matches', async () => {
+			const event = {
+				timestamp: 1743524005044,
+				webhookEvent: 'jira:issue_updated',
+				issue_event_type_name: 'issue_updated',
+				issue: {
+					id: '10018',
+					key: 'TEST-19',
+					fields: {
+						project: {
+							key: 'TEST',
+							id: '10000',
+						},
+					},
+				},
+			};
+
+			// Mock the JQL validation to return a match
+			const { responseData } = await testWebhookTriggerNode(JiraTrigger, {
+				bodyData: event,
+				node: {
+					parameters: {
+						events: ['jira:issue_updated'],
+						additionalFields: {
+							filter: 'project = TEST',
+						},
+					},
+				},
+				helpers: {
+					requestWithAuthentication: jest.fn().mockResolvedValue({
+						total: 1, // Match found
+						issues: [{ key: 'TEST-19' }],
+					}),
+				},
+			});
+
+			expect(responseData).toEqual({ workflowData: [[{ json: event }]] });
+		});
+
+		test('should not apply JQL filter to non-issue events', async () => {
+			const event = {
+				timestamp: 1743524005044,
+				webhookEvent: 'project_created',
+				project: {
+					id: '10000',
+					key: 'TEST',
+				},
+			};
+
+			// Even with a JQL filter configured, project events should pass through
+			const { responseData } = await testWebhookTriggerNode(JiraTrigger, {
+				bodyData: event,
+				node: {
+					parameters: {
+						events: ['project_created'],
+						additionalFields: {
+							filter: 'project = DIFFERENT',
+						},
+					},
+				},
 			});
 
 			expect(responseData).toEqual({ workflowData: [[{ json: event }]] });
