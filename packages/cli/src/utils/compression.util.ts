@@ -122,18 +122,24 @@ export async function decompressFolder(sourcePath: string, outputDir: string): P
 	// Ensure output directory exists
 	await mkdir(outputDir, { recursive: true });
 
+	const absoluteSourcePath = path.resolve(sourcePath);
+
 	return await new Promise<void>(async (resolve, reject) => {
 		let filesToProcess = 0;
 
 		const unzip = new fflate.Unzip((stream) => {
 			if (!stream.name.endsWith('/')) {
+				// Sanitize path to prevent zip slip attacks
+				const filePath = sanitizePath(stream.name, outputDir);
+
+				// Skip the source ZIP itself — it gets included as a 0-byte entry when the
+				// archive is created inside the same directory it's compressing.
+				if (filePath === absoluteSourcePath) return;
+
 				filesToProcess++;
 
 				const chunks: Uint8Array[] = [];
 				let totalLength = 0;
-
-				// Sanitize path to prevent zip slip attacks
-				const filePath = sanitizePath(stream.name, outputDir);
 				const dirPath = path.dirname(filePath);
 
 				// Create directory if it doesn't exist
@@ -173,7 +179,7 @@ export async function decompressFolder(sourcePath: string, outputDir: string): P
 			}
 		});
 
-		unzip.register(fflate.AsyncUnzipInflate);
+		unzip.register(fflate.UnzipInflate); // synchronous — no worker threads (required in K8s)
 
 		// Create readable stream
 		const zipStream = createReadStream(sourcePath);
