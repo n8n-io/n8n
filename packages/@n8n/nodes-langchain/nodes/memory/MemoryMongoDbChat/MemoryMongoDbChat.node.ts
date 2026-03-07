@@ -127,8 +127,9 @@ export class MemoryMongoDbChat implements INodeType {
 			);
 		}
 
+		let client: MongoClient|null=null;
 		try {
-			const client = new MongoClient(connectionString);
+			client=new MongoClient(connectionString);
 			await client.connect();
 
 			const db = client.db(dbName);
@@ -147,6 +148,9 @@ export class MemoryMongoDbChat implements INodeType {
 				outputKey: 'output',
 				k: this.getNodeParameter('contextWindowLength', itemIndex, 5) as number,
 			});
+			
+			// wait for response before return
+			await memory.chatHistory.getMessages();
 
 			async function closeFunction() {
 				await client.close();
@@ -157,6 +161,10 @@ export class MemoryMongoDbChat implements INodeType {
 				response: logWrapper(memory, this),
 			};
 		} catch (error) {
+			try { // force to close client
+				await client.close();
+			} catch (error) {
+			}
 			throw new NodeOperationError(this.getNode(), `MongoDB connection error: ${error.message}`);
 		}
 	}
