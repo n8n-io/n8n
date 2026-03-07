@@ -72,7 +72,11 @@ export const useAgGrid = <TRowData extends Record<string, unknown> = Record<stri
 
 	// Track the last focused cell so we can start editing when users click on it
 	// AG Grid doesn't provide cell blur event so we need to reset this manually
-	const lastFocusedCell = ref<{ rowIndex: number; colId: string } | null>(null);
+	const lastFocusedCell = ref<{
+		rowIndex: number;
+		colId: string;
+		rowPinned: string | null;
+	} | null>(null);
 
 	const onGridReady = (params: GridReadyEvent) => {
 		gridApi.value = params.api;
@@ -165,6 +169,9 @@ export const useAgGrid = <TRowData extends Record<string, unknown> = Record<stri
 		const clickedCellColumn = params.column.getColId();
 		const clickedCellRow = params.rowIndex;
 
+		// Ignore clicks on pinned rows (e.g. the add-row button row)
+		if (params.node.rowPinned) return;
+
 		if (
 			clickedCellRow === null ||
 			params.api.isEditing({
@@ -179,7 +186,8 @@ export const useAgGrid = <TRowData extends Record<string, unknown> = Record<stri
 		const wasAlreadyFocused =
 			lastFocusedCell.value &&
 			lastFocusedCell.value.rowIndex === clickedCellRow &&
-			lastFocusedCell.value.colId === clickedCellColumn;
+			lastFocusedCell.value.colId === clickedCellColumn &&
+			lastFocusedCell.value.rowPinned === null;
 
 		if (wasAlreadyFocused && params.column.getColDef()?.editable) {
 			// Cell was already selected, start editing
@@ -193,6 +201,7 @@ export const useAgGrid = <TRowData extends Record<string, unknown> = Record<stri
 		lastFocusedCell.value = {
 			rowIndex: clickedCellRow,
 			colId: clickedCellColumn,
+			rowPinned: null,
 		};
 	};
 
