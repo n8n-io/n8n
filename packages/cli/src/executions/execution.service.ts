@@ -14,7 +14,7 @@ import {
 	ExecutionRepository,
 	WorkflowRepository,
 } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { stringify } from 'flatted';
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import type {
@@ -624,6 +624,24 @@ export class ExecutionService {
 	}
 
 	private async stopInScalingMode(execution: IExecutionResponse) {
+		// Handle queued executions (status 'new') that are waiting in the Bull
+		// queue but haven't been picked up by a worker yet. These executions are
+		// not tracked in activeExecutions or waitTracker -- they only exist in
+		// the Bull/Redis queue. We need to find the corresponding Bull job and
+		// remove it directly via the scaling service.
+		if (execution.status === 'new') {
+			const { ScalingService } = await import('@/scaling/scaling.service');
+			const scalingService = Container.get(ScalingService);
+			const waitingJobs = await scalingService.findJobsByStatus(['waiting']);
+			const job = waitingJobs.find((j) => j.data.executionId === execution.id);
+
+			if (job) {
+				await scalingService.stopJob(job);
+			}
+
+			return await this.executionRepository.stopBeforeRun(execution);
+		}
+
 		if (this.activeExecutions.has(execution.id)) {
 			this.activeExecutions.stopExecution(
 				execution.id,
