@@ -2183,11 +2183,11 @@ describe('AI Builder store', () => {
 				const builderStore = useBuilderStore();
 
 				// Start with nodes, then clear them (simulates workflow load sequence)
-				workflowsStore.workflow.nodes = [{ name: 'Node1' }] as never;
+				workflowsStore.allNodes = [{ name: 'Node1' }] as never;
 				await nextTick();
 				expect(builderStore.builderMode).toBe('build');
 
-				workflowsStore.workflow.nodes = [];
+				workflowsStore.allNodes = [];
 				await nextTick();
 				expect(builderStore.builderMode).toBe('plan');
 			});
@@ -2195,18 +2195,18 @@ describe('AI Builder store', () => {
 			it('should switch to build mode when nodes are added', async () => {
 				enablePlanModeExperiment();
 				// Start with nodes so the watcher can observe changes
-				workflowsStore.workflow.nodes = [{ name: 'Node1' }] as never;
+				workflowsStore.allNodes = [{ name: 'Node1' }] as never;
 
 				const builderStore = useBuilderStore();
 				await nextTick();
 
 				// Clear nodes to trigger plan mode
-				workflowsStore.workflow.nodes = [];
+				workflowsStore.allNodes = [];
 				await nextTick();
 				expect(builderStore.builderMode).toBe('plan');
 
 				// Add nodes back to trigger build mode
-				workflowsStore.workflow.nodes = [{ name: 'Node1' }] as never;
+				workflowsStore.allNodes = [{ name: 'Node1' }] as never;
 				await nextTick();
 				expect(builderStore.builderMode).toBe('build');
 			});
@@ -2226,14 +2226,14 @@ describe('AI Builder store', () => {
 				const builderStore = useBuilderStore();
 
 				// Add nodes first so we can trigger a change later
-				workflowsStore.workflow.nodes = [{ name: 'Node1' }] as never;
+				workflowsStore.allNodes = [{ name: 'Node1' }] as never;
 				await nextTick();
 
 				// Simulate an active conversation
 				builderStore.chatMessages = [{ role: 'user', type: 'text', text: 'hello' } as never];
 
 				// Remove nodes — would normally switch to plan, but chat has messages
-				workflowsStore.workflow.nodes = [];
+				workflowsStore.allNodes = [];
 				await nextTick();
 
 				// Should stay at build because chat has messages
@@ -2246,7 +2246,7 @@ describe('AI Builder store', () => {
 
 				// Simulate navigating to a new empty workflow
 				workflowsStore.workflowId = 'new-empty-workflow';
-				workflowsStore.workflow.nodes = [];
+				workflowsStore.allNodes = [];
 				await nextTick();
 
 				expect(builderStore.builderMode).toBe('plan');
@@ -2261,14 +2261,14 @@ describe('AI Builder store', () => {
 					{ role: 'user', type: 'text', text: 'Build me something' } as never,
 					{ role: 'assistant', type: 'text', text: 'Done' } as never,
 				];
-				workflowsStore.workflow.nodes = [{ name: 'Node1' }] as never;
+				workflowsStore.allNodes = [{ name: 'Node1' }] as never;
 				await nextTick();
 				expect(builderStore.builderMode).toBe('build');
 
 				// Simulate what happens during restore: chat messages are truncated to []
 				// and nodes are cleared. The watcher would normally switch to plan mode.
 				builderStore.chatMessages = [];
-				workflowsStore.workflow.nodes = [];
+				workflowsStore.allNodes = [];
 				await nextTick();
 
 				// The watcher fires and sets plan mode

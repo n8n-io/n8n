@@ -73,6 +73,8 @@ describe('useNodeMention', () => {
 		workflowsStore = useWorkflowsStore();
 		focusedNodesStore = useFocusedNodesStore();
 
+		// @ts-expect-error -- mock readonly getter
+		workflowsStore.workflowId = 'test-wf';
 		// @ts-expect-error -- mock readonly property
 		workflowsStore.allNodes = mockNodes;
 	});
