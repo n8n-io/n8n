@@ -617,6 +617,7 @@ export class OauthService {
 		oauthTokenData: ICredentialDataDecryptedObject,
 		authHeader: string,
 		credentialResolverId: string,
+		authMetadata: Record<string, unknown> = {},
 	) {
 		const credentials = new Credentials(credential, credential.type, credential.data);
 		credentials.updateData(oauthTokenData, ['csrfSecret']);
@@ -632,8 +633,7 @@ export class OauthService {
 		await this.dynamicCredentialsProxy.storeIfNeeded(
 			credentialStoreMetadata,
 			oauthTokenData,
-			//  todo parse this
-			{ version: 1, identity: authHeader },
+			{ version: 1, identity: authHeader, metadata: authMetadata },
 			credentials.getData(),
 			{ credentialResolverId },
 		);

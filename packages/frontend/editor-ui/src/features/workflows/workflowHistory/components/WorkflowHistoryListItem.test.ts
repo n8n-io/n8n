@@ -57,4 +57,91 @@ describe('WorkflowHistoryListItem', () => {
 		expect(queryByText(/Latest saved/)).not.toBeInTheDocument();
 		expect(emitted().mounted).toEqual([[{ index: 2, isSelected: true, offsetTop: 0 }]]);
 	});
+
+	it('should emit compare event when compare button is clicked', async () => {
+		const item = workflowHistoryDataFactory();
+		const itemToCompareWith = workflowHistoryDataFactory();
+		const compareName = itemToCompareWith.name ?? 'compare target';
+		const { getByTestId, emitted } = renderComponent({
+			pinia,
+			props: {
+				item,
+				index: 2,
+				actions,
+				isSelected: false,
+				compareWith: { name: compareName, versionId: itemToCompareWith.versionId },
+				isWorkflowDiffsEnabled: true,
+			},
+		});
+
+		await userEvent.click(getByTestId('workflow-history-compare-item-button'));
+
+		expect(emitted().compare).toEqual([[{ id: itemToCompareWith.versionId }]]);
+	});
+
+	it('should not emit compare event when compareWith is missing', async () => {
+		const item = workflowHistoryDataFactory();
+		const { getByTestId, emitted } = renderComponent({
+			pinia,
+			props: {
+				item,
+				index: 2,
+				actions,
+				isSelected: false,
+				compareWith: null,
+				isWorkflowDiffsEnabled: true,
+			},
+		});
+
+		await userEvent.click(getByTestId('workflow-history-compare-item-button'));
+
+		expect(emitted().compare).toBeUndefined();
+	});
+
+	it('should not render compare button when workflow diffs are disabled', () => {
+		const item = workflowHistoryDataFactory();
+		const { queryByTestId } = renderComponent({
+			pinia,
+			props: {
+				item,
+				index: 2,
+				actions,
+				isSelected: false,
+				compareWith: null,
+				isWorkflowDiffsEnabled: false,
+			},
+		});
+
+		expect(queryByTestId('workflow-history-compare-item-button')).not.toBeInTheDocument();
+	});
+
+	it('should render current changes for first item', () => {
+		const item = workflowHistoryDataFactory();
+		const { getByText } = renderComponent({
+			pinia,
+			props: {
+				item,
+				index: 0,
+				actions,
+				isSelected: true,
+			},
+		});
+
+		expect(getByText('Current changes')).toBeInTheDocument();
+	});
+
+	it('should render generated version label when name is missing', () => {
+		const item = { ...workflowHistoryDataFactory(), name: null };
+		const { getByText } = renderComponent({
+			pinia,
+			props: {
+				item,
+				index: 2,
+				actions,
+				isSelected: false,
+			},
+		});
+
+		expect(getByText(`Version ${item.versionId.substring(0, 8)}`)).toBeInTheDocument();
+	});
 });

@@ -89,6 +89,10 @@ describe('get-workflow-details MCP tool', () => {
 			expect('pinData' in payload.workflow).toBe(false);
 			expect(payload.workflow.nodes.every((n) => !('credentials' in n))).toBe(true);
 			expect(payload.triggerInfo).toContain('MOCK_TRIGGER_DETAILS');
+			expect(payload.workflow.versionId).toBe(workflow.versionId);
+			expect(payload.workflow.activeVersionId).toBe(workflow.activeVersionId);
+			expect(payload.workflow.activeVersion).not.toBeNull();
+			expect(payload.workflow.activeVersion?.nodes.every((n) => !('credentials' in n))).toBe(true);
 			expect(payload.workflow.scopes).toEqual(['workflow:read', 'workflow:execute']);
 			expect(payload.workflow.canExecute).toBe(true);
 		});
@@ -150,6 +154,29 @@ describe('get-workflow-details MCP tool', () => {
 					{ workflowId: 'unavailable' },
 				),
 			).rejects.toThrow('Workflow not found');
+		});
+
+		test('returns null activeVersion for unpublished workflows', async () => {
+			const unpublished = createWorkflow({ activeVersionId: null });
+			const workflowFinderService = mockInstance(WorkflowFinderService, {
+				findWorkflowForUser: jest.fn().mockResolvedValue(unpublished),
+			});
+			const credentialsService = mockInstance(CredentialsService, {});
+			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
+
+			const payload = await getWorkflowDetails(
+				user,
+				baseWebhookUrl,
+				workflowFinderService,
+				credentialsService,
+				endpoints,
+				roleService,
+				projectService,
+				{ workflowId: 'wf-1' },
+			);
+
+			expect(payload.workflow.activeVersion).toBeNull();
+			expect(payload.workflow.activeVersionId).toBeNull();
 		});
 	});
 });

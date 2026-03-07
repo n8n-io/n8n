@@ -117,19 +117,45 @@ describe('argument-parser', () => {
 		});
 	});
 
+	it('accepts binary-checks suite', () => {
+		const args = parseEvaluationArgs(['--suite', 'binary-checks']);
+		expect(args.suite).toBe('binary-checks');
+	});
+
+	it('parses --checks flag as comma-separated list', () => {
+		const args = parseEvaluationArgs([
+			'--suite',
+			'binary-checks',
+			'--checks',
+			'has_nodes,has_trigger,all_nodes_connected',
+		]);
+		expect(args.checks).toEqual(['has_nodes', 'has_trigger', 'all_nodes_connected']);
+	});
+
+	it('trims whitespace in --checks values', () => {
+		const args = parseEvaluationArgs([
+			'--suite',
+			'binary-checks',
+			'--checks',
+			' has_nodes , has_trigger ',
+		]);
+		expect(args.checks).toEqual(['has_nodes', 'has_trigger']);
+	});
+
+	it('throws when --checks is used with non-binary-checks suite', () => {
+		expect(() => parseEvaluationArgs(['--suite', 'llm-judge', '--checks', 'has_nodes'])).toThrow(
+			'`--checks` is only supported for `--suite binary-checks`',
+		);
+	});
+
 	describe('--webhook-secret', () => {
 		it('parses valid webhook secret', () => {
-			const args = parseEvaluationArgs([
-				'--webhook-secret',
-				'my-secure-secret-key-1234567890',
-			]);
+			const args = parseEvaluationArgs(['--webhook-secret', 'my-secure-secret-key-1234567890']);
 			expect(args.webhookSecret).toBe('my-secure-secret-key-1234567890');
 		});
 
 		it('parses webhook secret with inline = syntax', () => {
-			const args = parseEvaluationArgs([
-				'--webhook-secret=another-secret-key-12345678',
-			]);
+			const args = parseEvaluationArgs(['--webhook-secret=another-secret-key-12345678']);
 			expect(args.webhookSecret).toBe('another-secret-key-12345678');
 		});
 

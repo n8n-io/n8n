@@ -37,7 +37,8 @@ const quickConnect = computed(() => {
 
 const nodeTypesStore = useNodeTypesStore();
 
-const isOwner = computed(() => useUsersStore().isInstanceOwner);
+const usersStore = useUsersStore();
+const isAdminOrOwner = computed(() => usersStore.isAdminOrOwner);
 
 const formatNumber = (number: number) => {
 	if (!number) return null;
@@ -175,7 +176,7 @@ onMounted(async () => {
 		</div>
 
 		<QuickConnectBanner v-if="quickConnect" :text="quickConnect?.text" />
-		<ContactAdministratorToInstall v-if="!isOwner && !communityNodeDetails?.installed" />
+		<ContactAdministratorToInstall v-if="!isAdminOrOwner && !communityNodeDetails?.installed" />
 	</div>
 </template>
 

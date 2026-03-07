@@ -277,6 +277,8 @@ export type FrontendModuleSettings = {
 		multipleConnections: boolean;
 		/** Whether project-scoped external secrets are enabled. */
 		forProjects: boolean;
+		/** Whether role-based access control for external secrets is enabled. */
+		roleBasedAccess: boolean;
 	};
 };
 

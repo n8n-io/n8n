@@ -90,9 +90,12 @@ const webhookParameterOptionsSchema = z
 		queryParameterArrays: z.enum(['indices', 'brackets', 'repeat']).optional(),
 		redirect: z
 			.object({
-				followRedirects: z.boolean().optional(),
-				maxRedirects: z.number().int().positive().optional(),
+				redirect: z.object({
+					followRedirects: z.boolean().optional(),
+					maxRedirects: z.number().int().positive().optional(),
+				}),
 			})
+			.transform((val) => val.redirect)
 			.optional(),
 		response: z
 			.object({
@@ -108,10 +111,13 @@ const webhookParameterOptionsSchema = z
 			.optional(),
 		proxy: z
 			.object({
-				protocol: z.enum(['https', 'http']),
-				host: z.string(),
-				port: z.number().int().positive(),
+				proxy: z.object({
+					protocol: z.enum(['https', 'http']),
+					host: z.string(),
+					port: z.number().int().positive(),
+				}),
 			})
+			.transform((val) => val.proxy)
 			.optional(),
 		timeout: z.number().int().positive().optional(),
 		socket: z

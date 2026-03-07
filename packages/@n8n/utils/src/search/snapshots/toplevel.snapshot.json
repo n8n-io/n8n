@@ -6125,6 +6125,54 @@
 		"type": "node"
 	},
 	{
+		"uuid": "43a88cb1-4c11-4cf7-9fb8-82f4aeb0b0a7",
+		"key": "n8n-nodes-base.lineMessagingApi",
+		"subcategory": "*",
+		"properties": {
+			"displayName": "LINE",
+			"defaults": {
+				"name": "LINE Messaging API"
+			},
+			"description": "Send messages using the LINE Messaging API",
+			"name": "n8n-nodes-base.lineMessagingApi",
+			"group": ["input"],
+			"iconUrl": "icons/n8n-nodes-base/dist/nodes/Line/line.png",
+			"outputs": ["main"],
+			"codex": {
+				"categories": ["Communication"],
+				"subcategories": {
+					"Communication": ["LINE Messaging API"],
+					"LINE Messaging API": ["Actions"]
+				}
+			}
+		},
+		"type": "node"
+	},
+	{
+		"uuid": "70686450-8063-4314-8749-71dd8fb38734",
+		"key": "n8n-nodes-base.lineMessagingApiTrigger",
+		"subcategory": "*",
+		"properties": {
+			"displayName": "LINE Trigger",
+			"defaults": {
+				"name": "LINE Messaging API"
+			},
+			"description": "Starts the workflow when LINE Messaging API webhook events are received",
+			"name": "n8n-nodes-base.lineMessagingApiTrigger",
+			"group": ["trigger"],
+			"iconUrl": "icons/n8n-nodes-base/dist/nodes/Line/line.png",
+			"outputs": ["main"],
+			"codex": {
+				"categories": ["Communication"],
+				"subcategories": {
+					"Communication": ["LINE Messaging API"],
+					"LINE Messaging API": ["Triggers"]
+				}
+			}
+		},
+		"type": "node"
+	},
+	{
 		"uuid": "47f6ea94-148b-4241-adbf-96668d29e54f",
 		"key": "n8n-nodes-base.linear",
 		"subcategory": "*",
