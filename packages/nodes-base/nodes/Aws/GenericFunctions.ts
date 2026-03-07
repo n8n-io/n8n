@@ -2,6 +2,7 @@ import type {
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
+	IPollFunctions,
 	IWebhookFunctions,
 	IHttpRequestOptions,
 	JsonObject,
@@ -15,7 +16,12 @@ import type {
 } from '../../credentials/common/aws/types';
 
 export async function getAwsCredentials(
-	context: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+	context:
+		| IHookFunctions
+		| IExecuteFunctions
+		| ILoadOptionsFunctions
+		| IPollFunctions
+		| IWebhookFunctions,
 ) {
 	let credentialsType: 'aws' | 'awsAssumeRole' = 'aws';
 
@@ -36,7 +42,12 @@ export async function getAwsCredentials(
 }
 
 export async function awsApiRequest(
-	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+	this:
+		| IHookFunctions
+		| IExecuteFunctions
+		| ILoadOptionsFunctions
+		| IPollFunctions
+		| IWebhookFunctions,
 	service: string,
 	method: IHttpRequestMethods,
 	path: string,
@@ -80,7 +91,12 @@ export async function awsApiRequestREST(
 }
 
 export async function awsApiRequestSOAP(
-	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+	this:
+		| IHookFunctions
+		| IExecuteFunctions
+		| ILoadOptionsFunctions
+		| IPollFunctions
+		| IWebhookFunctions,
 	service: string,
 	method: IHttpRequestMethods,
 	path: string,
