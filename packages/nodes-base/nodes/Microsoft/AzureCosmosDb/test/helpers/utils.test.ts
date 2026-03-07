@@ -22,7 +22,7 @@ import {
 } from '../../helpers/utils';
 
 interface RequestBodyWithParameters extends IDataObject {
-	parameters: Array<{ name: string; value: string }>;
+	parameters: Array<{ name: string; value: string | number | boolean | null }>;
 }
 
 const mockExecuteSingleFunctions = mock<IExecuteSingleFunctions>();
@@ -275,6 +275,48 @@ describe('validateQueryParameters', () => {
 		} else {
 			throw new OperationalError('Expected result.body to contain a parameters array');
 		}
+	});
+
+	test('should preserve numeric parameter values as numbers', async () => {
+		mockExecuteSingleFunctions.getNodeParameter
+			.mockReturnValueOnce('$1, $2')
+			.mockReturnValueOnce({ queryParameters: 'P12223, 1737062400000' });
+
+		const result = await validateQueryParameters.call(mockExecuteSingleFunctions, requestOptions);
+
+		expect((result.body as RequestBodyWithParameters).parameters).toEqual([
+			{ name: '@Param1', value: 'P12223' },
+			{ name: '@Param2', value: 1737062400000 },
+		]);
+	});
+
+	test('should preserve boolean and null parameter values', async () => {
+		mockExecuteSingleFunctions.getNodeParameter
+			.mockReturnValueOnce('$1, $2, $3')
+			.mockReturnValueOnce({ queryParameters: 'true, false, null' });
+
+		const result = await validateQueryParameters.call(mockExecuteSingleFunctions, requestOptions);
+
+		expect((result.body as RequestBodyWithParameters).parameters).toEqual([
+			{ name: '@Param1', value: true },
+			{ name: '@Param2', value: false },
+			{ name: '@Param3', value: null },
+		]);
+	});
+
+	test('should handle mixed parameter types', async () => {
+		mockExecuteSingleFunctions.getNodeParameter
+			.mockReturnValueOnce('$1, $2, $3, $4')
+			.mockReturnValueOnce({ queryParameters: 'hello, 42, true, 3.14' });
+
+		const result = await validateQueryParameters.call(mockExecuteSingleFunctions, requestOptions);
+
+		expect((result.body as RequestBodyWithParameters).parameters).toEqual([
+			{ name: '@Param1', value: 'hello' },
+			{ name: '@Param2', value: 42 },
+			{ name: '@Param3', value: true },
+			{ name: '@Param4', value: 3.14 },
+		]);
 	});
 
 	test('should extract and map parameter names correctly using regex', async () => {

@@ -83,7 +83,15 @@ export async function validateQueryParameters(
 
 	const queryParamsString = queryOptions?.queryParameters as string;
 	const parameterValues = queryParamsString
-		? queryParamsString.split(',').map((param) => param.trim())
+		? queryParamsString.split(',').map((param) => {
+				const trimmed = param.trim();
+				if (trimmed === 'true') return true;
+				if (trimmed === 'false') return false;
+				if (trimmed === 'null') return null;
+				const num = Number(trimmed);
+				if (trimmed !== '' && !Number.isNaN(num)) return num;
+				return trimmed;
+			})
 		: [];
 
 	if (parameterNames.length !== parameterValues.length) {
