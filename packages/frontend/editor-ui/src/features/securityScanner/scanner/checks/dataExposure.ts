@@ -1,0 +1,164 @@
+import type { IConnections } from 'n8n-workflow';
+import { findingId, type ScanContext, type SecurityFinding } from '../types';
+import {
+	isInputTrigger,
+	isExternalService,
+	isCodeNode,
+	getCodeParameters,
+} from '../utils/nodeClassification';
+import { getNodeParam } from '../utils/parameterWalker';
+
+/** Dangerous function patterns in Code nodes that indicate code injection risk. */
+const DANGEROUS_CODE_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
+	{ pattern: /\beval\s*\(/, label: 'eval()' },
+	{ pattern: /\bnew\s+Function\s*\(/, label: 'new Function()' },
+	{ pattern: /\bchild_process\b/, label: 'child_process' },
+	{ pattern: /\brequire\s*\(\s*['"]fs['"]/, label: "require('fs')" },
+	{ pattern: /\bexecSync\s*\(|\bexec\s*\(/, label: 'exec()' },
+	{ pattern: /\bspawnSync\s*\(|\bspawn\s*\(/, label: 'spawn()' },
+];
+
+/** Number of external services from a single trigger that triggers a fan-out warning. */
+const FAN_OUT_THRESHOLD = 5;
+
+function getDownstreamNodes(sourceNames: Set<string>, connections: IConnections): Set<string> {
+	const visited = new Set<string>();
+	const queue = [...sourceNames];
+
+	while (queue.length > 0) {
+		const current = queue.pop()!;
+		if (visited.has(current)) continue;
+		visited.add(current);
+
+		const nodeConnections = connections[current];
+		if (!nodeConnections) continue;
+
+		for (const connectionType of Object.values(nodeConnections)) {
+			for (const outputConnections of connectionType) {
+				if (!outputConnections) continue;
+				for (const connection of outputConnections) {
+					if (!visited.has(connection.node)) {
+						queue.push(connection.node);
+					}
+				}
+			}
+		}
+	}
+
+	return visited;
+}
+
+/**
+ * Detects data exposure risks: webhook data flowing to external services,
+ * dangerous patterns in Code nodes, and high fan-out from triggers.
+ */
+export function checkDataExposure(ctx: ScanContext): SecurityFinding[] {
+	const findings: SecurityFinding[] = [];
+	const { nodes, connections, nodesByName } = ctx;
+
+	// Find input trigger nodes
+	const triggerNames = new Set(nodes.filter((n) => isInputTrigger(n)).map((n) => n.name));
+
+	if (triggerNames.size > 0) {
+		// Find which nodes are downstream from triggers
+		const downstream = getDownstreamNodes(triggerNames, connections);
+
+		// Check if any external service node receives trigger data
+		for (const nodeName of downstream) {
+			const node = nodesByName.get(nodeName);
+			if (!node) continue;
+
+			if (isExternalService(node) && !triggerNames.has(node.name)) {
+				const triggerList = [...triggerNames].join(', ');
+				findings.push({
+					id: findingId('exposure', node.id),
+					category: 'data-exposure',
+					severity: 'info',
+					title: `External input flows to ${node.type.replace('n8n-nodes-base.', '')}`,
+					description: `Data from ${triggerList} reaches this node. Ensure sensitive input data is filtered before sending externally.`,
+					remediation:
+						'1. Add a Set or Filter node between the trigger and this node to strip sensitive fields.\n2. Only pass the specific fields needed by the external service.\n3. Review what data the trigger receives and ensure PII is not forwarded unintentionally.',
+					nodeName: node.name,
+					nodeId: node.id,
+					nodeType: node.type,
+				});
+			}
+		}
+	}
+
+	// Check Code nodes for console.log and dangerous functions
+	for (const node of nodes) {
+		if (isCodeNode(node) && node.parameters) {
+			const codeParamNames = getCodeParameters(node);
+			for (const paramName of codeParamNames) {
+				const code = String(getNodeParam(node, paramName) ?? '');
+				if (!code) continue;
+
+				if (code.includes('console.log')) {
+					findings.push({
+						id: findingId('exposure', node.id, paramName),
+						category: 'data-exposure',
+						severity: 'info',
+						title: 'console.log in Code node',
+						description:
+							'console.log may expose sensitive data in server logs. Remove logging before production use.',
+						remediation:
+							"1. Remove or comment out console.log statements before deploying to production.\n2. If you need logging, use structured logging that excludes sensitive data.\n3. Consider using n8n's built-in execution data view instead of console.log for debugging.",
+						nodeName: node.name,
+						nodeId: node.id,
+						nodeType: node.type,
+						parameterPath: paramName,
+					});
+				}
+
+				for (const { pattern, label } of DANGEROUS_CODE_PATTERNS) {
+					if (pattern.test(code)) {
+						findings.push({
+							id: findingId('exposure', node.id, paramName),
+							category: 'data-exposure',
+							severity: 'warning',
+							title: `Dangerous "${label}" usage in Code node "${node.name}"`,
+							description: `The Code node uses "${label}" which can execute arbitrary code or access the server. This is a code injection risk if the node processes user-controlled input.`,
+							remediation:
+								'1. Replace the dangerous function with a safer alternative (e.g., use JSON.parse instead of eval).\n2. If dynamic code execution is required, validate and sanitize all inputs before processing.\n3. Never pass user-controlled data directly to eval(), exec(), or similar functions.\n4. Consider using a dedicated n8n node instead of custom code where possible.',
+							nodeName: node.name,
+							nodeId: node.id,
+							nodeType: node.type,
+							parameterPath: paramName,
+						});
+					}
+				}
+			}
+		}
+	}
+
+	// Fan-out blast radius: flag triggers that reach many external services
+	if (triggerNames.size > 0) {
+		for (const triggerName of triggerNames) {
+			const triggerDownstream = getDownstreamNodes(new Set([triggerName]), connections);
+			let externalCount = 0;
+			for (const nodeName of triggerDownstream) {
+				if (nodeName === triggerName) continue;
+				const node = nodesByName.get(nodeName);
+				if (node && isExternalService(node)) externalCount++;
+			}
+			if (externalCount >= FAN_OUT_THRESHOLD) {
+				const triggerId = nodesByName.get(triggerName)?.id ?? triggerName;
+				findings.push({
+					id: findingId('exposure', triggerId, 'fan-out'),
+					category: 'data-exposure',
+					severity: 'warning',
+					title: `High fan-out: "${triggerName}" reaches ${externalCount} external services`,
+					description: `A single trigger fans out to ${externalCount} external services. A compromised input could affect all of them. Consider reducing the blast radius.`,
+					remediation:
+						'1. Review whether all downstream services need the full trigger payload.\n2. Add Set nodes before external services to pass only the minimum required data.\n3. Consider grouping related external calls behind a single sub-workflow to limit blast radius.\n4. Add error handling to prevent a failure in one branch from affecting others.',
+					nodeName: triggerName,
+					nodeId: triggerId,
+					nodeType: nodesByName.get(triggerName)?.type ?? '',
+				});
+			}
+		}
+	}
+
+	return findings;
+}

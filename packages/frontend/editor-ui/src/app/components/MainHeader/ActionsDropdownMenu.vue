@@ -39,6 +39,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { getWorkflowId } from '@/app/components/MainHeader/utils';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
+import { useSecurityScannerStore } from '@/features/securityScanner/securityScanner.store';
 
 const props = defineProps<{
 	workflowPermissions: PermissionsRecord['workflow'];
@@ -67,6 +68,7 @@ const usersStore = useUsersStore();
 const workflowHelpers = useWorkflowHelpers();
 const changeOwnerEventBus = createEventBus();
 const workflowTelemetry = useTelemetry();
+const securityScannerStore = useSecurityScannerStore();
 
 const onWorkflowPage = computed(() => {
 	return route.meta && (route.meta.nodeView || route.meta.keepWorkflowAlive === true);
@@ -190,6 +192,14 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 				!onWorkflowPage.value ||
 				onExecutionsTab.value ||
 				sourceControlStore.preferences.branchReadOnly,
+		});
+	}
+
+	if (securityScannerStore.isFeatureEnabled) {
+		actions.push({
+			id: WORKFLOW_MENU_ACTIONS.SECURITY_SCAN,
+			label: locale.baseText('menuActions.securityScan'),
+			disabled: !onWorkflowPage.value,
 		});
 	}
 
@@ -352,6 +362,10 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 		}
 		case WORKFLOW_MENU_ACTIONS.DELETE: {
 			nodeViewEventBus.emit('deleteWorkflow');
+			break;
+		}
+		case WORKFLOW_MENU_ACTIONS.SECURITY_SCAN: {
+			securityScannerStore.togglePanel();
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.CHANGE_OWNER: {

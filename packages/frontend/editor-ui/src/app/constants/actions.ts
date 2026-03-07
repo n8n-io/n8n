@@ -13,4 +13,5 @@ export const enum WORKFLOW_MENU_ACTIONS {
 	CHANGE_OWNER = 'change-owner',
 	UNPUBLISH = 'unpublish',
 	SHARE = 'share',
+	SECURITY_SCAN = 'security-scan',
 }

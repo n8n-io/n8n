@@ -37,6 +37,7 @@ import {
 import { createRemoveConnectionTool } from '../tools/remove-connection.tool';
 import { createRemoveNodeTool } from '../tools/remove-node.tool';
 import { createRenameNodeTool } from '../tools/rename-node.tool';
+import { createSecurityScanTool } from '../tools/security-scan.tool';
 import { createUpdateNodeParametersTool } from '../tools/update-node-parameters.tool';
 import { mermaidStringify } from '../tools/utils/mermaid.utils';
 import { createValidateConfigurationTool } from '../tools/validate-configuration.tool';
@@ -207,6 +208,18 @@ export class BuilderSubgraph extends BaseSubgraph<
 			// Workflow context tools
 			createGetWorkflowOverviewTool(config.logger),
 			createGetNodeContextTool(config.logger),
+			// Security tools
+			createSecurityScanTool(config.parsedNodeTypes),
+			// Conditionally add resource locator tool if callback is provided
+			...(config.resourceLocatorCallback
+				? [
+						createGetResourceLocatorOptionsTool(
+							config.parsedNodeTypes,
+							config.resourceLocatorCallback,
+							config.logger,
+						),
+					]
+				: []),
 		];
 
 		// Conditionally add resource locator tool if callback is provided
