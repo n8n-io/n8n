@@ -331,6 +331,30 @@ describe('setMicrosoftObservabilityDefaults', () => {
 		expect(process.env.ENABLE_OBSERVABILITY).toBe('custom-value');
 		expect(process.env.ENABLE_A365_OBSERVABILITY_EXPORTER).toBe('true');
 	});
+
+	test('should set ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT to true when undefined', () => {
+		delete process.env.ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT;
+
+		setMicrosoftObservabilityDefaults();
+
+		expect(process.env.ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT).toBe('true');
+	});
+
+	test('should set ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT to true when empty string', () => {
+		process.env.ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT = '';
+
+		setMicrosoftObservabilityDefaults();
+
+		expect(process.env.ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT).toBe('true');
+	});
+
+	test('should not override ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT when already set', () => {
+		process.env.ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT = 'false';
+
+		setMicrosoftObservabilityDefaults();
+
+		expect(process.env.ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT).toBe('false');
+	});
 });
 
 describe('containsExpression', () => {
