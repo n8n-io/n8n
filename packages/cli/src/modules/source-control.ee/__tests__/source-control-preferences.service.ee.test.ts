@@ -16,6 +16,11 @@ import type { SourceControlPreferences } from '../types/source-control-preferenc
 jest.unmock('node:fs');
 jest.unmock('node:fs/promises');
 
+const mockParsePrivateKey = jest.fn();
+jest.mock('sshpk', () => ({
+	parsePrivateKey: mockParsePrivateKey,
+}));
+
 describe('SourceControlPreferencesService', () => {
 	const instanceSettings = mock<InstanceSettings>({ n8nFolder: '' });
 	const mockCipher = mock<Cipher>();
@@ -434,6 +439,88 @@ describe('SourceControlPreferencesService', () => {
 			);
 
 			await expect(testService.resetKnownHosts()).resolves.toBeUndefined();
+		});
+	});
+
+	describe('saveKeyPairFromEnv', () => {
+		beforeEach(() => {
+			mockParsePrivateKey.mockReset();
+			mockParsePrivateKey.mockReturnValue({
+				comment: '',
+				toPublic: jest.fn().mockReturnValue({
+					comment: '',
+					toString: jest.fn().mockReturnValue('ssh-ed25519 AAAA... n8n deploy key'),
+				}),
+				toString: jest
+					.fn()
+					.mockReturnValue(
+						'-----BEGIN OPENSSH PRIVATE KEY-----\nformatted\n-----END OPENSSH PRIVATE KEY-----',
+					),
+			});
+		});
+
+		it('should encrypt and store a valid SSH private key', async () => {
+			const testKey =
+				'-----BEGIN OPENSSH PRIVATE KEY-----\ntest-key-data\n-----END OPENSSH PRIVATE KEY-----';
+
+			mockCipher.encrypt.mockReturnValue('encrypted-value');
+			mockSettingsRepository.save.mockResolvedValue(undefined as any);
+
+			await service.saveKeyPairFromEnv(testKey);
+
+			expect(mockParsePrivateKey).toHaveBeenCalled();
+			expect(mockSettingsRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({
+					key: 'features.sourceControl.sshKeys',
+				}),
+			);
+		});
+
+		it('should normalize CRLF line endings before parsing', async () => {
+			const testKeyWithCRLF =
+				'-----BEGIN OPENSSH PRIVATE KEY-----\r\ntest\r\n-----END OPENSSH PRIVATE KEY-----';
+
+			mockCipher.encrypt.mockReturnValue('encrypted-value');
+			mockSettingsRepository.save.mockResolvedValue(undefined as any);
+
+			await service.saveKeyPairFromEnv(testKeyWithCRLF);
+
+			const calledWith = mockParsePrivateKey.mock.calls[0][0] as string;
+			expect(calledWith).not.toContain('\r');
+		});
+
+		it('should trim whitespace from the key', async () => {
+			const testKeyWithSpaces =
+				'  -----BEGIN OPENSSH PRIVATE KEY-----\ntest\n-----END OPENSSH PRIVATE KEY-----  ';
+
+			mockCipher.encrypt.mockReturnValue('encrypted-value');
+			mockSettingsRepository.save.mockResolvedValue(undefined as any);
+
+			await service.saveKeyPairFromEnv(testKeyWithSpaces);
+
+			const calledWith = mockParsePrivateKey.mock.calls[0][0] as string;
+			expect(calledWith).toBe(testKeyWithSpaces.trim());
+		});
+
+		it('should throw descriptive error when key parsing fails', async () => {
+			mockParsePrivateKey.mockImplementation(() => {
+				throw new Error('Invalid key format');
+			});
+
+			await expect(service.saveKeyPairFromEnv('invalid-key')).rejects.toThrow(
+				'Failed to parse SSH private key from environment variable',
+			);
+		});
+
+		it('should throw when database save fails', async () => {
+			mockCipher.encrypt.mockReturnValue('encrypted-value');
+			mockSettingsRepository.save.mockRejectedValue(new Error('DB error'));
+
+			await expect(
+				service.saveKeyPairFromEnv(
+					'-----BEGIN OPENSSH PRIVATE KEY-----\ntest\n-----END OPENSSH PRIVATE KEY-----',
+				),
+			).rejects.toThrow('Failed to save SSH key pair from environment variable');
 		});
 	});
 });

@@ -18,6 +18,8 @@ describe('ApiKeyScope', () => {
 			'project:update',
 			'securityAudit:generate',
 			'sourceControl:pull',
+			'sourceControl:push',
+			'sourceControl:manage',
 			'tag:create',
 			'tag:delete',
 			'tag:list',

@@ -1,0 +1,39 @@
+get:
+  x-eov-operation-id: getStatus
+  x-eov-operation-handler: v1/handlers/source-control/source-control.handler
+  tags:
+    - SourceControl
+  summary: Get source control status
+  description: Returns the list of source-controlled files with their status. Requires the Source Control feature to be licensed and connected to a repository.
+  parameters:
+    - name: direction
+      in: query
+      description: Whether to get status for push or pull
+      required: false
+      schema:
+        type: string
+        enum: [push, pull]
+        default: push
+    - name: verbose
+      in: query
+      description: Whether to include verbose status information
+      required: false
+      schema:
+        type: boolean
+        default: false
+    - name: preferLocalVersion
+      in: query
+      description: Whether to prefer the local version when comparing
+      required: false
+      schema:
+        type: boolean
+        default: true
+  responses:
+    '200':
+      description: Status result
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/statusResult.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
