@@ -70,8 +70,14 @@ export async function runLoadTest({
 	console.log(`[LOAD] Waiting for ${expectedExecutions} executions (timeout: ${timeoutMs}ms)`);
 
 	const drainStart = Date.now();
-	await handle.waitForDrain({ expectedCount: expectedExecutions, timeoutMs });
+	const drainResult = await handle.waitForDrain({ expectedCount: expectedExecutions, timeoutMs });
 	const drainDurationMs = Date.now() - drainStart;
+
+	if (!drainResult.drained) {
+		console.warn(
+			`[LOAD] Drain incomplete after ${(drainDurationMs / 1000).toFixed(1)}s — results reflect partial completion`,
+		);
+	}
 
 	const durations = await sampleExecutionDurations(api.workflows, workflowId);
 	const metrics = buildMetrics(expectedExecutions, 0, drainDurationMs, durations);
