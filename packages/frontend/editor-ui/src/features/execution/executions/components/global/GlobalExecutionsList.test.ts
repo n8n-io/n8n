@@ -17,7 +17,7 @@ import {
 import { createComponentRenderer } from '@/__tests__/render';
 import { waitFor } from '@testing-library/vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import type { ExecutionFilterType, ExecutionSummaryWithScopes } from '../../executions.types';
+import type { ExecutionFilterType, ExecutionSummaryWithCustomData } from '../../executions.types';
 
 vi.mock('vue-router', () => ({
 	useRoute: vi.fn().mockReturnValue({
@@ -61,7 +61,9 @@ const generateUndefinedNullOrString = () => {
 	}
 };
 
-const executionDataFactory = (): ExecutionSummary => ({
+const executionDataFactory = (
+	overrides?: Partial<ExecutionSummary & { customData?: Record<string, string> }>,
+): ExecutionSummary => ({
 	id: faker.string.uuid(),
 	finished: faker.datatype.boolean(),
 	mode: faker.helpers.arrayElement(['manual', 'trigger']),
@@ -74,6 +76,7 @@ const executionDataFactory = (): ExecutionSummary => ({
 	nodeExecutionStatus: {},
 	retryOf: generateUndefinedNullOrString(),
 	retrySuccessId: generateUndefinedNullOrString(),
+	...overrides,
 });
 
 const generateExecutionsData = () =>
@@ -143,7 +146,7 @@ describe('GlobalExecutionsList', () => {
 		async () => {
 			const { getByTestId, getAllByTestId, queryByTestId, rerender } = renderComponent({
 				props: {
-					executions: executionsData[0].results as ExecutionSummaryWithScopes[],
+					executions: executionsData[0].results as ExecutionSummaryWithCustomData[],
 					total: executionsData[0].count,
 					filters: {} as ExecutionFilterType,
 					estimated: false,
@@ -207,7 +210,7 @@ describe('GlobalExecutionsList', () => {
 
 		const { queryAllByText } = renderComponent({
 			props: {
-				executions: executionsData[0].results as ExecutionSummaryWithScopes[],
+				executions: executionsData[0].results as ExecutionSummaryWithCustomData[],
 				total: executionsData[0].count,
 				filters: {} as ExecutionFilterType,
 				estimated: false,
@@ -223,11 +226,48 @@ describe('GlobalExecutionsList', () => {
 		settingsStore.concurrency = 5;
 		const { getByTestId } = renderComponent({
 			props: {
-				executions: executionsData[0].results as ExecutionSummaryWithScopes[],
+				executions: executionsData[0].results as ExecutionSummaryWithCustomData[],
 				filters: {} as ExecutionFilterType,
 			},
 		});
 
 		expect(getByTestId('concurrent-executions-header')).toBeVisible();
+	});
+
+	it('should toggle column visibility via column picker', async () => {
+		const { getByTestId, container } = renderComponent({
+			props: {
+				executions: executionsData[0].results as ExecutionSummaryWithCustomData[],
+				total: executionsData[0].count,
+				filters: {} as ExecutionFilterType,
+				estimated: false,
+			},
+		});
+		await waitAllPromises();
+
+		const getHeaderTexts = () =>
+			Array.from(container.querySelectorAll('thead th')).map((th) => th.textContent?.trim());
+
+		// Workflow column header should be present initially
+		expect(getHeaderTexts()).toContain('generic.workflow');
+
+		// Open column picker
+		await userEvent.click(getByTestId('execution-column-picker-button'));
+
+		// Toggle off the workflow column
+		const workflowToggle = getByTestId('execution-column-toggle-workflow');
+		await userEvent.click(workflowToggle);
+
+		// The "Workflow" header should no longer be in the table
+		await waitFor(() => {
+			expect(getHeaderTexts()).not.toContain('generic.workflow');
+		});
+
+		// Toggle it back on
+		await userEvent.click(workflowToggle);
+
+		await waitFor(() => {
+			expect(getHeaderTexts()).toContain('generic.workflow');
+		});
 	});
 });

@@ -52,6 +52,7 @@ describe('WorkflowExecutionsSidebar', () => {
 					loading: false,
 					loadingMore: false,
 					executions: [],
+					viewMode: 'detail',
 				},
 			}),
 		).not.toThrow();
@@ -64,9 +65,38 @@ describe('WorkflowExecutionsSidebar', () => {
 				loading: false,
 				loadingMore: false,
 				executions: [],
+				viewMode: 'detail',
 			},
 		});
 
 		expect(getByTestId('concurrent-executions-header')).toBeVisible();
+	});
+
+	it('should render view toggle buttons', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				loading: false,
+				loadingMore: false,
+				executions: [],
+				viewMode: 'detail',
+			},
+		});
+
+		expect(getByTestId('executions-view-mode-detail')).toBeVisible();
+		expect(getByTestId('executions-view-mode-table')).toBeVisible();
+	});
+
+	it('should emit update:viewMode when table button is clicked', () => {
+		const { getByTestId, emitted } = renderComponent({
+			props: {
+				loading: false,
+				loadingMore: false,
+				executions: [],
+				viewMode: 'detail',
+			},
+		});
+
+		getByTestId('executions-view-mode-table').click();
+		expect(emitted('update:viewMode')).toEqual([['table']]);
 	});
 });

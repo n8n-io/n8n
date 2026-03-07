@@ -50,6 +50,7 @@ const executions = computed(() =>
 );
 
 const execution = computed(() => {
+	if (!executionId.value) return undefined;
 	return executions.value.find((e) => e.id === executionId.value) ?? currentExecution.value;
 });
 

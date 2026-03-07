@@ -10,7 +10,7 @@ import type {
 import type {
 	ExecutionFilterType,
 	ExecutionsQueryFilter,
-	ExecutionSummaryWithScopes,
+	ExecutionSummaryWithCustomData,
 	IExecutionDeleteFilter,
 	IExecutionFlattedResponse,
 	IExecutionResponse,
@@ -55,7 +55,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 	const autoRefreshTimeout = ref<NodeJS.Timeout | null>(null);
 	const autoRefreshDelay = ref(4 * 1000); // Refresh data every 4 secs
 
-	const executionsById = ref<Record<string, ExecutionSummaryWithScopes>>({});
+	const executionsById = ref<Record<string, ExecutionSummaryWithCustomData>>({});
 	const executionsCount = ref(0);
 	const executionsCountEstimated = ref(false);
 	const concurrentExecutionsCount = ref(0);
@@ -79,7 +79,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		}, {}),
 	);
 
-	const currentExecutionsById = ref<Record<string, ExecutionSummaryWithScopes>>({});
+	const currentExecutionsById = ref<Record<string, ExecutionSummaryWithCustomData>>({});
 	const startedAtSortFn = (a: ExecutionSummary, b: ExecutionSummary) =>
 		new Date(b.startedAt ?? b.createdAt).getTime() - new Date(a.startedAt ?? a.createdAt).getTime();
 
@@ -119,7 +119,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 	const allExecutions = computed(() => [...currentExecutions.value, ...executions.value]);
 
-	function addExecution(execution: ExecutionSummaryWithScopes) {
+	function addExecution(execution: ExecutionSummaryWithCustomData) {
 		executionsById.value = {
 			...executionsById.value,
 			[execution.id]: {
@@ -129,7 +129,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		};
 	}
 
-	function addCurrentExecution(execution: ExecutionSummaryWithScopes) {
+	function addCurrentExecution(execution: ExecutionSummaryWithCustomData) {
 		currentExecutionsById.value[execution.id] = {
 			...execution,
 			mode: execution.mode,
@@ -230,7 +230,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		id: string,
 		data: { tags?: string[]; vote?: AnnotationVote | null },
 	): Promise<void> {
-		const updatedExecution: ExecutionSummaryWithScopes = await makeRestApiRequest(
+		const updatedExecution: ExecutionSummaryWithCustomData = await makeRestApiRequest(
 			rootStore.restApiContext,
 			'PATCH',
 			`/executions/${id}`,

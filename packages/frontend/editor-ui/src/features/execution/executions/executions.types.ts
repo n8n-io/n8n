@@ -1,12 +1,12 @@
+import type { IWorkflowDb } from '@/Interface';
+import type { Scope } from '@n8n/permissions';
 import type {
 	AnnotationVote,
 	ExecutionStatus,
 	ExecutionSummary,
-	WorkflowExecuteMode,
 	IRunExecutionData,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import type { IWorkflowDb } from '@/Interface';
-import type { Scope } from '@n8n/permissions';
 
 export type ExecutionFilterMetadata = {
 	key: string;
@@ -78,9 +78,37 @@ export interface IExecutionResponse extends IExecutionBase {
 
 export type ExecutionSummaryWithScopes = ExecutionSummary & { scopes: Scope[] };
 
+export type ExecutionSummaryWithCustomData = ExecutionSummaryWithScopes & {
+	customData?: Record<string, string>;
+};
+
+export type ExecutionColumnId =
+	| 'workflow'
+	| 'status'
+	| 'startedAt'
+	| 'runTime'
+	| 'id'
+	| 'tags'
+	| 'rating'
+	| 'mode'
+	| `customData:${string}`;
+
+export type WorkflowExecutionViewMode = 'detail' | 'table';
+
+export type ExecutionColumnGroup = 'standard' | 'annotation' | 'customData';
+
+export type ExecutionColumnDefinition = {
+	id: ExecutionColumnId;
+	labelKey: string;
+	width?: string;
+	toggleable: boolean;
+	visible: boolean;
+	group: ExecutionColumnGroup;
+};
+
 export interface IExecutionsListResponse {
 	count: number;
-	results: ExecutionSummaryWithScopes[];
+	results: ExecutionSummaryWithCustomData[];
 	estimated: boolean;
 	concurrentExecutionsCount: number;
 }
