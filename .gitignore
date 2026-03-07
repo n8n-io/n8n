@@ -51,6 +51,5 @@ coverage-gaps.json
 packages/cli/src/commands/export/outputs
 *.bak
 .data
-.data/
 .claude/settings.local.json
 lefthook-local.yml
