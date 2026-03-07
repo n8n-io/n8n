@@ -133,27 +133,27 @@ FROM node:${NODE_VERSION}-bookworm-slim AS node-debian
 FROM debian:bookworm-slim AS runtime-prep
 
 # Copy Python runtime
-COPY --from=python-runner-builder /usr/local/bin/python3.13 /runtime/usr/local/bin/python3.13
-COPY --from=python-runner-builder /usr/local/lib/python3.13 /runtime/usr/local/lib/python3.13
-COPY --from=python-runner-builder /usr/local/lib/libpython3.13.so* /runtime/usr/local/lib/
+COPY --link --from=python-runner-builder /usr/local/bin/python3.13 /runtime/usr/local/bin/python3.13
+COPY --link --from=python-runner-builder /usr/local/lib/python3.13 /runtime/usr/local/lib/python3.13
+COPY --link --from=python-runner-builder /usr/local/lib/libpython3.13.so* /runtime/usr/local/lib/
 
 # Copy Python dependencies (architecture-specific directories)
 # The /* glob will match x86_64-linux-gnu or aarch64-linux-gnu
-COPY --from=python-runner-builder /lib/*-linux-gnu* /runtime/lib/
-COPY --from=python-runner-builder /usr/lib/*-linux-gnu* /runtime/usr/lib/
+COPY --link --from=python-runner-builder /lib/*-linux-gnu* /runtime/lib/
+COPY --link --from=python-runner-builder /usr/lib/*-linux-gnu* /runtime/usr/lib/
 
 # Copy Node.js runtime
-COPY --from=node-debian /usr/local/bin/node /runtime/usr/local/bin/node
+COPY --link --from=node-debian /usr/local/bin/node /runtime/usr/local/bin/node
 
 # Copy task runners
-COPY --from=javascript-runner-builder /app/task-runner-javascript /runtime/opt/runners/task-runner-javascript
-COPY --from=python-runner-builder /app/task-runner-python /runtime/opt/runners/task-runner-python
+COPY --link --from=javascript-runner-builder /app/task-runner-javascript /runtime/opt/runners/task-runner-javascript
+COPY --link --from=python-runner-builder /app/task-runner-python /runtime/opt/runners/task-runner-python
 
 # Copy launcher
-COPY --from=launcher-downloader /launcher-bin/* /runtime/usr/local/bin/
+COPY --link --from=launcher-downloader /launcher-bin/* /runtime/usr/local/bin/
 
 # Copy configuration
-COPY docker/images/runners/n8n-task-runners.json /runtime/etc/n8n-task-runners.json
+COPY --link docker/images/runners/n8n-task-runners.json /runtime/etc/n8n-task-runners.json
 
 # Create necessary directories with proper permissions
 RUN mkdir -p /runtime/home/runner && \
@@ -179,7 +179,7 @@ ENV NODE_ENV=production \
     HOME=/home/runner
 
 # Copy everything from the prepared runtime filesystem
-COPY --from=runtime-prep --chown=root:root /runtime/ /
+COPY --link --from=runtime-prep --chown=root:root /runtime/ /
 
 WORKDIR /home/runner
 

@@ -116,10 +116,10 @@ ENV NODE_ENV=production \
     SHELL=/bin/sh
 
 # Bring `uv` over from python-runner-builder, to make the image easier to extend
-COPY --from=python-runner-builder /usr/local/bin/uv /usr/local/bin/uv
+COPY --link --from=python-runner-builder /usr/local/bin/uv /usr/local/bin/uv
 
 # Bring node over from node-alpine
-COPY --from=node-alpine /usr/local/bin/node /usr/local/bin/node
+COPY --link --from=node-alpine /usr/local/bin/node /usr/local/bin/node
 
 # libstdc++ is required by Node
 # libc6-compat is required by task-runner-launcher
@@ -127,7 +127,7 @@ RUN apk add --no-cache ca-certificates tini libstdc++ libc6-compat && \
     apk del apk-tools
 
 # Bring corepack and pnpm over, to make the image easier to extend
-COPY --from=node-alpine /usr/local/lib/node_modules/corepack /usr/local/lib/node_modules/corepack
+COPY --link --from=node-alpine /usr/local/lib/node_modules/corepack /usr/local/lib/node_modules/corepack
 RUN ln -s ../lib/node_modules/corepack/dist/corepack.js /usr/local/bin/corepack && \
 		ln -s ../lib/node_modules/corepack/dist/pnpm.js /usr/local/bin/pnpm
 
@@ -136,10 +136,10 @@ RUN addgroup -g 1000 -S runner \
 
 WORKDIR /home/runner
 
-COPY --from=javascript-runner-builder --chown=root:root /app/task-runner-javascript /opt/runners/task-runner-javascript
-COPY --from=python-runner-builder --chown=root:root /app/task-runner-python /opt/runners/task-runner-python
-COPY --from=launcher-downloader /launcher-bin/* /usr/local/bin/
-COPY --chown=root:root docker/images/runners/n8n-task-runners.json /etc/n8n-task-runners.json
+COPY --link --from=javascript-runner-builder --chown=root:root /app/task-runner-javascript /opt/runners/task-runner-javascript
+COPY --link --from=python-runner-builder --chown=root:root /app/task-runner-python /opt/runners/task-runner-python
+COPY --link --from=launcher-downloader /launcher-bin/* /usr/local/bin/
+COPY --link --chown=root:root docker/images/runners/n8n-task-runners.json /etc/n8n-task-runners.json
 
 USER runner
 
