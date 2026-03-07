@@ -130,4 +130,39 @@ describe('viewerOutput utils', () => {
 			binaryKeys: [],
 		});
 	});
+
+	it('returns first task error when no output is available', () => {
+		const execution = createExecution({
+			status: 'error',
+			data: {
+				startData: {},
+				resultData: {
+					runData: {
+						'Transform node': [
+							{
+								startTime: 1,
+								executionIndex: 0,
+								executionTime: 1,
+								executionStatus: 'error',
+								error: { message: 'Could not parse invoice fields' },
+							},
+						],
+					},
+				},
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+			},
+		});
+
+		expect(getViewerExecutionOutput(execution)).toEqual({
+			status: 'error',
+			binaryKeys: [],
+			errorMessage: 'Could not parse invoice fields',
+		});
+	});
 });

@@ -28,6 +28,11 @@ function getTaskOutputItem(task: ITaskData): INodeExecutionData | undefined {
 	return task.data?.main?.[0]?.[0];
 }
 
+interface ExecutionOutputLocation {
+	nodeName: string;
+	outputItem: INodeExecutionData;
+}
+
 function getJsonPreview(jsonData: INodeExecutionData['json']): string | undefined {
 	if (!jsonData || Object.keys(jsonData).length === 0) return undefined;
 
@@ -41,6 +46,53 @@ function getJsonPreview(jsonData: INodeExecutionData['json']): string | undefine
 	} catch {
 		return undefined;
 	}
+}
+
+function getNodeSearchOrder(execution: IExecutionResponse, runDataNodeNames: string[]): string[] {
+	if (!execution.executedNode) {
+		return [...runDataNodeNames].reverse();
+	}
+
+	return [
+		execution.executedNode,
+		...runDataNodeNames.filter((nodeName) => nodeName !== execution.executedNode).reverse(),
+	];
+}
+
+function findLatestOutput(
+	runData: NonNullable<NonNullable<IExecutionResponse['data']>['resultData']>['runData'],
+	nodeNames: string[],
+): ExecutionOutputLocation | null {
+	for (const nodeName of nodeNames) {
+		const tasks = runData[nodeName] ?? [];
+
+		for (let index = tasks.length - 1; index >= 0; index--) {
+			const outputItem = getTaskOutputItem(tasks[index]);
+			if (!outputItem) continue;
+
+			return { nodeName, outputItem };
+		}
+	}
+
+	return null;
+}
+
+function findFirstTaskError(
+	runData: NonNullable<NonNullable<IExecutionResponse['data']>['resultData']>['runData'],
+	nodeNames: string[],
+): string | undefined {
+	for (const nodeName of nodeNames) {
+		const tasks = runData[nodeName] ?? [];
+
+		for (let index = tasks.length - 1; index >= 0; index--) {
+			const taskError = getErrorMessage(tasks[index].error);
+			if (!taskError) continue;
+
+			return taskError;
+		}
+	}
+
+	return undefined;
 }
 
 export function getViewerExecutionOutput(
@@ -70,36 +122,19 @@ export function getViewerExecutionOutput(
 		};
 	}
 
-	const runDataNodeNames = Object.keys(runData);
-	const nodeNames = execution.executedNode
-		? [
-				execution.executedNode,
-				...runDataNodeNames.filter((nodeName) => nodeName !== execution.executedNode).reverse(),
-			]
-		: [...runDataNodeNames].reverse();
+	const nodeNames = getNodeSearchOrder(execution, Object.keys(runData));
+	const latestOutput = findLatestOutput(runData, nodeNames);
 
-	let taskError: string | undefined;
-
-	for (const nodeName of nodeNames) {
-		const tasks = runData[nodeName] ?? [];
-
-		for (let index = tasks.length - 1; index >= 0; index--) {
-			const task = tasks[index];
-			const outputItem = getTaskOutputItem(task);
-			if (outputItem) {
-				return {
-					status: 'success',
-					nodeName,
-					jsonPreview: getJsonPreview(outputItem.json),
-					binaryKeys: Object.keys(outputItem.binary ?? {}),
-				};
-			}
-
-			if (!taskError) {
-				taskError = getErrorMessage(task.error);
-			}
-		}
+	if (latestOutput) {
+		return {
+			status: 'success',
+			nodeName: latestOutput.nodeName,
+			jsonPreview: getJsonPreview(latestOutput.outputItem.json),
+			binaryKeys: Object.keys(latestOutput.outputItem.binary ?? {}),
+		};
 	}
+
+	const taskError = findFirstTaskError(runData, nodeNames);
 
 	if (executionError || taskError) {
 		return {
