@@ -285,7 +285,7 @@ const buildRunData = async (
 	}
 
 	// Generate a unique MCP message ID for this execution (used for queue mode correlation)
-	const mcpMessageId = `mcp-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+	const mcpMessageId = `mcp-${Date.now()}-${crypto.randomUUID().slice(0, 11)}`;
 
 	const isManualExecution = executionMode === 'manual';
 	const runData: IWorkflowExecutionDataProcess = {
