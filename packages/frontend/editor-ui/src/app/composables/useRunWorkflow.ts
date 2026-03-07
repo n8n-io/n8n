@@ -551,7 +551,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 		}
 	}
 
-	async function runEntireWorkflow(source: 'node' | 'main', triggerNode?: string) {
+	async function runEntireWorkflow(source: 'node' | 'main', triggerNode?: string, nodeData?: ITaskData) {
 		void workflowHelpers.getWorkflowDataToSave().then((workflowData) => {
 			const telemetryPayload = {
 				workflow_id: workflowObject.value.id,
@@ -583,6 +583,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 		void runWorkflow({
 			triggerNode: resolvedTriggerNode,
+			nodeData,
 		});
 	}
 

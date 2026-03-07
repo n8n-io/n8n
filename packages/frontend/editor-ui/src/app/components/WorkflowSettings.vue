@@ -51,6 +51,7 @@ import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.s
 import { useCredentialResolvers } from '@/features/resolvers/composables/useCredentialResolvers';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 import { hasPermission } from '@/app/utils/rbac/permissions';
+import { parseViewerInputsJson } from '@/app/utils/viewerMode';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
 
@@ -130,6 +131,7 @@ const workflowSettings = ref<IWorkflowSettings>({} as IWorkflowSettings);
 const workflows = ref<IWorkflowShortResponse[]>([]);
 const credentialResolverSelectRef = ref<InstanceType<typeof N8nSelect> | null>(null);
 const originalBinaryMode = ref<undefined | WorkflowSettingsBinaryMode>(undefined);
+const viewerInputsJson = ref('');
 
 const {
 	resolvers: credentialResolvers,
@@ -167,7 +169,17 @@ const helpTexts = computed(() => ({
 	workflowCallerPolicy: i18n.baseText('workflowSettings.helpTexts.workflowCallerPolicy'),
 	workflowCallerIds: i18n.baseText('workflowSettings.helpTexts.workflowCallerIds'),
 	redactionPolicy: i18n.baseText('workflowSettings.helpTexts.redactionPolicy'),
+	viewerManual: i18n.baseText('workflowSettings.helpTexts.viewerManual'),
+	viewerInputs: i18n.baseText('workflowSettings.helpTexts.viewerInputs'),
 }));
+
+const viewerManual = computed({
+	get: () => workflowSettings.value.viewerMode?.manual ?? '',
+	set: (value: string) => {
+		workflowSettings.value.viewerMode ??= {};
+		workflowSettings.value.viewerMode.manual = value;
+	},
+});
 
 const defaultValues = ref({
 	timezone: 'America/New_York',
@@ -505,6 +517,21 @@ const convertToHMS = (num: number): ITimeoutHMS => {
 };
 
 const saveSettings = async () => {
+	const parsedViewerInputs = parseViewerInputsJson(viewerInputsJson.value);
+	if (parsedViewerInputs.error) {
+		toast.showError(new Error(i18n.baseText('workflowSettings.viewerInputs.invalidSchema')));
+		return;
+	}
+
+	workflowSettings.value.viewerMode = {
+		manual: viewerManual.value.trim() || undefined,
+		inputs: parsedViewerInputs.inputs.length > 0 ? parsedViewerInputs.inputs : undefined,
+	};
+
+	if (!workflowSettings.value.viewerMode.manual && !workflowSettings.value.viewerMode.inputs) {
+		delete workflowSettings.value.viewerMode;
+	}
+
 	// Set that the active state should be changed
 	const data: WorkflowDataUpdate & { settings: IWorkflowSettings } = {
 		settings: workflowSettings.value,
@@ -731,9 +758,13 @@ onMounted(async () => {
 	if (workflowSettingsData.availableInMCP === undefined) {
 		workflowSettingsData.availableInMCP = defaultValues.value.availableInMCP;
 	}
+	if (workflowSettingsData.viewerMode === undefined) {
+		workflowSettingsData.viewerMode = {};
+	}
 
 	originalBinaryMode.value = workflowSettingsData.binaryMode;
 	workflowSettings.value = workflowSettingsData;
+	viewerInputsJson.value = JSON.stringify(workflowSettingsData.viewerMode.inputs ?? [], null, 2);
 	timeoutHMS.value = convertToHMS(workflowSettingsData.executionTimeout);
 	isLoading.value = false;
 
@@ -965,6 +996,51 @@ onBeforeUnmount(() => {
 						</ElCol>
 					</ElRow>
 				</div>
+				<ElRow data-test-id="workflow-settings-viewer-manual">
+					<ElCol :span="10" :class="$style['setting-name']">
+						{{ i18n.baseText('workflowSettings.viewerManual') }}
+						<N8nTooltip placement="top">
+							<template #content>
+								<div v-text="helpTexts.viewerManual"></div>
+							</template>
+							<N8nIcon icon="circle-help" />
+						</N8nTooltip>
+					</ElCol>
+					<ElCol :span="14">
+						<N8nInput
+							v-model="viewerManual"
+							type="textarea"
+							:rows="4"
+							:disabled="readOnlyEnv || !workflowPermissions.update"
+							:placeholder="i18n.baseText('workflowSettings.viewerManual.placeholder')"
+							data-test-id="workflow-settings-viewer-manual-input"
+						/>
+					</ElCol>
+				</ElRow>
+				<ElRow data-test-id="workflow-settings-viewer-inputs">
+					<ElCol :span="10" :class="$style['setting-name']">
+						{{ i18n.baseText('workflowSettings.viewerInputs') }}
+						<N8nTooltip placement="top">
+							<template #content>
+								<div v-text="helpTexts.viewerInputs"></div>
+							</template>
+							<N8nIcon icon="circle-help" />
+						</N8nTooltip>
+					</ElCol>
+					<ElCol :span="14">
+						<N8nInput
+							v-model="viewerInputsJson"
+							type="textarea"
+							:rows="7"
+							:disabled="readOnlyEnv || !workflowPermissions.update"
+							:placeholder="i18n.baseText('workflowSettings.viewerInputs.placeholder')"
+							data-test-id="workflow-settings-viewer-inputs-json"
+						/>
+						<div :class="$style.viewerInputExample">
+							{{ i18n.baseText('workflowSettings.viewerInputs.example') }}
+						</div>
+					</ElCol>
+				</ElRow>
 				<ElRow>
 					<ElCol :span="10" :class="$style['setting-name']">
 						{{ i18n.baseText('workflowSettings.timezone') }}
@@ -1595,5 +1671,12 @@ onBeforeUnmount(() => {
 		opacity: 0.5;
 		cursor: not-allowed;
 	}
+}
+
+.viewerInputExample {
+	margin-top: var(--spacing--4xs);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--light);
+	line-height: var(--line-height--md);
 }
 </style>
