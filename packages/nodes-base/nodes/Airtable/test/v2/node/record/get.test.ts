@@ -20,8 +20,8 @@ jest.mock('../../../../v2/transport', () => {
 	};
 });
 
-describe('Test AirtableV2, create operation', () => {
-	it('should create a record, autoMapInputData', async () => {
+describe('Test AirtableV2, get operation', () => {
+	it('should get a record and with nested fields structure for v2.2', async () => {
 		const nodeParameters = {
 			operation: 'get',
 			id: 'recXXX',
@@ -45,6 +45,38 @@ describe('Test AirtableV2, create operation', () => {
 		expect(transport.apiRequest).toHaveBeenCalledWith('GET', 'appYoLbase/tblltable/recXXX');
 
 		expect(responce).toEqual([
+			{
+				json: {
+					id: 'recXXX',
+					fields: {
+						foo: 'foo 1',
+						bar: 'bar 1',
+					},
+				},
+				pairedItem: {
+					item: 0,
+				},
+			},
+		]);
+	});
+
+	it('should get a record and flatten output for v2', async () => {
+		const nodeParameters = {
+			operation: 'get',
+			id: 'recXXX',
+			options: {},
+		};
+
+		const items = [{ json: {} }];
+
+		const result = await get.execute.call(
+			createMockExecuteFunction(nodeParameters, 2),
+			items,
+			'appYoLbase',
+			'tblltable',
+		);
+
+		expect(result).toEqual([
 			{
 				json: {
 					id: 'recXXX',

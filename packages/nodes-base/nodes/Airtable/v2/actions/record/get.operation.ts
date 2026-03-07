@@ -8,7 +8,11 @@ import type {
 
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
 import type { IRecord } from '../../helpers/interfaces';
-import { flattenOutput, processAirtableError } from '../../helpers/utils';
+import {
+	flattenOutput,
+	legacyFlattenRecordOutputs,
+	processAirtableError,
+} from '../../helpers/utils';
 import { apiRequest, downloadRecordAttachments } from '../../transport';
 
 const properties: INodeProperties[] = [
@@ -64,6 +68,7 @@ export async function execute(
 	table: string,
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
+	const nodeVersion = this.getNode().typeVersion;
 
 	for (let i = 0; i < items.length; i++) {
 		let id;
@@ -80,14 +85,18 @@ export async function execute(
 					[responseData] as IRecord[],
 					options.downloadFields as string[],
 				);
-				returnData.push(...itemWithAttachments);
+				returnData.push(...legacyFlattenRecordOutputs(itemWithAttachments, nodeVersion));
 				continue;
 			}
 
-			const executionData = this.helpers.constructExecutionMetaData(
-				wrapData(flattenOutput(responseData as IDataObject)),
-				{ itemData: { item: i } },
-			);
+			const output =
+				nodeVersion < 2.2
+					? flattenOutput(responseData as IDataObject)
+					: (responseData as IDataObject);
+
+			const executionData = this.helpers.constructExecutionMetaData(wrapData(output), {
+				itemData: { item: i },
+			});
 
 			returnData.push(...executionData);
 		} catch (error) {

@@ -1,5 +1,10 @@
 import set from 'lodash/set';
-import { ApplicationError, type IDataObject, type NodeApiError } from 'n8n-workflow';
+import {
+	ApplicationError,
+	type IDataObject,
+	type INodeExecutionData,
+	type NodeApiError,
+} from 'n8n-workflow';
 
 import type { UpdateRecord } from './interfaces';
 
@@ -90,3 +95,11 @@ export const flattenOutput = (record: IDataObject) => {
 		...(fields as IDataObject),
 	};
 };
+
+export function legacyFlattenRecordOutputs(
+	items: INodeExecutionData[],
+	nodeVersion: number,
+): INodeExecutionData[] {
+	if (nodeVersion >= 2.2) return items;
+	return items.map((item) => ({ ...item, json: flattenOutput(item.json) }));
+}
