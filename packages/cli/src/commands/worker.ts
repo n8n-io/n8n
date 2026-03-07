@@ -92,6 +92,7 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await this.initLicense();
 		this.logger.debug('License init complete');
+		await this.initCommunityPackages();
 		await Container.get(CredentialsOverwrites).init();
 		this.logger.debug('Credentials overwrites init complete');
 		await this.initBinaryDataService();

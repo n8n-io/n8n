@@ -226,6 +226,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
 		}
 
+		await this.initCommunityPackages();
+
 		// Initialize the auth roles service to make sure that roles are correctly setup for the instance.
 		// Only run on main instance - workers should not modify auth roles/scopes as they may have
 		// different code versions, and scope sync would incorrectly delete scopes they don't know about.
