@@ -45,8 +45,10 @@ const BENCHMARK_WORKER_COUNT = parseInt(process.env.KAFKA_LOAD_WORKERS ?? '3', 1
 export const BENCHMARK_MAIN_RESOURCES = { memory: 8, cpu: 2 };
 export const BENCHMARK_WORKER_RESOURCES = { memory: 4, cpu: 2 };
 
+export const OBSERVABILITY_SERVICES = ['victoriaLogs', 'victoriaMetrics', 'vector'] as const;
+
 const BENCHMARK_BASE_CONFIG: N8NConfig = {
-	services: ['kafka', 'victoriaLogs', 'victoriaMetrics', 'vector'],
+	services: [...OBSERVABILITY_SERVICES],
 	postgres: true,
 	resourceQuota: BENCHMARK_MAIN_RESOURCES,
 	workerResourceQuota: BENCHMARK_WORKER_RESOURCES,
@@ -60,6 +62,7 @@ const BENCHMARK_PROFILES: Array<{ name: string; config: N8NConfig }> = [
 		name: 'direct',
 		config: {
 			...BENCHMARK_BASE_CONFIG,
+			services: [...BENCHMARK_BASE_CONFIG.services!, 'kafka'],
 			env: {
 				...BENCHMARK_BASE_CONFIG.env,
 				DB_POSTGRESDB_POOL_SIZE: '20',
@@ -70,6 +73,7 @@ const BENCHMARK_PROFILES: Array<{ name: string; config: N8NConfig }> = [
 		name: 'queue',
 		config: {
 			...BENCHMARK_BASE_CONFIG,
+			services: [...BENCHMARK_BASE_CONFIG.services!, 'kafka'],
 			workers: BENCHMARK_WORKER_COUNT,
 			env: {
 				...BENCHMARK_BASE_CONFIG.env,
@@ -81,6 +85,7 @@ const BENCHMARK_PROFILES: Array<{ name: string; config: N8NConfig }> = [
 		name: 'queue-tuned',
 		config: {
 			...BENCHMARK_BASE_CONFIG,
+			services: [...BENCHMARK_BASE_CONFIG.services!, 'kafka'],
 			workers: BENCHMARK_WORKER_COUNT,
 			env: {
 				...BENCHMARK_BASE_CONFIG.env,
