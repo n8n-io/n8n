@@ -1,5 +1,5 @@
 import type { Tool } from '@langchain/core/tools';
-import { makeResolverFromLegacyOptions } from '@n8n/vm2';
+import { makeResolverFromLegacyOptions } from 'vm2';
 import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
 import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
 import { standardizeOutput } from 'n8n-nodes-base/dist/nodes/Code/utils';
@@ -16,7 +16,7 @@ import type {
 
 // TODO: Add support for execute function. Got already started but got commented out
 
-import { logWrapper } from '@utils/logWrapper';
+import { logWrapper } from '@n8n/ai-utilities';
 
 const { NODE_FUNCTION_ALLOW_BUILTIN: builtIn, NODE_FUNCTION_ALLOW_EXTERNAL: external } =
 	process.env;

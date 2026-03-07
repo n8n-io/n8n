@@ -80,6 +80,83 @@ process.env.TZ = 'UTC';
 
 configure({ testIdAttribute: 'data-test-id' });
 
+/**
+ * PointerEvent polyfill for JSDOM
+ * Required for Reka UI tooltip hover to work (checks event.pointerType)
+ */
+class JsonDomPointerEvent extends MouseEvent implements PointerEvent {
+	readonly pointerId: number;
+	readonly pointerType: string;
+	readonly pressure: number;
+	readonly tangentialPressure: number;
+	readonly tiltX: number;
+	readonly tiltY: number;
+	readonly twist: number;
+	readonly width: number;
+	readonly height: number;
+	readonly isPrimary: boolean;
+	readonly altitudeAngle: number;
+	readonly azimuthAngle: number;
+
+	constructor(type: string, params: PointerEventInit = {}) {
+		super(type, params);
+		this.pointerId = params.pointerId ?? 0;
+		this.pointerType = params.pointerType ?? 'mouse';
+		this.pressure = params.pressure ?? 0;
+		this.tangentialPressure = params.tangentialPressure ?? 0;
+		this.tiltX = params.tiltX ?? 0;
+		this.tiltY = params.tiltY ?? 0;
+		this.twist = params.twist ?? 0;
+		this.width = params.width ?? 1;
+		this.height = params.height ?? 1;
+		this.altitudeAngle = params.altitudeAngle ?? Math.PI / 2;
+		this.azimuthAngle = params.azimuthAngle ?? 0;
+		this.isPrimary = params.isPrimary ?? true;
+	}
+
+	getCoalescedEvents(): PointerEvent[] {
+		return [];
+	}
+	getPredictedEvents(): PointerEvent[] {
+		return [];
+	}
+}
+
+// Always apply our PointerEvent polyfill - JSDOM's PointerEvent is incomplete
+// and doesn't properly support pointerType which Reka UI requires for tooltips
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(globalThis as any).PointerEvent = JsonDomPointerEvent;
+
+/**
+ * Fixes missing pointer APIs and defaultPrevented issues for jsdom + user-event
+ * Required for Reka UI components (tooltips, etc.) to work properly in tests
+ */
+beforeAll(() => {
+	// Patch missing pointer APIs
+	const elementProto = HTMLElement.prototype as HTMLElement & {
+		hasPointerCapture?: (pointerId: number) => boolean;
+		setPointerCapture?: (pointerId: number) => void;
+		releasePointerCapture?: (pointerId: number) => void;
+	};
+
+	if (!elementProto.hasPointerCapture) {
+		Object.defineProperties(elementProto, {
+			hasPointerCapture: {
+				value: (_: number) => false,
+				writable: true,
+			},
+			setPointerCapture: {
+				value: (_: number) => {},
+				writable: true,
+			},
+			releasePointerCapture: {
+				value: (_: number) => {},
+				writable: true,
+			},
+		});
+	}
+});
+
 // Create DOM containers for Element Plus components before each test
 beforeEach(() => {
 	// Create app-grid container for toasts
@@ -106,13 +183,15 @@ afterEach(() => {
 	}
 });
 
-window.ResizeObserver =
-	window.ResizeObserver ||
-	vi.fn().mockImplementation(() => ({
-		disconnect: vi.fn(),
-		observe: vi.fn(),
-		unobserve: vi.fn(),
-	}));
+if (!window.ResizeObserver) {
+	// Use function constructor instead of class to allow vi.spyOn to work
+	function MockResizeObserver(this: ResizeObserver, _cb: ResizeObserverCallback) {
+		this.disconnect = vi.fn();
+		this.observe = vi.fn();
+		this.unobserve = vi.fn();
+	}
+	window.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
+}
 
 Element.prototype.scrollIntoView = vi.fn();
 
@@ -183,6 +262,40 @@ class Worker {
 	terminate = vi.fn();
 }
 
+class MockMessagePort {
+	onmessage = vi.fn();
+
+	onmessageerror = vi.fn();
+
+	postMessage = vi.fn();
+
+	start = vi.fn();
+
+	close = vi.fn();
+
+	addEventListener = vi.fn();
+
+	removeEventListener = vi.fn();
+
+	dispatchEvent = vi.fn(() => true);
+}
+
+class SharedWorker {
+	port: MockMessagePort;
+
+	onerror = vi.fn();
+
+	constructor(_url: string | URL, _options?: string | WorkerOptions) {
+		this.port = new MockMessagePort();
+	}
+
+	addEventListener = vi.fn();
+
+	removeEventListener = vi.fn();
+
+	dispatchEvent = vi.fn(() => true);
+}
+
 class DataTransfer {
 	private data: Record<string, unknown> = {};
 
@@ -199,6 +312,11 @@ class DataTransfer {
 Object.defineProperty(window, 'Worker', {
 	writable: true,
 	value: Worker,
+});
+
+Object.defineProperty(window, 'SharedWorker', {
+	writable: true,
+	value: SharedWorker,
 });
 
 Object.defineProperty(window, 'DataTransfer', {

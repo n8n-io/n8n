@@ -30,6 +30,14 @@ describe('eligibleModules', () => {
 			'source-control',
 			'dynamic-credentials',
 			'chat-hub',
+			'sso-oidc',
+			'sso-saml',
+			'log-streaming',
+			'ldap',
+			'quick-connect',
+			'workflow-builder',
+			'redaction',
+			'instance-registry',
 		]);
 	});
 
@@ -46,6 +54,14 @@ describe('eligibleModules', () => {
 			'source-control',
 			'dynamic-credentials',
 			'chat-hub',
+			'sso-oidc',
+			'sso-saml',
+			'log-streaming',
+			'ldap',
+			'quick-connect',
+			'workflow-builder',
+			'redaction',
+			'instance-registry',
 		]);
 	});
 

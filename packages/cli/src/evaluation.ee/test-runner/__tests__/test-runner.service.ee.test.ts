@@ -9,7 +9,7 @@ import type {
 import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
 import { readFileSync } from 'fs';
 import { mock } from 'jest-mock-extended';
-import type { ErrorReporter } from 'n8n-core';
+import type { ErrorReporter, InstanceSettings } from 'n8n-core';
 import {
 	createRunExecutionData,
 	EVALUATION_NODE_TYPE,
@@ -24,6 +24,7 @@ import { TestRunnerService } from '../test-runner.service.ee';
 import type { ActiveExecutions } from '@/active-executions';
 import { TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
 
@@ -42,6 +43,8 @@ describe('TestRunnerService', () => {
 	const testRunRepository = mock<TestRunRepository>();
 	const testCaseExecutionRepository = mock<TestCaseExecutionRepository>();
 	const executionsConfig = mockInstance(ExecutionsConfig, { mode: 'regular' });
+	const publisher = mock<Publisher>();
+	const instanceSettings = mock<InstanceSettings>({ hostId: 'test-host-id', isMultiMain: false });
 	let testRunnerService: TestRunnerService;
 
 	mockInstance(LoadNodesAndCredentials, {
@@ -59,6 +62,9 @@ describe('TestRunnerService', () => {
 			testCaseExecutionRepository,
 			errorReporter,
 			executionsConfig,
+			mock(),
+			publisher,
+			instanceSettings,
 		);
 
 		testRunRepository.createTestRun.mockResolvedValue(mock<TestRun>({ id: 'test-run-id' }));
@@ -223,7 +229,7 @@ describe('TestRunnerService', () => {
 				(testRunnerService as any).extractDatasetTriggerOutput(execution, workflow);
 			} catch (error) {
 				expect(error).toBeInstanceOf(TestRunError);
-				expect(error.code).toBe('TEST_CASES_NOT_FOUND');
+				expect(error.code).toBe('CANT_FETCH_TEST_CASES');
 			}
 		});
 
@@ -497,6 +503,9 @@ describe('TestRunnerService', () => {
 				testCaseExecutionRepository,
 				errorReporter,
 				queueModeConfig,
+				mock(),
+				publisher,
+				instanceSettings,
 			);
 			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
 
@@ -679,6 +688,8 @@ describe('TestRunnerService', () => {
 			// Setup test data
 			const triggerNodeName = 'TriggerNode';
 			const workflow = mock<IWorkflowBase>({
+				id: 'workflow-id',
+				name: 'Test Workflow',
 				nodes: [
 					{
 						id: 'node1',
@@ -807,6 +818,9 @@ describe('TestRunnerService', () => {
 					testCaseExecutionRepository,
 					errorReporter,
 					queueModeConfig,
+					mock(),
+					publisher,
+					instanceSettings,
 				);
 			});
 
@@ -814,6 +828,8 @@ describe('TestRunnerService', () => {
 				// Setup test data
 				const triggerNodeName = 'TriggerNode';
 				const workflow = mock<IWorkflowBase>({
+					id: 'workflow-id',
+					name: 'Test Workflow',
 					nodes: [
 						{
 							id: 'node1',

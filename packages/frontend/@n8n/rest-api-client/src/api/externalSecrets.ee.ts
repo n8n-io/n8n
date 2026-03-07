@@ -9,6 +9,29 @@ export const getExternalSecrets = async (
 	return await makeRestApiRequest(context, 'GET', '/external-secrets/secrets');
 };
 
+/**
+ * @beta still under development
+ */
+export const getGlobalExternalSecrets = async (
+	context: IRestApiContext,
+): Promise<Record<string, string[]>> => {
+	return await makeRestApiRequest(context, 'GET', '/secret-providers/completions/secrets/global');
+};
+
+/**
+ * @beta still under development
+ */
+export const getProjectExternalSecrets = async (
+	context: IRestApiContext,
+	projectId: string,
+): Promise<Record<string, string[]>> => {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/secret-providers/completions/secrets/project/${projectId}`,
+	);
+};
+
 export const getExternalSecretsProviders = async (
 	context: IRestApiContext,
 ): Promise<ExternalSecretsProvider[]> => {

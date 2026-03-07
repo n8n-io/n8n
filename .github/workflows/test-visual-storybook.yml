@@ -8,6 +8,8 @@ on:
     branches:
       - master
     paths:
+      - 'packages/frontend/@n8n/storybook/**'
+      - 'packages/frontend/@n8n/chat/**'
       - 'packages/frontend/@n8n/design-system/**'
       - '.github/workflows/test-visual-storybook.yml'
 concurrency:
@@ -33,9 +35,9 @@ jobs:
           build-command: pnpm run build --filter=@n8n/utils --filter=@n8n/vitest-config --filter=@n8n/design-system
 
       - name: Build
-        working-directory: packages/frontend/@n8n/design-system
+        working-directory: packages/frontend/@n8n/storybook
         run: |
-          pnpm build:storybook
+          pnpm build
 
       - name: Setup Wrangler Pre-requisites
         run: |
@@ -48,5 +50,5 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy packages/frontend/@n8n/design-system/storybook-static --project-name=storybook --branch=${{github.ref_name}} --commit-hash=${{ github.sha }}
+          command: pages deploy packages/frontend/@n8n/storybook/storybook-static --project-name=storybook --branch=${{github.ref_name}} --commit-hash=${{ github.sha }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}

@@ -6,6 +6,7 @@ import { getResourcePermissions } from '../get-resource-permissions.ee';
 describe('permissions', () => {
 	it('getResourcePermissions for empty scopes', () => {
 		expect(getResourcePermissions()).toEqual({
+			aiAssistant: {},
 			annotationTag: {},
 			auditLogs: {},
 			banner: {},
@@ -25,6 +26,7 @@ describe('permissions', () => {
 			saml: {},
 			provisioning: {},
 			securityAudit: {},
+			securitySettings: {},
 			sourceControl: {},
 			tag: {},
 			user: {},
@@ -83,6 +85,7 @@ describe('permissions', () => {
 		];
 
 		const permissionRecord: PermissionsRecord = {
+			aiAssistant: {},
 			annotationTag: {},
 			auditLogs: {},
 			banner: {},
@@ -117,6 +120,7 @@ describe('permissions', () => {
 			mcp: {},
 			mcpApiKey: {},
 			securityAudit: {},
+			securitySettings: {},
 			sourceControl: {},
 			tag: {
 				create: true,

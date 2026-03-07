@@ -1,8 +1,19 @@
 import type { IExecutionResponse } from '@n8n/db';
 import type { IDataObject, INode } from 'n8n-workflow';
-import { CHAT_WAIT_USER_REPLY, RESPOND_TO_WEBHOOK_NODE_TYPE } from 'n8n-workflow';
+import {
+	CHAT_NODE_TYPE,
+	CHAT_TOOL_NODE_TYPE,
+	CHAT_WAIT_USER_REPLY,
+	RESPOND_TO_WEBHOOK_NODE_TYPE,
+	SEND_AND_WAIT_OPERATION,
+} from 'n8n-workflow';
 
-import { getMessage, getLastNodeExecuted, shouldResumeImmediately } from '../utils';
+import {
+	getMessage,
+	getLastNodeExecuted,
+	getLastNodeMessage,
+	shouldResumeImmediately,
+} from '../utils';
 
 // helpers --------------------------------------------------------
 const createMockExecution = (
@@ -440,5 +451,93 @@ describe('shouldResumeImmediately', () => {
 		});
 		const result = shouldResumeImmediately(node);
 		expect(result).toBe(false);
+	});
+
+	it('should return false when operation is SEND_AND_WAIT_OPERATION and node type is CHAT_NODE_TYPE', () => {
+		const node = createMockNode({
+			type: CHAT_NODE_TYPE,
+			parameters: {
+				operation: SEND_AND_WAIT_OPERATION,
+			},
+		});
+		const result = shouldResumeImmediately(node);
+		expect(result).toBe(false);
+	});
+
+	it('should return false when operation is SEND_AND_WAIT_OPERATION and node type is CHAT_TOOL_NODE_TYPE', () => {
+		const node = createMockNode({
+			type: CHAT_TOOL_NODE_TYPE,
+			parameters: {
+				operation: SEND_AND_WAIT_OPERATION,
+			},
+		});
+		const result = shouldResumeImmediately(node);
+		expect(result).toBe(false);
+	});
+
+	it('should return true when operation is not SEND_AND_WAIT_OPERATION and node type is CHAT_NODE_TYPE', () => {
+		const node = createMockNode({
+			type: CHAT_NODE_TYPE,
+			parameters: {
+				operation: 'send',
+			},
+		});
+		const result = shouldResumeImmediately(node);
+		expect(result).toBe(true);
+	});
+
+	it('should return true operation is not SEND_AND_WAIT_OPERATION and node type is CHAT_TOOL_NODE_TYPE', () => {
+		const node = createMockNode({
+			type: CHAT_TOOL_NODE_TYPE,
+			parameters: {
+				operation: 'send',
+			},
+		});
+		const result = shouldResumeImmediately(node);
+		expect(result).toBe(true);
+	});
+});
+
+describe('getLastNodeMessage', () => {
+	it('should return empty string when node type is not CHAT_NODE_TYPE', () => {
+		const execution = createMockExecution();
+		const node = createMockNode({ type: 'some-other-node-type' });
+		const result = getLastNodeMessage(execution, node);
+		expect(result).toBe('');
+	});
+
+	it('should return the message when node is CHAT_NODE_TYPE and execution has sendMessage', () => {
+		const execution = createMockExecution();
+		const node = createMockNode({ type: CHAT_NODE_TYPE });
+		const result = getLastNodeMessage(execution, node);
+		expect(result).toBe('Test message');
+	});
+
+	it('should return empty string when node is CHAT_NODE_TYPE but sendMessage is missing', () => {
+		const execution = createMockExecution({}, { json: { data: 'test' } });
+		const node = createMockNode({ type: CHAT_NODE_TYPE });
+		const result = getLastNodeMessage(execution, node);
+		expect(result).toBe('');
+	});
+
+	it('should return empty string when run data for the node is missing', () => {
+		const execution = createMockExecution({
+			data: {
+				resultData: {
+					lastNodeExecuted: 'TestNode',
+					runData: {},
+				},
+			},
+		});
+		const node = createMockNode({ type: CHAT_NODE_TYPE });
+		const result = getLastNodeMessage(execution, node);
+		expect(result).toBe('');
+	});
+
+	it('should return empty string when main output is missing', () => {
+		const execution = createMockExecution({}, undefined, [{ data: {} }]);
+		const node = createMockNode({ type: CHAT_NODE_TYPE });
+		const result = getLastNodeMessage(execution, node);
+		expect(result).toBe('');
 	});
 });

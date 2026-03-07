@@ -177,6 +177,100 @@ describe('POST /credentials', () => {
 	});
 });
 
+describe('GET /credentials', () => {
+	test('should return all credentials for owner with pagination', async () => {
+		const saved1 = await saveCredential(dbCredential(), { user: owner });
+		const saved2 = await saveCredential(dbCredential(), { user: owner });
+
+		const response = await authOwnerAgent.get('/credentials');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toHaveProperty('data');
+		expect(response.body).toHaveProperty('nextCursor');
+		expect(Array.isArray(response.body.data)).toBe(true);
+		expect(response.body.data.length).toBe(2);
+
+		const allowedListItemKeys = ['createdAt', 'id', 'name', 'shared', 'type', 'updatedAt'];
+		response.body.data.forEach((item: Record<string, unknown>) => {
+			expect(Object.keys(item).sort()).toEqual(allowedListItemKeys);
+			expect(item).toHaveProperty('id');
+			expect(item).toHaveProperty('name');
+			expect(item).toHaveProperty('type');
+			expect(item).toHaveProperty('createdAt');
+			expect(item).toHaveProperty('updatedAt');
+			expect(item).toHaveProperty('shared');
+			expect(Array.isArray((item as { shared: unknown }).shared)).toBe(true);
+			(
+				item as {
+					shared: {
+						id: string;
+						name: string;
+						role: string;
+						createdAt: string;
+						updatedAt: string;
+					}[];
+				}
+			).shared.forEach((entry) => {
+				expect(entry).toHaveProperty('id');
+				expect(entry).toHaveProperty('name');
+				expect(entry).toHaveProperty('role');
+				expect(entry).toHaveProperty('createdAt');
+				expect(entry).toHaveProperty('updatedAt');
+			});
+		});
+		expect(response.body.data).toContainEqual(
+			expect.objectContaining({ id: saved1.id, name: saved1.name }),
+		);
+		expect(response.body.data).toContainEqual(
+			expect.objectContaining({ id: saved2.id, name: saved2.name }),
+		);
+	});
+
+	test('should return empty list when no credentials exist', async () => {
+		const response = await authOwnerAgent.get('/credentials');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toEqual([]);
+		expect(response.body.nextCursor).toBeNull();
+	});
+
+	test('should reject for member (missing credential:list scope)', async () => {
+		const response = await authMemberAgent.get('/credentials');
+
+		expect(response.statusCode).toBe(403);
+		expect(response.body).toHaveProperty('message', 'Forbidden');
+	});
+
+	test('should respect limit and return nextCursor when more results exist', async () => {
+		await saveCredential(dbCredential(), { user: owner });
+		await saveCredential(dbCredential(), { user: owner });
+		await saveCredential(dbCredential(), { user: owner });
+
+		const response = await authOwnerAgent.get('/credentials').query({ limit: 2 });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBe(2);
+		expect(response.body.nextCursor).not.toBeNull();
+	});
+
+	test('should paginate with cursor', async () => {
+		await saveCredential(dbCredential(), { user: owner });
+		await saveCredential(dbCredential(), { user: owner });
+		await saveCredential(dbCredential(), { user: owner });
+
+		const first = await authOwnerAgent.get('/credentials').query({ limit: 2 });
+		expect(first.statusCode).toBe(200);
+		expect(first.body.data.length).toBe(2);
+		expect(first.body.nextCursor).not.toBeNull();
+
+		const second = await authOwnerAgent
+			.get('/credentials')
+			.query({ cursor: first.body.nextCursor });
+		expect(second.statusCode).toBe(200);
+		expect(second.body.data.length).toBe(1);
+	});
+});
+
 describe('DELETE /credentials/:id', () => {
 	test('should delete owned cred for owner', async () => {
 		const savedCredential = await saveCredential(dbCredential(), { user: owner });
@@ -880,57 +974,6 @@ describe('PATCH /credentials/:id', () => {
 		expect(updatedData.accessToken).toBe(originalAccessToken); // Should keep original, not blanking value
 		expect(updatedData.user).toBe('newUserValue'); // Should be updated
 		expect(updatedData.server).toBe(originalServer); // Should be preserved
-	});
-
-	test('should preserve oauthTokenData when updating other fields', async () => {
-		const savedCredential = await saveCredential(dbCredential(), { user: owner });
-
-		// Manually add oauthTokenData to the credential
-		const credentialsService = Container.get(CredentialsService);
-		const existingData = credentialsService.decrypt(
-			await Container.get(CredentialsRepository).findOneByOrFail({ id: savedCredential.id }),
-			true,
-		);
-		const dataWithOAuth = {
-			...existingData,
-			oauthTokenData: {
-				access_token: 'test_access_token',
-				refresh_token: 'test_refresh_token',
-			},
-		};
-
-		// Update the credential with oauthTokenData
-		const encryptedWithOAuth = credentialsService.createEncryptedData({
-			id: savedCredential.id,
-			name: savedCredential.name,
-			type: savedCredential.type,
-			data: dataWithOAuth,
-		});
-		await Container.get(CredentialsRepository).update(savedCredential.id, encryptedWithOAuth);
-
-		// Update without including oauthTokenData in the payload
-		const updatePayload = {
-			data: {
-				accessToken: 'newToken',
-				user: 'test',
-				server: 'testServer',
-			},
-		};
-
-		const response = await authOwnerAgent
-			.patch(`/credentials/${savedCredential.id}`)
-			.send(updatePayload);
-
-		expect(response.statusCode).toBe(200);
-
-		// Verify oauthTokenData was preserved
-		const updatedData = await getDecryptedCredentialData(savedCredential.id);
-		expect(updatedData.oauthTokenData).toEqual({
-			access_token: 'test_access_token',
-			refresh_token: 'test_refresh_token',
-		});
-		// And other fields should be updated
-		expect(updatedData.accessToken).toBe('newToken');
 	});
 });
 

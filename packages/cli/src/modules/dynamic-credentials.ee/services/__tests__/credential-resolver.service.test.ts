@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
 import {
 	CredentialResolverValidationError,
 	type CredentialResolverConfiguration,
@@ -23,7 +23,7 @@ describe('DynamicCredentialResolverService', () => {
 	let mockCipher: jest.Mocked<Cipher>;
 	let mockExpressionService: jest.Mocked<ResolverConfigExpressionService>;
 
-	const mockResolverImplementation: jest.Mocked<ICredentialResolver> = {
+	const mockResolverImplementation = {
 		metadata: {
 			name: 'test.resolver',
 			description: 'A test resolver',
@@ -31,7 +31,8 @@ describe('DynamicCredentialResolverService', () => {
 		getSecret: jest.fn(),
 		setSecret: jest.fn(),
 		validateOptions: jest.fn(),
-	};
+		deleteAllSecrets: jest.fn(),
+	} as jest.Mocked<ICredentialResolver>;
 
 	const createMockEntity = (
 		overrides: Partial<DynamicCredentialResolver> = {},
@@ -167,52 +168,6 @@ describe('DynamicCredentialResolverService', () => {
 
 			expect(mockRepository.create).not.toHaveBeenCalled();
 			expect(mockRepository.save).not.toHaveBeenCalled();
-		});
-
-		it('should pass canUseExternalSecrets=true to validation for users with externalSecret:list permission', async () => {
-			const config: CredentialResolverConfiguration = { prefix: 'test-prefix' };
-			const savedEntity = createMockEntity();
-			const mockUser = createMockUser(GLOBAL_OWNER_ROLE); // Owner has externalSecret:list
-
-			mockRegistry.getResolverByTypename.mockReturnValue(mockResolverImplementation);
-			mockResolverImplementation.validateOptions.mockResolvedValue(undefined);
-			mockCipher.encrypt.mockReturnValue('encrypted-config-data');
-			mockRepository.create.mockReturnValue(savedEntity);
-			mockRepository.save.mockResolvedValue(savedEntity);
-			mockCipher.decrypt.mockReturnValue(JSON.stringify(config));
-
-			await service.create({
-				name: 'Test Resolver',
-				type: 'test.resolver',
-				config,
-				user: mockUser,
-			});
-
-			// Verify expression service was called with canUseExternalSecrets=true
-			expect(mockExpressionService.resolve).toHaveBeenCalledWith(config, true);
-		});
-
-		it('should pass canUseExternalSecrets=false to validation for users without externalSecret:list permission', async () => {
-			const config: CredentialResolverConfiguration = { prefix: 'test-prefix' };
-			const savedEntity = createMockEntity();
-			const mockUser = createMockUser(GLOBAL_MEMBER_ROLE); // Member doesn't have externalSecret:list
-
-			mockRegistry.getResolverByTypename.mockReturnValue(mockResolverImplementation);
-			mockResolverImplementation.validateOptions.mockResolvedValue(undefined);
-			mockCipher.encrypt.mockReturnValue('encrypted-config-data');
-			mockRepository.create.mockReturnValue(savedEntity);
-			mockRepository.save.mockResolvedValue(savedEntity);
-			mockCipher.decrypt.mockReturnValue(JSON.stringify(config));
-
-			await service.create({
-				name: 'Test Resolver',
-				type: 'test.resolver',
-				config,
-				user: mockUser,
-			});
-
-			// Verify expression service was called with canUseExternalSecrets=false
-			expect(mockExpressionService.resolve).toHaveBeenCalledWith(config, false);
 		});
 	});
 
@@ -391,42 +346,113 @@ describe('DynamicCredentialResolverService', () => {
 			expect(mockRepository.save).not.toHaveBeenCalled();
 		});
 
-		it('should pass canUseExternalSecrets=true to validation for users with externalSecret:list permission on update', async () => {
+		it('should call deleteAllSecrets when clearCredentials is true', async () => {
 			const entity = createMockEntity();
-			const newConfig: CredentialResolverConfiguration = { prefix: 'new-prefix' };
-			const updatedEntity = createMockEntity({ config: 'new-encrypted-config' });
-			const mockUser = createMockUser(GLOBAL_OWNER_ROLE); // Owner has externalSecret:list
+			const updatedEntity = createMockEntity();
+			const mockUser = createMockUser();
+			const decryptedConfig = { prefix: 'test' };
+			const resolverWithDeleteAllSecrets = {
+				...mockResolverImplementation,
+				deleteAllSecrets: jest.fn().mockResolvedValue(undefined),
+			};
 
 			mockRepository.findOneBy.mockResolvedValue(entity);
-			mockRegistry.getResolverByTypename.mockReturnValue(mockResolverImplementation);
-			mockResolverImplementation.validateOptions.mockResolvedValue(undefined);
-			mockCipher.encrypt.mockReturnValue('new-encrypted-config');
+			mockRegistry.getResolverByTypename.mockReturnValue(
+				resolverWithDeleteAllSecrets as jest.Mocked<ICredentialResolver>,
+			);
 			mockRepository.save.mockResolvedValue(updatedEntity);
-			mockCipher.decrypt.mockReturnValue(JSON.stringify(newConfig));
+			mockCipher.decrypt.mockReturnValue(JSON.stringify(decryptedConfig));
 
-			await service.update('resolver-id-123', { config: newConfig, user: mockUser });
+			await service.update('resolver-id-123', {
+				clearCredentials: true,
+				user: mockUser,
+			});
 
-			// Verify expression service was called with canUseExternalSecrets=true
-			expect(mockExpressionService.resolve).toHaveBeenCalledWith(newConfig, true);
+			expect(mockRegistry.getResolverByTypename).toHaveBeenCalledWith('test.resolver');
+			expect(resolverWithDeleteAllSecrets.deleteAllSecrets).toHaveBeenCalledWith({
+				resolverId: 'resolver-id-123',
+				resolverName: 'test.resolver',
+				configuration: decryptedConfig,
+			});
+			expect(mockRepository.save).toHaveBeenCalled();
 		});
 
-		it('should pass canUseExternalSecrets=false to validation for users without externalSecret:list permission on update', async () => {
+		it('should not call deleteAllSecrets when clearCredentials is false', async () => {
 			const entity = createMockEntity();
-			const newConfig: CredentialResolverConfiguration = { prefix: 'new-prefix' };
-			const updatedEntity = createMockEntity({ config: 'new-encrypted-config' });
-			const mockUser = createMockUser(GLOBAL_MEMBER_ROLE); // Member doesn't have externalSecret:list
+			const updatedEntity = createMockEntity();
+			const mockUser = createMockUser();
+			const decryptedConfig = { prefix: 'test' };
 
 			mockRepository.findOneBy.mockResolvedValue(entity);
-			mockRegistry.getResolverByTypename.mockReturnValue(mockResolverImplementation);
-			mockResolverImplementation.validateOptions.mockResolvedValue(undefined);
-			mockCipher.encrypt.mockReturnValue('new-encrypted-config');
 			mockRepository.save.mockResolvedValue(updatedEntity);
-			mockCipher.decrypt.mockReturnValue(JSON.stringify(newConfig));
+			mockCipher.decrypt.mockReturnValue(JSON.stringify(decryptedConfig));
 
-			await service.update('resolver-id-123', { config: newConfig, user: mockUser });
+			await service.update('resolver-id-123', {
+				clearCredentials: false,
+				user: mockUser,
+			});
 
-			// Verify expression service was called with canUseExternalSecrets=false
-			expect(mockExpressionService.resolve).toHaveBeenCalledWith(newConfig, false);
+			expect(mockRepository.save).toHaveBeenCalled();
+		});
+
+		it('should not call deleteAllSecrets when clearCredentials is undefined', async () => {
+			const entity = createMockEntity();
+			const updatedEntity = createMockEntity();
+			const mockUser = createMockUser();
+			const decryptedConfig = { prefix: 'test' };
+
+			mockRepository.findOneBy.mockResolvedValue(entity);
+			mockRepository.save.mockResolvedValue(updatedEntity);
+			mockCipher.decrypt.mockReturnValue(JSON.stringify(decryptedConfig));
+
+			await service.update('resolver-id-123', {
+				name: 'Updated Name',
+				user: mockUser,
+			});
+
+			expect(mockRepository.save).toHaveBeenCalled();
+		});
+
+		it('should throw CredentialResolverValidationError when resolver type is unknown and clearCredentials is true', async () => {
+			const entity = createMockEntity();
+			const mockUser = createMockUser();
+
+			mockRepository.findOneBy.mockResolvedValue(entity);
+			mockRegistry.getResolverByTypename.mockReturnValue(undefined);
+
+			await expect(
+				service.update('resolver-id-123', {
+					clearCredentials: true,
+					user: mockUser,
+				}),
+			).rejects.toThrow(CredentialResolverValidationError);
+
+			expect(mockRepository.save).not.toHaveBeenCalled();
+		});
+
+		it('should handle resolver without deleteAllSecrets method gracefully', async () => {
+			const entity = createMockEntity();
+			const updatedEntity = createMockEntity();
+			const mockUser = createMockUser();
+			const decryptedConfig = { prefix: 'test' };
+			const resolverWithoutDeleteAllSecrets = {
+				...mockResolverImplementation,
+				deleteAllSecrets: undefined,
+			};
+
+			mockRepository.findOneBy.mockResolvedValue(entity);
+			mockRegistry.getResolverByTypename.mockReturnValue(
+				resolverWithoutDeleteAllSecrets as jest.Mocked<ICredentialResolver>,
+			);
+			mockRepository.save.mockResolvedValue(updatedEntity);
+			mockCipher.decrypt.mockReturnValue(JSON.stringify(decryptedConfig));
+
+			await service.update('resolver-id-123', {
+				clearCredentials: true,
+				user: mockUser,
+			});
+
+			expect(mockRepository.save).toHaveBeenCalled();
 		});
 	});
 

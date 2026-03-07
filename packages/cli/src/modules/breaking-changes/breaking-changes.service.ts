@@ -7,10 +7,13 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
-import { WorkflowRepository } from '@n8n/db';
+import { WorkflowRepository, WorkflowStatisticsRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { In } from '@n8n/typeorm';
 import { ErrorReporter } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
+
+import { CacheService } from '@/services/cache/cache.service';
 
 import { RuleRegistry } from './breaking-changes.rule-registry.service';
 import { allRules, RuleInstances } from './rules';
@@ -20,8 +23,6 @@ import type {
 	IBreakingChangeWorkflowRule,
 } from './types';
 import { N8N_VERSION } from '../../constants';
-
-import { CacheService } from '@/services/cache/cache.service';
 
 interface WorkflowMetadata {
 	name: string;
@@ -44,6 +45,7 @@ export class BreakingChangeService {
 	constructor(
 		private readonly ruleRegistry: RuleRegistry,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly workflowStatisticsRepository: WorkflowStatisticsRepository,
 		private readonly cacheService: CacheService,
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
@@ -188,23 +190,41 @@ export class BreakingChangeService {
 
 		for (let skip = 0; skip < totalWorkflows; skip += this.batchSize) {
 			const workflows = await this.workflowRepository.find({
-				select: ['id', 'name', 'active', 'activeVersionId', 'nodes', 'updatedAt', 'statistics'],
+				select: ['id', 'name', 'active', 'activeVersionId', 'nodes', 'updatedAt'],
 				skip,
 				take: this.batchSize,
 				order: { id: 'ASC' },
-				relations: { statistics: true },
 			});
 
 			this.logger.debug('Processing batch', { skip, workflowsInBatch: workflows.length });
 
+			// Load statistics separately for all workflows in this batch
+			const workflowIds = workflows.map((w) => w.id);
+			const allStatistics = await this.workflowStatisticsRepository.find({
+				where: { workflowId: In(workflowIds) },
+			});
+
+			// Group statistics by workflowId
+			const statisticsByWorkflowId = new Map<string, typeof allStatistics>();
+			for (const stat of allStatistics) {
+				if (!stat.workflowId) continue;
+				const existing = statisticsByWorkflowId.get(stat.workflowId);
+				if (existing) {
+					existing.push(stat);
+				} else {
+					statisticsByWorkflowId.set(stat.workflowId, [stat]);
+				}
+			}
+
 			for (const workflow of workflows) {
 				const nodesGroupedByType = this.groupNodesByType(workflow.nodes);
+				const statistics = statisticsByWorkflowId.get(workflow.id) ?? [];
 
 				const workflowMetadata: WorkflowMetadata = {
 					name: workflow.name,
 					active: !!workflow.activeVersionId,
-					numberOfExecutions: workflow.statistics.reduce((acc, cur) => acc + (cur.count || 0), 0),
-					lastExecutedAt: workflow.statistics.sort(
+					numberOfExecutions: statistics.reduce((acc, cur) => acc + (cur.count || 0), 0),
+					lastExecutedAt: statistics.sort(
 						(a, b) => b.latestEvent.getTime() - a.latestEvent.getTime(),
 					)[0]?.latestEvent,
 					lastUpdatedAt: workflow.updatedAt,

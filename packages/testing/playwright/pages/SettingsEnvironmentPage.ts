@@ -11,10 +11,6 @@ export class SettingsEnvironmentPage extends BasePage {
 		return this.page.getByTestId('source-control-disconnect-button');
 	}
 
-	getSSHKeyValue(): Locator {
-		return this.page.getByTestId('copy-input').locator('span').first();
-	}
-
 	getRepoUrlInput(): Locator {
 		return this.page.getByPlaceholder('git@github.com:user/repository.git');
 	}

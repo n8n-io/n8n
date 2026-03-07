@@ -13,6 +13,11 @@ export const userGroupOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Add Users',
+				value: 'updateUsers',
+				action: 'Add users to a user group',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				action: 'Create a user group',
@@ -31,6 +36,11 @@ export const userGroupOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				action: 'Get many user groups',
+			},
+			{
+				name: 'Get Users',
+				value: 'getUsers',
+				action: 'Get users from a user group',
 			},
 			{
 				name: 'Update',
@@ -323,6 +333,102 @@ export const userGroupFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'A name for the User Group. Must be unique among User Groups.',
+			},
+		],
+	},
+	/* ----------------------------------------------------------------------- */
+	/*                              userGroup:updateUsers                      */
+	/* ----------------------------------------------------------------------- */
+	{
+		displayName: 'User Group ID',
+		name: 'userGroupId',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: ['updateUsers'],
+				resource: ['userGroup'],
+			},
+		},
+		required: true,
+		description: 'The encoded ID of the User Group to update',
+	},
+	{
+		displayName: 'User Names or IDs',
+		name: 'users',
+		type: 'multiOptions',
+		typeOptions: {
+			loadOptionsMethod: 'getUsers',
+		},
+		default: [],
+		displayOptions: {
+			show: {
+				operation: ['updateUsers'],
+				resource: ['userGroup'],
+			},
+		},
+		required: true,
+		description:
+			'Users to add to the User Group. Existing users will be preserved. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['userGroup'],
+				operation: ['updateUsers'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Include Count',
+				name: 'include_count',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to include the number of users in the User Group',
+			},
+		],
+	},
+	/* ----------------------------------------------------------------------- */
+	/*                              userGroup:getUsers                         */
+	/* ----------------------------------------------------------------------- */
+	{
+		displayName: 'User Group ID',
+		name: 'userGroupId',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				operation: ['getUsers'],
+				resource: ['userGroup'],
+			},
+		},
+		required: true,
+		description: 'The encoded ID of the User Group',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['userGroup'],
+				operation: ['getUsers'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Resolve Data',
+				name: 'resolveData',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to return full user objects instead of just user IDs',
 			},
 		],
 	},

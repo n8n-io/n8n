@@ -5,7 +5,7 @@ import type {
 	ChatSessionId,
 	ChatAttachment,
 } from '@n8n/api-types';
-import type { INode, INodeCredentials } from 'n8n-workflow';
+import type { INodeCredentials, IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { IconOrEmojiSchema } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -31,7 +31,6 @@ export interface HumanMessagePayload extends BaseMessagePayload {
 	message: string;
 	previousMessageId: ChatMessageId | null;
 	attachments: ChatAttachment[];
-	tools: INode[];
 	agentName?: string;
 }
 export interface RegenerateMessagePayload extends BaseMessagePayload {
@@ -66,12 +65,28 @@ const ChatTriggerResponseModeSchema = z.enum([
 	'responseNodes',
 ]);
 export type ChatTriggerResponseMode = z.infer<typeof ChatTriggerResponseModeSchema>;
+export type NonStreamingResponseMode = Exclude<
+	ChatTriggerResponseMode,
+	'streaming' | 'responseNode'
+>;
 
 export const chatTriggerParamsShape = z.object({
 	availableInChat: z.boolean().optional().default(false),
 	agentName: z.string().min(1).optional(),
 	agentDescription: z.string().min(1).optional(),
 	agentIcon: IconOrEmojiSchema.optional(),
+	suggestedPrompts: z
+		.object({
+			prompts: z
+				.array(
+					z.object({
+						text: z.string().min(1),
+						icon: IconOrEmojiSchema.optional(),
+					}),
+				)
+				.optional(),
+		})
+		.optional(),
 	options: z
 		.object({
 			allowFileUploads: z.boolean().optional(),
@@ -80,3 +95,11 @@ export const chatTriggerParamsShape = z.object({
 		})
 		.optional(),
 });
+
+export type ChatTriggerParams = z.infer<typeof chatTriggerParamsShape>;
+
+export type PreparedChatWorkflow = {
+	workflowData: IWorkflowBase;
+	executionData: IRunExecutionData;
+	responseMode: ChatTriggerResponseMode;
+};

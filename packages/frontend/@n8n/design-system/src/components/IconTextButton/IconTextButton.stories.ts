@@ -4,7 +4,7 @@ import { action } from 'storybook/actions';
 import IconTextButton from './IconTextButton.vue';
 
 export default {
-	title: 'Atoms/IconTextButton',
+	title: 'Core/IconTextButton',
 	component: IconTextButton,
 	argTypes: {
 		icon: {

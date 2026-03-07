@@ -75,6 +75,13 @@ export interface ICredentialResolver {
 	): Promise<void>;
 
 	/**
+	 * Deletes all credential data for the resolver.
+	 * Optional - not all resolvers support deletion.
+	 * @throws {CredentialResolverError} When deletion operation fails
+	 */
+	deleteAllSecrets?(handle: CredentialResolverHandle): Promise<void>;
+
+	/**
 	 * Validates resolver configuration before saving.
 	 * Should verify connectivity, authentication, and configuration structure.
 	 * @throws {CredentialResolverValidationError} When configuration is invalid
@@ -84,10 +91,10 @@ export interface ICredentialResolver {
 	/**
 	 * Validates if the userIdentity provided has access to the resolver capable credential
 	 *
-	 * @param identity - The identity of the entity to validate access for
+	 * @param context - The identity of the entity to validate access for
 	 * @throws {CredentialResolverAccessValidationError} When access is invalid
 	 */
-	validateIdentity?(identity: string, handle: CredentialResolverHandle): Promise<void>;
+	validateIdentity?(context: ICredentialContext, handle: CredentialResolverHandle): Promise<void>;
 
 	/**
 	 * Runs initialization logic for the resolver. This might be called multiple times!

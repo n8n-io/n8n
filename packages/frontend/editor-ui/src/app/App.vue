@@ -7,6 +7,7 @@ import AppLayout from '@/app/components/app/AppLayout.vue';
 import AppChatPanel from '@/app/components/app/AppChatPanel.vue';
 
 import { useHistoryHelper } from '@/app/composables/useHistoryHelper';
+import { useBackendStatus } from '@/app/composables/useBackendStatus';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
 import { useTelemetryInitializer } from '@/app/composables/useTelemetryInitializer';
 import { useWorkflowDiffRouting } from '@/app/composables/useWorkflowDiffRouting';
@@ -39,6 +40,9 @@ useHistoryHelper(route);
 useWorkflowDiffRouting();
 
 useTelemetryInitializer();
+
+// Initialize global backend status tracking
+useBackendStatus();
 
 const loading = ref(true);
 const defaultLocale = computed(() => rootStore.defaultLocale);

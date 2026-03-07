@@ -3,6 +3,7 @@ import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import type { INodeUi, IRunDataDisplayMode, ITableData } from '@/Interface';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { getMappedExpression } from '@/app/utils/mappingUtils';
 import { getPairedItemId } from '@/app/utils/pairedItemUtils';
 import { shorten } from '@/app/utils/typesUtils';
@@ -11,6 +12,7 @@ import { useTemplateRef, computed, onMounted, ref, watch } from 'vue';
 import Draggable from '@/app/components/Draggable.vue';
 import MappingPill from './MappingPill.vue';
 import TextWithHighlights from './TextWithHighlights.vue';
+import BinaryEntryDataTable from './BinaryEntryDataTable.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { storeToRefs } from 'pinia';
@@ -76,6 +78,7 @@ const fixedColumnWidths = ref<number[] | undefined>();
 
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -212,6 +215,7 @@ function getExpression(column: string) {
 		nodeName: props.node.name,
 		distanceFromActive: props.distanceFromActive,
 		path: [column],
+		binaryMode: workflowDocumentStore?.value?.settings?.binaryMode,
 	});
 }
 
@@ -244,6 +248,7 @@ function getCellExpression(path: Array<string | number>, colIndex: number) {
 		nodeName: props.node.name,
 		distanceFromActive: props.distanceFromActive,
 		path: [column, ...path],
+		binaryMode: workflowDocumentStore?.value?.settings?.binaryMode,
 	});
 }
 
@@ -530,12 +535,11 @@ watch(
 							:hide-after="0"
 						>
 							<N8nIconButton
+								variant="subtle"
 								v-show="showExecutionLink(index1)"
-								element="a"
-								type="secondary"
 								icon="external-link"
 								data-test-id="debug-sub-execution"
-								size="mini"
+								size="xsmall"
 								target="_blank"
 								:href="resolveRelatedExecutionUrl(tableData.metadata.data[index1])"
 								@click="trackOpeningRelatedExecution(tableData.metadata.data[index1], 'table')"
@@ -609,10 +613,9 @@ watch(
 											:disabled="mappingEnabled || collapsingColumnIndex === i"
 										>
 											<N8nIconButton
+												variant="ghost"
 												:class="$style.collapseColumnButton"
-												type="tertiary"
-												size="xmini"
-												text
+												size="xsmall"
 												:icon="
 													collapsingColumnIndex === i ? 'chevrons-up-down' : 'chevrons-down-up'
 												"
@@ -696,12 +699,11 @@ watch(
 							:hide-after="0"
 						>
 							<N8nIconButton
+								variant="subtle"
 								v-show="showExecutionLink(index1)"
-								element="a"
-								type="secondary"
 								icon="external-link"
 								data-test-id="debug-sub-execution"
-								size="mini"
+								size="xsmall"
 								target="_blank"
 								:href="resolveRelatedExecutionUrl(tableData.metadata.data[index1])"
 								@click="trackOpeningRelatedExecution(tableData.metadata.data[index1], 'table')"
@@ -744,6 +746,10 @@ watch(
 									@mouseenter="() => onMouseEnterKey(path, index2)"
 									@mouseleave="onMouseLeaveKey"
 								/>
+							</template>
+
+							<template #binary="{ value }">
+								<BinaryEntryDataTable :value="value" />
 							</template>
 
 							<template #value="{ value }">

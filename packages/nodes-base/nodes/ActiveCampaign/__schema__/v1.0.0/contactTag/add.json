@@ -4,6 +4,12 @@
         "cdate": {
             "type": "string"
         },
+        "created_by": {
+            "type": "null"
+        },
+        "created_timestamp": {
+            "type": "string"
+        },
         "id": {
             "type": "string"
         },
@@ -17,7 +23,13 @@
                     "type": "string"
                 }
             }
+        },
+        "updated_by": {
+            "type": "null"
+        },
+        "updated_timestamp": {
+            "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

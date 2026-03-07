@@ -42,7 +42,7 @@ export class LinearOAuth2Api implements ICredentialType {
 				},
 				{
 					name: 'Application',
-					value: 'application',
+					value: 'app',
 					description: 'Resources are created as the application',
 				},
 			],

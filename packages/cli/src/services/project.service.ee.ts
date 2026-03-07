@@ -1,6 +1,5 @@
 import type { CreateProjectDto, ProjectType, UpdateProjectDto } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
-import { DatabaseConfig } from '@n8n/config';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import {
@@ -30,7 +29,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { CacheService } from './cache/cache.service';
 import { RoleService } from './role.service';
 
 export class TeamProjectOverQuotaError extends UserError {
@@ -70,9 +68,7 @@ export class ProjectService {
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly roleService: RoleService,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
-		private readonly cacheService: CacheService,
 		private readonly licenseState: LicenseState,
-		private readonly databaseConfig: DatabaseConfig,
 		private readonly moduleRegistry: ModuleRegistry,
 	) {}
 
@@ -247,21 +243,11 @@ export class ProjectService {
 	}
 
 	async createTeamProject(adminUser: User, data: CreateProjectDto): Promise<Project> {
-		if (this.databaseConfig.isLegacySqlite) {
-			// Using transaction in the sqlite legacy driver can cause data loss, so
-			// we avoid this here.
-			return await this.createTeamProjectWithEntityManager(
-				adminUser,
-				data,
-				this.projectRepository.manager,
-			);
-		} else {
-			// This needs to be SERIALIZABLE otherwise the count would not block a
-			// concurrent transaction and we could insert multiple projects.
-			return await this.projectRepository.manager.transaction('SERIALIZABLE', async (trx) => {
-				return await this.createTeamProjectWithEntityManager(adminUser, data, trx);
-			});
-		}
+		// This needs to be SERIALIZABLE otherwise the count would not block a
+		// concurrent transaction and we could insert multiple projects.
+		return await this.projectRepository.manager.transaction('SERIALIZABLE', async (trx) => {
+			return await this.createTeamProjectWithEntityManager(adminUser, data, trx);
+		});
 	}
 
 	async updateProject(
@@ -312,7 +298,6 @@ export class ProjectService {
 		const newRelations = relations.filter(
 			(relation) => !project.projectRelations.some((r) => r.userId === relation.userId),
 		);
-		await this.clearCredentialCanUseExternalSecretsCache(projectId);
 
 		return { project, newRelations };
 	}
@@ -411,7 +396,6 @@ export class ProjectService {
 			added.push(...toInsert);
 		}
 
-		await this.clearCredentialCanUseExternalSecretsCache(projectId);
 		return { project, added, conflicts };
 	}
 
@@ -481,21 +465,6 @@ export class ProjectService {
 		}
 
 		await this.projectRelationRepository.update({ projectId, userId }, { role: { slug: role } });
-	}
-
-	async clearCredentialCanUseExternalSecretsCache(projectId: string) {
-		const shares = await this.sharedCredentialsRepository.find({
-			where: {
-				projectId,
-				role: 'credential:owner',
-			},
-			select: ['credentialsId'],
-		});
-		if (shares.length) {
-			await this.cacheService.deleteMany(
-				shares.map((share) => `credential-can-use-secrets:${share.credentialsId}`),
-			);
-		}
 	}
 
 	async pruneRelations(em: EntityManager, project: Project) {

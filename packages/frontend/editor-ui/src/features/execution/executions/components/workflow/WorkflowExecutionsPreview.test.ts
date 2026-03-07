@@ -6,7 +6,8 @@ import { randomInt, type ExecutionSummary, type AnnotationVote } from 'n8n-workf
 import { useSettingsStore } from '@/app/stores/settings.store';
 import WorkflowExecutionsPreview from './WorkflowExecutionsPreview.vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { IWorkflowDb } from '@/Interface';
 import type { ExecutionSummaryWithScopes } from '../../executions.types';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -14,7 +15,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import type { FrontendSettings } from '@n8n/api-types';
 import { STORES } from '@n8n/stores';
-import { nextTick } from 'vue';
+import { nextTick, computed } from 'vue';
 
 const showMessage = vi.fn();
 const showError = vi.fn();
@@ -78,6 +79,9 @@ const renderComponent = createComponentRenderer(WorkflowExecutionsPreview, {
 			RouterLink,
 		},
 		plugins: [router],
+		provide: {
+			[WorkflowIdKey]: computed(() => 'test-workflow-id'),
+		},
 	},
 });
 
@@ -111,14 +115,14 @@ describe('WorkflowExecutionsPreview.vue', () => {
 		'when debug enterprise feature is %s with workflow scopes %s it should handle debug link click accordingly',
 		async (availability, scopes, path) => {
 			const settingsStore = mockedStore(useSettingsStore);
-			const workflowsStore = mockedStore(useWorkflowsStore);
+			const workflowsListStore = mockedStore(useWorkflowsListStore);
 
 			settingsStore.settings.enterprise = {
 				...(settingsStore.settings.enterprise ?? {}),
 				[EnterpriseEditionFeature.DebugInEditor]: availability,
 			} as FrontendSettings['enterprise'];
 
-			workflowsStore.workflowsById[executionData.workflowId] = { scopes } as IWorkflowDb;
+			workflowsListStore.workflowsById[executionData.workflowId] = { scopes } as IWorkflowDb;
 
 			await router.push(path);
 

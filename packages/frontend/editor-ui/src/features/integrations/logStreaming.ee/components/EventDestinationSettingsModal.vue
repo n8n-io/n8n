@@ -323,7 +323,7 @@ async function removeThis() {
 	} else {
 		callEventBus('remove', destination.id);
 		uiStore.closeModal(LOG_STREAM_MODAL_KEY);
-		uiStore.stateIsDirty = false;
+		uiStore.markStateClean();
 	}
 }
 
@@ -336,7 +336,7 @@ function onModalClose() {
 	}
 	ndvStore.unsetActiveNodeName();
 	callEventBus('closing', destination.id);
-	uiStore.stateIsDirty = false;
+	uiStore.markStateClean();
 }
 
 async function saveDestination() {
@@ -349,7 +349,7 @@ async function saveDestination() {
 		testMessageSent.value = false;
 		unchanged.value = true;
 		callEventBus('destinationWasSaved', destination.id);
-		uiStore.stateIsDirty = false;
+		uiStore.markStateClean();
 
 		const destinationType = (
 			nodeParameters.value.__type && typeof nodeParameters.value.__type !== 'object'
@@ -435,6 +435,7 @@ const { width } = useElementSize(defNameRef);
 					</div>
 					<div :class="$style.destinationActions">
 						<N8nButton
+							variant="subtle"
 							v-if="nodeParameters && hasOnceBeenSaved && unchanged"
 							:icon="testMessageSent ? (testMessageResult ? 'check' : 'triangle-alert') : undefined"
 							:title="
@@ -442,7 +443,6 @@ const { width } = useElementSize(defNameRef);
 									? 'Event sent and returned OK'
 									: 'Event returned with error'
 							"
-							type="tertiary"
 							label="Send Test-Event"
 							:disabled="!hasOnceBeenSaved || !unchanged"
 							data-test-id="destination-test-button"
@@ -450,10 +450,10 @@ const { width } = useElementSize(defNameRef);
 						/>
 						<template v-if="canManageLogStreaming">
 							<N8nIconButton
+								variant="subtle"
 								v-if="nodeParameters && hasOnceBeenSaved"
 								:title="i18n.baseText('settings.log-streaming.delete')"
 								icon="trash-2"
-								type="tertiary"
 								:disabled="isSaving"
 								:loading="isDeleting"
 								data-test-id="destination-delete-button"

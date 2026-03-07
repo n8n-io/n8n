@@ -7,6 +7,8 @@ import type {
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 	JsonValue,
+	WorkflowExecuteMode,
+	WorkflowSettings,
 } from 'n8n-workflow';
 
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
@@ -21,6 +23,11 @@ export type UserLike = {
 	role?: {
 		slug: string;
 	};
+};
+
+export type ProjectSummary = {
+	id: string;
+	name: string;
 };
 
 export type RelayEventMap = {
@@ -42,6 +49,13 @@ export type RelayEventMap = {
 		projectId: string;
 		workflowId: string;
 		userId: string | null;
+	};
+
+	'instance-first-production-workflow-failed': {
+		projectId: string;
+		workflowId: string;
+		workflowName: string;
+		userId: string;
 	};
 
 	'first-workflow-data-loaded': {
@@ -105,11 +119,13 @@ export type RelayEventMap = {
 		workflowId: string;
 		workflow: IWorkflowDb;
 		publicApi: boolean;
+		deactivatedVersionId: string | null;
 	};
 
 	'workflow-pre-execute': {
 		executionId: string;
 		data: IWorkflowExecutionDataProcess /* main process */ | IWorkflowBase /* worker */;
+		mode: WorkflowExecuteMode;
 	};
 
 	'workflow-post-execute': {
@@ -130,16 +146,25 @@ export type RelayEventMap = {
 		workflowId: string;
 		workflowName: string;
 		executionId: string;
-		source: 'user-manual' | 'user-retry';
-		// TODO: To be added in future PR
-		// | 'webhook'
-		// | 'trigger'
-		// | 'error'
-		// | 'cli'
-		// | 'integrated'
-		// | 'internal'
-		// | 'evaluation'
-		// | 'chat';
+		source:
+			| 'user-manual'
+			| 'user-retry'
+			| 'webhook'
+			| 'trigger'
+			| 'error'
+			| 'cli'
+			| 'integrated'
+			| 'evaluation'
+			| 'chat';
+	};
+
+	'workflow-version-updated': {
+		user: UserLike;
+		workflowId: string;
+		workflowName: string;
+		versionId: string;
+		versionName?: string | null;
+		versionDescription?: string | null;
 	};
 
 	// #endregion
@@ -351,6 +376,7 @@ export type RelayEventMap = {
 		projectId?: string;
 		projectType?: string;
 		uiContext?: string;
+		isDynamic?: boolean;
 	};
 
 	'credentials-shared': {
@@ -366,6 +392,7 @@ export type RelayEventMap = {
 		user: UserLike;
 		credentialType: string;
 		credentialId: string;
+		isDynamic?: boolean;
 	};
 
 	'credentials-deleted': {
@@ -433,6 +460,15 @@ export type RelayEventMap = {
 		user: UserLike;
 		executionIds: string[];
 		deleteBefore?: Date;
+	};
+
+	'execution-data-revealed': {
+		user: UserLike;
+		executionId: string;
+		workflowId: string;
+		ipAddress: string;
+		userAgent: string;
+		redactionPolicy: WorkflowSettings.RedactionPolicy;
 	};
 
 	// #endregion
@@ -561,6 +597,43 @@ export type RelayEventMap = {
 		vaultType: string;
 	};
 
+	'external-secrets-connection-created': {
+		userId: string;
+		providerKey: string;
+		vaultType: string;
+		projects: ProjectSummary[];
+	};
+
+	'external-secrets-connection-updated': {
+		userId: string;
+		providerKey: string;
+		vaultType: string;
+		projects: ProjectSummary[];
+	};
+
+	'external-secrets-connection-deleted': {
+		userId: string;
+		providerKey: string;
+		vaultType: string;
+		projects: ProjectSummary[];
+	};
+
+	'external-secrets-connection-tested': {
+		userId: string;
+		providerKey: string;
+		vaultType: string;
+		projects: ProjectSummary[];
+		isValid: boolean;
+		errorMessage?: string;
+	};
+
+	'external-secrets-connection-reloaded': {
+		userId: string;
+		providerKey: string;
+		vaultType: string;
+		projects: ProjectSummary[];
+	};
+
 	// #endregion
 
 	// #region LDAP
@@ -649,6 +722,29 @@ export type RelayEventMap = {
 		workflowId: string;
 		hostId: string;
 		jobId: string;
+	};
+
+	// #endregion
+
+	// #region workflow history compaction
+	'history-compacted': {
+		workflowsProcessed: number;
+		totalVersionsSeen: number;
+		totalVersionsDeleted: number;
+		errorCount: number;
+		durationMs: number;
+		windowStartIso: string;
+		windowEndIso: string;
+		compactionStartTime: Date;
+	};
+	// #endregion
+
+	// #region Instance Policies
+
+	'instance-policies-updated': {
+		user: UserLike;
+		settingName: '2fa_enforcement' | 'workflow_publishing' | 'workflow_sharing';
+		value: boolean;
 	};
 
 	// #endregion

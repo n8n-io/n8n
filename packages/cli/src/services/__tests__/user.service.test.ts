@@ -21,6 +21,7 @@ import { UrlService } from '@/services/url.service';
 import { UserService } from '@/services/user.service';
 import type { UserManagementMailer } from '@/user-management/email';
 
+import type { OwnershipService } from '../ownership.service';
 import type { PublicApiKeyService } from '../public-api-key.service';
 import type { RoleService } from '../role.service';
 import { JwtService } from '../jwt.service';
@@ -43,6 +44,7 @@ describe('UserService', () => {
 	const projectRepository = mockInstance(ProjectRepository, {
 		manager,
 	});
+	const ownershipService = mock<OwnershipService>();
 	const roleService = mock<RoleService>();
 	const mailer = mock<UserManagementMailer>();
 	const publicApiKeyService = mock<PublicApiKeyService>();
@@ -59,6 +61,7 @@ describe('UserService', () => {
 		mailer,
 		urlService,
 		mock(),
+		ownershipService,
 		publicApiKeyService,
 		roleService,
 		globalConfig,
@@ -416,6 +419,18 @@ describe('UserService', () => {
 			);
 			expect(publicApiKeyService.removeOwnerOnlyScopesFromApiKeys).not.toHaveBeenCalled();
 			expect(publicApiKeyService.deleteAllApiKeysForUser).not.toHaveBeenCalled();
+		});
+
+		it('invalidates the project-owner cache after role change', async () => {
+			const user = new User();
+			user.id = uuid();
+			user.role = new Role();
+			user.role.slug = 'global:member';
+			roleService.checkRolesExist.mockResolvedValueOnce();
+
+			await userService.changeUserRole(user, { newRoleName: 'global:admin' });
+
+			expect(ownershipService.invalidateProjectOwnerCacheByUserId).toHaveBeenCalledWith(user.id);
 		});
 
 		it('removes higher privilege scopes from API tokens of user who is demoted from admin', async () => {
@@ -932,6 +947,52 @@ describe('UserService', () => {
 			await expect(userService.getInvitationIdsFromPayload({ token })).rejects.toThrow(
 				'Invalid invite URL',
 			);
+		});
+	});
+
+	describe('findSsoIdentity', () => {
+		it('should return undefined when user has no SSO identity', async () => {
+			const userId = uuid();
+			userRepository.findOne.mockResolvedValue(
+				Object.assign(new User(), {
+					id: userId,
+					authIdentities: [{ providerType: 'email' }],
+				}),
+			);
+
+			const result = await userService.findSsoIdentity(userId);
+
+			expect(result).toBeUndefined();
+		});
+
+		it('should return SSO identity when user has LDAP identity', async () => {
+			const userId = uuid();
+			const ldapIdentity = { providerType: 'ldap', providerId: 'ldap-id' };
+			userRepository.findOne.mockResolvedValue(
+				Object.assign(new User(), {
+					id: userId,
+					authIdentities: [ldapIdentity],
+				}),
+			);
+
+			const result = await userService.findSsoIdentity(userId);
+
+			expect(result).toEqual(ldapIdentity);
+		});
+
+		it('should return SSO identity when user has both email and SSO identity', async () => {
+			const userId = uuid();
+			const samlIdentity = { providerType: 'saml', providerId: 'saml-id' };
+			userRepository.findOne.mockResolvedValue(
+				Object.assign(new User(), {
+					id: userId,
+					authIdentities: [{ providerType: 'email' }, samlIdentity],
+				}),
+			);
+
+			const result = await userService.findSsoIdentity(userId);
+
+			expect(result).toEqual(samlIdentity);
 		});
 	});
 });

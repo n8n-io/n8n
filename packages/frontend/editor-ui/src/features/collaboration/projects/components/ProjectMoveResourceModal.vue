@@ -14,7 +14,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '../projects.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { ProjectTypes } from '../projects.types';
 import {
 	getTruncatedProjectName,
@@ -32,6 +32,7 @@ import { useRouter } from 'vue-router';
 
 import {
 	N8nButton,
+	N8nCallout,
 	N8nCheckbox,
 	N8nHeading,
 	N8nIcon,
@@ -44,7 +45,7 @@ const props = defineProps<{
 	modalName: string;
 	data: {
 		resource: IWorkflowDb | ICredentialsResponse;
-		resourceType: ResourceType;
+		resourceType: Exclude<ResourceType, 'dataTable'>;
 		resourceTypeLabel: string;
 		eventBus?: EventBus;
 	};
@@ -55,7 +56,7 @@ const uiStore = useUIStore();
 const toast = useToast();
 const router = useRouter();
 const projectsStore = useProjectsStore();
-const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 const credentialsStore = useCredentialsStore();
 const telemetry = useTelemetry();
 
@@ -114,6 +115,14 @@ const targetProjectName = computed(() => {
 	return getTruncatedProjectName(selectedProject.value?.name);
 });
 const resourceName = computed(() => truncate(props.data.resource.name, MAX_NAME_LENGTH));
+const isPersonalSpaceRestricted = computed(
+	() =>
+		props.data.resource.homeProject?.type === ProjectTypes.Personal &&
+		props.data.resource.homeProject?.id === projectsStore.personalProject?.id,
+);
+const isTargetPersonalProject = computed(
+	() => projectId.value === projectsStore.personalProject?.id,
+);
 
 const isHomeProjectTeam = (resource: IWorkflowDb | ICredentialsResponse) =>
 	resource.homeProject?.type === ProjectTypes.Team;
@@ -212,7 +221,7 @@ onMounted(async () => {
 
 	if (isResourceWorkflow.value) {
 		const [workflow, credentials] = await Promise.all([
-			workflowsStore.fetchWorkflow(props.data.resource.id),
+			workflowsListStore.fetchWorkflow(props.data.resource.id),
 			credentialsStore.fetchAllCredentials(),
 		]);
 
@@ -297,41 +306,60 @@ onMounted(async () => {
 						}}</span
 					>
 					<N8nCheckbox
-						v-if="shareableCredentials.length"
+						v-if="shareableCredentials.length && !isTargetPersonalProject"
 						v-model="shareUsedCredentials"
 						:class="$style.textBlock"
 						data-test-id="project-move-resource-modal-checkbox-all"
 					>
-						<I18nT keypath="projects.move.resource.modal.message.usedCredentials" scope="global">
-							<template #usedCredentials>
-								<N8nTooltip placement="top">
-									<span :class="$style.tooltipText">
-										{{
-											i18n.baseText('projects.move.resource.modal.message.usedCredentials.number', {
-												adjustToNumber: shareableCredentials.length,
-												interpolate: { count: shareableCredentials.length },
-											})
-										}}
-									</span>
-									<template #content>
-										<ProjectMoveResourceModalCredentialsList
-											:current-project-id="projectsStore.currentProjectId"
-											:credentials="shareableCredentials"
-										/>
-									</template>
-								</N8nTooltip>
-							</template>
-						</I18nT>
+						<template #label>
+							<I18nT keypath="projects.move.resource.modal.message.usedCredentials" scope="global">
+								<template #usedCredentials>
+									<N8nTooltip placement="top">
+										<span :class="$style.tooltipText">
+											{{
+												i18n.baseText(
+													'projects.move.resource.modal.message.usedCredentials.number',
+													{
+														adjustToNumber: shareableCredentials.length,
+														interpolate: { count: shareableCredentials.length },
+													},
+												)
+											}}
+										</span>
+										<template #content>
+											<ProjectMoveResourceModalCredentialsList
+												:current-project-id="projectsStore.currentProjectId"
+												:credentials="shareableCredentials"
+											/>
+										</template>
+									</N8nTooltip>
+								</template>
+							</I18nT>
+						</template>
 					</N8nCheckbox>
-					<span v-if="unShareableCredentials.length" :class="$style.textBlock">
+					<N8nCallout
+						v-if="unShareableCredentials.length && !isTargetPersonalProject"
+						theme="warning"
+						:class="$style.textBlock"
+					>
 						<I18nT
-							keypath="projects.move.resource.modal.message.unAccessibleCredentials.note"
+							:keypath="
+								isPersonalSpaceRestricted
+									? 'projects.move.resource.modal.message.unAccessibleCredentials.personalSpaceNote'
+									: 'projects.move.resource.modal.message.unAccessibleCredentials.note'
+							"
 							scope="global"
 						>
 							<template #credentials>
 								<N8nTooltip placement="top">
 									<span :class="$style.tooltipText">{{
-										i18n.baseText('projects.move.resource.modal.message.unAccessibleCredentials')
+										i18n.baseText(
+											'projects.move.resource.modal.message.unAccessibleCredentials.count',
+											{
+												adjustToNumber: unShareableCredentials.length,
+												interpolate: { count: unShareableCredentials.length },
+											},
+										)
 									}}</span>
 									<template #content>
 										<ProjectMoveResourceModalCredentialsList
@@ -342,7 +370,7 @@ onMounted(async () => {
 								</N8nTooltip>
 							</template>
 						</I18nT>
-					</span>
+					</N8nCallout>
 				</N8nText>
 			</div>
 			<N8nText v-else>{{
@@ -353,13 +381,13 @@ onMounted(async () => {
 		</template>
 		<template #footer>
 			<div :class="$style.buttons">
-				<N8nButton type="secondary" text class="mr-2xs" :disabled="loading" @click="closeModal">
+				<N8nButton variant="ghost" class="mr-2xs" :disabled="loading" @click="closeModal">
 					{{ i18n.baseText('generic.cancel') }}
 				</N8nButton>
 				<N8nButton
+					variant="solid"
 					:loading="loading"
 					:disabled="!projectId || loading"
-					type="primary"
 					data-test-id="project-move-resource-modal-button"
 					@click="moveResource"
 				>
@@ -381,7 +409,6 @@ onMounted(async () => {
 }
 
 .textBlock {
-	display: block;
 	margin-top: var(--spacing--sm);
 }
 

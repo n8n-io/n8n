@@ -35,6 +35,3 @@ export const INSECURE_CONNECTION_WARNING = `
 	</ul>
 </div>
 </body>`;
-
-export const BINARY_DATA_ACCESS_TOOLTIP =
-	"Specify the property name of the binary data in the input item or use an expression to access the binary data in previous nodes, e.g. {{ $('Target Node').item.binary.data }}";
