@@ -1,16 +1,18 @@
+import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
+import type { JSONSchema7 } from 'json-schema';
+import pick from 'lodash/pick';
 import { StructuredToolkit } from 'n8n-core';
-import {
-	type IDataObject,
-	type IExecuteFunctions,
-	type INodeExecutionData,
-	NodeConnectionTypes,
-	NodeOperationError,
-	type INodeType,
-	type INodeTypeDescription,
-	type ISupplyDataFunctions,
-	type SupplyData,
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+	ISupplyDataFunctions,
+	SupplyData,
 } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
@@ -26,8 +28,81 @@ import {
 	mapToNodeOperationError,
 	tryRefreshOAuth2Token,
 } from '../shared/utils';
-import type { JSONSchema7 } from 'json-schema';
-import pick from 'lodash/pick';
+
+const SESSION_KEY_PREFIX = 'mcp_session_';
+
+/** The MCP SDK exposes sessionId on transport but not in the Client type */
+function getTransportSessionId(client: Client): string | undefined {
+	return (client as { transport?: { sessionId?: string } }).transport?.sessionId;
+}
+
+function isSessionNotFoundError(error: { type: string; error: Error }): boolean {
+	return (
+		error.type === 'connection' && error.error.message?.toLowerCase().includes('session not found')
+	);
+}
+
+/**
+ * Manages MCP session persistence for Streamable HTTP transport.
+ * Sessions are stored in workflow static data keyed by endpoint URL.
+ */
+class SessionStore {
+	constructor(
+		private staticData: IDataObject,
+		private endpointUrl: string,
+	) {}
+
+	private get key(): string {
+		return `${SESSION_KEY_PREFIX}${this.endpointUrl}`;
+	}
+
+	get(): string | undefined {
+		return this.staticData[this.key] as string | undefined;
+	}
+
+	set(sessionId: string): void {
+		this.staticData[this.key] = sessionId;
+	}
+
+	clear(): void {
+		delete this.staticData[this.key];
+	}
+}
+
+/**
+ * Connect to MCP with optional session recovery for Streamable HTTP.
+ * Session auto-persistence only applies to node version >= 1.3.
+ */
+async function connectWithSessionRecovery(
+	ctx: IExecuteFunctions,
+	config: ReturnType<typeof getNodeConfig>,
+	sessionStore: SessionStore | null,
+	explicitSessionId: string,
+): Promise<{ client: Client; mcpTools: ReturnType<typeof getSelectedTools> }> {
+	const sessionId = explicitSessionId || sessionStore?.get();
+
+	let result = await connectAndGetTools(ctx, config, sessionId);
+
+	// Retry without session if stored session is stale (only for auto-persisted sessions)
+	if (result.error && isSessionNotFoundError(result.error) && sessionStore && !explicitSessionId) {
+		sessionStore.clear();
+		result = await connectAndGetTools(ctx, config, undefined);
+	}
+
+	if (result.error || !result.client) {
+		throw new NodeOperationError(ctx.getNode(), result.error?.error ?? 'Failed to connect');
+	}
+
+	// Persist session for future connections
+	if (sessionStore) {
+		const newSessionId = getTransportSessionId(result.client);
+		if (newSessionId) {
+			sessionStore.set(newSessionId);
+		}
+	}
+
+	return { client: result.client, mcpTools: result.mcpTools };
+}
 
 /**
  * Get node parameters for MCP client configuration
@@ -78,10 +153,14 @@ function getNodeConfig(
 
 /**
  * Connect to MCP server and get filtered tools
+ * @param ctx - n8n execution context
+ * @param config - MCP client configuration
+ * @param sessionId - Optional MCP session ID for resuming a previous session (Streamable HTTP only)
  */
 async function connectAndGetTools(
 	ctx: ISupplyDataFunctions | IExecuteFunctions,
 	config: ReturnType<typeof getNodeConfig>,
+	sessionId?: string,
 ) {
 	const node = ctx.getNode();
 	const { headers } = await getAuthHeaders(ctx, config.authentication);
@@ -94,10 +173,11 @@ async function connectAndGetTools(
 		version: node.typeVersion,
 		onUnauthorized: async (headers) =>
 			await tryRefreshOAuth2Token(ctx, config.authentication, headers),
+		sessionId,
 	});
 
 	if (!client.ok) {
-		return { client, mcpTools: null, error: client.error };
+		return { client: null, mcpTools: null, error: client.error };
 	}
 
 	const allTools = await getAllTools(client.result);
@@ -120,7 +200,7 @@ export class McpClientTool implements INodeType {
 			dark: 'file:../mcp.dark.svg',
 		},
 		group: ['output'],
-		version: [1, 1.1, 1.2],
+		version: [1, 1.1, 1.2, 1.3],
 		description: 'Connect tools from an MCP Server',
 		defaults: {
 			name: 'MCP Client',
@@ -326,6 +406,20 @@ export class McpClientTool implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Session ID',
+						name: 'sessionId',
+						type: 'string',
+						default: '',
+						description:
+							'Optional MCP session ID to resume a previous session. If not provided, sessions are automatically persisted for Streamable HTTP.',
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 1.3 } }],
+								'/serverTransport': ['httpStreamable'],
+							},
+						},
+					},
+					{
 						displayName: 'Timeout',
 						name: 'timeout',
 						type: 'number',
@@ -359,7 +453,12 @@ export class McpClientTool implements INodeType {
 
 		if (error) {
 			this.logger.error('McpClientTool: Failed to connect to MCP Server', { error });
-			return setError(mapToNodeOperationError(node, error));
+			return setError(
+				mapToNodeOperationError(
+					node,
+					error ?? { type: 'connection', error: new Error('Failed to connect') },
+				),
+			);
 		}
 
 		this.logger.debug('McpClientTool: Successfully connected to MCP Server');
@@ -399,16 +498,26 @@ export class McpClientTool implements INodeType {
 		const node = this.getNode();
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
+		const staticData = this.getWorkflowStaticData('node') ?? {};
+		const supportsSessionPersistence =
+			node.typeVersion >= 1.3 && this.getNodeParameter('serverTransport', 0) === 'httpStreamable';
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const item = items[itemIndex];
 			const config = getNodeConfig(this, itemIndex);
+			const explicitSessionId = supportsSessionPersistence
+				? (this.getNodeParameter('options.sessionId', itemIndex, '') as string)
+				: '';
+			const sessionStore = supportsSessionPersistence
+				? new SessionStore(staticData, config.endpointUrl)
+				: null;
 
-			const { client, mcpTools, error } = await connectAndGetTools(this, config);
-
-			if (error) {
-				throw new NodeOperationError(node, error.error, { itemIndex });
-			}
+			const { client, mcpTools } = await connectWithSessionRecovery(
+				this,
+				config,
+				sessionStore,
+				explicitSessionId,
+			);
 
 			if (!mcpTools?.length) {
 				throw new NodeOperationError(node, 'MCP Server returned no tools', { itemIndex });
@@ -455,6 +564,8 @@ export class McpClientTool implements INodeType {
 					});
 				}
 			}
+
+			await client.close();
 		}
 
 		return [returnData];

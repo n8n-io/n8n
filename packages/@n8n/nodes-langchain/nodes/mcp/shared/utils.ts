@@ -95,6 +95,16 @@ export function mapToNodeOperationError(
 	}
 }
 
+/**
+ * Connect to MCP server and return the connected client
+ * @param headers - Optional headers to include in the connection request
+ * @param serverTransport - The transport method to use (SSE or Streamable HTTP)
+ * @param endpointUrl - The MCP server endpoint URL
+ * @param name - The name of the client
+ * @param version - The version of the client
+ * @param onUnauthorized - Optional handler to refresh authentication on 401 errors
+ * @param sessionId - Optional MCP session ID for resuming a previous session (Streamable HTTP only)
+ */
 export async function connectMcpClient({
 	headers,
 	serverTransport,
@@ -102,6 +112,7 @@ export async function connectMcpClient({
 	name,
 	version,
 	onUnauthorized,
+	sessionId,
 }: {
 	serverTransport: McpServerTransport;
 	endpointUrl: string;
@@ -109,6 +120,7 @@ export async function connectMcpClient({
 	name: string;
 	version: number;
 	onUnauthorized?: OnUnauthorizedHandler;
+	sessionId?: string;
 }): Promise<Result<Client, ConnectMcpClientError>> {
 	const endpoint = normalizeAndValidateUrl(endpointUrl);
 
@@ -123,6 +135,7 @@ export async function connectMcpClient({
 			const transport = new StreamableHTTPClientTransport(endpoint.result, {
 				requestInit: { headers },
 				fetch: proxyFetch,
+				sessionId,
 			});
 			await client.connect(transport);
 			return createResultOk(client);
@@ -137,6 +150,7 @@ export async function connectMcpClient({
 						endpointUrl,
 						name,
 						version,
+						sessionId,
 					});
 				}
 			}

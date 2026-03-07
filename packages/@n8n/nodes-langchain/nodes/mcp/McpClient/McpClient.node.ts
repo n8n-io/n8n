@@ -199,6 +199,19 @@ export class McpClient implements INodeType {
 							'Whether to convert images and audio to binary data. If false, images and audio will be returned as base64 encoded strings.',
 					},
 					{
+						displayName: 'Session ID',
+						name: 'sessionId',
+						type: 'string',
+						default: '',
+						description:
+							'Optional MCP session ID to resume a previous session (Streamable HTTP only)',
+						displayOptions: {
+							show: {
+								'/serverTransport': ['httpStreamable'],
+							},
+						},
+					},
+					{
 						displayName: 'Timeout',
 						name: 'timeout',
 						type: 'number',
@@ -224,6 +237,7 @@ export class McpClient implements INodeType {
 		const authentication = this.getNodeParameter('authentication', 0) as McpAuthenticationOption;
 		const serverTransport = this.getNodeParameter('serverTransport', 0) as McpServerTransport;
 		const endpointUrl = this.getNodeParameter('endpointUrl', 0) as string;
+		const sessionId = this.getNodeParameter('options.sessionId', 0, '') as string;
 		const node = this.getNode();
 		const { headers } = await getAuthHeaders(this, authentication);
 		const client = await connectMcpClient({
@@ -233,10 +247,16 @@ export class McpClient implements INodeType {
 			name: node.type,
 			version: node.typeVersion,
 			onUnauthorized: async (headers) => await tryRefreshOAuth2Token(this, authentication, headers),
+			sessionId: sessionId || undefined,
 		});
 		if (!client.ok) {
 			throw mapToNodeOperationError(node, client.error);
 		}
+
+		// Get session ID from transport for output (Streamable HTTP only)
+		const transport = client.result as unknown as { transport?: { sessionId?: string } };
+		const mcpSessionId =
+			serverTransport === 'httpStreamable' ? transport.transport?.sessionId : undefined;
 
 		const inputMode = this.getNodeParameter('inputMode', 0, 'manual') as 'manual' | 'json';
 		const items = this.getInputData();
@@ -292,6 +312,7 @@ export class McpClient implements INodeType {
 				returnData.push({
 					json: {
 						content: content.length > 0 ? content : undefined,
+						sessionId: mcpSessionId,
 					},
 					binary: Object.keys(binary).length > 0 ? binary : undefined,
 					pairedItem: {
