@@ -474,7 +474,7 @@ export class Expression {
 						pid: process.pid,
 						ppid: process.ppid,
 						release: process.release,
-						version: process.pid,
+						version: process.version,
 						versions: process.versions,
 					}
 				: {};
