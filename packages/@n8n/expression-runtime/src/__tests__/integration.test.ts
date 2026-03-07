@@ -216,6 +216,28 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			'Invalid timezone: "Not/A/Timezone"',
 		);
 	});
+
+	it('should reset to system timezone when no timezone is provided after one was set', async () => {
+		const data = {
+			$json: { ts: 1704067200000 }, // 2024-01-01T00:00:00Z
+		};
+
+		// Capture the system default offset before any timezone is set
+		const systemOffset = evaluator.evaluate(
+			'{{ DateTime.fromMillis($json.ts).toFormat("ZZ") }}',
+			data,
+		);
+
+		// Evaluate with explicit timezone (changes Settings.defaultZone)
+		evaluator.evaluate('{{ DateTime.fromMillis($json.ts).toFormat("HH:mm ZZ") }}', data, {
+			timezone: 'Asia/Tokyo',
+		});
+
+		// Evaluate WITHOUT timezone — should reset to system default, not keep Tokyo
+		const result = evaluator.evaluate('{{ DateTime.fromMillis($json.ts).toFormat("ZZ") }}', data);
+
+		expect(result).toBe(systemOffset);
+	});
 });
 
 describe('Integration: IsolatedVmBridge error handling', () => {
