@@ -230,6 +230,21 @@ export class WorkflowBuilderAgent {
 		if (useCodeWorkflowBuilder) {
 			const usePlanMode = payload.featureFlags?.planMode === true;
 
+			// web_fetch_approval resumes always go through multi-agent (where the interrupt lives)
+			if (payload.resumeData && payload.resumeInterrupt?.type === 'web_fetch_approval') {
+				this.logger?.debug('web_fetch_approval resume, routing to multi-agent system', {
+					userId,
+				});
+				yield* this.runMultiAgentSystem(
+					payload,
+					userId,
+					abortSignal,
+					externalCallbacks,
+					historicalMessages,
+				);
+				return;
+			}
+
 			// Check if this is a plan decision resume (approval/modify/reject)
 			if (payload.resumeData && payload.resumeInterrupt?.type === 'plan') {
 				const decision = parsePlanDecision(payload.resumeData);
@@ -522,22 +537,28 @@ export class WorkflowBuilderAgent {
 		// The messagesStateReducer will properly merge these with any existing checkpoint state.
 		const messages = [...(historicalMessages ?? []), humanMessage];
 
+		// web_fetch_approval resumes are handled internally by the tool via interrupt()/Command.resume.
+		// Injecting AIMessage (with raw interrupt JSON) and HumanMessage causes the LLM to echo them.
+		const isWebFetchResume = payload.resumeInterrupt?.type === 'web_fetch_approval';
+
 		const stream = payload.resumeData
 			? await agent.stream(
 					new Command({
 						resume: payload.resumeData,
 						update: {
-							messages: [
-								...(payload.resumeInterrupt
-									? [
-											new AIMessage({
-												content: JSON.stringify(payload.resumeInterrupt),
-												additional_kwargs: { messageType: payload.resumeInterrupt.type },
-											}),
-										]
-									: []),
-								humanMessage,
-							],
+							messages: isWebFetchResume
+								? []
+								: [
+										...(payload.resumeInterrupt
+											? [
+													new AIMessage({
+														content: JSON.stringify(payload.resumeInterrupt),
+														additional_kwargs: { messageType: payload.resumeInterrupt.type },
+													}),
+												]
+											: []),
+										humanMessage,
+									],
 							workflowJSON,
 							workflowContext,
 							...(payload.mode ? { mode: payload.mode } : {}),

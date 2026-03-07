@@ -27,6 +27,7 @@ import {
 } from '@/tools/introspect.tool';
 import { createNodeSearchTool } from '@/tools/node-search.tool';
 import { submitQuestionsTool } from '@/tools/submit-questions.tool';
+import { createWebFetchTool } from '@/tools/web-fetch.tool';
 import type { CoordinationLogEntry } from '@/types/coordination';
 import { createDiscoveryMetadata } from '@/types/coordination';
 import type { DiscoveryContext } from '@/types/discovery-types';
@@ -205,6 +206,32 @@ export const DiscoverySubgraphState = Annotation.Root({
 		reducer: (x, y) => y ?? x,
 		default: () => 0,
 	}),
+
+	// Web Fetch: Per-session approved domains
+	approvedDomains: Annotation<string[]>({
+		reducer: (x, y) => [...new Set([...x, ...y])],
+		default: () => [],
+	}),
+
+	// Web Fetch: Whether all domains are approved
+	allDomainsApproved: Annotation<boolean>({
+		reducer: (x, y) => y ?? x,
+		default: () => false,
+	}),
+
+	// Web Fetch: Per-turn fetch count
+	webFetchCount: Annotation<number>({
+		reducer: (_x, y) => y,
+		default: () => 0,
+	}),
+
+	// Web Fetch: Accumulated fetched URL content (success + error)
+	fetchedUrlContent: Annotation<
+		Array<{ url: string; status: 'success' | 'error'; title: string; content: string }>
+	>({
+		reducer: (x, y) => x.concat(y),
+		default: () => [],
+	}),
 });
 
 export interface DiscoverySubgraphConfig {
@@ -244,8 +271,12 @@ export class DiscoverySubgraph extends BaseSubgraph<
 
 		// Create base tools - search_nodes provides all data needed for discovery
 		const baseTools: StructuredTool[] = includePlanMode
-			? [createNodeSearchTool(config.parsedNodeTypes).tool, submitQuestionsTool]
-			: [createNodeSearchTool(config.parsedNodeTypes).tool];
+			? [
+					createNodeSearchTool(config.parsedNodeTypes).tool,
+					submitQuestionsTool,
+					createWebFetchTool().tool,
+				]
+			: [createNodeSearchTool(config.parsedNodeTypes).tool, createWebFetchTool().tool];
 
 		// Conditionally add introspect tool if feature flag is enabled
 		if (enableIntrospection) {
@@ -303,7 +334,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		this.agent = systemPrompt.pipe(config.llm.bindTools(allTools));
 		this.plannerAgent = createPlannerAgent({
 			llm: config.plannerLLM,
-			tools: [createGetDocumentationTool().tool],
+			tools: [createGetDocumentationTool().tool, createWebFetchTool().tool],
 		});
 
 		// Build the subgraph
@@ -709,6 +740,9 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			selectedNodesContext: selectedNodesSummary ?? '',
 			messages: [contextMessage], // Context already in messages
 			cachedTemplates: parentState.cachedTemplates,
+			approvedDomains: parentState.approvedDomains ?? [],
+			allDomainsApproved: parentState.allDomainsApproved ?? false,
+			webFetchCount: 0, // Reset per-turn
 		};
 	}
 
@@ -718,9 +752,16 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	) {
 		const nodesFound = subgraphOutput.nodesFound || [];
 		const templateIds = subgraphOutput.templateIds || [];
+
+		// Read fetched URL content from first-class state field (populated by web_fetch tool)
+		const fetchedUrlContent = subgraphOutput.fetchedUrlContent?.length
+			? subgraphOutput.fetchedUrlContent
+			: undefined;
+
 		const discoveryContext: DiscoveryContext = {
 			nodesFound,
 			bestPractices: subgraphOutput.bestPractices,
+			...(fetchedUrlContent ? { fetchedUrlContent } : {}),
 		};
 
 		// Create coordination log entry (not a message)
@@ -766,6 +807,9 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			introspectionEvents,
 			// Include tool messages for persistence to restore frontend state on refresh
 			messages: toolMessages,
+			// Propagate web_fetch state back to parent
+			approvedDomains: subgraphOutput.approvedDomains ?? [],
+			allDomainsApproved: subgraphOutput.allDomainsApproved ?? false,
 		};
 	}
 }

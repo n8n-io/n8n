@@ -1,0 +1,859 @@
+import type { ToolMessage } from '@langchain/core/messages';
+import type { RunnableConfig } from '@langchain/core/runnables';
+import type { Command } from '@langchain/langgraph';
+
+import {
+	normalizeHost,
+	isBlockedUrl,
+	fetchUrl,
+	extractReadableContent,
+	isUrlInUserMessages,
+	isUrlInWorkflowNodes,
+} from '@/tools/utils/web-fetch.utils';
+import { createWebFetchTool, WEB_FETCH_TOOL } from '@/tools/web-fetch.tool';
+
+// Mock the LangGraph state access and interrupt
+const mockGetCurrentTaskInput = jest.fn();
+const mockInterrupt = jest.fn();
+
+jest.mock('@langchain/langgraph', () => ({
+	...jest.requireActual<object>('@langchain/langgraph'),
+	getCurrentTaskInput: (...args: unknown[]) => mockGetCurrentTaskInput(...args) as unknown,
+	interrupt: (...args: unknown[]) => mockInterrupt(...args) as unknown,
+}));
+
+// Mock the web-fetch utilities
+jest.mock('@/tools/utils/web-fetch.utils', () => ({
+	normalizeHost: jest.fn((url: string) => new URL(url).hostname.toLowerCase()),
+	isBlockedUrl: jest.fn(),
+	fetchUrl: jest.fn(),
+	extractReadableContent: jest.fn(),
+	isUrlInUserMessages: jest.fn(),
+	isUrlInWorkflowNodes: jest.fn(),
+}));
+
+const mockIsBlockedUrl = isBlockedUrl as jest.MockedFunction<typeof isBlockedUrl>;
+const mockFetchUrl = fetchUrl as jest.MockedFunction<typeof fetchUrl>;
+const mockExtractReadableContent = extractReadableContent as jest.MockedFunction<
+	typeof extractReadableContent
+>;
+const mockNormalizeHost = normalizeHost as jest.MockedFunction<typeof normalizeHost>;
+const mockIsUrlInUserMessages = isUrlInUserMessages as jest.MockedFunction<
+	typeof isUrlInUserMessages
+>;
+const mockIsUrlInWorkflowNodes = isUrlInWorkflowNodes as jest.MockedFunction<
+	typeof isUrlInWorkflowNodes
+>;
+
+function getMessageContent(command: Command): string {
+	const update = command.update as { messages: ToolMessage[] };
+	return update.messages[0].content as string;
+}
+
+function getStateUpdates(command: Command): Record<string, unknown> {
+	const update = command.update as Record<string, unknown>;
+	const { messages: _, ...stateUpdates } = update;
+	return stateUpdates;
+}
+
+describe('web_fetch tool', () => {
+	const mockConfig: RunnableConfig = {
+		callbacks: [],
+		toolCall: { id: 'test-tool-call-id', name: 'web_fetch' },
+	} as RunnableConfig;
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+		mockNormalizeHost.mockImplementation((url: string) => new URL(url).hostname.toLowerCase());
+		mockIsUrlInUserMessages.mockReturnValue(true);
+		mockIsUrlInWorkflowNodes.mockReturnValue(false);
+		mockGetCurrentTaskInput.mockReturnValue({
+			approvedDomains: [],
+			webFetchCount: 0,
+			messages: [],
+		});
+	});
+
+	describe('createWebFetchTool', () => {
+		it('should create a tool with correct name and metadata', () => {
+			const result = createWebFetchTool();
+			expect(result.toolName).toBe('web_fetch');
+			expect(result.displayTitle).toBe('Fetching web content');
+			expect(result.tool.name).toBe('web_fetch');
+		});
+	});
+
+	describe('WEB_FETCH_TOOL constant', () => {
+		it('should have correct values', () => {
+			expect(WEB_FETCH_TOOL.toolName).toBe('web_fetch');
+			expect(WEB_FETCH_TOOL.displayTitle).toBe('Fetching web content');
+		});
+	});
+
+	describe('SSRF blocking', () => {
+		it('should block URLs that fail SSRF check', async () => {
+			mockIsBlockedUrl.mockResolvedValue(true);
+
+			const { tool } = createWebFetchTool();
+			const command = await tool.invoke({ url: 'http://localhost:3000' }, mockConfig);
+			const content = getMessageContent(command);
+
+			expect(content).toContain('private or internal address');
+			expect(mockIsBlockedUrl).toHaveBeenCalledWith('http://localhost:3000');
+		});
+	});
+
+	describe('per-turn budget', () => {
+		it('should block when fetch budget is exceeded', async () => {
+			mockIsBlockedUrl.mockResolvedValue(false);
+			mockGetCurrentTaskInput.mockReturnValue({
+				approvedDomains: ['example.com'],
+				webFetchCount: 3,
+			});
+
+			const { tool } = createWebFetchTool();
+			const command = await tool.invoke({ url: 'https://example.com/page' }, mockConfig);
+			const content = getMessageContent(command);
+
+			expect(content).toContain('Maximum of 3 web fetches per turn reached');
+		});
+	});
+
+	describe('approval flow', () => {
+		beforeEach(() => {
+			// URL not from user (so approval is required), but from workflow nodes (so provenance passes)
+			mockIsUrlInUserMessages.mockReturnValue(false);
+			mockIsUrlInWorkflowNodes.mockReturnValue(true);
+		});
+
+		it('should trigger interrupt for unapproved domain', async () => {
+			mockIsBlockedUrl.mockResolvedValue(false);
+			// Make interrupt return an allow_once decision
+			mockInterrupt.mockReturnValue({
+				requestId: expect.any(String),
+				url: 'https://example.com/docs',
+				action: 'allow_once',
+			});
+
+			// We need to make interrupt return matching requestId
+			let capturedRequestId: string;
+			mockInterrupt.mockImplementation((payload: { requestId: string }) => {
+				capturedRequestId = payload.requestId;
+				return {
+					requestId: capturedRequestId,
+					url: 'https://example.com/docs',
+					action: 'allow_once',
+				};
+			});
+
+			mockFetchUrl.mockResolvedValue({
+				status: 'success',
+				body: '<html><body><p>Content</p></body></html>',
+				finalUrl: 'https://example.com/docs',
+				httpStatus: 200,
+				contentType: 'text/html',
+			});
+
+			mockExtractReadableContent.mockReturnValue({
+				title: 'Test Page',
+				content: 'Extracted content',
+				truncated: false,
+			});
+
+			const { tool } = createWebFetchTool();
+			const command = await tool.invoke({ url: 'https://example.com/docs' }, mockConfig);
+
+			expect(mockInterrupt).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'web_fetch_approval',
+					url: 'https://example.com/docs',
+					domain: 'example.com',
+				}),
+			);
+
+			const content = getMessageContent(command);
+			expect(content).toContain('web_fetch_result');
+		});
+
+		it('should skip interrupt for pre-approved domain', async () => {
+			mockIsBlockedUrl.mockResolvedValue(false);
+			mockGetCurrentTaskInput.mockReturnValue({
+				approvedDomains: ['example.com'],
+				webFetchCount: 0,
+			});
+
+			mockFetchUrl.mockResolvedValue({
+				status: 'success',
+				body: '<html><body><p>Content</p></body></html>',
+				finalUrl: 'https://example.com/docs',
+				httpStatus: 200,
+				contentType: 'text/html',
+			});
+
+			mockExtractReadableContent.mockReturnValue({
+				title: 'Test Page',
+				content: 'Extracted content',
+				truncated: false,
+			});
+
+			const { tool } = createWebFetchTool();
+			await tool.invoke({ url: 'https://example.com/docs' }, mockConfig);
+
+			expect(mockInterrupt).not.toHaveBeenCalled();
+		});
+
+		it('should return deny message when user denies', async () => {
+			mockIsBlockedUrl.mockResolvedValue(false);
+			mockInterrupt.mockImplementation((payload: { requestId: string }) => ({
+				requestId: payload.requestId,
+				url: 'https://example.com/docs',
+				action: 'deny',
+			}));
+
+			const { tool } = createWebFetchTool();
+			const command = await tool.invoke({ url: 'https://example.com/docs' }, mockConfig);
+			const content = getMessageContent(command);
+
+			expect(content).toContain('denied');
+			expect(content).toContain('example.com');
+		});
+
+		it('should add domain to approvedDomains on allow_domain', async () => {
+			mockIsBlockedUrl.mockResolvedValue(false);
+			mockInterrupt.mockImplementation((payload: { requestId: string }) => ({
+				requestId: payload.requestId,
+				url: 'https://example.com/docs',
+				action: 'allow_domain',
+			}));
+
+			mockFetchUrl.mockResolvedValue({
+				status: 'success',
+				body: '<html><body><p>Content</p></body></html>',
+				finalUrl: 'https://example.com/docs',
+				httpStatus: 200,
+				contentType: 'text/html',
+			});
+
+			mockExtractReadableContent.mockReturnValue({
+				title: 'Test',
+				content: 'Content',
+				truncated: false,
+			});
+
+			const { tool } = createWebFetchTool();
+			const command = await tool.invoke({ url: 'https://example.com/docs' }, mockConfig);
+			const stateUpdates = getStateUpdates(command);
+
+			expect(stateUpdates.approvedDomains).toEqual(['example.com']);
+			expect(stateUpdates.webFetchCount).toBe(1);
+		});
+
+		it('should NOT add domain to approvedDomains on allow_once', async () => {
+			mockIsBlockedUrl.mockResolvedValue(false);
+			mockInterrupt.mockImplementation((payload: { requestId: string }) => ({
+				requestId: payload.requestId,
+				url: 'https://example.com/docs',
+				action: 'allow_once',
+			}));
+
+			mockFetchUrl.mockResolvedValue({
+				status: 'success',
+				body: '<html><body><p>Content</p></body></html>',
+				finalUrl: 'https://example.com/docs',
+				httpStatus: 200,
+				contentType: 'text/html',
+			});
+
+			mockExtractReadableContent.mockReturnValue({
+				title: 'Test',
+				content: 'Content',
+				truncated: false,
+			});
+
+			const { tool } = createWebFetchTool();
+			const command = await tool.invoke({ url: 'https://example.com/docs' }, mockConfig);
+			const stateUpdates = getStateUpdates(command);
+
+			expect(stateUpdates.approvedDomains).toBeUndefined();
+			expect(stateUpdates.webFetchCount).toBe(1);
+		});
+
+		it('should reject stale/mismatched resume payload (url mismatch)', async () => {
+			mockIsBlockedUrl.mockResolvedValue(false);
+			mockInterrupt.mockReturnValue({
+				requestId: 'any-id',
+				url: 'https://different-site.com/page',
+				action: 'allow_once',
+			});
+
+			const { tool } = createWebFetchTool();
+			const command = await tool.invoke({ url: 'https://example.com/docs' }, mockConfig);
+			const content = getMessageContent(command);
+
+			expect(content).toContain('did not match');
+		});
+	});
+
+	describe('content fetching', () => {
+		beforeEach(() => {
+			mockIsBlockedUrl.mockResolvedValue(false);
+			mockGetCurrentTaskInput.mockReturnValue({
+				approvedDomains: ['example.com'],
+				webFetchCount: 0,
+			});
+		});
+
+		it('should handle PDF content type', async () => {
+			mockFetchUrl.mockResolvedValue({
+				status: 'unsupported',
+				reason: 'pdf',
+			});
+
+			const { tool } = createWebFetchTool();
+			const command = await tool.invoke({ url: 'https://example.com/doc.pdf' }, mockConfig);
+			const content = getMessageContent(command);
+
+			expect(content).toContain('not supported');
+			expect(content).toContain('PDF');
+		});
+
+		it('should handle empty body', async () => {
+			mockFetchUrl.mockResolvedValue({
+				status: 'success',
+				body: undefined,
+				finalUrl: 'https://example.com/empty',
+				httpStatus: 200,
+				contentType: 'text/html',
+			});
+
+			const { tool } = createWebFetchTool();
+			const command = await tool.invoke({ url: 'https://example.com/empty' }, mockConfig);
+			const content = getMessageContent(command);
+
+			expect(content).toContain('no content');
+		});
+
+		it('should return structured content on success', async () => {
+			mockFetchUrl.mockResolvedValue({
+				status: 'success',
+				body: '<html><body><p>Content</p></body></html>',
+				finalUrl: 'https://example.com/page',
+				httpStatus: 200,
+				contentType: 'text/html',
+			});
+
+			mockExtractReadableContent.mockReturnValue({
+				title: 'Test Page',
+				content: 'Extracted readable content',
+				truncated: false,
+			});
+
+			const { tool } = createWebFetchTool();
+			const command = await tool.invoke({ url: 'https://example.com/page' }, mockConfig);
+			const content = getMessageContent(command);
+
+			expect(content).toContain('<web_fetch_result>');
+			expect(content).toContain('<url>https://example.com/page</url>');
+			expect(content).toContain('<title>Test Page</title>');
+			expect(content).toContain('Extracted readable content');
+			expect(content).toContain('</web_fetch_result>');
+		});
+
+		it('should include truncation note when content is truncated', async () => {
+			mockFetchUrl.mockResolvedValue({
+				status: 'success',
+				body: '<html><body><p>Long content</p></body></html>',
+				finalUrl: 'https://example.com/long',
+				httpStatus: 200,
+				contentType: 'text/html',
+			});
+
+			mockExtractReadableContent.mockReturnValue({
+				title: 'Long Page',
+				content: 'Truncated content',
+				truncated: true,
+				truncateReason: 'Content truncated to 30000 characters',
+			});
+
+			const { tool } = createWebFetchTool();
+			const command = await tool.invoke({ url: 'https://example.com/long' }, mockConfig);
+			const content = getMessageContent(command);
+
+			expect(content).toContain('<note>Content truncated to 30000 characters</note>');
+		});
+
+		it('should increment webFetchCount on success', async () => {
+			mockFetchUrl.mockResolvedValue({
+				status: 'success',
+				body: '<html><body><p>Content</p></body></html>',
+				finalUrl: 'https://example.com/page',
+				httpStatus: 200,
+				contentType: 'text/html',
+			});
+
+			mockExtractReadableContent.mockReturnValue({
+				title: 'Page',
+				content: 'Content',
+				truncated: false,
+			});
+
+			const { tool } = createWebFetchTool();
+			const command = await tool.invoke({ url: 'https://example.com/page' }, mockConfig);
+			const stateUpdates = getStateUpdates(command);
+
+			expect(stateUpdates.webFetchCount).toBe(1);
+		});
+	});
+
+	describe('redirect handling', () => {
+		beforeEach(() => {
+			mockIsBlockedUrl.mockResolvedValue(false);
+			mockGetCurrentTaskInput.mockReturnValue({
+				approvedDomains: ['example.com'],
+				webFetchCount: 0,
+			});
+		});
+
+		it('should block redirect to private address', async () => {
+			mockFetchUrl.mockResolvedValue({
+				status: 'redirect_new_host',
+				finalUrl: 'http://localhost:3000/internal',
+			});
+
+			// isBlockedUrl is called twice: first for the original URL (returns false),
+			// then for the redirect URL (returns true)
+			mockIsBlockedUrl
+				.mockResolvedValueOnce(false) // original URL check
+				.mockResolvedValueOnce(true); // redirect URL check
+
+			const { tool } = createWebFetchTool();
+			const command = await tool.invoke({ url: 'https://example.com/redirect' }, mockConfig);
+			const content = getMessageContent(command);
+
+			expect(content).toContain('private address');
+		});
+
+		it('should trigger interrupt for redirect to unapproved domain and succeed on approval', async () => {
+			mockFetchUrl
+				.mockResolvedValueOnce({
+					status: 'redirect_new_host',
+					finalUrl: 'https://other-domain.com/page',
+				})
+				.mockResolvedValueOnce({
+					status: 'success',
+					body: '<html><body><p>Redirected content</p></body></html>',
+					finalUrl: 'https://other-domain.com/page',
+					httpStatus: 200,
+					contentType: 'text/html',
+				});
+
+			mockInterrupt.mockReturnValue({
+				requestId: 'any-id',
+				url: 'https://other-domain.com/page',
+				action: 'allow_once',
+			});
+
+			mockExtractReadableContent.mockReturnValue({
+				title: 'Redirected Page',
+				content: 'Redirected content',
+				truncated: false,
+			});
+
+			const { tool } = createWebFetchTool();
+			const command = await tool.invoke({ url: 'https://example.com/redirect' }, mockConfig);
+
+			expect(mockInterrupt).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'web_fetch_approval',
+					url: 'https://other-domain.com/page',
+					domain: 'other-domain.com',
+				}),
+			);
+
+			const content = getMessageContent(command);
+			expect(content).toContain('web_fetch_result');
+			expect(content).toContain('Redirected content');
+		});
+
+		it('should return deny message when user denies redirect domain', async () => {
+			mockFetchUrl.mockResolvedValueOnce({
+				status: 'redirect_new_host',
+				finalUrl: 'https://other-domain.com/page',
+			});
+
+			mockInterrupt.mockReturnValue({
+				requestId: 'any-id',
+				url: 'https://other-domain.com/page',
+				action: 'deny',
+			});
+
+			const { tool } = createWebFetchTool();
+			const command = await tool.invoke({ url: 'https://example.com/redirect' }, mockConfig);
+			const content = getMessageContent(command);
+
+			expect(content).toContain('denied');
+			expect(content).toContain('other-domain.com');
+		});
+
+		it('should add redirect host to approvedDomains on allow_domain', async () => {
+			mockFetchUrl
+				.mockResolvedValueOnce({
+					status: 'redirect_new_host',
+					finalUrl: 'https://other-domain.com/page',
+				})
+				.mockResolvedValueOnce({
+					status: 'success',
+					body: '<html><body><p>Content</p></body></html>',
+					finalUrl: 'https://other-domain.com/page',
+					httpStatus: 200,
+					contentType: 'text/html',
+				});
+
+			mockInterrupt.mockReturnValue({
+				requestId: 'any-id',
+				url: 'https://other-domain.com/page',
+				action: 'allow_domain',
+			});
+
+			mockExtractReadableContent.mockReturnValue({
+				title: 'Test',
+				content: 'Content',
+				truncated: false,
+			});
+
+			const { tool } = createWebFetchTool();
+			const command = await tool.invoke({ url: 'https://example.com/redirect' }, mockConfig);
+			const stateUpdates = getStateUpdates(command);
+
+			expect(stateUpdates.approvedDomains).toEqual(['other-domain.com']);
+		});
+
+		it('should skip interrupt when redirect domain is in allowlist', async () => {
+			mockFetchUrl
+				.mockResolvedValueOnce({
+					status: 'redirect_new_host',
+					finalUrl: 'https://docs.example.com/page',
+				})
+				.mockResolvedValueOnce({
+					status: 'success',
+					body: '<html><body><p>Content</p></body></html>',
+					finalUrl: 'https://docs.example.com/page',
+					httpStatus: 200,
+					contentType: 'text/html',
+				});
+
+			mockGetCurrentTaskInput.mockReturnValue({
+				approvedDomains: ['example.com', 'docs.example.com'],
+				webFetchCount: 0,
+			});
+
+			mockExtractReadableContent.mockReturnValue({
+				title: 'Docs',
+				content: 'Documentation content',
+				truncated: false,
+			});
+
+			const { tool } = createWebFetchTool();
+			const command = await tool.invoke({ url: 'https://example.com/redirect' }, mockConfig);
+
+			expect(mockInterrupt).not.toHaveBeenCalled();
+
+			const content = getMessageContent(command);
+			expect(content).toContain('web_fetch_result');
+		});
+	});
+
+	describe('error handling', () => {
+		it('should reject invalid URL input', async () => {
+			const { tool } = createWebFetchTool();
+			await expect(tool.invoke({ url: 'not-a-url' }, mockConfig)).rejects.toThrow();
+		});
+
+		it('should propagate GraphInterrupt errors', async () => {
+			mockIsBlockedUrl.mockResolvedValue(false);
+			const graphInterruptError = new Error('GraphInterrupt');
+			graphInterruptError.name = 'GraphInterrupt';
+			mockInterrupt.mockImplementation(() => {
+				throw graphInterruptError;
+			});
+
+			const { tool } = createWebFetchTool();
+			await expect(tool.invoke({ url: 'https://example.com/page' }, mockConfig)).rejects.toThrow(
+				'GraphInterrupt',
+			);
+		});
+	});
+
+	describe('URL provenance check', () => {
+		it('should reject URLs not found in user messages or workflow nodes', async () => {
+			mockIsBlockedUrl.mockResolvedValue(false);
+			mockIsUrlInUserMessages.mockReturnValue(false);
+			mockIsUrlInWorkflowNodes.mockReturnValue(false);
+
+			const { tool } = createWebFetchTool();
+			const command = await tool.invoke({ url: 'https://example.com/invented' }, mockConfig);
+			const content = getMessageContent(command);
+
+			expect(content).toContain('not provided by the user');
+		});
+
+		it('should allow URLs found in user messages', async () => {
+			mockIsBlockedUrl.mockResolvedValue(false);
+			mockIsUrlInUserMessages.mockReturnValue(true);
+			mockIsUrlInWorkflowNodes.mockReturnValue(false);
+			mockGetCurrentTaskInput.mockReturnValue({
+				approvedDomains: ['example.com'],
+				webFetchCount: 0,
+				messages: [],
+			});
+
+			mockFetchUrl.mockResolvedValue({
+				status: 'success',
+				body: '<html><body><p>Content</p></body></html>',
+				finalUrl: 'https://example.com/page',
+				httpStatus: 200,
+				contentType: 'text/html',
+			});
+
+			mockExtractReadableContent.mockReturnValue({
+				title: 'Test',
+				content: 'Content',
+				truncated: false,
+			});
+
+			const { tool } = createWebFetchTool();
+			const command = await tool.invoke({ url: 'https://example.com/page' }, mockConfig);
+			const content = getMessageContent(command);
+
+			expect(content).toContain('web_fetch_result');
+		});
+
+		it('should allow URLs found in workflow node parameters', async () => {
+			mockIsBlockedUrl.mockResolvedValue(false);
+			mockIsUrlInUserMessages.mockReturnValue(false);
+			mockIsUrlInWorkflowNodes.mockReturnValue(true);
+			mockGetCurrentTaskInput.mockReturnValue({
+				approvedDomains: [],
+				webFetchCount: 0,
+				messages: [],
+				workflowJSON: {
+					nodes: [{ parameters: { url: 'https://api.example.com/docs' } }],
+				},
+			});
+
+			mockInterrupt.mockImplementation((payload: { requestId: string }) => ({
+				requestId: payload.requestId,
+				url: 'https://api.example.com/docs',
+				action: 'allow_once',
+			}));
+
+			mockFetchUrl.mockResolvedValue({
+				status: 'success',
+				body: '<html><body><p>API docs</p></body></html>',
+				finalUrl: 'https://api.example.com/docs',
+				httpStatus: 200,
+				contentType: 'text/html',
+			});
+
+			mockExtractReadableContent.mockReturnValue({
+				title: 'API Docs',
+				content: 'API documentation content',
+				truncated: false,
+			});
+
+			const { tool } = createWebFetchTool();
+			const command = await tool.invoke({ url: 'https://api.example.com/docs' }, mockConfig);
+			const content = getMessageContent(command);
+
+			expect(content).toContain('web_fetch_result');
+			// Workflow-extracted URLs still require domain approval
+			expect(mockInterrupt).toHaveBeenCalled();
+		});
+
+		it('should skip domain approval for user-sent URLs on non-allowlisted domains', async () => {
+			mockIsBlockedUrl.mockResolvedValue(false);
+			mockIsUrlInUserMessages.mockReturnValue(true);
+			mockIsUrlInWorkflowNodes.mockReturnValue(false);
+			mockGetCurrentTaskInput.mockReturnValue({
+				approvedDomains: [],
+				webFetchCount: 0,
+				messages: [],
+			});
+
+			mockFetchUrl.mockResolvedValue({
+				status: 'success',
+				body: '<html><body><p>Content</p></body></html>',
+				finalUrl: 'https://unknown-site.com/page',
+				httpStatus: 200,
+				contentType: 'text/html',
+			});
+
+			mockExtractReadableContent.mockReturnValue({
+				title: 'Test',
+				content: 'Content',
+				truncated: false,
+			});
+
+			const { tool } = createWebFetchTool();
+			const command = await tool.invoke({ url: 'https://unknown-site.com/page' }, mockConfig);
+			const content = getMessageContent(command);
+
+			// User explicitly sent this URL, so no approval needed
+			expect(mockInterrupt).not.toHaveBeenCalled();
+			expect(content).toContain('web_fetch_result');
+		});
+	});
+
+	describe('approval action validation', () => {
+		beforeEach(() => {
+			// URL not from user (so approval is required), but from workflow nodes (so provenance passes)
+			mockIsUrlInUserMessages.mockReturnValue(false);
+			mockIsUrlInWorkflowNodes.mockReturnValue(true);
+		});
+
+		it('should reject invalid approval action values', async () => {
+			mockIsBlockedUrl.mockResolvedValue(false);
+			mockInterrupt.mockImplementation((payload: { requestId: string }) => ({
+				requestId: payload.requestId,
+				url: 'https://example.com/page',
+				action: 'invalid_action',
+			}));
+
+			const { tool } = createWebFetchTool();
+			const command = await tool.invoke({ url: 'https://example.com/page' }, mockConfig);
+			const content = getMessageContent(command);
+
+			expect(content).toContain('Invalid approval action');
+		});
+
+		it('should accept allow_once action', async () => {
+			mockIsBlockedUrl.mockResolvedValue(false);
+			mockInterrupt.mockImplementation((payload: { requestId: string }) => ({
+				requestId: payload.requestId,
+				url: 'https://example.com/page',
+				action: 'allow_once',
+			}));
+
+			mockFetchUrl.mockResolvedValue({
+				status: 'success',
+				body: '<html><body><p>Content</p></body></html>',
+				finalUrl: 'https://example.com/page',
+				httpStatus: 200,
+				contentType: 'text/html',
+			});
+
+			mockExtractReadableContent.mockReturnValue({
+				title: 'Test',
+				content: 'Content',
+				truncated: false,
+			});
+
+			const { tool } = createWebFetchTool();
+			const command = await tool.invoke({ url: 'https://example.com/page' }, mockConfig);
+			const content = getMessageContent(command);
+
+			expect(content).toContain('web_fetch_result');
+		});
+
+		it('should accept allow_all action and set allDomainsApproved', async () => {
+			mockIsBlockedUrl.mockResolvedValue(false);
+			mockInterrupt.mockImplementation((payload: { requestId: string }) => ({
+				requestId: payload.requestId,
+				url: 'https://example.com/page',
+				action: 'allow_all',
+			}));
+
+			mockFetchUrl.mockResolvedValue({
+				status: 'success',
+				body: '<html><body><p>Content</p></body></html>',
+				finalUrl: 'https://example.com/page',
+				httpStatus: 200,
+				contentType: 'text/html',
+			});
+
+			mockExtractReadableContent.mockReturnValue({
+				title: 'Test',
+				content: 'Content',
+				truncated: false,
+			});
+
+			const { tool } = createWebFetchTool();
+			const command = await tool.invoke({ url: 'https://example.com/page' }, mockConfig);
+			const content = getMessageContent(command);
+			const stateUpdates = getStateUpdates(command);
+
+			expect(content).toContain('web_fetch_result');
+			expect(stateUpdates.allDomainsApproved).toBe(true);
+			expect(stateUpdates.approvedDomains).toEqual(['example.com']);
+		});
+	});
+
+	describe('allDomainsApproved bypass', () => {
+		it('should skip domain approval interrupt when allDomainsApproved is true', async () => {
+			mockIsBlockedUrl.mockResolvedValue(false);
+			mockGetCurrentTaskInput.mockReturnValue({
+				approvedDomains: [],
+				allDomainsApproved: true,
+				webFetchCount: 0,
+				messages: [],
+			});
+
+			mockFetchUrl.mockResolvedValue({
+				status: 'success',
+				body: '<html><body><p>Content</p></body></html>',
+				finalUrl: 'https://example.com/page',
+				httpStatus: 200,
+				contentType: 'text/html',
+			});
+
+			mockExtractReadableContent.mockReturnValue({
+				title: 'Test',
+				content: 'Content',
+				truncated: false,
+			});
+
+			const { tool } = createWebFetchTool();
+			const command = await tool.invoke({ url: 'https://example.com/page' }, mockConfig);
+			const content = getMessageContent(command);
+
+			expect(mockInterrupt).not.toHaveBeenCalled();
+			expect(content).toContain('web_fetch_result');
+		});
+
+		it('should skip redirect domain approval when allDomainsApproved is true', async () => {
+			mockIsBlockedUrl.mockResolvedValue(false);
+			mockGetCurrentTaskInput.mockReturnValue({
+				approvedDomains: ['example.com'],
+				allDomainsApproved: true,
+				webFetchCount: 0,
+				messages: [],
+			});
+
+			mockFetchUrl
+				.mockResolvedValueOnce({
+					status: 'redirect_new_host',
+					finalUrl: 'https://other-domain.com/page',
+				})
+				.mockResolvedValueOnce({
+					status: 'success',
+					body: '<html><body><p>Redirected</p></body></html>',
+					finalUrl: 'https://other-domain.com/page',
+					httpStatus: 200,
+					contentType: 'text/html',
+				});
+
+			mockExtractReadableContent.mockReturnValue({
+				title: 'Test',
+				content: 'Redirected content',
+				truncated: false,
+			});
+
+			const { tool } = createWebFetchTool();
+			const command = await tool.invoke({ url: 'https://example.com/redirect' }, mockConfig);
+			const content = getMessageContent(command);
+
+			expect(mockInterrupt).not.toHaveBeenCalled();
+			expect(content).toContain('web_fetch_result');
+		});
+	});
+});

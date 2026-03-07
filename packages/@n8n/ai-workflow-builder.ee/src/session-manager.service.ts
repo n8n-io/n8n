@@ -209,6 +209,11 @@ export class SessionManagerService {
 			];
 		}
 
+		// web_fetch_decided — no messages to replay (approval is handled inline)
+		if (entry.type === 'web_fetch_decided') {
+			return [];
+		}
+
 		// plan_decided (reject or modify — approved plans survive in the checkpoint)
 		const messages: Array<Record<string, unknown>> = [
 			{
@@ -421,18 +426,28 @@ export class SessionManagerService {
 
 				const pendingHitl = this.getPendingHitl(threadId);
 				if (pendingHitl) {
-					formattedMessages.push({
-						role: 'assistant',
-						type: pendingHitl.type,
-						...(pendingHitl.type === 'questions'
-							? {
-									questions: pendingHitl.questions,
-									...(pendingHitl.introMessage ? { introMessage: pendingHitl.introMessage } : {}),
-								}
-							: {
-									plan: pendingHitl.plan,
-								}),
-					});
+					if (pendingHitl.type === 'questions') {
+						formattedMessages.push({
+							role: 'assistant',
+							type: pendingHitl.type,
+							questions: pendingHitl.questions,
+							...(pendingHitl.introMessage ? { introMessage: pendingHitl.introMessage } : {}),
+						});
+					} else if (pendingHitl.type === 'plan') {
+						formattedMessages.push({
+							role: 'assistant',
+							type: pendingHitl.type,
+							plan: pendingHitl.plan,
+						});
+					} else if (pendingHitl.type === 'web_fetch_approval') {
+						formattedMessages.push({
+							role: 'assistant',
+							type: pendingHitl.type,
+							requestId: pendingHitl.requestId,
+							url: pendingHitl.url,
+							domain: pendingHitl.domain,
+						});
+					}
 				}
 
 				sessions.push({
@@ -471,18 +486,28 @@ export class SessionManagerService {
 
 				const pendingHitl = this.getPendingHitl(threadId);
 				if (pendingHitl) {
-					formattedMessages.push({
-						role: 'assistant',
-						type: pendingHitl.type,
-						...(pendingHitl.type === 'questions'
-							? {
-									questions: pendingHitl.questions,
-									...(pendingHitl.introMessage ? { introMessage: pendingHitl.introMessage } : {}),
-								}
-							: {
-									plan: pendingHitl.plan,
-								}),
-					});
+					if (pendingHitl.type === 'questions') {
+						formattedMessages.push({
+							role: 'assistant',
+							type: pendingHitl.type,
+							questions: pendingHitl.questions,
+							...(pendingHitl.introMessage ? { introMessage: pendingHitl.introMessage } : {}),
+						});
+					} else if (pendingHitl.type === 'plan') {
+						formattedMessages.push({
+							role: 'assistant',
+							type: pendingHitl.type,
+							plan: pendingHitl.plan,
+						});
+					} else if (pendingHitl.type === 'web_fetch_approval') {
+						formattedMessages.push({
+							role: 'assistant',
+							type: pendingHitl.type,
+							requestId: pendingHitl.requestId,
+							url: pendingHitl.url,
+							domain: pendingHitl.domain,
+						});
+					}
 				}
 
 				sessions.push({
