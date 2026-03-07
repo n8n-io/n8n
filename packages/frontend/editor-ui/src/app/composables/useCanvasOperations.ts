@@ -1178,6 +1178,8 @@ export function useCanvasOperations() {
 	}
 
 	function resolveNodeParameters(node: INodeUi, nodeTypeDescription: INodeTypeDescription) {
+		if (node.parameters && Object.keys(node.parameters).length > 0) return;
+
 		const nodeParameters = NodeHelpers.getNodeParameters(
 			nodeTypeDescription?.properties ?? [],
 			node.parameters,

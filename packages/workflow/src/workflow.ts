@@ -106,16 +106,19 @@ export class Workflow {
 				// });
 			}
 
-			// Add default values
-			const nodeParameters = NodeHelpers.getNodeParameters(
-				nodeType.description.properties,
-				node.parameters,
-				true,
-				false,
-				node,
-				nodeType.description,
-			);
-			node.parameters = nodeParameters !== null ? nodeParameters : {};
+			// Add default values ONLY if the node has no parameters set
+			// This prevents imported workflows from having their parameters stripped
+			if (!node.parameters || Object.keys(node.parameters).length === 0) {
+				const nodeParameters = NodeHelpers.getNodeParameters(
+					nodeType.description.properties,
+					node.parameters,
+					true,
+					false,
+					node,
+					nodeType.description,
+				);
+				node.parameters = nodeParameters !== null ? nodeParameters : {};
+			}
 		}
 
 		this.setNodes(parameters.nodes);
