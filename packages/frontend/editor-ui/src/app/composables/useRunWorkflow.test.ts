@@ -1073,6 +1073,7 @@ describe('useRunWorkflow({ router })', () => {
 
 			vi.mocked(workflowsStore).workflowObject = {
 				id: 'workflowId',
+				getChildNodes: vi.fn().mockReturnValue([]),
 			} as unknown as Workflow;
 			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
 				id: 'workflowId',
