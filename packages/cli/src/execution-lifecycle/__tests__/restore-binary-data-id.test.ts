@@ -164,6 +164,79 @@ for (const mode of ['filesystem', 's3'] as const) {
 
 			expect(binaryDataService.rename).toHaveBeenCalled();
 		});
+
+		it('should only rename once when same binary appears in multiple nodes', async () => {
+			const workflowId = '6HYhhKmJch2cYxGj';
+			const executionId = '999';
+			const binaryDataFileUuid = 'a5c3f1ed-9d59-4155-bc68-9a370b3c51f6';
+
+			const incorrectFileId = `workflows/${workflowId}/executions/temp/binary_data/${binaryDataFileUuid}`;
+			const binaryDataId = `${mode}:${incorrectFileId}`;
+
+			// Create a run with multiple nodes all referencing the same binary file
+			const run = {
+				data: {
+					resultData: {
+						runData: {
+							Webhook: [
+								{
+									data: {
+										main: [
+											[
+												{
+													binary: {
+														data: { id: binaryDataId },
+													},
+												},
+											],
+										],
+									},
+								},
+							],
+							'Code': [
+								{
+									data: {
+										main: [
+											[
+												{
+													binary: {
+														data: { id: binaryDataId },
+													},
+												},
+											],
+										],
+									},
+								},
+							],
+							'HTTP Request': [
+								{
+									data: {
+										main: [
+											[
+												{
+													binary: {
+														data: { id: binaryDataId },
+													},
+												},
+											],
+										],
+									},
+								},
+							],
+						},
+					},
+				},
+			} as unknown as IRun;
+
+			await restoreBinaryDataId(run, executionId, 'webhook');
+
+			const correctFileId = incorrectFileId.replace('temp', executionId);
+
+			// Should only rename once since it's the same file, not once per node
+			// Bug: Currently renames 3 times (once per node) causing ENOENT errors
+			expect(binaryDataService.rename).toHaveBeenCalledTimes(1);
+			expect(binaryDataService.rename).toHaveBeenCalledWith(incorrectFileId, correctFileId);
+		});
 	});
 }
 
