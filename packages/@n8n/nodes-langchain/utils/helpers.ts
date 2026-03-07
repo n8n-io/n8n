@@ -9,7 +9,7 @@ import type {
 	IWebhookFunctions,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
-import { ZodType } from 'zod';
+import { z, ZodType } from 'zod';
 
 import { N8nTool } from './N8nTool';
 import { convertJsonSchemaToZod } from './schemaParsing';
@@ -140,11 +140,26 @@ export function escapeSingleCurlyBrackets(text?: string): string | undefined {
  * Most nodes expect tools to have a Zod schema and have Tool type, do this conversion to make sure all tools are compatible
  */
 const normalizeToolSchema = (tool: Tool | DynamicStructuredTool | StructuredTool) => {
-	if (tool instanceof Tool) {
-		return tool;
+	if (
+		!tool.schema ||
+		(!(tool.schema instanceof ZodType) && typeof tool.schema !== 'object') ||
+		(tool.schema instanceof ZodType && !(tool.schema instanceof z.ZodObject))
+	) {
+		tool.schema = z.object({
+			query: z.string().describe('The query to provide to the tool'),
+		});
+
+		// Ensure that the tool can handle the object input { query: '...' }
+		const originalInvoke = tool.invoke.bind(tool);
+		tool.invoke = async (input: any, config?: any) => {
+			if (typeof input === 'object' && input !== null && 'query' in input) {
+				return await originalInvoke(input.query, config);
+			}
+			return await originalInvoke(input, config);
+		};
 	}
-	const isZodObject = tool.schema instanceof ZodType;
-	if (tool.schema && !isZodObject) {
+
+	if (!(tool.schema instanceof ZodType)) {
 		tool.schema = convertJsonSchemaToZod(tool.schema as JSONSchema7);
 	}
 
