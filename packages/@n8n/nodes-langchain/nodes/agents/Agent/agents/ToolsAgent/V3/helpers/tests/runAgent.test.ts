@@ -23,9 +23,13 @@ jest.mock('@utils/agent-execution', () => {
 	};
 });
 
-jest.mock('@utils/tracing', () => ({
-	getTracingConfig: jest.fn(),
-}));
+jest.mock('@utils/tracing', () => {
+	const originalModule = jest.requireActual('@utils/tracing');
+	return {
+		...originalModule,
+		getTracingConfig: jest.fn(),
+	};
+});
 
 const mockContext = mock<IExecuteFunctions>();
 const mockNode = mock<INode>();
@@ -34,6 +38,11 @@ beforeEach(() => {
 	jest.clearAllMocks();
 	mockContext.getNode.mockReturnValue(mockNode);
 	mockNode.typeVersion = 3;
+	mockContext.getExecuteData = jest.fn();
+	(tracing.getTracingConfig as jest.Mock).mockReturnValue({
+		runName: '[Test Workflow] Test Node',
+		metadata: { execution_id: 'test-123', workflow: {}, node: 'Test Node' },
+	});
 });
 
 describe('runAgent - iteration count tracking', () => {
@@ -299,7 +308,59 @@ describe('runAgent - tracing configuration', () => {
 
 		await runAgent(mockContext, mockExecutor, itemContext, mockModel, undefined);
 
-		expect(tracing.getTracingConfig).toHaveBeenCalledWith(mockContext);
+		expect(tracing.getTracingConfig).toHaveBeenCalledWith(mockContext, {
+			additionalMetadata: {},
+		});
+		expect(mockWithConfig).toHaveBeenCalledWith(mockTracingConfig);
+		expect(mockInvoke).toHaveBeenCalled();
+	});
+
+	it('should include tracing metadata when provided', async () => {
+		const mockTracingConfig = {
+			runName: '[Test Workflow] Test Node',
+			metadata: { execution_id: 'test-123', workflow: {}, node: 'Test Node' },
+		};
+		const getTracingSpy = jest
+			.spyOn(tracing, 'getTracingConfig')
+			.mockReturnValue(mockTracingConfig);
+
+		const mockInvoke = jest.fn().mockResolvedValue({
+			returnValues: { output: 'Final answer' },
+		});
+		const mockWithConfig = jest.fn().mockReturnValue({ invoke: mockInvoke });
+		const mockExecutor = mock<AgentRunnableSequence>({
+			withConfig: mockWithConfig,
+		});
+		const mockModel = mock<BaseChatModel>();
+
+		const itemContext: ItemContext = {
+			itemIndex: 0,
+			input: 'test input',
+			steps: [],
+			tools: [],
+			prompt: mock(),
+			options: {
+				maxIterations: 10,
+				returnIntermediateSteps: false,
+				tracingMetadata: {
+					values: [
+						{ key: 'team', value: 'ai' },
+						{ key: 'run_id', value: 'r-123' },
+					],
+				},
+			},
+			outputParser: undefined,
+		};
+
+		jest.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
+		jest.spyOn(agentExecution, 'saveToMemory').mockResolvedValue();
+		mockContext.getExecutionCancelSignal.mockReturnValue(new AbortController().signal);
+
+		await runAgent(mockContext, mockExecutor, itemContext, mockModel, undefined);
+
+		expect(getTracingSpy).toHaveBeenCalledWith(mockContext, {
+			additionalMetadata: { team: 'ai', run_id: 'r-123' },
+		});
 		expect(mockWithConfig).toHaveBeenCalledWith(mockTracingConfig);
 		expect(mockInvoke).toHaveBeenCalled();
 	});
@@ -338,6 +399,7 @@ describe('runAgent - tracing configuration', () => {
 			isStreaming: jest.fn().mockReturnValue(true),
 			getExecutionCancelSignal: jest.fn().mockReturnValue(new AbortController().signal),
 		});
+		streamingContext.getExecuteData = jest.fn();
 
 		jest.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
 		jest.spyOn(agentExecution, 'processEventStream').mockResolvedValue({
@@ -346,7 +408,9 @@ describe('runAgent - tracing configuration', () => {
 
 		await runAgent(streamingContext, mockExecutor, itemContext, mockModel, undefined);
 
-		expect(tracing.getTracingConfig).toHaveBeenCalledWith(streamingContext);
+		expect(tracing.getTracingConfig).toHaveBeenCalledWith(streamingContext, {
+			additionalMetadata: {},
+		});
 		expect(mockWithConfig).toHaveBeenCalledWith(mockTracingConfig);
 		expect(mockStreamEvents).toHaveBeenCalled();
 	});
