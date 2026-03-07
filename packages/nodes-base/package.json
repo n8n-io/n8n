@@ -312,6 +312,7 @@
       "dist/credentials/RocketchatApi.credentials.js",
       "dist/credentials/RundeckApi.credentials.js",
       "dist/credentials/S3.credentials.js",
+      "dist/credentials/SalesforceClientCredentialsApi.credentials.js",
       "dist/credentials/SalesforceJwtApi.credentials.js",
       "dist/credentials/SalesforceOAuth2Api.credentials.js",
       "dist/credentials/SalesmateApi.credentials.js",

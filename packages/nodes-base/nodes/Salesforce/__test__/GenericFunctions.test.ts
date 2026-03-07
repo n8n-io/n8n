@@ -961,4 +961,82 @@ describe('Salesforce -> GenericFunctions', () => {
 			});
 		});
 	});
+
+	describe('salesforceApiRequest - Client Credentials Authentication', () => {
+		let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
+		let mockRequest: jest.Mock;
+
+		beforeEach(() => {
+			mockExecuteFunctions = mockDeep<IExecuteFunctions>();
+			mockRequest = jest.fn();
+			mockExecuteFunctions.helpers.request = mockRequest;
+			jest.clearAllMocks();
+
+			// Setup default mocks
+			(mockJwt.sign as jest.Mock).mockReturnValue('mock-jwt-signature');
+			mockExecuteFunctions.getNodeParameter.mockImplementation((param: string) => {
+				if (param === 'authentication') return 'clientCredentials';
+				return undefined;
+			});
+		});
+
+		afterEach(() => {
+			jest.resetAllMocks();
+		});
+
+		it('should authenticate using Client Credentials', async () => {
+			const mockCredentials = {
+				clientId: 'test-client-id',
+				clientSecret: 'test-client-secret',
+				url: 'https://mydomain.my.salesforce.com',
+			};
+			const mockResponse = {
+				access_token: 'mock-access-token',
+				instance_url: 'https://mydomain.my.salesforce.com',
+			};
+
+			mockExecuteFunctions.getCredentials.mockResolvedValue(mockCredentials);
+			mockRequest.mockResolvedValue(mockResponse);
+			mockExecuteFunctions.logger = {
+				debug: jest.fn(),
+			} as any;
+
+			await salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {});
+
+			// Verify token exchange request
+			expect(mockRequest).toHaveBeenCalledWith({
+				headers: {
+					'Content-Type': 'application/x-www-form-urlencoded',
+				},
+				method: 'POST',
+				form: {
+					grant_type: 'client_credentials',
+					client_id: 'test-client-id',
+					client_secret: 'test-client-secret',
+				},
+				url: 'https://mydomain.my.salesforce.com/services/oauth2/token',
+				json: true,
+			});
+
+			// Verify API request with bearer token
+			const expectedApiOptions = {
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: 'Bearer mock-access-token',
+				},
+				method: 'GET',
+				qs: {},
+				uri: 'https://mydomain.my.salesforce.com/services/data/v59.0/test-endpoint',
+				json: true,
+			};
+
+			// console log the second request
+			console.log('Second request options:', mockRequest.mock.calls[1][0]);
+
+			expect(mockRequest).toHaveBeenCalledWith(expectedApiOptions);
+			expect(mockExecuteFunctions.logger.debug).toHaveBeenCalledWith(
+				'Authentication for "Salesforce" node is using "clientCredentials". Invoking URI https://mydomain.my.salesforce.com/services/data/v59.0/test-endpoint',
+			);
+		});
+	});
 });
