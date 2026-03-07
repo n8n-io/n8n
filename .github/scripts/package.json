@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "test": "node --test --experimental-test-module-mocks ./*.test.mjs"
+  },
   "dependencies": {
     "cacheable-lookup": "6.1.0",
     "conventional-changelog": "^4.0.0",
