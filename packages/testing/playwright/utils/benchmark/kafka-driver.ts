@@ -58,9 +58,10 @@ async function preloadQueue(
 		value: { ...payload, index: i },
 	}));
 
-	// Scale batch size down for large payloads to stay under Kafka's message.max.bytes
+	// Scale batch size to stay under Kafka's message.max.bytes (default 1MB).
+	// 100KB × 10 = 1MB which is at the limit, so use 10 for large payloads.
 	const payloadBytes = PAYLOAD_PROFILES[payloadSize];
-	const batchSize = payloadBytes >= 10240 ? 5 : 1000;
+	const batchSize = payloadBytes >= 102400 ? 10 : 1000;
 
 	const startTime = Date.now();
 	await kafka.publishBatch(topic, messages, { batchSize });

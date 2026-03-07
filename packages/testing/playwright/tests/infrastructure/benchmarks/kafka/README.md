@@ -13,10 +13,10 @@ Measures per-execution latency (p50/p95/p99) and completion rate under realistic
 
 | Scenario | What it tests |
 |----------|---------------|
-| `10-nodes-1KB-10mps` | Baseline — sustain a modest steady stream |
-| `30-nodes-10KB-100mps` | Scale pressure — larger workflows + heavier payloads at 10x rate |
-| `60-nodes-1KB-preload-10k` | Burst capacity — drain a backlog with no pacing |
-| `10-nodes-100KB-10mps` | Payload weight — does message size affect latency? |
+| `steady: 10 nodes, 1KB, 10 msg/s` | Baseline — sustain a modest steady stream |
+| `steady: 30 nodes, 10KB, 100 msg/s` | Scale pressure — larger workflows + heavier payloads at 10x rate |
+| `burst: 60 nodes, 1KB, drain 10k backlog` | Burst capacity — drain a backlog with no pacing |
+| `steady: 10 nodes, 100KB, 10 msg/s` | Payload weight — does message size affect latency? |
 
 ### Throughput (`throughput.spec.ts`)
 
@@ -28,35 +28,24 @@ ONE test file runs in ALL benchmark profiles automatically via Playwright projec
 
 | Scenario | What it tests |
 |----------|---------------|
-| `10/30/60-nodes-10KB-10kb-out-5k` | Node count scaling curve with realistic payload (10KB in + 10KB out per node) |
-| `10-nodes-1KB-100kb-out-5k` | DB write pressure (heavy) — 100KB output per node |
-
-### Queue Mode Load (`load-queue.spec.ts`)
-
-**Question: "How does queue mode overhead compare to direct mode? How does worker scaling improve throughput?"**
-
-Runs the same 4 scenarios from the direct-mode load suite but with n8n in queue mode (1 main + N workers). Worker count is controlled via the `KAFKA_LOAD_WORKERS` env var (default: 1).
-
-| Workers | What it measures |
-|---------|-----------------|
-| 1 | Queue mode baseline — isolates Redis job queuing overhead vs direct mode |
-| 2 | First scaling step — does a second worker help? |
-| 4 | Mid-range scaling — diminishing returns? |
-| 8 | High-end scaling — where does contention appear? |
+| `node scaling: 10/30/60 nodes, 10KB, 10KB/node, 5k msgs` | Node count scaling curve with realistic payload (10KB in + 10KB out per node) |
+| `DB pressure: 10 nodes, 1KB, 100KB/node, 5k msgs` | DB write pressure (heavy) — 100KB output per node |
 
 ## Benchmark Profiles
 
-Throughput tests run in Playwright projects that represent real-world deployment configurations. Each profile provides the full container config (services, env vars, workers).
+All benchmark tests (load + throughput) run in Playwright projects that represent real-world deployment configurations. Each profile provides the full container config (services, env vars, workers). One test file runs in ALL profiles automatically.
 
 | Profile | Mode | Workers | Log | Pool | Concurrency | Save | Matches |
 |---------|------|---------|-----|------|-------------|------|---------|
 | `benchmark-direct` | Direct | 0 | info | 20 | N/A | all | Self-hosted single instance |
-| `benchmark-queue` | Queue | 2 | info | 2 | 10 | all | Helm chart defaults |
-| `benchmark-queue-tuned` | Queue | 2 | error | 20 | 20 | none | Optimized deployment |
+| `benchmark-queue` | Queue | 3 | info | default | default | all | Helm chart defaults |
+| `benchmark-queue-tuned` | Queue | 3 | error | 30 | 20 | none | Optimized deployment |
 
-**Adding a new profile** (e.g., multi-main): Add one entry to `BENCHMARK_PROFILES` in `playwright-projects.ts`. All 7 throughput scenarios auto-run in it.
+Worker count is controlled via the `KAFKA_LOAD_WORKERS` env var (default: 3).
 
-**Adding a new scenario**: Add one entry to `scenarios/throughput-scenarios.ts`. It auto-runs in all 3 profiles.
+**Adding a new profile** (e.g., multi-main): Add one entry to `BENCHMARK_PROFILES` in `playwright-projects.ts`. All tests auto-run in it.
+
+**Adding a new scenario**: Add a test to the relevant spec file. It auto-runs in all 3 profiles.
 
 **Key findings from benchmarking (10-nodes-1KB-5k noop, queue 2w):**
 
@@ -81,7 +70,7 @@ pnpm --filter=n8n-playwright test:benchmark --project="benchmark-queue:*"
 pnpm --filter=n8n-playwright test:benchmark --project="benchmark-queue-tuned:*"
 
 # Specific scenario in specific profile
-pnpm --filter=n8n-playwright test:benchmark --project="benchmark-queue:*" --grep "10-nodes-10KB-10kb-out-5k"
+pnpm --filter=n8n-playwright test:benchmark --project="benchmark-queue:*" --grep "node scaling: 10 nodes"
 
 # Custom message count
 BENCHMARK_MESSAGES=50000 pnpm --filter=n8n-playwright test:benchmark
@@ -89,13 +78,11 @@ BENCHMARK_MESSAGES=50000 pnpm --filter=n8n-playwright test:benchmark
 # Custom worker count (queue profiles only)
 KAFKA_LOAD_WORKERS=3 pnpm --filter=n8n-playwright test:benchmark --project="benchmark-queue:*"
 
-# Load tests (latency/p50/p95 — separate suite)
-pnpm --filter=n8n-playwright test:infrastructure --grep "10-nodes-1KB-10mps"
+# Load tests only
+pnpm --filter=n8n-playwright test:benchmark --grep "Kafka Load"
 
-# Queue mode load — scaling curve
-for w in 1 2 4 8; do
-  KAFKA_LOAD_WORKERS=$w pnpm --filter=n8n-playwright test:infrastructure --grep "@kafka-load-queue"
-done
+# Throughput tests only
+pnpm --filter=n8n-playwright test:benchmark --grep "Kafka Throughput"
 ```
 
 ## Results
@@ -141,4 +128,4 @@ The harnesses, measurement, and reporting work unchanged.
 
 Both suites share the same container stack: n8n + Kafka + Postgres + postgres-exporter + VictoriaMetrics + Vector. Tests run sequentially (1 worker) to avoid resource contention. Each test creates unique topics and credentials via `nanoid()` for logical isolation.
 
-Direct mode tests run on a single n8n process. Queue mode tests use 1 main + N workers, controlled via `KAFKA_LOAD_WORKERS` env var.
+Direct mode tests run on a single n8n process. Queue mode tests use 1 main + N workers, controlled via `KAFKA_LOAD_WORKERS` env var (default: 3).

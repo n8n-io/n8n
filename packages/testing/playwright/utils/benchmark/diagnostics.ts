@@ -27,6 +27,7 @@ export async function collectDiagnostics(
 	const fmt = (v: number | undefined, unit = '') =>
 		v !== undefined ? `${v.toFixed(2)}${unit}` : 'N/A';
 
+	// +30s buffer accounts for VictoriaMetrics scrape interval (15s) and ingestion delay
 	const windowSecs = Math.ceil(durationMs / 1000) + 30;
 	const window = `${windowSecs}s`;
 
