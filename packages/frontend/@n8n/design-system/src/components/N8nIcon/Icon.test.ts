@@ -1,4 +1,18 @@
-import { render } from '@testing-library/vue';
+import { render, waitFor } from '@testing-library/vue';
+import { vi } from 'vitest';
+
+const sharedLoaderMock = vi.hoisted(() => ({
+	loadLucideIconBody: vi.fn(async (iconName: string) =>
+		iconName === 'app-window-mac' ? '<path d="M1 1h22v22H1z" />' : null,
+	),
+}));
+
+vi.mock('./lucideIconLoader', () => sharedLoaderMock);
+vi.mock('@iconify/json/json/lucide.json', () => ({
+	default: {
+		icons: {},
+	},
+}));
 
 import Icon from './Icon.vue';
 import { deprecatedIconSet, type IconName } from './icons';
@@ -60,5 +74,21 @@ describe('Icon', () => {
 			},
 		});
 		expect(wrapper.html()).toMatchSnapshot();
+	});
+
+	it('should render arbitrary Lucide icons through the shared loader fallback', async () => {
+		const wrapper = render(Icon, {
+			props: {
+				icon: 'app-window-mac',
+			},
+		});
+
+		await waitFor(() => {
+			expect(wrapper.container.querySelector('svg[data-icon="app-window-mac"]')).toBeTruthy();
+		});
+		expect(wrapper.container.querySelector('svg[data-icon="app-window-mac"]')?.innerHTML).toContain(
+			'<path',
+		);
+		expect(sharedLoaderMock.loadLucideIconBody).toHaveBeenCalledWith('app-window-mac');
 	});
 });
