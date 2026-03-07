@@ -156,6 +156,56 @@ describe('WorkflowSettingsVue', () => {
 		expect(getByTestId('workflow-caller-policy-workflow-ids')).toBeVisible();
 	});
 
+	describe('Viewer mode settings', () => {
+		it('should load and save viewer manual and inputs', async () => {
+			workflowDocumentStore.setSettings({
+				executionOrder: 'v1',
+				viewerMode: {
+					manual: 'Upload the invoice and add context',
+					inputs: [{ key: 'document', label: 'Document', type: 'file', required: true }],
+				},
+			});
+
+			const { getByRole, getAllByTestId } = createComponent({ pinia });
+			await flushPromises();
+			expect(getAllByTestId('workflow-settings-viewer-input-row')).toHaveLength(1);
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					settings: expect.objectContaining({
+						viewerMode: {
+							manual: 'Upload the invoice and add context',
+							inputs: [{ key: 'document', label: 'Document', type: 'file', required: true }],
+						},
+					}),
+				}),
+			);
+		});
+
+		it('should block saving when viewer input fields are invalid', async () => {
+			const { getByRole, getByTestId, getAllByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			await userEvent.click(getByTestId('workflow-settings-viewer-input-add'));
+			const keyInputs = getAllByTestId('workflow-settings-viewer-input-key');
+			const keyInput =
+				keyInputs[0] instanceof HTMLInputElement
+					? keyInputs[0]
+					: keyInputs[0].querySelector('input');
+			if (!(keyInput instanceof HTMLInputElement)) {
+				throw new Error('Viewer input key control was not rendered');
+			}
+			await userEvent.clear(keyInput);
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(toast.showError).toHaveBeenCalled();
+			expect(workflowsStore.updateWorkflow).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('Error Workflow', () => {
 		it('should fetch all workflows and render them in the error workflows dropdown', async () => {
 			settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;

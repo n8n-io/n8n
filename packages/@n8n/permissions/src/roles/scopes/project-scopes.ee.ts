@@ -132,6 +132,7 @@ export const PROJECT_VIEWER_SCOPES: Scope[] = [
 	'project:read',
 	'workflow:list',
 	'workflow:read',
+	'workflow:execute',
 	'workflow:execute-chat',
 	'folder:read',
 	'folder:list',

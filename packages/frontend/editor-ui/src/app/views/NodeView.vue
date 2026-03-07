@@ -82,6 +82,8 @@ import type {
 	ExecutionSummary,
 	IConnection,
 	INodeParameters,
+	INodeExecutionData,
+	ITaskData,
 } from 'n8n-workflow';
 import { useToast } from '@/app/composables/useToast';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -135,8 +137,16 @@ import { useCollaborationStore } from '@/features/collaboration/collaboration/co
 import { injectStrict } from '@/app/utils/injectStrict';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { convertFileToBinaryData } from '@/app/utils/fileUtils';
+import { sanitizeViewerInputs } from '@/app/utils/viewerMode';
+import { getViewerExecutionOutput } from '@/app/utils/viewerOutput';
 
-import { N8nCallout, N8nCanvasThinkingPill, N8nCanvasCollaborationPill } from '@n8n/design-system';
+import {
+	N8nCallout,
+	N8nCanvasThinkingPill,
+	N8nCanvasCollaborationPill,
+	N8nInput,
+} from '@n8n/design-system';
 
 defineOptions({
 	name: 'NodeView',
@@ -305,6 +315,64 @@ const canExecuteOnCanvas = computed(() => {
 	return !!(workflowPermissions.value.execute ?? projectPermissions.value.workflow.execute);
 });
 
+const runWorkflowButtonLabel = computed(() => {
+	const canUpdate = !!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update);
+	const canExecute = !!(workflowPermissions.value.execute ?? projectPermissions.value.workflow.execute);
+
+	// Viewer-style run mode: allow running while keeping canvas strictly read-only.
+	if (canExecute && !canUpdate) {
+		return i18n.baseText('nodeView.runButtonText.startWorkflow');
+	}
+
+	return i18n.baseText('nodeView.runButtonText.executeWorkflow');
+});
+
+const isViewerExecutionMode = computed(() => {
+	const canUpdate = !!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update);
+	const canExecute = !!(workflowPermissions.value.execute ?? projectPermissions.value.workflow.execute);
+	return canExecute && !canUpdate;
+});
+
+const viewerModeSettings = computed(() => {
+	return workflowDocumentStore?.value?.settings?.viewerMode;
+});
+
+const viewerInputFields = computed(() => {
+	return sanitizeViewerInputs(viewerModeSettings.value?.inputs);
+});
+
+const hasViewerInputs = computed(() => isViewerExecutionMode.value && viewerInputFields.value.length > 0);
+
+const viewerFormValues = ref<Record<string, string | boolean>>({});
+const viewerFiles = ref<Record<string, File | null>>({});
+
+const viewerManual = computed(() => {
+	const manualFromSettings = viewerModeSettings.value?.manual?.trim();
+	if (manualFromSettings) return manualFromSettings;
+	return (workflowsStore.workflow.description ?? '').trim();
+});
+
+const showViewerManual = computed(() => {
+	return isViewerExecutionMode.value && viewerManual.value.length > 0;
+});
+
+const viewerExecutionOutput = computed(() => {
+	if (!isViewerExecutionMode.value) return null;
+	return getViewerExecutionOutput(workflowsStore.getWorkflowExecution);
+});
+
+const showViewerOutput = computed(() => {
+	return isViewerExecutionMode.value && viewerExecutionOutput.value !== null;
+});
+
+const viewerExecutionErrorMessage = computed(() => {
+	const errorMessage = viewerExecutionOutput.value?.errorMessage;
+	if (errorMessage?.trim()) {
+		return errorMessage.trim();
+	}
+	return i18n.baseText('generic.unknownError');
+});
+
 const isWriterAnotherTab = computed(() => {
 	return collaborationStore.isCurrentUserWriter && !collaborationStore.isCurrentTabWriter;
 });
@@ -316,6 +384,162 @@ const keyBindingsEnabled = computed(() => {
 });
 
 const isLogsPanelOpen = computed(() => logsStore.isOpen);
+
+watch(
+	viewerInputFields,
+	(fields) => {
+		const nextValues: Record<string, string | boolean> = {};
+		const nextFiles: Record<string, File | null> = {};
+
+		for (const field of fields) {
+			if (field.type === 'boolean') {
+				nextValues[field.key] = Boolean(viewerFormValues.value[field.key]);
+			} else {
+				nextValues[field.key] = typeof viewerFormValues.value[field.key] === 'string'
+					? String(viewerFormValues.value[field.key])
+					: '';
+			}
+
+			if (field.type === 'file') {
+				nextFiles[field.key] = viewerFiles.value[field.key] ?? null;
+			}
+		}
+
+		viewerFormValues.value = nextValues;
+		viewerFiles.value = nextFiles;
+	},
+	{ immediate: true },
+);
+
+function onViewerFileSelected(fieldKey: string, event: Event) {
+	const target = event.target as HTMLInputElement;
+	viewerFiles.value[fieldKey] = target.files?.[0] ?? null;
+}
+
+function getMissingViewerInputLabels() {
+	const missing: string[] = [];
+
+	for (const field of viewerInputFields.value) {
+		if (!field.required) continue;
+
+		const value = viewerFormValues.value[field.key];
+
+		if (field.type === 'file') {
+			if (!viewerFiles.value[field.key]) {
+				missing.push(field.label);
+			}
+			continue;
+		}
+
+		if (field.type === 'boolean') {
+			if (value !== true) {
+				missing.push(field.label);
+			}
+			continue;
+		}
+
+		if (String(value ?? '').trim() === '') {
+			missing.push(field.label);
+		}
+	}
+
+	return missing;
+}
+
+async function createViewerNodeData(): Promise<ITaskData> {
+	const json: IDataObject = {};
+	const binary: NonNullable<INodeExecutionData['binary']> = {};
+
+	for (const field of viewerInputFields.value) {
+		if (field.type === 'file') {
+			const file = viewerFiles.value[field.key];
+			if (!file) continue;
+			binary[field.key] = await convertFileToBinaryData(file);
+			json[`${field.key}FileName`] = file.name;
+			continue;
+		}
+
+		if (field.type === 'number') {
+			const numberValue = String(viewerFormValues.value[field.key] ?? '').trim();
+			if (numberValue === '') continue;
+			const parsedValue = Number(numberValue);
+			if (!Number.isNaN(parsedValue)) {
+				json[field.key] = parsedValue;
+			}
+			continue;
+		}
+
+		if (field.type === 'boolean') {
+			json[field.key] = Boolean(viewerFormValues.value[field.key]);
+			continue;
+		}
+
+		const textValue = String(viewerFormValues.value[field.key] ?? '').trim();
+		if (textValue !== '') {
+			json[field.key] = textValue;
+		}
+	}
+
+	const item: INodeExecutionData = { json };
+	if (Object.keys(binary).length > 0) {
+		item.binary = binary;
+	}
+
+	return {
+		startTime: Date.now(),
+		executionIndex: 0,
+		source: [],
+		executionTime: 0,
+		executionStatus: 'success',
+		data: {
+			main: [[item]],
+		},
+	};
+}
+
+async function onExecuteWorkflow() {
+	if (isViewerExecutionMode.value) {
+		telemetry.track('Viewer clicked Start', {
+			workflow_id: workflowsStore.workflowId,
+			has_inputs: hasViewerInputs.value,
+			input_count: viewerInputFields.value.length,
+		});
+	}
+
+	if (!hasViewerInputs.value) {
+		await runEntireWorkflow('main');
+		return;
+	}
+
+	const missingFields = getMissingViewerInputLabels();
+	if (missingFields.length > 0) {
+		telemetry.track('Viewer Start validation failed', {
+			workflow_id: workflowsStore.workflowId,
+			missing_required_count: missingFields.length,
+		});
+		toast.showError(
+			new Error(
+				i18n.baseText('nodeView.viewerMode.requiredInputsMissing', {
+					interpolate: { fields: missingFields.join(', ') },
+				}),
+			),
+		);
+		return;
+	}
+
+	let nodeData: ITaskData;
+	try {
+		nodeData = await createViewerNodeData();
+	} catch (error) {
+		telemetry.track('Viewer Start input build failed', {
+			workflow_id: workflowsStore.workflowId,
+		});
+		toast.showError(error, i18n.baseText('nodeView.viewerMode.inputBuildError'));
+		return;
+	}
+
+	await runEntireWorkflow('main', undefined, nodeData);
+}
 
 /**
  * Initialization
@@ -1776,7 +2000,7 @@ onBeforeUnmount(() => {
 			@copy:nodes="onCopyNodes"
 			@cut:nodes="onCutNodes"
 			@replace:node="onClickReplaceNode"
-			@run:workflow="runEntireWorkflow('main')"
+			@run:workflow="onExecuteWorkflow"
 			@create:workflow="onCreateWorkflow"
 			@viewport:change="onViewportChange"
 			@selection:end="onSelectionEnd"
@@ -1789,18 +2013,140 @@ onBeforeUnmount(() => {
 			<Suspense v-if="!isCanvasReadOnly">
 				<LazySetupWorkflowCredentialsButton :class="$style.setupCredentialsButtonWrapper" />
 			</Suspense>
+			<div
+				v-if="isViewerExecutionMode && (showViewerManual || hasViewerInputs || showViewerOutput)"
+				:class="$style.viewerOverlay"
+			>
+				<N8nCallout v-if="showViewerManual" icon="info" theme="secondary" :class="$style.viewerManual">
+					{{
+						i18n.baseText('nodeView.viewerMode.manual', {
+							interpolate: { manual: viewerManual },
+						})
+					}}
+				</N8nCallout>
+				<div
+					v-if="hasViewerInputs"
+					:class="$style.viewerInputsPanel"
+					data-test-id="viewer-inputs-panel"
+				>
+					<div :class="$style.viewerInputsTitle">
+						{{ i18n.baseText('nodeView.viewerMode.inputsTitle') }}
+					</div>
+					<div v-for="field in viewerInputFields" :key="field.key" :class="$style.viewerInputField">
+						<label :for="`viewer-input-${field.key}`" :class="$style.viewerInputLabel">
+							{{ field.label }}
+							<span v-if="field.required" :class="$style.viewerInputRequired">*</span>
+						</label>
+						<N8nInput
+							v-if="field.type === 'text' || field.type === 'number'"
+							:id="`viewer-input-${field.key}`"
+							v-model="viewerFormValues[field.key]"
+							:type="field.type === 'number' ? 'number' : 'text'"
+							:placeholder="field.placeholder"
+						/>
+						<N8nInput
+							v-else-if="field.type === 'textarea'"
+							:id="`viewer-input-${field.key}`"
+							v-model="viewerFormValues[field.key]"
+							type="textarea"
+							:rows="3"
+							:placeholder="field.placeholder"
+						/>
+						<label
+							v-else-if="field.type === 'boolean'"
+							:for="`viewer-input-${field.key}`"
+							:class="$style.viewerCheckboxLabel"
+						>
+							<input
+								:id="`viewer-input-${field.key}`"
+								v-model="viewerFormValues[field.key]"
+								type="checkbox"
+								:class="$style.viewerCheckbox"
+							/>
+							{{ i18n.baseText('nodeView.viewerMode.checkboxLabel') }}
+						</label>
+						<input
+							v-else
+							:id="`viewer-input-${field.key}`"
+							type="file"
+							:accept="field.accept"
+							:class="$style.viewerFileInput"
+							@change="onViewerFileSelected(field.key, $event)"
+						/>
+						<div v-if="field.helpText" :class="$style.viewerInputHelp">{{ field.helpText }}</div>
+					</div>
+				</div>
+				<div
+					v-if="showViewerOutput && viewerExecutionOutput"
+					:class="$style.viewerOutputPanel"
+					data-test-id="viewer-output-panel"
+				>
+					<div :class="$style.viewerInputsTitle">
+						{{ i18n.baseText('nodeView.viewerMode.outputTitle') }}
+					</div>
+					<div v-if="viewerExecutionOutput.nodeName" :class="$style.viewerOutputMeta">
+						{{
+							i18n.baseText('nodeView.viewerMode.outputNode', {
+								interpolate: { nodeName: viewerExecutionOutput.nodeName },
+							})
+						}}
+					</div>
+					<div
+						v-if="viewerExecutionOutput.status === 'error'"
+						:class="$style.viewerOutputError"
+						data-test-id="viewer-output-error"
+					>
+						{{
+							i18n.baseText('nodeView.viewerMode.outputError', {
+								interpolate: { error: viewerExecutionErrorMessage },
+							})
+						}}
+					</div>
+					<template v-else-if="viewerExecutionOutput.status === 'success'">
+						<div
+							v-if="viewerExecutionOutput.jsonPreview"
+							:class="$style.viewerOutputSection"
+							data-test-id="viewer-output-json"
+						>
+							<div :class="$style.viewerOutputHeading">
+								{{ i18n.baseText('nodeView.viewerMode.outputJson') }}
+							</div>
+							<pre :class="$style.viewerOutputPre">{{ viewerExecutionOutput.jsonPreview }}</pre>
+						</div>
+						<div
+							v-if="viewerExecutionOutput.binaryKeys.length > 0"
+							:class="$style.viewerOutputFiles"
+							data-test-id="viewer-output-files"
+						>
+							{{
+								i18n.baseText('nodeView.viewerMode.outputFiles', {
+									interpolate: { files: viewerExecutionOutput.binaryKeys.join(', ') },
+								})
+							}}
+						</div>
+					</template>
+					<div
+						v-else
+						:class="$style.viewerOutputEmpty"
+						data-test-id="viewer-output-empty"
+					>
+						{{ i18n.baseText('nodeView.viewerMode.outputEmpty') }}
+					</div>
+				</div>
+			</div>
 			<div v-if="!isCanvasReadOnly || canExecuteOnCanvas" :class="$style.executionButtons">
 				<CanvasRunWorkflowButton
 					v-if="isRunWorkflowButtonVisible"
 					:waiting-for-webhook="isExecutionWaitingForWebhook"
 					:disabled="isExecutionDisabled"
 					:executing="isWorkflowRunning"
+					:label="runWorkflowButtonLabel"
 					:trigger-nodes="triggerNodes"
 					:get-node-type="nodeTypesStore.getNodeType"
 					:selected-trigger-node-name="workflowsStore.selectedTriggerNodeName"
 					@mouseenter="onRunWorkflowButtonMouseEnter"
 					@mouseleave="onRunWorkflowButtonMouseLeave"
-					@execute="runEntireWorkflow('main')"
+					@execute="onExecuteWorkflow"
 					@select-trigger-node="workflowsStore.setSelectedTriggerNodeName"
 				/>
 				<template v-if="containsChatTriggerNodes">
@@ -1939,6 +2285,125 @@ onBeforeUnmount(() => {
 	position: absolute;
 	left: var(--spacing--sm);
 	top: var(--spacing--sm);
+}
+
+.viewerOverlay {
+	position: absolute;
+	top: var(--spacing--sm);
+	left: 50%;
+	transform: translateX(-50%);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	width: min(880px, calc(100% - (var(--spacing--2xl) * 2)));
+	max-height: min(58vh, 500px);
+	overflow: auto;
+}
+
+.viewerManual {
+	width: 100%;
+}
+
+.viewerInputsPanel {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+	width: 100%;
+	padding: var(--spacing--xs);
+	border-radius: var(--border-radius-base);
+	background: var(--color--background--light-3);
+	border: var(--border);
+	box-shadow: var(--shadow--light);
+}
+
+.viewerInputsTitle {
+	font-weight: var(--font-weight--bold);
+	color: var(--color--text);
+}
+
+.viewerInputField {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+}
+
+.viewerInputLabel {
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--shade-1);
+}
+
+.viewerInputRequired {
+	color: var(--color--danger);
+}
+
+.viewerInputHelp {
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
+}
+
+.viewerCheckboxLabel {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--shade-1);
+}
+
+.viewerCheckbox {
+	margin: 0;
+}
+
+.viewerFileInput {
+	font-size: var(--font-size--2xs);
+}
+
+.viewerOutputPanel {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+	width: 100%;
+	padding: var(--spacing--xs);
+	border-radius: var(--border-radius-base);
+	background: var(--color--background--light-3);
+	border: var(--border);
+	box-shadow: var(--shadow--light);
+}
+
+.viewerOutputMeta,
+.viewerOutputFiles,
+.viewerOutputError,
+.viewerOutputEmpty {
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--shade-1);
+}
+
+.viewerOutputError {
+	color: var(--color--danger);
+}
+
+.viewerOutputHeading {
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--bold);
+	color: var(--color--text--shade-1);
+}
+
+.viewerOutputSection {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+}
+
+.viewerOutputPre {
+	margin: 0;
+	padding: var(--spacing--2xs);
+	border: var(--border);
+	border-radius: var(--radius);
+	background: var(--color--background--base);
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--md);
+	max-height: min(30vh, 260px);
+	overflow: auto;
+	white-space: pre-wrap;
 }
 
 .readOnlyEnvironmentNotification {
