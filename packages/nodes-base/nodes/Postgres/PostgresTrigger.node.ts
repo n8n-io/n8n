@@ -284,6 +284,7 @@ export class PostgresTrigger implements INodeType {
 		// listen to channel
 		await connection.none(`LISTEN ${pgNames.channelName}`);
 
+		let connectionReleased = false;
 		const cleanUpDb = async () => {
 			try {
 				try {
@@ -291,7 +292,6 @@ export class PostgresTrigger implements INodeType {
 					await connection.query('SELECT 1');
 				} catch {
 					// connection already closed. Can't perform cleanup
-
 					throw new TriggerCloseError(this.getNode(), { level: 'warning' });
 				}
 
@@ -320,7 +320,27 @@ export class PostgresTrigger implements INodeType {
 					throw new TriggerCloseError(this.getNode(), { cause: error as Error, level: 'error' });
 				}
 			} finally {
-				connection.client.removeListener('notification', onNotification);
+				// Always remove the notification listener
+				try {
+					connection.client.removeListener('notification', onNotification);
+				} catch (error) {
+					// Ignore errors when removing listener - connection might already be closed
+					this.logger.debug('Error removing notification listener during cleanup', { error });
+				}
+
+				// Always release the connection back to the pool to prevent connection leaks
+				// This is critical: without releasing, the connection remains idle in the database
+				// and accumulates with each workflow deactivation/reactivation cycle
+				if (!connectionReleased) {
+					connectionReleased = true;
+					try {
+						await connection.done();
+					} catch (error) {
+						// Log but don't throw - connection might already be closed or released
+						// This prevents connection leaks even if release fails
+						this.logger.warn('Error releasing database connection during cleanup', { error });
+					}
+				}
 			}
 		};
 

@@ -176,7 +176,7 @@ export async function configurePostgres(
 		}
 	};
 
-	return await poolManager.getConnection({
+	const connectionData = await poolManager.getConnection({
 		credentials,
 		nodeType: 'postgres',
 		nodeVersion: options.nodeVersion as unknown as string,
@@ -187,4 +187,15 @@ export async function configurePostgres(
 			}
 		},
 	});
+
+	// Log connection acquisition for observability and debugging connection leaks
+	// Direct connections (db.connect({ direct: true })) MUST be released with connection.done()
+	// to prevent connection leaks. This is critical for trigger nodes that maintain long-lived connections.
+	this.logger.debug('Postgres connection pool acquired', {
+		nodeType: 'postgres',
+		hasDb: !!connectionData.db,
+		hasPgp: !!connectionData.pgp,
+	});
+
+	return connectionData;
 }

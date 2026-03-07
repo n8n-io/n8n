@@ -214,18 +214,46 @@ export class ActiveWorkflows {
 	private async closeTrigger(response: ITriggerResponse, workflowId: string) {
 		if (!response.closeFunction) return;
 
+		// Enforce cleanup completion with timeout to prevent resource leaks
+		// This ensures trigger cleanup completes within reasonable time, preventing
+		// scenarios where cleanup hangs indefinitely and resources remain allocated
+		const CLEANUP_TIMEOUT_MS = 30000; // 30 seconds
+		const startTime = Date.now();
+
 		try {
-			await response.closeFunction();
+			await Promise.race([
+				response.closeFunction(),
+				new Promise<never>((_, reject) =>
+					setTimeout(
+						() => reject(new Error('Trigger cleanup timeout exceeded')),
+						CLEANUP_TIMEOUT_MS,
+					),
+				),
+			]);
+
+			const duration = Date.now() - startTime;
+			this.logger.debug(`Trigger cleanup completed for workflow "${workflowId}"`, {
+				workflowId,
+				durationMs: duration,
+			});
 		} catch (e) {
+			const duration = Date.now() - startTime;
 			if (e instanceof TriggerCloseError) {
 				this.logger.error(
 					`There was a problem calling "closeFunction" on "${e.node.name}" in workflow "${workflowId}"`,
+					{ workflowId, durationMs: duration },
 				);
 				this.errorReporter.error(e, { extra: { workflowId } });
 				return;
 			}
 
 			const error = e instanceof Error ? e : new Error(`${e}`);
+
+			// Log timeout or other cleanup failures for observability
+			this.logger.error(
+				`Trigger cleanup failed for workflow "${workflowId}": ${error.message}`,
+				{ workflowId, durationMs: duration, error: error.message },
+			);
 
 			throw new WorkflowDeactivationError(
 				`Failed to deactivate trigger of workflow ID "${workflowId}": "${error.message}"`,
