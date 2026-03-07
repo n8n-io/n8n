@@ -792,6 +792,24 @@ describe('WorkflowSettingsVue', () => {
 			const input = dropdownContainer.querySelector('input');
 			expect(input).toBeDisabled();
 		});
+
+		it('should clear stale credentialResolverId when resolver no longer exists', async () => {
+			workflowDocumentStore.setSettings({
+				credentialResolverId: 'deleted-resolver-id',
+			});
+
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			await waitFor(() => {
+				expect(restApiClient.getCredentialResolvers).toHaveBeenCalled();
+			});
+
+			// The stale ID should be cleared — dropdown shows no selected value
+			const dropdown = getByTestId('workflow-settings-credential-resolver');
+			const input = dropdown.querySelector('input') as HTMLInputElement;
+			expect(input.value).toBe('');
+		});
 	});
 
 	describe('Credential Resolver RBAC', () => {
