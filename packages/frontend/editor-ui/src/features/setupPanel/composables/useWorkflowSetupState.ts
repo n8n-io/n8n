@@ -1,7 +1,7 @@
 import { computed, watch, type Ref } from 'vue';
 
 import type { INodeUi } from '@/Interface';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, IPinData } from 'n8n-workflow';
 import type { SetupCardItem } from '@/features/setupPanel/setupPanel.types';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -23,6 +23,9 @@ import {
 import { PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/app/constants';
 
 import { sortNodesByExecutionOrder } from '@/app/utils/workflowUtils';
+import { useSetupPanelStore } from '../setupPanel.store';
+import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
+import { computedAsync } from '@vueuse/core';
 
 /**
  * Composable that manages workflow setup state for credential configuration.
@@ -30,13 +33,32 @@ import { sortNodesByExecutionOrder } from '@/app/utils/workflowUtils';
  * with trigger nodes getting their own dedicated cards (test button only).
  * @param nodes Optional sub-set of nodes to check (defaults to full workflow)
  */
-export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
+export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>, demoDataOverride?: Ref<IPinData>) => {
 	const workflowsStore = useWorkflowsStore();
 	const credentialsStore = useCredentialsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const environmentsStore = useEnvironmentsStore();
 	const nodeHelpers = useNodeHelpers();
 	const workflowState = injectWorkflowState();
+	const setupPanelStore = useSetupPanelStore();
+	const templatesStore = useTemplatesStore();
+
+	const demoData = computedAsync<IPinData>(async () => {
+		if (demoDataOverride?.value) return demoDataOverride.value;
+
+		if (
+			!setupPanelStore.isDemoDataEnabled ||
+			!workflowsStore.workflow.meta?.templateId ||
+			workflowsStore.workflow.meta?.templateCredsSetupCompleted === true
+		)
+			return {};
+
+		const template = await templatesStore.retrieveFullTemplateById(
+			workflowsStore.workflow.meta?.templateId,
+		);
+
+		return template?.demoData ?? {};
+	}, {});
 
 	const sourceNodes = computed(() => nodes?.value ?? workflowsStore.allNodes);
 
@@ -115,6 +137,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 				node,
 				credentialTypes: getNodeCredentialTypes(nodeTypesStore, node),
 				isTrigger: isTriggerNode(node),
+				demoData: demoData.value[node.name],
 			}))
 			.filter(({ credentialTypes, isTrigger }) => credentialTypes.length > 0 || isTrigger);
 
@@ -207,6 +230,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 					credentialTypes,
 					credentialTypeStates.value,
 					hasTriggerExecutedSuccessfully(node.name),
+					demoData.value[node.name],
 				),
 			);
 	});
@@ -242,6 +266,10 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	const totalCardsRequiringSetup = computed(() => {
 		return setupCards.value.length;
 	});
+
+	const isReadyToDemo = computed(() =>
+		nodeSetupStates.value.every((x) => x.node.name in demoData.value),
+	);
 
 	const isAllComplete = computed(() => {
 		return setupCards.value.length > 0 && setupCards.value.every((card) => card.state.isComplete);
@@ -453,5 +481,6 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		isAllComplete,
 		setCredential,
 		unsetCredential,
+		isReadyToDemo,
 	};
 };

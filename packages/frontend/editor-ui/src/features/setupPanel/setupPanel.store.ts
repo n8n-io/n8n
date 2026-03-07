@@ -12,7 +12,14 @@ export const useSetupPanelStore = defineStore(STORES.SETUP_PANEL, () => {
 	const { debounce } = useDebounce();
 
 	const isFeatureEnabled = computed(() => {
-		return posthogStore.getVariant(SETUP_PANEL.name) === SETUP_PANEL.variant;
+		return (
+			posthogStore.getVariant(SETUP_PANEL.name) === SETUP_PANEL.variant ||
+			posthogStore.getVariant(SETUP_PANEL.name) === SETUP_PANEL.variantDemo
+		);
+	});
+
+	const isDemoDataEnabled = computed(() => {
+		return posthogStore.getVariant(SETUP_PANEL.name) === SETUP_PANEL.variantDemo;
 	});
 
 	const highlightedNodeIds = ref(new Set<string>());
@@ -37,6 +44,7 @@ export const useSetupPanelStore = defineStore(STORES.SETUP_PANEL, () => {
 
 	return {
 		isFeatureEnabled,
+		isDemoDataEnabled,
 		highlightedNodeIds,
 		isHighlightActive,
 		setHighlightedNodes,
