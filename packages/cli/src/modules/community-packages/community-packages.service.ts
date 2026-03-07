@@ -501,7 +501,7 @@ export class CommunityPackagesService {
 		// if (packageName.startsWith('@') && packageName.includes('/')) {}
 		const tarOutput = await executeNpmCommand(
 			['pack', `${packageName}@${packageVersion}`, `--registry=${registry}`, '--quiet'],
-			{ cwd: this.downloadFolder },
+			{ cwd: this.downloadFolder, shell: true },
 		);
 
 		const tarballName = tarOutput?.trim();
@@ -532,6 +532,7 @@ export class CommunityPackagesService {
 
 			await executeNpmCommand(['install', ...this.getNpmInstallArgs()], {
 				cwd: packageDirectory,
+				shell: true,
 			});
 			await this.updatePackageJsonDependency(packageName, packageJson.version);
 		} finally {
