@@ -729,13 +729,25 @@ export class HttpRequestV3 implements INodeType {
 						paginationData.binaryResult = true;
 					}
 
-					const requestPromise = this.helpers.requestWithAuthenticationPaginated
+					// For generic credential types (bearer, header, query, digest, basic,
+				// custom), auth data is already applied to requestOptions (headers, qs,
+				// body, auth). Only pass credentialType for predefined credential types
+				// and OAuth, which need requestWithAuthentication for token handling.
+				// This keeps the pagination path consistent with the non-pagination path
+				// where generic credentials use this.helpers.request() directly (#16005).
+				const paginationCredentialType =
+					nodeCredentialType ??
+					(genericCredentialType === 'oAuth1Api' || genericCredentialType === 'oAuth2Api'
+						? genericCredentialType
+						: undefined);
+
+				const requestPromise = this.helpers.requestWithAuthenticationPaginated
 						.call(
 							this,
 							requestOptions,
 							itemIndex,
 							paginationData,
-							nodeCredentialType ?? genericCredentialType,
+							paginationCredentialType,
 						)
 						.catch((error) => {
 							if (error instanceof NodeOperationError && error.type === 'invalid_url') {

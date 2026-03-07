@@ -56,13 +56,18 @@ describe('HttpRequestV3', () => {
 				),
 				requestWithAuthentication: jest.fn(),
 				requestWithAuthenticationPaginated: jest.fn(),
-				assertBinaryData: jest.fn(),
-				getBinaryStream: jest.fn(),
-				getBinaryMetadata: jest.fn(),
-				binaryToString: jest.fn((buffer: Buffer) => {
-					return buffer.toString();
-				}),
-				prepareBinaryData: jest.fn(),
+			assertBinaryData: jest.fn(),
+			getBinaryStream: jest.fn(),
+			getBinaryMetadata: jest.fn(),
+			binaryToString: jest.fn((buffer: Buffer) => {
+				return buffer.toString();
+			}),
+			binaryToBuffer: jest.fn(async (body: Buffer | unknown) => {
+				if (Buffer.isBuffer(body)) return body;
+				if (typeof body === 'string') return Buffer.from(body);
+				return Buffer.from(JSON.stringify(body));
+			}),
+			prepareBinaryData: jest.fn(),
 			},
 			getContext: jest.fn(),
 			sendMessageToUI: jest.fn(),
@@ -298,6 +303,148 @@ describe('HttpRequestV3', () => {
 				'URL parameter must be a string, got number',
 			);
 		});
+	});
+
+	describe('Pagination with Generic Credentials', () => {
+		const paginationConfig = {
+			paginationMode: 'updateAParameterInEachRequest' as const,
+			parameters: {
+				parameters: [{ type: 'qs' as const, name: 'page', value: '={{ $pageCount + 1 }}' }],
+			},
+			paginationCompleteWhen: 'responseIsEmpty' as const,
+			statusCodesWhenComplete: '',
+			completeExpression: '',
+			limitPagesFetched: true,
+			maxRequests: 2,
+			requestInterval: 0,
+		};
+
+		const genericCredentialTypes = [
+			{
+				name: 'httpBearerAuth',
+				credentials: { token: 'bearerToken123' },
+			},
+			{
+				name: 'httpBasicAuth',
+				credentials: { user: 'username', password: 'password' },
+			},
+			{
+				name: 'httpHeaderAuth',
+				credentials: { name: 'X-API-Key', value: 'secret' },
+			},
+			{
+				name: 'httpQueryAuth',
+				credentials: { name: 'api_key', value: 'secret' },
+			},
+			{
+				name: 'httpDigestAuth',
+				credentials: { user: 'username', password: 'password' },
+			},
+		];
+
+		it.each(genericCredentialTypes)(
+			'should NOT pass credentialType for $name with pagination (uses simple request)',
+			async ({ name, credentials }) => {
+				(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+				(executeFunctions.getNodeParameter as jest.Mock).mockImplementation(
+					(paramName: string) => {
+						switch (paramName) {
+							case 'method':
+								return 'GET';
+							case 'url':
+								return baseUrl;
+							case 'authentication':
+								return 'genericCredentialType';
+							case 'genericAuthType':
+								return name;
+							case 'options':
+								return options;
+							case 'options.pagination.pagination':
+								return paginationConfig;
+							default:
+								return undefined;
+						}
+					},
+				);
+				(executeFunctions.getCredentials as jest.Mock).mockResolvedValue(credentials);
+				(executeFunctions.helpers.requestWithAuthenticationPaginated as jest.Mock).mockResolvedValue(
+					[
+						{
+							headers: { 'content-type': 'application/json' },
+							body: { items: [1, 2] },
+							statusCode: 200,
+						},
+					],
+				);
+
+				await node.execute.call(executeFunctions);
+
+				// The 5th argument (credentialType) should be undefined for generic
+				// credential types, so pagination uses this.helpers.request() internally
+				// instead of requestWithAuthentication (which may fail to resolve
+				// credential expressions for non-OAuth generic types).
+				expect(
+					executeFunctions.helpers.requestWithAuthenticationPaginated,
+				).toHaveBeenCalledWith(
+					expect.objectContaining({ uri: baseUrl }),
+					0,
+					expect.any(Object),
+					undefined, // credentialType should be undefined for generic auth
+				);
+			},
+		);
+
+		it.each([
+			{ name: 'oAuth1Api', credentials: { oauth_token: 'token', oauth_token_secret: 'secret' } },
+			{ name: 'oAuth2Api', credentials: { access_token: 'token' } },
+		])(
+			'should pass credentialType for $name with pagination (needs token handling)',
+			async ({ name, credentials }) => {
+				(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+				(executeFunctions.getNodeParameter as jest.Mock).mockImplementation(
+					(paramName: string) => {
+						switch (paramName) {
+							case 'method':
+								return 'GET';
+							case 'url':
+								return baseUrl;
+							case 'authentication':
+								return 'genericCredentialType';
+							case 'genericAuthType':
+								return name;
+							case 'options':
+								return options;
+							case 'options.pagination.pagination':
+								return paginationConfig;
+							default:
+								return undefined;
+						}
+					},
+				);
+				(executeFunctions.getCredentials as jest.Mock).mockResolvedValue(credentials);
+				(executeFunctions.helpers.requestWithAuthenticationPaginated as jest.Mock).mockResolvedValue(
+					[
+						{
+							headers: { 'content-type': 'application/json' },
+							body: { items: [1, 2] },
+							statusCode: 200,
+						},
+					],
+				);
+
+				await node.execute.call(executeFunctions);
+
+				// OAuth types should still pass credentialType for token refresh handling
+				expect(
+					executeFunctions.helpers.requestWithAuthenticationPaginated,
+				).toHaveBeenCalledWith(
+					expect.objectContaining({ uri: baseUrl }),
+					0,
+					expect.any(Object),
+					name, // OAuth credential type should be passed
+				);
+			},
+		);
 	});
 
 	describe('Cross-Origin Redirects', () => {
