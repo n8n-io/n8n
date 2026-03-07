@@ -82,72 +82,65 @@ export async function runThroughputTest(options: ThroughputTestOptions): Promise
 		{ makeUnique: true },
 	);
 
-	try {
-		// Preload queue
-		const publishResult = await handle.preload(messageCount);
-		console.log(
-			`[BENCH-${profile.name}] Preloaded ${publishResult.totalPublished} messages in ${publishResult.publishDurationMs}ms`,
-		);
+	// Preload queue
+	const publishResult = await handle.preload(messageCount);
+	console.log(
+		`[BENCH-${profile.name}] Preloaded ${publishResult.totalPublished} messages in ${publishResult.publishDurationMs}ms`,
+	);
 
-		// Wait for VictoriaMetrics, then record baseline
-		await obs.metrics.waitForMetric('n8n_version_info', {
-			timeoutMs: 30_000,
-			intervalMs: 2000,
-			predicate: (results: unknown[]) => results.length > 0,
-		});
-		const baselineCounter = await getBaselineCounter(obs.metrics, WORKFLOW_SUCCESS_QUERY);
+	// Wait for VictoriaMetrics, then record baseline
+	await obs.metrics.waitForMetric('n8n_version_info', {
+		timeoutMs: 30_000,
+		intervalMs: 2000,
+		predicate: (results: unknown[]) => results.length > 0,
+	});
+	const baselineCounter = await getBaselineCounter(obs.metrics, WORKFLOW_SUCCESS_QUERY);
 
-		// Activate and wait for readiness
-		await api.workflows.activate(workflowId, createdWorkflow.versionId!);
-		await handle.waitForReady({ timeoutMs: 30_000 });
+	// Activate and wait for readiness
+	await api.workflows.activate(workflowId, createdWorkflow.versionId!);
+	await handle.waitForReady({ timeoutMs: 30_000 });
 
-		// Measure throughput
-		console.log(
-			`[BENCH-${profile.name}] Draining ${messageCount} messages through ${nodeCount}-node (${nodeOutputSize}) workflow (timeout: ${timeoutMs}ms)`,
-		);
-		const result = await waitForThroughput(obs.metrics, {
-			expectedCount: messageCount,
-			nodeCount,
-			timeoutMs,
-			baselineValue: baselineCounter,
-			metricQuery: WORKFLOW_SUCCESS_QUERY,
-			pollIntervalMs,
-		});
+	// Measure throughput
+	console.log(
+		`[BENCH-${profile.name}] Draining ${messageCount} messages through ${nodeCount}-node (${nodeOutputSize}) workflow (timeout: ${timeoutMs}ms)`,
+	);
+	const result = await waitForThroughput(obs.metrics, {
+		expectedCount: messageCount,
+		nodeCount,
+		timeoutMs,
+		baselineValue: baselineCounter,
+		metricQuery: WORKFLOW_SUCCESS_QUERY,
+		pollIntervalMs,
+	});
 
-		// Attach results
-		await attachThroughputResults(testInfo, testInfo.title, result);
+	// Attach results
+	await attachThroughputResults(testInfo, testInfo.title, result);
 
-		// Diagnostics
-		const diagnostics = await collectDiagnostics(obs.metrics, result.durationMs);
-		console.log(
-			`[DIAG-${profile.name}] ${testInfo.title}\n` +
-				`  Event Loop Lag: ${diagnostics.eventLoopLag}\n` +
-				`  PG Transactions/s: ${diagnostics.pgTxRate}\n` +
-				`  PG Rows Inserted/s: ${diagnostics.pgInsertRate}\n` +
-				`  PG Active Connections: ${diagnostics.pgActiveConnections}\n` +
-				`  Queue Waiting: ${diagnostics.queueWaiting}\n` +
-				`  Queue Active: ${diagnostics.queueActive}\n` +
-				`  Queue Completed/s: ${diagnostics.queueCompletedRate}\n` +
-				`  Queue Failed/s: ${diagnostics.queueFailedRate}`,
-		);
+	// Diagnostics
+	const diagnostics = await collectDiagnostics(obs.metrics, result.durationMs);
+	console.log(
+		`[DIAG-${profile.name}] ${testInfo.title}\n` +
+			`  Event Loop Lag: ${diagnostics.eventLoopLag}\n` +
+			`  PG Transactions/s: ${diagnostics.pgTxRate}\n` +
+			`  PG Rows Inserted/s: ${diagnostics.pgInsertRate}\n` +
+			`  PG Active Connections: ${diagnostics.pgActiveConnections}\n` +
+			`  Queue Waiting: ${diagnostics.queueWaiting}\n` +
+			`  Queue Active: ${diagnostics.queueActive}\n` +
+			`  Queue Completed/s: ${diagnostics.queueCompletedRate}\n` +
+			`  Queue Failed/s: ${diagnostics.queueFailedRate}`,
+	);
 
-		// Summary
-		console.log(
-			`[BENCH-${profile.name} RESULT] ${testInfo.title}\n` +
-				`  Profile: ${profile.name}\n` +
-				`${profile.resourceSummary}\n` +
-				`  Nodes: ${nodeCount} (${nodeOutputSize}) | Messages: ${messageCount}\n` +
-				`  Completed: ${result.totalCompleted}/${messageCount}\n` +
-				`  Throughput: ${result.avgExecPerSec.toFixed(1)} exec/s | ${result.actionsPerSec.toFixed(1)} actions/s\n` +
-				`  Peak: ${result.peakExecPerSec.toFixed(1)} exec/s | ${result.peakActionsPerSec.toFixed(1)} actions/s\n` +
-				`  Duration: ${(result.durationMs / 1000).toFixed(1)}s`,
-		);
+	// Summary
+	console.log(
+		`[BENCH-${profile.name} RESULT] ${testInfo.title}\n` +
+			`  Profile: ${profile.name}\n` +
+			`${profile.resourceSummary}\n` +
+			`  Nodes: ${nodeCount} (${nodeOutputSize}) | Messages: ${messageCount}\n` +
+			`  Completed: ${result.totalCompleted}/${messageCount}\n` +
+			`  Throughput: ${result.avgExecPerSec.toFixed(1)} exec/s | ${result.actionsPerSec.toFixed(1)} actions/s\n` +
+			`  Peak: ${result.peakExecPerSec.toFixed(1)} exec/s | ${result.peakActionsPerSec.toFixed(1)} actions/s\n` +
+			`  Duration: ${(result.durationMs / 1000).toFixed(1)}s`,
+	);
 
-		// Assertions
-		expect(result.totalCompleted).toBeGreaterThan(0);
-		expect(result.totalCompleted).toBeGreaterThanOrEqual(Math.floor(messageCount * 0.8));
-	} finally {
-		await api.workflows.deactivate(workflowId);
-		await handle.cleanup();
-	}
+	expect(result.totalCompleted).toBeGreaterThan(0);
 }

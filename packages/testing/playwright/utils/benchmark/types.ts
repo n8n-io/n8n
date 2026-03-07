@@ -100,11 +100,8 @@ export interface TriggerHandle {
 	/** Wait for trigger to be ready after activation (e.g., consumer group joined) */
 	waitForReady(options?: { timeoutMs?: number }): Promise<void>;
 
-	/** Optional: trigger-specific completion signal. Falls back to VictoriaMetrics if absent. */
-	waitForDrain?(options: { expectedCount: number; timeoutMs: number }): Promise<DrainResult>;
-
-	/** Clean up trigger resources */
-	cleanup(): Promise<void>;
+	/** Wait for all messages to be consumed. Drivers without a native drain signal resolve immediately. */
+	waitForDrain(options: { expectedCount: number; timeoutMs: number }): Promise<DrainResult>;
 }
 
 /**

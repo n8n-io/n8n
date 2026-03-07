@@ -8,8 +8,10 @@ import { runThroughputTest } from '../harness/throughput-harness';
 
 const envMessages = parseInt(process.env.BENCHMARK_MESSAGES ?? '0', 10);
 
+test.use({ capability: { env: { TEST_ISOLATION: 'kafka-throughput' } } });
+
 test.describe(
-	'Kafka Throughput @benchmark',
+	'Kafka Throughput',
 	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
 	() => {
 		test('node scaling: 10 nodes, 10KB, 10KB/node, 5k msgs', async ({
