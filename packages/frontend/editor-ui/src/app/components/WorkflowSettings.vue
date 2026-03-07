@@ -51,7 +51,7 @@ import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.s
 import { useCredentialResolvers } from '@/features/resolvers/composables/useCredentialResolvers';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 import { hasPermission } from '@/app/utils/rbac/permissions';
-import { parseViewerInputsJson } from '@/app/utils/viewerMode';
+import { sanitizeViewerInputs } from '@/app/utils/viewerMode';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
 
@@ -131,7 +131,7 @@ const workflowSettings = ref<IWorkflowSettings>({} as IWorkflowSettings);
 const workflows = ref<IWorkflowShortResponse[]>([]);
 const credentialResolverSelectRef = ref<InstanceType<typeof N8nSelect> | null>(null);
 const originalBinaryMode = ref<undefined | WorkflowSettingsBinaryMode>(undefined);
-const viewerInputsJson = ref('');
+const viewerInputFields = ref<WorkflowSettings.ViewerInputField[]>([]);
 
 const {
 	resolvers: credentialResolvers,
@@ -172,6 +172,31 @@ const helpTexts = computed(() => ({
 	viewerManual: i18n.baseText('workflowSettings.helpTexts.viewerManual'),
 	viewerInputs: i18n.baseText('workflowSettings.helpTexts.viewerInputs'),
 }));
+
+const viewerInputTypeOptions = computed(
+	(): Array<{ key: WorkflowSettings.ViewerInputType; value: string }> => [
+		{
+			key: 'text',
+			value: i18n.baseText('workflowSettings.viewerInputs.type.text'),
+		},
+		{
+			key: 'textarea',
+			value: i18n.baseText('workflowSettings.viewerInputs.type.textarea'),
+		},
+		{
+			key: 'number',
+			value: i18n.baseText('workflowSettings.viewerInputs.type.number'),
+		},
+		{
+			key: 'boolean',
+			value: i18n.baseText('workflowSettings.viewerInputs.type.boolean'),
+		},
+		{
+			key: 'file',
+			value: i18n.baseText('workflowSettings.viewerInputs.type.file'),
+		},
+	],
+);
 
 const viewerManual = computed({
 	get: () => workflowSettings.value.viewerMode?.manual ?? '',
@@ -517,15 +542,15 @@ const convertToHMS = (num: number): ITimeoutHMS => {
 };
 
 const saveSettings = async () => {
-	const parsedViewerInputs = parseViewerInputsJson(viewerInputsJson.value);
-	if (parsedViewerInputs.error) {
+	const sanitizedViewerInputs = sanitizeViewerInputs(viewerInputFields.value);
+	if (sanitizedViewerInputs.length !== viewerInputFields.value.length) {
 		toast.showError(new Error(i18n.baseText('workflowSettings.viewerInputs.invalidSchema')));
 		return;
 	}
 
 	workflowSettings.value.viewerMode = {
 		manual: viewerManual.value.trim() || undefined,
-		inputs: parsedViewerInputs.inputs.length > 0 ? parsedViewerInputs.inputs : undefined,
+		inputs: sanitizedViewerInputs.length > 0 ? sanitizedViewerInputs : undefined,
 	};
 
 	if (!workflowSettings.value.viewerMode.manual && !workflowSettings.value.viewerMode.inputs) {
@@ -666,6 +691,28 @@ const onExecutionLogicModeChange = (value: string) => {
 	}
 };
 
+const addViewerInputField = () => {
+	const index = viewerInputFields.value.length + 1;
+	viewerInputFields.value.push({
+		key: `input_${index}`,
+		label: `Input ${index}`,
+		type: 'text',
+	});
+};
+
+const removeViewerInputField = (index: number) => {
+	viewerInputFields.value.splice(index, 1);
+};
+
+const onViewerInputTypeChange = (field: WorkflowSettings.ViewerInputField) => {
+	if (field.type !== 'file') {
+		delete field.accept;
+	}
+	if (field.type === 'boolean') {
+		delete field.placeholder;
+	}
+};
+
 onMounted(async () => {
 	executionTimeout.value = rootStore.executionTimeout;
 	maxExecutionTimeout.value = rootStore.maxExecutionTimeout;
@@ -764,7 +811,7 @@ onMounted(async () => {
 
 	originalBinaryMode.value = workflowSettingsData.binaryMode;
 	workflowSettings.value = workflowSettingsData;
-	viewerInputsJson.value = JSON.stringify(workflowSettingsData.viewerMode.inputs ?? [], null, 2);
+	viewerInputFields.value = sanitizeViewerInputs(workflowSettingsData.viewerMode.inputs ?? []);
 	timeoutHMS.value = convertToHMS(workflowSettingsData.executionTimeout);
 	isLoading.value = false;
 
@@ -1028,16 +1075,106 @@ onBeforeUnmount(() => {
 						</N8nTooltip>
 					</ElCol>
 					<ElCol :span="14">
-						<N8nInput
-							v-model="viewerInputsJson"
-							type="textarea"
-							:rows="7"
-							:disabled="readOnlyEnv || !workflowPermissions.update"
-							:placeholder="i18n.baseText('workflowSettings.viewerInputs.placeholder')"
-							data-test-id="workflow-settings-viewer-inputs-json"
-						/>
-						<div :class="$style.viewerInputExample">
-							{{ i18n.baseText('workflowSettings.viewerInputs.example') }}
+						<div
+							:class="$style.viewerInputBuilder"
+							data-test-id="workflow-settings-viewer-inputs-builder"
+						>
+							<div
+								v-for="(field, index) in viewerInputFields"
+								:key="`${field.key}-${index}`"
+								:class="$style.viewerInputBuilderItem"
+								data-test-id="workflow-settings-viewer-input-row"
+							>
+								<div :class="$style.viewerInputBuilderHeader">
+									<span :class="$style.viewerInputBuilderTitle">
+										{{ i18n.baseText('workflowSettings.viewerInputs.field') }} {{ index + 1 }}
+									</span>
+									<N8nIconButton
+										icon="trash-2"
+										variant="ghost"
+										size="small"
+										:disabled="readOnlyEnv || !workflowPermissions.update"
+										data-test-id="workflow-settings-viewer-input-remove"
+										@click="removeViewerInputField(index)"
+									/>
+								</div>
+								<div :class="$style.viewerInputGrid">
+									<N8nInput
+										v-model="field.label"
+										:disabled="readOnlyEnv || !workflowPermissions.update"
+										:placeholder="i18n.baseText('workflowSettings.viewerInputs.label.placeholder')"
+										data-test-id="workflow-settings-viewer-input-label"
+									/>
+									<N8nInput
+										v-model="field.key"
+										:disabled="readOnlyEnv || !workflowPermissions.update"
+										:placeholder="i18n.baseText('workflowSettings.viewerInputs.key.placeholder')"
+										data-test-id="workflow-settings-viewer-input-key"
+									/>
+								</div>
+								<div :class="$style.viewerInputGrid">
+									<N8nSelect
+										v-model="field.type"
+										:disabled="readOnlyEnv || !workflowPermissions.update"
+										:placeholder="i18n.baseText('workflowSettings.viewerInputs.type.placeholder')"
+										:limit-popper-width="true"
+										data-test-id="workflow-settings-viewer-input-type"
+										@update:model-value="onViewerInputTypeChange(field)"
+									>
+										<N8nOption
+											v-for="option in viewerInputTypeOptions"
+											:key="option.key"
+											:label="option.value"
+											:value="option.key"
+										/>
+									</N8nSelect>
+									<label :class="$style.viewerRequiredLabel">
+										<input
+											v-model="field.required"
+											type="checkbox"
+											:disabled="readOnlyEnv || !workflowPermissions.update"
+											data-test-id="workflow-settings-viewer-input-required"
+										/>
+										{{ i18n.baseText('workflowSettings.viewerInputs.required') }}
+									</label>
+								</div>
+								<div v-if="field.type !== 'boolean'" :class="$style.viewerInputGridSingle">
+									<N8nInput
+										v-model="field.placeholder"
+										:disabled="readOnlyEnv || !workflowPermissions.update"
+										:placeholder="
+											i18n.baseText('workflowSettings.viewerInputs.placeholder.label')
+										"
+										data-test-id="workflow-settings-viewer-input-placeholder"
+									/>
+								</div>
+								<div v-if="field.type === 'file'" :class="$style.viewerInputGridSingle">
+									<N8nInput
+										v-model="field.accept"
+										:disabled="readOnlyEnv || !workflowPermissions.update"
+										:placeholder="i18n.baseText('workflowSettings.viewerInputs.accept.placeholder')"
+										data-test-id="workflow-settings-viewer-input-accept"
+									/>
+								</div>
+								<div :class="$style.viewerInputGridSingle">
+									<N8nInput
+										v-model="field.helpText"
+										:disabled="readOnlyEnv || !workflowPermissions.update"
+										:placeholder="i18n.baseText('workflowSettings.viewerInputs.help.placeholder')"
+										data-test-id="workflow-settings-viewer-input-help"
+									/>
+								</div>
+							</div>
+							<N8nButton
+								variant="secondary"
+								icon="plus"
+								size="small"
+								:disabled="readOnlyEnv || !workflowPermissions.update"
+								data-test-id="workflow-settings-viewer-input-add"
+								@click="addViewerInputField"
+							>
+								{{ i18n.baseText('workflowSettings.viewerInputs.addField') }}
+							</N8nButton>
 						</div>
 					</ElCol>
 				</ElRow>
@@ -1673,10 +1810,49 @@ onBeforeUnmount(() => {
 	}
 }
 
-.viewerInputExample {
-	margin-top: var(--spacing--4xs);
+.viewerInputBuilder {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+
+.viewerInputBuilderItem {
+	border: var(--border);
+	border-radius: var(--radius-base);
+	padding: var(--spacing--2xs);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+}
+
+.viewerInputBuilderHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.viewerInputBuilderTitle {
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--light);
-	line-height: var(--line-height--md);
+	font-weight: var(--font-weight--bold);
+	color: var(--color--text--shade-1);
+}
+
+.viewerInputGrid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: var(--spacing--3xs);
+	align-items: center;
+}
+
+.viewerInputGridSingle {
+	display: block;
+}
+
+.viewerRequiredLabel {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--shade-1);
 }
 </style>

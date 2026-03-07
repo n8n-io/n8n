@@ -166,8 +166,9 @@ describe('WorkflowSettingsVue', () => {
 				},
 			});
 
-			const { getByRole } = createComponent({ pinia });
+			const { getByRole, getAllByTestId } = createComponent({ pinia });
 			await flushPromises();
+			expect(getAllByTestId('workflow-settings-viewer-input-row')).toHaveLength(1);
 
 			await userEvent.click(getByRole('button', { name: 'Save' }));
 
@@ -184,24 +185,20 @@ describe('WorkflowSettingsVue', () => {
 			);
 		});
 
-		it('should block saving when viewer input JSON is invalid', async () => {
-			const { getByRole, getByTestId } = createComponent({ pinia });
+		it('should block saving when viewer input fields are invalid', async () => {
+			const { getByRole, getByTestId, getAllByTestId } = createComponent({ pinia });
 			await flushPromises();
 
-			const inputContainer = getByTestId('workflow-settings-viewer-inputs-json');
-			const input =
-				inputContainer instanceof HTMLInputElement || inputContainer instanceof HTMLTextAreaElement
-					? inputContainer
-					: (inputContainer.querySelector('input, textarea') as
-							| HTMLInputElement
-							| HTMLTextAreaElement
-							| null);
-			if (!input) {
-				throw new Error('Viewer input schema control was not rendered');
+			await userEvent.click(getByTestId('workflow-settings-viewer-input-add'));
+			const keyInputs = getAllByTestId('workflow-settings-viewer-input-key');
+			const keyInput =
+				keyInputs[0] instanceof HTMLInputElement
+					? keyInputs[0]
+					: keyInputs[0].querySelector('input');
+			if (!(keyInput instanceof HTMLInputElement)) {
+				throw new Error('Viewer input key control was not rendered');
 			}
-
-			await userEvent.clear(input);
-			await userEvent.type(input, 'invalid json');
+			await userEvent.clear(keyInput);
 			await userEvent.click(getByRole('button', { name: 'Save' }));
 
 			expect(toast.showError).toHaveBeenCalled();
