@@ -108,9 +108,27 @@ export class ScalingService {
 		this.logger.debug('Queue setup completed');
 	}
 
-	setupWorker(concurrency: number) {
+	setupWorker(concurrency: number, options?: { maxJobs?: number; onMaxJobsReached?: () => void }) {
 		this.assertWorker();
 		this.assertQueue();
+
+		const { maxJobs, onMaxJobsReached } = options ?? {};
+		let processedJobs = 0;
+		let limitTriggered = false;
+
+		const maybeTriggerShutdown = () => {
+			if (!maxJobs) return;
+
+			processedJobs += 1;
+
+			if (!limitTriggered && processedJobs >= maxJobs) {
+				limitTriggered = true;
+				this.logger.info(
+					`Reached configured max jobs limit (${maxJobs}). Initiating worker shutdown.`,
+				);
+				void onMaxJobsReached?.();
+			}
+		};
 
 		void this.queue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => {
 			try {
@@ -130,6 +148,8 @@ export class ScalingService {
 				await this.jobProcessor.processJob(job);
 			} catch (error) {
 				await this.reportJobProcessingError(ensureError(error), job);
+			} finally {
+				maybeTriggerShutdown();
 			}
 		});
 

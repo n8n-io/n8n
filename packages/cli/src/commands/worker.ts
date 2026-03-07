@@ -21,12 +21,18 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 const flagsSchema = z.object({
 	concurrency: z.number().int().default(10).describe('How many jobs can run in parallel.'),
+	maxJobs: z
+		.number()
+		.int()
+		.positive()
+		.optional()
+		.describe('How many jobs to process before shutting down. Leave unset to keep running.'),
 });
 
 @Command({
 	name: 'worker',
 	description: 'Starts a n8n worker',
-	examples: ['--concurrency=5'],
+	examples: ['--concurrency=5 --max-jobs=1'],
 	flagsSchema,
 })
 export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
@@ -37,6 +43,8 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 	 * other than -1, else taken from `--concurrency` flag.
 	 */
 	private concurrency: number;
+
+	private maxJobs?: number;
 
 	private scalingService: ScalingService;
 
@@ -86,6 +94,7 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 		this.logger.debug(`Host ID: ${this.instanceSettings.hostId}`);
 
 		await this.setConcurrency();
+		this.maxJobs = this.flags.maxJobs;
 		await super.init();
 
 		Container.get(DeprecationService).warn();
@@ -168,13 +177,22 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await this.scalingService.setupQueue();
 
-		this.scalingService.setupWorker(this.concurrency);
+		const workerOptions = this.maxJobs
+			? { maxJobs: this.maxJobs, onMaxJobsReached: this.handleMaxJobsReached }
+			: undefined;
+
+		this.scalingService.setupWorker(this.concurrency, workerOptions);
 	}
 
 	async run() {
 		this.logger.info('\nn8n worker is now ready');
 		this.logger.info(` * Version: ${N8N_VERSION}`);
 		this.logger.info(` * Concurrency: ${this.concurrency}`);
+		if (this.maxJobs) {
+			this.logger.info(
+				` * Max jobs: ${this.maxJobs} (worker will shut down after reaching this limit)`,
+			);
+		}
 		this.logger.info('');
 
 		const endpointsConfig: WorkerServerEndpointsConfig = {
@@ -203,6 +221,14 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 		// Make sure that the process does not close
 		if (!inTest) await new Promise(() => {});
 	}
+
+	private handleMaxJobsReached = () => {
+		if (!this.maxJobs) return;
+
+		const jobsWord = this.maxJobs === 1 ? 'job' : 'jobs';
+		this.logger.info(`Processed ${this.maxJobs} ${jobsWord}. Shutting down worker...`);
+		process.kill(process.pid, 'SIGTERM');
+	};
 
 	async catch(error: Error) {
 		await this.exitWithCrash('Worker exiting due to an error.', error);
