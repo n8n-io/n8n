@@ -410,7 +410,8 @@
       "dist/credentials/ZoomApi.credentials.js",
       "dist/credentials/ZoomOAuth2Api.credentials.js",
       "dist/credentials/ZscalerZiaApi.credentials.js",
-      "dist/credentials/ZulipApi.credentials.js"
+      "dist/credentials/ZulipApi.credentials.js",
+      "dist/credentials/ModelsLabApi.credentials.js"
     ],
     "nodes": [
       "dist/nodes/ActionNetwork/ActionNetwork.node.js",
@@ -667,6 +668,7 @@
       "dist/nodes/Mindee/Mindee.node.js",
       "dist/nodes/Misp/Misp.node.js",
       "dist/nodes/MistralAI/MistralAi.node.js",
+      "dist/nodes/ModelsLab/ModelsLab.node.js",
       "dist/nodes/Mocean/Mocean.node.js",
       "dist/nodes/MondayCom/MondayCom.node.js",
       "dist/nodes/MongoDb/MongoDb.node.js",
