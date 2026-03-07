@@ -12,17 +12,38 @@ function percentile(sorted: number[], p: number): number {
 
 /**
  * Fetches a sample of recent executions to calculate duration statistics.
- * The REST API has a page size limit, but a sample of 100 is sufficient for percentiles.
+ * Retries on transient errors (e.g. 503 "Database is not ready!") since the DB
+ * may still be under heavy write pressure after a burst of executions.
  */
 export async function sampleExecutionDurations(
 	workflowApi: WorkflowApiHelper,
 	workflowId: string,
+	options: { maxRetries?: number; retryDelayMs?: number } = {},
 ): Promise<number[]> {
-	const executions = await workflowApi.getExecutions(workflowId, 100);
-	return executions
-		.filter((e) => e.startedAt && e.stoppedAt)
-		.map((e) => new Date(e.stoppedAt!).getTime() - new Date(e.startedAt!).getTime())
-		.sort((a, b) => a - b);
+	const { maxRetries = 5, retryDelayMs = 3000 } = options;
+
+	for (let attempt = 0; attempt <= maxRetries; attempt++) {
+		try {
+			const executions = await workflowApi.getExecutions(workflowId, 100);
+			return executions
+				.filter((e) => e.startedAt && e.stoppedAt)
+				.map((e) => new Date(e.stoppedAt!).getTime() - new Date(e.startedAt!).getTime())
+				.sort((a, b) => a - b);
+		} catch (error) {
+			if (attempt === maxRetries) {
+				console.warn(
+					`[LOAD] Failed to sample executions after ${maxRetries + 1} attempts — returning empty durations`,
+				);
+				return [];
+			}
+			console.log(
+				`[LOAD] Execution sampling attempt ${attempt + 1} failed, retrying in ${retryDelayMs}ms...`,
+			);
+			await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+		}
+	}
+
+	return [];
 }
 
 export function buildMetrics(
