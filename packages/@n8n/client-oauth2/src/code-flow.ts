@@ -29,8 +29,6 @@ export class CodeFlow {
 		// Check the required parameters are set.
 		expects(options, 'clientId', 'authorizationUri');
 
-		const url = new URL(options.authorizationUri);
-
 		const queryParams = {
 			...options.query,
 			client_id: options.clientId,
@@ -40,13 +38,15 @@ export class CodeFlow {
 			...(options.scopes ? { scope: options.scopes.join(options.scopesSeparator ?? ' ') } : {}),
 		};
 
-		for (const [key, value] of Object.entries(queryParams)) {
-			if (value !== null && value !== undefined) {
-				url.searchParams.append(key, value);
-			}
-		}
+		// Build query string manually to preserve URL fragments (hash)
+		const queryString = Object.entries(queryParams)
+			.filter(([_, value]) => value !== null && value !== undefined)
+			.map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
+			.join('&');
 
-		return url.toString();
+		// Append query string to authorization URI, preserving any fragments
+		const separator = options.authorizationUri.includes('?') ? '&' : '?';
+		return `${options.authorizationUri}${separator}${queryString}`;
 	}
 
 	/**
