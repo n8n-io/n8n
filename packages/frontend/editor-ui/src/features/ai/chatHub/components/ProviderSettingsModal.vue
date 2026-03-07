@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
-import { N8nButton, N8nHeading, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nHeading,
+	N8nIconButton,
+	N8nInputNumber,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import Modal from '@/app/components/Modal.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -200,6 +207,18 @@ function onToggleLimitModels(value: string | number | boolean) {
 	}
 }
 
+function onToggleResponsesApi(value: string | number | boolean) {
+	if (settings.value) {
+		settings.value.responsesApiEnabled = typeof value === 'boolean' ? value : Boolean(value);
+	}
+}
+
+function onChangeContextWindow(value: number | undefined) {
+	if (settings.value) {
+		settings.value.contextWindowLength = value;
+	}
+}
+
 onMounted(async () => {
 	loadingSettings.value = true;
 	await Promise.all([
@@ -332,6 +351,43 @@ watch(
 						:tags-by-id="modelsById"
 						:create-tag="addManualModel"
 						:create-tag-i18n-key="'settings.chatHub.providers.modal.edit.models.create'"
+					/>
+				</label>
+
+				<label
+					v-if="settings && settings.enabled && data.provider === 'openai'"
+					:class="$style.container"
+				>
+					<N8nText color="text-dark">
+						{{ i18n.baseText('settings.chatHub.providers.modal.edit.responsesApi.label') }}
+					</N8nText>
+					<N8nText color="text-light" size="small">
+						{{ i18n.baseText('settings.chatHub.providers.modal.edit.responsesApi.description') }}
+					</N8nText>
+					<ElSwitch
+						size="large"
+						:model-value="settings.responsesApiEnabled ?? true"
+						:disabled="props.data.disabled"
+						@update:model-value="onToggleResponsesApi"
+					/>
+				</label>
+
+				<label v-if="settings && settings.enabled" :class="$style.container">
+					<N8nText color="text-dark">
+						{{ i18n.baseText('settings.chatHub.providers.modal.edit.contextWindowLength.label') }}
+					</N8nText>
+					<N8nText color="text-light" size="small">
+						{{
+							i18n.baseText('settings.chatHub.providers.modal.edit.contextWindowLength.description')
+						}}
+					</N8nText>
+					<N8nInputNumber
+						:model-value="settings.contextWindowLength ?? 20"
+						:min="1"
+						:max="256"
+						size="small"
+						:disabled="props.data.disabled"
+						@update:model-value="onChangeContextWindow"
 					/>
 				</label>
 			</div>
