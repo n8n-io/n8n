@@ -925,6 +925,52 @@ describe('GoogleSheet', () => {
 
 			expect(result.updateData[0].values[0][0]).toBe('{"first":"John","last":"Doe"}');
 		});
+
+		it('should retry fetching column values if initial match fails (stale data fix)', async () => {
+			const inputData = [{ Name: 'NewItem', Status: 'Active' }];
+			// list currently known by the node (stale, missing 'NewItem')
+			const staleColumnValues = ['OldItem'];
+
+			// list that actually exists in the sheet (contains 'NewItem')
+			const freshColumnValues = ['OldItem', 'NewItem'];
+
+			// Mock the header row request to return BOTH 'Name' and 'Status'
+			// Name' is Column A and 'Status' is Column B
+			(apiRequest.call as jest.Mock).mockImplementation((_, __, url) => {
+				if (url.includes('!A1:Z1') || url.includes('!A1%3AZ1')) {
+					return { values: [['Name', 'Status']] };
+				}
+				return {};
+			});
+
+			// SPY on getColumnValues.
+			// mock it to return the FRESH data, simulating a re-fetch.
+			const getColumnValuesSpy = jest
+				.spyOn(googleSheet, 'getColumnValues')
+				.mockResolvedValue(freshColumnValues);
+
+			const result = await googleSheet.prepareDataForUpdateOrUpsert({
+				inputData,
+				indexKey: 'Name',
+				range: 'Sheet1!A:Z',
+				keyRowIndex: 0,
+				dataStartRowIndex: 1,
+				valueRenderMode: 'UNFORMATTED_VALUE',
+				// pass the STALE list to trigger the retry logic
+				columnValuesList: staleColumnValues,
+			});
+
+			// Assertion 1: Verify that the retry mechanism was triggered.
+			expect(getColumnValuesSpy).toHaveBeenCalledTimes(1);
+
+			// Assertion 2: Verify the update was actually generated using the fresh data.
+			expect(result.updateData).toHaveLength(1);
+			expect(result.updateData[0]).toEqual({
+				range: 'Sheet1!B3',
+				values: [['Active']],
+			});
+			getColumnValuesSpy.mockRestore();
+		});
 	});
 
 	describe('private method testing via clearData (encodeRange)', () => {
