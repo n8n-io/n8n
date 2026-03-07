@@ -1,22 +1,23 @@
 <script setup lang="ts">
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useI18n } from '@n8n/i18n';
-import { computed, onMounted } from 'vue';
-import { useChatStore } from './chat.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { N8nHeading } from '@n8n/design-system';
-import { CHAT_PROVIDER_SETTINGS_MODAL_KEY } from './constants';
-import ChatProvidersTable from './components/ChatProvidersTable.vue';
 import {
 	type ChatHubLLMProvider,
 	type ChatProviderSettingsDto,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 } from '@n8n/api-types';
-import { useUIStore } from '@/app/stores/ui.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { N8nHeading } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import { computed, onMounted } from 'vue';
+import { useChatStore } from './chat.store';
+import ChatProvidersTable from './components/ChatProvidersTable.vue';
+import { CHAT_PROVIDER_SETTINGS_MODAL_KEY } from './constants';
+import ChatSemanticSearchSettings from './ChatSemanticSearchSettings.vue';
 
 const i18n = useI18n();
 const toast = useToast();
@@ -31,7 +32,6 @@ const telemetry = useTelemetry();
 
 const isOwner = computed(() => usersStore.isInstanceOwner);
 const isAdmin = computed(() => usersStore.isAdmin);
-
 const disabled = computed(() => !isOwner.value && !isAdmin.value);
 
 const fetchSettings = async () => {
@@ -95,19 +95,18 @@ onMounted(async () => {
 </script>
 <template>
 	<div :class="$style.container">
-		<N8nHeading size="2xlarge" :class="$style.title">
+		<N8nHeading size="2xlarge">
 			{{ i18n.baseText('settings.chatHub') }}
 		</N8nHeading>
-		<div :class="$style.container">
-			<ChatProvidersTable
-				:data-test-id="'chat-providers-table'"
-				:settings="chatStore.settings"
-				:loading="chatStore.settingsLoading"
-				:disabled="disabled"
-				@edit-provider="onEditProvider"
-				@refresh="onRefreshWorkflows"
-			/>
-		</div>
+		<ChatProvidersTable
+			data-test-id="chat-providers-table"
+			:settings="chatStore.settings"
+			:loading="chatStore.settingsLoading"
+			:disabled="disabled"
+			@edit-provider="onEditProvider"
+			@refresh="onRefreshWorkflows"
+		/>
+		<ChatSemanticSearchSettings />
 	</div>
 </template>
 
@@ -115,10 +114,7 @@ onMounted(async () => {
 .container {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--lg);
-}
-
-.title {
-	margin-bottom: var(--spacing--sm);
+	gap: var(--spacing--2xl);
+	padding-bottom: var(--spacing--2xl);
 }
 </style>
