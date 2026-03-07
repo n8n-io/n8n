@@ -269,7 +269,7 @@ async function handleKeyDown(event: KeyboardEvent) {
 	const isPrintableChar = event.key.length === 1 && !hasModifier;
 	const isDeletionKey = event.key === 'Backspace' || event.key === 'Delete';
 	const atMaxLength = characterCount.value >= props.maxLength;
-	const isSubmitKey = event.key === 'Enter' && !event.shiftKey;
+	const isSubmitKey = event.key === 'Enter' && !event.shiftKey && !event.isComposing;
 	const isNewlineKey = event.key === 'Enter' && event.shiftKey;
 
 	// Prevent adding characters if at max length (but allow deletions/navigation)
