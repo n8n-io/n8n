@@ -209,9 +209,54 @@ export const mailFields: INodeProperties[] = [
 			{
 				displayName: 'Attachments',
 				name: 'attachments',
-				type: 'string',
-				default: '',
-				description: 'Comma-separated list of binary properties',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Attachment',
+						name: 'data',
+						values: [
+							{
+								displayName: 'Property',
+								name: 'property',
+								type: 'string',
+								default: 'data',
+								description: 'Binary property name',
+							},
+							{
+								displayName: 'Content Disposition',
+								name: 'disposition',
+								type: 'options',
+								default: 'attachment',
+								options: [
+									{
+										name: 'Attachment',
+										value: 'attachment',
+									},
+									{
+										name: 'Inline',
+										value: 'inline',
+									},
+								],
+								description:
+									"The attachment's content-disposition specifies how you would like the attachment to be displayed",
+							},
+							{
+								displayName: 'Content ID',
+								name: 'contentId',
+								type: 'string',
+								default: '',
+								description:
+									'The attachment\'s Content ID is used when the Disposition is set to "inline" and the attachment is an image, allowing the file to be displayed within the body of the email',
+								hint: 'Default to "attachmentN", where N is the attachment\'s index (zero-based)',
+							},
+						],
+					},
+				],
+				description: 'File attachments',
 			},
 			{
 				displayName: 'BCC Email',
