@@ -125,7 +125,7 @@ export const cronNodeOptions: INodePropertyCollection[] = [
 					},
 				},
 				default: 0,
-				description: 'The minute of the day to trigger',
+				description: 'The minute of the hour to trigger',
 			},
 			{
 				displayName: 'Day of Month',
