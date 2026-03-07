@@ -47,10 +47,10 @@ export function adjustPutItem(putItemUi: PutItemUi) {
 			type = 'BOOL';
 		} else if (typeof value === 'object' && !Array.isArray(value) && value !== null) {
 			type = 'M';
-		} else if (isNaN(Number(value))) {
-			type = 'S';
-		} else {
+		} else if (typeof value === 'number') {
 			type = 'N';
+		} else {
+			type = 'S';
 		}
 
 		adjustedPutItem[attribute] = { [type]: value.toString() };
