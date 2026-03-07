@@ -1,16 +1,13 @@
 /**
- * Throughput benchmark helpers — VictoriaMetrics counter-based completion tracking.
+ * Throughput benchmark measurement — VictoriaMetrics counter-based completion tracking.
  *
- * Use this approach when you need sustained throughput measurement with per-interval
- * sampling. Better for benchmarks measuring aggregate throughput over time.
- *
- * For per-message tracking via consumer group lag with REST API duration statistics,
- * use `kafka-load-helper.ts` instead.
+ * Polls a PromQL counter at regular intervals to measure sustained throughput.
+ * Trigger-agnostic: works with any trigger type that increments n8n_workflow_success_total.
  */
 import type { TestInfo } from '@playwright/test';
 import type { MetricsHelper } from 'n8n-containers';
 
-import { attachMetric } from './performance-helper';
+import { attachMetric } from '../performance-helper';
 
 // --- Types ---
 
@@ -32,7 +29,8 @@ export interface ThroughputResult {
 
 // --- PromQL queries ---
 
-const WORKFLOW_SUCCESS_QUERY = 'n8n_workflow_success_total';
+export const WORKFLOW_SUCCESS_QUERY = 'n8n_workflow_success_total';
+
 // --- Throughput measurement ---
 
 /**
@@ -211,5 +209,3 @@ export async function attachThroughputResults(
 	await attachMetric(testInfo, `${label}-total-completed`, result.totalCompleted, 'count');
 	await attachMetric(testInfo, `${label}-duration`, result.durationMs, 'ms');
 }
-
-export { WORKFLOW_SUCCESS_QUERY };

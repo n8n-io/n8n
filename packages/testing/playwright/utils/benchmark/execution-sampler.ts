@@ -1,0 +1,62 @@
+import type { TestInfo } from '@playwright/test';
+
+import type { WorkflowApiHelper } from '../../services/workflow-api-helper';
+import { attachMetric } from '../performance-helper';
+import type { ExecutionMetrics } from './types';
+
+function percentile(sorted: number[], p: number): number {
+	if (sorted.length === 0) return 0;
+	const index = Math.ceil((p / 100) * sorted.length) - 1;
+	return sorted[Math.max(0, index)];
+}
+
+/**
+ * Fetches a sample of recent executions to calculate duration statistics.
+ * The REST API has a page size limit, but a sample of 100 is sufficient for percentiles.
+ */
+export async function sampleExecutionDurations(
+	workflowApi: WorkflowApiHelper,
+	workflowId: string,
+): Promise<number[]> {
+	const executions = await workflowApi.getExecutions(workflowId, 100);
+	return executions
+		.filter((e) => e.startedAt && e.stoppedAt)
+		.map((e) => new Date(e.stoppedAt!).getTime() - new Date(e.startedAt!).getTime())
+		.sort((a, b) => a - b);
+}
+
+export function buildMetrics(
+	successCount: number,
+	errorCount: number,
+	durationMs: number,
+	durations: number[],
+): ExecutionMetrics {
+	const totalCompleted = successCount + errorCount;
+	return {
+		totalCompleted,
+		totalErrors: errorCount,
+		durationMs,
+		throughputPerSecond: durationMs > 0 ? (totalCompleted / durationMs) * 1000 : 0,
+		executionDurations: durations,
+		avgDurationMs:
+			durations.length > 0 ? durations.reduce((a, b) => a + b, 0) / durations.length : 0,
+		p50DurationMs: percentile(durations, 50),
+		p95DurationMs: percentile(durations, 95),
+		p99DurationMs: percentile(durations, 99),
+	};
+}
+
+export async function attachLoadTestResults(
+	testInfo: TestInfo,
+	label: string,
+	metrics: ExecutionMetrics,
+): Promise<void> {
+	await attachMetric(testInfo, `${label}-executions-completed`, metrics.totalCompleted, 'count');
+	await attachMetric(testInfo, `${label}-executions-errors`, metrics.totalErrors, 'count');
+	await attachMetric(testInfo, `${label}-throughput`, metrics.throughputPerSecond, 'exec/s');
+	await attachMetric(testInfo, `${label}-duration-avg`, metrics.avgDurationMs, 'ms');
+	await attachMetric(testInfo, `${label}-duration-p50`, metrics.p50DurationMs, 'ms');
+	await attachMetric(testInfo, `${label}-duration-p95`, metrics.p95DurationMs, 'ms');
+	await attachMetric(testInfo, `${label}-duration-p99`, metrics.p99DurationMs, 'ms');
+	await attachMetric(testInfo, `${label}-total-duration`, metrics.durationMs, 'ms');
+}
