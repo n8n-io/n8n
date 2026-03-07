@@ -194,15 +194,6 @@ export interface GetWorkflowExamplesOutput {
 }
 
 /**
- * Output type for get node configuration examples tool
- */
-export interface GetNodeConfigurationExamplesOutput {
-	nodeType: string;
-	totalFound: number;
-	message: string;
-}
-
-/**
  * Output type for get execution schema tool
  */
 export interface GetExecutionSchemaOutput {

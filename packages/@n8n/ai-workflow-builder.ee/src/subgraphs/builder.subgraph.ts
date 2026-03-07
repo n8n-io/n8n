@@ -23,10 +23,7 @@ import { createGetExecutionLogsTool } from '../tools/get-execution-logs.tool';
 import { createGetExecutionSchemaTool } from '../tools/get-execution-schema.tool';
 import { createGetExpressionDataMappingTool } from '../tools/get-expression-data-mapping.tool';
 import { createGetNodeContextTool } from '../tools/get-node-context.tool';
-import {
-	createGetNodeConnectionExamplesTool,
-	createGetNodeConfigurationExamplesTool,
-} from '../tools/get-node-examples.tool';
+import { createGetNodeExamplesTool } from '../tools/get-node-examples.tool';
 import { createGetNodeParameterTool } from '../tools/get-node-parameter.tool';
 import { createGetResourceLocatorOptionsTool } from '../tools/get-resource-locator-options.tool';
 import { createGetWorkflowOverviewTool } from '../tools/get-workflow-overview.tool';
@@ -209,6 +206,11 @@ export class BuilderSubgraph extends BaseSubgraph<
 			createGetNodeContextTool(config.logger),
 		];
 
+		// Conditionally add node examples tool if template examples are enabled
+		if (includeExamples) {
+			baseTools.push(createGetNodeExamplesTool(config.logger));
+		}
+
 		// Conditionally add resource locator tool if callback is provided
 		if (config.resourceLocatorCallback) {
 			baseTools.push(
@@ -225,14 +227,7 @@ export class BuilderSubgraph extends BaseSubgraph<
 			baseTools.push(createIntrospectTool(config.logger));
 		}
 
-		// Conditionally add example tools if feature flag is enabled
-		const tools = includeExamples
-			? [
-					...baseTools,
-					createGetNodeConnectionExamplesTool(config.logger),
-					createGetNodeConfigurationExamplesTool(config.logger),
-				]
-			: baseTools;
+		const tools = baseTools;
 
 		this.toolMap = new Map<string, StructuredTool>(tools.map((bt) => [bt.tool.name, bt.tool]));
 
@@ -323,6 +318,8 @@ export class BuilderSubgraph extends BaseSubgraph<
 			applySubgraphCacheMarkers(state.messages);
 
 			// Messages already contain context from transformInput
+			// Expression examples are returned directly in the get_node_examples
+			// tool response, so the agent sees them naturally in the conversation.
 			const response: unknown = await this.agent.invoke({
 				messages: state.messages,
 				instanceUrl: state.instanceUrl ?? '',

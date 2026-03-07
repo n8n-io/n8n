@@ -410,6 +410,7 @@ export const createToolConfigWithWriter = (
 export const setupWorkflowState = (
 	mockGetCurrentTaskInput: jest.MockedFunction<typeof getCurrentTaskInput>,
 	workflow: SimpleWorkflow = createWorkflow([]),
+	overrides?: { expressionExamples?: Record<string, string> },
 ) => {
 	mockGetCurrentTaskInput.mockReturnValue({
 		workflowJSON: workflow,
@@ -418,6 +419,8 @@ export const setupWorkflowState = (
 		workflowValidation: null,
 		messages: [],
 		previousSummary: 'EMPTY',
+		cachedTemplates: [],
+		expressionExamples: overrides?.expressionExamples ?? {},
 	});
 };
 
@@ -522,6 +525,8 @@ export const setupWorkflowStateWithContext = (
 		workflowValidation: null,
 		messages: [],
 		previousSummary: 'EMPTY',
+		cachedTemplates: [],
+		expressionExamples: {},
 	});
 };
 

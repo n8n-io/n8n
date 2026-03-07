@@ -68,11 +68,11 @@ Call validate_structure and validate_configuration at the end. When validation f
 const EXECUTION_SEQUENCE_WITH_EXAMPLES = `Build incrementally in small batches for progressive canvas updates. Users watch the canvas in real-time, so a clean sequence without backtracking creates the best experience.
 
 Batch flow (3-4 nodes per batch):
-1. add_nodes(batch) → configure(batch) → connect(batch) + add_nodes(next batch)
+1. add_nodes(batch) → get_node_examples(external service node types) → configure(batch) → connect(batch) + add_nodes(next batch)
 2. Repeat: configure → connect + add_nodes → until done
 3. Final: configure(last) → connect(last) → validate_structure, validate_configuration
 
-Before configuring nodes, consider using get_node_configuration_examples to see how community templates configure similar nodes. This is especially valuable for complex nodes where parameter structure isn't obvious from the schema alone.
+IMPORTANT: After adding the first batch, call get_node_examples with all external service node types in the workflow. Use type "expressions" for triggers and third-party integrations (Jira, Slack, GitHub, HubSpot, etc.) to fetch verified output field paths. Use type "full" when you need complete parameter configuration examples for a node. Only call it once — the examples persist across all subsequent update_node_parameters calls.
 
 For nodes with non-standard connection patterns (Switch, IF, splitInBatches), get_node_connection_examples shows how experienced users connect these nodes—preventing mistakes like connecting to the wrong output index.
 
@@ -84,7 +84,7 @@ Batch size: 3-4 connected nodes per batch.
 
 Example "Webhook → Set → IF → Slack / Email":
   Round 1: add_nodes(Webhook, Set, IF)
-  Round 2: configure(Webhook, Set, IF)
+  Round 2: get_node_examples([{{nodeType: "n8n-nodes-base.webhook", type: "expressions"}}]) + configure(Webhook, Set, IF)
   Round 3: connect(Webhook→Set→IF) + add_nodes(Slack, Email)  ← parallel
   Round 4: configure(Slack, Email)
   Round 5: connect(IF→Slack, IF→Email), validate_structure, validate_configuration
@@ -413,11 +413,14 @@ WEBHOOK RESPONSES: When using Webhook trigger with responseMode='responseNode', 
 
 // === CONFIGURATION SECTIONS ===
 
-const DATA_REFERENCING = `Reference data from previous nodes:
-- $json.fieldName - Current node's input
-- $('NodeName').item.json.fieldName - Specific node's output
+const DATA_REFERENCING = `Reference data from previous nodes using the named node syntax:
+- $('NodeName').item.json.fieldName - ALWAYS use this format
 
-Use .item rather than .first() or .last() because .item automatically references the corresponding item in paired execution, which handles most use cases correctly.`;
+ALWAYS use $('NodeName').item.json.fieldPath to reference data from other nodes. Never use $json.fieldPath — it is ambiguous, depends on node ordering, and breaks when nodes are reordered. The named syntax is explicit and resilient to workflow changes.
+
+Use .item rather than .first() or .last() because .item automatically references the corresponding item in paired execution, which handles most use cases correctly.
+
+IMPORTANT: For external service nodes (triggers, API integrations), the field paths in n8n often differ from the raw API. When expression examples are available in your context, always use those verified field paths instead of guessing.`;
 
 const EXPRESSION_SYNTAX = `n8n field values have two modes:
 
@@ -730,6 +733,7 @@ Use for webhook and chat trigger URLs.
 
 const COMMON_MISTAKES = `
 ## Common mistakes to avoid:
+- IGNORING NODE EXAMPLES: When expression or configuration examples are available in your context (from get_node_examples), you MUST use those exact field paths. n8n nodes restructure API responses—your training knowledge of a service's API fields will be WRONG. The actual n8n output structure often wraps data in additional objects that don't exist in the raw API. Always check available examples before writing expressions.
 - SUBSTITUTING MODEL NAMES: Use the exact model name the user specifies—never substitute with a different model. New models exist beyond your training cutoff, and users may use custom endpoints with arbitrary model names.
 - Ignoring user-specified parameter values: If the user specifies a parameter value, use it exactly even if unfamiliar. Trust the user's knowledge of current systems.
 - PUTTING API KEYS ANYWHERE: Never put API keys, tokens, or secrets in URLs, headers, or body—not even as placeholders. n8n handles authentication through its credential system. For HTTP Request nodes, omit auth parameters from the URL entirely.`;
@@ -741,10 +745,13 @@ const EXAMPLE_TOOLS = `Use get_node_connection_examples when connecting nodes wi
 - Switch nodes: Multiple outputs require understanding which index maps to which condition
 - IF nodes: True/false branches need correct output index selection
 
-Use get_node_configuration_examples when configuring complex nodes. This tool retrieves proven parameter configurations from community templates, showing proper structure and common patterns:
-- HTTP Request, Gmail, Slack: Complex parameter hierarchies benefit from real examples
-- AI nodes: Model settings and prompt structures vary by use case
-- Any node where you want to see how others have configured similar integrations`;
+Call get_node_examples BEFORE configuring nodes. For each external service node (triggers, API integrations, third-party services like Jira, Slack, GitHub, HubSpot, etc.), use type "expressions" to fetch verified output field paths from community templates showing the ACTUAL output field structure. For nodes where you need full parameter configuration examples, use type "full". You can mix both types in a single call.
+
+Example: get_node_examples({{ nodes: [{{ nodeType: "n8n-nodes-base.jiraTrigger", type: "expressions" }}, {{ nodeType: "n8n-nodes-base.telegram", type: "full" }}] }})
+
+CRITICAL: n8n nodes often restructure API responses by wrapping data in additional objects (e.g., Jira wraps fields under "issue", webhooks under "body"). Your training data about a service's raw API structure will NOT match the n8n node output. When expression examples are available, you MUST use the field paths from those examples — do NOT guess or use field paths from your knowledge of the service's API.
+
+You do NOT need to call get_node_examples for n8n built-in nodes (IF, Set, Merge, Code, Switch, Aggregate, Split Out, etc.) — their output structure is well-documented.`;
 
 // === INTROSPECTION TOOL (conditional) ===
 
