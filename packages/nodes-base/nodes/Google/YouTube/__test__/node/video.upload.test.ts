@@ -48,6 +48,62 @@ describe('Test YouTube, video => upload', () => {
 		jest.clearAllMocks();
 	});
 
+	it('should use binaryData.mimeType over metadata.mimeType when streaming', async () => {
+		const items = [{ json: { data: 'test' } }];
+		mockExecuteFunctions.getInputData.mockReturnValue(items);
+		mockExecuteFunctions.getNodeParameter.mockImplementation((key: string) => {
+			switch (key) {
+				case 'resource':
+					return 'video';
+				case 'operation':
+					return 'upload';
+				case 'title':
+					return 'test';
+				case 'categoryId':
+					return '11';
+				case 'options':
+					return {};
+				case 'binaryProperty':
+					return 'data';
+				default:
+			}
+		});
+
+		// Simulate filesystem binary storage: binaryData has id and mimeType set by user,
+		// but metadata returns a different (incorrect) mimeType from file detection
+		const stream = Readable.from(Buffer.alloc(1024, 'a'));
+		mockExecuteFunctions.helpers = {
+			constructExecutionMetaData: jest.fn(() => []),
+			returnJsonArray: jest.fn(() => []),
+			assertBinaryData: jest.fn(() => ({
+				id: 'filesystem:some-binary-id',
+				mimeType: 'video/mp4',
+				data: 'filesystem',
+			})),
+			getBinaryStream: jest.fn(async () => stream),
+			getBinaryMetadata: jest.fn(async () => ({
+				fileSize: 1024,
+				mimeType: 'application/mp4',
+			})),
+			httpRequest: httpRequestMock,
+		} as any;
+
+		await youTube.execute.call(mockExecuteFunctions);
+
+		expect(genericFunctions.googleApiRequest).toHaveBeenCalledWith(
+			'POST',
+			'/upload/youtube/v3/videos',
+			expect.any(Object),
+			expect.any(Object),
+			undefined,
+			expect.objectContaining({
+				headers: expect.objectContaining({
+					'X-Upload-Content-Type': 'video/mp4',
+				}),
+			}),
+		);
+	});
+
 	it('should create readable from buffer', async () => {
 		const items = [{ json: { data: 'test' } }];
 		mockExecuteFunctions.getInputData.mockReturnValue(items);
