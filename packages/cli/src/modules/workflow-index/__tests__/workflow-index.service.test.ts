@@ -388,6 +388,232 @@ describe('WorkflowIndexService', () => {
 			);
 		});
 
+		it('should extract dataTableId dependency from dataTable node with list mode', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			const workflow = createWorkflow([
+				createNode({
+					id: 'node-1',
+					type: 'n8n-nodes-base.dataTable',
+					parameters: {
+						resource: 'row',
+						operation: 'insert',
+						dataTableId: { mode: 'list', value: 'table-uuid-123' },
+					},
+				}),
+			]);
+
+			await service.updateIndexForDraft(workflow);
+
+			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
+				'workflow-123',
+				expect.objectContaining({
+					dependencies: expect.arrayContaining([
+						expect.objectContaining({
+							dependencyType: 'dataTableId',
+							dependencyKey: 'table-uuid-123',
+							dependencyInfo: { nodeId: 'node-1', nodeVersion: 1, mode: 'list' },
+						}),
+					]),
+				}),
+			);
+		});
+
+		it('should extract dataTableId dependency from dataTable node with id mode', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			const workflow = createWorkflow([
+				createNode({
+					id: 'node-1',
+					type: 'n8n-nodes-base.dataTable',
+					parameters: {
+						dataTableId: { mode: 'id', value: 'custom-id-456' },
+					},
+				}),
+			]);
+
+			await service.updateIndexForDraft(workflow);
+
+			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
+				'workflow-123',
+				expect.objectContaining({
+					dependencies: expect.arrayContaining([
+						expect.objectContaining({
+							dependencyType: 'dataTableId',
+							dependencyKey: 'custom-id-456',
+							dependencyInfo: { nodeId: 'node-1', nodeVersion: 1, mode: 'id' },
+						}),
+					]),
+				}),
+			);
+		});
+
+		it('should extract dataTableId dependency from dataTable node with name mode', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			const workflow = createWorkflow([
+				createNode({
+					id: 'node-1',
+					type: 'n8n-nodes-base.dataTable',
+					parameters: {
+						dataTableId: { mode: 'name', value: 'My Table' },
+					},
+				}),
+			]);
+
+			await service.updateIndexForDraft(workflow);
+
+			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
+				'workflow-123',
+				expect.objectContaining({
+					dependencies: expect.arrayContaining([
+						expect.objectContaining({
+							dependencyType: 'dataTableId',
+							dependencyKey: 'My Table',
+							dependencyInfo: { nodeId: 'node-1', nodeVersion: 1, mode: 'name' },
+						}),
+					]),
+				}),
+			);
+		});
+
+		it('should extract dataTableId from all data-table-related node types', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			const workflow = createWorkflow([
+				createNode({
+					id: 'node-1',
+					type: 'n8n-nodes-base.dataTable',
+					parameters: { dataTableId: { mode: 'list', value: 'table-1' } },
+				}),
+				createNode({
+					id: 'node-2',
+					type: 'n8n-nodes-base.dataTableTool',
+					parameters: { dataTableId: { mode: 'list', value: 'table-2' } },
+				}),
+				createNode({
+					id: 'node-3',
+					type: 'n8n-nodes-base.evaluationTrigger',
+					parameters: { source: 'dataTable', dataTableId: { mode: 'list', value: 'table-3' } },
+				}),
+				createNode({
+					id: 'node-4',
+					type: 'n8n-nodes-base.evaluation',
+					parameters: { source: 'dataTable', dataTableId: { mode: 'list', value: 'table-4' } },
+				}),
+			]);
+
+			await service.updateIndexForDraft(workflow);
+
+			const call = mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mock.calls[0];
+			const dataTableDeps = call[1].dependencies.filter(
+				(d: { dependencyType: string }) => d.dependencyType === 'dataTableId',
+			);
+
+			expect(dataTableDeps).toHaveLength(4);
+			expect(dataTableDeps).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						dependencyKey: 'table-1',
+						dependencyInfo: expect.objectContaining({ nodeId: 'node-1' }),
+					}),
+					expect.objectContaining({
+						dependencyKey: 'table-2',
+						dependencyInfo: expect.objectContaining({ nodeId: 'node-2' }),
+					}),
+					expect.objectContaining({
+						dependencyKey: 'table-3',
+						dependencyInfo: expect.objectContaining({ nodeId: 'node-3' }),
+					}),
+					expect.objectContaining({
+						dependencyKey: 'table-4',
+						dependencyInfo: expect.objectContaining({ nodeId: 'node-4' }),
+					}),
+				]),
+			);
+		});
+
+		it('should skip dataTableId with expression-based values', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			const workflow = createWorkflow([
+				createNode({
+					id: 'node-1',
+					type: 'n8n-nodes-base.dataTable',
+					parameters: {
+						dataTableId: { mode: 'list', value: '={{ $json.tableId }}' },
+					},
+				}),
+			]);
+
+			await service.updateIndexForDraft(workflow);
+
+			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
+				'workflow-123',
+				expect.objectContaining({
+					dependencies: expect.not.arrayContaining([
+						expect.objectContaining({ dependencyType: 'dataTableId' }),
+					]),
+				}),
+			);
+		});
+
+		it('should skip dataTableId when value is empty or missing', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			const workflow = createWorkflow([
+				createNode({
+					id: 'node-1',
+					type: 'n8n-nodes-base.dataTable',
+					parameters: {
+						dataTableId: { mode: 'list', value: '' },
+					},
+				}),
+				createNode({
+					id: 'node-2',
+					type: 'n8n-nodes-base.dataTable',
+					parameters: {},
+				}),
+			]);
+
+			await service.updateIndexForDraft(workflow);
+
+			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
+				'workflow-123',
+				expect.objectContaining({
+					dependencies: expect.not.arrayContaining([
+						expect.objectContaining({ dependencyType: 'dataTableId' }),
+					]),
+				}),
+			);
+		});
+
+		it('should not create dataTableId dependency for non-data-table node types', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			const workflow = createWorkflow([
+				createNode({
+					id: 'node-1',
+					type: 'n8n-nodes-base.httpRequest',
+					parameters: {
+						// Even if someone somehow had a dataTableId param, it shouldn't be indexed
+						dataTableId: { mode: 'list', value: 'table-uuid-123' },
+					},
+				}),
+			]);
+
+			await service.updateIndexForDraft(workflow);
+
+			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
+				'workflow-123',
+				expect.objectContaining({
+					dependencies: expect.not.arrayContaining([
+						expect.objectContaining({ dependencyType: 'dataTableId' }),
+					]),
+				}),
+			);
+		});
+
 		it('should insert placeholder for workflow with no nodes', async () => {
 			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
 
