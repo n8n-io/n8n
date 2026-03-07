@@ -234,6 +234,178 @@ describe('JiraTrigger', () => {
 		});
 	});
 
+	describe('Webhook authentication', () => {
+		let authStaticData: IDataObject;
+
+		beforeEach(() => {
+			authStaticData = {};
+		});
+
+		test('should detect existing webhook with query parameters (NODE-4578)', async () => {
+			const trigger = new JiraTrigger();
+
+			// Simulate an existing webhook with query parameters
+			const existingWebhookUrl = 'https://n8n.local/webhook/id?auth_key=dGVzdF92YWx1ZQ%3D%3D';
+			const baseWebhookUrl = 'https://n8n.local/webhook/id';
+
+			const mockExistsRequest = jest
+				.fn()
+				.mockResolvedValueOnce({ deploymentType: 'Cloud', versionNumbers: [1000, 0, 1] })
+				.mockResolvedValueOnce([
+					{
+						id: 2053,
+						name: 'n8n-webhook:https://n8n.local/webhook/id',
+						url: existingWebhookUrl,
+						events: ['jira:issue_created'],
+						active: true,
+					},
+				]);
+
+			const hookFunctions = mockDeep<IHookFunctions>({
+				getWorkflowStaticData: () => authStaticData,
+				getNode: jest.fn(() => mock<INode>({ typeVersion: 1.1 })),
+				getNodeWebhookUrl: jest.fn(() => baseWebhookUrl),
+				getNodeParameter: jest.fn((param: string) => {
+					if (param === 'events') return ['jira:issue_created'];
+					if (param === 'authenticateWebhook') return true;
+					if (param === 'additionalFields') return {};
+					return {};
+				}),
+				getCredentials: async <T extends object = ICredentialDataDecryptedObject>(
+					credentialType: string,
+				) => {
+					if (credentialType === 'httpQueryAuth') {
+						return {
+							name: 'auth_key',
+							value: 'test_value',
+						} as T;
+					}
+					return {
+						email: 'test@n8n.io',
+						password: 'secret',
+						domain: 'https://jira.local',
+					} as T;
+				},
+				helpers: {
+					requestWithAuthentication: mockExistsRequest,
+				},
+			});
+
+			const exists = await trigger.webhookMethods.default?.checkExists.call(hookFunctions);
+
+			// BUG: This should return true because the webhook exists with query parameters,
+			// but it returns false because the URL comparison fails
+			expect(exists).toBe(true);
+			expect(authStaticData.webhookId).toBe('2053');
+		});
+
+		test('should not create duplicate webhook on restart when using authentication', async () => {
+			const trigger = new JiraTrigger();
+
+			const baseWebhookUrl = 'https://n8n.local/webhook/id';
+			const webhookUrlWithAuth = 'https://n8n.local/webhook/id?auth_key=dGVzdF92YWx1ZQ==';
+
+			// First activation: create webhook
+			const mockCreateRequest = jest.fn().mockResolvedValueOnce({ id: 2053 });
+
+			const createHookFunctions = mockDeep<IHookFunctions>({
+				getWorkflowStaticData: () => authStaticData,
+				getNode: jest.fn(() => mock<INode>({ typeVersion: 1.1 })),
+				getNodeWebhookUrl: jest.fn(() => baseWebhookUrl),
+				getNodeParameter: jest.fn((param: string) => {
+					if (param === 'events') return ['jira:issue_created'];
+					if (param === 'authenticateWebhook') return true;
+					if (param === 'additionalFields') return {};
+					return {};
+				}),
+				getCredentials: async <T extends object = ICredentialDataDecryptedObject>(
+					credentialType: string,
+				) => {
+					if (credentialType === 'httpQueryAuth') {
+						return {
+							name: 'auth_key',
+							value: 'test_value',
+						} as T;
+					}
+					return {
+						email: 'test@n8n.io',
+						password: 'secret',
+						domain: 'https://jira.local',
+					} as T;
+				},
+				helpers: {
+					requestWithAuthentication: mockCreateRequest,
+				},
+			});
+
+			authStaticData.endpoint = '/webhooks/1.0/webhook';
+			await trigger.webhookMethods.default?.create.call(createHookFunctions);
+
+			expect(authStaticData.webhookId).toBe('2053');
+			expect(mockCreateRequest).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					body: expect.objectContaining({
+						url: webhookUrlWithAuth,
+					}),
+				}),
+			);
+
+			// Second activation (restart): check if webhook exists
+			const mockExistsRequest = jest
+				.fn()
+				.mockResolvedValueOnce({ deploymentType: 'Cloud', versionNumbers: [1000, 0, 1] })
+				.mockResolvedValueOnce([
+					{
+						id: 2053,
+						name: 'n8n-webhook:https://n8n.local/webhook/id',
+						url: webhookUrlWithAuth,
+						events: ['jira:issue_created'],
+						active: true,
+					},
+				]);
+
+			const checkHookFunctions = mockDeep<IHookFunctions>({
+				getWorkflowStaticData: () => authStaticData,
+				getNode: jest.fn(() => mock<INode>({ typeVersion: 1.1 })),
+				getNodeWebhookUrl: jest.fn(() => baseWebhookUrl),
+				getNodeParameter: jest.fn((param: string) => {
+					if (param === 'events') return ['jira:issue_created'];
+					if (param === 'authenticateWebhook') return true;
+					if (param === 'additionalFields') return {};
+					return {};
+				}),
+				getCredentials: async <T extends object = ICredentialDataDecryptedObject>(
+					credentialType: string,
+				) => {
+					if (credentialType === 'httpQueryAuth') {
+						return {
+							name: 'auth_key',
+							value: 'test_value',
+						} as T;
+					}
+					return {
+						email: 'test@n8n.io',
+						password: 'secret',
+						domain: 'https://jira.local',
+					} as T;
+				},
+				helpers: {
+					requestWithAuthentication: mockExistsRequest,
+				},
+			});
+
+			const exists = await trigger.webhookMethods.default?.checkExists.call(checkHookFunctions);
+
+			// BUG: Should detect existing webhook and not create a duplicate
+			expect(exists).toBe(true);
+			expect(authStaticData.webhookId).toBe('2053');
+
+			// If checkExists returns false, a new webhook would be created on restart,
+			// resulting in duplicate webhooks in Jira
+		});
+	});
+
 	describe('Webhook', () => {
 		test('should receive a webhook event', async () => {
 			const event = {
