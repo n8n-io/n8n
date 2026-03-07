@@ -21,6 +21,7 @@ import {
 	workflowActivated,
 	workflowDeactivated,
 	workflowAutoDeactivated,
+	workflowUpdated,
 } from '@/app/composables/usePushConnection/handlers';
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
 import { createEventQueue } from '@n8n/utils/event-queue';
@@ -94,6 +95,8 @@ export function usePushConnection({
 				return await workflowDeactivated(event);
 			case 'workflowAutoDeactivated':
 				return await workflowAutoDeactivated(event);
+			case 'workflowUpdated':
+				return await workflowUpdated(event);
 			case 'updateBuilderCredits':
 				return await builderCreditsUpdated(event);
 		}
