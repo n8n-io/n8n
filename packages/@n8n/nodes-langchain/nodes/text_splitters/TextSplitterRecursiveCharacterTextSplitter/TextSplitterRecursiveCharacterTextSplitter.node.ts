@@ -30,6 +30,9 @@ const supportedLanguages: SupportedTextSplitterLanguage[] = [
 	'latex',
 	'html',
 ];
+
+const DEFAULT_SEPARATORS = ['\n\n', '\n', ' ', ''];
+
 export class TextSplitterRecursiveCharacterTextSplitter implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Recursive Character Text Splitter',
@@ -75,6 +78,14 @@ export class TextSplitterRecursiveCharacterTextSplitter implements INodeType {
 				default: 0,
 			},
 			{
+				displayName: 'Separators',
+				name: 'separators',
+				type: 'json',
+				default: DEFAULT_SEPARATORS,
+				description:
+					'JSON array of separators, evaluated in order. Defaults match LangChain.',
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				placeholder: 'Add Option',
@@ -87,7 +98,10 @@ export class TextSplitterRecursiveCharacterTextSplitter implements INodeType {
 						name: 'splitCode',
 						default: 'markdown',
 						type: 'options',
-						options: supportedLanguages.map((lang) => ({ name: lang, value: lang })),
+						options: supportedLanguages.map((lang) => ({
+							name: lang,
+							value: lang,
+						})),
 					},
 				],
 			},
@@ -104,9 +118,31 @@ export class TextSplitterRecursiveCharacterTextSplitter implements INodeType {
 			itemIndex,
 			null,
 		) as SupportedTextSplitterLanguage | null;
+
+		const rawSeparators = this.getNodeParameter(
+			'separators',
+			itemIndex,
+			DEFAULT_SEPARATORS,
+		);
+
+		let separators: string[];
+
+		// If the fallback default was returned
+		if (rawSeparators === null || rawSeparators === undefined) {
+			separators = DEFAULT_SEPARATORS;
+		} else if (
+			Array.isArray(rawSeparators) &&
+			rawSeparators.every((el) => typeof el === 'string')
+		) {
+			separators = rawSeparators;
+		} else {
+			throw new Error('Separators must be a JSON array of strings');
+		}
+
+		const separators: string[] = rawSeparators;
+
 		const params: RecursiveCharacterTextSplitterParams = {
-			// TODO: These are the default values, should we allow the user to change them?
-			separators: ['\n\n', '\n', ' ', ''],
+			separators,
 			chunkSize,
 			chunkOverlap,
 			keepSeparator: false,
