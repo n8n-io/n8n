@@ -117,19 +117,28 @@ Throughput tests also log Postgres diagnostics (tx/s, rows inserted/s, active co
 
 ## Architecture
 
+The benchmark framework uses a composable architecture with four layers:
+
+```
+Spec files (kafka/*.spec.ts)           ← wire driver + scenarios + config
+    ↓ passes
+Generic harnesses (harness/*.ts)       ← orchestrate: setup → generate → measure → report
+    ↓ calls
+TriggerDriver interface                ← encapsulates trigger-specific setup + load generation
+    ↓ implemented by
+kafka-driver.ts                        ← Kafka topic/cred creation, publishing, drain tracking
+    ↓ uses
+Shared building blocks                 ← workflow-builder, execution-sampler, diagnostics, throughput-measure
+```
+
+- **SUT** (`playwright-projects.ts`) — deployment profiles (workers, env vars, resources)
+- **Generator** (`kafka-driver.ts`) — trigger-specific load production and completion tracking
+- **Workflow** (`workflow-builder.ts`) — generic chain builder; any trigger node chains N nodes after it
+- **Measure** (`throughput-measure.ts`, `execution-sampler.ts`, `diagnostics.ts`) — VictoriaMetrics counters, REST API latency sampling, system diagnostics
+
+Adding a new trigger type (e.g., webhook) requires one driver file + one spec file.
+The harnesses, measurement, and reporting work unchanged.
+
 Both suites share the same container stack: n8n + Kafka + Postgres + postgres-exporter + VictoriaMetrics + Vector. Tests run sequentially (1 worker) to avoid resource contention. Each test creates unique topics and credentials via `nanoid()` for logical isolation.
 
 Direct mode tests run on a single n8n process. Queue mode tests use 1 main + N workers, controlled via `KAFKA_LOAD_WORKERS` env var.
-
-```
-playwright-projects.ts (BENCHMARK_PROFILES — deployment configs)
-    └── throughput.spec.ts (single test file, runs in all profiles)
-         └── harness/ (test registration + diagnostics)
-              └── scenarios/ (shared scenario definitions)
-                   └── utils/ (throughput-helper, kafka-workflow-builder, etc.)
-```
-
-- **Profiles** define how to deploy n8n (workers, env vars, resources) — in `playwright-projects.ts`
-- **Scenarios** define what to test (node count, message count, output size, timeouts)
-- **Harnesses** register Playwright tests from scenarios and collect diagnostics
-- **Spec** calls the harness — no per-deployment config needed
