@@ -42,7 +42,11 @@ export class NotionApi implements ICredentialType {
 		// if version it's not set, set it to last one
 		// version is only set when the request is made from
 		// the notion node, or was set explicitly in the http node
-		if (!requestOptions.headers['Notion-Version']) {
+		const hasNotionVersion = Object.keys(requestOptions.headers).some(
+			(key) => key.toLowerCase() === 'notion-version',
+		);
+
+		if (!hasNotionVersion) {
 			requestOptions.headers = {
 				...requestOptions.headers,
 				'Notion-Version': '2022-02-22',
