@@ -14,6 +14,7 @@ type RequestParameters = {
 	enableAnthropicBetas?: {
 		promptTools?: boolean;
 		codeExecution?: boolean;
+		promptCaching?: boolean;
 	};
 };
 
@@ -36,6 +37,10 @@ export async function apiRequest(
 
 	if (parameters?.enableAnthropicBetas?.codeExecution) {
 		betas.push('code-execution-2025-05-22');
+	}
+
+	if (parameters?.enableAnthropicBetas?.promptCaching) {
+		betas.push('prompt-caching-2024-07-31');
 	}
 
 	const requestHeaders: IDataObject = {
