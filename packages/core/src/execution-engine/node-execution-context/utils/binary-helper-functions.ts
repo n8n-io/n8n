@@ -24,6 +24,7 @@ import {
 	BINARY_MODE_SEPARATE,
 	sanitizeFilename,
 } from 'n8n-workflow';
+import { tmpdir } from 'node:os';
 import path from 'path';
 import type { Readable } from 'stream';
 import { URL } from 'url';
@@ -197,6 +198,15 @@ export async function copyBinaryFile(
 	fileName: string,
 	mimeType?: string,
 ): Promise<IBinaryData> {
+	// Validate filePath is within the OS temp directory to prevent arbitrary file reads (CVE-2026-21858)
+	const resolvedPath = path.resolve(filePath);
+	const tempDir = tmpdir();
+	if (!resolvedPath.startsWith(tempDir + path.sep) && resolvedPath !== tempDir) {
+		throw new UnexpectedError(
+			`File path must be within the temp directory. Resolved: ${resolvedPath}`,
+		);
+	}
+
 	let fileExtension: string | undefined;
 	if (!mimeType) {
 		// If no mime type is given figure it out
