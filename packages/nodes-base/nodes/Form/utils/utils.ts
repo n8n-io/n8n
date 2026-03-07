@@ -387,7 +387,7 @@ export function addFormResponseDataToReturnItem(
 			}
 		}
 		if (field.fieldType === 'date' && value && field.formatDate) {
-			const datetime = DateTime.fromFormat(String(value), 'yyyy-mm-dd');
+			const datetime = DateTime.fromFormat(String(value), 'yyyy-MM-dd');
 			value = datetime.toFormat(field.formatDate as string);
 		}
 		if (field.fieldType === 'file' && field.multipleFiles && !Array.isArray(value)) {
