@@ -422,23 +422,23 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	}
 
 	/** Returns the requested resolved (all expressions replaced) node parameters. */
-	getNodeParameter(
+	getNodeParameter<T = NodeParameterValueType | object>(
 		parameterName: string,
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
-	): NodeParameterValueType | object {
+	): T {
 		const itemIndex = 0;
-		return this._getNodeParameter(parameterName, itemIndex, fallbackValue, options);
+		return this._getNodeParameter<T>(parameterName, itemIndex, fallbackValue, options);
 	}
 
-	protected _getNodeParameter(
+	protected _getNodeParameter<T = NodeParameterValueType | object>(
 		parameterName: string,
 		itemIndex: number,
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
-	): NodeParameterValueType | object {
+	): T {
 		const { workflow, node, mode, runExecutionData, runIndex, connectionInputData, executeData } =
 			this;
 
@@ -508,7 +508,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			});
 		}
 
-		if (options?.skipValidation) return returnData;
+		if (options?.skipValidation) return returnData as T;
 
 		// Validate parameter value if it has a schema defined(RMC) or validateType defined
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
