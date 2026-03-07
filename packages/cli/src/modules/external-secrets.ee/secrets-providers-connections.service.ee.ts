@@ -10,7 +10,7 @@ import {
 	reloadSecretProviderConnectionResponseSchema,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { SecretsProviderConnection } from '@n8n/db';
+import type { SecretsProviderConnection, SecretsProviderAccessRole } from '@n8n/db';
 import {
 	ProjectSecretsProviderAccessRepository,
 	SecretsProviderConnectionRepository,
@@ -47,6 +47,7 @@ export class SecretsProvidersConnectionsService {
 	async createConnection(
 		proposedConnection: CreateSecretsProviderConnectionDto,
 		userId: string,
+		projectRole: SecretsProviderAccessRole,
 	): Promise<SecretsProviderConnection> {
 		const existing = await this.repository.findOne({
 			where: { providerKey: proposedConnection.providerKey },
@@ -72,6 +73,7 @@ export class SecretsProvidersConnectionsService {
 				this.projectAccessRepository.create({
 					secretsProviderConnectionId: savedConnection.id,
 					projectId,
+					role: projectRole,
 				}),
 			);
 			await this.projectAccessRepository.save(entries);
@@ -130,7 +132,11 @@ export class SecretsProvidersConnectionsService {
 		await this.repository.save(connection);
 
 		if (updates.projectIds !== undefined) {
-			await this.projectAccessRepository.setProjectAccess(connection.id, updates.projectIds);
+			await this.projectAccessRepository.setProjectAccess(
+				connection.id,
+				updates.projectIds,
+				'secretsProviderConnection:user',
+			);
 		}
 
 		await this.externalSecretsManager.syncProviderConnection(providerKey);
@@ -234,6 +240,7 @@ export class SecretsProvidersConnectionsService {
 			projects: connection.projectAccess.map((access) => ({
 				id: access.project.id,
 				name: access.project.name,
+				role: access.role,
 			})),
 			createdAt: connection.createdAt.toISOString(),
 			updatedAt: connection.updatedAt.toISOString(),
@@ -260,6 +267,7 @@ export class SecretsProvidersConnectionsService {
 			projects: connection.projectAccess.map((access) => ({
 				id: access.project.id,
 				name: access.project.name,
+				role: access.role,
 			})),
 			settings: redactedSettings,
 			createdAt: connection.createdAt.toISOString(),

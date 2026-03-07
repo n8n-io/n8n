@@ -603,4 +603,27 @@ describe('SecretsProviderConnectionModal', () => {
 			expect(notice).toBeInTheDocument();
 		});
 	});
+
+	describe('read-only mode for insufficient role', () => {
+		it('should show read-only notice when connection is not global but user lacks update permission', async () => {
+			mockConnectionModal.isReadOnly.value = true;
+			mockConnectionModal.isSharedGlobally.value = false;
+
+			const { container } = renderComponent({
+				props: {
+					modalName: SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
+					data: {
+						providerKey: 'test-123',
+						providerTypes: mockProviderTypes,
+					},
+				},
+			});
+
+			await nextTick();
+
+			const notice = container.querySelector('[data-test-id="secrets-provider-read-only-notice"]');
+			expect(notice).toBeInTheDocument();
+			expect(notice?.textContent).toContain('Contact your instance admin');
+		});
+	});
 });
