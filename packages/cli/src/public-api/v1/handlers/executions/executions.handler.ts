@@ -149,8 +149,9 @@ export = {
 					workflowIds: workflowId ? [workflowId] : sharedWorkflowsIds,
 
 					// for backward compatibility `running` executions are always excluded
-					// unless the user explicitly filters by `running` status
-					excludedExecutionsIds: status !== 'running' ? runningExecutionsIds : undefined,
+					// unless the user explicitly filters by `running` or `new` status
+					excludedExecutionsIds:
+						status !== 'running' && status !== 'new' ? runningExecutionsIds : undefined,
 				};
 
 			const executions =
