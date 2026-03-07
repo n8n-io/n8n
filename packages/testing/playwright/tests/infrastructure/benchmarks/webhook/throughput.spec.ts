@@ -12,7 +12,7 @@ test.describe(
 	'Webhook Throughput',
 	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
 	() => {
-		test('async: 10 nodes, 10KB, 10KB/node, 50 connections, 60s', async ({
+		test('async: 10 nodes, 10KB payload, 10KB output/node, 50 connections, 60s', async ({
 			api,
 			services,
 			backendUrl,
@@ -41,7 +41,7 @@ test.describe(
 			});
 		});
 
-		test('sync: 10 nodes, 10KB, 10KB/node, 50 connections, 60s', async ({
+		test('sync: 10 nodes, 10KB payload, 10KB output/node, 50 connections, 60s', async ({
 			api,
 			services,
 			backendUrl,

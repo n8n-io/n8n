@@ -28,6 +28,26 @@ const COLUMNS: Column[] = [
 	{ header: 'p50', suffixes: ['duration-p50'], format: (v) => `${v.toFixed(0)}ms` },
 	{ header: 'p95', suffixes: ['duration-p95'], format: (v) => `${v.toFixed(0)}ms` },
 	{ header: 'p99', suffixes: ['duration-p99'], format: (v) => `${v.toFixed(0)}ms` },
+	{
+		header: 'http req/s',
+		suffixes: ['http-requests-avg'],
+		format: (v) => v.toFixed(1),
+	},
+	{
+		header: 'http p50',
+		suffixes: ['http-latency-p50'],
+		format: (v) => `${v.toFixed(0)}ms`,
+	},
+	{
+		header: 'http p99',
+		suffixes: ['http-latency-p99'],
+		format: (v) => `${v.toFixed(0)}ms`,
+	},
+	{
+		header: 'errors',
+		suffixes: ['http-errors', 'executions-errors'],
+		format: (v) => String(v),
+	},
 ];
 
 function extractTrigger(filePath: string): string {
