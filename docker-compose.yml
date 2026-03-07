@@ -1,0 +1,47 @@
+# docker-compose.yml — n8n on N|Solid runtime (Apple M1/M2 MacBook Pro)
+#
+# Usage:
+#   docker compose build
+#   docker compose up
+#
+# Then open http://localhost:5678 — you will be prompted to log in with your
+# existing n8n username and password (or create an owner account on first run).
+#
+# To override the OpenTelemetry collector endpoint, set NSOLID_OTLP_CONFIG in
+# a .env file or pass it as an environment variable:
+#   NSOLID_OTLP_CONFIG='{"url":"http://otel-collector:4318/v1/traces","protocol":"http"}'
+
+services:
+  n8n:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Pin to the latest stable release. Keep in sync with ARG N8N_VERSION in Dockerfile.
+        # Check https://github.com/n8n-io/n8n/releases for newer versions.
+        N8N_VERSION: "2.10.4"
+        NODE_MAJOR: "22"
+    image: n8n-nsolid:latest
+    platform: linux/arm64
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    environment:
+      # ── N|Solid telemetry ──────────────────────────────────────────────────
+      NSOLID_APPNAME: "n8n"
+      NSOLID_TAGS: "production,n8n,workflow-automation"
+      NSOLID_TRACING_ENABLED: "1"
+      NSOLID_OTLP: "otlp"
+      # Override this if you have a local/remote OpenTelemetry collector.
+      # host.docker.internal resolves to the Docker Desktop host (macOS/Windows).
+      # Linux users: replace with the actual collector address or a sidecar service name.
+      NSOLID_OTLP_CONFIG: '{"url":"http://host.docker.internal:4318/v1/traces","protocol":"http"}'
+      # ── n8n settings ───────────────────────────────────────────────────────
+      NODE_ENV: production
+      # Persist n8n data between restarts
+      N8N_USER_FOLDER: /home/node/.n8n
+
+volumes:
+  n8n_data:
