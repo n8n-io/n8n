@@ -105,8 +105,294 @@ describe('WaitingWebhooks', () => {
 
 	describe('findAccessControlOptions', () => {
 		it('should return * as allowed origins', async () => {
-			const options = await waitingWebhooks.findAccessControlOptions();
+			const options = await waitingWebhooks.findAccessControlOptions('test-path', 'POST');
 			expect(options).toEqual({ allowedOrigins: '*' });
+		});
+
+		it('should return * for any path and method', async () => {
+			const options1 = await waitingWebhooks.findAccessControlOptions('exec-123', 'GET');
+			const options2 = await waitingWebhooks.findAccessControlOptions('exec-456/suffix', 'POST');
+			expect(options1).toEqual({ allowedOrigins: '*' });
+			expect(options2).toEqual({ allowedOrigins: '*' });
+		});
+	});
+
+	describe('resolveMethods (IWebhookMethodResolver)', () => {
+		it('should delegate to getWebhookMethods', async () => {
+			executionRepository.findSingleExecution.mockResolvedValue(undefined);
+
+			const methods = await waitingWebhooks.resolveMethods('exec-123');
+			expect(methods).toEqual([]);
+		});
+	});
+
+	describe('getWebhookMethods', () => {
+		beforeEach(() => {
+			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+		});
+
+		it('should return empty array for empty path', async () => {
+			const methods = await waitingWebhooks.getWebhookMethods('');
+			expect(methods).toEqual([]);
+		});
+
+		it('should return empty array for invalid executionId', async () => {
+			executionRepository.findSingleExecution.mockResolvedValue(undefined);
+
+			const methods = await waitingWebhooks.getWebhookMethods('invalid-id');
+			expect(methods).toEqual([]);
+		});
+
+		it('should return empty array for finished execution', async () => {
+			executionRepository.findSingleExecution.mockResolvedValue(
+				mock<IExecutionResponse>({
+					finished: true,
+					status: 'success',
+				}),
+			);
+
+			const methods = await waitingWebhooks.getWebhookMethods('exec-123');
+			expect(methods).toEqual([]);
+		});
+
+		it('should return empty array for cancelled execution', async () => {
+			executionRepository.findSingleExecution.mockResolvedValue(
+				mock<IExecutionResponse>({
+					finished: false,
+					status: 'canceled',
+				}),
+			);
+
+			const methods = await waitingWebhooks.getWebhookMethods('exec-123');
+			expect(methods).toEqual([]);
+		});
+
+		it('should return empty array for error execution', async () => {
+			executionRepository.findSingleExecution.mockResolvedValue(
+				mock<IExecutionResponse>({
+					finished: false,
+					status: 'error',
+				}),
+			);
+
+			const methods = await waitingWebhooks.getWebhookMethods('exec-123');
+			expect(methods).toEqual([]);
+		});
+
+		it('should return empty array for crashed execution', async () => {
+			executionRepository.findSingleExecution.mockResolvedValue(
+				mock<IExecutionResponse>({
+					finished: false,
+					status: 'crashed',
+				}),
+			);
+
+			const methods = await waitingWebhooks.getWebhookMethods('exec-123');
+			expect(methods).toEqual([]);
+		});
+
+		it('should return empty array for running execution', async () => {
+			executionRepository.findSingleExecution.mockResolvedValue(
+				mock<IExecutionResponse>({
+					finished: false,
+					status: 'running',
+				}),
+			);
+
+			const methods = await waitingWebhooks.getWebhookMethods('exec-123');
+			expect(methods).toEqual([]);
+		});
+
+		it('should return empty array when execution data is missing', async () => {
+			executionRepository.findSingleExecution.mockResolvedValue(
+				mock<IExecutionResponse>({
+					finished: false,
+					status: 'waiting',
+					data: undefined,
+				}),
+			);
+
+			const methods = await waitingWebhooks.getWebhookMethods('exec-123');
+			expect(methods).toEqual([]);
+		});
+
+		it('should return empty array when lastNodeExecuted is missing', async () => {
+			executionRepository.findSingleExecution.mockResolvedValue(
+				mock<IExecutionResponse>({
+					finished: false,
+					status: 'waiting',
+					data: {
+						resultData: {
+							lastNodeExecuted: undefined,
+						},
+					},
+				}),
+			);
+
+			const methods = await waitingWebhooks.getWebhookMethods('exec-123');
+			expect(methods).toEqual([]);
+		});
+
+		it('should return empty array when node not found in workflow', async () => {
+			const execution = mock<IExecutionResponse>({
+				finished: false,
+				status: 'waiting',
+				data: {
+					resultData: {
+						lastNodeExecuted: 'NonExistentNode',
+					},
+				},
+				workflowData: {
+					id: 'workflow-1',
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+					active: true,
+					settings: {},
+					staticData: {},
+					isArchived: false,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				},
+			});
+
+			executionRepository.findSingleExecution.mockResolvedValue(execution);
+
+			const methods = await waitingWebhooks.getWebhookMethods('exec-123');
+			expect(methods).toEqual([]);
+		});
+
+		it('should return empty array on database error', async () => {
+			executionRepository.findSingleExecution.mockRejectedValue(new Error('Database error'));
+
+			const methods = await waitingWebhooks.getWebhookMethods('exec-123');
+			expect(methods).toEqual([]);
+		});
+
+		it('should return methods for valid waiting execution', async () => {
+			const execution = mock<IExecutionResponse>({
+				finished: false,
+				status: 'waiting',
+				data: {
+					resultData: {
+						lastNodeExecuted: 'WaitNode',
+					},
+				},
+				workflowData: {
+					id: 'workflow-1',
+					name: 'Test Workflow',
+					nodes: [
+						{
+							name: 'WaitNode',
+							type: 'n8n-nodes-base.wait',
+							typeVersion: 1,
+							parameters: {},
+							id: 'node-1',
+							position: [0, 0],
+						},
+					],
+					connections: {},
+					active: true,
+					settings: {},
+					staticData: {},
+					isArchived: false,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				},
+			});
+
+			executionRepository.findSingleExecution.mockResolvedValue(execution);
+
+			mockWebhookService.getNodeWebhooks.mockReturnValue([
+				{
+					httpMethod: 'POST',
+					path: '',
+					webhookDescription: {
+						restartWebhook: true,
+						httpMethod: 'POST',
+						name: 'default',
+						path: '',
+						nodeType: undefined,
+					} as any,
+				},
+				{
+					httpMethod: 'GET',
+					path: '',
+					webhookDescription: {
+						restartWebhook: true,
+						httpMethod: 'GET',
+						name: 'default',
+						path: '',
+						nodeType: undefined,
+					} as any,
+				},
+			] as any);
+
+			const methods = await waitingWebhooks.getWebhookMethods('exec-123');
+			expect(methods).toEqual(['POST', 'GET']);
+		});
+
+		it('should filter methods by suffix when provided', async () => {
+			const execution = mock<IExecutionResponse>({
+				finished: false,
+				status: 'waiting',
+				data: {
+					resultData: {
+						lastNodeExecuted: 'WaitNode',
+					},
+				},
+				workflowData: {
+					id: 'workflow-1',
+					name: 'Test Workflow',
+					nodes: [
+						{
+							name: 'WaitNode',
+							type: 'n8n-nodes-base.wait',
+							typeVersion: 1,
+							parameters: {},
+							id: 'node-1',
+							position: [0, 0],
+						},
+					],
+					connections: {},
+					active: true,
+					settings: {},
+					staticData: {},
+					isArchived: false,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				},
+			});
+
+			executionRepository.findSingleExecution.mockResolvedValue(execution);
+
+			mockWebhookService.getNodeWebhooks.mockReturnValue([
+				{
+					httpMethod: 'POST',
+					path: 'suffix',
+					webhookDescription: {
+						restartWebhook: true,
+						httpMethod: 'POST',
+						name: 'default',
+						path: 'suffix',
+						nodeType: undefined,
+					} as any,
+				},
+				{
+					httpMethod: 'GET',
+					path: '',
+					webhookDescription: {
+						restartWebhook: true,
+						httpMethod: 'GET',
+						name: 'default',
+						path: '',
+						nodeType: undefined,
+					} as any,
+				},
+			] as any);
+
+			const methods = await waitingWebhooks.getWebhookMethods('exec-123/suffix');
+			expect(methods).toEqual(['POST']);
 		});
 	});
 

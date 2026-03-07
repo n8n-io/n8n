@@ -13,6 +13,7 @@ import {
 import {
 	FORM_NODE_TYPE,
 	type INodes,
+	type IHttpRequestMethods,
 	type IWorkflowBase,
 	NodeConnectionTypes,
 	SEND_AND_WAIT_OPERATION,
@@ -26,7 +27,9 @@ import type {
 	IWebhookResponseCallbackData,
 	IWebhookManager,
 	WaitingWebhookRequest,
+	WebhookAccessControlOptions,
 } from './webhook.types';
+import type { IWebhookMethodResolver } from './webhook-method-resolver.types';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -41,9 +44,11 @@ import { preserveInputOverride } from '@/workflow-helpers';
  * Service for handling the execution of webhooks of Wait nodes that use the
  * [Resume On Webhook Call](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/#on-webhook-call)
  * feature.
+ *
+ * Implements IWebhookMethodResolver to provide explicit method resolution for CORS preflight.
  */
 @Service()
-export class WaitingWebhooks implements IWebhookManager {
+export class WaitingWebhooks implements IWebhookManager, IWebhookMethodResolver {
 	protected includeForms = false;
 
 	constructor(
@@ -54,11 +59,170 @@ export class WaitingWebhooks implements IWebhookManager {
 		private readonly instanceSettings: InstanceSettings,
 	) {}
 
-	// TODO: implement `getWebhookMethods` for CORS support
+	/**
+	 * Resolves HTTP methods supported by a waiting webhook (implements IWebhookMethodResolver).
+	 *
+	 * Path format: `{executionId}` or `{executionId}/{suffix}`
+	 * - `executionId`: The execution ID waiting for webhook resume
+	 * - `suffix`: Optional webhook suffix (used when multiple wait nodes exist)
+	 *
+	 * **Security Contract:**
+	 * - Returns empty array for invalid/missing executions (prevents information disclosure)
+	 * - Returns empty array for finished/cancelled executions (no webhook can resume them)
+	 * - Returns empty array for executions in invalid states (running, error, crashed)
+	 * - Only returns methods for webhooks that can actually resume the execution
+	 *
+	 * **Why empty array instead of throwing:**
+	 * - CORS preflight requests should not reveal execution existence/state
+	 * - Empty methods list results in proper CORS rejection without information leak
+	 * - Actual webhook execution will throw appropriate errors with proper context
+	 *
+	 * @param path - Webhook path (executionId or executionId/suffix)
+	 * @returns Promise resolving to array of supported HTTP methods
+	 */
+	async resolveMethods(path: string): Promise<IHttpRequestMethods[]> {
+		return this.getWebhookMethods(path);
+	}
 
-	async findAccessControlOptions() {
-		// waiting webhooks do not support cors configuration options
-		// allow all origins because waiting webhook forms are always submitted in cors mode due to sandbox CSP
+	/**
+	 * Gets all HTTP methods supported by a waiting webhook for the given path.
+	 *
+	 * This method implements the core logic for method resolution, which is then
+	 * exposed via the IWebhookMethodResolver interface.
+	 *
+	 * **Edge Cases Handled:**
+	 * - Execution doesn't exist → [] (prevents information disclosure)
+	 * - Execution finished → [] (webhook can't resume finished execution)
+	 * - Execution cancelled → [] (webhook can't resume cancelled execution)
+	 * - Execution running → [] (webhook can't resume running execution)
+	 * - Execution errored/crashed → [] (webhook can't resume failed execution)
+	 * - Invalid executionId format → [] (graceful degradation)
+	 * - Node not found → [] (workflow structure changed)
+	 */
+	async getWebhookMethods(path: string): Promise<IHttpRequestMethods[]> {
+		// Type guard: Ensure path is a non-empty string
+		if (typeof path !== 'string' || path.length === 0) {
+			return [];
+		}
+
+		// Parse path: format is {executionId} or {executionId}/{suffix}
+		const pathParts = path.split('/');
+		const executionId = pathParts[0];
+		const suffix = pathParts.slice(1).join('/') || undefined;
+
+		// Edge case: Empty or invalid executionId
+		if (!executionId || executionId.trim().length === 0) {
+			// Return empty array to avoid information disclosure
+			return [];
+		}
+
+		try {
+			const execution = await this.getExecution(executionId);
+
+			// Edge case: Execution doesn't exist
+			if (!execution) {
+				// Return empty array to prevent information disclosure about execution existence
+				return [];
+			}
+
+			// Edge case: Execution finished (success, error, cancelled, crashed)
+			// A finished execution cannot be resumed via webhook
+			if (execution.finished) {
+				return [];
+			}
+
+			// Edge case: Execution is running (shouldn't happen for waiting webhooks, but handle gracefully)
+			if (execution.status === 'running') {
+				return [];
+			}
+
+			// Edge case: Execution has errors (crashed, error status)
+			// These executions cannot be resumed via webhook
+			if (execution.status === 'error' || execution.status === 'crashed' || execution.status === 'canceled') {
+				return [];
+			}
+
+			// Type guard: Ensure execution has required data structure
+			if (!execution.data?.resultData?.lastNodeExecuted) {
+				return [];
+			}
+
+			// Type assertion: We've verified lastNodeExecuted exists above
+			const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
+			if (typeof lastNodeExecuted !== 'string' || lastNodeExecuted.length === 0) {
+				return [];
+			}
+			const { workflowData } = execution;
+			const workflow = this.createWorkflow(workflowData);
+
+			// Edge case: Node that was waiting no longer exists in workflow
+			// (workflow was modified after execution started)
+			const workflowStartNode = workflow.getNode(lastNodeExecuted);
+			if (workflowStartNode === null) {
+				return [];
+			}
+
+			const additionalData = await WorkflowExecuteAdditionalData.getBase({
+				workflowId: workflow.id,
+			});
+
+			const webhooks = this.webhookService.getNodeWebhooks(
+				workflow,
+				workflowStartNode,
+				additionalData,
+			);
+
+			// Filter to only webhooks that match the path and can resume this execution
+			const matchingWebhooks = webhooks.filter(
+				(webhook) =>
+					webhook.path === (suffix ?? '') &&
+					webhook.webhookDescription.restartWebhook === true &&
+					(webhook.webhookDescription.nodeType === 'form' || false) === this.includeForms,
+			);
+
+			return matchingWebhooks.map((webhook) => webhook.httpMethod);
+		} catch (error) {
+			// Edge case: Database errors, invalid data, etc.
+			// Log for debugging but return empty array to avoid information disclosure
+			this.logger.debug(`Failed to get webhook methods for path "${path}": ${error}`);
+			return [];
+		}
+	}
+
+	/**
+	 * Finds CORS access control options for a waiting webhook.
+	 *
+	 * **Contract:** Always returns `{ allowedOrigins: '*' }` for waiting webhooks.
+	 *
+	 * **Why wildcard origins are allowed:**
+	 * 1. Waiting webhook URLs are cryptographically signed and time-limited
+	 * 2. Forms rendered by waiting webhooks use Content Security Policy (CSP) sandboxing
+	 * 3. Forms must be submittable from any origin due to CSP restrictions
+	 * 4. The security model relies on URL secrecy and signatures, not origin restrictions
+	 *
+	 * **Browser Preflight Behavior:**
+	 * - Browsers send OPTIONS requests before POST/PUT/PATCH with custom headers
+	 * - Browsers from `file://` URLs send `Origin: null` (string "null")
+	 * - Browsers may omit Origin header in some edge cases
+	 * - This method ensures all preflight requests succeed regardless of origin
+	 *
+	 * **Security Note:**
+	 * - Waiting webhook URLs should be treated as secrets
+	 * - URLs include HMAC signatures that prevent tampering
+	 * - Origin-based restrictions would break legitimate form submissions
+	 *
+	 * @param _path - Execution ID path (unused, kept for interface compatibility)
+	 * @param _httpMethod - HTTP method (unused, kept for interface compatibility)
+	 * @returns Always returns `{ allowedOrigins: '*' }`
+	 */
+	async findAccessControlOptions(
+		_path: string,
+		_httpMethod: IHttpRequestMethods,
+	): Promise<WebhookAccessControlOptions | undefined> {
+		// Waiting webhooks intentionally allow all origins (*) because:
+		// 1. Security is enforced via URL signatures, not origin restrictions
+		// 2. Forms must work from any origin due to CSP sandbox requirements
+		// 3. Browser preflight requests need to succeed regardless of origin
 		return {
 			allowedOrigins: '*',
 		};
