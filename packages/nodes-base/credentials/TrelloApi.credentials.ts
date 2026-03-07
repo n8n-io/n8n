@@ -33,9 +33,11 @@ export class TrelloApi implements ICredentialType {
 		{
 			displayName: 'OAuth Secret',
 			name: 'oauthSecret',
-			type: 'hidden',
+			type: 'string',
 			typeOptions: { password: true },
 			default: '',
+			description:
+				'The OAuth secret used to verify webhook signatures. Find it on your <a href="https://trello.com/power-ups/admin" target="_blank">Power-Up admin page</a> under "API Key".',
 		},
 	];
 
