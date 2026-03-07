@@ -18,7 +18,19 @@ export async function getTools(this: ILoadOptionsFunctions): Promise<INodeProper
 		serverTransport = 'sse';
 		endpointUrl = this.getNodeParameter('sseEndpoint') as string;
 	} else {
-		serverTransport = this.getNodeParameter('serverTransport') as McpServerTransport;
+		// Get serverTransport parameter with proper fallback based on version
+		// For version 1.1, default is 'sse', for 1.2+ default is 'httpStreamable'
+		const defaultTransport: McpServerTransport =
+			node.typeVersion >= 1.2 ? 'httpStreamable' : 'sse';
+		
+		const transportParam = this.getNodeParameter('serverTransport', 0, defaultTransport);
+		serverTransport = (transportParam as McpServerTransport) || defaultTransport;
+		
+		// Validate transport value
+		if (serverTransport !== 'sse' && serverTransport !== 'httpStreamable') {
+			serverTransport = defaultTransport;
+		}
+		
 		endpointUrl = this.getNodeParameter('endpointUrl') as string;
 	}
 	const { headers } = await getAuthHeaders(this, authentication);

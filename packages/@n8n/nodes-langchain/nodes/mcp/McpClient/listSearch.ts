@@ -14,7 +14,17 @@ export async function getTools(
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
 	const authentication = this.getNodeParameter('authentication') as McpAuthenticationOption;
-	const serverTransport = this.getNodeParameter('serverTransport') as McpServerTransport;
+	const defaultTransport: McpServerTransport = 'httpStreamable';
+	const transportParam = this.getNodeParameter('serverTransport', 0, defaultTransport);
+	const serverTransport = ((transportParam as McpServerTransport) || defaultTransport) as McpServerTransport;
+	
+	// Validate transport value
+	if (serverTransport !== 'sse' && serverTransport !== 'httpStreamable') {
+		throw new Error(
+			`Invalid serverTransport value: "${serverTransport}". Must be either "sse" or "httpStreamable"`,
+		);
+	}
+	
 	const endpointUrl = this.getNodeParameter('endpointUrl') as string;
 	const node = this.getNode();
 	const { headers } = await getAuthHeaders(this, authentication);

@@ -1,5 +1,6 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { McpError, ErrorCode, CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import { mock, mockDeep } from 'jest-mock-extended';
 import { StructuredToolkit } from 'n8n-core';
@@ -16,6 +17,7 @@ import { getTools } from '../loadOptions';
 import { McpClientTool } from '../McpClientTool.node';
 
 jest.mock('@modelcontextprotocol/sdk/client/sse.js');
+jest.mock('@modelcontextprotocol/sdk/client/streamableHttp.js');
 jest.mock('@modelcontextprotocol/sdk/client/index.js');
 
 describe('McpClientTool', () => {
@@ -851,6 +853,477 @@ describe('McpClientTool', () => {
 				CallToolResultSchema,
 				{ timeout: 12345 },
 			);
+		});
+
+		it('should fallback to httpStreamable for version 1.2+ when serverTransport is missing', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				content: [{ type: 'text', text: 'Weather is sunny' }],
+			});
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'get_weather',
+						description: 'Gets the weather',
+						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
+					},
+				],
+			});
+			const mockNode = mock<INode>({ typeVersion: 1.2, type: 'mcpClientTool' });
+			const mockExecuteFunctions = mockDeep<IExecuteFunctions>();
+			mockExecuteFunctions.getNode.mockReturnValue(mockNode);
+			mockExecuteFunctions.getInputData.mockReturnValue([
+				{
+					json: {
+						tool: 'get_weather',
+						location: 'Berlin',
+					},
+				},
+			]);
+			// Simulate missing serverTransport parameter - should fallback to httpStreamable
+			mockExecuteFunctions.getNodeParameter.mockImplementation((key, _idx, defaultValue) => {
+				const params: Record<string, any> = {
+					include: 'all',
+					authentication: 'none',
+					endpointUrl: 'https://test.com/mcp',
+					'options.timeout': 60000,
+				};
+				// Don't include serverTransport to test fallback
+				return params[key] ?? defaultValue;
+			});
+
+			await new McpClientTool().execute.call(mockExecuteFunctions);
+
+			// Verify that StreamableHTTPClientTransport was used (not SSE)
+			expect(Client.prototype.callTool).toHaveBeenCalledWith(
+				{
+					name: 'get_weather',
+					arguments: { location: 'Berlin' },
+				},
+				CallToolResultSchema,
+				{ timeout: 60000 },
+			);
+		});
+
+		it('should fallback to sse for version 1.1 when serverTransport is missing', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				content: [{ type: 'text', text: 'Weather is sunny' }],
+			});
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'get_weather',
+						description: 'Gets the weather',
+						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
+					},
+				],
+			});
+			const mockNode = mock<INode>({ typeVersion: 1.1, type: 'mcpClientTool' });
+			const mockExecuteFunctions = mockDeep<IExecuteFunctions>();
+			mockExecuteFunctions.getNode.mockReturnValue(mockNode);
+			mockExecuteFunctions.getInputData.mockReturnValue([
+				{
+					json: {
+						tool: 'get_weather',
+						location: 'Berlin',
+					},
+				},
+			]);
+			// For version 1.1, serverTransport should default to 'sse'
+			mockExecuteFunctions.getNodeParameter.mockImplementation((key, _idx, defaultValue) => {
+				const params: Record<string, any> = {
+					include: 'all',
+					authentication: 'none',
+					endpointUrl: 'https://test.com/mcp',
+					'options.timeout': 60000,
+				};
+				// Don't include serverTransport to test fallback
+				return params[key] ?? defaultValue;
+			});
+
+			await new McpClientTool().execute.call(mockExecuteFunctions);
+
+			expect(Client.prototype.callTool).toHaveBeenCalledWith(
+				{
+					name: 'get_weather',
+					arguments: { location: 'Berlin' },
+				},
+				CallToolResultSchema,
+				{ timeout: 60000 },
+			);
+		});
+
+		it('should use httpStreamable transport when explicitly set for version 1.2', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				content: [{ type: 'text', text: 'Weather is sunny' }],
+			});
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'get_weather',
+						description: 'Gets the weather',
+						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
+					},
+				],
+			});
+			const mockNode = mock<INode>({ typeVersion: 1.2, type: 'mcpClientTool' });
+			const mockExecuteFunctions = mockDeep<IExecuteFunctions>();
+			mockExecuteFunctions.getNode.mockReturnValue(mockNode);
+			mockExecuteFunctions.getInputData.mockReturnValue([
+				{
+					json: {
+						tool: 'get_weather',
+						location: 'Berlin',
+					},
+				},
+			]);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((key, _idx, defaultValue) => {
+				const params: Record<string, any> = {
+					include: 'all',
+					authentication: 'none',
+					serverTransport: 'httpStreamable', // Explicitly set to httpStreamable
+					endpointUrl: 'https://test.com/mcp',
+					'options.timeout': 60000,
+				};
+				return params[key] ?? defaultValue;
+			});
+
+			await new McpClientTool().execute.call(mockExecuteFunctions);
+
+			// Verify StreamableHTTPClientTransport was instantiated (not SSE)
+			expect(StreamableHTTPClientTransport).toHaveBeenCalled();
+			expect(SSEClientTransport).not.toHaveBeenCalled();
+			expect(Client.prototype.callTool).toHaveBeenCalled();
+		});
+
+		it('should use sse transport when explicitly set for version 1.2', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				content: [{ type: 'text', text: 'Weather is sunny' }],
+			});
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'get_weather',
+						description: 'Gets the weather',
+						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
+					},
+				],
+			});
+			const mockNode = mock<INode>({ typeVersion: 1.2, type: 'mcpClientTool' });
+			const mockExecuteFunctions = mockDeep<IExecuteFunctions>();
+			mockExecuteFunctions.getNode.mockReturnValue(mockNode);
+			mockExecuteFunctions.getInputData.mockReturnValue([
+				{
+					json: {
+						tool: 'get_weather',
+						location: 'Berlin',
+					},
+				},
+			]);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((key, _idx, defaultValue) => {
+				const params: Record<string, any> = {
+					include: 'all',
+					authentication: 'none',
+					serverTransport: 'sse', // Explicitly set to sse
+					endpointUrl: 'https://test.com/mcp',
+					'options.timeout': 60000,
+				};
+				return params[key] ?? defaultValue;
+			});
+
+			await new McpClientTool().execute.call(mockExecuteFunctions);
+
+			// Verify SSEClientTransport was instantiated (not HTTP)
+			expect(SSEClientTransport).toHaveBeenCalled();
+			expect(StreamableHTTPClientTransport).not.toHaveBeenCalled();
+			expect(Client.prototype.callTool).toHaveBeenCalled();
+		});
+
+		it('should handle invalid serverTransport value and fallback to default for version 1.2', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				content: [{ type: 'text', text: 'Weather is sunny' }],
+			});
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'get_weather',
+						description: 'Gets the weather',
+						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
+					},
+				],
+			});
+			const mockNode = mock<INode>({ typeVersion: 1.2, type: 'mcpClientTool' });
+			const mockExecuteFunctions = mockDeep<IExecuteFunctions>();
+			mockExecuteFunctions.getNode.mockReturnValue(mockNode);
+			mockExecuteFunctions.logger = { warn: jest.fn(), debug: jest.fn(), error: jest.fn() } as any;
+			mockExecuteFunctions.getInputData.mockReturnValue([
+				{
+					json: {
+						tool: 'get_weather',
+						location: 'Berlin',
+					},
+				},
+			]);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((key, _idx, defaultValue) => {
+				const params: Record<string, any> = {
+					include: 'all',
+					authentication: 'none',
+					serverTransport: 'invalidTransport', // Invalid value
+					endpointUrl: 'https://test.com/mcp',
+					'options.timeout': 60000,
+				};
+				return params[key] ?? defaultValue;
+			});
+
+			// Should throw error from connectMcpClient validation
+			await expect(
+				new McpClientTool().execute.call(mockExecuteFunctions),
+			).rejects.toThrow(NodeOperationError);
+		});
+	});
+
+	describe('supplyData transport selection', () => {
+		beforeEach(() => {
+			jest.resetAllMocks();
+		});
+
+		it('should use httpStreamable transport when explicitly set in supplyData', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'MyTool',
+						description: 'MyTool does something',
+						inputSchema: { type: 'object', properties: { input: { type: 'string' } } },
+					},
+				],
+			});
+
+			const mockNode = mock<INode>({ typeVersion: 1.2, type: 'mcpClientTool' });
+			const mockSupplyDataFunctions = mockDeep<ISupplyDataFunctions>();
+			mockSupplyDataFunctions.getNode.mockReturnValue(mockNode);
+			mockSupplyDataFunctions.logger = { warn: jest.fn(), debug: jest.fn(), error: jest.fn() } as any;
+			mockSupplyDataFunctions.getNodeParameter.mockImplementation((key, _idx, defaultValue) => {
+				const params: Record<string, any> = {
+					include: 'all',
+					authentication: 'none',
+					serverTransport: 'httpStreamable', // Explicitly set
+					endpointUrl: 'https://test.com/mcp',
+					'options.timeout': 60000,
+				};
+				return params[key] ?? defaultValue;
+			});
+			mockSupplyDataFunctions.addInputData = jest.fn(() => ({ index: 0 }));
+
+			await new McpClientTool().supplyData.call(mockSupplyDataFunctions, 0);
+
+			// Verify StreamableHTTPClientTransport was used
+			expect(StreamableHTTPClientTransport).toHaveBeenCalled();
+			expect(SSEClientTransport).not.toHaveBeenCalled();
+		});
+
+		it('should fallback to httpStreamable when serverTransport is missing in supplyData for version 1.2', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'MyTool',
+						description: 'MyTool does something',
+						inputSchema: { type: 'object', properties: { input: { type: 'string' } } },
+					},
+				],
+			});
+
+			const mockNode = mock<INode>({ typeVersion: 1.2, type: 'mcpClientTool' });
+			const mockSupplyDataFunctions = mockDeep<ISupplyDataFunctions>();
+			mockSupplyDataFunctions.getNode.mockReturnValue(mockNode);
+			mockSupplyDataFunctions.logger = { warn: jest.fn(), debug: jest.fn(), error: jest.fn() } as any;
+			mockSupplyDataFunctions.getNodeParameter.mockImplementation((key, _idx, defaultValue) => {
+				const params: Record<string, any> = {
+					include: 'all',
+					authentication: 'none',
+					endpointUrl: 'https://test.com/mcp',
+					'options.timeout': 60000,
+					// serverTransport is missing - should fallback
+				};
+				return params[key] ?? defaultValue;
+			});
+			mockSupplyDataFunctions.addInputData = jest.fn(() => ({ index: 0 }));
+
+			await new McpClientTool().supplyData.call(mockSupplyDataFunctions, 0);
+
+			// Verify StreamableHTTPClientTransport was used (fallback for 1.2+)
+			expect(StreamableHTTPClientTransport).toHaveBeenCalled();
+			expect(SSEClientTransport).not.toHaveBeenCalled();
+		});
+
+		it('should use sse transport when explicitly set in supplyData', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'MyTool',
+						description: 'MyTool does something',
+						inputSchema: { type: 'object', properties: { input: { type: 'string' } } },
+					},
+				],
+			});
+
+			const mockNode = mock<INode>({ typeVersion: 1.2, type: 'mcpClientTool' });
+			const mockSupplyDataFunctions = mockDeep<ISupplyDataFunctions>();
+			mockSupplyDataFunctions.getNode.mockReturnValue(mockNode);
+			mockSupplyDataFunctions.logger = { warn: jest.fn(), debug: jest.fn(), error: jest.fn() } as any;
+			mockSupplyDataFunctions.getNodeParameter.mockImplementation((key, _idx, defaultValue) => {
+				const params: Record<string, any> = {
+					include: 'all',
+					authentication: 'none',
+					serverTransport: 'sse', // Explicitly set to sse
+					endpointUrl: 'https://test.com/mcp',
+					'options.timeout': 60000,
+				};
+				return params[key] ?? defaultValue;
+			});
+			mockSupplyDataFunctions.addInputData = jest.fn(() => ({ index: 0 }));
+
+			await new McpClientTool().supplyData.call(mockSupplyDataFunctions, 0);
+
+			// Verify SSEClientTransport was used
+			expect(SSEClientTransport).toHaveBeenCalled();
+			expect(StreamableHTTPClientTransport).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('loadOptions: getTools transport selection', () => {
+		beforeEach(() => {
+			jest.resetAllMocks();
+		});
+
+		it('should use httpStreamable transport when explicitly set in getTools', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'MyTool',
+						description: 'MyTool does something',
+						inputSchema: { type: 'object', properties: { input: { type: 'string' } } },
+					},
+				],
+			});
+
+			const mockNode = mock<INode>({ typeVersion: 1.2, type: 'mcpClientTool' });
+			const mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>();
+			mockLoadOptionsFunctions.getNode.mockReturnValue(mockNode);
+			mockLoadOptionsFunctions.getNodeParameter.mockImplementation((key, _idx, defaultValue) => {
+				const params: Record<string, any> = {
+					authentication: 'none',
+					serverTransport: 'httpStreamable', // Explicitly set
+					endpointUrl: 'https://test.com/mcp',
+				};
+				return params[key] ?? defaultValue;
+			});
+
+			await getTools.call(mockLoadOptionsFunctions);
+
+			// Verify StreamableHTTPClientTransport was used
+			expect(StreamableHTTPClientTransport).toHaveBeenCalled();
+			expect(SSEClientTransport).not.toHaveBeenCalled();
+		});
+
+		it('should fallback to httpStreamable when serverTransport is missing in getTools for version 1.2', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'MyTool',
+						description: 'MyTool does something',
+						inputSchema: { type: 'object', properties: { input: { type: 'string' } } },
+					},
+				],
+			});
+
+			const mockNode = mock<INode>({ typeVersion: 1.2, type: 'mcpClientTool' });
+			const mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>();
+			mockLoadOptionsFunctions.getNode.mockReturnValue(mockNode);
+			mockLoadOptionsFunctions.getNodeParameter.mockImplementation((key, _idx, defaultValue) => {
+				const params: Record<string, any> = {
+					authentication: 'none',
+					endpointUrl: 'https://test.com/mcp',
+					// serverTransport is missing - should fallback
+				};
+				return params[key] ?? defaultValue;
+			});
+
+			await getTools.call(mockLoadOptionsFunctions);
+
+			// Verify StreamableHTTPClientTransport was used (fallback for 1.2+)
+			expect(StreamableHTTPClientTransport).toHaveBeenCalled();
+			expect(SSEClientTransport).not.toHaveBeenCalled();
+		});
+
+		it('should fallback to sse when serverTransport is missing in getTools for version 1.1', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'MyTool',
+						description: 'MyTool does something',
+						inputSchema: { type: 'object', properties: { input: { type: 'string' } } },
+					},
+				],
+			});
+
+			const mockNode = mock<INode>({ typeVersion: 1.1, type: 'mcpClientTool' });
+			const mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>();
+			mockLoadOptionsFunctions.getNode.mockReturnValue(mockNode);
+			mockLoadOptionsFunctions.getNodeParameter.mockImplementation((key, _idx, defaultValue) => {
+				const params: Record<string, any> = {
+					authentication: 'none',
+					endpointUrl: 'https://test.com/mcp',
+					// serverTransport is missing - should fallback to sse for 1.1
+				};
+				return params[key] ?? defaultValue;
+			});
+
+			await getTools.call(mockLoadOptionsFunctions);
+
+			// Verify SSEClientTransport was used (fallback for 1.1)
+			expect(SSEClientTransport).toHaveBeenCalled();
+			expect(StreamableHTTPClientTransport).not.toHaveBeenCalled();
+		});
+
+		it('should use sse transport when explicitly set in getTools', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'MyTool',
+						description: 'MyTool does something',
+						inputSchema: { type: 'object', properties: { input: { type: 'string' } } },
+					},
+				],
+			});
+
+			const mockNode = mock<INode>({ typeVersion: 1.2, type: 'mcpClientTool' });
+			const mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>();
+			mockLoadOptionsFunctions.getNode.mockReturnValue(mockNode);
+			mockLoadOptionsFunctions.getNodeParameter.mockImplementation((key, _idx, defaultValue) => {
+				const params: Record<string, any> = {
+					authentication: 'none',
+					serverTransport: 'sse', // Explicitly set to sse
+					endpointUrl: 'https://test.com/mcp',
+				};
+				return params[key] ?? defaultValue;
+			});
+
+			await getTools.call(mockLoadOptionsFunctions);
+
+			// Verify SSEClientTransport was used
+			expect(SSEClientTransport).toHaveBeenCalled();
+			expect(StreamableHTTPClientTransport).not.toHaveBeenCalled();
 		});
 	});
 });

@@ -222,7 +222,18 @@ export class McpClient implements INodeType {
 		this: IExecuteFunctions,
 	): Promise<INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null> {
 		const authentication = this.getNodeParameter('authentication', 0) as McpAuthenticationOption;
-		const serverTransport = this.getNodeParameter('serverTransport', 0) as McpServerTransport;
+		const defaultTransport: McpServerTransport = 'httpStreamable';
+		const transportParam = this.getNodeParameter('serverTransport', 0, defaultTransport);
+		const serverTransport = ((transportParam as McpServerTransport) || defaultTransport) as McpServerTransport;
+		
+		// Validate transport value
+		if (serverTransport !== 'sse' && serverTransport !== 'httpStreamable') {
+			throw new NodeOperationError(
+				this.getNode(),
+				`Invalid serverTransport value: "${serverTransport}". Must be either "sse" or "httpStreamable"`,
+			);
+		}
+		
 		const endpointUrl = this.getNodeParameter('endpointUrl', 0) as string;
 		const node = this.getNode();
 		const { headers } = await getAuthHeaders(this, authentication);
