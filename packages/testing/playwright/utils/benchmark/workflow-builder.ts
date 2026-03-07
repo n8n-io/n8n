@@ -49,6 +49,8 @@ export function buildChainedWorkflow(
 	nodeCount: number,
 	nodeOutputSize: NodeOutputSize = 'noop',
 ): Partial<IWorkflowBase> {
+	if (nodeCount <= 0) throw new Error(`nodeCount must be > 0, got ${nodeCount}`);
+
 	const [first, ...rest] = Array.from({ length: nodeCount }, (_, i) =>
 		createChainNode(i + 1, nodeOutputSize),
 	);
