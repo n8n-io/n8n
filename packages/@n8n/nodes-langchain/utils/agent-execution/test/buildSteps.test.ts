@@ -1624,4 +1624,197 @@ describe('buildSteps', () => {
 			).toBeUndefined();
 		});
 	});
+
+	describe('DeepSeek reasoning_content in additional_kwargs', () => {
+		it('should include reasoning_content in AIMessage additional_kwargs', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_123',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+								deepseek: {
+									reasoningContent: 'DeepSeek reasoning content for tool call',
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			const message = result[0].action.messageLog![0];
+			// Verify additional_kwargs contains the reasoning_content
+			expect(message.additional_kwargs).toBeDefined();
+			expect(message.additional_kwargs.reasoning_content).toBe(
+				'DeepSeek reasoning content for tool call',
+			);
+		});
+
+		it('should extract reasoning_content from existing messageLog when present', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_123',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+							},
+							messageLog: [
+								{
+									content: 'Calling calculator',
+									tool_calls: [
+										{
+											id: 'call_123',
+											name: 'calculator',
+											args: { expression: '2+2' },
+											type: 'tool_call',
+										},
+									],
+									additional_kwargs: {
+										reasoning_content: 'Reasoning extracted from messageLog',
+									},
+								},
+							],
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			const message = result[0].action.messageLog![0];
+			// Should extract and include reasoning_content from messageLog
+			expect(message.additional_kwargs).toBeDefined();
+			expect(message.additional_kwargs.reasoning_content).toBe(
+				'Reasoning extracted from messageLog',
+			);
+		});
+
+		it('should work alongside Gemini thought_signature', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_123',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+								google: {
+									thoughtSignature: 'gemini_signature',
+								},
+								deepseek: {
+									reasoningContent: 'deepseek_reasoning',
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			const message = result[0].action.messageLog![0];
+			// Should include both Gemini signature and DeepSeek reasoning_content
+			expect(message.additional_kwargs).toBeDefined();
+			expect(message.additional_kwargs.reasoning_content).toBe('deepseek_reasoning');
+			expect(message.additional_kwargs.__gemini_function_call_thought_signatures__).toEqual({
+				call_123: 'gemini_signature',
+			});
+		});
+
+		it('should not include reasoning_content when not present', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator',
+							input: {
+								id: 'call_123',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			const message = result[0].action.messageLog![0];
+			// Should not have reasoning_content when not present
+			expect(message.additional_kwargs?.reasoning_content).toBeUndefined();
+		});
+	});
 });

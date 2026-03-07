@@ -158,6 +158,36 @@ function extractThinkingMetadata(
 		}
 	}
 
+	// Extract DeepSeek reasoning_content from additional_kwargs
+	let reasoningContent: string | undefined;
+	if (effectiveAdditionalKwargs) {
+		reasoningContent =
+			typeof effectiveAdditionalKwargs.reasoning_content === 'string'
+				? effectiveAdditionalKwargs.reasoning_content
+				: undefined;
+	}
+
+	// Also check messageLog for reasoning_content in additional_kwargs
+	if (!reasoningContent && effectiveMessageLog && Array.isArray(effectiveMessageLog)) {
+		for (const message of effectiveMessageLog) {
+			if (message && typeof message === 'object' && 'additional_kwargs' in message) {
+				const msgAdditionalKwargs = message.additional_kwargs as
+					| Record<string, unknown>
+					| undefined;
+				if (msgAdditionalKwargs) {
+					const msgReasoningContent =
+						typeof msgAdditionalKwargs.reasoning_content === 'string'
+							? msgAdditionalKwargs.reasoning_content
+							: undefined;
+					if (msgReasoningContent) {
+						reasoningContent = msgReasoningContent;
+						break;
+					}
+				}
+			}
+		}
+	}
+
 	// Build result object
 	if (thoughtSignature) {
 		result.google = { thoughtSignature };
@@ -169,6 +199,10 @@ function extractThinkingMetadata(
 			thinkingType,
 			...(thinkingSignature ? { thinkingSignature } : {}),
 		};
+	}
+
+	if (reasoningContent) {
+		result.deepseek = { reasoningContent };
 	}
 
 	return result;

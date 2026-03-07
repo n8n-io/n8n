@@ -115,6 +115,14 @@ export type AnthropicThinkingMetadata = {
 };
 
 /**
+ * DeepSeek-specific metadata for Reasoner models.
+ */
+export type DeepSeekThinkingMetadata = {
+	/** Reasoning content required by DeepSeek Reasoner API when calling tools */
+	reasoningContent?: string;
+};
+
+/**
  * HITL (Human-in-the-Loop) metadata - presence indicates this is an HITL tool action.
  */
 export type HitlMetadata = {
@@ -127,11 +135,12 @@ export type HitlMetadata = {
 };
 
 /**
- * Thinking metadata extracted from LLM responses (Anthropic/Google extended thinking).
+ * Thinking metadata extracted from LLM responses (Anthropic/Google extended thinking, DeepSeek reasoning).
  */
 export type ThinkingMetadata = {
 	google?: GoogleThinkingMetadata;
 	anthropic?: AnthropicThinkingMetadata;
+	deepseek?: DeepSeekThinkingMetadata;
 };
 
 /**
@@ -150,6 +159,8 @@ export type RequestResponseMetadata = {
 	google?: GoogleThinkingMetadata;
 	/** Anthropic-specific metadata */
 	anthropic?: AnthropicThinkingMetadata;
+	/** DeepSeek-specific metadata */
+	deepseek?: DeepSeekThinkingMetadata;
 	/** HITL (Human-in-the-Loop) metadata - presence indicates this is an HITL tool action */
 	hitl?: HitlMetadata;
 };

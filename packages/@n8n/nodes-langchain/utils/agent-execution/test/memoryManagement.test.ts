@@ -437,6 +437,69 @@ describe('memoryManagement', () => {
 			const result = buildMessagesFromSteps([]);
 			expect(result).toHaveLength(0);
 		});
+
+		it('should preserve reasoning_content from existing AIMessage for DeepSeek Reasoner', () => {
+			const aiMessage = new AIMessage({
+				content: 'Calling calculator',
+				tool_calls: [
+					{
+						id: 'call-123',
+						name: 'calculator',
+						args: { expression: '2+2' },
+						type: 'tool_call',
+					},
+				],
+				additional_kwargs: {
+					reasoning_content: 'DeepSeek reasoning content preserved',
+				},
+			});
+
+			const steps: ToolCallData[] = [
+				{
+					action: {
+						tool: 'calculator',
+						toolInput: { expression: '2+2' },
+						log: 'Calc',
+						messageLog: [aiMessage],
+						toolCallId: 'call-123',
+						type: 'tool_call',
+					},
+					observation: '4',
+				},
+			];
+
+			const result = buildMessagesFromSteps(steps);
+
+			expect(result).toHaveLength(2);
+			// Should preserve the original AIMessage with reasoning_content
+			expect(result[0]).toBe(aiMessage);
+			expect(result[0].additional_kwargs?.reasoning_content).toBe(
+				'DeepSeek reasoning content preserved',
+			);
+		});
+
+		it('should not add reasoning_content when creating synthetic AIMessage without it', () => {
+			const steps: ToolCallData[] = [
+				{
+					action: {
+						tool: 'calculator',
+						toolInput: { expression: '2+2' },
+						log: 'Calc',
+						// No messageLog - will create synthetic AIMessage
+						toolCallId: 'call-123',
+						type: 'tool_call',
+					},
+					observation: '4',
+				},
+			];
+
+			const result = buildMessagesFromSteps(steps);
+
+			expect(result).toHaveLength(2);
+			expect(result[0]).toBeInstanceOf(AIMessage);
+			// Synthetic message should not have reasoning_content
+			expect(result[0].additional_kwargs?.reasoning_content).toBeUndefined();
+		});
 	});
 
 	describe('saveToMemory with steps (message-based storage)', () => {

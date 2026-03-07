@@ -22,6 +22,8 @@ interface ProviderMetadata {
 	thinkingType?: 'thinking' | 'redacted_thinking';
 	/** Anthropic thinking signature */
 	thinkingSignature?: string;
+	/** DeepSeek reasoning content for Reasoner models */
+	reasoningContent?: string;
 }
 
 /**
@@ -52,16 +54,23 @@ function extractProviderMetadata(metadata?: RequestResponseMetadata): ProviderMe
 			? metadata.anthropic.thinkingType
 			: undefined;
 
-	const thinkingSignature =
+	const anthropicThinkingSignature =
 		typeof metadata.anthropic?.thinkingSignature === 'string'
 			? metadata.anthropic.thinkingSignature
+			: undefined;
+
+	// Extract DeepSeek metadata
+	const reasoningContent =
+		typeof metadata.deepseek?.reasoningContent === 'string'
+			? metadata.deepseek.reasoningContent
 			: undefined;
 
 	return {
 		thoughtSignature,
 		thinkingContent,
 		thinkingType,
-		thinkingSignature,
+		thinkingSignature: anthropicThinkingSignature,
+		reasoningContent,
 	};
 }
 
@@ -205,6 +214,7 @@ function buildGeminiAdditionalKwargs(
  *
  * For Anthropic thinking mode, content is an array of blocks (thinking + tool_use).
  * For Gemini with thought signatures, additional_kwargs carries the signature.
+ * For DeepSeek Reasoner, additional_kwargs includes reasoning_content.
  * For other providers, content is a simple string with tool_calls set.
  */
 function buildIndividualAIMessage(
@@ -222,16 +232,30 @@ function buildIndividualAIMessage(
 
 	const content = buildMessageContent(providerMetadata, toolInput, toolId, toolName);
 
+	// Build additional_kwargs for provider-specific requirements
+	const additionalKwargs: Record<string, unknown> = {};
+
+	// Gemini thought signatures
+	if (providerMetadata.thoughtSignature) {
+		Object.assign(
+			additionalKwargs,
+			buildGeminiAdditionalKwargs(
+				[{ id: toolId, name: toolName, args: toolInput }],
+				providerMetadata.thoughtSignature,
+			),
+		);
+	}
+
+	// DeepSeek Reasoner requires reasoning_content in assistant messages when calling tools
+	if (providerMetadata.reasoningContent) {
+		additionalKwargs.reasoning_content = providerMetadata.reasoningContent;
+	}
+
 	return new AIMessage({
 		content,
 		// When content is an array (Anthropic thinking), LangChain ignores tool_calls
 		...(typeof content === 'string' && { tool_calls: [toolCall] }),
-		...(providerMetadata.thoughtSignature && {
-			additional_kwargs: buildGeminiAdditionalKwargs(
-				[{ id: toolId, name: toolName, args: toolInput }],
-				providerMetadata.thoughtSignature,
-			),
-		}),
+		...(Object.keys(additionalKwargs).length > 0 && { additional_kwargs: additionalKwargs }),
 	});
 }
 
@@ -369,6 +393,33 @@ export function buildSteps(
 
 		// Exclude metadata fields (id, log, type) from the tool input forwarded to the result
 		const { id, log, type, ...toolInputForResult } = toolInput;
+
+		// Extract reasoning_content from existing messageLog if present (for DeepSeek Reasoner)
+		// This ensures reasoning_content is preserved when rebuilding messages
+		let extractedReasoningContent = providerMetadata.reasoningContent;
+		if (!extractedReasoningContent && tool.action?.messageLog?.[0]) {
+			const existingMessage = tool.action.messageLog[0];
+			if (
+				existingMessage &&
+				typeof existingMessage === 'object' &&
+				'additional_kwargs' in existingMessage
+			) {
+				const msgAdditionalKwargs = existingMessage.additional_kwargs as
+					| Record<string, unknown>
+					| undefined;
+				if (msgAdditionalKwargs) {
+					const msgReasoningContent =
+						typeof msgAdditionalKwargs.reasoning_content === 'string'
+							? msgAdditionalKwargs.reasoning_content
+							: undefined;
+					if (msgReasoningContent) {
+						extractedReasoningContent = msgReasoningContent;
+						// Update providerMetadata with extracted reasoning_content
+						providerMetadata.reasoningContent = msgReasoningContent;
+					}
+				}
+			}
+		}
 
 		// Parallel Gemini tool calls: first step gets the shared AIMessage,
 		// subsequent steps get empty messageLog. LangChain's formatToToolMessages
