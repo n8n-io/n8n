@@ -5,7 +5,7 @@ import { runLoadTest } from '../harness/load-harness';
 test.use({ capability: { env: { TEST_ISOLATION: 'kafka-load' } } });
 
 test.describe('Kafka Load', { annotation: [{ type: 'owner', description: 'Catalysts' }] }, () => {
-	test('steady: 10 nodes, 1KB, 10 msg/s', async ({ api, services }, testInfo) => {
+	test('10 nodes, 1KB payload, steady 10 msg/s', async ({ api, services }, testInfo) => {
 		const handle = await kafkaDriver.setup({
 			api,
 			services,
@@ -20,7 +20,7 @@ test.describe('Kafka Load', { annotation: [{ type: 'owner', description: 'Cataly
 		});
 	});
 
-	test('steady: 30 nodes, 10KB, 100 msg/s', async ({ api, services }, testInfo) => {
+	test('30 nodes, 10KB payload, steady 100 msg/s', async ({ api, services }, testInfo) => {
 		const handle = await kafkaDriver.setup({
 			api,
 			services,
@@ -35,7 +35,7 @@ test.describe('Kafka Load', { annotation: [{ type: 'owner', description: 'Cataly
 		});
 	});
 
-	test('burst: 60 nodes, 1KB, drain 10k backlog', async ({ api, services }, testInfo) => {
+	test('60 nodes, 1KB payload, burst drain 10000 backlog', async ({ api, services }, testInfo) => {
 		const handle = await kafkaDriver.setup({
 			api,
 			services,
@@ -50,7 +50,7 @@ test.describe('Kafka Load', { annotation: [{ type: 'owner', description: 'Cataly
 		});
 	});
 
-	test('steady: 10 nodes, 100KB, 10 msg/s', async ({ api, services }, testInfo) => {
+	test('10 nodes, 100KB payload, steady 10 msg/s', async ({ api, services }, testInfo) => {
 		const handle = await kafkaDriver.setup({
 			api,
 			services,

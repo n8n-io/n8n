@@ -14,7 +14,7 @@ test.describe(
 	'Kafka Throughput',
 	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
 	() => {
-		test('node scaling: 10 nodes, 10KB, 10KB/node, 5k msgs', async ({
+		test('10 nodes, 10KB payload, 10KB output/node, 5000 msgs', async ({
 			api,
 			services,
 		}, testInfo) => {
@@ -37,7 +37,7 @@ test.describe(
 			});
 		});
 
-		test('node scaling: 30 nodes, 10KB, 10KB/node, 5k msgs', async ({
+		test('30 nodes, 10KB payload, 10KB output/node, 5000 msgs', async ({
 			api,
 			services,
 		}, testInfo) => {
@@ -60,7 +60,7 @@ test.describe(
 			});
 		});
 
-		test('node scaling: 60 nodes, 10KB, 10KB/node, 5k msgs', async ({
+		test('60 nodes, 10KB payload, 10KB output/node, 5000 msgs', async ({
 			api,
 			services,
 		}, testInfo) => {
@@ -83,7 +83,10 @@ test.describe(
 			});
 		});
 
-		test('DB pressure: 10 nodes, 1KB, 100KB/node, 5k msgs', async ({ api, services }, testInfo) => {
+		test('10 nodes, 1KB payload, 100KB output/node, 5000 msgs', async ({
+			api,
+			services,
+		}, testInfo) => {
 			const handle = await kafkaDriver.setup({
 				api,
 				services,
