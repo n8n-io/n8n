@@ -7,6 +7,7 @@ import { useCollaborationStore } from '@/features/collaboration/collaboration/co
 import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { AutoSaveState, VIEWS } from '@/app/constants';
 import { computed, watch, ref, nextTick, useSlots } from 'vue';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -59,6 +60,7 @@ const workflowHistoryStore = useWorkflowHistoryStore();
 const historyStore = useHistoryStore();
 const collaborationStore = useCollaborationStore();
 const workflowAutosaveStore = useWorkflowSaveStore();
+const workflowId = useInjectWorkflowId();
 const telemetry = useTelemetry();
 const slots = useSlots();
 const workflowsStore = useWorkflowsStore();
@@ -288,14 +290,14 @@ function onFeedback(feedback: RatingFeedback) {
 	if (feedback.rating) {
 		telemetry.track('User rated workflow generation', {
 			helpful: feedback.rating === 'up',
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowId.value,
 			session_id: builderStore.trackingSessionId,
 		});
 	}
 	if (feedback.feedback) {
 		telemetry.track('User submitted workflow generation feedback', {
 			feedback: feedback.feedback,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowId.value,
 			session_id: builderStore.trackingSessionId,
 			user_message_id: builderStore.lastUserMessageId,
 		});
@@ -485,7 +487,7 @@ function onShowVersion(versionId: string) {
 	const route = router.resolve({
 		name: VIEWS.WORKFLOW_HISTORY,
 		params: {
-			workflowId: workflowsStore.workflowId,
+			workflowId: workflowId.value,
 			versionId,
 		},
 	});
@@ -537,7 +539,7 @@ defineExpose({
 			:show-ask-owner-tooltip="showAskOwnerTooltip"
 			:suggestions="workflowSuggestions"
 			:input-placeholder="i18n.baseText('aiAssistant.builder.assistantPlaceholder')"
-			:workflow-id="workflowsStore.workflowId"
+			:workflow-id="workflowId"
 			:prune-time-hours="workflowHistoryStore.evaluatedPruneTime"
 			:disabled="isChatInputDisabled"
 			:disabled-tooltip="disabledTooltip"
