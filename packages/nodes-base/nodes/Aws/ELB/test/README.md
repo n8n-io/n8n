@@ -4,13 +4,12 @@ This document explains intentional test data adjustments made to match the curre
 
 ## Known Implementation Issues
 
-### 1. Typo in Remove Listener Certificate Operation
+### 1. Typo in Remove Listener Certificate Operation (FIXED)
 
 **File**: `remove-listener-certificate.workflow.json`
 **Issue**: The response contains `"sucess": true` instead of `"success": true`
 **Root Cause**: Spelling error in the node implementation
-**Test Adjustment**: The pinData uses the misspelled version to match actual output
-**TODO**: Fix the typo in the AWS ELB node implementation and update test accordingly
+**Status**: Fixed - both the node implementation and test data have been corrected
 
 ### 2. Boolean Values Returned as Strings
 
