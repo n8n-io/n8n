@@ -12,6 +12,7 @@ import {
 	ensureError,
 	UnexpectedError,
 	ManualExecutionCancelledError,
+	StalledExecutionCancelledError,
 } from 'n8n-workflow';
 import type { IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
 import assert, { strict } from 'node:assert';
@@ -628,6 +629,19 @@ export class ScalingService {
 		}
 
 		await this.executionRepository.markAsCrashed(danglingIds);
+
+		// Clean up in-memory active executions that are still tracked on this main
+		// process. Without this, the `job.finished()` call in `enqueueExecution`
+		// hangs indefinitely, leaking the execution in the `activeExecutions` map
+		// and blocking shutdown.
+		for (const executionId of danglingIds) {
+			if (this.activeExecutions.has(executionId)) {
+				this.activeExecutions.stopExecution(
+					executionId,
+					new StalledExecutionCancelledError(executionId),
+				);
+			}
+		}
 
 		this.logger.info('Completed queue recovery check, recovered dangling executions', {
 			danglingIds,
