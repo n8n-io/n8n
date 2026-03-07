@@ -63,6 +63,10 @@ describe('Hubspot Node', () => {
 							value: true,
 						},
 						{
+							name: 'facebook_company_page',
+							value: 'https://facebook.com/test',
+						},
+						{
 							name: 'zip',
 							value: '9000',
 						},
@@ -94,6 +98,10 @@ describe('Hubspot Node', () => {
 						{
 							name: 'city',
 							value: 'Gent',
+						},
+						{
+							name: 'facebook_company_page',
+							value: 'https://facebook.com/test-url',
 						},
 					],
 				})
