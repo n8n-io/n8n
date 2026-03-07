@@ -1,15 +1,16 @@
 import {
+	type IDataObject,
 	type IHookFunctions,
-	type IWebhookFunctions,
 	type INodeType,
 	type INodeTypeDescription,
+	type IWebhookFunctions,
 	type IWebhookResponseData,
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 
-import { apiRequest } from './GenericFunctions';
+import { createHmac } from 'crypto';
 
-// import { createHmac } from 'crypto';
+import { apiRequest } from './GenericFunctions';
 
 export class TrelloTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -149,19 +150,73 @@ export class TrelloTrigger implements INodeType {
 
 		const bodyData = this.getBodyData();
 
-		// TODO: Check why that does not work as expected even though it gets done as described
-		//    https://developers.trello.com/page/webhooks
+		// Verify webhook signature using Trello's validation approach
+		// https://developer.atlassian.com/cloud/trello/guides/rest-api/webhooks/
+		const credentials = await this.getCredentials('trelloApi');
+		if (credentials.oauthSecret) {
+			// Type guard functions
+			const isIDataObject = (value: unknown): value is IDataObject => {
+				return typeof value === 'object' && value !== null && !Array.isArray(value);
+			};
 
-		//const credentials = await this.getCredentials('trelloApi');
-		// // Check if the request is valid
-		// const headerData = this.getHeaderData() as IDataObject;
-		// const webhookUrl = this.getNodeWebhookUrl('default');
-		// const checkContent = JSON.stringify(bodyData) + webhookUrl;
-		// const computedSignature = createHmac('sha1', credentials.oauthSecret as string).update(checkContent).digest('base64');
-		// if (headerData['x-trello-webhook'] !== computedSignature) {
-		// 	// Signature is not valid so ignore call
-		// 	return {};
-		// }
+			const isString = (value: unknown): value is string => {
+				return typeof value === 'string';
+			};
+
+			const verifyTrelloWebhookRequest = async (
+				secret: string,
+				callbackURL: string,
+			): Promise<boolean> => {
+				const base64Digest = (content: string): string =>
+					createHmac('sha1', secret).update(content).digest('base64');
+
+				// Get raw request body
+				const req = this.getRequestObject();
+				if (!req.rawBody) {
+					await req.readRawBody();
+				}
+				const requestBody = req.rawBody?.toString('utf-8') ?? '';
+				const expectedSignature = base64Digest(requestBody + callbackURL);
+
+				const headerData = this.getHeaderData();
+				if (!isIDataObject(headerData)) {
+					return false;
+				}
+
+				const headerSignature = headerData['x-trello-webhook'];
+				if (!isString(headerSignature)) {
+					return false;
+				}
+
+				return expectedSignature === headerSignature;
+			};
+
+			// Extract callback URL with type guards
+			let webhookUrl: string | undefined;
+			if (
+				isIDataObject(bodyData) &&
+				isIDataObject(bodyData.webhook) &&
+				isString(bodyData.webhook.callbackURL)
+			) {
+				webhookUrl = bodyData.webhook.callbackURL;
+			}
+
+			if (!webhookUrl) {
+				webhookUrl = this.getNodeWebhookUrl('default');
+			}
+
+			if (!isString(credentials.oauthSecret)) {
+				return {};
+			}
+
+			const trelloSecret = credentials.oauthSecret;
+			const isValidRequest =
+				webhookUrl && (await verifyTrelloWebhookRequest(trelloSecret, webhookUrl));
+
+			if (!isValidRequest) {
+				return {};
+			}
+		}
 
 		return {
 			workflowData: [this.helpers.returnJsonArray(bodyData)],
