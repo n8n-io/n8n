@@ -63,6 +63,11 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import {
+	filterWorkflowResourcesByAccess,
+	WorkflowAccessFilter,
+	type WorkflowAccessFilterType,
+} from '@/app/utils/workflowAccessFilter';
+import {
 	type Project,
 	type ProjectSharingData,
 	ProjectTypes,
@@ -100,6 +105,7 @@ const FILTERS_DEBOUNCE_TIME = 100;
 
 interface Filters extends BaseFilters {
 	status: string | boolean;
+	access: WorkflowAccessFilterType;
 	showArchived: boolean;
 	tags: string[];
 }
@@ -164,6 +170,7 @@ const filters = ref<Filters>({
 	search: '',
 	homeProject: '',
 	status: StatusFilter.ALL,
+	access: WorkflowAccessFilter.ALL,
 	showArchived: false,
 	tags: [],
 });
@@ -382,6 +389,21 @@ const statusFilterOptions = computed(() => [
 	},
 ]);
 
+const accessFilterOptions = computed(() => [
+	{
+		label: i18n.baseText('workflows.filters.access.all'),
+		value: WorkflowAccessFilter.ALL,
+	},
+	{
+		label: i18n.baseText('workflows.filters.access.canStart'),
+		value: WorkflowAccessFilter.CAN_START,
+	},
+	{
+		label: i18n.baseText('workflows.filters.access.canEdit'),
+		value: WorkflowAccessFilter.CAN_EDIT,
+	},
+]);
+
 const showReadyToRunWorkflowsCallout = computed(() => {
 	const isEnabled = readyToRunWorkflowsStore.isFeatureEnabled;
 	const isDismissed = readyToRunWorkflowsStore.isCalloutDismissed;
@@ -400,6 +422,7 @@ const hasFilters = computed(() => {
 	return !!(
 		filters.value.search ||
 		filters.value.status !== StatusFilter.ALL ||
+		filters.value.access !== WorkflowAccessFilter.ALL ||
 		filters.value.showArchived ||
 		filters.value.tags.length
 	);
@@ -635,8 +658,12 @@ const fetchWorkflows = async () => {
 
 	const archivedFilter = filters.value.showArchived ? undefined : false;
 
-	// Only fetch folders if showFolders is enabled and there are not tags or active filter applied
-	const fetchFolders = showFolders.value && !tags.length && activeFilter === undefined;
+	// Only fetch folders if no workflow-only filters are active.
+	const fetchFolders =
+		showFolders.value &&
+		!tags.length &&
+		activeFilter === undefined &&
+		filters.value.access === WorkflowAccessFilter.ALL;
 
 	try {
 		const fetchedResources = await workflowsListStore.fetchWorkflowsPage(
@@ -673,7 +700,10 @@ const fetchWorkflows = async () => {
 			breadcrumbsLoading.value = false;
 		}
 
-		workflowsAndFolders.value = fetchedResources;
+		workflowsAndFolders.value = filterWorkflowResourcesByAccess(
+			fetchedResources,
+			filters.value.access,
+		);
 
 		// Toggle ownership cards visibility only after we have fetched the workflows
 		showCardsBadge.value =
@@ -782,6 +812,12 @@ const saveFiltersOnQueryString = () => {
 		delete currentQuery.status;
 	}
 
+	if (filters.value.access !== WorkflowAccessFilter.ALL) {
+		currentQuery.access = filters.value.access;
+	} else {
+		delete currentQuery.access;
+	}
+
 	if (filters.value.showArchived) {
 		currentQuery.showArchived = 'true';
 	} else {
@@ -807,7 +843,7 @@ const saveFiltersOnQueryString = () => {
 
 const setFiltersFromQueryString = async () => {
 	const newQuery: LocationQueryRaw = { ...route.query };
-	const { tags, status, search, homeProject, sort, showArchived } = route.query ?? {};
+	const { tags, status, search, homeProject, sort, showArchived, access } = route.query ?? {};
 
 	// Helper to check if string value is not empty
 	const isValidString = (value: unknown): value is string =>
@@ -857,6 +893,14 @@ const setFiltersFromQueryString = async () => {
 		filters.value.status = status === 'true' ? StatusFilter.ACTIVE : StatusFilter.DEACTIVATED;
 	} else {
 		delete newQuery.status;
+	}
+
+	if (isValidString(access) && Object.values(WorkflowAccessFilter).includes(access as WorkflowAccessFilterType)) {
+		newQuery.access = access;
+		filters.value.access = access as WorkflowAccessFilterType;
+	} else {
+		delete newQuery.access;
+		filters.value.access = WorkflowAccessFilter.ALL;
 	}
 
 	// Handle sort
@@ -2103,6 +2147,29 @@ const onNameSubmit = async (name: string) => {
 						:label="option.label"
 						:value="option.value"
 						data-test-id="status"
+					>
+					</N8nOption>
+				</N8nSelect>
+			</div>
+			<div class="mb-s">
+				<N8nInputLabel
+					:label="i18n.baseText('workflows.filters.access')"
+					:bold="false"
+					size="small"
+					color="text-base"
+					class="mb-3xs"
+				/>
+				<N8nSelect
+					data-test-id="access-dropdown"
+					:model-value="filters.access"
+					@update:model-value="setKeyValue('access', $event)"
+				>
+					<N8nOption
+						v-for="option in accessFilterOptions"
+						:key="option.label"
+						:label="option.label"
+						:value="option.value"
+						data-test-id="access"
 					>
 					</N8nOption>
 				</N8nSelect>
