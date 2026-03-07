@@ -24,12 +24,10 @@ import { createDeepLazyProxy } from './lazy-proxy';
  * Called from bridge: context.evalSync('resetDataProxies()')
  */
 export function resetDataProxies(timezone?: string): void {
-	if (timezone) {
-		if (!IANAZone.isValidZone(timezone)) {
-			throw new Error(`Invalid timezone: "${timezone}"`);
-		}
-		Settings.defaultZone = timezone;
+	if (timezone && !IANAZone.isValidZone(timezone)) {
+		throw new Error(`Invalid timezone: "${timezone}"`);
 	}
+	Settings.defaultZone = timezone ?? 'system';
 
 	// Clear existing __data object
 	globalThis.__data = {};
