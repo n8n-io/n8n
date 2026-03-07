@@ -1,5 +1,6 @@
 import { WebhookEntity } from '@n8n/db';
 import type { WebhookRepository } from '@n8n/db';
+import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import type {
 	INode,
@@ -537,6 +538,72 @@ describe('WebhookService', () => {
 
 			expect(webhookRepository.findOneBy).toHaveBeenCalledTimes(2);
 			expect(webhookRepository.findBy).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe('storeWebhook() with EntityManager', () => {
+		test('should use EntityManager for upsert when provided', async () => {
+			const mockWebhook = createWebhook('GET', 'user/:id');
+			const em = mock<EntityManager>();
+
+			await webhookService.storeWebhook(mockWebhook, em);
+
+			expect(em.upsert).toHaveBeenCalledWith(WebhookEntity, mockWebhook, ['method', 'webhookPath']);
+			expect(webhookRepository.upsert).not.toHaveBeenCalled();
+		});
+
+		test('should use repository when no EntityManager provided', async () => {
+			const mockWebhook = createWebhook('GET', 'user/:id');
+
+			await webhookService.storeWebhook(mockWebhook);
+
+			expect(webhookRepository.upsert).toHaveBeenCalledWith(mockWebhook, ['method', 'webhookPath']);
+		});
+	});
+
+	describe('deleteWorkflowWebhooks() with EntityManager', () => {
+		test('should use EntityManager when provided', async () => {
+			const mockWebhooks = [createWebhook('GET', 'user/:id')];
+			const em = mock<EntityManager>();
+			em.findBy.mockResolvedValue(mockWebhooks);
+
+			const workflowId = uuid();
+
+			await webhookService.deleteWorkflowWebhooks(workflowId, em);
+
+			expect(em.findBy).toHaveBeenCalledWith(WebhookEntity, { workflowId });
+			expect(em.remove).toHaveBeenCalledWith(mockWebhooks);
+			expect(webhookRepository.findBy).not.toHaveBeenCalled();
+		});
+
+		test('should not call remove when no webhooks found via EntityManager', async () => {
+			const em = mock<EntityManager>();
+			em.findBy.mockResolvedValue([]);
+
+			await webhookService.deleteWorkflowWebhooks(uuid(), em);
+
+			expect(em.remove).not.toHaveBeenCalled();
+		});
+
+		test('should use repository when no EntityManager provided', async () => {
+			const mockWebhooks = [createWebhook('PUT', 'users')];
+			webhookRepository.findBy.mockResolvedValue(mockWebhooks);
+
+			await webhookService.deleteWorkflowWebhooks(uuid());
+
+			expect(webhookRepository.remove).toHaveBeenCalledWith(mockWebhooks);
+		});
+	});
+
+	describe('findAllWebhooks()', () => {
+		test('should return all webhooks from repository', async () => {
+			const mockWebhooks = [createWebhook('GET', 'path1'), createWebhook('POST', 'path2')];
+			webhookRepository.find.mockResolvedValue(mockWebhooks);
+
+			const result = await webhookService.findAllWebhooks();
+
+			expect(result).toEqual(mockWebhooks);
+			expect(webhookRepository.find).toHaveBeenCalled();
 		});
 	});
 
