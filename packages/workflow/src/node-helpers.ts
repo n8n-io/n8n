@@ -868,7 +868,15 @@ export function getNodeParameters(
 
 			let propertyValues = deepCopy(nodeValues[nodeProperties.name]);
 			if (returnDefaults) {
-				if (propertyValues === undefined) {
+				const isEmptyFixedCollection =
+					typeof propertyValues === 'object' &&
+					propertyValues !== null &&
+					!Array.isArray(propertyValues) &&
+					Object.keys(propertyValues).length === 0;
+
+				if (propertyValues === undefined || isEmptyFixedCollection) {
+					// Apply the default when there is no stored value, or when the stored value is
+					// an empty {}
 					propertyValues = deepCopy(nodeProperties.default);
 				}
 			}
@@ -948,9 +956,10 @@ export function getNodeParameters(
 
 					if (nodePropertyOptions !== undefined) {
 						tempNodePropertiesArray = (nodePropertyOptions as INodePropertyCollection).values!;
-						const itemNodeValues = (nodeValues[nodeProperties.name] as INodeParameters)[
-							itemName
-						] as INodeParameters;
+						// Use propertyValues (already resolved to stored value or default) to avoid
+						// crashing when nodeValues[nodeProperties.name] is undefined for new nodes.
+						const itemNodeValues = ((propertyValues as INodeParameters | undefined)?.[itemName] ??
+							null) as INodeParameters | null;
 						tempValue = getNodeParameters(
 							tempNodePropertiesArray,
 							itemNodeValues,
