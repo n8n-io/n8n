@@ -8,7 +8,7 @@ Total Code Scanning Alerts: 184
 ## Summary
 
 | Category | Count | Status |
-|----------|-------|--------|
+| ---------- | ------- | -------- |
 | Dependabot - High | 44 | Pending - Requires dependency updates |
 | Dependabot - Moderate | 22 | Pending - Requires dependency updates |
 | Dependabot - Low | 6 | Pending - Requires dependency updates |
@@ -20,7 +20,7 @@ Total Code Scanning Alerts: 184
 | Code Scanning - Weak Crypto | 7 | NOT FIXED - Backward compatibility |
 | Code Scanning - Incomplete Sanitization | 4 | NOT FIXED - Not security boundary |
 | Code Scanning - String Escaping | ~30 | NOT FIXED - Low risk |
-| Code Scanning - CORS | 1 | NOT FIXED - Architectural decision needed |
+| Code Scanning - CORS | 1 | FIXED |
 | Code Scanning - Helmet | 1 | FIXED |
 | Code Scanning - XSS | 1 | NOT FIXED - Test file only |
 
@@ -31,7 +31,7 @@ Total Code Scanning Alerts: 184
 ### High Severity (44 alerts)
 
 | # | Vulnerability | Package | Status | Notes |
-|---|---------------|--------|--------|-------|
+| --- | --------------- | -------- | -------- | ------- |
 | 31 | Rollup 4 Arbitrary File Write | rollup | | |
 | 30 | Rollup 4 Arbitrary File Write | rollup | | |
 | 33 | Storybook WebSocket Hijacking | storybook | | |
@@ -61,7 +61,7 @@ Total Code Scanning Alerts: 184
 ### Moderate Severity (22 alerts)
 
 | # | Vulnerability | Package | Status | Notes |
-|---|---------------|--------|--------|-------|
+| --- | --------------- | -------- | -------- | ------- |
 | 22 | vite fs.deny bypass (Windows) | vite | | |
 | 21 | vite fs.deny bypass (Windows) | vite | | |
 | 6 | AIOHTTP DoS large payloads | aiohttp | | |
@@ -85,7 +85,7 @@ Total Code Scanning Alerts: 184
 ### Low Severity (6 alerts)
 
 | # | Vulnerability | Package | Status | Notes |
-|---|---------------|--------|--------|-------|
+| --- | --------------- | -------- | -------- | ------- |
 | 19 | Vite serves files with same prefix | vite | | |
 | 18 | Vite serves files with same prefix | vite | | |
 | 24 | Elliptic risky crypto primitive | elliptic | | |
@@ -100,7 +100,7 @@ Total Code Scanning Alerts: 184
 ### 1. Disabling Certificate Validation (4 alerts)
 
 | # | File | Line | Status | Notes |
-|---|------|------|--------|-------|
+| --- | ------ | ------ | -------- | ------- |
 | 226 | packages/@n8n/client-oauth2/src/client-oauth2.ts | 51 | NOT FIXED | Required for OAuth flows with self-signed certs - feature flag needed |
 | 225 | packages/core/src/execution-engine/node-execution-context/utils/request-helper-functions.ts | 791 | NOT FIXED | Required for node requests to self-signed endpoints - feature flag needed |
 | 224 | packages/core/src/execution-engine/node-execution-context/utils/request-helper-functions.ts | 600 | NOT FIXED | Required for node requests to self-signed endpoints - feature flag needed |
@@ -109,7 +109,7 @@ Total Code Scanning Alerts: 184
 ### 2. Inefficient/Polynomial Regular Expressions - ReDoS (18 alerts)
 
 | # | File | Line | Status | Notes |
-|---|------|------|--------|-------|
+| --- | ------ | ------ | -------- | ------- |
 | 245 | packages/nodes-base/nodes/SeaTable/v2/GenericFunctions.ts | 184 | NOT FIXED | Needs investigation - likely false positive |
 | 244 | packages/nodes-base/nodes/SeaTable/v1/GenericFunctions.ts | 226 | NOT FIXED | Needs investigation - likely false positive |
 | 243 | packages/frontend/@n8n/i18n/src/utils.ts | 49 | NOT FIXED | Needs investigation - likely false positive |
@@ -130,7 +130,7 @@ Total Code Scanning Alerts: 184
 ### 3. Uncontrolled Data Used in Path Expression (7 alerts)
 
 | # | File | Line | Status | Notes |
-|---|------|------|--------|-------|
+| --- | ------ | ------ | -------- | ------- |
 | 222 | packages/cli/src/executions/execution-data/fs-store.ts | 49 | | |
 | 221 | packages/cli/src/executions/execution-data/fs-store.ts | 43 | | |
 | 220 | packages/cli/src/executions/execution-data/fs-store.ts | 43 | | |
@@ -141,13 +141,13 @@ Total Code Scanning Alerts: 184
 ### 4. Arbitrary File Access - Zip Slip (1 alert)
 
 | # | File | Line | Status | Notes |
-|---|------|------|--------|-------|
+| --- | ------ | ------ | -------- | ------- |
 | 216 | packages/@n8n/workflow-sdk/scripts/extract-workflows.ts | 38 | | |
 
 ### 5. Insecure Randomness / Biased Random Numbers (5 alerts)
 
 | # | File | Line | Status | Notes |
-|---|------|------|--------|-------|
+| --- | ------ | ------ | -------- | ------- |
 | 215 | packages/cli/src/modules/mcp/tools/execute-workflow.tool.ts | 298 | FIXED | Changed Math.random() to crypto.randomUUID() |
 | 202 | packages/@n8n/expression-runtime/src/extensions/array-extensions.ts | 9 | | |
 | 201 | packages/@n8n/backend-test-utils/src/random.ts | 22 | | |
@@ -157,7 +157,7 @@ Total Code Scanning Alerts: 184
 ### 6. Use of Broken/Weak Cryptographic Algorithm (7 alerts)
 
 | # | File | Line | Status | Notes |
-|---|------|------|--------|-------|
+| --- | ------ | ------ | -------- | ------- |
 | 198 | packages/nodes-base/nodes/Cisco/Webex/GenericFunctions.ts | 631 | NOT FIXED | MD5 used for non-cryptographic secret generation - low risk |
 | 197 | packages/core/src/execution-engine/node-execution-context/utils/request-helper-functions.ts | 271 | NOT FIXED | Legacy crypto for backward compatibility |
 | 196 | packages/core/src/encryption/cipher.ts | 39 | NOT FIXED | Would break backward compatibility - requires migration strategy for existing encrypted data |
@@ -169,7 +169,7 @@ Total Code Scanning Alerts: 184
 ### 7. Incomplete Multi-character Sanitization (4 alerts)
 
 | # | File | Line | Status | Notes |
-|---|------|------|--------|-------|
+| --- | ------ | ------ | -------- | ------- |
 | 187 | packages/@n8n/expression-runtime/src/extensions/string-extensions.ts | 177 | NOT FIXED | Markdown parsing - not security boundary |
 | 186 | packages/@n8n/expression-runtime/src/extensions/string-extensions.ts | 147 | NOT FIXED | Markdown parsing - not security boundary |
 | 185 | packages/workflow/src/extensions/string-extensions.ts | 216 | NOT FIXED | Markdown parsing - not security boundary |
@@ -178,7 +178,7 @@ Total Code Scanning Alerts: 184
 ### 8. Incomplete String Escaping or Encoding (Multiple alerts)
 
 | # | File | Line | Status | Notes |
-|---|------|------|--------|-------|
+| --- | ------ | ------ | -------- | ------- |
 | - | packages/nodes-base/nodes/Shopify/GenericFunctions.ts | 117 | NOT FIXED | URL parsing in pagination - low risk |
 | - | packages/nodes-base/nodes/SentryIo/GenericFunctions.ts | 80 | NOT FIXED | URL parsing in pagination - low risk |
 | - | packages/nodes-base/nodes/MySql/v2/helpers/utils.ts | 162 | NOT FIXED | SQL escaping context needed |
@@ -195,19 +195,19 @@ Total Code Scanning Alerts: 184
 ### 9. CORS Misconfiguration (1 alert)
 
 | # | File | Line | Status | Notes |
-|---|------|------|--------|-------|
-| 228 | packages/cli/src/middlewares/cors.ts | 6 | NOT FIXED | Requires architectural decision - need to add allowedOrigins config and validate origin header |
+| --- | ------ | ------ | -------- | ------- |
+| 228 | packages/cli/src/middlewares/cors.ts | 6 | FIXED | Only allow localhost and Docker internal networks (172.16-31.x, 192.168.x, 10.x) |
 
 ### 10. Insecure Helmet Configuration (1 alert)
 
 | # | File | Line | Status | Notes |
-|---|------|------|--------|-------|
+| --- | ------ | ------ | -------- | ------- |
 | 227 | packages/cli/src/server.ts | 371 | FIXED | Added xContentTypeOptions and referrerPolicy headers |
 
 ### 11. Reflected Cross-Site Scripting (1 alert)
 
 | # | File | Line | Status | Notes |
-|---|------|------|--------|-------|
+| --- | ------ | ------ | -------- | ------- |
 | 229 | packages/cli/test/integration/middlewares/body-parser.test.ts | 11 | NOT FIXED | Test file - not a security vulnerability in production code |
 
 ---
@@ -215,6 +215,7 @@ Total Code Scanning Alerts: 184
 ## Fix Strategy
 
 ### Priority 1: Code Scanning - Code Fixes (Can be fixed directly)
+
 1. Certificate Validation - Remove rejectUnauthorized: false
 2. Path Expression - Add path validation
 3. Zip Slip - Add archive validation
@@ -225,10 +226,12 @@ Total Code Scanning Alerts: 184
 8. String Escaping - Add proper escaping
 
 ### Priority 2: Code Scanning - ReDoS (Optimize regex patterns)
+
 - Review and optimize regex patterns
 - Use non-backtracking patterns where possible
 
 ### Priority 3: Dependabot - Dependency Updates
+
 - Update npm packages to latest versions
 - Some may require code changes due to breaking changes
 
@@ -239,14 +242,16 @@ Total Code Scanning Alerts: 184
 ### March 6, 2026
 
 **Fixed:**
+
 1. **Insecure Randomness** - `packages/cli/src/modules/mcp/tools/execute-workflow.tool.ts` line 298
    - Changed `Math.random()` to `crypto.randomUUID()`
-   
+
 2. **Helmet Configuration** - `packages/cli/src/server.ts` line 371
    - Added `xContentTypeOptions: 'nosniff'` header
    - Added `referrerPolicy: { policy: 'strict-origin-when-cross-origin' }` header
 
 **Not Fixed (with reasons):**
+
 1. **Certificate Validation** (4 files) - Required for self-signed certificate support in enterprise environments. Need architectural solution (feature flag).
 
 2. **Weak Crypto** (7 files) - MD5 usage in cipher.ts would break backward compatibility for existing encrypted data. Requires migration strategy.
@@ -268,9 +273,9 @@ Total Code Scanning Alerts: 184
 10. **Insecure Randomness** (remaining 4 files) - Already using crypto.getRandomValues() which is secure.
 
 **Pending - Dependency Updates:**
+
 - 44 High severity Dependabot alerts
 - 22 Moderate severity Dependabot alerts  
 - 6 Low severity Dependabot alerts
 
 These require `pnpm update` or `pnpm dedupe` to resolve and may introduce breaking changes.
-
