@@ -7,6 +7,7 @@ import {
 	DATA_TABLE_CARD_ACTIONS,
 	DOWNLOAD_DATA_TABLE_MODAL_KEY,
 } from '@/features/core/dataTable/constants';
+
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';
 import type { IUser, UserAction } from '@n8n/design-system';
@@ -44,6 +45,8 @@ const message = useMessage();
 const toast = useToast();
 const telemetry = useTelemetry();
 
+const downloadModalKey = computed(() => `${DOWNLOAD_DATA_TABLE_MODAL_KEY}-${props.dataTable.id}`);
+
 const actions = computed<Array<UserAction<IUser>>>(() => {
 	const availableActions = [
 		{
@@ -79,7 +82,7 @@ const onAction = async (action: string) => {
 			break;
 		}
 		case DATA_TABLE_CARD_ACTIONS.DOWNLOAD_CSV: {
-			uiStore.openModal(DOWNLOAD_DATA_TABLE_MODAL_KEY);
+			uiStore.openModal(downloadModalKey.value);
 			break;
 		}
 		case DATA_TABLE_CARD_ACTIONS.DELETE: {
@@ -103,7 +106,7 @@ const onAction = async (action: string) => {
 
 const downloadDataTableCsv = async (includeSystemColumns: boolean) => {
 	try {
-		uiStore.closeModal(DOWNLOAD_DATA_TABLE_MODAL_KEY);
+		uiStore.closeModal(downloadModalKey.value);
 
 		await dataTableStore.downloadDataTableCsv(
 			props.dataTable.id,
@@ -149,10 +152,10 @@ const deleteDataTable = async () => {
 			@action="onAction"
 		/>
 		<DownloadDataTableModal
-			:modal-name="DOWNLOAD_DATA_TABLE_MODAL_KEY"
+			:modal-name="downloadModalKey"
 			:data-table-name="dataTable.name"
 			@confirm="downloadDataTableCsv"
-			@close="() => uiStore.closeModal(DOWNLOAD_DATA_TABLE_MODAL_KEY)"
+			@close="() => uiStore.closeModal(downloadModalKey)"
 		/>
 	</div>
 </template>

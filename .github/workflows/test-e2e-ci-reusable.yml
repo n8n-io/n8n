@@ -8,6 +8,11 @@ on:
         required: false
         type: string
         default: ''
+      playwright-only:
+        description: 'Only Playwright files changed — run impacted tests only'
+        required: false
+        type: boolean
+        default: false
 
 env:
   DOCKER_IMAGE: ghcr.io/${{ github.repository }}:ci-${{ github.run_id }}
@@ -22,6 +27,7 @@ jobs:
       contents: read
     outputs:
       matrix: ${{ steps.generate-matrix.outputs.matrix }}
+      skip-tests: ${{ steps.generate-matrix.outputs.skip-tests }}
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -51,9 +57,25 @@ jobs:
           BUILD_STATS_WEBHOOK_PASSWORD: ${{ secrets.BUILD_STATS_WEBHOOK_PASSWORD }}
           DOCKER_STATS_WEBHOOK_URL: ${{ secrets.DOCKER_STATS_WEBHOOK_URL }}
 
+      - name: Get changed files for impact analysis
+        if: ${{ inputs.playwright-only }}
+        id: changed-files
+        run: |
+          git fetch --depth=1 origin ${{ github.event.pull_request.base.ref || 'master' }}
+          echo "list=$(git diff --name-only FETCH_HEAD HEAD | tr '\n' ',' | sed 's/,$//')" >> "$GITHUB_OUTPUT"
+
       - name: Generate shard matrix
         id: generate-matrix
-        run: echo "matrix=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix 16 --orchestrate)" >> "$GITHUB_OUTPUT"
+        env:
+          CHANGED_FILES: ${{ steps.changed-files.outputs.list }}
+        run: |
+          ARGS=(--matrix 16 --orchestrate)
+          if [[ "${{ inputs.playwright-only }}" == "true" ]]; then
+            ARGS+=(--impact "--files=$CHANGED_FILES")
+          fi
+          MATRIX=$(node packages/testing/playwright/scripts/distribute-tests.mjs "${ARGS[@]}")
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+          echo "skip-tests=$(node -e "process.stdout.write(JSON.parse(process.argv[1])[0]?.skip === true ? 'true' : 'false')" "$MATRIX")" >> "$GITHUB_OUTPUT"
 
   sqlite-sanity:
     needs: [prepare]
@@ -76,7 +98,7 @@ jobs:
   multi-main-e2e:
     needs: [prepare]
     name: 'Multi-Main: E2E'
-    if: ${{ !github.event.pull_request.head.repo.fork }}
+    if: ${{ !github.event.pull_request.head.repo.fork && needs.prepare.outputs.skip-tests != 'true' }}
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       branch: ${{ inputs.branch }}

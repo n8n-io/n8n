@@ -1,6 +1,6 @@
 {
   "name": "@n8n/expression-runtime",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Secure, isolated expression evaluation runtime for n8n",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -21,6 +21,8 @@
   ],
   "license": "SEE LICENSE IN LICENSE.md",
   "dependencies": {
+    "@n8n/tournament": "1.0.6",
+    "isolated-vm": "^6.0.2",
     "js-base64": "catalog:",
     "jssha": "3.3.1",
     "lodash": "catalog:",

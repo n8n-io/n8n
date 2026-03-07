@@ -3,6 +3,17 @@ import type { ExecutionStatus, INodeTypeNameVersion } from 'n8n-workflow';
 
 import type { ChatTriggerResponseMode } from './chat-hub.types';
 
+export type ChatHubInputModality = 'text' | 'image' | 'audio' | 'video' | 'file';
+
+/** Internal metadata that includes inputModalities for LLM capability checks */
+export interface InternalModelMetadata extends ChatModelMetadataDto {
+	inputModalities: ChatHubInputModality[];
+}
+
+type InternalModelOverride = Partial<
+	Omit<InternalModelMetadata, 'allowFileUploads' | 'allowedFilesMimeTypes'>
+>;
+
 export const EXECUTION_POLL_INTERVAL = 1000;
 export const STREAM_CLOSE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 export const EXECUTION_FINISHED_STATUSES: ExecutionStatus[] = [
@@ -95,8 +106,11 @@ export const JSONL_STREAM_HEADERS = {
 };
 /* eslint-enable @typescript-eslint/naming-convention */
 
-// Default metadata for all models
-const DEFAULT_MODEL_METADATA: ChatModelMetadataDto = {
+// Default internal metadata for all LLM models
+const DEFAULT_INTERNAL_METADATA: InternalModelOverride &
+	Pick<InternalModelMetadata, 'inputModalities' | 'available'> & {
+		capabilities: { functionCalling: boolean };
+	} = {
 	inputModalities: ['text', 'image', 'audio', 'video', 'file'],
 	capabilities: {
 		functionCalling: true,
@@ -105,7 +119,7 @@ const DEFAULT_MODEL_METADATA: ChatModelMetadataDto = {
 };
 
 const MODEL_METADATA_REGISTRY: Partial<
-	Record<ChatHubLLMProvider, Partial<Record<string, Partial<ChatModelMetadataDto>>>>
+	Record<ChatHubLLMProvider, Partial<Record<string, InternalModelOverride>>>
 > = {
 	anthropic: {
 		'claude-3-5-haiku-20241022': {
@@ -639,27 +653,71 @@ const MODEL_METADATA_REGISTRY: Partial<
 	},
 };
 
+const TEXT_COMMON_MIME_TYPES = ['text/css', 'text/csv', 'text/markdown', 'text/plain'];
+
+/**
+ * Application/* MIME types accepted for the 'text' input modality.
+ */
+const TEXT_APPLICATION_MIME_TYPES = [
+	'application/json',
+	'application/xml',
+	'application/csv',
+	'application/x-yaml',
+	'application/yaml',
+	'application/ld+json',
+	'application/xhtml+xml',
+	'application/javascript',
+	'application/rtf',
+];
+
+/** Resolves inputModalities into MIME type string for the API response */
+function resolveAllowedMimeTypes(modalities: ChatHubInputModality[]): string {
+	if (modalities.includes('file')) {
+		return '*/*';
+	}
+
+	const mimeTypes: string[] = [];
+
+	for (const modality of modalities) {
+		if (modality === 'text') {
+			mimeTypes.push('text/*', ...TEXT_COMMON_MIME_TYPES, ...TEXT_APPLICATION_MIME_TYPES);
+		}
+		if (modality === 'image') {
+			mimeTypes.push('image/*');
+		}
+		if (modality === 'audio') {
+			mimeTypes.push('audio/*');
+		}
+		if (modality === 'video') {
+			mimeTypes.push('video/*');
+		}
+	}
+
+	return mimeTypes.join(',');
+}
+
 export function getModelMetadata(
 	provider: ChatHubLLMProvider,
 	modelId: string,
-): ChatModelMetadataDto {
+): InternalModelMetadata {
 	const providerModels = MODEL_METADATA_REGISTRY[provider];
 	const modelOverride = providerModels?.[modelId];
 
-	if (!modelOverride) {
-		return DEFAULT_MODEL_METADATA;
-	}
+	const inputModalities =
+		modelOverride?.inputModalities ?? DEFAULT_INTERNAL_METADATA.inputModalities;
 
-	// Merge override with default metadata
 	return {
-		inputModalities: modelOverride.inputModalities ?? DEFAULT_MODEL_METADATA.inputModalities,
-		priority: modelOverride.priority,
+		inputModalities,
+		// LLM providers always allow file uploads
+		allowFileUploads: true,
+		allowedFilesMimeTypes: resolveAllowedMimeTypes(inputModalities),
+		priority: modelOverride?.priority,
 		capabilities: {
 			functionCalling:
-				modelOverride.capabilities?.functionCalling ??
-				DEFAULT_MODEL_METADATA.capabilities.functionCalling,
+				modelOverride?.capabilities?.functionCalling ??
+				DEFAULT_INTERNAL_METADATA.capabilities.functionCalling,
 		},
-		available: modelOverride.available ?? true,
+		available: modelOverride?.available ?? true,
 	};
 }
 

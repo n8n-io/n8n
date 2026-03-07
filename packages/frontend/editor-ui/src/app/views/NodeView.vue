@@ -301,6 +301,13 @@ const isCanvasReadOnly = computed(() => {
 	);
 });
 
+const canExecuteOnCanvas = computed(() => {
+	if (isDemoRoute.value) return false;
+	if (editableWorkflow.value.isArchived) return false;
+	if (builderStore.streaming) return false;
+	return !!(workflowPermissions.value.execute ?? projectPermissions.value.workflow.execute);
+});
+
 const isWriterAnotherTab = computed(() => {
 	return collaborationStore.isCurrentUserWriter && !collaborationStore.isCurrentTabWriter;
 });
@@ -1633,7 +1640,7 @@ onBeforeRouteLeave(async (to, from, next) => {
 		return;
 	}
 
-	await useWorkflowSaving({ router }).promptSaveUnsavedWorkflowChanges(next, {
+	await workflowSaving.promptSaveUnsavedWorkflowChanges(next, {
 		async confirm() {
 			if (from.name === VIEWS.NEW_WORKFLOW) {
 				const savedWorkflowId = workflowsStore.workflowId;
@@ -1661,7 +1668,6 @@ onBeforeMount(() => {
 });
 
 onMounted(async () => {
-	canvasStore.startLoading();
 	documentTitle.reset();
 
 	// Register callback for collaboration store to refresh canvas when workflow updates arrive
@@ -1682,7 +1688,6 @@ onMounted(async () => {
 		}
 	} finally {
 		isLoading.value = false;
-		canvasStore.stopLoading();
 
 		void externalHooks.run('nodeView.mount').catch(() => {});
 
@@ -1799,7 +1804,7 @@ onBeforeUnmount(() => {
 			<Suspense v-if="!isCanvasReadOnly">
 				<LazySetupWorkflowCredentialsButton :class="$style.setupCredentialsButtonWrapper" />
 			</Suspense>
-			<div v-if="!isCanvasReadOnly" :class="$style.executionButtons">
+			<div v-if="!isCanvasReadOnly || canExecuteOnCanvas" :class="$style.executionButtons">
 				<CanvasRunWorkflowButton
 					v-if="isRunWorkflowButtonVisible"
 					:waiting-for-webhook="isExecutionWaitingForWebhook"

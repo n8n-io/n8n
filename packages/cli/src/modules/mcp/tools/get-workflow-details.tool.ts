@@ -127,8 +127,17 @@ export async function getWorkflowDetails(
 	const scopes = workflowWithScopes.scopes ?? [];
 	const canExecute = scopes.includes('workflow:execute');
 
-	const nodes = workflow.activeVersion?.nodes ?? [];
-	const connections = workflow.activeVersion?.connections ?? {};
+	const nodes = workflow.nodes ?? [];
+	const connections = workflow.connections ?? {};
+	const activeVersion =
+		workflow.activeVersionId && workflow.activeVersion
+			? {
+					nodes: (workflow.activeVersion.nodes ?? []).map(
+						({ credentials: _credentials, ...node }) => node,
+					),
+					connections: workflow.activeVersion.connections ?? {},
+				}
+			: null;
 
 	const supportedTriggers = Object.keys(SUPPORTED_MCP_TRIGGERS);
 	const triggers = nodes.filter(
@@ -149,12 +158,14 @@ export async function getWorkflowDetails(
 		active: workflow.activeVersionId !== null,
 		isArchived: workflow.isArchived,
 		versionId: workflow.versionId,
+		activeVersionId: workflow.activeVersionId,
 		triggerCount: workflow.triggerCount,
 		createdAt: workflow.createdAt.toISOString(),
 		updatedAt: workflow.updatedAt.toISOString(),
 		settings: workflow.settings ?? null,
 		connections,
 		nodes: nodes.map(({ credentials: _credentials, ...node }) => node),
+		activeVersion,
 		tags: (workflow.tags ?? []).map((tag) => ({ id: tag.id, name: tag.name })),
 		meta: workflow.meta ?? null,
 		parentFolderId: workflow.parentFolder?.id ?? null,

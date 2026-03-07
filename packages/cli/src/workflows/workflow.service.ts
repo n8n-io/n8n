@@ -50,6 +50,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { EventService } from '@/events/event.service';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { NodeTypes } from '@/node-types';
@@ -361,6 +362,19 @@ export class WorkflowService {
 
 		WorkflowHelpers.addNodeIds(workflowUpdateData);
 
+		// Strip redactionPolicy if user lacks scope and value is changing
+		if (
+			workflowUpdateData.settings?.redactionPolicy !== undefined &&
+			workflowUpdateData.settings.redactionPolicy !== workflow.settings?.redactionPolicy
+		) {
+			const canUpdate = await userHasScopes(user, ['workflow:updateRedactionSetting'], false, {
+				workflowId,
+			});
+			if (!canUpdate) {
+				delete workflowUpdateData.settings.redactionPolicy;
+			}
+		}
+
 		// Merge settings to support partial updates
 		if (workflowUpdateData.settings && workflow.settings) {
 			workflowUpdateData.settings = {
@@ -647,6 +661,7 @@ export class WorkflowService {
 		await this._detectWebhookConflicts(workflow, versionToActivate);
 
 		this._validateNodes(workflowId, versionToActivate.nodes, versionToActivate.connections);
+		await this._validateDynamicCredentials(workflowId, versionToActivate.nodes, workflow.settings);
 		await this._validateSubWorkflowReferences(workflowId, versionToActivate.nodes);
 
 		if (previousActiveVersionId) {
@@ -1015,9 +1030,8 @@ export class WorkflowService {
 		const currentChecksum = await calculateWorkflowChecksum(dbWorkflow);
 
 		if (expectedChecksum !== currentChecksum) {
-			throw new BadRequestError(
+			throw new ConflictError(
 				'Your most recent changes may be lost, because someone else just updated this workflow. Open this workflow in a new tab to see those new updates.',
-				100,
 			);
 		}
 	}
@@ -1040,6 +1054,28 @@ export class WorkflowService {
 				error: validation.error,
 			});
 			throw new WorkflowValidationError(validation.error ?? 'Workflow validation failed');
+		}
+	}
+
+	private async _validateDynamicCredentials(
+		workflowId: string,
+		nodes: INode[],
+		workflowSettings?: IWorkflowSettings,
+	) {
+		const validation = await this.workflowValidationService.validateDynamicCredentials(
+			nodes,
+			this.nodeTypes,
+			workflowSettings,
+		);
+
+		if (!validation.isValid) {
+			this.logger.warn('Workflow activation failed dynamic credentials validation', {
+				workflowId,
+				error: validation.error,
+			});
+			throw new WorkflowValidationError(
+				validation.error ?? 'Dynamic credentials validation failed',
+			);
 		}
 	}
 

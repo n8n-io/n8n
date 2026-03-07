@@ -2,7 +2,7 @@ import { useCommunityNodesStore } from '../communityNodes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { computed, nextTick, ref } from 'vue';
+import { nextTick, ref } from 'vue';
 import { i18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -39,7 +39,7 @@ export function useInstallNode() {
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
 	const workflowsStore = useWorkflowsStore();
-	const isOwner = computed(() => useUsersStore().isInstanceOwner);
+	const userStore = useUsersStore();
 	const loading = ref(false);
 	const toast = useToast();
 	const canvasOperations = useCanvasOperations();
@@ -56,8 +56,8 @@ export function useInstallNode() {
 	};
 
 	const installNode = async (props: InstallNodeProps): Promise<InstallNodeResult> => {
-		if (!isOwner.value) {
-			const error = new Error('User is not an owner');
+		if (!userStore.isAdminOrOwner) {
+			const error = new Error('User is not an owner or admin');
 			toast.showError(error, i18n.baseText('settings.communityNodes.messages.install.error'));
 			return { success: false, error };
 		}

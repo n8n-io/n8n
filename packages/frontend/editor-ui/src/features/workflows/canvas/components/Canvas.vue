@@ -454,7 +454,7 @@ function onNodeDragStop(event: NodeDragEvent) {
 
 function onNodeClick({ event, node }: NodeMouseEvent) {
 	if (chatPanelStore.isOpen && focusedNodesStore.isFeatureEnabled) {
-		focusedNodesStore.confirmNodes([node.id], 'canvas_selection');
+		focusedNodesStore.setUnconfirmedFromCanvasSelection([node.id]);
 	}
 
 	emit('click:node', node.id, getProjectedPosition(event));

@@ -58,6 +58,7 @@ type ModuleName =
 	| 'dynamic-credentials'
 	| 'log-streaming'
 	| 'ldap'
+	| 'redaction'
 	| 'source-control';
 
 export interface SetupProps {

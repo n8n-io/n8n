@@ -3,9 +3,11 @@ import type { User, WorkflowRepository } from '@n8n/db';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	type INode,
 	type IPinData,
+	type IRun,
 	type IRunExecutionData,
 	type IWorkflowExecutionDataProcess,
 	type WorkflowExecuteMode,
@@ -18,7 +20,11 @@ import {
 } from 'n8n-workflow';
 import z from 'zod';
 
-import { SUPPORTED_MCP_TRIGGERS, USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
+import {
+	SUPPORTED_MCP_TRIGGERS,
+	SUPPORTED_PRODUCTION_MCP_TRIGGERS,
+	USER_CALLED_MCP_TOOL_EVENT,
+} from '../mcp.constants';
 import { McpExecutionTimeoutError, WorkflowAccessError } from '../mcp.errors';
 import type {
 	ExecuteWorkflowsInputMeta,
@@ -38,6 +44,13 @@ const ERROR_KEYS_TO_IGNORE = ['stack', 'node'];
 
 const inputSchema = z.object({
 	workflowId: z.string().describe('The ID of the workflow to execute'),
+	executionMode: z
+		.enum(['manual', 'production'])
+		.optional()
+		.default('production')
+		.describe(
+			'Use "manual" to test the current version of the workflow. Use "production" to execute the published (active) version.',
+		),
 	inputs: z
 		.discriminatedUnion('type', [
 			z.object({
@@ -81,6 +94,8 @@ type ExecuteWorkflowOutput = {
 	error?: unknown;
 };
 
+type FoundWorkflow = NonNullable<Awaited<ReturnType<WorkflowFinderService['findWorkflowForUser']>>>;
+
 const outputSchema = {
 	success: z.boolean(),
 	executionId: z.string().nullable().optional(),
@@ -111,11 +126,11 @@ export const createExecuteWorkflowTool = (
 			openWorldHint: true, // Can access external systems via workflows
 		},
 	},
-	handler: async ({ workflowId, inputs }: z.infer<typeof inputSchema>) => {
+	handler: async ({ workflowId, executionMode, inputs }: z.infer<typeof inputSchema>) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: 'execute_workflow',
-			parameters: { workflowId, inputs: getInputMetaData(inputs) },
+			parameters: { workflowId, executionMode, inputs: getInputMetaData(inputs) },
 		};
 		try {
 			const output = await executeWorkflow(
@@ -127,6 +142,7 @@ export const createExecuteWorkflowTool = (
 				mcpService,
 				workflowId,
 				inputs,
+				executionMode,
 			);
 
 			telemetryPayload.results = {
@@ -203,7 +219,41 @@ export const executeWorkflow = async (
 	mcpService: McpService,
 	workflowId: string,
 	inputs?: z.infer<typeof inputSchema>['inputs'],
+	executionMode: z.infer<typeof inputSchema>['executionMode'] = 'production',
 ): Promise<ExecuteWorkflowOutput> => {
+	const workflow = await getExecutableWorkflow(
+		workflowFinderService,
+		workflowRepository,
+		user,
+		workflowId,
+	);
+	const runData = await buildRunData(
+		workflow,
+		user.id,
+		workflowId,
+		executionMode,
+		inputs,
+		mcpService,
+	);
+
+	const executionId = await workflowRunner.run(runData);
+	const data = await waitForExecutionResult(executionId, activeExecutions, mcpService);
+	const success = data.status !== 'error' && !data.data.resultData?.error;
+
+	return {
+		success,
+		executionId,
+		result: data.data.resultData,
+		error: data.data.resultData?.error,
+	};
+};
+
+const getExecutableWorkflow = async (
+	workflowFinderService: WorkflowFinderService,
+	workflowRepository: WorkflowRepository,
+	user: User,
+	workflowId: string,
+): Promise<FoundWorkflow> => {
 	// Check if user has permission to access the workflow
 	const workflow = await workflowFinderService.findWorkflowForUser(
 		workflowId,
@@ -242,14 +292,45 @@ export const executeWorkflow = async (
 		);
 	}
 
-	const nodes = workflow.activeVersion?.nodes ?? [];
-	const connections = workflow.activeVersion?.connections ?? {};
+	return workflow;
+};
 
-	const triggerNode = findMcpSupportedTrigger(nodes);
+const getVersionDataForExecution = (
+	workflow: FoundWorkflow,
+	workflowId: string,
+	executionMode: z.infer<typeof inputSchema>['executionMode'],
+) => {
+	if (executionMode === 'production' && !workflow.activeVersionId) {
+		throw new WorkflowAccessError(
+			`Workflow '${workflowId}' has no published (active) version to execute`,
+			'workflow_not_active',
+		);
+	}
+
+	const nodes =
+		executionMode === 'production' ? (workflow.activeVersion?.nodes ?? []) : (workflow.nodes ?? []);
+	const connections =
+		executionMode === 'production'
+			? (workflow.activeVersion?.connections ?? {})
+			: (workflow.connections ?? {});
+
+	return { nodes, connections };
+};
+
+const buildRunData = async (
+	workflow: FoundWorkflow,
+	userId: string,
+	workflowId: string,
+	executionMode: z.infer<typeof inputSchema>['executionMode'],
+	inputs: z.infer<typeof inputSchema>['inputs'],
+	mcpService: McpService,
+): Promise<IWorkflowExecutionDataProcess> => {
+	const { nodes, connections } = getVersionDataForExecution(workflow, workflowId, executionMode);
+	const triggerNode = findMcpSupportedTrigger(nodes, executionMode);
 
 	if (!triggerNode) {
 		throw new WorkflowAccessError(
-			`Only workflows with the following trigger nodes can be executed: ${Object.values(SUPPORTED_MCP_TRIGGERS).join(', ')}.`,
+			`Only workflows with the following trigger nodes can be executed: ${getSupportedTriggerNamesForMode(executionMode).join(', ')}.`,
 			'unsupported_trigger',
 		);
 	}
@@ -260,7 +341,7 @@ export const executeWorkflow = async (
 	const runData: IWorkflowExecutionDataProcess = {
 		executionMode: getExecutionModeForTrigger(triggerNode),
 		workflowData: { ...workflow, nodes, connections },
-		userId: user.id,
+		userId,
 		// MCP metadata for queue mode support
 		isMcpExecution: mcpService.isQueueMode,
 		mcpType: 'service',
@@ -296,8 +377,14 @@ export const executeWorkflow = async (
 		},
 	});
 
-	const executionId = await workflowRunner.run(runData);
+	return runData;
+};
 
+const waitForExecutionResult = async (
+	executionId: string,
+	activeExecutions: ActiveExecutions,
+	mcpService: McpService,
+): Promise<IRun> => {
 	// Create a timeout promise
 	let timeoutId: NodeJS.Timeout | undefined;
 	const timeoutPromise = new Promise<never>((_, reject) => {
@@ -322,14 +409,7 @@ export const executeWorkflow = async (
 			throw new UnexpectedError('Workflow did not return any data');
 		}
 
-		const success = data.status !== 'error' && !data.data.resultData?.error;
-
-		return {
-			success,
-			executionId,
-			result: data.data.resultData,
-			error: data.data.resultData?.error,
-		};
+		return data;
 	} catch (error) {
 		if (timeoutId) clearTimeout(timeoutId);
 
@@ -361,6 +441,8 @@ const getExecutionModeForTrigger = (node: INode): WorkflowExecuteMode => {
 			return 'webhook';
 		case CHAT_TRIGGER_NODE_TYPE:
 			return 'chat';
+		case MANUAL_TRIGGER_NODE_TYPE:
+			return 'manual';
 		case FORM_TRIGGER_NODE_TYPE:
 			return 'trigger';
 		default:
@@ -376,6 +458,10 @@ const getPinDataForTrigger = async (
 	inputs: z.infer<typeof inputSchema>['inputs'],
 ): Promise<IPinData> => {
 	switch (node.type) {
+		case MANUAL_TRIGGER_NODE_TYPE:
+			return {
+				[node.name]: [{ json: {} }],
+			};
 		case WEBHOOK_NODE_TYPE: {
 			// For webhook triggers, provide default empty values if no inputs or wrong type
 			const webhookData = inputs?.type === 'webhook' ? inputs.webhookData : undefined;
@@ -445,6 +531,14 @@ const getPinDataForTrigger = async (
 		default:
 			return {};
 	}
+};
+
+const getSupportedTriggerNamesForMode = (
+	executionMode: z.infer<typeof inputSchema>['executionMode'],
+): string[] => {
+	return executionMode === 'production'
+		? Object.values(SUPPORTED_PRODUCTION_MCP_TRIGGERS)
+		: Object.values(SUPPORTED_MCP_TRIGGERS);
 };
 
 /**
