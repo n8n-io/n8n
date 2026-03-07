@@ -1044,7 +1044,7 @@ export class CredentialsService {
 			const oauthUrlFields = ['authUrl', 'accessTokenUrl', 'serverUrl'] as const;
 			for (const field of oauthUrlFields) {
 				const value = data[field];
-				if (typeof value === 'string' && value.trim() !== '') {
+				if (typeof value === 'string' && value.trim() !== '' && value.trim().charAt(0) !== '=') {
 					validateOAuthUrl(value);
 				}
 			}
@@ -1053,7 +1053,7 @@ export class CredentialsService {
 			const oauthUrlFields = ['authUrl', 'requestTokenUrl', 'accessTokenUrl'] as const;
 			for (const field of oauthUrlFields) {
 				const value = data[field];
-				if (typeof value === 'string' && value.trim() !== '') {
+				if (typeof value === 'string' && value.trim() !== '' && value.trim().charAt(0) !== '=') {
 					validateOAuthUrl(value);
 				}
 			}
