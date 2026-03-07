@@ -12,7 +12,7 @@ import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workf
 import { URLSearchParams } from 'url';
 import { parseString } from 'xml2js';
 
-import { nextCloudApiRequest } from './GenericFunctions';
+import { encodeWebDavPath, nextCloudApiRequest } from './GenericFunctions';
 import { wrapData } from '../../utils/utilities';
 
 export class NextCloud implements INodeType {
@@ -936,7 +936,7 @@ export class NextCloud implements INodeType {
 						requestMethod = 'COPY' as IHttpRequestMethods;
 						endpoint = this.getNodeParameter('path', i) as string;
 						const toPath = this.getNodeParameter('toPath', i) as string;
-						headers.Destination = `${credentials.webDavUrl}/${encodeURI(toPath)}`;
+						headers.Destination = `${credentials.webDavUrl}/${encodeWebDavPath(toPath)}`;
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -952,7 +952,7 @@ export class NextCloud implements INodeType {
 						requestMethod = 'MOVE' as IHttpRequestMethods;
 						endpoint = this.getNodeParameter('path', i) as string;
 						const toPath = this.getNodeParameter('toPath', i) as string;
-						headers.Destination = `${credentials.webDavUrl}/${encodeURI(toPath)}`;
+						headers.Destination = `${credentials.webDavUrl}/${encodeWebDavPath(toPath)}`;
 					} else if (operation === 'share') {
 						// ----------------------------------
 						//         share

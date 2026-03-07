@@ -8,6 +8,19 @@ import {
 } from 'n8n-workflow';
 
 /**
+ * Encodes a path for use in NextCloud WebDAV URLs.
+ * Encodes each path segment individually while preserving path separators.
+ * This ensures proper handling of special characters including spaces.
+ */
+export function encodeWebDavPath(path: string): string {
+	// Split path by '/', encode each segment, then rejoin
+	return path
+		.split('/')
+		.map((segment) => encodeURIComponent(segment))
+		.join('/');
+}
+
+/**
  * Make an API request to NextCloud
  *
  */
@@ -45,7 +58,7 @@ export async function nextCloudApiRequest(
 		options.encoding = null;
 	}
 
-	options.uri = `${credentials.webDavUrl}/${encodeURI(endpoint)}`;
+	options.uri = `${credentials.webDavUrl}/${encodeWebDavPath(endpoint)}`;
 
 	if (resource === 'user' && operation === 'create') {
 		options.uri = options.uri.replace('/remote.php/webdav', '');
