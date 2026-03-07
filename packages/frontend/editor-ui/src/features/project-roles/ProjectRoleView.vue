@@ -169,6 +169,16 @@ function toggleScope(scope: string) {
 			toggleScope('workflow:execute');
 		}
 	}
+
+	// Dependency: workflow:publish and workflow:unpublish are coupled
+	if (scope === 'workflow:publish') {
+		if (isBeingAdded && !form.value.scopes.includes('workflow:unpublish')) {
+			form.value.scopes.push('workflow:unpublish');
+		} else if (!isBeingAdded) {
+			const idx = form.value.scopes.indexOf('workflow:unpublish');
+			if (idx !== -1) form.value.scopes.splice(idx, 1);
+		}
+	}
 }
 
 async function createProjectRole() {
