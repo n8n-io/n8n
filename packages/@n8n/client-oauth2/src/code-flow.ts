@@ -101,7 +101,11 @@ export class CodeFlow {
 		// `client_id`: REQUIRED, if the client is not authenticating with the
 		// authorization server as described in Section 3.2.1.
 		// Reference: https://tools.ietf.org/html/rfc6749#section-3.2.1
-		if (options.clientSecret) {
+		// When authentication is 'body', credentials must be in the body, not headers
+		if (options.authentication === 'body') {
+			// Client credentials will be added to body via options.body merge in getRequestOptions
+			// Don't add Authorization header when using body authentication
+		} else if (options.clientSecret) {
 			headers.Authorization = auth(options.clientId, options.clientSecret);
 		} else {
 			body.client_id = options.clientId;
