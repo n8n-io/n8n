@@ -112,6 +112,10 @@ const onAddColumn = async (column: DataTableColumnCreatePayload): Promise<AddCol
 	return await dataTableTableRef.value.addColumn(column);
 };
 
+const onCsvImported = async () => {
+	await dataTableTableRef.value?.fetchDataTableRows();
+};
+
 const handleSourceControlPull = async () => {
 	// Bypass cache and fetch fresh data from API after pull
 	loading.value = true;
@@ -156,7 +160,11 @@ onBeforeUnmount(() => {
 		</div>
 		<div v-else-if="dataTable">
 			<div :class="$style.header">
-				<DataTableBreadcrumbs :data-table="dataTable" :read-only="readOnlyEnv" />
+				<DataTableBreadcrumbs
+					:data-table="dataTable"
+					:read-only="readOnlyEnv"
+					@imported="onCsvImported"
+				/>
 				<div v-if="saving" :class="$style.saving">
 					<N8nSpinner />
 					<N8nText>{{ i18n.baseText('generic.saving') }}...</N8nText>

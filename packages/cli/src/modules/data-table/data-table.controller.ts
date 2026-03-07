@@ -4,6 +4,7 @@ import {
 	CreateDataTableDto,
 	DeleteDataTableRowsDto,
 	DownloadDataTableCsvQueryDto,
+	ImportCsvToDataTableDto,
 	ListDataTableContentQueryDto,
 	ListDataTableQueryDto,
 	MoveDataTableColumnDto,
@@ -356,6 +357,34 @@ export class DataTableController {
 				req.params.projectId,
 				dto.data,
 				dto.returnType,
+			);
+		} catch (e: unknown) {
+			if (e instanceof DataTableNotFoundError) {
+				throw new NotFoundError(e.message);
+			} else if (e instanceof DataTableValidationError) {
+				throw new BadRequestError(e.message);
+			} else if (e instanceof Error) {
+				throw new InternalServerError(e.message, e);
+			} else {
+				throw e;
+			}
+		}
+	}
+
+	@Post('/:dataTableId/import-csv')
+	@ProjectScope('dataTable:writeRow')
+	async importCsvToDataTable(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('dataTableId') dataTableId: string,
+		@Body dto: ImportCsvToDataTableDto,
+	) {
+		this.checkInstanceWriteAccess();
+		try {
+			return await this.dataTableService.importCsvToExistingTable(
+				dataTableId,
+				req.params.projectId,
+				dto.fileId,
 			);
 		} catch (e: unknown) {
 			if (e instanceof DataTableNotFoundError) {
