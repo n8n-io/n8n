@@ -68,7 +68,8 @@ export async function waitForThroughput(
 	let highWaterMark = baselineValue;
 
 	while (Date.now() < deadline) {
-		await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+		const remaining = deadline - Date.now();
+		await new Promise((resolve) => setTimeout(resolve, Math.min(pollIntervalMs, remaining)));
 
 		let results;
 		try {
