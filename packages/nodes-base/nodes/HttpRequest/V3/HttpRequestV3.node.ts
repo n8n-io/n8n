@@ -24,7 +24,7 @@ import {
 	sleep,
 	isDomainAllowed,
 } from 'n8n-workflow';
-import type { Readable } from 'stream';
+import { Readable } from 'stream';
 
 import { keysToLowercase } from '@utils/utilities';
 
@@ -103,7 +103,10 @@ export class HttpRequestV3 implements INodeType {
 				| 'predefinedCredentialType'
 				| 'genericCredentialType'
 				| 'none';
-		} catch {}
+		} catch (error) {
+			// Default to 'none' if parameter not found
+			authentication = 'none';
+		}
 
 		let httpBasicAuth;
 		let httpBearerAuth;
@@ -402,9 +405,44 @@ export class HttpRequestV3 implements INodeType {
 				}
 
 				const parametersToKeyValue = async (
-					accumulator: { [key: string]: any },
+					accumulator: IDataObject,
 					cur: { name: string; value: string; parameterType?: string; inputDataFieldName?: string },
 				) => {
+					interface IBinaryDataObject {
+						value: Buffer | Readable;
+						options: {
+							filename?: string;
+							contentType?: string;
+						};
+					}
+
+					const isExistingBinary = (value: unknown): value is IBinaryDataObject => {
+						if (
+							value === null ||
+							typeof value !== 'object' ||
+							!('value' in value) ||
+							!('options' in value)
+						) {
+							return false;
+						}
+
+						const isNodeReadable = (maybe: unknown): maybe is Readable => {
+							return (
+								maybe !== null &&
+								typeof maybe === 'object' &&
+								typeof (maybe as any).pipe === 'function' &&
+								typeof (maybe as any).read === 'function'
+							);
+						};
+
+						const dataValue = (value as IBinaryDataObject).value;
+
+						return Buffer.isBuffer(dataValue) || isNodeReadable(dataValue);
+					};
+
+					// Prepare the current value to be added
+					let currentValue: IBinaryDataObject | string;
+
 					if (cur.parameterType === 'formBinaryData') {
 						if (!cur.inputDataFieldName) return accumulator;
 						const binaryData = this.helpers.assertBinaryData(itemIndex, cur.inputDataFieldName);
@@ -416,14 +454,37 @@ export class HttpRequestV3 implements INodeType {
 							uploadData = Buffer.from(binaryData.data, BINARY_ENCODING);
 						}
 
-						accumulator[cur.name] = {
+						currentValue = {
 							value: uploadData,
 							options: {
 								filename: binaryData.fileName,
 								contentType: binaryData.mimeType,
 							},
 						};
-						return accumulator;
+					} else {
+						currentValue = cur.value;
+					}
+
+					// Handle multiple values for the same parameter, with special handling for binary data objects
+					const existingValue = accumulator[cur.name];
+
+					if (existingValue !== undefined) {
+						if (Array.isArray(existingValue)) {
+							// If it's already an array, append to it
+							accumulator[cur.name] = [...existingValue, currentValue];
+						} else if (isExistingBinary(existingValue) && isExistingBinary(currentValue)) {
+							// When both are binary, append to an array to preserve all values
+							accumulator[cur.name] = [existingValue, currentValue];
+						} else if (isExistingBinary(existingValue) && !isExistingBinary(currentValue)) {
+							// Never overwrite binary data with non-binary data
+							accumulator[cur.name] = [existingValue, currentValue];
+						} else {
+							// Convert existing value and new value into an array
+							accumulator[cur.name] = [existingValue, currentValue];
+						}
+					} else {
+						// First occurrence of this parameter
+						accumulator[cur.name] = currentValue;
 					}
 					updadeQueryParameter(accumulator, cur.name, cur.value);
 					return accumulator;
@@ -568,9 +629,7 @@ export class HttpRequestV3 implements INodeType {
 
 				// Add Content Type if any are set
 				if (bodyContentType === 'raw') {
-					if (requestOptions.headers === undefined) {
-						requestOptions.headers = {};
-					}
+					requestOptions.headers ??= {};
 					const rawContentType = this.getNodeParameter('rawContentType', itemIndex) as string;
 					requestOptions.headers['content-type'] = rawContentType;
 				}
@@ -822,12 +881,23 @@ export class HttpRequestV3 implements INodeType {
 								const sanitizedRequestOptions = sanitizeUiMessage(options, authKeys, secrets);
 								sanitizedRequests.push(sanitizedRequestOptions);
 								this.sendMessageToUI(sanitizedRequestOptions);
-							} catch (e) {}
+							} catch (e) {
+								// Ignore errors during UI message sanitization
+								this.logger.debug('Error sanitizing request options for UI', e);
+							}
 						}),
 			),
 		);
 
-		let responseData: any;
+		let responseData: {
+			status?: 'fulfilled' | 'rejected';
+			reason?: {
+				statusCode?: number;
+				message?: string;
+				error?: Buffer | unknown;
+			};
+			value?: unknown;
+		};
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
 				responseData = promisesResponses.shift();
@@ -882,11 +952,24 @@ export class HttpRequestV3 implements INodeType {
 					}
 				}
 
-				let responses: any[];
+				interface IResponse {
+					headers?: {
+						'content-type'?: string;
+						[key: string]: string | undefined;
+					};
+					body?: unknown;
+					statusCode?: number;
+					statusMessage?: string;
+					__bodyResolved?: boolean;
+					request?: unknown;
+					[key: string]: unknown;
+				}
+
+				let responses: IResponse[];
 				if (Array.isArray(responseData.value)) {
-					responses = responseData.value;
+					responses = responseData.value as IResponse[];
 				} else {
-					responses = [responseData.value];
+					responses = [responseData.value as IResponse];
 				}
 
 				let responseFormat = this.getNodeParameter(
@@ -917,7 +1000,7 @@ export class HttpRequestV3 implements INodeType {
 						}
 					}
 
-					const responseContentType = response.headers['content-type'] ?? '';
+					const responseContentType = response.headers?.['content-type'] ?? '';
 					if (autoDetectResponseFormat) {
 						if (responseContentType.includes('application/json')) {
 							responseFormat = 'json';
