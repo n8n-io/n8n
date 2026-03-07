@@ -598,16 +598,35 @@ export class SourceControlStatusService {
 					updatedAt: new Date().toISOString(),
 					owner: local.ownedBy ?? undefined,
 				});
+
+				// Check for cross-ID name collision (different tables sharing the same name)
+				const nameCollision = dataTablesRemote.find(
+					(r) => r.id !== local.id && r.name === local.name,
+				);
+				if (nameCollision) {
+					const modified = options.preferLocalVersion ? local : nameCollision;
+					if (collectVerbose) {
+						dtModifiedInEither.push(modified);
+					}
+					sourceControlledFiles.push({
+						id: modified.id,
+						name: modified.name,
+						type: 'datatable',
+						status: 'modified',
+						location: options.direction === 'push' ? 'local' : 'remote',
+						conflict: true,
+						file: getDataTableExportPath(modified.id, this.dataTableExportFolder),
+						updatedAt: new Date().toISOString(),
+						owner: this.convertToStatusResourceOwner(modified.ownedBy),
+					});
+				}
+
 				continue;
 			}
 
-			const hasMismatch =
-				(remote.id === local.id && remote.name !== local.name) ||
-				(remote.id !== local.id && remote.name === local.name);
-
 			const isModified = isDataTableModified(local, remote);
 
-			if (hasMismatch || isModified) {
+			if (isModified) {
 				const modified = options.preferLocalVersion ? local : remote;
 				if (collectVerbose) {
 					dtModifiedInEither.push(modified);
