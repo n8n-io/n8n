@@ -4,7 +4,6 @@ import { Workflow, type IRunExecutionData, type ITaskStartedData } from 'n8n-wor
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import {
-	copyExecutionData,
 	createLogTree,
 	findSubExecutionLocator,
 	mergeStartData,
@@ -140,7 +139,7 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 					workflowsStore.workflowExecutionData === null
 						? undefined
 						: {
-								response: copyExecutionData(workflowsStore.workflowExecutionData),
+								response: workflowsStore.workflowExecutionData,
 								startData: workflowsStore.workflowExecutionStartedData?.[1] ?? {},
 							};
 
