@@ -47,52 +47,112 @@ export async function execute(
 	runQueries: QueryRunner,
 	nodeOptions: IDataObject,
 ): Promise<INodeExecutionData[]> {
-	let returnData: INodeExecutionData[] = [];
 	const items = replaceEmptyStringsByNulls(inputItems, nodeOptions.replaceEmptyStrings as boolean);
 
+	const errorItems: INodeExecutionData[] = [];
 	const queries: QueryWithValues[] = [];
+	// Track which original item index each query corresponds to.
+	// runQueries uses the query array index for pairedItem, so we need this
+	// to remap results back to the correct input items when some items are
+	// filtered out due to preparation errors.
+	const queryToItemIndex: number[] = [];
 
 	for (let i = 0; i < items.length; i++) {
-		let rawQuery = this.getNodeParameter('query', i) as string;
+		try {
+			let rawQuery = this.getNodeParameter('query', i) as string;
 
-		for (const resolvable of getResolvables(rawQuery)) {
-			rawQuery = rawQuery.replace(resolvable, this.evaluateExpression(resolvable, i) as string);
-		}
+			for (const resolvable of getResolvables(rawQuery)) {
+				rawQuery = rawQuery.replace(resolvable, this.evaluateExpression(resolvable, i) as string);
+			}
 
-		const options = this.getNodeParameter('options', i, {});
+			const options = this.getNodeParameter('options', i, {});
 
-		const nodeVersion = Number(nodeOptions.nodeVersion);
+			const nodeVersion = Number(nodeOptions.nodeVersion);
 
-		let values;
-		let queryReplacement = options.queryReplacement || [];
+			let values;
+			let queryReplacement = options.queryReplacement || [];
 
-		if (typeof queryReplacement === 'string') {
-			queryReplacement = queryReplacement.split(',').map((entry) => entry.trim());
-		}
+			if (typeof queryReplacement === 'string') {
+				queryReplacement = queryReplacement.split(',').map((entry) => entry.trim());
+			}
 
-		if (Array.isArray(queryReplacement)) {
-			values = queryReplacement as IDataObject[];
-		} else {
-			throw new NodeOperationError(
-				this.getNode(),
-				'Query Replacement must be a string of comma-separated values, or an array of values',
-				{ itemIndex: i },
-			);
-		}
+			if (Array.isArray(queryReplacement)) {
+				values = queryReplacement as IDataObject[];
+			} else {
+				throw new NodeOperationError(
+					this.getNode(),
+					'Query Replacement must be a string of comma-separated values, or an array of values',
+					{ itemIndex: i },
+				);
+			}
 
-		const preparedQuery = prepareQueryAndReplacements(rawQuery, nodeVersion, values);
+			const preparedQuery = prepareQueryAndReplacements(rawQuery, nodeVersion, values);
 
-		if ((nodeOptions.nodeVersion as number) >= 2.3) {
-			const parsedNumbers = preparedQuery.values.map((value) => {
-				return Number(value) ? Number(value) : value;
+			if ((nodeOptions.nodeVersion as number) >= 2.3) {
+				const parsedNumbers = preparedQuery.values.map((value) => {
+					return Number(value) ? Number(value) : value;
+				});
+				preparedQuery.values = parsedNumbers;
+			}
+
+			queries.push(preparedQuery);
+			queryToItemIndex.push(i);
+		} catch (error) {
+			const nodeError =
+				error instanceof NodeOperationError
+					? error
+					: new NodeOperationError(this.getNode(), error as Error, { itemIndex: i });
+			if (!this.continueOnFail()) {
+				throw nodeError;
+			}
+			errorItems.push({
+				json: { message: nodeError.message, error: { ...nodeError } },
+				pairedItem: { item: i },
 			});
-			preparedQuery.values = parsedNumbers;
 		}
-
-		queries.push(preparedQuery);
 	}
 
-	returnData = await runQueries(queries);
+	if (queries.length === 0) {
+		return errorItems;
+	}
 
-	return returnData;
+	const queryResults = await runQueries(queries);
+
+	// runQueries assigns pairedItem using query array indices (0..n-1). When
+	// some items fail during preparation and are excluded from `queries`, those
+	// indices no longer match original input item indices. Remap both object and
+	// array pairedItem references back to original indices.
+	const remappedResults = queryResults.map((result) => {
+		const pairedItem = result.pairedItem;
+		if (pairedItem === undefined) {
+			return result;
+		}
+
+		if (Array.isArray(pairedItem)) {
+			const remappedPairedItems = pairedItem.map((entry) => {
+				const originalIndex = queryToItemIndex[entry.item];
+				if (originalIndex === undefined) {
+					return entry;
+				}
+
+				return { ...entry, item: originalIndex };
+			});
+
+			return { ...result, pairedItem: remappedPairedItems };
+		}
+
+		if (
+			typeof pairedItem === 'object' &&
+			pairedItem.item !== undefined
+		) {
+			const originalIndex = queryToItemIndex[pairedItem.item];
+			if (originalIndex !== undefined) {
+				return { ...result, pairedItem: { ...pairedItem, item: originalIndex } };
+			}
+		}
+
+		return result;
+	});
+
+	return [...errorItems, ...remappedResults];
 }
