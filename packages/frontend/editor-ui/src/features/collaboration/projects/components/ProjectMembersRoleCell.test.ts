@@ -59,7 +59,7 @@ const mockRoles = [
 	{
 		slug: 'project:viewer',
 		displayName: 'Viewer',
-		description: 'Can view workflows and executions',
+		description: 'Can view and start workflows and view executions',
 		systemRole: true,
 		licensed: true,
 		roleType: 'project',
