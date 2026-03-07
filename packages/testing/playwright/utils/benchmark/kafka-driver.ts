@@ -195,10 +195,6 @@ export const kafkaDriver: TriggerDriver = {
 			waitForReady: (opts) => kafka.waitForConsumerGroup(groupId, opts),
 
 			waitForDrain: (opts) => waitForConsumerGroupDrain(kafka, groupId, topic, opts),
-
-			cleanup: async () => {
-				// Topic and consumer group are cleaned up with the container
-			},
 		};
 	},
 };
