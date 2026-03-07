@@ -265,7 +265,7 @@ test.describe(
 			);
 		});
 
-			test('maps expressions to updated fields correctly @fixme', async ({ n8n }) => {
+		test('maps expressions to updated fields correctly @fixme', async ({ n8n }) => {
 			await n8n.start.fromImportedWorkflow('Test_workflow_3.json');
 			await n8n.canvas.openNode('Set');
 
