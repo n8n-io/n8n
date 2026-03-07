@@ -136,8 +136,7 @@ export function getProjects(): Project[] {
 		for (const { name, config } of BENCHMARK_PROFILES) {
 			projects.push({
 				name: `benchmark-${name}:infrastructure`,
-				testDir: './tests/infrastructure',
-				grep: /@benchmark/,
+				testDir: './tests/infrastructure/benchmarks',
 				workers: 1,
 				timeout: 600_000,
 				retries: 0,
