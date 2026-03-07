@@ -68,7 +68,7 @@ dependencies are installed and the packages get linked correctly. Here's a short
 
 ### Dev Container
 
-If you already have VS Code and Docker installed, you can click [here](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://github.com/n8n-io/n8n) to get started. Clicking these links will cause VS Code to automatically install the Dev Containers extension if needed, clone the source code into a container volume, and spin up a dev container for use.
+If you already have VS Code and Docker installed, you can click [here](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://github.com/n8n-io/n8n) to get started. Clicking these links will cause VS Code to automatically install the Dev Containers extension if needed, clone the source code into a container volume and spin up a dev container for use.
 
 ### Requirements
 
@@ -492,7 +492,7 @@ The repository for the n8n documentation on [docs.n8n.io](https://docs.n8n.io) c
 
 You can submit your workflows to n8n's template library.
 
-n8n is working on a creator program, and developing a marketplace of templates. This is an ongoing project, and details are likely to change.
+n8n is working on a creator program and developing a marketplace of templates. This is an ongoing project, and details are likely to change.
 
 Refer to [n8n Creator hub](https://www.notion.so/n8n/n8n-Creator-hub-7bd2cbe0fce0449198ecb23ff4a2f76f) for information on how to submit templates and become a creator.
 
