@@ -55,9 +55,10 @@ const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const nodeGovernanceStore = useNodeGovernanceStore();
 
-const emit = defineEmits<{
+const _emit = defineEmits<{
 	requestAccess: [nodeType: string];
 }>();
+void _emit;
 
 const dragging = ref(false);
 
@@ -80,15 +81,15 @@ const isPendingRequest = computed(() => {
 	const storeStatus = nodeGovernanceStore.getGovernanceForNode(props.nodeType.name);
 	return storeStatus?.status === 'pending_request';
 });
-const governanceStatus = computed(() => {
+const _governanceStatus = computed(() => {
 	const governanceStatus = props.nodeType.governance?.status;
 	if (governanceStatus !== undefined) {
 		return governanceStatus;
 	}
-	// Fallback to store lookup for category views where governance might not be augmented
 	const storeStatus = nodeGovernanceStore.getGovernanceForNode(props.nodeType.name);
 	return storeStatus?.status ?? 'allowed';
 });
+void _governanceStatus;
 const draggablePosition = ref({ x: -100, y: -100 });
 const draggableDataTransfer = ref(null as Element | null);
 

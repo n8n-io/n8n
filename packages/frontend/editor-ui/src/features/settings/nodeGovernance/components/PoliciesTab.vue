@@ -491,7 +491,7 @@ function getNodeCount(policy: NodeGovernancePolicy): number {
 							<N8nButton
 								type="tertiary"
 								size="small"
-								icon="trash"
+								icon="trash-2"
 								:class="$style.deleteBtn"
 								data-test-id="delete-policy-button"
 								@click="onDeletePolicy(item)"

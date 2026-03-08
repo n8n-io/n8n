@@ -29,7 +29,7 @@ const projectIds = ref<string[]>([]);
 
 const modalState = computed(() => uiStore.modalsById[POLICY_FORM_MODAL_KEY]);
 const isOpen = computed(() => modalState.value?.open ?? false);
-const modalData = computed(() => modalState.value?.data ?? {});
+const modalData = computed(() => (modalState.value?.data ?? {}) as Record<string, any>);
 const isEdit = computed(() => modalData.value.policy !== undefined);
 const modalTitle = computed(() =>
 	isEdit.value
@@ -172,8 +172,8 @@ function closeModal() {
 						<N8nOption
 							v-for="project in projects"
 							:key="project.id"
-							:value="project.id"
-							:label="project.name"
+							:value="project.id ?? undefined"
+							:label="project.name ?? ''"
 						/>
 					</N8nSelect>
 					<N8nText v-if="projectIds.length === 0" size="small" color="text-light">

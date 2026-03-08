@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Z } from 'zod-class';
+import { Z } from '../../zod-class';
 
 export class CreateAccessRequestDto extends Z.class({
 	projectId: z.string().min(1),

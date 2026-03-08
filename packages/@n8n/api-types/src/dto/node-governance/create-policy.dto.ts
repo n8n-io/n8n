@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Z } from 'zod-class';
+import { Z } from '../../zod-class';
 
 const policyTypeSchema = z.enum(['allow', 'block']);
 const policyScopeSchema = z.enum(['global', 'projects']);

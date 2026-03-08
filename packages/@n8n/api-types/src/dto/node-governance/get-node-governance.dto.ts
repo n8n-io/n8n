@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Z } from 'zod-class';
+import { Z } from '../../zod-class';
 
 // For GET requests (legacy, not recommended due to URL length limits)
 export class GetNodeGovernanceQueryDto extends Z.class({

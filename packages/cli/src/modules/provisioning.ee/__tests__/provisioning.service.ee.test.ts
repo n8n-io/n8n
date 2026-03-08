@@ -229,18 +229,22 @@ describe('ProvisioningService', () => {
 			});
 		});
 
-		it('should skip provisioning if array contains no global roles', async () => {
-			const user = mock<User>({ role: { slug: 'global:member' } });
-			// Only project roles, no global roles
+		it('should downgrade to member if array contains no global roles', async () => {
+			const user = mock<User>({ role: { slug: 'global:admin' } });
 			const roleSlug = ['projectId123:editor', 'projectId456:viewer'];
 
+			roleRepository.findOneOrFail.mockResolvedValue(
+				mock<Role>({ slug: 'global:member', roleType: 'global' }),
+			);
 			provisioningService['isInstanceRoleProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
 
-			expect(userService.changeUserRole).not.toHaveBeenCalled();
+			expect(userService.changeUserRole).toHaveBeenCalledWith(user, {
+				newRoleName: 'global:member',
+			});
 			expect(logger.debug).toHaveBeenCalledWith(
-				'No global roles found in roles array, skipping instance role provisioning',
+				'No global roles found in roles array, downgrading user to member role',
 				expect.objectContaining({
 					userId: user.id,
 					roleSlugInput: roleSlug,
@@ -367,6 +371,10 @@ describe('ProvisioningService', () => {
 	});
 
 	describe('provisionProjectRolesForUser', () => {
+		beforeEach(() => {
+			projectRepository.find.mockResolvedValue([]);
+		});
+
 		it('should do nothing if the projectIdToRole is not an array', async () => {
 			const userId = 'user-id-123';
 			const projectIdToRole = { not: 'an array' };
@@ -472,10 +480,10 @@ describe('ProvisioningService', () => {
 		it('should skip projectIds that reference a personal project', async () => {
 			const userId = 'user-id-123';
 			const projectIdToRole = ['personalProject1:viewer', 'teamProject1:editor'];
-			// Mocks query to find existing projects
-			projectRepository.find.mockResolvedValueOnce([mock<Project>({ id: 'teamProject1' })]);
-			// Mocks query to find currently accessible projects
+			// First call: get currently accessible projects (for removal tracking)
 			projectRepository.find.mockResolvedValueOnce([]);
+			// Second call: find existing projects matching the requested IDs
+			projectRepository.find.mockResolvedValueOnce([mock<Project>({ id: 'teamProject1' })]);
 			roleRepository.find.mockResolvedValue([
 				mock<Role>({ displayName: 'viewer', slug: 'project:viewer' }),
 				mock<Role>({ displayName: 'editor', slug: 'project:editor' }),
@@ -500,13 +508,13 @@ describe('ProvisioningService', () => {
 		it('should provision project roles for the user', async () => {
 			const userId = 'user-id-123';
 			const projectIdToRole = ['project-1:viewer', 'project-2:editor'];
-			// Mocks query to find existing projects
+			// First call: get currently accessible projects (for removal tracking)
+			projectRepository.find.mockResolvedValueOnce([]);
+			// Second call: find existing projects matching the requested IDs
 			projectRepository.find.mockResolvedValueOnce([
 				mock<Project>({ id: 'project-1' }),
 				mock<Project>({ id: 'project-2' }),
 			]);
-			// Mocks query to find currently accessible projects
-			projectRepository.find.mockResolvedValueOnce([]);
 			roleRepository.find.mockResolvedValue([
 				mock<Role>({ displayName: 'viewer', slug: 'project:viewer' }),
 				mock<Role>({ displayName: 'editor', slug: 'project:editor' }),
@@ -547,20 +555,19 @@ describe('ProvisioningService', () => {
 
 		it('should filter out global:* roles from the array (Azure AD format)', async () => {
 			const userId = 'user-id-123';
-			// Azure AD sends all App Roles in a single array, including global roles
 			const projectIdToRole = [
 				'global:admin',
 				'global:member',
 				'project-1:viewer',
 				'project-2:editor',
 			];
-			// Mocks query to find existing projects
+			// First call: get currently accessible projects (for removal tracking)
+			projectRepository.find.mockResolvedValueOnce([]);
+			// Second call: find existing projects matching the requested IDs
 			projectRepository.find.mockResolvedValueOnce([
 				mock<Project>({ id: 'project-1' }),
 				mock<Project>({ id: 'project-2' }),
 			]);
-			// Mocks query to find currently accessible projects
-			projectRepository.find.mockResolvedValueOnce([]);
 			roleRepository.find.mockResolvedValue([
 				mock<Role>({ displayName: 'viewer', slug: 'project:viewer' }),
 				mock<Role>({ displayName: 'editor', slug: 'project:editor' }),
@@ -614,13 +621,13 @@ describe('ProvisioningService', () => {
 		it('removes existing access to non-personal projects that are no longer present in the provided mapping', async () => {
 			const userId = 'user-id-123';
 			const projectIdToRole = ['project-1:viewer'];
-			// Mocks query to find existing projects
-			projectRepository.find.mockResolvedValueOnce([mock<Project>({ id: 'project-1' })]);
-			// Mocks query to find currently accessible projects
+			// First call: get currently accessible projects (for removal tracking)
 			projectRepository.find.mockResolvedValueOnce([
 				mock<Project>({ id: 'project-1', type: 'team' }),
 				mock<Project>({ id: 'project-2', type: 'team' }),
 			]);
+			// Second call: find existing projects matching the requested IDs
+			projectRepository.find.mockResolvedValueOnce([mock<Project>({ id: 'project-1' })]);
 			roleRepository.find.mockResolvedValue([
 				mock<Role>({ displayName: 'viewer', slug: 'project:viewer' }),
 			]);
@@ -644,12 +651,14 @@ describe('ProvisioningService', () => {
 		it('sends telemetry event', async () => {
 			const userId = 'user-id-123';
 			const projectIdToRole = ['project-1:viewer', 'project-2:editor'];
+			// First call: get currently accessible projects (for removal tracking)
+			projectRepository.find.mockResolvedValueOnce([
+				mock<Project>({ id: 'project-3', type: 'team' }),
+			]);
+			// Second call: find existing projects matching the requested IDs
 			projectRepository.find.mockResolvedValueOnce([
 				mock<Project>({ id: 'project-1' }),
 				mock<Project>({ id: 'project-2' }),
-			]);
-			projectRepository.find.mockResolvedValueOnce([
-				mock<Project>({ id: 'project-3', type: 'team' }),
 			]);
 			roleRepository.find.mockResolvedValue([
 				mock<Role>({ displayName: 'viewer', slug: 'project:viewer' }),

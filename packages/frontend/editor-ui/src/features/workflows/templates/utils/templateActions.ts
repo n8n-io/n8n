@@ -35,7 +35,7 @@ export async function createWorkflowFromTemplate(opts: {
 	nodeTypeProvider: NodeTypeProvider;
 }) {
 	const { credentialOverrides, nodeTypeProvider, rootStore, template, workflowsStore } = opts;
-	const { showWarning } = useToast();
+	const { showMessage } = useToast();
 	const projectsStore = useProjectsStore();
 
 	const workflowData = await getNewWorkflow(rootStore.restApiContext, { name: template.name });
@@ -74,9 +74,10 @@ export async function createWorkflowFromTemplate(opts: {
 			});
 
 			if (blockedNodes.length > 0) {
-				showWarning(
-					`Template imported with ${blockedNodes.length} blocked node(s): ${blockedNodes.join(', ')}. These nodes have been disabled.`,
-				);
+				showMessage({
+					title: `Template imported with ${blockedNodes.length} blocked node(s): ${blockedNodes.join(', ')}. These nodes have been disabled.`,
+					type: 'warning',
+				});
 			}
 		} catch (error) {
 			// Silently fail - governance check is optional, don't block template import

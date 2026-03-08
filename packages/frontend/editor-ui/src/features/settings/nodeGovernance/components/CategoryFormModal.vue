@@ -23,7 +23,7 @@ const color = ref('#22C55E');
 
 const modalState = computed(() => uiStore.modalsById[CATEGORY_FORM_MODAL_KEY]);
 const isOpen = computed(() => modalState.value?.open ?? false);
-const modalData = computed(() => modalState.value?.data ?? {});
+const modalData = computed(() => (modalState.value?.data ?? {}) as Record<string, any>);
 const isEdit = computed(() => modalData.value.category !== undefined);
 const modalTitle = computed(() => (isEdit.value ? 'Edit Category' : 'Create Category'));
 

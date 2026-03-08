@@ -23,8 +23,10 @@ const projectId = ref('');
 const justification = ref('');
 const workflowName = ref('');
 
-const modalData = computed(() => uiStore.modalsById[NODE_ACCESS_REQUEST_MODAL_KEY]?.data ?? {});
-const nodeType = computed(() => modalData.value.nodeType ?? '');
+const modalData = computed(
+	() => (uiStore.modalsById[NODE_ACCESS_REQUEST_MODAL_KEY]?.data ?? {}) as Record<string, any>,
+);
+const nodeType = computed(() => (modalData.value.nodeType ?? '') as string);
 const displayName = computed(() => modalData.value.displayName ?? nodeType.value);
 
 const projects = computed(() => projectsStore.myProjects ?? []);
@@ -128,8 +130,8 @@ function closeModal() {
 							<N8nOption
 								v-for="project in projects"
 								:key="project.id"
-								:value="project.id"
-								:label="project.name"
+								:value="project.id ?? undefined"
+								:label="project.name ?? ''"
 							/>
 						</N8nSelect>
 					</div>

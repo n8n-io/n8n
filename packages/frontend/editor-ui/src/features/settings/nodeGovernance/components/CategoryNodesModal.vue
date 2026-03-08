@@ -26,7 +26,9 @@ const searchQuery = ref('');
 const selectedNodes = ref<Set<string>>(new Set());
 
 // Get category ID from modal data
-const modalData = computed(() => uiStore.modalsById[CATEGORY_NODES_MODAL_KEY]?.data ?? {});
+const modalData = computed(
+	() => (uiStore.modalsById[CATEGORY_NODES_MODAL_KEY]?.data ?? {}) as Record<string, any>,
+);
 const categoryId = computed(() => modalData.value.category?.id);
 
 // Get the CURRENT category from the store (reactive to store updates)
@@ -286,7 +288,7 @@ function closeModal() {
 										{{ node.name }}
 									</N8nText>
 									<div v-if="nodeToOtherCategory[node.name]" :class="$style.alreadyAssignedBadge">
-										<N8nIcon icon="exclamation-triangle" :class="$style.warningIcon" />
+										<N8nIcon icon="triangle-alert" :class="$style.warningIcon" />
 										<N8nText size="small" :class="$style.warningText">
 											{{
 												i18n.baseText('nodeGovernance.categories.manageNodes.alreadyAssigned', {
@@ -335,7 +337,7 @@ function closeModal() {
 							<N8nButton
 								type="tertiary"
 								size="mini"
-								icon="times"
+								icon="x"
 								:class="$style.removeBtn"
 								:disabled="loading"
 								@click="removeNode(node.nodeType, node.displayName)"

@@ -255,7 +255,7 @@ async function onFileSelected(event: Event) {
 				<N8nButton
 					type="tertiary"
 					size="small"
-					icon="file-export"
+					icon="file-output"
 					:loading="isExporting"
 					data-test-id="export-categories-button"
 					@click="onExport"
@@ -265,7 +265,7 @@ async function onFileSelected(event: Event) {
 				<N8nButton
 					type="tertiary"
 					size="small"
-					icon="file-import"
+					icon="file-input"
 					:loading="isImporting"
 					data-test-id="import-categories-button"
 					@click="onImportClick"
@@ -331,7 +331,7 @@ async function onFileSelected(event: Event) {
 									<N8nButton
 										type="tertiary"
 										size="small"
-										icon="cubes"
+										icon="layers"
 										data-test-id="manage-nodes-button"
 										@click="onManageNodes(category)"
 									>
@@ -349,7 +349,7 @@ async function onFileSelected(event: Event) {
 									<N8nButton
 										type="tertiary"
 										size="small"
-										icon="trash"
+										icon="trash-2"
 										:class="$style.deleteBtn"
 										data-test-id="delete-category-button"
 										@click="onDeleteCategory(category)"
@@ -364,7 +364,7 @@ async function onFileSelected(event: Event) {
 			</N8nRecycleScroller>
 			<div v-else :class="$style.emptyState">
 				<N8nText color="text-light">{{
-					i18n.baseText('nodeGovernance.categories.noResults')
+					i18n.baseText('nodeGovernance.categories.noResults' as any)
 				}}</N8nText>
 			</div>
 		</div>

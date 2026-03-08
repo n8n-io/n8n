@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Z } from 'zod-class';
+import { Z } from '../../zod-class';
 
 export class CategoryAssignmentDto extends Z.class({
 	nodeType: z.string().min(1).max(255),

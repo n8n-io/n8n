@@ -17,7 +17,9 @@ const nodeGovernanceStore = useNodeGovernanceStore();
 const loading = ref(false);
 const comment = ref('');
 
-const modalData = computed(() => uiStore.modalsById[REJECT_REQUEST_MODAL_KEY]?.data ?? {});
+const modalData = computed(
+	() => (uiStore.modalsById[REJECT_REQUEST_MODAL_KEY]?.data ?? {}) as Record<string, any>,
+);
 const request = computed(() => modalData.value.request);
 const modalTitle = computed(() => i18n.baseText('nodeGovernance.requests.reject.title'));
 

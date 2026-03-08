@@ -141,7 +141,7 @@ function onAddCategory() {
 					:title="i18n.baseText('generic.refresh')"
 					@click="onRefresh"
 				>
-					<N8nIcon icon="sync" />
+					<N8nIcon icon="refresh-cw" />
 				</button>
 			</div>
 		</div>

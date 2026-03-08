@@ -212,7 +212,7 @@ function getNodeDisplayName(nodeType: string): string {
 									<N8nButton
 										type="danger"
 										size="small"
-										icon="times"
+										icon="x"
 										:class="$style.rejectBtn"
 										data-test-id="reject-request-button"
 										@click="onReviewRequest(request, 'reject')"
@@ -227,7 +227,7 @@ function getNodeDisplayName(nodeType: string): string {
 			</N8nRecycleScroller>
 			<div v-else :class="$style.emptyState">
 				<N8nText color="text-light">{{
-					i18n.baseText('nodeGovernance.requests.noResults')
+					i18n.baseText('nodeGovernance.requests.noResults' as any)
 				}}</N8nText>
 			</div>
 		</div>
