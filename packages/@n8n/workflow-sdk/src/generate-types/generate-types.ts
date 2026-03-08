@@ -4186,12 +4186,14 @@ export async function generateTypes(): Promise<void> {
 	console.log('Starting type generation...');
 
 	const allNodes: NodeTypeDescription[] = [];
+	const rawNodes: NodeTypeDescription[] = [];
 
 	// Load nodes-base
 	if (fs.existsSync(NODES_BASE_TYPES)) {
 		console.log(`Loading nodes from ${NODES_BASE_TYPES}...`);
 		const nodesBase = await loadNodeTypes(NODES_BASE_TYPES, 'n8n-nodes-base');
 		console.log(`  Found ${nodesBase.length} node entries in nodes-base`);
+		rawNodes.push(...nodesBase);
 		allNodes.push(...groupAndAddToolVariants(nodesBase));
 	} else {
 		console.log(`Warning: ${NODES_BASE_TYPES} not found. Run 'pnpm build' in nodes-base first.`);
@@ -4202,6 +4204,7 @@ export async function generateTypes(): Promise<void> {
 		console.log(`Loading nodes from ${NODES_LANGCHAIN_TYPES}...`);
 		const nodesLangchain = await loadNodeTypes(NODES_LANGCHAIN_TYPES, '@n8n/n8n-nodes-langchain');
 		console.log(`  Found ${nodesLangchain.length} node entries in nodes-langchain`);
+		rawNodes.push(...nodesLangchain);
 		allNodes.push(...groupAndAddToolVariants(nodesLangchain));
 	} else {
 		console.log(
@@ -4210,6 +4213,16 @@ export async function generateTypes(): Promise<void> {
 	}
 
 	const result = await orchestrateGeneration({ nodes: allNodes, outputDir: DEV_OUTPUT_PATH });
+
+	// Generate AI node registry from raw nodes (including hidden AI subnodes
+	// like toolHttpRequest that are filtered out of type generation)
+	const aiRegistry = generateAiNodeRegistry(rawNodes);
+	if (Object.keys(aiRegistry).length > 0) {
+		await fs.promises.writeFile(
+			path.join(DEV_OUTPUT_PATH, 'ai-node-registry.json'),
+			JSON.stringify(aiRegistry, null, 2) + '\n',
+		);
+	}
 
 	if (result.nodeCount === 0) {
 		// Generate placeholder if no nodes found

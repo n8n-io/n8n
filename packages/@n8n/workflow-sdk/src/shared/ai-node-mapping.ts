@@ -15,10 +15,7 @@ export interface AiNodeEntry {
 	ioMethod?: string;
 }
 
-const REGISTRY_PATH = path.resolve(
-	__dirname,
-	'../../../nodes-langchain/dist/node-definitions/ai-node-registry.json',
-);
+const REGISTRY_PATH = path.resolve(__dirname, '../../dist/node-definitions/ai-node-registry.json');
 
 let _registry: Record<string, AiNodeEntry> | undefined;
 let _reverseMap: Record<string, string> | undefined;
