@@ -1,4 +1,4 @@
-import { createHash, pbkdf2Sync } from 'crypto';
+import { pbkdf2Sync } from 'crypto';
 import upperFirst from 'lodash/upperFirst';
 import type {
 	ICredentialDataDecryptedObject,
