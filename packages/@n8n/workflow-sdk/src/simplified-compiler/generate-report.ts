@@ -500,13 +500,21 @@ function renderNodePipeline(
 function generateHtml(entries: ReportEntry[]): string {
 	const cards = entries
 		.map((entry) => {
+			const execStatus = entry.execution?.status;
+			const hasMismatches = (entry.execution?.expectationMismatches ?? []).length > 0;
 			const statusBadge = entry.skip
 				? '<span class="badge skip">SKIPPED</span>'
 				: entry.error
 					? '<span class="badge error">ERROR</span>'
-					: '<span class="badge pass">PASS</span>';
+					: execStatus === 'error' || hasMismatches
+						? '<span class="badge error">EXEC ERROR</span>'
+						: execStatus === 'skip'
+							? '<span class="badge skip">EXEC SKIP</span>'
+							: '<span class="badge pass">PASS</span>';
 
-			const templateLink = `<a class="template-link" href="https://n8n.io/workflows/${entry.templateId}/" target="_blank">#${entry.templateId}</a>`;
+			const templateLink = entry.templateId
+				? `<a class="template-link" href="https://n8n.io/workflows/${entry.templateId}/" target="_blank">#${entry.templateId}</a>`
+				: '';
 
 			const skipNote = entry.skip ? `<div class="skip-reason">${escapeHtml(entry.skip)}</div>` : '';
 
@@ -557,58 +565,60 @@ function generateHtml(entries: ReportEntry[]): string {
 
 			return `
     <div class="card">
-      <div class="card-header">
-        ${statusBadge}
-        ${validationBadge}
-        <h2>${escapeHtml(entry.title)}</h2>
-        ${templateLink}
-      </div>
-      ${skipNote}
-      ${errorNote}
-      <details>
-        <summary>Input JS</summary>
-        <pre class="code"><code>${escapeHtml(entry.input)}</code></pre>
+      <details class="card-details">
+        <summary class="card-summary">
+          ${statusBadge}
+          ${validationBadge}
+          <span class="card-title">${escapeHtml(entry.title)}</span>
+          ${templateLink}
+        </summary>
+        ${skipNote}
+        ${errorNote}
+        <details>
+          <summary>Input JS</summary>
+          <pre class="code"><code>${escapeHtml(entry.input)}</code></pre>
+        </details>
+        ${
+					entry.sdkOutput
+						? `<details>
+          <summary>Output SDK</summary>
+          <pre class="code"><code>${escapeHtml(entry.sdkOutput)}</code></pre>
+        </details>`
+						: ''
+				}
+        ${validationSection}
+        ${
+					(entry.pinData ?? []).length > 0
+						? `<details>
+          <summary>Pin Data <span class="pin-count">${entry.pinData!.length} node${entry.pinData!.length > 1 ? 's' : ''}</span></summary>
+          <div class="pin-data-list">
+            ${entry.pinData!.map((pd) => `<div class="pin-data-item"><div class="pin-node-name">${escapeHtml(pd.nodeName)}</div><pre class="code pin-code"><code>${escapeHtml(JSON.stringify(pd.data, null, 2))}</code></pre></div>`).join('\n            ')}
+          </div>
+        </details>`
+						: ''
+				}
+        ${executionSection}
+        ${
+					entry.workflowJson
+						? `<details class="demo-details" open>
+          <summary>Workflow Preview${(entry.subWorkflows ?? []).length > 0 ? ` <span class="pin-count">${(entry.subWorkflows ?? []).length + 1} workflows</span>` : ''}</summary>
+          <div class="demo">
+            ${(entry.subWorkflows ?? []).length > 0 ? '<h3 class="demo-label">Main Workflow</h3>' : ''}
+            <template class="lazy-demo" data-workflow='${entry.workflowJson.replace(/'/g, '&#39;')}'></template>
+          </div>
+          ${(entry.subWorkflows ?? [])
+						.map(
+							(sw) =>
+								`<div class="demo sub-workflow">
+            <h3 class="demo-label sub-workflow-label">Sub-workflow: ${escapeHtml(sw.name)}</h3>
+            <template class="lazy-demo" data-workflow='${sw.workflowJson.replace(/'/g, '&#39;')}'></template>
+          </div>`,
+						)
+						.join('\n')}
+        </details>`
+						: ''
+				}
       </details>
-      ${
-				entry.sdkOutput
-					? `<details>
-        <summary>Output SDK</summary>
-        <pre class="code"><code>${escapeHtml(entry.sdkOutput)}</code></pre>
-      </details>`
-					: ''
-			}
-      ${validationSection}
-      ${
-				(entry.pinData ?? []).length > 0
-					? `<details>
-        <summary>Pin Data <span class="pin-count">${entry.pinData!.length} node${entry.pinData!.length > 1 ? 's' : ''}</span></summary>
-        <div class="pin-data-list">
-          ${entry.pinData!.map((pd) => `<div class="pin-data-item"><div class="pin-node-name">${escapeHtml(pd.nodeName)}</div><pre class="code pin-code"><code>${escapeHtml(JSON.stringify(pd.data, null, 2))}</code></pre></div>`).join('\n          ')}
-        </div>
-      </details>`
-					: ''
-			}
-      ${executionSection}
-      ${
-				entry.workflowJson
-					? `<details class="demo-details">
-        <summary>Workflow Preview${(entry.subWorkflows ?? []).length > 0 ? ` <span class="pin-count">${(entry.subWorkflows ?? []).length + 1} workflows</span>` : ''}</summary>
-        <div class="demo">
-          ${(entry.subWorkflows ?? []).length > 0 ? '<h3 class="demo-label">Main Workflow</h3>' : ''}
-          <template class="lazy-demo" data-workflow='${entry.workflowJson.replace(/'/g, '&#39;')}'></template>
-        </div>
-        ${(entry.subWorkflows ?? [])
-					.map(
-						(sw) =>
-							`<div class="demo sub-workflow">
-          <h3 class="demo-label sub-workflow-label">Sub-workflow: ${escapeHtml(sw.name)}</h3>
-          <template class="lazy-demo" data-workflow='${sw.workflowJson.replace(/'/g, '&#39;')}'></template>
-        </div>`,
-					)
-					.join('\n')}
-      </details>`
-					: ''
-			}
     </div>`;
 		})
 		.join('\n');
@@ -626,114 +636,117 @@ function generateHtml(entries: ReportEntry[]): string {
   <script type="module" src="https://cdn.jsdelivr.net/npm/@n8n_io/n8n-demo-component/n8n-demo.bundled.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Inter, system-ui, sans-serif; background: #f5f5f5; padding: 24px; }
-    h1 { margin-bottom: 24px; color: #1a1a2e; }
-    .card { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-    .card-header h2 { font-size: 16px; color: #333; }
-    .template-link { font-size: 13px; color: #ff6d5a; text-decoration: none; font-weight: 600; }
+    body { font-family: Inter, system-ui, sans-serif; background: #0d1117; color: #c9d1d9; padding: 24px; }
+    h1 { margin-bottom: 24px; color: #e6edf3; }
+    .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+    .card-details > .card-summary { display: flex; align-items: center; gap: 12px; list-style: none; cursor: pointer; padding: 4px 0; font-size: 14px; }
+    .card-details > .card-summary::-webkit-details-marker { display: none; }
+    .card-details > .card-summary::before { content: '▶'; font-size: 10px; color: #6e7681; transition: transform 0.15s; flex-shrink: 0; }
+    .card-details[open] > .card-summary::before { transform: rotate(90deg); }
+    .card-title { font-size: 16px; font-weight: 600; color: #e6edf3; }
+    .template-link { font-size: 13px; color: #ff7b72; text-decoration: none; font-weight: 600; }
     .template-link:hover { text-decoration: underline; }
     .badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; }
-    .badge.pass { background: #d4edda; color: #155724; }
-    .badge.skip { background: #fff3cd; color: #856404; }
-    .badge.error { background: #f8d7da; color: #721c24; }
-    .skip-reason, .error-msg { font-size: 13px; color: #666; margin-bottom: 12px; padding: 8px 12px; background: #f9f9f9; border-radius: 4px; }
-    .error-msg { background: #fff0f0; color: #c00; }
+    .badge.pass { background: #1b3a2d; color: #3fb950; }
+    .badge.skip { background: #3d2e00; color: #d29922; }
+    .badge.error { background: #3d1a1a; color: #f85149; }
+    .skip-reason, .error-msg { font-size: 13px; color: #8b949e; margin-bottom: 12px; padding: 8px 12px; background: #1c2128; border-radius: 4px; }
+    .error-msg { background: #2d1216; color: #f85149; }
     details { margin-bottom: 12px; }
-    summary { cursor: pointer; font-size: 13px; font-weight: 600; color: #555; padding: 4px 0; }
-    .code { background: #1e1e2e; color: #cdd6f4; padding: 16px; border-radius: 6px; overflow-x: auto; font-size: 13px; line-height: 1.5; margin-top: 8px; }
+    summary { cursor: pointer; font-size: 13px; font-weight: 600; color: #8b949e; padding: 4px 0; }
+    .code { background: #0d1117; color: #c9d1d9; padding: 16px; border-radius: 6px; overflow-x: auto; font-size: 13px; line-height: 1.5; margin-top: 8px; border: 1px solid #30363d; }
     .demo { margin-top: 12px; }
-    .demo-label { font-size: 13px; font-weight: 600; color: #555; margin-bottom: 8px; }
-    .sub-workflow { margin-top: 16px; padding-top: 12px; border-top: 1px dashed #ddd; }
-    .sub-workflow-label { color: #7c5cfc; }
-    .pin-count { font-size: 11px; font-weight: 400; color: #888; margin-left: 4px; }
+    .demo-label { font-size: 13px; font-weight: 600; color: #8b949e; margin-bottom: 8px; }
+    .sub-workflow { margin-top: 16px; padding-top: 12px; border-top: 1px dashed #30363d; }
+    .sub-workflow-label { color: #a78bfa; }
+    .pin-count { font-size: 11px; font-weight: 400; color: #6e7681; margin-left: 4px; }
     .pin-data-list { margin-top: 8px; }
     .pin-data-item { margin-bottom: 12px; }
-    .pin-node-name { font-size: 12px; font-weight: 600; color: #7c5cfc; margin-bottom: 4px; padding: 2px 0; }
+    .pin-node-name { font-size: 12px; font-weight: 600; color: #a78bfa; margin-bottom: 4px; padding: 2px 0; }
     .pin-code { font-size: 12px; padding: 12px; }
     n8n-demo { width: 100%; min-height: 300px; display: block; }
 
     /* Execution output styles */
     .exec-badge { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 3px; text-transform: uppercase; margin-left: 6px; vertical-align: middle; }
-    .exec-pass { background: #d4edda; color: #155724; }
-    .exec-error { background: #f8d7da; color: #721c24; }
-    .exec-skip { background: #fff3cd; color: #856404; }
-    .exec-count { font-size: 11px; font-weight: 400; color: #888; margin-left: 4px; }
-    .exec-skip-reason { font-size: 12px; color: #856404; padding: 8px 12px; background: #fffdf0; border-radius: 4px; margin-top: 8px; }
-    .exec-error-msg { font-size: 12px; color: #c00; padding: 8px 12px; background: #fff0f0; border-radius: 4px; margin: 8px 0; }
-    .exec-pipeline { margin-top: 12px; padding-left: 16px; border-left: 2px solid #e0e0e0; }
+    .exec-pass { background: #1b3a2d; color: #3fb950; }
+    .exec-error { background: #3d1a1a; color: #f85149; }
+    .exec-skip { background: #3d2e00; color: #d29922; }
+    .exec-count { font-size: 11px; font-weight: 400; color: #6e7681; margin-left: 4px; }
+    .exec-skip-reason { font-size: 12px; color: #d29922; padding: 8px 12px; background: #2a2000; border-radius: 4px; margin-top: 8px; }
+    .exec-error-msg { font-size: 12px; color: #f85149; padding: 8px 12px; background: #2d1216; border-radius: 4px; margin: 8px 0; }
+    .exec-pipeline { margin-top: 12px; padding-left: 16px; border-left: 2px solid #30363d; }
     .exec-node { margin-bottom: 16px; position: relative; }
     .exec-node:last-child { margin-bottom: 4px; }
     .exec-node-header { display: flex; align-items: center; gap: 8px; }
-    .exec-dot { width: 10px; height: 10px; border-radius: 50%; background: #7c5cfc; margin-left: -21px; flex-shrink: 0; border: 2px solid #fff; box-shadow: 0 0 0 1px #7c5cfc; }
-    .exec-node-name { font-size: 12px; font-weight: 600; color: #333; }
-    .exec-item-count { font-size: 10px; color: #888; background: #f0f0f0; padding: 1px 6px; border-radius: 3px; }
-    .exec-no-output { font-size: 10px; color: #aaa; font-style: italic; }
+    .exec-dot { width: 10px; height: 10px; border-radius: 50%; background: #a78bfa; margin-left: -21px; flex-shrink: 0; border: 2px solid #161b22; box-shadow: 0 0 0 1px #a78bfa; }
+    .exec-node-name { font-size: 12px; font-weight: 600; color: #e6edf3; }
+    .exec-item-count { font-size: 10px; color: #8b949e; background: #21262d; padding: 1px 6px; border-radius: 3px; }
+    .exec-no-output { font-size: 10px; color: #484f58; font-style: italic; }
     .exec-output { font-size: 11px; padding: 8px 12px; margin-top: 6px; margin-bottom: 0; line-height: 1.4; max-height: 200px; overflow-y: auto; }
-    .exec-dot-error { background: #dc3545; box-shadow: 0 0 0 1px #dc3545; }
-    .exec-node-error { font-size: 11px; color: #c00; padding: 4px 8px; margin-top: 4px; background: #fff0f0; border-radius: 3px; }
+    .exec-dot-error { background: #f85149; box-shadow: 0 0 0 1px #f85149; }
+    .exec-node-error { font-size: 11px; color: #f85149; padding: 4px 8px; margin-top: 4px; background: #2d1216; border-radius: 3px; }
     .exec-output-index { margin-top: 6px; margin-left: 18px; }
-    .exec-output-label { font-size: 10px; font-weight: 600; color: #666; }
-    .exec-sub-workflow { margin-top: 16px; padding-top: 12px; border-top: 1px dashed #e0e0e0; }
-    .exec-sub-label { font-size: 12px; font-weight: 600; color: #7c5cfc; margin-bottom: 8px; }
+    .exec-output-label { font-size: 10px; font-weight: 600; color: #8b949e; }
+    .exec-sub-workflow { margin-top: 16px; padding-top: 12px; border-top: 1px dashed #30363d; }
+    .exec-sub-label { font-size: 12px; font-weight: 600; color: #a78bfa; margin-bottom: 8px; }
 
     /* Nock trace styles */
     .nock-trace { margin: 8px 0 12px; }
     .nock-trace summary { font-size: 12px; }
     .nock-badge { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 3px; margin-left: 6px; vertical-align: middle; }
-    .nock-badge-ok { background: #d4edda; color: #155724; }
-    .nock-badge-warn { background: #fff3cd; color: #856404; }
+    .nock-badge-ok { background: #1b3a2d; color: #3fb950; }
+    .nock-badge-warn { background: #3d2e00; color: #d29922; }
     .nock-list { margin-top: 6px; padding-left: 8px; }
     .nock-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 12px; }
     .nock-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-    .nock-dot-hit { background: #28a745; }
-    .nock-dot-miss { background: #ffc107; }
-    .nock-url { font-family: monospace; color: #333; }
+    .nock-dot-hit { background: #3fb950; }
+    .nock-dot-miss { background: #d29922; }
+    .nock-url { font-family: monospace; color: #c9d1d9; }
     .nock-label { font-size: 10px; padding: 0 4px; border-radius: 2px; }
-    .nock-label-hit { color: #155724; background: #d4edda; }
-    .nock-label-miss { color: #856404; background: #fff3cd; }
+    .nock-label-hit { color: #3fb950; background: #1b3a2d; }
+    .nock-label-miss { color: #d29922; background: #3d2e00; }
     .nock-requests { margin-top: 8px; padding-left: 8px; }
     .nock-requests-summary { font-size: 12px; }
     .nock-requests-list { margin-top: 4px; }
     .nock-req-detail { margin-bottom: 4px; padding-left: 8px; }
     .nock-req-detail summary { font-size: 12px; font-family: monospace; gap: 6px; }
-    .nock-req-method { font-weight: 700; color: #7c5cfc; }
-    .nock-req-url { color: #333; }
+    .nock-req-method { font-weight: 700; color: #a78bfa; }
+    .nock-req-url { color: #c9d1d9; }
     .nock-req-status { font-size: 10px; padding: 0 4px; border-radius: 2px; font-weight: 600; margin-left: 4px; }
-    .nock-status-ok { color: #155724; background: #d4edda; }
-    .nock-status-err { color: #721c24; background: #f8d7da; }
+    .nock-status-ok { color: #3fb950; background: #1b3a2d; }
+    .nock-status-err { color: #f85149; background: #3d1a1a; }
     .nock-req-panels { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
     .nock-req-panel { min-width: 0; }
-    .nock-panel-title { font-size: 11px; font-weight: 700; color: #555; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+    .nock-panel-title { font-size: 11px; font-weight: 700; color: #8b949e; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
     .nock-req-section { margin-top: 4px; }
-    .nock-req-label { font-size: 10px; font-weight: 600; color: #888; display: block; margin-bottom: 2px; }
+    .nock-req-label { font-size: 10px; font-weight: 600; color: #6e7681; display: block; margin-bottom: 2px; }
     .nock-req-body { font-size: 11px; padding: 6px 10px; margin-top: 2px; max-height: 150px; overflow-y: auto; }
-    .nock-inline { border-left: 2px solid #28a745; margin-left: 2px; padding-left: 10px; }
+    .nock-inline { border-left: 2px solid #3fb950; margin-left: 2px; padding-left: 10px; }
 
     /* Expectation badge + diff styles */
     .expect-badge { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 3px; margin-left: 6px; vertical-align: middle; }
-    .expect-pass { background: #d4edda; color: #155724; }
-    .expect-fail { background: #f8d7da; color: #721c24; }
+    .expect-pass { background: #1b3a2d; color: #3fb950; }
+    .expect-fail { background: #3d1a1a; color: #f85149; }
     .diff-details { margin-top: 6px; }
-    .diff-summary { font-size: 11px; color: #721c24; }
+    .diff-summary { font-size: 11px; color: #f85149; }
     .diff-table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 11px; }
-    .diff-table th { text-align: left; padding: 4px 8px; background: #f0f0f0; border: 1px solid #ddd; font-weight: 600; }
-    .diff-table td { padding: 4px 8px; border: 1px solid #ddd; font-family: monospace; }
-    .diff-path { color: #555; }
-    .diff-expected { color: #155724; background: #f0fff0; }
-    .diff-actual { color: #721c24; background: #fff0f0; }
+    .diff-table th { text-align: left; padding: 4px 8px; background: #21262d; border: 1px solid #30363d; font-weight: 600; color: #c9d1d9; }
+    .diff-table td { padding: 4px 8px; border: 1px solid #30363d; font-family: monospace; }
+    .diff-path { color: #8b949e; }
+    .diff-expected { color: #3fb950; background: #122117; }
+    .diff-actual { color: #f85149; background: #2d1216; }
 
     /* Validation styles */
     .validation-errors { margin-top: 8px; }
-    .validation-error { padding: 6px 10px; margin-bottom: 6px; background: #fff8f8; border-left: 3px solid #dc3545; border-radius: 3px; font-size: 12px; }
-    .validation-rule { font-weight: 600; color: #dc3545; font-family: monospace; font-size: 11px; }
-    .validation-loc { color: #888; font-size: 11px; margin-left: 4px; }
-    .validation-msg { color: #333; margin-left: 4px; }
-    .validation-suggestion { color: #666; font-size: 11px; margin-top: 2px; padding-left: 4px; font-style: italic; }
+    .validation-error { padding: 6px 10px; margin-bottom: 6px; background: #1c1216; border-left: 3px solid #f85149; border-radius: 3px; font-size: 12px; }
+    .validation-rule { font-weight: 600; color: #f85149; font-family: monospace; font-size: 11px; }
+    .validation-loc { color: #6e7681; font-size: 11px; margin-left: 4px; }
+    .validation-msg { color: #c9d1d9; margin-left: 4px; }
+    .validation-suggestion { color: #8b949e; font-size: 11px; margin-top: 2px; padding-left: 4px; font-style: italic; }
     .validation-rules-list { margin-top: 8px; }
     .rule-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; padding: 3px 8px; font-size: 12px; border-radius: 3px; margin-bottom: 2px; }
-    .rule-pass { color: #155724; }
-    .rule-fail { color: #721c24; background: #fff8f8; border-left: 3px solid #dc3545; }
+    .rule-pass { color: #3fb950; }
+    .rule-fail { color: #f85149; background: #1c1216; border-left: 3px solid #f85149; }
     .rule-icon { font-weight: 700; width: 14px; flex-shrink: 0; }
     .rule-id { font-family: monospace; font-size: 11px; font-weight: 600; }
     .rule-error-detail { width: 100%; padding-left: 20px; margin-top: 2px; font-size: 11px; }
@@ -741,19 +754,22 @@ function generateHtml(entries: ReportEntry[]): string {
 </head>
 <body>
   <h1>Simplified Compiler - Fixture Report</h1>
-  <p style="margin-bottom:20px;color:#666;font-size:14px;">${entries.length} fixtures total &middot; ${entries.filter((e) => !e.skip && !e.error).length} passing &middot; ${entries.filter((e) => e.skip).length} skipped &middot; ${entries.filter((e) => e.error).length} errors &middot; ${entries.filter((e) => e.validationErrors.length > 0).length} validation failures${hasExecutionData ? ' &middot; <span style="color:#7c5cfc">execution data available</span>' : ''}</p>
+  <p style="margin-bottom:20px;color:#8b949e;font-size:14px;">${entries.length} fixtures total &middot; ${entries.filter((e) => !e.skip && !e.error).length} passing &middot; ${entries.filter((e) => e.skip).length} skipped &middot; ${entries.filter((e) => e.error).length} errors &middot; ${entries.filter((e) => e.validationErrors.length > 0).length} validation failures${hasExecutionData ? ' &middot; <span style="color:#a78bfa">execution data available</span>' : ''}</p>
 ${cards}
 <script>
-  document.querySelectorAll('details.demo-details').forEach(details => {
-    details.addEventListener('toggle', function handler() {
-      if (!details.open) return;
-      details.querySelectorAll('template.lazy-demo').forEach(tmpl => {
-        const demo = document.createElement('n8n-demo');
-        demo.setAttribute('tidyup', 'true');
-        demo.setAttribute('workflow', tmpl.dataset.workflow);
-        tmpl.replaceWith(demo);
-      });
-      details.removeEventListener('toggle', handler);
+  function hydrateDemos(container) {
+    container.querySelectorAll('template.lazy-demo').forEach(tmpl => {
+      const demo = document.createElement('n8n-demo');
+      demo.setAttribute('tidyup', 'true');
+      demo.setAttribute('workflow', tmpl.dataset.workflow);
+      tmpl.replaceWith(demo);
+    });
+  }
+  document.querySelectorAll('details.card-details').forEach(card => {
+    card.addEventListener('toggle', function handler() {
+      if (!card.open) return;
+      hydrateDemos(card);
+      card.removeEventListener('toggle', handler);
     });
   });
 </script>
