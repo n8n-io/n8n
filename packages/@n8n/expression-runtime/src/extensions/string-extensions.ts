@@ -4,6 +4,7 @@ import { DateTime } from 'luxon';
 import MD5 from 'md5';
 import { titleCase } from 'title-case';
 import { transliterate } from 'transliteration';
+import createDOMPurify from 'dompurify';
 
 import type { Extension, ExtensionMap } from './extensions';
 import { ExpressionExtensionError } from './expression-extension-error';
@@ -174,7 +175,9 @@ function removeMarkdown(value: string): string {
 }
 
 function removeTags(value: string): string {
-	return value.replace(/<[^>]*>?/gm, '');
+	const DOMPurify = createDOMPurify();
+	// Strip all HTML tags and attributes, preserving only text content.
+	return DOMPurify.sanitize(value, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] });
 }
 
 function toDate(value: string): Date {
