@@ -28,6 +28,8 @@ const BASE_ENV: Record<string, string> = {
 	NODE_OPTIONS: '--expose-gc',
 };
 
+// Port 5678 must match N8N_PORT / QUEUE_HEALTH_CHECK_PORT defaults.
+// If those defaults change, update the port here too.
 const MAIN_WAIT_STRATEGY = Wait.forAll([
 	Wait.forListeningPorts(),
 	Wait.forHttp('/healthz/readiness', 5678).forStatusCode(200).withStartupTimeout(60_000),

@@ -128,6 +128,7 @@ export abstract class AbstractServer {
 
 	protected setupPushServer() {}
 
+	/** Call once after all initialization is complete. Unblocks the /healthz/readiness endpoint. */
 	markAsReady() {
 		this.fullyReady = true;
 	}

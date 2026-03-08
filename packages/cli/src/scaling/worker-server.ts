@@ -83,6 +83,7 @@ export class WorkerServer {
 		});
 	}
 
+	/** Call once after all initialization is complete. Unblocks the /healthz/readiness endpoint. */
 	markAsReady() {
 		this.fullyReady = true;
 	}

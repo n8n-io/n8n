@@ -212,7 +212,7 @@ describe('WorkerServer', () => {
 	describe('readiness', () => {
 		let readinessHandler: (req: express.Request, res: express.Response) => Promise<void>;
 
-		beforeEach(async () => {
+		async function initWithReadiness({ markReady = true } = {}) {
 			const server = mock<http.Server>();
 			jest.spyOn(http, 'createServer').mockReturnValue(server);
 
@@ -243,10 +243,11 @@ describe('WorkerServer', () => {
 
 			const workerServer = newWorkerServer();
 			await workerServer.init({ health: true, overwrites: false, metrics: false });
-			workerServer.markAsReady();
-		});
+			if (markReady) workerServer.markAsReady();
+		}
 
 		it('should return 200 after markAsReady() when DB and Redis are connected', async () => {
+			await initWithReadiness();
 			const res = mock<express.Response>();
 			res.status.mockReturnValue(res);
 
@@ -256,7 +257,19 @@ describe('WorkerServer', () => {
 			expect(res.send).toHaveBeenCalledWith({ status: 'ok' });
 		});
 
+		it('should return 503 before markAsReady() even if DB and Redis are connected', async () => {
+			await initWithReadiness({ markReady: false });
+			const res = mock<express.Response>();
+			res.status.mockReturnValue(res);
+
+			await readinessHandler(mock<express.Request>(), res);
+
+			expect(res.status).toHaveBeenCalledWith(503);
+			expect(res.send).toHaveBeenCalledWith({ status: 'error' });
+		});
+
 		it('should return 503 if Redis disconnects after ready', async () => {
+			await initWithReadiness();
 			redisClientService.isConnected.mockReturnValue(false);
 			const res = mock<express.Response>();
 			res.status.mockReturnValue(res);
@@ -268,53 +281,10 @@ describe('WorkerServer', () => {
 		});
 
 		it('should return 503 if DB disconnects after ready', async () => {
+			await initWithReadiness();
 			(
 				dbConnection as { connectionState: { connected: boolean; migrated: boolean } }
 			).connectionState = { connected: false, migrated: true };
-			const res = mock<express.Response>();
-			res.status.mockReturnValue(res);
-
-			await readinessHandler(mock<express.Request>(), res);
-
-			expect(res.status).toHaveBeenCalledWith(503);
-			expect(res.send).toHaveBeenCalledWith({ status: 'error' });
-		});
-	});
-
-	describe('readiness before markAsReady', () => {
-		it('should return 503 before markAsReady() even if DB and Redis are connected', async () => {
-			const server = mock<http.Server>();
-			jest.spyOn(http, 'createServer').mockReturnValue(server);
-
-			server.listen.mockImplementation((...args: unknown[]) => {
-				const callback = args.find((arg) => typeof arg === 'function');
-				if (callback) callback();
-				return server;
-			});
-
-			let readinessHandler: (req: express.Request, res: express.Response) => Promise<void> =
-				async () => {};
-
-			app.get.mockImplementation((...args: unknown[]) => {
-				const [path, handler] = args as [string, (...a: unknown[]) => Promise<void>];
-				if (path === '/internal/health/readiness') {
-					readinessHandler = handler as (
-						req: express.Request,
-						res: express.Response,
-					) => Promise<void>;
-				}
-				return app;
-			});
-
-			(
-				dbConnection as { connectionState: { connected: boolean; migrated: boolean } }
-			).connectionState = { connected: true, migrated: true };
-			redisClientService.isConnected.mockReturnValue(true);
-
-			const workerServer = newWorkerServer();
-			await workerServer.init({ health: true, overwrites: false, metrics: false });
-			// Note: markAsReady() is NOT called
-
 			const res = mock<express.Response>();
 			res.status.mockReturnValue(res);
 
