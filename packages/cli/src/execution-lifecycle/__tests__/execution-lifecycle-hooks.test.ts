@@ -621,7 +621,36 @@ describe('Execution Lifecycle Hooks', () => {
 					workflowData.nodes = workflowData.nodes.filter((n) => n !== saveExecutionNode);
 				});
 
-				const createRunWithSaveOverride = (saveExecution: boolean) => {
+				const createRunWithSaveOverride = (
+					saveExecution: boolean,
+					status: 'success' | 'error' = 'success',
+				) => {
+					const run = mock<IRun>({
+						status,
+						finished: true,
+						waitTill: undefined,
+						storedAt: 'db',
+					});
+					run.data = createRunExecutionData({
+						resultData: {
+							runData: {
+								'Save Execution': [
+									{
+										startTime: 0,
+										executionTime: 0,
+										executionIndex: 0,
+										source: [],
+										metadata: { saveExecution },
+									},
+								],
+							},
+							...(status === 'error' ? { error: expressionError } : {}),
+						},
+					});
+					return run;
+				};
+
+				const createRunWithConflictingOverrides = () => {
 					const run = mock<IRun>({
 						status: 'success',
 						finished: true,
@@ -637,7 +666,16 @@ describe('Execution Lifecycle Hooks', () => {
 										executionTime: 0,
 										executionIndex: 0,
 										source: [],
-										metadata: { saveExecution },
+										metadata: { saveExecution: true },
+									},
+								],
+								'Save Execution 2': [
+									{
+										startTime: 0,
+										executionTime: 0,
+										executionIndex: 1,
+										source: [],
+										metadata: { saveExecution: false },
 									},
 								],
 							},
@@ -665,6 +703,43 @@ describe('Execution Lifecycle Hooks', () => {
 
 					await lifecycleHooks.runHook('workflowExecuteAfter', [
 						createRunWithSaveOverride(false),
+						{},
+					]);
+
+					expect(executionPersistence.hardDelete).toHaveBeenCalled();
+				});
+
+				it('should force save a failed execution when saveExecution metadata is true', async () => {
+					workflowData.settings = { saveDataErrorExecution: 'none' as const };
+					lifecycleHooks = createHooks('trigger');
+
+					await lifecycleHooks.runHook('workflowExecuteAfter', [
+						createRunWithSaveOverride(true, 'error'),
+						{},
+					]);
+
+					expect(executionPersistence.hardDelete).not.toHaveBeenCalled();
+					expect(executionRepository.updateExistingExecution).toHaveBeenCalled();
+				});
+
+				it('should force discard a failed execution when saveExecution metadata is false', async () => {
+					workflowData.settings = { saveDataErrorExecution: 'all' as const };
+					lifecycleHooks = createHooks('trigger');
+
+					await lifecycleHooks.runHook('workflowExecuteAfter', [
+						createRunWithSaveOverride(false, 'error'),
+						{},
+					]);
+
+					expect(executionPersistence.hardDelete).toHaveBeenCalled();
+				});
+
+				it('should discard when parallel branches have conflicting overrides (false wins)', async () => {
+					workflowData.settings = { saveDataSuccessExecution: 'all' as const };
+					lifecycleHooks = createHooks('trigger');
+
+					await lifecycleHooks.runHook('workflowExecuteAfter', [
+						createRunWithConflictingOverrides(),
 						{},
 					]);
 
@@ -940,7 +1015,36 @@ describe('Execution Lifecycle Hooks', () => {
 					workflowData.nodes = workflowData.nodes.filter((n) => n !== saveExecutionNode);
 				});
 
-				const createRunWithSaveOverride = (saveExecution: boolean) => {
+				const createRunWithSaveOverride = (
+					saveExecution: boolean,
+					status: 'success' | 'error' = 'success',
+				) => {
+					const run = mock<IRun>({
+						status,
+						finished: true,
+						waitTill: undefined,
+						storedAt: 'db',
+					});
+					run.data = createRunExecutionData({
+						resultData: {
+							runData: {
+								'Save Execution': [
+									{
+										startTime: 0,
+										executionTime: 0,
+										executionIndex: 0,
+										source: [],
+										metadata: { saveExecution },
+									},
+								],
+							},
+							...(status === 'error' ? { error: expressionError } : {}),
+						},
+					});
+					return run;
+				};
+
+				const createRunWithConflictingOverrides = () => {
 					const run = mock<IRun>({
 						status: 'success',
 						finished: true,
@@ -956,7 +1060,16 @@ describe('Execution Lifecycle Hooks', () => {
 										executionTime: 0,
 										executionIndex: 0,
 										source: [],
-										metadata: { saveExecution },
+										metadata: { saveExecution: true },
+									},
+								],
+								'Save Execution 2': [
+									{
+										startTime: 0,
+										executionTime: 0,
+										executionIndex: 1,
+										source: [],
+										metadata: { saveExecution: false },
 									},
 								],
 							},
@@ -989,6 +1102,51 @@ describe('Execution Lifecycle Hooks', () => {
 
 					await lifecycleHooks.runHook('workflowExecuteAfter', [
 						createRunWithSaveOverride(false),
+						{},
+					]);
+
+					expect(executionPersistence.hardDelete).toHaveBeenCalled();
+				});
+
+				it('should force save a failed execution when saveExecution metadata is true', async () => {
+					workflowData.settings = { saveDataErrorExecution: 'none' as const };
+					lifecycleHooks = getLifecycleHooksForScalingMain(
+						{ executionMode: 'webhook', workflowData, pushRef, retryOf },
+						executionId,
+					);
+
+					await lifecycleHooks.runHook('workflowExecuteAfter', [
+						createRunWithSaveOverride(true, 'error'),
+						{},
+					]);
+
+					expect(executionPersistence.hardDelete).not.toHaveBeenCalled();
+				});
+
+				it('should force discard a failed execution when saveExecution metadata is false', async () => {
+					workflowData.settings = { saveDataErrorExecution: 'all' as const };
+					lifecycleHooks = getLifecycleHooksForScalingMain(
+						{ executionMode: 'webhook', workflowData, pushRef, retryOf },
+						executionId,
+					);
+
+					await lifecycleHooks.runHook('workflowExecuteAfter', [
+						createRunWithSaveOverride(false, 'error'),
+						{},
+					]);
+
+					expect(executionPersistence.hardDelete).toHaveBeenCalled();
+				});
+
+				it('should discard when parallel branches have conflicting overrides (false wins)', async () => {
+					workflowData.settings = { saveDataSuccessExecution: 'all' as const };
+					lifecycleHooks = getLifecycleHooksForScalingMain(
+						{ executionMode: 'webhook', workflowData, pushRef, retryOf },
+						executionId,
+					);
+
+					await lifecycleHooks.runHook('workflowExecuteAfter', [
+						createRunWithConflictingOverrides(),
 						{},
 					]);
 

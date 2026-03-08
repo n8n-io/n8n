@@ -43,8 +43,8 @@ import { getDataLastExecutedNodeData } from '@/workflow-helpers';
 
 /**
  * Scans per-node metadata in resultData.runData for a saveExecution override
- * set by the SaveExecution node. Returns the last value found (last-write-wins
- * when multiple SaveExecution nodes execute on different branches).
+ * set by the SaveExecution node. If multiple nodes set conflicting values
+ * (e.g. parallel branches), `false` (discard) takes priority as a safety default.
  */
 function getSaveExecutionOverride(fullRunData: IRun): boolean | undefined {
 	const runData = fullRunData.data?.resultData?.runData;
@@ -54,6 +54,7 @@ function getSaveExecutionOverride(fullRunData: IRun): boolean | undefined {
 	for (const taskDataList of Object.values(runData)) {
 		for (const taskData of taskDataList) {
 			if (taskData.metadata?.saveExecution !== undefined) {
+				if (taskData.metadata.saveExecution === false) return false;
 				override = taskData.metadata.saveExecution;
 			}
 		}

@@ -26,7 +26,7 @@ export class SaveExecution implements INodeType {
 				type: 'boolean',
 				default: true,
 				description:
-					'Whether to save this execution to the database. Overrides the workflow-level "Save successful executions" setting for this run.',
+					'Whether to save this execution to the database. Overrides both the "Save successful executions" and "Save failed executions" workflow settings for this run. If multiple Save Execution nodes run on different branches, discard takes priority.',
 			},
 		],
 	};
