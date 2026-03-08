@@ -1,0 +1,11 @@
+runtimes:
+    - java@17.0.10
+    - node@22.2.0
+    - python@3.11.11
+tools:
+    - eslint@8.57.0
+    - lizard@1.17.31
+    - pmd@6.55.0
+    - pylint@3.3.9
+    - semgrep@1.16.2
+    - trivy@0.69.2

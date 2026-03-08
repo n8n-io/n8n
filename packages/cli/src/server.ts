@@ -405,7 +405,7 @@ export class Server extends AbstractServer {
 					policy: crossOriginOpenerPolicy,
 				},
 				// Additional security headers to prevent MIME type sniffing and protect against XSS
-				xContentTypeOptions: 'nosniff',
+				xContentTypeOptions: true,
 				// Referrer policy to control information leakage
 				referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
 			});

@@ -37,6 +37,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         git=1:2.39.5-0+deb12u3 \
         openssh-client=1:9.2p1-2+deb12u7 \
         tzdata=2025b-0+deb12u2 \
+        sqlite3=3.40.1-2+deb12u2 \
     && rm -rf /var/lib/apt/lists/*
 
 # ─── Install N|Solid runtime from NodeSource ─────────────────────────────────
@@ -99,10 +100,11 @@ EXPOSE 5678/tcp
 USER node
 
 COPY docker/images/n8n/docker-entrypoint.sh /docker-entrypoint.sh
+COPY scripts/add-owner.sh /add-owner.sh
 
 # Ensure the entrypoint is executable (file may lose its permissions on COPY)
 USER root
-RUN chmod +x /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh /add-owner.sh
 USER node
 
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]

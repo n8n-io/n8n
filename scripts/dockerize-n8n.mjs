@@ -5,6 +5,19 @@
  * This script simulates the CI build process for local testing.
  * Default output: 'n8nio/n8n:local' and 'n8nio/runners:local'
  * Override with IMAGE_BASE_NAME and IMAGE_TAG environment variables.
+ *
+ * Usage:
+ *   node dockerize-n8n.mjs           - Build images only
+ *   node dockerize-n8n.mjs --run     - Build and run n8n container with owner creation
+ *   node dockerize-n8n.mjs --run-stop - Stop any existing n8n container before running
+ *
+ * Environment variables for owner creation (when --run is used):
+ *   N8N_DATA_VOLUME     - Docker volume name (default: n8n-data)
+ *   N8N_CREATE_OWNER    - Set to 'true' to enable owner creation
+ *   N8N_OWNER_EMAIL     - Owner email (default: techyactor15@gmail.com)
+ *   N8N_OWNER_FIRSTNAME - Owner first name (default: Daniel)
+ *   N8N_OWNER_LASTNAME  - Owner last name (default: Goldstein)
+ *   N8N_OWNER_HASH      - Pre-hashed bcrypt password (required for owner creation)
  */
 
 import { $, echo, fs, chalk, os } from 'zx';
@@ -119,6 +132,17 @@ const __dirname = path.dirname(__filename);
 const isInScriptsDir = path.basename(__dirname) === 'scripts';
 const rootDir = isInScriptsDir ? path.join(__dirname, '..') : __dirname;
 
+// Check for --run flag to build and run container
+const runMode = process.argv.includes('--run') ? 'run' :
+                process.argv.includes('--run-stop') ? 'run-stop' : null;
+
+// Default owner credentials (can be overridden via env vars)
+const DEFAULT_OWNER_EMAIL = 'techyactor15@gmail.com';
+const DEFAULT_OWNER_FIRSTNAME = 'Daniel';
+const DEFAULT_OWNER_LASTNAME = 'Goldstein';
+// Default bcrypt hash for password: ExamplePassword123!
+const DEFAULT_OWNER_HASH = '$2a$10$jTnfKXZCiUQwQnG3OOYnVOYHthaNHhK3iPcKq6uMJ8MwcYc80iw5K';
+
 const config = {
 	n8n: {
 		dockerfilePath: path.join(rootDir, 'docker/images/n8n/Dockerfile'),
@@ -147,64 +171,6 @@ const config = {
 // #region ===== Main Build Process =====
 
 const platform = getDockerPlatform();
-
-async function main() {
-	echo(chalk.blue.bold('===== Docker Build for n8n & Runners ====='));
-	echo(`INFO: n8n Image: ${config.n8n.fullImageName}`);
-	echo(`INFO: Runners Image: ${config.runners.fullImageName}`);
-	echo(`INFO: Platform: ${platform}`);
-	echo(chalk.gray('-'.repeat(47)));
-
-	await checkPrerequisites();
-
-	const n8nBuildTime = await buildDockerImage({
-		name: 'n8n',
-		dockerfilePath: config.n8n.dockerfilePath,
-		fullImageName: config.n8n.fullImageName,
-	});
-
-	const runnersBuildTime = await buildDockerImage({
-		name: 'runners',
-		dockerfilePath: config.runners.dockerfilePath,
-		fullImageName: config.runners.fullImageName,
-	});
-
-	// Get image details
-	const n8nImageSize = await getImageSize(config.n8n.fullImageName);
-	const runnersImageSize = await getImageSize(config.runners.fullImageName);
-
-	const imageStats = [
-		{
-			imageName: config.n8n.fullImageName,
-			platform,
-			size: n8nImageSize,
-			buildTime: n8nBuildTime,
-		},
-		{
-			imageName: config.runners.fullImageName,
-			platform,
-			size: runnersImageSize,
-			buildTime: runnersBuildTime,
-		},
-	];
-
-	// Write docker build manifest for telemetry collection
-	const dockerManifest = {
-		buildTime: new Date().toISOString(),
-		platform,
-		images: imageStats.map(({ imageName, size, buildTime }) => ({
-			imageName,
-			size,
-			buildTime,
-		})),
-	};
-	await fs.writeJson(path.join(config.buildContext, 'docker-build-manifest.json'), dockerManifest, {
-		spaces: 2,
-	});
-
-	// Display summary
-	displaySummary(imageStats);
-}
 
 async function checkPrerequisites() {
 	if (!(await fs.pathExists(config.compiledAppDir))) {
@@ -288,7 +254,188 @@ function displaySummary(images) {
 
 // #endregion ===== Main Build Process =====
 
+// #region ===== Container Run Functions =====
+
+/**
+ * Stop and remove existing n8n container
+ */
+async function stopExistingContainer() {
+	const containerName = 'n8n-n8n-1';
+	try {
+		// Check if container exists
+		const { stdout } = await $`docker ps -a --filter name=${containerName} --format "{{.Names}}"`;
+		if (stdout.trim() === containerName) {
+			echo(chalk.yellow(`INFO: Stopping existing container: ${containerName}`));
+			await $`docker stop ${containerName}`;
+			await $`docker rm ${containerName}`;
+			echo(chalk.green(`✅ Removed existing container: ${containerName}`));
+		}
+	} catch (error) {
+		// Container might not exist, which is fine
+		echo(chalk.gray(`INFO: No existing container to remove`));
+	}
+}
+
+/**
+ * Run n8n container with optional owner creation
+ */
+async function runN8nContainer() {
+	const containerName = 'n8n-n8n-1';
+	const volumeName = process.env.N8N_DATA_VOLUME || 'n8n-data';
+	// Default to creating owner if not explicitly set to false
+	const createOwner = process.env.N8N_CREATE_OWNER !== 'false';
+	
+	// Get owner credentials from env vars or defaults
+	const ownerEmail = process.env.N8N_OWNER_EMAIL || DEFAULT_OWNER_EMAIL;
+	const ownerFirstName = process.env.N8N_OWNER_FIRSTNAME || DEFAULT_OWNER_FIRSTNAME;
+	const ownerLastName = process.env.N8N_OWNER_LASTNAME || DEFAULT_OWNER_LASTNAME;
+	const ownerHash = process.env.N8N_OWNER_HASH || DEFAULT_OWNER_HASH;
+
+	// Build environment variables for the container as separate arguments
+	const envArgs = [
+		'-e', `N8N_CREATE_OWNER=${createOwner ? 'true' : 'false'}`,
+		'-e', `N8N_OWNER_EMAIL=${ownerEmail}`,
+		'-e', `N8N_OWNER_FIRSTNAME=${ownerFirstName}`,
+		'-e', `N8N_OWNER_LASTNAME=${ownerLastName}`,
+		'-e', `N8N_OWNER_HASH=${ownerHash}`,
+		// Add N|Solid telemetry env vars
+		'-e', 'NSOLID_APPNAME=n8n',
+		'-e', 'NSOLID_TAGS=production,n8n,workflow-automation',
+		'-e', 'NSOLID_TRACING_ENABLED=1',
+		'-e', 'NSOLID_OTLP=otlp',
+		'-e', 'NODE_ENV=production',
+	];
+
+	echo(chalk.blue.bold('===== Running n8n Container ====='));
+	echo(`INFO: Container name: ${containerName}`);
+	echo(`INFO: Volume: ${volumeName}`);
+	echo(`INFO: Image: ${config.n8n.fullImageName}`);
+	echo(`INFO: Create owner: ${createOwner}`);
+	if (createOwner) {
+		echo(`INFO: Owner email: ${ownerEmail}`);
+	}
+	echo(chalk.gray('-'.repeat(47)));
+
+	// Stop existing container if in run-stop mode
+	if (runMode === 'run-stop') {
+		await stopExistingContainer();
+	}
+
+	// Check if volume exists, create if not
+	try {
+		await $`docker volume inspect ${volumeName}`;
+		echo(chalk.gray(`INFO: Volume '${volumeName}' exists`));
+	} catch {
+		echo(chalk.yellow(`INFO: Creating volume: ${volumeName}`));
+		await $`docker volume create ${volumeName}`;
+	}
+
+	// Run the container using spawn with array arguments
+	try {
+		await $`docker run -d --name ${containerName} -p 5678:5678 -v ${volumeName}:/home/node/.n8n ${envArgs} ${config.n8n.fullImageName}`;
+		echo(chalk.green(`✅ Container started: ${containerName}`));
+		echo(chalk.green(`   n8n UI: http://localhost:5678`));
+		
+		if (createOwner) {
+			echo(chalk.green(`   Owner email: ${ownerEmail}`));
+		}
+	} catch (error) {
+		echo(chalk.red(`ERROR: Failed to start container: ${error.message}`));
+		process.exit(1);
+	}
+}
+
+// #endregion ===== Container Run Functions =====
+
+async function main() {
+	// If run mode is requested, handle it after build
+	if (runMode) {
+		echo(chalk.blue.bold('===== Building n8n Docker Image ====='));
+		echo(`INFO: n8n Image: ${config.n8n.fullImageName}`);
+		echo(`INFO: Platform: ${platform}`);
+		echo(chalk.gray('-'.repeat(47)));
+
+		await checkPrerequisites();
+
+		const n8nBuildTime = await buildDockerImage({
+			name: 'n8n',
+			dockerfilePath: config.n8n.dockerfilePath,
+			fullImageName: config.n8n.fullImageName,
+		});
+
+		const n8nImageSize = await getImageSize(config.n8n.fullImageName);
+
+		echo(chalk.green(`✅ n8n image built: ${config.n8n.fullImageName}`));
+		echo(`   Size: ${n8nImageSize}`);
+		echo(`   Build time: ${n8nBuildTime}`);
+		echo('');
+
+		// Now run the container
+		await runN8nContainer();
+		
+		return;
+	}
+
+	// Original build-only logic
+	echo(chalk.blue.bold('===== Docker Build for n8n & Runners ====='));
+	echo(`INFO: n8n Image: ${config.n8n.fullImageName}`);
+	echo(`INFO: Runners Image: ${config.runners.fullImageName}`);
+	echo(`INFO: Platform: ${platform}`);
+	echo(chalk.gray('-'.repeat(47)));
+
+	await checkPrerequisites();
+
+	const n8nBuildTime = await buildDockerImage({
+		name: 'n8n',
+		dockerfilePath: config.n8n.dockerfilePath,
+		fullImageName: config.n8n.fullImageName,
+	});
+
+	const runnersBuildTime = await buildDockerImage({
+		name: 'runners',
+		dockerfilePath: config.runners.dockerfilePath,
+		fullImageName: config.runners.fullImageName,
+	});
+
+	// Get image details
+	const n8nImageSize = await getImageSize(config.n8n.fullImageName);
+	const runnersImageSize = await getImageSize(config.runners.fullImageName);
+
+	const imageStats = [
+		{
+			imageName: config.n8n.fullImageName,
+			platform,
+			size: n8nImageSize,
+			buildTime: n8nBuildTime,
+		},
+		{
+			imageName: config.runners.fullImageName,
+			platform,
+			size: runnersImageSize,
+			buildTime: runnersBuildTime,
+		},
+	];
+
+	// Write docker build manifest for telemetry collection
+	const dockerManifest = {
+		buildTime: new Date().toISOString(),
+		platform,
+		images: imageStats.map(({ imageName, size, buildTime }) => ({
+			imageName,
+			size,
+			buildTime,
+		})),
+	};
+	await fs.writeJson(path.join(config.buildContext, 'docker-build-manifest.json'), dockerManifest, {
+		spaces: 2,
+	});
+
+	// Display summary
+	displaySummary(imageStats);
+}
+
+// Run the main function
 main().catch((error) => {
-	echo(chalk.red(`Unexpected error: ${error.message}`));
+	console.error('Error:', error);
 	process.exit(1);
 });

@@ -31,6 +31,73 @@ docker run -it --rm --name n8n -p 5678:5678 -v n8n_data:/home/node/.n8n docker.n
 
 Access the editor at http://localhost:5678
 
+## Building & Deployment
+
+This project uses custom build scripts to create production deployments and Docker images.
+
+### Build Scripts
+
+The main build orchestration is handled by scripts in the `scripts/` directory:
+
+| Script | Description |
+|--------|-------------|
+| `scripts/build-n8n.mjs` | Builds the n8n application (packages, compiles, creates pruned deployment in `compiled/`) |
+| `scripts/dockerize-n8n.mjs` | Builds Docker images from the compiled output |
+
+### npm Scripts
+
+```bash
+# Build application only (creates 'compiled/' directory)
+pnpm build:n8n
+
+# Build and create Docker images
+pnpm build:docker
+
+# Build, create Docker images, and run container with owner creation
+pnpm build:docker:run
+
+# Build, stop existing container, and run fresh
+pnpm build:docker:run-stop
+```
+
+### Docker Build Options
+
+The `dockerize-n8n.mjs` script supports additional flags:
+
+```bash
+# Build images only (default)
+node scripts/dockerize-n8n.mjs
+
+# Build and run n8n container with owner creation
+node scripts/dockerize-n8n.mjs --run
+
+# Stop existing container, then build and run
+node scripts/dockerize-n8n.mjs --run-stop
+```
+
+#### Environment Variables for Owner Creation
+
+When using `--run` or `--run-stop`, you can customize the owner user:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `N8N_DATA_VOLUME` | `n8n-data` | Docker volume name |
+| `N8N_CREATE_OWNER` | `true` | Set to `true` to create owner on first run |
+| `N8N_OWNER_EMAIL` | `techyactor15@gmail.com` | Owner email |
+| `N8N_OWNER_FIRSTNAME` | `Daniel` | Owner first name |
+| `N8N_OWNER_LASTNAME` | `Goldstein` | Owner last name |
+| `N8N_OWNER_HASH` | (hardcoded) | Pre-hashed bcrypt password (default: `ExamplePassword123!`) |
+
+Example with custom credentials:
+
+```bash
+N8N_OWNER_EMAIL=admin@company.com N8N_OWNER_HASH='$2a$10$...' pnpm build:docker:run
+```
+
+### Custom Docker Image
+
+This repository includes a custom `Dockerfile` at the root that builds n8n with the N|Solid runtime for enhanced observability. The image is automatically built when using `pnpm build:docker` or the scripts above.
+
 ## Resources
 
 - 📚 [Documentation](https://docs.n8n.io)
