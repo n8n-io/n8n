@@ -370,11 +370,14 @@ export class Server extends AbstractServer {
 			const cspReportOnly = Container.get(SecurityConfig).contentSecurityPolicyReportOnly;
 			const securityHeadersMiddleware = helmet({
 				contentSecurityPolicy: isEmpty(cspDirectives)
-					? {
-							// Fall back to Helmet's default CSP when no custom directives are configured
-							useDefaults: true,
-							reportOnly: cspReportOnly,
-						}
+					? cspReportOnly
+						? {
+								// When report-only is enabled but no custom directives are configured,
+								// fall back to Helmet's default CSP in report-only mode so it doesn't block resources.
+								useDefaults: true,
+								reportOnly: true,
+							}
+						: false // No CSP configured: disable CSP to preserve legacy behavior (no CSP header).
 					: {
 							useDefaults: false,
 							reportOnly: cspReportOnly,
