@@ -1,0 +1,12 @@
+{
+	"node": "n8n-nodes-base.saveExecution",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"details": "Override execution save behavior",
+	"categories": ["Core Nodes"],
+	"resources": {},
+	"alias": ["save", "execution", "discard", "skip"],
+	"subcategories": {
+		"Core Nodes": ["Helpers"]
+	}
+}

@@ -603,6 +603,85 @@ describe('Execution Lifecycle Hooks', () => {
 				});
 			});
 
+			describe('runtime save override', () => {
+				const saveExecutionNode = {
+					id: 'save-exec-node',
+					name: 'Save Execution',
+					type: 'n8n-nodes-base.saveExecution',
+					typeVersion: 1,
+					position: [200, 200] as [number, number],
+					parameters: {},
+				};
+
+				beforeEach(() => {
+					workflowData.nodes.push(saveExecutionNode);
+				});
+
+				afterEach(() => {
+					workflowData.nodes = workflowData.nodes.filter((n) => n !== saveExecutionNode);
+				});
+
+				const createRunWithSaveOverride = (saveExecution: boolean) => {
+					const run = mock<IRun>({
+						status: 'success',
+						finished: true,
+						waitTill: undefined,
+						storedAt: 'db',
+					});
+					run.data = createRunExecutionData({
+						resultData: {
+							runData: {
+								'Save Execution': [
+									{
+										startTime: 0,
+										executionTime: 0,
+										executionIndex: 0,
+										source: [],
+										metadata: { saveExecution },
+									},
+								],
+							},
+						},
+					});
+					return run;
+				};
+
+				it('should force save when saveExecution metadata is true and workflow setting says discard', async () => {
+					workflowData.settings = { saveDataSuccessExecution: 'none' as const };
+					lifecycleHooks = createHooks('trigger');
+
+					await lifecycleHooks.runHook('workflowExecuteAfter', [
+						createRunWithSaveOverride(true),
+						{},
+					]);
+
+					expect(executionPersistence.hardDelete).not.toHaveBeenCalled();
+					expect(executionRepository.updateExistingExecution).toHaveBeenCalled();
+				});
+
+				it('should force discard when saveExecution metadata is false and workflow setting says save', async () => {
+					workflowData.settings = { saveDataSuccessExecution: 'all' as const };
+					lifecycleHooks = createHooks('trigger');
+
+					await lifecycleHooks.runHook('workflowExecuteAfter', [
+						createRunWithSaveOverride(false),
+						{},
+					]);
+
+					expect(executionPersistence.hardDelete).toHaveBeenCalled();
+				});
+
+				it('should fall back to workflow settings when no override is present', async () => {
+					workflowData.settings = { saveDataSuccessExecution: 'all' as const };
+					lifecycleHooks = createHooks('trigger');
+
+					await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+					expect(executionPersistence.hardDelete).not.toHaveBeenCalled();
+					expect(executionRepository.updateExistingExecution).toHaveBeenCalled();
+				});
+			});
+
 			describe('error workflow', () => {
 				it('should not execute error workflow for manual executions', async () => {
 					await lifecycleHooks.runHook('workflowExecuteAfter', [failedRun, {}]);
@@ -840,6 +919,80 @@ describe('Execution Lifecycle Hooks', () => {
 					await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
 
 					expect(executionMetadataService.save).not.toHaveBeenCalled();
+				});
+			});
+
+			describe('runtime save override', () => {
+				const saveExecutionNode = {
+					id: 'save-exec-node',
+					name: 'Save Execution',
+					type: 'n8n-nodes-base.saveExecution',
+					typeVersion: 1,
+					position: [200, 200] as [number, number],
+					parameters: {},
+				};
+
+				beforeEach(() => {
+					workflowData.nodes.push(saveExecutionNode);
+				});
+
+				afterEach(() => {
+					workflowData.nodes = workflowData.nodes.filter((n) => n !== saveExecutionNode);
+				});
+
+				const createRunWithSaveOverride = (saveExecution: boolean) => {
+					const run = mock<IRun>({
+						status: 'success',
+						finished: true,
+						waitTill: undefined,
+						storedAt: 'db',
+					});
+					run.data = createRunExecutionData({
+						resultData: {
+							runData: {
+								'Save Execution': [
+									{
+										startTime: 0,
+										executionTime: 0,
+										executionIndex: 0,
+										source: [],
+										metadata: { saveExecution },
+									},
+								],
+							},
+						},
+					});
+					return run;
+				};
+
+				it('should force save when saveExecution metadata is true and workflow setting says discard', async () => {
+					workflowData.settings = { saveDataSuccessExecution: 'none' as const };
+					lifecycleHooks = getLifecycleHooksForScalingMain(
+						{ executionMode: 'webhook', workflowData, pushRef, retryOf },
+						executionId,
+					);
+
+					await lifecycleHooks.runHook('workflowExecuteAfter', [
+						createRunWithSaveOverride(true),
+						{},
+					]);
+
+					expect(executionPersistence.hardDelete).not.toHaveBeenCalled();
+				});
+
+				it('should force discard when saveExecution metadata is false and workflow setting says save', async () => {
+					workflowData.settings = { saveDataSuccessExecution: 'all' as const };
+					lifecycleHooks = getLifecycleHooksForScalingMain(
+						{ executionMode: 'webhook', workflowData, pushRef, retryOf },
+						executionId,
+					);
+
+					await lifecycleHooks.runHook('workflowExecuteAfter', [
+						createRunWithSaveOverride(false),
+						{},
+					]);
+
+					expect(executionPersistence.hardDelete).toHaveBeenCalled();
 				});
 			});
 		});
