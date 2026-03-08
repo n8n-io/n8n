@@ -92,8 +92,8 @@ async function processEventStream(
 		output: '',
 		intermediateSteps: [],
 	};
-	// Map run_id → step so on_tool_end can match the exact invocation
 	const toolRunToStep = new Map<string, ToolCallData>();
+	const mappedSteps = new Set<ToolCallData>();
 
 	ctx.sendChunk('begin', itemIndex);
 	for await (const event of eventStream) {
@@ -153,10 +153,11 @@ async function processEventStream(
 			case 'on_tool_start':
 				if (event.run_id) {
 					const step = agentResult.intermediateSteps.find(
-						(s) => !s.observation && s.action.tool === event.name,
+						(s) => !s.observation && s.action.tool === event.name && !mappedSteps.has(s),
 					);
 					if (step) {
 						toolRunToStep.set(event.run_id, step);
+						mappedSteps.add(step);
 					}
 				}
 				break;
