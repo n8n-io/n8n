@@ -39,7 +39,7 @@ function getParamPlaceholder(context: TestMigrationContext, index = 1): string {
 describe('ExpandSubjectIDColumnLength Migration', () => {
 	let dataSource: DataSource;
 
-	beforeAll(async () => {
+	beforeEach(async () => {
 		const dbConnection = Container.get(DbConnection);
 		await dbConnection.init();
 
@@ -49,7 +49,7 @@ describe('ExpandSubjectIDColumnLength Migration', () => {
 		await initDbUpToMigration(MIGRATION_NAME);
 	});
 
-	afterAll(async () => {
+	afterEach(async () => {
 		const dbConnection = Container.get(DbConnection);
 		await dbConnection.close();
 	});

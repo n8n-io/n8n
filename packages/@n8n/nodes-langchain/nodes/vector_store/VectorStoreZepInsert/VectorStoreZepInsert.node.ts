@@ -9,7 +9,7 @@ import {
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 
-import type { N8nJsonLoader } from '@utils/N8nJsonLoader';
+import type { N8nJsonLoader } from '@n8n/ai-utilities';
 
 import { processDocuments } from '../shared/processDocuments';
 

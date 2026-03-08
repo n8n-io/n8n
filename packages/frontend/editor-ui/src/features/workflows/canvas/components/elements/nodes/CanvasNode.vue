@@ -41,6 +41,7 @@ type Props = NodeProps<CanvasNodeData> & {
 	eventBus?: EventBus<CanvasEventBusEvents>;
 	hovered?: boolean;
 	nearbyHovered?: boolean;
+	highlighted?: boolean;
 };
 
 const slots = defineSlots<{
@@ -65,6 +66,7 @@ const emit = defineEmits<{
 	'update:outputs': [id: string];
 	move: [id: string, position: XYPosition];
 	focus: [id: string];
+	'add:ai': [id: string];
 }>();
 
 const style = useCssModule();
@@ -101,6 +103,7 @@ const classes = computed(() => ({
 	[style.canvasNode]: true,
 	[style.showToolbar]: showToolbar.value,
 	hovered: props.hovered,
+	highlighted: props.highlighted,
 	selected: props.selected,
 	waiting: props.data.execution.waiting || props.data.execution.status === 'waiting',
 	running: props.data.execution.running || props.data.execution.waitingForNext,
@@ -282,6 +285,10 @@ function onFocus(id: string) {
 	emit('focus', id);
 }
 
+function onAddToAi(id: string) {
+	emit('add:ai', id);
+}
+
 function onUpdateClass({ className, add = true }: CanvasNodeEventBusEvents['update:node:class']) {
 	nodeClasses.value = add
 		? [...new Set([...nodeClasses.value, className])]
@@ -409,6 +416,7 @@ onBeforeUnmount(() => {
 			@update="onUpdate"
 			@open:contextmenu="onOpenContextMenuFromToolbar"
 			@focus="onFocus"
+			@add:ai="onAddToAi"
 		/>
 
 		<CanvasNodeRenderer
@@ -454,7 +462,8 @@ onBeforeUnmount(() => {
 .canvasNodeToolbar {
 	position: absolute;
 	bottom: 100%;
-	left: 0;
+	left: 50%;
+	transform: translateX(-50%);
 	z-index: 1;
 }
 </style>

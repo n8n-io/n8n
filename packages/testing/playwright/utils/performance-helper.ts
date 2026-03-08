@@ -1,18 +1,15 @@
 import type { Page, TestInfo } from '@playwright/test';
 import type { MetricsHelper } from 'n8n-containers';
 
+const HEAP_USED_QUERY = 'n8n_nodejs_heap_size_used_bytes / 1024 / 1024';
+
 export async function measurePerformance(
 	page: Page,
 	actionName: string,
 	actionFn: () => Promise<void>,
 ): Promise<number> {
-	// Mark start
 	await page.evaluate((name) => performance.mark(`${name}-start`), actionName);
-
-	// Execute action
 	await actionFn();
-
-	// Mark end and get duration
 	return await page.evaluate((name) => {
 		performance.mark(`${name}-end`);
 		performance.measure(name, `${name}-start`, `${name}-end`);
@@ -30,13 +27,7 @@ export async function getAllPerformanceMetrics(page: Page) {
 	});
 }
 
-/**
- * Attach a performance metric for collection by the metrics reporter
- * @param testInfo - The Playwright TestInfo object
- * @param metricName - Name of the metric (will be prefixed with 'metric:')
- * @param value - The numeric value to track
- * @param unit - The unit of measurement (e.g., 'ms', 'bytes', 'count')
- */
+/** Attach a performance metric for collection by the metrics reporter */
 export async function attachMetric(
 	testInfo: TestInfo,
 	metricName: string,
@@ -48,47 +39,79 @@ export async function attachMetric(
 	});
 }
 
-export interface StabilizationOptions {
+export interface StableHeapOptions {
 	maxWaitMs?: number;
 	checkIntervalMs?: number;
 	thresholdMB?: number;
 	stableReadingsRequired?: number;
+	logGC?: boolean;
 }
 
-export interface StabilizationResult {
+export interface StableHeapResult {
 	heapUsedMB: number;
 	stabilizationTimeMs: number;
 	readingsCount: number;
 }
 
 /**
- * Wait for memory to stabilize by monitoring heap usage until consecutive
- * readings show minimal change. This is more reliable than a fixed timeout
- * because V8's garbage collector runs non-deterministically.
- *
- * @param metrics - MetricsHelper instance from observability services
- * @param options - Configuration options for stabilization behavior
- * @returns Stabilization result with final memory value and timing info (returns last reading with warning if stabilization doesn't occur)
+ * Trigger GC and wait for heap memory to stabilize.
+ * Uses consecutive stable readings to ensure metrics have settled post-GC.
  */
-export async function waitForMemoryStabilization(
+export async function getStableHeap(
+	baseUrl: string,
 	metrics: MetricsHelper,
-	options: StabilizationOptions = {},
-): Promise<StabilizationResult> {
+	options: StableHeapOptions = {},
+): Promise<StableHeapResult> {
 	const {
-		maxWaitMs = 120000,
+		maxWaitMs = 60000,
 		checkIntervalMs = 5000,
 		thresholdMB = 2,
-		stableReadingsRequired = 3,
+		stableReadingsRequired = 2,
+		logGC = true,
 	} = options;
 
-	const query = 'n8n_nodejs_heap_size_used_bytes / 1024 / 1024';
+	await triggerGC(baseUrl, logGC);
+	return await waitForStableMemory(metrics, {
+		maxWaitMs,
+		checkIntervalMs,
+		thresholdMB,
+		stableReadingsRequired,
+	});
+}
+
+async function triggerGC(baseUrl: string, log: boolean): Promise<void> {
+	const response = await fetch(`${baseUrl}/rest/e2e/gc`, { method: 'POST' });
+	if (!response.ok) {
+		throw new Error(`GC endpoint returned ${response.status}: ${response.statusText}`);
+	}
+	const result = (await response.json()) as { data?: { success: boolean; message: string } };
+	if (!result.data?.success) {
+		throw new Error(`GC failed: ${result.data?.message ?? 'Unknown error'}`);
+	}
+	if (log) {
+		console.log(`[GC] ${result.data.message}`);
+	}
+}
+
+interface StabilizationConfig {
+	maxWaitMs: number;
+	checkIntervalMs: number;
+	thresholdMB: number;
+	stableReadingsRequired: number;
+}
+
+async function waitForStableMemory(
+	metrics: MetricsHelper,
+	config: StabilizationConfig,
+): Promise<StableHeapResult> {
+	const { maxWaitMs, checkIntervalMs, thresholdMB, stableReadingsRequired } = config;
 	const startTime = Date.now();
 	let lastValue = 0;
 	let stableCount = 0;
 	let readingsCount = 0;
 
 	while (Date.now() - startTime < maxWaitMs) {
-		const result = await metrics.waitForMetric(query, {
+		const result = await metrics.waitForMetric(HEAP_USED_QUERY, {
 			timeoutMs: checkIntervalMs,
 			intervalMs: 1000,
 		});
@@ -106,31 +129,19 @@ export async function waitForMemoryStabilization(
 						`[STABILIZATION] Memory stabilized at ${currentValue.toFixed(2)} MB ` +
 							`after ${stabilizationTimeMs}ms (${readingsCount} readings)`,
 					);
-					return {
-						heapUsedMB: currentValue,
-						stabilizationTimeMs,
-						readingsCount,
-					};
+					return { heapUsedMB: currentValue, stabilizationTimeMs, readingsCount };
 				}
 			} else {
 				stableCount = 0;
 			}
-
 			lastValue = currentValue;
 		}
 
 		await new Promise((resolve) => setTimeout(resolve, checkIntervalMs));
 	}
 
-	// If we didn't stabilize, return the last reading with a warning
-	console.warn(
-		`[STABILIZATION] Memory did not stabilize within ${maxWaitMs}ms. ` +
-			`Last value: ${lastValue.toFixed(2)} MB after ${readingsCount} readings.`,
+	throw new Error(
+		`Memory did not stabilize within ${maxWaitMs}ms. ` +
+			`Last: ${lastValue.toFixed(2)} MB (${readingsCount} readings)`,
 	);
-
-	return {
-		heapUsedMB: lastValue,
-		stabilizationTimeMs: Date.now() - startTime,
-		readingsCount,
-	};
 }

@@ -18,8 +18,7 @@ import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { makeErrorFromStatus } from './error-handling';
 import { getAdditionalOptions } from '../gemini-common/additional-options';
-import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
-import { N8nLlmTracing } from '../N8nLlmTracing';
+import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing } from '@n8n/ai-utilities';
 
 export class LmChatGoogleVertex implements INodeType {
 	description: INodeTypeDescription = {

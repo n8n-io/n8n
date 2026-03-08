@@ -20,6 +20,10 @@ import { setActivePinia } from 'pinia';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSchemaPreviewStore } from '@/features/ndv/runData/schemaPreview.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 const MOCK_EXECUTION_URL = 'execution.url/123';
 
@@ -1214,7 +1218,12 @@ describe('RunData', () => {
 		ndvStore.setOutputPanelEditModeValue = vi.fn();
 
 		if (pinnedData) {
-			workflowsStore.pinDataByNodeName.mockReturnValue(pinnedData);
+			const testWorkflowId = workflowId ?? 'test-workflow';
+			workflowsStore.workflow.id = testWorkflowId;
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(testWorkflowId),
+			);
+			workflowDocumentStore.pinNodeData('Test Node', pinnedData);
 		}
 
 		schemaPreviewStore.getSchemaPreview = vi.fn().mockResolvedValue({});

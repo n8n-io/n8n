@@ -1,0 +1,1863 @@
+From 92fb7cb08625463e74b1f0243e88c272cb8e6a57 Mon Sep 17 00:00:00 2001
+From: Tzachi Shaiovitch <tzachish1@gmail.com>
+Date: Wed, 21 Jan 2026 09:50:48 +0200
+Subject: [PATCH 01/22] feat(node-governance): Add node governance backend
+ infrastructure
+
+- Add TypeORM entities: NodeGovernancePolicy, PolicyProjectAssignment,
+  NodeCategory, NodeCategoryAssignment, NodeAccessRequest
+- Add database migration for all governance tables with proper indexes
+  and foreign key constraints
+- Add repository layer for all entities with query methods
+- Add NodeGovernanceService with policy resolution logic
+  (Global BLOCK > Global ALLOW > Project BLOCK > Project ALLOW > Default)
+- Add REST API controller with DTOs for:
+  - Policy CRUD operations
+  - Category management
+  - Access request submission and review
+  - Node governance status endpoint
+- Add 'nodeGovernance:manage' scope for admin operations
+---
+ packages/@n8n/api-types/src/dto/index.ts      |  13 +
+ .../category-assignment.dto.ts                |  10 +
+ .../create-access-request.dto.ts              |   9 +
+ .../node-governance/create-category.dto.ts    |  20 +
+ .../dto/node-governance/create-policy.dto.ts  |  14 +
+ .../get-node-governance.dto.ts                |   7 +
+ .../src/dto/node-governance/index.ts          |   8 +
+ .../review-access-request.dto.ts              |  10 +
+ .../node-governance/update-category.dto.ts    |  22 +
+ .../dto/node-governance/update-policy.dto.ts  |  14 +
+ packages/@n8n/db/src/entities/index.ts        |  26 ++
+ .../db/src/entities/node-access-request.ts    |  51 +++
+ .../src/entities/node-category-assignment.ts  |  27 ++
+ .../@n8n/db/src/entities/node-category.ts     |  31 ++
+ .../db/src/entities/node-governance-policy.ts |  35 ++
+ .../src/entities/policy-project-assignment.ts |  24 +
+ .../1768981346000-AddNodeGovernanceTables.ts  | 125 ++++++
+ .../@n8n/db/src/migrations/mysqldb/index.ts   |   2 +
+ .../db/src/migrations/postgresdb/index.ts     |   2 +
+ .../@n8n/db/src/migrations/sqlite/index.ts    |   2 +
+ packages/@n8n/db/src/repositories/index.ts    |   5 +
+ .../node-access-request.repository.ts         | 130 ++++++
+ .../node-category-assignment.repository.ts    |  81 ++++
+ .../repositories/node-category.repository.ts  |  64 +++
+ .../node-governance-policy.repository.ts      |  93 ++++
+ .../policy-project-assignment.repository.ts   |  63 +++
+ packages/@n8n/permissions/src/constants.ee.ts |   1 +
+ .../src/roles/scopes/global-scopes.ee.ts      |   1 +
+ .../controllers/node-governance.controller.ts | 234 ++++++++++
+ .../src/services/node-governance.service.ts   | 416 ++++++++++++++++++
+ 30 files changed, 1540 insertions(+)
+ create mode 100644 packages/@n8n/api-types/src/dto/node-governance/category-assignment.dto.ts
+ create mode 100644 packages/@n8n/api-types/src/dto/node-governance/create-access-request.dto.ts
+ create mode 100644 packages/@n8n/api-types/src/dto/node-governance/create-category.dto.ts
+ create mode 100644 packages/@n8n/api-types/src/dto/node-governance/create-policy.dto.ts
+ create mode 100644 packages/@n8n/api-types/src/dto/node-governance/get-node-governance.dto.ts
+ create mode 100644 packages/@n8n/api-types/src/dto/node-governance/index.ts
+ create mode 100644 packages/@n8n/api-types/src/dto/node-governance/review-access-request.dto.ts
+ create mode 100644 packages/@n8n/api-types/src/dto/node-governance/update-category.dto.ts
+ create mode 100644 packages/@n8n/api-types/src/dto/node-governance/update-policy.dto.ts
+ create mode 100644 packages/@n8n/db/src/entities/node-access-request.ts
+ create mode 100644 packages/@n8n/db/src/entities/node-category-assignment.ts
+ create mode 100644 packages/@n8n/db/src/entities/node-category.ts
+ create mode 100644 packages/@n8n/db/src/entities/node-governance-policy.ts
+ create mode 100644 packages/@n8n/db/src/entities/policy-project-assignment.ts
+ create mode 100644 packages/@n8n/db/src/migrations/common/1768981346000-AddNodeGovernanceTables.ts
+ create mode 100644 packages/@n8n/db/src/repositories/node-access-request.repository.ts
+ create mode 100644 packages/@n8n/db/src/repositories/node-category-assignment.repository.ts
+ create mode 100644 packages/@n8n/db/src/repositories/node-category.repository.ts
+ create mode 100644 packages/@n8n/db/src/repositories/node-governance-policy.repository.ts
+ create mode 100644 packages/@n8n/db/src/repositories/policy-project-assignment.repository.ts
+ create mode 100644 packages/cli/src/controllers/node-governance.controller.ts
+ create mode 100644 packages/cli/src/services/node-governance.service.ts
+
+diff --git a/packages/@n8n/api-types/src/dto/index.ts b/packages/@n8n/api-types/src/dto/index.ts
+index 82b8f5b526..1e89503f33 100644
+--- a/packages/@n8n/api-types/src/dto/index.ts
++++ b/packages/@n8n/api-types/src/dto/index.ts
+@@ -128,3 +128,16 @@ export {
+ export { ProvisioningConfigDto, ProvisioningConfigPatchDto } from './provisioning/config.dto';
+ 
+ export { WorkflowHistoryVersionsByIdsDto } from './workflow-history/workflow-history-versions-by-ids.dto';
++
++// Node Governance
++export {
++	CreatePolicyDto,
++	UpdatePolicyDto,
++	CreateCategoryDto,
++	UpdateCategoryDto,
++	CategoryAssignmentDto,
++	BulkCategoryAssignmentDto,
++	CreateAccessRequestDto,
++	ReviewAccessRequestDto,
++	GetNodeGovernanceQueryDto,
++} from './node-governance';
+diff --git a/packages/@n8n/api-types/src/dto/node-governance/category-assignment.dto.ts b/packages/@n8n/api-types/src/dto/node-governance/category-assignment.dto.ts
+new file mode 100644
+index 0000000000..aee99c6c7a
+--- /dev/null
++++ b/packages/@n8n/api-types/src/dto/node-governance/category-assignment.dto.ts
+@@ -0,0 +1,10 @@
++import { z } from 'zod';
++import { Z } from 'zod-class';
++
++export class CategoryAssignmentDto extends Z.class({
++	nodeType: z.string().min(1).max(255),
++}) {}
++
++export class BulkCategoryAssignmentDto extends Z.class({
++	nodeTypes: z.array(z.string().min(1).max(255)).min(1),
++}) {}
+diff --git a/packages/@n8n/api-types/src/dto/node-governance/create-access-request.dto.ts b/packages/@n8n/api-types/src/dto/node-governance/create-access-request.dto.ts
+new file mode 100644
+index 0000000000..a6c259480f
+--- /dev/null
++++ b/packages/@n8n/api-types/src/dto/node-governance/create-access-request.dto.ts
+@@ -0,0 +1,9 @@
++import { z } from 'zod';
++import { Z } from 'zod-class';
++
++export class CreateAccessRequestDto extends Z.class({
++	projectId: z.string().min(1),
++	nodeType: z.string().min(1).max(255),
++	justification: z.string().min(10).max(1000),
++	workflowName: z.string().max(255).optional(),
++}) {}
+diff --git a/packages/@n8n/api-types/src/dto/node-governance/create-category.dto.ts b/packages/@n8n/api-types/src/dto/node-governance/create-category.dto.ts
+new file mode 100644
+index 0000000000..30fe0f54a2
+--- /dev/null
++++ b/packages/@n8n/api-types/src/dto/node-governance/create-category.dto.ts
+@@ -0,0 +1,20 @@
++import { z } from 'zod';
++import { Z } from 'zod-class';
++
++const slugSchema = z
++	.string()
++	.min(1)
++	.max(100)
++	.regex(/^[a-z0-9-]+$/, 'Slug must contain only lowercase letters, numbers, and hyphens');
++
++const hexColorSchema = z
++	.string()
++	.regex(/^#[0-9a-fA-F]{6}$/, 'Color must be a valid hex color (e.g., #FF5733)')
++	.optional();
++
++export class CreateCategoryDto extends Z.class({
++	slug: slugSchema,
++	displayName: z.string().min(1).max(255),
++	description: z.string().max(1000).optional(),
++	color: hexColorSchema,
++}) {}
+diff --git a/packages/@n8n/api-types/src/dto/node-governance/create-policy.dto.ts b/packages/@n8n/api-types/src/dto/node-governance/create-policy.dto.ts
+new file mode 100644
+index 0000000000..9dc972dfd5
+--- /dev/null
++++ b/packages/@n8n/api-types/src/dto/node-governance/create-policy.dto.ts
+@@ -0,0 +1,14 @@
++import { z } from 'zod';
++import { Z } from 'zod-class';
++
++const policyTypeSchema = z.enum(['allow', 'block']);
++const policyScopeSchema = z.enum(['global', 'projects']);
++const targetTypeSchema = z.enum(['node', 'category']);
++
++export class CreatePolicyDto extends Z.class({
++	policyType: policyTypeSchema,
++	scope: policyScopeSchema,
++	targetType: targetTypeSchema,
++	targetValue: z.string().min(1).max(255),
++	projectIds: z.array(z.string()).optional(),
++}) {}
+diff --git a/packages/@n8n/api-types/src/dto/node-governance/get-node-governance.dto.ts b/packages/@n8n/api-types/src/dto/node-governance/get-node-governance.dto.ts
+new file mode 100644
+index 0000000000..d12431f00d
+--- /dev/null
++++ b/packages/@n8n/api-types/src/dto/node-governance/get-node-governance.dto.ts
+@@ -0,0 +1,7 @@
++import { z } from 'zod';
++import { Z } from 'zod-class';
++
++export class GetNodeGovernanceQueryDto extends Z.class({
++	projectId: z.string().min(1),
++	nodeTypes: z.string().optional(), // Comma-separated list of node types
++}) {}
+diff --git a/packages/@n8n/api-types/src/dto/node-governance/index.ts b/packages/@n8n/api-types/src/dto/node-governance/index.ts
+new file mode 100644
+index 0000000000..26633b50ac
+--- /dev/null
++++ b/packages/@n8n/api-types/src/dto/node-governance/index.ts
+@@ -0,0 +1,8 @@
++export { CreatePolicyDto } from './create-policy.dto';
++export { UpdatePolicyDto } from './update-policy.dto';
++export { CreateCategoryDto } from './create-category.dto';
++export { UpdateCategoryDto } from './update-category.dto';
++export { CategoryAssignmentDto, BulkCategoryAssignmentDto } from './category-assignment.dto';
++export { CreateAccessRequestDto } from './create-access-request.dto';
++export { ReviewAccessRequestDto } from './review-access-request.dto';
++export { GetNodeGovernanceQueryDto } from './get-node-governance.dto';
+diff --git a/packages/@n8n/api-types/src/dto/node-governance/review-access-request.dto.ts b/packages/@n8n/api-types/src/dto/node-governance/review-access-request.dto.ts
+new file mode 100644
+index 0000000000..f7489e0733
+--- /dev/null
++++ b/packages/@n8n/api-types/src/dto/node-governance/review-access-request.dto.ts
+@@ -0,0 +1,10 @@
++import { z } from 'zod';
++import { Z } from 'zod-class';
++
++const reviewActionSchema = z.enum(['approve', 'reject']);
++
++export class ReviewAccessRequestDto extends Z.class({
++	action: reviewActionSchema,
++	comment: z.string().max(1000).optional(),
++	createPolicy: z.boolean().default(true),
++}) {}
+diff --git a/packages/@n8n/api-types/src/dto/node-governance/update-category.dto.ts b/packages/@n8n/api-types/src/dto/node-governance/update-category.dto.ts
+new file mode 100644
+index 0000000000..141f46cd90
+--- /dev/null
++++ b/packages/@n8n/api-types/src/dto/node-governance/update-category.dto.ts
+@@ -0,0 +1,22 @@
++import { z } from 'zod';
++import { Z } from 'zod-class';
++
++const slugSchema = z
++	.string()
++	.min(1)
++	.max(100)
++	.regex(/^[a-z0-9-]+$/, 'Slug must contain only lowercase letters, numbers, and hyphens')
++	.optional();
++
++const hexColorSchema = z
++	.string()
++	.regex(/^#[0-9a-fA-F]{6}$/, 'Color must be a valid hex color (e.g., #FF5733)')
++	.nullable()
++	.optional();
++
++export class UpdateCategoryDto extends Z.class({
++	slug: slugSchema,
++	displayName: z.string().min(1).max(255).optional(),
++	description: z.string().max(1000).nullable().optional(),
++	color: hexColorSchema,
++}) {}
+diff --git a/packages/@n8n/api-types/src/dto/node-governance/update-policy.dto.ts b/packages/@n8n/api-types/src/dto/node-governance/update-policy.dto.ts
+new file mode 100644
+index 0000000000..ee5e522b16
+--- /dev/null
++++ b/packages/@n8n/api-types/src/dto/node-governance/update-policy.dto.ts
+@@ -0,0 +1,14 @@
++import { z } from 'zod';
++import { Z } from 'zod-class';
++
++const policyTypeSchema = z.enum(['allow', 'block']);
++const policyScopeSchema = z.enum(['global', 'projects']);
++const targetTypeSchema = z.enum(['node', 'category']);
++
++export class UpdatePolicyDto extends Z.class({
++	policyType: policyTypeSchema.optional(),
++	scope: policyScopeSchema.optional(),
++	targetType: targetTypeSchema.optional(),
++	targetValue: z.string().min(1).max(255).optional(),
++	projectIds: z.array(z.string()).optional(),
++}) {}
+diff --git a/packages/@n8n/db/src/entities/index.ts b/packages/@n8n/db/src/entities/index.ts
+index 9faa85b11f..29389c5a01 100644
+--- a/packages/@n8n/db/src/entities/index.ts
++++ b/packages/@n8n/db/src/entities/index.ts
+@@ -12,6 +12,16 @@ import { ExecutionMetadata } from './execution-metadata';
+ import { Folder } from './folder';
+ import { FolderTagMapping } from './folder-tag-mapping';
+ import { InvalidAuthToken } from './invalid-auth-token';
++import { NodeAccessRequest, type RequestStatus } from './node-access-request';
++import { NodeCategory } from './node-category';
++import { NodeCategoryAssignment } from './node-category-assignment';
++import {
++	NodeGovernancePolicy,
++	type PolicyType,
++	type PolicyScope,
++	type TargetType,
++} from './node-governance-policy';
++import { PolicyProjectAssignment } from './policy-project-assignment';
+ import { ProcessedData } from './processed-data';
+ import { Project } from './project';
+ import { ProjectRelation } from './project-relation';
+@@ -70,6 +80,16 @@ export {
+ 	TestRun,
+ 	TestCaseExecution,
+ 	ExecutionEntity,
++	// Node Governance entities
++	NodeGovernancePolicy,
++	type PolicyType,
++	type PolicyScope,
++	type TargetType,
++	PolicyProjectAssignment,
++	NodeCategory,
++	NodeCategoryAssignment,
++	NodeAccessRequest,
++	type RequestStatus,
+ };
+ 
+ export const entities = {
+@@ -107,4 +127,10 @@ export const entities = {
+ 	TestCaseExecution,
+ 	ExecutionEntity,
+ 	Role,
++	// Node Governance entities
++	NodeGovernancePolicy,
++	PolicyProjectAssignment,
++	NodeCategory,
++	NodeCategoryAssignment,
++	NodeAccessRequest,
+ };
+diff --git a/packages/@n8n/db/src/entities/node-access-request.ts b/packages/@n8n/db/src/entities/node-access-request.ts
+new file mode 100644
+index 0000000000..79af4e79a4
+--- /dev/null
++++ b/packages/@n8n/db/src/entities/node-access-request.ts
+@@ -0,0 +1,51 @@
++import { Column, Entity, Index, ManyToOne, JoinColumn, Relation } from '@n8n/typeorm';
++
++import { WithTimestampsAndStringId, DateTimeColumn } from './abstract-entity';
++import { Project } from './project';
++import { User } from './user';
++
++export type RequestStatus = 'pending' | 'approved' | 'rejected';
++
++@Entity()
++@Index(['projectId', 'status'])
++@Index(['requestedById', 'status'])
++export class NodeAccessRequest extends WithTimestampsAndStringId {
++	@Column({ type: String })
++	projectId: string;
++
++	@ManyToOne('Project', { onDelete: 'CASCADE' })
++	@JoinColumn({ name: 'projectId' })
++	project: Relation<Project>;
++
++	@Column({ type: String })
++	requestedById: string;
++
++	@ManyToOne('User', { onDelete: 'CASCADE' })
++	@JoinColumn({ name: 'requestedById' })
++	requestedBy: Relation<User>;
++
++	@Column({ type: 'varchar', length: 255 })
++	nodeType: string;
++
++	@Column({ type: 'text' })
++	justification: string;
++
++	@Column({ type: 'varchar', length: 255, nullable: true })
++	workflowName: string | null;
++
++	@Column({ type: 'varchar', length: 10, default: 'pending' })
++	status: RequestStatus;
++
++	@Column({ type: String, nullable: true })
++	reviewedById: string | null;
++
++	@ManyToOne('User', { onDelete: 'SET NULL' })
++	@JoinColumn({ name: 'reviewedById' })
++	reviewedBy?: Relation<User>;
++
++	@Column({ type: 'text', nullable: true })
++	reviewComment: string | null;
++
++	@DateTimeColumn({ nullable: true })
++	reviewedAt: Date | null;
++}
+diff --git a/packages/@n8n/db/src/entities/node-category-assignment.ts b/packages/@n8n/db/src/entities/node-category-assignment.ts
+new file mode 100644
+index 0000000000..2dfabe0b82
+--- /dev/null
++++ b/packages/@n8n/db/src/entities/node-category-assignment.ts
+@@ -0,0 +1,27 @@
++import { Entity, ManyToOne, JoinColumn, Relation, Column, Unique, Index } from '@n8n/typeorm';
++
++import { WithTimestampsAndStringId } from './abstract-entity';
++import { NodeCategory } from './node-category';
++import { User } from './user';
++
++@Entity()
++@Index(['nodeType'])
++@Unique(['categoryId', 'nodeType'])
++export class NodeCategoryAssignment extends WithTimestampsAndStringId {
++	@Column({ type: String })
++	categoryId: string;
++
++	@ManyToOne('NodeCategory', 'nodeAssignments', { onDelete: 'CASCADE' })
++	@JoinColumn({ name: 'categoryId' })
++	category: Relation<NodeCategory>;
++
++	@Column({ type: 'varchar', length: 255 })
++	nodeType: string;
++
++	@Column({ type: String, nullable: true })
++	assignedById: string | null;
++
++	@ManyToOne('User', { onDelete: 'SET NULL' })
++	@JoinColumn({ name: 'assignedById' })
++	assignedBy?: Relation<User>;
++}
+diff --git a/packages/@n8n/db/src/entities/node-category.ts b/packages/@n8n/db/src/entities/node-category.ts
+new file mode 100644
+index 0000000000..3fc54ffdd6
+--- /dev/null
++++ b/packages/@n8n/db/src/entities/node-category.ts
+@@ -0,0 +1,31 @@
++import { Column, Entity, ManyToOne, OneToMany, JoinColumn, Relation, Unique } from '@n8n/typeorm';
++
++import { WithTimestampsAndStringId } from './abstract-entity';
++import type { NodeCategoryAssignment } from './node-category-assignment';
++import { User } from './user';
++
++@Entity()
++@Unique(['slug'])
++export class NodeCategory extends WithTimestampsAndStringId {
++	@Column({ type: 'varchar', length: 100 })
++	slug: string;
++
++	@Column({ type: 'varchar', length: 255 })
++	displayName: string;
++
++	@Column({ type: 'text', nullable: true })
++	description: string | null;
++
++	@Column({ type: 'varchar', length: 7, nullable: true })
++	color: string | null;
++
++	@Column({ type: String, nullable: true })
++	createdById: string | null;
++
++	@ManyToOne('User', { onDelete: 'SET NULL' })
++	@JoinColumn({ name: 'createdById' })
++	createdBy?: Relation<User>;
++
++	@OneToMany('NodeCategoryAssignment', 'category')
++	nodeAssignments: NodeCategoryAssignment[];
++}
+diff --git a/packages/@n8n/db/src/entities/node-governance-policy.ts b/packages/@n8n/db/src/entities/node-governance-policy.ts
+new file mode 100644
+index 0000000000..f766dec7fa
+--- /dev/null
++++ b/packages/@n8n/db/src/entities/node-governance-policy.ts
+@@ -0,0 +1,35 @@
++import { Column, Entity, Index, ManyToOne, OneToMany, JoinColumn, Relation } from '@n8n/typeorm';
++
++import { WithTimestampsAndStringId } from './abstract-entity';
++import type { PolicyProjectAssignment } from './policy-project-assignment';
++import { User } from './user';
++
++export type PolicyType = 'allow' | 'block';
++export type PolicyScope = 'global' | 'projects';
++export type TargetType = 'node' | 'category';
++
++@Entity()
++@Index(['scope', 'targetType', 'targetValue'])
++export class NodeGovernancePolicy extends WithTimestampsAndStringId {
++	@Column({ type: 'varchar', length: 10 })
++	policyType: PolicyType;
++
++	@Column({ type: 'varchar', length: 10, default: 'global' })
++	scope: PolicyScope;
++
++	@Column({ type: 'varchar', length: 20 })
++	targetType: TargetType;
++
++	@Column({ type: 'varchar', length: 255 })
++	targetValue: string;
++
++	@Column({ type: String, nullable: true })
++	createdById: string | null;
++
++	@ManyToOne('User', { onDelete: 'SET NULL' })
++	@JoinColumn({ name: 'createdById' })
++	createdBy?: Relation<User>;
++
++	@OneToMany('PolicyProjectAssignment', 'policy')
++	projectAssignments: PolicyProjectAssignment[];
++}
+diff --git a/packages/@n8n/db/src/entities/policy-project-assignment.ts b/packages/@n8n/db/src/entities/policy-project-assignment.ts
+new file mode 100644
+index 0000000000..95cdfcd627
+--- /dev/null
++++ b/packages/@n8n/db/src/entities/policy-project-assignment.ts
+@@ -0,0 +1,24 @@
++import { Entity, Index, ManyToOne, JoinColumn, Relation, Column, Unique } from '@n8n/typeorm';
++
++import { WithTimestampsAndStringId } from './abstract-entity';
++import { NodeGovernancePolicy } from './node-governance-policy';
++import { Project } from './project';
++
++@Entity()
++@Index(['projectId'])
++@Unique(['policyId', 'projectId'])
++export class PolicyProjectAssignment extends WithTimestampsAndStringId {
++	@Column({ type: String })
++	policyId: string;
++
++	@ManyToOne('NodeGovernancePolicy', 'projectAssignments', { onDelete: 'CASCADE' })
++	@JoinColumn({ name: 'policyId' })
++	policy: Relation<NodeGovernancePolicy>;
++
++	@Column({ type: String })
++	projectId: string;
++
++	@ManyToOne('Project', { onDelete: 'CASCADE' })
++	@JoinColumn({ name: 'projectId' })
++	project: Relation<Project>;
++}
+diff --git a/packages/@n8n/db/src/migrations/common/1768981346000-AddNodeGovernanceTables.ts b/packages/@n8n/db/src/migrations/common/1768981346000-AddNodeGovernanceTables.ts
+new file mode 100644
+index 0000000000..23957f7ed1
+--- /dev/null
++++ b/packages/@n8n/db/src/migrations/common/1768981346000-AddNodeGovernanceTables.ts
+@@ -0,0 +1,125 @@
++import type { MigrationContext, ReversibleMigration } from '../migration-types';
++
++export class AddNodeGovernanceTables1768981346000 implements ReversibleMigration {
++	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
++		// Create node_governance_policy table
++		await createTable('node_governance_policy')
++			.withColumns(
++				column('id').varchar(16).primary.notNull,
++				column('policyType').varchar(10).notNull,
++				column('scope').varchar(10).notNull.default("'global'"),
++				column('targetType').varchar(20).notNull,
++				column('targetValue').varchar(255).notNull,
++				column('createdById').varchar(16),
++			)
++			.withTimestamps.withForeignKey('createdById', {
++				tableName: 'user',
++				columnName: 'id',
++				onDelete: 'SET NULL',
++			})
++			.withIndexOn(['scope', 'targetType', 'targetValue'])
++			.withEnumCheck('policyType', ['allow', 'block'])
++			.withEnumCheck('scope', ['global', 'projects'])
++			.withEnumCheck('targetType', ['node', 'category']);
++
++		// Create node_category table
++		await createTable('node_category')
++			.withColumns(
++				column('id').varchar(16).primary.notNull,
++				column('slug').varchar(100).notNull,
++				column('displayName').varchar(255).notNull,
++				column('description').text,
++				column('color').varchar(7),
++				column('createdById').varchar(16),
++			)
++			.withTimestamps.withForeignKey('createdById', {
++				tableName: 'user',
++				columnName: 'id',
++				onDelete: 'SET NULL',
++			})
++			.withUniqueConstraintOn('slug');
++
++		// Create policy_project_assignment junction table
++		await createTable('policy_project_assignment')
++			.withColumns(
++				column('id').varchar(16).primary.notNull,
++				column('policyId').varchar(16).notNull,
++				column('projectId').varchar(16).notNull,
++			)
++			.withTimestamps.withForeignKey('policyId', {
++				tableName: 'node_governance_policy',
++				columnName: 'id',
++				onDelete: 'CASCADE',
++			})
++			.withForeignKey('projectId', {
++				tableName: 'project',
++				columnName: 'id',
++				onDelete: 'CASCADE',
++			})
++			.withUniqueConstraintOn(['policyId', 'projectId'])
++			.withIndexOn(['projectId']);
++
++		// Create node_category_assignment junction table
++		await createTable('node_category_assignment')
++			.withColumns(
++				column('id').varchar(16).primary.notNull,
++				column('categoryId').varchar(16).notNull,
++				column('nodeType').varchar(255).notNull,
++				column('assignedById').varchar(16),
++			)
++			.withTimestamps.withForeignKey('categoryId', {
++				tableName: 'node_category',
++				columnName: 'id',
++				onDelete: 'CASCADE',
++			})
++			.withForeignKey('assignedById', {
++				tableName: 'user',
++				columnName: 'id',
++				onDelete: 'SET NULL',
++			})
++			.withUniqueConstraintOn(['categoryId', 'nodeType'])
++			.withIndexOn(['nodeType']);
++
++		// Create node_access_request table
++		await createTable('node_access_request')
++			.withColumns(
++				column('id').varchar(16).primary.notNull,
++				column('projectId').varchar(16).notNull,
++				column('requestedById').varchar(16).notNull,
++				column('nodeType').varchar(255).notNull,
++				column('justification').text.notNull,
++				column('workflowName').varchar(255),
++				column('status').varchar(10).notNull.default("'pending'"),
++				column('reviewedById').varchar(16),
++				column('reviewComment').text,
++				column('reviewedAt').timestampTimezone(),
++			)
++			.withTimestamps.withForeignKey('projectId', {
++				tableName: 'project',
++				columnName: 'id',
++				onDelete: 'CASCADE',
++			})
++			.withForeignKey('requestedById', {
++				tableName: 'user',
++				columnName: 'id',
++				onDelete: 'CASCADE',
++			})
++			.withForeignKey('reviewedById', {
++				tableName: 'user',
++				columnName: 'id',
++				onDelete: 'SET NULL',
++			})
++			.withIndexOn(['projectId', 'status'])
++			.withIndexOn(['requestedById', 'status'])
++			.withEnumCheck('status', ['pending', 'approved', 'rejected']);
++	}
++
++	async down({ schemaBuilder: { dropTable } }: MigrationContext) {
++		// Drop tables in reverse order due to foreign key dependencies
++		await dropTable('node_access_request');
++		await dropTable('node_category_assignment');
++		await dropTable('policy_project_assignment');
++		await dropTable('node_category');
++		await dropTable('node_governance_policy');
++	}
++}
+diff --git a/packages/@n8n/db/src/migrations/mysqldb/index.ts b/packages/@n8n/db/src/migrations/mysqldb/index.ts
+index 9d539a63e7..3bc49eb498 100644
+--- a/packages/@n8n/db/src/migrations/mysqldb/index.ts
++++ b/packages/@n8n/db/src/migrations/mysqldb/index.ts
+@@ -128,6 +128,7 @@ import { AddResolvableFieldsToCredentials1765459448000 } from '../common/1765459
+ import { AddIconToAgentTable1765788427674 } from '../common/1765788427674-AddIconToAgentTable';
+ import { AddAgentIdForeignKeys1765886667897 } from '../common/1765886667897-AddAgentIdForeignKeys';
+ import { AddWorkflowVersionIdToExecutionData1765892199653 } from '../common/1765892199653-AddVersionIdToExecutionData';
++import { AddNodeGovernanceTables1768981346000 } from '../common/1768981346000-AddNodeGovernanceTables';
+ import type { Migration } from '../migration-types';
+ 
+ export const mysqlMigrations: Migration[] = [
+@@ -261,4 +262,5 @@ export const mysqlMigrations: Migration[] = [
+ 	AddIconToAgentTable1765788427674,
+ 	AddAgentIdForeignKeys1765886667897,
+ 	AddWorkflowVersionIdToExecutionData1765892199653,
++	AddNodeGovernanceTables1768981346000,
+ ];
+diff --git a/packages/@n8n/db/src/migrations/postgresdb/index.ts b/packages/@n8n/db/src/migrations/postgresdb/index.ts
+index f82e01a923..b437841dc6 100644
+--- a/packages/@n8n/db/src/migrations/postgresdb/index.ts
++++ b/packages/@n8n/db/src/migrations/postgresdb/index.ts
+@@ -136,6 +136,7 @@ import { AddChatMessageIndices1766068346315 } from '../common/1766068346315-AddC
+ import { ExpandModelColumnLength1768402473068 } from '../common/1768402473068-ExpandModelColumnLength';
+ import { AddStoredAtToExecutionEntity1768557000000 } from '../common/1768557000000-AddStoredAtToExecutionEntity';
+ import { AddDynamicCredentialUserEntryTable1768901721000 } from '../common/1768901721000-AddDynamicCredentialUserEntryTable';
++import { AddNodeGovernanceTables1768981346000 } from '../common/1768981346000-AddNodeGovernanceTables';
+ import type { Migration } from '../migration-types';
+ 
+ export const postgresMigrations: Migration[] = [
+@@ -277,4 +278,5 @@ export const postgresMigrations: Migration[] = [
+ 	ExpandModelColumnLength1768402473068,
+ 	AddStoredAtToExecutionEntity1768557000000,
+ 	AddDynamicCredentialUserEntryTable1768901721000,
++	AddNodeGovernanceTables1768981346000,
+ ];
+diff --git a/packages/@n8n/db/src/migrations/sqlite/index.ts b/packages/@n8n/db/src/migrations/sqlite/index.ts
+index 0e0b5da6fe..47ac6f57f8 100644
+--- a/packages/@n8n/db/src/migrations/sqlite/index.ts
++++ b/packages/@n8n/db/src/migrations/sqlite/index.ts
+@@ -130,6 +130,7 @@ import { AddWorkflowPublishScopeToProjectRoles1766064542000 } from '../common/17
+ import { ExpandModelColumnLength1768402473068 } from '../common/1768402473068-ExpandModelColumnLength';
+ import { AddStoredAtToExecutionEntity1768557000000 } from '../common/1768557000000-AddStoredAtToExecutionEntity';
+ import { AddDynamicCredentialUserEntryTable1768901721000 } from '../common/1768901721000-AddDynamicCredentialUserEntryTable';
++import { AddNodeGovernanceTables1768981346000 } from '../common/1768981346000-AddNodeGovernanceTables';
+ import type { Migration } from '../migration-types';
+ 
+ const sqliteMigrations: Migration[] = [
+@@ -265,6 +266,7 @@ const sqliteMigrations: Migration[] = [
+ 	ExpandModelColumnLength1768402473068,
+ 	AddStoredAtToExecutionEntity1768557000000,
+ 	AddDynamicCredentialUserEntryTable1768901721000,
++	AddNodeGovernanceTables1768981346000,
+ ];
+ 
+ export { sqliteMigrations };
+diff --git a/packages/@n8n/db/src/repositories/index.ts b/packages/@n8n/db/src/repositories/index.ts
+index 7a5ea1ec3d..63c03e3ed6 100644
+--- a/packages/@n8n/db/src/repositories/index.ts
++++ b/packages/@n8n/db/src/repositories/index.ts
+@@ -14,6 +14,11 @@ export { FolderTagMappingRepository } from './folder-tag-mapping.repository';
+ export { ScopeRepository } from './scope.repository';
+ export { InvalidAuthTokenRepository } from './invalid-auth-token.repository';
+ export { LicenseMetricsRepository } from './license-metrics.repository';
++export { NodeAccessRequestRepository } from './node-access-request.repository';
++export { NodeCategoryAssignmentRepository } from './node-category-assignment.repository';
++export { NodeCategoryRepository } from './node-category.repository';
++export { NodeGovernancePolicyRepository } from './node-governance-policy.repository';
++export { PolicyProjectAssignmentRepository } from './policy-project-assignment.repository';
+ export { ProjectRelationRepository } from './project-relation.repository';
+ export { ProjectRepository } from './project.repository';
+ export { RoleRepository } from './role.repository';
+diff --git a/packages/@n8n/db/src/repositories/node-access-request.repository.ts b/packages/@n8n/db/src/repositories/node-access-request.repository.ts
+new file mode 100644
+index 0000000000..06fe906f41
+--- /dev/null
++++ b/packages/@n8n/db/src/repositories/node-access-request.repository.ts
+@@ -0,0 +1,130 @@
++import { Service } from '@n8n/di';
++import type { EntityManager } from '@n8n/typeorm';
++import { DataSource, Repository } from '@n8n/typeorm';
++
++import { NodeAccessRequest, type RequestStatus } from '../entities';
++
++@Service()
++export class NodeAccessRequestRepository extends Repository<NodeAccessRequest> {
++	constructor(dataSource: DataSource) {
++		super(NodeAccessRequest, dataSource.manager);
++	}
++
++	async findByStatus(status: RequestStatus, entityManager?: EntityManager) {
++		const em = entityManager ?? this.manager;
++		return await em.find(NodeAccessRequest, {
++			where: { status },
++			relations: ['project', 'requestedBy', 'reviewedBy'],
++			order: { createdAt: 'DESC' },
++		});
++	}
++
++	async findPendingRequests(entityManager?: EntityManager) {
++		return await this.findByStatus('pending', entityManager);
++	}
++
++	async findByProjectId(projectId: string, entityManager?: EntityManager) {
++		const em = entityManager ?? this.manager;
++		return await em.find(NodeAccessRequest, {
++			where: { projectId },
++			relations: ['requestedBy', 'reviewedBy'],
++			order: { createdAt: 'DESC' },
++		});
++	}
++
++	async findByRequestedById(requestedById: string, entityManager?: EntityManager) {
++		const em = entityManager ?? this.manager;
++		return await em.find(NodeAccessRequest, {
++			where: { requestedById },
++			relations: ['project', 'reviewedBy'],
++			order: { createdAt: 'DESC' },
++		});
++	}
++
++	async findPendingForNodeAndProject(
++		nodeType: string,
++		projectId: string,
++		entityManager?: EntityManager,
++	) {
++		const em = entityManager ?? this.manager;
++		return await em.findOne(NodeAccessRequest, {
++			where: {
++				nodeType,
++				projectId,
++				status: 'pending',
++			},
++		});
++	}
++
++	async findPendingByUserAndNode(
++		requestedById: string,
++		nodeType: string,
++		projectId: string,
++		entityManager?: EntityManager,
++	) {
++		const em = entityManager ?? this.manager;
++		return await em.findOne(NodeAccessRequest, {
++			where: {
++				requestedById,
++				nodeType,
++				projectId,
++				status: 'pending',
++			},
++		});
++	}
++
++	async createRequest(
++		data: {
++			projectId: string;
++			requestedById: string;
++			nodeType: string;
++			justification: string;
++			workflowName?: string;
++		},
++		entityManager?: EntityManager,
++	) {
++		const em = entityManager ?? this.manager;
++		const request = em.create(NodeAccessRequest, {
++			projectId: data.projectId,
++			requestedById: data.requestedById,
++			nodeType: data.nodeType,
++			justification: data.justification,
++			workflowName: data.workflowName ?? null,
++			status: 'pending',
++		});
++		return await em.save(NodeAccessRequest, request);
++	}
++
++	async updateStatus(
++		id: string,
++		status: RequestStatus,
++		reviewedById: string,
++		reviewComment?: string,
++		entityManager?: EntityManager,
++	) {
++		const em = entityManager ?? this.manager;
++		await em.update(NodeAccessRequest, { id }, {
++			status,
++			reviewedById,
++			reviewComment: reviewComment ?? null,
++			reviewedAt: new Date(),
++		});
++		return await em.findOne(NodeAccessRequest, {
++			where: { id },
++			relations: ['project', 'requestedBy', 'reviewedBy'],
++		});
++	}
++
++	async getPendingCountByProject(entityManager?: EntityManager) {
++		const em = entityManager ?? this.manager;
++		const result = await em
++			.createQueryBuilder(NodeAccessRequest, 'request')
++			.select('request.projectId', 'projectId')
++			.addSelect('COUNT(*)', 'count')
++			.where('request.status = :status', { status: 'pending' satisfies RequestStatus })
++			.groupBy('request.projectId')
++			.getRawMany<{ projectId: string; count: string }>();
++
++		return new Map(result.map((r) => [r.projectId, parseInt(r.count, 10)]));
++	}
++}
+diff --git a/packages/@n8n/db/src/repositories/node-category-assignment.repository.ts b/packages/@n8n/db/src/repositories/node-category-assignment.repository.ts
+new file mode 100644
+index 0000000000..699b06a1a3
+--- /dev/null
++++ b/packages/@n8n/db/src/repositories/node-category-assignment.repository.ts
+@@ -0,0 +1,81 @@
++import { Service } from '@n8n/di';
++import type { EntityManager } from '@n8n/typeorm';
++import { DataSource, In, Repository } from '@n8n/typeorm';
++
++import { NodeCategoryAssignment } from '../entities';
++
++@Service()
++export class NodeCategoryAssignmentRepository extends Repository<NodeCategoryAssignment> {
++	constructor(dataSource: DataSource) {
++		super(NodeCategoryAssignment, dataSource.manager);
++	}
++
++	async findByCategoryId(categoryId: string, entityManager?: EntityManager) {
++		const em = entityManager ?? this.manager;
++		return await em.find(NodeCategoryAssignment, {
++			where: { categoryId },
++		});
++	}
++
++	async findByNodeType(nodeType: string, entityManager?: EntityManager) {
++		const em = entityManager ?? this.manager;
++		return await em.find(NodeCategoryAssignment, {
++			where: { nodeType },
++			relations: ['category'],
++		});
++	}
++
++	async findByNodeTypes(nodeTypes: string[], entityManager?: EntityManager) {
++		const em = entityManager ?? this.manager;
++		return await em.find(NodeCategoryAssignment, {
++			where: { nodeType: In(nodeTypes) },
++			relations: ['category'],
++		});
++	}
++
++	async createAssignment(
++		data: {
++			categoryId: string;
++			nodeType: string;
++			assignedById: string;
++		},
++		entityManager?: EntityManager,
++	) {
++		const em = entityManager ?? this.manager;
++		const assignment = em.create(NodeCategoryAssignment, data);
++		return await em.save(NodeCategoryAssignment, assignment);
++	}
++
++	async createBulkAssignments(
++		categoryId: string,
++		nodeTypes: string[],
++		assignedById: string,
++		entityManager?: EntityManager,
++	) {
++		const em = entityManager ?? this.manager;
++		const assignments = nodeTypes.map((nodeType) =>
++			em.create(NodeCategoryAssignment, { categoryId, nodeType, assignedById }),
++		);
++		return await em.save(NodeCategoryAssignment, assignments);
++	}
++
++	async removeAssignment(categoryId: string, nodeType: string, entityManager?: EntityManager) {
++		const em = entityManager ?? this.manager;
++		return await em.delete(NodeCategoryAssignment, { categoryId, nodeType });
++	}
++
++	async getNodeTypeToCategories(entityManager?: EntityManager) {
++		const em = entityManager ?? this.manager;
++		const assignments = await em.find(NodeCategoryAssignment, {
++			relations: ['category'],
++		});
++
++		const map = new Map<string, string[]>();
++		for (const assignment of assignments) {
++			const existing = map.get(assignment.nodeType) ?? [];
++			existing.push(assignment.category.slug);
++			map.set(assignment.nodeType, existing);
++		}
++		return map;
++	}
++}
+diff --git a/packages/@n8n/db/src/repositories/node-category.repository.ts b/packages/@n8n/db/src/repositories/node-category.repository.ts
+new file mode 100644
+index 0000000000..9a7391cafa
+--- /dev/null
++++ b/packages/@n8n/db/src/repositories/node-category.repository.ts
+@@ -0,0 +1,64 @@
++import { Service } from '@n8n/di';
++import type { EntityManager } from '@n8n/typeorm';
++import { DataSource, Repository } from '@n8n/typeorm';
++
++import { NodeCategory } from '../entities';
++
++@Service()
++export class NodeCategoryRepository extends Repository<NodeCategory> {
++	constructor(dataSource: DataSource) {
++		super(NodeCategory, dataSource.manager);
++	}
++
++	async findBySlug(slug: string, entityManager?: EntityManager) {
++		const em = entityManager ?? this.manager;
++		return await em.findOne(NodeCategory, {
++			where: { slug },
++			relations: ['nodeAssignments', 'createdBy'],
++		});
++	}
++
++	async findAllWithAssignments(entityManager?: EntityManager) {
++		const em = entityManager ?? this.manager;
++		return await em.find(NodeCategory, {
++			relations: ['nodeAssignments', 'createdBy'],
++			order: { displayName: 'ASC' },
++		});
++	}
++
++	async createCategory(
++		data: {
++			slug: string;
++			displayName: string;
++			description?: string;
++			color?: string;
++			createdById: string;
++		},
++		entityManager?: EntityManager,
++	) {
++		const em = entityManager ?? this.manager;
++		const category = em.create(NodeCategory, {
++			slug: data.slug,
++			displayName: data.displayName,
++			description: data.description ?? null,
++			color: data.color ?? null,
++			createdById: data.createdById,
++		});
++		return await em.save(NodeCategory, category);
++	}
++
++	async updateCategory(
++		id: string,
++		data: Partial<{
++			slug: string;
++			displayName: string;
++			description: string | null;
++			color: string | null;
++		}>,
++		entityManager?: EntityManager,
++	) {
++		const em = entityManager ?? this.manager;
++		await em.update(NodeCategory, { id }, data);
++		return await em.findOne(NodeCategory, { where: { id } });
++	}
++}
+diff --git a/packages/@n8n/db/src/repositories/node-governance-policy.repository.ts b/packages/@n8n/db/src/repositories/node-governance-policy.repository.ts
+new file mode 100644
+index 0000000000..95542e1856
+--- /dev/null
++++ b/packages/@n8n/db/src/repositories/node-governance-policy.repository.ts
+@@ -0,0 +1,93 @@
++import { Service } from '@n8n/di';
++import type { EntityManager } from '@n8n/typeorm';
++import { DataSource, In, Repository } from '@n8n/typeorm';
++
++import { NodeGovernancePolicy, type PolicyScope, type PolicyType, type TargetType } from '../entities';
++
++@Service()
++export class NodeGovernancePolicyRepository extends Repository<NodeGovernancePolicy> {
++	constructor(dataSource: DataSource) {
++		super(NodeGovernancePolicy, dataSource.manager);
++	}
++
++	async findByScope(scope: PolicyScope, entityManager?: EntityManager) {
++		const em = entityManager ?? this.manager;
++		return await em.find(NodeGovernancePolicy, {
++			where: { scope },
++			relations: ['projectAssignments', 'createdBy'],
++		});
++	}
++
++	async findByProjectIds(projectIds: string[], entityManager?: EntityManager) {
++		const em = entityManager ?? this.manager;
++		return await em.find(NodeGovernancePolicy, {
++			where: {
++				projectAssignments: {
++					projectId: In(projectIds),
++				},
++			},
++			relations: ['projectAssignments', 'createdBy'],
++		});
++	}
++
++	async findGlobalPolicies(entityManager?: EntityManager) {
++		const em = entityManager ?? this.manager;
++		return await em.find(NodeGovernancePolicy, {
++			where: { scope: 'global' },
++			relations: ['createdBy'],
++		});
++	}
++
++	async findPoliciesForNode(
++		nodeType: string,
++		categorySlug: string | undefined,
++		projectIds: string[],
++		entityManager?: EntityManager,
++	) {
++		const em = entityManager ?? this.manager;
++
++		const queryBuilder = em
++			.createQueryBuilder(NodeGovernancePolicy, 'policy')
++			.leftJoinAndSelect('policy.projectAssignments', 'assignment')
++			.leftJoinAndSelect('policy.createdBy', 'createdBy')
++			.where('policy.targetType = :nodeType AND policy.targetValue = :nodeTypeValue', {
++				nodeType: 'node' satisfies TargetType,
++				nodeTypeValue: nodeType,
++			});
++
++		if (categorySlug) {
++			queryBuilder.orWhere(
++				'policy.targetType = :categoryType AND policy.targetValue = :categoryValue',
++				{
++					categoryType: 'category' satisfies TargetType,
++					categoryValue: categorySlug,
++				},
++			);
++		}
++
++		return await queryBuilder.getMany();
++	}
++
++	async findAllWithRelations(entityManager?: EntityManager) {
++		const em = entityManager ?? this.manager;
++		return await em.find(NodeGovernancePolicy, {
++			relations: ['projectAssignments', 'projectAssignments.project', 'createdBy'],
++			order: { createdAt: 'DESC' },
++		});
++	}
++
++	async createPolicy(
++		data: {
++			policyType: PolicyType;
++			scope: PolicyScope;
++			targetType: TargetType;
++			targetValue: string;
++			createdById: string;
++		},
++		entityManager?: EntityManager,
++	) {
++		const em = entityManager ?? this.manager;
++		const policy = em.create(NodeGovernancePolicy, data);
++		return await em.save(NodeGovernancePolicy, policy);
++	}
++}
+diff --git a/packages/@n8n/db/src/repositories/policy-project-assignment.repository.ts b/packages/@n8n/db/src/repositories/policy-project-assignment.repository.ts
+new file mode 100644
+index 0000000000..fbe1b2cf76
+--- /dev/null
++++ b/packages/@n8n/db/src/repositories/policy-project-assignment.repository.ts
+@@ -0,0 +1,63 @@
++import { Service } from '@n8n/di';
++import type { EntityManager } from '@n8n/typeorm';
++import { DataSource, In, Repository } from '@n8n/typeorm';
++
++import { PolicyProjectAssignment } from '../entities';
++
++@Service()
++export class PolicyProjectAssignmentRepository extends Repository<PolicyProjectAssignment> {
++	constructor(dataSource: DataSource) {
++		super(PolicyProjectAssignment, dataSource.manager);
++	}
++
++	async findByPolicyId(policyId: string, entityManager?: EntityManager) {
++		const em = entityManager ?? this.manager;
++		return await em.find(PolicyProjectAssignment, {
++			where: { policyId },
++			relations: ['project'],
++		});
++	}
++
++	async findByProjectId(projectId: string, entityManager?: EntityManager) {
++		const em = entityManager ?? this.manager;
++		return await em.find(PolicyProjectAssignment, {
++			where: { projectId },
++			relations: ['policy'],
++		});
++	}
++
++	async createAssignments(
++		policyId: string,
++		projectIds: string[],
++		entityManager?: EntityManager,
++	) {
++		const em = entityManager ?? this.manager;
++		const assignments = projectIds.map((projectId) =>
++			em.create(PolicyProjectAssignment, { policyId, projectId }),
++		);
++		return await em.save(PolicyProjectAssignment, assignments);
++	}
++
++	async deleteByPolicyId(policyId: string, entityManager?: EntityManager) {
++		const em = entityManager ?? this.manager;
++		return await em.delete(PolicyProjectAssignment, { policyId });
++	}
++
++	async replaceAssignments(
++		policyId: string,
++		projectIds: string[],
++		entityManager?: EntityManager,
++	) {
++		const em = entityManager ?? this.manager;
++
++		// Delete existing assignments
++		await em.delete(PolicyProjectAssignment, { policyId });
++
++		// Create new assignments if any
++		if (projectIds.length > 0) {
++			return await this.createAssignments(policyId, projectIds, em);
++		}
++
++		return [];
++	}
++}
+diff --git a/packages/@n8n/permissions/src/constants.ee.ts b/packages/@n8n/permissions/src/constants.ee.ts
+index db0099e727..6a076a22d0 100644
+--- a/packages/@n8n/permissions/src/constants.ee.ts
++++ b/packages/@n8n/permissions/src/constants.ee.ts
+@@ -54,6 +54,7 @@ export const RESOURCES = {
+ 	breakingChanges: ['list'] as const,
+ 	apiKey: ['manage'] as const,
+ 	credentialResolver: [...DEFAULT_OPERATIONS] as const,
++	nodeGovernance: ['manage'] as const,
+ } as const;
+ 
+ export const API_KEY_RESOURCES = {
+diff --git a/packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts b/packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+index bcbbed48b8..bbc63aebbe 100644
+--- a/packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
++++ b/packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+@@ -121,6 +121,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
+ 	'credentialResolver:update',
+ 	'credentialResolver:delete',
+ 	'credentialResolver:list',
++	'nodeGovernance:manage',
+ ];
+ 
+ export const GLOBAL_ADMIN_SCOPES = GLOBAL_OWNER_SCOPES.concat();
+diff --git a/packages/cli/src/controllers/node-governance.controller.ts b/packages/cli/src/controllers/node-governance.controller.ts
+new file mode 100644
+index 0000000000..6ba27d03b0
+--- /dev/null
++++ b/packages/cli/src/controllers/node-governance.controller.ts
+@@ -0,0 +1,234 @@
++import {
++	CreatePolicyDto,
++	UpdatePolicyDto,
++	CreateCategoryDto,
++	UpdateCategoryDto,
++	CategoryAssignmentDto,
++	CreateAccessRequestDto,
++	ReviewAccessRequestDto,
++	GetNodeGovernanceQueryDto,
++} from '@n8n/api-types';
++import { AuthenticatedRequest } from '@n8n/db';
++import {
++	Body,
++	Delete,
++	Get,
++	GlobalScope,
++	Param,
++	Patch,
++	Post,
++	Query,
++	RestController,
++} from '@n8n/decorators';
++
++import { BadRequestError } from '@/errors/response-errors/bad-request.error';
++import { NotFoundError } from '@/errors/response-errors/not-found.error';
++import { NodeGovernanceService } from '@/services/node-governance.service';
++
++@RestController('/node-governance')
++export class NodeGovernanceController {
++	constructor(private readonly nodeGovernanceService: NodeGovernanceService) {}
++
++	// === Node Governance Status ===
++
++	@Get('/status')
++	async getNodeGovernanceStatus(
++		req: AuthenticatedRequest,
++		_res: Response,
++		@Query query: GetNodeGovernanceQueryDto,
++	) {
++		const { projectId, nodeTypes } = query;
++		const nodeTypeList = nodeTypes ? nodeTypes.split(',') : [];
++
++		if (nodeTypeList.length === 0) {
++			return { governance: {} };
++		}
++
++		const governanceMap = await this.nodeGovernanceService.getGovernanceForNodes(
++			nodeTypeList,
++			projectId,
++			req.user.id,
++		);
++
++		const governance: Record<string, unknown> = {};
++		for (const [nodeType, status] of governanceMap) {
++			governance[nodeType] = status;
++		}
++
++		return { governance };
++	}
++
++	// === Policies ===
++
++	@Get('/policies')
++	@GlobalScope('nodeGovernance:manage')
++	async getAllPolicies() {
++		const policies = await this.nodeGovernanceService.getAllPolicies();
++		return { policies };
++	}
++
++	@Post('/policies')
++	@GlobalScope('nodeGovernance:manage')
++	async createPolicy(req: AuthenticatedRequest, _res: Response, @Body payload: CreatePolicyDto) {
++		if (payload.scope === 'projects' && (!payload.projectIds || payload.projectIds.length === 0)) {
++			throw new BadRequestError('Project IDs are required for project-scoped policies');
++		}
++
++		const policy = await this.nodeGovernanceService.createPolicy(payload, req.user);
++		return { policy };
++	}
++
++	@Patch('/policies/:id')
++	@GlobalScope('nodeGovernance:manage')
++	async updatePolicy(
++		_req: AuthenticatedRequest,
++		_res: Response,
++		@Param('id') id: string,
++		@Body payload: UpdatePolicyDto,
++	) {
++		const policy = await this.nodeGovernanceService.updatePolicy(id, payload);
++		if (!policy) {
++			throw new NotFoundError(`Policy with ID ${id} not found`);
++		}
++		return { policy };
++	}
++
++	@Delete('/policies/:id')
++	@GlobalScope('nodeGovernance:manage')
++	async deletePolicy(_req: AuthenticatedRequest, _res: Response, @Param('id') id: string) {
++		await this.nodeGovernanceService.deletePolicy(id);
++		return { success: true };
++	}
++
++	// === Categories ===
++
++	@Get('/categories')
++	@GlobalScope('nodeGovernance:manage')
++	async getAllCategories() {
++		const categories = await this.nodeGovernanceService.getAllCategories();
++		return { categories };
++	}
++
++	@Post('/categories')
++	@GlobalScope('nodeGovernance:manage')
++	async createCategory(
++		req: AuthenticatedRequest,
++		_res: Response,
++		@Body payload: CreateCategoryDto,
++	) {
++		const category = await this.nodeGovernanceService.createCategory(payload, req.user);
++		return { category };
++	}
++
++	@Patch('/categories/:id')
++	@GlobalScope('nodeGovernance:manage')
++	async updateCategory(
++		_req: AuthenticatedRequest,
++		_res: Response,
++		@Param('id') id: string,
++		@Body payload: UpdateCategoryDto,
++	) {
++		const category = await this.nodeGovernanceService.updateCategory(id, payload);
++		if (!category) {
++			throw new NotFoundError(`Category with ID ${id} not found`);
++		}
++		return { category };
++	}
++
++	@Delete('/categories/:id')
++	@GlobalScope('nodeGovernance:manage')
++	async deleteCategory(_req: AuthenticatedRequest, _res: Response, @Param('id') id: string) {
++		await this.nodeGovernanceService.deleteCategory(id);
++		return { success: true };
++	}
++
++	@Post('/categories/:id/nodes')
++	@GlobalScope('nodeGovernance:manage')
++	async assignNodeToCategory(
++		req: AuthenticatedRequest,
++		_res: Response,
++		@Param('id') categoryId: string,
++		@Body payload: CategoryAssignmentDto,
++	) {
++		const assignment = await this.nodeGovernanceService.assignNodeToCategory(
++			categoryId,
++			payload.nodeType,
++			req.user,
++		);
++		return { assignment };
++	}
++
++	@Delete('/categories/:id/nodes/:nodeType')
++	@GlobalScope('nodeGovernance:manage')
++	async removeNodeFromCategory(
++		_req: AuthenticatedRequest,
++		_res: Response,
++		@Param('id') categoryId: string,
++		@Param('nodeType') nodeType: string,
++	) {
++		await this.nodeGovernanceService.removeNodeFromCategory(categoryId, decodeURIComponent(nodeType));
++		return { success: true };
++	}
++
++	// === Access Requests ===
++
++	@Get('/requests')
++	@GlobalScope('nodeGovernance:manage')
++	async getPendingRequests() {
++		const requests = await this.nodeGovernanceService.getPendingRequests();
++		return { requests };
++	}
++
++	@Get('/requests/my')
++	async getMyRequests(req: AuthenticatedRequest) {
++		const requests = await this.nodeGovernanceService.getRequestsByUser(req.user.id);
++		return { requests };
++	}
++
++	@Post('/requests')
++	async createAccessRequest(
++		req: AuthenticatedRequest,
++		_res: Response,
++		@Body payload: CreateAccessRequestDto,
++	) {
++		const result = await this.nodeGovernanceService.createAccessRequest(payload, req.user);
++
++		if (result.alreadyExists) {
++			return {
++				alreadyExists: true,
++				request: result.request,
++				message: 'A pending request for this node in this project already exists',
++			};
++		}
++
++		return { alreadyExists: false, request: result.request };
++	}
++
++	@Post('/requests/:id/review')
++	@GlobalScope('nodeGovernance:manage')
++	async reviewAccessRequest(
++		req: AuthenticatedRequest,
++		_res: Response,
++		@Param('id') id: string,
++		@Body payload: ReviewAccessRequestDto,
++	) {
++		let request;
++
++		if (payload.action === 'approve') {
++			request = await this.nodeGovernanceService.approveRequest(
++				id,
++				req.user,
++				payload.comment,
++				payload.createPolicy,
++			);
++		} else {
++			request = await this.nodeGovernanceService.rejectRequest(id, req.user, payload.comment);
++		}
++
++		if (!request) {
++			throw new NotFoundError(`Request with ID ${id} not found`);
++		}
++
++		return { request };
++	}
++}
+diff --git a/packages/cli/src/services/node-governance.service.ts b/packages/cli/src/services/node-governance.service.ts
+new file mode 100644
+index 0000000000..dcaa88251b
+--- /dev/null
++++ b/packages/cli/src/services/node-governance.service.ts
+@@ -0,0 +1,416 @@
++import type { User } from '@n8n/db';
++import {
++	NodeAccessRequestRepository,
++	NodeCategoryAssignmentRepository,
++	NodeCategoryRepository,
++	NodeGovernancePolicyRepository,
++	PolicyProjectAssignmentRepository,
++	type NodeGovernancePolicy,
++	type PolicyScope,
++	type PolicyType,
++	type TargetType,
++	type RequestStatus,
++} from '@n8n/db';
++import { Service } from '@n8n/di';
++import type { EntityManager } from '@n8n/typeorm';
++
++export interface GovernanceStatus {
++	status: 'allowed' | 'blocked' | 'pending_request';
++	category?: string;
++	requestId?: string;
++}
++
++export interface NodeGovernanceResult {
++	nodeType: string;
++	governance: GovernanceStatus;
++}
++
++interface PolicyMatch {
++	policy: NodeGovernancePolicy;
++	priority: number; // Lower = higher priority: Global BLOCK=1, Global ALLOW=2, Project BLOCK=3, Project ALLOW=4
++}
++
++@Service()
++export class NodeGovernanceService {
++	constructor(
++		private readonly policyRepository: NodeGovernancePolicyRepository,
++		private readonly policyProjectAssignmentRepository: PolicyProjectAssignmentRepository,
++		private readonly categoryRepository: NodeCategoryRepository,
++		private readonly categoryAssignmentRepository: NodeCategoryAssignmentRepository,
++		private readonly accessRequestRepository: NodeAccessRequestRepository,
++	) {}
++
++	/**
++	 * Get governance status for a list of node types for a specific project
++	 * Policy priority: Global BLOCK > Global ALLOW > Project BLOCK > Project ALLOW > Default (allowed)
++	 */
++	async getGovernanceForNodes(
++		nodeTypes: string[],
++		projectId: string,
++		userId: string,
++		entityManager?: EntityManager,
++	): Promise<Map<string, GovernanceStatus>> {
++		// Get all policies (global and project-scoped)
++		const [globalPolicies, projectPolicies] = await Promise.all([
++			this.policyRepository.findGlobalPolicies(entityManager),
++			this.policyRepository.findByProjectIds([projectId], entityManager),
++		]);
++
++		// Get category assignments for all node types
++		const categoryAssignments =
++			await this.categoryAssignmentRepository.findByNodeTypes(nodeTypes, entityManager);
++
++		// Build node type to category slugs map
++		const nodeToCategories = new Map<string, string[]>();
++		for (const assignment of categoryAssignments) {
++			const existing = nodeToCategories.get(assignment.nodeType) ?? [];
++			existing.push(assignment.category.slug);
++			nodeToCategories.set(assignment.nodeType, existing);
++		}
++
++		// Get pending requests for this user in this project
++		const pendingRequests =
++			await this.accessRequestRepository.findByProjectId(projectId, entityManager);
++		const pendingRequestMap = new Map<string, string>();
++		for (const request of pendingRequests) {
++			if (request.status === 'pending' && request.requestedById === userId) {
++				pendingRequestMap.set(request.nodeType, request.id);
++			}
++		}
++
++		const result = new Map<string, GovernanceStatus>();
++
++		for (const nodeType of nodeTypes) {
++			const categories = nodeToCategories.get(nodeType) ?? [];
++			const governanceStatus = this.resolveNodeGovernance(
++				nodeType,
++				categories,
++				globalPolicies,
++				projectPolicies,
++				projectId,
++			);
++
++			// Check for pending request
++			const pendingRequestId = pendingRequestMap.get(nodeType);
++			if (governanceStatus.status === 'blocked' && pendingRequestId) {
++				result.set(nodeType, {
++					status: 'pending_request',
++					category: categories[0],
++					requestId: pendingRequestId,
++				});
++			} else {
++				result.set(nodeType, {
++					...governanceStatus,
++					category: categories[0],
++				});
++			}
++		}
++
++		return result;
++	}
++
++	/**
++	 * Resolve governance for a single node type
++	 * Priority: Global BLOCK (1) > Global ALLOW (2) > Project BLOCK (3) > Project ALLOW (4) > Default
++	 */
++	private resolveNodeGovernance(
++		nodeType: string,
++		categories: string[],
++		globalPolicies: NodeGovernancePolicy[],
++		projectPolicies: NodeGovernancePolicy[],
++		projectId: string,
++	): GovernanceStatus {
++		const matchingPolicies: PolicyMatch[] = [];
++
++		// Check global policies
++		for (const policy of globalPolicies) {
++			if (this.policyMatchesNode(policy, nodeType, categories)) {
++				matchingPolicies.push({
++					policy,
++					priority: policy.policyType === 'block' ? 1 : 2,
++				});
++			}
++		}
++
++		// Check project policies
++		for (const policy of projectPolicies) {
++			const isForThisProject = policy.projectAssignments?.some(
++				(a) => a.projectId === projectId,
++			);
++			if (isForThisProject && this.policyMatchesNode(policy, nodeType, categories)) {
++				matchingPolicies.push({
++					policy,
++					priority: policy.policyType === 'block' ? 3 : 4,
++				});
++			}
++		}
++
++		// Sort by priority (lowest = highest priority)
++		matchingPolicies.sort((a, b) => a.priority - b.priority);
++
++		// Apply highest priority policy
++		if (matchingPolicies.length > 0) {
++			const highestPriorityPolicy = matchingPolicies[0].policy;
++			return {
++				status: highestPriorityPolicy.policyType === 'block' ? 'blocked' : 'allowed',
++			};
++		}
++
++		// Default: allowed
++		return { status: 'allowed' };
++	}
++
++	private policyMatchesNode(
++		policy: NodeGovernancePolicy,
++		nodeType: string,
++		categories: string[],
++	): boolean {
++		if (policy.targetType === 'node') {
++			return policy.targetValue === nodeType;
++		}
++		if (policy.targetType === 'category') {
++			return categories.includes(policy.targetValue);
++		}
++		return false;
++	}
++
++	// === Policy Management ===
++
++	async createPolicy(
++		data: {
++			policyType: PolicyType;
++			scope: PolicyScope;
++			targetType: TargetType;
++			targetValue: string;
++			projectIds?: string[];
++		},
++		user: User,
++		entityManager?: EntityManager,
++	) {
++		const policy = await this.policyRepository.createPolicy(
++			{
++				policyType: data.policyType,
++				scope: data.scope,
++				targetType: data.targetType,
++				targetValue: data.targetValue,
++				createdById: user.id,
++			},
++			entityManager,
++		);
++
++		if (data.scope === 'projects' && data.projectIds && data.projectIds.length > 0) {
++			await this.policyProjectAssignmentRepository.createAssignments(
++				policy.id,
++				data.projectIds,
++				entityManager,
++			);
++		}
++
++		return await this.policyRepository.findOne({
++			where: { id: policy.id },
++			relations: ['projectAssignments', 'projectAssignments.project', 'createdBy'],
++		});
++	}
++
++	async updatePolicy(
++		id: string,
++		data: {
++			policyType?: PolicyType;
++			scope?: PolicyScope;
++			targetType?: TargetType;
++			targetValue?: string;
++			projectIds?: string[];
++		},
++		entityManager?: EntityManager,
++	) {
++		const em = entityManager ?? this.policyRepository.manager;
++
++		const updateData: Partial<NodeGovernancePolicy> = {};
++		if (data.policyType) updateData.policyType = data.policyType;
++		if (data.scope) updateData.scope = data.scope;
++		if (data.targetType) updateData.targetType = data.targetType;
++		if (data.targetValue) updateData.targetValue = data.targetValue;
++
++		if (Object.keys(updateData).length > 0) {
++			await em.update('NodeGovernancePolicy', { id }, updateData);
++		}
++
++		if (data.projectIds !== undefined) {
++			await this.policyProjectAssignmentRepository.replaceAssignments(
++				id,
++				data.projectIds,
++				em,
++			);
++		}
++
++		return await this.policyRepository.findOne({
++			where: { id },
++			relations: ['projectAssignments', 'projectAssignments.project', 'createdBy'],
++		});
++	}
++
++	async deletePolicy(id: string, entityManager?: EntityManager) {
++		const em = entityManager ?? this.policyRepository.manager;
++		await em.delete('NodeGovernancePolicy', { id });
++	}
++
++	async getAllPolicies(entityManager?: EntityManager) {
++		return await this.policyRepository.findAllWithRelations(entityManager);
++	}
++
++	// === Category Management ===
++
++	async createCategory(
++		data: {
++			slug: string;
++			displayName: string;
++			description?: string;
++			color?: string;
++		},
++		user: User,
++		entityManager?: EntityManager,
++	) {
++		return await this.categoryRepository.createCategory(
++			{ ...data, createdById: user.id },
++			entityManager,
++		);
++	}
++
++	async updateCategory(
++		id: string,
++		data: {
++			slug?: string;
++			displayName?: string;
++			description?: string | null;
++			color?: string | null;
++		},
++		entityManager?: EntityManager,
++	) {
++		return await this.categoryRepository.updateCategory(id, data, entityManager);
++	}
++
++	async deleteCategory(id: string, entityManager?: EntityManager) {
++		const em = entityManager ?? this.categoryRepository.manager;
++		await em.delete('NodeCategory', { id });
++	}
++
++	async getAllCategories(entityManager?: EntityManager) {
++		return await this.categoryRepository.findAllWithAssignments(entityManager);
++	}
++
++	async assignNodeToCategory(
++		categoryId: string,
++		nodeType: string,
++		user: User,
++		entityManager?: EntityManager,
++	) {
++		return await this.categoryAssignmentRepository.createAssignment(
++			{ categoryId, nodeType, assignedById: user.id },
++			entityManager,
++		);
++	}
++
++	async removeNodeFromCategory(
++		categoryId: string,
++		nodeType: string,
++		entityManager?: EntityManager,
++	) {
++		return await this.categoryAssignmentRepository.removeAssignment(
++			categoryId,
++			nodeType,
++			entityManager,
++		);
++	}
++
++	// === Access Request Management ===
++
++	async createAccessRequest(
++		data: {
++			projectId: string;
++			nodeType: string;
++			justification: string;
++			workflowName?: string;
++		},
++		user: User,
++		entityManager?: EntityManager,
++	) {
++		// Check for existing pending request
++		const existingRequest = await this.accessRequestRepository.findPendingByUserAndNode(
++			user.id,
++			data.nodeType,
++			data.projectId,
++			entityManager,
++		);
++
++		if (existingRequest) {
++			return { alreadyExists: true, request: existingRequest };
++		}
++
++		const request = await this.accessRequestRepository.createRequest(
++			{ ...data, requestedById: user.id },
++			entityManager,
++		);
++
++		return { alreadyExists: false, request };
++	}
++
++	async approveRequest(
++		id: string,
++		reviewer: User,
++		reviewComment?: string,
++		createAllowPolicy = true,
++		entityManager?: EntityManager,
++	) {
++		const request = await this.accessRequestRepository.updateStatus(
++			id,
++			'approved',
++			reviewer.id,
++			reviewComment,
++			entityManager,
++		);
++
++		// Optionally create an allow policy for this node in the project
++		if (createAllowPolicy && request) {
++			await this.createPolicy(
++				{
++					policyType: 'allow',
++					scope: 'projects',
++					targetType: 'node',
++					targetValue: request.nodeType,
++					projectIds: [request.projectId],
++				},
++				reviewer,
++				entityManager,
++			);
++		}
++
++		return request;
++	}
++
++	async rejectRequest(
++		id: string,
++		reviewer: User,
++		reviewComment?: string,
++		entityManager?: EntityManager,
++	) {
++		return await this.accessRequestRepository.updateStatus(
++			id,
++			'rejected',
++			reviewer.id,
++			reviewComment,
++			entityManager,
++		);
++	}
++
++	async getPendingRequests(entityManager?: EntityManager) {
++		return await this.accessRequestRepository.findPendingRequests(entityManager);
++	}
++
++	async getRequestsByUser(userId: string, entityManager?: EntityManager) {
++		return await this.accessRequestRepository.findByRequestedById(userId, entityManager);
++	}
++
++	async getRequestsByProject(projectId: string, entityManager?: EntityManager) {
++		return await this.accessRequestRepository.findByProjectId(projectId, entityManager);
++	}
++}
+-- 
+2.50.1 (Apple Git-155)
+

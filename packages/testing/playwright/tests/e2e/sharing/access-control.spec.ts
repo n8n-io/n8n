@@ -4,7 +4,11 @@ import { test, expect } from '../../../fixtures/base';
 
 const TEST_API_KEY = 'test-api-key';
 
-test.describe('Access Control Boundaries', () => {
+test.describe('Access Control Boundaries', {
+	annotation: [
+		{ type: 'owner', description: 'Identity & Access' },
+	],
+}, () => {
 	test('should prevent credential editing by sharee', async ({ n8n, api }) => {
 		const member = await api.publicApi.createUser({
 			email: `member-${nanoid()}@test.com`,
@@ -69,8 +73,10 @@ test.describe('Access Control Boundaries', () => {
 		await expect(adminN8n.credentials.credentialModal.getUsersSelect()).toBeVisible();
 
 		await adminN8n.credentials.credentialModal.getUsersSelect().click();
+		// Personal projects show "Name (Personal space)" instead of email
+		const adminName = `${admin.firstName} ${admin.lastName}`;
 		await expect(
-			adminN8n.credentials.credentialModal.getVisibleDropdown().getByText(admin.email),
+			adminN8n.credentials.credentialModal.getVisibleDropdown().getByText(adminName),
 		).toBeVisible();
 	});
 

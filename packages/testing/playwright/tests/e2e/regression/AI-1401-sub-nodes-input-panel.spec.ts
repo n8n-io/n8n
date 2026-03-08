@@ -1,6 +1,10 @@
 import { test, expect } from '../../../fixtures/base';
 
-test.describe('AI-1401 AI sub-nodes show node output with no path back in input', () => {
+test.describe('AI-1401 AI sub-nodes show node output with no path back in input', {
+	annotation: [
+		{ type: 'owner', description: 'AI' },
+	],
+}, () => {
 	test('should show correct root node for nested sub-nodes in input panel', async ({ n8n }) => {
 		await n8n.start.fromImportedWorkflow('Test_ai_1401.json');
 

@@ -3,7 +3,11 @@ import { nanoid } from 'nanoid';
 import { test, expect } from '../../../fixtures/base';
 import type { n8nPage } from '../../../pages/n8nPage';
 
-test.describe('Data Table details view', () => {
+test.describe('Data Table details view', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	let testDataTableName: string;
 
 	const COLUMN_NAMES = {

@@ -72,26 +72,6 @@ $--mode-selector-width: 92px;
 		}
 	}
 
-	.background {
-		position: absolute;
-		background-color: var(--input-triple--color--background);
-		top: 0;
-		bottom: 0;
-		left: 0;
-		right: var(--resource-locator--input-issues--width);
-		border: 1px solid var(--border-color);
-		border-radius: var(--radius);
-		pointer-events: none;
-	}
-
-	.backgroundOverride {
-		right: var(--resource-locator--input-override--width);
-	}
-
-	.backgroundWithIssuesAndShowResourceLink {
-		right: 47px;
-	}
-
 	&.multipleModes {
 		.inputContainer {
 			display: flex;
@@ -125,14 +105,12 @@ $--mode-selector-width: 92px;
 }
 
 .selectInput input {
-	padding-right: 30px !important;
 	overflow: hidden;
 	text-overflow: ellipsis;
 }
 
 .selectIcon {
 	cursor: pointer;
-	font-size: 14px;
 	transition: transform 0.3s;
 	transform: rotateZ(0);
 
@@ -141,8 +119,11 @@ $--mode-selector-width: 92px;
 	}
 }
 
-.listModeInputContainer * {
-	cursor: pointer;
+.listModeInputContainer {
+	position: relative;
+	* {
+		cursor: pointer;
+	}
 }
 
 .errorContainer,
@@ -168,13 +149,9 @@ $--mode-selector-width: 92px;
 	font-size: var(--font-size--2xs);
 }
 
-.openResourceLink {
-	width: 25px !important;
-	padding-left: var(--spacing--2xs);
-	padding-top: var(--spacing--4xs);
-	align-self: flex-start;
-}
-
+.openResourceLink,
 .parameter-issues {
+	display: flex;
 	width: 25px !important;
+	justify-content: flex-end;
 }

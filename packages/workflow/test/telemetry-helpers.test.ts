@@ -50,6 +50,33 @@ describe('getDomainBase should return protocol plus domain', () => {
 			expect(getDomainBase(full)).toBe(protocolPlusDomain);
 		}
 	});
+
+	test('should handle multi-level TLDs correctly', () => {
+		// Test cases for multi-level TLDs (country codes, special services)
+		const testCases = [
+			{ input: 'https://api.example.co.uk/path', expected: 'example.co.uk' },
+			{ input: 'https://user.service.com.au/api', expected: 'service.com.au' },
+			{ input: 'https://api.example.co.jp/test', expected: 'example.co.jp' },
+			{ input: 'https://test.example.gov.uk/data', expected: 'example.gov.uk' },
+			{ input: 'https://sub.domain.org.nz/path', expected: 'domain.org.nz' },
+			{ input: 'api.example.co.uk/path', expected: 'example.co.uk' },
+		];
+
+		testCases.forEach(({ input, expected }) => {
+			expect(getDomainBase(input)).toBe(expected);
+		});
+	});
+
+	test('should handle edge cases', () => {
+		// Single word domains, localhost, etc.
+		expect(getDomainBase('https://localhost/path')).toBe('localhost');
+		expect(getDomainBase('https://example/path')).toBe('example');
+	});
+
+	test('should handle IP addresses', () => {
+		expect(getDomainBase('https://192.168.1.1/path')).toBe('192.168.1.1');
+		expect(getDomainBase('https://[::1]/path')).toBe('[::1]');
+	});
 });
 
 describe('getDomainPath should return pathname, excluding query string', () => {
@@ -941,7 +968,6 @@ describe('generateNodesGraph', () => {
 						credential_type: 'httpBasicAuth',
 						credential_set: true,
 						domain_base: 'google.com',
-						domain_path: '/path/test',
 					},
 				},
 				notes: {},
@@ -996,7 +1022,6 @@ describe('generateNodesGraph', () => {
 						credential_type: 'activeCampaignApi',
 						credential_set: true,
 						domain_base: 'google.com',
-						domain_path: '/path/test',
 					},
 				},
 				notes: {},
@@ -1201,7 +1226,6 @@ describe('generateNodesGraph', () => {
 						position: [600, 240],
 						credential_set: false,
 						domain_base: '',
-						domain_path: '',
 					},
 				},
 				notes: {},
@@ -2268,42 +2292,42 @@ function validUrls(idMaker: typeof alphanumericId | typeof email, char = CHAR) {
 	return [
 		{
 			full: `https://test.com/api/v1/users/${firstId}`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: `/api/v1/users/${firstIdObscured}`,
 		},
 		{
 			full: `https://test.com/api/v1/users/${firstId}/`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: `/api/v1/users/${firstIdObscured}/`,
 		},
 		{
 			full: `https://test.com/api/v1/users/${firstId}/posts/${secondId}`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}`,
 		},
 		{
 			full: `https://test.com/api/v1/users/${firstId}/posts/${secondId}/`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}/`,
 		},
 		{
 			full: `https://test.com/api/v1/users/${firstId}/posts/${secondId}/`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}/`,
 		},
 		{
 			full: `https://test.com/api/v1/users?id=${firstId}`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: '/api/v1/users',
 		},
 		{
 			full: `https://test.com/api/v1/users?id=${firstId}&post=${secondId}`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: '/api/v1/users',
 		},
 		{
 			full: `https://test.com/api/v1/users/${firstId}/posts/${secondId}`,
-			protocolPlusDomain: 'https://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}`,
 		},
 	];
@@ -2323,7 +2347,7 @@ function malformedUrls(idMaker: typeof numericId | typeof email, char = CHAR) {
 		},
 		{
 			full: `htp://test.com/api/v1/users/${firstId}/posts/${secondId}/`,
-			protocolPlusDomain: 'htp://test.com',
+			protocolPlusDomain: 'test.com',
 			pathname: `/api/v1/users/${firstIdObscured}/posts/${secondIdObscured}/`,
 		},
 		{

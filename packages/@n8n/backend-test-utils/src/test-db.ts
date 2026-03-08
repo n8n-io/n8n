@@ -9,6 +9,8 @@ import { randomString } from 'n8n-workflow';
 
 export const testDbPrefix = 'n8n_test_';
 let isInitialized = false;
+let testDbName: string | undefined;
+let originalDatabase: string | undefined;
 
 /**
  * Generate options for a bootstrap DB connection, to create and drop test databases.
@@ -34,9 +36,10 @@ export async function init() {
 
 	const globalConfig = Container.get(GlobalConfig);
 	const dbType = globalConfig.database.type;
-	const testDbName = `${testDbPrefix}${randomString(6, 10).toLowerCase()}_${Date.now()}`;
+	testDbName = `${testDbPrefix}${randomString(6, 10).toLowerCase()}_${Date.now()}`;
 
 	if (dbType === 'postgresdb') {
+		originalDatabase = globalConfig.database.postgresdb.database;
 		const bootstrapPostgres = await new Connection(getBootstrapDBOptions()).initialize();
 		await bootstrapPostgres.query(`CREATE DATABASE ${testDbName}`);
 		await bootstrapPostgres.destroy();
@@ -65,6 +68,23 @@ export async function terminate() {
 	const dbConnection = Container.get(DbConnection);
 	await dbConnection.close();
 	dbConnection.connectionState.connected = false;
+
+	if (testDbName && originalDatabase) {
+		const globalConfig = Container.get(GlobalConfig);
+		if (globalConfig.database.type === 'postgresdb') {
+			try {
+				globalConfig.database.postgresdb.database = originalDatabase;
+				const bootstrap = await new Connection(getBootstrapDBOptions()).initialize();
+				await bootstrap.query(`DROP DATABASE IF EXISTS "${testDbName}"`);
+				await bootstrap.destroy();
+			} catch (error) {
+				// Best effort - don't fail tests over cleanup
+				console.warn(`Failed to drop test database "${testDbName}":`, error);
+			}
+		}
+		testDbName = undefined;
+	}
+
 	isInitialized = false;
 }
 
@@ -78,6 +98,7 @@ type EntityName =
 	| 'ChatHubSession'
 	| 'ChatHubMessage'
 	| 'ChatHubAgent'
+	| 'ChatHubTool'
 	| 'OAuthClient'
 	| 'AuthorizationCode'
 	| 'AccessToken'

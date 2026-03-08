@@ -2,7 +2,11 @@ import { test, expect } from '../../../../fixtures/base';
 
 const SCHEDULE_TRIGGER_NODE_NAME = 'Schedule Trigger';
 
-test.describe('Workflow Production Checklist', () => {
+test.describe('Workflow Production Checklist', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 	});

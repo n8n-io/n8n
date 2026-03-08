@@ -1,6 +1,10 @@
 import { test, expect } from '../../../fixtures/base';
 
-test.describe('HTTP Request node', () => {
+test.describe('HTTP Request node', {
+	annotation: [
+		{ type: 'owner', description: 'NODES' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 	});

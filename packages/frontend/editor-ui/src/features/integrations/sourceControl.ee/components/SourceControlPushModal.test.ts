@@ -294,6 +294,16 @@ describe('SourceControlPushModal', () => {
 				updatedAt: '2024-09-20T14:42:51.968Z',
 			},
 			{
+				id: 'data-table-1',
+				name: 'Customer Data',
+				type: 'datatable',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '/Users/raul/.n8n/git/data_tables.json',
+				updatedAt: '2024-12-04T11:29:22.095Z',
+			},
+			{
 				id: 'mappings',
 				name: 'tags',
 				type: 'tags',
@@ -575,6 +585,551 @@ describe('SourceControlPushModal', () => {
 		expect(credentials[0].parentElement).toHaveTextContent('My credential');
 		// Credentials should be selected by default
 		expect(credentials[0]).toBeChecked();
+	});
+
+	describe('Data Tables tab', () => {
+		it('should have all data tables selected by default', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'workflow-1',
+					name: 'My workflow',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/workflow-1.json',
+					updatedAt: '2024-09-20T10:30:00.000Z',
+				},
+				{
+					id: 'dt-1',
+					name: 'Customer Data',
+					type: 'datatable',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/datatables/dt-1.json',
+					updatedAt: '2024-09-20T10:31:40.000Z',
+				},
+				{
+					id: 'dt-2',
+					name: 'Product Catalog',
+					type: 'datatable',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/datatables/dt-2.json',
+					updatedAt: '2024-09-20T14:42:51.968Z',
+				},
+			];
+
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+			const { getByTestId, getAllByTestId, getByText } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			// Wait for modal content to be visible
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				const workflows = getAllByTestId('source-control-push-modal-file-checkbox');
+				expect(workflows).toHaveLength(1);
+			});
+
+			// Switch to data tables tab
+			const dataTablesTab = getByTestId('source-control-push-modal-tab-datatable');
+			await userEvent.click(dataTablesTab);
+
+			await waitFor(() => {
+				const dataTables = getAllByTestId('source-control-push-modal-file-checkbox');
+				expect(dataTables).toHaveLength(2);
+			});
+
+			const dataTables = getAllByTestId('source-control-push-modal-file-checkbox');
+
+			// All data tables should be selected by default
+			expect(dataTables[0]).toBeChecked();
+			expect(dataTables[1]).toBeChecked();
+
+			// Verify the tab shows correct count
+			expect(dataTablesTab?.textContent).toContain('2 / 2 selected');
+		});
+
+		it('should show data tables in a different tab', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'wf-1',
+					name: 'My workflow',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/wf-1.json',
+					updatedAt: '2024-09-20T10:31:40.000Z',
+				},
+				{
+					id: 'dt-1',
+					name: 'Customer Data',
+					type: 'datatable',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/datatables/dt-1.json',
+					updatedAt: '2024-09-20T14:42:51.968Z',
+				},
+			];
+
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+			const { getByTestId, getAllByTestId, getByText } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			// Wait for modal content to be visible
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				const workflows = getAllByTestId('source-control-push-modal-file-checkbox');
+				expect(workflows).toHaveLength(1);
+			});
+
+			const dataTablesTab = getByTestId('source-control-push-modal-tab-datatable');
+
+			await userEvent.click(dataTablesTab);
+
+			const dataTables = getAllByTestId('source-control-push-modal-file-checkbox');
+			expect(dataTables).toHaveLength(1);
+			expect(dataTables[0].parentElement).toHaveTextContent('Customer Data');
+			// Data tables should be selected by default
+			expect(dataTables[0]).toBeChecked();
+		});
+
+		it('should toggle data table selection', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'wf-1',
+					name: 'My workflow',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/wf-1.json',
+					updatedAt: '2024-09-20T10:30:00.000Z',
+				},
+				{
+					id: 'dt-1',
+					name: 'Customer Data',
+					type: 'datatable',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/datatables/dt-1.json',
+					updatedAt: '2024-09-20T10:31:40.000Z',
+				},
+				{
+					id: 'dt-2',
+					name: 'Product Catalog',
+					type: 'datatable',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/datatables/dt-2.json',
+					updatedAt: '2024-09-20T14:42:51.968Z',
+				},
+			];
+
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+			const { getByTestId, getAllByTestId, getByText } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				const workflows = getAllByTestId('source-control-push-modal-file-checkbox');
+				expect(workflows).toHaveLength(1);
+			});
+
+			const dataTablesTab = getByTestId('source-control-push-modal-tab-datatable');
+			await userEvent.click(dataTablesTab);
+
+			await waitFor(() => {
+				const dataTables = getAllByTestId('source-control-push-modal-file-checkbox');
+				expect(dataTables).toHaveLength(2);
+			});
+
+			const dataTables = getAllByTestId('source-control-push-modal-file-checkbox');
+
+			// Both should be checked initially
+			expect(dataTables[0]).toBeChecked();
+			expect(dataTables[1]).toBeChecked();
+
+			// Uncheck first data table
+			await userEvent.click(dataTables[0]);
+			expect(dataTables[0]).not.toBeChecked();
+			expect(dataTables[1]).toBeChecked();
+
+			// Check it again
+			await userEvent.click(dataTables[0]);
+			expect(dataTables[0]).toBeChecked();
+			expect(dataTables[1]).toBeChecked();
+		});
+
+		it('should toggle all data tables with select-all button', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'wf-1',
+					name: 'My workflow',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/wf-1.json',
+					updatedAt: '2024-09-20T10:30:00.000Z',
+				},
+				{
+					id: 'dt-1',
+					name: 'Customer Data',
+					type: 'datatable',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/datatables/dt-1.json',
+					updatedAt: '2024-09-20T10:31:40.000Z',
+				},
+				{
+					id: 'dt-2',
+					name: 'Product Catalog',
+					type: 'datatable',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/datatables/dt-2.json',
+					updatedAt: '2024-09-20T14:42:51.968Z',
+				},
+			];
+
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+			const { getByTestId, getAllByTestId, getByText } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				const workflows = getAllByTestId('source-control-push-modal-file-checkbox');
+				expect(workflows).toHaveLength(1);
+			});
+
+			const dataTablesTab = getByTestId('source-control-push-modal-tab-datatable');
+			await userEvent.click(dataTablesTab);
+
+			await waitFor(() => {
+				const dataTables = getAllByTestId('source-control-push-modal-file-checkbox');
+				expect(dataTables).toHaveLength(2);
+			});
+
+			const dataTables = getAllByTestId('source-control-push-modal-file-checkbox');
+
+			// Both should be checked initially
+			expect(dataTables[0]).toBeChecked();
+			expect(dataTables[1]).toBeChecked();
+
+			// Unselect all
+			await userEvent.click(getByTestId('source-control-push-modal-toggle-all'));
+			expect(dataTables[0]).not.toBeChecked();
+			expect(dataTables[1]).not.toBeChecked();
+
+			// Select all again
+			await userEvent.click(getByTestId('source-control-push-modal-toggle-all'));
+			expect(dataTables[0]).toBeChecked();
+			expect(dataTables[1]).toBeChecked();
+		});
+
+		it('should filter data tables by name', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'wf-1',
+					name: 'My workflow',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/wf-1.json',
+					updatedAt: '2024-09-20T10:30:00.000Z',
+				},
+				{
+					id: 'dt-1',
+					name: 'Customer Data',
+					type: 'datatable',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/datatables/dt-1.json',
+					updatedAt: '2024-09-20T10:31:40.000Z',
+				},
+				{
+					id: 'dt-2',
+					name: 'Product Catalog',
+					type: 'datatable',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/datatables/dt-2.json',
+					updatedAt: '2024-09-20T14:42:51.968Z',
+				},
+			];
+
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+			const { getByTestId, getAllByTestId, getByText } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				const workflows = getAllByTestId('source-control-push-modal-file-checkbox');
+				expect(workflows).toHaveLength(1);
+			});
+
+			const dataTablesTab = getByTestId('source-control-push-modal-tab-datatable');
+			await userEvent.click(dataTablesTab);
+
+			await waitFor(() => {
+				expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(2);
+			});
+
+			await userEvent.type(getByTestId('source-control-push-search'), 'Customer');
+			await waitFor(() => {
+				expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(1);
+				expect(telemetry.track).toHaveBeenCalledWith('User searched workflows in commit modal', {
+					search: 'Customer',
+				});
+			});
+		});
+
+		it('should include selected data tables in push payload', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'wf-1',
+					name: 'My workflow',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/wf-1.json',
+					updatedAt: '2024-09-20T10:30:00.000Z',
+				},
+				{
+					id: 'dt-1',
+					name: 'Customer Data',
+					type: 'datatable',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/datatables/dt-1.json',
+					updatedAt: '2024-09-20T10:31:40.000Z',
+				},
+				{
+					id: 'dt-2',
+					name: 'Product Catalog',
+					type: 'datatable',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/datatables/dt-2.json',
+					updatedAt: '2024-09-20T14:42:51.968Z',
+				},
+				{
+					id: 'variables',
+					name: 'variables',
+					type: 'variables',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/variables.json',
+					updatedAt: '2024-09-20T14:42:51.968Z',
+				},
+			];
+
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+			const { getByTestId, getAllByTestId, getByText } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				const workflows = getAllByTestId('source-control-push-modal-file-checkbox');
+				expect(workflows).toHaveLength(1);
+			});
+
+			const submitButton = getByTestId('source-control-push-modal-submit');
+			const commitMessage = 'commit message';
+
+			await userEvent.type(getByTestId('source-control-push-modal-commit'), commitMessage);
+
+			expect(submitButton).not.toBeDisabled();
+			await userEvent.click(submitButton);
+
+			expect(sourceControlStore.pushWorkfolder).toHaveBeenCalledWith(
+				expect.objectContaining({
+					commitMessage,
+					// Should include both data tables (auto-selected) and variables
+					fileNames: expect.arrayContaining([
+						expect.objectContaining({ id: 'dt-1', type: 'datatable' }),
+						expect.objectContaining({ id: 'dt-2', type: 'datatable' }),
+						expect.objectContaining({ id: 'variables', type: 'variables' }),
+					]),
+					force: true,
+				}),
+			);
+		});
+
+		it('should only push selected data tables when some are unchecked', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'wf-1',
+					name: 'My workflow',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/workflows/wf-1.json',
+					updatedAt: '2024-09-20T10:30:00.000Z',
+				},
+				{
+					id: 'dt-1',
+					name: 'Customer Data',
+					type: 'datatable',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/datatables/dt-1.json',
+					updatedAt: '2024-09-20T10:31:40.000Z',
+				},
+				{
+					id: 'dt-2',
+					name: 'Product Catalog',
+					type: 'datatable',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					file: '/home/user/.n8n/git/datatables/dt-2.json',
+					updatedAt: '2024-09-20T14:42:51.968Z',
+				},
+			];
+
+			sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+			const { getByTestId, getAllByTestId, getByText } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			await waitFor(() => {
+				expect(getByText('Commit and push changes')).toBeInTheDocument();
+			});
+
+			await waitFor(() => {
+				const workflows = getAllByTestId('source-control-push-modal-file-checkbox');
+				expect(workflows).toHaveLength(1);
+			});
+
+			const dataTablesTab = getByTestId('source-control-push-modal-tab-datatable');
+			await userEvent.click(dataTablesTab);
+
+			await waitFor(() => {
+				const dataTables = getAllByTestId('source-control-push-modal-file-checkbox');
+				expect(dataTables).toHaveLength(2);
+			});
+
+			const dataTables = getAllByTestId('source-control-push-modal-file-checkbox');
+
+			// Uncheck second data table (dt-2 is displayed first due to sorting by updatedAt desc)
+			await userEvent.click(dataTables[0]);
+
+			const submitButton = getByTestId('source-control-push-modal-submit');
+			const commitMessage = 'commit message';
+
+			await userEvent.type(getByTestId('source-control-push-modal-commit'), commitMessage);
+
+			expect(submitButton).not.toBeDisabled();
+			await userEvent.click(submitButton);
+
+			expect(sourceControlStore.pushWorkfolder).toHaveBeenCalledWith(
+				expect.objectContaining({
+					commitMessage,
+					// Should only include dt-1, not dt-2
+					fileNames: expect.arrayContaining([
+						expect.objectContaining({ id: 'dt-1', type: 'datatable' }),
+					]),
+					force: true,
+				}),
+			);
+
+			// Ensure dt-2 is NOT in the payload
+			const callArgs = sourceControlStore.pushWorkfolder.mock.calls[0][0];
+			const dt2InPayload = callArgs.fileNames.some((f: SourceControlledFile) => f.id === 'dt-2');
+			expect(dt2InPayload).toBe(false);
+		});
 	});
 
 	describe('filters', () => {

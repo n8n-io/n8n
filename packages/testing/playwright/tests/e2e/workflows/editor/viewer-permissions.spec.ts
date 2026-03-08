@@ -38,7 +38,11 @@ async function setupProjectWithWorkflowAndSignInAsMember({
 	await expect(n8n.canvas.getLoadingMask()).not.toBeAttached();
 }
 
-test.describe('Workflow Viewer Permissions', () => {
+test.describe('Workflow Viewer Permissions', {
+	annotation: [
+		{ type: 'owner', description: 'Identity & Access' },
+	],
+}, () => {
 	test.describe.configure({ mode: 'serial' });
 
 	let readOnlyRole: { slug: string };

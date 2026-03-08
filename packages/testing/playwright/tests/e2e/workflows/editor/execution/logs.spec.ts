@@ -13,7 +13,11 @@ const NODES = {
 	WAIT_NODE: 'Wait node',
 };
 
-test.describe('Logs', () => {
+test.describe('Logs', {
+	annotation: [
+		{ type: 'owner', description: 'Catalysts' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.goHome();
 	});

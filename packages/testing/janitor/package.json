@@ -1,0 +1,46 @@
+{
+  "name": "@n8n/playwright-janitor",
+  "private": true,
+	"version": "0.1.0",
+	"description": "Static analysis and architecture enforcement for Playwright test suites",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"bin": {
+		"playwright-janitor": "dist/cli.js"
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsc",
+		"dev": "tsc --watch",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"test:coverage": "vitest run --coverage",
+		"lint": "eslint . --quiet",
+		"lint:fix": "eslint . --fix",
+		"typecheck": "tsc --noEmit"
+	},
+	"keywords": [
+		"playwright",
+		"testing",
+		"static-analysis",
+		"architecture",
+		"linting"
+	],
+	"license": "MIT",
+	"dependencies": {
+		"glob": "^10.0.0"
+	},
+	"peerDependencies": {
+		"ts-morph": ">=20.0.0"
+	},
+	"devDependencies": {
+		"@types/node": "^20.0.0",
+		"@vitest/coverage-v8": "catalog:",
+		"ts-morph": "catalog:",
+		"tsx": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
+	}
+}

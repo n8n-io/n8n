@@ -177,6 +177,33 @@ export function calculateWeightedScore(
 }
 
 /**
+ * Compute per-evaluator average scores from a set of example results.
+ *
+ * Groups feedback by evaluator, selects scoring items, and averages
+ * across all examples. Shared between local and LangSmith evaluation runners.
+ */
+export function computeEvaluatorAverages(
+	results: Array<{ feedback: Feedback[] }>,
+): Record<string, number> {
+	const evaluatorStats: Record<string, number[]> = {};
+
+	for (const result of results) {
+		const byEvaluator = groupByEvaluator(result.feedback);
+		for (const [evaluator, items] of Object.entries(byEvaluator)) {
+			if (!evaluatorStats[evaluator]) evaluatorStats[evaluator] = [];
+			const scoringItems = selectScoringItems(items);
+			evaluatorStats[evaluator].push(calculateFiniteAverage(scoringItems));
+		}
+	}
+
+	const averages: Record<string, number> = {};
+	for (const [name, scores] of Object.entries(evaluatorStats)) {
+		averages[name] = scores.reduce((a, b) => a + b, 0) / scores.length;
+	}
+	return averages;
+}
+
+/**
  * Aggregate scores by evaluator and category.
  *
  * @param feedback - Array of feedback items

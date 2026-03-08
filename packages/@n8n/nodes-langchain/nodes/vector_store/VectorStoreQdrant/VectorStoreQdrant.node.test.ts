@@ -16,14 +16,13 @@ jest.mock('@langchain/qdrant', () => {
 });
 
 jest.mock('@utils/sharedFields', () => ({ metadataFilterField: {} }), { virtual: true });
-jest.mock(
-	'@utils/helpers',
-	() => ({ getMetadataFiltersValues: jest.fn(), logAiEvent: jest.fn() }),
-	{ virtual: true },
-);
-jest.mock('@utils/N8nBinaryLoader', () => ({ N8nBinaryLoader: class {} }), { virtual: true });
-jest.mock('@utils/N8nJsonLoader', () => ({ N8nJsonLoader: class {} }), { virtual: true });
-jest.mock('@utils/logWrapper', () => ({ logWrapper: (fn: unknown) => fn }), { virtual: true });
+jest.mock('@n8n/ai-utilities', () => ({
+	getMetadataFiltersValues: jest.fn(),
+	logAiEvent: jest.fn(),
+	N8nBinaryLoader: class {},
+	N8nJsonLoader: class {},
+	logWrapper: (fn: unknown) => fn,
+}));
 
 // Mock the vector store node factory
 jest.mock('../shared/createVectorStoreNode/createVectorStoreNode', () => ({

@@ -23,6 +23,7 @@ import type { DataPinningDiscoveryEvent } from '@/app/event-bus';
 import { dataPinningEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
@@ -69,6 +70,7 @@ const { activeNode } = storeToRefs(ndvStore);
 const pinnedData = usePinnedData(activeNode);
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const deviceSupport = useDeviceSupport();
 const telemetry = useTelemetry();
 const telemetryContext = useTelemetryContext({ view_shown: 'ndv' });
@@ -134,7 +136,7 @@ const parentNodes = computed(() => {
 
 const parentNode = computed<IConnectedNode | undefined>(() => {
 	for (const parent of parentNodes.value) {
-		if (workflowsStore?.pinnedWorkflowData?.[parent.name]) {
+		if (workflowDocumentStore?.pinData?.[parent.name]) {
 			return parent;
 		}
 

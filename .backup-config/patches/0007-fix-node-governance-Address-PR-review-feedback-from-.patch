@@ -1,0 +1,299 @@
+From 2421c1489ce054e234868914e9cd7b49104b8079 Mon Sep 17 00:00:00 2001
+From: Tzachi Shaiovitch <tzachish1@gmail.com>
+Date: Thu, 29 Jan 2026 10:17:15 +0200
+Subject: [PATCH 07/22] fix(node-governance): Address PR review feedback from
+ cubic-dev-ai
+
+- Remove redundant type cast in PoliciesTab.vue (use computed setter)
+- Use type annotation instead of `as` assertion in templateActions.ts
+- Remove duplicate nodeGovernance i18n keys from en.json
+- Remove non-functional enable/disable switch from NodeGovernanceView
+- Add rel="noopener noreferrer" to external link for security
+---
+ .../frontend/@n8n/i18n/src/locales/en.json    | 167 +++++++-----------
+ .../nodeGovernance/components/PoliciesTab.vue |   1 -
+ .../views/NodeGovernanceView.vue              |  27 +--
+ .../templates/utils/templateActions.ts        |   2 +-
+ 4 files changed, 71 insertions(+), 126 deletions(-)
+
+diff --git a/packages/frontend/@n8n/i18n/src/locales/en.json b/packages/frontend/@n8n/i18n/src/locales/en.json
+index 5893a975bc..ea31e03dac 100644
+--- a/packages/frontend/@n8n/i18n/src/locales/en.json
++++ b/packages/frontend/@n8n/i18n/src/locales/en.json
+@@ -3109,6 +3109,67 @@
+ 	"nodeGovernance.requests.noJustification": "No justification provided.",
+ 	"nodeGovernance.requests.action.approve": "Approve",
+ 	"nodeGovernance.requests.action.reject": "Reject",
++	"nodeGovernance.policies.projects": "Projects",
++	"nodeGovernance.policies.form.policyType": "Policy Type",
++	"nodeGovernance.policies.form.scope": "Scope",
++	"nodeGovernance.policies.form.targetType": "Target Type",
++	"nodeGovernance.policies.form.targetValue": "Target Value",
++	"nodeGovernance.policies.type.allow": "Allow",
++	"nodeGovernance.policies.type.block": "Block",
++	"nodeGovernance.policies.scope.global": "Global",
++	"nodeGovernance.policies.scope.projects": "Specific Projects",
++	"nodeGovernance.policies.target.node": "Node",
++	"nodeGovernance.policies.target.category": "Category",
++	"nodeGovernance.categories.nodes": "nodes",
++	"nodeGovernance.categories.slug": "Slug",
++	"nodeGovernance.categories.form.displayName": "Display Name",
++	"nodeGovernance.categories.form.slug": "Slug",
++	"nodeGovernance.categories.form.description": "Description",
++	"nodeGovernance.categories.form.color": "Color",
++	"nodeGovernance.requests.approve": "Approve",
++	"nodeGovernance.requests.approve.title": "Approve Access Request",
++	"nodeGovernance.requests.approve.selectPolicy": "Select Policy",
++	"nodeGovernance.requests.approve.createNewPolicy": "Create new policy",
++	"nodeGovernance.requests.approve.policyHint": "Select an existing allow policy to attach this request to, or create a new policy.",
++	"nodeGovernance.requests.approve.success": "Request approved successfully",
++	"nodeGovernance.requests.approve.error": "Failed to approve request",
++	"nodeGovernance.requests.reject": "Reject",
++	"nodeGovernance.requests.reject.title": "Reject Access Request",
++	"nodeGovernance.requests.reject.response": "Response",
++	"nodeGovernance.requests.reject.optional": "(Optional)",
++	"nodeGovernance.requests.reject.commentPlaceholder": "Optional comment for the requester...",
++	"nodeGovernance.requests.reject.success": "Request rejected successfully",
++	"nodeGovernance.requests.reject.error": "Failed to reject request",
++	"nodeGovernance.requests.review": "Review",
++	"nodeGovernance.requests.requester": "Requester",
++	"nodeGovernance.requests.project": "Project",
++	"nodeGovernance.requests.workflow": "Workflow",
++	"nodeGovernance.requests.requestedAt": "Requested",
++	"nodeGovernance.requests.nodeType": "Node Type",
++	"nodeGovernance.requests.review.title": "Review Access Request",
++	"nodeGovernance.requests.review.requestDetails": "Request Details",
++	"nodeGovernance.requests.review.yourResponse": "Your Response",
++	"nodeGovernance.requests.review.commentPlaceholder": "Optional comment for the requester...",
++	"nodeGovernance.requests.review.createPolicy": "Create an allow policy for this node in this project",
++	"nodeGovernance.requests.review.createPolicyHint": "This will automatically allow this node for the project when approving.",
++	"nodeGovernance.accessRequest.title": "Request Node Access",
++	"nodeGovernance.accessRequest.requestingFor": "Requesting access for:",
++	"nodeGovernance.accessRequest.project": "Project",
++	"nodeGovernance.accessRequest.selectProject": "Select a project...",
++	"nodeGovernance.accessRequest.workflowName": "Workflow Name (optional)",
++	"nodeGovernance.accessRequest.workflowNamePlaceholder": "Enter the workflow name where you need this node",
++	"nodeGovernance.accessRequest.justification": "Justification",
++	"nodeGovernance.accessRequest.justificationPlaceholder": "Explain why you need access to this node...",
++	"nodeGovernance.accessRequest.justificationHint": "Provide a clear business reason for your request (min. 10 characters)",
++	"nodeGovernance.accessRequest.submit": "Submit Request",
++	"nodeGovernance.accessRequest.validation.required": "Please select a project and provide a justification",
++	"nodeGovernance.accessRequest.validation.justificationLength": "Justification must be at least 10 characters",
++	"nodeGovernance.accessRequest.validation.error": "Validation Error",
++	"nodeGovernance.accessRequest.success.title": "Request Submitted",
++	"nodeGovernance.accessRequest.success.message": "Your access request has been submitted for admin review.",
++	"nodeGovernance.accessRequest.alreadyExists.title": "Request Already Exists",
++	"nodeGovernance.accessRequest.alreadyExists.message": "You already have a pending request for this node in this project.",
++	"nodeGovernance.accessRequest.error": "Failed to submit request",
+ 	"nodeCreator.nodeItem.blocked": "Blocked",
+ 	"nodeCreator.nodeItem.pendingRequest": "Pending",
+ 	"nodeCreator.nodeItem.deprecated": "Deprecated",
+@@ -4557,109 +4618,5 @@
+ 	"browserNotifications.permission.denied.title": "Notifications blocked",
+ 	"browserNotifications.permission.denied.message": "Desktop notifications are blocked. To enable them, click the lock icon in your browser's address bar and allow notifications.",
+ 	"browserNotifications.permission.denied.checkAgain": "Check again",
+-	"browserNotifications.permission.granted.message": "Desktop notifications are enabled",
+-	"nodeGovernance.title": "Node Governance",
+-	"nodeGovernance.description": "Control which nodes are available for use in your workflows. Create policies to allow or block specific nodes or categories.",
+-	"nodeGovernance.error.load": "Failed to load node governance data",
+-	"nodeGovernance.tabs.policies": "Policies",
+-	"nodeGovernance.tabs.categories": "Categories",
+-	"nodeGovernance.tabs.requests": "Requests",
+-	"nodeGovernance.policies.create": "Create Policy",
+-	"nodeGovernance.policies.create.title": "Create Policy",
+-	"nodeGovernance.policies.create.success": "Policy created successfully",
+-	"nodeGovernance.policies.create.error": "Failed to create policy",
+-	"nodeGovernance.policies.edit.title": "Edit Policy",
+-	"nodeGovernance.policies.update.success": "Policy updated successfully",
+-	"nodeGovernance.policies.update.error": "Failed to update policy",
+-	"nodeGovernance.policies.delete.title": "Delete Policy",
+-	"nodeGovernance.policies.delete.description": "Are you sure you want to delete this policy? This action cannot be undone.",
+-	"nodeGovernance.policies.delete.success": "Policy deleted successfully",
+-	"nodeGovernance.policies.delete.error": "Failed to delete policy",
+-	"nodeGovernance.policies.empty.title": "No policies configured",
+-	"nodeGovernance.policies.empty.description": "Create your first policy to start controlling node access in your workflows.",
+-	"nodeGovernance.policies.projects": "Projects",
+-	"nodeGovernance.policies.form.policyType": "Policy Type",
+-	"nodeGovernance.policies.form.scope": "Scope",
+-	"nodeGovernance.policies.form.targetType": "Target Type",
+-	"nodeGovernance.policies.form.targetValue": "Target Value",
+-	"nodeGovernance.policies.type.allow": "Allow",
+-	"nodeGovernance.policies.type.block": "Block",
+-	"nodeGovernance.policies.scope.global": "Global",
+-	"nodeGovernance.policies.scope.projects": "Specific Projects",
+-	"nodeGovernance.policies.target.node": "Node",
+-	"nodeGovernance.policies.target.category": "Category",
+-	"nodeGovernance.policies.validation.targetValue": "Target value is required",
+-	"nodeGovernance.policies.validation.error": "Validation Error",
+-	"nodeGovernance.categories.create": "Create Category",
+-	"nodeGovernance.categories.create.title": "Create Category",
+-	"nodeGovernance.categories.create.success": "Category created successfully",
+-	"nodeGovernance.categories.create.error": "Failed to create category",
+-	"nodeGovernance.categories.edit.title": "Edit Category",
+-	"nodeGovernance.categories.update.success": "Category updated successfully",
+-	"nodeGovernance.categories.update.error": "Failed to update category",
+-	"nodeGovernance.categories.delete.title": "Delete Category",
+-	"nodeGovernance.categories.delete.description": "Are you sure you want to delete this category? Nodes assigned to this category will be unassigned.",
+-	"nodeGovernance.categories.delete.success": "Category deleted successfully",
+-	"nodeGovernance.categories.delete.error": "Failed to delete category",
+-	"nodeGovernance.categories.empty.title": "No categories created",
+-	"nodeGovernance.categories.empty.description": "Create categories to group related nodes together for easier policy management.",
+-	"nodeGovernance.categories.nodes": "nodes",
+-	"nodeGovernance.categories.slug": "Slug",
+-	"nodeGovernance.categories.form.displayName": "Display Name",
+-	"nodeGovernance.categories.form.slug": "Slug",
+-	"nodeGovernance.categories.form.description": "Description",
+-	"nodeGovernance.categories.form.color": "Color",
+-	"nodeGovernance.categories.validation.required": "Display name and slug are required",
+-	"nodeGovernance.categories.validation.error": "Validation Error",
+-	"nodeGovernance.requests.approve": "Approve",
+-	"nodeGovernance.requests.approve.title": "Approve Access Request",
+-	"nodeGovernance.requests.approve.selectPolicy": "Select Policy",
+-	"nodeGovernance.requests.approve.createNewPolicy": "Create new policy",
+-	"nodeGovernance.requests.approve.policyHint": "Select an existing allow policy to attach this request to, or create a new policy.",
+-	"nodeGovernance.requests.approve.success": "Request approved successfully",
+-	"nodeGovernance.requests.approve.error": "Failed to approve request",
+-	"nodeGovernance.requests.reject": "Reject",
+-	"nodeGovernance.requests.reject.title": "Reject Access Request",
+-	"nodeGovernance.requests.reject.response": "Response",
+-	"nodeGovernance.requests.reject.optional": "(Optional)",
+-	"nodeGovernance.requests.reject.commentPlaceholder": "Optional comment for the requester...",
+-	"nodeGovernance.requests.reject.success": "Request rejected successfully",
+-	"nodeGovernance.requests.reject.error": "Failed to reject request",
+-	"nodeGovernance.requests.review": "Review",
+-	"nodeGovernance.requests.empty.title": "No pending requests",
+-	"nodeGovernance.requests.empty.description": "When users request access to blocked nodes, their requests will appear here.",
+-	"nodeGovernance.requests.status.pending": "Pending",
+-	"nodeGovernance.requests.requester": "Requester",
+-	"nodeGovernance.requests.project": "Project",
+-	"nodeGovernance.requests.workflow": "Workflow",
+-	"nodeGovernance.requests.justification": "Justification",
+-	"nodeGovernance.requests.requestedAt": "Requested",
+-	"nodeGovernance.requests.nodeType": "Node Type",
+-	"nodeGovernance.requests.review.title": "Review Access Request",
+-	"nodeGovernance.requests.review.requestDetails": "Request Details",
+-	"nodeGovernance.requests.review.yourResponse": "Your Response",
+-	"nodeGovernance.requests.review.commentPlaceholder": "Optional comment for the requester...",
+-	"nodeGovernance.requests.review.createPolicy": "Create an allow policy for this node in this project",
+-	"nodeGovernance.requests.review.createPolicyHint": "This will automatically allow this node for the project when approving.",
+-	"nodeCreator.nodeItem.blocked": "Blocked",
+-	"nodeCreator.nodeItem.pendingRequest": "Pending",
+-	"nodeCreator.nodeItem.requestAccess": "Request access",
+-	"nodeGovernance.accessRequest.title": "Request Node Access",
+-	"nodeGovernance.accessRequest.requestingFor": "Requesting access for:",
+-	"nodeGovernance.accessRequest.project": "Project",
+-	"nodeGovernance.accessRequest.selectProject": "Select a project...",
+-	"nodeGovernance.accessRequest.workflowName": "Workflow Name (optional)",
+-	"nodeGovernance.accessRequest.workflowNamePlaceholder": "Enter the workflow name where you need this node",
+-	"nodeGovernance.accessRequest.justification": "Justification",
+-	"nodeGovernance.accessRequest.justificationPlaceholder": "Explain why you need access to this node...",
+-	"nodeGovernance.accessRequest.justificationHint": "Provide a clear business reason for your request (min. 10 characters)",
+-	"nodeGovernance.accessRequest.submit": "Submit Request",
+-	"nodeGovernance.accessRequest.validation.required": "Please select a project and provide a justification",
+-	"nodeGovernance.accessRequest.validation.justificationLength": "Justification must be at least 10 characters",
+-	"nodeGovernance.accessRequest.validation.error": "Validation Error",
+-	"nodeGovernance.accessRequest.success.title": "Request Submitted",
+-	"nodeGovernance.accessRequest.success.message": "Your access request has been submitted for admin review.",
+-	"nodeGovernance.accessRequest.alreadyExists.title": "Request Already Exists",
+-	"nodeGovernance.accessRequest.alreadyExists.message": "You already have a pending request for this node in this project.",
+-	"nodeGovernance.accessRequest.error": "Failed to submit request"
++	"browserNotifications.permission.granted.message": "Desktop notifications are enabled"
+ }
+diff --git a/packages/frontend/editor-ui/src/features/settings/nodeGovernance/components/PoliciesTab.vue b/packages/frontend/editor-ui/src/features/settings/nodeGovernance/components/PoliciesTab.vue
+index 4680478647..0bc6e2896b 100644
+--- a/packages/frontend/editor-ui/src/features/settings/nodeGovernance/components/PoliciesTab.vue
++++ b/packages/frontend/editor-ui/src/features/settings/nodeGovernance/components/PoliciesTab.vue
+@@ -353,7 +353,6 @@ function getNodeCount(policy: NodeGovernancePolicy): number {
+ 											i18n.baseText('nodeGovernance.policies.filters.project.placeholder')
+ 										"
+ 										:empty-options-text="i18n.baseText('projects.sharing.noMatchingProjects')"
+-										@update:model-value="filterProject = ($event as ProjectSharingData)?.id ?? ''"
+ 									/>
+ 									<N8nInputLabel
+ 										:label="i18n.baseText('nodeGovernance.policies.filters.status')"
+diff --git a/packages/frontend/editor-ui/src/features/settings/nodeGovernance/views/NodeGovernanceView.vue b/packages/frontend/editor-ui/src/features/settings/nodeGovernance/views/NodeGovernanceView.vue
+index 50aeb3fced..4d0b4f3153 100644
+--- a/packages/frontend/editor-ui/src/features/settings/nodeGovernance/views/NodeGovernanceView.vue
++++ b/packages/frontend/editor-ui/src/features/settings/nodeGovernance/views/NodeGovernanceView.vue
+@@ -7,7 +7,6 @@ import { useUIStore } from '@/app/stores/ui.store';
+ import { storeToRefs } from 'pinia';
+ 
+ import { N8nButton, N8nHeading, N8nIcon, N8nLoading, N8nNotice, N8nText } from '@n8n/design-system';
+-import { ElSwitch } from 'element-plus';
+ 
+ import { useNodeGovernanceStore } from '../nodeGovernance.store';
+ import PoliciesTab from '../components/PoliciesTab.vue';
+@@ -24,7 +23,6 @@ const nodeGovernanceStore = useNodeGovernanceStore();
+ const { loading, pendingRequestCount } = storeToRefs(nodeGovernanceStore);
+ 
+ const activeTab = ref<'policies' | 'categories' | 'requests'>('policies');
+-const isEnabled = ref(true);
+ 
+ onMounted(async () => {
+ 	documentTitle.set(i18n.baseText('nodeGovernance.title'));
+@@ -73,9 +71,13 @@ function onAddCategory() {
+ 		</N8nHeading>
+ 		<N8nText color="text-light" class="mb-l">
+ 			{{ i18n.baseText('nodeGovernance.description') }}
+-			<a href="https://docs.n8n.io" target="_blank" :class="$style.link">{{
+-				i18n.baseText('generic.learnMore')
+-			}}</a>
++			<a
++				href="https://docs.n8n.io"
++				target="_blank"
++				rel="noopener noreferrer"
++				:class="$style.link"
++				>{{ i18n.baseText('generic.learnMore') }}</a
++			>
+ 		</N8nText>
+ 
+ 		<!-- Priority Notice -->
+@@ -86,13 +88,6 @@ function onAddCategory() {
+ 
+ 		<!-- Controls Row -->
+ 		<div :class="$style.controlsRow">
+-			<div :class="$style.leftControls">
+-				<N8nText :bold="true" color="success">{{
+-					i18n.baseText('nodeGovernance.enabled')
+-				}}</N8nText>
+-				<ElSwitch v-model="isEnabled" size="large" data-test-id="node-governance-enabled" />
+-			</div>
+-
+ 			<N8nButton
+ 				v-if="activeTab === 'policies'"
+ 				type="primary"
+@@ -181,17 +176,11 @@ function onAddCategory() {
+ .controlsRow {
+ 	display: flex;
+ 	align-items: center;
+-	justify-content: space-between;
++	justify-content: flex-end;
+ 	gap: 16px;
+ 	margin: 20px 0;
+ }
+ 
+-.leftControls {
+-	display: flex;
+-	align-items: center;
+-	gap: 10px;
+-}
+-
+ .tabsContainer {
+ 	border-bottom: 1px solid var(--color--foreground);
+ 	margin-bottom: 0;
+diff --git a/packages/frontend/editor-ui/src/features/workflows/templates/utils/templateActions.ts b/packages/frontend/editor-ui/src/features/workflows/templates/utils/templateActions.ts
+index e9dabc11f2..7e850109d4 100644
+--- a/packages/frontend/editor-ui/src/features/workflows/templates/utils/templateActions.ts
++++ b/packages/frontend/editor-ui/src/features/workflows/templates/utils/templateActions.ts
+@@ -44,7 +44,7 @@ export async function createWorkflowFromTemplate(opts: {
+ 		template.workflow.nodes,
+ 		credentialOverrides,
+ 	);
+-	let nodes = getNodesWithNormalizedPosition(nodesWithCreds) as INodeUi[];
++	let nodes: INodeUi[] = getNodesWithNormalizedPosition(nodesWithCreds);
+ 
+ 	// Check node governance and disable blocked nodes using local resolution
+ 	const projectId = projectsStore.currentProjectId ?? projectsStore.personalProject?.id ?? null;
+-- 
+2.50.1 (Apple Git-155)
+

@@ -7,14 +7,15 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 	type INodeExecutionData,
+	nodeNameToToolName,
 } from 'n8n-workflow';
 
-import { logWrapper } from '@utils/logWrapper';
+import { logWrapper } from '@n8n/ai-utilities';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 function getTool(ctx: ISupplyDataFunctions | IExecuteFunctions): WikipediaQueryRun {
 	const WikiTool = new WikipediaQueryRun();
-	WikiTool.name = ctx.getNode().name;
+	WikiTool.name = nodeNameToToolName(ctx.getNode());
 	WikiTool.description =
 		'A tool for interacting with and fetching data from the Wikipedia API. The input should always be a string query.';
 	return WikiTool;

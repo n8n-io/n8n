@@ -44,6 +44,7 @@ import type {
 	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
+	IgnoreStatusErrorConfig,
 	IHttpRequestOptions,
 	IN8nHttpFullResponse,
 	IN8nHttpResponse,
@@ -94,6 +95,17 @@ function validateUrl(url?: string): boolean {
 	} catch {
 		return false;
 	}
+}
+
+function isIgnoreStatusErrorConfig(
+	ignoreHttpStatusErrors: unknown,
+): ignoreHttpStatusErrors is IgnoreStatusErrorConfig {
+	return (
+		typeof ignoreHttpStatusErrors === 'object' &&
+		ignoreHttpStatusErrors !== null &&
+		'ignore' in ignoreHttpStatusErrors &&
+		ignoreHttpStatusErrors.ignore === true
+	);
 }
 
 function getUrlFromProxyConfig(proxyConfig: IHttpRequestOptions['proxy'] | string): string | null {
@@ -843,7 +855,14 @@ export function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): Axios
 	}
 
 	if (n8nRequest.ignoreHttpStatusErrors) {
-		axiosRequest.validateStatus = () => true;
+		const ignoreHttpStatusErrors = n8nRequest.ignoreHttpStatusErrors;
+		if (isIgnoreStatusErrorConfig(ignoreHttpStatusErrors)) {
+			axiosRequest.validateStatus = (status) => {
+				return !ignoreHttpStatusErrors.except.includes(status);
+			};
+		} else {
+			axiosRequest.validateStatus = () => true;
+		}
 	}
 
 	return axiosRequest;

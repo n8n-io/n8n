@@ -1,0 +1,56 @@
+From 4165c8e149c20f4270d754cfc305ffe0bc2d0311 Mon Sep 17 00:00:00 2001
+From: Tzachi Shaiovitch <tzachish1@gmail.com>
+Date: Thu, 29 Jan 2026 17:08:01 +0200
+Subject: [PATCH 13/22] feat(node-governance): add export/import API endpoints
+
+Add REST endpoints for importing and exporting node governance categories:
+- GET /node-governance/export - Export all categories with node assignments
+- POST /node-governance/import - Import categories (upsert by slug)
+
+Both endpoints require nodeGovernance:manage scope.
+---
+ .../controllers/node-governance.controller.ts | 21 +++++++++++++++++++
+ 1 file changed, 21 insertions(+)
+
+diff --git a/packages/cli/src/controllers/node-governance.controller.ts b/packages/cli/src/controllers/node-governance.controller.ts
+index 495c255b3d..b30b3ff7bc 100644
+--- a/packages/cli/src/controllers/node-governance.controller.ts
++++ b/packages/cli/src/controllers/node-governance.controller.ts
+@@ -8,6 +8,7 @@ import {
+ 	ReviewAccessRequestDto,
+ 	GetNodeGovernanceQueryDto,
+ 	GetNodeGovernanceBodyDto,
++	ImportCategoriesDto,
+ } from '@n8n/api-types';
+ import { AuthenticatedRequest } from '@n8n/db';
+ import {
+@@ -218,6 +219,26 @@ export class NodeGovernanceController {
+ 		return { success: true };
+ 	}
+ 
++	// === Import/Export ===
++
++	@Get('/export')
++	@GlobalScope('nodeGovernance:manage')
++	async exportCategories() {
++		const exportData = await this.nodeGovernanceService.exportCategories();
++		return exportData;
++	}
++
++	@Post('/import')
++	@GlobalScope('nodeGovernance:manage')
++	async importCategories(
++		req: AuthenticatedRequest,
++		_res: Response,
++		@Body payload: ImportCategoriesDto,
++	) {
++		const result = await this.nodeGovernanceService.importCategories(payload, req.user);
++		return result;
++	}
++
+ 	// === Access Requests ===
+ 
+ 	@Get('/requests')
+-- 
+2.50.1 (Apple Git-155)
+

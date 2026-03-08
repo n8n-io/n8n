@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { Z } from 'zod-class';
 
 import { passwordSchema } from '../../schemas/password.schema';
+import { Z } from '../../zod-class';
 
 // Support both legacy format (inviterId) and new JWT format (token)
 // All fields are optional at the schema level, but validation ensures either token OR inviterId is provided

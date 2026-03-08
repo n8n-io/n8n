@@ -52,8 +52,8 @@ const visible = computed(() =>
 			</div>
 		</template>
 		<N8nIconButton
+			variant="subtle"
 			:class="$style.pinDataButton"
-			type="tertiary"
 			:active="props.pinnedData.hasData.value"
 			icon="pin"
 			:disabled="props.disabled"

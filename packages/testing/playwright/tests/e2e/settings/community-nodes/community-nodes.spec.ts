@@ -17,7 +17,11 @@ const MOCK_PACKAGE = {
 	updateAvailable: '1.1.2',
 };
 
-test.describe('Community nodes management', () => {
+test.describe('Community nodes management', {
+	annotation: [
+		{ type: 'owner', description: 'NODES' },
+	],
+}, () => {
 	test('can install, update and uninstall community nodes', async ({ n8n }) => {
 		await n8n.page.route('**/api.npms.io/v2/search*', async (route) => {
 			await route.fulfill({ status: 200, json: {} });

@@ -131,15 +131,19 @@ const MODEL_METADATA_REGISTRY: Partial<
 		},
 		'claude-haiku-4-5-20251001': {
 			inputModalities: ['text', 'image'],
-			priority: 80,
+			priority: 70,
 		},
 		'claude-sonnet-4-5-20250929': {
 			inputModalities: ['text', 'image'],
-			priority: 90,
+			priority: 80,
+		},
+		'claude-opus-4-6': {
+			inputModalities: ['text', 'image'],
+			priority: 100,
 		},
 		'claude-opus-4-5-20251101': {
 			inputModalities: ['text', 'image'],
-			priority: 100,
+			priority: 90,
 		},
 		'claude-opus-4-20250514': {
 			inputModalities: ['text', 'image'],

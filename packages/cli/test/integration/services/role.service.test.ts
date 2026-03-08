@@ -1192,6 +1192,93 @@ describe('RoleService', () => {
 		});
 	});
 
+	describe('addScopesToRole', () => {
+		it('should add new scopes to role when none are already assigned', async () => {
+			//
+			// ARRANGE
+			//
+			const testScopes = await createTestScopes();
+			const role = await createCustomRoleWithScopes([testScopes.readScope], {
+				displayName: 'Role For Add Scopes',
+			});
+
+			//
+			// ACT
+			//
+			await roleService.addScopesToRole(role.slug, [
+				testScopes.writeScope.slug,
+				testScopes.deleteScope.slug,
+			]);
+
+			//
+			// ASSERT
+			//
+			const updatedRole = await roleRepository.findBySlug(role.slug);
+			expect(updatedRole).toBeDefined();
+			const scopeSlugs = updatedRole!.scopes.map((s) => s.slug);
+			expect(scopeSlugs).toHaveLength(3);
+			expect(scopeSlugs).toContain(testScopes.readScope.slug);
+			expect(scopeSlugs).toContain(testScopes.writeScope.slug);
+			expect(scopeSlugs).toContain(testScopes.deleteScope.slug);
+		});
+
+		it('should not duplicate scopes when all requested scopes are already on the role', async () => {
+			//
+			// ARRANGE
+			//
+			const testScopes = await createTestScopes();
+			const role = await createCustomRoleWithScopes([testScopes.readScope, testScopes.writeScope], {
+				displayName: 'Role With Existing Scopes',
+			});
+
+			//
+			// ACT
+			//
+			await roleService.addScopesToRole(role.slug, [
+				testScopes.readScope.slug,
+				testScopes.writeScope.slug,
+			]);
+
+			//
+			// ASSERT
+			//
+			const updatedRole = await roleRepository.findBySlug(role.slug);
+			expect(updatedRole).toBeDefined();
+			const scopeSlugs = updatedRole!.scopes.map((s) => s.slug);
+			expect(scopeSlugs).toHaveLength(2);
+			expect(scopeSlugs).toContain(testScopes.readScope.slug);
+			expect(scopeSlugs).toContain(testScopes.writeScope.slug);
+		});
+
+		it('should add only new scopes when mix of new and already-assigned scopes are requested', async () => {
+			//
+			// ARRANGE
+			//
+			const testScopes = await createTestScopes();
+			const role = await createCustomRoleWithScopes([testScopes.readScope], {
+				displayName: 'Role For Mixed Scopes',
+			});
+
+			//
+			// ACT
+			//
+			await roleService.addScopesToRole(role.slug, [
+				testScopes.readScope.slug,
+				testScopes.writeScope.slug,
+			]);
+
+			//
+			// ASSERT
+			//
+			const updatedRole = await roleRepository.findBySlug(role.slug);
+			expect(updatedRole).toBeDefined();
+			const scopeSlugs = updatedRole!.scopes.map((s) => s.slug);
+			expect(scopeSlugs).toHaveLength(2);
+			expect(scopeSlugs).toContain(testScopes.readScope.slug);
+			expect(scopeSlugs).toContain(testScopes.writeScope.slug);
+		});
+	});
+
 	describe('isRoleLicensed', () => {
 		beforeEach(() => {
 			jest.clearAllMocks();

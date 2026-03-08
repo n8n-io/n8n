@@ -7,8 +7,6 @@ import type { ExecutionFilterType } from '../executions.types';
 import type { IWorkflowDb } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { NO_NETWORK_ERROR_CODE } from '@n8n/rest-api-client';
 import { useToast } from '@/app/composables/useToast';
 import { VIEWS } from '@/app/constants';
@@ -18,22 +16,17 @@ import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { executionRetryMessage } from '../executions.utils';
 
 const executionsStore = useExecutionsStore();
 const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
-const nodeTypesStore = useNodeTypesStore();
-const projectsStore = useProjectsStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const route = useRoute();
 const router = useRouter();
 const toast = useToast();
 const { callDebounced } = useDebounce();
-
-const { initializeWorkspace } = useCanvasOperations();
 
 const loading = ref(false);
 const loadingMore = ref(false);
@@ -69,8 +62,8 @@ const isNewWorkflowRoute = computed(() => {
 
 watch(
 	() => workflowId.value,
-	async () => {
-		await fetchWorkflow();
+	() => {
+		fetchWorkflow();
 	},
 );
 
@@ -82,7 +75,7 @@ watch(
 );
 
 onMounted(async () => {
-	await Promise.all([nodeTypesStore.loadNodeTypesIfNotLoaded(), fetchWorkflow()]);
+	fetchWorkflow();
 
 	if (workflowId.value) {
 		await Promise.all([executionsStore.initialize(workflowId.value), fetchExecution()]);
@@ -142,32 +135,15 @@ async function initializeRoute() {
 	}
 }
 
-async function fetchWorkflow() {
+function fetchWorkflow() {
 	// Skip fetching if it's a new workflow that hasn't been saved yet
-	if (isNewWorkflowRoute.value) {
+	if (isNewWorkflowRoute.value || !workflowId.value) {
 		workflow.value = workflowsStore.workflow;
 		return;
 	}
 
-	// Check if we are loading the Executions tab directly, without having loaded the workflow
-	if (workflowId.value) {
-		if (!workflowsListStore.workflowsById[workflowId.value]) {
-			try {
-				await workflowsListStore.fetchActiveWorkflows();
-				const data = await workflowsListStore.fetchWorkflow(workflowId.value);
-				await initializeWorkspace(data);
-			} catch (error) {
-				toast.showError(error, i18n.baseText('nodeView.showError.openWorkflow.title'));
-			}
-
-			workflow.value = workflowsListStore.getWorkflowById(workflowId.value);
-			const workflowData = await workflowsListStore.fetchWorkflow(workflow.value.id);
-
-			await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(workflowData.homeProject);
-		} else {
-			workflow.value = workflowsListStore.workflowsById[workflowId.value];
-		}
-	}
+	// Use the workflow from the list store (already loaded by WorkflowLayout)
+	workflow.value = workflowsListStore.workflowsById[workflowId.value] ?? workflowsStore.workflow;
 }
 
 async function onAutoRefreshToggle(value: boolean) {

@@ -21,6 +21,7 @@ import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import {
 	type IRunExecutionData,
@@ -87,6 +88,7 @@ const i18n = useI18n();
 const ndvStore = useNDVStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const schemaPreviewStore = useSchemaPreviewStore();
 const environmentsStore = useEnvironmentsStore();
 const settingsStore = useSettingsStore();
@@ -122,7 +124,8 @@ const toggleNodeExclusiveAndScrollTop = (id: string) => {
 };
 
 const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) => {
-	const pinData = workflowsStore.pinDataByNodeName(connectedNode.name);
+	const rawPinData = workflowDocumentStore?.getNodePinData(connectedNode.name);
+	const pinData = rawPinData ? executionDataToJson(rawPinData) : undefined;
 	const hasPinnedData = pinData ? pinData.length > 0 : false;
 	const isNodeExecuted = hasPinnedData || hasNodeExecuted(connectedNode.name);
 

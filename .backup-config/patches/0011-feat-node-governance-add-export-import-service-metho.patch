@@ -1,0 +1,192 @@
+From a8b10445322e23cc9bf5d6915bdd0b804d8182db Mon Sep 17 00:00:00 2001
+From: Tzachi Shaiovitch <tzachish1@gmail.com>
+Date: Thu, 29 Jan 2026 17:06:17 +0200
+Subject: [PATCH 11/22] feat(node-governance): add export/import service
+ methods for categories
+
+Add exportCategories() and importCategories() methods to NodeGovernanceService
+for exporting and importing category configurations with node assignments.
+
+- Export creates JSON with version, timestamp, and categories with nodes
+- Import uses upsert: updates existing categories by slug, creates new ones
+- Node assignments are synced (removed if not in import, added if new)
+---
+ .../src/services/node-governance.service.ts   | 155 ++++++++++++++++++
+ 1 file changed, 155 insertions(+)
+
+diff --git a/packages/cli/src/services/node-governance.service.ts b/packages/cli/src/services/node-governance.service.ts
+index f316f8f022..dbe3128cbd 100644
+--- a/packages/cli/src/services/node-governance.service.ts
++++ b/packages/cli/src/services/node-governance.service.ts
+@@ -32,6 +32,31 @@ interface PolicyMatch {
+ 	priority: number; // Lower = higher priority: Project ALLOW=1, Global BLOCK=2, Global ALLOW=3, Project BLOCK=4
+ }
+ 
++export interface NodeGovernanceExportCategory {
++	slug: string;
++	displayName: string;
++	description: string | null;
++	color: string | null;
++	nodes: string[];
++}
++
++export interface NodeGovernanceExport {
++	version: string;
++	exportedAt: string;
++	categories: NodeGovernanceExportCategory[];
++}
++
++export interface NodeGovernanceImportResult {
++	created: number;
++	updated: number;
++	unchanged: number;
++	categories: Array<{
++		slug: string;
++		action: 'created' | 'updated' | 'unchanged';
++		nodeCount: number;
++	}>;
++}
++
+ @Service()
+ export class NodeGovernanceService {
+ 	constructor(
+@@ -330,6 +355,136 @@ export class NodeGovernanceService {
+ 		);
+ 	}
+ 
++	// === Import/Export ===
++
++	/**
++	 * Export all categories and their node assignments
++	 */
++	async exportCategories(): Promise<NodeGovernanceExport> {
++		const categories = await this.categoryRepository.findAllWithAssignments();
++
++		return {
++			version: '1.0',
++			exportedAt: new Date().toISOString(),
++			categories: categories.map((category) => ({
++				slug: category.slug,
++				displayName: category.displayName,
++				description: category.description,
++				color: category.color,
++				nodes: category.nodeAssignments?.map((assignment) => assignment.nodeType) ?? [],
++			})),
++		};
++	}
++
++	/**
++	 * Import categories and their node assignments
++	 * Uses upsert behavior: existing categories (by slug) are updated, new ones are created
++	 */
++	async importCategories(
++		data: NodeGovernanceExport,
++		user: User,
++		entityManager?: EntityManager,
++	): Promise<NodeGovernanceImportResult> {
++		const em = entityManager ?? this.categoryRepository.manager;
++
++		const result: NodeGovernanceImportResult = {
++			created: 0,
++			updated: 0,
++			unchanged: 0,
++			categories: [],
++		};
++
++		for (const categoryData of data.categories) {
++			// Check if category already exists
++			const existingCategory = await this.categoryRepository.findBySlug(
++				categoryData.slug,
++				entityManager,
++			);
++
++			let categoryId: string;
++			let action: 'created' | 'updated' | 'unchanged';
++
++			if (existingCategory) {
++				// Check if anything changed
++				const hasChanges =
++					existingCategory.displayName !== categoryData.displayName ||
++					existingCategory.description !== categoryData.description ||
++					existingCategory.color !== categoryData.color;
++
++				if (hasChanges) {
++					// Update existing category
++					await this.categoryRepository.updateCategory(
++						existingCategory.id,
++						{
++							displayName: categoryData.displayName,
++							description: categoryData.description,
++							color: categoryData.color,
++						},
++						entityManager,
++					);
++					action = 'updated';
++					result.updated++;
++				} else {
++					action = 'unchanged';
++					result.unchanged++;
++				}
++				categoryId = existingCategory.id;
++			} else {
++				// Create new category
++				const newCategory = await this.categoryRepository.createCategory(
++					{
++						slug: categoryData.slug,
++						displayName: categoryData.displayName,
++						description: categoryData.description ?? undefined,
++						color: categoryData.color ?? undefined,
++						createdById: user.id,
++					},
++					entityManager,
++				);
++				categoryId = newCategory.id;
++				action = 'created';
++				result.created++;
++			}
++
++			// Sync node assignments - remove existing and add new ones
++			const existingAssignments = await this.categoryAssignmentRepository.findByCategoryId(
++				categoryId,
++				entityManager,
++			);
++			const existingNodeTypes = new Set(existingAssignments.map((a) => a.nodeType));
++			const newNodeTypes = new Set(categoryData.nodes ?? []);
++
++			// Remove assignments that are no longer in the import
++			for (const assignment of existingAssignments) {
++				if (!newNodeTypes.has(assignment.nodeType)) {
++					await em.delete('NodeCategoryAssignment', { id: assignment.id });
++				}
++			}
++
++			// Add new assignments
++			for (const nodeType of categoryData.nodes ?? []) {
++				if (!existingNodeTypes.has(nodeType)) {
++					await this.categoryAssignmentRepository.createAssignment(
++						{
++							categoryId,
++							nodeType,
++							assignedById: user.id,
++						},
++						entityManager,
++					);
++				}
++			}
++
++			result.categories.push({
++				slug: categoryData.slug,
++				action,
++				nodeCount: categoryData.nodes?.length ?? 0,
++			});
++		}
++
++		return result;
++	}
++
+ 	// === Access Request Management ===
+ 
+ 	async createAccessRequest(
+-- 
+2.50.1 (Apple Git-155)
+

@@ -157,6 +157,10 @@ describe('NodeSettingsInvalidNodeWarning', () => {
 				type: 'verified',
 				packageName: 'n8n-nodes-test',
 				nodeType: 'n8n-nodes-test.testNode',
+				telemetry: {
+					hasQuickConnect: false,
+					source: 'missing node modal source',
+				},
 			});
 		});
 
@@ -183,6 +187,10 @@ describe('NodeSettingsInvalidNodeWarning', () => {
 				type: 'verified',
 				packageName: 'n8n-nodes-test',
 				nodeType: 'n8n-nodes-test-preview.testNode',
+				telemetry: {
+					hasQuickConnect: false,
+					source: 'missing node modal source',
+				},
 			});
 		});
 

@@ -1,0 +1,1527 @@
+
+===== n8n Build & Production Preparation =====
+INFO: Output Directory: /Users/tzacis/Documents/projects/n8n-fork/compiled
+-----------------------------------------------
+INFO: Cleaning previous output directory: /Users/tzacis/Documents/projects/n8n-fork/compiled...
+(node:46870) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+INFO: Cleaning previous task runner output directory: /Users/tzacis/Documents/projects/n8n-fork/dist/task-runner-javascript...
+-----------------------------------------------
+INFO: Starting local application pre-build...
+INFO: Running pnpm install and build...
+$ cd /Users/tzacis/Documents/projects/n8n-fork && pnpm install --frozen-lockfile
+(node:47573) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `pnpm --trace-warnings ...` to show where the warning was created)
+(node:47594) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `pnpm --trace-warnings ...` to show where the warning was created)
+$ cd /Users/tzacis/Documents/projects/n8n-fork && pnpm build --summarize
+(node:47785) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `pnpm --trace-warnings ...` to show where the warning was created)
+(node:47786) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `pnpm --trace-warnings ...` to show where the warning was created)
+
+> n8n-monorepo@2.7.0 build /Users/tzacis/Documents/projects/n8n-fork
+> turbo run build --summarize
+
+[2m• Packages in scope: @n8n/ai-workflow-builder, @n8n/api-types, @n8n/backend-common, @n8n/backend-test-utils, @n8n/chat, @n8n/client-oauth2, @n8n/codemirror-lang, @n8n/codemirror-lang-html, @n8n/codemirror-lang-sql, @n8n/composables, @n8n/config, @n8n/constants, @n8n/crdt, @n8n/create-node, @n8n/db, @n8n/decorators, @n8n/design-system, @n8n/di, @n8n/errors, @n8n/eslint-config, @n8n/eslint-plugin-community-nodes, @n8n/extension-sdk, @n8n/i18n, @n8n/imap, @n8n/json-schema-to-zod, @n8n/n8n-benchmark, @n8n/n8n-extension-insights, @n8n/n8n-nodes-langchain, @n8n/node-cli, @n8n/permissions, @n8n/rest-api-client, @n8n/scan-community-package, @n8n/stores, @n8n/storybook, @n8n/stylelint-config, @n8n/syslog-client, @n8n/task-runner, @n8n/typescript-config, @n8n/utils, @n8n/vitest-config, n8n, n8n-containers, n8n-core, n8n-editor-ui, n8n-node-dev, n8n-nodes-base, n8n-playwright, n8n-workflow[0m
+[2m• Running [0m[1m[2mbuild[0m[2m in 48 packages
+[0m[2m• Remote caching disabled[0m
+[33m@n8n/di:build: [0mcache hit, replaying logs [2md825b04d79e756cb[0m
+[33m@n8n/di:build: [0m
+[33m@n8n/di:build: [0m> @n8n/di@0.10.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/di
+[33m@n8n/di:build: [0m> tsc -p tsconfig.build.json
+[33m@n8n/di:build: [0m
+[33m@n8n/codemirror-lang-html:build: [0mcache hit, replaying logs [2m90ba4c8bf40df614[0m
+[33m@n8n/codemirror-lang-html:build: [0m
+[33m@n8n/codemirror-lang-html:build: [0m> @n8n/codemirror-lang-html@1.2.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/codemirror-lang-html
+[33m@n8n/codemirror-lang-html:build: [0m> cm-buildhelper src/html.ts
+[33m@n8n/codemirror-lang-html:build: [0m
+[34m@n8n/vitest-config:build: [0mcache hit, replaying logs [2mda1987db73aa4c3c[0m
+[34m@n8n/vitest-config:build: [0m
+[34m@n8n/vitest-config:build: [0m> @n8n/vitest-config@1.6.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/vitest-config
+[34m@n8n/vitest-config:build: [0m> tsc -p tsconfig.build.json
+[34m@n8n/vitest-config:build: [0m
+[32m@n8n/codemirror-lang:build: [0mcache hit, replaying logs [2m6f0356f27909e05f[0m
+[32m@n8n/codemirror-lang:build: [0m
+[32m@n8n/codemirror-lang:build: [0m> @n8n/codemirror-lang@0.4.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/codemirror-lang
+[32m@n8n/codemirror-lang:build: [0m> tsc -p tsconfig.build.json
+[32m@n8n/codemirror-lang:build: [0m
+[34m@n8n/errors:build: [0mcache hit, replaying logs [2me79508dab15beb46[0m
+[34m@n8n/errors:build: [0m
+[34m@n8n/errors:build: [0m> @n8n/errors@0.6.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/errors
+[34m@n8n/errors:build: [0m> tsc -p tsconfig.build.json
+[34m@n8n/errors:build: [0m
+[34m@n8n/stylelint-config:build: [0mcache hit, replaying logs [2me1a21b0889bb7417[0m
+[34m@n8n/stylelint-config:build: [0m
+[34m@n8n/stylelint-config:build: [0m> @n8n/stylelint-config@0.0.1 build /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/stylelint-config
+[34m@n8n/stylelint-config:build: [0m> tsc
+[34m@n8n/stylelint-config:build: [0m
+[36m@n8n/syslog-client:build: [0mcache hit, replaying logs [2mdcf9ae4e0ba76e4e[0m
+[36m@n8n/syslog-client:build: [0m
+[36m@n8n/syslog-client:build: [0m> @n8n/syslog-client@1.1.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/syslog-client
+[36m@n8n/syslog-client:build: [0m> tsc -p tsconfig.build.json
+[36m@n8n/syslog-client:build: [0m
+[35m@n8n/client-oauth2:build: [0mcache hit, replaying logs [2mdbf989b17b2f77ce[0m
+[35m@n8n/client-oauth2:build: [0m
+[35m@n8n/client-oauth2:build: [0m> @n8n/client-oauth2@1.0.0-rc.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/client-oauth2
+[35m@n8n/client-oauth2:build: [0m> tsc -p tsconfig.build.json
+[35m@n8n/client-oauth2:build: [0m
+[32m@n8n/constants:build: [0mcache hit, replaying logs [2m64ddb7f5ae062ce0[0m
+[32m@n8n/constants:build: [0m
+[32m@n8n/constants:build: [0m> @n8n/constants@0.17.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/constants
+[32m@n8n/constants:build: [0m> tsc -p tsconfig.build.json
+[32m@n8n/constants:build: [0m
+[34m@n8n/imap:build: [0mcache hit, replaying logs [2mf2a2a71f0d65612a[0m
+[34m@n8n/imap:build: [0m
+[34m@n8n/imap:build: [0m> @n8n/imap@0.16.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/imap
+[34m@n8n/imap:build: [0m> tsc -p tsconfig.build.json
+[34m@n8n/imap:build: [0m
+[34m@n8n/codemirror-lang-sql:build: [0mcache hit, replaying logs [2m1e19f5581bfd5b7d[0m
+[34m@n8n/codemirror-lang-sql:build: [0m
+[34m@n8n/codemirror-lang-sql:build: [0m> @n8n/codemirror-lang-sql@1.4.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/codemirror-lang-sql
+[34m@n8n/codemirror-lang-sql:build: [0m> tsc -p tsconfig.build.json
+[34m@n8n/codemirror-lang-sql:build: [0m
+[36m@n8n/permissions:build: [0mcache hit, replaying logs [2m7f249102568ad528[0m
+[36m@n8n/permissions:build: [0m
+[36m@n8n/permissions:build: [0m> @n8n/permissions@0.48.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/permissions
+[36m@n8n/permissions:build: [0m> tsc -p tsconfig.build.json
+[36m@n8n/permissions:build: [0m
+[32m@n8n/extension-sdk:build: [0mcache hit, replaying logs [2m49d4abc200337b4f[0m
+[32m@n8n/extension-sdk:build: [0m
+[32m@n8n/extension-sdk:build: [0m> @n8n/extension-sdk@0.9.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/extension-sdk
+[32m@n8n/extension-sdk:build: [0m> pnpm "/^typecheck:.+/" && pnpm clean && tsdown && pnpm create-json-schema
+[32m@n8n/extension-sdk:build: [0m
+[32m@n8n/extension-sdk:build: [0m
+[32m@n8n/extension-sdk:build: [0m> @n8n/extension-sdk@0.9.0 clean /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/extension-sdk
+[32m@n8n/extension-sdk:build: [0m> rimraf dist
+[32m@n8n/extension-sdk:build: [0m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m tsdown [2mv0.16.5[22m powered by rolldown [2mv1.0.0-beta.50[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m Using tsdown config: [4m/Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/extension-sdk/tsdown.config.ts[24m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m entry: [34msrc/index.ts, src/schema.ts[39m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m entry: [34msrc/backend/define.ts, src/backend/index.ts, src/backend/types.ts[39m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m entry: [34msrc/frontend/define.ts, src/frontend/index.ts, src/frontend/types.ts[39m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m tsconfig: [34mtsconfig.common.json[39m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m tsconfig: [34mtsconfig.backend.json[39m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m tsconfig: [34mtsconfig.frontend.json[39m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m Build start
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mindex.cjs[22m        [2m0.12 kB[22m [2m│ gzip: 0.09 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mschema.cjs[22m       [2m0.12 kB[22m [2m│ gzip: 0.09 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mschema2.cjs.map  [2m2.62 kB[22m [2m│ gzip: 0.86 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mschema2.cjs      [2m0.90 kB[22m [2m│ gzip: 0.39 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [33m[CJS][39m 4 files, total: 3.76 kB
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/backend/[22m[1mdefine.cjs[22m       [2m0.12 kB[22m [2m│ gzip: 0.09 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/backend/[22m[1mindex.cjs[22m        [2m0.12 kB[22m [2m│ gzip: 0.09 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/backend/[22m[1mtypes.cjs[22m        [2m0.00 kB[22m [2m│ gzip: 0.02 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/backend/[22mdefine2.cjs.map  [2m0.33 kB[22m [2m│ gzip: 0.23 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/backend/[22mdefine2.cjs      [2m0.29 kB[22m [2m│ gzip: 0.20 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [33m[CJS][39m 5 files, total: 0.86 kB
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22m[1mdefine.cjs[22m       [2m0.12 kB[22m [2m│ gzip: 0.09 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22m[1mindex.cjs[22m        [2m0.12 kB[22m [2m│ gzip: 0.09 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22m[1mtypes.cjs[22m        [2m0.00 kB[22m [2m│ gzip: 0.02 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22mdefine2.cjs.map  [2m0.33 kB[22m [2m│ gzip: 0.23 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22mdefine2.cjs      [2m0.30 kB[22m [2m│ gzip: 0.20 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [33m[CJS][39m 5 files, total: 0.87 kB
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/backend/[22m[1mdefine.mjs[22m       [2m0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/backend/[22m[1mindex.mjs[22m        [2m0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/backend/[22m[1mtypes.mjs[22m        [2m0.01 kB[22m [2m│ gzip: 0.03 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/backend/[22mdefine2.mjs.map  [2m0.33 kB[22m [2m│ gzip: 0.23 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/backend/[22mdefine2.mjs      [2m0.19 kB[22m [2m│ gzip: 0.15 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/backend/[22m[32m[1mindex.d.mts[22m[39m      [2m0.28 kB[22m [2m│ gzip: 0.13 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/backend/[22m[32m[1mtypes.d.mts[22m[39m      [2m0.19 kB[22m [2m│ gzip: 0.11 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/backend/[22m[32m[1mdefine.d.mts[22m[39m     [2m0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/backend/[22m[32mtypes2.d.mts[39m     [2m0.36 kB[22m [2m│ gzip: 0.20 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/backend/[22m[32mdefine2.d.mts[39m    [2m0.27 kB[22m [2m│ gzip: 0.17 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [34m[ESM][39m 10 files, total: 1.94 kB
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mindex.mjs[22m        [2m0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mschema.mjs[22m       [2m0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mschema2.mjs.map  [2m2.59 kB[22m [2m│ gzip: 0.86 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mschema2.mjs      [2m0.70 kB[22m [2m│ gzip: 0.33 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mindex.d.mts[22m[39m      [2m0.14 kB[22m [2m│ gzip: 0.10 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mschema.d.mts[22m[39m     [2m0.14 kB[22m [2m│ gzip: 0.10 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mschema2.d.mts[39m    [2m2.37 kB[22m [2m│ gzip: 0.49 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [34m[ESM][39m 7 files, total: 6.13 kB
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22m[1mdefine.mjs[22m       [2m0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22m[1mindex.mjs[22m        [2m0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22m[1mtypes.mjs[22m        [2m0.01 kB[22m [2m│ gzip: 0.03 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22mdefine2.mjs.map  [2m0.33 kB[22m [2m│ gzip: 0.23 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22mdefine2.mjs      [2m0.19 kB[22m [2m│ gzip: 0.15 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22m[32m[1mindex.d.mts[22m[39m      [2m0.28 kB[22m [2m│ gzip: 0.13 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22m[32m[1mtypes.d.mts[22m[39m      [2m0.20 kB[22m [2m│ gzip: 0.11 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22m[32m[1mdefine.d.mts[22m[39m     [2m0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22m[32mtypes2.d.mts[39m     [2m0.57 kB[22m [2m│ gzip: 0.28 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/frontend/[22m[32mdefine2.d.mts[39m    [2m0.27 kB[22m [2m│ gzip: 0.18 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [34m[ESM][39m 10 files, total: 2.18 kB
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mindex.d.cts[22m[39m    [2m0.14 kB[22m [2m│ gzip: 0.10 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mschema.d.cts[22m[39m   [2m0.14 kB[22m [2m│ gzip: 0.10 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mschema2.d.cts[39m  [2m2.37 kB[22m [2m│ gzip: 0.49 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [33m[CJS][39m 3 files, total: 2.65 kB
+[32m@n8n/extension-sdk:build: [0m[32m✔[39m Build complete in [32m18308ms[39m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22m[32m[1mindex.d.cts[22m[39m    [2m0.28 kB[22m [2m│ gzip: 0.13 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22m[32m[1mtypes.d.cts[22m[39m    [2m0.20 kB[22m [2m│ gzip: 0.11 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22m[32m[1mdefine.d.cts[22m[39m   [2m0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22m[32mtypes2.d.cts[39m   [2m0.57 kB[22m [2m│ gzip: 0.28 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/frontend/[22m[32mdefine2.d.cts[39m  [2m0.27 kB[22m [2m│ gzip: 0.18 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [33m[CJS][39m 5 files, total: 1.45 kB
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/backend/[22m[32m[1mindex.d.cts[22m[39m    [2m0.28 kB[22m [2m│ gzip: 0.13 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/backend/[22m[32m[1mtypes.d.cts[22m[39m    [2m0.19 kB[22m [2m│ gzip: 0.11 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/backend/[22m[32m[1mdefine.d.cts[22m[39m   [2m0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/backend/[22m[32mtypes2.d.cts[39m   [2m0.36 kB[22m [2m│ gzip: 0.20 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/backend/[22m[32mdefine2.d.cts[39m  [2m0.27 kB[22m [2m│ gzip: 0.18 kB[22m
+[32m@n8n/extension-sdk:build: [0m[34mℹ[39m [33m[CJS][39m 5 files, total: 1.22 kB
+[32m@n8n/extension-sdk:build: [0m[32m✔[39m Build complete in [32m18309ms[39m
+[32m@n8n/extension-sdk:build: [0m[32m✔[39m Build complete in [32m18310ms[39m
+[32m@n8n/extension-sdk:build: [0m
+[32m@n8n/extension-sdk:build: [0m> @n8n/extension-sdk@0.9.0 create-json-schema /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/extension-sdk
+[32m@n8n/extension-sdk:build: [0m> tsx scripts/create-json-schema.ts
+[32m@n8n/extension-sdk:build: [0m
+[35m@n8n/n8n-benchmark:build: [0mcache hit, replaying logs [2mcd8083638cbcf845[0m
+[35m@n8n/n8n-benchmark:build: [0m
+[35m@n8n/n8n-benchmark:build: [0m> @n8n/n8n-benchmark@2.2.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/benchmark
+[35m@n8n/n8n-benchmark:build: [0m> tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json
+[35m@n8n/n8n-benchmark:build: [0m
+[36m@n8n/json-schema-to-zod:build: [0mcache hit, replaying logs [2m07963b7e1cc9fe24[0m
+[36m@n8n/json-schema-to-zod:build: [0m
+[36m@n8n/json-schema-to-zod:build: [0m> @n8n/json-schema-to-zod@1.6.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/json-schema-to-zod
+[36m@n8n/json-schema-to-zod:build: [0m> rimraf ./dist && pnpm run build:types && pnpm run build:cjs && pnpm run build:esm
+[36m@n8n/json-schema-to-zod:build: [0m
+[36m@n8n/json-schema-to-zod:build: [0m
+[36m@n8n/json-schema-to-zod:build: [0m> @n8n/json-schema-to-zod@1.6.0 build:types /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/json-schema-to-zod
+[36m@n8n/json-schema-to-zod:build: [0m> tsc -p tsconfig.types.json
+[36m@n8n/json-schema-to-zod:build: [0m
+[36m@n8n/json-schema-to-zod:build: [0m
+[36m@n8n/json-schema-to-zod:build: [0m> @n8n/json-schema-to-zod@1.6.0 build:cjs /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/json-schema-to-zod
+[36m@n8n/json-schema-to-zod:build: [0m> tsc -p tsconfig.cjs.json && node postcjs.cjs
+[36m@n8n/json-schema-to-zod:build: [0m
+[36m@n8n/json-schema-to-zod:build: [0m
+[36m@n8n/json-schema-to-zod:build: [0m> @n8n/json-schema-to-zod@1.6.0 build:esm /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/json-schema-to-zod
+[36m@n8n/json-schema-to-zod:build: [0m> tsc -p tsconfig.esm.json && node postesm.cjs
+[36m@n8n/json-schema-to-zod:build: [0m
+[32m@n8n/n8n-extension-insights:build: [0mcache hit, replaying logs [2m60204c135e4ab075[0m
+[32m@n8n/n8n-extension-insights:build: [0m
+[32m@n8n/n8n-extension-insights:build: [0m> @n8n/n8n-extension-insights@0.11.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/extensions/insights
+[32m@n8n/n8n-extension-insights:build: [0m> pnpm cleanup && pnpm run "/^build:.*/"
+[32m@n8n/n8n-extension-insights:build: [0m
+[32m@n8n/n8n-extension-insights:build: [0m
+[32m@n8n/n8n-extension-insights:build: [0m> @n8n/n8n-extension-insights@0.11.0 cleanup /Users/tzacis/Documents/projects/n8n-fork/packages/extensions/insights
+[32m@n8n/n8n-extension-insights:build: [0m> rimraf dist
+[32m@n8n/n8n-extension-insights:build: [0m
+[33m@n8n/crdt:build: [0mcache hit, replaying logs [2mea5d5f4cd01d7651[0m
+[33m@n8n/crdt:build: [0m
+[33m@n8n/crdt:build: [0m> @n8n/crdt@0.2.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/crdt
+[33m@n8n/crdt:build: [0m> tsc -p tsconfig.build.json
+[33m@n8n/crdt:build: [0m
+[35m@n8n/eslint-plugin-community-nodes:build: [0mcache hit, replaying logs [2m972c23e14aaf0424[0m
+[35m@n8n/eslint-plugin-community-nodes:build: [0m
+[35m@n8n/eslint-plugin-community-nodes:build: [0m> @n8n/eslint-plugin-community-nodes@0.7.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/eslint-plugin-community-nodes
+[35m@n8n/eslint-plugin-community-nodes:build: [0m> tsc --project tsconfig.build.json
+[35m@n8n/eslint-plugin-community-nodes:build: [0m
+[36m@n8n/eslint-config:build: [0mcache hit, replaying logs [2m1ac287b902e99d3f[0m
+[36m@n8n/eslint-config:build: [0m
+[36m@n8n/eslint-config:build: [0m> @n8n/eslint-config@0.0.1 build /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/eslint-config
+[36m@n8n/eslint-config:build: [0m> tsc
+[36m@n8n/eslint-config:build: [0m
+[36m@n8n/composables:build: [0mcache hit, replaying logs [2mdc936fd349f56483[0m
+[36m@n8n/composables:build: [0m
+[36m@n8n/composables:build: [0m> @n8n/composables@1.14.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/frontend/@n8n/composables
+[36m@n8n/composables:build: [0m> tsdown
+[36m@n8n/composables:build: [0m
+[36m@n8n/composables:build: [0m[34mℹ[39m tsdown [2mv0.16.5[22m powered by rolldown [2mv1.0.0-beta.50[22m
+[36m@n8n/composables:build: [0m[34mℹ[39m Using tsdown config: [4m/Users/tzacis/Documents/projects/n8n-fork/packages/frontend/@n8n/composables/tsdown.config.ts[24m
+[36m@n8n/composables:build: [0m[34mℹ[39m entry: [34msrc/useDeviceSupport.ts, src/useDocumentTitle.ts, src/useShortKeyPress.ts, src/useThrottleWithReactiveDelay.ts[39m
+[36m@n8n/composables:build: [0m[34mℹ[39m tsconfig: [34mtsconfig.json[39m
+[36m@n8n/composables:build: [0m[34mℹ[39m Build start
+[36m@n8n/composables:build: [0m[34mℹ[39m Cleaning 24 files
+[36m@n8n/composables:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1museDeviceSupport.cjs[22m                  [2m1.76 kB[22m [2m│ gzip: 0.70 kB[22m
+[36m@n8n/composables:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1museDocumentTitle.cjs[22m                  [2m1.22 kB[22m [2m│ gzip: 0.59 kB[22m
+[36m@n8n/composables:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1museShortKeyPress.cjs[22m                  [2m0.64 kB[22m [2m│ gzip: 0.33 kB[22m
+[36m@n8n/composables:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1museThrottleWithReactiveDelay.cjs[22m      [2m0.61 kB[22m [2m│ gzip: 0.33 kB[22m
+[36m@n8n/composables:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22museDocumentTitle.cjs.map              [2m2.59 kB[22m [2m│ gzip: 1.15 kB[22m
+[36m@n8n/composables:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22museDeviceSupport.cjs.map              [2m2.58 kB[22m [2m│ gzip: 1.07 kB[22m
+[36m@n8n/composables:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22museShortKeyPress.cjs.map              [2m1.26 kB[22m [2m│ gzip: 0.64 kB[22m
+[36m@n8n/composables:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22museThrottleWithReactiveDelay.cjs.map  [2m0.88 kB[22m [2m│ gzip: 0.49 kB[22m
+[36m@n8n/composables:build: [0m[34mℹ[39m [33m[CJS][39m 8 files, total: 11.54 kB
+[36m@n8n/composables:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1museDeviceSupport.mjs[22m                  [2m1.68 kB[22m [2m│ gzip: 0.69 kB[22m
+[36m@n8n/composables:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1museDocumentTitle.mjs[22m                  [2m1.19 kB[22m [2m│ gzip: 0.57 kB[22m
+[36m@n8n/composables:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1museShortKeyPress.mjs[22m                  [2m0.57 kB[22m [2m│ gzip: 0.32 kB[22m
+[36m@n8n/composables:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1museThrottleWithReactiveDelay.mjs[22m      [2m0.56 kB[22m [2m│ gzip: 0.31 kB[22m
+[36m@n8n/composables:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22museDeviceSupport.mjs.map              [2m2.62 kB[22m [2m│ gzip: 1.07 kB[22m
+[36m@n8n/composables:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22museDocumentTitle.mjs.map              [2m2.59 kB[22m [2m│ gzip: 1.15 kB[22m
+[36m@n8n/composables:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22museShortKeyPress.mjs.map              [2m1.27 kB[22m [2m│ gzip: 0.64 kB[22m
+[36m@n8n/composables:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22museThrottleWithReactiveDelay.mjs.map  [2m0.89 kB[22m [2m│ gzip: 0.48 kB[22m
+[36m@n8n/composables:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1museDocumentTitle.d.mts[22m[39m                [2m0.67 kB[22m [2m│ gzip: 0.35 kB[22m
+[36m@n8n/composables:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1museDeviceSupport.d.mts[22m[39m                [2m0.47 kB[22m [2m│ gzip: 0.29 kB[22m
+[36m@n8n/composables:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1museShortKeyPress.d.mts[22m[39m                [2m0.41 kB[22m [2m│ gzip: 0.25 kB[22m
+[36m@n8n/composables:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1museThrottleWithReactiveDelay.d.mts[22m[39m    [2m0.30 kB[22m [2m│ gzip: 0.19 kB[22m
+[36m@n8n/composables:build: [0m[34mℹ[39m [34m[ESM][39m 12 files, total: 13.23 kB
+[36m@n8n/composables:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1museDocumentTitle.d.cts[22m[39m              [2m0.67 kB[22m [2m│ gzip: 0.35 kB[22m
+[36m@n8n/composables:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1museDeviceSupport.d.cts[22m[39m              [2m0.47 kB[22m [2m│ gzip: 0.29 kB[22m
+[36m@n8n/composables:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1museShortKeyPress.d.cts[22m[39m              [2m0.41 kB[22m [2m│ gzip: 0.25 kB[22m
+[36m@n8n/composables:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1museThrottleWithReactiveDelay.d.cts[22m[39m  [2m0.30 kB[22m [2m│ gzip: 0.19 kB[22m
+[36m@n8n/composables:build: [0m[34mℹ[39m [33m[CJS][39m 4 files, total: 1.85 kB
+[36m@n8n/composables:build: [0m[32m✔[39m Build complete in [32m6451ms[39m
+[35m@n8n/config:build: [0mcache hit, replaying logs [2mfa8b9d58075ac958[0m
+[35m@n8n/config:build: [0m
+[35m@n8n/config:build: [0m> @n8n/config@2.6.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/config
+[35m@n8n/config:build: [0m> tsc -p tsconfig.build.json
+[35m@n8n/config:build: [0m
+[33m@n8n/utils:build: [0mcache hit, replaying logs [2m89eb3ea8703444bb[0m
+[33m@n8n/utils:build: [0m
+[33m@n8n/utils:build: [0m> @n8n/utils@1.23.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/utils
+[33m@n8n/utils:build: [0m> tsdown
+[33m@n8n/utils:build: [0m
+[33m@n8n/utils:build: [0m[34mℹ[39m tsdown [2mv0.16.5[22m powered by rolldown [2mv1.0.0-beta.50[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m Using tsdown config: [4m/Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/utils/tsdown.config.ts[24m
+[33m@n8n/utils:build: [0m[34mℹ[39m entry: [34msrc/assert.ts, src/event-bus.ts, src/event-queue.ts, src/index.ts, src/retry.ts, src/workflowId.ts, src/files/path.ts, src/files/sanitize.ts, src/search/reRankSearchResults.ts, src/search/sublimeSearch.ts, src/number/smartDecimal.ts, src/sort/sortByProperty.ts, src/string/truncate.ts[39m
+[33m@n8n/utils:build: [0m[34mℹ[39m tsconfig: [34mtsconfig.json[39m
+[33m@n8n/utils:build: [0m[34mℹ[39m Build start
+[33m@n8n/utils:build: [0m[34mℹ[39m Cleaning 129 files
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mindex.cjs[22m                       [2m 1.49 kB[22m [2m│ gzip: 0.38 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1msearch/sublimeSearch.cjs[22m        [2m 0.18 kB[22m [2m│ gzip: 0.10 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mstring/truncate.cjs[22m             [2m 0.17 kB[22m [2m│ gzip: 0.09 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1msearch/reRankSearchResults.cjs[22m  [2m 0.15 kB[22m [2m│ gzip: 0.09 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1msort/sortByProperty.cjs[22m         [2m 0.13 kB[22m [2m│ gzip: 0.08 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mevent-queue.cjs[22m                 [2m 0.12 kB[22m [2m│ gzip: 0.09 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mnumber/smartDecimal.cjs[22m         [2m 0.12 kB[22m [2m│ gzip: 0.08 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mworkflowId.cjs[22m                  [2m 0.12 kB[22m [2m│ gzip: 0.09 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mfiles/sanitize.cjs[22m              [2m 0.12 kB[22m [2m│ gzip: 0.09 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mevent-bus.cjs[22m                   [2m 0.11 kB[22m [2m│ gzip: 0.09 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mfiles/path.cjs[22m                  [2m 0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1massert.cjs[22m                      [2m 0.09 kB[22m [2m│ gzip: 0.07 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mretry.cjs[22m                       [2m 0.08 kB[22m [2m│ gzip: 0.07 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22msublimeSearch.cjs.map           [2m11.66 kB[22m [2m│ gzip: 3.92 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22msublimeSearch.cjs               [2m 5.53 kB[22m [2m│ gzip: 1.80 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mevent-bus2.cjs.map              [2m 2.93 kB[22m [2m│ gzip: 0.99 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22msanitize.cjs.map                [2m 2.91 kB[22m [2m│ gzip: 1.25 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mtruncate.cjs.map                [2m 2.60 kB[22m [2m│ gzip: 1.08 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mretry2.cjs.map                  [2m 2.35 kB[22m [2m│ gzip: 1.05 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22msanitize.cjs                    [2m 1.91 kB[22m [2m│ gzip: 0.90 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mevent-queue2.cjs.map            [2m 1.75 kB[22m [2m│ gzip: 0.83 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mtruncate.cjs                    [2m 1.67 kB[22m [2m│ gzip: 0.70 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mretry2.cjs                      [2m 1.54 kB[22m [2m│ gzip: 0.71 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mreRankSearchResults.cjs.map     [2m 1.27 kB[22m [2m│ gzip: 0.63 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mevent-bus2.cjs                  [2m 1.11 kB[22m [2m│ gzip: 0.52 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mevent-queue2.cjs                [2m 1.10 kB[22m [2m│ gzip: 0.53 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mworkflowId2.cjs.map             [2m 0.82 kB[22m [2m│ gzip: 0.48 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mworkflowId2.cjs                 [2m 0.81 kB[22m [2m│ gzip: 0.49 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22msortByProperty.cjs.map          [2m 0.67 kB[22m [2m│ gzip: 0.41 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mreRankSearchResults.cjs         [2m 0.65 kB[22m [2m│ gzip: 0.34 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22msmartDecimal.cjs.map            [2m 0.63 kB[22m [2m│ gzip: 0.37 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22msortByProperty.cjs              [2m 0.47 kB[22m [2m│ gzip: 0.30 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22massert2.cjs.map                 [2m 0.46 kB[22m [2m│ gzip: 0.33 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22msmartDecimal.cjs                [2m 0.42 kB[22m [2m│ gzip: 0.28 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mpath.cjs                        [2m 0.37 kB[22m [2m│ gzip: 0.28 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mpath.cjs.map                    [2m 0.36 kB[22m [2m│ gzip: 0.28 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22massert2.cjs                     [2m 0.32 kB[22m [2m│ gzip: 0.24 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m 37 files, total: 47.31 kB
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mindex.mjs[22m                         [2m 0.93 kB[22m [2m│ gzip: 0.32 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1msearch/sublimeSearch.mjs[22m          [2m 0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mstring/truncate.mjs[22m               [2m 0.12 kB[22m [2m│ gzip: 0.09 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1msearch/reRankSearchResults.mjs[22m    [2m 0.10 kB[22m [2m│ gzip: 0.08 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mevent-queue.mjs[22m                   [2m 0.09 kB[22m [2m│ gzip: 0.08 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1msort/sortByProperty.mjs[22m           [2m 0.09 kB[22m [2m│ gzip: 0.08 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mfiles/sanitize.mjs[22m                [2m 0.09 kB[22m [2m│ gzip: 0.08 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mfiles/path.mjs[22m                    [2m 0.08 kB[22m [2m│ gzip: 0.08 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mworkflowId.mjs[22m                    [2m 0.08 kB[22m [2m│ gzip: 0.09 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mevent-bus.mjs[22m                     [2m 0.08 kB[22m [2m│ gzip: 0.08 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mnumber/smartDecimal.mjs[22m           [2m 0.08 kB[22m [2m│ gzip: 0.07 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1massert.mjs[22m                        [2m 0.06 kB[22m [2m│ gzip: 0.07 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mretry.mjs[22m                         [2m 0.06 kB[22m [2m│ gzip: 0.07 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22msublimeSearch.mjs.map             [2m11.66 kB[22m [2m│ gzip: 3.92 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22msublimeSearch.mjs                 [2m 5.33 kB[22m [2m│ gzip: 1.75 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mevent-bus2.mjs.map                [2m 2.93 kB[22m [2m│ gzip: 0.99 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22msanitize.mjs.map                  [2m 2.91 kB[22m [2m│ gzip: 1.25 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mtruncate.mjs.map                  [2m 2.60 kB[22m [2m│ gzip: 1.08 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mretry2.mjs.map                    [2m 2.35 kB[22m [2m│ gzip: 1.05 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22msanitize.mjs                      [2m 1.82 kB[22m [2m│ gzip: 0.84 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mevent-queue2.mjs.map              [2m 1.75 kB[22m [2m│ gzip: 0.83 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mtruncate.mjs                      [2m 1.47 kB[22m [2m│ gzip: 0.65 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mretry2.mjs                        [2m 1.45 kB[22m [2m│ gzip: 0.67 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mreRankSearchResults.mjs.map       [2m 1.27 kB[22m [2m│ gzip: 0.63 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mevent-bus2.mjs                    [2m 1.02 kB[22m [2m│ gzip: 0.47 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mevent-queue2.mjs                  [2m 1.00 kB[22m [2m│ gzip: 0.48 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mworkflowId2.mjs.map               [2m 0.81 kB[22m [2m│ gzip: 0.48 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mworkflowId2.mjs                   [2m 0.69 kB[22m [2m│ gzip: 0.43 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22msortByProperty.mjs.map            [2m 0.67 kB[22m [2m│ gzip: 0.41 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22msmartDecimal.mjs.map              [2m 0.63 kB[22m [2m│ gzip: 0.37 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mreRankSearchResults.mjs           [2m 0.55 kB[22m [2m│ gzip: 0.30 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22massert2.mjs.map                   [2m 0.46 kB[22m [2m│ gzip: 0.33 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22msortByProperty.mjs                [2m 0.38 kB[22m [2m│ gzip: 0.25 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mpath.mjs.map                      [2m 0.36 kB[22m [2m│ gzip: 0.28 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22msmartDecimal.mjs                  [2m 0.33 kB[22m [2m│ gzip: 0.22 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mpath.mjs                          [2m 0.27 kB[22m [2m│ gzip: 0.22 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22massert2.mjs                       [2m 0.24 kB[22m [2m│ gzip: 0.19 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mindex.d.mts[22m[39m                       [2m 0.98 kB[22m [2m│ gzip: 0.34 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mevent-bus.d.mts[22m[39m                   [2m 0.14 kB[22m [2m│ gzip: 0.11 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1msearch/sublimeSearch.d.mts[22m[39m        [2m 0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mstring/truncate.d.mts[22m[39m             [2m 0.11 kB[22m [2m│ gzip: 0.09 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1msearch/reRankSearchResults.d.mts[22m[39m  [2m 0.10 kB[22m [2m│ gzip: 0.08 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mevent-queue.d.mts[22m[39m                 [2m 0.09 kB[22m [2m│ gzip: 0.08 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1msort/sortByProperty.d.mts[22m[39m         [2m 0.09 kB[22m [2m│ gzip: 0.08 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mfiles/sanitize.d.mts[22m[39m              [2m 0.09 kB[22m [2m│ gzip: 0.08 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mfiles/path.d.mts[22m[39m                  [2m 0.08 kB[22m [2m│ gzip: 0.08 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mworkflowId.d.mts[22m[39m                  [2m 0.08 kB[22m [2m│ gzip: 0.08 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mnumber/smartDecimal.d.mts[22m[39m         [2m 0.08 kB[22m [2m│ gzip: 0.07 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1massert.d.mts[22m[39m                      [2m 0.06 kB[22m [2m│ gzip: 0.07 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mretry.d.mts[22m[39m                       [2m 0.06 kB[22m [2m│ gzip: 0.07 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mevent-bus2.d.mts[39m                  [2m 0.99 kB[22m [2m│ gzip: 0.35 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32msublimeSearch.d.mts[39m               [2m 0.39 kB[22m [2m│ gzip: 0.25 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mreRankSearchResults.d.mts[39m         [2m 0.37 kB[22m [2m│ gzip: 0.22 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mtruncate.d.mts[39m                    [2m 0.31 kB[22m [2m│ gzip: 0.19 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mretry2.d.mts[39m                      [2m 0.28 kB[22m [2m│ gzip: 0.22 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mevent-queue2.d.mts[39m                [2m 0.24 kB[22m [2m│ gzip: 0.18 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32msortByProperty.d.mts[39m              [2m 0.22 kB[22m [2m│ gzip: 0.17 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32msanitize.d.mts[39m                    [2m 0.20 kB[22m [2m│ gzip: 0.16 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32msmartDecimal.d.mts[39m                [2m 0.20 kB[22m [2m│ gzip: 0.15 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32massert2.d.mts[39m                     [2m 0.18 kB[22m [2m│ gzip: 0.15 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mworkflowId2.d.mts[39m                 [2m 0.17 kB[22m [2m│ gzip: 0.15 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mpath.d.mts[39m                        [2m 0.17 kB[22m [2m│ gzip: 0.15 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [34m[ESM][39m 62 files, total: 50.73 kB
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mindex.d.cts[22m[39m                       [2m0.98 kB[22m [2m│ gzip: 0.34 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mevent-bus.d.cts[22m[39m                   [2m0.14 kB[22m [2m│ gzip: 0.11 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1msearch/sublimeSearch.d.cts[22m[39m        [2m0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mstring/truncate.d.cts[22m[39m             [2m0.11 kB[22m [2m│ gzip: 0.09 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1msearch/reRankSearchResults.d.cts[22m[39m  [2m0.10 kB[22m [2m│ gzip: 0.08 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mevent-queue.d.cts[22m[39m                 [2m0.09 kB[22m [2m│ gzip: 0.08 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1msort/sortByProperty.d.cts[22m[39m         [2m0.09 kB[22m [2m│ gzip: 0.08 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mfiles/sanitize.d.cts[22m[39m              [2m0.09 kB[22m [2m│ gzip: 0.08 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mfiles/path.d.cts[22m[39m                  [2m0.08 kB[22m [2m│ gzip: 0.08 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mworkflowId.d.cts[22m[39m                  [2m0.08 kB[22m [2m│ gzip: 0.08 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mnumber/smartDecimal.d.cts[22m[39m         [2m0.08 kB[22m [2m│ gzip: 0.07 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1massert.d.cts[22m[39m                      [2m0.06 kB[22m [2m│ gzip: 0.07 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mretry.d.cts[22m[39m                       [2m0.06 kB[22m [2m│ gzip: 0.07 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mevent-bus2.d.cts[39m                  [2m0.99 kB[22m [2m│ gzip: 0.35 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32msublimeSearch.d.cts[39m               [2m0.39 kB[22m [2m│ gzip: 0.25 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mreRankSearchResults.d.cts[39m         [2m0.37 kB[22m [2m│ gzip: 0.22 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mtruncate.d.cts[39m                    [2m0.31 kB[22m [2m│ gzip: 0.19 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mretry2.d.cts[39m                      [2m0.28 kB[22m [2m│ gzip: 0.22 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mevent-queue2.d.cts[39m                [2m0.24 kB[22m [2m│ gzip: 0.18 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32msortByProperty.d.cts[39m              [2m0.22 kB[22m [2m│ gzip: 0.17 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32msanitize.d.cts[39m                    [2m0.20 kB[22m [2m│ gzip: 0.16 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32msmartDecimal.d.cts[39m                [2m0.20 kB[22m [2m│ gzip: 0.15 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32massert2.d.cts[39m                     [2m0.18 kB[22m [2m│ gzip: 0.15 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mworkflowId2.d.cts[39m                 [2m0.17 kB[22m [2m│ gzip: 0.15 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mpath.d.cts[39m                        [2m0.17 kB[22m [2m│ gzip: 0.15 kB[22m
+[33m@n8n/utils:build: [0m[34mℹ[39m [33m[CJS][39m 25 files, total: 5.82 kB
+[33m@n8n/utils:build: [0m[32m✔[39m Build complete in [32m5947ms[39m
+[34m@n8n/node-cli:build: [0mcache hit, replaying logs [2m2e43e2f75a64312a[0m
+[34m@n8n/node-cli:build: [0m
+[34m@n8n/node-cli:build: [0m> @n8n/node-cli@0.19.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/node-cli
+[34m@n8n/node-cli:build: [0m> tsc -p tsconfig.build.json && pnpm copy-templates
+[34m@n8n/node-cli:build: [0m
+[34m@n8n/node-cli:build: [0m
+[34m@n8n/node-cli:build: [0m> @n8n/node-cli@0.19.0 copy-templates /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/node-cli
+[34m@n8n/node-cli:build: [0m> node scripts/copy-templates.mjs
+[34m@n8n/node-cli:build: [0m
+[32mn8n-workflow:build: [0mcache hit, replaying logs [2m7b50887e4cee8bde[0m
+[32mn8n-workflow:build: [0m
+[32mn8n-workflow:build: [0m> n8n-workflow@2.7.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/workflow
+[32mn8n-workflow:build: [0m> tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json
+[32mn8n-workflow:build: [0m
+[33m@n8n/stores:build: [0mcache hit, replaying logs [2m89a2fdc323f9be05[0m
+[33m@n8n/stores:build: [0m
+[33m@n8n/stores:build: [0m> @n8n/stores@2.7.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/frontend/@n8n/stores
+[33m@n8n/stores:build: [0m> tsdown
+[33m@n8n/stores:build: [0m
+[33m@n8n/stores:build: [0m[34mℹ[39m tsdown [2mv0.16.5[22m powered by rolldown [2mv1.0.0-beta.50[22m
+[33m@n8n/stores:build: [0m[34mℹ[39m Using tsdown config: [4m/Users/tzacis/Documents/projects/n8n-fork/packages/frontend/@n8n/stores/tsdown.config.ts[24m
+[33m@n8n/stores:build: [0m[34mℹ[39m entry: [34msrc/constants.ts, src/index.ts, src/metaTagConfig.ts, src/useAgentRequestStore.ts, src/useRootStore.ts[39m
+[33m@n8n/stores:build: [0m[34mℹ[39m tsconfig: [34mtsconfig.json[39m
+[33m@n8n/stores:build: [0m[34mℹ[39m Build start
+[33m@n8n/stores:build: [0m[34mℹ[39m Cleaning 34 files
+[33m@n8n/stores:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1museRootStore.cjs[22m              [2m5.68 kB[22m [2m│ gzip: 1.28 kB[22m
+[33m@n8n/stores:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1museAgentRequestStore.cjs[22m      [2m1.89 kB[22m [2m│ gzip: 0.57 kB[22m
+[33m@n8n/stores:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mmetaTagConfig.cjs[22m             [2m0.23 kB[22m [2m│ gzip: 0.11 kB[22m
+[33m@n8n/stores:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mconstants.cjs[22m                 [2m0.10 kB[22m [2m│ gzip: 0.08 kB[22m
+[33m@n8n/stores:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mindex.cjs[22m                     [2m0.10 kB[22m [2m│ gzip: 0.08 kB[22m
+[33m@n8n/stores:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22museRootStore.cjs.map          [2m9.94 kB[22m [2m│ gzip: 2.19 kB[22m
+[33m@n8n/stores:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22museAgentRequestStore.cjs.map  [2m3.65 kB[22m [2m│ gzip: 1.14 kB[22m
+[33m@n8n/stores:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mconstants2.cjs.map            [2m2.26 kB[22m [2m│ gzip: 1.03 kB[22m
+[33m@n8n/stores:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mmetaTagConfig2.cjs.map        [2m1.85 kB[22m [2m│ gzip: 0.76 kB[22m
+[33m@n8n/stores:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mconstants2.cjs                [2m1.68 kB[22m [2m│ gzip: 0.87 kB[22m
+[33m@n8n/stores:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mmetaTagConfig2.cjs            [2m1.34 kB[22m [2m│ gzip: 0.51 kB[22m
+[33m@n8n/stores:build: [0m[34mℹ[39m [33m[CJS][39m 11 files, total: 28.72 kB
+[33m@n8n/stores:build: [0m[33m[EMPTY_IMPORT_META] Warning:[0m `import.meta` may not be a valid syntax with the `cjs` output format.
+[33m@n8n/stores:build: [0m   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m src/useRootStore.ts:8:34 [38;5;246m][0m
+[33m@n8n/stores:build: [0m   [38;5;246m│[0m
+[33m@n8n/stores:build: [0m [38;5;246m8 │[0m [38;5;249mc[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249ms[0m[38;5;249mt[0m[38;5;249m [0m[38;5;249m{[0m[38;5;249m [0m[38;5;249mV[0m[38;5;249mU[0m[38;5;249mE[0m[38;5;249m_[0m[38;5;249mA[0m[38;5;249mP[0m[38;5;249mP[0m[38;5;249m_[0m[38;5;249mU[0m[38;5;249mR[0m[38;5;249mL[0m[38;5;249m_[0m[38;5;249mB[0m[38;5;249mA[0m[38;5;249mS[0m[38;5;249mE[0m[38;5;249m_[0m[38;5;249mA[0m[38;5;249mP[0m[38;5;249mI[0m[38;5;249m [0m[38;5;249m}[0m[38;5;249m [0m[38;5;249m=[0m[38;5;249m [0mimport.meta[38;5;249m.[0m[38;5;249me[0m[38;5;249mn[0m[38;5;249mv[0m[38;5;249m;[0m
+[33m@n8n/stores:build: [0m [38;5;240m  │[0m                                  ─────┬─────  
+[33m@n8n/stores:build: [0m [38;5;240m  │[0m                                       ╰─────── This `import.meta` will be replaced with an empty object (`{}`) automatically. If this is desired, you can suppress this warning by adding `transform.define: { 'import.meta': {} }`. If `import.meta` needs to be kept as-is, you need to set the output format to `esm`.
+[33m@n8n/stores:build: [0m[38;5;246m───╯[0m
+[33m@n8n/stores:build: [0m
+[33m@n8n/stores:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1museRootStore.mjs[22m              [2m 5.43 kB[22m [2m│ gzip: 1.25 kB[22m
+[33m@n8n/stores:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1museAgentRequestStore.mjs[22m      [2m 1.85 kB[22m [2m│ gzip: 0.55 kB[22m
+[33m@n8n/stores:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mmetaTagConfig.mjs[22m             [2m 0.16 kB[22m [2m│ gzip: 0.11 kB[22m
+[33m@n8n/stores:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mconstants.mjs[22m                 [2m 0.07 kB[22m [2m│ gzip: 0.08 kB[22m
+[33m@n8n/stores:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mindex.mjs[22m                     [2m 0.07 kB[22m [2m│ gzip: 0.08 kB[22m
+[33m@n8n/stores:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22museRootStore.mjs.map          [2m10.02 kB[22m [2m│ gzip: 2.17 kB[22m
+[33m@n8n/stores:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22museAgentRequestStore.mjs.map  [2m 3.66 kB[22m [2m│ gzip: 1.15 kB[22m
+[33m@n8n/stores:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mconstants2.mjs.map            [2m 2.26 kB[22m [2m│ gzip: 1.03 kB[22m
+[33m@n8n/stores:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mmetaTagConfig2.mjs.map        [2m 1.85 kB[22m [2m│ gzip: 0.76 kB[22m
+[33m@n8n/stores:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mconstants2.mjs                [2m 1.59 kB[22m [2m│ gzip: 0.81 kB[22m
+[33m@n8n/stores:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mmetaTagConfig2.mjs            [2m 1.12 kB[22m [2m│ gzip: 0.46 kB[22m
+[33m@n8n/stores:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1museRootStore.d.mts[22m[39m            [2m 7.48 kB[22m [2m│ gzip: 0.93 kB[22m
+[33m@n8n/stores:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1museAgentRequestStore.d.mts[22m[39m    [2m 2.45 kB[22m [2m│ gzip: 0.49 kB[22m
+[33m@n8n/stores:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mmetaTagConfig.d.mts[22m[39m           [2m 0.31 kB[22m [2m│ gzip: 0.17 kB[22m
+[33m@n8n/stores:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mconstants.d.mts[22m[39m               [2m 0.07 kB[22m [2m│ gzip: 0.07 kB[22m
+[33m@n8n/stores:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mindex.d.mts[22m[39m                   [2m 0.07 kB[22m [2m│ gzip: 0.07 kB[22m
+[33m@n8n/stores:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mconstants2.d.mts[39m              [2m 2.08 kB[22m [2m│ gzip: 0.83 kB[22m
+[33m@n8n/stores:build: [0m[34mℹ[39m [34m[ESM][39m 17 files, total: 40.52 kB
+[33m@n8n/stores:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1museRootStore.d.cts[22m[39m          [2m7.48 kB[22m [2m│ gzip: 0.93 kB[22m
+[33m@n8n/stores:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1museAgentRequestStore.d.cts[22m[39m  [2m2.45 kB[22m [2m│ gzip: 0.49 kB[22m
+[33m@n8n/stores:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mmetaTagConfig.d.cts[22m[39m         [2m0.31 kB[22m [2m│ gzip: 0.17 kB[22m
+[33m@n8n/stores:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mconstants.d.cts[22m[39m             [2m0.07 kB[22m [2m│ gzip: 0.07 kB[22m
+[33m@n8n/stores:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mindex.d.cts[22m[39m                 [2m0.07 kB[22m [2m│ gzip: 0.07 kB[22m
+[33m@n8n/stores:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mconstants2.d.cts[39m            [2m2.08 kB[22m [2m│ gzip: 0.83 kB[22m
+[33m@n8n/stores:build: [0m[34mℹ[39m [33m[CJS][39m 6 files, total: 12.45 kB
+[33m@n8n/stores:build: [0m[32m✔[39m Build complete in [32m7550ms[39m
+[33m@n8n/i18n:build: [0mcache hit, replaying logs [2mf6a2923fac12d2c1[0m
+[33m@n8n/i18n:build: [0m
+[33m@n8n/i18n:build: [0m> @n8n/i18n@2.7.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/frontend/@n8n/i18n
+[33m@n8n/i18n:build: [0m> tsdown
+[33m@n8n/i18n:build: [0m
+[33m@n8n/i18n:build: [0m[34mℹ[39m tsdown [2mv0.16.5[22m powered by rolldown [2mv1.0.0-beta.50[22m
+[33m@n8n/i18n:build: [0m[34mℹ[39m Using tsdown config: [4m/Users/tzacis/Documents/projects/n8n-fork/packages/frontend/@n8n/i18n/tsdown.config.ts[24m
+[33m@n8n/i18n:build: [0m[34mℹ[39m entry: [34msrc/index.ts, src/types.ts, src/utils.ts[39m
+[33m@n8n/i18n:build: [0m[34mℹ[39m tsconfig: [34mtsconfig.json[39m
+[33m@n8n/i18n:build: [0m[34mℹ[39m Build start
+[33m@n8n/i18n:build: [0m[34mℹ[39m Cleaning 20 files
+[33m@n8n/i18n:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mindex.cjs[22m       [2m378.66 kB[22m [2m│ gzip: 85.17 kB[22m
+[33m@n8n/i18n:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mutils.cjs[22m       [2m  0.29 kB[22m [2m│ gzip:  0.15 kB[22m
+[33m@n8n/i18n:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mtypes.cjs[22m       [2m  0.00 kB[22m [2m│ gzip:  0.02 kB[22m
+[33m@n8n/i18n:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mindex.cjs.map   [2m478.82 kB[22m [2m│ gzip: 96.23 kB[22m
+[33m@n8n/i18n:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mutils2.cjs.map  [2m  3.42 kB[22m [2m│ gzip:  1.35 kB[22m
+[33m@n8n/i18n:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mutils2.cjs      [2m  2.69 kB[22m [2m│ gzip:  1.02 kB[22m
+[33m@n8n/i18n:build: [0m[34mℹ[39m [33m[CJS][39m 6 files, total: 863.89 kB
+[33m@n8n/i18n:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mindex.mjs[22m       [2m378.27 kB[22m [2m│ gzip: 85.14 kB[22m
+[33m@n8n/i18n:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mutils.mjs[22m       [2m  0.22 kB[22m [2m│ gzip:  0.15 kB[22m
+[33m@n8n/i18n:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mtypes.mjs[22m       [2m  0.01 kB[22m [2m│ gzip:  0.03 kB[22m
+[33m@n8n/i18n:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mindex.mjs.map   [2m478.72 kB[22m [2m│ gzip: 96.16 kB[22m
+[33m@n8n/i18n:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mutils2.mjs.map  [2m  3.42 kB[22m [2m│ gzip:  1.35 kB[22m
+[33m@n8n/i18n:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mutils2.mjs      [2m  2.27 kB[22m [2m│ gzip:  0.96 kB[22m
+[33m@n8n/i18n:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mindex.d.mts[22m[39m     [2m246.31 kB[22m [2m│ gzip: 32.79 kB[22m
+[33m@n8n/i18n:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mutils.d.mts[22m[39m     [2m  0.46 kB[22m [2m│ gzip:  0.25 kB[22m
+[33m@n8n/i18n:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mtypes.d.mts[22m[39m     [2m  0.20 kB[22m [2m│ gzip:  0.14 kB[22m
+[33m@n8n/i18n:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mtypes2.d.mts[39m    [2m233.63 kB[22m [2m│ gzip: 31.71 kB[22m
+[33m@n8n/i18n:build: [0m[34mℹ[39m [34m[ESM][39m 10 files, total: 1343.51 kB
+[33m@n8n/i18n:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mindex.d.cts[22m[39m   [2m246.31 kB[22m [2m│ gzip: 32.78 kB[22m
+[33m@n8n/i18n:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mutils.d.cts[22m[39m   [2m  0.46 kB[22m [2m│ gzip:  0.25 kB[22m
+[33m@n8n/i18n:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mtypes.d.cts[22m[39m   [2m  0.20 kB[22m [2m│ gzip:  0.14 kB[22m
+[33m@n8n/i18n:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mtypes2.d.cts[39m  [2m233.63 kB[22m [2m│ gzip: 31.71 kB[22m
+[33m@n8n/i18n:build: [0m[34mℹ[39m [33m[CJS][39m 4 files, total: 480.61 kB
+[33m@n8n/i18n:build: [0m[32m✔[39m Build complete in [32m8073ms[39m
+[35m@n8n/decorators:build: [0mcache hit, replaying logs [2m18d0040e827acb02[0m
+[35m@n8n/decorators:build: [0m
+[35m@n8n/decorators:build: [0m> @n8n/decorators@1.7.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/decorators
+[35m@n8n/decorators:build: [0m> tsc -p tsconfig.build.json
+[35m@n8n/decorators:build: [0m
+[33m@n8n/backend-common:build: [0mcache hit, replaying logs [2m4f20c43ad55d723a[0m
+[33m@n8n/backend-common:build: [0m
+[33m@n8n/backend-common:build: [0m> @n8n/backend-common@1.7.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/backend-common
+[33m@n8n/backend-common:build: [0m> tsc -p tsconfig.build.json
+[33m@n8n/backend-common:build: [0m
+[32m@n8n/api-types:build: [0mcache hit, replaying logs [2m21e1eeeb9a426b4a[0m
+[32m@n8n/api-types:build: [0m
+[32m@n8n/api-types:build: [0m> @n8n/api-types@1.7.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/api-types
+[32m@n8n/api-types:build: [0m> tsc -p tsconfig.build.json
+[32m@n8n/api-types:build: [0m
+[32mn8n-core:build: [0mcache hit, replaying logs [2m8d9ec44a584d959f[0m
+[32mn8n-core:build: [0m
+[32mn8n-core:build: [0m> n8n-core@2.7.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/core
+[32mn8n-core:build: [0m> tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json
+[32mn8n-core:build: [0m
+[34mn8n-node-dev:build: [0mcache hit, replaying logs [2mb4ce912c43c7da10[0m
+[34mn8n-node-dev:build: [0m
+[34mn8n-node-dev:build: [0m> n8n-node-dev@2.7.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/node-dev
+[34mn8n-node-dev:build: [0m> tsc --noEmit
+[34mn8n-node-dev:build: [0m
+[35m@n8n/task-runner:build: [0mcache hit, replaying logs [2m8c499448075dfcc7[0m
+[35m@n8n/task-runner:build: [0m
+[35m@n8n/task-runner:build: [0m> @n8n/task-runner@2.7.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/task-runner
+[35m@n8n/task-runner:build: [0m> tsc -p ./tsconfig.build.json && tsc-alias -p tsconfig.build.json
+[35m@n8n/task-runner:build: [0m
+[35m@n8n/ai-workflow-builder:build: [0mcache hit, replaying logs [2m6eb012b0d692bba8[0m
+[35m@n8n/ai-workflow-builder:build: [0m
+[35m@n8n/ai-workflow-builder:build: [0m> @n8n/ai-workflow-builder@1.7.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/ai-workflow-builder.ee
+[35m@n8n/ai-workflow-builder:build: [0m> tsc -p ./tsconfig.build.json && tsc-alias -p tsconfig.build.json
+[35m@n8n/ai-workflow-builder:build: [0m
+[35m@n8n/rest-api-client:build: [0mcache hit, replaying logs [2mf6b5696cbe6a3e1b[0m
+[35m@n8n/rest-api-client:build: [0m
+[35m@n8n/rest-api-client:build: [0m> @n8n/rest-api-client@2.7.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/frontend/@n8n/rest-api-client
+[35m@n8n/rest-api-client:build: [0m> tsdown
+[35m@n8n/rest-api-client:build: [0m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m tsdown [2mv0.16.5[22m powered by rolldown [2mv1.0.0-beta.50[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m Using tsdown config: [4m/Users/tzacis/Documents/projects/n8n-fork/packages/frontend/@n8n/rest-api-client/tsdown.config.ts[24m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m entry: [34msrc/index.ts, src/types.ts, src/utils.ts, src/api/ai-usage.ts, src/api/api-keys.ts, src/api/breaking-changes.ts, src/api/cloudPlans.ts, src/api/communityNodes.ts, src/api/consent.ts, src/api/credentialResolvers.ts, src/api/ctas.ts, src/api/dynamic-banners.ts, src/api/eventbus.ee.ts, src/api/events.ts, src/api/execution.ts, src/api/externalSecrets.ee.ts, src/api/index.ts, src/api/ldap.ts, src/api/mfa.ts, src/api/module-settings.ts, src/api/nodeTypes.ts, src/api/npsSurvey.ts, src/api/orchestration.ts, src/api/provisioning.ts, src/api/roles.ts, src/api/secretsProvider.ee.ts, src/api/security-settings.ts, src/api/settings.ts, src/api/sso.ts, src/api/tags.ts, src/api/templates.ts, src/api/third-party-licenses.ts, src/api/ui.ts, src/api/usage.ts, src/api/users.ts, src/api/versions.ts, src/api/webhooks.ts, src/api/workflowHistory.ts, src/api/workflows.ts[39m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m tsconfig: [34mtsconfig.json[39m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m Build start
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m Cleaning 353 files
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mindex.cjs[22m                     [2m11.06 kB[22m [2m│ gzip: 2.01 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/index.cjs[22m                 [2m10.50 kB[22m [2m│ gzip: 1.88 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/users.cjs[22m                 [2m 1.26 kB[22m [2m│ gzip: 0.33 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/nodeTypes.cjs[22m             [2m 1.01 kB[22m [2m│ gzip: 0.27 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/breaking-changes.cjs[22m      [2m 0.78 kB[22m [2m│ gzip: 0.33 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/externalSecrets.ee.cjs[22m    [2m 0.77 kB[22m [2m│ gzip: 0.19 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/secretsProvider.ee.cjs[22m    [2m 0.68 kB[22m [2m│ gzip: 0.17 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/credentialResolvers.cjs[22m   [2m 0.63 kB[22m [2m│ gzip: 0.16 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mutils.cjs[22m                     [2m 0.61 kB[22m [2m│ gzip: 0.22 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/eventbus.ee.cjs[22m           [2m 0.56 kB[22m [2m│ gzip: 0.19 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/sso.cjs[22m                   [2m 0.53 kB[22m [2m│ gzip: 0.18 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/templates.cjs[22m             [2m 0.51 kB[22m [2m│ gzip: 0.18 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/consent.cjs[22m               [2m 0.50 kB[22m [2m│ gzip: 0.26 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/communityNodes.cjs[22m        [2m 0.48 kB[22m [2m│ gzip: 0.17 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/cloudPlans.cjs[22m            [2m 0.48 kB[22m [2m│ gzip: 0.18 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/usage.cjs[22m                 [2m 0.37 kB[22m [2m│ gzip: 0.17 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/ldap.cjs[22m                  [2m 0.36 kB[22m [2m│ gzip: 0.16 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/mfa.cjs[22m                   [2m 0.35 kB[22m [2m│ gzip: 0.17 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/roles.cjs[22m                 [2m 0.35 kB[22m [2m│ gzip: 0.15 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/api-keys.cjs[22m              [2m 0.35 kB[22m [2m│ gzip: 0.15 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/workflowHistory.cjs[22m       [2m 0.32 kB[22m [2m│ gzip: 0.13 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/dynamic-banners.cjs[22m       [2m 0.30 kB[22m [2m│ gzip: 0.20 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/security-settings.cjs[22m     [2m 0.26 kB[22m [2m│ gzip: 0.12 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/provisioning.cjs[22m          [2m 0.24 kB[22m [2m│ gzip: 0.12 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/versions.cjs[22m              [2m 0.20 kB[22m [2m│ gzip: 0.12 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/third-party-licenses.cjs[22m  [2m 0.19 kB[22m [2m│ gzip: 0.12 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/module-settings.cjs[22m       [2m 0.16 kB[22m [2m│ gzip: 0.11 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/orchestration.cjs[22m         [2m 0.16 kB[22m [2m│ gzip: 0.11 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/npsSurvey.cjs[22m             [2m 0.15 kB[22m [2m│ gzip: 0.10 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/ai-usage.cjs[22m              [2m 0.15 kB[22m [2m│ gzip: 0.11 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/ui.cjs[22m                    [2m 0.14 kB[22m [2m│ gzip: 0.11 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/ctas.cjs[22m                  [2m 0.14 kB[22m [2m│ gzip: 0.10 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/events.cjs[22m                [2m 0.13 kB[22m [2m│ gzip: 0.10 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/settings.cjs[22m              [2m 0.13 kB[22m [2m│ gzip: 0.09 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/webhooks.cjs[22m              [2m 0.13 kB[22m [2m│ gzip: 0.10 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/execution.cjs[22m             [2m 0.00 kB[22m [2m│ gzip: 0.02 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/tags.cjs[22m                  [2m 0.00 kB[22m [2m│ gzip: 0.02 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mapi/workflows.cjs[22m             [2m 0.00 kB[22m [2m│ gzip: 0.02 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[1mtypes.cjs[22m                     [2m 0.00 kB[22m [2m│ gzip: 0.02 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mutils2.cjs.map                [2m13.37 kB[22m [2m│ gzip: 4.31 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mutils2.cjs                    [2m 8.99 kB[22m [2m│ gzip: 2.88 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22musers.cjs.map                 [2m 8.97 kB[22m [2m│ gzip: 1.88 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mtemplates.cjs.map             [2m 6.37 kB[22m [2m│ gzip: 1.72 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mnodeTypes.cjs.map             [2m 5.75 kB[22m [2m│ gzip: 1.64 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22musers.cjs                     [2m 5.68 kB[22m [2m│ gzip: 0.88 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mnodeTypes.cjs                 [2m 4.75 kB[22m [2m│ gzip: 1.08 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mexternalSecrets.ee.cjs.map    [2m 3.05 kB[22m [2m│ gzip: 0.82 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22msso.cjs.map                   [2m 2.84 kB[22m [2m│ gzip: 0.77 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mcloudPlans.cjs.map            [2m 2.79 kB[22m [2m│ gzip: 1.01 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mexternalSecrets.ee.cjs        [2m 2.70 kB[22m [2m│ gzip: 0.53 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22msecretsProvider.ee.cjs.map    [2m 2.65 kB[22m [2m│ gzip: 0.72 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mldap.cjs.map                  [2m 2.63 kB[22m [2m│ gzip: 0.90 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22msso.cjs                       [2m 2.52 kB[22m [2m│ gzip: 0.49 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mtemplates.cjs                 [2m 2.50 kB[22m [2m│ gzip: 0.59 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mworkflowHistory.cjs.map       [2m 2.47 kB[22m [2m│ gzip: 0.81 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22meventbus.ee.cjs.map           [2m 2.33 kB[22m [2m│ gzip: 0.79 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mcredentialResolvers.cjs.map   [2m 2.30 kB[22m [2m│ gzip: 0.62 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22msecretsProvider.ee.cjs        [2m 2.15 kB[22m [2m│ gzip: 0.45 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mcommunityNodes.cjs.map        [2m 2.11 kB[22m [2m│ gzip: 0.82 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mversions.cjs.map              [2m 2.05 kB[22m [2m│ gzip: 0.78 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mcredentialResolvers.cjs       [2m 2.00 kB[22m [2m│ gzip: 0.41 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22meventbus.ee.cjs               [2m 1.94 kB[22m [2m│ gzip: 0.50 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mmfa.cjs.map                   [2m 1.88 kB[22m [2m│ gzip: 0.61 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22musage.cjs.map                 [2m 1.80 kB[22m [2m│ gzip: 0.64 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mcommunityNodes.cjs            [2m 1.76 kB[22m [2m│ gzip: 0.57 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mroles.cjs.map                 [2m 1.76 kB[22m [2m│ gzip: 0.60 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mapi-keys.cjs.map              [2m 1.75 kB[22m [2m│ gzip: 0.58 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mcloudPlans.cjs                [2m 1.69 kB[22m [2m│ gzip: 0.43 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mmfa.cjs                       [2m 1.63 kB[22m [2m│ gzip: 0.41 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mapi/breaking-changes.cjs.map  [2m 1.56 kB[22m [2m│ gzip: 0.62 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22musage.cjs                     [2m 1.52 kB[22m [2m│ gzip: 0.42 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mroles.cjs                     [2m 1.49 kB[22m [2m│ gzip: 0.41 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mldap.cjs                      [2m 1.47 kB[22m [2m│ gzip: 0.40 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mapi-keys.cjs                  [2m 1.41 kB[22m [2m│ gzip: 0.39 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mworkflowHistory.cjs           [2m 1.21 kB[22m [2m│ gzip: 0.38 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mprovisioning.cjs.map          [2m 1.08 kB[22m [2m│ gzip: 0.46 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mapi/consent.cjs.map           [2m 0.96 kB[22m [2m│ gzip: 0.45 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mapi/dynamic-banners.cjs.map   [2m 0.94 kB[22m [2m│ gzip: 0.51 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22msecurity-settings.cjs.map     [2m 0.90 kB[22m [2m│ gzip: 0.40 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mversions.cjs                  [2m 0.88 kB[22m [2m│ gzip: 0.37 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mprovisioning.cjs              [2m 0.73 kB[22m [2m│ gzip: 0.32 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mwebhooks.cjs.map              [2m 0.73 kB[22m [2m│ gzip: 0.42 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22msecurity-settings.cjs         [2m 0.71 kB[22m [2m│ gzip: 0.31 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mui.cjs.map                    [2m 0.66 kB[22m [2m│ gzip: 0.40 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mai-usage.cjs.map              [2m 0.60 kB[22m [2m│ gzip: 0.35 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mmodule-settings.cjs.map       [2m 0.56 kB[22m [2m│ gzip: 0.32 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22morchestration.cjs.map         [2m 0.56 kB[22m [2m│ gzip: 0.35 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mthird-party-licenses.cjs.map  [2m 0.55 kB[22m [2m│ gzip: 0.35 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mnpsSurvey.cjs.map             [2m 0.55 kB[22m [2m│ gzip: 0.33 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22msettings.cjs.map              [2m 0.52 kB[22m [2m│ gzip: 0.31 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mthird-party-licenses.cjs      [2m 0.47 kB[22m [2m│ gzip: 0.29 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22morchestration.cjs             [2m 0.47 kB[22m [2m│ gzip: 0.30 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mevents.cjs.map                [2m 0.46 kB[22m [2m│ gzip: 0.30 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mctas.cjs.map                  [2m 0.45 kB[22m [2m│ gzip: 0.31 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mui.cjs                        [2m 0.44 kB[22m [2m│ gzip: 0.29 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mnpsSurvey.cjs                 [2m 0.42 kB[22m [2m│ gzip: 0.28 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mai-usage.cjs                  [2m 0.42 kB[22m [2m│ gzip: 0.28 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mmodule-settings.cjs           [2m 0.41 kB[22m [2m│ gzip: 0.27 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mwebhooks.cjs                  [2m 0.39 kB[22m [2m│ gzip: 0.27 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mevents.cjs                    [2m 0.39 kB[22m [2m│ gzip: 0.27 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mctas.cjs                      [2m 0.38 kB[22m [2m│ gzip: 0.26 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22msettings.cjs                  [2m 0.37 kB[22m [2m│ gzip: 0.26 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22mapi.cjs                       [2m 0.00 kB[22m [2m│ gzip: 0.02 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m 103 files, total: 164.75 kB
+[35m@n8n/rest-api-client:build: [0m[33m[EMPTY_IMPORT_META] Warning:[0m `import.meta` may not be a valid syntax with the `cjs` output format.
+[35m@n8n/rest-api-client:build: [0m     [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m src/utils.ts:120:3 [38;5;246m][0m
+[35m@n8n/rest-api-client:build: [0m     [38;5;246m│[0m
+[35m@n8n/rest-api-client:build: [0m [38;5;246m120 │[0m [38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0mimport.meta[38;5;249m.[0m[38;5;249me[0m[38;5;249mn[0m[38;5;249mv[0m[38;5;249m.[0m[38;5;249mN[0m[38;5;249mO[0m[38;5;249mD[0m[38;5;249mE[0m[38;5;249m_[0m[38;5;249mE[0m[38;5;249mN[0m[38;5;249mV[0m[38;5;249m [0m[38;5;249m![0m[38;5;249m=[0m[38;5;249m=[0m[38;5;249m [0m[38;5;249m'[0m[38;5;249mp[0m[38;5;249mr[0m[38;5;249mo[0m[38;5;249md[0m[38;5;249mu[0m[38;5;249mc[0m[38;5;249mt[0m[38;5;249mi[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249m'[0m[38;5;249m [0m[38;5;249m&[0m[38;5;249m&[0m
+[35m@n8n/rest-api-client:build: [0m [38;5;240m    │[0m        ─────┬─────  
+[35m@n8n/rest-api-client:build: [0m [38;5;240m    │[0m             ╰─────── This `import.meta` will be replaced with an empty object (`{}`) automatically. If this is desired, you can suppress this warning by adding `transform.define: { 'import.meta': {} }`. If `import.meta` needs to be kept as-is, you need to set the output format to `esm`.
+[35m@n8n/rest-api-client:build: [0m[38;5;246m─────╯[0m
+[35m@n8n/rest-api-client:build: [0m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mindex.d.cts[22m[39m                     [2m9.76 kB[22m [2m│ gzip: 2.40 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/index.d.cts[22m[39m                 [2m9.35 kB[22m [2m│ gzip: 2.25 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/users.d.cts[22m[39m                 [2m1.39 kB[22m [2m│ gzip: 0.45 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/templates.d.cts[22m[39m             [2m1.12 kB[22m [2m│ gzip: 0.33 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/breaking-changes.d.cts[22m[39m      [2m0.77 kB[22m [2m│ gzip: 0.32 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/dynamic-banners.d.cts[22m[39m       [2m0.75 kB[22m [2m│ gzip: 0.40 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/nodeTypes.d.cts[22m[39m             [2m0.73 kB[22m [2m│ gzip: 0.26 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/consent.d.cts[22m[39m               [2m0.57 kB[22m [2m│ gzip: 0.28 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/workflowHistory.d.cts[22m[39m       [2m0.52 kB[22m [2m│ gzip: 0.19 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/externalSecrets.ee.d.cts[22m[39m    [2m0.50 kB[22m [2m│ gzip: 0.19 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/eventbus.ee.d.cts[22m[39m           [2m0.48 kB[22m [2m│ gzip: 0.21 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/secretsProvider.ee.d.cts[22m[39m    [2m0.47 kB[22m [2m│ gzip: 0.17 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/sso.d.cts[22m[39m                   [2m0.45 kB[22m [2m│ gzip: 0.20 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mutils.d.cts[22m[39m                     [2m0.43 kB[22m [2m│ gzip: 0.23 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/cloudPlans.d.cts[22m[39m            [2m0.43 kB[22m [2m│ gzip: 0.22 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/credentialResolvers.d.cts[22m[39m   [2m0.41 kB[22m [2m│ gzip: 0.15 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/ldap.d.cts[22m[39m                  [2m0.37 kB[22m [2m│ gzip: 0.18 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/communityNodes.d.cts[22m[39m        [2m0.33 kB[22m [2m│ gzip: 0.17 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/mfa.d.cts[22m[39m                   [2m0.29 kB[22m [2m│ gzip: 0.17 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/usage.d.cts[22m[39m                 [2m0.28 kB[22m [2m│ gzip: 0.16 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/versions.d.cts[22m[39m              [2m0.26 kB[22m [2m│ gzip: 0.14 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/roles.d.cts[22m[39m                 [2m0.25 kB[22m [2m│ gzip: 0.14 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/api-keys.d.cts[22m[39m              [2m0.23 kB[22m [2m│ gzip: 0.14 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/workflows.d.cts[22m[39m             [2m0.23 kB[22m [2m│ gzip: 0.13 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/provisioning.d.cts[22m[39m          [2m0.22 kB[22m [2m│ gzip: 0.12 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/security-settings.d.cts[22m[39m     [2m0.18 kB[22m [2m│ gzip: 0.12 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/third-party-licenses.d.cts[22m[39m  [2m0.13 kB[22m [2m│ gzip: 0.10 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/orchestration.d.cts[22m[39m         [2m0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/ai-usage.d.cts[22m[39m              [2m0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/ui.d.cts[22m[39m                    [2m0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/module-settings.d.cts[22m[39m       [2m0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/npsSurvey.d.cts[22m[39m             [2m0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/ctas.d.cts[22m[39m                  [2m0.11 kB[22m [2m│ gzip: 0.10 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/events.d.cts[22m[39m                [2m0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/settings.d.cts[22m[39m              [2m0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/webhooks.d.cts[22m[39m              [2m0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mtypes.d.cts[22m[39m                     [2m0.08 kB[22m [2m│ gzip: 0.08 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/tags.d.cts[22m[39m                  [2m0.06 kB[22m [2m│ gzip: 0.07 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32m[1mapi/execution.d.cts[22m[39m             [2m0.01 kB[22m [2m│ gzip: 0.03 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32musers.d.cts[39m                     [2m5.67 kB[22m [2m│ gzip: 1.28 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mtemplates.d.cts[39m                 [2m4.32 kB[22m [2m│ gzip: 1.10 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mnodeTypes.d.cts[39m                 [2m2.31 kB[22m [2m│ gzip: 0.61 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mutils2.d.cts[39m                    [2m2.25 kB[22m [2m│ gzip: 0.81 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mcloudPlans.d.cts[39m                [2m1.94 kB[22m [2m│ gzip: 0.76 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mldap.d.cts[39m                      [2m1.75 kB[22m [2m│ gzip: 0.62 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mworkflowHistory.d.cts[39m           [2m1.69 kB[22m [2m│ gzip: 0.58 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32msecretsProvider.ee.d.cts[39m        [2m1.47 kB[22m [2m│ gzip: 0.41 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mexternalSecrets.ee.d.cts[39m        [2m1.45 kB[22m [2m│ gzip: 0.41 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32msso.d.cts[39m                       [2m1.38 kB[22m [2m│ gzip: 0.45 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mversions.d.cts[39m                  [2m1.31 kB[22m [2m│ gzip: 0.51 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32meventbus.ee.d.cts[39m               [2m1.29 kB[22m [2m│ gzip: 0.42 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mcredentialResolvers.d.cts[39m       [2m1.26 kB[22m [2m│ gzip: 0.37 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mworkflows.d.cts[39m                 [2m1.25 kB[22m [2m│ gzip: 0.47 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mmfa.d.cts[39m                       [2m0.94 kB[22m [2m│ gzip: 0.37 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mapi-keys.d.cts[39m                  [2m0.92 kB[22m [2m│ gzip: 0.36 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mcommunityNodes.d.cts[39m            [2m0.91 kB[22m [2m│ gzip: 0.36 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32musage.d.cts[39m                     [2m0.91 kB[22m [2m│ gzip: 0.36 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mroles.d.cts[39m                     [2m0.87 kB[22m [2m│ gzip: 0.34 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mprovisioning.d.cts[39m              [2m0.68 kB[22m [2m│ gzip: 0.30 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32msecurity-settings.d.cts[39m         [2m0.53 kB[22m [2m│ gzip: 0.25 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mwebhooks.d.cts[39m                  [2m0.47 kB[22m [2m│ gzip: 0.28 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mui.d.cts[39m                        [2m0.36 kB[22m [2m│ gzip: 0.25 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mai-usage.d.cts[39m                  [2m0.35 kB[22m [2m│ gzip: 0.23 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mmodule-settings.d.cts[39m           [2m0.34 kB[22m [2m│ gzip: 0.22 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mnpsSurvey.d.cts[39m                 [2m0.33 kB[22m [2m│ gzip: 0.22 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32msettings.d.cts[39m                  [2m0.30 kB[22m [2m│ gzip: 0.20 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mthird-party-licenses.d.cts[39m      [2m0.28 kB[22m [2m│ gzip: 0.20 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32morchestration.d.cts[39m             [2m0.27 kB[22m [2m│ gzip: 0.20 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mctas.d.cts[39m                      [2m0.25 kB[22m [2m│ gzip: 0.19 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mevents.d.cts[39m                    [2m0.24 kB[22m [2m│ gzip: 0.18 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mtags.d.cts[39m                      [2m0.21 kB[22m [2m│ gzip: 0.16 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mtypes2.d.cts[39m                    [2m0.18 kB[22m [2m│ gzip: 0.15 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m [2mdist/[22m[32mindex2.d.cts[39m                    [2m0.01 kB[22m [2m│ gzip: 0.03 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [33m[CJS][39m 73 files, total: 70.77 kB
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mindex.mjs[22m                       [2m 7.36 kB[22m [2m│ gzip: 1.89 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/index.mjs[22m                   [2m 7.01 kB[22m [2m│ gzip: 1.74 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/users.mjs[22m                   [2m 0.89 kB[22m [2m│ gzip: 0.34 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/nodeTypes.mjs[22m               [2m 0.73 kB[22m [2m│ gzip: 0.27 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/breaking-changes.mjs[22m        [2m 0.69 kB[22m [2m│ gzip: 0.32 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/externalSecrets.ee.mjs[22m      [2m 0.50 kB[22m [2m│ gzip: 0.19 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/secretsProvider.ee.mjs[22m      [2m 0.47 kB[22m [2m│ gzip: 0.17 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/consent.mjs[22m                 [2m 0.44 kB[22m [2m│ gzip: 0.24 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/credentialResolvers.mjs[22m     [2m 0.42 kB[22m [2m│ gzip: 0.16 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mutils.mjs[22m                       [2m 0.41 kB[22m [2m│ gzip: 0.23 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/eventbus.ee.mjs[22m             [2m 0.40 kB[22m [2m│ gzip: 0.19 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/sso.mjs[22m                     [2m 0.38 kB[22m [2m│ gzip: 0.18 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/templates.mjs[22m               [2m 0.35 kB[22m [2m│ gzip: 0.17 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/communityNodes.mjs[22m          [2m 0.33 kB[22m [2m│ gzip: 0.17 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/cloudPlans.mjs[22m              [2m 0.33 kB[22m [2m│ gzip: 0.18 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/usage.mjs[22m                   [2m 0.28 kB[22m [2m│ gzip: 0.16 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/ldap.mjs[22m                    [2m 0.27 kB[22m [2m│ gzip: 0.16 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/dynamic-banners.mjs[22m         [2m 0.27 kB[22m [2m│ gzip: 0.19 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/roles.mjs[22m                   [2m 0.26 kB[22m [2m│ gzip: 0.15 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/mfa.mjs[22m                     [2m 0.25 kB[22m [2m│ gzip: 0.16 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/api-keys.mjs[22m                [2m 0.24 kB[22m [2m│ gzip: 0.14 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/workflowHistory.mjs[22m         [2m 0.22 kB[22m [2m│ gzip: 0.13 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/security-settings.mjs[22m       [2m 0.18 kB[22m [2m│ gzip: 0.12 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/provisioning.mjs[22m            [2m 0.18 kB[22m [2m│ gzip: 0.11 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/versions.mjs[22m                [2m 0.15 kB[22m [2m│ gzip: 0.12 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/third-party-licenses.mjs[22m    [2m 0.13 kB[22m [2m│ gzip: 0.10 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/orchestration.mjs[22m           [2m 0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/ai-usage.mjs[22m                [2m 0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/ui.mjs[22m                      [2m 0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/module-settings.mjs[22m         [2m 0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/npsSurvey.mjs[22m               [2m 0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/ctas.mjs[22m                    [2m 0.11 kB[22m [2m│ gzip: 0.10 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/events.mjs[22m                  [2m 0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/settings.mjs[22m                [2m 0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/webhooks.mjs[22m                [2m 0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/execution.mjs[22m               [2m 0.01 kB[22m [2m│ gzip: 0.03 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/tags.mjs[22m                    [2m 0.01 kB[22m [2m│ gzip: 0.03 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mapi/workflows.mjs[22m               [2m 0.01 kB[22m [2m│ gzip: 0.03 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[1mtypes.mjs[22m                       [2m 0.01 kB[22m [2m│ gzip: 0.03 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mutils2.mjs.map                  [2m13.31 kB[22m [2m│ gzip: 4.30 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22musers.mjs.map                   [2m 8.93 kB[22m [2m│ gzip: 1.87 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mutils2.mjs                      [2m 6.66 kB[22m [2m│ gzip: 2.38 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mtemplates.mjs.map               [2m 6.35 kB[22m [2m│ gzip: 1.71 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mnodeTypes.mjs.map               [2m 5.72 kB[22m [2m│ gzip: 1.63 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22musers.mjs                       [2m 3.26 kB[22m [2m│ gzip: 0.76 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mnodeTypes.mjs                   [2m 3.18 kB[22m [2m│ gzip: 0.97 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mexternalSecrets.ee.mjs.map      [2m 3.03 kB[22m [2m│ gzip: 0.82 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22msso.mjs.map                     [2m 2.81 kB[22m [2m│ gzip: 0.76 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mcloudPlans.mjs.map              [2m 2.77 kB[22m [2m│ gzip: 1.00 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22msecretsProvider.ee.mjs.map      [2m 2.62 kB[22m [2m│ gzip: 0.72 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mldap.mjs.map                    [2m 2.61 kB[22m [2m│ gzip: 0.89 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mworkflowHistory.mjs.map         [2m 2.45 kB[22m [2m│ gzip: 0.80 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22meventbus.ee.mjs.map             [2m 2.31 kB[22m [2m│ gzip: 0.79 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mcredentialResolvers.mjs.map     [2m 2.27 kB[22m [2m│ gzip: 0.62 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mcommunityNodes.mjs.map          [2m 2.04 kB[22m [2m│ gzip: 0.80 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mversions.mjs.map                [2m 1.99 kB[22m [2m│ gzip: 0.76 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mmfa.mjs.map                     [2m 1.85 kB[22m [2m│ gzip: 0.61 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22musage.mjs.map                   [2m 1.77 kB[22m [2m│ gzip: 0.63 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mroles.mjs.map                   [2m 1.73 kB[22m [2m│ gzip: 0.60 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mapi-keys.mjs.map                [2m 1.73 kB[22m [2m│ gzip: 0.58 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mexternalSecrets.ee.mjs          [2m 1.69 kB[22m [2m│ gzip: 0.45 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mtemplates.mjs                   [2m 1.66 kB[22m [2m│ gzip: 0.51 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mapi/breaking-changes.mjs.map    [2m 1.53 kB[22m [2m│ gzip: 0.60 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22msso.mjs                         [2m 1.46 kB[22m [2m│ gzip: 0.39 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22msecretsProvider.ee.mjs          [2m 1.36 kB[22m [2m│ gzip: 0.37 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mcredentialResolvers.mjs         [2m 1.25 kB[22m [2m│ gzip: 0.34 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22meventbus.ee.mjs                 [2m 1.20 kB[22m [2m│ gzip: 0.42 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mcommunityNodes.mjs              [2m 1.17 kB[22m [2m│ gzip: 0.50 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mprovisioning.mjs.map            [2m 1.05 kB[22m [2m│ gzip: 0.46 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mcloudPlans.mjs                  [2m 0.97 kB[22m [2m│ gzip: 0.36 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mmfa.mjs                         [2m 0.95 kB[22m [2m│ gzip: 0.33 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mapi/consent.mjs.map             [2m 0.94 kB[22m [2m│ gzip: 0.45 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mapi/dynamic-banners.mjs.map     [2m 0.94 kB[22m [2m│ gzip: 0.50 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22musage.mjs                       [2m 0.92 kB[22m [2m│ gzip: 0.34 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mroles.mjs                       [2m 0.90 kB[22m [2m│ gzip: 0.34 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22msecurity-settings.mjs.map       [2m 0.88 kB[22m [2m│ gzip: 0.40 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mldap.mjs                        [2m 0.88 kB[22m [2m│ gzip: 0.33 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mworkflowHistory.mjs             [2m 0.84 kB[22m [2m│ gzip: 0.31 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mapi-keys.mjs                    [2m 0.83 kB[22m [2m│ gzip: 0.31 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mwebhooks.mjs.map                [2m 0.71 kB[22m [2m│ gzip: 0.41 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mui.mjs.map                      [2m 0.64 kB[22m [2m│ gzip: 0.40 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mversions.mjs                    [2m 0.62 kB[22m [2m│ gzip: 0.30 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mai-usage.mjs.map                [2m 0.58 kB[22m [2m│ gzip: 0.35 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mthird-party-licenses.mjs.map    [2m 0.54 kB[22m [2m│ gzip: 0.35 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mmodule-settings.mjs.map         [2m 0.54 kB[22m [2m│ gzip: 0.32 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22morchestration.mjs.map           [2m 0.54 kB[22m [2m│ gzip: 0.35 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mnpsSurvey.mjs.map               [2m 0.53 kB[22m [2m│ gzip: 0.33 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22msettings.mjs.map                [2m 0.50 kB[22m [2m│ gzip: 0.31 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mprovisioning.mjs                [2m 0.50 kB[22m [2m│ gzip: 0.25 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22msecurity-settings.mjs           [2m 0.48 kB[22m [2m│ gzip: 0.24 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mctas.mjs.map                    [2m 0.45 kB[22m [2m│ gzip: 0.31 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mevents.mjs.map                  [2m 0.44 kB[22m [2m│ gzip: 0.30 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22morchestration.mjs               [2m 0.36 kB[22m [2m│ gzip: 0.24 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mthird-party-licenses.mjs        [2m 0.35 kB[22m [2m│ gzip: 0.24 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mui.mjs                          [2m 0.33 kB[22m [2m│ gzip: 0.23 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mnpsSurvey.mjs                   [2m 0.32 kB[22m [2m│ gzip: 0.22 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mai-usage.mjs                    [2m 0.31 kB[22m [2m│ gzip: 0.22 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mmodule-settings.mjs             [2m 0.30 kB[22m [2m│ gzip: 0.20 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mwebhooks.mjs                    [2m 0.29 kB[22m [2m│ gzip: 0.21 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mevents.mjs                      [2m 0.29 kB[22m [2m│ gzip: 0.21 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22msettings.mjs                    [2m 0.27 kB[22m [2m│ gzip: 0.20 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mctas.mjs                        [2m 0.26 kB[22m [2m│ gzip: 0.20 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22mapi.mjs                         [2m 0.01 kB[22m [2m│ gzip: 0.03 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mindex.d.mts[22m[39m                     [2m 9.76 kB[22m [2m│ gzip: 2.40 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/index.d.mts[22m[39m                 [2m 9.35 kB[22m [2m│ gzip: 2.25 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/users.d.mts[22m[39m                 [2m 1.39 kB[22m [2m│ gzip: 0.45 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/templates.d.mts[22m[39m             [2m 1.12 kB[22m [2m│ gzip: 0.33 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/breaking-changes.d.mts[22m[39m      [2m 0.77 kB[22m [2m│ gzip: 0.32 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/dynamic-banners.d.mts[22m[39m       [2m 0.75 kB[22m [2m│ gzip: 0.40 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/nodeTypes.d.mts[22m[39m             [2m 0.73 kB[22m [2m│ gzip: 0.26 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/consent.d.mts[22m[39m               [2m 0.57 kB[22m [2m│ gzip: 0.28 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/workflowHistory.d.mts[22m[39m       [2m 0.52 kB[22m [2m│ gzip: 0.19 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/externalSecrets.ee.d.mts[22m[39m    [2m 0.50 kB[22m [2m│ gzip: 0.19 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/eventbus.ee.d.mts[22m[39m           [2m 0.48 kB[22m [2m│ gzip: 0.21 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/secretsProvider.ee.d.mts[22m[39m    [2m 0.47 kB[22m [2m│ gzip: 0.17 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/sso.d.mts[22m[39m                   [2m 0.45 kB[22m [2m│ gzip: 0.20 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mutils.d.mts[22m[39m                     [2m 0.43 kB[22m [2m│ gzip: 0.23 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/cloudPlans.d.mts[22m[39m            [2m 0.43 kB[22m [2m│ gzip: 0.22 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/credentialResolvers.d.mts[22m[39m   [2m 0.41 kB[22m [2m│ gzip: 0.15 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/ldap.d.mts[22m[39m                  [2m 0.37 kB[22m [2m│ gzip: 0.18 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/communityNodes.d.mts[22m[39m        [2m 0.33 kB[22m [2m│ gzip: 0.17 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/mfa.d.mts[22m[39m                   [2m 0.29 kB[22m [2m│ gzip: 0.17 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/usage.d.mts[22m[39m                 [2m 0.28 kB[22m [2m│ gzip: 0.16 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/versions.d.mts[22m[39m              [2m 0.26 kB[22m [2m│ gzip: 0.14 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/roles.d.mts[22m[39m                 [2m 0.25 kB[22m [2m│ gzip: 0.14 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/api-keys.d.mts[22m[39m              [2m 0.23 kB[22m [2m│ gzip: 0.14 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/workflows.d.mts[22m[39m             [2m 0.23 kB[22m [2m│ gzip: 0.13 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/provisioning.d.mts[22m[39m          [2m 0.22 kB[22m [2m│ gzip: 0.12 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/security-settings.d.mts[22m[39m     [2m 0.18 kB[22m [2m│ gzip: 0.12 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/third-party-licenses.d.mts[22m[39m  [2m 0.13 kB[22m [2m│ gzip: 0.10 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/orchestration.d.mts[22m[39m         [2m 0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/ai-usage.d.mts[22m[39m              [2m 0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/ui.d.mts[22m[39m                    [2m 0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/module-settings.d.mts[22m[39m       [2m 0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/npsSurvey.d.mts[22m[39m             [2m 0.12 kB[22m [2m│ gzip: 0.10 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/ctas.d.mts[22m[39m                  [2m 0.11 kB[22m [2m│ gzip: 0.10 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/events.d.mts[22m[39m                [2m 0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/settings.d.mts[22m[39m              [2m 0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/webhooks.d.mts[22m[39m              [2m 0.10 kB[22m [2m│ gzip: 0.09 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mtypes.d.mts[22m[39m                     [2m 0.08 kB[22m [2m│ gzip: 0.08 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/tags.d.mts[22m[39m                  [2m 0.06 kB[22m [2m│ gzip: 0.07 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32m[1mapi/execution.d.mts[22m[39m             [2m 0.01 kB[22m [2m│ gzip: 0.03 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32musers.d.mts[39m                     [2m 5.67 kB[22m [2m│ gzip: 1.28 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mtemplates.d.mts[39m                 [2m 4.32 kB[22m [2m│ gzip: 1.09 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mnodeTypes.d.mts[39m                 [2m 2.31 kB[22m [2m│ gzip: 0.62 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mutils2.d.mts[39m                    [2m 2.25 kB[22m [2m│ gzip: 0.81 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mcloudPlans.d.mts[39m                [2m 1.94 kB[22m [2m│ gzip: 0.76 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mldap.d.mts[39m                      [2m 1.75 kB[22m [2m│ gzip: 0.62 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mworkflowHistory.d.mts[39m           [2m 1.69 kB[22m [2m│ gzip: 0.58 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32msecretsProvider.ee.d.mts[39m        [2m 1.47 kB[22m [2m│ gzip: 0.42 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mexternalSecrets.ee.d.mts[39m        [2m 1.45 kB[22m [2m│ gzip: 0.41 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32msso.d.mts[39m                       [2m 1.38 kB[22m [2m│ gzip: 0.45 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mversions.d.mts[39m                  [2m 1.31 kB[22m [2m│ gzip: 0.51 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32meventbus.ee.d.mts[39m               [2m 1.29 kB[22m [2m│ gzip: 0.42 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mcredentialResolvers.d.mts[39m       [2m 1.26 kB[22m [2m│ gzip: 0.37 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mworkflows.d.mts[39m                 [2m 1.25 kB[22m [2m│ gzip: 0.47 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mmfa.d.mts[39m                       [2m 0.94 kB[22m [2m│ gzip: 0.37 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mapi-keys.d.mts[39m                  [2m 0.92 kB[22m [2m│ gzip: 0.36 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mcommunityNodes.d.mts[39m            [2m 0.91 kB[22m [2m│ gzip: 0.36 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32musage.d.mts[39m                     [2m 0.91 kB[22m [2m│ gzip: 0.36 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mroles.d.mts[39m                     [2m 0.87 kB[22m [2m│ gzip: 0.34 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mprovisioning.d.mts[39m              [2m 0.68 kB[22m [2m│ gzip: 0.30 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32msecurity-settings.d.mts[39m         [2m 0.53 kB[22m [2m│ gzip: 0.25 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mwebhooks.d.mts[39m                  [2m 0.47 kB[22m [2m│ gzip: 0.28 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mui.d.mts[39m                        [2m 0.36 kB[22m [2m│ gzip: 0.25 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mai-usage.d.mts[39m                  [2m 0.35 kB[22m [2m│ gzip: 0.23 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mmodule-settings.d.mts[39m           [2m 0.34 kB[22m [2m│ gzip: 0.22 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mnpsSurvey.d.mts[39m                 [2m 0.33 kB[22m [2m│ gzip: 0.22 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32msettings.d.mts[39m                  [2m 0.30 kB[22m [2m│ gzip: 0.21 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mthird-party-licenses.d.mts[39m      [2m 0.28 kB[22m [2m│ gzip: 0.20 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32morchestration.d.mts[39m             [2m 0.27 kB[22m [2m│ gzip: 0.20 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mctas.d.mts[39m                      [2m 0.25 kB[22m [2m│ gzip: 0.19 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mevents.d.mts[39m                    [2m 0.24 kB[22m [2m│ gzip: 0.18 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mtags.d.mts[39m                      [2m 0.21 kB[22m [2m│ gzip: 0.16 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mtypes2.d.mts[39m                    [2m 0.18 kB[22m [2m│ gzip: 0.15 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m [2mdist/[22m[32mindex2.d.mts[39m                    [2m 0.01 kB[22m [2m│ gzip: 0.03 kB[22m
+[35m@n8n/rest-api-client:build: [0m[34mℹ[39m [34m[ESM][39m 176 files, total: 205.90 kB
+[35m@n8n/rest-api-client:build: [0m[32m✔[39m Build complete in [32m8340ms[39m
+[36m@n8n/db:build: [0mcache hit, replaying logs [2m06c4be3f868ca8b5[0m
+[36m@n8n/db:build: [0m
+[36m@n8n/db:build: [0m> @n8n/db@1.7.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/db
+[36m@n8n/db:build: [0m> tsc -p tsconfig.build.json
+[36m@n8n/db:build: [0m
+[34m@n8n/backend-test-utils:build: [0mcache hit, replaying logs [2m6ea55aee13a680d9[0m
+[34m@n8n/backend-test-utils:build: [0m
+[34m@n8n/backend-test-utils:build: [0m> @n8n/backend-test-utils@1.7.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/backend-test-utils
+[34m@n8n/backend-test-utils:build: [0m> tsc -p tsconfig.build.json
+[34m@n8n/backend-test-utils:build: [0m
+[36mn8n-nodes-base:build: [0mcache hit, replaying logs [2m641a49adba666bf8[0m
+[36mn8n-nodes-base:build: [0m
+[36mn8n-nodes-base:build: [0m> n8n-nodes-base@2.7.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/nodes-base
+[36mn8n-nodes-base:build: [0m> tsc --build tsconfig.build.cjs.json && pnpm copy-nodes-json && tsc-alias -p tsconfig.build.cjs.json && pnpm n8n-copy-static-files && pnpm n8n-generate-translations && pnpm n8n-generate-metadata
+[36mn8n-nodes-base:build: [0m
+[36mn8n-nodes-base:build: [0m
+[36mn8n-nodes-base:build: [0m> n8n-nodes-base@2.7.0 copy-nodes-json /Users/tzacis/Documents/projects/n8n-fork/packages/nodes-base
+[36mn8n-nodes-base:build: [0m> node scripts/copy-nodes-json.js .
+[36mn8n-nodes-base:build: [0m
+[36mn8n-nodes-base:build: [0mDefault locale set to: [35men[0m
+[36mn8n-nodes-base:build: [0mNo translation required - Skipping translations build...
+[33m@n8n/n8n-nodes-langchain:build: [0mcache hit, replaying logs [2mf0b697f7a7eaa599[0m
+[33m@n8n/n8n-nodes-langchain:build: [0m
+[33m@n8n/n8n-nodes-langchain:build: [0m> @n8n/n8n-nodes-langchain@2.7.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/nodes-langchain
+[33m@n8n/n8n-nodes-langchain:build: [0m> tsc --build tsconfig.build.json && pnpm copy-nodes-json && tsc-alias -p tsconfig.build.json && pnpm copy-tokenizer-json && pnpm n8n-copy-static-files && pnpm n8n-generate-metadata
+[33m@n8n/n8n-nodes-langchain:build: [0m
+[33m@n8n/n8n-nodes-langchain:build: [0m
+[33m@n8n/n8n-nodes-langchain:build: [0m> @n8n/n8n-nodes-langchain@2.7.0 copy-nodes-json /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/nodes-langchain
+[33m@n8n/n8n-nodes-langchain:build: [0m> node ../../nodes-base/scripts/copy-nodes-json.js .
+[33m@n8n/n8n-nodes-langchain:build: [0m
+[33m@n8n/n8n-nodes-langchain:build: [0m
+[33m@n8n/n8n-nodes-langchain:build: [0m> @n8n/n8n-nodes-langchain@2.7.0 copy-tokenizer-json /Users/tzacis/Documents/projects/n8n-fork/packages/@n8n/nodes-langchain
+[33m@n8n/n8n-nodes-langchain:build: [0m> node scripts/copy-tokenizer-json.js .
+[33m@n8n/n8n-nodes-langchain:build: [0m
+[33m@n8n/n8n-nodes-langchain:build: [0mCopied: utils/tokenizer/cl100k_base.json -> dist/utils/tokenizer/cl100k_base.json
+[33m@n8n/n8n-nodes-langchain:build: [0mCopied: utils/tokenizer/o200k_base.json -> dist/utils/tokenizer/o200k_base.json
+[36mn8n:build: [0mcache hit, replaying logs [2me84379c4a31d13fc[0m
+[36mn8n:build: [0m
+[36mn8n:build: [0m> n8n@2.7.0 build /Users/tzacis/Documents/projects/n8n-fork/packages/cli
+[36mn8n:build: [0m> tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && pnpm run build:data
+[36mn8n:build: [0m
+[36mn8n:build: [0m
+[36mn8n:build: [0m> n8n@2.7.0 build:data /Users/tzacis/Documents/projects/n8n-fork/packages/cli
+[36mn8n:build: [0m> node scripts/build.mjs
+[36mn8n:build: [0m
+
+[1m  Tasks:    [32m[1m39 successful[0m, 39 total[0m
+[1m Cached:    [1m39 cached[0m, 39 total[0m
+[1m   Time:    [1m1m19.573s[0m [1m[38;2;18;45;128m>[0m[0;1m[1m[38;2;4;45;162m>[0m[0;1m[1m[38;2;1;45;194m>[0m[0;1m[1m[38;2;6;45;221m [0m[0;1m[1m[38;2;21;45;241mF[0m[0;1m[1m[38;2;44;45;252mU[0m[0;1m[1m[38;2;73;45;254mL[0m[0;1m[1m[38;2;106;45;247mL[0m[0;1m[1m[38;2;141;45;230m [0m[0;1m[1m[38;2;175;45;206mT[0m[0;1m[1m[38;2;205;45;176mU[0m[0;1m[1m[38;2;229;45;142mR[0m[0;1m[1m[38;2;246;45;107mB[0m[0;1m[1m[38;2;254;45;74mO[0m[0;1m[0m[0m
+[1mSummary:    /Users/tzacis/Documents/projects/n8n-fork/.turbo/runs/399sqyBjarAuSfl3VTM3oSxvjyz.json[0m
+
+INFO: Skipping license generation (N8N_SKIP_LICENSES=true)
+✅ pnpm install and build completed
+✅ Package build completed in 1m 28s
+-----------------------------------------------
+INFO: Performing pre-deploy cleanup on package.json files...
+$ cd /Users/tzacis/Documents/projects/n8n-fork && find . -name "package.json" -not -path "./node_modules/*" -not -path "*/node_modules/*" -not -path "./compiled/*" -type f
+./.backup-config/package.json
+./package.json
+./packages/core/package.json
+./packages/frontend/editor-ui/package.json
+./packages/frontend/@n8n/storybook/package.json
+./packages/frontend/@n8n/composables/package.json
+./packages/frontend/@n8n/chat/package.json
+./packages/frontend/@n8n/stores/package.json
+./packages/frontend/@n8n/rest-api-client/package.json
+./packages/frontend/@n8n/i18n/package.json
+./packages/frontend/@n8n/design-system/package.json
+./packages/cli/package.json
+./packages/extensions/insights/package.json
+./packages/nodes-base/package.json
+./packages/testing/playwright/package.json
+./packages/testing/containers/package.json
+./packages/workflow/package.json
+./packages/@n8n/benchmark/package.json
+./packages/@n8n/backend-test-utils/package.json
+./packages/@n8n/crdt/package.json
+./packages/@n8n/backend-common/package.json
+./packages/@n8n/di/package.json
+./packages/@n8n/imap/package.json
+./packages/@n8n/config/package.json
+./packages/@n8n/decorators/package.json
+./packages/@n8n/nodes-langchain/package.json
+./packages/@n8n/codemirror-lang-html/package.json
+./packages/@n8n/constants/package.json
+./packages/@n8n/ai-workflow-builder.ee/package.json
+./packages/@n8n/node-cli/dist/template/templates/programmatic/example/template/package.json
+./packages/@n8n/node-cli/dist/template/templates/declarative/github-issues/template/package.json
+./packages/@n8n/node-cli/dist/template/templates/declarative/custom/template/package.json
+./packages/@n8n/node-cli/package.json
+./packages/@n8n/node-cli/src/template/templates/programmatic/example/template/package.json
+./packages/@n8n/node-cli/src/template/templates/declarative/github-issues/template/package.json
+./packages/@n8n/node-cli/src/template/templates/declarative/custom/template/package.json
+./packages/@n8n/syslog-client/package.json
+./packages/@n8n/vitest-config/package.json
+./packages/@n8n/scan-community-package/package.json
+./packages/@n8n/json-schema-to-zod/dist/esm/package.json
+./packages/@n8n/json-schema-to-zod/dist/cjs/package.json
+./packages/@n8n/json-schema-to-zod/package.json
+./packages/@n8n/codemirror-lang-sql/package.json
+./packages/@n8n/utils/package.json
+./packages/@n8n/permissions/package.json
+./packages/@n8n/eslint-plugin-community-nodes/package.json
+./packages/@n8n/stylelint-config/package.json
+./packages/@n8n/eslint-config/package.json
+./packages/@n8n/task-runner/package.json
+./packages/@n8n/codemirror-lang/package.json
+./packages/@n8n/api-types/package.json
+./packages/@n8n/client-oauth2/package.json
+./packages/@n8n/db/package.json
+./packages/@n8n/typescript-config/package.json
+./packages/@n8n/create-node/package.json
+./packages/@n8n/errors/package.json
+./packages/@n8n/extension-sdk/package.json
+./packages/node-dev/package.json
+./.github/scripts/package.json
+$ cd /Users/tzacis/Documents/projects/n8n-fork && node .github/scripts/trim-fe-packageJson.js
+INFO: Performing selective patch cleanup...
+✅ Kept backend patches: pdfjs-dist, pkce-challenge, bull
+Removed FE/dev patches that are not in the list of backend patches to keep: pdfjs-dist, pkce-challenge, bull
+INFO: Creating pruned production deployment in '/Users/tzacis/Documents/projects/n8n-fork/compiled'...
+$ cd /Users/tzacis/Documents/projects/n8n-fork && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=n8n --prod --legacy deploy --no-optional ./compiled
+(node:51888) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `pnpm --trace-warnings ...` to show where the warning was created)
+(node:51912) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `pnpm --trace-warnings ...` to show where the warning was created)
+[43m[30m WARN [39m[49m Shared workspace lockfile detected but configuration forces legacy deploy implementation.
+packages/cli                             | [43m[30m WARN [39m[49m [31mdeprecated[39m infisical-node@1.3.0
+.                                        | [43m[30m WARN [39m[49m [31mdeprecated[39m supertest@7.1.1
+packages/frontend/@n8n/i18n              | [43m[30m WARN [39m[49m [31mdeprecated[39m vue-i18n@11.1.10
+packages/nodes-base                      | [43m[30m WARN [39m[49m [31mdeprecated[39m gm@1.25.1
+[43m[30m WARN [39m[49m [31m32 deprecated subdependencies found:[39m @aws-sdk/protocol-http@3.374.0, @aws-sdk/signature-v4@3.374.0, @npmcli/move-file@1.1.2, @otplib/plugin-crypto@12.0.1, @otplib/plugin-thirty-two@12.0.1, @otplib/preset-default@12.0.1, abab@2.0.6, are-we-there-yet@3.0.1, bson@6.10.0, debuglog@1.0.1, domexception@4.0.0, gauge@4.0.4, glob@7.2.3, glob@8.1.0, inflight@1.0.6, lodash.get@4.4.2, mailsplit@5.4.0, node-domexception@1.0.0, npmlog@6.0.2, osenv@0.1.5, q@2.0.3, read-installed@4.0.3, read-package-json@2.1.2, readdir-scoped-modules@1.1.0, rimraf@2.6.3, rimraf@3.0.2, sourcemap-codec@1.4.8, superagent@10.2.1, tar@7.5.6, whatwg-encoding@2.0.0, whatwg-encoding@3.1.1, yaeti@0.0.6
+[43m[30m WARN [39m[49m Issues with peer dependencies found
+[0mpackages/@n8n/codemirror-lang-sql[0m
+└─┬ @n8n/codemirror-lang [90m0.4.0[39m
+  ├── [93m✕ unmet peer[39m @codemirror/language@catalog:: found 6.12.1
+  ├── [93m✕ unmet peer[39m @lezer/highlight@catalog:: found 1.2.3
+  └── [93m✕ unmet peer[39m @lezer/lr@catalog:: found 1.4.5
+
+[0mpackages/@n8n/crdt[0m
+└─┬ @n8n/vitest-config [90m1.6.0[39m
+  ├── [31m✕ missing peer[39m vite@catalog:
+  └── [93m✕ unmet peer[39m vitest@catalog:: found 3.1.3
+Peer dependencies that should be installed:
+  vite@catalog:
+
+[0mpackages/@n8n/decorators[0m
+└─┬ @n8n/vitest-config [90m1.6.0[39m
+  ├── [31m✕ missing peer[39m vite@catalog:
+  └── [93m✕ unmet peer[39m vitest@catalog:: found 3.1.3
+Peer dependencies that should be installed:
+  vite@catalog:
+
+[0mpackages/@n8n/eslint-config[0m
+└─┬ @n8n/vitest-config [90m1.6.0[39m
+  ├── [31m✕ missing peer[39m vite@catalog:
+  └── [93m✕ unmet peer[39m vitest@catalog:: found 3.1.3
+Peer dependencies that should be installed:
+  vite@catalog:
+
+[0mpackages/@n8n/eslint-plugin-community-nodes[0m
+└─┬ @n8n/vitest-config [90m1.6.0[39m
+  ├── [31m✕ missing peer[39m vite@catalog:
+  └── [93m✕ unmet peer[39m vitest@catalog:: found 3.1.3
+Peer dependencies that should be installed:
+  vite@catalog:
+
+[0mpackages/@n8n/extension-sdk[0m
+└─┬ @vitejs/plugin-vue [90m5.2.4[39m
+  └── [93m✕ unmet peer[39m vite@"^5.0.0 || ^6.0.0": found 7.3.1
+
+[0mpackages/@n8n/imap[0m
+├─┬ @n8n/vitest-config [90m1.6.0[39m
+│ ├── [31m✕ missing peer[39m vite@catalog:
+│ └── [31m✕ missing peer[39m vitest@catalog:
+└─┬ vitest-mock-extended [90m3.1.0[39m
+  └── [31m✕ missing peer[39m vitest@>=3.0.0
+[31m✕ Conflicting peer dependencies:[39m
+[31m  vitest[39m
+Peer dependencies that should be installed:
+  vite@catalog:
+
+[0mpackages/@n8n/node-cli[0m
+├─┬ @n8n/vitest-config [90m1.6.0[39m
+│ ├── [31m✕ missing peer[39m vite@catalog:
+│ └── [93m✕ unmet peer[39m vitest@catalog:: found 3.1.3
+└─┬ eslint-plugin-n8n-nodes-base [90m1.16.5[39m
+  └─┬ @typescript-eslint/utils [90m6.21.0[39m
+    └── [93m✕ unmet peer[39m eslint@"^7.0.0 || ^8.0.0": found 9.29.0
+Peer dependencies that should be installed:
+  vite@catalog:
+
+[0mpackages/@n8n/nodes-langchain[0m
+├─┬ @getzep/zep-cloud [90m1.0.6[39m
+│ ├── [93m✕ unmet peer[39m langchain@~0.1.19: found 1.2.3
+│ └── [93m✕ unmet peer[39m @langchain/core@~0.1.29: found 1.1.8
+├─┬ @langchain/google-genai [90m2.1.10[39m
+│ └── [93m✕ unmet peer[39m @langchain/core@1.1.15: found 1.1.8
+├─┬ @langchain/google-vertexai [90m2.1.10[39m
+│ └─┬ @langchain/google-gauth [90m2.1.10[39m
+│   └─┬ @langchain/google-common [90m2.1.10[39m
+│     └── [93m✕ unmet peer[39m @langchain/core@1.1.15: found 1.1.8
+└─┬ @browserbasehq/stagehand [90m1.9.0[39m
+  ├── [93m✕ unmet peer[39m dotenv@^16.4.5: found 17.2.3
+  └── [93m✕ unmet peer[39m openai@^4.62.1: found 6.9.1
+
+[0mpackages/@n8n/utils[0m
+└─┬ @n8n/vitest-config [90m1.6.0[39m
+  ├── [93m✕ unmet peer[39m vite@catalog:: found 7.3.1
+  └── [93m✕ unmet peer[39m vitest@catalog:: found 3.1.3
+
+[0mpackages/cli[0m
+├─┬ @modelcontextprotocol/sdk [90m1.25.2[39m
+│ └─┬ @hono/node-server [90m1.19.8[39m
+│   └── [31m✕ missing peer[39m hono@^4
+├─┬ @n8n/n8n-nodes-langchain [90m2.7.0[39m
+│ ├─┬ @modelcontextprotocol/sdk [90m1.25.2[39m
+│ │ └── [31m✕ missing peer[39m hono@^4
+│ ├─┬ @microsoft/agents-a365-tooling [90m0.1.0-preview.64[39m
+│ │ └─┬ @modelcontextprotocol/sdk [90m1.25.2[39m
+│ │   └── [31m✕ missing peer[39m hono@^4
+│ ├─┬ @microsoft/agents-a365-tooling-extensions-langchain [90m0.1.0-preview.64[39m
+│ │ ├─┬ @microsoft/agents-a365-tooling [90m0.1.0-preview.64[39m
+│ │ │ └── [31m✕ missing peer[39m hono@^4
+│ │ └─┬ @langchain/mcp-adapters [90m1.1.2[39m
+│ │   ├── [31m✕ missing peer[39m @langchain/langgraph@^1.0.0
+│ │   └─┬ @modelcontextprotocol/sdk [90m1.25.2[39m
+│ │     └── [31m✕ missing peer[39m hono@^4
+│ ├─┬ epub2 [90m3.0.2[39m
+│ │ └── [31m✕ missing peer[39m ts-toolbelt@^9.6.0
+│ ├─┬ @langchain/google-genai [90m2.1.10[39m
+│ │ └── [93m✕ unmet peer[39m @langchain/core@1.1.15: found 1.1.8
+│ └─┬ @langchain/google-vertexai [90m2.1.10[39m
+│   └─┬ @langchain/google-gauth [90m2.1.10[39m
+│     └─┬ @langchain/google-common [90m2.1.10[39m
+│       └── [93m✕ unmet peer[39m @langchain/core@1.1.15: found 1.1.8
+├─┬ epub2 [90m3.0.2[39m
+│ └─┬ crlf-normalize [90m1.0.19[39m
+│   └─┬ ts-type [90m3.0.1[39m
+│     └── [31m✕ missing peer[39m ts-toolbelt@^9.6.0
+├─┬ @getzep/zep-cloud [90m1.0.6[39m
+│ ├── [93m✕ unmet peer[39m langchain@~0.1.19: found 1.2.3
+│ └── [93m✕ unmet peer[39m @langchain/core@~0.1.29: found 1.1.8
+└─┬ @browserbasehq/stagehand [90m1.9.0[39m
+  ├── [93m✕ unmet peer[39m dotenv@^16.4.5: found 17.2.3
+  └── [93m✕ unmet peer[39m openai@^4.62.1: found 6.9.1
+Peer dependencies that should be installed:
+  @langchain/langgraph@^1.0.0
+  hono@">=4.0.0 <5.0.0-0"
+  ts-toolbelt@">=9.6.0 <10.0.0-0"
+
+[0mpackages/extensions/insights[0m
+└─┬ @n8n/extension-sdk [90m0.9.0[39m
+  ├── [93m✕ unmet peer[39m vue@catalog:frontend: found 3.5.26
+  └── [93m✕ unmet peer[39m vue-router@catalog:frontend: found 4.5.0
+
+[0mpackages/frontend/@n8n/composables[0m
+└─┬ @n8n/vitest-config [90m1.6.0[39m
+  ├── [93m✕ unmet peer[39m vite@catalog:: found 7.3.1
+  └── [93m✕ unmet peer[39m vitest@catalog:: found 3.1.3
+
+[0mpackages/frontend/@n8n/i18n[0m
+└─┬ @n8n/vitest-config [90m1.6.0[39m
+  ├── [93m✕ unmet peer[39m vite@catalog:: found 7.3.1
+  └── [93m✕ unmet peer[39m vitest@catalog:: found 3.1.3
+
+[0mpackages/frontend/@n8n/rest-api-client[0m
+├─┬ @n8n/i18n [90m2.7.0[39m
+│ ├── [31m✕ missing peer[39m vue@catalog:frontend
+│ └─┬ vue-i18n [90m11.1.10[39m
+│   └── [31m✕ missing peer[39m vue@^3.0.0
+└─┬ @n8n/vitest-config [90m1.6.0[39m
+  ├── [93m✕ unmet peer[39m vite@catalog:: found 7.3.1
+  └── [93m✕ unmet peer[39m vitest@catalog:: found 3.1.3
+[31m✕ Conflicting peer dependencies:[39m
+[31m  vue[39m
+
+[0mpackages/frontend/@n8n/stores[0m
+└─┬ @n8n/vitest-config [90m1.6.0[39m
+  ├── [93m✕ unmet peer[39m vite@catalog:: found 7.3.1
+  └── [93m✕ unmet peer[39m vitest@catalog:: found 3.1.3
+
+[0mpackages/frontend/@n8n/storybook[0m
+├─┬ @n8n/composables [90m1.14.0[39m
+│ ├── [31m✕ missing peer[39m @vueuse/core@catalog:frontend
+│ └── [93m✕ unmet peer[39m vue@catalog:frontend: found 3.5.26
+├─┬ @n8n/stores [90m2.7.0[39m
+│ ├── [31m✕ missing peer[39m @vueuse/core@catalog:frontend
+│ ├── [93m✕ unmet peer[39m vue@catalog:frontend: found 3.5.26
+│ └── [93m✕ unmet peer[39m pinia@catalog:frontend: found 2.2.4
+├─┬ @vitest/browser-playwright [90m4.0.16[39m
+│ ├── [93m✕ unmet peer[39m vitest@4.0.16: found 3.1.3
+│ └─┬ @vitest/browser [90m4.0.16[39m
+│   └── [93m✕ unmet peer[39m vitest@4.0.16: found 3.1.3
+├─┬ @vitest/coverage-v8 [90m3.2.4[39m
+│ └── [93m✕ unmet peer[39m vitest@3.2.4: found 3.1.3
+└─┬ @n8n/i18n [90m2.7.0[39m
+  └── [93m✕ unmet peer[39m vue@catalog:frontend: found 3.5.26
+[31m✕ Conflicting peer dependencies:[39m
+[31m  @vueuse/core[39m
+
+[0mpackages/nodes-base[0m
+├─┬ @n8n/vitest-config [90m1.6.0[39m
+│ └── [31m✕ missing peer[39m vite@catalog:
+└─┬ ts-ics [90m1.2.2[39m
+  └── [93m✕ unmet peer[39m zod@3.25.67: found 4.1.12
+Peer dependencies that should be installed:
+  vite@catalog:
+
+[0mpackages/testing/playwright[0m
+├─┬ n8n [90m2.7.0[39m
+│ └─┬ @n8n/n8n-nodes-langchain [90m2.7.0[39m
+│   ├─┬ @modelcontextprotocol/sdk [90m1.25.2[39m
+│   │ └── [31m✕ missing peer[39m hono@^4
+│   ├─┬ @microsoft/agents-a365-tooling [90m0.1.0-preview.64[39m
+│   │ └── [31m✕ missing peer[39m hono@^4
+│   ├─┬ @microsoft/agents-a365-tooling-extensions-langchain [90m0.1.0-preview.64[39m
+│   │ ├─┬ @microsoft/agents-a365-tooling [90m0.1.0-preview.64[39m
+│   │ │ └── [31m✕ missing peer[39m hono@^4
+│   │ └─┬ @langchain/mcp-adapters [90m1.1.2[39m
+│   │   ├── [31m✕ missing peer[39m @langchain/langgraph@^1.0.0
+│   │   └─┬ @modelcontextprotocol/sdk [90m1.25.2[39m
+│   │     └── [31m✕ missing peer[39m hono@^4
+│   ├─┬ epub2 [90m3.0.2[39m
+│   │ └── [31m✕ missing peer[39m ts-toolbelt@^9.6.0
+│   ├─┬ @getzep/zep-cloud [90m1.0.6[39m
+│   │ ├── ✕ unmet peer langchain@~0.1.19: found 1.2.3 in @n8n/n8n-nodes-langchain
+│   │ └── ✕ unmet peer @langchain/core@~0.1.29: found 1.1.8 in @n8n/n8n-nodes-langchain
+│   ├─┬ @langchain/google-genai [90m2.1.10[39m
+│   │ └── ✕ unmet peer @langchain/core@1.1.15: found 1.1.8 in @n8n/n8n-nodes-langchain
+│   └─┬ @langchain/google-vertexai [90m2.1.10[39m
+│     └─┬ @langchain/google-gauth [90m2.1.10[39m
+│       └─┬ @langchain/google-common [90m2.1.10[39m
+│         └── ✕ unmet peer @langchain/core@1.1.15: found 1.1.8 in @n8n/n8n-nodes-langchain
+└─┬ @browserbasehq/stagehand [90m1.9.0[39m
+  ├── [93m✕ unmet peer[39m dotenv@^16.4.5: found 17.2.3
+  └── [93m✕ unmet peer[39m openai@^4.62.1: found 6.9.1
+Peer dependencies that should be installed:
+  @langchain/langgraph@^1.0.0
+  hono@">=4.0.0 <5.0.0-0"
+  ts-toolbelt@^9.6.0
+
+[0mpackages/workflow[0m
+└─┬ @n8n/vitest-config [90m1.6.0[39m
+  ├── [31m✕ missing peer[39m vite@catalog:
+  └── [93m✕ unmet peer[39m vitest@catalog:: found 3.1.3
+Peer dependencies that should be installed:
+  vite@catalog:
+INFO: Creating JavaScript task runner deployment in '/Users/tzacis/Documents/projects/n8n-fork/dist/task-runner-javascript'...
+$ cd /Users/tzacis/Documents/projects/n8n-fork && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=@n8n/task-runner --prod --legacy deploy --no-optional /Users/tzacis/Documents/projects/n8n-fork/dist/task-runner-javascript
+(node:53896) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `pnpm --trace-warnings ...` to show where the warning was created)
+(node:53897) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `pnpm --trace-warnings ...` to show where the warning was created)
+[43m[30m WARN [39m[49m Shared workspace lockfile detected but configuration forces legacy deploy implementation.
+.                                        | [43m[30m WARN [39m[49m [31mdeprecated[39m supertest@7.1.1
+packages/frontend/@n8n/i18n              | [43m[30m WARN [39m[49m [31mdeprecated[39m vue-i18n@11.1.10
+packages/nodes-base                      | [43m[30m WARN [39m[49m [31mdeprecated[39m gm@1.25.1
+packages/cli                             | [43m[30m WARN [39m[49m [31mdeprecated[39m infisical-node@1.3.0
+[43m[30m WARN [39m[49m [31m32 deprecated subdependencies found:[39m @aws-sdk/protocol-http@3.374.0, @aws-sdk/signature-v4@3.374.0, @npmcli/move-file@1.1.2, @otplib/plugin-crypto@12.0.1, @otplib/plugin-thirty-two@12.0.1, @otplib/preset-default@12.0.1, abab@2.0.6, are-we-there-yet@3.0.1, bson@6.10.0, debuglog@1.0.1, domexception@4.0.0, gauge@4.0.4, glob@7.2.3, glob@8.1.0, inflight@1.0.6, lodash.get@4.4.2, mailsplit@5.4.0, node-domexception@1.0.0, npmlog@6.0.2, osenv@0.1.5, q@2.0.3, read-installed@4.0.3, read-package-json@2.1.2, readdir-scoped-modules@1.1.0, rimraf@2.6.3, rimraf@3.0.2, sourcemap-codec@1.4.8, superagent@10.2.1, tar@7.5.6, whatwg-encoding@2.0.0, whatwg-encoding@3.1.1, yaeti@0.0.6
+[43m[30m WARN [39m[49m Issues with peer dependencies found
+[0mpackages/@n8n/codemirror-lang-sql[0m
+└─┬ @n8n/codemirror-lang [90m0.4.0[39m
+  ├── [93m✕ unmet peer[39m @codemirror/language@catalog:: found 6.12.1
+  ├── [93m✕ unmet peer[39m @lezer/highlight@catalog:: found 1.2.3
+  └── [93m✕ unmet peer[39m @lezer/lr@catalog:: found 1.4.5
+
+[0mpackages/@n8n/crdt[0m
+└─┬ @n8n/vitest-config [90m1.6.0[39m
+  ├── [31m✕ missing peer[39m vite@catalog:
+  └── [93m✕ unmet peer[39m vitest@catalog:: found 3.1.3
+Peer dependencies that should be installed:
+  vite@catalog:
+
+[0mpackages/@n8n/decorators[0m
+└─┬ @n8n/vitest-config [90m1.6.0[39m
+  ├── [31m✕ missing peer[39m vite@catalog:
+  └── [93m✕ unmet peer[39m vitest@catalog:: found 3.1.3
+Peer dependencies that should be installed:
+  vite@catalog:
+
+[0mpackages/@n8n/eslint-config[0m
+└─┬ @n8n/vitest-config [90m1.6.0[39m
+  ├── [31m✕ missing peer[39m vite@catalog:
+  └── [93m✕ unmet peer[39m vitest@catalog:: found 3.1.3
+Peer dependencies that should be installed:
+  vite@catalog:
+
+[0mpackages/@n8n/eslint-plugin-community-nodes[0m
+└─┬ @n8n/vitest-config [90m1.6.0[39m
+  ├── [31m✕ missing peer[39m vite@catalog:
+  └── [93m✕ unmet peer[39m vitest@catalog:: found 3.1.3
+Peer dependencies that should be installed:
+  vite@catalog:
+
+[0mpackages/@n8n/extension-sdk[0m
+└─┬ @vitejs/plugin-vue [90m5.2.4[39m
+  └── [93m✕ unmet peer[39m vite@"^5.0.0 || ^6.0.0": found 7.3.1
+
+[0mpackages/@n8n/imap[0m
+├─┬ @n8n/vitest-config [90m1.6.0[39m
+│ ├── [31m✕ missing peer[39m vite@catalog:
+│ └── [31m✕ missing peer[39m vitest@catalog:
+└─┬ vitest-mock-extended [90m3.1.0[39m
+  └── [31m✕ missing peer[39m vitest@>=3.0.0
+[31m✕ Conflicting peer dependencies:[39m
+[31m  vitest[39m
+Peer dependencies that should be installed:
+  vite@catalog:
+
+[0mpackages/@n8n/node-cli[0m
+├─┬ @n8n/vitest-config [90m1.6.0[39m
+│ ├── [31m✕ missing peer[39m vite@catalog:
+│ └── [93m✕ unmet peer[39m vitest@catalog:: found 3.1.3
+└─┬ eslint-plugin-n8n-nodes-base [90m1.16.5[39m
+  └─┬ @typescript-eslint/utils [90m6.21.0[39m
+    └── [93m✕ unmet peer[39m eslint@"^7.0.0 || ^8.0.0": found 9.29.0
+Peer dependencies that should be installed:
+  vite@catalog:
+
+[0mpackages/@n8n/nodes-langchain[0m
+├─┬ @getzep/zep-cloud [90m1.0.6[39m
+│ ├── [93m✕ unmet peer[39m langchain@~0.1.19: found 1.2.3
+│ └── [93m✕ unmet peer[39m @langchain/core@~0.1.29: found 1.1.8
+├─┬ @langchain/google-genai [90m2.1.10[39m
+│ └── [93m✕ unmet peer[39m @langchain/core@1.1.15: found 1.1.8
+├─┬ @langchain/google-vertexai [90m2.1.10[39m
+│ └─┬ @langchain/google-gauth [90m2.1.10[39m
+│   └─┬ @langchain/google-common [90m2.1.10[39m
+│     └── [93m✕ unmet peer[39m @langchain/core@1.1.15: found 1.1.8
+└─┬ @browserbasehq/stagehand [90m1.9.0[39m
+  ├── [93m✕ unmet peer[39m dotenv@^16.4.5: found 17.2.3
+  └── [93m✕ unmet peer[39m openai@^4.62.1: found 6.9.1
+
+[0mpackages/@n8n/utils[0m
+└─┬ @n8n/vitest-config [90m1.6.0[39m
+  ├── [93m✕ unmet peer[39m vite@catalog:: found 7.3.1
+  └── [93m✕ unmet peer[39m vitest@catalog:: found 3.1.3
+
+[0mpackages/cli[0m
+├─┬ @modelcontextprotocol/sdk [90m1.25.2[39m
+│ └─┬ @hono/node-server [90m1.19.8[39m
+│   └── [31m✕ missing peer[39m hono@^4
+├─┬ @n8n/n8n-nodes-langchain [90m2.7.0[39m
+│ ├─┬ @modelcontextprotocol/sdk [90m1.25.2[39m
+│ │ └── [31m✕ missing peer[39m hono@^4
+│ ├─┬ @microsoft/agents-a365-tooling-extensions-langchain [90m0.1.0-preview.64[39m
+│ │ ├─┬ @microsoft/agents-a365-tooling [90m0.1.0-preview.64[39m
+│ │ │ └─┬ @modelcontextprotocol/sdk [90m1.25.2[39m
+│ │ │   └── [31m✕ missing peer[39m hono@^4
+│ │ └─┬ @langchain/mcp-adapters [90m1.1.2[39m
+│ │   ├── [31m✕ missing peer[39m @langchain/langgraph@^1.0.0
+│ │   └─┬ @modelcontextprotocol/sdk [90m1.25.2[39m
+│ │     └── [31m✕ missing peer[39m hono@^4
+│ ├─┬ @microsoft/agents-a365-tooling [90m0.1.0-preview.64[39m
+│ │ └── [31m✕ missing peer[39m hono@^4
+│ ├─┬ epub2 [90m3.0.2[39m
+│ │ └── [31m✕ missing peer[39m ts-toolbelt@^9.6.0
+│ ├─┬ @langchain/google-genai [90m2.1.10[39m
+│ │ └── [93m✕ unmet peer[39m @langchain/core@1.1.15: found 1.1.8
+│ └─┬ @langchain/google-vertexai [90m2.1.10[39m
+│   └─┬ @langchain/google-gauth [90m2.1.10[39m
+│     └─┬ @langchain/google-common [90m2.1.10[39m
+│       └── [93m✕ unmet peer[39m @langchain/core@1.1.15: found 1.1.8
+├─┬ epub2 [90m3.0.2[39m
+│ └─┬ crlf-normalize [90m1.0.19[39m
+│   └─┬ ts-type [90m3.0.1[39m
+│     └── [31m✕ missing peer[39m ts-toolbelt@^9.6.0
+├─┬ @getzep/zep-cloud [90m1.0.6[39m
+│ ├── [93m✕ unmet peer[39m langchain@~0.1.19: found 1.2.3
+│ └── [93m✕ unmet peer[39m @langchain/core@~0.1.29: found 1.1.8
+└─┬ @browserbasehq/stagehand [90m1.9.0[39m
+  ├── [93m✕ unmet peer[39m dotenv@^16.4.5: found 17.2.3
+  └── [93m✕ unmet peer[39m openai@^4.62.1: found 6.9.1
+Peer dependencies that should be installed:
+  @langchain/langgraph@^1.0.0
+  hono@">=4.0.0 <5.0.0-0"
+  ts-toolbelt@">=9.6.0 <10.0.0-0"
+
+[0mpackages/extensions/insights[0m
+└─┬ @n8n/extension-sdk [90m0.9.0[39m
+  ├── [93m✕ unmet peer[39m vue@catalog:frontend: found 3.5.26
+  └── [93m✕ unmet peer[39m vue-router@catalog:frontend: found 4.5.0
+
+[0mpackages/frontend/@n8n/composables[0m
+└─┬ @n8n/vitest-config [90m1.6.0[39m
+  ├── [93m✕ unmet peer[39m vite@catalog:: found 7.3.1
+  └── [93m✕ unmet peer[39m vitest@catalog:: found 3.1.3
+
+[0mpackages/frontend/@n8n/i18n[0m
+└─┬ @n8n/vitest-config [90m1.6.0[39m
+  ├── [93m✕ unmet peer[39m vite@catalog:: found 7.3.1
+  └── [93m✕ unmet peer[39m vitest@catalog:: found 3.1.3
+
+[0mpackages/frontend/@n8n/rest-api-client[0m
+├─┬ @n8n/i18n [90m2.7.0[39m
+│ ├── [31m✕ missing peer[39m vue@catalog:frontend
+│ └─┬ vue-i18n [90m11.1.10[39m
+│   └── [31m✕ missing peer[39m vue@^3.0.0
+└─┬ @n8n/vitest-config [90m1.6.0[39m
+  ├── [93m✕ unmet peer[39m vite@catalog:: found 7.3.1
+  └── [93m✕ unmet peer[39m vitest@catalog:: found 3.1.3
+[31m✕ Conflicting peer dependencies:[39m
+[31m  vue[39m
+
+[0mpackages/frontend/@n8n/stores[0m
+└─┬ @n8n/vitest-config [90m1.6.0[39m
+  ├── [93m✕ unmet peer[39m vite@catalog:: found 7.3.1
+  └── [93m✕ unmet peer[39m vitest@catalog:: found 3.1.3
+
+[0mpackages/frontend/@n8n/storybook[0m
+├─┬ @n8n/composables [90m1.14.0[39m
+│ ├── [31m✕ missing peer[39m @vueuse/core@catalog:frontend
+│ └── [93m✕ unmet peer[39m vue@catalog:frontend: found 3.5.26
+├─┬ @n8n/stores [90m2.7.0[39m
+│ ├── [31m✕ missing peer[39m @vueuse/core@catalog:frontend
+│ ├── [93m✕ unmet peer[39m vue@catalog:frontend: found 3.5.26
+│ └── [93m✕ unmet peer[39m pinia@catalog:frontend: found 2.2.4
+├─┬ @vitest/browser-playwright [90m4.0.16[39m
+│ ├── [93m✕ unmet peer[39m vitest@4.0.16: found 3.1.3
+│ └─┬ @vitest/browser [90m4.0.16[39m
+│   └── [93m✕ unmet peer[39m vitest@4.0.16: found 3.1.3
+├─┬ @vitest/coverage-v8 [90m3.2.4[39m
+│ └── [93m✕ unmet peer[39m vitest@3.2.4: found 3.1.3
+└─┬ @n8n/i18n [90m2.7.0[39m
+  └── [93m✕ unmet peer[39m vue@catalog:frontend: found 3.5.26
+[31m✕ Conflicting peer dependencies:[39m
+[31m  @vueuse/core[39m
+
+[0mpackages/nodes-base[0m
+├─┬ @n8n/vitest-config [90m1.6.0[39m
+│ └── [31m✕ missing peer[39m vite@catalog:
+└─┬ ts-ics [90m1.2.2[39m
+  └── [93m✕ unmet peer[39m zod@3.25.67: found 4.1.12
+Peer dependencies that should be installed:
+  vite@catalog:
+
+[0mpackages/testing/playwright[0m
+├─┬ n8n [90m2.7.0[39m
+│ └─┬ @n8n/n8n-nodes-langchain [90m2.7.0[39m
+│   ├─┬ @modelcontextprotocol/sdk [90m1.25.2[39m
+│   │ └── [31m✕ missing peer[39m hono@^4
+│   ├─┬ @microsoft/agents-a365-tooling-extensions-langchain [90m0.1.0-preview.64[39m
+│   │ ├─┬ @microsoft/agents-a365-tooling [90m0.1.0-preview.64[39m
+│   │ │ └── [31m✕ missing peer[39m hono@^4
+│   │ └─┬ @langchain/mcp-adapters [90m1.1.2[39m
+│   │   ├── [31m✕ missing peer[39m @langchain/langgraph@^1.0.0
+│   │   └─┬ @modelcontextprotocol/sdk [90m1.25.2[39m
+│   │     └── [31m✕ missing peer[39m hono@^4
+│   ├─┬ @microsoft/agents-a365-tooling [90m0.1.0-preview.64[39m
+│   │ └── [31m✕ missing peer[39m hono@^4
+│   ├─┬ epub2 [90m3.0.2[39m
+│   │ └── [31m✕ missing peer[39m ts-toolbelt@^9.6.0
+│   ├─┬ @getzep/zep-cloud [90m1.0.6[39m
+│   │ ├── ✕ unmet peer langchain@~0.1.19: found 1.2.3 in @n8n/n8n-nodes-langchain
+│   │ └── ✕ unmet peer @langchain/core@~0.1.29: found 1.1.8 in @n8n/n8n-nodes-langchain
+│   ├─┬ @langchain/google-genai [90m2.1.10[39m
+│   │ └── ✕ unmet peer @langchain/core@1.1.15: found 1.1.8 in @n8n/n8n-nodes-langchain
+│   └─┬ @langchain/google-vertexai [90m2.1.10[39m
+│     └─┬ @langchain/google-gauth [90m2.1.10[39m
+│       └─┬ @langchain/google-common [90m2.1.10[39m
+│         └── ✕ unmet peer @langchain/core@1.1.15: found 1.1.8 in @n8n/n8n-nodes-langchain
+└─┬ @browserbasehq/stagehand [90m1.9.0[39m
+  ├── [93m✕ unmet peer[39m dotenv@^16.4.5: found 17.2.3
+  └── [93m✕ unmet peer[39m openai@^4.62.1: found 6.9.1
+Peer dependencies that should be installed:
+  @langchain/langgraph@^1.0.0
+  hono@">=4.0.0 <5.0.0-0"
+  ts-toolbelt@^9.6.0
+
+[0mpackages/workflow[0m
+└─┬ @n8n/vitest-config [90m1.6.0[39m
+  ├── [31m✕ missing peer[39m vite@catalog:
+  └── [93m✕ unmet peer[39m vitest@catalog:: found 3.1.3
+Peer dependencies that should be installed:
+  vite@catalog:
+$ du -sh /Users/tzacis/Documents/projects/n8n-fork/compiled | cut -f1
+1.1G
+$ du -sh /Users/tzacis/Documents/projects/n8n-fork/dist/task-runner-javascript | cut -f1
+168M
+✅ Package deployment completed in 1m 49s
+INFO: Size of /Users/tzacis/Documents/projects/n8n-fork/compiled: 1.1G
+-----------------------------------------------
+
+================ BUILD SUMMARY ================
+✅ n8n built successfully!
+
+📦 Build Output:
+   n8n:
+   Directory:      /Users/tzacis/Documents/projects/n8n-fork/compiled
+   Size:           1.1G
+
+   task-runner-javascript:
+   Directory:      /Users/tzacis/Documents/projects/n8n-fork/dist/task-runner-javascript
+   Size:           168M
+
+⏱️  Build Times:
+   Package Build:  1m 28s
+   Package Deploy: 1m 49s
+   -----------------------------
+   Total Time:     4m 5s
+
+📋 Build Manifests:
+   /Users/tzacis/Documents/projects/n8n-fork/compiled/build-manifest.json
+   /Users/tzacis/Documents/projects/n8n-fork/dist/task-runner-javascript/build-manifest.json
+==============================================

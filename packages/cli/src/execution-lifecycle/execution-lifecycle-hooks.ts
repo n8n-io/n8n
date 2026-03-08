@@ -57,6 +57,7 @@ class ModulesHooksRegistry {
 							workflow: this.workflowData,
 							runData,
 							newStaticData,
+							executionId: this.executionId,
 						};
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 						return await instance[methodName].call(instance, context);
@@ -97,6 +98,21 @@ class ModulesHooksRegistry {
 							workflow: this.workflowData,
 							workflowInstance,
 							executionData,
+							executionId: this.executionId,
+						};
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+						return await instance[methodName].call(instance, context);
+					});
+					break;
+
+				case 'workflowExecuteResume':
+					hooks.addHandler(eventName, async function (workflowInstance, executionData) {
+						const context = {
+							type: 'workflowExecuteResume',
+							workflow: this.workflowData,
+							workflowInstance,
+							executionData,
+							executionId: this.executionId,
 						};
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 						return await instance[methodName].call(instance, context);
@@ -117,8 +133,8 @@ type HooksSetupParameters = {
 function hookFunctionsWorkflowEvents(hooks: ExecutionLifecycleHooks, userId?: string) {
 	const eventService = Container.get(EventService);
 	hooks.addHandler('workflowExecuteBefore', function () {
-		const { executionId, workflowData } = this;
-		eventService.emit('workflow-pre-execute', { executionId, data: workflowData });
+		const { executionId, workflowData, mode } = this;
+		eventService.emit('workflow-pre-execute', { executionId, data: workflowData, mode });
 	});
 	hooks.addHandler('workflowExecuteAfter', function (runData) {
 		if (runData.status === 'waiting') return;

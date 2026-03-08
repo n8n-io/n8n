@@ -1,0 +1,3665 @@
+{
+	"version": 1,
+	"generated": "2026-02-02T19:07:20.088Z",
+	"totalViolations": 571,
+	"violations": {
+		"pages/AIAssistantPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 3,
+				"message": "AIAssistantPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "4dd6c0c1862a"
+			}
+		],
+		"pages/AIBuilderPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 6,
+				"message": "AIBuilderPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "4d204a89414e"
+			}
+		],
+		"pages/CanvasPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 15,
+				"message": "CanvasPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "e0c352d26d04"
+			}
+		],
+		"pages/ChatHubChatPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 9,
+				"message": "ChatHubChatPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "e4eaeac24146"
+			},
+			{
+				"rule": "dead-code",
+				"line": 117,
+				"message": "Unused method: ChatHubChatPage.clickNextAlternativeButtonAt()",
+				"hash": "fda92980d389"
+			},
+			{
+				"rule": "dead-code",
+				"line": 136,
+				"message": "Unused method: ChatHubChatPage.getAttachButton()",
+				"hash": "ac2bd8e54358"
+			}
+		],
+		"pages/ChatHubPersonalAgentsPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 6,
+				"message": "ChatHubPersonalAgentsPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "f8ca4379facf"
+			},
+			{
+				"rule": "deduplication",
+				"line": 8,
+				"message": "Duplicate locator: this.page.getByTestId(\"agentEditorModal-modal\") in pages scope",
+				"hash": "9c085627d33a"
+			},
+			{
+				"rule": "deduplication",
+				"line": 24,
+				"message": "Duplicate locator: this.page.getByTestId(\"chat-agent-card\") in pages scope",
+				"hash": "93472d766ead"
+			},
+			{
+				"rule": "deduplication",
+				"line": 28,
+				"message": "Duplicate locator: this.page.getByTestId(\"chat-agent-card\") in pages scope",
+				"hash": "93472d766ead"
+			}
+		],
+		"pages/ChatHubSettingsPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 7,
+				"message": "ChatHubSettingsPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "ffbeab089486"
+			},
+			{
+				"rule": "deduplication",
+				"line": 11,
+				"message": "Duplicate locator: this.page.getByTestId(\"editCredential-modal\") in pages scope",
+				"hash": "2823ff890426"
+			}
+		],
+		"pages/ChatHubWorkflowAgentsPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 5,
+				"message": "ChatHubWorkflowAgentsPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "deaefa88466a"
+			},
+			{
+				"rule": "deduplication",
+				"line": 11,
+				"message": "Duplicate locator: this.page.getByTestId(\"chat-agent-card\") in pages scope",
+				"hash": "93472d766ead"
+			}
+		],
+		"pages/CommunityNodesPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 5,
+				"message": "CommunityNodesPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "008a055bd8e3"
+			}
+		],
+		"pages/CredentialsPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 6,
+				"message": "CredentialsPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "8a192ab0e1af"
+			},
+			{
+				"rule": "deduplication",
+				"line": 7,
+				"message": "Duplicate locator: this.page.getByTestId(\"editCredential-modal\") in pages scope",
+				"hash": "2823ff890426"
+			}
+		],
+		"pages/DataTableDetails.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 6,
+				"message": "DataTableDetails: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "a28b14eea75f"
+			}
+		],
+		"pages/DataTableView.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 4,
+				"message": "DataTableView: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "6d4a9d2ee846"
+			}
+		],
+		"pages/ExecutionsPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 6,
+				"message": "ExecutionsPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "35feaf11a7c9"
+			}
+		],
+		"pages/InteractionsPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 6,
+				"message": "InteractionsPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "fab9bccc270e"
+			}
+		],
+		"pages/KeycloakLoginPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 9,
+				"message": "KeycloakLoginPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "c904517ef2df"
+			}
+		],
+		"pages/MfaLoginPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 8,
+				"message": "MfaLoginPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "65f89f81ef90"
+			}
+		],
+		"pages/MfaSetupModal.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 9,
+				"message": "MfaSetupModal: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "bde632f5ade8"
+			}
+		],
+		"pages/NodeDetailsViewPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 15,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 16,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 26,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 30,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 34,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 38,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 42,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 90,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 94,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 98,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 102,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 106,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 110,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 123,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 127,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 157,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 180,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 184,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 188,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 192,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 200,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 221,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 239,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 243,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 253,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 262,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 270,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 274,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 278,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 282,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 286,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 290,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 294,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 298,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 302,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 306,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 318,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 322,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 326,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 330,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 334,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 340,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 360,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 366,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 377,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 385,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 389,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 393,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 397,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 433,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 437,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 437,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 441,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 445,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 463,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 467,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 467,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 478,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 487,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 518,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 528,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 529,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 534,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 538,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 550,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 554,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 573,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 579,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 591,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 595,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 599,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 603,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 603,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 607,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 615,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 619,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 623,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 627,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 631,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 639,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 643,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 677,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 713,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 717,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 722,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 727,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 731,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 742,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 746,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 746,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 750,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 756,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 784,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 788,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 792,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 796,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 801,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 807,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 811,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 811,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 819,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 823,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 827,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 859,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "scope-lockdown",
+				"line": 863,
+				"message": "NodeDetailsViewPage: Unscoped locator - use this.container instead of this.page",
+				"hash": "5244a408a8df"
+			},
+			{
+				"rule": "dead-code",
+				"line": 424,
+				"message": "Unused method: NodeDetailsViewPage.getParameterInputContainer()",
+				"hash": "fcd6fe5c28c8"
+			},
+			{
+				"rule": "dead-code",
+				"line": 655,
+				"message": "Unused method: NodeDetailsViewPage.searchInputData()",
+				"hash": "c4d72de4f9fd"
+			}
+		],
+		"pages/NotificationsPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 3,
+				"message": "NotificationsPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "fadcf75fa385"
+			}
+		],
+		"pages/NpsSurveyPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 5,
+				"message": "NpsSurveyPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "b4532143776c"
+			}
+		],
+		"pages/ProjectSettingsPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 5,
+				"message": "ProjectSettingsPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "fbf0ce1ab326"
+			}
+		],
+		"pages/SettingsEnvironmentPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 5,
+				"message": "SettingsEnvironmentPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "36447173c675"
+			}
+		],
+		"pages/SettingsLogStreamingPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 5,
+				"message": "SettingsLogStreamingPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "f334f4d128a2"
+			}
+		],
+		"pages/SettingsPersonalPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 8,
+				"message": "SettingsPersonalPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "ea35206b3713"
+			}
+		],
+		"pages/SettingsUsersPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 5,
+				"message": "SettingsUsersPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "ff0328cb8ec5"
+			}
+		],
+		"pages/SidebarPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 3,
+				"message": "SidebarPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "6a6e1341c8f5"
+			}
+		],
+		"pages/SignInPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 5,
+				"message": "SignInPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "1cc558fbab29"
+			}
+		],
+		"pages/SourceControlPullModal.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 3,
+				"message": "SourceControlPullModal: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "fe2503c9ea8b"
+			}
+		],
+		"pages/SourceControlPushModal.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 9,
+				"message": "SourceControlPushModal: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "bcc36f59ad8a"
+			}
+		],
+		"pages/TemplateCredentialSetupPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 6,
+				"message": "TemplateCredentialSetupPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "e1981dd460f8"
+			},
+			{
+				"rule": "deduplication",
+				"line": 7,
+				"message": "Duplicate locator: this.page.getByTestId(\"editCredential-modal\") in pages scope",
+				"hash": "2823ff890426"
+			}
+		],
+		"pages/TemplatesPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 5,
+				"message": "TemplatesPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "9ee7245554a9"
+			}
+		],
+		"pages/VariablesPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 6,
+				"message": "VariablesPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "f5ce7000f714"
+			},
+			{
+				"rule": "deduplication",
+				"line": 22,
+				"message": "Duplicate locator: this.page.getByTestId(\"resources-list-search\") in pages scope",
+				"hash": "3b38dddeafed"
+			}
+		],
+		"pages/VersionsPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 3,
+				"message": "VersionsPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "06f7a26b38d8"
+			}
+		],
+		"pages/WorkerViewPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 3,
+				"message": "WorkerViewPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "d235aee41517"
+			},
+			{
+				"rule": "deduplication",
+				"line": 13,
+				"message": "Duplicate locator: this.page.getByTestId(\"menu-item\") in pages scope",
+				"hash": "d2fda13bfcbe"
+			}
+		],
+		"pages/WorkflowActivationModal.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 5,
+				"message": "WorkflowActivationModal: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "e48153a68aa5"
+			}
+		],
+		"pages/WorkflowCredentialSetupModal.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 10,
+				"message": "WorkflowCredentialSetupModal: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "fcefbd002d16"
+			},
+			{
+				"rule": "deduplication",
+				"line": 24,
+				"message": "Duplicate locator: this.page.getByTestId(\"continue-button\") in pages scope",
+				"hash": "137ec08820a5"
+			},
+			{
+				"rule": "deduplication",
+				"line": 16,
+				"message": "Duplicate locator: this.page.getByTestId(\"setup-workflow-credentials-modal\") in pages scope",
+				"hash": "30c7a494b54c"
+			}
+		],
+		"pages/WorkflowSettingsModal.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 5,
+				"message": "WorkflowSettingsModal: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "cff0f23ce5d3"
+			}
+		],
+		"pages/WorkflowSharingModal.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 3,
+				"message": "WorkflowSharingModal: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "524404e370c4"
+			},
+			{
+				"rule": "deduplication",
+				"line": 5,
+				"message": "Duplicate locator: this.page.getByTestId(\"workflowShare-modal\") in pages scope",
+				"hash": "8a7555df8f27"
+			}
+		],
+		"pages/WorkflowsPage.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 7,
+				"message": "WorkflowsPage: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "44a4e1b07c9f"
+			},
+			{
+				"rule": "deduplication",
+				"line": 24,
+				"message": "Duplicate locator: this.page.getByTestId(\"resources-list-search\") in pages scope",
+				"hash": "3b38dddeafed"
+			},
+			{
+				"rule": "deduplication",
+				"line": 32,
+				"message": "Duplicate locator: this.page.getByTestId(\"resources-list-search\") in pages scope",
+				"hash": "3b38dddeafed"
+			},
+			{
+				"rule": "deduplication",
+				"line": 113,
+				"message": "Duplicate locator: this.page.getByTestId(\"action-toggle-dropdown\") in pages scope",
+				"hash": "6e4581e4338b"
+			},
+			{
+				"rule": "deduplication",
+				"line": 28,
+				"message": "Duplicate locator: this.page.getByTestId(\"project-name\") in pages scope",
+				"hash": "7080dca7588e"
+			},
+			{
+				"rule": "deduplication",
+				"line": 42,
+				"message": "Duplicate locator: this.page.getByTestId(\"action-delete\") in pages scope",
+				"hash": "1b8f3012152c"
+			}
+		],
+		"pages/nodes/EditFieldsNode.ts": [
+			{
+				"rule": "scope-lockdown",
+				"line": 5,
+				"message": "EditFieldsNode: Ambiguous page - add a container (for scoped components) or a navigation method (for top-level pages)",
+				"hash": "f59dd095b02f"
+			}
+		],
+		"composables/NodeDetailsViewComposer.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 17,
+				"message": "Direct page locator call: this.n8n.page.getByTestId('rlc-item')",
+				"hash": "a1b29fbeb1d3"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 36,
+				"message": "Direct page locator call: this.n8n.page.getByTestId('rlc-item')",
+				"hash": "a1b29fbeb1d3"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 51,
+				"message": "Direct page locator call: this.n8n.page.getByTestId('radio-button-expression').nth(...",
+				"hash": "134663b18c78"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 51,
+				"message": "Direct page locator call: this.n8n.page.getByTestId('radio-button-expression').nth(1)",
+				"hash": "ff909ccb232e"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 51,
+				"message": "Direct page locator call: this.n8n.page.getByTestId('radio-button-expression')",
+				"hash": "8832b7bb36bf"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 61,
+				"message": "Direct page locator call: this.n8n.page.getByTestId('rlc-item-add-resource').first()",
+				"hash": "0e33bf783799"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 61,
+				"message": "Direct page locator call: this.n8n.page.getByTestId('rlc-item-add-resource')",
+				"hash": "9f5c3611eea6"
+			},
+			{
+				"rule": "no-page-in-flow",
+				"line": 17,
+				"message": "Direct page access in composable: this.n8n.page.getByTestId",
+				"hash": "c324de315cb4"
+			},
+			{
+				"rule": "no-page-in-flow",
+				"line": 36,
+				"message": "Direct page access in composable: this.n8n.page.getByTestId",
+				"hash": "c324de315cb4"
+			},
+			{
+				"rule": "no-page-in-flow",
+				"line": 51,
+				"message": "Direct page access in composable: this.n8n.page.getByTestId",
+				"hash": "c324de315cb4"
+			},
+			{
+				"rule": "no-page-in-flow",
+				"line": 61,
+				"message": "Direct page access in composable: this.n8n.page.getByTestId",
+				"hash": "c324de315cb4"
+			}
+		],
+		"composables/ProjectComposer.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 14,
+				"message": "Direct page locator call: this.n8n.page.getByTestId('universal-add').click()",
+				"hash": "e8d2b760e894"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 14,
+				"message": "Direct page locator call: this.n8n.page.getByTestId('universal-add')",
+				"hash": "c3464fda06c4"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 15,
+				"message": "Direct page locator call: this.n8n.page.getByTestId('navigation-menu-item').filter(...",
+				"hash": "c8ba53fd5fa6"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 15,
+				"message": "Direct page locator call: this.n8n.page.getByTestId('navigation-menu-item').filter(...",
+				"hash": "c8ba53fd5fa6"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 15,
+				"message": "Direct page locator call: this.n8n.page.getByTestId('navigation-menu-item')",
+				"hash": "921cd5cfb22b"
+			},
+			{
+				"rule": "no-page-in-flow",
+				"line": 14,
+				"message": "Direct page access in composable: this.n8n.page.getByTestId",
+				"hash": "c324de315cb4"
+			},
+			{
+				"rule": "no-page-in-flow",
+				"line": 15,
+				"message": "Direct page access in composable: this.n8n.page.getByTestId",
+				"hash": "c324de315cb4"
+			},
+			{
+				"rule": "no-page-in-flow",
+				"line": 51,
+				"message": "Direct page access in composable: this.n8n.page.url",
+				"hash": "504827a38388"
+			}
+		],
+		"composables/WorkflowComposer.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 155,
+				"message": "Direct page locator call: this.n8n.page.getByTestId('move-to-folder-option').getByT...",
+				"hash": "fee6a7ca0898"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 155,
+				"message": "Direct page locator call: this.n8n.page.getByTestId('move-to-folder-option')",
+				"hash": "cfc91da57766"
+			},
+			{
+				"rule": "no-page-in-flow",
+				"line": 21,
+				"message": "Direct page access in composable: this.n8n.page.waitForResponse",
+				"hash": "07f5f1ebe32b"
+			},
+			{
+				"rule": "no-page-in-flow",
+				"line": 155,
+				"message": "Direct page access in composable: this.n8n.page.getByTestId",
+				"hash": "c324de315cb4"
+			}
+		],
+		"tests/e2e/ai/assistant-basic.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 162,
+				"message": "Chained locator call in test: n8n.aiAssistant .getNewAssistantSessionModal() .getByRole...",
+				"hash": "8a89adbe00d9"
+			}
+		],
+		"tests/e2e/ai/assistant-credential-help.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 29,
+				"message": "Chained locator call in test: n8n.aiAssistant.getCredentialEditAssistantButton().locato...",
+				"hash": "3ea859fe5518"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 54,
+				"message": "Chained locator call in test: n8n.aiAssistant.getCredentialEditAssistantButton().locato...",
+				"hash": "3ea859fe5518"
+			},
+			{
+				"rule": "api-purity",
+				"line": 75,
+				"message": "Raw API call detected: fetch(",
+				"hash": "b52df352569e"
+			},
+			{
+				"rule": "api-purity",
+				"line": 118,
+				"message": "Raw API call detected: fetch(",
+				"hash": "b52df352569e"
+			}
+		],
+		"tests/e2e/ai/hitl-for-tools.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 37,
+				"message": "Chained locator call in test: n8n.ndv.getParameterInput(parameterName).locator('.cm-con...",
+				"hash": "46f4ca4bc7eb"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 83,
+				"message": "Direct page locator call: n8n.page.getByTestId('add-connection-button')",
+				"hash": "e87a57e25440"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 112,
+				"message": "Chained locator call in test: n8n.ndv.getParameterInput('description').locator('textarea')",
+				"hash": "00a4addafb63"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 138,
+				"message": "Direct page locator call: n8n.page.getByTestId('canvas-chat').getByText('Approve')",
+				"hash": "158ef58d883a"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 138,
+				"message": "Chained locator call in test: n8n.page.getByTestId('canvas-chat').getByText('Approve')",
+				"hash": "9717a7a385c3"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 138,
+				"message": "Direct page locator call: n8n.page.getByTestId('canvas-chat')",
+				"hash": "0810223b0675"
+			}
+		],
+		"tests/e2e/ai/langchain-memory.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 88,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'Define below' }).cl...",
+				"hash": "39e5d44a50a7"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 88,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'Define below' })",
+				"hash": "5c42d41d0397"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 89,
+				"message": "Chained locator call in test: n8n.ndv.getParameterInput('sessionKey').locator('input')",
+				"hash": "4860c40ad30b"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 103,
+				"message": "Chained locator call in test: n8n.ndv.getAiOutputModeToggle().locator('[role=\"radio\"]')",
+				"hash": "712bf333eaaf"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 111,
+				"message": "Chained locator call in test: n8n.ndv.getOutputPanel().getByTestId('node-error-message')",
+				"hash": "9436eb5e9511"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 114,
+				"message": "Chained locator call in test: n8n.ndv.getOutputPanel().getByTestId('node-error-message')",
+				"hash": "9436eb5e9511"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 165,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'Define below' }).cl...",
+				"hash": "39e5d44a50a7"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 165,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'Define below' })",
+				"hash": "5c42d41d0397"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 166,
+				"message": "Chained locator call in test: n8n.ndv.getParameterInput('text').locator('textarea')",
+				"hash": "986a0637e45b"
+			}
+		],
+		"tests/e2e/ai/langchain-vectorstores.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 83,
+				"message": "Chained locator call in test: n8n.canvas.getManualChatModal().locator('main')",
+				"hash": "5dd065409d52"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 89,
+				"message": "Chained locator call in test: n8n.canvas.getManualChatModal().locator('main')",
+				"hash": "5dd065409d52"
+			}
+		],
+		"tests/e2e/ai/workflow-builder.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 77,
+				"message": "Direct page locator call: n8n.page.getByRole('button', { name: 'Execute and refine' })",
+				"hash": "ba2cdfe0e07b"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 111,
+				"message": "Direct page locator call: n8n.page.getByText('Task aborted')",
+				"hash": "beba4221d694"
+			}
+		],
+		"tests/e2e/app-config/security-notifications.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 180,
+				"message": "Chained locator call in test: versionCard.locator('.el-tag--danger').getByText('Securit...",
+				"hash": "41e0381dfdf0"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 180,
+				"message": "Chained locator call in test: versionCard.locator('.el-tag--danger')",
+				"hash": "60a61866e32a"
+			}
+		],
+		"tests/e2e/building-blocks/node-details-configuration.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 56,
+				"message": "Chained locator call in test: n8n.ndv.getAssignmentName('assignments', 0).getByRole('te...",
+				"hash": "fa1cc41275f1"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 70,
+				"message": "Chained locator call in test: n8n.ndv.getAssignmentCollectionContainer('assignments').g...",
+				"hash": "f36b5d7ebe58"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 85,
+				"message": "Chained locator call in test: n8n.ndv.getAssignmentCollectionContainer('assignments').g...",
+				"hash": "f36b5d7ebe58"
+			}
+		],
+		"tests/e2e/chat-hub/chat-hub-attachment.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 57,
+				"message": "Chained locator call in test: newPage.locator('img')",
+				"hash": "787461cb35dd"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 58,
+				"message": "Chained locator call in test: newPage.locator('img')",
+				"hash": "787461cb35dd"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 59,
+				"message": "Chained locator call in test: newPage.locator('img')",
+				"hash": "787461cb35dd"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 38,
+				"message": "Direct page instantiation: new ChatHubChatPage(n8n.page)",
+				"hash": "4c6c3053ee95"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 64,
+				"message": "Direct page instantiation: new ChatHubChatPage(n8n.page)",
+				"hash": "4c6c3053ee95"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 80,
+				"message": "Direct page instantiation: new ChatHubChatPage(n8n.page)",
+				"hash": "4c6c3053ee95"
+			}
+		],
+		"tests/e2e/chat-hub/chat-hub-basic.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 30,
+				"message": "Direct page locator call: n8n.page.getByTestId('editCredential-modal')",
+				"hash": "2786a49972b3"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 9,
+				"message": "Direct page instantiation: new ChatHubChatPage(n8n.page)",
+				"hash": "4c6c3053ee95"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 29,
+				"message": "Direct page instantiation: new ChatHubChatPage(n8n.page)",
+				"hash": "4c6c3053ee95"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 56,
+				"message": "Direct page instantiation: new ChatHubChatPage(n8n.page)",
+				"hash": "4c6c3053ee95"
+			}
+		],
+		"tests/e2e/chat-hub/chat-hub-personal-agent.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 88,
+				"message": "Direct page locator call: n8n.page.getByRole('dialog').getByText('Delete', { exact:...",
+				"hash": "5fd52ad894c3"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 88,
+				"message": "Direct page locator call: n8n.page.getByRole('dialog').getByText('Delete', { exact:...",
+				"hash": "5fd52ad894c3"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 88,
+				"message": "Chained locator call in test: n8n.page.getByRole('dialog').getByText('Delete', { exact:...",
+				"hash": "41d47e05bb02"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 88,
+				"message": "Direct page locator call: n8n.page.getByRole('dialog')",
+				"hash": "68deb7ade2bb"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 12,
+				"message": "Direct page instantiation: new ChatHubChatPage(n8n.page)",
+				"hash": "4c6c3053ee95"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 43,
+				"message": "Direct page instantiation: new ChatHubPersonalAgentsPage(n8n.page)",
+				"hash": "e85eb6a08ae6"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 44,
+				"message": "Direct page instantiation: new ChatHubChatPage(n8n.page)",
+				"hash": "4c6c3053ee95"
+			}
+		],
+		"tests/e2e/credentials/crud.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 68,
+				"message": "Chained locator call in test: n8n.canvas.credentialModal .getModal() .getByTestId('node...",
+				"hash": "d3010be3a81f"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 68,
+				"message": "Chained locator call in test: n8n.canvas.credentialModal .getModal() .getByTestId('node...",
+				"hash": "d3010be3a81f"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 74,
+				"message": "Chained locator call in test: n8n.canvas.credentialModal .getModal() .getByTestId('node...",
+				"hash": "d3010be3a81f"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 74,
+				"message": "Chained locator call in test: n8n.canvas.credentialModal .getModal() .getByTestId('node...",
+				"hash": "d3010be3a81f"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 130,
+				"message": "Chained locator call in test: n8n.canvas.credentialModal .getModal() .getByTestId('node...",
+				"hash": "d3010be3a81f"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 130,
+				"message": "Chained locator call in test: n8n.canvas.credentialModal .getModal() .getByTestId('node...",
+				"hash": "d3010be3a81f"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 320,
+				"message": "Chained locator call in test: n8n.canvas.credentialModal .getModal() .getByTestId('node...",
+				"hash": "d3010be3a81f"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 320,
+				"message": "Chained locator call in test: n8n.canvas.credentialModal .getModal() .getByTestId('node...",
+				"hash": "d3010be3a81f"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 353,
+				"message": "Direct page locator call: n8n.page.locator('.el-overlay').first()",
+				"hash": "6e0141ec89e6"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 353,
+				"message": "Direct page locator call: n8n.page.locator('.el-overlay')",
+				"hash": "4668d190d0af"
+			},
+			{
+				"rule": "api-purity",
+				"line": 302,
+				"message": "Raw API call detected: fetch(",
+				"hash": "b52df352569e"
+			}
+		],
+		"tests/e2e/credentials/global.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 35,
+				"message": "Chained locator call in test: n8n.credentials.credentialModal.getVisibleDropdown().getB...",
+				"hash": "5ffd78437b38"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 44,
+				"message": "Chained locator call in test: n8n.credentials.cards .getCredential('Global HTTP Header ...",
+				"hash": "05e7dd651e5e"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 61,
+				"message": "Chained locator call in test: n8n.credentials.cards .getCredential('Global HTTP Header ...",
+				"hash": "05e7dd651e5e"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 91,
+				"message": "Chained locator call in test: dropdown.getByText('Global HTTP Header Cred')",
+				"hash": "4a7662ea3718"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 94,
+				"message": "Chained locator call in test: dropdown.getByText('Global HTTP Header Cred')",
+				"hash": "4a7662ea3718"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 121,
+				"message": "Chained locator call in test: n8n.credentials.credentialModal .getModal() .getByTestId(...",
+				"hash": "ea4ed603d27a"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 128,
+				"message": "Chained locator call in test: n8n.credentials.credentialModal .getModal() .getByTestId(...",
+				"hash": "ea4ed603d27a"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 128,
+				"message": "Chained locator call in test: n8n.credentials.credentialModal .getModal() .getByTestId(...",
+				"hash": "ea4ed603d27a"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 141,
+				"message": "Chained locator call in test: n8n.credentials.cards .getCredential('Global HTTP Header ...",
+				"hash": "05e7dd651e5e"
+			}
+		],
+		"tests/e2e/node-creator/categories.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 19,
+				"message": "Chained locator call in test: n8n.canvas.nodeCreator.getCategoryItem('Triggers').locato...",
+				"hash": "7bf32888198a"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 24,
+				"message": "Chained locator call in test: n8n.canvas.nodeCreator.getCategoryItem('Actions').locator...",
+				"hash": "408e6ab6e61d"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 30,
+				"message": "Chained locator call in test: n8n.canvas.nodeCreator.getCategoryItem('Actions').locator...",
+				"hash": "408e6ab6e61d"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 45,
+				"message": "Chained locator call in test: n8n.canvas.nodeCreator.getCategoryItem('Actions').locator...",
+				"hash": "408e6ab6e61d"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 51,
+				"message": "Chained locator call in test: n8n.canvas.nodeCreator.getCategoryItem('Actions').locator...",
+				"hash": "408e6ab6e61d"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 56,
+				"message": "Chained locator call in test: n8n.canvas.nodeCreator.getCategoryItem('Triggers').locato...",
+				"hash": "7bf32888198a"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 62,
+				"message": "Chained locator call in test: n8n.canvas.nodeCreator.getCategoryItem('Triggers').locato...",
+				"hash": "7bf32888198a"
+			}
+		],
+		"tests/e2e/nodes/community-nodes.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 79,
+				"message": "Direct page locator call: n8n.page.getByTestId('credentials-label').click()",
+				"hash": "b487b1272454"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 79,
+				"message": "Direct page locator call: n8n.page.getByTestId('credentials-label')",
+				"hash": "c57d3abbea50"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 80,
+				"message": "Direct page locator call: n8n.page.getByTestId('node-credentials-select-item-new')....",
+				"hash": "b9824deca284"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 80,
+				"message": "Direct page locator call: n8n.page.getByTestId('node-credentials-select-item-new')",
+				"hash": "ba4a66294bfb"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 82,
+				"message": "Direct page locator call: n8n.page.getByTestId('editCredential-modal')",
+				"hash": "2786a49972b3"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 94,
+				"message": "Direct page locator call: n8n.page.getByTestId('credentials-label').click()",
+				"hash": "b487b1272454"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 94,
+				"message": "Direct page locator call: n8n.page.getByTestId('credentials-label')",
+				"hash": "c57d3abbea50"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 95,
+				"message": "Direct page locator call: n8n.page.getByTestId('node-credentials-select-item-new')....",
+				"hash": "b9824deca284"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 95,
+				"message": "Direct page locator call: n8n.page.getByTestId('node-credentials-select-item-new')",
+				"hash": "ba4a66294bfb"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 97,
+				"message": "Direct page locator call: n8n.page.getByTestId('editCredential-modal')",
+				"hash": "2786a49972b3"
+			},
+			{
+				"rule": "api-purity",
+				"line": 15,
+				"message": "Raw API call detected: fetch(",
+				"hash": "b52df352569e"
+			},
+			{
+				"rule": "api-purity",
+				"line": 30,
+				"message": "Raw API call detected: fetch(",
+				"hash": "b52df352569e"
+			}
+		],
+		"tests/e2e/nodes/form-trigger-node.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 59,
+				"message": "Direct page locator call: n8n.page.getByRole('button', { name: 'Add Field Option' }...",
+				"hash": "c3629563dd24"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 59,
+				"message": "Direct page locator call: n8n.page.getByRole('button', { name: 'Add Field Option' })",
+				"hash": "69e3d4b550e1"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 102,
+				"message": "Direct page locator call: n8n.page.locator('text=/form-test\\\\/[a-f0-9-]+/')",
+				"hash": "ccdce08746cc"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 111,
+				"message": "Chained locator call in test: formPage.getByLabel('What is your first name?')",
+				"hash": "1223d29492d9"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 112,
+				"message": "Chained locator call in test: formPage.getByRole('button', { name: 'Submit' })",
+				"hash": "e4d7841ebb40"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 116,
+				"message": "Chained locator call in test: formPage.getByLabel('What is your last name?')",
+				"hash": "cfc3f214f389"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 117,
+				"message": "Chained locator call in test: formPage.getByRole('button', { name: 'Submit' })",
+				"hash": "e4d7841ebb40"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 120,
+				"message": "Chained locator call in test: formPage.getByText('Your response has been recorded')",
+				"hash": "0e9a9b561cfa"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 193,
+				"message": "Direct page locator call: n8n.page.locator('text=/form-test\\\\/[a-f0-9-]+/')",
+				"hash": "ccdce08746cc"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 202,
+				"message": "Chained locator call in test: formPage.getByRole('button', { name: 'Submit' })",
+				"hash": "e4d7841ebb40"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 203,
+				"message": "Chained locator call in test: formPage.getByText('This worked')",
+				"hash": "a0552602d3c9"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 307,
+				"message": "Direct page locator call: n8n.page.locator('text=/form-test\\\\/[a-f0-9-]+/')",
+				"hash": "ccdce08746cc"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 316,
+				"message": "Chained locator call in test: formPage.getByRole('button', { name: 'Submit' })",
+				"hash": "e4d7841ebb40"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 317,
+				"message": "Chained locator call in test: formPage.getByText('Step 2')",
+				"hash": "94ffa2350779"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 320,
+				"message": "Chained locator call in test: formPage.getByRole('button', { name: 'Submit' })",
+				"hash": "e4d7841ebb40"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 321,
+				"message": "Chained locator call in test: formPage.getByText('This worked')",
+				"hash": "a0552602d3c9"
+			}
+		],
+		"tests/e2e/nodes/if-node.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 21,
+				"message": "Chained locator call in test: n8n.ndv.getFilterConditionLeft(FILTER_PARAM_NAME, 0).loca...",
+				"hash": "c3fc875effa7"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 22,
+				"message": "Chained locator call in test: n8n.ndv.getFilterConditionLeft(FILTER_PARAM_NAME, 1).loca...",
+				"hash": "5f2f690a0a6a"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 29,
+				"message": "Chained locator call in test: n8n.ndv.getFilterConditionLeft(FILTER_PARAM_NAME, 0).loca...",
+				"hash": "c3fc875effa7"
+			}
+		],
+		"tests/e2e/nodes/webhook.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 66,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'Response Code' }).c...",
+				"hash": "4ec8fd179f0d"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 66,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'Response Code' })",
+				"hash": "3f5a68018809"
+			}
+		],
+		"tests/e2e/projects/folders-basic.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 151,
+				"message": "Chained locator call in test: n8n.modal.container.getByText(errorMessage, { exact: fals...",
+				"hash": "493ced26c9ed"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 155,
+				"message": "Chained locator call in test: n8n.modal.container.getByText(emptyErrorMessage)",
+				"hash": "1a0616eac3d8"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 158,
+				"message": "Chained locator call in test: n8n.modal.container.getByText(tooLongErrorMessage)",
+				"hash": "d7e82d2a75eb"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 161,
+				"message": "Chained locator call in test: n8n.modal.container.getByText(dotsErrorMessage)",
+				"hash": "bbb98f3cbb44"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 177,
+				"message": "Chained locator call in test: n8n.notifications .getNotificationByTitleOrContent(FOLDER...",
+				"hash": "ef7efad8acb2"
+			}
+		],
+		"tests/e2e/projects/project-settings.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 60,
+				"message": "Direct page locator call: n8n.page.getByText('Project Updated Project Name saved su...",
+				"hash": "5c8bb96d8da1"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 80,
+				"message": "Chained locator call in test: table.getByText('User')",
+				"hash": "35eb3e7e10a1"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 81,
+				"message": "Chained locator call in test: table.getByText('Role')",
+				"hash": "598e22980502"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 84,
+				"message": "Chained locator call in test: table.locator('tbody tr')",
+				"hash": "fdc278cf27e4"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 89,
+				"message": "Chained locator call in test: ownerRow.getByTestId('project-member-role-dropdown')",
+				"hash": "c69f7e1bd77a"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 105,
+				"message": "Direct page locator call: n8n.page.locator('tbody tr').first()",
+				"hash": "c57a14994e07"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 105,
+				"message": "Direct page locator call: n8n.page.locator('tbody tr')",
+				"hash": "48de3852588f"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 106,
+				"message": "Chained locator call in test: currentUserRow.getByTestId('project-member-role-dropdown')",
+				"hash": "f1e1476c1fc9"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 109,
+				"message": "Chained locator call in test: currentUserRow.getByText('Admin')",
+				"hash": "1927ce34d19a"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 176,
+				"message": "Direct page locator call: n8n.page.getByText('Danger zone')",
+				"hash": "58fee023d77a"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 178,
+				"message": "Direct page locator call: n8n.page.getByText( 'When deleting a project, you can als...",
+				"hash": "f2d055ed66a9"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 204,
+				"message": "Direct page locator call: n8n.page.getByText('Project Persisted Project Name saved ...",
+				"hash": "0f573d3d200b"
+			}
+		],
+		"tests/e2e/projects/projects-move-resources.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 102,
+				"message": "Chained locator call in test: n8n.resourceMoveModal.getProjectSelectCredential().locato...",
+				"hash": "e8eff63d49af"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 103,
+				"message": "Direct page locator call: n8n.page.getByRole('option')",
+				"hash": "c58b0877f9a1"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 119,
+				"message": "Chained locator call in test: n8n.resourceMoveModal.getProjectSelectCredential().locato...",
+				"hash": "e8eff63d49af"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 120,
+				"message": "Direct page locator call: n8n.page.getByRole('option')",
+				"hash": "c58b0877f9a1"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 136,
+				"message": "Chained locator call in test: n8n.resourceMoveModal.getProjectSelectCredential().locato...",
+				"hash": "e8eff63d49af"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 137,
+				"message": "Direct page locator call: n8n.page.getByRole('option')",
+				"hash": "c58b0877f9a1"
+			}
+		],
+		"tests/e2e/projects/projects.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 85,
+				"message": "Chained locator call in test: n8n.workflows.cards.getWorkflow('My workflow').getByText(...",
+				"hash": "c5bffdc35ac3"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 161,
+				"message": "Direct page locator call: subn8n.page.getByRole('heading', { name: 'My Sub-Workflow...",
+				"hash": "788ef93cfb62"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 161,
+				"message": "Chained locator call in test: subn8n.page.getByRole('heading', { name: 'My Sub-Workflow...",
+				"hash": "9e664e14b0a8"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 166,
+				"message": "Direct page locator call: subn8n.page.getByRole('heading', { name: 'Notion account' })",
+				"hash": "43671aca120d"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 166,
+				"message": "Chained locator call in test: subn8n.page.getByRole('heading', { name: 'Notion account' })",
+				"hash": "c98e5c7b276b"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 206,
+				"message": "Chained locator call in test: n8n.projectSettings.getIconPickerButton().locator('svg')",
+				"hash": "4342f0cc13b8"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 243,
+				"message": "Direct page locator call: n8n.page.locator('body').click()",
+				"hash": "4484dbdcd879"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 243,
+				"message": "Direct page locator call: n8n.page.locator('body')",
+				"hash": "6667df4502c4"
+			}
+		],
+		"tests/e2e/regression/ADO-2372-prevent-clipping-params.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 62,
+				"message": "Chained locator call in test: editor.locator('.cm-line')",
+				"hash": "1ac80885fc71"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 63,
+				"message": "Chained locator call in test: editor.locator('.cm-line')",
+				"hash": "1ac80885fc71"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 64,
+				"message": "Chained locator call in test: editor.locator('.cm-line')",
+				"hash": "1ac80885fc71"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 65,
+				"message": "Chained locator call in test: editor.locator('.cm-line')",
+				"hash": "1ac80885fc71"
+			}
+		],
+		"tests/e2e/regression/AI-1401-sub-nodes-input-panel.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 19,
+				"message": "Chained locator call in test: n8n.ndv.inputPanel.get().locator('[data-test-id*=\"input-s...",
+				"hash": "396dc4f1d5af"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 22,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'Edit Fields' })",
+				"hash": "c6c4cc5bf6c4"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 23,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'Manual Trigger' })",
+				"hash": "503597d4ef3e"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 24,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'No Operation, do no...",
+				"hash": "7a16d85129d2"
+			}
+		],
+		"tests/e2e/regression/SUG-121-fields-reset-after-closing-ndv.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 21,
+				"message": "Chained locator call in test: n8n.ndv.getParameterByLabel('JavaScript').getByRole('text...",
+				"hash": "f8105d6d3a8d"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 24,
+				"message": "Chained locator call in test: n8n.ndv.getParameterByLabel('JavaScript').getByRole('text...",
+				"hash": "f8105d6d3a8d"
+			}
+		],
+		"tests/e2e/settings/environments/source-control.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 52,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'main' })",
+				"hash": "8e36dd6e7c35"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 71,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'main' })",
+				"hash": "8e36dd6e7c35"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 72,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'development' })",
+				"hash": "4157d0d852a3"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 73,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'staging' })",
+				"hash": "5ea1e1189ae1"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 74,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'production' })",
+				"hash": "13bbd087b456"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 75,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'development' }).cli...",
+				"hash": "2d47edbe9c6a"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 75,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'development' })",
+				"hash": "4157d0d852a3"
+			},
+			{
+				"rule": "api-purity",
+				"line": 79,
+				"message": "Raw API call detected: request.get(",
+				"hash": "5128d500e46f"
+			},
+			{
+				"rule": "api-purity",
+				"line": 88,
+				"message": "Raw API call detected: request.get(",
+				"hash": "5128d500e46f"
+			}
+		],
+		"tests/e2e/sharing/access-control.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 73,
+				"message": "Chained locator call in test: adminN8n.credentials.credentialModal.getVisibleDropdown()...",
+				"hash": "466547047099"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 134,
+				"message": "Chained locator call in test: credentialDropdown.getByText(testCredName)",
+				"hash": "88f241af5012"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 135,
+				"message": "Chained locator call in test: credentialDropdown.getByText(devCredName)",
+				"hash": "7c1126e1a52a"
+			},
+			{
+				"rule": "api-purity",
+				"line": 99,
+				"message": "Raw API call detected: request.get(",
+				"hash": "5128d500e46f"
+			}
+		],
+		"tests/e2e/sharing/credential-visibility.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 48,
+				"message": "Chained locator call in test: credentialDropdown.getByText(testCredName)",
+				"hash": "88f241af5012"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 49,
+				"message": "Chained locator call in test: credentialDropdown.getByText(personalCredName)",
+				"hash": "8a03b8f32fa8"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 50,
+				"message": "Chained locator call in test: credentialDropdown.getByText(devCredName)",
+				"hash": "7c1126e1a52a"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 92,
+				"message": "Chained locator call in test: credentialDropdown.getByText(ownerCredName)",
+				"hash": "7b09c1090b15"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 93,
+				"message": "Chained locator call in test: credentialDropdown.getByText(memberCredName)",
+				"hash": "241866f0d4df"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 150,
+				"message": "Chained locator call in test: credentialDropdown.getByText(memberCredName)",
+				"hash": "241866f0d4df"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 151,
+				"message": "Chained locator call in test: credentialDropdown.getByText(ownerCredName)",
+				"hash": "7b09c1090b15"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 205,
+				"message": "Chained locator call in test: n8n.ndv.getVisiblePopper().locator('li')",
+				"hash": "eb4832404c9b"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 235,
+				"message": "Chained locator call in test: n8n.ndv.getVisiblePopper().locator('li')",
+				"hash": "eb4832404c9b"
+			}
+		],
+		"tests/e2e/source-control/pull.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 90,
+				"message": "Chained locator call in test: n8n.canvas.tagsManagerModal.getTable().getByText('pull-te...",
+				"hash": "9cd079655a6b"
+			}
+		],
+		"tests/e2e/workflows/checklist/production-checklist.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 63,
+				"message": "Direct page locator call: n8n.page.getByTestId('workflow-settings-dialog')",
+				"hash": "6dff31c05187"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 64,
+				"message": "Direct page locator call: n8n.page.getByTestId('workflow-settings-error-workflow')",
+				"hash": "e86d143e5094"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 79,
+				"message": "Direct page locator call: n8n.page.getByTestId('workflow-settings-dialog')",
+				"hash": "6dff31c05187"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 91,
+				"message": "Chained locator call in test: n8n.canvas.getProductionChecklistActionItem().first().get...",
+				"hash": "b99bf85bffb8"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 94,
+				"message": "Direct page locator call: n8n.page.locator('body').click({ position: { x: 0, y: 0 } })",
+				"hash": "82ea0a8120b9"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 94,
+				"message": "Direct page locator call: n8n.page.locator('body')",
+				"hash": "6667df4502c4"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 132,
+				"message": "Direct page locator call: n8n.page.getByTestId('workflow-settings-dialog')",
+				"hash": "6dff31c05187"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 138,
+				"message": "Chained locator call in test: n8n.canvas .getProductionChecklistActionItem() .first() ....",
+				"hash": "049e1b469b18"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 155,
+				"message": "Direct page locator call: n8n.page.locator('.el-message-box')",
+				"hash": "a41c304c373a"
+			}
+		],
+		"tests/e2e/workflows/demo-diff.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 116,
+				"message": "Direct page locator call: n8n.page.getByText('Waiting for workflow data...')",
+				"hash": "b6b8ed64d974"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 123,
+				"message": "Direct page locator call: n8n.page.getByText('Waiting for workflow data...')",
+				"hash": "b6b8ed64d974"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 141,
+				"message": "Direct page locator call: n8n.page.getByText('Waiting for workflow data...')",
+				"hash": "b6b8ed64d974"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 145,
+				"message": "Direct page locator call: n8n.page.getByRole('heading', { name: /Test Workflow/, ex...",
+				"hash": "27a3f117a93a"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 149,
+				"message": "Direct page locator call: n8n.page.getByRole('button', { name: /Changes/ })",
+				"hash": "1daa8f688214"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 156,
+				"message": "Direct page locator call: n8n.page.getByText('Waiting for workflow data...')",
+				"hash": "b6b8ed64d974"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 173,
+				"message": "Direct page locator call: n8n.page.getByText('Waiting for workflow data...')",
+				"hash": "b6b8ed64d974"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 176,
+				"message": "Direct page locator call: n8n.page.getByRole('heading', { name: 'Test Workflow - Af...",
+				"hash": "284153f6d798"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 183,
+				"message": "Direct page locator call: n8n.page.getByText('Waiting for workflow data...')",
+				"hash": "b6b8ed64d974"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 200,
+				"message": "Direct page locator call: n8n.page.getByText('Waiting for workflow data...')",
+				"hash": "b6b8ed64d974"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 203,
+				"message": "Direct page locator call: n8n.page.getByRole('heading', { name: 'Test Workflow - Be...",
+				"hash": "dd7b576b2982"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 210,
+				"message": "Direct page locator call: n8n.page.getByText('Waiting for workflow data...')",
+				"hash": "b6b8ed64d974"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 229,
+				"message": "Direct page locator call: n8n.page.getByText('Waiting for workflow data...')",
+				"hash": "b6b8ed64d974"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 233,
+				"message": "Direct page locator call: n8n.page.getByRole('heading', { name: /Test Workflow/, ex...",
+				"hash": "27a3f117a93a"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 237,
+				"message": "Direct page locator call: n8n.page.getByRole('button', { name: /Changes/ })",
+				"hash": "1daa8f688214"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 244,
+				"message": "Direct page locator call: n8n.page.getByText('Waiting for workflow data...')",
+				"hash": "b6b8ed64d974"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 252,
+				"message": "Direct page locator call: n8n.page.getByText('Waiting for workflow data...')",
+				"hash": "b6b8ed64d974"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 259,
+				"message": "Direct page locator call: n8n.page.getByText('Waiting for workflow data...')",
+				"hash": "b6b8ed64d974"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 273,
+				"message": "Direct page locator call: n8n.page.getByText('Waiting for workflow data...')",
+				"hash": "b6b8ed64d974"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 278,
+				"message": "Direct page locator call: n8n.page.locator('body')",
+				"hash": "6667df4502c4"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 283,
+				"message": "Direct page locator call: n8n.page.locator('body')",
+				"hash": "6667df4502c4"
+			},
+			{
+				"rule": "duplicate-logic",
+				"line": 113,
+				"message": "Duplicate test logic: \"shows waiting state initially\" has identical structure to tests/e2e/ai/workflow-builder.spec.ts:\"should show Build with AI button on empty canvas\"",
+				"hash": "6cf55be1ebdb"
+			}
+		],
+		"tests/e2e/workflows/editor/canvas/canvas-nodes.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 24,
+				"message": "Direct page locator call: n8n.page.getByText('Add Routing Rule').click()",
+				"hash": "bb9ccdaa6e0f"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 24,
+				"message": "Direct page locator call: n8n.page.getByText('Add Routing Rule')",
+				"hash": "f13800d70ddd"
+			}
+		],
+		"tests/e2e/workflows/editor/canvas/canvas-zoom.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 218,
+				"message": "Chained locator call in test: n8n.canvas.nodeByName('n8n').getByTestId('overflow-node-b...",
+				"hash": "3d500494797e"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 219,
+				"message": "Direct page locator call: n8n.page.getByTestId('context-menu-item-open').click()",
+				"hash": "803edc6e2d15"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 219,
+				"message": "Direct page locator call: n8n.page.getByTestId('context-menu-item-open')",
+				"hash": "049003f6550b"
+			}
+		],
+		"tests/e2e/workflows/editor/code/code-node.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 24,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'Run Once for Each I...",
+				"hash": "354ddeafe76a"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 24,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'Run Once for Each I...",
+				"hash": "354ddeafe76a"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 31,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'Run Once for All It...",
+				"hash": "03087d1206ad"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 31,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'Run Once for All It...",
+				"hash": "03087d1206ad"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 46,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'Run Once for Each I...",
+				"hash": "354ddeafe76a"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 46,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'Run Once for Each I...",
+				"hash": "354ddeafe76a"
+			}
+		],
+		"tests/e2e/workflows/editor/execution/execution.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 145,
+				"message": "Direct page locator call: n8n.page.getByTestId('copy-input').click()",
+				"hash": "20e9bf63ae83"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 145,
+				"message": "Direct page locator call: n8n.page.getByTestId('copy-input')",
+				"hash": "dd5c167f4482"
+			},
+			{
+				"rule": "api-purity",
+				"line": 149,
+				"message": "Raw API call detected: request.get(",
+				"hash": "5128d500e46f"
+			}
+		],
+		"tests/e2e/workflows/editor/execution/inject-previous.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 55,
+				"message": "Chained locator call in test: n8n.ndv.outputPanel.get().locator('[contenteditable=\"true...",
+				"hash": "cae3335d44be"
+			}
+		],
+		"tests/e2e/workflows/editor/execution/logs.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 249,
+				"message": "Chained locator call in test: n8n.ndv.outputPanel .getDataContainer() .locator('a')",
+				"hash": "6a673016ebff"
+			},
+			{
+				"rule": "api-purity",
+				"line": 259,
+				"message": "Raw API call detected: request.get(",
+				"hash": "5128d500e46f"
+			}
+		],
+		"tests/e2e/workflows/editor/expressions/inline.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 51,
+				"message": "Chained locator call in test: n8n.ndv.getParameterInput('value').getByRole('textbox')",
+				"hash": "e6c73a21e494"
+			}
+		],
+		"tests/e2e/workflows/editor/expressions/mapping.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 56,
+				"message": "Chained locator call in test: n8n.ndv.inputPanel.get().getByText(expectedJsonText)",
+				"hash": "9865414150f3"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 102,
+				"message": "Chained locator call in test: n8n.ndv.inputPanel.get().getByText('Schedule Trigger')",
+				"hash": "2043cf03c7a7"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 113,
+				"message": "Chained locator call in test: schemaItem.locator('span')",
+				"hash": "dae1f9ee44ac"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 154,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'String' }).click()",
+				"hash": "c3130f54285b"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 154,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'String' })",
+				"hash": "6351fa2e946a"
+			}
+		],
+		"tests/e2e/workflows/editor/expressions/transformation.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 15,
+				"message": "Chained locator call in test: assignmentValue.locator('text=Expression')",
+				"hash": "398682465503"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 110,
+				"message": "Chained locator call in test: n8n.ndv.getOutputDataContainer().locator('[class*=value_]')",
+				"hash": "78a1c969575d"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 130,
+				"message": "Chained locator call in test: n8n.ndv.getOutputDataContainer().locator('[class*=value_]')",
+				"hash": "78a1c969575d"
+			}
+		],
+		"tests/e2e/workflows/editor/ndv/io-filter.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 28,
+				"message": "Chained locator call in test: pagination.locator('li')",
+				"hash": "5a7163c291f8"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 29,
+				"message": "Chained locator call in test: n8n.ndv.outputPanel.getDataContainer().locator('mark')",
+				"hash": "fc731709a0e9"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 38,
+				"message": "Chained locator call in test: n8n.ndv.outputPanel.getDataContainer().locator('mark')",
+				"hash": "fc731709a0e9"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 42,
+				"message": "Chained locator call in test: pagination.locator('li')",
+				"hash": "5a7163c291f8"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 62,
+				"message": "Chained locator call in test: n8n.ndv.inputPanel.get().getByTestId('ndv-data-pagination')",
+				"hash": "1a869dd91e67"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 64,
+				"message": "Chained locator call in test: n8n.ndv.outputPanel.get().getByTestId('ndv-data-pagination')",
+				"hash": "58e725977612"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 68,
+				"message": "Chained locator call in test: getInputPagination().locator('li')",
+				"hash": "5aa75994ab8d"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 70,
+				"message": "Chained locator call in test: getOutputPagination().locator('li')",
+				"hash": "d452a5950767"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 77,
+				"message": "Chained locator call in test: getOutputPagination().locator('li')",
+				"hash": "d452a5950767"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 84,
+				"message": "Chained locator call in test: getOutputPagination().locator('li')",
+				"hash": "d452a5950767"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 88,
+				"message": "Chained locator call in test: getInputPagination().locator('li')",
+				"hash": "5aa75994ab8d"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 90,
+				"message": "Chained locator call in test: getOutputPagination().locator('li')",
+				"hash": "d452a5950767"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 100,
+				"message": "Chained locator call in test: getInputPagination().locator('li')",
+				"hash": "5aa75994ab8d"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 102,
+				"message": "Chained locator call in test: getOutputPagination().locator('li')",
+				"hash": "d452a5950767"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 107,
+				"message": "Chained locator call in test: getInputPagination().locator('li')",
+				"hash": "5aa75994ab8d"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 114,
+				"message": "Chained locator call in test: getInputPagination().locator('li')",
+				"hash": "5aa75994ab8d"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 120,
+				"message": "Chained locator call in test: getInputPagination().locator('li')",
+				"hash": "5aa75994ab8d"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 122,
+				"message": "Chained locator call in test: getOutputPagination().locator('li')",
+				"hash": "d452a5950767"
+			}
+		],
+		"tests/e2e/workflows/editor/ndv/ndv-core.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 116,
+				"message": "Chained locator call in test: n8n.ndv.getContainer().getByText('Webhook URLs').locator(...",
+				"hash": "15c9e3d9aeba"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 116,
+				"message": "Chained locator call in test: n8n.ndv.getContainer().getByText('Webhook URLs')",
+				"hash": "9026e28e4f47"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 171,
+				"message": "Chained locator call in test: n8n.ndv.getParameterInput('jsCode').locator('.cm-content')",
+				"hash": "b09a3f3d56fc"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 202,
+				"message": "Chained locator call in test: n8n.ndv.getParameterInput('jsCode').locator('.cm-content')",
+				"hash": "b09a3f3d56fc"
+			}
+		],
+		"tests/e2e/workflows/editor/ndv/ndv-data-display.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 59,
+				"message": "Chained locator call in test: objectValueItem.locator('.toggle')",
+				"hash": "45d8699925c6"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 78,
+				"message": "Chained locator call in test: n8n.ndv.outputPanel.get().getByText('5 items')",
+				"hash": "beef6d951ce8"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 94,
+				"message": "Chained locator call in test: n8n.ndv.outputPanel.get().getByText('26 items')",
+				"hash": "f1b1cc3c04b4"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 116,
+				"message": "Chained locator call in test: n8n.ndv.outputPanel.getTableRow(1).locator('mark')",
+				"hash": "6212a0d5e5bc"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 131,
+				"message": "Chained locator call in test: n8n.ndv.outputPanel.get().locator('[class*=\"active\"]')",
+				"hash": "ddd992a3778f"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 143,
+				"message": "Chained locator call in test: n8n.ndv.outputPanel.getTableRow(1).locator('mark')",
+				"hash": "6212a0d5e5bc"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 147,
+				"message": "Chained locator call in test: n8n.ndv.outputPanel.getDataContainer().locator('.json-data')",
+				"hash": "8c80e9607f84"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 250,
+				"message": "Chained locator call in test: n8n.ndv.outputPanel .get() .getByText('To search field va...",
+				"hash": "6bd1281071a1"
+			}
+		],
+		"tests/e2e/workflows/editor/ndv/ndv-parameters.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 115,
+				"message": "Chained locator call in test: n8n.ndv.getResourceLocatorInput('documentId').locator('in...",
+				"hash": "a10387b2b4a5"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 173,
+				"message": "Chained locator call in test: n8n.ndv.getAssignmentValue('assignments').getByText('Expr...",
+				"hash": "25491e82dd43"
+			}
+		],
+		"tests/e2e/workflows/editor/ndv/paired-item.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 91,
+				"message": "Direct page locator call: n8n.page.locator('[data-test-id=\"hovering-item\"]')",
+				"hash": "170e68f7b7b7"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 97,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'Set1' }).click()",
+				"hash": "7363e0425bfb"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 97,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'Set1' })",
+				"hash": "7e6cc145ca37"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 101,
+				"message": "Chained locator call in test: n8n.ndv.inputPanel.getTable().locator('text=1000')",
+				"hash": "d54ea49f3e0f"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 102,
+				"message": "Chained locator call in test: n8n.ndv.outputPanel.get().locator('[data-test-id=\"hoverin...",
+				"hash": "6e9d8666bad6"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 109,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'Sort' }).click()",
+				"hash": "dab3a0c3f01f"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 109,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'Sort' })",
+				"hash": "57ea397df648"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 113,
+				"message": "Chained locator call in test: n8n.ndv.inputPanel.getTable().locator('text=1111')",
+				"hash": "20de742a14d7"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 114,
+				"message": "Chained locator call in test: n8n.ndv.outputPanel.get().locator('[data-test-id=\"hoverin...",
+				"hash": "6e9d8666bad6"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 193,
+				"message": "Chained locator call in test: n8n.ndv.outputPanel.get().getByText('False Branch (2 item...",
+				"hash": "4ed4184926d5"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 217,
+				"message": "Chained locator call in test: n8n.ndv.inputPanel.get().getByText('True Branch')",
+				"hash": "cc551456a986"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 224,
+				"message": "Chained locator call in test: n8n.ndv.inputPanel.get().locator('[data-test-id=\"hovering...",
+				"hash": "8d39d87925b5"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 229,
+				"message": "Chained locator call in test: n8n.ndv.outputPanel.get().locator('[data-test-id=\"hoverin...",
+				"hash": "6e9d8666bad6"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 233,
+				"message": "Chained locator call in test: n8n.ndv.inputPanel.get().getByText('False Branch')",
+				"hash": "dee1bac10eac"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 244,
+				"message": "Chained locator call in test: n8n.ndv.outputPanel.get().locator('[data-test-id=\"hoverin...",
+				"hash": "6e9d8666bad6"
+			}
+		],
+		"tests/e2e/workflows/editor/ndv/pinning.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 77,
+				"message": "Chained locator call in test: runDataHeader.getByRole('button', { name: 'Edit Output' })",
+				"hash": "aa1904651d9c"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 171,
+				"message": "Chained locator call in test: n8n.ndv.getAssignmentValue('assignments').getByText('Expr...",
+				"hash": "25491e82dd43"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 180,
+				"message": "Chained locator call in test: n8n.ndv.getParameterInputHint().getByText(expectedOutput)",
+				"hash": "393fc24d0bf4"
+			}
+		],
+		"tests/e2e/workflows/editor/ndv/resource-locator.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 77,
+				"message": "Direct page locator call: n8n.page.locator('.el-message-box').locator('button:has-t...",
+				"hash": "066ea6c93563"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 77,
+				"message": "Chained locator call in test: n8n.page.locator('.el-message-box').locator('button:has-t...",
+				"hash": "6dae6a423842"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 77,
+				"message": "Direct page locator call: n8n.page.locator('.el-message-box')",
+				"hash": "a41c304c373a"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 106,
+				"message": "Chained locator call in test: n8n.ndv.getResourceLocatorInput('sheetName').locator('inp...",
+				"hash": "8c2440762013"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 115,
+				"message": "Direct page locator call: n8n.page.getByTestId('rlc-item').first()",
+				"hash": "4466b60c399e"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 115,
+				"message": "Direct page locator call: n8n.page.getByTestId('rlc-item')",
+				"hash": "84df99d6a586"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 118,
+				"message": "Chained locator call in test: visiblePopper.getByTestId('rlc-item')",
+				"hash": "50584e5d1477"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 129,
+				"message": "Direct page locator call: n8n.page.getByTestId('rlc-item').first()",
+				"hash": "4466b60c399e"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 129,
+				"message": "Direct page locator call: n8n.page.getByTestId('rlc-item')",
+				"hash": "84df99d6a586"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 132,
+				"message": "Chained locator call in test: visiblePopperAfter.getByTestId('rlc-item')",
+				"hash": "160fc14cc93a"
+			}
+		],
+		"tests/e2e/workflows/editor/ndv/schema-preview.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 11,
+				"message": "Chained locator call in test: n8n.ndv.inputPanel.get().getByText('No input data')",
+				"hash": "89dc9850c2d6"
+			}
+		],
+		"tests/e2e/workflows/editor/subworkflows/debugging.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 38,
+				"message": "Chained locator call in test: n8n.ndv.outputPanel.getTbodyCell(0, 0).locator('a')",
+				"hash": "11bb70e5e4f9"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 81,
+				"message": "Chained locator call in test: n8n.ndv.outputPanel.getTbodyCell(0, 0).locator('a')",
+				"hash": "11bb70e5e4f9"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 95,
+				"message": "Chained locator call in test: n8n.ndv.outputPanel.getTbodyCell(0, 0).locator('a')",
+				"hash": "11bb70e5e4f9"
+			}
+		],
+		"tests/e2e/workflows/editor/subworkflows/workflow-selector.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 58,
+				"message": "Chained locator call in test: n8n.ndv.getResourceLocatorInput('workflowId').locator('in...",
+				"hash": "d4ee6d0058ed"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 64,
+				"message": "Chained locator call in test: n8n.ndv.getResourceLocatorInput('workflowId').locator('a')",
+				"hash": "1cadf974d1a1"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 73,
+				"message": "Chained locator call in test: n8n.ndv.getResourceLocatorModeSelector('workflowId').loca...",
+				"hash": "b893416c36ed"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 87,
+				"message": "Chained locator call in test: addResourceItem.getByText(/Create a/)",
+				"hash": "f7f77ebf40c7"
+			}
+		],
+		"tests/e2e/workflows/editor/tags.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 59,
+				"message": "Chained locator call in test: n8n.canvas.tagsManagerModal.getTable().getByText(tag1)",
+				"hash": "f31292c4e171"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 64,
+				"message": "Chained locator call in test: n8n.canvas.tagsManagerModal.getTable().getByText(tag2)",
+				"hash": "20fbe08893cc"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 209,
+				"message": "Chained locator call in test: n8n.canvas.getVisibleDropdown().locator('li')",
+				"hash": "4febc57392da"
+			}
+		],
+		"tests/e2e/workflows/editor/workflow-actions/archive.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 36,
+				"message": "Chained locator call in test: n8n.workflowSettingsModal.getArchiveMenuItem().locator('..')",
+				"hash": "ec8d53703e0b"
+			}
+		],
+		"tests/e2e/workflows/editor/workflow-actions/settings.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 28,
+				"message": "Direct page locator call: n8n.page.getByRole('option').count()",
+				"hash": "43ba2cdb87a8"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 28,
+				"message": "Direct page locator call: n8n.page.getByRole('option')",
+				"hash": "c58b0877f9a1"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 30,
+				"message": "Direct page locator call: n8n.page.getByRole('option').last().click()",
+				"hash": "4dcd8e905b3c"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 30,
+				"message": "Direct page locator call: n8n.page.getByRole('option').last()",
+				"hash": "a8b0a552c436"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 30,
+				"message": "Direct page locator call: n8n.page.getByRole('option')",
+				"hash": "c58b0877f9a1"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 33,
+				"message": "Direct page locator call: n8n.page.getByRole('option').first()",
+				"hash": "f8c4aff6a0b3"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 33,
+				"message": "Direct page locator call: n8n.page.getByRole('option')",
+				"hash": "c58b0877f9a1"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 34,
+				"message": "Direct page locator call: n8n.page.getByRole('option').nth(1).click()",
+				"hash": "5a25d5a68877"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 34,
+				"message": "Direct page locator call: n8n.page.getByRole('option').nth(1)",
+				"hash": "0e8a6f4130fa"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 34,
+				"message": "Direct page locator call: n8n.page.getByRole('option')",
+				"hash": "c58b0877f9a1"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 37,
+				"message": "Direct page locator call: n8n.page.getByRole('option')",
+				"hash": "c58b0877f9a1"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 38,
+				"message": "Direct page locator call: n8n.page.getByRole('option').last().click()",
+				"hash": "4dcd8e905b3c"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 38,
+				"message": "Direct page locator call: n8n.page.getByRole('option').last()",
+				"hash": "a8b0a552c436"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 38,
+				"message": "Direct page locator call: n8n.page.getByRole('option')",
+				"hash": "c58b0877f9a1"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 41,
+				"message": "Direct page locator call: n8n.page.getByRole('option')",
+				"hash": "c58b0877f9a1"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 42,
+				"message": "Direct page locator call: n8n.page.getByRole('option').last().click()",
+				"hash": "4dcd8e905b3c"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 42,
+				"message": "Direct page locator call: n8n.page.getByRole('option').last()",
+				"hash": "a8b0a552c436"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 42,
+				"message": "Direct page locator call: n8n.page.getByRole('option')",
+				"hash": "c58b0877f9a1"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 45,
+				"message": "Direct page locator call: n8n.page.getByRole('option')",
+				"hash": "c58b0877f9a1"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 46,
+				"message": "Direct page locator call: n8n.page.getByRole('option').last().click()",
+				"hash": "4dcd8e905b3c"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 46,
+				"message": "Direct page locator call: n8n.page.getByRole('option').last()",
+				"hash": "a8b0a552c436"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 46,
+				"message": "Direct page locator call: n8n.page.getByRole('option')",
+				"hash": "c58b0877f9a1"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 49,
+				"message": "Direct page locator call: n8n.page.getByRole('option')",
+				"hash": "c58b0877f9a1"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 50,
+				"message": "Direct page locator call: n8n.page.getByRole('option').last().click()",
+				"hash": "4dcd8e905b3c"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 50,
+				"message": "Direct page locator call: n8n.page.getByRole('option').last()",
+				"hash": "a8b0a552c436"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 50,
+				"message": "Direct page locator call: n8n.page.getByRole('option')",
+				"hash": "c58b0877f9a1"
+			}
+		],
+		"tests/e2e/workflows/executions/list.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 45,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'Success' }).click()",
+				"hash": "fbad8571f166"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 45,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'Success' })",
+				"hash": "75835fe42ab8"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 189,
+				"message": "Chained locator call in test: iframe.locator('body')",
+				"hash": "44c6c75041a8"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 230,
+				"message": "Chained locator call in test: iframe.locator('body')",
+				"hash": "44c6c75041a8"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 233,
+				"message": "Chained locator call in test: iframe.locator('body')",
+				"hash": "44c6c75041a8"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 236,
+				"message": "Chained locator call in test: iframe.locator('body')",
+				"hash": "44c6c75041a8"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 239,
+				"message": "Chained locator call in test: iframe.locator('body')",
+				"hash": "44c6c75041a8"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 242,
+				"message": "Chained locator call in test: iframe.locator('body')",
+				"hash": "44c6c75041a8"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 245,
+				"message": "Chained locator call in test: iframe.locator('body')",
+				"hash": "44c6c75041a8"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 248,
+				"message": "Chained locator call in test: iframe.locator('body')",
+				"hash": "44c6c75041a8"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 312,
+				"message": "Direct page locator call: n8n.page.getByTestId('workflow-execution-no-trigger-conte...",
+				"hash": "407bd53b3360"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 314,
+				"message": "Direct page locator call: n8n.page.getByRole('button', { name: 'Add first step' })....",
+				"hash": "90ae792f4909"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 314,
+				"message": "Direct page locator call: n8n.page.getByRole('button', { name: 'Add first step' })",
+				"hash": "ae0e7537f378"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 320,
+				"message": "Direct page locator call: n8n.page.getByTestId('workflow-execution-no-content')",
+				"hash": "36b71f3e9617"
+			},
+			{
+				"rule": "api-purity",
+				"line": 265,
+				"message": "Raw API call detected: request.post(",
+				"hash": "fc24119a27f0"
+			},
+			{
+				"rule": "api-purity",
+				"line": 283,
+				"message": "Raw API call detected: request.get(",
+				"hash": "5128d500e46f"
+			},
+			{
+				"rule": "api-purity",
+				"line": 291,
+				"message": "Raw API call detected: request.get(",
+				"hash": "5128d500e46f"
+			}
+		],
+		"tests/e2e/workflows/templates/templates.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 242,
+				"message": "Chained locator call in test: n8n.templates.getDescription().locator('img')",
+				"hash": "5f06d991a2b6"
+			}
+		],
+		"composables/CanvasComposer.ts": [
+			{
+				"rule": "no-page-in-flow",
+				"line": 138,
+				"message": "Direct page access in composable: this.n8n.page.url",
+				"hash": "504827a38388"
+			},
+			{
+				"rule": "no-page-in-flow",
+				"line": 148,
+				"message": "Direct page access in composable: this.n8n.page.url",
+				"hash": "504827a38388"
+			}
+		],
+		"composables/DataTablesComposer.ts": [
+			{
+				"rule": "no-page-in-flow",
+				"line": 29,
+				"message": "Direct page access in composable: this.n8n.page.goto",
+				"hash": "bb450d59c911"
+			},
+			{
+				"rule": "no-page-in-flow",
+				"line": 31,
+				"message": "Direct page access in composable: this.n8n.page.goto",
+				"hash": "bb450d59c911"
+			},
+			{
+				"rule": "no-page-in-flow",
+				"line": 40,
+				"message": "Direct page access in composable: this.n8n.page.goto",
+				"hash": "bb450d59c911"
+			}
+		],
+		"composables/ExecutionsComposer.ts": [
+			{
+				"rule": "no-page-in-flow",
+				"line": 21,
+				"message": "Direct page access in composable: this.n8n.page.waitForResponse",
+				"hash": "07f5f1ebe32b"
+			},
+			{
+				"rule": "no-page-in-flow",
+				"line": 47,
+				"message": "Direct page access in composable: this.n8n.page.waitForRequest",
+				"hash": "468594c2598a"
+			}
+		],
+		"composables/TestEntryComposer.ts": [
+			{
+				"rule": "no-page-in-flow",
+				"line": 44,
+				"message": "Direct page access in composable: this.n8n.page.goto",
+				"hash": "bb450d59c911"
+			},
+			{
+				"rule": "no-page-in-flow",
+				"line": 62,
+				"message": "Direct page access in composable: this.n8n.page.goto",
+				"hash": "bb450d59c911"
+			},
+			{
+				"rule": "no-page-in-flow",
+				"line": 72,
+				"message": "Direct page access in composable: this.n8n.page.waitForEvent",
+				"hash": "4b068bc8ea06"
+			},
+			{
+				"rule": "no-page-in-flow",
+				"line": 102,
+				"message": "Direct page access in composable: this.n8n.page.context",
+				"hash": "c24e4c27fc5b"
+			}
+		],
+		"tests/e2e/app-config/nps-survey.spec.ts": [
+			{
+				"rule": "api-purity",
+				"line": 46,
+				"message": "Raw API call detected: fetch(",
+				"hash": "b52df352569e"
+			}
+		],
+		"tests/e2e/auth/password-reset.spec.ts": [
+			{
+				"rule": "api-purity",
+				"line": 7,
+				"message": "Raw API call detected: request.post(",
+				"hash": "fc24119a27f0"
+			}
+		],
+		"tests/e2e/building-blocks/workflow-entry-points.spec.ts": [
+			{
+				"rule": "api-purity",
+				"line": 35,
+				"message": "Raw API call detected: request.post(",
+				"hash": "fc24119a27f0"
+			}
+		],
+		"tests/e2e/capabilities/proxy-server.spec.ts": [
+			{
+				"rule": "api-purity",
+				"line": 23,
+				"message": "Raw API call detected: fetch(",
+				"hash": "b52df352569e"
+			},
+			{
+				"rule": "api-purity",
+				"line": 60,
+				"message": "Raw API call detected: fetch(",
+				"hash": "b52df352569e"
+			}
+		],
+		"tests/e2e/sharing/workflow-sharing.spec.ts": [
+			{
+				"rule": "api-purity",
+				"line": 118,
+				"message": "Raw API call detected: request.get(",
+				"hash": "5128d500e46f"
+			}
+		],
+		"tests/e2e/workflows/editor/subworkflows/subworkflow-version-resolution.spec.ts": [
+			{
+				"rule": "api-purity",
+				"line": 60,
+				"message": "Raw API call detected: request.patch(",
+				"hash": "8b1d786219ad"
+			},
+			{
+				"rule": "api-purity",
+				"line": 112,
+				"message": "Raw API call detected: request.post(",
+				"hash": "fc24119a27f0"
+			},
+			{
+				"rule": "api-purity",
+				"line": 141,
+				"message": "Raw API call detected: request.patch(",
+				"hash": "8b1d786219ad"
+			},
+			{
+				"rule": "api-purity",
+				"line": 294,
+				"message": "Raw API call detected: request.patch(",
+				"hash": "8b1d786219ad"
+			}
+		],
+		"workflows/Test_workflow_5.json": [
+			{
+				"rule": "test-data-hygiene",
+				"line": 1,
+				"message": "Poorly named test data: Test_workflow_5.json",
+				"hash": "dad4916c95c2"
+			}
+		],
+		"workflows/Test_workflow_3.json": [
+			{
+				"rule": "test-data-hygiene",
+				"line": 1,
+				"message": "Poorly named test data: Test_workflow_3.json",
+				"hash": "f8c622dd26a0"
+			}
+		],
+		"workflows/Test_workflow_1.json": [
+			{
+				"rule": "test-data-hygiene",
+				"line": 1,
+				"message": "Poorly named test data: Test_workflow_1.json",
+				"hash": "59565c005bcb"
+			}
+		],
+		"pages/components/VariableModal.ts": [
+			{
+				"rule": "duplicate-logic",
+				"line": 36,
+				"message": "Duplicate method logic: VariableModal.close() has identical structure to pages/components/CredentialModal.ts:CredentialModal.close()",
+				"hash": "271e51542c85"
+			}
+		],
+		"tests/e2e/workflows/editor/canvas/actions.spec.ts": [
+			{
+				"rule": "duplicate-logic",
+				"line": 62,
+				"message": "Duplicate test logic: \"should add disconnected node if nothing is selected\" has identical structure to tests/e2e/building-blocks/canvas-actions.spec.ts:\"should add disconnected node when nothing selected\"",
+				"hash": "5cda70c65afc"
+			}
+		],
+		"tests/e2e/chat-hub/chat-hub-chat-user.spec.ts": [
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 24,
+				"message": "Direct page instantiation: new ChatHubChatPage(n8n.page)",
+				"hash": "4c6c3053ee95"
+			}
+		],
+		"tests/e2e/chat-hub/chat-hub-settings.spec.ts": [
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 10,
+				"message": "Direct page instantiation: new ChatHubSettingsPage(n8n.page)",
+				"hash": "03642a3feb2b"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 35,
+				"message": "Direct page instantiation: new ChatHubChatPage(memberN8n.page)",
+				"hash": "397d824f0d69"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 57,
+				"message": "Direct page instantiation: new ChatHubSettingsPage(n8n.page)",
+				"hash": "03642a3feb2b"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 94,
+				"message": "Direct page instantiation: new ChatHubChatPage(memberN8n.page)",
+				"hash": "397d824f0d69"
+			}
+		],
+		"tests/e2e/chat-hub/chat-hub-tools.spec.ts": [
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 12,
+				"message": "Direct page instantiation: new ChatHubChatPage(n8n.page)",
+				"hash": "4c6c3053ee95"
+			}
+		],
+		"tests/e2e/chat-hub/chat-hub-workflow-agent.spec.ts": [
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 12,
+				"message": "Direct page instantiation: new ChatHubWorkflowAgentsPage(n8n.page)",
+				"hash": "c9be1b5d1bc9"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 13,
+				"message": "Direct page instantiation: new ChatHubChatPage(n8n.page)",
+				"hash": "4c6c3053ee95"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 31,
+				"message": "Direct page instantiation: new CanvasPage(tab1)",
+				"hash": "57ca97b38297"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 32,
+				"message": "Direct page instantiation: new NodeDetailsViewPage(tab1)",
+				"hash": "b2f3d965950b"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 54,
+				"message": "Direct page instantiation: new CanvasPage(tab2)",
+				"hash": "0bd465646efa"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 55,
+				"message": "Direct page instantiation: new NodeDetailsViewPage(tab2)",
+				"hash": "e3b9a2a545fd"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 80,
+				"message": "Direct page instantiation: new ChatHubWorkflowAgentsPage(n8n.page)",
+				"hash": "c9be1b5d1bc9"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 85,
+				"message": "Direct page instantiation: new ChatHubWorkflowAgentsPage(memberN8n.page)",
+				"hash": "13e61175005b"
+			},
+			{
+				"rule": "no-direct-page-instantiation",
+				"line": 103,
+				"message": "Direct page instantiation: new ChatHubChatPage(memberN8n.page)",
+				"hash": "397d824f0d69"
+			}
+		]
+	}
+}

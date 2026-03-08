@@ -1,0 +1,45 @@
+From 2bc62f1287f9dd99a619f1faec38ae942a2d9430 Mon Sep 17 00:00:00 2001
+From: Tzachi Shaiovitch <tzachish1@gmail.com>
+Date: Thu, 29 Jan 2026 17:18:54 +0200
+Subject: [PATCH 20/22] fix(node-governance): fix build errors in import
+ command and DTO export
+
+- Export ImportCategoriesDto from @n8n/api-types dto index
+- Use GLOBAL_OWNER_ROLE constant instead of string for role query
+---
+ packages/@n8n/api-types/src/dto/index.ts            | 1 +
+ packages/cli/src/commands/import/node-governance.ts | 4 ++--
+ 2 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/packages/@n8n/api-types/src/dto/index.ts b/packages/@n8n/api-types/src/dto/index.ts
+index ed9335989a..0a60c8f815 100644
+--- a/packages/@n8n/api-types/src/dto/index.ts
++++ b/packages/@n8n/api-types/src/dto/index.ts
+@@ -152,4 +152,5 @@ export {
+ 	ReviewAccessRequestDto,
+ 	GetNodeGovernanceQueryDto,
+ 	GetNodeGovernanceBodyDto,
++	ImportCategoriesDto,
+ } from './node-governance';
+diff --git a/packages/cli/src/commands/import/node-governance.ts b/packages/cli/src/commands/import/node-governance.ts
+index 3d6a38f747..41581c4411 100644
+--- a/packages/cli/src/commands/import/node-governance.ts
++++ b/packages/cli/src/commands/import/node-governance.ts
+@@ -1,4 +1,4 @@
+-import { UserRepository } from '@n8n/db';
++import { UserRepository, GLOBAL_OWNER_ROLE } from '@n8n/db';
+ import { Command } from '@n8n/decorators';
+ import { Container } from '@n8n/di';
+ import fs from 'fs';
+@@ -61,7 +61,7 @@ export class ImportNodeGovernanceCommand extends BaseCommand<z.infer<typeof flag
+ 			}
+ 		} else {
+ 			// Default to the instance owner
+-			user = await userRepository.findOne({ where: { role: 'global:owner' } });
++			user = await userRepository.findOne({ where: { role: GLOBAL_OWNER_ROLE } });
+ 			if (!user) {
+ 				throw new UserError('No instance owner found. Please specify --userId.');
+ 			}
+-- 
+2.50.1 (Apple Git-155)
+

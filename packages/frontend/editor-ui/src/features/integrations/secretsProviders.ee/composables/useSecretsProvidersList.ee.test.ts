@@ -12,6 +12,7 @@ import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 vi.mock('@n8n/rest-api-client', () => ({
 	getSecretProviderTypes: vi.fn(),
 	getSecretProviderConnections: vi.fn(),
+	getSecretProviderConnectionByKey: vi.fn(),
 }));
 
 describe('useSecretsProvidersList', () => {
@@ -35,9 +36,7 @@ describe('useSecretsProvidersList', () => {
 
 	describe('initialization', () => {
 		it('should initialize with empty state', () => {
-			const { providerTypes, activeProviders, isLoading, secrets } = useSecretsProvidersList({
-				useMockApi: false,
-			});
+			const { providerTypes, activeProviders, isLoading, secrets } = useSecretsProvidersList();
 
 			expect(providerTypes.value).toEqual([]);
 			expect(activeProviders.value).toEqual([]);
@@ -50,7 +49,7 @@ describe('useSecretsProvidersList', () => {
 		it('should return true when enterprise feature is enabled', () => {
 			settingsStore.settings.enterprise[EnterpriseEditionFeature.ExternalSecrets] = true;
 
-			const { isEnterpriseExternalSecretsEnabled } = useSecretsProvidersList({ useMockApi: false });
+			const { isEnterpriseExternalSecretsEnabled } = useSecretsProvidersList();
 
 			expect(isEnterpriseExternalSecretsEnabled.value).toBe(true);
 		});
@@ -58,7 +57,7 @@ describe('useSecretsProvidersList', () => {
 		it('should return false when enterprise feature is disabled', () => {
 			settingsStore.settings.enterprise[EnterpriseEditionFeature.ExternalSecrets] = false;
 
-			const { isEnterpriseExternalSecretsEnabled } = useSecretsProvidersList({ useMockApi: false });
+			const { isEnterpriseExternalSecretsEnabled } = useSecretsProvidersList();
 
 			expect(isEnterpriseExternalSecretsEnabled.value).toBe(false);
 		});
@@ -79,9 +78,7 @@ describe('useSecretsProvidersList', () => {
 				mockProviderTypes as SecretProviderTypeResponse[],
 			);
 
-			const { fetchProviderTypes, providerTypes, isLoading } = useSecretsProvidersList({
-				useMockApi: false,
-			});
+			const { fetchProviderTypes, providerTypes, isLoading } = useSecretsProvidersList();
 
 			expect(isLoading.value).toBe(false);
 
@@ -100,7 +97,7 @@ describe('useSecretsProvidersList', () => {
 				new Error('API error'),
 			);
 
-			const { fetchProviderTypes, isLoading } = useSecretsProvidersList({ useMockApi: false });
+			const { fetchProviderTypes, isLoading } = useSecretsProvidersList();
 
 			expect(isLoading.value).toBe(false);
 
@@ -149,9 +146,7 @@ describe('useSecretsProvidersList', () => {
 		it('should not fetch if user lacks required scope', async () => {
 			vi.spyOn(rbacStore, 'hasScope').mockReturnValue(false);
 
-			const { fetchActiveConnections, activeProviders } = useSecretsProvidersList({
-				useMockApi: false,
-			});
+			const { fetchActiveConnections, activeProviders } = useSecretsProvidersList();
 
 			await fetchActiveConnections();
 
@@ -165,14 +160,98 @@ describe('useSecretsProvidersList', () => {
 				new Error('Network error'),
 			);
 
-			const { fetchActiveConnections, activeProviders, isLoading } = useSecretsProvidersList({
-				useMockApi: false,
-			});
+			const { fetchActiveConnections, activeProviders, isLoading } = useSecretsProvidersList();
 
 			await fetchActiveConnections();
 
 			expect(isLoading.value).toBe(false);
 			expect(activeProviders.value).toEqual([]);
+		});
+	});
+
+	describe('fetchConnection', () => {
+		const mockConnections: SecretProviderConnection[] = [
+			{
+				id: '1',
+				name: 'aws-prod',
+				type: 'awsSecretsManager',
+				state: 'connected',
+				isEnabled: true,
+				projects: [],
+				settings: {},
+				secretsCount: 5,
+				secrets: [],
+				createdAt: '2024-01-20T10:00:00Z',
+				updatedAt: '2024-01-20T10:00:00Z',
+			},
+			{
+				id: '2',
+				name: 'gcp-staging',
+				type: 'gcpSecretsManager',
+				state: 'connected',
+				isEnabled: true,
+				projects: [],
+				settings: {},
+				secretsCount: 3,
+				secrets: [],
+				createdAt: '2024-01-22T10:00:00Z',
+				updatedAt: '2024-01-22T10:00:00Z',
+			},
+		];
+
+		it('should update existing connection in activeConnections', async () => {
+			vi.spyOn(rbacStore, 'hasScope').mockReturnValue(true);
+			vi.mocked(secretsProviderApi.getSecretProviderConnections).mockResolvedValue(mockConnections);
+
+			const updatedConnection: SecretProviderConnection = {
+				...mockConnections[0],
+				secretsCount: 10,
+				state: 'connected',
+			};
+			vi.mocked(secretsProviderApi.getSecretProviderConnectionByKey).mockResolvedValue(
+				updatedConnection,
+			);
+
+			const { fetchActiveConnections, fetchConnection, activeProviders } =
+				useSecretsProvidersList();
+
+			await fetchActiveConnections();
+			expect(activeProviders.value.find((p) => p.name === 'aws-prod')?.secretsCount).toBe(5);
+
+			await fetchConnection('aws-prod');
+			expect(secretsProviderApi.getSecretProviderConnectionByKey).toHaveBeenCalledTimes(1);
+			expect(activeProviders.value.find((p) => p.name === 'aws-prod')?.secretsCount).toBe(10);
+		});
+
+		it('should not modify activeConnections when provider key is not found', async () => {
+			vi.spyOn(rbacStore, 'hasScope').mockReturnValue(true);
+			vi.mocked(secretsProviderApi.getSecretProviderConnections).mockResolvedValue(mockConnections);
+
+			const newConnection: SecretProviderConnection = {
+				id: '3',
+				name: 'unknown-provider',
+				type: 'vault',
+				state: 'connected',
+				isEnabled: true,
+				projects: [],
+				settings: {},
+				secretsCount: 1,
+				secrets: [],
+				createdAt: '2024-01-25T10:00:00Z',
+				updatedAt: '2024-01-25T10:00:00Z',
+			};
+			vi.mocked(secretsProviderApi.getSecretProviderConnectionByKey).mockResolvedValue(
+				newConnection,
+			);
+
+			const { fetchActiveConnections, fetchConnection, activeProviders } =
+				useSecretsProvidersList();
+
+			await fetchActiveConnections();
+			const providersBefore = activeProviders.value.map((p) => ({ ...p }));
+
+			await fetchConnection('unknown-provider');
+			expect(activeProviders.value).toEqual(providersBefore);
 		});
 	});
 
@@ -226,9 +305,7 @@ describe('useSecretsProvidersList', () => {
 
 			vi.mocked(secretsProviderApi.getSecretProviderConnections).mockResolvedValue(mockConnections);
 
-			const { fetchActiveConnections, activeProviders } = useSecretsProvidersList({
-				useMockApi: false,
-			});
+			const { fetchActiveConnections, activeProviders } = useSecretsProvidersList();
 
 			await fetchActiveConnections();
 

@@ -12,6 +12,7 @@ export type HeaderParamsWithDelete = IHeaderParams & {
 	onRename?: (columnId: string, newName: string) => void;
 	allowMenuActions: boolean;
 	showTypeIcon?: boolean;
+	readOnly: boolean;
 };
 
 const props = defineProps<{
@@ -213,8 +214,8 @@ onUnmounted(() => {
 				ref="renameInput"
 				:model-value="props.params.displayName"
 				:max-width="columnWidth"
-				:read-only="false"
-				:disabled="false"
+				:read-only="props.params.readOnly"
+				:disabled="props.params.readOnly"
 				class="ag-header-cell-text"
 				data-test-id="data-table-column-header-text"
 				@update:model-value="onNameSubmit"
@@ -232,11 +233,10 @@ onUnmounted(() => {
 		</div>
 
 		<N8nIconButton
+			variant="ghost"
 			v-show="isFilterButtonVisible"
 			data-test-id="data-table-column-header-filter-button"
 			icon="funnel"
-			type="tertiary"
-			text
 			:class="{ 'filter-highlighted': hasActiveFilter }"
 			@click="onShowFilter"
 		/>

@@ -76,7 +76,11 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 
 		// Update local  version of the workflow
 		if (id === workflowsStore.workflowId) {
-			workflowsStore.setWorkflowVersionId(versionId);
+			workflowsStore.setWorkflowVersionData({
+				versionId,
+				name: workflowsStore.versionData?.name ?? null,
+				description: workflowsStore.versionData?.description ?? null,
+			});
 			if (settings) {
 				workflowsStore.private.setWorkflowSettings(settings);
 			}

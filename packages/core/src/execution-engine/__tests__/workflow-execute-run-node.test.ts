@@ -791,6 +791,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 		it('should pass through input data for non-declarative webhook nodes', async () => {
 			mockNodeType.webhook = jest.fn();
 			mockNodeType.execute = undefined;
+			mockNodeType.supplyData = undefined;
 			mockNodeType.poll = undefined;
 			mockNodeType.trigger = undefined;
 			mockNodeType.description.requestDefaults = undefined; // Non-declarative
@@ -811,6 +812,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			const mockData = [[{ json: { webhook: 'result' } }]];
 			mockNodeType.webhook = jest.fn();
 			mockNodeType.execute = undefined;
+			mockNodeType.supplyData = undefined;
 			mockNodeType.poll = undefined;
 			mockNodeType.trigger = undefined;
 			mockNodeType.description.requestDefaults = {}; // Declarative node
@@ -843,6 +845,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			const mockData = [[{ json: { routed: 'result' } }]];
 			// Node with no execute, poll, trigger, or webhook methods
 			mockNodeType.execute = undefined;
+			mockNodeType.supplyData = undefined;
 			mockNodeType.poll = undefined;
 			mockNodeType.trigger = undefined;
 			mockNodeType.webhook = undefined;
@@ -867,6 +870,27 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			expect(mockRoutingNode).toHaveBeenCalledWith(mockContextInstance, mockNodeType);
 			expect(mockRoutingNodeInstance.runNode).toHaveBeenCalled();
 			expect(result).toEqual({ data: mockData });
+		});
+	});
+
+	describe('supplyData node handling', () => {
+		it('should throw a clear error when a supplyData node has no execute method', async () => {
+			mockNodeType.execute = undefined;
+			mockNodeType.supplyData = jest.fn();
+			mockNodeType.poll = undefined;
+			mockNodeType.trigger = undefined;
+			mockNodeType.webhook = undefined;
+
+			await expect(
+				workflowExecute.runNode(
+					mockWorkflow,
+					mockExecutionData,
+					mockRunExecutionData,
+					0,
+					mockAdditionalData,
+					'manual',
+				),
+			).rejects.toThrow('has a "supplyData" method but no "execute" method');
 		});
 	});
 

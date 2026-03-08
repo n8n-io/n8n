@@ -2,7 +2,11 @@ import type { IWorkflowBase } from 'n8n-workflow';
 
 import { test, expect } from '../../../fixtures/base';
 
-test.describe('Form Trigger', () => {
+test.describe('Form Trigger', {
+	annotation: [
+		{ type: 'owner', description: 'NODES' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 	});

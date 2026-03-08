@@ -17,7 +17,11 @@ const ZOOM_OUT_X1_FACTOR = 0.8; // Expected zoom after 1 zoom-out click (80%)
 const ZOOM_OUT_X2_FACTOR = 0.64; // Expected zoom after 2 zoom-out clicks (64%)
 const ZOOM_TOLERANCE = 0.2; // Acceptable variance for floating-point zoom comparisons
 
-test.describe('Canvas Zoom Functionality', () => {
+test.describe('Canvas Zoom Functionality', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 	});

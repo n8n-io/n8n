@@ -1,7 +1,11 @@
 import { test, expect } from '../../../../../fixtures/base';
 import type { TestRequirements } from '../../../../../Types';
 
-test.describe('Focus panel', () => {
+test.describe('Focus panel', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test.describe('With experimental NDV in focus panel enabled', () => {
 		const requirements: TestRequirements = {
 			storage: {

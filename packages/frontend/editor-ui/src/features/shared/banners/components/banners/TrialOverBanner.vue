@@ -18,9 +18,14 @@ function onUpgradePlanClick() {
 			<span>{{ locale.baseText('banners.trialOver.message') }}</span>
 		</template>
 		<template #trailingContent>
-			<N8nButton type="success" icon="zap" size="small" @click="onUpgradePlanClick">{{
-				locale.baseText('generic.upgradeNow')
-			}}</N8nButton>
+			<N8nButton
+				class="n8n-button--success"
+				variant="solid"
+				icon="zap"
+				size="small"
+				@click="onUpgradePlanClick"
+				>{{ locale.baseText('generic.upgradeNow') }}</N8nButton
+			>
 		</template>
 	</BaseBanner>
 </template>

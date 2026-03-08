@@ -24,6 +24,9 @@ export class GoogleBusinessProfileOAuth2Api implements ICredentialType {
 			name: 'notice',
 			type: 'notice',
 			default: '',
+			displayOptions: {
+				hideOnCloud: true,
+			},
 		},
 	];
 }

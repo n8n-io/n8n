@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Node Governance Feature Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            min-height: 100vh;
+        }
+        
+        .slide {
+            display: none;
+            min-height: 100vh;
+            padding: 40px 60px;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        .slide.active {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: #ff6b6b;
+        }
+        
+        h2 {
+            font-size: 2rem;
+            margin-bottom: 20px;
+            color: #4ecdc4;
+        }
+        
+        h3 {
+            font-size: 1.3rem;
+            color: #95a5a6;
+            margin-bottom: 30px;
+            font-weight: 400;
+        }
+        
+        .content {
+            flex: 1;
+            display: flex;
+            gap: 40px;
+            align-items: flex-start;
+        }
+        
+        .text-content {
+            flex: 1;
+            max-width: 45%;
+        }
+        
+        .image-content {
+            flex: 1;
+            max-width: 55%;
+        }
+        
+        .image-content img {
+            width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        ul {
+            list-style: none;
+            font-size: 1.2rem;
+            line-height: 2;
+        }
+        
+        ul li {
+            padding-left: 30px;
+            position: relative;
+            margin-bottom: 10px;
+        }
+        
+        ul li::before {
+            content: "→";
+            position: absolute;
+            left: 0;
+            color: #ff6b6b;
+        }
+        
+        .highlight {
+            background: linear-gradient(120deg, #ff6b6b 0%, #feca57 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 600;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin: 0 4px;
+        }
+        
+        .badge.block {
+            background: #ff6b6b;
+            color: #fff;
+        }
+        
+        .badge.allow {
+            background: #4ecdc4;
+            color: #1a1a2e;
+        }
+        
+        .badge.global {
+            background: #feca57;
+            color: #1a1a2e;
+        }
+        
+        .navigation {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+        }
+        
+        .nav-btn {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-btn:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateY(-2px);
+        }
+        
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        
+        .progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #ff6b6b, #feca57);
+            transition: width 0.3s ease;
+        }
+        
+        .slide-counter {
+            position: fixed;
+            bottom: 35px;
+            left: 30px;
+            font-size: 1rem;
+            color: rgba(255,255,255,0.5);
+        }
+        
+        /* Title slide specific */
+        .title-slide {
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        
+        .title-slide h1 {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+        
+        .title-slide h3 {
+            font-size: 1.5rem;
+        }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .feature-card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .feature-card h4 {
+            color: #4ecdc4;
+            margin-bottom: 10px;
+        }
+        
+        .priority-box {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            font-family: monospace;
+            font-size: 1.1rem;
+            line-height: 2;
+        }
+        
+        .priority-box .num {
+            color: #ff6b6b;
+            font-weight: bold;
+        }
+        
+        /* Full width image slide */
+        .full-image .content {
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .full-image .text-content {
+            max-width: 100%;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .full-image .image-content {
+            max-width: 80%;
+        }
+        
+        .key-points {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .key-point {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 15px 25px;
+        }
+        
+        code {
+            background: rgba(255,255,255,0.1);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="progress" id="progress"></div>
+    <div class="slide-counter" id="counter"></div>
+    
+    <!-- Slide 1: Title -->
+    <div class="slide title-slide active" id="slide-1">
+        <h1>Node Governance</h1>
+        <h2>Control Which Nodes Can Be Used in Workflows</h2>
+        <h3>n8n Enterprise Feature Demo</h3>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <h4>Policy Management</h4>
+                <p>Block or allow nodes globally or per-project</p>
+            </div>
+            <div class="feature-card">
+                <h4>Categories</h4>
+                <p>Group nodes for bulk policy application</p>
+            </div>
+            <div class="feature-card">
+                <h4>Access Requests</h4>
+                <p>Users can request access with justification</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Slide 2: Overview -->
+    <div class="slide" id="slide-2">
+        <h2>Settings Overview</h2>
+        <h3>Settings → Node Governance</h3>
+        <div class="content">
+            <div class="text-content">
+                <ul>
+                    <li><span class="highlight">Enable/Disable</span> feature globally</li>
+                    <li><span class="highlight">Priority notice</span> explaining policy precedence</li>
+                    <li>Three main tabs: <span class="highlight">Policies</span>, <span class="highlight">Categories</span>, <span class="highlight">Requests</span></li>
+                    <li>7 policies currently configured</li>
+                </ul>
+                <div class="priority-box">
+                    <div><span class="num">1.</span> Project ALLOW (highest)</div>
+                    <div><span class="num">2.</span> Global BLOCK</div>
+                    <div><span class="num">3.</span> Global ALLOW</div>
+                    <div><span class="num">4.</span> Project BLOCK (lowest)</div>
+                </div>
+            </div>
+            <div class="image-content">
+                <img src="demo-screenshots/demo-01-node-governance-overview.png" alt="Node Governance Overview">
+            </div>
+        </div>
+    </div>
+    
+    <!-- Slide 3: Categories -->
+    <div class="slide" id="slide-3">
+        <h2>Categories Tab</h2>
+        <h3>Group related nodes for bulk policy management</h3>
+        <div class="content">
+            <div class="text-content">
+                <ul>
+                    <li><span class="highlight">AWS</span> - 25 nodes</li>
+                    <li><span class="highlight">Azure/Microsoft</span> - 27 nodes</li>
+                    <li><span class="highlight">Blocked External</span> - 430 nodes</li>
+                    <li><span class="highlight">Core Essential</span> - Safe nodes</li>
+                    <li><span class="highlight">Google</span> - 55 nodes</li>
+                    <li><span class="highlight">MIS Approved</span> - Vetted nodes</li>
+                    <li><span class="highlight">Social Media</span> - Platform nodes</li>
+                </ul>
+                <p style="margin-top: 20px; color: #95a5a6;">
+                    Block an entire category instead of individual nodes
+                </p>
+            </div>
+            <div class="image-content">
+                <img src="demo-screenshots/demo-03-categories-tab.png" alt="Categories Tab">
+            </div>
+        </div>
+    </div>
+    
+    <!-- Slide 4: Manage Nodes -->
+    <div class="slide" id="slide-4">
+        <h2>Manage Category Nodes</h2>
+        <h3>Add or remove nodes from a category</h3>
+        <div class="content">
+            <div class="text-content">
+                <ul>
+                    <li><span class="highlight">Search</span> to find nodes to add</li>
+                    <li>View all <span class="highlight">assigned nodes</span></li>
+                    <li>Click <span class="highlight">X</span> to remove a node</li>
+                    <li>Node type names shown for clarity</li>
+                </ul>
+                <p style="margin-top: 20px; color: #95a5a6;">
+                    Example: AWS category includes S3, SES, SQS, Textract, etc.
+                </p>
+            </div>
+            <div class="image-content">
+                <img src="demo-screenshots/demo-04-manage-nodes-modal.png" alt="Manage Nodes Modal">
+            </div>
+        </div>
+    </div>
+    
+    <!-- Slide 5: Policies -->
+    <div class="slide" id="slide-5">
+        <h2>Policies Tab</h2>
+        <h3>Define what's allowed and what's blocked</h3>
+        <div class="content">
+            <div class="text-content">
+                <ul>
+                    <li><span class="badge block">Blocked</span> or <span class="badge allow">Allowed</span> status</li>
+                    <li>Target: <span class="highlight">Node</span> or <span class="highlight">Category</span></li>
+                    <li>Scope: <span class="badge global">Global</span> or Project-specific</li>
+                    <li>Edit or delete existing policies</li>
+                </ul>
+                <p style="margin-top: 20px; color: #95a5a6;">
+                    7 policies managing hundreds of nodes
+                </p>
+            </div>
+            <div class="image-content">
+                <img src="demo-screenshots/demo-05-policies-tab.png" alt="Policies Tab">
+            </div>
+        </div>
+    </div>
+    
+    <!-- Slide 6: Create Policy -->
+    <div class="slide" id="slide-6">
+        <h2>Create Policy</h2>
+        <h3>Granular control over node access</h3>
+        <div class="content">
+            <div class="text-content">
+                <ul>
+                    <li><span class="highlight">Policy Type:</span> Block or Allow</li>
+                    <li><span class="highlight">Scope:</span> Global or Specific Projects</li>
+                    <li><span class="highlight">Target Type:</span> Single Node or Category</li>
+                    <li><span class="highlight">Target Value:</span> e.g., <code>n8n-nodes-base.ssh</code></li>
+                </ul>
+                <p style="margin-top: 20px; color: #95a5a6;">
+                    Example: Block SSH globally, Allow HTTP for specific project
+                </p>
+            </div>
+            <div class="image-content">
+                <img src="demo-screenshots/demo-06-create-policy-modal.png" alt="Create Policy Modal">
+            </div>
+        </div>
+    </div>
+    
+    <!-- Slide 7: Node Creator Integration -->
+    <div class="slide" id="slide-7">
+        <h2>Node Creator Integration</h2>
+        <h3>Real-time governance status when adding nodes</h3>
+        <div class="content">
+            <div class="text-content">
+                <ul>
+                    <li>Blocked nodes show <span class="badge block">Blocked</span> badge</li>
+                    <li><span class="highlight">"Request access"</span> link appears</li>
+                    <li>Users can still <span class="highlight">see</span> blocked nodes</li>
+                    <li>Prevents accidental use of restricted nodes</li>
+                </ul>
+                <p style="margin-top: 20px; color: #95a5a6;">
+                    Gmail shows as blocked due to Google category policy
+                </p>
+            </div>
+            <div class="image-content">
+                <img src="demo-screenshots/demo-09-gmail-blocked.png" alt="Gmail Blocked in Node Creator">
+            </div>
+        </div>
+    </div>
+    
+    <!-- Slide 8: Request Access -->
+    <div class="slide" id="slide-8">
+        <h2>Request Node Access</h2>
+        <h3>Users provide business justification</h3>
+        <div class="content">
+            <div class="text-content">
+                <ul>
+                    <li><span class="highlight">Project</span> - Which project needs access</li>
+                    <li><span class="highlight">Workflow Name</span> - Optional context</li>
+                    <li><span class="highlight">Justification</span> - Required business reason</li>
+                    <li>Minimum 10 characters required</li>
+                </ul>
+                <p style="margin-top: 20px; color: #95a5a6;">
+                    Creates audit trail for compliance
+                </p>
+            </div>
+            <div class="image-content">
+                <img src="demo-screenshots/demo-10-request-access-modal.png" alt="Request Access Modal">
+            </div>
+        </div>
+    </div>
+    
+    <!-- Slide 9: Admin Review -->
+    <div class="slide" id="slide-9">
+        <h2>Admin Review</h2>
+        <h3>Approve or reject access requests</h3>
+        <div class="content">
+            <div class="text-content">
+                <ul>
+                    <li><span class="highlight">Pending requests</span> appear with badge count</li>
+                    <li>View user info and justification</li>
+                    <li><span class="badge allow">Approve</span> or <span class="badge block">Reject</span> with comment</li>
+                    <li>Full audit trail maintained</li>
+                </ul>
+                <p style="margin-top: 20px; color: #95a5a6;">
+                    Approved requests allow user to use the node
+                </p>
+            </div>
+            <div class="image-content">
+                <img src="demo-screenshots/demo-11-requests-tab.png" alt="Requests Tab">
+            </div>
+        </div>
+    </div>
+    
+    <!-- Slide 10: Summary -->
+    <div class="slide title-slide" id="slide-10">
+        <h1>Key Benefits</h1>
+        <div class="feature-grid" style="max-width: 900px;">
+            <div class="feature-card">
+                <h4>Security</h4>
+                <p>Block risky nodes like SSH, Execute Command, Code execution</p>
+            </div>
+            <div class="feature-card">
+                <h4>Compliance</h4>
+                <p>Audit trail for all access requests and approvals</p>
+            </div>
+            <div class="feature-card">
+                <h4>Flexibility</h4>
+                <p>Global or project-specific policies with priority system</p>
+            </div>
+            <div class="feature-card">
+                <h4>Visibility</h4>
+                <p>Users see blocked status in real-time when adding nodes</p>
+            </div>
+            <div class="feature-card">
+                <h4>Categories</h4>
+                <p>Manage hundreds of nodes with bulk category policies</p>
+            </div>
+            <div class="feature-card">
+                <h4>Self-Service</h4>
+                <p>Users can request access with business justification</p>
+            </div>
+        </div>
+        <h3 style="margin-top: 40px;">Questions?</h3>
+    </div>
+    
+    <!-- Navigation -->
+    <div class="navigation">
+        <button class="nav-btn" id="prevBtn" onclick="changeSlide(-1)">← Previous</button>
+        <button class="nav-btn" id="nextBtn" onclick="changeSlide(1)">Next →</button>
+    </div>
+    
+    <script>
+        let currentSlide = 1;
+        const totalSlides = 10;
+        
+        function showSlide(n) {
+            const slides = document.querySelectorAll('.slide');
+            
+            if (n > totalSlides) currentSlide = 1;
+            if (n < 1) currentSlide = totalSlides;
+            
+            slides.forEach(slide => slide.classList.remove('active'));
+            document.getElementById(`slide-${currentSlide}`).classList.add('active');
+            
+            // Update progress bar
+            const progress = (currentSlide / totalSlides) * 100;
+            document.getElementById('progress').style.width = `${progress}%`;
+            
+            // Update counter
+            document.getElementById('counter').textContent = `${currentSlide} / ${totalSlides}`;
+            
+            // Update button states
+            document.getElementById('prevBtn').disabled = currentSlide === 1;
+            document.getElementById('nextBtn').disabled = currentSlide === totalSlides;
+        }
+        
+        function changeSlide(n) {
+            currentSlide += n;
+            showSlide(currentSlide);
+        }
+        
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                changeSlide(1);
+            } else if (e.key === 'ArrowLeft') {
+                changeSlide(-1);
+            }
+        });
+        
+        // Initialize
+        showSlide(currentSlide);
+    </script>
+</body>
+</html>

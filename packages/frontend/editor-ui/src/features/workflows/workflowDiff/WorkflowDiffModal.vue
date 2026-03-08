@@ -277,8 +277,8 @@ function setSelectedDetailId(
 			<div :class="$style.header">
 				<div :class="$style.headerLeft">
 					<N8nIconButton
+						variant="subtle"
 						icon="arrow-left"
-						type="secondary"
 						:class="[$style.backButton, 'mr-xs']"
 						icon-size="large"
 						@click="handleBeforeClose"
@@ -307,7 +307,7 @@ function setSelectedDetailId(
 						:popper-class="$style.popper"
 						@visible-change="setActiveTab"
 					>
-						<N8nButton type="secondary" style="--button--radius: 4px 0 0 4px">
+						<N8nButton variant="subtle" style="--button--radius: 4px 0 0 4px">
 							<div v-if="changesCount" :class="$style.circleBadge">
 								{{ changesCount }}
 							</div>
@@ -435,15 +435,15 @@ function setSelectedDetailId(
 						</template>
 					</ElDropdown>
 					<N8nIconButton
+						variant="subtle"
 						icon="chevron-left"
-						type="secondary"
 						:class="$style.navigationButton"
 						style="--button--radius: 0; margin: 0 -1px"
 						@click="previousNodeChange"
 					/>
 					<N8nIconButton
+						variant="subtle"
 						icon="chevron-right"
-						type="secondary"
 						:class="$style.navigationButton"
 						style="--button--radius: 0 4px 4px 0"
 						@click="nextNodeChange"

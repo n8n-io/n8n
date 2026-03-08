@@ -1,0 +1,51 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.04kB 0.0s done
+#1 DONE 0.1s
+
+#2 [internal] load metadata for docker.io/n8nio/base:22.22.0
+#2 ...
+
+#3 [auth] n8nio/base:pull token for registry-1.docker.io
+#3 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/n8nio/base:22.22.0
+#2 DONE 2.3s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 771B done
+#4 DONE 0.0s
+
+#5 [1/5] FROM docker.io/n8nio/base:22.22.0@sha256:192e0f9e3d57833c4944f0741411f98af28465b72687b05b41488219f4c09006
+#5 resolve docker.io/n8nio/base:22.22.0@sha256:192e0f9e3d57833c4944f0741411f98af28465b72687b05b41488219f4c09006 done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 8.22MB 5.1s
+#6 transferring context: 15.13MB 10.1s
+#6 transferring context: 24.12MB 14.9s done
+#6 DONE 15.2s
+
+#7 [2/5] WORKDIR /home/node
+#7 CACHED
+
+#8 [3/5] COPY ./compiled /usr/local/lib/node_modules/n8n
+#8 DONE 23.2s
+
+#9 [4/5] COPY docker/images/n8n/docker-entrypoint.sh /
+#9 DONE 0.8s
+
+#10 [5/5] RUN cd /usr/local/lib/node_modules/n8n &&     npm rebuild sqlite3 &&     ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n &&     mkdir -p /home/node/.n8n &&     chown -R node:node /home/node &&     rm -rf /root/.npm /tmp/*
+#10 19.08 rebuilt dependencies successfully
+#10 DONE 19.2s
+
+#11 exporting to image
+#11 exporting layers
+#11 exporting layers 26.0s done
+#11 exporting manifest sha256:701ac13be1a4e351fd2091a072ae50cec2b0185a91a5f41f872d4e68f0f936b2 done
+#11 exporting config sha256:e3e74570a395d3efcf7718bdbb41a4d3ac6d27b238bbf19bb47b90b8a2ede543 done
+#11 exporting attestation manifest sha256:f6719dd6bddb5b50a4c5a850536b48736e1fd863b4c5b86267b37c0090badf91 done
+#11 exporting manifest list sha256:e3676c60271ed8681b2639478ca4806338c733a5aa84856d73fb6d8ca38f97b2 done
+#11 naming to misnexusprd.corp.amdocs.com/n8n-hosted/n8n:governance-v2 done
+#11 DONE 26.1s

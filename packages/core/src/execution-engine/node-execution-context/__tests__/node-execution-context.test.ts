@@ -1,7 +1,6 @@
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type {
-	Expression,
 	INode,
 	INodeType,
 	INodeTypes,
@@ -10,6 +9,7 @@ import type {
 	IWorkflowSettings,
 	Workflow,
 	WorkflowExecuteMode,
+	WorkflowExpression,
 } from 'n8n-workflow';
 import { CHAT_TRIGGER_NODE_TYPE, createRunExecutionData, NodeConnectionTypes } from 'n8n-workflow';
 
@@ -30,7 +30,7 @@ describe('NodeExecutionContext', () => {
 	const node = mock<INode>();
 	const nodeType = mock<INodeType>({ description: mock() });
 	const nodeTypes = mock<INodeTypes>();
-	const expression = mock<Expression>();
+	const expression = mock<WorkflowExpression>();
 	const workflow = mock<Workflow>({
 		id: '123',
 		name: 'Test Workflow',

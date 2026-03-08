@@ -1,0 +1,56 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.04kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/n8nio/base:22.22.0
+#2 ...
+
+#3 [auth] n8nio/base:pull token for registry-1.docker.io
+#3 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/n8nio/base:22.22.0
+#2 DONE 2.2s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 771B done
+#4 DONE 0.0s
+
+#5 [1/5] FROM docker.io/n8nio/base:22.22.0@sha256:192e0f9e3d57833c4944f0741411f98af28465b72687b05b41488219f4c09006
+#5 resolve docker.io/n8nio/base:22.22.0@sha256:192e0f9e3d57833c4944f0741411f98af28465b72687b05b41488219f4c09006 done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 14.83MB 5.0s
+#6 transferring context: 33.26MB 10.0s
+#6 transferring context: 92.43MB 15.1s
+#6 transferring context: 114.36MB 20.1s
+#6 transferring context: 143.10MB 25.2s
+#6 transferring context: 146.52MB 26.3s done
+#6 DONE 26.7s
+
+#7 [2/5] WORKDIR /home/node
+#7 CACHED
+
+#8 [3/5] COPY ./compiled /usr/local/lib/node_modules/n8n
+#8 DONE 16.0s
+
+#9 [4/5] COPY docker/images/n8n/docker-entrypoint.sh /
+#9 DONE 0.5s
+
+#10 [5/5] RUN cd /usr/local/lib/node_modules/n8n &&     npm rebuild sqlite3 &&     ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n &&     mkdir -p /home/node/.n8n &&     chown -R node:node /home/node &&     rm -rf /root/.npm /tmp/*
+#10 5.687 rebuilt dependencies successfully
+#10 DONE 5.7s
+
+#11 exporting to image
+#11 exporting layers
+#11 exporting layers 25.4s done
+#11 exporting manifest sha256:55ae4901b4a00438a266a4687bf6e3613da5fc3aa76dd50aa132d43424635d02 0.0s done
+#11 exporting config sha256:a7539c5a0e1348417bc22947d4c0e191e9d4278ce9b248f77126ea702cc9c9ea done
+#11 exporting attestation manifest sha256:be410b788cdeb7c707d9b6f0bd3bc3415fa1f1876290823ecf3288e954424744 0.0s done
+#11 exporting manifest list sha256:bc61f7298e5bf977ec4ca17b160b7f97c7aed801408413d541ac4c2f745b94f0 done
+#11 naming to docker.io/n8nio/n8n:local done
+#11 unpacking to docker.io/n8nio/n8n:local
+#11 unpacking to docker.io/n8nio/n8n:local 12.8s done
+#11 DONE 38.3s

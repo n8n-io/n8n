@@ -138,10 +138,10 @@ const onTableAction = (action: string, settings: ChatProviderSettingsDto) => {
 				<div :class="$style.actions">
 					<N8nTooltip :content="i18n.baseText('settings.chatHub.providers.table.refresh.tooltip')">
 						<N8nButton
+							variant="subtle"
+							iconOnly
 							size="small"
-							type="tertiary"
 							icon="refresh-cw"
-							:square="true"
 							@click="$emit('refresh')"
 						/>
 					</N8nTooltip>

@@ -1,6 +1,10 @@
 import { test, expect } from '../../../../../fixtures/base';
 
-test.describe('NDV Paired Items', () => {
+test.describe('NDV Paired Items', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test('maps paired input and output items', async ({ n8n }) => {
 		await n8n.start.fromImportedWorkflow('Test_workflow_5.json');
 		await n8n.canvas.clickZoomToFitButton();
@@ -244,6 +248,15 @@ test.describe('NDV Paired Items', () => {
 		await expect(n8n.ndv.outputPanel.get().locator('[data-test-id="hovering-item"]')).toContainText(
 			'8888',
 		);
+	});
+
+	test('should auto-fix pairedItem when multiple inputs create single output', async ({ n8n }) => {
+		await n8n.start.fromImportedWorkflow('Test_workflow_ndv_paired_item_single_output.json');
+		await n8n.canvas.openNode('Use paired item');
+		await n8n.ndv.execute();
+
+		await expect(n8n.ndv.getNodeRunErrorMessage()).toBeHidden();
+		await expect(n8n.ndv.outputPanel.get()).toContainText('Jay Gatsby');
 	});
 
 	test('can resolve expression with paired item in multi-input node', async ({ n8n }) => {

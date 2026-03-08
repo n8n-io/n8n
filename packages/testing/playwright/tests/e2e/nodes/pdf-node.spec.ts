@@ -1,6 +1,10 @@
 import { expect, test } from '../../../fixtures/base';
 
-test.describe('PDF Test', () => {
+test.describe('PDF Test', {
+	annotation: [
+		{ type: 'owner', description: 'NODES' },
+	],
+}, () => {
 	test('Can read and write PDF files and extract text', async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 		await n8n.canvas.importWorkflow('test_pdf_workflow.json', 'PDF Workflow');

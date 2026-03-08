@@ -9,7 +9,11 @@ test.beforeEach(async ({ api }) => {
 	await api.tags.deleteAll();
 });
 
-test.describe('Workflow tags - Tag creation', () => {
+test.describe('Workflow tags - Tag creation', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test('should create and attach tags inline, then add more incrementally', async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 
@@ -42,8 +46,7 @@ test.describe('Workflow tags - Tag creation', () => {
 		await expect(n8n.canvas.getSavedWorkflowTagPills()).toHaveCount(3);
 
 		// Pills should be rendered individually, not collapsed as "+3"
-		const tagsContainer = n8n.page.getByTestId('workflow-tags');
-		await expect(tagsContainer).not.toHaveText(/\+\d+/);
+		await expect(n8n.canvas.getWorkflowTagsElement()).not.toHaveText(/\+\d+/);
 	});
 
 	test('should create tags via modal without attaching them', async ({ n8n }) => {

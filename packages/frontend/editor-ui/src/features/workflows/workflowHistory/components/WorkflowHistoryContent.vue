@@ -154,7 +154,7 @@ watch(
 					data-test-id="workflow-history-content-actions"
 					@action="onAction"
 				>
-					<N8nButton type="tertiary" size="large" data-test-id="action-toggle-button">
+					<N8nButton variant="subtle" size="large" data-test-id="action-toggle-button">
 						{{ i18n.baseText('workflowHistory.content.actions') }}
 						<N8nIcon class="ml-3xs" icon="chevron-down" size="small" />
 					</N8nButton>
@@ -205,6 +205,7 @@ $descriptionBoxMaxWidth: 330px;
 }
 
 .mainLine {
+	display: block;
 	@include mixins.utils-ellipsis;
 	cursor: default;
 }

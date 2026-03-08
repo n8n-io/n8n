@@ -20,8 +20,10 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 
 	/**
 	 * Delete workflow history records earlier than a given date, except for current and active workflow versions.
+	 * @param date - Delete records created before this date
+	 * @param preserveNamedVersions - If true, also preserve versions with name set
 	 */
-	async deleteEarlierThanExceptCurrentAndActive(date: Date) {
+	async deleteEarlierThanExceptCurrentAndActive(date: Date, preserveNamedVersions = false) {
 		const currentVersionIdsSubquery = this.manager
 			.createQueryBuilder()
 			.subQuery()
@@ -37,14 +39,19 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 			.where('w.activeVersionId IS NOT NULL')
 			.getQuery();
 
-		return await this.manager
+		const query = this.manager
 			.createQueryBuilder()
 			.delete()
 			.from(WorkflowHistory)
 			.where('createdAt < :date', { date })
 			.andWhere(`versionId NOT IN (${currentVersionIdsSubquery})`)
-			.andWhere(`versionId NOT IN (${activeVersionIdsSubquery})`)
-			.execute();
+			.andWhere(`versionId NOT IN (${activeVersionIdsSubquery})`);
+
+		if (preserveNamedVersions) {
+			query.andWhere('name IS NULL');
+		}
+
+		return await query.execute();
 	}
 
 	private makeSkipActiveAndNamedVersionsRule(activeVersions: Set<string>) {

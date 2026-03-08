@@ -33,7 +33,12 @@ describe('ChatMessage', () => {
 	it('should render syntax highlighting for code blocks', async () => {
 		const message: ChatMessageType = createMockMessage({
 			type: 'ai',
-			content: '```javascript\nconst foo = "bar";\nfunction test() {\n  return true;\n}\n```',
+			content: [
+				{
+					type: 'text',
+					content: '```javascript\nconst foo = "bar";\nfunction test() {\n  return true;\n}\n```',
+				},
+			],
 		});
 
 		const { container } = renderComponent({
@@ -59,7 +64,12 @@ describe('ChatMessage', () => {
 	it('should render KaTeX inline math expressions', async () => {
 		const message: ChatMessageType = createMockMessage({
 			type: 'ai',
-			content: 'The quadratic formula is $x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$',
+			content: [
+				{
+					type: 'text',
+					content: 'The quadratic formula is $x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$',
+				},
+			],
 		});
 
 		const { container } = renderComponent({
@@ -83,7 +93,7 @@ describe('ChatMessage', () => {
 	it('should render KaTeX block math expressions', async () => {
 		const message: ChatMessageType = createMockMessage({
 			type: 'ai',
-			content: '$$\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}$$',
+			content: [{ type: 'text', content: '$$\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}$$' }],
 		});
 
 		const { container } = renderComponent({
@@ -108,7 +118,7 @@ describe('ChatMessage', () => {
 		const codeContent = 'const foo = "bar";\nfunction test() {\n  return true;\n}';
 		const message: ChatMessageType = createMockMessage({
 			type: 'ai',
-			content: `\`\`\`javascript\n${codeContent}\n\`\`\``,
+			content: [{ type: 'text', content: `\`\`\`javascript\n${codeContent}\n\`\`\`` }],
 		});
 
 		const rendered = renderComponent({

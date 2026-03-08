@@ -76,6 +76,7 @@ export const SentryPlugin: Plugin = {
 
 		if (serverName) {
 			Sentry.setTag('server_name', serverName);
+			Sentry.setUser({ id: serverName });
 		}
 	},
 };

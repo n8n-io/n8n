@@ -44,6 +44,13 @@ describe('Currents Node Structure', () => {
 			expect(resourceValues).toContain('test');
 			expect(resourceValues).toContain('testResult');
 		});
+
+		it('should use brackets array format for query params (tags[], authors[], etc.)', () => {
+			const node = new Currents();
+			const defaults = node.description.requestDefaults as { arrayFormat?: string } | undefined;
+			expect(defaults).toBeDefined();
+			expect(defaults?.arrayFormat).toBe('brackets');
+		});
 	});
 
 	describe('Credentials', () => {

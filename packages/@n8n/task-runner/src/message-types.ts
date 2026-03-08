@@ -57,6 +57,11 @@ export namespace BrokerMessage {
 			nodeTypes: INodeTypeBaseDescription[];
 		}
 
+		/** Signals the runner to stop accepting tasks, complete active ones, and prepare for shutdown. */
+		export interface Drain {
+			type: 'broker:drain';
+		}
+
 		export type All =
 			| InfoRequest
 			| TaskOfferAccept
@@ -65,7 +70,8 @@ export namespace BrokerMessage {
 			| RunnerRegistered
 			| RPCResponse
 			| TaskDataResponse
-			| NodeTypes;
+			| NodeTypes
+			| Drain;
 	}
 
 	export namespace ToRequester {
@@ -90,7 +96,7 @@ export namespace BrokerMessage {
 		export interface RequestExpired {
 			type: 'broker:requestexpired';
 			requestId: string;
-			reason: 'timeout';
+			reason: 'timeout' | 'draining';
 		}
 
 		export interface TaskDataRequest {

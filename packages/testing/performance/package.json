@@ -1,0 +1,15 @@
+{
+	"name": "@n8n/performance",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"bench": "vitest bench --run",
+		"bench:baseline": "node scripts/save-baseline.mjs",
+		"bench:ci": "vitest bench --run --outputJson ./profiles/benchmark-results.json && node scripts/check-regression.mjs"
+	},
+	"devDependencies": {
+		"vitest": "catalog:",
+		"n8n-workflow": "workspace:*"
+	}
+}

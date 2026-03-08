@@ -4,7 +4,11 @@ import { CODE_NODE_NAME, SCHEDULE_TRIGGER_NODE_NAME } from '../../../../../confi
 import { test, expect } from '../../../../../fixtures/base';
 import { resolveFromRoot } from '../../../../../utils/path-helper';
 
-test.describe('Workflow Copy Paste @fixme', () => {
+test.describe('Workflow Copy Paste @fixme', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test.fixme();
 
 	test.beforeEach(async ({ n8n }) => {

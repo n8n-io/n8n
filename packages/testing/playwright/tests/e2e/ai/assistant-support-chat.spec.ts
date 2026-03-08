@@ -15,7 +15,11 @@ type ChatRequestBody = {
 	};
 };
 
-test.describe('AI Assistant::enabled', () => {
+test.describe('AI Assistant::enabled', {
+	annotation: [
+		{ type: 'owner', description: 'AI' },
+	],
+}, () => {
 	test.describe('Support Chat', () => {
 		test('assistant returns code snippet', async ({ n8n, setupRequirements }) => {
 			await setupRequirements(aiEnabledWithCodeSnippetRequirements);

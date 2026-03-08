@@ -760,14 +760,13 @@ watch(
 					{{ i18n.baseText('parameterInputList.loadingError') }}
 				</N8nText>
 				<N8nIconButton
+					variant="ghost"
 					v-if="
 						hideDelete !== true &&
 						!isReadOnly &&
 						!item.parameter.isNodeSetting &&
 						!isCollectionOverhaulEnabled
 					"
-					type="tertiary"
-					text
 					size="small"
 					icon="trash-2"
 					class="icon-button"
@@ -811,14 +810,13 @@ watch(
 			/>
 			<div v-else-if="credentialsParameterIndex !== index" class="parameter-item">
 				<N8nIconButton
+					variant="ghost"
 					v-if="
 						hideDelete !== true &&
 						!isReadOnly &&
 						!item.parameter.isNodeSetting &&
 						!isCollectionOverhaulEnabled
 					"
-					type="tertiary"
-					text
 					size="small"
 					icon="trash-2"
 					class="icon-button"

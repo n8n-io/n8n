@@ -1,0 +1,62 @@
+From 574dcbc559cf7ee1960c46ad7fd43f21662c87a7 Mon Sep 17 00:00:00 2001
+From: Tzachi Shaiovitch <tzachish1@gmail.com>
+Date: Thu, 29 Jan 2026 17:07:09 +0200
+Subject: [PATCH 12/22] feat(api-types): add ImportCategoriesDto for node
+ governance import
+
+Add validation DTO for importing node governance categories with:
+- Version string for format compatibility
+- Array of categories with slug, displayName, description, color
+- Array of node type assignments per category
+---
+ .../node-governance/import-categories.dto.ts  | 28 +++++++++++++++++++
+ .../src/dto/node-governance/index.ts          |  1 +
+ 2 files changed, 29 insertions(+)
+ create mode 100644 packages/@n8n/api-types/src/dto/node-governance/import-categories.dto.ts
+
+diff --git a/packages/@n8n/api-types/src/dto/node-governance/import-categories.dto.ts b/packages/@n8n/api-types/src/dto/node-governance/import-categories.dto.ts
+new file mode 100644
+index 0000000000..e286998e8a
+--- /dev/null
++++ b/packages/@n8n/api-types/src/dto/node-governance/import-categories.dto.ts
+@@ -0,0 +1,28 @@
++import { z } from 'zod';
++import { Z } from 'zod-class';
++
++const slugSchema = z
++	.string()
++	.min(1)
++	.max(100)
++	.regex(/^[a-z0-9-]+$/, 'Slug must contain only lowercase letters, numbers, and hyphens');
++
++const hexColorSchema = z
++	.string()
++	.regex(/^#[0-9a-fA-F]{6}$/, 'Color must be a valid hex color (e.g., #FF5733)')
++	.nullable()
++	.optional();
++
++const categorySchema = z.object({
++	slug: slugSchema,
++	displayName: z.string().min(1).max(255),
++	description: z.string().max(1000).nullable().optional(),
++	color: hexColorSchema,
++	nodes: z.array(z.string().min(1).max(255)).default([]),
++});
++
++export class ImportCategoriesDto extends Z.class({
++	version: z.string().min(1).max(10),
++	exportedAt: z.string().optional(),
++	categories: z.array(categorySchema).min(1, 'At least one category is required'),
++}) {}
+diff --git a/packages/@n8n/api-types/src/dto/node-governance/index.ts b/packages/@n8n/api-types/src/dto/node-governance/index.ts
+index f9d90dc9e4..8141551b2c 100644
+--- a/packages/@n8n/api-types/src/dto/node-governance/index.ts
++++ b/packages/@n8n/api-types/src/dto/node-governance/index.ts
+@@ -6,3 +6,4 @@ export { CategoryAssignmentDto, BulkCategoryAssignmentDto } from './category-ass
+ export { CreateAccessRequestDto } from './create-access-request.dto';
+ export { ReviewAccessRequestDto } from './review-access-request.dto';
+ export { GetNodeGovernanceQueryDto, GetNodeGovernanceBodyDto } from './get-node-governance.dto';
++export { ImportCategoriesDto } from './import-categories.dto';
+-- 
+2.50.1 (Apple Git-155)
+

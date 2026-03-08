@@ -5,7 +5,11 @@ const NOTIFICATIONS = {
 	WORKFLOW_EXECUTED_SUCCESSFULLY: 'Workflow executed successfully',
 };
 
-test.describe('Inject previous execution', () => {
+test.describe('Inject previous execution', {
+	annotation: [
+		{ type: 'owner', description: 'Catalysts' },
+	],
+}, () => {
 	test('can map keys from previous execution', async ({ n8n }) => {
 		await n8n.start.fromImportedWorkflow('NDV-debug-generate-data.json');
 

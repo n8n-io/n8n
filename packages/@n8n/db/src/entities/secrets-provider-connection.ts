@@ -42,6 +42,7 @@ export class SecretsProviderConnection extends WithTimestamps {
 	encryptedSettings: string;
 
 	/**
+	 * @deprecated This field is no longer used.
 	 * Whether the secrets provider connection is enabled.
 	 * When enabled, a connection attempt will be made to the external secrets provider.
 	 * If the connection is successful, secrets will be available to be used in credentials.

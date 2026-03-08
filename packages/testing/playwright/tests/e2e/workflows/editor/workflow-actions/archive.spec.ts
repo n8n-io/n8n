@@ -21,7 +21,11 @@ async function goToWorkflow(n8n: n8nPage, workflowId: string): Promise<void> {
 	await loadResponsePromise;
 }
 
-test.describe('Workflow Archive @fixme', () => {
+test.describe('Workflow Archive @fixme', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test.fixme();
 
 	test.beforeEach(async ({ n8n }) => {

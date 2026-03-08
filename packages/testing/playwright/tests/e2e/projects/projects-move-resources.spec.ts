@@ -7,7 +7,11 @@ import { test, expect } from '../../../fixtures/base';
 
 test.use({ capability: { env: { TEST_ISOLATION: 'projects-move-resources' } } });
 
-test.describe('Projects - Moving Resources @db:reset', () => {
+test.describe('Projects - Moving Resources @db:reset', {
+	annotation: [
+		{ type: 'owner', description: 'Identity & Access' },
+	],
+}, () => {
 	test.describe.configure({ mode: 'serial' });
 
 	test.beforeEach(async ({ n8n }) => {

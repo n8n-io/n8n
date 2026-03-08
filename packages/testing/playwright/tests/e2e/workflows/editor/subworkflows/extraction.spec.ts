@@ -9,7 +9,11 @@ const EDIT_FIELDS_NAMES = [
 	'Edit Fields5',
 ];
 
-test.describe('Subworkflow Extraction', () => {
+test.describe('Subworkflow Extraction', {
+	annotation: [
+		{ type: 'owner', description: 'Catalysts' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromImportedWorkflow('Subworkflow-extraction-workflow.json');
 

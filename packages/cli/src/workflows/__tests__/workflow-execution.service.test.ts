@@ -307,6 +307,39 @@ describe('WorkflowExecutionService', () => {
 			expect(result).toEqual({ executionId });
 		});
 
+		test('should drop runData when triggerToStartFrom is present and execute as full known-trigger run', async () => {
+			const executionId = 'fake-execution-id';
+			const userId = 'user-id';
+			const user = mock<User>({ id: userId });
+
+			const runPayload = {
+				workflowData: mock<IWorkflowBase>({
+					nodes: [webhookNode, hackerNewsNode],
+					connections: createMainConnection(webhookNode.name, hackerNewsNode.name),
+					pinData: undefined,
+				}),
+				triggerToStartFrom: { name: webhookNode.name },
+				destinationNode: { nodeName: hackerNewsNode.name, mode: 'inclusive' },
+				runData: { [webhookNode.name]: [toITaskData([{ data: { value: 1 } }])] },
+			} as unknown as WorkflowRequest.ManualRunPayload;
+
+			workflowRunner.run.mockResolvedValue(executionId);
+
+			const result = await workflowExecutionService.executeManually(runPayload, user);
+
+			expect(workflowRunner.run).toHaveBeenCalledWith(
+				expect.objectContaining({
+					executionMode: 'manual',
+					triggerToStartFrom: { name: webhookNode.name },
+					destinationNode: { nodeName: hackerNewsNode.name, mode: 'inclusive' },
+					userId,
+				}),
+			);
+			const callArgs = workflowRunner.run.mock.calls[0][0];
+			expect('runData' in callArgs).toBe(false);
+			expect(result).toEqual({ executionId });
+		});
+
 		test('should force current version for manual execution even if workflow has active version', async () => {
 			const executionId = 'fake-execution-id';
 			const userId = 'user-id';

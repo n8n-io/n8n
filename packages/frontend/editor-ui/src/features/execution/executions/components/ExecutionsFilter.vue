@@ -181,10 +181,10 @@ onBeforeMount(() => {
 	>
 		<template #trigger>
 			<N8nButton
+				variant="subtle"
+				iconOnly
 				icon="funnel"
-				type="tertiary"
 				size="medium"
-				square
 				:active="!!countSelectedFilterProps"
 				data-test-id="executions-filter-button"
 				:class="$style.filterButton"
@@ -402,10 +402,10 @@ onBeforeMount(() => {
 					</div>
 				</div>
 				<N8nButton
+					variant="ghost"
 					v-if="!!countSelectedFilterProps"
 					:class="$style.resetBtn"
 					size="large"
-					text
 					data-test-id="executions-filter-reset-button"
 					@click="onFilterReset"
 				>

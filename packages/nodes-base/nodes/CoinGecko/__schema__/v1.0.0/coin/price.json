@@ -1,6 +1,174 @@
 {
     "type": "object",
     "properties": {
+        "algorand": {
+            "type": "object",
+            "properties": {
+                "usd": {
+                    "type": "number"
+                },
+                "usd_24h_change": {
+                    "type": "number"
+                },
+                "usd_market_cap": {
+                    "type": "number"
+                }
+            }
+        },
+        "avalanche-2": {
+            "type": "object",
+            "properties": {
+                "usd": {
+                    "type": "number"
+                },
+                "usd_24h_change": {
+                    "type": "number"
+                },
+                "usd_market_cap": {
+                    "type": "number"
+                }
+            }
+        },
+        "binancecoin": {
+            "type": "object",
+            "properties": {
+                "usd": {
+                    "type": "number"
+                },
+                "usd_24h_change": {
+                    "type": "number"
+                },
+                "usd_market_cap": {
+                    "type": "number"
+                }
+            }
+        },
+        "bitcoin": {
+            "type": "object",
+            "properties": {
+                "usd": {
+                    "type": "number"
+                },
+                "usd_24h_change": {
+                    "type": "number"
+                },
+                "usd_market_cap": {
+                    "type": "number"
+                }
+            }
+        },
+        "cardano": {
+            "type": "object",
+            "properties": {
+                "usd": {
+                    "type": "number"
+                },
+                "usd_24h_change": {
+                    "type": "number"
+                },
+                "usd_market_cap": {
+                    "type": "number"
+                }
+            }
+        },
+        "chainlink": {
+            "type": "object",
+            "properties": {
+                "usd": {
+                    "type": "number"
+                },
+                "usd_24h_change": {
+                    "type": "number"
+                },
+                "usd_market_cap": {
+                    "type": "number"
+                }
+            }
+        },
+        "cosmos": {
+            "type": "object",
+            "properties": {
+                "usd": {
+                    "type": "number"
+                },
+                "usd_24h_change": {
+                    "type": "number"
+                },
+                "usd_market_cap": {
+                    "type": "number"
+                }
+            }
+        },
+        "dogecoin": {
+            "type": "object",
+            "properties": {
+                "usd": {
+                    "type": "number"
+                },
+                "usd_24h_change": {
+                    "type": "number"
+                },
+                "usd_market_cap": {
+                    "type": "number"
+                }
+            }
+        },
+        "ethereum": {
+            "type": "object",
+            "properties": {
+                "usd": {
+                    "type": "number"
+                },
+                "usd_24h_change": {
+                    "type": "number"
+                },
+                "usd_market_cap": {
+                    "type": "number"
+                }
+            }
+        },
+        "filecoin": {
+            "type": "object",
+            "properties": {
+                "usd": {
+                    "type": "number"
+                },
+                "usd_24h_change": {
+                    "type": "number"
+                },
+                "usd_market_cap": {
+                    "type": "number"
+                }
+            }
+        },
+        "internet-computer": {
+            "type": "object",
+            "properties": {
+                "usd": {
+                    "type": "number"
+                },
+                "usd_24h_change": {
+                    "type": "number"
+                },
+                "usd_market_cap": {
+                    "type": "number"
+                }
+            }
+        },
+        "litecoin": {
+            "type": "object",
+            "properties": {
+                "usd": {
+                    "type": "number"
+                },
+                "usd_24h_change": {
+                    "type": "number"
+                },
+                "usd_market_cap": {
+                    "type": "number"
+                }
+            }
+        },
         "nacho-the-kat": {
             "type": "object",
             "properties": {
@@ -11,6 +179,105 @@
             "required": [
                 "usd"
             ]
+        },
+        "polkadot": {
+            "type": "object",
+            "properties": {
+                "usd": {
+                    "type": "number"
+                },
+                "usd_24h_change": {
+                    "type": "number"
+                },
+                "usd_market_cap": {
+                    "type": "number"
+                }
+            }
+        },
+        "ripple": {
+            "type": "object",
+            "properties": {
+                "usd": {
+                    "type": "number"
+                },
+                "usd_24h_change": {
+                    "type": "number"
+                },
+                "usd_market_cap": {
+                    "type": "number"
+                }
+            }
+        },
+        "solana": {
+            "type": "object",
+            "properties": {
+                "usd": {
+                    "type": "number"
+                },
+                "usd_24h_change": {
+                    "type": "number"
+                },
+                "usd_market_cap": {
+                    "type": "number"
+                }
+            }
+        },
+        "stellar": {
+            "type": "object",
+            "properties": {
+                "usd": {
+                    "type": "number"
+                },
+                "usd_24h_change": {
+                    "type": "number"
+                },
+                "usd_market_cap": {
+                    "type": "number"
+                }
+            }
+        },
+        "tron": {
+            "type": "object",
+            "properties": {
+                "usd": {
+                    "type": "number"
+                },
+                "usd_24h_change": {
+                    "type": "number"
+                },
+                "usd_market_cap": {
+                    "type": "number"
+                }
+            }
+        },
+        "uniswap": {
+            "type": "object",
+            "properties": {
+                "usd": {
+                    "type": "number"
+                },
+                "usd_24h_change": {
+                    "type": "number"
+                },
+                "usd_market_cap": {
+                    "type": "number"
+                }
+            }
+        },
+        "vechain": {
+            "type": "object",
+            "properties": {
+                "usd": {
+                    "type": "number"
+                },
+                "usd_24h_change": {
+                    "type": "number"
+                },
+                "usd_market_cap": {
+                    "type": "number"
+                }
+            }
         }
-    }
+    },
+    "version": 1
 }

@@ -192,17 +192,15 @@ onMounted(async () => {
 		<template #footer="{ close }">
 			<div :class="$style.footer">
 				<N8nButton
-					:loading="isSaving"
-					:label="i18n.baseText('duplicateWorkflowDialog.save')"
-					float="right"
-					@click="save"
-				/>
-				<N8nButton
-					type="secondary"
+					variant="subtle"
 					:disabled="isSaving"
 					:label="i18n.baseText('duplicateWorkflowDialog.cancel')"
-					float="right"
 					@click="close"
+				/>
+				<N8nButton
+					:loading="isSaving"
+					:label="i18n.baseText('duplicateWorkflowDialog.save')"
+					@click="save"
 				/>
 			</div>
 		</template>
@@ -217,6 +215,8 @@ onMounted(async () => {
 }
 
 .footer {
+	display: flex;
+	justify-content: flex-end;
 	> * {
 		margin-left: var(--spacing--3xs);
 	}

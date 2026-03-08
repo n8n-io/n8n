@@ -150,6 +150,18 @@ const workflow = createTestWorkflow({
 	meta: {},
 });
 
+// Extract props with correct types for WorkflowDetails component
+const defaultProps = {
+	id: workflow.id,
+	tags: ['1', '2'] as readonly string[],
+	name: workflow.name,
+	meta: workflow.meta,
+	scopes: workflow.scopes,
+	active: workflow.active,
+	isArchived: workflow.isArchived,
+	description: workflow.description,
+};
+
 describe('WorkflowDetails', () => {
 	beforeEach(() => {
 		uiStore = useUIStore();
@@ -167,6 +179,8 @@ describe('WorkflowDetails', () => {
 			'123': workflow,
 		};
 		workflowsStore.isWorkflowSaved = { '1': true, '123': true };
+		workflowsStore.workflowId = workflow.id;
+		workflowsStore.workflowChecksum = 'test-checksum';
 		projectsStore.currentProject = null;
 		projectsStore.personalProject = { id: 'personal', name: 'Personal' } as Project;
 		collaborationStore.shouldBeReadOnly = false;
@@ -187,7 +201,7 @@ describe('WorkflowDetails', () => {
 		} as unknown as ReturnType<typeof useRoute>);
 		const { getByTestId, getByText } = renderComponent({
 			props: {
-				...workflow,
+				...defaultProps,
 			},
 		});
 
@@ -203,7 +217,7 @@ describe('WorkflowDetails', () => {
 
 		const { getByTestId } = renderComponent({
 			props: {
-				...workflow,
+				...defaultProps,
 			},
 		});
 
@@ -231,7 +245,7 @@ describe('WorkflowDetails', () => {
 
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
-					...workflow,
+					...defaultProps,
 					isArchived: false,
 					scopes: ['workflow:read'],
 				},
@@ -249,7 +263,7 @@ describe('WorkflowDetails', () => {
 
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
-					...workflow,
+					...defaultProps,
 					isArchived: false,
 					scopes: ['workflow:read'],
 				},
@@ -265,7 +279,7 @@ describe('WorkflowDetails', () => {
 		it('should have workflow duplicate and import options if permission update is true', async () => {
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
-					...workflow,
+					...defaultProps,
 					isArchived: false,
 					scopes: ['workflow:update'],
 				},
@@ -295,7 +309,7 @@ describe('WorkflowDetails', () => {
 
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
-					...workflow,
+					...defaultProps,
 					id: 'new',
 					isArchived: false,
 					scopes: ['workflow:delete'],
@@ -312,7 +326,7 @@ describe('WorkflowDetails', () => {
 		it("should have 'Archive' option on non archived workflow", async () => {
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
-					...workflow,
+					...defaultProps,
 					isArchived: false,
 					scopes: ['workflow:delete'],
 				},
@@ -330,7 +344,7 @@ describe('WorkflowDetails', () => {
 
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
-					...workflow,
+					...defaultProps,
 					isArchived: false,
 					scopes: ['workflow:delete'],
 				},
@@ -347,7 +361,7 @@ describe('WorkflowDetails', () => {
 
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
-					...workflow,
+					...defaultProps,
 					isArchived: false,
 					scopes: ['workflow:delete'],
 				},
@@ -362,7 +376,7 @@ describe('WorkflowDetails', () => {
 		it("should not have 'Archive' option on non archived workflow without permission", async () => {
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
-					...workflow,
+					...defaultProps,
 					isArchived: false,
 					scopes: ['workflow:update'],
 				},
@@ -377,7 +391,7 @@ describe('WorkflowDetails', () => {
 		it("should have 'Unarchive' and 'Delete' options on archived workflow", async () => {
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
-					...workflow,
+					...defaultProps,
 					isArchived: true,
 					scopes: ['workflow:delete'],
 				},
@@ -396,7 +410,7 @@ describe('WorkflowDetails', () => {
 
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
-					...workflow,
+					...defaultProps,
 					isArchived: true,
 					scopes: ['workflow:delete'],
 				},
@@ -413,7 +427,7 @@ describe('WorkflowDetails', () => {
 
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
-					...workflow,
+					...defaultProps,
 					isArchived: true,
 					scopes: ['workflow:delete'],
 				},
@@ -428,7 +442,7 @@ describe('WorkflowDetails', () => {
 		it("should not have 'Unarchive' or 'Delete' options on archived workflow without permission", async () => {
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
-					...workflow,
+					...defaultProps,
 					isArchived: true,
 					scopes: ['workflow:update'],
 				},
@@ -443,7 +457,7 @@ describe('WorkflowDetails', () => {
 		it('should not have edit actions on archived workflow even with update permission', async () => {
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
-					...workflow,
+					...defaultProps,
 					isArchived: true,
 					scopes: ['workflow:update', 'workflow:delete'],
 				},
@@ -458,7 +472,7 @@ describe('WorkflowDetails', () => {
 		it("should call onWorkflowMenuSelect on 'Archive' option click on nonactive workflow", async () => {
 			const { getByTestId } = renderComponent({
 				props: {
-					...workflow,
+					...defaultProps,
 					active: false,
 					isArchived: false,
 					scopes: ['workflow:delete'],
@@ -474,7 +488,7 @@ describe('WorkflowDetails', () => {
 			expect(toast.showError).toHaveBeenCalledTimes(0);
 			expect(toast.showMessage).toHaveBeenCalledTimes(1);
 			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledTimes(1);
-			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(workflow.id);
+			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(workflow.id, 'test-checksum');
 			expect(router.push).toHaveBeenCalledTimes(1);
 			expect(router.push).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOWS,
@@ -497,7 +511,7 @@ describe('WorkflowDetails', () => {
 
 			const { getByTestId } = renderComponent({
 				props: {
-					...teamWorkflow,
+					...defaultProps,
 					active: false,
 					isArchived: false,
 					scopes: ['workflow:delete'],
@@ -507,7 +521,7 @@ describe('WorkflowDetails', () => {
 			await userEvent.click(getByTestId('workflow-menu'));
 			await userEvent.click(getByTestId('workflow-menu-item-archive'));
 
-			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(teamWorkflow.id);
+			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(teamWorkflow.id, 'test-checksum');
 			expect(router.push).toHaveBeenCalledWith({
 				name: VIEWS.PROJECTS_WORKFLOWS,
 				params: { projectId: teamProjectId },
@@ -529,7 +543,7 @@ describe('WorkflowDetails', () => {
 
 			const { getByTestId } = renderComponent({
 				props: {
-					...personalWorkflow,
+					...defaultProps,
 					active: false,
 					isArchived: false,
 					scopes: ['workflow:delete'],
@@ -539,7 +553,10 @@ describe('WorkflowDetails', () => {
 			await userEvent.click(getByTestId('workflow-menu'));
 			await userEvent.click(getByTestId('workflow-menu-item-archive'));
 
-			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(personalWorkflow.id);
+			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(
+				personalWorkflow.id,
+				'test-checksum',
+			);
 			expect(router.push).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOWS,
 			});
@@ -548,7 +565,7 @@ describe('WorkflowDetails', () => {
 		it("should confirm onWorkflowMenuSelect on 'Archive' option click on active workflow", async () => {
 			const { getByTestId } = renderComponent({
 				props: {
-					...workflow,
+					...defaultProps,
 					active: true,
 					isArchived: false,
 					scopes: ['workflow:delete'],
@@ -564,7 +581,7 @@ describe('WorkflowDetails', () => {
 			expect(toast.showError).toHaveBeenCalledTimes(0);
 			expect(toast.showMessage).toHaveBeenCalledTimes(1);
 			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledTimes(1);
-			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(workflow.id);
+			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(workflow.id, 'test-checksum');
 			expect(router.push).toHaveBeenCalledTimes(1);
 			expect(router.push).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOWS,
@@ -574,7 +591,7 @@ describe('WorkflowDetails', () => {
 		it("should call onWorkflowMenuSelect on 'Unarchive' option click", async () => {
 			const { getByTestId } = renderComponent({
 				props: {
-					...workflow,
+					...defaultProps,
 					isArchived: true,
 					scopes: ['workflow:delete'],
 				},
@@ -592,7 +609,7 @@ describe('WorkflowDetails', () => {
 		it("should call onWorkflowMenuSelect on 'Delete' option click", async () => {
 			const { getByTestId } = renderComponent({
 				props: {
-					...workflow,
+					...defaultProps,
 					isArchived: true,
 					scopes: ['workflow:delete'],
 				},
@@ -629,7 +646,7 @@ describe('WorkflowDetails', () => {
 
 			const { getByTestId } = renderComponent({
 				props: {
-					...teamWorkflow,
+					...defaultProps,
 					isArchived: true,
 					scopes: ['workflow:delete'],
 				},
@@ -661,7 +678,7 @@ describe('WorkflowDetails', () => {
 
 			const { getByTestId } = renderComponent({
 				props: {
-					...personalWorkflow,
+					...defaultProps,
 					isArchived: true,
 					scopes: ['workflow:delete'],
 				},
@@ -683,7 +700,7 @@ describe('WorkflowDetails', () => {
 
 			const { getByTestId } = renderComponent({
 				props: {
-					...workflow,
+					...defaultProps,
 					scopes: ['workflow:move'],
 				},
 			});
@@ -702,7 +719,7 @@ describe('WorkflowDetails', () => {
 		it('should show badge on archived workflow', async () => {
 			const { getByTestId } = renderComponent({
 				props: {
-					...workflow,
+					...defaultProps,
 					isArchived: true,
 					scopes: ['workflow:delete'],
 				},
@@ -714,7 +731,7 @@ describe('WorkflowDetails', () => {
 		it('should not show badge on non archived workflow', async () => {
 			const { queryByTestId } = renderComponent({
 				props: {
-					...workflow,
+					...defaultProps,
 					isArchived: false,
 					scopes: ['workflow:delete'],
 				},

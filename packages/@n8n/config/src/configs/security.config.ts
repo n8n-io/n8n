@@ -1,4 +1,8 @@
+import z from 'zod';
+
 import { Config, Env } from '../decorators';
+
+const crossOriginOpenerPolicySchema = z.enum(['same-origin', 'same-origin-allow-popups']);
 
 @Config
 export class SecurityConfig {
@@ -47,6 +51,12 @@ export class SecurityConfig {
 	 */
 	@Env('N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY')
 	contentSecurityPolicyReportOnly: boolean = false;
+
+	/**
+	 * Configuration for the `Cross-Origin-Opener-Policy` header.
+	 */
+	@Env('N8N_CROSS_ORIGIN_OPENER_POLICY', crossOriginOpenerPolicySchema)
+	crossOriginOpenerPolicy: z.infer<typeof crossOriginOpenerPolicySchema> = 'same-origin';
 
 	/**
 	 * Whether to disable HTML sandboxing for webhooks. The sandboxing mechanism uses CSP headers now,

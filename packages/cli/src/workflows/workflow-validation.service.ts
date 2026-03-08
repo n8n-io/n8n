@@ -1,7 +1,15 @@
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { validateWorkflowHasTriggerLikeNode } from 'n8n-workflow';
-import type { INode, INodes } from 'n8n-workflow';
+import {
+	validateWorkflowHasTriggerLikeNode,
+	NodeHelpers,
+	ensureError,
+	mapConnectionsByDestination,
+	validateNodeCredentials,
+	isNodeConnected,
+	isTriggerLikeNode,
+} from 'n8n-workflow';
+import type { INode, INodes, IConnections, INodeType } from 'n8n-workflow';
 
 import { STARTING_NODES } from '@/constants';
 import type { NodeTypes } from '@/node-types';
@@ -29,7 +37,131 @@ export interface WorkflowStatus {
 export class WorkflowValidationService {
 	constructor(private readonly workflowRepository: WorkflowRepository) {}
 
-	validateForActivation(nodes: INodes, nodeTypes: NodeTypes): WorkflowValidationResult {
+	/**
+	 * Validates node configuration (credentials, parameters) for connected and enabled nodes.
+	 * Trigger-like nodes are always validated even without connections.
+	 */
+	private validateNodeConfiguration(
+		nodes: INode[],
+		connections: IConnections,
+		nodeTypes: NodeTypes,
+	): WorkflowValidationResult {
+		try {
+			const connectionsByDestination = mapConnectionsByDestination(connections);
+			const issuesFound: Array<{ nodeName: string; issues: string[] }> = [];
+
+			for (const node of nodes) {
+				try {
+					if (node.disabled) continue;
+
+					const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+
+					if (!nodeType) {
+						issuesFound.push({
+							nodeName: node.name,
+							issues: ['Node type not found'],
+						});
+						continue;
+					}
+
+					const isNodeTriggerLike = isTriggerLikeNode(nodeType);
+
+					const isConnected = isNodeConnected(node.name, connections, connectionsByDestination);
+
+					if (!isConnected && !isNodeTriggerLike) continue;
+
+					const nodeIssues: string[] = [];
+					const credentialIssues = validateNodeCredentials(node, nodeType);
+
+					// Convert credential issues to error messages
+					for (const issue of credentialIssues) {
+						if (issue.type === 'missing') {
+							nodeIssues.push(`Missing required credential: ${issue.displayName}`);
+						} else if (issue.type === 'not-configured') {
+							nodeIssues.push(`Credential not configured: ${issue.displayName}`);
+						}
+					}
+
+					const parameterIssues = this.validateNodeParameters(node, nodeType);
+					nodeIssues.push(...parameterIssues);
+
+					if (nodeIssues.length > 0) {
+						issuesFound.push({
+							nodeName: node.name,
+							issues: nodeIssues,
+						});
+					}
+				} catch (nodeError) {
+					issuesFound.push({
+						nodeName: node.name,
+						issues: [`Error validating node: ${ensureError(nodeError).message}`],
+					});
+				}
+			}
+
+			if (issuesFound.length === 0) {
+				return { isValid: true };
+			}
+
+			const errorLines = issuesFound.map((item) => {
+				const issuesList = item.issues.map((issue) => `  - ${issue}`).join('\n');
+				return `Node "${item.nodeName}":\n${issuesList}`;
+			});
+
+			const nodeCount = issuesFound.length;
+			const pluralSuffix = nodeCount === 1 ? '' : 's';
+			const error = `Cannot publish workflow: ${nodeCount} node${pluralSuffix} have configuration issues:\n\n${errorLines.join('\n\n')}`;
+
+			return {
+				isValid: false,
+				error,
+			};
+		} catch (error) {
+			return {
+				isValid: false,
+				error: `Workflow validation failed: ${ensureError(error).message}`,
+			};
+		}
+	}
+
+	/**
+	 * Validates node parameters using NodeHelpers.
+	 */
+	private validateNodeParameters(node: INode, nodeType: INodeType): string[] {
+		const issues: string[] = [];
+
+		try {
+			if (!nodeType.description?.properties) {
+				return issues;
+			}
+
+			const nodeIssues = NodeHelpers.getNodeParametersIssues(
+				nodeType.description.properties,
+				node,
+				nodeType.description,
+			);
+
+			if (nodeIssues?.parameters) {
+				const parameterIssuesCount = Object.keys(nodeIssues.parameters).length;
+				if (parameterIssuesCount > 0) {
+					issues.push(
+						`Missing or invalid required parameters (${parameterIssuesCount} issue${parameterIssuesCount === 1 ? '' : 's'})`,
+					);
+				}
+			}
+		} catch (error) {
+			issues.push('Error validating node parameters');
+		}
+
+		return issues;
+	}
+
+	validateForActivation(
+		nodes: INodes,
+		connections: IConnections,
+		nodeTypes: NodeTypes,
+	): WorkflowValidationResult {
+		// Validate trigger nodes
 		const triggerValidation = validateWorkflowHasTriggerLikeNode(nodes, nodeTypes, STARTING_NODES);
 
 		if (!triggerValidation.isValid) {
@@ -39,6 +171,14 @@ export class WorkflowValidationService {
 					triggerValidation.error ??
 					'Workflow cannot be activated because it has no trigger node. At least one trigger, webhook, or polling node is required.',
 			};
+		}
+
+		// Validate node configuration (credentials, parameters)
+		const nodesArray = Object.values(nodes);
+		const configValidation = this.validateNodeConfiguration(nodesArray, connections, nodeTypes);
+
+		if (!configValidation.isValid) {
+			return configValidation;
 		}
 
 		return { isValid: true };

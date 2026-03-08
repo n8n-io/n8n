@@ -4,7 +4,11 @@ import { MANUAL_TRIGGER_NODE_DISPLAY_NAME } from '../../../../../config/constant
 import { test, expect } from '../../../../../fixtures/base';
 import { resolveFromRoot } from '../../../../../utils/path-helper';
 
-test.describe('Editors', () => {
+test.describe('Editors', {
+	annotation: [
+		{ type: 'owner', description: 'NODES' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 		await n8n.canvas.addInitialNodeToCanvas('Manual Trigger');

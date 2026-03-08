@@ -1,6 +1,10 @@
 import { test, expect } from '../../../fixtures/base';
 
-test.describe('Node Details Configuration', () => {
+test.describe('Node Details Configuration', {
+	annotation: [
+		{ type: 'owner', description: 'Catalysts' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 	});

@@ -1,0 +1,35 @@
+{
+  "name": "@n8n/chat",
+  "version": "1.5.0",
+  "types": "./dist/index.d.ts",
+  "main": "./dist/chat.umd.js",
+  "module": "./dist/chat.es.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/chat.es.js",
+      "require": "./dist/chat.umd.js"
+    },
+    "./style.css": {
+      "import": "./dist/style.css",
+      "require": "./dist/style.css"
+    },
+    "./*": {
+      "import": "./*",
+      "require": "./*"
+    }
+  },
+  "files": [
+    "README.md",
+    "dist"
+  ],
+  "dependencies": {
+    "@n8n/design-system": "workspace:*",
+    "@vueuse/core": "catalog:frontend",
+    "highlight.js": "catalog:frontend",
+    "markdown-it-link-attributes": "^4.0.1",
+    "uuid": "catalog:",
+    "vue": "catalog:frontend",
+    "vue-markdown-render": "catalog:frontend"
+  }
+}

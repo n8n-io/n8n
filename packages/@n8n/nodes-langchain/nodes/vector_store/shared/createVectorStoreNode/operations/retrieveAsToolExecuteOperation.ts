@@ -9,7 +9,7 @@ import {
 	type INodeExecutionData,
 } from 'n8n-workflow';
 
-import { getMetadataFiltersValues, logAiEvent } from '@utils/helpers';
+import { getMetadataFiltersValues, logAiEvent } from '@n8n/ai-utilities';
 
 import type { VectorStoreNodeConstructorArgs } from '../types';
 

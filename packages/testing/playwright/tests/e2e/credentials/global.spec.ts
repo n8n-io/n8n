@@ -2,7 +2,11 @@ import { test, expect } from '../../../fixtures/base';
 
 test.use({ capability: { env: { TEST_ISOLATION: 'global-credentials' } } });
 
-test.describe('Global credentials', () => {
+test.describe('Global credentials', {
+	annotation: [
+		{ type: 'owner', description: 'Identity & Access' },
+	],
+}, () => {
 	test.describe.configure({ mode: 'serial' });
 
 	test.beforeAll(async ({ api }) => {

@@ -4,6 +4,7 @@ import {
 	Project,
 	User,
 	ProjectRelationRepository,
+	ProjectRepository,
 	SharedWorkflowRepository,
 	UserRepository,
 	Role,
@@ -29,6 +30,7 @@ export class OwnershipService {
 		private logger: Logger,
 		private passwordUtility: PasswordUtility,
 		private projectRelationRepository: ProjectRelationRepository,
+		private projectRepository: ProjectRepository,
 		private sharedWorkflowRepository: SharedWorkflowRepository,
 		private userRepository: UserRepository,
 		private settingsRepository: SettingsRepository,
@@ -138,27 +140,10 @@ export class OwnershipService {
 		return owner;
 	}
 
-	/**
-	 * Invalidate the cached user data for a user's personal project.
-	 * This should be called when a user's role changes to ensure
-	 * the cached role/scopes data is refreshed.
-	 */
-	async invalidateUserProjectOwnerCache(userId: string): Promise<void> {
-		// Find the user's personal project relation
-		const userProjectRelation = await this.projectRelationRepository.findOne({
-			where: {
-				userId,
-				project: { type: 'personal' },
-			},
-			relations: ['project'],
-		});
-
-		if (userProjectRelation) {
-			await this.cacheService.deleteFromHash('project-owner', userProjectRelation.projectId);
-			this.logger.debug('Invalidated project-owner cache for user', {
-				userId,
-				projectId: userProjectRelation.projectId,
-			});
+	async invalidateProjectOwnerCacheByUserId(userId: string) {
+		const personalProject = await this.projectRepository.getPersonalProjectForUser(userId);
+		if (personalProject) {
+			await this.cacheService.deleteFromHash('project-owner', personalProject.id);
 		}
 	}
 

@@ -208,38 +208,50 @@ describe('CredentialEdit', () => {
 	});
 
 	test('shows the save button when credentialId is null', async () => {
-		const { queryByTestId } = renderComponent({
-			props: {
-				modalName: CREDENTIAL_EDIT_MODAL_KEY,
-				mode: 'new',
-			},
-			pinia: createTestingPinia({
-				initialState: {
-					[STORES.UI]: {
-						modalsById: {
-							[CREDENTIAL_EDIT_MODAL_KEY]: { open: true },
-						},
+		const pinia = createTestingPinia({
+			initialState: {
+				[STORES.UI]: {
+					modalsById: {
+						[CREDENTIAL_EDIT_MODAL_KEY]: { open: true },
 					},
-					[STORES.SETTINGS]: {
-						settings: {
-							enterprise: {
-								sharing: true,
-								externalSecrets: false,
-							},
-							templates: {
-								host: '',
-							},
+				},
+				[STORES.SETTINGS]: {
+					settings: {
+						enterprise: {
+							sharing: true,
+							externalSecrets: false,
 						},
-					},
-					[STORES.PROJECTS]: {
-						personalProject: {
-							id: 'personal-project',
-							type: 'personal',
-							scopes: ['credential:create', 'credential:read'],
+						templates: {
+							host: '',
 						},
 					},
 				},
-			}),
+				[STORES.PROJECTS]: {
+					personalProject: {
+						id: 'personal-project',
+						type: 'personal',
+						scopes: ['credential:create', 'credential:read'],
+					},
+				},
+			},
+		});
+
+		const credStore = useCredentialsStore(pinia);
+		credStore.state.credentialTypes = {
+			testApi: {
+				name: 'testApi',
+				displayName: 'Test API',
+				properties: [],
+			} as ICredentialType,
+		};
+
+		const { queryByTestId } = renderComponent({
+			props: {
+				activeId: 'testApi',
+				modalName: CREDENTIAL_EDIT_MODAL_KEY,
+				mode: 'new',
+			},
+			pinia,
 		});
 		await retry(() => expect(queryByTestId('credential-save-button')).toBeInTheDocument());
 	});

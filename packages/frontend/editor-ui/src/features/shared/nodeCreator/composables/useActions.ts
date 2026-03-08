@@ -42,7 +42,11 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 
-import { sortNodeCreateElements, transformNodeType } from '../nodeCreator.utils';
+import {
+	removePreviewToken,
+	sortNodeCreateElements,
+	transformNodeType,
+} from '../nodeCreator.utils';
 import { useI18n } from '@n8n/i18n';
 import { PUSH_NODES_OFFSET } from '@/app/utils/nodeViewUtils';
 import { useCanvasStore } from '@/app/stores/canvas.store';
@@ -215,7 +219,7 @@ export const useActions = () => {
 		actionData: NodeCreateElement,
 	): NodeTypeSelectedPayload {
 		const result: NodeTypeSelectedPayload = {
-			type: actionData.key,
+			type: removePreviewToken(actionData.key),
 		};
 
 		if (typeof actionData.resource === 'string' || typeof actionData.operation === 'string') {

@@ -271,12 +271,14 @@ export function createMockEnterpriseSettings(
 		advancedPermissions: false,
 		apiKeyScopes: false,
 		workflowDiffs: false,
+		namedVersions: false,
 		projects: {
 			team: {
 				limit: 0,
 			},
 		},
 		customRoles: false,
+		personalSpacePolicy: false,
 		...overrides, // Override with any passed properties
 	};
 }

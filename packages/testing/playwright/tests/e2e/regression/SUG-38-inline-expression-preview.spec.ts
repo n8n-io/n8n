@@ -7,7 +7,11 @@ const requirements: TestRequirements = {
 	},
 };
 
-test.describe('SUG-38 Inline expression previews are not displayed in NDV', () => {
+test.describe('SUG-38 Inline expression previews are not displayed in NDV', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test("should show resolved inline expression preview in NDV if the node's input data is populated", async ({
 		n8n,
 		setupRequirements,

@@ -1,0 +1,29 @@
+From 62082f5001977e3f763081d7d7b9b934b924a232 Mon Sep 17 00:00:00 2001
+From: Tzachi Shaiovitch <tzachish1@gmail.com>
+Date: Thu, 29 Jan 2026 17:26:19 +0200
+Subject: [PATCH 22/22] fix(node-governance): make description and color
+ optional in category interface
+
+Allow undefined for description and color to match the DTO schema.
+---
+ packages/cli/src/services/node-governance.service.ts | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/packages/cli/src/services/node-governance.service.ts b/packages/cli/src/services/node-governance.service.ts
+index 36f08eb2c0..4ad23af589 100644
+--- a/packages/cli/src/services/node-governance.service.ts
++++ b/packages/cli/src/services/node-governance.service.ts
+@@ -35,8 +35,8 @@ interface PolicyMatch {
+ export interface NodeGovernanceExportCategory {
+ 	slug: string;
+ 	displayName: string;
+-	description: string | null;
+-	color: string | null;
++	description?: string | null;
++	color?: string | null;
+ 	nodes: string[];
+ }
+ 
+-- 
+2.50.1 (Apple Git-155)
+

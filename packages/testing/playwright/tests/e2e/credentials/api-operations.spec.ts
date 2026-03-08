@@ -2,7 +2,11 @@ import type { CreateCredentialDto } from '@n8n/api-types';
 
 import { test, expect } from '../../../fixtures/base';
 
-test.describe('Credential API Operations', () => {
+test.describe('Credential API Operations', {
+	annotation: [
+		{ type: 'owner', description: 'Identity & Access' },
+	],
+}, () => {
 	test.describe('Basic CRUD Operations', () => {
 		test('should create, retrieve, update, and delete credential', async ({ api }) => {
 			const credentialData: CreateCredentialDto = {

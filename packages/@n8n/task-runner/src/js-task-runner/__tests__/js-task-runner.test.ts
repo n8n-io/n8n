@@ -151,6 +151,85 @@ describe('JsTaskRunner', () => {
 
 			expect(outcome.result).toEqual([wrapIntoJson({ allZeros: true })]);
 		});
+
+		it('should prevent bypass via Object.getOwnPropertyDescriptor', async () => {
+			const outcome = await executeForAllItems({
+				code: `
+					const desc = Object.getOwnPropertyDescriptor(Buffer, 'allocUnsafe');
+					const fn = desc && desc.value;
+					const buf = fn(10);
+					return [{ json: { allZeros: buf.every(b => b === 0) } }]
+				`,
+				inputItems: [{ a: 1 }],
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ allZeros: true })]);
+		});
+
+		it('should prevent bypass via Object.getOwnPropertyDescriptor for allocUnsafeSlow', async () => {
+			const outcome = await executeForAllItems({
+				code: `
+					const desc = Object.getOwnPropertyDescriptor(Buffer, 'allocUnsafeSlow');
+					const fn = desc && desc.value;
+					const buf = fn(10);
+					return [{ json: { allZeros: buf.every(b => b === 0) } }]
+				`,
+				inputItems: [{ a: 1 }],
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ allZeros: true })]);
+		});
+
+		it('should prevent bypass via Buffer.from([]).constructor.allocUnsafe', async () => {
+			const outcome = await executeForAllItems({
+				code: `
+					const RealBuffer = Buffer.from([]).constructor;
+					const buf = RealBuffer.allocUnsafe(100);
+					return [{ json: { allZeros: buf.every(b => b === 0) } }]
+				`,
+				inputItems: [{ a: 1 }],
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ allZeros: true })]);
+		});
+
+		it('should support Buffer.from and Buffer.concat', async () => {
+			const outcome = await executeForAllItems({
+				code: `
+					const buf1 = Buffer.from('hello');
+					const buf2 = Buffer.from(' world');
+					const combined = Buffer.concat([buf1, buf2]);
+					return [{ json: { result: combined.toString() } }]
+				`,
+				inputItems: [{ a: 1 }],
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ result: 'hello world' })]);
+		});
+
+		it('should support Buffer.isBuffer', async () => {
+			const outcome = await executeForAllItems({
+				code: `
+					const buf = Buffer.from('test');
+					return [{ json: { isBuf: Buffer.isBuffer(buf), notBuf: Buffer.isBuffer('str') } }]
+				`,
+				inputItems: [{ a: 1 }],
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ isBuf: true, notBuf: false })]);
+		});
+
+		it('should support instanceof Buffer', async () => {
+			const outcome = await executeForAllItems({
+				code: `
+					const buf = Buffer.from('test');
+					return [{ json: { isInstance: buf instanceof Buffer } }]
+				`,
+				inputItems: [{ a: 1 }],
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ isInstance: true })]);
+		});
 	});
 
 	describe('console', () => {
@@ -1474,6 +1553,39 @@ describe('JsTaskRunner', () => {
 			expect(Interval.fromISO('P1Y2M10DT2H30M').maliciousKey).toBeUndefined();
 			// @ts-expect-error Non-existing property
 			expect(Duration.fromObject({ hours: 1 }).maliciousKey).toBeUndefined();
+		});
+
+		test('should prevent overwriting Object.keys via module.constructor', async () => {
+			const outcome = await executeForAllItems({
+				code: `
+					module.constructor.keys = () => ['polluted'];
+					return [{ json: { keyCount: Object.keys({ a: 1, b: 2 }).length } }];
+				`,
+				inputItems: [{ a: 1 }],
+			});
+
+			expect(outcome.result).toEqual([wrapIntoJson({ keyCount: 2 })]);
+		});
+
+		test('should keep module.constructor in the sandbox realm', async () => {
+			const outcome = await executeForAllItems({
+				code: `
+					return [{
+						json: {
+							isSandboxObject: module.constructor === Object,
+							isFrozen: Object.isFrozen(module.constructor),
+						},
+					}];
+				`,
+				inputItems: [{ a: 1 }],
+			});
+
+			expect(outcome.result).toEqual([
+				wrapIntoJson({
+					isSandboxObject: true,
+					isFrozen: true,
+				}),
+			]);
 		});
 
 		it('should allow prototype mutation when `insecureMode` is true', async () => {

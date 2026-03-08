@@ -1,6 +1,10 @@
 import { test, expect } from '../../../../../fixtures/base';
 
-test.describe('Node IO Filter', () => {
+test.describe('Node IO Filter', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromImportedWorkflow('Node_IO_filter.json');
 		await n8n.canvas.clickExecuteWorkflowButton();

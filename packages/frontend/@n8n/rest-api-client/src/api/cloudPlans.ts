@@ -11,6 +11,8 @@ export declare namespace Cloud {
 		displayName: string;
 		expirationDate: string;
 		metadata: PlanMetadata;
+		userIsTrialing?: boolean;
+		bannerConfig?: BannerConfig;
 	}
 
 	export interface PlanMetadata {
@@ -25,6 +27,33 @@ export declare namespace Cloud {
 		gracePeriod: number;
 	}
 
+	export interface BannerConfig {
+		// If set, show time left section
+		// - If text provided, use it
+		// - If text not provided, compute from expirationDate
+		timeLeft?: {
+			text?: string;
+		};
+
+		// If true, show executions section with progress bar and x/y text
+		showExecutions?: boolean;
+
+		// CTA button configuration
+		cta?: {
+			text?: string;
+			icon?: string;
+			size?: 'small' | 'medium';
+			style?: 'primary' | 'success' | 'warning' | 'danger'; // button color, defaults to 'success'
+			href?: string; // If provided, navigate to this URL; otherwise use upgrade flow
+		};
+
+		// Banner icon (left side) - if not set, no icon shown
+		icon?: string;
+
+		dismissible?: boolean;
+		forceShow?: boolean; // Override localStorage dismissal
+	}
+
 	export type UserAccount = {
 		confirmed: boolean;
 		username: string;
@@ -34,9 +63,6 @@ export declare namespace Cloud {
 		selectedApps?: string[];
 		information?: {
 			[key: string]: string | string[];
-		};
-		trialBannerData?: {
-			bannerText: string;
 		};
 	};
 }

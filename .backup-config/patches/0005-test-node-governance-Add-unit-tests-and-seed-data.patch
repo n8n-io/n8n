@@ -1,0 +1,663 @@
+From 88c02175cdb5e34751d1bf40767f310c3e7e2c0d Mon Sep 17 00:00:00 2001
+From: Tzachi Shaiovitch <tzachish1@gmail.com>
+Date: Wed, 21 Jan 2026 10:19:06 +0200
+Subject: [PATCH 05/22] test(node-governance): Add unit tests and seed data
+
+- Add comprehensive unit tests for NodeGovernanceController (16 tests)
+- Add SQL seed script for sample governance data
+- Add TypeScript seed function for programmatic seeding
+- Test coverage for policies, categories, and access requests
+---
+ .../cli/src/commands/seed-node-governance.ts  | 183 ++++++++++
+ .../node-governance.controller.test.ts        | 342 ++++++++++++++++++
+ scripts/seed-node-governance.sql              |  99 +++++
+ 3 files changed, 624 insertions(+)
+ create mode 100644 packages/cli/src/commands/seed-node-governance.ts
+ create mode 100644 packages/cli/src/controllers/__tests__/node-governance.controller.test.ts
+ create mode 100644 scripts/seed-node-governance.sql
+
+diff --git a/packages/cli/src/commands/seed-node-governance.ts b/packages/cli/src/commands/seed-node-governance.ts
+new file mode 100644
+index 0000000000..85f770c4f8
+--- /dev/null
++++ b/packages/cli/src/commands/seed-node-governance.ts
+@@ -0,0 +1,183 @@
++import { Container } from '@n8n/di';
++import { DataSource } from '@n8n/typeorm';
++import {
++	NodeGovernancePolicyRepository,
++	NodeCategoryRepository,
++	NodeCategoryAssignmentRepository,
++} from '@n8n/db';
++
++/**
++ * Seeds the database with sample Node Governance data for testing
++ */
++export async function seedNodeGovernance(): Promise<void> {
++	const categoryRepository = Container.get(NodeCategoryRepository);
++	const categoryAssignmentRepository = Container.get(NodeCategoryAssignmentRepository);
++	const policyRepository = Container.get(NodeGovernancePolicyRepository);
++
++	console.log('🌱 Seeding Node Governance data...');
++
++	// ============================================================================
++	// Categories
++	// ============================================================================
++	const categories = [
++		{
++			id: 'cat_external_01',
++			name: 'External Services',
++			description: 'Nodes that connect to external third-party services',
++		},
++		{
++			id: 'cat_database_01',
++			name: 'Database Operations',
++			description: 'Nodes for database read/write operations',
++		},
++		{
++			id: 'cat_filesystem_01',
++			name: 'File System',
++			description: 'Nodes that access the local file system',
++		},
++		{
++			id: 'cat_network_01',
++			name: 'Network & SSH',
++			description: 'Nodes for network operations and SSH connections',
++		},
++		{
++			id: 'cat_code_exec_01',
++			name: 'Code Execution',
++			description: 'Nodes that execute arbitrary code',
++		},
++	];
++
++	for (const category of categories) {
++		const existing = await categoryRepository.findOne({ where: { id: category.id } });
++		if (!existing) {
++			await categoryRepository.save(category);
++			console.log(`  ✓ Created category: ${category.name}`);
++		} else {
++			console.log(`  - Category exists: ${category.name}`);
++		}
++	}
++
++	// ============================================================================
++	// Category Assignments
++	// ============================================================================
++	const categoryAssignments = [
++		// External Services
++		{ nodeType: 'n8n-nodes-base.httpRequest', categoryId: 'cat_external_01' },
++		{ nodeType: 'n8n-nodes-base.webhook', categoryId: 'cat_external_01' },
++		{ nodeType: 'n8n-nodes-base.slack', categoryId: 'cat_external_01' },
++		{ nodeType: 'n8n-nodes-base.gmail', categoryId: 'cat_external_01' },
++		{ nodeType: 'n8n-nodes-base.googleSheets', categoryId: 'cat_external_01' },
++		{ nodeType: 'n8n-nodes-base.microsoftTeams', categoryId: 'cat_external_01' },
++		// Database Operations
++		{ nodeType: 'n8n-nodes-base.postgres', categoryId: 'cat_database_01' },
++		{ nodeType: 'n8n-nodes-base.mysql', categoryId: 'cat_database_01' },
++		{ nodeType: 'n8n-nodes-base.mongodb', categoryId: 'cat_database_01' },
++		{ nodeType: 'n8n-nodes-base.redis', categoryId: 'cat_database_01' },
++		{ nodeType: 'n8n-nodes-base.mssql', categoryId: 'cat_database_01' },
++		// File System
++		{ nodeType: 'n8n-nodes-base.readWriteFile', categoryId: 'cat_filesystem_01' },
++		{ nodeType: 'n8n-nodes-base.localFileTrigger', categoryId: 'cat_filesystem_01' },
++		{ nodeType: 'n8n-nodes-base.ftp', categoryId: 'cat_filesystem_01' },
++		{ nodeType: 'n8n-nodes-base.sftp', categoryId: 'cat_filesystem_01' },
++		// Network & SSH
++		{ nodeType: 'n8n-nodes-base.ssh', categoryId: 'cat_network_01' },
++		{ nodeType: 'n8n-nodes-base.executeCommand', categoryId: 'cat_network_01' },
++		// Code Execution
++		{ nodeType: 'n8n-nodes-base.code', categoryId: 'cat_code_exec_01' },
++		{ nodeType: 'n8n-nodes-base.function', categoryId: 'cat_code_exec_01' },
++		{ nodeType: 'n8n-nodes-base.functionItem', categoryId: 'cat_code_exec_01' },
++	];
++
++	for (const assignment of categoryAssignments) {
++		const existing = await categoryAssignmentRepository.findOne({
++			where: { nodeType: assignment.nodeType, categoryId: assignment.categoryId },
++		});
++		if (!existing) {
++			await categoryAssignmentRepository.save(assignment);
++			console.log(`  ✓ Assigned ${assignment.nodeType} to category`);
++		}
++	}
++
++	// ============================================================================
++	// Policies
++	// ============================================================================
++	const policies = [
++		// Global Block Policies
++		{
++			id: 'pol_ssh_block_01',
++			name: 'Block SSH Node Globally',
++			nodeType: 'n8n-nodes-base.ssh',
++			action: 'block' as const,
++			isGlobal: true,
++			categoryId: null,
++		},
++		{
++			id: 'pol_exec_block_01',
++			name: 'Block Execute Command Globally',
++			nodeType: 'n8n-nodes-base.executeCommand',
++			action: 'block' as const,
++			isGlobal: true,
++			categoryId: null,
++		},
++		// Global Allow Policies
++		{
++			id: 'pol_http_allow_01',
++			name: 'Allow HTTP Request Globally',
++			nodeType: 'n8n-nodes-base.httpRequest',
++			action: 'allow' as const,
++			isGlobal: true,
++			categoryId: null,
++		},
++		{
++			id: 'pol_slack_allow_01',
++			name: 'Allow Slack Globally',
++			nodeType: 'n8n-nodes-base.slack',
++			action: 'allow' as const,
++			isGlobal: true,
++			categoryId: null,
++		},
++		{
++			id: 'pol_gmail_allow_01',
++			name: 'Allow Gmail Globally',
++			nodeType: 'n8n-nodes-base.gmail',
++			action: 'allow' as const,
++			isGlobal: true,
++			categoryId: null,
++		},
++		// Category-based Block Policy
++		{
++			id: 'pol_code_block_01',
++			name: 'Block Code Execution Category',
++			nodeType: '*',
++			action: 'block' as const,
++			isGlobal: true,
++			categoryId: 'cat_code_exec_01',
++		},
++	];
++
++	for (const policy of policies) {
++		const existing = await policyRepository.findOne({ where: { id: policy.id } });
++		if (!existing) {
++			await policyRepository.save(policy);
++			console.log(`  ✓ Created policy: ${policy.name}`);
++		} else {
++			console.log(`  - Policy exists: ${policy.name}`);
++		}
++	}
++
++	console.log('✅ Node Governance seeding complete!');
++	console.log('');
++	console.log('Summary:');
++	console.log('  - 5 categories created');
++	console.log('  - 20 node-to-category assignments');
++	console.log('  - 6 policies (2 block, 3 allow, 1 category-based block)');
++	console.log('');
++	console.log('Expected behavior:');
++	console.log('  - SSH, Execute Command: BLOCKED globally');
++	console.log('  - Code, Function nodes: BLOCKED via Code Execution category');
++	console.log('  - HTTP Request, Slack, Gmail: ALLOWED explicitly');
++	console.log('  - Other nodes: ALLOWED by default');
++}
++
++// Export for use in tests or CLI
++export default seedNodeGovernance;
+diff --git a/packages/cli/src/controllers/__tests__/node-governance.controller.test.ts b/packages/cli/src/controllers/__tests__/node-governance.controller.test.ts
+new file mode 100644
+index 0000000000..55af88aa43
+--- /dev/null
++++ b/packages/cli/src/controllers/__tests__/node-governance.controller.test.ts
+@@ -0,0 +1,342 @@
++import { mockInstance } from '@n8n/backend-test-utils';
++import type { AuthenticatedRequest } from '@n8n/db';
++import { Container } from '@n8n/di';
++import type { Response } from 'express';
++import { mock } from 'jest-mock-extended';
++
++import { NodeGovernanceController } from '@/controllers/node-governance.controller';
++import { BadRequestError } from '@/errors/response-errors/bad-request.error';
++import { NotFoundError } from '@/errors/response-errors/not-found.error';
++import { NodeGovernanceService } from '@/services/node-governance.service';
++
++describe('NodeGovernanceController', () => {
++	const nodeGovernanceService = mockInstance(NodeGovernanceService);
++	const controller = Container.get(NodeGovernanceController);
++
++	const mockUser = {
++		id: 'user-123',
++		email: 'admin@example.com',
++		firstName: 'Admin',
++		lastName: 'User',
++	};
++
++	beforeEach(() => {
++		jest.clearAllMocks();
++	});
++
++	describe('getNodeGovernanceStatus', () => {
++		it('should return governance status for requested nodes', async () => {
++			const req = mock<AuthenticatedRequest>({ user: mockUser });
++			const res = mock<Response>();
++			const query = { projectId: 'project-1', nodeTypes: 'n8n-nodes-base.httpRequest,n8n-nodes-base.code' };
++
++			const mockGovernanceMap = new Map([
++				['n8n-nodes-base.httpRequest', { status: 'blocked' }],
++				['n8n-nodes-base.code', { status: 'allowed' }],
++			]);
++
++			nodeGovernanceService.getGovernanceForNodes.mockResolvedValue(mockGovernanceMap as never);
++
++			const result = await controller.getNodeGovernanceStatus(req, res as never, query as never);
++
++			expect(result.governance['n8n-nodes-base.httpRequest'].status).toBe('blocked');
++			expect(result.governance['n8n-nodes-base.code'].status).toBe('allowed');
++		});
++
++		it('should return empty governance if no node types provided', async () => {
++			const req = mock<AuthenticatedRequest>({ user: mockUser });
++			const res = mock<Response>();
++			const query = { projectId: 'project-1', nodeTypes: '' };
++
++			const result = await controller.getNodeGovernanceStatus(req, res as never, query as never);
++
++			expect(result.governance).toEqual({});
++		});
++	});
++
++	describe('getAllPolicies', () => {
++		it('should return all policies', async () => {
++			const mockPolicies = [
++				{
++					id: 'policy-1',
++					name: 'Block HTTP',
++					nodeType: 'n8n-nodes-base.httpRequest',
++					action: 'block',
++					isGlobal: true,
++				},
++			];
++
++			nodeGovernanceService.getAllPolicies.mockResolvedValue(mockPolicies as never);
++
++			const result = await controller.getAllPolicies();
++
++			expect(result.policies).toEqual(mockPolicies);
++			expect(nodeGovernanceService.getAllPolicies).toHaveBeenCalled();
++		});
++	});
++
++	describe('createPolicy', () => {
++		it('should create a global policy', async () => {
++			const req = mock<AuthenticatedRequest>({ user: mockUser });
++			const res = mock<Response>();
++			const payload = {
++				name: 'Block SSH',
++				nodeType: 'n8n-nodes-base.ssh',
++				action: 'block' as const,
++				scope: 'global' as const,
++				targetType: 'node' as const,
++				targetValue: 'n8n-nodes-base.ssh',
++			};
++
++			const mockPolicy = {
++				id: 'policy-new',
++				...payload,
++				isGlobal: true,
++			};
++
++			nodeGovernanceService.createPolicy.mockResolvedValue(mockPolicy as never);
++
++			const result = await controller.createPolicy(req, res as never, payload as never);
++
++			expect(result.policy).toEqual(mockPolicy);
++		});
++
++		it('should throw BadRequestError if project-scoped policy has no project IDs', async () => {
++			const req = mock<AuthenticatedRequest>({ user: mockUser });
++			const res = mock<Response>();
++			const payload = {
++				name: 'Block SSH',
++				nodeType: 'n8n-nodes-base.ssh',
++				action: 'block' as const,
++				scope: 'projects' as const,
++				targetType: 'node' as const,
++				targetValue: 'n8n-nodes-base.ssh',
++				projectIds: [],
++			};
++
++			await expect(controller.createPolicy(req, res as never, payload as never)).rejects.toThrow(
++				BadRequestError,
++			);
++		});
++	});
++
++	describe('updatePolicy', () => {
++		it('should update a policy', async () => {
++			const req = mock<AuthenticatedRequest>({ user: mockUser });
++			const res = mock<Response>();
++			const payload = { name: 'Updated Policy Name' };
++
++			const mockPolicy = {
++				id: 'policy-1',
++				name: 'Updated Policy Name',
++				nodeType: 'n8n-nodes-base.httpRequest',
++				action: 'block',
++				isGlobal: true,
++			};
++
++			nodeGovernanceService.updatePolicy.mockResolvedValue(mockPolicy as never);
++
++			const result = await controller.updatePolicy(req, res as never, 'policy-1', payload as never);
++
++			expect(result.policy.name).toBe('Updated Policy Name');
++		});
++
++		it('should throw NotFoundError if policy does not exist', async () => {
++			const req = mock<AuthenticatedRequest>({ user: mockUser });
++			const res = mock<Response>();
++			const payload = { name: 'Updated Policy Name' };
++
++			nodeGovernanceService.updatePolicy.mockResolvedValue(null as never);
++
++			await expect(
++				controller.updatePolicy(req, res as never, 'non-existent', payload as never),
++			).rejects.toThrow(NotFoundError);
++		});
++	});
++
++	describe('deletePolicy', () => {
++		it('should delete a policy', async () => {
++			const req = mock<AuthenticatedRequest>({ user: mockUser });
++			const res = mock<Response>();
++
++			nodeGovernanceService.deletePolicy.mockResolvedValue(undefined);
++
++			const result = await controller.deletePolicy(req, res as never, 'policy-1');
++
++			expect(result.success).toBe(true);
++			expect(nodeGovernanceService.deletePolicy).toHaveBeenCalledWith('policy-1');
++		});
++	});
++
++	describe('getAllCategories', () => {
++		it('should return all categories', async () => {
++			const mockCategories = [
++				{
++					id: 'cat-1',
++					name: 'External Services',
++					description: 'Nodes for external services',
++				},
++			];
++
++			nodeGovernanceService.getAllCategories.mockResolvedValue(mockCategories as never);
++
++			const result = await controller.getAllCategories();
++
++			expect(result.categories).toEqual(mockCategories);
++		});
++	});
++
++	describe('createCategory', () => {
++		it('should create a category', async () => {
++			const req = mock<AuthenticatedRequest>({ user: mockUser });
++			const res = mock<Response>();
++			const payload = {
++				slug: 'database-nodes',
++				displayName: 'Database Nodes',
++				description: 'Nodes for database operations',
++			};
++
++			const mockCategory = {
++				id: 'cat-new',
++				name: payload.displayName,
++				...payload,
++			};
++
++			nodeGovernanceService.createCategory.mockResolvedValue(mockCategory as never);
++
++			const result = await controller.createCategory(req, res as never, payload as never);
++
++			expect(result.category.name).toBe('Database Nodes');
++		});
++	});
++
++	describe('getPendingRequests', () => {
++		it('should return pending requests', async () => {
++			const mockRequests = [
++				{
++					id: 'req-1',
++					nodeType: 'n8n-nodes-base.httpRequest',
++					status: 'pending',
++				},
++			];
++
++			nodeGovernanceService.getPendingRequests.mockResolvedValue(mockRequests as never);
++
++			const result = await controller.getPendingRequests();
++
++			expect(result.requests).toEqual(mockRequests);
++		});
++	});
++
++	describe('createAccessRequest', () => {
++		it('should create a new access request', async () => {
++			const req = mock<AuthenticatedRequest>({ user: mockUser });
++			const res = mock<Response>();
++			const payload = {
++				nodeType: 'n8n-nodes-base.ssh',
++				projectId: 'project-1',
++				reason: 'Need for automation',
++			};
++
++			const mockResult = {
++				alreadyExists: false,
++				request: {
++					id: 'req-new',
++					...payload,
++					status: 'pending',
++				},
++			};
++
++			nodeGovernanceService.createAccessRequest.mockResolvedValue(mockResult as never);
++
++			const result = await controller.createAccessRequest(req, res as never, payload as never);
++
++			expect(result.alreadyExists).toBe(false);
++			expect(result.request.status).toBe('pending');
++		});
++
++		it('should return existing request if duplicate', async () => {
++			const req = mock<AuthenticatedRequest>({ user: mockUser });
++			const res = mock<Response>();
++			const payload = {
++				nodeType: 'n8n-nodes-base.ssh',
++				projectId: 'project-1',
++				reason: 'Need for automation',
++			};
++
++			const mockResult = {
++				alreadyExists: true,
++				request: {
++					id: 'req-existing',
++					...payload,
++					status: 'pending',
++				},
++			};
++
++			nodeGovernanceService.createAccessRequest.mockResolvedValue(mockResult as never);
++
++			const result = await controller.createAccessRequest(req, res as never, payload as never);
++
++			expect(result.alreadyExists).toBe(true);
++			expect(result.message).toContain('already exists');
++		});
++	});
++
++	describe('reviewAccessRequest', () => {
++		it('should approve a request', async () => {
++			const req = mock<AuthenticatedRequest>({ user: mockUser });
++			const res = mock<Response>();
++			const payload = {
++				action: 'approve' as const,
++				comment: 'Approved for use',
++			};
++
++			const mockRequest = {
++				id: 'req-1',
++				status: 'approved',
++				reviewerId: mockUser.id,
++			};
++
++			nodeGovernanceService.approveRequest.mockResolvedValue(mockRequest as never);
++
++			const result = await controller.reviewAccessRequest(req, res as never, 'req-1', payload as never);
++
++			expect(result.request.status).toBe('approved');
++		});
++
++		it('should reject a request', async () => {
++			const req = mock<AuthenticatedRequest>({ user: mockUser });
++			const res = mock<Response>();
++			const payload = {
++				action: 'reject' as const,
++				comment: 'Security concerns',
++			};
++
++			const mockRequest = {
++				id: 'req-1',
++				status: 'rejected',
++				reviewerId: mockUser.id,
++			};
++
++			nodeGovernanceService.rejectRequest.mockResolvedValue(mockRequest as never);
++
++			const result = await controller.reviewAccessRequest(req, res as never, 'req-1', payload as never);
++
++			expect(result.request.status).toBe('rejected');
++		});
++
++		it('should throw NotFoundError if request does not exist', async () => {
++			const req = mock<AuthenticatedRequest>({ user: mockUser });
++			const res = mock<Response>();
++			const payload = {
++				action: 'approve' as const,
++			};
++
++			nodeGovernanceService.approveRequest.mockResolvedValue(null as never);
++
++			await expect(
++				controller.reviewAccessRequest(req, res as never, 'non-existent', payload as never),
++			).rejects.toThrow(NotFoundError);
++		});
++	});
++});
+diff --git a/scripts/seed-node-governance.sql b/scripts/seed-node-governance.sql
+new file mode 100644
+index 0000000000..d4a37f7349
+--- /dev/null
++++ b/scripts/seed-node-governance.sql
+@@ -0,0 +1,99 @@
++-- Node Governance Seed Data
++-- This script seeds sample data for testing the Node Governance feature
++-- Compatible with SQLite, PostgreSQL, and MySQL
++
++-- ============================================================================
++-- Categories
++-- ============================================================================
++
++-- Insert sample categories
++INSERT INTO node_category (id, name, description, "createdAt", "updatedAt")
++VALUES 
++    ('cat_external_01', 'External Services', 'Nodes that connect to external third-party services', datetime('now'), datetime('now')),
++    ('cat_database_01', 'Database Operations', 'Nodes for database read/write operations', datetime('now'), datetime('now')),
++    ('cat_filesystem_01', 'File System', 'Nodes that access the local file system', datetime('now'), datetime('now')),
++    ('cat_network_01', 'Network & SSH', 'Nodes for network operations and SSH connections', datetime('now'), datetime('now')),
++    ('cat_code_exec_01', 'Code Execution', 'Nodes that execute arbitrary code', datetime('now'), datetime('now'));
++
++-- ============================================================================
++-- Category Assignments (Assign nodes to categories)
++-- ============================================================================
++
++-- External Services
++INSERT INTO node_category_assignment (nodeType, categoryId)
++VALUES 
++    ('n8n-nodes-base.httpRequest', 'cat_external_01'),
++    ('n8n-nodes-base.webhook', 'cat_external_01'),
++    ('n8n-nodes-base.slack', 'cat_external_01'),
++    ('n8n-nodes-base.gmail', 'cat_external_01'),
++    ('n8n-nodes-base.googleSheets', 'cat_external_01'),
++    ('n8n-nodes-base.microsoftTeams', 'cat_external_01');
++
++-- Database Operations
++INSERT INTO node_category_assignment (nodeType, categoryId)
++VALUES 
++    ('n8n-nodes-base.postgres', 'cat_database_01'),
++    ('n8n-nodes-base.mysql', 'cat_database_01'),
++    ('n8n-nodes-base.mongodb', 'cat_database_01'),
++    ('n8n-nodes-base.redis', 'cat_database_01'),
++    ('n8n-nodes-base.mssql', 'cat_database_01');
++
++-- File System
++INSERT INTO node_category_assignment (nodeType, categoryId)
++VALUES 
++    ('n8n-nodes-base.readWriteFile', 'cat_filesystem_01'),
++    ('n8n-nodes-base.localFileTrigger', 'cat_filesystem_01'),
++    ('n8n-nodes-base.ftp', 'cat_filesystem_01'),
++    ('n8n-nodes-base.sftp', 'cat_filesystem_01');
++
++-- Network & SSH
++INSERT INTO node_category_assignment (nodeType, categoryId)
++VALUES 
++    ('n8n-nodes-base.ssh', 'cat_network_01'),
++    ('n8n-nodes-base.executeCommand', 'cat_network_01');
++
++-- Code Execution
++INSERT INTO node_category_assignment (nodeType, categoryId)
++VALUES 
++    ('n8n-nodes-base.code', 'cat_code_exec_01'),
++    ('n8n-nodes-base.function', 'cat_code_exec_01'),
++    ('n8n-nodes-base.functionItem', 'cat_code_exec_01');
++
++-- ============================================================================
++-- Policies
++-- ============================================================================
++
++-- Global Block Policies (highest priority)
++INSERT INTO node_governance_policy (id, name, nodeType, action, "isGlobal", categoryId, "createdAt", "updatedAt")
++VALUES 
++    ('pol_ssh_block_01', 'Block SSH Node Globally', 'n8n-nodes-base.ssh', 'block', 1, NULL, datetime('now'), datetime('now')),
++    ('pol_exec_block_01', 'Block Execute Command Globally', 'n8n-nodes-base.executeCommand', 'block', 1, NULL, datetime('now'), datetime('now'));
++
++-- Global Allow Policies
++INSERT INTO node_governance_policy (id, name, nodeType, action, "isGlobal", categoryId, "createdAt", "updatedAt")
++VALUES 
++    ('pol_http_allow_01', 'Allow HTTP Request Globally', 'n8n-nodes-base.httpRequest', 'allow', 1, NULL, datetime('now'), datetime('now')),
++    ('pol_slack_allow_01', 'Allow Slack Globally', 'n8n-nodes-base.slack', 'allow', 1, NULL, datetime('now'), datetime('now')),
++    ('pol_gmail_allow_01', 'Allow Gmail Globally', 'n8n-nodes-base.gmail', 'allow', 1, NULL, datetime('now'), datetime('now'));
++
++-- Category-based Block Policy
++INSERT INTO node_governance_policy (id, name, nodeType, action, "isGlobal", categoryId, "createdAt", "updatedAt")
++VALUES 
++    ('pol_code_block_01', 'Block Code Execution Category', '*', 'block', 1, 'cat_code_exec_01', datetime('now'), datetime('now'));
++
++-- ============================================================================
++-- Summary of Seed Data
++-- ============================================================================
++-- Categories: 5 categories for organizing nodes
++-- Category Assignments: 20+ node-to-category mappings
++-- Policies:
++--   - 2 Global Block policies (SSH, Execute Command)
++--   - 3 Global Allow policies (HTTP Request, Slack, Gmail)
++--   - 1 Category-based Block policy (Code Execution category)
++--
++-- Expected behavior after seeding:
++--   - SSH and Execute Command nodes: BLOCKED globally
++--   - Code, Function, FunctionItem nodes: BLOCKED (via category)
++--   - HTTP Request, Slack, Gmail: ALLOWED explicitly
++--   - Other nodes: ALLOWED by default (no policy = allowed)
++-- ============================================================================
+-- 
+2.50.1 (Apple Git-155)
+

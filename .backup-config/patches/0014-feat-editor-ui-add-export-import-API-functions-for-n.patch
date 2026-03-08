@@ -1,0 +1,69 @@
+From e152fbcc15bed8cf66f9b6aee7ddcae30521746d Mon Sep 17 00:00:00 2001
+From: Tzachi Shaiovitch <tzachish1@gmail.com>
+Date: Thu, 29 Jan 2026 17:08:54 +0200
+Subject: [PATCH 14/22] feat(editor-ui): add export/import API functions for
+ node governance
+
+Add frontend API functions for category import/export:
+- exportCategories() - GET /node-governance/export
+- importCategories() - POST /node-governance/import
+- TypeScript interfaces for export/import data structures
+---
+ .../nodeGovernance/nodeGovernance.api.ts      | 37 +++++++++++++++++++
+ 1 file changed, 37 insertions(+)
+
+diff --git a/packages/frontend/editor-ui/src/features/settings/nodeGovernance/nodeGovernance.api.ts b/packages/frontend/editor-ui/src/features/settings/nodeGovernance/nodeGovernance.api.ts
+index e3360c4994..7d3cc8bcfd 100644
+--- a/packages/frontend/editor-ui/src/features/settings/nodeGovernance/nodeGovernance.api.ts
++++ b/packages/frontend/editor-ui/src/features/settings/nodeGovernance/nodeGovernance.api.ts
+@@ -55,6 +55,31 @@ export interface GovernanceStatus {
+ 	requestId?: string;
+ }
+ 
++export interface NodeGovernanceExportCategory {
++	slug: string;
++	displayName: string;
++	description: string | null;
++	color: string | null;
++	nodes: string[];
++}
++
++export interface NodeGovernanceExport {
++	version: string;
++	exportedAt: string;
++	categories: NodeGovernanceExportCategory[];
++}
++
++export interface NodeGovernanceImportResult {
++	created: number;
++	updated: number;
++	unchanged: number;
++	categories: Array<{
++		slug: string;
++		action: 'created' | 'updated' | 'unchanged';
++		nodeCount: number;
++	}>;
++}
++
+ // Policies
+ export async function getPolicies(
+ 	context: IRestApiContext,
+@@ -228,3 +253,15 @@ export async function getNodeGovernanceStatus(
+ 		nodeTypes,
+ 	});
+ }
++
++// Import/Export
++export async function exportCategories(context: IRestApiContext): Promise<NodeGovernanceExport> {
++	return await makeRestApiRequest(context, 'GET', '/node-governance/export');
++}
++
++export async function importCategories(
++	context: IRestApiContext,
++	data: NodeGovernanceExport,
++): Promise<NodeGovernanceImportResult> {
++	return await makeRestApiRequest(context, 'POST', '/node-governance/import', data);
++}
+-- 
+2.50.1 (Apple Git-155)
+

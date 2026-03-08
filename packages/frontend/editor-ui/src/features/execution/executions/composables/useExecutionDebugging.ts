@@ -3,11 +3,15 @@ import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
 import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { DEBUG_PAYWALL_MODAL_KEY } from '../executions.constants';
 import type { INodeUi } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -16,7 +20,12 @@ import { isFullExecutionResponse } from '@/app/utils/typeGuards';
 import { sanitizeHtml } from '@/app/utils/htmlUtils';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 
-export const useExecutionDebugging = () => {
+/**
+ * @param providedWorkflowState - Optional workflow state to use instead of injecting.
+ *   This is needed when called from the same component that provides WorkflowStateKey
+ *   (e.g., WorkflowLayout), since Vue's provide/inject works parent-to-child only.
+ */
+export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => {
 	const telemetry = useTelemetry();
 
 	const router = useRouter();
@@ -24,7 +33,7 @@ export const useExecutionDebugging = () => {
 	const message = useMessage();
 	const toast = useToast();
 	const workflowsStore = useWorkflowsStore();
-	const workflowState = injectWorkflowState();
+	const workflowState = providedWorkflowState ?? injectWorkflowState();
 	const settingsStore = useSettingsStore();
 	const uiStore = useUIStore();
 
@@ -52,7 +61,10 @@ export const useExecutionDebugging = () => {
 
 		// Using the pinned data of the workflow to check if the node is pinned
 		// because workflowsStore.getCurrentWorkflow() returns a cached workflow without the updated pinned data
-		const workflowPinnedNodeNames = Object.keys(workflowsStore.workflow.pinData ?? {});
+		const workflowDocumentStore = workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined;
+		const workflowPinnedNodeNames = Object.keys(workflowDocumentStore?.pinData ?? {});
 		const matchingPinnedNodeNames = executionNodeNames.filter((name) =>
 			workflowPinnedNodeNames.includes(name),
 		);
@@ -81,10 +93,7 @@ export const useExecutionDebugging = () => {
 
 			if (overWritePinnedDataConfirm === MODAL_CONFIRM) {
 				matchingPinnedNodeNames.forEach((name) => {
-					const node = workflowsStore.getNodeByName(name);
-					if (node) {
-						workflowsStore.unpinData({ node });
-					}
+					workflowDocumentStore?.unpinNodeData(name);
 				});
 			} else {
 				await router.push({
@@ -113,11 +122,14 @@ export const useExecutionDebugging = () => {
 				const nodeData = taskData.data.main.find((output) => output && output.length > 0);
 				if (nodeData) {
 					pinnings++;
-					workflowsStore.pinData({
-						node,
-						data: nodeData,
-						isRestoration: true,
-					});
+					workflowDocumentStore?.pinNodeData(node.name, nodeData);
+
+					// Clear dirtiness timestamps so nodes don't appear dirty after restoration.
+					// The old pinData({ isRestoration: true }) handled this internally.
+					if (workflowsStore.nodeMetadata[node.name]) {
+						delete workflowsStore.nodeMetadata[node.name].pinnedDataLastUpdatedAt;
+						delete workflowsStore.nodeMetadata[node.name].pinnedDataLastRemovedAt;
+					}
 				}
 			}
 		});

@@ -1,7 +1,11 @@
 import { E2E_TEST_NODE_NAME } from '../../../../../config/constants';
 import { test, expect } from '../../../../../fixtures/base';
 
-test.describe('Resource Mapper', () => {
+test.describe('Resource Mapper', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 		await n8n.canvas.addNode(E2E_TEST_NODE_NAME, { action: 'Resource Mapping Component' });

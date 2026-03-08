@@ -36,6 +36,11 @@ describe('UniqueRoleNames Migration', () => {
 
 		dataSource = Container.get(DataSource);
 
+		// Clear database to start with clean slate
+		const context = createTestMigrationContext(dataSource);
+		await context.queryRunner.clearDatabase();
+		await context.queryRunner.release();
+
 		// Run migrations up to (but not including) target migration
 		await initDbUpToMigration(MIGRATION_NAME);
 	});
@@ -62,17 +67,17 @@ describe('UniqueRoleNames Migration', () => {
 		const roleType = roleData.roleType ?? 'project';
 		const description = roleData.description ?? null;
 
-		await context.queryRunner.query(
-			`INSERT INTO ${tableName} (${slugColumn}, ${displayNameColumn}, ${createdAtColumn}, ${updatedAtColumn}, ${systemRoleColumn}, ${roleTypeColumn}, ${descriptionColumn}) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-			[
-				roleData.slug,
-				roleData.displayName,
-				roleData.createdAt,
-				roleData.createdAt,
+		await context.runQuery(
+			`INSERT INTO ${tableName} (${slugColumn}, ${displayNameColumn}, ${createdAtColumn}, ${updatedAtColumn}, ${systemRoleColumn}, ${roleTypeColumn}, ${descriptionColumn}) VALUES (:slug, :displayName, :createdAt, :updatedAt, :systemRole, :roleType, :description)`,
+			{
+				slug: roleData.slug,
+				displayName: roleData.displayName,
+				createdAt: roleData.createdAt,
+				updatedAt: roleData.createdAt,
 				systemRole,
 				roleType,
 				description,
-			],
+			},
 		);
 	}
 
@@ -85,8 +90,9 @@ describe('UniqueRoleNames Migration', () => {
 		const displayNameColumn = context.escape.columnName('displayName');
 		const createdAtColumn = context.escape.columnName('createdAt');
 
-		const roles = await context.queryRunner.query(
-			`SELECT ${slugColumn} as slug, ${displayNameColumn} as displayName, ${createdAtColumn} as createdAt FROM ${tableName} ORDER BY ${createdAtColumn} ASC`,
+		const roles = await context.runQuery<RoleRow[]>(
+			`SELECT ${slugColumn}, ${displayNameColumn}, ${createdAtColumn} FROM ${tableName} ORDER BY ${createdAtColumn} ASC`,
+			{},
 		);
 
 		return roles;
@@ -261,26 +267,41 @@ describe('UniqueRoleNames Migration', () => {
 				);
 				expect(uniqueIndex).toBeDefined();
 			} else if (postMigrationContext.isPostgres) {
-				const result = await postMigrationContext.queryRunner.query(
-					`SELECT indexname FROM pg_indexes WHERE tablename = ${tableName} AND indexname = ${indexName}`,
+				// For PostgreSQL, we need the actual table/index names without quotes
+				// The escaped indexName has quotes, so we need to strip them
+				const actualTableName = postMigrationContext.tablePrefix + 'role';
+				const actualIndexName = indexName.replace(/"/g, ''); // Remove quotes from escaped name
+				const result = await postMigrationContext.runQuery(
+					'SELECT indexname FROM pg_indexes WHERE tablename = :tableName AND indexname = :indexName',
+					{ tableName: actualTableName, indexName: actualIndexName },
 				);
 				expect(result).toHaveLength(1);
 
 				// Verify index is unique
-				const uniqueCheck = await postMigrationContext.queryRunner.query(
+				const uniqueCheck = await postMigrationContext.runQuery<
+					Array<{ index_name: string; indisunique: boolean }>
+				>(
 					`SELECT i.relname as index_name, ix.indisunique
 					FROM pg_class t
 					JOIN pg_index ix ON t.oid = ix.indrelid
 					JOIN pg_class i ON i.oid = ix.indexrelid
-					WHERE t.relname = ${tableName} AND i.relname = ${indexName}`,
+					WHERE t.relname = :tableName AND i.relname = :indexName`,
+					{ tableName: actualTableName, indexName: actualIndexName },
 				);
 				expect(uniqueCheck[0].indisunique).toBe(true);
 			}
 
 			// Verify index enforces uniqueness by attempting duplicate insert
-			await postMigrationContext.queryRunner.query(
-				`INSERT INTO ${tableName} (${slugColumn}, ${displayNameColumn}, ${postMigrationContext.escape.columnName('createdAt')}, ${postMigrationContext.escape.columnName('updatedAt')}, ${postMigrationContext.escape.columnName('systemRole')}, ${postMigrationContext.escape.columnName('roleType')}) VALUES (?, ?, ?, ?, ?, ?)`,
-				['test-duplicate-attempt', 'Unique Test Name', new Date(), new Date(), false, 'project'],
+			await postMigrationContext.runQuery(
+				`INSERT INTO ${tableName} (${slugColumn}, ${displayNameColumn}, ${postMigrationContext.escape.columnName('createdAt')}, ${postMigrationContext.escape.columnName('updatedAt')}, ${postMigrationContext.escape.columnName('systemRole')}, ${postMigrationContext.escape.columnName('roleType')}) VALUES (:slug, :displayName, :createdAt, :updatedAt, :systemRole, :roleType)`,
+				{
+					slug: 'test-duplicate-attempt',
+					displayName: 'Unique Test Name',
+					createdAt: new Date(),
+					updatedAt: new Date(),
+					systemRole: false,
+					roleType: 'project',
+				},
 			);
 
 			const attemptDuplicateInsert = async () => {
@@ -326,8 +347,13 @@ describe('UniqueRoleNames Migration', () => {
 				);
 				expect(uniqueIndex).toBeDefined();
 			} else if (upContext.isPostgres) {
-				const result = await upContext.queryRunner.query(
-					`SELECT indexname FROM pg_indexes WHERE tablename = ${tableName} AND indexname = ${indexName}`,
+				// For PostgreSQL, we need the actual table/index names without quotes
+				// The escaped indexName has quotes, so we need to strip them
+				const actualTableName = upContext.tablePrefix + 'role';
+				const actualIndexName = indexName.replace(/"/g, ''); // Remove quotes from escaped name
+				const result = await upContext.runQuery(
+					'SELECT indexname FROM pg_indexes WHERE tablename = :tableName AND indexname = :indexName',
+					{ tableName: actualTableName, indexName: actualIndexName },
 				);
 				expect(result).toHaveLength(1);
 			}
@@ -341,7 +367,7 @@ describe('UniqueRoleNames Migration', () => {
 
 			// Verify index is removed (DB-specific queries)
 			if (postRollbackContext.isSqlite) {
-				const indexes = await postRollbackContext.queryRunner.query(
+				const indexes = await postRollbackContext.runQuery<Array<{ name: string; unique: number }>>(
 					`PRAGMA index_list(${tableName})`,
 				);
 				const uniqueIndex = indexes.find(
@@ -350,8 +376,12 @@ describe('UniqueRoleNames Migration', () => {
 				);
 				expect(uniqueIndex).toBeUndefined();
 			} else if (postRollbackContext.isPostgres) {
-				const result = await postRollbackContext.queryRunner.query(
-					`SELECT indexname FROM pg_indexes WHERE tablename = ${tableName} AND indexname = ${indexName}`,
+				const result = await postRollbackContext.runQuery(
+					'SELECT indexname FROM pg_indexes WHERE tablename = :tableName AND indexname = :indexName',
+					{
+						tableName: postRollbackContext.tablePrefix + 'role',
+						indexName: indexName.replace(/"/g, ''),
+					},
 				);
 				expect(result).toHaveLength(0);
 			}
@@ -365,20 +395,34 @@ describe('UniqueRoleNames Migration', () => {
 			const systemRoleColumn = postRollbackContext.escape.columnName('systemRole');
 			const roleTypeColumn = postRollbackContext.escape.columnName('roleType');
 
-			await postRollbackContext.queryRunner.query(
-				`INSERT INTO ${tableName} (${slugColumn}, ${displayNameColumn}, ${createdAtColumn}, ${updatedAtColumn}, ${systemRoleColumn}, ${roleTypeColumn}) VALUES (?, ?, ?, ?, ?, ?)`,
-				['rollback-test-1', 'Duplicate After Rollback', new Date(), new Date(), false, 'project'],
+			await postRollbackContext.runQuery(
+				`INSERT INTO ${tableName} (${slugColumn}, ${displayNameColumn}, ${createdAtColumn}, ${updatedAtColumn}, ${systemRoleColumn}, ${roleTypeColumn}) VALUES (:slug, :displayName, :createdAt, :updatedAt, :systemRole, :roleType)`,
+				{
+					slug: 'rollback-test-1',
+					displayName: 'Duplicate After Rollback',
+					createdAt: new Date(),
+					updatedAt: new Date(),
+					systemRole: false,
+					roleType: 'project',
+				},
 			);
 
-			await postRollbackContext.queryRunner.query(
-				`INSERT INTO ${tableName} (${slugColumn}, ${displayNameColumn}, ${createdAtColumn}, ${updatedAtColumn}, ${systemRoleColumn}, ${roleTypeColumn}) VALUES (?, ?, ?, ?, ?, ?)`,
-				['rollback-test-2', 'Duplicate After Rollback', new Date(), new Date(), false, 'project'],
+			await postRollbackContext.runQuery(
+				`INSERT INTO ${tableName} (${slugColumn}, ${displayNameColumn}, ${createdAtColumn}, ${updatedAtColumn}, ${systemRoleColumn}, ${roleTypeColumn}) VALUES (:slug, :displayName, :createdAt, :updatedAt, :systemRole, :roleType)`,
+				{
+					slug: 'rollback-test-2',
+					displayName: 'Duplicate After Rollback',
+					createdAt: new Date(),
+					updatedAt: new Date(),
+					systemRole: false,
+					roleType: 'project',
+				},
 			);
 
 			// Verify both roles were inserted successfully
-			const duplicateRoles = await postRollbackContext.queryRunner.query(
-				`SELECT ${slugColumn} as slug, ${displayNameColumn} as displayName FROM ${tableName} WHERE ${displayNameColumn} = ?`,
-				['Duplicate After Rollback'],
+			const duplicateRoles = await postRollbackContext.runQuery(
+				`SELECT ${slugColumn} as slug, ${displayNameColumn} as displayName FROM ${tableName} WHERE ${displayNameColumn} = :displayName`,
+				{ displayName: 'Duplicate After Rollback' },
 			);
 
 			expect(duplicateRoles).toHaveLength(2);
@@ -401,19 +445,28 @@ describe('UniqueRoleNames Migration', () => {
 			const roleTypeColumn = context.escape.columnName('roleType');
 
 			// Insert role with unique displayName
-			await context.queryRunner.query(
-				`INSERT INTO ${tableName} (${slugColumn}, ${displayNameColumn}, ${createdAtColumn}, ${updatedAtColumn}, ${systemRoleColumn}, ${roleTypeColumn}) VALUES (?, ?, ?, ?, ?, ?)`,
-				['unique-role-test', 'Unique Role Name', new Date(), new Date(), false, 'project'],
+			await context.runQuery(
+				`INSERT INTO ${tableName} (${slugColumn}, ${displayNameColumn}, ${createdAtColumn}, ${updatedAtColumn}, ${systemRoleColumn}, ${roleTypeColumn}) VALUES (:slug, :displayName, :createdAt, :updatedAt, :systemRole, :roleType)`,
+				{
+					slug: 'unique-role-test',
+					displayName: 'Unique Role Name',
+					createdAt: new Date(),
+					updatedAt: new Date(),
+					systemRole: false,
+					roleType: 'project',
+				},
 			);
 
 			// Verify retrieval using SQL
-			const [result] = await context.queryRunner.query(
-				`SELECT ${slugColumn} as slug, ${displayNameColumn} as displayName FROM ${tableName} WHERE ${slugColumn} = ?`,
-				['unique-role-test'],
+			const results = await context.runQuery<Array<{ slug: string; displayName: string }>>(
+				`SELECT ${slugColumn}, ${displayNameColumn} FROM ${tableName} WHERE ${slugColumn} = :slug`,
+				{ slug: 'unique-role-test' },
 			);
 
-			expect(result).toBeDefined();
-			expect(result.displayName).toBe('Unique Role Name');
+			expect(results).toHaveLength(1);
+			// Access using the actual database column name
+			const row = results[0] as Record<string, unknown>;
+			expect(row.displayName ?? row.displayname).toBe('Unique Role Name');
 
 			// Cleanup
 			await context.queryRunner.release();

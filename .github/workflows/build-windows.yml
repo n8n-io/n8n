@@ -39,6 +39,20 @@ jobs:
         with:
           build-command: pnpm build
 
+      - name: Smoke test pnpm start -- -- --version
+        shell: pwsh
+        run: |
+          Write-Host "Running smoke test: pnpm start -- -- --version"
+
+          pnpm start -- -- --version
+
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "`n❌ Smoke test failed (exit code: $LASTEXITCODE)"
+            exit $LASTEXITCODE
+          }
+
+          Write-Host "`n✓ Smoke test passed"
+
       - name: Send Slack notification on failure
         if: failure() && inputs.notify_on_failure == true
         uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1

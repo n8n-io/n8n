@@ -40,7 +40,11 @@ const getNpsTestRequirements: TestRequirements = {
 	},
 };
 
-test.fixme('NPS Survey @fixme', () => {
+test.fixme('NPS Survey @fixme', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.page.route('**/rest/login', async (route) => {
 			const response = await route.fetch();

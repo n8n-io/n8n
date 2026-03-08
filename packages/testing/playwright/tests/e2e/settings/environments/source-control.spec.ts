@@ -19,15 +19,19 @@ async function saveSettings(n8n: n8nPage) {
 
 // Skipped: These tests are flaky. Re-enable when PAY-4365 is resolved.
 // https://linear.app/n8n/issue/PAY-4365/bug-source-control-operations-fail-in-multi-main-deployment
-test.describe('Source Control Settings @capability:source-control @fixme', () => {
+test.describe('Source Control Settings @capability:source-control @fixme', {
+	annotation: [
+		{ type: 'owner', description: 'Lifecycle & Governance' },
+	],
+}, () => {
 	test.fixme();
 
 	let repoUrl: string;
 	let repoName: string;
 
-	test.beforeEach(async ({ n8n, n8nContainer }) => {
+	test.beforeEach(async ({ n8n, services }) => {
 		await n8n.api.enableFeature('sourceControl');
-		const gitea = n8nContainer.services.gitea;
+		const gitea = services.gitea;
 		await initSourceControl({ n8n, gitea });
 
 		// Create unique repo with branches via API (not UI)
@@ -56,8 +60,8 @@ test.describe('Source Control Settings @capability:source-control @fixme', () =>
 		await expect(n8n.sideBar.getSourceControlConnectedIndicator()).toBeVisible();
 	});
 
-	test('should switch between branches', async ({ n8n, n8nContainer }) => {
-		const gitea = n8nContainer.services.gitea;
+	test('should switch between branches', async ({ n8n, services }) => {
+		const gitea = services.gitea;
 		await gitea.createBranch(repoName, 'development');
 		await gitea.createBranch(repoName, 'staging');
 		await gitea.createBranch(repoName, 'production');

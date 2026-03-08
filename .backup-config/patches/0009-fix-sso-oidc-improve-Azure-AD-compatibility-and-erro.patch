@@ -1,0 +1,185 @@
+From e36493886bb622a1499dc85f1e927ca2b714f75a Mon Sep 17 00:00:00 2001
+From: Tzachi Shaiovitch <tzachish1@gmail.com>
+Date: Thu, 29 Jan 2026 13:16:14 +0200
+Subject: [PATCH 09/22] fix(sso-oidc): improve Azure AD compatibility and error
+ handling
+
+- Fix proxy support for OIDC discovery requests by passing customFetch
+  to the discovery() call (previously proxy was only set AFTER discovery)
+- Add createProxyAwareFetch() helper for reusable proxy configuration
+- Improve error logging to show detailed Azure AD/OIDC errors with cause
+- Add fallback to ID token claims when userinfo endpoint fails
+  (needed for Azure AD with custom API scopes)
+- Use type guards instead of type assertions for OIDC claims
+
+Cherry-picked and adapted from fix/oidc-azure-ad-provisioning branch
+---
+ .../src/modules/sso-oidc/oidc.service.ee.ts   | 126 ++++++++++++++----
+ 1 file changed, 99 insertions(+), 27 deletions(-)
+
+diff --git a/packages/cli/src/modules/sso-oidc/oidc.service.ee.ts b/packages/cli/src/modules/sso-oidc/oidc.service.ee.ts
+index 8c04f3298f..5197dde48b 100644
+--- a/packages/cli/src/modules/sso-oidc/oidc.service.ee.ts
++++ b/packages/cli/src/modules/sso-oidc/oidc.service.ee.ts
+@@ -233,7 +233,23 @@ export class OidcService {
+ 				expectedNonce,
+ 			});
+ 		} catch (error) {
+-			this.logger.error('Failed to exchange authorization code for tokens', { error });
++			// Log detailed error information for debugging Azure AD/OIDC issues
++			const errorDetails: Record<string, unknown> = {
++				name: error instanceof Error ? error.name : 'Unknown',
++				message: error instanceof Error ? error.message : String(error),
++			};
++			if (error instanceof Error && 'cause' in error) {
++				// Serialize the cause object properly for logging
++				const cause = error.cause;
++				if (typeof cause === 'object' && cause !== null) {
++					errorDetails.cause = JSON.stringify(cause, null, 2);
++				} else {
++					errorDetails.cause = String(cause);
++				}
++			}
++			this.logger.error('Failed to exchange authorization code for tokens', {
++				error: errorDetails,
++			});
+ 			throw new BadRequestError('Invalid authorization code');
+ 		}
+ 
+@@ -257,8 +273,29 @@ export class OidcService {
+ 				claims.sub,
+ 			);
+ 		} catch (error) {
+-			this.logger.error('Failed to fetch user info', { error });
+-			throw new BadRequestError('Invalid token');
++			// Userinfo endpoint may fail when using custom API scopes (e.g., Azure AD with custom scopes)
++			// In this case, fall back to using ID token claims which already contain user info
++			this.logger.debug('Userinfo endpoint failed, falling back to ID token claims', {
++				error: error instanceof Error ? error.message : String(error),
++			});
++
++			// Use claims from ID token as userInfo fallback
++			// Azure AD and other providers include email, name, etc. in the ID token
++			if (typeof claims.email === 'string') {
++				userInfo = {
++					sub: claims.sub,
++					email: claims.email,
++					name: typeof claims.name === 'string' ? claims.name : undefined,
++					given_name: typeof claims.given_name === 'string' ? claims.given_name : undefined,
++					family_name: typeof claims.family_name === 'string' ? claims.family_name : undefined,
++					preferred_username:
++						typeof claims.preferred_username === 'string' ? claims.preferred_username : undefined,
++				};
++				this.logger.debug('Using ID token claims as user info', { email: userInfo.email });
++			} else {
++				this.logger.error('Failed to fetch user info and no email in ID token claims', { error });
++				throw new BadRequestError('Invalid token - could not retrieve user info');
++			}
+ 		}
+ 
+ 		if (!userInfo.email) {
+@@ -516,9 +553,45 @@ export class OidcService {
+ 		  } & OidcRuntimeConfig)
+ 		| undefined;
+ 
++	/**
++	 * Creates a proxy-aware fetch function that respects HTTP_PROXY, HTTPS_PROXY, and NO_PROXY environment variables.
++	 * Returns undefined if no proxy is configured.
++	 * The function is typed to match openid-client's CustomFetch signature.
++	 */
++	private createProxyAwareFetch():
++		| ((url: string, options: unknown) => Promise<Response>)
++		| undefined {
++		const hasProxyConfig =
++			process.env.HTTP_PROXY ?? process.env.HTTPS_PROXY ?? process.env.ALL_PROXY;
++
++		if (!hasProxyConfig) {
++			return undefined;
++		}
++
++		this.logger.debug('Configuring OIDC client with proxy support', {
++			HTTP_PROXY: process.env.HTTP_PROXY,
++			HTTPS_PROXY: process.env.HTTPS_PROXY,
++			NO_PROXY: process.env.NO_PROXY,
++			ALL_PROXY: process.env.ALL_PROXY,
++		});
++
++		// Create a proxy agent that automatically reads from environment variables
++		const proxyAgent = new EnvHttpProxyAgent();
++
++		// Return a fetch function that uses the proxy agent
++		// openid-client passes CustomFetchOptions which is compatible with RequestInit
++		return async (url: string, options: unknown) => {
++			return await fetch(url, {
++				...(options as RequestInit),
++				// @ts-expect-error - dispatcher is an undici-specific option not in standard fetch
++				dispatcher: proxyAgent,
++			});
++		};
++	}
++
+ 	/**
+ 	 * Creates a proxy-aware configuration for openid-client.
+-	 * This method configures customFetch to respect HTTP_PROXY, HTTPS_PROXY, and NO_PROXY environment variables.
++	 * This method ensures the proxy is used for BOTH the discovery request AND subsequent requests.
+ 	 */
+ 	private async createProxyAwareConfiguration(
+ 		discoveryUrl: URL,
+@@ -526,32 +599,31 @@ export class OidcService {
+ 		clientSecret: string,
+ 	): Promise<openidClientTypes.Configuration> {
+ 		await this.loadOpenIdClient();
+-		const configuration = await this.openidClient.discovery(discoveryUrl, clientId, clientSecret);
+ 
+-		// Check if proxy environment variables are set
+-		const hasProxyConfig =
+-			process.env.HTTP_PROXY ?? process.env.HTTPS_PROXY ?? process.env.ALL_PROXY;
++		// Create proxy-aware fetch BEFORE discovery so the metadata request uses the proxy
++		const proxyFetch = this.createProxyAwareFetch();
+ 
+-		if (hasProxyConfig) {
+-			this.logger.debug('Configuring OIDC client with proxy support', {
+-				HTTP_PROXY: process.env.HTTP_PROXY,
+-				HTTPS_PROXY: process.env.HTTPS_PROXY,
+-				NO_PROXY: process.env.NO_PROXY,
+-				ALL_PROXY: process.env.ALL_PROXY,
+-			});
++		// Pass customFetch to discovery so the initial metadata fetch also uses the proxy
++		// This fixes the issue where discovery requests failed behind corporate proxies
++		const discoveryOptions: Record<symbol, unknown> = {};
++		if (proxyFetch) {
++			discoveryOptions[this.openidClient.customFetch] = proxyFetch;
++		}
+ 
+-			// Create a proxy agent that automatically reads from environment variables
+-			const proxyAgent = new EnvHttpProxyAgent();
+-
+-			// Configure customFetch to use the proxy agent
+-			configuration[this.openidClient.customFetch] = async (...args) => {
+-				const [url, options] = args;
+-				return await fetch(url, {
+-					...options,
+-					// @ts-expect-error - dispatcher is an undici-specific option not in standard fetch
+-					dispatcher: proxyAgent,
+-				});
+-			};
++		const configuration = await this.openidClient.discovery(
++			discoveryUrl,
++			clientId,
++			clientSecret,
++			undefined, // Use default client authentication
++			discoveryOptions,
++		);
++
++		// Also set customFetch on the returned configuration for subsequent requests
++		// (token exchange, userinfo, etc.)
++		if (proxyFetch) {
++			// Type assertion needed due to CustomFetchOptions vs RequestInit incompatibility
++			(configuration as unknown as Record<symbol, unknown>)[this.openidClient.customFetch] =
++				proxyFetch;
+ 		}
+ 
+ 		return configuration;
+-- 
+2.50.1 (Apple Git-155)
+

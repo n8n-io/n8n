@@ -1,6 +1,10 @@
 import { test, expect } from '../../../fixtures/base';
 
-test.describe('Node Creator Workflow Building', () => {
+test.describe('Node Creator Workflow Building', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 	});

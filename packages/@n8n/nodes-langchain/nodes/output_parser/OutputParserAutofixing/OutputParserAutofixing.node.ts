@@ -60,6 +60,12 @@ export class OutputParserAutofixing implements INodeType {
 
 		outputs: [NodeConnectionTypes.AiOutputParser],
 		outputNames: ['Output Parser'],
+		builderHint: {
+			inputs: {
+				ai_languageModel: { required: true },
+				ai_outputParser: { required: true },
+			},
+		},
 		properties: [
 			{
 				displayName:

@@ -51,7 +51,11 @@ const setupCloudTest = async (
 	await n8n.page.waitForLoadState();
 };
 
-test.describe('Cloud @db:reset @auth:owner', () => {
+test.describe('Cloud @db:reset @auth:owner', {
+	annotation: [
+		{ type: 'owner', description: 'Cloud Platform' },
+	],
+}, () => {
 	test.describe('Trial Upgrade', () => {
 		test('should render trial banner for opt-in cloud user', async ({ n8n, setupRequirements }) => {
 			await setupCloudTest(n8n, setupRequirements, cloudTrialRequirements);

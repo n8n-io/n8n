@@ -3,12 +3,17 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
-import { validateAgentPrompt, validateTools, validateFromAi } from '@/validation/checks';
+import {
+	validateAgentPrompt,
+	validateTools,
+	validateFromAi,
+	validateParameters,
+} from '@/validation/checks';
 
 import { ToolExecutionError, ValidationError } from '../errors';
 import { createProgressReporter, reportProgress } from './helpers/progress';
 import { createErrorResponse, createSuccessResponse } from './helpers/response';
-import { getWorkflowState } from './helpers/state';
+import { getEffectiveWorkflow } from './helpers/state';
 
 const validateConfigurationSchema = z.object({}).strict().default({});
 
@@ -19,7 +24,8 @@ export const VALIDATE_CONFIGURATION_TOOL: BuilderToolBase = {
 
 /**
  * Validation tool for Builder subgraph.
- * Checks node configuration: agent prompts, tool parameters, $fromAI usage.
+ * Checks node configuration: agent prompts, tool parameters, $fromAI usage,
+ * required parameters, and valid option values.
  */
 export function createValidateConfigurationTool(
 	parsedNodeTypes: INodeTypeDescription[],
@@ -36,18 +42,26 @@ export function createValidateConfigurationTool(
 				const validatedInput = validateConfigurationSchema.parse(input ?? {});
 				reporter.start(validatedInput);
 
-				const state = getWorkflowState();
+				// Get effective workflow (includes pending operations from this turn)
+				const workflow = getEffectiveWorkflow();
 				reportProgress(reporter, 'Validating configuration');
 
-				const agentViolations = validateAgentPrompt(state.workflowJSON);
-				const toolViolations = validateTools(state.workflowJSON, parsedNodeTypes);
-				const fromAiViolations = validateFromAi(state.workflowJSON, parsedNodeTypes);
+				const agentViolations = validateAgentPrompt(workflow);
+				const toolViolations = validateTools(workflow, parsedNodeTypes);
+				const fromAiViolations = validateFromAi(workflow, parsedNodeTypes);
+				const parameterViolations = validateParameters(workflow, parsedNodeTypes);
 
-				const allViolations = [...agentViolations, ...toolViolations, ...fromAiViolations];
+				const allViolations = [
+					...agentViolations,
+					...toolViolations,
+					...fromAiViolations,
+					...parameterViolations,
+				];
 
 				let message: string;
 				if (allViolations.length === 0) {
-					message = 'Configuration is valid. Agent prompts, tools, and $fromAI usage are correct.';
+					message =
+						'Configuration is valid. Agent prompts, tools, $fromAI usage, and required parameters are correct.';
 				} else {
 					message = `Found ${allViolations.length} configuration issues:\n${allViolations.map((v) => `- ${v.description}`).join('\n')}`;
 				}
@@ -59,6 +73,7 @@ export function createValidateConfigurationTool(
 						agentPrompt: agentViolations,
 						tools: toolViolations,
 						fromAi: fromAiViolations,
+						parameters: parameterViolations,
 					},
 				});
 			} catch (error) {
@@ -85,7 +100,7 @@ export function createValidateConfigurationTool(
 		{
 			name: VALIDATE_CONFIGURATION_TOOL.toolName,
 			description:
-				'Validate node configuration (agent prompts, tool parameters, $fromAI usage). Call after configuring nodes to check for issues.',
+				'Validate node configuration (agent prompts, tool parameters, $fromAI usage, required parameters, option values). Call after configuring nodes to check for issues.',
 			schema: validateConfigurationSchema,
 		},
 	);

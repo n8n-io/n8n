@@ -44,7 +44,11 @@ async function assertNodeExecutionStates(
 	}
 }
 
-test.describe('Execution', () => {
+test.describe('Execution', {
+	annotation: [
+		{ type: 'owner', description: 'Catalysts' },
+	],
+}, () => {
 	test('should test manual workflow', async ({ n8n }) => {
 		await n8n.start.fromImportedWorkflow('Manual_wait_set.json');
 

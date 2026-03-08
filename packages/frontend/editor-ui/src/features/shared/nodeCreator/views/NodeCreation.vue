@@ -24,7 +24,7 @@ import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 
 import { N8nAssistantIcon, N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 
 type Props = {
 	nodeViewScale: number;
@@ -49,18 +49,21 @@ const emit = defineEmits<{
 
 const uiStore = useUIStore();
 const focusPanelStore = useFocusPanelStore();
+const setupPanelStore = useSetupPanelStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const assistantStore = useAssistantStore();
 const builderStore = useBuilderStore();
 const chatPanelStore = useChatPanelStore();
-const settingsStore = useSettingsStore();
 
 const { getAddedNodesAndConnections } = useActions();
 
-const allowSendingParameterValues = computed(
-	() => settingsStore.settings.ai.allowSendingParameterValues,
-);
+const sidePanelTooltip = computed(() => {
+	if (setupPanelStore.isFeatureEnabled) {
+		return i18n.baseText('nodeView.openSidePanel');
+	}
+	return i18n.baseText('nodeView.openFocusPanel');
+});
 
 function openNodeCreator() {
 	emit('toggleNodeCreator', {
@@ -108,8 +111,8 @@ function toggleFocusPanel() {
 }
 
 async function onAskAssistantButtonClick() {
-	// Only start builder mode if it's enabled and parameter values can be sent
-	if (builderStore.isAIBuilderEnabled && allowSendingParameterValues.value) {
+	// Start builder mode if enabled; privacy setting is respected at payload creation level
+	if (builderStore.isAIBuilderEnabled) {
 		await chatPanelStore.toggle({ mode: 'builder' });
 	} else {
 		await chatPanelStore.toggle({ mode: 'assistant' });
@@ -147,9 +150,9 @@ function openCommandBar(event: MouseEvent) {
 			placement="left"
 		>
 			<N8nIconButton
+				variant="subtle"
 				size="large"
 				icon="plus"
-				type="tertiary"
 				data-test-id="node-creator-plus-button"
 				@click="openNodeCreator"
 			/>
@@ -160,9 +163,9 @@ function openCommandBar(event: MouseEvent) {
 			placement="left"
 		>
 			<N8nIconButton
+				variant="subtle"
 				size="large"
 				icon="search"
-				type="tertiary"
 				data-test-id="command-bar-button"
 				@click="openCommandBar"
 			/>
@@ -173,23 +176,22 @@ function openCommandBar(event: MouseEvent) {
 			placement="left"
 		>
 			<N8nIconButton
+				variant="subtle"
 				size="large"
-				type="tertiary"
 				icon="sticky-note"
 				data-test-id="add-sticky-button"
 				@click="addStickyNote"
 			/>
 		</KeyboardShortcutTooltip>
 		<KeyboardShortcutTooltip
-			:label="i18n.baseText('nodeView.openFocusPanel')"
+			:label="sidePanelTooltip"
 			:shortcut="{ keys: ['f'], shiftKey: true }"
 			placement="left"
 		>
 			<N8nIconButton
-				type="tertiary"
+				variant="subtle"
 				size="large"
 				icon="panel-right"
-				:class="focusPanelActive ? $style.activeButton : ''"
 				:active="focusPanelActive"
 				data-test-id="toggle-focus-panel-button"
 				@click="toggleFocusPanel"
@@ -198,9 +200,9 @@ function openCommandBar(event: MouseEvent) {
 		<N8nTooltip v-if="chatPanelStore.canShowAiButtonOnCanvas" placement="left">
 			<template #content> {{ i18n.baseText('aiAssistant.tooltip') }}</template>
 			<N8nButton
-				type="tertiary"
+				variant="subtle"
+				iconOnly
 				size="large"
-				square
 				:class="$style.icon"
 				data-test-id="ask-assistant-canvas-action-button"
 				@click="onAskAssistantButtonClick"
@@ -242,9 +244,5 @@ function openCommandBar(event: MouseEvent) {
 	svg {
 		display: block;
 	}
-}
-
-.activeButton {
-	background-color: var(--button--color--background--hover) !important;
 }
 </style>

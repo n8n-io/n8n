@@ -165,14 +165,22 @@ onBeforeUnmount(() => {
 			</div>
 			<div :class="$style.statItem">
 				<div :class="$style.statItemLeft">
-					<N8nIcon icon="clock" :size="16" />
-					<N8nText size="medium">
-						{{
-							i18n.baseText('templates.card.setupTime', {
-								interpolate: { count: setupTimeMinutes },
-							})
-						}}
-					</N8nText>
+					<div v-if="template.readyToDemo === true" :class="[$style.statItem, $style.mintGreen]">
+						<N8nIcon icon="zap" :size="16" />
+						<N8nText size="medium">
+							{{ i18n.baseText('templates.card.readyToRun') }}
+						</N8nText>
+					</div>
+					<div v-else :class="$style.statItem">
+						<N8nIcon icon="clock" :size="16" />
+						<N8nText size="medium">
+							{{
+								i18n.baseText('templates.card.setupTime', {
+									interpolate: { count: setupTimeMinutes },
+								})
+							}}
+						</N8nText>
+					</div>
 				</div>
 				<div v-if="templateNodes.length > 0" :class="$style.nodes">
 					<NodeIcon
@@ -267,8 +275,12 @@ onBeforeUnmount(() => {
 
 .statItem {
 	display: flex;
-	align-items: flex-end;
+	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--xs);
+}
+
+.mintGreen {
+	color: var(--color--mint-700);
 }
 </style>

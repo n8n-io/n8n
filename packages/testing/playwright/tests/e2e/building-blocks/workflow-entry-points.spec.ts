@@ -1,6 +1,10 @@
 import { test, expect } from '../../../fixtures/base';
 
-test.describe('UI Test Entry Points', () => {
+test.describe('UI Test Entry Points', {
+	annotation: [
+		{ type: 'owner', description: 'Catalysts' },
+	],
+}, () => {
 	test.describe('Entry Point: Home Page', () => {
 		test('should navigate from home', async ({ n8n }) => {
 			await n8n.start.fromHome();

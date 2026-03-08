@@ -19,6 +19,7 @@
 // Dialog
 .el-overlay {
 	background-color: var(--dialog--overlay--color--background--dark);
+	pointer-events: auto;
 }
 
 #app-modals .el-overlay {

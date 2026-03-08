@@ -5,7 +5,11 @@ import {
 } from '../../../../../config/constants';
 import { test, expect } from '../../../../../fixtures/base';
 
-test.describe('NDV', () => {
+test.describe('NDV', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 	});
@@ -93,7 +97,7 @@ test.describe('NDV', () => {
 		await n8n.ndv.execute();
 
 		await expect(n8n.ndv.getNodeRunErrorMessage()).toHaveText(
-			"Paired item data for item from node 'Break pairedItem chain' is unavailable. Ensure 'Break pairedItem chain' is providing the required output.",
+			"Paired item data for item from node 'Break pairedItem chain' is unavailable. Ensure 'Break pairedItem chain' is providing the required output. [item 0]",
 		);
 
 		await expect(n8n.ndv.getNodeRunErrorDescription()).toContainText(

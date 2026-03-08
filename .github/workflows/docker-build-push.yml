@@ -7,7 +7,7 @@ name: 'Docker: Build and Push'
 
 env:
   NODE_OPTIONS: '--max-old-space-size=7168'
-  NODE_VERSION: '22.22.0'
+  NODE_VERSION: '24.13.1'
 
 on:
   schedule:
@@ -90,6 +90,9 @@ jobs:
         with:
           build-command: pnpm build:n8n
           enable-docker-cache: 'true'
+        env:
+          RELEASE: ${{ needs.determine-build-context.outputs.n8n_version }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
       - name: Determine Docker tags for all images
         id: determine-tags

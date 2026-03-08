@@ -11,7 +11,11 @@ const NOTION_NODE_NAME = 'Notion';
 const EDIT_FIELDS_SET_NODE_NAME = 'Edit Fields (Set)';
 const NOTION_API_KEY = 'abc123Playwright';
 
-test.describe('Projects @db:reset', () => {
+test.describe('Projects @db:reset', {
+	annotation: [
+		{ type: 'owner', description: 'Identity & Access' },
+	],
+}, () => {
 	test.describe.configure({ mode: 'serial' });
 
 	test.beforeEach(async ({ n8n }) => {

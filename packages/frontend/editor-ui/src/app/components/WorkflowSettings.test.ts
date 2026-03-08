@@ -80,8 +80,10 @@ describe('WorkflowSettingsVue', () => {
 			envFeatureFlags: {
 				N8N_ENV_FEAT_DYNAMIC_CREDENTIALS: true,
 			},
+			activeModules: ['dynamic-credentials'],
 			releaseChannel: 'stable',
 		});
+		vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 		workflowsStore.workflowName = 'Test Workflow';
 		workflowsStore.workflowId = '1';
 		// Populate workflowsById to mark workflow as existing (not new)

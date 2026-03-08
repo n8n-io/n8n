@@ -1,0 +1,166 @@
+From 256f5810079243b03ecf8ff79e1a065b0df23a3f Mon Sep 17 00:00:00 2001
+From: Tzachi Shaiovitch <tzachish1@gmail.com>
+Date: Wed, 21 Jan 2026 10:12:22 +0200
+Subject: [PATCH 04/22] feat(editor): Integrate node governance into node
+ creator
+
+- Add governance status fetching to nodeGovernance store
+- Add fetchNodeGovernanceStatus and getGovernanceForNode methods
+- Modify NodeCreator to fetch and apply governance status
+- Augment nodes with governance info before setting merged nodes
+- Cache governance status per-project for performance
+---
+ .../nodeGovernance/nodeGovernance.store.ts    | 40 +++++++++++++++++++
+ .../nodeCreator/components/NodeCreator.vue    | 35 ++++++++++++++--
+ 2 files changed, 72 insertions(+), 3 deletions(-)
+
+diff --git a/packages/frontend/editor-ui/src/features/settings/nodeGovernance/nodeGovernance.store.ts b/packages/frontend/editor-ui/src/features/settings/nodeGovernance/nodeGovernance.store.ts
+index 5115f8f55c..9f56f3ec2b 100644
+--- a/packages/frontend/editor-ui/src/features/settings/nodeGovernance/nodeGovernance.store.ts
++++ b/packages/frontend/editor-ui/src/features/settings/nodeGovernance/nodeGovernance.store.ts
+@@ -6,6 +6,7 @@ import type {
+ 	NodeGovernancePolicy,
+ 	NodeCategory,
+ 	NodeAccessRequest,
++	GovernanceStatus,
+ } from './nodeGovernance.api';
+ 
+ export const useNodeGovernanceStore = defineStore('nodeGovernance', () => {
+@@ -18,6 +19,9 @@ export const useNodeGovernanceStore = defineStore('nodeGovernance', () => {
+ 	const myRequests = ref<NodeAccessRequest[]>([]);
+ 	const loading = ref(false);
+ 	const error = ref<string | null>(null);
++	// Per-node governance status cache (keyed by nodeType)
++	const nodeGovernanceStatus = ref<Record<string, GovernanceStatus>>({});
++	const governanceStatusLoaded = ref(false);
+ 
+ 	// Getters
+ 	const globalPolicies = computed(() =>
+@@ -172,6 +176,37 @@ export const useNodeGovernanceStore = defineStore('nodeGovernance', () => {
+ 		return response.request;
+ 	}
+ 
++	async function fetchNodeGovernanceStatus(projectId: string, nodeTypes: string[]) {
++		if (nodeTypes.length === 0) {
++			return;
++		}
++
++		try {
++			const response = await nodeGovernanceApi.getNodeGovernanceStatus(
++				rootStore.restApiContext,
++				projectId,
++				nodeTypes,
++			);
++			nodeGovernanceStatus.value = {
++				...nodeGovernanceStatus.value,
++				...response.governance,
++			};
++			governanceStatusLoaded.value = true;
++		} catch (e) {
++			// Silently fail - governance is optional
++			console.warn('Failed to fetch node governance status:', e);
++		}
++	}
++
++	function getGovernanceForNode(nodeType: string): GovernanceStatus | undefined {
++		return nodeGovernanceStatus.value[nodeType];
++	}
++
++	function clearGovernanceStatus() {
++		nodeGovernanceStatus.value = {};
++		governanceStatusLoaded.value = false;
++	}
++
+ 	return {
+ 		// State
+ 		policies,
+@@ -180,6 +215,8 @@ export const useNodeGovernanceStore = defineStore('nodeGovernance', () => {
+ 		myRequests,
+ 		loading,
+ 		error,
++		nodeGovernanceStatus,
++		governanceStatusLoaded,
+ 		// Getters
+ 		globalPolicies,
+ 		projectPolicies,
+@@ -201,5 +238,8 @@ export const useNodeGovernanceStore = defineStore('nodeGovernance', () => {
+ 		fetchMyRequests,
+ 		createAccessRequest,
+ 		reviewRequest,
++		fetchNodeGovernanceStatus,
++		getGovernanceForNode,
++		clearGovernanceStatus,
+ 	};
+ });
+diff --git a/packages/frontend/editor-ui/src/features/shared/nodeCreator/components/NodeCreator.vue b/packages/frontend/editor-ui/src/features/shared/nodeCreator/components/NodeCreator.vue
+index f72339dd39..0455a42662 100644
+--- a/packages/frontend/editor-ui/src/features/shared/nodeCreator/components/NodeCreator.vue
++++ b/packages/frontend/editor-ui/src/features/shared/nodeCreator/components/NodeCreator.vue
+@@ -14,8 +14,10 @@ import { useBannersStore } from '@/features/shared/banners/banners.store';
+ import { useUIStore } from '@/app/stores/ui.store';
+ import { DRAG_EVENT_DATA_KEY } from '@/app/constants';
+ import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
+-import type { NodeTypeSelectedPayload } from '@/Interface';
++import type { NodeTypeSelectedPayload, SimplifiedNodeType } from '@/Interface';
+ import { onClickOutside } from '@vueuse/core';
++import { useNodeGovernanceStore } from '@/features/settings/nodeGovernance/nodeGovernance.store';
++import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+ 
+ import { N8nIconButton } from '@n8n/design-system';
+ // elements that should not trigger onClickOutside
+@@ -42,6 +44,8 @@ const chatPanelStore = useChatPanelStore();
+ 
+ const { setShowScrim, setActions, setMergeNodes } = useNodeCreatorStore();
+ const { generateMergedNodesAndActions } = useActionsGenerator();
++const nodeGovernanceStore = useNodeGovernanceStore();
++const projectsStore = useProjectsStore();
+ 
+ const state = reactive({
+ 	nodeCreator: null as HTMLElement | null,
+@@ -140,16 +144,41 @@ registerKeyHook('NodeCreatorCloseTab', {
+ 	handler: () => emit('closeNodeCreator'),
+ });
+ 
++// Helper to augment nodes with governance status
++function augmentNodesWithGovernance(nodes: SimplifiedNodeType[]): SimplifiedNodeType[] {
++	return nodes.map((node) => {
++		const governanceStatus = nodeGovernanceStore.getGovernanceForNode(node.name);
++		if (governanceStatus) {
++			return {
++				...node,
++				governance: governanceStatus,
++			};
++		}
++		return node;
++	});
++}
++
+ watch(
+ 	() => ({
+ 		httpOnlyCredentials: useCredentialsStore().httpOnlyCredentialTypes,
+ 		nodeTypes: useNodeTypesStore().visibleNodeTypes,
++		governanceStatus: nodeGovernanceStore.nodeGovernanceStatus,
+ 	}),
+-	({ nodeTypes, httpOnlyCredentials }) => {
++	async ({ nodeTypes, httpOnlyCredentials }) => {
+ 		const { actions, mergedNodes } = generateMergedNodesAndActions(nodeTypes, httpOnlyCredentials);
+ 
++		// Fetch governance status for all node types if needed
++		const currentProjectId = projectsStore.currentProjectId;
++		if (currentProjectId && !nodeGovernanceStore.governanceStatusLoaded) {
++			const nodeTypeNames = mergedNodes.map((n) => n.name);
++			await nodeGovernanceStore.fetchNodeGovernanceStatus(currentProjectId, nodeTypeNames);
++		}
++
++		// Augment nodes with governance status
++		const nodesWithGovernance = augmentNodesWithGovernance(mergedNodes);
++
+ 		setActions(actions);
+-		setMergeNodes(mergedNodes);
++		setMergeNodes(nodesWithGovernance);
+ 	},
+ 	{ immediate: true },
+ );
+-- 
+2.50.1 (Apple Git-155)
+

@@ -152,9 +152,9 @@ watch(
 					<div :class="$style.buttons" data-test-id="nps-survey-ratings">
 						<div v-for="value in 11" :key="value - 1" :class="$style.container">
 							<N8nButton
-								type="tertiary"
+								variant="subtle"
+								iconOnly
 								:label="(value - 1).toString()"
-								square
 								@click="selectSurveyValue((value - 1).toString())"
 							/>
 						</div>

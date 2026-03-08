@@ -33,9 +33,10 @@ import {
 } from '../utils/fromAIOverride.utils';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { inject } from 'vue';
-import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
+import { ChatHubToolContextKey, ExpressionLocalResolveContextSymbol } from '@/app/constants';
 
 import { N8nInputLabel } from '@n8n/design-system';
+import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 type Props = {
 	parameter: INodeProperties;
 	path: string;
@@ -83,8 +84,10 @@ const wrapperHovered = ref(false);
 
 const ndvStore = useNDVStore();
 const telemetry = useTelemetry();
+const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
+const isChatHubToolContext = inject(ChatHubToolContextKey, false);
 const activeNode = computed(() => {
 	const ctx = expressionLocalResolveCtx?.value;
 
@@ -122,6 +125,16 @@ const isDropDisabled = computed(
 		isExpression.value,
 );
 const isExpression = computed(() => isValueExpression(props.parameter, props.value));
+
+const useInlineSwitchLayout = computed(
+	() =>
+		props.parameter.type === 'boolean' && isCollectionOverhaulEnabled.value && !isExpression.value,
+);
+
+const parameterTooltipText = computed(() =>
+	i18n.nodeText(activeNode.value?.type).inputLabelDescription(props.parameter, props.path),
+);
+
 const showExpressionSelector = computed(() => {
 	if (isResourceLocator.value) {
 		// The resourceLocator handles overrides itself, so we use this hack to
@@ -309,6 +322,9 @@ function applyOverride() {
 function removeOverride(clearField = false) {
 	if (!fromAIOverride.value) return;
 
+	// In chat hub tool configuration context, always reset to default since expressions aren't supported
+	const shouldClear = clearField || isChatHubToolContext;
+
 	telemetry.track('User turned off fromAI override', {
 		nodeType: activeNode.value?.type,
 		parameter: props.path,
@@ -316,7 +332,7 @@ function removeOverride(clearField = false) {
 	valueChanged({
 		node: activeNode.value?.name,
 		name: props.path,
-		value: clearField
+		value: shouldClear
 			? props.parameter.default
 			: buildValueFromOverride(fromAIOverride.value, props, false),
 	});
@@ -328,7 +344,74 @@ function removeOverride(clearField = false) {
 </script>
 
 <template>
+	<div
+		v-if="useInlineSwitchLayout"
+		:class="$style.inlineSwitchWrapper"
+		@mouseenter="onWrapperMouseEnter"
+		@mouseleave="onWrapperMouseLeave"
+	>
+		<DraggableTarget
+			type="mapping"
+			:disabled="isDropDisabled"
+			sticky
+			:sticky-offset="[3, 3]"
+			:class="$style.inlineSwitchToggle"
+			@drop="onDrop"
+		>
+			<template #default="{ droppable, activeDrop }">
+				<ParameterInputWrapper
+					ref="parameterInputWrapper"
+					:parameter="parameter"
+					:model-value="value"
+					:path="path"
+					:is-read-only="isReadOnly"
+					:rows="rows"
+					:droppable="droppable"
+					:active-drop="activeDrop"
+					:force-show-expression="forceShowExpression"
+					:hide-issues="hideIssues"
+					:label="label"
+					:event-bus="eventBus"
+					input-size="small"
+					@update="valueChanged"
+					@text-input="onTextInput"
+					@focus="onFocus"
+					@blur="onBlur"
+					@drop="onDrop"
+				/>
+			</template>
+		</DraggableTarget>
+		<N8nInputLabel
+			:class="$style.inlineSwitchLabel"
+			:label="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
+			:tooltip-text="parameterTooltipText"
+			:show-tooltip="focused"
+			:show-options="menuExpanded || focused || wrapperHovered"
+			:bold="false"
+			:size="label.size"
+			:input-name="parameter.name"
+			color="text-dark"
+		>
+			<template #options>
+				<ParameterOptions
+					v-if="displayOptions"
+					:parameter="parameter"
+					:value="value"
+					:is-read-only="isReadOnly"
+					:show-options="displayOptions"
+					:show-expression-selector="showExpressionSelector"
+					:is-content-overridden="isContentOverride"
+					:show-delete="showDelete"
+					:on-delete="onDelete"
+					@update:model-value="optionSelected"
+					@menu-expanded="onMenuExpanded"
+				/>
+			</template>
+		</N8nInputLabel>
+		<FromAiOverrideButton v-if="showOverrideButton" @click="applyOverride" />
+	</div>
 	<N8nInputLabel
+		v-else
 		ref="inputLabel"
 		:class="[$style.wrapper]"
 		:label="hideLabel ? '' : i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
@@ -479,6 +562,35 @@ function removeOverride(clearField = false) {
 		.optionsAbove {
 			opacity: 1;
 		}
+	}
+}
+
+.inlineSwitchWrapper {
+	display: flex;
+	align-items: center;
+	position: relative;
+	min-height: 30px;
+	gap: 0;
+	line-height: 0;
+}
+
+.inlineSwitchWrapper:has(:global(.switch-droppable-input)) {
+	.inlineSwitchLabel {
+		display: none;
+	}
+
+	.inlineSwitchToggle {
+		flex: 1;
+	}
+}
+
+.inlineSwitchLabel {
+	flex: 1;
+	min-width: 0;
+	padding-left: var(--spacing--2xs);
+
+	:global(label.n8n-input-label) {
+		padding-bottom: 0;
 	}
 }
 

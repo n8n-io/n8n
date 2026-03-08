@@ -1,0 +1,276 @@
+From d1fe85055b435c9abd935ee54f1608466e1146f4 Mon Sep 17 00:00:00 2001
+From: Tzachi Shaiovitch <tzachish1@gmail.com>
+Date: Thu, 29 Jan 2026 12:57:29 +0200
+Subject: [PATCH 08/22] fix(core): Handle Azure AD roles array format in OIDC
+ provisioning
+
+This fix addresses issues with OIDC/SSO role provisioning when using
+Azure AD (Microsoft Entra ID) as the identity provider:
+
+1. Instance role provisioning now accepts arrays
+   - Azure AD sends all App Roles as an array in the 'roles' claim
+   - Filters for 'global:*' roles when given an array
+   - Prioritizes roles: owner > admin > member
+
+2. Project role provisioning filters out global roles
+   - Skips entries starting with 'global:' to prevent parsing
+     'global:admin' as projectId='global', role='admin'
+   - Logs debug message explaining global roles are handled separately
+
+Cherry-picked from fix/oidc-azure-ad-provisioning branch (bf960798d0)
+---
+ .../__tests__/provisioning.service.ee.test.ts | 130 +++++++++++++++++-
+ .../provisioning.service.ee.ts                |  57 +++++++-
+ 2 files changed, 181 insertions(+), 6 deletions(-)
+
+diff --git a/packages/cli/src/modules/provisioning.ee/__tests__/provisioning.service.ee.test.ts b/packages/cli/src/modules/provisioning.ee/__tests__/provisioning.service.ee.test.ts
+index 17c007b6af..103c4fdeb9 100644
+--- a/packages/cli/src/modules/provisioning.ee/__tests__/provisioning.service.ee.test.ts
++++ b/packages/cli/src/modules/provisioning.ee/__tests__/provisioning.service.ee.test.ts
+@@ -173,7 +173,7 @@ describe('ProvisioningService', () => {
+ 	});
+ 
+ 	describe('provisionInstanceRoleForUser', () => {
+-		it('should do nothing if the role slug is not a string', async () => {
++		it('should do nothing if the role slug is not a string or array', async () => {
+ 			const user = mock<User>({ role: { slug: 'global:member' } });
+ 			const roleSlug = 123;
+ 
+@@ -183,11 +183,71 @@ describe('ProvisioningService', () => {
+ 			expect(userRepository.update).not.toHaveBeenCalled();
+ 			expect(logger.warn).toHaveBeenCalledTimes(1);
+ 			expect(logger.warn).toHaveBeenCalledWith(
+-				'skipping instance role provisioning. Invalid role type: expected string, received number',
++				'skipping instance role provisioning. Invalid role type: expected string or array, received number',
+ 				{ userId: user.id, roleSlug: 123 },
+ 			);
+ 		});
+ 
++		it('should extract global:admin from an array of roles (Azure AD format)', async () => {
++			const user = mock<User>({ role: { slug: 'global:member' } });
++			// Azure AD sends all App Roles as an array
++			const roleSlug = ['global:admin', 'projectId123:editor', 'projectId456:viewer'];
++
++			roleRepository.findOneOrFail.mockResolvedValue(
++				mock<Role>({ slug: 'global:admin', roleType: 'global' }),
++			);
++			provisioningService['isInstanceRoleProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
++
++			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
++
++			expect(userService.changeUserRole).toHaveBeenCalledWith(user, {
++				newRoleName: 'global:admin',
++			});
++			expect(logger.debug).toHaveBeenCalledWith(
++				'Extracted global role from array',
++				expect.objectContaining({
++					userId: user.id,
++					selectedRole: 'global:admin',
++					availableGlobalRoles: ['global:admin'],
++				}),
++			);
++		});
++
++		it('should prioritize global:admin over global:member when both are in array', async () => {
++			const user = mock<User>({ role: { slug: 'global:member' } });
++			const roleSlug = ['global:member', 'global:admin', 'projectId:editor'];
++
++			roleRepository.findOneOrFail.mockResolvedValue(
++				mock<Role>({ slug: 'global:admin', roleType: 'global' }),
++			);
++			provisioningService['isInstanceRoleProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
++
++			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
++
++			expect(userService.changeUserRole).toHaveBeenCalledWith(user, {
++				newRoleName: 'global:admin',
++			});
++		});
++
++		it('should skip provisioning if array contains no global roles', async () => {
++			const user = mock<User>({ role: { slug: 'global:member' } });
++			// Only project roles, no global roles
++			const roleSlug = ['projectId123:editor', 'projectId456:viewer'];
++
++			provisioningService['isInstanceRoleProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
++
++			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
++
++			expect(userService.changeUserRole).not.toHaveBeenCalled();
++			expect(logger.debug).toHaveBeenCalledWith(
++				'No global roles found in roles array, skipping instance role provisioning',
++				expect.objectContaining({
++					userId: user.id,
++					roleSlugInput: roleSlug,
++				}),
++			);
++		});
++
+ 		it('should do nothing if the role matching the slug is not found', async () => {
+ 			const user = mock<User>({ role: { slug: 'global:member' } });
+ 			const roleSlug = 'global:invalid';
+@@ -485,6 +545,72 @@ describe('ProvisioningService', () => {
+ 			);
+ 		});
+ 
++		it('should filter out global:* roles from the array (Azure AD format)', async () => {
++			const userId = 'user-id-123';
++			// Azure AD sends all App Roles in a single array, including global roles
++			const projectIdToRole = [
++				'global:admin',
++				'global:member',
++				'project-1:viewer',
++				'project-2:editor',
++			];
++			// Mocks query to find existing projects
++			projectRepository.find.mockResolvedValueOnce([
++				mock<Project>({ id: 'project-1' }),
++				mock<Project>({ id: 'project-2' }),
++			]);
++			// Mocks query to find currently accessible projects
++			projectRepository.find.mockResolvedValueOnce([]);
++			roleRepository.find.mockResolvedValue([
++				mock<Role>({ displayName: 'viewer', slug: 'project:viewer' }),
++				mock<Role>({ displayName: 'editor', slug: 'project:editor' }),
++			]);
++
++			provisioningService['isProjectRolesProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
++
++			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
++
++			// Should only provision project roles, not global roles
++			expect(projectService.addUser).toHaveBeenCalledTimes(2);
++			expect(projectService.addUser).toHaveBeenCalledWith(
++				'project-1',
++				{ userId, role: 'project:viewer' },
++				entityManager,
++			);
++			expect(projectService.addUser).toHaveBeenCalledWith(
++				'project-2',
++				{ userId, role: 'project:editor' },
++				entityManager,
++			);
++			// Should log debug message for skipped global roles
++			expect(logger.debug).toHaveBeenCalledWith(
++				'Skipping global role "global:admin" in project roles provisioning - global roles should be handled by instance role provisioning.',
++				{ userId, entry: 'global:admin' },
++			);
++			expect(logger.debug).toHaveBeenCalledWith(
++				'Skipping global role "global:member" in project roles provisioning - global roles should be handled by instance role provisioning.',
++				{ userId, entry: 'global:member' },
++			);
++		});
++
++		it('should handle array with only global roles gracefully', async () => {
++			const userId = 'user-id-123';
++			// Only global roles, no project roles
++			const projectIdToRole = ['global:admin', 'global:member'];
++
++			provisioningService['isProjectRolesProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
++
++			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
++
++			// Should not try to provision anything since all roles are filtered out
++			expect(projectService.addUser).not.toHaveBeenCalled();
++			// Should not warn since this is expected behavior
++			expect(logger.debug).toHaveBeenCalledWith(
++				'Skipping global role "global:admin" in project roles provisioning - global roles should be handled by instance role provisioning.',
++				{ userId, entry: 'global:admin' },
++			);
++		});
++
+ 		it('removes existing access to non-personal projects that are no longer present in the provided mapping', async () => {
+ 			const userId = 'user-id-123';
+ 			const projectIdToRole = ['project-1:viewer'];
+diff --git a/packages/cli/src/modules/provisioning.ee/provisioning.service.ee.ts b/packages/cli/src/modules/provisioning.ee/provisioning.service.ee.ts
+index 5889d534c9..5e972eb4cc 100644
+--- a/packages/cli/src/modules/provisioning.ee/provisioning.service.ee.ts
++++ b/packages/cli/src/modules/provisioning.ee/provisioning.service.ee.ts
+@@ -53,24 +53,63 @@ export class ProvisioningService {
+ 		return this.provisioningConfig;
+ 	}
+ 
+-	async provisionInstanceRoleForUser(user: User, roleSlug: unknown) {
++	async provisionInstanceRoleForUser(user: User, roleSlugInput: unknown) {
+ 		if (!(await this.isInstanceRoleProvisioningEnabled())) {
+ 			return;
+ 		}
+ 
+ 		const globalOwnerRoleSlug = 'global:owner';
+ 
+-		if (typeof roleSlug !== 'string') {
++		// Handle both string and array input (Azure AD sends roles as an array)
++		let roleSlug: string | undefined;
++
++		if (typeof roleSlugInput === 'string') {
++			roleSlug = roleSlugInput;
++		} else if (Array.isArray(roleSlugInput)) {
++			// Filter for global roles only (e.g., global:admin, global:member)
++			const globalRoles = roleSlugInput.filter(
++				(r): r is string => typeof r === 'string' && r.startsWith('global:'),
++			);
++
++			if (globalRoles.length === 0) {
++				this.logger.debug(
++					'No global roles found in roles array, skipping instance role provisioning',
++					{
++						userId: user.id,
++						roleSlugInput,
++					},
++				);
++				return;
++			}
++
++			// Prioritize: global:owner > global:admin > global:member > others
++			const rolePriority = ['global:owner', 'global:admin', 'global:member'];
++			roleSlug = rolePriority.find((r) => globalRoles.includes(r)) ?? globalRoles[0];
++
++			this.logger.debug('Extracted global role from array', {
++				userId: user.id,
++				selectedRole: roleSlug,
++				availableGlobalRoles: globalRoles,
++			});
++		} else {
+ 			this.logger.warn(
+-				`skipping instance role provisioning. Invalid role type: expected string, received ${typeof roleSlug}`,
++				`skipping instance role provisioning. Invalid role type: expected string or array, received ${typeof roleSlugInput}`,
+ 				{
+ 					userId: user.id,
+-					roleSlug,
++					roleSlug: roleSlugInput,
+ 				},
+ 			);
+ 			return;
+ 		}
+ 
++		if (!roleSlug) {
++			this.logger.warn('No valid role slug found for instance role provisioning', {
++				userId: user.id,
++				roleSlugInput,
++			});
++			return;
++		}
++
+ 		let dbRole: Role;
+ 
+ 		try {
+@@ -153,6 +192,16 @@ export class ProvisioningService {
+ 					continue;
+ 				}
+ 
++				// Skip global roles - they are instance roles, not project roles
++				// Azure AD and other IdPs may send all roles in a single array
++				if (entry.startsWith('global:')) {
++					this.logger.debug(
++						`Skipping global role "${entry}" in project roles provisioning - global roles should be handled by instance role provisioning.`,
++						{ userId, entry },
++					);
++					continue;
++				}
++
+ 				const [projectId, roleSlugSuffix] = entry.split(':');
+ 				if (!projectId || !roleSlugSuffix) {
+ 					this.logger.warn(
+-- 
+2.50.1 (Apple Git-155)
+

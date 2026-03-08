@@ -24,6 +24,7 @@ export const defaultSettings: FrontendSettings = {
 	endpointWebhook: '',
 	endpointWebhookTest: '',
 	endpointWebhookWaiting: '',
+	endpointHealth: '/healthz',
 	enterprise: {
 		sharing: false,
 		ldap: false,
@@ -43,6 +44,7 @@ export const defaultSettings: FrontendSettings = {
 		advancedPermissions: false,
 		apiKeyScopes: false,
 		workflowDiffs: false,
+		namedVersions: false,
 		provisioning: true,
 		projects: {
 			team: {
@@ -50,6 +52,7 @@ export const defaultSettings: FrontendSettings = {
 			},
 		},
 		customRoles: false,
+		personalSpacePolicy: false,
 	},
 	executionMode: 'regular',
 	isMultiMain: false,

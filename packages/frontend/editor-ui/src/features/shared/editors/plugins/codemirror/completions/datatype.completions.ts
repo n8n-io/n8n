@@ -54,6 +54,7 @@ import {
 	isCredentialsModalOpen,
 	isPseudoParam,
 	isSplitInBatchesAbsent,
+	isValidJavascriptIdentifier,
 	longestCommonPrefix,
 	prefixMatch,
 	resolveAutocompleteExpression,
@@ -64,7 +65,7 @@ import {
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { isPairedItemIntermediateNodesError } from '@/app/utils/expressions';
 import type { TargetNodeParameterContext } from '@/Interface';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 /**
  * Resolution-based completions offered according to datatype.
@@ -1245,7 +1246,6 @@ export const secretOptions = (base: string) => {
 			return [];
 		}
 		return Object.entries(resolved).map(([secret, value]) => {
-			const needsBracketAccess = /\//.test(secret);
 			const option = createCompletionOption({
 				name: secret,
 				doc: {
@@ -1257,7 +1257,7 @@ export const secretOptions = (base: string) => {
 			});
 
 			// Override the apply handler for keys that need bracket access
-			if (needsBracketAccess) {
+			if (!isValidJavascriptIdentifier(secret)) {
 				option.apply = applyBracketAccessCompletion;
 			}
 
@@ -1270,7 +1270,7 @@ export const secretOptions = (base: string) => {
 
 export const secretProvidersOptions = () => {
 	const externalSecretsStore = useExternalSecretsStore();
-	const { check } = useEnvFeatureFlag();
+	const settingsStore = useSettingsStore();
 
 	const externalSecretProviderToOption = (provider: string, section?: 'global' | 'project') => {
 		const doc: DocMetadata = {
@@ -1280,8 +1280,6 @@ export const secretProvidersOptions = () => {
 			docURL: i18n.baseText('settings.externalSecrets.docs'),
 		};
 		if (section) {
-			// group will be undefined if project secret development feature flag is disabled
-			// TODO: make group param mandatory once feature flag is removed
 			doc.section = section;
 			doc.description = i18n.baseText(
 				`codeNodeEditor.completer.$secrets.group.${section}.description`,
@@ -1294,7 +1292,8 @@ export const secretProvidersOptions = () => {
 		});
 	};
 
-	const projectSecretsEnabled = check.value('EXTERNAL_SECRETS_FOR_PROJECTS');
+	const projectSecretsEnabled =
+		settingsStore.moduleSettings['external-secrets']?.forProjects ?? false;
 	if (!projectSecretsEnabled) {
 		return Object.keys(externalSecretsStore.secretsAsObject).map((provider) =>
 			externalSecretProviderToOption(provider),

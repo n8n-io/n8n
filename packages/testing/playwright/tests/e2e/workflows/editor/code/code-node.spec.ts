@@ -7,7 +7,11 @@ import {
 } from '../../../../../config/constants';
 import { test, expect } from '../../../../../fixtures/base';
 
-test.describe('Code node', () => {
+test.describe('Code node', {
+	annotation: [
+		{ type: 'owner', description: 'NODES' },
+	],
+}, () => {
 	test.describe('Code editor', () => {
 		test.beforeEach(async ({ n8n }) => {
 			await n8n.start.fromBlankCanvas();

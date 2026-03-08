@@ -9,6 +9,7 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 import type { ChatHubAgentService } from '../chat-hub-agent.service';
 import type { ChatHubCredentialsService } from '../chat-hub-credentials.service';
 import type { ChatHubAuthenticationMetadata } from '../chat-hub-extractor';
+import type { ChatHubToolService } from '../chat-hub-tool.service';
 import { ChatHubMessage } from '../chat-hub-message.entity';
 import { ChatHubSession } from '../chat-hub-session.entity';
 import { ChatHubWorkflowService } from '../chat-hub-workflow.service';
@@ -25,6 +26,7 @@ describe('ChatHubWorkflowService', () => {
 	const chatHubAgentService = mock<ChatHubAgentService>();
 	const chatHubSettingsService = mock<ChatHubSettingsService>();
 	const chatHubCredentialsService = mock<ChatHubCredentialsService>();
+	const chatHubToolService = mock<ChatHubToolService>();
 	const workflowFinderService = mock<WorkflowFinderService>();
 
 	const mockCipher = mock<Cipher>();
@@ -58,6 +60,7 @@ describe('ChatHubWorkflowService', () => {
 			chatHubAgentService,
 			chatHubSettingsService,
 			chatHubCredentialsService,
+			chatHubToolService,
 			workflowFinderService,
 			mockCipher,
 		);

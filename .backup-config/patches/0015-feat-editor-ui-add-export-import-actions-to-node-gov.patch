@@ -1,0 +1,56 @@
+From afa40e23480235670506d325fa58eca3a7feaf3a Mon Sep 17 00:00:00 2001
+From: Tzachi Shaiovitch <tzachish1@gmail.com>
+Date: Thu, 29 Jan 2026 17:09:46 +0200
+Subject: [PATCH 15/22] feat(editor-ui): add export/import actions to node
+ governance store
+
+Add Pinia store actions for category import/export:
+- exportCategories() - exports all categories with node assignments
+- importCategories() - imports categories and refreshes store after
+---
+ .../nodeGovernance/nodeGovernance.store.ts        | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
+
+diff --git a/packages/frontend/editor-ui/src/features/settings/nodeGovernance/nodeGovernance.store.ts b/packages/frontend/editor-ui/src/features/settings/nodeGovernance/nodeGovernance.store.ts
+index f532c012f1..499abf4b77 100644
+--- a/packages/frontend/editor-ui/src/features/settings/nodeGovernance/nodeGovernance.store.ts
++++ b/packages/frontend/editor-ui/src/features/settings/nodeGovernance/nodeGovernance.store.ts
+@@ -7,6 +7,8 @@ import type {
+ 	NodeCategory,
+ 	NodeAccessRequest,
+ 	GovernanceStatus,
++	NodeGovernanceExport,
++	NodeGovernanceImportResult,
+ } from './nodeGovernance.api';
+ 
+ export const useNodeGovernanceStore = defineStore('nodeGovernance', () => {
+@@ -131,6 +133,17 @@ export const useNodeGovernanceStore = defineStore('nodeGovernance', () => {
+ 		);
+ 	}
+ 
++	async function exportCategories(): Promise<NodeGovernanceExport> {
++		return await nodeGovernanceApi.exportCategories(rootStore.restApiContext);
++	}
++
++	async function importCategories(data: NodeGovernanceExport): Promise<NodeGovernanceImportResult> {
++		const result = await nodeGovernanceApi.importCategories(rootStore.restApiContext, data);
++		// Refresh categories after import
++		await fetchCategories();
++		return result;
++	}
++
+ 	async function fetchPendingRequests() {
+ 		loading.value = true;
+ 		error.value = null;
+@@ -404,6 +417,8 @@ export const useNodeGovernanceStore = defineStore('nodeGovernance', () => {
+ 		deleteCategory,
+ 		assignNodeToCategory,
+ 		removeNodeFromCategory,
++		exportCategories,
++		importCategories,
+ 		fetchPendingRequests,
+ 		fetchMyRequests,
+ 		createAccessRequest,
+-- 
+2.50.1 (Apple Git-155)
+

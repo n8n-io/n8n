@@ -12,8 +12,7 @@ import type {
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { getAdditionalOptions } from '../gemini-common/additional-options';
-import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
-import { N8nLlmTracing } from '../N8nLlmTracing';
+import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing } from '@n8n/ai-utilities';
 
 function errorDescriptionMapper(error: NodeError) {
 	if (error.description?.includes('properties: should be non-empty for OBJECT type')) {

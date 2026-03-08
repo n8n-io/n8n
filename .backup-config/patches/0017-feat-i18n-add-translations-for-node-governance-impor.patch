@@ -1,0 +1,38 @@
+From b1308c6e73dfcd548ccb52a3ace05a0a9b5f91c4 Mon Sep 17 00:00:00 2001
+From: Tzachi Shaiovitch <tzachish1@gmail.com>
+Date: Thu, 29 Jan 2026 17:13:08 +0200
+Subject: [PATCH 17/22] feat(i18n): add translations for node governance
+ import/export
+
+Add English translations for:
+- Export/Import button labels
+- Success/error messages
+- Import result summary
+- Validation error messages
+---
+ packages/frontend/@n8n/i18n/src/locales/en.json | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/packages/frontend/@n8n/i18n/src/locales/en.json b/packages/frontend/@n8n/i18n/src/locales/en.json
+index ea31e03dac..a076a7cbd9 100644
+--- a/packages/frontend/@n8n/i18n/src/locales/en.json
++++ b/packages/frontend/@n8n/i18n/src/locales/en.json
+@@ -3072,6 +3072,15 @@
+ 	"nodeGovernance.categories.delete.description": "Are you sure you want to delete this category? Nodes assigned to it will become unassigned.",
+ 	"nodeGovernance.categories.delete.success": "Category deleted successfully",
+ 	"nodeGovernance.categories.delete.error": "Failed to delete category",
++	"nodeGovernance.categories.export": "Export",
++	"nodeGovernance.categories.export.success": "Categories exported successfully",
++	"nodeGovernance.categories.export.error": "Failed to export categories",
++	"nodeGovernance.categories.import": "Import",
++	"nodeGovernance.categories.import.success": "Categories imported successfully",
++	"nodeGovernance.categories.import.error": "Failed to import categories",
++	"nodeGovernance.categories.import.result": "Created: {created}, Updated: {updated}, Unchanged: {unchanged}",
++	"nodeGovernance.categories.import.invalidFormat": "Invalid file format. Expected JSON with version and categories array.",
++	"nodeGovernance.categories.import.invalidJson": "Invalid JSON file. Please check the file format.",
+ 	"nodeGovernance.categories.validation.required": "Display name and slug are required",
+ 	"nodeGovernance.categories.validation.error": "Validation Error",
+ 	"nodeGovernance.categories.update.success": "Category updated successfully",
+-- 
+2.50.1 (Apple Git-155)
+

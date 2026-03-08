@@ -1,0 +1,231 @@
+From 70c68f5c7926b2b6de238d409c18ecf9518585de Mon Sep 17 00:00:00 2001
+From: Tzachi Shaiovitch <tzachish1@gmail.com>
+Date: Thu, 29 Jan 2026 17:10:58 +0200
+Subject: [PATCH 16/22] feat(editor-ui): add Export/Import buttons to
+ CategoriesTab
+
+Add UI buttons for importing and exporting node governance categories:
+- Export button downloads JSON file with all categories and node assignments
+- Import button opens file picker to upload JSON configuration
+- Shows success/error messages with import result counts
+---
+ .../components/CategoriesTab.vue              | 172 +++++++++++++++---
+ 1 file changed, 151 insertions(+), 21 deletions(-)
+
+diff --git a/packages/frontend/editor-ui/src/features/settings/nodeGovernance/components/CategoriesTab.vue b/packages/frontend/editor-ui/src/features/settings/nodeGovernance/components/CategoriesTab.vue
+index 1913e57a3b..2870477cb6 100644
+--- a/packages/frontend/editor-ui/src/features/settings/nodeGovernance/components/CategoriesTab.vue
++++ b/packages/frontend/editor-ui/src/features/settings/nodeGovernance/components/CategoriesTab.vue
+@@ -17,7 +17,7 @@ import {
+ 	N8nText,
+ } from '@n8n/design-system';
+ import { useNodeGovernanceStore } from '../nodeGovernance.store';
+-import type { NodeCategory } from '../nodeGovernance.api';
++import type { NodeCategory, NodeGovernanceExport } from '../nodeGovernance.api';
+ import { CATEGORY_FORM_MODAL_KEY, CATEGORY_NODES_MODAL_KEY } from '../nodeGovernance.constants';
+ 
+ const { showError, showMessage } = useToast();
+@@ -29,6 +29,9 @@ const nodeGovernanceStore = useNodeGovernanceStore();
+ const { categories } = storeToRefs(nodeGovernanceStore);
+ 
+ const searchQuery = ref('');
++const isExporting = ref(false);
++const isImporting = ref(false);
++const fileInputRef = ref<HTMLInputElement | null>(null);
+ 
+ // Pagination state (1-indexed for N8nPagination)
+ const currentPage = ref(1);
+@@ -141,31 +144,142 @@ function onManageNodes(category: NodeCategory) {
+ 		data: { category },
+ 	});
+ }
++
++async function onExport() {
++	isExporting.value = true;
++	try {
++		const exportData = await nodeGovernanceStore.exportCategories();
++
++		// Create and download JSON file
++		const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
++		const url = URL.createObjectURL(blob);
++		const link = document.createElement('a');
++		link.href = url;
++		link.download = `node-governance-categories-${new Date().toISOString().split('T')[0]}.json`;
++		document.body.appendChild(link);
++		link.click();
++		document.body.removeChild(link);
++		URL.revokeObjectURL(url);
++
++		showMessage({
++			title: i18n.baseText('nodeGovernance.categories.export.success'),
++			type: 'success',
++		});
++	} catch (e) {
++		showError(e, i18n.baseText('nodeGovernance.categories.export.error'));
++	} finally {
++		isExporting.value = false;
++	}
++}
++
++function onImportClick() {
++	fileInputRef.value?.click();
++}
++
++async function onFileSelected(event: Event) {
++	const input = event.target as HTMLInputElement;
++	const file = input.files?.[0];
++
++	if (!file) {
++		return;
++	}
++
++	isImporting.value = true;
++	try {
++		const text = await file.text();
++		const importData = JSON.parse(text) as NodeGovernanceExport;
++
++		// Validate the import data structure
++		if (!importData.version || !Array.isArray(importData.categories)) {
++			throw new Error(i18n.baseText('nodeGovernance.categories.import.invalidFormat'));
++		}
++
++		const result = await nodeGovernanceStore.importCategories(importData);
++
++		showMessage({
++			title: i18n.baseText('nodeGovernance.categories.import.success'),
++			message: i18n.baseText('nodeGovernance.categories.import.result', {
++				interpolate: {
++					created: result.created,
++					updated: result.updated,
++					unchanged: result.unchanged,
++				},
++			}),
++			type: 'success',
++		});
++	} catch (e) {
++		if (e instanceof SyntaxError) {
++			showError(
++				new Error(i18n.baseText('nodeGovernance.categories.import.invalidJson')),
++				i18n.baseText('nodeGovernance.categories.import.error'),
++			);
++		} else {
++			showError(e, i18n.baseText('nodeGovernance.categories.import.error'));
++		}
++	} finally {
++		isImporting.value = false;
++		// Reset file input so the same file can be selected again
++		if (input) {
++			input.value = '';
++		}
++	}
++}
+ </script>
+ 
+ <template>
+ 	<div :class="$style.categoriesTab">
+ 		<!-- Search Row -->
+ 		<div :class="$style.headerRow">
+-			<N8nInput
+-				v-model="searchQuery"
+-				:class="$style.searchInput"
+-				:placeholder="i18n.baseText('nodeGovernance.categories.search')"
+-				clearable
+-				data-test-id="categories-search"
+-			>
+-				<template #prefix>
+-					<N8nIcon icon="search" />
+-				</template>
+-			</N8nInput>
+-			<N8nText size="small" color="text-light">
+-				{{
+-					i18n.baseText('nodeGovernance.categories.count', {
+-						interpolate: { count: filteredCategories.length },
+-						adjustToNumber: filteredCategories.length,
+-					})
+-				}}
+-			</N8nText>
++			<div :class="$style.headerLeft">
++				<N8nInput
++					v-model="searchQuery"
++					:class="$style.searchInput"
++					:placeholder="i18n.baseText('nodeGovernance.categories.search')"
++					clearable
++					data-test-id="categories-search"
++				>
++					<template #prefix>
++						<N8nIcon icon="search" />
++					</template>
++				</N8nInput>
++				<N8nText size="small" color="text-light">
++					{{
++						i18n.baseText('nodeGovernance.categories.count', {
++							interpolate: { count: filteredCategories.length },
++							adjustToNumber: filteredCategories.length,
++						})
++					}}
++				</N8nText>
++			</div>
++			<div :class="$style.headerActions">
++				<N8nButton
++					type="tertiary"
++					size="small"
++					icon="file-export"
++					:loading="isExporting"
++					data-test-id="export-categories-button"
++					@click="onExport"
++				>
++					{{ i18n.baseText('nodeGovernance.categories.export') }}
++				</N8nButton>
++				<N8nButton
++					type="tertiary"
++					size="small"
++					icon="file-import"
++					:loading="isImporting"
++					data-test-id="import-categories-button"
++					@click="onImportClick"
++				>
++					{{ i18n.baseText('nodeGovernance.categories.import') }}
++				</N8nButton>
++				<input
++					ref="fileInputRef"
++					type="file"
++					accept=".json"
++					:class="$style.hiddenInput"
++					@change="onFileSelected"
++				/>
++			</div>
+ 		</div>
+ 
+ 		<!-- Empty State -->
+@@ -288,11 +402,27 @@ function onManageNodes(category: NodeCategory) {
+ 	padding: var(--spacing--sm) 0;
+ 	margin-bottom: var(--spacing--sm);
+ 	border-bottom: 1px solid var(--color--foreground);
++	gap: var(--spacing--sm);
++}
++
++.headerLeft {
++	display: flex;
++	align-items: center;
++	gap: var(--spacing--sm);
++}
++
++.headerActions {
++	display: flex;
++	align-items: center;
++	gap: var(--spacing--2xs);
++}
++
++.hiddenInput {
++	display: none;
+ }
+ 
+ .searchInput {
+ 	max-width: 220px;
+-	margin-bottom: 10px;
+ }
+ 
+ .categoryListWrapper {
+-- 
+2.50.1 (Apple Git-155)
+

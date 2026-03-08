@@ -14,6 +14,10 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import {
@@ -336,7 +340,10 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 				const node = workflowObject.getNode(error.context.nodeCause as string);
 
 				if (node) {
-					eventData.is_pinned = !!workflowObject.getPinDataOfNode(node.name);
+					const workflowDocumentStore = workflowsStore.workflowId
+						? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+						: undefined;
+					eventData.is_pinned = !!workflowDocumentStore?.pinData?.[node.name];
 					eventData.mode = node.parameters.mode;
 					eventData.node_type = node.type;
 					eventData.operation = node.parameters.operation;

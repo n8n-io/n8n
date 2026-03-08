@@ -1,0 +1,27 @@
+From 664ef46068d93ec0628c69141c6328a8578262de Mon Sep 17 00:00:00 2001
+From: Tzachi Shaiovitch <tzachish1@gmail.com>
+Date: Thu, 29 Jan 2026 17:22:36 +0200
+Subject: [PATCH 21/22] fix(node-governance): make exportedAt optional in
+ import interface
+
+The DTO allows optional exportedAt, so the service interface should match.
+---
+ packages/cli/src/services/node-governance.service.ts | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/packages/cli/src/services/node-governance.service.ts b/packages/cli/src/services/node-governance.service.ts
+index dbe3128cbd..36f08eb2c0 100644
+--- a/packages/cli/src/services/node-governance.service.ts
++++ b/packages/cli/src/services/node-governance.service.ts
+@@ -42,7 +42,7 @@ export interface NodeGovernanceExportCategory {
+ 
+ export interface NodeGovernanceExport {
+ 	version: string;
+-	exportedAt: string;
++	exportedAt?: string;
+ 	categories: NodeGovernanceExportCategory[];
+ }
+ 
+-- 
+2.50.1 (Apple Git-155)
+

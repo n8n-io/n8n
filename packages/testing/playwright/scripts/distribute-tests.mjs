@@ -33,6 +33,19 @@ const E2E_PROJECT = 'multi-main:e2e';
 const CONTAINER_STARTUP_TIME = 22500; // 22.5 seconds average (heavier stacks with extra services take longer)
 const MAX_GROUP_DURATION = 5 * 60 * 1000; // 5 minutes - split groups larger than this
 
+/** Maps capability tags to required container images */
+const CAPABILITY_IMAGES = {
+	email: ['mailpit'],
+	kafka: ['kafka'],
+	observability: ['victoriaLogs', 'victoriaMetrics', 'vector', 'jaeger', 'n8nTracer'],
+	oidc: ['keycloak'],
+	proxy: ['mockserver'],
+	'source-control': ['gitea'],
+};
+
+/** Base images needed by all E2E tests */
+const BASE_IMAGES = ['postgres', 'redis', 'caddy', 'n8n', 'taskRunner'];
+
 const args = process.argv.slice(2);
 const matrixMode = args.includes('--matrix');
 const orchestrate = args.includes('--orchestrate');
@@ -285,11 +298,28 @@ function distribute(numShards) {
 	return distributeCapabilityAware(numShards);
 }
 
+/**
+ * Get required images for a bucket based on its capabilities
+ * @param {{capabilities: Set<string>}} bucket
+ * @returns {string[]}
+ */
+function getRequiredImages(bucket) {
+	const images = new Set(BASE_IMAGES);
+	for (const cap of bucket.capabilities) {
+		const capImages = CAPABILITY_IMAGES[cap];
+		if (capImages) {
+			for (const img of capImages) images.add(img);
+		}
+	}
+	return [...images].sort();
+}
+
 if (matrixMode) {
 	const buckets = orchestrate ? distribute(shards) : null;
 	const matrix = Array.from({ length: shards }, (_, i) => ({
 		shard: i + 1,
 		specs: orchestrate ? (buckets?.[i].specs.join(' ') ?? '') : '',
+		images: orchestrate && buckets ? getRequiredImages(buckets[i]).join(' ') : '',
 	}));
 
 	if (orchestrate && buckets) {

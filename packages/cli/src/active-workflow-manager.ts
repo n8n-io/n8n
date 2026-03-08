@@ -223,7 +223,6 @@ export class ActiveWorkflowManager {
 				throw error;
 			}
 		}
-		await this.webhookService.populateCache();
 
 		await this.workflowStaticDataService.saveStaticData(workflow);
 
@@ -611,7 +610,7 @@ export class ActiveWorkflowManager {
 
 			void this.publisher.publishCommand({
 				command: 'add-webhooks-triggers-and-pollers',
-				payload: { workflowId, activeVersionId: dbWorkflow.activeVersionId },
+				payload: { workflowId, activeVersionId: dbWorkflow.activeVersionId, activationMode },
 			});
 
 			return added;
@@ -744,9 +743,10 @@ export class ActiveWorkflowManager {
 	async handleAddWebhooksTriggersAndPollers({
 		workflowId,
 		activeVersionId,
+		activationMode,
 	}: PubSubCommandMap['add-webhooks-triggers-and-pollers']) {
 		try {
-			await this.add(workflowId, 'activate', undefined, {
+			await this.add(workflowId, activationMode, undefined, {
 				shouldPublish: false, // prevent leader from re-publishing message
 			});
 

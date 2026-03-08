@@ -136,11 +136,18 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  {\n    key: '0'\n  },\n  {\n    key: '1'\n  }\n];"
+				"data": [
+					{
+						"key": "0"
+					},
+					{
+						"key": "1"
+					}
+				]
 			},
 			"id": "cf21ca09-ca2e-4334-a6ea-e7453d8598ca",
 			"name": "Mock Data 1",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [1000, 840]
 		},
@@ -156,11 +163,18 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  {\n    key: '0'\n  },\n  {\n    key: '1'\n  }\n];"
+				"data": [
+					{
+						"key": "0"
+					},
+					{
+						"key": "1"
+					}
+				]
 			},
 			"id": "f4b7b020-7d07-4aff-a99b-f0d6bfe656ff",
 			"name": "Mock Data 2",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [1000, 1280]
 		},
@@ -176,11 +190,18 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  {\n    key: '0'\n  },\n  {\n    key: '1'\n  }\n];"
+				"data": [
+					{
+						"key": "0"
+					},
+					{
+						"key": "1"
+					}
+				]
 			},
 			"id": "d20015b3-6e15-4094-bd18-c62be7fbcf9e",
 			"name": "Mock Data 3",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [1000, 1560]
 		},

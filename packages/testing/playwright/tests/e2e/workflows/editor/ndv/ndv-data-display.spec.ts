@@ -1,7 +1,11 @@
 import { test, expect } from '../../../../../fixtures/base';
 import type { n8nPage } from '../../../../../pages/n8nPage';
 
-test.describe('NDV Data Display', () => {
+test.describe('NDV Data Display', {
+	annotation: [
+		{ type: 'owner', description: 'Adore' },
+	],
+}, () => {
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 	});

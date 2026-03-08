@@ -1,0 +1,57 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.04kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/n8nio/base:22.22.0
+#2 ...
+
+#3 [auth] n8nio/base:pull token for registry-1.docker.io
+#3 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/n8nio/base:22.22.0
+#2 DONE 1.3s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 771B done
+#4 DONE 0.0s
+
+#5 [1/5] FROM docker.io/n8nio/base:22.22.0@sha256:192e0f9e3d57833c4944f0741411f98af28465b72687b05b41488219f4c09006
+#5 resolve docker.io/n8nio/base:22.22.0@sha256:192e0f9e3d57833c4944f0741411f98af28465b72687b05b41488219f4c09006 done
+#5 DONE 0.0s
+
+#6 [2/5] WORKDIR /home/node
+#6 CACHED
+
+#7 [internal] load build context
+#7 transferring context: 10.74MB 5.0s
+#7 transferring context: 23.97MB 10.1s
+#7 transferring context: 45.62MB 15.2s
+#7 transferring context: 61.07MB 20.2s
+#7 transferring context: 79.14MB 25.2s
+#7 transferring context: 101.68MB 28.1s done
+#7 DONE 28.3s
+
+#8 [3/5] COPY ./compiled /usr/local/lib/node_modules/n8n
+#8 DONE 12.1s
+
+#9 [4/5] COPY docker/images/n8n/docker-entrypoint.sh /
+#9 DONE 0.5s
+
+#10 [5/5] RUN cd /usr/local/lib/node_modules/n8n &&     npm rebuild sqlite3 &&     ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n &&     mkdir -p /home/node/.n8n &&     chown -R node:node /home/node &&     rm -rf /root/.npm /tmp/*
+#10 5.954 rebuilt dependencies successfully
+#10 DONE 6.0s
+
+#11 exporting to image
+#11 exporting layers
+#11 exporting layers 24.9s done
+#11 exporting manifest sha256:4e268b6380933ddaf233ef01415d3b6cf6d4efc237d4c547662194785c09ab8a
+#11 exporting manifest sha256:4e268b6380933ddaf233ef01415d3b6cf6d4efc237d4c547662194785c09ab8a done
+#11 exporting config sha256:5312439526c2bde74362560f08d76e458caf4cccb3c2e33cc732bfd9fe260176 done
+#11 exporting attestation manifest sha256:4881d0eb975d6a333e45d7d43aee23add3fbf501d98447792b5507c697041260 done
+#11 exporting manifest list sha256:2e5d3c172e2babd66020efa1e3c58b462bffcb1bb1fb7ea268c2cc1290f7a910 done
+#11 naming to docker.io/n8nio/n8n:local done
+#11 unpacking to docker.io/n8nio/n8n:local
+#11 unpacking to docker.io/n8nio/n8n:local 11.6s done
+#11 DONE 36.6s

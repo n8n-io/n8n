@@ -507,7 +507,7 @@ describe('GET /projects/:projectId/folders/:folderId/credentials', () => {
 						},
 					],
 				},
-				owner,
+				project,
 			);
 		}
 

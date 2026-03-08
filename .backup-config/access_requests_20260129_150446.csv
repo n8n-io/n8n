@@ -1,0 +1,21 @@
+Request ID,Node Type,Status,Justification,Workflow Name,Project,Requested By,Requested At,Reviewed By,Review Comment,Reviewed At
+AzD9Ct0lGfhewENE,@n8n/n8n-nodes-langchain.anthropic,rejected,I need it for my work,,MIS,tzaci.shaiovitch@amdocs.com,2026-01-27 10:46:05.835+00,tzaci.shaiovitch@amdocs.com,,2026-01-27 10:46:41.632+00
+eqnT6E4xo3rfnLBJ,@n8n/n8n-nodes-langchain.anthropic,approved,need it please help,,Tzaci Shaiovitch <tzaci.shaiovitch@amdocs.com>,tzaci.shaiovitch@amdocs.com,2026-01-26 15:18:00.21+00,tzaci.shaiovitch@amdocs.com,,2026-01-26 15:18:14.605+00
+ulQM7BvTaG8CbZ5w,@n8n/n8n-nodes-langchain.anthropic,rejected,please add to mis project,,MIS,tzaci.shaiovitch@amdocs.com,2026-01-26 07:55:29.327+00,tzaci.shaiovitch@amdocs.com,,2026-01-26 07:56:30.255+00
+cH3D8DznjuXMoyu1,@n8n/n8n-nodes-langchain.anthropic,approved,dsadasdasdsadsadasdsa,,MIS,tzaci.shaiovitch@amdocs.com,2026-01-26 07:11:14.582+00,tzaci.shaiovitch@amdocs.com,,2026-01-26 07:23:04.379+00
+5v5ZD9sBGdHQketa,@n8n/n8n-nodes-langchain.anthropic,approved,"I need it today plz
+",,MIS,tzaci.shaiovitch@amdocs.com,2026-01-26 07:07:27.599+00,tzaci.shaiovitch@amdocs.com,,2026-01-26 07:07:44.036+00
+Tvp2WDNTQAXWG5f4,@n8n/n8n-nodes-langchain.anthropic,approved,I need it fast,,MIS,tzaci.shaiovitch@amdocs.com,2026-01-26 07:03:11.268+00,tzaci.shaiovitch@amdocs.com,,2026-01-26 07:06:03.83+00
+8Q8bOjcuackwOm9F,n8n-nodes-base.facebookGraphApi,rejected,kslf;dkas;dlkas;ldkas;das,,MIS,tzaci.shaiovitch@amdocs.com,2026-01-25 08:21:53.005+00,tzaci.shaiovitch@amdocs.com,,2026-01-25 12:39:02.4+00
+ly5gFa2J7s18yhVF,n8n-nodes-base.facebookGraphApi,approved,ddsfdsdfsdfsdfdsfsdfsdsdf,,MIS,tzaci.shaiovitch@amdocs.com,2026-01-25 07:04:22.402+00,tzaci.shaiovitch@amdocs.com,,2026-01-25 07:08:08.395+00
+IRnRy9bQjwopyJ4V,n8n-nodes-base.gmail,rejected,fsdfsdfsdfsdfsdfds,,MIS,tzaci.shaiovitch@amdocs.com,2026-01-25 07:04:10.803+00,tzaci.shaiovitch@amdocs.com,,2026-01-25 12:39:04.441+00
+5O6KsixLr8fP0RL1,@n8n/n8n-nodes-langchain.googleGemini,approved,"Needed
+Please assist
+",,MIS,tzaci.shaiovitch@amdocs.com,2026-01-22 15:37:20.33+00,tzaci.shaiovitch@amdocs.com,,2026-01-25 07:02:26.776+00
+4f6kcZQulRVq9fLe,n8n-nodes-base.gmailTool,approved,Needed as part of,,Tzaci Shaiovitch <tzaci.shaiovitch@amdocs.com>,tzaci.shaiovitch@amdocs.com,2026-01-22 14:30:40.439+00,tzaci.shaiovitch@amdocs.com,,2026-01-25 07:03:42.117+00
+gwoU7OTRna7rYLjb,@n8n/n8n-nodes-langchain.googleGemini,rejected,I need it!,,MIS,tzaci.shaiovitch@amdocs.com,2026-01-22 12:07:14.944+00,tzaci.shaiovitch@amdocs.com,,2026-01-22 14:12:51.768+00
+keB73xvt9DcS4PUM,n8n-nodes-base.youTube,rejected,fdsfsdfdsfdsfdsfdsfdfdsfds,,Tzaci Shaiovitch <tzaci.shaiovitch@amdocs.com>,tzaci.shaiovitch@amdocs.com,2026-01-21 15:08:28.297+00,tzaci.shaiovitch@amdocs.com,,2026-01-22 12:41:20.662+00
+3dfLsmAEzKZoHqdO,n8n-nodes-base.facebookTrigger,rejected,sdfdsfsdfsdfsdfdsfdssfdfds,,Tzaci Shaiovitch <tzaci.shaiovitch@amdocs.com>,tzaci.shaiovitch@amdocs.com,2026-01-21 15:08:04.606+00,tzaci.shaiovitch@amdocs.com,,2026-01-22 12:41:23.279+00
+N5fKADvKUG3Pe4FP,n8n-nodes-base.facebookTrigger,approved,fsdfsdfdsfdsfdsfdsfdsfdsdsf,,MIS,tzaci.shaiovitch@amdocs.com,2026-01-21 14:32:57.941+00,tzaci.shaiovitch@amdocs.com,,2026-01-21 15:06:20.084+00
+LtyU4hBEoWAdPVbD,n8n-nodes-base.facebookLeadAdsTrigger,approved,I need facebook :),,MIS,tzaci.shaiovitch@amdocs.com,2026-01-21 14:32:30.536+00,tzaci.shaiovitch@amdocs.com,,2026-01-21 15:06:35.746+00
+JpI0G7c2SlfAPzxf,n8n-nodes-base.line,approved,aaaasdasdsadasdsadas,,MIS,tzaci.shaiovitch@amdocs.com,2026-01-21 13:22:13.664+00,tzaci.shaiovitch@amdocs.com,,2026-01-22 14:13:03.283+00

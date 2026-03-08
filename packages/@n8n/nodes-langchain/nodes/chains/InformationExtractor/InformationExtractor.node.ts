@@ -62,6 +62,11 @@ export class InformationExtractor implements INodeType {
 			},
 		],
 		outputs: [NodeConnectionTypes.Main],
+		builderHint: {
+			inputs: {
+				ai_languageModel: { required: true },
+			},
+		},
 		properties: [
 			{
 				displayName: 'Text',
