@@ -354,6 +354,13 @@ export class Twilio implements INodeType {
 							body.MessagingServiceSid = options.messagingServiceSid as string;
 						} else {
 							body.From = this.getNodeParameter('from', i, '') as string;
+							if (!body.From) {
+								throw new NodeOperationError(
+									this.getNode(),
+									'The "From" parameter must be provided if "Messaging Service SID" is not used',
+									{ itemIndex: i },
+								);
+							}
 						}
 
 						body.To = this.getNodeParameter('to', i) as string;
@@ -365,14 +372,6 @@ export class Twilio implements INodeType {
 							: 'text';
 						const mediaUrl = this.getNodeParameter('mediaUrl', i, '') as string;
 
-						if (mediaUrl) {
-							if (toWhatsapp) {
-								body.MediaUrl = mediaUrl.split(',')[0].trim();
-							} else {
-								body.MediaUrl = mediaUrl.split(',').map((url) => url.trim());
-							}
-						}
-
 						if (toWhatsapp) {
 							if (body.From) {
 								body.From = `whatsapp:${body.From as string}`;
@@ -380,20 +379,35 @@ export class Twilio implements INodeType {
 							body.To = `whatsapp:${body.To}`;
 
 							if (messagingType === 'template') {
+								// WhatsApp Template Mode
 								const contentSid = this.getNodeParameter('contentSid', i, '') as string;
+								if (!contentSid) {
+									throw new NodeOperationError(
+										this.getNode(),
+										'The "Content SID" must be provided for templates',
+										{ itemIndex: i },
+									);
+								}
 								body.ContentSid = contentSid;
+
+								if (mediaUrl) {
+									throw new NodeOperationError(
+										this.getNode(),
+										'Media URL should not be provided for WhatsApp templates. Include media in Content Variables instead.',
+										{ itemIndex: i },
+									);
+								}
 
 								const contentVariables = this.getNodeParameter('contentVariables', i, '') as
 									| string
 									| object;
 								if (contentVariables) {
 									try {
-										if (typeof contentVariables === 'string') {
-											JSON.parse(contentVariables);
-											body.ContentVariables = contentVariables;
-										} else {
-											body.ContentVariables = JSON.stringify(contentVariables);
-										}
+										body.ContentVariables =
+											typeof contentVariables === 'string'
+												? JSON.parse(contentVariables)
+												: contentVariables;
+										body.ContentVariables = JSON.stringify(body.ContentVariables);
 									} catch (error) {
 										throw new NodeOperationError(
 											this.getNode(),
@@ -403,15 +417,23 @@ export class Twilio implements INodeType {
 									}
 								}
 							} else {
+								// WhatsApp Text Mode
 								const message = this.getNodeParameter('message', i, '') as string;
 								if (message) {
 									body.Body = message;
 								}
+								if (mediaUrl) {
+									body.MediaUrl = mediaUrl.split(',')[0].trim();
+								}
 							}
 						} else {
+							// SMS Mode
 							const message = this.getNodeParameter('message', i, '') as string;
 							if (message) {
 								body.Body = message;
+							}
+							if (mediaUrl) {
+								body.MediaUrl = mediaUrl.split(',').map((url) => url.trim());
 							}
 							if (!body.Body && !body.MediaUrl) {
 								throw new NodeOperationError(
@@ -442,6 +464,14 @@ export class Twilio implements INodeType {
 						body.From = this.getNodeParameter('from', i) as string;
 						body.To = this.getNodeParameter('to', i) as string;
 
+						if (!body.From) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'The "From" parameter must be provided for calls',
+								{ itemIndex: i },
+							);
+						}
+
 						const options = this.getNodeParameter('options', i, {});
 
 						if (useTwiml) {
@@ -455,8 +485,6 @@ export class Twilio implements INodeType {
 						}
 
 						body.StatusCallback = (options.statusCallback as string) || '';
-
-						body.StatusCallback = this.getNodeParameter('options.statusCallback', i, '') as string;
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),

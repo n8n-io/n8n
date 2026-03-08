@@ -3,10 +3,11 @@
 		{
 			"parameters": {
 				"operation": "send",
+				"from": "+0987654321",
 				"to": "+1234567890",
 				"toWhatsapp": true,
 				"messagingType": "template",
-				"contentSid": "HX...id",
+				"contentSid": "HX1234567890",
 				"contentVariables": "{\"1\": \"John\"}"
 			},
 			"id": "ecc7480e-333e-436f-b253-333333333333",
