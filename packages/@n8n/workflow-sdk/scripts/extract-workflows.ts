@@ -35,8 +35,24 @@ function main() {
 	let count = 0;
 	for (const entry of entries) {
 		if (entry.entryName.endsWith('.json')) {
-			const outputPath = path.join(FIXTURES_DIR, entry.entryName);
-			fs.writeFileSync(outputPath, entry.getData());
+			const normalizedEntryName = path.normalize(entry.entryName);
+
+			// Prevent absolute paths and directory traversal outside FIXTURES_DIR
+			if (path.isAbsolute(normalizedEntryName)) {
+				console.warn(`Skipping absolute path in zip entry: ${entry.entryName}`);
+				continue;
+			}
+
+			const outputPath = path.join(FIXTURES_DIR, normalizedEntryName);
+			const resolvedOutputPath = path.resolve(outputPath);
+			const resolvedFixturesDir = path.resolve(FIXTURES_DIR);
+
+			if (!resolvedOutputPath.startsWith(resolvedFixturesDir + path.sep)) {
+				console.warn(`Skipping path outside target directory from zip entry: ${entry.entryName}`);
+				continue;
+			}
+
+			fs.writeFileSync(resolvedOutputPath, entry.getData());
 			count++;
 		}
 	}
