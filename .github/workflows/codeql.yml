@@ -18,6 +18,7 @@ on:
     branches: [ "master" ]
   schedule:
     - cron: '25 7 * * 0'
+  workflow_dispatch: # This line enables the manual button
 
 jobs:
   analyze:
