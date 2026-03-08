@@ -104,14 +104,14 @@ export class Twilio implements INodeType {
 				type: 'string',
 				default: '',
 				placeholder: '+14155238886',
-				required: true,
 				displayOptions: {
 					show: {
 						operation: ['send', 'make'],
 						resource: ['sms', 'call'],
 					},
 				},
-				description: 'The number from which to send the message',
+				description:
+					'The number from which to send the message. Required unless using a Messaging Service SID.',
 			},
 			{
 				displayName: 'To',
@@ -142,18 +142,104 @@ export class Twilio implements INodeType {
 				description: 'Whether the message should be sent to WhatsApp',
 			},
 			{
+				displayName: 'Messaging Type',
+				name: 'messagingType',
+				type: 'options',
+				displayOptions: {
+					show: {
+						operation: ['send'],
+						resource: ['sms'],
+						toWhatsapp: [true],
+					},
+				},
+				options: [
+					{
+						name: 'Text',
+						value: 'text',
+					},
+					{
+						name: 'Template',
+						value: 'template',
+					},
+				],
+				default: 'text',
+			},
+			{
+				displayName: 'Content SID',
+				name: 'contentSid',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: ['send'],
+						resource: ['sms'],
+						toWhatsapp: [true],
+						messagingType: ['template'],
+					},
+				},
+				description: 'The SID of the Content API template to use (starts with HX...)',
+			},
+			{
+				displayName: 'Content Variables',
+				name: 'contentVariables',
+				type: 'json',
+				default: '{}',
+				displayOptions: {
+					show: {
+						operation: ['send'],
+						resource: ['sms'],
+						toWhatsapp: [true],
+						messagingType: ['template'],
+					},
+				},
+				description:
+					'Key-value pairs corresponding to variables in the template as a JSON object (e.g., {"1": "John"})',
+			},
+			{
 				displayName: 'Message',
 				name: 'message',
 				type: 'string',
 				default: '',
-				required: true,
+				displayOptions: {
+					show: {
+						operation: ['send'],
+						resource: ['sms'],
+						toWhatsapp: [false],
+					},
+				},
+				description: 'The message to send',
+			},
+			{
+				displayName: 'Message',
+				name: 'message',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						operation: ['send'],
+						resource: ['sms'],
+						toWhatsapp: [true],
+						messagingType: ['text'],
+					},
+				},
+				description: 'The message to send',
+			},
+			{
+				displayName: 'Media URL',
+				name: 'mediaUrl',
+				type: 'string',
+				default: '',
 				displayOptions: {
 					show: {
 						operation: ['send'],
 						resource: ['sms'],
 					},
+					hide: {
+						messagingType: ['template'],
+					},
 				},
-				description: 'The message to send',
+				description:
+					'The URL of the media you want to send. For WhatsApp templates, do not use this field; instead, include the media URL in the "Content Variables" JSON object.',
 			},
 			{
 				displayName: 'Use TwiML',
@@ -189,6 +275,32 @@ export class Twilio implements INodeType {
 				placeholder: 'Add Field',
 				default: {},
 				options: [
+					{
+						displayName: 'Messaging Service SID',
+						name: 'messagingServiceSid',
+						type: 'string',
+						default: '',
+						displayOptions: {
+							show: {
+								'/operation': ['send'],
+								'/resource': ['sms'],
+							},
+						},
+						description: 'The SID of the Messaging Service you want to associate with the Message',
+					},
+					{
+						displayName: 'Record',
+						name: 'record',
+						type: 'boolean',
+						default: false,
+						displayOptions: {
+							show: {
+								'/operation': ['make'],
+								'/resource': ['call'],
+							},
+						},
+						description: 'Whether to record the call',
+					},
 					{
 						displayName: 'Status Callback',
 						name: 'statusCallback',
@@ -236,16 +348,78 @@ export class Twilio implements INodeType {
 						requestMethod = 'POST';
 						endpoint = '/Messages.json';
 
-						body.From = this.getNodeParameter('from', i) as string;
-						body.To = this.getNodeParameter('to', i) as string;
-						body.Body = this.getNodeParameter('message', i) as string;
-						body.StatusCallback = this.getNodeParameter('options.statusCallback', i, '') as string;
+						const options = this.getNodeParameter('options', i, {});
 
-						const toWhatsapp = this.getNodeParameter('toWhatsapp', i) as boolean;
+						if (options.messagingServiceSid) {
+							body.MessagingServiceSid = options.messagingServiceSid as string;
+						} else {
+							body.From = this.getNodeParameter('from', i, '') as string;
+						}
+
+						body.To = this.getNodeParameter('to', i) as string;
+						body.StatusCallback = (options.statusCallback as string) || '';
+
+						const toWhatsapp = this.getNodeParameter('toWhatsapp', i, false) as boolean;
+						const messagingType = toWhatsapp
+							? (this.getNodeParameter('messagingType', i, 'text') as string)
+							: 'text';
+						const mediaUrl = this.getNodeParameter('mediaUrl', i, '') as string;
+
+						if (mediaUrl) {
+							if (toWhatsapp) {
+								body.MediaUrl = mediaUrl.split(',')[0].trim();
+							} else {
+								body.MediaUrl = mediaUrl.split(',').map((url) => url.trim());
+							}
+						}
 
 						if (toWhatsapp) {
-							body.From = `whatsapp:${body.From}`;
+							if (body.From) {
+								body.From = `whatsapp:${body.From as string}`;
+							}
 							body.To = `whatsapp:${body.To}`;
+
+							if (messagingType === 'template') {
+								const contentSid = this.getNodeParameter('contentSid', i, '') as string;
+								body.ContentSid = contentSid;
+
+								const contentVariables = this.getNodeParameter('contentVariables', i, '') as
+									| string
+									| object;
+								if (contentVariables) {
+									try {
+										if (typeof contentVariables === 'string') {
+											JSON.parse(contentVariables);
+											body.ContentVariables = contentVariables;
+										} else {
+											body.ContentVariables = JSON.stringify(contentVariables);
+										}
+									} catch (error) {
+										throw new NodeOperationError(
+											this.getNode(),
+											'Content Variables must be valid JSON',
+											{ itemIndex: i },
+										);
+									}
+								}
+							} else {
+								const message = this.getNodeParameter('message', i, '') as string;
+								if (message) {
+									body.Body = message;
+								}
+							}
+						} else {
+							const message = this.getNodeParameter('message', i, '') as string;
+							if (message) {
+								body.Body = message;
+							}
+							if (!body.Body && !body.MediaUrl) {
+								throw new NodeOperationError(
+									this.getNode(),
+									'Either "Message" or "Media URL" must be provided',
+									{ itemIndex: i },
+								);
+							}
 						}
 					} else {
 						throw new NodeOperationError(
@@ -268,11 +442,19 @@ export class Twilio implements INodeType {
 						body.From = this.getNodeParameter('from', i) as string;
 						body.To = this.getNodeParameter('to', i) as string;
 
+						const options = this.getNodeParameter('options', i, {});
+
 						if (useTwiml) {
 							body.Twiml = message;
 						} else {
 							body.Twiml = `<Response><Say>${escapeXml(message)}</Say></Response>`;
 						}
+
+						if (options.record) {
+							body.Record = options.record as boolean;
+						}
+
+						body.StatusCallback = (options.statusCallback as string) || '';
 
 						body.StatusCallback = this.getNodeParameter('options.statusCallback', i, '') as string;
 					} else {
@@ -288,12 +470,18 @@ export class Twilio implements INodeType {
 					});
 				}
 
-				const responseData = await twilioApiRequest.call(this, requestMethod, endpoint, body, qs);
+				const responseData = (await twilioApiRequest.call(
+					this,
+					requestMethod,
+					endpoint,
+					body,
+					qs,
+				)) as IDataObject;
 
-				returnData.push(responseData as IDataObject);
+				returnData.push(responseData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ error: (error as Error).message });
 					continue;
 				}
 				throw error;
