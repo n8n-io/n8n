@@ -22,6 +22,12 @@ export class FsStore implements ExecutionDataStore {
 		private readonly errorReporter: ErrorReporter,
 	) {}
 
+	private sanitizePathSegment(segment: string): string {
+		// Allow only simple filename characters to avoid path traversal or injection
+		const sanitized = segment.replace(/[^a-zA-Z0-9_-]/g, '_');
+		return sanitized.length > 0 ? sanitized : '_';
+	}
+
 	async init() {
 		await assertDir(this.storageConfig.storagePath);
 	}
@@ -80,12 +86,15 @@ export class FsStore implements ExecutionDataStore {
 	}
 
 	private resolveExecutionDir({ workflowId, executionId }: ExecutionRef) {
+		const safeWorkflowId = this.sanitizePathSegment(workflowId);
+		const safeExecutionId = this.sanitizePathSegment(executionId);
+
 		return path.join(
 			this.storageConfig.storagePath,
 			'workflows',
-			workflowId,
+			safeWorkflowId,
 			'executions',
-			executionId,
+			safeExecutionId,
 		);
 	}
 
