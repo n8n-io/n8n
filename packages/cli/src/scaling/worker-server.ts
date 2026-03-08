@@ -48,6 +48,8 @@ export class WorkerServer {
 
 	private overwritesLoaded = false;
 
+	private fullyReady = false;
+
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
@@ -79,6 +81,10 @@ export class WorkerServer {
 				process.exit(1);
 			}
 		});
+	}
+
+	markAsReady() {
+		this.fullyReady = true;
 	}
 
 	async init(endpointsConfig: WorkerServerEndpointsConfig) {
@@ -139,7 +145,8 @@ export class WorkerServer {
 		const isReady =
 			connectionState.connected &&
 			connectionState.migrated &&
-			this.redisClientService.isConnected();
+			this.redisClientService.isConnected() &&
+			this.fullyReady;
 
 		return isReady
 			? res.status(200).send({ status: 'ok' })
