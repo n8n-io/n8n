@@ -628,5 +628,5 @@ export function getInputTextProperties(): INodeProperties[] {
 
 export function getAutomaticSecret(credentials: ICredentialDataDecryptedObject) {
 	const data = `${credentials.clientId},${credentials.clientSecret}`;
-	return createHash('md5').update(data).digest('hex');
+	return createHash('sha256').update(data).digest('hex');
 }
