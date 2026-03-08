@@ -1,4 +1,4 @@
-import { createHash } from 'crypto';
+import { pbkdf2Sync } from 'crypto';
 import upperFirst from 'lodash/upperFirst';
 import type {
 	ICredentialDataDecryptedObject,
@@ -628,5 +628,9 @@ export function getInputTextProperties(): INodeProperties[] {
 
 export function getAutomaticSecret(credentials: ICredentialDataDecryptedObject) {
 	const data = `${credentials.clientId},${credentials.clientSecret}`;
-	return createHash('md5').update(data).digest('hex');
+	const salt = 'n8n-cisco-webex-webhook-secret';
+	const iterations = 100000;
+	const keyLength = 32;
+	const derivedKey = pbkdf2Sync(data, salt, iterations, keyLength, 'sha256');
+	return derivedKey.toString('hex');
 }
