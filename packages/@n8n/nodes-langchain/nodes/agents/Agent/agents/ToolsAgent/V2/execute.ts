@@ -92,6 +92,8 @@ async function processEventStream(
 		output: '',
 		intermediateSteps: [],
 	};
+	// Map run_id → step so on_tool_end can match the exact invocation
+	const toolRunToStep = new Map<string, ToolCallData>();
 
 	ctx.sendChunk('begin', itemIndex);
 	for await (const event of eventStream) {
@@ -148,14 +150,27 @@ async function processEventStream(
 					}
 				}
 				break;
-			case 'on_tool_end':
-				if (event.data && agentResult.intermediateSteps.length > 0) {
-					const toolData = event.data as Record<string, unknown>;
-					const matchingStep = agentResult.intermediateSteps.find(
-						(step) => !step.observation && step.action.tool === event.name,
+			case 'on_tool_start':
+				if (event.run_id) {
+					const step = agentResult.intermediateSteps.find(
+						(s) => !s.observation && s.action.tool === event.name,
 					);
-					if (matchingStep) {
-						matchingStep.observation = toolData.output as string;
+					if (step) {
+						toolRunToStep.set(event.run_id, step);
+					}
+				}
+				break;
+			case 'on_tool_end':
+				if (event.data) {
+					const toolData = event.data as Record<string, unknown>;
+					// Prefer run_id match, fall back to name-based match
+					const step =
+						(event.run_id && toolRunToStep.get(event.run_id)) ||
+						agentResult.intermediateSteps.find(
+							(s) => !s.observation && s.action.tool === event.name,
+						);
+					if (step) {
+						step.observation = toolData.output as string;
 					}
 				}
 				break;
@@ -298,7 +313,7 @@ export async function toolsAgentExecute(
 
 				const result = await processEventStream(this, eventStream, itemIndex);
 
-				if (memory && input && result.output) {
+				if (memory && input !== undefined && result.output) {
 					await saveToMemory(input, result.output, memory, result.intermediateSteps);
 				}
 
@@ -316,7 +331,7 @@ export async function toolsAgentExecute(
 				);
 
 				const steps = (response.intermediateSteps ?? []) as ToolCallData[];
-				if (memory && input && response.output) {
+				if (memory && input !== undefined && response.output) {
 					await saveToMemory(input, response.output as string, memory, steps);
 				}
 

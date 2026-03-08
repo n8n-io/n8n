@@ -97,7 +97,7 @@ export async function toolsAgentExecute(this: IExecuteFunctions): Promise<INodeE
 			);
 
 			const steps = (response.intermediateSteps ?? []) as ToolCallData[];
-			if (memory && input && response.output) {
+			if (memory && input !== undefined && response.output) {
 				await saveToMemory(input, response.output as string, memory, steps);
 			}
 
