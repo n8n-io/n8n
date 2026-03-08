@@ -6,7 +6,21 @@ import { ExpressionExtensionError } from './expression-extension-error';
 import { compact as oCompact } from './object-extensions';
 
 function randomInt(max: number): number {
-	return crypto.getRandomValues(new Uint32Array(1))[0] % max;
+	if (max <= 0) {
+		return 0;
+	}
+
+	const range = 0x1_0000_0000; // 2^32
+	const limit = range - (range % max);
+	const randomArray = new Uint32Array(1);
+
+	while (true) {
+		crypto.getRandomValues(randomArray);
+		const value = randomArray[0];
+		if (value < limit) {
+			return value % max;
+		}
+	}
 }
 
 function first(value: unknown[]): unknown {
