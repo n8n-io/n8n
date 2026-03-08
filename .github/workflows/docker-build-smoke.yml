@@ -14,7 +14,6 @@ on:
       - 'docker/images/n8n/**'
       - 'docker/images/n8n-base/**'
       - 'docker/images/runners/**'
-      - 'pnpm-lock.yaml'
       - 'scripts/build-n8n.mjs'
       - 'scripts/dockerize-n8n.mjs'
   workflow_dispatch:
@@ -27,9 +26,6 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
-
       - name: Login to DHI Registry (for base image)
         uses: ./.github/actions/docker-registry-login
         with:
@@ -41,8 +37,8 @@ jobs:
       - name: Build full chain (no cache)
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: 'pnpm build:docker:full-chain'
-          enable-docker-cache: false
+          build-command: 'pnpm build:docker:clean'
+          enable-docker-cache: true
 
       - name: Verify n8n image starts
         run: |

@@ -178,16 +178,20 @@ async function main() {
 		});
 	}
 
+	const nodeVersionArgs = withBaseImage ? [`NODE_VERSION=${nodeVersion}`] : [];
+
 	const n8nBuildTime = await buildDockerImage({
 		name: 'n8n',
 		dockerfilePath: config.n8n.dockerfilePath,
 		fullImageName: config.n8n.fullImageName,
+		buildArgs: nodeVersionArgs,
 	});
 
 	const runnersBuildTime = await buildDockerImage({
 		name: 'runners',
 		dockerfilePath: config.runners.dockerfilePath,
 		fullImageName: config.runners.fullImageName,
+		buildArgs: nodeVersionArgs,
 	});
 
 	// Get image details
