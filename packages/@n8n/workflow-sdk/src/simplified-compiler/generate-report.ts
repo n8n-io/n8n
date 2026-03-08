@@ -565,7 +565,7 @@ function generateHtml(entries: ReportEntry[]): string {
 
 			return `
     <div class="card">
-      <details class="card-details">
+      <details class="card-details" data-id="${entry.dirName}">
         <summary class="card-summary">
           ${statusBadge}
           ${validationBadge}
@@ -623,7 +623,38 @@ function generateHtml(entries: ReportEntry[]): string {
 		})
 		.join('\n');
 
-	const hasExecutionData = entries.some((e) => e.execution);
+	const compilePass = entries.filter((e) => !e.skip && !e.error).length;
+	const compileSkip = entries.filter((e) => e.skip).length;
+	const compileError = entries.filter((e) => e.error).length;
+	const validationFail = entries.filter((e) => e.validationErrors.length > 0).length;
+
+	const withExec = entries.filter((e) => e.execution);
+	const execPass = withExec.filter(
+		(e) =>
+			e.execution!.status === 'pass' && (e.execution!.expectationMismatches ?? []).length === 0,
+	).length;
+	const execFail = withExec.filter(
+		(e) => e.execution!.status === 'error' || (e.execution!.expectationMismatches ?? []).length > 0,
+	).length;
+	const execSkip = withExec.filter((e) => e.execution!.status === 'skip').length;
+	const execNone = entries.length - withExec.length;
+
+	const summaryHtml = `<div class="summary">
+    <div class="summary-row">
+      <span class="summary-label">Compile</span>
+      <span class="summary-stat pass">${compilePass} pass</span>
+      ${compileError > 0 ? `<span class="summary-stat error">${compileError} error</span>` : ''}
+      ${compileSkip > 0 ? `<span class="summary-stat skip">${compileSkip} skip</span>` : ''}
+    </div>
+    <div class="summary-row">
+      <span class="summary-label">Validate</span>
+      ${validationFail > 0 ? `<span class="summary-stat error">${validationFail} fail</span><span class="summary-stat pass">${entries.length - validationFail} pass</span>` : `<span class="summary-stat pass">${entries.length} pass</span>`}
+    </div>
+    <div class="summary-row">
+      <span class="summary-label">Execute</span>
+      ${withExec.length > 0 ? `<span class="summary-stat pass">${execPass} pass</span>${execFail > 0 ? `<span class="summary-stat error">${execFail} fail</span>` : ''}${execSkip > 0 ? `<span class="summary-stat skip">${execSkip} skip</span>` : ''}${execNone > 0 ? `<span class="summary-stat none">${execNone} no data</span>` : ''}` : `<span class="summary-stat none">no execution data</span>`}
+    </div>
+  </div>`;
 
 	return `<!DOCTYPE html>
 <html lang="en">
@@ -750,13 +781,35 @@ function generateHtml(entries: ReportEntry[]): string {
     .rule-icon { font-weight: 700; width: 14px; flex-shrink: 0; }
     .rule-id { font-family: monospace; font-size: 11px; font-weight: 600; }
     .rule-error-detail { width: 100%; padding-left: 20px; margin-top: 2px; font-size: 11px; }
+    .summary { margin-bottom: 20px; display: flex; flex-direction: column; gap: 6px; }
+    .summary-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+    .summary-label { font-weight: 600; color: #8b949e; width: 64px; flex-shrink: 0; }
+    .summary-stat { padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 12px; }
+    .summary-stat.pass { background: #1b3a2d; color: #3fb950; }
+    .summary-stat.error { background: #3d1a1a; color: #f85149; }
+    .summary-stat.skip { background: #3d2e00; color: #d29922; }
+    .summary-stat.none { background: #21262d; color: #6e7681; }
+    .toolbar { display: flex; gap: 8px; margin-bottom: 16px; }
+    .toolbar button { background: #21262d; color: #c9d1d9; border: 1px solid #30363d; border-radius: 6px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; }
+    .toolbar button:hover { background: #30363d; }
   </style>
 </head>
 <body>
   <h1>Simplified Compiler - Fixture Report</h1>
-  <p style="margin-bottom:20px;color:#8b949e;font-size:14px;">${entries.length} fixtures total &middot; ${entries.filter((e) => !e.skip && !e.error).length} passing &middot; ${entries.filter((e) => e.skip).length} skipped &middot; ${entries.filter((e) => e.error).length} errors &middot; ${entries.filter((e) => e.validationErrors.length > 0).length} validation failures${hasExecutionData ? ' &middot; <span style="color:#a78bfa">execution data available</span>' : ''}</p>
+  ${summaryHtml}
+  <div class="toolbar">
+    <button onclick="toggleAll(true)">Expand All</button>
+    <button onclick="toggleAll(false)">Collapse All</button>
+  </div>
 ${cards}
 <script>
+  const STORAGE_KEY = 'report-open-cards';
+  function getOpenSet() {
+    try { return new Set(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')); }
+    catch { return new Set(); }
+  }
+  function saveOpenSet(s) { localStorage.setItem(STORAGE_KEY, JSON.stringify([...s])); }
+
   function hydrateDemos(container) {
     container.querySelectorAll('template.lazy-demo').forEach(tmpl => {
       const demo = document.createElement('n8n-demo');
@@ -765,11 +818,31 @@ ${cards}
       tmpl.replaceWith(demo);
     });
   }
+
+  function toggleAll(open) {
+    const openSet = getOpenSet();
+    document.querySelectorAll('details.card-details').forEach(card => {
+      card.open = open;
+      const id = card.dataset.id;
+      if (open) { openSet.add(id); hydrateDemos(card); }
+      else { openSet.delete(id); }
+    });
+    saveOpenSet(openSet);
+  }
+
+  // Restore open state from localStorage + wire up toggle persistence
+  const openSet = getOpenSet();
   document.querySelectorAll('details.card-details').forEach(card => {
-    card.addEventListener('toggle', function handler() {
-      if (!card.open) return;
+    const id = card.dataset.id;
+    if (openSet.has(id)) {
+      card.open = true;
       hydrateDemos(card);
-      card.removeEventListener('toggle', handler);
+    }
+    card.addEventListener('toggle', () => {
+      const s = getOpenSet();
+      if (card.open) { s.add(id); hydrateDemos(card); }
+      else { s.delete(id); }
+      saveOpenSet(s);
     });
   });
 </script>
