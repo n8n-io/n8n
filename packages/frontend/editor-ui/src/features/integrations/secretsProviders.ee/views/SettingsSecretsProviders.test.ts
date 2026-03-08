@@ -29,6 +29,7 @@ vi.mock('vue-router', async () => {
 });
 
 const mockReloadConnection = vi.fn();
+const mockActivateConnection = vi.fn();
 
 vi.mock('../composables/useSecretsProviderConnection.ee', () => ({
 	useSecretsProviderConnection: () => ({
@@ -41,6 +42,7 @@ vi.mock('../composables/useSecretsProviderConnection.ee', () => ({
 		createConnection: vi.fn(),
 		updateConnection: vi.fn(),
 		testConnection: vi.fn(),
+		activateConnection: mockActivateConnection,
 	}),
 }));
 
@@ -82,6 +84,7 @@ describe('SettingsSecretsProviders', () => {
 		mockFetchProviders.mockResolvedValue(undefined);
 		mockFetchActiveConnections.mockResolvedValue(undefined);
 		mockFetchConnection.mockResolvedValue(undefined);
+		mockActivateConnection.mockResolvedValue(undefined);
 		mockIsEnterpriseEnabled.value = false;
 		mockProviders.value = [];
 		mockActiveProviders.value = [];
@@ -343,6 +346,68 @@ describe('SettingsSecretsProviders', () => {
 
 			await vi.waitFor(() => {
 				expect(mockReloadConnection).toHaveBeenCalledWith('aws-prod');
+			});
+
+			expect(mockFetchConnection).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('handleToggleEnabled', () => {
+		const activeProviders: SecretProviderConnection[] = [
+			{
+				id: '1',
+				name: 'aws-prod',
+				type: 'awsSecretsManager',
+				state: 'connected',
+				isEnabled: false,
+				projects: [],
+				settings: {},
+				secretsCount: 5,
+				secrets: [],
+				createdAt: '2024-01-20T10:00:00Z',
+				updatedAt: '2024-01-20T10:00:00Z',
+			},
+		];
+
+		it('should call activateConnection and fetchConnection on enable success', async () => {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.ExternalSecrets] = true;
+			mockIsEnterpriseEnabled.value = true;
+			mockIsLoading.value = false;
+			mockActiveProviders.value = activeProviders;
+
+			const rbacStore = useRBACStore();
+			rbacStore.globalScopes = ['externalSecretsProvider:update'];
+
+			mockActivateConnection.mockResolvedValue({ ...activeProviders[0], isEnabled: true });
+
+			const { getByTestId } = renderComponent({ pinia });
+
+			await userEvent.click(getByTestId('secrets-provider-enabled-switch'));
+
+			await vi.waitFor(() => {
+				expect(mockActivateConnection).toHaveBeenCalledWith('aws-prod');
+			});
+
+			expect(mockFetchConnection).toHaveBeenCalledWith('aws-prod');
+		});
+
+		it('should not fetch connection when toggling fails', async () => {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.ExternalSecrets] = true;
+			mockIsEnterpriseEnabled.value = true;
+			mockIsLoading.value = false;
+			mockActiveProviders.value = activeProviders;
+
+			const rbacStore = useRBACStore();
+			rbacStore.globalScopes = ['externalSecretsProvider:update'];
+
+			mockActivateConnection.mockRejectedValue(new Error('Enable failed'));
+
+			const { getByTestId } = renderComponent({ pinia });
+
+			await userEvent.click(getByTestId('secrets-provider-enabled-switch'));
+
+			await vi.waitFor(() => {
+				expect(mockActivateConnection).toHaveBeenCalledWith('aws-prod');
 			});
 
 			expect(mockFetchConnection).not.toHaveBeenCalled();

@@ -20,7 +20,7 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { I18nT } from 'vue-i18n';
 
 import SecretsProviderConnectionCard from '../components/SecretsProviderConnectionCard.ee.vue';
@@ -37,6 +37,7 @@ const pageRedirectionHelper = usePageRedirectionHelper();
 const uiStore = useUIStore();
 const secretsProviderConnection = useSecretsProviderConnection(projectsStore.currentProjectId);
 const hasActiveProviders = computed(() => secretsProviders.activeProviders.value.length > 0);
+const activatingProvider = ref<string | null>(null);
 
 const sortedProviders = computed(() => {
 	return [...secretsProviders.activeProviders.value].sort((a, b) => a.name.localeCompare(b.name));
@@ -48,6 +49,34 @@ function getProjectForProvider(provider: SecretProviderConnection): ProjectListI
 	return (
 		projectsStore.projects.find((p: ProjectListItem) => p.id === provider.projects[0].id) ?? null
 	);
+}
+
+async function handleToggleEnabled(providerKey: string) {
+	activatingProvider.value = providerKey;
+	try {
+		await secretsProviderConnection.activateConnection(providerKey);
+		toast.showMessage({
+			title: i18n.baseText('settings.secretsProviderConnections.actions.activate.success.title'),
+			message: i18n.baseText(
+				'settings.secretsProviderConnections.actions.activate.success.description',
+				{
+					interpolate: { provider: providerKey },
+				},
+			),
+			type: 'success',
+		});
+		await secretsProviders.fetchConnection(providerKey);
+	} catch (error) {
+		toast.showError(
+			error,
+			i18n.baseText('settings.secretsProviderConnections.actions.activate.error.title'),
+			i18n.baseText('settings.secretsProviderConnections.actions.activate.error.description', {
+				interpolate: { provider: providerKey },
+			}),
+		);
+	} finally {
+		activatingProvider.value = null;
+	}
 }
 
 function getProviderTypeInfo(providerType: string) {
@@ -208,10 +237,12 @@ function goToUpgrade() {
 					:provider-type-info="getProviderTypeInfo(provider.type)"
 					:project="getProjectForProvider(provider)"
 					:can-update="secretsProviders.canUpdate.value"
+					:activating="activatingProvider === provider.name"
 					@click="handleCardClick(provider.name)"
 					@edit="handleEdit"
 					@share="handleShare"
 					@reload="handleReload"
+					@toggle-enabled="handleToggleEnabled"
 					@delete="handleDelete"
 				/>
 			</div>

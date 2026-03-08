@@ -6,6 +6,7 @@ import {
 	N8nBadge,
 	N8nCard,
 	N8nHeading,
+	N8nSwitch2,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -33,6 +34,7 @@ const props = defineProps<{
 	providerTypeInfo?: SecretProviderTypeResponse;
 	project?: ProjectListItem | null;
 	canUpdate: boolean;
+	activating?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -40,6 +42,7 @@ const emit = defineEmits<{
 	share: [providerKey: string];
 	reload: [providerKey: string];
 	delete: [providerKey: string];
+	toggleEnabled: [providerKey: string];
 }>();
 
 const provider = toRef(props, 'provider');
@@ -56,6 +59,8 @@ const formattedDate = computed(() => {
 const showDisconnectedBadge = computed(() => {
 	return provider.value.state === 'error';
 });
+
+const isDisabled = computed(() => provider.value.isEnabled === false);
 
 const canDelete = computed(() => {
 	if (rbacStore.hasScope('externalSecretsProvider:delete')) return true;
@@ -125,7 +130,7 @@ const actionDropdownOptions = computed(() => {
 		});
 	}
 
-	if (provider.value.state === 'connected' && canSync.value) {
+	if (provider.value.state === 'connected' && canSync.value && !isDisabled.value) {
 		options.push({
 			label: i18n.baseText('settings.externalSecrets.card.actionDropdown.reload'),
 			value: 'reload',
@@ -153,6 +158,11 @@ function onAction(action: string) {
 		emit('delete', provider.value.name);
 	}
 }
+
+function onToggleEnabled(value: boolean) {
+	if (!value) return;
+	emit('toggleEnabled', provider.value.name);
+}
 </script>
 
 <template>
@@ -170,7 +180,16 @@ function onAction(action: string) {
 					provider.name
 				}}</N8nHeading>
 				<N8nBadge
-					v-if="showDisconnectedBadge"
+					v-if="isDisabled"
+					theme="warning"
+					:bold="false"
+					size="xsmall"
+					data-test-id="disabled-badge"
+				>
+					{{ i18n.baseText('settings.secretsProviderConnections.state.disabled') }}
+				</N8nBadge>
+				<N8nBadge
+					v-else-if="showDisconnectedBadge"
 					theme="warning"
 					:bold="false"
 					size="xsmall"
@@ -207,7 +226,27 @@ function onAction(action: string) {
 			</N8nText>
 		</template>
 		<template #append>
-			<N8nTooltip :class="$style.cardBadge" placement="top">
+			<N8nTooltip v-if="isDisabled && canUpdate" :class="$style.cardBadge" placement="top">
+				<div :class="$style.switchWrapper" @click.stop>
+					<N8nSwitch2
+						:model-value="false"
+						:disabled="activating"
+						size="small"
+						data-test-id="secrets-provider-enabled-switch"
+						@update:model-value="onToggleEnabled"
+					/>
+				</div>
+				<template #content>
+					{{
+						i18n.baseText('settings.secretsProviderConnections.actions.activate', {
+							interpolate: {
+								provider: provider?.name,
+							},
+						})
+					}}
+				</template>
+			</N8nTooltip>
+			<N8nTooltip v-else :class="$style.cardBadge" placement="top">
 				<N8nBadge
 					:class="$style.badge"
 					theme="tertiary"
@@ -260,6 +299,12 @@ function onAction(action: string) {
 }
 
 .cardBadge {
+	margin-right: var(--spacing--3xs);
+}
+
+.switchWrapper {
+	display: flex;
+	align-items: center;
 	margin-right: var(--spacing--3xs);
 }
 
