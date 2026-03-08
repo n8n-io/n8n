@@ -3,5 +3,13 @@
 		"GET api.app.com/items": {
 			"items": [{ "id": 101, "name": "Old Campaign" }]
 		}
+	},
+	"requests": {
+		"DELETE https://api.app.com/items/101": {
+			"response": { "deleted": true, "id": 101 }
+		},
+		"DELETE https://api.app.com/items/202": {
+			"response": { "deleted": true, "id": 202 }
+		}
 	}
 }

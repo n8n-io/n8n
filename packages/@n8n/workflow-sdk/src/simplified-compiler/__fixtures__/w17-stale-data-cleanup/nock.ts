@@ -9,11 +9,14 @@ export function setupNock(): nock.Scope[] {
 			{ id: 202, name: 'Expired Report', status: 'stale', lastAccessed: '2023-05-01' },
 		]);
 
-	// DELETE /items/remove → per-loop deletion
+	// DELETE /items/:id → per-loop deletion with item.id in URL
 	const s2 = nock('https://api.app.com')
-		.delete('/items/remove')
-		.reply(200, { deleted: true })
-		.persist();
+		.delete('/items/101')
+		.reply(200, { deleted: true, id: 101 });
 
-	return [s1, s2];
+	const s3 = nock('https://api.app.com')
+		.delete('/items/202')
+		.reply(200, { deleted: true, id: 202 });
+
+	return [s1, s2, s3];
 }

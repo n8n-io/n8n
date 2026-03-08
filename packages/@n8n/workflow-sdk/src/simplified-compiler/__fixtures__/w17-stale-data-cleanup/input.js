@@ -3,7 +3,7 @@ onSchedule({ cron: '0 2 * * *' }, async () => {
 		auth: { type: 'basic', credential: 'App API' },
 	});
 	for (const item of items) {
-		await http.delete('https://api.app.com/items/remove', {
+		await http.delete('https://api.app.com/items/' + item.id, {
 			auth: { type: 'basic', credential: 'App API' },
 		});
 	}

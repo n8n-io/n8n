@@ -44,10 +44,10 @@ return items.map(item => ({ json: item }));`,
 const http2 = node({
   type: 'n8n-nodes-base.httpRequest', version: 4.2,
   config: {
-    "name": "DELETE api.app.com/items/remove",
+    "name": "DELETE Request",
     "parameters": {
       "method": "DELETE",
-      "url": "https://api.app.com/items/remove",
+      "url": "={{ 'https://api.app.com/items/' + $('Split items').first().json.id }}",
       "options": {},
       "authentication": "genericCredentialType",
       "genericAuthType": "httpBasicAuth"
