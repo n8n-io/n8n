@@ -37,6 +37,7 @@ const MAIN_WAIT_STRATEGY = Wait.forAll([
 const WORKER_WAIT_STRATEGY = Wait.forAll([
 	Wait.forListeningPorts(),
 	Wait.forLogMessage('n8n worker is now ready').withStartupTimeout(30000),
+	Wait.forHttp('/healthz/readiness', 5678).forStatusCode(200).withStartupTimeout(30000),
 ]);
 
 export interface N8NInstancesOptions {
@@ -50,6 +51,7 @@ export interface N8NInstancesOptions {
 	baseUrl?: string;
 	allocatedPort?: number;
 	resourceQuota?: { memory?: number; cpu?: number };
+	workerResourceQuota?: { memory?: number; cpu?: number };
 	filesToMount?: FileToMount[];
 }
 
@@ -177,18 +179,34 @@ async function createContainer(
 export async function createN8NInstances(
 	options: N8NInstancesOptions,
 ): Promise<N8NInstancesResult> {
-	const { mains, workers, projectName, network, allocatedPort, resourceQuota, filesToMount } =
-		options;
+	const {
+		mains,
+		workers,
+		projectName,
+		network,
+		allocatedPort,
+		resourceQuota,
+		workerResourceQuota,
+		filesToMount,
+	} = options;
 
 	const log = createElapsedLogger('n8n-instances');
 	const environment = computeEnvironment(options);
 	const containers: StartedTestContainer[] = [];
 
-	const shared: SharedConfig = {
+	const mainShared: SharedConfig = {
 		projectName,
 		environment,
 		network,
 		resourceQuota,
+		filesToMount,
+	};
+
+	const workerShared: SharedConfig = {
+		projectName,
+		environment,
+		network,
+		resourceQuota: workerResourceQuota ?? resourceQuota,
 		filesToMount,
 	};
 
@@ -220,7 +238,7 @@ export async function createN8NInstances(
 	// Start main 1 first (handles DB migrations/setup)
 	const [main1, ...remaining] = instances;
 	log(`Starting main 1: ${main1.name} (DB setup)`);
-	containers.push(await createContainer(main1, shared));
+	containers.push(await createContainer(main1, mainShared));
 	log('main 1 ready');
 
 	// Start remaining instances in parallel
@@ -230,7 +248,10 @@ export async function createN8NInstances(
 			remaining.map(async (instance) => {
 				const type = instance.isWorker ? 'worker' : 'main';
 				log(`Starting ${type} ${instance.instanceNumber}: ${instance.name}`);
-				const container = await createContainer(instance, shared);
+				const container = await createContainer(
+					instance,
+					instance.isWorker ? workerShared : mainShared,
+				);
 				log(`${type} ${instance.instanceNumber} ready`);
 				return container;
 			}),
