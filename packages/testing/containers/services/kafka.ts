@@ -49,6 +49,10 @@ export const kafka: Service<KafkaResult> = {
 	},
 };
 
+/**
+ * Test helper for interacting with a Kafka broker.
+ * Provides topic management, message publishing, consumer group monitoring, and consumption.
+ */
 export class KafkaHelper {
 	private readonly kafka: Kafka;
 
@@ -61,6 +65,7 @@ export class KafkaHelper {
 		});
 	}
 
+	/** Creates a topic with the given number of partitions. */
 	async createTopic(topic: string, numPartitions = 1): Promise<void> {
 		const admin = this.kafka.admin();
 		try {
@@ -73,6 +78,7 @@ export class KafkaHelper {
 		}
 	}
 
+	/** Polls until a consumer group reaches 'Stable' state with active members, or times out. */
 	async waitForConsumerGroup(
 		groupId: string,
 		options: { timeoutMs?: number; pollIntervalMs?: number } = {},
@@ -101,6 +107,7 @@ export class KafkaHelper {
 		}
 	}
 
+	/** Publishes a single message to a topic. Lazily initializes the producer on first call. */
 	async publish(topic: string, message: string | object, key?: string): Promise<void> {
 		if (!this.producer) {
 			this.producer = this.kafka.producer();
@@ -115,6 +122,10 @@ export class KafkaHelper {
 		});
 	}
 
+	/**
+	 * Publishes messages in chunked batches to stay under Kafka's message.max.bytes limit.
+	 * Default batch size is 1000 messages; callers can override for large payloads.
+	 */
 	async publishBatch(
 		topic: string,
 		messages: Array<{ value: string | object; key?: string }>,
@@ -137,6 +148,7 @@ export class KafkaHelper {
 		}
 	}
 
+	/** Returns per-partition and total lag for a consumer group on a topic. */
 	async getConsumerGroupLag(
 		groupId: string,
 		topic: string,
@@ -162,6 +174,7 @@ export class KafkaHelper {
 		}
 	}
 
+	/** Consumes up to maxMessages from a topic, returning within timeoutMs. Used for test assertions. */
 	async consume(
 		topic: string,
 		options: {

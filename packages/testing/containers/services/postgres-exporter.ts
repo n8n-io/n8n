@@ -15,6 +15,12 @@ export interface PostgresExporterMeta {
 
 export type PostgresExporterResult = ServiceResult<PostgresExporterMeta>;
 
+/**
+ * Runs a Prometheus-compatible exporter that scrapes PostgreSQL internal statistics
+ * (connections, transactions, replication lag, etc.) and exposes them as metrics on /metrics.
+ * VictoriaMetrics scrapes this endpoint to make Postgres performance data queryable via PromQL.
+ * Auto-starts when both postgres and victoriaMetrics services are in use.
+ */
 export const postgresExporter: Service<PostgresExporterResult> = {
 	description: 'Postgres Exporter',
 	dependsOn: ['postgres'],
