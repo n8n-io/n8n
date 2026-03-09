@@ -20,7 +20,7 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted } from 'vue';
 import { I18nT } from 'vue-i18n';
 
 import SecretsProviderConnectionCard from '../components/SecretsProviderConnectionCard.ee.vue';
@@ -37,7 +37,6 @@ const pageRedirectionHelper = usePageRedirectionHelper();
 const uiStore = useUIStore();
 const secretsProviderConnection = useSecretsProviderConnection(projectsStore.currentProjectId);
 const hasActiveProviders = computed(() => secretsProviders.activeProviders.value.length > 0);
-const activatingProvider = ref<string | null>(null);
 
 const sortedProviders = computed(() => {
 	return [...secretsProviders.activeProviders.value].sort((a, b) => a.name.localeCompare(b.name));
@@ -51,8 +50,7 @@ function getProjectForProvider(provider: SecretProviderConnection): ProjectListI
 	);
 }
 
-async function handleToggleEnabled(providerKey: string) {
-	activatingProvider.value = providerKey;
+async function handleActivate(providerKey: string) {
 	try {
 		await secretsProviderConnection.activateConnection(providerKey);
 		await secretsProviders.fetchConnection(providerKey);
@@ -74,8 +72,6 @@ async function handleToggleEnabled(providerKey: string) {
 				interpolate: { provider: providerKey },
 			}),
 		);
-	} finally {
-		activatingProvider.value = null;
 	}
 }
 
@@ -237,12 +233,11 @@ function goToUpgrade() {
 					:provider-type-info="getProviderTypeInfo(provider.type)"
 					:project="getProjectForProvider(provider)"
 					:can-update="secretsProviders.canUpdate.value"
-					:activating="activatingProvider === provider.name"
 					@click="handleCardClick(provider.name)"
 					@edit="handleEdit"
 					@share="handleShare"
 					@reload="handleReload"
-					@toggle-enabled="handleToggleEnabled"
+					@activate="handleActivate"
 					@delete="handleDelete"
 				/>
 			</div>
