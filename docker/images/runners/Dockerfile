@@ -30,13 +30,9 @@ RUN node -e "const pkg = require('./package.json'); \
 RUN rm -f node_modules/.modules.yaml && \
     pnpm add moment@2.30.1 --prod --no-lockfile
 
-# Rebuild isolated-vm native addon against the current Node.js version.
-# The pre-built binary from CI may have been compiled against a different
-# Node.js version (e.g., v22), causing ERR_DLOPEN_FAILED at runtime when
-# the V8 ABI has changed (e.g., missing ArrayBuffer::Allocator::Reallocate).
-RUN apk add --no-cache --virtual .build-deps python3 make g++ && \
-    npm rebuild isolated-vm && \
-    apk del .build-deps
+# Rebuild isolated-vm for the container platform (prebuilt binaries exist for
+# linuxmusl-arm64 and linuxmusl-x64, so no compilation toolchain is needed).
+RUN npm rebuild isolated-vm
 
 # ==============================================================================
 # STAGE 2: Python runner build (@n8n/task-runner-python) with uv
