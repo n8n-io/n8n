@@ -40,5 +40,6 @@ export const WORKFLOW_DESCRIPTION_MODAL_KEY = 'workflowDescription';
 export const WORKFLOW_PUBLISH_MODAL_KEY = 'workflowPublish';
 export const WORKFLOW_HISTORY_PUBLISH_MODAL_KEY = 'workflowHistoryPublish';
 export const WORKFLOW_HISTORY_DIFF_MODAL_KEY = 'workflowHistoryDiff';
+export const WORKFLOW_PUBLISH_TIMELINE_MODAL_KEY = 'workflowPublishTimeline';
 export const CREDENTIAL_RESOLVER_EDIT_MODAL_KEY = 'credentialResolverEdit';
 export const AI_BUILDER_DIFF_MODAL_KEY = 'aiBuilderDiff';

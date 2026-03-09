@@ -1,5 +1,5 @@
 import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
-import { User, WorkflowHistoryRepository } from '@n8n/db';
+import { User, WorkflowHistoryRepository, WorkflowPublishHistoryRepository } from '@n8n/db';
 import type { UpdateResult } from '@n8n/typeorm';
 import { mockClear } from 'jest-mock-extended';
 
@@ -11,12 +11,14 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { getWorkflow, getWorkflowHistory } from '@test-integration/workflow';
 
 const workflowHistoryRepository = mockInstance(WorkflowHistoryRepository);
+const workflowPublishHistoryRepository = mockInstance(WorkflowPublishHistoryRepository);
 const logger = mockLogger();
 const workflowFinderService = mockInstance(WorkflowFinderService);
 const eventService = mockInstance(EventService);
 const workflowHistoryService = new WorkflowHistoryService(
 	logger,
 	workflowHistoryRepository,
+	workflowPublishHistoryRepository,
 	workflowFinderService,
 	eventService,
 );

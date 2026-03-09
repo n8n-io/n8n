@@ -84,6 +84,27 @@ export const getWorkflowVersionsByIds = async (
 	return data;
 };
 
+export type PublishTimelineEvent = {
+	id: number;
+	workflowId: string;
+	versionId: string;
+	event: 'activated' | 'deactivated';
+	createdAt: string;
+	userId: string | null;
+	user: { firstName: string; lastName: string } | null;
+};
+
+export const getPublishTimeline = async (
+	context: IRestApiContext,
+	workflowId: string,
+): Promise<PublishTimelineEvent[]> => {
+	const { data } = await get(
+		context.baseUrl,
+		`/workflow-history/workflow/${workflowId}/publish-timeline`,
+	);
+	return data;
+};
+
 export const updateWorkflowHistoryVersion = async (
 	context: IRestApiContext,
 	workflowId: string,
