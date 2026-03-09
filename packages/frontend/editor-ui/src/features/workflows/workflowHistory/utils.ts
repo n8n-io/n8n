@@ -24,11 +24,15 @@ export const getVersionLabel = ({
 	currentVersionId?: string;
 }) => {
 	const i18n = useI18n();
-	if (workflowHistory.versionId === currentVersionId) {
-		return i18n.baseText('workflowHistory.item.currentChanges');
+	const isNamedVersion = Boolean(workflowHistory.name);
+	if (isNamedVersion) {
+		return workflowHistory.name;
 	}
 
-	return workflowHistory.name ?? generateVersionLabelFromId(workflowHistory.versionId);
+	const isCurrentVersion = workflowHistory.versionId === currentVersionId;
+	return isCurrentVersion
+		? i18n.baseText('workflowHistory.item.currentChanges')
+		: generateVersionLabelFromId(workflowHistory.versionId);
 };
 
 export const formatTimestamp = (value: string) => {
