@@ -176,22 +176,51 @@ export async function decompressFolder(sourcePath: string, outputDir: string): P
 
 		const zipStream = createReadStream(sourcePath);
 
+		// Register error handler BEFORE reading to catch EOF and other stream errors
+		zipStream.on('error', (error) => {
+			// If stream ends with EOF, it's normal - just finalize
+			const errorWithCode = error as { code?: string; message?: string };
+			if (errorWithCode.code === 'EOF' || errorWithCode.message?.includes('EOF')) {
+				streamEnded = true;
+				unzip.push(new Uint8Array(0), true);
+				attemptToResolve();
+			} else {
+				reject(error);
+			}
+		});
+
+		// Handle stream end event (normal completion)
+		zipStream.on('end', () => {
+			streamEnded = true;
+			unzip.push(new Uint8Array(0), true);
+			attemptToResolve();
+		});
+
 		try {
 			for await (const chunk of zipStream) {
 				unzip.push(chunk as Uint8Array, false);
 			}
 
-			streamEnded = true;
-
-			// IMPORTANT: signal end of zip stream
-			unzip.push(new Uint8Array(0), true);
-
-			attemptToResolve();
+			// Only set streamEnded if loop completed normally (not via error/end event)
+			if (!streamEnded) {
+				streamEnded = true;
+				// IMPORTANT: signal end of zip stream
+				unzip.push(new Uint8Array(0), true);
+				attemptToResolve();
+			}
 		} catch (err) {
-			reject(err);
+			// Handle EOF errors gracefully (common in Kubernetes with network filesystems)
+			if (
+				(err as { code?: string; message?: string }).code === 'EOF' ||
+				(err as { message?: string }).message?.includes('EOF')
+			) {
+				streamEnded = true;
+				unzip.push(new Uint8Array(0), true);
+				attemptToResolve();
+			} else {
+				reject(err);
+			}
 		}
-
-		zipStream.on('error', reject);
 	});
 }
 /**
