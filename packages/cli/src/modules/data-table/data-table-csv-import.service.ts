@@ -44,16 +44,7 @@ export class DataTableCsvImportService {
 
 			const csvRows = await this.csvParserService.parseFileData(fileId, hasHeaders);
 
-			return csvRows.map((csvRow) => {
-				const transformedRow: DataTableRow = {};
-				for (const [csvColName, value] of Object.entries(csvRow)) {
-					const tableColName = columnMapping.get(csvColName);
-					if (tableColName) {
-						transformedRow[tableColName] = value;
-					}
-				}
-				return transformedRow;
-			});
+			return this.transformRows(csvRows, columnMapping);
 		} catch (error) {
 			this.logger.error('Failed to import data from CSV file', { error, fileId });
 			throw new FileUploadError(error instanceof Error ? error.message : 'Failed to read CSV file');
@@ -80,8 +71,9 @@ export class DataTableCsvImportService {
 				tableColumnNames,
 			);
 
+			const mapping = new Map(matchedColumns.map((col) => [col, col]));
 			return {
-				rows: this.transformRows(csvRows, matchedColumns),
+				rows: this.transformRows(csvRows, mapping),
 				systemColumnsIgnored,
 			};
 		} catch (error) {
@@ -132,13 +124,13 @@ export class DataTableCsvImportService {
 
 	private transformRows(
 		csvRows: Array<Record<string, string>>,
-		matchedColumns: string[],
+		columnMapping: Map<string, string>,
 	): DataTableRow[] {
 		return csvRows.map((csvRow) => {
 			const transformedRow: DataTableRow = {};
-			for (const colName of matchedColumns) {
-				const value = csvRow[colName];
-				transformedRow[colName] = value === undefined || value === '' ? null : value;
+			for (const [csvColName, tableColName] of columnMapping) {
+				const value = csvRow[csvColName];
+				transformedRow[tableColName] = value === undefined || value === '' ? null : value;
 			}
 			return transformedRow;
 		});

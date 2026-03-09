@@ -230,6 +230,26 @@ describe('DataTableCsvImportService', () => {
 			expect(result[0]).toEqual({ 'First Name': 'Alice', Age: '30' });
 		});
 
+		it('should convert empty and missing CSV values to null', async () => {
+			mockCsvParserService.parseFile.mockResolvedValue({
+				rowCount: 1,
+				columnCount: 2,
+				columns: [
+					{ name: 'name', type: 'string' },
+					{ name: 'age', type: 'number' },
+				],
+			});
+			mockCsvParserService.parseFileData.mockResolvedValue([
+				{ name: 'Alice', age: '' },
+				{ name: '' },
+			]);
+
+			const result = await service.buildRowsForNewTable(fileId, true, tableColumns);
+
+			expect(result[0]).toEqual({ 'First Name': 'Alice', Age: null });
+			expect(result[1]).toEqual({ 'First Name': null, Age: null });
+		});
+
 		it('should wrap unexpected errors in FileUploadError', async () => {
 			mockCsvParserService.parseFile.mockRejectedValue(new Error('file not found'));
 
