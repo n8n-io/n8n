@@ -32,6 +32,10 @@ on:
           - experimental
           - premajor
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   create-release-pr:
     runs-on: ubuntu-latest
@@ -41,6 +45,9 @@ jobs:
       pull-requests: write
 
     timeout-minutes: 5
+
+    outputs:
+      pull-request-number: ${{ steps.create-pr.outputs.pull-request-number }}
 
     steps:
       - name: Generate GitHub App Token
@@ -108,6 +115,7 @@ jobs:
 
       - name: Push the release branch, and Create the PR
         uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c # v6
+        id: create-pr
         with:
           token: ${{ steps.generate_token.outputs.token }}
           base: 'release/${{ env.NEXT_RELEASE }}'
@@ -117,3 +125,12 @@ jobs:
           labels: release,release:${{ inputs.release-type }}
           title: ':rocket: Release ${{ env.NEXT_RELEASE }}'
           body: ${{ steps.generate-body.outputs.content }}
+
+  approve-and-automerge:
+    needs: [create-release-pr]
+    if: |
+      needs.create-release-pr.outputs.pull-request-number != ''
+    uses: ./.github/workflows/util-approve-and-set-automerge.yml
+    secrets: inherit
+    with:
+      pull-request-number: ${{ needs.create-release-pr.outputs.pull-request-number }}

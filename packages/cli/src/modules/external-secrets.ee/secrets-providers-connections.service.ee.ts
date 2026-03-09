@@ -102,6 +102,7 @@ export class SecretsProvidersConnectionsService {
 			type?: string;
 			projectIds?: string[];
 			settings?: IDataObject;
+			isEnabled?: boolean;
 		},
 		userId: string,
 	): Promise<SecretsProviderConnection> {
@@ -123,6 +124,9 @@ export class SecretsProvidersConnectionsService {
 			const savedSettings = this.decryptConnectionSettings(connection.encryptedSettings);
 			const unredactedSettings = this.redactionService.unredact(updates.settings, savedSettings);
 			connection.encryptedSettings = this.encryptConnectionSettings(unredactedSettings);
+		}
+		if (updates.isEnabled !== undefined) {
+			connection.isEnabled = updates.isEnabled;
 		}
 
 		await this.repository.save(connection);
@@ -228,6 +232,7 @@ export class SecretsProvidersConnectionsService {
 			id: String(connection.id),
 			name: connection.providerKey,
 			type: connection.type as SecretsProviderType,
+			isEnabled: connection.isEnabled,
 			secretsCount: secretNames.length,
 			// Provider may not be registered yet in multi-main setups.
 			// When that's the case the default state is 'initializing'.
@@ -253,6 +258,7 @@ export class SecretsProvidersConnectionsService {
 			id: String(connection.id),
 			name: connection.providerKey,
 			type: connection.type as SecretsProviderType,
+			isEnabled: connection.isEnabled,
 			secretsCount: secretNames.length,
 			// Provider may not be registered yet in multi-main setups.
 			// When that's the case the default state is 'initializing'.

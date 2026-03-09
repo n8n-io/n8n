@@ -17,6 +17,7 @@ import {
 	ERROR_WORKFLOW_DOCS_URL,
 	TIME_SAVED_DOCS_URL,
 	TIME_SAVED_NODE_TYPE,
+	ERROR_TRIGGER_NODE_TYPE,
 } from '@/app/constants';
 import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -64,6 +65,12 @@ const hasEvaluationSetOutputsNode = computed((): boolean => {
 
 const hasErrorWorkflow = computed(() => {
 	return !!props.workflow.settings?.errorWorkflow;
+});
+
+const isErrorWorkflow = computed(() => {
+	return props.workflow.nodes.some(
+		(node) => node.type === ERROR_TRIGGER_NODE_TYPE && node.disabled !== true,
+	);
 });
 
 const hasSavedTimeNodes = computed(() => {
@@ -118,7 +125,11 @@ const availableActions = computed(() => {
 	const suggestedActionSettings = cachedSettings.value?.suggestedActions ?? {};
 
 	// Error workflow action
-	if (hasPublishedVersion && !suggestedActionSettings.errorWorkflow?.ignored) {
+	if (
+		hasPublishedVersion &&
+		!isErrorWorkflow.value &&
+		!suggestedActionSettings.errorWorkflow?.ignored
+	) {
 		actions.push({
 			id: 'errorWorkflow',
 			title: i18n.baseText('workflowProductionChecklist.errorWorkflow.title'),

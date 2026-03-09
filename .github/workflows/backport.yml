@@ -59,18 +59,24 @@ jobs:
             # Description
             Backport of #${pull_number} to `${target_branch}`.
 
-            - [ ] Review the changes
+            ## Checklist for the author (@${pull_author}) to go through.
+
+            - [ ] Review the backport changes
             - [ ] Fix possible conflicts
             - [ ] Merge to target branch
+
+            After this PR has been merged, it will be picked up in the next patch release for release track.
 
             # Original description
 
             ${pull_description}
           pull_title: ${pull_title} (backport to ${target_branch})
           add_author_as_assignee: true
+          add_author_as_reviewer: true
           copy_assignees: true
-          copy_requested_reviewers: true
+          copy_requested_reviewers: false
           copy_labels_pattern: '^(?!Backport to\b).+' # Copy everything except backport labels
+          add_labels: 'automation:backport'
           experimental: >
             {
               "conflict_resolution": "draft_commit_conflicts"
