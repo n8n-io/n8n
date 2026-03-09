@@ -187,8 +187,16 @@ export class ChatHubAgentService {
 			throw new NotFoundError('Chat agent not found');
 		}
 
+		try {
+			await this.deleteEmbeddingsByAgentId(userId, id);
+		} catch (error) {
+			this.logger.warn(
+				`Could not delete embeddings from vector store for agent ${id}. Proceeding with agent deletion.`,
+				{ error },
+			);
+		}
+
 		await this.chatAgentRepository.deleteAgent(id);
-		await this.deleteEmbeddings(userId, id);
 
 		this.logger.debug(`Chat agent deleted: ${id} by user ${userId}`);
 	}
@@ -276,7 +284,7 @@ export class ChatHubAgentService {
 		this.logger.debug(`Deleted all embeddings for user ${userId} from vector store`);
 	}
 
-	private async deleteEmbeddings(userId: string, agentId: string): Promise<void> {
+	private async deleteEmbeddingsByAgentId(userId: string, agentId: string): Promise<void> {
 		const settings = await this.chatHubSettingsService.getSemanticSearchOptions();
 		if (!settings) {
 			return;
@@ -298,15 +306,11 @@ export class ChatHubAgentService {
 		this.logger.debug(`Deleted embeddings for agent ${agentId} from vector store`);
 	}
 
-	private async deleteEmbeddingsByKnowledgeIds(
+	private async deleteEmbeddingsByKnowledgeId(
 		user: User,
 		agentId: string,
-		knowledgeIds: string[],
+		fileKnowledgeId: string,
 	): Promise<void> {
-		if (knowledgeIds.length === 0) {
-			return;
-		}
-
 		const settings = await this.ensureSemanticSearchOptions();
 		const additionalData = await getBase({ userId: user.id });
 
@@ -316,14 +320,14 @@ export class ChatHubAgentService {
 			additionalData,
 			{ name: settings.vectorStore.nodeType, version: 1 },
 			{},
-			JSON.stringify({ filter: { agentId, fileKnowledgeId: knowledgeIds } }),
+			JSON.stringify({ filter: { agentId, fileKnowledgeId } }),
 			{
 				[settings.vectorStore.credentialType]: { id: settings.vectorStore.credentialId, name: '' },
 			},
 		);
 
 		this.logger.debug(
-			`Deleted embeddings for ${knowledgeIds.length} files from vector store (agentId: ${agentId}, knowledgeIds: ${knowledgeIds.join(', ')})`,
+			`Deleted embeddings from vector store (agentId: ${agentId}, knowledgeId: ${fileKnowledgeId})`,
 		);
 	}
 
@@ -352,7 +356,14 @@ export class ChatHubAgentService {
 			throw new NotFoundError('File not found');
 		}
 
-		await this.deleteEmbeddingsByKnowledgeIds(user, agentId, [fileItem.id]);
+		try {
+			await this.deleteEmbeddingsByKnowledgeId(user, agentId, fileItem.id);
+		} catch (error) {
+			this.logger.warn(
+				`Could not delete embeddings from vector store for file "${fileItem.fileName}" (agentId: ${agentId}, knowledgeId: ${fileItem.id}). Proceeding with file deletion.`,
+				{ error },
+			);
+		}
 
 		await this.chatAgentRepository.updateAgent(agentId, {
 			files: agent.files.filter((f) => f.id !== fileKnowledgeId),
