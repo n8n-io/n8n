@@ -336,7 +336,7 @@ describe('CredentialResolverWorkflowService', () => {
 			);
 		});
 
-		it('should skip credentials without resolver ID', async () => {
+		it('should return resolver_missing status for credentials without resolver ID', async () => {
 			const mockWorkflow = createMockWorkflow({
 				nodes: [
 					createMockNode({
@@ -351,6 +351,7 @@ describe('CredentialResolverWorkflowService', () => {
 			const mockCredential = createMockCredential({
 				id: 'cred-1',
 				type: 'oauth2Api',
+				name: 'OAuth2 API',
 				isResolvable: true,
 				resolverId: null,
 			});
@@ -364,7 +365,13 @@ describe('CredentialResolverWorkflowService', () => {
 				metadata: {},
 			});
 
-			expect(result).toEqual([]);
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({
+				credentialId: 'cred-1',
+				credentialName: 'OAuth2 API',
+				status: 'resolver_missing',
+				credentialType: 'oauth2Api',
+			});
 			expect(mockResolverImplementation.getSecret).not.toHaveBeenCalled();
 		});
 

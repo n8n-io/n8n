@@ -32,10 +32,13 @@ import {
 	Patch,
 	Query,
 } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import { sanitizeFilename } from '@n8n/utils';
 import type { Response } from 'express';
+import multer from 'multer';
 
 import { ChatHubAgentService } from './chat-hub-agent.service';
+import { ChatHubUploadMiddleware } from './chat-hub-upload.middleware';
 import { ChatHubToolService } from './chat-hub-tool.service';
 import { extractAuthenticationMetadata } from './chat-hub-extractor';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
@@ -44,6 +47,8 @@ import { ChatHubService } from './chat-hub.service';
 import { ChatModelsRequestDto } from './dto/chat-models-request.dto';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+
+const chatHubUploadMiddleware = Container.get(ChatHubUploadMiddleware);
 
 @RestController('/chat')
 export class ChatHubController {
@@ -307,12 +312,6 @@ export class ChatHubController {
 		res.status(204).send();
 	}
 
-	@Get('/agents')
-	@GlobalScope('chatHubAgent:list')
-	async getAgents(req: AuthenticatedRequest) {
-		return await this.chatAgentService.getAgentsByUserIdAsDtos(req.user.id);
-	}
-
 	@Get('/agents/:agentId')
 	@GlobalScope('chatHubAgent:read')
 	async getAgent(req: AuthenticatedRequest, _res: Response, @Param('agentId') agentId: string) {
@@ -349,6 +348,43 @@ export class ChatHubController {
 	): Promise<void> {
 		await this.chatAgentService.deleteAgent(agentId, req.user.id);
 
+		res.status(204).send();
+	}
+
+	@Post('/agents/:agentId/files', {
+		middlewares: [chatHubUploadMiddleware.array('files')],
+	})
+	@GlobalScope('chatHubAgent:update')
+	async uploadAgentFiles(
+		req: AuthenticatedRequest & { files?: Express.Multer.File[]; fileUploadError?: Error },
+		_res: Response,
+		@Param('agentId') agentId: string,
+	) {
+		if (req.fileUploadError) {
+			const error = req.fileUploadError;
+			if (error instanceof multer.MulterError) {
+				throw new BadRequestError(`File upload error: ${error.message}`);
+			}
+			throw error instanceof BadRequestError ? error : new BadRequestError('File upload failed');
+		}
+
+		const files = req.files ?? [];
+		if (files.length === 0) {
+			throw new BadRequestError('No files uploaded');
+		}
+
+		return await this.chatAgentService.addFilesToAgent(agentId, req.user, files);
+	}
+
+	@Delete('/agents/:agentId/files/:fileKnowledgeId')
+	@GlobalScope('chatHubAgent:update')
+	async deleteAgentFile(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Param('agentId') agentId: string,
+		@Param('fileKnowledgeId') fileKnowledgeId: string,
+	): Promise<void> {
+		await this.chatAgentService.deleteAgentFile(agentId, req.user, fileKnowledgeId);
 		res.status(204).send();
 	}
 

@@ -1444,8 +1444,8 @@ describe('Request Helper Functions', () => {
 		const node = mock<INode>();
 
 		const createSsrfBridge = (overrides?: Partial<SsrfBridge>): SsrfBridge => ({
-			validateIp: jest.fn().mockReturnValue({ allowed: true }),
-			validateUrl: jest.fn().mockResolvedValue({ allowed: true }),
+			validateIp: jest.fn().mockReturnValue({ ok: true, result: undefined }),
+			validateUrl: jest.fn().mockResolvedValue({ ok: true, result: undefined }),
 			validateRedirectSync: jest.fn(),
 			createSecureLookup: jest.fn().mockReturnValue(jest.fn()),
 			...overrides,
@@ -1468,11 +1468,10 @@ describe('Request Helper Functions', () => {
 				expect(response).toEqual({ ok: true });
 			});
 
-			test('should throw UserError when validateUrl blocks a direct IP request', async () => {
+			test('should throw when validateUrl blocks a direct IP request', async () => {
+				const blockedError = new UserError('IP address is blocked');
 				const ssrfBridge = createSsrfBridge({
-					validateUrl: jest
-						.fn()
-						.mockResolvedValue({ allowed: false, reason: 'IP address is blocked' }),
+					validateUrl: jest.fn().mockResolvedValue({ ok: false, error: blockedError }),
 				});
 				const additionalData = mock<IWorkflowExecuteAdditionalData>({
 					hooks,
@@ -1487,7 +1486,7 @@ describe('Request Helper Functions', () => {
 						method: 'GET',
 						url: 'http://127.0.0.1/secret',
 					}),
-				).rejects.toThrow(UserError);
+				).rejects.toThrow('IP address is blocked');
 
 				expect(ssrfBridge.validateUrl).toHaveBeenCalledWith(new URL('http://127.0.0.1/secret'));
 			});
@@ -1559,11 +1558,10 @@ describe('Request Helper Functions', () => {
 		});
 
 		describe('proxyRequestToAxios (legacy path)', () => {
-			test('should throw UserError when validateUrl blocks a direct IP request', async () => {
+			test('should throw when validateUrl blocks a direct IP request', async () => {
+				const blockedError = new UserError('IP address is blocked');
 				const ssrfBridge = createSsrfBridge({
-					validateUrl: jest
-						.fn()
-						.mockResolvedValue({ allowed: false, reason: 'IP address is blocked' }),
+					validateUrl: jest.fn().mockResolvedValue({ ok: false, error: blockedError }),
 				});
 				const additionalData = mock<IWorkflowExecuteAdditionalData>({
 					hooks,
@@ -1572,7 +1570,7 @@ describe('Request Helper Functions', () => {
 
 				await expect(
 					proxyRequestToAxios(workflow, additionalData, node, 'http://10.0.0.1/internal'),
-				).rejects.toThrow(UserError);
+				).rejects.toThrow('IP address is blocked');
 
 				expect(ssrfBridge.validateUrl).toHaveBeenCalledWith(new URL('http://10.0.0.1/internal'));
 			});
