@@ -1,0 +1,38 @@
+name: Skyramp Testbot
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-maintenance:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Skyramp Testbot
+        uses: skyramp/testbot@v0.2.0
+        with:
+          skyramp_license_file: ${{ secrets.SKYRAMP_LICENSE }}
+          anthropic_api_key: ${{ secrets.SKYRAMP_TESTBOT_API_KEY }}
+
+          service_startup_command: './deployment-testbot/setup.sh'
+          health_check_command: 'curl -f http://localhost:5678/healthz'
+          health_check_timeout: 60
+          auth_token_command: './deployment-testbot/get-token.sh'
+
+          test_directory: 'test'
+          auto_commit: true
+          post_pr_comment: true
+          enable_debug: true
+          commit_message: 'TestBot: update tests for n8n'
