@@ -31,7 +31,6 @@ import {
 	NodeApiError,
 	NodeOperationError,
 	NodeSslError,
-	UserError,
 	isObjectEmpty,
 	ExecutionBaseError,
 	jsonParse,
