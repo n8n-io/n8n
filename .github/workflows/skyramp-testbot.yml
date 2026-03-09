@@ -21,7 +21,7 @@ jobs:
           fetch-depth: 0
 
       - name: Run Skyramp Testbot
-        uses: skyramp/testbot@v0.2.0
+        uses: skyramp/testbot@v0.3.0
         with:
           skyramp_license_file: ${{ secrets.SKYRAMP_LICENSE }}
           anthropic_api_key: ${{ secrets.SKYRAMP_TESTBOT_API_KEY }}
