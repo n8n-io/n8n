@@ -51,17 +51,18 @@ export async function runLoadTest({
 	}
 
 	// Phase 2: Activate workflow
+	// For burst tests, processing starts at activation (messages are already queued),
+	// so the timer must begin here to capture the full drain window.
+	const activationStart = Date.now();
 	await api.workflows.activate(workflowId, createdWorkflow.versionId!);
 	await handle.waitForReady({ timeoutMs: 30_000 });
 
 	// Phase 3: Post-activation load (publish at controlled rate)
-	// Timer starts here to capture the full processing window (publish + drain),
-	// not just the drain tail. For steady-state tests, n8n consumes messages
-	// concurrently during publishing, so measuring only drain time would
-	// inflate throughput (e.g. 913 exec/s when the real rate is ~100 exec/s).
-	const loadStart = Date.now();
-
+	// For steady-state tests, n8n consumes concurrently during publishing,
+	// so the timer starts at publish to measure the real processing window.
+	let publishStart: number | undefined;
 	if (load.type === 'steady') {
+		publishStart = Date.now();
 		const result = await handle.publishAtRate({
 			ratePerSecond: load.ratePerSecond,
 			durationSeconds: load.durationSeconds,
@@ -76,7 +77,7 @@ export async function runLoadTest({
 	console.log(`[LOAD] Waiting for ${expectedExecutions} executions (timeout: ${timeoutMs}ms)`);
 
 	const drainResult = await handle.waitForDrain({ expectedCount: expectedExecutions, timeoutMs });
-	const totalDurationMs = Date.now() - loadStart;
+	const totalDurationMs = Date.now() - (publishStart ?? activationStart);
 
 	if (!drainResult.drained) {
 		console.warn(
