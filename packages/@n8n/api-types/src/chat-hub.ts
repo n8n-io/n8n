@@ -47,6 +47,7 @@ export interface ChatHubAgentKnowledgeItem {
 	mimeType: string;
 	status?: ChatHubAgentKnowledgeItemStatus;
 	error?: string;
+	createdAt?: string;
 }
 
 /**

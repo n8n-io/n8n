@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import dateformat from 'dateformat';
 import type { ChatHubLLMProvider, ChatHubAgentKnowledgeItem } from '@n8n/api-types';
 import { providerDisplayNames } from '@/features/ai/chatHub/constants';
 
@@ -18,6 +19,14 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+
+const formattedCreatedAt = computed(() => {
+	const createdAt = props.item.createdAt ?? new Date().toISOString();
+	const currentYear = new Date().getFullYear().toString();
+	const sameYear = createdAt.startsWith(currentYear);
+	const date = dateformat(createdAt, `mmmm d${sameYear ? '' : ', yyyy'}`);
+	return i18n.baseText('chatHub.agent.editor.files.createdAt', { interpolate: { date } });
+});
 
 const warningTooltip = computed<string | undefined>(() => {
 	if (props.item.isNew || props.item.status !== 'indexed') return undefined;
@@ -40,7 +49,10 @@ const warningTooltip = computed<string | undefined>(() => {
 
 <template>
 	<div :class="$style.fileRow">
-		<span :class="$style.fileName">{{ item.fileName }}</span>
+		<div :class="$style.fileName">
+			<span :class="$style.fileNameText">{{ item.fileName }}</span>
+			<span :class="$style.createdAt">{{ formattedCreatedAt }}</span>
+		</div>
 		<div :class="$style.indexedCell">
 			<N8nTooltip v-if="warningTooltip" :content="warningTooltip">
 				<N8nText size="small" color="warn" :class="$style.statusText">
@@ -68,8 +80,8 @@ const warningTooltip = computed<string | undefined>(() => {
 					</N8nText>
 				</N8nTooltip>
 			</template>
-			<N8nText v-else size="small" color="text-light">
-				{{ item.isNew ? item.mimeType : i18n.baseText('chatHub.agent.editor.files.indexed') }}
+			<N8nText v-else-if="item.isNew" size="small" color="text-light">
+				{{ item.mimeType }}
 			</N8nText>
 		</div>
 		<N8nIconButton icon="trash-2" size="small" variant="subtle" @click.stop="emit('remove')" />
@@ -93,11 +105,23 @@ const warningTooltip = computed<string | undefined>(() => {
 .fileName {
 	flex: 1;
 	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	font-size: var(--font-size--sm);
-	line-height: var(--line-height--xl);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+
+	.fileNameText {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		font-size: var(--font-size--sm);
+		line-height: var(--line-height--xl);
+	}
+}
+
+.createdAt {
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-2);
+	line-height: var(--line-height--lg);
 }
 
 .indexedCell {

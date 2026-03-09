@@ -484,6 +484,7 @@ export class ChatHubAgentService {
 				fileName: storedFile.fileName ?? originalName,
 				provider: settings.embeddingModel.provider,
 				status: 'indexing',
+				createdAt: new Date().toISOString(),
 			});
 			pdfFilesToInsert.push({ attachment: storedFile, knowledgeId });
 		}
