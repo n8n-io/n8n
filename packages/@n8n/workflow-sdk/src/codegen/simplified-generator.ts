@@ -26,7 +26,12 @@ import type { WorkflowJSON } from '../types/base';
 import { nodeTypeToClassName } from '../shared/ai-node-mapping';
 import { CREDENTIAL_TO_AUTH_TYPE } from '../shared/credential-mapping';
 import { fromScheduleRule } from '../shared/schedule-mapping';
-import { NODE_TYPE_TO_TRIGGER, TRIGGER_TYPES } from '../shared/trigger-mapping';
+import {
+	APP_TRIGGER_REGISTRY,
+	NODE_TYPE_TO_APP_TRIGGER,
+	NODE_TYPE_TO_TRIGGER,
+	TRIGGER_TYPES,
+} from '../shared/trigger-mapping';
 import { buildSemanticGraph } from './semantic-graph';
 import { annotateGraph } from './graph-annotator';
 import { buildCompositeTree } from './composite-builder';
@@ -63,7 +68,7 @@ interface SimplifiedGenContext {
 	lines: string[];
 	graph: SemanticGraph;
 	nodeNameToVarName: Map<string, string>;
-	triggerType: 'manual' | 'webhook' | 'schedule' | 'error' | '';
+	triggerType: 'manual' | 'webhook' | 'schedule' | 'error' | 'app' | '';
 	codeNodeVars: Set<string>;
 	subFunctions: Map<string, SubFunctionInfo>;
 	execToFunc: ExecToFuncMap;
@@ -871,8 +876,14 @@ function isMultiLine(node: SemanticNode, ctx: SimplifiedGenContext): boolean {
 }
 
 function setTriggerType(node: SemanticNode, ctx: SimplifiedGenContext): void {
-	const key = NODE_TYPE_TO_TRIGGER[node.type] ?? 'manual';
-	ctx.triggerType = key as typeof ctx.triggerType;
+	const key = NODE_TYPE_TO_TRIGGER[node.type];
+	if (key) {
+		ctx.triggerType = key as typeof ctx.triggerType;
+	} else if (NODE_TYPE_TO_APP_TRIGGER[node.type]) {
+		ctx.triggerType = 'app';
+	} else {
+		ctx.triggerType = 'manual';
+	}
 }
 
 // ─── Leaf ────────────────────────────────────────────────────────────────────
@@ -2163,8 +2174,8 @@ function emitTriggerHeader(
 	hasRespond = false,
 ): void {
 	const params = node.json.parameters ?? {};
-	const triggerKey = NODE_TYPE_TO_TRIGGER[node.type] ?? 'manual';
-	const { callbackName } = TRIGGER_TYPES[triggerKey];
+	const triggerKey = NODE_TYPE_TO_TRIGGER[node.type];
+	const appServiceName = NODE_TYPE_TO_APP_TRIGGER[node.type];
 
 	// Emit @example pin data annotation for non-schedule triggers
 	if (triggerKey !== 'schedule') {
@@ -2173,6 +2184,44 @@ function emitTriggerHeader(
 			emit(ctx, `/** @example ${JSON.stringify(pinData)} */`);
 		}
 	}
+
+	// App trigger: onTrigger('serviceName', { ...params, credential }, async (...) => {)
+	if (appServiceName) {
+		const entry = APP_TRIGGER_REGISTRY[appServiceName];
+		const optionParts: string[] = [];
+
+		// Emit remaining node parameters as the options object
+		for (const [key, value] of Object.entries(params)) {
+			optionParts.push(`${key}: ${JSON.stringify(value)}`);
+		}
+
+		// Extract credential name and type from node's credentials config
+		if (entry?.credentialTypes.length) {
+			const credentials = node.json.credentials as Record<string, { name: string }> | undefined;
+			if (credentials) {
+				// Find which credential type key is present in the node
+				const matchedType = entry.credentialTypes.find((ct) => credentials[ct]);
+				if (matchedType) {
+					optionParts.push(`credential: '${credentials[matchedType].name}'`);
+					// Emit credentialType only if it's not the default (first in array)
+					if (matchedType !== entry.credentialTypes[0]) {
+						optionParts.push(`credentialType: '${matchedType}'`);
+					}
+				}
+			}
+		}
+
+		const optionsStr = optionParts.length > 0 ? `{ ${optionParts.join(', ')} }` : '{}';
+		emit(ctx, `onTrigger('${appServiceName}', ${optionsStr}, async () => {`);
+		return;
+	}
+
+	if (!triggerKey) {
+		emit(ctx, `${TRIGGER_TYPES.manual.callbackName}(async () => {`);
+		return;
+	}
+
+	const { callbackName } = TRIGGER_TYPES[triggerKey];
 
 	switch (triggerKey) {
 		case 'manual':

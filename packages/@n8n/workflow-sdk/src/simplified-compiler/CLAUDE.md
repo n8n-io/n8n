@@ -63,7 +63,7 @@ The LLM writes normal JS (single values, for-of loops) and the compiler handles 
 ```
 Source JS string
   -> Acorn parse (AST)
-  -> findCallbacks() (onManual, onWebhook, onSchedule, onError)
+  -> findCallbacks() (onManual, onWebhook, onSchedule, onError, onTrigger)
   -> walkStatements() per callback
      -> extractIOCall() (http, ai, workflow, respond)
      -> processIfStatement() / processSwitchStatement()
@@ -97,7 +97,7 @@ Used by both compile and decompile:
 
 | File | Maps |
 |------|------|
-| `trigger-mapping.ts` | Callback name (`onManual`) <-> trigger node type (`n8n-nodes-base.manualTrigger`) |
+| `trigger-mapping.ts` | Callback name (`onManual`) <-> trigger node type (`n8n-nodes-base.manualTrigger`). Also `APP_TRIGGER_REGISTRY` for `onTrigger()` generic app triggers. |
 | `credential-mapping.ts` | Auth type (`bearer`) <-> credential type (`httpHeaderAuth`) |
 | `schedule-mapping.ts` | Human string (`{ every: '5m' }`) <-> n8n rule params |
 | `ai-node-mapping.ts` | DSL class name (`OpenAiModel`) <-> node type + version + category (from auto-generated registry) |
@@ -122,7 +122,7 @@ Assert: normalizeSDK(SDK₁) === normalizeSDK(SDK₂)
 - **Forward test**: `transpileWorkflowJS(input.js)` must equal `output.js` exactly
 - **Round-trip test**: compile -> decompile -> recompile must produce structurally identical SDK
 
-**Fixtures:** `__fixtures__/w01-w31/`, each containing:
+**Fixtures:** `__fixtures__/w01-w32/`, each containing:
 - `meta.json` — title, templateId, optional `skip` flag
 - `input.js` — simplified DSL source
 - `output.js` — expected SDK output
@@ -140,7 +140,7 @@ Assert: normalizeSDK(SDK₁) === normalizeSDK(SDK₂)
 | `examples.ts` | Pre-built DSL examples for UI quick-start templates |
 | `generate-report.ts` | HTML report generator for fixture validation results + expectation badges/diffs |
 | `index.ts` | Public exports: `transpileWorkflowJS`, `decompileWorkflowSDK`, `COMPILER_EXAMPLES` |
-| `__fixtures__/w01-w31/` | Test fixtures (real workflow patterns, w18-w22 sub-functions, w23-w24 try/catch, w25 CRUD+branching, w26 loop+sub-fn, w27 loop+try/catch, w28 else-if+numeric, w29 try+switch, w30 multi-trigger independent, w31 Promise.all) |
+| `__fixtures__/w01-w32/` | Test fixtures (real workflow patterns, w18-w22 sub-functions, w23-w24 try/catch, w25 CRUD+branching, w26 loop+sub-fn, w27 loop+try/catch, w28 else-if+numeric, w29 try+switch, w30 multi-trigger independent, w31 Promise.all, w32 app trigger) |
 
 **Decompile pipeline (in `src/codegen/`):**
 
@@ -178,12 +178,39 @@ The `jsonBodyToExpression()` function recursively converts the parsed JSON body,
 
 **Constraints**: Destructuring is required (`const [a, b] = ...`). Each array element must be an IO call (`http.get/post/...`). The collect node maps each variable to `varSourceKind: 'code'` for expression resolution.
 
+## App Trigger Registry (`onTrigger`)
+
+Generic app triggers via `onTrigger('serviceName', options, callback)`. Unlike `onManual/onWebhook/onSchedule/onError` which have specialized parameter mappings, app trigger parameters pass through directly to the node — no custom mapping per service.
+
+**DSL syntax:**
+```javascript
+onTrigger('jira', {
+  events: ['jira:issue_created'],
+  credential: 'My Jira Account',
+}, async () => { ... });
+```
+
+**How it works:**
+1. `findCallbacks()` detects `onTrigger` calls, extracts service name from arg[0], options from arg[1], callback from arg[2]
+2. Service name is looked up in `APP_TRIGGER_REGISTRY` (in `trigger-mapping.ts`) to get nodeType, version, credentialTypes
+3. `credential` key is extracted from options and emitted as node credentials config using the appropriate credential type
+4. `credentialType` key (optional) selects a non-default credential type (e.g. `'githubOAuth2Api'` instead of `'githubApi'`)
+5. Remaining options are passed through directly as node parameters
+6. Callback params are seeded into `varSourceMap` (same as webhook `{ body }`)
+
+**Credential type selection:** Each registry entry has `credentialTypes: string[]` listing all valid credential keys (first = default). User can specify `credentialType` in options to pick a non-default one. The decompiler only emits `credentialType` when it differs from the default.
+
+**Registry** (in `trigger-mapping.ts`): jira, github, gitlab, slack, telegram, stripe, typeform, airtable, hubspot, linear. Easily extensible — add entries to `APP_TRIGGER_REGISTRY`.
+
+**Decompiler**: `NODE_TYPE_TO_APP_TRIGGER` reverse lookup detects app trigger nodes. `emitTriggerHeader()` reconstructs `onTrigger('serviceName', { ...params, credential }, ...)` from the node's parameters and credentials.
+
 ## Supported Language Features
 
 | Category | DSL Syntax | Compiles To |
 |----------|-----------|-------------|
 | **Imports** | `import { onManual } from '@n8n/sdk'` | Silently ignored (DSL is compiled, not executed) |
 | **Triggers** | `onManual()`, `onWebhook()`, `onSchedule()`, `onError()` | Trigger nodes |
+| **App Triggers** | `onTrigger('jira', { events: [...], credential: 'Name' }, cb)` | App-specific trigger nodes (jira, github, slack, etc.) via `APP_TRIGGER_REGISTRY` |
 | **HTTP** | `await http.get/post/put/patch/delete(url, body?, options?)` | httpRequest node |
 | **AI** | `await new Agent({ prompt, model: new OpenAiModel({...}) }).chat()` | Agent node + subnodes (passthrough params) |
 | **Sub-workflows** | `await workflow.run(name)` | executeWorkflow node |
@@ -261,8 +288,8 @@ Validates existing fixtures through the full compilation pipeline (transpile, ge
 
 ## Coverage Status
 
-- **Round-trip**: 31/31 fixtures pass (100%)
-- **Schema validation**: 31/31 fixtures pass (100%). `KNOWN_SCHEMA_VIOLATIONS` is empty.
+- **Round-trip**: 32/32 fixtures pass (100%)
+- **Schema validation**: 32/32 fixtures pass (100%). `KNOWN_SCHEMA_VIOLATIONS` is empty.
 
 **Key insight**: Nested sub-workflow WorkflowBuilder references (e.g., `workflowJson: __tryCatch_1Workflow` inside a loop body sub-workflow) are handled automatically by `resolveWorkflowBuilderValues()` in `json-serializer.ts`. It duck-types WorkflowBuilder instances (`toJSON` + `add` methods) at any nesting depth and converts them to `JSON.stringify(value.toJSON())`.
 

@@ -251,7 +251,7 @@ function walkNode(node: AcornNode, info: CollectedInfo, ctx: WalkContext): void 
 		if (callExpr.callee?.type === 'Identifier') {
 			const name = callExpr.callee.name ?? '';
 			// Don't count callback names or builtins
-			if (name && !(name in CALLBACK_TO_TRIGGER) && name !== 'respond') {
+			if (name && !(name in CALLBACK_TO_TRIGGER) && name !== 'respond' && name !== 'onTrigger') {
 				info.functionCalls.push({
 					name,
 					argCount: callExpr.arguments?.length ?? 0,
@@ -262,10 +262,10 @@ function walkNode(node: AcornNode, info: CollectedInfo, ctx: WalkContext): void 
 		}
 	}
 
-	// Detect onManual/onWebhook/onSchedule/onError callback calls
+	// Detect onManual/onWebhook/onSchedule/onError/onTrigger callback calls
 	if (node.type === 'CallExpression' && node.callee?.type === 'Identifier') {
 		const name = node.callee.name ?? '';
-		if (name in CALLBACK_TO_TRIGGER) {
+		if (name in CALLBACK_TO_TRIGGER || name === 'onTrigger') {
 			const callbackInfo = extractCallbackInfo(name, node);
 			info.callbacks.push(callbackInfo);
 			// Walk the callback body with the callback index

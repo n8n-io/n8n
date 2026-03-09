@@ -14,7 +14,12 @@ import { classNameToEntry, getKnownIoMethods } from '../shared/ai-node-mapping';
 import type { AiNodeEntry } from '../shared/ai-node-mapping';
 import { AUTH_TYPE_TO_CREDENTIAL } from '../shared/credential-mapping';
 import { toScheduleRule } from '../shared/schedule-mapping';
-import { CALLBACK_TO_TRIGGER, TRIGGER_TYPES } from '../shared/trigger-mapping';
+import {
+	APP_TRIGGER_REGISTRY,
+	CALLBACK_TO_TRIGGER,
+	TRIGGER_TYPES,
+} from '../shared/trigger-mapping';
+import type { AppTriggerEntry } from '../shared/trigger-mapping';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -71,11 +76,12 @@ type AcornNode = acorn.Node & {
 // ─── Callback Info ───────────────────────────────────────────────────────────
 
 interface CallbackInfo {
-	triggerType: 'manual' | 'webhook' | 'schedule' | 'error';
+	triggerType: 'manual' | 'webhook' | 'schedule' | 'error' | 'app';
 	triggerOptions: Record<string, unknown>;
 	callbackBody: AcornNode[];
 	callbackParams: string[];
 	pinData?: unknown[];
+	appTrigger?: { serviceName: string; entry: AppTriggerEntry };
 }
 
 // ─── IO Call ─────────────────────────────────────────────────────────────────
@@ -543,7 +549,33 @@ function findCallbacks(
 		const name = callee.name ?? '';
 		const args = expr.arguments ?? [];
 
-		const triggerType = CALLBACK_TO_TRIGGER[name] as CallbackInfo['triggerType'] | undefined;
+		// Handle onTrigger('serviceName', options, callback) — generic app triggers
+		let triggerType: CallbackInfo['triggerType'] | undefined;
+		let appTrigger: CallbackInfo['appTrigger'];
+
+		if (name === 'onTrigger') {
+			// args[0] = service name string, args[1] = options, args[2] = callback
+			const serviceNameNode = args[0];
+			if (
+				!serviceNameNode ||
+				serviceNameNode.type !== 'Literal' ||
+				typeof serviceNameNode.value !== 'string'
+			) {
+				prevStmtEnd = stmt.end ?? prevStmtEnd;
+				continue;
+			}
+			const serviceName = serviceNameNode.value as string;
+			const entry = APP_TRIGGER_REGISTRY[serviceName];
+			if (!entry) {
+				prevStmtEnd = stmt.end ?? prevStmtEnd;
+				continue;
+			}
+			triggerType = 'app';
+			appTrigger = { serviceName, entry };
+		} else {
+			triggerType = CALLBACK_TO_TRIGGER[name] as CallbackInfo['triggerType'] | undefined;
+		}
+
 		if (!triggerType) {
 			prevStmtEnd = stmt.end ?? prevStmtEnd;
 			continue;
@@ -552,7 +584,11 @@ function findCallbacks(
 		let callbackFn: AcornNode | undefined;
 		let triggerOptions: Record<string, unknown> = {};
 
-		if (triggerType === 'manual' || triggerType === 'error') {
+		if (triggerType === 'app') {
+			// onTrigger('service', { ...options }, async (...) => { ... })
+			if (args[1]) triggerOptions = extractObjectLiteral(args[1]) ?? {};
+			callbackFn = args[2];
+		} else if (triggerType === 'manual' || triggerType === 'error') {
 			callbackFn = args[0];
 		} else {
 			if (args[0]) triggerOptions = extractObjectLiteral(args[0]) ?? {};
@@ -599,6 +635,7 @@ function findCallbacks(
 			callbackBody: fnBody,
 			callbackParams: cbParams,
 			pinData,
+			appTrigger,
 		});
 
 		prevStmtEnd = stmt.end ?? prevStmtEnd;
@@ -1231,8 +1268,8 @@ function transpileCallback(
 	ctx.nodes.push(triggerNode);
 	ctx.prevVar = triggerVar;
 
-	// Seed varSourceMap with webhook params
-	if (cb.triggerType === 'webhook') {
+	// Seed varSourceMap with callback params (webhook and app triggers)
+	if (cb.triggerType === 'webhook' || cb.triggerType === 'app') {
 		for (const param of cb.callbackParams) {
 			if (param !== 'respond') {
 				ctx.varSourceMap.set(param, triggerNode.nodeName);
@@ -3556,8 +3593,31 @@ function flushPendingCode(ctx: TranspilerContext): void {
 // ─── SDK Code Generation ─────────────────────────────────────────────────────
 
 function generateTriggerSDK(cb: CallbackInfo, varName: string): EmittedNode {
-	const triggerEntry = TRIGGER_TYPES[cb.triggerType] ?? TRIGGER_TYPES.manual;
-	const triggerInfo = { type: triggerEntry.nodeType, version: triggerEntry.version };
+	let triggerInfo: { type: string; version: number };
+	let credentialsStr = '';
+
+	if (cb.triggerType === 'app' && cb.appTrigger) {
+		// App trigger: use registry entry directly
+		const { entry } = cb.appTrigger;
+		triggerInfo = { type: entry.nodeType, version: entry.version };
+
+		// Extract credential from options and build credentials config.
+		// User can specify credentialType to pick a non-default type (e.g. 'githubOAuth2Api').
+		// Falls back to first entry in credentialTypes array.
+		const credentialName = cb.triggerOptions.credential as string | undefined;
+		if (credentialName && entry.credentialTypes.length > 0) {
+			const explicitType = cb.triggerOptions.credentialType as string | undefined;
+			const credType =
+				explicitType && entry.credentialTypes.includes(explicitType)
+					? explicitType
+					: entry.credentialTypes[0];
+			credentialsStr = `, credentials: { ${credType}: { name: '${credentialName}', id: '' } }`;
+		}
+	} else {
+		const triggerEntry = TRIGGER_TYPES[cb.triggerType] ?? TRIGGER_TYPES.manual;
+		triggerInfo = { type: triggerEntry.nodeType, version: triggerEntry.version };
+	}
+
 	const configParams = mapTriggerParams(cb);
 
 	// If webhook callback has `respond` param, set responseMode
@@ -3573,7 +3633,13 @@ function generateTriggerSDK(cb: CallbackInfo, varName: string): EmittedNode {
 		configParts.push(`pinData: ${JSON.stringify(cb.pinData)}`);
 	}
 
-	const configBody = configParts.length > 0 ? `{ ${configParts.join(', ')} }` : '{}';
+	let configBody = configParts.length > 0 ? `{ ${configParts.join(', ')} }` : '{}';
+
+	// Insert credentials into config if present (same pattern as HTTP nodes)
+	if (credentialsStr) {
+		configBody = configBody.slice(0, -1) + credentialsStr + ' }';
+	}
+
 	// Derive node name from trigger type the same way the SDK builder does
 	const typeParts = triggerInfo.type.split('.');
 	const rawName = typeParts[typeParts.length - 1];
@@ -3589,7 +3655,19 @@ function generateTriggerSDK(cb: CallbackInfo, varName: string): EmittedNode {
 function mapTriggerParams(cb: CallbackInfo): Record<string, unknown> {
 	if (cb.triggerType === 'schedule') return mapScheduleOptions(cb.triggerOptions);
 	if (cb.triggerType === 'webhook') return mapWebhookOptions(cb.triggerOptions);
+	if (cb.triggerType === 'app') return mapAppTriggerOptions(cb.triggerOptions);
 	return {};
+}
+
+function mapAppTriggerOptions(options: Record<string, unknown>): Record<string, unknown> {
+	// Pass all options through except `credential` and `credentialType` (extracted for credentials config)
+	const params: Record<string, unknown> = {};
+	for (const [key, value] of Object.entries(options)) {
+		if (key !== 'credential' && key !== 'credentialType') {
+			params[key] = value;
+		}
+	}
+	return params;
 }
 
 function mapScheduleOptions(options: Record<string, unknown>): Record<string, unknown> {
