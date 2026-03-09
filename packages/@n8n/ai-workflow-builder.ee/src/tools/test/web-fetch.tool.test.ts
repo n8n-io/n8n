@@ -7,18 +7,15 @@ import {
 	isBlockedUrl,
 	fetchUrl,
 	extractReadableContent,
-	isUrlInUserMessages,
-	isUrlInWorkflowNodes,
 } from '@/tools/utils/web-fetch.utils';
+import type { WebFetchSecurityManager } from '@/tools/web-fetch-security';
 import { createWebFetchTool, WEB_FETCH_TOOL } from '@/tools/web-fetch.tool';
 
-// Mock the LangGraph state access and interrupt
-const mockGetCurrentTaskInput = jest.fn();
+// Mock the LangGraph interrupt
 const mockInterrupt = jest.fn();
 
 jest.mock('@langchain/langgraph', () => ({
 	...jest.requireActual<object>('@langchain/langgraph'),
-	getCurrentTaskInput: (...args: unknown[]) => mockGetCurrentTaskInput(...args) as unknown,
 	interrupt: (...args: unknown[]) => mockInterrupt(...args) as unknown,
 }));
 
@@ -29,7 +26,6 @@ jest.mock('@/tools/utils/web-fetch.utils', () => ({
 	fetchUrl: jest.fn(),
 	extractReadableContent: jest.fn(),
 	isUrlInUserMessages: jest.fn(),
-	isUrlInWorkflowNodes: jest.fn(),
 }));
 
 const mockIsBlockedUrl = isBlockedUrl as jest.MockedFunction<typeof isBlockedUrl>;
@@ -38,12 +34,6 @@ const mockExtractReadableContent = extractReadableContent as jest.MockedFunction
 	typeof extractReadableContent
 >;
 const mockNormalizeHost = normalizeHost as jest.MockedFunction<typeof normalizeHost>;
-const mockIsUrlInUserMessages = isUrlInUserMessages as jest.MockedFunction<
-	typeof isUrlInUserMessages
->;
-const mockIsUrlInWorkflowNodes = isUrlInWorkflowNodes as jest.MockedFunction<
-	typeof isUrlInWorkflowNodes
->;
 
 function getMessageContent(command: Command): string {
 	const update = command.update as { messages: ToolMessage[] };
@@ -56,27 +46,37 @@ function getStateUpdates(command: Command): Record<string, unknown> {
 	return stateUpdates;
 }
 
+function createMockSecurityManager(
+	overrides: Partial<WebFetchSecurityManager> = {},
+): WebFetchSecurityManager {
+	return {
+		isHostAllowed: jest.fn().mockReturnValue(true),
+		approveDomain: jest.fn(),
+		approveAllDomains: jest.fn(),
+		hasBudget: jest.fn().mockReturnValue(true),
+		recordFetch: jest.fn(),
+		getStateUpdates: jest.fn().mockReturnValue({ webFetchCount: 1 }),
+		...overrides,
+	};
+}
+
 describe('web_fetch tool', () => {
 	const mockConfig: RunnableConfig = {
 		callbacks: [],
 		toolCall: { id: 'test-tool-call-id', name: 'web_fetch' },
 	} as RunnableConfig;
 
+	let security: WebFetchSecurityManager;
+
 	beforeEach(() => {
-		jest.clearAllMocks();
+		jest.resetAllMocks();
 		mockNormalizeHost.mockImplementation((url: string) => new URL(url).hostname.toLowerCase());
-		mockIsUrlInUserMessages.mockReturnValue(true);
-		mockIsUrlInWorkflowNodes.mockReturnValue(false);
-		mockGetCurrentTaskInput.mockReturnValue({
-			approvedDomains: [],
-			webFetchCount: 0,
-			messages: [],
-		});
+		security = createMockSecurityManager();
 	});
 
 	describe('createWebFetchTool', () => {
 		it('should create a tool with correct name and metadata', () => {
-			const result = createWebFetchTool();
+			const result = createWebFetchTool(() => security);
 			expect(result.toolName).toBe('web_fetch');
 			expect(result.displayTitle).toBe('Fetching web content');
 			expect(result.tool.name).toBe('web_fetch');
@@ -94,7 +94,7 @@ describe('web_fetch tool', () => {
 		it('should block URLs that fail SSRF check', async () => {
 			mockIsBlockedUrl.mockResolvedValue(true);
 
-			const { tool } = createWebFetchTool();
+			const { tool } = createWebFetchTool(() => security);
 			const command = await tool.invoke({ url: 'http://localhost:3000' }, mockConfig);
 			const content = getMessageContent(command);
 
@@ -106,12 +106,11 @@ describe('web_fetch tool', () => {
 	describe('per-turn budget', () => {
 		it('should block when fetch budget is exceeded', async () => {
 			mockIsBlockedUrl.mockResolvedValue(false);
-			mockGetCurrentTaskInput.mockReturnValue({
-				approvedDomains: ['example.com'],
-				webFetchCount: 3,
+			security = createMockSecurityManager({
+				hasBudget: jest.fn().mockReturnValue(false),
 			});
 
-			const { tool } = createWebFetchTool();
+			const { tool } = createWebFetchTool(() => security);
 			const command = await tool.invoke({ url: 'https://example.com/page' }, mockConfig);
 			const content = getMessageContent(command);
 
@@ -121,9 +120,11 @@ describe('web_fetch tool', () => {
 
 	describe('approval flow', () => {
 		beforeEach(() => {
-			// URL not from user (so approval is required), but from workflow nodes (so provenance passes)
-			mockIsUrlInUserMessages.mockReturnValue(false);
-			mockIsUrlInWorkflowNodes.mockReturnValue(true);
+			// Host not allowed (so approval is required)
+			security = createMockSecurityManager({
+				isHostAllowed: jest.fn().mockReturnValue(false),
+				getStateUpdates: jest.fn().mockReturnValue({ webFetchCount: 1 }),
+			});
 		});
 
 		it('should trigger interrupt for unapproved domain', async () => {
@@ -160,7 +161,7 @@ describe('web_fetch tool', () => {
 				truncated: false,
 			});
 
-			const { tool } = createWebFetchTool();
+			const { tool } = createWebFetchTool(() => security);
 			const command = await tool.invoke({ url: 'https://example.com/docs' }, mockConfig);
 
 			expect(mockInterrupt).toHaveBeenCalledWith(
@@ -177,9 +178,8 @@ describe('web_fetch tool', () => {
 
 		it('should skip interrupt for pre-approved domain', async () => {
 			mockIsBlockedUrl.mockResolvedValue(false);
-			mockGetCurrentTaskInput.mockReturnValue({
-				approvedDomains: ['example.com'],
-				webFetchCount: 0,
+			security = createMockSecurityManager({
+				isHostAllowed: jest.fn().mockReturnValue(true),
 			});
 
 			mockFetchUrl.mockResolvedValue({
@@ -196,7 +196,7 @@ describe('web_fetch tool', () => {
 				truncated: false,
 			});
 
-			const { tool } = createWebFetchTool();
+			const { tool } = createWebFetchTool(() => security);
 			await tool.invoke({ url: 'https://example.com/docs' }, mockConfig);
 
 			expect(mockInterrupt).not.toHaveBeenCalled();
@@ -210,7 +210,7 @@ describe('web_fetch tool', () => {
 				action: 'deny',
 			}));
 
-			const { tool } = createWebFetchTool();
+			const { tool } = createWebFetchTool(() => security);
 			const command = await tool.invoke({ url: 'https://example.com/docs' }, mockConfig);
 			const content = getMessageContent(command);
 
@@ -220,6 +220,13 @@ describe('web_fetch tool', () => {
 
 		it('should add domain to approvedDomains on allow_domain', async () => {
 			mockIsBlockedUrl.mockResolvedValue(false);
+			security = createMockSecurityManager({
+				isHostAllowed: jest.fn().mockReturnValue(false),
+				getStateUpdates: jest.fn().mockReturnValue({
+					webFetchCount: 1,
+					approvedDomains: ['example.com'],
+				}),
+			});
 			mockInterrupt.mockImplementation((payload: { requestId: string }) => ({
 				requestId: payload.requestId,
 				url: 'https://example.com/docs',
@@ -240,12 +247,14 @@ describe('web_fetch tool', () => {
 				truncated: false,
 			});
 
-			const { tool } = createWebFetchTool();
+			const { tool } = createWebFetchTool(() => security);
 			const command = await tool.invoke({ url: 'https://example.com/docs' }, mockConfig);
 			const stateUpdates = getStateUpdates(command);
 
 			expect(stateUpdates.approvedDomains).toEqual(['example.com']);
 			expect(stateUpdates.webFetchCount).toBe(1);
+			expect(security.approveDomain).toHaveBeenCalledWith('example.com');
+			expect(security.recordFetch).toHaveBeenCalled();
 		});
 
 		it('should NOT add domain to approvedDomains on allow_once', async () => {
@@ -270,12 +279,13 @@ describe('web_fetch tool', () => {
 				truncated: false,
 			});
 
-			const { tool } = createWebFetchTool();
+			const { tool } = createWebFetchTool(() => security);
 			const command = await tool.invoke({ url: 'https://example.com/docs' }, mockConfig);
 			const stateUpdates = getStateUpdates(command);
 
 			expect(stateUpdates.approvedDomains).toBeUndefined();
 			expect(stateUpdates.webFetchCount).toBe(1);
+			expect(security.approveDomain).not.toHaveBeenCalled();
 		});
 
 		it('should reject stale/mismatched resume payload (url mismatch)', async () => {
@@ -286,7 +296,7 @@ describe('web_fetch tool', () => {
 				action: 'allow_once',
 			});
 
-			const { tool } = createWebFetchTool();
+			const { tool } = createWebFetchTool(() => security);
 			const command = await tool.invoke({ url: 'https://example.com/docs' }, mockConfig);
 			const content = getMessageContent(command);
 
@@ -297,9 +307,8 @@ describe('web_fetch tool', () => {
 	describe('content fetching', () => {
 		beforeEach(() => {
 			mockIsBlockedUrl.mockResolvedValue(false);
-			mockGetCurrentTaskInput.mockReturnValue({
-				approvedDomains: ['example.com'],
-				webFetchCount: 0,
+			security = createMockSecurityManager({
+				isHostAllowed: jest.fn().mockReturnValue(true),
 			});
 		});
 
@@ -309,7 +318,7 @@ describe('web_fetch tool', () => {
 				reason: 'pdf',
 			});
 
-			const { tool } = createWebFetchTool();
+			const { tool } = createWebFetchTool(() => security);
 			const command = await tool.invoke({ url: 'https://example.com/doc.pdf' }, mockConfig);
 			const content = getMessageContent(command);
 
@@ -326,7 +335,7 @@ describe('web_fetch tool', () => {
 				contentType: 'text/html',
 			});
 
-			const { tool } = createWebFetchTool();
+			const { tool } = createWebFetchTool(() => security);
 			const command = await tool.invoke({ url: 'https://example.com/empty' }, mockConfig);
 			const content = getMessageContent(command);
 
@@ -348,7 +357,7 @@ describe('web_fetch tool', () => {
 				truncated: false,
 			});
 
-			const { tool } = createWebFetchTool();
+			const { tool } = createWebFetchTool(() => security);
 			const command = await tool.invoke({ url: 'https://example.com/page' }, mockConfig);
 			const content = getMessageContent(command);
 
@@ -375,7 +384,7 @@ describe('web_fetch tool', () => {
 				truncateReason: 'Content truncated to 30000 characters',
 			});
 
-			const { tool } = createWebFetchTool();
+			const { tool } = createWebFetchTool(() => security);
 			const command = await tool.invoke({ url: 'https://example.com/long' }, mockConfig);
 			const content = getMessageContent(command);
 
@@ -397,24 +406,28 @@ describe('web_fetch tool', () => {
 				truncated: false,
 			});
 
-			const { tool } = createWebFetchTool();
+			const { tool } = createWebFetchTool(() => security);
 			const command = await tool.invoke({ url: 'https://example.com/page' }, mockConfig);
 			const stateUpdates = getStateUpdates(command);
 
 			expect(stateUpdates.webFetchCount).toBe(1);
+			expect(security.recordFetch).toHaveBeenCalled();
 		});
 	});
 
 	describe('redirect handling', () => {
 		beforeEach(() => {
 			mockIsBlockedUrl.mockResolvedValue(false);
-			mockGetCurrentTaskInput.mockReturnValue({
-				approvedDomains: ['example.com'],
-				webFetchCount: 0,
+			security = createMockSecurityManager({
+				isHostAllowed: jest.fn().mockReturnValue(true),
 			});
 		});
 
 		it('should block redirect to private address', async () => {
+			security = createMockSecurityManager({
+				isHostAllowed: jest.fn().mockReturnValue(true),
+			});
+
 			mockFetchUrl.mockResolvedValue({
 				status: 'redirect_new_host',
 				finalUrl: 'http://localhost:3000/internal',
@@ -426,7 +439,7 @@ describe('web_fetch tool', () => {
 				.mockResolvedValueOnce(false) // original URL check
 				.mockResolvedValueOnce(true); // redirect URL check
 
-			const { tool } = createWebFetchTool();
+			const { tool } = createWebFetchTool(() => security);
 			const command = await tool.invoke({ url: 'https://example.com/redirect' }, mockConfig);
 			const content = getMessageContent(command);
 
@@ -434,6 +447,13 @@ describe('web_fetch tool', () => {
 		});
 
 		it('should trigger interrupt for redirect to unapproved domain and succeed on approval', async () => {
+			security = createMockSecurityManager({
+				isHostAllowed: jest
+					.fn()
+					.mockReturnValueOnce(true) // original host
+					.mockReturnValueOnce(false), // redirect host
+			});
+
 			mockFetchUrl
 				.mockResolvedValueOnce({
 					status: 'redirect_new_host',
@@ -459,7 +479,7 @@ describe('web_fetch tool', () => {
 				truncated: false,
 			});
 
-			const { tool } = createWebFetchTool();
+			const { tool } = createWebFetchTool(() => security);
 			const command = await tool.invoke({ url: 'https://example.com/redirect' }, mockConfig);
 
 			expect(mockInterrupt).toHaveBeenCalledWith(
@@ -476,6 +496,13 @@ describe('web_fetch tool', () => {
 		});
 
 		it('should return deny message when user denies redirect domain', async () => {
+			security = createMockSecurityManager({
+				isHostAllowed: jest
+					.fn()
+					.mockReturnValueOnce(true) // original host
+					.mockReturnValueOnce(false), // redirect host
+			});
+
 			mockFetchUrl.mockResolvedValueOnce({
 				status: 'redirect_new_host',
 				finalUrl: 'https://other-domain.com/page',
@@ -487,7 +514,7 @@ describe('web_fetch tool', () => {
 				action: 'deny',
 			});
 
-			const { tool } = createWebFetchTool();
+			const { tool } = createWebFetchTool(() => security);
 			const command = await tool.invoke({ url: 'https://example.com/redirect' }, mockConfig);
 			const content = getMessageContent(command);
 
@@ -496,6 +523,17 @@ describe('web_fetch tool', () => {
 		});
 
 		it('should add redirect host to approvedDomains on allow_domain', async () => {
+			security = createMockSecurityManager({
+				isHostAllowed: jest
+					.fn()
+					.mockReturnValueOnce(true) // original host
+					.mockReturnValueOnce(false), // redirect host
+				getStateUpdates: jest.fn().mockReturnValue({
+					webFetchCount: 1,
+					approvedDomains: ['other-domain.com'],
+				}),
+			});
+
 			mockFetchUrl
 				.mockResolvedValueOnce({
 					status: 'redirect_new_host',
@@ -521,14 +559,19 @@ describe('web_fetch tool', () => {
 				truncated: false,
 			});
 
-			const { tool } = createWebFetchTool();
+			const { tool } = createWebFetchTool(() => security);
 			const command = await tool.invoke({ url: 'https://example.com/redirect' }, mockConfig);
 			const stateUpdates = getStateUpdates(command);
 
 			expect(stateUpdates.approvedDomains).toEqual(['other-domain.com']);
+			expect(security.approveDomain).toHaveBeenCalledWith('other-domain.com');
 		});
 
 		it('should skip interrupt when redirect domain is in allowlist', async () => {
+			security = createMockSecurityManager({
+				isHostAllowed: jest.fn().mockReturnValue(true),
+			});
+
 			mockFetchUrl
 				.mockResolvedValueOnce({
 					status: 'redirect_new_host',
@@ -542,18 +585,13 @@ describe('web_fetch tool', () => {
 					contentType: 'text/html',
 				});
 
-			mockGetCurrentTaskInput.mockReturnValue({
-				approvedDomains: ['example.com', 'docs.example.com'],
-				webFetchCount: 0,
-			});
-
 			mockExtractReadableContent.mockReturnValue({
 				title: 'Docs',
 				content: 'Documentation content',
 				truncated: false,
 			});
 
-			const { tool } = createWebFetchTool();
+			const { tool } = createWebFetchTool(() => security);
 			const command = await tool.invoke({ url: 'https://example.com/redirect' }, mockConfig);
 
 			expect(mockInterrupt).not.toHaveBeenCalled();
@@ -565,46 +603,33 @@ describe('web_fetch tool', () => {
 
 	describe('error handling', () => {
 		it('should reject invalid URL input', async () => {
-			const { tool } = createWebFetchTool();
+			const { tool } = createWebFetchTool(() => security);
 			await expect(tool.invoke({ url: 'not-a-url' }, mockConfig)).rejects.toThrow();
 		});
 
 		it('should propagate GraphInterrupt errors', async () => {
 			mockIsBlockedUrl.mockResolvedValue(false);
+			security = createMockSecurityManager({
+				isHostAllowed: jest.fn().mockReturnValue(false),
+			});
 			const graphInterruptError = new Error('GraphInterrupt');
 			graphInterruptError.name = 'GraphInterrupt';
 			mockInterrupt.mockImplementation(() => {
 				throw graphInterruptError;
 			});
 
-			const { tool } = createWebFetchTool();
+			const { tool } = createWebFetchTool(() => security);
 			await expect(tool.invoke({ url: 'https://example.com/page' }, mockConfig)).rejects.toThrow(
 				'GraphInterrupt',
 			);
 		});
 	});
 
-	describe('URL provenance check', () => {
-		it('should reject URLs not found in user messages or workflow nodes', async () => {
+	describe('URL provenance and approval', () => {
+		it('should allow URLs found in user messages without approval', async () => {
 			mockIsBlockedUrl.mockResolvedValue(false);
-			mockIsUrlInUserMessages.mockReturnValue(false);
-			mockIsUrlInWorkflowNodes.mockReturnValue(false);
-
-			const { tool } = createWebFetchTool();
-			const command = await tool.invoke({ url: 'https://example.com/invented' }, mockConfig);
-			const content = getMessageContent(command);
-
-			expect(content).toContain('not provided by the user');
-		});
-
-		it('should allow URLs found in user messages', async () => {
-			mockIsBlockedUrl.mockResolvedValue(false);
-			mockIsUrlInUserMessages.mockReturnValue(true);
-			mockIsUrlInWorkflowNodes.mockReturnValue(false);
-			mockGetCurrentTaskInput.mockReturnValue({
-				approvedDomains: ['example.com'],
-				webFetchCount: 0,
-				messages: [],
+			security = createMockSecurityManager({
+				isHostAllowed: jest.fn().mockReturnValue(true),
 			});
 
 			mockFetchUrl.mockResolvedValue({
@@ -621,63 +646,19 @@ describe('web_fetch tool', () => {
 				truncated: false,
 			});
 
-			const { tool } = createWebFetchTool();
+			const { tool } = createWebFetchTool(() => security);
 			const command = await tool.invoke({ url: 'https://example.com/page' }, mockConfig);
 			const content = getMessageContent(command);
 
 			expect(content).toContain('web_fetch_result');
-		});
-
-		it('should allow URLs found in workflow node parameters', async () => {
-			mockIsBlockedUrl.mockResolvedValue(false);
-			mockIsUrlInUserMessages.mockReturnValue(false);
-			mockIsUrlInWorkflowNodes.mockReturnValue(true);
-			mockGetCurrentTaskInput.mockReturnValue({
-				approvedDomains: [],
-				webFetchCount: 0,
-				messages: [],
-				workflowJSON: {
-					nodes: [{ parameters: { url: 'https://api.example.com/docs' } }],
-				},
-			});
-
-			mockInterrupt.mockImplementation((payload: { requestId: string }) => ({
-				requestId: payload.requestId,
-				url: 'https://api.example.com/docs',
-				action: 'allow_once',
-			}));
-
-			mockFetchUrl.mockResolvedValue({
-				status: 'success',
-				body: '<html><body><p>API docs</p></body></html>',
-				finalUrl: 'https://api.example.com/docs',
-				httpStatus: 200,
-				contentType: 'text/html',
-			});
-
-			mockExtractReadableContent.mockReturnValue({
-				title: 'API Docs',
-				content: 'API documentation content',
-				truncated: false,
-			});
-
-			const { tool } = createWebFetchTool();
-			const command = await tool.invoke({ url: 'https://api.example.com/docs' }, mockConfig);
-			const content = getMessageContent(command);
-
-			expect(content).toContain('web_fetch_result');
-			// Workflow-extracted URLs still require domain approval
-			expect(mockInterrupt).toHaveBeenCalled();
+			expect(mockInterrupt).not.toHaveBeenCalled();
 		});
 
 		it('should skip domain approval for user-sent URLs on non-allowlisted domains', async () => {
 			mockIsBlockedUrl.mockResolvedValue(false);
-			mockIsUrlInUserMessages.mockReturnValue(true);
-			mockIsUrlInWorkflowNodes.mockReturnValue(false);
-			mockGetCurrentTaskInput.mockReturnValue({
-				approvedDomains: [],
-				webFetchCount: 0,
-				messages: [],
+			// isHostAllowed returns true because isUrlInUserMessages is checked inside the manager
+			security = createMockSecurityManager({
+				isHostAllowed: jest.fn().mockReturnValue(true),
 			});
 
 			mockFetchUrl.mockResolvedValue({
@@ -694,7 +675,7 @@ describe('web_fetch tool', () => {
 				truncated: false,
 			});
 
-			const { tool } = createWebFetchTool();
+			const { tool } = createWebFetchTool(() => security);
 			const command = await tool.invoke({ url: 'https://unknown-site.com/page' }, mockConfig);
 			const content = getMessageContent(command);
 
@@ -702,13 +683,54 @@ describe('web_fetch tool', () => {
 			expect(mockInterrupt).not.toHaveBeenCalled();
 			expect(content).toContain('web_fetch_result');
 		});
+
+		it('should require approval for URLs not sent by user', async () => {
+			mockIsBlockedUrl.mockResolvedValue(false);
+			security = createMockSecurityManager({
+				isHostAllowed: jest.fn().mockReturnValue(false),
+			});
+
+			mockInterrupt.mockImplementation((payload: { requestId: string }) => ({
+				requestId: payload.requestId,
+				url: 'https://example.com/ai-found',
+				action: 'allow_once',
+			}));
+
+			mockFetchUrl.mockResolvedValue({
+				status: 'success',
+				body: '<html><body><p>Content</p></body></html>',
+				finalUrl: 'https://example.com/ai-found',
+				httpStatus: 200,
+				contentType: 'text/html',
+			});
+
+			mockExtractReadableContent.mockReturnValue({
+				title: 'Test',
+				content: 'Content',
+				truncated: false,
+			});
+
+			const { tool } = createWebFetchTool(() => security);
+			const command = await tool.invoke({ url: 'https://example.com/ai-found' }, mockConfig);
+			const content = getMessageContent(command);
+
+			expect(mockInterrupt).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'web_fetch_approval',
+					url: 'https://example.com/ai-found',
+					domain: 'example.com',
+				}),
+			);
+			expect(content).toContain('web_fetch_result');
+		});
 	});
 
 	describe('approval action validation', () => {
 		beforeEach(() => {
-			// URL not from user (so approval is required), but from workflow nodes (so provenance passes)
-			mockIsUrlInUserMessages.mockReturnValue(false);
-			mockIsUrlInWorkflowNodes.mockReturnValue(true);
+			// Host not allowed (so approval is required)
+			security = createMockSecurityManager({
+				isHostAllowed: jest.fn().mockReturnValue(false),
+			});
 		});
 
 		it('should reject invalid approval action values', async () => {
@@ -719,7 +741,7 @@ describe('web_fetch tool', () => {
 				action: 'invalid_action',
 			}));
 
-			const { tool } = createWebFetchTool();
+			const { tool } = createWebFetchTool(() => security);
 			const command = await tool.invoke({ url: 'https://example.com/page' }, mockConfig);
 			const content = getMessageContent(command);
 
@@ -748,7 +770,7 @@ describe('web_fetch tool', () => {
 				truncated: false,
 			});
 
-			const { tool } = createWebFetchTool();
+			const { tool } = createWebFetchTool(() => security);
 			const command = await tool.invoke({ url: 'https://example.com/page' }, mockConfig);
 			const content = getMessageContent(command);
 
@@ -757,6 +779,14 @@ describe('web_fetch tool', () => {
 
 		it('should accept allow_all action and set allDomainsApproved', async () => {
 			mockIsBlockedUrl.mockResolvedValue(false);
+			security = createMockSecurityManager({
+				isHostAllowed: jest.fn().mockReturnValue(false),
+				getStateUpdates: jest.fn().mockReturnValue({
+					webFetchCount: 1,
+					approvedDomains: ['example.com'],
+					allDomainsApproved: true,
+				}),
+			});
 			mockInterrupt.mockImplementation((payload: { requestId: string }) => ({
 				requestId: payload.requestId,
 				url: 'https://example.com/page',
@@ -777,7 +807,7 @@ describe('web_fetch tool', () => {
 				truncated: false,
 			});
 
-			const { tool } = createWebFetchTool();
+			const { tool } = createWebFetchTool(() => security);
 			const command = await tool.invoke({ url: 'https://example.com/page' }, mockConfig);
 			const content = getMessageContent(command);
 			const stateUpdates = getStateUpdates(command);
@@ -785,17 +815,16 @@ describe('web_fetch tool', () => {
 			expect(content).toContain('web_fetch_result');
 			expect(stateUpdates.allDomainsApproved).toBe(true);
 			expect(stateUpdates.approvedDomains).toEqual(['example.com']);
+			expect(security.approveAllDomains).toHaveBeenCalled();
+			expect(security.approveDomain).toHaveBeenCalledWith('example.com');
 		});
 	});
 
 	describe('allDomainsApproved bypass', () => {
 		it('should skip domain approval interrupt when allDomainsApproved is true', async () => {
 			mockIsBlockedUrl.mockResolvedValue(false);
-			mockGetCurrentTaskInput.mockReturnValue({
-				approvedDomains: [],
-				allDomainsApproved: true,
-				webFetchCount: 0,
-				messages: [],
+			security = createMockSecurityManager({
+				isHostAllowed: jest.fn().mockReturnValue(true),
 			});
 
 			mockFetchUrl.mockResolvedValue({
@@ -812,7 +841,7 @@ describe('web_fetch tool', () => {
 				truncated: false,
 			});
 
-			const { tool } = createWebFetchTool();
+			const { tool } = createWebFetchTool(() => security);
 			const command = await tool.invoke({ url: 'https://example.com/page' }, mockConfig);
 			const content = getMessageContent(command);
 
@@ -822,11 +851,8 @@ describe('web_fetch tool', () => {
 
 		it('should skip redirect domain approval when allDomainsApproved is true', async () => {
 			mockIsBlockedUrl.mockResolvedValue(false);
-			mockGetCurrentTaskInput.mockReturnValue({
-				approvedDomains: ['example.com'],
-				allDomainsApproved: true,
-				webFetchCount: 0,
-				messages: [],
+			security = createMockSecurityManager({
+				isHostAllowed: jest.fn().mockReturnValue(true),
 			});
 
 			mockFetchUrl
@@ -848,7 +874,7 @@ describe('web_fetch tool', () => {
 				truncated: false,
 			});
 
-			const { tool } = createWebFetchTool();
+			const { tool } = createWebFetchTool(() => security);
 			const command = await tool.invoke({ url: 'https://example.com/redirect' }, mockConfig);
 			const content = getMessageContent(command);
 

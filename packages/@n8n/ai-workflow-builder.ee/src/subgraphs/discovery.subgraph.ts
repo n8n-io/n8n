@@ -27,6 +27,11 @@ import {
 } from '@/tools/introspect.tool';
 import { createNodeSearchTool } from '@/tools/node-search.tool';
 import { submitQuestionsTool } from '@/tools/submit-questions.tool';
+import {
+	createLangGraphSecurityManagerFactory,
+	createMutableSecurityManagerFactory,
+	type MutableWebFetchState,
+} from '@/tools/web-fetch-security';
 import { createWebFetchTool } from '@/tools/web-fetch.tool';
 import type { CoordinationLogEntry } from '@/types/coordination';
 import { createDiscoveryMetadata } from '@/types/coordination';
@@ -259,6 +264,14 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	private parsedNodeTypes!: INodeTypeDescription[];
 	private featureFlags?: BuilderFeatureFlags;
 
+	/** Mutable state for planner web_fetch hooks, updated before each planner invocation */
+	private plannerWebFetchState: MutableWebFetchState = {
+		approvedDomains: [],
+		allDomainsApproved: false,
+		webFetchCount: 0,
+		messages: [],
+	};
+
 	create(config: DiscoverySubgraphConfig) {
 		this.logger = config.logger;
 		this.parsedNodeTypes = config.parsedNodeTypes;
@@ -269,14 +282,21 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		const includePlanMode = config.featureFlags?.planMode === true;
 		const enableIntrospection = config.featureFlags?.enableIntrospection === true;
 
+		// Create security manager factories for web_fetch in each context
+		const discoverySecurityFactory = createLangGraphSecurityManagerFactory();
+		const plannerSecurityFactory = createMutableSecurityManagerFactory(this.plannerWebFetchState);
+
 		// Create base tools - search_nodes provides all data needed for discovery
 		const baseTools: StructuredTool[] = includePlanMode
 			? [
 					createNodeSearchTool(config.parsedNodeTypes).tool,
 					submitQuestionsTool,
-					createWebFetchTool().tool,
+					createWebFetchTool(discoverySecurityFactory).tool,
 				]
-			: [createNodeSearchTool(config.parsedNodeTypes).tool, createWebFetchTool().tool];
+			: [
+					createNodeSearchTool(config.parsedNodeTypes).tool,
+					createWebFetchTool(discoverySecurityFactory).tool,
+				];
 
 		// Conditionally add introspect tool if feature flag is enabled
 		if (enableIntrospection) {
@@ -334,7 +354,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		this.agent = systemPrompt.pipe(config.llm.bindTools(allTools));
 		this.plannerAgent = createPlannerAgent({
 			llm: config.plannerLLM,
-			tools: [createGetDocumentationTool().tool, createWebFetchTool().tool],
+			tools: [createGetDocumentationTool().tool, createWebFetchTool(plannerSecurityFactory).tool],
 		});
 
 		// Build the subgraph
@@ -393,6 +413,12 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			return {};
 		}
 
+		// Seed planner web_fetch state from discovery state so previously approved domains carry over
+		this.plannerWebFetchState.approvedDomains = [...(state.approvedDomains ?? [])];
+		this.plannerWebFetchState.allDomainsApproved = state.allDomainsApproved ?? false;
+		this.plannerWebFetchState.webFetchCount = state.webFetchCount ?? 0;
+		this.plannerWebFetchState.messages = state.messages ?? [];
+
 		const result = await invokePlannerNode(
 			this.plannerAgent,
 			{
@@ -409,11 +435,18 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			runnableConfig,
 		);
 
+		// Propagate planner's accumulated web_fetch approvals back to discovery state
+		const webFetchUpdates = {
+			approvedDomains: this.plannerWebFetchState.approvedDomains,
+			allDomainsApproved: this.plannerWebFetchState.allDomainsApproved,
+			webFetchCount: this.plannerWebFetchState.webFetchCount,
+		};
+
 		if (result.planDecision === 'modify') {
-			return { ...result, planModifyCount: state.planModifyCount + 1 };
+			return { ...result, ...webFetchUpdates, planModifyCount: state.planModifyCount + 1 };
 		}
 
-		return result;
+		return { ...result, ...webFetchUpdates };
 	}
 
 	private shouldPlan(state: typeof DiscoverySubgraphState.State): 'planner' | typeof END {

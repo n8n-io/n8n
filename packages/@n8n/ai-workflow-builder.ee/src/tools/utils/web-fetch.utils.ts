@@ -61,23 +61,6 @@ export function isUrlInUserMessages(url: string, messages: BaseMessage[]): boole
 	return false;
 }
 
-/**
- * Check if a URL appears anywhere in the workflow nodes' parameters.
- * This covers URLs referenced in existing nodes (e.g. HTTP Request node URLs).
- */
-export function isUrlInWorkflowNodes(
-	url: string,
-	workflowJSON: { nodes: Array<{ parameters?: Record<string, unknown> }> },
-): boolean {
-	const normalized = normalizeUrlForComparison(url);
-	for (const node of workflowJSON.nodes) {
-		if (!node.parameters) continue;
-		const paramStr = JSON.stringify(node.parameters);
-		if (paramStr.includes(url) || paramStr.includes(normalized)) return true;
-	}
-	return false;
-}
-
 // ============================================================================
 // TYPES
 // ============================================================================

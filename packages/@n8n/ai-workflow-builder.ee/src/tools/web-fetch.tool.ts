@@ -1,6 +1,5 @@
-import type { BaseMessage } from '@langchain/core/messages';
 import { tool } from '@langchain/core/tools';
-import { interrupt, getCurrentTaskInput } from '@langchain/langgraph';
+import { interrupt } from '@langchain/langgraph';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
 
@@ -10,24 +9,13 @@ import { createProgressReporter } from '@/tools/helpers/progress';
 import { createSuccessResponse, createErrorResponse } from '@/tools/helpers/response';
 import type { BuilderToolBase } from '@/utils/stream-processor';
 
-import { isAllowedDomain } from './utils/allowed-domains';
 import {
 	normalizeHost,
 	isBlockedUrl,
 	fetchUrl,
 	extractReadableContent,
-	isUrlInUserMessages,
-	isUrlInWorkflowNodes,
 } from './utils/web-fetch.utils';
-
-interface WebFetchState {
-	approvedDomains?: string[];
-	allDomainsApproved?: boolean;
-	webFetchCount?: number;
-	messages?: BaseMessage[];
-	userRequest?: string;
-	workflowJSON?: { nodes: Array<{ parameters?: Record<string, unknown> }> };
-}
+import type { WebFetchSecurityManager } from './web-fetch-security';
 
 interface WebFetchResumeValue {
 	requestId: string;
@@ -92,9 +80,10 @@ const webFetchSchema = z.object({
 });
 
 /**
- * Factory function to create the web fetch tool
+ * Factory function to create the web fetch tool.
+ * @param createSecurity - factory called at each tool invocation to get a fresh security manager
  */
-export function createWebFetchTool() {
+export function createWebFetchTool(createSecurity: () => WebFetchSecurityManager) {
 	const dynamicTool = tool(
 		// eslint-disable-next-line complexity
 		async (input: unknown, config) => {
@@ -115,6 +104,9 @@ export function createWebFetchTool() {
 
 				reporter.start(validatedInput);
 
+				// Create a security manager for this invocation
+				const security = createSecurity();
+
 				// 1. SSRF check
 				reporter.progress('Checking URL safety...');
 				const blocked = await isBlockedUrl(url);
@@ -127,43 +119,21 @@ export function createWebFetchTool() {
 					});
 				}
 
-				// 2. Read state for approved domains, fetch count, and messages
-				const state = getCurrentTaskInput<WebFetchState>();
-				const approvedDomains: string[] = state.approvedDomains ?? [];
-				const webFetchCount: number = state.webFetchCount ?? 0;
-
-				// 2b. URL provenance check — only fetch URLs the user provided or from workflow nodes
-				const messages = state.messages ?? [];
-				const workflowJSON = state.workflowJSON ?? { nodes: [] };
-				const urlFromUser = isUrlInUserMessages(url, messages);
-				const urlFromWorkflow = isUrlInWorkflowNodes(url, workflowJSON);
-
-				if (!urlFromUser && !urlFromWorkflow) {
-					const message =
-						'This URL was not provided by the user. Only URLs from the conversation or workflow nodes can be fetched.';
-					reporter.error({ message });
-					return createSuccessResponse(config, message);
-				}
-
-				// 3. Check per-turn budget
-				if (webFetchCount >= WEB_FETCH_MAX_PER_TURN) {
+				// 2. Check per-turn budget
+				if (!security.hasBudget()) {
 					const message = `Maximum of ${WEB_FETCH_MAX_PER_TURN} web fetches per turn reached. Please continue without additional fetches.`;
 					reporter.error({ message });
 					return createSuccessResponse(config, message);
 				}
 
-				// 4. Check host approval
+				// 3. Check host approval
 				const host = normalizeHost(url);
 				let userAction: string | undefined;
 				let redirectUserAction: string | undefined;
-				const allDomainsApproved = state.allDomainsApproved === true;
 
-				if (
-					!allDomainsApproved &&
-					!isAllowedDomain(host) &&
-					!approvedDomains.includes(host) &&
-					!urlFromUser
-				) {
+				const hostAllowed = security.isHostAllowed(host, url);
+
+				if (!hostAllowed) {
 					const approval = requestDomainApproval(host, url);
 					if (!approval.approved) {
 						reporter.error({ message: approval.message });
@@ -174,18 +144,23 @@ export function createWebFetchTool() {
 						});
 					}
 					userAction = approval.action;
+					// Track locally so redirect check for the same host doesn't re-prompt
+					if (userAction === 'allow_domain' || userAction === 'allow_all') {
+						security.approveDomain(host);
+					}
 				}
 
-				// 5. Fetch the URL
+				// 4. Fetch the URL
 				reporter.progress('Fetching content...');
 				const fetchResult = await fetchUrl(url);
 
 				// Handle unsupported content
 				if (fetchResult.status === 'unsupported') {
+					security.recordFetch();
 					const message = `This content type is not supported: ${fetchResult.reason}. The tool cannot process PDF files.`;
 					reporter.error({ message });
 					return createSuccessResponse(config, message, {
-						webFetchCount: webFetchCount + 1,
+						...security.getStateUpdates(),
 						fetchedUrlContent: [{ url, status: 'error' as const, title: '', content: message }],
 					});
 				}
@@ -205,25 +180,23 @@ export function createWebFetchTool() {
 					// Check SSRF on redirected URL
 					const redirectBlocked = await isBlockedUrl(fetchResult.finalUrl);
 					if (redirectBlocked) {
+						security.recordFetch();
 						const message = `The URL redirected to ${newHost}, which points to a private address. Fetch blocked.`;
 						reporter.error({ message });
 						return createSuccessResponse(config, message, {
-							webFetchCount: webFetchCount + 1,
+							...security.getStateUpdates(),
 							fetchedUrlContent: [{ url, status: 'error' as const, title: '', content: message }],
 						});
 					}
 
-					// If new host not in allowlist and not already approved, ask user
-					if (
-						!allDomainsApproved &&
-						!isAllowedDomain(newHost) &&
-						!approvedDomains.includes(newHost)
-					) {
+					// If new host not allowed, ask user
+					if (!security.isHostAllowed(newHost, fetchResult.finalUrl)) {
 						const approval = requestDomainApproval(newHost, fetchResult.finalUrl);
 						if (!approval.approved) {
+							security.recordFetch();
 							reporter.error({ message: approval.message });
 							return createSuccessResponse(config, approval.message, {
-								webFetchCount: webFetchCount + 1,
+								...security.getStateUpdates(),
 								fetchedUrlContent: [
 									{ url, status: 'error' as const, title: '', content: approval.message },
 								],
@@ -235,10 +208,11 @@ export function createWebFetchTool() {
 					// Re-fetch from final URL (host is approved)
 					const finalResult = await fetchUrl(fetchResult.finalUrl);
 					if (finalResult.status !== 'success' || !finalResult.body) {
+						security.recordFetch();
 						const message = `Failed to fetch content from the redirected URL (${newHost}).`;
 						reporter.error({ message });
 						return createSuccessResponse(config, message, {
-							webFetchCount: webFetchCount + 1,
+							...security.getStateUpdates(),
 							fetchedUrlContent: [{ url, status: 'error' as const, title: '', content: message }],
 						});
 					}
@@ -249,19 +223,20 @@ export function createWebFetchTool() {
 				}
 
 				if (!fetchResult.body) {
+					security.recordFetch();
 					const message = 'The page returned no content.';
 					reporter.error({ message });
 					return createSuccessResponse(config, message, {
-						webFetchCount: webFetchCount + 1,
+						...security.getStateUpdates(),
 						fetchedUrlContent: [{ url, status: 'error' as const, title: '', content: message }],
 					});
 				}
 
-				// 6. Extract readable content
+				// 5. Extract readable content
 				reporter.progress('Extracting content...');
 				const extracted = extractReadableContent(fetchResult.body, fetchResult.finalUrl ?? url);
 
-				// 7. Build response
+				// 6. Build response
 				const responseLines = [
 					'<web_fetch_result>',
 					`<url>${url}</url>`,
@@ -278,9 +253,23 @@ export function createWebFetchTool() {
 					.filter(Boolean)
 					.join('\n');
 
-				// 8. Build state updates
+				// 7. Record fetch and build state updates
+				security.recordFetch();
+
+				// Handle "allow_all" — approve all domains globally
+				if (userAction === 'allow_all' || redirectUserAction === 'allow_all') {
+					security.approveAllDomains();
+				}
+
+				// Add redirect host to approved domains when user chose "allow_domain" or "allow_all"
+				// (initial host was already added via security.approveDomain above)
+				if (redirectUserAction === 'allow_domain' || redirectUserAction === 'allow_all') {
+					const redirectHost = normalizeHost(fetchResult.finalUrl ?? url);
+					security.approveDomain(redirectHost);
+				}
+
 				const stateUpdates: Record<string, unknown> = {
-					webFetchCount: webFetchCount + 1,
+					...security.getStateUpdates(),
 					fetchedUrlContent: [
 						{
 							url,
@@ -290,23 +279,6 @@ export function createWebFetchTool() {
 						},
 					],
 				};
-
-				// Handle "allow_all" — approve all domains globally
-				if (userAction === 'allow_all' || redirectUserAction === 'allow_all') {
-					stateUpdates.allDomainsApproved = true;
-				}
-
-				// Add to approved domains when user chose "allow_domain" or "allow_all"
-				const newApprovedDomains: string[] = [];
-				if (userAction === 'allow_domain' || userAction === 'allow_all') {
-					newApprovedDomains.push(host);
-				}
-				if (redirectUserAction === 'allow_domain' || redirectUserAction === 'allow_all') {
-					newApprovedDomains.push(normalizeHost(fetchResult.finalUrl ?? url));
-				}
-				if (newApprovedDomains.length > 0) {
-					stateUpdates.approvedDomains = newApprovedDomains;
-				}
 
 				reporter.complete({
 					status: 'success',
@@ -366,10 +338,9 @@ The tool will request user approval before fetching any URL.
 After approval, it returns the page's readable text content.
 
 Constraints:
-- Only URLs from the user's messages or workflow node parameters can be fetched
 - Only public HTTP/HTTPS URLs
 - Maximum 3 fetches per conversation turn
-- PDFs are not supported
+- Only text content, PDFs, images, binaries are not supported
 - Redirects to a different host may require separate approval`,
 			schema: webFetchSchema,
 		},

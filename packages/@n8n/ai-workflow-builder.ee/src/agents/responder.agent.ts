@@ -135,6 +135,13 @@ function buildContextContent(context: ResponderContext): string | null {
 		);
 	}
 
+	// Fetched URL content during discovery (if any) - can provide useful context for the responder to explain what was found
+	if (context.discoveryContext?.fetchedUrlContent?.length) {
+		contextParts.push(
+			`**Fetched URL Content:**\n${context.discoveryContext?.fetchedUrlContent.map((u) => `- ${u.url} (status: ${u.status}) ${u.title}`).join('\n')}`,
+		);
+	}
+
 	// Builder output (handles both node creation and parameter configuration)
 	const builderOutput = getBuilderOutput(context.coordinationLog);
 	if (builderOutput) {
