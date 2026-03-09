@@ -508,23 +508,47 @@ describe('WorkflowIndexService', () => {
 			expect(call[1].dependencies).toHaveLength(1);
 		});
 
-		it('should pass publishedVersionId when calling updateIndexForPublished', async () => {
+		it('should index published nodes (not draft nodes) when calling updateIndexForPublished', async () => {
 			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
 
-			const workflow = createWorkflow([
+			const draftNodes = [
 				createNode({
 					id: 'node-1',
 					type: 'n8n-nodes-base.manualTrigger',
 				}),
-			]);
+			];
+			const publishedNodes = [
+				createNode({
+					id: 'node-2',
+					type: 'n8n-nodes-base.httpRequest',
+				}),
+			];
+			const workflow = createWorkflow(draftNodes);
 
 			const publishedVersionId = 'published-version-123';
-			await service.updateIndexForPublished(workflow, publishedVersionId);
+			await service.updateIndexForPublished(workflow, publishedVersionId, publishedNodes);
 
 			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
 				'workflow-123',
 				expect.objectContaining({
 					publishedVersionId: 'published-version-123',
+					dependencies: expect.arrayContaining([
+						expect.objectContaining({
+							dependencyType: 'nodeType',
+							dependencyKey: 'n8n-nodes-base.httpRequest',
+						}),
+					]),
+				}),
+			);
+			// Should NOT contain the draft node type
+			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
+				'workflow-123',
+				expect.objectContaining({
+					dependencies: expect.not.arrayContaining([
+						expect.objectContaining({
+							dependencyKey: 'n8n-nodes-base.manualTrigger',
+						}),
+					]),
 				}),
 			);
 		});

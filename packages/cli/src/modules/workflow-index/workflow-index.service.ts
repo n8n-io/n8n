@@ -52,7 +52,8 @@ export class WorkflowIndexService {
 				);
 				return;
 			}
-			await this.updateIndexForPublished(workflow, workflow.activeVersionId);
+			// At activation time, the draft nodes are the published nodes.
+			await this.updateIndexForPublished(workflow, workflow.activeVersionId, workflow.nodes);
 		});
 	}
 
@@ -102,6 +103,12 @@ export class WorkflowIndexService {
 					// We know activeVersionId is not null here because the finder only returns workflows
 					// that have a published version. Use the published version's nodes, not the draft nodes.
 					const publishedNodes = workflow.activeVersion?.nodes;
+					if (!publishedNodes) {
+						this.logger.warn(
+							`Workflow ${workflow.id} has activeVersionId but no activeVersion nodes. Skipping published index.`,
+						);
+						continue;
+					}
 					await this.updateIndexForPublished(workflow, workflow.activeVersionId!, publishedNodes);
 				}
 			}
@@ -136,7 +143,7 @@ export class WorkflowIndexService {
 	async updateIndexForPublished(
 		workflow: IWorkflowBase,
 		publishedVersionId: string,
-		publishedNodes?: INode[],
+		publishedNodes: INode[],
 	) {
 		const dependencyUpdates = new WorkflowDependencies(
 			workflow.id,

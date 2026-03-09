@@ -1492,9 +1492,10 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			`${qb.escape(depAlias)}.${qb.escape(publishedVersionIdAlias)} IS NULL`,
 		);
 
-		// Include the published version's nodes for indexing (skip connections to save memory)
+		// Include the published version's nodes for indexing (skip connections to save memory).
+		// The primary key (versionId) must be selected for TypeORM to hydrate the relation.
 		qb.leftJoin('workflow.activeVersion', 'activeVersion');
-		qb.addSelect('activeVersion.nodes');
+		qb.addSelect(['activeVersion.versionId', 'activeVersion.nodes']);
 
 		if (batchSize) {
 			qb.limit(batchSize);
