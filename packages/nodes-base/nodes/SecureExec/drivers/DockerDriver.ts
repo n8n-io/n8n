@@ -19,7 +19,13 @@ export class DockerDriver implements ICommandExecutor {
 		/* eslint-disable @typescript-eslint/naming-convention */
 		const container = await this.docker.createContainer({
 			Image: containerImage,
-			Cmd: ['bash', '-o', 'pipefail', '-c', command],
+			Cmd: [
+				'sh',
+				'-c',
+				'if command -v bash > /dev/null 2>&1; then exec bash -o pipefail -c "$1"; else exec sh -c "$1"; fi',
+				'--',
+				command,
+			],
 			AttachStdout: true,
 			AttachStderr: true,
 			WorkingDir: workspacePath ? '/workspace' : '/',
