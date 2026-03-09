@@ -190,18 +190,16 @@ export class SecretsProvidersConnectionsService {
 	async getGlobalCompletions(): Promise<SecretsProviderConnection[]> {
 		const connectedProviderKeys = this.providerRegistry.getConnectedNames();
 
-		return await this.repository.findGlobalConnections({
+		return await this.repository.findEnabledGlobalConnections({
 			providerKeys: connectedProviderKeys,
-			isEnabled: true,
 		});
 	}
 
 	async getProjectCompletions(projectId: string): Promise<SecretsProviderConnection[]> {
 		const connectedProviderKeys = this.providerRegistry.getConnectedNames();
 
-		return await this.repository.findByProjectId(projectId, {
+		return await this.repository.findEnabledByProjectId(projectId, {
 			providerKeys: connectedProviderKeys,
-			isEnabled: true,
 		});
 	}
 
