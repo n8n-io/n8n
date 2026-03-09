@@ -16,7 +16,7 @@ export class ExternalSecretsSettingsService {
 			{
 				key: EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING.key,
 				value: enabled.toString(),
-				loadOnStartup: true,
+				loadOnStartup: false,
 			},
 			['key'],
 		);
