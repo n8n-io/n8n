@@ -11,6 +11,11 @@ import type { Callbacks } from '@langchain/core/callbacks/manager';
 import { createQdrantClient, type QdrantCredential } from '../VectorStoreQdrant/Qdrant.utils';
 import { ensureUserId } from '../shared/userScoped';
 import { createVectorStoreNode } from '@n8n/ai-utilities';
+import {
+	filterChatHubMetadata,
+	filterChatHubInsertDocuments,
+	CHAT_HUB_RETRIEVE_METADATA_KEYS,
+} from '../shared/chatHub';
 
 type ChatHubVectorStoreQdrantApiCredentials = QdrantCredential & {
 	collectionName: string;
@@ -124,18 +129,39 @@ export class ChatHubVectorStoreQdrant extends createVectorStoreNode<QdrantVector
 			return final;
 		}
 
-		store.similaritySearch = async (query: string, k?: number, f?: Filter, callbacks?: Callbacks) =>
-			await originalSearch(query, k, createFinalFilter(f), callbacks);
+		store.similaritySearch = async (
+			query: string,
+			k?: number,
+			f?: Filter,
+			callbacks?: Callbacks,
+		) => {
+			const results = await originalSearch(query, k, createFinalFilter(f), callbacks);
+			return results.map((doc) => ({
+				...doc,
+				metadata: filterChatHubMetadata(doc.metadata, CHAT_HUB_RETRIEVE_METADATA_KEYS),
+			}));
+		};
 
 		store.similaritySearchWithScore = async (
 			query: string,
 			k?: number,
 			f?: Filter,
 			callbacks?: Callbacks,
-		) => await originalSearchWithScore(query, k, createFinalFilter(f), callbacks);
+		) => {
+			const results = await originalSearchWithScore(query, k, createFinalFilter(f), callbacks);
+			return results.map(([doc, score]) => [
+				{ ...doc, metadata: filterChatHubMetadata(doc.metadata, CHAT_HUB_RETRIEVE_METADATA_KEYS) },
+				score,
+			]);
+		};
 
-		store.similaritySearchVectorWithScore = async (query: number[], k?: number, f?: Filter) =>
-			await originalSearchVectorWithScore(query, k, createFinalFilter(f));
+		store.similaritySearchVectorWithScore = async (query: number[], k?: number, f?: Filter) => {
+			const results = await originalSearchVectorWithScore(query, k, createFinalFilter(f));
+			return results.map(([doc, score]) => [
+				{ ...doc, metadata: filterChatHubMetadata(doc.metadata, CHAT_HUB_RETRIEVE_METADATA_KEYS) },
+				score,
+			]);
+		};
 
 		return store;
 	},
@@ -148,7 +174,10 @@ export class ChatHubVectorStoreQdrant extends createVectorStoreNode<QdrantVector
 		const config: QdrantLibArgs = { client, collectionName: credentials.collectionName };
 
 		await QdrantVectorStore.fromDocuments(
-			documents.map((d) => ({ ...d, metadata: { ...d.metadata, userId } })),
+			filterChatHubInsertDocuments(documents).map((d) => ({
+				...d,
+				metadata: { ...d.metadata, userId },
+			})),
 			embeddings,
 			config,
 		);
