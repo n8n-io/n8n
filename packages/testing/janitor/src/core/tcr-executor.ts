@@ -124,7 +124,7 @@ export class TcrExecutor {
 		this.logger.debugList(changedFiles);
 
 		// Analyze changed methods early (useful for understanding the change even if later checks fail)
-		const diffs = this.extractDiffs(changedFiles, baseRef);
+		const diffs = extractDiffs(changedFiles, baseRef);
 		const changedMethods = diffs.flatMap((d) => d.changedMethods);
 		this.logChangedMethods(changedMethods);
 
@@ -353,10 +353,6 @@ export class TcrExecutor {
 	}
 
 	// --- Method Analysis ---
-
-	private extractDiffs(changedFiles: string[], baseRef: string): FileDiffResult[] {
-		return extractDiffs(changedFiles, baseRef);
-	}
 
 	private logChangedMethods(changedMethods: MethodChange[]): void {
 		if (changedMethods.length === 0) return;

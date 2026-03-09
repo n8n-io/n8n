@@ -92,7 +92,7 @@ Files with modified/removed methods use method-level resolution for precision.
 Options:
   --file=<path>        Analyze a specific file
   --files=<p1,p2>      Analyze multiple files (comma-separated)
-  --base=<ref>         Git ref to diff against (default: HEAD)
+  --base=<ref>         Git ref to diff against (default: HEAD — compares working tree to HEAD)
   --json               Output as JSON (includes resolution strategies)
   --test-list          Output affected test paths only (for piping to playwright)
   --verbose, -v        Show dependency graph and resolution strategies
