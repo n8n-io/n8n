@@ -5,6 +5,7 @@ import type {
 	WorkflowResource,
 } from '@/Interface';
 import type {
+	IExecutionFlattedResponse,
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
 } from '@/features/execution/executions/executions.types';
@@ -107,7 +108,7 @@ export async function getExecutionData(
 	executionId: string,
 	queryParams?: ExecutionRedactionQueryDto,
 ) {
-	return await makeRestApiRequest<IExecutionResponse | null>(
+	return await makeRestApiRequest<IExecutionFlattedResponse | null>(
 		context,
 		'GET',
 		`/executions/${executionId}`,

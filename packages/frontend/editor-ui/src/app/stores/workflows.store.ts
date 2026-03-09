@@ -1538,7 +1538,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		executionId: string,
 		queryParams?: ExecutionRedactionQueryDto,
 	): Promise<IExecutionResponse | null> {
-		return await workflowsApi.getExecutionData(rootStore.restApiContext, executionId, queryParams);
+		const response = await workflowsApi.getExecutionData(
+			rootStore.restApiContext,
+			executionId,
+			queryParams,
+		);
+		return response && unflattenExecutionData(response);
 	}
 
 	function deleteExecution(execution: ExecutionSummary): void {
