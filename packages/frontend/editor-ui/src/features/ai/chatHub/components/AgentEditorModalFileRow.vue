@@ -2,17 +2,10 @@
 import { computed } from 'vue';
 import { N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { ChatHubLLMProvider } from '@n8n/api-types';
+import type { ChatHubLLMProvider, ChatHubAgentKnowledgeItem } from '@n8n/api-types';
 import { providerDisplayNames } from '@/features/ai/chatHub/constants';
 
-export type FileRow = {
-	id: string;
-	name: string;
-	mimeType: string;
-	isNew: boolean;
-	embeddingProvider: ChatHubLLMProvider | null;
-	index: number;
-};
+export type FileRow = ChatHubAgentKnowledgeItem & { isNew: boolean };
 
 const props = defineProps<{
 	item: FileRow;
@@ -27,17 +20,14 @@ const emit = defineEmits<{
 const i18n = useI18n();
 
 const warningTooltip = computed<string | undefined>(() => {
-	if (props.item.isNew) return undefined;
+	if (props.item.isNew || props.item.status !== 'indexed') return undefined;
 	if (!props.semanticSearchReady) {
 		return i18n.baseText('chatHub.agent.editor.files.semanticSearchNotReady.tooltip');
 	}
-	if (
-		props.item.embeddingProvider &&
-		props.item.embeddingProvider !== props.currentEmbeddingProvider
-	) {
+	if (props.item.provider && props.item.provider !== props.currentEmbeddingProvider) {
 		return i18n.baseText('chatHub.agent.editor.files.embeddingMismatch.tooltip', {
 			interpolate: {
-				fileProvider: providerDisplayNames[props.item.embeddingProvider],
+				fileProvider: providerDisplayNames[props.item.provider],
 				currentProvider: props.currentEmbeddingProvider
 					? providerDisplayNames[props.currentEmbeddingProvider]
 					: 'unknown',
@@ -50,11 +40,34 @@ const warningTooltip = computed<string | undefined>(() => {
 
 <template>
 	<div :class="$style.fileRow">
-		<span :class="$style.fileName">{{ item.name }}</span>
+		<span :class="$style.fileName">{{ item.fileName }}</span>
 		<div :class="$style.indexedCell">
 			<N8nTooltip v-if="warningTooltip" :content="warningTooltip">
-				<N8nIcon icon="triangle-alert" :class="$style.iconWarning" size="small" />
+				<N8nText size="small" color="warn" :class="$style.statusText">
+					<N8nIcon icon="triangle-alert" size="medium" :class="$style.iconWarning" />
+					{{ i18n.baseText('chatHub.agent.editor.files.unavailable') }}
+				</N8nText>
 			</N8nTooltip>
+			<template v-else-if="item.status === 'indexing'">
+				<N8nIcon icon="loader" :class="$style.iconIndexing" size="medium" />
+				<N8nText size="small" color="text-light">
+					{{ i18n.baseText('chatHub.agent.editor.files.indexing') }}
+				</N8nText>
+			</template>
+			<template v-else-if="item.status === 'error'">
+				<N8nTooltip
+					:content="
+						i18n.baseText('chatHub.agent.editor.files.indexingError.tooltip', {
+							interpolate: { error: item.error ?? 'Unknown error' },
+						})
+					"
+				>
+					<N8nText size="small" color="danger" :class="$style.statusText">
+						<N8nIcon icon="circle-x" size="medium" />
+						{{ i18n.baseText('chatHub.agent.editor.files.failed') }}
+					</N8nText>
+				</N8nTooltip>
+			</template>
 			<N8nText v-else size="small" color="text-light">
 				{{ item.isNew ? item.mimeType : i18n.baseText('chatHub.agent.editor.files.indexed') }}
 			</N8nText>
@@ -96,6 +109,26 @@ const warningTooltip = computed<string | undefined>(() => {
 
 .iconWarning {
 	color: var(--color--warning);
+}
+
+.iconIndexing {
+	color: var(--color--text--tint-1);
 	flex-shrink: 0;
+	animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+.statusText {
+	display: flex;
+	gap: var(--spacing--4xs);
+	align-items: center;
 }
 </style>

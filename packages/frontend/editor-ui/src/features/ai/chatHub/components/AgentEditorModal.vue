@@ -6,7 +6,7 @@ import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { fetchChatModelsApi } from '@/features/ai/chatHub/chat.api';
+import { fetchChatModelsApi, fetchAgentApi } from '@/features/ai/chatHub/chat.api';
 import Modal from '@/app/components/Modal.vue';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
 import {
@@ -32,6 +32,7 @@ import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/ty
 import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
 import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { useTimeoutPoll } from '@vueuse/core';
 import type { SuggestedPrompt } from '@n8n/api-types';
 import type { CredentialsMap } from '../chat.types';
 import SuggestedPromptsEditor from './SuggestedPromptsEditor.vue';
@@ -91,21 +92,14 @@ const currentEmbeddingProvider = computed(
 );
 
 const allFiles = computed<FileRow[]>(() => [
-	...savedFiles.value.map((file, index) => ({
-		id: `saved-${index}`,
-		name: file.fileName,
-		mimeType: file.mimeType,
-		isNew: false,
-		embeddingProvider: file.provider,
-		index,
-	})),
+	...savedFiles.value.map((file) => ({ ...file, isNew: false })),
 	...newFiles.value.map((file, index) => ({
 		id: `new-${index}`,
-		name: file.name,
+		type: 'embedding' as const,
+		provider: currentEmbeddingProvider.value!,
+		fileName: file.name,
 		mimeType: file.type,
 		isNew: true,
-		embeddingProvider: null,
-		index,
 	})),
 ]);
 const suggestedPrompts = ref<SuggestedPrompt[]>([]);
@@ -259,6 +253,8 @@ async function onSave() {
 			suggestedPrompts: filteredPrompts.length > 0 ? filteredPrompts : undefined,
 		};
 
+		const hasNewFiles = newFiles.value.length > 0;
+
 		if (isEditMode.value && props.data.agentId) {
 			await chatStore.updateCustomAgent(
 				props.data.agentId,
@@ -268,7 +264,11 @@ async function onSave() {
 				props.data.credentials,
 			);
 			toast.showMessage({
-				title: i18n.baseText('chatHub.agent.editor.success.update'),
+				title: i18n.baseText(
+					hasNewFiles
+						? 'chatHub.agent.editor.success.update.withFiles'
+						: 'chatHub.agent.editor.success.update',
+				),
 				type: 'success',
 			});
 		} else {
@@ -280,7 +280,11 @@ async function onSave() {
 			props.data.onCreateCustomAgent?.(agent);
 
 			toast.showMessage({
-				title: i18n.baseText('chatHub.agent.editor.success.create'),
+				title: i18n.baseText(
+					hasNewFiles
+						? 'chatHub.agent.editor.success.create.withFiles'
+						: 'chatHub.agent.editor.success.create',
+				),
 				type: 'success',
 			});
 		}
@@ -359,27 +363,16 @@ function handleFileSelect(event: Event) {
 	target.value = '';
 }
 
-function removeExistingFile(index: number) {
-	const file = savedFiles.value[index];
-	if (file) {
-		removedFileKnowledgeIds.value = [...removedFileKnowledgeIds.value, file.id];
-	}
-	savedFiles.value = savedFiles.value.filter((_, i) => i !== index);
-}
-
-function removeNewFile(index: number) {
-	newFiles.value = newFiles.value.filter((_, i) => i !== index);
-}
-
 function handleClickUploadArea() {
 	fileInputRef.value?.click();
 }
 
 function removeFile(row: FileRow) {
 	if (row.isNew) {
-		removeNewFile(row.index);
+		newFiles.value = newFiles.value.filter((_, i) => `new-${i}` !== row.id);
 	} else {
-		removeExistingFile(row.index);
+		removedFileKnowledgeIds.value = [...removedFileKnowledgeIds.value, row.id];
+		savedFiles.value = savedFiles.value.filter((f) => f.id !== row.id);
 	}
 }
 
@@ -392,6 +385,30 @@ const isSemanticSearchEnabled = computed(() =>
 );
 
 const fileDrop = useFileDrop(true, onFilesDropped, ['application/pdf']);
+
+const hasIndexingFiles = computed(() => savedFiles.value.some((f) => f.status === 'indexing'));
+
+const { pause, resume } = useTimeoutPoll(async () => {
+	if (!props.data.agentId) return;
+	try {
+		const agent = await fetchAgentApi(useRootStore().restApiContext, props.data.agentId);
+		savedFiles.value = agent.files;
+	} catch {
+		// ignore polling errors
+	}
+}, 5000);
+
+watch(
+	hasIndexingFiles,
+	(hasIndexing) => {
+		if (hasIndexing && props.data.agentId) {
+			resume();
+		} else {
+			pause();
+		}
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
