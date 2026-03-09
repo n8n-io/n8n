@@ -115,7 +115,7 @@ Assert: normalizeSDK(SDK₁) === normalizeSDK(SDK₂)
 - **Forward test**: `transpileWorkflowJS(input.js)` must equal `output.js` exactly
 - **Round-trip test**: compile -> decompile -> recompile must produce structurally identical SDK
 
-**Fixtures:** `__fixtures__/w01-w29/`, each containing:
+**Fixtures:** `__fixtures__/w01-w30/`, each containing:
 - `meta.json` — title, templateId, optional `skip` flag
 - `input.js` — simplified DSL source
 - `output.js` — expected SDK output
@@ -133,7 +133,7 @@ Assert: normalizeSDK(SDK₁) === normalizeSDK(SDK₂)
 | `examples.ts` | Pre-built DSL examples for UI quick-start templates |
 | `generate-report.ts` | HTML report generator for fixture validation results + expectation badges/diffs |
 | `index.ts` | Public exports: `transpileWorkflowJS`, `decompileWorkflowSDK`, `COMPILER_EXAMPLES` |
-| `__fixtures__/w01-w29/` | Test fixtures (real workflow patterns, w18-w22 sub-functions, w23-w24 try/catch, w25 CRUD+branching, w26 loop+sub-fn, w27 loop+try/catch, w28 else-if+numeric, w29 try+switch) |
+| `__fixtures__/w01-w30/` | Test fixtures (real workflow patterns, w18-w22 sub-functions, w23-w24 try/catch, w25 CRUD+branching, w26 loop+sub-fn, w27 loop+try/catch, w28 else-if+numeric, w29 try+switch, w30 multi-trigger independent) |
 
 **Decompile pipeline (in `src/codegen/`):**
 
@@ -229,8 +229,8 @@ Validates existing fixtures through the full compilation pipeline (transpile, ge
 
 ## Coverage Status
 
-- **Round-trip**: 29/29 fixtures pass (100%)
-- **Schema validation**: 29/29 fixtures pass (100%). `KNOWN_SCHEMA_VIOLATIONS` is empty.
+- **Round-trip**: 30/30 fixtures pass (100%)
+- **Schema validation**: 30/30 fixtures pass (100%). `KNOWN_SCHEMA_VIOLATIONS` is empty.
 
 **Key insight**: Nested sub-workflow WorkflowBuilder references (e.g., `workflowJson: __tryCatch_1Workflow` inside a loop body sub-workflow) are handled automatically by `resolveWorkflowBuilderValues()` in `json-serializer.ts`. It duck-types WorkflowBuilder instances (`toJSON` + `add` methods) at any nesting depth and converts them to `JSON.stringify(value.toJSON())`.
 
