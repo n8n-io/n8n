@@ -33,6 +33,7 @@ jobs:
 
           skyramp_mcp_source: 'github'
           skyramp_mcp_github_ref: 'v0.0.59'
+          skyramp_mcp_github_token: ${{ github.token }}
 
           test_directory: 'test'
           auto_commit: true
