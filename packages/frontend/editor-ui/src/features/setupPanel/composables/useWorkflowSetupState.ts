@@ -557,12 +557,13 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 				const isAutoApplied =
 					!!selectedCredentialId && autoAppliedCredentialIds.value.has(selectedCredentialId);
 
+				const parametersComplete =
+					Object.keys(parameterIssues).length === 0 && !hasUnfilledTemplateParams(node);
+
 				const isComplete =
-					credentialComplete &&
-					testPassed &&
-					Object.keys(parameterIssues).length === 0 &&
-					!hasUnfilledTemplateParams(node) &&
-					triggerComplete;
+					triggerComplete && !isAutoApplied
+						? parametersComplete
+						: credentialComplete && testPassed && parametersComplete && triggerComplete;
 
 				result.push({
 					node,
