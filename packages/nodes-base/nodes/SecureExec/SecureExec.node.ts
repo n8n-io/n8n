@@ -29,7 +29,7 @@ export class SecureExec implements INodeType {
 				displayName: 'Command',
 				name: 'command',
 				type: 'string',
-				typeOptions: { rows: 5, editor: 'codeNodeEditor' },
+				typeOptions: { rows: 5 },
 				default: '',
 				placeholder: 'echo "hello world"',
 				description: 'The shell command to execute inside the sandbox',
@@ -87,6 +87,7 @@ export class SecureExec implements INodeType {
 							'Host path to mount into the sandbox as the working directory. Leave empty to use a temporary directory.',
 					},
 					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						displayName: 'Timeout (ms)',
 						name: 'timeoutMs',
 						type: 'number',

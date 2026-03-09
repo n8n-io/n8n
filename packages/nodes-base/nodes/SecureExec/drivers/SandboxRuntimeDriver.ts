@@ -3,24 +3,13 @@ import { spawn } from 'child_process';
 
 import type { ExecutionOptions, ExecutionResult, ICommandExecutor } from './ICommandExecutor';
 
-/**
- * Sandbox configuration used by this driver.
- *
- * - Network: fully blocked (no allowed domains).
- * - Filesystem reads: deny well-known sensitive credential/key directories.
- *   The sandbox-runtime also enforces its own mandatory deny list for dotfiles
- *   such as .bashrc, .gitconfig, .git/hooks, etc.
- *   NOTE: On Linux (bubblewrap), every denyRead path must exist on the host,
- *   otherwise bwrap fails. We only list paths that are reliably present.
- * - Filesystem writes: only /tmp is writable.
- */
 const SANDBOX_CONFIG: SandboxRuntimeConfig = {
 	network: {
 		allowedDomains: [],
 		deniedDomains: [],
 	},
 	filesystem: {
-		denyRead: ['~/.ssh', '~/.gnupg', '/root', '/etc/shadow', '/etc/passwd'],
+		denyRead: ['~/.ssh', '~/.gnupg', '/root', '/etc/shadow', '/etc/passwd', '~/.n8n'],
 		allowWrite: ['/tmp'],
 		denyWrite: [],
 	},
@@ -43,8 +32,7 @@ export class SandboxRuntimeDriver implements ICommandExecutor {
 			const child = spawn(wrappedCommand, {
 				shell: true,
 				stdio: ['ignore', 'pipe', 'pipe'],
-				// TODO: for now merge two envs, but I don't think we should copy over the env of the original process
-				env: env ? { ...process.env, ...env } : process.env,
+				env: env ?? undefined,
 			});
 
 			child.stdout.on('data', (data: Buffer) => {

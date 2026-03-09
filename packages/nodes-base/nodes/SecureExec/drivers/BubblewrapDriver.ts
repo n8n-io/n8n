@@ -63,9 +63,9 @@ export class BubblewrapDriver implements ICommandExecutor {
 				});
 			});
 
-			child.on('error', (err) => {
+			child.on('error', (error) => {
 				clearTimeout(timer);
-				reject(new Error(`Failed to start bwrap: ${err.message}`));
+				reject(new Error(`Failed to start bwrap: ${error.message}`));
 			});
 		});
 	}
