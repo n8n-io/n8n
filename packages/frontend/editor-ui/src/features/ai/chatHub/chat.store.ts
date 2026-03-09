@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { CHAT_SESSIONS_PAGE_SIZE } from './constants';
+import { EnterpriseEditionFeature } from '@/app/constants/enterprise';
 import { computed, ref } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { useI18n } from '@n8n/i18n';
@@ -19,6 +20,8 @@ import {
 	createAgentApi,
 	updateAgentApi,
 	deleteAgentApi,
+	uploadAgentFilesApi,
+	deleteAgentFileApi,
 	updateConversationApi,
 	fetchChatSettingsApi,
 	fetchChatProviderSettingsApi,
@@ -29,6 +32,8 @@ import {
 	deleteToolApi,
 } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import {
 	emptyChatModelsResponse,
 	type ChatHubConversationModel,
@@ -56,6 +61,8 @@ import {
 	type ChatHubExecutionBegin,
 	type ChatHubExecutionEnd,
 	type ChatMessageContentChunk,
+	VECTOR_STORE_PROVIDER_CREDENTIAL_TYPE_MAP,
+	PROVIDER_CREDENTIAL_TYPE_MAP,
 } from '@n8n/api-types';
 import type {
 	CredentialsMap,
@@ -63,6 +70,8 @@ import type {
 	ChatConversation,
 	ChatStreamingState,
 	FetchOptions,
+	SemanticSearchReadiness,
+	SemanticSearchCredentialIssue,
 } from './chat.types';
 import { retry } from '@n8n/utils/retry';
 import {
@@ -80,10 +89,12 @@ import { deepCopy, type INode } from 'n8n-workflow';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import { ResponseError } from '@n8n/rest-api-client';
 import { STORES } from '@n8n/stores/constants';
-import { appendChunkToParsedMessageItems } from '@n8n/chat-hub';
+import { appendChunkToParsedMessageItems, DEFAULT_SEMANTIC_SEARCH_SETTINGS } from '@n8n/chat-hub';
 
 export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	const rootStore = useRootStore();
+	const settingsStore = useSettingsStore();
+	const credentialsStore = useCredentialsStore();
 	const toast = useToast();
 	const telemetry = useTelemetry();
 	const i18n = useI18n();
@@ -802,9 +813,15 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 
 	async function createCustomAgent(
 		payload: ChatHubCreateAgentRequest,
+		files: File[],
 		credentials: CredentialsMap,
 	): Promise<ChatModelDto> {
-		const customAgent = await createAgentApi(rootStore.restApiContext, payload);
+		let customAgent = await createAgentApi(rootStore.restApiContext, payload);
+
+		if (files.length > 0) {
+			customAgent = await uploadAgentFilesApi(rootStore.restApiContext, customAgent.id, files);
+		}
+
 		const baseModel = agents.value?.[customAgent.provider]?.models.find(
 			(model) => model.name === customAgent.model,
 		);
@@ -843,9 +860,21 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	async function updateCustomAgent(
 		agentId: string,
 		payload: ChatHubUpdateAgentRequest,
+		newFiles: File[],
+		fileKnowledgeIdsToDelete: string[],
 		credentials: CredentialsMap,
 	): Promise<ChatHubAgentDto> {
-		const customAgent = await updateAgentApi(rootStore.restApiContext, agentId, payload);
+		await updateAgentApi(rootStore.restApiContext, agentId, payload);
+
+		for (const fileKnowledgeId of fileKnowledgeIdsToDelete) {
+			await deleteAgentFileApi(rootStore.restApiContext, agentId, fileKnowledgeId);
+		}
+
+		if (newFiles.length > 0) {
+			await uploadAgentFilesApi(rootStore.restApiContext, agentId, newFiles);
+		}
+
+		const customAgent = await fetchAgentApi(rootStore.restApiContext, agentId);
 
 		// Update the agent in models as well
 		if (agents.value?.['custom-agent']) {
@@ -1249,6 +1278,68 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		addMessage(data.sessionId, message);
 	}
 
+	const vectorStoreIssue = computed<SemanticSearchCredentialIssue | undefined>(() => {
+		const isSharingEnabled =
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing];
+		const semanticSearch =
+			settingsStore.moduleSettings['chat-hub']?.semanticSearch ?? DEFAULT_SEMANTIC_SEARCH_SETTINGS;
+		const vectorStoreCredentialId = semanticSearch?.vectorStore.credentialId ?? '';
+		const vectorStoreCredential = credentialsStore.getCredentialById(vectorStoreCredentialId);
+
+		if (!vectorStoreCredentialId) {
+			return 'unspecified';
+		}
+
+		if (
+			!vectorStoreCredential ||
+			vectorStoreCredential?.type !==
+				VECTOR_STORE_PROVIDER_CREDENTIAL_TYPE_MAP[semanticSearch.vectorStore.provider]
+		) {
+			return 'notFound';
+		}
+
+		if (isSharingEnabled && !vectorStoreCredential.isGlobal) {
+			return 'notShared';
+		}
+
+		return undefined;
+	});
+
+	const embeddingIssue = computed<SemanticSearchCredentialIssue | undefined>(() => {
+		const isSharingEnabled =
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing];
+		const semanticSearch =
+			settingsStore.moduleSettings['chat-hub']?.semanticSearch ?? DEFAULT_SEMANTIC_SEARCH_SETTINGS;
+		const embeddingCredentialId = semanticSearch?.embeddingModel.credentialId ?? '';
+		const embeddingCredential = credentialsStore.getCredentialById(embeddingCredentialId);
+
+		if (!embeddingCredentialId) {
+			return 'unspecified';
+		}
+
+		if (
+			!embeddingCredential ||
+			embeddingCredential?.type !==
+				PROVIDER_CREDENTIAL_TYPE_MAP[semanticSearch.embeddingModel.provider]
+		) {
+			return 'notFound';
+		}
+
+		if (isSharingEnabled && !embeddingCredential.isGlobal) {
+			return 'notShared';
+		}
+
+		return undefined;
+	});
+
+	const semanticSearchReadiness = computed<SemanticSearchReadiness>(() => ({
+		isReadyForCurrentUser:
+			(!vectorStoreIssue.value || vectorStoreIssue.value === 'notShared') &&
+			(!embeddingIssue.value || embeddingIssue.value === 'notShared'),
+		vectorStoreIssue: vectorStoreIssue.value,
+		embeddingIssue: embeddingIssue.value,
+	}));
+
 	return {
 		/**
 		 * models and agents
@@ -1317,6 +1408,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		fetchAllChatSettings,
 		fetchProviderSettings,
 		updateProviderSettings,
+		semanticSearchReadiness,
 
 		/**
 		 * WebSocket streaming handlers
