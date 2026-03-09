@@ -251,6 +251,20 @@ throttledWatch(
 	{ throttle: 200, immediate: true },
 );
 
+// When the active node changes (e.g. via floating node navigation arrows),
+// immediately nullify dependentParametersValues in the cached items.
+// The throttledWatch above will recompute them asynchronously, but until then
+// the ResourceMapper component would see stale dep values from the previous node.
+// By setting them to null, the ResourceMapper's dependency watcher sees a
+// null → correctValue transition which is naturally ignored (oldValue !== null guard),
+// preventing it from incorrectly clearing the new node's field values.
+watch(node, () => {
+	parameterItems.value = parameterItems.value.map((item) => ({
+		...item,
+		dependentParametersValues: null,
+	}));
+});
+
 const credentialsParameterIndex = computed(() => {
 	return parameterItems.value.findIndex((paramData) => paramData.parameter.type === 'credentials');
 });
@@ -777,6 +791,7 @@ watch(
 			</div>
 			<ResourceMapper
 				v-else-if="item.parameter.type === 'resourceMapper'"
+				:key="node?.name"
 				:parameter="item.parameter"
 				:node="node"
 				:path="item.path"
