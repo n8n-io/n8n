@@ -1,0 +1,18 @@
+2026-03-09T21:24:10.979669880Z Owner updated with email: techyactor15@gmail.com
+2026-03-09T21:24:12.163520714Z OpenTelemetry SDK initialized for n8n - exporting to http://localhost:4318
+2026-03-09T21:24:12.838431756Z (node:7) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-03-09T21:24:12.838452381Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-03-09T21:24:14.789354132Z Initializing n8n process
+2026-03-09T21:24:15.119399965Z n8n ready on ::, port 5678
+2026-03-09T21:24:15.155395674Z n8n Task Broker ready on 127.0.0.1, port 5679
+2026-03-09T21:24:15.194614549Z Failed to start Python task runner in internal mode. because Python 3 is missing from this system. Launching a Python runner in internal mode is intended only for debugging and is not recommended for production. Users are encouraged to deploy in external mode. See: https://docs.n8n.io/hosting/configuration/task-runners/#setting-up-external-mode
+2026-03-09T21:24:15.233049507Z [license SDK] Skipping renewal on init: license cert is not initialized
+2026-03-09T21:24:16.269711091Z Registered runner "JS Task Runner" (gX3cWeF7nHFJsV35DQkk9) 
+2026-03-09T21:24:17.214964591Z Version: 2.11.0
+2026-03-09T21:24:17.216108758Z Building workflow dependency index...
+2026-03-09T21:24:17.244112175Z Finished building workflow dependency index. Processed 0 draft workflows, 0 published workflows.
+2026-03-09T21:24:17.246070633Z 
+2026-03-09T21:24:17.246085966Z Editor is now accessible via:
+2026-03-09T21:24:17.246087633Z http://localhost:5678
+2026-03-09T21:24:17.755211091Z (node:7) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-03-09T21:24:17.755238633Z (Use `node --trace-deprecation ...` to show where the warning was created)

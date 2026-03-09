@@ -1,0 +1,87 @@
+===== Building n8n Docker Image =====
+INFO: n8n Image: n8nio/n8n:local
+INFO: Platform: linux/arm64
+-----------------------------------------------
+INFO: Building n8n Docker image using docker...
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.34kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/n8nio/base:24.13.1
+#2 DONE 0.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 1.05kB done
+#3 DONE 0.0s
+
+#4 [1/8] FROM docker.io/n8nio/base:24.13.1@sha256:cb1d285bb0cb651b2024f0efc8b1cd8705a56744980ab47b2c7866118ed77ee3
+#4 resolve docker.io/n8nio/base:24.13.1@sha256:cb1d285bb0cb651b2024f0efc8b1cd8705a56744980ab47b2c7866118ed77ee3 0.0s done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 10.94MB 5.1s
+#5 transferring context: 21.79MB 10.1s
+#5 transferring context: 29.91MB 13.4s done
+#5 DONE 13.9s
+
+#6 [3/8] COPY ./compiled /usr/lib/node_modules/n8n
+#6 CACHED
+
+#7 [2/8] WORKDIR /home/node
+#7 CACHED
+
+#8 [4/8] COPY docker/images/n8n/docker-entrypoint.sh /
+#8 CACHED
+
+#9 [5/8] COPY docker/images/n8n/tracing.js /tracing.js
+#9 DONE 0.5s
+
+#10 [6/8] COPY docker/images/n8n/owner-bootstrap.js /owner-bootstrap.js
+#10 DONE 0.1s
+
+#11 [7/8] COPY docker/images/n8n/package.json /package.json
+#11 DONE 0.1s
+
+#12 [8/8] RUN cd / &&     npm install --omit=dev --legacy-peer-deps &&     cd /usr/lib/node_modules/n8n &&     npm rebuild sqlite3 isolated-vm &&     ln -s /usr/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n &&     mkdir -p /home/node/.n8n &&     chown -R node:node /home/node &&     rm -f /package.json /package-lock.json &&     rm -rf /root/.npm /tmp/*
+#12 17.57 
+#12 17.57 added 323 packages, and audited 324 packages in 17s
+#12 17.57 
+#12 17.57 9 packages are looking for funding
+#12 17.57   run `npm fund` for details
+#12 17.57 
+#12 17.57 found 0 vulnerabilities
+#12 24.29 rebuilt dependencies successfully
+#12 DONE 26.2s
+
+#13 exporting to image
+#13 exporting layers
+#13 exporting layers 12.3s done
+#13 exporting manifest sha256:8774069b7b74b00da4f8bdef9b83a86a2706814c41b5c607ec3af80af0e9166c
+#13 exporting manifest sha256:8774069b7b74b00da4f8bdef9b83a86a2706814c41b5c607ec3af80af0e9166c 0.0s done
+#13 exporting config sha256:825badf399eeebb10d08f5ab98d31becb6a1e244602d45d6e118ad77e11613a1 done
+#13 naming to docker.io/n8nio/n8n:local done
+#13 unpacking to docker.io/n8nio/n8n:local
+#13 unpacking to docker.io/n8nio/n8n:local 5.2s done
+#13 DONE 17.6s
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/n237oljiytwyrkit7hgeerk46
+
+✅ n8n image built: n8nio/n8n:local
+   Size: 2.72GB
+   Build time: 59s
+
+===== Running n8n Container =====
+INFO: Container name: n8n-n8n-1
+INFO: Volume: n8n-data
+INFO: Image: n8nio/n8n:local
+INFO: Create owner: true
+INFO: Owner email: techyactor15@gmail.com
+-----------------------------------------------
+INFO: Stopping existing container: n8n-n8n-1
+✅ Removed existing container: n8n-n8n-1
+INFO: Volume 'n8n-data' exists
+✅ Container started: n8n-n8n-1
+   n8n UI: http://localhost:5678
+   Owner email: techyactor15@gmail.com

@@ -5,6 +5,14 @@
 
 'use strict';
 
+// Prevent this file from initializing tracing more than once when required
+// multiple times (some tooling may load --require files repeatedly).
+if (global.__n8n_opentelemetry_initialized) {
+  // Already initialized; no-op to avoid duplicate logs and duplicate SDK startups
+  return;
+}
+global.__n8n_opentelemetry_initialized = true;
+
 var NodeSDK = require('@opentelemetry/sdk-node').NodeSDK;
 var getNodeAutoInstrumentations = require('@opentelemetry/auto-instrumentations-node').getNodeAutoInstrumentations;
 var OTLPTraceExporter = require('@opentelemetry/exporter-trace-otlp-http').OTLPTraceExporter;
@@ -21,6 +29,8 @@ var ATTR_PROCESS_RUNTIME_VERSION = semantic.ATTR_PROCESS_RUNTIME_VERSION;
 
 var os = require('os');
 var v8 = require('v8');
+var ENTRYPOINT_COMMAND = process.argv[1] || '';
+var SHOULD_LOG_LIFECYCLE = ENTRYPOINT_COMMAND.indexOf('/bin/n8n') !== -1;
 
 // Get OTLP endpoint from environment (supports both NSOLID_OTLP_CONFIG and OTEL_* vars)
 var OTLP_ENDPOINT = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
@@ -96,14 +106,18 @@ try {
   if (startResult && typeof startResult.then === 'function') {
     startResult
       .then(function () {
-        console.log('OpenTelemetry SDK initialized for n8n - exporting to', OTLP_ENDPOINT);
+        if (SHOULD_LOG_LIFECYCLE) {
+          console.log('OpenTelemetry SDK initialized for n8n - exporting to', OTLP_ENDPOINT);
+        }
       })
       .catch(function (err) {
         console.error('Failed to start OpenTelemetry SDK', err);
         process.exit(1);
       });
   } else {
-    console.log('OpenTelemetry SDK initialized for n8n - exporting to', OTLP_ENDPOINT);
+    if (SHOULD_LOG_LIFECYCLE) {
+      console.log('OpenTelemetry SDK initialized for n8n - exporting to', OTLP_ENDPOINT);
+    }
   }
 } catch (err) {
   console.error('Failed to start OpenTelemetry SDK', err);
@@ -180,7 +194,7 @@ var eventLoopLag = 0;
 function measureEventLoopLag() {
   var start = process.hrtime.bigint();
   setTimeout(function () {
-    eventLoopLag = Number(process.hrtime.bigint() - start) / 1e6;
+    eventLoopLag = Number(process.hrtime.bigint() - start) / 1000000;
     measureEventLoopLag();
   }, 0);
 }
@@ -214,14 +228,18 @@ process.on('SIGTERM', function () {
     if (shutdownResult && typeof shutdownResult.then === 'function') {
       shutdownResult.then(
         function () {
-          console.log('OpenTelemetry SDK shut down');
+          if (SHOULD_LOG_LIFECYCLE) {
+            console.log('OpenTelemetry SDK shut down');
+          }
         },
         function (err) {
           console.error('Error shutting down SDK', err);
         }
       );
     } else {
-      console.log('OpenTelemetry SDK shut down');
+      if (SHOULD_LOG_LIFECYCLE) {
+        console.log('OpenTelemetry SDK shut down');
+      }
     }
   } catch (err) {
     console.error('Error shutting down SDK', err);

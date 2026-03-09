@@ -15,10 +15,10 @@ WORKDIR /home/node
 COPY ./compiled /usr/lib/node_modules/n8n
 COPY docker/images/n8n/docker-entrypoint.sh /
 COPY docker/images/n8n/tracing.js /tracing.js
+COPY docker/images/n8n/owner-bootstrap.js /owner-bootstrap.js
 COPY docker/images/n8n/package.json /package.json
 
 RUN cd / && \
-    apk add --no-cache sqlite && \
     npm install --omit=dev --legacy-peer-deps && \
     cd /usr/lib/node_modules/n8n && \
     npm rebuild sqlite3 isolated-vm && \
