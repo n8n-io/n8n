@@ -164,8 +164,8 @@ export class CsvParserService {
 	}
 
 	/**
-	 * Parses a CSV file in a single pass, returning both metadata and all rows.
-	 * Use this instead of calling parseFile + parseFileData separately.
+	 * Parses a CSV file in a single pass, returning column names and all rows.
+	 * Skips type inference since callers only need column names for matching.
 	 */
 	async parseFileWithData(
 		fileId: string,
@@ -173,7 +173,6 @@ export class CsvParserService {
 	): Promise<{ metadata: CsvMetadata; rows: Array<Record<string, string>> }> {
 		const filePath = safeJoinPath(this.uploadDir, fileId);
 		let columnNames: string[] = [];
-		const firstNonEmptyValues = new Map<string, string>();
 		const rows: Array<Record<string, string>> = [];
 
 		return await new Promise((resolve, reject) => {
@@ -187,13 +186,9 @@ export class CsvParserService {
 					if (!normalized) return;
 					columnNames = normalized.columnNames;
 					rows.push(normalized.rowObject);
-
-					if (rows.length <= this.TYPE_INFERENCE_SAMPLE_SIZE) {
-						this.collectTypeSamples(normalized.rowObject, columnNames, firstNonEmptyValues);
-					}
 				})
 				.on('end', () => {
-					const columns = this.buildColumnMetadata(columnNames, firstNonEmptyValues);
+					const columns = columnNames.map((name) => ({ name, type: 'string' as const }));
 					resolve({
 						metadata: { rowCount: rows.length, columnCount: columns.length, columns },
 						rows,
