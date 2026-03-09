@@ -1,0 +1,40 @@
+name: 'Util: Cleanup abandoned release branches'
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  delete-release-branch:
+    # Only if PR was closed without merge
+    if: >
+      github.event.pull_request.merged == false
+    runs-on: ubuntu-slim
+    permissions:
+      contents: write
+
+    steps:
+      - name: Generate GitHub App Token
+        id: generate_token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+          install-command: npm install --prefix=.github/scripts --no-package-lock
+
+      - name: Cleanup release branch if PR qualifies
+        run: node .github/scripts/cleanup-release-branch.mjs
+        env:
+          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+          GITHUB_REPOSITORY: ${{ github.repository }}

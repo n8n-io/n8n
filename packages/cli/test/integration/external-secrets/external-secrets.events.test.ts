@@ -91,6 +91,7 @@ describe('External Secrets Event Handling', () => {
 
 			const config = Container.get(ExternalSecretsConfig);
 			(config as any).externalSecretsForProjects = false;
+			(config as any).externalSecretsMultipleConnections = false;
 
 			const settingsRepository = Container.get(SettingsRepository);
 			const cipher = Container.get(Cipher);

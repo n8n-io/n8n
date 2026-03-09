@@ -13,10 +13,9 @@ import { computed, ref, toValue, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { restoreChatHistory } from '@/features/execution/logs/logs.utils';
-import type { INode, NodeParameterValue } from 'n8n-workflow';
+import { type INode, type INodeParameters, NodeHelpers } from 'n8n-workflow';
 import { isChatNode } from '@/app/utils/aiUtils';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
-import { resolveParameter } from '@/app/composables/useWorkflowHelpers';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { MessageComponentKey } from '@n8n/chat/constants/messageComponents';
 
@@ -29,7 +28,7 @@ interface ChatState {
 	chatTriggerNode: ComputedRef<INode | null>;
 	isStreamingEnabled: ComputedRef<boolean>;
 	isFileUploadsAllowed: ComputedRef<boolean>;
-	allowedFilesMimeTypes: ComputedRef<string>;
+	allowedFilesMimeTypes: ComputedRef<string | undefined>;
 	isWorkflowReadyForChat: ComputedRef<boolean>;
 	webhookUrl: ComputedRef<string>;
 	chatOptions: ComputedRef<ChatOptions>;
@@ -63,71 +62,69 @@ export function useChatState(
 	const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
 	const chatTriggerNode = computed(() => workflowsStore.allNodes.find(isChatNode) ?? null);
 
-	// Get default value for a parameter from the node type definition
-	const getNodeParameterDefault = <T>(parameterName: string, fallback: T): T => {
-		if (!chatTriggerNode.value) return fallback;
+	// Resolve the effective value for an options sub-parameter: returns the
+	// user-set value if present, otherwise the default from the node type
+	// definition (respecting displayOptions at both collection and parameter
+	// level, e.g. responseMode default varies based on availableInChat).
+	const getOptionsValue = <T>(parameterName: string): T | undefined => {
+		const node = chatTriggerNode.value;
+		const nodeType = node ? nodeTypesStore.getNodeType(node.type, node.typeVersion) : null;
 
-		const nodeType = nodeTypesStore.getNodeType(
-			chatTriggerNode.value.type,
-			chatTriggerNode.value.typeVersion,
+		if (!node || !nodeType) {
+			return undefined;
+		}
+
+		// Resolve full root parameters with defaults so displayOptions checks
+		// work even when optional parameters aren't explicitly set.
+		const resolvedParams =
+			NodeHelpers.getNodeParameters(
+				nodeType.properties,
+				node.parameters,
+				true,
+				false,
+				node,
+				nodeType,
+			) ?? {};
+		const optionsValues = (resolvedParams.options ?? {}) as INodeParameters;
+
+		// Use the user set value if present
+		if (parameterName in optionsValues) {
+			return optionsValues[parameterName] as T;
+		}
+
+		// Otherwise find the default from the active parameter definition
+		const optionsParam = nodeType.properties.find(
+			(prop) =>
+				prop.name === 'options' &&
+				prop.type === 'collection' &&
+				NodeHelpers.displayParameter(resolvedParams, prop, node, nodeType),
 		);
 
-		if (!nodeType) return fallback;
+		for (const opt of optionsParam?.options ?? []) {
+			if (opt.name !== parameterName || !('default' in opt)) continue;
 
-		// Find the options collection parameter
-		const optionsParam = nodeType.properties.find((prop) => prop.name === 'options');
-		if (!optionsParam || optionsParam.type !== 'collection') return fallback;
-
-		// Find the specific parameter within the options collection
-		const param = optionsParam.options?.find((opt) => opt.name === parameterName);
-		// Type guard: only INodeProperties has a 'default' property
-		if (param && 'default' in param) {
-			return (param.default ?? fallback) as T;
-		}
-		return fallback;
-	};
-
-	// Helper to resolve the options parameter from the chat trigger node
-	// resolveParameter is async, so we use a ref updated via watch instead of computed
-	const resolvedOptions = ref<Record<string, unknown> | null>(null);
-
-	watch(
-		() => chatTriggerNode.value?.parameters?.options,
-		async (options) => {
-			if (!chatTriggerNode.value || !options) {
-				resolvedOptions.value = null;
-				return;
+			if (NodeHelpers.displayParameter(optionsValues, opt, node, nodeType, resolvedParams)) {
+				return opt.default as T;
 			}
+		}
 
-			resolvedOptions.value = await resolveParameter<Record<string, unknown>>(
-				options as NodeParameterValue,
-				{ contextNodeName: chatTriggerNode.value.name },
-			);
-		},
-		{ immediate: true },
-	);
+		return undefined;
+	};
 
 	// Check if streaming is enabled in ChatTrigger node
 	const isStreamingEnabled = computed<boolean>(
-		() =>
-			(resolvedOptions.value?.responseMode ??
-				getNodeParameterDefault<string>('responseMode', 'lastNode')) === 'streaming',
+		() => getOptionsValue<string>('responseMode') === 'streaming',
 	);
 
 	// Check if file uploads are allowed in ChatTrigger node
 	const isFileUploadsAllowed = computed<boolean>(
-		() =>
-			(resolvedOptions.value?.allowFileUploads ??
-				getNodeParameterDefault('allowFileUploads', false)) === true,
+		() => getOptionsValue('allowFileUploads') === true,
 	);
 
 	// Get allowed file MIME types from ChatTrigger node
-	const allowedFilesMimeTypesComputed = computed<string>(() => {
-		const value = resolvedOptions.value?.allowedFilesMimeTypes;
-		return typeof value === 'string'
-			? value
-			: getNodeParameterDefault<string>('allowedFilesMimeTypes', '*');
-	});
+	const allowedFilesMimeTypesComputed = computed<string | undefined>(() =>
+		getOptionsValue<string>('allowedFilesMimeTypes'),
+	);
 
 	// Check if workflow is ready for chat execution
 	const isWorkflowReadyForChat = computed(() => {

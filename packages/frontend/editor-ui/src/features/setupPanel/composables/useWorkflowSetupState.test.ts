@@ -80,6 +80,7 @@ describe('useWorkflowSetupState', () => {
 
 		credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue(undefined);
 		credentialsStore.getCredentialById = vi.fn().mockReturnValue(undefined);
+		credentialsStore.getNodesWithAccess = vi.fn().mockReturnValue([]);
 		credentialsStore.isCredentialTestedOk = vi.fn().mockReturnValue(true);
 		credentialsStore.isCredentialTestPending = vi.fn().mockReturnValue(false);
 		credentialsStore.getCredentialData = vi.fn().mockResolvedValue(undefined);
@@ -706,6 +707,125 @@ describe('useWorkflowSetupState', () => {
 		});
 	});
 
+	describe('setCredential — HTTP Request auto-assign', () => {
+		it('should auto-assign to another HTTP Request node with the same URL and credential type', () => {
+			const httpNode1 = createNode({
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				position: [0, 0],
+				parameters: { url: 'https://api.example.com/data' },
+			});
+			const httpNode2 = createNode({
+				name: 'HTTP Request1',
+				type: 'n8n-nodes-base.httpRequest',
+				position: [100, 0],
+				parameters: { url: 'https://api.example.com/data' },
+			});
+			workflowsStore.allNodes = [httpNode1, httpNode2];
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
+				displayName: 'Header Auth',
+			});
+			workflowsStore.getNodeByName = vi.fn((name: string) => {
+				if (name === 'HTTP Request') return httpNode1;
+				if (name === 'HTTP Request1') return httpNode2;
+				return null;
+			});
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue({
+				id: 'cred-1',
+				name: 'My Auth',
+			});
+
+			const { setCredential } = useWorkflowSetupState();
+			setCredential('httpHeaderAuth', 'cred-1', 'HTTP Request');
+
+			// Both nodes should get the credential because they share the same URL
+			expect(mockUpdateNodeProperties).toHaveBeenCalledWith({
+				name: 'HTTP Request',
+				properties: {
+					credentials: { httpHeaderAuth: { id: 'cred-1', name: 'My Auth' } },
+				},
+			});
+			expect(mockUpdateNodeProperties).toHaveBeenCalledWith({
+				name: 'HTTP Request1',
+				properties: {
+					credentials: { httpHeaderAuth: { id: 'cred-1', name: 'My Auth' } },
+				},
+			});
+		});
+
+		it('should NOT auto-assign to another HTTP Request node with a different URL', () => {
+			const httpNode1 = createNode({
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				position: [0, 0],
+				parameters: { url: 'https://api.example.com/data' },
+			});
+			const httpNode2 = createNode({
+				name: 'HTTP Request1',
+				type: 'n8n-nodes-base.httpRequest',
+				position: [100, 0],
+				parameters: { url: 'https://api.other.com/data' },
+			});
+			workflowsStore.allNodes = [httpNode1, httpNode2];
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
+				displayName: 'Header Auth',
+			});
+			workflowsStore.getNodeByName = vi.fn((name: string) => {
+				if (name === 'HTTP Request') return httpNode1;
+				if (name === 'HTTP Request1') return httpNode2;
+				return null;
+			});
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue({
+				id: 'cred-1',
+				name: 'My Auth',
+			});
+
+			const { setCredential } = useWorkflowSetupState();
+			setCredential('httpHeaderAuth', 'cred-1', 'HTTP Request');
+
+			// Only the source node should get the credential
+			expect(mockUpdateNodeProperties).toHaveBeenCalledTimes(1);
+			expect(mockUpdateNodeProperties).toHaveBeenCalledWith({
+				name: 'HTTP Request',
+				properties: {
+					credentials: { httpHeaderAuth: { id: 'cred-1', name: 'My Auth' } },
+				},
+			});
+		});
+
+		it('should create separate cards for HTTP Request nodes with same credential type', () => {
+			const httpNode = createNode({
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				position: [0, 0],
+				parameters: { url: 'https://api.example.com' },
+			});
+			const regularNode = createNode({
+				name: 'Slack',
+				position: [100, 0],
+			});
+			workflowsStore.allNodes = [httpNode, regularNode];
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
+				displayName: 'Header Auth',
+			});
+			workflowsStore.getNodeByName = vi.fn((name: string) => {
+				if (name === 'HTTP Request') return httpNode;
+				if (name === 'Slack') return regularNode;
+				return null;
+			});
+
+			const { credentialTypeStates } = useWorkflowSetupState();
+
+			// HTTP Request gets its own card, regular node gets its own card
+			expect(credentialTypeStates.value).toHaveLength(2);
+			expect(credentialTypeStates.value[0].nodes[0].name).toBe('HTTP Request');
+			expect(credentialTypeStates.value[1].nodes[0].name).toBe('Slack');
+		});
+	});
+
 	describe('unsetCredential', () => {
 		it('should remove credential from all nodes that need the type', () => {
 			const node1 = createNode({
@@ -1180,6 +1300,7 @@ describe('useWorkflowSetupState', () => {
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'openAiApi' }]);
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'OpenAI API',
+				test: { request: {} },
 			});
 			workflowsStore.getNodeByName = vi.fn().mockReturnValue(node);
 			credentialsStore.getCredentialById = vi.fn().mockReturnValue({
@@ -1212,6 +1333,7 @@ describe('useWorkflowSetupState', () => {
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'openAiApi' }]);
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'OpenAI API',
+				test: { request: {} },
 			});
 			workflowsStore.getNodeByName = vi.fn().mockReturnValue(node);
 			credentialsStore.getCredentialById = vi.fn().mockReturnValue({
@@ -1234,6 +1356,7 @@ describe('useWorkflowSetupState', () => {
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'openAiApi' }]);
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'OpenAI API',
+				test: { request: {} },
 			});
 			workflowsStore.getNodeByName = vi.fn().mockReturnValue(node);
 			credentialsStore.getCredentialById = vi.fn().mockReturnValue({
@@ -1257,6 +1380,7 @@ describe('useWorkflowSetupState', () => {
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'googleApi' }]);
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'Google API',
+				test: { request: {} },
 			});
 			workflowsStore.getNodeByName = vi.fn().mockReturnValue(node);
 			credentialsStore.getCredentialById = vi.fn().mockReturnValue({
@@ -1276,6 +1400,32 @@ describe('useWorkflowSetupState', () => {
 				expect(credentialsStore.credentialTestResults.get('cred-1')).toBe('success');
 			});
 
+			expect(credentialsStore.testCredential).not.toHaveBeenCalled();
+		});
+
+		it('should skip test for non-testable credential types', async () => {
+			const node = createNode({ name: 'HttpRequest' });
+			workflowsStore.allNodes = [node];
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
+				displayName: 'Header Auth',
+			});
+			credentialsStore.getNodesWithAccess = vi.fn().mockReturnValue([]);
+			workflowsStore.getNodeByName = vi.fn().mockReturnValue(node);
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue({
+				id: 'cred-1',
+				name: 'My Header Auth',
+			});
+			credentialsStore.isCredentialTestedOk = vi.fn().mockReturnValue(false);
+			credentialsStore.getCredentialData = vi.fn();
+			credentialsStore.testCredential = vi.fn();
+
+			const { setCredential } = useWorkflowSetupState();
+			setCredential('httpHeaderAuth', 'cred-1');
+
+			await nextTick();
+
+			expect(credentialsStore.getCredentialData).not.toHaveBeenCalled();
 			expect(credentialsStore.testCredential).not.toHaveBeenCalled();
 		});
 
@@ -1300,6 +1450,7 @@ describe('useWorkflowSetupState', () => {
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'openAiApi' }]);
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'OpenAI API',
+				test: { request: {} },
 			});
 			workflowsStore.getNodeByName = vi.fn().mockReturnValue(node);
 

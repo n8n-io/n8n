@@ -128,6 +128,7 @@ export namespace ChatRequest {
 		codeBuilder?: boolean;
 		pinData?: boolean;
 		planMode?: boolean;
+		mergeAskBuild?: boolean;
 	}
 
 	export interface UserChatMessage {
@@ -180,6 +181,8 @@ export namespace ChatRequest {
 
 	// API-specific types that extend UI types
 	export interface CodeDiffMessage extends ChatUI.CodeDiffMessage {
+		sdkSessionId?: string;
+		nodeName?: string;
 		solution_count?: number;
 		quickReplies?: ChatUI.QuickReply[];
 	}

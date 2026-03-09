@@ -1,4 +1,5 @@
 name: 'Release: Update pointer tag'
+run-name: 'Update pointer tag: ${{ inputs.track }} -> ${{ inputs.version-tag }}'
 
 on:
   workflow_call:
@@ -28,13 +29,24 @@ jobs:
   update-pointer-tags:
     name: Update pointer tags
     runs-on: ubuntu-slim
+    environment: minor-release-tag-merge
 
     steps:
+      - name: Generate GitHub App Token
+        id: generate_token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ secrets.RELEASE_TAG_MERGE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_TAG_MERGE_PRIVATE_KEY }}
+          skip-token-revoke: false
+
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          fetch-depth: 0
-          fetch-tags: true
+          token: ${{ steps.generate_token.outputs.token }}
+          # We can manage with a shallow clone, since `ensureTagExists` in github-helpers.mjs
+          # does a targeted fetch for the tags it needs.
+          fetch-depth: 1
 
       - name: Setup NodeJS
         uses: ./.github/actions/setup-nodejs

@@ -132,7 +132,9 @@ export async function verifyIntegrity(
 
 		const integrity = metadata?.data?.dist?.integrity;
 		if (integrity !== expectedIntegrity) {
-			throw new UnexpectedError('Checksum verification failed. Package integrity does not match.');
+			throw new UnexpectedError(
+				'Checksum verification failed. Package integrity does not match. Try restarting n8n and attempting the installation again.',
+			);
 		}
 		return;
 	} catch (error) {
@@ -152,7 +154,7 @@ export async function verifyIntegrity(
 			const integrity = jsonParse(stdout);
 			if (integrity !== expectedIntegrity) {
 				throw new UnexpectedError(
-					'Checksum verification failed. Package integrity does not match.',
+					'Checksum verification failed. Package integrity does not match. Try restarting n8n and attempting the installation again.',
 				);
 			}
 			return;
@@ -162,7 +164,9 @@ export async function verifyIntegrity(
 					'Checksum verification failed. Please check your network connection and try again.',
 				);
 			}
-			throw new UnexpectedError('Checksum verification failed');
+			throw new UnexpectedError(
+				'Checksum verification failed. Try restarting n8n and attempting the installation again.',
+			);
 		}
 	}
 }

@@ -1,16 +1,19 @@
 <script setup lang="ts">
-import { computed, ref, onBeforeUnmount } from 'vue';
+import { computed, ref, onBeforeUnmount, onMounted } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nCallout, N8nText, N8nTooltip } from '@n8n/design-system';
 
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
 import TriggerExecuteButton from '@/features/setupPanel/components/TriggerExecuteButton.vue';
+import WebhookUrlPreview from '@/features/setupPanel/components/WebhookUrlPreview.vue';
 
 import type { CredentialTypeSetupState } from '@/features/setupPanel/setupPanel.types';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { useTriggerExecution } from '@/features/setupPanel/composables/useTriggerExecution';
+import { useWebhookUrls } from '@/features/setupPanel/composables/useWebhookUrls';
 import SetupCard from '@/features/setupPanel/components/cards/SetupCard.vue';
 
 const props = defineProps<{
@@ -27,6 +30,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
+const credentialsStore = useCredentialsStore();
 const setupPanelStore = useSetupPanelStore();
 
 const setupCard = ref<InstanceType<typeof SetupCard> | null>(null);
@@ -50,15 +54,22 @@ const {
 	isButtonDisabled,
 	label,
 	buttonIcon,
-	tooltipText,
+	tooltipItems,
 	execute,
 	isInListeningState,
 	listeningHint,
 } = useTriggerExecution(triggerNode);
 
+const { webhookUrls } = useWebhookUrls(triggerNode);
+
 const cardTitle = computed(() => nodeNames.value[0] ?? '');
 
 const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
+
+const isTestingCredential = computed(() => {
+	const id = props.state.selectedCredentialId;
+	return !!id && credentialsStore.isCredentialTestPending(id);
+});
 
 const showFooter = computed(() => triggerNode.value !== null || props.state.isComplete);
 
@@ -107,6 +118,23 @@ const onSharedNodesHintLeave = () => {
 	}
 };
 
+onMounted(() => {
+	if (props.state.selectedCredentialId) return;
+
+	const available = credentialsStore.getCredentialsByType(props.state.credentialType);
+	if (available.length === 0) return;
+
+	const mostRecent = available.reduce(
+		(best, current) => (best.updatedAt > current.updatedAt ? best : current),
+		available[0],
+	);
+
+	emit('credentialSelected', {
+		credentialType: props.state.credentialType,
+		credentialId: mostRecent.id,
+	});
+});
+
 onBeforeUnmount(() => {
 	setupPanelStore.clearHighlightedNodes();
 });
@@ -117,6 +145,7 @@ onBeforeUnmount(() => {
 		ref="setupCard"
 		v-model:expanded="expanded"
 		:is-complete="state.isComplete"
+		:loading="isTestingCredential"
 		:title="cardTitle"
 		:show-footer="showFooter"
 		:show-callout="!!triggerNode && isInListeningState"
@@ -137,6 +166,13 @@ onBeforeUnmount(() => {
 			>
 				{{ listeningHint }}
 			</N8nCallout>
+		</template>
+
+		<template #webhook-urls>
+			<WebhookUrlPreview
+				v-if="triggerNode && isInListeningState && webhookUrls.length > 0"
+				:urls="webhookUrls"
+			/>
 		</template>
 
 		<template #card-description>
@@ -189,9 +225,9 @@ onBeforeUnmount(() => {
 				v-if="triggerNode"
 				:label="label"
 				:icon="buttonIcon"
-				:disabled="isButtonDisabled"
+				:disabled="isButtonDisabled || isTestingCredential"
 				:loading="isExecuting"
-				:tooltip-text="tooltipText"
+				:tooltip-items="tooltipItems"
 				@click="onExecuteClick"
 			/>
 		</template>

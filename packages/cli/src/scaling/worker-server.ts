@@ -18,6 +18,7 @@ import { PrometheusMetricsService } from '@/metrics/prometheus-metrics.service';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import * as ResponseHelper from '@/response-helper';
 import { RedisClientService } from '@/services/redis-client.service';
+import { resolveHealthEndpointPath } from '@/utils/health-endpoint.util';
 
 export type WorkerServerEndpointsConfig = {
 	/** Whether the health check endpoint is enabled. */
@@ -102,7 +103,7 @@ export class WorkerServer {
 		const { health, overwrites, metrics } = this.endpointsConfig;
 
 		if (health) {
-			const healthPath = this.globalConfig.endpoints.health;
+			const healthPath = resolveHealthEndpointPath(this.globalConfig);
 			const readinessPath = `${healthPath}/readiness`;
 
 			this.app.get(healthPath, async (_, res) => {

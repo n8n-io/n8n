@@ -115,6 +115,16 @@ export { UpdateRoleDto } from './roles/update-role.dto';
 export { CreateRoleDto } from './roles/create-role.dto';
 export { RoleListQueryDto } from './roles/role-list-query.dto';
 export { RoleGetQueryDto } from './roles/role-get-query.dto';
+export {
+	RoleAssignmentsResponseDto,
+	type RoleProjectAssignment,
+	type RoleAssignmentsResponse,
+} from './roles/role-assignments-response.dto';
+export {
+	RoleProjectMembersResponseDto,
+	type RoleProjectMember,
+	type RoleProjectMembersResponse,
+} from './roles/role-project-members-response.dto';
 
 export { OidcConfigDto } from './oidc/config.dto';
 
@@ -158,4 +168,9 @@ export { SetSecretsProviderConnectionIsEnabledDto } from './secrets-provider/set
 export { TestSecretsProviderConnectionDto } from './secrets-provider/test-secrets-provider-connection.dto';
 export { UpdateSecretsProviderConnectionDto } from './secrets-provider/update-secrets-provider-connection.dto';
 
-export { CreateQuickConnectCredentialDto } from './quick-connect/create-quick-connect-credential.dto';
+export { GetQuickConnectApiKeyDto } from './quick-connect/create-quick-connect-credential.dto';
+
+export {
+	ExecutionRedactionQueryDtoSchema,
+	type ExecutionRedactionQueryDto,
+} from './executions/execution-redaction-query.dto';

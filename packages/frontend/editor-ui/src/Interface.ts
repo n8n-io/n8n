@@ -40,7 +40,6 @@ import type { Version } from '@n8n/rest-api-client/api/versions';
 import type { Cloud, InstanceUsage } from '@n8n/rest-api-client/api/cloudPlans';
 import type {
 	WorkflowMetadata,
-	WorkflowData,
 	WorkflowDataCreate,
 	WorkflowDataUpdate,
 } from '@n8n/rest-api-client/api/workflows';
@@ -159,6 +158,7 @@ export interface INodeUi extends INode {
 	name: string;
 	pinData?: IDataObject;
 	draggable?: boolean;
+	placeholder?: boolean;
 }
 
 export interface INodeTypesMaxCount {
@@ -185,7 +185,7 @@ export interface IAiDataContent {
 }
 
 export interface IStartRunData {
-	workflowData: WorkflowData;
+	workflowId: string;
 	startNodes?: StartNodeData[];
 	destinationNode?: IDestinationNode;
 	runData?: IRunData;
@@ -257,10 +257,7 @@ export interface IWorkflowDb {
 	activeVersionId: string | null;
 	usedCredentials?: IUsedCredential[];
 	meta?: WorkflowMetadata;
-	parentFolder?: {
-		id: string;
-		name: string;
-		parentFolderId: string | null;
+	parentFolder?: ResourceParentFolder & {
 		createdAt?: string;
 		updatedAt?: string;
 	};
@@ -642,6 +639,7 @@ export type ModalState = {
 
 export interface NewCredentialsModal extends ModalState {
 	showAuthSelector?: boolean;
+	forceManualMode?: boolean;
 }
 
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai';
@@ -678,7 +676,7 @@ export type NodeCreatorOpenSource =
 	| 'plus_endpoint'
 	| 'add_input_endpoint'
 	| 'trigger_placeholder_button'
-	| 'tab'
+	| 'node_shortcut'
 	| 'replace_node_action'
 	| 'node_connection_action'
 	| 'node_connection_drop'
@@ -871,6 +869,8 @@ export type CloudUpdateLinkSourceType =
 	| 'ai-builder-sidebar'
 	| 'ai-builder-canvas'
 	| 'custom-roles'
+	| 'custom-roles-selector'
+	| 'custom-roles-list'
 	| 'main-sidebar'
 	| 'chat-hub'
 	| 'empty-state-builder-prompt';

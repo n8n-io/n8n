@@ -10,7 +10,7 @@ import type { Scope } from '@n8n/permissions';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { isComponentPublicInstance } from '@/app/utils/typeGuards';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 export type ConnectionProjectSummary = { id: string; name: string };
 
@@ -39,7 +39,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	const rbacStore = useRBACStore();
 	const toast = useToast();
 	const projectsStore = useProjectsStore();
-	const { check: checkDevFeatureFlag } = useEnvFeatureFlag();
+	const settingsStore = useSettingsStore();
 
 	// State
 	const providerKey = ref<string | undefined>(options.providerKey?.value);
@@ -55,7 +55,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	const parameterValidationStates = ref<Record<string, boolean>>({});
 
 	// Connection composable (low-level API operations)
-	const connection = useSecretsProviderConnection();
+	const connection = useSecretsProviderConnection(options.projectId);
 
 	// Display logic - determines which properties should be shown
 	function shouldDisplayProperty(property: INodeProperties): boolean {
@@ -139,8 +139,15 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		return rbacStore.hasScope('externalSecretsProvider:update') || canUpdateProjectScoped.value;
 	});
 
+	const canDeleteProjectScoped = computed(() => {
+		if (originalProjectIds.value.length === 0) return false;
+		return originalProjectIds.value.every((id) =>
+			hasProjectScope(id, 'externalSecretsProvider:delete'),
+		);
+	});
+
 	const canDelete = computed(() => {
-		return rbacStore.hasScope('externalSecretsProvider:delete');
+		return rbacStore.hasScope('externalSecretsProvider:delete') || canDeleteProjectScoped.value;
 	});
 
 	const canShareGlobally = computed(() => {
@@ -157,7 +164,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 			value: type.type,
 		}));
 
-		if (checkDevFeatureFlag.value('EXTERNAL_SECRETS_MULTIPLE_CONNECTIONS')) {
+		if (settingsStore.moduleSettings['external-secrets']?.multipleConnections) {
 			// infisical has been deprecated for a long time.
 			// In order to be able to fully remove the code for it
 			// we are no longer showing users the option to create connections to infisical.
@@ -484,6 +491,12 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		}
 	}
 
+	const isScopedMode = computed(() => !!options.projectId);
+
+	const isReadOnly = computed(
+		() => isScopedMode.value && isSharedGlobally.value && isEditMode.value,
+	);
+
 	return {
 		// State refs
 		providerSecretsCount,
@@ -505,6 +518,8 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		canUpdate,
 		canDelete,
 		canShareGlobally,
+		isScopedMode,
+		isReadOnly,
 		setScopeState,
 
 		// Computed

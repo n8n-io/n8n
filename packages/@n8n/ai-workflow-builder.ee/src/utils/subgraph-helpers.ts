@@ -3,6 +3,7 @@ import { HumanMessage, AIMessage, ToolMessage } from '@langchain/core/messages';
 import type { StructuredTool } from '@langchain/core/tools';
 import { END, isCommand, isGraphInterrupt } from '@langchain/langgraph';
 
+import { stripAllCacheControlMarkers } from './cache-control';
 import { isBaseMessage } from '../types/langchain';
 import type { WorkflowMetadata } from '../types/tools';
 import type { WorkflowOperation } from '../types/workflow';
@@ -244,7 +245,7 @@ export function extractToolMessagesForPersistence(messages: BaseMessage[]): Base
 		}
 	}
 
-	return messages.filter((msg) => {
+	const filtered = messages.filter((msg) => {
 		if (ToolMessage.isInstance(msg)) {
 			return true;
 		}
@@ -253,5 +254,35 @@ export function extractToolMessagesForPersistence(messages: BaseMessage[]): Base
 			return msg.tool_calls.every((tc) => tc.id && completedToolCallIds.has(tc.id));
 		}
 		return false;
+	});
+
+	// Strip cache_control markers from persisted messages to avoid exceeding
+	// Anthropic's cache marker limit when these are loaded in subsequent requests
+	stripAllCacheControlMarkers(filtered);
+
+	return filtered;
+}
+
+/**
+ * Filter out internal subgraph tool messages from the conversation.
+ *
+ * Subgraph tool messages (ToolMessages and AIMessages with tool_calls) are
+ * persisted in parent state for frontend UI restoration, but they are not
+ * relevant for agents like the supervisor or responder. Including them
+ * wastes tokens and risks exceeding Anthropic's cache_control marker limit
+ * if stale markers remain on those messages.
+ *
+ * @param messages - Parent graph messages array
+ * @returns Messages with internal tool messages removed
+ */
+export function filterOutSubgraphToolMessages(messages: BaseMessage[]): BaseMessage[] {
+	return messages.filter((msg) => {
+		if (ToolMessage.isInstance(msg)) {
+			return false;
+		}
+		if (AIMessage.isInstance(msg) && msg.tool_calls && msg.tool_calls.length > 0) {
+			return false;
+		}
+		return true;
 	});
 }

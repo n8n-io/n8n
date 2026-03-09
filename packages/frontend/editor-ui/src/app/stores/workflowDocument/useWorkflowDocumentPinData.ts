@@ -1,34 +1,23 @@
 import { ref, readonly } from 'vue';
+import { createEventHook } from '@vueuse/core';
 import type { INodeExecutionData, IDataObject, IPinData } from 'n8n-workflow';
 import { isJsonKeyObject, stringSizeInBytes } from '@/app/utils/typesUtils';
-import { dataPinningEventBus } from '@/app/event-bus';
+import { CHANGE_ACTION } from './types';
+import type { ChangeAction, ChangeEvent } from './types';
 
-type Action<N, P> = { name: N; payload: P };
+export type PinDataNodePayload = {
+	nodeName: string;
+	data: INodeExecutionData[] | undefined;
+};
 
-type SetPinDataAction = Action<'setPinData', { pinData: IPinData }>;
-type PinNodeDataAction = Action<'pinNodeData', { nodeName: string; data: INodeExecutionData[] }>;
-type UnpinNodeDataAction = Action<'unpinNodeData', { nodeName: string }>;
-type RenamePinDataNodeAction = Action<'renamePinDataNode', { oldName: string; newName: string }>;
+export type PinDataBulkPayload = {
+	pinData: IPinData;
+};
 
-export type PinDataAction =
-	| SetPinDataAction
-	| PinNodeDataAction
-	| UnpinNodeDataAction
-	| RenamePinDataNodeAction;
-
-const PIN_DATA_ACTION_NAMES = new Set<string>([
-	'setPinData',
-	'pinNodeData',
-	'unpinNodeData',
-	'renamePinDataNode',
-]);
-
-export function isPinDataAction(action: { name: string }): action is PinDataAction {
-	return PIN_DATA_ACTION_NAMES.has(action.name);
-}
+export type PinDataChangeEvent = ChangeEvent<PinDataNodePayload> | ChangeEvent<PinDataBulkPayload>;
 
 /**
- * Normalize an array of node execution data items by stripping runtime properties.
+ * Strips runtime properties from node execution data items.
  * Only keeps json, binary, and pairedItem.
  */
 function normalizeNodeExecutionData(data: INodeExecutionData[]): INodeExecutionData[] {
@@ -49,9 +38,6 @@ function normalizeNodeExecutionData(data: INodeExecutionData[]): INodeExecutionD
 	}) as INodeExecutionData[];
 }
 
-/**
- * Normalize pin data by ensuring all items have the json key wrapper.
- */
 function normalizePinData(data: IPinData): IPinData {
 	return Object.keys(data).reduce<IPinData>((accu, nodeName) => {
 		accu[nodeName] = data[nodeName].map((item) => {
@@ -64,9 +50,6 @@ function normalizePinData(data: IPinData): IPinData {
 	}, {});
 }
 
-/**
- * Extract the json values from pin data, producing a map of node names to plain data objects.
- */
 export function pinDataToExecutionData(
 	pinData: Readonly<Record<string, ReadonlyArray<{ readonly json: IDataObject }>>>,
 ): Record<string, IDataObject[]> {
@@ -75,9 +58,6 @@ export function pinDataToExecutionData(
 	);
 }
 
-/**
- * Calculate the byte size of pin data.
- */
 export function getPinDataSize(
 	pinData: Record<string, string | INodeExecutionData[]> = {},
 ): number {
@@ -86,87 +66,79 @@ export function getPinDataSize(
 	}, 0);
 }
 
-/**
- * Composable that encapsulates pin data state, public API, and mutation logic
- * for a workflow document store.
- *
- * Accepts an `onChange` callback that routes actions through the store's
- * unified dispatcher for CRDT migration readiness.
- */
-export function useWorkflowDocumentPinData(onChange: (action: PinDataAction) => void) {
+// TODO: Consider replacing the plain object ref with a reactive Map for per-node
+// reactivity and a more natural fit with CRDT Y.Map when collaborative editing lands.
+export function useWorkflowDocumentPinData() {
 	const pinData = ref<IPinData>({});
 
+	const onPinnedDataChange = createEventHook<PinDataChangeEvent>();
+
+	function applyPinData(data: IPinData, action: ChangeAction = CHANGE_ACTION.UPDATE) {
+		pinData.value = data;
+		void onPinnedDataChange.trigger({ action, payload: { pinData: data } });
+	}
+
+	function applyNodePinData(nodeName: string, data: INodeExecutionData[]) {
+		const action: ChangeAction = pinData.value[nodeName] ? CHANGE_ACTION.UPDATE : CHANGE_ACTION.ADD;
+		pinData.value = { ...pinData.value, [nodeName]: data };
+		void onPinnedDataChange.trigger({ action, payload: { nodeName, data } });
+	}
+
+	function applyUnpin(nodeName: string) {
+		const { [nodeName]: _, ...rest } = pinData.value;
+		pinData.value = rest;
+		void onPinnedDataChange.trigger({
+			action: CHANGE_ACTION.DELETE,
+			payload: { nodeName, data: undefined },
+		});
+	}
+
+	function applyRenamePinDataNode(oldName: string, newName: string) {
+		if (pinData.value[oldName]) {
+			const { [oldName]: renamed, ...rest } = pinData.value;
+			pinData.value = { ...rest, [newName]: renamed };
+		}
+		Object.values(pinData.value)
+			.flatMap((executionData) =>
+				executionData.flatMap((nodeExecution) =>
+					Array.isArray(nodeExecution.pairedItem)
+						? nodeExecution.pairedItem
+						: [nodeExecution.pairedItem],
+				),
+			)
+			.forEach((pairedItem) => {
+				if (typeof pairedItem === 'number' || pairedItem?.sourceOverwrite?.previousNode !== oldName)
+					return;
+				pairedItem.sourceOverwrite.previousNode = newName;
+			});
+		void onPinnedDataChange.trigger({
+			action: CHANGE_ACTION.UPDATE,
+			payload: { nodeName: newName, data: pinData.value[newName] },
+		});
+	}
+
 	function setPinData(newPinData: IPinData) {
-		onChange({ name: 'setPinData', payload: { pinData: newPinData } });
+		applyPinData(normalizePinData(newPinData));
 	}
 
 	function pinNodeData(nodeName: string, data: INodeExecutionData[]) {
-		onChange({ name: 'pinNodeData', payload: { nodeName, data } });
+		applyNodePinData(nodeName, normalizeNodeExecutionData(data));
 	}
 
 	function unpinNodeData(nodeName: string) {
-		onChange({ name: 'unpinNodeData', payload: { nodeName } });
+		applyUnpin(nodeName);
 	}
 
 	function renamePinDataNode(oldName: string, newName: string) {
-		onChange({ name: 'renamePinDataNode', payload: { oldName, newName } });
+		applyRenamePinDataNode(oldName, newName);
 	}
 
-	/** Returns a mutable shallow copy of all pin data, bypassing the readonly wrapper. */
 	function getPinDataSnapshot(): IPinData {
 		return { ...pinData.value };
 	}
 
-	/** Returns pin data for a specific node, bypassing the readonly wrapper. */
 	function getNodePinData(nodeName: string): INodeExecutionData[] | undefined {
 		return pinData.value[nodeName];
-	}
-
-	/**
-	 * Apply a pin data action to the state.
-	 * Called by the store's unified onChange dispatcher.
-	 */
-	function handleAction(action: PinDataAction) {
-		if (action.name === 'setPinData') {
-			const normalized = normalizePinData(action.payload.pinData);
-			pinData.value = normalized;
-			dataPinningEventBus.emit('pin-data', normalized);
-		} else if (action.name === 'pinNodeData') {
-			const storedData = normalizeNodeExecutionData(action.payload.data);
-			pinData.value = { ...pinData.value, [action.payload.nodeName]: storedData };
-			dataPinningEventBus.emit('pin-data', {
-				[action.payload.nodeName]: storedData,
-			});
-		} else if (action.name === 'unpinNodeData') {
-			const { [action.payload.nodeName]: _, ...rest } = pinData.value;
-			pinData.value = rest;
-			dataPinningEventBus.emit('unpin-data', {
-				nodeNames: [action.payload.nodeName],
-			});
-		} else if (action.name === 'renamePinDataNode') {
-			const { oldName, newName } = action.payload;
-			if (pinData.value[oldName]) {
-				const { [oldName]: renamed, ...rest } = pinData.value;
-				pinData.value = { ...rest, [newName]: renamed };
-			}
-			// Update pairedItem sourceOverwrite references to the old node name
-			Object.values(pinData.value)
-				.flatMap((executionData) =>
-					executionData.flatMap((nodeExecution) =>
-						Array.isArray(nodeExecution.pairedItem)
-							? nodeExecution.pairedItem
-							: [nodeExecution.pairedItem],
-					),
-				)
-				.forEach((pairedItem) => {
-					if (
-						typeof pairedItem === 'number' ||
-						pairedItem?.sourceOverwrite?.previousNode !== oldName
-					)
-						return;
-					pairedItem.sourceOverwrite.previousNode = newName;
-				});
-		}
 	}
 
 	return {
@@ -177,6 +149,6 @@ export function useWorkflowDocumentPinData(onChange: (action: PinDataAction) => 
 		renamePinDataNode,
 		getPinDataSnapshot,
 		getNodePinData,
-		handleAction,
+		onPinnedDataChange: onPinnedDataChange.on,
 	};
 }

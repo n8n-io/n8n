@@ -12,6 +12,7 @@ import {
 	SOURCE_CONTROL_SSH_FOLDER,
 } from '@/modules/source-control.ee/constants';
 import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+
 import {
 	areSameCredentials,
 	generateSshKeyPair,
@@ -25,7 +26,6 @@ import {
 	sanitizeCredentialData,
 	sourceControlFoldersExistCheck,
 } from '../source-control-helper.ee';
-
 import type { StatusExportableCredential } from '../types/exportable-credential';
 import type { SourceControlWorkflowVersionId } from '../types/source-control-workflow-version-id';
 

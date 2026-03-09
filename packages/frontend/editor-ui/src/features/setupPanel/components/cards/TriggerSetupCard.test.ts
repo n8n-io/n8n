@@ -2,7 +2,6 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestNode, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
-import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import TriggerSetupCard from '@/features/setupPanel/components/cards/TriggerSetupCard.vue';
@@ -16,7 +15,7 @@ const { mockExecute, mockComposableState } = vi.hoisted(() => ({
 		isButtonDisabled: false,
 		label: 'Test node',
 		buttonIcon: 'flask-conical' as const,
-		tooltipText: '',
+		tooltipItems: [] as string[],
 		isInListeningState: false,
 		listeningHint: '',
 	},
@@ -30,7 +29,7 @@ vi.mock('@/features/setupPanel/composables/useTriggerExecution', async () => {
 			isButtonDisabled: computed(() => mockComposableState.isButtonDisabled),
 			label: computed(() => mockComposableState.label),
 			buttonIcon: computed(() => mockComposableState.buttonIcon),
-			tooltipText: computed(() => mockComposableState.tooltipText),
+			tooltipItems: computed(() => mockComposableState.tooltipItems),
 			execute: mockExecute,
 			isInListeningState: computed(() => mockComposableState.isInListeningState),
 			listeningHint: computed(() => mockComposableState.listeningHint),
@@ -63,7 +62,7 @@ describe('TriggerSetupCard', () => {
 		mockComposableState.isButtonDisabled = false;
 		mockComposableState.label = 'Test node';
 		mockComposableState.buttonIcon = 'flask-conical';
-		mockComposableState.tooltipText = '';
+		mockComposableState.tooltipItems = [];
 		mockComposableState.isInListeningState = false;
 		mockComposableState.listeningHint = '';
 		createTestingPinia();
@@ -123,26 +122,8 @@ describe('TriggerSetupCard', () => {
 			expect(emitted('update:expanded')).toEqual([[true]]);
 		});
 
-		it('should auto-collapse when isComplete changes to true', async () => {
-			const state = createState({ isComplete: false });
-			const { emitted, rerender } = renderComponent({
-				props: { state, expanded: true },
-			});
-
-			await rerender({ state: { ...state, isComplete: true }, expanded: true });
-
-			await waitFor(() => {
-				expect(emitted('update:expanded')).toEqual([[false]]);
-			});
-		});
-
-		it('should start collapsed when mounted with isComplete true', () => {
-			const { emitted } = renderComponent({
-				props: { state: createState({ isComplete: true }), expanded: true },
-			});
-
-			expect(emitted('update:expanded')).toEqual([[false]]);
-		});
+		// Auto-collapse on completion and initial-collapse-if-complete
+		// are handled by the parent (SetupPanelCards) which owns expanded state.
 	});
 
 	describe('complete state', () => {

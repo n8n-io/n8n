@@ -1,10 +1,13 @@
-import type { SecretCompletionsResponse, SecretsProviderType } from '@n8n/api-types';
 import {
-	CreateSecretsProviderConnectionDto,
-	TestSecretProviderConnectionResponse,
+	type CreateSecretsProviderConnectionDto,
+	type ReloadSecretProviderConnectionResponse,
+	type TestSecretProviderConnectionResponse,
+	type SecretCompletionsResponse,
+	type SecretProviderConnection,
+	type SecretProviderConnectionListItem,
+	type SecretsProviderType,
 	testSecretProviderConnectionResponseSchema,
 	reloadSecretProviderConnectionResponseSchema,
-	ReloadSecretProviderConnectionResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { SecretsProviderConnection } from '@n8n/db';
@@ -23,7 +26,6 @@ import { EventService } from '@/events/event.service';
 import type { ProjectSummary } from '@/events/maps/relay.event-map';
 import { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
 import { RedactionService } from '@/modules/external-secrets.ee/redaction.service.ee';
-import { SecretsProvidersResponses } from '@/modules/external-secrets.ee/secrets-providers.responses.ee';
 
 import { ExternalSecretsProviderRegistry } from './provider-registry.service';
 
@@ -98,6 +100,7 @@ export class SecretsProvidersConnectionsService {
 			type?: string;
 			projectIds?: string[];
 			settings?: IDataObject;
+			isEnabled?: boolean;
 		},
 		userId: string,
 	): Promise<SecretsProviderConnection> {
@@ -119,6 +122,9 @@ export class SecretsProvidersConnectionsService {
 			const savedSettings = this.decryptConnectionSettings(connection.encryptedSettings);
 			const unredactedSettings = this.redactionService.unredact(updates.settings, savedSettings);
 			connection.encryptedSettings = this.encryptConnectionSettings(unredactedSettings);
+		}
+		if (updates.isEnabled !== undefined) {
+			connection.isEnabled = updates.isEnabled;
 		}
 
 		await this.repository.save(connection);
@@ -212,7 +218,7 @@ export class SecretsProvidersConnectionsService {
 
 	toPublicConnectionListItem(
 		connection: SecretsProviderConnection,
-	): SecretsProvidersResponses.ConnectionListItem {
+	): SecretProviderConnectionListItem {
 		const secretNames = this.externalSecretsManager.getSecretNames(connection.providerKey);
 		const connectionInstance = this.externalSecretsManager.getProvider(connection.providerKey);
 
@@ -220,6 +226,7 @@ export class SecretsProvidersConnectionsService {
 			id: String(connection.id),
 			name: connection.providerKey,
 			type: connection.type as SecretsProviderType,
+			isEnabled: connection.isEnabled,
 			secretsCount: secretNames.length,
 			// Provider may not be registered yet in multi-main setups.
 			// When that's the case the default state is 'initializing'.
@@ -233,7 +240,7 @@ export class SecretsProvidersConnectionsService {
 		};
 	}
 
-	toPublicConnection(connection: SecretsProviderConnection): SecretsProvidersResponses.Connection {
+	toPublicConnection(connection: SecretsProviderConnection): SecretProviderConnection {
 		const decryptedSettings = this.decryptConnectionSettings(connection.encryptedSettings);
 		const properties = this.externalSecretsManager.getProviderProperties(connection.type);
 		const redactedSettings = this.redactionService.redact(decryptedSettings, properties);
@@ -244,6 +251,7 @@ export class SecretsProvidersConnectionsService {
 			id: String(connection.id),
 			name: connection.providerKey,
 			type: connection.type as SecretsProviderType,
+			isEnabled: connection.isEnabled,
 			secretsCount: secretNames.length,
 			// Provider may not be registered yet in multi-main setups.
 			// When that's the case the default state is 'initializing'.
@@ -364,6 +372,22 @@ export class SecretsProvidersConnectionsService {
 		projectId: string,
 	): Promise<SecretsProviderConnection> {
 		const connection = await this.repository.findByProviderKeyAndProjectId(providerKey, projectId);
+
+		if (!connection) {
+			throw new NotFoundError(`Connection with key "${providerKey}" not found`);
+		}
+
+		return connection;
+	}
+
+	async getConnectionAccessibleFromProject(
+		providerKey: string,
+		projectId: string,
+	): Promise<SecretsProviderConnection> {
+		const connection = await this.repository.findAccessibleByProviderKeyAndProjectId(
+			providerKey,
+			projectId,
+		);
 
 		if (!connection) {
 			throw new NotFoundError(`Connection with key "${providerKey}" not found`);

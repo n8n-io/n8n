@@ -78,7 +78,6 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 			'isGlobal',
 			'isResolvable',
 			'resolverId',
-			'resolvableAllowFallback',
 		];
 
 		if (!listQueryOptions) {
@@ -329,7 +328,6 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 			'isGlobal',
 			'isResolvable',
 			'resolverId',
-			'resolvableAllowFallback',
 		];
 
 		if (options.select) {

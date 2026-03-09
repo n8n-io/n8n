@@ -279,7 +279,7 @@ export class WorkflowBuilderAgent {
 				return;
 			}
 
-			const isMergeAskBuildEnabled = process.env.N8N_ENV_FEAT_MERGE_ASK_BUILD === 'true';
+			const isMergeAskBuildEnabled = payload.featureFlags?.mergeAskBuild === true;
 			if (isMergeAskBuildEnabled && this.assistantHandler) {
 				this.logger?.debug('Routing through triage agent', { userId });
 				yield* this.runTriageAgent(payload, userId, abortSignal);

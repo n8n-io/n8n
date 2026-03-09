@@ -3,7 +3,7 @@ import type { StoryFn } from '@storybook/vue3-vite';
 import N8nLogo from './Logo.vue';
 
 export default {
-	title: 'Atoms/Logo',
+	title: 'Core/Logo',
 	component: N8nLogo,
 	argTypes: {
 		size: {

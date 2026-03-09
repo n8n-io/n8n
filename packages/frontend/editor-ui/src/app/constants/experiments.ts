@@ -51,6 +51,12 @@ export const AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT = createExperiment(
 
 export const AI_BUILDER_PLAN_MODE_EXPERIMENT = createExperiment('073_builder_plan_mode');
 
+export const AI_BUILDER_REVIEW_CHANGES_EXPERIMENT = createExperiment(
+	'075_ai_builder_review_changes',
+);
+
+export const MERGE_ASK_BUILD_EXPERIMENT = createExperiment('076_merge_ask_build');
+
 export const EXECUTION_LOGIC_V2_EXPERIMENT = {
 	name: '062_execution_logic_v2',
 	control: 'control',
@@ -95,6 +101,8 @@ export const CODE_WORKFLOW_BUILDER_EXPERIMENT = createExperiment('071_coding_wor
 
 export const QUICK_CONNECT_EXPERIMENT = createExperiment('073_quick_connect');
 
+export const CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT = createExperiment('077_chat_hub_semantic_search');
+
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
@@ -116,4 +124,7 @@ export const EXPERIMENTS_TO_TRACK = [
 	EMPTY_STATE_BUILDER_PROMPT_EXPERIMENT.name,
 	FOCUSED_NODES_EXPERIMENT.name,
 	QUICK_CONNECT_EXPERIMENT.name,
+	AI_BUILDER_REVIEW_CHANGES_EXPERIMENT.name,
+	MERGE_ASK_BUILD_EXPERIMENT.name,
+	CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT.name,
 ];

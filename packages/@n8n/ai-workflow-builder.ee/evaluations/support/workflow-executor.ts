@@ -17,6 +17,7 @@
 
 import type {
 	IExecuteFunctions,
+	INode,
 	IPinData,
 	IRun,
 	INodeType,
@@ -112,7 +113,6 @@ class DistNodeTypes implements INodeTypes {
 		const known = this.knownNodes.get(type);
 		if (!known) {
 			// Unknown type — return a passthrough so the engine doesn't crash.
-			// Service nodes never reach execute() because pin data intercepts them first.
 			return {
 				description: {
 					displayName: type,
@@ -141,10 +141,6 @@ class DistNodeTypes implements INodeTypes {
 		return instance;
 	}
 }
-
-// ---------------------------------------------------------------------------
-// Lazy singleton for WorkflowExecute + ExecutionLifecycleHooks + DistNodeTypes
-// ---------------------------------------------------------------------------
 
 let resolvedImports: ResolvedImports | undefined;
 
@@ -193,8 +189,6 @@ async function resolveImports(): Promise<ResolvedImports> {
 	>;
 
 	// Load the lazy-load index from each package's dist/known/nodes.json.
-	// These JSON files are built during `pnpm build` and map short node names
-	// to their compiled .js entry points.
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
 	const nodesBaseKnown = require(path.join(nodesBasePath, 'dist', 'known', 'nodes.json')) as Record<
 		string,
@@ -229,15 +223,13 @@ async function resolveImports(): Promise<ResolvedImports> {
 	return resolvedImports;
 }
 
-// ---------------------------------------------------------------------------
-// Proxy-based additionalData stub
-//
-// WorkflowExecute calls various methods on additionalData at runtime.
-// Rather than importing jest-mock-extended (which requires the Jest runtime),
-// we use a Proxy that returns a no-op function for any property access and
-// allows specific values to be injected via the `overrides` map.
-// ---------------------------------------------------------------------------
-
+/*
+ * Proxy-based additionalData stub
+ *
+ * WorkflowExecute calls various methods on additionalData at runtime.
+ * we use a Proxy that returns a no-op function for any property access and
+ * allows specific values to be injected via the `overrides` map.
+ */
 function makeAdditionalDataStub(
 	overrides: Record<string, unknown>,
 ): IWorkflowExecuteAdditionalData {
@@ -250,6 +242,23 @@ function makeAdditionalDataStub(
 }
 
 // ---------------------------------------------------------------------------
+// Start node detection
+// ---------------------------------------------------------------------------
+
+/**
+ * Fallback start-node finder for trigger nodes whose type description
+ * includes 'trigger' in its group (e.g. ChatTrigger, which is webhook-based
+ * and not recognised by Workflow.getStartNode()).
+ */
+export function findTriggerByGroup(nodes: INode[], nodeTypes: INodeTypes): INode | undefined {
+	return nodes.find((currentNode) => {
+		if (currentNode.disabled) return false;
+		const nt = nodeTypes.getByNameAndVersion(currentNode.type, currentNode.typeVersion);
+		return nt.description.group?.includes('trigger');
+	});
+}
+
+// ---------------------------------------------------------------------------
 // Main execution function
 // ---------------------------------------------------------------------------
 
@@ -258,7 +267,7 @@ function makeAdditionalDataStub(
  *
  * Service/API nodes use pin data (skipping real API calls). Utility nodes
  * (Set, If, Code, etc.) execute normally using their compiled dist
- * implementations, validating the workflow structure end-to-end.
+ * implementations
  *
  * @param workflow - The workflow to execute
  * @param pinData  - Pin data for service/API nodes
@@ -282,8 +291,10 @@ export async function executeWorkflowWithPinData(
 			active: false,
 		});
 
-		// Find start node
-		const startNode = workflowInstance.getStartNode();
+		// Find start node. getStartNode() only recognises nodes with a trigger()/poll()
+		// method or those in STARTING_NODE_TYPES. Webhook-based triggers like ChatTrigger
+		// are missed, so fall back to any node whose description group includes 'trigger'.
+		const startNode = workflowInstance.getStartNode() ?? findTriggerByGroup(workflow.nodes, imports.nodeTypes);
 		if (!startNode) {
 			return {
 				success: false,
@@ -306,13 +317,9 @@ export async function executeWorkflowWithPinData(
 			waitPromise.resolve(fullRunData as IRun);
 		});
 
-		// Set up additional data with a Proxy stub so WorkflowExecute can safely call
-		// any method on it without hitting "Cannot read properties of undefined".
-		// WorkflowExecute reads `hooks` at runtime — it's not on the TS type, so we
-		// inject it via the proxy's known-values map.
+		// Set up additional data with a Proxy stub so WorkflowExecute
 		const additionalData = makeAdditionalDataStub({ executionId: '1', hooks });
 
-		// Create execution data with pin data in resultData
 		const runExecutionData = createRunExecutionData({
 			executionData: {
 				nodeExecutionStack: [
@@ -328,7 +335,6 @@ export async function executeWorkflowWithPinData(
 			},
 		});
 
-		// Execute the workflow
 		const workflowExecute = new imports.WorkflowExecute(additionalData, 'manual', runExecutionData);
 		await workflowExecute.processRunExecutionData(workflowInstance);
 

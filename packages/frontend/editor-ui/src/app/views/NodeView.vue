@@ -3,9 +3,6 @@ import {
 	computed,
 	defineAsyncComponent,
 	nextTick,
-	onActivated,
-	onBeforeMount,
-	onDeactivated,
 	onMounted,
 	ref,
 	useCssModule,
@@ -101,7 +98,7 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
-import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
+
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { getBounds, getNodeViewTab } from '@/app/utils/nodeViewUtils';
 import CanvasStopCurrentExecutionButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopCurrentExecutionButton.vue';
@@ -192,7 +189,7 @@ const npsSurveyStore = useNpsSurveyStore();
 const projectsStore = useProjectsStore();
 const usersStore = useUsersStore();
 const tagsStore = useTagsStore();
-const pushConnectionStore = usePushConnectionStore();
+
 const ndvStore = useNDVStore();
 const focusPanelStore = useFocusPanelStore();
 const builderStore = useBuilderStore();
@@ -297,8 +294,15 @@ const isCanvasReadOnly = computed(() => {
 		collaborationStore.shouldBeReadOnly ||
 		!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update) ||
 		editableWorkflow.value.isArchived ||
-		builderStore.streaming
+		(builderStore.streaming && !builderStore.isHelpStreaming)
 	);
+});
+
+const canExecuteOnCanvas = computed(() => {
+	if (isDemoRoute.value) return false;
+	if (editableWorkflow.value.isArchived) return false;
+	if (builderStore.streaming) return false;
+	return !!(workflowPermissions.value.execute ?? projectPermissions.value.workflow.execute);
 });
 
 const isWriterAnotherTab = computed(() => {
@@ -642,7 +646,18 @@ async function onOpenRenameNodeModal(id: string) {
 		nameInput?.focus();
 		nameInput?.select();
 
+		// Stop propagation for space key to prevent VueFlow from intercepting it
+		// when modifier keys (like Shift) are pressed. See: https://github.com/bcakmakoglu/vue-flow/issues/1999
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if (e.key === ' ') {
+				e.stopPropagation();
+			}
+		};
+		nameInput?.addEventListener('keydown', handleKeyDown);
+
 		const promptResponse = await promptResponsePromise;
+
+		nameInput?.removeEventListener('keydown', handleKeyDown);
 
 		if (promptResponse.action === MODAL_CONFIRM) {
 			await renameNode(currentName, promptResponse.value, { trackHistory: true });
@@ -948,6 +963,7 @@ function onClickReplaceNode(nodeId: string) {
 	if (!nodeType) return;
 
 	nodeCreatorReplaceTargetId.value = nodeId;
+	nodeCreatorStore.oppeningContext = 'replacement';
 	if (isTriggerNode(nodeType)) {
 		nodeCreatorStore.openNodeCreatorForTriggerNodes(NODE_CREATOR_OPEN_SOURCES.REPLACE_NODE_ACTION);
 	} else {
@@ -1072,7 +1088,7 @@ async function onCopyTestUrl(id: string) {
 }
 
 async function onCopyProductionUrl(id: string) {
-	const isWorkflowActive = workflowsStore.workflow.active;
+	const isWorkflowActive = workflowDocumentStore?.value?.active ?? false;
 	if (!isWorkflowActive) {
 		toast.showMessage({
 			title: i18n.baseText('nodeWebhooks.showMessage.not.active'),
@@ -1193,7 +1209,7 @@ const isOnlyChatTriggerNodeActive = computed(() => {
 const chatTriggerNodePinnedData = computed(() => {
 	if (!chatTriggerNode.value) return null;
 
-	return workflowDocumentStore?.pinData?.[chatTriggerNode.value.name];
+	return workflowDocumentStore?.value?.pinData?.[chatTriggerNode.value.name];
 });
 
 function onOpenChat() {
@@ -1439,7 +1455,7 @@ function registerCustomActions() {
 			ndvStore.unsetActiveNodeName();
 
 			void nextTick(() => {
-				void onOpenNodeCreatorForTriggerNodes(NODE_CREATOR_OPEN_SOURCES.TAB);
+				void onOpenNodeCreatorForTriggerNodes(NODE_CREATOR_OPEN_SOURCES.NODE_SHORTCUT);
 			});
 		},
 	});
@@ -1621,7 +1637,7 @@ onBeforeRouteLeave(async (to, from, next) => {
 		return;
 	}
 
-	await useWorkflowSaving({ router }).promptSaveUnsavedWorkflowChanges(next, {
+	await workflowSaving.promptSaveUnsavedWorkflowChanges(next, {
 		async confirm() {
 			if (from.name === VIEWS.NEW_WORKFLOW) {
 				const savedWorkflowId = workflowsStore.workflowId;
@@ -1642,14 +1658,7 @@ onBeforeRouteLeave(async (to, from, next) => {
  * Lifecycle
  */
 
-onBeforeMount(() => {
-	if (!isDemoRoute.value) {
-		pushConnectionStore.pushConnect();
-	}
-});
-
 onMounted(async () => {
-	canvasStore.startLoading();
 	documentTitle.reset();
 
 	// Register callback for collaboration store to refresh canvas when workflow updates arrive
@@ -1670,7 +1679,6 @@ onMounted(async () => {
 		}
 	} finally {
 		isLoading.value = false;
-		canvasStore.stopLoading();
 
 		void externalHooks.run('nodeView.mount').catch(() => {});
 
@@ -1695,20 +1703,15 @@ onMounted(async () => {
 	addExecutionOpenedEventBindings();
 	addCommandBarEventBindings();
 	registerCustomActions();
-});
-
-onActivated(() => {
 	addUndoRedoEventBindings();
 	showAddFirstStepIfEnabled();
 });
 
-onDeactivated(() => {
-	uiStore.closeModal(WORKFLOW_SETTINGS_MODAL_KEY);
-	removeUndoRedoEventBindings();
-	toast.clearAllStickyNotifications();
-});
-
 onBeforeUnmount(() => {
+	uiStore.closeModal(WORKFLOW_SETTINGS_MODAL_KEY);
+	toast.clearAllStickyNotifications();
+	workflowDocumentStore?.value?.setViewport(viewportTransform.value);
+
 	removeSourceControlEventBindings();
 	removeWorkflowSavedEventBindings();
 	removeBeforeUnloadEventBindings();
@@ -1716,10 +1719,8 @@ onBeforeUnmount(() => {
 	removeExecutionOpenedEventBindings();
 	removeCommandBarEventBindings();
 	unregisterCustomActions();
+	removeUndoRedoEventBindings();
 	canvasEventBus.off('saved:workflow', onSaveFromWithinExecutionDebug);
-	if (!isDemoRoute.value) {
-		pushConnectionStore.pushDisconnect();
-	}
 });
 </script>
 
@@ -1739,6 +1740,7 @@ onBeforeUnmount(() => {
 			:key-bindings="keyBindingsEnabled"
 			:suppress-interaction="experimentalNdvStore.isMapperOpen"
 			:hide-controls="hideCanvasControls"
+			:initial-viewport="workflowDocumentStore?.viewport"
 			@update:nodes:position="onUpdateNodesPosition"
 			@update:node:position="onUpdateNodePosition"
 			@update:node:activated="onSetNodeActivated"
@@ -1787,7 +1789,7 @@ onBeforeUnmount(() => {
 			<Suspense v-if="!isCanvasReadOnly">
 				<LazySetupWorkflowCredentialsButton :class="$style.setupCredentialsButtonWrapper" />
 			</Suspense>
-			<div v-if="!isCanvasReadOnly" :class="$style.executionButtons">
+			<div v-if="!isCanvasReadOnly || canExecuteOnCanvas" :class="$style.executionButtons">
 				<CanvasRunWorkflowButton
 					v-if="isRunWorkflowButtonVisible"
 					:waiting-for-webhook="isExecutionWaitingForWebhook"
@@ -1852,7 +1854,7 @@ onBeforeUnmount(() => {
 			/>
 
 			<N8nCanvasThinkingPill
-				v-if="builderStore.streaming"
+				v-if="builderStore.streaming && !builderStore.isHelpStreaming"
 				:class="$style.canvasCenterPill"
 				show-stop
 				@stop="builderStore.abortStreaming"

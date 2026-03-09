@@ -69,6 +69,7 @@ describe('Scope', () => {
 			'credential:create',
 			'credential:delete',
 			'credential:move',
+			'execution:reveal',
 			'ldap:sync',
 			'project:create',
 			'project:delete',

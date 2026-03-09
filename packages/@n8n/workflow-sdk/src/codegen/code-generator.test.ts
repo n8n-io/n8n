@@ -2,8 +2,9 @@ import { describe, it, expect, beforeAll } from '@jest/globals';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { generateCode } from './code-generator';
+import { generateCode, collectNestedMultiOutputs } from './code-generator';
 import { buildCompositeTree } from './composite-builder';
+import type { MultiOutputNode } from './composite-tree';
 import { annotateGraph } from './graph-annotator';
 import { parseWorkflowCode } from './parse-workflow-code';
 import { buildSemanticGraph } from './semantic-graph';
@@ -1196,6 +1197,62 @@ describe('code-generator', () => {
 				// It should have empty nodes array
 				expect(code).toContain("sticky('Outer', []");
 			});
+			it('handles object color by omitting it from output', () => {
+				const json: WorkflowJSON = {
+					id: 'sticky-object-color-test',
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Sticky Note',
+							type: 'n8n-nodes-base.stickyNote',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {
+								content: 'Note',
+								color: {},
+								width: 300,
+								height: 200,
+							},
+						},
+					],
+					connections: {},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				// Object color should be omitted (it's an invalid value like {})
+				expect(code).not.toContain('[object Object]');
+				// Code should be parseable (no SyntaxError)
+				expect(() => parseWorkflowCode(code)).not.toThrow();
+			});
+
+			it('handles string color values correctly', () => {
+				const json: WorkflowJSON = {
+					id: 'sticky-string-color-test',
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Sticky Note',
+							type: 'n8n-nodes-base.stickyNote',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {
+								content: 'Note',
+								color: '#FF0000',
+								width: 300,
+								height: 200,
+							},
+						},
+					],
+					connections: {},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				expect(code).toContain("color: '#FF0000'");
+			});
 		});
 
 		describe('AI subnodes', () => {
@@ -2132,6 +2189,111 @@ describe('code-generator', () => {
 			});
 		});
 
+		describe('multi-trigger fan-out to shared merge targets', () => {
+			it('preserves connections from second trigger when both fan out to same already-visited targets', () => {
+				// Pattern: Two triggers both fan out to the same pair of nodes that converge at a Merge.
+				// Trigger1 → [BranchA, BranchB] → Merge → Output
+				// Trigger2 → [BranchA, BranchB] → Merge → Output
+				// After Trigger1 builds BranchA and BranchB, Trigger2's fan-out targets
+				// are already visited. The codegen must still produce Trigger2's connections.
+				const json: WorkflowJSON = {
+					id: 'multi-trigger-merge',
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Manual Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+						{
+							id: '2',
+							name: 'Schedule Trigger',
+							type: 'n8n-nodes-base.scheduleTrigger',
+							typeVersion: 1,
+							position: [0, 200],
+							parameters: {},
+						},
+						{
+							id: '3',
+							name: 'Branch A',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 4,
+							position: [300, 0],
+							parameters: {},
+						},
+						{
+							id: '4',
+							name: 'Branch B',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 4,
+							position: [300, 200],
+							parameters: {},
+						},
+						{
+							id: '5',
+							name: 'Merge',
+							type: 'n8n-nodes-base.merge',
+							typeVersion: 3,
+							position: [600, 100],
+							parameters: {},
+						},
+						{
+							id: '6',
+							name: 'Output',
+							type: 'n8n-nodes-base.set',
+							typeVersion: 3,
+							position: [900, 100],
+							parameters: {},
+						},
+					],
+					connections: {
+						'Manual Trigger': {
+							main: [
+								[
+									{ node: 'Branch A', type: 'main', index: 0 },
+									{ node: 'Branch B', type: 'main', index: 0 },
+								],
+							],
+						},
+						'Schedule Trigger': {
+							main: [
+								[
+									{ node: 'Branch A', type: 'main', index: 0 },
+									{ node: 'Branch B', type: 'main', index: 0 },
+								],
+							],
+						},
+						'Branch A': {
+							main: [[{ node: 'Merge', type: 'main', index: 0 }]],
+						},
+						'Branch B': {
+							main: [[{ node: 'Merge', type: 'main', index: 1 }]],
+						},
+						Merge: {
+							main: [[{ node: 'Output', type: 'main', index: 0 }]],
+						},
+					},
+				};
+
+				const code = generateFromWorkflow(json);
+				const parsed = parseWorkflowCode(code);
+
+				// Both triggers must appear as connection sources
+				const connectionKeys = Object.keys(parsed.connections);
+				expect(connectionKeys).toContain('Schedule Trigger');
+				expect(connectionKeys).toContain('Manual Trigger');
+
+				// Schedule Trigger must connect to both Branch A and Branch B
+				const scheduleTriggerConns = parsed.connections['Schedule Trigger']?.main?.[0];
+				expect(scheduleTriggerConns).toBeDefined();
+				const scheduleTargets = scheduleTriggerConns!.map((c: { node: string }) => c.node).sort();
+				expect(scheduleTargets).toEqual(['Branch A', 'Branch B']);
+			});
+		});
+
 		describe('merge node outgoing connections', () => {
 			it('preserves merge node outgoing connections when merge has .to()', () => {
 				// Pattern: trigger → [branch1, branch2] → merge → loopOverItems
@@ -2907,6 +3069,136 @@ describe('code-generator', () => {
 				// "Merge" is a reserved SDK function, so variable should be merge_node
 				expect(code).toContain('const merge_node =');
 			});
+		});
+
+		describe('nested multi-output nodes', () => {
+			it('generates .output().to() calls for multiOutput nodes nested inside another multiOutput chain', () => {
+				// Pattern: Trigger → Classifier1 (2 outputs)
+				//   output 0 → NodeA
+				//   output 1 → NodeB → Classifier2 (2 outputs)
+				//     output 0 → NodeC
+				//     output 1 → NodeD
+				// Classifier2 is nested inside Classifier1's output 1 chain.
+				// Both Classifier1 and Classifier2 should get .output(n).to() calls.
+				const json: WorkflowJSON = {
+					id: 'nested-multi-output-test',
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+						},
+						{
+							id: '2',
+							name: 'Classifier1',
+							type: '@n8n/n8n-nodes-langchain.textClassifier',
+							typeVersion: 1,
+							position: [200, 0],
+							parameters: {
+								inputText: '={{ $json.text }}',
+								categories: {
+									categories: [{ category: 'Cat1' }, { category: 'Cat2' }],
+								},
+							},
+						},
+						{
+							id: '3',
+							name: 'NodeA',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [400, -100],
+						},
+						{
+							id: '4',
+							name: 'NodeB',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [400, 100],
+						},
+						{
+							id: '5',
+							name: 'Classifier2',
+							type: '@n8n/n8n-nodes-langchain.textClassifier',
+							typeVersion: 1,
+							position: [600, 100],
+							parameters: {
+								inputText: '={{ $json.text }}',
+								categories: {
+									categories: [{ category: 'CatA' }, { category: 'CatB' }],
+								},
+							},
+						},
+						{
+							id: '6',
+							name: 'NodeC',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [800, 0],
+						},
+						{
+							id: '7',
+							name: 'NodeD',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [800, 200],
+						},
+					],
+					connections: {
+						Trigger: { main: [[{ node: 'Classifier1', type: 'main', index: 0 }]] },
+						Classifier1: {
+							main: [
+								[{ node: 'NodeA', type: 'main', index: 0 }],
+								[{ node: 'NodeB', type: 'main', index: 0 }],
+							],
+						},
+						NodeB: { main: [[{ node: 'Classifier2', type: 'main', index: 0 }]] },
+						Classifier2: {
+							main: [
+								[{ node: 'NodeC', type: 'main', index: 0 }],
+								[{ node: 'NodeD', type: 'main', index: 0 }],
+							],
+						},
+					},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				// Classifier1 should have .output() calls
+				expect(code).toContain('classifier1.output(0)');
+				expect(code).toContain('classifier1.output(1)');
+
+				// Classifier2 should ALSO have .output() calls (nested multi-output)
+				expect(code).toContain('classifier2.output(0)');
+				expect(code).toContain('classifier2.output(1)');
+
+				// All nodes should be parseable
+				const parsed = parseWorkflowCode(code);
+				const nodeNames = parsed.nodes.map((n) => n.name);
+				expect(nodeNames).toContain('NodeC');
+				expect(nodeNames).toContain('NodeD');
+			});
+		});
+	});
+
+	describe('collectNestedMultiOutputs', () => {
+		it('handles cycles without infinite recursion', () => {
+			const multiOutput: MultiOutputNode = {
+				kind: 'multiOutput',
+				sourceNode: { name: 'Switch1' } as MultiOutputNode['sourceNode'],
+				outputTargets: new Map(),
+			};
+			// Create a cycle: multiOutput's target points back to itself
+			multiOutput.outputTargets.set(0, multiOutput);
+
+			const collected: MultiOutputNode[] = [];
+			collectNestedMultiOutputs(multiOutput, collected);
+
+			// Should collect the node once and not infinite-loop
+			expect(collected).toHaveLength(1);
+			expect(collected[0]).toBe(multiOutput);
 		});
 	});
 });

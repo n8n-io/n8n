@@ -110,6 +110,8 @@ const multipleValues = computed(() => !!props.parameter.typeOptions?.multipleVal
 
 const sortable = computed(() => !!props.parameter.typeOptions?.sortable);
 
+const layout = computed(() => props.parameter.typeOptions?.fixedCollection?.layout);
+
 const propertyNames = computed(() => new Set(Object.keys(mutableValues.value ?? {})));
 
 const properties = computed(() =>
@@ -626,6 +628,7 @@ const onAddButtonClick = () => {
 						:get-picker-property-values="getPickerPropertyValues"
 						:is-optional-value-added="isOptionalValueAdded"
 						:add-optional-field-button-text="addOptionalFieldButtonText"
+						:layout="layout"
 						@value-changed="valueChanged"
 						@delete="handleDelete"
 						@drag-change="onDragChange"
@@ -670,6 +673,7 @@ const onAddButtonClick = () => {
 					variant="subtle"
 					v-if="hasSingleOption"
 					icon="plus"
+					size="small"
 					:data-test-id="`fixed-collection-add-top-level-button`"
 					:label="placeholder"
 					:disabled="isAddDisabled"
@@ -688,6 +692,7 @@ const onAddButtonClick = () => {
 							class="n8n-button--highlightFill"
 							variant="subtle"
 							icon="plus"
+							size="small"
 							:label="placeholder"
 							:disabled="isAddDisabled"
 						/>
@@ -753,6 +758,7 @@ const onAddButtonClick = () => {
 							:get-picker-property-values="getPickerPropertyValues"
 							:is-optional-value-added="isOptionalValueAdded"
 							:add-optional-field-button-text="addOptionalFieldButtonText"
+							:layout="layout"
 							@value-changed="valueChanged"
 							@delete="handleDelete"
 							@drag-change="onDragChange"
@@ -769,6 +775,7 @@ const onAddButtonClick = () => {
 							variant="subtle"
 							v-if="hasSingleOption"
 							icon="plus"
+							size="small"
 							:data-test-id="`fixed-collection-add-nested-button`"
 							:label="placeholder"
 							@click="onAddButtonClick"
@@ -785,6 +792,7 @@ const onAddButtonClick = () => {
 									class="n8n-button--highlightFill"
 									variant="subtle"
 									icon="plus"
+									size="small"
 									:label="placeholder"
 								/>
 							</template>
@@ -827,6 +835,7 @@ const onAddButtonClick = () => {
 						:get-picker-property-values="getPickerPropertyValues"
 						:is-optional-value-added="isOptionalValueAdded"
 						:add-optional-field-button-text="addOptionalFieldButtonText"
+						:layout="layout"
 						@value-changed="valueChanged"
 						@delete="handleDelete"
 						@drag-change="onDragChange"

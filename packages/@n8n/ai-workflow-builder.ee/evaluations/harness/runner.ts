@@ -448,6 +448,15 @@ function extractContextFromLangsmithInputs(inputs: unknown): TestCaseContext {
 		context.referenceWorkflows = [record.referenceWorkflow];
 	}
 
+	// Extract annotations for binary-checks evaluator
+	if (
+		record.annotations &&
+		typeof record.annotations === 'object' &&
+		!Array.isArray(record.annotations)
+	) {
+		context.annotations = record.annotations as Record<string, unknown>;
+	}
+
 	return context;
 }
 
@@ -914,8 +923,11 @@ async function runLocal(config: LocalRunConfig): Promise<RunSummary> {
 	// Write CSV if requested
 	if (outputCsv) {
 		const { writeResultsCsv } = await import('./csv-writer.js');
-		// Map suite to CSV format (only llm-judge and pairwise are supported)
-		const csvSuite = suite === 'llm-judge' || suite === 'pairwise' ? suite : undefined;
+		// Map suite to CSV format
+		const csvSuite =
+			suite === 'llm-judge' || suite === 'pairwise' || suite === 'binary-checks'
+				? suite
+				: undefined;
 		writeResultsCsv(results, outputCsv, { suite: csvSuite });
 		logger.info(`Results written to: ${outputCsv}`);
 	}
@@ -1194,7 +1206,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 	const artifactSaver = createArtifactSaverIfRequested({ outputDir, logger });
 	const capturedResults: ExampleResult[] = [];
 
-	// Create traceable wrapper ONCE outside target function to avoid context leaking
+	// Create traceable wrappers ONCE outside target function to avoid context leaking
 	// when running concurrent evaluations. Pass all parameters explicitly (no closures).
 	// IMPORTANT: Get callbacks INSIDE the traceable wrapper where AsyncLocalStorage context
 	// is correctly set, then pass them explicitly to genFn to avoid race conditions.
@@ -1219,6 +1231,31 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 		},
 		{
 			name: 'workflow_generation',
+			run_type: 'chain',
+			client: lsClient,
+		},
+	);
+
+	// Separate traceable wrapper for evaluation so it appears as a sibling to
+	// workflow_generation in LangSmith traces (not nested under it).
+	const traceableEvaluateWorkflow = traceable(
+		async (args: {
+			workflow: SimpleWorkflow;
+			evaluators: Array<Evaluator<EvaluationContext>>;
+			context: EvaluationContext;
+			evalTimeoutMs?: number;
+			evalLifecycle?: Partial<EvaluationLifecycle>;
+		}): Promise<Feedback[]> => {
+			return await evaluateWithPlugins(
+				args.workflow,
+				args.evaluators,
+				args.context,
+				args.evalTimeoutMs,
+				args.evalLifecycle,
+			);
+		},
+		{
+			name: 'workflow_evaluation',
 			run_type: 'chain',
 			client: lsClient,
 		},
@@ -1286,15 +1323,22 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 				pinData,
 			});
 
-			// Run all evaluators in parallel
+			// Run all evaluators in parallel (wrapped in traceable so it appears
+			// as a sibling to workflow_generation in LangSmith traces).
+			// Fall back to direct call if traceable wrapper fails.
 			const evalStart = Date.now();
-			const feedback = await evaluateWithPlugins(
-				workflow,
-				evaluators,
-				context,
-				timeoutMs,
-				lifecycle,
-			);
+			let feedback: Feedback[];
+			try {
+				feedback = await traceableEvaluateWorkflow({
+					workflow,
+					evaluators,
+					context,
+					evalTimeoutMs: timeoutMs,
+					evalLifecycle: lifecycle,
+				});
+			} catch {
+				feedback = await evaluateWithPlugins(workflow, evaluators, context, timeoutMs, lifecycle);
+			}
 			const evalDurationMs = Date.now() - evalStart;
 			const totalDurationMs = Date.now() - startTime;
 
@@ -1419,8 +1463,11 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 	// Write CSV if requested
 	if (outputCsv) {
 		const { writeResultsCsv } = await import('./csv-writer.js');
-		// Map suite to CSV format (only llm-judge and pairwise are supported)
-		const csvSuite = suite === 'llm-judge' || suite === 'pairwise' ? suite : undefined;
+		// Map suite to CSV format
+		const csvSuite =
+			suite === 'llm-judge' || suite === 'pairwise' || suite === 'binary-checks'
+				? suite
+				: undefined;
 		writeResultsCsv(capturedResults, outputCsv, { suite: csvSuite });
 		logger.info(`Results written to: ${outputCsv}`);
 	}

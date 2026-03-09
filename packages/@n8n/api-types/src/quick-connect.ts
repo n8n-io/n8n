@@ -3,8 +3,8 @@ type QuickConnectGenericOption = {
 	credentialType: string;
 	text: string;
 	quickConnectType: string;
-	serviceName: string;
 	consentText?: string;
+	consentCheckbox?: string;
 	config?: never;
 };
 

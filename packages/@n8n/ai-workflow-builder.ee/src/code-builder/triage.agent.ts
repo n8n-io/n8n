@@ -333,7 +333,7 @@ export class TriageAgent {
 						type: 'tool',
 						toolName: 'assistant',
 						toolCallId: assistantToolCallId,
-						customDisplayTitle: 'Asking assistant...',
+						displayTitle: 'Asking assistant',
 						status: 'running',
 					}),
 				);

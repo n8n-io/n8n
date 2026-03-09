@@ -370,7 +370,9 @@ describe('verifyIntegrity', () => {
 		mockAsyncExec.mockRejectedValue(new Error('CLI command failed'));
 
 		await expect(verifyIntegrity(packageName, version, registryUrl, integrity)).rejects.toThrow(
-			new UnexpectedError('Checksum verification failed'),
+			new UnexpectedError(
+				'Checksum verification failed. Try restarting n8n and attempting the installation again.',
+			),
 		);
 	});
 
@@ -444,7 +446,9 @@ describe('verifyIntegrity', () => {
 			});
 
 			await expect(verifyIntegrity(packageName, version, registryUrl, integrity)).rejects.toThrow(
-				new UnexpectedError('Checksum verification failed'),
+				new UnexpectedError(
+					'Checksum verification failed. Try restarting n8n and attempting the installation again.',
+				),
 			);
 
 			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
@@ -521,7 +525,9 @@ describe('verifyIntegrity', () => {
 			mockAsyncExec.mockRejectedValue(new Error('Some other error'));
 
 			await expect(verifyIntegrity(packageName, version, registryUrl, integrity)).rejects.toThrow(
-				new UnexpectedError('Checksum verification failed'),
+				new UnexpectedError(
+					'Checksum verification failed. Try restarting n8n and attempting the installation again.',
+				),
 			);
 
 			expect(mockAsyncExec).toHaveBeenCalledTimes(1);

@@ -40,12 +40,12 @@ function getUrl(environment: 'staging' | 'production'): string {
 export async function getCommunityNodeTypes(
 	environment: 'staging' | 'production',
 	qs: { filters?: StrapiFilters; fields?: string[] } = {},
-	aiNodeSdkVersion: number,
+	maxAiNodeSdkVersion: number,
 ): Promise<StrapiCommunityNodeType[]> {
 	const url = getUrl(environment);
 	const params = {
 		...qs,
-		includeAiNodesSdkVersion: aiNodeSdkVersion,
+		maxAiNodeSdkVersion,
 		pagination: {
 			page: 1,
 			pageSize: 25,
@@ -56,12 +56,12 @@ export async function getCommunityNodeTypes(
 
 export async function getCommunityNodesMetadata(
 	environment: 'staging' | 'production',
-	aiNodeSdkVersion: number,
+	maxAiNodeSdkVersion: number,
 ): Promise<CommunityNodesMetadata[]> {
 	const url = getUrl(environment);
 	const params = {
 		fields: ['npmVersion', 'name', 'updatedAt'],
-		includeAiNodesSdkVersion: aiNodeSdkVersion,
+		maxAiNodeSdkVersion,
 		pagination: {
 			page: 1,
 			pageSize: 500,

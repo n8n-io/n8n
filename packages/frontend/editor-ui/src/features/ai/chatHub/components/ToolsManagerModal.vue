@@ -1,14 +1,11 @@
 <script setup lang="ts">
 import { v4 as uuidv4 } from 'uuid';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useUIStore } from '@/app/stores/ui.store';
+import Modal from '@/app/components/Modal.vue';
 import ToolListItem from './ToolListItem.vue';
 import ToolSettingsContent from './ToolSettingsContent.vue';
 import {
 	N8nButton,
-	N8nDialog,
-	N8nDialogHeader,
-	N8nDialogTitle,
 	N8nHeading,
 	N8nIcon,
 	N8nIconButton,
@@ -68,7 +65,6 @@ const nodeTypesStore = useNodeTypesStore();
 const chatStore = useChatStore();
 const toast = useToast();
 const message = useMessage();
-const uiStore = useUIStore();
 
 const nodePopularityMap = new Map(nodePopularity.map((node) => [node.id, node.popularity]));
 
@@ -150,10 +146,6 @@ const filteredAvailableTools = computed(() => {
 
 function getNodeType(tool: ChatHubToolDto): INodeTypeDescription | null {
 	return nodeTypesStore.getNodeType(tool.definition.type, tool.definition.typeVersion);
-}
-
-function closeDialog() {
-	uiStore.closeModal(props.modalName);
 }
 
 function openSettings(
@@ -269,17 +261,17 @@ function handleSettingsChangeName(name: string) {
 </script>
 
 <template>
-	<N8nDialog
-		:open="true"
-		size="2xlarge"
-		:show-close-button="currentView === 'list'"
-		@update:open="closeDialog"
+	<Modal
+		:name="modalName"
+		width="780px"
+		:show-close="currentView === 'list'"
+		:custom-class="$style.modal"
 	>
-		<N8nDialogHeader>
+		<template #header>
 			<!-- List view header -->
-			<N8nDialogTitle v-if="currentView === 'list'" as-child>
-				<N8nHeading tag="h2" size="large">{{ modalTitle }}</N8nHeading>
-			</N8nDialogTitle>
+			<N8nHeading v-if="currentView === 'list'" tag="h2" size="large">
+				{{ modalTitle }}
+			</N8nHeading>
 
 			<!-- Settings view header -->
 			<div v-else :class="$style.settingsHeader">
@@ -303,88 +295,96 @@ function handleSettingsChangeName(name: string) {
 					{{ i18n.baseText('chatHub.toolSettings.confirm') }}
 				</N8nButton>
 			</div>
-		</N8nDialogHeader>
+		</template>
 
-		<N8nInput
-			v-show="currentView === 'list'"
-			v-model="searchQuery"
-			:placeholder="i18n.baseText('chatHub.toolsManager.searchPlaceholder')"
-			clearable
-			:class="$style.searchInput"
-		>
-			<template #prefix>
-				<N8nIcon icon="search" />
-			</template>
-		</N8nInput>
-
-		<!-- List view: scrolls itself, scrollbar in padding gutter -->
-		<div v-show="currentView === 'list'" data-tools-manager-modal :class="$style.listWrapper">
-			<div v-if="filteredConfiguredTools.length > 0" :class="$style.section">
-				<N8nHeading size="small" color="text-light" tag="h3">
-					{{
-						i18n.baseText('chatHub.toolsManager.configuredTools', {
-							interpolate: { count: tools.length },
-						})
-					}}
-				</N8nHeading>
-				<div :class="$style.toolsList">
-					<ToolListItem
-						v-for="tool in filteredConfiguredTools"
-						:key="tool.definition.id"
-						:node-type="getNodeType(tool)!"
-						:configured-node="tool.definition"
-						:enabled="agentToolIds ? agentToolIds.includes(tool.definition.id) : tool.enabled"
-						mode="configured"
-						@configure="handleConfigureTool(tool)"
-						@remove="handleRemoveTool(tool.definition.id)"
-						@toggle="handleToggleTool(tool, $event)"
-					/>
-				</div>
-			</div>
-
-			<div v-if="filteredAvailableTools.length > 0" :class="$style.section">
-				<N8nHeading size="small" color="text-light" tag="h3">
-					{{
-						i18n.baseText('chatHub.toolsManager.availableTools', {
-							interpolate: { count: availableToolTypes.length },
-						})
-					}}
-				</N8nHeading>
-				<div :class="$style.toolsList">
-					<ToolListItem
-						v-for="nodeType in filteredAvailableTools"
-						:key="nodeType.name"
-						:node-type="nodeType"
-						mode="available"
-						@add="handleAddTool(nodeType)"
-					/>
-				</div>
-			</div>
-
-			<div
-				v-if="filteredConfiguredTools.length === 0 && filteredAvailableTools.length === 0"
-				:class="$style.emptyState"
+		<template #content>
+			<N8nInput
+				v-show="currentView === 'list'"
+				v-model="searchQuery"
+				:placeholder="i18n.baseText('chatHub.toolsManager.searchPlaceholder')"
+				clearable
+				:class="$style.searchInput"
 			>
-				<N8nText color="text-light">
-					{{ i18n.baseText('chatHub.toolsManager.noResults') }}
-				</N8nText>
-			</div>
-		</div>
+				<template #prefix>
+					<N8nIcon icon="search" />
+				</template>
+			</N8nInput>
 
-		<!-- Settings view: doesn't scroll, lets ToolSettingsContent.tabContent scroll -->
-		<div v-if="currentView === 'settings' && settingsNode" :class="$style.settingsWrapper">
-			<ToolSettingsContent
-				ref="settingsContentRef"
-				:initial-node="settingsNode"
-				:existing-tool-names="settingsExistingToolNames"
-				@update:valid="settingsIsValid = $event"
-				@update:node-name="settingsNodeName = $event"
-			/>
-		</div>
-	</N8nDialog>
+			<!-- List view: scrolls itself, scrollbar in padding gutter -->
+			<div v-show="currentView === 'list'" data-tools-manager-modal :class="$style.listWrapper">
+				<div v-if="filteredConfiguredTools.length > 0" :class="$style.section">
+					<N8nHeading size="small" color="text-light" tag="h3">
+						{{
+							i18n.baseText('chatHub.toolsManager.configuredTools', {
+								interpolate: { count: tools.length },
+							})
+						}}
+					</N8nHeading>
+					<div :class="$style.toolsList">
+						<ToolListItem
+							v-for="tool in filteredConfiguredTools"
+							:key="tool.definition.id"
+							:node-type="getNodeType(tool)!"
+							:configured-node="tool.definition"
+							:enabled="agentToolIds ? agentToolIds.includes(tool.definition.id) : tool.enabled"
+							mode="configured"
+							@configure="handleConfigureTool(tool)"
+							@remove="handleRemoveTool(tool.definition.id)"
+							@toggle="handleToggleTool(tool, $event)"
+						/>
+					</div>
+				</div>
+
+				<div v-if="filteredAvailableTools.length > 0" :class="$style.section">
+					<N8nHeading size="small" color="text-light" tag="h3">
+						{{
+							i18n.baseText('chatHub.toolsManager.availableTools', {
+								interpolate: { count: availableToolTypes.length },
+							})
+						}}
+					</N8nHeading>
+					<div :class="$style.toolsList">
+						<ToolListItem
+							v-for="nodeType in filteredAvailableTools"
+							:key="nodeType.name"
+							:node-type="nodeType"
+							mode="available"
+							@add="handleAddTool(nodeType)"
+						/>
+					</div>
+				</div>
+
+				<div
+					v-if="filteredConfiguredTools.length === 0 && filteredAvailableTools.length === 0"
+					:class="$style.emptyState"
+				>
+					<N8nText color="text-light">
+						{{ i18n.baseText('chatHub.toolsManager.noResults') }}
+					</N8nText>
+				</div>
+			</div>
+
+			<!-- Settings view: doesn't scroll, lets ToolSettingsContent.tabContent scroll -->
+			<div v-if="currentView === 'settings' && settingsNode" :class="$style.settingsWrapper">
+				<ToolSettingsContent
+					ref="settingsContentRef"
+					:initial-node="settingsNode"
+					:existing-tool-names="settingsExistingToolNames"
+					@update:valid="settingsIsValid = $event"
+					@update:node-name="settingsNodeName = $event"
+				/>
+			</div>
+		</template>
+	</Modal>
 </template>
 
 <style lang="scss" module>
+.modal {
+	:global(.ndv-connection-hint-notice) {
+		display: none;
+	}
+}
+
 .settingsHeader {
 	display: flex;
 	align-items: center;
@@ -398,14 +398,6 @@ function handleSettingsChangeName(name: string) {
 	gap: var(--spacing--3xs);
 	min-width: 0;
 	flex: 1;
-}
-
-.backButton {
-	width: 32px !important;
-	height: 32px !important;
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	font-size: var(--font-size--md);
-	flex-shrink: 0;
 }
 
 .icon {
@@ -463,15 +455,5 @@ function handleSettingsChangeName(name: string) {
 	align-items: center;
 	justify-content: center;
 	padding: var(--spacing--xl);
-}
-</style>
-
-<style lang="scss">
-[role='dialog']:has([data-tools-manager-modal]) {
-	background-color: var(--dialog--color--background);
-}
-
-[role='dialog']:has([data-tools-manager-modal]) .ndv-connection-hint-notice {
-	display: none;
 }
 </style>

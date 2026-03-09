@@ -140,7 +140,7 @@ const parentNodes = computed(() => {
 
 const parentNode = computed(() => {
 	for (const parentNodeName of parentNodes.value) {
-		if (workflowDocumentStore?.pinData?.[parentNodeName]) {
+		if (workflowDocumentStore?.value?.pinData?.[parentNodeName]) {
 			return parentNodeName;
 		}
 

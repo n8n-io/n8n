@@ -1,13 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import {
-	AuthRolesService,
-	Role,
-	RoleRepository,
-	Scope,
-	ScopeRepository,
-	SettingsRepository,
-} from '@n8n/db';
+import { AuthRolesService, Role, Scope } from '@n8n/db';
+import type { DbLock, DbLockService } from '@n8n/db';
 import {
 	ALL_SCOPES,
 	ALL_ROLES,
@@ -16,21 +10,36 @@ import {
 	PERSONAL_SPACE_PUBLISHING_SETTING,
 	PERSONAL_SPACE_SHARING_SETTING,
 } from '@n8n/permissions';
+import type { EntityManager, Repository } from '@n8n/typeorm';
+import { mock } from 'jest-mock-extended';
 
 const SHARING_SCOPES = PERSONAL_SPACE_SHARING_SETTING.scopes;
 
 describe('AuthRolesService', () => {
 	const logger = mockInstance(Logger);
-	const scopeRepository = mockInstance(ScopeRepository);
-	const roleRepository = mockInstance(RoleRepository);
-	const settingsRepository = mockInstance(SettingsRepository);
 
-	const authRolesService = new AuthRolesService(
-		logger,
-		scopeRepository,
-		roleRepository,
-		settingsRepository,
+	// Mock repositories returned by EntityManager.getRepository()
+	const scopeRepository = mock<Repository<Scope>>();
+	const roleRepository = mock<Repository<Role>>();
+
+	// Mock EntityManager provided by DbLockService.withLock()
+	const mockEntityManager = mock<EntityManager>();
+	mockEntityManager.getRepository.mockImplementation((entity) => {
+		if (entity === Scope) return scopeRepository as never;
+		if (entity === Role) return roleRepository as never;
+		throw new Error(`Unexpected entity: ${String(entity)}`);
+	});
+	// Default: no settings rows (backward compat: undefined values => grant scopes)
+	mockEntityManager.findBy.mockResolvedValue([]);
+
+	// Mock DbLockService that executes the callback with our mock EntityManager
+	const dbLockService = mock<DbLockService>();
+	dbLockService.withLock.mockImplementation(
+		async (_lockId: DbLock, fn: (tx: EntityManager) => Promise<unknown>) =>
+			await fn(mockEntityManager),
 	);
+
+	const authRolesService = new AuthRolesService(logger, dbLockService);
 
 	// Helper functions for creating test data
 	function createScope(
@@ -90,19 +99,29 @@ describe('AuthRolesService', () => {
 		scopeRepository.find.mockResolvedValue(allScopes);
 		roleRepository.find.mockResolvedValue([]);
 		roleRepository.create.mockImplementation((data) => data as Role);
-		roleRepository.save.mockImplementation(async (entities) => entities as any);
+		roleRepository.save.mockImplementation(async (entities) => entities as never);
 	}
 
 	beforeEach(() => {
 		jest.restoreAllMocks();
-		// AuthRolesService uses findByKeys; default to [] so missing settings => undefined => backward compat (grant scopes)
-		settingsRepository.findByKeys.mockResolvedValue([]);
+		// Re-setup the EntityManager mocks after restoreAllMocks
+		mockEntityManager.getRepository.mockImplementation((entity) => {
+			if (entity === Scope) return scopeRepository as never;
+			if (entity === Role) return roleRepository as never;
+			throw new Error(`Unexpected entity: ${String(entity)}`);
+		});
+		// Default: no settings rows (backward compat: undefined values => grant scopes)
+		mockEntityManager.findBy.mockResolvedValue([]);
+		dbLockService.withLock.mockImplementation(
+			async (_lockId: DbLock, fn: (tx: EntityManager) => Promise<unknown>) =>
+				await fn(mockEntityManager),
+		);
 	});
 
 	describe('init - syncScopes', () => {
 		test('should create new scopes that do not exist in database', async () => {
 			scopeRepository.find.mockResolvedValue([]);
-			scopeRepository.save.mockImplementation(async (entities) => entities as any);
+			scopeRepository.save.mockImplementation(async (entities) => entities as never);
 			roleRepository.find.mockResolvedValue([]);
 
 			await authRolesService.init();
@@ -125,7 +144,7 @@ describe('AuthRolesService', () => {
 			});
 
 			scopeRepository.find.mockResolvedValueOnce([outdatedScope]);
-			scopeRepository.save.mockImplementation(async (entities) => entities as any);
+			scopeRepository.save.mockImplementation(async (entities) => entities as never);
 			scopeRepository.find.mockResolvedValueOnce([outdatedScope]);
 			roleRepository.find.mockResolvedValue([]);
 
@@ -163,7 +182,7 @@ describe('AuthRolesService', () => {
 			obsoleteScope.description = 'This scope should be deleted';
 
 			scopeRepository.find.mockResolvedValueOnce([obsoleteScope]);
-			scopeRepository.remove.mockImplementation(async (entities) => entities as any);
+			scopeRepository.remove.mockImplementation(async (entities) => entities as never);
 			roleRepository.find.mockResolvedValueOnce([]);
 			scopeRepository.find.mockResolvedValueOnce([]);
 			roleRepository.find.mockResolvedValueOnce([]);
@@ -187,8 +206,8 @@ describe('AuthRolesService', () => {
 
 			scopeRepository.find.mockResolvedValueOnce([obsoleteScope, validScope]);
 			roleRepository.find.mockResolvedValueOnce([roleWithObsoleteScope]);
-			roleRepository.save.mockImplementation(async (entities) => entities as any);
-			scopeRepository.remove.mockImplementation(async (entities) => entities as any);
+			roleRepository.save.mockImplementation(async (entities) => entities as never);
+			scopeRepository.remove.mockImplementation(async (entities) => entities as never);
 			scopeRepository.find.mockResolvedValueOnce([validScope]);
 			roleRepository.find.mockResolvedValueOnce([]);
 
@@ -217,8 +236,8 @@ describe('AuthRolesService', () => {
 
 			scopeRepository.find.mockResolvedValueOnce([obsoleteScope1, obsoleteScope2, validScope]);
 			roleRepository.find.mockResolvedValueOnce([role1, role2, role3]);
-			roleRepository.save.mockImplementation(async (entities) => entities as any);
-			scopeRepository.remove.mockImplementation(async (entities) => entities as any);
+			roleRepository.save.mockImplementation(async (entities) => entities as never);
+			scopeRepository.remove.mockImplementation(async (entities) => entities as never);
 			scopeRepository.find.mockResolvedValueOnce([validScope]);
 			roleRepository.find.mockResolvedValueOnce([]);
 
@@ -265,7 +284,7 @@ describe('AuthRolesService', () => {
 			const mixedScopes = [validScope1, obsoleteScope1, validScope2, obsoleteScope2];
 
 			scopeRepository.find.mockResolvedValueOnce(mixedScopes);
-			scopeRepository.remove.mockImplementation(async (entities) => entities as any);
+			scopeRepository.remove.mockImplementation(async (entities) => entities as never);
 			roleRepository.find.mockResolvedValueOnce([]);
 			scopeRepository.find.mockResolvedValueOnce([validScope1, validScope2]);
 			roleRepository.find.mockResolvedValueOnce([]);
@@ -310,7 +329,7 @@ describe('AuthRolesService', () => {
 			scopeRepository.find.mockResolvedValue(allScopes);
 			// syncScopes and syncRoles each call roleRepository.find() once
 			roleRepository.find.mockResolvedValue([outdatedRole]);
-			roleRepository.save.mockImplementation(async (entities) => entities as any);
+			roleRepository.save.mockImplementation(async (entities) => entities as never);
 
 			await authRolesService.init();
 
@@ -335,7 +354,7 @@ describe('AuthRolesService', () => {
 			scopeRepository.find.mockResolvedValue(allScopes);
 			// syncScopes and syncRoles each call roleRepository.find() once
 			roleRepository.find.mockResolvedValue([existingRole]);
-			roleRepository.save.mockImplementation(async (entities) => entities as any);
+			roleRepository.save.mockImplementation(async (entities) => entities as never);
 
 			await authRolesService.init();
 
@@ -365,7 +384,7 @@ describe('AuthRolesService', () => {
 
 			scopeRepository.find.mockResolvedValue(allScopes);
 			roleRepository.find.mockResolvedValue([existingRole]);
-			roleRepository.save.mockImplementation(async (entities) => entities as any);
+			roleRepository.save.mockImplementation(async (entities) => entities as never);
 
 			await authRolesService.init();
 
@@ -424,7 +443,7 @@ describe('AuthRolesService', () => {
 			roleRepository.find.mockImplementation(async (opts?: { relations?: string[] }) =>
 				opts?.relations?.includes('scopes') ? [] : correctRoles,
 			);
-			roleRepository.save.mockImplementation(async (entities) => entities as any);
+			roleRepository.save.mockImplementation(async (entities) => entities as never);
 
 			await authRolesService.init();
 
@@ -471,14 +490,14 @@ describe('AuthRolesService', () => {
 						loadOnStartup: true,
 					});
 				}
-				settingsRepository.findByKeys.mockResolvedValue(rows);
+				mockEntityManager.findBy.mockResolvedValue(rows);
 			}
 
 			describe('personal space publishing', () => {
 				test('should add workflow:publish to personalOwner role when setting is null (backward compatibility)', async () => {
 					const allScopes = createAllScopes();
 					setupDefaultMocks(allScopes);
-					// findByKeys default [] in beforeEach => both values undefined => backward compat => grant scopes
+					// findBy default [] in beforeEach => both values undefined => backward compat => grant scopes
 					await authRolesService.init();
 
 					const personalOwnerCall = roleRepository.create.mock.calls.find(
@@ -539,7 +558,7 @@ describe('AuthRolesService', () => {
 
 					scopeRepository.find.mockResolvedValue(allScopes);
 					roleRepository.find.mockResolvedValue([existingRole]);
-					roleRepository.save.mockImplementation(async (entities) => entities as any);
+					roleRepository.save.mockImplementation(async (entities) => entities as never);
 					mockPersonalSpaceSettings(true, null);
 
 					await authRolesService.init();
@@ -574,7 +593,7 @@ describe('AuthRolesService', () => {
 
 					scopeRepository.find.mockResolvedValue(allScopes);
 					roleRepository.find.mockResolvedValue([existingRole]);
-					roleRepository.save.mockImplementation(async (entities) => entities as any);
+					roleRepository.save.mockImplementation(async (entities) => entities as never);
 					mockPersonalSpaceSettings(false, null);
 
 					await authRolesService.init();
@@ -599,7 +618,7 @@ describe('AuthRolesService', () => {
 				test('should add sharing scopes to personalOwner role when setting is null (backward compatibility)', async () => {
 					const allScopes = createAllScopes();
 					setupDefaultMocks(allScopes);
-					// findByKeys default [] in beforeEach => both values undefined => backward compat => grant scopes
+					// findBy default [] in beforeEach => both values undefined => backward compat => grant scopes
 					await authRolesService.init();
 
 					const personalOwnerCall = roleRepository.create.mock.calls.find(
@@ -661,7 +680,7 @@ describe('AuthRolesService', () => {
 
 					scopeRepository.find.mockResolvedValue(allScopes);
 					roleRepository.find.mockResolvedValue([existingRole]);
-					roleRepository.save.mockImplementation(async (entities) => entities as any);
+					roleRepository.save.mockImplementation(async (entities) => entities as never);
 					mockPersonalSpaceSettings(false, true);
 
 					await authRolesService.init();
@@ -697,7 +716,7 @@ describe('AuthRolesService', () => {
 
 					scopeRepository.find.mockResolvedValue(allScopes);
 					roleRepository.find.mockResolvedValue([existingRole]);
-					roleRepository.save.mockImplementation(async (entities) => entities as any);
+					roleRepository.save.mockImplementation(async (entities) => entities as never);
 					mockPersonalSpaceSettings(false, false);
 
 					await authRolesService.init();

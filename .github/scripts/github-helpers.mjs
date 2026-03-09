@@ -1,5 +1,7 @@
+import { getOctokit } from '@actions/github';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import path from 'node:path';
 import semver from 'semver';
 
 export const RELEASE_TRACKS = /** @type { const } */ ([
@@ -9,6 +11,22 @@ export const RELEASE_TRACKS = /** @type { const } */ ([
 	'v1',
 ]);
 
+/**
+ * @typedef {typeof RELEASE_TRACKS[number]} ReleaseTrack
+ * */
+
+/**
+ * @typedef {`${number}.${number}.${number}`} SemVer
+ * */
+
+/**
+ * @typedef {`${RELEASE_PREFIX}${SemVer}`} ReleaseVersion
+ * */
+
+/**
+ * @typedef {{ tag: ReleaseVersion, version: SemVer}} TagVersionInfo
+ * */
+
 export const RELEASE_PREFIX = 'n8n@';
 
 /**
@@ -16,6 +34,8 @@ export const RELEASE_PREFIX = 'n8n@';
  * Returns the *tag string* (e.g. "n8n@2.7.0") or null.
  *
  * @param {string[]} tags
+ *
+ * @returns { ReleaseVersion | null }
  * */
 export function pickHighestReleaseTag(tags) {
 	const versions = tags
@@ -24,13 +44,13 @@ export function pickHighestReleaseTag(tags) {
 		.filter(({ v }) => semver.valid(v))
 		.sort((a, b) => semver.rcompare(a.v, b.v));
 
-	return versions[0]?.tag ?? null;
+	return /** @type { ReleaseVersion } */ (versions[0]?.tag) ?? null;
 }
 
 /**
- * @param {string} track
+ * @param {any} track
  *
- * @returns { typeof RELEASE_TRACKS[number] }
+ * @returns { ReleaseTrack }
  * */
 export function ensureReleaseTrack(track) {
 	if (!RELEASE_TRACKS.includes(track)) {
@@ -38,6 +58,30 @@ export function ensureReleaseTrack(track) {
 	}
 
 	return track;
+}
+
+/**
+ * Resolve a release track tag (stable/beta/etc.) to the corresponding
+ * n8n@x.y.z tag pointing at the same commit.
+ *
+ * Returns null if the track tag or release tag is missing.
+ *
+ * @param { typeof RELEASE_TRACKS[number] } track
+ *
+ * @returns { TagVersionInfo }
+ * */
+export function resolveReleaseTagForTrack(track) {
+	const commit = getCommitForRef(track);
+	if (!commit) return null;
+
+	const tagsAtCommit = listTagsPointingAt(commit);
+	const releaseTag = pickHighestReleaseTag(tagsAtCommit);
+	if (!releaseTag) return null;
+
+	return {
+		tag: releaseTag,
+		version: stripReleasePrefixes(releaseTag),
+	};
 }
 
 /**
@@ -66,20 +110,35 @@ export function resolveRcBranchForTrack(track) {
 
 /**
  * @param {string} tag
+ *
+ * @returns { SemVer }
  * */
 export function stripReleasePrefixes(tag) {
-	return tag.startsWith(RELEASE_PREFIX) ? tag.slice(RELEASE_PREFIX.length) : tag;
+	return /** @type { SemVer } */ (
+		tag.startsWith(RELEASE_PREFIX) ? tag.slice(RELEASE_PREFIX.length) : tag
+	);
+}
+
+export function getEventFromGithubEventPath() {
+	let eventPath = ensureEnvVar('GITHUB_EVENT_PATH');
+	if (!path.isAbsolute(eventPath)) {
+		eventPath = import.meta.dirname + '/' + eventPath;
+	}
+	return JSON.parse(fs.readFileSync(eventPath, 'utf8'));
 }
 
 /**
- * @returns { string[] }
- * */
-export function readPrLabels() {
-	const eventPath = ensureEnvVar('GITHUB_EVENT_PATH');
-
-	const event = JSON.parse(fs.readFileSync(eventPath, 'utf8'));
+ * @param {any} [pullRequest] Optional pull request object. If not provided, reads from GITHUB_EVENT_PATH
+ *
+ * @returns {string[]}
+ */
+export function readPrLabels(pullRequest) {
+	if (!pullRequest) {
+		const event = getEventFromGithubEventPath();
+		pullRequest = event.pull_request;
+	}
 	/** @type { string[] | { name: string }[] } */
-	const labels = event?.pull_request?.labels ?? [];
+	const labels = pullRequest?.labels ?? [];
 
 	return labels.map((l) => (typeof l === 'string' ? l : l?.name)).filter(Boolean);
 }
@@ -90,7 +149,7 @@ export function readPrLabels() {
  * @throws { Error } if no tag was found
  * */
 export function ensureTagExists(tag) {
-	sh('git', ['fetch', '--force', 'origin', `refs/tags/${tag}:refs/tags/${tag}`]);
+	sh('git', ['fetch', '--force', '--no-tags', 'origin', `refs/tags/${tag}:refs/tags/${tag}`]);
 }
 
 /**
@@ -180,4 +239,55 @@ export function listTagsPointingAt(commit) {
 		.split('\n')
 		.map((s) => s.trim())
 		.filter(Boolean);
+}
+
+/**
+ * @param {string} branch
+ */
+export function remoteBranchExists(branch) {
+	const res = trySh('git', ['ls-remote', '--heads', 'origin', branch]);
+	return res.ok && res.out.length > 0;
+}
+
+/**
+ * @param {string} ref
+ */
+export function localRefExists(ref) {
+	const res = trySh('git', ['show-ref', '--verify', '--quiet', ref]);
+	return res.ok;
+}
+
+/**
+ * Initializes octokit with GITHUB_TOKEN from env vars.
+ *
+ * Also ensures the existence of useful environment variables.
+ * */
+export function initGithub() {
+	const token = ensureEnvVar('GITHUB_TOKEN');
+	const repoFullName = ensureEnvVar('GITHUB_REPOSITORY');
+
+	const [owner, repo] = repoFullName.split('/');
+
+	const octokit = getOctokit(token);
+
+	return {
+		octokit,
+		owner,
+		repo,
+	};
+}
+
+/**
+ * @param {number} pullRequestId
+ */
+export async function getPullRequestById(pullRequestId) {
+	const { octokit, owner, repo } = initGithub();
+
+	const pullRequest = await octokit.rest.pulls.get({
+		owner,
+		repo,
+		pull_number: pullRequestId,
+	});
+
+	return pullRequest.data;
 }
