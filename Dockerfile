@@ -62,8 +62,9 @@ RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
 # create a stable `node` symlink at the same location so PATH lookups work.
 RUN ln -sf /usr/bin/nsolid /usr/bin/node
 
-# ─── Install n8n ─────────────────────────────────────────────────────────────
+# ─── Install n8n and OpenTelemetry packages for tracing ─────────────────────
 RUN npm install -g n8n@${N8N_VERSION} --omit=dev \
+    && npm install -g @opentelemetry/api@1.9.0 @opentelemetry/sdk-node@0.57.2 @opentelemetry/auto-instrumentations-node@0.57.0 @opentelemetry/exporter-trace-otlp-http@0.57.2 @opentelemetry/exporter-metrics-otlp-http@0.57.2 @opentelemetry/sdk-metrics@1.23.0 @opentelemetry/resources@1.23.0 @opentelemetry/semantic-conventions@1.23.0 \
     && rm -rf /root/.npm /tmp/*
 
 # ─── Prepare runtime user and data directory ─────────────────────────────────
@@ -91,6 +92,7 @@ ENV NSOLID_OTLP_CONFIG='{"url":"http://host.docker.internal:4318/v1/traces","pro
 
 # ─── n8n application settings ────────────────────────────────────────────────
 ENV NODE_ENV=production
+ENV NODE_PATH=/usr/lib/node_modules
 ENV SHELL=/bin/sh
 # n8n stores workflow data, credentials, and settings here
 VOLUME ["/home/node/.n8n"]
@@ -100,6 +102,7 @@ EXPOSE 5678/tcp
 USER node
 
 COPY docker/images/n8n/docker-entrypoint.sh /docker-entrypoint.sh
+COPY docker/images/n8n/tracing.js /tracing.js
 COPY scripts/add-owner.sh /add-owner.sh
 
 # Ensure the entrypoint is executable (file may lose its permissions on COPY)
