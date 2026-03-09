@@ -59,14 +59,13 @@ async function deleteDocuments(
 	const values: Array<string | string[]> = [];
 	let paramIndex = 1;
 	for (const [key, value] of Object.entries(filter)) {
-		const escapedKey = `'${key.replace(/'/g, "''")}'`;
 		if (Array.isArray(value)) {
-			conditions.push(`metadata->>${escapedKey} = ANY($${paramIndex}::text[])`);
+			conditions.push(`metadata->>($${paramIndex}::text) = ANY($${paramIndex + 1}::text[])`);
 		} else {
-			conditions.push(`metadata->>${escapedKey} = $${paramIndex}`);
+			conditions.push(`metadata->>($${paramIndex}::text) = $${paramIndex + 1}`);
 		}
-		values.push(value);
-		paramIndex++;
+		values.push(key, value);
+		paramIndex += 2;
 	}
 	await pool.query(`DELETE FROM "${tableName}" WHERE ${conditions.join(' AND ')}`, values);
 
