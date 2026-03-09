@@ -222,43 +222,38 @@ describe('generateVersionLabelFromId', () => {
 });
 
 describe('getVersionLabel', () => {
-	it('returns current changes label for current version', () => {
+	it('returns the version name when current version is named', () => {
 		const result = getVersionLabel({
-			workflowHistory: { versionId: 'v1', name: 'Named Version', workflowPublishHistory: [] },
+			workflowHistory: { versionId: 'v1', name: 'Named Version' },
 			currentVersionId: 'v1',
 		});
 
-		expect(result).toBe('workflowHistory.item.currentChanges');
+		expect(result).toBe('Named Version');
 	});
 
 	it('returns generated label when version has no name', () => {
 		const result = getVersionLabel({
-			workflowHistory: { versionId: '12345678abcdef', name: null, workflowPublishHistory: [] },
+			workflowHistory: { versionId: '12345678abcdef', name: null },
 			currentVersionId: 'other',
 		});
 
 		expect(result).toBe('Version 12345678');
 	});
 
-	it('does not return current changes label when current version is published', () => {
+	it('returns generated label when no current version is provided', () => {
 		const result = getVersionLabel({
-			workflowHistory: {
-				versionId: 'v1',
-				name: 'Named Version',
-				workflowPublishHistory: [
-					{
-						createdAt: '2026-03-08T10:00:00.000Z',
-						id: 1,
-						event: 'activated',
-						userId: 'user-1',
-						versionId: 'v1',
-						workflowId: 'wf-1',
-					},
-				],
-			},
+			workflowHistory: { versionId: '87654321abcdef', name: null },
+		});
+
+		expect(result).toBe('Version 87654321');
+	});
+
+	it('returns current changes label for unnamed current version', () => {
+		const result = getVersionLabel({
+			workflowHistory: { versionId: 'v1', name: null },
 			currentVersionId: 'v1',
 		});
 
-		expect(result).toBe('Named Version');
+		expect(result).toBe('workflowHistory.item.currentChanges');
 	});
 });
