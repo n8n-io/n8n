@@ -131,6 +131,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: validate-inputs
     timeout-minutes: 5
+    environment: release
     permissions:
       packages: write
     steps:
