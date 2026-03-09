@@ -1,3 +1,6 @@
+import { onSchedule } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+
 onSchedule({ every: '1d' }, async () => {
 	const leads = await http.get(
 		'https://sheets.googleapis.com/v4/spreadsheets/SPREADSHEET_ID/values/Sheet1',

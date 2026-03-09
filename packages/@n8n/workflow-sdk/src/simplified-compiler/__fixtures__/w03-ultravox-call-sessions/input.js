@@ -1,3 +1,6 @@
+import { onWebhook } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+
 /** @example [{ body: { callerId: "+15551234567", department: "support" } }] */
 onWebhook({ method: 'POST', path: '/call-session' }, async ({ body, respond }) => {
 	const session = await http.post(

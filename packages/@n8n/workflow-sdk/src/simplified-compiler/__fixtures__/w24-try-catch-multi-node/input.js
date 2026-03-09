@@ -1,3 +1,6 @@
+import { onManual } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+
 onManual(async () => {
 	try {
 		const users = await http.get('https://api.example.com/users');

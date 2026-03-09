@@ -1,3 +1,6 @@
+import { onManual } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+
 async function classify(priority) {
 	if (priority === 'high') {
 		await http.post('https://api.com/urgent', { priority });

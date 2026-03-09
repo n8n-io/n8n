@@ -1,3 +1,6 @@
+import { onError } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+
 /** @example [{ error: { message: "Connection timeout" }, workflow: { name: "Data Sync", id: "wf_123" } }] */
 onError(async ({ error, workflow }) => {
 	await http.post(

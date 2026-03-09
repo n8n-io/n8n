@@ -1,3 +1,7 @@
+import { onWebhook } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+import { Agent, GoogleGeminiModel, StructuredOutputParser } from '@n8n/sdk/ai';
+
 /** @example [{ body: { meetingTitle: "Q3 Planning", meetingNotes: "Discussed roadmap priorities and budget allocation" } }] */
 onWebhook({ method: 'POST', path: '/google-meet-automation' }, async ({ body, respond }) => {
 	if (!body.meetingTitle || !body.meetingNotes) {

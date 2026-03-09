@@ -1,3 +1,6 @@
+import { onWebhook } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+
 onWebhook({ method: 'POST', path: '/process' }, async ({ body }) => {
 	try {
 		const data = await http.get('https://api.example.com/data');

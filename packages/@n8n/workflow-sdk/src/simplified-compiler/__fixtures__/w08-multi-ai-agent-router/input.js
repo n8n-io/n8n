@@ -1,3 +1,6 @@
+import { onWebhook } from '@n8n/sdk';
+import { Agent, OpenAiModel } from '@n8n/sdk/ai';
+
 /** @example [{ body: { data: "Quarterly revenue grew 15% YoY", priority: "balanced" } }] */
 onWebhook({ method: 'POST', path: '/ai-pipeline' }, async ({ body, respond }) => {
 	const inputData = body.data;

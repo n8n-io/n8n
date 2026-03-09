@@ -1,3 +1,6 @@
+import { onManual } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+
 onManual(async () => {
 	const config = { endpoint: 'https://api.example.com' };
 

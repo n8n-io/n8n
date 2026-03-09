@@ -1,3 +1,6 @@
+import { onWebhook, onSchedule } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+
 onWebhook({ method: 'POST', path: '/orders' }, async ({ body }) => {
 	const order = body;
 

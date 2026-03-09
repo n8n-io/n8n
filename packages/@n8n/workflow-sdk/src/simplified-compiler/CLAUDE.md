@@ -38,7 +38,7 @@ The DSL does NOT try to support every n8n concept. The guiding principle:
 **If it can't be expressed as linear or branching JS control flow, it's out of scope.**
 
 Intentionally excluded:
-- **Merge nodes / multi-input joins** — can't be naturally expressed in sequential JS
+- **Merge nodes / multi-input joins** — can't be expressed directly in the DSL (though the compiler uses Merge internally for `Promise.all` convergence)
 - **n8n expression primitives (`$json`, `$input`, etc.)** — the DSL uses plain JS variables; the compiler resolves `users.name` to `={{ $('HTTP 1').first().json.name }}` automatically
 - Any node pattern that requires non-linear graph topology
 
@@ -156,16 +156,25 @@ Assert: normalizeSDK(SDK₁) === normalizeSDK(SDK₂)
 
 See `docs/aggregate-nodes.md` for full details. After every HTTP call with an assigned variable, the compiler emits an aggregate Code node (`Collect <varName>`) that collects all items and defensively unwraps single-item responses. Uses `// @aggregate: <varName>` jsCode marker for decompiler detection. Variable kind `'aggregate'` behaves like `'code'` for expression resolution.
 
+## Expression-Object Format for HTTP Bodies
+
+When an HTTP POST/PUT/PATCH body contains node references (e.g. `users.length` resolving to `$('Collect users').first().json.users.length`), the compiler wraps the entire `jsonBody` as a single expression: `={{ { "key": expr, ... } }}`. This is necessary because n8n's `jsonBody` parameter only evaluates expressions when the value starts with `=` (expression mode).
+
+The `jsonBodyToExpression()` function recursively converts the parsed JSON body, unwrapping `={{ }}` expressions at any nesting depth into raw JS expressions within the outer `={{ { ... } }}` wrapper. The decompiler's `formatJsonBody()` reverses this using placeholder-based JSON parsing — `$('...')` expressions are replaced with JSON-safe placeholders, the result is parsed as JSON, then placeholders are restored as `={{ expr }}` strings.
+
 ## Promise.all (Parallel Execution)
 
 `const [a, b] = await Promise.all([http.get(...), http.get(...)])` compiles to:
 
 1. **Fan-out connections**: Source node → multiple HTTP nodes in parallel (via separate `.to()` calls from the same node)
 2. **Per-branch aggregates**: Each HTTP node gets its own aggregate Code node (reuses existing `// @aggregate:` pattern)
-3. **Collect node**: A Code node with `// @parallel-collect: a, b` marker that references all aggregate outputs and returns them as a single object
-4. **Explicit connections**: Generated as `sourceVar.to(httpN)`, `httpN.to(aggN)`, `aggN.to(collectN)` after the main chain
+3. **Merge node**: A `n8n-nodes-base.merge` node (mode `append`, `numberInputs: N`) that waits for all branches to complete. Each aggregate connects to a separate input slot (`agg1.to(merge1.input(0))`, `agg2.to(merge1.input(1))`)
+4. **Collect node**: A Code node with `// @parallel-collect: a, b` marker that references all aggregate outputs and returns them as a single object. Connected after the Merge node.
+5. **Chain splitting**: The main `.add()` chain is split at parallel boundaries to avoid direct source→collect connections. Parallel connections are emitted as separate statements after the chain.
 
-**Decompiler detection**: The `// @parallel-collect:` jsCode prefix on a Code node signals a fan-out convergence point. The decompiler's `visitFanOut()` checks for this marker and reconstructs the `Promise.all([...])` syntax.
+**Why Merge is required**: n8n only waits for multiple inputs when a node has multiple input slots (`main[0]`, `main[1]`). Multiple connections to the same slot (`main[0]`) fire the downstream node on the first arrival. The Merge node provides proper multi-input waiting.
+
+**Decompiler detection**: The `// @parallel-collect:` jsCode prefix on a Code node signals a fan-out convergence point. The decompiler searches `deferredMergeDownstreams` (since the composite builder treats Merge nodes as deferred) and reconstructs the `Promise.all([...])` syntax.
 
 **Constraints**: Destructuring is required (`const [a, b] = ...`). Each array element must be an IO call (`http.get/post/...`). The collect node maps each variable to `varSourceKind: 'code'` for expression resolution.
 
@@ -183,7 +192,7 @@ See `docs/aggregate-nodes.md` for full details. After every HTTP call with an as
 | **Switch** | `switch (expr) { case: ... }` | switchCase node |
 | **Loops** | `for (const x of items) { ... }` | Splitter Code + aggregate |
 | **Try/catch** | `try { ... } catch { ... }` | onError behavior on nodes |
-| **Promise.all** | `const [a, b] = await Promise.all([http.get(...), ...])` | Fan-out HTTP nodes + collect Code node |
+| **Promise.all** | `const [a, b] = await Promise.all([http.get(...), ...])` | Fan-out HTTP nodes + Merge + collect Code node |
 | **Sub-functions** | `async function fn(params) { ... }` then `await fn(args)` | Execute Workflow node with inline `workflowJson` |
 | **Variables** | `const x = "value"` | Set node (static assignments) |
 | **Code** | Any other JS statements | Code node with `jsCode` |
@@ -221,7 +230,7 @@ pushd packages/@n8n/workflow-sdk && pnpm test decompiler-debug.test.ts && popd
 - **No n8n expressions in DSL**: plain JS variables only — compiler resolves to `={{ $('NodeName').first().json.path }}`
 - **Never use `$json` in generated expressions**: always use explicit `$('NodeName').first().json.prop` references. This ensures expressions are unambiguous and don't depend on predecessor ordering.
 - **`executeOnce: true`** on all non-trigger nodes (single-item semantics)
-- **Node variable naming for Promise.all**: `collect1`, `collect2`, ... for collect parallel nodes
+- **Node variable naming for Promise.all**: `merge1`, `merge2`, ... for Merge nodes; `collect1`, `collect2`, ... for collect parallel Code nodes
 - **Fixture naming**: `w01-descriptive-name/` with `meta.json`, `input.js`, `output.js`
 - **Adding new fixtures**: create dir, add the three files, fixture auto-discovered by `loadFixtures()`
 

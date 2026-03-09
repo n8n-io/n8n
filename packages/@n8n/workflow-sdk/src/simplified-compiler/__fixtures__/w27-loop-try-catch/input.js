@@ -1,3 +1,6 @@
+import { onSchedule } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+
 onSchedule({ every: '1h' }, async () => {
 	const users = await http.get('https://jsonplaceholder.typicode.com/users');
 

@@ -1,3 +1,6 @@
+import { onSchedule } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+
 onSchedule({ cron: '0 9 * * 1' }, async () => {
 	const reportTag = 'weekly-check';
 

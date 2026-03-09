@@ -1,3 +1,6 @@
+import { onSchedule } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+
 onSchedule({ cron: '0 5 * * *' }, async () => {
 	const latest = await http.get('https://registry.npmjs.org/n8n/latest');
 

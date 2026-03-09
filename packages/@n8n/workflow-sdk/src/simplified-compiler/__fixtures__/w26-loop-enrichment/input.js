@@ -1,3 +1,6 @@
+import { onSchedule } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+
 async function enrichUser(userId) {
 	const user = await http.get('https://jsonplaceholder.typicode.com/users/' + userId);
 	const posts = await http.get('https://jsonplaceholder.typicode.com/users/' + userId + '/posts');

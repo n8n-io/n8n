@@ -1,3 +1,6 @@
+import { onSchedule, workflow } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+
 onSchedule({ cron: '0 9 * * 1' }, async () => {
 	const salesReport = await workflow.run('Generate Sales Report');
 	const supportReport = await workflow.run('Generate Support Report');

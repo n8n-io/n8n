@@ -1,3 +1,6 @@
+import { onWebhook } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+
 onWebhook({ method: 'POST', path: '/dashboard' }, async ({ body }) => {
 	const userId = body.userId;
 
