@@ -329,42 +329,6 @@ export class SecretsProvidersConnectionsService {
 		};
 	}
 
-	async reloadProjectConnectionSecrets(
-		projectId: string,
-		userId: string,
-	): Promise<ReloadSecretProviderConnectionResponse> {
-		const projectConnections = await this.repository.findByProjectId(projectId);
-		const providers: Record<string, { success: boolean }> = {};
-
-		await Promise.allSettled(
-			projectConnections.map(async (c) => {
-				try {
-					await this.externalSecretsManager.updateProvider(c.providerKey);
-					providers[c.providerKey] = { success: true };
-
-					this.eventService.emit('external-secrets-connection-reloaded', {
-						userId,
-						providerKey: c.providerKey,
-						vaultType: c.type,
-						...this.extractProjectInfo(c),
-					});
-				} catch (error) {
-					providers[c.providerKey] = { success: false };
-					this.logger.warn(`Failed to reload provider ${c.providerKey}`, {
-						projectId,
-						providerKey: c.providerKey,
-					});
-				}
-			}),
-		);
-
-		const allSucceeded = Object.values(providers).every((p) => p.success);
-		return reloadSecretProviderConnectionResponseSchema.parse({
-			success: allSucceeded,
-			providers,
-		});
-	}
-
 	private encryptConnectionSettings(settings: IDataObject): string {
 		return this.cipher.encrypt(settings);
 	}
