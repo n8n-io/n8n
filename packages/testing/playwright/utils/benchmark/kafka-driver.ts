@@ -1,3 +1,4 @@
+import { trigger } from '@n8n/workflow-sdk';
 import type { KafkaHelper } from 'n8n-containers';
 import { nanoid } from 'nanoid';
 
@@ -12,7 +13,6 @@ import type {
 } from './types';
 import { PAYLOAD_PROFILES, generatePayload } from './types';
 import { buildChainedWorkflow } from './workflow-builder';
-import { trigger } from '@n8n/workflow-sdk';
 
 const LAST_EXECUTION_SETTLE_MS = 3000;
 
@@ -109,13 +109,14 @@ async function waitForConsumerGroupDrain(
 		if (lagInfo.totalLag === 0) {
 			// All messages consumed — wait briefly for last execution to finish
 			await new Promise((resolve) => setTimeout(resolve, LAST_EXECUTION_SETTLE_MS));
-			return { drained: true, durationMs: Date.now() - startTime };
+			return { drained: true, consumed: expectedCount, durationMs: Date.now() - startTime };
 		}
 
 		await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
 	}
 
-	return { drained: false, durationMs: Date.now() - startTime };
+	const consumed = lastLag >= 0 ? expectedCount - lastLag : 0;
+	return { drained: false, consumed, durationMs: Date.now() - startTime };
 }
 
 // --- Kafka trigger node ---

@@ -1,10 +1,10 @@
+import { trigger } from '@n8n/workflow-sdk';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import type { PayloadSize, NodeOutputSize } from './types';
 import { PAYLOAD_PROFILES, generatePayload } from './types';
 import { buildChainedWorkflow } from './workflow-builder';
-import { trigger } from '@n8n/workflow-sdk';
 
 type WebhookResponseMode = 'onReceived' | 'lastNode';
 

@@ -79,8 +79,10 @@ export async function runLoadTest({
 		);
 	}
 
+	// Duration sampling is optional — may be empty when EXECUTIONS_DATA_SAVE_ON_SUCCESS=none
+	// hard-deletes execution records. Completion count comes from drain tracking (Kafka lag).
 	const durations = await sampleExecutionDurations(api.workflows, workflowId);
-	const metrics = buildMetrics(durations.length, 0, drainDurationMs, durations);
+	const metrics = buildMetrics(drainResult.consumed, 0, drainDurationMs, durations);
 
 	await attachLoadTestResults(testInfo, testInfo.title, metrics);
 

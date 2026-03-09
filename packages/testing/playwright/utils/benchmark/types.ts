@@ -66,6 +66,8 @@ export interface PublishResult {
 
 export interface DrainResult {
 	drained: boolean;
+	/** Number of messages confirmed consumed (via consumer group lag tracking) */
+	consumed: number;
 	durationMs: number;
 }
 

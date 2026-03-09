@@ -1,9 +1,9 @@
+import { workflow, node } from '@n8n/workflow-sdk';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import type { NodeOutputSize } from './types';
 import { OUTPUT_SIZE_BYTES } from './types';
-import { workflow, node } from '@n8n/workflow-sdk';
 
 type TriggerNode = Parameters<ReturnType<typeof workflow>['add']>[0];
 
