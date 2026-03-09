@@ -33,15 +33,17 @@ export const WORKFLOW_SUCCESS_QUERY = 'n8n_workflow_success_total';
 export const QUEUE_JOBS_COMPLETED_QUERY = 'n8n_scaling_mode_queue_jobs_completed';
 
 /**
- * Returns the correct completion metric for the current Playwright project.
- * Queue mode uses the main-aggregated job completion counter;
- * direct mode uses the per-instance workflow success counter.
+ * Returns the completion metric for the current Playwright project.
+ *
+ * Currently always uses `n8n_workflow_success_total` which is emitted by both main
+ * and workers, aggregated across all instances by VictoriaMetrics.
+ *
+ * `n8n_scaling_mode_queue_jobs_completed` is the designed queue-mode metric but
+ * it depends on ScalingService.scheduleQueueMetrics() emitting `job-counts-updated`
+ * events at regular intervals — currently observed as 0 in CI.
  */
-export function resolveMetricQuery(testInfo: TestInfo): string {
-	const workers =
-		(testInfo.project.use as { containerConfig?: { workers?: number } }).containerConfig?.workers ??
-		0;
-	return workers > 0 ? QUEUE_JOBS_COMPLETED_QUERY : WORKFLOW_SUCCESS_QUERY;
+export function resolveMetricQuery(_testInfo: TestInfo): string {
+	return WORKFLOW_SUCCESS_QUERY;
 }
 
 // --- Throughput measurement ---
