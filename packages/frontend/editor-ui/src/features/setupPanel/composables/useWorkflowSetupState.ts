@@ -125,6 +125,30 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	const nodeHasTemplateParams = (nodeName: string) =>
 		(templateParametersByNode.value.get(nodeName)?.length ?? 0) > 0;
 
+	/**
+	 * Checks if a node has any unfilled resource locator template parameters.
+	 * Recursively searches the node's parameters for resource locators matching
+	 * the template parameter names and returns true if any have empty values.
+	 */
+	const hasUnfilledTemplateParams = (node: INodeUi): boolean => {
+		const templateParams = templateParametersByNode.value.get(node.name);
+		if (!templateParams || templateParams.length === 0) return false;
+
+		const paramNamesToCheck = new Set(templateParams);
+		const findUnfilled = (obj: Record<string, unknown>): boolean => {
+			for (const [key, value] of Object.entries(obj)) {
+				if (paramNamesToCheck.has(key) && isResourceLocatorValue(value) && !value.value) {
+					return true;
+				}
+				if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+					if (findUnfilled(value as Record<string, unknown>)) return true;
+				}
+			}
+			return false;
+		};
+		return findUnfilled(node.parameters);
+	};
+
 	async function loadTemplateMissingParameters() {
 		const templateId = workflowDocumentStore?.value?.meta?.templateId;
 		if (!templateId) return;
@@ -430,7 +454,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 				parameterIssues,
 				templateParameterNames: templateParametersByNode.value.get(node.name),
 				isTrigger,
-				isComplete: Object.keys(parameterIssues).length === 0,
+				isComplete: Object.keys(parameterIssues).length === 0 && !hasUnfilledTemplateParams(node),
 			});
 		}
 
@@ -537,6 +561,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 					credentialComplete &&
 					testPassed &&
 					Object.keys(parameterIssues).length === 0 &&
+					!hasUnfilledTemplateParams(node) &&
 					triggerComplete;
 
 				result.push({

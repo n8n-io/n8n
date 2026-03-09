@@ -66,9 +66,9 @@ let initialized = false;
 
 const isCardExpanded = (key: string): boolean => expandedStates[key] ?? false;
 
-/** Find the next uncompleted card after a given index, skipping auto-applied credential cards */
+/** Find the next uncompleted card after a given index */
 const findNextUncompleted = (cards: SetupCardItem[], afterIndex: number) =>
-	cards.find((c, j) => j > afterIndex && !c.state.isComplete && !c.state.isAutoApplied);
+	cards.find((c, j) => j > afterIndex && !c.state.isComplete);
 
 const setCardExpanded = (key: string, value: boolean) => {
 	expandedStates[key] = value;
@@ -105,13 +105,26 @@ watch(
 		}
 
 		if (!initialized) {
-			// On first load, expand the first uncompleted card (skip auto-applied credential cards)
+			// On first load, expand the first uncompleted card
 			const firstUncompleted = findNextUncompleted(cards, -1);
 			if (firstUncompleted) {
 				expandedStates[cardKey(firstUncompleted)] = true;
 			}
 			initialized = true;
 		} else {
+			// When a new incomplete card appears before the currently expanded card
+			// (e.g. template parameters detected after templateId becomes available),
+			// shift expansion to it since the user hasn't interacted with any card yet.
+			const firstUncompleted = findNextUncompleted(cards, -1);
+			if (firstUncompleted && !prevCompleteStates.has(cardKey(firstUncompleted))) {
+				const firstExpandedIndex = cards.findIndex((c) => expandedStates[cardKey(c)]);
+				const firstUncompletedIndex = cards.indexOf(firstUncompleted);
+				if (firstExpandedIndex > firstUncompletedIndex) {
+					expandedStates[cardKey(cards[firstExpandedIndex])] = false;
+					expandedStates[cardKey(firstUncompleted)] = true;
+				}
+			}
+
 			// When a card completes, collapse it and auto-expand the next uncompleted card.
 			// Skip auto-collapse for cards with parameters — those require manual collapse.
 			// Credential-only and trigger-only cards auto-collapse on completion.
