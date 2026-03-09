@@ -44,6 +44,8 @@ import AgentEditorModalFileRow, {
 import { I18nT } from 'vue-i18n';
 import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
 import { useFileDrop } from '@/features/ai/chatHub/composables/useFileDrop';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT } from '@/app/constants';
 
 const props = defineProps<{
 	modalName: string;
@@ -381,6 +383,14 @@ function removeFile(row: FileRow) {
 	}
 }
 
+const posthogStore = usePostHog();
+const isSemanticSearchEnabled = computed(() =>
+	posthogStore.isVariantEnabled(
+		CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT.name,
+		CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT.variant,
+	),
+);
+
 const fileDrop = useFileDrop(true, onFilesDropped, ['application/pdf']);
 </script>
 
@@ -402,7 +412,10 @@ const fileDrop = useFileDrop(true, onFilesDropped, ['application/pdf']);
 		</template>
 		<template #content>
 			<div :class="$style.contentWrapper">
-				<div v-if="fileDrop.isDragging.value" :class="$style.dropOverlay">
+				<div
+					v-if="isSemanticSearchEnabled && fileDrop.isDragging.value"
+					:class="$style.dropOverlay"
+				>
 					<N8nText v-if="fileDrop.isDraggingUnsupported.value" size="large" color="text-dark">{{
 						i18n.baseText('chatHub.agent.editor.dropOverlay.unsupportedFileType')
 					}}</N8nText>
@@ -411,11 +424,22 @@ const fileDrop = useFileDrop(true, onFilesDropped, ['application/pdf']);
 					}}</N8nText>
 				</div>
 				<div
-					:class="[$style.content, { [$style.isDraggingFile]: fileDrop.isDragging.value }]"
-					@dragenter="canUploadFiles ? fileDrop.handleDragEnter($event) : undefined"
-					@dragleave="canUploadFiles ? fileDrop.handleDragLeave($event) : undefined"
-					@dragover="canUploadFiles ? fileDrop.handleDragOver($event) : undefined"
-					@drop="canUploadFiles ? fileDrop.handleDrop($event) : undefined"
+					:class="[
+						$style.content,
+						{ [$style.isDraggingFile]: isSemanticSearchEnabled && fileDrop.isDragging.value },
+					]"
+					@dragenter="
+						isSemanticSearchEnabled && canUploadFiles ? fileDrop.handleDragEnter($event) : undefined
+					"
+					@dragleave="
+						isSemanticSearchEnabled && canUploadFiles ? fileDrop.handleDragLeave($event) : undefined
+					"
+					@dragover="
+						isSemanticSearchEnabled && canUploadFiles ? fileDrop.handleDragOver($event) : undefined
+					"
+					@drop="
+						isSemanticSearchEnabled && canUploadFiles ? fileDrop.handleDrop($event) : undefined
+					"
 				>
 					<N8nInputLabel
 						input-name="agent-name"
@@ -520,6 +544,7 @@ const fileDrop = useFileDrop(true, onFilesDropped, ['application/pdf']);
 					</div>
 
 					<N8nInputLabel
+						v-if="isSemanticSearchEnabled"
 						input-name="agent-files"
 						:label="i18n.baseText('chatHub.agent.editor.files.label')"
 						:required="false"

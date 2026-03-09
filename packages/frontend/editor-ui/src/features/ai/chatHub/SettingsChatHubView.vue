@@ -6,6 +6,8 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT } from '@/app/constants';
 import {
 	type ChatHubLLMProvider,
 	type ChatProviderSettingsDto,
@@ -20,6 +22,13 @@ import { CHAT_PROVIDER_SETTINGS_MODAL_KEY } from './constants';
 import ChatSemanticSearchSettings from './ChatSemanticSearchSettings.vue';
 
 const i18n = useI18n();
+const posthogStore = usePostHog();
+const isSemanticSearchEnabled = computed(() =>
+	posthogStore.isVariantEnabled(
+		CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT.name,
+		CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT.variant,
+	),
+);
 const toast = useToast();
 const documentTitle = useDocumentTitle();
 
@@ -106,7 +115,7 @@ onMounted(async () => {
 			@edit-provider="onEditProvider"
 			@refresh="onRefreshWorkflows"
 		/>
-		<ChatSemanticSearchSettings />
+		<ChatSemanticSearchSettings v-if="isSemanticSearchEnabled" />
 	</div>
 </template>
 
