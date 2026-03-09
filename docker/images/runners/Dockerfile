@@ -30,6 +30,9 @@ RUN node -e "const pkg = require('./package.json'); \
 RUN rm -f node_modules/.modules.yaml && \
     pnpm add moment@2.30.1 --prod --no-lockfile
 
+# Rebuild native modules for the container platform (e.g. linux-arm64-musl)
+RUN npm rebuild isolated-vm 2>/dev/null || true
+
 # ==============================================================================
 # STAGE 2: Python runner build (@n8n/task-runner-python) with uv
 # Produces a relocatable venv tied to the python version used
