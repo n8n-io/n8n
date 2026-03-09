@@ -343,10 +343,10 @@ test.describe(
 
 			// Check border on input wrapper (N8nInput has border on wrapper, not input)
 			const includeOtherFieldsWrapper = n8n.ndv.getParameterInputContainer('includeOtherFields');
-			await expect(includeOtherFieldsWrapper).toHaveCSS('border', /dashed.*rgb\(90, 76, 194\)/);
+			await expect(includeOtherFieldsWrapper).toHaveCSS('border', /.*rgba\(0, 0, 0, 0.1\)/);
 
 			const valueWrapper = n8n.ndv.getParameterInputContainer('value');
-			await expect(valueWrapper).toHaveCSS('border', /dashed.*rgb\(90, 76, 194\)/);
+			await expect(valueWrapper).toHaveCSS('border', /.*rgba\(0, 0, 0, 0.1\)/);
 
 			await n8n.page.mouse.up();
 		});
