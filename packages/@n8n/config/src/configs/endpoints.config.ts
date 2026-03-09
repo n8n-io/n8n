@@ -126,6 +126,10 @@ export class EndpointsConfig {
 	@Env('N8N_ENDPOINT_MCP_TEST')
 	mcpTest: string = 'mcp-test';
 
+	/** Whether to enable workflow builder tools in the MCP server. */
+	@Env('N8N_MCP_BUILDER_ENABLED')
+	mcpBuilderEnabled: boolean = false;
+
 	/** Whether to disable n8n's UI (frontend). */
 	@Env('N8N_DISABLE_UI')
 	disableUi: boolean = false;

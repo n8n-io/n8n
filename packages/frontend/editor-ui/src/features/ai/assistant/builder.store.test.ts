@@ -159,6 +159,7 @@ describe('AI Builder store', () => {
 		settingsStore.setSettings(
 			merge({}, defaultSettings, {
 				posthog: DEFAULT_POSTHOG_SETTINGS,
+				aiAssistant: { enabled: true, setup: true },
 			}),
 		);
 		window.posthog = {

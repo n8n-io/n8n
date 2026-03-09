@@ -131,7 +131,6 @@ import type { TelemetryNdvSource, TelemetryNdvType } from '@/app/types/telemetry
 import { useRoute, useRouter } from 'vue-router';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { isValidNodeConnectionType } from '@/app/utils/typeGuards';
-import { useParentFolder } from '@/features/core/folders/composables/useParentFolder';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { useClipboard } from '@vueuse/core';
@@ -197,7 +196,6 @@ export function useCanvasOperations() {
 	const externalHooks = useExternalHooks();
 	const clipboard = useClipboard();
 	const { uniqueNodeName } = useUniqueNodeName();
-	const { fetchAndSetParentFolder } = useParentFolder();
 
 	const router = useRouter();
 	const route = useRoute();
@@ -3180,7 +3178,6 @@ export function useCanvasOperations() {
 		const parentFolderId = route.query.parentFolderId as string | undefined;
 
 		await projectsStore.refreshCurrentProject();
-		await fetchAndSetParentFolder(parentFolderId);
 
 		await router.replace({
 			name: VIEWS.NEW_WORKFLOW,

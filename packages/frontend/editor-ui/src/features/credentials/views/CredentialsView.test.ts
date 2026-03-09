@@ -4,17 +4,15 @@ import { createTestingPinia } from '@pinia/testing';
 import { useCredentialsStore } from '../credentials.store';
 import CredentialsView from './CredentialsView.vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import { mockedStore, type MockedStore } from '@/__tests__/utils';
+import { mockedStore } from '@/__tests__/utils';
 import { waitFor, within, fireEvent } from '@testing-library/vue';
 import { STORES } from '@n8n/stores';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '../credentials.constants';
 import { VIEWS } from '@/app/constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { createRouter, createWebHistory } from 'vue-router';
 import { flushPromises } from '@vue/test-utils';
 import { CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
-import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import * as projectsApi from '@/features/collaboration/projects/projects.api';
 
 vi.mock('@/app/composables/useGlobalEntityCreation', () => ({
@@ -387,82 +385,6 @@ describe('CredentialsView', () => {
 			await fireEvent.click(getByTestId('resources-list-filters-trigger'));
 			await fireEvent.click(getByTestId('credential-filter-setup-needed'));
 			await waitFor(() => expect(getAllByTestId('resources-list-item').length).toBe(2));
-		});
-	});
-
-	describe('external secrets', () => {
-		let externalSecretsStore: MockedStore<typeof useExternalSecretsStore>;
-		beforeEach(() => {
-			externalSecretsStore = mockedStore(useExternalSecretsStore);
-			externalSecretsStore.fetchGlobalSecrets.mockResolvedValue(undefined);
-			externalSecretsStore.fetchProjectSecrets.mockResolvedValue(undefined);
-		});
-		it('should fetch external secrets on mount', async () => {
-			const projectsStore = mockedStore(useProjectsStore);
-
-			projectsStore.personalProject = createTestProject({ id: 'personal-123' });
-			projectsStore.isProjectHome = false;
-
-			renderComponent();
-
-			await waitFor(() => {
-				expect(externalSecretsStore.fetchGlobalSecrets).toHaveBeenCalledTimes(1);
-			});
-			expect(externalSecretsStore.fetchGlobalSecrets).toHaveBeenCalledWith();
-		});
-
-		it('should not fetch project external secrets if on personal project page', async () => {
-			const projectsStore = mockedStore(useProjectsStore);
-
-			// Set up matching personal project ID
-			const personalProjectId = 'personal-123';
-			projectsStore.personalProject = createTestProject({
-				id: personalProjectId,
-				type: ProjectTypes.Personal,
-			});
-			projectsStore.isProjectHome = false;
-
-			// Navigate to personal project route before rendering
-			await router.push({
-				name: VIEWS.CREDENTIALS,
-				params: { projectId: personalProjectId },
-			});
-
-			renderComponent();
-
-			await waitFor(() => {
-				expect(externalSecretsStore.fetchGlobalSecrets).toHaveBeenCalledTimes(1);
-			});
-			expect(externalSecretsStore.fetchProjectSecrets).not.toHaveBeenCalled();
-		});
-
-		it('should fetch project external secrets when on team project page', async () => {
-			const projectsStore = mockedStore(useProjectsStore);
-
-			const personalProjectId = 'personal-123';
-			const teamProjectId = 'team-456';
-			projectsStore.personalProject = createTestProject({
-				id: personalProjectId,
-				type: ProjectTypes.Personal,
-			});
-			projectsStore.currentProject = createTestProject({
-				id: teamProjectId,
-				type: ProjectTypes.Team,
-			});
-
-			// Navigate to team project route before rendering
-			await router.push({
-				name: VIEWS.CREDENTIALS,
-				params: { projectId: teamProjectId },
-			});
-
-			renderComponent();
-
-			await waitFor(() => {
-				expect(externalSecretsStore.fetchProjectSecrets).toHaveBeenCalledTimes(1);
-			});
-			expect(externalSecretsStore.fetchGlobalSecrets).toHaveBeenCalledTimes(1);
-			expect(externalSecretsStore.fetchProjectSecrets).toHaveBeenCalledWith(teamProjectId);
 		});
 	});
 });
