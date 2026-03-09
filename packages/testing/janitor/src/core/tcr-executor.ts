@@ -6,7 +6,8 @@ import { execFileSync } from 'node:child_process';
 import * as path from 'node:path';
 import { Project } from 'ts-morph';
 
-import { diffFileMethods, type FileDiffResult, type MethodChange } from './ast-diff-analyzer.js';
+import { type FileDiffResult, type MethodChange } from './ast-diff-analyzer.js';
+import { extractDiffs } from './extract-diffs.js';
 import { loadBaseline, filterNewViolations } from './baseline.js';
 import { ImpactAnalyzer } from './impact-analyzer.js';
 import { MethodUsageAnalyzer, type MethodUsageIndex } from './method-usage-analyzer.js';
@@ -354,13 +355,7 @@ export class TcrExecutor {
 	// --- Method Analysis ---
 
 	private extractDiffs(changedFiles: string[], baseRef: string): FileDiffResult[] {
-		const diffs: FileDiffResult[] = [];
-		for (const file of changedFiles) {
-			if (file.endsWith('.ts') && !file.endsWith('.spec.ts')) {
-				diffs.push(diffFileMethods(file, baseRef));
-			}
-		}
-		return diffs;
+		return extractDiffs(changedFiles, baseRef);
 	}
 
 	private logChangedMethods(changedMethods: MethodChange[]): void {

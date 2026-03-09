@@ -376,7 +376,11 @@ export function formatImpactConsole(result: ImpactResult, verbose = false): void
 	console.log('====================================\n');
 
 	console.log(`Changed files: ${result.changedFiles.length}`);
-	result.changedFiles.forEach((f) => console.log(`  - ${f}`));
+	result.changedFiles.forEach((f) => {
+		const strategy = result.strategies[f];
+		const label = strategy ? ` [${strategy}]` : '';
+		console.log(`  - ${f}${label}`);
+	});
 
 	console.log(`\nAffected test files: ${result.affectedTests.length}`);
 	if (result.affectedTests.length === 0) {
