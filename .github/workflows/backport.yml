@@ -59,7 +59,7 @@ jobs:
             # Description
             Backport of #${pull_number} to `${target_branch}`.
 
-            Checklist for the author (@${pull_author}) to go through.
+            ## Checklist for the author (@${pull_author}) to go through.
 
             - [ ] Review the backport changes
             - [ ] Fix possible conflicts
