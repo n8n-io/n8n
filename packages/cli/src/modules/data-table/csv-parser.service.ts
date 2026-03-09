@@ -42,6 +42,59 @@ export class CsvParserService {
 
 	private readonly TYPE_INFERENCE_SAMPLE_SIZE = 100;
 
+	private createParserOptions(hasHeaders: boolean, onColumnNames: (names: string[]) => void) {
+		return {
+			columns: hasHeaders
+				? (header: string[]) => {
+						const trimmed = header.map((h) => h.trim());
+						onColumnNames(trimmed);
+						return trimmed;
+					}
+				: (false as const),
+			skip_empty_lines: true,
+			bom: true,
+		};
+	}
+
+	private normalizeRow(
+		row: Record<string, string> | string[],
+		hasHeaders: boolean,
+		columnNames: string[],
+	): { rowObject: Record<string, string>; columnNames: string[] } | null {
+		if (!hasHeaders && Array.isArray(row)) {
+			return this.processRowWithoutHeaders(row, columnNames);
+		} else if (!Array.isArray(row)) {
+			return { rowObject: row, columnNames };
+		}
+		return null;
+	}
+
+	private collectTypeSamples(
+		rowObject: Record<string, string>,
+		columnNames: string[],
+		firstNonEmptyValues: Map<string, string>,
+	) {
+		for (const colName of columnNames) {
+			if (!firstNonEmptyValues.has(colName)) {
+				const value = rowObject[colName];
+				if (value?.trim()) {
+					firstNonEmptyValues.set(colName, value);
+				}
+			}
+		}
+	}
+
+	private buildColumnMetadata(columnNames: string[], firstNonEmptyValues: Map<string, string>) {
+		return columnNames.map((columnName) => {
+			const detectedType = this.inferColumnType(firstNonEmptyValues.get(columnName));
+			return {
+				name: columnName,
+				type: detectedType,
+				compatibleTypes: this.getCompatibleTypes(detectedType),
+			};
+		});
+	}
+
 	/**
 	 * Parses a CSV file and returns metadata including row count, column count, and inferred column types.
 	 * Samples up to 100 rows to find the first non-empty value per column for type inference.
@@ -53,60 +106,24 @@ export class CsvParserService {
 		const firstNonEmptyValues = new Map<string, string>();
 
 		return await new Promise((resolve, reject) => {
-			const parser = parse({
-				columns: hasHeaders
-					? (header: string[]) => {
-							columnNames = header.map((h) => h.trim());
-							return columnNames;
-						}
-					: false,
-				skip_empty_lines: true,
-				bom: true,
-			})
+			const parser = parse(
+				this.createParserOptions(hasHeaders, (names) => {
+					columnNames = names;
+				}),
+			)
 				.on('data', (row: Record<string, string> | string[]) => {
 					rowCount++;
+					const normalized = this.normalizeRow(row, hasHeaders, columnNames);
+					if (!normalized) return;
+					columnNames = normalized.columnNames;
 
-					let rowObject: Record<string, string>;
-					if (!hasHeaders && Array.isArray(row)) {
-						const processed = this.processRowWithoutHeaders(row, columnNames);
-						columnNames = processed.columnNames;
-						rowObject = processed.rowObject;
-					} else if (!Array.isArray(row)) {
-						rowObject = row;
-					} else {
-						return;
-					}
-
-					// Collect first non-empty value per column (sample up to N rows).
-					// `columnNames` is already populated by the `columns` header callback (which fires
-					// before any `data` events) when hasHeaders=true, or built incrementally by
-					// processRowWithoutHeaders on the first row otherwise.
 					if (rowCount <= this.TYPE_INFERENCE_SAMPLE_SIZE) {
-						for (const colName of columnNames) {
-							if (!firstNonEmptyValues.has(colName)) {
-								const value = rowObject[colName];
-								if (value?.trim()) {
-									firstNonEmptyValues.set(colName, value);
-								}
-							}
-						}
+						this.collectTypeSamples(normalized.rowObject, columnNames, firstNonEmptyValues);
 					}
 				})
 				.on('end', () => {
-					const columns = columnNames.map((columnName) => {
-						const detectedType = this.inferColumnType(firstNonEmptyValues.get(columnName));
-						return {
-							name: columnName,
-							type: detectedType,
-							compatibleTypes: this.getCompatibleTypes(detectedType),
-						};
-					});
-
-					resolve({
-						rowCount,
-						columnCount: columns.length,
-						columns,
-					});
+					const columns = this.buildColumnMetadata(columnNames, firstNonEmptyValues);
+					resolve({ rowCount, columnCount: columns.length, columns });
 				})
 				.on('error', reject);
 
@@ -122,24 +139,20 @@ export class CsvParserService {
 		hasHeaders: boolean = true,
 	): Promise<Array<Record<string, string>>> {
 		const filePath = safeJoinPath(this.uploadDir, fileId);
-
 		const rows: Array<Record<string, string>> = [];
 		let columnNames: string[] = [];
 
 		return await new Promise((resolve, reject) => {
-			const parser = parse({
-				columns: hasHeaders ? (header: string[]) => header.map((h) => h.trim()) : false,
-				skip_empty_lines: true,
-				bom: true,
-			})
+			const parser = parse(
+				this.createParserOptions(hasHeaders, (names) => {
+					columnNames = names;
+				}),
+			)
 				.on('data', (row: Record<string, string> | string[]) => {
-					if (!hasHeaders && Array.isArray(row)) {
-						const processed = this.processRowWithoutHeaders(row, columnNames);
-						columnNames = processed.columnNames;
-						rows.push(processed.rowObject);
-					} else if (!Array.isArray(row)) {
-						rows.push(row);
-					}
+					const normalized = this.normalizeRow(row, hasHeaders, columnNames);
+					if (!normalized) return;
+					columnNames = normalized.columnNames;
+					rows.push(normalized.rowObject);
 				})
 				.on('end', () => {
 					resolve(rows);
@@ -164,57 +177,25 @@ export class CsvParserService {
 		const rows: Array<Record<string, string>> = [];
 
 		return await new Promise((resolve, reject) => {
-			const parser = parse({
-				columns: hasHeaders
-					? (header: string[]) => {
-							columnNames = header.map((h) => h.trim());
-							return columnNames;
-						}
-					: false,
-				skip_empty_lines: true,
-				bom: true,
-			})
+			const parser = parse(
+				this.createParserOptions(hasHeaders, (names) => {
+					columnNames = names;
+				}),
+			)
 				.on('data', (row: Record<string, string> | string[]) => {
-					let rowObject: Record<string, string>;
-					if (!hasHeaders && Array.isArray(row)) {
-						const processed = this.processRowWithoutHeaders(row, columnNames);
-						columnNames = processed.columnNames;
-						rowObject = processed.rowObject;
-					} else if (!Array.isArray(row)) {
-						rowObject = row;
-					} else {
-						return;
-					}
-
-					rows.push(rowObject);
+					const normalized = this.normalizeRow(row, hasHeaders, columnNames);
+					if (!normalized) return;
+					columnNames = normalized.columnNames;
+					rows.push(normalized.rowObject);
 
 					if (rows.length <= this.TYPE_INFERENCE_SAMPLE_SIZE) {
-						for (const colName of columnNames) {
-							if (!firstNonEmptyValues.has(colName)) {
-								const value = rowObject[colName];
-								if (value?.trim()) {
-									firstNonEmptyValues.set(colName, value);
-								}
-							}
-						}
+						this.collectTypeSamples(normalized.rowObject, columnNames, firstNonEmptyValues);
 					}
 				})
 				.on('end', () => {
-					const columns = columnNames.map((columnName) => {
-						const detectedType = this.inferColumnType(firstNonEmptyValues.get(columnName));
-						return {
-							name: columnName,
-							type: detectedType,
-							compatibleTypes: this.getCompatibleTypes(detectedType),
-						};
-					});
-
+					const columns = this.buildColumnMetadata(columnNames, firstNonEmptyValues);
 					resolve({
-						metadata: {
-							rowCount: rows.length,
-							columnCount: columns.length,
-							columns,
-						},
+						metadata: { rowCount: rows.length, columnCount: columns.length, columns },
 						rows,
 					});
 				})

@@ -28,22 +28,16 @@ import type {
 	DataTableColumnType,
 	DataTableRowReturnWithState,
 } from 'n8n-workflow';
-import {
-	DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP,
-	DATA_TABLE_SYSTEM_COLUMNS,
-	validateFieldType,
-} from 'n8n-workflow';
+import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, validateFieldType } from 'n8n-workflow';
 
-import { CsvParserService } from './csv-parser.service';
 import { DataTableColumn } from './data-table-column.entity';
 import { DataTableColumnRepository } from './data-table-column.repository';
-import { DataTableFileCleanupService } from './data-table-file-cleanup.service';
+import { DataTableCsvImportService } from './data-table-csv-import.service';
 import { DataTableRowsRepository } from './data-table-rows.repository';
 import { DataTableSizeValidator } from './data-table-size-validator.service';
 import { DataTableRepository } from './data-table.repository';
 import { columnTypeToFieldType } from './data-table.types';
 import { DataTableColumnNotFoundError } from './errors/data-table-column-not-found.error';
-import { FileUploadError } from './errors/data-table-file-upload.error';
 import { DataTableNameConflictError } from './errors/data-table-name-conflict.error';
 import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
@@ -61,8 +55,7 @@ export class DataTableService {
 		private readonly dataTableSizeValidator: DataTableSizeValidator,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly roleService: RoleService,
-		private readonly csvParserService: CsvParserService,
-		private readonly fileCleanupService: DataTableFileCleanupService,
+		private readonly csvImportService: DataTableCsvImportService,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
@@ -83,14 +76,19 @@ export class DataTableService {
 
 		if (dto.fileId) {
 			try {
-				await this.importDataFromFile(
-					projectId,
-					result.id,
+				const tableColumns = await this.getColumns(result.id, projectId);
+				const rows = await this.csvImportService.buildRowsForNewTable(
 					dto.fileId,
 					dto.hasHeaders ?? true,
+					tableColumns,
 					dto.columns,
 				);
-				await this.fileCleanupService.deleteFile(dto.fileId);
+
+				if (rows.length > 0) {
+					await this.insertRows(result.id, projectId, rows);
+				}
+
+				await this.csvImportService.cleanupFile(dto.fileId);
 			} catch (error) {
 				await this.deleteDataTable(result.id, projectId);
 				throw error;
@@ -100,63 +98,6 @@ export class DataTableService {
 		this.dataTableSizeValidator.reset();
 
 		return result;
-	}
-
-	private async importDataFromFile(
-		projectId: string,
-		dataTableId: string,
-		fileId: string,
-		hasHeaders: boolean,
-		dtoColumns?: CreateDataTableDto['columns'],
-	) {
-		try {
-			const tableColumns = await this.getColumns(dataTableId, projectId);
-
-			// Build mapping from CSV column name → table column name.
-			// When dtoColumns carry csvColumnName (i.e. a column was renamed or some
-			// columns were discarded), use that for a name-based mapping. Otherwise
-			// fall back to the legacy index-based mapping.
-			const columnMapping = new Map<string, string>();
-
-			const hasCsvColumnNames = dtoColumns?.some((c) => c.csvColumnName);
-			if (hasCsvColumnNames && dtoColumns) {
-				for (const dtoCol of dtoColumns) {
-					if (dtoCol.csvColumnName) {
-						const tableCol = tableColumns.find((tc) => tc.name === dtoCol.name);
-						if (tableCol) {
-							columnMapping.set(dtoCol.csvColumnName, tableCol.name);
-						}
-					}
-				}
-			} else {
-				const csvMetadata = await this.csvParserService.parseFile(fileId, hasHeaders);
-				csvMetadata.columns.forEach((csvColumn, index) => {
-					if (tableColumns[index]) {
-						columnMapping.set(csvColumn.name, tableColumns[index].name);
-					}
-				});
-			}
-
-			const csvRows = await this.csvParserService.parseFileData(fileId, hasHeaders);
-
-			const transformedRows = csvRows.map((csvRow) => {
-				const transformedRow: DataTableRow = {};
-				for (const [csvColName, value] of Object.entries(csvRow)) {
-					const tableColName = columnMapping.get(csvColName);
-					if (tableColName) {
-						transformedRow[tableColName] = value;
-					}
-				}
-				return transformedRow;
-			});
-
-			if (transformedRows.length > 0) {
-				await this.insertRows(dataTableId, projectId, transformedRows);
-			}
-		} catch (error) {
-			this.logger.error('Failed to import data from CSV file', { error, fileId, dataTableId });
-			throw new FileUploadError(error instanceof Error ? error.message : 'Failed to read CSV file');
-		}
 	}
 
 	async importCsvToExistingTable(
@@ -169,66 +110,19 @@ export class DataTableService {
 
 		try {
 			const tableColumns = await this.getColumns(dataTableId, projectId);
-			const tableColumnNames = new Set(tableColumns.map((col) => col.name));
+			const { rows, systemColumnsIgnored } =
+				await this.csvImportService.validateAndBuildRowsForExistingTable(fileId, tableColumns);
 
-			const { metadata: csvMetadata, rows: csvRows } =
-				await this.csvParserService.parseFileWithData(fileId);
-
-			const systemColumnsIgnored: string[] = [];
-			const unrecognizedColumns: string[] = [];
-			const matchedCsvColumnNames: string[] = [];
-
-			for (const csvCol of csvMetadata.columns) {
-				if (DATA_TABLE_SYSTEM_COLUMNS.includes(csvCol.name)) {
-					systemColumnsIgnored.push(csvCol.name);
-				} else if (tableColumnNames.has(csvCol.name)) {
-					matchedCsvColumnNames.push(csvCol.name);
-				} else {
-					unrecognizedColumns.push(csvCol.name);
-				}
-			}
-
-			if (unrecognizedColumns.length > 0) {
-				throw new DataTableValidationError(
-					`CSV contains columns not found in the data table: ${unrecognizedColumns.join(', ')}. Remove them and try again.`,
-				);
-			}
-
-			if (matchedCsvColumnNames.length === 0) {
-				throw new DataTableValidationError(
-					'No matching columns found between CSV and data table. CSV columns must match table column names exactly.',
-				);
-			}
-
-			const transformedRows = csvRows.map((csvRow) => {
-				const transformedRow: DataTableRow = {};
-				for (const colName of matchedCsvColumnNames) {
-					const value = csvRow[colName];
-					transformedRow[colName] = value === undefined || value === '' ? null : value;
-				}
-				return transformedRow;
-			});
-
-			if (transformedRows.length > 0) {
-				await this.insertRows(dataTableId, projectId, transformedRows);
+			if (rows.length > 0) {
+				await this.insertRows(dataTableId, projectId, rows);
 			}
 
 			return {
-				importedRowCount: transformedRows.length,
+				importedRowCount: rows.length,
 				systemColumnsIgnored,
 			};
-		} catch (error) {
-			if (error instanceof DataTableValidationError) throw error;
-			this.logger.error('Failed to import CSV to existing table', {
-				error,
-				fileId,
-				dataTableId,
-			});
-			throw new FileUploadError(
-				error instanceof Error ? error.message : 'Failed to import CSV file',
-			);
 		} finally {
-			await this.fileCleanupService.deleteFile(fileId);
+			await this.csvImportService.cleanupFile(fileId);
 		}
 	}
 

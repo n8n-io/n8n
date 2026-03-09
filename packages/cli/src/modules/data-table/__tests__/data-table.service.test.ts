@@ -4,10 +4,9 @@ import { Logger } from '@n8n/backend-common';
 import { ProjectRelationRepository, type User } from '@n8n/db';
 import type { DataTableInfoById } from 'n8n-workflow';
 
-import { CsvParserService } from '../csv-parser.service';
 import type { DataTableColumn } from '../data-table-column.entity';
 import { DataTableColumnRepository } from '../data-table-column.repository';
-import { DataTableFileCleanupService } from '../data-table-file-cleanup.service';
+import { DataTableCsvImportService } from '../data-table-csv-import.service';
 import { DataTableRowsRepository } from '../data-table-rows.repository';
 import { DataTableSizeValidator } from '../data-table-size-validator.service';
 import type { DataTable } from '../data-table.entity';
@@ -27,8 +26,7 @@ describe('DataTableService', () => {
 	let mockDataTableSizeValidator: jest.Mocked<DataTableSizeValidator>;
 	let mockProjectRelationRepository: jest.Mocked<ProjectRelationRepository>;
 	let mockRoleService: jest.Mocked<RoleService>;
-	let mockCsvParserService: jest.Mocked<CsvParserService>;
-	let mockFileCleanupService: jest.Mocked<DataTableFileCleanupService>;
+	let mockCsvImportService: jest.Mocked<DataTableCsvImportService>;
 
 	beforeAll(async () => {
 		await testModules.loadModules(['data-table']);
@@ -42,8 +40,7 @@ describe('DataTableService', () => {
 		mockDataTableSizeValidator = mockInstance(DataTableSizeValidator);
 		mockProjectRelationRepository = mockInstance(ProjectRelationRepository);
 		mockRoleService = mockInstance(RoleService);
-		mockCsvParserService = mockInstance(CsvParserService);
-		mockFileCleanupService = mockInstance(DataTableFileCleanupService);
+		mockCsvImportService = mockInstance(DataTableCsvImportService);
 
 		// Mock the logger.scoped method to return the logger itself
 		mockLogger.scoped = jest.fn().mockReturnValue(mockLogger);
@@ -56,8 +53,7 @@ describe('DataTableService', () => {
 			mockDataTableSizeValidator,
 			mockProjectRelationRepository,
 			mockRoleService,
-			mockCsvParserService,
-			mockFileCleanupService,
+			mockCsvImportService,
 		);
 
 		jest.clearAllMocks();
@@ -495,7 +491,7 @@ describe('DataTableService', () => {
 			mockDataTableSizeValidator.validateSize.mockResolvedValue(undefined);
 			mockDataTableRepository.findOneBy.mockResolvedValue(mockDataTable);
 			mockDataTableColumnRepository.getColumns.mockResolvedValue(tableColumns);
-			mockFileCleanupService.deleteFile.mockResolvedValue(undefined);
+			mockCsvImportService.cleanupFile.mockResolvedValue(undefined);
 			// Mock insertRows transaction
 			Object.defineProperty(mockDataTableColumnRepository, 'manager', {
 				value: {
@@ -512,21 +508,13 @@ describe('DataTableService', () => {
 			mockDataTableRepository.touchUpdatedAt.mockResolvedValue(undefined);
 		});
 
-		it('should import matching columns successfully', async () => {
-			mockCsvParserService.parseFileWithData.mockResolvedValue({
-				metadata: {
-					rowCount: 2,
-					columnCount: 3,
-					columns: [
-						{ name: 'name', type: 'string' },
-						{ name: 'age', type: 'number' },
-						{ name: 'email', type: 'string' },
-					],
-				},
+		it('should import rows returned by csv import service', async () => {
+			mockCsvImportService.validateAndBuildRowsForExistingTable.mockResolvedValue({
 				rows: [
 					{ name: 'Alice', age: '30', email: 'alice@test.com' },
 					{ name: 'Bob', age: '25', email: 'bob@test.com' },
 				],
+				systemColumnsIgnored: [],
 			});
 
 			const result = await dataTableService.importCsvToExistingTable(
@@ -537,22 +525,16 @@ describe('DataTableService', () => {
 
 			expect(result.importedRowCount).toBe(2);
 			expect(result.systemColumnsIgnored).toEqual([]);
-			expect(mockFileCleanupService.deleteFile).toHaveBeenCalledWith(fileId);
+			expect(mockCsvImportService.validateAndBuildRowsForExistingTable).toHaveBeenCalledWith(
+				fileId,
+				tableColumns,
+			);
 		});
 
-		it('should ignore system columns and return them in systemColumnsIgnored', async () => {
-			mockCsvParserService.parseFileWithData.mockResolvedValue({
-				metadata: {
-					rowCount: 1,
-					columnCount: 4,
-					columns: [
-						{ name: 'id', type: 'number' },
-						{ name: 'name', type: 'string' },
-						{ name: 'createdAt', type: 'date' },
-						{ name: 'updatedAt', type: 'date' },
-					],
-				},
-				rows: [{ id: '1', name: 'Alice', createdAt: '2024-01-01', updatedAt: '2024-01-01' }],
+		it('should pass through systemColumnsIgnored from csv import service', async () => {
+			mockCsvImportService.validateAndBuildRowsForExistingTable.mockResolvedValue({
+				rows: [{ name: 'Alice' }],
+				systemColumnsIgnored: ['id', 'createdAt', 'updatedAt'],
 			});
 
 			const result = await dataTableService.importCsvToExistingTable(
@@ -565,54 +547,22 @@ describe('DataTableService', () => {
 			expect(result.systemColumnsIgnored).toEqual(['id', 'createdAt', 'updatedAt']);
 		});
 
-		it('should throw when CSV has unrecognized columns', async () => {
-			mockCsvParserService.parseFileWithData.mockResolvedValue({
-				metadata: {
-					rowCount: 1,
-					columnCount: 3,
-					columns: [
-						{ name: 'name', type: 'string' },
-						{ name: 'unknown_col', type: 'string' },
-						{ name: 'another_unknown', type: 'string' },
-					],
-				},
-				rows: [{ name: 'Alice', unknown_col: 'x', another_unknown: 'y' }],
-			});
+		it('should propagate validation errors from csv import service', async () => {
+			mockCsvImportService.validateAndBuildRowsForExistingTable.mockRejectedValue(
+				new DataTableValidationError('CSV contains columns not found in the data table'),
+			);
 
 			await expect(
 				dataTableService.importCsvToExistingTable(dataTableId, projectId, fileId),
 			).rejects.toThrow(DataTableValidationError);
+
+			expect(mockCsvImportService.cleanupFile).toHaveBeenCalledWith(fileId);
 		});
 
-		it('should throw when zero non-system columns match', async () => {
-			mockCsvParserService.parseFileWithData.mockResolvedValue({
-				metadata: {
-					rowCount: 1,
-					columnCount: 2,
-					columns: [
-						{ name: 'id', type: 'number' },
-						{ name: 'createdAt', type: 'date' },
-					],
-				},
-				rows: [{ id: '1', createdAt: '2024-01-01' }],
-			});
-
-			await expect(
-				dataTableService.importCsvToExistingTable(dataTableId, projectId, fileId),
-			).rejects.toThrow(DataTableValidationError);
-		});
-
-		it('should handle empty CSV with 0 rows', async () => {
-			mockCsvParserService.parseFileWithData.mockResolvedValue({
-				metadata: {
-					rowCount: 0,
-					columnCount: 2,
-					columns: [
-						{ name: 'name', type: 'string' },
-						{ name: 'age', type: 'number' },
-					],
-				},
+		it('should skip insertRows when csv import service returns 0 rows', async () => {
+			mockCsvImportService.validateAndBuildRowsForExistingTable.mockResolvedValue({
 				rows: [],
+				systemColumnsIgnored: [],
 			});
 
 			const result = await dataTableService.importCsvToExistingTable(
@@ -622,44 +572,30 @@ describe('DataTableService', () => {
 			);
 
 			expect(result.importedRowCount).toBe(0);
-			expect(mockFileCleanupService.deleteFile).toHaveBeenCalledWith(fileId);
+			expect(mockDataTableRowsRepository.insertRows).not.toHaveBeenCalled();
 		});
 
-		it('should convert empty and missing CSV values to null', async () => {
-			mockCsvParserService.parseFileWithData.mockResolvedValue({
-				metadata: {
-					rowCount: 2,
-					columnCount: 2,
-					columns: [
-						{ name: 'name', type: 'string' },
-						{ name: 'age', type: 'number' },
-					],
-				},
-				rows: [{ name: 'Alice', age: '' }, { name: '' }],
-			});
-
-			await dataTableService.importCsvToExistingTable(dataTableId, projectId, fileId);
-
-			const insertedRows = mockDataTableRowsRepository.insertRows.mock.calls[0][1] as Array<
-				Record<string, unknown>
-			>;
-			expect(insertedRows[0]).toEqual(expect.objectContaining({ name: 'Alice', age: null }));
-			expect(insertedRows[1]).toEqual(expect.objectContaining({ name: null, age: null }));
-		});
-
-		it('should clean up uploaded file after successful import', async () => {
-			mockCsvParserService.parseFileWithData.mockResolvedValue({
-				metadata: {
-					rowCount: 1,
-					columnCount: 1,
-					columns: [{ name: 'name', type: 'string' }],
-				},
+		it('should clean up file after successful import', async () => {
+			mockCsvImportService.validateAndBuildRowsForExistingTable.mockResolvedValue({
 				rows: [{ name: 'Alice' }],
+				systemColumnsIgnored: [],
 			});
 
 			await dataTableService.importCsvToExistingTable(dataTableId, projectId, fileId);
 
-			expect(mockFileCleanupService.deleteFile).toHaveBeenCalledWith(fileId);
+			expect(mockCsvImportService.cleanupFile).toHaveBeenCalledWith(fileId);
+		});
+
+		it('should clean up file even when import fails', async () => {
+			mockCsvImportService.validateAndBuildRowsForExistingTable.mockRejectedValue(
+				new Error('parse error'),
+			);
+
+			await expect(
+				dataTableService.importCsvToExistingTable(dataTableId, projectId, fileId),
+			).rejects.toThrow();
+
+			expect(mockCsvImportService.cleanupFile).toHaveBeenCalledWith(fileId);
 		});
 	});
 });
