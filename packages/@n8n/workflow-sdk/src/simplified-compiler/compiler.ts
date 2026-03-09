@@ -165,6 +165,13 @@ interface CompiledFunction {
 
 // ─── Transpiler Context ──────────────────────────────────────────────────────
 
+interface ParallelGroup {
+	sourceVar: string;
+	/** Each branch is a chain of node vars, e.g. [httpVar, aggVar] or [httpVar] */
+	branches: string[][];
+	collectVar: string; // the collect Code node var
+}
+
 interface TranspilerContext {
 	source: string;
 	nodes: EmittedNode[];
@@ -179,6 +186,7 @@ interface TranspilerContext {
 	wfCounter: number;
 	setCounter: number;
 	aggCounter: number;
+	collectCounter: number;
 	pendingStatements: Array<{ source: string; ast: AcornNode }>;
 	prevVar: string;
 	triggerType: CallbackInfo['triggerType'];
@@ -195,6 +203,7 @@ interface TranspilerContext {
 	execCounter: number;
 	tryCatchCounter: number;
 	errorConnections: Array<{ sourceVar: string; catchChainStartVar: string }>;
+	parallelGroups: ParallelGroup[];
 	pendingPinData?: unknown[];
 }
 
@@ -328,6 +337,7 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 	const allLoopBodies: CompiledFunction[] = [];
 	const allTryCatchBodies: CompiledFunction[] = [];
 	const allErrorConnections: Array<{ sourceVar: string; catchChainStartVar: string }> = [];
+	const allParallelGroups: ParallelGroup[] = [];
 
 	// Track compiled shared pipelines: fnName → first pipeline node var
 	const compiledSharedPipelineFirstNode = new Map<string, string>();
@@ -342,7 +352,7 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 				// First callback: inline the function body
 				const fnDef = sharedPipelineDefs.get(sharedFnName)!;
 				const inlinedCb: CallbackInfo = { ...cb, callbackBody: fnDef.body };
-				const { nodes, chainExpr, loopBodies, tryCatchBodies, errorConnections } =
+				const { nodes, chainExpr, loopBodies, tryCatchBodies, errorConnections, parallelGroups } =
 					transpileCallback(
 						inlinedCb,
 						source,
@@ -363,6 +373,7 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 				allLoopBodies.push(...loopBodies);
 				allTryCatchBodies.push(...tryCatchBodies);
 				allErrorConnections.push(...errorConnections);
+				allParallelGroups.push(...parallelGroups);
 			} else {
 				// Subsequent callback: just create trigger, connect to shared chain
 				const triggerVar = `t${allNodes.length}`;
@@ -374,21 +385,23 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 			continue;
 		}
 
-		const { nodes, chainExpr, loopBodies, tryCatchBodies, errorConnections } = transpileCallback(
-			cb,
-			source,
-			allNodes.length,
-			comments,
-			errors,
-			functionDefs,
-			compiledFunctions,
-			consumedComments,
-		);
+		const { nodes, chainExpr, loopBodies, tryCatchBodies, errorConnections, parallelGroups } =
+			transpileCallback(
+				cb,
+				source,
+				allNodes.length,
+				comments,
+				errors,
+				functionDefs,
+				compiledFunctions,
+				consumedComments,
+			);
 		allNodes.push(...nodes);
 		allChains.push(chainExpr);
 		allLoopBodies.push(...loopBodies);
 		allTryCatchBodies.push(...tryCatchBodies);
 		allErrorConnections.push(...errorConnections);
+		allParallelGroups.push(...parallelGroups);
 	}
 
 	// Step 6: Generate final SDK code
@@ -399,6 +412,7 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 		allLoopBodies,
 		allTryCatchBodies,
 		allErrorConnections,
+		allParallelGroups,
 	);
 	return { code, errors };
 }
@@ -1000,6 +1014,7 @@ function compileFunctionToSDK(
 		wfCounter: 0,
 		setCounter: 0,
 		aggCounter: 0,
+		collectCounter: 0,
 		pendingStatements: [],
 		prevVar: '',
 		triggerType: 'manual',
@@ -1016,6 +1031,7 @@ function compileFunctionToSDK(
 		execCounter: 0,
 		tryCatchCounter: 0,
 		errorConnections: [],
+		parallelGroups: [],
 	};
 
 	// Generate executeWorkflowTrigger as first node
@@ -1108,6 +1124,7 @@ function transpileCallback(
 	loopBodies: CompiledFunction[];
 	tryCatchBodies: CompiledFunction[];
 	errorConnections: Array<{ sourceVar: string; catchChainStartVar: string }>;
+	parallelGroups: ParallelGroup[];
 } {
 	const ctx: TranspilerContext = {
 		source,
@@ -1123,6 +1140,7 @@ function transpileCallback(
 		wfCounter: nodeOffset,
 		setCounter: nodeOffset,
 		aggCounter: nodeOffset,
+		collectCounter: nodeOffset,
 		pendingStatements: [],
 		prevVar: '',
 		triggerType: cb.triggerType,
@@ -1139,6 +1157,7 @@ function transpileCallback(
 		execCounter: nodeOffset,
 		tryCatchCounter: nodeOffset,
 		errorConnections: [],
+		parallelGroups: [],
 	};
 
 	// Generate trigger node
@@ -1181,6 +1200,7 @@ function transpileCallback(
 		loopBodies: ctx.compiledLoopBodies,
 		tryCatchBodies: ctx.compiledTryCatchBodies,
 		errorConnections: ctx.errorConnections,
+		parallelGroups: ctx.parallelGroups,
 	};
 }
 
@@ -1274,6 +1294,12 @@ function walkStatements(
 
 		if (stmt.type === 'TryStatement') {
 			processTryStatement(ctx, stmt, comments);
+			continue;
+		}
+
+		// Check for Promise.all: const [a, b] = await Promise.all([...])
+		if (isPromiseAllStatement(stmt)) {
+			processPromiseAll(ctx, stmt);
 			continue;
 		}
 
@@ -1694,6 +1720,7 @@ const COUNTER_KEYS = [
 	'loopCounter',
 	'execCounter',
 	'tryCatchCounter',
+	'collectCounter',
 ] as const;
 
 function syncCounters(target: TranspilerContext, source: TranspilerContext): void {
@@ -1717,6 +1744,7 @@ function createBranchContext(parentCtx: TranspilerContext): TranspilerContext {
 		wfCounter: parentCtx.wfCounter,
 		setCounter: parentCtx.setCounter,
 		aggCounter: parentCtx.aggCounter,
+		collectCounter: parentCtx.collectCounter,
 		pendingStatements: [],
 		prevVar: '',
 		triggerType: parentCtx.triggerType,
@@ -1733,6 +1761,7 @@ function createBranchContext(parentCtx: TranspilerContext): TranspilerContext {
 		execCounter: parentCtx.execCounter,
 		tryCatchCounter: parentCtx.tryCatchCounter,
 		errorConnections: parentCtx.errorConnections,
+		parallelGroups: parentCtx.parallelGroups,
 	};
 }
 
@@ -1866,6 +1895,160 @@ function processSwitchStatement(
 		nodeName: `Switch ${ctx.switchCounter}`,
 	});
 	ctx.prevVar = switchVar;
+}
+
+// ─── Promise.all Processing ──────────────────────────────────────────────────
+
+/**
+ * Check if a statement matches `const [a, b] = await Promise.all([...])`.
+ * AST shape:
+ *   VariableDeclaration
+ *     └─ declarations[0]
+ *          ├─ id: ArrayPattern [Identifier, ...]
+ *          └─ init: AwaitExpression
+ *               └─ argument: CallExpression
+ *                    ├─ callee: MemberExpression (Promise.all)
+ *                    └─ arguments[0]: ArrayExpression
+ */
+function isPromiseAllStatement(stmt: AcornNode): boolean {
+	if (stmt.type !== 'VariableDeclaration' || !stmt.declarations) return false;
+	const decl = stmt.declarations[0];
+	if (!decl) return false;
+	if (decl.id?.type !== 'ArrayPattern') return false;
+	if (decl.init?.type !== 'AwaitExpression') return false;
+	const arg = decl.init.argument;
+	if (arg?.type !== 'CallExpression') return false;
+	const callee = arg.callee;
+	if (callee?.type !== 'MemberExpression') return false;
+	if (callee.object?.type !== 'Identifier' || callee.object.name !== 'Promise') return false;
+	if (callee.property?.type !== 'Identifier' || callee.property.name !== 'all') return false;
+	const args = arg.arguments;
+	if (!args || args.length === 0 || args[0]?.type !== 'ArrayExpression') return false;
+	return true;
+}
+
+/**
+ * Process `const [a, b] = await Promise.all([http.get(...), http.get(...)]);`
+ *
+ * Emits:
+ * 1. Flush pending code (becomes fan-out source)
+ * 2. For each element: process as an IO call (HTTP node + aggregate), mark branchOnly
+ * 3. Emit a "Collect parallel" Code node that references all aggregates
+ * 4. Record parallel group for SDK connection generation
+ * 5. Update prevVar to the collect node
+ */
+function processPromiseAll(ctx: TranspilerContext, stmt: AcornNode): void {
+	const decl = stmt.declarations![0];
+	const arrayPattern = decl.id!;
+	const awaitArg = decl.init!.argument!;
+	const arrayExpr = awaitArg.arguments![0];
+	const elements = arrayExpr.elements ?? [];
+
+	// Extract destructured variable names
+	const varNames: string[] = [];
+	for (const el of arrayPattern.elements ?? []) {
+		varNames.push(el?.name ?? '_');
+	}
+
+	// Extract IO calls from each array element
+	const ioCalls: IOCall[] = [];
+	for (let i = 0; i < elements.length; i++) {
+		const el = elements[i];
+		if (!el) continue;
+		const io = matchIOCallNode(el, ctx.source);
+		if (io) {
+			io.assignedVar = varNames[i] ?? null;
+			ioCalls.push(io);
+		}
+	}
+
+	if (ioCalls.length === 0) return;
+
+	// Flush pending code first — any buffered code becomes the fan-out source
+	flushPendingCode(ctx);
+	const sourceVar = ctx.prevVar;
+
+	// Process each IO call, collecting branch node chains
+	const branches: string[][] = [];
+	const collectParts: Array<{ varName: string; aggNodeName: string }> = [];
+
+	for (const ioCall of ioCalls) {
+		// Process the IO call — this emits HTTP + aggregate nodes and updates prevVar
+		const nodesBefore = ctx.nodes.length;
+		processIOCall(ctx, ioCall);
+		const nodesAfter = ctx.nodes.length;
+
+		// Mark all newly emitted nodes as branchOnly (excluded from main .to() chain)
+		const branchChain: string[] = [];
+		for (let j = nodesBefore; j < nodesAfter; j++) {
+			ctx.nodes[j].branchOnly = true;
+			branchChain.push(ctx.nodes[j].varName);
+		}
+
+		if (branchChain.length > 0) {
+			branches.push(branchChain);
+		}
+
+		// The last new node is the aggregate (if assigned) or the HTTP node
+		if (ioCall.assignedVar) {
+			const lastNode = ctx.nodes[nodesAfter - 1];
+			collectParts.push({
+				varName: ioCall.assignedVar,
+				aggNodeName: lastNode.nodeName,
+			});
+		}
+	}
+
+	// Emit "Collect parallel" Code node that references all aggregate results
+	ctx.collectCounter++;
+	const collectVar = `collect${ctx.collectCounter}`;
+	const collectNodeName = `Collect parallel ${ctx.collectCounter}`;
+
+	const jsCodeLines: string[] = [];
+	jsCodeLines.push(`// @parallel-collect: ${varNames.join(', ')}`);
+	for (const part of collectParts) {
+		const escapedName = part.aggNodeName.replace(/'/g, "\\'");
+		jsCodeLines.push(`const ${part.varName} = $('${escapedName}').first().json.${part.varName};`);
+	}
+	jsCodeLines.push(`return [{ json: { ${varNames.filter((v) => v !== '_').join(', ')} } }];`);
+	const jsCode = jsCodeLines.join('\\n');
+
+	const collectSdkCode = `const ${collectVar} = node({
+  type: 'n8n-nodes-base.code', version: 2,
+  config: {
+    name: '${collectNodeName}',
+    parameters: {
+      jsCode: \`${jsCode}\`,
+      mode: 'runOnceForAllItems'
+    },
+    executeOnce: true
+  }
+});`;
+
+	ctx.nodes.push({
+		varName: collectVar,
+		sdkCode: collectSdkCode,
+		kind: 'code',
+		nodeName: collectNodeName,
+	});
+
+	// Record parallel group for SDK generation
+	ctx.parallelGroups.push({
+		sourceVar,
+		branches,
+		collectVar,
+	});
+
+	// Update prevVar to the collect node — downstream nodes chain from here
+	ctx.prevVar = collectVar;
+
+	// Map each destructured variable to the collect node
+	for (const v of varNames) {
+		if (v !== '_') {
+			ctx.varSourceMap.set(v, collectNodeName);
+			ctx.varSourceKind.set(v, 'code');
+		}
+	}
 }
 
 // ─── For-Of Processing ───────────────────────────────────────────────────────
@@ -2071,6 +2254,7 @@ function compileLoopBodyAsSubWorkflow(
 		wfCounter: 0,
 		setCounter: 0,
 		aggCounter: 0,
+		collectCounter: 0,
 		pendingStatements: [],
 		prevVar: '',
 		triggerType: 'manual',
@@ -2087,6 +2271,7 @@ function compileLoopBodyAsSubWorkflow(
 		execCounter: 0,
 		tryCatchCounter: 0,
 		errorConnections: [],
+		parallelGroups: [],
 	};
 
 	// Generate executeWorkflowTrigger as first node
@@ -2452,6 +2637,7 @@ function compileTryCatchBodyAsSubWorkflow(
 		wfCounter: 0,
 		setCounter: 0,
 		aggCounter: 0,
+		collectCounter: 0,
 		pendingStatements: [],
 		prevVar: '',
 		triggerType: 'manual',
@@ -2468,6 +2654,7 @@ function compileTryCatchBodyAsSubWorkflow(
 		execCounter: 0,
 		tryCatchCounter: 0,
 		errorConnections: [],
+		parallelGroups: [],
 	};
 
 	// Generate executeWorkflowTrigger as first node
@@ -3504,6 +3691,7 @@ function generateSDKCode(
 	compiledLoopBodies?: CompiledFunction[],
 	compiledTryCatchBodies?: CompiledFunction[],
 	errorConnections?: Array<{ sourceVar: string; catchChainStartVar: string }>,
+	parallelGroups?: ParallelGroup[],
 ): string {
 	const lines: string[] = [];
 
@@ -3615,6 +3803,23 @@ function generateSDKCode(
 	if (errorConnections && errorConnections.length > 0) {
 		for (const ec of errorConnections) {
 			lines.push(`${ec.sourceVar}.onError(${ec.catchChainStartVar});`);
+			lines.push('');
+		}
+	}
+
+	// Parallel connections (Promise.all fan-out/convergence)
+	if (parallelGroups && parallelGroups.length > 0) {
+		for (const group of parallelGroups) {
+			for (const branch of group.branches) {
+				// Fan-out: sourceVar → first node of branch
+				lines.push(`${group.sourceVar}.to(${branch[0]});`);
+				// Intra-branch: chain nodes within each branch
+				for (let i = 0; i < branch.length - 1; i++) {
+					lines.push(`${branch[i]}.to(${branch[i + 1]});`);
+				}
+				// Convergence: last node of branch → collect node
+				lines.push(`${branch[branch.length - 1]}.to(${group.collectVar});`);
+			}
 			lines.push('');
 		}
 	}

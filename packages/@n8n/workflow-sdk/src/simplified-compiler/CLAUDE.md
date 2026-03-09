@@ -115,7 +115,7 @@ Assert: normalizeSDK(SDK₁) === normalizeSDK(SDK₂)
 - **Forward test**: `transpileWorkflowJS(input.js)` must equal `output.js` exactly
 - **Round-trip test**: compile -> decompile -> recompile must produce structurally identical SDK
 
-**Fixtures:** `__fixtures__/w01-w30/`, each containing:
+**Fixtures:** `__fixtures__/w01-w31/`, each containing:
 - `meta.json` — title, templateId, optional `skip` flag
 - `input.js` — simplified DSL source
 - `output.js` — expected SDK output
@@ -133,7 +133,7 @@ Assert: normalizeSDK(SDK₁) === normalizeSDK(SDK₂)
 | `examples.ts` | Pre-built DSL examples for UI quick-start templates |
 | `generate-report.ts` | HTML report generator for fixture validation results + expectation badges/diffs |
 | `index.ts` | Public exports: `transpileWorkflowJS`, `decompileWorkflowSDK`, `COMPILER_EXAMPLES` |
-| `__fixtures__/w01-w30/` | Test fixtures (real workflow patterns, w18-w22 sub-functions, w23-w24 try/catch, w25 CRUD+branching, w26 loop+sub-fn, w27 loop+try/catch, w28 else-if+numeric, w29 try+switch, w30 multi-trigger independent) |
+| `__fixtures__/w01-w31/` | Test fixtures (real workflow patterns, w18-w22 sub-functions, w23-w24 try/catch, w25 CRUD+branching, w26 loop+sub-fn, w27 loop+try/catch, w28 else-if+numeric, w29 try+switch, w30 multi-trigger independent, w31 Promise.all) |
 
 **Decompile pipeline (in `src/codegen/`):**
 
@@ -149,6 +149,19 @@ Assert: normalizeSDK(SDK₁) === normalizeSDK(SDK₂)
 
 See `docs/aggregate-nodes.md` for full details. After every HTTP call with an assigned variable, the compiler emits an aggregate Code node (`Collect <varName>`) that collects all items and defensively unwraps single-item responses. Uses `// @aggregate: <varName>` jsCode marker for decompiler detection. Variable kind `'aggregate'` behaves like `'code'` for expression resolution.
 
+## Promise.all (Parallel Execution)
+
+`const [a, b] = await Promise.all([http.get(...), http.get(...)])` compiles to:
+
+1. **Fan-out connections**: Source node → multiple HTTP nodes in parallel (via separate `.to()` calls from the same node)
+2. **Per-branch aggregates**: Each HTTP node gets its own aggregate Code node (reuses existing `// @aggregate:` pattern)
+3. **Collect node**: A Code node with `// @parallel-collect: a, b` marker that references all aggregate outputs and returns them as a single object
+4. **Explicit connections**: Generated as `sourceVar.to(httpN)`, `httpN.to(aggN)`, `aggN.to(collectN)` after the main chain
+
+**Decompiler detection**: The `// @parallel-collect:` jsCode prefix on a Code node signals a fan-out convergence point. The decompiler's `visitFanOut()` checks for this marker and reconstructs the `Promise.all([...])` syntax.
+
+**Constraints**: Destructuring is required (`const [a, b] = ...`). Each array element must be an IO call (`http.get/post/...`). The collect node maps each variable to `varSourceKind: 'code'` for expression resolution.
+
 ## Supported Language Features
 
 | Category | DSL Syntax | Compiles To |
@@ -162,6 +175,7 @@ See `docs/aggregate-nodes.md` for full details. After every HTTP call with an as
 | **Switch** | `switch (expr) { case: ... }` | switchCase node |
 | **Loops** | `for (const x of items) { ... }` | Splitter Code + aggregate |
 | **Try/catch** | `try { ... } catch { ... }` | onError behavior on nodes |
+| **Promise.all** | `const [a, b] = await Promise.all([http.get(...), ...])` | Fan-out HTTP nodes + collect Code node |
 | **Sub-functions** | `async function fn(params) { ... }` then `await fn(args)` | Execute Workflow node with inline `workflowJson` |
 | **Variables** | `const x = "value"` | Set node (static assignments) |
 | **Code** | Any other JS statements | Code node with `jsCode` |
@@ -199,6 +213,7 @@ pushd packages/@n8n/workflow-sdk && pnpm test decompiler-debug.test.ts && popd
 - **No n8n expressions in DSL**: plain JS variables only — compiler resolves to `={{ $('NodeName').first().json.path }}`
 - **Never use `$json` in generated expressions**: always use explicit `$('NodeName').first().json.prop` references. This ensures expressions are unambiguous and don't depend on predecessor ordering.
 - **`executeOnce: true`** on all non-trigger nodes (single-item semantics)
+- **Node variable naming for Promise.all**: `collect1`, `collect2`, ... for collect parallel nodes
 - **Fixture naming**: `w01-descriptive-name/` with `meta.json`, `input.js`, `output.js`
 - **Adding new fixtures**: create dir, add the three files, fixture auto-discovered by `loadFixtures()`
 
@@ -229,8 +244,8 @@ Validates existing fixtures through the full compilation pipeline (transpile, ge
 
 ## Coverage Status
 
-- **Round-trip**: 30/30 fixtures pass (100%)
-- **Schema validation**: 30/30 fixtures pass (100%). `KNOWN_SCHEMA_VIOLATIONS` is empty.
+- **Round-trip**: 31/31 fixtures pass (100%)
+- **Schema validation**: 31/31 fixtures pass (100%). `KNOWN_SCHEMA_VIOLATIONS` is empty.
 
 **Key insight**: Nested sub-workflow WorkflowBuilder references (e.g., `workflowJson: __tryCatch_1Workflow` inside a loop body sub-workflow) are handled automatically by `resolveWorkflowBuilderValues()` in `json-serializer.ts`. It duck-types WorkflowBuilder instances (`toJSON` + `add` methods) at any nesting depth and converts them to `JSON.stringify(value.toJSON())`.
 

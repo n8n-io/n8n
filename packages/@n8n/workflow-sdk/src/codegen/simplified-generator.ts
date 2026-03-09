@@ -17,6 +17,7 @@ import type {
 	IfElseCompositeNode,
 	SwitchCaseCompositeNode,
 	SplitInBatchesCompositeNode,
+	FanOutCompositeNode,
 	VariableReference,
 } from './composite-tree';
 import type { SemanticGraph, SemanticNode } from './types';
@@ -643,6 +644,8 @@ function visitComposite(node: CompositeNode, ctx: SimplifiedGenContext): void {
 			return visitSwitchCase(node, ctx);
 		case 'splitInBatches':
 			return visitSplitInBatches(node, ctx);
+		case 'fanOut':
+			return visitFanOut(node, ctx);
 		default:
 			break;
 	}
@@ -1918,6 +1921,182 @@ function extractLoopIterableInfo(
 	}
 
 	return { iterable: 'items', itemVar: 'item' };
+}
+
+// ─── Fan-Out (Promise.all) ────────────────────────────────────────────────────
+
+function visitFanOut(node: FanOutCompositeNode, ctx: SimplifiedGenContext): void {
+	// First, emit the source node
+	visitComposite(node.sourceNode, ctx);
+
+	// Check for parallel-collect pattern: targets converge at a Code node with @parallel-collect marker
+	const parallelInfo = detectParallelCollectPattern(node, ctx);
+	if (parallelInfo) {
+		emitPromiseAll(parallelInfo, ctx);
+		return;
+	}
+
+	// Fallback: emit each target sequentially
+	for (const target of node.targets) {
+		visitComposite(target, ctx);
+	}
+}
+
+interface ParallelCollectInfo {
+	/** Variable names from the @parallel-collect marker */
+	varNames: string[];
+	/** HTTP nodes for each parallel branch (in order matching varNames) */
+	httpNodes: SemanticNode[];
+	/** Downstream nodes after the collect node (if any) */
+	downstream: CompositeNode[];
+}
+
+/**
+ * Detect the parallel-collect pattern in a FanOutCompositeNode.
+ *
+ * Pattern: multiple target branches converge at a Code node with `// @parallel-collect:` marker.
+ * Each branch has: HTTP node → aggregate Code node → collect node (or VarRef to it).
+ */
+function detectParallelCollectPattern(
+	node: FanOutCompositeNode,
+	ctx: SimplifiedGenContext,
+): ParallelCollectInfo | null {
+	// Find the collect node: a Code node with @parallel-collect marker
+	// It can appear in any target branch
+	let collectNodeName = '';
+	let varNames: string[] = [];
+
+	for (const target of node.targets) {
+		const found = findParallelCollectNode(target, ctx);
+		if (found) {
+			collectNodeName = found.nodeName;
+			varNames = found.varNames;
+			break;
+		}
+	}
+
+	if (!collectNodeName || varNames.length === 0) return null;
+
+	// Extract HTTP nodes from branches (branches that lead to the collect node)
+	const httpNodes: SemanticNode[] = [];
+	const downstream: CompositeNode[] = [];
+
+	for (const target of node.targets) {
+		// Skip bare VarRef targets (main chain connections to collect)
+		if (target.kind === 'varRef') continue;
+
+		if (target.kind === 'chain') {
+			const chainNodes = (target as ChainNode).nodes;
+			// Find HTTP nodes in this branch (before the collect node)
+			let foundCollect = false;
+			for (let i = 0; i < chainNodes.length; i++) {
+				const cn = chainNodes[i];
+				if (cn.kind === 'leaf') {
+					const sn = (cn as LeafNode).node;
+					if (sn.name === collectNodeName) {
+						foundCollect = true;
+						// Remaining chain nodes are downstream
+						for (let j = i + 1; j < chainNodes.length; j++) {
+							downstream.push(chainNodes[j]);
+						}
+						break;
+					}
+					if (cn.kind === 'leaf' && sn.type === 'n8n-nodes-base.httpRequest') {
+						httpNodes.push(sn);
+					}
+				} else if (cn.kind === 'varRef' && (cn as VariableReference).nodeName === collectNodeName) {
+					foundCollect = true;
+					break;
+				}
+			}
+			// If branch doesn't reach collect node, check if it has HTTP nodes anyway
+			if (!foundCollect) {
+				for (const cn of chainNodes) {
+					if (cn.kind === 'leaf' && (cn as LeafNode).node.type === 'n8n-nodes-base.httpRequest') {
+						httpNodes.push((cn as LeafNode).node);
+					}
+				}
+			}
+		} else if (
+			target.kind === 'leaf' &&
+			(target as LeafNode).node.type === 'n8n-nodes-base.httpRequest'
+		) {
+			httpNodes.push((target as LeafNode).node);
+		}
+	}
+
+	if (httpNodes.length === 0) return null;
+
+	return { varNames, httpNodes, downstream };
+}
+
+/**
+ * Find a @parallel-collect Code node in a composite tree.
+ */
+function findParallelCollectNode(
+	node: CompositeNode,
+	_ctx: SimplifiedGenContext,
+): { nodeName: string; varNames: string[] } | null {
+	if (node.kind === 'leaf') {
+		const sn = (node as LeafNode).node;
+		if (sn.type === 'n8n-nodes-base.code') {
+			const jsCode = (sn.json.parameters?.jsCode as string) ?? '';
+			const match = /^\/\/ @parallel-collect: (.+)$/.exec(jsCode.split('\n')[0]);
+			if (match) {
+				return {
+					nodeName: sn.name,
+					varNames: match[1].split(',').map((v) => v.trim()),
+				};
+			}
+		}
+	} else if (node.kind === 'chain') {
+		for (const cn of (node as ChainNode).nodes) {
+			const found = findParallelCollectNode(cn, _ctx);
+			if (found) return found;
+		}
+	}
+	return null;
+}
+
+/**
+ * Emit `const [a, b] = await Promise.all([...])` from detected parallel branches.
+ */
+function emitPromiseAll(info: ParallelCollectInfo, ctx: SimplifiedGenContext): void {
+	emit(ctx, '');
+	const vars = info.varNames.join(', ');
+	emit(ctx, `const [${vars}] = await Promise.all([`);
+	ctx.indent++;
+	for (let i = 0; i < info.httpNodes.length; i++) {
+		const node = info.httpNodes[i];
+		const params = node.json.parameters ?? {};
+		const method = ((params.method as string) ?? 'GET').toLowerCase();
+		const url = (params.url as string) ?? '';
+		const urlArg = resolveUrlArg(url, ctx);
+		const args: string[] = [urlArg];
+
+		// Body
+		const jsonBody = params.jsonBody as string | undefined;
+		if (jsonBody && params.sendBody) {
+			args.push(formatJsonBody(jsonBody, ctx));
+		}
+
+		// Credentials
+		const credStr = reverseCredentials(node);
+		if (credStr) {
+			args.push(credStr);
+		}
+
+		const trailing = i < info.httpNodes.length - 1 ? ',' : ',';
+		emit(ctx, `http.${method}(${args.join(', ')})${trailing}`);
+	}
+	ctx.indent--;
+	emit(ctx, ']);');
+
+	// Emit downstream nodes
+	for (const dn of info.downstream) {
+		emit(ctx, '');
+		visitComposite(dn, ctx);
+	}
 }
 
 // ─── Trigger Header ──────────────────────────────────────────────────────────
