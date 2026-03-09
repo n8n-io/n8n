@@ -376,10 +376,7 @@ export class SecretsProvidersConnectionsService {
 		for (const access of accessEntries) {
 			providerKeysToSync.add(access.secretsProviderConnection.providerKey);
 
-			if (
-				hasGlobalScope(user, 'externalSecretsProvider:delete') ||
-				access.role === 'secretsProviderConnection:owner'
-			) {
+			if (access.role === 'secretsProviderConnection:owner') {
 				// Delete the connection entirely; DB cascade removes the access entry too
 				await this.repository.delete({ id: access.secretsProviderConnectionId });
 				continue;
