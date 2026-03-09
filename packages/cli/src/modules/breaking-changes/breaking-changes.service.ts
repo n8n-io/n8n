@@ -52,7 +52,6 @@ export class BreakingChangeService {
 		private readonly errorReporter: ErrorReporter,
 	) {
 		this.logger = logger.scoped('breaking-changes');
-		this.registerRules();
 	}
 
 	registerRules() {
