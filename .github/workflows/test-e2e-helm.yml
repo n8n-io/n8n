@@ -91,26 +91,16 @@ jobs:
         uses: azure/setup-kubectl@c0c8b32d33a5244f1e5947304550403b63930415 # v4
 
       - name: Start K3s + Helm stack
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: 'true'
         run: |
           npx tsx packages/testing/containers/helm-start-stack.ts \
+            --env E2E_TESTS=true --env NODE_ENV=development \
             --mode "${{ inputs.mode || 'queue' }}" \
             --image "${{ env.DOCKER_IMAGE }}" \
             --chart-ref "${{ env.HELM_CHART_REF }}" \
             --url-file /tmp/n8n-helm-url.txt \
-            --kubeconfig-file /tmp/n8n-helm-kubeconfig.txt &
-
-          echo "Waiting for Helm stack to be ready..."
-          for i in $(seq 1 60); do
-            if [ -f /tmp/n8n-helm-url.txt ]; then
-              echo "Stack ready!"
-              break
-            fi
-            if [ "$i" -eq 60 ]; then
-              echo "Timeout waiting for Helm stack"
-              exit 1
-            fi
-            sleep 10
-          done
+            --kubeconfig-file /tmp/n8n-helm-kubeconfig.txt
 
           N8N_URL=$(cat /tmp/n8n-helm-url.txt)
           echo "n8n URL: ${N8N_URL}"

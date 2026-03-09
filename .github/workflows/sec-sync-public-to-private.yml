@@ -43,8 +43,8 @@ jobs:
         run: |
           git fetch https://github.com/n8n-io/n8n.git master:public-master
 
-          # Check if private is ahead of public
-          AHEAD_COUNT=$(git rev-list public-master..HEAD --count)
+          # Check if private is ahead of public, ignore Bundle commits
+          AHEAD_COUNT=$(git rev-list public-master..HEAD --pretty=oneline --grep="chore: Bundle" --invert-grep --count)
 
           if [ "$AHEAD_COUNT" -gt 0 ]; then
             if [ "${{ github.event_name }}" = "schedule" ]; then

@@ -84,7 +84,7 @@ exports[`FormBox > should render the component 1`] = `
                   <!--v-if-->
                   <!-- Input wrapper (holds border, contains prefix/input/suffix) -->
                   <div
-                    class="inputWrapper"
+                    class="n8n-input__wrapper inputWrapper"
                   >
                     <!-- Prefix slot -->
                     <!--v-if-->
@@ -170,7 +170,7 @@ exports[`FormBox > should render the component 1`] = `
                   <!--v-if-->
                   <!-- Input wrapper (holds border, contains prefix/input/suffix) -->
                   <div
-                    class="inputWrapper"
+                    class="n8n-input__wrapper inputWrapper"
                   >
                     <!-- Prefix slot -->
                     <!--v-if-->
@@ -256,7 +256,7 @@ exports[`FormBox > should render the component 1`] = `
                   <!--v-if-->
                   <!-- Input wrapper (holds border, contains prefix/input/suffix) -->
                   <div
-                    class="inputWrapper"
+                    class="n8n-input__wrapper inputWrapper"
                   >
                     <!-- Prefix slot -->
                     <!--v-if-->

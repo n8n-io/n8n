@@ -35,7 +35,7 @@ vi.mock('@/features/ai/assistant/assistant.store', () => ({
 
 vi.mock('@/app/composables/useWorkflowState', () => ({
 	useWorkflowState: vi.fn(() => ({
-		getNewWorkflowDataAndMakeShareable: vi.fn(),
+		getNewWorkflowData: vi.fn(),
 		setWorkflowId: vi.fn(),
 		resetState: vi.fn(),
 	})),
@@ -60,6 +60,15 @@ vi.mock('@/app/composables/usePostMessageHandler', () => ({
 	usePostMessageHandler: vi.fn(() => ({
 		setup: vi.fn(),
 		cleanup: vi.fn(),
+	})),
+}));
+
+const mockPushConnect = vi.fn();
+const mockPushDisconnect = vi.fn();
+vi.mock('@/app/stores/pushConnection.store', () => ({
+	usePushConnectionStore: vi.fn(() => ({
+		pushConnect: mockPushConnect,
+		pushDisconnect: mockPushDisconnect,
 	})),
 }));
 
@@ -182,5 +191,16 @@ describe('WorkflowLayout', () => {
 		expect(getByTestId('app-header')).toBeInTheDocument();
 		expect(getByTestId('app-sidebar')).toBeInTheDocument();
 		expect(getByText('Workflow Content')).toBeInTheDocument();
+	});
+
+	it('should call pushConnect on mount', () => {
+		renderComponent();
+		expect(mockPushConnect).toHaveBeenCalledOnce();
+	});
+
+	it('should call pushDisconnect on unmount', () => {
+		const { unmount } = renderComponent();
+		unmount();
+		expect(mockPushDisconnect).toHaveBeenCalledOnce();
 	});
 });
