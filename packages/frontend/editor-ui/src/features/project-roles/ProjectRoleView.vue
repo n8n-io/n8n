@@ -23,7 +23,7 @@ import isEqual from 'lodash/isEqual';
 import sortBy from 'lodash/sortBy';
 import { computed, ref, toRaw, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { SCOPE_TYPES, SCOPES } from './projectRoleScopes';
+import { SCOPE_TYPES, SCOPES, normalizeCoupledScopes } from './projectRoleScopes';
 
 import RoleAssignmentsTab from './RoleAssignmentsTab.vue';
 
@@ -185,6 +185,7 @@ async function createProjectRole() {
 	try {
 		const role = await rolesStore.createProjectRole({
 			...form.value,
+			scopes: normalizeCoupledScopes(form.value.scopes),
 			description: form.value.description ?? undefined,
 			roleType: 'project',
 		});
@@ -242,6 +243,7 @@ async function updateProjectRole(slug: string) {
 	try {
 		const role = await rolesStore.updateProjectRole(slug, {
 			...form.value,
+			scopes: normalizeCoupledScopes(form.value.scopes),
 			description: form.value.description ?? undefined,
 		});
 
