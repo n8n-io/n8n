@@ -14,5 +14,7 @@ export interface ExecutionResult {
 }
 
 export interface ICommandExecutor {
+	initialize?(): Promise<void>;
 	execute(options: ExecutionOptions): Promise<ExecutionResult>;
+	cleanup?(): Promise<void>;
 }

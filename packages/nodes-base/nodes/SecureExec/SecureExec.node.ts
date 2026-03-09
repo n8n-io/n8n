@@ -57,10 +57,14 @@ export class SecureExec implements INodeType {
 						description:
 							'Isolation backend to use. Auto-detect picks Docker → Bubblewrap → Host in order of preference.',
 						options: [
-							{ name: 'Auto-detect', value: 'auto' },
+							{ name: 'Auto-Detect', value: 'auto' },
+							{ name: 'Bubblewrap (Linux Only)', value: 'bubblewrap' },
 							{ name: 'Docker', value: 'docker' },
-							{ name: 'Bubblewrap (Linux only)', value: 'bubblewrap' },
-							{ name: 'Host (no isolation)', value: 'host' },
+							{ name: 'Host (No Isolation)', value: 'host' },
+							{
+								name: 'Sandbox Runtime (Linux/macOS)',
+								value: 'sandbox-runtime',
+							},
 						],
 					},
 					{
@@ -139,61 +143,74 @@ export class SecureExec implements INodeType {
 			items = [items[0]];
 		}
 
+		// NOTE: maybe we should only keep driverType as an env var?
+		const firstOptions = this.getNodeParameter('options', 0, {}) as {
+			driver?: DriverType;
+		};
+		const driverType = firstOptions.driver ?? 'auto';
+		const { driver, type: activeDriver, isUnsafeFallback } = createDriver(driverType);
+
+		if (isUnsafeFallback) {
+			this.logger.warn(
+				'SecureExec: No Docker socket or bwrap found — falling back to direct host execution. Commands run with n8n process permissions.',
+			);
+		}
+
+		if (driver.initialize) {
+			await driver.initialize();
+		}
+
 		const returnItems: INodeExecutionData[] = [];
 
-		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			try {
-				const command = this.getNodeParameter('command', itemIndex) as string;
-				const options = this.getNodeParameter('options', itemIndex, {}) as {
-					driver?: DriverType;
-					containerImage?: string;
-					workspacePath?: string;
-					timeoutMs?: number;
-					memoryMB?: number;
-					envVars?: { variable?: Array<{ name: string; value: string }> };
-				};
+		try {
+			for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+				try {
+					const command = this.getNodeParameter('command', itemIndex) as string;
+					const options = this.getNodeParameter('options', itemIndex, {}) as {
+						containerImage?: string;
+						workspacePath?: string;
+						timeoutMs?: number;
+						memoryMB?: number;
+						envVars?: { variable?: Array<{ name: string; value: string }> };
+					};
 
-				const driverType = options.driver ?? 'auto';
-				const { driver, type: activeDriver, isUnsafeFallback } = createDriver(driverType);
+					const env: Record<string, string> = {};
+					for (const { name, value } of options.envVars?.variable ?? []) {
+						if (name) env[name] = value;
+					}
 
-				if (isUnsafeFallback) {
-					this.logger.warn(
-						'SecureExec: No Docker socket or bwrap found — falling back to direct host execution. Commands run with n8n process permissions.',
-					);
-				}
+					const result = await driver.execute({
+						command,
+						containerImage: options.containerImage,
+						workspacePath: options.workspacePath ?? undefined,
+						timeoutMs: options.timeoutMs,
+						memoryMB: options.memoryMB,
+						env: Object.keys(env).length > 0 ? env : undefined,
+					});
 
-				const env: Record<string, string> = {};
-				for (const { name, value } of options.envVars?.variable ?? []) {
-					if (name) env[name] = value;
-				}
-
-				const result = await driver.execute({
-					command,
-					containerImage: options.containerImage,
-					workspacePath: options.workspacePath || undefined,
-					timeoutMs: options.timeoutMs,
-					memoryMB: options.memoryMB,
-					env: Object.keys(env).length > 0 ? env : undefined,
-				});
-
-				returnItems.push({
-					json: {
-						stdout: result.stdout,
-						stderr: result.stderr,
-						exitCode: result.exitCode,
-						driver: activeDriver,
-					},
-					pairedItem: { item: itemIndex },
-				});
-			} catch (error) {
-				if (this.continueOnFail()) {
 					returnItems.push({
-						json: { error: (error as Error).message },
+						json: {
+							stdout: result.stdout,
+							stderr: result.stderr,
+							exitCode: result.exitCode,
+							driver: activeDriver,
+						},
 						pairedItem: { item: itemIndex },
 					});
-					continue;
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnItems.push({
+							json: { error: (error as Error).message },
+							pairedItem: { item: itemIndex },
+						});
+						continue;
+					}
+					throw new NodeOperationError(this.getNode(), error as Error, { itemIndex });
 				}
-				throw new NodeOperationError(this.getNode(), error as Error, { itemIndex });
+			}
+		} finally {
+			if (driver.cleanup) {
+				await driver.cleanup();
 			}
 		}
 

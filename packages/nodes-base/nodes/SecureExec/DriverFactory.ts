@@ -1,12 +1,14 @@
-import { accessSync, constants } from 'fs';
+import { SandboxManager } from '@anthropic-ai/sandbox-runtime';
 import { execSync } from 'child_process';
+import { accessSync, constants } from 'fs';
 
 import { BubblewrapDriver } from './drivers/BubblewrapDriver';
 import { DockerDriver } from './drivers/DockerDriver';
 import { HostDriver } from './drivers/HostDriver';
 import type { ICommandExecutor } from './drivers/ICommandExecutor';
+import { SandboxRuntimeDriver } from './drivers/SandboxRuntimeDriver';
 
-export type DriverType = 'host' | 'docker' | 'bubblewrap' | 'auto';
+export type DriverType = 'host' | 'docker' | 'bubblewrap' | 'sandbox-runtime' | 'auto';
 
 export interface DriverSelection {
 	driver: ICommandExecutor;
@@ -33,6 +35,14 @@ function isBwrapAvailable(): boolean {
 	}
 }
 
+function isSandboxRuntimeAvailable(): boolean {
+	if (process.platform !== 'linux' && process.platform !== 'darwin') {
+		return false;
+	}
+	const { errors } = SandboxManager.checkDependencies();
+	return errors.length === 0;
+}
+
 export function createDriver(driverType: DriverType = 'auto'): DriverSelection {
 	const requested =
 		driverType === 'auto'
@@ -44,12 +54,25 @@ export function createDriver(driverType: DriverType = 'auto'): DriverSelection {
 			return { driver: new DockerDriver(), type: 'docker', isUnsafeFallback: false };
 		case 'bubblewrap':
 			return { driver: new BubblewrapDriver(), type: 'bubblewrap', isUnsafeFallback: false };
+		case 'sandbox-runtime':
+			return {
+				driver: new SandboxRuntimeDriver(),
+				type: 'sandbox-runtime',
+				isUnsafeFallback: false,
+			};
 		case 'host':
 			return { driver: new HostDriver(), type: 'host', isUnsafeFallback: false };
 		case 'auto':
 		default: {
 			if (isDockerAvailable()) {
 				return { driver: new DockerDriver(), type: 'docker', isUnsafeFallback: false };
+			}
+			if (isSandboxRuntimeAvailable()) {
+				return {
+					driver: new SandboxRuntimeDriver(),
+					type: 'sandbox-runtime',
+					isUnsafeFallback: false,
+				};
 			}
 			if (process.platform === 'linux' && isBwrapAvailable()) {
 				return { driver: new BubblewrapDriver(), type: 'bubblewrap', isUnsafeFallback: false };
