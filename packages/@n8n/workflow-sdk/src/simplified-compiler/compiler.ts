@@ -1051,6 +1051,7 @@ function compileFunctionToSDK(
 		if (node.varName === triggerVar) continue;
 		for (const [oldVar, newVar] of renames) {
 			node.sdkCode = node.sdkCode.replaceAll(`(${oldVar})`, `(${newVar})`);
+			node.sdkCode = node.sdkCode.replaceAll(`, ${oldVar})`, `, ${newVar})`);
 			node.sdkCode = node.sdkCode.replace(`const ${oldVar} `, `const ${newVar} `);
 		}
 		node.varName = renames.get(node.varName) ?? node.varName;
@@ -2119,6 +2120,7 @@ function compileLoopBodyAsSubWorkflow(
 		if (node.varName === triggerVar) continue;
 		for (const [oldVar, newVar] of renames) {
 			node.sdkCode = node.sdkCode.replaceAll(`(${oldVar})`, `(${newVar})`);
+			node.sdkCode = node.sdkCode.replaceAll(`, ${oldVar})`, `, ${newVar})`);
 			node.sdkCode = node.sdkCode.replace(`const ${oldVar} `, `const ${newVar} `);
 		}
 		node.varName = renames.get(node.varName) ?? node.varName;
@@ -2501,6 +2503,7 @@ function compileTryCatchBodyAsSubWorkflow(
 		if (node.varName === triggerVar) continue;
 		for (const [oldVar, newVar] of renames) {
 			node.sdkCode = node.sdkCode.replaceAll(`(${oldVar})`, `(${newVar})`);
+			node.sdkCode = node.sdkCode.replaceAll(`, ${oldVar})`, `, ${newVar})`);
 			node.sdkCode = node.sdkCode.replace(`const ${oldVar} `, `const ${newVar} `);
 		}
 		node.varName = renames.get(node.varName) ?? node.varName;
@@ -2564,6 +2567,12 @@ function findNestedIO(stmt: AcornNode, source: string): IOCall[] {
 			if (node.handler) {
 				const handlerBody = (node.handler as AcornNode).body as unknown as AcornNode;
 				if (handlerBody) walkBlock(handlerBody);
+			}
+		} else if (node.type === 'SwitchStatement') {
+			for (const c of (node as unknown as { cases: AcornNode[] }).cases ?? []) {
+				for (const stmt of (c as unknown as { consequent: AcornNode[] }).consequent ?? []) {
+					walk(stmt);
+				}
 			}
 		} else if (node.type === 'BlockStatement' && node.body) {
 			for (const s of node.body) walk(s);

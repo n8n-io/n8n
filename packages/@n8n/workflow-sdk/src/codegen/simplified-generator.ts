@@ -1617,17 +1617,42 @@ function visitIfElse(node: IfElseCompositeNode, ctx: SimplifiedGenContext): void
 	}
 	ctx.indent--;
 
-	if (node.falseBranch) {
+	// Walk else-if chain iteratively to emit flat "} else if (...)" instead of nested blocks
+	let current: IfElseCompositeNode = node;
+	for (;;) {
+		if (!current.falseBranch) {
+			emit(ctx, '}');
+			break;
+		}
+		// Flatten: single ifElse false branch becomes "} else if (...)"
+		if (!Array.isArray(current.falseBranch) && current.falseBranch.kind === 'ifElse') {
+			const next = current.falseBranch;
+			const condition = extractConditionString(next.ifNode, ctx);
+			emit(ctx, `} else if (${condition}) {`);
+			ctx.indent++;
+			if (next.trueBranch) {
+				if (Array.isArray(next.trueBranch)) {
+					for (const branch of next.trueBranch) visitComposite(branch, ctx);
+				} else {
+					visitComposite(next.trueBranch, ctx);
+				}
+			}
+			ctx.indent--;
+			current = next;
+			continue;
+		}
+		// Regular else block
 		emit(ctx, '} else {');
 		ctx.indent++;
-		if (Array.isArray(node.falseBranch)) {
-			for (const branch of node.falseBranch) visitComposite(branch, ctx);
+		if (Array.isArray(current.falseBranch)) {
+			for (const branch of current.falseBranch) visitComposite(branch, ctx);
 		} else {
-			visitComposite(node.falseBranch, ctx);
+			visitComposite(current.falseBranch, ctx);
 		}
 		ctx.indent--;
+		emit(ctx, '}');
+		break;
 	}
-	emit(ctx, '}');
 }
 
 function extractConditionString(node: SemanticNode, ctx: SimplifiedGenContext): string {
@@ -1656,7 +1681,7 @@ function extractConditionString(node: SemanticNode, ctx: SimplifiedGenContext): 
 				if (op?.operation === 'notExists') return `!${left}`;
 				if (op?.operation === 'exists' || op?.singleValue) return left;
 
-				const right = resolveConditionExpr(cond.rightValue, ctx);
+				const right = resolveConditionExpr(cond.rightValue, ctx, op?.type);
 				const jsOp = mapOperator(op?.type ?? '', op?.operation ?? '');
 				if (jsOp === '.includes') return `${left}.includes(${right})`;
 				return `${left} ${jsOp} ${right}`;
@@ -1668,7 +1693,11 @@ function extractConditionString(node: SemanticNode, ctx: SimplifiedGenContext): 
 	return 'true';
 }
 
-function resolveConditionExpr(value: string | undefined, ctx: SimplifiedGenContext): string {
+function resolveConditionExpr(
+	value: string | undefined,
+	ctx: SimplifiedGenContext,
+	operatorType?: string,
+): string {
 	if (!value) return "''";
 
 	// n8n expression: ={{ $('NodeName').first().json.prop }} or {{ ... }}
@@ -1711,8 +1740,14 @@ function resolveConditionExpr(value: string | undefined, ctx: SimplifiedGenConte
 		return prop;
 	}
 
-	// Literal string
+	// Literal value — preserve type for numbers and booleans
 	if (typeof value === 'string' && !value.startsWith('{{') && !value.startsWith('={{')) {
+		if (operatorType === 'number' && !Number.isNaN(Number(value))) {
+			return value;
+		}
+		if (operatorType === 'boolean') {
+			if (value === 'true' || value === 'false') return value;
+		}
 		return `'${value}'`;
 	}
 
