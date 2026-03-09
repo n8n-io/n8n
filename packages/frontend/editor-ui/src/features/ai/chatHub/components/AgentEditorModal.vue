@@ -32,7 +32,7 @@ import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/ty
 import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
 import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
-import { useTimeoutPoll } from '@vueuse/core';
+import { useDocumentVisibility, useTimeoutPoll } from '@vueuse/core';
 import type { SuggestedPrompt } from '@n8n/api-types';
 import type { CredentialsMap } from '../chat.types';
 import SuggestedPromptsEditor from './SuggestedPromptsEditor.vue';
@@ -68,6 +68,7 @@ const canUploadFiles = computed(() => chatStore.semanticSearchReadiness.isReadyF
 const toast = useToast();
 const message = useMessage();
 const uiStore = useUIStore();
+const documentVisibility = useDocumentVisibility();
 
 const { customAgent, isLoading: isLoadingCustomAgent } = useCustomAgent(props.data.agentId);
 
@@ -438,6 +439,13 @@ watch(
 	},
 	{ immediate: true },
 );
+
+// refresh semantic search readiness
+watch(documentVisibility, (visibility) => {
+	if (visibility === 'visible' && !canUploadFiles.value) {
+		void settingsStore.getModuleSettings();
+	}
+});
 </script>
 
 <template>
