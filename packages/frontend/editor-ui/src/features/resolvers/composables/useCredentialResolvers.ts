@@ -68,15 +68,10 @@ export function useCredentialResolvers() {
 			console.warn('Failed to fetch affected workflows for resolver deletion', error);
 		}
 
-		const confirmMessage =
-			affectedWorkflows.length > 0
-				? h(ResolverDeleteConfirmMessage, {
-						resolverName: resolver.name,
-						affectedWorkflows,
-					})
-				: i18n.baseText('credentialResolverEdit.confirmMessage.deleteResolver.message', {
-						interpolate: { savedResolverName: resolver.name },
-					});
+		const confirmMessage = h(ResolverDeleteConfirmMessage, {
+			resolverName: resolver.name,
+			affectedWorkflows,
+		});
 
 		const deleteConfirmed = await message.confirm(
 			confirmMessage,
@@ -85,6 +80,8 @@ export function useCredentialResolvers() {
 				confirmButtonText: i18n.baseText(
 					'credentialResolverEdit.confirmMessage.deleteResolver.confirmButtonText',
 				),
+				customClass: 'el-message-box--destructive',
+				showClose: true,
 			},
 		);
 

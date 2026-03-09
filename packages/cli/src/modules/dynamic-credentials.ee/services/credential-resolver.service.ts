@@ -9,6 +9,8 @@ import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+
 import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
 import { ResolverConfigExpressionService } from './resolver-config-expression.service';
 import { DynamicCredentialResolver } from '../database/entities/credential-resolver';
@@ -46,6 +48,7 @@ export class DynamicCredentialResolverService {
 		private readonly cipher: Cipher,
 		private readonly expressionService: ResolverConfigExpressionService,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly activeWorkflowManager: ActiveWorkflowManager,
 	) {
 		this.logger = this.logger.scoped('dynamic-credentials');
 	}
@@ -165,7 +168,8 @@ export class DynamicCredentialResolverService {
 
 	/**
 	 * Deletes a credential resolver by ID.
-	 * Clears credentialResolverId from workflow settings before deleting.
+	 * Clears credentialResolverId from workflow settings and reactivates affected
+	 * active workflows so that the ActiveWorkflowManager picks up the updated settings.
 	 * @throws {DynamicCredentialResolverNotFoundError} When resolver is not found
 	 */
 	async delete(id: string): Promise<void> {
@@ -174,11 +178,32 @@ export class DynamicCredentialResolverService {
 			throw new DynamicCredentialResolverNotFoundError(id);
 		}
 
-		// Clean up workflow references before deleting the resolver
-		await this.workflowRepository.clearCredentialResolverId(id);
+		// Identify active workflows that reference this resolver before clearing
+		const affectedWorkflows = await this.workflowRepository.findActiveByCredentialResolverId(id);
 
-		await this.repository.remove(existing);
+		// Clear workflow references and delete resolver in a single transaction
+		const { manager } = this.repository;
+		await manager.transaction(async (trx) => {
+			await this.workflowRepository.clearCredentialResolverId(id, trx);
+			await trx.remove(existing);
+		});
+
 		this.logger.debug(`Deleted credential resolver "${existing.name}" (${id})`);
+
+		// Reactivate affected active workflows so they pick up the cleared settings
+		await Promise.all(
+			affectedWorkflows.map(async (workflowId) => {
+				try {
+					await this.activeWorkflowManager.remove(workflowId);
+					await this.activeWorkflowManager.add(workflowId, 'update');
+				} catch (error) {
+					this.logger.warn(
+						`Failed to reactivate workflow "${workflowId}" after resolver deletion`,
+						{ error },
+					);
+				}
+			}),
+		);
 	}
 
 	/**

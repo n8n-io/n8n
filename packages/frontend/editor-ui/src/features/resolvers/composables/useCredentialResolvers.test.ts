@@ -221,7 +221,7 @@ describe('useCredentialResolvers', () => {
 			);
 		});
 
-		it('should fall back to string message when affected workflows fetch fails', async () => {
+		it('should fall back to VNode with empty workflows when affected workflows fetch fails', async () => {
 			vi.mocked(restApiClient.getCredentialResolverWorkflows).mockRejectedValue(
 				new Error('Network error'),
 			);
@@ -233,8 +233,13 @@ describe('useCredentialResolvers', () => {
 
 			expect(mockConfirm).toHaveBeenCalled();
 			const confirmMessage = mockConfirm.mock.calls[0][0];
-			// Should be a plain string, not a VNode
-			expect(typeof confirmMessage).toBe('string');
+			expect(isVNode(confirmMessage)).toBe(true);
+			expect(confirmMessage.props).toEqual(
+				expect.objectContaining({
+					resolverName: 'Test Resolver',
+					affectedWorkflows: [],
+				}),
+			);
 		});
 
 		it('should pass all affected workflows to VNode including overflow', async () => {

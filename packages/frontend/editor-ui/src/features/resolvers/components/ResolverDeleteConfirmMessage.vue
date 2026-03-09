@@ -1,8 +1,10 @@
 <script lang="ts" setup>
 import type { CredentialResolverAffectedWorkflow } from '@n8n/api-types';
-import { N8nText } from '@n8n/design-system';
+import { N8nLink, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
+import { useRouter } from 'vue-router';
+import { VIEWS } from '@/app/constants';
 
 const MAX_DISPLAYED_WORKFLOWS = 5;
 
@@ -12,23 +14,40 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
+const router = useRouter();
 
 const displayed = computed(() => props.affectedWorkflows.slice(0, MAX_DISPLAYED_WORKFLOWS));
 const remaining = computed(() => props.affectedWorkflows.length - displayed.value.length);
+
+const messageKey = computed(() =>
+	props.affectedWorkflows.length > 0
+		? 'credentialResolverEdit.confirmMessage.deleteResolver.messageWithWorkflows'
+		: 'credentialResolverEdit.confirmMessage.deleteResolver.message',
+);
+
+const messageParts = computed(() => {
+	const full = i18n.baseText(messageKey.value, {
+		interpolate: { savedResolverName: '{{RESOLVER_NAME}}' },
+	});
+	const [before, after] = full.split('{{RESOLVER_NAME}}');
+	return { before, after };
+});
 </script>
 
 <template>
 	<div :class="$style.container">
 		<N8nText>
-			{{
-				i18n.baseText('credentialResolverEdit.confirmMessage.deleteResolver.messageWithWorkflows', {
-					interpolate: { savedResolverName: props.resolverName },
-				})
-			}}
+			{{ messageParts.before }}<N8nText bold tag="span">{{ props.resolverName }}</N8nText
+			>{{ messageParts.after }}
 		</N8nText>
-		<ul :class="$style.workflowList">
+		<ul v-if="affectedWorkflows.length > 0" :class="$style.workflowList">
 			<li v-for="workflow in displayed" :key="workflow.id" :class="$style.workflowItem">
-				<N8nText bold>{{ workflow.name }}</N8nText>
+				<N8nLink
+					:href="router.resolve({ name: VIEWS.WORKFLOW, params: { name: workflow.id } }).href"
+					new-window
+				>
+					{{ workflow.name }}
+				</N8nLink>
 			</li>
 		</ul>
 		<N8nText v-if="remaining > 0" size="small" color="text-light">
