@@ -1,10 +1,5 @@
 import set from 'lodash/set';
-import {
-	ApplicationError,
-	type IDataObject,
-	type INodeExecutionData,
-	type NodeApiError,
-} from 'n8n-workflow';
+import { ApplicationError, type IDataObject, type NodeApiError } from 'n8n-workflow';
 
 import type { UpdateRecord } from './interfaces';
 
@@ -88,18 +83,11 @@ export function processAirtableError(error: NodeApiError, id?: string, itemIndex
 	return error;
 }
 
-export const flattenOutput = (record: IDataObject) => {
+export function legacyFlattenOutput(record: IDataObject, nodeVersion: number): IDataObject {
+	if (nodeVersion >= 2.2) return record;
 	const { fields, ...rest } = record;
 	return {
 		...rest,
 		...(fields as IDataObject),
 	};
-};
-
-export function legacyFlattenRecordOutputs(
-	items: INodeExecutionData[],
-	nodeVersion: number,
-): INodeExecutionData[] {
-	if (nodeVersion >= 2.2) return items;
-	return items.map((item) => ({ ...item, json: flattenOutput(item.json) }));
 }

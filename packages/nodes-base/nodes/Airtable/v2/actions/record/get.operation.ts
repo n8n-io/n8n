@@ -8,11 +8,7 @@ import type {
 
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
 import type { IRecord } from '../../helpers/interfaces';
-import {
-	flattenOutput,
-	legacyFlattenRecordOutputs,
-	processAirtableError,
-} from '../../helpers/utils';
+import { legacyFlattenOutput, processAirtableError } from '../../helpers/utils';
 import { apiRequest, downloadRecordAttachments } from '../../transport';
 
 const properties: INodeProperties[] = [
@@ -85,14 +81,16 @@ export async function execute(
 					[responseData] as IRecord[],
 					options.downloadFields as string[],
 				);
-				returnData.push(...legacyFlattenRecordOutputs(itemWithAttachments, nodeVersion));
+				returnData.push(
+					...itemWithAttachments.map((item) => ({
+						...item,
+						json: legacyFlattenOutput(item.json, nodeVersion),
+					})),
+				);
 				continue;
 			}
 
-			const output =
-				nodeVersion < 2.2
-					? flattenOutput(responseData as IDataObject)
-					: (responseData as IDataObject);
+			const output = legacyFlattenOutput(responseData as IDataObject, nodeVersion);
 
 			const executionData = this.helpers.constructExecutionMetaData(wrapData(output), {
 				itemData: { item: i },
