@@ -72,8 +72,13 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 
 	@Memoized
 	get customData(): IWorkflowExecutionCustomData {
+		if (!this.runExecutionData) {
+			throw new ApplicationError(
+				'Cannot access customData: runExecutionData is not available in this context',
+			);
+		}
 		return createExecutionCustomData({
-			runExecutionData: this.runExecutionData ?? { resultData: { runData: {} } },
+			runExecutionData: this.runExecutionData,
 			mode: this.mode,
 		});
 	}

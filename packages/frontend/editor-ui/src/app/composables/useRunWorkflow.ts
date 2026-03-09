@@ -330,10 +330,6 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				chatSessionId: options.sessionId,
 			};
 
-			if (options.metadata) {
-				startRunData.metadata = options.metadata;
-			}
-
 			if ('destinationNode' in options) {
 				startRunData.destinationNode = options.destinationNode;
 				const nodeId = workflowsStore.getNodeByName(options.destinationNode?.nodeName ?? '')?.id;

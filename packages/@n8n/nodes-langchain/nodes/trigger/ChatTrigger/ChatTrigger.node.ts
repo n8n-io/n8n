@@ -3,6 +3,7 @@ import pick from 'lodash/pick';
 import {
 	autoSaveHighlightedDataProperty,
 	getHighlightedInputKey,
+	HIGHLIGHTED_SESSION_KEY,
 } from 'n8n-nodes-base/dist/utils/highlightedData';
 import {
 	Node,
@@ -722,7 +723,7 @@ export class ChatTrigger extends Node {
 			for (const fileKey of Object.keys(files)) {
 				const processedFiles: MultiPartFormData.File[] = [];
 				if (Array.isArray(files[fileKey])) {
-					processedFiles.push.apply(processedFiles, files[fileKey]);
+					processedFiles.push(...files[fileKey]);
 				} else {
 					processedFiles.push(files[fileKey]);
 				}
@@ -898,11 +899,13 @@ export class ChatTrigger extends Node {
 			}
 		}
 
-		if (
-			ctx.getNodeParameter('options.autoSaveHighlightedData', true) !== false &&
-			typeof bodyData.chatMessage === 'string'
-		) {
-			ctx.customData.set(getHighlightedInputKey(ctx.getNode().name), bodyData.chatMessage);
+		if (ctx.getNodeParameter('options.autoSaveHighlightedData', true) !== false) {
+			if (typeof bodyData.chatInput === 'string') {
+				ctx.customData.set(getHighlightedInputKey(ctx.getNode().name), bodyData.chatInput);
+			}
+			if (typeof bodyData.sessionId === 'string') {
+				ctx.customData.set(HIGHLIGHTED_SESSION_KEY, bodyData.sessionId);
+			}
 		}
 
 		let returnData: INodeExecutionData[];

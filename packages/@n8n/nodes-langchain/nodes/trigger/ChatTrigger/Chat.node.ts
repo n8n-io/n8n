@@ -358,7 +358,8 @@ export class Chat implements INodeType {
 		};
 
 		if (this.getNodeParameter('options.autoSaveHighlightedData', 0, true) !== false) {
-			this.customData.set(getHighlightedResponseKey(this.getNode().name), message);
+			const responseText = typeof message === 'string' ? message : message.text;
+			this.customData.set(getHighlightedResponseKey(this.getNode().name), responseText);
 		}
 
 		if (options.memoryConnection) {

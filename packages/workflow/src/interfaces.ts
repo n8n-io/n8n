@@ -2871,7 +2871,6 @@ export interface IWorkflowExecutionDataProcess {
 		name: string;
 		data?: ITaskData;
 	};
-	metadata?: Record<string, string>;
 	agentRequest?: AiAgentRequest;
 	httpResponse?: express.Response; // Used for streaming responses
 	streamingEnabled?: boolean;

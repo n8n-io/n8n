@@ -190,7 +190,6 @@ export interface IStartRunData {
 	destinationNode?: IDestinationNode;
 	runData?: IRunData;
 	dirtyNodeNames?: string[];
-	metadata?: Record<string, string>;
 	triggerToStartFrom?: {
 		name: string;
 		data?: ITaskData;

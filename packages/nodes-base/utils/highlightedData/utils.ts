@@ -7,3 +7,5 @@ export function getHighlightedInputKey(nodeName: string): string {
 export function getHighlightedResponseKey(nodeName: string): string {
 	return `response_${snakeCase(nodeName)}`;
 }
+
+export const HIGHLIGHTED_SESSION_KEY = 'session_id';

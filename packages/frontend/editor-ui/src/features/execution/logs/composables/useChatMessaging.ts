@@ -1,7 +1,6 @@
 import type { ComputedRef, Ref } from 'vue';
 import { computed, ref } from 'vue';
 import { v4 as uuid } from 'uuid';
-import { snakeCase } from 'change-case';
 import type { ChatMessage } from '@n8n/chat/types';
 import type {
 	ITaskData,
@@ -29,7 +28,6 @@ export type RunWorkflowChatPayload = {
 	nodeData: ITaskData;
 	source: string;
 	message: string;
-	metadata?: Record<string, string>;
 };
 export interface ChatMessagingDependencies {
 	chatTrigger: Ref<INodeUi | null>;
@@ -123,20 +121,11 @@ export function useChatMessaging({
 			source: [null],
 		};
 		isLoading.value = true;
-		const triggerOptions = triggerNode.parameters.options as {
-			responseMode?: string;
-			autoSaveHighlightedData?: boolean;
-		};
-
 		const response = await onRunChatWorkflow({
 			triggerNode: triggerNode.name,
 			nodeData,
 			source: 'RunData.ManualChatMessage',
 			message,
-			metadata:
-				triggerOptions.autoSaveHighlightedData !== false
-					? { [`input_${snakeCase(triggerNode.name)}`]: message }
-					: undefined,
 		});
 		isLoading.value = false;
 		ws.value = null;
@@ -145,7 +134,8 @@ export function useChatMessaging({
 		}
 
 		// Response Node mode should not return last node result if responseMode is "responseNodes"
-		const responseMode = triggerOptions.responseMode;
+		const responseMode = (triggerNode.parameters.options as { responseMode?: string })
+			?.responseMode;
 		if (responseMode === 'responseNodes') return;
 
 		const chatMessage = executionResultData.value

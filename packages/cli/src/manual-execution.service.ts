@@ -8,7 +8,6 @@ import {
 	recreateNodeExecutionStack,
 	WorkflowExecute,
 	rewireGraph,
-	setAllWorkflowExecutionMetadata,
 } from 'n8n-core';
 import { NodeHelpers, createRunExecutionData } from 'n8n-workflow';
 import type {
@@ -93,12 +92,6 @@ export class ManualExecutionService {
 					waitingExecutionSource,
 				},
 			});
-
-			// Set workflow execution metadata (= highlighed data)
-			// Example use-case: Automatically highlight chat message
-			if (data.metadata) {
-				setAllWorkflowExecutionMetadata(executionData, data.metadata);
-			}
 
 			if (data.destinationNode) {
 				executionData.startData = { destinationNode: data.destinationNode };
