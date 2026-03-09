@@ -1,14 +1,6 @@
 /**
  * Pre-approved documentation domains for the web fetch tool.
- *
- * URLs on these domains skip the user-approval interrupt because they are
- * well-known, public documentation sites for services that n8n integrates
- * with, or widely-used developer reference material.
- *
- * Keep this list sorted alphabetically within each section.
  */
-
-// ── AI / LLM ────────────────────────────────────────────────────────────────
 
 const AI_DOCS = [
 	'code.claude.com',
@@ -29,8 +21,6 @@ const AI_DOCS = [
 	'developers.openai.com',
 ] as const;
 
-// ── Cloud, Hosting & DevOps ─────────────────────────────────────────────────
-
 const CLOUD_DOCS = [
 	'cypress.io',
 	'devcenter.heroku.com',
@@ -43,8 +33,6 @@ const CLOUD_DOCS = [
 	'vercel.com',
 ] as const;
 
-// ── Communication & Messaging ───────────────────────────────────────────────
-
 const COMMUNICATION_DOCS = [
 	'api.mattermost.com',
 	'api.slack.com',
@@ -55,8 +43,6 @@ const COMMUNICATION_DOCS = [
 	'discord.com',
 	'www.twilio.com',
 ] as const;
-
-// ── CRM & Marketing ────────────────────────────────────────────────────────
 
 const CRM_DOCS = [
 	'customer.io',
@@ -75,8 +61,6 @@ const CRM_DOCS = [
 	'postmarkapp.com',
 ] as const;
 
-// ── Databases & Data ────────────────────────────────────────────────────────
-
 const DATABASE_DOCS = [
 	'dev.mysql.com',
 	'docs.pinecone.io',
@@ -91,8 +75,6 @@ const DATABASE_DOCS = [
 	'www.sqlite.org',
 ] as const;
 
-// ── E-commerce & Payments ───────────────────────────────────────────────────
-
 const ECOMMERCE_DOCS = [
 	'developer.paddle.com',
 	'developer.paypal.com',
@@ -103,8 +85,6 @@ const ECOMMERCE_DOCS = [
 	'shopify.dev',
 	'woocommerce.github.io',
 ] as const;
-
-// ── Frameworks & Languages ──────────────────────────────────────────────────
 
 const FRAMEWORK_DOCS = [
 	'angular.io',
@@ -118,8 +98,6 @@ const FRAMEWORK_DOCS = [
 	'www.typescriptlang.org',
 ] as const;
 
-// ── HR, Support & Helpdesk ──────────────────────────────────────────────────
-
 const SUPPORT_DOCS = [
 	'developer.helpscout.com',
 	'developer.pagerduty.com',
@@ -132,8 +110,6 @@ const SUPPORT_DOCS = [
 	'uptimerobot.com',
 	'workable.readme.io',
 ] as const;
-
-// ── Productivity & Project Management ───────────────────────────────────────
 
 const PRODUCTIVITY_DOCS = [
 	'api.seatable.io',
@@ -150,8 +126,6 @@ const PRODUCTIVITY_DOCS = [
 	'docs.nocodb.com',
 ] as const;
 
-// ── Social & Content ────────────────────────────────────────────────────────
-
 const SOCIAL_DOCS = [
 	'developer.spotify.com',
 	'developer.twitter.com',
@@ -160,8 +134,6 @@ const SOCIAL_DOCS = [
 	'docs.discourse.org',
 	'learn.microsoft.com',
 ] as const;
-
-// ── CMS & Website Builders ─────────────────────────────────────────────────
 
 const CMS_DOCS = [
 	'developer.webflow.com',
@@ -174,8 +146,6 @@ const CMS_DOCS = [
 	'www.storyblok.com',
 ] as const;
 
-// ── DevTools & Version Control ──────────────────────────────────────────────
-
 const DEVTOOLS_DOCS = [
 	'developer.github.com',
 	'docs.github.com',
@@ -184,16 +154,12 @@ const DEVTOOLS_DOCS = [
 	'www.jenkins.io',
 ] as const;
 
-// ── File Storage ────────────────────────────────────────────────────────────
-
 const STORAGE_DOCS = [
 	'developer.box.com',
 	'developers.cloudflare.com',
 	'docs.nextcloud.com',
 	'www.dropbox.com',
 ] as const;
-
-// ── Analytics & Monitoring ──────────────────────────────────────────────────
 
 const ANALYTICS_DOCS = [
 	'developer.okta.com',
@@ -206,8 +172,6 @@ const ANALYTICS_DOCS = [
 	'segment.com',
 	'www.metabase.com',
 ] as const;
-
-// ── Other Services ──────────────────────────────────────────────────────────
 
 const OTHER_DOCS = [
 	'api.calendly.com',
@@ -231,8 +195,6 @@ const OTHER_DOCS = [
 	'www.home-assistant.io',
 	'www.odoo.com',
 ] as const;
-
-// ── Aggregate ───────────────────────────────────────────────────────────────
 
 export const ALLOWED_DOMAINS: ReadonlySet<string> = new Set([
 	...AI_DOCS,

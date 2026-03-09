@@ -1,18 +1,14 @@
 /**
  * WebFetchSecurityManager — encapsulates domain-approval, budget tracking,
- * and state-propagation logic that was previously spread across WebFetchHooks.
+ * and state-propagation logic for the WebFetchTool
  */
 import type { BaseMessage } from '@langchain/core/messages';
 import { getCurrentTaskInput } from '@langchain/langgraph';
 
 import { WEB_FETCH_MAX_PER_TURN } from '@/constants';
 
-import { isAllowedDomain } from './utils/allowed-domains';
-import { isUrlInUserMessages } from './utils/web-fetch.utils';
-
-// ---------------------------------------------------------------------------
-// Public interfaces
-// ---------------------------------------------------------------------------
+import { isAllowedDomain } from './allowed-domains';
+import { isUrlInUserMessages } from './web-fetch.utils';
 
 export interface WebFetchSecurityManager {
 	isHostAllowed(host: string, url: string): boolean;
@@ -24,22 +20,17 @@ export interface WebFetchSecurityManager {
 }
 
 export interface WebFetchSecurityStateUpdates {
-	webFetchCount: number;
 	approvedDomains?: string[];
 	allDomainsApproved?: boolean;
 }
 
-/** Mutable state object backing the closure-based (planner) factory */
+/** Mutable state object backing the closure-based factory */
 export interface MutableWebFetchState {
 	approvedDomains: string[];
 	allDomainsApproved: boolean;
 	webFetchCount: number;
 	messages: BaseMessage[];
 }
-
-// ---------------------------------------------------------------------------
-// Private implementation (closure-based)
-// ---------------------------------------------------------------------------
 
 function createSecurityManager(config: {
 	approvedDomains: string[];
@@ -77,7 +68,7 @@ function createSecurityManager(config: {
 			webFetchCount++;
 		},
 		getStateUpdates() {
-			const updates: WebFetchSecurityStateUpdates = { webFetchCount };
+			const updates: WebFetchSecurityStateUpdates = {};
 			if (newlyApprovedDomains.length > 0) {
 				updates.approvedDomains = newlyApprovedDomains;
 			}
@@ -114,6 +105,9 @@ interface SecurityManagerFactoryOptions {
 	writeThrough?: MutableWebFetchState;
 }
 
+/**
+ * Core factory function for creating WebFetchSecurityManagers.
+ */
 function createFactory(options: SecurityManagerFactoryOptions): () => WebFetchSecurityManager {
 	return () => {
 		const state = options.stateProvider();
@@ -142,10 +136,6 @@ function createFactory(options: SecurityManagerFactoryOptions): () => WebFetchSe
 	};
 }
 
-// ---------------------------------------------------------------------------
-// Public factory: LangGraph subgraph contexts
-// ---------------------------------------------------------------------------
-
 /**
  * Factory for LangGraph subgraph contexts where state propagation
  * happens via Command reducers. Reads lazily from getCurrentTaskInput()
@@ -164,10 +154,6 @@ export function createLangGraphSecurityManagerFactory(): () => WebFetchSecurityM
 		},
 	});
 }
-
-// ---------------------------------------------------------------------------
-// Public factory: caller-owned mutable state
-// ---------------------------------------------------------------------------
 
 /**
  * Factory backed by a caller-owned mutable state object.

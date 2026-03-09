@@ -1,11 +1,11 @@
 import { HumanMessage } from '@langchain/core/messages';
 
 import { WEB_FETCH_MAX_PER_TURN } from '@/constants';
-import type { MutableWebFetchState } from '@/tools/web-fetch-security';
+import type { MutableWebFetchState } from '@/tools/utils/web-fetch-security';
 import {
 	createLangGraphSecurityManagerFactory,
 	createMutableSecurityManagerFactory,
-} from '@/tools/web-fetch-security';
+} from '@/tools/utils/web-fetch-security';
 
 // ---------------------------------------------------------------------------
 // Mocks

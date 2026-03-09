@@ -9,13 +9,13 @@ import { createProgressReporter } from '@/tools/helpers/progress';
 import { createSuccessResponse, createErrorResponse } from '@/tools/helpers/response';
 import type { BuilderToolBase } from '@/utils/stream-processor';
 
+import type { WebFetchSecurityManager } from './utils/web-fetch-security';
 import {
 	normalizeHost,
 	isBlockedUrl,
 	fetchUrl,
 	extractReadableContent,
 } from './utils/web-fetch.utils';
-import type { WebFetchSecurityManager } from './web-fetch-security';
 
 interface WebFetchResumeValue {
 	requestId: string;
@@ -50,7 +50,7 @@ function requestDomainApproval(domain: string, url: string): ApprovalResult {
 	if (resumeValue.action === 'deny') {
 		return {
 			approved: false,
-			message: `The user denied fetching content from ${domain}. Continue without this content.`,
+			message: `The user denied fetching content from ${domain}.`,
 		};
 	}
 
@@ -68,6 +68,8 @@ function requestDomainApproval(domain: string, url: string): ApprovalResult {
 export const WEB_FETCH_TOOL: BuilderToolBase = {
 	toolName: 'web_fetch',
 	displayTitle: 'Fetching web content',
+
+	// Shows "Fetching [URL]" in UI when URL is available, otherwise defaults to "Fetching web content"
 	getCustomDisplayTitle: (args: Record<string, unknown>) => {
 		const url = typeof args.url === 'string' ? args.url : '';
 		if (!url) return 'Fetching web content';
@@ -81,7 +83,6 @@ const webFetchSchema = z.object({
 
 /**
  * Factory function to create the web fetch tool.
- * @param createSecurity - factory called at each tool invocation to get a fresh security manager
  */
 export function createWebFetchTool(createSecurity: () => WebFetchSecurityManager) {
 	const dynamicTool = tool(
@@ -131,6 +132,7 @@ export function createWebFetchTool(createSecurity: () => WebFetchSecurityManager
 				let userAction: string | undefined;
 				let redirectUserAction: string | undefined;
 
+				// Check if host is already approved
 				const hostAllowed = security.isHostAllowed(host, url);
 
 				if (!hostAllowed) {
@@ -143,8 +145,9 @@ export function createWebFetchTool(createSecurity: () => WebFetchSecurityManager
 							],
 						});
 					}
+
 					userAction = approval.action;
-					// Track locally so redirect check for the same host doesn't re-prompt
+
 					if (userAction === 'allow_domain' || userAction === 'allow_all') {
 						security.approveDomain(host);
 					}
@@ -157,7 +160,7 @@ export function createWebFetchTool(createSecurity: () => WebFetchSecurityManager
 				// Handle unsupported content
 				if (fetchResult.status === 'unsupported') {
 					security.recordFetch();
-					const message = `This content type is not supported: ${fetchResult.reason}. The tool cannot process PDF files.`;
+					const message = `This content type is not supported: ${fetchResult.reason}. Only HTML pages can be fetched.`;
 					reporter.error({ message });
 					return createSuccessResponse(config, message, {
 						...security.getStateUpdates(),

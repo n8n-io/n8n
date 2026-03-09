@@ -49,6 +49,7 @@ import { useBrowserNotifications } from '@/app/composables/useBrowserNotificatio
 import { AI_BUILDER_PLAN_MODE_EXPERIMENT } from '@/app/constants/experiments';
 import type { PlanMode } from '@/features/ai/assistant/assistant.types';
 import {
+	type ChatRequest,
 	isPlanModePlanMessage,
 	isPlanModeQuestionsMessage,
 	isWebFetchApprovalCustomMessage,
@@ -739,7 +740,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		planAnswers?: PlanMode.QuestionResponse[];
 		/** Whether this is a help question (e.g. credential or error help) that should not lock the canvas */
 		helpMessage?: boolean;
-		/** When true, skip adding the user message bubble to chat (e.g. web_fetch approval decisions shown inline) */
+		/** When true, skip adding the user message bubble to chat (e.g. web_fetch_approval decisions handled via buttons) */
 		skipUserMessage?: boolean;
 	}) {
 		isHelpStreaming.value = Boolean(options.helpMessage);
@@ -873,24 +874,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					);
 					chatMessages.value = result.messages;
 
-					// Track web-fetch lifecycle events
-					for (const msg of response.messages) {
-						if (isWebFetchApprovalMessage(msg)) {
-							trackWorkflowBuilderJourney('web_fetch_approval_prompted', {
-								domain: msg.domain,
-								url: msg.url,
-							});
-						}
-						if (
-							isApiToolMessage(msg) &&
-							msg.toolName === 'web_fetch' &&
-							(msg.status === 'completed' || msg.status === 'error')
-						) {
-							trackWorkflowBuilderJourney('web_fetch_completed', {
-								status: msg.status,
-							});
-						}
-					}
+					trackWebFetchEvents(response.messages);
 
 					if (result.shouldClearThinking) {
 						builderThinkingMessage.value = undefined;
@@ -1184,6 +1168,26 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		}
 
 		telemetry.track('Workflow builder journey', payload);
+	}
+
+	function trackWebFetchEvents(messages: ChatRequest.MessageResponse[]) {
+		for (const msg of messages) {
+			if (isWebFetchApprovalMessage(msg)) {
+				trackWorkflowBuilderJourney('web_fetch_approval_prompted', {
+					domain: msg.domain,
+					url: msg.url,
+				});
+			}
+			if (
+				isApiToolMessage(msg) &&
+				msg.toolName === 'web_fetch' &&
+				(msg.status === 'completed' || msg.status === 'error')
+			) {
+				trackWorkflowBuilderJourney('web_fetch_completed', {
+					status: msg.status,
+				});
+			}
+		}
 	}
 
 	// Version management for workflow history

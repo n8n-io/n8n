@@ -2,13 +2,13 @@ import type { ToolMessage } from '@langchain/core/messages';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import type { Command } from '@langchain/langgraph';
 
+import type { WebFetchSecurityManager } from '@/tools/utils/web-fetch-security';
 import {
 	normalizeHost,
 	isBlockedUrl,
 	fetchUrl,
 	extractReadableContent,
 } from '@/tools/utils/web-fetch.utils';
-import type { WebFetchSecurityManager } from '@/tools/web-fetch-security';
 import { createWebFetchTool } from '@/tools/web-fetch.tool';
 
 // Mock the LangGraph interrupt

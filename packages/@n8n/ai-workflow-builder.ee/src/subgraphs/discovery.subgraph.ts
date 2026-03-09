@@ -31,7 +31,7 @@ import {
 	createLangGraphSecurityManagerFactory,
 	createMutableSecurityManagerFactory,
 	type MutableWebFetchState,
-} from '@/tools/web-fetch-security';
+} from '@/tools/utils/web-fetch-security';
 import { createWebFetchTool } from '@/tools/web-fetch.tool';
 import type { CoordinationLogEntry } from '@/types/coordination';
 import { createDiscoveryMetadata } from '@/types/coordination';
