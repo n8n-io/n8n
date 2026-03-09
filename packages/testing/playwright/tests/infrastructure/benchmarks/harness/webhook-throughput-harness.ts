@@ -11,7 +11,7 @@ import {
 	collectDiagnostics,
 	attachDiagnostics,
 	formatDiagnosticValue,
-	WORKFLOW_SUCCESS_QUERY,
+	resolveMetricQuery,
 } from '../../../../utils/benchmark';
 import type { NodeOutputSize } from '../../../../utils/benchmark';
 import type { WebhookHandle } from '../../../../utils/benchmark/webhook-driver';
@@ -28,6 +28,8 @@ export interface WebhookThroughputOptions {
 	connections: number;
 	durationSeconds: number;
 	timeoutMs: number;
+	/** PromQL metric to track workflow completions. Defaults to resolveMetricQuery(testInfo). */
+	metricQuery?: string;
 	plan?: { memory: number; cpu: number };
 	workerPlan?: { memory: number; cpu: number };
 }
@@ -51,6 +53,7 @@ export async function runWebhookThroughputTest(options: WebhookThroughputOptions
 		durationSeconds,
 		timeoutMs,
 	} = options;
+	const metricQuery = options.metricQuery ?? resolveMetricQuery(testInfo);
 
 	testInfo.setTimeout(timeoutMs + 120_000);
 
@@ -83,7 +86,7 @@ export async function runWebhookThroughputTest(options: WebhookThroughputOptions
 		intervalMs: 2000,
 		predicate: (results: unknown[]) => results.length > 0,
 	});
-	const baselineCounter = await getBaselineCounter(obs.metrics, WORKFLOW_SUCCESS_QUERY);
+	const baselineCounter = await getBaselineCounter(obs.metrics, metricQuery);
 
 	// Phase 4: Run autocannon + VictoriaMetrics measurement in parallel
 	console.log(
@@ -105,7 +108,7 @@ export async function runWebhookThroughputTest(options: WebhookThroughputOptions
 			nodeCount,
 			timeoutMs: (durationSeconds + 30) * 1000,
 			baselineValue: baselineCounter,
-			metricQuery: WORKFLOW_SUCCESS_QUERY,
+			metricQuery,
 		}),
 	]);
 

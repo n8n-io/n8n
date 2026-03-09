@@ -12,7 +12,7 @@ import {
 	collectDiagnostics,
 	attachDiagnostics,
 	formatDiagnosticValue,
-	WORKFLOW_SUCCESS_QUERY,
+	resolveMetricQuery,
 } from '../../../../utils/benchmark';
 import type { TriggerHandle, ExecutionMetrics } from '../../../../utils/benchmark';
 
@@ -27,6 +27,8 @@ export interface LoadTestOptions {
 	testInfo: TestInfo;
 	load: LoadProfile;
 	timeoutMs: number;
+	/** PromQL metric to track workflow completions. Defaults to resolveMetricQuery(testInfo). */
+	metricQuery?: string;
 }
 
 /**
@@ -34,17 +36,12 @@ export interface LoadTestOptions {
  *
  * Phases: create workflow → preload (if backlog) → baseline → activate → publish (if steady) → measure → report.
  *
- * Completion is tracked via VictoriaMetrics (`n8n_workflow_success_total`), which only
- * increments when a workflow finishes — not when a message is consumed from the queue.
+ * Completion is tracked via VictoriaMetrics using the metric resolved from the project config
+ * (direct mode: `n8n_workflow_success_total`, queue mode: `n8n_scaling_mode_queue_jobs_completed`).
  */
-export async function runLoadTest({
-	handle,
-	api,
-	services,
-	testInfo,
-	load,
-	timeoutMs,
-}: LoadTestOptions): Promise<ExecutionMetrics> {
+export async function runLoadTest(options: LoadTestOptions): Promise<ExecutionMetrics> {
+	const { handle, api, services, testInfo, load, timeoutMs } = options;
+	const metricQuery = options.metricQuery ?? resolveMetricQuery(testInfo);
 	testInfo.setTimeout(timeoutMs + 120_000);
 
 	const obs = services.observability;
@@ -70,7 +67,7 @@ export async function runLoadTest({
 		intervalMs: 2000,
 		predicate: (results: unknown[]) => results.length > 0,
 	});
-	const baselineCounter = await getBaselineCounter(obs.metrics, WORKFLOW_SUCCESS_QUERY);
+	const baselineCounter = await getBaselineCounter(obs.metrics, metricQuery);
 
 	// Phase 3: Activate workflow
 	// For burst tests, processing starts at activation (messages are already queued),
@@ -105,7 +102,7 @@ export async function runLoadTest({
 		nodeCount: 1,
 		timeoutMs,
 		baselineValue: baselineCounter,
-		metricQuery: WORKFLOW_SUCCESS_QUERY,
+		metricQuery,
 	});
 	const totalDurationMs = Date.now() - (publishStart ?? activationStart);
 

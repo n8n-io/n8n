@@ -30,6 +30,19 @@ export interface ThroughputResult {
 // --- PromQL queries ---
 
 export const WORKFLOW_SUCCESS_QUERY = 'n8n_workflow_success_total';
+export const QUEUE_JOBS_COMPLETED_QUERY = 'n8n_scaling_mode_queue_jobs_completed';
+
+/**
+ * Returns the correct completion metric for the current Playwright project.
+ * Queue mode uses the main-aggregated job completion counter;
+ * direct mode uses the per-instance workflow success counter.
+ */
+export function resolveMetricQuery(testInfo: TestInfo): string {
+	const workers =
+		(testInfo.project.use as { containerConfig?: { workers?: number } }).containerConfig?.workers ??
+		0;
+	return workers > 0 ? QUEUE_JOBS_COMPLETED_QUERY : WORKFLOW_SUCCESS_QUERY;
+}
 
 // --- Throughput measurement ---
 

@@ -10,7 +10,7 @@ import {
 	collectDiagnostics,
 	attachDiagnostics,
 	formatDiagnosticValue,
-	WORKFLOW_SUCCESS_QUERY,
+	resolveMetricQuery,
 } from '../../../../utils/benchmark';
 import type { TriggerHandle, NodeOutputSize } from '../../../../utils/benchmark';
 
@@ -24,6 +24,8 @@ export interface ThroughputTestOptions {
 	nodeOutputSize: NodeOutputSize;
 	timeoutMs: number;
 	pollIntervalMs?: number;
+	/** PromQL metric to track workflow completions. Defaults to resolveMetricQuery(testInfo). */
+	metricQuery?: string;
 	plan?: { memory: number; cpu: number };
 	workerPlan?: { memory: number; cpu: number };
 }
@@ -73,6 +75,7 @@ export async function runThroughputTest(options: ThroughputTestOptions): Promise
 		plan,
 		workerPlan,
 	} = options;
+	const metricQuery = options.metricQuery ?? resolveMetricQuery(testInfo);
 
 	testInfo.setTimeout(timeoutMs + 120_000);
 
@@ -96,7 +99,7 @@ export async function runThroughputTest(options: ThroughputTestOptions): Promise
 		intervalMs: 2000,
 		predicate: (results: unknown[]) => results.length > 0,
 	});
-	const baselineCounter = await getBaselineCounter(obs.metrics, WORKFLOW_SUCCESS_QUERY);
+	const baselineCounter = await getBaselineCounter(obs.metrics, metricQuery);
 
 	// Activate and wait for readiness
 	await api.workflows.activate(workflowId, createdWorkflow.versionId!);
@@ -111,7 +114,7 @@ export async function runThroughputTest(options: ThroughputTestOptions): Promise
 		nodeCount,
 		timeoutMs,
 		baselineValue: baselineCounter,
-		metricQuery: WORKFLOW_SUCCESS_QUERY,
+		metricQuery,
 		pollIntervalMs,
 	});
 
