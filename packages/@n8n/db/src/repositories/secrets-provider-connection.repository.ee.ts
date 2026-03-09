@@ -33,9 +33,12 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 	 * @returns Promise resolving to all matching SecretsProviderConnection entities.
 	 */
 	async findGlobalConnections(
-		filters: { providerKeys?: Array<SecretsProviderConnection['providerKey']> } = {},
+		filters: {
+			providerKeys?: Array<SecretsProviderConnection['providerKey']>;
+			isEnabled?: boolean;
+		} = {},
 	): Promise<SecretsProviderConnection[]> {
-		const { providerKeys } = filters;
+		const { providerKeys, isEnabled } = filters;
 		if (providerKeys && providerKeys.length === 0) {
 			return [];
 		}
@@ -46,6 +49,10 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 
 		if (providerKeys) {
 			connectionQuery.andWhere('connection.providerKey IN (:...providerKeys)', { providerKeys });
+		}
+
+		if (isEnabled !== undefined) {
+			connectionQuery.andWhere('connection.isEnabled = :isEnabled', { isEnabled });
 		}
 
 		return await connectionQuery.getMany();
@@ -65,9 +72,12 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 	 */
 	async findByProjectId(
 		projectId: string,
-		filters: { providerKeys?: Array<SecretsProviderConnection['providerKey']> } = {},
+		filters: {
+			providerKeys?: Array<SecretsProviderConnection['providerKey']>;
+			isEnabled?: boolean;
+		} = {},
 	): Promise<SecretsProviderConnection[]> {
-		const { providerKeys } = filters;
+		const { providerKeys, isEnabled } = filters;
 		if (providerKeys && providerKeys.length === 0) {
 			return [];
 		}
@@ -79,6 +89,10 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 
 		if (providerKeys) {
 			connectionQuery.andWhere('connection.providerKey IN (:...providerKeys)', { providerKeys });
+		}
+
+		if (isEnabled !== undefined) {
+			connectionQuery.andWhere('connection.isEnabled = :isEnabled', { isEnabled });
 		}
 
 		return await connectionQuery.getMany();

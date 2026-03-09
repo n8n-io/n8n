@@ -192,6 +192,7 @@ export class SecretsProvidersConnectionsService {
 
 		return await this.repository.findGlobalConnections({
 			providerKeys: connectedProviderKeys,
+			isEnabled: true,
 		});
 	}
 
@@ -200,6 +201,7 @@ export class SecretsProvidersConnectionsService {
 
 		return await this.repository.findByProjectId(projectId, {
 			providerKeys: connectedProviderKeys,
+			isEnabled: true,
 		});
 	}
 
