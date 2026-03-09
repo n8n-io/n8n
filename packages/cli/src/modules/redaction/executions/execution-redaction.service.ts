@@ -120,9 +120,16 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 				await strategy.apply(execution, context);
 			}
 
-			// Override reason for dynamic credential executions
-			if (hasDynCreds && execution.data.redactionInfo) {
-				execution.data.redactionInfo.reason = 'dynamic_credentials';
+			// Override reason and scrub credential context for dynamic credential executions
+			if (hasDynCreds) {
+				if (execution.data.redactionInfo) {
+					execution.data.redactionInfo.reason = 'dynamic_credentials';
+				}
+				// runtimeData.credentials contains encrypted credential context that
+				// must never be exposed in API responses
+				if (execution.data.executionData?.runtimeData) {
+					delete execution.data.executionData.runtimeData.credentials;
+				}
 			}
 		}
 

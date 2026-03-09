@@ -605,6 +605,7 @@ const showPinButton = computed(
 		!props.disablePin &&
 		!hasNoData.value &&
 		!editMode.value.enabled &&
+		!isExecutionRedacted.value &&
 		(hasBinaryData.value ? isPaneTypeOutput.value : canPinData.value),
 );
 

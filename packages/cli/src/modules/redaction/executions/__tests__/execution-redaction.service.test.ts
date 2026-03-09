@@ -562,5 +562,23 @@ describe('ExecutionRedactionService', () => {
 			// policy=none, no dynamic creds → no FullItemRedactionStrategy
 			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
 		});
+
+		it('scrubs runtimeData.credentials from the execution data', async () => {
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				withDynamicCredentials: true,
+			});
+
+			// Verify credentials exist before processing
+			expect(execution.data.executionData?.runtimeData?.credentials).toBe(
+				'encrypted-credential-context',
+			);
+
+			await service.processExecution(execution, { user: mockUser });
+
+			// Credentials must be scrubbed from the response
+			expect(execution.data.executionData?.runtimeData?.credentials).toBeUndefined();
+		});
 	});
 });

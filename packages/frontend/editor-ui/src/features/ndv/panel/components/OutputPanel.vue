@@ -512,7 +512,9 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 				<template v-else>
 					<I18nT keypath="ndv.redacted.description" tag="span" scope="global">
 						<template #link>
-							<N8nLink size="small">{{ i18n.baseText('ndv.redacted.description.link') }}</N8nLink>
+							<N8nLink size="small" @click="openSettings">{{
+								i18n.baseText('ndv.redacted.description.link')
+							}}</N8nLink>
 						</template>
 					</I18nT>
 				</template>
