@@ -31,6 +31,8 @@ jobs:
           health_check_timeout: 60
           auth_token_command: './deployment-testbot/get-token.sh'
 
+          skyramp_mcp_version: 'v0.0.59'
+
           test_directory: 'test'
           auto_commit: true
           post_pr_comment: true
