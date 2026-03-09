@@ -58,6 +58,19 @@ export async function compressFolder(
 	const outputDir = path.dirname(outputPath);
 	await mkdir(outputDir, { recursive: true });
 
+	// Resolve paths to handle relative paths correctly
+	const resolvedSourceDir = path.resolve(sourceDir);
+	const resolvedOutputPath = path.resolve(outputPath);
+
+	// If output file is inside source directory, exclude it to prevent self-inclusion
+	const outputFileName = path.basename(resolvedOutputPath);
+	const outputIsInSource =
+		resolvedOutputPath.startsWith(resolvedSourceDir + path.sep) ||
+		resolvedOutputPath === resolvedSourceDir;
+
+	// Add output file to exclude list if it's inside the source directory
+	const excludeList = outputIsInSource ? [...exclude, outputFileName] : exclude;
+
 	// Create write stream for the output ZIP file
 	const outputStream = createWriteStream(outputPath);
 
@@ -77,7 +90,11 @@ export async function compressFolder(
 	};
 
 	// Add directory contents to ZIP using streaming
-	await addDirectoryToZipStreaming(sourceDir, '', zip, { exclude, includeHidden, level });
+	await addDirectoryToZipStreaming(sourceDir, '', zip, {
+		exclude: excludeList,
+		includeHidden,
+		level,
+	});
 
 	// Finalize the ZIP
 	zip.end();
