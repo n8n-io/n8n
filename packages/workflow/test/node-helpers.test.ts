@@ -6524,5 +6524,83 @@ describe('NodeHelpers', () => {
 			// When undefined, the default value (empty string) is used
 			expect(result?.resource).toBe('');
 		});
+
+		it('should apply defaults to a multipleValues:false fixedCollection when stored value is {} (e.g. approvalOptions from old default)', () => {
+			const nodePropertiesArray: INodeProperties[] = [
+				{
+					displayName: 'Approval Options',
+					name: 'approvalOptions',
+					type: 'fixedCollection',
+					default: {
+						values: { approvalType: 'double', approveLabel: 'Approve', disapproveLabel: 'Decline' },
+					},
+					options: [
+						{
+							displayName: 'Values',
+							name: 'values',
+							values: [
+								{
+									displayName: 'Approval Type',
+									name: 'approvalType',
+									type: 'string',
+									default: 'double',
+								},
+								{
+									displayName: 'Approve Label',
+									name: 'approveLabel',
+									type: 'string',
+									default: 'Approve',
+								},
+								{
+									displayName: 'Disapprove Label',
+									name: 'disapproveLabel',
+									type: 'string',
+									default: 'Decline',
+								},
+							],
+						},
+					],
+				},
+			];
+
+			// {} = node was saved with the old default (before non-empty default was introduced)
+			const nodeValues = { approvalOptions: {} };
+
+			const result = getNodeParameters(nodePropertiesArray, nodeValues, true, false, null, null);
+
+			// Should apply the non-empty default for multipleValues:false
+			expect(result?.approvalOptions).toEqual({
+				values: { approvalType: 'double', approveLabel: 'Approve', disapproveLabel: 'Decline' },
+			});
+		});
+
+		it('should NOT inject defaults into a multipleValues:true fixedCollection when stored value is {} (user deleted all items)', () => {
+			const nodePropertiesArray: INodeProperties[] = [
+				{
+					displayName: 'Metrics',
+					name: 'metricsUA',
+					type: 'fixedCollection',
+					typeOptions: { multipleValues: true },
+					default: { metricValues: [{ listName: 'ga:users' }] },
+					options: [
+						{
+							displayName: 'Metric',
+							name: 'metricValues',
+							values: [
+								{ displayName: 'Metric', name: 'listName', type: 'string', default: 'ga:users' },
+							],
+						},
+					],
+				},
+			];
+
+			// {} = user deleted all metric items via the UI
+			const nodeValues = { metricsUA: {} };
+
+			const result = getNodeParameters(nodePropertiesArray, nodeValues, true, false, null, null);
+
+			// The empty {} should be preserved - NOT replaced with { metricValues: [{ listName: 'ga:users' }] }
+			expect(result?.metricsUA).toEqual({});
+		});
 	});
 });

@@ -50,7 +50,7 @@ import {
 	isValidResourceLocatorParameterValue,
 } from './type-guards';
 import { validateFieldType } from './type-validation';
-import { deepCopy } from './utils';
+import { deepCopy, isObject } from './utils';
 import type { Workflow } from './workflow';
 
 export const cronNodeOptions: INodePropertyCollection[] = [
@@ -869,14 +869,15 @@ export function getNodeParameters(
 			let propertyValues = deepCopy(nodeValues[nodeProperties.name]);
 			if (returnDefaults) {
 				const isEmptyFixedCollection =
-					typeof propertyValues === 'object' &&
-					propertyValues !== null &&
-					!Array.isArray(propertyValues) &&
-					Object.keys(propertyValues).length === 0;
+					nodeProperties.typeOptions?.multipleValues !== true &&
+					isObject(propertyValues) &&
+					Object.keys(propertyValues).length === 0 &&
+					isObject(nodeProperties.default) &&
+					Object.keys(nodeProperties.default).length > 0;
 
 				if (propertyValues === undefined || isEmptyFixedCollection) {
 					// Apply the default when there is no stored value, or when the stored value is
-					// an empty {}
+					// an empty {} (only for multipleValues:false collections)
 					propertyValues = deepCopy(nodeProperties.default);
 				}
 			}
