@@ -75,6 +75,18 @@ export class WorkflowHistoryController {
 		}
 	}
 
+	@Get('/workflow/:workflowId/publish-timeline')
+	async getPublishTimeline(req: WorkflowHistoryRequest.GetList) {
+		try {
+			return await this.historyService.getPublishTimeline(req.user, req.params.workflowId);
+		} catch (e) {
+			if (e instanceof SharedWorkflowNotFoundError) {
+				throw new NotFoundError('Could not find workflow');
+			}
+			throw e;
+		}
+	}
+
 	@Licensed('feat:namedVersions')
 	@Patch('/workflow/:workflowId/versions/:versionId')
 	async updateVersion(
