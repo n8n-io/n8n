@@ -712,7 +712,32 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async addItemToFixedCollection(collectionName: string) {
-		await this.page.getByTestId(`fixed-collection-${collectionName}`).click();
+		const collection = this.page.getByTestId(`fixed-collection-${collectionName}`);
+		const explicitAddControl = collection
+			.locator(
+				[
+					'[data-test-id="fixed-collection-add-top-level-button"]',
+					'[data-test-id="fixed-collection-add-top-level-dropdown"]',
+					'[data-test-id="fixed-collection-add-header"]',
+					'[data-test-id="fixed-collection-add-header-nested"]',
+					'[data-test-id="fixed-collection-add"]',
+				].join(', '),
+			)
+			.first();
+
+		if ((await explicitAddControl.count()) > 0 && (await explicitAddControl.isVisible())) {
+			await explicitAddControl.click();
+			return;
+		}
+
+		const addButtonByName = collection.getByRole('button', { name: /^Add / }).first();
+		if ((await addButtonByName.count()) > 0 && (await addButtonByName.isVisible())) {
+			await addButtonByName.click();
+			return;
+		}
+
+		// Fallback for legacy behavior where clicking the wrapper would add an item.
+		await collection.click();
 	}
 
 	getFixedCollectionPropertyPicker(index?: number) {
@@ -817,6 +842,10 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getFilterConditionLeft(paramName: string, index: number = 0) {
 		return this.getFilterComponent(paramName).getByTestId('filter-condition-left').nth(index);
+	}
+
+	getFilterConditionLeftInput(paramName: string, index: number = 0) {
+		return this.getFilterConditionLeft(paramName, index).locator('input');
 	}
 
 	getFilterConditionOperator(paramName: string, index: number = 0) {

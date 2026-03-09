@@ -40,6 +40,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { sendUserEvent, type DynamicNotification } from '@n8n/rest-api-client/api/cloudPlans';
 import { isExpression, isTestableExpression } from '@/app/utils/expressions';
@@ -86,6 +87,7 @@ const workflowsStore = useWorkflowsStore();
 const workflowState = injectWorkflowState();
 const nodeTypesStore = useNodeTypesStore();
 const projectsStore = useProjectsStore();
+const externalSecretsStore = useExternalSecretsStore();
 
 const nodeHelpers = useNodeHelpers();
 const externalHooks = useExternalHooks();
@@ -394,6 +396,15 @@ onMounted(async () => {
 		isCredentialModalState(modalState) && modalState.showAuthSelector === true;
 
 	const forceManual = isCredentialModalState(modalState) && modalState.forceManualMode === true;
+
+	const projectId = projectsStore.currentProjectId ?? projectsStore.personalProject?.id;
+	if (projectId) {
+		try {
+			await externalSecretsStore.fetchSecretsForProject(projectId);
+		} catch {
+			// Secrets fetch failure should not block the credential modal
+		}
+	}
 
 	if (props.mode === 'new' && credentialTypeName.value) {
 		credentialName.value = await credentialsStore.getNewCredentialName({

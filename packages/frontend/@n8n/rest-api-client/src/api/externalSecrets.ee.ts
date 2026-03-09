@@ -10,12 +10,26 @@ export const getExternalSecrets = async (
 };
 
 /**
- * @beta still under development
+ * @deprecated use getGlobalExternalSecretsForProject instead
  */
 export const getGlobalExternalSecrets = async (
 	context: IRestApiContext,
 ): Promise<Record<string, string[]>> => {
 	return await makeRestApiRequest(context, 'GET', '/secret-providers/completions/secrets/global');
+};
+
+/**
+ * Global secrets in project context (project-scoped auth).
+ */
+export const getGlobalExternalSecretsForProject = async (
+	context: IRestApiContext,
+	projectId: string,
+): Promise<Record<string, string[]>> => {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/secret-providers/completions/secrets/global/${projectId}`,
+	);
 };
 
 /**
@@ -76,4 +90,11 @@ export const connectProvider = async (
 	return await makeRestApiRequest(context, 'POST', `/external-secrets/providers/${id}/connect`, {
 		connected,
 	});
+};
+
+export const updateExternalSecretsSettings = async (
+	context: IRestApiContext,
+	data: { systemRolesEnabled: boolean },
+): Promise<{ systemRolesEnabled: boolean }> => {
+	return await makeRestApiRequest(context, 'POST', '/external-secrets/settings', data);
 };
