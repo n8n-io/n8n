@@ -3,7 +3,7 @@ import type { IWorkflowDb } from '@n8n/db';
 import { WorkflowDependencies, WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter, SpanStatus, Tracing } from 'n8n-core';
-import { ensureError, INode, IWorkflowBase } from 'n8n-workflow';
+import { DATA_TABLE_NODE_TYPES, ensureError, INode, IWorkflowBase } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
 
@@ -245,15 +245,8 @@ export class WorkflowIndexService {
 		}
 	}
 
-	private static readonly DATA_TABLE_NODE_TYPES = new Set([
-		'n8n-nodes-base.dataTable',
-		'n8n-nodes-base.dataTableTool',
-		'n8n-nodes-base.evaluationTrigger',
-		'n8n-nodes-base.evaluation',
-	]);
-
 	private addDataTableDependencies(node: INode, dependencyUpdates: WorkflowDependencies): void {
-		if (!WorkflowIndexService.DATA_TABLE_NODE_TYPES.has(node.type)) {
+		if (!DATA_TABLE_NODE_TYPES.includes(node.type)) {
 			return;
 		}
 		const dataTableId = node.parameters?.['dataTableId'] as
@@ -266,6 +259,7 @@ export class WorkflowIndexService {
 		if (dataTableId.value.includes('{')) {
 			return;
 		}
+
 		dependencyUpdates.add({
 			dependencyType: 'dataTableId',
 			dependencyKey: dataTableId.value,
