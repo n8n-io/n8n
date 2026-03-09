@@ -100,8 +100,9 @@ export class WorkflowIndexService {
 					await this.updateIndexForDraft(workflow);
 				} else {
 					// We know activeVersionId is not null here because the finder only returns workflows
-					// that have a published version.
-					await this.updateIndexForPublished(workflow, workflow.activeVersionId!);
+					// that have a published version. Use the published version's nodes, not the draft nodes.
+					const publishedNodes = workflow.activeVersion?.nodes;
+					await this.updateIndexForPublished(workflow, workflow.activeVersionId!, publishedNodes);
 				}
 			}
 
@@ -132,13 +133,17 @@ export class WorkflowIndexService {
 		return await this.updateIndexInternal(workflow, dependencyUpdates);
 	}
 
-	async updateIndexForPublished(workflow: IWorkflowBase, publishedVersionId: string) {
+	async updateIndexForPublished(
+		workflow: IWorkflowBase,
+		publishedVersionId: string,
+		publishedNodes?: INode[],
+	) {
 		const dependencyUpdates = new WorkflowDependencies(
 			workflow.id,
 			workflow.versionCounter,
 			publishedVersionId,
 		);
-		return await this.updateIndexInternal(workflow, dependencyUpdates);
+		return await this.updateIndexInternal(workflow, dependencyUpdates, publishedNodes);
 	}
 
 	async removeDependenciesForWorkflow(workflowId: string) {
@@ -165,8 +170,10 @@ export class WorkflowIndexService {
 	private async updateIndexInternal(
 		workflow: IWorkflowBase,
 		dependencyUpdates: WorkflowDependencies,
+		nodes?: INode[],
 	) {
 		const indexType = dependencyUpdates.publishedVersionId ? 'published' : 'draft';
+		const nodesToIndex = nodes ?? workflow.nodes;
 
 		return await this.tracing.startSpan(
 			{
@@ -178,7 +185,7 @@ export class WorkflowIndexService {
 				},
 			},
 			async (span) => {
-				workflow.nodes.forEach((node) => {
+				nodesToIndex.forEach((node) => {
 					this.addNodeTypeDependencies(node, dependencyUpdates);
 					this.addCredentialDependencies(node, dependencyUpdates);
 					this.addDataTableDependencies(node, dependencyUpdates);
