@@ -55,6 +55,12 @@ export async function runLoadTest({
 	await handle.waitForReady({ timeoutMs: 30_000 });
 
 	// Phase 3: Post-activation load (publish at controlled rate)
+	// Timer starts here to capture the full processing window (publish + drain),
+	// not just the drain tail. For steady-state tests, n8n consumes messages
+	// concurrently during publishing, so measuring only drain time would
+	// inflate throughput (e.g. 913 exec/s when the real rate is ~100 exec/s).
+	const loadStart = Date.now();
+
 	if (load.type === 'steady') {
 		const result = await handle.publishAtRate({
 			ratePerSecond: load.ratePerSecond,
@@ -69,20 +75,19 @@ export async function runLoadTest({
 	// Phase 4: Drain and measure
 	console.log(`[LOAD] Waiting for ${expectedExecutions} executions (timeout: ${timeoutMs}ms)`);
 
-	const drainStart = Date.now();
 	const drainResult = await handle.waitForDrain({ expectedCount: expectedExecutions, timeoutMs });
-	const drainDurationMs = Date.now() - drainStart;
+	const totalDurationMs = Date.now() - loadStart;
 
 	if (!drainResult.drained) {
 		console.warn(
-			`[LOAD] Drain incomplete after ${(drainDurationMs / 1000).toFixed(1)}s — results reflect partial completion`,
+			`[LOAD] Drain incomplete after ${(totalDurationMs / 1000).toFixed(1)}s — results reflect partial completion`,
 		);
 	}
 
 	// Duration sampling is optional — may be empty when EXECUTIONS_DATA_SAVE_ON_SUCCESS=none
 	// hard-deletes execution records. Completion count comes from drain tracking (Kafka lag).
 	const durations = await sampleExecutionDurations(api.workflows, workflowId);
-	const metrics = buildMetrics(drainResult.consumed, 0, drainDurationMs, durations);
+	const metrics = buildMetrics(drainResult.consumed, 0, totalDurationMs, durations);
 
 	await attachLoadTestResults(testInfo, testInfo.title, metrics);
 
