@@ -878,6 +878,7 @@
     "@types/rfc2047": "^2.0.1",
     "@types/sanitize-html": "^2.11.0",
     "@types/showdown": "^1.9.4",
+    "@types/dockerode": "4.0.1",
     "@types/ssh2-sftp-client": "^9.0.5",
     "@types/uuid": "catalog:",
     "@types/xml2js": "catalog:",
