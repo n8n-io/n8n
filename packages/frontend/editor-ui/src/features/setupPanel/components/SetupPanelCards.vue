@@ -107,17 +107,10 @@ watch(
 		}
 
 		if (!initialized) {
-			// On first load, expand the first uncompleted card and all with auto-assigned credentials
+			// On first load, expand the first uncompleted card
 			const firstUncompleted = cards.find((c) => !c.state.isComplete);
 			if (firstUncompleted) {
 				expandedStates[cardKey(firstUncompleted)] = true;
-			}
-			for (const card of cards) {
-				const wasAutoApplied =
-					!!card.state.selectedCredentialId &&
-					autoAppliedCredentialIds.value.has(card.state.selectedCredentialId);
-
-				if (wasAutoApplied) expandedStates[cardKey(card)] = true;
 			}
 			initialized = true;
 		} else {

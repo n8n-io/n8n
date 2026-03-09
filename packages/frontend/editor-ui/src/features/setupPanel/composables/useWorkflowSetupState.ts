@@ -73,12 +73,17 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 				}
 			}
 
-			// From current parameter values (catches dynamic parameters not in the type definition)
-			for (const [key, value] of Object.entries(node.parameters)) {
-				if (isResourceLocatorValue(value)) {
-					paramNames.add(key);
+			// From current parameter values (catches dynamic/nested parameters not in the type definition)
+			const findResourceLocators = (obj: Record<string, unknown>) => {
+				for (const [key, value] of Object.entries(obj)) {
+					if (isResourceLocatorValue(value)) {
+						paramNames.add(key);
+					} else if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+						findResourceLocators(value as Record<string, unknown>);
+					}
 				}
-			}
+			};
+			findResourceLocators(node.parameters);
 
 			if (paramNames.size > 0) {
 				paramMap.set(node.name, Array.from(paramNames));
@@ -177,6 +182,12 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		const runData = workflowsStore.getWorkflowResultDataByNodeName(nodeName);
 		return runData !== null && runData.length > 0;
 	};
+
+	/**
+	 * Credential IDs that were auto-applied on initial load (not manually selected by the user).
+	 * Auto-applied credentials require node execution before being marked complete.
+	 */
+	const autoAppliedCredentialIds = ref(new Set<string>());
 
 	/**
 	 * Attempts to resolve an expression URL synchronously.
@@ -353,14 +364,21 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 			const testChecker = isCredentialTypeTestable(state.credentialType)
 				? credentialsStore.isCredentialTestedOk
 				: undefined;
+			const baseComplete = isCredentialCardComplete(
+				{ ...state, nodes: nodesForCompletion },
+				hasTriggerExecutedSuccessfully,
+				isTriggerNodeType,
+				testChecker,
+			);
+			// Auto-applied credentials require at least one node to have been executed
+			const isAutoApplied =
+				!!state.selectedCredentialId &&
+				autoAppliedCredentialIds.value.has(state.selectedCredentialId);
+			const nodeExecuted =
+				!isAutoApplied || state.nodes.some((node) => hasTriggerExecutedSuccessfully(node.name));
 			return {
 				...state,
-				isComplete: isCredentialCardComplete(
-					{ ...state, nodes: nodesForCompletion },
-					hasTriggerExecutedSuccessfully,
-					isTriggerNodeType,
-					testChecker,
-				),
+				isComplete: baseComplete && nodeExecuted,
 			};
 		});
 	});
@@ -514,11 +532,17 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 					node.name !== firstTriggerName.value ||
 					hasTriggerExecutedSuccessfully(node.name);
 
+				// Auto-applied credentials require node execution before being marked complete
+				const isAutoApplied =
+					!!selectedCredentialId && autoAppliedCredentialIds.value.has(selectedCredentialId);
+				const nodeExecuted = !isAutoApplied || hasTriggerExecutedSuccessfully(node.name);
+
 				const isComplete =
 					credentialComplete &&
 					testPassed &&
 					Object.keys(parameterIssues).length === 0 &&
-					triggerComplete;
+					triggerComplete &&
+					nodeExecuted;
 
 				result.push({
 					node,
@@ -702,6 +726,13 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		for (const nodeName of getAffectedNodeNames(credentialType, sourceNodeName)) {
 			const node = workflowsStore.getNodeByName(nodeName);
 			if (!node) continue;
+
+			// Clear auto-applied status for the previous credential on this node.
+			// During auto-apply the nodes are still unset so this is a no-op;
+			// during manual selection it removes the auto-applied flag.
+			const prevCred = node.credentials?.[credentialType];
+			const prevId = typeof prevCred === 'string' ? undefined : prevCred?.id;
+			if (prevId) autoAppliedCredentialIds.value.delete(prevId);
 			workflowState.updateNodeProperties({
 				name: nodeName,
 				properties: {
@@ -742,12 +773,6 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		nodeHelpers.updateNodesCredentialsIssues();
 		useUIStore().markStateDirty();
 	};
-
-	/**
-	 * Credential IDs that were auto-applied on initial load (not manually selected by the user).
-	 * Used by SetupPanelCards to suppress auto-expanding the next card when these complete.
-	 */
-	const autoAppliedCredentialIds = ref(new Set<string>());
 
 	/**
 	 * Auto-select the most recently updated credential for each credential type
