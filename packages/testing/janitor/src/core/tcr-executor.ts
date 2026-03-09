@@ -7,8 +7,8 @@ import * as path from 'node:path';
 import { Project } from 'ts-morph';
 
 import { type FileDiffResult, type MethodChange } from './ast-diff-analyzer.js';
-import { extractDiffs } from './extract-diffs.js';
 import { loadBaseline, filterNewViolations } from './baseline.js';
+import { extractDiffs } from './extract-diffs.js';
 import { ImpactAnalyzer } from './impact-analyzer.js';
 import { MethodUsageAnalyzer, type MethodUsageIndex } from './method-usage-analyzer.js';
 import { createProject } from './project-loader.js';
