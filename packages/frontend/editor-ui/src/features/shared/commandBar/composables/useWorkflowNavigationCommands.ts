@@ -82,16 +82,7 @@ export function useWorkflowNavigationCommands(options: {
 			// Search workflows by name with minimal fields
 			const nameSearchPromise = workflowsListStore.searchWorkflows({
 				query: trimmed,
-				select: [
-					'id',
-					'name',
-					'active',
-					'versionId',
-					'ownedBy',
-					'parentFolder',
-					'isArchived',
-					'description',
-				],
+				select: ['id', 'name', 'versionId', 'ownedBy', 'parentFolder', 'isArchived', 'description'],
 			});
 
 			const nodeTypeSearchPromise =
@@ -101,7 +92,6 @@ export function useWorkflowNavigationCommands(options: {
 							select: [
 								'id',
 								'name',
-								'active',
 								'versionId',
 								'nodes',
 								'ownedBy',
@@ -118,7 +108,6 @@ export function useWorkflowNavigationCommands(options: {
 						select: [
 							'id',
 							'name',
-							'active',
 							'versionId',
 							'ownedBy',
 							'tags',
