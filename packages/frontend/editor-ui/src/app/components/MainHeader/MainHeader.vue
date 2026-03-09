@@ -93,13 +93,12 @@ const showGitHubButton = computed(
 );
 
 const parentFolderForBreadcrumbs = computed<FolderShortInfo | undefined>(() => {
-	if (!workflow.value.parentFolder) {
-		return undefined;
-	}
+	const folder = workflowDocumentStore?.value?.parentFolder;
+	if (!folder) return undefined;
 	return {
-		id: workflow.value.parentFolder.id,
-		name: workflow.value.parentFolder.name,
-		parentFolder: workflow.value.parentFolder.parentFolderId ?? undefined,
+		id: folder.id,
+		name: folder.name,
+		parentFolder: folder.parentFolderId ?? undefined,
 	};
 });
 
