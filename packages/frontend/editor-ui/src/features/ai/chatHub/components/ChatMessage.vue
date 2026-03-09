@@ -571,7 +571,7 @@ onBeforeMount(() => {
 	padding: var(--spacing--sm);
 	padding-top: calc(var(--spacing--sm) + var(--attachments--height));
 	padding-bottom: 64px;
-	color: var(----color--text--shade-1);
+	color: var(--color--text--shade-1);
 }
 
 .fileInput {

@@ -475,7 +475,7 @@ defineExpose({
 		padding: var(--spacing--sm);
 		padding-top: calc(var(--spacing--sm) + var(--attachments-el--height));
 		padding-bottom: 64px;
-		color: var(----color--text--shade-1);
+		color: var(--color--text--shade-1);
 		box-shadow: 0 10px 24px 0 #00000010;
 		border-radius: 16px;
 
