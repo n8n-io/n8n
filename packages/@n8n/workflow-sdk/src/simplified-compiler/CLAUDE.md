@@ -10,6 +10,9 @@ The compiler handles translation to exact n8n node configs. The LLM never needs 
 
 ```javascript
 // What the LLM writes (simplified DSL)
+import { onSchedule } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+
 onSchedule({ every: '1h' }, async () => {
   const users = await http.get('https://api.example.com/users');
   const active = users.filter(u => u.active);
@@ -17,6 +20,8 @@ onSchedule({ every: '1h' }, async () => {
 });
 
 // AI with class-based constructors — parameter names match node schemas directly
+import { Agent, OpenAiModel, HttpRequestTool } from '@n8n/sdk/ai';
+
 const answer = await new Agent({
   prompt: 'Answer the question',
   model: new OpenAiModel({ model: 'gpt-4o' }),
@@ -36,6 +41,8 @@ Intentionally excluded:
 - **Merge nodes / multi-input joins** — can't be naturally expressed in sequential JS
 - **n8n expression primitives (`$json`, `$input`, etc.)** — the DSL uses plain JS variables; the compiler resolves `users.name` to `={{ $('HTTP 1').first().json.name }}` automatically
 - Any node pattern that requires non-linear graph topology
+
+**Import statements** (`import ... from '...'`) are silently ignored by the compiler. They exist to make the DSL feel like normal JS/TS to LLMs and editors. All DSL globals (`http`, `onManual`, `Agent`, etc.) are available without imports. Convention: `@n8n/sdk` for triggers, `@n8n/sdk/http` for http, `@n8n/sdk/ai` for AI classes.
 
 ## Item Simplification
 
@@ -166,6 +173,7 @@ See `docs/aggregate-nodes.md` for full details. After every HTTP call with an as
 
 | Category | DSL Syntax | Compiles To |
 |----------|-----------|-------------|
+| **Imports** | `import { onManual } from '@n8n/sdk'` | Silently ignored (DSL is compiled, not executed) |
 | **Triggers** | `onManual()`, `onWebhook()`, `onSchedule()`, `onError()` | Trigger nodes |
 | **HTTP** | `await http.get/post/put/patch/delete(url, body?, options?)` | httpRequest node |
 | **AI** | `await new Agent({ prompt, model: new OpenAiModel({...}) }).chat()` | Agent node + subnodes (passthrough params) |

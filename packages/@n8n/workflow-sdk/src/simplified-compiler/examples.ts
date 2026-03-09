@@ -6,7 +6,10 @@ export interface CompilerExample {
 export const COMPILER_EXAMPLES: CompilerExample[] = [
 	{
 		label: 'Simple API Call',
-		code: `onManual(async () => {
+		code: `import { onManual } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+
+onManual(async () => {
   // Fetch users from the API
   const users = await http.get('https://jsonplaceholder.typicode.com/users');
 
@@ -24,7 +27,10 @@ export const COMPILER_EXAMPLES: CompilerExample[] = [
 	},
 	{
 		label: 'ETL Pipeline',
-		code: `onSchedule({ every: '1h' }, async () => {
+		code: `import { onSchedule } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+
+onSchedule({ every: '1h' }, async () => {
   // Extract: fetch raw data from multiple sources
   const users = await http.get('https://jsonplaceholder.typicode.com/users');
   const todos = await http.get('https://jsonplaceholder.typicode.com/todos');
@@ -58,7 +64,11 @@ export const COMPILER_EXAMPLES: CompilerExample[] = [
 	},
 	{
 		label: 'AI Content Pipeline',
-		code: `onManual(async () => {
+		code: `import { onManual } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+import { Agent, OpenAiModel } from '@n8n/sdk/ai';
+
+onManual(async () => {
   // Fetch trending topics
   const posts = await http.get('https://jsonplaceholder.typicode.com/posts');
 
@@ -84,7 +94,10 @@ export const COMPILER_EXAMPLES: CompilerExample[] = [
 	},
 	{
 		label: 'Webhook with Response',
-		code: `onWebhook({ method: 'POST', path: '/orders' }, async ({ body, respond }) => {
+		code: `import { onWebhook } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+
+onWebhook({ method: 'POST', path: '/orders' }, async ({ body, respond }) => {
   // Validate the incoming order
   const order = await http.get('https://jsonplaceholder.typicode.com/posts/1');
 
@@ -114,7 +127,10 @@ export const COMPILER_EXAMPLES: CompilerExample[] = [
 	},
 	{
 		label: 'If/Else Branching',
-		code: `onManual(async () => {
+		code: `import { onManual } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+
+onManual(async () => {
   // Check the order status
   const order = await http.get('https://jsonplaceholder.typicode.com/posts/1');
 
@@ -130,7 +146,10 @@ export const COMPILER_EXAMPLES: CompilerExample[] = [
 	},
 	{
 		label: 'Error Handling',
-		code: `onManual(async () => {
+		code: `import { onManual } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+
+onManual(async () => {
   try {
     // Attempt the API call
     const data = await http.get('https://jsonplaceholder.typicode.com/posts/1');
@@ -144,7 +163,11 @@ export const COMPILER_EXAMPLES: CompilerExample[] = [
 	},
 	{
 		label: 'AI with Tools',
-		code: `onManual(async () => {
+		code: `import { onManual } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+import { Agent, OpenAiModel, CodeTool } from '@n8n/sdk/ai';
+
+onManual(async () => {
   // Fetch data for the AI to analyze
   const tickets = await http.get('https://jsonplaceholder.typicode.com/comments');
 
@@ -162,7 +185,10 @@ export const COMPILER_EXAMPLES: CompilerExample[] = [
 	},
 	{
 		label: 'Multiple Triggers',
-		code: `onManual(async () => {
+		code: `import { onManual, onSchedule } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+
+onManual(async () => {
   const data = await http.get('https://jsonplaceholder.typicode.com/users');
   await http.post('https://httpbin.org/post', { source: 'manual', data });
 });
@@ -175,7 +201,10 @@ onSchedule({ cron: '0 9 * * 1' }, async () => {
 	},
 	{
 		label: 'CRUD + Branching + Error Handling',
-		code: `onSchedule({ cron: '0 9 * * 1' }, async () => {
+		code: `import { onSchedule } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+
+onSchedule({ cron: '0 9 * * 1' }, async () => {
   const reportTag = 'weekly-check';
 
   const created = await http.post('https://jsonplaceholder.typicode.com/posts', {
@@ -225,7 +254,10 @@ onSchedule({ cron: '0 9 * * 1' }, async () => {
 	},
 	{
 		label: 'Loop with Sub-Function',
-		code: `async function enrichUser(userId) {
+		code: `import { onSchedule } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+
+async function enrichUser(userId) {
   const user = await http.get('https://jsonplaceholder.typicode.com/users/' + userId);
   const posts = await http.get('https://jsonplaceholder.typicode.com/users/' + userId + '/posts');
   await http.post('https://httpbin.org/post', {
@@ -249,7 +281,10 @@ onSchedule({ every: '6h' }, async () => {
 	},
 	{
 		label: 'Loop with Try/Catch',
-		code: `onSchedule({ every: '1h' }, async () => {
+		code: `import { onSchedule } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+
+onSchedule({ every: '1h' }, async () => {
   const users = await http.get('https://jsonplaceholder.typicode.com/users');
 
   const active = users.filter(u => u.id <= 5);
@@ -272,7 +307,10 @@ onSchedule({ every: '6h' }, async () => {
 	},
 	{
 		label: 'CRM Sync',
-		code: `onSchedule({ every: '30m' }, async () => {
+		code: `import { onSchedule } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+
+onSchedule({ every: '30m' }, async () => {
   // Fetch new leads from the marketing platform
   const leads = await http.get('https://jsonplaceholder.typicode.com/users');
 
