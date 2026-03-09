@@ -64,7 +64,7 @@ const http3 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"latestVersion\":\"={{ $('Collect latest').first().json.latest.version }}\",\"currentVersion\":\"={{ $('Collect local 2').first().json.local.data.versionCli }}\"}"
+      "jsonBody": "={{ { \"latestVersion\": $('Collect latest').first().json.latest.version, \"currentVersion\": $('Collect local 2').first().json.local.data.versionCli } }}"
     },
     "executeOnce": true
   }

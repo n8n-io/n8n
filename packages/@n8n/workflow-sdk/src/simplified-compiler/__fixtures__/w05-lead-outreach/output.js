@@ -12,7 +12,7 @@ const loop_lead_http1 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"to\":\"={{ $('When Executed by Another Workflow').first().json[1] }}\",\"subject\":\"Hello\",\"body\":\"Your outreach message here...\"}",
+      "jsonBody": "={{ { \"to\": $('When Executed by Another Workflow').first().json[1], \"subject\": \"Hello\", \"body\": \"Your outreach message here...\" } }}",
       "authentication": "genericCredentialType",
       "genericAuthType": "oAuth2Api"
     },

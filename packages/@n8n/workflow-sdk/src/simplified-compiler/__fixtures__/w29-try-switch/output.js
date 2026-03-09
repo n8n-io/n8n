@@ -37,7 +37,7 @@ const tc_tryCatch_1_http2 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"to\":\"={{ $('Collect data').first().json.data.recipient }}\"}"
+      "jsonBody": "={{ { \"to\": $('Collect data').first().json.data.recipient } }}"
     },
     "executeOnce": true
   }
@@ -54,7 +54,7 @@ const tc_tryCatch_1_http3 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"phone\":\"={{ $('Collect data').first().json.data.phone }}\"}"
+      "jsonBody": "={{ { \"phone\": $('Collect data').first().json.data.phone } }}"
     },
     "executeOnce": true
   }

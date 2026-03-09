@@ -169,7 +169,8 @@ interface ParallelGroup {
 	sourceVar: string;
 	/** Each branch is a chain of node vars, e.g. [httpVar, aggVar] or [httpVar] */
 	branches: string[][];
-	collectVar: string; // the collect Code node var
+	mergeVar: string; // the Merge node var (waits for all branches)
+	collectVar: string; // the collect Code node var (restructures data)
 }
 
 interface TranspilerContext {
@@ -187,6 +188,8 @@ interface TranspilerContext {
 	setCounter: number;
 	aggCounter: number;
 	collectCounter: number;
+	mergeCounter: number;
+
 	pendingStatements: Array<{ source: string; ast: AcornNode }>;
 	prevVar: string;
 	triggerType: CallbackInfo['triggerType'];
@@ -229,6 +232,49 @@ function resolveJsonRefs(str: string, ctx: TranspilerContext): string {
 			return `$('${sourceNode}').first().json.${root}${rest}`;
 		},
 	);
+}
+
+/**
+ * Convert a JSON string with embedded `={{ expr }}` values into a single
+ * n8n expression that builds the object at runtime.
+ *
+ * n8n's jsonBody parameter (type `json`) only evaluates expressions when the
+ * entire value is in Expression mode (starts with `=`). Embedded `={{ }}`
+ * in Fixed mode are treated as literal strings.
+ *
+ * Input:  `{"count":"={{ $('Node').first().json.x }}","name":"literal"}`
+ * Output: `={{ { "count": $('Node').first().json.x, "name": "literal" } }}`
+ */
+function jsonBodyToExpression(jsonStr: string): string {
+	try {
+		const obj = JSON.parse(jsonStr) as unknown;
+		return `={{ ${valueToExpr(obj)} }}`;
+	} catch {
+		// Fallback: return as-is if JSON parsing fails
+		return jsonStr;
+	}
+}
+
+/** Recursively convert a parsed JSON value to a JS expression string,
+ *  unwrapping any ={{ expr }} strings into raw expressions. */
+function valueToExpr(value: unknown): string {
+	if (typeof value === 'string') {
+		if (value.startsWith('={{') && value.endsWith('}}')) {
+			return value.slice(3, -2).trim();
+		}
+		return JSON.stringify(value);
+	}
+	if (value === null || typeof value === 'boolean' || typeof value === 'number') {
+		return JSON.stringify(value);
+	}
+	if (Array.isArray(value)) {
+		return `[${value.map(valueToExpr).join(', ')}]`;
+	}
+	if (typeof value === 'object' && value !== null) {
+		const entries = Object.entries(value).map(([k, v]) => `"${k}": ${valueToExpr(v)}`);
+		return `{ ${entries.join(', ')} }`;
+	}
+	return JSON.stringify(value);
 }
 
 // ─── Main Transpiler ─────────────────────────────────────────────────────────
@@ -352,17 +398,24 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 				// First callback: inline the function body
 				const fnDef = sharedPipelineDefs.get(sharedFnName)!;
 				const inlinedCb: CallbackInfo = { ...cb, callbackBody: fnDef.body };
-				const { nodes, chainExpr, loopBodies, tryCatchBodies, errorConnections, parallelGroups } =
-					transpileCallback(
-						inlinedCb,
-						source,
-						allNodes.length,
-						comments,
-						errors,
-						functionDefs,
-						compiledFunctions,
-						consumedComments,
-					);
+				const {
+					nodes,
+					chainExpr,
+					extraChains,
+					loopBodies,
+					tryCatchBodies,
+					errorConnections,
+					parallelGroups,
+				} = transpileCallback(
+					inlinedCb,
+					source,
+					allNodes.length,
+					comments,
+					errors,
+					functionDefs,
+					compiledFunctions,
+					consumedComments,
+				);
 				// First non-trigger node is the pipeline entry point
 				const pipelineNodes = nodes.filter((n) => n.kind !== 'trigger');
 				if (pipelineNodes.length > 0) {
@@ -370,6 +423,7 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 				}
 				allNodes.push(...nodes);
 				allChains.push(chainExpr);
+				if (extraChains) allChains.push(...extraChains);
 				allLoopBodies.push(...loopBodies);
 				allTryCatchBodies.push(...tryCatchBodies);
 				allErrorConnections.push(...errorConnections);
@@ -385,19 +439,27 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 			continue;
 		}
 
-		const { nodes, chainExpr, loopBodies, tryCatchBodies, errorConnections, parallelGroups } =
-			transpileCallback(
-				cb,
-				source,
-				allNodes.length,
-				comments,
-				errors,
-				functionDefs,
-				compiledFunctions,
-				consumedComments,
-			);
+		const {
+			nodes,
+			chainExpr,
+			extraChains,
+			loopBodies,
+			tryCatchBodies,
+			errorConnections,
+			parallelGroups,
+		} = transpileCallback(
+			cb,
+			source,
+			allNodes.length,
+			comments,
+			errors,
+			functionDefs,
+			compiledFunctions,
+			consumedComments,
+		);
 		allNodes.push(...nodes);
 		allChains.push(chainExpr);
+		if (extraChains) allChains.push(...extraChains);
 		allLoopBodies.push(...loopBodies);
 		allTryCatchBodies.push(...tryCatchBodies);
 		allErrorConnections.push(...errorConnections);
@@ -1015,6 +1077,7 @@ function compileFunctionToSDK(
 		setCounter: 0,
 		aggCounter: 0,
 		collectCounter: 0,
+		mergeCounter: 0,
 		pendingStatements: [],
 		prevVar: '',
 		triggerType: 'manual',
@@ -1121,6 +1184,7 @@ function transpileCallback(
 ): {
 	nodes: EmittedNode[];
 	chainExpr: string;
+	extraChains?: string[];
 	loopBodies: CompiledFunction[];
 	tryCatchBodies: CompiledFunction[];
 	errorConnections: Array<{ sourceVar: string; catchChainStartVar: string }>;
@@ -1141,6 +1205,7 @@ function transpileCallback(
 		setCounter: nodeOffset,
 		aggCounter: nodeOffset,
 		collectCounter: nodeOffset,
+		mergeCounter: nodeOffset,
 		pendingStatements: [],
 		prevVar: '',
 		triggerType: cb.triggerType,
@@ -1182,21 +1247,67 @@ function transpileCallback(
 	// Flush remaining code
 	flushPendingCode(ctx);
 
-	// Build chain expression
+	// Build chain expression, splitting at parallel group boundaries.
+	// Each parallel group's sourceVar ends a chain segment; the next segment
+	// starts from collectVar. This prevents a direct connection from source → collect
+	// (which would fire collect before parallel branches complete).
 	const nodeVars = ctx.nodes.filter((n) => !n.branchOnly).map((n) => n.varName);
-	let chainExpr: string;
-	if (nodeVars.length <= 1) {
-		chainExpr = nodeVars[0] ?? triggerVar;
-	} else {
-		chainExpr = nodeVars[0];
-		for (let i = 1; i < nodeVars.length; i++) {
-			chainExpr += `.to(${nodeVars[i]})`;
+
+	if (ctx.parallelGroups.length === 0) {
+		// No parallel groups — single chain
+		let chainExpr: string;
+		if (nodeVars.length <= 1) {
+			chainExpr = nodeVars[0] ?? triggerVar;
+		} else {
+			chainExpr = nodeVars[0];
+			for (let i = 1; i < nodeVars.length; i++) {
+				chainExpr += `.to(${nodeVars[i]})`;
+			}
+		}
+
+		return {
+			nodes: ctx.nodes,
+			chainExpr,
+			loopBodies: ctx.compiledLoopBodies,
+			tryCatchBodies: ctx.compiledTryCatchBodies,
+			errorConnections: ctx.errorConnections,
+			parallelGroups: ctx.parallelGroups,
+		};
+	}
+
+	// With parallel groups — split chain at boundaries
+	const parallelSourceVars = new Set(ctx.parallelGroups.map((g) => g.sourceVar));
+	const parallelCollectVars = new Map(ctx.parallelGroups.map((g) => [g.sourceVar, g.collectVar]));
+
+	// Split nodeVars into segments at parallel boundaries
+	const segments: string[][] = [[]];
+	for (const v of nodeVars) {
+		segments[segments.length - 1].push(v);
+		if (parallelSourceVars.has(v)) {
+			// End current segment, start new one from collectVar
+			const collectVar = parallelCollectVars.get(v)!;
+			segments.push([collectVar]);
 		}
 	}
+
+	// Build a chain expression per segment
+	const chainExprs: string[] = [];
+	for (const seg of segments) {
+		if (seg.length === 0) continue;
+		let expr = seg[0];
+		for (let i = 1; i < seg.length; i++) {
+			expr += `.to(${seg[i]})`;
+		}
+		chainExprs.push(expr);
+	}
+
+	// First segment is the main chain; remaining segments are extra .add() chains
+	const chainExpr = chainExprs.length > 0 ? chainExprs[0] : triggerVar;
 
 	return {
 		nodes: ctx.nodes,
 		chainExpr,
+		extraChains: chainExprs.slice(1),
 		loopBodies: ctx.compiledLoopBodies,
 		tryCatchBodies: ctx.compiledTryCatchBodies,
 		errorConnections: ctx.errorConnections,
@@ -1721,6 +1832,7 @@ const COUNTER_KEYS = [
 	'execCounter',
 	'tryCatchCounter',
 	'collectCounter',
+	'mergeCounter',
 ] as const;
 
 function syncCounters(target: TranspilerContext, source: TranspilerContext): void {
@@ -1745,6 +1857,7 @@ function createBranchContext(parentCtx: TranspilerContext): TranspilerContext {
 		setCounter: parentCtx.setCounter,
 		aggCounter: parentCtx.aggCounter,
 		collectCounter: parentCtx.collectCounter,
+		mergeCounter: parentCtx.mergeCounter,
 		pendingStatements: [],
 		prevVar: '',
 		triggerType: parentCtx.triggerType,
@@ -1999,6 +2112,30 @@ function processPromiseAll(ctx: TranspilerContext, stmt: AcornNode): void {
 		}
 	}
 
+	// Emit Merge node (waits for all branches to complete before firing)
+	ctx.mergeCounter++;
+	const mergeVar = `merge${ctx.mergeCounter}`;
+	const mergeNodeName = `Merge parallel ${ctx.mergeCounter}`;
+
+	const mergeSdkCode = `const ${mergeVar} = node({
+  type: 'n8n-nodes-base.merge', version: 3.2,
+  config: {
+    name: '${mergeNodeName}',
+    parameters: {
+      mode: 'append',
+      numberInputs: ${branches.length}
+    }
+  }
+});`;
+
+	ctx.nodes.push({
+		varName: mergeVar,
+		sdkCode: mergeSdkCode,
+		kind: 'code',
+		nodeName: mergeNodeName,
+		branchOnly: true,
+	});
+
 	// Emit "Collect parallel" Code node that references all aggregate results
 	ctx.collectCounter++;
 	const collectVar = `collect${ctx.collectCounter}`;
@@ -2030,12 +2167,14 @@ function processPromiseAll(ctx: TranspilerContext, stmt: AcornNode): void {
 		sdkCode: collectSdkCode,
 		kind: 'code',
 		nodeName: collectNodeName,
+		branchOnly: true,
 	});
 
 	// Record parallel group for SDK generation
 	ctx.parallelGroups.push({
 		sourceVar,
 		branches,
+		mergeVar,
 		collectVar,
 	});
 
@@ -2255,6 +2394,7 @@ function compileLoopBodyAsSubWorkflow(
 		setCounter: 0,
 		aggCounter: 0,
 		collectCounter: 0,
+		mergeCounter: 0,
 		pendingStatements: [],
 		prevVar: '',
 		triggerType: 'manual',
@@ -2638,6 +2778,7 @@ function compileTryCatchBodyAsSubWorkflow(
 		setCounter: 0,
 		aggCounter: 0,
 		collectCounter: 0,
+		mergeCounter: 0,
 		pendingStatements: [],
 		prevVar: '',
 		triggerType: 'manual',
@@ -3488,7 +3629,16 @@ function generateHttpSDK(
 			params.sendBody = true;
 			params.contentType = 'json';
 			params.specifyBody = 'json';
-			params.jsonBody = resolveJsonRefs(JSON.stringify(io.body), ctx);
+			const resolved = resolveJsonRefs(JSON.stringify(io.body), ctx);
+			// If the resolved JSON body contains n8n node references, wrap the
+			// entire value as a single expression. n8n's jsonBody parameter
+			// (type json) only evaluates expressions in Expression mode (value
+			// starts with =). Embedded ={{ }} in Fixed mode are literal strings.
+			if (resolved.includes("$('")) {
+				params.jsonBody = jsonBodyToExpression(resolved);
+			} else {
+				params.jsonBody = resolved;
+			}
 		}
 	}
 
@@ -3807,19 +3957,22 @@ function generateSDKCode(
 		}
 	}
 
-	// Parallel connections (Promise.all fan-out/convergence)
+	// Parallel connections (Promise.all fan-out/convergence via Merge node)
 	if (parallelGroups && parallelGroups.length > 0) {
 		for (const group of parallelGroups) {
-			for (const branch of group.branches) {
+			for (let bi = 0; bi < group.branches.length; bi++) {
+				const branch = group.branches[bi];
 				// Fan-out: sourceVar → first node of branch
 				lines.push(`${group.sourceVar}.to(${branch[0]});`);
 				// Intra-branch: chain nodes within each branch
 				for (let i = 0; i < branch.length - 1; i++) {
 					lines.push(`${branch[i]}.to(${branch[i + 1]});`);
 				}
-				// Convergence: last node of branch → collect node
-				lines.push(`${branch[branch.length - 1]}.to(${group.collectVar});`);
+				// Convergence: last node of branch → merge node input[N]
+				lines.push(`${branch[branch.length - 1]}.to(${group.mergeVar}.input(${bi}));`);
 			}
+			// Merge → Collect (restructure data)
+			lines.push(`${group.mergeVar}.to(${group.collectVar});`);
 			lines.push('');
 		}
 	}

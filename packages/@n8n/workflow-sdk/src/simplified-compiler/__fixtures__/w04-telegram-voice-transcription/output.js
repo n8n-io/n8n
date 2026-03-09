@@ -23,7 +23,7 @@ const http1 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"chat_id\":\"={{ $('Code 1').first().json.msg.message.chat.id }}\",\"text\":\"={{ $('Code 1').first().json.msg.message.text }}\"}"
+      "jsonBody": "={{ { \"chat_id\": $('Code 1').first().json.msg.message.chat.id, \"text\": $('Code 1').first().json.msg.message.text } }}"
     },
     "executeOnce": true
   }
@@ -65,7 +65,7 @@ const http3 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"file\":\"={{ $('Collect file').first().json.file.result.file_path }}\",\"model\":\"whisper-1\"}",
+      "jsonBody": "={{ { \"file\": $('Collect file').first().json.file.result.file_path, \"model\": \"whisper-1\" } }}",
       "authentication": "genericCredentialType",
       "genericAuthType": "httpHeaderAuth"
     },
@@ -97,7 +97,7 @@ const http4 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"chat_id\":\"={{ $('Code 1').first().json.msg.message.chat.id }}\",\"text\":\"={{ $('Collect transcription 2').first().json.transcription.text }}\"}"
+      "jsonBody": "={{ { \"chat_id\": $('Code 1').first().json.msg.message.chat.id, \"text\": $('Collect transcription 2').first().json.transcription.text } }}"
     },
     "executeOnce": true
   }

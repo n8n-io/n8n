@@ -37,7 +37,7 @@ const tc_tryCatch_1_http2 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"user\":\"={{ $('When Executed by Another Workflow').first().json.user.name }}\",\"postCount\":\"={{ $('Collect posts').first().json.posts.length }}\"}"
+      "jsonBody": "={{ { \"user\": $('When Executed by Another Workflow').first().json.user.name, \"postCount\": $('Collect posts').first().json.posts.length } }}"
     },
     "executeOnce": true
   }

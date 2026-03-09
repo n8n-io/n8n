@@ -66,7 +66,7 @@ const loop_wf_http2 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"message\":\"new\",\"content\":\"={{ $('Code 1').first().json.wfJson }}\"}",
+      "jsonBody": "={{ { \"message\": \"new\", \"content\": $('Code 1').first().json.wfJson } }}",
       "authentication": "genericCredentialType",
       "genericAuthType": "httpHeaderAuth"
     },
@@ -86,7 +86,7 @@ const loop_wf_http3 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"message\":\"updated\",\"content\":\"={{ $('Code 1').first().json.wfJson }}\",\"sha\":\"={{ $('Collect existing').first().json.existing.sha }}\"}",
+      "jsonBody": "={{ { \"message\": \"updated\", \"content\": $('Code 1').first().json.wfJson, \"sha\": $('Collect existing').first().json.existing.sha } }}",
       "authentication": "genericCredentialType",
       "genericAuthType": "httpHeaderAuth"
     },

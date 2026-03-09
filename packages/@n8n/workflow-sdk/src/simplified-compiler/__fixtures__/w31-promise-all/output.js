@@ -62,6 +62,17 @@ const agg2 = node({
   }
 });
 
+const merge1 = node({
+  type: 'n8n-nodes-base.merge', version: 3.2,
+  config: {
+    name: 'Merge parallel 1',
+    parameters: {
+      mode: 'append',
+      numberInputs: 2
+    }
+  }
+});
+
 const collect1 = node({
   type: 'n8n-nodes-base.code', version: 2,
   config: {
@@ -85,7 +96,7 @@ const http3 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"userCount\":\"={{ $('Collect parallel 1').first().json.users.length }}\",\"orderCount\":\"={{ $('Collect parallel 1').first().json.orders.length }}\",\"requestedBy\":\"={{ $('Code 1').first().json.userId }}\"}"
+      "jsonBody": "={{ { \"userCount\": $('Collect parallel 1').first().json.users.length, \"orderCount\": $('Collect parallel 1').first().json.orders.length, \"requestedBy\": $('Code 1').first().json.userId } }}"
     },
     "executeOnce": true
   }
@@ -93,10 +104,12 @@ const http3 = node({
 
 code1.to(http1);
 http1.to(agg1);
-agg1.to(collect1);
+agg1.to(merge1.input(0));
 code1.to(http2);
 http2.to(agg2);
-agg2.to(collect1);
+agg2.to(merge1.input(1));
+merge1.to(collect1);
 
 export default workflow('compiled', 'Compiled Workflow')
-  .add(t0.to(code1).to(collect1).to(http3));
+  .add(t0.to(code1))
+  .add(collect1.to(http3));

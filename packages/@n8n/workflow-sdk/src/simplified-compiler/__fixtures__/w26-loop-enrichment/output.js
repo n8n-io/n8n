@@ -62,7 +62,7 @@ const fn_enrichUser_http3 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"name\":\"={{ $('Collect user').first().json.user.name }}\",\"email\":\"={{ $('Collect user').first().json.user.email }}\",\"postCount\":\"={{ $('Collect posts 2').first().json.posts.length }}\"}"
+      "jsonBody": "={{ { \"name\": $('Collect user').first().json.user.name, \"email\": $('Collect user').first().json.user.email, \"postCount\": $('Collect posts 2').first().json.posts.length } }}"
     },
     "executeOnce": true
   }
@@ -167,7 +167,7 @@ const http2 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"processed\":\"={{ $('Code 1').first().json.pending.length }}\"}"
+      "jsonBody": "={{ { \"processed\": $('Code 1').first().json.pending.length } }}"
     },
     "executeOnce": true
   }

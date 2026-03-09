@@ -23,7 +23,7 @@ const http1 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"orderId\":\"={{ $('Code 1').first().json.order.id }}\",\"items\":\"={{ $('Code 1').first().json.order.items }}\"}"
+      "jsonBody": "={{ { \"orderId\": $('Code 1').first().json.order.id, \"items\": $('Code 1').first().json.order.items } }}"
     },
     "executeOnce": true
   }
@@ -71,7 +71,7 @@ const http5 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"orderId\":\"={{ $('Code 5').first().json.ret.orderId }}\",\"reason\":\"={{ $('Code 5').first().json.ret.reason }}\"}"
+      "jsonBody": "={{ { \"orderId\": $('Code 5').first().json.ret.orderId, \"reason\": $('Code 5').first().json.ret.reason } }}"
     },
     "executeOnce": true
   }

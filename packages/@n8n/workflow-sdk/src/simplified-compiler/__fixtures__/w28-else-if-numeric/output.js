@@ -23,7 +23,7 @@ const http1 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"grade\":\"A\",\"score\":\"={{ $('Code 1').first().json.score }}\"}"
+      "jsonBody": "={{ { \"grade\": \"A\", \"score\": $('Code 1').first().json.score } }}"
     },
     "executeOnce": true
   }
@@ -40,7 +40,7 @@ const http2 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"grade\":\"B\",\"score\":\"={{ $('Code 1').first().json.score }}\"}"
+      "jsonBody": "={{ { \"grade\": \"B\", \"score\": $('Code 1').first().json.score } }}"
     },
     "executeOnce": true
   }
@@ -57,7 +57,7 @@ const http3 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"grade\":\"F\",\"score\":\"={{ $('Code 1').first().json.score }}\"}"
+      "jsonBody": "={{ { \"grade\": \"F\", \"score\": $('Code 1').first().json.score } }}"
     },
     "executeOnce": true
   }

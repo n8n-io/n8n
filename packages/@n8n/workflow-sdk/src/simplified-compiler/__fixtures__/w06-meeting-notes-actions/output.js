@@ -82,7 +82,7 @@ const http2 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"title\":\"={{ $('Split items').first().json.description }}\"}",
+      "jsonBody": "={{ { \"title\": $('Split items').first().json.description } }}",
       "authentication": "genericCredentialType",
       "genericAuthType": "oAuth2Api"
     }
@@ -114,7 +114,7 @@ const http3 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"to\":\"={{ $('Split emails').first().json.recipient }}\",\"subject\":\"={{ $('Split emails').first().json.subject }}\"}",
+      "jsonBody": "={{ { \"to\": $('Split emails').first().json.recipient, \"subject\": $('Split emails').first().json.subject } }}",
       "authentication": "genericCredentialType",
       "genericAuthType": "oAuth2Api"
     }
