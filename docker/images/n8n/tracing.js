@@ -28,7 +28,8 @@ let OTLP_ENDPOINT = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
 if (!OTLP_ENDPOINT) {
   try {
     const otlpConfig = JSON.parse(process.env.NSOLID_OTLP_CONFIG || '{}');
-    OTLP_ENDPOINT = otlpConfig.url?.replace('/v1/traces', '').replace('/v1/metrics', '');
+    const parsedUrl = otlpConfig.url?.replace('/v1/traces', '').replace('/v1/metrics', '');
+    OTLP_ENDPOINT = parsedUrl || 'http://localhost:4318';
   } catch (e) {
     OTLP_ENDPOINT = 'http://localhost:4318';
   }
