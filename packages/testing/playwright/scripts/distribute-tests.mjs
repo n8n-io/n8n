@@ -48,9 +48,23 @@ function getRequiredImages(capabilities) {
 
 function getOrchestration(numShards, options = {}) {
 	const cliArgs = ['orchestrate', `--shards=${numShards}`];
-	if (options.impact) cliArgs.push('--impact');
-	if (options.base) cliArgs.push(`--base=${options.base}`);
-	if (options.files) {
+	let useImpact = options.impact;
+	if (useImpact && options.files) {
+		// If any changed file is outside the playwright project, the impact analyzer
+		// can't trace it — fall back to running all tests to be safe.
+		const files = options.files.split(',');
+		const externalFiles = files.filter((f) => !f.startsWith(PLAYWRIGHT_PREFIX));
+		if (externalFiles.length > 0) {
+			console.error(
+				`Impact: ${externalFiles.length} file(s) outside playwright project — running all tests`,
+			);
+			for (const f of externalFiles) console.error(`  - ${f}`);
+			useImpact = false;
+		}
+	}
+	if (useImpact) cliArgs.push('--impact');
+	if (useImpact && options.base) cliArgs.push(`--base=${options.base}`);
+	if (options.files && useImpact) {
 		// Normalize repo-root-relative paths to playwright-root-relative
 		// git diff gives 'packages/testing/playwright/foo.ts', janitor expects 'foo.ts'
 		const normalized = options.files
