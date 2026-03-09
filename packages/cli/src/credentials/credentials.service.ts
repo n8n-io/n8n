@@ -561,12 +561,18 @@ export class CredentialsService {
 		existingCredential: CredentialsEntity,
 	): Promise<CredentialsEntity> {
 		const decryptedData = this.decrypt(existingCredential, true);
-		validateExternalSecretsPermissions(user, data.data, decryptedData);
 
 		// eslint-disable-next-line @typescript-eslint/no-non-null-asserted-optional-chain -- credential will always have an owner
 		const projectOwningCredential = existingCredential.shared?.find(
 			(shared) => shared.role === 'credential:owner',
 		)!;
+
+		await validateExternalSecretsPermissions({
+			user,
+			projectId: projectOwningCredential.projectId,
+			dataToSave: data.data,
+			decryptedExistingData: decryptedData,
+		});
 
 		if (this.externalSecretsConfig.externalSecretsForProjects && data.data) {
 			await validateAccessToReferencedSecretProviders(
@@ -1003,7 +1009,12 @@ export class CredentialsService {
 	 * TODO: consider refactoring enable using this for both creating and updating, right now only used for creation
 	 * (likely only affects the validateExternalSecretsPermissions call)
 	 */
-	checkCredentialData(type: string, data: ICredentialDataDecryptedObject, user: User) {
+	async checkCredentialData(
+		type: string,
+		data: ICredentialDataDecryptedObject,
+		user: User,
+		projectId: string,
+	): Promise<void> {
 		// check mandatory fields are present
 		const credentialProperties = this.credentialsHelper.getCredentialsProperties(type);
 		for (const property of credentialProperties) {
@@ -1028,7 +1039,7 @@ export class CredentialsService {
 				}
 			}
 		}
-		validateExternalSecretsPermissions(user, data);
+		await validateExternalSecretsPermissions({ user, projectId, dataToSave: data });
 		this.validateOAuthCredentialUrls(type, data);
 	}
 
@@ -1069,7 +1080,12 @@ export class CredentialsService {
 	}
 
 	private async createCredential(opts: CreateCredentialOptions, user: User) {
-		this.checkCredentialData(opts.type, opts.data as ICredentialDataDecryptedObject, user);
+		await this.checkCredentialData(
+			opts.type,
+			opts.data as ICredentialDataDecryptedObject,
+			user,
+			opts.projectId ?? '',
+		);
 		if (this.externalSecretsConfig.externalSecretsForProjects && opts.projectId) {
 			await validateAccessToReferencedSecretProviders(
 				opts.projectId,
