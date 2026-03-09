@@ -61,7 +61,7 @@ async function deleteDocuments(
 		// and avoids leaving empty ghost namespaces after user deletion.
 		await namespace.deleteAll();
 	} else {
-		await namespace.deleteMany({ filter });
+		await namespace.deleteMany(filter);
 	}
 
 	return null;
