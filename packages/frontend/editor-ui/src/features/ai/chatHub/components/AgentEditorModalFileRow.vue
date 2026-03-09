@@ -55,7 +55,7 @@ const warningTooltip = computed<string | undefined>(() => {
 		</div>
 		<div :class="$style.indexedCell">
 			<N8nTooltip v-if="warningTooltip" :content="warningTooltip">
-				<N8nText size="small" color="warn" :class="$style.statusText">
+				<N8nText size="small" :class="$style.statusText">
 					<N8nIcon icon="triangle-alert" size="medium" :class="$style.iconWarning" />
 					{{ i18n.baseText('chatHub.agent.editor.files.unavailable') }}
 				</N8nText>
