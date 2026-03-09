@@ -49,7 +49,7 @@ const resourceAttributes = {
   'process.command_args': JSON.stringify(process.argv),
   'process.executable.name': 'node',
   'process.executable.path': process.execPath,
-  'process.runtime.description': 'Node.js',
+  'process.runtime.description': 'Node.js'
 };
 
 let resource;
@@ -66,11 +66,11 @@ if (typeof resourcesPkg.createResource === 'function') {
 }
 
 const traceExporter = new OTLPTraceExporter({
-  url: `${OTLP_ENDPOINT}/v1/traces`,
+  url: `${OTLP_ENDPOINT}/v1/traces`
 });
 
 const metricExporter = new OTLPMetricExporter({
-  url: `${OTLP_ENDPOINT}/v1/metrics`,
+  url: `${OTLP_ENDPOINT}/v1/metrics`
 });
 
 const sdk = new NodeSDK({
@@ -78,14 +78,13 @@ const sdk = new NodeSDK({
   traceExporter,
   metricReader: new PeriodicExportingMetricReader({
     exporter: metricExporter,
-    exportIntervalMillis: 10_000, // Export metrics every 10 seconds
+    exportIntervalMillis: 10_000 // Export metrics every 10 seconds
   }),
   instrumentations: [
     getNodeAutoInstrumentations({
-      // Enable HTTP, DNS, Express etc. automatically
-      '@opentelemetry/instrumentation-fs': { enabled: false }, // too noisy
-    }),
-  ],
+      '@opentelemetry/instrumentation-fs': { enabled: false } // too noisy
+    })
+  ]
 });
 
 sdk
@@ -108,28 +107,28 @@ const meter = metrics.getMeter('n8n-runtime-metrics', '1.0.0');
 // Memory gauges
 meter.createObservableGauge('process.memory.heap_used', {
   description: 'Heap memory used in bytes',
-  unit: 'By',
+  unit: 'By'
 }).addCallback((obs) => {
   obs.observe(process.memoryUsage().heapUsed);
 });
 
 meter.createObservableGauge('process.memory.heap_total', {
   description: 'Total heap memory in bytes',
-  unit: 'By',
+  unit: 'By'
 }).addCallback((obs) => {
   obs.observe(process.memoryUsage().heapTotal);
 });
 
 meter.createObservableGauge('process.memory.rss', {
   description: 'Resident set size in bytes',
-  unit: 'By',
+  unit: 'By'
 }).addCallback((obs) => {
   obs.observe(process.memoryUsage().rss);
 });
 
 meter.createObservableGauge('process.memory.external', {
   description: 'External memory used in bytes (C++ objects)',
-  unit: 'By',
+  unit: 'By'
 }).addCallback((obs) => {
   obs.observe(process.memoryUsage().external);
 });
@@ -140,7 +139,7 @@ let prevCpuTime = process.hrtime.bigint();
 
 meter.createObservableGauge('process.cpu.percent', {
   description: 'Total CPU usage as a percentage (0-100)',
-  unit: '%',
+  unit: '%'
 }).addCallback((obs) => {
   const now = process.hrtime.bigint();
   const currentCpu = process.cpuUsage();
@@ -159,7 +158,7 @@ meter.createObservableGauge('process.cpu.percent', {
 // Event loop lag
 meter.createObservableGauge('nodejs.eventloop.lag', {
   description: 'Event loop lag in milliseconds',
-  unit: 'ms',
+  unit: 'ms'
 }).addCallback((obs) => {
   obs.observe(eventLoopLag);
 });
@@ -177,20 +176,20 @@ measureEventLoopLag();
 // V8 heap statistics
 meter.createObservableGauge('nodejs.heap.size_limit', {
   description: 'V8 heap size limit in bytes',
-  unit: 'By',
+  unit: 'By'
 }).addCallback((obs) => {
   obs.observe(v8.getHeapStatistics().heap_size_limit);
 });
 
 // Active handles and requests
 meter.createObservableGauge('nodejs.active_handles', {
-  description: 'Number of active libuv handles',
+  description: 'Number of active libuv handles'
 }).addCallback((obs) => {
   obs.observe(process._getActiveHandles ? process._getActiveHandles().length : 0);
 });
 
 meter.createObservableGauge('nodejs.active_requests', {
-  description: 'Number of active libuv requests',
+  description: 'Number of active libuv requests'
 }).addCallback((obs) => {
   obs.observe(process._getActiveRequests ? process._getActiveRequests().length : 0);
 });
@@ -199,6 +198,6 @@ meter.createObservableGauge('nodejs.active_requests', {
 process.on('SIGTERM', () => {
   sdk.shutdown().then(
     () => console.log('OpenTelemetry SDK shut down'),
-    (err) => console.error('Error shutting down SDK', err),
+    (err) => console.error('Error shutting down SDK', err)
   );
 });
