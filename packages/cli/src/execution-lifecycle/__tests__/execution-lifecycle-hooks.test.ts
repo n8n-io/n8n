@@ -755,6 +755,58 @@ describe('Execution Lifecycle Hooks', () => {
 					expect(executionPersistence.hardDelete).not.toHaveBeenCalled();
 					expect(executionRepository.updateExistingExecution).toHaveBeenCalled();
 				});
+
+				it('should fall back to workflow settings when run has no runData', async () => {
+					workflowData.settings = { saveDataSuccessExecution: 'none' as const };
+					lifecycleHooks = createHooks('trigger');
+
+					const runWithNoRunData = mock<IRun>({
+						status: 'success',
+						finished: true,
+						waitTill: undefined,
+						storedAt: 'db',
+					});
+					runWithNoRunData.data = createRunExecutionData({
+						resultData: {},
+					});
+
+					await lifecycleHooks.runHook('workflowExecuteAfter', [runWithNoRunData, {}]);
+
+					expect(executionPersistence.hardDelete).toHaveBeenCalled();
+				});
+
+				it('should skip override scan when workflow has no SaveExecution node', async () => {
+					workflowData.nodes = workflowData.nodes.filter((n) => n !== saveExecutionNode);
+					workflowData.settings = { saveDataSuccessExecution: 'all' as const };
+					lifecycleHooks = createHooks('trigger');
+
+					const runWithOrphanedMetadata = mock<IRun>({
+						status: 'success',
+						finished: true,
+						waitTill: undefined,
+						storedAt: 'db',
+					});
+					runWithOrphanedMetadata.data = createRunExecutionData({
+						resultData: {
+							runData: {
+								'Some Node': [
+									{
+										startTime: 0,
+										executionTime: 0,
+										executionIndex: 0,
+										source: [],
+										metadata: { saveExecution: false },
+									},
+								],
+							},
+						},
+					});
+
+					await lifecycleHooks.runHook('workflowExecuteAfter', [runWithOrphanedMetadata, {}]);
+
+					expect(executionPersistence.hardDelete).not.toHaveBeenCalled();
+					expect(executionRepository.updateExistingExecution).toHaveBeenCalled();
+				});
 			});
 
 			describe('error workflow', () => {
@@ -1151,6 +1203,63 @@ describe('Execution Lifecycle Hooks', () => {
 					]);
 
 					expect(executionPersistence.hardDelete).toHaveBeenCalled();
+				});
+
+				it('should fall back to workflow settings when run has no runData', async () => {
+					workflowData.settings = { saveDataSuccessExecution: 'none' as const };
+					lifecycleHooks = getLifecycleHooksForScalingMain(
+						{ executionMode: 'webhook', workflowData, pushRef, retryOf },
+						executionId,
+					);
+
+					const runWithNoRunData = mock<IRun>({
+						status: 'success',
+						finished: true,
+						waitTill: undefined,
+						storedAt: 'db',
+					});
+					runWithNoRunData.data = createRunExecutionData({
+						resultData: {},
+					});
+
+					await lifecycleHooks.runHook('workflowExecuteAfter', [runWithNoRunData, {}]);
+
+					expect(executionPersistence.hardDelete).toHaveBeenCalled();
+				});
+
+				it('should skip override scan when workflow has no SaveExecution node', async () => {
+					workflowData.nodes = workflowData.nodes.filter((n) => n !== saveExecutionNode);
+					workflowData.settings = { saveDataSuccessExecution: 'all' as const };
+					lifecycleHooks = getLifecycleHooksForScalingMain(
+						{ executionMode: 'webhook', workflowData, pushRef, retryOf },
+						executionId,
+					);
+
+					const runWithOrphanedMetadata = mock<IRun>({
+						status: 'success',
+						finished: true,
+						waitTill: undefined,
+						storedAt: 'db',
+					});
+					runWithOrphanedMetadata.data = createRunExecutionData({
+						resultData: {
+							runData: {
+								'Some Node': [
+									{
+										startTime: 0,
+										executionTime: 0,
+										executionIndex: 0,
+										source: [],
+										metadata: { saveExecution: false },
+									},
+								],
+							},
+						},
+					});
+
+					await lifecycleHooks.runHook('workflowExecuteAfter', [runWithOrphanedMetadata, {}]);
+
+					expect(executionPersistence.hardDelete).not.toHaveBeenCalled();
 				});
 			});
 		});
