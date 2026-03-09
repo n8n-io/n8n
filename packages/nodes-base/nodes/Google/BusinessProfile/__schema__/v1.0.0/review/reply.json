@@ -1,12 +1,12 @@
 {
     "type": "object",
     "properties": {
-        "_id": {
+        "comment": {
             "type": "string"
         },
-        "timestamp": {
+        "updateTime": {
             "type": "string"
         }
     },
-    "version": 4
+    "version": 1
 }

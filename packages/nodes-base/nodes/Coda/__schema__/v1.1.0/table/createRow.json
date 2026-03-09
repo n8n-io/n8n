@@ -1,27 +1,24 @@
 {
     "type": "object",
     "properties": {
-        "creation": {
+        "InboundMessage": {
             "type": "string"
         },
-        "docstatus": {
-            "type": "integer"
-        },
-        "idx": {
-            "type": "integer"
-        },
-        "modified": {
+        "LeadEmail": {
             "type": "string"
         },
-        "modified_by": {
+        "LeadID": {
             "type": "string"
         },
-        "name": {
+        "LeadLinkedInURL": {
             "type": "string"
         },
-        "owner": {
+        "LeadName": {
+            "type": "string"
+        },
+        "MsgStatus": {
             "type": "string"
         }
     },
-    "version": 2
+    "version": 1
 }
