@@ -26,10 +26,11 @@ jobs:
           skyramp_license_file: ${{ secrets.SKYRAMP_LICENSE }}
           anthropic_api_key: ${{ secrets.SKYRAMP_TESTBOT_API_KEY }}
 
-          service_startup_command: './deployment-testbot/setup.sh'
-          health_check_command: 'curl -f http://localhost:5678/healthz'
-          health_check_timeout: 60
+          target_setup_command: './deployment-testbot/setup.sh'
+          target_ready_check_command: 'curl -f http://localhost:5678/healthz'
+          target_ready_check_timeout: 60
           auth_token_command: './deployment-testbot/get-token.sh'
+          target_teardown_command: 'docker compose -f deployment-testbot/docker-compose.yml down'
 
           test_directory: 'test'
           auto_commit: true
