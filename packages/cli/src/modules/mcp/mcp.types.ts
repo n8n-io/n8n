@@ -3,7 +3,7 @@ import type { User } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 import type z from 'zod';
 
-import type { SUPPORTED_MCP_TRIGGERS } from './mcp.constants';
+import type { SUPPORTED_PRODUCTION_MCP_TRIGGERS } from './mcp.constants';
 import type { WorkflowDetailsOutputSchema } from './tools/get-workflow-details.tool';
 
 export type ToolDefinition<InputArgs extends z.ZodRawShape = z.ZodRawShape> = {
@@ -33,13 +33,14 @@ export type SearchWorkflowsParams = {
 export type SearchWorkflowsItem = {
 	id: string;
 	name: string | null;
+	description?: string | null;
 	active: boolean | null;
 	createdAt: string | null;
 	updatedAt: string | null;
 	triggerCount: number | null;
-	nodes: Array<{ name: string; type: string }>;
 	scopes: string[];
 	canExecute: boolean;
+	availableInMCP: boolean;
 };
 
 export type SearchWorkflowsResult = {
@@ -84,7 +85,10 @@ export type WorkflowNotFoundReason =
 	| 'no_permission'
 	| 'workflow_archived'
 	| 'not_available_in_mcp'
-	| 'unsupported_trigger';
+	| 'workflow_not_active'
+	| 'unsupported_trigger'
+	| 'execution_does_not_exist'
+	| 'execution_workflow_mismatch';
 
 export type UserCalledMCPToolEventPayload = {
 	user_id?: string;
@@ -98,10 +102,8 @@ export type UserCalledMCPToolEventPayload = {
 	};
 };
 
-type SupportedTriggerNodeTypes = keyof typeof SUPPORTED_MCP_TRIGGERS;
-
 export type MCPTriggersMap = {
-	[K in SupportedTriggerNodeTypes]: INode[];
+	[K in keyof typeof SUPPORTED_PRODUCTION_MCP_TRIGGERS]: INode[];
 };
 
 export type AuthFailureReason =

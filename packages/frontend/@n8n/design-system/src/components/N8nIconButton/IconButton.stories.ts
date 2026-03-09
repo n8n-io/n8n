@@ -4,7 +4,7 @@ import { action } from 'storybook/actions';
 import N8nIconButton from './IconButton.vue';
 
 export default {
-	title: 'Atoms/Icon Button',
+	title: 'Core/Icon Button',
 	component: N8nIconButton,
 	argTypes: {
 		type: {

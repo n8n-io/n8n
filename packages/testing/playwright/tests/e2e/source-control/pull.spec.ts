@@ -13,139 +13,141 @@ async function expectPullSuccess(n8n: n8nPage) {
 
 // Skipped: These tests are flaky. Re-enable when PAY-4365 is resolved.
 // https://linear.app/n8n/issue/PAY-4365/bug-source-control-operations-fail-in-multi-main-deployment
-test.describe('Pull resources from Git @capability:source-control @fixme', {
-	annotation: [
-		{ type: 'owner', description: 'Lifecycle & Governance' },
-	],
-}, () => {
-	test.fixme();
+test.describe(
+	'Pull resources from Git @capability:source-control',
+	{
+		annotation: [{ type: 'owner', description: 'Lifecycle & Governance' }],
+	},
+	() => {
+		test.fixme();
 
-	let gitRepo: GitRepoHelper;
+		let gitRepo: GitRepoHelper;
 
-	test.beforeEach(async ({ n8n, services }) => {
-		await n8n.api.enableFeature('sourceControl');
-		await n8n.api.enableFeature('variables');
-		gitRepo = await setupGitRepo(n8n, services.gitea);
-	});
-
-	test('should pull new resources from remote', async ({ n8n }) => {
-		// create project
-		const project = await n8n.api.projects.createProject('Test Project');
-		const folder = await n8n.api.projects.createFolder(project.id, 'Test Folder');
-		// create folder
-		const workflow = await n8n.api.workflows.createInProject(project.id, {
-			name: 'Pull Test Workflow',
-			folder: folder.id,
-		});
-		const credential = await n8n.api.credentials.createCredential({
-			name: 'Test Credential',
-			type: 'notionApi',
-			data: { apiKey: '1234567890' },
-			projectId: project.id,
-		});
-		const variable = await n8n.api.variables.createVariable({
-			key: 'PULL_TEST_VARIABLE',
-			value: 'test-value',
-			projectId: project.id,
+		test.beforeEach(async ({ n8n, services }) => {
+			await n8n.api.enableFeature('sourceControl');
+			await n8n.api.enableFeature('variables');
+			gitRepo = await setupGitRepo(n8n, services.gitea);
 		});
 
-		const tag = await n8n.api.tags.create('pull-test-tag');
+		test('should pull new resources from remote', async ({ n8n }) => {
+			// create project
+			const project = await n8n.api.projects.createProject('Test Project');
+			const folder = await n8n.api.projects.createFolder(project.id, 'Test Folder');
+			// create folder
+			const workflow = await n8n.api.workflows.createInProject(project.id, {
+				name: 'Pull Test Workflow',
+				folder: folder.id,
+			});
+			const credential = await n8n.api.credentials.createCredential({
+				name: 'Test Credential',
+				type: 'notionApi',
+				data: { apiKey: '1234567890' },
+				projectId: project.id,
+			});
+			const variable = await n8n.api.variables.createVariable({
+				key: 'PULL_TEST_VARIABLE',
+				value: 'test-value',
+				projectId: project.id,
+			});
 
-		// push all resources
-		await n8n.api.sourceControl.pushWorkFolder({
-			commitMessage: 'Initial push',
+			const tag = await n8n.api.tags.create('pull-test-tag');
+
+			// push all resources
+			await n8n.api.sourceControl.pushWorkFolder({
+				commitMessage: 'Initial push',
+			});
+
+			// disconnect
+			await n8n.api.sourceControl.disconnect();
+
+			// delete created resources
+			await n8n.api.projects.deleteProject(project.id); // This also deletes all related resources
+			await n8n.api.tags.delete(tag.id);
+
+			// re-connect to source control
+			await n8n.api.sourceControl.connect({ repositoryUrl: gitRepo.repoUrl });
+
+			// pull all resources
+			await n8n.navigate.toHome();
+			await n8n.sideBar.getSourceControlPullButton().click();
+			await expectPullSuccess(n8n);
+
+			// check that all new resources are pulled
+			await n8n.navigate.toProjectSettings(project.id);
+			await expect(n8n.projectSettings.getTitle()).toHaveText(project.name);
+
+			await n8n.projectTabs.clickCredentialsTab();
+			await expect(n8n.credentials.cards.getCredential(credential.name)).toBeVisible();
+
+			await n8n.projectTabs.clickVariablesTab();
+			await expect(n8n.variables.getVariableRow(variable.key)).toBeVisible();
+
+			await n8n.projectTabs.clickWorkflowsTab();
+			await expect(n8n.workflows.cards.getFolder(folder.name)).toBeVisible();
+
+			await n8n.workflows.cards.openFolder(folder.name);
+			await expect(n8n.workflows.cards.getWorkflow(workflow.name)).toBeVisible();
+
+			await n8n.workflows.cards.clickWorkflowCard(workflow.name);
+			await n8n.canvas.openTagManagerModal();
+			await expect(n8n.canvas.tagsManagerModal.getModal()).toBeVisible();
+			await expect(n8n.canvas.tagsManagerModal.getTable()).toBeVisible();
+			await expect(n8n.canvas.tagsManagerModal.getTable().getByText('pull-test-tag')).toBeVisible();
 		});
 
-		// disconnect
-		await n8n.api.sourceControl.disconnect();
+		test('should pull modified and deleted resources from remote', async ({ n8n }) => {
+			const project = await n8n.api.projects.createProject('Pull Test Project');
+			const workflow = await n8n.api.workflows.createInProject(project.id, {
+				name: 'Pull Test Workflow',
+			});
 
-		// delete created resources
-		await n8n.api.projects.deleteProject(project.id); // This also deletes all related resources
-		await n8n.api.tags.delete(tag.id);
+			// push
+			await n8n.api.sourceControl.pushWorkFolder({
+				commitMessage: 'Initial push',
+			});
 
-		// re-connect to source control
-		await n8n.api.sourceControl.connect({ repositoryUrl: gitRepo.repoUrl });
+			// disconnect
+			await n8n.api.sourceControl.disconnect();
 
-		// pull all resources
-		await n8n.navigate.toHome();
-		await n8n.sideBar.getSourceControlPullButton().click();
-		await expectPullSuccess(n8n);
+			// modify workflow
+			await n8n.navigate.toWorkflow(workflow.id);
+			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
+			await n8n.canvas.waitForSaveWorkflowCompleted();
 
-		// check that all new resources are pulled
-		await n8n.navigate.toProjectSettings(project.id);
-		await expect(n8n.projectSettings.getTitle()).toHaveText(project.name);
+			// add new workflow
+			await n8n.api.workflows.createInProject(project.id, {
+				name: 'New Workflow',
+			});
 
-		await n8n.projectTabs.clickCredentialsTab();
-		await expect(n8n.credentials.cards.getCredential(credential.name)).toBeVisible();
+			// re-connect to source control
+			await n8n.api.sourceControl.connect({ repositoryUrl: gitRepo.repoUrl });
 
-		await n8n.projectTabs.clickVariablesTab();
-		await expect(n8n.variables.getVariableRow(variable.key)).toBeVisible();
+			// pull
+			await n8n.navigate.toHome();
+			await n8n.sideBar.getSourceControlPullButton().click();
+			await expect(n8n.sourceControlPullModal.getModal()).toBeVisible();
 
-		await n8n.projectTabs.clickWorkflowsTab();
-		await expect(n8n.workflows.cards.getFolder(folder.name)).toBeVisible();
+			// check that conflicts are detected
+			await n8n.sourceControlPullModal.selectWorkflowsTab();
+			await expect(n8n.sourceControlPullModal.getFileInModal('New Workflow')).toBeVisible();
+			await expect(
+				n8n.sourceControlPullModal.getStatusBadge('New Workflow', 'Deleted'),
+			).toBeVisible();
 
-		await n8n.workflows.cards.openFolder(folder.name);
-		await expect(n8n.workflows.cards.getWorkflow(workflow.name)).toBeVisible();
+			await expect(n8n.sourceControlPullModal.getFileInModal('Pull Test Workflow')).toBeVisible();
+			await expect(
+				n8n.sourceControlPullModal.getStatusBadge('Pull Test Workflow', 'Modified'),
+			).toBeVisible();
 
-		await n8n.workflows.cards.clickWorkflowCard(workflow.name);
-		await n8n.canvas.openTagManagerModal();
-		await expect(n8n.canvas.tagsManagerModal.getModal()).toBeVisible();
-		await expect(n8n.canvas.tagsManagerModal.getTable()).toBeVisible();
-		await expect(n8n.canvas.tagsManagerModal.getTable().getByText('pull-test-tag')).toBeVisible();
-	});
+			// click on pull & override button
+			await n8n.sourceControlPullModal.getPullAndOverrideButton().click();
+			await expectPullSuccess(n8n);
 
-	test('should pull modified and deleted resources from remote', async ({ n8n }) => {
-		const project = await n8n.api.projects.createProject('Pull Test Project');
-		const workflow = await n8n.api.workflows.createInProject(project.id, {
-			name: 'Pull Test Workflow',
+			// check pulled resources
+			await n8n.navigate.toWorkflow(workflow.id);
+			await expect(n8n.canvas.getWorkflowName()).toHaveAttribute('title', 'Pull Test Workflow');
+			await n8n.navigate.toHome();
+			await expect(n8n.workflows.cards.getWorkflow('New Workflow')).toBeHidden();
 		});
-
-		// push
-		await n8n.api.sourceControl.pushWorkFolder({
-			commitMessage: 'Initial push',
-		});
-
-		// disconnect
-		await n8n.api.sourceControl.disconnect();
-
-		// modify workflow
-		await n8n.navigate.toWorkflow(workflow.id);
-		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
-		await n8n.canvas.waitForSaveWorkflowCompleted();
-
-		// add new workflow
-		await n8n.api.workflows.createInProject(project.id, {
-			name: 'New Workflow',
-		});
-
-		// re-connect to source control
-		await n8n.api.sourceControl.connect({ repositoryUrl: gitRepo.repoUrl });
-
-		// pull
-		await n8n.navigate.toHome();
-		await n8n.sideBar.getSourceControlPullButton().click();
-		await expect(n8n.sourceControlPullModal.getModal()).toBeVisible();
-
-		// check that conflicts are detected
-		await n8n.sourceControlPullModal.selectWorkflowsTab();
-		await expect(n8n.sourceControlPullModal.getFileInModal('New Workflow')).toBeVisible();
-		await expect(
-			n8n.sourceControlPullModal.getStatusBadge('New Workflow', 'Deleted'),
-		).toBeVisible();
-
-		await expect(n8n.sourceControlPullModal.getFileInModal('Pull Test Workflow')).toBeVisible();
-		await expect(
-			n8n.sourceControlPullModal.getStatusBadge('Pull Test Workflow', 'Modified'),
-		).toBeVisible();
-
-		// click on pull & override button
-		await n8n.sourceControlPullModal.getPullAndOverrideButton().click();
-		await expectPullSuccess(n8n);
-
-		// check pulled resources
-		await n8n.navigate.toWorkflow(workflow.id);
-		await expect(n8n.canvas.getWorkflowName()).toHaveAttribute('title', 'Pull Test Workflow');
-		await n8n.navigate.toHome();
-		await expect(n8n.workflows.cards.getWorkflow('New Workflow')).toBeHidden();
-	});
-});
+	},
+);

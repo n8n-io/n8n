@@ -178,6 +178,7 @@
 	&.whats-new-notification {
 		bottom: var(--spacing--xs) !important;
 		left: var(--spacing--sm) !important;
+		margin-bottom: 0;
 		width: 300px;
 		padding: var(--spacing--xs);
 		border: var(--border);

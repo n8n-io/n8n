@@ -310,6 +310,10 @@ async function startExecution(
 		// This one already contains changes to talk to parent process
 		// and get executionID from `activeExecutions` running on main process
 		additionalDataIntegrated.executeWorkflow = additionalData.executeWorkflow;
+		// Propagate the root execution mode so nested subworkflows retain the original
+		// mode (e.g. 'manual') even though their own WorkflowExecute runs as 'integrated'
+		additionalDataIntegrated.rootExecutionMode =
+			additionalData.rootExecutionMode ?? options.executionMode;
 		if (additionalData.httpResponse) {
 			additionalDataIntegrated.httpResponse = additionalData.httpResponse;
 		}

@@ -6,7 +6,7 @@ import N8nLink from '../N8nLink';
 import N8nText from '../N8nText';
 
 export default {
-	title: 'Atoms/ActionBox',
+	title: 'Core/ActionBox',
 	component: N8nActionBox,
 	argTypes: {
 		calloutTheme: {

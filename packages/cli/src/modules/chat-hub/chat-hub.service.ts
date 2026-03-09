@@ -700,7 +700,7 @@ export class ChatHubService {
 
 				const lastHumanMessageIndex = history.indexOf(lastHumanMessage);
 				if (lastHumanMessageIndex !== -1) {
-					history.splice(lastHumanMessageIndex + 1);
+					history.splice(lastHumanMessageIndex);
 				}
 
 				const retryOfMessageId = messageToRetry.retryOfMessageId ?? messageToRetry.id;
