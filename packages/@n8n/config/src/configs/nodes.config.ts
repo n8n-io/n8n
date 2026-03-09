@@ -42,4 +42,19 @@ export class NodesConfig {
 	/** Whether to enable Python execution on the Code node. */
 	@Env('N8N_PYTHON_ENABLED')
 	pythonEnabled: boolean = true;
+
+	/**
+	 * Isolation driver used by the Secure Exec node.
+	 * `auto` (default) picks Docker → Bubblewrap → Host in order of availability.
+	 */
+	@Env('N8N_SECURE_EXEC_DRIVER')
+	secureExecDriver: 'auto' | 'docker' | 'bubblewrap' | 'host' = 'auto';
+
+	/** Default Docker image for the Secure Exec node when using the Docker driver. */
+	@Env('N8N_SECURE_EXEC_DOCKER_IMAGE')
+	secureExecDockerImage: string = 'ubuntu:24.04';
+
+	/** Default timeout in milliseconds for Secure Exec node commands. */
+	@Env('N8N_SECURE_EXEC_TIMEOUT_MS')
+	secureExecTimeoutMs: number = 30_000;
 }

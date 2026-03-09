@@ -751,6 +751,7 @@
       "dist/nodes/Schedule/ScheduleTrigger.node.js",
       "dist/nodes/SeaTable/SeaTable.node.js",
       "dist/nodes/SeaTable/SeaTableTrigger.node.js",
+      "dist/nodes/SecureExec/SecureExec.node.js",
       "dist/nodes/SecurityScorecard/SecurityScorecard.node.js",
       "dist/nodes/Segment/Segment.node.js",
       "dist/nodes/SendGrid/SendGrid.node.js",
