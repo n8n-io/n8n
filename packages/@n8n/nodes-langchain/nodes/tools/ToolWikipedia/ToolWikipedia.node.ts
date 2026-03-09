@@ -10,8 +10,7 @@ import {
 	nodeNameToToolName,
 } from 'n8n-workflow';
 
-import { logWrapper } from '@n8n/ai-utilities';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 function getTool(ctx: ISupplyDataFunctions | IExecuteFunctions): WikipediaQueryRun {
 	const WikiTool = new WikipediaQueryRun();

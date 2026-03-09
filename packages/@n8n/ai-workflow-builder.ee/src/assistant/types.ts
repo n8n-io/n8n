@@ -15,7 +15,7 @@ export interface AssistantSdkClient {
  * Writer function for streaming chunks to the consumer.
  * Both adapters (subgraph config.writer and tool config.writer) pass their own writer.
  */
-export type StreamWriter = (chunk: StreamChunk) => void;
+export type StreamWriter = (chunk: StreamChunk) => void | Promise<void>;
 
 /**
  * Framework-agnostic input context for the assistant handler.

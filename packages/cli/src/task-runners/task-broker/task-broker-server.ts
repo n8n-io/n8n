@@ -170,8 +170,14 @@ export class TaskBrokerServer {
 			send(async (req) => await this.authController.createGrantToken(req)),
 		);
 
-		const healthPath = this.globalConfig.endpoints.health;
-		this.app.get(healthPath, (_, res) => {
+		// The task broker is an internal server (not publicly accessible) used
+		// exclusively by the task-runner-launcher. Its health endpoint must always
+		// be /healthz, independent of N8N_ENDPOINT_HEALTH, which is intended for
+		// external-facing servers. Platforms such as Cloud Run reserve /healthz at
+		// the ingress level, so users set N8N_ENDPOINT_HEALTH=health to avoid
+		// conflicts on the public URL — but that restriction does not apply to
+		// internal container-to-container traffic on the broker port.
+		this.app.get('/healthz', (_, res) => {
 			res.send({ status: 'ok' });
 		});
 	}

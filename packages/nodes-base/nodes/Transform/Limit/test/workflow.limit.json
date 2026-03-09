@@ -11,11 +11,27 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  {entry: 1},\n  {entry: 2},\n  {entry: 3},\n  {entry: 4},\n  {entry: 5},\n];"
+				"data": [
+					{
+						"entry": 1
+					},
+					{
+						"entry": 2
+					},
+					{
+						"entry": 3
+					},
+					{
+						"entry": 4
+					},
+					{
+						"entry": 5
+					}
+				]
 			},
 			"id": "21185d7a-f0c1-49a0-9c2d-f0f198ceea7e",
 			"name": "Code",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [520, 180]
 		},

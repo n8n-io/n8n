@@ -27,7 +27,8 @@
 				{ "code": "DISCONNECTED_NODE", "nodeName": "Edit Fields6" },
 				{ "code": "MERGE_SINGLE_INPUT", "nodeName": "Merge7" },
 				{ "code": "MERGE_SINGLE_INPUT", "nodeName": "Merge6" },
-				{ "code": "MERGE_SINGLE_INPUT", "nodeName": "Merge10" }
+				{ "code": "MERGE_SINGLE_INPUT", "nodeName": "Merge10" },
+				{ "code": "MERGE_SINGLE_INPUT", "nodeName": "Merge12" }
 			]
 		},
 		{

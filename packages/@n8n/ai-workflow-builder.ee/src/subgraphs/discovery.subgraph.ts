@@ -45,7 +45,11 @@ import {
 	type ResourceOperationInfo,
 } from '@/utils/resource-operation-extractor';
 import { appendArrayReducer, cachedTemplatesReducer } from '@/utils/state-reducers';
-import { executeSubgraphTools, extractUserRequest } from '@/utils/subgraph-helpers';
+import {
+	executeSubgraphTools,
+	extractUserRequest,
+	extractToolMessagesForPersistence,
+} from '@/utils/subgraph-helpers';
 import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
 import { BaseSubgraph } from './subgraph-interface';
@@ -732,6 +736,10 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			}),
 		};
 
+		// Extract tool-related messages for persistence (skip the first context message).
+		// This allows the frontend to restore UI state after page refresh.
+		const toolMessages = extractToolMessagesForPersistence(subgraphOutput.messages);
+
 		// If the modify-loop cap was reached, the subgraph exited with the
 		// last plan but planDecision is still 'modify'. Clear it so the
 		// parent router doesn't send the flow back to discovery again,
@@ -756,6 +764,8 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			planPrevious: subgraphOutput.planPrevious,
 			...(subgraphOutput.mode ? { mode: subgraphOutput.mode } : {}),
 			introspectionEvents,
+			// Include tool messages for persistence to restore frontend state on refresh
+			messages: toolMessages,
 		};
 	}
 }

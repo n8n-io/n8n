@@ -161,6 +161,18 @@ export type PubSubCommandMap = {
 	};
 
 	// #endregion
+
+	// #region Evaluation
+
+	/**
+	 * Cancel a test run across all main instances.
+	 * Used in multi-main mode to signal cancellation to the instance running the test.
+	 */
+	'cancel-test-run': {
+		testRunId: string;
+	};
+
+	// #endregion
 };
 
 export type PubSubWorkerResponseMap = {

@@ -4,6 +4,8 @@ import BaseLayout from './BaseLayout.vue';
 import { useLayoutProps } from '@/app/composables/useLayoutProps';
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { useWorkflowInitialization } from '@/app/composables/useWorkflowInitialization';
+import { usePostMessageHandler } from '@/app/composables/usePostMessageHandler';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import AskAssistantFloatingButton from '@/features/ai/assistant/components/Chat/AskAssistantFloatingButton.vue';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import AppHeader from '@/app/components/app/AppHeader.vue';
@@ -18,6 +20,7 @@ import {
 
 const { layoutProps } = useLayoutProps();
 const assistantStore = useAssistantStore();
+const pushConnectionStore = usePushConnectionStore();
 
 const workflowState = useWorkflowState();
 provide(WorkflowStateKey, workflowState);
@@ -36,7 +39,14 @@ const {
 provide(WorkflowIdKey, workflowId);
 provide(WorkflowDocumentStoreKey, currentWorkflowDocumentStore);
 
+const { setup: setupPostMessages, cleanup: cleanupPostMessages } = usePostMessageHandler({
+	workflowState,
+	currentWorkflowDocumentStore,
+});
+
 onMounted(async () => {
+	pushConnectionStore.pushConnect();
+	setupPostMessages();
 	await initializeData();
 	await initializeWorkflow();
 });
@@ -64,7 +74,11 @@ watch(
 	{ flush: 'post' },
 );
 
-onBeforeUnmount(() => cleanup());
+onBeforeUnmount(() => {
+	pushConnectionStore.pushDisconnect();
+	cleanupPostMessages();
+	cleanup();
+});
 </script>
 
 <template>
@@ -76,11 +90,7 @@ onBeforeUnmount(() => cleanup());
 			<AppSidebar />
 		</template>
 		<LoadingView v-if="isLoading" />
-		<RouterView v-else v-slot="{ Component }">
-			<KeepAlive include="NodeView" :max="1">
-				<component :is="Component" />
-			</KeepAlive>
-		</RouterView>
+		<RouterView v-else />
 		<template v-if="layoutProps.logs" #footer>
 			<LogsPanel />
 		</template>

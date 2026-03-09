@@ -6,6 +6,7 @@ import {
 	cleanStaleWorkflowContext,
 	applyCacheControlMarkers,
 	applySubgraphCacheMarkers,
+	stripAllCacheControlMarkers,
 } from '../helpers';
 
 describe('Cache Control Helpers', () => {
@@ -631,6 +632,158 @@ describe('Cache Control Helpers', () => {
 				cache_control?: { type: string };
 			}>;
 			expect(content[0].cache_control).toBeUndefined();
+		});
+	});
+
+	describe('stripAllCacheControlMarkers', () => {
+		it('should do nothing for empty messages array', () => {
+			const messages: BaseMessage[] = [];
+			stripAllCacheControlMarkers(messages);
+			expect(messages).toHaveLength(0);
+		});
+
+		it('should do nothing for messages with string content', () => {
+			const messages = [new HumanMessage('hello'), new AIMessage('response')];
+			stripAllCacheControlMarkers(messages);
+
+			expect(messages[0].content).toBe('hello');
+			expect(messages[1].content).toBe('response');
+		});
+
+		it('should remove cache_control from single message with array content', () => {
+			const message = new HumanMessage('test');
+			message.content = [
+				{
+					type: 'text' as const,
+					text: 'test',
+					cache_control: { type: 'ephemeral' as const },
+				},
+			];
+			const messages = [message];
+
+			stripAllCacheControlMarkers(messages);
+
+			const content = messages[0].content as Array<{ cache_control?: unknown }>;
+			expect(content[0].cache_control).toBeUndefined();
+		});
+
+		it('should remove cache_control from multiple messages', () => {
+			const msg1 = new HumanMessage('first');
+			msg1.content = [
+				{
+					type: 'text' as const,
+					text: 'first',
+					cache_control: { type: 'ephemeral' as const },
+				},
+			];
+
+			const msg2 = new ToolMessage({ content: 'tool result', tool_call_id: '1' });
+			msg2.content = [
+				{
+					type: 'text' as const,
+					text: 'tool result',
+					cache_control: { type: 'ephemeral' as const },
+				},
+			];
+
+			const msg3 = new HumanMessage('third');
+			msg3.content = [
+				{
+					type: 'text' as const,
+					text: 'third',
+					cache_control: { type: 'ephemeral' as const },
+				},
+			];
+
+			const messages = [msg1, new AIMessage('response'), msg2, msg3];
+
+			stripAllCacheControlMarkers(messages);
+
+			// All cache_control markers should be removed
+			const content1 = messages[0].content as Array<{ cache_control?: unknown }>;
+			expect(content1[0].cache_control).toBeUndefined();
+
+			const content2 = messages[2].content as Array<{ cache_control?: unknown }>;
+			expect(content2[0].cache_control).toBeUndefined();
+
+			const content3 = messages[3].content as Array<{ cache_control?: unknown }>;
+			expect(content3[0].cache_control).toBeUndefined();
+		});
+
+		it('should handle mixed string and array content', () => {
+			const msg1 = new HumanMessage('string content');
+
+			const msg2 = new HumanMessage('array content');
+			msg2.content = [
+				{
+					type: 'text' as const,
+					text: 'array content',
+					cache_control: { type: 'ephemeral' as const },
+				},
+			];
+
+			const messages = [msg1, msg2];
+
+			stripAllCacheControlMarkers(messages);
+
+			// String content should be unchanged
+			expect(messages[0].content).toBe('string content');
+
+			// Array content should have cache_control removed
+			const content2 = messages[1].content as Array<{ cache_control?: unknown }>;
+			expect(content2[0].cache_control).toBeUndefined();
+		});
+
+		it('should handle multiple content blocks in a single message', () => {
+			const message = new HumanMessage('test');
+			message.content = [
+				{
+					type: 'text' as const,
+					text: 'block 1',
+					cache_control: { type: 'ephemeral' as const },
+				},
+				{
+					type: 'text' as const,
+					text: 'block 2',
+					cache_control: { type: 'ephemeral' as const },
+				},
+				{
+					type: 'text' as const,
+					text: 'block 3',
+					// No cache_control on this one
+				},
+			];
+
+			const messages = [message];
+			stripAllCacheControlMarkers(messages);
+
+			const content = messages[0].content as Array<{ text: string; cache_control?: unknown }>;
+			expect(content[0].cache_control).toBeUndefined();
+			expect(content[1].cache_control).toBeUndefined();
+			expect(content[2].cache_control).toBeUndefined();
+			// Text should be preserved
+			expect(content[0].text).toBe('block 1');
+			expect(content[1].text).toBe('block 2');
+			expect(content[2].text).toBe('block 3');
+		});
+
+		it('should be idempotent - running twice produces same result', () => {
+			const message = new HumanMessage('test');
+			message.content = [
+				{
+					type: 'text' as const,
+					text: 'test',
+					cache_control: { type: 'ephemeral' as const },
+				},
+			];
+			const messages = [message];
+
+			stripAllCacheControlMarkers(messages);
+			stripAllCacheControlMarkers(messages);
+
+			const content = messages[0].content as Array<{ text: string; cache_control?: unknown }>;
+			expect(content[0].cache_control).toBeUndefined();
+			expect(content[0].text).toBe('test');
 		});
 	});
 });

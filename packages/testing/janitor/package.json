@@ -17,6 +17,8 @@
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage",
+		"format": "biome format --write .",
+		"format:check": "biome ci .",
 		"lint": "eslint . --quiet",
 		"lint:fix": "eslint . --fix",
 		"typecheck": "tsc --noEmit"

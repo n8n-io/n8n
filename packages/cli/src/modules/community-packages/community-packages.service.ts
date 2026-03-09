@@ -274,14 +274,18 @@ export class CommunityPackagesService {
 
 			let vettedPackages: StrapiCommunityNodeType[] = [];
 			try {
-				vettedPackages = await getCommunityNodeTypes(environment, {
-					filters: {
-						packageName: {
-							$in: packageNames,
+				vettedPackages = await getCommunityNodeTypes(
+					environment,
+					{
+						filters: {
+							packageName: {
+								$in: packageNames,
+							},
 						},
+						fields: ['packageName', 'npmVersion', 'checksum', 'nodeVersions'],
 					},
-					fields: ['packageName', 'npmVersion', 'checksum', 'nodeVersions'],
-				});
+					this.config.aiNodeSdkVersion,
+				);
 			} catch (error) {
 				this.logger.error(
 					`Failed to fetch community packages from Strapi: ${ensureError(error).message}`,

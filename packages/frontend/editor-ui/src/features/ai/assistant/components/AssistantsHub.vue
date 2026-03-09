@@ -19,8 +19,13 @@ const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
 const settingsStore = useSettingsStore();
 
-const { isBuildMode, canToggleModes, shouldShowCoachmark, onDismissCoachmark } =
-	useAskModeCoachmark();
+const {
+	isBuildMode,
+	isMergeAskBuildEnabled,
+	canToggleModes,
+	shouldShowCoachmark,
+	onDismissCoachmark,
+} = useAskModeCoachmark();
 
 // Track when slide animation has completed to prevent coachmark from appearing off-screen
 const slideAnimationComplete = ref(false);
@@ -90,8 +95,8 @@ function onSlideEnterComplete() {
 
 const unsubscribeAssistantStore = assistantStore.$onAction(({ name }) => {
 	// When assistant is opened from error or credentials help
-	// switch from build mode to chat mode
-	if (['initErrorHelper', 'initCredHelp'].includes(name)) {
+	// switch from build mode to chat mode (unless merge is enabled, which keeps builder mode)
+	if (['initErrorHelper', 'initCredHelp'].includes(name) && !isMergeAskBuildEnabled.value) {
 		chatPanelStore.switchMode('assistant');
 	}
 });

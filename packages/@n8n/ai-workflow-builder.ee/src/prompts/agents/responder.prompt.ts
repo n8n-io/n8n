@@ -188,8 +188,9 @@ export function buildRecursionErrorNoWorkflowGuidance(): string[] {
 /** Guidance for other (non-recursion) errors */
 export function buildGeneralErrorGuidance(): string {
 	return (
-		'Apologize and explain that a technical error occurred. ' +
-		'Ask if they would like to try again or approach the problem differently.'
+		'Apologize briefly and explain that something went wrong while building the workflow. ' +
+		'Do NOT use the phrase "technical error". ' +
+		'Suggest the user try again, and offer to help approach the problem differently if the issue persists.'
 	);
 }
 

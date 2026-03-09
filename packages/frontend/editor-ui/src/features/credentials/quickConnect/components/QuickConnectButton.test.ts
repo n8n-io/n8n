@@ -50,7 +50,7 @@ describe('QuickConnectButton', () => {
 		renderComponent();
 
 		expect(screen.getByRole('button')).toBeInTheDocument();
-		expect(screen.queryByTitle('Sign in with Google')).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Sign in with Google' })).not.toBeInTheDocument();
 	});
 
 	it('should render GoogleAuthButton for Google OAuth types', () => {
@@ -58,7 +58,7 @@ describe('QuickConnectButton', () => {
 			props: { credentialTypeName: 'googleSheetsOAuth2Api', serviceName: 'Google Sheets' },
 		});
 
-		expect(screen.getByTitle('Sign in with Google')).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Sign in with Google' })).toBeInTheDocument();
 	});
 
 	it('should emit click event when clicked', async () => {

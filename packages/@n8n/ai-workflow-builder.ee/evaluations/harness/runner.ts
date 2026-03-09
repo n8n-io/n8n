@@ -2,6 +2,7 @@ import type { BaseMessage } from '@langchain/core/messages';
 import { evaluate } from 'langsmith/evaluation';
 import type { Run, Example } from 'langsmith/schemas';
 import { traceable } from 'langsmith/traceable';
+import type { IPinData } from 'n8n-workflow';
 import pLimit from 'p-limit';
 
 import { runWithOptionalLimiter, withTimeout } from './evaluation-helpers';
@@ -199,8 +200,10 @@ function buildContext(args: {
 	testCaseContext?: TestCaseContext;
 	referenceWorkflows?: SimpleWorkflow[];
 	generatedCode?: string;
+	pinData?: IPinData;
 }): EvaluationContext {
-	const { prompt, globalContext, testCaseContext, referenceWorkflows, generatedCode } = args;
+	const { prompt, globalContext, testCaseContext, referenceWorkflows, generatedCode, pinData } =
+		args;
 
 	return {
 		prompt,
@@ -208,6 +211,7 @@ function buildContext(args: {
 		...(testCaseContext ?? {}),
 		...(referenceWorkflows?.length ? { referenceWorkflows } : {}),
 		...(generatedCode ? { generatedCode } : {}),
+		...(pinData ? { pinData } : {}),
 	};
 }
 
@@ -444,6 +448,15 @@ function extractContextFromLangsmithInputs(inputs: unknown): TestCaseContext {
 		context.referenceWorkflows = [record.referenceWorkflow];
 	}
 
+	// Extract annotations for binary-checks evaluator
+	if (
+		record.annotations &&
+		typeof record.annotations === 'object' &&
+		!Array.isArray(record.annotations)
+	) {
+		context.annotations = record.annotations as Record<string, unknown>;
+	}
+
 	return context;
 }
 
@@ -537,6 +550,7 @@ async function runLocalExampleSuccess(args: {
 	passThreshold: number;
 	timeoutMs: number | undefined;
 	lifecycle?: Partial<EvaluationLifecycle>;
+	pinDataGenerator?: (workflow: SimpleWorkflow) => Promise<IPinData>;
 }): Promise<ExampleResult> {
 	const {
 		index,
@@ -548,6 +562,7 @@ async function runLocalExampleSuccess(args: {
 		passThreshold,
 		timeoutMs,
 		lifecycle,
+		pinDataGenerator,
 	} = args;
 
 	// Generate workflow with metrics collection
@@ -569,6 +584,16 @@ async function runLocalExampleSuccess(args: {
 
 	lifecycle?.onWorkflowGenerated?.(workflow, genDurationMs);
 
+	// Generate pin data for service nodes (best-effort)
+	let pinData: IPinData | undefined;
+	if (pinDataGenerator) {
+		try {
+			pinData = await pinDataGenerator(workflow);
+		} catch {
+			// Pin data generation is best-effort — don't fail the evaluation
+		}
+	}
+
 	const context = buildContext({
 		prompt: testCase.prompt,
 		globalContext: {
@@ -578,6 +603,7 @@ async function runLocalExampleSuccess(args: {
 		testCaseContext: testCase.context,
 		referenceWorkflows: testCase.referenceWorkflows,
 		generatedCode,
+		pinData,
 	});
 
 	// Run evaluators in parallel
@@ -623,6 +649,7 @@ async function runLocalExample(args: {
 	timeoutMs: number | undefined;
 	lifecycle?: Partial<EvaluationLifecycle>;
 	artifactSaver?: ArtifactSaver | null;
+	pinDataGenerator?: (workflow: SimpleWorkflow) => Promise<IPinData>;
 }): Promise<ExampleResult> {
 	const {
 		index,
@@ -635,6 +662,7 @@ async function runLocalExample(args: {
 		timeoutMs,
 		lifecycle,
 		artifactSaver,
+		pinDataGenerator,
 	} = args;
 
 	const startTime = Date.now();
@@ -651,6 +679,7 @@ async function runLocalExample(args: {
 			passThreshold,
 			timeoutMs,
 			lifecycle,
+			pinDataGenerator,
 		});
 
 		artifactSaver?.saveExample(result);
@@ -700,6 +729,7 @@ async function runLocalDataset(params: {
 	lifecycle?: Partial<EvaluationLifecycle>;
 	artifactSaver: ArtifactSaver | null;
 	concurrency?: number;
+	pinDataGenerator?: (workflow: SimpleWorkflow) => Promise<IPinData>;
 }): Promise<ExampleResult[]> {
 	const {
 		testCases,
@@ -711,6 +741,7 @@ async function runLocalDataset(params: {
 		lifecycle,
 		artifactSaver,
 		concurrency = 1,
+		pinDataGenerator,
 	} = params;
 
 	// Use pLimit to control concurrency of example execution
@@ -731,6 +762,7 @@ async function runLocalDataset(params: {
 					timeoutMs,
 					lifecycle,
 					artifactSaver,
+					pinDataGenerator,
 				}),
 		);
 	});
@@ -852,6 +884,7 @@ async function runLocal(config: LocalRunConfig): Promise<RunSummary> {
 		suite,
 		logger,
 		concurrency = 1,
+		pinDataGenerator,
 	} = config;
 
 	const testCases: TestCase[] = dataset;
@@ -880,6 +913,7 @@ async function runLocal(config: LocalRunConfig): Promise<RunSummary> {
 		lifecycle,
 		artifactSaver,
 		concurrency,
+		pinDataGenerator,
 	});
 	const summary = buildRunSummary(results);
 
@@ -889,8 +923,11 @@ async function runLocal(config: LocalRunConfig): Promise<RunSummary> {
 	// Write CSV if requested
 	if (outputCsv) {
 		const { writeResultsCsv } = await import('./csv-writer.js');
-		// Map suite to CSV format (only llm-judge and pairwise are supported)
-		const csvSuite = suite === 'llm-judge' || suite === 'pairwise' ? suite : undefined;
+		// Map suite to CSV format
+		const csvSuite =
+			suite === 'llm-judge' || suite === 'pairwise' || suite === 'binary-checks'
+				? suite
+				: undefined;
 		writeResultsCsv(results, outputCsv, { suite: csvSuite });
 		logger.info(`Results written to: ${outputCsv}`);
 	}
@@ -1152,6 +1189,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 		langsmithClient: lsClient,
 		lifecycle,
 		logger,
+		pinDataGenerator,
 	} = config;
 
 	// Enable tracing (required in langsmith 0.4.x)
@@ -1168,7 +1206,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 	const artifactSaver = createArtifactSaverIfRequested({ outputDir, logger });
 	const capturedResults: ExampleResult[] = [];
 
-	// Create traceable wrapper ONCE outside target function to avoid context leaking
+	// Create traceable wrappers ONCE outside target function to avoid context leaking
 	// when running concurrent evaluations. Pass all parameters explicitly (no closures).
 	// IMPORTANT: Get callbacks INSIDE the traceable wrapper where AsyncLocalStorage context
 	// is correctly set, then pass them explicitly to genFn to avoid race conditions.
@@ -1193,6 +1231,31 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 		},
 		{
 			name: 'workflow_generation',
+			run_type: 'chain',
+			client: lsClient,
+		},
+	);
+
+	// Separate traceable wrapper for evaluation so it appears as a sibling to
+	// workflow_generation in LangSmith traces (not nested under it).
+	const traceableEvaluateWorkflow = traceable(
+		async (args: {
+			workflow: SimpleWorkflow;
+			evaluators: Array<Evaluator<EvaluationContext>>;
+			context: EvaluationContext;
+			evalTimeoutMs?: number;
+			evalLifecycle?: Partial<EvaluationLifecycle>;
+		}): Promise<Feedback[]> => {
+			return await evaluateWithPlugins(
+				args.workflow,
+				args.evaluators,
+				args.context,
+				args.evalTimeoutMs,
+				args.evalLifecycle,
+			);
+		},
+		{
+			name: 'workflow_evaluation',
 			run_type: 'chain',
 			client: lsClient,
 		},
@@ -1238,6 +1301,16 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 
 			lifecycle?.onWorkflowGenerated?.(workflow, genDurationMs);
 
+			// Generate pin data for service nodes (best-effort)
+			let pinData: IPinData | undefined;
+			if (pinDataGenerator) {
+				try {
+					pinData = await pinDataGenerator(workflow);
+				} catch {
+					// Pin data generation is best-effort — don't fail the evaluation
+				}
+			}
+
 			const extracted = extractContextFromLangsmithInputs({
 				...asRecord(datasetContext),
 				...asRecord(rest),
@@ -1247,17 +1320,25 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 				globalContext: effectiveGlobalContext,
 				testCaseContext: extracted,
 				generatedCode,
+				pinData,
 			});
 
-			// Run all evaluators in parallel
+			// Run all evaluators in parallel (wrapped in traceable so it appears
+			// as a sibling to workflow_generation in LangSmith traces).
+			// Fall back to direct call if traceable wrapper fails.
 			const evalStart = Date.now();
-			const feedback = await evaluateWithPlugins(
-				workflow,
-				evaluators,
-				context,
-				timeoutMs,
-				lifecycle,
-			);
+			let feedback: Feedback[];
+			try {
+				feedback = await traceableEvaluateWorkflow({
+					workflow,
+					evaluators,
+					context,
+					evalTimeoutMs: timeoutMs,
+					evalLifecycle: lifecycle,
+				});
+			} catch {
+				feedback = await evaluateWithPlugins(workflow, evaluators, context, timeoutMs, lifecycle);
+			}
 			const evalDurationMs = Date.now() - evalStart;
 			const totalDurationMs = Date.now() - startTime;
 
@@ -1382,8 +1463,11 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 	// Write CSV if requested
 	if (outputCsv) {
 		const { writeResultsCsv } = await import('./csv-writer.js');
-		// Map suite to CSV format (only llm-judge and pairwise are supported)
-		const csvSuite = suite === 'llm-judge' || suite === 'pairwise' ? suite : undefined;
+		// Map suite to CSV format
+		const csvSuite =
+			suite === 'llm-judge' || suite === 'pairwise' || suite === 'binary-checks'
+				? suite
+				: undefined;
 		writeResultsCsv(capturedResults, outputCsv, { suite: csvSuite });
 		logger.info(`Results written to: ${outputCsv}`);
 	}

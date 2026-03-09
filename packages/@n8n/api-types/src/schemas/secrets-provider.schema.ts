@@ -10,6 +10,7 @@ export const secretsProviderTypeSchema = z.enum([
 	'vault',
 	'azureKeyVault',
 	'infisical',
+	'onePassword',
 ]);
 export type SecretsProviderType = z.infer<typeof secretsProviderTypeSchema>;
 
@@ -78,6 +79,10 @@ export const secretProviderConnectionSchema = z.object({
 	updatedAt: z.string(),
 });
 export type SecretProviderConnection = z.infer<typeof secretProviderConnectionSchema>;
+export type SecretProviderConnectionListItem = Omit<
+	SecretProviderConnection,
+	'settings' | 'secrets'
+>;
 
 /**
  * Provider type metadata - for form rendering

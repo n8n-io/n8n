@@ -4,7 +4,7 @@ import { action } from 'storybook/actions';
 import N8nFormBox from './FormBox.vue';
 
 export default {
-	title: 'Modules/FormBox',
+	title: 'Core/FormBox',
 	component: N8nFormBox,
 	argTypes: {},
 	parameters: {

@@ -135,10 +135,6 @@ registerKeyHook('NodeCreatorCloseEscape', {
 	keyboardKeys: ['Escape'],
 	handler: () => emit('closeNodeCreator'),
 });
-registerKeyHook('NodeCreatorCloseTab', {
-	keyboardKeys: ['Tab'],
-	handler: () => emit('closeNodeCreator'),
-});
 
 watch(
 	() => ({

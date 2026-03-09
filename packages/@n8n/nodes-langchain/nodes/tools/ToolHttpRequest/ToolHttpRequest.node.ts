@@ -15,7 +15,7 @@ import {
 } from 'n8n-workflow';
 
 import { N8nTool } from '@utils/N8nTool';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 import {
 	authenticationProperties,

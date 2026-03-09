@@ -367,6 +367,7 @@ describe('LogStreamingEventRelay', () => {
 			const event: RelayEventMap['workflow-pre-execute'] = {
 				executionId: 'exec123',
 				data: workflow,
+				mode: 'trigger',
 			};
 
 			eventService.emit('workflow-pre-execute', event);
@@ -378,6 +379,7 @@ describe('LogStreamingEventRelay', () => {
 					userId: undefined,
 					workflowId: 'wf202',
 					isManual: false,
+					mode: 'trigger',
 					workflowName: 'Test Workflow',
 				},
 			});
@@ -406,6 +408,7 @@ describe('LogStreamingEventRelay', () => {
 					...rest,
 					success: true, // same as finished
 					isManual: true,
+					mode: 'manual',
 					workflowName: 'some-name',
 					workflowId: 'some-id',
 				},
@@ -476,6 +479,7 @@ describe('LogStreamingEventRelay', () => {
 					...rest,
 					success: false, // same as finished
 					isManual: true,
+					mode: 'manual',
 					workflowName: 'some-name',
 					workflowId: 'some-id',
 					lastNodeExecuted: 'some-node',

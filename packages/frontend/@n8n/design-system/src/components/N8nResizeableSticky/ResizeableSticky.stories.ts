@@ -4,7 +4,7 @@ import { action } from 'storybook/actions';
 import N8nResizeableSticky from './ResizeableSticky.vue';
 
 export default {
-	title: 'Atoms/ResizeableSticky',
+	title: 'Core/ResizeableSticky',
 	component: N8nResizeableSticky,
 	argTypes: {
 		content: {

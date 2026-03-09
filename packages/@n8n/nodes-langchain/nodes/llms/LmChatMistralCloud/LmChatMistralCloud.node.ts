@@ -1,7 +1,12 @@
 import type { ChatMistralAIInput } from '@langchain/mistralai';
 import { ChatMistralAI } from '@langchain/mistralai';
 import { HTTPClient } from '@mistralai/mistralai/lib/http.js';
-import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing, proxyFetch } from '@n8n/ai-utilities';
+import {
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	proxyFetch,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -9,8 +14,6 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 const deprecatedMagistralModelsWithTextOutput = ['magistral-small-2506', 'magistral-medium-2506'];
 

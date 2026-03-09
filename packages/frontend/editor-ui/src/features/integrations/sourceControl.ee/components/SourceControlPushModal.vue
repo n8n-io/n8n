@@ -825,7 +825,7 @@ onMounted(async () => {
 							<N8nButton
 								variant="subtle"
 								icon="funnel"
-								style="height: 100%"
+								:class="$style.filterButton"
 								:active="Boolean(filterCount)"
 								data-test-id="source-control-filter-dropdown"
 							>
@@ -1109,6 +1109,11 @@ onMounted(async () => {
 </template>
 
 <style module lang="scss">
+.filterButton {
+	align-self: stretch;
+	height: auto;
+}
+
 .filtersRow {
 	display: flex;
 	align-items: center;

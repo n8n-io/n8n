@@ -18,6 +18,8 @@ import { rawBodyReader, bodyParser } from '@/middlewares';
 import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';
 import { Telemetry } from '@/telemetry';
+import { resolveHealthEndpointPath } from '@/utils/health-endpoint.util';
+
 import { LicenseMocker } from '@test-integration/license';
 
 import { PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
@@ -153,7 +155,7 @@ export const setupTestServer = ({
 
 		if (endpointGroups?.includes('health')) {
 			const globalConfig = Container.get(GlobalConfig);
-			const healthPath = globalConfig.endpoints.health;
+			const healthPath = resolveHealthEndpointPath(globalConfig);
 			const readinessPath = `${healthPath}/readiness`;
 
 			app.get(readinessPath, async (_req, res) => {

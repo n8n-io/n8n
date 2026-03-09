@@ -4,7 +4,11 @@ import { computed, ref, watch } from 'vue';
 import { defaultStickyProps } from './constants';
 import type { StickyProps } from './types';
 import { useI18n } from '../../composables/useI18n';
-import { isValidHexColor, adjustColorLightness } from '../../utils/colorUtils';
+import {
+	isValidHexColor,
+	adjustColorLightness,
+	getContrastTextColor,
+} from '../../utils/colorUtils';
 import N8nInput from '../N8nInput';
 import N8nMarkdown from '../N8nMarkdown';
 import N8nText from '../N8nText';
@@ -43,15 +47,11 @@ const getCustomColorStyles = (hexColor: string) => {
 		return {};
 	}
 
-	// Create lighter border for dark mode (80% lighter)
-	const lighterBorder = adjustColorLightness(hexColor, 80);
-	// Create darker border for light mode (20% darker)
-	const darkerBorder = adjustColorLightness(hexColor, -20);
-
 	return {
 		'--sticky--color--background': hexColor,
-		'--sticky--border-color--custom-light': darkerBorder,
-		'--sticky--border-color--custom-dark': lighterBorder,
+		'--sticky--border-color--custom-light': adjustColorLightness(hexColor, -20),
+		'--sticky--border-color--custom-dark': adjustColorLightness(hexColor, 80),
+		'--sticky--color--text--custom': getContrastTextColor(hexColor),
 	};
 };
 
@@ -158,18 +158,17 @@ const onInputScroll = (event: WheelEvent) => {
 	border: 1px solid var(--sticky--border-color);
 }
 
-// Custom color borders - only apply to custom colors
+// Custom colors - text contrast and theme-aware borders
 .customColor {
-	// Default to darker border (for light mode)
+	--sticky--color--text: var(--sticky--color--text--custom);
+	--color--text--shade-1: var(--sticky--color--text--custom);
 	--sticky--border-color: var(--sticky--border-color--custom-light);
 }
 
-// Dark mode: use lighter borders for custom colors
 :global(body[data-theme='dark']) .customColor {
 	--sticky--border-color: var(--sticky--border-color--custom-dark);
 }
 
-// System dark mode (when theme is 'system')
 @media (prefers-color-scheme: dark) {
 	:global(body:not([data-theme='light'])) .customColor {
 		--sticky--border-color: var(--sticky--border-color--custom-dark);

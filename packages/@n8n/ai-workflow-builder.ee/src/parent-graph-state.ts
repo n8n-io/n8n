@@ -113,4 +113,9 @@ export const ParentGraphState = Annotation.Root({
 		reducer: (x, y) => x.concat(y),
 		default: () => [],
 	}),
+
+	sdkSessionId: Annotation<string | undefined>({
+		reducer: (x, y) => y ?? x,
+		default: () => undefined,
+	}),
 });

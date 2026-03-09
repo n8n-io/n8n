@@ -4,7 +4,7 @@ import type { AxiosInstance, AxiosResponse } from 'axios';
 import axios from 'axios';
 import type { IDataObject, INodeProperties } from 'n8n-workflow';
 
-import { DOCS_HELP_NOTICE, EXTERNAL_SECRETS_NAME_REGEX } from '../constants';
+import { DOCS_HELP_NOTICE } from '../constants';
 import { ExternalSecretsConfig } from '../external-secrets.config';
 import type { SecretsProviderSettings } from '../types';
 import { SecretsProvider } from '../types';
@@ -59,7 +59,7 @@ interface VaultMount {
 	description: string;
 	external_entropy_access: boolean;
 	local: boolean;
-	options: Record<string, string | number | boolean | null>;
+	options: Record<string, string | number | boolean | null> | null;
 	plugin_version: string;
 	running_plugin_version: string;
 	running_sha256: string;
@@ -458,7 +458,12 @@ export class VaultProvider extends SecretsProvider {
 			(
 				await Promise.all(
 					kvs.map(async ([basePath, data]): Promise<[string, IDataObject] | null> => {
-						const value = await this.getKVSecrets(basePath, data.options.version as string, '');
+						const version = data.options?.version;
+						if (typeof version !== 'string') {
+							this.logger.debug(`Skipping KV mount "${basePath}" — no version in mount options`);
+							return null;
+						}
+						const value = await this.getKVSecrets(basePath, version, '');
 						if (value === null) {
 							return null;
 						}
@@ -526,15 +531,9 @@ export class VaultProvider extends SecretsProvider {
 
 	getSecretNames(): string[] {
 		const getKeys = ([k, v]: [string, IDataObject]): string[] => {
-			if (!EXTERNAL_SECRETS_NAME_REGEX.test(k)) {
-				return [];
-			}
 			if (typeof v === 'object') {
 				const keys: string[] = [];
 				for (const key of Object.keys(v)) {
-					if (!EXTERNAL_SECRETS_NAME_REGEX.test(key)) {
-						continue;
-					}
 					const value = v[key];
 					if (typeof value === 'object' && value !== null) {
 						keys.push(...getKeys([key, value as IDataObject]).map((ok) => `${k}.${ok}`));

@@ -195,6 +195,7 @@ describe('GET /credentials', () => {
 					'credential:read',
 					'credential:update',
 					'credential:share',
+					'credential:unshare',
 					'credential:delete',
 				].sort(),
 			);
@@ -228,6 +229,7 @@ describe('GET /credentials', () => {
 					'credential:move',
 					'credential:read',
 					'credential:share',
+					'credential:unshare',
 					'credential:update',
 				].sort(),
 			);
@@ -254,6 +256,7 @@ describe('GET /credentials', () => {
 					'credential:read',
 					'credential:share',
 					'credential:shareGlobally',
+					'credential:unshare',
 					'credential:update',
 				].sort(),
 			);
@@ -269,6 +272,7 @@ describe('GET /credentials', () => {
 					'credential:read',
 					'credential:share',
 					'credential:shareGlobally',
+					'credential:unshare',
 					'credential:update',
 				].sort(),
 			);
@@ -333,6 +337,7 @@ describe('GET /credentials', () => {
 				'credential:read',
 				'credential:update',
 				'credential:share',
+				'credential:unshare',
 				'credential:delete',
 			].sort(),
 		);
@@ -396,6 +401,7 @@ describe('GET /credentials', () => {
 				'credential:update',
 				'credential:share',
 				'credential:shareGlobally',
+				'credential:unshare',
 				'credential:delete',
 				'credential:create',
 				'credential:list',
@@ -411,6 +417,7 @@ describe('GET /credentials', () => {
 				'credential:update',
 				'credential:share',
 				'credential:shareGlobally',
+				'credential:unshare',
 				'credential:delete',
 				'credential:create',
 				'credential:list',
@@ -429,6 +436,7 @@ describe('GET /credentials', () => {
 				'credential:update',
 				'credential:share',
 				'credential:shareGlobally',
+				'credential:unshare',
 				'credential:delete',
 				'credential:create',
 				'credential:list',
@@ -843,6 +851,7 @@ describe('POST /credentials', () => {
 				'credential:move',
 				'credential:read',
 				'credential:share',
+				'credential:unshare',
 				'credential:update',
 			].sort(),
 		);
@@ -1232,6 +1241,7 @@ describe('PATCH /credentials/:id', () => {
 				'credential:read',
 				'credential:share',
 				'credential:shareGlobally',
+				'credential:unshare',
 				'credential:update',
 			].sort(),
 		);

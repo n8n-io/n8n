@@ -39,9 +39,7 @@ describe('N8nSticky', () => {
 				expect(stickyElement?.style.getPropertyValue('--sticky--border-color--custom-light')).toBe(
 					'',
 				);
-				expect(stickyElement?.style.getPropertyValue('--sticky--border-color--custom-dark')).toBe(
-					'',
-				);
+				expect(stickyElement?.style.getPropertyValue('--sticky--color--text--custom')).toBe('');
 			});
 		});
 
@@ -57,13 +55,13 @@ describe('N8nSticky', () => {
 
 				const stickyElement = wrapper.container.querySelector('.n8n-sticky') as HTMLElement;
 				expect(stickyElement?.style.getPropertyValue('--sticky--color--background')).toBe(hexColor);
-				// Check that theme-aware border colors are set (not exact hex)
 				expect(
 					stickyElement?.style.getPropertyValue('--sticky--border-color--custom-light'),
 				).toBeTruthy();
 				expect(
 					stickyElement?.style.getPropertyValue('--sticky--border-color--custom-dark'),
 				).toBeTruthy();
+				expect(stickyElement?.style.getPropertyValue('--sticky--color--text--custom')).toBeTruthy();
 			});
 
 			it('does not apply color CSS class for hex colors', () => {
@@ -93,9 +91,7 @@ describe('N8nSticky', () => {
 				expect(stickyElement?.style.getPropertyValue('--sticky--border-color--custom-light')).toBe(
 					'',
 				);
-				expect(stickyElement?.style.getPropertyValue('--sticky--border-color--custom-dark')).toBe(
-					'',
-				);
+				expect(stickyElement?.style.getPropertyValue('--sticky--color--text--custom')).toBe('');
 			});
 
 			it('applies correct inline styles for multiple valid hex colors', () => {

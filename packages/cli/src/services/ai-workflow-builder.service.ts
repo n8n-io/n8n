@@ -19,6 +19,7 @@ import type {
 import { N8N_VERSION } from '@/constants';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { WorkflowBuilderSessionRepository } from '@/modules/workflow-builder';
 import { Push } from '@/push';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { UrlService } from '@/services/url.service';
@@ -47,11 +48,12 @@ export class WorkflowBuilderService {
 		private readonly telemetry: Telemetry,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
+		private readonly sessionRepository: WorkflowBuilderSessionRepository,
 	) {
 		// Register a post-processor to update node types when they change.
 		// This ensures newly installed/updated/uninstalled community packages are recognized
 		// while preserving existing sessions.
-		this.loadNodesAndCredentials.addPostProcessor(async () => this.refreshNodeTypes());
+		this.loadNodesAndCredentials.addPostProcessor(async () => await this.refreshNodeTypes());
 	}
 
 	/**
@@ -59,9 +61,9 @@ export class WorkflowBuilderService {
 	 * Called automatically when postProcessLoaders() runs (e.g., after community package changes).
 	 * This preserves existing sessions while making new node types available.
 	 */
-	refreshNodeTypes() {
+	async refreshNodeTypes() {
 		if (this.service) {
-			const { nodes: nodeTypeDescriptions } = this.loadNodesAndCredentials.types;
+			const { nodes: nodeTypeDescriptions } = await this.loadNodesAndCredentials.collectTypes();
 			this.service.updateNodeTypes(nodeTypeDescriptions);
 		}
 	}
@@ -144,11 +146,16 @@ export class WorkflowBuilderService {
 		};
 
 		await this.loadNodesAndCredentials.postProcessLoaders();
-		const { nodes: nodeTypeDescriptions } = this.loadNodesAndCredentials.types;
-		this.loadNodesAndCredentials.releaseTypes();
+		const { nodes: nodeTypeDescriptions } = await this.loadNodesAndCredentials.collectTypes();
+
+		// Use persistent session storage if feature flag is enabled
+		const sessionStorage = this.config.ai.persistBuilderSessions
+			? this.sessionRepository
+			: undefined;
 
 		this.service = new AiWorkflowBuilderService(
 			nodeTypeDescriptions,
+			sessionStorage,
 			this.client,
 			this.logger,
 			this.instanceSettings.instanceId,
@@ -194,6 +201,11 @@ export class WorkflowBuilderService {
 	async getBuilderInstanceCredits(user: IUser) {
 		const service = await this.getService();
 		return await service.getBuilderInstanceCredits(user);
+	}
+
+	async clearSession(workflowId: string, user: IUser): Promise<void> {
+		const service = await this.getService();
+		await service.clearSession(workflowId, user);
 	}
 
 	async truncateMessagesAfter(

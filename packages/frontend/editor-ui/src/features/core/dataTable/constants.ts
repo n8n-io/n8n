@@ -10,6 +10,8 @@ export const DEFAULT_DATA_TABLE_PAGE_SIZE = 10;
 
 export const DATA_TABLE_ID_COLUMN_WIDTH = 60;
 
+export const MIN_ADD_COLUMN_BUTTON_COLUMN_WIDTH = 50;
+
 export const DEFAULT_COLUMN_WIDTH = 250;
 
 export const DATA_TABLE_HEADER_HEIGHT = 36;

@@ -3,7 +3,7 @@ import type { StoryFn } from '@storybook/vue3-vite';
 import N8nNotice from './Notice.vue';
 
 export default {
-	title: 'Atoms/Notice',
+	title: 'Core/Notice',
 	component: N8nNotice,
 	argTypes: {
 		theme: {

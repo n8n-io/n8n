@@ -3,11 +3,15 @@ import type { ChatRequest, PlanMode } from '../assistant.types';
 import { useI18n } from '@n8n/i18n';
 import {
 	isTextMessage,
+	isCodeDiffMessage,
 	isWorkflowUpdatedMessage,
 	isToolMessage,
 	isQuestionsMessage,
 	isPlanMessage,
 	isUserAnswersMessage,
+	isMessagesCompactedEvent,
+	isSummaryMessage,
+	isAgentSuggestionMessage,
 } from '../assistant.types';
 import { generateShortId } from '../builder.utils';
 
@@ -155,12 +159,13 @@ export function useBuilderMessages() {
 			: -1;
 
 		if (existingIndex !== -1) {
-			// Update existing tool message - merge updates array
+			// Update existing tool message - merge updates array and update display title
 			const existing = messages[existingIndex] as ChatUI.ToolMessage;
 			const toolMessage: ChatUI.ToolMessage = {
 				...existing,
 				id: `${messageId}-${msg.toolCallId}`,
 				status: msg.status,
+				customDisplayTitle: msg.customDisplayTitle ?? existing.customDisplayTitle,
 				updates: [...(existing.updates || []), ...(msg.updates || [])],
 			};
 			messages[existingIndex] = toolMessage as ChatUI.AssistantMessage;
@@ -193,14 +198,49 @@ export function useBuilderMessages() {
 	): boolean {
 		let shouldClearThinking = false;
 
-		if (isTextMessage(msg)) {
+		if (isSummaryMessage(msg)) {
+			messages.push({
+				id: messageId,
+				role: 'assistant',
+				type: 'block',
+				title: msg.title,
+				content: msg.content,
+				read: false,
+			} satisfies ChatUI.AssistantMessage);
+			shouldClearThinking = true;
+		} else if (isAgentSuggestionMessage(msg)) {
+			messages.push({
+				id: messageId,
+				role: 'assistant',
+				type: 'block',
+				title: msg.title,
+				content: msg.text,
+				read: false,
+			} satisfies ChatUI.AssistantMessage);
+			shouldClearThinking = true;
+		} else if (isTextMessage(msg)) {
 			messages.push({
 				id: messageId,
 				role: 'assistant',
 				type: 'text',
 				content: msg.text,
+				codeSnippet: msg.codeSnippet,
 				read: false,
 			} satisfies ChatUI.AssistantMessage);
+			shouldClearThinking = true;
+		} else if (isCodeDiffMessage(msg)) {
+			messages.push({
+				id: messageId,
+				role: 'assistant',
+				type: 'code-diff',
+				description: msg.description,
+				codeDiff: msg.codeDiff,
+				suggestionId: msg.suggestionId,
+				sdkSessionId: msg.sdkSessionId,
+				nodeName: msg.nodeName,
+				quickReplies: msg.quickReplies,
+				read: false,
+			});
 			shouldClearThinking = true;
 		} else if (isQuestionsMessage(msg)) {
 			// Check if we already have a questions message (prevent duplicates from streaming)
@@ -306,7 +346,12 @@ export function useBuilderMessages() {
 		if (lastCompletedToolIndex !== -1) {
 			for (let i = lastCompletedToolIndex + 1; i < messages.length; i++) {
 				const msg = messages[i];
-				if (msg.type === 'text' || msg.type === 'custom') {
+				if (
+					msg.type === 'text' ||
+					msg.type === 'custom' ||
+					msg.type === 'code-diff' ||
+					msg.type === 'block'
+				) {
 					hasResponseAfterTools = true;
 					break;
 				}
@@ -355,6 +400,12 @@ export function useBuilderMessages() {
 		const mutableMessages = [...currentMessages];
 		let shouldClearThinking = false;
 
+		// If this batch contains a compaction event, clear all existing messages first
+		const hasCompaction = newMessages.some(isMessagesCompactedEvent);
+		if (hasCompaction) {
+			mutableMessages.length = 0;
+		}
+
 		const messageGroupId = generateShortId();
 
 		newMessages.forEach((msg, index) => {
@@ -365,7 +416,10 @@ export function useBuilderMessages() {
 			shouldClearThinking = shouldClearThinking || clearThinking;
 		});
 
-		const thinkingMessage = determineThinkingMessage(mutableMessages);
+		// Show "Compacting" while waiting for the responder acknowledgment
+		const thinkingMessage = hasCompaction
+			? locale.baseText('aiAssistant.thinkingSteps.compacting')
+			: determineThinkingMessage(mutableMessages);
 
 		// Rating is now handled in the footer of AskAssistantChat, not per-message
 		// Remove retry from all error messages except the last one
@@ -490,15 +544,53 @@ export function useBuilderMessages() {
 		id: string,
 	): ChatUI.AssistantMessage {
 		// Handle specific message types using type guards
+		if (isSummaryMessage(message)) {
+			return {
+				id,
+				role: 'assistant',
+				type: 'block',
+				title: message.title,
+				content: message.content,
+				read: false,
+			} satisfies ChatUI.AssistantMessage;
+		}
+
+		if (isAgentSuggestionMessage(message)) {
+			return {
+				id,
+				role: 'assistant',
+				type: 'block',
+				title: message.title,
+				content: message.text,
+				read: false,
+			} satisfies ChatUI.AssistantMessage;
+		}
+
 		if (isTextMessage(message)) {
 			return {
 				id,
 				role: message.role ?? 'assistant',
 				type: 'text',
 				content: message.text,
+				codeSnippet: message.codeSnippet,
 				revertVersion: message.revertVersion,
 				read: false,
 			} satisfies ChatUI.AssistantMessage;
+		}
+
+		if (isCodeDiffMessage(message)) {
+			return {
+				id,
+				role: 'assistant',
+				type: 'code-diff',
+				description: message.description,
+				codeDiff: message.codeDiff,
+				suggestionId: message.suggestionId,
+				sdkSessionId: message.sdkSessionId,
+				nodeName: message.nodeName,
+				quickReplies: message.quickReplies,
+				read: false,
+			};
 		}
 
 		if (isQuestionsMessage(message)) {

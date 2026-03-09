@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowLayout from './WorkflowLayout.vue';
-import { computed, ref } from 'vue';
+import { computed, ref, shallowRef } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 
 vi.mock('vue-router', async (importOriginal) => {
@@ -35,7 +35,7 @@ vi.mock('@/features/ai/assistant/assistant.store', () => ({
 
 vi.mock('@/app/composables/useWorkflowState', () => ({
 	useWorkflowState: vi.fn(() => ({
-		getNewWorkflowDataAndMakeShareable: vi.fn(),
+		getNewWorkflowData: vi.fn(),
 		setWorkflowId: vi.fn(),
 		resetState: vi.fn(),
 	})),
@@ -45,11 +45,30 @@ vi.mock('@/app/composables/useWorkflowInitialization', () => ({
 	useWorkflowInitialization: vi.fn(() => ({
 		isLoading: ref(false),
 		workflowId: computed(() => 'test-workflow-id'),
+		currentWorkflowDocumentStore: shallowRef(null),
 		isTemplateRoute: computed(() => false),
 		isOnboardingRoute: computed(() => false),
+		isDebugRoute: computed(() => false),
 		initializeData: vi.fn().mockResolvedValue(undefined),
 		initializeWorkflow: vi.fn().mockResolvedValue(undefined),
+		handleDebugModeRoute: vi.fn().mockResolvedValue(undefined),
 		cleanup: vi.fn(),
+	})),
+}));
+
+vi.mock('@/app/composables/usePostMessageHandler', () => ({
+	usePostMessageHandler: vi.fn(() => ({
+		setup: vi.fn(),
+		cleanup: vi.fn(),
+	})),
+}));
+
+const mockPushConnect = vi.fn();
+const mockPushDisconnect = vi.fn();
+vi.mock('@/app/stores/pushConnection.store', () => ({
+	usePushConnectionStore: vi.fn(() => ({
+		pushConnect: mockPushConnect,
+		pushDisconnect: mockPushDisconnect,
 	})),
 }));
 
@@ -172,5 +191,16 @@ describe('WorkflowLayout', () => {
 		expect(getByTestId('app-header')).toBeInTheDocument();
 		expect(getByTestId('app-sidebar')).toBeInTheDocument();
 		expect(getByText('Workflow Content')).toBeInTheDocument();
+	});
+
+	it('should call pushConnect on mount', () => {
+		renderComponent();
+		expect(mockPushConnect).toHaveBeenCalledOnce();
+	});
+
+	it('should call pushDisconnect on unmount', () => {
+		const { unmount } = renderComponent();
+		unmount();
+		expect(mockPushDisconnect).toHaveBeenCalledOnce();
 	});
 });

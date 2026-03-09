@@ -12,11 +12,12 @@ import type {
 	SubgraphPhase,
 	DiscoveryMetadata,
 	BuilderMetadata,
+	AssistantMetadata,
 	StateManagementMetadata,
 	ResponderMetadata,
 } from '../types/coordination';
 
-export type RoutingDecision = 'discovery' | 'builder' | 'responder';
+export type RoutingDecision = 'discovery' | 'builder' | 'assistant' | 'responder';
 
 /**
  * Get the last completed phase from the coordination log
@@ -71,12 +72,22 @@ export function getPhaseMetadata(
 ): BuilderMetadata | null;
 export function getPhaseMetadata(
 	log: CoordinationLogEntry[],
+	phase: 'assistant',
+): AssistantMetadata | null;
+export function getPhaseMetadata(
+	log: CoordinationLogEntry[],
 	phase: 'state_management',
 ): StateManagementMetadata | null;
 export function getPhaseMetadata(
 	log: CoordinationLogEntry[],
 	phase: SubgraphPhase,
-): DiscoveryMetadata | BuilderMetadata | StateManagementMetadata | ResponderMetadata | null {
+):
+	| DiscoveryMetadata
+	| BuilderMetadata
+	| AssistantMetadata
+	| StateManagementMetadata
+	| ResponderMetadata
+	| null {
 	const entry = getPhaseEntry(log, phase);
 	if (!entry) return null;
 
@@ -84,6 +95,14 @@ export function getPhaseMetadata(
 	if (entry.metadata.phase === 'error') return null;
 
 	return entry.metadata;
+}
+
+/**
+ * Check if the coordination log contains a completed builder phase.
+ * Used to gate credit consumption — only builder phases consume credits.
+ */
+export function hasBuilderPhaseInLog(log: CoordinationLogEntry[]): boolean {
+	return log.some((entry) => entry.phase === 'builder' && entry.status === 'completed');
 }
 
 /**
@@ -158,8 +177,29 @@ export function getNextPhaseFromLog(log: CoordinationLogEntry[]): RoutingDecisio
 		return 'responder';
 	}
 
+	if (lastPhase === 'assistant') {
+		return 'responder';
+	}
+
 	// No phases completed yet → let supervisor decide
 	return 'responder';
+}
+
+/**
+ * Get entries from the current turn only.
+ * A turn ends when the responder completes, so current-turn entries
+ * are those after the last completed responder entry.
+ * This prevents stale entries from previous turns leaking into context.
+ */
+export function getCurrentTurnEntries(log: CoordinationLogEntry[]): CoordinationLogEntry[] {
+	const lastResponderIndex = log.findLastIndex(
+		(entry) => entry.phase === 'responder' && entry.status === 'completed',
+	);
+
+	// No previous responder completion — entire log is the current turn
+	if (lastResponderIndex === -1) return log;
+
+	return log.slice(lastResponderIndex + 1);
 }
 
 /**

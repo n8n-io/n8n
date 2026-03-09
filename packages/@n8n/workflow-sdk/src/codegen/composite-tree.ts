@@ -52,6 +52,7 @@ export interface IfElseCompositeNode extends CompositeNodeBase {
 	ifNode: SemanticNode;
 	trueBranch: CompositeNode | CompositeNode[] | null;
 	falseBranch: CompositeNode | CompositeNode[] | null;
+	errorHandler?: CompositeNode;
 }
 
 /**
@@ -176,6 +177,8 @@ export interface DeferredInputConnection {
 	sourceNodeName: string;
 	/** Which output slot of source (default 0) */
 	sourceOutputIndex: number;
+	/** Whether this connection comes from an error output */
+	isErrorOutput?: boolean;
 }
 
 /**

@@ -40,7 +40,7 @@ const DEFAULT_IMAGES = {
 	ngrok: 'ngrok/ngrok:alpine',
 	kafka: 'confluentinc/cp-kafka:8.0.3',
 	mysql: 'mysql:9.6.0',
-	localstack: 'localstack/localstack:latest',
+	localstack: 'localstack/localstack:4.13.1',
 } as const;
 
 /** Convert camelCase to SCREAMING_SNAKE_CASE for env var names */

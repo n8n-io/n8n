@@ -47,6 +47,34 @@ export class CredentialModal extends BaseModal {
 		await expect(input).toHaveValue(value);
 	}
 
+	/**
+	 * Switch a credential field to expression mode and fill it with an expression.
+	 *
+	 * Expression mode is activated by clicking the "Expression" radio button that
+	 * appears when hovering over a parameter input.
+	 *
+	 * @example
+	 * await modal.fillExpressionField('value', "{{ $secrets['myVault']['apikey'] }}");
+	 */
+	async fillExpressionField(key: string, expression: string): Promise<void> {
+		const parameterInput = this.root
+			.getByTestId('credential-connection-parameter')
+			.getByTestId(key);
+
+		// Hover to reveal the Fixed / Expression toggle
+		await parameterInput.locator('label').first().hover();
+		await parameterInput.getByTestId('parameter-options-container').waitFor({ state: 'visible' });
+
+		// Click the "Expression" radio option
+		await parameterInput.getByTestId('radio-button-expression').click();
+
+		// After switching modes, the field becomes a CodeMirror editor
+		const cmContent = parameterInput.locator('.cm-content');
+		await cmContent.waitFor({ state: 'visible', timeout: 10_000 });
+		await cmContent.click();
+		await cmContent.fill(expression);
+	}
+
 	async fillAllFields(values: Record<string, string>): Promise<void> {
 		for (const [key, val] of Object.entries(values)) {
 			await this.fillField(key, val);
@@ -57,12 +85,26 @@ export class CredentialModal extends BaseModal {
 		return this.root.getByTestId('credential-save-button');
 	}
 
-	async save(): Promise<void> {
-		const saveBtn = this.getSaveButton();
-		await saveBtn.click();
-		await saveBtn.waitFor({ state: 'visible' });
+	getParameterInputHint(): Locator {
+		return this.container.getByTestId('parameter-input-hint');
+	}
 
-		await saveBtn.getByText('Saved', { exact: true }).waitFor({ state: 'visible', timeout: 3000 });
+	/**
+	 * Wait for save to fully complete.
+	 * After saving (and optional credential testing), the button becomes
+	 * disabled (no unsaved changes) and is no longer loading
+	 */
+	async waitForSaveComplete(): Promise<void> {
+		const btn = this.getSaveButton().locator('button');
+		await expect(async () => {
+			await expect(btn).toBeDisabled();
+			await expect(btn).not.toHaveAttribute('aria-busy', 'true');
+		}).toPass({ timeout: 10000 });
+	}
+
+	async save(): Promise<void> {
+		await this.getSaveButton().click();
+		await this.waitForSaveComplete();
 	}
 
 	async close(): Promise<void> {
@@ -81,14 +123,18 @@ export class CredentialModal extends BaseModal {
 	 */
 	async addCredential(
 		fields: Record<string, string>,
-		options?: { closeDialog?: boolean; name?: string },
+		options?: { closeDialog?: boolean; skipSave?: boolean; name?: string },
 	): Promise<void> {
 		await this.fillAllFields(fields);
 		if (options?.name) {
 			await this.getCredentialName().click();
 			await this.getNameInput().fill(options.name);
 		}
-		await this.save();
+
+		if (!options?.skipSave) {
+			await this.save();
+		}
+
 		const shouldClose = options?.closeDialog ?? true;
 		if (shouldClose) {
 			await this.close();
@@ -121,16 +167,21 @@ export class CredentialModal extends BaseModal {
 		await this.getNameInput().press('Enter');
 	}
 
-	getAuthMethodSelector() {
-		return this.root.page().getByText('Select Authentication Method');
-	}
-
 	getOAuthRedirectUrl() {
 		return this.root.page().getByTestId('oauth-redirect-url');
 	}
 
-	getAuthTypeRadioButtons() {
-		return this.root.page().locator('label.el-radio');
+	getModeSelector() {
+		return this.root.getByTestId('credential-mode-selector');
+	}
+
+	getModeDropdownTrigger() {
+		return this.root.getByTestId('credential-mode-dropdown-trigger');
+	}
+
+	async selectAuthTypeFromDropdown(optionName: string | RegExp): Promise<void> {
+		await this.getModeDropdownTrigger().click();
+		await this.root.page().getByRole('menuitem', { name: optionName }).click();
 	}
 
 	async changeTab(tabName: 'Sharing'): Promise<void> {
@@ -196,9 +247,6 @@ export class CredentialModal extends BaseModal {
 					response.request().method() === 'PUT',
 			);
 
-		await saveBtn.getByText('Saved', { exact: true }).waitFor({
-			state: 'visible',
-			timeout: 3000,
-		});
+		await this.waitForSaveComplete();
 	}
 }

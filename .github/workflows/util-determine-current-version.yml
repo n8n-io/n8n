@@ -1,0 +1,45 @@
+name: 'Util: Determine current versions'
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    outputs:
+      stable:
+        description: 'Stable release version'
+        value: ${{ jobs.get-versions.outputs.stable }}
+      beta:
+        description: 'Beta release version'
+        value: ${{ jobs.get-versions.outputs.beta }}
+      v1:
+        description: 'v1 release version'
+        value: ${{ jobs.get-versions.outputs.v1 }}
+
+jobs:
+  get-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      stable: ${{ steps.get-tags.outputs.stable }}
+      beta: ${{ steps.get-tags.outputs.beta }}
+      v1: ${{ steps.get-tags.outputs.v1 }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+          install-command: npm install --prefix=.github/scripts --no-package-lock
+
+      - name: Extract release versions
+        id: get-tags
+        run: node ./.github/scripts/get-release-versions.mjs
+
+      - name: Print detected versions
+        run: |
+          echo "Stable: ${{ steps.get-tags.outputs.stable }}"
+          echo "Beta:   ${{ steps.get-tags.outputs.beta }}"
+          echo "v1: ${{ steps.get-tags.outputs.v1 }}"

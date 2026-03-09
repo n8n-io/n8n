@@ -66,6 +66,15 @@ const DISPLAY_METRICS_BY_EVALUATOR: Record<string, string[]> = {
 		'pairwise_total_passes',
 		'pairwise_total_violations',
 	],
+	'responder-judge': [
+		'relevance',
+		'accuracy',
+		'completeness',
+		'clarity',
+		'criteriaMatch',
+		'forbiddenPhrases',
+		'overallScore',
+	],
 };
 
 const PAIRWISE_COUNT_METRICS = new Set([
@@ -135,6 +144,16 @@ function extractIssuesForLogs(evaluator: string, feedback: Feedback[]): Feedback
 			if (f.metric === 'pairwise_primary' && f.score < 1) return true;
 			if (f.metric === 'pairwise_generation_correctness' && f.score < 1) return true;
 
+			return false;
+		});
+	}
+
+	if (evaluator === 'responder-judge') {
+		return withComments.filter((f) => {
+			// Show per-judge detail summaries
+			if (/^judge\d+$/u.test(f.metric)) return true;
+			// Show dimensions that scored below threshold
+			if (f.kind === 'metric' && f.score < 0.7) return true;
 			return false;
 		});
 	}
@@ -382,10 +401,7 @@ export function createConsoleLifecycle(options: ConsoleLifecycleOptions): Evalua
 		},
 
 		onEnd(summary: RunSummary): void {
-			if (runMode === 'langsmith') {
-				return;
-			}
-
+			if (runMode === 'langsmith') return;
 			logger.info('\n' + pc.bold('═══════════════════ SUMMARY ═══════════════════'));
 			logger.info(
 				`  Total: ${summary.totalExamples} | ` +
@@ -397,6 +413,19 @@ export function createConsoleLifecycle(options: ConsoleLifecycleOptions): Evalua
 			logger.info(`  Pass rate: ${formatScore(passRate)}`);
 			logger.info(`  Average score: ${formatScore(summary.averageScore)}`);
 			logger.info(`  Total time: ${formatDuration(summary.totalDurationMs)}`);
+
+			if (summary.evaluatorAverages && Object.keys(summary.evaluatorAverages).length > 0) {
+				logger.info(pc.dim('  Evaluator averages:'));
+				for (const [name, avg] of Object.entries(summary.evaluatorAverages)) {
+					const color = scoreColor(avg);
+					logger.info(`    ${pc.dim(name + ':')} ${color(formatScore(avg))}`);
+				}
+			}
+
+			if (summary.langsmith) {
+				logger.info(pc.dim(`  Experiment: ${summary.langsmith.experimentName}`));
+			}
+
 			logger.info(pc.bold('═══════════════════════════════════════════════\n'));
 		},
 	};

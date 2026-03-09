@@ -50,6 +50,7 @@ describe('WorkerServer', () => {
 
 	beforeEach(() => {
 		globalConfig = mock<GlobalConfig>({
+			path: '/',
 			queue: {
 				health: { active: true, port: 5678, address: '::' },
 			},

@@ -32,6 +32,7 @@ import { UrlService } from '@/services/url.service';
 import { UserManagementMailer } from '@/user-management/email';
 
 import { JwtService } from './jwt.service';
+import { OwnershipService } from './ownership.service';
 import { PublicApiKeyService } from './public-api-key.service';
 import { RoleService } from './role.service';
 
@@ -46,6 +47,7 @@ export class UserService {
 		private readonly mailer: UserManagementMailer,
 		private readonly urlService: UrlService,
 		private readonly eventService: EventService,
+		private readonly ownershipService: OwnershipService,
 		private readonly publicApiKeyService: PublicApiKeyService,
 		private readonly roleService: RoleService,
 		private readonly globalConfig: GlobalConfig,
@@ -345,7 +347,7 @@ export class UserService {
 		// Check that new role exists
 		await this.roleService.checkRolesExist([newRole.newRoleName], 'global');
 
-		return await this.userRepository.manager.transaction(async (trx) => {
+		await this.userRepository.manager.transaction(async (trx) => {
 			await trx.update(User, { id: user.id }, { role: { slug: newRole.newRoleName } });
 
 			const isAdminRole = (roleName: string) => {
@@ -427,6 +429,9 @@ export class UserService {
 				);
 			}
 		});
+
+		// Invalidate ownership cache for the user to ensure their new permissions are reflected in subsequent requests
+		await this.ownershipService.invalidateProjectOwnerCacheByUserId(user.id);
 	}
 
 	/**

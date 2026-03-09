@@ -239,7 +239,7 @@ onMounted(() => {
 					</N8nText>
 				</div>
 			</div>
-			<div>
+			<div :class="$style.footer">
 				<N8nButton
 					float="right"
 					:loading="verifyingMfaCode"
@@ -282,6 +282,12 @@ body {
 
 .formContainer {
 	padding-bottom: var(--spacing--xl);
+}
+
+.footer {
+	display: flex;
+	justify-content: space-between;
+	gap: var(--spacing--2xs);
 }
 
 .headerContainer {
