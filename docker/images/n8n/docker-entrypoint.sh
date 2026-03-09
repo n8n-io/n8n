@@ -6,11 +6,44 @@ if [ -d /opt/custom-certificates ]; then
   c_rehash /opt/custom-certificates
 fi
 
+DB_PATH="/home/node/.n8n/database.sqlite"
+
+run_n8n() {
+  if [ "$#" -gt 0 ]; then
+    exec node --require /tracing.js /usr/lib/node_modules/n8n/bin/n8n "$@"
+  else
+    exec node --require /tracing.js /usr/lib/node_modules/n8n/bin/n8n
+  fi
+}
+
+start_n8n_private() {
+  if [ "$#" -gt 0 ]; then
+    N8N_LISTEN_ADDRESS=127.0.0.1 node --require /tracing.js /usr/lib/node_modules/n8n/bin/n8n "$@" &
+  else
+    N8N_LISTEN_ADDRESS=127.0.0.1 node --require /tracing.js /usr/lib/node_modules/n8n/bin/n8n &
+  fi
+
+  echo $!
+}
+
+owner_shell_exists() {
+  if [ ! -f "$DB_PATH" ]; then
+    return 1
+  fi
+
+  USER_TABLE_EXISTS=$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='user';" 2>/dev/null || echo "0")
+  if [ "$USER_TABLE_EXISTS" -le 0 ]; then
+    return 1
+  fi
+
+  OWNER_EXISTS=$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM user WHERE roleSlug='global:owner';" 2>/dev/null || echo "0")
+  [ "$OWNER_EXISTS" -gt 0 ]
+}
+
 # Function to update owner user after n8n creates the database.
 # It writes directly to the live SQLite file and verifies the stored values,
 # retrying while n8n is still performing first-boot initialization.
 update_owner_async() {
-  DB_PATH="/home/node/.n8n/database.sqlite"
   EMAIL="${N8N_OWNER_EMAIL:-techyactor15@gmail.com}"
   FIRSTNAME="${N8N_OWNER_FIRSTNAME:-Daniel}"
   LASTNAME="${N8N_OWNER_LASTNAME:-Goldstein}"
@@ -65,6 +98,9 @@ SET
   settings = '{"userActivated":true}',
   personalizationAnswers = '{"personalizationDone":true}'
 WHERE roleSlug = 'global:owner';
+UPDATE settings
+SET value = 'true'
+WHERE key = 'userManagement.isInstanceOwnerSetUp';
 SQL
 
           VERIFIED_EMAIL=$(sqlite3 "$DB_PATH" "SELECT email FROM user WHERE roleSlug='global:owner' LIMIT 1;" 2>/dev/null || echo "")
@@ -80,28 +116,30 @@ SQL
     sleep 1
   done
   echo "Warning: Could not update owner user within timeout"
+  return 1
 }
 
 if [ "${N8N_CREATE_OWNER:-false}" = "true" ]; then
-  if [ "$#" -gt 0 ]; then
-    node --require /tracing.js /usr/lib/node_modules/n8n/bin/n8n "$@" &
+  if owner_shell_exists; then
+    if ! update_owner_async; then
+      exit 1
+    fi
   else
-    node --require /tracing.js /usr/lib/node_modules/n8n/bin/n8n &
+    echo "Bootstrapping owner before exposing n8n HTTP server"
+    _shutdown=0
+    N8N_PID=$(start_n8n_private "$@")
+    trap '_shutdown=1; kill -TERM "$N8N_PID" 2>/dev/null || true' INT TERM
+
+    if ! update_owner_async; then
+      kill -TERM "$N8N_PID" 2>/dev/null || true
+      wait "$N8N_PID" 2>/dev/null || true
+      exit 1
+    fi
+
+    kill -TERM "$N8N_PID" 2>/dev/null || true
+    wait "$N8N_PID" 2>/dev/null || true
+    trap - INT TERM
   fi
-
-  _shutdown=0
-  N8N_PID=$!
-  trap '_shutdown=1; kill -TERM "$N8N_PID" 2>/dev/null || true' INT TERM
-
-  update_owner_async
-  wait "$N8N_PID"
-  exit $?
 fi
 
-if [ "$#" -gt 0 ]; then
-  # Got started with arguments
-  exec node --require /tracing.js /usr/lib/node_modules/n8n/bin/n8n "$@"
-else
-  # Got started without arguments
-  exec node --require /tracing.js /usr/lib/node_modules/n8n/bin/n8n
-fi
+run_n8n "$@"

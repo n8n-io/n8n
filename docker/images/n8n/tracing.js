@@ -89,15 +89,26 @@ var sdk = new NodeSDK({
   ]
 });
 
-sdk
-  .start()
-  .then(() => {
+var startResult;
+
+try {
+  startResult = sdk.start();
+  if (startResult && typeof startResult.then === 'function') {
+    startResult
+      .then(function () {
+        console.log('OpenTelemetry SDK initialized for n8n - exporting to', OTLP_ENDPOINT);
+      })
+      .catch(function (err) {
+        console.error('Failed to start OpenTelemetry SDK', err);
+        process.exit(1);
+      });
+  } else {
     console.log('OpenTelemetry SDK initialized for n8n - exporting to', OTLP_ENDPOINT);
-  })
-  .catch((err) => {
-    console.error('Failed to start OpenTelemetry SDK', err);
-    process.exit(1);
-  });
+  }
+} catch (err) {
+  console.error('Failed to start OpenTelemetry SDK', err);
+  process.exit(1);
+}
 
 // ---------------------------------------------------------------------------
 // Custom runtime metrics as OTel observable gauges
@@ -197,9 +208,22 @@ meter.createObservableGauge('nodejs.active_requests', {
 });
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
-  sdk.shutdown().then(
-    () => console.log('OpenTelemetry SDK shut down'),
-    (err) => console.error('Error shutting down SDK', err)
-  );
+process.on('SIGTERM', function () {
+  try {
+    var shutdownResult = sdk.shutdown();
+    if (shutdownResult && typeof shutdownResult.then === 'function') {
+      shutdownResult.then(
+        function () {
+          console.log('OpenTelemetry SDK shut down');
+        },
+        function (err) {
+          console.error('Error shutting down SDK', err);
+        }
+      );
+    } else {
+      console.log('OpenTelemetry SDK shut down');
+    }
+  } catch (err) {
+    console.error('Error shutting down SDK', err);
+  }
 });
