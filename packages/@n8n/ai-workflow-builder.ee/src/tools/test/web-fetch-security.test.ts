@@ -188,7 +188,7 @@ describe('WebFetchSecurityManager', () => {
 	});
 
 	describe('getStateUpdates', () => {
-		it('should return only webFetchCount when nothing changed', () => {
+		it('should return empty object when nothing changed', () => {
 			const state: MutableWebFetchState = {
 				approvedDomains: [],
 				allDomainsApproved: false,
@@ -197,7 +197,7 @@ describe('WebFetchSecurityManager', () => {
 			};
 			const manager = createMutableSecurityManagerFactory(state)();
 
-			expect(manager.getStateUpdates()).toEqual({ webFetchCount: 0 });
+			expect(manager.getStateUpdates()).toEqual({});
 		});
 
 		it('should include newly approved domains', () => {
@@ -214,7 +214,6 @@ describe('WebFetchSecurityManager', () => {
 			manager.recordFetch();
 
 			expect(manager.getStateUpdates()).toEqual({
-				webFetchCount: 1,
 				approvedDomains: ['a.com', 'b.com'],
 			});
 		});
@@ -231,7 +230,6 @@ describe('WebFetchSecurityManager', () => {
 			manager.approveAllDomains();
 
 			expect(manager.getStateUpdates()).toEqual({
-				webFetchCount: 0,
 				allDomainsApproved: true,
 			});
 		});

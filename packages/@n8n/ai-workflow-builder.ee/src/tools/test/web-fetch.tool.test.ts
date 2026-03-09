@@ -310,7 +310,7 @@ describe('web_fetch tool', () => {
 			const content = getMessageContent(command);
 
 			expect(content).toContain('not supported');
-			expect(content).toContain('PDF');
+			expect(content).toContain('pdf');
 		});
 
 		it('should handle empty body', async () => {
