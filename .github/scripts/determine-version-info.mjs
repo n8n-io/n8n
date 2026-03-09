@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { RELEASE_TRACKS, resolveReleaseTagForTrack, writeGithubOutput } from './github-helpers.mjs';
+import { tagVersionInfoToReleaseCandidateBranchName } from './ensure-release-candidate-branches.mjs';
 import semver from 'semver';
 
 /**
@@ -50,17 +51,23 @@ export function determineTrack(packageVersion) {
 		throw new Error('Could not determine track for release. Exiting...');
 	}
 
+	const rc_branch = tagVersionInfoToReleaseCandidateBranchName({
+		version: packageVersion,
+		tag: /** @type {import('./github-helpers.mjs').ReleaseVersion} */ (`n8n@${packageVersion}`),
+	});
+
 	const output = {
 		version: packageVersion,
 		track,
 		bump,
 		new_stable_version: newStable,
 		release_type: releaseType,
+		rc_branch,
 	};
 
 	writeGithubOutput(output);
 	console.log(
-		`Determined track info: track=${track}, version=${packageVersion}, new_stable_version=${newStable}, release_type=${releaseType}`,
+		`Determined track info: track=${track}, version=${packageVersion}, new_stable_version=${newStable}, release_type=${releaseType}, rc_branch=${rc_branch}`,
 	);
 
 	return output;

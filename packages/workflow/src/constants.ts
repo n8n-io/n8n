@@ -116,6 +116,15 @@ export const AI_VENDOR_NODE_TYPES = [
 
 export const LANGCHAIN_LM_NODE_TYPE_PREFIX = '@n8n/n8n-nodes-langchain.lm';
 
+export const CHAT_HUB_VECTOR_STORE_PG_VECTOR_NODE_TYPE =
+	'@n8n/n8n-nodes-langchain.chatHubVectorStorePGVector';
+export const CHAT_HUB_VECTOR_STORE_QDRANT_NODE_TYPE =
+	'@n8n/n8n-nodes-langchain.chatHubVectorStoreQdrant';
+export const CHAT_HUB_VECTOR_STORE_PINECONE_NODE_TYPE =
+	'@n8n/n8n-nodes-langchain.chatHubVectorStorePinecone';
+export const DOCUMENT_DEFAULT_DATA_LOADER_NODE_TYPE =
+	'@n8n/n8n-nodes-langchain.documentDefaultDataLoader';
+
 export const LANGCHAIN_CUSTOM_TOOLS = [
 	CODE_TOOL_LANGCHAIN_NODE_TYPE,
 	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
