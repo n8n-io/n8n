@@ -12,7 +12,9 @@ import type {
 } from './types';
 import { PAYLOAD_PROFILES, generatePayload } from './types';
 import { buildChainedWorkflow } from './workflow-builder';
-import { trigger } from '../../../../@n8n/workflow-sdk/src';
+import { trigger } from '@n8n/workflow-sdk';
+
+const LAST_EXECUTION_SETTLE_MS = 3000;
 
 // --- Kafka-specific publishing ---
 
@@ -41,7 +43,14 @@ async function publishAtRate(
 		await kafka.publish(topic, { ...payload, index: i });
 	}
 
-	return { totalPublished: totalMessages, actualDurationMs: Date.now() - startTime };
+	const actualDurationMs = Date.now() - startTime;
+	if (actualDurationMs > durationSeconds * 1000 * 1.1) {
+		console.warn(
+			`[LOAD] Publish rate slower than requested: took ${actualDurationMs}ms for ${durationSeconds}s target (${((actualDurationMs / (durationSeconds * 1000)) * 100).toFixed(1)}% of target)`,
+		);
+	}
+
+	return { totalPublished: totalMessages, actualDurationMs };
 }
 
 async function preloadQueue(
@@ -99,7 +108,7 @@ async function waitForConsumerGroupDrain(
 
 		if (lagInfo.totalLag === 0) {
 			// All messages consumed — wait briefly for last execution to finish
-			await new Promise((resolve) => setTimeout(resolve, 3000));
+			await new Promise((resolve) => setTimeout(resolve, LAST_EXECUTION_SETTLE_MS));
 			return { drained: true, durationMs: Date.now() - startTime };
 		}
 

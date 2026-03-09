@@ -80,7 +80,7 @@ export async function runLoadTest({
 	}
 
 	const durations = await sampleExecutionDurations(api.workflows, workflowId);
-	const metrics = buildMetrics(expectedExecutions, 0, drainDurationMs, durations);
+	const metrics = buildMetrics(durations.length, 0, drainDurationMs, durations);
 
 	await attachLoadTestResults(testInfo, testInfo.title, metrics);
 

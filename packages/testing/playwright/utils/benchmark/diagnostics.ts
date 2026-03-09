@@ -34,10 +34,10 @@ export async function collectDiagnostics(
 	const db = 'n8n_db';
 	const [
 		eventLoopLag,
-		pgTxA,
-		pgTxB,
-		pgInsA,
-		pgInsB,
+		pgTxRateWithTotals,
+		pgTxRateFallback,
+		pgInsertRateWithTotals,
+		pgInsertRateFallback,
 		pgActive,
 		queueWaiting,
 		queueActive,
@@ -62,8 +62,9 @@ export async function collectDiagnostics(
 		metrics.query(`rate(n8n_scaling_mode_queue_jobs_failed[${window}])`).catch(() => []),
 	]);
 
-	const pgTxRate = pgTxA.length > 0 ? pgTxA : pgTxB;
-	const pgInsertRate = pgInsA.length > 0 ? pgInsA : pgInsB;
+	const pgTxRate = pgTxRateWithTotals.length > 0 ? pgTxRateWithTotals : pgTxRateFallback;
+	const pgInsertRate =
+		pgInsertRateWithTotals.length > 0 ? pgInsertRateWithTotals : pgInsertRateFallback;
 
 	return {
 		eventLoopLag: fmt(sumValues(eventLoopLag), 's'),

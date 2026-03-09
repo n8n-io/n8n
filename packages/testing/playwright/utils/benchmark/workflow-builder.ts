@@ -3,7 +3,7 @@ import { nanoid } from 'nanoid';
 
 import type { NodeOutputSize } from './types';
 import { OUTPUT_SIZE_BYTES } from './types';
-import { workflow, node } from '../../../../@n8n/workflow-sdk/src';
+import { workflow, node } from '@n8n/workflow-sdk';
 
 type TriggerNode = Parameters<ReturnType<typeof workflow>['add']>[0];
 
