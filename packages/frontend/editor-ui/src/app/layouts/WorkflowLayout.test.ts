@@ -63,6 +63,15 @@ vi.mock('@/app/composables/usePostMessageHandler', () => ({
 	})),
 }));
 
+const mockPushConnect = vi.fn();
+const mockPushDisconnect = vi.fn();
+vi.mock('@/app/stores/pushConnection.store', () => ({
+	usePushConnectionStore: vi.fn(() => ({
+		pushConnect: mockPushConnect,
+		pushDisconnect: mockPushDisconnect,
+	})),
+}));
+
 const defaultStubs = {
 	AppHeader: {
 		template: '<div data-test-id="app-header">App Header</div>',
@@ -182,5 +191,16 @@ describe('WorkflowLayout', () => {
 		expect(getByTestId('app-header')).toBeInTheDocument();
 		expect(getByTestId('app-sidebar')).toBeInTheDocument();
 		expect(getByText('Workflow Content')).toBeInTheDocument();
+	});
+
+	it('should call pushConnect on mount', () => {
+		renderComponent();
+		expect(mockPushConnect).toHaveBeenCalledOnce();
+	});
+
+	it('should call pushDisconnect on unmount', () => {
+		const { unmount } = renderComponent();
+		unmount();
+		expect(mockPushDisconnect).toHaveBeenCalledOnce();
 	});
 });
