@@ -17,6 +17,21 @@ jest.mock('../../../../v2/transport', () => {
 				};
 			}
 		}),
+		downloadRecordAttachments: jest.fn(async function () {
+			return [
+				{
+					json: {
+						id: 'recXXX',
+						fields: {
+							foo: 'foo 1',
+							bar: 'bar 1',
+							attachment: [{ url: 'http://example.com/file.png' }],
+						},
+					},
+					binary: { attachment_0: { data: 'binary-data' } },
+				},
+			];
+		}),
 	};
 });
 
@@ -56,6 +71,70 @@ describe('Test AirtableV2, get operation', () => {
 				pairedItem: {
 					item: 0,
 				},
+			},
+		]);
+	});
+
+	afterEach(() => jest.clearAllMocks());
+
+	it('should get a record with attachments and nested fields structure for v2.2', async () => {
+		const nodeParameters = {
+			operation: 'get',
+			id: 'recXXX',
+			options: { downloadFields: ['attachment'] },
+		};
+
+		const items = [{ json: {} }];
+
+		const result = await get.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			items,
+			'appYoLbase',
+			'tblltable',
+		);
+
+		expect(transport.downloadRecordAttachments).toHaveBeenCalledTimes(1);
+		expect(result).toEqual([
+			{
+				json: {
+					id: 'recXXX',
+					fields: {
+						foo: 'foo 1',
+						bar: 'bar 1',
+						attachment: [{ url: 'http://example.com/file.png' }],
+					},
+				},
+				binary: { attachment_0: { data: 'binary-data' } },
+			},
+		]);
+	});
+
+	it('should get a record with attachments and flatten output for v2', async () => {
+		const nodeParameters = {
+			operation: 'get',
+			id: 'recXXX',
+			options: { downloadFields: ['attachment'] },
+		};
+
+		const items = [{ json: {} }];
+
+		const result = await get.execute.call(
+			createMockExecuteFunction(nodeParameters, 2),
+			items,
+			'appYoLbase',
+			'tblltable',
+		);
+
+		expect(transport.downloadRecordAttachments).toHaveBeenCalledTimes(1);
+		expect(result).toEqual([
+			{
+				json: {
+					id: 'recXXX',
+					foo: 'foo 1',
+					bar: 'bar 1',
+					attachment: [{ url: 'http://example.com/file.png' }],
+				},
+				binary: { attachment_0: { data: 'binary-data' } },
 			},
 		]);
 	});
