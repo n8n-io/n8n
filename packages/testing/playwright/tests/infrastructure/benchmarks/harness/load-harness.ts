@@ -47,7 +47,7 @@ export async function runLoadTest({
 		console.log(
 			`[LOAD] Preloaded ${result.totalPublished} messages in ${result.publishDurationMs}ms`,
 		);
-		expectedExecutions = load.count;
+		expectedExecutions = result.totalPublished;
 	}
 
 	// Phase 2: Activate workflow

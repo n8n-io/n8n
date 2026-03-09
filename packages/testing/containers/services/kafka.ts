@@ -148,9 +148,10 @@ export class KafkaHelper {
 			const topicOffsets = await admin.fetchTopicOffsets(topic);
 
 			const consumerPartitions = offsets.find((o) => o.topic === topic)?.partitions ?? [];
+			const committedByPartition = new Map(consumerPartitions.map((p) => [p.partition, p.offset]));
 			const partitions = topicOffsets.map((tp) => {
-				const committed = consumerPartitions.find((p) => p.partition === tp.partition);
-				const lag = parseInt(tp.high, 10) - parseInt(committed?.offset ?? '0', 10);
+				const committedOffset = committedByPartition.get(tp.partition) ?? '0';
+				const lag = parseInt(tp.high, 10) - parseInt(committedOffset, 10);
 				return { partition: tp.partition, lag };
 			});
 			const totalLag = partitions.reduce((sum, p) => sum + p.lag, 0);

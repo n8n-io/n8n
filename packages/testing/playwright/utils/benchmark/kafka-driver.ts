@@ -29,6 +29,7 @@ async function publishAtRate(
 ): Promise<PublishResult> {
 	const { ratePerSecond, durationSeconds, payloadSize } = options;
 	if (ratePerSecond <= 0) throw new Error(`ratePerSecond must be > 0, got ${ratePerSecond}`);
+	if (durationSeconds <= 0) throw new Error(`durationSeconds must be > 0, got ${durationSeconds}`);
 	const payload = generatePayload(PAYLOAD_PROFILES[payloadSize]);
 	const intervalMs = 1000 / ratePerSecond;
 	const totalMessages = ratePerSecond * durationSeconds;
