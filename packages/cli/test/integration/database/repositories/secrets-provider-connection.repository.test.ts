@@ -2,8 +2,10 @@ import { LicenseState } from '@n8n/backend-common';
 import { createTeamProject, testDb } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
 import {
+	CredentialsRepository,
 	ProjectSecretsProviderAccessRepository,
 	SecretsProviderConnectionRepository,
+	SharedCredentialsRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -31,7 +33,12 @@ describe('SecretsProviderConnectionRepository', () => {
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['SecretsProviderConnection', 'ProjectSecretsProviderAccess']);
+		await testDb.truncate([
+			'SecretsProviderConnection',
+			'ProjectSecretsProviderAccess',
+			'SharedCredentials',
+			'CredentialsEntity',
+		]);
 	});
 
 	afterAll(async () => {
@@ -63,6 +70,30 @@ describe('SecretsProviderConnectionRepository', () => {
 		}
 
 		return connection;
+	}
+
+	async function createCredential(ownerProjectId: string) {
+		const credentialsRepository = Container.get(CredentialsRepository);
+		const sharedCredentialsRepository = Container.get(SharedCredentialsRepository);
+		const cipher = Container.get(Cipher);
+
+		const credential = await credentialsRepository.save(
+			credentialsRepository.create({
+				name: 'Test Credential',
+				type: 'githubApi',
+				data: cipher.encrypt({}),
+			}),
+		);
+
+		await sharedCredentialsRepository.save(
+			sharedCredentialsRepository.create({
+				credentialsId: credential.id,
+				projectId: ownerProjectId,
+				role: 'credential:owner',
+			}),
+		);
+
+		return credential;
 	}
 
 	describe('findGlobalConnections', () => {
@@ -179,6 +210,41 @@ describe('SecretsProviderConnectionRepository', () => {
 			});
 
 			expect(connections).toEqual([]);
+		});
+	});
+
+	describe('findAllAccessibleProviderKeysByCredentialId', () => {
+		it('should always include global vaults', async () => {
+			await createConnection('globalVault', 'awsSecretsManager');
+			const credential = await createCredential(project1.id);
+
+			const providerKeys = await connectionRepository.findAllAccessibleProviderKeysByCredentialId(
+				credential.id,
+			);
+
+			expect(providerKeys).toContain('globalVault');
+		});
+
+		it('should include project-scoped vaults if the project that owns the credential has access to them', async () => {
+			await createConnection('project1Vault', 'awsSecretsManager', [project1.id]);
+			const credential = await createCredential(project1.id);
+
+			const providerKeys = await connectionRepository.findAllAccessibleProviderKeysByCredentialId(
+				credential.id,
+			);
+
+			expect(providerKeys).toContain('project1Vault');
+		});
+
+		it('should not include project-scoped vault that the owning project of the credential does not have access to', async () => {
+			await createConnection('project2Vault', 'awsSecretsManager', [project2.id]);
+			const credential = await createCredential(project1.id);
+
+			const providerKeys = await connectionRepository.findAllAccessibleProviderKeysByCredentialId(
+				credential.id,
+			);
+
+			expect(providerKeys).not.toContain('project2Vault');
 		});
 	});
 });
