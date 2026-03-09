@@ -34,7 +34,7 @@ update_owner_async() {
   # Once it exists, update the live database in place until the stored values
   # match the requested credentials.
   attempt=1
-  while [ "$attempt" -le 120 ]; do
+  while [ "${_shutdown:-0}" -eq 0 ] && [ "$attempt" -le 120 ]; do
     if [ -f "$DB_PATH" ]; then
       USER_TABLE_EXISTS=$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='user';" 2>/dev/null || echo "0")
       if [ "$USER_TABLE_EXISTS" -gt 0 ]; then
@@ -89,8 +89,9 @@ if [ "${N8N_CREATE_OWNER:-false}" = "true" ]; then
     node --require /tracing.js /usr/lib/node_modules/n8n/bin/n8n &
   fi
 
+  _shutdown=0
   N8N_PID=$!
-  trap 'kill -TERM "$N8N_PID" 2>/dev/null || true' INT TERM
+  trap '_shutdown=1; kill -TERM "$N8N_PID" 2>/dev/null || true' INT TERM
 
   update_owner_async
   wait "$N8N_PID"
