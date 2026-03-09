@@ -90,7 +90,7 @@ const BENCHMARK_PROFILES: Array<{ name: string; config: N8NConfig }> = [
 			env: {
 				...BENCHMARK_BASE_CONFIG.env,
 				N8N_METRICS_INCLUDE_QUEUE_METRICS: 'true',
-				N8N_LOG_LEVEL: 'error',
+				N8N_LOG_LEVEL: 'info',
 				DB_POSTGRESDB_POOL_SIZE: '30',
 				DB_POSTGRESDB_CONNECTION_TIMEOUT: '60000',
 				N8N_CONCURRENCY_PRODUCTION_LIMIT: '20',
