@@ -9,6 +9,8 @@ import {
 	PROJECT_OWNER_ROLE_SLUG,
 	PERSONAL_SPACE_SHARING_SETTING,
 	EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING,
+	PROJECT_ADMIN_ROLE_SLUG,
+	PROJECT_EDITOR_ROLE_SLUG,
 } from '@n8n/permissions';
 
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
@@ -177,7 +179,10 @@ export class AuthRolesService {
 		}
 
 		// External secrets system roles scopes
-		scopes.push(...(await this.getExternalSecretsSystemRolesScopes(roleSlug, tx)));
+		if (roleSlug === PROJECT_ADMIN_ROLE_SLUG || roleSlug === PROJECT_EDITOR_ROLE_SLUG) {
+			scopes.push(...(await this.getExternalSecretsSystemRolesScopes(roleSlug, tx)));
+		}
+
 		return scopes;
 	}
 
