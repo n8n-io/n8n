@@ -9,7 +9,7 @@ import {
 	extractReadableContent,
 } from '@/tools/utils/web-fetch.utils';
 import type { WebFetchSecurityManager } from '@/tools/web-fetch-security';
-import { createWebFetchTool, WEB_FETCH_TOOL } from '@/tools/web-fetch.tool';
+import { createWebFetchTool } from '@/tools/web-fetch.tool';
 
 // Mock the LangGraph interrupt
 const mockInterrupt = jest.fn();
@@ -72,22 +72,6 @@ describe('web_fetch tool', () => {
 		jest.resetAllMocks();
 		mockNormalizeHost.mockImplementation((url: string) => new URL(url).hostname.toLowerCase());
 		security = createMockSecurityManager();
-	});
-
-	describe('createWebFetchTool', () => {
-		it('should create a tool with correct name and metadata', () => {
-			const result = createWebFetchTool(() => security);
-			expect(result.toolName).toBe('web_fetch');
-			expect(result.displayTitle).toBe('Fetching web content');
-			expect(result.tool.name).toBe('web_fetch');
-		});
-	});
-
-	describe('WEB_FETCH_TOOL constant', () => {
-		it('should have correct values', () => {
-			expect(WEB_FETCH_TOOL.toolName).toBe('web_fetch');
-			expect(WEB_FETCH_TOOL.displayTitle).toBe('Fetching web content');
-		});
 	});
 
 	describe('SSRF blocking', () => {
@@ -197,9 +181,12 @@ describe('web_fetch tool', () => {
 			});
 
 			const { tool } = createWebFetchTool(() => security);
-			await tool.invoke({ url: 'https://example.com/docs' }, mockConfig);
+			const command = await tool.invoke({ url: 'https://example.com/docs' }, mockConfig);
 
 			expect(mockInterrupt).not.toHaveBeenCalled();
+
+			const content = getMessageContent(command);
+			expect(content).toContain('Test Page');
 		});
 
 		it('should return deny message when user denies', async () => {

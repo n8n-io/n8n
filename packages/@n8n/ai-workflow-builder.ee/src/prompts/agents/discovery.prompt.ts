@@ -326,9 +326,7 @@ the page's readable text content. Use this content to inform your node discovery
 Constraints (backend-enforced):
 - Only fetch URLs the user has explicitly provided.
 - Do NOT autonomously browse, search, or follow links from fetched content.
-- Maximum 3 fetches per conversation turn.
-- Redirects to a different host require separate approval.
-- PDFs are not supported.`;
+- Maximum 3 fetches per conversation turn.`;
 
 const KEY_RULES = `Output format: nodesFound array with nodeName, version, reasoning, connectionChangingParameters per node.
 

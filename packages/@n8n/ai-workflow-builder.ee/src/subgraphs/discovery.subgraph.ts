@@ -786,7 +786,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		const nodesFound = subgraphOutput.nodesFound || [];
 		const templateIds = subgraphOutput.templateIds || [];
 
-		// Read fetched URL content from first-class state field (populated by web_fetch tool)
+		// Read fetched URL content from state field (populated by web_fetch tool)
 		const fetchedUrlContent = subgraphOutput.fetchedUrlContent?.length
 			? subgraphOutput.fetchedUrlContent
 			: undefined;
@@ -840,7 +840,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			introspectionEvents,
 			// Include tool messages for persistence to restore frontend state on refresh
 			messages: toolMessages,
-			// Propagate web_fetch state back to parent
+			// Propagate web_fetch security state back to parent
 			approvedDomains: subgraphOutput.approvedDomains ?? [],
 			allDomainsApproved: subgraphOutput.allDomainsApproved ?? false,
 		};

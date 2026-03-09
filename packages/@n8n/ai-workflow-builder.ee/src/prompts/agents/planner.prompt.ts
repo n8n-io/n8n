@@ -27,13 +27,12 @@ Available techniques: trigger, loop, branch, subroutine, pagination, parallel_ex
 
 const WEB_FETCH_TOOL = `If the user's request includes a URL, use web_fetch to retrieve the page content before writing the plan. This gives you concrete details (API endpoints, data shapes, field names) that lead to a more accurate plan.
 
-The tool requires user approval before fetching. After approval, it returns the page's readable text content.
+The tool returns the page's readable text content.
 
 Constraints (backend-enforced):
 - Only fetch URLs the user has explicitly provided.
 - Do NOT autonomously browse, search, or follow links from fetched content.
-- Maximum 3 fetches per conversation turn.
-- PDFs are not supported.`;
+- Maximum 3 fetches per conversation turn.`;
 
 const RULES = `<plan_style>
 Keep it short. A simple workflow (3-5 nodes) needs 2-4 short steps with no sub-steps. Only complex workflows (10+ nodes, branching logic, multiple integrations) warrant sub-steps.
