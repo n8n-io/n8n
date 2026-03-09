@@ -146,7 +146,10 @@ jobs:
   performance:
     name: Performance
     needs: install-and-build
-    if: needs.install-and-build.outputs.performance == 'true' && github.event_name != 'merge_group'
+    if: |
+      needs.install-and-build.outputs.performance == 'true' &&
+      github.event_name != 'merge_group' &&
+      github.repository == 'n8n-io/n8n'
     uses: ./.github/workflows/test-bench-reusable.yml
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
@@ -173,7 +176,18 @@ jobs:
   # PRs cannot be merged unless this job passes.
   required-checks:
     name: Required Checks
-    needs: [install-and-build, unit-test, typecheck, lint, e2e-tests, db-tests, performance, security-checks, chromatic]
+    needs:
+      [
+        install-and-build,
+        unit-test,
+        typecheck,
+        lint,
+        e2e-tests,
+        db-tests,
+        performance,
+        security-checks,
+        chromatic,
+      ]
     if: always()
     runs-on: ubuntu-slim
     steps:
