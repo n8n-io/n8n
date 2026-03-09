@@ -9,6 +9,7 @@ import type { GenericValue, IDataObject, INodeProperties } from 'n8n-workflow';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
+import * as checkAccess from '@/permissions.ee/check-access';
 import type { IDependency } from '@/public-api/types';
 
 import { buildSharedForCredential, toJsonSchema, updateCredential } from '../credentials.service';
@@ -475,6 +476,7 @@ describe('CredentialsService', () => {
 				project: owningProjectData as Project,
 			} as SharedCredentials;
 			it('should throw error when user without permission tries to add external secret expression', async () => {
+				jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
 				const existingCredential = mock<CredentialsEntity>({
 					id: 'cred-id',
 					name: 'Test Credential',
@@ -496,6 +498,7 @@ describe('CredentialsService', () => {
 			});
 
 			it('should throw error when user without permission tries to modify existing external secret expression', async () => {
+				jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
 				const existingCredential = mock<CredentialsEntity>({
 					id: 'cred-id',
 					name: 'Test Credential',
@@ -520,6 +523,7 @@ describe('CredentialsService', () => {
 			});
 
 			it('should throw error when external secret store referenced in expression is not shared with current project', async () => {
+				jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 				const existingCredential = mock<CredentialsEntity>({
 					id: 'UdGtZBYb2TLDgSHy',
 					name: 'Test Credential',
@@ -594,6 +598,7 @@ describe('CredentialsService', () => {
 			});
 
 			it('should allow user with permission to add external secret expression', async () => {
+				jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 				const existingCredential = mock<CredentialsEntity>({
 					id: 'cred-id',
 					name: 'Test Credential',

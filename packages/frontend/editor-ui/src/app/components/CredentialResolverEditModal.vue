@@ -568,6 +568,7 @@ onMounted(async () => {
 	flex: 1;
 	overflow: auto;
 	padding-bottom: 100px;
+	padding-inline: var(--spacing--4xs);
 }
 
 .resolverName {

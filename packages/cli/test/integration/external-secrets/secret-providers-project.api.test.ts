@@ -162,6 +162,7 @@ describe('Secret Providers Project API', () => {
 				expect(globalConnection1).toMatchObject({
 					name: 'global-connection1',
 					type: 'dummy',
+					isEnabled: true,
 					state: 'initializing',
 					projects: [],
 				});
@@ -215,6 +216,7 @@ describe('Secret Providers Project API', () => {
 					expect(connection1).toMatchObject({
 						name: 'connection1',
 						type: 'dummy',
+						isEnabled: true,
 						state: 'initializing',
 						projects: [{ id: teamProject1.id, name: teamProject1.name }],
 					});
@@ -311,6 +313,7 @@ describe('Secret Providers Project API', () => {
 			expect(response.body.data).toMatchObject({
 				name: 'newConn',
 				type: 'awsSecretsManager',
+				isEnabled: true,
 				state: 'connected',
 				projects: [{ id: teamProject1.id, name: teamProject1.name }],
 			});
@@ -408,6 +411,7 @@ describe('Secret Providers Project API', () => {
 
 			expect(response.body.data).toMatchObject({
 				name: 'my-conn',
+				isEnabled: true,
 				state: 'initializing',
 				projects: [{ id: teamProject1.id }],
 			});
@@ -432,6 +436,7 @@ describe('Secret Providers Project API', () => {
 
 			expect(response.body.data).toMatchObject({
 				name: 'global-conn',
+				isEnabled: true,
 				state: 'initializing',
 			});
 		});

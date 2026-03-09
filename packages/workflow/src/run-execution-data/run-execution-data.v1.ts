@@ -5,6 +5,7 @@ import type {
 	IExecuteData,
 	IExecutionContext,
 	IPinData,
+	IRedactedErrorInfo,
 	IRunData,
 	ITaskMetadata,
 	IWaitingForExecution,
@@ -32,6 +33,11 @@ export interface IRunExecutionDataV1 {
 	};
 	resultData: {
 		error?: ExecutionError;
+		/**
+		 * When present, indicates `error` was redacted.
+		 * Contains only non-PII technical metadata from the original error.
+		 */
+		redactedError?: IRedactedErrorInfo;
 		runData: IRunData;
 		pinData?: IPinData;
 		lastNodeExecuted?: string;

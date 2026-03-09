@@ -47,6 +47,34 @@ export class CredentialModal extends BaseModal {
 		await expect(input).toHaveValue(value);
 	}
 
+	/**
+	 * Switch a credential field to expression mode and fill it with an expression.
+	 *
+	 * Expression mode is activated by clicking the "Expression" radio button that
+	 * appears when hovering over a parameter input.
+	 *
+	 * @example
+	 * await modal.fillExpressionField('value', "{{ $secrets['myVault']['apikey'] }}");
+	 */
+	async fillExpressionField(key: string, expression: string): Promise<void> {
+		const parameterInput = this.root
+			.getByTestId('credential-connection-parameter')
+			.getByTestId(key);
+
+		// Hover to reveal the Fixed / Expression toggle
+		await parameterInput.locator('label').first().hover();
+		await parameterInput.getByTestId('parameter-options-container').waitFor({ state: 'visible' });
+
+		// Click the "Expression" radio option
+		await parameterInput.getByTestId('radio-button-expression').click();
+
+		// After switching modes, the field becomes a CodeMirror editor
+		const cmContent = parameterInput.locator('.cm-content');
+		await cmContent.waitFor({ state: 'visible', timeout: 10_000 });
+		await cmContent.click();
+		await cmContent.fill(expression);
+	}
+
 	async fillAllFields(values: Record<string, string>): Promise<void> {
 		for (const [key, val] of Object.entries(values)) {
 			await this.fillField(key, val);
@@ -55,6 +83,10 @@ export class CredentialModal extends BaseModal {
 
 	getSaveButton(): Locator {
 		return this.root.getByTestId('credential-save-button');
+	}
+
+	getParameterInputHint(): Locator {
+		return this.container.getByTestId('parameter-input-hint');
 	}
 
 	/**

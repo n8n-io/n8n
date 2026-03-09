@@ -59,7 +59,7 @@ interface VaultMount {
 	description: string;
 	external_entropy_access: boolean;
 	local: boolean;
-	options: Record<string, string | number | boolean | null>;
+	options: Record<string, string | number | boolean | null> | null;
 	plugin_version: string;
 	running_plugin_version: string;
 	running_sha256: string;
@@ -458,7 +458,12 @@ export class VaultProvider extends SecretsProvider {
 			(
 				await Promise.all(
 					kvs.map(async ([basePath, data]): Promise<[string, IDataObject] | null> => {
-						const value = await this.getKVSecrets(basePath, data.options.version as string, '');
+						const version = data.options?.version;
+						if (typeof version !== 'string') {
+							this.logger.debug(`Skipping KV mount "${basePath}" — no version in mount options`);
+							return null;
+						}
+						const value = await this.getKVSecrets(basePath, version, '');
 						if (value === null) {
 							return null;
 						}

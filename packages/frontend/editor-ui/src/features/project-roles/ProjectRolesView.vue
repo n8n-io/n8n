@@ -4,11 +4,10 @@ import { useMessage } from '@/app/composables/useMessage';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
-import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import { CUSTOM_ROLES_DOCS_URL, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useRolesStore } from '@/app/stores/roles.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import {
-	N8nActionBox,
 	N8nActionToggle,
 	N8nButton,
 	N8nDataTableServer,
@@ -249,7 +248,7 @@ function addRole() {
 				<N8nHeading tag="h1" size="2xlarge">
 					{{ i18n.baseText('settings.projectRoles') }}
 				</N8nHeading>
-				<N8nTag :clickable="false" text="Beta" />
+				<N8nTag :clickable="false" text="New" :class="$style.newTag" />
 			</div>
 			<N8nButton variant="subtle" v-if="settingsStore.isCustomRolesFeatureEnabled" @click="addRole">
 				{{ i18n.baseText('projectRoles.addRole') }}
@@ -257,19 +256,44 @@ function addRole() {
 		</div>
 
 		<template v-if="!settingsStore.isCustomRolesFeatureEnabled">
-			<N8nActionBox
-				class="mt-2xl mb-l"
-				:button-text="i18n.baseText('settings.externalSecrets.actionBox.buttonText')"
-				description="yes"
-				@click="goToUpgrade('custom-roles-list', 'upgrade-custom-roles')"
-			>
-				<template #heading>
-					<span>{{ i18n.baseText('projectRoles.manageRoles.paywall.title') }}</span>
-				</template>
-				<template #description>
-					{{ i18n.baseText('projectRoles.manageRoles.paywall.text') }}
-				</template>
-			</N8nActionBox>
+			<div :class="$style.paywallContainer">
+				<div :class="$style.paywallIcons">
+					<div :class="[$style.iconBox, $style.iconBoxLeft]">
+						<N8nIcon icon="eye-off" :size="20" color="foreground-xdark" />
+					</div>
+					<div :class="[$style.iconBox, $style.iconBoxCenter]">
+						<N8nIcon icon="shield-user" :size="20" color="foreground-xdark" />
+					</div>
+					<div :class="[$style.iconBox, $style.iconBoxRight]">
+						<N8nIcon icon="pencil-off" :size="20" color="foreground-xdark" />
+					</div>
+				</div>
+				<div :class="$style.paywallText">
+					<N8nText tag="p" size="medium" :bold="true" align="center">
+						{{ i18n.baseText('projectRoles.paywall.title') }}
+					</N8nText>
+					<N8nText tag="p" color="text-light" align="center">
+						{{ i18n.baseText('projectRoles.paywall.description') }}
+					</N8nText>
+				</div>
+				<div :class="$style.paywallActions">
+					<N8nButton variant="outline" size="medium" :href="CUSTOM_ROLES_DOCS_URL" target="_blank">
+						{{ i18n.baseText('generic.learnMore') }}
+						<N8nIcon icon="external-link" size="small" />
+					</N8nButton>
+					<N8nButton
+						variant="solid"
+						size="medium"
+						@click="goToUpgrade('custom-roles-list', 'upgrade-custom-roles')"
+					>
+						{{
+							settingsStore.isCloudDeployment
+								? i18n.baseText('projectRoles.paywall.viewPlans')
+								: i18n.baseText('generic.upgrade')
+						}}
+					</N8nButton>
+				</div>
+			</div>
 		</template>
 		<template v-else>
 			<N8nDataTableServer
@@ -330,7 +354,83 @@ function addRole() {
 .headerTitle {
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	gap: var(--spacing--2xs);
+}
+
+.newTag {
+	background-color: var(--color--foreground--shade-2);
+	color: var(--color--background);
+	border-color: var(--color--foreground--shade-2);
+	font-size: var(--font-size--3xs);
+	font-weight: var(--font-weight--bold);
+	padding: var(--spacing--5xs) var(--spacing--4xs);
+	border-radius: var(--spacing--sm);
+	min-height: auto;
+	height: auto;
+	line-height: 1;
+}
+
+.paywallContainer {
+	border: 2px dashed var(--color--foreground);
+	border-radius: var(--radius--lg);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding: var(--spacing--3xl);
+	gap: var(--spacing--lg);
+}
+
+.paywallIcons {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.iconBox {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 40px;
+	height: 40px;
+	background: var(--color--foreground--tint-2);
+	border: 1px solid var(--color--foreground);
+	border-radius: var(--radius);
+	box-shadow:
+		0 0 0.5px 0 light-dark(var(--color--black-alpha-200), var(--color--white-alpha-100)),
+		0 3px 8px 0 light-dark(var(--color--black-alpha-200), var(--color--white-alpha-100)),
+		0 1px 3px 0 light-dark(var(--color--black-alpha-200), var(--color--white-alpha-100));
+}
+
+.iconBoxLeft {
+	transform: rotate(-8deg);
+	margin: var(--spacing--2xs) var(--spacing--5xs) 0 0;
+}
+
+.iconBoxCenter {
+	z-index: 1;
+	box-shadow:
+		0 0 0.5px 0 light-dark(var(--color--black-alpha-200), var(--color--white-alpha-200)),
+		0 5px 12px 0 light-dark(var(--color--black-alpha-300), var(--color--white-alpha-200)),
+		0 1px 3px 0 light-dark(var(--color--black-alpha-200), var(--color--white-alpha-100));
+	margin: 0 -3px;
+}
+
+.iconBoxRight {
+	transform: rotate(8deg);
+	margin: var(--spacing--2xs) 0 0 var(--spacing--5xs);
+}
+
+.paywallText {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	text-align: center;
+}
+
+.paywallActions {
+	display: flex;
+	gap: var(--spacing--xs);
+	align-items: center;
 }
 
 .clickableRow {
@@ -338,7 +438,7 @@ function addRole() {
 }
 
 .tallRow {
-	height: 64px;
+	height: var(--spacing--3xl);
 }
 
 .projectCountLink {

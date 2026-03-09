@@ -66,3 +66,19 @@ jobs:
           flags: frontend-e2e
           name: playwright-e2e
           fail_ci_if_error: false
+
+      - name: Analyse Coverage Gaps
+        if: always() && steps.coverage-tests.outcome != 'skipped'
+        env:
+          CODECOV_API_TOKEN: ${{ secrets.CODECOV_API_TOKEN }}
+        run: |
+          node packages/testing/playwright/scripts/coverage-analysis.mjs \
+            --md --top=15 --out-json=coverage-gaps.json >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Coverage Gap Report
+        if: always() && steps.coverage-tests.outcome != 'skipped'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage-gap-report
+          path: coverage-gaps.json
+          retention-days: 21
