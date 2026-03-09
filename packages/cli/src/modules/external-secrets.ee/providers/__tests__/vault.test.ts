@@ -243,7 +243,7 @@ describe('VaultProvider', () => {
 			scope.done();
 		});
 
-		it('should normalise a mount path without a trailing slash', async () => {
+		it('should append trailing slash to mount path when missing', async () => {
 			const provider = new VaultProvider(logger);
 			await provider.init(vaultSettingsWithKvPath('secret', '2'));
 
@@ -256,6 +256,77 @@ describe('VaultProvider', () => {
 			await provider.update();
 
 			expect(provider.getSecret('secret')).toEqual({ myapp: { password: 'hunter2' } });
+			scope.done();
+		});
+
+		it('should return no secrets when the configured KV path returns 403', async () => {
+			const provider = new VaultProvider(logger);
+			await provider.init(vaultSettingsWithKvPath('secret/', '2'));
+
+			const scope = nock(VAULT_BASE_URL)
+				.get('/v1/secret/metadata/?list=true')
+				.reply(403, { errors: ['permission denied'] });
+
+			await provider.update();
+
+			expect(provider.hasSecret('secret')).toBe(false);
+			expect(provider.getSecretNames()).toHaveLength(0);
+			scope.done();
+		});
+	});
+
+	describe('test with auto-discovery', () => {
+		it('should validate access to sys/mounts when no manual KV path is configured', async () => {
+			const provider = new VaultProvider(logger);
+			await provider.init(vaultSettings);
+
+			const scope = nock(VAULT_BASE_URL)
+				.get('/v1/auth/token/lookup-self')
+				.reply(200, tokenLookupResponse())
+				.get('/v1/sys/mounts')
+				.reply(200, mountsResponse({ 'secret/': { type: 'kv', options: { version: '2' } } }));
+
+			const [success] = await provider.test();
+
+			expect(success).toBe(true);
+			scope.done();
+		});
+
+		it('should return error when token lacks access to sys/mounts', async () => {
+			const provider = new VaultProvider(logger);
+			await provider.init(vaultSettings);
+
+			const scope = nock(VAULT_BASE_URL)
+				.get('/v1/auth/token/lookup-self')
+				.reply(200, tokenLookupResponse())
+				.get('/v1/sys/mounts')
+				.reply(403, { errors: ['permission denied'] });
+
+			const [success, message] = await provider.test();
+
+			expect(success).toBe(false);
+			expect(message).toBe(
+				"Couldn't list mounts. Please give these credentials 'read' access to sys/mounts.",
+			);
+			scope.done();
+		});
+
+		it('should return error when sys/mounts returns an unexpected status', async () => {
+			const provider = new VaultProvider(logger);
+			await provider.init(vaultSettings);
+
+			const scope = nock(VAULT_BASE_URL)
+				.get('/v1/auth/token/lookup-self')
+				.reply(200, tokenLookupResponse())
+				.get('/v1/sys/mounts')
+				.reply(500, { errors: ['internal error'] });
+
+			const [success, message] = await provider.test();
+
+			expect(success).toBe(false);
+			expect(message).toBe(
+				"Couldn't list mounts but it wasn't a permissions issue. Please consult your Vault admin.",
+			);
 			scope.done();
 		});
 	});
@@ -290,7 +361,24 @@ describe('VaultProvider', () => {
 			const [success, message] = await provider.test();
 
 			expect(success).toBe(false);
-			expect(message).toContain('Permission denied');
+			expect(message).toBe('Permission denied accessing secret/. Check your token policies.');
+			scope.done();
+		});
+
+		it('should return error when configured KV path returns an unexpected status', async () => {
+			const provider = new VaultProvider(logger);
+			await provider.init(vaultSettingsWithKvPath('secret/', '2'));
+
+			const scope = nock(VAULT_BASE_URL)
+				.get('/v1/auth/token/lookup-self')
+				.reply(200, tokenLookupResponse())
+				.get('/v1/secret/metadata/?list=true')
+				.reply(500, { errors: ['internal error'] });
+
+			const [success, message] = await provider.test();
+
+			expect(success).toBe(false);
+			expect(message).toBe('Could not access KV mount at secret/ (status 500).');
 			scope.done();
 		});
 
