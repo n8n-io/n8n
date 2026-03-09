@@ -64,11 +64,11 @@ const canImport = computed(() => {
 const handleFileChange = (uploadFile: UploadFile) => {
 	if (uploadFile.raw) {
 		selectedFile.value = uploadFile.raw;
-		void uploadFile_();
+		void processUpload();
 	}
 };
 
-const uploadFile_ = async () => {
+const processUpload = async () => {
 	if (!selectedFile.value) return;
 
 	isUploading.value = true;
