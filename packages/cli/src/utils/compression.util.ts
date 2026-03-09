@@ -119,11 +119,17 @@ export async function compressFolder(
  * Reuses the same patterns as the Compression node but with streaming approach
  */
 export async function decompressFolder(sourcePath: string, outputDir: string): Promise<void> {
-	// Ensure output directory exists
 	await mkdir(outputDir, { recursive: true });
 
-	return await new Promise<void>(async (resolve, reject) => {
+	return new Promise<void>(async (resolve, reject) => {
 		let filesToProcess = 0;
+		let streamEnded = false;
+
+		const attemptToResolve = () => {
+			if (streamEnded && filesToProcess === 0) {
+				resolve();
+			}
+		};
 
 		const unzip = new fflate.Unzip((stream) => {
 			if (!stream.name.endsWith('/')) {
@@ -132,15 +138,11 @@ export async function decompressFolder(sourcePath: string, outputDir: string): P
 				const chunks: Uint8Array[] = [];
 				let totalLength = 0;
 
-				// Sanitize path to prevent zip slip attacks
 				const filePath = sanitizePath(stream.name, outputDir);
 				const dirPath = path.dirname(filePath);
 
-				// Create directory if it doesn't exist
 				mkdir(dirPath, { recursive: true }).catch((error) => {
-					if (error.code !== 'EEXIST') {
-						reject(error);
-					}
+					if (error.code !== 'EEXIST') reject(error);
 				});
 
 				stream.ondata = async (error, chunk, final) => {
@@ -155,17 +157,16 @@ export async function decompressFolder(sourcePath: string, outputDir: string): P
 					if (final) {
 						const finalBuffer = new Uint8Array(totalLength);
 						let offset = 0;
+
 						for (const chunk of chunks) {
 							finalBuffer.set(chunk, offset);
 							offset += chunk.length;
 						}
+
 						await writeFile(filePath, Buffer.from(finalBuffer));
 
 						filesToProcess--;
-
-						if (filesToProcess === 0) {
-							resolve();
-						}
+						attemptToResolve();
 					}
 				};
 
@@ -175,22 +176,26 @@ export async function decompressFolder(sourcePath: string, outputDir: string): P
 
 		unzip.register(fflate.AsyncUnzipInflate);
 
-		// Create readable stream
 		const zipStream = createReadStream(sourcePath);
 
-		for await (const chunk of zipStream) {
-			unzip.push(chunk as Uint8Array);
+		try {
+			for await (const chunk of zipStream) {
+				unzip.push(chunk as Uint8Array, false);
+			}
+
+			streamEnded = true;
+
+			// IMPORTANT: signal end of zip stream
+			unzip.push(new Uint8Array(0), true);
+
+			attemptToResolve();
+		} catch (err) {
+			reject(err);
 		}
 
 		zipStream.on('error', reject);
-
-		// If no files were processed (e.g., only directories), resolve immediately
-		if (filesToProcess === 0) {
-			resolve();
-		}
 	});
 }
-
 /**
  * Add directory contents to zip using streaming approach
  * This version processes files one at a time instead of loading everything into memory
