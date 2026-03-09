@@ -34,9 +34,7 @@ export class ExternalSecretsSettingsController {
 		_res: Response,
 		@Body body: UpdateExternalSecretsSettingsDto,
 	) {
-		if (body.systemRolesEnabled !== undefined) {
-			await this.settingsService.setSystemRolesEnabled(body.systemRolesEnabled);
-		}
+		await this.settingsService.setSystemRolesEnabled(body.systemRolesEnabled);
 
 		return {
 			systemRolesEnabled: await this.settingsService.isSystemRolesEnabled(),
