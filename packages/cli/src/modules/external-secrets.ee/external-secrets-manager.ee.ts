@@ -309,8 +309,8 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 
 	private async reloadProvidersFromConnectionsRepo(): Promise<void> {
 		this.logger.debug('Initializing external secrets with project-based providers');
-		const connections = await this.secretsProviderConnectionRepository.find({
-			where: { isEnabled: true },
+		const connections = await this.secretsProviderConnectionRepository.findAll({
+			isEnabled: true,
 		});
 
 		for (const connection of connections) {
