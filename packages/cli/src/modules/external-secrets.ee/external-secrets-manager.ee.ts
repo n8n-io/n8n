@@ -309,12 +309,15 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 
 	private async reloadProvidersFromConnectionsRepo(): Promise<void> {
 		this.logger.debug('Initializing external secrets with project-based providers');
-		const connections = await this.secretsProviderConnectionRepository.findAll({
-			isEnabled: true,
-		});
+		const connections = await this.secretsProviderConnectionRepository.findAll();
 
 		for (const connection of connections) {
+			// Tear down all connections, including disabled ones that may
+			// still be in the registry from a previous load
 			await this.tearDownProviderConnection(connection.providerKey);
+
+			if (!connection.isEnabled) continue;
+
 			const settings: SecretsProviderSettings['settings'] = this.decryptSettings(
 				connection.encryptedSettings,
 			);
