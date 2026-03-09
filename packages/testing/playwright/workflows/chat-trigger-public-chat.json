@@ -1,0 +1,55 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"public": true,
+				"options": {
+					"responseMode": "lastNode"
+				}
+			},
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"typeVersion": 1.2,
+			"position": [0, 0],
+			"id": "chat-trigger-node",
+			"name": "When chat message received",
+			"webhookId": "test-chat-webhook-id"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "test-response-id",
+							"name": "response",
+							"value": "=Echo: {{ $json.chatInput }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [220, 0],
+			"id": "edit-fields-node",
+			"name": "Edit Fields"
+		}
+	],
+	"connections": {
+		"When chat message received": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {},
+	"meta": {
+		"templateCredsSetupCompleted": true
+	}
+}
