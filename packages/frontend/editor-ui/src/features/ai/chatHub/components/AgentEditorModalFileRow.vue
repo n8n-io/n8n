@@ -80,9 +80,6 @@ const warningTooltip = computed<string | undefined>(() => {
 					</N8nText>
 				</N8nTooltip>
 			</template>
-			<N8nText v-else-if="item.isNew" size="small" color="text-light">
-				{{ item.mimeType }}
-			</N8nText>
 		</div>
 		<N8nIconButton icon="trash-2" size="small" variant="subtle" @click.stop="emit('remove')" />
 	</div>

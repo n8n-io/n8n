@@ -269,11 +269,8 @@ async function onSave() {
 				props.data.credentials,
 			);
 			toast.showMessage({
-				title: i18n.baseText(
-					hasNewFiles
-						? 'chatHub.agent.editor.success.update.withFiles'
-						: 'chatHub.agent.editor.success.update',
-				),
+				title: i18n.baseText('chatHub.agent.editor.success.update'),
+				message: hasNewFiles ? i18n.baseText('chatHub.agent.editor.success.withFiles') : undefined,
 				type: 'success',
 			});
 		} else {
@@ -285,11 +282,8 @@ async function onSave() {
 			props.data.onCreateCustomAgent?.(agent);
 
 			toast.showMessage({
-				title: i18n.baseText(
-					hasNewFiles
-						? 'chatHub.agent.editor.success.create.withFiles'
-						: 'chatHub.agent.editor.success.create',
-				),
+				title: i18n.baseText('chatHub.agent.editor.success.create'),
+				message: hasNewFiles ? i18n.baseText('chatHub.agent.editor.success.withFiles') : undefined,
 				type: 'success',
 			});
 		}
