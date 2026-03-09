@@ -24,7 +24,7 @@ const emit = defineEmits<{
 				size="small"
 			/>
 		</div>
-		<div :class="[$style.overrideCloseButton]" @click="emit('close')">
+		<div v-if="!isReadOnly" :class="[$style.overrideCloseButton]" @click="emit('close')">
 			<N8nIcon v-if="!isReadOnly" icon="x" size="small" />
 		</div>
 	</div>
