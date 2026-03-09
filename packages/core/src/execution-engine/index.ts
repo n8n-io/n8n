@@ -1,16 +1,23 @@
-import type { DataTableProxyProvider, IExecutionContext, IWorkflowSettings } from 'n8n-workflow';
+import type {
+	DataTableProxyProvider,
+	IExecutionContext,
+	IWorkflowSettings,
+	Result,
+} from 'n8n-workflow';
 import type { LookupFunction } from 'node:net';
 
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
 import type { ExternalSecretsProxy } from './external-secrets-proxy';
+
+export type SsrfCheckResult = Result<void, Error>;
 
 /**
  * Narrow interface for SSRF protection, satisfied structurally by SsrfProtectionService.
  * Defined here so packages/core can use it without importing from packages/cli.
  */
 export interface SsrfBridge {
-	validateIp(ip: string): { allowed: boolean; reason?: string };
-	validateUrl(url: string | URL): Promise<{ allowed: boolean; reason?: string }>;
+	validateIp(ip: string): SsrfCheckResult;
+	validateUrl(url: string | URL): Promise<SsrfCheckResult>;
 	validateRedirectSync(url: string): void;
 	createSecureLookup(): LookupFunction;
 }
