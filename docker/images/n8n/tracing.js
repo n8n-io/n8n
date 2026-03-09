@@ -89,7 +89,15 @@ const sdk = new NodeSDK({
   ],
 });
 
-sdk.start();
+sdk
+  .start()
+  .then(() => {
+    console.log('OpenTelemetry SDK initialized for n8n - exporting to', OTLP_ENDPOINT);
+  })
+  .catch((err) => {
+    console.error('Failed to start OpenTelemetry SDK', err);
+    process.exit(1);
+  });
 
 // ---------------------------------------------------------------------------
 // Custom runtime metrics as OTel observable gauges
@@ -187,8 +195,6 @@ meter.createObservableGauge('nodejs.active_requests', {
 }).addCallback((obs) => {
   obs.observe(process._getActiveRequests ? process._getActiveRequests().length : 0);
 });
-
-console.log('OpenTelemetry SDK initialized for n8n - exporting to', OTLP_ENDPOINT);
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
