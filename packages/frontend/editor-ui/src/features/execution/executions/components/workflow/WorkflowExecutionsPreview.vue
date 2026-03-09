@@ -111,6 +111,28 @@ const workflowVersionRoute = computed(() => {
 	};
 });
 
+const executionMetaText = computed(() => {
+	if (!executionUIDetails.value) return null;
+
+	if (executionUIDetails.value.showTimestamp === false) {
+		return null;
+	}
+
+	if (executionUIDetails.value.name === 'running') {
+		return locale.baseText('executionDetails.runningTimeRunning', {
+			interpolate: { time: executionUIDetails.value.runningTime },
+		});
+	}
+
+	if (executionUIDetails.value.name !== 'waiting') {
+		return locale.baseText('executionDetails.runningTimeFinished', {
+			interpolate: { time: executionUIDetails.value.runningTime ?? 'unknown' },
+		});
+	}
+
+	return null;
+});
+
 watch(
 	() => props.execution?.workflowVersionId,
 	async (versionId) => {
@@ -267,36 +289,12 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 						</template>
 					</N8nText>
 					<N8nText
-						v-else-if="executionUIDetails.name === 'running'"
-						color="text-base"
-						size="medium"
-					>
-						{{
-							locale.baseText('executionDetails.runningTimeRunning', {
-								interpolate: { time: executionUIDetails?.runningTime },
-							})
-						}}
-						| ID#{{ execution.id }}
-						<template v-if="workflowVersionLabel && workflowVersionRoute">
-							|
-							<N8nText color="text-light">
-								<RouterLink :class="$style.versionLink" :to="workflowVersionRoute">
-									{{ workflowVersionLabel }}
-								</RouterLink>
-							</N8nText>
-						</template>
-					</N8nText>
-					<N8nText
-						v-else-if="executionUIDetails.name !== 'waiting'"
+						v-else-if="executionMetaText"
 						color="text-base"
 						size="medium"
 						data-test-id="execution-preview-id"
 					>
-						{{
-							locale.baseText('executionDetails.runningTimeFinished', {
-								interpolate: { time: executionUIDetails?.runningTime ?? 'unknown' },
-							})
-						}}
+						{{ executionMetaText }}
 						| ID#{{ execution.id }}
 						<template v-if="workflowVersionLabel && workflowVersionRoute">
 							|
@@ -350,8 +348,9 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 						<span
 							data-test-id="execution-debug-button"
 							@click="executionDebugging.handleDebugLinkClick"
-							>{{ debugButtonData.text }}</span
 						>
+							{{ debugButtonData.text }}
+						</span>
 					</N8nButton>
 				</RouterLink>
 
@@ -372,6 +371,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 							@blur="onRetryButtonBlur"
 						/>
 					</span>
+
 					<template #dropdown>
 						<ElDropdownMenu>
 							<ElDropdownItem command="current-workflow">
@@ -400,6 +400,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 				/>
 			</div>
 		</div>
+
 		<WorkflowPreview
 			:key="executionId"
 			mode="execution"
@@ -466,12 +467,15 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 .spinner {
 	color: var(--color--warning);
 }
+
 .waiting {
 	color: var(--color--secondary);
 }
+
 .success {
 	color: var(--color--success);
 }
+
 .error {
 	color: var(--color--danger);
 }
@@ -520,7 +524,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 }
 
 .versionLink {
-	color: inherit;
+	color: var(--color--text--tint-1);
 	text-decoration: none;
 
 	&:hover {
