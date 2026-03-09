@@ -201,6 +201,7 @@ function onStepExecuted() {
 	if (isLastStep) {
 		// Last step executed successfully — dismiss the wizard
 		lastStepCompleted.value = true;
+		setupPanelStore.clearHighlightedNodes();
 		return;
 	}
 
