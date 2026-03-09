@@ -16,7 +16,8 @@ import { jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData, ISupplyDataFunctions } from 'n8n-workflow';
 import assert from 'node:assert';
 
-import { loadMemory } from '@utils/agent-execution';
+import { loadMemory, saveToMemory } from '@utils/agent-execution';
+import type { ToolCallData } from '@utils/agent-execution';
 import { getPromptInputByType } from '@utils/helpers';
 import {
 	getOptionalOutputParser,
@@ -36,13 +37,14 @@ import { SYSTEM_MESSAGE } from '../prompt';
 import { ChatOpenAI } from '@langchain/openai';
 
 /**
- * Creates an agent executor with the given configuration
+ * Creates an agent executor with the given configuration.
+ * Memory is handled by the caller (not AgentExecutor) so tool calls get persisted.
  */
 export function createAgentExecutor(
 	model: BaseChatModel,
 	tools: Array<DynamicStructuredTool | Tool>,
 	prompt: ChatPromptTemplate,
-	options: { maxIterations?: number; returnIntermediateSteps?: boolean },
+	options: { maxIterations?: number },
 	outputParser?: N8nOutputParser,
 	memory?: BaseChatMemory,
 	fallbackModel?: BaseChatModel | null,
@@ -74,9 +76,9 @@ export function createAgentExecutor(
 
 	return AgentExecutor.fromAgentAndTools({
 		agent: runnableAgent,
-		memory,
+		// Don't pass memory here — we save it ourselves to keep tool call messages
 		tools,
-		returnIntermediateSteps: options.returnIntermediateSteps === true,
+		returnIntermediateSteps: true,
 		maxIterations: options.maxIterations ?? 10,
 	});
 }
@@ -85,15 +87,13 @@ async function processEventStream(
 	ctx: IExecuteFunctions,
 	eventStream: IterableReadableStream<StreamEvent>,
 	itemIndex: number,
-	returnIntermediateSteps: boolean = false,
-): Promise<{ output: string; intermediateSteps?: any[] }> {
-	const agentResult: { output: string; intermediateSteps?: any[] } = {
+): Promise<{ output: string; intermediateSteps: ToolCallData[] }> {
+	const agentResult: { output: string; intermediateSteps: ToolCallData[] } = {
 		output: '',
+		intermediateSteps: [],
 	};
-
-	if (returnIntermediateSteps) {
-		agentResult.intermediateSteps = [];
-	}
+	const toolRunToStep = new Map<string, ToolCallData>();
+	const mappedSteps = new Set<ToolCallData>();
 
 	ctx.sendChunk('begin', itemIndex);
 	for await (const event of eventStream) {
@@ -119,40 +119,59 @@ async function processEventStream(
 				}
 				break;
 			case 'on_chat_model_end':
-				// Capture full LLM response with tool calls for intermediate steps
-				if (returnIntermediateSteps && event.data) {
-					const chatModelData = event.data as any;
-					const output = chatModelData.output;
+				if (event.data) {
+					const chatModelData = event.data as Record<string, unknown>;
+					const output = chatModelData.output as Record<string, unknown> | undefined;
 
-					// Check if this LLM response contains tool calls
-					if (output?.tool_calls && output.tool_calls.length > 0) {
-						for (const toolCall of output.tool_calls) {
-							agentResult.intermediateSteps!.push({
+					const toolCalls = output?.tool_calls as
+						| Array<{
+								name: string;
+								args: Record<string, unknown>;
+								id: string;
+								type: string;
+						  }>
+						| undefined;
+					if (toolCalls && toolCalls.length > 0) {
+						for (const toolCall of toolCalls) {
+							agentResult.intermediateSteps.push({
 								action: {
 									tool: toolCall.name,
 									toolInput: toolCall.args,
 									log:
-										output.content ||
+										(output?.content as string) ||
 										`Calling ${toolCall.name} with input: ${JSON.stringify(toolCall.args)}`,
-									messageLog: [output], // Include the full LLM response
+									messageLog: [output] as unknown as ToolCallData['action']['messageLog'],
 									toolCallId: toolCall.id,
 									type: toolCall.type,
 								},
+								observation: '',
 							});
 						}
 					}
 				}
 				break;
-			case 'on_tool_end':
-				// Capture tool execution results and match with action
-				if (returnIntermediateSteps && event.data && agentResult.intermediateSteps!.length > 0) {
-					const toolData = event.data as any;
-					// Find the matching intermediate step for this tool call
-					const matchingStep = agentResult.intermediateSteps!.find(
-						(step) => !step.observation && step.action.tool === event.name,
+			case 'on_tool_start':
+				if (event.run_id) {
+					const step = agentResult.intermediateSteps.find(
+						(s) => !s.observation && s.action.tool === event.name && !mappedSteps.has(s),
 					);
-					if (matchingStep) {
-						matchingStep.observation = toolData.output;
+					if (step) {
+						toolRunToStep.set(event.run_id, step);
+						mappedSteps.add(step);
+					}
+				}
+				break;
+			case 'on_tool_end':
+				if (event.data) {
+					const toolData = event.data as Record<string, unknown>;
+					// Prefer run_id match, fall back to name-based match
+					const step =
+						(event.run_id && toolRunToStep.get(event.run_id)) ||
+						agentResult.intermediateSteps.find(
+							(s) => !s.observation && s.action.tool === event.name,
+						);
+					if (step) {
+						step.observation = toolData.output as string;
 					}
 				}
 				break;
@@ -175,20 +194,7 @@ function checkIsResponsesApi(model: BaseChatModel | null | undefined): boolean {
 	}
 }
 
-/* -----------------------------------------------------------
-   Main Executor Function
------------------------------------------------------------ */
-/**
- * The main executor method for the Tools Agent.
- *
- * This function retrieves necessary components (model, memory, tools), prepares the prompt,
- * creates the agent, and processes each input item. The error handling for each item is also
- * managed here based on the node's continueOnFail setting.
- *
- * @param this Execute context. SupplyDataContext is passed when agent is as a tool
- *
- * @returns The array of execution data for all processed items
- */
+/** Main executor for the Tools Agent V2. */
 export async function toolsAgentExecute(
 	this: IExecuteFunctions | ISupplyDataFunctions,
 ): Promise<INodeExecutionData[][]> {
@@ -266,7 +272,6 @@ export async function toolsAgentExecute(
 			});
 			const prompt: ChatPromptTemplate = preparePrompt(messages);
 
-			// Create executors for primary and fallback models
 			const executor = createAgentExecutor(
 				model,
 				tools,
@@ -276,7 +281,7 @@ export async function toolsAgentExecute(
 				memory,
 				fallbackModel,
 			);
-			// Invoke with fallback logic
+
 			const invokeParams = {
 				input,
 				system_message: options.systemMessage ?? SYSTEM_MESSAGE,
@@ -284,6 +289,8 @@ export async function toolsAgentExecute(
 					'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
 			};
 			const executeOptions = { signal: this.getExecutionCancelSignal() };
+
+			const chatHistory = memory ? await loadMemory(memory, model) : undefined;
 
 			// Check if streaming is actually available
 			const isStreamingAvailable = 'isStreaming' in this ? this.isStreaming?.() : undefined;
@@ -294,8 +301,6 @@ export async function toolsAgentExecute(
 				isStreamingAvailable &&
 				this.getNode().typeVersion >= 2.1
 			) {
-				// Get chat history respecting the context window length configured in memory
-				const chatHistory = memory ? await loadMemory(memory, model) : undefined;
 				const eventStream = executor.streamEvents(
 					{
 						...invokeParams,
@@ -307,15 +312,34 @@ export async function toolsAgentExecute(
 					},
 				);
 
-				return await processEventStream(
-					this,
-					eventStream,
-					itemIndex,
-					options.returnIntermediateSteps,
-				);
+				const result = await processEventStream(this, eventStream, itemIndex);
+
+				if (memory && input !== undefined && result.output) {
+					await saveToMemory(input, result.output, memory, result.intermediateSteps);
+				}
+
+				if (!options.returnIntermediateSteps) {
+					return { output: result.output };
+				}
+				return result;
 			} else {
-				// Handle regular execution
-				return await executor.invoke(invokeParams, executeOptions);
+				const response = await executor.invoke(
+					{
+						...invokeParams,
+						chat_history: chatHistory ?? undefined,
+					},
+					executeOptions,
+				);
+
+				const steps = (response.intermediateSteps ?? []) as ToolCallData[];
+				if (memory && input !== undefined && response.output) {
+					await saveToMemory(input, response.output as string, memory, steps);
+				}
+
+				if (!options.returnIntermediateSteps) {
+					delete response.intermediateSteps;
+				}
+				return response;
 			}
 		});
 
