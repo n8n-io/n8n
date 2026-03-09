@@ -1,4 +1,8 @@
-import type { ChatHubLLMProvider, ChatHubProvider } from '@n8n/api-types';
+import type {
+	ChatHubLLMProvider,
+	ChatHubProvider,
+	ChatHubVectorStoreProvider,
+} from '@n8n/api-types';
 
 // Route and view identifiers
 export const CHAT_VIEW = 'chat';
@@ -30,6 +34,12 @@ export const providerDisplayNames: Record<ChatHubProvider, string> = {
 	mistralCloud: 'Mistral Cloud',
 	n8n: 'Workflow agent',
 	'custom-agent': 'Personal agent',
+};
+
+export const vectorStoreProviderDisplayNames: Record<ChatHubVectorStoreProvider, string> = {
+	pgvector: 'PGVector',
+	pinecone: 'Pinecone',
+	qdrant: 'Qdrant',
 };
 
 export const MOBILE_MEDIA_QUERY = '(max-width: 768px)';

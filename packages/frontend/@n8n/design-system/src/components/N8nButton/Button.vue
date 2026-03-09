@@ -258,7 +258,7 @@ const handleClick = (event: MouseEvent) => {
 		);
 		--button--shadow:
 			0 1px 3px light-dark(var(--color--black-alpha-100), var(--color--black-alpha-300)),
-			0 0 0 1px light-dark(transparent, var(--color--black-alpha-100));
+			0 0 0 1.5px light-dark(transparent, var(--color--black-alpha-100));
 		--button--shadow--hover:
 			0 1px 3px 0 light-dark(var(--color--black-alpha-200), var(--color--black-alpha-300)),
 			0 0 0 1px light-dark(transparent, var(--color--black-alpha-100));

@@ -6,6 +6,7 @@ import {
 } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
@@ -49,9 +50,10 @@ type Item = ActionDropdownItem<ContextMenuAction>;
 
 export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): ComputedRef<Item[]> {
 	const uiStore = useUIStore();
+	const settingsStore = useSettingsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
-	const documentStore = injectWorkflowDocumentStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const sourceControlStore = useSourceControlStore();
 	const collaborationStore = useCollaborationStore();
 	const focusedNodesStore = useFocusedNodesStore();
@@ -60,7 +62,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
 
 	const workflowPermissions = computed(
-		() => getResourcePermissions(workflowsStore.workflow.scopes).workflow,
+		() => getResourcePermissions(workflowDocumentStore?.value?.scopes).workflow,
 	);
 
 	const isReadOnly = computed(
@@ -68,7 +70,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 			sourceControlStore.preferences.branchReadOnly ||
 			uiStore.isReadOnlyView ||
 			!workflowPermissions.value.update ||
-			workflowsStore.workflow.isArchived ||
+			(workflowDocumentStore?.value?.isArchived ?? false) ||
 			collaborationStore.shouldBeReadOnly,
 	);
 
@@ -164,6 +166,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 
 		const aiActions: Item[] = [
 			!onlyStickies &&
+				settingsStore.isAiAssistantOrBuilderEnabled &&
 				focusedNodesStore.isFeatureEnabled && {
 					id: 'focus_ai_on_selected',
 					divided: true,
@@ -252,7 +255,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 
 				if (isWebhookNode(nodes[0])) {
 					const isProductionOnly = PRODUCTION_ONLY_TRIGGER_NODE_TYPES.includes(nodes[0].type);
-					const isWorkflowActive = documentStore?.value?.active ?? false;
+					const isWorkflowActive = workflowDocumentStore?.value?.active ?? false;
 					if (!isProductionOnly) {
 						copyWebhookActions.push({
 							divided: true,
