@@ -91,6 +91,10 @@ const currentEmbeddingProvider = computed(
 	() => settingsStore.moduleSettings['chat-hub']?.semanticSearch.embeddingModel.provider ?? null,
 );
 
+const agentUploadMaxSizeMb = computed(
+	() => settingsStore.moduleSettings['chat-hub']?.agentUploadMaxSizeMb ?? 20,
+);
+
 const allFiles = computed<FileRow[]>(() => [
 	...savedFiles.value.map((file) => ({ ...file, isNew: false })),
 	...newFiles.value.map((file, index) => ({
@@ -334,10 +338,30 @@ function isFileTypeAccepted(file: File): boolean {
 	return file.type === 'application/pdf';
 }
 
+function validateFileSizes(files: File[]): boolean {
+	const maxSizeBytes = agentUploadMaxSizeMb.value * 1024 * 1024;
+	for (const file of files) {
+		if (file.size > maxSizeBytes) {
+			toast.showMessage({
+				title: i18n.baseText('chatHub.agent.editor.files.tooLarge', {
+					interpolate: { fileName: file.name, maxSizeMb: agentUploadMaxSizeMb.value },
+				}),
+				type: 'error',
+			});
+			return false;
+		}
+	}
+	return true;
+}
+
 function onFilesDropped(droppedFiles: File[]) {
 	const acceptedFiles = droppedFiles.filter((file) => isFileTypeAccepted(file));
 
 	if (acceptedFiles.length === 0) {
+		return;
+	}
+
+	if (!validateFileSizes(acceptedFiles)) {
 		return;
 	}
 
@@ -353,6 +377,11 @@ function handleFileSelect(event: Event) {
 	const acceptedFiles = Array.from(target.files).filter((file) => isFileTypeAccepted(file));
 
 	if (acceptedFiles.length === 0) {
+		target.value = '';
+		return;
+	}
+
+	if (!validateFileSizes(acceptedFiles)) {
 		target.value = '';
 		return;
 	}

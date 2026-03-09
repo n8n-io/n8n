@@ -811,6 +811,40 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		);
 	}
 
+	function chunkFilesBySize(files: File[], maxSizeBytes: number): File[][] {
+		const chunks: File[][] = [];
+		let currentChunk: File[] = [];
+		let currentSize = 0;
+
+		for (const file of files) {
+			if (currentSize + file.size > maxSizeBytes && currentChunk.length > 0) {
+				chunks.push(currentChunk);
+				currentChunk = [];
+				currentSize = 0;
+			}
+			currentChunk.push(file);
+			currentSize += file.size;
+		}
+
+		if (currentChunk.length > 0) {
+			chunks.push(currentChunk);
+		}
+
+		return chunks;
+	}
+
+	async function uploadFilesInChunks(agentId: string, files: File[]): Promise<ChatHubAgentDto> {
+		const maxSizeBytes =
+			(settingsStore.moduleSettings['chat-hub']?.agentUploadMaxSizeMb ?? 20) * 1024 * 1024;
+		const chunks = chunkFilesBySize(files, maxSizeBytes);
+
+		let result!: ChatHubAgentDto;
+		for (const chunk of chunks) {
+			result = await uploadAgentFilesApi(rootStore.restApiContext, agentId, chunk);
+		}
+		return result;
+	}
+
 	async function createCustomAgent(
 		payload: ChatHubCreateAgentRequest,
 		files: File[],
@@ -819,7 +853,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		let customAgent = await createAgentApi(rootStore.restApiContext, payload);
 
 		if (files.length > 0) {
-			customAgent = await uploadAgentFilesApi(rootStore.restApiContext, customAgent.id, files);
+			customAgent = await uploadFilesInChunks(customAgent.id, files);
 		}
 
 		const baseModel = agents.value?.[customAgent.provider]?.models.find(
@@ -871,7 +905,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		}
 
 		if (newFiles.length > 0) {
-			await uploadAgentFilesApi(rootStore.restApiContext, agentId, newFiles);
+			await uploadFilesInChunks(agentId, newFiles);
 		}
 
 		const customAgent = await fetchAgentApi(rootStore.restApiContext, agentId);

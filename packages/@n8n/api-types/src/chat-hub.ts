@@ -574,6 +574,8 @@ export class ChatHubSemanticSearchSettings extends Z.class({
 export interface ChatHubModuleSettings {
 	enabled: boolean;
 	providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>;
+	semanticSearch: ChatHubSemanticSearchSettings;
+	agentUploadMaxSizeMb: number;
 }
 
 /**

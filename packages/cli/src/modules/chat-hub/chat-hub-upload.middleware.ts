@@ -1,4 +1,4 @@
-import { GlobalConfig } from '@n8n/config';
+import { ChatHubConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { RequestHandler } from 'express';
 import multer from 'multer';
@@ -7,8 +7,8 @@ import multer from 'multer';
 export class ChatHubUploadMiddleware {
 	private readonly upload: multer.Multer;
 
-	constructor(globalConfig: GlobalConfig) {
-		const maxFileSizeBytes = globalConfig.endpoints.formDataFileSizeMax * 1024 * 1024;
+	constructor(chatHubConfig: ChatHubConfig) {
+		const maxFileSizeBytes = chatHubConfig.agentUploadMaxSizeMb * 1024 * 1024;
 		this.upload = multer({
 			storage: multer.diskStorage({}),
 			limits: { fileSize: maxFileSizeBytes },

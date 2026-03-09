@@ -1,4 +1,4 @@
-import { ExecutionsConfig } from '@n8n/config';
+import { ChatHubConfig, ExecutionsConfig } from '@n8n/config';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -25,6 +25,7 @@ export class ChatHubModule implements ModuleInterface {
 	async settings() {
 		const { ChatHubSettingsService } = await import('./chat-hub.settings.service');
 		const service = Container.get(ChatHubSettingsService);
+		const chatHubConfig = Container.get(ChatHubConfig);
 		const [enabled, providers, semanticSearch] = await Promise.all([
 			service.getEnabled(),
 			service.getAllProviderSettings(),
@@ -35,6 +36,7 @@ export class ChatHubModule implements ModuleInterface {
 			enabled,
 			providers,
 			semanticSearch,
+			agentUploadMaxSizeMb: chatHubConfig.agentUploadMaxSizeMb,
 		};
 	}
 

@@ -447,6 +447,7 @@
 	"chatHub.agent.editor.delete.cancel.button": "Cancel",
 	"chatHub.agent.editor.error.load": "Failed to load agent",
 	"chatHub.agent.editor.files.label": "Files",
+	"chatHub.agent.editor.files.tooLarge": "File \"{fileName}\" is too large. Maximum file size is {maxSizeMb} MB.",
 	"chatHub.agent.editor.files.indexed": "Available for search",
 	"chatHub.agent.editor.files.indexing": "Preparing...",
 	"chatHub.agent.editor.files.failed": "Failed",
