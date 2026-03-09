@@ -8,6 +8,8 @@ import {
 	getBaselineCounter,
 	attachThroughputResults,
 	collectDiagnostics,
+	attachDiagnostics,
+	formatDiagnosticValue,
 	WORKFLOW_SUCCESS_QUERY,
 } from '../../../../utils/benchmark';
 import type { TriggerHandle, NodeOutputSize } from '../../../../utils/benchmark';
@@ -118,16 +120,18 @@ export async function runThroughputTest(options: ThroughputTestOptions): Promise
 
 	// Diagnostics
 	const diagnostics = await collectDiagnostics(obs.metrics, result.durationMs);
+	await attachDiagnostics(testInfo, testInfo.title, diagnostics);
+	const fmt = formatDiagnosticValue;
 	console.log(
 		`[DIAG-${profile.name}] ${testInfo.title}\n` +
-			`  Event Loop Lag: ${diagnostics.eventLoopLag}\n` +
-			`  PG Transactions/s: ${diagnostics.pgTxRate}\n` +
-			`  PG Rows Inserted/s: ${diagnostics.pgInsertRate}\n` +
-			`  PG Active Connections: ${diagnostics.pgActiveConnections}\n` +
-			`  Queue Waiting: ${diagnostics.queueWaiting}\n` +
-			`  Queue Active: ${diagnostics.queueActive}\n` +
-			`  Queue Completed/s: ${diagnostics.queueCompletedRate}\n` +
-			`  Queue Failed/s: ${diagnostics.queueFailedRate}`,
+			`  Event Loop Lag: ${fmt(diagnostics.eventLoopLag, 's')}\n` +
+			`  PG Transactions/s: ${fmt(diagnostics.pgTxRate, ' tx/s')}\n` +
+			`  PG Rows Inserted/s: ${fmt(diagnostics.pgInsertRate, ' rows/s')}\n` +
+			`  PG Active Connections: ${fmt(diagnostics.pgActiveConnections)}\n` +
+			`  Queue Waiting: ${fmt(diagnostics.queueWaiting)}\n` +
+			`  Queue Active: ${fmt(diagnostics.queueActive)}\n` +
+			`  Queue Completed/s: ${fmt(diagnostics.queueCompletedRate, ' jobs/s')}\n` +
+			`  Queue Failed/s: ${fmt(diagnostics.queueFailedRate, ' jobs/s')}`,
 	);
 
 	// Summary

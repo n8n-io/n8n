@@ -1,19 +1,26 @@
+import type { TestInfo } from '@playwright/test';
 import type { MetricsHelper } from 'n8n-containers';
 
+import { attachMetric } from '../performance-helper';
+
 export interface DiagnosticsResult {
-	eventLoopLag: string;
-	pgTxRate: string;
-	pgInsertRate: string;
-	pgActiveConnections: string;
-	queueWaiting: string;
-	queueActive: string;
-	queueCompletedRate: string;
-	queueFailedRate: string;
+	eventLoopLag?: number;
+	pgTxRate?: number;
+	pgInsertRate?: number;
+	pgActiveConnections?: number;
+	queueWaiting?: number;
+	queueActive?: number;
+	queueCompletedRate?: number;
+	queueFailedRate?: number;
 }
 
 function sumValues(results: Array<{ value: number }>): number | undefined {
 	if (results.length === 0) return undefined;
 	return results.reduce((sum, r) => sum + r.value, 0);
+}
+
+export function formatDiagnosticValue(v: number | undefined, unit = ''): string {
+	return v !== undefined ? `${v.toFixed(2)}${unit}` : 'N/A';
 }
 
 /**
@@ -24,9 +31,6 @@ export async function collectDiagnostics(
 	metrics: MetricsHelper,
 	durationMs: number,
 ): Promise<DiagnosticsResult> {
-	const fmt = (v: number | undefined, unit = '') =>
-		v !== undefined ? `${v.toFixed(2)}${unit}` : 'N/A';
-
 	// +30s buffer accounts for VictoriaMetrics scrape interval (15s) and ingestion delay
 	const windowSecs = Math.ceil(durationMs / 1000) + 30;
 	const window = `${windowSecs}s`;
@@ -62,18 +66,38 @@ export async function collectDiagnostics(
 		metrics.query(`rate(n8n_scaling_mode_queue_jobs_failed[${window}])`).catch(() => []),
 	]);
 
-	const pgTxRate = pgTxRateWithTotals.length > 0 ? pgTxRateWithTotals : pgTxRateFallback;
-	const pgInsertRate =
+	const pgTxRateResult = pgTxRateWithTotals.length > 0 ? pgTxRateWithTotals : pgTxRateFallback;
+	const pgInsertRateResult =
 		pgInsertRateWithTotals.length > 0 ? pgInsertRateWithTotals : pgInsertRateFallback;
 
 	return {
-		eventLoopLag: fmt(sumValues(eventLoopLag), 's'),
-		pgTxRate: fmt(sumValues(pgTxRate), ' tx/s'),
-		pgInsertRate: fmt(sumValues(pgInsertRate), ' rows/s'),
-		pgActiveConnections: fmt(sumValues(pgActive)),
-		queueWaiting: fmt(sumValues(queueWaiting)),
-		queueActive: fmt(sumValues(queueActive)),
-		queueCompletedRate: fmt(sumValues(queueCompletedRate), ' jobs/s'),
-		queueFailedRate: fmt(sumValues(queueFailedRate), ' jobs/s'),
+		eventLoopLag: sumValues(eventLoopLag),
+		pgTxRate: sumValues(pgTxRateResult),
+		pgInsertRate: sumValues(pgInsertRateResult),
+		pgActiveConnections: sumValues(pgActive),
+		queueWaiting: sumValues(queueWaiting),
+		queueActive: sumValues(queueActive),
+		queueCompletedRate: sumValues(queueCompletedRate),
+		queueFailedRate: sumValues(queueFailedRate),
 	};
+}
+
+/**
+ * Attaches reporter-relevant diagnostic values as test metrics.
+ * Only attaches values that are present (undefined = metric not available).
+ */
+export async function attachDiagnostics(
+	testInfo: TestInfo,
+	label: string,
+	diagnostics: DiagnosticsResult,
+): Promise<void> {
+	if (diagnostics.eventLoopLag !== undefined) {
+		await attachMetric(testInfo, `${label}-event-loop-lag`, diagnostics.eventLoopLag, 's');
+	}
+	if (diagnostics.pgTxRate !== undefined) {
+		await attachMetric(testInfo, `${label}-pg-tx-rate`, diagnostics.pgTxRate, 'tx/s');
+	}
+	if (diagnostics.queueWaiting !== undefined) {
+		await attachMetric(testInfo, `${label}-queue-waiting`, diagnostics.queueWaiting, 'count');
+	}
 }

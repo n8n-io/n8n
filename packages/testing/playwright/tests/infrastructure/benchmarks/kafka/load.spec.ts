@@ -14,6 +14,7 @@ test.describe('Kafka Load', { annotation: [{ type: 'owner', description: 'Cataly
 		await runLoadTest({
 			handle,
 			api,
+			services,
 			testInfo,
 			load: { type: 'steady', ratePerSecond: 10, durationSeconds: 30 },
 			timeoutMs: 120_000,
@@ -29,6 +30,7 @@ test.describe('Kafka Load', { annotation: [{ type: 'owner', description: 'Cataly
 		await runLoadTest({
 			handle,
 			api,
+			services,
 			testInfo,
 			load: { type: 'steady', ratePerSecond: 100, durationSeconds: 30 },
 			timeoutMs: 300_000,
@@ -44,6 +46,7 @@ test.describe('Kafka Load', { annotation: [{ type: 'owner', description: 'Cataly
 		await runLoadTest({
 			handle,
 			api,
+			services,
 			testInfo,
 			load: { type: 'preloaded', count: 10_000 },
 			timeoutMs: 600_000,
@@ -59,6 +62,7 @@ test.describe('Kafka Load', { annotation: [{ type: 'owner', description: 'Cataly
 		await runLoadTest({
 			handle,
 			api,
+			services,
 			testInfo,
 			load: { type: 'steady', ratePerSecond: 10, durationSeconds: 30 },
 			timeoutMs: 300_000,

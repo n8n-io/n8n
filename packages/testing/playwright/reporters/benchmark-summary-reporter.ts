@@ -25,28 +25,40 @@ const COLUMNS: Column[] = [
 		suffixes: ['actions-per-sec'],
 		format: (v) => v.toFixed(1),
 	},
-	{ header: 'p50', suffixes: ['duration-p50'], format: (v) => `${v.toFixed(0)}ms` },
-	{ header: 'p95', suffixes: ['duration-p95'], format: (v) => `${v.toFixed(0)}ms` },
-	{ header: 'p99', suffixes: ['duration-p99'], format: (v) => `${v.toFixed(0)}ms` },
 	{
-		header: 'http req/s',
+		header: 'p50',
+		suffixes: ['duration-p50', 'http-latency-p50'],
+		format: (v) => `${v.toFixed(0)}ms`,
+	},
+	{
+		header: 'p99',
+		suffixes: ['duration-p99', 'http-latency-p99'],
+		format: (v) => `${v.toFixed(0)}ms`,
+	},
+	{
+		header: 'req/s',
 		suffixes: ['http-requests-avg'],
 		format: (v) => v.toFixed(1),
-	},
-	{
-		header: 'http p50',
-		suffixes: ['http-latency-p50'],
-		format: (v) => `${v.toFixed(0)}ms`,
-	},
-	{
-		header: 'http p99',
-		suffixes: ['http-latency-p99'],
-		format: (v) => `${v.toFixed(0)}ms`,
 	},
 	{
 		header: 'errors',
 		suffixes: ['http-errors', 'executions-errors'],
 		format: (v) => String(v),
+	},
+	{
+		header: 'ev lag',
+		suffixes: ['event-loop-lag'],
+		format: (v) => `${(v * 1000).toFixed(0)}ms`,
+	},
+	{
+		header: 'pg tx/s',
+		suffixes: ['pg-tx-rate'],
+		format: (v) => v.toFixed(0),
+	},
+	{
+		header: 'queue',
+		suffixes: ['queue-waiting'],
+		format: (v) => String(Math.round(v)),
 	},
 ];
 

@@ -9,6 +9,8 @@ import {
 	getBaselineCounter,
 	attachThroughputResults,
 	collectDiagnostics,
+	attachDiagnostics,
+	formatDiagnosticValue,
 	WORKFLOW_SUCCESS_QUERY,
 } from '../../../../utils/benchmark';
 import type { NodeOutputSize } from '../../../../utils/benchmark';
@@ -110,7 +112,7 @@ export async function runWebhookThroughputTest(options: WebhookThroughputOptions
 	// Phase 5: Collect diagnostics
 	const diagnostics = await collectDiagnostics(obs.metrics, throughputResult.durationMs);
 
-	// Phase 6: Attach metrics — VictoriaMetrics throughput + autocannon HTTP stats
+	// Phase 6: Attach metrics — VictoriaMetrics throughput + autocannon HTTP stats + diagnostics
 	await attachThroughputResults(testInfo, testInfo.title, throughputResult);
 	await attachMetric(
 		testInfo,
@@ -142,13 +144,15 @@ export async function runWebhookThroughputTest(options: WebhookThroughputOptions
 		cannonResult.errors + cannonResult.non2xx,
 		'count',
 	);
+	await attachDiagnostics(testInfo, testInfo.title, diagnostics);
 
 	// Phase 7: Log summary
+	const fmt = formatDiagnosticValue;
 	console.log(
 		`[DIAG-${profile}] ${testInfo.title}\n` +
-			`  Event Loop Lag: ${diagnostics.eventLoopLag}\n` +
-			`  PG Transactions/s: ${diagnostics.pgTxRate}\n` +
-			`  PG Active Connections: ${diagnostics.pgActiveConnections}`,
+			`  Event Loop Lag: ${fmt(diagnostics.eventLoopLag, 's')}\n` +
+			`  PG Transactions/s: ${fmt(diagnostics.pgTxRate, ' tx/s')}\n` +
+			`  PG Active Connections: ${fmt(diagnostics.pgActiveConnections)}`,
 	);
 
 	console.log(

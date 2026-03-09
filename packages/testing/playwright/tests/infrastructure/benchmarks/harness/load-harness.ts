@@ -1,11 +1,18 @@
 import { expect } from '@playwright/test';
 import type { TestInfo } from '@playwright/test';
+import type { ServiceHelpers } from 'n8n-containers/services/types';
 
 import type { ApiHelpers } from '../../../../services/api-helper';
 import {
 	sampleExecutionDurations,
 	buildMetrics,
 	attachLoadTestResults,
+	waitForThroughput,
+	getBaselineCounter,
+	collectDiagnostics,
+	attachDiagnostics,
+	formatDiagnosticValue,
+	WORKFLOW_SUCCESS_QUERY,
 } from '../../../../utils/benchmark';
 import type { TriggerHandle, ExecutionMetrics } from '../../../../utils/benchmark';
 
@@ -16,24 +23,31 @@ export type LoadProfile =
 export interface LoadTestOptions {
 	handle: TriggerHandle;
 	api: ApiHelpers;
+	services: ServiceHelpers;
 	testInfo: TestInfo;
 	load: LoadProfile;
 	timeoutMs: number;
 }
 
 /**
- * Runs a single load test: creates workflow, generates load, measures latency.
+ * Runs a single load test: creates workflow, generates load, measures completion rate and latency.
  *
- * Phases: create workflow → preload (if backlog) → activate → publish (if steady) → drain → report.
+ * Phases: create workflow → preload (if backlog) → baseline → activate → publish (if steady) → measure → report.
+ *
+ * Completion is tracked via VictoriaMetrics (`n8n_workflow_success_total`), which only
+ * increments when a workflow finishes — not when a message is consumed from the queue.
  */
 export async function runLoadTest({
 	handle,
 	api,
+	services,
 	testInfo,
 	load,
 	timeoutMs,
 }: LoadTestOptions): Promise<ExecutionMetrics> {
 	testInfo.setTimeout(timeoutMs + 120_000);
+
+	const obs = services.observability;
 
 	const { workflowId, createdWorkflow } = await api.workflows.createWorkflowFromDefinition(
 		handle.workflow,
@@ -50,14 +64,22 @@ export async function runLoadTest({
 		expectedExecutions = result.totalPublished;
 	}
 
-	// Phase 2: Activate workflow
+	// Phase 2: Wait for VictoriaMetrics readiness and record baseline
+	await obs.metrics.waitForMetric('n8n_version_info', {
+		timeoutMs: 30_000,
+		intervalMs: 2000,
+		predicate: (results: unknown[]) => results.length > 0,
+	});
+	const baselineCounter = await getBaselineCounter(obs.metrics, WORKFLOW_SUCCESS_QUERY);
+
+	// Phase 3: Activate workflow
 	// For burst tests, processing starts at activation (messages are already queued),
-	// so the timer must begin here to capture the full drain window.
+	// so the timer must begin here to capture the full processing window.
 	const activationStart = Date.now();
 	await api.workflows.activate(workflowId, createdWorkflow.versionId!);
 	await handle.waitForReady({ timeoutMs: 30_000 });
 
-	// Phase 3: Post-activation load (publish at controlled rate)
+	// Phase 4: Post-activation load (publish at controlled rate)
 	// For steady-state tests, n8n consumes concurrently during publishing,
 	// so the timer starts at publish to measure the real processing window.
 	let publishStart: number | undefined;
@@ -73,24 +95,44 @@ export async function runLoadTest({
 		expectedExecutions = result.totalPublished;
 	}
 
-	// Phase 4: Drain and measure
-	console.log(`[LOAD] Waiting for ${expectedExecutions} executions (timeout: ${timeoutMs}ms)`);
+	// Phase 5: Wait for workflow completions via VictoriaMetrics
+	console.log(
+		`[LOAD] Waiting for ${expectedExecutions} workflow completions (timeout: ${timeoutMs}ms)`,
+	);
 
-	const drainResult = await handle.waitForDrain({ expectedCount: expectedExecutions, timeoutMs });
+	const throughputResult = await waitForThroughput(obs.metrics, {
+		expectedCount: expectedExecutions,
+		nodeCount: 1,
+		timeoutMs,
+		baselineValue: baselineCounter,
+		metricQuery: WORKFLOW_SUCCESS_QUERY,
+	});
 	const totalDurationMs = Date.now() - (publishStart ?? activationStart);
 
-	if (!drainResult.drained) {
+	if (throughputResult.totalCompleted < expectedExecutions) {
 		console.warn(
-			`[LOAD] Drain incomplete after ${(totalDurationMs / 1000).toFixed(1)}s — results reflect partial completion`,
+			`[LOAD] Only ${throughputResult.totalCompleted}/${expectedExecutions} completed after ${(totalDurationMs / 1000).toFixed(1)}s — results reflect partial completion`,
 		);
 	}
 
 	// Duration sampling is optional — may be empty when EXECUTIONS_DATA_SAVE_ON_SUCCESS=none
-	// hard-deletes execution records. Completion count comes from drain tracking (Kafka lag).
+	// hard-deletes execution records. Completion count comes from VictoriaMetrics.
 	const durations = await sampleExecutionDurations(api.workflows, workflowId);
-	const metrics = buildMetrics(drainResult.consumed, 0, totalDurationMs, durations);
+	const metrics = buildMetrics(throughputResult.totalCompleted, 0, totalDurationMs, durations);
 
 	await attachLoadTestResults(testInfo, testInfo.title, metrics);
+
+	// Diagnostics
+	const diagnostics = await collectDiagnostics(obs.metrics, totalDurationMs);
+	await attachDiagnostics(testInfo, testInfo.title, diagnostics);
+	const fmt = formatDiagnosticValue;
+	console.log(
+		`[DIAG] ${testInfo.title}\n` +
+			`  Event Loop Lag: ${fmt(diagnostics.eventLoopLag, 's')}\n` +
+			`  PG Transactions/s: ${fmt(diagnostics.pgTxRate, ' tx/s')}\n` +
+			`  PG Active Connections: ${fmt(diagnostics.pgActiveConnections)}\n` +
+			`  Queue Waiting: ${fmt(diagnostics.queueWaiting)}`,
+	);
 
 	console.log(
 		`[LOAD RESULT] ${testInfo.title}\n` +
