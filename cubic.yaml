@@ -195,6 +195,34 @@ reviews:
         - Higher scrutiny for: expression engine, credential handling, code execution nodes, license enforcement, SSO integrations
         - Consider n8n's security audit categories: credentials, database, nodes, instance, filesystem risks
         - Community/custom nodes have higher risk profile than official nodes
+    - name: Native C++ Addon Check
+      description: |-
+        Flag PRs that add native C++ addons to any package.json or pnpm-lock.yaml.
+
+        **Detection criteria — flag when a PR adds:**
+        - A known native module (isolated-vm, better-sqlite3, sharp, canvas, sqlite3,
+          node-sass, bcrypt, cpu-features, re2, libxmljs, etc.)
+        - A dependency with node-gyp, prebuild-install, or node-pre-gyp in its build scripts
+        - A new `binding.gyp` file or C++/C addon source files
+
+        **When detected, comment with:**
+        1. Native C++ addons compiled on Ubuntu/glibc CI runners produce binaries
+           incompatible with Alpine/musl Docker containers
+        2. The Dockerfile(s) in `docker/images/` may need an explicit `npm rebuild`
+           for the new module
+        3. Run `pnpm build:docker:clean` locally or trigger the Docker Build Smoke
+           Test workflow to verify the image builds and starts correctly
+        4. A nightly smoke test catches this automatically, but same-day verification
+           prevents up to 24h of broken containers
+
+        **Context:** In Feb 2026, `isolated-vm` was added without a Dockerfile change.
+        The glibc binary was silently copied into the Alpine runner container, breaking
+        Code node execution for 16 days until discovered.
+
+        **Do NOT flag:**
+        - Version bumps of existing native dependencies (already handled in Dockerfiles)
+        - Pure JavaScript/WASM alternatives (e.g., better-sqlite3-wasm)
+        - Existing unchanged code
     - name: Design System Tokens
       description: |-
         For any hard-coded visual values in CSS (colors, shadows, spacing),
