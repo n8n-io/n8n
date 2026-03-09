@@ -44,31 +44,6 @@ export interface DecompressionOptions {
 }
 
 /**
- * Sanitize file path to prevent zip slip attacks
- * Ensures the resolved path stays within the output directory
- */
-function sanitizePath(fileName: string, outputDir: string): string {
-	// Normalize the path and resolve any relative path components
-	const normalizedPath = path.normalize(fileName);
-
-	// Join with output directory and resolve to get absolute path
-	const resolvedPath = path.resolve(outputDir, normalizedPath);
-	const resolvedOutputDir = path.resolve(outputDir);
-
-	// Check if the resolved path is within the output directory
-	if (
-		!resolvedPath.startsWith(resolvedOutputDir + path.sep) &&
-		resolvedPath !== resolvedOutputDir
-	) {
-		throw new Error(
-			`Path traversal detected: ${fileName} would be extracted outside the output directory`,
-		);
-	}
-
-	return resolvedPath;
-}
-
-/**
  * Compress a folder into a ZIP archive using streaming
  * Based on fflate documentation: https://github.com/101arrowz/fflate
  */
@@ -133,17 +108,37 @@ export async function decompressFolder(sourcePath: string, outputDir: string): P
 
 		const unzip = new fflate.Unzip((stream) => {
 			if (!stream.name.endsWith('/')) {
+				// Validate no null bytes (path traversal attack vector)
+				if (stream.name.includes('\0')) {
+					reject(new Error(`Invalid path: null byte detected in ${stream.name}`));
+					return;
+				}
+
+				// Normalize path separators (zip files can contain both / and \)
+				const normalizedName = stream.name.replace(/\\/g, '/');
+
+				// Use safeJoinPath to prevent path traversal attacks
+				let filePath: string;
+				try {
+					filePath = safeJoinPath(outputDir, normalizedName);
+				} catch (error) {
+					reject(error);
+					return;
+				}
+
+				const dirPath = path.dirname(filePath);
+
+				// Ensure directory exists before writing (await to prevent race conditions)
+				const dirPromise = mkdir(dirPath, { recursive: true }).catch((error) => {
+					if (error.code !== 'EEXIST') {
+						reject(error);
+					}
+				});
+
 				filesToProcess++;
 
 				const chunks: Uint8Array[] = [];
 				let totalLength = 0;
-
-				const filePath = sanitizePath(stream.name, outputDir);
-				const dirPath = path.dirname(filePath);
-
-				mkdir(dirPath, { recursive: true }).catch((error) => {
-					if (error.code !== 'EEXIST') reject(error);
-				});
 
 				stream.ondata = async (error, chunk, final) => {
 					if (error) {
@@ -155,6 +150,9 @@ export async function decompressFolder(sourcePath: string, outputDir: string): P
 					totalLength += chunk.length;
 
 					if (final) {
+						// Ensure directory is created before writing
+						await dirPromise;
+
 						const finalBuffer = new Uint8Array(totalLength);
 						let offset = 0;
 
