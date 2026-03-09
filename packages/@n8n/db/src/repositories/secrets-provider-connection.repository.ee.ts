@@ -165,7 +165,8 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 		const rows = await this.createQueryBuilder('connection')
 			.select('connection.providerKey', 'providerKey')
 			.leftJoin('connection.projectAccess', 'access')
-			.where(
+			.where('connection.isEnabled = :isEnabled', { isEnabled: true })
+			.andWhere(
 				new Brackets((qb) => {
 					qb.where('access.secretsProviderConnectionId IS NULL') // Global
 						.orWhere(`access.projectId IN ${ownerProjectSubquery}`); // Owner project
