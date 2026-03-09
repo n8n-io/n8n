@@ -352,7 +352,7 @@ describe('SettingsSecretsProviders', () => {
 		});
 	});
 
-	describe('handleToggleEnabled', () => {
+	describe('handleActivate', () => {
 		const activeProviders: SecretProviderConnection[] = [
 			{
 				id: '1',
@@ -369,7 +369,7 @@ describe('SettingsSecretsProviders', () => {
 			},
 		];
 
-		it('should call activateConnection and fetchConnection on enable success', async () => {
+		it('should call activateConnection and fetchConnection on success', async () => {
 			settingsStore.settings.enterprise[EnterpriseEditionFeature.ExternalSecrets] = true;
 			mockIsEnterpriseEnabled.value = true;
 			mockIsLoading.value = false;
@@ -382,7 +382,7 @@ describe('SettingsSecretsProviders', () => {
 
 			const { getByTestId } = renderComponent({ pinia });
 
-			await userEvent.click(getByTestId('secrets-provider-enabled-switch'));
+			await userEvent.click(getByTestId('action-activate'));
 
 			await vi.waitFor(() => {
 				expect(mockActivateConnection).toHaveBeenCalledWith('aws-prod');
@@ -391,7 +391,7 @@ describe('SettingsSecretsProviders', () => {
 			expect(mockFetchConnection).toHaveBeenCalledWith('aws-prod');
 		});
 
-		it('should not fetch connection when toggling fails', async () => {
+		it('should not fetch connection when activation fails', async () => {
 			settingsStore.settings.enterprise[EnterpriseEditionFeature.ExternalSecrets] = true;
 			mockIsEnterpriseEnabled.value = true;
 			mockIsLoading.value = false;
@@ -400,11 +400,11 @@ describe('SettingsSecretsProviders', () => {
 			const rbacStore = useRBACStore();
 			rbacStore.globalScopes = ['externalSecretsProvider:update'];
 
-			mockActivateConnection.mockRejectedValue(new Error('Enable failed'));
+			mockActivateConnection.mockRejectedValue(new Error('Activation failed'));
 
 			const { getByTestId } = renderComponent({ pinia });
 
-			await userEvent.click(getByTestId('secrets-provider-enabled-switch'));
+			await userEvent.click(getByTestId('action-activate'));
 
 			await vi.waitFor(() => {
 				expect(mockActivateConnection).toHaveBeenCalledWith('aws-prod');
