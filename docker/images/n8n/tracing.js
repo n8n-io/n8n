@@ -9,7 +9,7 @@ const { NodeSDK } = require('@opentelemetry/sdk-node');
 const { getNodeAutoInstrumentations } = require('@opentelemetry/auto-instrumentations-node');
 const { OTLPTraceExporter } = require('@opentelemetry/exporter-trace-otlp-http');
 const { OTLPMetricExporter } = require('@opentelemetry/exporter-metrics-otlp-http');
-const { PeriodicExportingMetricReader, MeterProvider } = require('@opentelemetry/sdk-metrics');
+const { PeriodicExportingMetricReader } = require('@opentelemetry/sdk-metrics');
 const resourcesPkg = require('@opentelemetry/resources');
 const { metrics } = require('@opentelemetry/api');
 const {
