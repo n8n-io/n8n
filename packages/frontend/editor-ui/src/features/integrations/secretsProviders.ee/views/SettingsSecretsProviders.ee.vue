@@ -55,6 +55,7 @@ async function handleToggleEnabled(providerKey: string) {
 	activatingProvider.value = providerKey;
 	try {
 		await secretsProviderConnection.activateConnection(providerKey);
+		await secretsProviders.fetchConnection(providerKey);
 		toast.showMessage({
 			title: i18n.baseText('settings.secretsProviderConnections.actions.activate.success.title'),
 			message: i18n.baseText(
@@ -65,7 +66,6 @@ async function handleToggleEnabled(providerKey: string) {
 			),
 			type: 'success',
 		});
-		await secretsProviders.fetchConnection(providerKey);
 	} catch (error) {
 		toast.showError(
 			error,

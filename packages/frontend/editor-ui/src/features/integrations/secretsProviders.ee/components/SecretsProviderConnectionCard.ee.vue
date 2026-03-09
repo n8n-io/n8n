@@ -181,7 +181,7 @@ function onToggleEnabled(value: boolean) {
 				}}</N8nHeading>
 				<N8nBadge
 					v-if="isDisabled"
-					theme="warning"
+					theme="tertiary"
 					:bold="false"
 					size="xsmall"
 					data-test-id="disabled-badge"

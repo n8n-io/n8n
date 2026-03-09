@@ -3050,7 +3050,7 @@
 	"settings.secretsProviderConnections.description": "Manage credentials across multiple environments by connecting an external secrets store. Keep sensitive credential information in your vault for added security.",
 	"settings.secretsProviderConnections.card.createdAt": "Created on {date}",
 	"settings.secretsProviderConnections.actions.share": "Share",
-	"settings.secretsProviderConnections.actions.activate": "Make {provider} active",
+	"settings.secretsProviderConnections.actions.activate": "Activate {provider} by sharing it globally",
 	"settings.secretsProviderConnections.actions.activate.success.title": "Secret store active",
 	"settings.secretsProviderConnections.actions.activate.success.description": "\"{provider}\" is now active.",
 	"settings.secretsProviderConnections.actions.activate.error.title": "Couldn't activate secret store",
