@@ -3,8 +3,8 @@
 	"@context": "https://openvex.dev/ns/v0.2.0",
 	"@id": "https://github.com/n8n-io/n8n/vex",
 	"author": "n8n Security Team <security@n8n.io>",
-	"timestamp": "2026-03-01T00:00:00Z",
-	"version": 5,
+	"timestamp": "2026-03-09T00:00:00Z",
+	"version": 6,
 	"statements": [
 		{
 			"vulnerability": {
@@ -64,6 +64,66 @@
 			],
 			"status": "affected",
 			"action_statement": "WPG (WordPerfect Graphics) coder is compiled into Alpine's graphicsmagick package. However, WPG is an obsolete format from the 1980s with no legitimate use case in n8n workflows. Exploitation requires a workflow author to deliberately fetch and process a crafted WPG file via the Edit Image node."
+		},
+		{
+			"vulnerability": {
+				"@id": "https://nvd.nist.gov/vuln/detail/CVE-2026-27903",
+				"name": "CVE-2026-27903",
+				"description": "minimatch: Denial of Service due to unbounded recursive backtracking via crafted glob patterns"
+			},
+			"products": [
+				{
+					"@id": "pkg:docker/n8nio/n8n",
+					"subcomponents": [
+						{
+							"@id": "pkg:npm/minimatch@10.2.2"
+						}
+					]
+				}
+			],
+			"status": "not_affected",
+			"justification": "vulnerable_code_not_in_execute_path",
+			"impact_statement": "This minimatch instance is bundled inside Node.js's own npm at /opt/nodejs/node-v24.13.1/lib/node_modules/npm/node_modules/minimatch. It is not imported or used by n8n application code. Will be resolved when Node.js ships an updated npm version."
+		},
+		{
+			"vulnerability": {
+				"@id": "https://nvd.nist.gov/vuln/detail/CVE-2026-27904",
+				"name": "CVE-2026-27904",
+				"description": "minimatch: Denial of Service via catastrophic backtracking in glob expressions"
+			},
+			"products": [
+				{
+					"@id": "pkg:docker/n8nio/n8n",
+					"subcomponents": [
+						{
+							"@id": "pkg:npm/minimatch@10.2.2"
+						}
+					]
+				}
+			],
+			"status": "not_affected",
+			"justification": "vulnerable_code_not_in_execute_path",
+			"impact_statement": "This minimatch instance is bundled inside Node.js's own npm at /opt/nodejs/node-v24.13.1/lib/node_modules/npm/node_modules/minimatch. It is not imported or used by n8n application code. Will be resolved when Node.js ships an updated npm version."
+		},
+		{
+			"vulnerability": {
+				"@id": "https://nvd.nist.gov/vuln/detail/CVE-2026-29786",
+				"name": "CVE-2026-29786",
+				"description": "node-tar: path traversal vulnerability prior to version 7.5.10"
+			},
+			"products": [
+				{
+					"@id": "pkg:docker/n8nio/n8n",
+					"subcomponents": [
+						{
+							"@id": "pkg:npm/tar@7.5.9"
+						}
+					]
+				}
+			],
+			"status": "not_affected",
+			"justification": "vulnerable_code_not_in_execute_path",
+			"impact_statement": "This tar instance is bundled inside Node.js's own npm at /opt/nodejs/node-v24.13.1/lib/node_modules/npm/node_modules/tar. It is not imported or used by n8n application code. Will be resolved when Node.js ships an updated npm version."
 		}
 	]
 }
