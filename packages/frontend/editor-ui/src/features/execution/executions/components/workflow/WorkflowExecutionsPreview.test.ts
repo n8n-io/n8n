@@ -8,6 +8,7 @@ import WorkflowExecutionsPreview from './WorkflowExecutionsPreview.vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import type { IWorkflowDb } from '@/Interface';
 import type { ExecutionSummaryWithScopes } from '../../executions.types';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -16,6 +17,7 @@ import { mockedStore } from '@/__tests__/utils';
 import type { FrontendSettings } from '@n8n/api-types';
 import { STORES } from '@n8n/stores';
 import { nextTick, computed } from 'vue';
+import type { WorkflowVersion } from '@n8n/rest-api-client/api/workflowHistory';
 
 const showMessage = vi.fn();
 const showError = vi.fn();
@@ -29,6 +31,11 @@ const routes = [
 	{
 		path: '/workflow/:name/debug/:executionId',
 		name: VIEWS.EXECUTION_DEBUG,
+		component: { template: '<div></div>' },
+	},
+	{
+		path: '/workflow/:workflowId/history/:versionId?',
+		name: VIEWS.WORKFLOW_HISTORY,
 		component: { template: '<div></div>' },
 	},
 ];
@@ -318,5 +325,153 @@ describe('WorkflowExecutionsPreview.vue', () => {
 		// Should not show annotation-related elements
 		expect(queryByTestId('annotation-tags-container')).not.toBeInTheDocument();
 		expect(queryByTestId('execution-preview-ellipsis-button')).not.toBeInTheDocument();
+	});
+
+	it('should not show version link when execution has no workflowVersionId', async () => {
+		const { queryByTestId } = renderComponent({
+			props: { execution: executionData },
+		});
+
+		await nextTick();
+
+		expect(queryByTestId('execution-preview-version-link')).not.toBeInTheDocument();
+	});
+
+	it('should show version link with named version', async () => {
+		const versionId = faker.string.uuid();
+		const workflowId = executionData.workflowId;
+
+		const pinia = createTestingPinia({
+			initialState: {
+				[STORES.SETTINGS]: {
+					settings: {
+						enterprise: {
+							[EnterpriseEditionFeature.AdvancedExecutionFilters]: true,
+						},
+					},
+				},
+				[STORES.EXECUTIONS]: {
+					activeExecution: executionData,
+				},
+			},
+		});
+
+		const workflowHistoryStore = mockedStore(useWorkflowHistoryStore);
+		workflowHistoryStore.getWorkflowVersion.mockResolvedValue({
+			versionId,
+			workflowId,
+			name: 'My release v2',
+			description: null,
+			authors: 'test',
+			createdAt: '2025-10-10T10:24:00.000Z',
+			updatedAt: '2025-10-10T10:24:00.000Z',
+			nodes: [],
+			connections: {},
+			workflowPublishHistory: [],
+		} as WorkflowVersion);
+
+		const executionWithVersion = {
+			...executionData,
+			workflowVersionId: versionId,
+		};
+
+		const { findByTestId } = renderComponent({
+			props: { execution: executionWithVersion },
+			pinia,
+		});
+
+		const versionLink = await findByTestId('execution-preview-version-link');
+		expect(versionLink).toBeInTheDocument();
+		expect(versionLink.textContent?.trim()).toContain('My release v2');
+		expect(versionLink.getAttribute('href')).toContain(
+			`/workflow/${workflowId}/history/${versionId}`,
+		);
+	});
+
+	it('should show version link with autosave label when version has no name', async () => {
+		const versionId = faker.string.uuid();
+		const workflowId = executionData.workflowId;
+
+		const pinia = createTestingPinia({
+			initialState: {
+				[STORES.SETTINGS]: {
+					settings: {
+						enterprise: {
+							[EnterpriseEditionFeature.AdvancedExecutionFilters]: true,
+						},
+					},
+				},
+				[STORES.EXECUTIONS]: {
+					activeExecution: executionData,
+				},
+			},
+		});
+
+		const workflowHistoryStore = mockedStore(useWorkflowHistoryStore);
+		workflowHistoryStore.getWorkflowVersion.mockResolvedValue({
+			versionId,
+			workflowId,
+			name: null,
+			description: null,
+			authors: 'test',
+			createdAt: '2025-10-10T10:24:00.000Z',
+			updatedAt: '2025-10-10T10:24:00.000Z',
+			nodes: [],
+			connections: {},
+			workflowPublishHistory: [],
+		} as WorkflowVersion);
+
+		const executionWithVersion = {
+			...executionData,
+			workflowVersionId: versionId,
+		};
+
+		const { findByTestId } = renderComponent({
+			props: { execution: executionWithVersion },
+			pinia,
+		});
+
+		const versionLink = await findByTestId('execution-preview-version-link');
+		expect(versionLink).toBeInTheDocument();
+		expect(versionLink.textContent?.trim()).toContain('Autosave');
+		expect(versionLink.getAttribute('href')).toContain(
+			`/workflow/${workflowId}/history/${versionId}`,
+		);
+	});
+
+	it('should not show version link when version fetch fails', async () => {
+		const pinia = createTestingPinia({
+			initialState: {
+				[STORES.SETTINGS]: {
+					settings: {
+						enterprise: {
+							[EnterpriseEditionFeature.AdvancedExecutionFilters]: true,
+						},
+					},
+				},
+				[STORES.EXECUTIONS]: {
+					activeExecution: executionData,
+				},
+			},
+		});
+
+		const workflowHistoryStore = mockedStore(useWorkflowHistoryStore);
+		workflowHistoryStore.getWorkflowVersion.mockRejectedValue(new Error('Not found'));
+
+		const executionWithVersion = {
+			...executionData,
+			workflowVersionId: faker.string.uuid(),
+		};
+
+		const { queryByTestId } = renderComponent({
+			props: { execution: executionWithVersion },
+			pinia,
+		});
+
+		await nextTick();
+		// Wait for the async watch to settle
+		await nextTick();
+
+		expect(queryByTestId('execution-preview-version-link')).not.toBeInTheDocument();
 	});
 });

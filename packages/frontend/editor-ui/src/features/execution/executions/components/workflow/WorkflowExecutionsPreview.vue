@@ -282,7 +282,11 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 						<template v-if="workflowVersionLabel && workflowVersionRoute">
 							|
 							<N8nText color="text-light">
-								<RouterLink :class="$style.versionLink" :to="workflowVersionRoute">
+								<RouterLink
+									:class="$style.versionLink"
+									data-test-id="execution-preview-version-link"
+									:to="workflowVersionRoute"
+								>
 									{{ workflowVersionLabel }}
 								</RouterLink>
 							</N8nText>
@@ -299,7 +303,11 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 						<template v-if="workflowVersionLabel && workflowVersionRoute">
 							|
 							<N8nText color="text-light">
-								<RouterLink :class="$style.versionLink" :to="workflowVersionRoute">
+								<RouterLink
+									:class="$style.versionLink"
+									data-test-id="execution-preview-version-link"
+									:to="workflowVersionRoute"
+								>
 									{{ workflowVersionLabel }}
 								</RouterLink>
 							</N8nText>
