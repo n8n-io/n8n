@@ -95,19 +95,6 @@ describe('useWorkflowNavigationCommands', () => {
 		}),
 	];
 
-	const getSearchWorkflowCalls = () =>
-		vi
-			.mocked(mockWorkflowsListStore.searchWorkflows)
-			.mock.calls.map(([params]) => params as { select?: string[] });
-
-	const expectSearchCallsToIncludeVersionId = (expectedCalls: number) => {
-		const calls = getSearchWorkflowCalls();
-		expect(calls).toHaveLength(expectedCalls);
-		calls.forEach((params) => {
-			expect(params.select).toEqual(expect.arrayContaining(['versionId']));
-		});
-	};
-
 	beforeEach(() => {
 		vi.clearAllMocks();
 		setActivePinia(createTestingPinia());
@@ -162,12 +149,7 @@ describe('useWorkflowNavigationCommands', () => {
 			configurable: true,
 		});
 		vi.spyOn(mockWorkflowsListStore, 'searchWorkflows').mockImplementation(
-			async (params: {
-				query?: string;
-				nodeTypes?: string[];
-				tags?: string[];
-				select?: string[];
-			}) => {
+			async (params: { query?: string; nodeTypes?: string[]; tags?: string[] }) => {
 				if (params.nodeTypes && params.nodeTypes.length > 0) {
 					return [
 						{ ...allWorkflows[0], nodes: [{ type: 'n8n-nodes-base.httpRequest' }] } as IWorkflowDb,
@@ -311,22 +293,6 @@ describe('useWorkflowNavigationCommands', () => {
 		expect(resolveMock).toHaveBeenCalled();
 	});
 
-	it('includes versionId in workflow search select when opening workflow search', async () => {
-		const api = useWorkflowNavigationCommands({
-			lastQuery: ref(''),
-			activeNodeId: ref(null),
-			currentProjectName: ref('My Project'),
-		});
-
-		api.handlers?.onCommandBarNavigateTo?.('open-workflow');
-
-		await waitFor(() => {
-			expect(mockWorkflowsListStore.searchWorkflows).toHaveBeenCalled();
-		});
-
-		expectSearchCallsToIncludeVersionId(1);
-	});
-
 	it('create workflow navigates to NEW_WORKFLOW route with project and folder', async () => {
 		const api = useWorkflowNavigationCommands({
 			lastQuery: ref(''),
@@ -365,38 +331,6 @@ describe('useWorkflowNavigationCommands', () => {
 		expect(item.keywords).toEqual(expect.arrayContaining(['Alpha', 'Marketing']));
 		// Icon present when matched by node type
 		expect(item.icon).toBeDefined();
-	});
-
-	it('includes versionId in workflow search select when matching node types', async () => {
-		const api = useWorkflowNavigationCommands({
-			lastQuery: ref('http request'),
-			activeNodeId: ref('open-workflow'),
-			currentProjectName: ref('My Project'),
-		});
-
-		(api.handlers?.onCommandBarChange as (q: string) => void)('http request');
-
-		await waitFor(() => {
-			expect(mockWorkflowsListStore.searchWorkflows).toHaveBeenCalledTimes(2);
-		});
-
-		expectSearchCallsToIncludeVersionId(2);
-	});
-
-	it('includes versionId in workflow search select when matching tags', async () => {
-		const api = useWorkflowNavigationCommands({
-			lastQuery: ref('Marketing'),
-			activeNodeId: ref('open-workflow'),
-			currentProjectName: ref('My Project'),
-		});
-
-		(api.handlers?.onCommandBarChange as (q: string) => void)('Marketing');
-
-		await waitFor(() => {
-			expect(mockWorkflowsListStore.searchWorkflows).toHaveBeenCalledTimes(2);
-		});
-
-		expectSearchCallsToIncludeVersionId(2);
 	});
 
 	it('root workflow items have correct title and section', async () => {
