@@ -173,6 +173,7 @@ export class Chat implements INodeType {
 							},
 						},
 					},
+					autoSaveHighlightedDataProperty,
 				],
 			},
 			{
