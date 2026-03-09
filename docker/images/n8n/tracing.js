@@ -50,8 +50,6 @@ const resourceAttributes = {
   'process.executable.name': 'node',
   'process.executable.path': process.execPath,
   'process.runtime.description': 'Node.js',
-  'telemetry.sdk.name': 'opentelemetry',
-  'telemetry.sdk.version': '1.23.0',
 };
 
 let resource;
