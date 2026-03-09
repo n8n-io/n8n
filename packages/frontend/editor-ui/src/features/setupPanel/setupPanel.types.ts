@@ -9,6 +9,8 @@ export interface CredentialTypeSetupState {
 	/** All nodes that require this credential type */
 	nodes: INodeUi[];
 	isComplete: boolean;
+	/** True when the credential was auto-applied (not manually selected by the user) */
+	isAutoApplied?: boolean;
 }
 
 /** Trigger card — shows only the test button (no credential picker) */
@@ -36,6 +38,8 @@ export interface NodeSetupState {
 	showCredentialPicker?: boolean;
 	/** All nodes that use this credential type (for "Used in X nodes" hint) */
 	allNodesUsingCredential?: INodeUi[];
+	/** True when the credential was auto-applied (not manually selected by the user) */
+	isAutoApplied?: boolean;
 }
 
 /** Unified setup card item — all cards use NodeSetupState */

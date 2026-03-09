@@ -202,10 +202,28 @@ const allParametersAddressed = ref(
 		Object.keys(props.state.parameterIssues).length === 0,
 );
 
+/** Auto-applied credential cards require manual collapse (or execution) to be marked complete */
+const autoAppliedAcknowledged = ref(!props.state.isAutoApplied);
+
+// When the user manually selects a different credential, auto-applied status clears
+watch(
+	() => props.state.isAutoApplied ?? false,
+	(isAutoApplied) => {
+		if (!isAutoApplied) {
+			autoAppliedAcknowledged.value = true;
+		}
+	},
+);
+
 // Only mark as complete if explicitly closed
 watch(expanded, (value, oldValue) => {
-	if (oldValue && !value && Object.keys(props.state.parameterIssues).length === 0) {
-		allParametersAddressed.value = true;
+	if (oldValue && !value) {
+		if (Object.keys(props.state.parameterIssues).length === 0) {
+			allParametersAddressed.value = true;
+		}
+		if (props.state.isAutoApplied) {
+			autoAppliedAcknowledged.value = true;
+		}
 	}
 });
 
@@ -213,12 +231,13 @@ watch(expanded, (value, oldValue) => {
  * Card completion logic:
  * - Trigger-only / credential-only cards: pass through state.isComplete directly
  * - Cards with parameters: also require user to have collapsed the card after resolving all issues
+ * - Auto-applied credential cards: also require manual collapse or execution to acknowledge
  */
 const cardComplete = computed(() => {
 	if (hasShownParameters.value) {
-		return props.state.isComplete && allParametersAddressed.value;
+		return props.state.isComplete && allParametersAddressed.value && autoAppliedAcknowledged.value;
 	}
-	return props.state.isComplete;
+	return props.state.isComplete && autoAppliedAcknowledged.value;
 });
 
 const highlightNodeIds = computed(() => {

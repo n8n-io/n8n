@@ -370,15 +370,13 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 				isTriggerNodeType,
 				testChecker,
 			);
-			// Auto-applied credentials require at least one node to have been executed
 			const isAutoApplied =
 				!!state.selectedCredentialId &&
 				autoAppliedCredentialIds.value.has(state.selectedCredentialId);
-			const nodeExecuted =
-				!isAutoApplied || state.nodes.some((node) => hasTriggerExecutedSuccessfully(node.name));
 			return {
 				...state,
-				isComplete: baseComplete && nodeExecuted,
+				isComplete: baseComplete,
+				isAutoApplied,
 			};
 		});
 	});
@@ -532,17 +530,14 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 					node.name !== firstTriggerName.value ||
 					hasTriggerExecutedSuccessfully(node.name);
 
-				// Auto-applied credentials require node execution before being marked complete
 				const isAutoApplied =
 					!!selectedCredentialId && autoAppliedCredentialIds.value.has(selectedCredentialId);
-				const nodeExecuted = !isAutoApplied || hasTriggerExecutedSuccessfully(node.name);
 
 				const isComplete =
 					credentialComplete &&
 					testPassed &&
 					Object.keys(parameterIssues).length === 0 &&
-					triggerComplete &&
-					nodeExecuted;
+					triggerComplete;
 
 				result.push({
 					node,
@@ -556,6 +551,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 					showCredentialPicker,
 					isComplete,
 					allNodesUsingCredential,
+					isAutoApplied,
 				});
 
 				isFirstNode = false;
@@ -583,6 +579,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 			isTrigger: isTriggerNode(credState.nodes[0]),
 			showCredentialPicker: true,
 			isComplete: credState.isComplete,
+			isAutoApplied: credState.isAutoApplied,
 			allNodesUsingCredential: credState.nodes,
 		}));
 

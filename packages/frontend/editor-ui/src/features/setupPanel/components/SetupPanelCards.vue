@@ -22,14 +22,8 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
-const {
-	setupCards,
-	isAllComplete,
-	setCredential,
-	unsetCredential,
-	firstTriggerName,
-	autoAppliedCredentialIds,
-} = useWorkflowSetupState();
+const { setupCards, isAllComplete, setCredential, unsetCredential, firstTriggerName } =
+	useWorkflowSetupState();
 
 watch(isAllComplete, (allComplete) => {
 	if (allComplete) {
@@ -72,6 +66,10 @@ let initialized = false;
 
 const isCardExpanded = (key: string): boolean => expandedStates[key] ?? false;
 
+/** Find the next uncompleted card after a given index, skipping auto-applied credential cards */
+const findNextUncompleted = (cards: SetupCardItem[], afterIndex: number) =>
+	cards.find((c, j) => j > afterIndex && !c.state.isComplete && !c.state.isAutoApplied);
+
 const setCardExpanded = (key: string, value: boolean) => {
 	expandedStates[key] = value;
 
@@ -81,7 +79,7 @@ const setCardExpanded = (key: string, value: boolean) => {
 		const cardIndex = cards.findIndex((c) => cardKey(c) === key);
 		const card = cards[cardIndex];
 		if (card?.state.isComplete && cardsWithParameters.has(key)) {
-			const nextUncompleted = cards.find((c, j) => j > cardIndex && !c.state.isComplete);
+			const nextUncompleted = findNextUncompleted(cards, cardIndex);
 			if (nextUncompleted) {
 				expandedStates[cardKey(nextUncompleted)] = true;
 			}
@@ -107,8 +105,8 @@ watch(
 		}
 
 		if (!initialized) {
-			// On first load, expand the first uncompleted card
-			const firstUncompleted = cards.find((c) => !c.state.isComplete);
+			// On first load, expand the first uncompleted card (skip auto-applied credential cards)
+			const firstUncompleted = findNextUncompleted(cards, -1);
 			if (firstUncompleted) {
 				expandedStates[cardKey(firstUncompleted)] = true;
 			}
@@ -127,14 +125,12 @@ watch(
 
 					// When auto-applied credentials complete a card, only open the next card
 					// if all other cards are already collapsed (don't disrupt user's current work).
-					const wasAutoApplied =
-						!!card.state.selectedCredentialId &&
-						autoAppliedCredentialIds.value.has(card.state.selectedCredentialId);
 					const allOthersCollapsed =
-						!wasAutoApplied || cards.every((c, j) => j === i || !expandedStates[cardKey(c)]);
+						!card.state.isAutoApplied ||
+						cards.every((c, j) => j === i || !expandedStates[cardKey(c)]);
 
 					if (allOthersCollapsed) {
-						const nextUncompleted = cards.find((c, j) => j > i && !c.state.isComplete);
+						const nextUncompleted = findNextUncompleted(cards, i);
 						if (nextUncompleted) {
 							expandedStates[cardKey(nextUncompleted)] = true;
 						}
