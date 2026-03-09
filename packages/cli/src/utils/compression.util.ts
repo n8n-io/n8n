@@ -246,6 +246,31 @@ interface ZipEntry {
 }
 
 /**
+ * Try to read a ZIP64 end-of-central-directory record using the ZIP64 locator
+ * immediately preceding the standard EOCD. Returns null if not found.
+ */
+async function tryReadZip64(
+	fh: FileHandle,
+	locatorPos: number,
+): Promise<{ cdOffset: bigint; cdSize: bigint } | null> {
+	if (locatorPos < 0) return null;
+
+	const locBuf = Buffer.allocUnsafe(20);
+	await fh.read(locBuf, 0, 20, locatorPos);
+	if (locBuf.readUInt32LE(0) !== EOCD64_LOCATOR_SIG) return null;
+
+	const eocd64Offset = Number(locBuf.readBigUInt64LE(8));
+	const eocd64Buf = Buffer.allocUnsafe(56);
+	await fh.read(eocd64Buf, 0, 56, eocd64Offset);
+	if (eocd64Buf.readUInt32LE(0) !== EOCD64_SIG) return null;
+
+	return {
+		cdSize: eocd64Buf.readBigUInt64LE(40),
+		cdOffset: eocd64Buf.readBigUInt64LE(48),
+	};
+}
+
+/**
  * Locate the end-of-central-directory record and return the central directory
  * offset and size. Handles ZIP64 archives transparently.
  */
@@ -265,22 +290,8 @@ async function readEOCD(
 		const cdOffset32 = buf.readUInt32LE(i + 16);
 
 		if (cdSize32 === 0xffffffff || cdOffset32 === 0xffffffff) {
-			const locatorPos = fileSize - searchSize + i - 20;
-			if (locatorPos >= 0) {
-				const locBuf = Buffer.allocUnsafe(20);
-				await fh.read(locBuf, 0, 20, locatorPos);
-				if (locBuf.readUInt32LE(0) === EOCD64_LOCATOR_SIG) {
-					const eocd64Offset = Number(locBuf.readBigUInt64LE(8));
-					const eocd64Buf = Buffer.allocUnsafe(56);
-					await fh.read(eocd64Buf, 0, 56, eocd64Offset);
-					if (eocd64Buf.readUInt32LE(0) === EOCD64_SIG) {
-						return {
-							cdSize: eocd64Buf.readBigUInt64LE(40),
-							cdOffset: eocd64Buf.readBigUInt64LE(48),
-						};
-					}
-				}
-			}
+			const zip64 = await tryReadZip64(fh, fileSize - searchSize + i - 20);
+			if (zip64) return zip64;
 		}
 
 		return { cdSize: BigInt(cdSize32), cdOffset: BigInt(cdOffset32) };
