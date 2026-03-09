@@ -5,30 +5,34 @@
 
 'use strict';
 
-const { NodeSDK } = require('@opentelemetry/sdk-node');
-const { getNodeAutoInstrumentations } = require('@opentelemetry/auto-instrumentations-node');
-const { OTLPTraceExporter } = require('@opentelemetry/exporter-trace-otlp-http');
-const { OTLPMetricExporter } = require('@opentelemetry/exporter-metrics-otlp-http');
-const { PeriodicExportingMetricReader } = require('@opentelemetry/sdk-metrics');
-const resourcesPkg = require('@opentelemetry/resources');
-const { metrics } = require('@opentelemetry/api');
-const {
-  ATTR_SERVICE_NAME,
-  ATTR_HOST_NAME,
-  ATTR_PROCESS_PID,
-  ATTR_PROCESS_RUNTIME_NAME,
-  ATTR_PROCESS_RUNTIME_VERSION,
-} = require('@opentelemetry/semantic-conventions');
+var NodeSDK = require('@opentelemetry/sdk-node').NodeSDK;
+var getNodeAutoInstrumentations = require('@opentelemetry/auto-instrumentations-node').getNodeAutoInstrumentations;
+var OTLPTraceExporter = require('@opentelemetry/exporter-trace-otlp-http').OTLPTraceExporter;
+var OTLPMetricExporter = require('@opentelemetry/exporter-metrics-otlp-http').OTLPMetricExporter;
+var PeriodicExportingMetricReader = require('@opentelemetry/sdk-metrics').PeriodicExportingMetricReader;
+var resourcesPkg = require('@opentelemetry/resources');
+var metrics = require('@opentelemetry/api').metrics;
+var semantic = require('@opentelemetry/semantic-conventions');
+var ATTR_SERVICE_NAME = semantic.ATTR_SERVICE_NAME;
+var ATTR_HOST_NAME = semantic.ATTR_HOST_NAME;
+var ATTR_PROCESS_PID = semantic.ATTR_PROCESS_PID;
+var ATTR_PROCESS_RUNTIME_NAME = semantic.ATTR_PROCESS_RUNTIME_NAME;
+var ATTR_PROCESS_RUNTIME_VERSION = semantic.ATTR_PROCESS_RUNTIME_VERSION;
 
-const os = require('os');
-const v8 = require('v8');
+var os = require('os');
+var v8 = require('v8');
 
 // Get OTLP endpoint from environment (supports both NSOLID_OTLP_CONFIG and OTEL_* vars)
-let OTLP_ENDPOINT = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
+var OTLP_ENDPOINT = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
 if (!OTLP_ENDPOINT) {
   try {
-    const otlpConfig = JSON.parse(process.env.NSOLID_OTLP_CONFIG || '{}');
-    const parsedUrl = otlpConfig.url?.replace('/v1/traces', '').replace('/v1/metrics', '');
+    var otlpConfig = {};
+    try {
+      otlpConfig = JSON.parse(process.env.NSOLID_OTLP_CONFIG || '{}');
+    } catch (e) {
+      otlpConfig = {};
+    }
+    var parsedUrl = (otlpConfig && otlpConfig.url) ? otlpConfig.url.replace('/v1/traces', '').replace('/v1/metrics', '') : undefined;
     OTLP_ENDPOINT = parsedUrl || 'http://localhost:4318';
   } catch (e) {
     OTLP_ENDPOINT = 'http://localhost:4318';
@@ -36,53 +40,51 @@ if (!OTLP_ENDPOINT) {
 }
 
 // Get service name from environment
-const SERVICE_NAME = process.env.OTEL_SERVICE_NAME || process.env.NSOLID_APP || process.env.NSOLID_APPNAME || 'n8n';
+var SERVICE_NAME = process.env.OTEL_SERVICE_NAME || process.env.NSOLID_APP || process.env.NSOLID_APPNAME || 'n8n';
 
 // Create Resource in a way that's compatible across @opentelemetry/resources versions
-const resourceAttributes = {
-  [ATTR_SERVICE_NAME]: SERVICE_NAME,
-  [ATTR_HOST_NAME]: os.hostname(),
-  [ATTR_PROCESS_PID]: String(process.pid),
-  [ATTR_PROCESS_RUNTIME_NAME]: 'nodejs',
-  [ATTR_PROCESS_RUNTIME_VERSION]: process.version,
-  'process.command': process.argv[1] || 'n8n',
-  'process.command_args': JSON.stringify(process.argv),
-  'process.executable.name': 'node',
-  'process.executable.path': process.execPath,
-  'process.runtime.description': 'Node.js'
-};
+var resourceAttributes = {};
+resourceAttributes[ATTR_SERVICE_NAME] = SERVICE_NAME;
+resourceAttributes[ATTR_HOST_NAME] = os.hostname();
+resourceAttributes[ATTR_PROCESS_PID] = String(process.pid);
+resourceAttributes[ATTR_PROCESS_RUNTIME_NAME] = 'nodejs';
+resourceAttributes[ATTR_PROCESS_RUNTIME_VERSION] = process.version;
+resourceAttributes['process.command'] = process.argv[1] || 'n8n';
+resourceAttributes['process.command_args'] = JSON.stringify(process.argv);
+resourceAttributes['process.executable.name'] = 'node';
+resourceAttributes['process.executable.path'] = process.execPath;
+resourceAttributes['process.runtime.description'] = 'Node.js';
 
-let resource;
+var resource;
 if (typeof resourcesPkg.createResource === 'function') {
   resource = resourcesPkg.createResource(resourceAttributes);
 } else {
-  const ResourceClass = resourcesPkg.Resource || resourcesPkg.default || resourcesPkg;
+  var ResourceClass = resourcesPkg.Resource || resourcesPkg.default || resourcesPkg;
   if (typeof ResourceClass === 'function') {
     resource = new ResourceClass(resourceAttributes);
   } else {
-    // Fallback: create a plain Resource-like object (best-effort)
     resource = { attributes: resourceAttributes };
   }
 }
 
-const traceExporter = new OTLPTraceExporter({
-  url: `${OTLP_ENDPOINT}/v1/traces`
+var traceExporter = new OTLPTraceExporter({
+  url: OTLP_ENDPOINT + '/v1/traces'
 });
 
-const metricExporter = new OTLPMetricExporter({
-  url: `${OTLP_ENDPOINT}/v1/metrics`
+var metricExporter = new OTLPMetricExporter({
+  url: OTLP_ENDPOINT + '/v1/metrics'
 });
 
-const sdk = new NodeSDK({
-  resource,
-  traceExporter,
+var sdk = new NodeSDK({
+  resource: resource,
+  traceExporter: traceExporter,
   metricReader: new PeriodicExportingMetricReader({
     exporter: metricExporter,
-    exportIntervalMillis: 10_000 // Export metrics every 10 seconds
+    exportIntervalMillis: 10000
   }),
   instrumentations: [
     getNodeAutoInstrumentations({
-      '@opentelemetry/instrumentation-fs': { enabled: false } // too noisy
+      '@opentelemetry/instrumentation-fs': { enabled: false }
     })
   ]
 });
@@ -102,7 +104,7 @@ sdk
 // These surface Node.js process health in the same way N|Solid would.
 // ---------------------------------------------------------------------------
 
-const meter = metrics.getMeter('n8n-runtime-metrics', '1.0.0');
+var meter = metrics.getMeter('n8n-runtime-metrics', '1.0.0');
 
 // Memory gauges
 meter.createObservableGauge('process.memory.heap_used', {
@@ -134,8 +136,8 @@ meter.createObservableGauge('process.memory.external', {
 });
 
 // CPU gauges (percentage since last sample)
-let prevCpu = process.cpuUsage();
-let prevCpuTime = process.hrtime.bigint();
+var prevCpu = process.cpuUsage();
+var prevCpuTime = process.hrtime.bigint();
 
 meter.createObservableGauge('process.cpu.percent', {
   description: 'Total CPU usage as a percentage (0-100)',
@@ -163,11 +165,11 @@ meter.createObservableGauge('nodejs.eventloop.lag', {
   obs.observe(eventLoopLag);
 });
 
-let eventLoopLag = 0;
+var eventLoopLag = 0;
 function measureEventLoopLag() {
-  const start = process.hrtime.bigint();
-  setTimeout(() => {
-    eventLoopLag = Number(process.hrtime.bigint() - start) / 1e6; // ns to ms
+  var start = process.hrtime.bigint();
+  setTimeout(function () {
+    eventLoopLag = Number(process.hrtime.bigint() - start) / 1e6;
     measureEventLoopLag();
   }, 0);
 }
