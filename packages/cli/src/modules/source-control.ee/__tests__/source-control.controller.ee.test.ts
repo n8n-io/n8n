@@ -35,6 +35,9 @@ describe('SourceControlController', () => {
 			sourceControlPreferencesService,
 			mock(),
 			eventService,
+			mock(),
+			mock(),
+			mock(),
 		);
 	});
 

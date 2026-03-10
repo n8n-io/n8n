@@ -70,6 +70,18 @@ const settingsStore = useSettingsStore();
 
 const isWorkflowDiffsEnabled = computed(() => settingsStore.settings.enterprise.workflowDiffs);
 
+// Project-scoped export mode detection
+const activeProjectId = computed(() => projectsStore.currentProjectId);
+const isProjectScoped = computed(
+	() => !!activeProjectId.value && activeProjectId.value !== projectsStore.personalProject?.id,
+);
+const activeProjectName = computed(() => {
+	if (!activeProjectId.value) return '';
+	const project = projectsStore.availableProjects.find((p) => p.id === activeProjectId.value);
+	return project?.name ?? '';
+});
+const isPackageExporting = ref(false);
+
 // Reactive status state - starts with props data or empty, then loads fresh data
 const status = ref<SourceControlledFile[]>(props.data.status ?? []);
 const isLoading = ref(false);
@@ -547,6 +559,11 @@ const successNotificationMessage = () => {
 };
 
 async function commitAndPush() {
+	if (isProjectScoped.value) {
+		await commitAndPushPackage();
+		return;
+	}
+
 	const files = changes.value.tags
 		.concat(changes.value.variables)
 		.concat(changes.value.datatable.filter((file) => selectedDataTables.has(file.id)))
@@ -572,6 +589,30 @@ async function commitAndPush() {
 	} catch (error) {
 		toast.showError(error, i18n.baseText('error'));
 	} finally {
+		loadingService.stopLoading();
+	}
+}
+
+async function commitAndPushPackage() {
+	isPackageExporting.value = true;
+	loadingService.startLoading('Exporting project package...');
+	close();
+
+	try {
+		await sourceControlStore.exportPackage({
+			projectIds: [activeProjectId.value!],
+			commitMessage: commitMessage.value || `Export project: ${activeProjectName.value}`,
+		});
+
+		toast.showToast({
+			title: 'Package exported',
+			message: `Project "${activeProjectName.value}" exported and pushed successfully.`,
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(error, 'Export failed');
+	} finally {
+		isPackageExporting.value = false;
 		loadingService.stopLoading();
 	}
 }
@@ -778,14 +819,70 @@ watchEffect(() => {
 
 // Load data when modal opens
 onMounted(async () => {
-	// Always load fresh data to ensure workflow names are populated
+	if (isProjectScoped.value) {
+		// Project-scoped mode doesn't need instance-wide status
+		return;
+	}
 	await loadSourceControlStatus();
 });
 </script>
 
 <template>
+	<!-- Project-scoped export mode -->
 	<Modal
-		v-if="!isLoading"
+		v-if="!isLoading && isProjectScoped"
+		width="500px"
+		:event-bus="data.eventBus"
+		:name="SOURCE_CONTROL_PUSH_MODAL_KEY"
+		height="auto"
+		:custom-class="$style.sourceControlPush"
+		:before-close="close"
+	>
+		<template #header>
+			<N8nHeading tag="h1" size="xlarge"> Export project: {{ activeProjectName }} </N8nHeading>
+		</template>
+		<template #content>
+			<div :class="$style.packageContent">
+				<N8nText>
+					This will export all resources from this project as a package and push to the git
+					repository.
+				</N8nText>
+				<N8nNotice :compact="false" class="mt-s">
+					<N8nText size="small">
+						All workflows, credentials, variables, folders, and data tables belonging to this
+						project will be exported.
+					</N8nText>
+				</N8nNotice>
+			</div>
+		</template>
+		<template #footer>
+			<N8nText bold tag="p">
+				{{ i18n.baseText('settings.sourceControl.modals.push.commitMessage') }}
+			</N8nText>
+			<div :class="$style.footer">
+				<N8nInput
+					v-model="commitMessage"
+					class="mr-2xs"
+					data-test-id="source-control-push-modal-commit"
+					:placeholder="`Export project: ${activeProjectName}`"
+					@keydown.enter.stop="onCommitKeyDownEnter"
+				/>
+				<N8nButton
+					variant="solid"
+					data-test-id="source-control-push-modal-submit"
+					:disabled="isPackageExporting"
+					size="large"
+					@click="commitAndPush"
+				>
+					Export &amp; Push
+				</N8nButton>
+			</div>
+		</template>
+	</Modal>
+
+	<!-- Standard instance-wide push mode -->
+	<Modal
+		v-else-if="!isLoading"
 		width="812px"
 		:event-bus="data.eventBus"
 		:name="SOURCE_CONTROL_PUSH_MODAL_KEY"
@@ -1250,5 +1347,9 @@ onMounted(async () => {
 
 .popover-content {
 	padding: var(--spacing--sm);
+}
+
+.packageContent {
+	padding: var(--spacing--xs) 0;
 }
 </style>

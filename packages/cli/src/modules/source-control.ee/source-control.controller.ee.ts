@@ -13,6 +13,9 @@ import type { PullResult } from 'simple-git';
 import { SOURCE_CONTROL_DEFAULT_BRANCH } from './constants';
 import { sourceControlEnabledMiddleware } from './middleware/source-control-enabled-middleware.ee';
 import { getRepoType } from './source-control-helper.ee';
+import { SourceControlGitService } from './source-control-git.service.ee';
+import { SourceControlPackageExportService } from './source-control-package-export.service';
+import { SourceControlPackageImportService } from './source-control-package-import.service';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
 import { SourceControlScopedService } from './source-control-scoped.service';
 import { SourceControlService } from './source-control.service.ee';
@@ -32,6 +35,9 @@ export class SourceControlController {
 		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
 		private readonly sourceControlScopedService: SourceControlScopedService,
 		private readonly eventService: EventService,
+		private readonly sourceControlGitService: SourceControlGitService,
+		private readonly packageExportService: SourceControlPackageExportService,
+		private readonly packageImportService: SourceControlPackageImportService,
 	) {}
 
 	@Get('/preferences')
@@ -287,6 +293,59 @@ export class SourceControlController {
 			if (error instanceof ForbiddenError) {
 				throw error;
 			}
+			throw new BadRequestError((error as { message: string }).message);
+		}
+	}
+
+	@Post('/export-package', { middlewares: [sourceControlEnabledMiddleware] })
+	@GlobalScope('sourceControl:manage')
+	async exportPackage(req: AuthenticatedRequest) {
+		try {
+			const { projectIds, commitMessage } = req.body as {
+				projectIds: string[];
+				commitMessage?: string;
+			};
+
+			if (!projectIds?.length) {
+				throw new BadRequestError('projectIds is required and must not be empty');
+			}
+
+			await this.sourceControlService.setGitUserDetails(
+				`${req.user.firstName} ${req.user.lastName}`,
+				req.user.email,
+			);
+
+			await this.packageExportService.exportPackage(projectIds, req.user.id);
+
+			await this.sourceControlGitService.stage(new Set(['manifest.json', 'projects']));
+			await this.sourceControlGitService.commit(commitMessage ?? 'Export package');
+
+			const { branchName } = this.sourceControlPreferencesService.getPreferences();
+			const pushResult = await this.sourceControlGitService.push({
+				branch: branchName || SOURCE_CONTROL_DEFAULT_BRANCH,
+				force: false,
+			});
+
+			return { success: true, pushResult };
+		} catch (error) {
+			throw new BadRequestError((error as { message: string }).message);
+		}
+	}
+
+	@Post('/import-package', { middlewares: [sourceControlEnabledMiddleware] })
+	@GlobalScope('sourceControl:manage')
+	async importPackage(req: AuthenticatedRequest) {
+		try {
+			await this.sourceControlGitService.fetch();
+			const { branchName } = this.sourceControlPreferencesService.getPreferences();
+			await this.sourceControlGitService.resetBranch({
+				hard: true,
+				target: `origin/${branchName || SOURCE_CONTROL_DEFAULT_BRANCH}`,
+			});
+
+			const result = await this.packageImportService.importPackage(req.user.id);
+			return result;
+		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}
 	}

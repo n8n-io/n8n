@@ -112,6 +112,14 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		return await vcApi.getRemoteWorkflow(rootStore.restApiContext, workflowId);
 	};
 
+	const exportPackage = async (data: { projectIds: string[]; commitMessage?: string }) => {
+		return await vcApi.exportPackage(rootStore.restApiContext, data);
+	};
+
+	const importPackage = async (data: { force?: boolean }) => {
+		return await vcApi.importPackage(rootStore.restApiContext, data);
+	};
+
 	return {
 		isEnterpriseSourceControlEnabled,
 		state,
@@ -128,6 +136,8 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		getStatus,
 		getAggregatedStatus,
 		getRemoteWorkflow,
+		exportPackage,
+		importPackage,
 		sshKeyTypesWithLabel,
 	};
 });

@@ -38,6 +38,63 @@ import type { KeyPairType } from './types/key-pair-type';
 import type { RemoteResourceOwner, StatusResourceOwner } from './types/resource-owner';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
 
+// --- Package export path helpers ---
+
+export function slugify(name: string, id: string): string {
+	const slug = name
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-|-$/g, '');
+	const shortId = id.slice(-6);
+	return `${slug}-${shortId}`;
+}
+
+export function getPackageProjectDir(
+	gitFolder: string,
+	projectName: string,
+	projectId: string,
+): string {
+	return path.join(gitFolder, 'projects', slugify(projectName, projectId));
+}
+
+export function getPackageFolderDir(
+	parentPath: string,
+	folderName: string,
+	folderId: string,
+): string {
+	return path.join(parentPath, slugify(folderName, folderId));
+}
+
+export function getPackageWorkflowDir(
+	parentFolderPath: string,
+	workflowName: string,
+	workflowId: string,
+): string {
+	return path.join(parentFolderPath, 'workflows', slugify(workflowName, workflowId));
+}
+
+export function getPackageCredentialDir(
+	projectDir: string,
+	credName: string,
+	credId: string,
+): string {
+	return path.join(projectDir, 'credentials', slugify(credName, credId));
+}
+
+export function getPackageVariableDir(projectDir: string, varKey: string, varId: string): string {
+	return path.join(projectDir, 'variables', slugify(varKey, varId));
+}
+
+export function getPackageDataTableDir(
+	projectDir: string,
+	tableName: string,
+	tableId: string,
+): string {
+	return path.join(projectDir, 'data-tables', slugify(tableName, tableId));
+}
+
+// --- End package export path helpers ---
+
 export function sanitizeCredentialData(
 	data: ICredentialDataDecryptedObject,
 ): ICredentialDataDecryptedObject {

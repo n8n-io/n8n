@@ -68,6 +68,18 @@ const uiStore = useUIStore();
 
 const isWorkflowDiffsEnabled = computed(() => settingsStore.settings.enterprise.workflowDiffs);
 
+// Project-scoped import mode detection
+const activeProjectId = computed(() => projectsStore.currentProjectId);
+const isProjectScoped = computed(
+	() => !!activeProjectId.value && activeProjectId.value !== projectsStore.personalProject?.id,
+);
+const activeProjectName = computed(() => {
+	if (!activeProjectId.value) return '';
+	const project = projectsStore.availableProjects.find((p) => p.id === activeProjectId.value);
+	return project?.name ?? '';
+});
+const isPackageImporting = ref(false);
+
 // Reactive status state - starts with props data or empty, then loads fresh data
 const status = ref<SourceControlledFile[]>(props.data.status || []);
 const isLoading = ref(false);
@@ -354,6 +366,29 @@ function close() {
 	router.back();
 }
 
+async function pullPackage() {
+	isPackageImporting.value = true;
+	loadingService.startLoading('Importing package...');
+	close();
+
+	try {
+		await sourceControlStore.importPackage({ force: true });
+
+		toast.showToast({
+			title: 'Package imported',
+			message: `Resources imported from the git package into project "${activeProjectName.value}".`,
+			type: 'success',
+		});
+
+		sourceControlEventBus.emit('pull');
+	} catch (error) {
+		toast.showError(error, 'Import failed');
+	} finally {
+		isPackageImporting.value = false;
+		loadingService.stopLoading();
+	}
+}
+
 async function pullWorkfolder() {
 	loadingService.startLoading(i18n.baseText('settings.sourceControl.loading.checkingForChanges'));
 
@@ -431,7 +466,10 @@ const modalHeight = computed(() =>
 
 // Load data when modal opens
 onMounted(() => {
-	// Only load fresh data if we don't have any initial data
+	if (isProjectScoped.value) {
+		// Project-scoped mode doesn't need instance-wide status
+		return;
+	}
 	if (!props.data.status || props.data.status.length === 0) {
 		void loadSourceControlStatus();
 	}
@@ -439,8 +477,53 @@ onMounted(() => {
 </script>
 
 <template>
+	<!-- Project-scoped import mode -->
 	<Modal
-		v-if="!isLoading"
+		v-if="!isLoading && isProjectScoped"
+		width="500px"
+		:event-bus="data.eventBus"
+		:name="SOURCE_CONTROL_PULL_MODAL_KEY"
+		height="auto"
+		:custom-class="$style.sourceControlPull"
+		:before-close="close"
+	>
+		<template #header>
+			<N8nHeading tag="h1" size="xlarge">Import from package</N8nHeading>
+		</template>
+		<template #content>
+			<div :class="$style.packageContent">
+				<N8nText>
+					This will import all resources from the git package into the project
+					<N8nText bold>"{{ activeProjectName }}"</N8nText>.
+				</N8nText>
+				<N8nNotice :compact="false" class="mt-s">
+					<N8nText size="small">
+						All workflows, credentials, variables, folders, and data tables in the package will be
+						imported or updated.
+					</N8nText>
+				</N8nNotice>
+			</div>
+		</template>
+		<template #footer>
+			<div :class="$style.footer">
+				<N8nButton variant="subtle" class="mr-2xs" @click="close">
+					{{ i18n.baseText('settings.sourceControl.modals.pull.buttons.cancel') }}
+				</N8nButton>
+				<N8nButton
+					variant="solid"
+					data-test-id="force-pull"
+					:disabled="isPackageImporting"
+					@click="pullPackage"
+				>
+					Import
+				</N8nButton>
+			</div>
+		</template>
+	</Modal>
+
+	<!-- Standard instance-wide pull mode -->
+	<Modal
+		v-else-if="!isLoading"
 		width="812px"
 		:event-bus="data.eventBus"
 		:name="SOURCE_CONTROL_PULL_MODAL_KEY"
@@ -829,5 +912,9 @@ onMounted(() => {
 	margin: var(--spacing--3xs) 0;
 	white-space: normal;
 	padding-right: var(--spacing--md);
+}
+
+.packageContent {
+	padding: var(--spacing--xs) 0;
 }
 </style>

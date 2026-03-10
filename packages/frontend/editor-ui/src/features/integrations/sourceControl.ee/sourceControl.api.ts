@@ -97,3 +97,19 @@ export const generateKeyPair = async (
 		keyGeneratorType,
 	});
 };
+
+export const exportPackage = async (
+	context: IRestApiContext,
+	data: { projectIds: string[]; commitMessage?: string },
+) => {
+	return await makeRestApiRequest<{ success: boolean }>(
+		context,
+		'POST',
+		`${sourceControlApiRoot}/export-package`,
+		data,
+	);
+};
+
+export const importPackage = async (context: IRestApiContext, data: { force?: boolean }) => {
+	return await makeRestApiRequest(context, 'POST', `${sourceControlApiRoot}/import-package`, data);
+};
