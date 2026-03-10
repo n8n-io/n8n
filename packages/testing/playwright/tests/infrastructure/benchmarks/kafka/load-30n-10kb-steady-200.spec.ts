@@ -2,26 +2,26 @@ import { test } from '../../../../fixtures/base';
 import { kafkaDriver } from '../../../../utils/benchmark';
 import { runLoadTest } from '../harness/load-harness';
 
-test.use({ capability: { env: { TEST_ISOLATION: 'kafka-load-10n-100kb-steady' } } });
+test.use({ capability: { env: { TEST_ISOLATION: 'kafka-load-30n-10kb-steady-200' } } });
 
 test.describe(
-	'Kafka Load: steady 10n/100KB',
+	'Kafka Load: steady 30n/10KB/200msg',
 	{
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},
 	() => {
-		test('10 nodes, 100KB payload, steady 10 msg/s', async ({ api, services }, testInfo) => {
+		test('30 nodes, 10KB payload, steady 200 msg/s', async ({ api, services }, testInfo) => {
 			const handle = await kafkaDriver.setup({
 				api,
 				services,
-				scenario: { nodeCount: 10, payloadSize: '100KB' },
+				scenario: { nodeCount: 30, payloadSize: '10KB' },
 			});
 			await runLoadTest({
 				handle,
 				api,
 				services,
 				testInfo,
-				load: { type: 'steady', ratePerSecond: 10, durationSeconds: 30 },
+				load: { type: 'steady', ratePerSecond: 200, durationSeconds: 30 },
 				timeoutMs: 300_000,
 			});
 		});

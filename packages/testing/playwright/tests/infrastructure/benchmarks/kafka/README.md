@@ -13,10 +13,10 @@ Measures per-execution latency (p50/p95/p99) and completion rate under realistic
 
 | Scenario | What it tests |
 |----------|---------------|
-| `steady: 10 nodes, 1KB, 10 msg/s` | Baseline — sustain a modest steady stream |
-| `steady: 30 nodes, 10KB, 100 msg/s` | Scale pressure — larger workflows + heavier payloads at 10x rate |
+| `steady: 30 nodes, 10KB, 100 msg/s` | Baseline pressure — sustainable rate with realistic payloads |
+| `steady: 30 nodes, 10KB, 200 msg/s` | Approaching saturation — where does latency start degrading? |
+| `steady: 30 nodes, 10KB, 300 msg/s` | Saturation — should overwhelm direct mode, stress queue modes |
 | `burst: 60 nodes, 1KB, drain 10k backlog` | Burst capacity — drain a backlog with no pacing |
-| `steady: 10 nodes, 100KB, 10 msg/s` | Payload weight — does message size affect latency? |
 
 ### Throughput (`throughput.spec.ts`)
 
