@@ -478,15 +478,15 @@ export class VaultProvider extends SecretsProvider {
 		return [name, data];
 	}
 
-	#normalizeKvPath(mountPath: string): string {
+	private normalizeKvPath(mountPath: string): string {
 		return mountPath.endsWith('/') ? mountPath : `${mountPath}/`;
 	}
 
-	async #discoverKvMounts(): Promise<Array<{ path: string; version: string }>> {
+	private async discoverKvMounts(): Promise<Array<{ path: string; version: string }>> {
 		const { kvMountPath, kvVersion } = this.settings;
 
 		if (kvMountPath) {
-			return [{ path: this.#normalizeKvPath(kvMountPath), version: kvVersion ?? '2' }];
+			return [{ path: this.normalizeKvPath(kvMountPath), version: kvVersion ?? '2' }];
 		}
 
 		const mounts = await this.#http.get<VaultResponse<VaultMountsResp>>('sys/mounts');
@@ -504,7 +504,7 @@ export class VaultProvider extends SecretsProvider {
 			.filter((entry): entry is { path: string; version: string } => entry !== null);
 	}
 
-	async #testSecretAccess(): Promise<[boolean] | [boolean, string]> {
+	private async testSecretAccess(): Promise<[boolean] | [boolean, string]> {
 		const { kvMountPath, kvVersion } = this.settings;
 
 		let listUrl: string;
@@ -512,7 +512,7 @@ export class VaultProvider extends SecretsProvider {
 		let failureMessage: (status: number) => string;
 
 		if (kvMountPath) {
-			const normalizedPath = this.#normalizeKvPath(kvMountPath);
+			const normalizedPath = this.normalizeKvPath(kvMountPath);
 			const version = kvVersion ?? '2';
 			listUrl =
 				version === '2' ? `${normalizedPath}metadata/?list=true` : `${normalizedPath}?list=true`;
@@ -539,7 +539,7 @@ export class VaultProvider extends SecretsProvider {
 	}
 
 	async update(): Promise<void> {
-		const kvMounts = await this.#discoverKvMounts();
+		const kvMounts = await this.discoverKvMounts();
 
 		const secrets = Object.fromEntries(
 			(
@@ -569,7 +569,7 @@ export class VaultProvider extends SecretsProvider {
 				return [false, 'Invalid credentials'];
 			}
 
-			return await this.#testSecretAccess();
+			return await this.testSecretAccess();
 		} catch (error) {
 			if (axios.isAxiosError(error)) {
 				if (error.code === 'ECONNREFUSED') {
