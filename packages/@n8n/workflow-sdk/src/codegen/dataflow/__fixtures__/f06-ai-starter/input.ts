@@ -7,7 +7,7 @@ workflow({ name: 'Demo: My first AI Agent in n8n' }, () => {
 			version: 1.1,
 		},
 		(items) => {
-			const agent = node({
+			const agent = executeNode({
 				type: '@n8n/n8n-nodes-langchain.agent',
 				params: {
 					promptType: 'define',
@@ -22,14 +22,14 @@ workflow({ name: 'Demo: My first AI Agent in n8n' }, () => {
 				},
 				version: 1.7,
 				subnodes: {
-					ai_languageModel: {
+					model: languageModel({
 						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
 						params: { options: {} },
 						version: 1,
 						name: 'OpenAI Model',
-					},
+					}),
 				},
-			})(items);
+			});
 		},
 	);
 });

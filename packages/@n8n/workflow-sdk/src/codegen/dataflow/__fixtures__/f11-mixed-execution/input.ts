@@ -1,13 +1,13 @@
 workflow({ name: 'Mixed Execution' }, () => {
 	onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
-		const fetch_Users = node({
+		const fetch_Users = executeNode({
 			type: 'n8n-nodes-base.httpRequest',
 			name: 'Fetch Users',
 			params: { url: 'https://api.example.com/users' },
 			version: 4,
-		})();
-		fetch_Users.map((item) => {
-			const send_Email = node({
+		});
+		const send_Email = fetch_Users.map((item) =>
+			executeNode({
 				type: 'n8n-nodes-base.emailSend',
 				name: 'Send Email',
 				params: {
@@ -16,7 +16,7 @@ workflow({ name: 'Mixed Execution' }, () => {
 					text: expr('{{ $json.name }}'),
 				},
 				version: 2,
-			})();
-		});
+			}),
+		);
 	});
 });

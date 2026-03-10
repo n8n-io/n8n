@@ -23,7 +23,11 @@ import type {
 	FanOutCompositeNode,
 	VariableReference,
 } from '../composite-tree';
-import { AI_ALWAYS_ARRAY_TYPES } from '../constants';
+import {
+	AI_ALWAYS_ARRAY_TYPES,
+	AI_CONNECTION_TO_CONFIG_KEY,
+	AI_CONNECTION_TO_BUILDER,
+} from '../constants';
 import type { IDataObject, WorkflowJSON } from '../../types/base';
 
 /**
@@ -101,12 +105,14 @@ function buildSubnodesConfig(node: SemanticNode, ctx: DataFlowContext): string |
 	for (const [connType, subnodeNodes] of grouped) {
 		if (subnodeNodes.length === 0) continue;
 
-		const entryStrings = subnodeNodes.map((sn) => buildSubnodeEntry(sn));
+		const configKey = AI_CONNECTION_TO_CONFIG_KEY[connType] ?? connType;
+		const builderName = AI_CONNECTION_TO_BUILDER[connType] ?? connType;
+		const entryStrings = subnodeNodes.map((sn) => `${builderName}(${buildSubnodeEntry(sn)})`);
 
 		if (AI_ALWAYS_ARRAY_TYPES.has(connType) || subnodeNodes.length > 1) {
-			entries.push(`${connType}: [${entryStrings.join(', ')}]`);
+			entries.push(`${configKey}: [${entryStrings.join(', ')}]`);
 		} else {
-			entries.push(`${connType}: ${entryStrings[0]}`);
+			entries.push(`${configKey}: ${entryStrings[0]}`);
 		}
 	}
 
@@ -266,7 +272,7 @@ function generateLeafNode(
 	}
 
 	return {
-		code: `${indent}const ${varName} = node(${config})(${inputVar});`,
+		code: `${indent}const ${varName} = executeNode(${config});`,
 		varName,
 	};
 }
@@ -287,7 +293,7 @@ function generateLeafWithErrorHandler(
 	const lines: string[] = [];
 
 	lines.push(`${indent}try {`);
-	lines.push(`${innerIndent}const ${varName} = node(${config})(${inputVar});`);
+	lines.push(`${innerIndent}const ${varName} = executeNode(${config});`);
 	lines.push(`${indent}} catch (e) {`);
 
 	// Generate the error handler body
@@ -637,7 +643,7 @@ function generateMultiOutputNode(
 	multiOutput: MultiOutputNode,
 	ctx: DataFlowContext,
 	depth: number,
-	inputVar: string,
+	_inputVar: string,
 ): CompositeNodeResult {
 	const indent = getIndent(depth);
 	const lines: string[] = [];
@@ -660,16 +666,26 @@ function generateMultiOutputNode(
 		}
 	}
 
-	// Generate: const [var0, _, var2] = node({ ... })(inputVar);
-	lines.push(`${indent}const [${destructuredVars.join(', ')}] = node(${config})(${inputVar});`);
+	// Generate: const [var0, _, var2] = executeNode({ ... });
+	lines.push(`${indent}const [${destructuredVars.join(', ')}] = executeNode(${config});`);
 
-	// Generate downstream code for each output target
+	// Generate downstream code for each output target using .map()
 	const sortedOutputs = [...multiOutput.outputTargets.entries()].sort((a, b) => a[0] - b[0]);
 	for (const [outputIndex, targetComposite] of sortedOutputs) {
 		const outputVar = `${baseVarName}_${outputIndex}`;
-		const result = generateCompositeNode(targetComposite, ctx, depth, outputVar);
-		if (result.code) {
-			lines.push(result.code);
+		// For leaf targets, emit x.map((item) => executeNode(...));
+		if (targetComposite.kind === 'leaf') {
+			const targetNode = (targetComposite as LeafNode).node;
+			const targetVarName = getUniqueVarName(targetNode.name, ctx);
+			const targetConfig = buildNodeConfig(targetNode, ctx);
+			lines.push(
+				`${indent}const ${targetVarName} = ${outputVar}.map((item) =>\n${indent}  executeNode(${targetConfig}),\n${indent});`,
+			);
+		} else {
+			const result = generateCompositeNode(targetComposite, ctx, depth, outputVar);
+			if (result.code) {
+				lines.push(result.code);
+			}
 		}
 	}
 
@@ -693,6 +709,7 @@ function generateFanOutNode(
 	depth: number,
 	inputVar: string,
 ): CompositeNodeResult {
+	const indent = getIndent(depth);
 	const lines: string[] = [];
 
 	// Generate source node/chain
@@ -700,10 +717,19 @@ function generateFanOutNode(
 	if (sourceResult.code) lines.push(sourceResult.code);
 	const sourceVar = sourceResult.varName ?? inputVar;
 
-	// Generate each target using the source variable as input
+	// Generate each target using .map() from source variable
 	for (const target of fanOut.targets) {
-		const targetResult = generateCompositeNode(target, ctx, depth, sourceVar);
-		if (targetResult.code) lines.push(targetResult.code);
+		if (target.kind === 'leaf') {
+			const targetNode = (target as LeafNode).node;
+			const targetVarName = getUniqueVarName(targetNode.name, ctx);
+			const targetConfig = buildNodeConfig(targetNode, ctx);
+			lines.push(
+				`${indent}const ${targetVarName} = ${sourceVar}.map((item) =>\n${indent}  executeNode(${targetConfig}),\n${indent});`,
+			);
+		} else {
+			const targetResult = generateCompositeNode(target, ctx, depth, sourceVar);
+			if (targetResult.code) lines.push(targetResult.code);
+		}
 	}
 
 	return { code: lines.join('\n'), varName: null };

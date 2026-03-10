@@ -37,6 +37,17 @@ import type {
 import { parseSDKCode } from '../../ast-interpreter/parser';
 import { generateDefaultNodeName } from '../node-type-utils';
 import type { WorkflowJSON, NodeJSON, IConnections, IConnection } from '../../types/base';
+import { AI_CONNECTION_TO_CONFIG_KEY, AI_CONNECTION_TO_BUILDER } from '../constants';
+
+// Build reverse maps: builder name → connection type, config key → connection type
+const BUILDER_TO_CONNECTION: Record<string, string> = {};
+for (const [connType, builder] of Object.entries(AI_CONNECTION_TO_BUILDER)) {
+	BUILDER_TO_CONNECTION[builder] = connType;
+}
+const CONFIG_KEY_TO_CONNECTION: Record<string, string> = {};
+for (const [connType, configKey] of Object.entries(AI_CONNECTION_TO_CONFIG_KEY)) {
+	CONFIG_KEY_TO_CONNECTION[configKey] = connType;
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -49,6 +60,8 @@ interface ParserState {
 	workflowName: string;
 	nodeCounter: number;
 	usedNames: Set<string>;
+	insideMap: boolean;
+	lastNodeInScope: { nodeName: string; outputIndex: number } | undefined;
 }
 
 interface NodeConfig {
@@ -141,6 +154,14 @@ function extractLiteralValue(node: EstreeNode): unknown {
 		const val = node.argument.value;
 		if (typeof val === 'number') return -val;
 	}
+	// Member expression: var.json.field → ={{ $json.field }}
+	if (isMemberExpression(node)) {
+		const fieldPath = memberExprToFieldPath(node as Expression);
+		if (fieldPath !== undefined) {
+			return `={{ $json.${fieldPath} }}`;
+		}
+		return undefined;
+	}
 	// Template literals and other complex expressions - return as string
 	if (node.type === 'TemplateLiteral') {
 		// Simple template literal extraction
@@ -153,13 +174,23 @@ function extractLiteralValue(node: EstreeNode): unknown {
 		}
 	}
 	// Handle expr('{{ $json.field }}') → '={{ $json.field }}'
+	// Handle subnode builder calls: languageModel({...}), tool({...}) etc.
 	if (isCallExpression(node)) {
 		const call = node as CallExpression;
-		if (isIdentifier(call.callee) && (call.callee as Identifier).name === 'expr') {
-			if (call.arguments.length > 0 && call.arguments[0].type !== 'SpreadElement') {
-				const arg = call.arguments[0];
-				if (isLiteral(arg) && typeof arg.value === 'string') {
-					return '=' + arg.value;
+		if (isIdentifier(call.callee)) {
+			const calleeName = (call.callee as Identifier).name;
+			if (calleeName === 'expr') {
+				if (call.arguments.length > 0 && call.arguments[0].type !== 'SpreadElement') {
+					const arg = call.arguments[0];
+					if (isLiteral(arg) && typeof arg.value === 'string') {
+						return '=' + arg.value;
+					}
+				}
+			}
+			// Subnode builder: languageModel({...}), tool({...}), memory({...}) etc.
+			if (calleeName in BUILDER_TO_CONNECTION) {
+				if (call.arguments.length > 0 && isObjectExpression(call.arguments[0])) {
+					return extractObjectLiteral(call.arguments[0]);
 				}
 			}
 		}
@@ -341,6 +372,14 @@ function memberExprToFieldPath(expr: Expression): string | undefined {
 			}
 			if (me.object.type === 'Super') return undefined;
 			current = me.object;
+		}
+	}
+	// Handle identifier.json.field (e.g. prevVar.json.name, item.json.email)
+	if (isIdentifier(current)) {
+		parts.reverse();
+		if (parts.length > 0 && parts[0] === 'json') {
+			const fieldPath = joinFieldParts(parts.slice(1));
+			return fieldPath || undefined;
 		}
 	}
 	return undefined;
@@ -543,13 +582,43 @@ function buildSwitchParameters(fieldPath: string, caseValues: unknown[]): Record
 // ---------------------------------------------------------------------------
 
 /**
- * Check if a call expression is a `node({...})(input)` pattern.
- * Returns the config ObjectExpression and input argument if matched.
+ * Check if a call expression is `executeNode({...})`.
+ * Returns the config ObjectExpression if matched.
+ */
+function matchExecuteNodeCall(expr: CallExpression): ObjectExpression | undefined {
+	if (!isIdentifier(expr.callee) || expr.callee.name !== 'executeNode') return undefined;
+	if (expr.arguments.length === 0) return undefined;
+	const configArg = expr.arguments[0];
+	if (configArg.type === 'SpreadElement' || !isObjectExpression(configArg)) return undefined;
+	return configArg;
+}
+
+/**
+ * Check if a call expression is `source.map((item) => ...)`.
+ * Returns the source variable name and callback if matched.
+ */
+function isMapCall(
+	expr: CallExpression,
+): { sourceVar: string; callback: ArrowFunctionExpression | FunctionExpression } | undefined {
+	if (!isMemberExpression(expr.callee)) return undefined;
+	const member = expr.callee;
+	if (!isIdentifier(member.property) || member.property.name !== 'map') return undefined;
+	if (member.object.type === 'Super' || !isIdentifier(member.object)) return undefined;
+	const sourceVar = member.object.name;
+	if (expr.arguments.length === 0) return undefined;
+	const arg = expr.arguments[0];
+	if (arg.type === 'SpreadElement' || !isArrowOrFunction(arg)) return undefined;
+	return { sourceVar, callback: arg };
+}
+
+/**
+ * Check if a call expression is a `node({...})(input)` or `node({...})()` pattern.
+ * Returns the config ObjectExpression and optional input argument if matched.
  */
 function matchNodeCall(
 	expr: CallExpression,
-): { configExpr: ObjectExpression; inputArg: Expression } | undefined {
-	// Pattern: node({ ... })(inputVar)
+): { configExpr: ObjectExpression; inputArg?: Expression } | undefined {
+	// Pattern: node({ ... })(inputVar) or node({ ... })()
 	// The outer call has callee = another CallExpression: node({...})
 	if (!isCallExpression(expr.callee)) return undefined;
 
@@ -562,7 +631,9 @@ function matchNodeCall(
 	const configArg = innerCall.arguments[0];
 	if (!isObjectExpression(configArg)) return undefined;
 
-	if (expr.arguments.length === 0) return undefined;
+	if (expr.arguments.length === 0) {
+		return { configExpr: configArg };
+	}
 	const inputArg = expr.arguments[0];
 	if (inputArg.type === 'SpreadElement') return undefined;
 
@@ -597,7 +668,10 @@ function resolveOutputIndex(expr: Expression, state: ParserState): number {
 function processSubnodes(config: NodeConfig, parentNodeName: string, state: ParserState): void {
 	if (!config.subnodes) return;
 
-	for (const [connectionType, subnodeConfigsRaw] of Object.entries(config.subnodes)) {
+	for (const [key, subnodeConfigsRaw] of Object.entries(config.subnodes)) {
+		// Map config key (e.g. 'model') to connection type (e.g. 'ai_languageModel')
+		// Also accept raw connection types for backward compatibility
+		const connectionType = CONFIG_KEY_TO_CONNECTION[key] ?? key;
 		// Handle both array and single-object formats
 		const subnodeConfigs = Array.isArray(subnodeConfigsRaw)
 			? subnodeConfigsRaw
@@ -632,6 +706,65 @@ function processNodeVarDeclaration(
 ): string | undefined {
 	if (!declarator.init || !isCallExpression(declarator.init)) return undefined;
 
+	// Pattern A: const x = source.map((item) => executeNode({...}))
+	const mapMatch = isMapCall(declarator.init);
+	if (mapMatch) {
+		const { callback } = mapMatch;
+		let execConfig: ObjectExpression | undefined;
+		const { body } = callback;
+		if (body.type !== 'BlockStatement' && isCallExpression(body)) {
+			execConfig = matchExecuteNodeCall(body);
+		}
+		if (execConfig) {
+			const config = extractNodeConfig(execConfig);
+			const nodeJSON = createNodeJSON(config, state);
+			state.nodes.push(nodeJSON);
+			processSubnodes(config, nodeJSON.name!, state);
+
+			const mapping = state.varToNode.get(mapMatch.sourceVar);
+			if (mapping) {
+				addConnection(state, mapping.nodeName, nodeJSON.name!, mapping.outputIndex);
+			}
+			if (isIdentifier(declarator.id)) {
+				state.varToNode.set(declarator.id.name, { nodeName: nodeJSON.name!, outputIndex: 0 });
+			}
+			state.lastNodeInScope = { nodeName: nodeJSON.name!, outputIndex: 0 };
+			return isIdentifier(declarator.id) ? declarator.id.name : undefined;
+		}
+	}
+
+	// Pattern B: const x = executeNode({...}) or const [a, b] = executeNode({...})
+	const execConfig = matchExecuteNodeCall(declarator.init);
+	if (execConfig) {
+		const config = extractNodeConfig(execConfig);
+		const nodeJSON = createNodeJSON(config, state);
+		state.nodes.push(nodeJSON);
+		processSubnodes(config, nodeJSON.name!, state);
+
+		if (state.lastNodeInScope) {
+			addConnection(
+				state,
+				state.lastNodeInScope.nodeName,
+				nodeJSON.name!,
+				state.lastNodeInScope.outputIndex,
+			);
+		}
+		if (isIdentifier(declarator.id)) {
+			state.varToNode.set(declarator.id.name, { nodeName: nodeJSON.name!, outputIndex: 0 });
+		} else if (declarator.id.type === 'ArrayPattern') {
+			// Destructuring: const [a, b, c] = executeNode({...})
+			for (let i = 0; i < declarator.id.elements.length; i++) {
+				const el = declarator.id.elements[i];
+				if (el && isIdentifier(el)) {
+					state.varToNode.set(el.name, { nodeName: nodeJSON.name!, outputIndex: i });
+				}
+			}
+		}
+		state.lastNodeInScope = { nodeName: nodeJSON.name!, outputIndex: 0 };
+		return isIdentifier(declarator.id) ? declarator.id.name : undefined;
+	}
+
+	// Pattern C: const x = node({...})(input) or node({...})() — legacy format
 	const match = matchNodeCall(declarator.init);
 	if (!match) return undefined;
 
@@ -643,13 +776,22 @@ function processNodeVarDeclaration(
 	processSubnodes(config, nodeJSON.name!, state);
 
 	// Determine input source
-	const inputExpr = match.inputArg;
-	const sourceNodeName = resolveInputVar(inputExpr, state);
-	const sourceOutputIndex = resolveOutputIndex(inputExpr, state);
-
-	if (sourceNodeName) {
-		addConnection(state, sourceNodeName, nodeJSON.name!, sourceOutputIndex);
+	if (match.inputArg) {
+		const sourceNodeName = resolveInputVar(match.inputArg, state);
+		const sourceOutputIndex = resolveOutputIndex(match.inputArg, state);
+		if (sourceNodeName) {
+			addConnection(state, sourceNodeName, nodeJSON.name!, sourceOutputIndex);
+		}
+	} else if (state.lastNodeInScope) {
+		// node({...})() with no input — use implicit chaining
+		addConnection(
+			state,
+			state.lastNodeInScope.nodeName,
+			nodeJSON.name!,
+			state.lastNodeInScope.outputIndex,
+		);
 	}
+	state.lastNodeInScope = { nodeName: nodeJSON.name!, outputIndex: 0 };
 
 	// Handle different LHS patterns
 	const lhs = declarator.id;
@@ -720,15 +862,16 @@ function processIfStatement(
 		}
 	}
 
-	// Remap inputVarName so that `(items)` inside branches resolves to the
-	// IF node output instead of the upstream trigger, preventing spurious
-	// trigger → branch-node connections.
+	// Remap inputVarName and lastNodeInScope so that branches resolve to the
+	// IF node output instead of the upstream trigger.
 	const originalMapping = inputVarName ? state.varToNode.get(inputVarName) : undefined;
+	const originalLastNode = state.lastNodeInScope;
 
 	// Process true branch (consequent) — remap to IF output 0
 	if (inputVarName) {
 		state.varToNode.set(inputVarName, { nodeName: ifNodeJSON.name!, outputIndex: 0 });
 	}
+	state.lastNodeInScope = { nodeName: ifNodeJSON.name!, outputIndex: 0 };
 	const trueStatements = getBlockStatements(stmt.consequent);
 	processStatements(trueStatements, state, inputVarName);
 
@@ -737,6 +880,7 @@ function processIfStatement(
 		if (inputVarName) {
 			state.varToNode.set(inputVarName, { nodeName: ifNodeJSON.name!, outputIndex: 1 });
 		}
+		state.lastNodeInScope = { nodeName: ifNodeJSON.name!, outputIndex: 1 };
 		const falseStatements = getBlockStatements(stmt.alternate);
 		processStatements(falseStatements, state, inputVarName);
 	}
@@ -749,6 +893,7 @@ function processIfStatement(
 			state.varToNode.delete(inputVarName);
 		}
 	}
+	state.lastNodeInScope = originalLastNode;
 }
 
 /**
@@ -803,9 +948,10 @@ function processSwitchStatement(
 		}
 	}
 
-	// Remap inputVarName so that `(items)` inside cases resolves to the
+	// Remap inputVarName and lastNodeInScope so that cases resolve to the
 	// Switch node output instead of the upstream trigger.
 	const originalMapping = inputVarName ? state.varToNode.get(inputVarName) : undefined;
+	const originalLastNode = state.lastNodeInScope;
 
 	// Process each case — remap to Switch output i
 	for (let i = 0; i < caseStatements.length; i++) {
@@ -813,6 +959,7 @@ function processSwitchStatement(
 		if (inputVarName) {
 			state.varToNode.set(inputVarName, { nodeName: switchNodeJSON.name!, outputIndex: i });
 		}
+		state.lastNodeInScope = { nodeName: switchNodeJSON.name!, outputIndex: i };
 		processStatements(sc.consequent, state, inputVarName);
 	}
 
@@ -824,6 +971,7 @@ function processSwitchStatement(
 				outputIndex: caseStatements.length,
 			});
 		}
+		state.lastNodeInScope = { nodeName: switchNodeJSON.name!, outputIndex: caseStatements.length };
 		processStatements(defaultCase.consequent, state, inputVarName);
 	}
 
@@ -835,6 +983,7 @@ function processSwitchStatement(
 			state.varToNode.delete(inputVarName);
 		}
 	}
+	state.lastNodeInScope = originalLastNode;
 }
 
 /**
@@ -864,14 +1013,17 @@ function processTryStatement(
 		// the last try-block node's error output (index 1), preventing spurious
 		// connections from the trigger.
 		const originalMapping = inputVarName ? state.varToNode.get(inputVarName) : undefined;
+		const originalLastNode = state.lastNodeInScope;
 		if (inputVarName && nodeCountBefore < errorNodeCountBefore) {
 			const lastTryNode = state.nodes[errorNodeCountBefore - 1];
 			state.varToNode.set(inputVarName, { nodeName: lastTryNode.name!, outputIndex: 1 });
+			state.lastNodeInScope = { nodeName: lastTryNode.name!, outputIndex: 1 };
 		}
 
 		processStatements(stmt.handler.body.body, state, inputVarName);
 
-		// Restore original mapping
+		// Restore original mappings
+		state.lastNodeInScope = originalLastNode;
 		if (inputVarName) {
 			if (originalMapping) {
 				state.varToNode.set(inputVarName, originalMapping);
@@ -914,8 +1066,31 @@ function processStatement(
 
 		case 'ExpressionStatement': {
 			const exprStmt = stmt as ExpressionStatement;
-			// Check for standalone node() call without assignment
 			if (isCallExpression(exprStmt.expression)) {
+				// Check for .map() call without assignment (expression body only)
+				const mapMatch = isMapCall(exprStmt.expression);
+				if (mapMatch) {
+					const { callback } = mapMatch;
+					const { body } = callback;
+					if (body.type !== 'BlockStatement' && isCallExpression(body)) {
+						const execConfig = matchExecuteNodeCall(body);
+						if (execConfig) {
+							const config = extractNodeConfig(execConfig);
+							const nodeJSON = createNodeJSON(config, state);
+							state.nodes.push(nodeJSON);
+							processSubnodes(config, nodeJSON.name!, state);
+
+							const mapping = state.varToNode.get(mapMatch.sourceVar);
+							if (mapping) {
+								addConnection(state, mapping.nodeName, nodeJSON.name!, mapping.outputIndex);
+							}
+							state.lastNodeInScope = { nodeName: nodeJSON.name!, outputIndex: 0 };
+						}
+					}
+					break;
+				}
+
+				// Check for standalone node() call without assignment
 				const match = matchNodeCall(exprStmt.expression);
 				if (match) {
 					const config = extractNodeConfig(match.configExpr);
@@ -924,11 +1099,21 @@ function processStatement(
 
 					processSubnodes(config, nodeJSON.name!, state);
 
-					const sourceNodeName = resolveInputVar(match.inputArg, state);
-					const sourceOutputIndex = resolveOutputIndex(match.inputArg, state);
-					if (sourceNodeName) {
-						addConnection(state, sourceNodeName, nodeJSON.name!, sourceOutputIndex);
+					if (match.inputArg) {
+						const sourceNodeName = resolveInputVar(match.inputArg, state);
+						const sourceOutputIndex = resolveOutputIndex(match.inputArg, state);
+						if (sourceNodeName) {
+							addConnection(state, sourceNodeName, nodeJSON.name!, sourceOutputIndex);
+						}
+					} else if (state.lastNodeInScope) {
+						addConnection(
+							state,
+							state.lastNodeInScope.nodeName,
+							nodeJSON.name!,
+							state.lastNodeInScope.outputIndex,
+						);
 					}
+					state.lastNodeInScope = { nodeName: nodeJSON.name!, outputIndex: 0 };
 				}
 			}
 			break;
@@ -999,6 +1184,7 @@ function processOnTriggerCall(callExpr: CallExpression, state: ParserState): voi
 					outputIndex: 0,
 				});
 			}
+			state.lastNodeInScope = { nodeName: triggerJSON.name!, outputIndex: 0 };
 
 			// Get the body statements
 			let bodyStatements: Statement[];
@@ -1122,6 +1308,8 @@ export function parseDataFlowCode(code: string): WorkflowJSON {
 		workflowName: name,
 		nodeCounter: 0,
 		usedNames: new Set<string>(),
+		insideMap: false,
+		lastNodeInScope: undefined,
 	};
 
 	processWorkflowBody(bodyFn, state);

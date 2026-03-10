@@ -1,12 +1,12 @@
 workflow({ name: 'Execute Once Three Node' }, () => {
 	onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
-		const fetch_Data = node({
+		const fetch_Data = executeNode({
 			type: 'n8n-nodes-base.httpRequest',
 			name: 'Fetch Data',
 			params: { url: 'https://api.example.com/users' },
 			version: 4,
-		})();
-		const transform = node({
+		});
+		const transform = executeNode({
 			type: 'n8n-nodes-base.set',
 			name: 'Transform',
 			params: {
@@ -17,8 +17,8 @@ workflow({ name: 'Execute Once Three Node' }, () => {
 				},
 			},
 			version: 3.4,
-		})();
-		const send_Notification = node({
+		});
+		const send_Notification = executeNode({
 			type: 'n8n-nodes-base.httpRequest',
 			name: 'Send Notification',
 			params: {
@@ -30,6 +30,6 @@ workflow({ name: 'Execute Once Three Node' }, () => {
 				},
 			},
 			version: 4,
-		})();
+		});
 	});
 });

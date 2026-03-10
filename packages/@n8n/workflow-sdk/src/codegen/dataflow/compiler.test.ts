@@ -104,9 +104,9 @@ describe('Data-flow compiler (fixture round-trip)', () => {
 			const code = `workflow({ name: 'OnError Test' }, () => {
   onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
     try {
-      const hTTP_Request = node({ type: 'n8n-nodes-base.httpRequest', params: { url: 'https://api.example.com' }, version: 4 })(items);
+      const hTTP_Request = executeNode({ type: 'n8n-nodes-base.httpRequest', params: { url: 'https://api.example.com' }, version: 4 });
     } catch (e) {
-      const error_Handler = node({ type: 'n8n-nodes-base.set', name: 'Error Handler', params: {}, version: 3 })(items);
+      const error_Handler = executeNode({ type: 'n8n-nodes-base.set', name: 'Error Handler', params: {}, version: 3 });
     }
   });
 });`;
@@ -121,7 +121,7 @@ describe('Data-flow compiler (fixture round-trip)', () => {
 		it('preserves credentials through code → JSON → code', () => {
 			const code = `workflow({ name: 'Creds Test' }, () => {
   onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
-    const hTTP_Request = node({ type: 'n8n-nodes-base.httpRequest', params: { url: 'https://api.example.com' }, version: 4, credentials: { httpBasicAuth: { id: '1', name: 'My Auth' } } })(items);
+    const hTTP_Request = executeNode({ type: 'n8n-nodes-base.httpRequest', params: { url: 'https://api.example.com' }, credentials: { httpBasicAuth: { id: '1', name: 'My Auth' } }, version: 4 });
   });
 });`;
 			const parsed = parseDataFlowCode(code);
@@ -136,7 +136,7 @@ describe('Data-flow compiler (fixture round-trip)', () => {
 		it('preserves AI subnodes through code → JSON → code', () => {
 			const code = `workflow({ name: 'AI Test' }, () => {
   onTrigger({ type: '@n8n/n8n-nodes-langchain.chatTrigger', params: {}, version: 1 }, (items) => {
-    const agent = node({ type: '@n8n/n8n-nodes-langchain.agent', params: { agent: 'conversationalAgent' }, version: 1, subnodes: { ai_languageModel: { type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', params: { model: 'gpt-4' }, version: 1 } } })(items);
+    const agent = executeNode({ type: '@n8n/n8n-nodes-langchain.agent', params: { agent: 'conversationalAgent' }, version: 1, subnodes: { model: languageModel({ type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', params: { model: 'gpt-4' }, version: 1 }) } });
   });
 });`;
 			const parsed = parseDataFlowCode(code);
@@ -155,7 +155,8 @@ describe('Data-flow compiler (fixture round-trip)', () => {
 			expect(hasAiConn).toBe(true);
 
 			const reGenerated = generateDataFlowWorkflowCode(parsed);
-			expect(reGenerated).toContain('ai_languageModel');
+			expect(reGenerated).toContain('languageModel(');
+			expect(reGenerated).toContain('model:');
 			expect(reGenerated).toContain('lmChatOpenAi');
 		});
 	});
