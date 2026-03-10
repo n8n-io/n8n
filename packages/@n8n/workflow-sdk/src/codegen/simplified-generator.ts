@@ -540,7 +540,11 @@ function computeVariableAssignments(graph: SemanticGraph): Map<string, string> {
 		for (const sources of node.inputSources.values()) {
 			for (const source of sources) {
 				const predNode = graph.nodes.get(source.from);
-				if (predNode && predNode.type === 'n8n-nodes-base.httpRequest') {
+				if (
+					predNode &&
+					(predNode.type === 'n8n-nodes-base.httpRequest' ||
+						predNode.type === 'n8n-nodes-base.wait')
+				) {
 					nodeNameToVarName.set(predNode.name, varName);
 				}
 			}
@@ -1482,6 +1486,7 @@ const N8N_UNIT_TO_SHORT: Record<string, string> = {
 function emitWaitNode(node: SemanticNode, ctx: SimplifiedGenContext): void {
 	const params = node.json.parameters ?? {};
 	const resume = params.resume as string;
+	const assignedVar = ctx.nodeNameToVarName.get(node.name);
 
 	// Emit @example pin data if present
 	const pinData = ctx.workflowPinData[node.name];
@@ -1502,7 +1507,8 @@ function emitWaitNode(node: SemanticNode, ctx: SimplifiedGenContext): void {
 			break;
 		}
 		case 'webhook': {
-			emit(ctx, `await waitForWebhook();`);
+			const prefix = assignedVar ? `const ${assignedVar} = ` : '';
+			emit(ctx, `${prefix}await waitForWebhook();`);
 			break;
 		}
 		case 'form': {
@@ -1537,10 +1543,11 @@ function emitWaitNode(node: SemanticNode, ctx: SimplifiedGenContext): void {
 				configParts.push(`fields: [\n    ${fields.join(',\n    ')},\n  ]`);
 			}
 
+			const formPrefix = assignedVar ? `const ${assignedVar} = ` : '';
 			if (configParts.length > 0) {
-				emit(ctx, `await waitForForm({ ${configParts.join(', ')} });`);
+				emit(ctx, `${formPrefix}await waitForForm({ ${configParts.join(', ')} });`);
 			} else {
-				emit(ctx, `await waitForForm();`);
+				emit(ctx, `${formPrefix}await waitForForm();`);
 			}
 			break;
 		}

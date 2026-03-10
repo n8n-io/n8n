@@ -122,7 +122,7 @@ Assert: normalizeSDK(SDK₁) === normalizeSDK(SDK₂)
 - **Forward test**: `transpileWorkflowJS(input.js)` must equal `output.js` exactly
 - **Round-trip test**: compile -> decompile -> recompile must produce structurally identical SDK
 
-**Fixtures:** `__fixtures__/w01-w32/`, each containing:
+**Fixtures:** `__fixtures__/w01-w38/`, each containing:
 - `meta.json` — title, templateId, optional `skip` flag
 - `input.js` — simplified DSL source
 - `output.js` — expected SDK output
@@ -142,7 +142,7 @@ Assert: normalizeSDK(SDK₁) === normalizeSDK(SDK₂)
 | `examples.ts` | Pre-built DSL examples for UI quick-start templates |
 | `generate-report.ts` | HTML report generator for fixture validation results + expectation badges/diffs |
 | `index.ts` | Public exports: `transpileWorkflowJS`, `decompileWorkflowSDK`, `COMPILER_EXAMPLES` |
-| `__fixtures__/w01-w35/` | Test fixtures (real workflow patterns, w18-w22 sub-functions, w23-w24 try/catch, w25 CRUD+branching, w26 loop+sub-fn, w27 loop+try/catch, w28 else-if+numeric, w29 try+switch, w30 multi-trigger independent, w31 Promise.all, w32 app trigger, w33 wait-time, w34 wait-webhook, w35 wait-form) |
+| `__fixtures__/w01-w38/` | Test fixtures (real workflow patterns, w18-w22 sub-functions, w23-w24 try/catch, w25 CRUD+branching, w26 loop+sub-fn, w27 loop+try/catch, w28 else-if+numeric, w29 try+switch, w30 multi-trigger independent, w31 Promise.all, w32 app trigger, w33 wait-time, w34 wait-webhook, w35 wait-form, w36 wait-webhook-simple, w37 wait-in-webhook-flow, w38 wait-form-no-callback) |
 
 **Decompile pipeline (in `src/codegen/`):**
 
@@ -355,8 +355,8 @@ Fixtures with HTTP calls can provide a `nock.ts` file exporting `setupNock(): no
 
 ## Coverage Status
 
-- **Round-trip**: 35/35 fixtures pass (100%)
-- **Schema validation**: 34/35 fixtures pass. `KNOWN_SCHEMA_VIOLATIONS` has W35 (Wait node form fieldType schema).
+- **Round-trip**: 38/38 fixtures pass (100%)
+- **Schema validation**: 37/38 fixtures pass. `KNOWN_SCHEMA_VIOLATIONS` has W35 (Wait node form fieldType schema).
 
 **Key insight**: Nested sub-workflow WorkflowBuilder references (e.g., `workflowJson: __tryCatch_1Workflow` inside a loop body sub-workflow) are handled automatically by `resolveWorkflowBuilderValues()` in `json-serializer.ts`. It duck-types WorkflowBuilder instances (`toJSON` + `add` methods) at any nesting depth and converts them to `JSON.stringify(value.toJSON())`.
 
