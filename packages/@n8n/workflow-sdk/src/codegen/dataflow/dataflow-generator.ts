@@ -348,7 +348,9 @@ function generateChainNodes(
  */
 function n8nExprToJs(expr: string, inputVar: string): string {
 	if (typeof expr !== 'string') return String(expr);
-	const match = expr.match(/^=\{\{\s*\$json((?:\.[a-zA-Z_$][a-zA-Z0-9_$]*|\["[^"]*"\])*)\s*\}\}$/);
+	const match = expr.match(
+		/^=\{\{\s*\$json((?:\.[a-zA-Z_$][a-zA-Z0-9_$]*|\["[^"]*"\]|\['[^']*'\])*)\s*\}\}$/,
+	);
 	if (match) {
 		return `${inputVar}[0].json${match[1]}`;
 	}

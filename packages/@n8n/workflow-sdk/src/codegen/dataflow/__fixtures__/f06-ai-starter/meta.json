@@ -1,4 +1,3 @@
 {
-	"title": "F06: AI starter (Chat Trigger → Agent + OpenAI model)",
-	"skip": "Generator drops expr() wrapped parameter values (produces undefined)"
+	"title": "F06: AI starter (Chat Trigger → Agent + OpenAI model)"
 }

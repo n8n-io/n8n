@@ -151,6 +151,18 @@ function extractLiteralValue(node: EstreeNode): unknown {
 			return tmpl.quasis[0].value.raw;
 		}
 	}
+	// Handle expr('{{ $json.field }}') → '={{ $json.field }}'
+	if (isCallExpression(node)) {
+		const call = node as CallExpression;
+		if (isIdentifier(call.callee) && (call.callee as Identifier).name === 'expr') {
+			if (call.arguments.length > 0 && call.arguments[0].type !== 'SpreadElement') {
+				const arg = call.arguments[0];
+				if (isLiteral(arg) && typeof arg.value === 'string') {
+					return '=' + arg.value;
+				}
+			}
+		}
+	}
 	return undefined;
 }
 
@@ -256,6 +268,24 @@ function extractNodeConfig(objExpr: ObjectExpression): NodeConfig {
 // ---------------------------------------------------------------------------
 
 /**
+ * Join field path parts, using `.` between regular identifiers and
+ * no separator before bracket-access parts like `['key']`.
+ */
+function joinFieldParts(parts: string[]): string {
+	let result = '';
+	for (const part of parts) {
+		if (part.startsWith('[')) {
+			result += part;
+		} else if (result.length > 0) {
+			result += '.' + part;
+		} else {
+			result = part;
+		}
+	}
+	return result;
+}
+
+/**
  * Try to extract a field path from `items[0].json.path...` pattern.
  * Returns the n8n expression like `={{ $json.path }}` or undefined.
  */
@@ -267,7 +297,7 @@ function memberExprToFieldPath(expr: Expression): string | undefined {
 	while (current.type === 'MemberExpression') {
 		const me: MemberExpression = current;
 		if (me.computed) {
-			// items[0] case
+			// items[0] case — numeric index at root
 			if (isLiteral(me.property) && (me.property as Literal).value === 0) {
 				// Check if object is an identifier (the variable)
 				if (me.object.type !== 'Super' && isIdentifier(me.object)) {
@@ -275,11 +305,20 @@ function memberExprToFieldPath(expr: Expression): string | undefined {
 					// parts is reversed: [field, json] -> $json.field
 					parts.reverse();
 					if (parts.length > 0 && parts[0] === 'json') {
-						const fieldPath = parts.slice(1).join('.');
+						const fieldPath = joinFieldParts(parts.slice(1));
 						return fieldPath || undefined;
 					}
 				}
 				return undefined;
+			}
+			// Bracket-access with string literal key: obj['key'] or obj["key"]
+			if (isLiteral(me.property) && typeof (me.property as Literal).value === 'string') {
+				const key = (me.property as Literal).value as string;
+				// Store as bracket notation to preserve in round-trip
+				parts.push(`['${key}']`);
+				if (me.object.type === 'Super') return undefined;
+				current = me.object;
+				continue;
 			}
 			return undefined;
 		} else {
@@ -808,15 +847,25 @@ function processTryStatement(
 	// Process catch block
 	if (stmt.handler && stmt.handler.body) {
 		const errorNodeCountBefore = state.nodes.length;
+
+		// Remap inputVarName so that `(items)` inside catch block resolves to
+		// the last try-block node's error output (index 1), preventing spurious
+		// connections from the trigger.
+		const originalMapping = inputVarName ? state.varToNode.get(inputVarName) : undefined;
+		if (inputVarName && nodeCountBefore < errorNodeCountBefore) {
+			const lastTryNode = state.nodes[errorNodeCountBefore - 1];
+			state.varToNode.set(inputVarName, { nodeName: lastTryNode.name!, outputIndex: 1 });
+		}
+
 		processStatements(stmt.handler.body.body, state, inputVarName);
 
-		// Connect error output from try nodes to catch nodes
-		// The try block's last node connects error output to first catch node
-		if (state.nodes.length > errorNodeCountBefore && nodeCountBefore < errorNodeCountBefore) {
-			const lastTryNode = state.nodes[errorNodeCountBefore - 1];
-			const firstCatchNode = state.nodes[errorNodeCountBefore];
-			// Error output is typically output index 1 for nodes with continueErrorOutput
-			addConnection(state, lastTryNode.name!, firstCatchNode.name!, 1);
+		// Restore original mapping
+		if (inputVarName) {
+			if (originalMapping) {
+				state.varToNode.set(inputVarName, originalMapping);
+			} else {
+				state.varToNode.delete(inputVarName);
+			}
 		}
 	}
 }

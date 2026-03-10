@@ -98,7 +98,7 @@ describe('Data-flow compiler (fixture round-trip)', () => {
 	// Additional round-trip assertion tests
 
 	describe('round-trip property preservation', () => {
-		it.skip('preserves onError through code → JSON → code', () => {
+		it('preserves onError through code → JSON → code', () => {
 			const code = `workflow({ name: 'OnError Test' }, () => {
   onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
     try {

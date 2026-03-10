@@ -1,4 +1,3 @@
 {
-	"title": "F03: IF branching (Trigger → IF → true/false)",
-	"skip": "Generator produces fanOut comment instead of if/else for IF node branching"
+	"title": "F03: IF branching (Trigger → IF → true/false)"
 }
