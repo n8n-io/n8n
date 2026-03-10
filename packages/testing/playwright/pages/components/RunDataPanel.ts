@@ -131,6 +131,14 @@ export class RunDataPanel {
 		await this.root.getByTestId('link-run').click();
 	}
 
+	getNoInputDataMessage() {
+		return this.root.getByText('No input data');
+	}
+
+	getContentEditableEditor() {
+		return this.root.locator('[contenteditable="true"]');
+	}
+
 	async switchDisplayMode(mode: 'table' | 'ai' | 'json' | 'schema' | 'binary'): Promise<void> {
 		await this.root.getByTestId(`radio-button-${mode}`).click();
 	}
