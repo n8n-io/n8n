@@ -133,7 +133,9 @@ Assert: normalizeSDK(SDK₁) === normalizeSDK(SDK₂)
 |------|---------|
 | `compiler.ts` | Main transpiler: simplified JS -> Workflow-SDK TypeScript |
 | `decompiler.ts` | Thin wrapper: SDK -> simplified JS (orchestrates codegen pipeline) |
-| `compiler.test.ts` | Forward tests (18 phases) + round-trip tests |
+| `compiler.test.ts` | Forward tests (18 phases) + round-trip tests + report generation |
+| `execution.test.ts` | Execution tests: compile → parse → pin data → execute with nock |
+| `execution-utils.ts` | Lightweight workflow executor: `executeWorkflow()`, `buildAdditionalData()`, mock task runner |
 | `decompiler-debug.test.ts` | Debug test for decompile round-trips with diff logging |
 | `expectation-matcher.ts` | Execution expectation matching: `deepPartialMatch`, `deepExactMatch`, `matchRequests`, `matchNodes`, `checkExpectations` |
 | `expectation-matcher.test.ts` | 40 unit tests for expectation matchers |
@@ -244,11 +246,14 @@ This applies to bug fixes, new features, and any code changes in the compiler/de
 # Run all compiler tests (from workflow-sdk package dir)
 pushd packages/@n8n/workflow-sdk && pnpm test compiler.test.ts && popd
 
+# Run execution tests (also regenerates report.html)
+pushd packages/@n8n/workflow-sdk && pnpm test execution.test.ts && popd
+
 # Run decompiler debug tests
 pushd packages/@n8n/workflow-sdk && pnpm test decompiler-debug.test.ts && popd
 
 # Generate HTML fixture report
-# (via generate-report.ts — produces __fixtures__/report.html)
+# (via generate-report.ts — produced by both compiler.test.ts and execution.test.ts afterAll)
 ```
 
 ## Conventions
@@ -285,6 +290,42 @@ Validates existing fixtures through the full compilation pipeline (transpile, ge
 - IF/Switch condition mapping (Steps 2f, 2g)
 - Schedule conversion table (Step 2a)
 - Unsupported patterns list (Step 3)
+
+## Execution Test Architecture
+
+Execution tests (`execution.test.ts`) compile fixtures, parse to WorkflowJSON, extract pin data, set up nock interceptors, and execute the workflow using a lightweight mock execution environment in `execution-utils.ts`.
+
+### Report Generation
+
+Both `compiler.test.ts` and `execution.test.ts` call `generateReport()` in their `afterAll` hooks. The execution tests write per-fixture results to `__fixtures__/execution-data.json`, which the report generator reads to render execution status, node outputs, nock traces, and expectation diffs in `__fixtures__/report.html`.
+
+### Mock additionalData (execution-utils.ts)
+
+`buildAdditionalData()` uses a `Proxy` to provide a minimal `IWorkflowExecuteAdditionalData`. Key mocked properties:
+
+| Property | What it mocks |
+|----------|---------------|
+| `credentialsHelper` | `MockCredentialsHelper` — returns static credential data |
+| `ssrfBridge` | Permits all URLs (no SSRF protection in tests). Must implement `SsrfBridge` interface from `packages/core/src/execution-engine/index.ts` with `Result` type `{ ok: true, result: T }` (NOT `value`) |
+| `startRunnerTask` | Executes Code node JS in a `new Function` sandbox with `$`, `$input`, `$json` |
+| `executeWorkflow` | Delegates to `executeSubWorkflow()` for inline sub-workflow execution |
+| `getRunExecutionData` | Looks up sub-workflow run data by execution ID |
+
+**Gotcha — Proxy default**: Any property NOT in overrides returns `() => undefined`. If a new node type accesses a new `additionalData` property, it will silently get a no-op function. Always check the Proxy when debugging mysterious `undefined` or "is not a function" errors.
+
+### Mock Task Runner (`mockStartRunnerTask`)
+
+Code nodes execute JS via `additionalData.startRunnerTask()`. The mock provides:
+- **`$(nodeName)`** — reads from `runExecutionData.resultData.runData[nodeName]`, returns `.all()`, `.first()`, `.last()`, `.item(i)`, `.isExecuted`
+- **`$input`** — reads from `connectionInputData`, returns `.all()`, `.first()`, `.last()`, `.item(i)`, `.length`
+- **`$json`** — shorthand for first input item's `.json`
+- Code is wrapped in `(async () => { <code> })()` so `return` statements work
+
+**Limitations**: The mock doesn't support `$evaluateExpression`, `$getWorkflowStaticData`, `require()`, `$env`, binary data helpers, or RPC methods. Fixtures needing these will fail execution tests.
+
+### Fixture nock setup
+
+Fixtures with HTTP calls can provide a `nock.ts` file exporting `setupNock(): nock.Scope[]`. When present, the test strips HTTP node pin data (so real HTTP calls go through nock) and tracks request/response data for expectation matching.
 
 ## Coverage Status
 
