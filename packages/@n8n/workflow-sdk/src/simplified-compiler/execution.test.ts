@@ -4,6 +4,7 @@ import nock from 'nock';
 import type { INode, IPinData, IRunData } from 'n8n-workflow';
 import { transpileWorkflowJS } from './compiler';
 import { parseWorkflowCode } from '../codegen/parse-workflow-code';
+import { generateReport } from './generate-report';
 import { loadFixtures } from './fixture-loader';
 import {
 	resolveImports,
@@ -214,6 +215,7 @@ describe('Fixture execution with pin data', () => {
 			join(__dirname, '__fixtures__', 'execution-data.json'),
 			JSON.stringify(executionData, null, 2) + '\n',
 		);
+		generateReport();
 	});
 
 	afterEach(() => {

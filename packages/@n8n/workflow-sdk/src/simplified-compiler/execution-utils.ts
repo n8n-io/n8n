@@ -310,6 +310,74 @@ async function executeSubWorkflow(
 }
 
 // ---------------------------------------------------------------------------
+// Mock task runner for Code node execution
+// ---------------------------------------------------------------------------
+
+/**
+ * Minimal mock for `additionalData.startRunnerTask`.
+ * Executes Code-node JS in a Function context with `$`, `$input`, `$json`.
+ *
+ * Signature mirrors IWorkflowExecuteAdditionalData.startRunnerTask — only the
+ * parameters actually used by the mock are named; the rest are positional.
+ */
+async function mockStartRunnerTask(
+	_additionalData: unknown,
+	_jobType: string,
+	settings: unknown,
+	_executeFunctions: unknown,
+	_inputData: unknown,
+	_node: unknown,
+	_workflow: unknown,
+	runExecutionData: IRunExecutionData,
+	_runIndex: number,
+	_itemIndex: number,
+	_activeNodeName: string,
+	connectionInputData: INodeExecutionData[],
+): Promise<{ ok: true; result: unknown } | { ok: false; error: unknown }> {
+	const { code } = settings as { code: string };
+
+	// Build $() — access previous node output from runData
+	const $fn = (nodeName: string) => {
+		const nodeRuns = runExecutionData.resultData.runData[nodeName];
+		const items: INodeExecutionData[] = nodeRuns?.[0]?.data?.main?.[0] ?? [];
+		return {
+			all: (_branchIndex?: number, _runIndex?: number) => items,
+			first: (_branchIndex?: number, _runIndex?: number) => items[0],
+			last: (_branchIndex?: number, _runIndex?: number) => items[items.length - 1],
+			item: (index: number) => items[index],
+			isExecuted: nodeRuns !== undefined && nodeRuns.length > 0,
+		};
+	};
+
+	// Build $input from connectionInputData
+	const inputItems = connectionInputData ?? [];
+	const $input = {
+		all: () => inputItems,
+		first: () => inputItems[0],
+		last: () => inputItems[inputItems.length - 1],
+		item: (index: number) => inputItems[index],
+		length: inputItems.length,
+	};
+
+	const $json: IDataObject = (inputItems[0]?.json as IDataObject) ?? {};
+
+	try {
+		// Wrap code in async IIFE so `return` statements work
+		const fn = new Function(
+			'$',
+			'$input',
+			'$json',
+			'console',
+			`return (async () => {\n${code}\n})();`,
+		);
+		const result = await fn($fn, $input, $json, console);
+		return { ok: true, result };
+	} catch (err) {
+		return { ok: false, error: err };
+	}
+}
+
+// ---------------------------------------------------------------------------
 // additionalData builder (shared between main and sub-workflow execution)
 // ---------------------------------------------------------------------------
 
@@ -326,6 +394,13 @@ function buildAdditionalData(
 		executionId,
 		hooks,
 		credentialsHelper: new MockCredentialsHelper(),
+		ssrfBridge: {
+			validateIp: () => ({ ok: true, result: undefined }),
+			validateUrl: async () => ({ ok: true, result: undefined }),
+			validateRedirectSync: () => {},
+			createSecureLookup: () => (_hostname: string, _options: unknown, cb: Function) =>
+				cb(null, '127.0.0.1', 4),
+		},
 		executeWorkflow: async (
 			workflowInfo: {
 				id?: string;
@@ -353,6 +428,7 @@ function buildAdditionalData(
 		getRunExecutionData: async (execId: string): Promise<IRunExecutionData | undefined> => {
 			return subRunDataById.get(execId);
 		},
+		startRunnerTask: mockStartRunnerTask,
 	};
 
 	return new Proxy({} as IWorkflowExecuteAdditionalData, {
