@@ -338,10 +338,12 @@ This MVP is built in a **separate feature branch** for exploration and validatio
 - [ ]  Workflow execution integration
 
 ```
-        "n8nAiGateway": {
-          "id": "n8nAiGateway",
-          "name": "n8n AI Gateway"
-        }
+"credentials": {
+  "n8nAiGateway": {
+    "id": "n8nAiGateway",
+    "name": "n8n AI Gateway"
+  }
+}
 ```
 
 - [ ]  Usage metering and credit tracking (?)
