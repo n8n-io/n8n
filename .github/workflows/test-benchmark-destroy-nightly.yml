@@ -29,17 +29,10 @@ jobs:
           tenant-id: ${{ secrets.BENCHMARK_ARM_TENANT_ID }}
           subscription-id: ${{ secrets.BENCHMARK_ARM_SUBSCRIPTION_ID }}
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - name: Setup Node.js and install dependencies
+        uses: ./.github/actions/setup-nodejs
         with:
-          node-version: 22.x
-
-      - name: Setup corepack and pnpm
-        run: |
-          npm i -g corepack@0.33
-          corepack enable
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+          build-command: ''
 
       - name: Destroy cloud env
         run: pnpm destroy-cloud-env

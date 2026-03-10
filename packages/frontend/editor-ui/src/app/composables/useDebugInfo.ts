@@ -9,7 +9,7 @@ type DebugInfo = {
 		platform: 'docker (cloud)' | 'docker (self-hosted)' | 'npm';
 		nodeJsVersion: string;
 		nodeEnv: string | undefined;
-		database: 'sqlite' | 'mysql' | 'mariadb' | 'postgres';
+		database: 'sqlite' | 'postgres';
 		executionMode: 'regular' | 'scaling (single-main)' | 'scaling (multi-main)';
 		license: 'community' | 'enterprise (production)' | 'enterprise (sandbox)';
 		consumerId?: string;
@@ -61,11 +61,7 @@ export function useDebugInfo() {
 			nodeJsVersion: settingsStore.nodeJsVersion,
 			nodeEnv: settingsStore.nodeEnv,
 			database:
-				settingsStore.databaseType === 'postgresdb'
-					? 'postgres'
-					: settingsStore.databaseType === 'mysqldb'
-						? 'mysql'
-						: settingsStore.databaseType,
+				settingsStore.databaseType === 'postgresdb' ? 'postgres' : settingsStore.databaseType,
 			executionMode: settingsStore.isQueueModeEnabled
 				? settingsStore.isMultiMain
 					? 'scaling (multi-main)'

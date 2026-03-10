@@ -3,7 +3,6 @@ import type { ITaskData, ITaskDataConnections, NodeConnectionType } from 'n8n-wo
 import { splitTextBySearch } from '@/app/utils/stringUtils';
 import { escapeHtml } from 'xss';
 import type MarkdownIt from 'markdown-it';
-import { unescapeAll } from 'markdown-it/lib/common/utils';
 
 export function getReferencedData(taskData: ITaskData): IAiDataContent[] {
 	const returnData: IAiDataContent[] = [];
@@ -62,7 +61,7 @@ export function createSearchHighlightPlugin(search: string | undefined) {
 
 		md.renderer.rules.fence = (tokens, idx, options, _, slf) => {
 			const token = tokens[idx];
-			const info = token.info ? unescapeAll(token.info).trim() : '';
+			const info = token.info ? md.utils.unescapeAll(token.info).trim() : '';
 			let langName = '';
 			let langAttrs = '';
 

@@ -8,8 +8,10 @@ interface VueComponentInstance {
 			onUserMessage?: (message: string) => Promise<void>;
 			showAskOwnerTooltip?: boolean;
 			showExecuteMessage?: boolean;
+			showReviewChanges?: boolean;
 			isInputDisabled?: boolean;
 			disabledTooltip?: string;
+			workflowSuggestions?: unknown[] | undefined;
 		};
 	};
 }
@@ -31,6 +33,14 @@ const updateWorkflowMock = vi.hoisted(() =>
 vi.mock('@/app/composables/useWorkflowUpdate', () => ({
 	useWorkflowUpdate: vi.fn().mockReturnValue({
 		updateWorkflow: updateWorkflowMock,
+	}),
+}));
+
+// Mock focusedNodes store to prevent defineStore from failing during module load
+vi.mock('@/features/ai/assistant/focusedNodes.store', () => ({
+	useFocusedNodesStore: vi.fn().mockReturnValue({
+		buildContextPayload: vi.fn().mockReturnValue([]),
+		isFeatureEnabled: false,
 	}),
 }));
 
@@ -81,11 +91,21 @@ vi.mock('@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue', (
 
 			// Create a more realistic mock that includes rating buttons and slots when needed
 			return () => {
-				const lastMessage = props.messages?.[props.messages.length - 1];
-				const showRating = lastMessage?.showRating;
+				// Footer rating logic (matches showFooterRating computed in AskAssistantChat.vue)
+				const messages = props.messages || [];
+				const hasWorkflowUpdate = messages.some(
+					(msg: { type: string }) => msg.type === 'workflow-updated',
+				);
+				const lastMessage = messages[messages.length - 1];
+				const showFooterRating =
+					!props.streaming &&
+					messages.length > 0 &&
+					hasWorkflowUpdate &&
+					lastMessage?.role !== 'user' &&
+					lastMessage?.type !== 'thinking-group';
 
 				return h('div', { 'data-test-id': 'mocked-assistant-chat' }, [
-					showRating
+					showFooterRating
 						? [
 								h('button', {
 									'data-test-id': 'message-thumbs-up-button',
@@ -132,12 +152,14 @@ import { useBuilderStore } from '../../builder.store';
 import { mockedStore } from '@/__tests__/utils';
 import { STORES } from '@n8n/stores';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useHistoryStore } from '@/app/stores/history.store';
 import type { INodeUi } from '@/Interface';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
-import { useWorkflowAutosaveStore } from '@/app/stores/workflowAutosave.store';
+import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { AutoSaveState } from '@/app/constants';
+import { usePostHog } from '@/app/stores/posthog.store';
 
 const nodeViewEventBusEmitMock = vi.hoisted(() => vi.fn());
 vi.mock('@/app/event-bus', () => ({
@@ -148,6 +170,15 @@ vi.mock('@/app/event-bus', () => ({
 		on: vi.fn(),
 		off: vi.fn(),
 		emit: vi.fn(),
+	},
+}));
+
+const canvasEventBusEmitMock = vi.hoisted(() => vi.fn());
+vi.mock('@/features/workflows/canvas/canvas.eventBus', () => ({
+	canvasEventBus: {
+		emit: canvasEventBusEmitMock,
+		on: vi.fn(),
+		off: vi.fn(),
 	},
 }));
 
@@ -221,6 +252,7 @@ describe('AskAssistantBuild', () => {
 	const renderComponent = createComponentRenderer(AskAssistantBuild);
 	let builderStore: ReturnType<typeof mockedStore<typeof useBuilderStore>>;
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+	let workflowsListStore: ReturnType<typeof mockedStore<typeof useWorkflowsListStore>>;
 	let historyStore: ReturnType<typeof mockedStore<typeof useHistoryStore>>;
 	let collaborationStore: ReturnType<typeof mockedStore<typeof useCollaborationStore>>;
 
@@ -262,7 +294,7 @@ describe('AskAssistantBuild', () => {
 				},
 				workflowAutosave: {
 					autoSaveState: AutoSaveState.Idle,
-					pendingAutoSave: null,
+					pendingSave: null,
 				},
 			},
 		});
@@ -270,6 +302,7 @@ describe('AskAssistantBuild', () => {
 		setActivePinia(pinia);
 		builderStore = mockedStore(useBuilderStore);
 		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsListStore = mockedStore(useWorkflowsListStore);
 		historyStore = mockedStore(useHistoryStore);
 		collaborationStore = mockedStore(useCollaborationStore);
 
@@ -335,7 +368,7 @@ describe('AskAssistantBuild', () => {
 		});
 
 		it('should disable input when autosave is scheduled', () => {
-			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			const workflowAutosaveStore = mockedStore(useWorkflowSaveStore);
 			workflowAutosaveStore.autoSaveState = AutoSaveState.Scheduled;
 
 			const { container } = renderComponent();
@@ -347,7 +380,7 @@ describe('AskAssistantBuild', () => {
 		});
 
 		it('should disable input when autosave is in progress', () => {
-			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			const workflowAutosaveStore = mockedStore(useWorkflowSaveStore);
 			workflowAutosaveStore.autoSaveState = AutoSaveState.InProgress;
 
 			const { container } = renderComponent();
@@ -359,7 +392,7 @@ describe('AskAssistantBuild', () => {
 		});
 
 		it('should not disable input when autosave is idle', () => {
-			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			const workflowAutosaveStore = mockedStore(useWorkflowSaveStore);
 			workflowAutosaveStore.autoSaveState = AutoSaveState.Idle;
 
 			const { container } = renderComponent();
@@ -372,7 +405,7 @@ describe('AskAssistantBuild', () => {
 
 		it('should disable input when collaboration shouldBeReadOnly is true regardless of autosave state', () => {
 			collaborationStore.shouldBeReadOnly = true;
-			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			const workflowAutosaveStore = mockedStore(useWorkflowSaveStore);
 			workflowAutosaveStore.autoSaveState = AutoSaveState.Idle;
 
 			const { container } = renderComponent();
@@ -384,7 +417,7 @@ describe('AskAssistantBuild', () => {
 		});
 
 		it('should show autosaving tooltip when autosave is scheduled', () => {
-			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			const workflowAutosaveStore = mockedStore(useWorkflowSaveStore);
 			workflowAutosaveStore.autoSaveState = AutoSaveState.Scheduled;
 
 			const { container } = renderComponent();
@@ -396,7 +429,7 @@ describe('AskAssistantBuild', () => {
 		});
 
 		it('should show autosaving tooltip when autosave is in progress', () => {
-			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			const workflowAutosaveStore = mockedStore(useWorkflowSaveStore);
 			workflowAutosaveStore.autoSaveState = AutoSaveState.InProgress;
 
 			const { container } = renderComponent();
@@ -409,7 +442,7 @@ describe('AskAssistantBuild', () => {
 
 		it('should show read-only tooltip when collaboration shouldBeReadOnly is true', () => {
 			collaborationStore.shouldBeReadOnly = true;
-			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			const workflowAutosaveStore = mockedStore(useWorkflowSaveStore);
 			workflowAutosaveStore.autoSaveState = AutoSaveState.Idle;
 
 			const { container } = renderComponent();
@@ -422,7 +455,7 @@ describe('AskAssistantBuild', () => {
 
 		it('should show autosaving tooltip when both autosave is in progress and collaboration is read-only', () => {
 			collaborationStore.shouldBeReadOnly = true;
-			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			const workflowAutosaveStore = mockedStore(useWorkflowSaveStore);
 			workflowAutosaveStore.autoSaveState = AutoSaveState.InProgress;
 
 			const { container } = renderComponent();
@@ -435,7 +468,7 @@ describe('AskAssistantBuild', () => {
 		});
 
 		it('should not show any tooltip when input is not disabled', () => {
-			const workflowAutosaveStore = mockedStore(useWorkflowAutosaveStore);
+			const workflowAutosaveStore = mockedStore(useWorkflowSaveStore);
 			workflowAutosaveStore.autoSaveState = AutoSaveState.Idle;
 
 			const { container } = renderComponent();
@@ -447,11 +480,69 @@ describe('AskAssistantBuild', () => {
 		});
 	});
 
+	describe('workflow suggestions visibility', () => {
+		it('should not show suggestions when workflow has existing nodes', () => {
+			workflowsStore.$patch({
+				workflow: {
+					nodes: [
+						{
+							id: 'node1',
+							name: 'Start',
+							type: 'n8n-nodes-base.manualTrigger',
+							position: [0, 0],
+							typeVersion: 1,
+							parameters: {},
+						} as INodeUi,
+					],
+					connections: {},
+				},
+			});
+			builderStore.hasMessages = false;
+
+			const { container } = renderComponent();
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const workflowSuggestions = vm?.setupState?.workflowSuggestions;
+
+			expect(workflowSuggestions).toBeUndefined();
+		});
+
+		it('should show suggestions when workflow is empty and has no messages', () => {
+			workflowsStore.$patch({
+				workflow: { nodes: [], connections: {} },
+			});
+			builderStore.hasMessages = false;
+
+			const { container } = renderComponent();
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const workflowSuggestions = vm?.setupState?.workflowSuggestions;
+
+			expect(workflowSuggestions).toBeDefined();
+			expect(Array.isArray(workflowSuggestions)).toBe(true);
+			expect(workflowSuggestions!.length).toBeGreaterThan(0);
+		});
+
+		it('should not show suggestions when there are already messages', () => {
+			workflowsStore.$patch({
+				workflow: { nodes: [], connections: {} },
+			});
+			builderStore.hasMessages = true;
+
+			const { container } = renderComponent();
+
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			const workflowSuggestions = vm?.setupState?.workflowSuggestions;
+
+			expect(workflowSuggestions).toBeUndefined();
+		});
+	});
+
 	describe('user message handling', () => {
 		it('should initialize builder chat when a user sends a message', async () => {
 			// Mock empty workflow to ensure initialGeneration is true
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
+			workflowsListStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			const { container } = renderComponent();
 			const testMessage = 'Create a workflow to send emails';
@@ -472,7 +563,7 @@ describe('AskAssistantBuild', () => {
 
 		it('should request write access when sending a message', async () => {
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
+			workflowsListStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			const { container } = renderComponent();
 			const testMessage = 'Create a workflow';
@@ -496,6 +587,7 @@ describe('AskAssistantBuild', () => {
 
 			beforeEach(() => {
 				// Use $patch to ensure reactivity
+				// Note: showRating is no longer set on messages - rating is shown in footer
 				builderStore.$patch({
 					lastUserMessageId: testUserMessageId,
 					chatMessages: [
@@ -512,8 +604,6 @@ describe('AskAssistantBuild', () => {
 							type: 'text',
 							content: 'Wat',
 							read: true,
-							showRating: true,
-							ratingStyle: 'minimal',
 						},
 					],
 				});
@@ -597,7 +687,6 @@ describe('AskAssistantBuild', () => {
 							type: 'text',
 							content: 'This is just an informational message',
 							read: true,
-							showRating: false,
 						},
 					],
 				});
@@ -608,7 +697,7 @@ describe('AskAssistantBuild', () => {
 
 				await flushPromises();
 
-				// Rating buttons should not be present
+				// Rating buttons should not be present (footer rating requires workflow-updated)
 				expect(queryAllByTestId('message-thumbs-up-button')).toHaveLength(0);
 				expect(queryAllByTestId('message-thumbs-down-button')).toHaveLength(0);
 			});
@@ -616,7 +705,9 @@ describe('AskAssistantBuild', () => {
 
 		describe('when tools are still running', () => {
 			beforeEach(() => {
+				// Note: footer rating should NOT show while streaming is true
 				builderStore.$patch({
+					streaming: true,
 					chatMessages: [
 						{
 							id: faker.string.uuid(),
@@ -640,24 +731,19 @@ describe('AskAssistantBuild', () => {
 							type: 'text',
 							content: 'Working on your workflow...',
 							read: true,
-							showRating: true,
-							ratingStyle: 'minimal',
 						},
 					],
 				});
 			});
 
-			it('should show minimal rating style when tools are still running', async () => {
-				const { findByTestId } = renderComponent();
+			it('should NOT show rating buttons while streaming/tools are running', async () => {
+				const { queryAllByTestId } = renderComponent();
 
 				await flushPromises();
 
-				// Check that rating buttons exist but in minimal style
-				const thumbsUpButton = await findByTestId('message-thumbs-up-button');
-				expect(thumbsUpButton).toBeInTheDocument();
-
-				// The minimal style should have icon-only buttons (no label)
-				expect(thumbsUpButton.textContent).toBe('');
+				// Rating buttons should NOT be present while streaming
+				expect(queryAllByTestId('message-thumbs-up-button')).toHaveLength(0);
+				expect(queryAllByTestId('message-thumbs-down-button')).toHaveLength(0);
 			});
 		});
 	});
@@ -666,7 +752,7 @@ describe('AskAssistantBuild', () => {
 		it('should reset initialGeneration flag when streaming ends and workflow has nodes', async () => {
 			// Setup: empty workflow
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
+			workflowsListStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			renderComponent();
 
@@ -705,7 +791,7 @@ describe('AskAssistantBuild', () => {
 		it('should NOT reset initialGeneration flag when workflow is still empty', async () => {
 			// Setup: empty workflow
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
+			workflowsListStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			renderComponent();
 
@@ -722,6 +808,68 @@ describe('AskAssistantBuild', () => {
 
 			// Verify initialGeneration flag was NOT reset since workflow is still empty
 			expect(builderStore.initialGeneration).toBe(true);
+		});
+	});
+
+	describe('zoom to fit after streaming ends', () => {
+		it('should emit fitView when streaming ends and new nodes were added', async () => {
+			const newWorkflow = {
+				nodes: [
+					{
+						id: 'new-node-1',
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						position: [0, 0] as [number, number],
+						typeVersion: 1,
+						parameters: {},
+					},
+				],
+				connections: {},
+			};
+
+			updateWorkflowMock.mockResolvedValue({ success: true, newNodeIds: ['new-node-1'] });
+			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
+
+			renderComponent();
+
+			// Start streaming and trigger a workflow update with new nodes
+			builderStore.$patch({ streaming: true });
+			await flushPromises();
+
+			builderStore.workflowMessages = [
+				{
+					id: faker.string.uuid(),
+					role: 'assistant' as const,
+					type: 'workflow-updated' as const,
+					codeSnippet: JSON.stringify(newWorkflow),
+				},
+			];
+			await flushPromises();
+
+			canvasEventBusEmitMock.mockClear();
+
+			// End streaming
+			builderStore.$patch({ streaming: false });
+			await flushPromises();
+
+			expect(canvasEventBusEmitMock).toHaveBeenCalledWith('fitView');
+		});
+
+		it('should NOT emit fitView when streaming ends without new nodes', async () => {
+			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
+
+			renderComponent();
+
+			// Start and end streaming without any workflow updates
+			builderStore.$patch({ streaming: true });
+			await flushPromises();
+
+			canvasEventBusEmitMock.mockClear();
+
+			builderStore.$patch({ streaming: false });
+			await flushPromises();
+
+			expect(canvasEventBusEmitMock).not.toHaveBeenCalledWith('fitView');
 		});
 	});
 
@@ -1082,7 +1230,7 @@ describe('AskAssistantBuild', () => {
 
 		it('should reset accumulated node IDs on new user message', async () => {
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
+			workflowsListStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			const { container } = renderComponent();
 
@@ -1565,6 +1713,81 @@ describe('AskAssistantBuild', () => {
 
 			// Banner should NOT be shown since streaming hasn't started in this session
 			expect(queryByTestId('notification-permission-banner')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('review changes button', () => {
+		it('showReviewChanges is false when feature flag is disabled', () => {
+			const posthogStore = mockedStore(usePostHog);
+			posthogStore.isFeatureEnabled = vi.fn().mockReturnValue(false);
+			builderStore.streaming = false;
+			builderStore.latestRevertVersion = { id: 'v1', createdAt: '2024-01-01' };
+
+			const { container } = renderComponent();
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			expect(vm?.setupState?.showReviewChanges).toBe(false);
+		});
+
+		it('showReviewChanges is false when streaming is true', () => {
+			const posthogStore = mockedStore(usePostHog);
+			posthogStore.isFeatureEnabled = vi.fn().mockReturnValue(true);
+			builderStore.streaming = true;
+			builderStore.latestRevertVersion = { id: 'v1', createdAt: '2024-01-01' };
+
+			const { container } = renderComponent();
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			expect(vm?.setupState?.showReviewChanges).toBe(false);
+		});
+
+		it('showReviewChanges is false when no latestRevertVersion exists', () => {
+			const posthogStore = mockedStore(usePostHog);
+			posthogStore.isFeatureEnabled = vi.fn().mockReturnValue(true);
+			builderStore.streaming = false;
+			builderStore.latestRevertVersion = null;
+
+			const { container } = renderComponent();
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			expect(vm?.setupState?.showReviewChanges).toBe(false);
+		});
+
+		it('showReviewChanges is false when editedNodesCount is 0', async () => {
+			const posthogStore = mockedStore(usePostHog);
+			posthogStore.isFeatureEnabled = vi.fn().mockReturnValue(true);
+			builderStore.streaming = false;
+			builderStore.latestRevertVersion = { id: 'v1', createdAt: '2024-01-01' };
+			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
+
+			const { container } = renderComponent();
+			await flushPromises();
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			expect(vm?.setupState?.showReviewChanges).toBe(false);
+		});
+
+		it('showReviewChanges is true when feature flag is enabled, not streaming, latestRevertVersion exists, and nodes were edited', async () => {
+			const posthogStore = mockedStore(usePostHog);
+			posthogStore.isFeatureEnabled = vi.fn().mockReturnValue(true);
+			builderStore.streaming = false;
+			builderStore.latestRevertVersion = { id: 'v1', createdAt: '2024-01-01' };
+			workflowsStore.$patch({
+				workflow: {
+					nodes: [
+						{
+							id: 'node1',
+							name: 'Start',
+							type: 'n8n-nodes-base.manualTrigger',
+							position: [0, 0],
+							typeVersion: 1,
+							parameters: {},
+						} as INodeUi,
+					],
+					connections: {},
+				},
+			});
+
+			const { container } = renderComponent();
+			await flushPromises();
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			expect(vm?.setupState?.showReviewChanges).toBe(true);
 		});
 	});
 });

@@ -2,22 +2,30 @@
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
-import type { ButtonType } from '@n8n/design-system';
+import type { ButtonVariant } from '@n8n/design-system';
 
 import { N8nButton } from '@n8n/design-system';
+
+// Explicit click emit is required for Playwright tests - N8nTooltip wraps
+// content in a span (via TooltipTrigger), which can interfere with click
+// event detection in automated tests
+const emit = defineEmits<{
+	click: [];
+}>();
+
 const props = withDefaults(
 	defineProps<{
 		saved: boolean;
 		isSaving?: boolean;
 		disabled?: boolean;
-		type?: ButtonType;
+		variant?: ButtonVariant;
 		withShortcut?: boolean;
 		shortcutTooltip?: string;
 		savingLabel?: string;
 	}>(),
 	{
 		isSaving: false,
-		type: 'primary',
+		variant: 'solid',
 		withShortcut: false,
 		disabled: false,
 	},
@@ -53,7 +61,8 @@ const shortcutTooltipLabel = computed(() => {
 					:loading="isSaving"
 					:disabled="disabled"
 					:class="$style.button"
-					:type="type"
+					:variant="variant"
+					@click="emit('click')"
 				/>
 			</KeyboardShortcutTooltip>
 			<N8nButton
@@ -62,7 +71,8 @@ const shortcutTooltipLabel = computed(() => {
 				:loading="isSaving"
 				:disabled="disabled"
 				:class="$style.button"
-				:type="type"
+				:variant="variant"
+				@click="emit('click')"
 			/>
 		</template>
 	</span>

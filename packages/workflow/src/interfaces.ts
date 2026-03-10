@@ -105,6 +105,8 @@ export type ExecutionError =
 	| NodeOperationError
 	| NodeApiError;
 
+export type ExecutionStorageLocation = 'db' | 'fs';
+
 // Get used to gives nodes access to credentials
 export interface IGetCredentials {
 	get(type: string, id: string | null): Promise<ICredentialsEncrypted>;
@@ -357,6 +359,7 @@ export interface ICredentialType {
 	properties: INodeProperties[];
 	documentationUrl?: string;
 	__overwrittenProperties?: string[];
+	__skipManagedCreation?: boolean;
 	authenticate?: IAuthenticate;
 	preAuthentication?: (
 		this: IHttpRequestHelper,
@@ -463,6 +466,12 @@ export interface IExecuteContextData {
 
 export type IHttpRequestMethods = 'DELETE' | 'GET' | 'HEAD' | 'PATCH' | 'POST' | 'PUT';
 
+export type IgnoreStatusErrorConfig = {
+	ignore: true;
+	/** Ignore HTTP status errors except for the specified status codes */
+	except: number[];
+};
+
 /** used in helpers.httpRequest(WithAuthentication) */
 export interface IHttpRequestOptions {
 	url: string;
@@ -481,7 +490,7 @@ export interface IHttpRequestOptions {
 	encoding?: 'arraybuffer' | 'blob' | 'document' | 'json' | 'text' | 'stream';
 	skipSslCertificateValidation?: boolean;
 	returnFullResponse?: boolean;
-	ignoreHttpStatusErrors?: boolean;
+	ignoreHttpStatusErrors?: boolean | IgnoreStatusErrorConfig;
 	proxy?: {
 		host: string;
 		port: number;
@@ -494,6 +503,11 @@ export interface IHttpRequestOptions {
 	timeout?: number;
 	json?: boolean;
 	abortSignal?: GenericAbortSignal;
+	/**
+	 * Whether to send credentials on cross-origin redirects
+	 * @default true - for backwards compatibility
+	 */
+	sendCredentialsOnCrossOriginRedirect?: boolean;
 }
 
 /**
@@ -541,6 +555,12 @@ export interface IRequestOptions {
 	maxRedirects?: number;
 
 	agentOptions?: SecureContextOptions;
+
+	/**
+	 * Whether to send credentials on cross-origin redirects
+	 * @default true - for backwards compatibility
+	 */
+	sendCredentialsOnCrossOriginRedirect?: boolean;
 }
 
 export interface PaginationOptions {
@@ -1197,6 +1217,23 @@ export interface ITriggerFunctions
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 		donePromise?: IDeferredPromise<IRun>,
 	): void;
+	/**
+	 * Persist the current run as a failed execution and run the error workflow if configured.
+	 * Use this when the trigger or poller encounters an error during a run (e.g. processing failed)
+	 * but the listener/connection is still healthy. The workflow stays active.
+	 *
+	 * @param error - The execution error to persist and pass to the error workflow
+	 */
+	saveFailedExecution(error: ExecutionError): void;
+	/**
+	 * Report a fatal trigger/poller error: deactivate the workflow, run the error workflow if configured,
+	 * and queue the workflow for reactivation with backoff. Use this when the trigger or poller cannot
+	 * continue (e.g. connection lost, auth failure). The workflow is removed from active workflows
+	 * and will be retried periodically until it activates successfully.
+	 *
+	 * @param error - The error that caused the trigger or poller to fail
+	 * @param responsePromise - Optional. When provided (e.g. in manual trigger mode), used to signal the error to the caller
+	 */
 	emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
 	getNodeParameter(
 		parameterName: string,
@@ -1243,6 +1280,7 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getRequestObject(): express.Request;
 	getResponseObject(): express.Response;
 	getWebhookName(): string;
+	validateCookieAuth(cookieValue: string): Promise<void>;
 	nodeHelpers: NodeHelperFunctions;
 	helpers: RequestHelperFunctions & BaseHelperFunctions & BinaryHelperFunctions;
 }
@@ -1331,10 +1369,49 @@ export type ChatNodeMessageWithButtons = {
 
 export type ChatNodeMessage = ChatNodeMessageWithButtons | string;
 
+/**
+ * Technical metadata preserved when an error is redacted.
+ * Contains only non-PII debugging information.
+ * Deliberately excludes: message, description, messages[], cause,
+ * context, and errorResponse — all of which may contain PII.
+ */
+export interface IRedactedErrorInfo {
+	/** Constructor name of the original error class, e.g. 'NodeApiError' */
+	type: string;
+	/** HTTP status code from NodeApiError, e.g. '404', '500', null */
+	httpCode?: string | null;
+}
+
+export interface INodeExecutionRedactionInfo {
+	redacted: true;
+	reason: string;
+	/**
+	 * When present, indicates the item's `error` field was redacted.
+	 * Contains only non-PII technical metadata. Placeholder for future smart filtering.
+	 */
+	error?: IRedactedErrorInfo;
+}
+
+/**
+ * Marker placed on an `item.json` field when it has been redacted by a
+ * node-declared field redaction strategy.  A typed object (not `null` or a
+ * string) so consumers can distinguish intentional redaction from absent data.
+ *
+ * `canReveal` controls whether the UI should offer an option to unmask the
+ * value.  For credential-equivalent fields (e.g. auth headers) this is always
+ * `false`; future strategies may produce `true` for less-sensitive fields.
+ */
+export interface IRedactedFieldMarker {
+	__redacted: true;
+	reason: 'node_defined_field';
+	canReveal: boolean;
+}
+
 export interface INodeExecutionData {
 	[key: string]:
 		| IDataObject
 		| IBinaryKeyData
+		| INodeExecutionRedactionInfo
 		| IPairedItemData
 		| IPairedItemData[]
 		| NodeApiError
@@ -1350,6 +1427,12 @@ export interface INodeExecutionData {
 		subExecution: RelatedExecution;
 	};
 	evaluationData?: Record<string, GenericValue>;
+	/**
+	 * Redaction marker. Present when this item's data has been redacted.
+	 * Check `redaction.redacted` to determine if data was stripped,
+	 * and `redaction.reason` for why (e.g. "workflow_redaction_policy").
+	 */
+	redaction?: INodeExecutionRedactionInfo;
 	/**
 	 * Use this key to send a message to the chat.
 	 *
@@ -1498,6 +1581,7 @@ export interface INodePropertyTypeOptions {
 	numberPrecision?: number; // Supported by: number
 	fixedCollection?: {
 		itemTitle?: string; // Template for item titles, supports {{ $collection.item.value }}, {{ $collection.item.index }}
+		layout?: 'inline'; // Render sub-parameters side-by-side in a row
 	};
 	password?: boolean; // Supported by: string
 	rows?: number; // Supported by: string
@@ -1623,6 +1707,7 @@ export interface INodeProperties {
 	default: NodeParameterValueType;
 	description?: string;
 	hint?: string;
+	builderHint?: IParameterBuilderHint;
 	disabledOptions?: IDisplayOptions;
 	displayOptions?: IDisplayOptions;
 	options?: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>;
@@ -1720,6 +1805,7 @@ export interface INodePropertyOptions {
 	value: string | number | boolean;
 	action?: string;
 	description?: string;
+	builderHint?: IParameterBuilderHint;
 	routing?: INodePropertyRouting;
 	outputConnectionType?: NodeConnectionType;
 	inputSchema?: any;
@@ -1743,6 +1829,12 @@ export interface INodePropertyCollection {
 	displayName: string;
 	name: string;
 	values: INodeProperties[];
+	builderHint?: IParameterBuilderHint;
+}
+
+export interface IParameterBuilderHint {
+	message: string;
+	placeholderSupported?: boolean;
 }
 
 export interface INodePropertyValueExtractorBase {
@@ -1949,7 +2041,7 @@ export type ExecuteNodeResult<T = unknown> = {
  *
  * @template T - The type of metadata associated with this result
  */
-type EngineResult<T> = ExecuteNodeResult<T>;
+export type EngineResult<T> = ExecuteNodeResult<T>;
 
 /**
  * Response structure returned from the workflow engine after execution.
@@ -2084,6 +2176,12 @@ export interface INodeTypeBaseDescription {
 	 * optionally replacing provided parts of the description
 	 */
 	usableAsTool?: true | UsableAsToolDescription;
+
+	/** Hints for workflow-sdk type generation, including explicit AI input requirements */
+	builderHint?: IBuilderHint;
+
+	/** Path to schema directory relative to nodes-base/dist/nodes/ (e.g., "Google/Drive") */
+	schemaPath?: string;
 }
 
 /**
@@ -2217,7 +2315,7 @@ export type AINodeConnectionType = Exclude<NodeConnectionType, typeof NodeConnec
 
 export const nodeConnectionTypes: NodeConnectionType[] = Object.values(NodeConnectionTypes);
 
-export interface INodeInputFilter {
+export interface INodeFilter {
 	// TODO: Later add more filter options like categories, subcatogries,
 	//       regex, allow to exclude certain nodes, ... ?
 	//       Potentially change totally after alpha/beta. Is not a breaking change after all.
@@ -2225,12 +2323,17 @@ export interface INodeInputFilter {
 	excludedNodes?: string[];
 }
 
+/**
+ * @deprecated Use INodeFilter instead
+ */
+export type INodeInputFilter = INodeFilter;
+
 export interface INodeInputConfiguration {
 	category?: string;
 	displayName?: string;
 	required?: boolean;
 	type: NodeConnectionType;
-	filter?: INodeInputFilter;
+	filter?: INodeFilter;
 	maxConnections?: number;
 }
 
@@ -2240,6 +2343,7 @@ export interface INodeOutputConfiguration {
 	maxConnections?: number;
 	required?: boolean;
 	type: NodeConnectionType;
+	filter?: INodeFilter;
 }
 
 export type ExpressionString = `={{${string}}}`;
@@ -2251,6 +2355,43 @@ export type NodeDefaults = Partial<{
 	color: string;
 	name: string;
 }>;
+
+/**
+ * Configuration for a single AI subnode input in builderHint.inputs
+ */
+export interface IBuilderHintInputConfig {
+	/** Whether this AI input is required */
+	required: boolean;
+	/** Conditions under which this input should be available/required */
+	displayOptions?: IDisplayOptions;
+}
+
+/**
+ * Maps AI input types (e.g. 'ai_languageModel', 'ai_memory') to their configuration
+ */
+export type BuilderHintInputs = Partial<Record<AINodeConnectionType, IBuilderHintInputConfig>>;
+
+/**
+ * Related node with explanation of why it's related
+ */
+export interface IRelatedNode {
+	/** The node type ID (e.g., '@n8n/n8n-nodes-langchain.memoryBufferWindow') */
+	nodeType: string;
+	/** Brief explanation of why this node is related (e.g., 'Maintains conversation history') */
+	relationHint: string;
+}
+
+/**
+ * Builder hints for workflow-sdk type generation
+ */
+export interface IBuilderHint {
+	/** Explicit AI input requirements for accurate type generation */
+	inputs?: BuilderHintInputs;
+	/** General hint message for LLM workflow builders */
+	message?: string;
+	/** Related nodes that work together with this node */
+	relatedNodes?: IRelatedNode[];
+}
 
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number | number[];
@@ -2283,7 +2424,21 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	communityNodePackageVersion?: string;
 	waitingNodeTooltip?: string;
 	__loadOptionsMethods?: string[]; // only for validation during build
+	/**
+	 * When true, skip generating a name from resource/operation (e.g., "SendAndWait message in Slack")
+	 * and just use defaults.name. Useful for tool nodes that should keep a simple name like "Slack".
+	 */
+	skipNameGeneration?: boolean;
 	features?: NodeFeaturesDefinition;
+	/** Hints for workflow-sdk type generation, including explicit AI input requirements */
+	builderHint?: IBuilderHint;
+	/**
+	 * Dot-notation paths relative to `item.json` that contain
+	 * credential-equivalent sensitive data (e.g. `'headers.authorization'`).
+	 * These fields are always redacted regardless of workflow policy or user
+	 * permissions and are never revealable.
+	 */
+	sensitiveOutputFields?: string[];
 }
 
 export type TriggerPanelDefinition = {
@@ -2392,7 +2547,7 @@ export type IWorkflowDataProxyAdditionalKeys = IDataObject & {
 	$vars?: IDataObject;
 	$secrets?: IDataObject;
 	$pageCount?: number;
-
+	$tool?: { name: string; parameters: string };
 	/** @deprecated */
 	$executionId?: string;
 	/** @deprecated */
@@ -2483,6 +2638,7 @@ export interface IRun {
 	waitTill?: Date | null;
 	startedAt: Date;
 	stoppedAt?: Date;
+	storedAt: ExecutionStorageLocation;
 	status: ExecutionStatus;
 
 	/** ID of the job this execution belongs to. Only in scaling mode. */
@@ -2585,7 +2741,14 @@ export interface ITaskData extends ITaskStartedData {
 	data?: ITaskDataConnections;
 	inputOverride?: ITaskDataConnections;
 	error?: ExecutionError;
+	/**
+	 * When present, indicates `error` was redacted.
+	 * Contains only non-PII technical metadata from the original error.
+	 */
+	redactedError?: IRedactedErrorInfo;
 	metadata?: ITaskMetadata;
+	/** True when at least one credential used by this node was resolved dynamically */
+	usedDynamicCredentials?: boolean;
 }
 
 export interface ISourceData {
@@ -2708,6 +2871,22 @@ export interface IWorkflowExecutionDataProcess {
 	httpResponse?: express.Response; // Used for streaming responses
 	streamingEnabled?: boolean;
 	startedAt?: Date;
+
+	// MCP-specific fields for queue mode support
+	/** Whether this execution was triggered by an MCP tool call. */
+	isMcpExecution?: boolean;
+	/** Type of MCP execution: 'service' for MCP Service, 'trigger' for MCP Trigger Node. */
+	mcpType?: 'service' | 'trigger';
+	/** MCP session ID for routing responses back to the correct client. */
+	mcpSessionId?: string;
+	/** MCP message ID for correlating responses with requests. */
+	mcpMessageId?: string;
+	/** Tool call info for MCP Trigger executions in queue mode. */
+	mcpToolCall?: {
+		toolName: string;
+		arguments: Record<string, unknown>;
+		sourceNodeName?: string;
+	};
 }
 
 export interface ExecuteWorkflowOptions {
@@ -2749,9 +2928,10 @@ type AiEventPayload = {
 	nodeType?: string;
 };
 
+export type AgentRequestQuery = { [nodeName: string]: Record<string, unknown> | string };
 // Used to transport an agent request for partial execution
 export interface AiAgentRequest {
-	query: string | INodeParameters;
+	query: AgentRequestQuery;
 	tool: {
 		name: string;
 	};
@@ -2785,6 +2965,12 @@ export interface IWorkflowExecuteAdditionalData {
 	variables: IDataObject;
 	logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => void;
 	parentCallbackManager?: CallbackManager;
+	/**
+	 * The execution mode of the root (top-level) workflow. Used to propagate manual
+	 * mode context into subworkflows so credential resolution can fall back to static
+	 * data consistently across the entire execution tree.
+	 */
+	rootExecutionMode?: WorkflowExecuteMode;
 	startRunnerTask<T, E = unknown>(
 		additionalData: IWorkflowExecuteAdditionalData,
 		jobType: string,
@@ -2804,6 +2990,12 @@ export interface IWorkflowExecuteAdditionalData {
 		executeData?: IExecuteData,
 	): Promise<Result<T, E>>;
 	getRunnerStatus?(taskType: string): { available: true } | { available: false; reason?: string };
+	validateCookieAuth?: (cookieValue: string) => Promise<void>;
+	/**
+	 * Mutable flag set to true during a node's execution if any credential was resolved
+	 * dynamically. Reset to false by the execution engine before each node runs.
+	 */
+	currentNodeUsedDynamicCredentials?: boolean;
 }
 
 export type WorkflowActivateMode =
@@ -2817,6 +3009,7 @@ export type WorkflowActivateMode =
 export namespace WorkflowSettings {
 	export type CallerPolicy = 'any' | 'none' | 'workflowsFromAList' | 'workflowsFromSameOwner';
 	export type SaveDataExecution = 'DEFAULT' | 'all' | 'none';
+	export type RedactionPolicy = 'none' | 'all' | 'non-manual';
 }
 
 export type WorkflowSettingsBinaryMode = typeof BINARY_MODE_SEPARATE | typeof BINARY_MODE_COMBINED;
@@ -2837,6 +3030,7 @@ export interface IWorkflowSettings {
 	timeSavedMode?: 'fixed' | 'dynamic';
 	availableInMCP?: boolean;
 	credentialResolverId?: string;
+	redactionPolicy?: WorkflowSettings.RedactionPolicy;
 }
 
 export interface WorkflowFEMeta {
@@ -2973,7 +3167,6 @@ export interface INodeGraphItem {
 	operation?: string;
 	domain?: string; // HTTP Request node v1
 	domain_base?: string; // HTTP Request node v2
-	domain_path?: string; // HTTP Request node v2
 	position: [number, number];
 	mode?: string;
 	credential_type?: string; // HTTP Request node v2
@@ -2996,6 +3189,8 @@ export interface INodeGraphItem {
 	language?: string; // only for Code node: 'javascript' or 'python' or 'pythonNative'
 	package_version?: string; // only for community nodes
 	used_guardrails?: string[]; // only for @n8n/n8n-nodes-langchain.guardrails
+	mcp_client_auth_method?: string; // for @n8n/n8n-nodes-langchain.mcpClientTool and @n8n/n8n-nodes-langchain.mcpClient
+	ai_model?: string; // AI model for model nodes and standalone AI nodes
 }
 
 export interface INodeNameIndex {

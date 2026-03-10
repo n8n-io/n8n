@@ -26,11 +26,12 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import type { WorkflowSettings, WorkflowSettingsBinaryMode } from 'n8n-workflow';
-import { deepCopy, BINARY_MODE_COMBINED, BINARY_MODE_SEPARATE } from 'n8n-workflow';
+import { BINARY_MODE_COMBINED, BINARY_MODE_SEPARATE } from 'n8n-workflow';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -40,12 +41,16 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useDebounce } from '@/app/composables/useDebounce';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { useCredentialResolvers } from '@/features/resolvers/composables/useCredentialResolvers';
+import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
 
@@ -57,20 +62,48 @@ const modalBus = createEventBus();
 const telemetry = useTelemetry();
 const { isEligibleForMcpAccess, trackMcpAccessEnabledForWorkflow, mcpTriggerMap } = useMcp();
 const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
-const { check: checkEnvFeatureFlag } = useEnvFeatureFlag();
+const { isEnabled: isCredentialResolverEnabled } = useDynamicCredentials();
+const canListCredentialResolvers = hasPermission(['rbac'], {
+	rbac: { scope: 'credentialResolver:list' },
+});
+const canCreateCredentialResolver = hasPermission(['rbac'], {
+	rbac: { scope: 'credentialResolver:create' },
+});
+const canUpdateCredentialResolver = hasPermission(['rbac'], {
+	rbac: { scope: 'credentialResolver:update' },
+});
 
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 const sourceControlStore = useSourceControlStore();
 const collaborationStore = useCollaborationStore();
 const workflowsStore = useWorkflowsStore();
-const workflowState = injectWorkflowState();
+const workflowsListStore = useWorkflowsListStore();
+const workflowDocumentStore = computed(() => {
+	const wfId = workflowsStore.workflowId;
+	if (!wfId) return null;
+	return useWorkflowDocumentStore(createWorkflowDocumentId(wfId));
+});
 const workflowsEEStore = useWorkflowsEEStore();
 const nodeCreatorStore = useNodeCreatorStore();
 const posthogStore = usePostHog();
 
 const isLoading = ref(true);
 const workflowCallerPolicyOptions = ref<Array<{ key: string; value: string }>>([]);
+const redactionPolicyOptions = ref<Array<{ key: string; value: string }>>([
+	{
+		key: 'none',
+		value: i18n.baseText('workflowSettings.redactionPolicy.options.none'),
+	},
+	{
+		key: 'all',
+		value: i18n.baseText('workflowSettings.redactionPolicy.options.all'),
+	},
+	{
+		key: 'non-manual',
+		value: i18n.baseText('workflowSettings.redactionPolicy.options.nonManual'),
+	},
+]);
 const saveDataErrorExecutionOptions = ref<Array<{ key: string; value: string }>>([]);
 const saveDataSuccessExecutionOptions = ref<Array<{ key: string; value: string }>>([]);
 const saveExecutionProgressOptions = ref<Array<{ key: string | boolean; value: string }>>([]);
@@ -100,13 +133,26 @@ const originalBinaryMode = ref<undefined | WorkflowSettingsBinaryMode>(undefined
 
 const {
 	resolvers: credentialResolvers,
+	resolverTypes: credentialResolverTypes,
 	fetchResolvers: loadCredentialResolvers,
+	fetchResolverTypes: loadCredentialResolverTypes,
 	openCreateModal,
 	openEditModal,
 } = useCredentialResolvers();
 const executionTimeout = ref(0);
 const maxExecutionTimeout = ref(0);
 const timeoutHMS = ref<ITimeoutHMS>({ hours: 0, minutes: 0, seconds: 0 });
+
+const isSelectedResolverEditable = computed(() => {
+	const resolverId = workflowSettings.value.credentialResolverId;
+	if (!resolverId) return false;
+
+	const resolver = credentialResolvers.value.find((r) => r.id === resolverId);
+	if (!resolver) return false;
+
+	const resolverType = credentialResolverTypes.value.find((t) => t.name === resolver.type);
+	return !!resolverType?.options?.length;
+});
 
 const helpTexts = computed(() => ({
 	errorWorkflow: i18n.baseText('workflowSettings.helpTexts.errorWorkflow'),
@@ -120,6 +166,7 @@ const helpTexts = computed(() => ({
 	executionTimeout: i18n.baseText('workflowSettings.helpTexts.executionTimeout'),
 	workflowCallerPolicy: i18n.baseText('workflowSettings.helpTexts.workflowCallerPolicy'),
 	workflowCallerIds: i18n.baseText('workflowSettings.helpTexts.workflowCallerIds'),
+	redactionPolicy: i18n.baseText('workflowSettings.helpTexts.redactionPolicy'),
 }));
 
 const defaultValues = ref({
@@ -142,15 +189,12 @@ const executionLogic = computed(() => {
 const isMCPEnabled = computed(
 	() => settingsStore.isModuleActive('mcp') && settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
 );
-const isCredentialResolverEnabled = computed(() =>
-	checkEnvFeatureFlag.value('DYNAMIC_CREDENTIALS'),
-);
 const readOnlyEnv = computed(
 	() => sourceControlStore.preferences.branchReadOnly || collaborationStore.shouldBeReadOnly,
 );
 const workflowName = computed(() => workflowsStore.workflowName);
 const workflowId = computed(() => workflowsStore.workflowId);
-const workflow = computed(() => workflowsStore.getWorkflowById(workflowId.value));
+const workflow = computed(() => workflowsListStore.getWorkflowById(workflowId.value));
 const isSharingEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
 );
@@ -160,6 +204,11 @@ const workflowOwnerName = computed(() => {
 	return workflowsEEStore.getWorkflowOwnerName(`${workflowId.value}`, fallback);
 });
 const workflowPermissions = computed(() => getResourcePermissions(workflow.value?.scopes).workflow);
+
+const isRedactionSettingVisible = computed(
+	() =>
+		settingsStore.isModuleActive('redaction') && workflowPermissions.value.updateRedactionSetting,
+);
 
 const mcpToggleDisabled = computed(() => {
 	return readOnlyEnv.value || !workflowPermissions.value.update || !isEligibleForMcp.value;
@@ -176,10 +225,7 @@ const mcpToggleTooltip = computed(() => {
 	return i18n.baseText('workflowSettings.availableInMCP.tooltip');
 });
 
-const isEligibleForMcp = computed(() => {
-	if (!workflow?.value?.active) return false;
-	return isEligibleForMcpAccess(workflow.value);
-});
+const isEligibleForMcp = computed(() => isEligibleForMcpAccess(workflow.value));
 
 const savedTimeNodes = computed(() => {
 	if (!workflow?.value?.nodes) return [];
@@ -194,11 +240,11 @@ const hasSavedTimeNodes = computed(() => {
 
 const timeSavedModeOptions = computed(() => [
 	{
-		label: 'Fixed',
+		label: i18n.baseText('workflowSettings.timeSavedPerExecution.tab.fixed'),
 		value: 'fixed' as const,
 	},
 	{
-		label: 'Dynamic (uses time saved nodes)',
+		label: i18n.baseText('workflowSettings.timeSavedPerExecution.tab.dynamic'),
 		value: 'dynamic' as const,
 	},
 ]);
@@ -221,9 +267,9 @@ const executionLogicOptions = computed(() => {
 });
 
 const onCallerIdsInput = (str: string) => {
-	workflowSettings.value.callerIds = /^[a-zA-Z0-9,\s]+$/.test(str)
+	workflowSettings.value.callerIds = /^[a-zA-Z0-9,\s_-]+$/.test(str)
 		? str
-		: str.replace(/[^a-zA-Z0-9,\s]/g, '');
+		: str.replace(/[^a-zA-Z0-9,\s_-]/g, '');
 };
 
 const closeDialog = () => {
@@ -394,7 +440,7 @@ const loadTimezones = async () => {
 };
 
 const loadWorkflows = async (searchTerm?: string) => {
-	const workflowsData = (await workflowsStore.searchWorkflows({
+	const workflowsData = (await workflowsListStore.searchWorkflows({
 		query: searchTerm,
 		isArchived: false,
 		triggerNodeTypes: ['n8n-nodes-base.errorTrigger'],
@@ -502,7 +548,7 @@ const saveSettings = async () => {
 
 	isLoading.value = true;
 	data.versionId = workflowsStore.workflowVersionId;
-	data.expectedChecksum = workflowsStore.workflowChecksum;
+	data.expectedChecksum = workflowDocumentStore?.value?.checksum;
 
 	try {
 		await workflowsStore.updateWorkflow(String(route.params.name), data);
@@ -517,9 +563,10 @@ const saveSettings = async () => {
 		Object.entries(workflowSettings.value).filter(([, value]) => value !== 'DEFAULT'),
 	);
 
-	const oldSettings = deepCopy(workflowsStore.workflowSettings);
+	const oldSettings = (workflowDocumentStore?.value?.getSettingsSnapshot() ??
+		{}) as IWorkflowSettings;
 
-	workflowState.setWorkflowSettings(localWorkflowSettings);
+	workflowDocumentStore?.value?.setSettings(localWorkflowSettings);
 
 	isLoading.value = false;
 
@@ -530,7 +577,7 @@ const saveSettings = async () => {
 
 	closeDialog();
 
-	void externalHooks.run('workflowSettings.saveSettings', { oldSettings });
+	void externalHooks.run('workflowSettings.saveSettings', { oldSettings: { ...oldSettings } });
 	telemetry.track('User updated workflow settings', {
 		workflow_id: workflowsStore.workflowId,
 		// null and undefined values are removed from the object, but we need the keys to be there
@@ -618,7 +665,7 @@ onMounted(async () => {
 
 	try {
 		const promises = [
-			workflowsStore.fetchWorkflow(workflowId.value),
+			workflowsListStore.fetchWorkflow(workflowId.value),
 			loadWorkflows(),
 			loadSaveDataErrorExecutionOptions(),
 			loadSaveDataSuccessExecutionOptions(),
@@ -628,8 +675,8 @@ onMounted(async () => {
 			loadWorkflowCallerPolicyOptions(),
 		];
 
-		if (isCredentialResolverEnabled.value) {
-			promises.push(loadCredentialResolvers());
+		if (isCredentialResolverEnabled.value && canListCredentialResolvers) {
+			promises.push(loadCredentialResolvers(), loadCredentialResolverTypes());
 		}
 
 		await Promise.all(promises);
@@ -641,7 +688,8 @@ onMounted(async () => {
 		);
 	}
 
-	const workflowSettingsData = deepCopy(workflowsStore.workflowSettings);
+	const workflowSettingsData = (workflowDocumentStore?.value?.getSettingsSnapshot() ??
+		{}) as IWorkflowSettings;
 
 	if (workflowSettingsData.timeSavedMode === undefined) {
 		workflowSettingsData.timeSavedMode = 'fixed';
@@ -825,7 +873,10 @@ onBeforeUnmount(() => {
 								v-model="workflowSettings.credentialResolverId"
 								:placeholder="i18n.baseText('workflowSettings.credentialResolver.placeholder')"
 								filterable
-								:disabled="readOnlyEnv || !workflowPermissions.update"
+								clearable
+								:disabled="
+									readOnlyEnv || !workflowPermissions.update || !canListCredentialResolvers
+								"
 								:limit-popper-width="true"
 								data-test-id="workflow-settings-credential-resolver"
 							>
@@ -836,7 +887,7 @@ onBeforeUnmount(() => {
 									:value="resolver.id"
 								>
 								</N8nOption>
-								<template #footer>
+								<template v-if="canCreateCredentialResolver" #footer>
 									<button
 										type="button"
 										:class="$style['create-new-button']"
@@ -850,10 +901,9 @@ onBeforeUnmount(() => {
 								</template>
 							</N8nSelect>
 							<N8nIconButton
-								v-if="workflowSettings.credentialResolverId"
+								v-if="isSelectedResolverEditable && canUpdateCredentialResolver"
+								variant="ghost"
 								icon="pen"
-								type="tertiary"
-								:text="true"
 								size="small"
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								:title="i18n.baseText('workflowSettings.credentialResolver.edit')"
@@ -1060,6 +1110,37 @@ onBeforeUnmount(() => {
 						</N8nSelect>
 					</ElCol>
 				</ElRow>
+				<div v-if="isRedactionSettingVisible" data-test-id="workflow-settings-redaction-policy">
+					<ElRow>
+						<ElCol :span="10" :class="$style['setting-name']">
+							{{ i18n.baseText('workflowSettings.redactionPolicy') }}
+							<N8nTooltip placement="top">
+								<template #content>
+									<div v-text="helpTexts.redactionPolicy"></div>
+								</template>
+								<N8nIcon icon="circle-help" />
+							</N8nTooltip>
+						</ElCol>
+						<ElCol :span="14" class="ignore-key-press-canvas">
+							<N8nSelect
+								v-model="workflowSettings.redactionPolicy"
+								:disabled="readOnlyEnv || !workflowPermissions.updateRedactionSetting"
+								:placeholder="i18n.baseText('workflowSettings.selectOption')"
+								filterable
+								:limit-popper-width="true"
+								data-test-id="workflow-settings-redaction-policy-select"
+							>
+								<N8nOption
+									v-for="option of redactionPolicyOptions"
+									:key="option.key"
+									:label="option.value"
+									:value="option.key"
+								>
+								</N8nOption>
+							</N8nSelect>
+						</ElCol>
+					</ElRow>
+				</div>
 				<ElRow>
 					<ElCol :span="10" :class="$style['setting-name']">
 						{{ i18n.baseText('workflowSettings.timeoutWorkflow') }}

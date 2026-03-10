@@ -1,0 +1,91 @@
+%% Expression Runtime Architecture
+%% Three-layer design for environment-agnostic expression evaluation
+
+graph TB
+    subgraph "Host Process"
+        WF[Workflow Package]
+
+        subgraph "Layer 3: Evaluator"
+            EVAL[ExpressionEvaluator]
+            TOUR[Tournament]
+            CACHE[Code Cache]
+            OBS[Observability]
+        end
+
+        subgraph "Layer 2: Bridge"
+            BRIDGE_IF[RuntimeBridge Interface]
+            ISOVM[IsolatedVmBridge]
+            WEBW[WebWorkerBridge]
+            TASKR[TaskRunnerBridge]
+        end
+
+        DATASTORE[(Data Store)]
+    end
+
+    subgraph "Isolated Context (isolate/worker/subprocess)"
+        subgraph "Layer 1: Runtime"
+            RUNTIME[Runtime Entry]
+            PROXY[Lazy Proxy]
+            HELPERS[Helper Functions]
+            LODASH[lodash]
+            LUXON[Luxon]
+        end
+    end
+
+    WF -->|evaluate| EVAL
+    EVAL --> TOUR
+    EVAL --> CACHE
+    EVAL --> OBS
+    EVAL -->|execute| BRIDGE_IF
+
+    BRIDGE_IF -.->|implements| ISOVM
+    BRIDGE_IF -.->|implements| WEBW
+    BRIDGE_IF -.->|implements| TASKR
+
+    ISOVM -->|IPC/Reference| RUNTIME
+    WEBW -->|postMessage| RUNTIME
+    TASKR -->|IPC| RUNTIME
+
+    RUNTIME --> PROXY
+    RUNTIME --> HELPERS
+    RUNTIME --> LODASH
+    RUNTIME --> LUXON
+
+    PROXY -.->|getData request| ISOVM
+    ISOVM --> DATASTORE
+    DATASTORE -.->|value| ISOVM
+    ISOVM -.->|value| PROXY
+
+    style EVAL fill:#e1f5ff
+    style BRIDGE_IF fill:#fff4e1
+    style RUNTIME fill:#f0ffe1
+
+    style ISOVM fill:#fff4e1,stroke:#ff9800
+    style WEBW fill:#fff4e1,stroke:#9e9e9e,stroke-dasharray: 5 5
+    style TASKR fill:#fff4e1,stroke:#9e9e9e,stroke-dasharray: 5 5
+
+%% Data Flow Sequence
+
+sequenceDiagram
+    participant WF as Workflow
+    participant Eval as ExpressionEvaluator
+    participant Bridge as IsolatedVmBridge
+    participant Runtime as Runtime (Isolated)
+
+    WF->>Eval: evaluate(expr, data)
+    Eval->>Eval: Transform with Tournament
+    Eval->>Eval: Check code cache
+    Eval->>Bridge: execute(code, data)
+    Bridge->>Bridge: Register ivm.Reference callbacks with data
+    Bridge->>Runtime: evalSync("resetDataProxies()")
+    Runtime->>Runtime: Create lazy proxies for $json, $input, etc.
+    Bridge->>Runtime: Run compiled script
+
+    Runtime->>Runtime: Access $json.email
+    Runtime->>Bridge: __getValueAtPath(['$json','email']) [ivm.Reference]
+    Bridge->>Bridge: Navigate path in data
+    Bridge-->>Runtime: Value
+
+    Runtime-->>Bridge: Expression result
+    Bridge-->>Eval: Result
+    Eval-->>WF: Result

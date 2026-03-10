@@ -1,61 +1,50 @@
 import { Config, Env } from '../decorators';
 
+/**
+ * Config for the workflow history compaction service, which compacts recent versions and trims old ones to manage storage.
+ */
 @Config
 export class WorkflowHistoryCompactionConfig {
-	@Env('N8N_WORKFLOW_HISTORY_COMPACTION_MINIMUM_AGE_HOURS')
 	/**
-	 * The minimum time we leave workflows in the history untouched
-	 * before we start compacting them.
-	 *
-	 * The workflow versions we compare and compact are those with
-	 * a `createdAt` value between `compactingMinimumAgeHours - compactingTimeWindowHours`
-	 * and `compactingMinimumAgeHours`
-
+	 * Minimum age in hours before a workflow version is eligible for optimization.
+	 * Versions compacted are those with `createdAt` between `optimizingMinimumAgeHours - optimizingTimeWindowHours` and `optimizingMinimumAgeHours`.
 	 */
-	compactingMinimumAgeHours: number = 3;
+	@Env('N8N_WORKFLOW_HISTORY_OPTIMIZING_MINIMUM_AGE_HOURS')
+	optimizingMinimumAgeHours: number = 0.25;
 
 	/**
-	 * The time window we consider when compacting versions.
-	 *
-	 * The workflow versions we compare and compact are those with
-	 * a `createdAt` value between `compactingMinimumAgeHours - compactingTimeWindowHours`
-	 * and `compactingMinimumAgeHours`.
-	 *
-	 * Compaction will happen every `compactingTimeWindowHours/2` hours to
-	 * account for small gaps and downtime.
+	 * Time window in hours used when selecting versions to optimize.
+	 * Optimization runs roughly every `optimizingTimeWindowHours / 2` hours.
 	 */
-	@Env('N8N_WORKFLOW_HISTORY_COMPACTION_TIME_WINDOW_HOURS')
-	compactingTimeWindowHours: number = 2;
+	@Env('N8N_WORKFLOW_HISTORY_OPTIMIZING_TIME_WINDOW_HOURS')
+	optimizingTimeWindowHours: number = 2;
 
 	/**
-	 * The maximum number of compared workflow versions before waiting `batchDelayMs`
-	 * before continuing with the next workflowId
+	 * Minimum age in days before a workflow version is eligible for trimming.
+	 * Versions trimmed are those with `createdAt` between `trimmingMinimumAgeDays - trimmingTimeWindowDays` and `trimmingMinimumAgeDays`.
 	 */
+	@Env('N8N_WORKFLOW_HISTORY_TRIMMING_MINIMUM_AGE_DAYS')
+	trimmingMinimumAgeDays: number = 7;
+
+	/**
+	 * Time window in days used when selecting versions to trim. Trimming runs once per day.
+	 */
+	@Env('N8N_WORKFLOW_HISTORY_TRIMMING_TIME_WINDOW_DAYS')
+	trimmingTimeWindowDays: number = 2;
+
+	/** Maximum number of workflow versions to process per workflow before waiting `batchDelayMs` before the next workflow. */
 	@Env('N8N_WORKFLOW_HISTORY_COMPACTION_BATCH_SIZE')
 	batchSize: number = 100;
 
-	/**
-	 * Delay in milliseconds before continuing with the next workflowId to compact
-	 * after having compared at least `batchSize` workflow versions
-	 */
+	/** Delay in milliseconds after processing `batchSize` versions before moving to the next workflow. */
 	@Env('N8N_WORKFLOW_HISTORY_COMPACTION_BATCH_DELAY_MS')
 	batchDelayMs: number = 1_000;
 
 	/**
-	 * Whether to run compaction on instance start up.
+	 * Whether to run a trim pass on startup (for example, to fix existing history or for development).
 	 *
-	 * Useful to apply a larger compaction value to cover existing
-	 * histories if something went wrong previously, and for development.
-	 *
-	 * @warning Long-running blocking operation that will increase startup time.
+	 * @warning Blocking; can significantly increase startup time.
 	 */
-	@Env('N8N_WORKFLOW_HISTORY_COMPACTION_RUN_ON_START_UP')
-	compactOnStartUp: boolean = false;
-
-	/**
-	 * The minimum time in milliseconds before two consecutive versions are
-	 * considered part of different sessions and should thus never be merged together.
-	 */
-	@Env('N8N_WORKFLOW_HISTORY_COMPACTION_MINIMUM_TIME_BETWEEN_SESSIONS_MS')
-	minimumTimeBetweenSessionsMs: number = 20 * 60 * 1000;
+	@Env('N8N_WORKFLOW_HISTORY_COMPACTION_TRIM_ON_START_UP')
+	trimOnStartUp: boolean = false;
 }

@@ -279,11 +279,6 @@ const goToUpgrade = () => {
 	justify-content: space-between;
 	padding-top: var(--spacing--sm);
 	padding-right: var(--spacing--md);
-
-	button {
-		display: flex;
-		align-items: center;
-	}
 }
 
 .executionList {

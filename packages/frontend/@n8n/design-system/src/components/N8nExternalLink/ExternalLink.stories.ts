@@ -3,7 +3,7 @@ import type { StoryFn } from '@storybook/vue3-vite';
 import N8nExternalLink from './ExternalLink.vue';
 
 export default {
-	title: 'Atoms/ExternalLink',
+	title: 'Core/ExternalLink',
 	component: N8nExternalLink,
 	argTypes: {
 		size: {

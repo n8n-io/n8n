@@ -2,6 +2,7 @@ import type {
 	LoginRequestDto,
 	PasswordUpdateRequestDto,
 	SettingsUpdateRequestDto,
+	UserSelfSettingsUpdateRequestDto,
 	UsersListFilterDto,
 	UserUpdateRequestDto,
 	Role,
@@ -169,7 +170,7 @@ export async function updateCurrentUser(
 
 export async function updateCurrentUserSettings(
 	context: IRestApiContext,
-	settings: SettingsUpdateRequestDto,
+	settings: UserSelfSettingsUpdateRequestDto,
 ): Promise<IUserSettings> {
 	return await makeRestApiRequest(context, 'PATCH', '/me/settings', settings);
 }

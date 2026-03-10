@@ -82,6 +82,12 @@ const homeProject = computed<ProjectSharingData | undefined>(
 	() => props.credential?.homeProject ?? credentialDataHomeProject.value,
 );
 const isHomeTeamProject = computed(() => homeProject.value?.type === ProjectTypes.Team);
+const isPersonalSpaceRestricted = computed(
+	() =>
+		homeProject.value?.type === ProjectTypes.Personal &&
+		homeProject.value?.id === projectsStore.personalProject?.id &&
+		!props.credentialPermissions.share,
+);
 const credentialRoleTranslations = computed<Record<string, string>>(() => {
 	return {
 		'credential:user': i18n.baseText('credentialEdit.credentialSharing.role.user'),
@@ -122,7 +128,7 @@ watch(
 );
 
 onMounted(async () => {
-	await Promise.all([usersStore.fetchUsers(), projectsStore.getAllProjects()]);
+	await projectsStore.getAllProjects();
 });
 
 function goToUpgrade() {
@@ -149,7 +155,11 @@ function goToUpgrade() {
 			/>
 		</div>
 		<div v-else>
-			<N8nInfoTip v-if="credentialPermissions.share" :bold="false" class="mb-s">
+			<N8nInfoTip
+				v-if="credentialPermissions.share || isPersonalSpaceRestricted"
+				:bold="false"
+				class="mb-s"
+			>
 				{{ i18n.baseText('credentialEdit.credentialSharing.info.owner') }}
 			</N8nInfoTip>
 			<N8nInfoTip v-else-if="isHomeTeamProject" :bold="false" class="mb-s">
@@ -169,6 +179,11 @@ function goToUpgrade() {
 				:home-project="homeProject"
 				:readonly="!credentialPermissions.share"
 				:static="!credentialPermissions.share"
+				:disabled-tooltip="
+					isPersonalSpaceRestricted
+						? i18n.baseText('credentialEdit.credentialSharing.info.personalSpaceRestricted')
+						: undefined
+				"
 				:placeholder="sharingSelectPlaceholder"
 				:can-share-globally="canShareGlobally"
 				:is-shared-globally="isSharedGlobally"

@@ -132,6 +132,13 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		return this.webhookData.webhookDescription.name;
 	}
 
+	async validateCookieAuth(cookieValue: string): Promise<void> {
+		if (!this.additionalData.validateCookieAuth) {
+			throw new ApplicationError('Cookie auth validation is not available');
+		}
+		await this.additionalData.validateCookieAuth(cookieValue);
+	}
+
 	async getInputConnectionData(
 		connectionType: AINodeConnectionType,
 		itemIndex: number,

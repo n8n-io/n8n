@@ -12,24 +12,23 @@ import type {
 } from '@/features/execution/executions/executions.types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { getPairedItemsMapping } from '@/app/utils/pairedItemUtils';
 import {
 	type INodeIssueData,
 	type INodeIssueObjectProperty,
+	type IWorkflowSettings,
 	NodeHelpers,
 	type IDataObject,
 	type INodeParameters,
-	type IWorkflowSettings,
-	type IPinData,
 } from 'n8n-workflow';
 import { inject } from 'vue';
 import * as workflowsApi from '@/app/api/workflows';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { isEmpty, isJsonKeyObject } from '@/app/utils/typesUtils';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
+import { isEmpty } from '@/app/utils/typesUtils';
 import { clearPopupWindowState } from '@/features/execution/executions/executions.utils';
+import { DEFAULT_SETTINGS } from '@/app/stores/workflowDocument/useWorkflowDocumentSettings';
 import { useDocumentTitle } from './useDocumentTitle';
 import { useWorkflowStateStore } from '@/app/stores/workflowState.store';
 import { isObject } from '@/app/utils/objectUtils';
@@ -38,8 +37,10 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 import { createEventBus } from '@n8n/utils/event-bus';
-import type { WorkflowMetadata } from '@n8n/rest-api-client';
-import { dataPinningEventBus } from '../event-bus';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 export type WorkflowStateBusEvents = {
 	updateNodeProperties: [WorkflowState, INodeUpdatePropertiesInformation];
@@ -49,6 +50,7 @@ export const workflowStateEventBus = createEventBus<WorkflowStateBusEvents>();
 
 export function useWorkflowState() {
 	const ws = useWorkflowsStore();
+	const workflowsListStore = useWorkflowsListStore();
 	const workflowStateStore = useWorkflowStateStore();
 	const uiStore = useUIStore();
 	const rootStore = useRootStore();
@@ -60,13 +62,13 @@ export function useWorkflowState() {
 
 	function setWorkflowName(data: { newName: string; setStateDirty: boolean }) {
 		if (data.setStateDirty) {
-			uiStore.markStateDirty();
+			uiStore.markStateDirty('metadata');
 		}
 		ws.workflow.name = data.newName;
 		ws.workflowObject.name = data.newName;
 
-		if (ws.workflow.id && ws.workflowsById[ws.workflow.id]) {
-			ws.workflowsById[ws.workflow.id].name = data.newName;
+		if (ws.workflow.id && workflowsListStore.workflowsById[ws.workflow.id]) {
+			workflowsListStore.workflowsById[ws.workflow.id].name = data.newName;
 		}
 	}
 
@@ -79,13 +81,19 @@ export function useWorkflowState() {
 		ws.workflowObject.setConnections({});
 	}
 
+	/** @deprecated Use `workflowDocumentStore.removeAllNodes()` instead. */
 	function removeAllNodes(data: { setStateDirty: boolean; removePinData: boolean }): void {
 		if (data.setStateDirty) {
 			uiStore.markStateDirty();
 		}
 
 		if (data.removePinData) {
-			ws.workflow.pinData = {};
+			if (ws.workflow.id) {
+				const workflowDocumentStore = useWorkflowDocumentStore(
+					createWorkflowDocumentId(ws.workflow.id),
+				);
+				workflowDocumentStore.setPinData({});
+			}
 		}
 
 		ws.workflow.nodes.splice(0, ws.workflow.nodes.length);
@@ -105,6 +113,7 @@ export function useWorkflowState() {
 		ws.workflowExecutionStartedData = undefined;
 	}
 
+	/** @deprecated Use `workflowDocumentStore.resetAllNodesIssues()` instead. */
 	function resetAllNodesIssues(): boolean {
 		ws.workflow.nodes.forEach((node) => {
 			node.issues = undefined;
@@ -112,23 +121,10 @@ export function useWorkflowState() {
 		return true;
 	}
 
-	function setActive(activeVersionId: string | null) {
-		ws.workflow.active = activeVersionId !== null;
-		ws.workflow.activeVersionId = activeVersionId;
-	}
-
 	function setWorkflowId(id?: string) {
 		// Set the workflow ID directly, or empty string if not provided
 		ws.workflow.id = id || '';
 		ws.workflowObject.id = ws.workflow.id;
-	}
-
-	function setWorkflowSettings(workflowSettings: IWorkflowSettings) {
-		ws.private.setWorkflowSettings(workflowSettings);
-	}
-
-	function setWorkflowTagIds(tags: string[]) {
-		ws.workflow.tags = tags;
 	}
 
 	function setWorkflowProperty<K extends keyof IWorkflowDb>(key: K, value: IWorkflowDb[K]) {
@@ -144,9 +140,9 @@ export function useWorkflowState() {
 		projectId?: string,
 		parentFolderId?: string,
 	): Promise<INewWorkflowData> {
-		let workflowData = {
+		let workflowData: { name: string; settings: IWorkflowSettings } = {
 			name: '',
-			settings: { ...ws.defaults.settings },
+			settings: { ...DEFAULT_SETTINGS },
 		};
 		try {
 			const data: IDataObject = {
@@ -167,69 +163,6 @@ export function useWorkflowState() {
 		setWorkflowName({ newName: workflowData.name, setStateDirty: false });
 
 		return workflowData;
-	}
-
-	function makeNewWorkflowShareable() {
-		const { currentProject, personalProject } = useProjectsStore();
-		const homeProject = currentProject ?? personalProject ?? {};
-		const scopes = currentProject?.scopes ?? personalProject?.scopes ?? [];
-
-		ws.workflow.homeProject = homeProject as ProjectSharingData;
-		ws.workflow.scopes = scopes;
-	}
-
-	async function getNewWorkflowDataAndMakeShareable(
-		name?: string,
-		projectId?: string,
-		parentFolderId?: string,
-	): Promise<INewWorkflowData> {
-		const workflowData = await getNewWorkflowData(name, projectId, parentFolderId);
-		makeNewWorkflowShareable();
-		return workflowData;
-	}
-
-	function addWorkflowTagIds(tags: string[]) {
-		ws.workflow.tags = [...new Set([...(ws.workflow.tags ?? []), ...tags])] as IWorkflowDb['tags'];
-	}
-
-	function removeWorkflowTagId(tagId: string) {
-		const tags = ws.workflow.tags as string[];
-		const updated = tags.filter((id: string) => id !== tagId);
-		ws.workflow.tags = updated as IWorkflowDb['tags'];
-	}
-
-	function setWorkflowScopes(scopes: IWorkflowDb['scopes']): void {
-		ws.workflow.scopes = scopes;
-	}
-
-	function setWorkflowMetadata(metadata: WorkflowMetadata | undefined): void {
-		ws.workflow.meta = metadata;
-	}
-
-	function addToWorkflowMetadata(data: Partial<WorkflowMetadata>): void {
-		ws.workflow.meta = {
-			...ws.workflow.meta,
-			...data,
-		};
-	}
-
-	function setWorkflowPinData(data: IPinData = {}) {
-		const validPinData = Object.keys(data).reduce((accu, nodeName) => {
-			accu[nodeName] = data[nodeName].map((item) => {
-				if (!isJsonKeyObject(item)) {
-					return { json: item };
-				}
-
-				return item;
-			});
-
-			return accu;
-		}, {} as IPinData);
-
-		ws.workflow.pinData = validPinData;
-		ws.workflowObject.setPinData(validPinData);
-
-		dataPinningEventBus.emit('pin-data', validPinData);
 	}
 
 	////
@@ -274,11 +207,11 @@ export function useWorkflowState() {
 		setWorkflowExecutionData(null);
 		resetAllNodesIssues();
 
-		setActive(ws.defaults.activeVersionId);
 		setWorkflowId('');
 		setWorkflowName({ newName: '', setStateDirty: false });
-		setWorkflowSettings({ ...ws.defaults.settings });
-		setWorkflowTagIds([]);
+		// Settings are managed by workflowDocumentStore; reset the runtime Workflow instance directly
+		ws.workflowObject.setSettings({ ...DEFAULT_SETTINGS });
+		// Note: Tags are now managed by workflowDocumentStore, which is disposed during reset
 
 		setActiveExecutionId(undefined);
 		workflowStateStore.executingNode.executingNode.length = 0;
@@ -291,6 +224,7 @@ export function useWorkflowState() {
 	////
 
 	/**
+	 * @deprecated Use per-node mutation methods on `workflowDocumentStore` instead.
 	 * @returns `true` if the object was changed
 	 */
 	function updateNodeAtIndex(nodeIndex: number, nodeData: Partial<INodeUi>): boolean {
@@ -310,6 +244,7 @@ export function useWorkflowState() {
 		return false;
 	}
 
+	/** @deprecated Use `workflowDocumentStore.setNodeParameters()` instead. */
 	function setNodeParameters(updateInformation: IUpdateInformation, append?: boolean): void {
 		// Find the node that should be updated
 		const nodeIndex = ws.workflow.nodes.findIndex((node) => {
@@ -339,6 +274,7 @@ export function useWorkflowState() {
 		}
 	}
 
+	/** @deprecated Use `workflowDocumentStore.setLastNodeParameters()` instead. */
 	function setLastNodeParameters(updateInformation: IUpdateInformation): void {
 		const latestNode = findLast(
 			ws.workflow.nodes,
@@ -361,6 +297,7 @@ export function useWorkflowState() {
 		}
 	}
 
+	/** @deprecated Use `workflowDocumentStore.setNodeValue()` instead. */
 	function setNodeValue(updateInformation: IUpdateInformation): void {
 		// Find the node that should be updated
 		const nodeIndex = ws.workflow.nodes.findIndex((node) => {
@@ -388,6 +325,7 @@ export function useWorkflowState() {
 		}
 	}
 
+	/** @deprecated Use `workflowDocumentStore.setNodePositionById()` instead. */
 	function setNodePositionById(id: string, position: INodeUi['position']): void {
 		const node = ws.workflow.nodes.find((n) => n.id === id);
 		if (!node) return;
@@ -397,6 +335,7 @@ export function useWorkflowState() {
 
 	/**
 	 * Update node by ID. Finds the node by ID and updates it with the provided data.
+	 * @deprecated Use `workflowDocumentStore.updateNodeById()` instead.
 	 * @returns `true` if the node was found and updated
 	 */
 	function updateNodeById(nodeId: string, nodeData: Partial<INodeUi>): boolean {
@@ -408,6 +347,7 @@ export function useWorkflowState() {
 	/**
 	 * Reset parametersLastUpdatedAt to current timestamp for a node.
 	 * Used to mark a node as "dirty" when its parameters change.
+	 * @deprecated Use `workflowDocumentStore.resetParametersLastUpdatedAt()` instead.
 	 */
 	function resetParametersLastUpdatedAt(nodeName: string): void {
 		if (!ws.nodeMetadata[nodeName]) {
@@ -416,6 +356,7 @@ export function useWorkflowState() {
 		ws.nodeMetadata[nodeName].parametersLastUpdatedAt = Date.now();
 	}
 
+	/** @deprecated Use `workflowDocumentStore.updateNodeProperties()` instead. */
 	function updateNodeProperties(
 		this: WorkflowState,
 		updateInformation: INodeUpdatePropertiesInformation,
@@ -441,6 +382,7 @@ export function useWorkflowState() {
 		workflowStateEventBus.emit('updateNodeProperties', [this, updateInformation]);
 	}
 
+	/** @deprecated Use `workflowDocumentStore.setNodeIssue()` instead. */
 	function setNodeIssue(nodeIssueData: INodeIssueData): void {
 		const nodeIndex = ws.workflow.nodes.findIndex((node) => {
 			return node.name === nodeIssueData.node;
@@ -480,20 +422,11 @@ export function useWorkflowState() {
 		removeAllNodes,
 		setWorkflowExecutionData,
 		resetAllNodesIssues,
-		setActive,
 		setWorkflowId,
 		setWorkflowName,
-		setWorkflowSettings,
-		setWorkflowTagIds,
 		setWorkflowProperty,
 		setActiveExecutionId,
-		getNewWorkflowDataAndMakeShareable,
-		addWorkflowTagIds,
-		removeWorkflowTagId,
-		setWorkflowScopes,
-		setWorkflowMetadata,
-		addToWorkflowMetadata,
-		setWorkflowPinData,
+		getNewWorkflowData,
 
 		// Execution
 		markExecutionAsStopped,

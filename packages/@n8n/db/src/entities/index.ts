@@ -8,6 +8,7 @@ import { CredentialsEntity } from './credentials-entity';
 import { ExecutionAnnotation } from './execution-annotation.ee';
 import { ExecutionData } from './execution-data';
 import { ExecutionEntity } from './execution-entity';
+import type { ExecutionDataStorageLocation } from './execution-entity';
 import { ExecutionMetadata } from './execution-metadata';
 import { Folder } from './folder';
 import { FolderTagMapping } from './folder-tag-mapping';
@@ -15,8 +16,11 @@ import { InvalidAuthToken } from './invalid-auth-token';
 import { ProcessedData } from './processed-data';
 import { Project } from './project';
 import { ProjectRelation } from './project-relation';
+import { ProjectSecretsProviderAccess } from './project-secrets-provider-access';
+import type { SecretsProviderAccessRole } from './project-secrets-provider-access';
 import { Role } from './role';
 import { Scope } from './scope';
+import { SecretsProviderConnection } from './secrets-provider-connection';
 import { Settings } from './settings';
 import { SharedCredentials } from './shared-credentials';
 import { SharedWorkflow } from './shared-workflow';
@@ -42,6 +46,7 @@ export {
 	BinaryDataFile,
 	SourceTypeSchema,
 	type SourceType,
+	type ExecutionDataStorageLocation,
 	WebhookEntity,
 	AuthIdentity,
 	CredentialsEntity,
@@ -70,6 +75,9 @@ export {
 	TestRun,
 	TestCaseExecution,
 	ExecutionEntity,
+	ProjectSecretsProviderAccess,
+	type SecretsProviderAccessRole,
+	SecretsProviderConnection,
 };
 
 export const entities = {
@@ -107,4 +115,6 @@ export const entities = {
 	TestCaseExecution,
 	ExecutionEntity,
 	Role,
+	ProjectSecretsProviderAccess,
+	SecretsProviderConnection,
 };

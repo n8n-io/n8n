@@ -5,6 +5,7 @@ import { CredentialModal } from './components/CredentialModal';
 
 export class TemplateCredentialSetupPage extends BasePage {
 	readonly credentialModal = new CredentialModal(this.page.getByTestId('editCredential-modal'));
+
 	getTitle(titleText: string): Locator {
 		return this.page.getByRole('heading', { name: titleText, level: 1 });
 	}
@@ -41,12 +42,6 @@ export class TemplateCredentialSetupPage extends BasePage {
 		return this.page.getByTestId('setup-workflow-credentials-modal');
 	}
 
-	getSetupCredentialModalCloseButton(): Locator {
-		return this.page
-			.getByTestId('setup-workflow-credentials-modal')
-			.getByRole('button', { name: 'Close this dialog' });
-	}
-
 	getSetupCredentialModalSteps(): Locator {
 		return this.page
 			.getByTestId('setup-workflow-credentials-modal')
@@ -73,10 +68,5 @@ export class TemplateCredentialSetupPage extends BasePage {
 		const messageBox = this.getMessageBox();
 		await messageBox.waitFor({ state: 'visible' });
 		await messageBox.locator('.btn--cancel').click();
-	}
-
-	async closeSetupCredentialModal(): Promise<void> {
-		await this.getSetupCredentialModalCloseButton().click();
-		await this.getCanvasCredentialModal().waitFor({ state: 'hidden' });
 	}
 }

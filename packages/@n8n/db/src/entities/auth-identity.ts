@@ -16,7 +16,7 @@ export class AuthIdentity extends WithTimestamps {
 	)
 	user: User;
 
-	@PrimaryColumn()
+	@PrimaryColumn({ length: 255 })
 	providerId: string;
 
 	@PrimaryColumn()

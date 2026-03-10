@@ -45,11 +45,11 @@ export const HTML_NODE_TYPE = 'n8n-nodes-base.html';
 export const MAILGUN_NODE_TYPE = 'n8n-nodes-base.mailgun';
 export const POSTGRES_NODE_TYPE = 'n8n-nodes-base.postgres';
 export const MYSQL_NODE_TYPE = 'n8n-nodes-base.mySql';
+export const MICROSOFT_AGENT365_TRIGGER_NODE_TYPE =
+	'@n8n/n8n-nodes-langchain.microsoftAgent365Trigger';
 export const SCHEDULE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.scheduleTrigger';
-
-// Chat hub (search) tools
-export const JINA_AI_TOOL_NODE_TYPE = 'n8n-nodes-base.jinaAiTool';
-export const SERP_API_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolSerpApi';
+export const DATA_TABLE_NODE_TYPE = 'n8n-nodes-base.dataTable';
+export const DATA_TABLE_TOOL_NODE_TYPE = 'n8n-nodes-base.dataTableTool';
 
 export const STARTING_NODE_TYPES = [
 	MANUAL_TRIGGER_NODE_TYPE,
@@ -64,6 +64,13 @@ export const SCRIPTING_NODE_TYPES = [
 	FUNCTION_ITEM_NODE_TYPE,
 	CODE_NODE_TYPE,
 	AI_TRANSFORM_NODE_TYPE,
+];
+
+export const DATA_TABLE_NODE_TYPES = [
+	DATA_TABLE_NODE_TYPE,
+	DATA_TABLE_TOOL_NODE_TYPE,
+	EVALUATION_TRIGGER_NODE_TYPE,
+	EVALUATION_NODE_TYPE,
 ];
 
 export const ADD_FORM_NOTICE = 'addFormPage';
@@ -102,6 +109,29 @@ export const CHAT_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatTool';
 export const MEMORY_MANAGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.memoryManager';
 export const MEMORY_BUFFER_WINDOW_NODE_TYPE = '@n8n/n8n-nodes-langchain.memoryBufferWindow';
 export const GUARDRAILS_NODE_TYPE = '@n8n/n8n-nodes-langchain.guardrails';
+export const MCP_CLIENT_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpClientTool';
+export const MCP_CLIENT_NODE_TYPE = '@n8n/n8n-nodes-langchain.mcpClient';
+export const ANTHROPIC_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.anthropic';
+export const OLLAMA_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.ollama';
+export const GOOGLE_GEMINI_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.googleGemini';
+
+export const AI_VENDOR_NODE_TYPES = [
+	OPENAI_LANGCHAIN_NODE_TYPE,
+	ANTHROPIC_LANGCHAIN_NODE_TYPE,
+	OLLAMA_LANGCHAIN_NODE_TYPE,
+	GOOGLE_GEMINI_LANGCHAIN_NODE_TYPE,
+];
+
+export const LANGCHAIN_LM_NODE_TYPE_PREFIX = '@n8n/n8n-nodes-langchain.lm';
+
+export const CHAT_HUB_VECTOR_STORE_PG_VECTOR_NODE_TYPE =
+	'@n8n/n8n-nodes-langchain.chatHubVectorStorePGVector';
+export const CHAT_HUB_VECTOR_STORE_QDRANT_NODE_TYPE =
+	'@n8n/n8n-nodes-langchain.chatHubVectorStoreQdrant';
+export const CHAT_HUB_VECTOR_STORE_PINECONE_NODE_TYPE =
+	'@n8n/n8n-nodes-langchain.chatHubVectorStorePinecone';
+export const DOCUMENT_DEFAULT_DATA_LOADER_NODE_TYPE =
+	'@n8n/n8n-nodes-langchain.documentDefaultDataLoader';
 
 export const LANGCHAIN_CUSTOM_TOOLS = [
 	CODE_TOOL_LANGCHAIN_NODE_TYPE,

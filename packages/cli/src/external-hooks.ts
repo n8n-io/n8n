@@ -147,6 +147,10 @@ export class ExternalHooks {
 		}
 	}
 
+	hasHook<HookName extends HookNames>(hookName: HookName): boolean {
+		return !!this.registered[hookName]?.length;
+	}
+
 	async run<HookName extends HookNames>(
 		hookName: HookName,
 		hookParameters?: ExternalHooksMap[HookName],

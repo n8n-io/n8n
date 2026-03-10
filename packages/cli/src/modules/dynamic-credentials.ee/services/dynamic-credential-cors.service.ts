@@ -43,7 +43,7 @@ export class DynamicCredentialCorsService {
 
 		this.defaultOptions = {
 			allowedOrigins,
-			allowedHeaders: ['Authorization', 'Content-Type', 'X-Requested-With'],
+			allowedHeaders: ['Authorization', 'Content-Type', 'X-Requested-With', 'X-Authorization'],
 			allowCredentials: this.dynamicCredentialConfig.corsAllowCredentials,
 		};
 	}

@@ -1,43 +1,46 @@
 import type {
-	NodeCreateElement,
 	ActionCreateElement,
-	SubcategorizedNodeTypes,
-	SimplifiedNodeType,
-	INodeCreateElement,
-	SectionCreateElement,
 	ActionTypeDescription,
+	INodeCreateElement,
+	LinkCreateElement,
+	NodeCreateElement,
 	NodeFilterType,
 	OpenTemplateElement,
-	LinkCreateElement,
+	SectionCreateElement,
+	SimplifiedNodeType,
+	SubcategorizedNodeTypes,
 } from '@/Interface';
 import {
 	AI_CATEGORY_AGENTS,
+	AI_CATEGORY_HUMAN_IN_THE_LOOP,
 	AI_CATEGORY_OTHER_TOOLS,
+	AI_CATEGORY_VECTOR_STORES,
 	AI_SUBCATEGORY,
 	AI_TRANSFORM_NODE_TYPE,
+	BETA_NODES,
 	CORE_NODES_CATEGORY,
 	DEFAULT_SUBCATEGORY,
 	DISCORD_NODE_TYPE,
 	HUMAN_IN_THE_LOOP_CATEGORY,
 	MICROSOFT_TEAMS_NODE_TYPE,
 	RECOMMENDED_NODES,
-	BETA_NODES,
 } from '@/app/constants';
 import { v4 as uuidv4 } from 'uuid';
 
-import { sublimeSearch } from '@n8n/utils/search/sublimeSearch';
-import { reRankSearchResults } from '@n8n/utils/search/reRankSearchResults';
-import type { NodeViewItemSection } from './views/viewsData';
 import { i18n } from '@n8n/i18n';
-import sortBy from 'lodash/sortBy';
+import { reRankSearchResults } from '@n8n/utils/search/reRankSearchResults';
+import { sublimeSearch } from '@n8n/utils/search/sublimeSearch';
 import * as changeCase from 'change-case';
+import sortBy from 'lodash/sortBy';
+import type { NodeViewItemSection } from './views/viewsData';
 
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import type { NodeIconSource } from '@/app/utils/nodeIcon';
-import type { CommunityNodeDetails, ViewStack } from './composables/useViewStacks';
 import { SampleTemplates } from '@/features/workflows/templates/utils/workflowSamples';
+import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import type { CommunityNodeDetails, ViewStack } from './composables/useViewStacks';
 
 const COMMUNITY_NODE_TYPE_PREVIEW_TOKEN = '-preview';
 
@@ -157,6 +160,39 @@ export function isAINode(node: INodeCreateElement) {
 
 	return false;
 }
+
+export function nodeTypesToCreateElements(
+	nodeTypes: string[],
+	createElements: INodeCreateElement[],
+	sortAlphabetically = true,
+) {
+	const map = createElements.reduce((acc: Record<string, INodeCreateElement>, element) => {
+		acc[element.key] = element;
+		return acc;
+	}, {});
+	const foundElements: INodeCreateElement[] = [];
+	for (const nodeType of nodeTypes) {
+		const createElement = map[nodeType];
+		if (createElement) {
+			foundElements.push(createElement);
+		}
+	}
+	return sortAlphabetically ? sortNodeCreateElements(foundElements) : foundElements;
+}
+
+export function mapToolSubcategoryIcon(sectionKey: string): IconName {
+	switch (sectionKey) {
+		case AI_CATEGORY_OTHER_TOOLS:
+			return 'globe';
+		case AI_CATEGORY_VECTOR_STORES:
+			return 'database';
+		case AI_CATEGORY_HUMAN_IN_THE_LOOP:
+			return 'badge-check';
+		default:
+			return 'globe';
+	}
+}
+
 export function groupItemsInSections(
 	items: INodeCreateElement[],
 	sections: string[] | NodeViewItemSection[],

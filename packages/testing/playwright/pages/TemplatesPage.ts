@@ -3,6 +3,10 @@ import type { Locator } from '@playwright/test';
 import { BasePage } from './BasePage';
 
 export class TemplatesPage extends BasePage {
+	getPageHeading(): Locator {
+		return this.page.getByRole('heading', { name: /workflow.*templates/i });
+	}
+
 	getTemplateCards(): Locator {
 		return this.page.getByTestId('template-card');
 	}

@@ -1,14 +1,15 @@
 import {
 	ChatHubConversationModel,
 	ChatSessionId,
+	PROVIDER_CREDENTIAL_TYPE_MAP,
 	type ChatHubBaseLLMModel,
-	type ChatHubInputModality,
-	type ChatModelMetadataDto,
+	type ChatHubAgentKnowledgeItem,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
 	SharedWorkflow,
 	SharedWorkflowRepository,
+	User,
 	withTransaction,
 	WorkflowEntity,
 	WorkflowRepository,
@@ -16,10 +17,13 @@ import {
 import { Service } from '@n8n/di';
 import { EntityManager } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
+import { Cipher } from 'n8n-core';
 import {
+	CHAT_NODE_TYPE,
 	AGENT_LANGCHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 	createRunExecutionData,
+	DOCUMENT_DEFAULT_DATA_LOADER_NODE_TYPE,
 	IConnections,
 	IExecuteData,
 	INode,
@@ -36,12 +40,37 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+
+import { ChatHubCredentialsService } from './chat-hub-credentials.service';
+import { ChatHubToolService } from './chat-hub-tool.service';
+import { CHATHUB_EXTRACTOR_NAME, ChatHubAuthenticationMetadata } from './chat-hub-extractor';
 import { ChatHubMessage } from './chat-hub-message.entity';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
-import { getModelMetadata, NODE_NAMES, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
-import { MessageRecord, type ContentBlock, type ChatTriggerResponseMode } from './chat-hub.types';
+import {
+	CHAT_TRIGGER_NODE_MIN_VERSION,
+	getModelMetadata,
+	NODE_NAMES,
+	PROVIDER_NODE_TYPE_MAP,
+	SUPPORTED_RESPONSE_MODES,
+	TOOLS_AGENT_NODE_MIN_VERSION,
+	type ChatHubInputModality,
+	type InternalModelMetadata,
+} from './chat-hub.constants';
+import { ChatHubSettingsService } from './chat-hub.settings.service';
+import {
+	chatTriggerParamsShape,
+	MessageRecord,
+	PreparedChatWorkflow,
+	type ContentBlock,
+	type ChatTriggerResponseMode,
+	type SemanticSearchOptions,
+} from './chat-hub.types';
 import { getMaxContextWindowTokens } from './context-limits';
 import { inE2ETests } from '../../constants';
+import { EMBEDDINGS_NODE_TYPE_MAP, parseMessage, collectChatArtifacts } from '@n8n/chat-hub';
+import { ChatHubAgentRepository } from './chat-hub-agent.repository';
 
 @Service()
 export class ChatHubWorkflowService {
@@ -50,7 +79,21 @@ export class ChatHubWorkflowService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly chatHubAttachmentService: ChatHubAttachmentService,
-	) {}
+		private readonly chatHubAgentRepository: ChatHubAgentRepository,
+		private readonly chatHubSettingsService: ChatHubSettingsService,
+		private readonly chatHubCredentialsService: ChatHubCredentialsService,
+		private readonly chatHubToolService: ChatHubToolService,
+		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly cipher: Cipher,
+	) {
+		this.logger = this.logger.scoped('chat-hub');
+	}
+
+	async deleteChatWorkflow(workflowId: string): Promise<void> {
+		if (process.env.N8N_SKIP_CHAT_WORKFLOW_CLEANUP !== 'true') {
+			await this.workflowRepository.delete(workflowId);
+		}
+	}
 
 	async createChatWorkflow(
 		userId: string,
@@ -64,6 +107,8 @@ export class ChatHubWorkflowService {
 		systemMessage: string | undefined,
 		tools: INode[],
 		timeZone: string,
+		vectorStoreSearch: { agentId: string; options: SemanticSearchOptions } | null,
+		executionMetadata: ChatHubAuthenticationMetadata,
 		trx?: EntityManager,
 	): Promise<{
 		workflowData: IWorkflowBase;
@@ -83,8 +128,10 @@ export class ChatHubWorkflowService {
 				attachments,
 				credentials,
 				model,
-				systemMessage: systemMessage ?? this.getBaseSystemMessage(timeZone),
+				systemMessage: systemMessage ?? this.getBaseSystemMessage(history, timeZone),
 				tools,
+				vectorStoreSearch,
+				executionMetadata,
 			});
 
 			const newWorkflow = new WorkflowEntity();
@@ -181,38 +228,6 @@ export class ChatHubWorkflowService {
 		});
 	}
 
-	prepareExecutionData(
-		triggerNode: INode,
-		sessionId: string,
-		message: string,
-		attachments: IBinaryData[],
-	): IExecuteData[] {
-		// Attachments are already processed (id field populated) by the caller
-		return [
-			{
-				node: triggerNode,
-				data: {
-					main: [
-						[
-							{
-								json: {
-									sessionId,
-									action: 'sendMessage',
-									chatInput: message,
-									files: attachments.map(({ data, ...metadata }) => metadata),
-								},
-								binary: Object.fromEntries(
-									attachments.map((attachment, index) => [`data${index}`, attachment]),
-								),
-							},
-						],
-					],
-				},
-				source: null,
-			},
-		];
-	}
-
 	/**
 	 * Parses input modalities from chat trigger options
 	 * Converts MIME types string to ChatHubInputModality array
@@ -242,6 +257,86 @@ export class ChatHubWorkflowService {
 		return Array.from(modalities);
 	}
 
+	/**
+	 * Resolves the allowed MIME types string for the chat hub API from chat trigger options.
+	 * Returns the MIME types string to be used as the `accept` attribute on the file input.
+	 */
+	resolveAllowedMimeTypes(options?: {
+		allowFileUploads?: boolean;
+		allowedFilesMimeTypes?: string;
+	}): string {
+		if (!options?.allowFileUploads) {
+			return '';
+		}
+
+		const allowedFilesMimeTypes = options.allowedFilesMimeTypes;
+		if (!allowedFilesMimeTypes || allowedFilesMimeTypes === '*/*') {
+			return '*/*';
+		}
+
+		return allowedFilesMimeTypes;
+	}
+
+	/**
+	 * Resolves the attachment policy from a workflow's nodes by finding the
+	 * chat trigger and extracting file upload settings.
+	 */
+	resolveWorkflowAttachmentPolicy(nodes: INode[]) {
+		const chatTrigger = nodes.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
+		const chatTriggerParams = chatTriggerParamsShape.safeParse(chatTrigger?.parameters).data;
+		const allowFileUploads = chatTriggerParams?.options?.allowFileUploads ?? false;
+
+		return {
+			allowFileUploads,
+			allowedFilesMimeTypes: this.resolveAllowedMimeTypes(chatTriggerParams?.options),
+		};
+	}
+
+	/**
+	 * Resolves the attachment upload policy for the given model.
+	 * Used to validate attachments before storage.
+	 */
+	async getAttachmentPolicy(
+		model: ChatHubConversationModel,
+		user: User,
+		trx: EntityManager,
+	): Promise<{ allowFileUploads: boolean; allowedFilesMimeTypes: string }> {
+		if (model.provider === 'n8n') {
+			const workflow = await this.workflowFinderService.findWorkflowForUser(
+				model.workflowId,
+				user,
+				['workflow:execute-chat'],
+				{ includeTags: false, includeParentFolder: false, includeActiveVersion: true, em: trx },
+			);
+
+			if (!workflow?.activeVersion) {
+				throw new BadRequestError('Workflow not found');
+			}
+
+			return this.resolveWorkflowAttachmentPolicy(workflow.activeVersion.nodes);
+		}
+
+		if (model.provider === 'custom-agent') {
+			const agent = await this.chatHubAgentRepository.getOneById(model.agentId, user.id, trx);
+
+			if (!agent?.provider || !agent.model) {
+				throw new BadRequestError('Agent not found or has no model configured');
+			}
+
+			const metadata = getModelMetadata(agent.provider, agent.model);
+			return {
+				allowFileUploads: metadata.allowFileUploads,
+				allowedFilesMimeTypes: metadata.allowedFilesMimeTypes,
+			};
+		}
+
+		const metadata = getModelMetadata(model.provider, model.model);
+		return {
+			allowFileUploads: metadata.allowFileUploads,
+			allowedFilesMimeTypes: metadata.allowedFilesMimeTypes,
+		};
+	}
+
 	private getUniqueNodeName(originalName: string, existingNames: Set<string>): string {
 		if (!existingNames.has(originalName)) {
 			return originalName;
@@ -268,6 +363,8 @@ export class ChatHubWorkflowService {
 		model,
 		systemMessage,
 		tools,
+		vectorStoreSearch,
+		executionMetadata,
 	}: {
 		userId: string;
 		sessionId: ChatSessionId;
@@ -278,6 +375,8 @@ export class ChatHubWorkflowService {
 		model: ChatHubBaseLLMModel;
 		systemMessage: string;
 		tools: INode[];
+		vectorStoreSearch: { agentId: string; options: SemanticSearchOptions } | null;
+		executionMetadata: ChatHubAuthenticationMetadata;
 	}) {
 		const chatTriggerNode = this.buildChatTriggerNode();
 		const toolsAgentNode = this.buildToolsAgentNode(model, systemMessage);
@@ -295,6 +394,9 @@ export class ChatHubWorkflowService {
 			restoreMemoryNode,
 			clearMemoryNode,
 			mergeNode,
+			...(vectorStoreSearch
+				? this.buildVectorStoreNodes(vectorStoreSearch.agentId, vectorStoreSearch.options)
+				: []),
 		];
 
 		const nodeNames = new Set(nodes.map((node) => node.name));
@@ -376,6 +478,32 @@ export class ChatHubWorkflowService {
 
 				return acc;
 			}, {}),
+			...(vectorStoreSearch
+				? {
+						[NODE_NAMES.EMBEDDINGS_MODEL]: {
+							[NodeConnectionTypes.AiEmbedding]: [
+								[
+									{
+										node: NODE_NAMES.VECTOR_STORE,
+										type: NodeConnectionTypes.AiEmbedding,
+										index: 0,
+									},
+								],
+							],
+						},
+						[NODE_NAMES.VECTOR_STORE]: {
+							[NodeConnectionTypes.AiTool]: [
+								[
+									{
+										node: NODE_NAMES.REPLY_AGENT,
+										type: NodeConnectionTypes.AiTool,
+										index: 0,
+									},
+								],
+							],
+						},
+					}
+				: {}),
 		};
 
 		const nodeExecutionStack = this.prepareExecutionData(
@@ -383,6 +511,7 @@ export class ChatHubWorkflowService {
 			sessionId,
 			humanMessage,
 			attachments,
+			executionMetadata,
 		);
 
 		const executionData = createRunExecutionData({
@@ -474,21 +603,92 @@ export class ChatHubWorkflowService {
 	}
 
 	getSystemMessageMetadata(timeZone: string) {
-		const now = inE2ETests ? DateTime.fromISO('2025-01-15T12:00:00.000Z') : DateTime.now();
+		if (inE2ETests) {
+			return '__e2e_system_prompt_placeholder__';
+		}
+
+		const now = DateTime.now();
 		const isoTime = now.setZone(timeZone).toISO({ includeOffset: true });
 
-		return `The user's current local date and time is: ${isoTime} (timezone: ${timeZone}).
+		return `
+# Current Date and Time
+
+The user's current local date and time is: ${isoTime} (timezone: ${timeZone}).
 When you need to reference "now", use this date and time.
 
-You can only produce text responses.
-You cannot create, generate, edit, or display images, videos, or other non-text content.
-If the user asks you to generate or edit an image (or other media), explain that you are not able to do that and, if helpful, describe in words what the image could look like or how they could create it using external tools.`;
+# Output Capabilities
+
+## Multimedia Generation
+
+You are allowed to describe, explain and analyze provided multimedia data if you're capable of, but not allowed to create, generate, edit, or display images, videos, or other non-text content.
+If the user asks you to generate or edit an image (or other media), explain that you are not able to do that and, if helpful, describe in words what the image could look like or how they could create it using external tools.
+
+## Document Generation
+
+You can create and edit documents for the user using special XML-like commands. When you use these commands, documents appear in a side panel next to this chat where users can view them in real-time. You can create multiple documents in a conversation, and users can switch between them using a dropdown selector.
+
+Write these commands DIRECTLY in your response - do NOT wrap them in code fences or backticks.
+
+### Creating a Document
+
+To create a new document, include this command directly in your response:
+
+<command:artifact-create>
+<title>Document Title</title>
+<type>md</type>
+<content>
+Document content here...
+</content>
+</command:artifact-create>
+
+The type can be:
+- html for HTML documents
+- md for Markdown documents
+- A code language like typescript, python, json, etc. for code files
+
+Example response:
+"I'll create an RFC document for you.
+
+<command:artifact-create>
+<title>RFC: New Feature</title>
+<type>md</type>
+<content>
+# RFC: New Feature
+
+## Summary
+This feature will...
+</content>
+</command:artifact-create>
+
+I've created the RFC above. Let me know if you'd like any changes!"
+
+### Editing a Document
+
+To make targeted edits to a document, you must specify the exact title of the document you want to edit:
+
+<command:artifact-edit>
+<title>Document Title</title>
+<oldString>text to find</oldString>
+<newString>replacement text</newString>
+<replaceAll>false</replaceAll>
+</command:artifact-edit>
+
+- <title> is required and must match the exact title of an existing document.
+- Set replaceAll to true to replace all occurrences, or false to replace only the first occurrence.
+- If the document title doesn't exist, the edit command will be ignored.
+
+IMPORTANT:
+- Write these commands directly in your response text, NOT inside code blocks or fences.
+- ALWAYS include conversational text before and/or after document commands. Never send a message with only commands and no explanation.
+`;
 	}
 
-	private getBaseSystemMessage(timeZone: string) {
+	private getBaseSystemMessage(history: ChatHubMessage[], timeZone: string) {
+		const artifactContext = this.buildArtifactContext(history);
+
 		return `You are a helpful assistant.
 
-${this.getSystemMessageMetadata(timeZone)}`;
+${this.getSystemMessageMetadata(timeZone) + artifactContext}`;
 	}
 
 	private buildToolsAgentNode(
@@ -771,7 +971,7 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 		attachment: IBinaryData,
 		currentTotalSize: number,
 		maxTotalPayloadSize: number,
-		modelMetadata: ChatModelMetadataDto,
+		modelMetadata: InternalModelMetadata,
 	): Promise<ContentBlock> {
 		class TotalFileSizeExceededError extends Error {}
 		class UnsupportedMimeTypeError extends Error {}
@@ -912,5 +1112,630 @@ Respond the title only:`,
 			return 'video';
 		}
 		return 'file';
+	}
+
+	prepareExecutionData(
+		triggerNode: INode,
+		sessionId: string,
+		message: string,
+		attachments: IBinaryData[],
+		executionMetadata: ChatHubAuthenticationMetadata,
+	): IExecuteData[] {
+		const encryptedMetadata = this.cipher.encrypt(executionMetadata);
+		// Attachments are already processed (id field populated) by the caller
+		return [
+			{
+				node: {
+					...triggerNode,
+					parameters: {
+						...triggerNode.parameters,
+						executionsHooksVersion: 1,
+						contextEstablishmentHooks: {
+							hooks: [
+								{
+									hookName: CHATHUB_EXTRACTOR_NAME,
+									isAllowedToFail: true,
+								},
+							],
+						},
+					},
+				},
+				data: {
+					main: [
+						[
+							{
+								encryptedMetadata,
+								json: {
+									sessionId,
+									action: 'sendMessage',
+									chatInput: message,
+									files: attachments.map(({ data, ...metadata }) => metadata),
+								},
+								binary: Object.fromEntries(
+									attachments.map((attachment, index) => [`data${index}`, attachment]),
+								),
+							},
+						],
+					],
+				},
+				source: null,
+			},
+		];
+	}
+
+	async prepareReplyWorkflow(
+		user: User,
+		sessionId: ChatSessionId,
+		credentials: INodeCredentials,
+		model: ChatHubConversationModel,
+		history: ChatHubMessage[],
+		message: string,
+		tools: INode[],
+		attachments: IBinaryData[],
+		timeZone: string,
+		trx: EntityManager,
+		executionMetadata: ChatHubAuthenticationMetadata,
+	): Promise<PreparedChatWorkflow> {
+		if (model.provider === 'n8n') {
+			return await this.prepareWorkflowAgentWorkflow(
+				user,
+				sessionId,
+				model.workflowId,
+				message,
+				attachments,
+				trx,
+				executionMetadata,
+			);
+		}
+
+		if (model.provider === 'custom-agent') {
+			return await this.prepareChatAgentWorkflow(
+				model.agentId,
+				user,
+				sessionId,
+				history,
+				message,
+				attachments,
+				timeZone,
+				trx,
+				executionMetadata,
+			);
+		}
+
+		return await this.prepareBaseChatWorkflow(
+			user,
+			sessionId,
+			credentials,
+			model,
+			history,
+			message,
+			undefined,
+			tools,
+			attachments,
+			timeZone,
+			null,
+			trx,
+			executionMetadata,
+		);
+	}
+
+	private async prepareBaseChatWorkflow(
+		user: User,
+		sessionId: ChatSessionId,
+		credentials: INodeCredentials,
+		model: ChatHubBaseLLMModel,
+		history: ChatHubMessage[],
+		message: string,
+		systemMessage: string | undefined,
+		tools: INode[],
+		attachments: IBinaryData[],
+		timeZone: string,
+		vectorStoreSearch: { agentId: string; options: SemanticSearchOptions } | null,
+		trx: EntityManager,
+		executionMetadata: ChatHubAuthenticationMetadata,
+	) {
+		await this.chatHubSettingsService.ensureModelIsAllowed(model, trx);
+		this.chatHubCredentialsService.findProviderCredential(model.provider, credentials);
+		const { id: projectId } = await this.chatHubCredentialsService.findPersonalProject(user, trx);
+
+		return await this.createChatWorkflow(
+			user.id,
+			sessionId,
+			projectId,
+			history,
+			message,
+			attachments,
+			credentials,
+			model,
+			systemMessage,
+			tools,
+			timeZone,
+			vectorStoreSearch,
+			executionMetadata,
+			trx,
+		);
+	}
+
+	private async prepareChatAgentWorkflow(
+		agentId: string,
+		user: User,
+		sessionId: ChatSessionId,
+		history: ChatHubMessage[],
+		message: string,
+		attachments: IBinaryData[],
+		timeZone: string,
+		trx: EntityManager,
+		executionMetadata: ChatHubAuthenticationMetadata,
+	) {
+		const agent = await this.chatHubAgentRepository.getOneById(agentId, user.id, trx);
+
+		if (!agent) {
+			throw new BadRequestError('Agent not found');
+		}
+
+		if (!agent.provider || !agent.model) {
+			throw new BadRequestError('Provider or model not set for agent');
+		}
+
+		const credentialId = agent.credentialId;
+		if (!credentialId) {
+			throw new BadRequestError('Credentials not set for agent');
+		}
+
+		const artifactContext = this.buildArtifactContext(history);
+		const systemMessage = [
+			'Combine provided tools and knowledge to answer questions.',
+			this.getSystemMessageMetadata(timeZone) + artifactContext,
+			this.buildCustomInstructionsContext(agent.systemPrompt),
+			this.buildFileKnowledgeContext(agent.files),
+		]
+			.filter(Boolean)
+			.join('\n\n');
+
+		const model: ChatHubBaseLLMModel = {
+			provider: agent.provider,
+			model: agent.model,
+		};
+
+		const credentials: INodeCredentials = {
+			[PROVIDER_CREDENTIAL_TYPE_MAP[agent.provider]]: {
+				id: credentialId,
+				name: '',
+			},
+		};
+
+		const tools = await this.chatHubToolService.getToolDefinitionsForAgent(agentId, trx);
+		const semanticSearchOptions = await this.chatHubSettingsService.getSemanticSearchOptions();
+
+		return await this.prepareBaseChatWorkflow(
+			user,
+			sessionId,
+			credentials,
+			model,
+			history,
+			message,
+			systemMessage,
+			tools,
+			attachments,
+			timeZone,
+			agent.files.length > 0 && semanticSearchOptions
+				? { agentId: agent.id, options: semanticSearchOptions }
+				: null,
+			trx,
+			executionMetadata,
+		);
+	}
+
+	private async prepareWorkflowAgentWorkflow(
+		user: User,
+		sessionId: ChatSessionId,
+		workflowId: string,
+		message: string,
+		attachments: IBinaryData[],
+		trx: EntityManager,
+		executionMetadata: ChatHubAuthenticationMetadata,
+	) {
+		const workflow = await this.workflowFinderService.findWorkflowForUser(
+			workflowId,
+			user,
+			['workflow:execute-chat'],
+			{ includeTags: false, includeParentFolder: false, includeActiveVersion: true, em: trx },
+		);
+
+		if (!workflow?.activeVersion) {
+			throw new BadRequestError('Workflow not found');
+		}
+
+		const chatTriggers = workflow.activeVersion.nodes.filter(
+			(node) => node.type === CHAT_TRIGGER_NODE_TYPE,
+		);
+
+		if (chatTriggers.length !== 1) {
+			throw new BadRequestError('Workflow must have exactly one chat trigger');
+		}
+
+		const chatTrigger = chatTriggers[0];
+
+		if (chatTrigger.typeVersion < CHAT_TRIGGER_NODE_MIN_VERSION) {
+			throw new BadRequestError(
+				'Chat Trigger node version is too old to support Chat. Please update the node.',
+			);
+		}
+
+		const chatTriggerParams = chatTriggerParamsShape.safeParse(chatTrigger.parameters).data;
+		if (!chatTriggerParams) {
+			throw new BadRequestError('Chat Trigger node has invalid parameters');
+		}
+
+		if (!chatTriggerParams.availableInChat) {
+			throw new BadRequestError('Chat Trigger node must be made available in Chat');
+		}
+
+		const responseMode = chatTriggerParams.options?.responseMode ?? 'streaming';
+		if (!SUPPORTED_RESPONSE_MODES.includes(responseMode)) {
+			throw new BadRequestError(
+				'Chat Trigger node response mode must be set to "When Last Node Finishes", "Using Response Nodes" or "Streaming" to use the workflow on Chat',
+			);
+		}
+
+		const chatResponseNodes = workflow.activeVersion.nodes.filter(
+			(node) => node.type === CHAT_NODE_TYPE,
+		);
+
+		if (chatResponseNodes.length > 0 && responseMode !== 'responseNodes') {
+			throw new BadRequestError(
+				'Chat nodes are not supported with the selected response mode. Please set the response mode to "Using Response Nodes" or remove the nodes from the workflow.',
+			);
+		}
+
+		const agentNodes = workflow.activeVersion.nodes?.filter(
+			(node) => node.type === AGENT_LANGCHAIN_NODE_TYPE,
+		);
+
+		// Agents older than this can't do streaming
+		if (agentNodes.some((node) => node.typeVersion < TOOLS_AGENT_NODE_MIN_VERSION)) {
+			throw new BadRequestError(
+				'Agent node version is too old to support streaming responses. Please update the node.',
+			);
+		}
+
+		const nodeExecutionStack = this.prepareExecutionData(
+			chatTrigger,
+			sessionId,
+			message,
+			attachments,
+			executionMetadata,
+		);
+
+		const executionData = createRunExecutionData({
+			executionData: {
+				nodeExecutionStack,
+			},
+			manualData: {
+				userId: user.id,
+			},
+		});
+
+		const workflowData: IWorkflowBase = {
+			...workflow,
+			nodes: workflow.activeVersion.nodes,
+			connections: workflow.activeVersion.connections,
+			// Force saving data on successful executions for custom agent workflows
+			// to be able to read the results after execution.
+			settings: {
+				...workflow.settings,
+				saveDataSuccessExecution: 'all',
+			},
+		};
+
+		return {
+			workflowData,
+			executionData,
+			responseMode,
+		};
+	}
+
+	private buildCustomInstructionsContext(systemPrompt: string): string {
+		if (!systemPrompt.trim()) {
+			return '';
+		}
+
+		return `## Instructions from the user
+
+${systemPrompt
+	.split('\n')
+	.map((line) => `> ${line}`)
+	.join('\n')}`;
+	}
+
+	private buildFileKnowledgeContext(knowledgeItems: ChatHubAgentKnowledgeItem[]): string {
+		if (knowledgeItems.length === 0) {
+			return '';
+		}
+
+		const fileList = knowledgeItems.map((f) => `- ${f.fileName}`).join('\n');
+
+		return `## Your Knowledge
+
+You have access to the following files as a searchable knowledge base:
+
+${fileList}
+
+Use the vector store tool to search the content of these files when answering questions that may be related to them.
+Do not proactively mention these files to the user.`;
+	}
+
+	private buildArtifactContext(history: ChatHubMessage[]): string {
+		const artifacts = collectChatArtifacts(history.flatMap(parseMessage));
+		if (artifacts.length === 0) {
+			return '';
+		}
+
+		// Multiple artifacts - show all of them
+		const artifactsText = artifacts
+			.map(
+				(artifact, index) => `
+
+### Document ${index + 1}: ${artifact.title} (type: ${artifact.type})
+
+${artifact.content}
+`,
+			)
+			.join('\n');
+
+		return `
+
+## Current Documents
+
+${artifactsText}
+
+You can update the most recent document using the commands described above, or create a new document.`;
+	}
+
+	private buildVectorStoreNodes(agentId: string, options: SemanticSearchOptions): INode[] {
+		const embeddingsModelNode = this.buildEmbeddingsModelNode(options);
+		const vectorStoreNode = this.buildVectorStoreNode(agentId, options);
+
+		return [embeddingsModelNode, vectorStoreNode];
+	}
+
+	private buildEmbeddingsModelNode({ embeddingModel: embedding }: SemanticSearchOptions): INode {
+		const embeddingsNodeType = EMBEDDINGS_NODE_TYPE_MAP[embedding.provider];
+
+		if (!embeddingsNodeType) {
+			throw new BadRequestError(
+				`Embeddings are not supported for provider '${embedding.provider}'. Please configure an embedding provider for this agent.`,
+			);
+		}
+
+		const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[embedding.provider];
+
+		return {
+			parameters: {
+				options: {},
+			},
+			type: embeddingsNodeType.name,
+			typeVersion: embeddingsNodeType.version,
+			position: [800, 720],
+			id: uuidv4(),
+			name: NODE_NAMES.EMBEDDINGS_MODEL,
+			credentials: {
+				[credentialType]: {
+					id: embedding.credentialId,
+					name: credentialType,
+				},
+			},
+		};
+	}
+
+	private buildVectorStoreNode(agentId: string, settings: SemanticSearchOptions): INode {
+		return {
+			parameters: {
+				mode: 'retrieve-as-tool',
+				toolName: 'file_knowledge',
+				toolDescription: 'Use this tool to query context files',
+				options: {
+					metadata: {
+						metadataValues: [{ name: 'agentId', value: agentId }],
+					},
+				},
+			},
+			type: settings.vectorStore.nodeType,
+			typeVersion: 1,
+			position: [800, 496],
+			id: uuidv4(),
+			name: 'Vector Store',
+			credentials: {
+				[settings.vectorStore.credentialType]: {
+					id: settings.vectorStore.credentialId,
+					name: '',
+				},
+			},
+		};
+	}
+
+	async createEmbeddingsInsertionWorkflow(
+		user: User,
+		projectId: string,
+		attachments: Array<{ attachment: IBinaryData; knowledgeId: string }>,
+		agentId: string,
+		vectorStoreSearch: SemanticSearchOptions,
+		trx: EntityManager,
+		workflowId: string,
+	): Promise<{
+		workflowData: IWorkflowBase;
+		executionData: IRunExecutionData;
+	}> {
+		const triggerNode: INode = {
+			parameters: {
+				options: {
+					allowFileUploads: true,
+				},
+			},
+			type: CHAT_TRIGGER_NODE_TYPE,
+			typeVersion: 1.4,
+			position: [-48, 0],
+			id: uuidv4(),
+			name: NODE_NAMES.CHAT_TRIGGER,
+			webhookId: uuidv4(),
+		};
+
+		const embeddingsNode: INode = {
+			...this.buildEmbeddingsModelNode(vectorStoreSearch),
+			position: [128, 464],
+			name: NODE_NAMES.EMBEDDINGS_MODEL,
+		};
+
+		const nodes: INode[] = [
+			{
+				parameters: {
+					mode: 'insert',
+				},
+				type: vectorStoreSearch.vectorStore.nodeType,
+				typeVersion: 1,
+				position: [208, 0],
+				id: uuidv4(),
+				name: NODE_NAMES.VECTOR_STORE,
+				credentials: {
+					[vectorStoreSearch.vectorStore.credentialType]: {
+						id: vectorStoreSearch.vectorStore.credentialId,
+						name: '',
+					},
+				},
+			},
+			triggerNode,
+			embeddingsNode,
+			{
+				parameters: {
+					dataType: 'binary',
+					options: {
+						metadata: {
+							metadataValues: [
+								{
+									name: 'fileName',
+									// Extract fileName from the binary data field
+									value: '={{ $binary.data.fileName }}',
+								},
+								{
+									name: 'agentId',
+									value: agentId,
+								},
+								{
+									name: 'fileKnowledgeId',
+									value: '={{ $json.knowledgeId }}',
+								},
+							],
+						},
+					},
+				},
+				type: DOCUMENT_DEFAULT_DATA_LOADER_NODE_TYPE,
+				typeVersion: 1.1,
+				position: [320, 192],
+				id: uuidv4(),
+				name: NODE_NAMES.DEFAULT_DATA_LOADER,
+			},
+		];
+		const connections: IConnections = {
+			[NODE_NAMES.VECTOR_STORE]: {
+				main: [[]],
+			},
+			[NODE_NAMES.CHAT_TRIGGER]: {
+				main: [
+					[
+						{
+							node: NODE_NAMES.VECTOR_STORE,
+							type: 'main',
+							index: 0,
+						},
+					],
+				],
+			},
+			[NODE_NAMES.EMBEDDINGS_MODEL]: {
+				ai_embedding: [
+					[
+						{
+							node: NODE_NAMES.VECTOR_STORE,
+							type: 'ai_embedding',
+							index: 0,
+						},
+					],
+				],
+			},
+			[NODE_NAMES.DEFAULT_DATA_LOADER]: {
+				ai_document: [
+					[
+						{
+							node: NODE_NAMES.VECTOR_STORE,
+							type: 'ai_document',
+							index: 0,
+						},
+					],
+				],
+			},
+		};
+		// Create one item per file so each file gets its own metadata with correct fileName
+		const items = attachments.map(({ attachment, knowledgeId }) => ({
+			json: {
+				sessionId: uuidv4(),
+				action: 'sendMessage',
+				chatInput: '',
+				knowledgeId,
+				files: [{ ...attachment, data: undefined }], // Strip data field
+			},
+			binary: {
+				data: attachment,
+			},
+		}));
+
+		const nodeExecutionStack: IExecuteData[] = [
+			{
+				node: triggerNode,
+				data: {
+					main: [items],
+				},
+				source: null,
+			},
+		];
+
+		return await withTransaction(this.workflowRepository.manager, trx, async (em) => {
+			const newWorkflow = new WorkflowEntity();
+
+			// Chat workflows are created as archived to hide them
+			// from the user by default while they are being run.
+			newWorkflow.isArchived = true;
+
+			newWorkflow.id = workflowId;
+			newWorkflow.versionId = uuidv4();
+			newWorkflow.name = `Chat files insertion ${uuidv4()}`;
+			newWorkflow.active = false;
+			newWorkflow.activeVersionId = null;
+			newWorkflow.nodes = nodes;
+			newWorkflow.connections = connections;
+			newWorkflow.settings = {
+				executionOrder: 'v1',
+			};
+
+			const workflow = await em.save<WorkflowEntity>(newWorkflow);
+
+			await em.save<SharedWorkflow>(
+				this.sharedWorkflowRepository.create({
+					role: 'workflow:owner',
+					projectId,
+					workflow,
+				}),
+			);
+
+			return {
+				workflowData: workflow,
+				executionData: createRunExecutionData({
+					executionData: {
+						nodeExecutionStack,
+					},
+					manualData: {
+						userId: user.id,
+					},
+				}),
+			};
+		});
 	}
 }

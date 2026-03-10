@@ -70,7 +70,11 @@ export interface ITemplatesWorkflow {
 	totalViews: number;
 	user: {
 		username: string;
+		name: string;
+		avatar: string;
+		verified: boolean;
 	};
+	readyToDemo?: boolean | null;
 }
 
 export interface ITemplatesWorkflowInfo {
