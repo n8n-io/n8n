@@ -75,7 +75,7 @@ describe('TaskBrokerServer', () => {
 
 			// @ts-expect-error Private property
 			await server.handleUpgradeRequest(
-				mock<TaskBrokerServerInitRequest>({ url: '/runners/_ws', headers: {} }),
+				mock<TaskBrokerServerInitRequest>({ url: '/runners/_ws?id=runner1', headers: {} }),
 				socket,
 				Buffer.from(''),
 			);
