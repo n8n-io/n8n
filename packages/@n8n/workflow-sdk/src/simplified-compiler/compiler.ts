@@ -1001,6 +1001,19 @@ function extractFunctionCall(stmt: AcornNode, ctx: TranspilerContext): FunctionC
 }
 
 /**
+ * Infer n8n Set node assignment type from a resolved expression.
+ * Whole-object refs (ending with .json or bare $json) → 'object';
+ * everything else → 'string'.
+ */
+function inferAssignmentType(resolvedExpression: string): 'string' | 'object' {
+	const inner = resolvedExpression.replace(/^={{/, '').replace(/}}$/, '').trim();
+	if (inner.endsWith('.json') || inner === '$json') {
+		return 'object';
+	}
+	return 'string';
+}
+
+/**
  * Process a sub-function call: emit Set node for params + Execute Workflow node.
  */
 function processFunctionCall(ctx: TranspilerContext, fnCall: FunctionCallInfo): void {
@@ -1025,7 +1038,7 @@ function processFunctionCall(ctx: TranspilerContext, fnCall: FunctionCallInfo): 
 				return {
 					id: `assign_${i}`,
 					name: param,
-					type: 'string',
+					type: inferAssignmentType(argValue),
 					value: argValue,
 				};
 			})
@@ -2593,12 +2606,15 @@ function processTryStatement(
 			const setVar = `set${ctx.setCounter}`;
 			const setName = `Set ${subWfName} params`;
 
-			const assignments = capturedVars.map((cv, i) => ({
-				id: `assign_${i}`,
-				name: cv.name,
-				type: 'string',
-				value: resolveExpressionFromAST(cv.astNode, ctx),
-			}));
+			const assignments = capturedVars.map((cv, i) => {
+				const value = resolveExpressionFromAST(cv.astNode, ctx);
+				return {
+					id: `assign_${i}`,
+					name: cv.name,
+					type: inferAssignmentType(value),
+					value,
+				};
+			});
 
 			const configObj = {
 				name: setName,

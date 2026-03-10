@@ -331,11 +331,10 @@ Fixtures with HTTP calls can provide a `nock.ts` file exporting `setupNock(): no
 
 - **Round-trip**: 32/32 fixtures pass (100%)
 - **Schema validation**: 32/32 fixtures pass (100%). `KNOWN_SCHEMA_VIOLATIONS` is empty.
-- **Execution**: 28/32 pass, 4 fail (W05, W10, W15, W27). No skips.
+- **Execution**: 29/32 pass, 3 fail (W05, W10, W15). No skips.
   - W05: Pre-existing issue — spreadsheet rows are arrays not objects, splitter produces invalid items
   - W10: `extractLinks` function undefined in Code node mock environment
   - W15: `workflow.run()` by name requires DB lookup, not supported in mock executor
-  - W27: Set node `type: 'string'` coerces objects to `[object Object]` in try/catch sub-workflow parameter passing
 
 **Key insight**: Nested sub-workflow WorkflowBuilder references (e.g., `workflowJson: __tryCatch_1Workflow` inside a loop body sub-workflow) are handled automatically by `resolveWorkflowBuilderValues()` in `json-serializer.ts`. It duck-types WorkflowBuilder instances (`toJSON` + `add` methods) at any nesting depth and converts them to `JSON.stringify(value.toJSON())`.
 
@@ -354,7 +353,10 @@ When generating splitter Code nodes for `for (const x of items)`, variables with
 `extractHttpCall()` now captures `Identifier` and `MemberExpression` AST nodes (not just `BinaryExpression`) for `urlAstNode`. `generateHttpSDK()` falls back to `resolveExpressionFromAST()` when `resolveUrlExpression()` fails, allowing function parameters to resolve via `varSourceMap`.
 
 ### Try/catch sub-workflow captured variable kind
-Captured variables in try/catch sub-workflows always use `'code'` kind (seed to `varSourceMap` in `compileTryCatchBodyAsSubWorkflow`). This means `user.id` resolves to `$('TriggerNode').first().json.user.id`. Changing to `'io'` kind would break the round-trip because the decompiler can't reconstruct the loop variable context across sub-workflow boundaries. The deeper issue is that Set node `type: 'string'` coerces object values to `[object Object]` — fixing this requires using expression format or a different type for object params.
+Captured variables in try/catch sub-workflows always use `'code'` kind (seed to `varSourceMap` in `compileTryCatchBodyAsSubWorkflow`). This means `user.id` resolves to `$('TriggerNode').first().json.user.id`. Changing to `'io'` kind would break the round-trip because the decompiler can't reconstruct the loop variable context across sub-workflow boundaries.
+
+### Set node `inferAssignmentType()` for object vs string
+`inferAssignmentType()` in `compiler.ts` detects whole-object references in Set node assignments. Expressions ending with `.json` or bare `$json` use `type: 'object'`; all others use `type: 'string'`. Applied in both `processTryStatement()` (captured vars) and `processFunctionCall()` (sub-function args). This fixed W27 where `user` (a full object) was coerced to `"[object Object]"` by the Set node's string type.
 
 ### Expectation matcher URL scheme
 `matchRequests()` in `expectation-matcher.ts` strips `https?://` from URLs before comparing, since nock traces may record URLs without scheme.

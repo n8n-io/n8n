@@ -684,6 +684,24 @@ onManual(async () => {
 			expect(result.code).not.toContain('.onError(');
 		});
 
+		it('should use object type in Set node for whole-object captured variables', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const items = await http.get('https://api.example.com/items');
+  for (const item of items) {
+    try {
+      await http.post('https://api.example.com/a', { id: item.id });
+      await http.post('https://api.example.com/b', { name: item.name });
+    } catch {
+      await http.post('https://api.example.com/error');
+    }
+  }
+});`);
+			expect(result.errors).toHaveLength(0);
+			// The Set node passing 'item' to the try/catch sub-workflow should use type: 'object'
+			expect(result.code).toContain('"type": "object"');
+		});
+
 		it('should support @onError continue annotation', () => {
 			const result = transpileWorkflowJS(`
 onManual(async () => {

@@ -60,7 +60,7 @@ const loop_user_set1 = node({
           {
             "id": "assign_0",
             "name": "user",
-            "type": "string",
+            "type": "object",
             "value": "={{ $('When Executed by Another Workflow').first().json }}"
           }
         ]
