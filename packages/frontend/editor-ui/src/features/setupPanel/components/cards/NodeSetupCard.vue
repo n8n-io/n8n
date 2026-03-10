@@ -195,11 +195,14 @@ const onSharedNodesHintLeave = () => {
 	setupPanelStore.setHighlightedNodes([props.state.node.id]);
 };
 
-const allParametersAddressed = ref(
-	// When template parameters exist but there are no current issues,
-	// the user already configured them in a previous session
-	(props.state.templateParameterNames?.length ?? 0) > 0 &&
-		Object.keys(props.state.parameterIssues).length === 0,
+const allNodeIssuesResolved = ref(Object.keys(props.state.parameterIssues).length === 0);
+const allParametersAddressed = computed(
+	() =>
+		allNodeIssuesResolved.value ||
+		// When template parameters exist but there are no current issues,
+		// the user already configured them in a previous session
+		((props.state.templateParameterNames?.length ?? 0) > 0 &&
+			Object.keys(props.state.parameterIssues).length === 0),
 );
 
 /** Auto-applied credential cards require manual collapse (or execution) to be marked complete */
@@ -219,7 +222,7 @@ watch(
 watch(expanded, (value, oldValue) => {
 	if (oldValue && !value) {
 		if (Object.keys(props.state.parameterIssues).length === 0) {
-			allParametersAddressed.value = true;
+			allNodeIssuesResolved.value = true;
 		}
 		if (props.state.isAutoApplied) {
 			autoAppliedAcknowledged.value = true;
@@ -234,6 +237,14 @@ watch(expanded, (value, oldValue) => {
  * - Auto-applied credential cards: also require manual collapse or execution to acknowledge
  */
 const cardComplete = computed(() => {
+	console.log(
+		props.state.node.name,
+		props.state.templateParameterNames,
+		props.state.parameterIssues,
+		props.state.isComplete,
+		allParametersAddressed.value,
+		autoAppliedAcknowledged.value,
+	);
 	if (hasShownParameters.value) {
 		return props.state.isComplete && allParametersAddressed.value && autoAppliedAcknowledged.value;
 	}
