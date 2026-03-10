@@ -2,6 +2,9 @@ name: 'Release: Populate cloud with releases'
 run-name: 'Populate cloud with version n8n@${{ inputs.version }}'
 
 on:
+  pull_request:
+    paths:
+      - '.github/workflows/release-populate-cloud-with-release.yml'
   workflow_dispatch:
     inputs:
       version:
