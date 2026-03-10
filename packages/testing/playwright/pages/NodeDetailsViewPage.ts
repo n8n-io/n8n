@@ -844,6 +844,10 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getFilterComponent(paramName).getByTestId('filter-condition-left').nth(index);
 	}
 
+	getFilterConditionLeftInput(paramName: string, index: number = 0) {
+		return this.getFilterConditionLeft(paramName, index).locator('input');
+	}
+
 	getFilterConditionOperator(paramName: string, index: number = 0) {
 		return this.getFilterComponent(paramName).getByTestId('filter-operator-select').nth(index);
 	}
