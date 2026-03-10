@@ -68,7 +68,7 @@ export function ensureReleaseTrack(track) {
  *
  * @param { typeof RELEASE_TRACKS[number] } track
  *
- * @returns { TagVersionInfo }
+ * @returns { TagVersionInfo | null }
  * */
 export function resolveReleaseTagForTrack(track) {
 	const commit = getCommitForRef(track);
@@ -91,9 +91,13 @@ export function resolveReleaseTagForTrack(track) {
  *
  * Returns null if the track tag or release tag is missing.
  *
- * @param { typeof RELEASE_TRACKS[number] } track
+ * @param { ReleaseTrack } track
  * */
 export function resolveRcBranchForTrack(track) {
+	if (track === 'v1') {
+		return '1.x';
+	}
+
 	const commit = getCommitForRef(track);
 	if (!commit) return null;
 
@@ -239,6 +243,25 @@ export function listTagsPointingAt(commit) {
 		.split('\n')
 		.map((s) => s.trim())
 		.filter(Boolean);
+}
+
+/**
+ * @param {string} from
+ * @param {string} to
+ */
+export function listCommitsBetweenRefs(from, to) {
+	return sh('git', ['--no-pager', 'log', '--format="- %s (%h)', `${to}..origin/${from}`]);
+}
+
+/**
+ * @param {string} from
+ * @param {string} to
+ */
+export function countCommitsBetweenRefs(from, to) {
+	const output = sh('git', ['rev-list', '--count', `${to}..origin/${from}`]);
+	const count = parseInt(output);
+
+	return isNaN(count) ? 0 : count;
 }
 
 /**
