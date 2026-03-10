@@ -27,6 +27,8 @@ export interface RunnerConfig {
 	llm: BaseChatModel;
 	timeoutMs?: number;
 	verbose?: boolean;
+	/** Use simplified JS syntax (onManual, http, Agent DSL) instead of SDK */
+	useSimplifiedSyntax?: boolean;
 }
 
 export async function runSingleExample(
@@ -47,6 +49,7 @@ export async function runSingleExample(
 		llm: config.llm,
 		nodeTypes: config.nodeTypes,
 		nodeDefinitionDirs: config.nodeDefinitionDirs,
+		useSimplifiedSyntax: config.useSimplifiedSyntax,
 		onTokenUsage: (usage: TokenUsage) => {
 			tokenSnapshots.push(usage);
 			// Each token usage callback = end of one LLM iteration

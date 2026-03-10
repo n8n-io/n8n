@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import type { Run, AgentResult, PromptConfig, ToolCallDetail } from './types';
+import type { Run, AgentResult, PromptConfig, RunVariant, ToolCallDetail } from './types';
 
 /** Backfill complexity and tags for old results that don't have them stored */
 function backfillFromPrompts(run: Run): void {
@@ -193,6 +193,10 @@ function renderResultRow(result: AgentResult, index: number): string {
 		</tr>`;
 }
 
+function getRunVariant(run: Run): RunVariant {
+	return run.config.variant ?? 'default';
+}
+
 function renderRunSection(run: Run, runIndex: number): string {
 	backfillFromPrompts(run);
 	const avgScore =
@@ -203,12 +207,14 @@ function renderRunSection(run: Run, runIndex: number): string {
 		run.results.length > 0
 			? run.results.reduce((sum, r) => sum + r.totalTimeMs, 0) / run.results.length
 			: 0;
+	const variant = getRunVariant(run);
 
 	return `
-		<div class="run-section">
+		<div class="run-section" data-variant="${variant}">
 			<div class="run-header" onclick="toggleRun('run-${runIndex}')">
 				<h3>
 					${escapeHtml(run.config.model)}
+					<span class="badge badge-variant-${variant}">${variant === 'simplified' ? 'SIMPLIFIED' : 'SDK'}</span>
 					<span class="run-date">${run.id.slice(0, 8)} — ${new Date(run.createdAt).toLocaleString()}</span>
 					<span class="badge badge-${run.status}">${run.status}</span>
 				</h3>
@@ -312,6 +318,8 @@ export function generateReport(runs: Run[]): string {
 	.badge-complexity-simple { background: #23863633; color: #3fb950; }
 	.badge-complexity-medium { background: #d2992233; color: #d29922; }
 	.badge-complexity-complex { background: #da363333; color: #f85149; }
+	.badge-variant-default { background: #30363d; color: #8b949e; }
+	.badge-variant-simplified { background: #1f6feb33; color: #58a6ff; }
 	.badge-tag { background: #30363d; color: #c9d1d9; font-size: 11px; padding: 1px 6px; margin: 1px; display: inline-block; }
 	.tags-cell { max-width: 180px; }
 	.tool-calls-cell { max-width: 250px; line-height: 1.6; }
@@ -399,6 +407,11 @@ export function generateReport(runs: Run[]): string {
 			.map((tag) => `<option value="${escapeHtml(tag)}">${escapeHtml(tag)}</option>`)
 			.join('')}
 	</select>
+	<select id="filter-variant" onchange="filterRuns()">
+		<option value="">All Variants</option>
+		<option value="default">SDK (default)</option>
+		<option value="simplified">Simplified</option>
+	</select>
 </div>
 
 ${runs.map((run, i) => renderRunSection(run, i)).join('')}
@@ -444,6 +457,16 @@ function toggleDetail(id, promptHash) {
 function toggleRun(id) {
 	const el = document.getElementById(id);
 	if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+function filterRuns() {
+	var variant = document.getElementById('filter-variant').value;
+	document.querySelectorAll('.run-section').forEach(function(section) {
+		if (!variant || section.getAttribute('data-variant') === variant) {
+			section.style.display = '';
+		} else {
+			section.style.display = 'none';
+		}
+	});
 }
 function filterResults() {
 	var complexity = document.getElementById('filter-complexity').value;

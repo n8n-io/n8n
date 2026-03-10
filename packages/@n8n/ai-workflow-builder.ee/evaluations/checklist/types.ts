@@ -54,6 +54,8 @@ export interface PromptConfig {
 
 export type RunStatus = 'running' | 'completed' | 'failed';
 
+export type RunVariant = 'default' | 'simplified';
+
 export interface Run {
 	id: string;
 	createdAt: string;
@@ -61,6 +63,8 @@ export interface Run {
 	config: {
 		prompts: PromptConfig[];
 		model: string;
+		/** Which code generation variant was used. Defaults to 'default' (SDK syntax). */
+		variant?: RunVariant;
 	};
 	results: AgentResult[];
 }

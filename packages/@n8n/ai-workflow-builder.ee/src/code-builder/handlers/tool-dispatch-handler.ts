@@ -196,6 +196,11 @@ export class ToolDispatchHandler {
 			}
 		}
 
+		// Capture source code from text editor when workflow is ready
+		if (workflowReady && !sourceCode && textEditorHandler) {
+			sourceCode = textEditorHandler.getWorkflowCode() ?? undefined;
+		}
+
 		return {
 			workflow,
 			workflowReady,

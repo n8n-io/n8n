@@ -3,7 +3,7 @@ import { runSingleExample, type RunnerConfig } from './runner';
 import { writeReport } from './report';
 import { saveRun, listRuns } from './storage';
 import { SYNTHETIC_PROMPTS } from './synthetic-prompts';
-import type { Run, PromptConfig, ChecklistItem, AgentResult } from './types';
+import type { Run, PromptConfig, ChecklistItem, AgentResult, RunVariant } from './types';
 
 import { loadNodesFromFile } from '../support/load-nodes';
 import { resolveBuiltinNodeDefinitionDirs, setupLLM } from '../support/environment';
@@ -18,6 +18,7 @@ interface CliArgs {
 	concurrency: number;
 	timeoutMs: number;
 	verbose: boolean;
+	simplified: boolean;
 }
 
 function parseArgs(args: string[]): CliArgs {
@@ -29,6 +30,7 @@ function parseArgs(args: string[]): CliArgs {
 		concurrency: 3,
 		timeoutMs: 5 * 60 * 1000,
 		verbose: false,
+		simplified: false,
 	};
 
 	for (let i = 0; i < args.length; i++) {
@@ -53,6 +55,9 @@ function parseArgs(args: string[]): CliArgs {
 				break;
 			case '--verbose':
 				result.verbose = true;
+				break;
+			case '--simplified':
+				result.simplified = true;
 				break;
 		}
 	}
@@ -120,6 +125,7 @@ async function runEval() {
 	console.log(`Prompts: ${prompts.length}`);
 	console.log(`Concurrency: ${args.concurrency}`);
 	console.log(`Timeout: ${args.timeoutMs / 1000}s`);
+	console.log(`Simplified syntax: ${args.simplified}`);
 	if (args.tags.length > 0) console.log(`Tags: ${args.tags.join(', ')}`);
 	if (args.grep) console.log(`Grep: ${args.grep}`);
 	console.log('');
@@ -141,13 +147,15 @@ async function runEval() {
 		llm,
 		timeoutMs: args.timeoutMs,
 		verbose: args.verbose,
+		useSimplifiedSyntax: args.simplified,
 	};
 
+	const variant: RunVariant = args.simplified ? 'simplified' : 'default';
 	const run: Run = {
 		id: crypto.randomUUID(),
 		createdAt: new Date().toISOString(),
 		status: 'running',
-		config: { prompts, model: args.model },
+		config: { prompts, model: args.model, variant },
 		results: [],
 	};
 
@@ -270,6 +278,7 @@ Options:
   --concurrency <n>       Number of parallel runs (default: 3)
   --timeout <seconds>     Timeout per example in seconds (default: 300)
   --verbose               Enable verbose output
+  --simplified            Use simplified JS syntax (onManual/http.*/Agent DSL)
   --help                  Show this help message`);
 }
 
