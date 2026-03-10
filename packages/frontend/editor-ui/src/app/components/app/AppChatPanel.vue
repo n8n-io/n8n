@@ -2,11 +2,14 @@
 import AssistantsHub from '@/features/ai/assistant/components/AssistantsHub.vue';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useProvideWorkflowId } from '@/app/composables/useProvideWorkflowId';
 import { computed, nextTick, onBeforeUnmount, onMounted, watch } from 'vue';
 
 const props = defineProps<{
 	layoutRef: Element | null;
 }>();
+
+useProvideWorkflowId();
 
 const chatPanelStore = useChatPanelStore();
 const uiStore = useUIStore();

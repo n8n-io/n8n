@@ -7,6 +7,7 @@ import { useCollaborationStore } from '@/features/collaboration/collaboration/co
 import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { AutoSaveState, VIEWS } from '@/app/constants';
 import { computed, watch, ref, nextTick, useSlots } from 'vue';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -42,12 +43,14 @@ import {
 	isPlanModePlanMessage,
 	isPlanModeQuestionsMessage,
 	isPlanModeUserAnswersMessage,
+	isWebFetchApprovalCustomMessage,
 	type PlanMode,
 } from '../../assistant.types';
 import PlanDisplayMessage from './PlanDisplayMessage.vue';
 import PlanModeSelector from './PlanModeSelector.vue';
 import PlanQuestionsMessage from './PlanQuestionsMessage.vue';
 import UserAnswersMessage from './UserAnswersMessage.vue';
+import WebFetchApprovalMessage from './WebFetchApprovalMessage.vue';
 
 const emit = defineEmits<{
 	close: [];
@@ -59,6 +62,7 @@ const workflowHistoryStore = useWorkflowHistoryStore();
 const historyStore = useHistoryStore();
 const collaborationStore = useCollaborationStore();
 const workflowAutosaveStore = useWorkflowSaveStore();
+const workflowId = useInjectWorkflowId();
 const telemetry = useTelemetry();
 const slots = useSlots();
 const workflowsStore = useWorkflowsStore();
@@ -151,7 +155,8 @@ const showExecuteMessage = computed(() => {
 	const hasPendingInteraction =
 		lastAssistantMessage &&
 		(isPlanModeQuestionsMessage(lastAssistantMessage) ||
-			isPlanModePlanMessage(lastAssistantMessage));
+			isPlanModePlanMessage(lastAssistantMessage) ||
+			isWebFetchApprovalCustomMessage(lastAssistantMessage));
 
 	return (
 		!builderStore.streaming &&
@@ -254,6 +259,34 @@ function isLastPlanMessage(message: PlanMode.PlanMessage): boolean {
 	return !messages.slice(idx + 1).some((m) => m.role === 'user');
 }
 
+async function onWebFetchDecision(payload: {
+	requestId: string;
+	url: string;
+	domain: string;
+	action: 'allow_once' | 'allow_domain' | 'allow_all' | 'deny';
+}) {
+	builderStore.trackWorkflowBuilderJourney('web_fetch_decision', {
+		domain: payload.domain,
+		url: payload.url,
+		decision: payload.action,
+	});
+
+	const textMap: Record<string, string> = {
+		deny: i18n.baseText('aiAssistant.builder.webFetch.deny'),
+		allow_once: i18n.baseText('aiAssistant.builder.webFetch.allowOnce'),
+		allow_domain: i18n.baseText('aiAssistant.builder.webFetch.allowDomain', {
+			interpolate: { domain: payload.domain },
+		}),
+		allow_all: i18n.baseText('aiAssistant.builder.webFetch.allowAll'),
+	};
+
+	await builderStore.sendChatMessage({
+		text: textMap[payload.action],
+		resumeData: payload,
+		skipUserMessage: true,
+	});
+}
+
 async function onUserMessage(content: string) {
 	// Record activity to maintain write lock while building
 	collaborationStore.requestWriteAccess();
@@ -288,14 +321,14 @@ function onFeedback(feedback: RatingFeedback) {
 	if (feedback.rating) {
 		telemetry.track('User rated workflow generation', {
 			helpful: feedback.rating === 'up',
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowId.value,
 			session_id: builderStore.trackingSessionId,
 		});
 	}
 	if (feedback.feedback) {
 		telemetry.track('User submitted workflow generation feedback', {
 			feedback: feedback.feedback,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowId.value,
 			session_id: builderStore.trackingSessionId,
 			user_message_id: builderStore.lastUserMessageId,
 		});
@@ -485,7 +518,7 @@ function onShowVersion(versionId: string) {
 	const route = router.resolve({
 		name: VIEWS.WORKFLOW_HISTORY,
 		params: {
-			workflowId: workflowsStore.workflowId,
+			workflowId: workflowId.value,
 			versionId,
 		},
 	});
@@ -537,7 +570,7 @@ defineExpose({
 			:show-ask-owner-tooltip="showAskOwnerTooltip"
 			:suggestions="workflowSuggestions"
 			:input-placeholder="i18n.baseText('aiAssistant.builder.assistantPlaceholder')"
-			:workflow-id="workflowsStore.workflowId"
+			:workflow-id="workflowId"
 			:prune-time-hours="workflowHistoryStore.evaluatedPruneTime"
 			:disabled="isChatInputDisabled"
 			:disabled-tooltip="disabledTooltip"
@@ -599,6 +632,12 @@ defineExpose({
 				<UserAnswersMessage
 					v-else-if="isPlanModeUserAnswersMessage(message)"
 					:answers="message.data.answers"
+				/>
+				<WebFetchApprovalMessage
+					v-else-if="isWebFetchApprovalCustomMessage(message)"
+					:data="message.data"
+					:disabled="builderStore.streaming"
+					@decision="onWebFetchDecision"
 				/>
 			</template>
 			<template
