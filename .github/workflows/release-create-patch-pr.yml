@@ -30,6 +30,8 @@ jobs:
 
       - name: Determine release candidate branch from track
         id: determine-branch
+        env:
+          TRACK: ${{ inputs.track }}
         run: node .github/scripts/determine-release-candidate-branch-for-track.mjs
 
   skip-release-pr:
