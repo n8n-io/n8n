@@ -12,8 +12,10 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '../sourceControl.store';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
+import { useSourceControlFileList } from '../composables/useSourceControlFileList';
 import { useWorkflowTreeRows } from '../composables/useWorkflowTreeRows';
 import {
+	formatSourceControlUpdatedAt,
 	getPullPriorityByStatus,
 	getStatusText,
 	getStatusTheme,
@@ -25,8 +27,6 @@ import { type SourceControlledFile, SOURCE_CONTROL_FILE_TYPE } from '@n8n/api-ty
 import { shouldAutoPublishWorkflow, type AutoPublishMode } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
-import dateformat from 'dateformat';
-import orderBy from 'lodash/orderBy';
 import { computed, onBeforeMount, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
@@ -177,25 +177,18 @@ const groupedFilesByType = computed(() => {
 	return grouped;
 });
 
-// Filtered workflows
-const filteredWorkflows = computed(() => {
-	const workflows = groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.workflow] || [];
-	return workflows;
+const baseSortedWorkflows = useSourceControlFileList({
+	files: computed(() => groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.workflow] || []),
+	sortBy: [
+		({ folderPath }) => folderPath?.join('/') ?? '',
+		({ status }) => getPullPriorityByStatus(status),
+		'updatedAt',
+	],
+	sortOrder: ['asc', 'asc', 'desc'],
 });
 
-const sortedWorkflows = computed(() => {
-	const sorted = orderBy(
-		filteredWorkflows.value,
-		[
-			({ folderPath }) => folderPath?.join('/') ?? '',
-			({ status }) => getPullPriorityByStatus(status),
-			'updatedAt',
-		],
-		['asc', 'asc', 'desc'],
-	);
-
-	// Add willBeAutoPublished property to each workflow
-	return sorted.map((file) => ({
+const sortedWorkflows = computed(() =>
+	baseSortedWorkflows.value.map((file) => ({
 		...file,
 		willBeAutoPublished:
 			file.type === SOURCE_CONTROL_FILE_TYPE.workflow &&
@@ -206,43 +199,27 @@ const sortedWorkflows = computed(() => {
 				isRemoteArchived: file.isRemoteArchived ?? false,
 				autoPublish: autoPublish.value,
 			}),
-	}));
-});
+	})),
+);
 
 const { visibleWorkflowRows, isFolderCollapsed, toggleFolderCollapse } =
 	useWorkflowTreeRows(sortedWorkflows);
 
-// Filtered credentials
-const filteredCredentials = computed(() => {
-	const credentials = groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.credential] || [];
-	return credentials;
+const sortedCredentials = useSourceControlFileList({
+	files: computed(() => groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.credential] || []),
+	sortBy: [({ status }) => getPullPriorityByStatus(status), 'updatedAt'],
+	sortOrder: ['asc', 'desc'],
 });
 
-const sortedCredentials = computed(() =>
-	orderBy(
-		filteredCredentials.value,
-		[({ status }) => getPullPriorityByStatus(status), 'updatedAt'],
-		['asc', 'desc'],
-	),
-);
-
-// Filtered data tables
-const filteredDataTables = computed(() => {
-	const dataTables = groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.datatable] || [];
-	return dataTables;
+const sortedDataTables = useSourceControlFileList({
+	files: computed(() => groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.datatable] || []),
+	sortBy: [({ status }) => getPullPriorityByStatus(status), 'updatedAt'],
+	sortOrder: ['asc', 'desc'],
 });
-
-const sortedDataTables = computed(() =>
-	orderBy(
-		filteredDataTables.value,
-		[({ status }) => getPullPriorityByStatus(status), 'updatedAt'],
-		['asc', 'desc'],
-	),
-);
 
 // Data tables with schema conflicts (columns will be lost)
 const conflictedDataTables = computed(() => {
-	return filteredDataTables.value.filter((dt) => {
+	return sortedDataTables.value.filter((dt) => {
 		// For pull operations, show warning for modified data tables with conflicts
 		// (schema changes) not for deleted data tables (entire table removed)
 		return dt.conflict === true && dt.status === 'modified';
@@ -415,17 +392,7 @@ async function pullWorkfolder() {
 }
 
 function renderUpdatedAt(file: SourceControlledFile) {
-	const currentYear = new Date().getFullYear().toString();
-
-	return i18n.baseText('settings.sourceControl.lastUpdated', {
-		interpolate: {
-			date: dateformat(
-				file.updatedAt,
-				`d mmm${file.updatedAt?.startsWith(currentYear) ? '' : ', yyyy'}`,
-			),
-			time: dateformat(file.updatedAt, 'HH:MM'),
-		},
-	});
+	return formatSourceControlUpdatedAt(file.updatedAt);
 }
 
 function openDiffModal(id: string) {

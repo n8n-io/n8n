@@ -15,8 +15,14 @@ import type {
 	ProjectSharingData,
 } from '@/features/collaboration/projects/projects.types';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
+import { useSourceControlFileList } from '../composables/useSourceControlFileList';
 import { useWorkflowTreeRows } from '../composables/useWorkflowTreeRows';
-import { getPushPriorityByStatus, getStatusText, getStatusTheme } from '../sourceControl.utils';
+import {
+	formatSourceControlUpdatedAt,
+	getPushPriorityByStatus,
+	getStatusText,
+	getStatusTheme,
+} from '../sourceControl.utils';
 import type { SourceControlTreeRow } from '../sourceControl.types';
 import type { SourceControlledFile, SourceControlledFileStatus } from '@n8n/api-types';
 import {
@@ -28,8 +34,6 @@ import {
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { refDebounced, useStorage } from '@vueuse/core';
-import dateformat from 'dateformat';
-import orderBy from 'lodash/orderBy';
 import { computed, onBeforeMount, onMounted, reactive, ref, toRaw, watch, watchEffect } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
@@ -343,10 +347,16 @@ const folderFilterOptions = computed(() => {
 		}));
 });
 
-const filteredWorkflows = computed(() => {
-	const searchQuery = debouncedSearch.value.toLocaleLowerCase();
-
-	return changes.value.workflow.filter((workflow) => {
+const sortedWorkflows = useSourceControlFileList({
+	files: computed(() => changes.value.workflow),
+	sortBy: [
+		({ folderPath }) => folderPath?.join('/') ?? '',
+		({ status }) => getPushPriorityByStatus(status),
+		'updatedAt',
+	],
+	sortOrder: ['asc', 'asc', 'desc'],
+	filter: (workflow) => {
+		const searchQuery = debouncedSearch.value.toLocaleLowerCase().trim();
 		const nameMatches = workflow.name.toLocaleLowerCase().includes(searchQuery);
 		const folderPathMatches = (workflow.folderPath ?? []).some((segment) =>
 			segment.toLocaleLowerCase().includes(searchQuery),
@@ -356,42 +366,23 @@ const filteredWorkflows = computed(() => {
 			return false;
 		}
 
-		// Project filter logic: if a project filter is set, only show items from that project
 		if (filters.value.project && workflow.project?.id !== filters.value.project.id) {
 			return false;
 		}
 
-		const folderFilter = filters.value.folder?.trim();
-		if (folderFilter) {
-			const workflowPath = (workflow.folderPath ?? []).join('/');
-			const matchesFolderFilter =
-				workflowPath === folderFilter || workflowPath.startsWith(`${folderFilter}/`);
-
-			if (!matchesFolderFilter) {
-				return false;
-			}
-		}
-
-		// Status filter (only applied when no project filter is active)
 		if (filters.value.status && filters.value.status !== workflow.status) {
 			return false;
 		}
 
-		return true;
-	});
-});
+		const folderFilter = filters.value.folder?.trim();
+		if (!folderFilter) {
+			return true;
+		}
 
-const sortedWorkflows = computed(() =>
-	orderBy(
-		filteredWorkflows.value,
-		[
-			({ folderPath }) => folderPath?.join('/') ?? '',
-			({ status }) => getPushPriorityByStatus(status),
-			'updatedAt',
-		],
-		['asc', 'asc', 'desc'],
-	),
-);
+		const workflowPath = (workflow.folderPath ?? []).join('/');
+		return workflowPath === folderFilter || workflowPath.startsWith(`${folderFilter}/`);
+	},
+});
 
 const workflowScroller = ref<{ scrollToItem: (index: number) => void; $el?: Element } | null>(null);
 const hasScrolledCurrentWorkflow = ref(false);
@@ -501,67 +492,49 @@ const selectedCredentials = reactive<Set<string>>(new Set());
 
 const selectedDataTables = reactive<Set<string>>(new Set());
 
-const filteredCredentials = computed(() => {
-	const searchQuery = debouncedSearch.value.toLocaleLowerCase();
-
-	return changes.value.credential.filter((credential) => {
-		if (!credential.name.toLocaleLowerCase().includes(searchQuery)) {
+const sortedCredentials = useSourceControlFileList({
+	files: computed(() => changes.value.credential),
+	sortBy: [({ status }) => getPushPriorityByStatus(status), 'updatedAt'],
+	sortOrder: ['asc', 'desc'],
+	filter: (credential) => {
+		const searchQuery = debouncedSearch.value.toLocaleLowerCase().trim();
+		if (searchQuery && !credential.name.toLocaleLowerCase().includes(searchQuery)) {
 			return false;
 		}
 
-		// Project filter logic: if a project filter is set, only show items from that project
-		if (filters.value.project) {
-			// Item must have a project and it must match the filter
-			return credential.project?.id === filters.value.project.id;
+		if (filters.value.project && credential.project?.id !== filters.value.project.id) {
+			return false;
 		}
 
-		// Status filter (only applied when no project filter is active)
 		if (filters.value.status && filters.value.status !== credential.status) {
 			return false;
 		}
 
 		return true;
-	});
+	},
 });
 
-const sortedCredentials = computed(() =>
-	orderBy(
-		filteredCredentials.value,
-		[({ status }) => getPushPriorityByStatus(status), 'updatedAt'],
-		['asc', 'desc'],
-	),
-);
-
-const filteredDataTables = computed(() => {
-	const searchQuery = debouncedSearch.value.toLocaleLowerCase();
-
-	return changes.value.datatable.filter((dataTable) => {
-		if (!dataTable.name.toLocaleLowerCase().includes(searchQuery)) {
+const sortedDataTables = useSourceControlFileList({
+	files: computed(() => changes.value.datatable),
+	sortBy: [({ status }) => getPushPriorityByStatus(status), 'updatedAt'],
+	sortOrder: ['asc', 'desc'],
+	filter: (dataTable) => {
+		const searchQuery = debouncedSearch.value.toLocaleLowerCase().trim();
+		if (searchQuery && !dataTable.name.toLocaleLowerCase().includes(searchQuery)) {
 			return false;
 		}
 
-		// Project filter logic: if a project filter is set, only show items from that project
-		if (filters.value.project) {
-			// Item must have a project and it must match the filter
-			return dataTable.project?.id === filters.value.project.id;
+		if (filters.value.project && dataTable.project?.id !== filters.value.project.id) {
+			return false;
 		}
 
-		// Status filter (only applied when no project filter is active)
 		if (filters.value.status && filters.value.status !== dataTable.status) {
 			return false;
 		}
 
 		return true;
-	});
+	},
 });
-
-const sortedDataTables = computed(() =>
-	orderBy(
-		filteredDataTables.value,
-		[({ status }) => getPushPriorityByStatus(status), 'updatedAt'],
-		['asc', 'desc'],
-	),
-);
 
 const commitMessage = ref('');
 const isSubmitDisabled = computed(() => {
@@ -621,17 +594,7 @@ function close() {
 }
 
 function renderUpdatedAt(file: SourceControlledFile) {
-	const currentYear = new Date().getFullYear().toString();
-
-	return i18n.baseText('settings.sourceControl.lastUpdated', {
-		interpolate: {
-			date: dateformat(
-				file.updatedAt,
-				`d mmm${file.updatedAt?.startsWith(currentYear) ? '' : ', yyyy'}`,
-			),
-			time: dateformat(file.updatedAt, 'HH:MM'),
-		},
-	});
+	return formatSourceControlUpdatedAt(file.updatedAt);
 }
 
 async function onCommitKeyDownEnter() {

@@ -5,6 +5,7 @@ import { type SourceControlledFile, SOURCE_CONTROL_FILE_STATUS } from '@n8n/api-
 import type { BaseTextKey } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
 import groupBy from 'lodash/groupBy';
+import dateformat from 'dateformat';
 import type { useToast } from '@/app/composables/useToast';
 import { telemetry } from '@/app/plugins/telemetry';
 import type { SourceControlTreeRow } from './sourceControl.types';
@@ -209,6 +210,17 @@ export function buildWorkflowTreeRows<T extends SourceControlledFile>(
 
 	return rows;
 }
+
+export const formatSourceControlUpdatedAt = (updatedAt: string | undefined) => {
+	const currentYear = new Date().getFullYear().toString();
+
+	return i18n.baseText('settings.sourceControl.lastUpdated', {
+		interpolate: {
+			date: dateformat(updatedAt, `d mmm${updatedAt?.startsWith(currentYear) ? '' : ', yyyy'}`),
+			time: dateformat(updatedAt, 'HH:MM'),
+		},
+	});
+};
 
 export const notifyUserAboutPullWorkFolderOutcome = async (
 	files: SourceControlledFile[],

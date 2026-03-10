@@ -1,5 +1,6 @@
 import {
 	buildWorkflowTreeRows,
+	formatSourceControlUpdatedAt,
 	getStatusText,
 	getStatusTheme,
 	getPullPriorityByStatus,
@@ -107,6 +108,17 @@ describe('source control utils', () => {
 				1,
 			);
 			expect(rows.filter((row) => row.type === 'file')).toHaveLength(2);
+		});
+	});
+
+	describe('formatSourceControlUpdatedAt()', () => {
+		it('includes year for dates from previous years', () => {
+			const lastYear = new Date().getFullYear() - 1;
+			const value = formatSourceControlUpdatedAt(`${lastYear}-01-02T03:04:00.000Z`);
+
+			expect(value).toContain('2 Jan');
+			expect(value).toContain(String(lastYear));
+			expect(value).toContain('03:04');
 		});
 	});
 
