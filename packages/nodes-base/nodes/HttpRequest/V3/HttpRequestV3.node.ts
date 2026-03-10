@@ -277,7 +277,7 @@ export class HttpRequestV3 implements INodeType {
 					[],
 				) as [{ name: string; value: string }];
 				const specifyQuery = this.getNodeParameter('specifyQuery', itemIndex, 'keypair') as string;
-				const jsonQueryParameter = this.getNodeParameter('jsonQuery', itemIndex, '') as string;
+				const jsonQueryParameter = this.getNodeParameter('jsonQuery', itemIndex, '');
 
 				const sendBody = this.getNodeParameter('sendBody', itemIndex, false) as boolean;
 				const bodyContentType = this.getNodeParameter('contentType', itemIndex, '') as string;
@@ -287,7 +287,7 @@ export class HttpRequestV3 implements INodeType {
 					itemIndex,
 					[],
 				) as BodyParameter[];
-				const jsonBodyParameter = this.getNodeParameter('jsonBody', itemIndex, '') as string;
+				const jsonBodyParameter = this.getNodeParameter('jsonBody', itemIndex, '');
 				const body = this.getNodeParameter('body', itemIndex, '') as string;
 
 				const sendHeaders = this.getNodeParameter('sendHeaders', itemIndex, false) as boolean;
@@ -304,7 +304,7 @@ export class HttpRequestV3 implements INodeType {
 					'keypair',
 				) as string;
 
-				const jsonHeadersParameter = this.getNodeParameter('jsonHeaders', itemIndex, '') as string;
+				const jsonHeadersParameter = this.getNodeParameter('jsonHeaders', itemIndex, '');
 
 				const {
 					redirect,
@@ -440,21 +440,43 @@ export class HttpRequestV3 implements INodeType {
 						);
 					} else if (specifyBody === 'json') {
 						// body is specified using JSON
-						if (typeof jsonBodyParameter !== 'object' && jsonBodyParameter !== null) {
+						if (jsonBodyParameter === null || jsonBodyParameter === undefined) {
+							requestOptions.body = jsonBodyParameter;
+						} else if (typeof jsonBodyParameter === 'object') {
+							// Already an object or array, validate it can be stringified (is valid JSON)
 							try {
-								JSON.parse(jsonBodyParameter);
-							} catch {
+								JSON.stringify(jsonBodyParameter);
+								requestOptions.body = jsonBodyParameter;
+							} catch (error) {
 								throw new NodeOperationError(
 									this.getNode(),
 									'JSON parameter needs to be valid JSON',
 									{
 										itemIndex,
+										description: error instanceof Error ? error.message : String(error),
 									},
 								);
 							}
-
-							requestOptions.body = jsonParse(jsonBodyParameter);
+						} else if (typeof jsonBodyParameter === 'string') {
+							// String that needs to be parsed
+							if (jsonBodyParameter.trim() === '') {
+								requestOptions.body = {};
+							} else {
+								try {
+									requestOptions.body = jsonParse(jsonBodyParameter);
+								} catch (error) {
+									throw new NodeOperationError(
+										this.getNode(),
+										'JSON parameter needs to be valid JSON',
+										{
+											itemIndex,
+											description: error instanceof Error ? error.message : String(error),
+										},
+									);
+								}
+							}
 						} else {
+							// Other types (number, boolean, etc.) - convert to object
 							requestOptions.body = jsonBodyParameter;
 						}
 					} else if (specifyBody === 'string') {
@@ -507,19 +529,45 @@ export class HttpRequestV3 implements INodeType {
 						requestOptions.qs = await reduceAsync(queryParameters, parametersToKeyValue);
 					} else if (specifyQuery === 'json') {
 						// query is specified using JSON
-						try {
-							JSON.parse(jsonQueryParameter);
-						} catch {
-							throw new NodeOperationError(
-								this.getNode(),
-								'JSON parameter needs to be valid JSON',
-								{
-									itemIndex,
-								},
-							);
+						if (jsonQueryParameter === null || jsonQueryParameter === undefined) {
+							requestOptions.qs = jsonQueryParameter;
+						} else if (typeof jsonQueryParameter === 'object') {
+							// Already an object or array, validate it can be stringified (is valid JSON)
+							try {
+								JSON.stringify(jsonQueryParameter);
+								requestOptions.qs = jsonQueryParameter;
+							} catch (error) {
+								throw new NodeOperationError(
+									this.getNode(),
+									'JSON parameter needs to be valid JSON',
+									{
+										itemIndex,
+										description: error instanceof Error ? error.message : String(error),
+									},
+								);
+							}
+						} else if (typeof jsonQueryParameter === 'string') {
+							// String that needs to be parsed
+							if (jsonQueryParameter.trim() === '') {
+								requestOptions.qs = {};
+							} else {
+								try {
+									requestOptions.qs = jsonParse(jsonQueryParameter);
+								} catch (error) {
+									throw new NodeOperationError(
+										this.getNode(),
+										'JSON parameter needs to be valid JSON',
+										{
+											itemIndex,
+											description: error instanceof Error ? error.message : String(error),
+										},
+									);
+								}
+							}
+						} else {
+							// Other types (number, boolean, etc.) - use as is
+							requestOptions.qs = jsonQueryParameter;
 						}
-
-						requestOptions.qs = jsonParse(jsonQueryParameter);
 					}
 				}
 
@@ -532,20 +580,65 @@ export class HttpRequestV3 implements INodeType {
 							parametersToKeyValue,
 						);
 					} else if (specifyHeaders === 'json') {
-						// body is specified using JSON
-						try {
-							JSON.parse(jsonHeadersParameter);
-						} catch {
+						// headers is specified using JSON
+						if (jsonHeadersParameter === null || jsonHeadersParameter === undefined) {
+							additionalHeaders = {};
+						} else if (typeof jsonHeadersParameter === 'object' && !Array.isArray(jsonHeadersParameter)) {
+							// Already an object (not array), validate it can be stringified (is valid JSON)
+							try {
+								JSON.stringify(jsonHeadersParameter);
+								additionalHeaders = jsonHeadersParameter as IDataObject;
+							} catch (error) {
+								throw new NodeOperationError(
+									this.getNode(),
+									'JSON parameter needs to be valid JSON',
+									{
+										itemIndex,
+										description: error instanceof Error ? error.message : String(error),
+									},
+								);
+							}
+						} else if (typeof jsonHeadersParameter === 'string') {
+							// String that needs to be parsed
+							if (jsonHeadersParameter.trim() === '') {
+								additionalHeaders = {};
+							} else {
+								try {
+									const parsed = jsonParse(jsonHeadersParameter);
+									if (Array.isArray(parsed)) {
+										throw new NodeOperationError(
+											this.getNode(),
+											'JSON parameter for headers must be an object, not an array',
+											{
+												itemIndex,
+											},
+										);
+									}
+									additionalHeaders = parsed as IDataObject;
+								} catch (error) {
+									if (error instanceof NodeOperationError) {
+										throw error;
+									}
+									throw new NodeOperationError(
+										this.getNode(),
+										'JSON parameter needs to be valid JSON',
+										{
+											itemIndex,
+											description: error instanceof Error ? error.message : String(error),
+										},
+									);
+								}
+							}
+						} else {
+							// Other types (number, boolean, array, etc.) - not valid for headers
 							throw new NodeOperationError(
 								this.getNode(),
-								'JSON parameter needs to be valid JSON',
+								'JSON parameter for headers must be an object',
 								{
 									itemIndex,
 								},
 							);
 						}
-
-						additionalHeaders = jsonParse(jsonHeadersParameter);
 					}
 					requestOptions.headers = {
 						...requestOptions.headers,

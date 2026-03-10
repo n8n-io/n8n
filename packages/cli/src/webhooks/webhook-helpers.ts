@@ -12,6 +12,7 @@ import { Container } from '@n8n/di';
 import type express from 'express';
 import { BinaryDataService, ErrorReporter } from 'n8n-core';
 import type {
+	ExecutionError,
 	IBinaryData,
 	IDataObject,
 	IDeferredPromise,
@@ -47,6 +48,7 @@ import {
 	WAIT_NODE_TYPE,
 	WorkflowConfigurationError,
 } from 'n8n-workflow';
+import { classifyWebhookError, extractErrorMetadata } from './webhook-error-classifier';
 import { finished } from 'stream/promises';
 
 import { WebhookService } from './webhook.service';
@@ -493,6 +495,7 @@ export async function executeWebhook(
 
 	let didSendResponse = false;
 	let runExecutionDataMerge = {};
+	let earlyError: ResponseError | null = null; // Store error to send after execution is created
 	try {
 		// Run the webhook function to see what should be returned and if
 		// the workflow should be executed or not
@@ -536,34 +539,42 @@ export async function executeWebhook(
 				node: workflowStartNode,
 			});
 		} catch (err) {
-			// Send error response to webhook caller
-			const webhookType = ['formTrigger', 'form'].includes(nodeType.description.name)
-				? 'Form'
-				: 'Webhook';
-			const errorMessage = _privateGetWebhookErrorMessage(err, webhookType);
+			// Classify the error to determine proper HTTP status code
+			const classifiedError = classifyWebhookError(err as Error);
+			const errorMetadata = extractErrorMetadata(err as Error);
 
+			// Log the error with metadata
 			Container.get(ErrorReporter).error(err, {
 				extra: {
-					nodeName: workflowStartNode.name,
-					nodeType: workflowStartNode.type,
+					nodeName: errorMetadata.nodeName || workflowStartNode.name,
+					nodeType: errorMetadata.nodeType || workflowStartNode.type,
 					nodeVersion: workflowStartNode.typeVersion,
 					workflowId: workflow.id,
+					parameter: errorMetadata.parameter,
+					errorType: errorMetadata.errorType || err.constructor.name,
 				},
 			});
 
-			responseCallback(new UnexpectedError(errorMessage), {});
-			didSendResponse = true;
+			// Add error to execution data with metadata
+			const errorData: ExecutionError = {
+				...err,
+				message: err.message,
+				stack: err.stack,
+			};
 
-			// Add error to execution data that it can be logged and send to Editor-UI
+			// Add metadata to error if available
+			if (errorMetadata.nodeName || errorMetadata.parameter) {
+				errorData.name = errorMetadata.nodeName || 'Unknown';
+				if (errorMetadata.parameter) {
+					errorData.message = `${errorData.message} (Parameter: ${errorMetadata.parameter})`;
+				}
+			}
+
 			runExecutionDataMerge = {
 				resultData: {
 					runData: {},
-					lastNodeExecuted: workflowStartNode.name,
-					error: {
-						...err,
-						message: err.message,
-						stack: err.stack,
-					},
+					lastNodeExecuted: errorMetadata.nodeName || workflowStartNode.name,
+					error: errorData,
 				},
 			};
 
@@ -573,6 +584,10 @@ export async function executeWebhook(
 				// which then so gets the chance to throw the error.
 				workflowData: [[{ json: {} }]],
 			};
+
+			// Store the classified error to send after execution is created
+			// This ensures execution record exists in history even on validation failures
+			earlyError = classifiedError;
 		}
 
 		const responseHeaders = evaluateResponseHeaders(context);
@@ -732,6 +747,16 @@ export async function executeWebhook(
 		 */
 		Container.get(ActiveExecutions).setResponseMode(executionId, responseMode);
 
+		// If there was an early error (e.g., validation error during webhook execution),
+		// send the error response now that execution is created
+		// This ensures execution appears in history even on validation failures
+		if (earlyError && !didSendResponse) {
+			responseCallback(earlyError, {});
+			didSendResponse = true;
+			// Don't return early - let execution complete and finalize with error
+			// The execution promise will handle finalization
+		}
+
 		if (shouldDeferOnReceivedResponse) {
 			additionalKeys.$executionId = executionId;
 			additionalKeys.$execution = {
@@ -829,12 +854,13 @@ export async function executeWebhook(
 					const lastNodeTaskData = WorkflowHelpers.getDataLastExecutedNodeData(runData);
 					if (runData.data.resultData.error || lastNodeTaskData?.error !== undefined) {
 						if (!didSendResponse) {
-							responseCallback(null, {
-								data: {
-									message: 'Error in workflow',
-								},
-								responseCode: 500,
-							});
+							// Classify the execution error for proper HTTP status code
+							const executionError = runData.data.resultData.error || lastNodeTaskData?.error;
+							const classifiedError = executionError
+								? classifyWebhookError(executionError as Error)
+								: new InternalServerError('Error in workflow');
+							
+							responseCallback(classifiedError, {});
 						}
 						didSendResponse = true;
 						return runData;
@@ -894,12 +920,9 @@ export async function executeWebhook(
 				})
 				.catch((e) => {
 					if (!didSendResponse) {
-						responseCallback(
-							new OperationalError('There was a problem executing the workflow', {
-								cause: e,
-							}),
-							{},
-						);
+						// Classify the error for proper HTTP status code
+						const classifiedError = classifyWebhookError(e);
+						responseCallback(classifiedError, {});
 					}
 
 					const internalServerError = new InternalServerError(e.message, e);
@@ -909,12 +932,11 @@ export async function executeWebhook(
 		}
 		return executionId;
 	} catch (e) {
+		// Classify the error for proper HTTP status code
 		const error =
 			e instanceof UnprocessableRequestError
 				? e
-				: new OperationalError('There was a problem executing the workflow', {
-						cause: e,
-					});
+				: classifyWebhookError(e as Error);
 		if (didSendResponse) throw error;
 		responseCallback(error, {});
 		return;
