@@ -612,6 +612,24 @@ function isMapCall(
 }
 
 /**
+ * Check if a call expression is `source.filter((item) => condition)`.
+ * Returns the source variable name and the callback.
+ */
+function isFilterCall(
+	expr: CallExpression,
+): { sourceVar: string; callback: ArrowFunctionExpression | FunctionExpression } | undefined {
+	if (!isMemberExpression(expr.callee)) return undefined;
+	const member = expr.callee;
+	if (!isIdentifier(member.property) || member.property.name !== 'filter') return undefined;
+	if (member.object.type === 'Super' || !isIdentifier(member.object)) return undefined;
+	const sourceVar = member.object.name;
+	if (expr.arguments.length === 0) return undefined;
+	const arg = expr.arguments[0];
+	if (arg.type === 'SpreadElement' || !isArrowOrFunction(arg)) return undefined;
+	return { sourceVar, callback: arg };
+}
+
+/**
  * Check if a call expression is a `node({...})(input)` or `node({...})()` pattern.
  * Returns the config ObjectExpression and optional input argument if matched.
  */
@@ -733,6 +751,41 @@ function processNodeVarDeclaration(
 		}
 	}
 
+	// Pattern A2: const x = source.filter((item) => condition) — creates IF node
+	const filterMatch = isFilterCall(declarator.init);
+	if (filterMatch) {
+		const { callback } = filterMatch;
+		const { body } = callback;
+
+		// Extract condition from the arrow body (expression, not block)
+		if (body.type !== 'BlockStatement') {
+			const condition = extractConditionFromExpression(body);
+			if (condition) {
+				const ifParams = buildIfParameters(condition);
+				const ifConfig: NodeConfig = {
+					type: 'n8n-nodes-base.if',
+					params: ifParams,
+					version: 2,
+				};
+				const ifNodeJSON = createNodeJSON(ifConfig, state);
+				state.nodes.push(ifNodeJSON);
+
+				// Connect source → IF node
+				const mapping = state.varToNode.get(filterMatch.sourceVar);
+				if (mapping) {
+					addConnection(state, mapping.nodeName, ifNodeJSON.name!, mapping.outputIndex);
+				}
+
+				// Variable maps to IF node's true output (index 0)
+				if (isIdentifier(declarator.id)) {
+					state.varToNode.set(declarator.id.name, { nodeName: ifNodeJSON.name!, outputIndex: 0 });
+				}
+				state.lastNodeInScope = { nodeName: ifNodeJSON.name!, outputIndex: 0 };
+				return isIdentifier(declarator.id) ? declarator.id.name : undefined;
+			}
+		}
+	}
+
 	// Pattern B: const x = executeNode({...}) or const [a, b] = executeNode({...})
 	const execConfig = matchExecuteNodeCall(declarator.init);
 	if (execConfig) {
@@ -847,8 +900,16 @@ function processIfStatement(
 	const ifNodeJSON = createNodeJSON(ifConfig, state);
 	state.nodes.push(ifNodeJSON);
 
-	// Connect input to IF node
-	if (inputVarName) {
+	// Connect input to IF node — prefer lastNodeInScope for implicit chaining
+	// over inputVarName (which always points to the trigger param).
+	if (state.lastNodeInScope) {
+		addConnection(
+			state,
+			state.lastNodeInScope.nodeName,
+			ifNodeJSON.name!,
+			state.lastNodeInScope.outputIndex,
+		);
+	} else if (inputVarName) {
 		const sourceNodeName = resolveInputVar(
 			{ type: 'Identifier', name: inputVarName } as Identifier,
 			state,
@@ -933,8 +994,15 @@ function processSwitchStatement(
 	const switchNodeJSON = createNodeJSON(switchConfig, state);
 	state.nodes.push(switchNodeJSON);
 
-	// Connect input to Switch node
-	if (inputVarName) {
+	// Connect input to Switch node — prefer lastNodeInScope for implicit chaining
+	if (state.lastNodeInScope) {
+		addConnection(
+			state,
+			state.lastNodeInScope.nodeName,
+			switchNodeJSON.name!,
+			state.lastNodeInScope.outputIndex,
+		);
+	} else if (inputVarName) {
 		const sourceNodeName = resolveInputVar(
 			{ type: 'Identifier', name: inputVarName } as Identifier,
 			state,
@@ -1022,14 +1090,23 @@ function processTryStatement(
 
 		processStatements(stmt.handler.body.body, state, inputVarName);
 
-		// Restore original mappings
-		state.lastNodeInScope = originalLastNode;
+		// Restore inputVarName mapping so nodes after try/catch don't
+		// accidentally connect from the error output.
 		if (inputVarName) {
 			if (originalMapping) {
 				state.varToNode.set(inputVarName, originalMapping);
 			} else {
 				state.varToNode.delete(inputVarName);
 			}
+		}
+
+		// After try/catch, lastNodeInScope should point to the last try-block
+		// node's success output (index 0) so subsequent statements chain from it.
+		if (nodeCountBefore < errorNodeCountBefore) {
+			const lastTryNode = state.nodes[errorNodeCountBefore - 1];
+			state.lastNodeInScope = { nodeName: lastTryNode.name!, outputIndex: 0 };
+		} else {
+			state.lastNodeInScope = originalLastNode;
 		}
 	}
 }

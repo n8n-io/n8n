@@ -306,4 +306,78 @@ describe('parseDataFlowCode', () => {
 			expect(triggerConns![0]![0].node).toBe('Switch');
 		});
 	});
+
+	describe('else-if chain', () => {
+		it('should parse else-if as chained IF nodes', () => {
+			const code = `workflow({ name: 'Else If' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    if (items[0].json.score > 90) {
+      const grade_A = executeNode({ type: 'n8n-nodes-base.set', name: 'Grade A', params: {}, version: 3 });
+    } else if (items[0].json.score > 70) {
+      const grade_B = executeNode({ type: 'n8n-nodes-base.set', name: 'Grade B', params: {}, version: 3 });
+    } else {
+      const grade_F = executeNode({ type: 'n8n-nodes-base.set', name: 'Grade F', params: {}, version: 3 });
+    }
+  });
+});`;
+
+			const result = parseDataFlowCode(code);
+
+			// Should have: Trigger, If, Grade A, If1, Grade B, Grade F
+			// First IF: score > 90 → true: Grade A, false: second IF
+			const triggerConns = result.connections['Manual Trigger']?.main;
+			expect(triggerConns).toHaveLength(1);
+			expect(triggerConns![0]).toHaveLength(1);
+			expect(triggerConns![0]![0].node).toBe('If');
+
+			// First IF true → Grade A
+			const if1Conns = result.connections['If']?.main;
+			expect(if1Conns![0]).toEqual([{ node: 'Grade A', type: 'main', index: 0 }]);
+
+			// First IF false → second IF (If 1)
+			expect(if1Conns![1]).toEqual([{ node: 'If 1', type: 'main', index: 0 }]);
+
+			// Second IF true → Grade B, false → Grade F
+			const if2Conns = result.connections['If 1']?.main;
+			expect(if2Conns![0]).toEqual([{ node: 'Grade B', type: 'main', index: 0 }]);
+			expect(if2Conns![1]).toEqual([{ node: 'Grade F', type: 'main', index: 0 }]);
+		});
+	});
+
+	describe('filter parsing', () => {
+		it('should parse .filter() as IF node with true-only output', () => {
+			const code = `workflow({ name: 'Filter' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    const data = items.map((item) =>
+      executeNode({ type: 'n8n-nodes-base.httpRequest', params: { url: 'https://example.com' }, version: 4 }),
+    );
+    const active = data.filter((item) => item.json.status === 'active');
+    const notify = active.map((item) =>
+      executeNode({ type: 'n8n-nodes-base.httpRequest', name: 'Notify', params: { url: 'https://example.com/notify' }, version: 4 }),
+    );
+  });
+});`;
+
+			const result = parseDataFlowCode(code);
+
+			// Should have: Trigger, HTTP Request, If (from filter), Notify
+			const httpNode = result.nodes.find((n) => n.name === 'HTTP Request');
+			const ifNode = result.nodes.find((n) => n.type === 'n8n-nodes-base.if');
+			const notifyNode = result.nodes.find((n) => n.name === 'Notify');
+
+			expect(httpNode).toBeDefined();
+			expect(ifNode).toBeDefined();
+			expect(notifyNode).toBeDefined();
+
+			// HTTP Request → If
+			expect(result.connections[httpNode!.name!]?.main![0]).toEqual(
+				expect.arrayContaining([expect.objectContaining({ node: ifNode!.name })]),
+			);
+
+			// If true output → Notify
+			expect(result.connections[ifNode!.name!]?.main![0]).toEqual(
+				expect.arrayContaining([expect.objectContaining({ node: 'Notify' })]),
+			);
+		});
+	});
 });

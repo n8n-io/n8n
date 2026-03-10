@@ -1,0 +1,4 @@
+{
+	"title": "F13: For-of loop (SplitInBatches pattern)",
+	"skip": "Needs for...of parser support"
+}
