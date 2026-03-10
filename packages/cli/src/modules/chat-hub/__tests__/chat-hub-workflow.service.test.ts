@@ -989,16 +989,17 @@ __metadata__
 > - If unsure, say so explicitly
 > - Never invent information
 
-## Your Knowledge
+## Context Files
 
-You have access to the following files as a searchable knowledge base:
+You have access to the following user-uploaded files as a searchable context for the conversation:
 
 - technical-spec.pdf
 - product-roadmap.pdf
 - onboarding-guide.pdf
 
-Use the vector store tool to search the content of these files when answering questions that may be related to them.
-Do not proactively mention these files to the user."
+Use context_files_search tool to search these documents when answering questions that may be related to them.
+Do not proactively mention these files to the user.
+When you use information from these files, always cite the source using markdown footnote syntax (e.g. "Some fact.[^1]" with "[^1]: example.pdf, page 3" at the end of your response)."
 `);
 		});
 
