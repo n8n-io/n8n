@@ -19,6 +19,8 @@ import { jsonParse } from 'n8n-workflow';
 import ExecuteMessage from './ExecuteMessage.vue';
 import NotificationPermissionBanner from './NotificationPermissionBanner.vue';
 import ReviewChangesBanner from './ReviewChangesBanner.vue';
+import CreditsSettingsDropdown from './CreditsSettingsDropdown.vue';
+import CreditWarningBanner from './CreditWarningBanner.vue';
 import ChatInputWithMention from '../FocusedNodes/ChatInputWithMention.vue';
 import MessageFocusedNodesChips from '../FocusedNodes/MessageFocusedNodesChips.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
@@ -93,6 +95,7 @@ const suggestionsInputRef = ref<InstanceType<typeof ChatInputWithMention>>();
 const inputText = ref('');
 
 const notificationsPermissionsBannerTriggered = ref(false);
+const creditBannerDismissed = ref(false);
 
 watch(
 	() => builderStore.streaming,
@@ -102,6 +105,17 @@ watch(
 		}
 	},
 );
+
+watch(
+	() => builderStore.creditsRemaining,
+	() => {
+		creditBannerDismissed.value = false;
+	},
+);
+
+const showCreditBanner = computed(() => {
+	return builderStore.isLowCredits && !creditBannerDismissed.value;
+});
 
 const showUsabilityNotice = computed(
 	() =>
@@ -562,6 +576,14 @@ defineExpose({
 					<span>{{ i18n.baseText('aiAssistant.reducedHelp.chat.notice') }}</span>
 				</N8nInfoTip>
 			</template>
+			<template #headerActions>
+				<CreditsSettingsDropdown
+					:credits-remaining="creditsRemaining"
+					:credits-quota="creditsQuota"
+					:is-low-credits="builderStore.isLowCredits"
+					@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"
+				/>
+			</template>
 			<template #inputHeader>
 				<ReviewChangesBanner
 					v-if="showReviewChanges"
@@ -570,6 +592,13 @@ defineExpose({
 					@toggle="toggleExpanded"
 					@open-diff="openDiffView"
 					@select-node="onSelectChangedNode"
+				/>
+				<CreditWarningBanner
+					v-else-if="showCreditBanner"
+					:credits-remaining="creditsRemaining"
+					:credits-quota="creditsQuota"
+					@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"
+					@dismiss="creditBannerDismissed = true"
 				/>
 				<Transition v-else name="slide">
 					<NotificationPermissionBanner v-if="shouldShowNotificationBanner" />
