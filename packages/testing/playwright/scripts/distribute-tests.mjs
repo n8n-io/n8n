@@ -60,11 +60,15 @@ function hasExternalFiles(files) {
 
 function getOrchestration(numShards, options = {}) {
 	const cliArgs = ['orchestrate', `--shards=${numShards}`];
-	const useImpact = options.impact && options.files && !hasExternalFiles(options.files);
+	// Disable impact when explicit files include non-playwright paths the analyzer can't trace.
+	// When no files are provided, janitor auto-detects via git — impact stays enabled.
+	const useImpact = options.impact && !(options.files && hasExternalFiles(options.files));
 
 	if (useImpact) {
 		cliArgs.push('--impact');
 		if (options.base) cliArgs.push(`--base=${options.base}`);
+	}
+	if (useImpact && options.files) {
 		// Normalize repo-root-relative paths to playwright-root-relative
 		// git diff gives 'packages/testing/playwright/foo.ts', janitor expects 'foo.ts'
 		const normalized = options.files
