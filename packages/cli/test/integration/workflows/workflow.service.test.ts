@@ -507,7 +507,6 @@ describe('workflow_published_version table population', () => {
 			const publishedVersion = await workflowPublishedVersionRepository.findOne({
 				where: { workflowId: workflow.id },
 			});
-			expect(publishedVersion).not.toBeNull();
 			expect(publishedVersion?.publishedVersionId).toBe(workflow.versionId);
 		});
 

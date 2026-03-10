@@ -545,6 +545,9 @@ export class WorkflowService {
 			if (didPublish) {
 				assert(workflow.activeVersionId !== null);
 
+				// Temporary: In the future, the workflow publication service will
+				// manage this mapping. We set it here for now to support incremental
+				// development and testing.
 				if (this.globalConfig.workflows.useWorkflowPublicationService) {
 					await this.workflowPublishedVersionRepository.setPublishedVersion(
 						workflowId,
@@ -792,6 +795,7 @@ export class WorkflowService {
 
 		const deactivatedVersionId = workflow.activeVersionId;
 
+		// Temporary: will be removed when the workflow publication service manages this.
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
 			await this.workflowPublishedVersionRepository.removePublishedVersion(workflowId);
 		}
@@ -892,6 +896,7 @@ export class WorkflowService {
 		if (workflow.activeVersionId !== null) {
 			await this.activeWorkflowManager.remove(workflowId);
 
+			// Temporary: will be removed when the workflow publication service manages this.
 			if (this.globalConfig.workflows.useWorkflowPublicationService) {
 				await this.workflowPublishedVersionRepository.removePublishedVersion(workflowId);
 			}
