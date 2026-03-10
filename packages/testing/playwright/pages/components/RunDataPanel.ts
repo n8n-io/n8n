@@ -139,6 +139,10 @@ export class RunDataPanel {
 		return this.root.locator('[contenteditable="true"]');
 	}
 
+	getFirstLink() {
+		return this.root.locator('a').first();
+	}
+
 	async switchDisplayMode(mode: 'table' | 'ai' | 'json' | 'schema' | 'binary'): Promise<void> {
 		await this.root.getByTestId(`radio-button-${mode}`).click();
 	}
