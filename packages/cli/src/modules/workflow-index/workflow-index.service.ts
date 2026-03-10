@@ -100,8 +100,6 @@ export class WorkflowIndexService {
 				if (dependencyType === 'draft') {
 					await this.updateIndexForDraft(workflow);
 				} else {
-					// We know activeVersionId is not null here because the finder only returns workflows
-					// that have a published version. Use the published version's nodes, not the draft nodes.
 					const publishedNodes = workflow.activeVersion?.nodes;
 					if (!publishedNodes) {
 						this.logger.warn(
