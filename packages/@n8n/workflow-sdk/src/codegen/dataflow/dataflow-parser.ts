@@ -669,23 +669,33 @@ function processIfStatement(
 		}
 	}
 
-	// Process true branch (consequent)
+	// Remap inputVarName so that `(items)` inside branches resolves to the
+	// IF node output instead of the upstream trigger, preventing spurious
+	// trigger → branch-node connections.
+	const originalMapping = inputVarName ? state.varToNode.get(inputVarName) : undefined;
+
+	// Process true branch (consequent) — remap to IF output 0
+	if (inputVarName) {
+		state.varToNode.set(inputVarName, { nodeName: ifNodeJSON.name!, outputIndex: 0 });
+	}
 	const trueStatements = getBlockStatements(stmt.consequent);
-	const trueBranchFirstNode = processStatementsAndGetFirstNode(trueStatements, state, inputVarName);
-	if (trueBranchFirstNode) {
-		addConnection(state, ifNodeJSON.name!, trueBranchFirstNode, 0);
+	processStatements(trueStatements, state, inputVarName);
+
+	// Process false branch (alternate) — remap to IF output 1
+	if (stmt.alternate) {
+		if (inputVarName) {
+			state.varToNode.set(inputVarName, { nodeName: ifNodeJSON.name!, outputIndex: 1 });
+		}
+		const falseStatements = getBlockStatements(stmt.alternate);
+		processStatements(falseStatements, state, inputVarName);
 	}
 
-	// Process false branch (alternate)
-	if (stmt.alternate) {
-		const falseStatements = getBlockStatements(stmt.alternate);
-		const falseBranchFirstNode = processStatementsAndGetFirstNode(
-			falseStatements,
-			state,
-			inputVarName,
-		);
-		if (falseBranchFirstNode) {
-			addConnection(state, ifNodeJSON.name!, falseBranchFirstNode, 1);
+	// Restore original mapping so nodes after the if/else connect correctly
+	if (inputVarName) {
+		if (originalMapping) {
+			state.varToNode.set(inputVarName, originalMapping);
+		} else {
+			state.varToNode.delete(inputVarName);
 		}
 	}
 }
@@ -742,20 +752,36 @@ function processSwitchStatement(
 		}
 	}
 
-	// Process each case
+	// Remap inputVarName so that `(items)` inside cases resolves to the
+	// Switch node output instead of the upstream trigger.
+	const originalMapping = inputVarName ? state.varToNode.get(inputVarName) : undefined;
+
+	// Process each case — remap to Switch output i
 	for (let i = 0; i < caseStatements.length; i++) {
 		const sc = caseStatements[i];
-		const firstNode = processStatementsAndGetFirstNode(sc.consequent, state, inputVarName);
-		if (firstNode) {
-			addConnection(state, switchNodeJSON.name!, firstNode, i);
+		if (inputVarName) {
+			state.varToNode.set(inputVarName, { nodeName: switchNodeJSON.name!, outputIndex: i });
 		}
+		processStatements(sc.consequent, state, inputVarName);
 	}
 
-	// Process default case
+	// Process default case — remap to Switch output after all cases
 	if (defaultCase) {
-		const firstNode = processStatementsAndGetFirstNode(defaultCase.consequent, state, inputVarName);
-		if (firstNode) {
-			addConnection(state, switchNodeJSON.name!, firstNode, caseStatements.length);
+		if (inputVarName) {
+			state.varToNode.set(inputVarName, {
+				nodeName: switchNodeJSON.name!,
+				outputIndex: caseStatements.length,
+			});
+		}
+		processStatements(defaultCase.consequent, state, inputVarName);
+	}
+
+	// Restore original mapping
+	if (inputVarName) {
+		if (originalMapping) {
+			state.varToNode.set(inputVarName, originalMapping);
+		} else {
+			state.varToNode.delete(inputVarName);
 		}
 	}
 }
