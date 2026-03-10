@@ -379,6 +379,25 @@ onManual(async () => {
 			const ifCount = (result.code.match(/ifElse\(/g) || []).length;
 			expect(ifCount).toBe(2);
 		});
+
+		it('should not produce duplicate aggregate variable names across if/else branches', () => {
+			const result = transpileWorkflowJS(`
+onWebhook({ path: '/test' }, async ({ body }) => {
+  const data = await http.get('https://api.example.com/check');
+  if (data.exists) {
+    const updated = await http.put('https://api.example.com/update', body);
+  } else {
+    const created = await http.post('https://api.example.com/create', body);
+  }
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			// Each branch should get a unique agg variable (e.g. agg2, agg3), not both agg2
+			const aggDeclarations = result.code.match(/const (agg\d+)/g) || [];
+			const aggNames = aggDeclarations.map((d) => d.replace('const ', ''));
+			const uniqueNames = new Set(aggNames);
+			expect(uniqueNames.size).toBe(aggNames.length);
+		});
 	});
 
 	describe('Phase 8: loops', () => {

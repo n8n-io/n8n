@@ -2384,6 +2384,7 @@ const COUNTER_KEYS = [
 	'collectCounter',
 	'mergeCounter',
 	'whileCounter',
+	'aggCounter',
 ] as const;
 
 function syncCounters(target: TranspilerContext, source: TranspilerContext): void {

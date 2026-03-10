@@ -92,14 +92,15 @@ export class ValidateToolHandler {
 
 		// Check if code exists
 		if (!code) {
+			const noCodeMsg =
+				'No workflow code exists. You MUST create the workflow code using str_replace_based_edit_tool with command "create" before validating. Do NOT call validate_workflow again until you have written code. If empty workflow is expected, stop calling tools to finish.';
 			messages.push(
 				new ToolMessage({
 					tool_call_id: toolCallId,
-					content:
-						'No workflow code exists. You MUST create the workflow code using str_replace_based_edit_tool with command "create" before validating. Do NOT call validate_workflow again until you have written code. If empty workflow is expected, stop calling tools to finish.',
+					content: noCodeMsg,
 				}),
 			);
-			yield this.createToolProgressChunk('completed', toolCallId);
+			yield this.createToolProgressChunk('error', toolCallId, undefined, noCodeMsg);
 			return { workflowReady: false };
 		}
 
@@ -118,17 +119,22 @@ export class ValidateToolHandler {
 
 					const warningText = formatWarnings(newWarnings, warningTracker);
 					const errorContext = this.getErrorContext(code, newWarnings[0].message);
+					const warningContent = `Validation warnings:\n${warningText}\n\n${errorContext}\n\n${FIX_VALIDATION_ERRORS_INSTRUCTION}`;
 
 					messages.push(
 						new ToolMessage({
 							tool_call_id: toolCallId,
-							content: `Validation warnings:\n${warningText}\n\n${errorContext}\n\n${FIX_VALIDATION_ERRORS_INSTRUCTION}`,
+							content: warningContent,
 						}),
 					);
 
 					// Stream partial workflow for progressive rendering
 					yield this.createWorkflowUpdateChunk(result.workflow);
-					yield this.createToolProgressChunk('completed', toolCallId);
+					yield this.createToolProgressChunk(
+						'completed',
+						toolCallId,
+						`Validation warnings:\n${warningText}`,
+					);
 
 					return {
 						workflowReady: false,
@@ -149,7 +155,7 @@ export class ValidateToolHandler {
 
 			// Stream workflow update
 			yield this.createWorkflowUpdateChunk(result.workflow);
-			yield this.createToolProgressChunk('completed', toolCallId);
+			yield this.createToolProgressChunk('completed', toolCallId, 'Validation passed');
 
 			return {
 				workflowReady: true,
@@ -168,7 +174,12 @@ export class ValidateToolHandler {
 				}),
 			);
 
-			yield this.createToolProgressChunk('completed', toolCallId);
+			yield this.createToolProgressChunk(
+				'error',
+				toolCallId,
+				undefined,
+				`Parse error: ${errorMessage}`,
+			);
 
 			return {
 				workflowReady: false,
@@ -181,8 +192,10 @@ export class ValidateToolHandler {
 	 * Create a tool progress chunk
 	 */
 	private createToolProgressChunk(
-		status: 'running' | 'completed',
+		status: 'running' | 'completed' | 'error',
 		toolCallId: string,
+		result?: string,
+		error?: string,
 	): StreamOutput {
 		return {
 			messages: [
@@ -192,6 +205,8 @@ export class ValidateToolHandler {
 					toolCallId,
 					displayTitle: 'Validating workflow',
 					status,
+					...(result !== undefined && { result }),
+					...(error !== undefined && { error }),
 				} as ToolProgressChunk,
 			],
 		};

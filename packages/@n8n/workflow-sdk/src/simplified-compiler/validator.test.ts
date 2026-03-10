@@ -210,6 +210,18 @@ onManual(async () => {
 			const err = result.errors.find((e) => e.ruleId === 'invalid-ai-class-name');
 			expect(err).toBeUndefined();
 		});
+
+		it('should not flag JS built-in classes as AI classes', () => {
+			const result = validateSimplifiedJS(`
+onManual(async () => {
+  const now = new Date().toISOString();
+  const params = new URLSearchParams().toString();
+  const url = new URL('https://example.com').href;
+});
+`);
+			const err = result.errors.find((e) => e.ruleId === 'invalid-ai-class-name');
+			expect(err).toBeUndefined();
+		});
 	});
 
 	describe('invalid-ai-io-method', () => {

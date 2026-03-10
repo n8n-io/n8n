@@ -485,6 +485,31 @@ function extractAiCall(node: AcornNode): AiCallInfo | undefined {
 	const className = newExpr.callee?.type === 'Identifier' ? (newExpr.callee.name ?? '') : '';
 	if (!className) return undefined;
 
+	// Skip JS built-in classes — not AI nodes
+	const JS_BUILTINS = new Set([
+		'Date',
+		'Map',
+		'Set',
+		'Array',
+		'Object',
+		'RegExp',
+		'Error',
+		'Promise',
+		'URL',
+		'URLSearchParams',
+		'Int8Array',
+		'Uint8Array',
+		'Float32Array',
+		'Float64Array',
+		'ArrayBuffer',
+		'SharedArrayBuffer',
+		'DataView',
+		'WeakMap',
+		'WeakSet',
+		'WeakRef',
+	]);
+	if (JS_BUILTINS.has(className)) return undefined;
+
 	const configArg = newExpr.arguments?.[0];
 	const subnodes: AiSubnodeCallInfo[] = [];
 

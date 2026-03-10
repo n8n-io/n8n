@@ -981,6 +981,8 @@ function generateComposite(node: CompositeNode, ctx: GenerationContext): string 
 			return generateExplicitConnections(node, ctx);
 		case 'multiOutput':
 			return generateMultiOutput(node, ctx);
+		case 'whileLoop':
+			throw new Error('whileLoop composite nodes are not supported in SDK code generation');
 	}
 }
 

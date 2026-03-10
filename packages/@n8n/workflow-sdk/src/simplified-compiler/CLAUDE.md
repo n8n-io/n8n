@@ -392,6 +392,12 @@ Captured variables in try/catch sub-workflows always use `'code'` kind (seed to 
 ### Expectation matcher URL scheme
 `matchRequests()` in `expectation-matcher.ts` strips `https?://` from URLs before comparing, since nock traces may record URLs without scheme.
 
+### `aggCounter` must be in `COUNTER_KEYS`
+`COUNTER_KEYS` controls which counters `syncCounters()` propagates from branch contexts back to the parent after if/else processing. If `aggCounter` is missing, both if-true and if-false branches start with the same `aggCounter` value, producing duplicate `const agg2` declarations. Fixed by adding `'aggCounter'` to `COUNTER_KEYS`.
+
+### JS built-in classes in `extractAiCall()` (validator)
+`extractAiCall()` matches ANY `new ClassName().method()` pattern. Without filtering, `new Date().toISOString()` is flagged as "Unknown AI class 'Date'". A `JS_BUILTINS` Set in `extractAiCall()` skips known built-in classes (`Date`, `Map`, `Set`, `URL`, `URLSearchParams`, `Error`, `Promise`, `RegExp`, etc.).
+
 ## Detailed Documentation
 
 Deep-dive architecture docs live in `docs/` — read on demand when working on specific areas:
@@ -408,6 +414,65 @@ Deep-dive architecture docs live in `docs/` — read on demand when working on s
 | `docs/execution-tests.md` | Execution test harness (task runner, nock mocking, expectations, credentials) |
 | `docs/round-trip-fixes.md` | W25/W26/W27 historical bug fixes |
 | `docs/while-loops.md` | While/do-while loop compilation and decompilation (IF nodes, back-edges, cycle detection) |
+
+## Checklist Evaluator Integration
+
+The `@n8n/ai-workflow-builder.ee` package has a checklist evaluator that tests end-to-end workflow generation quality. Run with `--simplified` to test the simplified DSL pipeline.
+
+### Running the Evaluator
+
+```bash
+pushd packages/@n8n/ai-workflow-builder.ee
+
+# Prerequisites
+pnpm export:nodes                    # Generate evaluations/nodes.json (needs n8n built)
+export N8N_AI_ANTHROPIC_KEY="..."    # Or reuse ANTHROPIC_API_KEY
+
+# Run on simple prompts
+N8N_AI_ANTHROPIC_KEY="$ANTHROPIC_API_KEY" pnpm eval:checklist --simplified --max-examples 4
+
+# Run with tags filter
+N8N_AI_ANTHROPIC_KEY="$ANTHROPIC_API_KEY" pnpm eval:checklist --simplified --tags webhook
+
+# Report at: evaluations/.data/checklist-report.html
+popd
+```
+
+### How It Works
+
+1. **Phase 1**: Extracts verification checklists from prompts using LLM (cached by prompt hash)
+2. **Phase 2**: Generates workflows via `CodeWorkflowBuilder` with `useSimplifiedSyntax: true`
+   - LLM writes simplified DSL using text editor tool (`str_replace_based_edit_tool`)
+   - `validate_workflow` tool triggers `ParseValidateHandler.parseAndValidate()` which:
+     - Runs `validateSimplifiedJS()` for DSL structure validation
+     - Runs `transpileWorkflowJS()` to compile to SDK
+     - Runs `parseWorkflowCode()` to get WorkflowJSON
+3. **Verification**: LLM checks generated code against checklist items
+
+### Key Files in ai-workflow-builder.ee
+
+| File | Purpose |
+|------|---------|
+| `evaluations/checklist/cli.ts` | CLI entry: `--simplified`, `--max-examples`, `--tags`, `--grep` |
+| `evaluations/checklist/runner.ts` | Runs `CodeWorkflowBuilder.chat()`, captures `WorkflowUpdateChunk` |
+| `evaluations/checklist/synthetic-prompts.ts` | 27 prompts: simple (8), medium (7), complex (12) |
+| `src/code-builder/handlers/parse-validate-handler.ts` | Simplified syntax compile pipeline (lines 139-163) |
+| `src/code-builder/code-workflow-builder.ts` | `useSimplifiedSyntax` config → `CodeBuilderAgent` |
+
+### Evaluation Results (2025-03-10)
+
+Simple prompts (4 examples): **100% success rate, 96% avg checklist score**
+- 3/4 scored 100%, 1/4 scored 86% (used HTTP as DB proxy — reasonable DSL limitation)
+- Most simple prompts converge in 1 iteration (LLM writes valid DSL first try)
+- The LLM generates clean DSL code: proper imports, callback patterns, respond() usage
+
+### Build Dependency
+
+The workflow-sdk package MUST be built before running the evaluator. If `validateSimplifiedJS` is not in dist, the validate tool silently fails (parse error → `workflowReady: false` → LLM retries → all iterations fail → 0% score). Always rebuild after source changes:
+
+```bash
+pushd packages/@n8n/workflow-sdk && pnpm build && popd
+```
 
 ## Updating This Document
 
