@@ -194,7 +194,7 @@ export function useChatHubMarkdownOptions(
 				const id = tokens[idx].meta.id;
 				const content = (env as FootnoteEnv).footnotes?.list?.[id]?.content;
 				const text = content ?? String(id + 1);
-				const truncated = truncateBeforeLast(text, 20);
+				const truncated = truncateBeforeLast(text, 25, 11, 4);
 				const escapedFull = md.utils.escapeHtml(text);
 				const escapedTruncated = md.utils.escapeHtml(truncated);
 				return `<span class="${footnoteRefClassName}" title="${escapedFull}">${escapedTruncated}</span>`;

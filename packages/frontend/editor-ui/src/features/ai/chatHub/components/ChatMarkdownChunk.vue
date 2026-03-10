@@ -346,13 +346,14 @@ defineExpose({
 		display: inline-block;
 		font-size: var(--font-size--3xs);
 		line-height: 1;
-		color: var(--color--text--tint-1);
+		color: var(--color--text);
 		background: var(--color--foreground--tint-1);
 		border-radius: var(--radius--xl);
 		padding: var(--spacing--4xs) var(--spacing--2xs);
 		margin-inline: var(--spacing--5xs);
 		vertical-align: middle;
 		white-space: nowrap;
+		font-weight: var(--font-weight--regular);
 	}
 
 	// Tables
