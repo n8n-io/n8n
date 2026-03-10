@@ -48,12 +48,12 @@ function generateScrapeConfig(targets: ScrapeTarget[]): string {
     static_configs:
 ${targetConfigs}
     metrics_path: '/metrics'
-    scrape_interval: '5s'`);
+    scrape_interval: '2s'`);
 	}
 
 	return `
 global:
-  scrape_interval: 15s
+  scrape_interval: 2s
 
 scrape_configs:
 ${scrapeConfigs.join('\n')}

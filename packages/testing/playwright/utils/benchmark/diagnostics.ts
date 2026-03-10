@@ -23,11 +23,14 @@ export function formatDiagnosticValue(v: number | undefined, unit = ''): string 
 	return v !== undefined ? `${v.toFixed(2)}${unit}` : 'N/A';
 }
 
-/**
- * Collects system-level diagnostics from VictoriaMetrics.
- * Queries Postgres, queue, and event loop metrics over the benchmark duration window.
- */
-export async function collectDiagnostics(
+/** Core diagnostic keys that should always be present when VictoriaMetrics has data. */
+const EXPECTED_KEYS: Array<keyof DiagnosticsResult> = [
+	'eventLoopLag',
+	'pgTxRate',
+	'pgActiveConnections',
+];
+
+async function queryDiagnostics(
 	metrics: MetricsHelper,
 	durationMs: number,
 ): Promise<DiagnosticsResult> {
@@ -80,6 +83,40 @@ export async function collectDiagnostics(
 		queueCompletedRate: sumValues(queueCompletedRate),
 		queueFailedRate: sumValues(queueFailedRate),
 	};
+}
+
+/**
+ * Collects system-level diagnostics from VictoriaMetrics.
+ * Retries when core metrics are missing — VictoriaMetrics may not have
+ * ingested a fresh scrape immediately after the benchmark completes.
+ */
+export async function collectDiagnostics(
+	metrics: MetricsHelper,
+	durationMs: number,
+	options: { maxRetries?: number; retryDelayMs?: number } = {},
+): Promise<DiagnosticsResult> {
+	const { maxRetries = 3, retryDelayMs = 5000 } = options;
+
+	for (let attempt = 0; attempt <= maxRetries; attempt++) {
+		const result = await queryDiagnostics(metrics, durationMs);
+
+		const missing = EXPECTED_KEYS.filter((k) => result[k] === undefined);
+		if (missing.length === 0) return result;
+
+		if (attempt === maxRetries) {
+			console.warn(
+				`[DIAG] Missing metrics after ${maxRetries + 1} attempts: ${missing.join(', ')}`,
+			);
+			return result;
+		}
+
+		console.log(
+			`[DIAG] Missing metrics (attempt ${attempt + 1}): ${missing.join(', ')} — retrying in ${retryDelayMs}ms`,
+		);
+		await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+	}
+
+	return {};
 }
 
 /**
