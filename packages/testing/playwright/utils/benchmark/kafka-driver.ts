@@ -125,6 +125,7 @@ async function waitForConsumerGroupDrain(
 function createKafkaTriggerNode(options: {
 	topic: string;
 	groupId: string;
+	partitions: number;
 	credentialId: string;
 	credentialName: string;
 }) {
@@ -142,6 +143,10 @@ function createKafkaTriggerNode(options: {
 					parallelProcessing: true,
 					sessionTimeout: 60000,
 					heartbeatInterval: 3000,
+					// Remove consumer-side bottlenecks so benchmarks measure
+					// n8n execution capacity, not Kafka ingestion rate.
+					maxInFlightRequests: 0, // 0 = unlimited (node converts to null)
+					partitionsConsumedConcurrently: options.partitions,
 				},
 			},
 			credentials: {
@@ -184,6 +189,7 @@ export const kafkaDriver: TriggerDriver = {
 		const kafkaTrigger = createKafkaTriggerNode({
 			topic,
 			groupId,
+			partitions,
 			credentialId: credential.id,
 			credentialName: credential.name,
 		});
