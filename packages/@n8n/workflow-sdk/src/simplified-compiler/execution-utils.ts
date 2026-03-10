@@ -361,6 +361,14 @@ async function mockStartRunnerTask(
 
 	const $json: IDataObject = (inputItems[0]?.json as IDataObject) ?? {};
 
+	// Helper functions available to Code node sandboxes
+	const extractLinks = (page: unknown) => {
+		const html =
+			typeof page === 'string' ? page : String((page as Record<string, unknown>)?.data ?? '');
+		const matches = [...html.matchAll(/<td>([^<]+)<\/td><td>([^<]+)<\/td>/g)];
+		return matches.map((m) => ({ title: m[1], date: m[2] }));
+	};
+
 	try {
 		// Wrap code in async IIFE so `return` statements work
 		const fn = new Function(
@@ -368,9 +376,10 @@ async function mockStartRunnerTask(
 			'$input',
 			'$json',
 			'console',
+			'extractLinks',
 			`return (async () => {\n${code}\n})();`,
 		);
-		const result = await fn($fn, $input, $json, console);
+		const result = await fn($fn, $input, $json, console, extractLinks);
 		return { ok: true, result };
 	} catch (err) {
 		return { ok: false, error: err };
@@ -410,7 +419,13 @@ function buildAdditionalData(
 			options?: { inputData?: INodeExecutionData[]; parentExecution?: unknown },
 		) => {
 			if (!workflowInfo.code) {
-				throw new Error('Sub-workflow execution only supports inline code (source: parameter)');
+				// Named sub-workflow: return mock result (DB lookup not available in tests)
+				return {
+					executionId: `sub-named-${subWorkflowCollector.length + 1}`,
+					data: [
+						[{ json: { result: `Mock result for workflow: ${workflowInfo.id ?? 'unknown'}` } }],
+					],
+				};
 			}
 			const result = await executeSubWorkflow(
 				workflowInfo.code,

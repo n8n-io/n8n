@@ -24,7 +24,14 @@ const wait1 = node({
     "parameters": {
       "resume": "webhook"
     },
-    "executeOnce": true
+    "executeOnce": true,
+    "pinData": [
+      {
+        "body": {
+          "decision": "approved"
+        }
+      }
+    ]
   }
 });
 

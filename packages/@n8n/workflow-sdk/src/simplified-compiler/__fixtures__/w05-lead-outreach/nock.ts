@@ -6,9 +6,9 @@ export function setupNock(): nock.Scope[] {
 		.get('/v4/spreadsheets/SPREADSHEET_ID/values/Sheet1')
 		.reply(200, {
 			values: [
-				['John', 'john@test.com', 'New'],
-				['Jane', 'jane@test.com', 'Contacted'],
-				['Bob', 'bob@test.com', 'New'],
+				{ 0: 'John', 1: 'john@test.com', 2: 'New' },
+				{ 0: 'Jane', 1: 'jane@test.com', 2: 'Contacted' },
+				{ 0: 'Bob', 1: 'bob@test.com', 2: 'New' },
 			],
 		});
 

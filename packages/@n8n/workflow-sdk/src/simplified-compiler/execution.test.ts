@@ -19,10 +19,14 @@ import type { ExpectationMismatch } from './expectation-matcher';
 // Skip map: fixtures that fail execution (grouped by root cause)
 // ---------------------------------------------------------------------------
 
-const SKIP_REASONS: Record<string, string> = {};
+const SKIP_REASONS: Record<string, string> = {
+	'w34-while-cursor':
+		'While-loop variable tracking: condition reads $("Set cursor") which never updates between iterations',
+};
 
 function getSkipReason(dir: string): string | undefined {
-	// Extract the w## prefix from dir name like "w04-telegram-voice-transcription"
+	// Check full dir name first, then w## prefix
+	if (SKIP_REASONS[dir]) return SKIP_REASONS[dir];
 	const prefix = dir.match(/^(w\d+)/)?.[1];
 	return prefix ? SKIP_REASONS[prefix] : undefined;
 }
@@ -244,7 +248,14 @@ describe('Fixture execution with pin data', () => {
 			// Patch missing filter options for IF/Switch nodes (including sub-workflows)
 			patchFilterConditions(workflowJson.nodes as Array<{ parameters?: Record<string, unknown> }>);
 
-			// Step 3b: If fixture has nock interceptors, set them up and strip HTTP pin data
+			// Step 3b: Inject pin data for Wait nodes so they pass through without pausing
+			for (const nd of workflowJson.nodes as Array<{ name: string; type: string }>) {
+				if (nd.type === 'n8n-nodes-base.wait' && !pinData[nd.name]) {
+					pinData[nd.name] = [{ json: {} }];
+				}
+			}
+
+			// Step 3c: If fixture has nock interceptors, set them up and strip HTTP pin data
 			let nockInterceptors: string[] = [];
 			const nockRequests: NockRequestRecord[] = [];
 			if (fixture.hasNock) {

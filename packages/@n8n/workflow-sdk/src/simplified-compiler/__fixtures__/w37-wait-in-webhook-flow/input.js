@@ -2,6 +2,7 @@ import { onWebhook } from '@n8n/sdk';
 import http from '@n8n/sdk/http';
 import { wait, waitUntil } from '@n8n/sdk';
 
+/** @example [{ body: { item: "widget", quantity: 5 } }] */
 onWebhook({ method: 'POST', path: '/process' }, async ({ body }) => {
 	const order = await http.post('https://api.example.com/orders', {
 		item: body.item,

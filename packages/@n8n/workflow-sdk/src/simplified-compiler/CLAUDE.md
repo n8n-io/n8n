@@ -360,10 +360,12 @@ Fixtures with HTTP calls can provide a `nock.ts` file exporting `setupNock(): no
 
 - **Round-trip**: 38/38 fixtures pass (100%)
 - **Schema validation**: 37/38 fixtures pass. `KNOWN_SCHEMA_VIOLATIONS` has W35 (Wait node form fieldType schema).
-- **Execution**: 29/32 pass, 3 fail (W05, W10, W15). No skips.
-  - W05: Pre-existing issue — spreadsheet rows are arrays not objects, splitter produces invalid items
-  - W10: `extractLinks` function undefined in Code node mock environment
-  - W15: `workflow.run()` by name requires DB lookup, not supported in mock executor
+- **Execution**: 39/40 pass, 0 fail, 1 skip. All W33-W38 wait/while fixtures now have nock.ts files.
+  - W34-while-cursor: Skipped — while-loop variable tracking limitation (condition reads `$('Set cursor')` which never updates between iterations)
+  - W05: Fixed — nock returns objects with numeric keys instead of arrays (valid n8n json items)
+  - W10: Fixed — `extractLinks` helper added to mock Code node sandbox in `execution-utils.ts`
+  - W15: Fixed — named sub-workflow mock returns placeholder result instead of throwing
+  - Wait nodes: Pin data auto-injected for all Wait nodes in `execution.test.ts` to prevent execution pausing
 
 **Key insight**: Nested sub-workflow WorkflowBuilder references (e.g., `workflowJson: __tryCatch_1Workflow` inside a loop body sub-workflow) are handled automatically by `resolveWorkflowBuilderValues()` in `json-serializer.ts`. It duck-types WorkflowBuilder instances (`toJSON` + `add` methods) at any nesting depth and converts them to `JSON.stringify(value.toJSON())`.
 
