@@ -71,6 +71,10 @@ export class RunDataPanel {
 		return this.root.locator('table tbody tr').nth(row).locator('td').nth(col);
 	}
 
+	getTbodyCellLink(row: number, col: number) {
+		return this.getTbodyCell(row, col).locator('a');
+	}
+
 	getTableCellSpan(row: number, col: number, dataName: string) {
 		return this.getTbodyCell(row, col).locator(`span[data-name="${dataName}"]`).first();
 	}
