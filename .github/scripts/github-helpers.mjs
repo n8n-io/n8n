@@ -205,7 +205,7 @@ export function trySh(cmd, args, opts = {}) {
 /**
  * Append outputs to GITHUB_OUTPUT if available.
  *
- * @param {Record<string, string>} obj
+ * @param {Record<string, string | boolean>} obj
  */
 export function writeGithubOutput(obj) {
 	const path = process.env.GITHUB_OUTPUT;

@@ -14,6 +14,7 @@ jobs:
     if: github.event.pull_request.merged == true
     outputs:
       track: ${{ steps.determine-info.outputs.track }}
+      previous_version: ${{ steps.determine-info.outputs.previous_version }}
       version: ${{ steps.determine-info.outputs.version }}
       bump: ${{ steps.determine-info.outputs.bump }}
       new_stable_version: ${{ steps.determine-info.outputs.new_stable_version }}
@@ -192,6 +193,7 @@ jobs:
     uses: ./.github/workflows/release-publish-post-release.yml
     with:
       track: ${{ needs.determine-version-info.outputs.track }}
+      previous_version: ${{ needs.determine-version-info.outputs.previous_version }}
       version: ${{ needs.determine-version-info.outputs.version }}
       bump: ${{ needs.determine-version-info.outputs.bump }}
       new_stable_version: ${{ needs.determine-version-info.outputs.new_stable_version }}
