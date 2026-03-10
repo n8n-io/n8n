@@ -33,7 +33,7 @@ on:
 
 jobs:
   determine-changes:
-    runs-on: ubuntu-latest # TODO. Slim
+    runs-on: ubuntu-slim
     outputs:
       has_node_enhancements: ${{ steps.get-changes.outputs.has_node_enhancements }}
       has_core_changes: ${{ steps.get-changes.outputs.has_core_changes }}
@@ -57,7 +57,7 @@ jobs:
         run: node ./.github/scripts/determine-release-version-changes.mjs
 
   populate-cloud:
-    runs-on: ubuntu-latest # TODO. Slim
+    runs-on: ubuntu-slim
     environment: release
     needs: [determine-changes]
     env:
