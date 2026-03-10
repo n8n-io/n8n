@@ -63,6 +63,11 @@ export {
 	isCycleOutput,
 } from './semantic-registry';
 
+// Data-flow format exports
+export { generateDataFlowWorkflowCode, parseDataFlowCode } from './dataflow/index';
+export type { GenerateDataFlowCodeOptions } from './dataflow/index';
+export { n8nExprToDataFlow, dataFlowExprToN8n } from './dataflow/dataflow-expression';
+
 /**
  * Type guard to check if input is options object
  */
