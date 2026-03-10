@@ -38,6 +38,7 @@ import {
 	N8nButton,
 	N8nCallout,
 	N8nHeading,
+	N8nIcon,
 	N8nIconButton,
 	N8nInfoTip,
 	N8nLink,
@@ -212,6 +213,46 @@ const workflowTreeRows = computed<SourceControlTreeRow<SourceControlledFileWithP
 	buildWorkflowTreeRows(sortedWorkflows.value),
 );
 
+const collapsedFolderIds = ref<Set<string>>(new Set());
+
+const visibleWorkflowRows = computed<SourceControlTreeRow<SourceControlledFileWithProject>[]>(
+	() => {
+		const visibleRows: SourceControlTreeRow<SourceControlledFileWithProject>[] = [];
+		const collapsedDepths: number[] = [];
+
+		for (const row of workflowTreeRows.value) {
+			while (collapsedDepths.length && row.depth <= collapsedDepths[collapsedDepths.length - 1]) {
+				collapsedDepths.pop();
+			}
+
+			if (collapsedDepths.length) {
+				continue;
+			}
+
+			visibleRows.push(row);
+
+			if (row.type === 'folder' && collapsedFolderIds.value.has(row.id)) {
+				collapsedDepths.push(row.depth);
+			}
+		}
+
+		return visibleRows;
+	},
+);
+
+function isFolderCollapsed(folderId: string) {
+	return collapsedFolderIds.value.has(folderId);
+}
+
+function toggleFolderCollapse(folderId: string) {
+	if (collapsedFolderIds.value.has(folderId)) {
+		collapsedFolderIds.value.delete(folderId);
+		return;
+	}
+
+	collapsedFolderIds.value.add(folderId);
+}
+
 // Filtered credentials
 const filteredCredentials = computed(() => {
 	const credentials = groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.credential] || [];
@@ -273,9 +314,9 @@ const activeDataSourceFiltered = computed(() => {
 	return [];
 });
 
-const activeRows = computed<SourceControlTreeRow[]>(() => {
+const activeRows = computed<SourceControlTreeRow<SourceControlledFileWithProject>[]>(() => {
 	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
-		return workflowTreeRows.value;
+		return visibleWorkflowRows.value;
 	}
 
 	return activeDataSourceFiltered.value.map((file) => ({
@@ -560,15 +601,39 @@ onMounted(() => {
 										>
 											<div
 												v-if="row.type === 'folder'"
-												:class="[$style.folderRow]"
+												:class="[
+													$style.folderRow,
+													{ [$style.rowNoBorder]: index === activeRows.length - 1 },
+												]"
 												:style="{ paddingLeft: `${16 + row.depth * 16}px` }"
 												data-test-id="source-control-pull-modal-folder-row"
 											>
 												<N8nText tag="span" color="text-light">
 													{{ row.name }}
 												</N8nText>
+												<button
+													type="button"
+													:class="$style.folderToggle"
+													data-test-id="source-control-pull-modal-folder-toggle"
+													@click.stop="toggleFolderCollapse(row.id)"
+													@mousedown.stop
+													@pointerdown.stop
+												>
+													<N8nIcon
+														:icon="isFolderCollapsed(row.id) ? 'chevron-right' : 'chevron-down'"
+														color="text-light"
+														size="small"
+													/>
+												</button>
 											</div>
-											<div v-else :class="[$style.listItem]" data-test-id="pull-modal-item">
+											<div
+												v-else
+												:class="[
+													$style.listItem,
+													{ [$style.rowNoBorder]: index === activeRows.length - 1 },
+												]"
+												data-test-id="pull-modal-item"
+											>
 												<div
 													:class="[$style.itemContent]"
 													:style="{ paddingLeft: `${row.depth * 16}px` }"
@@ -726,14 +791,6 @@ onMounted(() => {
 	max-height: 100%;
 	scrollbar-color: var(--color--foreground) transparent;
 	outline: var(--border);
-
-	:global(.scrollerItem) {
-		border-bottom: var(--border);
-
-		&:last-child {
-			border-bottom: 0;
-		}
-	}
 }
 
 .listItem {
@@ -742,7 +799,7 @@ onMounted(() => {
 	justify-content: space-between;
 	padding: 10px 16px;
 	margin: 0;
-	border-bottom: 0;
+	border-bottom: var(--border);
 	gap: 30px;
 }
 
@@ -750,7 +807,20 @@ onMounted(() => {
 	display: flex;
 	align-items: center;
 	padding: var(--spacing--2xs) var(--spacing--sm);
-	border-bottom: 0;
+	border-bottom: var(--border);
+}
+
+.folderToggle {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	border: 0;
+	background: transparent;
+	padding: 0;
+	margin-left: var(--spacing--4xs);
+	cursor: pointer;
 }
 
 .itemContent {
@@ -884,5 +954,9 @@ onMounted(() => {
 	margin: var(--spacing--3xs) 0;
 	white-space: normal;
 	padding-right: var(--spacing--md);
+}
+
+.rowNoBorder {
+	border-bottom: 0;
 }
 </style>

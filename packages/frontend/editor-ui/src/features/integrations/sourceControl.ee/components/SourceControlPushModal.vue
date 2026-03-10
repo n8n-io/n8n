@@ -399,6 +399,46 @@ const workflowTreeRows = computed<SourceControlTreeRow<SourceControlledFileWithP
 	buildWorkflowTreeRows(sortedWorkflows.value),
 );
 
+const collapsedFolderIds = ref<Set<string>>(new Set());
+
+const visibleWorkflowRows = computed<SourceControlTreeRow<SourceControlledFileWithProject>[]>(
+	() => {
+		const visibleRows: SourceControlTreeRow<SourceControlledFileWithProject>[] = [];
+		const collapsedDepths: number[] = [];
+
+		for (const row of workflowTreeRows.value) {
+			while (collapsedDepths.length && row.depth <= collapsedDepths[collapsedDepths.length - 1]) {
+				collapsedDepths.pop();
+			}
+
+			if (collapsedDepths.length) {
+				continue;
+			}
+
+			visibleRows.push(row);
+
+			if (row.type === 'folder' && collapsedFolderIds.value.has(row.id)) {
+				collapsedDepths.push(row.depth);
+			}
+		}
+
+		return visibleRows;
+	},
+);
+
+function isFolderCollapsed(folderId: string) {
+	return collapsedFolderIds.value.has(folderId);
+}
+
+function toggleFolderCollapse(folderId: string) {
+	if (collapsedFolderIds.value.has(folderId)) {
+		collapsedFolderIds.value.delete(folderId);
+		return;
+	}
+
+	collapsedFolderIds.value.add(folderId);
+}
+
 const folderChildrenMap = computed(() => {
 	const childrenByFolderId = new Map<string, string[]>();
 	const rows = workflowTreeRows.value;
@@ -790,9 +830,9 @@ const activeDataSourceFiltered = computed(() => {
 	return [];
 });
 
-const activeRows = computed<SourceControlTreeRow[]>(() => {
+const activeRows = computed<SourceControlTreeRow<SourceControlledFileWithProject>[]>(() => {
 	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
-		return workflowTreeRows.value;
+		return visibleWorkflowRows.value;
 	}
 
 	return activeDataSourceFiltered.value.map((file) => ({
@@ -1135,7 +1175,10 @@ onMounted(async () => {
 									>
 										<div
 											v-if="row.type === 'folder'"
-											:class="[$style.folderRow]"
+											:class="[
+												$style.folderRow,
+												{ [$style.rowNoBorder]: index === activeRows.length - 1 },
+											]"
 											:style="{ paddingLeft: `${16 + row.depth * 16}px` }"
 										>
 											<N8nCheckbox
@@ -1151,13 +1194,31 @@ onMounted(async () => {
 														<N8nText tag="span" color="text-light">
 															{{ row.name }}
 														</N8nText>
+														<button
+															type="button"
+															:class="$style.folderToggle"
+															data-test-id="source-control-push-modal-folder-toggle"
+															@click.stop.prevent="toggleFolderCollapse(row.id)"
+															@mousedown.stop.prevent
+															@mouseup.stop.prevent
+															@pointerdown.stop.prevent
+														>
+															<N8nIcon
+																:icon="isFolderCollapsed(row.id) ? 'chevron-right' : 'chevron-down'"
+																color="text-light"
+																size="small"
+															/>
+														</button>
 													</div>
 												</template>
 											</N8nCheckbox>
 										</div>
 										<div
 											v-else
-											:class="$style.fileRow"
+											:class="[
+												$style.fileRow,
+												{ [$style.rowNoBorder]: index === activeRows.length - 1 },
+											]"
 											:style="{ paddingLeft: `${row.depth * 16}px` }"
 										>
 											<N8nCheckbox
@@ -1338,14 +1399,6 @@ onMounted(async () => {
 	max-height: 100%;
 	scrollbar-color: var(--color--foreground) transparent;
 	outline: var(--border);
-
-	:global(.scrollerItem) {
-		border-bottom: var(--border);
-
-		&:last-child {
-			border-bottom: 0;
-		}
-	}
 }
 
 .listItem {
@@ -1377,7 +1430,7 @@ onMounted(async () => {
 	display: flex;
 	align-items: center;
 	padding: var(--spacing--2xs) var(--spacing--sm);
-	border-bottom: 0;
+	border-bottom: var(--border);
 }
 
 .folderCheckbox {
@@ -1385,6 +1438,19 @@ onMounted(async () => {
 	align-items: center;
 	width: 100%;
 	margin-bottom: 0;
+}
+
+.folderToggle {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	border: 0;
+	background: transparent;
+	padding: 0;
+	margin-left: var(--spacing--4xs);
+	cursor: pointer;
 }
 
 .folderLabel {
@@ -1396,6 +1462,11 @@ onMounted(async () => {
 .fileRow {
 	box-sizing: border-box;
 	width: 100%;
+	border-bottom: var(--border);
+}
+
+.rowNoBorder {
+	border-bottom: 0;
 }
 
 .badges {

@@ -348,6 +348,78 @@ describe('SourceControlPushModal', () => {
 		expect(fileCheckboxes[2]).not.toBeChecked();
 	});
 
+	it('should collapse and expand nested folder workflows', async () => {
+		const status: SourceControlledFile[] = [
+			{
+				id: 'wf-root',
+				name: 'Root workflow',
+				type: 'workflow',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '/home/user/.n8n/git/workflows/wf-root.json',
+				updatedAt: '2024-09-20T10:31:40.000Z',
+			},
+			{
+				id: 'wf-child-1',
+				name: 'Child workflow 1',
+				type: 'workflow',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '/home/user/.n8n/git/workflows/wf-child-1.json',
+				updatedAt: '2024-09-20T10:32:40.000Z',
+				folderPath: ['Prod'],
+			},
+			{
+				id: 'wf-child-2',
+				name: 'Child workflow 2',
+				type: 'workflow',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '/home/user/.n8n/git/workflows/wf-child-2.json',
+				updatedAt: '2024-09-20T10:33:40.000Z',
+				folderPath: ['Prod'],
+			},
+		];
+
+		sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+		const { getByText, getByTestId, getAllByTestId } = renderModal({
+			pinia,
+			props: {
+				data: {
+					eventBus,
+					status,
+				},
+			},
+		});
+
+		let folderToggle: HTMLElement;
+
+		await waitFor(() => {
+			expect(getByText('Commit and push changes')).toBeInTheDocument();
+			expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(3);
+			folderToggle = getByTestId('source-control-push-modal-folder-toggle');
+			expect(folderToggle).toBeInTheDocument();
+			expect(getAllByTestId('source-control-push-modal-folder-checkbox')[0]).not.toBeChecked();
+		});
+
+		await userEvent.click(folderToggle!);
+
+		await waitFor(() => {
+			expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(1);
+			expect(getAllByTestId('source-control-push-modal-folder-checkbox')[0]).not.toBeChecked();
+		});
+
+		await userEvent.click(folderToggle!);
+
+		await waitFor(() => {
+			expect(getAllByTestId('source-control-push-modal-file-checkbox')).toHaveLength(3);
+		});
+	});
+
 	it('should push all entities besides workflows and credentials', async () => {
 		const status: SourceControlledFile[] = [
 			{
