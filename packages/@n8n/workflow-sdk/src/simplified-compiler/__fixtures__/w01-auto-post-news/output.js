@@ -32,7 +32,7 @@ const http1 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"model\":\"llama-3.1-sonar-small-128k-online\",\"messages\":[{\"role\":\"system\",\"content\":\"You are a social media assistant summarizing tech news...\"},{\"role\":\"user\",\"content\":\"={{ $('Set searchInput').first().json.searchInput }}\"}],\"temperature\":0.3}",
+      "jsonBody": "={{ { \"model\": \"llama-3.1-sonar-small-128k-online\", \"messages\": [{ \"role\": \"system\", \"content\": \"You are a social media assistant summarizing tech news...\" }, { \"role\": \"user\", \"content\": $('Set searchInput').first().json.searchInput }], \"temperature\": 0.3 } }}",
       "authentication": "genericCredentialType",
       "genericAuthType": "httpHeaderAuth"
     },
@@ -64,7 +64,7 @@ const http2 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"text\":\"={{ $('Collect result').first().json.result.choices[0].message.content }}\"}",
+      "jsonBody": "={{ { \"text\": $('Collect result').first().json.result.choices[0].message.content } }}",
       "authentication": "genericCredentialType",
       "genericAuthType": "oAuth2Api"
     },

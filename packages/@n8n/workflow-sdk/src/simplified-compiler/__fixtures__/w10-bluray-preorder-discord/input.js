@@ -1,3 +1,6 @@
+import { onManual, onSchedule } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+
 async function checkBlurays() {
 	const today = new Date();
 	const formattedDate = today.toLocaleDateString('en-US', {

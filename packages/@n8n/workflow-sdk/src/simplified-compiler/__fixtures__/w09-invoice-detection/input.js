@@ -1,3 +1,7 @@
+import { onSchedule } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+import { Agent, OpenAiModel, StructuredOutputParser } from '@n8n/sdk/ai';
+
 onSchedule({ every: '1h' }, async () => {
 	const emails = await http.get(
 		'https://gmail.googleapis.com/gmail/v1/users/me/messages?q=is:unread',

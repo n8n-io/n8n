@@ -1,3 +1,6 @@
+import { onManual } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+
 async function enrichData(id) {
 	const result = await http.get('https://api.com/enrich/' + id);
 	return result;

@@ -77,7 +77,7 @@ const http1 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"info\":\"={{ $('fetchData').first().json.name }}\"}"
+      "jsonBody": "={{ { \"info\": $('fetchData').first().json.name } }}"
     },
     "executeOnce": true
   }

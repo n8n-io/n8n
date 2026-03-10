@@ -1,3 +1,6 @@
+import { onSchedule } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+
 onSchedule({ every: '1m' }, async () => {
 	const events = await http.get('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
 		auth: { type: 'oauth2', credential: 'Google Calendar' },

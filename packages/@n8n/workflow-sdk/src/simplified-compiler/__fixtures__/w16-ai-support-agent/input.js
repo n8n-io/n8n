@@ -1,3 +1,6 @@
+import { onWebhook } from '@n8n/sdk';
+import { Agent, OpenAiModel, HttpRequestTool, CodeTool, BufferWindowMemory } from '@n8n/sdk/ai';
+
 /** @example [{ body: { question: "How do I reset my password?", userId: "user_42" } }] */
 onWebhook({ method: 'POST', path: '/support' }, async ({ body, respond }) => {
 	/** @example [{ output: "Based on our knowledge base, you can resolve this by going to Settings > Account > Reset Password. If the issue persists, please contact support@company.com." }] */

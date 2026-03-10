@@ -1,3 +1,6 @@
+import { onWebhook, onSchedule } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+
 async function processOrder(orderId) {
 	const enriched = await http.get('https://api.com/orders/' + orderId);
 	await http.post('https://api.com/crm', enriched);

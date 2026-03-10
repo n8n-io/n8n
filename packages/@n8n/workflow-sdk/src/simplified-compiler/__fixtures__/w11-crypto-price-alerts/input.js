@@ -1,3 +1,6 @@
+import { onSchedule } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+
 onSchedule({ every: '5m' }, async () => {
 	const tickers = await http.get('https://api.binance.com/api/v1/ticker/24hr');
 

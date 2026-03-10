@@ -1,3 +1,6 @@
+import { onWebhook } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+
 /** @example [{ body: { action: "approve", postId: "post_789", moderator: "admin@cms.com" } }] */
 onWebhook({ method: 'POST', path: '/moderate' }, async ({ body, respond }) => {
 	switch (body.action) {

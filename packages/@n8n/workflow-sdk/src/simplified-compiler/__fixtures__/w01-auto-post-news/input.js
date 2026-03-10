@@ -1,3 +1,6 @@
+import { onSchedule } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+
 onSchedule({ every: '21h' }, async () => {
 	const searchInput = "What's the latest news in artificial intelligence?";
 

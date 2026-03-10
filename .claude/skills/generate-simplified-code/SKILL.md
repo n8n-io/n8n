@@ -342,7 +342,84 @@ Only if the user explicitly asks to save as a fixture:
    - `meta.json`: `{ "title": "WNN: Description", "templateId": ID }`
    - `input.js`: the generated DSL from `/tmp/generated_input.js`
    - `output.js`: the compiled SDK from `/tmp/compiled_output.js`
-4. Run `/validate-compiler-fixture wNN` to validate the new fixture
+4. Generate `nock.ts` and `expectations.json` (see Steps 7b and 7c below)
+5. Run `/validate-compiler-fixture wNN` to validate the new fixture
+
+### Step 7b: Generate `nock.ts` (HTTP Mocking)
+
+For every HTTP call in the DSL, create a nock mock that returns a realistic response. **Use web search to find real API documentation** for the URLs used in the workflow to determine realistic response shapes.
+
+**Process:**
+1. Identify all HTTP calls in the generated DSL (`http.get`, `http.post`, etc.)
+2. For each URL, search the web for the API documentation (e.g., "Twitter API POST /2/tweets response format")
+3. Create realistic mock responses based on the actual API response schema
+4. If the API docs can't be found, create plausible responses matching the field names referenced downstream in the DSL
+
+**File format:**
+
+```typescript
+import nock from 'nock';
+
+export function setupNock(): nock.Scope[] {
+	// Comment describing what this mock covers
+	const s1 = nock('https://api.example.com')
+		.get('/endpoint')
+		.reply(200, { /* realistic response body */ });
+
+	// POST with request body matching (when the DSL sends a body)
+	const s2 = nock('https://api.example.com')
+		.post('/endpoint', { /* expected request body */ })
+		.reply(201, { /* realistic response body */ });
+
+	return [s1, s2];
+}
+```
+
+**Key rules:**
+- One `nock()` scope per unique base URL + endpoint
+- Match the HTTP method from the DSL (`http.get` → `.get()`, etc.)
+- For POST/PUT/PATCH: include request body matching if the DSL sends a static body
+- Use `.persist()` on mocks that get called multiple times (e.g., inside loops)
+- Response bodies must include all fields that downstream nodes reference (check expressions in the compiled SDK output)
+- Use realistic data types (numbers for IDs, ISO dates for timestamps, etc.)
+
+### Step 7c: Generate `expectations.json` (Execution Validation)
+
+Define expected request bodies and node outputs to validate execution correctness.
+
+**File format:**
+
+```json
+{
+	"requests": {
+		"METHOD domain.com/path": {
+			"requestBody": { /* exact match — all fields required */ }
+		},
+		"METHOD domain.com/path#2": {
+			"requestBody": { /* for 2nd call to same endpoint (1-indexed after first) */ }
+		}
+	},
+	"nodes": {
+		"NodeName": {
+			"items": [{ /* partial match — only specified fields checked */ }]
+		}
+	}
+}
+```
+
+**Key rules:**
+- **Request keys** use format `"METHOD domain.com/path"` (no protocol, no leading slash duplication)
+- **Duplicate endpoints** get `#2`, `#3` suffixes (the first occurrence has no suffix)
+- **`requestBody`** uses **exact match** — include ALL fields the node sends, no extras
+- **`nodes.*.items`** uses **partial match** — only include fields you want to validate
+- **Node names** match the compiled SDK node names (e.g., `"GET api.example.com/data"`, `"IF 1"`, `"Code 1"`)
+- Focus on validating key data flow: did the right data arrive at the right nodes?
+
+**What to include:**
+- Request bodies for POST/PUT/PATCH calls (validates expression resolution)
+- Node output items for HTTP response nodes (validates nock responses are received)
+- Node output items for IF/Switch nodes (validates correct branch was taken)
+- Code node outputs (validates transformations)
 
 ## Reference: Existing Fixture Patterns
 

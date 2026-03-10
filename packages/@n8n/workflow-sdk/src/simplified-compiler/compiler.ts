@@ -14,7 +14,12 @@ import { classNameToEntry, getKnownIoMethods } from '../shared/ai-node-mapping';
 import type { AiNodeEntry } from '../shared/ai-node-mapping';
 import { AUTH_TYPE_TO_CREDENTIAL } from '../shared/credential-mapping';
 import { toScheduleRule } from '../shared/schedule-mapping';
-import { CALLBACK_TO_TRIGGER, TRIGGER_TYPES } from '../shared/trigger-mapping';
+import {
+	APP_TRIGGER_REGISTRY,
+	CALLBACK_TO_TRIGGER,
+	TRIGGER_TYPES,
+} from '../shared/trigger-mapping';
+import type { AppTriggerEntry } from '../shared/trigger-mapping';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -71,11 +76,12 @@ type AcornNode = acorn.Node & {
 // ─── Callback Info ───────────────────────────────────────────────────────────
 
 interface CallbackInfo {
-	triggerType: 'manual' | 'webhook' | 'schedule' | 'error';
+	triggerType: 'manual' | 'webhook' | 'schedule' | 'error' | 'app';
 	triggerOptions: Record<string, unknown>;
 	callbackBody: AcornNode[];
 	callbackParams: string[];
 	pinData?: unknown[];
+	appTrigger?: { serviceName: string; entry: AppTriggerEntry };
 }
 
 // ─── IO Call ─────────────────────────────────────────────────────────────────
@@ -165,6 +171,14 @@ interface CompiledFunction {
 
 // ─── Transpiler Context ──────────────────────────────────────────────────────
 
+interface ParallelGroup {
+	sourceVar: string;
+	/** Each branch is a chain of node vars, e.g. [httpVar, aggVar] or [httpVar] */
+	branches: string[][];
+	mergeVar: string; // the Merge node var (waits for all branches)
+	collectVar: string; // the collect Code node var (restructures data)
+}
+
 interface TranspilerContext {
 	source: string;
 	nodes: EmittedNode[];
@@ -179,6 +193,9 @@ interface TranspilerContext {
 	wfCounter: number;
 	setCounter: number;
 	aggCounter: number;
+	collectCounter: number;
+	mergeCounter: number;
+
 	pendingStatements: Array<{ source: string; ast: AcornNode }>;
 	prevVar: string;
 	triggerType: CallbackInfo['triggerType'];
@@ -195,6 +212,7 @@ interface TranspilerContext {
 	execCounter: number;
 	tryCatchCounter: number;
 	errorConnections: Array<{ sourceVar: string; catchChainStartVar: string }>;
+	parallelGroups: ParallelGroup[];
 	pendingPinData?: unknown[];
 }
 
@@ -220,6 +238,49 @@ function resolveJsonRefs(str: string, ctx: TranspilerContext): string {
 			return `$('${sourceNode}').first().json.${root}${rest}`;
 		},
 	);
+}
+
+/**
+ * Convert a JSON string with embedded `={{ expr }}` values into a single
+ * n8n expression that builds the object at runtime.
+ *
+ * n8n's jsonBody parameter (type `json`) only evaluates expressions when the
+ * entire value is in Expression mode (starts with `=`). Embedded `={{ }}`
+ * in Fixed mode are treated as literal strings.
+ *
+ * Input:  `{"count":"={{ $('Node').first().json.x }}","name":"literal"}`
+ * Output: `={{ { "count": $('Node').first().json.x, "name": "literal" } }}`
+ */
+function jsonBodyToExpression(jsonStr: string): string {
+	try {
+		const obj = JSON.parse(jsonStr) as unknown;
+		return `={{ ${valueToExpr(obj)} }}`;
+	} catch {
+		// Fallback: return as-is if JSON parsing fails
+		return jsonStr;
+	}
+}
+
+/** Recursively convert a parsed JSON value to a JS expression string,
+ *  unwrapping any ={{ expr }} strings into raw expressions. */
+function valueToExpr(value: unknown): string {
+	if (typeof value === 'string') {
+		if (value.startsWith('={{') && value.endsWith('}}')) {
+			return value.slice(3, -2).trim();
+		}
+		return JSON.stringify(value);
+	}
+	if (value === null || typeof value === 'boolean' || typeof value === 'number') {
+		return JSON.stringify(value);
+	}
+	if (Array.isArray(value)) {
+		return `[${value.map(valueToExpr).join(', ')}]`;
+	}
+	if (typeof value === 'object' && value !== null) {
+		const entries = Object.entries(value).map(([k, v]) => `"${k}": ${valueToExpr(v)}`);
+		return `{ ${entries.join(', ')} }`;
+	}
+	return JSON.stringify(value);
 }
 
 // ─── Main Transpiler ─────────────────────────────────────────────────────────
@@ -328,6 +389,7 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 	const allLoopBodies: CompiledFunction[] = [];
 	const allTryCatchBodies: CompiledFunction[] = [];
 	const allErrorConnections: Array<{ sourceVar: string; catchChainStartVar: string }> = [];
+	const allParallelGroups: ParallelGroup[] = [];
 
 	// Track compiled shared pipelines: fnName → first pipeline node var
 	const compiledSharedPipelineFirstNode = new Map<string, string>();
@@ -342,17 +404,24 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 				// First callback: inline the function body
 				const fnDef = sharedPipelineDefs.get(sharedFnName)!;
 				const inlinedCb: CallbackInfo = { ...cb, callbackBody: fnDef.body };
-				const { nodes, chainExpr, loopBodies, tryCatchBodies, errorConnections } =
-					transpileCallback(
-						inlinedCb,
-						source,
-						allNodes.length,
-						comments,
-						errors,
-						functionDefs,
-						compiledFunctions,
-						consumedComments,
-					);
+				const {
+					nodes,
+					chainExpr,
+					extraChains,
+					loopBodies,
+					tryCatchBodies,
+					errorConnections,
+					parallelGroups,
+				} = transpileCallback(
+					inlinedCb,
+					source,
+					allNodes.length,
+					comments,
+					errors,
+					functionDefs,
+					compiledFunctions,
+					consumedComments,
+				);
 				// First non-trigger node is the pipeline entry point
 				const pipelineNodes = nodes.filter((n) => n.kind !== 'trigger');
 				if (pipelineNodes.length > 0) {
@@ -360,9 +429,11 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 				}
 				allNodes.push(...nodes);
 				allChains.push(chainExpr);
+				if (extraChains) allChains.push(...extraChains);
 				allLoopBodies.push(...loopBodies);
 				allTryCatchBodies.push(...tryCatchBodies);
 				allErrorConnections.push(...errorConnections);
+				allParallelGroups.push(...parallelGroups);
 			} else {
 				// Subsequent callback: just create trigger, connect to shared chain
 				const triggerVar = `t${allNodes.length}`;
@@ -374,7 +445,15 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 			continue;
 		}
 
-		const { nodes, chainExpr, loopBodies, tryCatchBodies, errorConnections } = transpileCallback(
+		const {
+			nodes,
+			chainExpr,
+			extraChains,
+			loopBodies,
+			tryCatchBodies,
+			errorConnections,
+			parallelGroups,
+		} = transpileCallback(
 			cb,
 			source,
 			allNodes.length,
@@ -386,9 +465,11 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 		);
 		allNodes.push(...nodes);
 		allChains.push(chainExpr);
+		if (extraChains) allChains.push(...extraChains);
 		allLoopBodies.push(...loopBodies);
 		allTryCatchBodies.push(...tryCatchBodies);
 		allErrorConnections.push(...errorConnections);
+		allParallelGroups.push(...parallelGroups);
 	}
 
 	// Step 6: Generate final SDK code
@@ -399,6 +480,7 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 		allLoopBodies,
 		allTryCatchBodies,
 		allErrorConnections,
+		allParallelGroups,
 	);
 	return { code, errors };
 }
@@ -467,7 +549,33 @@ function findCallbacks(
 		const name = callee.name ?? '';
 		const args = expr.arguments ?? [];
 
-		const triggerType = CALLBACK_TO_TRIGGER[name] as CallbackInfo['triggerType'] | undefined;
+		// Handle onTrigger('serviceName', options, callback) — generic app triggers
+		let triggerType: CallbackInfo['triggerType'] | undefined;
+		let appTrigger: CallbackInfo['appTrigger'];
+
+		if (name === 'onTrigger') {
+			// args[0] = service name string, args[1] = options, args[2] = callback
+			const serviceNameNode = args[0];
+			if (
+				!serviceNameNode ||
+				serviceNameNode.type !== 'Literal' ||
+				typeof serviceNameNode.value !== 'string'
+			) {
+				prevStmtEnd = stmt.end ?? prevStmtEnd;
+				continue;
+			}
+			const serviceName = serviceNameNode.value as string;
+			const entry = APP_TRIGGER_REGISTRY[serviceName];
+			if (!entry) {
+				prevStmtEnd = stmt.end ?? prevStmtEnd;
+				continue;
+			}
+			triggerType = 'app';
+			appTrigger = { serviceName, entry };
+		} else {
+			triggerType = CALLBACK_TO_TRIGGER[name] as CallbackInfo['triggerType'] | undefined;
+		}
+
 		if (!triggerType) {
 			prevStmtEnd = stmt.end ?? prevStmtEnd;
 			continue;
@@ -476,7 +584,11 @@ function findCallbacks(
 		let callbackFn: AcornNode | undefined;
 		let triggerOptions: Record<string, unknown> = {};
 
-		if (triggerType === 'manual' || triggerType === 'error') {
+		if (triggerType === 'app') {
+			// onTrigger('service', { ...options }, async (...) => { ... })
+			if (args[1]) triggerOptions = extractObjectLiteral(args[1]) ?? {};
+			callbackFn = args[2];
+		} else if (triggerType === 'manual' || triggerType === 'error') {
 			callbackFn = args[0];
 		} else {
 			if (args[0]) triggerOptions = extractObjectLiteral(args[0]) ?? {};
@@ -523,6 +635,7 @@ function findCallbacks(
 			callbackBody: fnBody,
 			callbackParams: cbParams,
 			pinData,
+			appTrigger,
 		});
 
 		prevStmtEnd = stmt.end ?? prevStmtEnd;
@@ -1000,6 +1113,8 @@ function compileFunctionToSDK(
 		wfCounter: 0,
 		setCounter: 0,
 		aggCounter: 0,
+		collectCounter: 0,
+		mergeCounter: 0,
 		pendingStatements: [],
 		prevVar: '',
 		triggerType: 'manual',
@@ -1016,6 +1131,7 @@ function compileFunctionToSDK(
 		execCounter: 0,
 		tryCatchCounter: 0,
 		errorConnections: [],
+		parallelGroups: [],
 	};
 
 	// Generate executeWorkflowTrigger as first node
@@ -1051,6 +1167,7 @@ function compileFunctionToSDK(
 		if (node.varName === triggerVar) continue;
 		for (const [oldVar, newVar] of renames) {
 			node.sdkCode = node.sdkCode.replaceAll(`(${oldVar})`, `(${newVar})`);
+			node.sdkCode = node.sdkCode.replaceAll(`, ${oldVar})`, `, ${newVar})`);
 			node.sdkCode = node.sdkCode.replace(`const ${oldVar} `, `const ${newVar} `);
 		}
 		node.varName = renames.get(node.varName) ?? node.varName;
@@ -1104,9 +1221,11 @@ function transpileCallback(
 ): {
 	nodes: EmittedNode[];
 	chainExpr: string;
+	extraChains?: string[];
 	loopBodies: CompiledFunction[];
 	tryCatchBodies: CompiledFunction[];
 	errorConnections: Array<{ sourceVar: string; catchChainStartVar: string }>;
+	parallelGroups: ParallelGroup[];
 } {
 	const ctx: TranspilerContext = {
 		source,
@@ -1122,6 +1241,8 @@ function transpileCallback(
 		wfCounter: nodeOffset,
 		setCounter: nodeOffset,
 		aggCounter: nodeOffset,
+		collectCounter: nodeOffset,
+		mergeCounter: nodeOffset,
 		pendingStatements: [],
 		prevVar: '',
 		triggerType: cb.triggerType,
@@ -1138,6 +1259,7 @@ function transpileCallback(
 		execCounter: nodeOffset,
 		tryCatchCounter: nodeOffset,
 		errorConnections: [],
+		parallelGroups: [],
 	};
 
 	// Generate trigger node
@@ -1146,8 +1268,8 @@ function transpileCallback(
 	ctx.nodes.push(triggerNode);
 	ctx.prevVar = triggerVar;
 
-	// Seed varSourceMap with webhook params
-	if (cb.triggerType === 'webhook') {
+	// Seed varSourceMap with callback params (webhook and app triggers)
+	if (cb.triggerType === 'webhook' || cb.triggerType === 'app') {
 		for (const param of cb.callbackParams) {
 			if (param !== 'respond') {
 				ctx.varSourceMap.set(param, triggerNode.nodeName);
@@ -1162,24 +1284,71 @@ function transpileCallback(
 	// Flush remaining code
 	flushPendingCode(ctx);
 
-	// Build chain expression
+	// Build chain expression, splitting at parallel group boundaries.
+	// Each parallel group's sourceVar ends a chain segment; the next segment
+	// starts from collectVar. This prevents a direct connection from source → collect
+	// (which would fire collect before parallel branches complete).
 	const nodeVars = ctx.nodes.filter((n) => !n.branchOnly).map((n) => n.varName);
-	let chainExpr: string;
-	if (nodeVars.length <= 1) {
-		chainExpr = nodeVars[0] ?? triggerVar;
-	} else {
-		chainExpr = nodeVars[0];
-		for (let i = 1; i < nodeVars.length; i++) {
-			chainExpr += `.to(${nodeVars[i]})`;
+
+	if (ctx.parallelGroups.length === 0) {
+		// No parallel groups — single chain
+		let chainExpr: string;
+		if (nodeVars.length <= 1) {
+			chainExpr = nodeVars[0] ?? triggerVar;
+		} else {
+			chainExpr = nodeVars[0];
+			for (let i = 1; i < nodeVars.length; i++) {
+				chainExpr += `.to(${nodeVars[i]})`;
+			}
+		}
+
+		return {
+			nodes: ctx.nodes,
+			chainExpr,
+			loopBodies: ctx.compiledLoopBodies,
+			tryCatchBodies: ctx.compiledTryCatchBodies,
+			errorConnections: ctx.errorConnections,
+			parallelGroups: ctx.parallelGroups,
+		};
+	}
+
+	// With parallel groups — split chain at boundaries
+	const parallelSourceVars = new Set(ctx.parallelGroups.map((g) => g.sourceVar));
+	const parallelCollectVars = new Map(ctx.parallelGroups.map((g) => [g.sourceVar, g.collectVar]));
+
+	// Split nodeVars into segments at parallel boundaries
+	const segments: string[][] = [[]];
+	for (const v of nodeVars) {
+		segments[segments.length - 1].push(v);
+		if (parallelSourceVars.has(v)) {
+			// End current segment, start new one from collectVar
+			const collectVar = parallelCollectVars.get(v)!;
+			segments.push([collectVar]);
 		}
 	}
+
+	// Build a chain expression per segment
+	const chainExprs: string[] = [];
+	for (const seg of segments) {
+		if (seg.length === 0) continue;
+		let expr = seg[0];
+		for (let i = 1; i < seg.length; i++) {
+			expr += `.to(${seg[i]})`;
+		}
+		chainExprs.push(expr);
+	}
+
+	// First segment is the main chain; remaining segments are extra .add() chains
+	const chainExpr = chainExprs.length > 0 ? chainExprs[0] : triggerVar;
 
 	return {
 		nodes: ctx.nodes,
 		chainExpr,
+		extraChains: chainExprs.slice(1),
 		loopBodies: ctx.compiledLoopBodies,
 		tryCatchBodies: ctx.compiledTryCatchBodies,
 		errorConnections: ctx.errorConnections,
+		parallelGroups: ctx.parallelGroups,
 	};
 }
 
@@ -1273,6 +1442,12 @@ function walkStatements(
 
 		if (stmt.type === 'TryStatement') {
 			processTryStatement(ctx, stmt, comments);
+			continue;
+		}
+
+		// Check for Promise.all: const [a, b] = await Promise.all([...])
+		if (isPromiseAllStatement(stmt)) {
+			processPromiseAll(ctx, stmt);
 			continue;
 		}
 
@@ -1693,6 +1868,8 @@ const COUNTER_KEYS = [
 	'loopCounter',
 	'execCounter',
 	'tryCatchCounter',
+	'collectCounter',
+	'mergeCounter',
 ] as const;
 
 function syncCounters(target: TranspilerContext, source: TranspilerContext): void {
@@ -1716,6 +1893,8 @@ function createBranchContext(parentCtx: TranspilerContext): TranspilerContext {
 		wfCounter: parentCtx.wfCounter,
 		setCounter: parentCtx.setCounter,
 		aggCounter: parentCtx.aggCounter,
+		collectCounter: parentCtx.collectCounter,
+		mergeCounter: parentCtx.mergeCounter,
 		pendingStatements: [],
 		prevVar: '',
 		triggerType: parentCtx.triggerType,
@@ -1732,6 +1911,7 @@ function createBranchContext(parentCtx: TranspilerContext): TranspilerContext {
 		execCounter: parentCtx.execCounter,
 		tryCatchCounter: parentCtx.tryCatchCounter,
 		errorConnections: parentCtx.errorConnections,
+		parallelGroups: parentCtx.parallelGroups,
 	};
 }
 
@@ -1865,6 +2045,186 @@ function processSwitchStatement(
 		nodeName: `Switch ${ctx.switchCounter}`,
 	});
 	ctx.prevVar = switchVar;
+}
+
+// ─── Promise.all Processing ──────────────────────────────────────────────────
+
+/**
+ * Check if a statement matches `const [a, b] = await Promise.all([...])`.
+ * AST shape:
+ *   VariableDeclaration
+ *     └─ declarations[0]
+ *          ├─ id: ArrayPattern [Identifier, ...]
+ *          └─ init: AwaitExpression
+ *               └─ argument: CallExpression
+ *                    ├─ callee: MemberExpression (Promise.all)
+ *                    └─ arguments[0]: ArrayExpression
+ */
+function isPromiseAllStatement(stmt: AcornNode): boolean {
+	if (stmt.type !== 'VariableDeclaration' || !stmt.declarations) return false;
+	const decl = stmt.declarations[0];
+	if (!decl) return false;
+	if (decl.id?.type !== 'ArrayPattern') return false;
+	if (decl.init?.type !== 'AwaitExpression') return false;
+	const arg = decl.init.argument;
+	if (arg?.type !== 'CallExpression') return false;
+	const callee = arg.callee;
+	if (callee?.type !== 'MemberExpression') return false;
+	if (callee.object?.type !== 'Identifier' || callee.object.name !== 'Promise') return false;
+	if (callee.property?.type !== 'Identifier' || callee.property.name !== 'all') return false;
+	const args = arg.arguments;
+	if (!args || args.length === 0 || args[0]?.type !== 'ArrayExpression') return false;
+	return true;
+}
+
+/**
+ * Process `const [a, b] = await Promise.all([http.get(...), http.get(...)]);`
+ *
+ * Emits:
+ * 1. Flush pending code (becomes fan-out source)
+ * 2. For each element: process as an IO call (HTTP node + aggregate), mark branchOnly
+ * 3. Emit a "Collect parallel" Code node that references all aggregates
+ * 4. Record parallel group for SDK connection generation
+ * 5. Update prevVar to the collect node
+ */
+function processPromiseAll(ctx: TranspilerContext, stmt: AcornNode): void {
+	const decl = stmt.declarations![0];
+	const arrayPattern = decl.id!;
+	const awaitArg = decl.init!.argument!;
+	const arrayExpr = awaitArg.arguments![0];
+	const elements = arrayExpr.elements ?? [];
+
+	// Extract destructured variable names
+	const varNames: string[] = [];
+	for (const el of arrayPattern.elements ?? []) {
+		varNames.push(el?.name ?? '_');
+	}
+
+	// Extract IO calls from each array element
+	const ioCalls: IOCall[] = [];
+	for (let i = 0; i < elements.length; i++) {
+		const el = elements[i];
+		if (!el) continue;
+		const io = matchIOCallNode(el, ctx.source);
+		if (io) {
+			io.assignedVar = varNames[i] ?? null;
+			ioCalls.push(io);
+		}
+	}
+
+	if (ioCalls.length === 0) return;
+
+	// Flush pending code first — any buffered code becomes the fan-out source
+	flushPendingCode(ctx);
+	const sourceVar = ctx.prevVar;
+
+	// Process each IO call, collecting branch node chains
+	const branches: string[][] = [];
+	const collectParts: Array<{ varName: string; aggNodeName: string }> = [];
+
+	for (const ioCall of ioCalls) {
+		// Process the IO call — this emits HTTP + aggregate nodes and updates prevVar
+		const nodesBefore = ctx.nodes.length;
+		processIOCall(ctx, ioCall);
+		const nodesAfter = ctx.nodes.length;
+
+		// Mark all newly emitted nodes as branchOnly (excluded from main .to() chain)
+		const branchChain: string[] = [];
+		for (let j = nodesBefore; j < nodesAfter; j++) {
+			ctx.nodes[j].branchOnly = true;
+			branchChain.push(ctx.nodes[j].varName);
+		}
+
+		if (branchChain.length > 0) {
+			branches.push(branchChain);
+		}
+
+		// The last new node is the aggregate (if assigned) or the HTTP node
+		if (ioCall.assignedVar) {
+			const lastNode = ctx.nodes[nodesAfter - 1];
+			collectParts.push({
+				varName: ioCall.assignedVar,
+				aggNodeName: lastNode.nodeName,
+			});
+		}
+	}
+
+	// Emit Merge node (waits for all branches to complete before firing)
+	ctx.mergeCounter++;
+	const mergeVar = `merge${ctx.mergeCounter}`;
+	const mergeNodeName = `Merge parallel ${ctx.mergeCounter}`;
+
+	const mergeSdkCode = `const ${mergeVar} = node({
+  type: 'n8n-nodes-base.merge', version: 3.2,
+  config: {
+    name: '${mergeNodeName}',
+    parameters: {
+      mode: 'append',
+      numberInputs: ${branches.length}
+    }
+  }
+});`;
+
+	ctx.nodes.push({
+		varName: mergeVar,
+		sdkCode: mergeSdkCode,
+		kind: 'code',
+		nodeName: mergeNodeName,
+		branchOnly: true,
+	});
+
+	// Emit "Collect parallel" Code node that references all aggregate results
+	ctx.collectCounter++;
+	const collectVar = `collect${ctx.collectCounter}`;
+	const collectNodeName = `Collect parallel ${ctx.collectCounter}`;
+
+	const jsCodeLines: string[] = [];
+	jsCodeLines.push(`// @parallel-collect: ${varNames.join(', ')}`);
+	for (const part of collectParts) {
+		const escapedName = part.aggNodeName.replace(/'/g, "\\'");
+		jsCodeLines.push(`const ${part.varName} = $('${escapedName}').first().json.${part.varName};`);
+	}
+	jsCodeLines.push(`return [{ json: { ${varNames.filter((v) => v !== '_').join(', ')} } }];`);
+	const jsCode = jsCodeLines.join('\\n');
+
+	const collectSdkCode = `const ${collectVar} = node({
+  type: 'n8n-nodes-base.code', version: 2,
+  config: {
+    name: '${collectNodeName}',
+    parameters: {
+      jsCode: \`${jsCode}\`,
+      mode: 'runOnceForAllItems'
+    },
+    executeOnce: true
+  }
+});`;
+
+	ctx.nodes.push({
+		varName: collectVar,
+		sdkCode: collectSdkCode,
+		kind: 'code',
+		nodeName: collectNodeName,
+		branchOnly: true,
+	});
+
+	// Record parallel group for SDK generation
+	ctx.parallelGroups.push({
+		sourceVar,
+		branches,
+		mergeVar,
+		collectVar,
+	});
+
+	// Update prevVar to the collect node — downstream nodes chain from here
+	ctx.prevVar = collectVar;
+
+	// Map each destructured variable to the collect node
+	for (const v of varNames) {
+		if (v !== '_') {
+			ctx.varSourceMap.set(v, collectNodeName);
+			ctx.varSourceKind.set(v, 'code');
+		}
+	}
 }
 
 // ─── For-Of Processing ───────────────────────────────────────────────────────
@@ -2070,6 +2430,8 @@ function compileLoopBodyAsSubWorkflow(
 		wfCounter: 0,
 		setCounter: 0,
 		aggCounter: 0,
+		collectCounter: 0,
+		mergeCounter: 0,
 		pendingStatements: [],
 		prevVar: '',
 		triggerType: 'manual',
@@ -2086,6 +2448,7 @@ function compileLoopBodyAsSubWorkflow(
 		execCounter: 0,
 		tryCatchCounter: 0,
 		errorConnections: [],
+		parallelGroups: [],
 	};
 
 	// Generate executeWorkflowTrigger as first node
@@ -2119,6 +2482,7 @@ function compileLoopBodyAsSubWorkflow(
 		if (node.varName === triggerVar) continue;
 		for (const [oldVar, newVar] of renames) {
 			node.sdkCode = node.sdkCode.replaceAll(`(${oldVar})`, `(${newVar})`);
+			node.sdkCode = node.sdkCode.replaceAll(`, ${oldVar})`, `, ${newVar})`);
 			node.sdkCode = node.sdkCode.replace(`const ${oldVar} `, `const ${newVar} `);
 		}
 		node.varName = renames.get(node.varName) ?? node.varName;
@@ -2450,6 +2814,8 @@ function compileTryCatchBodyAsSubWorkflow(
 		wfCounter: 0,
 		setCounter: 0,
 		aggCounter: 0,
+		collectCounter: 0,
+		mergeCounter: 0,
 		pendingStatements: [],
 		prevVar: '',
 		triggerType: 'manual',
@@ -2466,6 +2832,7 @@ function compileTryCatchBodyAsSubWorkflow(
 		execCounter: 0,
 		tryCatchCounter: 0,
 		errorConnections: [],
+		parallelGroups: [],
 	};
 
 	// Generate executeWorkflowTrigger as first node
@@ -2501,6 +2868,7 @@ function compileTryCatchBodyAsSubWorkflow(
 		if (node.varName === triggerVar) continue;
 		for (const [oldVar, newVar] of renames) {
 			node.sdkCode = node.sdkCode.replaceAll(`(${oldVar})`, `(${newVar})`);
+			node.sdkCode = node.sdkCode.replaceAll(`, ${oldVar})`, `, ${newVar})`);
 			node.sdkCode = node.sdkCode.replace(`const ${oldVar} `, `const ${newVar} `);
 		}
 		node.varName = renames.get(node.varName) ?? node.varName;
@@ -2564,6 +2932,12 @@ function findNestedIO(stmt: AcornNode, source: string): IOCall[] {
 			if (node.handler) {
 				const handlerBody = (node.handler as AcornNode).body as unknown as AcornNode;
 				if (handlerBody) walkBlock(handlerBody);
+			}
+		} else if (node.type === 'SwitchStatement') {
+			for (const c of (node as unknown as { cases: AcornNode[] }).cases ?? []) {
+				for (const stmt of (c as unknown as { consequent: AcornNode[] }).consequent ?? []) {
+					walk(stmt);
+				}
 			}
 		} else if (node.type === 'BlockStatement' && node.body) {
 			for (const s of node.body) walk(s);
@@ -3219,8 +3593,31 @@ function flushPendingCode(ctx: TranspilerContext): void {
 // ─── SDK Code Generation ─────────────────────────────────────────────────────
 
 function generateTriggerSDK(cb: CallbackInfo, varName: string): EmittedNode {
-	const triggerEntry = TRIGGER_TYPES[cb.triggerType] ?? TRIGGER_TYPES.manual;
-	const triggerInfo = { type: triggerEntry.nodeType, version: triggerEntry.version };
+	let triggerInfo: { type: string; version: number };
+	let credentialsStr = '';
+
+	if (cb.triggerType === 'app' && cb.appTrigger) {
+		// App trigger: use registry entry directly
+		const { entry } = cb.appTrigger;
+		triggerInfo = { type: entry.nodeType, version: entry.version };
+
+		// Extract credential from options and build credentials config.
+		// User can specify credentialType to pick a non-default type (e.g. 'githubOAuth2Api').
+		// Falls back to first entry in credentialTypes array.
+		const credentialName = cb.triggerOptions.credential as string | undefined;
+		if (credentialName && entry.credentialTypes.length > 0) {
+			const explicitType = cb.triggerOptions.credentialType as string | undefined;
+			const credType =
+				explicitType && entry.credentialTypes.includes(explicitType)
+					? explicitType
+					: entry.credentialTypes[0];
+			credentialsStr = `, credentials: { ${credType}: { name: '${credentialName}', id: '' } }`;
+		}
+	} else {
+		const triggerEntry = TRIGGER_TYPES[cb.triggerType] ?? TRIGGER_TYPES.manual;
+		triggerInfo = { type: triggerEntry.nodeType, version: triggerEntry.version };
+	}
+
 	const configParams = mapTriggerParams(cb);
 
 	// If webhook callback has `respond` param, set responseMode
@@ -3236,7 +3633,13 @@ function generateTriggerSDK(cb: CallbackInfo, varName: string): EmittedNode {
 		configParts.push(`pinData: ${JSON.stringify(cb.pinData)}`);
 	}
 
-	const configBody = configParts.length > 0 ? `{ ${configParts.join(', ')} }` : '{}';
+	let configBody = configParts.length > 0 ? `{ ${configParts.join(', ')} }` : '{}';
+
+	// Insert credentials into config if present (same pattern as HTTP nodes)
+	if (credentialsStr) {
+		configBody = configBody.slice(0, -1) + credentialsStr + ' }';
+	}
+
 	// Derive node name from trigger type the same way the SDK builder does
 	const typeParts = triggerInfo.type.split('.');
 	const rawName = typeParts[typeParts.length - 1];
@@ -3252,7 +3655,19 @@ function generateTriggerSDK(cb: CallbackInfo, varName: string): EmittedNode {
 function mapTriggerParams(cb: CallbackInfo): Record<string, unknown> {
 	if (cb.triggerType === 'schedule') return mapScheduleOptions(cb.triggerOptions);
 	if (cb.triggerType === 'webhook') return mapWebhookOptions(cb.triggerOptions);
+	if (cb.triggerType === 'app') return mapAppTriggerOptions(cb.triggerOptions);
 	return {};
+}
+
+function mapAppTriggerOptions(options: Record<string, unknown>): Record<string, unknown> {
+	// Pass all options through except `credential` and `credentialType` (extracted for credentials config)
+	const params: Record<string, unknown> = {};
+	for (const [key, value] of Object.entries(options)) {
+		if (key !== 'credential' && key !== 'credentialType') {
+			params[key] = value;
+		}
+	}
+	return params;
 }
 
 function mapScheduleOptions(options: Record<string, unknown>): Record<string, unknown> {
@@ -3292,7 +3707,16 @@ function generateHttpSDK(
 			params.sendBody = true;
 			params.contentType = 'json';
 			params.specifyBody = 'json';
-			params.jsonBody = resolveJsonRefs(JSON.stringify(io.body), ctx);
+			const resolved = resolveJsonRefs(JSON.stringify(io.body), ctx);
+			// If the resolved JSON body contains n8n node references, wrap the
+			// entire value as a single expression. n8n's jsonBody parameter
+			// (type json) only evaluates expressions in Expression mode (value
+			// starts with =). Embedded ={{ }} in Fixed mode are literal strings.
+			if (resolved.includes("$('")) {
+				params.jsonBody = jsonBodyToExpression(resolved);
+			} else {
+				params.jsonBody = resolved;
+			}
 		}
 	}
 
@@ -3495,6 +3919,7 @@ function generateSDKCode(
 	compiledLoopBodies?: CompiledFunction[],
 	compiledTryCatchBodies?: CompiledFunction[],
 	errorConnections?: Array<{ sourceVar: string; catchChainStartVar: string }>,
+	parallelGroups?: ParallelGroup[],
 ): string {
 	const lines: string[] = [];
 
@@ -3606,6 +4031,26 @@ function generateSDKCode(
 	if (errorConnections && errorConnections.length > 0) {
 		for (const ec of errorConnections) {
 			lines.push(`${ec.sourceVar}.onError(${ec.catchChainStartVar});`);
+			lines.push('');
+		}
+	}
+
+	// Parallel connections (Promise.all fan-out/convergence via Merge node)
+	if (parallelGroups && parallelGroups.length > 0) {
+		for (const group of parallelGroups) {
+			for (let bi = 0; bi < group.branches.length; bi++) {
+				const branch = group.branches[bi];
+				// Fan-out: sourceVar → first node of branch
+				lines.push(`${group.sourceVar}.to(${branch[0]});`);
+				// Intra-branch: chain nodes within each branch
+				for (let i = 0; i < branch.length - 1; i++) {
+					lines.push(`${branch[i]}.to(${branch[i + 1]});`);
+				}
+				// Convergence: last node of branch → merge node input[N]
+				lines.push(`${branch[branch.length - 1]}.to(${group.mergeVar}.input(${bi}));`);
+			}
+			// Merge → Collect (restructure data)
+			lines.push(`${group.mergeVar}.to(${group.collectVar});`);
 			lines.push('');
 		}
 	}

@@ -77,7 +77,7 @@ const fn_processAndNotify_http1 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"data\":\"={{ $('enrichData').first().json }}\"}"
+      "jsonBody": "={{ { \"data\": $('enrichData').first().json } }}"
     },
     "executeOnce": true
   }

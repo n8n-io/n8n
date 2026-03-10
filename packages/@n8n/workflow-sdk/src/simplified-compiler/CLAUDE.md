@@ -10,6 +10,9 @@ The compiler handles translation to exact n8n node configs. The LLM never needs 
 
 ```javascript
 // What the LLM writes (simplified DSL)
+import { onSchedule } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+
 onSchedule({ every: '1h' }, async () => {
   const users = await http.get('https://api.example.com/users');
   const active = users.filter(u => u.active);
@@ -17,6 +20,8 @@ onSchedule({ every: '1h' }, async () => {
 });
 
 // AI with class-based constructors — parameter names match node schemas directly
+import { Agent, OpenAiModel, HttpRequestTool } from '@n8n/sdk/ai';
+
 const answer = await new Agent({
   prompt: 'Answer the question',
   model: new OpenAiModel({ model: 'gpt-4o' }),
@@ -33,9 +38,11 @@ The DSL does NOT try to support every n8n concept. The guiding principle:
 **If it can't be expressed as linear or branching JS control flow, it's out of scope.**
 
 Intentionally excluded:
-- **Merge nodes / multi-input joins** — can't be naturally expressed in sequential JS
+- **Merge nodes / multi-input joins** — can't be expressed directly in the DSL (though the compiler uses Merge internally for `Promise.all` convergence)
 - **n8n expression primitives (`$json`, `$input`, etc.)** — the DSL uses plain JS variables; the compiler resolves `users.name` to `={{ $('HTTP 1').first().json.name }}` automatically
 - Any node pattern that requires non-linear graph topology
+
+**Import statements** (`import ... from '...'`) are silently ignored by the compiler. They exist to make the DSL feel like normal JS/TS to LLMs and editors. All DSL globals (`http`, `onManual`, `Agent`, etc.) are available without imports. Convention: `@n8n/sdk` for triggers, `@n8n/sdk/http` for http, `@n8n/sdk/ai` for AI classes.
 
 ## Item Simplification
 
@@ -56,7 +63,7 @@ The LLM writes normal JS (single values, for-of loops) and the compiler handles 
 ```
 Source JS string
   -> Acorn parse (AST)
-  -> findCallbacks() (onManual, onWebhook, onSchedule, onError)
+  -> findCallbacks() (onManual, onWebhook, onSchedule, onError, onTrigger)
   -> walkStatements() per callback
      -> extractIOCall() (http, ai, workflow, respond)
      -> processIfStatement() / processSwitchStatement()
@@ -90,7 +97,7 @@ Used by both compile and decompile:
 
 | File | Maps |
 |------|------|
-| `trigger-mapping.ts` | Callback name (`onManual`) <-> trigger node type (`n8n-nodes-base.manualTrigger`) |
+| `trigger-mapping.ts` | Callback name (`onManual`) <-> trigger node type (`n8n-nodes-base.manualTrigger`). Also `APP_TRIGGER_REGISTRY` for `onTrigger()` generic app triggers. |
 | `credential-mapping.ts` | Auth type (`bearer`) <-> credential type (`httpHeaderAuth`) |
 | `schedule-mapping.ts` | Human string (`{ every: '5m' }`) <-> n8n rule params |
 | `ai-node-mapping.ts` | DSL class name (`OpenAiModel`) <-> node type + version + category (from auto-generated registry) |
@@ -115,7 +122,7 @@ Assert: normalizeSDK(SDK₁) === normalizeSDK(SDK₂)
 - **Forward test**: `transpileWorkflowJS(input.js)` must equal `output.js` exactly
 - **Round-trip test**: compile -> decompile -> recompile must produce structurally identical SDK
 
-**Fixtures:** `__fixtures__/w01-w27/`, each containing:
+**Fixtures:** `__fixtures__/w01-w32/`, each containing:
 - `meta.json` — title, templateId, optional `skip` flag
 - `input.js` — simplified DSL source
 - `output.js` — expected SDK output
@@ -133,7 +140,7 @@ Assert: normalizeSDK(SDK₁) === normalizeSDK(SDK₂)
 | `examples.ts` | Pre-built DSL examples for UI quick-start templates |
 | `generate-report.ts` | HTML report generator for fixture validation results + expectation badges/diffs |
 | `index.ts` | Public exports: `transpileWorkflowJS`, `decompileWorkflowSDK`, `COMPILER_EXAMPLES` |
-| `__fixtures__/w01-w27/` | Test fixtures (real workflow patterns, w18-w22 sub-functions, w23-w24 try/catch, w25 CRUD+branching, w26 loop+sub-fn, w27 loop+try/catch) |
+| `__fixtures__/w01-w32/` | Test fixtures (real workflow patterns, w18-w22 sub-functions, w23-w24 try/catch, w25 CRUD+branching, w26 loop+sub-fn, w27 loop+try/catch, w28 else-if+numeric, w29 try+switch, w30 multi-trigger independent, w31 Promise.all, w32 app trigger) |
 
 **Decompile pipeline (in `src/codegen/`):**
 
@@ -149,11 +156,61 @@ Assert: normalizeSDK(SDK₁) === normalizeSDK(SDK₂)
 
 See `docs/aggregate-nodes.md` for full details. After every HTTP call with an assigned variable, the compiler emits an aggregate Code node (`Collect <varName>`) that collects all items and defensively unwraps single-item responses. Uses `// @aggregate: <varName>` jsCode marker for decompiler detection. Variable kind `'aggregate'` behaves like `'code'` for expression resolution.
 
+## Expression-Object Format for HTTP Bodies
+
+When an HTTP POST/PUT/PATCH body contains node references (e.g. `users.length` resolving to `$('Collect users').first().json.users.length`), the compiler wraps the entire `jsonBody` as a single expression: `={{ { "key": expr, ... } }}`. This is necessary because n8n's `jsonBody` parameter only evaluates expressions when the value starts with `=` (expression mode).
+
+The `jsonBodyToExpression()` function recursively converts the parsed JSON body, unwrapping `={{ }}` expressions at any nesting depth into raw JS expressions within the outer `={{ { ... } }}` wrapper. The decompiler's `formatJsonBody()` reverses this using placeholder-based JSON parsing — `$('...')` expressions are replaced with JSON-safe placeholders, the result is parsed as JSON, then placeholders are restored as `={{ expr }}` strings.
+
+## Promise.all (Parallel Execution)
+
+`const [a, b] = await Promise.all([http.get(...), http.get(...)])` compiles to:
+
+1. **Fan-out connections**: Source node → multiple HTTP nodes in parallel (via separate `.to()` calls from the same node)
+2. **Per-branch aggregates**: Each HTTP node gets its own aggregate Code node (reuses existing `// @aggregate:` pattern)
+3. **Merge node**: A `n8n-nodes-base.merge` node (mode `append`, `numberInputs: N`) that waits for all branches to complete. Each aggregate connects to a separate input slot (`agg1.to(merge1.input(0))`, `agg2.to(merge1.input(1))`)
+4. **Collect node**: A Code node with `// @parallel-collect: a, b` marker that references all aggregate outputs and returns them as a single object. Connected after the Merge node.
+5. **Chain splitting**: The main `.add()` chain is split at parallel boundaries to avoid direct source→collect connections. Parallel connections are emitted as separate statements after the chain.
+
+**Why Merge is required**: n8n only waits for multiple inputs when a node has multiple input slots (`main[0]`, `main[1]`). Multiple connections to the same slot (`main[0]`) fire the downstream node on the first arrival. The Merge node provides proper multi-input waiting.
+
+**Decompiler detection**: The `// @parallel-collect:` jsCode prefix on a Code node signals a fan-out convergence point. The decompiler searches `deferredMergeDownstreams` (since the composite builder treats Merge nodes as deferred) and reconstructs the `Promise.all([...])` syntax.
+
+**Constraints**: Destructuring is required (`const [a, b] = ...`). Each array element must be an IO call (`http.get/post/...`). The collect node maps each variable to `varSourceKind: 'code'` for expression resolution.
+
+## App Trigger Registry (`onTrigger`)
+
+Generic app triggers via `onTrigger('serviceName', options, callback)`. Unlike `onManual/onWebhook/onSchedule/onError` which have specialized parameter mappings, app trigger parameters pass through directly to the node — no custom mapping per service.
+
+**DSL syntax:**
+```javascript
+onTrigger('jira', {
+  events: ['jira:issue_created'],
+  credential: 'My Jira Account',
+}, async () => { ... });
+```
+
+**How it works:**
+1. `findCallbacks()` detects `onTrigger` calls, extracts service name from arg[0], options from arg[1], callback from arg[2]
+2. Service name is looked up in `APP_TRIGGER_REGISTRY` (in `trigger-mapping.ts`) to get nodeType, version, credentialTypes
+3. `credential` key is extracted from options and emitted as node credentials config using the appropriate credential type
+4. `credentialType` key (optional) selects a non-default credential type (e.g. `'githubOAuth2Api'` instead of `'githubApi'`)
+5. Remaining options are passed through directly as node parameters
+6. Callback params are seeded into `varSourceMap` (same as webhook `{ body }`)
+
+**Credential type selection:** Each registry entry has `credentialTypes: string[]` listing all valid credential keys (first = default). User can specify `credentialType` in options to pick a non-default one. The decompiler only emits `credentialType` when it differs from the default.
+
+**Registry** (in `trigger-mapping.ts`): jira, github, gitlab, slack, telegram, stripe, typeform, airtable, hubspot, linear. Easily extensible — add entries to `APP_TRIGGER_REGISTRY`.
+
+**Decompiler**: `NODE_TYPE_TO_APP_TRIGGER` reverse lookup detects app trigger nodes. `emitTriggerHeader()` reconstructs `onTrigger('serviceName', { ...params, credential }, ...)` from the node's parameters and credentials.
+
 ## Supported Language Features
 
 | Category | DSL Syntax | Compiles To |
 |----------|-----------|-------------|
+| **Imports** | `import { onManual } from '@n8n/sdk'` | Silently ignored (DSL is compiled, not executed) |
 | **Triggers** | `onManual()`, `onWebhook()`, `onSchedule()`, `onError()` | Trigger nodes |
+| **App Triggers** | `onTrigger('jira', { events: [...], credential: 'Name' }, cb)` | App-specific trigger nodes (jira, github, slack, etc.) via `APP_TRIGGER_REGISTRY` |
 | **HTTP** | `await http.get/post/put/patch/delete(url, body?, options?)` | httpRequest node |
 | **AI** | `await new Agent({ prompt, model: new OpenAiModel({...}) }).chat()` | Agent node + subnodes (passthrough params) |
 | **Sub-workflows** | `await workflow.run(name)` | executeWorkflow node |
@@ -162,6 +219,7 @@ See `docs/aggregate-nodes.md` for full details. After every HTTP call with an as
 | **Switch** | `switch (expr) { case: ... }` | switchCase node |
 | **Loops** | `for (const x of items) { ... }` | Splitter Code + aggregate |
 | **Try/catch** | `try { ... } catch { ... }` | onError behavior on nodes |
+| **Promise.all** | `const [a, b] = await Promise.all([http.get(...), ...])` | Fan-out HTTP nodes + Merge + collect Code node |
 | **Sub-functions** | `async function fn(params) { ... }` then `await fn(args)` | Execute Workflow node with inline `workflowJson` |
 | **Variables** | `const x = "value"` | Set node (static assignments) |
 | **Code** | Any other JS statements | Code node with `jsCode` |
@@ -199,6 +257,7 @@ pushd packages/@n8n/workflow-sdk && pnpm test decompiler-debug.test.ts && popd
 - **No n8n expressions in DSL**: plain JS variables only — compiler resolves to `={{ $('NodeName').first().json.path }}`
 - **Never use `$json` in generated expressions**: always use explicit `$('NodeName').first().json.prop` references. This ensures expressions are unambiguous and don't depend on predecessor ordering.
 - **`executeOnce: true`** on all non-trigger nodes (single-item semantics)
+- **Node variable naming for Promise.all**: `merge1`, `merge2`, ... for Merge nodes; `collect1`, `collect2`, ... for collect parallel Code nodes
 - **Fixture naming**: `w01-descriptive-name/` with `meta.json`, `input.js`, `output.js`
 - **Adding new fixtures**: create dir, add the three files, fixture auto-discovered by `loadFixtures()`
 
@@ -229,8 +288,8 @@ Validates existing fixtures through the full compilation pipeline (transpile, ge
 
 ## Coverage Status
 
-- **Round-trip**: 27/27 fixtures pass (100%)
-- **Schema validation**: 27/27 fixtures pass (100%). `KNOWN_SCHEMA_VIOLATIONS` is empty.
+- **Round-trip**: 32/32 fixtures pass (100%)
+- **Schema validation**: 32/32 fixtures pass (100%). `KNOWN_SCHEMA_VIOLATIONS` is empty.
 
 **Key insight**: Nested sub-workflow WorkflowBuilder references (e.g., `workflowJson: __tryCatch_1Workflow` inside a loop body sub-workflow) are handled automatically by `resolveWorkflowBuilderValues()` in `json-serializer.ts`. It duck-types WorkflowBuilder instances (`toJSON` + `add` methods) at any nesting depth and converts them to `JSON.stringify(value.toJSON())`.
 

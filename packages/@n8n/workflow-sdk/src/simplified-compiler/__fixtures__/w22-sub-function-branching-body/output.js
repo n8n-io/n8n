@@ -12,7 +12,7 @@ const fn_classify_http1 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"priority\":\"={{ $('When Executed by Another Workflow').first().json.priority }}\"}"
+      "jsonBody": "={{ { \"priority\": $('When Executed by Another Workflow').first().json.priority } }}"
     },
     "executeOnce": true
   }
@@ -29,7 +29,7 @@ const fn_classify_http2 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"priority\":\"={{ $('When Executed by Another Workflow').first().json.priority }}\"}"
+      "jsonBody": "={{ { \"priority\": $('When Executed by Another Workflow').first().json.priority } }}"
     },
     "executeOnce": true
   }

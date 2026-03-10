@@ -12,7 +12,7 @@ const fn_notifyTeam_http1 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"text\":\"={{ $('When Executed by Another Workflow').first().json.message }}\"}"
+      "jsonBody": "={{ { \"text\": $('When Executed by Another Workflow').first().json.message } }}"
     },
     "executeOnce": true
   }

@@ -1,0 +1,25 @@
+{
+	"requests": {
+		"POST api.example.com/dashboard": {
+			"requestBody": {
+				"userCount": "={{ $('Collect parallel 1').first().json.users.length }}",
+				"orderCount": "={{ $('Collect parallel 1').first().json.orders.length }}",
+				"requestedBy": "={{ $('Code 1').first().json.userId }}"
+			}
+		}
+	},
+	"nodes": {
+		"GET api.example.com/users": {
+			"items": [{ "id": 1, "name": "Alice" }, { "id": 2, "name": "Bob" }]
+		},
+		"GET api.example.com/orders": {
+			"items": [
+				{ "id": 101, "product": "Widget", "quantity": 3 },
+				{ "id": 102, "product": "Gadget", "quantity": 1 }
+			]
+		},
+		"POST api.example.com/dashboard": {
+			"items": [{ "status": "ok", "dashboardId": "dash_001" }]
+		}
+	}
+}

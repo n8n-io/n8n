@@ -1,3 +1,6 @@
+import { onWebhook } from '@n8n/sdk';
+import http from '@n8n/sdk/http';
+
 /** @example [{ body: { message: { chat: { id: 123456 }, text: "Hello bot", voice: null } } }] */
 onWebhook({ method: 'POST', path: '/telegram-bot' }, async ({ body }) => {
 	const msg = body;

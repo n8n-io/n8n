@@ -86,7 +86,7 @@ const http3 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"title\":\"Updated Post\",\"body\":\"={{ $('Collect fetched 2').first().json.fetched.body }}\",\"userId\":1}"
+      "jsonBody": "={{ { \"title\": \"Updated Post\", \"body\": $('Collect fetched 2').first().json.fetched.body, \"userId\": 1 } }}"
     },
     "executeOnce": true
   }
@@ -188,7 +188,7 @@ const http8 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"title\":\"={{ $('Collect backup 3').first().json.backup.title }}\",\"status\":\"ok\"}"
+      "jsonBody": "={{ { \"title\": $('Collect backup 3').first().json.backup.title, \"status\": \"ok\" } }}"
     },
     "executeOnce": true
   }
@@ -251,7 +251,7 @@ const http11 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"status\":\"done\",\"title\":\"={{ $('Collect todo 4').first().json.todo.title }}\"}"
+      "jsonBody": "={{ { \"status\": \"done\", \"title\": $('Collect todo 4').first().json.todo.title } }}"
     },
     "executeOnce": true
   }
@@ -268,7 +268,7 @@ const http12 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"status\":\"pending\",\"title\":\"={{ $('Collect todo 4').first().json.todo.title }}\"}"
+      "jsonBody": "={{ { \"status\": \"pending\", \"title\": $('Collect todo 4').first().json.todo.title } }}"
     },
     "executeOnce": true
   }
@@ -307,7 +307,7 @@ const http14 = node({
       "sendBody": true,
       "contentType": "json",
       "specifyBody": "json",
-      "jsonBody": "{\"reportTag\":\"={{ $('Set reportTag').first().json.reportTag }}\",\"result\":\"complete\"}"
+      "jsonBody": "={{ { \"reportTag\": $('Set reportTag').first().json.reportTag, \"result\": \"complete\" } }}"
     },
     "executeOnce": true
   }
