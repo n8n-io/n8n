@@ -161,78 +161,58 @@ export async function getFolders(
 
 	const allFolders: INodeListSearchItems[] = [];
 
-	// Simple semaphore to limit concurrent API requests
+	// Iterative BFS to walk the folder tree — avoids stack overflow on deep hierarchies
 	const MAX_CONCURRENT = 5;
-	let active = 0;
-	const waiting: (() => void)[] = [];
-	const acquire = () => {
-		if (active < MAX_CONCURRENT) {
-			active++;
-			return Promise.resolve();
-		}
-		return new Promise<void>((resolve) => waiting.push(resolve));
-	};
-	const release = () => {
-		active--;
-		const next = waiting.shift();
-		if (next) {
-			active++;
-			next();
-		}
-	};
+	const queue: Array<{ parentId: string; parentPath: string }> = [
+		{ parentId: 'root', parentPath: '' },
+	];
 
-	// Recursively walk the folder tree collecting all folders with full paths
-	const MAX_DEPTH = 50;
-	const collectFolders = async (parentId: string, parentPath: string, depth = 0) => {
-		if (depth >= MAX_DEPTH) return;
-		let nextUrl: string | undefined;
-		do {
-			await acquire();
-			let response: unknown;
-			try {
-				if (nextUrl) {
-					response = await microsoftSharePointApiRequest.call(
-						this,
-						'GET',
-						'',
-						{},
-						undefined,
-						undefined,
-						nextUrl,
-					);
-				} else {
-					response = await microsoftSharePointApiRequest.call(
-						this,
-						'GET',
-						`/sites/${site}/drives/${drive}/items/${parentId}/children`,
-						{},
-						{
-							$select: 'id,name,folder',
-							$filter: 'folder ne null',
-						},
-					);
-				}
-			} finally {
-				release();
-			}
+	while (queue.length > 0) {
+		const batch = queue.splice(0, MAX_CONCURRENT);
 
-			const body = response as { value?: IDriveItem[]; '@odata.nextLink'?: string };
-			const items: IDriveItem[] = body.value ?? [];
+		await Promise.all(
+			batch.map(async ({ parentId, parentPath }) => {
+				let nextUrl: string | undefined;
+				do {
+					let response: unknown;
+					if (nextUrl) {
+						response = await microsoftSharePointApiRequest.call(
+							this,
+							'GET',
+							'',
+							{},
+							undefined,
+							undefined,
+							nextUrl,
+						);
+					} else {
+						response = await microsoftSharePointApiRequest.call(
+							this,
+							'GET',
+							`/sites/${site}/drives/${drive}/items/${parentId}/children`,
+							{},
+							{
+								$select: 'id,name,folder',
+								$filter: 'folder ne null',
+							},
+						);
+					}
 
-			const childPromises: Promise<void>[] = [];
-			for (const item of items) {
-				if (!item.folder) continue;
-				const fullPath = `${parentPath}/${item.name}`;
-				allFolders.push({ name: fullPath, value: item.id });
-				childPromises.push(collectFolders(item.id, fullPath, depth + 1));
-			}
-			await Promise.all(childPromises);
+					const body = response as { value?: IDriveItem[]; '@odata.nextLink'?: string };
+					const items: IDriveItem[] = body.value ?? [];
 
-			nextUrl = body['@odata.nextLink'];
-		} while (nextUrl);
-	};
+					for (const item of items) {
+						if (!item.folder) continue;
+						const fullPath = `${parentPath}/${item.name}`;
+						allFolders.push({ name: fullPath, value: item.id });
+						queue.push({ parentId: item.id, parentPath: fullPath });
+					}
 
-	await collectFolders('root', '');
+					nextUrl = body['@odata.nextLink'];
+				} while (nextUrl);
+			}),
+		);
+	}
 
 	const filteredFolders = filter
 		? allFolders.filter((f) => f.name.toLowerCase().includes(filter.toLowerCase()))
