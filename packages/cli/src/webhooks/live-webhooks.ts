@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
@@ -20,6 +21,7 @@ import { NodeTypes } from '@/node-types';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { WorkflowPublishedVersionService } from '@/workflows/workflow-published-version.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 /**
@@ -31,9 +33,11 @@ import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.serv
 export class LiveWebhooks implements IWebhookManager {
 	constructor(
 		private readonly logger: Logger,
+		private readonly globalConfig: GlobalConfig,
 		private readonly nodeTypes: NodeTypes,
 		private readonly webhookService: WebhookService,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly workflowPublishedVersionService: WorkflowPublishedVersionService,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
 	) {}
 
@@ -106,15 +110,29 @@ export class LiveWebhooks implements IWebhookManager {
 			throw new NotFoundError(`Could not find workflow with id "${webhook.workflowId}"`);
 		}
 
-		if (!workflowData.activeVersion) {
-			throw new NotFoundError(
-				`Active version not found for workflow with id "${webhook.workflowId}"`,
+		let nodes: INode[];
+		let connections: IWorkflowBase['connections'];
+
+		if (this.globalConfig.workflows.useWorkflowPublicationService) {
+			const published = await this.workflowPublishedVersionService.getPublishedVersion(
+				webhook.workflowId,
 			);
+			if (!published) {
+				throw new NotFoundError(
+					`Published version not found for workflow with id "${webhook.workflowId}"`,
+				);
+			}
+			({ nodes, connections } = published);
+		} else {
+			if (!workflowData.activeVersion) {
+				throw new NotFoundError(
+					`Active version not found for workflow with id "${webhook.workflowId}"`,
+				);
+			}
+			({ nodes, connections } = workflowData.activeVersion);
 		}
 
-		const { nodes, connections } = workflowData.activeVersion;
-
-		// Create a clean workflowData object with only activeVersion nodes/connections
+		// Create a clean workflowData object with only published nodes/connections
 		// This prevents any downstream code from accidentally using the draft nodes
 		const activeWorkflowData: IWorkflowBase = {
 			...workflowData,

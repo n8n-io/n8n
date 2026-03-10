@@ -6,7 +6,7 @@ import {
 	WORKFLOW_REACTIVATE_MAX_TIMEOUT,
 } from '@/constants';
 import { Logger } from '@n8n/backend-common';
-import { WorkflowsConfig } from '@n8n/config';
+import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, IWorkflowDb } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
@@ -62,6 +62,7 @@ import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import { WorkflowPublishedVersionService } from '@/workflows/workflow-published-version.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 import { formatWorkflow } from '@/workflows/workflow.formatter';
 
@@ -96,6 +97,8 @@ export class ActiveWorkflowManager {
 		private readonly push: Push,
 		private readonly eventService: EventService,
 		private readonly storageConfig: StorageConfig,
+		private readonly globalConfig: GlobalConfig,
+		private readonly workflowPublishedVersionService: WorkflowPublishedVersionService,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -247,13 +250,25 @@ export class ActiveWorkflowManager {
 			throw new UnexpectedError('Could not find workflow', { extra: { workflowId } });
 		}
 
-		if (!workflowData.activeVersion) {
-			throw new UnexpectedError('Active version not found for workflow', {
-				extra: { workflowId },
-			});
-		}
+		let nodes: INode[];
+		let connections: IWorkflowBase['connections'];
 
-		const { nodes, connections } = workflowData.activeVersion;
+		if (this.globalConfig.workflows.useWorkflowPublicationService) {
+			const published = await this.workflowPublishedVersionService.getPublishedVersion(workflowId);
+			if (!published) {
+				throw new UnexpectedError('Published version not found for workflow', {
+					extra: { workflowId },
+				});
+			}
+			({ nodes, connections } = published);
+		} else {
+			if (!workflowData.activeVersion) {
+				throw new UnexpectedError('Active version not found for workflow', {
+					extra: { workflowId },
+				});
+			}
+			({ nodes, connections } = workflowData.activeVersion);
+		}
 
 		const workflow = new Workflow({
 			id: workflowId,
@@ -622,23 +637,43 @@ export class ActiveWorkflowManager {
 		const shouldAddTriggersAndPollers = this.shouldAddTriggersAndPollers();
 
 		try {
-			if (['init', 'leadershipChange'].includes(activationMode) && !dbWorkflow.activeVersion) {
-				this.logger.debug(
-					`Skipping workflow ${formatWorkflow(dbWorkflow)} as it is no longer active`,
-					{ workflowId: dbWorkflow.id },
+			let nodes: INode[];
+			let connections: IWorkflowBase['connections'];
+
+			if (this.globalConfig.workflows.useWorkflowPublicationService) {
+				const published = await this.workflowPublishedVersionService.getPublishedVersion(
+					dbWorkflow.id,
 				);
+				if (!published) {
+					if (['init', 'leadershipChange'].includes(activationMode)) {
+						this.logger.debug(
+							`Skipping workflow ${formatWorkflow(dbWorkflow)} as it has no published version`,
+							{ workflowId: dbWorkflow.id },
+						);
+						return added;
+					}
+					throw new UnexpectedError('Published version not found for workflow', {
+						extra: { workflowId: dbWorkflow.id },
+					});
+				}
+				({ nodes, connections } = published);
+			} else {
+				if (['init', 'leadershipChange'].includes(activationMode) && !dbWorkflow.activeVersion) {
+					this.logger.debug(
+						`Skipping workflow ${formatWorkflow(dbWorkflow)} as it is no longer active`,
+						{ workflowId: dbWorkflow.id },
+					);
+					return added;
+				}
 
-				return added;
+				if (!dbWorkflow.activeVersion) {
+					throw new UnexpectedError('Active version not found for workflow', {
+						extra: { workflowId: dbWorkflow.id },
+					});
+				}
+				({ nodes, connections } = dbWorkflow.activeVersion);
 			}
 
-			// Get workflow data from the active version
-			if (!dbWorkflow.activeVersion) {
-				throw new UnexpectedError('Active version not found for workflow', {
-					extra: { workflowId: dbWorkflow.id },
-				});
-			}
-
-			const { nodes, connections } = dbWorkflow.activeVersion;
 			dbWorkflow.nodes = nodes;
 			dbWorkflow.connections = connections;
 

@@ -36,9 +36,11 @@ describe('LiveWebhooks', () => {
 		jest.clearAllMocks();
 		liveWebhooks = new LiveWebhooks(
 			mockLogger(),
+			mock(), // globalConfig
 			nodeTypes,
 			webhookService,
 			workflowRepository,
+			mock(), // workflowPublishedVersionService
 			workflowStaticDataService,
 		);
 

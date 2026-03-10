@@ -49,6 +49,8 @@ describe('ActiveWorkflowManager', () => {
 			mock(),
 			mock(),
 			mock(),
+			mock(), // globalConfig
+			mock(), // workflowPublishedVersionService
 		);
 	});
 
@@ -240,6 +242,8 @@ describe('ActiveWorkflowManager', () => {
 				mock(),
 				eventService,
 				mock(),
+				mock(), // globalConfig
+				mock(), // workflowPublishedVersionService
 			);
 		});
 
