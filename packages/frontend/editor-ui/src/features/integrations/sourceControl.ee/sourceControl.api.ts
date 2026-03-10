@@ -110,6 +110,30 @@ export const exportPackage = async (
 	);
 };
 
-export const importPackage = async (context: IRestApiContext, data: { force?: boolean }) => {
+export const importPackage = async (
+	context: IRestApiContext,
+	data: { force?: boolean; projectIds?: string[] },
+) => {
 	return await makeRestApiRequest(context, 'POST', `${sourceControlApiRoot}/import-package`, data);
+};
+
+export interface PackageProjectPreview {
+	id: string;
+	name: string;
+	dirName: string;
+	workflows: Array<{ id: string; name: string }>;
+	credentials: Array<{ id: string; name: string; type: string }>;
+	variables: Array<{ id: string; key: string }>;
+	folders: Array<{ id: string; name: string }>;
+	dataTables: Array<{ id: string; name: string }>;
+}
+
+export interface PackagePreview {
+	projects: PackageProjectPreview[];
+	exportedAt: string;
+	exportedBy: string;
+}
+
+export const getPackagePreview = async (context: IRestApiContext): Promise<PackagePreview> => {
+	return await makeRestApiRequest(context, 'GET', `${sourceControlApiRoot}/package-preview`);
 };

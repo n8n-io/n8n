@@ -332,6 +332,23 @@ export class SourceControlController {
 		}
 	}
 
+	@Get('/package-preview', { middlewares: [sourceControlEnabledMiddleware] })
+	@GlobalScope('sourceControl:manage')
+	async packagePreview() {
+		try {
+			await this.sourceControlGitService.fetch();
+			const { branchName } = this.sourceControlPreferencesService.getPreferences();
+			await this.sourceControlGitService.resetBranch({
+				hard: true,
+				target: `origin/${branchName || SOURCE_CONTROL_DEFAULT_BRANCH}`,
+			});
+
+			return await this.packageImportService.previewPackage();
+		} catch (error) {
+			throw new BadRequestError((error as { message: string }).message);
+		}
+	}
+
 	@Post('/import-package', { middlewares: [sourceControlEnabledMiddleware] })
 	@GlobalScope('sourceControl:manage')
 	async importPackage(req: AuthenticatedRequest) {
@@ -343,7 +360,8 @@ export class SourceControlController {
 				target: `origin/${branchName || SOURCE_CONTROL_DEFAULT_BRANCH}`,
 			});
 
-			const result = await this.packageImportService.importPackage(req.user.id);
+			const { projectIds } = (req.body ?? {}) as { projectIds?: string[] };
+			const result = await this.packageImportService.importPackage(req.user.id, projectIds);
 			return result;
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);

@@ -30,6 +30,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import Modal from '@/app/components/Modal.vue';
+import type { PackageProjectPreview } from '../sourceControl.api';
 
 import {
 	N8nBadge,
@@ -39,6 +40,7 @@ import {
 	N8nIconButton,
 	N8nInfoTip,
 	N8nLink,
+	N8nLoading,
 	N8nNotice,
 	N8nOption,
 	N8nSelect,
@@ -79,6 +81,44 @@ const activeProjectName = computed(() => {
 	return project?.name ?? '';
 });
 const isPackageImporting = ref(false);
+
+// Package preview state
+const packagePreview = ref<PackageProjectPreview[]>([]);
+const isLoadingPreview = ref(false);
+const previewError = ref('');
+const selectedProjectId = ref<string | null>(null);
+
+const selectedProject = computed(() =>
+	packagePreview.value.find((p) => p.id === selectedProjectId.value) ?? null,
+);
+
+const previewResourceCounts = computed(() => {
+	const p = selectedProject.value;
+	if (!p) return null;
+	return {
+		workflows: p.workflows.length,
+		credentials: p.credentials.length,
+		variables: p.variables.length,
+		folders: p.folders.length,
+		dataTables: p.dataTables.length,
+	};
+});
+
+async function loadPackagePreview() {
+	isLoadingPreview.value = true;
+	previewError.value = '';
+	try {
+		const preview = await sourceControlStore.getPackagePreview();
+		packagePreview.value = preview.projects;
+		if (preview.projects.length === 1) {
+			selectedProjectId.value = preview.projects[0].id;
+		}
+	} catch (error) {
+		previewError.value = (error as Error).message || 'Failed to load package preview';
+	} finally {
+		isLoadingPreview.value = false;
+	}
+}
 
 // Reactive status state - starts with props data or empty, then loads fresh data
 const status = ref<SourceControlledFile[]>(props.data.status || []);
@@ -367,16 +407,22 @@ function close() {
 }
 
 async function pullPackage() {
+	if (!selectedProjectId.value) return;
+
+	const projectName = selectedProject.value?.name ?? '';
 	isPackageImporting.value = true;
 	loadingService.startLoading('Importing package...');
 	close();
 
 	try {
-		await sourceControlStore.importPackage({ force: true });
+		await sourceControlStore.importPackage({
+			force: true,
+			projectIds: [selectedProjectId.value],
+		});
 
 		toast.showToast({
 			title: 'Package imported',
-			message: `Resources imported from the git package into project "${activeProjectName.value}".`,
+			message: `Resources imported from project "${projectName}".`,
 			type: 'success',
 		});
 
@@ -467,7 +513,7 @@ const modalHeight = computed(() =>
 // Load data when modal opens
 onMounted(() => {
 	if (isProjectScoped.value) {
-		// Project-scoped mode doesn't need instance-wide status
+		void loadPackagePreview();
 		return;
 	}
 	if (!props.data.status || props.data.status.length === 0) {
@@ -480,7 +526,7 @@ onMounted(() => {
 	<!-- Project-scoped import mode -->
 	<Modal
 		v-if="!isLoading && isProjectScoped"
-		width="500px"
+		width="620px"
 		:event-bus="data.eventBus"
 		:name="SOURCE_CONTROL_PULL_MODAL_KEY"
 		height="auto"
@@ -488,20 +534,148 @@ onMounted(() => {
 		:before-close="close"
 	>
 		<template #header>
-			<N8nHeading tag="h1" size="xlarge">Import from package</N8nHeading>
+			<N8nHeading tag="h1" size="xlarge">Import from git</N8nHeading>
 		</template>
 		<template #content>
 			<div :class="$style.packageContent">
-				<N8nText>
-					This will import all resources from the git package into the project
-					<N8nText bold>"{{ activeProjectName }}"</N8nText>.
-				</N8nText>
-				<N8nNotice :compact="false" class="mt-s">
-					<N8nText size="small">
-						All workflows, credentials, variables, folders, and data tables in the package will be
-						imported or updated.
+				<!-- Loading state -->
+				<div v-if="isLoadingPreview" :class="$style.previewLoading">
+					<N8nLoading :rows="3" />
+					<N8nText color="text-light" size="small" class="mt-2xs">
+						Fetching package contents from git...
 					</N8nText>
-				</N8nNotice>
+				</div>
+
+				<!-- Error state -->
+				<N8nCallout v-else-if="previewError" theme="danger">
+					{{ previewError }}
+				</N8nCallout>
+
+				<!-- Empty state -->
+				<N8nCallout v-else-if="packagePreview.length === 0" theme="info">
+					No projects found in the git repository. Push a project first.
+				</N8nCallout>
+
+				<!-- Preview content -->
+				<template v-else>
+					<!-- Project selector -->
+					<div :class="$style.projectSelector">
+						<N8nText bold size="medium" color="text-dark">Project</N8nText>
+						<N8nSelect
+							:model-value="selectedProjectId"
+							size="medium"
+							:class="$style.projectSelect"
+							placeholder="Select a project to import"
+							data-test-id="package-project-select"
+							@update:model-value="selectedProjectId = $event"
+						>
+							<N8nOption
+								v-for="project in packagePreview"
+								:key="project.id"
+								:value="project.id"
+								:label="project.name"
+							/>
+						</N8nSelect>
+					</div>
+
+					<!-- Resource preview for selected project -->
+					<div v-if="selectedProject" :class="$style.resourcePreview">
+						<div :class="$style.resourceGrid">
+							<div :class="$style.resourceCard">
+								<N8nText bold size="xlarge" color="text-dark">
+									{{ previewResourceCounts?.workflows ?? 0 }}
+								</N8nText>
+								<N8nText size="small" color="text-light">Workflows</N8nText>
+							</div>
+							<div :class="$style.resourceCard">
+								<N8nText bold size="xlarge" color="text-dark">
+									{{ previewResourceCounts?.credentials ?? 0 }}
+								</N8nText>
+								<N8nText size="small" color="text-light">Credentials</N8nText>
+							</div>
+							<div :class="$style.resourceCard">
+								<N8nText bold size="xlarge" color="text-dark">
+									{{ previewResourceCounts?.variables ?? 0 }}
+								</N8nText>
+								<N8nText size="small" color="text-light">Variables</N8nText>
+							</div>
+							<div :class="$style.resourceCard">
+								<N8nText bold size="xlarge" color="text-dark">
+									{{ previewResourceCounts?.dataTables ?? 0 }}
+								</N8nText>
+								<N8nText size="small" color="text-light">Data tables</N8nText>
+							</div>
+						</div>
+
+						<!-- Resource details -->
+						<div :class="$style.resourceDetails">
+							<div v-if="selectedProject.workflows.length" :class="$style.resourceSection">
+								<N8nText bold size="small" color="text-dark" class="mb-4xs">
+									Workflows
+								</N8nText>
+								<ul :class="$style.resourceList">
+									<li
+										v-for="wf in selectedProject.workflows"
+										:key="wf.id"
+										:class="$style.resourceItem"
+									>
+										<N8nText size="small">{{ wf.name }}</N8nText>
+									</li>
+								</ul>
+							</div>
+							<div v-if="selectedProject.credentials.length" :class="$style.resourceSection">
+								<N8nText bold size="small" color="text-dark" class="mb-4xs">
+									Credentials
+								</N8nText>
+								<ul :class="$style.resourceList">
+									<li
+										v-for="cred in selectedProject.credentials"
+										:key="cred.id"
+										:class="$style.resourceItem"
+									>
+										<N8nText size="small">{{ cred.name }}</N8nText>
+										<N8nText size="small" color="text-light">&middot; {{ cred.type }}</N8nText>
+									</li>
+								</ul>
+							</div>
+							<div v-if="selectedProject.variables.length" :class="$style.resourceSection">
+								<N8nText bold size="small" color="text-dark" class="mb-4xs">
+									Variables
+								</N8nText>
+								<ul :class="$style.resourceList">
+									<li
+										v-for="v in selectedProject.variables"
+										:key="v.id"
+										:class="$style.resourceItem"
+									>
+										<N8nText size="small">{{ v.key }}</N8nText>
+									</li>
+								</ul>
+							</div>
+							<div v-if="selectedProject.dataTables.length" :class="$style.resourceSection">
+								<N8nText bold size="small" color="text-dark" class="mb-4xs">
+									Data tables
+								</N8nText>
+								<ul :class="$style.resourceList">
+									<li
+										v-for="dt in selectedProject.dataTables"
+										:key="dt.id"
+										:class="$style.resourceItem"
+									>
+										<N8nText size="small">{{ dt.name }}</N8nText>
+									</li>
+								</ul>
+							</div>
+						</div>
+					</div>
+
+					<N8nNotice v-if="selectedProject" :compact="false" class="mt-xs">
+						<N8nText size="small">
+							Importing will create or update all resources from this project. Existing resources
+							with the same IDs will be overwritten.
+						</N8nText>
+					</N8nNotice>
+				</template>
 			</div>
 		</template>
 		<template #footer>
@@ -512,10 +686,10 @@ onMounted(() => {
 				<N8nButton
 					variant="solid"
 					data-test-id="force-pull"
-					:disabled="isPackageImporting"
+					:disabled="isPackageImporting || !selectedProjectId || isLoadingPreview"
 					@click="pullPackage"
 				>
-					Import
+					Import project
 				</N8nButton>
 			</div>
 		</template>
@@ -916,5 +1090,80 @@ onMounted(() => {
 
 .packageContent {
 	padding: var(--spacing--xs) 0;
+}
+
+.previewLoading {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding: var(--spacing--lg) 0;
+}
+
+.projectSelector {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	margin-bottom: var(--spacing--xs);
+}
+
+.projectSelect {
+	flex: 1;
+}
+
+.resourcePreview {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+}
+
+.resourceGrid {
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: var(--spacing--2xs);
+}
+
+.resourceCard {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding: var(--spacing--xs);
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	background: var(--color--background);
+}
+
+.resourceDetails {
+	max-height: 280px;
+	overflow-y: auto;
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	padding: var(--spacing--xs);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+	scrollbar-color: var(--color--foreground) transparent;
+}
+
+.resourceSection {
+	display: flex;
+	flex-direction: column;
+
+	& + & {
+		padding-top: var(--spacing--xs);
+		border-top: var(--border);
+	}
+}
+
+.resourceList {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+}
+
+.resourceItem {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	padding: var(--spacing--4xs) 0;
 }
 </style>

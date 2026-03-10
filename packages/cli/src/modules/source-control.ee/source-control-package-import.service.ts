@@ -46,6 +46,23 @@ export interface PackageImportResult {
 	dataTables: { imported: string[] };
 }
 
+export interface PackageProjectPreview {
+	id: string;
+	name: string;
+	dirName: string;
+	workflows: Array<{ id: string; name: string }>;
+	credentials: Array<{ id: string; name: string; type: string }>;
+	variables: Array<{ id: string; key: string }>;
+	folders: Array<{ id: string; name: string }>;
+	dataTables: Array<{ id: string; name: string }>;
+}
+
+export interface PackagePreview {
+	projects: PackageProjectPreview[];
+	exportedAt: string;
+	exportedBy: string;
+}
+
 @Service()
 export class SourceControlPackageImportService {
 	private gitFolder: string;
@@ -69,16 +86,32 @@ export class SourceControlPackageImportService {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 	}
 
-	async importPackage(userId: string): Promise<PackageImportResult> {
-		const manifestPath = path.join(this.gitFolder, 'manifest.json');
-		let manifest: ExportableManifest;
+	async previewPackage(): Promise<PackagePreview> {
+		const manifest = await this.readManifest();
 
-		try {
-			const content = await readFile(manifestPath, 'utf8');
-			manifest = jsonParse<ExportableManifest>(content);
-		} catch {
-			throw new UnexpectedError('No manifest.json found in git work folder');
+		const projects: PackageProjectPreview[] = [];
+
+		for (const projectEntry of manifest.projects) {
+			const projectDir = path.join(this.gitFolder, 'projects', projectEntry.dirName);
+			try {
+				const preview = await this.previewSingleProject(projectDir, projectEntry);
+				projects.push(preview);
+			} catch (error) {
+				this.logger.error(`Failed to preview project ${projectEntry.name}`, {
+					error: ensureError(error),
+				});
+			}
 		}
+
+		return {
+			projects,
+			exportedAt: manifest.exportedAt,
+			exportedBy: manifest.exportedBy,
+		};
+	}
+
+	async importPackage(userId: string, projectIds?: string[]): Promise<PackageImportResult> {
+		const manifest = await this.readManifest();
 
 		const result: PackageImportResult = {
 			projects: [],
@@ -89,7 +122,11 @@ export class SourceControlPackageImportService {
 			dataTables: { imported: [] },
 		};
 
-		for (const projectEntry of manifest.projects) {
+		const projectsToImport = projectIds
+			? manifest.projects.filter((p) => projectIds.includes(p.id))
+			: manifest.projects;
+
+		for (const projectEntry of projectsToImport) {
 			const projectDir = path.join(this.gitFolder, 'projects', projectEntry.dirName);
 
 			try {
@@ -108,6 +145,121 @@ export class SourceControlPackageImportService {
 		}
 
 		return result;
+	}
+
+	private async readManifest(): Promise<ExportableManifest> {
+		const manifestPath = path.join(this.gitFolder, 'manifest.json');
+		try {
+			const content = await readFile(manifestPath, 'utf8');
+			return jsonParse<ExportableManifest>(content);
+		} catch {
+			throw new UnexpectedError('No manifest.json found in git work folder');
+		}
+	}
+
+	private async previewSingleProject(
+		projectDir: string,
+		entry: ExportableManifest['projects'][number],
+	): Promise<PackageProjectPreview> {
+		const preview: PackageProjectPreview = {
+			id: entry.id,
+			name: entry.name,
+			dirName: entry.dirName,
+			workflows: [],
+			credentials: [],
+			variables: [],
+			folders: [],
+			dataTables: [],
+		};
+
+		// Collect workflows and folders from the folder tree
+		const foldersDir = path.join(projectDir, 'folders');
+		await this.previewFolderTree(foldersDir, preview);
+
+		// Collect credentials
+		const credentialsDir = path.join(projectDir, 'credentials');
+		try {
+			const entries = await readdir(credentialsDir, { withFileTypes: true });
+			for (const credEntry of entries) {
+				if (!credEntry.isDirectory()) continue;
+				try {
+					const data = jsonParse<ExportableCredential>(
+						await readFile(path.join(credentialsDir, credEntry.name, 'credential.json'), 'utf8'),
+					);
+					preview.credentials.push({ id: data.id, name: data.name, type: data.type });
+				} catch {}
+			}
+		} catch {}
+
+		// Collect variables
+		const variablesDir = path.join(projectDir, 'variables');
+		try {
+			const entries = await readdir(variablesDir, { withFileTypes: true });
+			for (const varEntry of entries) {
+				if (!varEntry.isDirectory()) continue;
+				try {
+					const data = jsonParse<ExportableVariable>(
+						await readFile(path.join(variablesDir, varEntry.name, 'variable.json'), 'utf8'),
+					);
+					preview.variables.push({ id: data.id, key: data.key });
+				} catch {}
+			}
+		} catch {}
+
+		// Collect data tables
+		const dataTablesDir = path.join(projectDir, 'data-tables');
+		try {
+			const entries = await readdir(dataTablesDir, { withFileTypes: true });
+			for (const dtEntry of entries) {
+				if (!dtEntry.isDirectory()) continue;
+				try {
+					const data = jsonParse<ExportableDataTable>(
+						await readFile(path.join(dataTablesDir, dtEntry.name, 'data-table.json'), 'utf8'),
+					);
+					preview.dataTables.push({ id: data.id, name: data.name });
+				} catch {}
+			}
+		} catch {}
+
+		return preview;
+	}
+
+	private async previewFolderTree(dirPath: string, preview: PackageProjectPreview): Promise<void> {
+		let entries;
+		try {
+			entries = await readdir(dirPath, { withFileTypes: true });
+		} catch {
+			return;
+		}
+
+		for (const entry of entries) {
+			if (!entry.isDirectory()) continue;
+
+			const subDir = path.join(dirPath, entry.name);
+
+			if (entry.name === 'workflows') {
+				const wfEntries = await readdir(subDir, { withFileTypes: true });
+				for (const wfEntry of wfEntries) {
+					if (!wfEntry.isDirectory()) continue;
+					try {
+						const data = jsonParse<ExportableWorkflow>(
+							await readFile(path.join(subDir, wfEntry.name, 'workflow.json'), 'utf8'),
+						);
+						preview.workflows.push({ id: data.id, name: data.name });
+					} catch {}
+				}
+			} else {
+				// Check if this is a folder
+				try {
+					const folderData = jsonParse<ExportableFolder>(
+						await readFile(path.join(subDir, 'folder.json'), 'utf8'),
+					);
+					preview.folders.push({ id: folderData.id, name: folderData.name });
+				} catch {}
+				// Recurse
+				await this.previewFolderTree(subDir, preview);
+			}
+		}
 	}
 
 	private async importSingleProject(

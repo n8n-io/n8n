@@ -116,8 +116,12 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		return await vcApi.exportPackage(rootStore.restApiContext, data);
 	};
 
-	const importPackage = async (data: { force?: boolean }) => {
+	const importPackage = async (data: { force?: boolean; projectIds?: string[] }) => {
 		return await vcApi.importPackage(rootStore.restApiContext, data);
+	};
+
+	const getPackagePreview = async () => {
+		return await vcApi.getPackagePreview(rootStore.restApiContext);
 	};
 
 	return {
@@ -138,6 +142,7 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		getRemoteWorkflow,
 		exportPackage,
 		importPackage,
+		getPackagePreview,
 		sshKeyTypesWithLabel,
 	};
 });
