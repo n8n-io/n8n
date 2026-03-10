@@ -1,0 +1,26 @@
+name: 'Release: Populate cloud with releases'
+run-name: 'Populate cloud with version n8n@${{ inputs.version }}'
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'The release version (e.g. 2.10.2)'
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      version:
+        description: 'The release version (e.g. 2.10.2)'
+        required: true
+        type: string
+
+jobs:
+  populate-cloud:
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - name: Call n8n workflow
+        run: |
+          curl ${{ secrets.N8N_POPULATE_CLOUD_WEBHOOK_DATA }} \
+          --data '{"version": "${{ inputs.version }}"}'
