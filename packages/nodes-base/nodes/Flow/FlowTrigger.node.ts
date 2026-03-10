@@ -110,8 +110,7 @@ export class FlowTrigger implements INodeType {
 				webhooks = await flowApiRequest.call(this, 'GET', endpoint, {}, qs);
 				webhooks = webhooks.integration_webhooks;
 				for (const webhook of webhooks) {
-					// @ts-ignore
-					if (webhookData.webhookIds.includes(webhook.id)) {
+					if ((webhookData.webhookIds as number[]).includes(webhook.id)) {
 						continue;
 					} else {
 						return false;
@@ -122,18 +121,19 @@ export class FlowTrigger implements INodeType {
 			async create(this: IHookFunctions): Promise<boolean> {
 				const credentials = await this.getCredentials('flowApi');
 
-				let resourceIds, body, responseData;
+				let resourceIds: string[];
+				let body, responseData;
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const resource = this.getNodeParameter('resource') as string;
 				const endpoint = '/integration_webhooks';
 				if (resource === 'list') {
 					resourceIds = (this.getNodeParameter('listIds') as string).split(',');
-				}
-				if (resource === 'task') {
+				} else if (resource === 'task') {
 					resourceIds = (this.getNodeParameter('taskIds') as string).split(',');
+				} else {
+					throw new Error(`Unsupported resource type: "${resource}"`);
 				}
-				// @ts-ignore
 				for (const resourceId of resourceIds) {
 					body = {
 						organization_id: credentials.organizationId as number,
@@ -156,8 +156,7 @@ export class FlowTrigger implements INodeType {
 						// Required data is missing so was not successful
 						return false;
 					}
-					// @ts-ignore
-					webhookData.webhookIds.push(responseData.integration_webhook.id);
+					(webhookData.webhookIds as number[]).push(responseData.integration_webhook.id);
 				}
 				return true;
 			},
@@ -167,10 +166,8 @@ export class FlowTrigger implements INodeType {
 				const qs: IDataObject = {};
 				const webhookData = this.getWorkflowStaticData('node');
 				qs.organization_id = credentials.organizationId as number;
-				// @ts-ignore
-				if (webhookData.webhookIds.length > 0) {
-					// @ts-ignore
-					for (const webhookId of webhookData.webhookIds) {
+				if ((webhookData.webhookIds as number[]).length > 0) {
+					for (const webhookId of webhookData.webhookIds as number[]) {
 						const endpoint = `/integration_webhooks/${webhookId}`;
 						try {
 							await flowApiRequest.call(this, 'DELETE', endpoint, {}, qs);
