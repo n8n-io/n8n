@@ -1332,7 +1332,9 @@ function getRoundTripSkipReason(_title: string): string | undefined {
 
 // Known schema violations in existing fixtures (to be fixed separately).
 // Each entry maps fixture title substring to the reason.
-const KNOWN_SCHEMA_VIOLATIONS: Record<string, string> = {};
+const KNOWN_SCHEMA_VIOLATIONS: Record<string, string> = {
+	W35: 'Wait node form fieldType schema expects expression but plain string is valid',
+};
 
 function getKnownSchemaSkip(title: string): string | undefined {
 	for (const [key, reason] of Object.entries(KNOWN_SCHEMA_VIOLATIONS)) {

@@ -16,6 +16,8 @@ import { AUTH_TYPE_TO_CREDENTIAL } from '../shared/credential-mapping';
 import { CALLBACK_TO_TRIGGER } from '../shared/trigger-mapping';
 import { validateNodeConfig } from '../validation/schema-validator';
 
+const WAIT_BUILTINS = new Set(['wait', 'waitUntil', 'waitForWebhook', 'waitForForm', 'setTimeout']);
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface ValidationError {
@@ -251,7 +253,13 @@ function walkNode(node: AcornNode, info: CollectedInfo, ctx: WalkContext): void 
 		if (callExpr.callee?.type === 'Identifier') {
 			const name = callExpr.callee.name ?? '';
 			// Don't count callback names or builtins
-			if (name && !(name in CALLBACK_TO_TRIGGER) && name !== 'respond' && name !== 'onTrigger') {
+			if (
+				name &&
+				!(name in CALLBACK_TO_TRIGGER) &&
+				name !== 'respond' &&
+				name !== 'onTrigger' &&
+				!WAIT_BUILTINS.has(name)
+			) {
 				info.functionCalls.push({
 					name,
 					argCount: callExpr.arguments?.length ?? 0,
