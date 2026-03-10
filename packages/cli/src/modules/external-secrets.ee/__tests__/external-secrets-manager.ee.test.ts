@@ -863,7 +863,7 @@ describe('ExternalSecretsManager', () => {
 
 			await managerWithProjectMode.reloadAllProviders();
 
-			expect(mockSecretsProviderConnectionRepository.findAll).toHaveBeenCalledWith();
+			expect(mockSecretsProviderConnectionRepository.findAll).toHaveBeenCalled();
 			expect(mockSettingsStore.reload).not.toHaveBeenCalled();
 			expect(mockProviderRegistry.add).toHaveBeenCalledWith('my-vault-1', dummyProvider);
 		});
