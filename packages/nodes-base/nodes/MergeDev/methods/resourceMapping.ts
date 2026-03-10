@@ -248,6 +248,10 @@ export async function getModelFields(this: ILoadOptionsFunctions): Promise<Resou
 		return { fields: DOWNLOAD_FILE_FIELDS };
 	}
 
+	if (operation === 'remoteFieldClassesList' || operation === 'linesRemoteFieldClassesList') {
+		return { fields: COMMON_LIST_FIELDS };
+	}
+
 	const { apiKey, accountToken } = await this.getCredentials<{
 		apiKey: string;
 		accountToken: string;

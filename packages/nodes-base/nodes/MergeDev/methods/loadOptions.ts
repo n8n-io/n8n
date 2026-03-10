@@ -42,7 +42,8 @@ export async function getCommonModels(
 				.replace(/([A-Z])/g, ' $1')
 				.trim(),
 			value: op.modelName,
-		}));
+		}))
+		.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export async function getModelOperations(
@@ -65,19 +66,19 @@ export async function getModelOperations(
 		unknown
 	>;
 
-	// Read (list + get) is always available for any model exposed via availableModelOperations.
-	// Merge does not include "RETRIEVE" in availableOperations — that field only tracks write ops.
+	// Detect operations by SDK method presence — more reliable than availableOperations,
+	// which only reflects what the specific third-party integration reports and can be
+	// empty even when the Merge endpoint exists (e.g. Accounting Expenses CREATE).
 	const operations: INodePropertyOptions[] = [
 		{ name: 'List', value: 'list', description: 'Return a paginated list of records' },
 		{ name: 'Get', value: 'get', description: 'Return a single record by ID' },
 	];
 
-	const upperOps = modelOp.availableOperations.map((op) => op.toUpperCase());
-	if (upperOps.includes('CREATE')) {
+	if (typeof resource.create === 'function') {
 		operations.push({ name: 'Create', value: 'create', description: 'Create a new record' });
 	}
 
-	if (upperOps.includes('UPDATE') && typeof resource.partialUpdate === 'function') {
+	if (typeof resource.partialUpdate === 'function') {
 		operations.push({
 			name: 'Update',
 			value: 'update',
@@ -99,6 +100,30 @@ export async function getModelOperations(
 			name: 'Get Download URL',
 			value: 'getDownloadUrl',
 			description: 'Get a direct download URL with auth headers',
+		});
+	}
+
+	if (typeof resource.remoteFieldClassesList === 'function') {
+		operations.push({
+			name: 'List Remote Field Classes',
+			value: 'remoteFieldClassesList',
+			description: 'List available remote field classes for this model',
+		});
+	}
+
+	if (typeof resource.linesRemoteFieldClassesList === 'function') {
+		operations.push({
+			name: 'List Line Remote Field Classes',
+			value: 'linesRemoteFieldClassesList',
+			description: 'List available remote field classes for line items',
+		});
+	}
+
+	if (typeof resource.metaPostRetrieve === 'function') {
+		operations.push({
+			name: 'Get Create Metadata',
+			value: 'metaPostRetrieve',
+			description: 'Get metadata describing available fields for creating a record',
 		});
 	}
 

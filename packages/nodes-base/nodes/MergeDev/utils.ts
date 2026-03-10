@@ -66,6 +66,7 @@ const INFRA_RESOURCES = new Set([
 	'accountDetails',
 	'accountToken',
 	'asyncPassthrough',
+	'asyncTasks', // accounting: async operation status, not a common model
 	'auditTrail',
 	'availableActions',
 	'scopes',
@@ -99,17 +100,24 @@ export function findResourceKey(categoryClient: CategoryClient, modelName: strin
 
 	const modelLower = modelName.toLowerCase();
 
+	// Pick the resource whose singular form is the longest suffix of the model name.
+	// This prevents ambiguous matches like "BankFeedAccount" → "accounts" (singular "account")
+	// when "bankFeedAccounts" (singular "bankFeedAccount") is the correct, more specific match.
+	let bestKey: string | undefined;
+	let bestSingularLength = 0;
+
 	for (const resource of resources) {
-		// Derive singular form of the resource key
 		const singular = resource.replace(/ies$/, 'y').replace(/s$/, '');
-		if (modelLower.endsWith(singular.toLowerCase())) {
-			return resource;
-		}
-		// Also accept exact match on the resource key itself
-		if (modelLower === resource.toLowerCase()) {
-			return resource;
+		const singularLower = singular.toLowerCase();
+		if (
+			(modelLower.endsWith(singularLower) || modelLower === resource.toLowerCase()) &&
+			singularLower.length > bestSingularLength
+		) {
+			bestKey = resource;
+			bestSingularLength = singularLower.length;
 		}
 	}
 
+	if (bestKey) return bestKey;
 	throw new UserError(`No SDK resource found for model "${modelName}" in this category`);
 }

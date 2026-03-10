@@ -96,11 +96,22 @@ export class MergeDev implements INodeType {
 						fieldWords: { singular: 'parameter', plural: 'parameters' },
 					},
 				},
-				displayOptions: { show: { modelOperation: ['list', 'get', 'getDownloadUrl', 'download'] } },
+				displayOptions: {
+					show: {
+						modelOperation: [
+							'list',
+							'get',
+							'getDownloadUrl',
+							'download',
+							'remoteFieldClassesList',
+							'linesRemoteFieldClassesList',
+						],
+					},
+				},
 			},
 			{
-				displayName: 'Body Fields',
-				name: 'bodyFields',
+				displayName: 'Fields',
+				name: 'createFields',
 				type: 'resourceMapper',
 				noDataExpression: true,
 				default: { mappingMode: 'defineBelow', value: null },
@@ -109,13 +120,30 @@ export class MergeDev implements INodeType {
 					loadOptionsDependsOn: ['commonModels', 'modelOperation'],
 					resourceMapper: {
 						resourceMapperMethod: 'getBodyFields',
-						mode: 'map',
+						mode: 'add',
 						addAllFields: true,
-						valuesLabel: 'Body Fields',
 						fieldWords: { singular: 'field', plural: 'fields' },
 					},
 				},
-				displayOptions: { show: { modelOperation: ['create', 'update'] } },
+				displayOptions: { show: { modelOperation: ['create'] } },
+			},
+			{
+				displayName: 'Fields',
+				name: 'updateFields',
+				type: 'resourceMapper',
+				noDataExpression: true,
+				default: { mappingMode: 'defineBelow', value: null },
+				required: true,
+				typeOptions: {
+					loadOptionsDependsOn: ['commonModels', 'modelOperation'],
+					resourceMapper: {
+						resourceMapperMethod: 'getBodyFields',
+						mode: 'update',
+						addAllFields: true,
+						fieldWords: { singular: 'field', plural: 'fields' },
+					},
+				},
+				displayOptions: { show: { modelOperation: ['update'] } },
 			},
 		],
 	};
@@ -147,13 +175,14 @@ export class MergeDev implements INodeType {
 			const operation = this.getNodeParameter('modelOperation', i) as string;
 
 			// Read field values from the appropriate section based on operation
-			const isWriteOp = operation === 'create' || operation === 'update';
+			const fieldParamName =
+				operation === 'create'
+					? 'createFields.value'
+					: operation === 'update'
+						? 'updateFields.value'
+						: 'queryParams.value';
 			const fieldValues = omitEmpty(
-				(this.getNodeParameter(
-					isWriteOp ? 'bodyFields.value' : 'queryParams.value',
-					i,
-					{},
-				) as IDataObject) ?? {},
+				(this.getNodeParameter(fieldParamName, i, {}) as IDataObject) ?? {},
 			);
 
 			const modelOp = availableModelOperations?.find((op) => op.modelName === modelName);
@@ -286,6 +315,36 @@ export class MergeDev implements INodeType {
 						`${modelName} does not support get download URL`,
 					);
 				responseData = (await downloadMetaFn.call(resource, id)) as IDataObject;
+			} else if (operation === 'remoteFieldClassesList') {
+				const listFn = resource.remoteFieldClassesList;
+				if (!listFn)
+					throw new NodeOperationError(
+						this.getNode(),
+						`${modelName} does not support remote field classes`,
+					);
+				const result = (await listFn.call(resource, fieldValues)) as {
+					results?: IDataObject[];
+				};
+				responseData = result.results ?? [];
+			} else if (operation === 'linesRemoteFieldClassesList') {
+				const listFn = resource.linesRemoteFieldClassesList;
+				if (!listFn)
+					throw new NodeOperationError(
+						this.getNode(),
+						`${modelName} does not support line remote field classes`,
+					);
+				const result = (await listFn.call(resource, fieldValues)) as {
+					results?: IDataObject[];
+				};
+				responseData = result.results ?? [];
+			} else if (operation === 'metaPostRetrieve') {
+				const metaFn = resource.metaPostRetrieve;
+				if (!metaFn)
+					throw new NodeOperationError(
+						this.getNode(),
+						`${modelName} does not support get create metadata`,
+					);
+				responseData = (await metaFn.call(resource)) as IDataObject;
 			} else {
 				throw new NodeOperationError(this.getNode(), `Unknown operation: ${operation}`);
 			}
