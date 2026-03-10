@@ -16,6 +16,12 @@ function main() {
 
 	const releaseCandidateBranch = resolveRcBranchForTrack(track);
 
+	if (!currentTag.tag || !releaseCandidateBranch) {
+		throw new Error(
+			`Couldn't resolve needed parameters. currentTag.tag=${currentTag.tag}, releaseCandidateBranch=${releaseCandidateBranch}`,
+		);
+	}
+
 	console.log(`Commits between ${releaseCandidateBranch} and ${currentTag.tag}:`);
 	console.log(listCommitsBetweenRefs(releaseCandidateBranch, currentTag.tag));
 
