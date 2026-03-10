@@ -207,10 +207,13 @@ creates nested proxies for objects or arrays as needed.
 ### Array iteration is slow for large arrays
 
 ```
-{{ _.sum($json.items) }}
+{{ $json.items.reduce((sum, x) => sum + x, 0) }}
 // items has 10 000 elements → length transferred, then 10 000 callback
 // calls to fetch each element. Prefer accessing specific indices.
 ```
+
+Note: lodash (`_`) is not available in expressions — it is bundled internally for
+use by extension functions but not exposed on `globalThis`.
 
 ## Contributing
 

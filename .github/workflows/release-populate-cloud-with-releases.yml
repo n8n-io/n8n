@@ -1,0 +1,72 @@
+name: 'Release: Populate cloud with releases'
+run-name: 'Populate cloud with version n8n@${{ inputs.version }}'
+
+on:
+  workflow_dispatch:
+    inputs:
+      previous-version:
+        description: 'The previous release version (e.g. 2.10.2)'
+        required: true
+        type: string
+      version:
+        description: 'The release version (e.g. 2.11.0)'
+        required: true
+        type: string
+      experimental:
+        description: 'If publishing experimental version'
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      previous-version:
+        description: 'The previous release version (e.g. 2.10.2)'
+        required: true
+        type: string
+      version:
+        description: 'The release version (e.g. 2.11.0)'
+        required: true
+        type: string
+      experimental:
+        description: 'If publishing experimental version'
+        type: boolean
+        default: false
+
+jobs:
+  determine-changes:
+    runs-on: ubuntu-slim
+    environment: release
+    outputs:
+      has_node_enhancements: ${{ steps.get-changes.outputs.has_node_enhancements }}
+      has_core_changes: ${{ steps.get-changes.outputs.has_core_changes }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+          install-command: npm install --prefix=.github/scripts --no-package-lock
+
+      - name: Extract changes
+        id: get-changes
+        env:
+          PREVIOUS_VERSION_TAG: 'n8n@${{ inputs.previous-version }}'
+          RELEASE_VERSION_TAG: 'n8n@${{ inputs.version }}'
+        run: node ./.github/scripts/determine-release-version-changes.mjs
+
+      - name: Populate databases
+        id: populate-databases
+        env:
+          N8N_POPULATE_CLOUD_WEBHOOK_DATA: ${{ secrets.N8N_POPULATE_CLOUD_WEBHOOK_DATA }}
+          PAYLOAD: |
+            {
+              "target_version_to_update": "${{ inputs.version }}",
+              "has_node_enhancements": ${{ steps.get-changes.outputs.has_node_enhancements }},
+              "has_core_changes": ${{ steps.get-changes.outputs.has_core_changes }},
+              "has_breaking_change": false,
+              "is_experimental": ${{ inputs.experimental }}
+            }
+        run: node ./.github/scripts/populate-cloud-databases.mjs
