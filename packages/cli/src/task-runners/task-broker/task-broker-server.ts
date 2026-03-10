@@ -4,21 +4,31 @@ import { Service } from '@n8n/di';
 import compression from 'compression';
 import express from 'express';
 import { rateLimit as expressRateLimit } from 'express-rate-limit';
+import { ErrorReporter } from 'n8n-core';
 import * as a from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
-import { ServerResponse, type Server, createServer as createHttpServer } from 'node:http';
+import {
+	type IncomingMessage,
+	STATUS_CODES,
+	type Server,
+	createServer as createHttpServer,
+} from 'node:http';
 import type { AddressInfo, Socket } from 'node:net';
 import { parse as parseUrl } from 'node:url';
-import { Server as WSServer } from 'ws';
+import { type WebSocket, Server as WSServer } from 'ws';
 
 import { bodyParser, rawBodyReader } from '@/middlewares';
 import { send } from '@/response-helper';
 import { TaskBrokerAuthController } from '@/task-runners/task-broker/auth/task-broker-auth.controller';
+import { bearerTokenSchema } from '@/task-runners/task-broker/auth/task-broker-auth.schema';
+import { TaskBrokerAuthService } from '@/task-runners/task-broker/auth/task-broker-auth.service';
 import type {
 	TaskBrokerServerInitRequest,
 	TaskBrokerServerInitResponse,
 } from '@/task-runners/task-broker/task-broker-types';
 import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server';
+
+type IncomingUpgradeRequest = IncomingMessage & { url: string; ws?: WebSocket };
 
 /**
  * Task Broker HTTP & WS server
@@ -44,6 +54,8 @@ export class TaskBrokerServer {
 		private readonly globalConfig: GlobalConfig,
 		private readonly authController: TaskBrokerAuthController,
 		private readonly taskBrokerWsServer: TaskBrokerWsServer,
+		private readonly authService: TaskBrokerAuthService,
+		private readonly errorReporter: ErrorReporter,
 	) {
 		this.app = express();
 		this.app.disable('x-powered-by');
@@ -182,41 +194,84 @@ export class TaskBrokerServer {
 		});
 	}
 
-	private handleUpgradeRequest = (
-		request: TaskBrokerServerInitRequest,
+	private handleUpgradeRequest = async (
+		request: IncomingUpgradeRequest,
 		socket: Socket,
 		head: Buffer,
 	) => {
-		if (parseUrl(request.url).pathname !== this.upgradeEndpoint) {
-			socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
-			socket.destroy();
-			return;
+		try {
+			const parsedUrl = parseUrl(request.url, true);
+
+			if (parsedUrl.pathname !== this.upgradeEndpoint) {
+				this.failUpgradeRequest(socket, 404);
+				return;
+			}
+
+			if (!this.wsServer) {
+				this.failUpgradeRequest(socket, 503);
+				return;
+			}
+
+			const runnerId = typeof parsedUrl.query.id === 'string' ? parsedUrl.query.id : '';
+			if (!runnerId) {
+				this.logger.warn(
+					'Task runner connection attempt failed: missing runner ID in query parameters',
+				);
+				this.failUpgradeRequest(socket, 400);
+				return;
+			}
+
+			// Validate auth BEFORE upgrading the connection so the client
+			// receives a proper HTTP error instead of an opaque close frame
+			const grantToken = this.extractGrantToken(request.headers.authorization);
+			if (grantToken === undefined) {
+				this.logger.warn(
+					'Task runner connection attempt failed: missing or invalid Authorization header',
+					{ runnerId },
+				);
+				this.failUpgradeRequest(socket, 401);
+				return;
+			}
+
+			const isValid = await this.authService.tryConsumeGrantToken(grantToken);
+			if (!isValid) {
+				this.logger.warn('Task runner connection attempt failed: invalid or expired grant token', {
+					runnerId,
+				});
+				this.failUpgradeRequest(socket, 403);
+				return;
+			}
+
+			// Re-check after await in case server is shutting down
+			if (!this.wsServer) {
+				this.failUpgradeRequest(socket, 503);
+				return;
+			}
+
+			const wsServer = this.wsServer;
+			wsServer.handleUpgrade(request, socket, head, (ws) => {
+				request.ws = ws;
+				this.taskBrokerWsServer.add(runnerId, ws);
+			});
+		} catch (error) {
+			this.errorReporter.error(error, {
+				extra: { requestUrl: request.url },
+			});
+			this.failUpgradeRequest(socket, 500);
 		}
-
-		if (!this.wsServer) {
-			// This might happen if the server is shutting down and we receive an upgrade request
-			socket.write('HTTP/1.1 503 Service Unavailable\r\n\r\n');
-			socket.destroy();
-			return;
-		}
-
-		this.wsServer.handleUpgrade(request, socket, head, (ws) => {
-			request.ws = ws;
-
-			const response = new ServerResponse(request);
-			response.writeHead = (statusCode) => {
-				if (statusCode > 200) {
-					this.logger.error(`Task runner connection attempt failed with status code ${statusCode}`);
-					ws.close();
-				}
-				return response;
-			};
-
-			// @ts-expect-error Delegate the request to the express app. This function is not exposed
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-			this.app.handle(request, response);
-		});
 	};
+
+	private failUpgradeRequest(socket: Socket, statusCode: number) {
+		const statusMessage = STATUS_CODES[statusCode] ?? 'Error';
+		socket.write(`HTTP/1.1 ${statusCode} ${statusMessage}\r\n\r\n`);
+		socket.destroy();
+	}
+
+	/** Extracts and validates the grant token from the Authorization header */
+	private extractGrantToken(authHeader: string | undefined): string | undefined {
+		const result = bearerTokenSchema.safeParse(authHeader);
+		return result.success ? result.data : undefined;
+	}
 
 	/** Returns the normalized base path for the task runner endpoints */
 	private getEndpointBasePath() {
