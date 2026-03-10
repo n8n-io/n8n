@@ -1,8 +1,4 @@
 export type BaserowCredentials = {
-	username: string;
-	password: string;
-	token: string;
-	authType: string;
 	host: string;
 };
 
@@ -28,10 +24,6 @@ export type LoadedResource = {
 	id: number;
 	name: string;
 	type?: string;
-};
-
-export type Accumulator = {
-	[key: string]: string;
 };
 
 export type Row = Record<string, string>;

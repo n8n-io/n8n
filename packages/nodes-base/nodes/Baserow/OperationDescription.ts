@@ -15,6 +15,11 @@ export const operationFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getDatabaseIds',
 		},
+		displayOptions: {
+			hide: {
+				authentication: ['databaseToken'],
+			},
+		},
 	},
 	{
 		displayName: 'Table Name or ID',

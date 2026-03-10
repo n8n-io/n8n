@@ -1,4 +1,11 @@
-import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type {
+	IAuthenticateGeneric,
+	ICredentialDataDecryptedObject,
+	ICredentialTestRequest,
+	ICredentialType,
+	IHttpRequestHelper,
+	INodeProperties,
+} from 'n8n-workflow';
 
 // https://api.baserow.io/api/redoc/#section/Authentication
 
@@ -17,24 +24,20 @@ export class BaserowApi implements ICredentialType {
 			default: 'https://api.baserow.io',
 		},
 		{
-			displayName: 'Authentication',
-			name: 'authType',
-			type: 'options',
-			options: [
-				{ name: 'Username & Password', value: 'basic' },
-				{ name: 'API Token', value: 'token' },
-			],
-			default: 'basic',
+			displayName: 'Session Token',
+			name: 'jwtToken',
+			type: 'hidden',
+			typeOptions: {
+				expirable: true,
+			},
+			default: '',
 		},
 		{
 			displayName: 'Username',
 			name: 'username',
 			type: 'string',
 			default: '',
-			description: 'Email address you use to login to Baserow.',
-			displayOptions: {
-				show: { authType: ['basic'] },
-			},
+			description: 'Email address you use to login to Baserow',
 		},
 		{
 			displayName: 'Password',
@@ -44,23 +47,35 @@ export class BaserowApi implements ICredentialType {
 			typeOptions: {
 				password: true,
 			},
-			displayOptions: {
-				show: { authType: ['basic'] },
-			},
-		},
-		{
-			displayName: 'Database Token',
-			name: 'token',
-			type: 'string',
-			default: '',
-			typeOptions: {
-				password: true,
-			},
-			description:
-				'In Baserow, click on top left corner, My settings, Database tokens, Create new.',
-			displayOptions: {
-				show: { authType: ['token'] },
-			},
 		},
 	];
+
+	async preAuthentication(this: IHttpRequestHelper, credentials: ICredentialDataDecryptedObject) {
+		const host = (credentials.host as string).replace(/\/$/, '');
+		const { token } = (await this.helpers.httpRequest({
+			method: 'POST',
+			url: `${host}/api/user/token-auth/`,
+			body: {
+				username: credentials.username,
+				password: credentials.password,
+			},
+		})) as { token: string };
+		return { jwtToken: token };
+	}
+
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			headers: {
+				Authorization: '=JWT {{$credentials.jwtToken}}',
+			},
+		},
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials.host}}',
+			url: '/api/applications/',
+		},
+	};
 }

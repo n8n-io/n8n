@@ -11,19 +11,21 @@ import {
 import {
 	baserowApiRequest,
 	baserowApiRequestAllItems,
-	getAuthorizationHeader,
 	TableFieldMapper,
 	toOptions,
 } from './GenericFunctions';
 import { operationFields } from './OperationDescription';
 import type {
-	BaserowCredentials,
 	FieldsUiValues,
 	GetAllAdditionalOptions,
 	LoadedResource,
 	Operation,
 	Row,
 } from './types';
+
+function getCredentialType(authentication: string): string {
+	return authentication === 'databaseToken' ? 'baserowTokenApi' : 'baserowApi';
+}
 
 export class Baserow implements INodeType {
 	description: INodeTypeDescription = {
@@ -44,9 +46,39 @@ export class Baserow implements INodeType {
 			{
 				name: 'baserowApi',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['usernamePassword'],
+					},
+				},
+			},
+			{
+				name: 'baserowTokenApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['databaseToken'],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Username & Password',
+						value: 'usernamePassword',
+					},
+					{
+						name: 'Database Token',
+						value: 'databaseToken',
+					},
+				],
+				default: 'usernamePassword',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -129,37 +161,25 @@ export class Baserow implements INodeType {
 	methods = {
 		loadOptions: {
 			async getDatabaseIds(this: ILoadOptionsFunctions) {
-				const credentials = await this.getCredentials<BaserowCredentials>('baserowApi');
-
-				if (credentials.authType === 'token') {
-					// Databases cannot be listed with token auth, return a placeholder option.
-					return [
-						{
-							name: 'No Databases Available (Token Auth)',
-							value: 'no-database',
-						},
-					];
-				}
-
-				const authHeader = await getAuthorizationHeader.call(this, credentials);
+				const credentialType = getCredentialType(
+					this.getNodeParameter('authentication', 0) as string,
+				);
 				const endpoint = '/api/applications/';
 				const databases = (await baserowApiRequest.call(
 					this,
 					'GET',
 					endpoint,
-					authHeader,
+					credentialType,
 				)) as LoadedResource[];
-				// Baserow has different types of applications, we only want the databases
-				// https://api.baserow.io/api/redoc/#tag/Applications/operation/list_all_applications
 				return toOptions(databases.filter((database) => database.type === 'database'));
 			},
 
 			async getTableIds(this: ILoadOptionsFunctions) {
-				const credentials = await this.getCredentials<BaserowCredentials>('baserowApi');
-				const authHeader = await getAuthorizationHeader.call(this, credentials);
+				const authentication = this.getNodeParameter('authentication', 0) as string;
+				const credentialType = getCredentialType(authentication);
 
-				let endpoint;
-				if (credentials.authType === 'token') {
+				let endpoint: string;
+				if (authentication === 'databaseToken') {
 					endpoint = '/api/database/tables/all-tables/';
 				} else {
 					const databaseId = this.getNodeParameter('databaseId', 0) as string;
@@ -169,21 +189,22 @@ export class Baserow implements INodeType {
 					this,
 					'GET',
 					endpoint,
-					authHeader,
+					credentialType,
 				)) as LoadedResource[];
 				return toOptions(tables);
 			},
 
 			async getTableFields(this: ILoadOptionsFunctions) {
-				const credentials = await this.getCredentials<BaserowCredentials>('baserowApi');
-				const authHeader = await getAuthorizationHeader.call(this, credentials);
+				const credentialType = getCredentialType(
+					this.getNodeParameter('authentication', 0) as string,
+				);
 				const tableId = this.getNodeParameter('tableId', 0) as string;
 				const endpoint = `/api/database/fields/table/${tableId}/`;
 				const fields = (await baserowApiRequest.call(
 					this,
 					'GET',
 					endpoint,
-					authHeader,
+					credentialType,
 				)) as LoadedResource[];
 				return toOptions(fields);
 			},
@@ -197,9 +218,8 @@ export class Baserow implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as Operation;
 
 		const tableId = this.getNodeParameter('tableId', 0) as string;
-		const credentials = await this.getCredentials<BaserowCredentials>('baserowApi');
-		const authHeader = await getAuthorizationHeader.call(this, credentials);
-		const fields = await mapper.getTableFields.call(this, tableId, authHeader);
+		const credentialType = getCredentialType(this.getNodeParameter('authentication', 0) as string);
+		const fields = await mapper.getTableFields.call(this, tableId, credentialType);
 		mapper.createMappings(fields);
 
 		if (operation === 'batchCreate') {
@@ -242,7 +262,7 @@ export class Baserow implements INodeType {
 			}
 
 			const endpoint = `/api/database/rows/table/${tableId}/batch/`;
-			const response = await baserowApiRequest.call(this, 'POST', endpoint, authHeader, {
+			const response = await baserowApiRequest.call(this, 'POST', endpoint, credentialType, {
 				items: itemsPayload,
 			});
 
@@ -298,7 +318,7 @@ export class Baserow implements INodeType {
 			}
 
 			const endpoint = `/api/database/rows/table/${tableId}/batch/`;
-			const response = await baserowApiRequest.call(this, 'PATCH', endpoint, authHeader, {
+			const response = await baserowApiRequest.call(this, 'PATCH', endpoint, credentialType, {
 				items: itemsPayload,
 			});
 
@@ -333,7 +353,7 @@ export class Baserow implements INodeType {
 			}
 
 			const endpoint = `/api/database/rows/table/${tableId}/batch-delete/`;
-			await baserowApiRequest.call(this, 'POST', endpoint, authHeader, { items: ids });
+			await baserowApiRequest.call(this, 'POST', endpoint, credentialType, { items: ids });
 
 			const executionData = this.helpers.constructExecutionMetaData(
 				this.helpers.returnJsonArray([{ success: true, deleted: ids }]),
@@ -384,7 +404,7 @@ export class Baserow implements INodeType {
 						this,
 						'GET',
 						endpoint,
-						authHeader,
+						credentialType,
 						{},
 						qs,
 					)) as Row[];
@@ -404,7 +424,7 @@ export class Baserow implements INodeType {
 
 					const rowId = this.getNodeParameter('rowId', i) as string;
 					const endpoint = `/api/database/rows/table/${tableId}/${rowId}/`;
-					const row = await baserowApiRequest.call(this, 'GET', endpoint, authHeader);
+					const row = await baserowApiRequest.call(this, 'GET', endpoint, credentialType);
 
 					mapper.idsToNames(row as Row);
 					const executionData = this.helpers.constructExecutionMetaData(
@@ -443,7 +463,13 @@ export class Baserow implements INodeType {
 					}
 
 					const endpoint = `/api/database/rows/table/${tableId}/`;
-					const createdRow = await baserowApiRequest.call(this, 'POST', endpoint, authHeader, body);
+					const createdRow = await baserowApiRequest.call(
+						this,
+						'POST',
+						endpoint,
+						credentialType,
+						body,
+					);
 
 					mapper.idsToNames(createdRow as Row);
 					const executionData = this.helpers.constructExecutionMetaData(
@@ -488,7 +514,7 @@ export class Baserow implements INodeType {
 						this,
 						'PATCH',
 						endpoint,
-						authHeader,
+						credentialType,
 						body,
 					);
 
@@ -508,7 +534,7 @@ export class Baserow implements INodeType {
 					const rowId = this.getNodeParameter('rowId', i) as string;
 
 					const endpoint = `/api/database/rows/table/${tableId}/${rowId}/`;
-					await baserowApiRequest.call(this, 'DELETE', endpoint, authHeader);
+					await baserowApiRequest.call(this, 'DELETE', endpoint, credentialType);
 
 					const executionData = this.helpers.constructExecutionMetaData(
 						[{ json: { success: true } }],
