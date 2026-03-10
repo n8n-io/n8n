@@ -35,6 +35,6 @@ export type AgentOptions = {
 	enableStreaming?: boolean;
 	maxTokensFromMemory?: number;
 	tracingMetadata?: {
-		values?: Array<TracingMetadataEntry>;
+		values?: TracingMetadataEntry[];
 	};
 };

@@ -102,7 +102,7 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 		};
 
 		const mockResponse: EngineResponse<RequestResponseMetadata> = {
-			data: [],
+			actionResponses: [],
 			metadata: { previousRequests: [] },
 		};
 

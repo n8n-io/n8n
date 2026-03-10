@@ -17,7 +17,7 @@ export type TracingMetadataEntry = {
 };
 
 export function buildTracingMetadata(
-	entries: Array<TracingMetadataEntry> | undefined,
+	entries: TracingMetadataEntry[] | undefined,
 	logger?: Logger,
 ): Record<string, unknown> {
 	const additionalMetadata: Record<string, unknown> = {};
@@ -31,7 +31,7 @@ export function buildTracingMetadata(
 		// Handle new typed format
 		if (entry.type) {
 			const fieldType = entry.type.replace('Value', '') as FieldType;
-			let rawValue = entry[entry.type];
+			const rawValue = entry[entry.type];
 
 			if (rawValue === undefined || rawValue === null) {
 				continue;

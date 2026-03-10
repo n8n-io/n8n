@@ -138,24 +138,24 @@ export const reActAgentAgentProperties: INodeProperties[] = [
 								description: 'The field value type',
 								options: [
 									{
-										name: 'String',
-										value: 'stringValue',
-									},
-									{
-										name: 'Number',
-										value: 'numberValue',
+										name: 'Array',
+										value: 'arrayValue',
 									},
 									{
 										name: 'Boolean',
 										value: 'booleanValue',
 									},
 									{
-										name: 'Array',
-										value: 'arrayValue',
+										name: 'Number',
+										value: 'numberValue',
 									},
 									{
 										name: 'Object',
 										value: 'objectValue',
+									},
+									{
+										name: 'String',
+										value: 'stringValue',
 									},
 								],
 								default: 'stringValue',

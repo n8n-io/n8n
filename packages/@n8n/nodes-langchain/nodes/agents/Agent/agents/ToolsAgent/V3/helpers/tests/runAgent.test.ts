@@ -38,7 +38,7 @@ beforeEach(() => {
 	jest.clearAllMocks();
 	mockContext.getNode.mockReturnValue(mockNode);
 	mockNode.typeVersion = 3;
-	mockContext.getExecuteData = jest.fn();
+	mockContext.getExecuteData = jest.fn() as any;
 	(tracing.getTracingConfig as jest.Mock).mockReturnValue({
 		runName: '[Test Workflow] Test Node',
 		metadata: { execution_id: 'test-123', workflow: {}, node: 'Test Node' },
@@ -412,7 +412,7 @@ describe('runAgent - tracing configuration', () => {
 			isStreaming: jest.fn().mockReturnValue(true),
 			getExecutionCancelSignal: jest.fn().mockReturnValue(new AbortController().signal),
 		});
-		streamingContext.getExecuteData = jest.fn();
+		streamingContext.getExecuteData = jest.fn() as any;
 
 		jest.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
 		jest.spyOn(agentExecution, 'processEventStream').mockResolvedValue({
