@@ -807,7 +807,9 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		nodeTypes: string[],
 		sourceNodeName?: string,
 	): void => {
-		if (nodeTypes.some(isHttpRequestNodeType)) return;
+		// Exclude httpRequest nodes
+		nodeTypes = nodeTypes.filter((x) => !isHttpRequestNodeType(x));
+
 		const available = credentialsStore.getCredentialsByType(credentialType);
 		if (available.length === 0) return;
 		const mostRecent = available.reduce(
