@@ -1,0 +1,27 @@
+{
+	"node": "n8n-nodes-base.mergeDev",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"accounting",
+		"ats",
+		"crm",
+		"filestorage",
+		"hris",
+		"knowledgebase",
+		"mktg",
+		"ticketing"
+	],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.merge.dev/basics/authentication/"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.merge.dev"
+			}
+		]
+	}
+}
