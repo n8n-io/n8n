@@ -50,22 +50,20 @@ const triggerNodes = computed(() =>
 	workflowsStore.workflow.nodes.filter((node) => nodeTypesStore.isTriggerNode(node.type)),
 );
 
+// Empty until all cards are complete — prevents trigger selection in the execute button while setup is pending
 const availableTriggerNodes = computed(() => (isAllComplete.value ? triggerNodes.value : []));
 
 const executeButtonTooltip = computed(() =>
 	!isAllComplete.value ? i18n.baseText('aiAssistant.builder.executeMessage.validationTooltip') : '',
 );
 
-const lastStepCompleted = ref(false);
-
-const showCard = computed(
-	() => currentCard.value && !(isAllComplete.value && builderStore.wizardHasExecutedWorkflow),
+const wizardDismissed = computed(
+	() => isAllComplete.value && builderStore.wizardHasExecutedWorkflow,
 );
 
-const showWizard = computed(
-	() =>
-		!lastStepCompleted.value && !(isAllComplete.value && builderStore.wizardHasExecutedWorkflow),
-);
+const showCard = computed(() => currentCard.value && !wizardDismissed.value);
+
+const showWizard = computed(() => !wizardDismissed.value);
 
 const isHovering = ref(false);
 
@@ -210,8 +208,7 @@ function onStepExecuted() {
 	const isLastStep = currentStepIndex.value >= totalCards.value - 1;
 
 	if (isLastStep && isAllComplete.value) {
-		// All steps complete and last step executed — dismiss the wizard
-		lastStepCompleted.value = true;
+		builderStore.wizardHasExecutedWorkflow = true;
 		setupPanelStore.clearHighlightedNodes();
 		return;
 	}
