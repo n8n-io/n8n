@@ -6,7 +6,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-import { createDriver, type DriverType } from './DriverFactory';
+import { createDriver } from './DriverFactory';
 
 export class SecureExec implements INodeType {
 	description: INodeTypeDescription = {
@@ -50,32 +50,12 @@ export class SecureExec implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Driver',
-						name: 'driver',
-						type: 'options',
-						default: 'auto',
-						description:
-							'Isolation backend to use. Auto-detect picks Docker → Bubblewrap → Host in order of preference.',
-						options: [
-							{ name: 'Auto-Detect', value: 'auto' },
-							{ name: 'Bubblewrap (Linux Only)', value: 'bubblewrap' },
-							{ name: 'Docker', value: 'docker' },
-							{ name: 'Host (No Isolation)', value: 'host' },
-							{
-								name: 'Sandbox Runtime (Linux/macOS)',
-								value: 'sandbox-runtime',
-							},
-						],
-					},
-					{
 						displayName: 'Container Image',
 						name: 'containerImage',
 						type: 'string',
 						default: 'ubuntu:24.04',
-						description: 'Docker image to use when the Docker driver is active',
-						displayOptions: {
-							show: { driver: ['docker', 'auto'] },
-						},
+						description:
+							'Docker image to use when the Docker driver is active (controlled via N8N_SECURE_EXEC_DRIVER)',
 					},
 					{
 						displayName: 'Working Directory',
@@ -100,9 +80,6 @@ export class SecureExec implements INodeType {
 						type: 'number',
 						default: 512,
 						description: 'Maximum memory the container may use (Docker only)',
-						displayOptions: {
-							show: { driver: ['docker', 'auto'] },
-						},
 					},
 					{
 						displayName: 'Environment Variables',
@@ -144,12 +121,7 @@ export class SecureExec implements INodeType {
 			items = [items[0]];
 		}
 
-		// NOTE: maybe we should only keep driverType as an env var?
-		const firstOptions = this.getNodeParameter('options', 0, {}) as {
-			driver?: DriverType;
-		};
-		const driverType = firstOptions.driver ?? 'auto';
-		const { driver, type: activeDriver, isUnsafeFallback } = createDriver(driverType);
+		const { driver, type: activeDriver, isUnsafeFallback } = createDriver();
 
 		if (isUnsafeFallback) {
 			this.logger.warn(
