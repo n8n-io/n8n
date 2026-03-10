@@ -1,0 +1,64 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"field": "hours",
+							"hoursInterval": 1
+						}
+					]
+				}
+			},
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"typeVersion": 1.2,
+			"position": [-400, 300],
+			"id": "d1b2c3d4-0004-0004-0004-000000000001",
+			"name": "Schedule Trigger"
+		},
+		{
+			"parameters": {
+				"operation": "append",
+				"documentId": {
+					"__rl": true,
+					"mode": "list",
+					"value": ""
+				},
+				"sheetName": {
+					"__rl": true,
+					"mode": "list",
+					"value": ""
+				},
+				"columns": {
+					"mappingMode": "autoMapInputData",
+					"value": {}
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.googleSheets",
+			"typeVersion": 4.5,
+			"position": [-180, 300],
+			"id": "d1b2c3d4-0004-0004-0004-000000000002",
+			"name": "Google Sheets"
+		}
+	],
+	"connections": {
+		"Schedule Trigger": {
+			"main": [
+				[
+					{
+						"node": "Google Sheets",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {},
+	"meta": {
+		"instanceId": "test-setup-panel-cred-and-params",
+		"templateId": "1234"
+	}
+}

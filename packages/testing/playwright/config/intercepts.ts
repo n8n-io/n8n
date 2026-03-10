@@ -51,7 +51,7 @@ export async function setupDefaultInterceptors(target: BrowserContext) {
 		if (route.request().method() === 'POST') {
 			await route.fulfill({
 				contentType: 'application/json',
-				body: JSON.stringify({ data: { status: 'success', message: 'Tested successfully' } }),
+				body: JSON.stringify({ data: { status: 'OK', message: 'Tested successfully' } }),
 			});
 		} else {
 			await route.continue();

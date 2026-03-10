@@ -1,0 +1,76 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"field": "hours",
+							"hoursInterval": 1
+						}
+					]
+				}
+			},
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"typeVersion": 1.2,
+			"position": [-400, 300],
+			"id": "c1b2c3d4-0003-0003-0003-000000000001",
+			"name": "Schedule Trigger"
+		},
+		{
+			"parameters": {
+				"resource": "page",
+				"operation": "get",
+				"pageId": {
+					"__rl": true,
+					"mode": "id",
+					"value": ""
+				}
+			},
+			"type": "n8n-nodes-base.notion",
+			"typeVersion": 2.2,
+			"position": [-180, 200],
+			"id": "c1b2c3d4-0003-0003-0003-000000000002",
+			"name": "Notion"
+		},
+		{
+			"parameters": {
+				"resource": "page",
+				"operation": "create",
+				"databaseId": {
+					"__rl": true,
+					"mode": "id",
+					"value": ""
+				},
+				"title": "New Page"
+			},
+			"type": "n8n-nodes-base.notion",
+			"typeVersion": 2.2,
+			"position": [-180, 400],
+			"id": "c1b2c3d4-0003-0003-0003-000000000003",
+			"name": "Notion1"
+		}
+	],
+	"connections": {
+		"Schedule Trigger": {
+			"main": [
+				[
+					{
+						"node": "Notion",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Notion1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {},
+	"meta": {
+		"instanceId": "test-setup-panel-multi-cred-shared"
+	}
+}

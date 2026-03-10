@@ -1,0 +1,56 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"field": "hours",
+							"hoursInterval": 1
+						}
+					]
+				}
+			},
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"typeVersion": 1.2,
+			"position": [-400, 300],
+			"id": "a1b2c3d4-0001-0001-0001-000000000001",
+			"name": "Schedule Trigger"
+		},
+		{
+			"parameters": {
+				"resource": "message",
+				"operation": "post",
+				"channel": {
+					"__rl": true,
+					"mode": "id",
+					"value": ""
+				},
+				"messageType": "text",
+				"text": "Hello"
+			},
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 2.2,
+			"position": [-180, 300],
+			"id": "a1b2c3d4-0001-0001-0001-000000000002",
+			"name": "Slack"
+		}
+	],
+	"connections": {
+		"Schedule Trigger": {
+			"main": [
+				[
+					{
+						"node": "Slack",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {},
+	"meta": {
+		"instanceId": "test-setup-panel-cred-only"
+	}
+}
