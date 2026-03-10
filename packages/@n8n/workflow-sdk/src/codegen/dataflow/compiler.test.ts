@@ -3,25 +3,9 @@ import { parseDataFlowCode } from './dataflow-parser';
 import { generateReport } from './generate-report';
 import { loadFixtures } from './fixture-loader';
 import { validateWorkflow } from '../../validation';
+import type { CompilerTestEntry } from './compiler-types';
 
-// ---------------------------------------------------------------------------
-// Test data collection (used by report generator)
-// ---------------------------------------------------------------------------
-
-export interface CompilerTestEntry {
-	title: string;
-	dirName: string;
-	skip?: string;
-	inputCode: string;
-	parsedJson?: string;
-	reGeneratedCode?: string;
-	roundTripStatus: 'pass' | 'error' | 'skip';
-	roundTripError?: string;
-	codeMatch?: boolean;
-	nodeCount?: number;
-	connectionCount?: number;
-	validationErrors?: string[];
-}
+export type { CompilerTestEntry };
 
 const testEntries: CompilerTestEntry[] = [];
 

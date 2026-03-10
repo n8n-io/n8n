@@ -6,7 +6,7 @@
  */
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import type { CompilerTestEntry } from './compiler.test';
+import type { CompilerTestEntry } from './compiler-types';
 
 const FIXTURES_DIR = join(__dirname, '__fixtures__');
 const REPORT_PATH = join(FIXTURES_DIR, 'report.html');
