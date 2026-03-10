@@ -135,7 +135,7 @@ export class WorkflowIndexService {
 			workflow.versionCounter,
 			/*publishedVersionId=*/ null,
 		);
-		return await this.updateIndexInternal(workflow, dependencyUpdates);
+		return await this.updateIndexInternal(dependencyUpdates, workflow.nodes, workflow.name);
 	}
 
 	async updateIndexForPublished(
@@ -148,7 +148,7 @@ export class WorkflowIndexService {
 			workflow.versionCounter,
 			publishedVersionId,
 		);
-		return await this.updateIndexInternal(workflow, dependencyUpdates, publishedNodes);
+		return await this.updateIndexInternal(dependencyUpdates, publishedNodes, workflow.name);
 	}
 
 	async removeDependenciesForWorkflow(workflowId: string) {
@@ -173,24 +173,24 @@ export class WorkflowIndexService {
 	 *
 	 */
 	private async updateIndexInternal(
-		workflow: IWorkflowBase,
 		dependencyUpdates: WorkflowDependencies,
-		nodes?: INode[],
+		nodes: INode[],
+		workflowName?: string,
 	) {
 		const indexType = dependencyUpdates.publishedVersionId ? 'published' : 'draft';
-		const nodesToIndex = nodes ?? workflow.nodes;
+		const workflowId = dependencyUpdates.workflowId;
 
 		return await this.tracing.startSpan(
 			{
 				name: 'WorkflowIndex update',
 				op: 'workflow-index.update',
 				attributes: {
-					...this.tracing.pickWorkflowAttributes(workflow),
+					...this.tracing.pickWorkflowAttributes({ id: workflowId, name: workflowName }),
 					'n8n.workflow-index.type': indexType,
 				},
 			},
 			async (span) => {
-				nodesToIndex.forEach((node) => {
+				nodes.forEach((node) => {
 					this.addNodeTypeDependencies(node, dependencyUpdates);
 					this.addCredentialDependencies(node, dependencyUpdates);
 					this.addDataTableDependencies(node, dependencyUpdates);
@@ -210,20 +210,20 @@ export class WorkflowIndexService {
 				let updated: boolean;
 				try {
 					updated = await this.dependencyRepository.updateDependenciesForWorkflow(
-						workflow.id,
+						workflowId,
 						dependencyUpdates,
 					);
 				} catch (e) {
 					const error = ensureError(e);
 					this.logger.error(
-						`Failed to update workflow ${indexType} dependency index for workflow ${workflow.id}: ${error.message}`,
+						`Failed to update workflow ${indexType} dependency index for workflow ${workflowId}: ${error.message}`,
 					);
 					this.errorReporter.error(error);
 					span.setStatus({ code: SpanStatus.error });
 					return;
 				}
 				this.logger.debug(
-					`Workflow ${indexType} dependency index ${updated ? 'updated' : 'skipped'} for workflow ${workflow.id}`,
+					`Workflow ${indexType} dependency index ${updated ? 'updated' : 'skipped'} for workflow ${workflowId}`,
 				);
 				span.setStatus({ code: SpanStatus.ok });
 			},
