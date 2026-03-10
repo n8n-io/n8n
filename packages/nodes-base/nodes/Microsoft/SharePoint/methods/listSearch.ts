@@ -74,8 +74,13 @@ export async function getDrives(
 					}
 				}
 			}
-		} catch {
-			// Skip lists without drives (not document libraries)
+		} catch (error: unknown) {
+			// Lists that aren't document libraries return 404 – skip those.
+			// Re-throw unexpected errors (auth failures, network issues, etc.).
+			const httpCode = (error as { httpCode?: string }).httpCode;
+			if (httpCode !== '404') {
+				throw error;
+			}
 		}
 	}
 
@@ -177,7 +182,9 @@ export async function getFolders(
 	};
 
 	// Recursively walk the folder tree collecting all folders with full paths
-	const collectFolders = async (parentId: string, parentPath: string) => {
+	const MAX_DEPTH = 50;
+	const collectFolders = async (parentId: string, parentPath: string, depth = 0) => {
+		if (depth >= MAX_DEPTH) return;
 		let nextUrl: string | undefined;
 		do {
 			await acquire();
@@ -217,7 +224,7 @@ export async function getFolders(
 				if (!item.folder) continue;
 				const fullPath = `${parentPath}/${item.name}`;
 				allFolders.push({ name: fullPath, value: item.id });
-				childPromises.push(collectFolders(item.id, fullPath));
+				childPromises.push(collectFolders(item.id, fullPath, depth + 1));
 			}
 			await Promise.all(childPromises);
 
