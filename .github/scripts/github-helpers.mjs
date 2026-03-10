@@ -68,7 +68,7 @@ export function ensureReleaseTrack(track) {
  *
  * @param { typeof RELEASE_TRACKS[number] } track
  *
- * @returns { TagVersionInfo }
+ * @returns { TagVersionInfo | null }
  * */
 export function resolveReleaseTagForTrack(track) {
 	const commit = getCommitForRef(track);

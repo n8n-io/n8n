@@ -16,7 +16,7 @@ function main() {
 
 	const releaseCandidateBranch = resolveRcBranchForTrack(track);
 
-	if (!currentTag.tag || !releaseCandidateBranch) {
+	if (!currentTag?.tag || !releaseCandidateBranch) {
 		throw new Error(
 			`Couldn't resolve needed parameters. currentTag.tag=${currentTag.tag}, releaseCandidateBranch=${releaseCandidateBranch}`,
 		);
