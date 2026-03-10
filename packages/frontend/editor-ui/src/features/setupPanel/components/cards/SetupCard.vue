@@ -123,21 +123,12 @@ defineExpose({ markInteracted });
 		@mouseleave="onCardMouseLeave"
 	>
 		<header :data-test-id="`${cardTestId}-header`" :class="$style.header" @click="onHeaderClick">
-			<N8nIcon
-				v-if="!expanded && loading && !isComplete"
-				:data-test-id="`${cardTestId}-loading-icon`"
-				icon="spinner"
-				:spin="true"
-				:class="$style['loading-icon']"
-				size="medium"
-			/>
-			<N8nIcon
-				v-else-if="!expanded && isComplete"
-				:data-test-id="`${cardTestId}-complete-icon`"
-				icon="check"
-				:class="$style['complete-icon']"
-				size="medium"
-			/>
+			<span v-if="!expanded && loading && !isComplete" :data-test-id="`${cardTestId}-loading-icon`">
+				<N8nIcon icon="spinner" :spin="true" :class="$style['loading-icon']" size="medium" />
+			</span>
+			<span v-else-if="!expanded && isComplete" :data-test-id="`${cardTestId}-complete-icon`">
+				<N8nIcon icon="check" :class="$style['complete-icon']" size="medium" />
+			</span>
 			<slot v-else name="icon" />
 			<N8nText :class="$style['card-title']" size="medium" color="text-dark">
 				{{ title }}
