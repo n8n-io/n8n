@@ -15,12 +15,8 @@ import type {
 	ProjectSharingData,
 } from '@/features/collaboration/projects/projects.types';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
-import {
-	buildWorkflowTreeRows,
-	getPushPriorityByStatus,
-	getStatusText,
-	getStatusTheme,
-} from '../sourceControl.utils';
+import { useWorkflowTreeRows } from '../composables/useWorkflowTreeRows';
+import { getPushPriorityByStatus, getStatusText, getStatusTheme } from '../sourceControl.utils';
 import type { SourceControlTreeRow } from '../sourceControl.types';
 import type { SourceControlledFile, SourceControlledFileStatus } from '@n8n/api-types';
 import {
@@ -397,73 +393,18 @@ const sortedWorkflows = computed(() =>
 	),
 );
 
-const workflowTreeRows = computed<Array<SourceControlTreeRow<SourceControlledFileWithProject>>>(
-	() => buildWorkflowTreeRows(sortedWorkflows.value),
-);
-
-const collapsedFolderIds = ref<Set<string>>(new Set());
 const workflowScroller = ref<{ scrollToItem: (index: number) => void; $el?: Element } | null>(null);
 const hasScrolledCurrentWorkflow = ref(false);
 const isRevealInProgress = ref(false);
 
-const visibleWorkflowRows = computed<Array<SourceControlTreeRow<SourceControlledFileWithProject>>>(
-	() => {
-		const visibleRows: Array<SourceControlTreeRow<SourceControlledFileWithProject>> = [];
-		const collapsedDepths: number[] = [];
-
-		for (const row of workflowTreeRows.value) {
-			while (collapsedDepths.length && row.depth <= collapsedDepths[collapsedDepths.length - 1]) {
-				collapsedDepths.pop();
-			}
-
-			if (collapsedDepths.length) {
-				continue;
-			}
-
-			visibleRows.push(row);
-
-			if (row.type === 'folder' && collapsedFolderIds.value.has(row.id)) {
-				collapsedDepths.push(row.depth);
-			}
-		}
-
-		return visibleRows;
-	},
-);
-
-function isFolderCollapsed(folderId: string) {
-	return collapsedFolderIds.value.has(folderId);
-}
-
-function toggleFolderCollapse(folderId: string) {
-	if (collapsedFolderIds.value.has(folderId)) {
-		collapsedFolderIds.value.delete(folderId);
-		return;
-	}
-
-	collapsedFolderIds.value.add(folderId);
-}
-
-function getAncestorFolderIdsForWorkflow(workflowId: string): string[] {
-	const ancestorStack: Array<{ id: string; depth: number }> = [];
-
-	for (const row of workflowTreeRows.value) {
-		while (ancestorStack.length && row.depth <= ancestorStack[ancestorStack.length - 1].depth) {
-			ancestorStack.pop();
-		}
-
-		if (row.type === 'folder') {
-			ancestorStack.push({ id: row.id, depth: row.depth });
-			continue;
-		}
-
-		if (row.file.id === workflowId) {
-			return ancestorStack.map(({ id }) => id);
-		}
-	}
-
-	return [];
-}
+const {
+	workflowTreeRows,
+	visibleWorkflowRows,
+	isFolderCollapsed,
+	toggleFolderCollapse,
+	expandFolders,
+	getAncestorFolderIdsForWorkflow,
+} = useWorkflowTreeRows(sortedWorkflows);
 
 async function animationFrame() {
 	await new Promise<void>((resolve) => {
@@ -501,9 +442,7 @@ async function revealAndScrollToCurrentWorkflow() {
 	isRevealInProgress.value = true;
 	try {
 		const currentWorkflowId = changes.value.currentWorkflow.id;
-		for (const folderId of getAncestorFolderIdsForWorkflow(currentWorkflowId)) {
-			collapsedFolderIds.value.delete(folderId);
-		}
+		expandFolders(getAncestorFolderIdsForWorkflow(currentWorkflowId));
 
 		for (let attempt = 0; attempt < 6; attempt++) {
 			const visibleIndex = visibleWorkflowRows.value.findIndex(

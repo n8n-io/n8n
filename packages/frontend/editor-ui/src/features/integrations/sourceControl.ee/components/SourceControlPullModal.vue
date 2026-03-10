@@ -12,8 +12,8 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '../sourceControl.store';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
+import { useWorkflowTreeRows } from '../composables/useWorkflowTreeRows';
 import {
-	buildWorkflowTreeRows,
 	getPullPriorityByStatus,
 	getStatusText,
 	getStatusTheme,
@@ -209,49 +209,8 @@ const sortedWorkflows = computed(() => {
 	}));
 });
 
-const workflowTreeRows = computed<Array<SourceControlTreeRow<SourceControlledFileWithProject>>>(
-	() => buildWorkflowTreeRows(sortedWorkflows.value),
-);
-
-const collapsedFolderIds = ref<Set<string>>(new Set());
-
-const visibleWorkflowRows = computed<Array<SourceControlTreeRow<SourceControlledFileWithProject>>>(
-	() => {
-		const visibleRows: Array<SourceControlTreeRow<SourceControlledFileWithProject>> = [];
-		const collapsedDepths: number[] = [];
-
-		for (const row of workflowTreeRows.value) {
-			while (collapsedDepths.length && row.depth <= collapsedDepths[collapsedDepths.length - 1]) {
-				collapsedDepths.pop();
-			}
-
-			if (collapsedDepths.length) {
-				continue;
-			}
-
-			visibleRows.push(row);
-
-			if (row.type === 'folder' && collapsedFolderIds.value.has(row.id)) {
-				collapsedDepths.push(row.depth);
-			}
-		}
-
-		return visibleRows;
-	},
-);
-
-function isFolderCollapsed(folderId: string) {
-	return collapsedFolderIds.value.has(folderId);
-}
-
-function toggleFolderCollapse(folderId: string) {
-	if (collapsedFolderIds.value.has(folderId)) {
-		collapsedFolderIds.value.delete(folderId);
-		return;
-	}
-
-	collapsedFolderIds.value.add(folderId);
-}
+const { visibleWorkflowRows, isFolderCollapsed, toggleFolderCollapse } =
+	useWorkflowTreeRows(sortedWorkflows);
 
 // Filtered credentials
 const filteredCredentials = computed(() => {
