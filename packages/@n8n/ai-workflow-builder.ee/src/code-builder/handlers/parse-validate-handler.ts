@@ -9,12 +9,13 @@
 import type { Logger } from '@n8n/backend-common';
 import {
 	transpileWorkflowJS,
+	validateSimplifiedJS,
 	parseWorkflowCode,
 	parseWorkflowCodeToBuilder,
 	validateWorkflow,
 	workflow,
 } from '@n8n/workflow-sdk';
-import type { WorkflowJSON, CompilerError } from '@n8n/workflow-sdk';
+import type { WorkflowJSON, CompilerError, SimplifiedValidationResult } from '@n8n/workflow-sdk';
 
 import type { ParseAndValidateResult, ValidationWarning } from '../types';
 import { stripImportStatements } from '../utils/extract-code';
@@ -136,12 +137,27 @@ export class ParseValidateHandler {
 	): Promise<ParseAndValidateResult> {
 		// Use simplified compiler when enabled
 		if (this.useSimplifiedSyntax) {
+			// Step 1: Validate DSL structure (catches issues with actionable suggestions)
+			const validation: SimplifiedValidationResult = validateSimplifiedJS(code);
+			if (!validation.valid) {
+				throw new Error(
+					validation.errors
+						.map(
+							(e) =>
+								`Line ${e.line ?? '?'}: ${e.message}${e.suggestion ? ` — ${e.suggestion}` : ''}`,
+						)
+						.join('\n'),
+				);
+			}
+
+			// Step 2: Compile to SDK code
 			const result = transpileWorkflowJS(code);
 			if (result.errors.length > 0) {
 				throw new Error(
 					result.errors.map((e: CompilerError) => `Line ${e.line ?? '?'}: ${e.message}`).join('\n'),
 				);
 			}
+
 			const workflowJson = parseWorkflowCode(result.code);
 			return { workflow: workflowJson as WorkflowJSON, warnings: [] };
 		}
