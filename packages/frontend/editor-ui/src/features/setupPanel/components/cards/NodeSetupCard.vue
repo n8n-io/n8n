@@ -237,14 +237,6 @@ watch(expanded, (value, oldValue) => {
  * - Auto-applied credential cards: also require manual collapse or execution to acknowledge
  */
 const cardComplete = computed(() => {
-	console.log(
-		props.state.node.name,
-		props.state.templateParameterNames,
-		props.state.parameterIssues,
-		props.state.isComplete,
-		allParametersAddressed.value,
-		autoAppliedAcknowledged.value,
-	);
 	if (hasShownParameters.value) {
 		return props.state.isComplete && allParametersAddressed.value && autoAppliedAcknowledged.value;
 	}
