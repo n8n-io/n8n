@@ -95,13 +95,49 @@
 				{{ msg.approvalStatus === 'approved' ? 'Approved' : 'Denied' }}
 			</div>
 
-			<!-- Tool calls -->
-			<div v-if="msg.toolCalls?.length" class="mt-2">
+			<!-- Thinking + Tool calls row (below message content) -->
+			<div
+				v-if="msg.role === 'assistant' && (msg.thinking || hasToolCalls)"
+				class="mt-2 flex gap-3"
+			>
+				<!-- Thinking toggle -->
 				<button
-					class="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-200 transition-colors"
-					@click="toolCallsExpanded = !toolCallsExpanded"
+					v-if="msg.thinking"
+					class="flex items-center gap-1.5 text-xs transition-colors"
+					:class="thinkingExpanded ? 'text-purple-300' : 'text-purple-400 hover:text-purple-200'"
+					@click="toggleThinking"
 				>
 					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						class="w-3.5 h-3.5 transition-transform"
+						:class="{ 'rotate-90': thinkingExpanded }"
+						viewBox="0 0 20 20"
+						fill="currentColor"
+					>
+						<path
+							fill-rule="evenodd"
+							d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+							clip-rule="evenodd"
+						/>
+					</svg>
+					Thinking
+				</button>
+
+				<!-- Tool calls toggle -->
+				<component
+					:is="hasToolCalls ? 'button' : 'span'"
+					class="flex items-center gap-1.5 text-xs transition-colors"
+					:class="
+						hasToolCalls
+							? toolCallsExpanded
+								? 'text-gray-200'
+								: 'text-gray-400 hover:text-gray-200'
+							: 'text-gray-600 cursor-default'
+					"
+					@click="hasToolCalls && toggleToolCalls()"
+				>
+					<svg
+						v-if="hasToolCalls"
 						xmlns="http://www.w3.org/2000/svg"
 						class="w-3.5 h-3.5 transition-transform"
 						:class="{ 'rotate-90': toolCallsExpanded }"
@@ -114,21 +150,34 @@
 							clip-rule="evenodd"
 						/>
 					</svg>
-					Tool calls ({{ msg.toolCalls.length }})
-				</button>
-				<div v-if="toolCallsExpanded" class="mt-1.5 space-y-1">
-					<div
-						v-for="(tc, idx) in msg.toolCalls"
-						:key="idx"
-						class="flex items-baseline gap-2 text-xs text-gray-400"
-					>
-						<code class="text-gray-300">{{ tc.tool }}</code>
-						<span v-if="tc.input !== undefined" class="truncate text-gray-500">{{
-							formatInputSummary(tc.input)
-						}}</span>
-					</div>
+					Tool calls ({{ msg.toolCalls?.length ?? 0 }})
+				</component>
+			</div>
+
+			<!-- Thinking expanded content (fixed height, scrollable) -->
+			<div
+				v-if="thinkingExpanded && msg.thinking"
+				ref="thinkingContainer"
+				class="mt-1.5 pl-3 border-l-2 border-purple-800/50 text-xs text-gray-400 prose prose-invert prose-xs max-w-none overflow-y-auto"
+				style="max-height: 15em; scrollbar-width: thin"
+				v-html="renderedThinking"
+				@scroll="onThinkingScroll"
+			/>
+
+			<!-- Tool calls expanded content -->
+			<div v-if="toolCallsExpanded && hasToolCalls" class="mt-1.5 space-y-1">
+				<div
+					v-for="(tc, idx) in msg.toolCalls"
+					:key="idx"
+					class="flex items-baseline gap-2 text-xs text-gray-400"
+				>
+					<code class="text-gray-300">{{ tc.tool }}</code>
+					<span v-if="tc.input !== undefined" class="truncate text-gray-500">{{
+						formatInputSummary(tc.input)
+					}}</span>
 				</div>
 			</div>
+
 			<div v-if="msg.role === 'assistant' && msg.tokens" class="mt-1 text-xs text-gray-500">
 				{{ msg.tokens.input + msg.tokens.output }} tokens
 			</div>
@@ -157,6 +206,7 @@ const props = withDefaults(
 		msg: {
 			role: 'user' | 'assistant';
 			content: string;
+			thinking?: string;
 			files?: Array<{ name: string; type: string; data: string }>;
 			tokens?: { input: number; output: number };
 			toolCalls?: Array<{ tool: string; input: unknown; output: unknown }>;
@@ -179,6 +229,59 @@ defineEmits<{
 }>();
 
 const toolCallsExpanded = ref(false);
+const thinkingExpanded = ref(false);
+const thinkingContainer = ref<HTMLElement | undefined>();
+
+const hasToolCalls = computed(() => (props.msg.toolCalls?.length ?? 0) > 0);
+
+// Track whether the user has scrolled away from the bottom
+const thinkingAutoScroll = ref(true);
+
+function onThinkingScroll() {
+	const el = thinkingContainer.value;
+	if (!el) return;
+	// Consider "at bottom" if within 10px of the end
+	thinkingAutoScroll.value = el.scrollHeight - el.scrollTop - el.clientHeight < 10;
+}
+
+// Auto-scroll thinking container as content streams in,
+// but only if the user hasn't scrolled up manually.
+watch(
+	() => props.msg.thinking,
+	() => {
+		if (!thinkingAutoScroll.value) return;
+		nextTick(() => {
+			const el = thinkingContainer.value;
+			if (el) el.scrollTop = el.scrollHeight;
+		});
+	},
+);
+
+function toggleThinking() {
+	thinkingExpanded.value = !thinkingExpanded.value;
+	if (thinkingExpanded.value) {
+		toolCallsExpanded.value = false;
+		thinkingAutoScroll.value = true;
+		nextTick(() => {
+			const el = thinkingContainer.value;
+			if (el) el.scrollTop = el.scrollHeight;
+		});
+	}
+}
+
+function toggleToolCalls() {
+	toolCallsExpanded.value = !toolCallsExpanded.value;
+	if (toolCallsExpanded.value) thinkingExpanded.value = false;
+}
+
+const renderedThinking = computed(() => {
+	if (!props.msg.thinking) return '';
+	try {
+		return marked.parse(props.msg.thinking, { breaks: true });
+	} catch {
+		return props.msg.thinking;
+	}
+});
 
 const rendered = computed(() => {
 	try {

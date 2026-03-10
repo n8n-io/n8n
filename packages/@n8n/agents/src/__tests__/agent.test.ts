@@ -1,12 +1,17 @@
-/* eslint-disable @typescript-eslint/naming-convention, @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/naming-convention, @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any */
 import { Agent } from '../agent';
 import type { BuiltTool, BuiltMemory, BuiltGuardrail, BuiltEval } from '../types';
 
 /** Exposes protected build() for testing. */
-class TestableAgent extends Agent {
+class TestableAgent extends Agent<any> {
 	override build() {
 		return super.build();
 	}
+}
+
+/** Call build() on a TestableAgent after fluent chaining (which widens the type to Agent). */
+function buildAgent(agent: Agent<any>): ReturnType<TestableAgent['build']> {
+	return (agent as TestableAgent).build();
 }
 
 const mockGenerate = jest.fn();
@@ -64,20 +69,22 @@ describe('Agent', () => {
 
 	describe('build()', () => {
 		it('should build with minimum config (model + instructions)', () => {
-			const agent = new TestableAgent('assistant')
-				.model('anthropic/claude-sonnet-4')
-				.instructions('You are helpful.')
-				.build();
+			const agent = buildAgent(
+				new TestableAgent('assistant')
+					.model('anthropic/claude-sonnet-4')
+					.instructions('You are helpful.'),
+			);
 
 			expect(agent.name).toBe('assistant');
 		});
 
 		it('should build with tools', () => {
-			const agent = new TestableAgent('assistant')
-				.model('anthropic/claude-sonnet-4')
-				.instructions('You are helpful.')
-				.tool(mockTool)
-				.build();
+			const agent = buildAgent(
+				new TestableAgent('assistant')
+					.model('anthropic/claude-sonnet-4')
+					.instructions('You are helpful.')
+					.tool(mockTool),
+			);
 
 			expect(agent.name).toBe('assistant');
 
@@ -90,11 +97,12 @@ describe('Agent', () => {
 		});
 
 		it('should build with memory', () => {
-			const agent = new TestableAgent('assistant')
-				.model('anthropic/claude-sonnet-4')
-				.instructions('You are helpful.')
-				.memory(mockMemory)
-				.build();
+			const agent = buildAgent(
+				new TestableAgent('assistant')
+					.model('anthropic/claude-sonnet-4')
+					.instructions('You are helpful.')
+					.memory(mockMemory),
+			);
 
 			expect(agent.name).toBe('assistant');
 
@@ -107,26 +115,27 @@ describe('Agent', () => {
 		});
 
 		it('should build with guardrails and evals', () => {
-			const agent = new TestableAgent('assistant')
-				.model('anthropic/claude-sonnet-4')
-				.instructions('You are helpful.')
-				.inputGuardrail(mockGuardrail)
-				.outputGuardrail(mockGuardrail)
-				.eval(mockEval)
-				.build();
+			const agent = buildAgent(
+				new TestableAgent('assistant')
+					.model('anthropic/claude-sonnet-4')
+					.instructions('You are helpful.')
+					.inputGuardrail(mockGuardrail)
+					.outputGuardrail(mockGuardrail)
+					.eval(mockEval),
+			);
 
 			expect(agent.name).toBe('assistant');
 		});
 
 		it('should throw if model is missing', () => {
-			expect(() => new TestableAgent('assistant').instructions('You are helpful.').build()).toThrow(
-				'Agent "assistant" requires a model',
-			);
+			expect(() =>
+				buildAgent(new TestableAgent('assistant').instructions('You are helpful.')),
+			).toThrow('Agent "assistant" requires a model');
 		});
 
 		it('should throw if instructions are missing', () => {
 			expect(() =>
-				new TestableAgent('assistant').model('anthropic/claude-sonnet-4').build(),
+				buildAgent(new TestableAgent('assistant').model('anthropic/claude-sonnet-4')),
 			).toThrow('Agent "assistant" requires instructions');
 		});
 	});
@@ -229,15 +238,16 @@ describe('Agent', () => {
 
 	describe('fluent API chaining', () => {
 		it('should support full chain with all builder methods', () => {
-			const agent = new TestableAgent('full-agent')
-				.model('openai/gpt-4o')
-				.instructions('You do everything.')
-				.tool(mockTool)
-				.memory(mockMemory)
-				.inputGuardrail(mockGuardrail)
-				.outputGuardrail(mockGuardrail)
-				.eval(mockEval)
-				.build();
+			const agent = buildAgent(
+				new TestableAgent('full-agent')
+					.model('openai/gpt-4o')
+					.instructions('You do everything.')
+					.tool(mockTool)
+					.memory(mockMemory)
+					.inputGuardrail(mockGuardrail)
+					.outputGuardrail(mockGuardrail)
+					.eval(mockEval),
+			);
 
 			expect(agent.name).toBe('full-agent');
 		});
@@ -249,12 +259,13 @@ describe('Agent', () => {
 				_mastraTool: { __isTool: true, id: 'calculator' },
 			};
 
-			const agent = new TestableAgent('multi-tool')
-				.model('anthropic/claude-sonnet-4')
-				.instructions('You are helpful.')
-				.tool(mockTool)
-				.tool(secondTool)
-				.build();
+			const agent = buildAgent(
+				new TestableAgent('multi-tool')
+					.model('anthropic/claude-sonnet-4')
+					.instructions('You are helpful.')
+					.tool(mockTool)
+					.tool(secondTool),
+			);
 
 			expect(agent.name).toBe('multi-tool');
 

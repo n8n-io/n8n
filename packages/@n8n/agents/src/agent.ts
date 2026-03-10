@@ -13,8 +13,11 @@ import type {
 	BuiltProviderTool,
 	BuiltTool,
 	CheckpointStore,
+	Provider,
 	Run,
 	RunOptions,
+	ThinkingConfig,
+	ThinkingConfigFor,
 } from './types';
 
 /** Convert a plain string prompt into a Message array. */
@@ -29,7 +32,7 @@ function toMessages(prompt: string | Message[]): Message[] {
  * Usage:
  * ```typescript
  * const agent = new Agent('assistant')
- *   .model('anthropic/claude-sonnet-4')
+ *   .model('anthropic', 'claude-sonnet-4')   // typed: Agent<'anthropic'>
  *   .credential('anthropic')
  *   .instructions('You are a helpful assistant.')
  *   .tool(searchTool);
@@ -38,7 +41,8 @@ function toMessages(prompt: string | Message[]): Message[] {
  * const result = await run.result;
  * ```
  */
-export class Agent {
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
+export class Agent<P extends Provider | undefined = undefined> {
 	private name: string;
 
 	private modelId?: string;
@@ -63,6 +67,8 @@ export class Agent {
 
 	private checkpointStore?: 'memory' | CheckpointStore;
 
+	private thinkingConfig?: ThinkingConfig;
+
 	private credentialName?: string;
 
 	private _resolvedApiKey?: string;
@@ -73,10 +79,25 @@ export class Agent {
 		this.name = name;
 	}
 
-	/** Set the model identifier (e.g. 'anthropic/claude-sonnet-4'). Required before building. */
-	model(modelId: string): this {
-		this.modelId = modelId;
-		return this;
+	/**
+	 * Set the model with provider type information.
+	 *
+	 * @example
+	 * ```typescript
+	 * // Typed form — enables provider-specific config on .thinking() etc.
+	 * agent.model('anthropic', 'claude-sonnet-4-5')
+	 *
+	 * // Untyped form — backwards compatible
+	 * agent.model('anthropic/claude-sonnet-4-5')
+	 * ```
+	 */
+	model<Prov extends Provider>(provider: Prov, modelName: string): Agent<Prov>;
+	model(modelId: string): Agent;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	model(providerOrId: string, modelName?: string): Agent<any> {
+		this.modelId = modelName ? `${providerOrId}/${modelName}` : providerOrId;
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-explicit-any
+		return this as any;
 	}
 
 	/** Set the system instructions for the agent. Required before building. */
@@ -197,6 +218,28 @@ export class Agent {
 		return this;
 	}
 
+	/**
+	 * Enable extended thinking / reasoning for the agent.
+	 * The config type is inferred from the provider set via `.model()`.
+	 *
+	 * @example
+	 * ```typescript
+	 * // Anthropic — budgetTokens
+	 * new Agent('thinker')
+	 *   .model('anthropic', 'claude-sonnet-4-5')
+	 *   .thinking({ budgetTokens: 10000 })
+	 *
+	 * // OpenAI — reasoningEffort
+	 * new Agent('thinker')
+	 *   .model('openai', 'o3-mini')
+	 *   .thinking({ reasoningEffort: 'high' })
+	 * ```
+	 */
+	thinking(config?: ThinkingConfigFor<P>): this {
+		this.thinkingConfig = config ?? {};
+		return this;
+	}
+
 	/** @internal Lazy-build the agent on first use. */
 	private ensureBuilt(): BuiltAgent {
 		this._built ??= this.build();
@@ -275,6 +318,7 @@ export class Agent {
 			memory: this.memoryConfig,
 			structuredOutput: this.outputSchema,
 			checkpointStorage: this.checkpointStore,
+			thinking: this.thinkingConfig,
 		});
 
 		const name = this.name;

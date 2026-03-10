@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/naming-convention */
+/* eslint-disable @typescript-eslint/naming-convention, @typescript-eslint/no-explicit-any */
 import { Agent } from '../agent';
 import type { Message } from '../message';
 import { Network } from '../network';
@@ -13,10 +13,14 @@ function findTextContent(messages: Message[]): string | undefined {
 }
 
 /** Exposes protected build() for testing. */
-class TestableAgent extends Agent {
+class TestableAgent extends Agent<any> {
 	override build() {
 		return super.build();
 	}
+}
+
+function buildAgent(agent: Agent<any>): ReturnType<TestableAgent['build']> {
+	return (agent as TestableAgent).build();
 }
 
 /** Exposes protected build() for testing. */
@@ -46,20 +50,17 @@ jest.mock('@mastra/core/tools', () => ({
 }));
 
 describe('Network', () => {
-	const researcher = new TestableAgent('researcher')
-		.model('openai/gpt-4o')
-		.instructions('Research things')
-		.build();
+	const researcher = buildAgent(
+		new TestableAgent('researcher').model('openai/gpt-4o').instructions('Research things'),
+	);
 
-	const writer = new TestableAgent('writer')
-		.model('openai/gpt-4o')
-		.instructions('Write things')
-		.build();
+	const writer = buildAgent(
+		new TestableAgent('writer').model('openai/gpt-4o').instructions('Write things'),
+	);
 
-	const coordinator = new TestableAgent('coordinator')
-		.model('openai/gpt-4o')
-		.instructions('Coordinate tasks')
-		.build();
+	const coordinator = buildAgent(
+		new TestableAgent('coordinator').model('openai/gpt-4o').instructions('Coordinate tasks'),
+	);
 
 	it('should build a network with coordinator and agents', () => {
 		const network = new TestableNetwork('team')

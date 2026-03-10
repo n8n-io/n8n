@@ -18,7 +18,7 @@ export interface CompileResult {
  * This is exactly what the execution engine would do — the user never
  * needs to call `.checkpoint()` or handle API keys manually.
  */
-class EngineAgent extends agents.Agent {
+class EngineAgent extends agents.Agent<any> {
 	build() {
 		this.checkpoint(playgroundCheckpointStore);
 

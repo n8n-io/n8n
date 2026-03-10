@@ -81,6 +81,97 @@ watch(
 	},
 );
 
+interface CatalogProvider {
+	id: string;
+	name: string;
+	models: Record<string, { id: string; name: string; reasoning: boolean; toolCall: boolean }>;
+}
+
+/**
+ * Fetch the provider/model catalog and register Monaco completion providers
+ * for .model() calls — suggests provider names for the first arg and model
+ * names for the second arg.
+ */
+async function loadCatalogCompletions() {
+	try {
+		const catalog = await $fetch<Record<string, CatalogProvider>>('/api/catalog');
+
+		// Provider name completions: .model('<cursor>')
+		monaco.languages.registerCompletionItemProvider('typescript', {
+			triggerCharacters: ["'", '"'],
+			provideCompletionItems(model, position) {
+				const line = model.getLineContent(position.lineNumber);
+				const textBefore = line.substring(0, position.column - 1);
+
+				// Match .model('  or  .model("
+				if (!/\.model\(\s*['"]$/.test(textBefore)) return { suggestions: [] };
+
+				const word = model.getWordUntilPosition(position);
+				const range = {
+					startLineNumber: position.lineNumber,
+					endLineNumber: position.lineNumber,
+					startColumn: word.startColumn,
+					endColumn: word.endColumn,
+				};
+
+				const suggestions = Object.values(catalog).map((p) => ({
+					label: p.id,
+					kind: monaco.languages.CompletionItemKind.Enum,
+					detail: `${p.name} (${Object.keys(p.models).length} models)`,
+					insertText: p.id,
+					range,
+				}));
+
+				return { suggestions };
+			},
+		});
+
+		// Model name completions: .model('provider', '<cursor>')
+		monaco.languages.registerCompletionItemProvider('typescript', {
+			triggerCharacters: ["'", '"'],
+			provideCompletionItems(model, position) {
+				const line = model.getLineContent(position.lineNumber);
+				const textBefore = line.substring(0, position.column - 1);
+
+				// Match .model('provider', '  or  .model("provider", "
+				const match = textBefore.match(/\.model\(\s*['"]([^'"]+)['"]\s*,\s*['"]$/);
+				if (!match) return { suggestions: [] };
+
+				const providerId = match[1];
+				const provider = catalog[providerId];
+				if (!provider) return { suggestions: [] };
+
+				const word = model.getWordUntilPosition(position);
+				const range = {
+					startLineNumber: position.lineNumber,
+					endLineNumber: position.lineNumber,
+					startColumn: word.startColumn,
+					endColumn: word.endColumn,
+				};
+
+				const suggestions = Object.values(provider.models).map((m) => {
+					const tags: string[] = [];
+					if (m.reasoning) tags.push('reasoning');
+					if (m.toolCall) tags.push('tools');
+					const detail = tags.length > 0 ? tags.join(', ') : undefined;
+
+					return {
+						label: m.id,
+						kind: monaco.languages.CompletionItemKind.Value,
+						detail: `${m.name}${detail ? ` (${detail})` : ''}`,
+						insertText: m.id,
+						range,
+					};
+				});
+
+				return { suggestions };
+			},
+		});
+	} catch {
+		// Catalog unavailable — editor works without completions
+	}
+}
+
 onMounted(async () => {
 	if (!editorContainer.value) return;
 
@@ -155,6 +246,9 @@ interface Buffer extends Uint8Array {
 		emit('update:modelValue', value);
 		compiler.compileDebounced(value);
 	});
+
+	// Load provider/model catalog for autocomplete
+	loadCatalogCompletions();
 
 	// Initial compile
 	compiler.compile(initialCode);

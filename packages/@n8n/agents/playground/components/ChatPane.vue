@@ -98,6 +98,7 @@ interface PendingApproval {
 interface Message {
 	role: 'user' | 'assistant';
 	content: string;
+	thinking?: string;
 	files?: UploadedFile[];
 	tokens?: { input: number; output: number };
 	toolCalls?: Array<{ tool: string; input: unknown; output: unknown }>;
@@ -378,6 +379,7 @@ async function handleBuildResponse(
 	const decoder = new TextDecoder();
 	let buffer = '';
 	let accumulated = '';
+	let thinking = '';
 	const toolCalls: Array<{ tool: string; input: unknown; output: unknown }> = [];
 	let pendingToolCall: { tool: string; input: unknown } | undefined;
 	let hadToolSinceLastText = false;
@@ -393,6 +395,9 @@ async function handleBuildResponse(
 		for (const data of events) {
 			if (data.error) {
 				accumulated += `\n\n**Error:** ${data.error}`;
+				loading.value = false;
+			} else if (data.thinking) {
+				thinking += data.thinking as string;
 				loading.value = false;
 			} else if (data.text) {
 				if (hadToolSinceLastText && accumulated.length > 0) {
@@ -423,6 +428,7 @@ async function handleBuildResponse(
 		messages.value[assistantIndex] = {
 			...messages.value[assistantIndex],
 			content: accumulated,
+			thinking: thinking || undefined,
 			toolCalls: toolCalls.length > 0 ? [...toolCalls] : undefined,
 		};
 		scrollToBottom();
@@ -460,6 +466,7 @@ async function handleTestResponse(
 	const decoder = new TextDecoder();
 	let buffer = '';
 	let accumulated = '';
+	let thinking = '';
 	const toolCalls: Array<{ tool: string; input: unknown; output: unknown }> = [];
 	const serverFiles: Array<{ name: string; type: string; data: string }> = [];
 	let pendingToolCall: { tool: string; input: unknown } | undefined;
@@ -476,6 +483,9 @@ async function handleTestResponse(
 		for (const data of events) {
 			if (data.error) {
 				accumulated += `\n\n**Error:** ${data.error}`;
+				loading.value = false;
+			} else if (data.thinking) {
+				thinking += data.thinking as string;
 				loading.value = false;
 			} else if (data.text) {
 				accumulated += data.text as string;
@@ -501,6 +511,7 @@ async function handleTestResponse(
 					messages.value[assistantIndex] = {
 						...messages.value[assistantIndex],
 						content: accumulated,
+						thinking: thinking || undefined,
 						toolCalls: toolCalls.length > 0 ? [...toolCalls] : undefined,
 						files: serverFiles.length > 0 ? [...serverFiles] : undefined,
 					};
@@ -536,6 +547,7 @@ async function handleTestResponse(
 		messages.value[assistantIndex] = {
 			...messages.value[assistantIndex],
 			content: accumulated,
+			thinking: thinking || undefined,
 			toolCalls: toolCalls.length > 0 ? [...toolCalls] : undefined,
 			files: serverFiles.length > 0 ? [...serverFiles] : undefined,
 		};
@@ -551,6 +563,7 @@ async function handleTestResponse(
 		messages.value[assistantIndex] = {
 			...messages.value[assistantIndex],
 			content: accumulated,
+			thinking: thinking || undefined,
 			toolCalls: toolCalls.length > 0 ? [...toolCalls] : undefined,
 			files: serverFiles.length > 0 ? [...serverFiles] : undefined,
 		};

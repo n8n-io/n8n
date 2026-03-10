@@ -4,7 +4,7 @@ import { compileSource } from './compile';
 import { listCredentials } from './credentials-db';
 import { getSdkTypeDeclarations } from './sdk-types';
 
-let cachedAgent: Agent | undefined;
+let cachedAgent: Agent<any> | undefined;
 
 // Holds the last code set by the set_code tool, read by the build endpoint.
 let lastSetCode: string | undefined;
@@ -70,9 +70,11 @@ export function getBuilderAgent() {
 		.build();
 
 	const model = process.env.BUILDER_MODEL ?? 'anthropic/claude-sonnet-4-5';
+	const provider = model.split('/')[0];
 
 	cachedAgent = new Agent('agent-builder')
 		.model(model)
+		.thinking(provider === 'anthropic' ? { budgetTokens: 10000 } : {})
 		.instructions(
 			`You are an expert @n8n/agents SDK developer. Your job is to generate TypeScript code that creates AI agents using the @n8n/agents SDK.
 
@@ -148,6 +150,14 @@ const correctness = evals.correctness()
 
 Attach evals to agents: \`agent.eval(correctness).eval(similarity)\`
 Do NOT use Scorer — it is deprecated. Always use Eval or evals.* instead.
+
+## Thinking / Reasoning
+
+- \`.thinking()\` enables extended thinking (reasoning) for the agent
+- \`.thinking({ budgetTokens: 20000 })\` customizes the thinking budget (default: 10000)
+- Works with Anthropic models (extended thinking) and OpenAI reasoning models
+- Thinking content streams to the user as a collapsible section in the chat
+- Example: \`agent.thinking({ budgetTokens: 10000 })\`
 
 ## Important
 

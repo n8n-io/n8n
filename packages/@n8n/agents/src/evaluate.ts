@@ -1,7 +1,7 @@
 import type { Agent } from './agent';
 import type { Eval } from './eval';
 import type { Message } from './message';
-import type { EvalResults, EvalRunResult, EvalScore, StreamChunk } from './types';
+import type { EvalResults, EvalRunResult, EvalScore, Provider, StreamChunk } from './types';
 
 /** Extract text content from messages. */
 function extractText(messages: Message[]): string {
@@ -60,7 +60,10 @@ interface CollectedToolResult {
  * });
  * ```
  */
-export async function evaluate(agent: Agent, config: EvaluateConfig): Promise<EvalResults> {
+export async function evaluate(
+	agent: Agent<Provider | undefined>,
+	config: EvaluateConfig,
+): Promise<EvalResults> {
 	const { dataset, evals } = config;
 
 	const runs: EvalRunResult[] = await Promise.all(
@@ -153,7 +156,7 @@ export async function evaluate(agent: Agent, config: EvaluateConfig): Promise<Ev
  */
 async function drainStreamWithApprovals(
 	reader: ReadableStreamDefaultReader<unknown>,
-	agent: Agent,
+	agent: Agent<Provider | undefined>,
 	collected: CollectedToolResult[],
 	approvals?: Record<string, 'approve' | 'deny'>,
 ): Promise<void> {

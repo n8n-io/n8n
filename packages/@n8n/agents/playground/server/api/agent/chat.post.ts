@@ -107,15 +107,10 @@ export default defineEventHandler(async (event) => {
 
 				const chunk = value as StreamChunk;
 
-				// Debug: log all chunk types to server console
-				if (chunk.type !== 'text-delta') {
-					console.log('[stream chunk]', chunk.type, JSON.stringify(chunk).slice(0, 200));
-				}
-
 				if (chunk.type === 'text-delta' && 'delta' in chunk && chunk.delta) {
 					sse.send({ text: chunk.delta });
 				} else if (chunk.type === 'reasoning-delta' && 'delta' in chunk && chunk.delta) {
-					sse.send({ text: chunk.delta });
+					sse.send({ thinking: chunk.delta });
 				} else if (chunk.type === 'content' && 'content' in chunk) {
 					const c = chunk.content;
 					if (c.type === 'tool-call') {

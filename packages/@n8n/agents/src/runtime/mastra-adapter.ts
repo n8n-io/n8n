@@ -17,6 +17,7 @@ import type {
 	CheckpointStore,
 	FinishReason,
 	StreamChunk,
+	ThinkingConfig,
 	TokenUsage,
 } from '../types';
 
@@ -36,6 +37,7 @@ export interface MastraAdapterConfig {
 	memory?: BuiltMemory;
 	structuredOutput?: z.ZodType;
 	checkpointStorage?: 'memory' | CheckpointStore;
+	thinking?: ThinkingConfig;
 }
 
 /**
@@ -249,6 +251,9 @@ export class MastraAdapter {
 	private readonly toolToMessageMap: ToolToMessageMap;
 	private readonly storeResultsToolNames: Set<string>;
 	private readonly hasMemory: boolean;
+	private readonly thinkingConfig?: ThinkingConfig;
+	private readonly modelIdString: string;
+
 	constructor(config: MastraAdapterConfig) {
 		if (!config.model) {
 			throw new Error(`Agent "${config.name}" requires a model`);
@@ -283,6 +288,8 @@ export class MastraAdapter {
 		}
 
 		this.structuredOutputSchema = config.structuredOutput;
+		this.thinkingConfig = config.thinking;
+		this.modelIdString = typeof config.model === 'string' ? config.model : config.model.id;
 
 		this.mastraAgent = new MastraAgent({
 			id: config.name,
@@ -321,6 +328,55 @@ export class MastraAdapter {
 	}
 
 	/**
+	 * Build provider-specific options for thinking/reasoning if enabled.
+	 */
+	private buildThinkingProviderOptions(): Record<string, unknown> | undefined {
+		if (!this.thinkingConfig) return undefined;
+
+		const provider = this.modelIdString.split('/')[0];
+		const config = this.thinkingConfig as Record<string, unknown>;
+
+		switch (provider) {
+			case 'anthropic':
+				return {
+					anthropic: {
+						thinking: {
+							type: 'enabled',
+							budgetTokens: (config.budgetTokens as number) ?? 10000,
+						},
+					},
+				};
+			case 'openai':
+				return {
+					openai: {
+						reasoningEffort: (config.reasoningEffort as string) ?? 'medium',
+					},
+				};
+			case 'google': {
+				const googleConfig: Record<string, unknown> = { includeThoughts: true };
+				if (config.thinkingBudget !== undefined)
+					googleConfig.thinkingBudget = config.thinkingBudget;
+				if (config.thinkingLevel !== undefined) googleConfig.thinkingLevel = config.thinkingLevel;
+				return { google: { thinkingConfig: googleConfig } };
+			}
+			case 'xai':
+				return {
+					xai: {
+						reasoningEffort: (config.reasoningEffort as string) ?? 'low',
+					},
+				};
+			default:
+				// Most providers follow the OpenAI-style reasoningEffort API.
+				// Pass through using the provider name as the key.
+				return {
+					[provider]: {
+						reasoningEffort: (config.reasoningEffort as string) ?? 'medium',
+					},
+				};
+		}
+	}
+
+	/**
 	 * Call Mastra's stream and return a text stream plus a way to get the
 	 * full result (including tool calls) after the stream completes.
 	 */
@@ -345,6 +401,10 @@ export class MastraAdapter {
 		const streamOptions: Record<string, unknown> = { ...memoryOptions };
 		if (this.structuredOutputSchema) {
 			streamOptions.structuredOutput = { schema: this.structuredOutputSchema };
+		}
+		const thinkingOptions = this.buildThinkingProviderOptions();
+		if (thinkingOptions) {
+			streamOptions.providerOptions = thinkingOptions;
 		}
 		const mastraInput = Array.isArray(input) ? toMastraMessages(input) : input;
 		const output = await this.mastraAgent.stream(mastraInput, streamOptions);
@@ -460,6 +520,10 @@ export class MastraAdapter {
 		const executionOptions: Record<string, unknown> = { ...memoryOptions };
 		if (this.structuredOutputSchema) {
 			executionOptions.structuredOutput = { schema: this.structuredOutputSchema };
+		}
+		const thinkingOptions = this.buildThinkingProviderOptions();
+		if (thinkingOptions) {
+			executionOptions.providerOptions = thinkingOptions;
 		}
 
 		const mastraInput = Array.isArray(input) ? toMastraMessages(input) : input;

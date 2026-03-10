@@ -19,6 +19,13 @@ export type {
 	CheckpointStore,
 	RunSnapshot,
 	StreamChunk,
+	Provider,
+	ThinkingConfig,
+	ThinkingConfigFor,
+	AnthropicThinkingConfig,
+	OpenAIThinkingConfig,
+	GoogleThinkingConfig,
+	XaiThinkingConfig,
 } from './types';
 
 export { Tool } from './tool';
@@ -36,3 +43,5 @@ export { providerTools } from './provider-tools';
 export { verify } from './verify';
 export type { VerifyResult } from './verify';
 export type { Message } from './message';
+export { fetchProviderCatalog } from './catalog';
+export type { ProviderCatalog, ProviderInfo, ModelInfo } from './catalog';

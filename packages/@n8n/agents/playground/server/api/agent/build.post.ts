@@ -65,17 +65,20 @@ export default defineEventHandler(async (event) => {
 
 			const chunk = value;
 
-			if (chunk.type === 'text-delta' && chunk.payload?.text) {
-				explanationText += chunk.payload.text;
-				sse.send({ text: chunk.payload.text });
-			} else if (chunk.type === 'tool-call' && chunk.payload?.toolName) {
-				sse.send({ toolCall: { tool: chunk.payload.toolName, input: chunk.payload.args } });
+			if (chunk.type === 'text-delta' && 'delta' in chunk && chunk.delta) {
+				explanationText += chunk.delta;
+				sse.send({ text: chunk.delta });
+			} else if (chunk.type === 'reasoning-delta' && 'delta' in chunk && chunk.delta) {
+				sse.send({ thinking: chunk.delta });
 			} else if (chunk.type === 'content') {
 				const content = chunk.content;
 				if (content.type === 'text') {
 					explanationText += content.text;
 					sse.send({ text: content.text });
+				} else if (content.type === 'tool-call') {
+					sse.send({ toolCall: { tool: content.toolName, input: content.input } });
 				} else if (content.type === 'tool-result') {
+					sse.send({ toolResult: { tool: content.toolName, output: content.result } });
 					if (content.toolName === 'set_code') {
 						const code = getLastSetCode();
 						if (code) {
