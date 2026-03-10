@@ -483,6 +483,48 @@ export class SourceControlGitService {
 		return statusResult;
 	}
 
+	async getRecentCommits(
+		branch: string,
+		count: number = 3,
+	): Promise<Array<{ hash: string; message: string; author: string; date: string }>> {
+		if (!this.git) {
+			throw new UnexpectedError('Git is not initialized (getRecentCommits)');
+		}
+		const log = await this.git.log([`origin/${branch}`, `-${count}`]);
+		return log.all.map((entry) => ({
+			hash: entry.hash,
+			message: entry.message,
+			author: entry.author_name,
+			date: entry.date,
+		}));
+	}
+
+	async getFileTree(
+		commit: string,
+		treePath: string = '',
+	): Promise<Array<{ type: 'blob' | 'tree'; name: string; path: string }>> {
+		if (!this.git) {
+			throw new UnexpectedError('Git is not initialized (getFileTree)');
+		}
+		const ref = treePath ? `${commit}:${treePath}` : commit;
+		const output = await this.git.raw(['ls-tree', '--name-only', ref]);
+		if (!output.trim()) return [];
+
+		const names = output.trim().split('\n');
+		const fullOutput = await this.git.raw(['ls-tree', ref]);
+		const lines = fullOutput.trim().split('\n');
+
+		return lines.map((line, i) => {
+			const isTree = line.startsWith('040000') || line.includes(' tree ');
+			const name = names[i];
+			return {
+				type: isTree ? 'tree' as const : 'blob' as const,
+				name,
+				path: treePath ? `${treePath}/${name}` : name,
+			};
+		});
+	}
+
 	async getFileContent(filePath: string, commit: string = 'HEAD'): Promise<string> {
 		if (!this.git) {
 			throw new UnexpectedError('Git is not initialized (getFileContent)');

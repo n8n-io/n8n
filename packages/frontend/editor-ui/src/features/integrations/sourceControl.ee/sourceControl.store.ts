@@ -116,12 +116,24 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		return await vcApi.exportPackage(rootStore.restApiContext, data);
 	};
 
-	const importPackage = async (data: { force?: boolean; projectIds?: string[] }) => {
+	const importPackage = async (data: {
+		force?: boolean;
+		projectIds?: string[];
+		commitHash?: string;
+	}) => {
 		return await vcApi.importPackage(rootStore.restApiContext, data);
 	};
 
 	const getPackagePreview = async () => {
 		return await vcApi.getPackagePreview(rootStore.restApiContext);
+	};
+
+	const getPackageCommits = async () => {
+		return await vcApi.getPackageCommits(rootStore.restApiContext);
+	};
+
+	const getPackageTree = async (commit: string, treePath?: string) => {
+		return await vcApi.getPackageTree(rootStore.restApiContext, commit, treePath);
 	};
 
 	return {
@@ -143,6 +155,8 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		exportPackage,
 		importPackage,
 		getPackagePreview,
+		getPackageCommits,
+		getPackageTree,
 		sshKeyTypesWithLabel,
 	};
 });

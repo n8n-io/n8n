@@ -112,7 +112,7 @@ export const exportPackage = async (
 
 export const importPackage = async (
 	context: IRestApiContext,
-	data: { force?: boolean; projectIds?: string[] },
+	data: { force?: boolean; projectIds?: string[]; commitHash?: string },
 ) => {
 	return await makeRestApiRequest(context, 'POST', `${sourceControlApiRoot}/import-package`, data);
 };
@@ -136,4 +136,36 @@ export interface PackagePreview {
 
 export const getPackagePreview = async (context: IRestApiContext): Promise<PackagePreview> => {
 	return await makeRestApiRequest(context, 'GET', `${sourceControlApiRoot}/package-preview`);
+};
+
+export interface PackageCommit {
+	hash: string;
+	message: string;
+	author: string;
+	date: string;
+}
+
+export interface FileTreeEntry {
+	type: 'blob' | 'tree';
+	name: string;
+	path: string;
+}
+
+export const getPackageCommits = async (
+	context: IRestApiContext,
+): Promise<{ commits: PackageCommit[] }> => {
+	return await makeRestApiRequest(context, 'GET', `${sourceControlApiRoot}/package-commits`);
+};
+
+export const getPackageTree = async (
+	context: IRestApiContext,
+	commit: string,
+	treePath: string = '',
+): Promise<{ entries: FileTreeEntry[] }> => {
+	const params = treePath ? `?path=${encodeURIComponent(treePath)}` : '';
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`${sourceControlApiRoot}/package-tree/${commit}${params}`,
+	);
 };

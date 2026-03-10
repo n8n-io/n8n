@@ -30,13 +30,14 @@ import { useRoute, useRouter } from 'vue-router';
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import Modal from '@/app/components/Modal.vue';
-import type { PackageProjectPreview } from '../sourceControl.api';
+import type { PackageProjectPreview, PackageCommit, FileTreeEntry } from '../sourceControl.api';
 
 import {
 	N8nBadge,
 	N8nButton,
 	N8nCallout,
 	N8nHeading,
+	N8nIcon,
 	N8nIconButton,
 	N8nInfoTip,
 	N8nLink,
@@ -75,11 +76,6 @@ const activeProjectId = computed(() => projectsStore.currentProjectId);
 const isProjectScoped = computed(
 	() => !!activeProjectId.value && activeProjectId.value !== projectsStore.personalProject?.id,
 );
-const activeProjectName = computed(() => {
-	if (!activeProjectId.value) return '';
-	const project = projectsStore.availableProjects.find((p) => p.id === activeProjectId.value);
-	return project?.name ?? '';
-});
 const isPackageImporting = ref(false);
 
 // Package preview state
@@ -88,8 +84,10 @@ const isLoadingPreview = ref(false);
 const previewError = ref('');
 const selectedProjectId = ref<string | null>(null);
 
-const selectedProject = computed(() =>
-	packagePreview.value.find((p) => p.id === selectedProjectId.value) ?? null,
+const usePackageMode = true;
+
+const selectedProject = computed(
+	() => packagePreview.value.find((p) => p.id === selectedProjectId.value) ?? null,
 );
 
 const previewResourceCounts = computed(() => {
@@ -104,13 +102,92 @@ const previewResourceCounts = computed(() => {
 	};
 });
 
+// Commits + file browser state
+const commits = ref<PackageCommit[]>([]);
+const selectedCommitHash = ref<string | null>(null);
+const expandedCommitHash = ref<string | null>(null);
+const fileTree = ref<FileTreeEntry[]>([]);
+const isLoadingTree = ref(false);
+const currentTreePath = ref<string[]>([]);
+
+function formatCommitDate(dateStr: string) {
+	return dateformat(new Date(dateStr), 'd mmm yyyy, HH:MM');
+}
+
+function shortHash(hash: string) {
+	return hash.slice(0, 7);
+}
+
+function selectCommit(hash: string) {
+	selectedCommitHash.value = hash;
+}
+
+async function loadFileTree(commit: string, treePath: string) {
+	isLoadingTree.value = true;
+	try {
+		const result = await sourceControlStore.getPackageTree(commit, treePath);
+		fileTree.value = result.entries;
+	} catch {
+		fileTree.value = [];
+	} finally {
+		isLoadingTree.value = false;
+	}
+}
+
+async function toggleCommit(hash: string) {
+	if (expandedCommitHash.value === hash) {
+		expandedCommitHash.value = null;
+		fileTree.value = [];
+		currentTreePath.value = [];
+		return;
+	}
+	expandedCommitHash.value = hash;
+	currentTreePath.value = [];
+	await loadFileTree(hash, '');
+}
+
+async function navigateInto(entry: FileTreeEntry) {
+	if (entry.type !== 'tree' || !expandedCommitHash.value) return;
+	currentTreePath.value.push(entry.name);
+	await loadFileTree(expandedCommitHash.value, entry.path);
+}
+
+async function navigateUp() {
+	if (!expandedCommitHash.value || currentTreePath.value.length === 0) return;
+	currentTreePath.value.pop();
+	const newPath = currentTreePath.value.join('/');
+	await loadFileTree(expandedCommitHash.value, newPath);
+}
+
+async function navigateToBreadcrumb(index: number) {
+	if (!expandedCommitHash.value) return;
+	currentTreePath.value = currentTreePath.value.slice(0, index + 1);
+	const newPath = currentTreePath.value.join('/');
+	await loadFileTree(expandedCommitHash.value, newPath);
+}
+
 async function loadPackagePreview() {
 	isLoadingPreview.value = true;
 	previewError.value = '';
 	try {
-		const preview = await sourceControlStore.getPackagePreview();
+		const [preview, commitsResult] = await Promise.all([
+			sourceControlStore.getPackagePreview(),
+			sourceControlStore.getPackageCommits(),
+		]);
 		packagePreview.value = preview.projects;
-		if (preview.projects.length === 1) {
+		commits.value = commitsResult.commits;
+
+		if (commitsResult.commits.length > 0) {
+			selectedCommitHash.value = commitsResult.commits[0].hash;
+		}
+
+		// Auto-select: active team project if it exists in the repo, otherwise single project
+		if (isProjectScoped.value) {
+			const match = preview.projects.find((p) => p.id === activeProjectId.value);
+			if (match) {
+				selectedProjectId.value = match.id;
+			}
+		} else if (preview.projects.length === 1) {
 			selectedProjectId.value = preview.projects[0].id;
 		}
 	} catch (error) {
@@ -418,6 +495,7 @@ async function pullPackage() {
 		await sourceControlStore.importPackage({
 			force: true,
 			projectIds: [selectedProjectId.value],
+			commitHash: selectedCommitHash.value ?? undefined,
 		});
 
 		toast.showToast({
@@ -510,22 +588,16 @@ const modalHeight = computed(() =>
 		: 'auto',
 );
 
-// Load data when modal opens
+// Always try package preview first; falls back to standard pull if no packages found
 onMounted(() => {
-	if (isProjectScoped.value) {
-		void loadPackagePreview();
-		return;
-	}
-	if (!props.data.status || props.data.status.length === 0) {
-		void loadSourceControlStatus();
-	}
+	void loadPackagePreview();
 });
 </script>
 
 <template>
-	<!-- Project-scoped import mode -->
+	<!-- Package import mode (project-scoped or packages found in git) -->
 	<Modal
-		v-if="!isLoading && isProjectScoped"
+		v-if="!isLoading && usePackageMode"
 		width="620px"
 		:event-bus="data.eventBus"
 		:name="SOURCE_CONTROL_PULL_MODAL_KEY"
@@ -578,93 +650,165 @@ onMounted(() => {
 						</N8nSelect>
 					</div>
 
-					<!-- Resource preview for selected project -->
-					<div v-if="selectedProject" :class="$style.resourcePreview">
-						<div :class="$style.resourceGrid">
-							<div :class="$style.resourceCard">
-								<N8nText bold size="xlarge" color="text-dark">
-									{{ previewResourceCounts?.workflows ?? 0 }}
-								</N8nText>
-								<N8nText size="small" color="text-light">Workflows</N8nText>
-							</div>
-							<div :class="$style.resourceCard">
-								<N8nText bold size="xlarge" color="text-dark">
-									{{ previewResourceCounts?.credentials ?? 0 }}
-								</N8nText>
-								<N8nText size="small" color="text-light">Credentials</N8nText>
-							</div>
-							<div :class="$style.resourceCard">
-								<N8nText bold size="xlarge" color="text-dark">
-									{{ previewResourceCounts?.variables ?? 0 }}
-								</N8nText>
-								<N8nText size="small" color="text-light">Variables</N8nText>
-							</div>
-							<div :class="$style.resourceCard">
-								<N8nText bold size="xlarge" color="text-dark">
-									{{ previewResourceCounts?.dataTables ?? 0 }}
-								</N8nText>
-								<N8nText size="small" color="text-light">Data tables</N8nText>
-							</div>
+					<!-- Resource count cards -->
+					<div v-if="selectedProject" :class="$style.resourceGrid">
+						<div :class="$style.resourceCard">
+							<N8nText bold size="xlarge" color="text-dark">
+								{{ previewResourceCounts?.workflows ?? 0 }}
+							</N8nText>
+							<N8nText size="small" color="text-light">Workflows</N8nText>
 						</div>
+						<div :class="$style.resourceCard">
+							<N8nText bold size="xlarge" color="text-dark">
+								{{ previewResourceCounts?.credentials ?? 0 }}
+							</N8nText>
+							<N8nText size="small" color="text-light">Credentials</N8nText>
+						</div>
+						<div :class="$style.resourceCard">
+							<N8nText bold size="xlarge" color="text-dark">
+								{{ previewResourceCounts?.variables ?? 0 }}
+							</N8nText>
+							<N8nText size="small" color="text-light">Variables</N8nText>
+						</div>
+						<div :class="$style.resourceCard">
+							<N8nText bold size="xlarge" color="text-dark">
+								{{ previewResourceCounts?.dataTables ?? 0 }}
+							</N8nText>
+							<N8nText size="small" color="text-light">Data tables</N8nText>
+						</div>
+					</div>
 
-						<!-- Resource details -->
-						<div :class="$style.resourceDetails">
-							<div v-if="selectedProject.workflows.length" :class="$style.resourceSection">
-								<N8nText bold size="small" color="text-dark" class="mb-4xs">
-									Workflows
-								</N8nText>
-								<ul :class="$style.resourceList">
-									<li
-										v-for="wf in selectedProject.workflows"
-										:key="wf.id"
-										:class="$style.resourceItem"
+					<!-- Recent commits -->
+					<div v-if="commits.length" :class="$style.commitsSection">
+						<N8nText bold size="medium" color="text-dark" class="mb-2xs">
+							Pull from commit
+						</N8nText>
+						<div :class="$style.commitsList">
+							<div
+								v-for="commit in commits"
+								:key="commit.hash"
+								:class="[
+									$style.commitEntry,
+									{ [$style.commitEntrySelected]: selectedCommitHash === commit.hash },
+								]"
+							>
+								<div :class="$style.commitHeader">
+									<button
+										type="button"
+										:class="$style.commitRadio"
+										@click="selectCommit(commit.hash)"
 									>
-										<N8nText size="small">{{ wf.name }}</N8nText>
-									</li>
-								</ul>
-							</div>
-							<div v-if="selectedProject.credentials.length" :class="$style.resourceSection">
-								<N8nText bold size="small" color="text-dark" class="mb-4xs">
-									Credentials
-								</N8nText>
-								<ul :class="$style.resourceList">
-									<li
-										v-for="cred in selectedProject.credentials"
-										:key="cred.id"
-										:class="$style.resourceItem"
+										<span
+											:class="[
+												$style.radioCircle,
+												{ [$style.radioCircleSelected]: selectedCommitHash === commit.hash },
+											]"
+										/>
+									</button>
+									<button
+										type="button"
+										:class="$style.commitInfoBtn"
+										@click="selectCommit(commit.hash)"
 									>
-										<N8nText size="small">{{ cred.name }}</N8nText>
-										<N8nText size="small" color="text-light">&middot; {{ cred.type }}</N8nText>
-									</li>
-								</ul>
-							</div>
-							<div v-if="selectedProject.variables.length" :class="$style.resourceSection">
-								<N8nText bold size="small" color="text-dark" class="mb-4xs">
-									Variables
-								</N8nText>
-								<ul :class="$style.resourceList">
-									<li
-										v-for="v in selectedProject.variables"
-										:key="v.id"
-										:class="$style.resourceItem"
+										<div :class="$style.commitInfo">
+											<div :class="$style.commitMessageRow">
+												<N8nText size="small" bold>{{ commit.message }}</N8nText>
+											</div>
+											<N8nText size="small" color="text-light">
+												{{ shortHash(commit.hash) }} &middot; {{ commit.author }} &middot;
+												{{ formatCommitDate(commit.date) }}
+											</N8nText>
+										</div>
+									</button>
+									<button
+										type="button"
+										:class="$style.commitExpandBtn"
+										@click="toggleCommit(commit.hash)"
 									>
-										<N8nText size="small">{{ v.key }}</N8nText>
-									</li>
-								</ul>
-							</div>
-							<div v-if="selectedProject.dataTables.length" :class="$style.resourceSection">
-								<N8nText bold size="small" color="text-dark" class="mb-4xs">
-									Data tables
-								</N8nText>
-								<ul :class="$style.resourceList">
-									<li
-										v-for="dt in selectedProject.dataTables"
-										:key="dt.id"
-										:class="$style.resourceItem"
-									>
-										<N8nText size="small">{{ dt.name }}</N8nText>
-									</li>
-								</ul>
+										<N8nIcon
+											:icon="expandedCommitHash === commit.hash ? 'chevron-down' : 'chevron-right'"
+											size="small"
+											color="text-light"
+										/>
+									</button>
+								</div>
+
+								<!-- File browser (expanded) -->
+								<div
+									v-if="expandedCommitHash === commit.hash"
+									:class="$style.fileBrowser"
+								>
+									<div v-if="isLoadingTree" :class="$style.treePlaceholder">
+										<N8nLoading :rows="2" />
+									</div>
+									<template v-else>
+										<!-- Breadcrumb -->
+										<div v-if="currentTreePath.length" :class="$style.breadcrumb">
+											<button
+												type="button"
+												:class="$style.breadcrumbItem"
+												@click="navigateUp"
+											>
+												<N8nIcon icon="arrow-left" size="small" />
+											</button>
+											<button
+												type="button"
+												:class="$style.breadcrumbItem"
+												@click="toggleCommit(commit.hash)"
+											>
+												<N8nText size="small" color="text-light">/</N8nText>
+											</button>
+											<template
+												v-for="(segment, idx) in currentTreePath"
+												:key="idx"
+											>
+												<N8nText size="small" color="text-light">/</N8nText>
+												<button
+													type="button"
+													:class="$style.breadcrumbItem"
+													@click="navigateToBreadcrumb(idx)"
+												>
+													<N8nText
+														size="small"
+														:bold="idx === currentTreePath.length - 1"
+													>
+														{{ segment }}
+													</N8nText>
+												</button>
+											</template>
+										</div>
+
+										<!-- File/folder list -->
+										<div :class="$style.treeEntries">
+											<button
+												v-for="entry in fileTree"
+												:key="entry.path"
+												type="button"
+												:class="[
+													$style.treeEntry,
+													{ [$style.treeEntryClickable]: entry.type === 'tree' },
+												]"
+												:disabled="entry.type !== 'tree'"
+												@click="navigateInto(entry)"
+											>
+												<N8nIcon
+													:icon="entry.type === 'tree' ? 'folder' : 'file'"
+													size="small"
+													:color="entry.type === 'tree' ? 'warning' : 'text-light'"
+												/>
+												<N8nText size="small">{{ entry.name }}</N8nText>
+											</button>
+											<N8nText
+												v-if="fileTree.length === 0"
+												size="small"
+												color="text-light"
+												class="p-2xs"
+											>
+												Empty directory
+											</N8nText>
+										</div>
+									</template>
+								</div>
 							</div>
 						</div>
 					</div>
@@ -689,7 +833,7 @@ onMounted(() => {
 					:disabled="isPackageImporting || !selectedProjectId || isLoadingPreview"
 					@click="pullPackage"
 				>
-					Import project
+					Pull project
 				</N8nButton>
 			</div>
 		</template>
@@ -1165,5 +1309,159 @@ onMounted(() => {
 	align-items: center;
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--4xs) 0;
+}
+
+.commitsSection {
+	margin-top: var(--spacing--xs);
+}
+
+.commitsList {
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	overflow: hidden;
+}
+
+.commitEntry {
+	& + & {
+		border-top: var(--border);
+	}
+}
+
+.commitEntrySelected {
+	background: var(--color--background);
+}
+
+.commitHeader {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	width: 100%;
+	padding: var(--spacing--xs);
+}
+
+.commitRadio {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: none;
+	border: none;
+	cursor: pointer;
+	padding: var(--spacing--4xs);
+}
+
+.radioCircle {
+	display: block;
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	border: 2px solid var(--color--foreground--tint-2);
+	background: var(--color--background);
+	transition: border-color 0.15s, background 0.15s;
+}
+
+.radioCircleSelected {
+	border-color: var(--color-primary);
+	background: var(--color-primary);
+	box-shadow: inset 0 0 0 3px var(--color--background);
+}
+
+.commitInfoBtn {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	align-items: flex-start;
+	background: none;
+	border: none;
+	cursor: pointer;
+	text-align: left;
+	color: var(--color--text);
+	padding: 0;
+}
+
+.commitExpandBtn {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: none;
+	border: none;
+	cursor: pointer;
+	padding: var(--spacing--4xs);
+	border-radius: var(--radius--sm);
+	color: var(--color--text);
+
+	&:hover {
+		background: var(--color--foreground--tint-1);
+	}
+}
+
+.commitInfo {
+	flex: 1;
+	min-width: 0;
+}
+
+.commitMessageRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	margin-bottom: var(--spacing--5xs);
+}
+
+.fileBrowser {
+	border-top: var(--border);
+	background: var(--color--background--light-2);
+}
+
+.treePlaceholder {
+	padding: var(--spacing--xs);
+}
+
+.breadcrumb {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	border-bottom: var(--border);
+	background: var(--color--background);
+}
+
+.breadcrumbItem {
+	background: none;
+	border: none;
+	cursor: pointer;
+	padding: var(--spacing--4xs);
+	border-radius: var(--radius--sm);
+	color: var(--color--text);
+
+	&:hover {
+		background: var(--color--foreground--tint-1);
+	}
+}
+
+.treeEntries {
+	max-height: 200px;
+	overflow-y: auto;
+	scrollbar-color: var(--color--foreground) transparent;
+}
+
+.treeEntry {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	width: 100%;
+	padding: var(--spacing--3xs) var(--spacing--xs);
+	background: none;
+	border: none;
+	text-align: left;
+	color: var(--color--text);
+}
+
+.treeEntryClickable {
+	cursor: pointer;
+
+	&:hover {
+		background: var(--color--background);
+	}
 }
 </style>

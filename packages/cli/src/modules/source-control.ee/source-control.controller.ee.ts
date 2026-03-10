@@ -349,18 +349,54 @@ export class SourceControlController {
 		}
 	}
 
+	@Get('/package-commits', { middlewares: [sourceControlEnabledMiddleware] })
+	@GlobalScope('sourceControl:manage')
+	async packageCommits() {
+		try {
+			await this.sourceControlGitService.fetch();
+			const { branchName } = this.sourceControlPreferencesService.getPreferences();
+			const commits = await this.sourceControlGitService.getRecentCommits(
+				branchName || SOURCE_CONTROL_DEFAULT_BRANCH,
+				3,
+			);
+			return { commits };
+		} catch (error) {
+			throw new BadRequestError((error as { message: string }).message);
+		}
+	}
+
+	@Get('/package-tree/:commit', { middlewares: [sourceControlEnabledMiddleware] })
+	@GlobalScope('sourceControl:manage')
+	async packageTree(
+		req: AuthenticatedRequest & { params: { commit: string }; query: { path?: string } },
+	) {
+		try {
+			const { commit } = req.params;
+			const treePath = (req.query.path as string) || '';
+			const entries = await this.sourceControlGitService.getFileTree(commit, treePath);
+			return { entries };
+		} catch (error) {
+			throw new BadRequestError((error as { message: string }).message);
+		}
+	}
+
 	@Post('/import-package', { middlewares: [sourceControlEnabledMiddleware] })
 	@GlobalScope('sourceControl:manage')
 	async importPackage(req: AuthenticatedRequest) {
 		try {
 			await this.sourceControlGitService.fetch();
 			const { branchName } = this.sourceControlPreferencesService.getPreferences();
+			const { projectIds, commitHash } = (req.body ?? {}) as {
+				projectIds?: string[];
+				commitHash?: string;
+			};
+
+			const resetTarget = commitHash ?? `origin/${branchName || SOURCE_CONTROL_DEFAULT_BRANCH}`;
 			await this.sourceControlGitService.resetBranch({
 				hard: true,
-				target: `origin/${branchName || SOURCE_CONTROL_DEFAULT_BRANCH}`,
+				target: resetTarget,
 			});
 
-			const { projectIds } = (req.body ?? {}) as { projectIds?: string[] };
 			const result = await this.packageImportService.importPackage(req.user.id, projectIds);
 			return result;
 		} catch (error) {
