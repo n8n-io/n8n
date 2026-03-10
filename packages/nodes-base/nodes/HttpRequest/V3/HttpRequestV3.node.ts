@@ -1143,9 +1143,7 @@ function parseJsonParameter(
 	itemIndex: number,
 ): IDataObject {
 	try {
-		JSON.parse(jsonString);
-
-		return jsonParse(jsonString);
+		return JSON.parse(jsonString) as IDataObject;
 	} catch (e) {
 		const error = ensureError(e);
 		throw new NodeOperationError(node, `The value in the "${fieldName}" field is not valid JSON`, {
