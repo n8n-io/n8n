@@ -25,8 +25,8 @@ import { useCollaborationStore } from '@/features/collaboration/collaboration/co
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import type { SourceControlPreferences } from '@/features/integrations/sourceControl.ee/sourceControl.types';
 import type { Project } from '@/features/collaboration/projects/projects.types';
-import { shallowRef } from 'vue';
-import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { shallowRef, computed } from 'vue';
+import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -128,6 +128,7 @@ const renderComponent = createComponentRenderer(WorkflowDetails, {
 	global: {
 		provide: {
 			[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
+			[WorkflowIdKey as unknown as string]: computed(() => '1'),
 		},
 		stubs: {
 			RouterLink: true,

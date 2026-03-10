@@ -5,7 +5,7 @@ import TriggerSetupCard from '@/features/setupPanel/components/cards/TriggerSetu
 import CredentialTypeSetupCard from '@/features/setupPanel/components/cards/CredentialTypeSetupCard.vue';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import type { SetupCardItem } from '@/features/setupPanel/setupPanel.types';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -21,7 +21,7 @@ const props = withDefaults(
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
-const workflowsStore = useWorkflowsStore();
+const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const { setupCards, isAllComplete, setCredential, unsetCredential, firstTriggerName } =
 	useWorkflowSetupState();
@@ -30,7 +30,7 @@ watch(isAllComplete, (allComplete) => {
 	if (allComplete) {
 		telemetry.track('User completed all setup steps', {
 			template_id: workflowDocumentStore?.value?.meta?.templateId,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowId.value,
 		});
 	}
 });
