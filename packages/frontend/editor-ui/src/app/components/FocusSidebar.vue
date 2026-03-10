@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
@@ -34,7 +33,6 @@ const wrapperRef = useTemplateRef('wrapper');
 
 const workflowId = useInjectWorkflowId();
 const focusPanelStore = useFocusPanelStore();
-const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const setupPanelStore = useSetupPanelStore();
