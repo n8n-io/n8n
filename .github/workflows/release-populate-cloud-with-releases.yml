@@ -56,39 +56,16 @@ jobs:
           RELEASE_VERSION_TAG: 'n8n@${{ inputs.version }}'
         run: node ./.github/scripts/determine-release-version-changes.mjs
 
-  populate-cloud:
-    runs-on: ubuntu-slim
-    environment: release
-    needs: [determine-changes]
-    env:
-      PAYLOAD: |
-        {
-          "target_version_to_update": "${{ inputs.version }}",
-          "has_node_enhancements": ${{ needs.determine-changes.outputs.has_node_enhancements }},
-          "has_core_changes": ${{ needs.determine-changes.outputs.has_core_changes }},
-          "has_breaking_change": false,
-          "is_experimental": ${{ inputs.experimental }}
-        }
-    steps:
-      - name: Print payload
-        run: echo "$PAYLOAD"
-
-      - name: Call n8n workflow
-        shell: bash
-        run: |
-          status=$(curl \
-          -o response.json \
-          -w "%{http_code}" \
-          --data "$PAYLOAD" \
-          --request POST \
-          -H "Content-Type: application/json" \
-          ${{ secrets.N8N_POPULATE_CLOUD_WEBHOOK_DATA }})
-
-          echo "HTTP Status: $status"
-          echo "Response body:"
-          cat response.json
-
-          if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
-            echo "Request failed with status $status"
-            exit 1
-          fi
+      - name: Populate databases
+        id: populate-databases
+        env:
+          N8N_POPULATE_CLOUD_WEBHOOK_DATA: ${{ secrets.N8N_POPULATE_CLOUD_WEBHOOK_DATA }}
+          PAYLOAD: |
+            {
+              "target_version_to_update": "${{ inputs.version }}",
+              "has_node_enhancements": ${{ steps.get-changes.outputs.has_node_enhancements }},
+              "has_core_changes": ${{ steps.get-changes.outputs.has_core_changes }},
+              "has_breaking_change": false,
+              "is_experimental": ${{ inputs.experimental }}
+            }
+        run: node ./.github/scripts/populate-cloud-databases.mjs
