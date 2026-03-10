@@ -276,6 +276,27 @@ describe('create-workflow-from-code MCP tool', () => {
 			);
 		});
 
+		test('assigns webhookId to webhook nodes before saving', async () => {
+			nodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+				if (type === 'n8n-nodes-base.webhook') {
+					return { description: { webhooks: [{ httpMethod: 'GET', path: '' }] } };
+				}
+				return { description: {} };
+			}) as typeof nodeTypes.getByNameAndVersion);
+
+			await callHandler({ code: 'const wf = ...' });
+
+			const savedWorkflow = createWorkflowMock.mock.calls[0][1] as WorkflowEntity;
+			const webhookNode = savedWorkflow.nodes.find(
+				(n: INode) => n.type === 'n8n-nodes-base.webhook',
+			);
+			const setNode = savedWorkflow.nodes.find((n: INode) => n.type === 'n8n-nodes-base.set');
+
+			expect(webhookNode!.webhookId).toBeDefined();
+			expect(typeof webhookNode!.webhookId).toBe('string');
+			expect(setNode!.webhookId).toBeUndefined();
+		});
+
 		test('tracks telemetry on failure', async () => {
 			mockParseAndValidate.mockRejectedValue(new Error('Parse failed'));
 
