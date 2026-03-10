@@ -385,13 +385,11 @@ const sortedWorkflows = computed(() =>
 	orderBy(
 		filteredWorkflows.value,
 		[
-			// Keep the current workflow at the top of the list.
-			({ id }) => id === changes.value.currentWorkflow?.id,
 			({ folderPath }) => folderPath?.join('/') ?? '',
 			({ status }) => getPushPriorityByStatus(status),
 			'updatedAt',
 		],
-		['desc', 'asc', 'asc', 'desc'],
+		['asc', 'asc', 'desc'],
 	),
 );
 
@@ -400,6 +398,9 @@ const workflowTreeRows = computed<SourceControlTreeRow<SourceControlledFileWithP
 );
 
 const collapsedFolderIds = ref<Set<string>>(new Set());
+const workflowScroller = ref<{ scrollToItem: (index: number) => void; $el?: Element } | null>(null);
+const hasScrolledCurrentWorkflow = ref(false);
+const isRevealInProgress = ref(false);
 
 const visibleWorkflowRows = computed<SourceControlTreeRow<SourceControlledFileWithProject>[]>(
 	() => {
@@ -437,6 +438,92 @@ function toggleFolderCollapse(folderId: string) {
 	}
 
 	collapsedFolderIds.value.add(folderId);
+}
+
+function getAncestorFolderIdsForWorkflow(workflowId: string): string[] {
+	const ancestorStack: Array<{ id: string; depth: number }> = [];
+
+	for (const row of workflowTreeRows.value) {
+		while (ancestorStack.length && row.depth <= ancestorStack[ancestorStack.length - 1].depth) {
+			ancestorStack.pop();
+		}
+
+		if (row.type === 'folder') {
+			ancestorStack.push({ id: row.id, depth: row.depth });
+			continue;
+		}
+
+		if (row.file.id === workflowId) {
+			return ancestorStack.map(({ id }) => id);
+		}
+	}
+
+	return [];
+}
+
+async function animationFrame() {
+	await new Promise<void>((resolve) => {
+		if (typeof requestAnimationFrame === 'function') {
+			requestAnimationFrame(() => resolve());
+			return;
+		}
+
+		setTimeout(resolve, 0);
+	});
+}
+
+function getCurrentWorkflowRowElement(workflowId: string): HTMLElement | null {
+	const scrollerRoot = workflowScroller.value?.$el;
+	if (!(scrollerRoot instanceof Element)) {
+		return null;
+	}
+
+	return scrollerRoot.querySelector<HTMLElement>(`[data-workflow-id="${workflowId}"]`);
+}
+
+async function revealAndScrollToCurrentWorkflow() {
+	const isWorkflowTab = activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow;
+
+	if (
+		isRevealInProgress.value ||
+		hasScrolledCurrentWorkflow.value ||
+		!isWorkflowTab ||
+		!changes.value.currentWorkflow ||
+		isLoading.value
+	) {
+		return;
+	}
+
+	isRevealInProgress.value = true;
+	try {
+		const currentWorkflowId = changes.value.currentWorkflow.id;
+		for (const folderId of getAncestorFolderIdsForWorkflow(currentWorkflowId)) {
+			collapsedFolderIds.value.delete(folderId);
+		}
+
+		for (let attempt = 0; attempt < 6; attempt++) {
+			const visibleIndex = visibleWorkflowRows.value.findIndex(
+				(row) => row.type === 'file' && row.file.id === currentWorkflowId,
+			);
+			const scroller = workflowScroller.value;
+
+			if (visibleIndex >= 0 && scroller) {
+				scroller.scrollToItem(visibleIndex);
+				await animationFrame();
+
+				const workflowRowElement = getCurrentWorkflowRowElement(currentWorkflowId);
+				if (!workflowRowElement) {
+					continue;
+				}
+
+				workflowRowElement.scrollIntoView({ block: 'center', inline: 'nearest' });
+				hasScrolledCurrentWorkflow.value = true;
+				return;
+			}
+		}
+	} finally {
+		isRevealInProgress.value = false;
+	}
 }
 
 const folderChildrenMap = computed(() => {
@@ -952,6 +1039,20 @@ watchEffect(() => {
 	}
 });
 
+watch(
+	[
+		() => changes.value.currentWorkflow?.id,
+		() => activeTab.value,
+		() => visibleWorkflowRows.value.length,
+		() => workflowScroller.value,
+		() => isLoading.value,
+	],
+	() => {
+		void revealAndScrollToCurrentWorkflow();
+	},
+	{ immediate: true, flush: 'post' },
+);
+
 // Load data when modal opens
 onMounted(async () => {
 	// Always load fresh data to ensure workflow names are populated
@@ -1156,6 +1257,7 @@ onMounted(async () => {
 							</N8nInfoTip>
 							<DynamicScroller
 								v-if="activeRows.length"
+								ref="workflowScroller"
 								:class="[$style.scroller]"
 								:items="activeRows"
 								:min-item-size="57"
@@ -1220,6 +1322,11 @@ onMounted(async () => {
 												{ [$style.rowNoBorder]: index === activeRows.length - 1 },
 											]"
 											:style="{ paddingLeft: `${row.depth * 16}px` }"
+											:data-workflow-id="
+												row.file.type === SOURCE_CONTROL_FILE_TYPE.workflow
+													? row.file.id
+													: undefined
+											"
 										>
 											<N8nCheckbox
 												:class="[$style.listItem]"
@@ -1327,7 +1434,7 @@ onMounted(async () => {
 					<br />
 					<template v-for="{ title, content } in userNotices" :key="title">
 						<N8nText bold size="small"> {{ title }}</N8nText>
-						<N8nText size="small"> : {{ content }}. </N8nText>
+						<N8nText size="small">: {{ content }}. </N8nText>
 					</template>
 					<br v-if="hasModifiedCredentialsSelected" />
 				</template>

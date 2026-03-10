@@ -563,7 +563,7 @@ describe('SourceControlPushModal', () => {
 		mockRoute.name = VIEWS.WORKFLOW;
 		mockRoute.params = { name: 'gTbbBkkYTnNyX1jD' };
 
-		const { getByTestId, getAllByTestId, getByText } = renderModal({
+		const { getByTestId, getAllByTestId, getByText, getByRole } = renderModal({
 			pinia,
 			props: {
 				data: {
@@ -583,11 +583,11 @@ describe('SourceControlPushModal', () => {
 			expect(files).toHaveLength(2);
 		});
 
-		const files = getAllByTestId('source-control-push-modal-file-checkbox');
-
-		// The current workflow should be auto-selected now that we fixed the regression
-		expect(files[0]).toBeChecked();
-		expect(files[1]).not.toBeChecked();
+		// The current workflow should be auto-selected regardless of rendered order
+		await waitFor(() => {
+			expect(getByRole('checkbox', { name: /My workflow 1/i })).toBeChecked();
+			expect(getByRole('checkbox', { name: /My workflow 2/i })).not.toBeChecked();
+		});
 
 		await userEvent.type(getByTestId('source-control-push-modal-commit'), 'message');
 		const submitButton = getByTestId('source-control-push-modal-submit');
