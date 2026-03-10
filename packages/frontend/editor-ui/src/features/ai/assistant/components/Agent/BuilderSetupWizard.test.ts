@@ -236,6 +236,7 @@ describe('BuilderSetupWizard', () => {
 		};
 		mockTotalCards.value = 1;
 		mockCurrentStepIndex.value = 0;
+		mockIsAllComplete.value = true;
 
 		const { getByTestId, queryByTestId } = render();
 		expect(getByTestId('builder-setup-wizard')).toBeInTheDocument();

@@ -330,7 +330,7 @@ export const builderWizardRequirements: TestRequirements = {
 		},
 	},
 	storage: {
-		N8N_EXPERIMENT_OVERRIDES: JSON.stringify({ '077_ai_builder_setup_wizard': 'variant' }),
+		N8N_EXPERIMENT_OVERRIDES: JSON.stringify({ '079_ai_builder_setup_wizard': 'variant' }),
 	},
 };
 
