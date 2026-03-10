@@ -59,7 +59,7 @@ export async function sqlAgentAgentExecute(
 				throw new NodeOperationError(this.getNode(), 'The ‘prompt’ parameter is empty.');
 			}
 
-			const options = this.getNodeParameter('options', i, {}) as {
+			const options = this.getNodeParameter('options', i, {}) as IDataObject & {
 				tracingMetadata?: { values?: TracingMetadataEntry[] };
 			};
 			const selectedDataSource = this.getNodeParameter('dataSource', i, 'sqlite') as
@@ -129,10 +129,7 @@ export async function sqlAgentAgentExecute(
 			}
 
 			let response: IDataObject;
-			const additionalMetadata = buildTracingMetadata(
-				(options.tracingMetadata as { values?: TracingMetadataEntry[] })?.values,
-				this.logger,
-			);
+			const additionalMetadata = buildTracingMetadata(options.tracingMetadata?.values, this.logger);
 			if (Object.keys(additionalMetadata).length > 0) {
 				this.logger.debug('Tracing metadata', { additionalMetadata });
 			}
