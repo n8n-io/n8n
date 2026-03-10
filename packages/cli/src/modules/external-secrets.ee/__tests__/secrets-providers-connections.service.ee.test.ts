@@ -691,4 +691,44 @@ describe('SecretsProvidersConnectionsService', () => {
 			expect(mockExternalSecretsManager.syncProviderConnection).toHaveBeenCalledWith('my-aws');
 		});
 	});
+
+	describe('getGlobalCompletions', () => {
+		it('should call findEnabledGlobalConnections with connected provider keys', async () => {
+			const connectedNames = ['aws-conn', 'vault-conn'];
+			const enabledConnections = [
+				{ providerKey: 'aws-conn' },
+			] as unknown as SecretsProviderConnection[];
+
+			mockProviderRegistry.getConnectedNames.mockReturnValue(connectedNames);
+			mockRepository.findEnabledGlobalConnections.mockResolvedValue(enabledConnections);
+
+			const result = await service.getGlobalCompletions();
+
+			expect(result).toBe(enabledConnections);
+			expect(mockProviderRegistry.getConnectedNames).toHaveBeenCalled();
+			expect(mockRepository.findEnabledGlobalConnections).toHaveBeenCalledWith({
+				providerKeys: connectedNames,
+			});
+		});
+	});
+
+	describe('getProjectCompletions', () => {
+		it('should call findEnabledByProjectId with project ID and connected provider keys', async () => {
+			const connectedNames = ['aws-conn', 'vault-conn'];
+			const enabledConnections = [
+				{ providerKey: 'vault-conn' },
+			] as unknown as SecretsProviderConnection[];
+
+			mockProviderRegistry.getConnectedNames.mockReturnValue(connectedNames);
+			mockRepository.findEnabledByProjectId.mockResolvedValue(enabledConnections);
+
+			const result = await service.getProjectCompletions('project-1');
+
+			expect(result).toBe(enabledConnections);
+			expect(mockProviderRegistry.getConnectedNames).toHaveBeenCalled();
+			expect(mockRepository.findEnabledByProjectId).toHaveBeenCalledWith('project-1', {
+				providerKeys: connectedNames,
+			});
+		});
+	});
 });
