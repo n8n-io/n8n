@@ -1,5 +1,5 @@
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
-import { resolveNodeWebhook } from 'n8n-workflow';
+import { resolveNodeWebhookId } from 'n8n-workflow';
 import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
@@ -129,7 +129,7 @@ export const createUpdateWorkflowTool = (
 			for (const node of workflowUpdateData.nodes) {
 				try {
 					const desc = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-					resolveNodeWebhook(node, desc.description);
+					resolveNodeWebhookId(node, desc.description);
 				} catch {
 					// Node type not found, skip
 				}

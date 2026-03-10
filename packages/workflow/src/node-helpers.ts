@@ -1106,7 +1106,7 @@ export function getNodeWebhookUrl(
  * Assigns a webhookId to a node if its type has webhook definitions
  * and the node doesn't already have one.
  */
-export function resolveNodeWebhook(
+export function resolveNodeWebhookId(
 	node: Pick<INode, 'webhookId'>,
 	nodeTypeDescription: Pick<INodeTypeDescription, 'webhooks'>,
 ): void {

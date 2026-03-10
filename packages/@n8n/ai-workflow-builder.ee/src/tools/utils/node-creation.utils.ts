@@ -1,6 +1,6 @@
 import {
 	assert,
-	resolveNodeWebhook,
+	resolveNodeWebhookId,
 	type INode,
 	type INodeTypeDescription,
 	type NodeParameterValueType,
@@ -92,7 +92,7 @@ export function createNodeInstance(
 	};
 
 	// Add webhook ID if required
-	resolveNodeWebhook(node, nodeType);
+	resolveNodeWebhookId(node, nodeType);
 
 	return node;
 }

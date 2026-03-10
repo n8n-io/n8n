@@ -1,5 +1,5 @@
 import { type User, type ProjectRepository, WorkflowEntity } from '@n8n/db';
-import { resolveNodeWebhook } from 'n8n-workflow';
+import { resolveNodeWebhookId } from 'n8n-workflow';
 import z from 'zod';
 
 import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
@@ -127,7 +127,7 @@ export const createCreateWorkflowFromCodeTool = (
 			for (const node of newWorkflow.nodes) {
 				try {
 					const desc = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-					resolveNodeWebhook(node, desc.description);
+					resolveNodeWebhookId(node, desc.description);
 				} catch {
 					// Node type not found, skip
 				}

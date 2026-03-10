@@ -1,7 +1,7 @@
 import type { INode, INodeTypeDescription } from '../src/interfaces';
-import { resolveNodeWebhook } from '../src/node-helpers';
+import { resolveNodeWebhookId } from '../src/node-helpers';
 
-describe('resolveNodeWebhook', () => {
+describe('resolveNodeWebhookId', () => {
 	const makeNode = (webhookId?: string): Pick<INode, 'webhookId'> => ({ webhookId });
 
 	const withWebhooks: Pick<INodeTypeDescription, 'webhooks'> = {
@@ -15,7 +15,7 @@ describe('resolveNodeWebhook', () => {
 	test('assigns webhookId when webhooks is non-empty and node has no webhookId', () => {
 		const node = makeNode();
 
-		resolveNodeWebhook(node, withWebhooks);
+		resolveNodeWebhookId(node, withWebhooks);
 
 		expect(node.webhookId).toBeDefined();
 		expect(typeof node.webhookId).toBe('string');
@@ -24,7 +24,7 @@ describe('resolveNodeWebhook', () => {
 	test('does not assign webhookId when webhooks is undefined', () => {
 		const node = makeNode();
 
-		resolveNodeWebhook(node, withoutWebhooks);
+		resolveNodeWebhookId(node, withoutWebhooks);
 
 		expect(node.webhookId).toBeUndefined();
 	});
@@ -32,7 +32,7 @@ describe('resolveNodeWebhook', () => {
 	test('does not assign webhookId when webhooks is empty', () => {
 		const node = makeNode();
 
-		resolveNodeWebhook(node, { webhooks: [] });
+		resolveNodeWebhookId(node, { webhooks: [] });
 
 		expect(node.webhookId).toBeUndefined();
 	});
@@ -40,7 +40,7 @@ describe('resolveNodeWebhook', () => {
 	test('preserves existing webhookId', () => {
 		const node = makeNode('existing-id');
 
-		resolveNodeWebhook(node, withWebhooks);
+		resolveNodeWebhookId(node, withWebhooks);
 
 		expect(node.webhookId).toBe('existing-id');
 	});

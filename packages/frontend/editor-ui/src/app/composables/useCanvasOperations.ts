@@ -112,7 +112,7 @@ import {
 	TelemetryHelpers,
 	isCommunityPackageName,
 	isHitlToolType,
-	resolveNodeWebhook as resolveNodeWebhookId,
+	resolveNodeWebhookId,
 } from 'n8n-workflow';
 import { computed, nextTick, ref, type DeepReadonly } from 'vue';
 import { useUniqueNodeName } from '@/app/composables/useUniqueNodeName';
