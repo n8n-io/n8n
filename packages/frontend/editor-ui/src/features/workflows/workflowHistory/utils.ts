@@ -24,8 +24,7 @@ export const getVersionLabel = ({
 	currentVersionId?: string;
 }) => {
 	const i18n = useI18n();
-	const isNamedVersion = Boolean(workflowHistory.name);
-	if (isNamedVersion) {
+	if (workflowHistory.name) {
 		return workflowHistory.name;
 	}
 
