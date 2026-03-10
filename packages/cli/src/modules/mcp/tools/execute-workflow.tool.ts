@@ -8,7 +8,6 @@ import {
 	type INode,
 	type IPinData,
 	type IRun,
-	type IRunExecutionData,
 	type IWorkflowExecutionDataProcess,
 	type WorkflowExecuteMode,
 	UnexpectedError,
@@ -41,7 +40,6 @@ import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const WORKFLOW_EXECUTION_TIMEOUT_MS = 5 * Time.minutes.toMilliseconds; // 5 minutes
-const ERROR_KEYS_TO_IGNORE = ['stack', 'node'];
 
 export { type FoundWorkflow };
 
@@ -91,17 +89,17 @@ const inputSchema = z.object({
 });
 
 type ExecuteWorkflowOutput = {
-	success: boolean;
 	executionId: string | null;
-	result?: IRunExecutionData['resultData'];
-	error?: unknown;
+	status: 'success' | 'error' | 'running' | 'waiting' | 'canceled' | 'crashed' | 'new' | 'unknown';
+	error?: string;
 };
 
 const outputSchema = {
-	success: z.boolean(),
-	executionId: z.string().nullable().optional(),
-	result: z.unknown().optional().describe('Workflow execution result data'),
-	error: z.unknown().optional(),
+	executionId: z.string().nullable(),
+	status: z
+		.enum(['success', 'error', 'running', 'waiting', 'canceled', 'crashed', 'new', 'unknown'])
+		.describe('The status of the execution'),
+	error: z.string().optional().describe('Error message if the execution failed'),
 } satisfies z.ZodRawShape;
 
 export const createExecuteWorkflowTool = (
@@ -115,7 +113,7 @@ export const createExecuteWorkflowTool = (
 	name: 'execute_workflow',
 	config: {
 		description:
-			'Execute a workflow by ID. Before executing always ensure you know the input schema by first using the get_workflow_details tool and consulting workflow description',
+			'Execute a workflow by ID. Returns execution ID and status. To get the full execution results, use the get_execution tool with the returned execution ID. Before executing always ensure you know the input schema by first using the get_workflow_details tool and consulting workflow description',
 		inputSchema: inputSchema.shape,
 		outputSchema,
 		annotations: {
@@ -145,16 +143,14 @@ export const createExecuteWorkflowTool = (
 			);
 
 			telemetryPayload.results = {
-				success: output.success,
+				success: output.status === 'success',
 				data: {
 					executionId: output.executionId,
+					status: output.status,
 				},
 			};
-			if (!output.success && output.error) {
-				telemetryPayload.results.error = JSON.stringify(
-					output.error,
-					(key: string, value: unknown) => (ERROR_KEYS_TO_IGNORE.includes(key) ? undefined : value),
-				);
+			if (output.status === 'error' && output.error) {
+				telemetryPayload.results.error = output.error;
 			}
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
@@ -181,8 +177,8 @@ export const createExecuteWorkflowTool = (
 			}
 
 			const output: ExecuteWorkflowOutput = {
-				success: false,
 				executionId: isTimeout ? error.executionId : null,
+				status: 'error',
 				error: isTimeout
 					? `Workflow execution timed out after ${WORKFLOW_EXECUTION_TIMEOUT_MS / Time.milliseconds.toSeconds} seconds (Enforced MCP timeout)`
 					: (error.message ?? `${error.constructor.name}: (no message)`),
@@ -237,13 +233,14 @@ export const executeWorkflow = async (
 
 	const executionId = await workflowRunner.run(runData);
 	const data = await waitForExecutionResult(executionId, activeExecutions, mcpService);
-	const success = data.status !== 'error' && !data.data.resultData?.error;
+	const hasError = data.status === 'error' || data.data.resultData?.error;
 
 	return {
-		success,
 		executionId,
-		result: data.data.resultData,
-		error: data.data.resultData?.error,
+		status: hasError ? 'error' : data.status,
+		error: hasError
+			? (data.data.resultData?.error?.message ?? 'Execution completed with errors')
+			: undefined,
 	};
 };
 
@@ -290,8 +287,9 @@ const buildRunData = async (
 	// Generate a unique MCP message ID for this execution (used for queue mode correlation)
 	const mcpMessageId = `mcp-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 
+	const isManualExecution = executionMode === 'manual';
 	const runData: IWorkflowExecutionDataProcess = {
-		executionMode: getExecutionModeForTrigger(triggerNode),
+		executionMode: isManualExecution ? 'manual' : getExecutionModeForTrigger(triggerNode),
 		workflowData: { ...workflow, nodes, connections },
 		userId,
 		// MCP metadata for queue mode support
@@ -304,7 +302,10 @@ const buildRunData = async (
 	// Set the trigger node as the start node and pin data for it
 	// This will enable us to run the workflow from the trigger node with the provided inputs without waiting for an actual trigger event
 	runData.startNodes = [{ name: triggerNode.name, sourceData: null }];
-	runData.pinData = await getPinDataForTrigger(triggerNode, inputs);
+
+	const triggerPinData = await getPinDataForTrigger(triggerNode, inputs);
+	const workflowPinData = isManualExecution ? (workflow.pinData ?? {}) : {};
+	runData.pinData = { ...triggerPinData, ...workflowPinData };
 
 	runData.executionData = createRunExecutionData({
 		startData: {},
