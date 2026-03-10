@@ -101,7 +101,7 @@ export const CODE_WORKFLOW_BUILDER_EXPERIMENT = createExperiment('071_coding_wor
 
 export const QUICK_CONNECT_EXPERIMENT = createExperiment('073_quick_connect');
 
-export const AI_BUILDER_SETUP_WIZARD_EXPERIMENT = createExperiment('077_ai_builder_setup_wizard');
+export const AI_BUILDER_SETUP_WIZARD_EXPERIMENT = createExperiment('079_ai_builder_setup_wizard');
 
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
