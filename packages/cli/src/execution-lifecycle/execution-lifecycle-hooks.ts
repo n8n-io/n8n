@@ -54,7 +54,7 @@ function getSaveExecutionOverride(fullRunData: IRun): boolean | undefined {
 	for (const taskDataList of Object.values(runData)) {
 		for (const taskData of taskDataList) {
 			if (taskData.metadata?.saveExecution !== undefined) {
-				if (taskData.metadata.saveExecution === false) return false;
+				if (!taskData.metadata.saveExecution) return false;
 				override = taskData.metadata.saveExecution;
 			}
 		}
