@@ -209,15 +209,15 @@ const sortedWorkflows = computed(() => {
 	}));
 });
 
-const workflowTreeRows = computed<SourceControlTreeRow<SourceControlledFileWithProject>[]>(() =>
-	buildWorkflowTreeRows(sortedWorkflows.value),
+const workflowTreeRows = computed<Array<SourceControlTreeRow<SourceControlledFileWithProject>>>(
+	() => buildWorkflowTreeRows(sortedWorkflows.value),
 );
 
 const collapsedFolderIds = ref<Set<string>>(new Set());
 
-const visibleWorkflowRows = computed<SourceControlTreeRow<SourceControlledFileWithProject>[]>(
+const visibleWorkflowRows = computed<Array<SourceControlTreeRow<SourceControlledFileWithProject>>>(
 	() => {
-		const visibleRows: SourceControlTreeRow<SourceControlledFileWithProject>[] = [];
+		const visibleRows: Array<SourceControlTreeRow<SourceControlledFileWithProject>> = [];
 		const collapsedDepths: number[] = [];
 
 		for (const row of workflowTreeRows.value) {
@@ -314,7 +314,7 @@ const activeDataSourceFiltered = computed(() => {
 	return [];
 });
 
-const activeRows = computed<SourceControlTreeRow<SourceControlledFileWithProject>[]>(() => {
+const activeRows = computed<Array<SourceControlTreeRow<SourceControlledFileWithProject>>>(() => {
 	if (activeTab.value === SOURCE_CONTROL_FILE_TYPE.workflow) {
 		return visibleWorkflowRows.value;
 	}
