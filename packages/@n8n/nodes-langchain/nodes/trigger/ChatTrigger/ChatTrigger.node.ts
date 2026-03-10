@@ -1,10 +1,6 @@
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import pick from 'lodash/pick';
-import {
-	autoSaveHighlightedDataProperty,
-	getHighlightedInputKey,
-	HIGHLIGHTED_SESSION_KEY,
-} from 'n8n-nodes-base/dist/utils/highlightedData';
+import { autoSaveHighlightedDataProperty } from 'n8n-nodes-base/dist/utils/highlightedData';
 import {
 	Node,
 	NodeConnectionTypes,
@@ -12,6 +8,8 @@ import {
 	assertParamIsBoolean,
 	validateNodeParameters,
 	assertParamIsString,
+	getHighlightedInputKey,
+	HIGHLIGHTED_SESSION_KEY,
 } from 'n8n-workflow';
 import type {
 	IDataObject,

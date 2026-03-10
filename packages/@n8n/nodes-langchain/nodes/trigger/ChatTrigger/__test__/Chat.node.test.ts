@@ -17,6 +17,12 @@ describe('Test Chat Node', () => {
 	beforeEach(() => {
 		chat = new Chat();
 		mockExecuteFunctions = mock<IExecuteFunctions>();
+		mockExecuteFunctions.customData = {
+			set: jest.fn(),
+			setAll: jest.fn(),
+			get: jest.fn(),
+			getAll: jest.fn(),
+		};
 	});
 
 	afterEach(() => {
@@ -36,6 +42,7 @@ describe('Test Chat Node', () => {
 			mockExecuteFunctions.getInputData.mockReturnValue(items);
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('message');
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(false);
+			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(true); // autoSaveHighlightedData
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({
 				limitType: 'afterTimeInterval',
 				resumeAmount: 1,
@@ -60,6 +67,7 @@ describe('Test Chat Node', () => {
 			mockExecuteFunctions.getInputData.mockReturnValue(items);
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('message');
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({ memoryConnection: true });
+			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(true); // autoSaveHighlightedData
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({
 				limitType: 'afterTimeInterval',
 				resumeAmount: 1,
@@ -87,6 +95,7 @@ describe('Test Chat Node', () => {
 			mockExecuteFunctions.getInputData.mockReturnValue(items);
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('message');
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(false);
+			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(true); // autoSaveHighlightedData
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({
 				limitType: 'afterTimeInterval',
 				resumeAmount: 1,
@@ -111,6 +120,7 @@ describe('Test Chat Node', () => {
 			mockExecuteFunctions.getInputData.mockReturnValue(items);
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('message');
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(false);
+			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(true); // autoSaveHighlightedData
 			mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({
 				limitType: 'atSpecifiedTime',
 				maxDateAndTime: new Date().toISOString(),

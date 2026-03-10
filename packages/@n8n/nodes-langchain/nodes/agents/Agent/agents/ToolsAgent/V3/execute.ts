@@ -1,5 +1,3 @@
-import { getHighlightedResponseKey } from 'n8n-nodes-base/dist/utils/highlightedData';
-
 import type { RequestResponseMetadata } from '@utils/agent-execution';
 import type {
 	EngineRequest,
@@ -8,7 +6,7 @@ import type {
 	INodeExecutionData,
 	ISupplyDataFunctions,
 } from 'n8n-workflow';
-import { sleep } from 'n8n-workflow';
+import { getHighlightedResponseKey, sleep } from 'n8n-workflow';
 
 import { buildExecutionContext, executeBatch } from './helpers';
 

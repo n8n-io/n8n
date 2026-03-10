@@ -1,5 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { BaseChatMemory } from '@langchain/classic/memory';
+import { autoSaveHighlightedDataProperty } from 'n8n-nodes-base/dist/utils/highlightedData';
 import {
 	limitWaitTimeOption,
 	sendAndWaitWebhooksDescription,
@@ -9,17 +10,14 @@ import {
 	sendAndWaitWebhook,
 } from 'n8n-nodes-base/dist/utils/sendAndWait/utils';
 import {
-	autoSaveHighlightedDataProperty,
-	getHighlightedInputKey,
-	getHighlightedResponseKey,
-} from 'n8n-nodes-base/dist/utils/highlightedData';
-import {
 	CHAT_TRIGGER_NODE_TYPE,
 	CHAT_WAIT_USER_REPLY,
 	FREE_TEXT_CHAT_RESPONSE_TYPE,
 	NodeConnectionTypes,
 	NodeOperationError,
 	SEND_AND_WAIT_OPERATION,
+	getHighlightedInputKey,
+	getHighlightedResponseKey,
 } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
