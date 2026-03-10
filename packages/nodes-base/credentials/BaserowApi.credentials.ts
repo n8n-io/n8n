@@ -18,6 +18,13 @@ export class BaserowApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
+			displayName:
+				"This type of connection (Username & Password) is deprecated. Please create a new credential of type 'Baserow Token API' instead.",
+			name: 'deprecated',
+			type: 'notice',
+			default: '',
+		},
+		{
 			displayName: 'Host',
 			name: 'host',
 			type: 'string',
