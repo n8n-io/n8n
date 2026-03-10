@@ -9,7 +9,6 @@ import { FocusPanel } from './components/FocusPanel';
 import { LogsPanel } from './components/LogsPanel';
 import { NodeCreator } from './components/NodeCreator';
 import { SaveChangesModal } from './components/SaveChangesModal';
-import { SetupPanelPage } from './components/SetupPanelPage';
 import { StickyComponent } from './components/StickyComponent';
 import { TagsManagerModal } from './components/TagsManagerModal';
 
@@ -17,7 +16,6 @@ export class CanvasPage extends BasePage {
 	readonly sticky = new StickyComponent(this.page);
 	readonly logsPanel = new LogsPanel(this.page.getByTestId('logs-panel'));
 	readonly focusPanel = new FocusPanel(this.page.getByTestId('focus-panel'));
-	readonly setupPanel = new SetupPanelPage(this.page.getByTestId('focus-sidebar'));
 	readonly credentialModal = new CredentialModal(this.page.getByTestId('editCredential-modal'));
 	readonly nodeCreator = new NodeCreator(this.page);
 	readonly saveChangesModal = new SaveChangesModal(this.page.locator('.el-overlay'));
@@ -27,10 +25,6 @@ export class CanvasPage extends BasePage {
 	readonly convertToSubworkflowModal = new ConvertToSubworkflowModal(
 		this.page.getByRole('dialog').filter({ hasText: 'Convert' }),
 	);
-
-	getPageUrl(): string {
-		return this.page.url();
-	}
 
 	nodeCreatorItemByName(text: string): Locator {
 		return this.page.getByTestId('node-creator-item-name').getByText(text, { exact: true });

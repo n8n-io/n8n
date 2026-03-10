@@ -52,7 +52,6 @@ import { NodeDetailsViewComposer } from '../composables/NodeDetailsViewComposer'
 import { OidcComposer } from '../composables/OidcComposer';
 import { PartialExecutionComposer } from '../composables/PartialExecutionComposer';
 import { ProjectComposer } from '../composables/ProjectComposer';
-import { SetupPanelComposer } from '../composables/SetupPanelComposer';
 import { TemplatesComposer } from '../composables/TemplatesComposer';
 import { TestEntryComposer } from '../composables/TestEntryComposer';
 import { WorkflowComposer } from '../composables/WorkflowComposer';
@@ -126,7 +125,6 @@ export class n8nPage {
 	readonly partialExecutionComposer: PartialExecutionComposer;
 	readonly ndvComposer: NodeDetailsViewComposer;
 	readonly templatesComposer: TemplatesComposer;
-	readonly setupPanelComposer: SetupPanelComposer;
 	readonly start: TestEntryComposer;
 	readonly dataTableComposer: DataTableComposer;
 
@@ -199,7 +197,6 @@ export class n8nPage {
 		this.partialExecutionComposer = new PartialExecutionComposer(this);
 		this.ndvComposer = new NodeDetailsViewComposer(this);
 		this.templatesComposer = new TemplatesComposer(this);
-		this.setupPanelComposer = new SetupPanelComposer(this);
 		this.start = new TestEntryComposer(this);
 		this.dataTableComposer = new DataTableComposer(this);
 
