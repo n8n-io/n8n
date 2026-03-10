@@ -135,11 +135,11 @@ export async function decompressFolder(sourcePath: string, outputDir: string): P
 	// causing a 0-byte self-referential entry that would otherwise truncate the source.
 	const absoluteSourcePath = path.resolve(sourcePath);
 
-	const fh = await open(sourcePath, 'r');
+	const fileHandle = await open(sourcePath, 'r');
 	try {
-		const { size: fileSize } = await fh.stat();
-		const { cdOffset, cdSize } = await readEOCD(fh, fileSize);
-		const entries = await readCentralDirectory(fh, cdOffset, cdSize);
+		const { size: fileSize } = await fileHandle.stat();
+		const { cdOffset, cdSize } = await readEOCD(fileHandle, fileSize);
+		const entries = await readCentralDirectory(fileHandle, cdOffset, cdSize);
 
 		for (const entry of entries) {
 			if (entry.name.endsWith('/')) continue;
@@ -149,9 +149,9 @@ export async function decompressFolder(sourcePath: string, outputDir: string): P
 
 			mkdirSync(path.dirname(filePath), { recursive: true });
 
-			const dataOffset = await getDataOffset(fh, entry.localHeaderOffset);
+			const dataOffset = await getDataOffset(fileHandle, entry.localHeaderOffset);
 			const readStream = Readable.from(
-				readFileChunks(fh, Number(dataOffset), Number(entry.compressedSize)),
+				readFileChunks(fileHandle, Number(dataOffset), Number(entry.compressedSize)),
 			);
 			const writeStream = createWriteStream(filePath);
 
@@ -164,7 +164,7 @@ export async function decompressFolder(sourcePath: string, outputDir: string): P
 			}
 		}
 	} finally {
-		await fh.close();
+		await fileHandle.close();
 	}
 }
 
@@ -250,18 +250,18 @@ interface ZipEntry {
  * immediately preceding the standard EOCD. Returns null if not found.
  */
 async function tryReadZip64(
-	fh: FileHandle,
+	fileHandle: FileHandle,
 	locatorPos: number,
 ): Promise<{ cdOffset: bigint; cdSize: bigint } | null> {
 	if (locatorPos < 0) return null;
 
 	const locBuf = Buffer.allocUnsafe(20);
-	await fh.read(locBuf, 0, 20, locatorPos);
+	await fileHandle.read(locBuf, 0, 20, locatorPos);
 	if (locBuf.readUInt32LE(0) !== EOCD64_LOCATOR_SIG) return null;
 
 	const eocd64Offset = Number(locBuf.readBigUInt64LE(8));
 	const eocd64Buf = Buffer.allocUnsafe(56);
-	await fh.read(eocd64Buf, 0, 56, eocd64Offset);
+	await fileHandle.read(eocd64Buf, 0, 56, eocd64Offset);
 	if (eocd64Buf.readUInt32LE(0) !== EOCD64_SIG) return null;
 
 	return {
@@ -275,13 +275,13 @@ async function tryReadZip64(
  * offset and size. Handles ZIP64 archives transparently.
  */
 async function readEOCD(
-	fh: FileHandle,
+	fileHandle: FileHandle,
 	fileSize: number,
 ): Promise<{ cdOffset: bigint; cdSize: bigint }> {
 	// EOCD is at most 65557 bytes from the end (22 fixed + 65535 max comment)
 	const searchSize = Math.min(65557, fileSize);
 	const buf = Buffer.allocUnsafe(searchSize);
-	await fh.read(buf, 0, searchSize, fileSize - searchSize);
+	await fileHandle.read(buf, 0, searchSize, fileSize - searchSize);
 
 	for (let i = searchSize - 22; i >= 0; i--) {
 		if (buf.readUInt32LE(i) !== EOCD_SIG) continue;
@@ -290,7 +290,7 @@ async function readEOCD(
 		const cdOffset32 = buf.readUInt32LE(i + 16);
 
 		if (cdSize32 === 0xffffffff || cdOffset32 === 0xffffffff) {
-			const zip64 = await tryReadZip64(fh, fileSize - searchSize + i - 20);
+			const zip64 = await tryReadZip64(fileHandle, fileSize - searchSize + i - 20);
 			if (zip64) return zip64;
 		}
 
@@ -306,12 +306,12 @@ async function readEOCD(
  * extended fields, unlike local file headers which may hold placeholder values.
  */
 async function readCentralDirectory(
-	fh: FileHandle,
+	fileHandle: FileHandle,
 	cdOffset: bigint,
 	cdSize: bigint,
 ): Promise<ZipEntry[]> {
 	const buf = Buffer.allocUnsafe(Number(cdSize));
-	await fh.read(buf, 0, Number(cdSize), Number(cdOffset));
+	await fileHandle.read(buf, 0, Number(cdSize), Number(cdOffset));
 
 	const entries: ZipEntry[] = [];
 	let pos = 0;
@@ -364,9 +364,9 @@ async function readCentralDirectory(
  * Read the local file header to find where compressed data actually starts.
  * The local header's extra field may differ in length from the central directory.
  */
-async function getDataOffset(fh: FileHandle, localHeaderOffset: bigint): Promise<bigint> {
+async function getDataOffset(fileHandle: FileHandle, localHeaderOffset: bigint): Promise<bigint> {
 	const buf = Buffer.allocUnsafe(30);
-	await fh.read(buf, 0, 30, Number(localHeaderOffset));
+	await fileHandle.read(buf, 0, 30, Number(localHeaderOffset));
 
 	if (buf.readUInt32LE(0) !== LOCAL_HEADER_SIG) {
 		throw new Error(`Invalid local file header at offset ${localHeaderOffset}`);
@@ -382,7 +382,7 @@ async function getDataOffset(fh: FileHandle, localHeaderOffset: bigint): Promise
  * the FileHandle's cursor or accumulating listeners. Safe on NFS/EFS.
  */
 async function* readFileChunks(
-	fh: FileHandle,
+	fileHandle: FileHandle,
 	offset: number,
 	size: number,
 	chunkSize = 64 * 1024,
@@ -392,7 +392,7 @@ async function* readFileChunks(
 	while (remaining > 0) {
 		const toRead = Math.min(remaining, chunkSize);
 		const buf = Buffer.allocUnsafe(toRead);
-		const { bytesRead } = await fh.read(buf, 0, toRead, pos);
+		const { bytesRead } = await fileHandle.read(buf, 0, toRead, pos);
 		if (bytesRead === 0) break;
 		yield bytesRead === toRead ? buf : buf.subarray(0, bytesRead);
 		pos += bytesRead;
