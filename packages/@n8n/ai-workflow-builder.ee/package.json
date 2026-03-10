@@ -38,7 +38,8 @@
     "python:check": "cd evaluations/programmatic/python && just check",
     "python:test": "cd evaluations/programmatic/python && just test",
     "python:lint": "cd evaluations/programmatic/python && just lint",
-    "python:format": "cd evaluations/programmatic/python && just format"
+    "python:format": "cd evaluations/programmatic/python && just format",
+    "eval:checklist": "tsx evaluations/checklist/cli.ts"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",
