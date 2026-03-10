@@ -148,8 +148,10 @@ export function createWebFetchTool(createSecurity: () => WebFetchSecurityManager
 
 					userAction = approval.action;
 
-					if (userAction === 'allow_domain' || userAction === 'allow_all') {
+					if (userAction === 'allow_domain') {
 						security.approveDomain(host);
+					} else if (userAction === 'allow_all') {
+						security.approveAllDomains();
 					}
 				}
 
@@ -206,6 +208,11 @@ export function createWebFetchTool(createSecurity: () => WebFetchSecurityManager
 							});
 						}
 						redirectUserAction = approval.action;
+						if (redirectUserAction === 'allow_domain') {
+							security.approveDomain(newHost);
+						} else if (redirectUserAction === 'allow_all') {
+							security.approveAllDomains();
+						}
 					}
 
 					// Re-fetch from final URL (host is approved)
@@ -258,18 +265,6 @@ export function createWebFetchTool(createSecurity: () => WebFetchSecurityManager
 
 				// 7. Record fetch and build state updates
 				security.recordFetch();
-
-				// Handle "allow_all" — approve all domains globally
-				if (userAction === 'allow_all' || redirectUserAction === 'allow_all') {
-					security.approveAllDomains();
-				}
-
-				// Add redirect host to approved domains when user chose "allow_domain" or "allow_all"
-				// (initial host was already added via security.approveDomain above)
-				if (redirectUserAction === 'allow_domain' || redirectUserAction === 'allow_all') {
-					const redirectHost = normalizeHost(fetchResult.finalUrl ?? url);
-					security.approveDomain(redirectHost);
-				}
 
 				const stateUpdates: Record<string, unknown> = {
 					...security.getStateUpdates(),
