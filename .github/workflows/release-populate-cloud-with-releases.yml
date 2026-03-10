@@ -80,6 +80,8 @@ jobs:
           -o response.json \
           -w "%{http_code}" \
           --data "$PAYLOAD" \
+          -request POST \
+          -H "Content-Type: application/json" \
           ${{ secrets.N8N_POPULATE_CLOUD_WEBHOOK_DATA }})
 
           echo "HTTP Status: $status"
