@@ -811,6 +811,70 @@ describe('OIDC service', () => {
 				'mock-subject-userinfo-error',
 			);
 		});
+
+		it('should persist new user even if SSO provisioning fails', async () => {
+			const provisioningService = Container.get(ProvisioningService);
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			provisioningService.provisioningConfig.scopesProvisionInstanceRole = true;
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			provisioningService.provisioningConfig.scopesInstanceRoleClaimName = 'n8n_instance_role';
+
+			const provisionSpy = jest
+				.spyOn(provisioningService, 'provisionInstanceRoleForUser')
+				.mockRejectedValueOnce(new Error('Provisioning failed'));
+
+			const state = oidcService.generateState();
+			const nonce = oidcService.generateNonce();
+			const callbackUrl = new URL(
+				`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
+			);
+
+			const mockTokens: mocked_oidc_client.TokenEndpointResponse &
+				mocked_oidc_client.TokenEndpointResponseHelpers = {
+				access_token: 'mock-access-token-provisioning-fail',
+				id_token: 'mock-id-token-provisioning-fail',
+				token_type: 'bearer',
+				claims: () => {
+					return {
+						sub: 'mock-subject-provisioning-fail',
+						iss: 'https://example.com/auth/realms/n8n',
+						aud: 'test-client-id',
+						iat: Math.floor(Date.now() / 1000) - 1000,
+						exp: Math.floor(Date.now() / 1000) + 3600,
+						n8n_instance_role: 'admin',
+					} as mocked_oidc_client.IDToken;
+				},
+				expiresIn: () => 3600,
+			} as mocked_oidc_client.TokenEndpointResponse &
+				mocked_oidc_client.TokenEndpointResponseHelpers;
+
+			authorizationCodeGrantMock.mockResolvedValueOnce(mockTokens);
+
+			fetchUserInfoMock.mockResolvedValueOnce({
+				email_verified: true,
+				email: 'new-user-provisioning-fail@example.com',
+			});
+
+			// loginUser should throw because provisioning failed
+			await expect(oidcService.loginUser(callbackUrl, state.signed, nonce.signed)).rejects.toThrow(
+				'Provisioning failed',
+			);
+
+			expect(provisionSpy).toHaveBeenCalled();
+
+			// But the user should still exist in the database because the
+			// transaction committed before provisioning was attempted
+			const userFromDB = await userRepository.findOne({
+				where: { email: 'new-user-provisioning-fail@example.com' },
+			});
+
+			expect(userFromDB).toBeDefined();
+			expect(userFromDB!.email).toEqual('new-user-provisioning-fail@example.com');
+
+			provisionSpy.mockRestore();
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			provisioningService.provisioningConfig.scopesProvisionInstanceRole = false;
+		});
 	});
 
 	describe('State and nonce', () => {
