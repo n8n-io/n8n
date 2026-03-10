@@ -20,6 +20,7 @@ import type {
 	FanOutCompositeNode,
 	VariableReference,
 	DeferredMergeDownstream,
+	WhileLoopCompositeNode,
 } from './composite-tree';
 import type { SemanticGraph, SemanticNode } from './types';
 import type { WorkflowJSON } from '../types/base';
@@ -542,7 +543,11 @@ function computeVariableAssignments(graph: SemanticGraph): Map<string, string> {
 		for (const sources of node.inputSources.values()) {
 			for (const source of sources) {
 				const predNode = graph.nodes.get(source.from);
-				if (predNode && predNode.type === 'n8n-nodes-base.httpRequest') {
+				if (
+					predNode &&
+					(predNode.type === 'n8n-nodes-base.httpRequest' ||
+						predNode.type === 'n8n-nodes-base.wait')
+				) {
 					nodeNameToVarName.set(predNode.name, varName);
 				}
 			}
@@ -657,6 +662,8 @@ function visitComposite(node: CompositeNode, ctx: SimplifiedGenContext): void {
 			return visitSplitInBatches(node, ctx);
 		case 'fanOut':
 			return visitFanOut(node, ctx);
+		case 'whileLoop':
+			return visitWhileLoop(node, ctx);
 		default:
 			break;
 	}
@@ -740,9 +747,57 @@ function emitChainBody(nodes: CompositeNode[], start: number, ctx: SimplifiedGen
 			continue;
 		}
 
+		// Detect do-while loop pattern: look ahead for a whileLoop composite with isDoWhile
+		const doWhileInfo = detectDoWhilePattern(nodes, i);
+		if (doWhileInfo) {
+			const condition = extractConditionString(doWhileInfo.whileNode.ifNode, ctx);
+			emit(ctx, 'do {');
+			ctx.indent++;
+			// Emit body nodes (from current position to just before the whileLoop composite)
+			for (let j = i; j < doWhileInfo.whileIndex; j++) {
+				if (j > i) {
+					const prev = nodes[j - 1];
+					if (prev.kind === 'leaf' && isMultiLine(prev.node, ctx)) {
+						emit(ctx, '');
+					}
+				}
+				visitComposite(nodes[j], ctx);
+			}
+			ctx.indent--;
+			emit(ctx, `} while (${condition});`);
+			i = doWhileInfo.whileIndex + 1;
+			continue;
+		}
+
 		visitComposite(nodes[i], ctx);
 		i++;
 	}
+}
+
+interface DoWhilePatternInfo {
+	whileNode: WhileLoopCompositeNode;
+	whileIndex: number;
+}
+
+/**
+ * Detect do-while pattern: a cycle target leaf node followed (eventually) by
+ * a whileLoop composite with isDoWhile: true.
+ */
+function detectDoWhilePattern(nodes: CompositeNode[], index: number): DoWhilePatternInfo | null {
+	const current = nodes[index];
+	// The first body node of a do-while is a cycle target (back-edge from the IF)
+	if (current.kind !== 'leaf' || !current.node.annotations.isCycleTarget) return null;
+
+	// Look ahead for the whileLoop composite
+	for (let j = index + 1; j < nodes.length; j++) {
+		const candidate = nodes[j];
+		if (candidate.kind === 'whileLoop' && candidate.isDoWhile) {
+			return { whileNode: candidate, whileIndex: j };
+		}
+		// Stop looking if we hit another branching construct
+		if (candidate.kind === 'ifElse' || candidate.kind === 'switchCase') break;
+	}
+	return null;
 }
 
 function chainHasRespondNode(chain: ChainNode, _ctx: SimplifiedGenContext): boolean {
@@ -862,6 +917,9 @@ function compositeTreeHasRespondNode(node: CompositeNode): boolean {
 					: compositeTreeHasRespondNode(c)
 				: false,
 		);
+	}
+	if (node.kind === 'whileLoop') {
+		return node.bodyChain ? compositeTreeHasRespondNode(node.bodyChain) : false;
 	}
 	return false;
 }
@@ -1001,6 +1059,9 @@ function emitLeafByType(node: SemanticNode, ctx: SimplifiedGenContext): void {
 			break;
 		case 'n8n-nodes-base.respondToWebhook':
 			emitRespondNode(node, ctx);
+			break;
+		case 'n8n-nodes-base.wait':
+			emitWaitNode(node, ctx);
 			break;
 		case '@n8n/n8n-nodes-langchain.agent':
 			emitAiNode(node, ctx);
@@ -1481,6 +1542,89 @@ function emitRespondNode(node: SemanticNode, ctx: SimplifiedGenContext): void {
 	emit(ctx, `respond({ ${args.join(', ')} });`);
 }
 
+// ─── Wait Node ────────────────────────────────────────────────────────────────
+
+const N8N_UNIT_TO_SHORT: Record<string, string> = {
+	seconds: 's',
+	minutes: 'm',
+	hours: 'h',
+	days: 'd',
+};
+
+function emitWaitNode(node: SemanticNode, ctx: SimplifiedGenContext): void {
+	const params = node.json.parameters ?? {};
+	const resume = params.resume as string;
+	const assignedVar = ctx.nodeNameToVarName.get(node.name);
+
+	// Emit @example pin data if present
+	const pinData = ctx.workflowPinData[node.name];
+	if (pinData) {
+		emit(ctx, `/** @example ${JSON.stringify(pinData)} */`);
+	}
+
+	switch (resume) {
+		case 'timeInterval': {
+			const amount = params.amount as number;
+			const unit = N8N_UNIT_TO_SHORT[params.unit as string] ?? 's';
+			emit(ctx, `await wait('${amount}${unit}');`);
+			break;
+		}
+		case 'specificTime': {
+			const dateTime = params.dateTime as string;
+			emit(ctx, `await waitUntil('${dateTime}');`);
+			break;
+		}
+		case 'webhook': {
+			const prefix = assignedVar ? `const ${assignedVar} = ` : '';
+			emit(ctx, `${prefix}await waitForWebhook();`);
+			break;
+		}
+		case 'form': {
+			// Reconstruct form config from params
+			const configParts: string[] = [];
+			if (params.formTitle)
+				configParts.push(`title: '${(params.formTitle as string).replace(/'/g, "\\'")}'`);
+			if (params.formDescription)
+				configParts.push(
+					`description: '${(params.formDescription as string).replace(/'/g, "\\'")}'`,
+				);
+
+			const formFields = params.formFields as
+				| {
+						values?: Array<{
+							fieldLabel: string;
+							fieldType?: string;
+							fieldOptions?: { values: Array<{ option: string }> };
+						}>;
+				  }
+				| undefined;
+			if (formFields?.values && formFields.values.length > 0) {
+				const fields = formFields.values.map((f) => {
+					const parts: string[] = [`label: '${f.fieldLabel}'`];
+					if (f.fieldType && f.fieldType !== 'text') parts.push(`type: '${f.fieldType}'`);
+					if (f.fieldOptions?.values) {
+						const opts = f.fieldOptions.values.map((o) => `'${o.option}'`).join(', ');
+						parts.push(`options: [${opts}]`);
+					}
+					return `{ ${parts.join(', ')} }`;
+				});
+				configParts.push(`fields: [\n    ${fields.join(',\n    ')},\n  ]`);
+			}
+
+			const formPrefix = assignedVar ? `const ${assignedVar} = ` : '';
+			if (configParts.length > 0) {
+				emit(ctx, `${formPrefix}await waitForForm({ ${configParts.join(', ')} });`);
+			} else {
+				emit(ctx, `${formPrefix}await waitForForm();`);
+			}
+			break;
+		}
+		default:
+			emit(ctx, `await wait('0s'); // unknown resume mode: ${resume}`);
+			break;
+	}
+}
+
 // ─── AI Node ─────────────────────────────────────────────────────────────────
 
 function emitAiNode(node: SemanticNode, ctx: SimplifiedGenContext): void {
@@ -1728,6 +1872,31 @@ function visitIfElse(node: IfElseCompositeNode, ctx: SimplifiedGenContext): void
 		ctx.indent--;
 		emit(ctx, '}');
 		break;
+	}
+}
+
+function visitWhileLoop(node: WhileLoopCompositeNode, ctx: SimplifiedGenContext): void {
+	const condition = extractConditionString(node.ifNode, ctx);
+
+	if (node.isDoWhile) {
+		emit(ctx, 'do {');
+		ctx.indent++;
+		// For do-while, body is in the parent chain (before this composite).
+		// The bodyChain is null. Nothing to emit here — body was already emitted.
+		// However, if bodyChain is provided (future-proofing), visit it.
+		if (node.bodyChain) {
+			visitComposite(node.bodyChain, ctx);
+		}
+		ctx.indent--;
+		emit(ctx, `} while (${condition});`);
+	} else {
+		emit(ctx, `while (${condition}) {`);
+		ctx.indent++;
+		if (node.bodyChain) {
+			visitComposite(node.bodyChain, ctx);
+		}
+		ctx.indent--;
+		emit(ctx, '}');
 	}
 }
 

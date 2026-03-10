@@ -1168,6 +1168,156 @@ onManual(async () => {
 		});
 	});
 
+	describe('Phase 19: while / do-while loops', () => {
+		it('should keep do-while without IO in Code node', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  let x = 10;
+  do {
+    x--;
+  } while (x > 0);
+  await http.post('/result', { x });
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			// Loop kept as plain JS inside Code node
+			expect(result.code).toContain('do {');
+			expect(result.code).toContain('x--;');
+			expect(result.code).toContain('while (x > 0)');
+			// No ifElse node for the loop
+			expect(result.code).not.toContain("name: 'While ");
+		});
+
+		it('should keep while without IO in Code node', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  let x = 10;
+  while (x > 0) {
+    x--;
+  }
+  await http.post('/result', { x });
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			// Loop kept as plain JS inside Code node
+			expect(result.code).toContain('while (x > 0)');
+			expect(result.code).toContain('x--;');
+			// No ifElse node for the loop
+			expect(result.code).not.toContain("name: 'While ");
+		});
+
+		it('should compile do-while with IO to IF node with back-edge', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  let status;
+  do {
+    status = await http.get('https://api.example.com/health', {
+      fullResponse: true,
+      neverError: true,
+    });
+  } while (status.statusCode !== 200);
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			// Should have an IF node named 'While 1'
+			expect(result.code).toContain("name: 'While 1'");
+			expect(result.code).toContain('ifElse(');
+			// Should have HTTP node
+			expect(result.code).toContain("type: 'n8n-nodes-base.httpRequest'");
+			// Should have back-edge: if1.to(http1, 0)
+			expect(result.code).toMatch(/while1\.to\(http1, 0\)/);
+		});
+
+		it('should compile while with IO to IF node with back-edge', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  let cursor = 'start';
+  while (cursor) {
+    const page = await http.get('https://api.example.com/data?cursor=' + cursor);
+    cursor = page.nextCursor;
+  }
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			// Should have an IF node named 'While 1'
+			expect(result.code).toContain("name: 'While 1'");
+			expect(result.code).toContain('ifElse(');
+			// Should have HTTP node in the true branch
+			expect(result.code).toContain("type: 'n8n-nodes-base.httpRequest'");
+			// Should have back-edge from last body node back to IF
+			expect(result.code).toMatch(/\w+\.to\(while1\)/);
+		});
+
+		it('should connect post-loop code via IF false output for do-while', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  let status;
+  do {
+    status = await http.get('https://api.example.com/health');
+  } while (status.statusCode !== 200);
+  await http.post('https://api.example.com/done', { status: 'ok' });
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			// Back-edge: while1 true output → http1
+			expect(result.code).toMatch(/while1\.to\(http1, 0\)/);
+			// Exit: while1 false output → next node (http2 or its aggregate)
+			expect(result.code).toMatch(/while1\.to\(\w+, 1\)/);
+		});
+
+		it('should connect post-loop code via IF false output for while', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  let cursor = 'start';
+  while (cursor) {
+    const page = await http.get('https://api.example.com/data');
+    cursor = page.nextCursor;
+  }
+  await http.post('https://api.example.com/done');
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			// Back-edge: body → while1
+			expect(result.code).toMatch(/\w+\.to\(while1\)/);
+			// Exit: while1 false output → post-loop node
+			expect(result.code).toMatch(/while1\.to\(\w+, 1\)/);
+		});
+
+		it('should handle complex conditions with && in while loop', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  let data;
+  do {
+    data = await http.get('https://api.example.com/check');
+  } while (data.status !== 'done' && data.retries < 10);
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain("name: 'While 1'");
+			expect(result.code).toContain('"combinator":"and"');
+			// Two conditions
+			expect(result.code).toContain('"notEquals"');
+			expect(result.code).toContain('"lt"');
+		});
+
+		it('should handle while without IO nested in code node', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const items = await http.get('https://api.example.com/items');
+  let i = 0;
+  while (i < items.length) {
+    i++;
+  }
+  await http.post('https://api.example.com/done', { count: i });
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			// No While IF node — loop stays in Code node
+			expect(result.code).not.toContain("name: 'While ");
+			expect(result.code).toContain('while (i < items.length)');
+		});
+	});
+
 	// ─── Real-world workflow validation ──────────────────────────────────────
 	// Fixture-driven tests: each .txt file in __fixtures__/ contains a title,
 	// input DSL, and expected output separated by === markers. Files with a
@@ -1239,7 +1389,9 @@ function getRoundTripSkipReason(_title: string): string | undefined {
 
 // Known schema violations in existing fixtures (to be fixed separately).
 // Each entry maps fixture title substring to the reason.
-const KNOWN_SCHEMA_VIOLATIONS: Record<string, string> = {};
+const KNOWN_SCHEMA_VIOLATIONS: Record<string, string> = {
+	W35: 'Wait node form fieldType schema expects expression but plain string is valid',
+};
 
 function getKnownSchemaSkip(title: string): string | undefined {
 	for (const [key, reason] of Object.entries(KNOWN_SCHEMA_VIOLATIONS)) {

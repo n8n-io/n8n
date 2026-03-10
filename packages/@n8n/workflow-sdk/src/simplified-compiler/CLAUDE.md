@@ -67,6 +67,7 @@ Source JS string
   -> walkStatements() per callback
      -> extractIOCall() (http, ai, workflow, respond)
      -> processIfStatement() / processSwitchStatement()
+     -> processWhileStatement() / processDoWhileStatement()
      -> processForOfStatement() / processPromiseAll()
      -> flushPendingCode() (batch non-IO statements into Code nodes)
   -> generateSDKCode()
@@ -76,7 +77,7 @@ Source JS string
 Key tracking during compilation:
 - `varSourceMap`: variable name -> source node name (for expression resolution)
 - `varSourceKind`: variable -> `'io'` | `'code'` (determines reference style)
-- Counters: `http`, `code`, `if`, `switch`, `loop`, `respond`, `wf`, `set`
+- Counters: `http`, `code`, `if`, `switch`, `loop`, `respond`, `wf`, `set`, `while`
 
 ### Decompile: SDK -> Simplified JS
 
@@ -122,7 +123,7 @@ Assert: normalizeSDK(SDK₁) === normalizeSDK(SDK₂)
 - **Forward test**: `transpileWorkflowJS(input.js)` must equal `output.js` exactly
 - **Round-trip test**: compile -> decompile -> recompile must produce structurally identical SDK
 
-**Fixtures:** `__fixtures__/w01-w32/`, each containing:
+**Fixtures:** `__fixtures__/w01-w38/`, each containing:
 - `meta.json` — title, templateId, optional `skip` flag
 - `input.js` — simplified DSL source
 - `output.js` — expected SDK output
@@ -133,7 +134,7 @@ Assert: normalizeSDK(SDK₁) === normalizeSDK(SDK₂)
 |------|---------|
 | `compiler.ts` | Main transpiler: simplified JS -> Workflow-SDK TypeScript |
 | `decompiler.ts` | Thin wrapper: SDK -> simplified JS (orchestrates codegen pipeline) |
-| `compiler.test.ts` | Forward tests (18 phases) + round-trip tests + report generation |
+| `compiler.test.ts` | Forward tests (19 phases) + round-trip tests + report generation |
 | `execution.test.ts` | Execution tests: compile → parse → pin data → execute with nock |
 | `execution-utils.ts` | Lightweight workflow executor: `executeWorkflow()`, `buildAdditionalData()`, mock task runner |
 | `decompiler-debug.test.ts` | Debug test for decompile round-trips with diff logging |
@@ -142,7 +143,7 @@ Assert: normalizeSDK(SDK₁) === normalizeSDK(SDK₂)
 | `examples.ts` | Pre-built DSL examples for UI quick-start templates |
 | `generate-report.ts` | HTML report generator for fixture validation results + expectation badges/diffs |
 | `index.ts` | Public exports: `transpileWorkflowJS`, `decompileWorkflowSDK`, `COMPILER_EXAMPLES` |
-| `__fixtures__/w01-w32/` | Test fixtures (real workflow patterns, w18-w22 sub-functions, w23-w24 try/catch, w25 CRUD+branching, w26 loop+sub-fn, w27 loop+try/catch, w28 else-if+numeric, w29 try+switch, w30 multi-trigger independent, w31 Promise.all, w32 app trigger) |
+| `__fixtures__/w01-w38/` | Test fixtures (real workflow patterns, w18-w22 sub-functions, w23-w24 try/catch, w25 CRUD+branching, w26 loop+sub-fn, w27 loop+try/catch, w28 else-if+numeric, w29 try+switch, w30 multi-trigger independent, w31 Promise.all, w32 app trigger, w33 wait-time, w34 wait-webhook, w35 wait-form, w36 wait-webhook-simple, w37 wait-in-webhook-flow, w38 wait-form-no-callback) |
 
 **Decompile pipeline (in `src/codegen/`):**
 
@@ -206,6 +207,28 @@ onTrigger('jira', {
 
 **Decompiler**: `NODE_TYPE_TO_APP_TRIGGER` reverse lookup detects app trigger nodes. `emitTriggerHeader()` reconstructs `onTrigger('serviceName', { ...params, credential }, ...)` from the node's parameters and credentials.
 
+## Wait Node (`n8n-nodes-base.wait` v1.1)
+
+Five DSL functions map to the Wait node with different `resume` modes:
+
+| DSL Function | Resume Mode | Callback? | Expression Override |
+|---|---|---|---|
+| `await wait('5s')` | `timeInterval` | No | — |
+| `setTimeout(callback, ms)` | `timeInterval` | Yes (body emitted AFTER wait) | — |
+| `await waitUntil('2024-12-25T00:00:00Z')` | `specificTime` | No | — |
+| `await waitForWebhook(callback?)` | `webhook` | Yes (body emitted BEFORE wait) | `resumeUrl` → `$execution.resumeUrl` |
+| `await waitForForm(config, callback?)` | `form` | Yes (body emitted BEFORE wait) | `formUrl` → `$execution.resumeFormUrl` |
+
+**Callback semantics**: `setTimeout` emits wait THEN body (like native JS). `waitForWebhook`/`waitForForm` emit body THEN wait (setup runs before pause, e.g. send callback URL to external service).
+
+**Expression overrides**: Callback parameters (`resumeUrl`, `formUrl`) are mapped to n8n execution expressions via sentinel values in `varSourceMap` (`__execution_resumeUrl__`, `__execution_resumeFormUrl__`). These are intercepted in `resolveExpressionFromAST()` and `resolveJsonRefs()`.
+
+**Duration parsing**: `wait('5s')` → regex `/^(\d+)\s*(s|m|h|d)$/` → `{ amount, unit }`. `setTimeout(cb, ms)` → convert ms to best unit (days > hours > minutes > seconds).
+
+**Variable assignment**: `const data = await waitForWebhook()` emits an aggregate Code node after the Wait node (same pattern as HTTP). Time-based waits don't support assignment.
+
+**Decompiler**: `emitWaitNode()` in `simplified-generator.ts` dispatches by `resume` param. Time-based → `await wait('5s')`. Specific time → `await waitUntil(...)`. Webhook/form → simple `await waitForWebhook()`/`await waitForForm({...})`. The callback is not reconstructed in the decompiler (round-trip produces linear code).
+
 ## Supported Language Features
 
 | Category | DSL Syntax | Compiles To |
@@ -219,13 +242,19 @@ onTrigger('jira', {
 | **Respond** | `respond({ status, body, headers })` | respondToWebhook node |
 | **If/else** | `if (cond) { ... } else { ... }` | ifElse node with branches |
 | **Switch** | `switch (expr) { case: ... }` | switchCase node |
-| **Loops** | `for (const x of items) { ... }` | Splitter Code + aggregate |
+| **Loops (for-of)** | `for (const x of items) { ... }` | Splitter Code + aggregate |
+| **Loops (while)** | `while (cond) { ... }` | IF node (`While N`) with body as true branch + back-edge |
+| **Loops (do-while)** | `do { ... } while (cond)` | Body nodes + IF node (`While N`) with back-edge to first body node |
 | **Try/catch** | `try { ... } catch { ... }` | onError behavior on nodes |
 | **Promise.all** | `const [a, b] = await Promise.all([http.get(...), ...])` | Fan-out HTTP nodes + Merge + collect Code node |
 | **Sub-functions** | `async function fn(params) { ... }` then `await fn(args)` | Execute Workflow node with inline `workflowJson` |
 | **Variables** | `const x = "value"` | Set node (static assignments) |
 | **Code** | Any other JS statements | Code node with `jsCode` |
 | **Credentials** | `{ auth: { type: 'bearer', credential: 'My Key' } }` | Node credentials config |
+| **Wait (time)** | `await wait('5s')`, `setTimeout(cb, 5000)` | Wait node (`resume: 'timeInterval'`) |
+| **Wait (specific time)** | `await waitUntil('2024-12-25T00:00:00Z')` | Wait node (`resume: 'specificTime'`) |
+| **Wait (webhook)** | `await waitForWebhook(cb?)` | Wait node (`resume: 'webhook'`), callback body emitted BEFORE wait |
+| **Wait (form)** | `await waitForForm(config, cb?)` | Wait node (`resume: 'form'`), callback body emitted BEFORE wait |
 | **Pin Data** | `/** @example [{ id: 1 }] */` before IO call or trigger | `config.pinData` on node |
 
 ## Development Process
@@ -258,7 +287,7 @@ pushd packages/@n8n/workflow-sdk && pnpm test decompiler-debug.test.ts && popd
 
 ## Conventions
 
-- **Node variable naming**: `t0` (trigger), `http1`, `code1`, `if1`, `switch1`, `set1`, `agg1`, `respond1`, `wf1`
+- **Node variable naming**: `t0` (trigger), `http1`, `code1`, `if1`, `switch1`, `set1`, `agg1`, `respond1`, `wait1`, `wf1`, `while1`
 - **No n8n expressions in DSL**: plain JS variables only — compiler resolves to `={{ $('NodeName').first().json.path }}`
 - **Never use `$json` in generated expressions**: always use explicit `$('NodeName').first().json.prop` references. This ensures expressions are unambiguous and don't depend on predecessor ordering.
 - **`executeOnce: true`** on all non-trigger nodes (single-item semantics)
@@ -329,8 +358,8 @@ Fixtures with HTTP calls can provide a `nock.ts` file exporting `setupNock(): no
 
 ## Coverage Status
 
-- **Round-trip**: 32/32 fixtures pass (100%)
-- **Schema validation**: 32/32 fixtures pass (100%). `KNOWN_SCHEMA_VIOLATIONS` is empty.
+- **Round-trip**: 38/38 fixtures pass (100%)
+- **Schema validation**: 37/38 fixtures pass. `KNOWN_SCHEMA_VIOLATIONS` has W35 (Wait node form fieldType schema).
 - **Execution**: 29/32 pass, 3 fail (W05, W10, W15). No skips.
   - W05: Pre-existing issue — spreadsheet rows are arrays not objects, splitter produces invalid items
   - W10: `extractLinks` function undefined in Code node mock environment
@@ -376,6 +405,7 @@ Deep-dive architecture docs live in `docs/` — read on demand when working on s
 | `docs/dynamic-urls.md` | BinaryExpression URL resolution (lazy resolution timing, decompiler splitOnPlus) |
 | `docs/execution-tests.md` | Execution test harness (task runner, nock mocking, expectations, credentials) |
 | `docs/round-trip-fixes.md` | W25/W26/W27 historical bug fixes |
+| `docs/while-loops.md` | While/do-while loop compilation and decompilation (IF nodes, back-edges, cycle detection) |
 
 ## Updating This Document
 

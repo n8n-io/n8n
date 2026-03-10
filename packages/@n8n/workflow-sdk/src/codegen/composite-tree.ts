@@ -148,6 +148,19 @@ export interface MultiOutputNode extends CompositeNodeBase {
 }
 
 /**
+ * While/do-while loop composite
+ * Represents a condition-based loop with a back-edge cycle in the workflow graph.
+ * - while: IF checked first, body on true branch, back-edge from body to IF
+ * - do-while: body runs first, IF checked after, back-edge from IF true to body
+ */
+export interface WhileLoopCompositeNode extends CompositeNodeBase {
+	kind: 'whileLoop';
+	ifNode: SemanticNode;
+	bodyChain: CompositeNode | null;
+	isDoWhile: boolean;
+}
+
+/**
  * Union of all composite node types
  */
 export type CompositeNode =
@@ -160,7 +173,8 @@ export type CompositeNode =
 	| SplitInBatchesCompositeNode
 	| FanOutCompositeNode
 	| ExplicitConnectionsNode
-	| MultiOutputNode;
+	| MultiOutputNode
+	| WhileLoopCompositeNode;
 
 /**
  * Deferred input connection - represents a connection that should be expressed

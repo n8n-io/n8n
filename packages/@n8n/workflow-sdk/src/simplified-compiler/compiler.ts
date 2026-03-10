@@ -94,7 +94,7 @@ interface AiSubnodeInfo {
 }
 
 interface IOCall {
-	type: 'http' | 'ai' | 'workflow' | 'respond';
+	type: 'http' | 'ai' | 'workflow' | 'respond' | 'wait';
 	method: string;
 	assignedVar: string | null;
 	url?: string;
@@ -138,6 +138,7 @@ interface EmittedNode {
 		| 'set'
 		| 'ai'
 		| 'respond'
+		| 'wait'
 		| 'workflow'
 		| 'ifElse'
 		| 'switchCase'
@@ -179,6 +180,20 @@ interface ParallelGroup {
 	collectVar: string; // the collect Code node var (restructures data)
 }
 
+interface WhileLoopGroup {
+	ifVar: string;
+	ifNodeName: string;
+	/** For do-while: first body node (back-edge target) */
+	backEdgeTarget?: string;
+	/** For while: last body node (back-edge source) */
+	backEdgeSource?: string;
+	/** Which IF output is the loop continuation (0 = true) */
+	backEdgeOutputIndex: number;
+	isDoWhile: boolean;
+	/** First post-loop node var (set during chain splitting) */
+	exitTarget?: string;
+}
+
 interface TranspilerContext {
 	source: string;
 	nodes: EmittedNode[];
@@ -190,6 +205,7 @@ interface TranspilerContext {
 	switchCounter: number;
 	sibCounter: number;
 	respondCounter: number;
+	waitCounter: number;
 	wfCounter: number;
 	setCounter: number;
 	aggCounter: number;
@@ -214,6 +230,8 @@ interface TranspilerContext {
 	tryCatchCounter: number;
 	errorConnections: Array<{ sourceVar: string; catchChainStartVar: string }>;
 	parallelGroups: ParallelGroup[];
+	whileLoopGroups: WhileLoopGroup[];
+	whileCounter: number;
 	pendingPinData?: unknown[];
 }
 
@@ -230,6 +248,9 @@ function resolveJsonRefs(str: string, ctx: TranspilerContext): string {
 		(match: string, root: string, rest: string) => {
 			const sourceNode = ctx.varSourceMap.get(root);
 			if (!sourceNode) return match;
+			// Special execution expression overrides
+			if (sourceNode === '__execution_resumeUrl__') return `$execution.resumeUrl`;
+			if (sourceNode === '__execution_resumeFormUrl__') return `$execution.resumeFormUrl`;
 			const kind = ctx.varSourceKind.get(root) ?? 'code';
 			if (kind === 'io') {
 				// IO node output: variable IS the json, strip root
@@ -391,6 +412,7 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 	const allTryCatchBodies: CompiledFunction[] = [];
 	const allErrorConnections: Array<{ sourceVar: string; catchChainStartVar: string }> = [];
 	const allParallelGroups: ParallelGroup[] = [];
+	const allWhileLoopGroups: WhileLoopGroup[] = [];
 
 	// Track compiled shared pipelines: fnName → first pipeline node var
 	const compiledSharedPipelineFirstNode = new Map<string, string>();
@@ -413,6 +435,7 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 					tryCatchBodies,
 					errorConnections,
 					parallelGroups,
+					whileLoopGroups,
 				} = transpileCallback(
 					inlinedCb,
 					source,
@@ -435,6 +458,7 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 				allTryCatchBodies.push(...tryCatchBodies);
 				allErrorConnections.push(...errorConnections);
 				allParallelGroups.push(...parallelGroups);
+				allWhileLoopGroups.push(...whileLoopGroups);
 			} else {
 				// Subsequent callback: just create trigger, connect to shared chain
 				const triggerVar = `t${allNodes.length}`;
@@ -454,6 +478,7 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 			tryCatchBodies,
 			errorConnections,
 			parallelGroups,
+			whileLoopGroups,
 		} = transpileCallback(
 			cb,
 			source,
@@ -471,6 +496,7 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 		allTryCatchBodies.push(...tryCatchBodies);
 		allErrorConnections.push(...errorConnections);
 		allParallelGroups.push(...parallelGroups);
+		allWhileLoopGroups.push(...whileLoopGroups);
 	}
 
 	// Step 6: Generate final SDK code
@@ -482,6 +508,7 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 		allTryCatchBodies,
 		allErrorConnections,
 		allParallelGroups,
+		allWhileLoopGroups,
 	);
 	return { code, errors };
 }
@@ -945,6 +972,91 @@ function isRespondCall(stmt: AcornNode): boolean {
 	return false;
 }
 
+// ─── Wait Detection ──────────────────────────────────────────────────────────
+
+const WAIT_CALLEE_NAMES = new Set(['wait', 'waitUntil', 'waitForWebhook', 'waitForForm']);
+
+interface WaitCallInfo {
+	calleeName: string;
+	args: AcornNode[];
+	assignedVar: string | null;
+}
+
+/**
+ * Check if a statement is a wait call: `await wait('5s')`, `await waitUntil(...)`,
+ * `await waitForWebhook(...)`, `await waitForForm(...)`, or `setTimeout(cb, ms)`.
+ * Returns the callee name and args, or null if not a wait call.
+ */
+function extractWaitCall(stmt: AcornNode): WaitCallInfo | null {
+	// await wait(...) or const x = await waitForWebhook(...)
+	if (stmt.type === 'ExpressionStatement' && stmt.expression) {
+		const expr = stmt.expression;
+		// await wait(...)
+		if (expr.type === 'AwaitExpression' && expr.argument?.type === 'CallExpression') {
+			const call = expr.argument;
+			if (call.callee?.type === 'Identifier' && WAIT_CALLEE_NAMES.has(call.callee.name ?? '')) {
+				return { calleeName: call.callee.name!, args: call.arguments ?? [], assignedVar: null };
+			}
+		}
+		// setTimeout(callback, ms) — not awaited
+		if (
+			expr.type === 'CallExpression' &&
+			expr.callee?.type === 'Identifier' &&
+			expr.callee.name === 'setTimeout'
+		) {
+			return { calleeName: 'setTimeout', args: expr.arguments ?? [], assignedVar: null };
+		}
+	}
+
+	// const data = await waitForWebhook(...)
+	if (stmt.type === 'VariableDeclaration' && stmt.declarations) {
+		for (const decl of stmt.declarations) {
+			if (decl.init?.type === 'AwaitExpression' && decl.init.argument?.type === 'CallExpression') {
+				const call = decl.init.argument;
+				if (call.callee?.type === 'Identifier' && WAIT_CALLEE_NAMES.has(call.callee.name ?? '')) {
+					return {
+						calleeName: call.callee.name!,
+						args: call.arguments ?? [],
+						assignedVar: decl.id?.name ?? null,
+					};
+				}
+			}
+		}
+	}
+
+	return null;
+}
+
+// ─── Wait Duration Parsing ───────────────────────────────────────────────────
+
+const DURATION_REGEX = /^(\d+)\s*(s|m|h|d)$/;
+
+const DURATION_UNIT_MAP: Record<string, string> = {
+	s: 'seconds',
+	m: 'minutes',
+	h: 'hours',
+	d: 'days',
+};
+
+/**
+ * Parse a duration string like '5s', '2m', '1h', '3d' into amount + n8n unit.
+ */
+function parseWaitDurationString(str: string): { amount: number; unit: string } | null {
+	const match = DURATION_REGEX.exec(str);
+	if (!match) return null;
+	return { amount: Number(match[1]), unit: DURATION_UNIT_MAP[match[2]] };
+}
+
+/**
+ * Convert milliseconds to the best n8n unit (days > hours > minutes > seconds).
+ */
+function parseWaitDurationMs(ms: number): { amount: number; unit: string } {
+	if (ms >= 86400000 && ms % 86400000 === 0) return { amount: ms / 86400000, unit: 'days' };
+	if (ms >= 3600000 && ms % 3600000 === 0) return { amount: ms / 3600000, unit: 'hours' };
+	if (ms >= 60000 && ms % 60000 === 0) return { amount: ms / 60000, unit: 'minutes' };
+	return { amount: ms / 1000, unit: 'seconds' };
+}
+
 // ─── Function Call Handling ───────────────────────────────────────────────────
 
 interface FunctionCallInfo {
@@ -1124,6 +1236,7 @@ function compileFunctionToSDK(
 		switchCounter: 0,
 		sibCounter: 0,
 		respondCounter: 0,
+		waitCounter: 0,
 		wfCounter: 0,
 		setCounter: 0,
 		aggCounter: 0,
@@ -1146,6 +1259,8 @@ function compileFunctionToSDK(
 		tryCatchCounter: 0,
 		errorConnections: [],
 		parallelGroups: [],
+		whileLoopGroups: [],
+		whileCounter: 0,
 	};
 
 	// Generate executeWorkflowTrigger as first node
@@ -1240,6 +1355,7 @@ function transpileCallback(
 	tryCatchBodies: CompiledFunction[];
 	errorConnections: Array<{ sourceVar: string; catchChainStartVar: string }>;
 	parallelGroups: ParallelGroup[];
+	whileLoopGroups: WhileLoopGroup[];
 } {
 	const ctx: TranspilerContext = {
 		source,
@@ -1252,6 +1368,7 @@ function transpileCallback(
 		switchCounter: nodeOffset,
 		sibCounter: nodeOffset,
 		respondCounter: nodeOffset,
+		waitCounter: nodeOffset,
 		wfCounter: nodeOffset,
 		setCounter: nodeOffset,
 		aggCounter: nodeOffset,
@@ -1274,6 +1391,8 @@ function transpileCallback(
 		tryCatchCounter: nodeOffset,
 		errorConnections: [],
 		parallelGroups: [],
+		whileLoopGroups: [],
+		whileCounter: nodeOffset,
 	};
 
 	// Generate trigger node
@@ -1298,14 +1417,23 @@ function transpileCallback(
 	// Flush remaining code
 	flushPendingCode(ctx);
 
-	// Build chain expression, splitting at parallel group boundaries.
+	// Build chain expression, splitting at parallel group and while-loop boundaries.
 	// Each parallel group's sourceVar ends a chain segment; the next segment
 	// starts from collectVar. This prevents a direct connection from source → collect
 	// (which would fire collect before parallel branches complete).
+	// Each while-loop IF var ends a chain segment; the next segment starts with
+	// ifVar.to(nextVar, 1) (false/exit output) emitted as a standalone connection.
 	const nodeVars = ctx.nodes.filter((n) => !n.branchOnly).map((n) => n.varName);
 
-	if (ctx.parallelGroups.length === 0) {
-		// No parallel groups — single chain
+	// Collect all boundary vars (parallel sources + while IF vars)
+	const parallelSourceVars = new Set(ctx.parallelGroups.map((g) => g.sourceVar));
+	const parallelCollectVars = new Map(ctx.parallelGroups.map((g) => [g.sourceVar, g.collectVar]));
+	const whileIfVars = new Set(ctx.whileLoopGroups.map((g) => g.ifVar));
+
+	const hasBoundaries = parallelSourceVars.size > 0 || whileIfVars.size > 0;
+
+	if (!hasBoundaries) {
+		// No boundaries — single chain
 		let chainExpr: string;
 		if (nodeVars.length <= 1) {
 			chainExpr = nodeVars[0] ?? triggerVar;
@@ -1323,21 +1451,28 @@ function transpileCallback(
 			tryCatchBodies: ctx.compiledTryCatchBodies,
 			errorConnections: ctx.errorConnections,
 			parallelGroups: ctx.parallelGroups,
+			whileLoopGroups: ctx.whileLoopGroups,
 		};
 	}
 
-	// With parallel groups — split chain at boundaries
-	const parallelSourceVars = new Set(ctx.parallelGroups.map((g) => g.sourceVar));
-	const parallelCollectVars = new Map(ctx.parallelGroups.map((g) => [g.sourceVar, g.collectVar]));
+	// Build map of while IF var → WhileLoopGroup for exit target tracking
+	const whileIfVarToGroup = new Map(ctx.whileLoopGroups.map((g) => [g.ifVar, g]));
 
-	// Split nodeVars into segments at parallel boundaries
+	// Split nodeVars into segments at boundaries
 	const segments: string[][] = [[]];
-	for (const v of nodeVars) {
+	for (let vi = 0; vi < nodeVars.length; vi++) {
+		const v = nodeVars[vi];
 		segments[segments.length - 1].push(v);
 		if (parallelSourceVars.has(v)) {
 			// End current segment, start new one from collectVar
 			const collectVar = parallelCollectVars.get(v)!;
 			segments.push([collectVar]);
+		} else if (whileIfVars.has(v)) {
+			// End current segment — record exit target if there's a next node
+			const nextVar = vi + 1 < nodeVars.length ? nodeVars[vi + 1] : undefined;
+			const group = whileIfVarToGroup.get(v)!;
+			group.exitTarget = nextVar;
+			segments.push([]);
 		}
 	}
 
@@ -1358,11 +1493,12 @@ function transpileCallback(
 	return {
 		nodes: ctx.nodes,
 		chainExpr,
-		extraChains: chainExprs.slice(1),
+		extraChains: chainExprs.length > 1 ? chainExprs.slice(1) : undefined,
 		loopBodies: ctx.compiledLoopBodies,
 		tryCatchBodies: ctx.compiledTryCatchBodies,
 		errorConnections: ctx.errorConnections,
 		parallelGroups: ctx.parallelGroups,
+		whileLoopGroups: ctx.whileLoopGroups,
 	};
 }
 
@@ -1435,6 +1571,33 @@ function walkStatements(
 			continue;
 		}
 
+		// Check for wait calls: wait(), setTimeout(), waitUntil(), waitForWebhook(), waitForForm()
+		const waitCall = extractWaitCall(stmt);
+		if (waitCall) {
+			const waitPinData = ctx.pendingPinData;
+			ctx.pendingPinData = undefined;
+			switch (waitCall.calleeName) {
+				case 'wait':
+					if (waitCall.args[0]?.type === 'Literal' && typeof waitCall.args[0].value === 'string') {
+						processWaitTimeCall(ctx, waitCall.args[0].value as string, waitPinData);
+					}
+					break;
+				case 'setTimeout':
+					processSetTimeoutCall(ctx, waitCall, comments);
+					break;
+				case 'waitUntil':
+					processWaitUntilCall(ctx, waitCall.args, waitPinData);
+					break;
+				case 'waitForWebhook':
+					processWaitForWebhookCall(ctx, waitCall, comments, waitPinData);
+					break;
+				case 'waitForForm':
+					processWaitForFormCall(ctx, waitCall, comments, waitPinData);
+					break;
+			}
+			continue;
+		}
+
 		// Clear pending pin data if statement was not an IO call or respond
 		ctx.pendingPinData = undefined;
 
@@ -1451,6 +1614,16 @@ function walkStatements(
 
 		if (stmt.type === 'ForOfStatement') {
 			processForOfStatement(ctx, stmt, comments);
+			continue;
+		}
+
+		if (stmt.type === 'DoWhileStatement') {
+			processDoWhileStatement(ctx, stmt, comments);
+			continue;
+		}
+
+		if (stmt.type === 'WhileStatement') {
+			processWhileStatement(ctx, stmt, comments);
 			continue;
 		}
 
@@ -1631,6 +1804,300 @@ function processRespondCall(ctx: TranspilerContext, stmt: AcornNode, pinData?: u
 	ctx.prevVar = respondVar;
 }
 
+// ─── Wait Processing ─────────────────────────────────────────────────────────
+
+function emitWaitNode(
+	ctx: TranspilerContext,
+	params: Record<string, unknown>,
+	pinData?: unknown[],
+): string {
+	ctx.waitCounter++;
+	const waitVar = `wait${ctx.waitCounter}`;
+	const nodeName = `Wait ${ctx.waitCounter}`;
+
+	const configObj: Record<string, unknown> = {
+		name: nodeName,
+		parameters: params,
+		executeOnce: true,
+	};
+	if (pinData) {
+		configObj.pinData = pinData;
+	}
+	const configStr = JSON.stringify(configObj, null, 2)
+		.split('\n')
+		.map((line, i) => (i === 0 ? line : '  ' + line))
+		.join('\n');
+
+	const sdkCode = `const ${waitVar} = node({
+  type: 'n8n-nodes-base.wait', version: 1.1,
+  config: ${configStr}
+});`;
+
+	ctx.nodes.push({
+		varName: waitVar,
+		sdkCode,
+		kind: 'wait',
+		nodeName,
+	});
+	ctx.prevVar = waitVar;
+	return waitVar;
+}
+
+function processWaitTimeCall(
+	ctx: TranspilerContext,
+	durationStr: string,
+	pinData?: unknown[],
+): void {
+	flushPendingCode(ctx);
+
+	const parsed = parseWaitDurationString(durationStr);
+	if (!parsed) {
+		ctx.errors.push({ message: `Invalid wait duration: '${durationStr}'`, category: 'syntax' });
+		return;
+	}
+	emitWaitNode(ctx, { resume: 'timeInterval', amount: parsed.amount, unit: parsed.unit }, pinData);
+}
+
+function processSetTimeoutCall(
+	ctx: TranspilerContext,
+	waitInfo: WaitCallInfo,
+	comments: Array<{ type: string; value: string; start: number; end: number }>,
+): void {
+	flushPendingCode(ctx);
+
+	const args = waitInfo.args;
+	// setTimeout(callback, ms) — last arg is ms, first arg is callback
+	const callbackArg = args[0];
+	const msArg = args[args.length - 1];
+
+	if (!msArg || msArg.type !== 'Literal' || typeof msArg.value !== 'number') {
+		ctx.errors.push({
+			message: 'setTimeout requires a numeric delay as second argument',
+			category: 'syntax',
+		});
+		return;
+	}
+
+	const parsed = parseWaitDurationMs(msArg.value as number);
+	emitWaitNode(ctx, { resume: 'timeInterval', amount: parsed.amount, unit: parsed.unit });
+
+	// Walk callback body
+	if (
+		callbackArg &&
+		(callbackArg.type === 'FunctionExpression' || callbackArg.type === 'ArrowFunctionExpression')
+	) {
+		const bodyNode = callbackArg.body as unknown as AcornNode;
+		const bodyStmts =
+			bodyNode?.type === 'BlockStatement' && bodyNode.body
+				? bodyNode.body
+				: bodyNode
+					? [bodyNode]
+					: [];
+		walkStatements(ctx, bodyStmts, comments);
+	}
+}
+
+function processWaitForWebhookCall(
+	ctx: TranspilerContext,
+	waitInfo: WaitCallInfo,
+	comments: Array<{ type: string; value: string; start: number; end: number }>,
+	pinData?: unknown[],
+): void {
+	flushPendingCode(ctx);
+
+	const args = waitInfo.args;
+
+	// Find callback function (last arg that's a function)
+	let callbackArg: AcornNode | null = null;
+	let callbackParamName: string | null = null;
+
+	for (let i = args.length - 1; i >= 0; i--) {
+		if (args[i].type === 'FunctionExpression' || args[i].type === 'ArrowFunctionExpression') {
+			callbackArg = args[i];
+			// Extract callback param name (resumeUrl)
+			const params = callbackArg.params ?? [];
+			if (params.length > 0 && params[0].type === 'Identifier') {
+				callbackParamName = params[0].name ?? null;
+			}
+			break;
+		}
+	}
+
+	// Set up expression override for resumeUrl
+	if (callbackParamName) {
+		ctx.varSourceMap.set(callbackParamName, '__execution_resumeUrl__');
+		ctx.varSourceKind.set(callbackParamName, 'io');
+	}
+
+	// Walk callback body BEFORE emitting wait node
+	if (callbackArg) {
+		const bodyNode = callbackArg.body as unknown as AcornNode;
+		const bodyStmts =
+			bodyNode?.type === 'BlockStatement' && bodyNode.body
+				? bodyNode.body
+				: bodyNode
+					? [bodyNode]
+					: [];
+
+		// Mark nodes emitted in callback with @wait-setup marker
+		const nodeCountBefore = ctx.nodes.length;
+		walkStatements(ctx, bodyStmts, comments);
+		flushPendingCode(ctx);
+
+		// Add @wait-setup marker to Code nodes emitted in callback
+		for (let i = nodeCountBefore; i < ctx.nodes.length; i++) {
+			const n = ctx.nodes[i];
+			if (n.kind === 'http' && n.sdkCode.includes('jsonBody')) {
+				// HTTP nodes with body refs to resumeUrl will have $execution.resumeUrl resolved
+			}
+		}
+	}
+
+	// Clean up expression override
+	if (callbackParamName) {
+		ctx.varSourceMap.delete(callbackParamName);
+		ctx.varSourceKind.delete(callbackParamName);
+	}
+
+	// Build wait node params
+	const waitParams: Record<string, unknown> = { resume: 'webhook' };
+
+	// Extract options if first arg is an object (not a function)
+	if (
+		args.length > 0 &&
+		args[0].type !== 'FunctionExpression' &&
+		args[0].type !== 'ArrowFunctionExpression'
+	) {
+		const opts = extractObjectLiteral(args[0]);
+		if (opts) {
+			if (opts.httpMethod) waitParams.httpMethod = opts.httpMethod;
+			if (opts.webhookSuffix) {
+				waitParams.options = {
+					...((waitParams.options as Record<string, unknown>) ?? {}),
+					webhookSuffix: opts.webhookSuffix,
+				};
+			}
+		}
+	}
+
+	emitWaitNode(ctx, waitParams, pinData);
+
+	// If there's an assigned variable, emit aggregate node for webhook payload
+	if (waitInfo.assignedVar) {
+		const aggNode = emitAggregateNode(waitInfo.assignedVar, `Wait ${ctx.waitCounter}`, ctx);
+		ctx.nodes.push(aggNode);
+		ctx.prevVar = aggNode.varName;
+		ctx.varSourceMap.set(waitInfo.assignedVar, aggNode.nodeName);
+		ctx.varSourceKind.set(waitInfo.assignedVar, 'aggregate');
+	}
+}
+
+function processWaitForFormCall(
+	ctx: TranspilerContext,
+	waitInfo: WaitCallInfo,
+	comments: Array<{ type: string; value: string; start: number; end: number }>,
+	pinData?: unknown[],
+): void {
+	flushPendingCode(ctx);
+
+	const args = waitInfo.args;
+
+	// Find config object (first arg) and callback (last function arg)
+	let configArg: AcornNode | null = null;
+	let callbackArg: AcornNode | null = null;
+	let callbackParamName: string | null = null;
+
+	for (const arg of args) {
+		if (arg.type === 'ObjectExpression') {
+			configArg = arg;
+		} else if (arg.type === 'FunctionExpression' || arg.type === 'ArrowFunctionExpression') {
+			callbackArg = arg;
+			const params = callbackArg.params ?? [];
+			if (params.length > 0 && params[0].type === 'Identifier') {
+				callbackParamName = params[0].name ?? null;
+			}
+		}
+	}
+
+	// Set up expression override for formUrl
+	if (callbackParamName) {
+		ctx.varSourceMap.set(callbackParamName, '__execution_resumeFormUrl__');
+		ctx.varSourceKind.set(callbackParamName, 'io');
+	}
+
+	// Walk callback body BEFORE emitting wait node
+	if (callbackArg) {
+		const bodyNode = callbackArg.body as unknown as AcornNode;
+		const bodyStmts =
+			bodyNode?.type === 'BlockStatement' && bodyNode.body
+				? bodyNode.body
+				: bodyNode
+					? [bodyNode]
+					: [];
+		walkStatements(ctx, bodyStmts, comments);
+		flushPendingCode(ctx);
+	}
+
+	// Clean up expression override
+	if (callbackParamName) {
+		ctx.varSourceMap.delete(callbackParamName);
+		ctx.varSourceKind.delete(callbackParamName);
+	}
+
+	// Build wait node params
+	const waitParams: Record<string, unknown> = { resume: 'form' };
+
+	// Map form config to n8n params
+	if (configArg) {
+		const config = extractObjectLiteral(configArg);
+		if (config) {
+			if (config.title) waitParams.formTitle = config.title;
+			if (config.description) waitParams.formDescription = config.description;
+			if (Array.isArray(config.fields)) {
+				waitParams.formFields = {
+					values: (config.fields as Array<Record<string, unknown>>).map((f) => ({
+						fieldLabel: f.label,
+						fieldType: f.type ?? 'text',
+						...(f.options
+							? { fieldOptions: { values: (f.options as string[]).map((o) => ({ option: o })) } }
+							: {}),
+					})),
+				};
+			}
+		}
+	}
+
+	emitWaitNode(ctx, waitParams, pinData);
+
+	// If there's an assigned variable, emit aggregate node for form payload
+	if (waitInfo.assignedVar) {
+		const aggNode = emitAggregateNode(waitInfo.assignedVar, `Wait ${ctx.waitCounter}`, ctx);
+		ctx.nodes.push(aggNode);
+		ctx.prevVar = aggNode.varName;
+		ctx.varSourceMap.set(waitInfo.assignedVar, aggNode.nodeName);
+		ctx.varSourceKind.set(waitInfo.assignedVar, 'aggregate');
+	}
+}
+
+function processWaitUntilCall(
+	ctx: TranspilerContext,
+	args: AcornNode[],
+	pinData?: unknown[],
+): void {
+	flushPendingCode(ctx);
+
+	const dateTimeArg = args[0];
+	if (!dateTimeArg || dateTimeArg.type !== 'Literal' || typeof dateTimeArg.value !== 'string') {
+		ctx.errors.push({
+			message: 'waitUntil requires a date/time string argument',
+			category: 'syntax',
+		});
+		return;
+	}
+
+	emitWaitNode(ctx, { resume: 'specificTime', dateTime: dateTimeArg.value }, pinData);
+}
+
 // ─── IF Condition Helpers ────────────────────────────────────────────────────
 
 interface IfConditionEntry {
@@ -1675,6 +2142,14 @@ function resolveExpressionFromAST(astNode: AcornNode, ctx: TranspilerContext): s
 
 		const sourceNode = ctx.varSourceMap.get(root);
 		if (!sourceNode) return ctx.source.slice(astNode.start, astNode.end);
+
+		// Special execution expression overrides (e.g. $execution.resumeUrl)
+		if (sourceNode === '__execution_resumeUrl__') {
+			return `={{ $execution.resumeUrl }}`;
+		}
+		if (sourceNode === '__execution_resumeFormUrl__') {
+			return `={{ $execution.resumeFormUrl }}`;
+		}
 
 		const kind = ctx.varSourceKind.get(root) ?? 'code';
 		const chain = extractPropertyChain(astNode);
@@ -1881,6 +2356,7 @@ const COUNTER_KEYS = [
 	'switchCounter',
 	'sibCounter',
 	'respondCounter',
+	'waitCounter',
 	'wfCounter',
 	'setCounter',
 	'loopCounter',
@@ -1888,6 +2364,7 @@ const COUNTER_KEYS = [
 	'tryCatchCounter',
 	'collectCounter',
 	'mergeCounter',
+	'whileCounter',
 ] as const;
 
 function syncCounters(target: TranspilerContext, source: TranspilerContext): void {
@@ -1908,6 +2385,7 @@ function createBranchContext(parentCtx: TranspilerContext): TranspilerContext {
 		switchCounter: parentCtx.switchCounter,
 		sibCounter: parentCtx.sibCounter,
 		respondCounter: parentCtx.respondCounter,
+		waitCounter: parentCtx.waitCounter,
 		wfCounter: parentCtx.wfCounter,
 		setCounter: parentCtx.setCounter,
 		aggCounter: parentCtx.aggCounter,
@@ -1931,6 +2409,8 @@ function createBranchContext(parentCtx: TranspilerContext): TranspilerContext {
 		tryCatchCounter: parentCtx.tryCatchCounter,
 		errorConnections: parentCtx.errorConnections,
 		parallelGroups: parentCtx.parallelGroups,
+		whileLoopGroups: parentCtx.whileLoopGroups,
+		whileCounter: parentCtx.whileCounter,
 	};
 }
 
@@ -2246,6 +2726,120 @@ function processPromiseAll(ctx: TranspilerContext, stmt: AcornNode): void {
 	}
 }
 
+// ─── While / Do-While Processing ─────────────────────────────────────────────
+
+function processDoWhileStatement(
+	ctx: TranspilerContext,
+	stmt: AcornNode,
+	comments: Array<{ type: string; value: string; start: number; end: number }>,
+): void {
+	const bodyNode = (stmt as unknown as { body: AcornNode }).body;
+
+	// Case 1: No IO in body → keep as plain JS in Code node
+	if (!loopBodyHasIO(bodyNode, ctx.source)) {
+		const loopSource = ctx.source.slice(stmt.start, stmt.end);
+		const baseIndent = getBaseIndent(ctx.source, stmt.start);
+		ctx.pendingStatements.push({ source: dedentSource(loopSource, baseIndent), ast: stmt });
+		return;
+	}
+
+	// Case 2: IO in body → emit body nodes + IF node with back-edge
+	flushPendingCode(ctx);
+
+	const firstBodyNodeIdx = ctx.nodes.length;
+
+	// Walk body statements — body nodes emit normally into the main chain
+	const bodyStmts =
+		bodyNode.type === 'BlockStatement' && bodyNode.body ? bodyNode.body : [bodyNode];
+	walkStatements(ctx, bodyStmts, comments);
+	flushPendingCode(ctx);
+
+	// Find first non-branchOnly node emitted during body walk
+	const bodyNodes = ctx.nodes.slice(firstBodyNodeIdx).filter((n) => !n.branchOnly);
+	const firstBodyVar = bodyNodes.length > 0 ? bodyNodes[0].varName : undefined;
+
+	// Emit IF node for the condition
+	ctx.whileCounter++;
+	const whileNum = ctx.whileCounter;
+	const ifVar = `while${whileNum}`;
+	const ifNodeName = `While ${whileNum}`;
+
+	const conditionsParam = buildIfConditionsParam(stmt.test!, ctx);
+	const sdkCode = `const ${ifVar} = ifElse({ version: 2.2, config: { name: '${ifNodeName}', parameters: { conditions: ${conditionsParam} }, executeOnce: true } });`;
+
+	ctx.nodes.push({ varName: ifVar, sdkCode, kind: 'ifElse', nodeName: ifNodeName });
+
+	// Record while loop group for back-edge generation
+	ctx.whileLoopGroups.push({
+		ifVar,
+		ifNodeName,
+		backEdgeTarget: firstBodyVar,
+		backEdgeOutputIndex: 0,
+		isDoWhile: true,
+	});
+
+	ctx.prevVar = ifVar;
+}
+
+function processWhileStatement(
+	ctx: TranspilerContext,
+	stmt: AcornNode,
+	comments: Array<{ type: string; value: string; start: number; end: number }>,
+): void {
+	const bodyNode = (stmt as unknown as { body: AcornNode }).body;
+
+	// Case 1: No IO in body → keep as plain JS in Code node
+	if (!loopBodyHasIO(bodyNode, ctx.source)) {
+		const loopSource = ctx.source.slice(stmt.start, stmt.end);
+		const baseIndent = getBaseIndent(ctx.source, stmt.start);
+		ctx.pendingStatements.push({ source: dedentSource(loopSource, baseIndent), ast: stmt });
+		return;
+	}
+
+	// Case 2: IO in body → emit IF node first, then body as true branch
+	flushPendingCode(ctx);
+
+	// Emit IF node for the condition
+	ctx.whileCounter++;
+	const whileNum = ctx.whileCounter;
+	const ifVar = `while${whileNum}`;
+	const ifNodeName = `While ${whileNum}`;
+
+	// Compile body as true branch
+	const trueBranch = transpileBranch(ctx, bodyNode, comments);
+
+	// Emit all branch nodes
+	for (const bn of trueBranch.nodes) {
+		ctx.nodes.push({ ...bn, branchOnly: true });
+	}
+
+	// Build IF node with true branch
+	const conditionsParam = buildIfConditionsParam(stmt.test!, ctx);
+	let sdkCode = `const ${ifVar} = ifElse({ version: 2.2, config: { name: '${ifNodeName}', parameters: { conditions: ${conditionsParam} }, executeOnce: true } })`;
+	if (trueBranch.chainExpr) {
+		sdkCode += `\n  .onTrue(${trueBranch.chainExpr})`;
+	}
+	sdkCode += ';';
+
+	ctx.nodes.push({ varName: ifVar, sdkCode, kind: 'ifElse', nodeName: ifNodeName });
+
+	// Find last non-branchOnly body node for back-edge source
+	const bodyChainNodes = trueBranch.nodes.filter((n) => !n.branchOnly);
+	const lastBodyVar =
+		bodyChainNodes.length > 0 ? bodyChainNodes[bodyChainNodes.length - 1].varName : undefined;
+
+	// Record while loop group for back-edge generation
+	ctx.whileLoopGroups.push({
+		ifVar,
+		ifNodeName,
+		backEdgeSource: lastBodyVar,
+		backEdgeOutputIndex: 0,
+		isDoWhile: false,
+	});
+
+	ctx.prevVar = ifVar;
+}
+
 // ─── For-Of Processing ───────────────────────────────────────────────────────
 
 function loopBodyHasIO(bodyNode: AcornNode, source: string): boolean {
@@ -2444,6 +3038,7 @@ function compileLoopBodyAsSubWorkflow(
 		switchCounter: 0,
 		sibCounter: 0,
 		respondCounter: 0,
+		waitCounter: 0,
 		wfCounter: 0,
 		setCounter: 0,
 		aggCounter: 0,
@@ -2466,6 +3061,8 @@ function compileLoopBodyAsSubWorkflow(
 		tryCatchCounter: 0,
 		errorConnections: [],
 		parallelGroups: [],
+		whileLoopGroups: [],
+		whileCounter: 0,
 	};
 
 	// Generate executeWorkflowTrigger as first node
@@ -2831,6 +3428,7 @@ function compileTryCatchBodyAsSubWorkflow(
 		switchCounter: 0,
 		sibCounter: 0,
 		respondCounter: 0,
+		waitCounter: 0,
 		wfCounter: 0,
 		setCounter: 0,
 		aggCounter: 0,
@@ -2853,6 +3451,8 @@ function compileTryCatchBodyAsSubWorkflow(
 		tryCatchCounter: 0,
 		errorConnections: [],
 		parallelGroups: [],
+		whileLoopGroups: [],
+		whileCounter: 0,
 	};
 
 	// Generate executeWorkflowTrigger as first node
@@ -2943,7 +3543,9 @@ function findNestedIO(stmt: AcornNode, source: string): IOCall[] {
 		} else if (
 			node.type === 'ForOfStatement' ||
 			node.type === 'ForInStatement' ||
-			node.type === 'ForStatement'
+			node.type === 'ForStatement' ||
+			node.type === 'WhileStatement' ||
+			node.type === 'DoWhileStatement'
 		) {
 			const body = (node as unknown as { body: AcornNode }).body;
 			if (body) walkBlock(body);
@@ -3289,6 +3891,27 @@ function extractArrayElements(elements: AcornNode[]): unknown[] {
 	});
 }
 
+/** Recursively flatten a BinaryExpression (+) into a JS expression string,
+ *  replacing Identifiers with $json references and MemberExpressions with dotted chains. */
+function extractBinaryExprParts(node: AcornNode): string {
+	if (node.type === 'Literal') {
+		return JSON.stringify(node.value);
+	}
+	if (node.type === 'Identifier') {
+		return `$json.${node.name}`;
+	}
+	if (node.type === 'MemberExpression') {
+		const chain = extractMemberChain(node);
+		return chain ? `$json.${chain}` : '$json';
+	}
+	if (node.type === 'BinaryExpression' && node.operator === '+') {
+		const left = extractBinaryExprParts(node.left as AcornNode);
+		const right = extractBinaryExprParts(node.right as AcornNode);
+		return `${left} + ${right}`;
+	}
+	return '$json';
+}
+
 function extractObjectLiteral(node: AcornNode): Record<string, unknown> | undefined {
 	if (node.type !== 'ObjectExpression' || !node.properties) return undefined;
 
@@ -3309,6 +3932,9 @@ function extractObjectLiteral(node: AcornNode): Record<string, unknown> | undefi
 				} else if (valNode.type === 'MemberExpression') {
 					const chain = extractMemberChain(valNode);
 					obj[key] = chain ? `={{ $json.${chain} }}` : '={{$json}}';
+				} else if (valNode.type === 'BinaryExpression' && valNode.operator === '+') {
+					// String concatenation: 'literal' + varName → resolve each part
+					obj[key] = `={{ ${extractBinaryExprParts(valNode)} }}`;
 				} else {
 					const strVal = extractStringLiteral(valNode);
 					obj[key] = strVal ?? '={{$json}}';
@@ -3953,6 +4579,7 @@ function generateSDKCode(
 	compiledTryCatchBodies?: CompiledFunction[],
 	errorConnections?: Array<{ sourceVar: string; catchChainStartVar: string }>,
 	parallelGroups?: ParallelGroup[],
+	whileLoopGroups?: WhileLoopGroup[],
 ): string {
 	const lines: string[] = [];
 
@@ -4086,6 +4713,24 @@ function generateSDKCode(
 			lines.push(`${group.mergeVar}.to(${group.collectVar});`);
 			lines.push('');
 		}
+	}
+
+	// While loop back-edges and exit connections
+	if (whileLoopGroups && whileLoopGroups.length > 0) {
+		for (const group of whileLoopGroups) {
+			if (group.isDoWhile && group.backEdgeTarget) {
+				// do-while: IF true output loops back to first body node
+				lines.push(`${group.ifVar}.to(${group.backEdgeTarget}, 0);`);
+			} else if (!group.isDoWhile && group.backEdgeSource) {
+				// while: last body node loops back to IF node
+				lines.push(`${group.backEdgeSource}.to(${group.ifVar});`);
+			}
+			// Exit connection: IF false output (1) to first post-loop node
+			if (group.exitTarget) {
+				lines.push(`${group.ifVar}.to(${group.exitTarget}, 1);`);
+			}
+		}
+		lines.push('');
 	}
 
 	// Workflow builder
