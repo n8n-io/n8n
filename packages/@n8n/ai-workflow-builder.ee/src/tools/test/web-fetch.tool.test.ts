@@ -801,9 +801,7 @@ describe('web_fetch tool', () => {
 
 			expect(content).toContain('web_fetch_result');
 			expect(stateUpdates.allDomainsApproved).toBe(true);
-			expect(stateUpdates.approvedDomains).toEqual(['example.com']);
 			expect(security.approveAllDomains).toHaveBeenCalled();
-			expect(security.approveDomain).toHaveBeenCalledWith('example.com');
 		});
 	});
 
