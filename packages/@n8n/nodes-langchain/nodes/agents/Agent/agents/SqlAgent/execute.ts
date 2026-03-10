@@ -129,7 +129,10 @@ export async function sqlAgentAgentExecute(
 			}
 
 			let response: IDataObject;
-			const additionalMetadata = buildTracingMetadata(options.tracingMetadata?.values, this.logger);
+			const additionalMetadata = buildTracingMetadata(
+				(options.tracingMetadata as { values?: TracingMetadataEntry[] })?.values,
+				this.logger,
+			);
 			if (Object.keys(additionalMetadata).length > 0) {
 				this.logger.debug('Tracing metadata', { additionalMetadata });
 			}

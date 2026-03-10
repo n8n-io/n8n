@@ -316,13 +316,15 @@ describe('runAgent - tracing configuration', () => {
 	});
 
 	it('should include tracing metadata when provided', async () => {
-		const mockTracingConfig = {
-			runName: '[Test Workflow] Test Node',
-			metadata: { execution_id: 'test-123', workflow: {}, node: 'Test Node' },
-		};
-		const getTracingSpy = jest
-			.spyOn(tracing, 'getTracingConfig')
-			.mockReturnValue(mockTracingConfig);
+		// Use real implementations instead of mocks
+		const { getTracingConfig: realGetTracingConfig } =
+			jest.requireActual<typeof tracing>('@utils/tracing');
+		(tracing.getTracingConfig as jest.Mock).mockImplementation(realGetTracingConfig);
+
+		const { loadMemory: realLoadMemory, saveToMemory: realSaveToMemory } =
+			jest.requireActual<typeof agentExecution>('@utils/agent-execution');
+		(agentExecution.loadMemory as jest.Mock).mockImplementation(realLoadMemory);
+		(agentExecution.saveToMemory as jest.Mock).mockImplementation(realSaveToMemory);
 
 		const mockInvoke = jest.fn().mockResolvedValue({
 			returnValues: { output: 'Final answer' },
@@ -332,6 +334,11 @@ describe('runAgent - tracing configuration', () => {
 			withConfig: mockWithConfig,
 		});
 		const mockModel = mock<BaseChatModel>();
+
+		// Set up context for real getTracingConfig
+		mockContext.getWorkflow.mockReturnValue({ name: 'Test Workflow' } as any);
+		mockContext.getExecutionId.mockReturnValue('exec-456');
+		mockNode.name = 'Test Node';
 
 		const itemContext: ItemContext = {
 			itemIndex: 0,
@@ -352,16 +359,22 @@ describe('runAgent - tracing configuration', () => {
 			outputParser: undefined,
 		};
 
-		jest.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
-		jest.spyOn(agentExecution, 'saveToMemory').mockResolvedValue();
 		mockContext.getExecutionCancelSignal.mockReturnValue(new AbortController().signal);
 
 		await runAgent(mockContext, mockExecutor, itemContext, mockModel, undefined);
 
-		expect(getTracingSpy).toHaveBeenCalledWith(mockContext, {
-			additionalMetadata: { team: 'ai', run_id: 'r-123' },
-		});
-		expect(mockWithConfig).toHaveBeenCalledWith(mockTracingConfig);
+		// Assert on the actual tracing config built by the real getTracingConfig + buildTracingMetadata
+		expect(mockWithConfig).toHaveBeenCalledWith(
+			expect.objectContaining({
+				runName: '[Test Workflow] Test Node',
+				metadata: expect.objectContaining({
+					execution_id: 'exec-456',
+					node: 'Test Node',
+					team: 'ai',
+					run_id: 'r-123',
+				}),
+			}),
+		);
 		expect(mockInvoke).toHaveBeenCalled();
 	});
 
