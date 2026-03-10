@@ -532,10 +532,11 @@ export class VaultProvider extends SecretsProvider {
 		if (resp.status === 403) {
 			return [false, forbiddenMessage];
 		}
-		if (resp.status !== 200) {
-			return [false, failureMessage(resp.status)];
+		// Vault returns 404 when listing an empty KV mount — this is valid, not an error
+		if (resp.status === 200 || (kvMountPath && resp.status === 404)) {
+			return [true];
 		}
-		return [true];
+		return [false, failureMessage(resp.status)];
 	}
 
 	async update(): Promise<void> {

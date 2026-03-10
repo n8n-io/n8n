@@ -348,6 +348,22 @@ describe('VaultProvider', () => {
 			scope.done();
 		});
 
+		it('should treat 404 as success for an empty KV mount', async () => {
+			const provider = new VaultProvider(logger);
+			await provider.init(vaultSettingsWithKvPath('secret/', '2'));
+
+			const scope = nock(VAULT_BASE_URL)
+				.get('/v1/auth/token/lookup-self')
+				.reply(200, tokenLookupResponse())
+				.get('/v1/secret/metadata/?list=true')
+				.reply(404, { errors: [] });
+
+			const [success] = await provider.test();
+
+			expect(success).toBe(true);
+			scope.done();
+		});
+
 		it('should return error when token lacks access to the configured KV path', async () => {
 			const provider = new VaultProvider(logger);
 			await provider.init(vaultSettingsWithKvPath('secret/', '2'));
