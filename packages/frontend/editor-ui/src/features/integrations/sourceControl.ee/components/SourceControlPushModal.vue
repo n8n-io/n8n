@@ -385,7 +385,7 @@ const sortedWorkflows = computed(() =>
 	orderBy(
 		filteredWorkflows.value,
 		[
-			// keep the current workflow at the top of the list
+			// Keep the current workflow at the top of the list.
 			({ id }) => id === changes.value.currentWorkflow?.id,
 			({ folderPath }) => folderPath?.join('/') ?? '',
 			({ status }) => getPushPriorityByStatus(status),
@@ -1015,6 +1015,7 @@ onMounted(async () => {
 								v-model="filters.folder"
 								data-test-id="source-control-folder-filter"
 								clearable
+								filterable
 								:placeholder="i18n.baseText('generic.folder')"
 							>
 								<N8nOption
@@ -1157,10 +1158,7 @@ onMounted(async () => {
 										<div
 											v-else
 											:class="$style.fileRow"
-											:style="{
-												marginLeft: `${row.depth * 16}px`,
-												width: `calc(100% - ${row.depth * 16}px)`,
-											}"
+											:style="{ paddingLeft: `${row.depth * 16}px` }"
 										>
 											<N8nCheckbox
 												:class="[$style.listItem]"
@@ -1197,7 +1195,11 @@ onMounted(async () => {
 																"
 																class="mr-2xs"
 															>
-																Current workflow
+																{{
+																	i18n.baseText(
+																		'settings.sourceControl.modals.push.currentWorkflow',
+																	)
+																}}
 															</N8nBadge>
 															<template
 																v-if="
@@ -1393,6 +1395,7 @@ onMounted(async () => {
 
 .fileRow {
 	box-sizing: border-box;
+	width: 100%;
 }
 
 .badges {

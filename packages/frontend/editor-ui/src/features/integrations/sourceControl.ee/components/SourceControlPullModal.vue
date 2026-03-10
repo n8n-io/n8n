@@ -728,10 +728,10 @@ onMounted(() => {
 	outline: var(--border);
 
 	:global(.scrollerItem) {
+		border-bottom: var(--border);
+
 		&:last-child {
-			.listItem {
-				border-bottom: 0;
-			}
+			border-bottom: 0;
 		}
 	}
 }
@@ -742,7 +742,7 @@ onMounted(() => {
 	justify-content: space-between;
 	padding: 10px 16px;
 	margin: 0;
-	border-bottom: var(--border);
+	border-bottom: 0;
 	gap: 30px;
 }
 
@@ -750,7 +750,7 @@ onMounted(() => {
 	display: flex;
 	align-items: center;
 	padding: var(--spacing--2xs) var(--spacing--sm);
-	border-bottom: var(--border);
+	border-bottom: 0;
 }
 
 .itemContent {
