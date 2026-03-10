@@ -5,11 +5,6 @@ import type { SetupCardItem } from '@/features/setupPanel/setupPanel.types';
 import { useWorkflowSetupState } from '@/features/setupPanel/composables/useWorkflowSetupState';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
-import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import {
@@ -21,13 +16,11 @@ import { MANUAL_TRIGGER_NODE_TYPE } from '@/app/constants/nodeTypes';
 /**
  * Composable for managing builder setup wizard cards.
  * Feeds placeholder parameter names into useWorkflowSetupState so it creates
- * proper cards, then adds wizard navigation, lazy placeholder clearing,
- * and pinned data auto-strip on top.
+ * proper cards, then adds wizard navigation and lazy placeholder clearing on top.
  */
 export function useBuilderSetupCards() {
 	const builderStore = useBuilderStore();
 	const workflowsStore = useWorkflowsStore();
-	const uiStore = useUIStore();
 	const nodeHelpers = useNodeHelpers();
 	const workflowState = injectWorkflowState();
 
@@ -89,10 +82,8 @@ export function useBuilderSetupCards() {
 		},
 	});
 
-	// Filter out manual trigger cards
-	const cards = computed<SetupCardItem[]>(() =>
-		baseCards.value.filter((card) => card.state.node.type !== MANUAL_TRIGGER_NODE_TYPE),
-	);
+	// Manual trigger cards are already filtered upstream by useWorkflowSetupState
+	const cards = computed<SetupCardItem[]>(() => baseCards.value);
 
 	const totalCards = computed(() => cards.value.length);
 
@@ -192,47 +183,6 @@ export function useBuilderSetupCards() {
 			nodeHelpers.updateNodesParameterIssues();
 		},
 		{ immediate: true },
-	);
-
-	// Auto-strip pinned data when a card completes
-	watch(
-		() => cards.value.map((c) => c.state.isComplete),
-		(newCompletes, oldCompletes) => {
-			if (!oldCompletes) return;
-
-			for (let i = 0; i < newCompletes.length; i++) {
-				if (newCompletes[i] && !oldCompletes[i]) {
-					const card = cards.value[i];
-					if (!card) continue;
-
-					const nodeNames = card.state.allNodesUsingCredential
-						? card.state.allNodesUsingCredential.map((n) => n.name)
-						: [card.state.node.name];
-
-					const workflowDocumentStore = workflowsStore.workflowId
-						? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-						: undefined;
-
-					const unpinnedNodes: string[] = [];
-					for (const name of nodeNames) {
-						if (workflowDocumentStore?.pinData?.[name]) {
-							workflowDocumentStore.unpinNodeData(name);
-							if (workflowsStore.nodeMetadata[name]) {
-								workflowsStore.nodeMetadata[name].pinnedDataLastRemovedAt = Date.now();
-							}
-							unpinnedNodes.push(name);
-						}
-					}
-
-					if (unpinnedNodes.length > 0) {
-						uiStore.markStateDirty();
-						builderStore.trackWorkflowBuilderJourney('setup_wizard_node_unpinned', {
-							unpinned_nodes: unpinnedNodes,
-						});
-					}
-				}
-			}
-		},
 	);
 
 	function goToNext() {

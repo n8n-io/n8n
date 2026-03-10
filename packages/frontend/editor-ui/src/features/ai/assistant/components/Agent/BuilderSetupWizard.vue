@@ -62,7 +62,10 @@ const showCard = computed(
 	() => currentCard.value && !(isAllComplete.value && builderStore.wizardHasExecutedWorkflow),
 );
 
-const showWizard = computed(() => !lastStepCompleted.value);
+const showWizard = computed(
+	() =>
+		!lastStepCompleted.value && !(isAllComplete.value && builderStore.wizardHasExecutedWorkflow),
+);
 
 const isHovering = ref(false);
 
@@ -75,17 +78,25 @@ function onMouseLeave() {
 	setupPanelStore.clearHighlightedNodes();
 }
 
-// Highlight the active card's node only while hovering over the wizard
-watch(
-	[isHovering, () => currentCard.value?.state.node.id, showCard],
-	([hovering, nodeId, visible]) => {
-		if (hovering && nodeId && visible) {
-			setupPanelStore.setHighlightedNodes([nodeId]);
-		} else {
-			setupPanelStore.clearHighlightedNodes();
-		}
-	},
-);
+// Highlight all nodes associated with the active card while hovering over the wizard.
+// Uses showWizard (not showCard) so highlighting is always cleared when
+// the wizard is hidden — mouseleave won't fire when the DOM is removed by v-if.
+const highlightedNodeIds = computed(() => {
+	const card = currentCard.value;
+	if (!card) return [];
+	if (card.state.allNodesUsingCredential?.length) {
+		return card.state.allNodesUsingCredential.map((n) => n.id);
+	}
+	return [card.state.node.id];
+});
+
+watch([isHovering, highlightedNodeIds, showWizard], ([hovering, nodeIds, visible]) => {
+	if (hovering && nodeIds.length > 0 && visible) {
+		setupPanelStore.setHighlightedNodes(nodeIds);
+	} else {
+		setupPanelStore.clearHighlightedNodes();
+	}
+});
 
 const descriptionText = computed(() => {
 	if (!isAllComplete.value) {
@@ -198,8 +209,8 @@ function onStepExecuted() {
 
 	const isLastStep = currentStepIndex.value >= totalCards.value - 1;
 
-	if (isLastStep) {
-		// Last step executed successfully — dismiss the wizard
+	if (isLastStep && isAllComplete.value) {
+		// All steps complete and last step executed — dismiss the wizard
 		lastStepCompleted.value = true;
 		setupPanelStore.clearHighlightedNodes();
 		return;

@@ -153,8 +153,12 @@ export const useWorkflowSetupState = (
 		const paramNamesToCheck = new Set(templateParams);
 		const findUnfilled = (obj: Record<string, unknown>): boolean => {
 			for (const [key, value] of Object.entries(obj)) {
-				if (paramNamesToCheck.has(key) && isResourceLocatorValue(value) && !value.value) {
-					return true;
+				if (paramNamesToCheck.has(key)) {
+					if (isResourceLocatorValue(value)) {
+						if (!value.value) return true;
+					} else if (value === '' || value === null || value === undefined) {
+						return true;
+					}
 				}
 				if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
 					if (findUnfilled(value as Record<string, unknown>)) return true;
@@ -577,9 +581,7 @@ export const useWorkflowSetupState = (
 					Object.keys(parameterIssues).length === 0 && !hasUnfilledTemplateParams(node);
 
 				const isComplete =
-					triggerComplete && !isAutoApplied
-						? parametersComplete
-						: credentialComplete && testPassed && parametersComplete && triggerComplete;
+					credentialComplete && testPassed && parametersComplete && triggerComplete;
 
 				result.push({
 					node,

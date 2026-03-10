@@ -160,12 +160,9 @@ describe('useBuilderSetupCards', () => {
 		mockBuilderStoreState.wizardClearedPlaceholders = new Set();
 	});
 
-	it('filters out manual trigger cards', async () => {
+	it('passes through cards from useWorkflowSetupState', async () => {
+		// Manual trigger filtering is now handled upstream by useWorkflowSetupState
 		mockSetupCards.value = [
-			createCard({
-				node: createNode({ type: 'n8n-nodes-base.manualTrigger', name: 'Manual Trigger' }),
-				isTrigger: true,
-			}),
 			createCard({
 				node: createNode({ type: 'n8n-nodes-base.httpRequest', name: 'HTTP Request' }),
 			}),

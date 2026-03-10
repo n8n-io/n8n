@@ -33,10 +33,10 @@ vi.mock('@/features/credentials/components/CredentialIcon.vue', () => ({
 	},
 }));
 
-vi.mock('@/features/credentials/components/CredentialPicker/CredentialPicker.vue', () => ({
+vi.mock('@/features/credentials/components/NodeCredentials.vue', () => ({
 	default: {
-		template: '<div data-test-id="credential-picker" />',
-		props: ['appName', 'credentialType', 'selectedCredentialId'],
+		template: '<div data-test-id="node-credentials" />',
+		props: ['node', 'overrideCredType', 'skipAutoSelect', 'hideIssues'],
 	},
 }));
 
@@ -245,20 +245,20 @@ describe('BuilderSetupCard', () => {
 	});
 
 	describe('credential section', () => {
-		it('shows credential picker when showCredentialPicker is true', () => {
+		it('shows credential section when showCredentialPicker is true', () => {
 			const { getByTestId } = render({
 				showCredentialPicker: true,
 				credentialType: 'openAiApi',
 				credentialDisplayName: 'OpenAI',
 			});
-			expect(getByTestId('credential-picker')).toBeInTheDocument();
+			expect(getByTestId('node-credentials')).toBeInTheDocument();
 		});
 
-		it('hides credential picker when showCredentialPicker is false', () => {
+		it('hides credential section when showCredentialPicker is false', () => {
 			const { queryByTestId } = render({
 				showCredentialPicker: false,
 			});
-			expect(queryByTestId('credential-picker')).not.toBeInTheDocument();
+			expect(queryByTestId('node-credentials')).not.toBeInTheDocument();
 		});
 	});
 });

@@ -5,19 +5,20 @@ import { N8nButton, N8nCallout, N8nIcon, N8nText, N8nTooltip } from '@n8n/design
 
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
-import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
+import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import TriggerExecuteButton from '@/features/setupPanel/components/TriggerExecuteButton.vue';
 import WebhookUrlPreview from '@/features/setupPanel/components/WebhookUrlPreview.vue';
 
 import type { NodeSetupState } from '@/features/setupPanel/setupPanel.types';
-import type { INodeUi, IUpdateInformation } from '@/Interface';
+import type { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
 import type { INodeProperties } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
+import { isHttpRequestNodeType } from '@/features/setupPanel/setupPanel.utils';
 import { useExpressionResolveCtx } from '@/features/workflows/canvas/experimental/composables/useExpressionResolveCtx';
 import { useTriggerExecution } from '@/features/setupPanel/composables/useTriggerExecution';
 import { useWebhookUrls } from '@/features/setupPanel/composables/useWebhookUrls';
@@ -52,6 +53,8 @@ provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
 const nodeType = computed(() =>
 	nodeTypesStore.getNodeType(props.state.node.type, props.state.node.typeVersion),
 );
+
+const isHttpRequestNode = computed(() => isHttpRequestNodeType(props.state.node.type));
 
 const hasCredential = computed(() => !!props.state.credentialType);
 
@@ -128,21 +131,24 @@ const isNextDisabled = computed(() => isLastCard.value);
 
 const showTriggerCallout = computed(() => props.state.isTrigger && isInListeningState.value);
 
-const onCredentialSelected = (credentialId: string) => {
+const onCredentialSelected = (updateInfo: INodeUpdatePropertiesInformation) => {
 	if (!props.state.credentialType) return;
-	emit('credentialSelected', {
-		credentialType: props.state.credentialType,
-		credentialId,
-		nodeName: props.state.node.name,
-	});
-};
 
-const onCredentialDeselected = () => {
-	if (!props.state.credentialType) return;
-	emit('credentialDeselected', {
-		credentialType: props.state.credentialType,
-		nodeName: props.state.node.name,
-	});
+	const credentialData = updateInfo.properties.credentials?.[props.state.credentialType];
+	const credentialId = typeof credentialData === 'string' ? undefined : credentialData?.id;
+
+	if (credentialId) {
+		emit('credentialSelected', {
+			credentialType: props.state.credentialType,
+			credentialId,
+			nodeName: props.state.node.name,
+		});
+	} else {
+		emit('credentialDeselected', {
+			credentialType: props.state.credentialType,
+			nodeName: props.state.node.name,
+		});
+	}
 };
 
 const onValueChanged = (parameterData: IUpdateInformation) => {
@@ -207,37 +213,28 @@ watch(isExecuting, (executing, wasExecuting) => {
 		<!-- Content -->
 		<div v-if="!isTriggerOnly" :class="$style.content">
 			<div v-if="state.showCredentialPicker" :class="$style.credentialContainer">
-				<div :class="$style.credentialLabelRow">
-					<label
-						data-test-id="builder-setup-card-credential-label"
-						:for="`credential-picker-${state.credentialType}`"
-						:class="$style.credentialLabel"
-					>
-						{{ i18n.baseText('setupPanel.credentialLabel' as BaseTextKey) }}
-					</label>
-					<N8nTooltip v-if="nodeNames.length > 1" placement="top">
-						<template #content>
-							{{ nodeNamesTooltip }}
-						</template>
-						<span data-test-id="builder-setup-card-nodes-hint" :class="$style.nodesHint">
-							{{
-								i18n.baseText('setupPanel.usedInNodes' as BaseTextKey, {
-									interpolate: { count: String(nodeNames.length) },
-								})
-							}}
-						</span>
-					</N8nTooltip>
-				</div>
-				<CredentialPicker
-					create-button-variant="subtle"
-					:class="$style.credentialPicker"
-					:app-name="state.credentialDisplayName ?? ''"
-					:credential-type="state.credentialType ?? ''"
-					:selected-credential-id="state.selectedCredentialId ?? null"
-					edit-icon-only
+				<NodeCredentials
+					:node="state.node"
+					:override-cred-type="state.credentialType ?? ''"
+					:skip-auto-select="isHttpRequestNode"
+					hide-issues
 					@credential-selected="onCredentialSelected"
-					@credential-deselected="onCredentialDeselected"
-				/>
+				>
+					<template v-if="nodeNames.length > 1" #label-postfix>
+						<N8nTooltip placement="top">
+							<template #content>
+								{{ nodeNamesTooltip }}
+							</template>
+							<span data-test-id="builder-setup-card-nodes-hint" :class="$style.nodesHint">
+								{{
+									i18n.baseText('setupPanel.usedInNodes' as BaseTextKey, {
+										interpolate: { count: String(nodeNames.length) },
+									})
+								}}
+							</span>
+						</N8nTooltip>
+					</template>
+				</NodeCredentials>
 			</div>
 
 			<ParameterInputList
@@ -346,31 +343,10 @@ watch(isExecuting, (executing, wasExecuting) => {
 	flex-direction: column;
 }
 
-.credentialLabelRow {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	min-height: 32px;
-}
-
-.credentialLabel {
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--shade-1);
-}
-
 .nodesHint {
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--tint-1);
 	cursor: default;
-	display: none;
-
-	.credentialContainer:hover & {
-		display: flex;
-	}
-}
-
-.credentialPicker {
-	flex: 1;
 }
 
 .footer {

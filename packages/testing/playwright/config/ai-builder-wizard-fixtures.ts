@@ -254,6 +254,66 @@ export function createBuilderFollowUpWithInsertedNode(): string {
 	return JSON.stringify(chunk) + STREAM_SEPARATOR;
 }
 
+/**
+ * Multi-trigger workflow: Morning Schedule → Slack, plus a standalone Telegram Trigger.
+ * Execution order: Morning Schedule → Slack → Telegram Listener.
+ * Creates 3 cards: trigger-only (first trigger), credential (slackApi), credential (telegramApi).
+ * Only the first trigger is executable; the Telegram Trigger card has no execute button.
+ */
+export function createBuilderResponseMultipleTriggers(): string {
+	const workflow = {
+		nodes: [
+			{
+				id: 'schedule-trigger-1',
+				name: 'Morning Schedule',
+				type: 'n8n-nodes-base.scheduleTrigger',
+				typeVersion: 1.2,
+				position: [0, 0],
+				parameters: {
+					rule: { interval: [{ field: 'hours', hoursInterval: 8 }] },
+				},
+			},
+			{
+				id: 'slack-1',
+				name: 'Slack',
+				type: 'n8n-nodes-base.slack',
+				typeVersion: 2.2,
+				position: [220, 0],
+				parameters: {
+					resource: 'message',
+					operation: 'send',
+					channelId: { __rl: true, mode: 'id', value: 'C01234567' },
+					messageType: 'text',
+					text: 'Good morning!',
+				},
+				credentials: {
+					slackApi: { id: '', name: '' },
+				},
+			},
+			{
+				id: 'telegram-trigger-1',
+				name: 'Telegram Listener',
+				type: 'n8n-nodes-base.telegramTrigger',
+				typeVersion: 1.2,
+				position: [0, 300],
+				parameters: {
+					updates: ['message'],
+				},
+				credentials: {
+					telegramApi: { id: '', name: '' },
+				},
+			},
+		],
+		connections: {
+			'Morning Schedule': {
+				main: [[{ node: 'Slack', type: 'main', index: 0 }]],
+			},
+		},
+		pinData: {},
+	};
+	return createBuilderStreamingResponse(workflow);
+}
+
 // #endregion
 
 // #region Test Requirements
