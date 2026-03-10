@@ -1,17 +1,18 @@
 import { CredentialsEntity, CredentialsRepository, In, WorkflowRepository } from '@n8n/db';
-import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
-import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
-import { Cipher } from 'n8n-core';
-import { ICredentialContext, jsonParse } from 'n8n-workflow';
 import { ICredentialResolver } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { Cipher } from 'n8n-core';
+import { ICredentialContext, jsonParse } from 'n8n-workflow';
+
+import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
+import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
 
 type CredentialStatus = {
 	credentialId: string;
 	credentialName: string;
-	resolverId: string;
+	resolverId?: string;
 	credentialType: string;
-	status: 'missing' | 'configured';
+	status: 'missing' | 'configured' | 'resolver_missing';
 };
 
 function isCredentialStatus(obj: unknown): obj is CredentialStatus {
@@ -21,12 +22,10 @@ function isCredentialStatus(obj: unknown): obj is CredentialStatus {
 	return (
 		'credentialId' in obj &&
 		typeof obj.credentialId === 'string' &&
-		'resolverId' in obj &&
-		typeof obj.resolverId === 'string' &&
 		'credentialType' in obj &&
 		typeof obj.credentialType === 'string' &&
 		'status' in obj &&
-		(obj.status === 'missing' || obj.status === 'configured')
+		(obj.status === 'missing' || obj.status === 'configured' || obj.status === 'resolver_missing')
 	);
 }
 
@@ -146,7 +145,12 @@ export class CredentialResolverWorkflowService {
 		let resolverConfig: Record<string, unknown> | null = options.workflowResolverConfig;
 		const credentialResolverId = credential.resolverId ?? options.resolverId;
 		if (!credentialResolverId) {
-			return null;
+			return {
+				credentialId: credential.id,
+				credentialName: credential.name,
+				status: 'resolver_missing' as const,
+				credentialType: credential.type,
+			};
 		}
 		if (credentialResolverId !== options.resolverId) {
 			const {
