@@ -39,9 +39,11 @@ import type {
 	IConnections,
 	INodeExecutionData,
 	INodeTypeDescription,
+	IRunData,
 	ITaskData,
 	Workflow,
 } from 'n8n-workflow';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import {
 	NodeConnectionTypes,
 	NodeHelpers,
@@ -72,10 +74,14 @@ export function useCanvasMapping({
 	nodes,
 	connections,
 	workflowObject,
+	executionData,
 }: {
 	nodes: Ref<INodeUi[]>;
 	connections: Ref<IConnections>;
 	workflowObject: Ref<Workflow>;
+	/** Optional execution data override. When provided, the canvas renders execution
+	 *  state from this data instead of the global workflowsStore. */
+	executionData?: Ref<IExecutionResponse | null>;
 }) {
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
@@ -88,6 +94,42 @@ export function useCanvasMapping({
 	const nodeTypesStore = useNodeTypesStore();
 	const nodeHelpers = useNodeHelpers();
 	const { dirtinessByName } = useNodeDirtiness();
+
+	// When executionData override is provided, derive run data from it
+	// instead of the global workflowsStore. This allows isolated rendering
+	// (e.g., preview cards) without polluting the editor's execution state.
+	const runData = computed<IRunData | null>(() => {
+		if (executionData) {
+			return executionData.value?.data?.resultData?.runData ?? null;
+		}
+		return workflowsStore.getWorkflowRunData;
+	});
+
+	const execution = computed(() => {
+		if (executionData) {
+			return executionData.value ?? undefined;
+		}
+		return workflowsStore.getWorkflowExecution;
+	});
+
+	function getResultDataByNodeName(nodeName: string): ITaskData[] | null {
+		const rd = runData.value;
+		if (!rd?.[nodeName]) return null;
+		return rd[nodeName];
+	}
+
+	const isRunning = computed(() => {
+		if (executionData) return false; // Override = completed execution, never "running"
+		return workflowsStore.isWorkflowRunning;
+	});
+
+	const executionResultDataLastUpdate = computed(() => {
+		if (executionData) {
+			// Return a value that changes when executionData changes
+			return executionData.value?.id ?? null;
+		}
+		return workflowsStore.workflowExecutionResultDataLastUpdate;
+	});
 
 	function createStickyNoteRenderType(node: INodeUi): CanvasNodeStickyNoteRender {
 		return {
@@ -295,14 +337,14 @@ export function useCanvasMapping({
 	);
 
 	const nodeTooltipById = computed(() => {
-		if (!workflowsStore.isWorkflowRunning) {
+		if (!isRunning.value) {
 			return {};
 		}
 
 		const activeTriggerNodeCount = nodes.value.filter(
 			(node) => isTriggerNodeById.value[node.id] && !node.disabled,
 		).length;
-		const triggerNodeName = workflowsStore.getWorkflowExecution?.triggerNode;
+		const triggerNodeName = execution.value?.triggerNode;
 
 		// For workflows with multiple active trigger nodes, we show a tooltip only when
 		// trigger node name is known
@@ -353,7 +395,7 @@ export function useCanvasMapping({
 			acc[node.id] =
 				node.name === workflowState.executingNode.lastAddedExecutingNode &&
 				workflowState.executingNode.executingNode.length === 0 &&
-				workflowsStore.isWorkflowRunning;
+				isRunning.value;
 
 			return acc;
 		}, {}),
@@ -361,7 +403,7 @@ export function useCanvasMapping({
 
 	const nodeExecutionStatusById = computed(() =>
 		nodes.value.reduce<Record<string, ExecutionStatus>>((acc, node) => {
-			const tasks = workflowsStore.getWorkflowRunData?.[node.name] ?? [];
+			const tasks = runData.value?.[node.name] ?? [];
 
 			let lastExecutionStatus = tasks.at(-1)?.executionStatus;
 			if (tasks.length > 1 && lastExecutionStatus === 'canceled') {
@@ -374,7 +416,7 @@ export function useCanvasMapping({
 
 	const nodeExecutionRunDataById = computed(() =>
 		nodes.value.reduce<Record<string, ITaskData[] | null>>((acc, node) => {
-			acc[node.id] = workflowsStore.getWorkflowResultDataByNodeName(node.name);
+			acc[node.id] = getResultDataByNodeName(node.name);
 			return acc;
 		}, {}),
 	);
@@ -385,7 +427,7 @@ export function useCanvasMapping({
 	const nodeExecutionRunDataOutputMapById = ref<Record<string, ExecutionOutputMap>>({});
 
 	throttledWatch(
-		() => workflowsStore.workflowExecutionResultDataLastUpdate,
+		() => executionResultDataLastUpdate.value,
 		() => {
 			nodeExecutionRunDataOutputMapById.value = Object.keys(nodeExecutionRunDataById.value).reduce<
 				Record<string, ExecutionOutputMap>
@@ -474,7 +516,7 @@ export function useCanvasMapping({
 	const nodeExecutionErrorsById = computed(() =>
 		nodes.value.reduce<Record<string, string[]>>((acc, node) => {
 			const executionErrors: string[] = [];
-			const nodeExecutionRunData = workflowsStore.getWorkflowRunData?.[node.name];
+			const nodeExecutionRunData = runData.value?.[node.name];
 			if (nodeExecutionRunData) {
 				nodeExecutionRunData.forEach((executionRunData) => {
 					if (executionRunData?.error) {
@@ -519,7 +561,7 @@ export function useCanvasMapping({
 			} else if (hasExecutionErrors) {
 				acc[node.id] = true;
 			} else {
-				const tasks = workflowsStore.getWorkflowRunData?.[node.name] ?? [];
+				const tasks = runData.value?.[node.name] ?? [];
 				acc[node.id] = Boolean(tasks.at(-1)?.error);
 			}
 
@@ -532,7 +574,7 @@ export function useCanvasMapping({
 			const isExecutionSummary = (execution: object): execution is ExecutionSummary =>
 				'waitTill' in execution;
 
-			const workflowExecution = workflowsStore.getWorkflowExecution;
+			const workflowExecution = execution.value;
 			const lastNodeExecuted = workflowExecution?.data?.resultData?.lastNodeExecuted;
 
 			if (workflowExecution && lastNodeExecuted && isExecutionSummary(workflowExecution)) {

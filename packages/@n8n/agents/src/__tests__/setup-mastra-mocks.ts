@@ -9,6 +9,10 @@ jest.mock('@mastra/core', () => ({
 	Mastra: jest.fn().mockImplementation(() => ({})),
 }));
 
+jest.mock('@mastra/core/agent', () => ({
+	Agent: jest.fn().mockImplementation(() => ({})),
+}));
+
 // Base class stubs for the checkpoint bridge
 class MockStorageDomain {}
 class MockWorkflowsStorage extends MockStorageDomain {}

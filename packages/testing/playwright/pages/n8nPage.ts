@@ -15,6 +15,7 @@ import { DataTableDetails } from './DataTableDetails';
 import { DataTableView } from './DataTableView';
 import { DemoPage } from './DemoPage';
 import { ExecutionsPage } from './ExecutionsPage';
+import { InstanceAiPage } from './InstanceAiPage';
 import { InteractionsPage } from './InteractionsPage';
 import { KeycloakLoginPage } from './KeycloakLoginPage';
 import { MfaLoginPage } from './MfaLoginPage';
@@ -67,6 +68,7 @@ export class n8nPage {
 	// Pages
 	readonly aiAssistant: AIAssistantPage;
 	readonly aiBuilder: AIBuilderPage;
+	readonly instanceAi: InstanceAiPage;
 	readonly canvas: CanvasPage;
 	readonly communityNodes: CommunityNodesPage;
 	readonly demo: DemoPage;
@@ -140,6 +142,7 @@ export class n8nPage {
 		// Pages
 		this.aiAssistant = new AIAssistantPage(page);
 		this.aiBuilder = new AIBuilderPage(page);
+		this.instanceAi = new InstanceAiPage(page);
 		this.canvas = new CanvasPage(page);
 		this.communityNodes = new CommunityNodesPage(page);
 		this.demo = new DemoPage(page);

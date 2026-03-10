@@ -275,6 +275,18 @@ export type FrontendModuleSettings = {
 	};
 
 	/**
+	 * Client settings for instance AI module.
+	 */
+	'instance-ai'?: {
+		enabled: boolean;
+		filesystem: boolean;
+		gatewayConnected: boolean;
+		gatewayDirectory: string | null;
+		filesystemDisabled: boolean;
+		filesystemDirectory: string | null;
+	};
+
+	/**
 	 * Client settings for external secrets module.
 	 */
 	'external-secrets'?: {

@@ -240,6 +240,14 @@ export class NavigationHelper {
 	}
 
 	/**
+	 * Navigate to the Instance AI page
+	 * URL: /instance-ai
+	 */
+	async toInstanceAi(): Promise<void> {
+		await this.page.goto('/instance-ai');
+	}
+
+	/**
 	 * Navigate to external secrets settings page
 	 * URL: /settings/external-secrets
 	 */

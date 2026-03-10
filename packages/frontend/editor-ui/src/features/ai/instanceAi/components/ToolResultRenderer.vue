@@ -1,0 +1,79 @@
+<script lang="ts" setup>
+import { computed } from 'vue';
+import ToolResultJson from './ToolResultJson.vue';
+import ToolResultTable from './ToolResultTable.vue';
+import ToolResultCode from './ToolResultCode.vue';
+
+const props = defineProps<{
+	result: unknown;
+	toolName: string;
+}>();
+
+type ResultType = 'code' | 'table' | 'json';
+
+const CODE_TOOLS = new Set(['get-workflow-as-code', 'get-node-type-definition']);
+const TABLE_TOOLS = new Set([
+	'query-data-table-rows',
+	'list-workflows',
+	'list-executions',
+	'list-credentials',
+	'search-nodes',
+	'list-nodes',
+	'list-data-tables',
+]);
+
+function detectType(result: unknown, toolName: string): ResultType {
+	if (CODE_TOOLS.has(toolName)) return 'code';
+	if (TABLE_TOOLS.has(toolName) && result && typeof result === 'object') return 'table';
+	return 'json';
+}
+
+function extractCode(result: unknown, toolName: string): string | null {
+	if (!result || typeof result !== 'object') return null;
+	const obj = result as Record<string, unknown>;
+
+	if (toolName === 'get-workflow-as-code' && typeof obj.code === 'string') {
+		return obj.code;
+	}
+	if (toolName === 'get-node-type-definition' && Array.isArray(obj.definitions)) {
+		const defs = obj.definitions as Array<Record<string, unknown>>;
+		return defs
+			.filter((d) => typeof d.content === 'string')
+			.map((d) => d.content as string)
+			.join('\n\n');
+	}
+	return null;
+}
+
+function extractTableRows(result: unknown): Array<Record<string, unknown>> | null {
+	if (!result || typeof result !== 'object') return null;
+	const obj = result as Record<string, unknown>;
+
+	// Try common array property names
+	for (const key of [
+		'data',
+		'workflows',
+		'executions',
+		'credentials',
+		'results',
+		'nodes',
+		'tables',
+	]) {
+		if (Array.isArray(obj[key]) && obj[key].length > 0 && typeof obj[key][0] === 'object') {
+			return obj[key] as Array<Record<string, unknown>>;
+		}
+	}
+	return null;
+}
+
+const resultType = computed(() => detectType(props.result, props.toolName));
+
+const codeContent = computed(() => extractCode(props.result, props.toolName));
+const tableRows = computed(() => extractTableRows(props.result));
+</script>
+
+<template>
+	<ToolResultCode v-if="resultType === 'code' && codeContent" :code="codeContent" />
+	<ToolResultTable v-else-if="resultType === 'table' && tableRows" :rows="tableRows" />
+	<ToolResultJson v-else :value="props.result" />
+</template>

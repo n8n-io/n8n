@@ -47,6 +47,10 @@ const properties: INodeProperties[] = [
 		type: 'boolean',
 		default: true,
 		description: 'Whether to return a simplified version of the response instead of the raw data',
+		builderHint: {
+			message:
+				'Even with simplify=true, the text.response output is nested: access text via output[0].content[0].text (not .text directly). For simpler output handling, use AI Agent + OpenAI Chat Model instead — Agent returns text at $json.output.',
+		},
 	},
 	{
 		displayName: 'Hide Tools',

@@ -1,0 +1,515 @@
+import { z } from 'zod';
+
+// ---------------------------------------------------------------------------
+// Branded ID types — prevent swapping runId/agentId/threadId/toolCallId
+// ---------------------------------------------------------------------------
+
+export type RunId = string & { readonly __brand: 'RunId' };
+export type AgentId = string & { readonly __brand: 'AgentId' };
+export type ThreadId = string & { readonly __brand: 'ThreadId' };
+export type ToolCallId = string & { readonly __brand: 'ToolCallId' };
+
+// ---------------------------------------------------------------------------
+// Event type enum
+// ---------------------------------------------------------------------------
+
+export const instanceAiEventTypeSchema = z.enum([
+	'run-start',
+	'run-finish',
+	'agent-spawned',
+	'agent-completed',
+	'text-delta',
+	'reasoning-delta',
+	'tool-call',
+	'tool-result',
+	'tool-error',
+	'confirmation-request',
+	'plan-update',
+	'filesystem-request',
+	'error',
+]);
+export type InstanceAiEventType = z.infer<typeof instanceAiEventTypeSchema>;
+
+// ---------------------------------------------------------------------------
+// Run status
+// ---------------------------------------------------------------------------
+
+export const instanceAiRunStatusSchema = z.enum(['completed', 'cancelled', 'error']);
+export type InstanceAiRunStatus = z.infer<typeof instanceAiRunStatusSchema>;
+
+// ---------------------------------------------------------------------------
+// Confirmation severity
+// ---------------------------------------------------------------------------
+
+export const instanceAiConfirmationSeveritySchema = z.enum(['destructive', 'warning', 'info']);
+export type InstanceAiConfirmationSeverity = z.infer<typeof instanceAiConfirmationSeveritySchema>;
+
+// ---------------------------------------------------------------------------
+// Agent status (frontend rendering state)
+// ---------------------------------------------------------------------------
+
+export const instanceAiAgentStatusSchema = z.enum(['active', 'completed', 'cancelled', 'error']);
+export type InstanceAiAgentStatus = z.infer<typeof instanceAiAgentStatusSchema>;
+
+// ---------------------------------------------------------------------------
+// Event payloads
+// ---------------------------------------------------------------------------
+
+export const runStartPayloadSchema = z.object({
+	messageId: z.string().describe('Correlates with the user message that triggered this run'),
+});
+
+export const runFinishPayloadSchema = z.object({
+	status: instanceAiRunStatusSchema,
+	reason: z.string().optional(),
+});
+
+export const agentSpawnedPayloadSchema = z.object({
+	parentId: z.string().describe("Orchestrator's agentId"),
+	role: z.string().describe('Free-form role description'),
+	tools: z.array(z.string()).describe('Tool names the sub-agent received'),
+	taskId: z.string().optional().describe('Background task ID (only for background agents)'),
+});
+
+export const agentCompletedPayloadSchema = z.object({
+	role: z.string(),
+	result: z.string().describe('Synthesized answer'),
+	error: z.string().optional(),
+});
+
+export const textDeltaPayloadSchema = z.object({
+	text: z.string(),
+});
+
+export const reasoningDeltaPayloadSchema = z.object({
+	text: z.string(),
+});
+
+export const toolCallPayloadSchema = z.object({
+	toolCallId: z.string(),
+	toolName: z.string(),
+	args: z.record(z.unknown()),
+});
+
+export const toolResultPayloadSchema = z.object({
+	toolCallId: z.string(),
+	result: z.unknown(),
+});
+
+export const toolErrorPayloadSchema = z.object({
+	toolCallId: z.string(),
+	error: z.string(),
+});
+
+export const credentialRequestSchema = z.object({
+	credentialType: z.string(),
+	reason: z.string(),
+	existingCredentials: z.array(z.object({ id: z.string(), name: z.string() })),
+});
+
+export type InstanceAiCredentialRequest = z.infer<typeof credentialRequestSchema>;
+
+export const confirmationRequestPayloadSchema = z.object({
+	requestId: z.string(),
+	toolCallId: z.string().describe('Correlates to the tool-call that needs approval'),
+	toolName: z.string(),
+	args: z.record(z.unknown()),
+	severity: instanceAiConfirmationSeveritySchema,
+	message: z.string().describe('Human-readable description of the action'),
+	credentialRequests: z.array(credentialRequestSchema).optional(),
+	inputType: z
+		.enum(['approval', 'text'])
+		.optional()
+		.describe('UI mode: approval (default) shows approve/deny, text shows a text input'),
+});
+
+export const errorPayloadSchema = z.object({
+	content: z.string(),
+});
+
+// ---------------------------------------------------------------------------
+// MCP protocol types (used by the filesystem gateway)
+// ---------------------------------------------------------------------------
+
+export const mcpToolSchema = z.object({
+	name: z.string(),
+	description: z.string().optional(),
+	inputSchema: z.object({
+		type: z.literal('object'),
+		properties: z.record(z.unknown()),
+		required: z.array(z.string()).optional(),
+	}),
+});
+export type McpTool = z.infer<typeof mcpToolSchema>;
+
+export const mcpToolCallRequestSchema = z.object({
+	name: z.string(),
+	arguments: z.record(z.unknown()),
+});
+export type McpToolCallRequest = z.infer<typeof mcpToolCallRequestSchema>;
+
+export const mcpToolCallResultSchema = z.object({
+	content: z.array(z.object({ type: z.literal('text'), text: z.string() })),
+	isError: z.boolean().optional(),
+});
+export type McpToolCallResult = z.infer<typeof mcpToolCallResultSchema>;
+
+// Sent by the daemon on connect — replaces the old file-tree upload
+export const instanceAiGatewayCapabilitiesSchema = z.object({
+	rootPath: z.string(),
+	tools: z.array(mcpToolSchema),
+});
+export type InstanceAiGatewayCapabilities = z.infer<typeof instanceAiGatewayCapabilitiesSchema>;
+
+// ---------------------------------------------------------------------------
+// Filesystem bridge payloads (browser ↔ server round-trip)
+// ---------------------------------------------------------------------------
+
+export const filesystemRequestPayloadSchema = z.object({
+	requestId: z.string(),
+	toolCall: mcpToolCallRequestSchema,
+});
+
+export const instanceAiFilesystemResponseSchema = z.object({
+	result: mcpToolCallResultSchema.optional(),
+	error: z.string().optional(),
+});
+
+// ---------------------------------------------------------------------------
+// Plan schemas (shared between backend plan tool and frontend PlanCard)
+// ---------------------------------------------------------------------------
+
+export const planStepSchema = z.object({
+	phase: z.string().describe('Phase name (e.g., "build", "execute", "debug")'),
+	description: z.string().describe('What this step accomplishes'),
+	status: z
+		.enum(['pending', 'in_progress', 'completed', 'failed', 'skipped'])
+		.describe('Current status of this step'),
+	result: z.string().optional().describe('Outcome after completion or failure'),
+	toolCallId: z.string().optional().describe('Links this step to the tool call implementing it'),
+});
+
+export type PlanStep = z.infer<typeof planStepSchema>;
+
+export const planObjectSchema = z.object({
+	goal: z.string().describe('What the user wants accomplished'),
+	currentPhase: z
+		.enum(['build', 'execute', 'inspect', 'evaluate', 'debug'])
+		.describe('Current phase of the autonomous loop'),
+	iteration: z.number().int().min(0).describe('Loop iteration count (0 = first pass)'),
+	steps: z.array(planStepSchema).describe('Ordered list of plan steps'),
+});
+
+export type PlanObject = z.infer<typeof planObjectSchema>;
+
+export const planUpdatePayloadSchema = z.object({
+	plan: planObjectSchema,
+});
+
+// ---------------------------------------------------------------------------
+// Event schema (Zod discriminated union — single source of truth)
+// ---------------------------------------------------------------------------
+
+const eventBase = { runId: z.string(), agentId: z.string(), userId: z.string().optional() };
+
+export const instanceAiEventSchema = z.discriminatedUnion('type', [
+	z.object({ type: z.literal('run-start'), ...eventBase, payload: runStartPayloadSchema }),
+	z.object({ type: z.literal('run-finish'), ...eventBase, payload: runFinishPayloadSchema }),
+	z.object({ type: z.literal('agent-spawned'), ...eventBase, payload: agentSpawnedPayloadSchema }),
+	z.object({
+		type: z.literal('agent-completed'),
+		...eventBase,
+		payload: agentCompletedPayloadSchema,
+	}),
+	z.object({ type: z.literal('text-delta'), ...eventBase, payload: textDeltaPayloadSchema }),
+	z.object({
+		type: z.literal('reasoning-delta'),
+		...eventBase,
+		payload: reasoningDeltaPayloadSchema,
+	}),
+	z.object({ type: z.literal('tool-call'), ...eventBase, payload: toolCallPayloadSchema }),
+	z.object({ type: z.literal('tool-result'), ...eventBase, payload: toolResultPayloadSchema }),
+	z.object({ type: z.literal('tool-error'), ...eventBase, payload: toolErrorPayloadSchema }),
+	z.object({
+		type: z.literal('confirmation-request'),
+		...eventBase,
+		payload: confirmationRequestPayloadSchema,
+	}),
+	z.object({ type: z.literal('plan-update'), ...eventBase, payload: planUpdatePayloadSchema }),
+	z.object({ type: z.literal('error'), ...eventBase, payload: errorPayloadSchema }),
+	z.object({
+		type: z.literal('filesystem-request'),
+		...eventBase,
+		payload: filesystemRequestPayloadSchema,
+	}),
+]);
+
+// ---------------------------------------------------------------------------
+// Derived event types (from the schema — single source of truth)
+// ---------------------------------------------------------------------------
+
+export type InstanceAiEvent = z.infer<typeof instanceAiEventSchema>;
+
+// Named event types as Extract aliases for consumers that need specific types
+export type InstanceAiRunStartEvent = Extract<InstanceAiEvent, { type: 'run-start' }>;
+export type InstanceAiRunFinishEvent = Extract<InstanceAiEvent, { type: 'run-finish' }>;
+export type InstanceAiAgentSpawnedEvent = Extract<InstanceAiEvent, { type: 'agent-spawned' }>;
+export type InstanceAiAgentCompletedEvent = Extract<InstanceAiEvent, { type: 'agent-completed' }>;
+export type InstanceAiTextDeltaEvent = Extract<InstanceAiEvent, { type: 'text-delta' }>;
+export type InstanceAiReasoningDeltaEvent = Extract<InstanceAiEvent, { type: 'reasoning-delta' }>;
+export type InstanceAiToolCallEvent = Extract<InstanceAiEvent, { type: 'tool-call' }>;
+export type InstanceAiToolResultEvent = Extract<InstanceAiEvent, { type: 'tool-result' }>;
+export type InstanceAiToolErrorEvent = Extract<InstanceAiEvent, { type: 'tool-error' }>;
+export type InstanceAiConfirmationRequestEvent = Extract<
+	InstanceAiEvent,
+	{ type: 'confirmation-request' }
+>;
+export type InstanceAiPlanUpdateEvent = Extract<InstanceAiEvent, { type: 'plan-update' }>;
+export type InstanceAiErrorEvent = Extract<InstanceAiEvent, { type: 'error' }>;
+export type InstanceAiFilesystemRequestEvent = Extract<
+	InstanceAiEvent,
+	{ type: 'filesystem-request' }
+>;
+
+export type InstanceAiFilesystemResponse = z.infer<typeof instanceAiFilesystemResponseSchema>;
+
+// ---------------------------------------------------------------------------
+// API types
+// ---------------------------------------------------------------------------
+
+export interface InstanceAiSendMessageRequest {
+	message: string;
+	researchMode?: boolean;
+}
+
+export interface InstanceAiSendMessageResponse {
+	runId: string;
+}
+
+export interface InstanceAiConfirmResponse {
+	approved: boolean;
+	credentialId?: string;
+	credentials?: Record<string, string>;
+	autoSetup?: { credentialType: string };
+	userInput?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Frontend store types (shared so both sides agree on structure)
+// ---------------------------------------------------------------------------
+
+export interface InstanceAiToolCallState {
+	toolCallId: string;
+	toolName: string;
+	args: Record<string, unknown>;
+	result?: unknown;
+	error?: string;
+	isLoading: boolean;
+	renderHint?: 'plan' | 'delegate' | 'builder' | 'data-table' | 'researcher' | 'default';
+	confirmation?: {
+		requestId: string;
+		severity: InstanceAiConfirmationSeverity;
+		message: string;
+		credentialRequests?: InstanceAiCredentialRequest[];
+		inputType?: 'approval' | 'text';
+	};
+	confirmationStatus?: 'pending' | 'approved' | 'denied';
+	startedAt?: string;
+	completedAt?: string;
+}
+
+export type InstanceAiTimelineEntry =
+	| { type: 'text'; content: string }
+	| { type: 'tool-call'; toolCallId: string }
+	| { type: 'child'; agentId: string };
+
+export interface InstanceAiAgentNode {
+	agentId: string;
+	role: string;
+	tools?: string[];
+	/** Background task ID — present only for background agents (workflow-builder, data-table-manager). */
+	taskId?: string;
+	status: InstanceAiAgentStatus;
+	textContent: string;
+	reasoning: string;
+	toolCalls: InstanceAiToolCallState[];
+	children: InstanceAiAgentNode[];
+	/** Chronological ordering of text segments, tool calls, and sub-agents. */
+	timeline: InstanceAiTimelineEntry[];
+	/** Latest plan state — updated by plan-update events. */
+	plan?: PlanObject;
+	result?: string;
+	error?: string;
+}
+
+export interface InstanceAiMessage {
+	id: string;
+	runId?: string;
+	role: 'user' | 'assistant';
+	createdAt: string;
+	content: string;
+	reasoning: string;
+	isStreaming: boolean;
+	agentTree?: InstanceAiAgentNode;
+}
+
+export interface InstanceAiThreadSummary {
+	id: string;
+	title: string;
+	createdAt: string;
+}
+
+export type InstanceAiSSEConnectionState =
+	| 'disconnected'
+	| 'connecting'
+	| 'connected'
+	| 'reconnecting';
+
+// ---------------------------------------------------------------------------
+// Thread Inspector types (debug panel — raw Mastra storage inspection)
+// ---------------------------------------------------------------------------
+
+export interface InstanceAiThreadInfo {
+	id: string;
+	title?: string;
+	resourceId: string;
+	createdAt: string;
+	updatedAt: string;
+	metadata?: Record<string, unknown>;
+}
+
+export interface InstanceAiThreadListResponse {
+	threads: InstanceAiThreadInfo[];
+	total: number;
+	page: number;
+	hasMore: boolean;
+}
+
+export interface InstanceAiStoredMessage {
+	id: string;
+	role: string;
+	content: unknown;
+	type?: string;
+	createdAt: string;
+}
+
+export interface InstanceAiThreadMessagesResponse {
+	messages: InstanceAiStoredMessage[];
+	threadId: string;
+}
+
+export interface InstanceAiThreadContextResponse {
+	threadId: string;
+	workingMemory: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Rich messages response (session-restored view with agent trees)
+// ---------------------------------------------------------------------------
+
+export interface InstanceAiRichMessagesResponse {
+	threadId: string;
+	messages: InstanceAiMessage[];
+	/** Next SSE event ID for this thread — use as cursor to avoid replaying events already covered by these messages. */
+	nextEventId: number;
+}
+
+// ---------------------------------------------------------------------------
+// Thread status response (background task visibility)
+// ---------------------------------------------------------------------------
+
+export interface InstanceAiThreadStatusResponse {
+	hasActiveRun: boolean;
+	isSuspended: boolean;
+	backgroundTasks: Array<{
+		taskId: string;
+		role: string;
+		agentId: string;
+		status: 'running' | 'completed' | 'failed' | 'cancelled';
+		startedAt: number;
+	}>;
+}
+
+// ---------------------------------------------------------------------------
+// Shared utility: maps tool names to render hints (used by both FE and BE)
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Settings types (runtime-configurable subset of InstanceAiConfig)
+// ---------------------------------------------------------------------------
+
+export type InstanceAiPermissionMode = 'require_approval' | 'always_allow';
+
+export interface InstanceAiPermissions {
+	runWorkflow: InstanceAiPermissionMode;
+	activateWorkflow: InstanceAiPermissionMode;
+	deleteWorkflow: InstanceAiPermissionMode;
+	deleteCredential: InstanceAiPermissionMode;
+}
+
+export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
+	runWorkflow: 'require_approval',
+	activateWorkflow: 'require_approval',
+	deleteWorkflow: 'require_approval',
+	deleteCredential: 'require_approval',
+};
+
+export interface InstanceAiSettingsResponse {
+	credentialId: string | null;
+	credentialType: string | null;
+	credentialName: string | null;
+	modelName: string;
+	mcpServers: string;
+	lastMessages: number;
+	embedderModel: string;
+	semanticRecallTopK: number;
+	timeout: number;
+	subAgentMaxSteps: number;
+	browserMcp: boolean;
+	sandboxEnabled: boolean;
+	sandboxProvider: string;
+	daytonaApiUrl: string;
+	hasDaytonaApiKey: boolean;
+	sandboxImage: string;
+	sandboxTimeout: number;
+	hasBraveSearchApiKey: boolean;
+	searxngUrl: string;
+	permissions: InstanceAiPermissions;
+}
+
+export interface InstanceAiSettingsUpdateRequest {
+	credentialId?: string | null;
+	modelName?: string;
+	mcpServers?: string;
+	lastMessages?: number;
+	embedderModel?: string;
+	semanticRecallTopK?: number;
+	timeout?: number;
+	subAgentMaxSteps?: number;
+	browserMcp?: boolean;
+	sandboxEnabled?: boolean;
+	sandboxProvider?: string;
+	daytonaApiUrl?: string;
+	daytonaApiKey?: string;
+	sandboxImage?: string;
+	sandboxTimeout?: number;
+	braveSearchApiKey?: string;
+	searxngUrl?: string;
+	permissions?: Partial<InstanceAiPermissions>;
+}
+
+export interface InstanceAiModelCredential {
+	id: string;
+	name: string;
+	type: string;
+	provider: string;
+}
+
+export function getRenderHint(toolName: string): InstanceAiToolCallState['renderHint'] {
+	if (toolName === 'plan') return 'plan';
+	if (toolName === 'delegate') return 'delegate';
+	if (toolName === 'build-workflow-with-agent') return 'builder';
+	if (toolName === 'manage-data-tables-with-agent') return 'data-table';
+	if (toolName === 'research-with-agent') return 'researcher';
+	return 'default';
+}

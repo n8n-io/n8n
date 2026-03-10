@@ -22,9 +22,9 @@
     "test:integration": "vitest run --config vitest.integration.config.mjs"
   },
   "dependencies": {
-    "@mastra/core": "^1.8.0",
-    "@mastra/memory": "^1.5.0",
-    "@mastra/evals": "^1.1.0",
+    "@mastra/core": "catalog:",
+    "@mastra/memory": "catalog:",
+    "@mastra/evals": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

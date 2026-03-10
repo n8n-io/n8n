@@ -1,0 +1,36 @@
+{
+  "name": "@n8n/fs-proxy",
+  "version": "0.1.0",
+  "description": "CLI daemon that tunnels filesystem requests from a remote n8n instance to local project files",
+  "bin": {
+    "n8n-fs-proxy": "dist/cli.js"
+  },
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "dev": "pnpm watch",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "format": "biome format --write src",
+    "format:check": "biome ci src",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix",
+    "watch": "tsc -p tsconfig.build.json --watch",
+    "postinstall": "node dist/install-autostart.js || true",
+    "test": "jest",
+    "test:unit": "jest",
+    "test:dev": "jest --watch"
+  },
+  "main": "dist/cli.js",
+  "module": "src/cli.ts",
+  "types": "dist/cli.d.ts",
+  "files": [
+    "dist/**/*"
+  ],
+  "dependencies": {
+    "eventsource": "^3.0.6"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
+    "@types/node": "catalog:"
+  }
+}
