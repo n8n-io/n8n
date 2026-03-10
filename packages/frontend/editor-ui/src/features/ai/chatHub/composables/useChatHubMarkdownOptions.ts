@@ -7,6 +7,7 @@ import markdownItKatex from '@vscode/markdown-it-katex';
 import markdownItFootnote from 'markdown-it-footnote';
 import { truncateBeforeLast } from '@n8n/utils/string/truncate';
 import 'katex/dist/katex.min.css';
+import type StateCore from 'markdown-it/lib/rules_core/state_core';
 
 let hljsInstance: HLJSApi | undefined;
 let asyncImport:
@@ -16,6 +17,49 @@ let asyncImport:
 	  }
 	| { status: 'uninitialized' }
 	| { status: 'done' } = { status: 'uninitialized' };
+
+type FootnoteEnv = {
+	footnotes?: { list?: Array<{ label?: string; count?: number; content?: string }> };
+};
+
+/**
+ * To render streamed content cleanly, strip orphaned [^label] references that have no matching definition.
+ * markdown-it-footnote only creates footnote_ref tokens for resolved references; unresolved ones remain as literal text.
+ */
+function hideOrphanFootnoteRefs(state: StateCore) {
+	for (const token of state.tokens) {
+		if (token.type === 'inline' && token.children) {
+			for (const child of token.children) {
+				if (child.type === 'text') {
+					child.content = child.content.replace(/\[\^[^\]]+\]/g, '');
+				}
+			}
+		}
+	}
+}
+
+/**
+ * footnote_tail puts content into the main token stream, not into env.footnotes.list.
+ * This rule runs after footnote_tail and backfills list[id].content from the token stream.
+ */
+function footnoteContentExtractor(state: StateCore) {
+	const list = (state.env as FootnoteEnv).footnotes?.list;
+	if (!list) return;
+
+	let currentId = -1;
+	for (const token of state.tokens) {
+		if (token.type === 'footnote_open') {
+			currentId = token.meta.id;
+		} else if (token.type === 'inline' && currentId >= 0) {
+			if (!list[currentId].content) {
+				list[currentId].content = token.content;
+			}
+			currentId = -1;
+		} else if (token.type === 'footnote_close') {
+			currentId = -1;
+		}
+	}
+}
 
 export function useChatHubMarkdownOptions(
 	codeBlockActionsClassName: string,
@@ -140,47 +184,11 @@ export function useChatHubMarkdownOptions(
 		const footnotePlugin = (md: MarkdownIt) => {
 			md.use(markdownItFootnote);
 
-			// Strip orphaned [^label] references that have no matching definition.
-			// markdown-it-footnote only creates footnote_ref tokens for resolved
-			// references; unresolved ones remain as literal text.
-			md.core.ruler.push('hide_orphan_footnote_refs', (state) => {
-				for (const token of state.tokens) {
-					if (token.type === 'inline' && token.children) {
-						for (const child of token.children) {
-							if (child.type === 'text') {
-								child.content = child.content.replace(/\[\^[^\]]+\]/g, '');
-							}
-						}
-					}
-				}
-			});
+			md.core.ruler.push('hide_orphan_footnote_refs', hideOrphanFootnoteRefs);
 
 			if (!footnoteRefClassName) return;
 
-			type FootnoteEnv = {
-				footnotes?: { list?: Array<{ label?: string; count?: number; content?: string }> };
-			};
-
-			// footnote_tail puts content into the main token stream, not into env.footnotes.list.
-			// This rule runs after footnote_tail and backfills list[id].content from the token stream.
-			md.core.ruler.push('footnote_content_extractor', (state) => {
-				const list = (state.env as FootnoteEnv).footnotes?.list;
-				if (!list) return;
-
-				let currentId = -1;
-				for (const token of state.tokens) {
-					if (token.type === 'footnote_open') {
-						currentId = token.meta.id;
-					} else if (token.type === 'inline' && currentId >= 0) {
-						if (!list[currentId].content) {
-							list[currentId].content = token.content;
-						}
-						currentId = -1;
-					} else if (token.type === 'footnote_close') {
-						currentId = -1;
-					}
-				}
-			});
+			md.core.ruler.push('footnote_content_extractor', footnoteContentExtractor);
 
 			md.renderer.rules.footnote_ref = (tokens, idx, _options, env) => {
 				const id = tokens[idx].meta.id;

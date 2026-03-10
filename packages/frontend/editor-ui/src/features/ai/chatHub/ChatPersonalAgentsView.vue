@@ -61,6 +61,7 @@ function handleEditAgent(model: ChatHubConversationModel) {
 	}
 }
 
+// Sync query parameter to modal window state
 watch(
 	credentialsByProvider,
 	(credentials) => {
@@ -73,6 +74,7 @@ watch(
 	{ immediate: true },
 );
 
+// Sync modal window state to query parameter
 watch(
 	() => uiStore.modalsById[AGENT_EDITOR_MODAL_KEY]?.open,
 	(isOpen) => {

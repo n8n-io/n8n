@@ -104,7 +104,7 @@ const warningTooltip = computed<string | undefined>(() => {
 	min-width: 0;
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--5xs);
 
 	.fileNameText {
 		overflow: hidden;
@@ -117,7 +117,7 @@ const warningTooltip = computed<string | undefined>(() => {
 
 .createdAt {
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	line-height: var(--line-height--lg);
 }
 

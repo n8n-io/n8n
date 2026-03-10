@@ -82,6 +82,7 @@ import {
 	flattenModel,
 	unflattenModel,
 	createFakeAgent,
+	chunkFilesBySize,
 } from './chat.utils';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -809,28 +810,6 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		return agents.value?.['custom-agent'].models.find(
 			(model) => 'agentId' in model && model.agentId === agentId,
 		);
-	}
-
-	function chunkFilesBySize(files: File[], maxSizeBytes: number): File[][] {
-		const chunks: File[][] = [];
-		let currentChunk: File[] = [];
-		let currentSize = 0;
-
-		for (const file of files) {
-			if (currentSize + file.size > maxSizeBytes && currentChunk.length > 0) {
-				chunks.push(currentChunk);
-				currentChunk = [];
-				currentSize = 0;
-			}
-			currentChunk.push(file);
-			currentSize += file.size;
-		}
-
-		if (currentChunk.length > 0) {
-			chunks.push(currentChunk);
-		}
-
-		return chunks;
 	}
 
 	async function uploadFilesInChunks(agentId: string, files: File[]): Promise<ChatHubAgentDto> {

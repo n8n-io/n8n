@@ -422,6 +422,7 @@ const { pause, resume } = useTimeoutPoll(async () => {
 	}
 }, 5000);
 
+// Poll indexing status while there's a file in indexing state
 watch(
 	hasIndexingFiles,
 	(hasIndexing) => {
