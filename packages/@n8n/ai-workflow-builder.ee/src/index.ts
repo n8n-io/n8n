@@ -2,7 +2,7 @@ export * from './ai-workflow-builder-agent.service';
 export * from './types';
 export * from './workflow-state';
 export { resolveConnections } from '@/validation/utils/resolve-connections';
-export { CodeBuilderAgent, type CodeBuilderAgentConfig } from './code-builder';
+export { CodeBuilderAgent, type CodeBuilderAgentConfig, type CodeFormat } from './code-builder';
 export { CodeWorkflowBuilder, type CodeWorkflowBuilderConfig } from './code-builder';
 export { AssistantHandler } from './assistant';
 export type {
@@ -23,6 +23,7 @@ export {
 	SDK_IMPORT_STATEMENT,
 	EXPRESSION_REFERENCE,
 	WORKFLOW_PATTERNS,
+	DATAFLOW_WORKFLOW_PATTERNS,
 	ADDITIONAL_FUNCTIONS,
 	WORKFLOW_RULES,
 	CODE_BUILDER_SEARCH_NODES_TOOL,

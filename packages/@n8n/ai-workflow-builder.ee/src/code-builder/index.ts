@@ -8,7 +8,12 @@
 export { CodeBuilderAgent } from './code-builder-agent';
 
 // Types
-export type { CodeBuilderAgentConfig, ParseAndValidateResult, ValidationWarning } from './types';
+export type {
+	CodeBuilderAgentConfig,
+	CodeFormat,
+	ParseAndValidateResult,
+	ValidationWarning,
+} from './types';
 
 // Code Workflow Builder
 export { CodeWorkflowBuilder } from './code-workflow-builder';
@@ -28,6 +33,7 @@ export { stripImportStatements, SDK_IMPORT_STATEMENT } from './utils/extract-cod
 
 // SDK reference content (raw, unescaped curly braces)
 export { WORKFLOW_PATTERNS } from './prompts';
+export { DATAFLOW_WORKFLOW_PATTERNS } from './prompts/dataflow-prompt';
 export {
 	EXPRESSION_REFERENCE,
 	ADDITIONAL_FUNCTIONS,

@@ -23,7 +23,7 @@ import type { StreamOutput } from '../types/streaming';
 import type { ChatPayload } from '../workflow-builder-agent';
 import { CodeBuilderAgent } from './code-builder-agent';
 import { SessionChatHandler } from './handlers/session-chat-handler';
-import type { TokenUsage } from './types';
+import type { CodeFormat, TokenUsage } from './types';
 export type { TokenUsage };
 
 /**
@@ -71,6 +71,12 @@ export interface CodeWorkflowBuilderConfig {
 	 * Whether to generate pin data for new nodes. Defaults to true.
 	 */
 	generatePinData?: boolean;
+	/**
+	 * Code format variant. Defaults to 'sdk'.
+	 * - 'sdk': JavaScript SDK fluent builder format
+	 * - 'dataflow': Data-flow TypeScript format with native control flow
+	 */
+	codeFormat?: CodeFormat;
 }
 
 /**
@@ -100,6 +106,7 @@ export class CodeWorkflowBuilder {
 			runMetadata: config.runMetadata,
 			onTelemetryEvent: config.onTelemetryEvent,
 			generatePinData: config.generatePinData,
+			codeFormat: config.codeFormat,
 		});
 
 		this.logger = config.logger;

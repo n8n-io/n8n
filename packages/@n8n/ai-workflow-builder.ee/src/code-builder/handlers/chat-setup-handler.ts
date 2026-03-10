@@ -13,18 +13,19 @@ import type { AIMessage, BaseMessage } from '@langchain/core/messages';
 import type { Runnable } from '@langchain/core/runnables';
 import type { StructuredToolInterface } from '@langchain/core/tools';
 import type { Logger } from '@n8n/backend-common';
-import { generateWorkflowCode } from '@n8n/workflow-sdk';
+import { generateWorkflowCode, generateDataFlowWorkflowCode } from '@n8n/workflow-sdk';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import { TEXT_EDITOR_TOOL, VALIDATE_TOOL, BATCH_STR_REPLACE_TOOL } from '../constants';
 import { buildCodeBuilderPrompt, type HistoryContext } from '../prompts';
+import { buildDataFlowCodeBuilderPrompt } from '../prompts/dataflow-prompt';
 import { TextEditorHandler } from './text-editor-handler';
 import { TextEditorToolHandler } from './text-editor-tool-handler';
 import type { TextEditorCommand } from './text-editor.types';
 import type { PlanOutput } from '../../types/planning';
 import type { ChatPayload } from '../../workflow-builder-agent';
 import { formatNodeResult } from '../tools/code-builder-search.tool';
-import type { ParseAndValidateResult } from '../types';
+import type { CodeFormat, ParseAndValidateResult } from '../types';
 import { SDK_IMPORT_STATEMENT } from '../utils/extract-code';
 import type { NodeTypeParser } from '../utils/node-type-parser';
 
@@ -52,6 +53,8 @@ export interface ChatSetupHandlerConfig {
 	getErrorContext: GetErrorContextFn;
 	nodeTypeParser?: NodeTypeParser;
 	logger?: Logger;
+	/** Code format variant. Defaults to 'sdk'. */
+	codeFormat?: CodeFormat;
 }
 
 /**
@@ -99,6 +102,7 @@ export class ChatSetupHandler {
 	private getErrorContext: GetErrorContextFn;
 	private nodeTypeParser?: NodeTypeParser;
 	private logger?: Logger;
+	private codeFormat: CodeFormat;
 
 	constructor(config: ChatSetupHandlerConfig) {
 		this.llm = config.llm;
@@ -108,6 +112,7 @@ export class ChatSetupHandler {
 		this.getErrorContext = config.getErrorContext;
 		this.nodeTypeParser = config.nodeTypeParser;
 		this.logger = config.logger;
+		this.codeFormat = config.codeFormat ?? 'sdk';
 	}
 
 	/**
@@ -136,8 +141,8 @@ export class ChatSetupHandler {
 		// Check if text editor mode should be enabled
 		const textEditorEnabled = this.shouldEnableTextEditor();
 
-		// Build prompt
-		const prompt = buildCodeBuilderPrompt(workflowForCodeContext, historyContext, {
+		// Build prompt — select prompt builder based on code format
+		const promptOptions = {
 			enableTextEditor: textEditorEnabled,
 			executionSchema: payload.workflowContext?.executionSchema,
 			executionData: payload.workflowContext?.executionData,
@@ -147,7 +152,12 @@ export class ChatSetupHandler {
 			pinnedNodes: payload.workflowContext?.pinnedNodes,
 			planOutput: payload.planOutput,
 			preSearchResults,
-		});
+		};
+
+		const prompt =
+			this.codeFormat === 'dataflow'
+				? buildDataFlowCodeBuilderPrompt(workflowForCodeContext, historyContext, promptOptions)
+				: buildCodeBuilderPrompt(workflowForCodeContext, historyContext, promptOptions);
 
 		// Bind tools to LLM (exclude get_suggested_nodes when plan provides node suggestions)
 		const llmWithTools = this.bindToolsToLlm(textEditorEnabled, !!payload.planOutput);
@@ -198,6 +208,11 @@ export class ChatSetupHandler {
 	): string | undefined {
 		if (!currentWorkflow) {
 			return undefined;
+		}
+
+		if (this.codeFormat === 'dataflow') {
+			// Data-flow format doesn't support execution context annotations yet
+			return generateDataFlowWorkflowCode({ workflow: currentWorkflow });
 		}
 
 		return generateWorkflowCode({
@@ -274,8 +289,13 @@ export class ChatSetupHandler {
 		// Pre-populate with the SAME code that's in the system prompt
 		// This ensures str_replace commands match what the LLM sees
 		if (preGeneratedWorkflowCode) {
-			const codeWithImport = `${SDK_IMPORT_STATEMENT}\n\n${preGeneratedWorkflowCode}`;
-			textEditorHandler.setWorkflowCode(codeWithImport);
+			if (this.codeFormat === 'dataflow') {
+				// Data-flow format: no import statement needed
+				textEditorHandler.setWorkflowCode(preGeneratedWorkflowCode);
+			} else {
+				const codeWithImport = `${SDK_IMPORT_STATEMENT}\n\n${preGeneratedWorkflowCode}`;
+				textEditorHandler.setWorkflowCode(codeWithImport);
+			}
 		}
 
 		return { textEditorHandler, textEditorToolHandler };

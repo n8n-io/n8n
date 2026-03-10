@@ -14,6 +14,13 @@ import type {
 	ITelemetryTrackProperties,
 } from 'n8n-workflow';
 
+/**
+ * Code format variant for the code builder agent.
+ * - 'sdk': JavaScript SDK fluent builder format (default)
+ * - 'dataflow': Data-flow TypeScript format with native control flow
+ */
+export type CodeFormat = 'sdk' | 'dataflow';
+
 // ============================================================================
 // Forked types from types/nodes.ts for code-builder specific features
 // ============================================================================
@@ -129,4 +136,10 @@ export interface CodeBuilderAgentConfig {
 	 * Whether to generate pin data for new nodes. Defaults to true.
 	 */
 	generatePinData?: boolean;
+	/**
+	 * Code format variant. Defaults to 'sdk'.
+	 * - 'sdk': JavaScript SDK fluent builder format
+	 * - 'dataflow': Data-flow TypeScript format with native control flow
+	 */
+	codeFormat?: CodeFormat;
 }

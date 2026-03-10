@@ -7,10 +7,15 @@
  */
 
 import type { Logger } from '@n8n/backend-common';
-import { parseWorkflowCodeToBuilder, validateWorkflow, workflow } from '@n8n/workflow-sdk';
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import {
+	parseWorkflowCodeToBuilder,
+	parseDataFlowCode,
+	validateWorkflow,
+	workflow,
+} from '@n8n/workflow-sdk';
+import type { WorkflowBuilder, WorkflowJSON } from '@n8n/workflow-sdk';
 
-import type { ParseAndValidateResult, ValidationWarning } from '../types';
+import type { CodeFormat, ParseAndValidateResult, ValidationWarning } from '../types';
 import { stripImportStatements } from '../utils/extract-code';
 
 /**
@@ -20,6 +25,8 @@ export interface ParseValidateHandlerConfig {
 	logger?: Logger;
 	/** Whether to generate pin data for new nodes. Defaults to true. */
 	generatePinData?: boolean;
+	/** Code format variant. Defaults to 'sdk'. */
+	codeFormat?: CodeFormat;
 }
 
 /**
@@ -40,10 +47,12 @@ interface ValidationIssue {
 export class ParseValidateHandler {
 	private logger?: Logger;
 	private generatePinData: boolean;
+	private codeFormat: CodeFormat;
 
 	constructor(config: ParseValidateHandlerConfig = {}) {
 		this.logger = config.logger;
 		this.generatePinData = config.generatePinData ?? true;
+		this.codeFormat = config.codeFormat ?? 'sdk';
 	}
 
 	/**
@@ -124,77 +133,28 @@ export class ParseValidateHandler {
 		code: string,
 		currentWorkflow?: WorkflowJSON,
 	): Promise<ParseAndValidateResult> {
+		if (this.codeFormat === 'dataflow') {
+			return this.parseAndValidateDataFlow(code, currentWorkflow);
+		}
+		return this.parseAndValidateSdk(code, currentWorkflow);
+	}
+
+	/**
+	 * Parse and validate SDK format code (fluent builder).
+	 */
+	private async parseAndValidateSdk(
+		code: string,
+		currentWorkflow?: WorkflowJSON,
+	): Promise<ParseAndValidateResult> {
 		// Strip import statements before parsing - SDK functions are available as globals
 		const codeToParse = stripImportStatements(code);
 
 		try {
 			// Parse the TypeScript code to WorkflowBuilder
-			this.logger?.debug('Parsing WorkflowCode', { codeLength: codeToParse.length });
+			this.logger?.debug('Parsing WorkflowCode (SDK)', { codeLength: codeToParse.length });
 			const builder = parseWorkflowCodeToBuilder(codeToParse);
 
-			// Regenerate node IDs deterministically to ensure stable IDs across re-parses
-			builder.regenerateNodeIds();
-
-			// Run graph + JSON validation
-			const allWarnings: ValidationWarning[] = [];
-
-			// Validate the graph structure BEFORE converting to JSON
-			const graphValidation = builder.validate();
-
-			// Collect graph validation errors as warnings for agent self-correction
-			this.collectValidationIssues(
-				graphValidation.errors,
-				allWarnings,
-				'GRAPH VALIDATION ERRORS',
-				'warn',
-			);
-
-			// Collect graph validation warnings
-			this.collectValidationIssues(
-				graphValidation.warnings,
-				allWarnings,
-				'GRAPH VALIDATION WARNINGS',
-				'info',
-			);
-
-			// Convert to JSON for JSON-based validation
-			const json = builder.toJSON();
-
-			// Run JSON-based validation for additional checks
-			const validationResult = validateWorkflow(json);
-
-			// Collect JSON validation errors as warnings for agent self-correction
-			this.collectValidationIssues(
-				validationResult.errors,
-				allWarnings,
-				'JSON VALIDATION ERRORS',
-				'warn',
-			);
-
-			// Collect JSON validation warnings
-			this.collectValidationIssues(
-				validationResult.warnings,
-				allWarnings,
-				'JSON VALIDATION WARNINGS',
-				'info',
-			);
-
-			// Generate pin data for new nodes only (nodes not in currentWorkflow)
-			if (this.generatePinData) {
-				builder.generatePinData({ beforeWorkflow: currentWorkflow });
-			}
-
-			// Convert to JSON
-			const workflowJson: WorkflowJSON = builder.toJSON();
-
-			this.logger?.debug('Parsed workflow', {
-				id: workflowJson.id,
-				name: workflowJson.name,
-				nodeCount: workflowJson.nodes.length,
-			});
-
-			// Return both workflow and warnings for agent self-correction
-			return { workflow: workflowJson, warnings: allWarnings };
+			return this.validateBuilder(builder, currentWorkflow);
 		} catch (error) {
 			this.logger?.error('Failed to parse WorkflowCode', {
 				error: error instanceof Error ? error.message : String(error),
@@ -205,6 +165,107 @@ export class ParseValidateHandler {
 				`Failed to parse generated workflow code: ${error instanceof Error ? error.message : 'Unknown error'}`,
 			);
 		}
+	}
+
+	/**
+	 * Parse and validate data-flow format code.
+	 */
+	private async parseAndValidateDataFlow(
+		code: string,
+		currentWorkflow?: WorkflowJSON,
+	): Promise<ParseAndValidateResult> {
+		try {
+			this.logger?.debug('Parsing WorkflowCode (dataflow)', { codeLength: code.length });
+
+			// Parse data-flow code directly to WorkflowJSON
+			const json = parseDataFlowCode(code);
+
+			// Wrap in builder for validation and pin data generation
+			const builder = workflow.fromJSON(json);
+
+			return this.validateBuilder(builder, currentWorkflow);
+		} catch (error) {
+			this.logger?.error('Failed to parse WorkflowCode (dataflow)', {
+				error: error instanceof Error ? error.message : String(error),
+				code: code.substring(0, 500),
+			});
+
+			throw new Error(
+				`Failed to parse generated workflow code: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			);
+		}
+	}
+
+	/**
+	 * Shared validation pipeline for both SDK and data-flow formats.
+	 */
+	private async validateBuilder(
+		builder: WorkflowBuilder,
+		currentWorkflow: WorkflowJSON | undefined,
+	): Promise<ParseAndValidateResult> {
+		// Regenerate node IDs deterministically to ensure stable IDs across re-parses
+		builder.regenerateNodeIds();
+
+		// Run graph + JSON validation
+		const allWarnings: ValidationWarning[] = [];
+
+		// Validate the graph structure BEFORE converting to JSON
+		const graphValidation = builder.validate();
+
+		// Collect graph validation errors as warnings for agent self-correction
+		this.collectValidationIssues(
+			graphValidation.errors,
+			allWarnings,
+			'GRAPH VALIDATION ERRORS',
+			'warn',
+		);
+
+		// Collect graph validation warnings
+		this.collectValidationIssues(
+			graphValidation.warnings,
+			allWarnings,
+			'GRAPH VALIDATION WARNINGS',
+			'info',
+		);
+
+		// Convert to JSON for JSON-based validation
+		const json = builder.toJSON();
+
+		// Run JSON-based validation for additional checks
+		const validationResult = validateWorkflow(json);
+
+		// Collect JSON validation errors as warnings for agent self-correction
+		this.collectValidationIssues(
+			validationResult.errors,
+			allWarnings,
+			'JSON VALIDATION ERRORS',
+			'warn',
+		);
+
+		// Collect JSON validation warnings
+		this.collectValidationIssues(
+			validationResult.warnings,
+			allWarnings,
+			'JSON VALIDATION WARNINGS',
+			'info',
+		);
+
+		// Generate pin data for new nodes only (nodes not in currentWorkflow)
+		if (this.generatePinData) {
+			builder.generatePinData({ beforeWorkflow: currentWorkflow });
+		}
+
+		// Convert to JSON
+		const workflowJson: WorkflowJSON = builder.toJSON();
+
+		this.logger?.debug('Parsed workflow', {
+			id: workflowJson.id,
+			name: workflowJson.name,
+			nodeCount: workflowJson.nodes.length,
+		});
+
+		// Return both workflow and warnings for agent self-correction
+		return { workflow: workflowJson, warnings: allWarnings };
 	}
 
 	/**
