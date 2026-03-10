@@ -15,6 +15,7 @@ import {
 	WorkflowTagMappingRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
+	WorkflowPublishedVersionRepository,
 	WorkflowPublishHistoryRepository,
 	ProjectRepository,
 } from '@n8n/db';
@@ -87,6 +88,7 @@ export class WorkflowService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly folderRepository: FolderRepository,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 		private readonly workflowValidationService: WorkflowValidationService,
 		private readonly nodeTypes: NodeTypes,
@@ -542,6 +544,14 @@ export class WorkflowService {
 		} finally {
 			if (didPublish) {
 				assert(workflow.activeVersionId !== null);
+
+				if (this.globalConfig.workflows.useWorkflowPublicationService) {
+					await this.workflowPublishedVersionRepository.setPublishedVersion(
+						workflowId,
+						workflow.activeVersionId,
+					);
+				}
+
 				await this.workflowPublishHistoryRepository.addRecord({
 					workflowId,
 					versionId: workflow.activeVersionId,
@@ -782,6 +792,10 @@ export class WorkflowService {
 
 		const deactivatedVersionId = workflow.activeVersionId;
 
+		if (this.globalConfig.workflows.useWorkflowPublicationService) {
+			await this.workflowPublishedVersionRepository.removePublishedVersion(workflowId);
+		}
+
 		await this.workflowPublishHistoryRepository.addRecord({
 			workflowId,
 			versionId: deactivatedVersionId,
@@ -877,6 +891,11 @@ export class WorkflowService {
 
 		if (workflow.activeVersionId !== null) {
 			await this.activeWorkflowManager.remove(workflowId);
+
+			if (this.globalConfig.workflows.useWorkflowPublicationService) {
+				await this.workflowPublishedVersionRepository.removePublishedVersion(workflowId);
+			}
+
 			await this.workflowPublishHistoryRepository.addRecord({
 				workflowId,
 				versionId: workflow.activeVersionId,
