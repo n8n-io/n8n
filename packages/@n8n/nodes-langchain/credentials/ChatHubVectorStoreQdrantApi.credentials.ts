@@ -16,7 +16,7 @@ export class ChatHubVectorStoreQdrantApi implements ICredentialType {
 			type: 'string',
 			default: 'n8n_vectors',
 			description:
-				'The Qdrant collection to use. All users share this collection; access is scoped per user via a userId metadata field.',
+				'The Qdrant collection to use. All users share this collection; access is scoped per user via a userId metadata field. The collection is created automatically if it does not exist.',
 		},
 	];
 }
