@@ -115,8 +115,8 @@ export class TextEditorToolHandler {
 
 		const command = args.command as string;
 
-		// Stream tool progress - running
-		yield this.createToolProgressChunk('running', command, toolCallId);
+		// Stream tool progress - running (include args so evaluators can inspect edits)
+		yield this.createToolProgressChunk('running', command, toolCallId, args);
 
 		try {
 			// Execute the text editor command
@@ -281,6 +281,7 @@ export class TextEditorToolHandler {
 		status: 'running' | 'completed',
 		command: string,
 		toolCallId: string,
+		args?: Record<string, unknown>,
 	): StreamOutput {
 		const displayTitle = command === 'view' ? 'Viewing workflow' : 'Editing workflow';
 		return {
@@ -291,6 +292,7 @@ export class TextEditorToolHandler {
 					toolCallId,
 					displayTitle,
 					status,
+					args,
 				} as ToolProgressChunk,
 			],
 		};

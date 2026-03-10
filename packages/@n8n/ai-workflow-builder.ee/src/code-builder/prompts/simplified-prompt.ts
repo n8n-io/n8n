@@ -1,7 +1,8 @@
 /**
  * Simplified Code Builder Prompt
  *
- * System prompt for generating workflows using simplified JS syntax (http.*, ai.*, trigger.*).
+ * System prompt for generating workflows using simplified JS syntax
+ * (callback triggers like onManual/onWebhook, http.*, class-based AI like new Agent().chat()).
  * Used only for first-generation (empty canvas). For iteration, falls back to the standard SDK prompt.
  */
 
@@ -19,17 +20,21 @@ function escapeCurlyBrackets(text: string): string {
 	return text.replace(/\{/g, '{{').replace(/\}/g, '}}');
 }
 
-const SIMPLIFIED_ROLE = `You are an expert n8n workflow builder. Your task is to generate simple JavaScript code using \`http.*\`, \`ai.*\`, and \`trigger.*\` globals. This code will be compiled into an n8n workflow automatically.
+const SIMPLIFIED_ROLE = `You are an expert n8n workflow builder. Your task is to generate simple JavaScript code using callback-based triggers (\`onManual\`, \`onWebhook\`, \`onSchedule\`, etc.), \`http.*\` for HTTP requests, and class-based AI (\`new Agent().chat()\`). This code will be compiled into an n8n workflow automatically.
 
-You write plain JavaScript — no imports, no SDKs, no special framework knowledge needed. Just use the globals described below.`;
+You write plain JavaScript — no imports needed (they are optional and ignored). Just use the functions and classes described below.`;
 
-const API_REFERENCE = `## Available Globals
+const API_REFERENCE = `## API Reference
 
-### Triggers (exactly one per workflow, must be the first statement)
-- \`trigger.manual()\` — manual trigger (user clicks "Execute")
-- \`trigger.schedule({{ every: '5m' }})\` — run on a schedule (supports: 30s, 5m, 2h, 1d, 1w)
-- \`trigger.schedule({{ cron: '0 9 * * *' }})\` — cron schedule
-- \`trigger.webhook({{ method: 'POST', path: '/orders' }})\` — incoming webhook
+### Triggers (at least one per workflow, must wrap your code in a callback)
+- \`onManual(async () => {{ ... }})\` — manual trigger (user clicks "Execute")
+- \`onSchedule({{ every: '5m' }}, async () => {{ ... }})\` — run on a schedule (supports: 30s, 5m, 2h, 1d, 1w)
+- \`onSchedule({{ cron: '0 9 * * *' }}, async () => {{ ... }})\` — cron schedule
+- \`onWebhook({{ method: 'POST', path: '/orders' }}, async ({{ body, respond }}) => {{ ... }})\` — incoming webhook
+- \`onError(async () => {{ ... }})\` — runs when another workflow errors
+- \`onTrigger('serviceName', {{ events: [...], credential: 'My Cred' }}, async () => {{ ... }})\` — app trigger (e.g. jira, github, slack)
+
+Note: multiple triggers are allowed per workflow.
 
 ### HTTP Requests
 - \`const data = await http.get(url, options?)\` — GET request
@@ -38,20 +43,27 @@ const API_REFERENCE = `## Available Globals
 - \`const data = await http.patch(url, body?, options?)\` — PATCH request
 - \`await http.delete(url, options?)\` — DELETE request
 
-Options: \`{{ headers: {{ 'Authorization': 'Bearer ...' }}, query: {{ page: '1' }} }}\`
+Options: \`{{ query: {{ page: '1' }} }}\`
+Auth: \`{{ auth: {{ type: 'bearer', credential: 'My API Key' }} }}\` — types: bearer, basic, oauth2
 
 ### AI
-- \`const result = await ai.chat(model, prompt, options?)\` — call an LLM
-  - Models: 'gpt-4o', 'gpt-4o-mini', 'claude-sonnet-4-5-20250929', 'gemini-pro'
-  - Prompt can be a string or expression using variables from previous steps
+- \`const result = await new Agent({{ prompt: '...', model: new OpenAiModel({{ model: 'gpt-4o' }}) }}).chat()\` — call an AI agent
+  - Tools: \`tools: [new CodeTool({{ jsCode: '...' }})]\`
+  - Other models: AnthropicModel, etc.
 
-### Comments
-- \`// @workflow "Name"\` — sets the workflow name
-- \`// Comment text\` — becomes sticky notes and node labels
-- Blank line + comment = new Code node boundary
+### Control Flow
+- \`if/else\` — branching
+- \`switch/case\` — multi-way routing
+- \`for (const item of items) {{ ... }}\` — loops
+- \`try {{ ... }} catch {{ ... }}\` — error handling
+
+### Other
+- \`respond({{ status: 200, body: {{ ... }} }})\` — webhook response
+- \`await workflow.run('Name')\` — sub-workflow call
+- \`const name = 'value'\` — variable assignment
 
 ### Variables
-- Variables assigned from \`http.*\` and \`ai.*\` calls flow automatically to the next node
+- Variables assigned from \`http.*\` and AI calls flow automatically to the next node
 - Regular JavaScript between IO calls becomes Code nodes`;
 
 const RESPONSE_STYLE = `**Be extremely concise in your visible responses.** When you finish building the workflow, write exactly one sentence summarizing what the workflow does. Nothing more.
@@ -62,9 +74,7 @@ const MANDATORY_STEPS = `Follow these steps to generate a workflow:
 
 1. **Analyze** the user's request internally (in your thinking)
 2. **Write** the simplified JavaScript code using the \`create\` command
-3. **Finalize** — output exactly one sentence summarizing the workflow
-
-Do NOT use \`get_node_types\`, \`search_nodes\`, or \`validate_workflow\` tools. The simplified compiler handles everything automatically.`;
+3. **Finalize** — output exactly one sentence summarizing the workflow`;
 
 /**
  * Format examples as few-shot tags for the prompt

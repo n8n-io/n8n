@@ -161,8 +161,12 @@ export class ChatSetupHandler {
 					preSearchResults,
 				});
 
-		// Bind tools to LLM (exclude get_suggested_nodes when plan provides node suggestions)
-		const llmWithTools = this.bindToolsToLlm(textEditorEnabled, !!payload.planOutput);
+		// Bind tools to LLM (exclude node-discovery tools when simplified, exclude get_suggested_nodes when plan provides node suggestions)
+		const llmWithTools = this.bindToolsToLlm(
+			textEditorEnabled,
+			!!payload.planOutput,
+			useSimplified,
+		);
 
 		// Format initial messages
 		const messages = await this.formatInitialMessages(prompt, payload.message);
@@ -227,19 +231,29 @@ export class ChatSetupHandler {
 	 *
 	 * @returns LLM with tools bound, typed for use with AgentIterationHandler
 	 */
-	private bindToolsToLlm(textEditorEnabled: boolean, hasPlanOutput: boolean): LlmWithTools {
+	private bindToolsToLlm(
+		textEditorEnabled: boolean,
+		hasPlanOutput: boolean,
+		useSimplified?: boolean,
+	): LlmWithTools {
 		if (!this.llm.bindTools) {
 			throw new Error('LLM does not support bindTools - cannot use tools for node discovery');
 		}
 
-		// When an approved plan is provided, exclude get_suggested_nodes
-		// because the plan already contains curated node suggestions per step
+		// When simplified syntax is active, the compiler handles all node resolution —
+		// exclude node-discovery tools entirely
+		const SIMPLIFIED_EXCLUDED_TOOLS = ['get_node_types', 'search_nodes', 'get_suggested_nodes'];
+
 		let tools: Array<
 			| StructuredToolInterface
 			| typeof TEXT_EDITOR_TOOL
 			| typeof VALIDATE_TOOL
 			| typeof BATCH_STR_REPLACE_TOOL
-		> = hasPlanOutput ? this.tools.filter((t) => t.name !== 'get_suggested_nodes') : this.tools;
+		> = useSimplified
+			? this.tools.filter((t) => !SIMPLIFIED_EXCLUDED_TOOLS.includes(t.name))
+			: hasPlanOutput
+				? this.tools.filter((t) => t.name !== 'get_suggested_nodes')
+				: this.tools;
 
 		if (textEditorEnabled) {
 			tools = [...tools, TEXT_EDITOR_TOOL, VALIDATE_TOOL, BATCH_STR_REPLACE_TOOL];

@@ -12,6 +12,7 @@ jest.mock('@n8n/workflow-sdk', () => ({
 	parseWorkflowCodeToBuilder: jest.fn(),
 	parseWorkflowCode: jest.fn(),
 	validateWorkflow: jest.fn(),
+	validateSimplifiedJS: jest.fn(),
 	workflow: { fromJSON: jest.fn() },
 	transpileWorkflowJS: jest.fn(),
 	stripImportStatements: jest.fn((code: string) => code),
@@ -23,11 +24,15 @@ const mockValidateWorkflow = validateWorkflow as jest.Mock;
 const mockFromJSON = workflow.fromJSON as jest.Mock;
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { transpileWorkflowJS: mockTranspileWorkflowJS, parseWorkflowCode: mockParseWorkflowCode } =
-	require('@n8n/workflow-sdk') as {
-		transpileWorkflowJS: jest.Mock;
-		parseWorkflowCode: jest.Mock;
-	};
+const {
+	transpileWorkflowJS: mockTranspileWorkflowJS,
+	parseWorkflowCode: mockParseWorkflowCode,
+	validateSimplifiedJS: mockValidateSimplifiedJS,
+} = require('@n8n/workflow-sdk') as {
+	transpileWorkflowJS: jest.Mock;
+	parseWorkflowCode: jest.Mock;
+	validateSimplifiedJS: jest.Mock;
+};
 
 describe('ParseValidateHandler', () => {
 	let handler: ParseValidateHandler;
@@ -339,15 +344,18 @@ describe('ParseValidateHandler', () => {
 				connections: {},
 			};
 
+			mockValidateSimplifiedJS.mockReturnValue({ valid: true, errors: [], ruleResults: [] });
 			mockTranspileWorkflowJS.mockReturnValue({
 				code: 'const sdk = workflow("test", "Compiled");',
 				errors: [],
 			});
 			mockParseWorkflowCode.mockReturnValue(mockWorkflow);
 
-			const result = await simplifiedHandler.parseAndValidate('trigger.manual()');
+			const code = 'onManual(async () => { })';
+			const result = await simplifiedHandler.parseAndValidate(code);
 
-			expect(mockTranspileWorkflowJS).toHaveBeenCalledWith('trigger.manual()');
+			expect(mockValidateSimplifiedJS).toHaveBeenCalledWith(code);
+			expect(mockTranspileWorkflowJS).toHaveBeenCalledWith(code);
 			expect(mockParseWorkflowCode).toHaveBeenCalledWith(
 				'const sdk = workflow("test", "Compiled");',
 			);
@@ -358,6 +366,7 @@ describe('ParseValidateHandler', () => {
 		});
 
 		it('should throw when simplified compiler returns errors', async () => {
+			mockValidateSimplifiedJS.mockReturnValue({ valid: true, errors: [], ruleResults: [] });
 			mockTranspileWorkflowJS.mockReturnValue({
 				code: '',
 				errors: [
@@ -369,6 +378,27 @@ describe('ParseValidateHandler', () => {
 			await expect(simplifiedHandler.parseAndValidate('bad code')).rejects.toThrow(
 				'Line 3: Unexpected token\nLine ?: Missing trigger',
 			);
+		});
+
+		it('should throw when DSL validation fails before compilation', async () => {
+			mockValidateSimplifiedJS.mockReturnValue({
+				valid: false,
+				errors: [
+					{
+						line: 1,
+						message: 'Missing trigger callback',
+						suggestion: 'Use onManual(async () => { ... })',
+					},
+				],
+				ruleResults: [],
+			});
+
+			await expect(simplifiedHandler.parseAndValidate('const x = 1')).rejects.toThrow(
+				'Line 1: Missing trigger callback — Use onManual(async () => { ... })',
+			);
+
+			// Should NOT proceed to compilation
+			expect(mockTranspileWorkflowJS).not.toHaveBeenCalled();
 		});
 
 		it('should not use transpileWorkflowJS when useSimplifiedSyntax is false', async () => {
@@ -386,6 +416,7 @@ describe('ParseValidateHandler', () => {
 			await handler.parseAndValidate('const w = {}');
 
 			expect(mockTranspileWorkflowJS).not.toHaveBeenCalled();
+			expect(mockValidateSimplifiedJS).not.toHaveBeenCalled();
 			expect(mockParseWorkflowCodeToBuilder).toHaveBeenCalled();
 		});
 	});

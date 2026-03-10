@@ -180,11 +180,17 @@ export {
 } from './workflow-builder/plugins';
 
 // Simplified JS transpiler (onManual/onWebhook/onSchedule → SDK TypeScript code)
-export { transpileWorkflowJS, COMPILER_EXAMPLES } from './simplified-compiler';
+export {
+	transpileWorkflowJS,
+	validateSimplifiedJS,
+	COMPILER_EXAMPLES,
+} from './simplified-compiler';
 export type {
 	TranspilerResult,
 	CompilerError,
 	CompilerExample,
+	ValidationResult as SimplifiedValidationResult,
+	ValidationError as SimplifiedValidationError,
 } from './simplified-compiler';
 
 // Node type constants
