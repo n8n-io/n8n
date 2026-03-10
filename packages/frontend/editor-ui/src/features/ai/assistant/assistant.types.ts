@@ -510,7 +510,13 @@ export function isUserAnswersMessage(
 export function isWebFetchApprovalMessage(
 	msg: ChatRequest.MessageResponse,
 ): msg is ChatRequest.ApiWebFetchApprovalMessage {
-	return 'type' in msg && msg.type === 'web_fetch_approval' && 'requestId' in msg && 'url' in msg;
+	return (
+		'type' in msg &&
+		msg.type === 'web_fetch_approval' &&
+		'requestId' in msg &&
+		'url' in msg &&
+		'domain' in msg
+	);
 }
 
 export function isWebFetchApprovalCustomMessage(
