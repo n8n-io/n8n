@@ -172,11 +172,6 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 	}
 
 	async run() {
-		this.logger.info('\nn8n worker is now ready');
-		this.logger.info(` * Version: ${N8N_VERSION}`);
-		this.logger.info(` * Concurrency: ${this.concurrency}`);
-		this.logger.info('');
-
 		const endpointsConfig: WorkerServerEndpointsConfig = {
 			health: this.globalConfig.queue.health.active,
 			overwrites: this.globalConfig.credentials.overwrite.endpoint !== '',
@@ -185,8 +180,15 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		if (Object.values(endpointsConfig).some((e) => e)) {
 			const { WorkerServer } = await import('@/scaling/worker-server');
-			await Container.get(WorkerServer).init(endpointsConfig);
+			const workerServer = Container.get(WorkerServer);
+			await workerServer.init(endpointsConfig);
+			workerServer.markAsReady();
 		}
+
+		this.logger.info('\nn8n worker is now ready');
+		this.logger.info(` * Version: ${N8N_VERSION}`);
+		this.logger.info(` * Concurrency: ${this.concurrency}`);
+		this.logger.info('');
 
 		if (!inTest && process.stdout.isTTY) {
 			process.stdin.setRawMode(true);

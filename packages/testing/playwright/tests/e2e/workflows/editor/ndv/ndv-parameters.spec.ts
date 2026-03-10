@@ -12,7 +12,7 @@ test.describe(
 
 		test.describe('Parameter Hints', () => {
 			test('should display parameter hints correctly', async ({ n8n }) => {
-				await n8n.start.fromImportedWorkflow('Test_workflow_3.json');
+				await n8n.start.fromImportedWorkflow('schedule-trigger-with-set-nodes.json');
 				await n8n.canvas.openNode('Set1');
 
 				await n8n.ndv.getParameterInputField('value').clear();
@@ -170,7 +170,10 @@ test.describe(
 
 		test.describe('Expression Editor Features', () => {
 			test('should allow selecting item for expressions', async ({ n8n }) => {
-				await n8n.canvas.importWorkflow('Test_workflow_3.json', 'My test workflow 2');
+				await n8n.canvas.importWorkflow(
+					'schedule-trigger-with-set-nodes.json',
+					'My test workflow 2',
+				);
 
 				await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
 					'Workflow executed successfully',
