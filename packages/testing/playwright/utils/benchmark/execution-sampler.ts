@@ -25,10 +25,23 @@ export async function sampleExecutionDurations(
 	for (let attempt = 0; attempt <= maxRetries; attempt++) {
 		try {
 			const executions = await workflowApi.getExecutions(workflowId, 100);
-			return executions
+			const durations = executions
 				.filter((e) => e.startedAt && e.stoppedAt)
 				.map((e) => new Date(e.stoppedAt!).getTime() - new Date(e.startedAt!).getTime())
 				.sort((a, b) => a - b);
+
+			if (durations.length > 0) return durations;
+
+			// Executions not yet persisted — retry unless final attempt
+			if (attempt === maxRetries) {
+				console.warn(
+					`[LOAD] No execution durations found after ${maxRetries + 1} attempts — returning empty`,
+				);
+				return [];
+			}
+			console.log(
+				`[LOAD] No executions found yet (attempt ${attempt + 1}), retrying in ${retryDelayMs}ms...`,
+			);
 		} catch (error) {
 			if (attempt === maxRetries) {
 				console.warn(
@@ -39,8 +52,8 @@ export async function sampleExecutionDurations(
 			console.log(
 				`[LOAD] Execution sampling attempt ${attempt + 1} failed, retrying in ${retryDelayMs}ms...`,
 			);
-			await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
 		}
+		await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
 	}
 
 	return [];

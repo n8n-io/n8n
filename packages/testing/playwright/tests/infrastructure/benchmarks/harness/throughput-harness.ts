@@ -7,12 +7,15 @@ import {
 	waitForThroughput,
 	getBaselineCounter,
 	attachThroughputResults,
+	sampleExecutionDurations,
+	buildMetrics,
 	collectDiagnostics,
 	attachDiagnostics,
 	formatDiagnosticValue,
 	resolveMetricQuery,
 } from '../../../../utils/benchmark';
 import type { TriggerHandle, NodeOutputSize } from '../../../../utils/benchmark';
+import { attachMetric } from '../../../../utils/performance-helper';
 
 export interface ThroughputTestOptions {
 	handle: TriggerHandle;
@@ -120,6 +123,37 @@ export async function runThroughputTest(options: ThroughputTestOptions): Promise
 
 	// Attach results
 	await attachThroughputResults(testInfo, testInfo.title, result);
+
+	// Execution duration sampling — provides p50/p95/p99 latency percentiles.
+	// May be empty when EXECUTIONS_DATA_SAVE_ON_SUCCESS=none.
+	const durations = await sampleExecutionDurations(api.workflows, workflowId);
+	if (durations.length > 0) {
+		const durationMetrics = buildMetrics(result.totalCompleted, 0, result.durationMs, durations);
+		await attachMetric(
+			testInfo,
+			`${testInfo.title}-duration-avg`,
+			durationMetrics.avgDurationMs,
+			'ms',
+		);
+		await attachMetric(
+			testInfo,
+			`${testInfo.title}-duration-p50`,
+			durationMetrics.p50DurationMs,
+			'ms',
+		);
+		await attachMetric(
+			testInfo,
+			`${testInfo.title}-duration-p95`,
+			durationMetrics.p95DurationMs,
+			'ms',
+		);
+		await attachMetric(
+			testInfo,
+			`${testInfo.title}-duration-p99`,
+			durationMetrics.p99DurationMs,
+			'ms',
+		);
+	}
 
 	// Diagnostics
 	const diagnostics = await collectDiagnostics(obs.metrics, result.durationMs);
