@@ -268,7 +268,7 @@ export class SourceControlStatusService {
 	): Promise<void> {
 		const getMissingFolderIds = (folderIds: Array<string | null>): Set<string> => {
 			const missingFolderIds = folderIds.filter(
-				(id): id is string => id !== null && localFoldersById.has(id) === false,
+				(id): id is string => id !== null && !localFoldersById.has(id),
 			);
 
 			return new Set<string>(missingFolderIds);

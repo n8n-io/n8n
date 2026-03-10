@@ -294,6 +294,10 @@ const resetFilters = () => {
 	search.value = '';
 };
 
+function clearProjectFilter() {
+	filters.value.project = null;
+}
+
 const statusFilterOptions: Array<{ label: string; value: SourceControlledFileStatus }> = [
 	{
 		label: 'New',
@@ -1141,9 +1145,11 @@ onMounted(async () => {
 							<ProjectSharing
 								v-model="filters.project"
 								data-test-id="source-control-push-modal-project-search"
+								clearable
 								:projects="projectsForFilters"
 								:placeholder="i18n.baseText('forms.resourceFiltersDropdown.owner.placeholder')"
 								:empty-options-text="i18n.baseText('projects.sharing.noMatchingProjects')"
+								@clear="clearProjectFilter"
 							/>
 							<N8nInputLabel
 								:label="i18n.baseText('generic.folder')"
