@@ -14,6 +14,7 @@ import {
 	createProjectSecretProviderConnection,
 	updateProjectSecretProviderConnection,
 	testProjectSecretProviderConnection,
+	enableSecretProviderConnection,
 } from '@n8n/rest-api-client';
 
 /**
@@ -122,6 +123,10 @@ export function useSecretsProviderConnection(projectId?: string) {
 		return await reloadSecretProviderConnection(rootStore.restApiContext, providerKey);
 	}
 
+	async function activateConnection(providerKey: string): Promise<SecretProviderConnection> {
+		return await enableSecretProviderConnection(rootStore.restApiContext, providerKey);
+	}
+
 	return {
 		// State
 		connectionState,
@@ -136,5 +141,6 @@ export function useSecretsProviderConnection(projectId?: string) {
 		updateConnection,
 		testConnection,
 		reloadConnection,
+		activateConnection,
 	};
 }

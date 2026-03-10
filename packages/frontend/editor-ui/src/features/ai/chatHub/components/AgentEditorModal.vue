@@ -46,6 +46,7 @@ import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent
 import { useFileDrop } from '@/features/ai/chatHub/composables/useFileDrop';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT } from '@/app/constants';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 
 const props = defineProps<{
 	modalName: string;
@@ -259,24 +260,39 @@ async function onSave() {
 			suggestedPrompts: filteredPrompts.length > 0 ? filteredPrompts : undefined,
 		};
 
+		// Capture before async calls — the customAgent watcher resets newFiles mid-await
+		const addedFiles = [...newFiles.value];
+
 		if (isEditMode.value && props.data.agentId) {
 			await chatStore.updateCustomAgent(
 				props.data.agentId,
 				payload,
-				newFiles.value,
+				addedFiles,
 				removedFileKnowledgeIds.value,
 				props.data.credentials,
 			);
+			if (addedFiles.length > 0) {
+				const totalSizeMb = addedFiles.reduce((sum, f) => sum + f.size, 0) / (1024 * 1024);
+				telemetry.track('User added files to personal agent', {
+					count: addedFiles.length,
+					total_size_mb: totalSizeMb,
+					agent_id: props.data.agentId,
+				});
+			}
 			toast.showMessage({
 				title: i18n.baseText('chatHub.agent.editor.success.update'),
 				type: 'success',
 			});
 		} else {
-			const agent = await chatStore.createCustomAgent(
-				payload,
-				newFiles.value,
-				props.data.credentials,
-			);
+			const agent = await chatStore.createCustomAgent(payload, addedFiles, props.data.credentials);
+			if (addedFiles.length > 0) {
+				const totalSizeMb = addedFiles.reduce((sum, f) => sum + f.size, 0) / (1024 * 1024);
+				telemetry.track('User added files to personal agent', {
+					count: addedFiles.length,
+					total_size_mb: totalSizeMb,
+					agent_id: agent.model.provider === 'custom-agent' ? agent.model.agentId : undefined,
+				});
+			}
 			props.data.onCreateCustomAgent?.(agent);
 
 			toast.showMessage({
@@ -384,6 +400,7 @@ function removeFile(row: FileRow) {
 }
 
 const posthogStore = usePostHog();
+const telemetry = useTelemetry();
 const isSemanticSearchEnabled = computed(() =>
 	posthogStore.isVariantEnabled(
 		CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT.name,

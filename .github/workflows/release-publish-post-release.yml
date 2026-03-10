@@ -7,6 +7,10 @@ on:
         description: 'Release track acquired from determine-version-info. (e.g. stable, beta)'
         required: true
         type: string
+      previous_version:
+        description: 'Previous release version acquired from determine-version-info. (e.g. 2.9.2, 1.123.22)'
+        required: true
+        type: string
       version:
         description: 'Release version acquired from determine-version-info. (e.g. 2.9.3, 1.123.23)'
         required: true
@@ -50,4 +54,13 @@ jobs:
     if: |
       inputs.release_type != 'rc'
     uses: ./.github/workflows/util-ensure-release-candidate-branches.yml
+    secrets: inherit
+
+  populate-cloud-with-releases:
+    name: 'Populate cloud database with releases'
+    uses: ./.github/workflows/release-populate-cloud-with-releases.yml
+    with:
+      previous-version: ${{ inputs.previous_version }}
+      version: ${{ inputs.version }}
+      experimental: ${{ inputs.release_type == 'rc' }}
     secrets: inherit
