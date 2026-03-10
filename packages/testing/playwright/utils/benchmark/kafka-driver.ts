@@ -147,6 +147,11 @@ function createKafkaTriggerNode(options: {
 					// n8n execution capacity, not Kafka ingestion rate.
 					maxInFlightRequests: 0, // 0 = unlimited (node converts to null)
 					partitionsConsumedConcurrently: options.partitions,
+					// Batch offset commits — defaults (0/undefined) commit on every
+					// message, adding a broker round-trip per msg that caps the main
+					// process consumption rate and starves queue-mode workers.
+					autoCommitThreshold: 50,
+					autoCommitInterval: 2000,
 				},
 			},
 			credentials: {
