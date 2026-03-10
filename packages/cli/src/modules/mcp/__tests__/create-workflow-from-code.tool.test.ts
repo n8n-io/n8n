@@ -69,6 +69,7 @@ describe('create-workflow-from-code MCP tool', () => {
 	let createWorkflowMock: jest.Mock;
 	let urlService: UrlService;
 	let telemetry: Telemetry;
+	let nodeTypes: ReturnType<typeof mockInstance<NodeTypes>>;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -87,12 +88,12 @@ describe('create-workflow-from-code MCP tool', () => {
 		telemetry = mockInstance(Telemetry, {
 			track: jest.fn(),
 		});
+		nodeTypes = mockInstance(NodeTypes);
 
 		mockParseAndValidate.mockResolvedValue({ workflow: mockWorkflowJson });
 		mockStripImportStatements.mockImplementation((code: string) => code);
 	});
 
-	const nodeTypes = mockInstance(NodeTypes);
 	const credentialsService = mockInstance(CredentialsService, {
 		getCredentialsAUserCanUseInAWorkflow: jest.fn().mockResolvedValue([]),
 	});

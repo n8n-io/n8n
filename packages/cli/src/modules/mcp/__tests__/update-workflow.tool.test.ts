@@ -75,8 +75,6 @@ const mockWorkflowJson = {
 const parseResult = (result: { content: Array<{ type: string; text?: string }> }) =>
 	JSON.parse((result.content[0] as { type: 'text'; text: string }).text) as Record<string, unknown>;
 
-const nodeTypes = mockInstance(NodeTypes);
-
 describe('update-workflow MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	let workflowFinderService: WorkflowFinderService;
@@ -87,6 +85,7 @@ describe('update-workflow MCP tool', () => {
 	let telemetry: Telemetry;
 	let credentialsService: CredentialsService;
 	let sharedWorkflowRepository: SharedWorkflowRepository;
+	let nodeTypes: ReturnType<typeof mockInstance<NodeTypes>>;
 
 	const mockExistingWorkflow = Object.assign(new WorkflowEntity(), {
 		id: 'wf-1',
@@ -119,6 +118,7 @@ describe('update-workflow MCP tool', () => {
 		sharedWorkflowRepository = mockInstance(SharedWorkflowRepository, {
 			findOneOrFail: jest.fn().mockResolvedValue({ projectId: 'project-1' }),
 		});
+		nodeTypes = mockInstance(NodeTypes);
 
 		mockParseAndValidate.mockResolvedValue({ workflow: mockWorkflowJson });
 		mockStripImportStatements.mockImplementation((code: string) => code);
