@@ -127,6 +127,10 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.getByTestId('run-data-pane-header');
 	}
 
+	getEditOutputButton() {
+		return this.getRunDataPaneHeader().getByRole('button', { name: 'Edit Output' });
+	}
+
 	getOutputDataContainer() {
 		return this.getOutputPanel().getByTestId('ndv-data-container');
 	}
@@ -167,6 +171,10 @@ export class NodeDetailsViewPage extends BasePage {
 			.getByTestId('assignment-value');
 	}
 
+	async clickAssignmentExpressionToggle(paramName: string) {
+		await this.getAssignmentValue(paramName).getByText('Expression').click();
+	}
+
 	/**
 	 * Get the inline expression editor input
 	 * @param parameterName - The name of the parameter to get the inline expression editor input for. If not set, gets the first inline expression editor input on page
@@ -186,6 +194,10 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getParameterInputHint() {
 		return this.page.getByTestId('parameter-input-hint');
+	}
+
+	getParameterInputHintWithText(text: string) {
+		return this.getParameterInputHint().getByText(text);
 	}
 
 	getInputLabel() {
