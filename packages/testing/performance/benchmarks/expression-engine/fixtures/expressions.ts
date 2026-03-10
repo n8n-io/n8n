@@ -14,7 +14,7 @@ export const SIMPLE_PROPERTY = [
 
 /** Nested property access (2-3 levels) — 11.2% of real usage */
 export const NESTED_PROPERTY = [
-	'={{ $json.nested.user.profile }}',
+	'={{ $json.nested.user.profile.age }}',
 	'={{ $json.nested.user.profile.displayName }}',
 ] as const;
 
