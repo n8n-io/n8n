@@ -37,6 +37,7 @@
 			"clientSecret": "Client Secret"
 		}
 	},
+	"generic.activate": "Activate",
 	"generic.annotations": "Annotations",
 	"generic.annotationData": "Highlighted data",
 	"generic.any": "Any",
@@ -3088,6 +3089,10 @@
 	"settings.secretsProviderConnections.description": "Manage credentials across multiple environments by connecting an external secrets store. Keep sensitive credential information in your vault for added security.",
 	"settings.secretsProviderConnections.card.createdAt": "Created on {date}",
 	"settings.secretsProviderConnections.actions.share": "Share",
+	"settings.secretsProviderConnections.actions.activate.success.title": "Secret store active",
+	"settings.secretsProviderConnections.actions.activate.success.description": "\"{provider}\" is now active.",
+	"settings.secretsProviderConnections.actions.activate.error.title": "Couldn't activate secret store",
+	"settings.secretsProviderConnections.actions.activate.error.description": "Try again to make \"{provider}\" active.",
 	"settings.secretsProviderConnections.oneSecret": "1 secret",
 	"settings.secretsProviderConnections.secrets": "{count} secrets",
 	"settings.secretsProviderConnections.modal.items.connection": "Connection",
@@ -3113,6 +3118,7 @@
 	"settings.secretsProviderConnections.modal.connectionName.hint": "Enter a unique name for your secret store. This can not be changed later.",
 	"settings.secretsProviderConnections.modal.connectionName.unique": "A secret store with this name already exists. Enter a unique name for your secret store.",
 	"settings.secretsProviderConnections.state.disconnected": "Disconnected",
+	"settings.secretsProviderConnections.state.disabled": "Inactive",
 	"settings.secretsProviderConnections.delete.title": "Delete \"{name}\"",
 	"settings.secretsProviderConnections.delete.description": "Deleting this vault will remove it and all {secretsCount} imported from it. This will impact credentials that rely on those secrets.",
 	"settings.secretsProviderConnections.delete.impact.title": "Impact:",

@@ -10,7 +10,8 @@ import { createTestingPinia } from '@pinia/testing';
 import { useVueFlow } from '@vue-flow/core';
 import type { INodeProperties } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
-import { reactive } from 'vue';
+import { reactive, computed } from 'vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import FocusSidebar from './FocusSidebar.vue';
@@ -25,6 +26,11 @@ describe('FocusSidebar', () => {
 	const renderComponent = createComponentRenderer(FocusSidebar, {
 		props: {
 			isCanvasReadOnly: false,
+		},
+		global: {
+			provide: {
+				[WorkflowIdKey as unknown as string]: computed(() => 'w0'),
+			},
 		},
 	});
 

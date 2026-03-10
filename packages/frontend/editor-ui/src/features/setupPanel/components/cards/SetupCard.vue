@@ -3,7 +3,7 @@ import { ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
@@ -29,7 +29,7 @@ const expanded = defineModel<boolean>('expanded', { default: false });
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
-const workflowsStore = useWorkflowsStore();
+const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const hadManualInteraction = ref(false);
@@ -48,7 +48,7 @@ watch(
 		if (isComplete && hadManualInteraction.value) {
 			telemetry.track('User completed setup step', {
 				template_id: workflowDocumentStore?.value?.meta?.templateId,
-				workflow_id: workflowsStore.workflowId,
+				workflow_id: workflowId.value,
 				...props.telemetryPayload,
 			});
 			hadManualInteraction.value = false;
