@@ -533,22 +533,31 @@ export class SourceControlPackageImportService {
 			return;
 		}
 
-		// Check if parent folder exists
 		const existingFolderIds = (await this.folderRepository.find({ select: ['id'] })).map(
 			(f) => f.id,
 		);
 
 		const parentFolderId = wfData.parentFolderId ?? '';
+		const existingWorkflow = await this.workflowRepository.findOneBy({ id: wfData.id });
 
 		await this.workflowRepository.upsert(
 			{
-				...wfData,
-				parentFolder: existingFolderIds.includes(parentFolderId) ? { id: parentFolderId } : null,
+				id: wfData.id,
+				name: wfData.name,
+				nodes: wfData.nodes,
+				connections: wfData.connections,
+				settings: wfData.settings,
+				triggerCount: wfData.triggerCount,
+				versionId: wfData.versionId ?? wfData.id,
+				isArchived: wfData.isArchived,
+				active: existingWorkflow?.active ?? false,
+				parentFolder: existingFolderIds.includes(parentFolderId)
+					? { id: parentFolderId }
+					: null,
 			},
 			['id'],
 		);
 
-		// Set ownership to the project
 		await this.sharedWorkflowRepository.makeOwner([wfData.id], projectId);
 
 		result.workflows.push({ id: wfData.id, name: wfData.name });
