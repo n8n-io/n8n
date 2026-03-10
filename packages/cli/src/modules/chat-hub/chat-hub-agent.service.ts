@@ -7,7 +7,6 @@ import {
 	type ChatHubAgentKnowledgeItemStatus,
 } from '@n8n/api-types';
 
-import { ChatHubConfig } from '@n8n/config';
 import { Logger } from '@n8n/backend-common';
 import type { EntityManager, User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -46,7 +45,6 @@ export class ChatHubAgentService {
 		private readonly chatHubSettingsService: ChatHubSettingsService,
 		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
 		private readonly chatHubToolService: ChatHubToolService,
-		private readonly chatHubConfig: ChatHubConfig,
 	) {
 		this.logger = this.logger.scoped('chat-hub');
 	}
@@ -436,21 +434,11 @@ export class ChatHubAgentService {
 		const workflowId = uuidv4();
 		const settings = await this.ensureSemanticSearchOptions();
 
-		const maxUploadSizeBytes = this.chatHubConfig.agentUploadMaxSizeMb * 1024 * 1024;
-
 		// Ensure all file types are valid
 		for (const file of files) {
 			if (file.mimetype !== 'application/pdf') {
 				throw new BadRequestError(`Unsupported mime-type: ${file.mimetype}`);
 			}
-		}
-
-		// Ensure the total upload size does not exceed the limit
-		const totalSize = files.reduce((sum, file) => sum + file.size, 0);
-		if (totalSize > maxUploadSizeBytes) {
-			throw new BadRequestError(
-				`Upload size exceeds the maximum allowed size of ${this.chatHubConfig.agentUploadMaxSizeMb} MB`,
-			);
 		}
 
 		for (const file of files) {

@@ -20,12 +20,4 @@ export class ChatHubConfig {
 	/** Maximum number of response chunks to buffer per stream for reconnection in Chat Hub. */
 	@Env('N8N_CHAT_HUB_MAX_BUFFERED_CHUNKS')
 	maxBufferedChunks: number = 1000;
-
-	/**
-	 * Maximum size in MB for a single personal agent file upload request.
-	 * If any individual file exceeds this limit, the upload is rejected.
-	 * Multiple files are automatically chunked into separate requests to stay within this limit.
-	 */
-	@Env('N8N_CHAT_HUB_AGENT_UPLOAD_MAX_SIZE_MB')
-	agentUploadMaxSizeMb: number = 20;
 }
