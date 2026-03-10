@@ -221,6 +221,10 @@ export class NodeDetailsViewPage extends BasePage {
 		return locatorByIndex(this.page.getByTestId(`parameter-input-${parameterName}`), index);
 	}
 
+	getParameterInputTextbox(parameterName: string, index?: number) {
+		return this.getParameterInput(parameterName, index).getByRole('textbox');
+	}
+
 	getParameterInputField(parameterName: string, index?: number) {
 		return this.getParameterInput(parameterName, index).locator('input');
 	}
