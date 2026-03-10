@@ -133,6 +133,14 @@ export async function runSingleExample(
 
 	const totalTimeMs = Date.now() - startTime;
 
+	// Flush any remaining tool calls into the last iteration's bucket.
+	// Tool calls from the final LLM response are processed after its onTokenUsage fires,
+	// so they remain in currentToolCalls and need to be appended to the last iteration.
+	if (currentToolCalls.length > 0 && toolCallsPerIteration.length > 0) {
+		const last = toolCallsPerIteration[toolCallsPerIteration.length - 1];
+		last.push(...currentToolCalls);
+	}
+
 	// Build iterations from token snapshots
 	const iterations: Iteration[] = tokenSnapshots.map((snapshot, i) => ({
 		iterationNumber: i + 1,

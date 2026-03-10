@@ -56,10 +56,23 @@ function renderToolCallDetail(tc: ToolCallDetail, idx: number, parentId: string)
 
 	let argsHtml = '';
 	if (tc.args) {
-		if (isEditTool && tc.args.command === 'str_replace' && tc.args.old_str && tc.args.new_str) {
+		if (isEditTool && tc.args.command === 'create' && tc.args.file_text) {
+			argsHtml = `<div class="diff-view">
+				<div class="diff-new"><div class="diff-label">create ${escapeHtml(String(tc.args.path ?? ''))}</div><pre><code>${escapeHtml(String(tc.args.file_text))}</code></pre></div>
+			</div>`;
+		} else if (
+			isEditTool &&
+			tc.args.command === 'str_replace' &&
+			tc.args.old_str &&
+			tc.args.new_str
+		) {
 			argsHtml = `<div class="diff-view">
 				<div class="diff-old"><div class="diff-label">old_str</div><pre><code>${escapeHtml(String(tc.args.old_str))}</code></pre></div>
 				<div class="diff-new"><div class="diff-label">new_str</div><pre><code>${escapeHtml(String(tc.args.new_str))}</code></pre></div>
+			</div>`;
+		} else if (isEditTool && tc.args.command === 'insert' && tc.args.new_str) {
+			argsHtml = `<div class="diff-view">
+				<div class="diff-new"><div class="diff-label">insert at line ${escapeHtml(String(tc.args.insert_line ?? '?'))}</div><pre><code>${escapeHtml(String(tc.args.new_str))}</code></pre></div>
 			</div>`;
 		} else if (isEditTool && tc.args.replacements) {
 			const replacements = tc.args.replacements as Array<Record<string, unknown>>;
