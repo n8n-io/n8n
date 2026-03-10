@@ -9,11 +9,7 @@ export class SecretsProviderConnectionRepository extends Repository<SecretsProvi
 		super(SecretsProviderConnection, dataSource.manager);
 	}
 
-	async findAll(filters: { isEnabled?: boolean } = {}): Promise<SecretsProviderConnection[]> {
-		const { isEnabled } = filters;
-		if (isEnabled !== undefined) {
-			return await this.find({ where: { isEnabled } });
-		}
+	async findAll(): Promise<SecretsProviderConnection[]> {
 		return await this.find();
 	}
 
