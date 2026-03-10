@@ -19,7 +19,7 @@ describe('parseDataFlowCode', () => {
 			const triggerConns = result.connections['Manual Trigger']?.main;
 			expect(triggerConns).toHaveLength(1);
 			expect(triggerConns![0]).toHaveLength(1);
-			expect(triggerConns![0][0].node).toBe('If');
+			expect(triggerConns![0]![0].node).toBe('If');
 
 			// If node should have two outputs: true → True Branch, false → False Branch
 			const ifConns = result.connections['If']?.main;
@@ -44,7 +44,7 @@ describe('parseDataFlowCode', () => {
 			const triggerConns = result.connections['Manual Trigger']?.main;
 			expect(triggerConns).toHaveLength(1);
 			expect(triggerConns![0]).toHaveLength(1);
-			expect(triggerConns![0][0].node).toBe('If');
+			expect(triggerConns![0]![0].node).toBe('If');
 
 			// If output 0 → Step 1
 			const ifConns = result.connections['If']?.main;
@@ -79,7 +79,7 @@ describe('parseDataFlowCode', () => {
 			const triggerConns = result.connections['Manual Trigger']?.main;
 			expect(triggerConns).toHaveLength(1);
 			expect(triggerConns![0]).toHaveLength(1);
-			expect(triggerConns![0][0].node).toBe('Switch');
+			expect(triggerConns![0]![0].node).toBe('Switch');
 		});
 	});
 });

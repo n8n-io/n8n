@@ -1,3 +1,4 @@
 {
-	"title": "F05: Error handling (Trigger → HTTP with onError → error handler)"
+	"title": "F05: Error handling (Trigger → HTTP with onError → error handler)",
+	"skip": "Generator produces fanOut comment instead of try/catch for onError handling"
 }

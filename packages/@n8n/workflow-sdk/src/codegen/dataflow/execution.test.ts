@@ -39,16 +39,8 @@ interface FixtureExecutionEntry {
 	status: 'pass' | 'error' | 'skip';
 	error?: string;
 	reason?: string;
-	originalValidation?: WorkflowValidation;
-	parsedValidation?: WorkflowValidation;
-	comparisonResult?: {
-		nodeCountMatch: boolean;
-		triggerCountMatch: boolean;
-		allNodeTypesPresent: boolean;
-		allConnectionsPresent: boolean;
-		missingNodeTypes: string[];
-		missingConnections: string[];
-	};
+	validation?: WorkflowValidation;
+	roundTripCodeMatch?: boolean;
 }
 
 const executionData: Record<string, FixtureExecutionEntry> = {};
@@ -127,7 +119,7 @@ function validateWorkflowStructure(json: WorkflowJSON): WorkflowValidation {
 		if (!n.type) errors.push(`Node "${n.name}" has no type`);
 	}
 
-	// Check for dangling connections (target node doesn't exist)
+	// Check for dangling connections
 	const nodeNames = new Set(nonStickyNodes.map((n) => n.name ?? ''));
 	for (const conn of connections) {
 		for (const target of conn.targets) {
@@ -149,6 +141,14 @@ function validateWorkflowStructure(json: WorkflowJSON): WorkflowValidation {
 	};
 }
 
+function normalizeCode(code: string): string {
+	return code
+		.split('\n')
+		.map((line) => line.trim())
+		.filter((line) => line.length > 0)
+		.join('\n');
+}
+
 // ---------------------------------------------------------------------------
 // Test suite
 // ---------------------------------------------------------------------------
@@ -166,54 +166,36 @@ describe('Data-flow execution validation (fixture round-trip)', () => {
 
 	for (const fixture of fixtures) {
 		if (fixture.skip) {
-			executionData[fixture.dir] = { status: 'skip', reason: fixture.skip };
+			executionData[fixture.dir] = {
+				status: 'skip',
+				reason: fixture.skip,
+			};
 			it.skip(`${fixture.title} [execution]`, () => {});
 			continue;
 		}
 
 		it(`${fixture.title} [execution]`, () => {
-			// Step 1: Validate the original workflow structure
-			const originalValidation = validateWorkflowStructure(fixture.input);
+			// Step 1: Parse data-flow code → WorkflowJSON
+			const parsed = parseDataFlowCode(fixture.input);
+			expect(parsed.nodes.length).toBeGreaterThan(0);
 
-			// Step 2: Generate data-flow code
-			const code = generateDataFlowWorkflowCode(fixture.input);
-			expect(code.length).toBeGreaterThan(0);
+			// Step 2: Validate parsed workflow structure
+			const validation = validateWorkflowStructure(parsed);
 
-			// Step 3: Parse back to WorkflowJSON
-			const parsed = parseDataFlowCode(code);
-
-			// Step 4: Validate the parsed workflow structure
-			const parsedValidation = validateWorkflowStructure(parsed);
-
-			// Step 5: Compare structures
-			const origNodeTypes = new Set(originalValidation.nodes.map((n) => n.type));
-			const parsedNodeTypes = new Set(parsedValidation.nodes.map((n) => n.type));
-			const missingNodeTypes = [...origNodeTypes].filter((t) => !parsedNodeTypes.has(t));
-
-			const origConnSources = new Set(originalValidation.connections.map((c) => c.source));
-			const parsedConnSources = new Set(parsedValidation.connections.map((c) => c.source));
-			const missingConnections = [...origConnSources].filter((s) => !parsedConnSources.has(s));
-
-			const comparisonResult = {
-				nodeCountMatch: parsedValidation.nodeCount >= originalValidation.nodeCount,
-				triggerCountMatch: parsedValidation.triggerCount >= originalValidation.triggerCount,
-				allNodeTypesPresent: missingNodeTypes.length === 0,
-				allConnectionsPresent: missingConnections.length === 0,
-				missingNodeTypes,
-				missingConnections,
-			};
+			// Step 3: Re-generate code and check round-trip
+			const reGenerated = generateDataFlowWorkflowCode(parsed);
+			const roundTripCodeMatch = normalizeCode(reGenerated) === normalizeCode(fixture.input);
 
 			executionData[fixture.dir] = {
 				status: 'pass',
-				originalValidation,
-				parsedValidation,
-				comparisonResult,
+				validation,
+				roundTripCodeMatch,
 			};
 
 			// Assertions
-			expect(parsedValidation.errors).toHaveLength(0);
-			expect(missingNodeTypes).toEqual([]);
-			expect(parsedValidation.triggerCount).toBeGreaterThanOrEqual(originalValidation.triggerCount);
+			expect(validation.errors).toHaveLength(0);
+			expect(validation.triggerCount).toBeGreaterThanOrEqual(1);
+			expect(roundTripCodeMatch).toBe(true);
 		});
 	}
 });

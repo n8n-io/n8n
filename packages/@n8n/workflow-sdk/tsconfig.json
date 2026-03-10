@@ -7,5 +7,6 @@
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
 	},
 	"include": ["src/**/*.ts"],
+	"exclude": ["src/**/__fixtures__/**"],
 	"references": [{ "path": "../../workflow/tsconfig.build.esm.json" }]
 }

@@ -1,14 +1,11 @@
 /**
  * Generates report.html for data-flow compiler fixtures.
- * Shows: input JSON, generated code, round-trip comparison, validation results.
+ * Shows: input code, parsed JSON, re-generated code, round-trip comparison.
  *
  * Generated files are gitignored.
  */
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import { generateDataFlowWorkflowCode } from './index';
-import { parseDataFlowCode } from './dataflow-parser';
-import { loadFixtures } from './fixture-loader';
 import type { CompilerTestEntry } from './compiler.test';
 
 const FIXTURES_DIR = join(__dirname, '__fixtures__');
@@ -23,42 +20,29 @@ interface ExecutionEntry {
 	status: 'pass' | 'error' | 'skip';
 	error?: string;
 	reason?: string;
-	originalValidation?: {
+	validation?: {
 		nodeCount: number;
 		connectionCount: number;
 		triggerCount: number;
 		errors: string[];
+		orphanedNodes: string[];
 	};
-	parsedValidation?: {
-		nodeCount: number;
-		connectionCount: number;
-		triggerCount: number;
-		errors: string[];
-	};
-	comparisonResult?: {
-		nodeCountMatch: boolean;
-		triggerCountMatch: boolean;
-		allNodeTypesPresent: boolean;
-		allConnectionsPresent: boolean;
-		missingNodeTypes: string[];
-		missingConnections: string[];
-	};
+	roundTripCodeMatch?: boolean;
 }
 
 interface ReportEntry {
 	title: string;
 	dirName: string;
 	skip?: string;
-	inputJson: string;
-	generatedCode?: string;
+	inputCode: string;
 	parsedJson?: string;
+	reGeneratedCode?: string;
 	roundTripStatus: 'pass' | 'error' | 'skip';
 	roundTripError?: string;
-	nodeTypesMatch?: boolean;
-	connectionCountMatch?: boolean;
-	parametersMatch?: boolean;
-	missingTypes?: string[];
-	extraTypes?: string[];
+	codeMatch?: boolean;
+	nodeCount?: number;
+	connectionCount?: number;
+	validationErrors?: string[];
 	execution?: ExecutionEntry;
 }
 
@@ -78,7 +62,6 @@ function loadExecutionData(): Record<string, ExecutionEntry> {
 function processFixtures(testEntries?: CompilerTestEntry[]): ReportEntry[] {
 	const executionMap = loadExecutionData();
 
-	// If test entries are provided (from compiler.test.ts afterAll), use them
 	if (testEntries && testEntries.length > 0) {
 		return testEntries.map((entry) => ({
 			...entry,
@@ -86,42 +69,7 @@ function processFixtures(testEntries?: CompilerTestEntry[]): ReportEntry[] {
 		}));
 	}
 
-	// Otherwise, re-run generation for standalone report
-	const fixtures = loadFixtures();
-	return fixtures.map((fixture) => {
-		const entry: ReportEntry = {
-			title: fixture.title,
-			dirName: fixture.dir,
-			skip: fixture.skip,
-			inputJson: JSON.stringify(fixture.input, null, 2),
-			roundTripStatus: fixture.skip ? 'skip' : 'pass',
-			execution: executionMap[fixture.dir],
-		};
-
-		if (fixture.skip) return entry;
-
-		try {
-			const code = generateDataFlowWorkflowCode(fixture.input);
-			entry.generatedCode = code;
-
-			const parsed = parseDataFlowCode(code);
-			entry.parsedJson = JSON.stringify(parsed, null, 2);
-
-			// Check node types
-			const origTypes = new Set(
-				fixture.input.nodes.filter((n) => !n.type.includes('stickyNote')).map((n) => n.type),
-			);
-			const parsedTypes = new Set(parsed.nodes.map((n) => n.type));
-			entry.missingTypes = [...origTypes].filter((t) => !parsedTypes.has(t));
-			entry.extraTypes = [...parsedTypes].filter((t) => !origTypes.has(t));
-			entry.nodeTypesMatch = entry.missingTypes.length === 0;
-		} catch (err) {
-			entry.roundTripStatus = 'error';
-			entry.roundTripError = err instanceof Error ? err.message : String(err);
-		}
-
-		return entry;
-	});
+	return [];
 }
 
 // ---------------------------------------------------------------------------
@@ -147,35 +95,30 @@ function renderExecutionSection(execution: ExecutionEntry): string {
 	const statusClass = execution.status === 'pass' ? 'exec-pass' : 'exec-error';
 	const statusLabel = execution.status === 'pass' ? 'PASS' : 'ERROR';
 
-	const comp = execution.comparisonResult;
-	const compRows = comp
-		? `<div class="comparison-grid">
-        <div class="comp-row ${comp.nodeCountMatch ? 'comp-pass' : 'comp-fail'}">Node count: ${comp.nodeCountMatch ? 'MATCH' : 'MISMATCH'}</div>
-        <div class="comp-row ${comp.triggerCountMatch ? 'comp-pass' : 'comp-fail'}">Trigger count: ${comp.triggerCountMatch ? 'MATCH' : 'MISMATCH'}</div>
-        <div class="comp-row ${comp.allNodeTypesPresent ? 'comp-pass' : 'comp-fail'}">All node types: ${comp.allNodeTypesPresent ? 'PRESENT' : `MISSING: ${comp.missingNodeTypes.join(', ')}`}</div>
-        <div class="comp-row ${comp.allConnectionsPresent ? 'comp-pass' : 'comp-fail'}">All connections: ${comp.allConnectionsPresent ? 'PRESENT' : `MISSING: ${comp.missingConnections.join(', ')}`}</div>
-      </div>`
-		: '';
-
-	const origStats = execution.originalValidation;
-	const parsedStats = execution.parsedValidation;
-	const statsTable =
-		origStats && parsedStats
-			? `<table class="stats-table">
-        <thead><tr><th></th><th>Original</th><th>Parsed</th></tr></thead>
+	const v = execution.validation;
+	const statsHtml = v
+		? `<table class="stats-table">
+        <thead><tr><th>Metric</th><th>Value</th></tr></thead>
         <tbody>
-          <tr><td>Nodes</td><td>${origStats.nodeCount}</td><td>${parsedStats.nodeCount}</td></tr>
-          <tr><td>Connections</td><td>${origStats.connectionCount}</td><td>${parsedStats.connectionCount}</td></tr>
-          <tr><td>Triggers</td><td>${origStats.triggerCount}</td><td>${parsedStats.triggerCount}</td></tr>
-          <tr><td>Errors</td><td>${origStats.errors.length}</td><td>${parsedStats.errors.length}</td></tr>
+          <tr><td>Nodes</td><td>${v.nodeCount}</td></tr>
+          <tr><td>Connections</td><td>${v.connectionCount}</td></tr>
+          <tr><td>Triggers</td><td>${v.triggerCount}</td></tr>
+          <tr><td>Errors</td><td>${v.errors.length}</td></tr>
+          <tr><td>Orphaned</td><td>${v.orphanedNodes.length}</td></tr>
         </tbody>
       </table>`
-			: '';
+		: '';
+
+	const roundTripBadge =
+		execution.roundTripCodeMatch === true
+			? '<span class="badge pass">CODE MATCH</span>'
+			: execution.roundTripCodeMatch === false
+				? '<span class="badge error">CODE MISMATCH</span>'
+				: '';
 
 	return `<details>
-        <summary>Execution Validation <span class="exec-badge ${statusClass}">${statusLabel}</span></summary>
-        ${compRows}
-        ${statsTable}
+        <summary>Execution Validation <span class="exec-badge ${statusClass}">${statusLabel}</span> ${roundTripBadge}</summary>
+        ${statsHtml}
       </details>`;
 }
 
@@ -197,26 +140,23 @@ function generateHtml(entries: ReportEntry[]): string {
 				? `<div class="error-msg">${escapeHtml(entry.roundTripError)}</div>`
 				: '';
 
-			const nodeTypeBadge =
-				entry.nodeTypesMatch === true
-					? '<span class="badge pass">TYPES OK</span>'
-					: entry.nodeTypesMatch === false
-						? `<span class="badge error">MISSING: ${(entry.missingTypes ?? []).join(', ')}</span>`
+			const codeMatchBadge =
+				entry.codeMatch === true
+					? '<span class="badge pass">ROUND-TRIP OK</span>'
+					: entry.codeMatch === false
+						? '<span class="badge error">ROUND-TRIP MISMATCH</span>'
 						: '';
 
-			const connBadge =
-				entry.connectionCountMatch === true
-					? '<span class="badge pass">CONNS OK</span>'
-					: entry.connectionCountMatch === false
-						? '<span class="badge error">CONNS MISMATCH</span>'
-						: '';
-
-			const paramBadge =
-				entry.parametersMatch === true
-					? '<span class="badge pass">PARAMS OK</span>'
-					: entry.parametersMatch === false
-						? '<span class="badge error">PARAMS MISMATCH</span>'
-						: '';
+			const statsBadges = [
+				entry.nodeCount !== undefined
+					? `<span class="badge-stat">${entry.nodeCount} nodes</span>`
+					: '',
+				entry.connectionCount !== undefined
+					? `<span class="badge-stat">${entry.connectionCount} conns</span>`
+					: '',
+			]
+				.filter(Boolean)
+				.join(' ');
 
 			const executionSection = entry.execution ? renderExecutionSection(entry.execution) : '';
 
@@ -224,28 +164,37 @@ function generateHtml(entries: ReportEntry[]): string {
     <div class="card">
       <details class="card-details" data-id="${entry.dirName}">
         <summary class="card-summary">
-          ${statusBadge} ${nodeTypeBadge} ${connBadge} ${paramBadge}
+          ${statusBadge} ${codeMatchBadge}
           <span class="card-title">${escapeHtml(entry.title)}</span>
+          <span class="card-stats">${statsBadges}</span>
         </summary>
         ${skipNote}
         ${errorNote}
         <details>
-          <summary>Input JSON</summary>
-          <pre class="code"><code>${escapeHtml(entry.inputJson)}</code></pre>
+          <summary>Input Code</summary>
+          <pre class="code"><code>${escapeHtml(entry.inputCode)}</code></pre>
         </details>
         ${
-					entry.generatedCode
+					entry.parsedJson
 						? `<details>
-          <summary>Generated Data-Flow Code</summary>
-          <pre class="code"><code>${escapeHtml(entry.generatedCode)}</code></pre>
+          <summary>Parsed JSON</summary>
+          <pre class="code"><code>${escapeHtml(entry.parsedJson)}</code></pre>
         </details>`
 						: ''
 				}
         ${
-					entry.parsedJson
+					entry.reGeneratedCode
 						? `<details>
-          <summary>Parsed-Back JSON</summary>
-          <pre class="code"><code>${escapeHtml(entry.parsedJson)}</code></pre>
+          <summary>Re-Generated Code</summary>
+          <pre class="code"><code>${escapeHtml(entry.reGeneratedCode)}</code></pre>
+        </details>`
+						: ''
+				}
+        ${
+					entry.validationErrors && entry.validationErrors.length > 0
+						? `<details>
+          <summary>Validation Errors (${entry.validationErrors.length})</summary>
+          <pre class="code"><code>${entry.validationErrors.map(escapeHtml).join('\n')}</code></pre>
         </details>`
 						: ''
 				}
@@ -306,6 +255,8 @@ function generateHtml(entries: ReportEntry[]): string {
     .card-details > .card-summary::before { content: '▶'; font-size: 10px; color: #6e7681; transition: transform 0.15s; flex-shrink: 0; }
     .card-details[open] > .card-summary::before { transform: rotate(90deg); }
     .card-title { font-size: 16px; font-weight: 600; color: #e6edf3; }
+    .card-stats { font-size: 12px; color: #6e7681; margin-left: auto; }
+    .badge-stat { font-size: 11px; color: #8b949e; padding: 2px 6px; background: #21262d; border-radius: 3px; }
     .badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; }
     .badge.pass { background: #1b3a2d; color: #3fb950; }
     .badge.skip { background: #3d2e00; color: #d29922; }
@@ -318,16 +269,11 @@ function generateHtml(entries: ReportEntry[]): string {
     .demo { margin-top: 12px; }
     n8n-demo { width: 100%; min-height: 300px; display: block; }
 
-    /* Execution validation styles */
     .exec-badge { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 3px; text-transform: uppercase; margin-left: 6px; vertical-align: middle; }
     .exec-pass { background: #1b3a2d; color: #3fb950; }
     .exec-error { background: #3d1a1a; color: #f85149; }
     .exec-skip { background: #3d2e00; color: #d29922; }
     .exec-skip-reason { font-size: 12px; color: #d29922; padding: 8px 12px; background: #2a2000; border-radius: 4px; margin-top: 8px; }
-    .comparison-grid { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
-    .comp-row { font-size: 12px; padding: 4px 8px; border-radius: 3px; }
-    .comp-pass { color: #3fb950; background: #1b3a2d; }
-    .comp-fail { color: #f85149; background: #2d1216; }
     .stats-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
     .stats-table th, .stats-table td { padding: 4px 12px; border: 1px solid #30363d; text-align: left; }
     .stats-table th { background: #21262d; font-weight: 600; }
@@ -411,15 +357,4 @@ ${cards}
 export function generateReport(testEntries?: CompilerTestEntry[]): void {
 	const entries = processFixtures(testEntries);
 	writeFileSync(REPORT_PATH, generateHtml(entries));
-}
-
-// Run as standalone script
-if (require.main === module) {
-	generateReport();
-	const entries = processFixtures();
-	const passing = entries.filter((e) => !e.skip && e.roundTripStatus === 'pass').length;
-	const skipped = entries.filter((e) => e.skip).length;
-	const errors = entries.filter((e) => e.roundTripStatus === 'error').length;
-	console.log(`Report generated: ${REPORT_PATH}`);
-	console.log(`  ${passing} passing, ${skipped} skipped, ${errors} errors`);
 }

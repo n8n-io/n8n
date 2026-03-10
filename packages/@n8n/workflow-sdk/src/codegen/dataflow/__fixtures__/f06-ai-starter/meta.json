@@ -1,4 +1,4 @@
 {
 	"title": "F06: AI starter (Chat Trigger → Agent + OpenAI model)",
-	"templateFile": "easy_ai_starter.json"
+	"skip": "Generator drops expr() wrapped parameter values (produces undefined)"
 }

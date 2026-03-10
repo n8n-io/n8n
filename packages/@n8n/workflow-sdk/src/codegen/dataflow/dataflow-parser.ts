@@ -822,23 +822,6 @@ function processTryStatement(
 }
 
 /**
- * Process statements and return the name of the first node created.
- * This is used by if/switch to connect branches.
- */
-function processStatementsAndGetFirstNode(
-	statements: Statement[],
-	state: ParserState,
-	inputVarName: string | undefined,
-): string | undefined {
-	const nodeCountBefore = state.nodes.length;
-	processStatements(statements, state, inputVarName);
-	if (state.nodes.length > nodeCountBefore) {
-		return state.nodes[nodeCountBefore].name;
-	}
-	return undefined;
-}
-
-/**
  * Process a list of statements in a callback body.
  */
 function processStatements(

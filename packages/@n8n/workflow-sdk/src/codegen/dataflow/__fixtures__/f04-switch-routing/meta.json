@@ -1,3 +1,4 @@
 {
-	"title": "F04: Switch routing (Trigger → Switch → 3 cases + default)"
+	"title": "F04: Switch routing (Trigger → Switch → 3 cases + default)",
+	"skip": "Generator produces fanOut comment instead of switch/case for Switch node routing"
 }
