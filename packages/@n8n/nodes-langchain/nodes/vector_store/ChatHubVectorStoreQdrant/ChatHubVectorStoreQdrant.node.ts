@@ -2,6 +2,7 @@ import type { QdrantLibArgs } from '@langchain/qdrant';
 import { QdrantVectorStore } from '@langchain/qdrant';
 import {
 	jsonParse,
+	type INodeProperties,
 	type IDataObject,
 	type ILoadOptionsFunctions,
 	type NodeParameterValueType,
@@ -10,7 +11,7 @@ import {
 import type { Callbacks } from '@langchain/core/callbacks/manager';
 import { createQdrantClient, type QdrantCredential } from '../VectorStoreQdrant/Qdrant.utils';
 import { ensureUserId } from '../shared/userScoped';
-import { createVectorStoreNode } from '@n8n/ai-utilities';
+import { createVectorStoreNode, metadataFilterField } from '@n8n/ai-utilities';
 import {
 	filterChatHubMetadata,
 	filterChatHubInsertDocuments,
@@ -20,6 +21,17 @@ import {
 type ChatHubVectorStoreQdrantApiCredentials = QdrantCredential & {
 	collectionName: string;
 };
+
+const retrieveFields: INodeProperties[] = [
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [metadataFilterField],
+	},
+];
 
 type Filter = QdrantVectorStore['FilterType'];
 
@@ -93,9 +105,9 @@ export class ChatHubVectorStoreQdrant extends createVectorStoreNode<QdrantVector
 	methods: { actionHandler: { deleteDocuments } },
 	sharedFields: [],
 	insertFields: [],
-	loadFields: [],
-	retrieveFields: [],
-	async getVectorStoreClient(context, filter, embeddings) {
+	loadFields: retrieveFields,
+	retrieveFields,
+	async getVectorStoreClient(context, _filter, embeddings) {
 		const credentials = await context.getCredentials<ChatHubVectorStoreQdrantApiCredentials>(
 			'chatHubVectorStoreQdrantApi',
 		);
@@ -110,18 +122,19 @@ export class ChatHubVectorStoreQdrant extends createVectorStoreNode<QdrantVector
 		const originalSearchWithScore = store.similaritySearchWithScore.bind(store);
 		const originalSearchVectorWithScore = store.similaritySearchVectorWithScore.bind(store);
 
+		// In ChatHub, getVectorStoreClient is always called with filter=undefined.
+		// The flat metadata filter (e.g. { agentId }) is passed directly to
+		// similaritySearch* methods as anotherFilter instead (see retrieveAsToolOperation).
 		function createFinalFilter(anotherFilter?: Filter): Filter {
-			const originalMust = anotherFilter
-				? Array.isArray(anotherFilter.must)
-					? anotherFilter.must
-					: [anotherFilter.must ?? {}]
+			const anotherFilterMust = anotherFilter
+				? Object.entries(anotherFilter).map(([key, value]) => ({
+						key: `metadata.${key}`,
+						match: { value },
+					}))
 				: [];
-			const must = filter ? (Array.isArray(filter.must) ? filter.must : [filter.must ?? {}]) : [];
 
 			const final = {
-				...anotherFilter,
-				...filter,
-				must: [...originalMust, ...must, { key: 'metadata.userId', match: { value: userId } }],
+				must: [...anotherFilterMust, { key: 'metadata.userId', match: { value: userId } }],
 			};
 
 			context.logger.debug(`Querying Qdrant vector store... Filter: ${JSON.stringify(final)}`);

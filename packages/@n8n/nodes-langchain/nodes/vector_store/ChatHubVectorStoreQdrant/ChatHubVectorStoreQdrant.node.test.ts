@@ -195,35 +195,32 @@ describe('ChatHubVectorStoreQdrant', () => {
 			);
 		});
 
-		it('should merge userId with an existing filter', async () => {
-			const originalSearch = jest.fn().mockResolvedValue([]);
+		it('should convert flat anotherFilter into Qdrant must conditions (retrieve-as-tool path)', async () => {
+			const originalSearchVectorWithScore = jest.fn().mockResolvedValue([]);
 			MockQdrantVectorStore.fromExistingCollection = jest.fn().mockResolvedValue({
-				similaritySearch: originalSearch,
+				similaritySearch: jest.fn().mockResolvedValue([]),
 				similaritySearchWithScore: jest.fn().mockResolvedValue([]),
-				similaritySearchVectorWithScore: jest.fn().mockResolvedValue([]),
+				similaritySearchVectorWithScore: originalSearchVectorWithScore,
 			});
-
-			const existingFilter = { must: [{ key: 'metadata.agentId', match: { value: 'agent-1' } }] };
 
 			const node = new ChatHubVectorStoreQdrant();
 			const store = await (node as any).getVectorStoreClient(
 				makeContext('user-123'),
-				existingFilter,
+				undefined,
 				{},
 			);
 
-			await store.similaritySearch('query');
+			await store.similaritySearchVectorWithScore([0.1, 0.2], 4, { agentId: 'agent-1' });
 
-			expect(originalSearch).toHaveBeenCalledWith(
-				'query',
-				undefined,
+			expect(originalSearchVectorWithScore).toHaveBeenCalledWith(
+				[0.1, 0.2],
+				4,
 				expect.objectContaining({
 					must: expect.arrayContaining([
-						{ key: 'metadata.userId', match: { value: 'user-123' } },
 						{ key: 'metadata.agentId', match: { value: 'agent-1' } },
+						{ key: 'metadata.userId', match: { value: 'user-123' } },
 					]),
 				}),
-				undefined,
 			);
 		});
 	});
