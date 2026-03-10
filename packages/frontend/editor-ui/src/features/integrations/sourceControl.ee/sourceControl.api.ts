@@ -101,8 +101,8 @@ export const generateKeyPair = async (
 export const exportPackage = async (
 	context: IRestApiContext,
 	data: { projectIds: string[]; commitMessage?: string },
-) => {
-	return await makeRestApiRequest<{ success: boolean }>(
+): Promise<{ success: boolean }> => {
+	return await makeRestApiRequest(
 		context,
 		'POST',
 		`${sourceControlApiRoot}/export-package`,
@@ -113,7 +113,7 @@ export const exportPackage = async (
 export const importPackage = async (
 	context: IRestApiContext,
 	data: { force?: boolean; projectIds?: string[]; commitHash?: string },
-) => {
+): Promise<unknown> => {
 	return await makeRestApiRequest(context, 'POST', `${sourceControlApiRoot}/import-package`, data);
 };
 

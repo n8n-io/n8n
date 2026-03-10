@@ -147,6 +147,17 @@ export class SourceControlPackageImportService {
 		return result;
 	}
 
+	private async readdirSafe(dirPath: string): Promise<import('node:fs').Dirent[]> {
+		try {
+			return await readdir(dirPath, { withFileTypes: true });
+		} catch (error) {
+			if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+				return [];
+			}
+			throw error;
+		}
+	}
+
 	private async readManifest(): Promise<ExportableManifest> {
 		const manifestPath = path.join(this.gitFolder, 'manifest.json');
 		try {
@@ -347,84 +358,66 @@ export class SourceControlPackageImportService {
 
 		// Import credentials
 		const credentialsDir = path.join(projectDir, 'credentials');
-		try {
-			const credEntries = await readdir(credentialsDir, { withFileTypes: true });
-			for (const entry of credEntries) {
-				if (!entry.isDirectory()) continue;
-				try {
-					await this.importCredential(
-						path.join(credentialsDir, entry.name, 'credential.json'),
-						projectData.id,
-						userId,
-						result,
-					);
-				} catch (error) {
-					this.logger.error(`Failed to import credential ${entry.name}`, {
-						error: ensureError(error),
-					});
-				}
-			}
-		} catch (error) {
-			if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-				this.logger.error('Failed to read credentials dir', { error: ensureError(error) });
+		for (const entry of await this.readdirSafe(credentialsDir)) {
+			if (!entry.isDirectory()) continue;
+			try {
+				await this.importCredential(
+					path.join(credentialsDir, entry.name, 'credential.json'),
+					projectData.id,
+					userId,
+					result,
+				);
+			} catch (error) {
+				this.logger.error(`Failed to import credential ${entry.name}`, {
+					error: ensureError(error),
+				});
 			}
 		}
 
 		// Import variables
 		const variablesDir = path.join(projectDir, 'variables');
-		try {
-			const varEntries = await readdir(variablesDir, { withFileTypes: true });
-			for (const entry of varEntries) {
-				if (!entry.isDirectory()) continue;
-				try {
-					const varData = jsonParse<ExportableVariable>(
-						await readFile(path.join(variablesDir, entry.name, 'variable.json'), 'utf8'),
-					);
-					const variableToUpsert: Partial<Variables> & { id: string; key: string } = {
-						id: varData.id,
-						key: varData.key,
-						type: varData.type,
-						value: varData.value === '' ? undefined : varData.value,
-					};
-					if (varData.projectId) {
-						Object.assign(variableToUpsert, { project: { id: varData.projectId } });
-					}
-					await this.variablesRepository.upsert(variableToUpsert, ['id']);
-					result.variables.imported.push(varData.key);
-				} catch (error) {
-					this.logger.error(`Failed to import variable ${entry.name}`, {
-						error: ensureError(error),
-					});
+		const varEntries = await this.readdirSafe(variablesDir);
+		for (const entry of varEntries) {
+			if (!entry.isDirectory()) continue;
+			try {
+				const varData = jsonParse<ExportableVariable>(
+					await readFile(path.join(variablesDir, entry.name, 'variable.json'), 'utf8'),
+				);
+				const variableToUpsert: Partial<Variables> & { id: string; key: string } = {
+					id: varData.id,
+					key: varData.key,
+					type: varData.type,
+					value: varData.value === '' ? undefined : varData.value,
+				};
+				if (varData.projectId) {
+					Object.assign(variableToUpsert, { project: { id: varData.projectId } });
 				}
+				await this.variablesRepository.upsert(variableToUpsert, ['id']);
+				result.variables.imported.push(varData.key);
+			} catch (error) {
+				this.logger.error(`Failed to import variable ${entry.name}`, {
+					error: ensureError(error),
+				});
 			}
+		}
+		if (varEntries.length > 0) {
 			await this.variablesService.updateCache();
-		} catch (error) {
-			if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-				this.logger.error('Failed to read variables dir', { error: ensureError(error) });
-			}
 		}
 
 		// Import data tables
 		const dataTablesDir = path.join(projectDir, 'data-tables');
-		try {
-			const dtEntries = await readdir(dataTablesDir, { withFileTypes: true });
-			for (const entry of dtEntries) {
-				if (!entry.isDirectory()) continue;
-				try {
-					await this.importDataTable(
-						path.join(dataTablesDir, entry.name, 'data-table.json'),
-						projectData.id,
-						result,
-					);
-				} catch (error) {
-					this.logger.error(`Failed to import data table ${entry.name}`, {
-						error: ensureError(error),
-					});
-				}
-			}
-		} catch (error) {
-			if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-				this.logger.error('Failed to read data-tables dir', { error: ensureError(error) });
+		for (const entry of await this.readdirSafe(dataTablesDir)) {
+			if (!entry.isDirectory()) continue;
+			try {
+				await this.importDataTable(
+					path.join(dataTablesDir, entry.name, 'data-table.json'),
+					projectData.id,
+					result,
+				);
+			} catch (error) {
+				this.logger.error(`Failed to import data table ${entry.name}`, {
+					error: ensureError(error),
+				});
 			}
 		}
 

@@ -304,15 +304,10 @@ const groupedFilesByType = computed(() => {
 	return grouped;
 });
 
-// Filtered workflows
-const filteredWorkflows = computed(() => {
-	const workflows = groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.workflow] || [];
-	return workflows;
-});
-
 const sortedWorkflows = computed(() => {
+	const workflows = groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.workflow] ?? [];
 	const sorted = orderBy(
-		filteredWorkflows.value,
+		workflows,
 		[({ status }) => getPullPriorityByStatus(status), 'updatedAt'],
 		['asc', 'desc'],
 	);
@@ -332,41 +327,25 @@ const sortedWorkflows = computed(() => {
 	}));
 });
 
-// Filtered credentials
-const filteredCredentials = computed(() => {
-	const credentials = groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.credential] || [];
-	return credentials;
-});
-
 const sortedCredentials = computed(() =>
 	orderBy(
-		filteredCredentials.value,
+		groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.credential] ?? [],
 		[({ status }) => getPullPriorityByStatus(status), 'updatedAt'],
 		['asc', 'desc'],
 	),
 );
-
-// Filtered data tables
-const filteredDataTables = computed(() => {
-	const dataTables = groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.datatable] || [];
-	return dataTables;
-});
 
 const sortedDataTables = computed(() =>
 	orderBy(
-		filteredDataTables.value,
+		groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.datatable] ?? [],
 		[({ status }) => getPullPriorityByStatus(status), 'updatedAt'],
 		['asc', 'desc'],
 	),
 );
 
-// Data tables with schema conflicts (columns will be lost)
 const conflictedDataTables = computed(() => {
-	return filteredDataTables.value.filter((dt) => {
-		// For pull operations, show warning for modified data tables with conflicts
-		// (schema changes) not for deleted data tables (entire table removed)
-		return dt.conflict === true && dt.status === 'modified';
-	});
+	const dataTables = groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.datatable] ?? [];
+	return dataTables.filter((dt) => dt.conflict === true && dt.status === 'modified');
 });
 
 const hasDataTableConflicts = computed(() => conflictedDataTables.value.length > 0);
@@ -427,28 +406,14 @@ const tabs = computed(() => {
 	];
 });
 
-// Other files (variables, tags, folders, projects) that are always pulled
 const otherFiles = computed(() => {
-	const others: SourceControlledFileWithProject[] = [];
-
-	const variables = groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.variables];
-	if (variables) {
-		others.push.apply(others, variables);
-	}
-	const tags = groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.tags];
-	if (tags) {
-		others.push.apply(others, tags);
-	}
-	const folders = groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.folders];
-	if (folders) {
-		others.push.apply(others, folders);
-	}
-	const projects = groupedFilesByType.value[SOURCE_CONTROL_FILE_TYPE.project];
-	if (projects) {
-		others.push.apply(others, projects);
-	}
-
-	return others;
+	const grouped = groupedFilesByType.value;
+	return [
+		...(grouped[SOURCE_CONTROL_FILE_TYPE.variables] ?? []),
+		...(grouped[SOURCE_CONTROL_FILE_TYPE.tags] ?? []),
+		...(grouped[SOURCE_CONTROL_FILE_TYPE.folders] ?? []),
+		...(grouped[SOURCE_CONTROL_FILE_TYPE.project] ?? []),
+	];
 });
 
 const otherFilesText = computed(() => {
@@ -1055,14 +1020,14 @@ onMounted(() => {
 .filtersRow {
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	gap: var(--spacing--2xs);
 	justify-content: space-between;
 }
 
 .filters {
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	gap: var(--spacing--2xs);
 }
 
 .headerTitle {
@@ -1096,7 +1061,7 @@ onMounted(() => {
 	padding: 10px 16px;
 	margin: 0;
 	border-bottom: var(--border);
-	gap: 30px;
+	gap: var(--spacing--xl);
 }
 
 .itemContent {
@@ -1124,7 +1089,7 @@ onMounted(() => {
 
 .badges {
 	display: flex;
-	gap: 10px;
+	gap: var(--spacing--xs);
 	align-items: center;
 	flex-shrink: 0;
 }
@@ -1133,7 +1098,7 @@ onMounted(() => {
 	display: flex;
 	flex-direction: row;
 	justify-content: flex-end;
-	margin-top: 8px;
+	margin-top: var(--spacing--2xs);
 }
 
 .warningContent {
@@ -1175,7 +1140,7 @@ onMounted(() => {
 .tabs {
 	display: flex;
 	flex-direction: column;
-	gap: 4px;
+	gap: var(--spacing--4xs);
 	width: 165px;
 	padding: var(--spacing--2xs);
 	border: var(--border);
@@ -1194,7 +1159,7 @@ onMounted(() => {
 	text-align: left;
 	display: flex;
 	flex-direction: column;
-	gap: 2px;
+	gap: var(--spacing--5xs);
 	&:hover {
 		border-color: var(--color--background);
 	}

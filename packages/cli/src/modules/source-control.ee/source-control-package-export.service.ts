@@ -12,7 +12,7 @@ import { Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import { Credentials, InstanceSettings } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile as fsWriteFile } from 'node:fs/promises';
 import path from 'path';
 
 import { SOURCE_CONTROL_GIT_FOLDER } from './constants';
@@ -54,12 +54,15 @@ export class SourceControlPackageExportService {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 	}
 
+	private async writeJson(filePath: string, data: unknown): Promise<void> {
+		await fsWriteFile(filePath, JSON.stringify(data, null, 2));
+	}
+
 	async exportPackage(projectIds: string[], userId: string): Promise<void> {
 		const manifestPath = path.join(this.gitFolder, 'manifest.json');
 
 		const existingManifest = await this.readExistingManifest(manifestPath);
 
-		// Only delete directories for projects being re-exported, not the entire projects/ dir
 		for (const projectId of projectIds) {
 			const project = await this.projectRepository.findOneBy({ id: projectId });
 			if (project) {
@@ -68,7 +71,6 @@ export class SourceControlPackageExportService {
 			}
 		}
 
-		const exportedProjectIds = new Set(projectIds);
 		const newProjectEntries: ExportableManifest['projects'] = [];
 		const allCredentialTypes = new Set<string>();
 		const allNodeTypes = new Set<string>();
@@ -81,9 +83,9 @@ export class SourceControlPackageExportService {
 			nodeTypes.forEach((t) => allNodeTypes.add(t));
 		}
 
-		// Merge with existing manifest entries for projects not being re-exported
+		const exportedIds = new Set(projectIds);
 		const preservedProjects =
-			existingManifest?.projects.filter((p) => !exportedProjectIds.has(p.id)) ?? [];
+			existingManifest?.projects.filter((p) => !exportedIds.has(p.id)) ?? [];
 		const mergedProjects = [...preservedProjects, ...newProjectEntries];
 
 		const manifest: ExportableManifest = {
@@ -98,7 +100,7 @@ export class SourceControlPackageExportService {
 			exportedBy: userId,
 		};
 
-		await writeFile(manifestPath, JSON.stringify(manifest, null, 2));
+		await this.writeJson(manifestPath, manifest);
 		this.logger.info(
 			`Package export complete: ${newProjectEntries.length} project(s) exported, ${preservedProjects.length} project(s) preserved`,
 		);
@@ -130,32 +132,24 @@ export class SourceControlPackageExportService {
 		const projectDir = getPackageProjectDir(this.gitFolder, project.name, project.id);
 		await mkdir(projectDir, { recursive: true });
 
-		// Write project.json
-		await writeFile(
-			path.join(projectDir, 'project.json'),
-			JSON.stringify(
-				{
-					id: project.id,
-					name: project.name,
-					icon: project.icon,
-					description: project.description,
-					type: project.type,
-					owner: {
-						type: 'team',
-						teamId: project.id,
-						teamName: project.name,
-					},
-					variableStubs: project.variables.map((v) => ({
-						id: v.id,
-						key: v.key,
-						type: v.type,
-						value: '',
-					})),
-				},
-				null,
-				2,
-			),
-		);
+		await this.writeJson(path.join(projectDir, 'project.json'), {
+			id: project.id,
+			name: project.name,
+			icon: project.icon,
+			description: project.description,
+			type: project.type,
+			owner: {
+				type: 'team',
+				teamId: project.id,
+				teamName: project.name,
+			},
+			variableStubs: project.variables.map((v) => ({
+				id: v.id,
+				key: v.key,
+				type: v.type,
+				value: '',
+			})),
+		});
 
 		// Get folders for this project
 		const folders = await this.folderRepository.find({
@@ -252,7 +246,7 @@ export class SourceControlPackageExportService {
 				isGlobal,
 			};
 
-			await writeFile(path.join(credDir, 'credential.json'), JSON.stringify(stub, null, 2));
+			await this.writeJson(path.join(credDir, 'credential.json'), stub);
 			credentialTypes.add(type);
 		}
 
@@ -262,20 +256,13 @@ export class SourceControlPackageExportService {
 			const varDir = getPackageVariableDir(projectDir, variable.key, variable.id);
 			await mkdir(varDir, { recursive: true });
 
-			await writeFile(
-				path.join(varDir, 'variable.json'),
-				JSON.stringify(
-					{
-						id: variable.id,
-						key: variable.key,
-						type: variable.type,
-						value: '',
-						projectId: project.id,
-					},
-					null,
-					2,
-				),
-			);
+			await this.writeJson(path.join(varDir, 'variable.json'), {
+				id: variable.id,
+				key: variable.key,
+				type: variable.type,
+				value: '',
+				projectId: project.id,
+			});
 		}
 
 		// Export data tables
@@ -288,32 +275,25 @@ export class SourceControlPackageExportService {
 			const dtDir = getPackageDataTableDir(projectDir, table.name, table.id);
 			await mkdir(dtDir, { recursive: true });
 
-			await writeFile(
-				path.join(dtDir, 'data-table.json'),
-				JSON.stringify(
-					{
-						id: table.id,
-						name: table.name,
-						columns: table.columns
-							.sort((a, b) => a.index - b.index)
-							.map((col) => ({
-								id: col.id,
-								name: col.name,
-								type: col.type,
-								index: col.index,
-							})),
-						ownedBy: {
-							type: 'team',
-							teamId: project.id,
-							teamName: project.name,
-						},
-						createdAt: table.createdAt.toISOString(),
-						updatedAt: table.updatedAt.toISOString(),
-					},
-					null,
-					2,
-				),
-			);
+			await this.writeJson(path.join(dtDir, 'data-table.json'), {
+				id: table.id,
+				name: table.name,
+				columns: table.columns
+					.sort((a, b) => a.index - b.index)
+					.map((col) => ({
+						id: col.id,
+						name: col.name,
+						type: col.type,
+						index: col.index,
+					})),
+				ownedBy: {
+					type: 'team',
+					teamId: project.id,
+					teamName: project.name,
+				},
+				createdAt: table.createdAt.toISOString(),
+				updatedAt: table.updatedAt.toISOString(),
+			});
 		}
 
 		return {
@@ -376,22 +356,14 @@ export class SourceControlPackageExportService {
 
 		const originalFolder = allFolders.find((f) => f.id === folderNode.id);
 
-		// Write folder.json
-		await writeFile(
-			path.join(folderDir, 'folder.json'),
-			JSON.stringify(
-				{
-					id: folderNode.id,
-					name: folderNode.name,
-					parentFolderId: folderNode.parentFolderId,
-					homeProjectId: projectId,
-					createdAt: originalFolder?.createdAt?.toISOString?.() ?? new Date().toISOString(),
-					updatedAt: originalFolder?.updatedAt?.toISOString?.() ?? new Date().toISOString(),
-				},
-				null,
-				2,
-			),
-		);
+		await this.writeJson(path.join(folderDir, 'folder.json'), {
+			id: folderNode.id,
+			name: folderNode.name,
+			parentFolderId: folderNode.parentFolderId,
+			homeProjectId: projectId,
+			createdAt: originalFolder?.createdAt?.toISOString?.() ?? new Date().toISOString(),
+			updatedAt: originalFolder?.updatedAt?.toISOString?.() ?? new Date().toISOString(),
+		});
 
 		// Write workflows in this folder
 		const folderWorkflows = workflowsByFolder.get(folderNode.id) ?? [];
@@ -431,12 +403,9 @@ export class SourceControlPackageExportService {
 		const wfDir = getPackageWorkflowDir(parentDir, wf.name, wf.id);
 		await mkdir(wfDir, { recursive: true });
 
-		// Collect node types for manifest dependencies
-		if (Array.isArray(wf.nodes)) {
-			for (const node of wf.nodes) {
-				if (typeof node === 'object' && node !== null && 'type' in node) {
-					nodeTypes.add((node as { type: string }).type);
-				}
+		for (const node of wf.nodes ?? []) {
+			if (typeof node === 'object' && node !== null && 'type' in node) {
+				nodeTypes.add((node as { type: string }).type);
 			}
 		}
 
@@ -457,6 +426,6 @@ export class SourceControlPackageExportService {
 			isArchived: wf.isArchived,
 		};
 
-		await writeFile(path.join(wfDir, 'workflow.json'), JSON.stringify(exportable, null, 2));
+		await this.writeJson(path.join(wfDir, 'workflow.json'), exportable);
 	}
 }

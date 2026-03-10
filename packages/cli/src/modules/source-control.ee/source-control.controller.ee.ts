@@ -297,6 +297,11 @@ export class SourceControlController {
 		}
 	}
 
+	private getActiveBranch(): string {
+		const { branchName } = this.sourceControlPreferencesService.getPreferences();
+		return branchName || SOURCE_CONTROL_DEFAULT_BRANCH;
+	}
+
 	@Post('/export-package', { middlewares: [sourceControlEnabledMiddleware] })
 	@GlobalScope('sourceControl:manage')
 	async exportPackage(req: AuthenticatedRequest) {
@@ -320,9 +325,8 @@ export class SourceControlController {
 			await this.sourceControlGitService.stage(new Set(['manifest.json', 'projects']));
 			await this.sourceControlGitService.commit(commitMessage ?? 'Export package');
 
-			const { branchName } = this.sourceControlPreferencesService.getPreferences();
 			const pushResult = await this.sourceControlGitService.push({
-				branch: branchName || SOURCE_CONTROL_DEFAULT_BRANCH,
+				branch: this.getActiveBranch(),
 				force: false,
 			});
 
@@ -337,10 +341,9 @@ export class SourceControlController {
 	async packagePreview() {
 		try {
 			await this.sourceControlGitService.fetch();
-			const { branchName } = this.sourceControlPreferencesService.getPreferences();
 			await this.sourceControlGitService.resetBranch({
 				hard: true,
-				target: `origin/${branchName || SOURCE_CONTROL_DEFAULT_BRANCH}`,
+				target: `origin/${this.getActiveBranch()}`,
 			});
 
 			return await this.packageImportService.previewPackage();
@@ -354,9 +357,8 @@ export class SourceControlController {
 	async packageCommits() {
 		try {
 			await this.sourceControlGitService.fetch();
-			const { branchName } = this.sourceControlPreferencesService.getPreferences();
 			const commits = await this.sourceControlGitService.getRecentCommits(
-				branchName || SOURCE_CONTROL_DEFAULT_BRANCH,
+				this.getActiveBranch(),
 				3,
 			);
 			return { commits };
@@ -385,20 +387,18 @@ export class SourceControlController {
 	async importPackage(req: AuthenticatedRequest) {
 		try {
 			await this.sourceControlGitService.fetch();
-			const { branchName } = this.sourceControlPreferencesService.getPreferences();
 			const { projectIds, commitHash } = (req.body ?? {}) as {
 				projectIds?: string[];
 				commitHash?: string;
 			};
 
-			const resetTarget = commitHash ?? `origin/${branchName || SOURCE_CONTROL_DEFAULT_BRANCH}`;
+			const resetTarget = commitHash ?? `origin/${this.getActiveBranch()}`;
 			await this.sourceControlGitService.resetBranch({
 				hard: true,
 				target: resetTarget,
 			});
 
-			const result = await this.packageImportService.importPackage(req.user.id, projectIds);
-			return result;
+			return await this.packageImportService.importPackage(req.user.id, projectIds);
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);
 		}

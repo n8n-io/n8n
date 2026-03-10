@@ -518,7 +518,7 @@ export class SourceControlGitService {
 			const isTree = line.startsWith('040000') || line.includes(' tree ');
 			const name = names[i];
 			return {
-				type: isTree ? 'tree' as const : 'blob' as const,
+				type: isTree ? 'tree' : 'blob',
 				name,
 				path: treePath ? `${treePath}/${name}` : name,
 			};
@@ -530,8 +530,7 @@ export class SourceControlGitService {
 			throw new UnexpectedError('Git is not initialized (getFileContent)');
 		}
 		try {
-			const content = await this.git.show([`${commit}:${filePath}`]);
-			return content;
+			return await this.git.show([`${commit}:${filePath}`]);
 		} catch (error) {
 			this.logger.error('Failed to get file content', { filePath, error });
 			throw new UnexpectedError(

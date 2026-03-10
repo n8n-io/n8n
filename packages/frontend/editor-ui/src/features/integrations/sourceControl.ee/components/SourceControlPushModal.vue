@@ -1214,14 +1214,14 @@ onMounted(async () => {
 .filtersRow {
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	gap: var(--spacing--2xs);
 	justify-content: space-between;
 }
 
 .filters {
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	gap: var(--spacing--2xs);
 }
 
 .selectAll {
@@ -1275,7 +1275,7 @@ onMounted(async () => {
 
 .badges {
 	display: flex;
-	gap: 10px;
+	gap: var(--spacing--xs);
 	align-items: center;
 }
 
@@ -1283,7 +1283,7 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: row;
 	justify-content: flex-end;
-	margin-top: 8px;
+	margin-top: var(--spacing--2xs);
 }
 
 .sourceControlPush {
@@ -1315,7 +1315,7 @@ onMounted(async () => {
 .tabs {
 	display: flex;
 	flex-direction: column;
-	gap: 4px;
+	gap: var(--spacing--4xs);
 	width: 165px;
 	padding: var(--spacing--2xs);
 	border: var(--border);
@@ -1334,7 +1334,7 @@ onMounted(async () => {
 	text-align: left;
 	display: flex;
 	flex-direction: column;
-	gap: 2px;
+	gap: var(--spacing--5xs);
 	&:hover {
 		border-color: var(--color--background);
 	}
