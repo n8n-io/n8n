@@ -36,9 +36,7 @@ export class ActiveExecutions {
 	/**
 	 * Active executions in the current process, not globally.
 	 */
-	private activeExecutions: {
-		[executionId: string]: IExecutingWorkflowData;
-	} = {};
+	private activeExecutions = new Map<string, IExecutingWorkflowData>();
 
 	/** Response mode by execution ID, if webhook-initiated. */
 	private responseModes = new Map<string, WebhookResponseMode>();
@@ -53,7 +51,7 @@ export class ActiveExecutions {
 	) {}
 
 	has(executionId: string) {
-		return this.activeExecutions[executionId] !== undefined;
+		return this.activeExecutions.has(executionId);
 	}
 
 	/**
@@ -124,7 +122,7 @@ export class ActiveExecutions {
 
 		// At this point executionId is guaranteed to be defined - capture it for use in closures
 		const executionId = maybeExecutionId;
-		const resumingExecution = this.activeExecutions[executionId];
+		const resumingExecution = this.activeExecutions.get(executionId);
 		const postExecutePromise = createDeferredPromise<IRun | undefined>();
 
 		const execution: IExecutingWorkflowData = {
@@ -135,7 +133,7 @@ export class ActiveExecutions {
 			responsePromise: resumingExecution?.responsePromise,
 			httpResponse: executionData.httpResponse ?? undefined,
 		};
-		this.activeExecutions[executionId] = execution;
+		this.activeExecutions.set(executionId, execution);
 
 		// Automatically remove execution once the postExecutePromise settles
 		void postExecutePromise.promise
@@ -149,7 +147,7 @@ export class ActiveExecutions {
 					// Do not hold on a reference to the previous WorkflowExecute instance, since a resuming execution will use a new instance
 					delete execution.workflowExecution;
 				} else {
-					delete this.activeExecutions[executionId];
+					this.activeExecutions.delete(executionId);
 					this.responseModes.delete(executionId);
 					this.logger.debug('Execution removed', { executionId });
 				}
@@ -176,13 +174,13 @@ export class ActiveExecutions {
 	}
 
 	resolveResponsePromise(executionId: string, response: IExecuteResponsePromiseData): void {
-		const execution = this.activeExecutions[executionId];
+		const execution = this.activeExecutions.get(executionId);
 		execution?.responsePromise?.resolve(response);
 	}
 
 	/** Used for sending a chunk to a streaming response */
 	sendChunk(executionId: string, chunkText: StructuredChunk): void {
-		const execution = this.activeExecutions[executionId];
+		const execution = this.activeExecutions.get(executionId);
 		if (execution?.httpResponse) {
 			execution?.httpResponse.write(JSON.stringify(chunkText) + '\n');
 			execution?.httpResponse.flush();
@@ -191,7 +189,7 @@ export class ActiveExecutions {
 
 	/** Cancel the execution promise and reject its post-execution promise. */
 	stopExecution(executionId: string, cancellationError: ExecutionCancelledError): void {
-		const execution = this.activeExecutions[executionId];
+		const execution = this.activeExecutions.get(executionId);
 		if (execution === undefined) {
 			// There is no execution running with that id
 			return;
@@ -210,7 +208,7 @@ export class ActiveExecutions {
 		if (execution.status === 'waiting') {
 			// A waiting execution will not have a valid workflowExecution or postExecutePromise
 			// So we can't rely on the `.finally` on the postExecutePromise for the execution removal
-			delete this.activeExecutions[executionId];
+			this.activeExecutions.delete(executionId);
 			this.responseModes.delete(executionId);
 		} else {
 			execution.workflowExecution?.cancel();
@@ -270,10 +268,7 @@ export class ActiveExecutions {
 	getActiveExecutions(): IExecutionsCurrentSummary[] {
 		const returnData: IExecutionsCurrentSummary[] = [];
 
-		let data;
-
-		for (const id of Object.keys(this.activeExecutions)) {
-			data = this.activeExecutions[id];
+		for (const [id, data] of this.activeExecutions) {
 			returnData.push({
 				id,
 				retryOf: data.executionData.retryOf ?? undefined,
@@ -312,35 +307,32 @@ export class ActiveExecutions {
 			this.concurrencyControl.disable();
 		}
 
-		let executionIds = Object.keys(this.activeExecutions);
 		const toCancel: string[] = [];
-		for (const executionId of executionIds) {
-			const { status } = this.activeExecutions[executionId];
+		for (const [executionId, { status }] of this.activeExecutions) {
 			if (isRegularMode && cancelAll) {
 				this.stopExecution(executionId, new SystemShutdownExecutionCancelledError(executionId));
 				toCancel.push(executionId);
 			} else if (status === 'waiting' || status === 'new') {
 				// Remove waiting and new executions to not block shutdown
-				delete this.activeExecutions[executionId];
+				this.activeExecutions.delete(executionId);
 			}
 		}
 
 		await this.concurrencyControl.removeAll(toCancel);
 
 		let count = 0;
-		executionIds = Object.keys(this.activeExecutions);
-		while (executionIds.length !== 0) {
+		while (this.activeExecutions.size !== 0) {
 			if (count++ % 4 === 0) {
-				this.logger.info(`Waiting for ${executionIds.length} active executions to finish...`);
+				this.logger.info(
+					`Waiting for ${this.activeExecutions.size} active executions to finish...`,
+				);
 			}
-
 			await sleep(500);
-			executionIds = Object.keys(this.activeExecutions);
 		}
 	}
 
 	getExecutionOrFail(executionId: string): IExecutingWorkflowData {
-		const execution = this.activeExecutions[executionId];
+		const execution = this.activeExecutions.get(executionId);
 		if (!execution) {
 			throw new ExecutionNotFoundError(executionId);
 		}
