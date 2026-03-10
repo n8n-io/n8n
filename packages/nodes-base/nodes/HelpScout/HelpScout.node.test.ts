@@ -15,6 +15,10 @@ describe('HelpScout Node', () => {
 	const mockHelpscoutApiRequest = GenericFunctions.helpscoutApiRequest as jest.MockedFunction<
 		typeof GenericFunctions.helpscoutApiRequest
 	>;
+	const mockHelpscoutApiRequestAllItems =
+		GenericFunctions.helpscoutApiRequestAllItems as jest.MockedFunction<
+			typeof GenericFunctions.helpscoutApiRequestAllItems
+		>;
 
 	beforeEach(() => {
 		helpScout = new HelpScout();
@@ -436,7 +440,97 @@ describe('HelpScout Node', () => {
 				}),
 			);
 		});
+	});
 
+	describe('Conversation getAll - modifiedSince handling', () => {
+		beforeEach(() => {
+			mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			mockExecuteFunctions.continueOnFail.mockReturnValue(false);
+			mockHelpscoutApiRequestAllItems.mockResolvedValue([]);
+		});
+
+		it('should handle modifiedSince when provided as an array (date picker)', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('conversation') // resource
+				.mockReturnValueOnce('getAll') // operation
+				.mockReturnValueOnce(true) // returnAll
+				.mockReturnValueOnce({ modifiedSince: ['2024-01-01T00:00:00Z'] }); // options
+
+			await helpScout.execute.call(mockExecuteFunctions);
+
+			expect(mockHelpscoutApiRequestAllItems).toHaveBeenCalledWith(
+				'_embedded.conversations',
+				'GET',
+				'/v2/conversations',
+				{},
+				expect.objectContaining({ modifiedSince: '2024-01-01T00:00:00Z' }),
+			);
+		});
+
+		it('should handle modifiedSince when provided as a string', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('conversation') // resource
+				.mockReturnValueOnce('getAll') // operation
+				.mockReturnValueOnce(true) // returnAll
+				.mockReturnValueOnce({ modifiedSince: '2024-06-15T12:00:00Z' }); // options
+
+			await helpScout.execute.call(mockExecuteFunctions);
+
+			expect(mockHelpscoutApiRequestAllItems).toHaveBeenCalledWith(
+				'_embedded.conversations',
+				'GET',
+				'/v2/conversations',
+				{},
+				expect.objectContaining({ modifiedSince: '2024-06-15T12:00:00Z' }),
+			);
+		});
+	});
+
+	describe('Customer getAll - modifiedSince handling', () => {
+		beforeEach(() => {
+			mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			mockExecuteFunctions.continueOnFail.mockReturnValue(false);
+			mockHelpscoutApiRequestAllItems.mockResolvedValue([]);
+		});
+
+		it('should handle modifiedSince when provided as an array (date picker)', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('customer') // resource
+				.mockReturnValueOnce('getAll') // operation
+				.mockReturnValueOnce(true) // returnAll
+				.mockReturnValueOnce({ modifiedSince: ['2024-03-01T00:00:00Z'] }); // options
+
+			await helpScout.execute.call(mockExecuteFunctions);
+
+			expect(mockHelpscoutApiRequestAllItems).toHaveBeenCalledWith(
+				'_embedded.customers',
+				'GET',
+				'/v2/customers',
+				{},
+				expect.objectContaining({ modifiedSince: '2024-03-01T00:00:00Z' }),
+			);
+		});
+
+		it('should handle modifiedSince when provided as a string', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('customer') // resource
+				.mockReturnValueOnce('getAll') // operation
+				.mockReturnValueOnce(true) // returnAll
+				.mockReturnValueOnce({ modifiedSince: '2024-09-01T00:00:00Z' }); // options
+
+			await helpScout.execute.call(mockExecuteFunctions);
+
+			expect(mockHelpscoutApiRequestAllItems).toHaveBeenCalledWith(
+				'_embedded.customers',
+				'GET',
+				'/v2/customers',
+				{},
+				expect.objectContaining({ modifiedSince: '2024-09-01T00:00:00Z' }),
+			);
+		});
+	});
+
+	describe('Thread create operation - customer validation', () => {
 		it('should throw error when neither customer email nor customer ID is provided', async () => {
 			const inputData: INodeExecutionData[] = [
 				{
