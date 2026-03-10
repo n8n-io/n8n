@@ -1,11 +1,11 @@
 import { render } from '@testing-library/vue';
 
-import N8nActionDropdown from './ActionDropdown.vue';
+import N8nDropdown from './ActionDropdown.vue';
 
 describe('components', () => {
-	describe('N8nActionDropdown', () => {
+	describe('N8nDropdown', () => {
 		it('should render default styling correctly', () => {
-			const wrapper = render(N8nActionDropdown, {
+			const wrapper = render(N8nDropdown, {
 				props: {
 					items: [
 						{
@@ -26,7 +26,7 @@ describe('components', () => {
 		});
 
 		it('should render custom styling correctly', () => {
-			const wrapper = render(N8nActionDropdown, {
+			const wrapper = render(N8nDropdown, {
 				props: {
 					items: [
 						{
@@ -56,7 +56,7 @@ describe('components', () => {
 		});
 
 		it('should render items with badges', () => {
-			const wrapper = render(N8nActionDropdown, {
+			const wrapper = render(N8nDropdown, {
 				props: {
 					items: [
 						{
@@ -85,7 +85,7 @@ describe('components', () => {
 			// and accepts items with badge properties. The actual click interaction
 			// is tested in integration tests (ProjectMembersRoleCell and ProjectMembersTable)
 			// where the dropdown menu is opened and badges are clickable.
-			const wrapper = render(N8nActionDropdown, {
+			const wrapper = render(N8nDropdown, {
 				props: {
 					items: [
 						{

@@ -14,7 +14,7 @@ import TimeAgo from '@/app/components/TimeAgo.vue';
 import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
 
 import {
-	N8nActionToggle,
+	N8nDropdown,
 	N8nBadge,
 	N8nBreadcrumbs,
 	N8nCard,
@@ -236,7 +236,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 								</div>
 							</ProjectCardBadge>
 						</div>
-						<N8nActionToggle
+						<N8nDropdown
 							v-if="actions.length"
 							:actions="actions"
 							theme="dark"

@@ -4,7 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import type { WorkflowListItem, UserAction } from '@/Interface';
 import { type TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import {
-	N8nActionToggle,
+	N8nDropdown,
 	N8nButton,
 	N8nDataTableServer,
 	N8nIcon,
@@ -204,7 +204,7 @@ const onConnectClick = () => {
 					</N8nTooltip>
 				</template>
 				<template #[`item.actions`]="{ item }">
-					<N8nActionToggle
+					<N8nDropdown
 						:class="$style['action-toggle']"
 						data-test-id="mcp-workflow-action-toggle"
 						placement="bottom"

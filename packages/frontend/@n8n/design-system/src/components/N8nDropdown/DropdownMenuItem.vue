@@ -14,12 +14,12 @@ import N8nText from '@n8n/design-system/components/N8nText/Text.vue';
 import N8nLoading from '@n8n/design-system/v2/components/Loading/Loading.vue';
 
 import { useMenuKeyboardNavigation } from './composables/useMenuKeyboardNavigation';
-import type { DropdownMenuItemProps, DropdownMenuItemSlots } from './DropdownMenu.types';
-import N8nDropdownMenuSearch from './DropdownMenuSearch.vue';
+import type { DropdownMenuItemProps, DropdownMenuItemSlots } from './Dropdown.types';
+import N8nDropdownSearch from './DropdownMenuSearch.vue';
 
 const SUBMENU_FOCUS_DELAY = 100;
 
-defineOptions({ name: 'N8nDropdownMenuItem', inheritAttrs: false });
+defineOptions({ name: 'N8nDropdownItem', inheritAttrs: false });
 
 const props = withDefaults(defineProps<DropdownMenuItemProps<T, D>>(), {
 	loadingItemCount: 3,
@@ -114,6 +114,8 @@ const trailingProps = computed(() => ({
 	class: $style['item-trailing'],
 }));
 
+const isEmojiIcon = (icon: DropdownMenuItemProps<T, D>['icon']) => icon?.type === 'emoji';
+
 const handleSelect = (value: T) => {
 	emit('select', value);
 };
@@ -154,41 +156,52 @@ watch(
 			@update:open="handleSubMenuOpenChange"
 		>
 			<DropdownMenuSubTrigger
+				as-child
 				:disabled="disabled"
-				:class="[
-					$style.item,
-					$style['sub-trigger'],
-					props.class,
-					{ [$style.highlighted]: highlighted },
-				]"
 			>
-				<slot name="item-leading" :item="props" :ui="leadingProps">
+				<li
+					:data-test-id="dataTestId"
+					:class="[
+						'el-dropdown-menu__item',
+						$style.item,
+						$style['sub-trigger'],
+						props.class,
+						{ [$style.highlighted]: highlighted },
+						{ 'is-disabled': disabled },
+						{ disabled },
+					]"
+				>
+					<slot name="item-leading" :item="props" :ui="leadingProps">
+						<Icon
+							v-if="icon && !isEmojiIcon(icon)"
+							:icon="icon.value"
+							:class="[$style['item-leading'], $style.icon]"
+							:color="disabled ? 'text-xlight' : 'text-light'"
+							size="large"
+						/>
+						<span
+							v-else-if="icon && isEmojiIcon(icon)"
+							:class="[$style['item-leading'], $style.emoji]"
+						>
+							{{ icon.value }}
+						</span>
+					</slot>
+					<slot name="item-label" :item="props" :ui="labelProps">
+						<N8nText
+							:class="$style['item-label']"
+							size="medium"
+							:color="disabled ? 'text-light' : 'text-dark'"
+						>
+							{{ label }}
+						</N8nText>
+					</slot>
 					<Icon
-						v-if="icon?.type === 'icon'"
-						:icon="icon.value"
-						:class="[$style['item-leading'], $style.icon]"
+						icon="chevron-right"
+						:class="$style['sub-indicator']"
 						:color="disabled ? 'text-xlight' : 'text-light'"
 						size="large"
 					/>
-					<span v-else-if="icon?.type === 'emoji'" :class="[$style['item-leading'], $style.emoji]">
-						{{ icon.value }}
-					</span>
-				</slot>
-				<slot name="item-label" :item="props" :ui="labelProps">
-					<N8nText
-						:class="$style['item-label']"
-						size="medium"
-						:color="disabled ? 'text-light' : 'text-dark'"
-					>
-						{{ label }}
-					</N8nText>
-				</slot>
-				<Icon
-					icon="chevron-right"
-					:class="$style['sub-indicator']"
-					:color="disabled ? 'text-xlight' : 'text-light'"
-					size="large"
-				/>
+				</li>
 			</DropdownMenuSubTrigger>
 
 			<DropdownMenuPortal>
@@ -200,7 +213,7 @@ watch(
 					sticky="partial"
 					@keydown="handleSubContentKeydown"
 				>
-					<N8nDropdownMenuSearch
+					<N8nDropdownSearch
 						v-if="searchable && !loading"
 						ref="searchRef"
 						:model-value="searchTerm"
@@ -228,7 +241,7 @@ watch(
 							@mouseenter="subMenuNavigation.reset"
 						>
 							<template v-for="(child, childIndex) in props.children" :key="child.id">
-								<N8nDropdownMenuItem
+								<N8nDropdownItem
 									v-bind="child"
 									:highlighted="searchable && subMenuHighlightedIndex === childIndex"
 									:divided="child.divided && childIndex > 0"
@@ -244,7 +257,7 @@ watch(
 									<template #item-trailing="trailingProps">
 										<slot name="item-trailing" v-bind="trailingProps" />
 									</template>
-								</N8nDropdownMenuItem>
+								</N8nDropdownItem>
 							</template>
 						</div>
 					</template>
@@ -258,39 +271,54 @@ watch(
 		<!-- Regular item without children -->
 		<DropdownMenuItem
 			v-else
+			as-child
 			:disabled="disabled"
-			:class="[$style.item, props.class, { [$style.highlighted]: highlighted }]"
 			@select="handleItemSelect"
 		>
-			<slot name="item-leading" :item="props" :ui="leadingProps">
+			<li
+				:data-test-id="dataTestId"
+				:class="[
+					'el-dropdown-menu__item',
+					$style.item,
+					props.class,
+					{ [$style.highlighted]: highlighted },
+					{ 'is-disabled': disabled },
+					{ disabled },
+				]"
+			>
+				<slot name="item-leading" :item="props" :ui="leadingProps">
+					<Icon
+						v-if="icon && !isEmojiIcon(icon)"
+						:icon="icon.value"
+						:class="[$style['item-leading'], $style.icon]"
+						size="large"
+						:color="disabled ? 'text-xlight' : 'text-light'"
+					/>
+					<span
+						v-else-if="icon && isEmojiIcon(icon)"
+						:class="[$style['item-leading'], $style.emoji]"
+					>
+						{{ icon.value }}
+					</span>
+				</slot>
+				<slot name="item-label" :item="props" :ui="labelProps">
+					<N8nText
+						:class="$style['item-label']"
+						size="medium"
+						:color="disabled ? 'text-light' : 'text-dark'"
+					>
+						{{ label }}
+					</N8nText>
+				</slot>
+				<slot name="item-trailing" :item="props" :ui="trailingProps" />
 				<Icon
-					v-if="icon?.type === 'icon'"
-					:icon="icon.value"
-					:class="[$style['item-leading'], $style.icon]"
+					v-if="checked"
+					icon="check"
+					:class="$style['item-check']"
 					size="large"
 					:color="disabled ? 'text-xlight' : 'text-light'"
 				/>
-				<span v-else-if="icon?.type === 'emoji'" :class="[$style['item-leading'], $style.emoji]">
-					{{ icon.value }}
-				</span>
-			</slot>
-			<slot name="item-label" :item="props" :ui="labelProps">
-				<N8nText
-					:class="$style['item-label']"
-					size="medium"
-					:color="disabled ? 'text-light' : 'text-dark'"
-				>
-					{{ label }}
-				</N8nText>
-			</slot>
-			<slot name="item-trailing" :item="props" :ui="trailingProps" />
-			<Icon
-				v-if="checked"
-				icon="check"
-				:class="$style['item-check']"
-				size="large"
-				:color="disabled ? 'text-xlight' : 'text-light'"
-			/>
+			</li>
 		</DropdownMenuItem>
 	</div>
 </template>

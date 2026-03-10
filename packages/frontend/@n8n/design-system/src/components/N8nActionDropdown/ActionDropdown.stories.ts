@@ -1,10 +1,10 @@
 import type { StoryFn } from '@storybook/vue3-vite';
 
-import N8nActionDropdown from './ActionDropdown.vue';
+import N8nDropdown from './ActionDropdown.vue';
 
 export default {
 	title: 'Core/ActionDropdown',
-	component: N8nActionDropdown,
+	component: N8nDropdown,
 	argTypes: {
 		placement: {
 			control: {
@@ -32,9 +32,9 @@ const template: StoryFn = (args, { argTypes }) => ({
 	components: {
 		// "as unknown ..." is a workaround for generic components.
 		// See https://github.com/storybookjs/storybook/issues/24238
-		N8nActionDropdown: N8nActionDropdown as unknown as Record<string, unknown>,
+		N8nDropdown: N8nDropdown as unknown as Record<string, unknown>,
 	},
-	template: '<n8n-action-dropdown v-bind="args" />',
+	template: '<n8n-dropdown v-bind="args" />',
 });
 
 export const defaultActionDropdown = template.bind({});

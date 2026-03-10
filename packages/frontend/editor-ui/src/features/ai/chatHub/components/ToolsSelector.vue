@@ -2,7 +2,7 @@
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { computed, onMounted, ref, useTemplateRef } from 'vue';
-import { N8nButton, N8nDropdownMenu, N8nIcon, N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nDropdown, N8nIcon, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
@@ -183,7 +183,7 @@ onMounted(async () => {
 			:disabled="!disabledTooltip || !disabled"
 			placement="bottom"
 		>
-			<N8nDropdownMenu
+			<N8nDropdown
 				ref="dropdownMenu"
 				:items="menuItems"
 				placement="top-start"
@@ -256,8 +256,7 @@ onMounted(async () => {
 						<span v-if="!item.checked" :class="$style.checkPlaceholder" />
 					</template>
 				</template>
-			</N8nDropdownMenu>
-		</N8nTooltip>
+			</N8nDropdown>		</N8nTooltip>
 	</div>
 </template>
 

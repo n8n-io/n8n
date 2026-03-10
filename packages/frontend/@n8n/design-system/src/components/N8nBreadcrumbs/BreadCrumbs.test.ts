@@ -6,9 +6,9 @@ import { createRouter, createWebHistory } from 'vue-router';
 import Breadcrumbs from '.';
 import type { PathItem } from './Breadcrumbs.vue';
 
-// Simple mock for the N8nActionToggle component to test hidden items and events
+// Simple mock for the N8nDropdown component to test hidden items and events
 const N8nActionToggleMock = defineComponent({
-	name: 'N8nActionToggle',
+	name: 'N8nDropdown',
 	props: {
 		actions: {
 			type: Array as () => Array<{ value: string; label: string }>,
@@ -157,9 +157,9 @@ describe('Breadcrumbs', async () => {
 		expect(getByTestId('ellipsis')).toBeTruthy();
 		expect(getByTestId('hidden-items-menu')).toBeTruthy();
 		expect(getByTestId('ellipsis')).toHaveClass('disabled');
-		expect(getByTestId('hidden-items-menu').querySelector('.el-dropdown')).toHaveClass(
-			'is-disabled',
-		);
+		expect(
+			getByTestId('hidden-items-menu').querySelector('[data-test-id="action-toggle"]'),
+		).toHaveAttribute('data-disabled');
 	});
 
 	it('does not highlight last item for "highlightLastItem = false" ', () => {
@@ -198,7 +198,7 @@ describe('Breadcrumbs', async () => {
 			},
 			global: {
 				stubs: {
-					N8nActionToggle: N8nActionToggleMock,
+					N8nDropdown: N8nActionToggleMock,
 				},
 				plugins: [router],
 			},
@@ -242,7 +242,7 @@ describe('Breadcrumbs', async () => {
 			},
 			global: {
 				stubs: {
-					N8nActionToggle: N8nActionToggleMock,
+					N8nDropdown: N8nActionToggleMock,
 				},
 				plugins: [router],
 			},
@@ -285,7 +285,7 @@ describe('Breadcrumbs', async () => {
 			},
 			global: {
 				stubs: {
-					N8nActionToggle: N8nActionToggleMock,
+					N8nDropdown: N8nActionToggleMock,
 				},
 				plugins: [router],
 			},
@@ -318,7 +318,7 @@ describe('Breadcrumbs', async () => {
 			},
 			global: {
 				stubs: {
-					N8nActionToggle: N8nActionToggleMock,
+					N8nDropdown: N8nActionToggleMock,
 				},
 				plugins: [router],
 			},

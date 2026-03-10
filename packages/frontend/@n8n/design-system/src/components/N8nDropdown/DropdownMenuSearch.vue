@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, useCssModule } from 'vue';
 
-defineOptions({ name: 'N8nDropdownMenuSearch' });
+defineOptions({ name: 'N8nDropdownSearch' });
 
 withDefaults(
 	defineProps<{

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef } from 'vue';
-import { N8nDropdownMenu, N8nIcon, N8nButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nDropdown, N8nIcon, N8nButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
 import type {
 	ChatHubProvider,
@@ -186,7 +186,7 @@ defineExpose({
 </script>
 
 <template>
-	<N8nDropdownMenu
+	<N8nDropdown
 		ref="dropdownRef"
 		:items="filteredMenu"
 		teleported
@@ -270,8 +270,7 @@ defineExpose({
 				<N8nIcon icon="info" size="medium" color="text-light" :class="$style.infoIcon" />
 			</N8nTooltip>
 		</template>
-	</N8nDropdownMenu>
-</template>
+	</N8nDropdown></template>
 
 <style lang="scss" module>
 .component {

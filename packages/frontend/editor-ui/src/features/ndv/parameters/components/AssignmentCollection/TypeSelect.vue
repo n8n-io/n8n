@@ -6,10 +6,7 @@ import { computed, useCssModule } from 'vue';
 import { Primitive } from 'reka-ui';
 
 import { N8nIcon } from '@n8n/design-system';
-import {
-	N8nDropdownMenu,
-	type DropdownMenuItemProps,
-} from '@n8n/design-system/v2/components/DropdownMenu';
+import { N8nDropdown, type DropdownMenuItemProps } from '@n8n/design-system';
 
 interface Props {
 	modelValue: string;
@@ -49,7 +46,7 @@ const onSelect = (type: string): void => {
 
 <template>
 	<div :class="$style.wrapper" data-test-id="assignment-type-select">
-		<N8nDropdownMenu
+		<N8nDropdown
 			:items="menuItems"
 			:disabled="isReadOnly"
 			placement="bottom-start"
@@ -70,8 +67,7 @@ const onSelect = (type: string): void => {
 					<N8nIcon icon="chevron-down" color="text-light" size="small" />
 				</Primitive>
 			</template>
-		</N8nDropdownMenu>
-	</div>
+		</N8nDropdown>	</div>
 </template>
 
 <style lang="scss" module>

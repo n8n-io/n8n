@@ -1,3 +1,3 @@
-import N8nActionToggle from './ActionToggle.vue';
+import N8nDropdown from './ActionToggle.vue';
 
-export default N8nActionToggle;
+export default N8nDropdown;

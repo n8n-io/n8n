@@ -13,7 +13,7 @@ import { computed, nextTick, onMounted, toRef } from 'vue';
 import { isDateObject } from '@/app/utils/typeGuards';
 
 import {
-	N8nActionToggle,
+	N8nDropdown,
 	N8nBadge,
 	N8nButton,
 	N8nCard,
@@ -154,7 +154,7 @@ async function onActionDropdownClick(id: string) {
 					:before-update="onBeforeConnectionUpdate"
 					:disabled="connectionState === 'error' && !provider.connected"
 				/>
-				<N8nActionToggle
+				<N8nDropdown
 					class="ml-s"
 					theme="dark"
 					:actions="actionDropdownOptions"

@@ -4,7 +4,7 @@ import { useDataTableTypes } from '@/features/core/dataTable/composables/useData
 import { ref, computed, onMounted, onUnmounted, useTemplateRef } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { isAGGridCellType } from '@/features/core/dataTable/typeGuards';
-import { N8nActionDropdown, N8nIcon, N8nIconButton, N8nInlineTextEdit } from '@n8n/design-system';
+import { N8nDropdown, N8nIcon, N8nIconButton, N8nInlineTextEdit } from '@n8n/design-system';
 import { DATA_TABLE_SYSTEM_COLUMNS } from 'n8n-workflow';
 
 export type HeaderParamsWithDelete = IHeaderParams & {
@@ -242,7 +242,7 @@ onUnmounted(() => {
 			@click="onShowFilter"
 		/>
 
-		<N8nActionDropdown
+		<N8nDropdown
 			v-show="isMenuButtonVisible"
 			data-test-id="data-table-column-header-actions"
 			:items="columnActionItems"

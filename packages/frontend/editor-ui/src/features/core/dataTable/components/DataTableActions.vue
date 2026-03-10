@@ -14,7 +14,7 @@ import type { IUser, UserAction } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
-import { N8nActionToggle } from '@n8n/design-system';
+import { N8nDropdown } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
 import DownloadDataTableModal from './DownloadDataTableModal.vue';
 type Props = {
@@ -145,7 +145,7 @@ const deleteDataTable = async () => {
 </script>
 <template>
 	<div>
-		<N8nActionToggle
+		<N8nDropdown
 			:actions="actions"
 			theme="dark"
 			data-test-id="data-table-card-actions"

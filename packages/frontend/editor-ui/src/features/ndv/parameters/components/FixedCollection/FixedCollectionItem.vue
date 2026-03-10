@@ -6,7 +6,7 @@ import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import {
-	N8nActionDropdown,
+	N8nDropdown,
 	N8nButton,
 	N8nCollapsiblePanel,
 	N8nHeaderAction,
@@ -160,7 +160,7 @@ const handleValueChanged = (parameterData: IUpdateInformation) =>
 			:class="$style.addOption"
 			data-test-id="fixed-collection-add-property"
 		>
-			<N8nActionDropdown :items="pickerDropdownItems" @select="emit('toggleOptionalValue', $event)">
+			<N8nDropdown :items="pickerDropdownItems" @select="emit('toggleOptionalValue', $event)">
 				<template #activator>
 					<N8nButton
 						class="n8n-button--highlightFill"
@@ -170,8 +170,7 @@ const handleValueChanged = (parameterData: IUpdateInformation) =>
 						:label="addOptionalFieldButtonText"
 					/>
 				</template>
-			</N8nActionDropdown>
-		</div>
+			</N8nDropdown>		</div>
 	</N8nCollapsiblePanel>
 </template>
 

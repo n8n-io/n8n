@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { getAgentRoute } from '@/features/ai/chatHub/chat.utils';
 import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import type { ChatModelDto } from '@n8n/api-types';
-import { N8nActionDropdown, N8nIconButton, N8nText } from '@n8n/design-system';
+import { N8nDropdown, N8nIconButton, N8nText } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
 import { RouterLink } from 'vue-router';
@@ -66,7 +66,7 @@ function handleSelectMenu(action: MenuAction) {
 				:title="i18n.baseText('chatHub.agent.card.button.edit')"
 				@click.prevent="emit('edit')"
 			/>
-			<N8nActionDropdown
+			<N8nDropdown
 				v-if="menuItems.length > 0"
 				:items="menuItems"
 				placement="bottom-end"
@@ -82,8 +82,7 @@ function handleSelectMenu(action: MenuAction) {
 						:class="$style.actionDropdownTrigger"
 					/>
 				</template>
-			</N8nActionDropdown>
-		</div>
+			</N8nDropdown>		</div>
 	</RouterLink>
 </template>
 

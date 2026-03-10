@@ -10,7 +10,7 @@ import { useI18n } from '@n8n/i18n';
 import type { IUser } from 'n8n-workflow';
 
 import {
-	N8nActionToggle,
+	N8nDropdown,
 	N8nButton,
 	N8nIcon,
 	N8nLink,
@@ -153,7 +153,7 @@ watch(
 						</N8nLink>
 					</N8nText>
 				</div>
-				<N8nActionToggle
+				<N8nDropdown
 					:class="$style.actions"
 					:actions="actions"
 					placement="bottom-end"
@@ -164,8 +164,7 @@ watch(
 						{{ i18n.baseText('workflowHistory.content.actions') }}
 						<N8nIcon class="ml-3xs" icon="chevron-down" size="small" />
 					</N8nButton>
-				</N8nActionToggle>
-			</div>
+				</N8nDropdown>			</div>
 		</div>
 	</div>
 </template>

@@ -10,7 +10,7 @@ import type { FolderPathItem, FolderShortInfo } from '../folders.types';
 import type { IUser } from 'n8n-workflow';
 import ProjectBreadcrumb from '@/features/core/folders/components/ProjectBreadcrumb.vue';
 
-import { N8nActionToggle, N8nBreadcrumbs } from '@n8n/design-system';
+import { N8nDropdown, N8nBreadcrumbs } from '@n8n/design-system';
 type Props = {
 	// Current folder can be null when showing breadcrumbs for workflows in project root
 	currentFolder?: FolderShortInfo | null;
@@ -233,7 +233,7 @@ onBeforeUnmount(() => {
 		<div v-else>
 			<slot name="append"></slot>
 		</div>
-		<N8nActionToggle
+		<N8nDropdown
 			v-if="visibleBreadcrumbsItems && actions?.length"
 			:actions="actions"
 			:class="$style['action-toggle']"

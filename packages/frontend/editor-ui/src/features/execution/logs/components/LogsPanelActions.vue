@@ -3,7 +3,7 @@ import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vu
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
-import { N8nActionDropdown, N8nIconButton, N8nTooltip } from '@n8n/design-system';
+import { N8nDropdown, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 const {
 	isOpen,
 	isSyncSelectionEnabled: isSyncEnabled,
@@ -57,7 +57,7 @@ function handleSelectMenuItem(selected: string) {
 				@click.stop="emit('popOut')"
 			/>
 		</N8nTooltip>
-		<N8nActionDropdown
+		<N8nDropdown
 			v-if="isOpen"
 			icon-size="small"
 			activator-icon="ellipsis"

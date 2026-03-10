@@ -12,7 +12,7 @@ import { computed, ref, watch } from 'vue';
 import semver from 'semver';
 
 import {
-	N8nActionToggle,
+	N8nDropdown,
 	N8nButton,
 	N8nIcon,
 	N8nLoading,
@@ -164,7 +164,7 @@ watch(
 					<N8nIcon icon="circle-check" color="text-light" size="large" />
 				</N8nTooltip>
 				<div :class="$style.cardActions">
-					<N8nActionToggle :actions="packageActions" @action="onAction"></N8nActionToggle>
+					<N8nDropdown :actions="packageActions" @action="onAction" />
 				</div>
 			</div>
 		</div>

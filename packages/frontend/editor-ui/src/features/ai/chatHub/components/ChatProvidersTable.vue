@@ -4,7 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import { type TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import {
 	N8nActionBox,
-	N8nActionToggle,
+	N8nDropdown,
 	N8nButton,
 	N8nDataTableServer,
 	N8nHeading,
@@ -197,7 +197,7 @@ const onTableAction = (action: string, settings: ChatProviderSettingsDto) => {
 					</span>
 				</template>
 				<template #[`item.actions`]="{ item }">
-					<N8nActionToggle
+					<N8nDropdown
 						placement="bottom"
 						:actions="tableActions"
 						theme="dark"

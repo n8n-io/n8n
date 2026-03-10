@@ -11,8 +11,8 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 	const original = await importOriginal<object>();
 	return {
 		...original,
-		N8nActionToggle: {
-			name: 'N8nActionToggle',
+		N8nDropdown: {
+			name: 'N8nDropdown',
 			props: {
 				actions: { type: Array, required: true },
 			},

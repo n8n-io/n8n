@@ -2,7 +2,7 @@
 import { computed, toRef } from 'vue';
 import SecretsProviderImage from './SecretsProviderImage.ee.vue';
 import {
-	N8nActionToggle,
+	N8nDropdown,
 	N8nBadge,
 	N8nCard,
 	N8nHeading,
@@ -227,7 +227,7 @@ function onAction(action: string) {
 					{{ badgeTooltip }}
 				</template>
 			</N8nTooltip>
-			<N8nActionToggle
+			<N8nDropdown
 				:actions="actionDropdownOptions"
 				data-test-id="secrets-provider-action-toggle"
 				@action="onAction"

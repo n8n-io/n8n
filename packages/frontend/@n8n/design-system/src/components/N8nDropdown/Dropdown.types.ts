@@ -1,4 +1,5 @@
-import type { IconOrEmoji } from '../../../components/N8nIconPicker/types';
+import type { KeyboardShortcut } from '../../types/keyboardshortcut';
+import type { IconOrEmoji } from '../N8nIconPicker/types';
 
 type VueCssClass = undefined | string | Record<string, boolean> | Array<string | VueCssClass>;
 
@@ -34,6 +35,16 @@ export type DropdownMenuItemProps<T = string, D = never> = {
 	divided?: boolean;
 	/** Whether to show a checkmark indicator */
 	checked?: boolean;
+	/** Optional item type */
+	type?: 'external-link';
+	/** Optional badge content */
+	badge?: string;
+	/** Optional badge props */
+	badgeProps?: Record<string, unknown>;
+	/** Optional keyboard shortcut */
+	shortcut?: KeyboardShortcut;
+	/** Legacy custom class alias */
+	customClass?: string;
 	/** Additional CSS classes */
 	class?: VueCssClass;
 	/** Nested menu items (creates a sub-menu) */
@@ -50,6 +61,8 @@ export type DropdownMenuItemProps<T = string, D = never> = {
 	highlighted?: boolean;
 	/** Whether this item's sub-menu should be open (controlled by parent for keyboard nav) */
 	subMenuOpen?: boolean;
+	/** Optional data-testid for the item */
+	dataTestId?: string;
 	/** extra data useful for rendering leading/trailing slot */
 	data?: D;
 };

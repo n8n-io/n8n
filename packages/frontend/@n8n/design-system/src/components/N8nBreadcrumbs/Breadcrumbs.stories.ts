@@ -5,7 +5,7 @@ import type { IUser, UserAction } from '@n8n/design-system/types';
 import AsyncLoadingCacheDemo from './AsyncLoadingCacheDemo.vue';
 import Breadcrumbs from './Breadcrumbs.vue';
 import type { PathItem } from './Breadcrumbs.vue';
-import ActionToggle from '../N8nActionToggle/ActionToggle.vue';
+import N8nDropdown from '../N8nDropdown/Dropdown.vue';
 import Tags from '../N8nTags/Tags.vue';
 
 export default {
@@ -136,7 +136,7 @@ const testTags: Array<{ id: string; name: string }> = [
 ];
 const withSlotsTemplate: StoryFn = (args, { argTypes }) => ({
 	setup: () => ({ args, testActions, testTags }),
-	components: { Breadcrumbs, ActionToggle, Tags },
+	components: { Breadcrumbs, N8nDropdown, Tags },
 	props: Object.keys(argTypes),
 	template: `<Breadcrumbs v-bind="args">
     <template #prepend>
@@ -148,7 +148,7 @@ const withSlotsTemplate: StoryFn = (args, { argTypes }) => ({
     <template #append>
       <div style="display: flex; align-items: center;">
 				<n8n-tags :tags="testTags" />
-        <n8n-action-toggle size="small" :actions="testActions" theme="dark"/>
+        <n8n-dropdown size="small" :actions="testActions" theme="dark"/>
       </div>
     </template>
   </Breadcrumbs>`,

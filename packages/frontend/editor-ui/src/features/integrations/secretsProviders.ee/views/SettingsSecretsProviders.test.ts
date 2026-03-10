@@ -295,6 +295,7 @@ describe('SettingsSecretsProviders', () => {
 			const { getByTestId } = renderComponent({ pinia });
 
 			// Click the action toggle to open the dropdown, then click reload
+			await userEvent.click(getByTestId('action-toggle'));
 			await userEvent.click(getByTestId('action-reload'));
 
 			await vi.waitFor(() => {
@@ -317,6 +318,7 @@ describe('SettingsSecretsProviders', () => {
 
 			const { getByTestId } = renderComponent({ pinia });
 
+			await userEvent.click(getByTestId('action-toggle'));
 			await userEvent.click(getByTestId('action-reload'));
 
 			await vi.waitFor(() => {
@@ -339,6 +341,7 @@ describe('SettingsSecretsProviders', () => {
 
 			const { getByTestId } = renderComponent({ pinia });
 
+			await userEvent.click(getByTestId('action-toggle'));
 			await userEvent.click(getByTestId('action-reload'));
 
 			await vi.waitFor(() => {

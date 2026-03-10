@@ -22,7 +22,7 @@ import {
 import { useNodeSpecificationValues } from '../../composables/useNodeSpecificationValues';
 import {
 	N8nButton,
-	N8nDropdownMenu,
+	N8nDropdown,
 	N8nIcon,
 	N8nIconButton,
 	N8nInputLabel,
@@ -437,7 +437,7 @@ defineExpose({
 				"
 				@click="addField(addFieldOptions[0].id)"
 			/>
-			<N8nDropdownMenu
+			<N8nDropdown
 				v-else-if="hasMultipleFieldOptions"
 				:items="addFieldOptions"
 				:class="$style.dropdown"
@@ -455,8 +455,7 @@ defineExpose({
 						"
 					/>
 				</template>
-			</N8nDropdownMenu>
-		</div>
+			</N8nDropdown>		</div>
 	</div>
 </template>
 

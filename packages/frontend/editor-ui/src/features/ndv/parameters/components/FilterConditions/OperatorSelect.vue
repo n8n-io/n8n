@@ -8,10 +8,7 @@ import type { FilterOperatorType } from 'n8n-workflow';
 import { Primitive } from 'reka-ui';
 
 import { N8nIcon } from '@n8n/design-system';
-import {
-	N8nDropdownMenu,
-	type DropdownMenuItemProps,
-} from '@n8n/design-system/v2/components/DropdownMenu';
+import { N8nDropdown, type DropdownMenuItemProps } from '@n8n/design-system';
 
 interface Props {
 	selected: string;
@@ -79,7 +76,7 @@ const onSelect = (operatorId: string): void => {
 
 <template>
 	<div :class="$style.wrapper" data-test-id="filter-operator-select">
-		<N8nDropdownMenu
+		<N8nDropdown
 			:items="menuItems"
 			:disabled="readOnly"
 			placement="bottom-start"
@@ -99,8 +96,7 @@ const onSelect = (operatorId: string): void => {
 					<N8nIcon :class="$style.chevron" icon="chevron-down" color="text-light" size="small" />
 				</Primitive>
 			</template>
-		</N8nDropdownMenu>
-	</div>
+		</N8nDropdown>	</div>
 </template>
 
 <style lang="scss" module>

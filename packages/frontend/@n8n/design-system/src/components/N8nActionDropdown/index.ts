@@ -1,2 +1,2 @@
-import N8nActionDropdown from './ActionDropdown.vue';
-export default N8nActionDropdown;
+import N8nDropdown from './ActionDropdown.vue';
+export default N8nDropdown;

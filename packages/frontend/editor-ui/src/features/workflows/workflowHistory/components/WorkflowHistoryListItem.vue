@@ -9,7 +9,7 @@ import type {
 import { useI18n } from '@n8n/i18n';
 import type { IUser } from 'n8n-workflow';
 
-import { N8nActionToggle, N8nIconButton, N8nTooltip, N8nText } from '@n8n/design-system';
+import { N8nDropdown, N8nIconButton, N8nTooltip, N8nText } from '@n8n/design-system';
 import {
 	getLastPublishedVersion,
 	formatTimestamp,
@@ -216,7 +216,7 @@ onMounted(() => {
 						@click.stop="onCompareClick"
 					/>
 				</N8nTooltip>
-				<N8nActionToggle
+				<N8nDropdown
 					:class="$style.actions"
 					:actions="props.actions"
 					placement="bottom-end"

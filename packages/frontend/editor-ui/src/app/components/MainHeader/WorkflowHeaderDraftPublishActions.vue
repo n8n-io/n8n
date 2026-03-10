@@ -14,7 +14,7 @@ import {
 } from '@/app/constants';
 import {
 	type ActionDropdownItem,
-	N8nActionDropdown,
+	N8nDropdown,
 	N8nButton,
 	N8nIconButton,
 	N8nTooltip,
@@ -549,7 +549,7 @@ defineExpose({
 						</div>
 					</N8nButton>
 				</N8nTooltip>
-				<N8nActionDropdown
+				<N8nDropdown
 					:items="versionMenuActions"
 					placement="bottom-end"
 					data-test-id="version-menu"
@@ -564,8 +564,7 @@ defineExpose({
 							data-test-id="version-menu-button"
 						/>
 					</template>
-				</N8nActionDropdown>
-			</div>
+				</N8nDropdown>			</div>
 		</div>
 		<WorkflowHistoryButton :workflow-id="props.id" :is-new-workflow="isNewWorkflow" />
 		<ActionsDropdownMenu

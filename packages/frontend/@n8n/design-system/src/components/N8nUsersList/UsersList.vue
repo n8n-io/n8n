@@ -3,7 +3,7 @@ import { computed } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import type { IUser, UserAction } from '../../types';
-import N8nActionToggle from '../N8nActionToggle';
+import N8nDropdown from '../N8nDropdown';
 import N8nBadge from '../N8nBadge';
 import N8nUserInfo from '../N8nUserInfo';
 
@@ -98,7 +98,7 @@ const onUserAction = (user: UserType, action: string) =>
 					{{ t('nds.auth.roles.owner') }}
 				</N8nBadge>
 				<slot v-if="!user.isOwner && !readonly" name="actions" :user="user" />
-				<N8nActionToggle
+				<N8nDropdown
 					v-if="
 						!user.isOwner &&
 						user.signInType !== 'ldap' &&

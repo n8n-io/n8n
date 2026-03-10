@@ -11,7 +11,7 @@ import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
 
 import { ElSwitch } from 'element-plus';
-import { N8nActionToggle, N8nCard, N8nHeading, N8nText } from '@n8n/design-system';
+import { N8nDropdown, N8nCard, N8nHeading, N8nText } from '@n8n/design-system';
 
 const DESTINATION_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -177,7 +177,7 @@ async function onAction(action: string) {
 				>
 				</ElSwitch>
 
-				<N8nActionToggle :actions="actions" theme="dark" @action="onAction" />
+				<N8nDropdown :actions="actions" theme="dark" @action="onAction" />
 			</div>
 		</template>
 	</N8nCard>

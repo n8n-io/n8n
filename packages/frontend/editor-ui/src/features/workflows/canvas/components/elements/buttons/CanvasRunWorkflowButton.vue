@@ -9,7 +9,7 @@ import { computed } from 'vue';
 import { isChatNode } from '@/app/utils/aiUtils';
 import { I18nT } from 'vue-i18n';
 
-import { N8nActionDropdown, N8nButton, N8nText, type ActionDropdownItem } from '@n8n/design-system';
+import { N8nDropdown, N8nButton, N8nText, type ActionDropdownItem } from '@n8n/design-system';
 const emit = defineEmits<{
 	mouseenter: [event: MouseEvent];
 	mouseleave: [event: MouseEvent];
@@ -116,7 +116,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 		</KeyboardShortcutTooltip>
 		<template v-if="isSplitButton">
 			<div role="presentation" :class="$style.divider" />
-			<N8nActionDropdown
+			<N8nDropdown
 				:class="$style.menu"
 				:items="actions"
 				:disabled="disabled"
@@ -146,8 +146,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 						</span>
 					</div>
 				</template>
-			</N8nActionDropdown>
-		</template>
+			</N8nDropdown>		</template>
 	</div>
 </template>
 

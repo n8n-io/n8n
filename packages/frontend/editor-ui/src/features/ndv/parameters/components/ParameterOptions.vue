@@ -15,7 +15,7 @@ import { useIsInExperimentalNdv } from '@/features/workflows/canvas/experimental
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 
 import {
-	N8nActionToggle,
+	N8nDropdown,
 	N8nIcon,
 	N8nIconButton,
 	N8nRadioButtons,
@@ -201,7 +201,7 @@ const onViewSelected = (selected: string) => {
 			/>
 
 			<div>
-				<N8nActionToggle
+				<N8nDropdown
 					v-if="shouldShowOptions"
 					placement="bottom-end"
 					size="small"

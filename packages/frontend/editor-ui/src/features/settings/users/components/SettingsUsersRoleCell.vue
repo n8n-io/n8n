@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { ROLE, type Role, type UsersList } from '@n8n/api-types';
 import { ElRadio } from 'element-plus';
-import { N8nActionDropdown, N8nIcon, N8nText, type ActionDropdownItem } from '@n8n/design-system';
+import { N8nDropdown, N8nIcon, N8nText, type ActionDropdownItem } from '@n8n/design-system';
 const props = withDefaults(
 	defineProps<{
 		data: UsersList['items'][number];
@@ -31,7 +31,7 @@ const onActionSelect = (role: Role) => {
 
 <template>
 	<div>
-		<N8nActionDropdown
+		<N8nDropdown
 			v-if="isEditable"
 			placement="bottom-start"
 			:items="props.actions"
@@ -56,8 +56,7 @@ const onActionSelect = (role: Role) => {
 					</span>
 				</ElRadio>
 			</template>
-		</N8nActionDropdown>
-		<span v-else>{{ roleLabel }}</span>
+		</N8nDropdown>		<span v-else>{{ roleLabel }}</span>
 	</div>
 </template>
 

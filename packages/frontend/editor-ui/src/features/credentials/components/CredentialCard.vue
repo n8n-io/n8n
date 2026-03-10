@@ -17,7 +17,7 @@ import type { CredentialsResource } from '@/Interface';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 
 import {
-	N8nActionToggle,
+	N8nDropdown,
 	N8nBadge,
 	N8nCard,
 	N8nIcon,
@@ -195,7 +195,7 @@ function moveResource() {
 					:show-badge-border="false"
 					:global="data.isGlobal"
 				/>
-				<N8nActionToggle
+				<N8nDropdown
 					data-test-id="credential-card-actions"
 					:actions="actions"
 					theme="dark"

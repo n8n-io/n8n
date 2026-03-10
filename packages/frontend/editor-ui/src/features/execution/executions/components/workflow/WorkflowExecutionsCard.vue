@@ -14,7 +14,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { toDayMonth, toTime } from '@/app/utils/formatters/dateFormatter';
 
 import {
-	N8nActionDropdown,
+	N8nDropdown,
 	N8nIcon,
 	N8nSpinner,
 	N8nTags,
@@ -161,7 +161,7 @@ function onRetryMenuItemSelect(action: string): void {
 				</div>
 			</div>
 			<div :class="$style.icons">
-				<N8nActionDropdown
+				<N8nDropdown
 					v-if="isRetriable"
 					:class="[$style.icon, $style.retry]"
 					:items="retryExecutionActions"

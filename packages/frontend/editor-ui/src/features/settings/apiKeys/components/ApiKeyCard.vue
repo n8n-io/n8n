@@ -4,7 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import type { ApiKey } from '@n8n/api-types';
 import { DateTime } from 'luxon';
 
-import { N8nActionToggle, N8nCard, N8nText } from '@n8n/design-system';
+import { N8nDropdown, N8nCard, N8nText } from '@n8n/design-system';
 const API_KEY_ITEM_ACTIONS = {
 	EDIT: 'edit',
 	DELETE: 'delete',
@@ -77,7 +77,7 @@ const getExpirationTime = (apiKey: ApiKey): string => {
 
 		<template #append>
 			<div ref="cardActions" :class="$style.cardActions">
-				<N8nActionToggle :actions="ACTION_LIST" theme="dark" @action="onAction" />
+				<N8nDropdown :actions="ACTION_LIST" theme="dark" @action="onAction" />
 			</div>
 		</template>
 	</N8nCard>

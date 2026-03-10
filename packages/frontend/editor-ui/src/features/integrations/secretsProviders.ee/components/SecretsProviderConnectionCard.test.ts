@@ -1,4 +1,5 @@
 import { screen } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import SecretsProviderConnectionCard from './SecretsProviderConnectionCard.ee.vue';
 import type { SecretProviderConnection, SecretProviderTypeResponse } from '@n8n/api-types';
@@ -174,8 +175,9 @@ describe('SecretsProviderConnectionCard', () => {
 		expect(queryByTestId('disconnected-badge')).not.toBeInTheDocument();
 	});
 
-	it('should show edit action when user has update permission', () => {
+	it('should show edit action when user has update permission', async () => {
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
+		const user = userEvent.setup();
 
 		const { getByTestId } = renderComponent({
 			pinia,
@@ -183,11 +185,13 @@ describe('SecretsProviderConnectionCard', () => {
 		});
 
 		expect(getByTestId('secrets-provider-action-toggle')).toBeInTheDocument();
+		await user.click(screen.getByTestId('action-toggle'));
 		expect(screen.getByTestId('action-edit')).toBeInTheDocument();
 	});
 
-	it('should not show edit action when user lacks update permission', () => {
+	it('should not show edit action when user lacks update permission', async () => {
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
+		const user = userEvent.setup();
 
 		const { getByTestId } = renderComponent({
 			pinia,
@@ -195,12 +199,14 @@ describe('SecretsProviderConnectionCard', () => {
 		});
 
 		expect(getByTestId('secrets-provider-action-toggle')).toBeInTheDocument();
+		await user.click(screen.getByTestId('action-toggle'));
 		expect(screen.queryAllByTestId('action-edit').length).toBe(0);
 	});
 
-	it('should show reload action when provider is connected and user has sync scope', () => {
+	it('should show reload action when provider is connected and user has sync scope', async () => {
 		const rbacStore = useRBACStore();
 		rbacStore.globalScopes = ['externalSecretsProvider:sync'];
+		const user = userEvent.setup();
 
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
 
@@ -209,23 +215,27 @@ describe('SecretsProviderConnectionCard', () => {
 			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
 		});
 
+		await user.click(screen.getByTestId('action-toggle'));
 		expect(screen.getByTestId('action-reload')).toBeInTheDocument();
 	});
 
-	it('should not show reload action when user lacks sync scope', () => {
+	it('should not show reload action when user lacks sync scope', async () => {
 		const providerTypeInfo = MOCK_PROVIDER_TYPES.find((t) => t.type === mockProvider.type);
+		const user = userEvent.setup();
 
 		renderComponent({
 			pinia,
 			props: { provider: mockProvider, providerTypeInfo, canUpdate: true },
 		});
 
+		await user.click(screen.getByTestId('action-toggle'));
 		expect(screen.queryByTestId('action-reload')).not.toBeInTheDocument();
 	});
 
-	it('should not show reload action when provider is in error state', () => {
+	it('should not show reload action when provider is in error state', async () => {
 		const rbacStore = useRBACStore();
 		rbacStore.globalScopes = ['externalSecretsProvider:sync'];
+		const user = userEvent.setup();
 
 		const errorProvider: SecretProviderConnection = {
 			...mockProvider,
@@ -238,6 +248,7 @@ describe('SecretsProviderConnectionCard', () => {
 			props: { provider: errorProvider, providerTypeInfo, canUpdate: true },
 		});
 
+		await user.click(screen.getByTestId('action-toggle'));
 		expect(screen.queryByTestId('action-reload')).not.toBeInTheDocument();
 	});
 });

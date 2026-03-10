@@ -4,7 +4,7 @@ import FixedCollectionParameterNew, { type Props } from './FixedCollectionParame
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { waitFor } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
 import { setActivePinia } from 'pinia';
 import { nextTick } from 'vue';
 import { flushPromises } from '@vue/test-utils';
@@ -699,45 +699,45 @@ describe('FixedCollectionParameterNew.vue', () => {
 			const picker = getByTestId('fixed-collection-add-property');
 			expect(picker).toBeInTheDocument();
 
-			const button = picker.querySelector('button');
+			const button = within(picker).getByTestId('action-toggle');
 			expect(button).toBeInTheDocument();
+			const controlsId = button.getAttribute('aria-controls');
 
-			if (button) {
-				await userEvent.click(button);
-			}
+			await userEvent.click(button);
 
 			await waitFor(() => {
-				// N8nActionDropdown renders items with data-test-id like "action-*"
-				const options = document.querySelectorAll('[class*="itemContainer"]');
-				expect(options.length).toBe(2);
+				const options = document.querySelectorAll(`#${controlsId} [data-test-id]`);
+				expect(options.length).toBeGreaterThanOrEqual(2);
+				expect(Array.from(options).some((opt) => opt.textContent?.includes('Placeholder'))).toBe(true);
+				expect(Array.from(options).some((opt) => opt.textContent?.includes('Required Field'))).toBe(true);
 			});
 		});
 
 		it('emits valueChanged when toggling an optional value on', async () => {
 			const { getByTestId, emitted } = renderHideOptionalFields();
 			const picker = getByTestId('fixed-collection-add-property');
-			const button = picker.querySelector('button');
+			const button = within(picker).getByTestId('action-toggle');
+			const controlsId = button.getAttribute('aria-controls');
+			await userEvent.click(button);
 
-			if (button) {
-				await userEvent.click(button);
-			}
+			const placeholderOption = (await waitFor(() => {
+				const byLegacyId = document.querySelector(
+					`#${controlsId} [data-test-id="action-placeholder"]`,
+				);
+				if (byLegacyId instanceof HTMLElement) return byLegacyId;
 
-			await waitFor(async () => {
-				const options = document.querySelectorAll('[class*="itemContainer"]');
-				const placeholderOption = Array.from(options).find((opt) =>
+				const byText = Array.from(document.querySelectorAll(`#${controlsId} [data-test-id]`)).find((opt) =>
 					opt.textContent?.includes('Placeholder'),
 				);
-				expect(placeholderOption).toBeDefined();
+				if (byText instanceof HTMLElement) return byText;
 
-				if (placeholderOption) {
-					await userEvent.click(placeholderOption);
-				}
-			});
+				throw new Error('Placeholder option not found');
+			})) as HTMLElement;
+			expect(placeholderOption).toBeDefined();
+			await userEvent.click(placeholderOption);
 
 			await waitFor(() => {
-				const events = emitted('valueChanged');
-				expect(events).toBeDefined();
-				expect(events.length).toBeGreaterThan(0);
+				expect(emitted('valueChanged')?.length).toBeGreaterThan(0);
 			});
 		});
 

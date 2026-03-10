@@ -11,7 +11,7 @@ describe('N8nDropdown', () => {
 		{ label: 'Option 3', value: 'option3' },
 	];
 
-	it('should render with default props', () => {
+	it('renders options mode with legacy trigger test id', () => {
 		const wrapper = mount(N8nDropdown, {
 			props: {
 				options: defaultOptions,
@@ -22,30 +22,7 @@ describe('N8nDropdown', () => {
 		expect(wrapper.find('[data-test-id="dropdown-trigger"]').exists()).toBe(true);
 	});
 
-	it('should display placeholder when no value is selected', () => {
-		const wrapper = mount(N8nDropdown, {
-			props: {
-				options: defaultOptions,
-				placeholder: 'Select an option',
-			},
-		});
-
-		expect(wrapper.text()).toContain('Select an option');
-	});
-
-	it('should display selected label when value is provided', () => {
-		const wrapper = mount(N8nDropdown, {
-			props: {
-				options: defaultOptions,
-				modelValue: 'option2',
-			},
-		});
-
-		const trigger = wrapper.find('[data-test-id="dropdown-trigger"]');
-		expect(trigger.exists()).toBe(true);
-	});
-
-	it('should emit select when an option is clicked', async () => {
+	it('emits select in options mode', async () => {
 		const wrapper = mount(N8nDropdown, {
 			props: {
 				options: defaultOptions,
@@ -53,96 +30,81 @@ describe('N8nDropdown', () => {
 			attachTo: document.body,
 		});
 
-		// Open the dropdown by clicking the trigger
-		const trigger = wrapper.find('[data-test-id="dropdown-trigger"]');
-		await trigger.trigger('click');
-
-		// Wait for dropdown content to be rendered in portal
+		await wrapper.find('[data-test-id="dropdown-trigger"]').trigger('click');
 		await new Promise((resolve) => setTimeout(resolve, 0));
-
-		// Find and click the option in the document (since it's rendered in a portal)
-		const option = document.querySelector('[data-test-id="dropdown-option-option2"]');
+		const option = document.querySelector('[data-test-id="action-option2"]');
 		expect(option).not.toBeNull();
 		option?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-
-		// Wait for event to propagate
 		await new Promise((resolve) => setTimeout(resolve, 0));
 
-		expect(wrapper.emitted('select')).toBeTruthy();
 		expect(wrapper.emitted('select')?.[0]).toEqual(['option2']);
-
 		wrapper.unmount();
 	});
 
-	it('should apply disabled state correctly', () => {
+	it('supports ActionDropdown-compatible items and prefixed test ids', async () => {
 		const wrapper = mount(N8nDropdown, {
 			props: {
-				options: defaultOptions,
-				disabled: true,
+				items: [
+					{ id: 'edit', label: 'Edit' },
+					{ id: 'delete', label: 'Delete', disabled: true },
+				],
+				'data-test-id': 'workflow-menu',
+			},
+			attachTo: document.body,
+		});
+
+		await wrapper.find('[data-test-id="action-toggle"]').trigger('click');
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		const edit = document.querySelector('[data-test-id="workflow-menu-item-edit"]');
+		expect(edit).not.toBeNull();
+		edit?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		expect(wrapper.emitted('select')?.[0]).toEqual(['edit']);
+		expect(wrapper.emitted('action')?.[0]).toEqual(['edit']);
+		wrapper.unmount();
+	});
+
+	it('supports ActionToggle-compatible actions', async () => {
+		const wrapper = mount(N8nDropdown, {
+			props: {
+				actions: [
+					{ label: 'Archive', value: 'archive' },
+					{ label: 'Delete', value: 'delete' },
+				],
+			},
+			attachTo: document.body,
+		});
+
+		await wrapper.find('[data-test-id="action-toggle"]').trigger('click');
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		const action = document.querySelector('[data-test-id="action-archive"]');
+		expect(action).not.toBeNull();
+		action?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		expect(wrapper.emitted('action')?.[0]).toEqual(['archive']);
+		expect(wrapper.emitted('item-mouseup')?.[0]).toEqual([{ label: 'Archive', value: 'archive' }]);
+		wrapper.unmount();
+	});
+
+	it('supports openActionToggle exposed method', async () => {
+		const wrapper = mount(N8nDropdown, {
+			props: {
+				actions: [{ label: 'Archive', value: 'archive' }],
 			},
 		});
 
-		const trigger = wrapper.find('[data-test-id="dropdown-trigger"]');
-		expect(trigger.attributes('data-disabled')).toBeDefined();
+		(wrapper.vm as unknown as { openActionToggle: (open: boolean) => void }).openActionToggle(true);
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		expect(wrapper.emitted('visible-change')?.[0]).toEqual([true]);
+		expect(wrapper.emitted('update:open')?.[0]).toEqual([true]);
 	});
 
-	it('should apply size variants correctly', () => {
-		const sizes = ['small', 'medium', 'large'] as const;
-
-		sizes.forEach((size) => {
-			const wrapper = mount(N8nDropdown, {
-				props: {
-					options: defaultOptions,
-					size,
-				},
-			});
-
-			const trigger = wrapper.find('[data-test-id="dropdown-trigger"]');
-			expect(trigger.classes()).toContain(size);
-		});
-	});
-
-	it('should handle disabled options', () => {
-		const optionsWithDisabled: N8nDropdownOption[] = [
-			{ label: 'Enabled', value: 'enabled' },
-			{ label: 'Disabled', value: 'disabled', disabled: true },
-		];
-
-		const wrapper = mount(N8nDropdown, {
-			props: {
-				options: optionsWithDisabled,
-			},
-		});
-
-		expect(wrapper.exists()).toBe(true);
-	});
-
-	it('should show selected label for valid value', () => {
-		const wrapper = mount(N8nDropdown, {
-			props: {
-				options: defaultOptions,
-				modelValue: 'option1',
-			},
-		});
-
-		const trigger = wrapper.find('[data-test-id="dropdown-trigger"]');
-		expect(trigger.exists()).toBe(true);
-	});
-
-	it('should show placeholder for invalid value', () => {
-		const wrapper = mount(N8nDropdown, {
-			props: {
-				options: defaultOptions,
-				modelValue: 'invalid-value',
-				placeholder: 'Select option',
-			},
-		});
-
-		const trigger = wrapper.find('[data-test-id="dropdown-trigger"]');
-		expect(trigger.exists()).toBe(true);
-	});
-
-	it('should support custom trigger slot', () => {
+	it('supports custom trigger slot', () => {
 		const wrapper = mount(N8nDropdown, {
 			props: {
 				options: defaultOptions,

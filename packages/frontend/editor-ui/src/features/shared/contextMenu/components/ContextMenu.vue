@@ -5,10 +5,10 @@ import { useStyles } from '@/app/composables/useStyles';
 import { ref, watch } from 'vue';
 import { type ComponentExposed } from 'vue-component-type-helpers';
 
-import { N8nActionDropdown } from '@n8n/design-system';
+import { N8nDropdown } from '@n8n/design-system';
 const contextMenu = useContextMenu();
 const { position, isOpen, actions, target } = contextMenu;
-const dropdown = ref<ComponentExposed<typeof N8nActionDropdown>>();
+const dropdown = ref<ComponentExposed<typeof N8nDropdown>>();
 const emit = defineEmits<{ action: [action: ContextMenuAction, nodeIds: string[]] }>();
 const { APP_Z_INDEXES } = useStyles();
 
@@ -45,7 +45,7 @@ function onVisibleChange(open: boolean) {
 				zIndex: APP_Z_INDEXES.CONTEXT_MENU,
 			}"
 		>
-			<N8nActionDropdown
+			<N8nDropdown
 				ref="dropdown"
 				:items="actions"
 				placement="bottom-start"
@@ -58,8 +58,7 @@ function onVisibleChange(open: boolean) {
 				<template #activator>
 					<div :class="$style.activator"></div>
 				</template>
-			</N8nActionDropdown>
-		</div>
+			</N8nDropdown>		</div>
 	</Teleport>
 </template>
 

@@ -3,7 +3,7 @@ import TimeAgo from '@/app/components/TimeAgo.vue';
 import type { CredentialResolver } from '@n8n/api-types';
 import {
 	N8nActionBox,
-	N8nActionToggle,
+	N8nDropdown,
 	N8nButton,
 	N8nCard,
 	N8nHeading,
@@ -174,7 +174,7 @@ async function onAction(action: string, resolver: CredentialResolver) {
 					</N8nText>
 				</div>
 				<template #append>
-					<N8nActionToggle :actions="actions" @action="onAction($event, resolver)" />
+					<N8nDropdown :actions="actions" @action="onAction($event, resolver)" />
 				</template>
 			</N8nCard>
 		</div>

@@ -3,7 +3,7 @@ import type { ButtonVariant, UserAction } from '@n8n/design-system';
 import type { IUser } from 'n8n-workflow';
 import { useTemplateRef } from 'vue';
 
-import { N8nActionToggle, N8nIconButton } from '@n8n/design-system';
+import { N8nDropdown, N8nIconButton } from '@n8n/design-system';
 
 defineProps<{
 	actions: Array<UserAction<IUser>>;
@@ -25,7 +25,7 @@ defineExpose({
 <template>
 	<div :class="[$style.buttonGroup]">
 		<slot></slot>
-		<N8nActionToggle
+		<N8nDropdown
 			ref="actionToggleRef"
 			data-test-id="add-resource"
 			:actions="actions"
@@ -39,8 +39,7 @@ defineExpose({
 				icon="chevron-down"
 				:variant="variant ?? 'solid'"
 			/>
-		</N8nActionToggle>
-	</div>
+		</N8nDropdown>	</div>
 </template>
 
 <style lang="scss" module>

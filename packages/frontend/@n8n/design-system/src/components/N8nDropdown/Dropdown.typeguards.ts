@@ -1,4 +1,4 @@
-import type { DropdownMenuAlign, DropdownMenuSide } from './DropdownMenu.types';
+import type { DropdownMenuAlign, DropdownMenuSide } from './Dropdown.types';
 
 const VALID_SIDES: DropdownMenuSide[] = ['top', 'bottom', 'left', 'right'];
 const VALID_ALIGNS: DropdownMenuAlign[] = ['start', 'end', 'center'];

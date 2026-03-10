@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, ref, useCssModule } from 'vue';
-import { type ActionDropdownItem, N8nActionDropdown } from '@n8n/design-system';
+import { type ActionDropdownItem, N8nDropdown } from '@n8n/design-system';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
@@ -393,7 +393,7 @@ defineExpose({
 			data-test-id="workflow-import-input"
 			@change="handleFileImport()"
 		/>
-		<N8nActionDropdown
+		<N8nDropdown
 			:items="workflowMenuItems"
 			data-test-id="workflow-menu"
 			@select="onWorkflowMenuSelect"

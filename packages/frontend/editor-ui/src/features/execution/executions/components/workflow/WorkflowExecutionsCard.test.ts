@@ -149,9 +149,9 @@ describe('WorkflowExecutionsCard', () => {
 				expect(retryButton).toBeVisible();
 
 				if (disabled) {
-					expect(retryButton?.querySelector('.is-disabled')).toBeVisible();
+					expect(retryButton?.querySelector('[data-disabled]')).toBeVisible();
 				} else {
-					expect(retryButton?.querySelector('.is-disabled')).toBe(null);
+					expect(retryButton?.querySelector('[data-disabled]')).toBe(null);
 				}
 			} else {
 				expect(retryButton).toBe(null);

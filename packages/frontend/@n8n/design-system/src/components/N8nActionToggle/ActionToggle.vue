@@ -28,7 +28,7 @@ interface ActionToggleProps<UserType extends IUser, Actions extends Array<UserAc
 
 type ActionValue = Actions[number]['value'];
 
-defineOptions({ name: 'N8nActionToggle' });
+defineOptions({ name: 'N8nDropdown' });
 const props = withDefaults(
 	defineProps<ActionToggleProps<UserType, Array<UserAction<UserType>>>>(),
 	{

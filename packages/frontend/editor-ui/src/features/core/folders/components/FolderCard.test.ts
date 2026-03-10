@@ -112,10 +112,7 @@ describe('FolderCard', () => {
 
 	it('should emit action event when action is clicked', async () => {
 		const { getByTestId, emitted } = renderComponent();
-		const actionButton = getByTestId('folder-card-actions').querySelector('[role=button]');
-		if (!actionButton) {
-			throw new Error('Action button not found');
-		}
+		const actionButton = getByTestId('action-toggle');
 		await userEvent.click(actionButton);
 		const actionToggleId = actionButton.getAttribute('aria-controls');
 		const actionDropdown = document.getElementById(actionToggleId as string) as HTMLElement;
@@ -128,10 +125,7 @@ describe('FolderCard', () => {
 
 	it('should emit folder-open action', async () => {
 		const { getByTestId, emitted } = renderComponent();
-		const actionButton = getByTestId('folder-card-actions').querySelector('[role=button]');
-		if (!actionButton) {
-			throw new Error('Action button not found');
-		}
+		const actionButton = getByTestId('action-toggle');
 		await userEvent.click(actionButton);
 		const actionToggleId = actionButton.getAttribute('aria-controls');
 		const actionDropdown = document.getElementById(actionToggleId as string) as HTMLElement;

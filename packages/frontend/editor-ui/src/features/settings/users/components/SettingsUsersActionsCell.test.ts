@@ -44,9 +44,12 @@ describe('SettingsUsersActionsCell', () => {
 		expect(container.firstChild).toBeEmptyDOMElement();
 	});
 
-	it('should render the action toggle with provided actions', () => {
+	it('should render the action toggle with provided actions', async () => {
 		const props = { data: baseUser, actions: mockActions };
 		renderComponent({ props });
+		const user = userEvent.setup();
+
+		await user.click(screen.getByTestId('action-toggle'));
 
 		expect(screen.getByTestId('action-copyInviteLink')).toBeInTheDocument();
 		expect(screen.getByTestId('action-copyPasswordResetLink')).toBeInTheDocument();
@@ -57,6 +60,7 @@ describe('SettingsUsersActionsCell', () => {
 		const { emitted } = renderComponent({ props });
 		const user = userEvent.setup();
 
+		await user.click(screen.getByTestId('action-toggle'));
 		await user.click(screen.getByTestId('action-copyInviteLink'));
 
 		expect(emitted()).toHaveProperty('action');

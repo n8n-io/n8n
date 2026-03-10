@@ -5,10 +5,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
 import { computed } from 'vue';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
-import {
-	N8nDropdownMenu,
-	type DropdownMenuItemProps,
-} from '@n8n/design-system/v2/components/DropdownMenu';
+import { N8nDropdown, type DropdownMenuItemProps } from '@n8n/design-system';
 import { getNodeAuthOptions, getAuthTypeForNodeCredential } from '@/app/utils/nodeTypesUtils';
 import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
 
@@ -179,7 +176,7 @@ function onOptionChange(value: CredentialModeOption): void {
 				{{ headingText }}
 			</N8nText>
 
-			<N8nDropdownMenu
+			<N8nDropdown
 				:items="menuItems"
 				placement="bottom-end"
 				:extra-popper-class="$style.dropdownContent"
@@ -192,8 +189,7 @@ function onOptionChange(value: CredentialModeOption): void {
 						<N8nIcon icon="chevron-down" size="small" />
 					</N8nButton>
 				</template>
-			</N8nDropdownMenu>
-		</div>
+			</N8nDropdown>		</div>
 	</div>
 </template>
 
