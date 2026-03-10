@@ -18,7 +18,7 @@ function main() {
 
 	if (!currentTag?.tag || !releaseCandidateBranch) {
 		throw new Error(
-			`Couldn't resolve needed parameters. currentTag.tag=${currentTag.tag}, releaseCandidateBranch=${releaseCandidateBranch}`,
+			`Couldn't resolve needed parameters. currentTag.tag=${currentTag?.tag}, releaseCandidateBranch=${releaseCandidateBranch}`,
 		);
 	}
 
