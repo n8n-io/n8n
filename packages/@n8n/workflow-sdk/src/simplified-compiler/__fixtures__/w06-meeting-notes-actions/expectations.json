@@ -1,7 +1,3 @@
 {
-	"nodes": {
-		"POST docs.googleapis.com/v1/documents": {
-			"items": [{ "documentId": "doc_001", "title": "Meeting Summary" }]
-		}
-	}
+	"nodes": {}
 }

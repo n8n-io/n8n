@@ -1,6 +1,7 @@
 import { onWebhook } from '@n8n/sdk';
 import http from '@n8n/sdk/http';
 
+/** @example [{ body: { score: 95 } }] */
 onWebhook({ method: 'POST', path: '/grade' }, async ({ body }) => {
 	const score = body.score;
 

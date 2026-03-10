@@ -2,9 +2,9 @@
 	"requests": {
 		"POST api.example.com/dashboard": {
 			"requestBody": {
-				"userCount": "={{ $('Collect parallel 1').first().json.users.length }}",
-				"orderCount": "={{ $('Collect parallel 1').first().json.orders.length }}",
-				"requestedBy": "={{ $('Code 1').first().json.userId }}"
+				"userCount": 2,
+				"orderCount": 2,
+				"requestedBy": "user-123"
 			}
 		}
 	},

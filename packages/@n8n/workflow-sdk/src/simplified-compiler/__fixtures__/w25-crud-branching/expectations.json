@@ -34,7 +34,7 @@
 			"items": [{ "backup": null }]
 		},
 		"IF 1": {
-			"items": [{ "id": 1, "title": "Backup Post" }]
+			"items": [{ "backup": { "id": 1, "title": "Backup Post" } }]
 		},
 		"GET jsonplaceholder.typicode.com/todos/1": {
 			"items": [{ "completed": true }]

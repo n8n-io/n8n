@@ -1,6 +1,7 @@
 import { onWebhook } from '@n8n/sdk';
 import http from '@n8n/sdk/http';
 
+/** @example [{ body: { userId: "user-123" } }] */
 onWebhook({ method: 'POST', path: '/dashboard' }, async ({ body }) => {
 	const userId = body.userId;
 

@@ -1,4 +1,4 @@
-const t0 = trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: { parameters: {"httpMethod":"POST","path":"/dashboard"} } });
+const t0 = trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: { parameters: {"httpMethod":"POST","path":"/dashboard"}, pinData: [{"body":{"userId":"user-123"}}] } });
 
 const code1 = node({
   type: 'n8n-nodes-base.code', version: 2,

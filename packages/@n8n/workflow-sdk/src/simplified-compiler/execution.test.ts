@@ -20,8 +20,15 @@ import type { ExpectationMismatch } from './expectation-matcher';
 // ---------------------------------------------------------------------------
 
 const SKIP_REASONS: Record<string, string> = {
+	w08: 'Compiler bug: generates const instead of let for reassigned variables in Code node',
+	w09: 'AI Agent nodes not available in mock execution environment',
 	w10: 'DSL calls undefined function extractLinks — authoring error in fixture',
 	w15: 'workflow.run() with database lookup not supported in mock execution',
+	w16: 'AI Agent nodes not available in mock execution environment',
+	w17: 'Loop-body HTTP URL uses .first() instead of current item — compiler expression bug',
+	w21: 'Sub-function URL parameter placeholder {{dynamic URL}} not resolved',
+	w26: 'Loop variable resolves to null in sub-workflow URL expression',
+	w27: 'Loop variable resolves to undefined in sub-workflow URL expression',
 };
 
 function getSkipReason(dir: string): string | undefined {

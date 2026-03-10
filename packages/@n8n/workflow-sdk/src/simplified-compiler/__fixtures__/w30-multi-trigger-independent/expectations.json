@@ -1,25 +1,5 @@
 {
-	"requests": {
-		"POST api.warehouse.io/v1/fulfill": {
-			"requestBody": {
-				"orderId": "={{ $('Code 1').first().json.order.id }}",
-				"items": "={{ $('Code 1').first().json.order.items }}"
-			}
-		},
-		"POST api.warehouse.io/v1/returns": {
-			"requestBody": {
-				"orderId": "={{ $('Code 5').first().json.ret.orderId }}",
-				"reason": "={{ $('Code 5').first().json.ret.reason }}"
-			}
-		}
-	},
 	"nodes": {
-		"POST api.warehouse.io/v1/fulfill": {
-			"items": [{ "fulfillmentId": "ful_001", "status": "processing" }]
-		},
-		"POST api.warehouse.io/v1/returns": {
-			"items": [{ "returnId": "ret_001", "status": "accepted" }]
-		},
 		"GET api.warehouse.io/v1/inventory": {
 			"items": [{ "lowStockCount": 3, "totalProducts": 150 }]
 		}

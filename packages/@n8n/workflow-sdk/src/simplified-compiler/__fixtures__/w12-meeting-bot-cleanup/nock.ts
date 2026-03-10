@@ -11,6 +11,12 @@ export function setupNock(): nock.Scope[] {
 				summary: 'Team Standup',
 				start: { dateTime: '2024-01-15T10:00:00Z' },
 			},
+			{
+				id: 'evt_002',
+				status: 'cancelled',
+				summary: 'Design Review',
+				start: { dateTime: '2024-01-15T14:00:00Z' },
+			},
 		]);
 
 	// POST /bots → per-loop bot join for confirmed events
