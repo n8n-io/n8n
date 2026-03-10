@@ -146,7 +146,6 @@ export async function getFiles(
 export async function getFolders(
 	this: ILoadOptionsFunctions,
 	filter?: string,
-	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
 	const site = this.getNodeParameter('site', undefined, { extractValue: true }) as string;
 	const driveParameter = this.getNodeParameter('drive', undefined, { extractValue: true });
@@ -155,58 +154,98 @@ export async function getFolders(
 	}
 	const drive = driveParameter;
 
-	let response: any;
-	if (paginationToken) {
-		response = await microsoftSharePointApiRequest.call(
-			this,
-			'GET',
-			`/sites/${site}/drives/${drive}/root/children`,
-			{},
-			undefined,
-			undefined,
-			paginationToken,
-		);
-	} else {
-		const qs: IDataObject = {
-			$select: 'id,name,folder',
-			// Folder filter not supported, but filter is still required
-			// https://learn.microsoft.com/en-us/onedrive/developer/rest-api/concepts/filtering-results?view=odsp-graph-online#filterable-properties
-			$filter: 'folder ne null',
-		};
-		response = await microsoftSharePointApiRequest.call(
-			this,
-			'GET',
-			`/sites/${site}/drives/${drive}/root/children`,
-			{},
-			qs,
-		);
-	}
+	const allFolders: INodeListSearchItems[] = [];
 
-	const items: IDriveItem[] = response.value;
+	// Simple semaphore to limit concurrent API requests
+	const MAX_CONCURRENT = 5;
+	let active = 0;
+	const waiting: (() => void)[] = [];
+	const acquire = () => {
+		if (active < MAX_CONCURRENT) {
+			active++;
+			return Promise.resolve();
+		}
+		return new Promise<void>((resolve) => waiting.push(resolve));
+	};
+	const release = () => {
+		active--;
+		const next = waiting.shift();
+		if (next) {
+			active++;
+			next();
+		}
+	};
 
-	// Add the root folder option for selecting the document library root
+	// Recursively walk the folder tree collecting all folders with full paths
+	const collectFolders = async (parentId: string, parentPath: string) => {
+		let nextUrl: string | undefined;
+		do {
+			await acquire();
+			let response: unknown;
+			try {
+				if (nextUrl) {
+					response = await microsoftSharePointApiRequest.call(
+						this,
+						'GET',
+						'',
+						{},
+						undefined,
+						undefined,
+						nextUrl,
+					);
+				} else {
+					response = await microsoftSharePointApiRequest.call(
+						this,
+						'GET',
+						`/sites/${site}/drives/${drive}/items/${parentId}/children`,
+						{},
+						{
+							$select: 'id,name,folder',
+							$filter: 'folder ne null',
+						},
+					);
+				}
+			} finally {
+				release();
+			}
+
+			const body = response as { value?: IDriveItem[]; '@odata.nextLink'?: string };
+			const items: IDriveItem[] = body.value ?? [];
+
+			const childPromises: Promise<void>[] = [];
+			for (const item of items) {
+				if (!item.folder) continue;
+				const fullPath = `${parentPath}/${item.name}`;
+				allFolders.push({ name: fullPath, value: item.id });
+				childPromises.push(collectFolders(item.id, fullPath));
+			}
+			await Promise.all(childPromises);
+
+			nextUrl = body['@odata.nextLink'];
+		} while (nextUrl);
+	};
+
+	await collectFolders('root', '');
+
+	const filteredFolders = filter
+		? allFolders.filter((f) => f.name.toLowerCase().includes(filter.toLowerCase()))
+		: allFolders;
+
+	filteredFolders.sort((a, b) =>
+		a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }),
+	);
+
 	const rootOption: INodeListSearchItems = {
-		name: '/ (Library root)',
+		name: '/ (Library Root)',
 		value: 'root',
 	};
 
-	const folderResults: INodeListSearchItems[] = items
-		.filter((x) => x.folder && (!filter || x.name?.toLowerCase()?.includes?.(filter.toLowerCase())))
-		.map((g) => ({
-			name: g.name,
-			value: g.id,
-		}))
-		.sort((a, b) =>
-			a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }),
-		);
-
-	// Include root option if filter matches or no filter provided
 	const results: INodeListSearchItems[] =
 		!filter || rootOption.name.toLowerCase().includes(filter.toLowerCase())
-			? [rootOption, ...folderResults]
-			: folderResults;
+			? [rootOption, ...filteredFolders]
+			: filteredFolders;
 
-	return { results, paginationToken: response['@odata.nextLink'] };
+	return { results };
 }
 
 export async function getItems(
