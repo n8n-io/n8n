@@ -130,9 +130,9 @@ async function fetchWorkflowData(
 	} else {
 		const workflowData = workflowInfo.code;
 		if (workflowData) {
-			if (!workflowData.id) {
-				workflowData.id = parentWorkflowId;
-			}
+			// Inline sub-workflows don't exist as real workflow entities in the DB,
+			// so always use the parent workflow ID for execution tracking (FK constraint).
+			workflowData.id = parentWorkflowId;
 			workflowData.settings ??= parentWorkflowSettings;
 		}
 		return workflowData;
