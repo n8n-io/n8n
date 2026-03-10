@@ -29,6 +29,7 @@ import type {
 	FanOutCompositeNode,
 	ExplicitConnectionsNode,
 	MultiOutputNode,
+	WhileLoopCompositeNode,
 } from './composite-tree';
 import { findDirectMergeInFanOut, detectMergePattern, findMergeInputIndex } from './merge-pattern';
 import {
@@ -338,6 +339,81 @@ function buildBranchTargets(
 /**
  * Build composite for an IF node
  */
+// ─── While Loop Detection ────────────────────────────────────────────────────
+
+/**
+ * Detect whether an IF node represents a while/do-while loop pattern.
+ * Primary signal: node name starts with 'While '.
+ * Confirmation: cycle edges involving this node exist in the graph.
+ */
+function isWhileLoopPattern(node: SemanticNode, graph: SemanticGraph): boolean {
+	if (!node.name.startsWith('While ')) return false;
+
+	// Check for cycle edges FROM this node (do-while: IF true → body start)
+	const outgoingCycles = graph.cycleEdges.get(node.name);
+	if (outgoingCycles && outgoingCycles.length > 0) return true;
+
+	// Check for cycle edges TO this node (while: body end → IF)
+	if (node.annotations.isCycleTarget) return true;
+
+	return false;
+}
+
+/**
+ * Build a WhileLoopCompositeNode from an IF node that represents a while/do-while loop.
+ *
+ * For do-while: cycle edge goes FROM the IF node (true output) TO a body node.
+ *   The body chain is built from the true branch targets (skipping the cycle target).
+ *   Actually, in do-while the body precedes the IF in the chain, so the true branch
+ *   of the IF points back to an already-visited body node (cycle edge).
+ *   The bodyChain is null here — the body nodes are already in the parent chain.
+ *
+ * For while: cycle edge goes FROM a body node TO the IF node.
+ *   The true branch contains the body chain. The false branch is the exit.
+ */
+function buildWhileLoop(node: SemanticNode, ctx: BuildContext): WhileLoopCompositeNode {
+	const outgoingCycles = ctx.graph.cycleEdges.get(node.name);
+	const isDoWhile = !!(outgoingCycles && outgoingCycles.length > 0);
+
+	if (isDoWhile) {
+		// do-while: body already in parent chain, IF just has back-edge on true output
+		// No body chain to build — the body nodes precede this IF in the main chain
+		return {
+			kind: 'whileLoop',
+			ifNode: node,
+			bodyChain: null,
+			isDoWhile: true,
+		};
+	}
+
+	// while: true branch is the loop body, false branch is exit (handled by parent chain)
+	const trueBranchTargets = node.outputs.get('trueBranch') ?? [];
+
+	const branchCtx: BuildContext = {
+		...ctx,
+		isBranchContext: true,
+		pendingDownstream: null,
+	};
+
+	const bodyChain = buildBranchTargets(trueBranchTargets, branchCtx, node.name, 0);
+	// Propagate downstream
+	ctx.pendingDownstream = branchCtx.pendingDownstream;
+
+	// bodyChain may be an array (fan-out) — for while loops it should be a single chain
+	const resolvedBody = Array.isArray(bodyChain)
+		? bodyChain.length === 1
+			? bodyChain[0]
+			: { kind: 'chain' as const, nodes: bodyChain }
+		: bodyChain;
+
+	return {
+		kind: 'whileLoop',
+		ifNode: node,
+		bodyChain: resolvedBody,
+		isDoWhile: false,
+	};
+}
+
 function buildIfElse(node: SemanticNode, ctx: BuildContext): IfElseCompositeNode {
 	const trueBranchTargets = node.outputs.get('trueBranch') ?? [];
 	const falseBranchTargets = node.outputs.get('falseBranch') ?? [];
@@ -585,7 +661,11 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 
 	switch (compositeType) {
 		case 'ifElse':
-			compositeNode = buildIfElse(node, ctx);
+			if (isWhileLoopPattern(node, ctx.graph)) {
+				compositeNode = buildWhileLoop(node, ctx);
+			} else {
+				compositeNode = buildIfElse(node, ctx);
+			}
 			break;
 		case 'switchCase':
 			compositeNode = buildSwitchCase(node, ctx);

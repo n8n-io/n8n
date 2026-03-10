@@ -179,6 +179,20 @@ interface ParallelGroup {
 	collectVar: string; // the collect Code node var (restructures data)
 }
 
+interface WhileLoopGroup {
+	ifVar: string;
+	ifNodeName: string;
+	/** For do-while: first body node (back-edge target) */
+	backEdgeTarget?: string;
+	/** For while: last body node (back-edge source) */
+	backEdgeSource?: string;
+	/** Which IF output is the loop continuation (0 = true) */
+	backEdgeOutputIndex: number;
+	isDoWhile: boolean;
+	/** First post-loop node var (set during chain splitting) */
+	exitTarget?: string;
+}
+
 interface TranspilerContext {
 	source: string;
 	nodes: EmittedNode[];
@@ -213,6 +227,8 @@ interface TranspilerContext {
 	tryCatchCounter: number;
 	errorConnections: Array<{ sourceVar: string; catchChainStartVar: string }>;
 	parallelGroups: ParallelGroup[];
+	whileLoopGroups: WhileLoopGroup[];
+	whileCounter: number;
 	pendingPinData?: unknown[];
 }
 
@@ -390,6 +406,7 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 	const allTryCatchBodies: CompiledFunction[] = [];
 	const allErrorConnections: Array<{ sourceVar: string; catchChainStartVar: string }> = [];
 	const allParallelGroups: ParallelGroup[] = [];
+	const allWhileLoopGroups: WhileLoopGroup[] = [];
 
 	// Track compiled shared pipelines: fnName → first pipeline node var
 	const compiledSharedPipelineFirstNode = new Map<string, string>();
@@ -412,6 +429,7 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 					tryCatchBodies,
 					errorConnections,
 					parallelGroups,
+					whileLoopGroups,
 				} = transpileCallback(
 					inlinedCb,
 					source,
@@ -434,6 +452,7 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 				allTryCatchBodies.push(...tryCatchBodies);
 				allErrorConnections.push(...errorConnections);
 				allParallelGroups.push(...parallelGroups);
+				allWhileLoopGroups.push(...whileLoopGroups);
 			} else {
 				// Subsequent callback: just create trigger, connect to shared chain
 				const triggerVar = `t${allNodes.length}`;
@@ -453,6 +472,7 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 			tryCatchBodies,
 			errorConnections,
 			parallelGroups,
+			whileLoopGroups,
 		} = transpileCallback(
 			cb,
 			source,
@@ -470,6 +490,7 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 		allTryCatchBodies.push(...tryCatchBodies);
 		allErrorConnections.push(...errorConnections);
 		allParallelGroups.push(...parallelGroups);
+		allWhileLoopGroups.push(...whileLoopGroups);
 	}
 
 	// Step 6: Generate final SDK code
@@ -481,6 +502,7 @@ export function transpileWorkflowJS(source: string): TranspilerResult {
 		allTryCatchBodies,
 		allErrorConnections,
 		allParallelGroups,
+		allWhileLoopGroups,
 	);
 	return { code, errors };
 }
@@ -1132,6 +1154,8 @@ function compileFunctionToSDK(
 		tryCatchCounter: 0,
 		errorConnections: [],
 		parallelGroups: [],
+		whileLoopGroups: [],
+		whileCounter: 0,
 	};
 
 	// Generate executeWorkflowTrigger as first node
@@ -1226,6 +1250,7 @@ function transpileCallback(
 	tryCatchBodies: CompiledFunction[];
 	errorConnections: Array<{ sourceVar: string; catchChainStartVar: string }>;
 	parallelGroups: ParallelGroup[];
+	whileLoopGroups: WhileLoopGroup[];
 } {
 	const ctx: TranspilerContext = {
 		source,
@@ -1260,6 +1285,8 @@ function transpileCallback(
 		tryCatchCounter: nodeOffset,
 		errorConnections: [],
 		parallelGroups: [],
+		whileLoopGroups: [],
+		whileCounter: nodeOffset,
 	};
 
 	// Generate trigger node
@@ -1284,14 +1311,23 @@ function transpileCallback(
 	// Flush remaining code
 	flushPendingCode(ctx);
 
-	// Build chain expression, splitting at parallel group boundaries.
+	// Build chain expression, splitting at parallel group and while-loop boundaries.
 	// Each parallel group's sourceVar ends a chain segment; the next segment
 	// starts from collectVar. This prevents a direct connection from source → collect
 	// (which would fire collect before parallel branches complete).
+	// Each while-loop IF var ends a chain segment; the next segment starts with
+	// ifVar.to(nextVar, 1) (false/exit output) emitted as a standalone connection.
 	const nodeVars = ctx.nodes.filter((n) => !n.branchOnly).map((n) => n.varName);
 
-	if (ctx.parallelGroups.length === 0) {
-		// No parallel groups — single chain
+	// Collect all boundary vars (parallel sources + while IF vars)
+	const parallelSourceVars = new Set(ctx.parallelGroups.map((g) => g.sourceVar));
+	const parallelCollectVars = new Map(ctx.parallelGroups.map((g) => [g.sourceVar, g.collectVar]));
+	const whileIfVars = new Set(ctx.whileLoopGroups.map((g) => g.ifVar));
+
+	const hasBoundaries = parallelSourceVars.size > 0 || whileIfVars.size > 0;
+
+	if (!hasBoundaries) {
+		// No boundaries — single chain
 		let chainExpr: string;
 		if (nodeVars.length <= 1) {
 			chainExpr = nodeVars[0] ?? triggerVar;
@@ -1309,21 +1345,28 @@ function transpileCallback(
 			tryCatchBodies: ctx.compiledTryCatchBodies,
 			errorConnections: ctx.errorConnections,
 			parallelGroups: ctx.parallelGroups,
+			whileLoopGroups: ctx.whileLoopGroups,
 		};
 	}
 
-	// With parallel groups — split chain at boundaries
-	const parallelSourceVars = new Set(ctx.parallelGroups.map((g) => g.sourceVar));
-	const parallelCollectVars = new Map(ctx.parallelGroups.map((g) => [g.sourceVar, g.collectVar]));
+	// Build map of while IF var → WhileLoopGroup for exit target tracking
+	const whileIfVarToGroup = new Map(ctx.whileLoopGroups.map((g) => [g.ifVar, g]));
 
-	// Split nodeVars into segments at parallel boundaries
+	// Split nodeVars into segments at boundaries
 	const segments: string[][] = [[]];
-	for (const v of nodeVars) {
+	for (let vi = 0; vi < nodeVars.length; vi++) {
+		const v = nodeVars[vi];
 		segments[segments.length - 1].push(v);
 		if (parallelSourceVars.has(v)) {
 			// End current segment, start new one from collectVar
 			const collectVar = parallelCollectVars.get(v)!;
 			segments.push([collectVar]);
+		} else if (whileIfVars.has(v)) {
+			// End current segment — record exit target if there's a next node
+			const nextVar = vi + 1 < nodeVars.length ? nodeVars[vi + 1] : undefined;
+			const group = whileIfVarToGroup.get(v)!;
+			group.exitTarget = nextVar;
+			segments.push([]);
 		}
 	}
 
@@ -1344,11 +1387,12 @@ function transpileCallback(
 	return {
 		nodes: ctx.nodes,
 		chainExpr,
-		extraChains: chainExprs.slice(1),
+		extraChains: chainExprs.length > 1 ? chainExprs.slice(1) : undefined,
 		loopBodies: ctx.compiledLoopBodies,
 		tryCatchBodies: ctx.compiledTryCatchBodies,
 		errorConnections: ctx.errorConnections,
 		parallelGroups: ctx.parallelGroups,
+		whileLoopGroups: ctx.whileLoopGroups,
 	};
 }
 
@@ -1437,6 +1481,16 @@ function walkStatements(
 
 		if (stmt.type === 'ForOfStatement') {
 			processForOfStatement(ctx, stmt, comments);
+			continue;
+		}
+
+		if (stmt.type === 'DoWhileStatement') {
+			processDoWhileStatement(ctx, stmt, comments);
+			continue;
+		}
+
+		if (stmt.type === 'WhileStatement') {
+			processWhileStatement(ctx, stmt, comments);
 			continue;
 		}
 
@@ -1870,6 +1924,7 @@ const COUNTER_KEYS = [
 	'tryCatchCounter',
 	'collectCounter',
 	'mergeCounter',
+	'whileCounter',
 ] as const;
 
 function syncCounters(target: TranspilerContext, source: TranspilerContext): void {
@@ -1912,6 +1967,8 @@ function createBranchContext(parentCtx: TranspilerContext): TranspilerContext {
 		tryCatchCounter: parentCtx.tryCatchCounter,
 		errorConnections: parentCtx.errorConnections,
 		parallelGroups: parentCtx.parallelGroups,
+		whileLoopGroups: parentCtx.whileLoopGroups,
+		whileCounter: parentCtx.whileCounter,
 	};
 }
 
@@ -2227,6 +2284,120 @@ function processPromiseAll(ctx: TranspilerContext, stmt: AcornNode): void {
 	}
 }
 
+// ─── While / Do-While Processing ─────────────────────────────────────────────
+
+function processDoWhileStatement(
+	ctx: TranspilerContext,
+	stmt: AcornNode,
+	comments: Array<{ type: string; value: string; start: number; end: number }>,
+): void {
+	const bodyNode = (stmt as unknown as { body: AcornNode }).body;
+
+	// Case 1: No IO in body → keep as plain JS in Code node
+	if (!loopBodyHasIO(bodyNode, ctx.source)) {
+		const loopSource = ctx.source.slice(stmt.start, stmt.end);
+		const baseIndent = getBaseIndent(ctx.source, stmt.start);
+		ctx.pendingStatements.push({ source: dedentSource(loopSource, baseIndent), ast: stmt });
+		return;
+	}
+
+	// Case 2: IO in body → emit body nodes + IF node with back-edge
+	flushPendingCode(ctx);
+
+	const firstBodyNodeIdx = ctx.nodes.length;
+
+	// Walk body statements — body nodes emit normally into the main chain
+	const bodyStmts =
+		bodyNode.type === 'BlockStatement' && bodyNode.body ? bodyNode.body : [bodyNode];
+	walkStatements(ctx, bodyStmts, comments);
+	flushPendingCode(ctx);
+
+	// Find first non-branchOnly node emitted during body walk
+	const bodyNodes = ctx.nodes.slice(firstBodyNodeIdx).filter((n) => !n.branchOnly);
+	const firstBodyVar = bodyNodes.length > 0 ? bodyNodes[0].varName : undefined;
+
+	// Emit IF node for the condition
+	ctx.whileCounter++;
+	const whileNum = ctx.whileCounter;
+	const ifVar = `while${whileNum}`;
+	const ifNodeName = `While ${whileNum}`;
+
+	const conditionsParam = buildIfConditionsParam(stmt.test!, ctx);
+	const sdkCode = `const ${ifVar} = ifElse({ version: 2.2, config: { name: '${ifNodeName}', parameters: { conditions: ${conditionsParam} }, executeOnce: true } });`;
+
+	ctx.nodes.push({ varName: ifVar, sdkCode, kind: 'ifElse', nodeName: ifNodeName });
+
+	// Record while loop group for back-edge generation
+	ctx.whileLoopGroups.push({
+		ifVar,
+		ifNodeName,
+		backEdgeTarget: firstBodyVar,
+		backEdgeOutputIndex: 0,
+		isDoWhile: true,
+	});
+
+	ctx.prevVar = ifVar;
+}
+
+function processWhileStatement(
+	ctx: TranspilerContext,
+	stmt: AcornNode,
+	comments: Array<{ type: string; value: string; start: number; end: number }>,
+): void {
+	const bodyNode = (stmt as unknown as { body: AcornNode }).body;
+
+	// Case 1: No IO in body → keep as plain JS in Code node
+	if (!loopBodyHasIO(bodyNode, ctx.source)) {
+		const loopSource = ctx.source.slice(stmt.start, stmt.end);
+		const baseIndent = getBaseIndent(ctx.source, stmt.start);
+		ctx.pendingStatements.push({ source: dedentSource(loopSource, baseIndent), ast: stmt });
+		return;
+	}
+
+	// Case 2: IO in body → emit IF node first, then body as true branch
+	flushPendingCode(ctx);
+
+	// Emit IF node for the condition
+	ctx.whileCounter++;
+	const whileNum = ctx.whileCounter;
+	const ifVar = `while${whileNum}`;
+	const ifNodeName = `While ${whileNum}`;
+
+	// Compile body as true branch
+	const trueBranch = transpileBranch(ctx, bodyNode, comments);
+
+	// Emit all branch nodes
+	for (const bn of trueBranch.nodes) {
+		ctx.nodes.push({ ...bn, branchOnly: true });
+	}
+
+	// Build IF node with true branch
+	const conditionsParam = buildIfConditionsParam(stmt.test!, ctx);
+	let sdkCode = `const ${ifVar} = ifElse({ version: 2.2, config: { name: '${ifNodeName}', parameters: { conditions: ${conditionsParam} }, executeOnce: true } })`;
+	if (trueBranch.chainExpr) {
+		sdkCode += `\n  .onTrue(${trueBranch.chainExpr})`;
+	}
+	sdkCode += ';';
+
+	ctx.nodes.push({ varName: ifVar, sdkCode, kind: 'ifElse', nodeName: ifNodeName });
+
+	// Find last non-branchOnly body node for back-edge source
+	const bodyChainNodes = trueBranch.nodes.filter((n) => !n.branchOnly);
+	const lastBodyVar =
+		bodyChainNodes.length > 0 ? bodyChainNodes[bodyChainNodes.length - 1].varName : undefined;
+
+	// Record while loop group for back-edge generation
+	ctx.whileLoopGroups.push({
+		ifVar,
+		ifNodeName,
+		backEdgeSource: lastBodyVar,
+		backEdgeOutputIndex: 0,
+		isDoWhile: false,
+	});
+
+	ctx.prevVar = ifVar;
+}
+
 // ─── For-Of Processing ───────────────────────────────────────────────────────
 
 function loopBodyHasIO(bodyNode: AcornNode, source: string): boolean {
@@ -2449,6 +2620,8 @@ function compileLoopBodyAsSubWorkflow(
 		tryCatchCounter: 0,
 		errorConnections: [],
 		parallelGroups: [],
+		whileLoopGroups: [],
+		whileCounter: 0,
 	};
 
 	// Generate executeWorkflowTrigger as first node
@@ -2833,6 +3006,8 @@ function compileTryCatchBodyAsSubWorkflow(
 		tryCatchCounter: 0,
 		errorConnections: [],
 		parallelGroups: [],
+		whileLoopGroups: [],
+		whileCounter: 0,
 	};
 
 	// Generate executeWorkflowTrigger as first node
@@ -2923,7 +3098,9 @@ function findNestedIO(stmt: AcornNode, source: string): IOCall[] {
 		} else if (
 			node.type === 'ForOfStatement' ||
 			node.type === 'ForInStatement' ||
-			node.type === 'ForStatement'
+			node.type === 'ForStatement' ||
+			node.type === 'WhileStatement' ||
+			node.type === 'DoWhileStatement'
 		) {
 			const body = (node as unknown as { body: AcornNode }).body;
 			if (body) walkBlock(body);
@@ -3920,6 +4097,7 @@ function generateSDKCode(
 	compiledTryCatchBodies?: CompiledFunction[],
 	errorConnections?: Array<{ sourceVar: string; catchChainStartVar: string }>,
 	parallelGroups?: ParallelGroup[],
+	whileLoopGroups?: WhileLoopGroup[],
 ): string {
 	const lines: string[] = [];
 
@@ -4053,6 +4231,24 @@ function generateSDKCode(
 			lines.push(`${group.mergeVar}.to(${group.collectVar});`);
 			lines.push('');
 		}
+	}
+
+	// While loop back-edges and exit connections
+	if (whileLoopGroups && whileLoopGroups.length > 0) {
+		for (const group of whileLoopGroups) {
+			if (group.isDoWhile && group.backEdgeTarget) {
+				// do-while: IF true output loops back to first body node
+				lines.push(`${group.ifVar}.to(${group.backEdgeTarget}, 0);`);
+			} else if (!group.isDoWhile && group.backEdgeSource) {
+				// while: last body node loops back to IF node
+				lines.push(`${group.backEdgeSource}.to(${group.ifVar});`);
+			}
+			// Exit connection: IF false output (1) to first post-loop node
+			if (group.exitTarget) {
+				lines.push(`${group.ifVar}.to(${group.exitTarget}, 1);`);
+			}
+		}
+		lines.push('');
 	}
 
 	// Workflow builder

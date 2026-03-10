@@ -20,6 +20,7 @@ import type {
 	FanOutCompositeNode,
 	VariableReference,
 	DeferredMergeDownstream,
+	WhileLoopCompositeNode,
 } from './composite-tree';
 import type { SemanticGraph, SemanticNode } from './types';
 import type { WorkflowJSON } from '../types/base';
@@ -655,6 +656,8 @@ function visitComposite(node: CompositeNode, ctx: SimplifiedGenContext): void {
 			return visitSplitInBatches(node, ctx);
 		case 'fanOut':
 			return visitFanOut(node, ctx);
+		case 'whileLoop':
+			return visitWhileLoop(node, ctx);
 		default:
 			break;
 	}
@@ -735,9 +738,57 @@ function emitChainBody(nodes: CompositeNode[], start: number, ctx: SimplifiedGen
 			continue;
 		}
 
+		// Detect do-while loop pattern: look ahead for a whileLoop composite with isDoWhile
+		const doWhileInfo = detectDoWhilePattern(nodes, i);
+		if (doWhileInfo) {
+			const condition = extractConditionString(doWhileInfo.whileNode.ifNode, ctx);
+			emit(ctx, 'do {');
+			ctx.indent++;
+			// Emit body nodes (from current position to just before the whileLoop composite)
+			for (let j = i; j < doWhileInfo.whileIndex; j++) {
+				if (j > i) {
+					const prev = nodes[j - 1];
+					if (prev.kind === 'leaf' && isMultiLine(prev.node, ctx)) {
+						emit(ctx, '');
+					}
+				}
+				visitComposite(nodes[j], ctx);
+			}
+			ctx.indent--;
+			emit(ctx, `} while (${condition});`);
+			i = doWhileInfo.whileIndex + 1;
+			continue;
+		}
+
 		visitComposite(nodes[i], ctx);
 		i++;
 	}
+}
+
+interface DoWhilePatternInfo {
+	whileNode: WhileLoopCompositeNode;
+	whileIndex: number;
+}
+
+/**
+ * Detect do-while pattern: a cycle target leaf node followed (eventually) by
+ * a whileLoop composite with isDoWhile: true.
+ */
+function detectDoWhilePattern(nodes: CompositeNode[], index: number): DoWhilePatternInfo | null {
+	const current = nodes[index];
+	// The first body node of a do-while is a cycle target (back-edge from the IF)
+	if (current.kind !== 'leaf' || !current.node.annotations.isCycleTarget) return null;
+
+	// Look ahead for the whileLoop composite
+	for (let j = index + 1; j < nodes.length; j++) {
+		const candidate = nodes[j];
+		if (candidate.kind === 'whileLoop' && candidate.isDoWhile) {
+			return { whileNode: candidate, whileIndex: j };
+		}
+		// Stop looking if we hit another branching construct
+		if (candidate.kind === 'ifElse' || candidate.kind === 'switchCase') break;
+	}
+	return null;
 }
 
 function chainHasRespondNode(chain: ChainNode, _ctx: SimplifiedGenContext): boolean {
@@ -857,6 +908,9 @@ function compositeTreeHasRespondNode(node: CompositeNode): boolean {
 					: compositeTreeHasRespondNode(c)
 				: false,
 		);
+	}
+	if (node.kind === 'whileLoop') {
+		return node.bodyChain ? compositeTreeHasRespondNode(node.bodyChain) : false;
 	}
 	return false;
 }
@@ -1714,6 +1768,31 @@ function visitIfElse(node: IfElseCompositeNode, ctx: SimplifiedGenContext): void
 		ctx.indent--;
 		emit(ctx, '}');
 		break;
+	}
+}
+
+function visitWhileLoop(node: WhileLoopCompositeNode, ctx: SimplifiedGenContext): void {
+	const condition = extractConditionString(node.ifNode, ctx);
+
+	if (node.isDoWhile) {
+		emit(ctx, 'do {');
+		ctx.indent++;
+		// For do-while, body is in the parent chain (before this composite).
+		// The bodyChain is null. Nothing to emit here — body was already emitted.
+		// However, if bodyChain is provided (future-proofing), visit it.
+		if (node.bodyChain) {
+			visitComposite(node.bodyChain, ctx);
+		}
+		ctx.indent--;
+		emit(ctx, `} while (${condition});`);
+	} else {
+		emit(ctx, `while (${condition}) {`);
+		ctx.indent++;
+		if (node.bodyChain) {
+			visitComposite(node.bodyChain, ctx);
+		}
+		ctx.indent--;
+		emit(ctx, '}');
 	}
 }
 

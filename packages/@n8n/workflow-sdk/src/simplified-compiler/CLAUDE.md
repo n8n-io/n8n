@@ -67,6 +67,7 @@ Source JS string
   -> walkStatements() per callback
      -> extractIOCall() (http, ai, workflow, respond)
      -> processIfStatement() / processSwitchStatement()
+     -> processWhileStatement() / processDoWhileStatement()
      -> processForOfStatement() / processPromiseAll()
      -> flushPendingCode() (batch non-IO statements into Code nodes)
   -> generateSDKCode()
@@ -76,7 +77,7 @@ Source JS string
 Key tracking during compilation:
 - `varSourceMap`: variable name -> source node name (for expression resolution)
 - `varSourceKind`: variable -> `'io'` | `'code'` (determines reference style)
-- Counters: `http`, `code`, `if`, `switch`, `loop`, `respond`, `wf`, `set`
+- Counters: `http`, `code`, `if`, `switch`, `loop`, `respond`, `wf`, `set`, `while`
 
 ### Decompile: SDK -> Simplified JS
 
@@ -122,7 +123,7 @@ Assert: normalizeSDK(SDK₁) === normalizeSDK(SDK₂)
 - **Forward test**: `transpileWorkflowJS(input.js)` must equal `output.js` exactly
 - **Round-trip test**: compile -> decompile -> recompile must produce structurally identical SDK
 
-**Fixtures:** `__fixtures__/w01-w32/`, each containing:
+**Fixtures:** `__fixtures__/w01-w34/`, each containing:
 - `meta.json` — title, templateId, optional `skip` flag
 - `input.js` — simplified DSL source
 - `output.js` — expected SDK output
@@ -133,7 +134,7 @@ Assert: normalizeSDK(SDK₁) === normalizeSDK(SDK₂)
 |------|---------|
 | `compiler.ts` | Main transpiler: simplified JS -> Workflow-SDK TypeScript |
 | `decompiler.ts` | Thin wrapper: SDK -> simplified JS (orchestrates codegen pipeline) |
-| `compiler.test.ts` | Forward tests (18 phases) + round-trip tests + report generation |
+| `compiler.test.ts` | Forward tests (19 phases) + round-trip tests + report generation |
 | `execution.test.ts` | Execution tests: compile → parse → pin data → execute with nock |
 | `execution-utils.ts` | Lightweight workflow executor: `executeWorkflow()`, `buildAdditionalData()`, mock task runner |
 | `decompiler-debug.test.ts` | Debug test for decompile round-trips with diff logging |
@@ -142,7 +143,7 @@ Assert: normalizeSDK(SDK₁) === normalizeSDK(SDK₂)
 | `examples.ts` | Pre-built DSL examples for UI quick-start templates |
 | `generate-report.ts` | HTML report generator for fixture validation results + expectation badges/diffs |
 | `index.ts` | Public exports: `transpileWorkflowJS`, `decompileWorkflowSDK`, `COMPILER_EXAMPLES` |
-| `__fixtures__/w01-w32/` | Test fixtures (real workflow patterns, w18-w22 sub-functions, w23-w24 try/catch, w25 CRUD+branching, w26 loop+sub-fn, w27 loop+try/catch, w28 else-if+numeric, w29 try+switch, w30 multi-trigger independent, w31 Promise.all, w32 app trigger) |
+| `__fixtures__/w01-w34/` | Test fixtures (real workflow patterns, w18-w22 sub-functions, w23-w24 try/catch, w25 CRUD+branching, w26 loop+sub-fn, w27 loop+try/catch, w28 else-if+numeric, w29 try+switch, w30 multi-trigger independent, w31 Promise.all, w32 app trigger, w33 do-while poll, w34 while cursor) |
 
 **Decompile pipeline (in `src/codegen/`):**
 
@@ -219,7 +220,9 @@ onTrigger('jira', {
 | **Respond** | `respond({ status, body, headers })` | respondToWebhook node |
 | **If/else** | `if (cond) { ... } else { ... }` | ifElse node with branches |
 | **Switch** | `switch (expr) { case: ... }` | switchCase node |
-| **Loops** | `for (const x of items) { ... }` | Splitter Code + aggregate |
+| **Loops (for-of)** | `for (const x of items) { ... }` | Splitter Code + aggregate |
+| **Loops (while)** | `while (cond) { ... }` | IF node (`While N`) with body as true branch + back-edge |
+| **Loops (do-while)** | `do { ... } while (cond)` | Body nodes + IF node (`While N`) with back-edge to first body node |
 | **Try/catch** | `try { ... } catch { ... }` | onError behavior on nodes |
 | **Promise.all** | `const [a, b] = await Promise.all([http.get(...), ...])` | Fan-out HTTP nodes + Merge + collect Code node |
 | **Sub-functions** | `async function fn(params) { ... }` then `await fn(args)` | Execute Workflow node with inline `workflowJson` |
@@ -258,7 +261,7 @@ pushd packages/@n8n/workflow-sdk && pnpm test decompiler-debug.test.ts && popd
 
 ## Conventions
 
-- **Node variable naming**: `t0` (trigger), `http1`, `code1`, `if1`, `switch1`, `set1`, `agg1`, `respond1`, `wf1`
+- **Node variable naming**: `t0` (trigger), `http1`, `code1`, `if1`, `switch1`, `set1`, `agg1`, `respond1`, `wf1`, `while1`
 - **No n8n expressions in DSL**: plain JS variables only — compiler resolves to `={{ $('NodeName').first().json.path }}`
 - **Never use `$json` in generated expressions**: always use explicit `$('NodeName').first().json.prop` references. This ensures expressions are unambiguous and don't depend on predecessor ordering.
 - **`executeOnce: true`** on all non-trigger nodes (single-item semantics)
@@ -329,8 +332,8 @@ Fixtures with HTTP calls can provide a `nock.ts` file exporting `setupNock(): no
 
 ## Coverage Status
 
-- **Round-trip**: 32/32 fixtures pass (100%)
-- **Schema validation**: 32/32 fixtures pass (100%). `KNOWN_SCHEMA_VIOLATIONS` is empty.
+- **Round-trip**: 34/34 fixtures pass (100%)
+- **Schema validation**: 34/34 fixtures pass (100%). `KNOWN_SCHEMA_VIOLATIONS` is empty.
 
 **Key insight**: Nested sub-workflow WorkflowBuilder references (e.g., `workflowJson: __tryCatch_1Workflow` inside a loop body sub-workflow) are handled automatically by `resolveWorkflowBuilderValues()` in `json-serializer.ts`. It duck-types WorkflowBuilder instances (`toJSON` + `add` methods) at any nesting depth and converts them to `JSON.stringify(value.toJSON())`.
 
@@ -349,6 +352,7 @@ Deep-dive architecture docs live in `docs/` — read on demand when working on s
 | `docs/dynamic-urls.md` | BinaryExpression URL resolution (lazy resolution timing, decompiler splitOnPlus) |
 | `docs/execution-tests.md` | Execution test harness (task runner, nock mocking, expectations, credentials) |
 | `docs/round-trip-fixes.md` | W25/W26/W27 historical bug fixes |
+| `docs/while-loops.md` | While/do-while loop compilation and decompilation (IF nodes, back-edges, cycle detection) |
 
 ## Updating This Document
 
