@@ -1,5 +1,5 @@
 import { computed, nextTick, watch } from 'vue';
-import type { INodeParameters } from 'n8n-workflow';
+import { type INodeParameters, deepCopy } from 'n8n-workflow';
 
 import type { SetupCardItem } from '@/features/setupPanel/setupPanel.types';
 import { useWorkflowSetupState } from '@/features/setupPanel/composables/useWorkflowSetupState';
@@ -12,6 +12,54 @@ import {
 	isFullPlaceholderValue,
 } from '@/features/ai/assistant/composables/useBuilderTodos';
 import { MANUAL_TRIGGER_NODE_TYPE } from '@/app/constants/nodeTypes';
+
+/** Delay before auto-advancing to the next card after completion (ms) */
+const AUTO_ADVANCE_DELAY_MS = 300;
+
+/**
+ * Navigates a nested object by path segments (supports array index notation like `[0]`).
+ * Returns the parent object and the final key, or undefined if the path is invalid.
+ */
+function resolveNestedPath(
+	root: Record<string, unknown>,
+	path: string[],
+): { parent: Record<string, unknown> | unknown[]; key: string } | undefined {
+	let target: unknown = root;
+	for (let i = 0; i < path.length - 1; i++) {
+		if (target === null || target === undefined || typeof target !== 'object') return undefined;
+		const segment = path[i];
+		const arrayMatch = /^\[(\d+)]$/.exec(segment);
+		if (arrayMatch && Array.isArray(target)) {
+			target = (target as unknown[])[Number(arrayMatch[1])];
+		} else {
+			target = (target as Record<string, unknown>)[segment];
+		}
+	}
+	if (target === null || target === undefined || typeof target !== 'object') return undefined;
+	return { parent: target as Record<string, unknown> | unknown[], key: path[path.length - 1] };
+}
+
+/**
+ * Reads a value from a parent object/array using the final path key.
+ */
+function getByKey(parent: Record<string, unknown> | unknown[], key: string): unknown {
+	const arrayMatch = /^\[(\d+)]$/.exec(key);
+	if (arrayMatch && Array.isArray(parent)) return parent[Number(arrayMatch[1])];
+	return (parent as Record<string, unknown>)[key];
+}
+
+/**
+ * Clears a value in a parent object/array by setting it to empty string.
+ */
+function clearByKey(parent: Record<string, unknown> | unknown[], key: string): void {
+	const value = '';
+	const arrayMatch = /^\[(\d+)]$/.exec(key);
+	if (arrayMatch && Array.isArray(parent)) {
+		parent[Number(arrayMatch[1])] = value;
+	} else if (key in (parent as Record<string, unknown>)) {
+		(parent as Record<string, unknown>)[key] = value;
+	}
+}
 
 /**
  * Composable for managing builder setup wizard cards.
@@ -52,19 +100,6 @@ export function useBuilderSetupCards() {
 		return result;
 	});
 
-	// Reset persisted placeholder params when wizard state resets.
-	// Also skip to the first incomplete card after reset (handles AI
-	// updating the workflow without the wizard remounting).
-	watch(
-		() => builderStore.wizardClearedPlaceholders.size,
-		(size) => {
-			if (size === 0) {
-				seenPlaceholderParams.clear();
-				void nextTick(() => skipToFirstIncomplete());
-			}
-		},
-	);
-
 	const {
 		setupCards: baseCards,
 		firstTriggerName,
@@ -104,6 +139,19 @@ export function useBuilderSetupCards() {
 		}
 	}
 
+	// Reset persisted placeholder params when wizard state resets.
+	// Also skip to the first incomplete card after reset (handles AI
+	// updating the workflow without the wizard remounting).
+	watch(
+		() => builderStore.wizardClearedPlaceholders.size,
+		(size) => {
+			if (size === 0) {
+				seenPlaceholderParams.clear();
+				void nextTick(() => skipToFirstIncomplete());
+			}
+		},
+	);
+
 	// Clamp step index when cards array changes, and on mount skip to
 	// the first incomplete card (handles wizard remounting after AI update
 	// with some cards already complete).
@@ -135,43 +183,17 @@ export function useBuilderSetupCards() {
 			const placeholders = findPlaceholderDetails(card.state.node.parameters);
 			if (placeholders.length === 0) return;
 
-			const updatedParams = JSON.parse(
-				JSON.stringify(card.state.node.parameters),
-			) as INodeParameters;
+			const updatedParams = deepCopy(card.state.node.parameters);
 
-			for (const placeholder of placeholders) {
-				if (placeholder.path.length === 0) continue;
-				let target: unknown = updatedParams as unknown;
-				for (let i = 0; i < placeholder.path.length - 1; i++) {
-					if (target === null || target === undefined || typeof target !== 'object') break;
-					const segment = placeholder.path[i];
-					const arrayMatch = /^\[(\d+)]$/.exec(segment);
-					if (arrayMatch && Array.isArray(target)) {
-						target = (target as unknown[])[Number(arrayMatch[1])];
-					} else {
-						target = (target as Record<string, unknown>)[segment];
-					}
-				}
-				if (target !== null && target !== undefined && typeof target === 'object') {
-					const lastKey = placeholder.path[placeholder.path.length - 1];
-					const arrayMatch = /^\[(\d+)]$/.exec(lastKey);
-					let currentValue: unknown;
-					if (arrayMatch && Array.isArray(target)) {
-						currentValue = (target as unknown[])[Number(arrayMatch[1])];
-					} else {
-						currentValue = (target as Record<string, unknown>)[lastKey];
-					}
+			for (const { path } of placeholders) {
+				if (path.length === 0) continue;
+				const resolved = resolveNestedPath(updatedParams, path);
+				if (!resolved) continue;
 
-					// Only clear fields whose entire value is a placeholder.
-					// Mixed-content fields (e.g. code with embedded placeholders) are left intact.
-					if (!isFullPlaceholderValue(currentValue)) continue;
-
-					if (arrayMatch && Array.isArray(target)) {
-						(target as unknown[])[Number(arrayMatch[1])] = '';
-					} else if (lastKey in (target as Record<string, unknown>)) {
-						(target as Record<string, unknown>)[lastKey] = '';
-					}
-				}
+				// Only clear fields whose entire value is a placeholder.
+				// Mixed-content fields (e.g. code with embedded placeholders) are left intact.
+				if (!isFullPlaceholderValue(getByKey(resolved.parent, resolved.key))) continue;
+				clearByKey(resolved.parent, resolved.key);
 			}
 
 			workflowState.updateNodeProperties({
@@ -211,7 +233,10 @@ export function useBuilderSetupCards() {
 	}
 
 	// Auto-advance to the next card when the current one completes (non-last cards).
-	// Skips when the full workflow has been executed (wizardHasExecutedWorkflow).
+	// Only for cards WITHOUT parameter inputs (credential-only/trigger-only).
+	// Cards with parameters should not auto-advance — the user may still be typing.
+	// Those cards advance via explicit "Continue" or "Execute step" actions instead.
+	// Also skips when the full workflow has been executed (wizardHasExecutedWorkflow).
 	let lastWatchedStep = currentStepIndex.value;
 	watch(
 		() => ({ isComplete: currentCard.value?.state.isComplete, step: currentStepIndex.value }),
@@ -222,7 +247,14 @@ export function useBuilderSetupCards() {
 
 			if (isComplete && !old?.isComplete && step < cards.value.length - 1) {
 				if (builderStore.wizardHasExecutedWorkflow) return;
-				setTimeout(() => goToNext(), 300);
+
+				const card = currentCard.value;
+				const hasParams =
+					(card?.state.additionalParameterNames?.length ?? 0) > 0 ||
+					Object.keys(card?.state.parameterIssues ?? {}).length > 0;
+				if (!hasParams) {
+					setTimeout(() => goToNext(), AUTO_ADVANCE_DELAY_MS);
+				}
 			}
 		},
 	);

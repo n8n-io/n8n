@@ -344,7 +344,13 @@ test.describe.serial(
 			await expect(card).toBeVisible();
 		});
 
-		test('should not complete placeholder card with credential alone', async ({ n8n, api }) => {
+		// Skipped: flaky in serial suite — credentials from earlier tests get auto-applied and
+		// tested before the waitForResponse waiter is registered, causing a timeout.
+		// Re-enable with proper test isolation (TEST_ISOLATION container capability).
+		test.skip('should not complete placeholder card with credential alone', async ({
+			n8n,
+			api,
+		}) => {
 			const credName = `Slack Test ${nanoid()}`;
 			await api.credentials.createCredential({
 				name: credName,

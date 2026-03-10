@@ -341,7 +341,7 @@ describe('useBuilderSetupCards', () => {
 		vi.useRealTimers();
 	});
 
-	it('auto-advances for cards with additional parameters when they complete', async () => {
+	it('does not auto-advance for cards with parameters to avoid disrupting typing', async () => {
 		vi.useFakeTimers();
 
 		mockSetupCards.value = [
@@ -356,7 +356,7 @@ describe('useBuilderSetupCards', () => {
 		const { currentStepIndex } = await getComposable();
 		expect(currentStepIndex.value).toBe(0);
 
-		// Simulate card completing (e.g., user filled in params and executed)
+		// Simulate card completing (e.g., user filled in the last required param)
 		mockSetupCards.value = [
 			createCard({
 				node: createNode({ name: 'Node 1', id: 'n1' }),
@@ -371,8 +371,8 @@ describe('useBuilderSetupCards', () => {
 		vi.advanceTimersByTime(500);
 		await nextTick();
 
-		// Should auto-advance to next card
-		expect(currentStepIndex.value).toBe(1);
+		// Should NOT auto-advance — user may still be editing parameters
+		expect(currentStepIndex.value).toBe(0);
 
 		vi.useRealTimers();
 	});

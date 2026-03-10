@@ -202,12 +202,21 @@ function onCredentialDeselected(payload: { credentialType: string; nodeName: str
 }
 
 function onStepExecuted() {
-	if (!isAllComplete.value) return;
+	const card = currentCard.value;
+	if (!card?.state.isComplete) return;
 
 	const isLastStep = currentStepIndex.value >= totalCards.value - 1;
-	if (isLastStep) {
+
+	if (isLastStep && isAllComplete.value) {
 		builderStore.wizardHasExecutedWorkflow = true;
 		setupPanelStore.clearHighlightedNodes();
+		return;
+	}
+
+	// Auto-advance after step execution for cards with parameters.
+	// Credential-only cards are handled by the composable's auto-advance watcher.
+	if (!isLastStep) {
+		goToNext();
 	}
 }
 
