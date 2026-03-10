@@ -6,6 +6,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import * as externalSecretsApi from '@n8n/rest-api-client';
 import { connectProvider } from '@n8n/rest-api-client';
 import { useRBACStore } from '@/app/stores/rbac.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ExternalSecretsProvider } from '@n8n/api-types';
 
 /**
@@ -61,6 +62,7 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 	const rbacStore = useRBACStore();
+	const projectsStore = useProjectsStore();
 
 	const externalSecretsModuleSettings = computed(
 		() => settingsStore.moduleSettings['external-secrets'],
@@ -76,6 +78,15 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 
 	const isEnterpriseExternalSecretsEnabled = computed(
 		() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.ExternalSecrets],
+	);
+
+	// True if none of the new external secrets features are enabled.
+	// Used to decide whether to fetch secrets via legacy/global methods rather than project-scoped APIs.
+	const isLegacyMode = computed(
+		() =>
+			!externalSecretsModuleSettings.value?.roleBasedAccess &&
+			!externalSecretsModuleSettings.value?.forProjects &&
+			!externalSecretsModuleSettings.value?.multipleConnections,
 	);
 
 	const secrets = computed(() => state.secrets);
@@ -101,18 +112,65 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 		return globalSecretsAsObject.value;
 	});
 
-	async function fetchGlobalSecrets() {
+	/**
+	 * TODO: remove this once beta features (multiple connections and scoped access) are stable
+	 */
+	async function fetchLegacySecrets() {
 		if (rbacStore.hasScope('externalSecret:list')) {
 			try {
-				const moduleConfig = externalSecretsModuleSettings.value;
-				const betaFeatureEnabled = moduleConfig?.forProjects || moduleConfig?.multipleConnections;
-				state.secrets = betaFeatureEnabled
-					? await externalSecretsApi.getGlobalExternalSecrets(rootStore.restApiContext)
-					: await externalSecretsApi.getExternalSecrets(rootStore.restApiContext);
+				state.secrets = await externalSecretsApi.getExternalSecrets(rootStore.restApiContext);
 			} catch {
 				state.secrets = {};
 			}
 		}
+	}
+
+	/**
+	 * TODO: remove this once scoped access is stable
+	 */
+	async function fetchMultiConnectionsGlobalSecrets() {
+		if (rbacStore.hasScope('externalSecret:list')) {
+			try {
+				state.secrets = await externalSecretsApi.getGlobalExternalSecrets(rootStore.restApiContext);
+			} catch {
+				state.secrets = {};
+			}
+		}
+	}
+
+	async function fetchScopedGlobalSecrets(projectId: string) {
+		try {
+			// There is no need to check for global scope permission
+			// the backend has dedicated logic to return the global secrets
+			// relevant to the project and the user
+			state.secrets = await externalSecretsApi.getGlobalExternalSecretsForProject(
+				rootStore.restApiContext,
+				projectId,
+			);
+		} catch {
+			state.secrets = {};
+		}
+	}
+
+	async function fetchGlobalSecrets(projectId?: string) {
+		const moduleConfig = externalSecretsModuleSettings.value;
+
+		if (moduleConfig?.roleBasedAccess) {
+			// In principle when roleBasedAccess is enabled, projectId is always provided
+			if (!projectId) {
+				return;
+			}
+
+			await fetchScopedGlobalSecrets(projectId);
+			return;
+		}
+
+		if (moduleConfig?.forProjects || moduleConfig?.multipleConnections) {
+			await fetchMultiConnectionsGlobalSecrets();
+			return;
+		}
+
+		await fetchLegacySecrets();
 	}
 
 	async function fetchProjectSecrets(projectId: string) {
@@ -121,21 +179,39 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 			return;
 		}
 
-		if (rbacStore.hasScope('externalSecret:list')) {
+		// It's not possible to scope secrets to a personal project,
+		// therefore there is not need to fetch project secrets for a personal project.
+		const isTeamProject = projectId !== projectsStore.personalProject?.id;
+		if (!isTeamProject) {
+			return;
+		}
+
+		const project =
+			projectsStore.currentProject?.id === projectId
+				? projectsStore.currentProject
+				: projectsStore.myProjects.find((p) => p.id === projectId);
+		if (
+			rbacStore.hasScope('externalSecret:list') ||
+			project?.scopes?.includes('externalSecret:list') === true
+		) {
 			try {
 				state.projectSecrets = await externalSecretsApi.getProjectExternalSecrets(
 					rootStore.restApiContext,
 					projectId,
 				);
-			} catch (error) {
+			} catch {
 				state.projectSecrets = {};
 			}
 		}
 	}
 
+	async function fetchSecretsForProject(projectId: string) {
+		await Promise.all([fetchGlobalSecrets(projectId), fetchProjectSecrets(projectId)]);
+	}
+
 	async function reloadProvider(id: string) {
 		const { updated } = await externalSecretsApi.reloadProvider(rootStore.restApiContext, id);
-		if (updated) {
+		if (updated && isLegacyMode.value) {
 			await fetchGlobalSecrets();
 		}
 
@@ -190,13 +266,17 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 
 	async function updateProviderConnected(id: string, value: boolean) {
 		await connectProvider(rootStore.restApiContext, id, value);
-		await fetchGlobalSecrets();
+		if (isLegacyMode.value) {
+			await fetchGlobalSecrets();
+		}
 		updateStoredProvider(id, { connected: value, state: value ? 'connected' : 'initializing' });
 	}
 
 	async function updateProvider(id: string, { data }: Partial<ExternalSecretsProvider>) {
 		await externalSecretsApi.updateProvider(rootStore.restApiContext, id, data);
-		await fetchGlobalSecrets();
+		if (isLegacyMode.value) {
+			await fetchGlobalSecrets();
+		}
 		updateStoredProvider(id, { data });
 	}
 
@@ -215,6 +295,7 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 		isEnterpriseExternalSecretsEnabled,
 		fetchGlobalSecrets,
 		fetchProjectSecrets,
+		fetchSecretsForProject,
 		getProvider,
 		getProviders,
 		testProviderConnection,

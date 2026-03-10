@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "2.11.0",
+  "version": "2.12.0",
   "description": "",
   "main": "index.js",
   "exports": {
@@ -72,7 +72,10 @@
       "dist/credentials/WolframAlphaApi.credentials.js",
       "dist/credentials/XAiApi.credentials.js",
       "dist/credentials/XataApi.credentials.js",
-      "dist/credentials/ZepApi.credentials.js"
+      "dist/credentials/ZepApi.credentials.js",
+      "dist/credentials/ChatHubVectorStorePGVectorApi.credentials.js",
+      "dist/credentials/ChatHubVectorStoreQdrantApi.credentials.js",
+      "dist/credentials/ChatHubVectorStorePineconeApi.credentials.js"
     ],
     "nodes": [
       "dist/nodes/vendors/Anthropic/Anthropic.node.js",
@@ -167,7 +170,10 @@
       "dist/nodes/vector_store/VectorStoreMilvus/VectorStoreMilvus.node.js",
       "dist/nodes/vector_store/VectorStoreMongoDBAtlas/VectorStoreMongoDBAtlas.node.js",
       "dist/nodes/vector_store/VectorStorePGVector/VectorStorePGVector.node.js",
+      "dist/nodes/vector_store/ChatHubVectorStorePGVector/ChatHubVectorStorePGVector.node.js",
+      "dist/nodes/vector_store/ChatHubVectorStoreQdrant/ChatHubVectorStoreQdrant.node.js",
       "dist/nodes/vector_store/VectorStorePinecone/VectorStorePinecone.node.js",
+      "dist/nodes/vector_store/ChatHubVectorStorePinecone/ChatHubVectorStorePinecone.node.js",
       "dist/nodes/vector_store/VectorStorePineconeInsert/VectorStorePineconeInsert.node.js",
       "dist/nodes/vector_store/VectorStorePineconeLoad/VectorStorePineconeLoad.node.js",
       "dist/nodes/vector_store/VectorStoreRedis/VectorStoreRedis.node.js",

@@ -2040,6 +2040,12 @@ onUpdated(async () => {
 	--input--border-style: dashed;
 	--input--border-width: 1.5px;
 
+	:global(.n8n-input__wrapper) {
+		outline: 1.5px dashed var(--ndv--droppable-parameter--color);
+		outline-offset: -1.5px;
+		transition: none;
+	}
+
 	.cm-editor {
 		border-color: transparent;
 		outline: 1.5px dashed var(--ndv--droppable-parameter--color);
@@ -2054,6 +2060,12 @@ onUpdated(async () => {
 	--input--color--background: var(--color--foreground--tint-2);
 	--input--border-style: solid;
 	--input--border-width: 1px;
+
+	:global(.n8n-input__wrapper) {
+		outline: 1px solid var(--color--success);
+		outline-offset: -1px;
+		transition: none;
+	}
 
 	textarea,
 	input,

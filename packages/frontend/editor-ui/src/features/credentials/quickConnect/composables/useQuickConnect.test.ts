@@ -1,4 +1,4 @@
-import { QUICK_CONNECT_EXPERIMENT } from '@/app/constants';
+import { MODAL_CONFIRM, QUICK_CONNECT_EXPERIMENT } from '@/app/constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -81,6 +81,34 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 	}),
 }));
 
+const { mockConfirm } = vi.hoisted(() => ({
+	mockConfirm: vi.fn(),
+}));
+vi.mock('@/app/composables/useMessage', () => ({
+	useMessage: () => ({
+		confirm: mockConfirm,
+	}),
+}));
+
+const mockUsersState = vi.hoisted(() => ({
+	currentUser: null as {
+		email?: string | null;
+		firstName?: string | null;
+		fullName?: string | null;
+		lastName?: string | null;
+	} | null,
+}));
+vi.mock('@/features/settings/users/users.store', () => ({
+	useUsersStore: () => mockUsersState,
+}));
+
+const { mockGetQuickConnectApiKey } = vi.hoisted(() => ({
+	mockGetQuickConnectApiKey: vi.fn(),
+}));
+vi.mock('../quickConnect.api', () => ({
+	getQuickConnectApiKey: mockGetQuickConnectApiKey,
+}));
+
 describe('useQuickConnect()', () => {
 	const isVariantEnabledMock = vi.fn(() => false);
 	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
@@ -103,6 +131,7 @@ describe('useQuickConnect()', () => {
 
 		settingsStore = mockedStore(useSettingsStore);
 		settingsStore.moduleSettings['quick-connect'] = undefined;
+		mockUsersState.currentUser = null;
 	});
 
 	it('checks if feature is enabled through posthog', () => {
@@ -533,6 +562,238 @@ describe('useQuickConnect()', () => {
 								error,
 								'credentialEdit.credentialEdit.showError.createCredential.title',
 							);
+						});
+
+						describe('firecrawl quick connect', () => {
+							const firecrawlOption: QuickConnectOption = {
+								packageName: 'n8n-nodes-firecrawl',
+								credentialType: 'firecrawlApi',
+								text: 'Firecrawl',
+								quickConnectType: 'firecrawl',
+								consentText: 'This is the consent text.',
+							};
+
+							beforeEach(() => {
+								mockIsOAuthCredentialType.mockReturnValue(false);
+								settingsStore.moduleSettings['quick-connect'] = {
+									options: [firecrawlOption],
+								};
+								mockGetCredentialTypeByName.mockReturnValue({
+									name: 'firecrawlApi',
+									displayName: 'Firecrawl API',
+									properties: [],
+								});
+								mockGetQuickConnectApiKey.mockResolvedValue({ apiKey: 'firecrawl-api-key' });
+								mockCreateNewCredential.mockResolvedValue({
+									id: 'cred-456',
+									name: 'Firecrawl API',
+									type: 'firecrawlApi',
+								});
+								mockConfirm.mockResolvedValue(MODAL_CONFIRM);
+							});
+
+							it('shows confirmation dialog with sanitized HTML content', async () => {
+								const { connect } = useQuickConnect();
+								await connect({
+									credentialTypeName: 'firecrawlApi',
+									nodeType: 'n8n-nodes-firecrawl.firecrawl',
+									source: 'node_type',
+									serviceName: 'Firecrawl',
+								});
+
+								expect(mockConfirm).toHaveBeenCalledWith(
+									expect.objectContaining({
+										type: 'span',
+										props: expect.objectContaining({
+											innerHTML: 'This is the consent text.',
+										}),
+									}),
+									'nodeCredentials.quickConnect.connectTo',
+									expect.objectContaining({
+										customClass: 'wide',
+									}),
+								);
+							});
+
+							it('passes undefined as confirmationCheckboxMessage when consentCheckbox is not set', async () => {
+								const { connect } = useQuickConnect();
+								await connect({
+									credentialTypeName: 'firecrawlApi',
+									nodeType: 'n8n-nodes-firecrawl.firecrawl',
+									source: 'node_type',
+									serviceName: 'Firecrawl',
+								});
+
+								expect(mockConfirm).toHaveBeenCalledWith(
+									expect.any(Object),
+									expect.any(String),
+									expect.objectContaining({
+										confirmationCheckboxMessage: undefined,
+									}),
+								);
+							});
+
+							it('passes sanitized HTML as confirmationCheckboxMessage when consentCheckbox is set', async () => {
+								settingsStore.moduleSettings['quick-connect'] = {
+									options: [{ ...firecrawlOption, consentCheckbox: 'I agree to the terms' }],
+								};
+
+								const { connect } = useQuickConnect();
+								await connect({
+									credentialTypeName: 'firecrawlApi',
+									nodeType: 'n8n-nodes-firecrawl.firecrawl',
+									source: 'node_type',
+									serviceName: 'Firecrawl',
+								});
+
+								expect(mockConfirm).toHaveBeenCalledWith(
+									expect.any(Object),
+									expect.any(String),
+									expect.objectContaining({
+										confirmationCheckboxMessage: expect.objectContaining({
+											type: 'span',
+											props: expect.objectContaining({
+												innerHTML: 'I agree to the terms',
+											}),
+										}),
+									}),
+								);
+							});
+
+							it('returns null without creating a credential when dialog is cancelled', async () => {
+								mockConfirm.mockResolvedValue('cancel');
+
+								const { connect } = useQuickConnect();
+								const result = await connect({
+									credentialTypeName: 'firecrawlApi',
+									nodeType: 'n8n-nodes-firecrawl.firecrawl',
+									source: 'node_type',
+									serviceName: 'Firecrawl',
+								});
+
+								expect(result).toBeNull();
+								expect(mockGetQuickConnectApiKey).not.toHaveBeenCalled();
+								expect(mockCreateNewCredential).not.toHaveBeenCalled();
+							});
+
+							it('creates credential after dialog confirmation', async () => {
+								const mockCredential = {
+									id: 'cred-456',
+									name: 'Firecrawl API',
+									type: 'firecrawlApi',
+								};
+								mockCreateNewCredential.mockResolvedValue(mockCredential);
+
+								const { connect } = useQuickConnect();
+								const result = await connect({
+									credentialTypeName: 'firecrawlApi',
+									nodeType: 'n8n-nodes-firecrawl.firecrawl',
+									source: 'node_type',
+									serviceName: 'Firecrawl',
+								});
+
+								expect(mockGetQuickConnectApiKey).toHaveBeenCalled();
+								expect(result).toEqual(mockCredential);
+							});
+
+							describe('user data replacement in consent text', () => {
+								it('replaces user template variables with current user data', async () => {
+									settingsStore.moduleSettings['quick-connect'] = {
+										options: [
+											{
+												...firecrawlOption,
+												consentText:
+													'Hello {user.firstName} {user.lastName}, your email is {user.email} and full name {user.fullName}',
+											},
+										],
+									};
+									mockUsersState.currentUser = {
+										email: 'john@example.com',
+										firstName: 'John',
+										fullName: 'John Doe',
+										lastName: 'Doe',
+									};
+
+									const { connect } = useQuickConnect();
+									await connect({
+										credentialTypeName: 'firecrawlApi',
+										nodeType: 'n8n-nodes-firecrawl.firecrawl',
+										source: 'node_type',
+										serviceName: 'Firecrawl',
+									});
+
+									expect(mockConfirm).toHaveBeenCalledWith(
+										expect.objectContaining({
+											type: 'span',
+											props: expect.objectContaining({
+												innerHTML:
+													'Hello John Doe, your email is john@example.com and full name John Doe',
+											}),
+										}),
+										expect.any(String),
+										expect.any(Object),
+									);
+								});
+
+								it('passes text unchanged when no user is logged in', async () => {
+									settingsStore.moduleSettings['quick-connect'] = {
+										options: [{ ...firecrawlOption, consentText: 'Hello {user.firstName}' }],
+									};
+									mockUsersState.currentUser = null;
+
+									const { connect } = useQuickConnect();
+									await connect({
+										credentialTypeName: 'firecrawlApi',
+										nodeType: 'n8n-nodes-firecrawl.firecrawl',
+										source: 'node_type',
+										serviceName: 'Firecrawl',
+									});
+
+									expect(mockConfirm).toHaveBeenCalledWith(
+										expect.objectContaining({
+											type: 'span',
+											props: expect.objectContaining({
+												innerHTML: 'Hello {user.firstName}',
+											}),
+										}),
+										expect.any(String),
+										expect.any(Object),
+									);
+								});
+
+								it('replaces missing user fields with empty string', async () => {
+									settingsStore.moduleSettings['quick-connect'] = {
+										options: [
+											{ ...firecrawlOption, consentText: '{user.firstName} <{user.email}>' },
+										],
+									};
+									mockUsersState.currentUser = {
+										email: null,
+										firstName: 'Alice',
+										fullName: null,
+										lastName: null,
+									};
+
+									const { connect } = useQuickConnect();
+									await connect({
+										credentialTypeName: 'firecrawlApi',
+										nodeType: 'n8n-nodes-firecrawl.firecrawl',
+										source: 'node_type',
+										serviceName: 'Firecrawl',
+									});
+
+									expect(mockConfirm).toHaveBeenCalledWith(
+										expect.objectContaining({
+											type: 'span',
+											props: expect.objectContaining({
+												innerHTML: 'Alice ',
+											}),
+										}),
+										expect.any(String),
+										expect.any(Object),
+									);
+								});
+							});
 						});
 
 						it('throws error for unsupported quick connect type', async () => {
