@@ -738,6 +738,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		credentialType: string,
 		credentialId: string,
 		sourceNodeName?: string,
+		skipHttpRequestType = false,
 	): void => {
 		const credential = credentialsStore.getCredentialById(credentialId);
 		if (!credential) return;
@@ -749,6 +750,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		for (const nodeName of getAffectedNodeNames(credentialType, sourceNodeName)) {
 			const node = workflowsStore.getNodeByName(nodeName);
 			if (!node) continue;
+			if (skipHttpRequestType && isHttpRequestNodeType(node.type)) continue;
 
 			// Clear auto-applied status for the previous credential on this node.
 			// During auto-apply the nodes are still unset so this is a no-op;
@@ -802,14 +804,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	 * that doesn't already have one assigned.
 	 * Runs once on initial load to pre-fill credential pickers.
 	 */
-	const tryAutoApplyCredential = (
-		credentialType: string,
-		nodeTypes: string[],
-		sourceNodeName?: string,
-	): void => {
-		// Exclude httpRequest nodes
-		nodeTypes = nodeTypes.filter((x) => !isHttpRequestNodeType(x));
-
+	const tryAutoApplyCredential = (credentialType: string, sourceNodeName?: string): void => {
 		const available = credentialsStore.getCredentialsByType(credentialType);
 		if (available.length === 0) return;
 		const mostRecent = available.reduce(
@@ -817,7 +812,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 			available[0],
 		);
 		autoAppliedCredentialIds.value.add(mostRecent.id);
-		setCredential(credentialType, mostRecent.id, sourceNodeName);
+		setCredential(credentialType, mostRecent.id, sourceNodeName, true);
 	};
 
 	const autoSelectCredentials = (): void => {
@@ -828,15 +823,12 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 
 		for (const credState of credStates) {
 			if (credState.selectedCredentialId) continue;
-			tryAutoApplyCredential(
-				credState.credentialType,
-				credState.nodes.map((n) => n.type),
-			);
+			tryAutoApplyCredential(credState.credentialType);
 		}
 
 		for (const nodeState of nStates) {
 			if (!nodeState.credentialType || nodeState.selectedCredentialId) continue;
-			tryAutoApplyCredential(nodeState.credentialType, [nodeState.node.type], nodeState.node.name);
+			tryAutoApplyCredential(nodeState.credentialType, nodeState.node.name);
 		}
 	};
 
