@@ -210,11 +210,8 @@ export function useBuilderSetupCards() {
 		goToNext();
 	}
 
-	// Auto-advance on card completion (non-last cards).
-	// Only auto-advance for cards WITHOUT parameter inputs (credential-only/trigger-only).
-	// Cards with parameters require explicit user action (Continue) because
-	// auto-advancing while the user is typing is disruptive.
-	// Also skip when the full workflow has been executed (wizardHasExecutedWorkflow).
+	// Auto-advance to the next card when the current one completes (non-last cards).
+	// Skips when the full workflow has been executed (wizardHasExecutedWorkflow).
 	let lastWatchedStep = currentStepIndex.value;
 	watch(
 		() => ({ isComplete: currentCard.value?.state.isComplete, step: currentStepIndex.value }),
@@ -225,14 +222,7 @@ export function useBuilderSetupCards() {
 
 			if (isComplete && !old?.isComplete && step < cards.value.length - 1) {
 				if (builderStore.wizardHasExecutedWorkflow) return;
-
-				const card = currentCard.value;
-				const hasParams =
-					(card?.state.additionalParameterNames?.length ?? 0) > 0 ||
-					Object.keys(card?.state.parameterIssues ?? {}).length > 0;
-				if (!hasParams) {
-					setTimeout(() => goToNext(), 300);
-				}
+				setTimeout(() => goToNext(), 300);
 			}
 		},
 	);
