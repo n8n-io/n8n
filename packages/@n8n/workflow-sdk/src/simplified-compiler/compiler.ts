@@ -204,6 +204,7 @@ interface TranspilerContext {
 	hasOnErrorAnnotation: boolean;
 	consumedComments: Set<number>; // tracks consumed comment start positions
 	inLoopBody: boolean;
+	loopVarName?: string;
 	loopCounter: number;
 	functionDefs: Map<string, FunctionDef>;
 	compiledFunctions: Map<string, CompiledFunction>;
@@ -1669,6 +1670,10 @@ function resolveExpressionFromAST(astNode: AcornNode, ctx: TranspilerContext): s
 			// IO node: variable IS the $json, so strip the root identifier
 			const propsAfterRoot = chain.includes('.') ? chain.slice(chain.indexOf('.') + 1) : '';
 			const jsonPath = propsAfterRoot ? `.${propsAfterRoot}` : '';
+			// Inside loop body, loop variable maps to current item ($json), not .first()
+			if (ctx.inLoopBody && root === ctx.loopVarName) {
+				return `={{ $json${jsonPath} }}`;
+			}
 			return `={{ $('${sourceNode}').first().json${jsonPath} }}`;
 		}
 		// Code node: variable is wrapped inside $json, keep full chain
@@ -1903,6 +1908,7 @@ function createBranchContext(parentCtx: TranspilerContext): TranspilerContext {
 		hasOnErrorAnnotation: false,
 		consumedComments: parentCtx.consumedComments,
 		inLoopBody: parentCtx.inLoopBody,
+		loopVarName: parentCtx.loopVarName,
 		loopCounter: parentCtx.loopCounter,
 		functionDefs: parentCtx.functionDefs,
 		compiledFunctions: parentCtx.compiledFunctions,
@@ -2310,12 +2316,9 @@ function processForOfStatement(
 		if (sourceKind === 'io') {
 			// IO node: variable IS the $json (e.g., AI agent result)
 			refLine = `const ${iterableRoot} = $('${sourceNodeName}').first().json;\n`;
-		} else if (sourceKind === 'aggregate') {
-			// Aggregate kind: variable is nested inside $json under its name
-			refLine = `const ${iterableRoot} = $('${sourceNodeName}').first().json.${iterableRoot};\n`;
 		} else {
-			// Code kind: use .all().map() to get item json array
-			refLine = `const ${iterableRoot} = $('${sourceNodeName}').all().map(i => i.json);\n`;
+			// Code/aggregate kind: variable is nested inside $json under its name
+			refLine = `const ${iterableRoot} = $('${sourceNodeName}').first().json.${iterableRoot};\n`;
 		}
 	}
 	// Use the full property chain for the iterable (e.g. analysis.action_items)
@@ -2352,6 +2355,7 @@ function processForOfStatement(
 
 		const branchCtx = createBranchContext(ctx);
 		branchCtx.inLoopBody = true;
+		branchCtx.loopVarName = loopVar;
 		branchCtx.prevVar = splitterVar;
 		const bodyStmts =
 			bodyNode.type === 'BlockStatement' && bodyNode.body ? bodyNode.body : [bodyNode];
@@ -3045,7 +3049,10 @@ function extractHttpCall(callNode: AcornNode, method: string, _source: string): 
 	const url = args[0] ? extractStringLiteral(args[0]) : undefined;
 
 	// Store raw AST node for lazy URL resolution in generateHttpSDK
-	const urlAstNode = !url && args[0]?.type === 'BinaryExpression' ? args[0] : undefined;
+	const urlAstNode =
+		!url && args[0] && ['BinaryExpression', 'Identifier', 'MemberExpression'].includes(args[0].type)
+			? args[0]
+			: undefined;
 
 	let body: Record<string, unknown> | null = null;
 	let bodyExpression: string | undefined;
@@ -3537,16 +3544,25 @@ function flushPendingCode(ctx: TranspilerContext): void {
 		jsCodeLines.push(`// From: ${referencedVars[0].sourceNode}`);
 	}
 
+	// Detect variables that are reassigned in the code body so we use `let` instead of `const`
+	const reassignedVars = new Set<string>();
+	const assignmentPattern = /\b(\w+)\s*=[^=<>!]/g;
+	let assignMatch;
+	while ((assignMatch = assignmentPattern.exec(codeSource)) !== null) {
+		reassignedVars.add(assignMatch[1]);
+	}
+
 	for (const { varName, sourceNode, kind } of referencedVars) {
 		// Use .first().json for IO-kind vars (webhook params, IO call results) for single-item access
 		// Use .all().map() for code-kind vars (variables from Code nodes) for array access
 		// Use .first().json.<varName> for aggregate-kind vars (collected HTTP results)
+		const decl = reassignedVars.has(varName) ? 'let' : 'const';
 		if (kind === 'io') {
-			jsCodeLines.push(`const ${varName} = $('${sourceNode}').first().json;`);
+			jsCodeLines.push(`${decl} ${varName} = $('${sourceNode}').first().json;`);
 		} else if (kind === 'aggregate') {
-			jsCodeLines.push(`const ${varName} = $('${sourceNode}').first().json.${varName};`);
+			jsCodeLines.push(`${decl} ${varName} = $('${sourceNode}').first().json.${varName};`);
 		} else {
-			jsCodeLines.push(`const ${varName} = $('${sourceNode}').all().map(i => i.json);`);
+			jsCodeLines.push(`${decl} ${varName} = $('${sourceNode}').all().map(i => i.json);`);
 		}
 	}
 
@@ -3689,10 +3705,11 @@ function generateHttpSDK(
 	options?: { skipExecuteOnce?: boolean },
 ): EmittedNode {
 	const method = io.method.toUpperCase();
-	// Resolve URL: static string, or lazy-resolve BinaryExpression AST via varSourceMap
+	// Resolve URL: static string, lazy-resolve BinaryExpression, or Identifier/MemberExpression
 	const url =
 		io.url ??
 		(io.urlAstNode ? resolveUrlExpression(io.urlAstNode, ctx) : undefined) ??
+		(io.urlAstNode ? resolveExpressionFromAST(io.urlAstNode, ctx) : undefined) ??
 		'{{dynamic URL}}';
 
 	const params: Record<string, unknown> = { method, url, options: {} };

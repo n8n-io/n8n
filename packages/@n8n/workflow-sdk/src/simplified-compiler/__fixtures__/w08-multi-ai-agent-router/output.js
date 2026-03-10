@@ -21,7 +21,7 @@ const code2 = node({
   config: {
     name: 'Code 2',
     parameters: {
-      jsCode: `// From: Code 1\nconst complexity = $('Code 1').all().map(i => i.json);\nconst provider = $('Code 1').all().map(i => i.json);\nprovider = 'groq';
+      jsCode: `// From: Code 1\nconst complexity = $('Code 1').all().map(i => i.json);\nlet provider = $('Code 1').all().map(i => i.json);\nprovider = 'groq';
 model = complexity <= 2 ? 'llama-3.1-8b-instant' : 'llama-3.1-70b-versatile';\nreturn [{ json: {} }];`,
       mode: 'runOnceForAllItems'
     },
@@ -34,7 +34,7 @@ const code3 = node({
   config: {
     name: 'Code 3',
     parameters: {
-      jsCode: `// From: Code 1\nconst provider = $('Code 1').all().map(i => i.json);\nprovider = 'openai';
+      jsCode: `// From: Code 1\nlet provider = $('Code 1').all().map(i => i.json);\nprovider = 'openai';
 model = 'gpt-4o';\nreturn [{ json: {} }];`,
       mode: 'runOnceForAllItems'
     },
@@ -47,7 +47,7 @@ const code4 = node({
   config: {
     name: 'Code 4',
     parameters: {
-      jsCode: `// From: Code 1\nconst provider = $('Code 1').all().map(i => i.json);\nprovider = 'anthropic';
+      jsCode: `// From: Code 1\nlet provider = $('Code 1').all().map(i => i.json);\nprovider = 'anthropic';
 model = 'claude-3-5-sonnet';\nreturn [{ json: {} }];`,
       mode: 'runOnceForAllItems'
     },

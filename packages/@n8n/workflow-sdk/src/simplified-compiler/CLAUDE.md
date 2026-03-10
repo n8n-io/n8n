@@ -331,8 +331,33 @@ Fixtures with HTTP calls can provide a `nock.ts` file exporting `setupNock(): no
 
 - **Round-trip**: 32/32 fixtures pass (100%)
 - **Schema validation**: 32/32 fixtures pass (100%). `KNOWN_SCHEMA_VIOLATIONS` is empty.
+- **Execution**: 28/32 pass, 4 fail (W05, W10, W15, W27). No skips.
+  - W05: Pre-existing issue — spreadsheet rows are arrays not objects, splitter produces invalid items
+  - W10: `extractLinks` function undefined in Code node mock environment
+  - W15: `workflow.run()` by name requires DB lookup, not supported in mock executor
+  - W27: Set node `type: 'string'` coerces objects to `[object Object]` in try/catch sub-workflow parameter passing
 
 **Key insight**: Nested sub-workflow WorkflowBuilder references (e.g., `workflowJson: __tryCatch_1Workflow` inside a loop body sub-workflow) are handled automatically by `resolveWorkflowBuilderValues()` in `json-serializer.ts`. It duck-types WorkflowBuilder instances (`toJSON` + `add` methods) at any nesting depth and converts them to `JSON.stringify(value.toJSON())`.
+
+## Known Compiler Fixes & Gotchas
+
+### `const` vs `let` for reassigned variables (W08)
+`flushPendingCode()` scans the Code node body for assignment targets (`/\b(\w+)\s*=[^=<>!]/g`) and uses `let` instead of `const` for reference lines of reassigned variables. The decompiler's jsCode reference line regex must match both `const` and `let` (`/^(?:const|let) (\w+) = .../`).
+
+### Loop variable `$json` resolution (W17/W26/W27)
+Inside a per-item loop body (`ctx.inLoopBody = true`), the loop variable maps to the current iteration item (`$json`), not `.first()`. `resolveExpressionFromAST()` checks `ctx.inLoopBody && root === ctx.loopVarName` to emit `={{ $json.prop }}`. The decompiler needs `currentLoopVar` context to reverse this — set when visiting inline loop body nodes in `simplified-generator.ts`.
+
+### Splitter code for code-kind variables
+When generating splitter Code nodes for `for (const x of items)`, variables with `code`/`aggregate` kind need `.first().json.varName` (not `.all().map(i => i.json)`) because the array is nested under the variable name in the json.
+
+### Sub-function URL `Identifier` capture (W21)
+`extractHttpCall()` now captures `Identifier` and `MemberExpression` AST nodes (not just `BinaryExpression`) for `urlAstNode`. `generateHttpSDK()` falls back to `resolveExpressionFromAST()` when `resolveUrlExpression()` fails, allowing function parameters to resolve via `varSourceMap`.
+
+### Try/catch sub-workflow captured variable kind
+Captured variables in try/catch sub-workflows always use `'code'` kind (seed to `varSourceMap` in `compileTryCatchBodyAsSubWorkflow`). This means `user.id` resolves to `$('TriggerNode').first().json.user.id`. Changing to `'io'` kind would break the round-trip because the decompiler can't reconstruct the loop variable context across sub-workflow boundaries. The deeper issue is that Set node `type: 'string'` coerces object values to `[object Object]` — fixing this requires using expression format or a different type for object params.
+
+### Expectation matcher URL scheme
+`matchRequests()` in `expectation-matcher.ts` strips `https?://` from URLs before comparing, since nock traces may record URLs without scheme.
 
 ## Detailed Documentation
 

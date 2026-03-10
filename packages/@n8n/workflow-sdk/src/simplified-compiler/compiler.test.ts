@@ -180,6 +180,19 @@ const data = await http.get('https://example.com');
 			expect(result.errors.length).toBeGreaterThan(0);
 			expect(result.errors[0].message).toContain('onManual');
 		});
+
+		it('should use let instead of const for reassigned variables in Code nodes', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const data = await http.get('https://api.example.com');
+  let provider = 'default';
+  provider = 'custom';
+  await http.post('https://api.example.com/send', { provider });
+});`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain('let provider');
+			expect(result.code).not.toMatch(/const provider = \$\(/);
+		});
 	});
 
 	describe('Phase 2: trigger callbacks', () => {
@@ -514,6 +527,19 @@ onManual(async () => {
 			expect(result.code).toContain('/done');
 			// Main chain should go: ... splitter → exec → post-loop-http
 			expect(result.code).toContain("type: 'n8n-nodes-base.executeWorkflow'");
+		});
+
+		it('should use $json for loop variable in per-item HTTP URL', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const items = await http.get('https://api.example.com/items');
+  for (const item of items) {
+    await http.delete('https://api.example.com/items/' + item.id);
+  }
+});`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain('$json.id');
+			expect(result.code).not.toContain("$('Split items').first().json.id");
 		});
 	});
 
@@ -953,6 +979,19 @@ onManual(async () => {
 			expect(result.errors).toHaveLength(0);
 			expect(result.code).toContain('sortKeys');
 			expect(result.code).not.toContain('executeWorkflow');
+		});
+
+		it('should resolve function parameter as HTTP URL in sub-function', () => {
+			const result = transpileWorkflowJS(`
+async function fetchData(url) {
+  const result = await http.get(url);
+  return result;
+}
+onManual(async () => {
+  const data = await fetchData('https://api.example.com/data');
+});`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).not.toContain('{{dynamic URL}}');
 		});
 	});
 

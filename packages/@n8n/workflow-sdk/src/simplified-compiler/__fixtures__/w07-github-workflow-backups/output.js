@@ -187,7 +187,7 @@ const code3 = node({
   config: {
     name: 'Split wfs',
     parameters: {
-      jsCode: `const recent = $('Code 2').all().map(i => i.json);
+      jsCode: `const recent = $('Code 2').first().json.recent;
 return recent.map(wf => ({ json: wf }));`,
       mode: 'runOnceForAllItems'
     },

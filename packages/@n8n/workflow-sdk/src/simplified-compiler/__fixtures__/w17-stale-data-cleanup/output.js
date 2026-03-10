@@ -47,7 +47,7 @@ const http2 = node({
     "name": "DELETE Request",
     "parameters": {
       "method": "DELETE",
-      "url": "={{ 'https://api.app.com/items/' + $('Split items').first().json.id }}",
+      "url": "={{ 'https://api.app.com/items/' + $json.id }}",
       "options": {},
       "authentication": "genericCredentialType",
       "genericAuthType": "httpBasicAuth"

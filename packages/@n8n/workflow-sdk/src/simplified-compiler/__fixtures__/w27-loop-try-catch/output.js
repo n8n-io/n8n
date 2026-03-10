@@ -151,7 +151,7 @@ const code2 = node({
   config: {
     name: 'Split users',
     parameters: {
-      jsCode: `const active = $('Code 1').all().map(i => i.json);
+      jsCode: `const active = $('Code 1').first().json.active;
 return active.map(user => ({ json: user }));`,
       mode: 'runOnceForAllItems'
     },

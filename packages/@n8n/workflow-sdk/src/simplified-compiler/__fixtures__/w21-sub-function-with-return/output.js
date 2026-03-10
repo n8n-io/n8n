@@ -7,7 +7,7 @@ const fn_fetchData_http1 = node({
     "name": "GET Request",
     "parameters": {
       "method": "GET",
-      "url": "{{dynamic URL}}",
+      "url": "={{ $('When Executed by Another Workflow').first().json.url }}",
       "options": {}
     },
     "executeOnce": true

@@ -82,6 +82,8 @@ interface SimplifiedGenContext {
 	workflowPinData: Record<string, unknown[]>;
 	/** Deferred merge downstream chains (for Promise.all detection) */
 	deferredMergeDownstreams: DeferredMergeDownstream[];
+	/** Current loop variable name, set while visiting inline loop body nodes */
+	currentLoopVar?: string;
 }
 
 function emit(ctx: SimplifiedGenContext, text: string): void {
@@ -718,6 +720,8 @@ function emitChainBody(nodes: CompositeNode[], start: number, ctx: SimplifiedGen
 				}
 			} else {
 				// Single-IO loop: emit inline nodes
+				const prevLoopVar = ctx.currentLoopVar;
+				ctx.currentLoopVar = loopInfo.itemVar;
 				for (let j = loopInfo.loopStart; j <= loopInfo.loopEnd; j++) {
 					if (j > loopInfo.loopStart) {
 						const prev = nodes[j - 1];
@@ -727,6 +731,7 @@ function emitChainBody(nodes: CompositeNode[], start: number, ctx: SimplifiedGen
 					}
 					visitComposite(nodes[j], ctx);
 				}
+				ctx.currentLoopVar = prevLoopVar;
 			}
 
 			ctx.indent--;
@@ -1024,7 +1029,12 @@ function resolveUrlArg(url: string, ctx: SimplifiedGenContext): string {
 
 	// Split on top-level + (respecting quotes and parens)
 	const parts = splitOnPlus(inner);
-	if (parts.length < 2) return `'${url}'`;
+	if (parts.length < 2) {
+		// Single expression (no +), try to resolve as node reference
+		const ref = resolveExpression(url, ctx);
+		if (ref !== null) return ref;
+		return `'${url}'`;
+	}
 
 	const resolved = parts.map((part) => {
 		const trimmed = part.trim();
@@ -1306,6 +1316,10 @@ function resolveExpression(value: string, ctx: SimplifiedGenContext): string | n
 	match = jsonRef.exec(value);
 	if (match) {
 		const prop = match[1];
+		// Inside loop body, $json refers to the current loop variable
+		if (ctx.currentLoopVar) {
+			return `${ctx.currentLoopVar}.${prop}`;
+		}
 		const firstSegment = prop.split('.')[0].split('[')[0];
 		if (ctx.triggerType === 'webhook' && !ctx.codeNodeVars.has(firstSegment)) {
 			if (firstSegment === 'body') return prop;
@@ -1379,7 +1393,7 @@ function emitCodeNode(node: SemanticNode, ctx: SimplifiedGenContext): void {
 		if (line.startsWith('// From:')) continue;
 		// Replace $('NodeName').all().map(i => i.json) or $('NodeName').first().json[.prop] with upstream variable reference
 		const importMatch =
-			/^const (\w+) = \$\('([^']+)'\)\.(?:all\(\)\.map\(i => i\.json\)|first\(\)\.json(?:\.\w+)?);?$/.exec(
+			/^(?:const|let) (\w+) = \$\('([^']+)'\)\.(?:all\(\)\.map\(i => i\.json\)|first\(\)\.json(?:\.\w+)?);?$/.exec(
 				line.trim(),
 			);
 		if (importMatch) {

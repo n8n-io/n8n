@@ -116,7 +116,7 @@ const code2 = node({
   config: {
     name: 'Split tasks',
     parameters: {
-      jsCode: `const pending = $('Code 1').all().map(i => i.json);
+      jsCode: `const pending = $('Code 1').first().json.pending;
 return pending.map(task => ({ json: task }));`,
       mode: 'runOnceForAllItems'
     },
@@ -136,7 +136,7 @@ const set1 = node({
             "id": "assign_0",
             "name": "userId",
             "type": "string",
-            "value": "={{ $('Split tasks').first().json.userId }}"
+            "value": "={{ $json.userId }}"
           }
         ]
       }

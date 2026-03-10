@@ -192,7 +192,11 @@ export function matchRequests(
 
 	for (const [key, expected] of Object.entries(expectations)) {
 		const { method, url, occurrence } = parseRequestKey(key);
-		const matching = requests.filter((r) => r.method === method && r.url === url);
+		// Match URLs with or without scheme (nock may strip https://)
+		const urlWithoutScheme = url.replace(/^https?:\/\//, '');
+		const matching = requests.filter(
+			(r) => r.method === method && (r.url === url || r.url === urlWithoutScheme),
+		);
 
 		if (matching.length < occurrence) {
 			mismatches.push({

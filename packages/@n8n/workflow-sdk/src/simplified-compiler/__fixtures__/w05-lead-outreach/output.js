@@ -94,7 +94,7 @@ const code2 = node({
   config: {
     name: 'Split leads',
     parameters: {
-      jsCode: `const newLeads = $('Code 1').all().map(i => i.json);
+      jsCode: `const newLeads = $('Code 1').first().json.newLeads;
 return newLeads.map(lead => ({ json: lead }));`,
       mode: 'runOnceForAllItems'
     },
