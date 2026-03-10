@@ -1595,6 +1595,28 @@ describe('Source Control Helper', () => {
 			expect(auth.enabled).toBe(true);
 			expect(auth.port).toBe(443);
 		});
+
+		it('should preserve empty string field when local does not have the key', () => {
+			const local = { port: 3000 };
+			const remote = { port: 3000, apiKey: '' };
+
+			const result = mergeRemoteCrendetialDataIntoLocalCredentialData({ local, remote });
+
+			expect('apiKey' in result).toBe(true);
+			expect(result.apiKey).toBe('');
+		});
+
+		it('should preserve multiple new empty string fields from remote when local has no matching key', () => {
+			const local = { port: 3000 };
+			const remote = { port: 3000, apiKey: '', username: '' };
+
+			const result = mergeRemoteCrendetialDataIntoLocalCredentialData({ local, remote });
+
+			expect('apiKey' in result).toBe(true);
+			expect(result.apiKey).toBe('');
+			expect('username' in result).toBe(true);
+			expect(result.username).toBe('');
+		});
 	});
 
 	describe('sanitizeCredentialData + merge consistency', () => {

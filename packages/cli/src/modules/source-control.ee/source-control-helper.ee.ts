@@ -79,7 +79,10 @@ function mergeSingleValue(sanitizedRemoteValue: unknown, localValue: unknown): u
 			return localValue;
 		}
 
-		return undefined;
+		// The remote field exists as an empty string (key is part of the schema)
+		// but local has no value for it. Preserve the empty string so the field
+		// is not silently dropped from the merged credential.
+		return '';
 	}
 
 	if (typeof sanitizedRemoteValue === 'number' || typeof sanitizedRemoteValue === 'boolean') {
