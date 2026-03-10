@@ -1011,8 +1011,77 @@ function emitLeafByType(node: SemanticNode, ctx: SimplifiedGenContext): void {
 			emitWorkflowNode(node, ctx);
 			break;
 		default:
+			emitExecuteNodeCall(node, ctx);
 			break;
 	}
+}
+
+// ─── Raw Node (executeNode escape hatch) ────────────────────────────────────
+
+function emitExecuteNodeCall(node: SemanticNode, ctx: SimplifiedGenContext): void {
+	// Emit @example pin data annotation if present
+	const pinData = ctx.workflowPinData[node.name];
+	if (pinData) {
+		emit(ctx, `/** @example ${JSON.stringify(pinData)} */`);
+	}
+
+	const params = node.json.parameters ?? {};
+	const credentials = node.json.credentials;
+	const assignedVar = ctx.nodeNameToVarName.get(node.name);
+
+	// Resolve expressions in parameter values, tracking which are DSL variable refs
+	const resolvedParams: Record<string, unknown> = {};
+	const exprKeys = new Set<string>();
+	for (const [k, v] of Object.entries(params)) {
+		if (typeof v === 'string') {
+			const resolved = resolveExpression(v, ctx);
+			if (resolved !== null) {
+				resolvedParams[k] = resolved;
+				exprKeys.add(k);
+			} else {
+				resolvedParams[k] = v;
+			}
+		} else {
+			resolvedParams[k] = v;
+		}
+	}
+
+	// Build config object parts
+	const configParts: string[] = [];
+	if (node.json.name) {
+		configParts.push(`name: ${JSON.stringify(node.json.name)}`);
+	}
+	if (Object.keys(resolvedParams).length > 0) {
+		configParts.push(`parameters: ${formatObjectWithExprs(resolvedParams, exprKeys)}`);
+	}
+	if (credentials && Object.keys(credentials).length > 0) {
+		configParts.push(`credentials: ${formatObjectForDSL(credentials)}`);
+	}
+
+	const prefix = assignedVar ? `const ${assignedVar} = await ` : 'await ';
+	const configStr = configParts.join(', ');
+
+	emit(
+		ctx,
+		`${prefix}executeNode({ type: '${node.type}', version: ${node.json.typeVersion}, config: { ${configStr} } });`,
+	);
+}
+
+/** Format a plain object as a DSL-friendly string (JSON-like but with unquoted keys where possible). */
+function formatObjectForDSL(obj: unknown): string {
+	return JSON.stringify(obj);
+}
+
+/** Format an object where some keys contain DSL variable references (unquoted). */
+function formatObjectWithExprs(obj: Record<string, unknown>, exprKeys: Set<string>): string {
+	const entries = Object.entries(obj).map(([k, v]) => {
+		if (exprKeys.has(k)) {
+			// Expression reference — emit unquoted
+			return `${k}: ${v}`;
+		}
+		return `${k}: ${JSON.stringify(v)}`;
+	});
+	return `{ ${entries.join(', ')} }`;
 }
 
 // ─── HTTP Node ───────────────────────────────────────────────────────────────
