@@ -89,8 +89,8 @@ const parameters = computed<INodeProperties[]>(() => {
 	if (!nodeType.value?.properties) return [];
 
 	const issueParamNames = Object.keys(props.state.parameterIssues);
-	const templateParamNames = props.state.templateParameterNames ?? [];
-	const allParamNames = new Set([...issueParamNames, ...templateParamNames]);
+	const additionalParamNames = props.state.additionalParameterNames ?? [];
+	const allParamNames = new Set([...issueParamNames, ...additionalParamNames]);
 
 	return nodeType.value.properties.filter((prop) => allParamNames.has(prop.name));
 });
@@ -191,7 +191,7 @@ watch(isExecuting, (executing, wasExecuting) => {
 			</N8nText>
 			<span v-if="isComplete" data-test-id="builder-setup-card-check" :class="$style.completeLabel">
 				<N8nIcon icon="check" size="large" />
-				{{ i18n.baseText('aiAssistant.builder.setupWizard.complete' as BaseTextKey) }}
+				{{ i18n.baseText('generic.complete') }}
 			</span>
 		</header>
 

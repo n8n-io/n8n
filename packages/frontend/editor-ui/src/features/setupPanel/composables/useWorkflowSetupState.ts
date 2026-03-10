@@ -472,7 +472,7 @@ export const useWorkflowSetupState = (
 			result.push({
 				node,
 				parameterIssues,
-				templateParameterNames: templateParametersByNode.value.get(node.name),
+				additionalParameterNames: templateParametersByNode.value.get(node.name),
 				isTrigger,
 				isComplete: Object.keys(parameterIssues).length === 0 && !hasUnfilledTemplateParams(node),
 			});
@@ -590,7 +590,7 @@ export const useWorkflowSetupState = (
 					selectedCredentialId,
 					issues: issueMessages,
 					parameterIssues,
-					templateParameterNames: templateParametersByNode.value.get(node.name),
+					additionalParameterNames: templateParametersByNode.value.get(node.name),
 					isTrigger,
 					showCredentialPicker,
 					isComplete,

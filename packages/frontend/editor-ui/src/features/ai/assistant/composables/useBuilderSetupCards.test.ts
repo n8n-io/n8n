@@ -348,7 +348,7 @@ describe('useBuilderSetupCards', () => {
 			createCard({
 				node: createNode({ name: 'Node 1', id: 'n1' }),
 				isComplete: false,
-				templateParameterNames: ['assignments'],
+				additionalParameterNames: ['assignments'],
 			}),
 			createCard({ node: createNode({ name: 'Node 2', id: 'n2' }), isComplete: false }),
 		];
@@ -361,7 +361,7 @@ describe('useBuilderSetupCards', () => {
 			createCard({
 				node: createNode({ name: 'Node 1', id: 'n1' }),
 				isComplete: true,
-				templateParameterNames: ['assignments'],
+				additionalParameterNames: ['assignments'],
 			}),
 			createCard({ node: createNode({ name: 'Node 2', id: 'n2' }), isComplete: false }),
 		];

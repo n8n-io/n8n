@@ -96,10 +96,10 @@ watch(
 			const key = cardKey(card);
 			if (cardsWithParameters.has(key)) continue;
 
-			const templateParamNames = card.state.templateParameterNames ?? [];
+			const additionalParamNames = card.state.additionalParameterNames ?? [];
 			const issueParamNames = Object.keys(card.state.parameterIssues);
 
-			if (templateParamNames.length > 0 || issueParamNames.length > 0) {
+			if (additionalParamNames.length > 0 || issueParamNames.length > 0) {
 				cardsWithParameters.add(key);
 			}
 		}

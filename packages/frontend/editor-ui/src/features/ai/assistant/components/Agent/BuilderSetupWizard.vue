@@ -220,7 +220,7 @@ function onStepExecuted() {
 	// Only for cards with parameters — credential-only cards are already
 	// handled by the composable's auto-advance watcher.
 	const hasParams =
-		(card?.state.templateParameterNames?.length ?? 0) > 0 ||
+		(card?.state.additionalParameterNames?.length ?? 0) > 0 ||
 		Object.keys(card?.state.parameterIssues ?? {}).length > 0;
 	if (hasParams) {
 		setTimeout(() => goToNext(), 300);
