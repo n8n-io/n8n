@@ -2,28 +2,91 @@ name: 'Release: Populate cloud with releases'
 run-name: 'Populate cloud with version n8n@${{ inputs.version }}'
 
 on:
-  pull_request:
-    paths:
-      - '.github/workflows/release-populate-cloud-with-release.yml'
   workflow_dispatch:
     inputs:
-      version:
-        description: 'The release version (e.g. 2.10.2)'
+      previous-version:
+        description: 'The previous release version (e.g. 2.10.2)'
         required: true
         type: string
+      version:
+        description: 'The release version (e.g. 2.11.0)'
+        required: true
+        type: string
+      experimental:
+        description: 'If publishing experimental version'
+        type: boolean
+        default: false
   workflow_call:
     inputs:
-      version:
-        description: 'The release version (e.g. 2.10.2)'
+      previous-version:
+        description: 'The previous release version (e.g. 2.10.2)'
         required: true
         type: string
+      version:
+        description: 'The release version (e.g. 2.11.0)'
+        required: true
+        type: string
+      experimental:
+        description: 'If publishing experimental version'
+        type: boolean
+        default: false
 
 jobs:
-  populate-cloud:
-    runs-on: ubuntu-latest
-    environment: release
+  determine-changes:
+    runs-on: ubuntu-latest # TODO. Slim
+    outputs:
+      has_node_enhancements: ${{ steps.get-changes.outputs.has_node_enhancements }}
+      has_core_changes: ${{ steps.get-changes.outputs.has_core_changes }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+          install-command: npm install --prefix=.github/scripts --no-package-lock
+
+      - name: Extract changes
+        id: get-changes
+        env:
+          PREVIOUS_VERSION_TAG: 'n8n@${{ inputs.previous-version }}'
+          RELEASE_VERSION_TAG: 'n8n@${{ inputs.version }}'
+        run: node ./.github/scripts/determine-release-version-changes.mjs
+
+  populate-cloud:
+    runs-on: ubuntu-latest # TODO. Slim
+    environment: release
+    needs: [determine-changes]
+    env:
+      PAYLOAD: |
+        {
+          "target_version_to_update": "${{ inputs.version }}",
+          "has_node_enhancements": ${{ needs.determine-changes.outputs.has_node_enhancements }},
+          "has_core_changes": ${{ needs.determine-changes.outputs.has_core_changes }},
+          "has_breaking_change": false,
+          "is_experimental": ${{ inputs.experimental }}
+        }
+    steps:
+      - name: Print payload
+        run: echo "$PAYLOAD"
+
       - name: Call n8n workflow
+        shell: bash
         run: |
-          curl ${{ secrets.N8N_POPULATE_CLOUD_WEBHOOK_DATA }} \
-          --data '{"version": "${{ inputs.version }}"}'
+          status=$(curl \
+          -o response.json \
+          -w "%{http_code}" \
+          --data "$PAYLOAD" \
+          ${{ secrets.N8N_POPULATE_CLOUD_WEBHOOK_DATA }})
+
+          echo "HTTP Status: $status"
+          echo "Response body:"
+          cat response.json
+
+          if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+            echo "Request failed with status $status"
+            exit 1
+          fi
