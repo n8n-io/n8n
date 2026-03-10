@@ -21,7 +21,7 @@ const esmDependencies = [
 	'jose',
 	'p-retry',
 	'is-network-error',
-	// Add other ESM dependencies that need to be transformed here
+	'@openrouter/sdk',
 ];
 
 const esmDependenciesPattern = esmDependencies.join('|');
