@@ -175,7 +175,20 @@ jobs:
 
   post-release:
     name: Run Post-release actions
-    needs: [determine-version-info, publish-to-npm, create-github-release]
+    needs:
+      [
+        determine-version-info,
+        publish-to-npm,
+        create-github-release,
+        move-track-tag,
+        promote-stable-tag,
+      ]
+    if: |
+      always() &&
+      needs.publish-to-npm.result == 'success' &&
+      needs.create-github-release.result == 'success' &&
+      (needs.move-track-tag.result == 'success' || needs.move-track-tag.result == 'skipped') &&
+      (needs.promote-stable-tag.result == 'success' || needs.promote-stable-tag.result == 'skipped')
     uses: ./.github/workflows/release-publish-post-release.yml
     with:
       track: ${{ needs.determine-version-info.outputs.track }}
