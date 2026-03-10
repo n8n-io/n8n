@@ -112,6 +112,7 @@ beforeEach(async () => {
 	anotherMember = await createMember();
 
 	workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
+	workflowValidationService.validateDynamicCredentials.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
 
 	folderListMissingRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:list'], {
@@ -836,7 +837,7 @@ describe('POST /workflows', () => {
 				settings: { redactionPolicy: 'non-manual' },
 			};
 
-			const response = await authMemberAgent.post('/workflows').send(payload).expect(200);
+			const response = await authOwnerAgent.post('/workflows').send(payload).expect(200);
 
 			const dbWorkflow = await workflowRepository.findOneBy({
 				id: response.body.data.id,
@@ -1210,6 +1211,7 @@ describe('GET /workflows', () => {
 					'workflow:share',
 					'workflow:unshare',
 					'workflow:update',
+					'workflow:updateRedactionSetting',
 				].sort(),
 			);
 
@@ -1228,6 +1230,7 @@ describe('GET /workflows', () => {
 					'workflow:share',
 					'workflow:unshare',
 					'workflow:update',
+					'workflow:updateRedactionSetting',
 				].sort(),
 			);
 		}
@@ -2386,6 +2389,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:share',
 					'workflow:unshare',
 					'workflow:update',
+					'workflow:updateRedactionSetting',
 				].sort(),
 			);
 
@@ -2404,6 +2408,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:share',
 					'workflow:unshare',
 					'workflow:update',
+					'workflow:updateRedactionSetting',
 				].sort(),
 			);
 
@@ -4163,8 +4168,8 @@ describe('POST /workflows/:workflowId/deactivate', () => {
 			.post(`/workflows/${workflow.id}/deactivate`)
 			.send({ expectedChecksum: outdatedChecksum });
 
-		expect(response.statusCode).toBe(400);
-		expect(response.body.code).toBe(100);
+		expect(response.statusCode).toBe(409);
+		expect(response.body.code).toBe(409);
 	});
 
 	test('should allow deactivation when expectedChecksum matches', async () => {
@@ -4412,8 +4417,8 @@ describe('POST /workflows/:workflowId/archive', () => {
 			.post(`/workflows/${workflow.id}/archive`)
 			.send({ expectedChecksum: outdatedChecksum });
 
-		expect(response.statusCode).toBe(400);
-		expect(response.body.code).toBe(100);
+		expect(response.statusCode).toBe(409);
+		expect(response.body.code).toBe(409);
 	});
 
 	test('should allow archive when expectedChecksum matches', async () => {

@@ -113,6 +113,7 @@ exports[`Scope Information ensure scopes are defined correctly 1`] = `
   "workflow:deactivate",
   "workflow:publish",
   "workflow:unpublish",
+  "workflow:updateRedactionSetting",
   "workflow:create",
   "workflow:read",
   "workflow:update",

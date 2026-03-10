@@ -3,9 +3,6 @@ import {
 	computed,
 	defineAsyncComponent,
 	nextTick,
-	onActivated,
-	onBeforeMount,
-	onDeactivated,
 	onMounted,
 	ref,
 	useCssModule,
@@ -101,7 +98,7 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
-import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
+
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { getBounds, getNodeViewTab } from '@/app/utils/nodeViewUtils';
 import CanvasStopCurrentExecutionButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopCurrentExecutionButton.vue';
@@ -192,7 +189,7 @@ const npsSurveyStore = useNpsSurveyStore();
 const projectsStore = useProjectsStore();
 const usersStore = useUsersStore();
 const tagsStore = useTagsStore();
-const pushConnectionStore = usePushConnectionStore();
+
 const ndvStore = useNDVStore();
 const focusPanelStore = useFocusPanelStore();
 const builderStore = useBuilderStore();
@@ -1640,7 +1637,7 @@ onBeforeRouteLeave(async (to, from, next) => {
 		return;
 	}
 
-	await useWorkflowSaving({ router }).promptSaveUnsavedWorkflowChanges(next, {
+	await workflowSaving.promptSaveUnsavedWorkflowChanges(next, {
 		async confirm() {
 			if (from.name === VIEWS.NEW_WORKFLOW) {
 				const savedWorkflowId = workflowsStore.workflowId;
@@ -1661,14 +1658,7 @@ onBeforeRouteLeave(async (to, from, next) => {
  * Lifecycle
  */
 
-onBeforeMount(() => {
-	if (!isDemoRoute.value) {
-		pushConnectionStore.pushConnect();
-	}
-});
-
 onMounted(async () => {
-	canvasStore.startLoading();
 	documentTitle.reset();
 
 	// Register callback for collaboration store to refresh canvas when workflow updates arrive
@@ -1689,7 +1679,6 @@ onMounted(async () => {
 		}
 	} finally {
 		isLoading.value = false;
-		canvasStore.stopLoading();
 
 		void externalHooks.run('nodeView.mount').catch(() => {});
 
@@ -1714,20 +1703,15 @@ onMounted(async () => {
 	addExecutionOpenedEventBindings();
 	addCommandBarEventBindings();
 	registerCustomActions();
-});
-
-onActivated(() => {
 	addUndoRedoEventBindings();
 	showAddFirstStepIfEnabled();
 });
 
-onDeactivated(() => {
-	uiStore.closeModal(WORKFLOW_SETTINGS_MODAL_KEY);
-	removeUndoRedoEventBindings();
-	toast.clearAllStickyNotifications();
-});
-
 onBeforeUnmount(() => {
+	uiStore.closeModal(WORKFLOW_SETTINGS_MODAL_KEY);
+	toast.clearAllStickyNotifications();
+	workflowDocumentStore?.value?.setViewport(viewportTransform.value);
+
 	removeSourceControlEventBindings();
 	removeWorkflowSavedEventBindings();
 	removeBeforeUnloadEventBindings();
@@ -1735,10 +1719,8 @@ onBeforeUnmount(() => {
 	removeExecutionOpenedEventBindings();
 	removeCommandBarEventBindings();
 	unregisterCustomActions();
+	removeUndoRedoEventBindings();
 	canvasEventBus.off('saved:workflow', onSaveFromWithinExecutionDebug);
-	if (!isDemoRoute.value) {
-		pushConnectionStore.pushDisconnect();
-	}
 });
 </script>
 
@@ -1758,6 +1740,7 @@ onBeforeUnmount(() => {
 			:key-bindings="keyBindingsEnabled"
 			:suppress-interaction="experimentalNdvStore.isMapperOpen"
 			:hide-controls="hideCanvasControls"
+			:initial-viewport="workflowDocumentStore?.viewport"
 			@update:nodes:position="onUpdateNodesPosition"
 			@update:node:position="onUpdateNodePosition"
 			@update:node:activated="onSetNodeActivated"

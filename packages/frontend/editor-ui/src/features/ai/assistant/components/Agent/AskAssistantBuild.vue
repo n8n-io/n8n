@@ -195,7 +195,12 @@ const isChatInputDisabled = computed(() => {
 	return isInputDisabled.value || builderStore.shouldDisableChatInput;
 });
 
-const { showReviewChanges, editedNodesCount, isLoadingDiff, openDiffView } = useReviewChanges();
+const { showReviewChanges, nodeChanges, isExpanded, toggleExpanded, openDiffView } =
+	useReviewChanges();
+
+function onSelectChangedNode(nodeId: string) {
+	canvasEventBus.emit('nodes:select', { ids: [nodeId], panIntoView: true });
+}
 
 const codeDiffWorkflowState = injectWorkflowState();
 
@@ -558,9 +563,11 @@ defineExpose({
 			<template #inputHeader>
 				<ReviewChangesBanner
 					v-if="showReviewChanges"
-					:edited-nodes-count="editedNodesCount"
-					:loading="isLoadingDiff"
-					@click="openDiffView"
+					:node-changes="nodeChanges"
+					:expanded="isExpanded"
+					@toggle="toggleExpanded"
+					@open-diff="openDiffView"
+					@select-node="onSelectChangedNode"
 				/>
 				<Transition v-else name="slide">
 					<NotificationPermissionBanner v-if="shouldShowNotificationBanner" />

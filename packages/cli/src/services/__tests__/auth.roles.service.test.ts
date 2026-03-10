@@ -7,8 +7,11 @@ import {
 	ALL_ROLES,
 	scopeInformation,
 	PROJECT_OWNER_ROLE_SLUG,
+	PROJECT_ADMIN_ROLE_SLUG,
+	PROJECT_EDITOR_ROLE_SLUG,
 	PERSONAL_SPACE_PUBLISHING_SETTING,
 	PERSONAL_SPACE_SHARING_SETTING,
+	EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING,
 } from '@n8n/permissions';
 import type { EntityManager, Repository } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
@@ -31,6 +34,7 @@ describe('AuthRolesService', () => {
 	});
 	// Default: no settings rows (backward compat: undefined values => grant scopes)
 	mockEntityManager.findBy.mockResolvedValue([]);
+	mockEntityManager.findOneBy.mockResolvedValue(null);
 
 	// Mock DbLockService that executes the callback with our mock EntityManager
 	const dbLockService = mock<DbLockService>();
@@ -112,6 +116,7 @@ describe('AuthRolesService', () => {
 		});
 		// Default: no settings rows (backward compat: undefined values => grant scopes)
 		mockEntityManager.findBy.mockResolvedValue([]);
+		mockEntityManager.findOneBy.mockResolvedValue(null);
 		dbLockService.withLock.mockImplementation(
 			async (_lockId: DbLock, fn: (tx: EntityManager) => Promise<unknown>) =>
 				await fn(mockEntityManager),
@@ -731,6 +736,131 @@ describe('AuthRolesService', () => {
 					expect(updatedRole).toBeDefined();
 					const scopeSlugs = updatedRole?.scopes.map((s) => s.slug) ?? [];
 					for (const scope of SHARING_SCOPES) {
+						expect(scopeSlugs).not.toContain(scope);
+					}
+				});
+			});
+
+			describe('external secrets system roles', () => {
+				function mockExternalSecretsEnabled(enabled: boolean | null): void {
+					if (enabled === null) {
+						mockEntityManager.findOneBy.mockResolvedValue(null);
+					} else {
+						mockEntityManager.findOneBy.mockResolvedValue({
+							key: EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING.key,
+							value: enabled ? 'true' : 'false',
+							loadOnStartup: true,
+						});
+					}
+				}
+
+				test('should add external secrets scopes to admin role when setting is true', async () => {
+					const allScopes = createAllScopes();
+					setupDefaultMocks(allScopes);
+					mockPersonalSpaceSettings(false, false);
+					mockExternalSecretsEnabled(true);
+
+					await authRolesService.init();
+
+					const adminCall = roleRepository.create.mock.calls.find(
+						(call) => (call[0] as Role).slug === PROJECT_ADMIN_ROLE_SLUG,
+					);
+					expect(adminCall).toBeDefined();
+					const scopeSlugs = (adminCall?.[0] as Role).scopes.map((s: Scope) => s.slug);
+					for (const scope of EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING.roleScopeMap[
+						PROJECT_ADMIN_ROLE_SLUG
+					]) {
+						expect(scopeSlugs).toContain(scope);
+					}
+				});
+
+				test('should add external secrets scopes to editor role when setting is true', async () => {
+					const allScopes = createAllScopes();
+					setupDefaultMocks(allScopes);
+					mockPersonalSpaceSettings(false, false);
+					mockExternalSecretsEnabled(true);
+
+					await authRolesService.init();
+
+					const editorCall = roleRepository.create.mock.calls.find(
+						(call) => (call[0] as Role).slug === PROJECT_EDITOR_ROLE_SLUG,
+					);
+					expect(editorCall).toBeDefined();
+					const scopeSlugs = (editorCall?.[0] as Role).scopes.map((s: Scope) => s.slug);
+					for (const scope of EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING.roleScopeMap[
+						PROJECT_EDITOR_ROLE_SLUG
+					]) {
+						expect(scopeSlugs).toContain(scope);
+					}
+				});
+
+				test('should NOT add external secrets scopes when setting is false', async () => {
+					const allScopes = createAllScopes();
+					setupDefaultMocks(allScopes);
+					mockPersonalSpaceSettings(false, false);
+					mockExternalSecretsEnabled(false);
+
+					await authRolesService.init();
+
+					const externalSecretsScopes = [
+						...new Set(
+							Object.values(EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING.roleScopeMap).flat(),
+						),
+					];
+
+					const adminCall = roleRepository.create.mock.calls.find(
+						(call) => (call[0] as Role).slug === PROJECT_ADMIN_ROLE_SLUG,
+					);
+					expect(adminCall).toBeDefined();
+					const adminScopeSlugs = (adminCall?.[0] as Role).scopes.map((s: Scope) => s.slug);
+					for (const scope of externalSecretsScopes) {
+						expect(adminScopeSlugs).not.toContain(scope);
+					}
+				});
+
+				test('should NOT add external secrets scopes when setting is missing (null)', async () => {
+					const allScopes = createAllScopes();
+					setupDefaultMocks(allScopes);
+					mockPersonalSpaceSettings(false, false);
+					mockExternalSecretsEnabled(null);
+
+					await authRolesService.init();
+
+					const externalSecretsScopes = [
+						...new Set(
+							Object.values(EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING.roleScopeMap).flat(),
+						),
+					];
+
+					const adminCall = roleRepository.create.mock.calls.find(
+						(call) => (call[0] as Role).slug === PROJECT_ADMIN_ROLE_SLUG,
+					);
+					expect(adminCall).toBeDefined();
+					const adminScopeSlugs = (adminCall?.[0] as Role).scopes.map((s: Scope) => s.slug);
+					for (const scope of externalSecretsScopes) {
+						expect(adminScopeSlugs).not.toContain(scope);
+					}
+				});
+
+				test('should return empty scopes for role not in roleScopeMap', async () => {
+					const allScopes = createAllScopes();
+					setupDefaultMocks(allScopes);
+					mockPersonalSpaceSettings(false, false);
+					mockExternalSecretsEnabled(true);
+
+					await authRolesService.init();
+
+					const personalOwnerCall = roleRepository.create.mock.calls.find(
+						(call) => (call[0] as Role).slug === PROJECT_OWNER_ROLE_SLUG,
+					);
+					expect(personalOwnerCall).toBeDefined();
+					const scopeSlugs = (personalOwnerCall?.[0] as Role).scopes.map((s: Scope) => s.slug);
+					const externalSecretsScopes = [
+						...new Set(
+							Object.values(EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING.roleScopeMap).flat(),
+						),
+					];
+					for (const scope of externalSecretsScopes) {
 						expect(scopeSlugs).not.toContain(scope);
 					}
 				});

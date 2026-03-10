@@ -9,6 +9,7 @@ jobs:
   create-release-pr:
     name: Create release PR
     uses: ./.github/workflows/release-create-pr.yml
+    secrets: inherit
     with:
       base-branch: master
       release-type: minor

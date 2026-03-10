@@ -1358,9 +1358,11 @@ describe('useWorkflowsStore', () => {
 				'1': { active: true, isArchived: false, versionId } as IWorkflowDb,
 			};
 			workflowsStore.workflow.active = true;
-			workflowsStore.workflow.isArchived = false;
 			workflowsStore.workflow.id = workflowId;
 			workflowsStore.workflow.versionId = versionId;
+
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			workflowDocumentStore.setIsArchived(false);
 
 			const makeRestApiRequestSpy = vi
 				.spyOn(apiUtils, 'makeRestApiRequest')
@@ -1374,7 +1376,7 @@ describe('useWorkflowsStore', () => {
 			expect(workflowsListStore.workflowsById['1'].active).toBe(false);
 			expect(workflowsListStore.workflowsById['1'].isArchived).toBe(true);
 			expect(workflowsListStore.workflowsById['1'].versionId).toBe(updatedVersionId);
-			expect(workflowsStore.workflow.isArchived).toBe(true);
+			expect(workflowDocumentStore.isArchived).toBe(true);
 			expect(workflowsStore.workflow.versionId).toBe(updatedVersionId);
 			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -1397,9 +1399,11 @@ describe('useWorkflowsStore', () => {
 			workflowsListStore.workflowsById = {
 				'1': { active: true, isArchived: false, versionId } as IWorkflowDb,
 			};
-			workflowsStore.workflow.isArchived = false;
 			workflowsStore.workflow.id = workflowId;
 			workflowsStore.workflow.versionId = versionId;
+
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			workflowDocumentStore.setIsArchived(false);
 
 			const makeRestApiRequestSpy = vi
 				.spyOn(apiUtils, 'makeRestApiRequest')
@@ -1433,9 +1437,11 @@ describe('useWorkflowsStore', () => {
 				'1': { active: false, isArchived: true, versionId } as IWorkflowDb,
 			};
 			workflowsStore.workflow.active = false;
-			workflowsStore.workflow.isArchived = true;
 			workflowsStore.workflow.id = workflowId;
 			workflowsStore.workflow.versionId = versionId;
+
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			workflowDocumentStore.setIsArchived(true);
 
 			const makeRestApiRequestSpy = vi
 				.spyOn(apiUtils, 'makeRestApiRequest')
@@ -1449,7 +1455,7 @@ describe('useWorkflowsStore', () => {
 			expect(workflowsListStore.workflowsById['1'].active).toBe(false);
 			expect(workflowsListStore.workflowsById['1'].isArchived).toBe(false);
 			expect(workflowsListStore.workflowsById['1'].versionId).toBe(updatedVersionId);
-			expect(workflowsStore.workflow.isArchived).toBe(false);
+			expect(workflowDocumentStore.isArchived).toBe(false);
 			expect(workflowsStore.workflow.versionId).toBe(updatedVersionId);
 			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -1474,6 +1480,10 @@ describe('useWorkflowsStore', () => {
 				executionOrder: 'v1',
 				timezone: 'UTC',
 			};
+
+			// Also populate the document store since updateWorkflowSetting reads from it
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('w1'));
+			workflowDocumentStore.setSettings({ executionOrder: 'v1', timezone: 'UTC' });
 
 			const makeRestApiRequestSpy = vi.spyOn(apiUtils, 'makeRestApiRequest').mockResolvedValue(
 				createTestWorkflow({
@@ -1506,8 +1516,9 @@ describe('useWorkflowsStore', () => {
 			// Assert returned value and store updates
 			expect(result.versionId).toBe('v1');
 			expect(workflowsStore.workflow.versionId).toBe('v1');
-			expect(workflowsStore.workflow.settings).toEqual({
+			expect(workflowDocumentStore.settings).toEqual({
 				executionOrder: 'v1',
+				binaryMode: 'separate',
 				timezone: 'UTC',
 				executionTimeout: 10,
 			});
@@ -2222,8 +2233,9 @@ describe('useWorkflowsStore', () => {
 				status: 'success',
 			});
 
+			const workflowId = 'workflow-123';
 			const testWorkflow = createTestWorkflow({
-				id: 'workflow-123',
+				id: workflowId,
 				scopes: ['workflow:update'],
 			});
 
@@ -2231,10 +2243,13 @@ describe('useWorkflowsStore', () => {
 			// Add workflow to workflowsById to simulate it being loaded from backend
 			workflowsListStore.addWorkflow(testWorkflow);
 
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			workflowDocumentStore.setScopes(testWorkflow.scopes ?? []);
+
 			// Verify the mock is set up correctly
 			expect(workflowsStore.workflow.scopes).toContain('workflow:update');
 			expect(workflowsStore.workflow.id).toBe('workflow-123');
-			expect(workflowsStore.workflow.isArchived).toBe(false);
+			expect(workflowDocumentStore.isArchived).toBe(false);
 
 			vi.mocked(workflowsApi).getLastSuccessfulExecution.mockResolvedValue(mockExecution);
 
@@ -2260,6 +2275,11 @@ describe('useWorkflowsStore', () => {
 			// Add workflow to workflowsById to simulate it being loaded from backend
 			workflowsListStore.addWorkflow(testWorkflow);
 
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(testWorkflow.id),
+			);
+			workflowDocumentStore.setScopes(testWorkflow.scopes ?? []);
+
 			vi.mocked(workflowsApi).getLastSuccessfulExecution.mockResolvedValue(null);
 
 			await workflowsStore.fetchLastSuccessfulExecution();
@@ -2283,6 +2303,11 @@ describe('useWorkflowsStore', () => {
 			workflowsStore.workflow = testWorkflow;
 			// Add workflow to workflowsById to simulate it being loaded from backend
 			workflowsListStore.addWorkflow(testWorkflow);
+
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(testWorkflow.id),
+			);
+			workflowDocumentStore.setScopes(testWorkflow.scopes ?? []);
 
 			const error = new Error('API Error');
 			vi.mocked(workflowsApi).getLastSuccessfulExecution.mockRejectedValue(error);
@@ -2324,11 +2349,15 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should not fetch when workflow is archived', async () => {
+			const workflowId = 'workflow-123';
 			workflowsStore.workflow = createTestWorkflow({
-				id: 'workflow-123',
+				id: workflowId,
 				scopes: ['workflow:update'],
-				isArchived: true,
 			});
+			workflowsListStore.addWorkflow(workflowsStore.workflow);
+
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			workflowDocumentStore.setIsArchived(true);
 
 			await workflowsStore.fetchLastSuccessfulExecution();
 

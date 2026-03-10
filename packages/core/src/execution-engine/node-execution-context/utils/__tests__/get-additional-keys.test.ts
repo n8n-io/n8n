@@ -8,6 +8,7 @@ import { getAdditionalKeys } from '../get-additional-keys';
 
 describe('getAdditionalKeys', () => {
 	const externalSecretsProxy = mock<ExternalSecretsProxy>();
+	const providerKeysAccessibleByCredential = new Set(['provider1']);
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({
 		executionId: '123',
 		webhookWaitingBaseUrl: 'https://webhook.test',
@@ -15,6 +16,8 @@ describe('getAdditionalKeys', () => {
 		variables: { testVar: 'value' },
 		externalSecretsProxy,
 	});
+	additionalData.externalSecretProviderKeysAccessibleByCredential =
+		providerKeysAccessibleByCredential;
 
 	const runExecutionData = mock<IRunExecutionData>({
 		resultData: {
@@ -70,17 +73,11 @@ describe('getAdditionalKeys', () => {
 		});
 	});
 
-	it('should include secrets when enabled', () => {
-		const result = getAdditionalKeys(additionalData, 'manual', null, { secretsEnabled: true });
+	it('should include secrets', () => {
+		const result = getAdditionalKeys(additionalData, 'manual', null);
 
 		expect(result.$secrets).toBeDefined();
 		expect((result.$secrets?.provider1 as IDataObject).secret1).toEqual('secret-value');
-	});
-
-	it('should not include secrets when disabled', () => {
-		const result = getAdditionalKeys(additionalData, 'manual', null, { secretsEnabled: false });
-
-		expect(result.$secrets).toBeUndefined();
 	});
 
 	it('should throw errors in manual mode', () => {
