@@ -4,7 +4,7 @@ import { ElMenu } from 'element-plus';
 import N8nMenuItem from '.';
 
 export default {
-	title: 'Atoms/MenuItem',
+	title: 'Core/MenuItem',
 	component: N8nMenuItem,
 };
 

@@ -10,7 +10,14 @@ import { NodeOperationError } from 'n8n-workflow';
 import { LmChatAnthropic } from '../LmChatAnthropic.node';
 
 jest.mock('@langchain/anthropic');
-jest.mock('@n8n/ai-utilities');
+jest.mock('@n8n/ai-utilities', () => ({
+	getConnectionHintNoticeField: jest
+		.fn()
+		.mockReturnValue({ displayName: '', name: 'notice', type: 'notice', default: '' }),
+	makeN8nLlmFailedAttemptHandler: jest.fn(),
+	N8nLlmTracing: jest.fn(),
+	getProxyAgent: jest.fn(),
+}));
 
 const MockedChatAnthropic = jest.mocked(ChatAnthropic);
 const MockedN8nLlmTracing = jest.mocked(N8nLlmTracing);

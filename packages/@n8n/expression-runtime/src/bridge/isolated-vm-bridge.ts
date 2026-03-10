@@ -1,12 +1,31 @@
 import ivm from 'isolated-vm';
 import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import type { RuntimeBridge, BridgeConfig } from '../types';
+import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
 
-// Get __dirname equivalent for ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const BUNDLE_RELATIVE_PATH = path.join('dist', 'bundle', 'runtime.iife.js');
+
+/**
+ * Read the runtime IIFE bundle by walking up from `__dirname` until
+ * `dist/bundle/runtime.iife.js` is found.
+ *
+ * This works regardless of where the compiled output lives:
+ *   - `src/bridge/`               (vitest running against source)
+ *   - `dist/cjs/bridge/`          (CJS build)
+ */
+async function readRuntimeBundle(): Promise<string> {
+	let dir = __dirname;
+	while (dir !== path.dirname(dir)) {
+		try {
+			return await readFile(path.join(dir, BUNDLE_RELATIVE_PATH), 'utf-8');
+		} catch {}
+		dir = path.dirname(dir);
+	}
+	throw new Error(
+		`Could not find runtime bundle (${BUNDLE_RELATIVE_PATH}) in any parent of ${__dirname}`,
+	);
+}
 
 /**
  * IsolatedVmBridge - Runtime bridge using isolated-vm for secure expression evaluation.
@@ -38,9 +57,8 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 	constructor(config: BridgeConfig = {}) {
 		this.config = {
-			memoryLimit: config.memoryLimit ?? 128,
-			timeout: config.timeout ?? 5000,
-			debug: config.debug ?? false,
+			...DEFAULT_BRIDGE_CONFIG,
+			...config,
 		};
 
 		// Create isolate with memory limit
@@ -110,16 +128,14 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 		try {
 			// Load runtime bundle (includes vendor libraries + proxy system)
-			// Path: dist/bundle/runtime.iife.js
-			const runtimeBundlePath = path.join(__dirname, '../../dist/bundle/runtime.iife.js');
-			const runtimeBundle = await readFile(runtimeBundlePath, 'utf-8');
+			const runtimeBundle = await readRuntimeBundle();
 
 			// Evaluate bundle in isolate context
 			// This makes all exported globals available (DateTime, extend, extendOptional, SafeObject, SafeError, createDeepLazyProxy, resetDataProxies, __data)
 			await this.context.eval(runtimeBundle);
 
 			if (this.config.debug) {
-				console.log('[IsolatedVmBridge] Runtime bundle loaded from:', runtimeBundlePath);
+				console.log('[IsolatedVmBridge] Runtime bundle loaded');
 			}
 
 			// Verify vendor libraries loaded correctly
@@ -322,6 +338,9 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			let arr: unknown = data;
 			for (const key of path) {
 				arr = (arr as Record<string, unknown>)?.[key];
+				if (arr === undefined || arr === null) {
+					return undefined;
+				}
 			}
 
 			if (!Array.isArray(arr)) {
@@ -449,6 +468,15 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			return result;
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
+			if (errorMessage.includes('Script execution timed out')) {
+				throw new TimeoutError(`Expression timed out after ${this.config.timeout}ms`, {});
+			}
+			if (errorMessage.includes('memory limit')) {
+				throw new MemoryLimitError(
+					`Expression exceeded memory limit of ${this.config.memoryLimit}MB`,
+					{},
+				);
+			}
 			throw new Error(`Expression evaluation failed: ${errorMessage}`);
 		}
 	}

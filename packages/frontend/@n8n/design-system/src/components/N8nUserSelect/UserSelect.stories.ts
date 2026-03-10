@@ -4,7 +4,7 @@ import { action } from 'storybook/actions';
 import N8nUserSelect from './UserSelect.vue';
 
 export default {
-	title: 'Modules/UserSelect',
+	title: 'Core/UserSelect',
 	component: N8nUserSelect,
 	argTypes: {},
 	parameters: {

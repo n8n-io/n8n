@@ -71,6 +71,7 @@ flowchart TB
         LLM["LLM-Judge"]
         Pair["Pairwise"]
         Prog["Programmatic"]
+        Bin["Binary-Checks"]
     end
 
     Evaluators --> Feedback
@@ -277,6 +278,37 @@ Additional per-judge details may also be emitted (e.g. `judge1`, `judge2`).
 
 **Context required:** `{ dos?: string, donts?: string }`
 
+### Binary-Checks
+
+Per-check binary pass/fail evaluation — 17 deterministic checks (fast, no LLM) plus 5 LLM-judge checks (parallel):
+
+```typescript
+import { createBinaryChecksEvaluator } from './evaluators';
+
+const evaluator = createBinaryChecksEvaluator({ nodeTypes, llm });
+```
+
+**Evaluator:** `binary-checks`
+
+**Deterministic checks:** `has_nodes`, `all_nodes_connected`, `no_unreachable_nodes`, `has_trigger`, `no_empty_set_nodes`, `agent_has_dynamic_prompt`, `agent_has_language_model`, `memory_properly_connected`, `vector_store_has_embeddings`, `has_start_node`, `no_hardcoded_credentials`, `no_unnecessary_code_nodes`, `expressions_reference_existing_nodes`, `valid_required_parameters`, `valid_options_values`, `no_invalid_from_ai`, `tools_have_parameters`
+
+**LLM checks** (require `llm` option): `fulfills_user_request`, `correct_node_operations`, `valid_data_flow`, `handles_multiple_items`, `descriptive_node_names`
+
+**Context required:** `{ prompt: string }`, optional `{ annotations?: Record<string, unknown> }`
+
+**CLI:**
+
+```bash
+# Run all checks
+pnpm eval --suite binary-checks --prompt "Create a Slack workflow"
+
+# Run specific checks only
+pnpm eval --suite binary-checks --checks has_nodes,has_trigger --prompt "..."
+
+# LangSmith
+pnpm eval --suite binary-checks --langsmith --dataset "binary-checks-spec-prompts"
+```
+
 ### Programmatic
 
 Rule-based checks without LLM calls:
@@ -325,7 +357,7 @@ Notes:
 ### Common Flags
 
 ```bash
---suite <llm-judge|pairwise|programmatic|similarity>
+--suite <llm-judge|pairwise|programmatic|similarity|binary-checks>
 --backend <local|langsmith>   # Or `--langsmith` as a shortcut
 --verbose, -v       # Enable verbose output
 --name <name>       # Experiment name (LangSmith mode)
@@ -338,6 +370,7 @@ Notes:
 --prompt <text>     # Single prompt for local testing
 --dos <text>        # Pairwise: things the workflow should do
 --donts <text>      # Pairwise: things the workflow should not do
+--checks <names>    # Comma-separated binary check names (binary-checks suite only)
 --output-dir <dir>  # Local mode: write artifacts (one folder per example + summary.json)
 --template-examples # Enable template examples feature flag
 --webhook-url <url> # Send results to webhook URL on completion (HTTPS only)
@@ -378,7 +411,7 @@ This directory is intentionally split by responsibility:
 
 - `evaluations/cli/`: CLI entrypoint and input parsing (`cli/index.ts`, `cli/argument-parser.ts`, `cli/csv-prompt-loader.ts`, `cli/webhook.ts`)
 - `evaluations/harness/`: orchestration, scoring, logging, and artifact writing (`harness/runner.ts`, `harness/lifecycle.ts`, `harness/score-calculator.ts`, `harness/output.ts`)
-- `evaluations/evaluators/`: evaluator factories used by the harness (LLM-judge, pairwise, programmatic, similarity)
+- `evaluations/evaluators/`: evaluator factories used by the harness (LLM-judge, pairwise, programmatic, similarity, binary-checks)
 - `evaluations/judge/`: the LLM-judge “engine” (schemas + category evaluators + `judge/workflow-evaluator.ts`)
 - `evaluations/langsmith/`: LangSmith-specific helpers (`langsmith/trace-filters.ts`, `langsmith/types.ts`)
 - `evaluations/support/`: environment setup, node loading, report generation, and test-case generation
@@ -409,6 +442,7 @@ evaluations/
 ├── __tests__/               # Unit tests
 ├── cli/                     # CLI entry + arg parsing + CSV loader
 ├── evaluators/              # Evaluator factories
+│   ├── binary-checks/       # Binary pass/fail checks (deterministic + LLM)
 │   ├── llm-judge/
 │   ├── pairwise/
 │   ├── programmatic/

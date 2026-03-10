@@ -53,6 +53,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 type Props = {
 	node: INodeUi;
 	overrideCredType?: NodeParameterValueType;
@@ -85,6 +86,7 @@ const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 const workflowState = injectWorkflowState();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
 
 // Quick connect
@@ -147,7 +149,7 @@ const selected = computed<Record<string, INodeCredentialsDetails>>(
 );
 
 const hasWorkflowResolver = computed(() => {
-	return !!workflowsStore.workflowSettings?.credentialResolverId;
+	return !!workflowDocumentStore?.value?.settings?.credentialResolverId;
 });
 
 function isCredentialResolvable(credentialType: string): boolean {
