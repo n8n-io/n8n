@@ -20,7 +20,7 @@ const flagsSchema = z.object({
 		.boolean()
 		.describe('Skip migration validation checks')
 		.default(false),
-	skipDisableForeignKeyConstraints: z.coerce
+	skipTogglingForeignKeyConstraints: z.coerce
 		.boolean()
 		.describe('Skip disabling foreign key constraints')
 		.default(false),
@@ -48,7 +48,7 @@ export class ImportEntitiesCommand extends BaseCommand<z.infer<typeof flagsSchem
 		const truncateTables = this.flags.truncateTables;
 		const keyFilePath = this.flags.keyFile ? safeJoinPath(this.flags.keyFile) : undefined;
 		const skipMigrationChecks = this.flags.skipMigrationChecks ?? false;
-		const skipDisableForeignKeyConstraints = this.flags.skipDisableForeignKeyConstraints ?? false;
+		const skipTogglingForeignKeyConstraints = this.flags.skipTogglingForeignKeyConstraints ?? false;
 
 		this.logger.info('\n⚠️⚠️ This feature is currently under development. ⚠️⚠️');
 		this.logger.info('\n🚀 Starting entity import...');
@@ -57,7 +57,7 @@ export class ImportEntitiesCommand extends BaseCommand<z.infer<typeof flagsSchem
 		if (skipMigrationChecks) {
 			this.logger.info('⏭️  Skipping migration checks');
 		}
-		if (skipDisableForeignKeyConstraints) {
+		if (skipTogglingForeignKeyConstraints) {
 			this.logger.info('⏭️  Skipping disabling foreign key constraints');
 		}
 
@@ -66,7 +66,7 @@ export class ImportEntitiesCommand extends BaseCommand<z.infer<typeof flagsSchem
 			truncateTables,
 			keyFilePath,
 			skipMigrationChecks,
-			skipDisableForeignKeyConstraints,
+			skipTogglingForeignKeyConstraints,
 		);
 	}
 

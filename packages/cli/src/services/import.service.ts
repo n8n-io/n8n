@@ -372,7 +372,7 @@ export class ImportService {
 		truncateTables: boolean,
 		keyFilePath?: string,
 		skipMigrationChecks = false,
-		skipDisableForeignKeyConstraints = false,
+		skipTogglingForeignKeyConstraints = false,
 	) {
 		validateDbTypeForImportEntities(this.dataSource.options.type);
 
@@ -398,7 +398,7 @@ export class ImportService {
 		}
 
 		await this.dataSource.transaction(async (transactionManager: EntityManager) => {
-			if (!skipDisableForeignKeyConstraints) {
+			if (!skipTogglingForeignKeyConstraints) {
 				await this.disableForeignKeyConstraints(transactionManager);
 			}
 
@@ -437,7 +437,7 @@ export class ImportService {
 				customEncryptionKey,
 			);
 
-			if (!skipDisableForeignKeyConstraints) {
+			if (!skipTogglingForeignKeyConstraints) {
 				await this.enableForeignKeyConstraints(transactionManager);
 			}
 		});

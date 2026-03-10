@@ -146,13 +146,13 @@ describe('ImportEntitiesCommand', () => {
 			);
 		});
 
-		it('should skip disabling foreign key constraints when skipDisableForeignKeyConstraints flag is true', async () => {
+		it('should skip disabling foreign key constraints when skipTogglingForeignKeyConstraints flag is true', async () => {
 			const command = new ImportEntitiesCommand();
 			// @ts-expect-error Protected property
 			command.flags = {
 				inputDir: './outputs',
 				truncateTables: false,
-				skipDisableForeignKeyConstraints: true,
+				skipTogglingForeignKeyConstraints: true,
 			};
 			// @ts-expect-error Protected property
 			command.logger = {
