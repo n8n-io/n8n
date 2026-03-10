@@ -94,7 +94,7 @@ interface AiSubnodeInfo {
 }
 
 interface IOCall {
-	type: 'http' | 'ai' | 'workflow' | 'respond' | 'wait';
+	type: 'http' | 'ai' | 'workflow' | 'respond' | 'wait' | 'raw';
 	method: string;
 	assignedVar: string | null;
 	url?: string;
@@ -124,6 +124,10 @@ interface IOCall {
 	onError?: string;
 	// Pin data (mock output)
 	pinData?: unknown[];
+	// executeNode() raw node fields
+	rawNodeType?: string;
+	rawVersion?: number;
+	rawConfig?: Record<string, unknown>;
 }
 
 // ─── Emitted Node ────────────────────────────────────────────────────────────
@@ -142,7 +146,8 @@ interface EmittedNode {
 		| 'workflow'
 		| 'ifElse'
 		| 'switchCase'
-		| 'aggregate';
+		| 'aggregate'
+		| 'raw';
 	nodeName: string;
 	branchOnly?: boolean;
 }
@@ -206,6 +211,7 @@ interface TranspilerContext {
 	sibCounter: number;
 	respondCounter: number;
 	waitCounter: number;
+	rawCounter: number;
 	wfCounter: number;
 	setCounter: number;
 	aggCounter: number;
@@ -1237,6 +1243,7 @@ function compileFunctionToSDK(
 		sibCounter: 0,
 		respondCounter: 0,
 		waitCounter: 0,
+		rawCounter: 0,
 		wfCounter: 0,
 		setCounter: 0,
 		aggCounter: 0,
@@ -1369,6 +1376,7 @@ function transpileCallback(
 		sibCounter: nodeOffset,
 		respondCounter: nodeOffset,
 		waitCounter: nodeOffset,
+		rawCounter: nodeOffset,
 		wfCounter: nodeOffset,
 		setCounter: nodeOffset,
 		aggCounter: nodeOffset,
@@ -1704,6 +1712,16 @@ function processIOCall(ctx: TranspilerContext, ioCall: IOCall): void {
 			ctx.varSourceKind.set(ioCall.assignedVar, 'io');
 		}
 		ctx.prevVar = wfVar;
+	} else if (ioCall.type === 'raw') {
+		ctx.rawCounter++;
+		const rawVar = `raw${ctx.rawCounter}`;
+		const rawNode = generateExecuteNodeSDK(ioCall, rawVar, ctx);
+		ctx.nodes.push(rawNode);
+		if (ioCall.assignedVar) {
+			ctx.varSourceMap.set(ioCall.assignedVar, rawNode.nodeName);
+			ctx.varSourceKind.set(ioCall.assignedVar, 'io');
+		}
+		ctx.prevVar = rawVar;
 	}
 }
 
@@ -2357,6 +2375,7 @@ const COUNTER_KEYS = [
 	'sibCounter',
 	'respondCounter',
 	'waitCounter',
+	'rawCounter',
 	'wfCounter',
 	'setCounter',
 	'loopCounter',
@@ -2386,6 +2405,7 @@ function createBranchContext(parentCtx: TranspilerContext): TranspilerContext {
 		sibCounter: parentCtx.sibCounter,
 		respondCounter: parentCtx.respondCounter,
 		waitCounter: parentCtx.waitCounter,
+		rawCounter: parentCtx.rawCounter,
 		wfCounter: parentCtx.wfCounter,
 		setCounter: parentCtx.setCounter,
 		aggCounter: parentCtx.aggCounter,
@@ -3039,6 +3059,7 @@ function compileLoopBodyAsSubWorkflow(
 		sibCounter: 0,
 		respondCounter: 0,
 		waitCounter: 0,
+		rawCounter: 0,
 		wfCounter: 0,
 		setCounter: 0,
 		aggCounter: 0,
@@ -3429,6 +3450,7 @@ function compileTryCatchBodyAsSubWorkflow(
 		sibCounter: 0,
 		respondCounter: 0,
 		waitCounter: 0,
+		rawCounter: 0,
 		wfCounter: 0,
 		setCounter: 0,
 		aggCounter: 0,
@@ -3640,6 +3662,11 @@ function matchIOCallNode(callNode: AcornNode, source: string): IOCall | null {
 		}
 	}
 
+	// Pattern: executeNode({...}) — raw node escape hatch
+	if (callee.type === 'Identifier' && callee.name === 'executeNode') {
+		return extractExecuteNodeCall(callNode);
+	}
+
 	if (
 		callee.type !== 'MemberExpression' ||
 		callee.object?.type !== 'Identifier' ||
@@ -3660,6 +3687,33 @@ function matchIOCallNode(callNode: AcornNode, source: string): IOCall | null {
 	}
 
 	return null;
+}
+
+function extractExecuteNodeCall(callNode: AcornNode): IOCall {
+	const args = callNode.arguments ?? [];
+	const configObj = args[0] ? extractObjectLiteral(args[0]) : undefined;
+
+	const rawNodeType = (configObj?.type as string) ?? '';
+	const rawVersion = (configObj?.version as number) ?? 1;
+	const rawConfig = (configObj?.config as Record<string, unknown>) ?? {};
+
+	// Derive display name from config.name or node type
+	const nodeName =
+		(rawConfig.name as string) ??
+		rawNodeType
+			.replace(/^.*\./, '')
+			.replace(/([A-Z])/g, ' $1')
+			.trim();
+
+	return {
+		type: 'raw',
+		method: 'executeNode',
+		assignedVar: null,
+		nodeName,
+		rawNodeType,
+		rawVersion,
+		rawConfig,
+	};
 }
 
 function extractHttpCall(callNode: AcornNode, method: string, _source: string): IOCall {
@@ -4552,6 +4606,48 @@ function generateAiClassSDK(io: IOCall, varName: string): EmittedNode {
 	return { varName, sdkCode, kind: 'ai', nodeName: io.nodeName };
 }
 
+function generateExecuteNodeSDK(io: IOCall, varName: string, ctx: TranspilerContext): EmittedNode {
+	const rawConfig = io.rawConfig ?? {};
+	const parameters = (rawConfig.parameters as Record<string, unknown>) ?? {};
+	const credentials = rawConfig.credentials as Record<string, unknown> | undefined;
+
+	// Resolve expressions in parameter values
+	const resolvedParams: Record<string, unknown> = {};
+	for (const [k, v] of Object.entries(parameters)) {
+		if (typeof v === 'string' && v.startsWith('={{')) {
+			resolvedParams[k] = resolveJsonRefs(v, ctx);
+		} else if (typeof v === 'string') {
+			resolvedParams[k] = v;
+		} else {
+			resolvedParams[k] = v;
+		}
+	}
+
+	const configObj: Record<string, unknown> = {
+		name: io.nodeName,
+		parameters: resolvedParams,
+		executeOnce: true,
+	};
+	if (credentials) {
+		configObj.credentials = credentials;
+	}
+	if (io.pinData) {
+		configObj.pinData = io.pinData;
+	}
+
+	const configStr = JSON.stringify(configObj, null, 2)
+		.split('\n')
+		.map((line, i) => (i === 0 ? line : '  ' + line))
+		.join('\n');
+
+	const sdkCode = `const ${varName} = node({
+  type: '${io.rawNodeType}', version: ${io.rawVersion},
+  config: ${configStr}
+});`;
+
+	return { varName, sdkCode, kind: 'raw', nodeName: io.nodeName };
+}
+
 function generateWorkflowRunSDK(io: IOCall, varName: string): EmittedNode {
 	const wfName = io.workflowName ?? 'Sub-Workflow';
 
@@ -4596,6 +4692,7 @@ function generateSDKCode(
 			case 'set':
 			case 'respond':
 			case 'workflow':
+			case 'raw':
 				usedFactories.add('node');
 				break;
 			case 'ai':

@@ -1318,6 +1318,138 @@ onManual(async () => {
 		});
 	});
 
+	describe('Phase 20: executeNode escape hatch', () => {
+		it('should compile executeNode() to a raw node with correct type and version', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  await executeNode({
+    type: 'n8n-nodes-base.slack',
+    version: 2.2,
+    config: {
+      name: 'Send Slack Message',
+      parameters: { channel: '#general', text: 'Hello' },
+    }
+  });
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain("type: 'n8n-nodes-base.slack'");
+			expect(result.code).toContain('version: 2.2');
+			expect(result.code).toContain('"channel": "#general"');
+			expect(result.code).toContain('"text": "Hello"');
+			expect(result.code).toContain('"name": "Send Slack Message"');
+			expect(result.code).toContain('"executeOnce": true');
+		});
+
+		it('should assign variable from executeNode() result', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const msg = await executeNode({
+    type: 'n8n-nodes-base.slack',
+    version: 2.2,
+    config: {
+      name: 'Send Slack Message',
+      parameters: { channel: '#general', text: 'Hello' },
+    }
+  });
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			// Variable should be tracked as 'io' kind (raw node output IS json)
+			expect(result.code).toContain('const raw1');
+		});
+
+		it('should use raw1, raw2 naming convention', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  await executeNode({ type: 'n8n-nodes-base.slack', version: 2.2, config: { parameters: { channel: '#a' } } });
+  await executeNode({ type: 'n8n-nodes-base.slack', version: 2.2, config: { parameters: { channel: '#b' } } });
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain('const raw1');
+			expect(result.code).toContain('const raw2');
+		});
+
+		it('should resolve expressions in executeNode parameters', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  const users = await http.get('https://api.example.com/users');
+  await executeNode({
+    type: 'n8n-nodes-base.slack',
+    version: 2.2,
+    config: {
+      name: 'Notify Slack',
+      parameters: { channel: '#general', text: users.length },
+    }
+  });
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain("$('Collect users')");
+		});
+
+		it('should pass credentials through in executeNode config', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  await executeNode({
+    type: 'n8n-nodes-base.slack',
+    version: 2.2,
+    config: {
+      name: 'Send Slack Message',
+      parameters: { channel: '#general', text: 'Hello' },
+      credentials: { slackApi: { name: 'My Slack', id: '' } }
+    }
+  });
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain('"slackApi"');
+			expect(result.code).toContain('"name": "My Slack"');
+		});
+
+		it('should chain executeNode in workflow .add()', () => {
+			const result = transpileWorkflowJS(`
+onManual(async () => {
+  await executeNode({
+    type: 'n8n-nodes-base.slack',
+    version: 2.2,
+    config: { parameters: { channel: '#general' } }
+  });
+});
+`);
+			expect(result.errors).toHaveLength(0);
+			expect(result.code).toContain('.to(raw1)');
+		});
+
+		it('should round-trip executeNode through decompile/recompile', () => {
+			const input = `
+onManual(async () => {
+  const users = await http.get('https://api.example.com/users');
+  const msg = await executeNode({
+    type: 'n8n-nodes-base.slack',
+    version: 2.2,
+    config: {
+      name: 'Send Slack Message',
+      parameters: { channel: '#general', text: users.length },
+      credentials: { slackApi: { name: 'My Slack', id: '' } }
+    }
+  });
+});
+`;
+			const sdk1 = transpileWorkflowJS(input);
+			expect(sdk1.errors).toHaveLength(0);
+
+			const decompiled = decompileWorkflowSDK(sdk1.code);
+			expect(decompiled.errors).toHaveLength(0);
+			expect(decompiled.code).toContain('executeNode(');
+
+			const sdk2 = transpileWorkflowJS(decompiled.code);
+			expect(sdk2.errors).toHaveLength(0);
+			expect(normalizeSDK(sdk2.code)).toBe(normalizeSDK(sdk1.code));
+		});
+	});
+
 	// ─── Real-world workflow validation ──────────────────────────────────────
 	// Fixture-driven tests: each .txt file in __fixtures__/ contains a title,
 	// input DSL, and expected output separated by === markers. Files with a
