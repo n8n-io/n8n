@@ -106,6 +106,31 @@ function getProjectForProvider(provider: SecretProviderConnection): ProjectListI
 	);
 }
 
+async function handleActivate(providerKey: string) {
+	try {
+		await secretsProviderConnection.activateConnection(providerKey);
+		await secretsProviders.fetchConnection(providerKey);
+		toast.showMessage({
+			title: i18n.baseText('settings.secretsProviderConnections.actions.activate.success.title'),
+			message: i18n.baseText(
+				'settings.secretsProviderConnections.actions.activate.success.description',
+				{
+					interpolate: { provider: providerKey },
+				},
+			),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(
+			error,
+			i18n.baseText('settings.secretsProviderConnections.actions.activate.error.title'),
+			i18n.baseText('settings.secretsProviderConnections.actions.activate.error.description', {
+				interpolate: { provider: providerKey },
+			}),
+		);
+	}
+}
+
 function getProviderTypeInfo(providerType: string) {
 	return secretsProviders.providerTypes.value.find((type) => type.type === providerType);
 }
@@ -290,6 +315,7 @@ function goToUpgrade() {
 					@edit="handleEdit"
 					@share="handleShare"
 					@reload="handleReload"
+					@activate="handleActivate"
 					@delete="handleDelete"
 				/>
 			</div>
