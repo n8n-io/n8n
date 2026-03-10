@@ -485,6 +485,10 @@ export class NodeDetailsViewPage extends BasePage {
 		await this.page.waitForTimeout(2500);
 	}
 
+	getCopyInputButton() {
+		return this.page.getByTestId('copy-input');
+	}
+
 	getOutputPagination() {
 		return this.outputPanel.get().getByTestId('ndv-data-pagination');
 	}
