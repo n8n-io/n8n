@@ -251,27 +251,43 @@ export class Server extends AbstractServer {
 			this.app.post(
 				`/${this.endpointPresetCredentials}`,
 				async (req: express.Request, res: express.Response) => {
-					// If authentication is enforced we can allow multiple overwrites
-					if (!this.presetCredentialsLoaded || authenticationEnforced) {
-						const body = req.body as ICredentialsOverwrite;
+					try {
+						// If authentication is enforced we can allow multiple overwrites
+						if (!this.presetCredentialsLoaded || authenticationEnforced) {
+							const body = req.body as ICredentialsOverwrite;
 
-						if (req.contentType !== 'application/json') {
+							if (req.contentType !== 'application/json') {
+								ResponseHelper.sendErrorResponse(
+									res,
+									new Error(
+										'Body must be a valid JSON, make sure the content-type is application/json',
+									),
+								);
+								return;
+							}
+
+							await Container.get(CredentialsOverwrites).setData(body, true, true);
+
+							this.presetCredentialsLoaded = true;
+
+							// Send push event to notify frontend to refetch types
+							Container.get(Push).broadcast({ type: 'nodeDescriptionUpdated', data: {} });
+
+							ResponseHelper.sendSuccessResponse(res, { success: true }, true, 200);
+						} else {
 							ResponseHelper.sendErrorResponse(
 								res,
-								new Error(
-									'Body must be a valid JSON, make sure the content-type is application/json',
-								),
+								new Error('Preset credentials can be set once'),
 							);
-							return;
 						}
-
-						await Container.get(CredentialsOverwrites).setData(body, true, true);
-
-						this.presetCredentialsLoaded = true;
-
-						ResponseHelper.sendSuccessResponse(res, { success: true }, true, 200);
-					} else {
-						ResponseHelper.sendErrorResponse(res, new Error('Preset credentials can be set once'));
+					} catch (error) {
+						this.logger.error('Error handling credentials overwrite', { error });
+						ResponseHelper.sendErrorResponse(
+							res,
+							new Error(
+								'An error occurred while handling credentials overwrite, please check the logs for more details',
+							),
+						);
 					}
 				},
 			);
@@ -350,6 +366,7 @@ export class Server extends AbstractServer {
 					errorMessage: 'The contentSecurityPolicy is not valid JSON.',
 				},
 			);
+			const crossOriginOpenerPolicy = Container.get(SecurityConfig).crossOriginOpenerPolicy;
 			const cspReportOnly = Container.get(SecurityConfig).contentSecurityPolicyReportOnly;
 			const securityHeadersMiddleware = helmet({
 				contentSecurityPolicy: isEmpty(cspDirectives)
@@ -377,6 +394,9 @@ export class Server extends AbstractServer {
 							preload: false,
 						}
 					: false,
+				crossOriginOpenerPolicy: {
+					policy: crossOriginOpenerPolicy,
+				},
 			});
 
 			// Route all UI urls to index.html to support history-api
@@ -385,7 +405,7 @@ export class Server extends AbstractServer {
 				'assets',
 				'static',
 				'types',
-				'healthz',
+				this.endpointHealth,
 				'metrics',
 				'e2e',
 				this.restEndpoint,

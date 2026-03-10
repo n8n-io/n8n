@@ -3,6 +3,7 @@ import type { IDataObject, INodeProperties } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
+import { containsExpression } from '@/utils';
 
 @Service()
 export class RedactionService {
@@ -51,8 +52,7 @@ export class RedactionService {
 	 * @returns True if value should be redacted
 	 */
 	private shouldRedactValue(value: unknown): boolean {
-		// Only redact string values that are not expressions (starting with '=')
-		return typeof value === 'string' && !value.startsWith('=');
+		return typeof value === 'string' && !containsExpression(value);
 	}
 
 	/**

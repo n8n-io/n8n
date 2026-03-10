@@ -4,8 +4,8 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
-import { useWorkflowAutosaveStore } from '@/app/stores/workflowAutosave.store';
-import { AutoSaveState } from '@/app/constants';
+import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
+import { AutoSaveState, VIEWS } from '@/app/constants';
 import { computed, watch, ref, nextTick, useSlots } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
@@ -14,8 +14,10 @@ import { useRoute, useRouter } from 'vue-router';
 import type { RatingFeedback, WorkflowSuggestion } from '@n8n/design-system/types/assistant';
 import { isTaskAbortedMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { nodeViewEventBus } from '@/app/event-bus';
+import { jsonParse } from 'n8n-workflow';
 import ExecuteMessage from './ExecuteMessage.vue';
 import NotificationPermissionBanner from './NotificationPermissionBanner.vue';
+import ReviewChangesBanner from './ReviewChangesBanner.vue';
 import ChatInputWithMention from '../FocusedNodes/ChatInputWithMention.vue';
 import MessageFocusedNodesChips from '../FocusedNodes/MessageFocusedNodesChips.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
@@ -23,18 +25,18 @@ import { useBrowserNotifications } from '@/app/composables/useBrowserNotificatio
 import { useToast } from '@/app/composables/useToast';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import { WORKFLOW_SUGGESTIONS } from '@/app/constants/workflowSuggestions';
-import { VIEWS } from '@/app/constants';
 import { useWorkflowUpdate } from '@/app/composables/useWorkflowUpdate';
+import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { useErrorHandler } from '@/app/composables/useErrorHandler';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
-import { jsonParse } from 'n8n-workflow';
 import shuffle from 'lodash/shuffle';
-import AISettingsButton from '@/features/ai/assistant/components/Chat/AISettingsButton.vue';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useChatPanelStateStore } from '@/features/ai/assistant/chatPanelState.store';
+import { useReviewChanges } from '@/features/ai/assistant/composables/useReviewChanges';
+import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 
-import { N8nAskAssistantChat } from '@n8n/design-system';
+import { N8nAskAssistantChat, N8nInfoTip } from '@n8n/design-system';
 import BuildModeEmptyState from './BuildModeEmptyState.vue';
 import {
 	isPlanModePlanMessage,
@@ -56,12 +58,12 @@ const usersStore = useUsersStore();
 const workflowHistoryStore = useWorkflowHistoryStore();
 const historyStore = useHistoryStore();
 const collaborationStore = useCollaborationStore();
-const workflowAutosaveStore = useWorkflowAutosaveStore();
-const settingsStore = useSettingsStore();
+const workflowAutosaveStore = useWorkflowSaveStore();
 const telemetry = useTelemetry();
 const slots = useSlots();
 const workflowsStore = useWorkflowsStore();
 const assistantStore = useAssistantStore();
+const settingsStore = useSettingsStore();
 const chatPanelStateStore = useChatPanelStateStore();
 const router = useRouter();
 const i18n = useI18n();
@@ -99,12 +101,9 @@ watch(
 	},
 );
 
-const showSettingsButton = computed(() => {
-	return assistantStore.canManageAISettings;
-});
-
-const allowSendingParameterValues = computed(
-	() => settingsStore.settings.ai.allowSendingParameterValues,
+const showUsabilityNotice = computed(
+	() =>
+		assistantStore.canManageAISettings && !settingsStore.settings.ai.allowSendingParameterValues,
 );
 
 const shouldShowNotificationBanner = computed(() => {
@@ -195,6 +194,23 @@ const isInputDisabled = computed(() => {
 const isChatInputDisabled = computed(() => {
 	return isInputDisabled.value || builderStore.shouldDisableChatInput;
 });
+
+const { showReviewChanges, nodeChanges, isExpanded, toggleExpanded, openDiffView } =
+	useReviewChanges();
+
+function onSelectChangedNode(nodeId: string) {
+	canvasEventBus.emit('nodes:select', { ids: [nodeId], panIntoView: true });
+}
+
+const codeDiffWorkflowState = injectWorkflowState();
+
+async function onCodeReplace(index: number) {
+	await builderStore.applyCodeDiff(codeDiffWorkflowState, index);
+}
+
+async function onCodeUndo(index: number) {
+	await builderStore.undoCodeDiff(codeDiffWorkflowState, index);
+}
 
 const disabledTooltip = computed(() => {
 	if (!isChatInputDisabled.value) {
@@ -398,11 +414,11 @@ watch(
 	},
 );
 
-// Reset initial generation flag when streaming ends
+// Reset initial generation flag and fit canvas when streaming ends
 // Note: Saving is handled by auto-save in NodeView.vue
 watch(
 	() => builderStore.streaming,
-	(isStreaming, wasStreaming) => {
+	async (isStreaming, wasStreaming) => {
 		// Only process when streaming just ended (was streaming, now not)
 		if (!wasStreaming || isStreaming) {
 			return;
@@ -410,6 +426,20 @@ watch(
 
 		if (builderStore.initialGeneration && workflowsStore.workflow.nodes.length > 0) {
 			builderStore.initialGeneration = false;
+		}
+
+		// Tidy up all nodes and zoom to fit after generation completes
+		if (accumulatedNodeIdsToTidyUp.value.length > 0) {
+			accumulatedNodeIdsToTidyUp.value = [];
+			await nextTick();
+			canvasEventBus.emit('tidyUp', {
+				source: 'builder-update',
+				trackEvents: false,
+				trackHistory: false,
+				trackBulk: false,
+			});
+			await nextTick();
+			canvasEventBus.emit('fitView');
 		}
 	},
 );
@@ -423,6 +453,10 @@ async function onRestoreConfirm(versionId: string, messageId: string) {
 		if (!updatedWorkflow) {
 			return;
 		}
+
+		processedWorkflowUpdates.value.clear();
+		accumulatedNodeIdsToTidyUp.value = [];
+
 		builderStore.clearExistingWorkflow();
 		// Reload the workflow to reflect the restored state
 		nodeViewEventBus.emit('importWorkflowData', {
@@ -432,6 +466,9 @@ async function onRestoreConfirm(versionId: string, messageId: string) {
 			trackEvents: false,
 			setStateDirty: false,
 		});
+
+		await nextTick();
+		builderStore.builderMode = 'build';
 	} catch (e: unknown) {
 		toast.showMessage({
 			type: 'error',
@@ -511,22 +548,28 @@ defineExpose({
 			@stop="builderStore.abortStreaming"
 			@restore-confirm="onRestoreConfirm"
 			@show-version="onShowVersion"
+			@code-replace="onCodeReplace"
+			@code-undo="onCodeUndo"
 		>
 			<template #focused-nodes-chips="{ message }">
 				<MessageFocusedNodesChips :focused-node-names="message.focusedNodeNames" />
 			</template>
-			<template #header>
-				<div :class="{ [$style.header]: true, [$style['with-slot']]: !!slots.header }">
-					<slot name="header" />
-					<AISettingsButton
-						v-if="showSettingsButton"
-						:show-usability-notice="!allowSendingParameterValues"
-						:disabled="builderStore.streaming"
-					/>
-				</div>
+			<template v-if="slots.header || showUsabilityNotice" #header>
+				<slot name="header" />
+				<N8nInfoTip v-if="showUsabilityNotice" theme="warning" type="tooltip">
+					<span>{{ i18n.baseText('aiAssistant.reducedHelp.chat.notice') }}</span>
+				</N8nInfoTip>
 			</template>
 			<template #inputHeader>
-				<Transition name="slide">
+				<ReviewChangesBanner
+					v-if="showReviewChanges"
+					:node-changes="nodeChanges"
+					:expanded="isExpanded"
+					@toggle="toggleExpanded"
+					@open-diff="openDiffView"
+					@select-node="onSelectChangedNode"
+				/>
+				<Transition v-else name="slide">
 					<NotificationPermissionBanner v-if="shouldShowNotificationBanner" />
 				</Transition>
 			</template>
@@ -642,17 +685,6 @@ defineExpose({
 .container {
 	height: 100%;
 	width: 100%;
-}
-
-.header {
-	display: flex;
-	justify-content: end;
-	align-items: center;
-	flex: 1;
-
-	&.with-slot {
-		justify-content: space-between;
-	}
 }
 
 .newWorkflowButtonWrapper {

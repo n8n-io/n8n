@@ -155,6 +155,69 @@ export interface IConnections {
 	[key: string]: INodeConnections;
 }
 
+/**
+ * Normalize workflow connections in-place.
+ * Some workflows store connections as flat tuples [nodeName, type, index]
+ * instead of the standard {node, type, index} objects. This converts them
+ * to canonical object format so all downstream code sees a consistent shape.
+ */
+export function normalizeConnections(connections: IConnections): void {
+	for (const nodeConns of Object.values(connections)) {
+		for (const [connType, outputs] of Object.entries(nodeConns)) {
+			if (!Array.isArray(outputs)) continue;
+			for (let i = 0; i < outputs.length; i++) {
+				const slot = outputs[i] as unknown;
+				if (!Array.isArray(slot)) continue;
+				// Flat tuple: [string, string, number] instead of [{node, type, index}]
+				if (slot.length > 0 && slot.length <= 3 && typeof slot[0] === 'string') {
+					outputs[i] = [
+						{
+							node: slot[0],
+							type: (slot[1] as string) ?? 'main',
+							index: (slot[2] as number) ?? 0,
+						},
+					];
+				}
+			}
+			nodeConns[connType] = outputs;
+		}
+	}
+
+	// Ensure every connection object has an explicit `index` property.
+	// Some original JSON omits it (semantically equivalent to 0).
+	for (const nodeConns of Object.values(connections)) {
+		for (const outputs of Object.values(nodeConns)) {
+			if (!Array.isArray(outputs)) continue;
+			for (const slot of outputs) {
+				if (!Array.isArray(slot)) continue;
+				for (const conn of slot) {
+					if (typeof conn === 'object' && conn !== null && conn.index === undefined) {
+						conn.index = 0;
+					}
+				}
+			}
+		}
+	}
+}
+
+/**
+ * Generate a unique name by appending an incrementing counter (starting at 2).
+ * The first instance keeps the original baseName; duplicates get "baseName 2", "baseName 3", etc.
+ *
+ * @param baseName - The original name to deduplicate
+ * @param exists - Callback that returns true if a name is already taken
+ * @returns A unique name derived from baseName
+ */
+export function generateUniqueName(baseName: string, exists: (name: string) => boolean): string {
+	let counter = 2;
+	let uniqueName = `${baseName} ${counter}`;
+	while (exists(uniqueName)) {
+		counter++;
+		uniqueName = `${baseName} ${counter}`;
+	}
+	return uniqueName;
+}
+
 // =============================================================================
 // Internal: Serialization types
 // =============================================================================
@@ -223,6 +286,7 @@ export interface DeclaredConnection {
 	target: NodeInstance<string, string, unknown> | InputTarget;
 	outputIndex: number;
 	targetInputIndex?: number;
+	connectionType?: string;
 }
 
 /**
@@ -259,35 +323,6 @@ export interface OutputSelector<TType extends string, TVersion extends string, T
 // =============================================================================
 
 /**
- * Binary data field properties
- */
-export interface BinaryField {
-	fileName?: string;
-	directory?: string;
-	mimeType?: string;
-	fileExtension?: string;
-	fileSize?: string;
-}
-
-/**
- * Binary data context
- */
-export type BinaryContext = {
-	[fieldName: string]: BinaryField | (() => string[]);
-} & {
-	keys(): string[];
-};
-
-/**
- * Input data context
- */
-export interface InputContext {
-	first(): IDataObject;
-	all(): IDataObject[];
-	item: IDataObject;
-}
-
-/**
  * Execution context
  */
 export interface ExecutionContext {
@@ -304,29 +339,6 @@ export interface WorkflowContext {
 	name?: string;
 	active: boolean;
 }
-
-/**
- * Expression context providing access to n8n runtime data
- */
-export interface ExpressionContext {
-	json: IDataObject;
-	binary: BinaryContext;
-	input: InputContext;
-	env: IDataObject;
-	vars: IDataObject;
-	secrets: IDataObject;
-	now: Date;
-	today: Date;
-	itemIndex: number;
-	runIndex: number;
-	execution: ExecutionContext;
-	workflow: WorkflowContext;
-}
-
-/**
- * Expression function type
- */
-export type Expression<T> = ($: ExpressionContext) => T;
 
 // =============================================================================
 // Node configuration (full version with all options)
@@ -376,7 +388,7 @@ export interface StickyNoteConfig {
  * Subnode configuration for AI nodes
  */
 export interface SubnodeConfig {
-	model?: LanguageModelInstance | LanguageModelInstance[];
+	model?: LanguageModelInstance | LanguageModelInstance[] | LanguageModelInstance[][];
 	memory?: MemoryInstance;
 	tools?: ToolInstance[];
 	outputParser?: OutputParserInstance;
@@ -387,7 +399,7 @@ export interface SubnodeConfig {
 	retriever?: RetrieverInstance;
 	documentLoader?: DocumentLoaderInstance | DocumentLoaderInstance[];
 	textSplitter?: TextSplitterInstance;
-	reranker?: RerankerInstance;
+	reranker?: RerankerInstance | RerankerInstance[];
 }
 
 // =============================================================================
@@ -732,6 +744,8 @@ export interface IfElseBuilder<TOutput = unknown> {
 	readonly trueBranch: IfElseTarget;
 	/** The false branch target (set via .onFalse()) */
 	readonly falseBranch: IfElseTarget;
+	/** The error branch target (set via .onError()) */
+	readonly errorBranch?: IfElseTarget;
 
 	/**
 	 * Set the target for the true branch (output 0).
@@ -748,6 +762,14 @@ export interface IfElseBuilder<TOutput = unknown> {
 	 * @param target - The node, chain, or array (fan-out) to execute when condition is false
 	 */
 	onFalse(target: IfElseTarget): IfElseBuilder<TOutput>;
+
+	/**
+	 * Set the target for the error branch (output 2).
+	 * Only applicable when the IF node has onError: 'continueErrorOutput'.
+	 *
+	 * @param target - The node or chain to execute on error
+	 */
+	onError(target: IfElseTarget): IfElseBuilder<TOutput>;
 
 	/**
 	 * Chain a target node after the IF branches.
@@ -894,6 +916,7 @@ export interface WorkflowBuilder {
 	>(node: N): WorkflowBuilder;
 
 	to<N extends NodeInstance<string, string, unknown>>(node: N): WorkflowBuilder;
+	to(inputTarget: InputTarget): WorkflowBuilder;
 	to(ifElse: IfElseComposite): WorkflowBuilder;
 	to(switchCase: SwitchCaseComposite): WorkflowBuilder;
 	to<T>(splitInBatches: SplitInBatchesBuilder<T>): WorkflowBuilder;

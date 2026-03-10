@@ -191,7 +191,9 @@ describe('SettingsSso View', () => {
 				}),
 			);
 
-			expect(ssoStore.testSamlConfig).toHaveBeenCalled();
+			expect(ssoStore.testSamlConfig).toHaveBeenCalledWith(
+				expect.objectContaining({ metadataUrl: samlConfig.metadataUrl }),
+			);
 			expect(windowOpenSpy).toHaveBeenCalled();
 
 			expect(telemetryTrack).toHaveBeenCalledWith(
@@ -252,7 +254,9 @@ describe('SettingsSso View', () => {
 				}),
 			);
 
-			expect(ssoStore.testSamlConfig).toHaveBeenCalled();
+			expect(ssoStore.testSamlConfig).toHaveBeenCalledWith(
+				expect.objectContaining({ metadata: samlConfig.metadata }),
+			);
 			expect(windowOpenSpy).toHaveBeenCalled();
 
 			expect(telemetryTrack).toHaveBeenCalledWith(
@@ -261,6 +265,82 @@ describe('SettingsSso View', () => {
 			);
 
 			expect(ssoStore.getSamlConfig).toHaveBeenCalledTimes(2);
+		});
+
+		it('test button sends metadataUrl when in URL mode without saving', async () => {
+			const windowOpenSpy = vi.spyOn(window, 'open');
+
+			ssoStore.isEnterpriseSamlEnabled = true;
+			ssoStore.isEnterpriseOidcEnabled = true;
+			ssoStore.isSamlLoginEnabled = false;
+			ssoStore.samlConfig = {
+				...samlConfig,
+				metadataUrl: undefined,
+				metadata: undefined,
+				loginEnabled: false,
+			};
+			ssoStore.getSamlConfig.mockResolvedValue({
+				...samlConfig,
+				metadataUrl: undefined,
+				metadata: undefined,
+				loginEnabled: false,
+			});
+			ssoStore.testSamlConfig.mockResolvedValue('https://test-url.com');
+
+			const { getByTestId } = renderView();
+
+			const urlInput = getByTestId('sso-provider-url');
+			expect(urlInput).toBeVisible();
+			await userEvent.type(urlInput, samlConfig.metadataUrl as string);
+
+			const testButton = getByTestId('sso-test');
+			expect(testButton).not.toBeDisabled();
+			await userEvent.click(testButton);
+
+			expect(ssoStore.testSamlConfig).toHaveBeenCalledWith(
+				expect.objectContaining({ metadataUrl: samlConfig.metadataUrl }),
+			);
+			expect(ssoStore.saveSamlConfig).not.toHaveBeenCalled();
+			expect(windowOpenSpy).toHaveBeenCalled();
+		});
+
+		it('test button sends metadata XML when in XML mode without saving', async () => {
+			const windowOpenSpy = vi.spyOn(window, 'open');
+
+			ssoStore.isEnterpriseSamlEnabled = true;
+			ssoStore.isEnterpriseOidcEnabled = true;
+			ssoStore.isSamlLoginEnabled = false;
+			ssoStore.samlConfig = {
+				...samlConfig,
+				metadataUrl: undefined,
+				metadata: undefined,
+				loginEnabled: false,
+			};
+			ssoStore.getSamlConfig.mockResolvedValue({
+				...samlConfig,
+				metadataUrl: undefined,
+				metadata: undefined,
+				loginEnabled: false,
+			});
+			ssoStore.testSamlConfig.mockResolvedValue('https://test-url.com');
+
+			const { getByTestId } = renderView();
+
+			await userEvent.click(getByTestId('radio-button-xml'));
+
+			const xmlInput = getByTestId('sso-provider-xml');
+			expect(xmlInput).toBeVisible();
+			await userEvent.type(xmlInput, samlConfig.metadata!);
+
+			const testButton = getByTestId('sso-test');
+			expect(testButton).not.toBeDisabled();
+			await userEvent.click(testButton);
+
+			expect(ssoStore.testSamlConfig).toHaveBeenCalledWith(
+				expect.objectContaining({ metadata: samlConfig.metadata }),
+			);
+			expect(ssoStore.saveSamlConfig).not.toHaveBeenCalled();
+			expect(windowOpenSpy).toHaveBeenCalled();
 		});
 
 		it('should validate the url before setting the saml config', async () => {

@@ -45,14 +45,6 @@ export class TagsManagerModal extends BasePage {
 		return this.root.getByText('Are you sure you want to delete this tag?');
 	}
 
-	async clickAddNewButton(): Promise<void> {
-		await this.root.getByRole('button', { name: 'Add new' }).click();
-	}
-
-	async clickCreateTagButton(): Promise<void> {
-		await this.root.getByRole('button', { name: 'Create a tag' }).click();
-	}
-
 	/**
 	 * Start adding a new tag, handling both empty state ("Create a tag") and existing tags ("Add new")
 	 */

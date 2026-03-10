@@ -18,12 +18,17 @@ import {
 } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { validateExternalSecretsPermissions } from '@/credentials/validation';
+import {
+	validateAccessToReferencedSecretProviders,
+	validateExternalSecretsPermissions,
+} from '@/credentials/validation';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import type { CredentialRequest } from '@/requests';
 
 import type { IDependency, IJsonSchema } from '../../../types';
+import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
+import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 
 export class CredentialsIsNotUpdatableError extends BaseError {}
 
@@ -58,8 +63,15 @@ export function buildSharedForCredential(
 		}));
 }
 
-export async function getCredentials(credentialId: string): Promise<ICredentialsDb | null> {
-	return await Container.get(CredentialsRepository).findOneBy({ id: credentialId });
+export async function getCredential(credentialId: string): Promise<ICredentialsDb | null> {
+	return await Container.get(CredentialsRepository).findOne({
+		where: { id: credentialId },
+		relations: ['shared', 'shared.project'],
+	});
+}
+
+function isProjectScopedExternalSecretsEnabled() {
+	return Container.get(ExternalSecretsConfig).externalSecretsForProjects;
 }
 
 export async function getSharedCredentials(
@@ -85,18 +97,27 @@ export async function createCredential(
 	return newCredential;
 }
 
+/**
+ * Creats a credential in the personal project of the given user.
+ */
 export async function saveCredential(
 	payload: { type: string; name: string; data: ICredentialDataDecryptedObject },
 	user: User,
 ): Promise<CredentialsEntity> {
 	const credential = await createCredential(payload);
 
-	validateExternalSecretsPermissions(user, payload.data);
+	const projectRepository = Container.get(ProjectRepository);
+	const personalProject = await projectRepository.getPersonalProjectForUserOrFail(user.id);
+
+	await validateExternalSecretsPermissions({
+		user,
+		projectId: personalProject.id,
+		dataToSave: payload.data,
+	});
 
 	const encryptedData = await encryptCredential(credential);
 	Object.assign(credential, encryptedData);
 
-	const projectRepository = Container.get(ProjectRepository);
 	const { manager: dbManager } = projectRepository;
 	const result = await dbManager.transaction(async (transactionManager) => {
 		const savedCredential = await transactionManager.save<CredentialsEntity>(credential);
@@ -104,11 +125,6 @@ export async function saveCredential(
 		savedCredential.data = credential.data;
 
 		const newSharedCredential = new SharedCredentials();
-
-		const personalProject = await projectRepository.getPersonalProjectForUserOrFail(
-			user.id,
-			transactionManager,
-		);
 
 		Object.assign(newSharedCredential, {
 			role: 'credential:owner',
@@ -152,7 +168,7 @@ export async function updateCredential(
 		isPartialData?: boolean;
 	},
 ): Promise<ICredentialsDb | null> {
-	const existingCredential = await getCredentials(credentialId);
+	const existingCredential = await getCredential(credentialId);
 	if (!existingCredential) {
 		return null;
 	}
@@ -179,7 +195,26 @@ export async function updateCredential(
 		// Decrypt existing data to access oauthTokenData
 		const decryptedData = credentialsService.decrypt(existingCredential as CredentialsEntity, true);
 
-		validateExternalSecretsPermissions(user, updateData.data, decryptedData);
+		// eslint-disable-next-line @typescript-eslint/no-non-null-asserted-optional-chain -- credential will always have an owner
+		const projectOwningCredential = existingCredential.shared?.find(
+			(shared) => shared.role === 'credential:owner',
+		)!;
+
+		await validateExternalSecretsPermissions({
+			user,
+			projectId: projectOwningCredential.project.id,
+			dataToSave: updateData.data,
+			decryptedExistingData: decryptedData,
+		});
+
+		if (isProjectScopedExternalSecretsEnabled() && decryptedData) {
+			await validateAccessToReferencedSecretProviders(
+				projectOwningCredential.project.id,
+				updateData.data,
+				Container.get(SecretsProviderAccessCheckService),
+				'update',
+			);
+		}
 
 		let dataToEncrypt: ICredentialDataDecryptedObject;
 
@@ -223,7 +258,7 @@ export async function updateCredential(
 
 	await Container.get(CredentialsRepository).update(credentialId, credentialData);
 
-	return await getCredentials(credentialId);
+	return await getCredential(credentialId);
 }
 
 export async function removeCredential(

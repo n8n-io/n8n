@@ -29,6 +29,7 @@ export {
 	type EvaluationLifecycle,
 	type LangsmithOptions,
 	type GenerationResult,
+	type SubgraphExampleOutput,
 } from './harness/harness-types';
 
 // Lifecycle
@@ -45,10 +46,23 @@ export {
 	createProgrammaticEvaluator,
 	createPairwiseEvaluator,
 	createSimilarityEvaluator,
+	createResponderEvaluator,
+	createExecutionEvaluator,
+	createBinaryChecksEvaluator,
 	type PairwiseEvaluatorOptions,
 	type SimilarityEvaluatorOptions,
+	type BinaryChecksEvaluatorOptions,
+	type ResponderEvaluationContext,
 } from './evaluators';
 
+// Subgraph evaluation
+export {
+	createSubgraphRunner,
+	type SubgraphName,
+	type SubgraphRunFn,
+} from './harness/subgraph-runner';
+export { runSubgraphEvaluation } from './harness/subgraph-evaluation';
+export { runLocalSubgraphEvaluation } from './harness/subgraph-evaluation-local';
 // Introspection lifecycle
 export {
 	createIntrospectionAnalysisLifecycle,

@@ -10,6 +10,7 @@ export const secretsProviderTypeSchema = z.enum([
 	'vault',
 	'azureKeyVault',
 	'infisical',
+	'onePassword',
 ]);
 export type SecretsProviderType = z.infer<typeof secretsProviderTypeSchema>;
 
@@ -78,6 +79,10 @@ export const secretProviderConnectionSchema = z.object({
 	updatedAt: z.string(),
 });
 export type SecretProviderConnection = z.infer<typeof secretProviderConnectionSchema>;
+export type SecretProviderConnectionListItem = Omit<
+	SecretProviderConnection,
+	'settings' | 'secrets'
+>;
 
 /**
  * Provider type metadata - for form rendering
@@ -114,6 +119,7 @@ export type TestSecretProviderConnectionResponse = z.infer<
  */
 export const reloadSecretProviderConnectionResponseSchema = z.object({
 	success: z.boolean(),
+	providers: z.record(z.string(), z.object({ success: z.boolean() })).optional(),
 });
 export type ReloadSecretProviderConnectionResponse = z.infer<
 	typeof reloadSecretProviderConnectionResponseSchema

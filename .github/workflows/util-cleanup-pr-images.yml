@@ -1,13 +1,13 @@
-name: 'Util: Cleanup PR Docker Images'
+name: 'Util: Cleanup CI Docker Images'
 
 on:
   schedule:
-    # Weekly cleanup: Sunday at 3 AM UTC
-    - cron: '0 3 * * 0'
+    # Daily cleanup at 3 AM UTC
+    - cron: '0 3 * * *'
 
 jobs:
   cleanup:
-    name: 'Delete stale PR images'
+    name: 'Delete stale CI images'
     runs-on: ubuntu-slim
     permissions:
       packages: write
@@ -19,9 +19,9 @@ jobs:
           sparse-checkout: .github/scripts
           sparse-checkout-cone-mode: false
 
-      - name: Delete stale PR images
+      - name: Delete stale CI images
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GHCR_ORG: ${{ github.repository_owner }}
           GHCR_REPO: ${{ github.event.repository.name }}
-        run: node .github/scripts/cleanup-ghcr-images.mjs --stale 7
+        run: node .github/scripts/cleanup-ghcr-images.mjs --stale 1

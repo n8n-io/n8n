@@ -48,6 +48,9 @@ const props = withDefaults(defineProps<SelectProps<T, VK, M>>(), {
 	placeholder: 'Select an option',
 	variant: 'default',
 	size: 'small',
+	position: 'item-aligned',
+	side: 'bottom',
+	sideOffset: 4,
 });
 const emit = defineEmits<SelectEmits<T, VK, M>>();
 const slots = defineSlots<SelectSlots<T, VK, M>>();
@@ -147,7 +150,12 @@ const groups = computed<SelectItemProps[]>(() => {
 		</SelectTrigger>
 
 		<SelectPortal>
-			<SelectContent :class="$style.selectContent">
+			<SelectContent
+				:class="[$style.selectContent, contentClass]"
+				:position="position"
+				:side="side"
+				:side-offset="sideOffset"
+			>
 				<slot name="header" />
 
 				<SelectScrollUpButton :class="$style.selectScrollButton">
@@ -282,6 +290,12 @@ const groups = computed<SelectItemProps[]>(() => {
 	 * TODO: Replace with design system z-index variable when available
 	 */
 	z-index: 999999;
+
+	/* When in popper mode, match trigger width and constrain height */
+	&[data-side] {
+		min-width: var(--reka-select-trigger-width);
+		max-height: var(--reka-select-content-available-height);
+	}
 }
 
 .selectViewport {

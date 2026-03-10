@@ -552,7 +552,7 @@ onMounted(async () => {
 		<template #footer="{ close }">
 			<div :class="$style.footer">
 				<N8nButton
-					type="secondary"
+					variant="subtle"
 					:label="i18n.baseText('generic.cancel')"
 					:disabled="loading"
 					float="right"

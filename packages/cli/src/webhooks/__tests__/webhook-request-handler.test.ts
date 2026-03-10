@@ -1,5 +1,6 @@
 import { type Response } from 'express';
 import { mock } from 'jest-mock-extended';
+import { isWebhookHtmlSandboxingDisabled, getWebhookSandboxCSP } from 'n8n-core';
 import { randomString } from 'n8n-workflow';
 import type { IHttpRequestMethods } from 'n8n-workflow';
 
@@ -11,6 +12,14 @@ import type {
 	WebhookOptionsRequest,
 	WebhookRequest,
 } from '@/webhooks/webhook.types';
+
+jest.mock('n8n-core', () => ({
+	...jest.requireActual('n8n-core'),
+	isWebhookHtmlSandboxingDisabled: jest.fn().mockReturnValue(false),
+	getWebhookSandboxCSP: jest
+		.fn()
+		.mockReturnValue('sandbox allow-downloads allow-forms allow-modals'),
+}));
 
 describe('WebhookRequestHandler', () => {
 	const webhookManager = mock<Required<IWebhookManager>>();
@@ -163,7 +172,7 @@ describe('WebhookRequestHandler', () => {
 
 			expect(webhookManager.executeWebhook).toHaveBeenCalledWith(req, res);
 			expect(res.status).toHaveBeenCalledWith(200);
-			expect(res.setHeader).toHaveBeenCalledWith('x-custom-header', 'test');
+			expect(res.setHeaders).toHaveBeenCalledWith(new Map([['x-custom-header', 'test']]));
 			expect(res.json).toHaveBeenCalledWith(executeWebhookResponse.data);
 		});
 
@@ -192,6 +201,54 @@ describe('WebhookRequestHandler', () => {
 			});
 		});
 
+		it('should not throw when legacy response headers contain invalid names', async () => {
+			const req = mock<WebhookRequest>({
+				method: 'GET',
+				params: { path: 'test' },
+			});
+
+			const res = mock<Response>();
+
+			const executeWebhookResponse: IWebhookResponseCallbackData = {
+				responseCode: 200,
+				data: { ok: true },
+				headers: {
+					'<img src=x onerror=alert(1)>': 'xss',
+					'x-valid': 'value',
+				},
+			};
+			webhookManager.executeWebhook.mockResolvedValueOnce(executeWebhookResponse);
+
+			await handler(req, res);
+
+			expect(res.setHeaders).toHaveBeenCalledTimes(1);
+			expect(res.setHeaders).toHaveBeenCalledWith(new Map([['x-valid', 'value']]));
+			expect(res.json).toHaveBeenCalledWith(executeWebhookResponse.data);
+		});
+
+		it('should not allow user to override CSP via response headers', async () => {
+			const req = mock<WebhookRequest>({
+				method: 'GET',
+				params: { path: 'test' },
+			});
+
+			const res = mock<Response>();
+
+			const executeWebhookResponse: IWebhookResponseCallbackData = {
+				responseCode: 200,
+				data: { ok: true },
+				headers: {
+					'Content-Security-Policy': "default-src 'unsafe-inline'",
+				},
+			};
+			webhookManager.executeWebhook.mockResolvedValueOnce(executeWebhookResponse);
+
+			await handler(req, res);
+
+			expect(res.setHeaders).not.toHaveBeenCalled();
+			expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getWebhookSandboxCSP());
+		});
+
 		test.each<IHttpRequestMethods>(['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'])(
 			"should handle '%s' method",
 			async (method) => {
@@ -214,5 +271,49 @@ describe('WebhookRequestHandler', () => {
 				expect(res.json).toHaveBeenCalledWith(executeWebhookResponse.data);
 			},
 		);
+	});
+
+	describe('CSP sandbox header', () => {
+		it('should set CSP sandbox header on all webhook responses', async () => {
+			const req = mock<WebhookRequest>({
+				method: 'GET',
+				params: { path: 'test' },
+			});
+
+			const res = mock<Response>();
+
+			const executeWebhookResponse: IWebhookResponseCallbackData = {
+				responseCode: 200,
+				data: {},
+				headers: { 'content-type': 'image/svg+xml' },
+			};
+			webhookManager.executeWebhook.mockResolvedValueOnce(executeWebhookResponse);
+
+			await handler(req, res);
+
+			expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getWebhookSandboxCSP());
+		});
+
+		it('should not set CSP sandbox header when sandboxing is disabled', async () => {
+			jest.mocked(isWebhookHtmlSandboxingDisabled).mockReturnValueOnce(true);
+
+			const req = mock<WebhookRequest>({
+				method: 'GET',
+				params: { path: 'test' },
+			});
+
+			const res = mock<Response>();
+
+			const executeWebhookResponse: IWebhookResponseCallbackData = {
+				responseCode: 200,
+				data: {},
+				headers: { 'content-type': 'text/html' },
+			};
+			webhookManager.executeWebhook.mockResolvedValueOnce(executeWebhookResponse);
+
+			await handler(req, res);
+
+			expect(res.setHeader).not.toHaveBeenCalledWith('Content-Security-Policy', expect.anything());
+		});
 	});
 });

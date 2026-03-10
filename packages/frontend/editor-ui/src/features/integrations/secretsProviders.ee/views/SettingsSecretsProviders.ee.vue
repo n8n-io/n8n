@@ -1,9 +1,17 @@
 <script lang="ts" setup>
-import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/app/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useSecretsProvidersList } from '../composables/useSecretsProvidersList.ee';
-import { computed, onMounted } from 'vue';
+import { useMessage } from '@/app/composables/useMessage';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { useToast } from '@/app/composables/useToast';
+import {
+	DELETE_SECRETS_PROVIDER_MODAL_KEY,
+	SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
+} from '@/app/constants/modals';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
+import type { SecretProviderConnection } from '@n8n/api-types';
 import {
 	N8nActionBox,
 	N8nButton,
@@ -13,24 +21,90 @@ import {
 	N8nLoading,
 	N8nText,
 } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import * as externalSecretsApi from '@n8n/rest-api-client';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { ElSwitch } from 'element-plus';
+import { computed, onMounted, ref } from 'vue';
+import { I18nT } from 'vue-i18n';
+
 import SecretsProviderConnectionCard from '../components/SecretsProviderConnectionCard.ee.vue';
 import SecretsProvidersEmptyState from '../components/SecretsProvidersEmptyState.ee.vue';
-import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { useUIStore } from '@/app/stores/ui.store';
-import {
-	SECRETS_PROVIDER_CONNECTION_MODAL_KEY,
-	DELETE_SECRETS_PROVIDER_MODAL_KEY,
-} from '@/app/constants/modals';
-import { I18nT } from 'vue-i18n';
+import { useSecretsProviderConnection } from '../composables/useSecretsProviderConnection.ee';
+import { useSecretsProvidersList } from '../composables/useSecretsProvidersList.ee';
 
 const i18n = useI18n();
 const secretsProviders = useSecretsProvidersList();
+const projectsStore = useProjectsStore();
+const settingsStore = useSettingsStore();
+const rootStore = useRootStore();
 const toast = useToast();
+const message = useMessage();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const uiStore = useUIStore();
-
+const secretsProviderConnection = useSecretsProviderConnection(projectsStore.currentProjectId);
 const hasActiveProviders = computed(() => secretsProviders.activeProviders.value.length > 0);
+
+const externalSecretsModuleSettings = computed(
+	() => settingsStore.moduleSettings['external-secrets'],
+);
+const isRoleBasedAccessEnabled = computed(
+	() => externalSecretsModuleSettings.value?.roleBasedAccess ?? false,
+);
+const systemRolesEnabled = ref(false);
+const systemRolesToggleLoading = ref(false);
+
+async function onSystemRolesToggle(value: string | number | boolean) {
+	const enabled = Boolean(value);
+	if (!enabled) {
+		const result = await message.confirm(
+			i18n.baseText('settings.externalSecrets.systemRoles.confirm.message'),
+			i18n.baseText('settings.externalSecrets.systemRoles.confirm.headline'),
+			{
+				confirmButtonText: i18n.baseText(
+					'settings.externalSecrets.systemRoles.confirm.confirmButtonText',
+				),
+				cancelButtonText: i18n.baseText(
+					'settings.externalSecrets.systemRoles.confirm.cancelButtonText',
+				),
+			},
+		);
+		if (result !== 'confirm') return;
+	}
+
+	systemRolesToggleLoading.value = true;
+	try {
+		const response = await externalSecretsApi.updateExternalSecretsSettings(
+			rootStore.restApiContext,
+			{ systemRolesEnabled: enabled },
+		);
+		systemRolesEnabled.value = response.systemRolesEnabled;
+		await settingsStore.getModuleSettings();
+		toast.showMessage({
+			title: enabled
+				? i18n.baseText('settings.externalSecrets.systemRoles.enabled.toast')
+				: i18n.baseText('settings.externalSecrets.systemRoles.disabled.toast'),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.externalSecrets.systemRoles.error'));
+	} finally {
+		systemRolesToggleLoading.value = false;
+	}
+}
+
+const sortedProviders = computed(() => {
+	return [...secretsProviders.activeProviders.value].sort((a, b) => a.name.localeCompare(b.name));
+});
+
+function getProjectForProvider(provider: SecretProviderConnection): ProjectListItem | null {
+	if (!provider || provider.projects.length === 0) return null;
+
+	return (
+		projectsStore.projects.find((p: ProjectListItem) => p.id === provider.projects[0].id) ?? null
+	);
+}
 
 function getProviderTypeInfo(providerType: string) {
 	return secretsProviders.providerTypes.value.find((type) => type.type === providerType);
@@ -56,12 +130,36 @@ function openConnectionModal(
 	});
 }
 
+function handleCardClick(providerKey: string) {
+	openConnectionModal(providerKey, 'connection');
+}
+
 function handleEdit(providerKey: string) {
 	openConnectionModal(providerKey, 'connection');
 }
 
 function handleShare(providerKey: string) {
 	openConnectionModal(providerKey, 'sharing');
+}
+
+async function handleReload(providerKey: string) {
+	try {
+		const result = await secretsProviderConnection.reloadConnection(providerKey);
+		if (!result.success) {
+			toast.showError(new Error('Reload failed'), i18n.baseText('error'));
+			return;
+		}
+		toast.showMessage({
+			title: i18n.baseText('settings.externalSecrets.card.reload.success.title'),
+			message: i18n.baseText('settings.externalSecrets.card.reload.success.description', {
+				interpolate: { provider: providerKey },
+			}),
+			type: 'success',
+		});
+		await secretsProviders.fetchConnection(providerKey);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('error'));
+	}
 }
 
 function handleDelete(providerKey: string) {
@@ -75,6 +173,7 @@ function handleDelete(providerKey: string) {
 			providerKey: provider.name,
 			providerName: provider.name,
 			secretsCount: provider.secretsCount ?? 0,
+			projectId: provider.projects.length > 0 ? provider.projects[0].id : undefined,
 			onConfirm: async () => {
 				await secretsProviders.fetchActiveConnections();
 			},
@@ -86,11 +185,15 @@ onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.secretsProviderConnections.title'));
 	if (!secretsProviders.isEnterpriseExternalSecretsEnabled.value) return;
 	try {
-		await secretsProviders.fetchProviderTypes();
-		await secretsProviders.fetchActiveConnections();
+		await Promise.all([
+			secretsProviders.fetchProviderTypes(),
+			secretsProviders.fetchActiveConnections(),
+			projectsStore.getAllProjects(),
+		]);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('error'));
 	}
+	systemRolesEnabled.value = externalSecretsModuleSettings.value?.systemRolesEnabled ?? false;
 });
 
 function goToUpgrade() {
@@ -124,10 +227,32 @@ function goToUpgrade() {
 						</span>
 					</N8nLink>
 				</N8nText>
+				<div
+					v-if="isRoleBasedAccessEnabled"
+					:class="$style.systemRolesToggle"
+					class="mt-xl"
+					data-test-id="external-secrets-system-roles-toggle"
+				>
+					<div :class="$style.systemRolesToggleInfo">
+						<N8nText :bold="true" size="small">
+							{{ i18n.baseText('settings.externalSecrets.systemRoles.title') }}
+						</N8nText>
+						<N8nText size="small" color="text-light">
+							{{ i18n.baseText('settings.externalSecrets.systemRoles.description') }}
+						</N8nText>
+					</div>
+					<ElSwitch
+						:model-value="systemRolesEnabled"
+						:loading="systemRolesToggleLoading"
+						data-test-id="external-secrets-system-roles-switch"
+						@update:model-value="onSystemRolesToggle"
+					/>
+				</div>
 				<N8nButton
 					v-if="hasActiveProviders && secretsProviders.canCreate.value"
 					:class="$style.addButton"
-					type="primary"
+					variant="solid"
+					size="small"
 					@click="openConnectionModal()"
 					><N8nIcon icon="plus" />
 					{{ i18n.baseText('settings.secretsProviderConnections.buttons.addSecretsStore') }}
@@ -154,14 +279,17 @@ function goToUpgrade() {
 			/>
 			<div v-else>
 				<SecretsProviderConnectionCard
-					v-for="provider in secretsProviders.activeProviders.value"
+					v-for="provider in sortedProviders"
 					:key="provider.name"
 					class="mb-2xs"
 					:provider="provider"
 					:provider-type-info="getProviderTypeInfo(provider.type)"
+					:project="getProjectForProvider(provider)"
 					:can-update="secretsProviders.canUpdate.value"
+					@click="handleCardClick(provider.name)"
 					@edit="handleEdit"
 					@share="handleShare"
+					@reload="handleReload"
 					@delete="handleDelete"
 				/>
 			</div>
@@ -217,5 +345,20 @@ function goToUpgrade() {
 	text-transform: lowercase;
 	display: inline-flex;
 	align-items: center;
+}
+
+.systemRolesToggle {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: var(--spacing--sm);
+	border: var(--border);
+	border-radius: var(--radius--lg);
+}
+
+.systemRolesToggleInfo {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
 }
 </style>

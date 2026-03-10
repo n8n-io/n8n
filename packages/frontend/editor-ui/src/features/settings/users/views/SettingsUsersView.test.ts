@@ -168,6 +168,7 @@ describe('SettingsUsersView', () => {
 		settingsStore.settings.enterprise = {} as FrontendSettings['enterprise'];
 		settingsStore.settings.enterprise[EnterpriseEditionFeature.AdvancedPermissions] = true;
 		ssoStore.isSamlLoginEnabled = false;
+		ssoStore.isOidcLoginEnabled = false;
 	});
 
 	afterEach(() => {
@@ -212,8 +213,17 @@ describe('SettingsUsersView', () => {
 		});
 	});
 
-	it('should disable invite button when SSO is enabled', () => {
+	it('should disable invite button when SAML SSO is enabled', () => {
 		ssoStore.isSamlLoginEnabled = true;
+
+		renderComponent();
+
+		const inviteButton = screen.getByTestId('settings-users-invite-button');
+		expect(inviteButton).toBeDisabled();
+	});
+
+	it('should disable invite button when OIDC SSO is enabled', () => {
+		ssoStore.isOidcLoginEnabled = true;
 
 		renderComponent();
 
@@ -296,6 +306,75 @@ describe('SettingsUsersView', () => {
 		expect(actionsList).toBeInTheDocument();
 		expect(screen.getByTestId('action-delete-2')).toBeInTheDocument();
 		spy.mockRestore();
+	});
+
+	it('should show allow SSO manual login action when SAML is enabled', () => {
+		ssoStore.isSamlLoginEnabled = true;
+		// Ensure user 2 doesn't have allowSSOManualLogin set
+		usersStore.usersList.state.items[1].settings = {};
+
+		renderComponent();
+
+		const actionsList = screen.getByTestId('actions-for-2');
+		expect(actionsList).toBeInTheDocument();
+		expect(screen.getByTestId('action-allowSSOManualLogin-2')).toBeInTheDocument();
+	});
+
+	it('should show allow SSO manual login action when OIDC is enabled', () => {
+		ssoStore.isOidcLoginEnabled = true;
+		// Ensure user 2 doesn't have allowSSOManualLogin set
+		usersStore.usersList.state.items[1].settings = {};
+
+		renderComponent();
+
+		const actionsList = screen.getByTestId('actions-for-2');
+		expect(actionsList).toBeInTheDocument();
+		expect(screen.getByTestId('action-allowSSOManualLogin-2')).toBeInTheDocument();
+	});
+
+	it('should not show allow SSO manual login action when SSO is disabled', () => {
+		ssoStore.isSamlLoginEnabled = false;
+		ssoStore.isOidcLoginEnabled = false;
+
+		renderComponent();
+
+		const actionsList = screen.getByTestId('actions-for-2');
+		expect(actionsList).toBeInTheDocument();
+		expect(screen.queryByTestId('action-allowSSOManualLogin-2')).not.toBeInTheDocument();
+	});
+
+	it('should show disallow SSO manual login action when SAML is enabled and user has allowSSOManualLogin', () => {
+		ssoStore.isSamlLoginEnabled = true;
+		usersStore.usersList.state.items[1].settings = { allowSSOManualLogin: true };
+
+		renderComponent();
+
+		const actionsList = screen.getByTestId('actions-for-2');
+		expect(actionsList).toBeInTheDocument();
+		expect(screen.getByTestId('action-disallowSSOManualLogin-2')).toBeInTheDocument();
+	});
+
+	it('should show disallow SSO manual login action when OIDC is enabled and user has allowSSOManualLogin', () => {
+		ssoStore.isOidcLoginEnabled = true;
+		usersStore.usersList.state.items[1].settings = { allowSSOManualLogin: true };
+
+		renderComponent();
+
+		const actionsList = screen.getByTestId('actions-for-2');
+		expect(actionsList).toBeInTheDocument();
+		expect(screen.getByTestId('action-disallowSSOManualLogin-2')).toBeInTheDocument();
+	});
+
+	it('should not show disallow SSO manual login action when SSO is disabled', () => {
+		ssoStore.isSamlLoginEnabled = false;
+		ssoStore.isOidcLoginEnabled = false;
+		usersStore.usersList.state.items[1].settings = { allowSSOManualLogin: true };
+
+		renderComponent();
+
+		const actionsList = screen.getByTestId('actions-for-2');
+		expect(actionsList).toBeInTheDocument();
+		expect(screen.queryByTestId('action-disallowSSOManualLogin-2')).not.toBeInTheDocument();
 	});
 
 	describe('search functionality', () => {
@@ -555,7 +634,9 @@ describe('SettingsUsersView', () => {
 			});
 		});
 
-		it('should handle allow SSO manual login action', async () => {
+		it('should handle allow SSO manual login action when SAML is enabled', async () => {
+			ssoStore.isSamlLoginEnabled = true;
+
 			renderComponent();
 
 			emitters.settingsUsersTable.emit('action', { action: 'allowSSOManualLogin', userId: '2' });
@@ -572,7 +653,48 @@ describe('SettingsUsersView', () => {
 			});
 		});
 
-		it('should handle disallow SSO manual login action', async () => {
+		it('should handle allow SSO manual login action when OIDC is enabled', async () => {
+			ssoStore.isOidcLoginEnabled = true;
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('action', { action: 'allowSSOManualLogin', userId: '2' });
+
+			expect(usersStore.updateOtherUserSettings).toHaveBeenCalledWith('2', {
+				allowSSOManualLogin: true,
+			});
+			await waitFor(() => {
+				expect(mockToast.showToast).toHaveBeenCalledWith({
+					type: 'success',
+					title: expect.any(String),
+					message: expect.any(String),
+				});
+			});
+		});
+
+		it('should handle disallow SSO manual login action when SAML is enabled', async () => {
+			ssoStore.isSamlLoginEnabled = true;
+			// Set user to have SSO manual login enabled
+			usersStore.usersList.state.items[1].settings = { allowSSOManualLogin: true };
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('action', { action: 'disallowSSOManualLogin', userId: '2' });
+
+			expect(usersStore.updateOtherUserSettings).toHaveBeenCalledWith('2', {
+				allowSSOManualLogin: false,
+			});
+			await waitFor(() => {
+				expect(mockToast.showToast).toHaveBeenCalledWith({
+					type: 'success',
+					title: expect.any(String),
+					message: expect.any(String),
+				});
+			});
+		});
+
+		it('should handle disallow SSO manual login action when OIDC is enabled', async () => {
+			ssoStore.isOidcLoginEnabled = true;
 			// Set user to have SSO manual login enabled
 			usersStore.usersList.state.items[1].settings = { allowSSOManualLogin: true };
 

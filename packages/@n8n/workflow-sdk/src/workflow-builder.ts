@@ -47,6 +47,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	private _meta?: { templateId?: string; instanceId?: string; [key: string]: unknown };
 	private _registry?: PluginRegistry;
 	private _staleIdToKeyMap?: Map<string, string>;
+	private _branchDepth = 0;
+	private _dispatchedComposites = new WeakSet<object>();
+	private static readonly MAX_BRANCH_DEPTH = 500;
 
 	constructor(
 		id: string,
@@ -244,7 +247,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const regularNode = node as NodeInstance<string, string, unknown>;
 
 		// Regular node or trigger
-		this.addNodeWithSubnodes(this._nodes, regularNode);
+		const actualKey = this.addNodeWithSubnodes(this._nodes, regularNode) ?? regularNode.name;
 
 		// Also add connection target nodes (e.g., onError handlers)
 		// This is important when re-adding a node that already exists but has new connections
@@ -252,13 +255,45 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 		// Collect pinData from the node if present
 		this._pinData = this.collectPinData(regularNode);
-		this._currentNode = regularNode.name;
+		this._currentNode = actualKey;
 		this._currentOutput = 0;
 
 		return this;
 	}
 
 	to(nodeOrComposite: unknown): WorkflowBuilder {
+		// Handle InputTarget (e.g., mergeNode.input(0))
+		if (isInputTarget(nodeOrComposite)) {
+			const actualNode = nodeOrComposite.node;
+			const actualKey = this.addNodeWithSubnodes(this._nodes, actualNode) ?? actualNode.name;
+
+			// Connect from current node to the target with the specified input index
+			if (this._currentNode) {
+				const currentGraphNode = this._nodes.get(this._currentNode);
+				if (currentGraphNode) {
+					const mainConns =
+						currentGraphNode.connections.get('main') ?? new Map<number, ConnectionTarget[]>();
+					const outputConns: ConnectionTarget[] = mainConns.get(this._currentOutput) ?? [];
+					const alreadyConnected = outputConns.some(
+						(c) => c.node === actualKey && c.index === nodeOrComposite.inputIndex,
+					);
+					if (!alreadyConnected) {
+						outputConns.push({
+							node: actualKey,
+							type: 'main',
+							index: nodeOrComposite.inputIndex,
+						});
+					}
+					mainConns.set(this._currentOutput, outputConns);
+					currentGraphNode.connections.set('main', mainConns);
+				}
+			}
+
+			this._currentNode = actualKey;
+			this._currentOutput = 0;
+			return this;
+		}
+
 		// Handle array of nodes (fan-out pattern)
 		if (Array.isArray(nodeOrComposite)) {
 			return this.handleFanOut(nodeOrComposite);
@@ -301,36 +336,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		// Remaining type is a regular NodeInstance.
 		const node = nodeOrComposite as NodeInstance<string, string, unknown>;
 
-		// Check if node already exists in the workflow (cycle connection)
-		const existingNode = this._nodes.has(node.name);
-
-		if (existingNode) {
-			// Node already exists - just add the connection, don't re-add the node
-			if (this._currentNode) {
-				const currentGraphNode = this._nodes.get(this._currentNode);
-				if (currentGraphNode) {
-					const mainConns =
-						currentGraphNode.connections.get('main') ?? new Map<number, ConnectionTarget[]>();
-					const outputConnections: ConnectionTarget[] = mainConns.get(this._currentOutput) ?? [];
-					// Check for duplicate connections
-					const alreadyConnected = outputConnections.some((c) => c.node === node.name);
-					if (!alreadyConnected) {
-						mainConns.set(this._currentOutput, [
-							...outputConnections,
-							{ node: node.name, type: 'main', index: 0 },
-						]);
-						currentGraphNode.connections.set('main', mainConns);
-					}
-				}
-			}
-
-			this._currentNode = node.name;
-			this._currentOutput = 0;
-			return this;
-		}
-
-		// Add the new node and its subnodes
-		this.addNodeWithSubnodes(this._nodes, node);
+		// addNodeWithSubnodes is idempotent: returns existing key for same instance,
+		// generates unique name for name collisions, or adds new node.
+		const actualKey = this.addNodeWithSubnodes(this._nodes, node) ?? node.name;
 
 		// Add connection target nodes (e.g., onError handlers)
 		this.addSingleNodeConnectionTargets(this._nodes, node);
@@ -342,20 +350,38 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				const mainConns =
 					currentGraphNode.connections.get('main') ?? new Map<number, ConnectionTarget[]>();
 				const outputConnections: ConnectionTarget[] = mainConns.get(this._currentOutput) ?? [];
-				mainConns.set(this._currentOutput, [
-					...outputConnections,
-					{ node: node.name, type: 'main', index: 0 },
-				]);
-				currentGraphNode.connections.set('main', mainConns);
+				// Check for duplicate connections
+				const alreadyConnected = outputConnections.some((c) => c.node === actualKey);
+				if (!alreadyConnected) {
+					mainConns.set(this._currentOutput, [
+						...outputConnections,
+						{ node: actualKey, type: 'main', index: 0 },
+					]);
+					currentGraphNode.connections.set('main', mainConns);
+				}
 			}
 		}
 
 		// Collect pinData from the node if present
 		this._pinData = this.collectPinData(node);
-		this._currentNode = node.name;
+		this._currentNode = actualKey;
 		this._currentOutput = 0;
 
 		return this;
+	}
+
+	output(): never {
+		throw new Error(
+			'Cannot call .output() on the workflow builder. ' +
+				'Use .output() on a node variable instead: myNode.output(0).to(targetNode)',
+		);
+	}
+
+	input(): never {
+		throw new Error(
+			'Cannot call .input() on the workflow builder. ' +
+				'Use .input() on a node variable instead: myNode.input(1)',
+		);
 	}
 
 	settings(settings: WorkflowSettings): WorkflowBuilder {
@@ -414,6 +440,11 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 
 	toJSON(): WorkflowJSON {
+		// Ensure composite targets from .onError() connections are added to the graph.
+		// This handles cases where a chain node has .onError(ifElseBuilder) — the composite
+		// isn't in the chain's allNodes, so it wasn't dispatched during chain processing.
+		this.addMissingCompositeTargets();
+
 		// Merge connections declared on node instances via .to() into the graph
 		this.mergeInstanceConnections();
 
@@ -432,6 +463,35 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 
 	/**
+	 * Scan all nodes in the graph for connection targets that are composite types
+	 * (e.g., IfElseBuilder from .onError()) and dispatch them to add their nodes.
+	 * This runs once before serialization to catch composites missed during chain processing.
+	 */
+	private addMissingCompositeTargets(): void {
+		const registry = this._registry ?? pluginRegistry;
+		// Iterate over a snapshot of current nodes to avoid issues with map mutation during iteration
+		const currentNodes = [...this._nodes.values()];
+		for (const graphNode of currentNodes) {
+			if (typeof graphNode.instance.getConnections !== 'function') continue;
+			const connections = graphNode.instance.getConnections();
+			for (const { target } of connections) {
+				if (registry.isCompositeType(target)) {
+					// Skip composites already dispatched during parsing (.add(), .to(), chain processing).
+					// Only dispatch composites that were missed (e.g., .onError() on chain nodes).
+					if (
+						typeof target === 'object' &&
+						target !== null &&
+						this._dispatchedComposites.has(target)
+					) {
+						continue;
+					}
+					this.tryPluginDispatch(this._nodes, target);
+				}
+			}
+		}
+	}
+
+	/**
 	 * Merge connections declared on node instances via .to() into the graph connections.
 	 * This prepares the graph for serialization by ensuring all connections are stored
 	 * in graphNode.connections.
@@ -441,16 +501,17 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			// Only process if the node instance has getConnections() (nodes from builder, not fromJSON)
 			if (typeof graphNode.instance.getConnections === 'function') {
 				const nodeConns = graphNode.instance.getConnections();
-				for (const { target, outputIndex, targetInputIndex } of nodeConns) {
+				for (const { target, outputIndex, targetInputIndex, connectionType } of nodeConns) {
+					const connType = connectionType ?? 'main';
 					// Resolve target node name - handles both NodeInstance and composites.
 					// Pass _staleIdToKeyMap so stale target references (from pre-clone
 					// instances after regenerateNodeIds) resolve to the correct map key.
 					const targetName = this.resolveTargetNodeName(target, this._staleIdToKeyMap);
 					if (!targetName) continue;
 
-					const mainConns =
-						graphNode.connections.get('main') ?? new Map<number, ConnectionTarget[]>();
-					const outputConns: ConnectionTarget[] = mainConns.get(outputIndex) ?? [];
+					const typeConns =
+						graphNode.connections.get(connType) ?? new Map<number, ConnectionTarget[]>();
+					const outputConns: ConnectionTarget[] = typeConns.get(outputIndex) ?? [];
 					// Avoid duplicates - check both target node AND input index
 					const targetIndex = targetInputIndex ?? 0;
 					const alreadyExists = outputConns.some(
@@ -458,8 +519,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 					);
 					if (!alreadyExists) {
 						outputConns.push({ node: targetName, type: 'main', index: targetIndex });
-						mainConns.set(outputIndex, outputConns);
-						graphNode.connections.set('main', mainConns);
+						typeConns.set(outputIndex, outputConns);
+						graphNode.connections.set(connType, typeConns);
 					}
 				}
 			}
@@ -677,7 +738,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const registry = this._registry ?? pluginRegistry;
 		const connections = chain.getConnections();
 		for (const { target } of connections) {
-			// Skip if target is a composite type (already handled by plugin dispatch elsewhere)
+			// Skip composite types — they are handled either:
+			// - In the caller's allNodes iteration (for chain members)
+			// - Via addSingleNodeConnectionTargets (for .onError() targets)
 			if (registry.isCompositeType(target)) continue;
 
 			// Handle NodeChains - use addBranchToGraph to add all nodes with their connections
@@ -694,6 +757,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 					if (actualKey && nameMapping && actualKey !== inputTargetNode.name) {
 						nameMapping.set(inputTargetNode.id, actualKey);
 					}
+					this.addSingleNodeConnectionTargets(nodes, inputTargetNode);
 				}
 				continue;
 			}
@@ -705,6 +769,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				if (actualKey && nameMapping && actualKey !== targetNode.name) {
 					nameMapping.set(targetNode.id, actualKey);
 				}
+				this.addSingleNodeConnectionTargets(nodes, targetNode);
 			}
 		}
 	}
@@ -723,8 +788,11 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const registry = this._registry ?? pluginRegistry;
 		const connections = nodeInstance.getConnections();
 		for (const { target } of connections) {
-			// Skip if target is a composite type (already handled by plugin dispatch elsewhere)
-			if (registry.isCompositeType(target)) continue;
+			// Dispatch composite types (e.g., IfElseBuilder from .onError()) to plugin handlers
+			if (registry.isCompositeType(target)) {
+				this.tryPluginDispatch(nodes, target);
+				continue;
+			}
 
 			// Handle NodeChains - use addBranchToGraph to add all nodes with their connections
 			if (isNodeChain(target)) {
@@ -737,6 +805,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				const inputTargetNode = target.node;
 				if (!nodes.has(inputTargetNode.name)) {
 					this.addNodeWithSubnodes(nodes, inputTargetNode);
+					this.addSingleNodeConnectionTargets(nodes, inputTargetNode);
 				}
 				continue;
 			}
@@ -745,6 +814,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			const targetNode = target;
 			if (!nodes.has(targetNode.name)) {
 				this.addNodeWithSubnodes(nodes, targetNode);
+				this.addSingleNodeConnectionTargets(nodes, targetNode);
 			}
 		}
 	}
@@ -773,10 +843,22 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		//   .add(merge_node.to(set_Default_True_2.to(is_Approved.onTrue(x_Post.to(x_Result)))))
 		// The second line needs to add the onTrue() branch even though the IF node already exists.
 
-		// Try plugin dispatch
+		// Skip re-dispatch of already-processed composites.
+		// The first dispatch fully processes all branch nodes. Re-dispatching
+		// the same object causes exponential recursion in convergence patterns
+		// (multiple paths reaching the same node).
 		const registry = this._registry ?? pluginRegistry;
+		if (typeof target === 'object' && target !== null && this._dispatchedComposites.has(target)) {
+			return registry.resolveCompositeHeadName(target, nameMapping);
+		}
+
+		// Try plugin dispatch
 		const handler = registry.findCompositeHandler(target);
 		if (handler) {
+			// Track dispatched composites so addMissingCompositeTargets can skip them
+			if (typeof target === 'object' && target !== null) {
+				this._dispatchedComposites.add(target);
+			}
 			const ctx = this.createMutablePluginContext(nodes, nameMapping);
 			return handler.addNodes(target, ctx);
 		}
@@ -895,6 +977,25 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		branch: NodeInstance<string, string, unknown>,
 		nameMapping?: Map<string, string>,
 	): string {
+		// Guard against infinite recursion from cycles in branch chains
+		if (this._branchDepth >= WorkflowBuilderImpl.MAX_BRANCH_DEPTH) {
+			throw new Error(
+				`Maximum branch depth (${WorkflowBuilderImpl.MAX_BRANCH_DEPTH}) exceeded while building workflow graph`,
+			);
+		}
+		this._branchDepth++;
+		try {
+			return this._addBranchToGraphInner(nodes, branch, nameMapping);
+		} finally {
+			this._branchDepth--;
+		}
+	}
+
+	private _addBranchToGraphInner(
+		nodes: Map<string, GraphNode>,
+		branch: NodeInstance<string, string, unknown>,
+		nameMapping?: Map<string, string>,
+	): string {
 		// Create nameMapping if not passed (tracks node ID -> actual map key for renamed nodes)
 		const effectiveNameMapping = nameMapping ?? new Map<string, string>();
 		const registry = this._registry ?? pluginRegistry;
@@ -937,7 +1038,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 			// Process connections declared on the chain (from .to() calls)
 			const connections = branch.getConnections();
-			for (const { target, outputIndex, targetInputIndex } of connections) {
+			for (const { target, outputIndex, targetInputIndex, connectionType } of connections) {
+				const connType = connectionType ?? 'main';
 				// Find the source node in the chain that declared this connection
 				// by looking for the node whose .to() was called
 				for (const chainNode of branch.allNodes) {
@@ -961,7 +1063,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 								(c) =>
 									c.target === target &&
 									c.outputIndex === outputIndex &&
-									c.targetInputIndex === targetInputIndex,
+									c.targetInputIndex === targetInputIndex &&
+									(c.connectionType ?? 'main') === connType,
 							)
 						) {
 							// This chain node declared this connection
@@ -983,13 +1086,25 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 									if (targetPluginResult === undefined && !nodes.has(targetChainNode.name)) {
 										// Not a composite and not already present - add as regular node
 										this.addNodeWithSubnodes(nodes, targetChainNode);
+										this.addSingleNodeConnectionTargets(nodes, targetChainNode);
 									}
+								}
+							} else if (registry.isCompositeType(target)) {
+								// Only dispatch if the composite's head node isn't already in the graph
+								// (avoids re-dispatching composites already handled by the allNodes loop above)
+								const compositeHeadName = this.resolveTargetNodeName(target, effectiveNameMapping);
+								if (!compositeHeadName || !nodes.has(compositeHeadName)) {
+									this.tryPluginDispatch(nodes, target, effectiveNameMapping);
 								}
 							} else if (
 								typeof (target as NodeInstance<string, string, unknown>).name === 'string' &&
 								!nodes.has((target as NodeInstance<string, string, unknown>).name)
 							) {
 								this.addNodeWithSubnodes(nodes, target as NodeInstance<string, string, unknown>);
+								this.addSingleNodeConnectionTargets(
+									nodes,
+									target as NodeInstance<string, string, unknown>,
+								);
 							}
 
 							// Use the effectiveNameMapping to get the actual key if the node was renamed
@@ -999,10 +1114,10 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 							if (sourceGraphNode) {
 								const targetName = this.resolveTargetNodeName(target, effectiveNameMapping);
 								if (targetName) {
-									const mainConns =
-										sourceGraphNode.connections.get('main') ??
+									const typeConns =
+										sourceGraphNode.connections.get(connType) ??
 										new Map<number, ConnectionTarget[]>();
-									const outputConns: ConnectionTarget[] = mainConns.get(outputIndex) ?? [];
+									const outputConns: ConnectionTarget[] = typeConns.get(outputIndex) ?? [];
 									if (
 										!outputConns.some(
 											(c) => c.node === targetName && c.index === (targetInputIndex ?? 0),
@@ -1013,11 +1128,12 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 											type: 'main',
 											index: targetInputIndex ?? 0,
 										});
-										mainConns.set(outputIndex, outputConns);
-										sourceGraphNode.connections.set('main', mainConns);
+										typeConns.set(outputIndex, outputConns);
+										sourceGraphNode.connections.set(connType, typeConns);
 									}
 								}
 							}
+							break; // Connection attributed to this node; stop searching chain
 						}
 					}
 				}
@@ -1030,7 +1146,11 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		} else {
 			// Single node - add it and return its name
 			// Note: Composites are handled by tryPluginDispatch at the entry point
+			const alreadyPresent = nodes.has(branch.name);
 			const actualKey = this.addNodeWithSubnodes(nodes, branch);
+			if (!alreadyPresent) {
+				this.addSingleNodeConnectionTargets(nodes, branch);
+			}
 			// If the node was renamed, track it and return the actual key
 			if (actualKey && actualKey !== branch.name) {
 				effectiveNameMapping.set(branch.id, actualKey);

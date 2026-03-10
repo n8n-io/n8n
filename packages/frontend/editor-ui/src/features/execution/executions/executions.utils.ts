@@ -1,4 +1,8 @@
-import { MANUAL_TRIGGER_NODE_TYPE, TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
+import {
+	MANUAL_TRIGGER_NODE_TYPE,
+	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
+	createRunExecutionData,
+} from 'n8n-workflow';
 import type {
 	ITaskData,
 	ExecutionStatus,
@@ -12,9 +16,12 @@ import type {
 	Workflow,
 	IWorkflowDataProxyAdditionalKeys,
 } from 'n8n-workflow';
-import type { INodeUi } from '@/Interface';
+import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type {
 	ExecutionFilterType,
+	ExecutionPreviewNodeSchema,
+	ExecutionPreviewOutputSchema,
+	ExecutionPreviewSchemaField,
 	ExecutionsQueryFilter,
 	IExecutionFlattedResponse,
 	IExecutionResponse,
@@ -425,4 +432,132 @@ export function findTriggerNodeToAutoSelect(
 			return bPriority - aPriority;
 		})
 		.find((node) => !node.disabled);
+}
+
+const MAX_ITEM_COUNT = 10;
+const MAX_NESTING_DEPTH = 5;
+
+export function generatePlaceholderValue(field: ExecutionPreviewSchemaField, depth = 0): unknown {
+	if (depth > MAX_NESTING_DEPTH) {
+		return field.type === 'object' ? {} : field.type === 'array' ? [] : '';
+	}
+
+	switch (field.type) {
+		case 'string':
+			return '';
+		case 'number':
+			return 0;
+		case 'boolean':
+			return false;
+		case 'object': {
+			if (!field.fields?.length) return {};
+			const obj: IDataObject = {};
+			for (const child of field.fields) {
+				obj[child.name] = generatePlaceholderValue(child, depth + 1) as IDataObject[string];
+			}
+			return obj;
+		}
+		case 'array': {
+			if (!field.itemSchema?.length) return [];
+			const element: IDataObject = {};
+			for (const itemField of field.itemSchema) {
+				element[itemField.name] = generatePlaceholderValue(
+					itemField,
+					depth + 1,
+				) as IDataObject[string];
+			}
+			return [element];
+		}
+		default:
+			return '';
+	}
+}
+
+export function generateFakeDataFromSchema(
+	outputSchema: ExecutionPreviewOutputSchema,
+): INodeExecutionData[] {
+	const itemCount = Math.max(1, Math.min(outputSchema.itemCount ?? 1, MAX_ITEM_COUNT));
+	const items: INodeExecutionData[] = [];
+
+	for (let i = 0; i < itemCount; i++) {
+		const json: IDataObject = {};
+		for (const field of outputSchema.fields) {
+			json[field.name] = generatePlaceholderValue(field) as IDataObject[string];
+		}
+		items.push({ json });
+	}
+
+	return items;
+}
+
+/**
+ * Builds a synthetic IExecutionResponse from a lightweight per-node execution schema.
+ * When an outputSchema is provided, placeholder data is generated so the NDV can
+ * display realistic columns/rows without exposing sensitive real data.
+ */
+export function buildExecutionResponseFromSchema({
+	workflow,
+	nodeExecutionSchema,
+	executionStatus,
+	executionError,
+	lastNodeExecuted,
+}: {
+	workflow: IWorkflowDb;
+	nodeExecutionSchema: Record<string, ExecutionPreviewNodeSchema>;
+	executionStatus: ExecutionStatus;
+	executionError?: {
+		message: string;
+		description?: string;
+		name?: string;
+		stack?: string;
+	};
+	lastNodeExecuted?: string;
+}): IExecutionResponse {
+	const runData: IRunData = {};
+
+	for (const [nodeName, schema] of Object.entries(nodeExecutionSchema)) {
+		const taskData: ITaskData = {
+			startTime: 0,
+			executionIndex: 0,
+			executionTime: schema.executionTime ?? 0,
+			executionStatus: schema.executionStatus,
+			source: [],
+		};
+
+		if (schema.error) {
+			// Preview errors are plain JSON objects from postMessage, not class instances.
+			// They structurally match ExecutionError for rendering purposes.
+			taskData.error = schema.error as unknown as ExecutionError;
+		}
+
+		if (schema.outputSchema && schema.outputSchema.fields.length > 0) {
+			taskData.data = { main: [generateFakeDataFromSchema(schema.outputSchema)] };
+		}
+
+		runData[nodeName] = [taskData];
+	}
+
+	// Same as above: preview error is a serialized plain object, not an Error subclass instance.
+	const resultError = executionError ? (executionError as unknown as ExecutionError) : undefined;
+
+	const data = createRunExecutionData({
+		resultData: {
+			runData,
+			error: resultError,
+			lastNodeExecuted,
+		},
+		executionData: null,
+	});
+
+	return {
+		id: 'preview',
+		finished: executionStatus === 'success',
+		mode: 'manual',
+		status: executionStatus,
+		startedAt: new Date().toISOString(),
+		createdAt: new Date().toISOString(),
+		stoppedAt: new Date().toISOString(),
+		data,
+		workflowData: workflow,
+	};
 }

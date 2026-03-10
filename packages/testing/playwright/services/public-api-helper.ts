@@ -174,14 +174,4 @@ export class PublicApiHelper {
 		const result = await response.json();
 		return result.data;
 	}
-
-	async deleteUser(userId: string): Promise<void> {
-		const headers = await this.getApiHeaders();
-		const response = await this.api.request.delete(`/api/v1/users/${userId}`, { headers });
-
-		if (!response.ok()) {
-			const errorText = await response.text();
-			throw new TestError(`Failed to delete user: ${response.status()} ${errorText}`);
-		}
-	}
 }

@@ -116,8 +116,8 @@ const onDelete = () => {
 		</div>
 		<template #footer>
 			<N8nButton
-				type="danger"
-				native-type="button"
+				variant="destructive"
+				type="button"
 				:disabled="!isValid"
 				data-test-id="project-settings-delete-confirm-button"
 				@click.stop.prevent="onDelete"

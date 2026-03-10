@@ -10,7 +10,11 @@ import type {
 import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { CREDENTIAL_ERRORS, CredentialDataError, Credentials, type ErrorReporter } from 'n8n-core';
-import { CREDENTIAL_EMPTY_VALUE, type ICredentialType } from 'n8n-workflow';
+import {
+	CREDENTIAL_EMPTY_VALUE,
+	type ICredentialDataDecryptedObject,
+	type ICredentialType,
+} from 'n8n-workflow';
 
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import type { CredentialTypes } from '@/credential-types';
@@ -19,10 +23,15 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import * as validation from '@/credentials/validation';
 import type { CredentialsHelper } from '@/credentials-helper';
 import type { ExternalHooks } from '@/external-hooks';
+import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
+import * as checkAccess from '@/permissions.ee/check-access';
 import type { CredentialsTester } from '@/services/credentials-tester.service';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { RoleService } from '@/services/role.service';
+
+import { mockExistingCredential } from './credentials.test-data';
 
 describe('CredentialsService', () => {
 	const credType = mock<ICredentialType>({
@@ -57,6 +66,8 @@ describe('CredentialsService', () => {
 	const userRepository = mock<UserRepository>();
 	const credentialsFinderService = mock<CredentialsFinderService>();
 	const credentialsHelper = mock<CredentialsHelper>();
+	const externalSecretsConfig = mock<ExternalSecretsConfig>();
+	const externalSecretsProviderAccessCheckService = mock<SecretsProviderAccessCheckService>();
 
 	const service = new CredentialsService(
 		credentialsRepository,
@@ -73,9 +84,49 @@ describe('CredentialsService', () => {
 		userRepository,
 		credentialsFinderService,
 		credentialsHelper,
+		externalSecretsConfig,
+		externalSecretsProviderAccessCheckService,
 	);
 
-	beforeEach(() => jest.resetAllMocks());
+	beforeEach(() => {
+		jest.resetAllMocks();
+		// Mock the subquery method used by member users and admin users with onlySharedWithMe
+		credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
+			credentials: [],
+			count: 0,
+		});
+		// Mock roleService for the new subquery implementation
+		roleService.rolesWithScope.mockResolvedValue(['project:viewer', 'project:editor']);
+	});
+
+	/**
+	 * Helper function to mock the credentials repository transaction manager
+	 * @param options - Configuration options
+	 * @param options.credentialId - The ID to assign to saved credentials (default: 'new-cred-id')
+	 * @param options.onSave - Optional callback to capture saved entities
+	 */
+	const mockTransactionManager = (options?: {
+		credentialId?: string;
+		onSave?: (entity: any) => void;
+	}) => {
+		const credentialId = options?.credentialId ?? 'new-cred-id';
+		const onSave = options?.onSave;
+
+		// @ts-expect-error - Mocking manager for testing
+		credentialsRepository.manager = {
+			transaction: jest.fn().mockImplementation(async (callback) => {
+				const mockManager = {
+					save: jest.fn().mockImplementation(async (entity) => {
+						if (onSave) {
+							onSave(entity);
+						}
+						return { ...entity, id: credentialId };
+					}),
+				};
+				return await callback(mockManager);
+			}),
+		};
+	};
 
 	describe('redact', () => {
 		it('should redact sensitive values', () => {
@@ -723,7 +774,10 @@ describe('CredentialsService', () => {
 				it('should fetch all relations when onlySharedWithMe is true', async () => {
 					// ARRANGE
 					const credWithShared = { ...regularCredential, shared: [] } as any;
-					credentialsRepository.findMany.mockResolvedValue([credWithShared]);
+					credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
+						credentials: [credWithShared],
+						count: 1,
+					});
 					sharedCredentialsRepository.getAllRelationsForCredentials.mockResolvedValue([
 						sharedRelation,
 					]);
@@ -792,29 +846,41 @@ describe('CredentialsService', () => {
 
 		describe('returnAll = false (member user)', () => {
 			beforeEach(() => {
-				credentialsFinderService.getCredentialIdsByUserAndRole.mockResolvedValue(['cred-1']);
+				// Member users now use the subquery approach
+				credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
+					credentials: [regularCredential],
+					count: 1,
+				});
 			});
 
-			it('should fetch credentials by user and role', async () => {
-				// ARRANGE
-				credentialsRepository.findMany.mockResolvedValue([regularCredential]);
+			it('should fetch credentials using subquery approach', async () => {
+				// ARRANGE - mock is set in beforeEach
 
 				// ACT
 				await service.getMany(memberUser, {});
 
 				// ASSERT
-				expect(credentialsFinderService.getCredentialIdsByUserAndRole).toHaveBeenCalledWith(
-					[memberUser.id],
-					{ scopes: ['credential:read'] },
+				expect(roleService.rolesWithScope).toHaveBeenCalledWith('project', ['credential:read']);
+				expect(roleService.rolesWithScope).toHaveBeenCalledWith('credential', ['credential:read']);
+				expect(credentialsRepository.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
+					memberUser,
+					expect.objectContaining({
+						scopes: ['credential:read'],
+						projectRoles: expect.any(Array),
+						credentialRoles: expect.any(Array),
+					}),
+					{},
 				);
-				expect(credentialsRepository.findMany).toHaveBeenCalledWith({}, ['cred-1']);
 			});
 
 			describe('with includeScopes', () => {
 				it('should add scopes to credentials when includeScopes is true', async () => {
 					// ARRANGE
 					const projectRelations = [{ projectId: 'proj-1', role: 'project:editor' }] as any;
-					credentialsRepository.findMany.mockResolvedValue([regularCredential]);
+					credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
+						credentials: [regularCredential],
+						count: 1,
+					});
 					projectService.getProjectRelationsForUser.mockResolvedValue(projectRelations);
 					roleService.addScopes.mockImplementation(
 						(c) => ({ ...c, scopes: ['credential:read'] }) as any,
@@ -847,7 +913,10 @@ describe('CredentialsService', () => {
 
 				it('should include decrypted data when user has credential:update scope', async () => {
 					// ARRANGE
-					credentialsRepository.findMany.mockResolvedValue([regularCredential]);
+					credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
+						credentials: [regularCredential],
+						count: 1,
+					});
 					roleService.addScopes.mockImplementation(
 						(c) => ({ ...c, scopes: ['credential:update'] }) as any,
 					);
@@ -864,7 +933,10 @@ describe('CredentialsService', () => {
 
 				it('should not include decrypted data when user lacks credential:update scope', async () => {
 					// ARRANGE
-					credentialsRepository.findMany.mockResolvedValue([regularCredential]);
+					credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
+						credentials: [regularCredential],
+						count: 1,
+					});
 					roleService.addScopes.mockImplementation(
 						(c) => ({ ...c, scopes: ['credential:read'] }) as any,
 					);
@@ -886,7 +958,10 @@ describe('CredentialsService', () => {
 				it('should fetch all relations when filtering by shared.projectId', async () => {
 					// ARRANGE
 					const credWithShared = { ...regularCredential, shared: [] } as any;
-					credentialsRepository.findMany.mockResolvedValue([credWithShared]);
+					credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
+						credentials: [credWithShared],
+						count: 1,
+					});
 					sharedCredentialsRepository.getAllRelationsForCredentials.mockResolvedValue([
 						sharedRelation,
 					]);
@@ -908,7 +983,10 @@ describe('CredentialsService', () => {
 				it('should fetch all relations when onlySharedWithMe is true', async () => {
 					// ARRANGE
 					const credWithShared = { ...regularCredential, shared: [] } as any;
-					credentialsRepository.findMany.mockResolvedValue([credWithShared]);
+					credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
+						credentials: [credWithShared],
+						count: 1,
+					});
 					sharedCredentialsRepository.getAllRelationsForCredentials.mockResolvedValue([
 						sharedRelation,
 					]);
@@ -929,7 +1007,10 @@ describe('CredentialsService', () => {
 			describe('with custom select', () => {
 				it('should skip addOwnedByAndSharedWith when select is custom', async () => {
 					// ARRANGE
-					credentialsRepository.findMany.mockResolvedValue([regularCredential]);
+					credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
+						credentials: [regularCredential],
+						count: 1,
+					});
 
 					// ACT
 					await service.getMany(memberUser, {
@@ -945,12 +1026,14 @@ describe('CredentialsService', () => {
 		});
 
 		describe('with onlySharedWithMe', () => {
-			it('should filter by credential:user role when onlySharedWithMe is true', async () => {
+			it('should use subquery with onlySharedWithMe when onlySharedWithMe is true', async () => {
 				// ARRANGE
 				const credWithShared = { ...regularCredential, shared: [] } as any;
 				const sharedRelation = { credentialsId: 'cred-1', projectId: 'proj-1' } as any;
-				credentialsFinderService.getCredentialIdsByUserAndRole.mockResolvedValue(['cred-1']);
-				credentialsRepository.findMany.mockResolvedValue([credWithShared]);
+				credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
+					credentials: [credWithShared],
+					count: 1,
+				});
 				sharedCredentialsRepository.getAllRelationsForCredentials.mockResolvedValue([
 					sharedRelation,
 				]);
@@ -961,26 +1044,26 @@ describe('CredentialsService', () => {
 				});
 
 				// ASSERT
-				expect(credentialsRepository.findMany).toHaveBeenCalledWith(
+				expect(credentialsRepository.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
+					memberUser,
 					expect.objectContaining({
-						filter: expect.objectContaining({
-							withRole: 'credential:user',
-							user: memberUser,
-						}),
+						onlySharedWithMe: true,
 					}),
-					['cred-1'],
+					{},
 				);
 				expect(sharedCredentialsRepository.getAllRelationsForCredentials).toHaveBeenCalledWith([
 					'cred-1',
 				]);
 			});
 
-			it('should merge onlySharedWithMe with existing filters', async () => {
+			it('should pass filters through when onlySharedWithMe is true', async () => {
 				// ARRANGE
 				const credWithShared = { ...regularCredential, shared: [] } as any;
 				const sharedRelation = { credentialsId: 'cred-1', projectId: 'proj-1' } as any;
-				credentialsFinderService.getCredentialIdsByUserAndRole.mockResolvedValue(['cred-1']);
-				credentialsRepository.findMany.mockResolvedValue([credWithShared]);
+				credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
+					credentials: [credWithShared],
+					count: 1,
+				});
 				sharedCredentialsRepository.getAllRelationsForCredentials.mockResolvedValue([
 					sharedRelation,
 				]);
@@ -994,15 +1077,16 @@ describe('CredentialsService', () => {
 				});
 
 				// ASSERT
-				expect(credentialsRepository.findMany).toHaveBeenCalledWith(
+				expect(credentialsRepository.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
+					memberUser,
+					expect.objectContaining({
+						onlySharedWithMe: true,
+					}),
 					expect.objectContaining({
 						filter: expect.objectContaining({
 							type: 'apiKey',
-							withRole: 'credential:user',
-							user: memberUser,
 						}),
 					}),
-					['cred-1'],
 				);
 			});
 		});
@@ -1032,8 +1116,10 @@ describe('CredentialsService', () => {
 
 			it('should include global credentials for member users', async () => {
 				// ARRANGE
-				credentialsFinderService.getCredentialIdsByUserAndRole.mockResolvedValue(['cred-1']);
-				credentialsRepository.findMany.mockResolvedValue([regularCredential]);
+				credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
+					credentials: [regularCredential],
+					count: 1,
+				});
 				credentialsRepository.findAllGlobalCredentials.mockResolvedValue([globalCredential]);
 
 				// ACT
@@ -1042,7 +1128,7 @@ describe('CredentialsService', () => {
 				});
 
 				// ASSERT
-				expect(credentialsRepository.findMany).toHaveBeenCalled();
+				expect(credentialsRepository.getManyAndCountWithSharingSubquery).toHaveBeenCalled();
 				expect(credentialsRepository.findAllGlobalCredentials).toHaveBeenCalledWith(false);
 				expect(result).toHaveLength(2);
 				expect(result).toEqual(
@@ -1062,11 +1148,10 @@ describe('CredentialsService', () => {
 					isGlobal: true,
 					shared: [],
 				} as Partial<CredentialsEntity> as CredentialsEntity;
-				credentialsFinderService.getCredentialIdsByUserAndRole.mockResolvedValue([
-					'cred-1',
-					'cred-2',
-				]);
-				credentialsRepository.findMany.mockResolvedValue([regularCredential, sharedGlobalCred]);
+				credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
+					credentials: [regularCredential, sharedGlobalCred],
+					count: 2,
+				});
 				credentialsRepository.findAllGlobalCredentials.mockResolvedValue([globalCredential]);
 
 				// ACT
@@ -1083,7 +1168,10 @@ describe('CredentialsService', () => {
 
 			it('should include data for global credentials when includeData is true', async () => {
 				// ARRANGE
-				credentialsRepository.findMany.mockResolvedValue([regularCredential]);
+				credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
+					credentials: [regularCredential],
+					count: 1,
+				});
 				credentialsRepository.findAllGlobalCredentials.mockResolvedValue([globalCredential]);
 				projectService.getProjectRelationsForUser.mockResolvedValue([]);
 				roleService.addScopes.mockImplementation(
@@ -1120,8 +1208,10 @@ describe('CredentialsService', () => {
 
 			it('should exclude global credentials when includeGlobal is undefined', async () => {
 				// ARRANGE
-				credentialsFinderService.getCredentialIdsByUserAndRole.mockResolvedValue(['cred-1']);
-				credentialsRepository.findMany.mockResolvedValue([regularCredential]);
+				credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
+					credentials: [regularCredential],
+					count: 1,
+				});
 
 				// ACT
 				const result = await service.getMany(memberUser, {
@@ -1151,11 +1241,14 @@ describe('CredentialsService', () => {
 					'cred-with-external-secret-2',
 					'{{ $secrets.anotherProvider.apiKey }}',
 				);
-				credentialsRepository.findMany.mockResolvedValue([
-					regularCredential,
-					credentialWithExternalSecret1,
-					credentialWithExternalSecret2,
-				]);
+				credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
+					credentials: [
+						regularCredential,
+						credentialWithExternalSecret1,
+						credentialWithExternalSecret2,
+					],
+					count: 3,
+				});
 
 				// ACT
 				const result = await service.getMany(memberUser, {
@@ -1177,11 +1270,14 @@ describe('CredentialsService', () => {
 					'cred-with-external-secret-2',
 					'{{ $secrets["anotherProvider"]["apiKey"] }}',
 				);
-				credentialsRepository.findMany.mockResolvedValue([
-					regularCredential,
-					credentialWithExternalSecret1,
-					credentialWithExternalSecret2,
-				]);
+				credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
+					credentials: [
+						regularCredential,
+						credentialWithExternalSecret1,
+						credentialWithExternalSecret2,
+					],
+					count: 3,
+				});
 
 				// ACT
 				const result = await service.getMany(memberUser, {
@@ -1459,18 +1555,7 @@ describe('CredentialsService', () => {
 				credentialEntityInput = data;
 				return data as any;
 			});
-			// @ts-expect-error - Mocking manager for testing
-			credentialsRepository.manager = {
-				transaction: jest.fn().mockImplementation(async (callback) => {
-					const mockManager = {
-						save: jest.fn().mockImplementation(async (entity) => {
-							savedEntities.push(entity);
-							return { ...entity, id: 'new-cred-id' };
-						}),
-					};
-					return await callback(mockManager);
-				}),
-			};
+			mockTransactionManager({ onSave: (entity) => savedEntities.push(entity) });
 
 			// ACT
 			await service.createUnmanagedCredential(payload, ownerUser);
@@ -1497,18 +1582,7 @@ describe('CredentialsService', () => {
 			// ARRANGE
 			const payload = { ...credentialData }; // no isGlobal field
 			let savedCredential: any;
-			// @ts-expect-error - Mocking manager for testing
-			credentialsRepository.manager = {
-				transaction: jest.fn().mockImplementation(async (callback) => {
-					const mockManager = {
-						save: jest.fn().mockImplementation(async (entity) => {
-							savedCredential = entity;
-							return { ...entity, id: 'new-cred-id' };
-						}),
-					};
-					return await callback(mockManager);
-				}),
-			};
+			mockTransactionManager({ onSave: (entity) => (savedCredential = entity) });
 
 			// ACT
 			await service.createUnmanagedCredential(payload, ownerUser);
@@ -1521,18 +1595,7 @@ describe('CredentialsService', () => {
 			// ARRANGE
 			const payload = { ...credentialData, isGlobal: false };
 			let savedCredential: any;
-			// @ts-expect-error - Mocking manager for testing
-			credentialsRepository.manager = {
-				transaction: jest.fn().mockImplementation(async (callback) => {
-					const mockManager = {
-						save: jest.fn().mockImplementation(async (entity) => {
-							savedCredential = entity;
-							return { ...entity, id: 'new-cred-id' };
-						}),
-					};
-					return await callback(mockManager);
-				}),
-			};
+			mockTransactionManager({ onSave: (entity) => (savedCredential = entity) });
 
 			// ACT
 			await service.createUnmanagedCredential(payload, memberUser);
@@ -1594,6 +1657,7 @@ describe('CredentialsService', () => {
 					type: 'string',
 					required: true,
 					default: '', // Empty default means no valid default
+					displayOptions: {},
 				},
 			] as any);
 
@@ -1610,21 +1674,86 @@ describe('CredentialsService', () => {
 			);
 		});
 
-		it('should prevent use of external secret expression when required permission is missing', async () => {
-			credentialsHelper.getCredentialsProperties.mockReturnValue([]);
-			const payload = {
-				name: 'Test Credential',
-				type: 'apiKey',
-				data: {
-					apiKey: '$secrets.myApiKey',
-					url: 'https://api.example.com',
-				},
-				projectId: 'project-1',
-			};
+		describe('external secrets', () => {
+			it('should prevent use of external secret expression when required permission is missing', async () => {
+				jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+				const payload = {
+					name: 'Test Credential',
+					type: 'apiKey',
+					data: {
+						apiKey: '={{ $secrets.myApiKey }}',
+						url: 'https://api.example.com',
+					},
+					projectId: 'WHwt9vP3keCUvmB5',
+				};
 
-			await expect(service.createUnmanagedCredential(payload, memberUser)).rejects.toThrow(
-				'Lacking permissions to reference external secrets in credentials',
-			);
+				await expect(service.createUnmanagedCredential(payload, memberUser)).rejects.toThrow(
+					'Lacking permissions to reference external secrets in credentials',
+				);
+			});
+
+			it('should list all unavailable external secret providers in error message', async () => {
+				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+				const payload = {
+					name: 'Test Credential',
+					type: 'apiKey',
+					data: {
+						apiKey: '={{ $secrets.outsideProvider.bar }}',
+						anotherApiKey: '={{ $secrets.anotherOutsideProvider.bar }}',
+					},
+					projectId: 'WHwt9vP3keCUvmB5',
+				};
+				externalSecretsProviderAccessCheckService.isProviderAvailableInProject.mockResolvedValue(
+					false,
+				);
+
+				await expect(service.createUnmanagedCredential(payload, ownerUser)).rejects.toThrow(
+					'The secret providers "outsideProvider" (used in "apiKey"), "anotherOutsideProvider" (used in "anotherApiKey") do not exist in this project',
+				);
+			});
+
+			it('should throw BadRequestError when referencing external secret provider that is not available in current project', async () => {
+				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+				const payload = {
+					name: 'Test Credential',
+					type: 'apiKey',
+					data: {
+						apiKey: '={{ $secrets.outsideProvider.bar }}',
+						url: 'https://api.example.com',
+					},
+					projectId: 'WHwt9vP3keCUvmB5',
+				};
+				externalSecretsProviderAccessCheckService.isProviderAvailableInProject.mockResolvedValue(
+					false,
+				);
+
+				await expect(service.createUnmanagedCredential(payload, ownerUser)).rejects.toThrow(
+					'The secret provider "outsideProvider" used in "apiKey" does not exist in this project',
+				);
+			});
+
+			it('should create credential that references external secret provider that is shared with current project', async () => {
+				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+				const payload = {
+					name: 'Test Credential',
+					type: 'apiKey',
+					data: {
+						apiKey: '={{ $secrets.validProvider.bar }}',
+						url: 'https://api.example.com',
+					},
+					projectId: 'WHwt9vP3keCUvmB5',
+				};
+
+				externalSecretsProviderAccessCheckService.isProviderAvailableInProject.mockResolvedValue(
+					true,
+				);
+
+				credentialsRepository.create.mockImplementation((data) => ({ ...data }) as any);
+				mockTransactionManager();
+
+				await service.createUnmanagedCredential(payload, ownerUser);
+			});
 		});
 	});
 
@@ -1672,6 +1801,7 @@ describe('CredentialsService', () => {
 					type: 'string',
 					required: true,
 					default: null,
+					displayOptions: {},
 				},
 			]);
 
@@ -1699,17 +1829,7 @@ describe('CredentialsService', () => {
 				},
 			]);
 			credentialsRepository.create.mockImplementation((data) => ({ ...data }) as any);
-			// @ts-expect-error - Mocking manager for testing
-			credentialsRepository.manager = {
-				transaction: jest.fn().mockImplementation(async (callback) => {
-					const mockManager = {
-						save: jest.fn().mockImplementation(async (entity) => {
-							return { ...entity, id: 'new-managed-cred-id' };
-						}),
-					};
-					return await callback(mockManager);
-				}),
-			};
+			mockTransactionManager({ credentialId: 'new-managed-cred-id' });
 
 			// ACT
 			const result = await service.createManagedCredential(payload, ownerUser);
@@ -1720,14 +1840,118 @@ describe('CredentialsService', () => {
 		});
 	});
 
+	describe('prepareUpdateData', () => {
+		const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
+		describe('external secrets', () => {
+			beforeEach(() => {
+				jest.spyOn(service, 'decrypt').mockReturnValue({});
+			});
+
+			it('should list all unavailable external secret providers in error message', async () => {
+				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+				const payload = {
+					name: 'Test Credential',
+					type: 'apiKey',
+					data: {
+						apiKey: '={{ $secrets.outsideProvider.bar }}',
+						anotherApiKey: '={{ $secrets.anotherOutsideProvider.bar }}',
+					},
+					projectId: 'WHwt9vP3keCUvmB5',
+				};
+				const existingCredential = mockExistingCredential({
+					name: 'Test Credential',
+					type: 'apiKey',
+					data: {},
+					projectId: 'WHwt9vP3keCUvmB5',
+				});
+				externalSecretsProviderAccessCheckService.isProviderAvailableInProject.mockResolvedValue(
+					false,
+				);
+
+				await expect(
+					service.prepareUpdateData(ownerUser, payload, existingCredential),
+				).rejects.toThrow(
+					'The secret providers "outsideProvider" (used in "apiKey"), "anotherOutsideProvider" (used in "anotherApiKey") do not exist in this project',
+				);
+				expect(
+					externalSecretsProviderAccessCheckService.isProviderAvailableInProject.mock.calls,
+				).toEqual([
+					['outsideProvider', 'WHwt9vP3keCUvmB5'],
+					['anotherOutsideProvider', 'WHwt9vP3keCUvmB5'],
+				]);
+			});
+
+			it('should throw BadRequestError when referencing external secret provider that is not available in current project', async () => {
+				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+				const payload = {
+					name: 'Test Credential',
+					type: 'apiKey',
+					data: {
+						apiKey: '={{ $secrets.outsideProvider.bar }}',
+						url: 'https://api.example.com',
+					},
+					projectId: 'WHwt9vP3keCUvmB5',
+				};
+				const existingCredential = mockExistingCredential({
+					name: 'Test Credential',
+					type: 'apiKey',
+					data: {},
+					projectId: 'WHwt9vP3keCUvmB5',
+				});
+				externalSecretsProviderAccessCheckService.isProviderAvailableInProject.mockResolvedValue(
+					false,
+				);
+
+				await expect(
+					service.prepareUpdateData(ownerUser, payload, existingCredential),
+				).rejects.toThrow(
+					'The secret provider "outsideProvider" used in "apiKey" does not exist in this project',
+				);
+				expect(
+					externalSecretsProviderAccessCheckService.isProviderAvailableInProject,
+				).toHaveBeenCalledWith('outsideProvider', 'WHwt9vP3keCUvmB5');
+			});
+
+			it('should create credential that references external secret provider that is shared with current project', async () => {
+				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+				const payload = {
+					name: 'Test Credential',
+					type: 'apiKey',
+					data: {
+						apiKey: '={{ $secrets.validProvider.bar }}',
+						url: 'https://api.example.com',
+					},
+					projectId: 'WHwt9vP3keCUvmB5',
+				};
+				const existingCredential = mockExistingCredential({
+					name: 'Test Credential',
+					type: 'apiKey',
+					data: {},
+					projectId: 'WHwt9vP3keCUvmB5',
+				});
+
+				externalSecretsProviderAccessCheckService.isProviderAvailableInProject.mockResolvedValue(
+					true,
+				);
+
+				credentialsRepository.create.mockImplementation((data) => ({ ...data }) as any);
+				mockTransactionManager();
+
+				await service.prepareUpdateData(ownerUser, payload, existingCredential);
+			});
+		});
+	});
+
 	describe('checkCredentialData', () => {
 		const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
+		const testProjectId = 'test-project-id';
 
 		beforeEach(() => {
 			jest.clearAllMocks();
+			jest.spyOn(validation, 'validateExternalSecretsPermissions').mockResolvedValue();
 		});
 
-		it('should pass when all required fields are provided', () => {
+		it('should pass when all required fields are provided', async () => {
 			credentialsHelper.getCredentialsProperties.mockReturnValue([
 				{
 					displayName: 'API Key',
@@ -1735,6 +1959,7 @@ describe('CredentialsService', () => {
 					type: 'string',
 					required: true,
 					default: '',
+					displayOptions: {},
 				},
 				{
 					displayName: 'Domain',
@@ -1742,6 +1967,7 @@ describe('CredentialsService', () => {
 					type: 'string',
 					required: true,
 					default: '',
+					displayOptions: {},
 				},
 			]);
 
@@ -1750,10 +1976,12 @@ describe('CredentialsService', () => {
 				domain: 'example.com',
 			};
 
-			expect(() => service.checkCredentialData('apiCredential', data, ownerUser)).not.toThrow();
+			await expect(
+				service.checkCredentialData('apiCredential', data, ownerUser, testProjectId),
+			).resolves.not.toThrow();
 		});
 
-		it('should pass when required field with valid default is not provided', () => {
+		it('should pass when required field with valid default is not provided', async () => {
 			credentialsHelper.getCredentialsProperties.mockReturnValue([
 				{
 					displayName: 'Host',
@@ -1761,15 +1989,18 @@ describe('CredentialsService', () => {
 					type: 'string',
 					required: true,
 					default: 'https://api.example.com',
+					displayOptions: {},
 				},
 			]);
 
 			const data = {};
 
-			expect(() => service.checkCredentialData('apiCredential', data, ownerUser)).not.toThrow();
+			await expect(
+				service.checkCredentialData('apiCredential', data, ownerUser, testProjectId),
+			).resolves.not.toThrow();
 		});
 
-		it('should pass when credential has no required fields', () => {
+		it('should pass when credential has no required fields', async () => {
 			credentialsHelper.getCredentialsProperties.mockReturnValue([
 				{
 					displayName: 'Optional Field',
@@ -1782,21 +2013,29 @@ describe('CredentialsService', () => {
 
 			const data = {};
 
-			expect(() => service.checkCredentialData('apiCredential', data, ownerUser)).not.toThrow();
+			await expect(
+				service.checkCredentialData('apiCredential', data, ownerUser, testProjectId),
+			).resolves.not.toThrow();
 		});
 
-		it('should call validateExternalSecretsPermissions', () => {
+		it('should call validateExternalSecretsPermissions', async () => {
 			credentialsHelper.getCredentialsProperties.mockReturnValue([]);
-			const validateSpy = jest.spyOn(validation, 'validateExternalSecretsPermissions');
+			const validateSpy = jest
+				.spyOn(validation, 'validateExternalSecretsPermissions')
+				.mockResolvedValue();
 
 			const data = { apiKey: 'test-key' };
 
-			service.checkCredentialData('apiCredential', data, ownerUser);
+			await service.checkCredentialData('apiCredential', data, ownerUser, testProjectId);
 
-			expect(validateSpy).toHaveBeenCalledWith(ownerUser, data);
+			expect(validateSpy).toHaveBeenCalledWith({
+				user: ownerUser,
+				projectId: testProjectId,
+				dataToSave: data,
+			});
 		});
 
-		it('should throw BadRequestError when required field is missing and has no default', () => {
+		it('should throw BadRequestError when required field is missing and has no default', async () => {
 			credentialsHelper.getCredentialsProperties.mockReturnValue([
 				{
 					displayName: 'API Key',
@@ -1804,17 +2043,18 @@ describe('CredentialsService', () => {
 					type: 'string',
 					required: true,
 					default: undefined,
+					displayOptions: {},
 				},
 			]);
 
 			const data = {}; // apiKey is missing
 
-			expect(() => service.checkCredentialData('apiCredential', data, ownerUser)).toThrow(
-				'The field "apiKey" is mandatory for credentials of type "apiCredential"',
-			);
+			await expect(
+				service.checkCredentialData('apiCredential', data, ownerUser, testProjectId),
+			).rejects.toThrow('The field "apiKey" is mandatory for credentials of type "apiCredential"');
 		});
 
-		it('should throw when required field value is undefined', () => {
+		it('should throw when required field value is undefined', async () => {
 			credentialsHelper.getCredentialsProperties.mockReturnValue([
 				{
 					displayName: 'API Key',
@@ -1822,18 +2062,18 @@ describe('CredentialsService', () => {
 					type: 'string',
 					required: true,
 					default: '',
+					displayOptions: {},
 				},
 			]);
 
-			const data = { apiKey: undefined };
+			const data = { apiKey: undefined } as unknown as ICredentialDataDecryptedObject;
 
-			// @ts-expect-error - Testing edge case with undefined value
-			expect(() => service.checkCredentialData('apiCredential', data, ownerUser)).toThrow(
-				'The field "apiKey" is mandatory for credentials of type "apiCredential"',
-			);
+			await expect(
+				service.checkCredentialData('apiCredential', data, ownerUser, testProjectId),
+			).rejects.toThrow('The field "apiKey" is mandatory for credentials of type "apiCredential"');
 		});
 
-		it('should throw when required field value is empty string', () => {
+		it('should throw when required field value is empty string', async () => {
 			credentialsHelper.getCredentialsProperties.mockReturnValue([
 				{
 					displayName: 'API Key',
@@ -1841,14 +2081,105 @@ describe('CredentialsService', () => {
 					type: 'string',
 					required: true,
 					default: '',
+					displayOptions: {},
 				},
 			]);
 
 			const data = { apiKey: '' };
 
-			expect(() => service.checkCredentialData('apiCredential', data, ownerUser)).toThrow(
-				'The field "apiKey" is mandatory for credentials of type "apiCredential"',
-			);
+			await expect(
+				service.checkCredentialData('apiCredential', data, ownerUser, testProjectId),
+			).rejects.toThrow('The field "apiKey" is mandatory for credentials of type "apiCredential"');
+		});
+
+		it('should skip validation when required field has displayOptions undefined', async () => {
+			credentialsHelper.getCredentialsProperties.mockReturnValue([
+				{
+					displayName: 'API Key',
+					name: 'apiKey',
+					type: 'string',
+					required: true,
+					default: undefined,
+					displayOptions: undefined,
+				},
+			]);
+
+			const data = {}; // apiKey is missing
+
+			// Should not throw because displayOptions is undefined, so validation is skipped
+			await expect(
+				service.checkCredentialData('apiCredential', data, ownerUser, testProjectId),
+			).resolves.not.toThrow();
+		});
+
+		it('should skip validation when required field is hidden by displayOptions', async () => {
+			credentialsHelper.getCredentialsProperties.mockReturnValue([
+				{
+					displayName: 'API Key',
+					name: 'apiKey',
+					type: 'string',
+					required: true,
+					default: undefined,
+					displayOptions: {
+						show: {
+							authType: ['oauth2'],
+						},
+					},
+				},
+			]);
+
+			const data = { authType: 'apiKey' }; // apiKey is missing and field is hidden
+
+			// Should not throw because displayParameter will return false (field is hidden)
+			await expect(
+				service.checkCredentialData('apiCredential', data, ownerUser, testProjectId),
+			).resolves.not.toThrow();
+		});
+
+		it('should validate when required field is shown by displayOptions', async () => {
+			credentialsHelper.getCredentialsProperties.mockReturnValue([
+				{
+					displayName: 'API Key',
+					name: 'apiKey',
+					type: 'string',
+					required: true,
+					default: undefined,
+					displayOptions: {
+						show: {
+							authType: ['oauth2'],
+						},
+					},
+				},
+			]);
+
+			const data = { authType: 'oauth2' }; // Field is shown but apiKey is missing
+
+			// Should throw because field is shown but value is missing
+			await expect(
+				service.checkCredentialData('apiCredential', data, ownerUser, testProjectId),
+			).rejects.toThrow('The field "apiKey" is mandatory for credentials of type "apiCredential"');
+		});
+
+		it('should validate when displayOptions is explicitly null (edge case)', async () => {
+			credentialsHelper.getCredentialsProperties.mockReturnValue([
+				{
+					displayName: 'API Key',
+					name: 'apiKey',
+					type: 'string',
+					required: true,
+					default: undefined,
+					// @ts-expect-error - Testing edge case where displayOptions is explicitly null
+					displayOptions: null,
+				},
+			]);
+
+			const data = {}; // apiKey is missing
+
+			// null !== undefined, so the check passes and displayParameter is called
+			// displayParameter treats null as falsy and returns true, so validation proceeds
+			await expect(
+				service.checkCredentialData('apiCredential', data, ownerUser, testProjectId),
+			).rejects.toThrow('The field "apiKey" is mandatory for credentials of type "apiCredential"');
 		});
 	});
 });

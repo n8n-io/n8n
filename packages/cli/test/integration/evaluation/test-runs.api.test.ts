@@ -84,8 +84,9 @@ describe('GET /workflows/:workflowId/test-runs', () => {
 
 	test('should retrieve list of test runs for a workflow with pagination', async () => {
 		const testRun1 = await testRunRepository.createTestRun(workflowUnderTest.id);
-		// Mark as running just to make a slight delay between the runs
 		await testRunRepository.markAsRunning(testRun1.id);
+		// Ensure distinct createdAt timestamps for deterministic ordering
+		await new Promise((resolve) => setTimeout(resolve, 10));
 		const testRun2 = await testRunRepository.createTestRun(workflowUnderTest.id);
 
 		// Fetch the first page

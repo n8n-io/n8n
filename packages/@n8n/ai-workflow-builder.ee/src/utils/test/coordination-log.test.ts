@@ -5,15 +5,19 @@ import {
 	hasPhaseCompleted,
 	getBuilderOutput,
 	getNextPhaseFromLog,
+	hasBuilderPhaseInLog,
 	hasErrorInLog,
 	getErrorEntry,
 	summarizeCoordinationLog,
 } from '../coordination-log';
 
 describe('coordination-log utilities', () => {
-	const createMetadata = (phase: 'discovery' | 'builder'): CoordinationMetadata => {
+	const createMetadata = (phase: 'discovery' | 'builder' | 'assistant'): CoordinationMetadata => {
 		if (phase === 'discovery') {
 			return { phase: 'discovery', nodesFound: 3, nodeTypes: ['test'], hasBestPractices: true };
+		}
+		if (phase === 'assistant') {
+			return { phase: 'assistant', hasCodeDiff: false, suggestionCount: 0 };
 		}
 		return {
 			phase: 'builder',
@@ -24,7 +28,7 @@ describe('coordination-log utilities', () => {
 	};
 
 	const createLogEntry = (
-		phase: 'discovery' | 'builder',
+		phase: 'discovery' | 'builder' | 'assistant',
 		status: 'completed' | 'error' = 'completed',
 		output?: string,
 	): CoordinationLogEntry => ({
@@ -188,6 +192,44 @@ describe('coordination-log utilities', () => {
 			const summary = summarizeCoordinationLog(log);
 			expect(summary).toContain('discovery');
 			expect(summary).not.toContain('builder');
+		});
+	});
+
+	describe('getNextPhaseFromLog - assistant routing', () => {
+		it('should return responder after assistant completes', () => {
+			const log = [createLogEntry('assistant')];
+			expect(getNextPhaseFromLog(log)).toBe('responder');
+		});
+
+		it('should return responder when assistant errors', () => {
+			const log = [createLogEntry('assistant', 'error')];
+			expect(getNextPhaseFromLog(log)).toBe('responder');
+		});
+	});
+
+	describe('hasBuilderPhaseInLog', () => {
+		it('should return false for empty log', () => {
+			expect(hasBuilderPhaseInLog([])).toBe(false);
+		});
+
+		it('should return true when builder completed', () => {
+			const log = [createLogEntry('discovery'), createLogEntry('builder')];
+			expect(hasBuilderPhaseInLog(log)).toBe(true);
+		});
+
+		it('should return false when builder errored', () => {
+			const log = [createLogEntry('discovery'), createLogEntry('builder', 'error')];
+			expect(hasBuilderPhaseInLog(log)).toBe(false);
+		});
+
+		it('should return false for assistant-only flows', () => {
+			const log = [createLogEntry('assistant')];
+			expect(hasBuilderPhaseInLog(log)).toBe(false);
+		});
+
+		it('should return false for discovery-only flows', () => {
+			const log = [createLogEntry('discovery')];
+			expect(hasBuilderPhaseInLog(log)).toBe(false);
 		});
 	});
 });

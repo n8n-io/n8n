@@ -10,6 +10,7 @@ import {
 	type ITaskData,
 	type IWorkflowExecuteAdditionalData,
 	Workflow,
+	NodeConnectionTypes,
 	type IRunExecutionData,
 	type WorkflowExecuteMode,
 	type ExecutionError,
@@ -17,6 +18,7 @@ import {
 
 import { JobProcessor } from '../job-processor';
 import type { Job } from '../scaling.types';
+import type { NodeTypes } from '@/node-types';
 
 import { CredentialsHelper } from '@/credentials-helper';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
@@ -723,6 +725,198 @@ describe('JobProcessor', () => {
 				response: { error?: { stack?: string } };
 			};
 			expect(lastResponse.response.error?.stack).toBeUndefined();
+		});
+
+		it('should invoke tool via execute for tool wrapper nodes without supplyData', async () => {
+			const executionRepository = mock<ExecutionRepository>();
+			const toolNode = {
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequestTool',
+				typeVersion: 4.4,
+				parameters: {},
+				position: [0, 0] as [number, number],
+			};
+			executionRepository.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					mode: 'trigger',
+					workflowData: {
+						id: 'wf-1',
+						nodes: [toolNode],
+						staticData: {},
+					},
+					data: mock<IRunExecutionData>({
+						executionData: undefined,
+					}),
+				}),
+			);
+			executionRepository.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					status: 'success',
+					workflowData: { id: 'wf-1', nodes: [toolNode], staticData: {} },
+					data: mock<IRunExecutionData>({ resultData: { runData: {} } }),
+				}),
+			);
+
+			const manualExecutionService = mock<ManualExecutionService>();
+			const mcpInstanceSettings = {
+				hostId: 'worker-host-123',
+			} as unknown as InstanceSettings;
+
+			// Mock nodeTypes to return a node without supplyData but with AiTool output
+			const mockExecuteFn = jest
+				.fn()
+				.mockResolvedValue([[{ json: { result: 'tool response data' } }]]);
+			const nodeTypes = mock<NodeTypes>();
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: {
+					name: 'httpRequestTool',
+					outputs: [NodeConnectionTypes.AiTool],
+					properties: [],
+				},
+				execute: mockExecuteFn,
+			} as never);
+
+			const jobProcessor = new JobProcessor(
+				logger,
+				executionRepository,
+				mock(),
+				nodeTypes,
+				mcpInstanceSettings,
+				manualExecutionService,
+				executionsConfig,
+				mock(),
+			);
+
+			const job = mock<Job>();
+			job.data = {
+				workflowId: 'wf-1',
+				executionId: 'exec-mcp-tool-wrapper',
+				loadStaticData: false,
+				isMcpExecution: true,
+				mcpType: 'trigger',
+				mcpSessionId: 'session-tool',
+				mcpMessageId: 'msg-tool',
+				mcpToolCall: {
+					toolName: 'HTTP Request',
+					arguments: { url: 'https://example.com' },
+					sourceNodeName: 'HTTP Request',
+				},
+			};
+
+			await jobProcessor.processJob(job);
+
+			// execute should have been called (not supplyData)
+			expect(mockExecuteFn).toHaveBeenCalled();
+
+			// Should send mcp-response with tool result
+			const mcpResponseCalls = (job.progress as jest.Mock).mock.calls.filter(
+				(call: unknown[]) => (call[0] as { kind: string }).kind === 'mcp-response',
+			);
+			expect(mcpResponseCalls.length).toBeGreaterThan(0);
+			const lastResponse = mcpResponseCalls[mcpResponseCalls.length - 1][0] as {
+				kind: string;
+				mcpType: string;
+				response: unknown;
+			};
+			expect(lastResponse).toMatchObject({
+				kind: 'mcp-response',
+				mcpType: 'trigger',
+			});
+			// Response should contain the tool's output data
+			expect(lastResponse.response).toEqual([{ result: 'tool response data' }]);
+		});
+
+		it('should invoke tool via supplyData for nodes with supplyData method', async () => {
+			const executionRepository = mock<ExecutionRepository>();
+			const toolNode = {
+				name: 'Tool HTTP Request',
+				type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+				typeVersion: 1,
+				parameters: {},
+				position: [0, 0] as [number, number],
+			};
+			executionRepository.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					mode: 'trigger',
+					workflowData: {
+						id: 'wf-1',
+						nodes: [toolNode],
+						staticData: {},
+					},
+					data: mock<IRunExecutionData>({
+						executionData: undefined,
+					}),
+				}),
+			);
+			executionRepository.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					status: 'success',
+					workflowData: { id: 'wf-1', nodes: [toolNode], staticData: {} },
+					data: mock<IRunExecutionData>({ resultData: { runData: {} } }),
+				}),
+			);
+
+			const manualExecutionService = mock<ManualExecutionService>();
+			const mcpInstanceSettings = {
+				hostId: 'worker-host-123',
+			} as unknown as InstanceSettings;
+
+			// Mock a tool that supplyData returns
+			const mockTool = { invoke: jest.fn().mockResolvedValue('supply data tool result') };
+			const mockSupplyData = jest.fn().mockResolvedValue({ response: mockTool });
+
+			const nodeTypes = mock<NodeTypes>();
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: {
+					name: 'toolHttpRequest',
+					outputs: [NodeConnectionTypes.AiTool],
+					properties: [],
+				},
+				supplyData: mockSupplyData,
+			} as never);
+
+			const jobProcessor = new JobProcessor(
+				logger,
+				executionRepository,
+				mock(),
+				nodeTypes,
+				mcpInstanceSettings,
+				manualExecutionService,
+				executionsConfig,
+				mock(),
+			);
+
+			const job = mock<Job>();
+			job.data = {
+				workflowId: 'wf-1',
+				executionId: 'exec-mcp-supply-data',
+				loadStaticData: false,
+				isMcpExecution: true,
+				mcpType: 'trigger',
+				mcpSessionId: 'session-supply',
+				mcpMessageId: 'msg-supply',
+				mcpToolCall: {
+					toolName: 'Tool HTTP Request',
+					arguments: { query: 'test' },
+					sourceNodeName: 'Tool HTTP Request',
+				},
+			};
+
+			await jobProcessor.processJob(job);
+
+			// supplyData path should have been used
+			expect(mockSupplyData).toHaveBeenCalled();
+			expect(mockTool.invoke).toHaveBeenCalledWith({ query: 'test' });
+
+			// Should send mcp-response with tool result
+			const mcpResponseCalls = (job.progress as jest.Mock).mock.calls.filter(
+				(call: unknown[]) => (call[0] as { kind: string }).kind === 'mcp-response',
+			);
+			expect(mcpResponseCalls.length).toBeGreaterThan(0);
+			const lastResponse = mcpResponseCalls[mcpResponseCalls.length - 1][0] as {
+				response: unknown;
+			};
+			expect(lastResponse.response).toBe('supply data tool result');
 		});
 	});
 });

@@ -14,6 +14,10 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import {
@@ -141,7 +145,7 @@ export async function executionFinished(
 	uiStore.setProcessingExecutionResults(false);
 
 	if (execution.data?.waitTill !== undefined) {
-		handleExecutionFinishedWithWaitTill(options);
+		handleExecutionFinishedWithWaitTill(data.workflowId, options);
 	} else if (execution.status === 'error' || execution.status === 'canceled') {
 		handleExecutionFinishedWithErrorOrCanceled(execution, runExecutionData);
 	} else {
@@ -262,15 +266,21 @@ export function getRunDataExecutedErrorMessage(execution: SimplifiedExecution) {
  * Handle the case when the workflow execution finished with `waitTill`,
  * meaning that it's in a waiting state.
  */
-export function handleExecutionFinishedWithWaitTill(options: {
-	router: ReturnType<typeof useRouter>;
-}) {
+export function handleExecutionFinishedWithWaitTill(
+	workflowId: string,
+	options: {
+		router: ReturnType<typeof useRouter>;
+	},
+) {
 	const workflowsStore = useWorkflowsStore();
 	const settingsStore = useSettingsStore();
 	const workflowSaving = useWorkflowSaving(options);
 	const workflowObject = workflowsStore.workflowObject;
 
-	const workflowSettings = workflowsStore.workflowSettings;
+	const workflowDocumentStore = workflowId
+		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowId))
+		: undefined;
+	const workflowSettings = workflowDocumentStore?.settings ?? {};
 	const saveManualExecutions =
 		workflowSettings.saveManualExecutions ?? settingsStore.saveManualExecutions;
 
@@ -336,7 +346,10 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 				const node = workflowObject.getNode(error.context.nodeCause as string);
 
 				if (node) {
-					eventData.is_pinned = !!workflowObject.getPinDataOfNode(node.name);
+					const workflowDocumentStore = workflowsStore.workflowId
+						? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+						: undefined;
+					eventData.is_pinned = !!workflowDocumentStore?.pinData?.[node.name];
 					eventData.mode = node.parameters.mode;
 					eventData.node_type = node.type;
 					eventData.operation = node.parameters.operation;

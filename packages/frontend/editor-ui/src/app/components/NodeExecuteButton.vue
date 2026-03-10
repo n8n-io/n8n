@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { ButtonSize, IUpdateInformation } from '@/Interface';
-import type { ButtonType } from '@n8n/design-system';
+import type { ButtonVariant } from '@n8n/design-system';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { N8nButton, N8nTooltip } from '@n8n/design-system';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -19,7 +19,7 @@ const props = withDefaults(
 		telemetrySource: string;
 		disabled?: boolean;
 		label?: string;
-		type?: ButtonType;
+		variant?: ButtonVariant;
 		size?: ButtonSize;
 		icon?: IconName;
 		square?: boolean;
@@ -152,7 +152,7 @@ async function onClick() {
 			:loading="isExecuting && showLoadingSpinner"
 			:disabled="disabled || !!disabledHint || (isExecuting && !showLoadingSpinner)"
 			:label="buttonLabel"
-			:type="type"
+			:variant="variant"
 			:size="size"
 			:icon="buttonIcon"
 			:square="square"

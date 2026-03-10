@@ -5,9 +5,21 @@ import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
 import { STORES } from '@n8n/stores';
 import { retry, mockedStore } from '@/__tests__/utils';
 import { useCredentialsStore } from '../../credentials.store';
+import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ICredentialsResponse } from '../../credentials.types';
-import { within } from '@testing-library/vue';
+import { within, waitFor } from '@testing-library/vue';
 import type { ICredentialType } from 'n8n-workflow';
+
+vi.mock('vue-router', async () => ({
+	...(await vi.importActual('vue-router')),
+	useRouter: vi.fn(),
+	useRoute: () => ({
+		params: {},
+		query: {},
+		path: '',
+	}),
+}));
 
 const oAuth2Api: ICredentialType = {
 	name: 'oAuth2Api',
@@ -203,43 +215,60 @@ const renderComponent = createComponentRenderer(CredentialEdit, {
 	}),
 });
 describe('CredentialEdit', () => {
+	beforeEach(() => {
+		const externalSecretsStore = mockedStore(useExternalSecretsStore);
+		externalSecretsStore.fetchSecretsForProject.mockResolvedValue(undefined);
+	});
+
 	afterEach(() => {
 		vi.clearAllMocks();
 	});
 
 	test('shows the save button when credentialId is null', async () => {
-		const { queryByTestId } = renderComponent({
-			props: {
-				modalName: CREDENTIAL_EDIT_MODAL_KEY,
-				mode: 'new',
-			},
-			pinia: createTestingPinia({
-				initialState: {
-					[STORES.UI]: {
-						modalsById: {
-							[CREDENTIAL_EDIT_MODAL_KEY]: { open: true },
-						},
+		const pinia = createTestingPinia({
+			initialState: {
+				[STORES.UI]: {
+					modalsById: {
+						[CREDENTIAL_EDIT_MODAL_KEY]: { open: true },
 					},
-					[STORES.SETTINGS]: {
-						settings: {
-							enterprise: {
-								sharing: true,
-								externalSecrets: false,
-							},
-							templates: {
-								host: '',
-							},
+				},
+				[STORES.SETTINGS]: {
+					settings: {
+						enterprise: {
+							sharing: true,
+							externalSecrets: false,
 						},
-					},
-					[STORES.PROJECTS]: {
-						personalProject: {
-							id: 'personal-project',
-							type: 'personal',
-							scopes: ['credential:create', 'credential:read'],
+						templates: {
+							host: '',
 						},
 					},
 				},
-			}),
+				[STORES.PROJECTS]: {
+					personalProject: {
+						id: 'personal-project',
+						type: 'personal',
+						scopes: ['credential:create', 'credential:read'],
+					},
+				},
+			},
+		});
+
+		const credStore = useCredentialsStore(pinia);
+		credStore.state.credentialTypes = {
+			testApi: {
+				name: 'testApi',
+				displayName: 'Test API',
+				properties: [],
+			} as ICredentialType,
+		};
+
+		const { queryByTestId } = renderComponent({
+			props: {
+				activeId: 'testApi',
+				modalName: CREDENTIAL_EDIT_MODAL_KEY,
+				mode: 'new',
+			},
+			pinia,
 		});
 		await retry(() => expect(queryByTestId('credential-save-button')).toBeInTheDocument());
 	});
@@ -355,5 +384,58 @@ describe('CredentialEdit', () => {
 		expect(
 			within(getByTestId('credential-edit-dialog')).getByTestId('oauth-connect-button'),
 		).toBeInTheDocument();
+	});
+
+	describe('external secrets', () => {
+		it('should fetch secrets on mount', async () => {
+			const externalSecretsStore = mockedStore(useExternalSecretsStore);
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.personalProject = {
+				id: 'personal-project',
+				name: 'Personal',
+				type: 'personal',
+				icon: null,
+				createdAt: '',
+				updatedAt: '',
+				relations: [],
+				scopes: [],
+			};
+
+			renderComponent({
+				props: { modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' },
+			});
+
+			await waitFor(() => {
+				expect(externalSecretsStore.fetchSecretsForProject).toHaveBeenCalledTimes(1);
+				expect(externalSecretsStore.fetchSecretsForProject).toHaveBeenCalledWith(
+					'personal-project',
+				);
+			});
+		});
+
+		it('should not block modal mount when secrets fetch fails', async () => {
+			const externalSecretsStore = mockedStore(useExternalSecretsStore);
+			externalSecretsStore.fetchSecretsForProject.mockRejectedValue(new Error('Network error'));
+
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.personalProject = {
+				id: 'personal-project',
+				name: 'Personal',
+				type: 'personal',
+				icon: null,
+				createdAt: '',
+				updatedAt: '',
+				relations: [],
+				scopes: [],
+			};
+
+			const { getByTestId } = renderComponent({
+				props: { modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' },
+			});
+
+			await waitFor(() => {
+				expect(getByTestId('credential-edit-dialog')).toBeInTheDocument();
+			});
+		});
 	});
 });

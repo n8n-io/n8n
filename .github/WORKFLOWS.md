@@ -354,8 +354,8 @@ Runs on push to `master` or `1.x`:
 ```
 Push to master/1.x
 ├─ build-github (populate cache)
-├─ unit-test (matrix: Node 20.x, 22.x, 24.3.x)
-│   └─ Coverage only on 22.x
+├─ unit-test (matrix: Node 22.x, 24.13.1, 25.x)
+│   └─ Coverage only on 24.13.1
 ├─ lint
 └─ notify-on-failure (Slack #alerts-build)
 ```
@@ -394,7 +394,7 @@ Composite actions in `.github/actions/`:
 
 ```yaml
 inputs:
-  node-version:        # default: '22.x'
+  node-version:        # default: '24.13.1'
   enable-docker-cache: # default: 'false' (Blacksmith Buildx)
   build-command:       # default: 'pnpm build'
 ```
@@ -599,10 +599,10 @@ npm audit signatures n8n@VERSION
 
 VEX documents which CVEs actually affect n8n vs false positives from scanners.
 
-- **File:** `vex.openvex.json` (repo root)
+- **File:** `security/vex.openvex.json`
 - **Format:** OpenVEX (broad scanner compatibility - Trivy, Docker Scout, etc.)
 - **Attached to:** GitHub Release, Docker image attestations
-- **Used by:** Trivy scans (via `.github/trivy.yaml`)
+- **Used by:** Trivy scans (via `security/trivy.yaml`)
 
 **VEX Status Types:**
 | Status | Meaning |
@@ -620,7 +620,7 @@ cosign verify-attestation --type openvex \
   ghcr.io/n8n-io/n8n:VERSION
 ```
 
-**Adding a CVE statement to vex.openvex.json:**
+**Adding a CVE statement to security/vex.openvex.json:**
 ```json
 {
   "statements": [

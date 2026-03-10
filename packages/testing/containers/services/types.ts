@@ -1,5 +1,8 @@
 import type { StartedTestContainer, StartedNetwork } from 'testcontainers';
 
+/** Hostname that containers use to reach the host machine (Docker Desktop built-in) */
+export const EXTERNAL_HOST = 'host.docker.internal';
+
 export const SERVICE_NAMES = [
 	'postgres',
 	'redis',
@@ -50,6 +53,8 @@ export interface StartContext {
 	isQueueMode: boolean;
 	usePostgres: boolean;
 	needsLoadBalancer: boolean;
+	/** When true, services should target host.testcontainers.internal instead of Docker-internal hostnames */
+	external: boolean;
 	environment: Record<string, string>;
 	serviceResults: Partial<Record<ServiceName, ServiceResult>>;
 	allocatedPorts: { main?: number; loadBalancer?: number };
@@ -64,6 +69,8 @@ export interface StackConfig {
 	projectName?: string;
 	resourceQuota?: { memory?: number; cpu?: number };
 	services?: readonly ServiceName[];
+	/** When true, services target host machine instead of Docker-internal n8n */
+	external?: boolean;
 }
 
 export interface Service<TResult extends ServiceResult = ServiceResult> {

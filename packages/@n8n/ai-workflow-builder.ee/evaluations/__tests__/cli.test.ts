@@ -27,6 +27,7 @@ const mockCreateConsoleLifecycle = jest.fn();
 const mockCreateLLMJudgeEvaluator = jest.fn();
 const mockCreateProgrammaticEvaluator = jest.fn();
 const mockCreatePairwiseEvaluator = jest.fn();
+const mockCreateExecutionEvaluator = jest.fn();
 const mockSendWebhookNotification = jest.fn();
 
 // Mock all external modules
@@ -42,6 +43,7 @@ jest.mock('../cli/argument-parser', () => ({
 jest.mock('../support/environment', () => ({
 	setupTestEnvironment: (): unknown => mockSetupTestEnvironment(),
 	createAgent: (...args: unknown[]): unknown => mockCreateAgent(...args),
+	resolveNodesBasePath: (): string => '/mock/nodes-base',
 }));
 
 jest.mock('../langsmith/types', () => ({
@@ -89,6 +91,7 @@ jest.mock('../index', () => ({
 		mockCreateProgrammaticEvaluator(...args),
 	createPairwiseEvaluator: (...args: unknown[]): unknown => mockCreatePairwiseEvaluator(...args),
 	createSimilarityEvaluator: () => ({ name: 'similarity', evaluate: jest.fn() }),
+	createExecutionEvaluator: (...args: unknown[]): unknown => mockCreateExecutionEvaluator(...args),
 }));
 
 /** Helper to create a minimal valid workflow for tests */
@@ -191,6 +194,7 @@ describe('CLI', () => {
 		mockCreateLLMJudgeEvaluator.mockReturnValue({ name: 'llm-judge', evaluate: jest.fn() });
 		mockCreateProgrammaticEvaluator.mockReturnValue({ name: 'programmatic', evaluate: jest.fn() });
 		mockCreatePairwiseEvaluator.mockReturnValue({ name: 'pairwise', evaluate: jest.fn() });
+		mockCreateExecutionEvaluator.mockReturnValue({ name: 'execution', evaluate: jest.fn() });
 	});
 
 	afterEach(() => {

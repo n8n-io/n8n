@@ -6,10 +6,10 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
 import type { IWorkflowSettings } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import type { IconColor } from '@n8n/design-system';
 import { type IAccordionItem } from '@n8n/design-system/components/N8nInfoAccordion/InfoAccordion.vue';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
@@ -39,6 +39,7 @@ const locale = useI18n();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const npsSurveyStore = useNpsSurveyStore();
 
 const defaultValues = ref({
@@ -103,7 +104,7 @@ const productionExecutionsStatus = computed(() => {
 		return 'unknown';
 	}
 });
-const workflowSettings = computed(() => deepCopy(workflowsStore.workflowSettings));
+const workflowSettings = computed(() => workflowDocumentStore?.value?.getSettingsSnapshot() ?? {});
 const accordionIcon = computed((): { color: IconColor; icon: IconName } | undefined => {
 	if (
 		!workflowSaveSettings.value.saveTestExecutions ||
@@ -114,9 +115,6 @@ const accordionIcon = computed((): { color: IconColor; icon: IconName } | undefi
 	return undefined;
 });
 const currentWorkflowId = computed(() => workflowsStore.workflowId);
-
-const workflowName = computed(() => workflowsStore.workflowName);
-const currentWorkflowTagIds = computed(() => workflowsStore.workflowTags);
 
 watch(workflowSettings, (newSettings: IWorkflowSettings) => {
 	updateSettings(newSettings);
@@ -175,8 +173,6 @@ async function onSaveWorkflowClick(): Promise<void> {
 	}
 	const saved = await workflowSaving.saveCurrentWorkflow({
 		id: currentId,
-		name: workflowName.value,
-		tags: currentWorkflowTagIds.value,
 	});
 	if (saved) {
 		await npsSurveyStore.showNpsSurveyIfPossible();

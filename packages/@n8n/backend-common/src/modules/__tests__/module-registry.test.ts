@@ -35,6 +35,9 @@ describe('eligibleModules', () => {
 			'log-streaming',
 			'ldap',
 			'quick-connect',
+			'workflow-builder',
+			'redaction',
+			'instance-registry',
 		]);
 	});
 
@@ -56,6 +59,9 @@ describe('eligibleModules', () => {
 			'log-streaming',
 			'ldap',
 			'quick-connect',
+			'workflow-builder',
+			'redaction',
+			'instance-registry',
 		]);
 	});
 

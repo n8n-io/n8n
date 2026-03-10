@@ -2,8 +2,11 @@ import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
 import type { User, TestRun } from '@n8n/db';
 import { TestCaseExecutionRepository, TestRunRepository, WorkflowRepository } from '@n8n/db';
+import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { ErrorReporter } from 'n8n-core';
+import { ErrorReporter, InstanceSettings } from 'n8n-core';
+
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 import {
 	EVALUATION_NODE_TYPE,
 	EVALUATION_TRIGGER_NODE_TYPE,
@@ -72,6 +75,8 @@ export class TestRunnerService {
 		private readonly errorReporter: ErrorReporter,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly eventService: EventService,
+		private readonly publisher: Publisher,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	/**
@@ -424,15 +429,16 @@ export class TestRunnerService {
 		const triggerNode = this.findEvaluationTriggerNode(workflow);
 		assert(triggerNode);
 
-		const triggerOutputData = execution.data.resultData.runData[triggerNode.name][0];
+		const triggerOutputData = execution.data.resultData.runData[triggerNode.name]?.[0];
 
-		if (triggerOutputData?.error) {
+		if (!triggerOutputData || triggerOutputData.error) {
 			throw new TestRunError('CANT_FETCH_TEST_CASES', {
-				message: triggerOutputData.error.message,
+				message:
+					triggerOutputData?.error?.message ?? 'Evaluation trigger node did not produce any output',
 			});
 		}
 
-		const triggerOutput = triggerOutputData?.data?.[NodeConnectionTypes.Main]?.[0];
+		const triggerOutput = triggerOutputData.data?.[NodeConnectionTypes.Main]?.[0];
 
 		if (!triggerOutput || triggerOutput.length === 0) {
 			throw new TestRunError('TEST_CASES_NOT_FOUND');
@@ -533,8 +539,8 @@ export class TestRunnerService {
 		const { manager: dbManager } = this.testRunRepository;
 
 		try {
-			// Update test run status
-			await this.testRunRepository.markAsRunning(testRun.id);
+			// Update test run status with instance ID for multi-main coordination
+			await this.testRunRepository.markAsRunning(testRun.id, this.instanceSettings.hostId);
 
 			// Check if the workflow is ready for evaluation
 			this.validateWorkflowConfiguration(workflow);
@@ -575,6 +581,22 @@ export class TestRunnerService {
 					this.logger.debug('Test run was cancelled', {
 						workflowId,
 					});
+					break;
+				}
+
+				// Check database cancellation flag (fallback for multi-main mode only)
+				// This ensures cancellation works even if the pub/sub message didn't reach this instance
+				// In single-main mode, the local abort controller check above is sufficient
+				if (
+					this.instanceSettings.isMultiMain &&
+					(await this.testRunRepository.isCancellationRequested(testRun.id))
+				) {
+					this.logger.debug('Test run cancellation requested via database flag', {
+						workflowId,
+						testRunId: testRun.id,
+					});
+					abortController.abort();
+					telemetryMeta.status = 'cancelled';
 					break;
 				}
 
@@ -762,6 +784,9 @@ export class TestRunnerService {
 			// Clean up abort controller
 			this.abortControllers.delete(testRun.id);
 
+			// Clear instance tracking fields (runningInstanceId, cancelRequested)
+			await this.testRunRepository.clearInstanceTracking(testRun.id);
+
 			// Send telemetry event with complete metadata
 			const telemetryPayload: Record<string, GenericValue> = {
 				...telemetryMeta,
@@ -791,18 +816,55 @@ export class TestRunnerService {
 	}
 
 	/**
-	 * Cancels the test run with the given ID.
-	 * TODO: Implement the cancellation of the test run in a multi-main scenario
+	 * Attempts to cancel a test run locally by aborting its controller.
+	 * This is called both directly and via pub/sub event handler.
 	 */
-	async cancelTestRun(testRunId: string) {
+	private cancelTestRunLocally(testRunId: string): boolean {
 		const abortController = this.abortControllers.get(testRunId);
 		if (abortController) {
+			this.logger.debug('Cancelling test run locally', { testRunId });
 			abortController.abort();
 			this.abortControllers.delete(testRunId);
-		} else {
-			const { manager: dbManager } = this.testRunRepository;
+			return true;
+		}
+		return false;
+	}
 
-			// If there is no abort controller - just mark the test run and all its pending test case executions as cancelled
+	/**
+	 * Handle cancel-test-run pub/sub command from other main instances.
+	 */
+	@OnPubSubEvent('cancel-test-run', { instanceType: 'main' })
+	handleCancelTestRunCommand({ testRunId }: { testRunId: string }) {
+		this.logger.debug('Received cancel-test-run command via pub/sub', { testRunId });
+		this.cancelTestRunLocally(testRunId);
+	}
+
+	/**
+	 * Cancels the test run with the given ID.
+	 * In multi-main mode, this broadcasts the cancellation to all instances via pub/sub
+	 * and sets a database flag as a fallback mechanism.
+	 */
+	async cancelTestRun(testRunId: string) {
+		// 1. Set the database cancellation flag (fallback for polling)
+		await this.testRunRepository.requestCancellation(testRunId);
+
+		// 2. Try local cancellation first
+		const cancelledLocally = this.cancelTestRunLocally(testRunId);
+
+		// 3. In multi-main or queue mode, broadcast cancellation to all instances
+		if (this.instanceSettings.isMultiMain || this.executionsConfig.mode === 'queue') {
+			this.logger.debug('Broadcasting cancel-test-run command via pub/sub', { testRunId });
+			await this.publisher.publishCommand({
+				command: 'cancel-test-run',
+				payload: { testRunId },
+			});
+		}
+
+		// 4. If not running locally, mark as cancelled in DB as a fallback
+		// This handles both single-main (where this is the only instance) and multi-main
+		// (where the running instance may be dead or unreachable via pub/sub)
+		if (!cancelledLocally) {
+			const { manager: dbManager } = this.testRunRepository;
 			await dbManager.transaction(async (trx) => {
 				await this.testRunRepository.markAsCancelled(testRunId, trx);
 				await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRunId, trx);

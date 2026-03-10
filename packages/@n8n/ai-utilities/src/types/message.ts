@@ -3,6 +3,7 @@ export type MessageRole = 'system' | 'user' | 'assistant' | 'tool';
 export type MessageContent =
 	| ContentText
 	| ContentToolCall
+	| ContentInvalidToolCall
 	| ContentToolResult
 	| ContentReasoning
 	| ContentFile
@@ -115,6 +116,30 @@ export type ContentToolResult = ContentMetadata & {
 	 * Optional flag if the result is an error or an error message.
 	 */
 	isError?: boolean;
+};
+
+export type ContentInvalidToolCall = ContentMetadata & {
+	type: 'invalid-tool-call';
+
+	/**
+	 * The ID of the tool call that this result is associated with.
+	 */
+	toolCallId?: string;
+
+	/**
+	 * The error message of the tool call.
+	 */
+	error?: string;
+
+	/**
+	 * The arguments to the tool call.
+	 */
+	args?: string;
+
+	/**
+	 * The name of the tool that was called.
+	 */
+	name?: string;
 };
 
 export type ContentProvider = ContentMetadata & {

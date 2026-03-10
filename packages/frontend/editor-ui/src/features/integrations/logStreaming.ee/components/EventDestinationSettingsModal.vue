@@ -435,6 +435,7 @@ const { width } = useElementSize(defNameRef);
 					</div>
 					<div :class="$style.destinationActions">
 						<N8nButton
+							variant="subtle"
 							v-if="nodeParameters && hasOnceBeenSaved && unchanged"
 							:icon="testMessageSent ? (testMessageResult ? 'check' : 'triangle-alert') : undefined"
 							:title="
@@ -442,7 +443,6 @@ const { width } = useElementSize(defNameRef);
 									? 'Event sent and returned OK'
 									: 'Event returned with error'
 							"
-							type="tertiary"
 							label="Send Test-Event"
 							:disabled="!hasOnceBeenSaved || !unchanged"
 							data-test-id="destination-test-button"
@@ -450,10 +450,10 @@ const { width } = useElementSize(defNameRef);
 						/>
 						<template v-if="canManageLogStreaming">
 							<N8nIconButton
+								variant="subtle"
 								v-if="nodeParameters && hasOnceBeenSaved"
 								:title="i18n.baseText('settings.log-streaming.delete')"
 								icon="trash-2"
-								type="tertiary"
 								:disabled="isSaving"
 								:loading="isDeleting"
 								data-test-id="destination-delete-button"

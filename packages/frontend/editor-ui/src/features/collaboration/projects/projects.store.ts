@@ -234,7 +234,7 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	};
 
 	const moveResourceToProject = async (
-		resourceType: 'workflow' | 'credential',
+		resourceType: 'workflow' | 'credential' | 'dataTable',
 		resourceId: string,
 		projectId: string,
 		parentFolderId?: string,

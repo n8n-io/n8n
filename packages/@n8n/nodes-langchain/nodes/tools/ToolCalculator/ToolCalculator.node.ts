@@ -7,14 +7,14 @@ import {
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
+	nodeNameToToolName,
 } from 'n8n-workflow';
 
-import { logWrapper } from '@n8n/ai-utilities';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 function getTool(ctx: ISupplyDataFunctions | IExecuteFunctions): Calculator {
 	const calculator = new Calculator();
-	calculator.name = ctx.getNode().name;
+	calculator.name = nodeNameToToolName(ctx.getNode());
 	return calculator;
 }
 

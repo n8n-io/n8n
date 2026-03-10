@@ -8,17 +8,24 @@ import {
 	N8nButton,
 	N8nFormInput,
 	N8nHeading,
+	N8nInput,
 	N8nLoading,
+	N8nTabs,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+import type { TabOptions } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { Role } from '@n8n/permissions';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useAsyncState } from '@vueuse/core';
 import isEqual from 'lodash/isEqual';
 import sortBy from 'lodash/sortBy';
-import { computed, ref, toRaw } from 'vue';
+import { computed, ref, toRaw, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { SCOPE_TYPES, SCOPES } from './projectRoleScopes';
+
+import RoleAssignmentsTab from './RoleAssignmentsTab.vue';
 
 const rolesStore = useRolesStore();
 const route = useRoute();
@@ -27,8 +34,37 @@ const { showError, showMessage } = useToast();
 const i18n = useI18n();
 const message = useMessage();
 const telemetry = useTelemetry();
+const settingsStore = useSettingsStore();
 
 const props = defineProps<{ roleSlug?: string }>();
+
+const activeTab = ref<string>((route.query?.tab as string) ?? 'permissions');
+
+watch(activeTab, (newTab) => {
+	void router.replace({ query: { ...route.query, tab: newTab } });
+});
+
+const tabOptions = computed<Array<TabOptions<string>>>(() => [
+	{ label: i18n.baseText('projectRoles.tab.permissions'), value: 'permissions' },
+	{ label: i18n.baseText('projectRoles.tab.assignments'), value: 'assignments' },
+]);
+
+// Dynamic back button text and navigation based on where the user navigated from
+const cameFromProjectSettings = computed(() => route.query.from === VIEWS.PROJECT_SETTINGS);
+
+const backButtonText = computed(() =>
+	cameFromProjectSettings.value
+		? i18n.baseText('projectRoles.backToProjectSettings')
+		: i18n.baseText('projectRoles.backToProjectRoles'),
+);
+
+const onBackClick = () => {
+	if (cameFromProjectSettings.value) {
+		router.back();
+	} else {
+		void router.push({ name: VIEWS.PROJECT_ROLES_SETTINGS });
+	}
+};
 
 const defaultForm = () => ({
 	displayName: '',
@@ -92,50 +128,20 @@ function resetForm(payload: Role | undefined) {
 		: defaultForm();
 }
 
-const project = (['read', 'update', 'delete'] as const).map(
-	(action) => `project:${action}` as const,
-);
-const folder = (['read', 'update', 'create', 'move', 'delete'] as const).map(
-	(action) => `folder:${action}` as const,
-);
-const workflow = (
-	['read', 'update', 'create', 'publish', 'unpublish', 'move', 'delete'] as const
-).map((action) => `workflow:${action}` as const);
-const credential = (['read', 'update', 'create', 'share', 'move', 'delete'] as const).map(
-	(action) => `credential:${action}` as const,
-);
-const sourceControl = (['push'] as const).map((action) => `sourceControl:${action}` as const);
-
-const dataTable = (['read', 'readRow', 'update', 'writeRow', 'create', 'delete'] as const).map(
-	(action) => `dataTable:${action}` as const,
-);
-
-const projectVariable = (['read', 'update', 'create', 'delete'] as const).map(
-	(action) => `projectVariable:${action}` as const,
-);
-
-const scopeTypes = [
-	'project',
-	'folder',
-	'workflow',
-	'credential',
-	'dataTable',
-	'projectVariable',
-	'sourceControl',
-] as const;
-
-const scopes = {
-	project,
-	folder,
-	workflow,
-	credential,
-	sourceControl,
-	dataTable,
-	projectVariable,
-} as const;
+const scopeTypes = computed(() => {
+	if (!settingsStore.moduleSettings['external-secrets']?.roleBasedAccess) {
+		return SCOPE_TYPES.filter(
+			(type) => type !== 'externalSecretsProvider' && type !== 'externalSecret',
+		);
+	}
+	return SCOPE_TYPES;
+});
+const scopes = SCOPES;
 
 function toggleScope(scope: string) {
 	const index = form.value.scopes.indexOf(scope);
+	const isBeingAdded = index === -1;
+
 	if (index !== -1) {
 		form.value.scopes.splice(index, 1);
 	} else {
@@ -151,8 +157,17 @@ function toggleScope(scope: string) {
 		toggleScope(scope.replace(':read', ':list'));
 	}
 
-	if (scope === 'workflow:update') {
-		toggleScope('workflow:execute');
+	// Dependency: workflow:execute requires workflow:read
+	if (scope === 'workflow:execute' && isBeingAdded) {
+		if (!form.value.scopes.includes('workflow:read')) {
+			toggleScope('workflow:read');
+		}
+	}
+
+	if (scope === 'workflow:read' && !isBeingAdded) {
+		if (form.value.scopes.includes('workflow:execute')) {
+			toggleScope('workflow:execute');
+		}
 	}
 }
 
@@ -322,132 +337,174 @@ const displayNameValidationRules = [
 <template>
 	<div class="pb-xl" :class="$style.container">
 		<N8nButton
+			variant="ghost"
 			icon="arrow-left"
-			type="secondary"
 			:class="$style.backButton"
 			text
-			@click="() => router.back()"
+			@click="onBackClick"
 		>
-			{{ i18n.baseText('projectRoles.backToRoleList') }}
+			{{ backButtonText }}
 		</N8nButton>
 		<div class="mb-xl" :class="$style.headerContainer">
 			<N8nHeading tag="h1" size="2xlarge">
 				{{ roleSlug ? `Role "${form.displayName}"` : i18n.baseText('projectRoles.newRole') }}
 			</N8nHeading>
-			<div v-if="initialState && !isReadOnly">
-				<N8nButton
-					type="secondary"
-					:disabled="!hasUnsavedChanges"
-					class="mr-xs"
-					@click="resetForm(initialState)"
-				>
+			<div v-if="initialState && !isReadOnly && !isLoading" :class="$style.headerActions">
+				<N8nButton variant="subtle" :disabled="!hasUnsavedChanges" @click="resetForm(initialState)">
 					{{ i18n.baseText('projectRoles.discardChanges') }}
 				</N8nButton>
 				<N8nButton :disabled="!hasUnsavedChanges" @click="handleSubmit">
 					{{ i18n.baseText('projectRoles.save') }}
 				</N8nButton>
 			</div>
-			<template v-else-if="!initialState">
+			<template v-else-if="!roleSlug">
 				<N8nButton @click="handleSubmit">{{ i18n.baseText('projectRoles.create') }}</N8nButton>
 			</template>
 		</div>
 
 		<div class="mb-l" :class="$style.formContainer">
-			<N8nFormInput
-				v-model="form.displayName"
-				:label="i18n.baseText('projectRoles.roleName')"
-				validate-on-blur
-				:validation-rules="displayNameValidationRules"
-				class="mb-s"
-				show-required-asterisk
-				required
-				:maxlength="100"
-				:disabled="isReadOnly"
-			></N8nFormInput>
-			<N8nFormInput
-				v-model="form.description"
-				:label="i18n.baseText('projectRoles.description')"
-				:placeholder="i18n.baseText('projectRoles.optional')"
-				type="textarea"
-				:maxlength="500"
-				:autosize="{ minRows: 2, maxRows: 4 }"
-				:disabled="isReadOnly"
-			></N8nFormInput>
+			<!-- Read-only: use slot to wrap input with tooltip -->
+			<template v-if="isReadOnly">
+				<N8nFormInput
+					v-model="form.displayName"
+					:label="i18n.baseText('projectRoles.roleName')"
+					class="mb-s"
+					show-required-asterisk
+					required
+				>
+					<N8nTooltip
+						:content="i18n.baseText('projectRoles.systemRoleNotEditable')"
+						placement="top"
+					>
+						<N8nInput v-model="form.displayName" :maxlength="100" disabled />
+					</N8nTooltip>
+				</N8nFormInput>
+				<N8nFormInput v-model="form.description" :label="i18n.baseText('projectRoles.description')">
+					<N8nTooltip
+						:content="i18n.baseText('projectRoles.systemRoleNotEditable')"
+						placement="top"
+					>
+						<N8nInput
+							v-model="form.description"
+							type="textarea"
+							:placeholder="i18n.baseText('projectRoles.optional')"
+							:maxlength="500"
+							:autosize="{ minRows: 2, maxRows: 4 }"
+							disabled
+						/>
+					</N8nTooltip>
+				</N8nFormInput>
+			</template>
+			<!-- Editable: standard N8nFormInput with full validation -->
+			<template v-else>
+				<N8nFormInput
+					v-model="form.displayName"
+					:label="i18n.baseText('projectRoles.roleName')"
+					validate-on-blur
+					:validation-rules="displayNameValidationRules"
+					class="mb-s"
+					show-required-asterisk
+					required
+					:maxlength="100"
+				/>
+				<N8nFormInput
+					v-model="form.description"
+					:label="i18n.baseText('projectRoles.description')"
+					:placeholder="i18n.baseText('projectRoles.optional')"
+					type="textarea"
+					:maxlength="500"
+					:autosize="{ minRows: 2, maxRows: 4 }"
+				/>
+			</template>
 		</div>
 
-		<N8nHeading tag="h2" size="xlarge" class="mb-s">
-			{{ i18n.baseText('projectRoles.permissions') }}
-		</N8nHeading>
-		<template v-if="!isReadOnly">
-			<N8nText color="text-light" class="mb-2xs" tag="p">
-				{{ i18n.baseText('projectRoles.preset') }}
-			</N8nText>
+		<div v-if="roleSlug" class="mb-l">
+			<N8nTabs v-model="activeTab" :options="tabOptions" />
+		</div>
 
-			<div class="mb-s" :class="$style.presetsContainer">
-				<N8nButton type="secondary" @click="setPreset('project:admin')">
-					{{ i18n.baseText('projectRoles.admin') }}
-				</N8nButton>
-				<N8nButton type="secondary" @click="setPreset('project:editor')">
-					{{ i18n.baseText('projectRoles.editor') }}
-				</N8nButton>
-				<N8nButton type="secondary" @click="setPreset('project:viewer')">
-					{{ i18n.baseText('projectRoles.viewer') }}
-				</N8nButton>
-			</div>
-		</template>
+		<div v-show="!roleSlug || activeTab === 'permissions'">
+			<template v-if="!isReadOnly">
+				<N8nText color="text-light" class="mb-2xs" tag="p">
+					{{ i18n.baseText('projectRoles.preset') }}
+				</N8nText>
 
-		<div :class="$style.cardContainer">
-			<div v-for="type in scopeTypes" :key="type" class="mb-s mt-s" :class="$style.card">
-				<div :class="$style.cardTitle">
-					{{ i18n.baseText(`projectRoles.type.${type}`) }}
+				<div class="mb-s" :class="$style.presetsContainer">
+					<N8nButton variant="subtle" @click="setPreset('project:admin')">
+						{{ i18n.baseText('projectRoles.admin') }}
+					</N8nButton>
+					<N8nButton variant="subtle" @click="setPreset('project:editor')">
+						{{ i18n.baseText('projectRoles.editor') }}
+					</N8nButton>
+					<N8nButton variant="subtle" @click="setPreset('project:viewer')">
+						{{ i18n.baseText('projectRoles.viewer') }}
+					</N8nButton>
 				</div>
-				<div style="flex: 1">
-					<N8nLoading v-if="isLoading" :rows="scopes[type].length" :shrink-last="false" />
-					<template v-else>
-						<div v-for="scope in scopes[type]" :key="scope" class="mb-2xs">
-							<N8nTooltip
-								:content="i18n.baseText(`projectRoles.${scope}.tooltip`)"
-								placement="right"
-								:enterable="false"
-								:show-after="250"
-							>
-								<N8nFormInput
-									:data-test-id="`scope-checkbox-${scope}`"
-									:model-value="form.scopes.includes(scope)"
-									:label="i18n.baseText(`projectRoles.${scope}`)"
-									validate-on-blur
-									type="checkbox"
-									:class="$style.checkbox"
-									:disabled="isReadOnly"
-									@update:model-value="() => toggleScope(scope)"
-								/>
-							</N8nTooltip>
-						</div>
+			</template>
+
+			<div :class="$style.cardContainer">
+				<div v-for="type in scopeTypes" :key="type" class="mb-s mt-s" :class="$style.card">
+					<div :class="$style.cardTitle">
+						{{ i18n.baseText(`projectRoles.type.${type}`) }}
+					</div>
+					<div style="flex: 1">
+						<N8nLoading v-if="isLoading" :rows="scopes[type].length" :shrink-last="false" />
+						<template v-else>
+							<div v-for="scope in scopes[type]" :key="scope" class="mb-2xs">
+								<N8nTooltip
+									:content="i18n.baseText(`projectRoles.${scope}.tooltip`)"
+									placement="right"
+									:enterable="false"
+									:show-after="250"
+								>
+									<N8nFormInput
+										:data-test-id="`scope-checkbox-${scope}`"
+										:model-value="form.scopes.includes(scope)"
+										:label="i18n.baseText(`projectRoles.${scope}`)"
+										validate-on-blur
+										type="checkbox"
+										:class="$style.checkbox"
+										:disabled="isReadOnly"
+										@update:model-value="() => toggleScope(scope)"
+									/>
+								</N8nTooltip>
+							</div>
+						</template>
+					</div>
+				</div>
+			</div>
+
+			<div v-if="roleSlug && !isReadOnly" class="mt-xl">
+				<N8nHeading tag="h2" class="mb-2xs" size="large">
+					{{ i18n.baseText('projectRoles.dangerZone') }}
+				</N8nHeading>
+				<N8nText tag="p" class="mb-s">
+					<template v-if="initialState?.usedByProjects">
+						{{ i18n.baseText('projectRoles.action.delete.useWarning.before') }}
+						<a :class="$style.assignmentsLink" @click="activeTab = 'assignments'">
+							{{
+								i18n.baseText('projectRoles.action.delete.useWarning.linkText', {
+									adjustToNumber: initialState.usedByProjects,
+									interpolate: { count: initialState.usedByProjects },
+								})
+							}} </a
+						>.
+						{{ i18n.baseText('projectRoles.action.delete.useWarning.after') }}
 					</template>
-				</div>
+					<template v-else>
+						{{ i18n.baseText('projectRoles.action.delete.warning') }}
+					</template>
+				</N8nText>
+				<N8nButton
+					variant="destructive"
+					:disabled="Boolean(initialState?.usedByProjects)"
+					@click="deleteRole"
+				>
+					{{ i18n.baseText('projectRoles.action.delete.button') }}
+				</N8nButton>
 			</div>
 		</div>
 
-		<div v-if="roleSlug && !isReadOnly" class="mt-xl">
-			<N8nHeading tag="h2" class="mb-2xs" size="large">
-				{{ i18n.baseText('projectRoles.dangerZone') }}
-			</N8nHeading>
-			<N8nText tag="p" class="mb-s">
-				<template v-if="initialState?.usedByUsers">
-					{{
-						i18n.baseText('projectRoles.action.delete.useWarning', {
-							interpolate: {
-								count: initialState.usedByUsers,
-							},
-						})
-					}}
-				</template>
-				<template v-else> {{ i18n.baseText('projectRoles.action.delete.warning') }}</template>
-			</N8nText>
-			<N8nButton type="danger" :disabled="Boolean(initialState?.usedByUsers)" @click="deleteRole">
-				{{ i18n.baseText('projectRoles.action.delete.button') }}
-			</N8nButton>
-		</div>
+		<RoleAssignmentsTab v-if="roleSlug && activeTab === 'assignments'" :role-slug="roleSlug" />
 	</div>
 </template>
 
@@ -491,7 +548,14 @@ const displayNameValidationRules = [
 .headerContainer {
 	display: flex;
 	justify-content: space-between;
-	align-items: center;
+	align-items: flex-start;
+	gap: var(--spacing--sm);
+}
+
+.headerActions {
+	display: flex;
+	gap: var(--spacing--2xs);
+	flex-shrink: 0;
 }
 
 .formContainer {
@@ -509,5 +573,15 @@ const displayNameValidationRules = [
 	:global(label) {
 		padding-bottom: 0 !important;
 	}
+}
+
+.assignmentsLink {
+	color: var(--color--text);
+	cursor: pointer;
+	text-decoration: underline;
+}
+
+.assignmentsLink:hover {
+	color: var(--color--primary);
 }
 </style>

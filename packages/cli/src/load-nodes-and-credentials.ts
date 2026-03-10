@@ -112,6 +112,30 @@ export class LoadNodesAndCredentials {
 		}
 	}
 
+	/**
+	 * Returns the current node and credential types.
+	 * If types have been released from memory, re-runs postProcessLoaders to
+	 * repopulate them first, then releases after snapshotting.
+	 *
+	 * WARNING: Holding types in memory is very consuming. Use sparingly and only
+	 * where the caller genuinely needs its own copy (e.g. the AI workflow builder
+	 * service or the frontend service writing static JSON files).
+	 */
+	async collectTypes(): Promise<Types> {
+		const needsReload = this.types.nodes.length === 0 && this.types.credentials.length === 0;
+		if (needsReload) {
+			await this.postProcessLoaders();
+		}
+		const types: Types = {
+			nodes: this.types.nodes,
+			credentials: this.types.credentials,
+		};
+		if (needsReload) {
+			this.releaseTypes();
+		}
+		return types;
+	}
+
 	isKnownNode(type: string) {
 		return type in this.known.nodes;
 	}

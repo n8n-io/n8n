@@ -5,7 +5,7 @@ import type { SuggestedActionsProps } from './SuggestedActions.vue';
 import N8nSuggestedActions from './SuggestedActions.vue';
 
 export default {
-	title: 'Modules/SuggestedActions',
+	title: 'Core/SuggestedActions',
 	component: N8nSuggestedActions,
 	argTypes: {
 		open: {

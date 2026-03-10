@@ -2,7 +2,8 @@ import type { Callbacks } from '@langchain/core/callbacks/manager';
 import { getLangchainCallbacks } from 'langsmith/langchain';
 import { v4 as uuid } from 'uuid';
 
-import type { LlmCallLimiter } from './harness-types';
+import type { Evaluator, EvaluationContext, Feedback, LlmCallLimiter } from './harness-types';
+import type { SimpleWorkflow } from '../../src/types/workflow';
 import type { BuilderFeatureFlags, ChatPayload } from '../../src/workflow-builder-agent';
 import { DEFAULTS } from '../support/constants';
 
@@ -86,7 +87,7 @@ export function getChatPayload(options: GetChatPayloadOptions): ChatPayload {
  * Matches the CoordinationLogEntry type from src/types/coordination.ts
  */
 interface CoordinationLogEntry {
-	phase: 'discovery' | 'builder' | 'state_management' | 'responder' | 'planner';
+	phase: 'discovery' | 'builder' | 'assistant' | 'state_management' | 'responder' | 'planner';
 	status: 'completed' | 'in_progress' | 'error';
 	timestamp: number;
 }
@@ -161,4 +162,40 @@ export function extractSubgraphMetrics(
 	}
 
 	return metrics;
+}
+
+/**
+ * Run all evaluators on a workflow + context pair, with per-evaluator timeouts.
+ * Returns flattened feedback; errors are captured as feedback items.
+ */
+export async function runEvaluatorsOnExample(
+	evaluators: Array<Evaluator<EvaluationContext>>,
+	workflow: SimpleWorkflow,
+	context: EvaluationContext,
+	timeoutMs?: number,
+): Promise<Feedback[]> {
+	return (
+		await Promise.all(
+			evaluators.map(async (evaluator): Promise<Feedback[]> => {
+				try {
+					return await withTimeout({
+						promise: evaluator.evaluate(workflow, context),
+						timeoutMs,
+						label: `evaluator:${evaluator.name}`,
+					});
+				} catch (error) {
+					const msg = error instanceof Error ? error.message : String(error);
+					return [
+						{
+							evaluator: evaluator.name,
+							metric: 'error',
+							score: 0,
+							kind: 'score' as const,
+							comment: msg,
+						},
+					];
+				}
+			}),
+		)
+	).flat();
 }

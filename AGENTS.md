@@ -154,6 +154,7 @@ What we use for testing and writing tests:
 - For frontend we use `vitest`
 - For E2E tests we use Playwright. Run with `pnpm --filter=n8n-playwright test:local`.
   See `packages/testing/playwright/README.md` for details.
+- **For Playwright test maintenance/cleanup**, see @packages/testing/playwright/AGENTS.md (includes janitor tool for static analysis, dead code removal, architecture enforcement, and TCR workflows).
 
 ### Common Development Tasks
 
