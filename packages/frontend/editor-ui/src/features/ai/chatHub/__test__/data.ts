@@ -151,6 +151,11 @@ export function createChatHubModuleSettings(
 ): ChatHubModuleSettings {
 	return {
 		enabled: true,
+		semanticSearch: {
+			vectorStore: { provider: 'qdrant', credentialId: null },
+			embeddingModel: { provider: 'openai', credentialId: null },
+		},
+		agentUploadMaxSizeMb: 10,
 		providers: {
 			openai: {
 				provider: 'openai',
