@@ -376,11 +376,21 @@ export class Telemetry {
 			return;
 		}
 
+		const debugEvents = ['User invoked API', 'User retrieved workflow'];
+		const isDebugEvent = debugEvents.includes(eventName);
+
 		this.logger.info('[Telemetry Debug] Sending event', {
 			eventName,
 			payloadSize,
 			userId: rudderStackPayload.userId,
 		});
+
+		if (isDebugEvent) {
+			this.logger.info('[Telemetry Debug] Target event details', {
+				eventName,
+				rudderStackPayload: JSON.stringify(rudderStackPayload),
+			});
+		}
 
 		this.postHog?.track(payload);
 
