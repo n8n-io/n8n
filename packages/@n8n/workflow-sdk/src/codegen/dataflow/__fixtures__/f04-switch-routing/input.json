@@ -1,0 +1,89 @@
+{
+	"name": "Switch Workflow",
+	"nodes": [
+		{
+			"id": "1",
+			"name": "Manual Trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"parameters": {}
+		},
+		{
+			"id": "2",
+			"name": "Switch",
+			"type": "n8n-nodes-base.switch",
+			"typeVersion": 3,
+			"position": [200, 0],
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"conditions": {
+								"options": { "version": 2, "caseSensitive": true, "typeValidation": "loose" },
+								"combinator": "and",
+								"conditions": [
+									{
+										"operator": { "type": "string", "operation": "equals" },
+										"leftValue": "={{ $json.destination }}",
+										"rightValue": "London"
+									}
+								]
+							}
+						},
+						{
+							"conditions": {
+								"options": { "version": 2, "caseSensitive": true, "typeValidation": "loose" },
+								"combinator": "and",
+								"conditions": [
+									{
+										"operator": { "type": "string", "operation": "equals" },
+										"leftValue": "={{ $json.destination }}",
+										"rightValue": "New York"
+									}
+								]
+							}
+						}
+					]
+				},
+				"options": { "fallbackOutput": "extra" }
+			}
+		},
+		{
+			"id": "3",
+			"name": "London Handler",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3,
+			"position": [400, -100],
+			"parameters": {}
+		},
+		{
+			"id": "4",
+			"name": "New York Handler",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3,
+			"position": [400, 0],
+			"parameters": {}
+		},
+		{
+			"id": "5",
+			"name": "Default Handler",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3,
+			"position": [400, 100],
+			"parameters": {}
+		}
+	],
+	"connections": {
+		"Manual Trigger": {
+			"main": [[{ "node": "Switch", "type": "main", "index": 0 }]]
+		},
+		"Switch": {
+			"main": [
+				[{ "node": "London Handler", "type": "main", "index": 0 }],
+				[{ "node": "New York Handler", "type": "main", "index": 0 }],
+				[{ "node": "Default Handler", "type": "main", "index": 0 }]
+			]
+		}
+	}
+}

@@ -1,0 +1,39 @@
+{
+	"name": "Three Node Chain",
+	"nodes": [
+		{
+			"id": "1",
+			"name": "Manual Trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"parameters": {}
+		},
+		{
+			"id": "2",
+			"name": "HTTP Request",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4,
+			"position": [200, 0],
+			"parameters": { "url": "https://example.com", "method": "POST" }
+		},
+		{
+			"id": "3",
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3,
+			"position": [400, 0],
+			"parameters": {
+				"values": { "string": [{ "name": "key", "value": "val" }] }
+			}
+		}
+	],
+	"connections": {
+		"Manual Trigger": {
+			"main": [[{ "node": "HTTP Request", "type": "main", "index": 0 }]]
+		},
+		"HTTP Request": {
+			"main": [[{ "node": "Set", "type": "main", "index": 0 }]]
+		}
+	}
+}

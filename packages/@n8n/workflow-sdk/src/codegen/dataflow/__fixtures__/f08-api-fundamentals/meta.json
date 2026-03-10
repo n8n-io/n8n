@@ -1,0 +1,5 @@
+{
+	"title": "F08: API fundamentals tutorial (webhooks + IF branching)",
+	"templateFile": "tutorial/api_fundamentals.json",
+	"skip": "Complex expressions (bracket-access header fields) produce invalid JS in generated code"
+}

@@ -1,0 +1,57 @@
+{
+	"name": "Multi Output",
+	"nodes": [
+		{
+			"id": "1",
+			"name": "Manual Trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"parameters": {}
+		},
+		{
+			"id": "2",
+			"name": "Compare Datasets",
+			"type": "n8n-nodes-base.compareDatasets",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"parameters": {}
+		},
+		{
+			"id": "3",
+			"name": "Only In A",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3,
+			"position": [400, -100],
+			"parameters": {}
+		},
+		{
+			"id": "4",
+			"name": "Only In B",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3,
+			"position": [400, 0],
+			"parameters": {}
+		},
+		{
+			"id": "5",
+			"name": "In Both",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3,
+			"position": [400, 100],
+			"parameters": {}
+		}
+	],
+	"connections": {
+		"Manual Trigger": {
+			"main": [[{ "node": "Compare Datasets", "type": "main", "index": 0 }]]
+		},
+		"Compare Datasets": {
+			"main": [
+				[{ "node": "Only In A", "type": "main", "index": 0 }],
+				[{ "node": "Only In B", "type": "main", "index": 0 }],
+				[{ "node": "In Both", "type": "main", "index": 0 }]
+			]
+		}
+	}
+}
