@@ -997,6 +997,9 @@ function emitLeafByType(node: SemanticNode, ctx: SimplifiedGenContext): void {
 		case 'n8n-nodes-base.respondToWebhook':
 			emitRespondNode(node, ctx);
 			break;
+		case 'n8n-nodes-base.wait':
+			emitWaitNode(node, ctx);
+			break;
 		case '@n8n/n8n-nodes-langchain.agent':
 			emitAiNode(node, ctx);
 			break;
@@ -1465,6 +1468,86 @@ function emitRespondNode(node: SemanticNode, ctx: SimplifiedGenContext): void {
 	}
 
 	emit(ctx, `respond({ ${args.join(', ')} });`);
+}
+
+// ─── Wait Node ────────────────────────────────────────────────────────────────
+
+const N8N_UNIT_TO_SHORT: Record<string, string> = {
+	seconds: 's',
+	minutes: 'm',
+	hours: 'h',
+	days: 'd',
+};
+
+function emitWaitNode(node: SemanticNode, ctx: SimplifiedGenContext): void {
+	const params = node.json.parameters ?? {};
+	const resume = params.resume as string;
+
+	// Emit @example pin data if present
+	const pinData = ctx.workflowPinData[node.name];
+	if (pinData) {
+		emit(ctx, `/** @example ${JSON.stringify(pinData)} */`);
+	}
+
+	switch (resume) {
+		case 'timeInterval': {
+			const amount = params.amount as number;
+			const unit = N8N_UNIT_TO_SHORT[params.unit as string] ?? 's';
+			emit(ctx, `await wait('${amount}${unit}');`);
+			break;
+		}
+		case 'specificTime': {
+			const dateTime = params.dateTime as string;
+			emit(ctx, `await waitUntil('${dateTime}');`);
+			break;
+		}
+		case 'webhook': {
+			emit(ctx, `await waitForWebhook();`);
+			break;
+		}
+		case 'form': {
+			// Reconstruct form config from params
+			const configParts: string[] = [];
+			if (params.formTitle)
+				configParts.push(`title: '${(params.formTitle as string).replace(/'/g, "\\'")}'`);
+			if (params.formDescription)
+				configParts.push(
+					`description: '${(params.formDescription as string).replace(/'/g, "\\'")}'`,
+				);
+
+			const formFields = params.formFields as
+				| {
+						values?: Array<{
+							fieldLabel: string;
+							fieldType?: string;
+							fieldOptions?: { values: Array<{ option: string }> };
+						}>;
+				  }
+				| undefined;
+			if (formFields?.values && formFields.values.length > 0) {
+				const fields = formFields.values.map((f) => {
+					const parts: string[] = [`label: '${f.fieldLabel}'`];
+					if (f.fieldType && f.fieldType !== 'text') parts.push(`type: '${f.fieldType}'`);
+					if (f.fieldOptions?.values) {
+						const opts = f.fieldOptions.values.map((o) => `'${o.option}'`).join(', ');
+						parts.push(`options: [${opts}]`);
+					}
+					return `{ ${parts.join(', ')} }`;
+				});
+				configParts.push(`fields: [\n    ${fields.join(',\n    ')},\n  ]`);
+			}
+
+			if (configParts.length > 0) {
+				emit(ctx, `await waitForForm({ ${configParts.join(', ')} });`);
+			} else {
+				emit(ctx, `await waitForForm();`);
+			}
+			break;
+		}
+		default:
+			emit(ctx, `await wait('0s'); // unknown resume mode: ${resume}`);
+			break;
+	}
 }
 
 // ─── AI Node ─────────────────────────────────────────────────────────────────

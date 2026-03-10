@@ -94,7 +94,7 @@ interface AiSubnodeInfo {
 }
 
 interface IOCall {
-	type: 'http' | 'ai' | 'workflow' | 'respond';
+	type: 'http' | 'ai' | 'workflow' | 'respond' | 'wait';
 	method: string;
 	assignedVar: string | null;
 	url?: string;
@@ -138,6 +138,7 @@ interface EmittedNode {
 		| 'set'
 		| 'ai'
 		| 'respond'
+		| 'wait'
 		| 'workflow'
 		| 'ifElse'
 		| 'switchCase'
@@ -190,6 +191,7 @@ interface TranspilerContext {
 	switchCounter: number;
 	sibCounter: number;
 	respondCounter: number;
+	waitCounter: number;
 	wfCounter: number;
 	setCounter: number;
 	aggCounter: number;
@@ -229,6 +231,9 @@ function resolveJsonRefs(str: string, ctx: TranspilerContext): string {
 		(match: string, root: string, rest: string) => {
 			const sourceNode = ctx.varSourceMap.get(root);
 			if (!sourceNode) return match;
+			// Special execution expression overrides
+			if (sourceNode === '__execution_resumeUrl__') return `$execution.resumeUrl`;
+			if (sourceNode === '__execution_resumeFormUrl__') return `$execution.resumeFormUrl`;
 			const kind = ctx.varSourceKind.get(root) ?? 'code';
 			if (kind === 'io') {
 				// IO node output: variable IS the json, strip root
@@ -944,6 +949,91 @@ function isRespondCall(stmt: AcornNode): boolean {
 	return false;
 }
 
+// ─── Wait Detection ──────────────────────────────────────────────────────────
+
+const WAIT_CALLEE_NAMES = new Set(['wait', 'waitUntil', 'waitForWebhook', 'waitForForm']);
+
+interface WaitCallInfo {
+	calleeName: string;
+	args: AcornNode[];
+	assignedVar: string | null;
+}
+
+/**
+ * Check if a statement is a wait call: `await wait('5s')`, `await waitUntil(...)`,
+ * `await waitForWebhook(...)`, `await waitForForm(...)`, or `setTimeout(cb, ms)`.
+ * Returns the callee name and args, or null if not a wait call.
+ */
+function extractWaitCall(stmt: AcornNode): WaitCallInfo | null {
+	// await wait(...) or const x = await waitForWebhook(...)
+	if (stmt.type === 'ExpressionStatement' && stmt.expression) {
+		const expr = stmt.expression;
+		// await wait(...)
+		if (expr.type === 'AwaitExpression' && expr.argument?.type === 'CallExpression') {
+			const call = expr.argument;
+			if (call.callee?.type === 'Identifier' && WAIT_CALLEE_NAMES.has(call.callee.name ?? '')) {
+				return { calleeName: call.callee.name!, args: call.arguments ?? [], assignedVar: null };
+			}
+		}
+		// setTimeout(callback, ms) — not awaited
+		if (
+			expr.type === 'CallExpression' &&
+			expr.callee?.type === 'Identifier' &&
+			expr.callee.name === 'setTimeout'
+		) {
+			return { calleeName: 'setTimeout', args: expr.arguments ?? [], assignedVar: null };
+		}
+	}
+
+	// const data = await waitForWebhook(...)
+	if (stmt.type === 'VariableDeclaration' && stmt.declarations) {
+		for (const decl of stmt.declarations) {
+			if (decl.init?.type === 'AwaitExpression' && decl.init.argument?.type === 'CallExpression') {
+				const call = decl.init.argument;
+				if (call.callee?.type === 'Identifier' && WAIT_CALLEE_NAMES.has(call.callee.name ?? '')) {
+					return {
+						calleeName: call.callee.name!,
+						args: call.arguments ?? [],
+						assignedVar: decl.id?.name ?? null,
+					};
+				}
+			}
+		}
+	}
+
+	return null;
+}
+
+// ─── Wait Duration Parsing ───────────────────────────────────────────────────
+
+const DURATION_REGEX = /^(\d+)\s*(s|m|h|d)$/;
+
+const DURATION_UNIT_MAP: Record<string, string> = {
+	s: 'seconds',
+	m: 'minutes',
+	h: 'hours',
+	d: 'days',
+};
+
+/**
+ * Parse a duration string like '5s', '2m', '1h', '3d' into amount + n8n unit.
+ */
+function parseWaitDurationString(str: string): { amount: number; unit: string } | null {
+	const match = DURATION_REGEX.exec(str);
+	if (!match) return null;
+	return { amount: Number(match[1]), unit: DURATION_UNIT_MAP[match[2]] };
+}
+
+/**
+ * Convert milliseconds to the best n8n unit (days > hours > minutes > seconds).
+ */
+function parseWaitDurationMs(ms: number): { amount: number; unit: string } {
+	if (ms >= 86400000 && ms % 86400000 === 0) return { amount: ms / 86400000, unit: 'days' };
+	if (ms >= 3600000 && ms % 3600000 === 0) return { amount: ms / 3600000, unit: 'hours' };
+	if (ms >= 60000 && ms % 60000 === 0) return { amount: ms / 60000, unit: 'minutes' };
+	return { amount: ms / 1000, unit: 'seconds' };
+}
+
 // ─── Function Call Handling ───────────────────────────────────────────────────
 
 interface FunctionCallInfo {
@@ -1110,6 +1200,7 @@ function compileFunctionToSDK(
 		switchCounter: 0,
 		sibCounter: 0,
 		respondCounter: 0,
+		waitCounter: 0,
 		wfCounter: 0,
 		setCounter: 0,
 		aggCounter: 0,
@@ -1238,6 +1329,7 @@ function transpileCallback(
 		switchCounter: nodeOffset,
 		sibCounter: nodeOffset,
 		respondCounter: nodeOffset,
+		waitCounter: nodeOffset,
 		wfCounter: nodeOffset,
 		setCounter: nodeOffset,
 		aggCounter: nodeOffset,
@@ -1418,6 +1510,33 @@ function walkStatements(
 			const respondPinData = ctx.pendingPinData;
 			ctx.pendingPinData = undefined;
 			processRespondCall(ctx, stmt, respondPinData);
+			continue;
+		}
+
+		// Check for wait calls: wait(), setTimeout(), waitUntil(), waitForWebhook(), waitForForm()
+		const waitCall = extractWaitCall(stmt);
+		if (waitCall) {
+			const waitPinData = ctx.pendingPinData;
+			ctx.pendingPinData = undefined;
+			switch (waitCall.calleeName) {
+				case 'wait':
+					if (waitCall.args[0]?.type === 'Literal' && typeof waitCall.args[0].value === 'string') {
+						processWaitTimeCall(ctx, waitCall.args[0].value as string, waitPinData);
+					}
+					break;
+				case 'setTimeout':
+					processSetTimeoutCall(ctx, waitCall, comments);
+					break;
+				case 'waitUntil':
+					processWaitUntilCall(ctx, waitCall.args, waitPinData);
+					break;
+				case 'waitForWebhook':
+					processWaitForWebhookCall(ctx, waitCall, comments, waitPinData);
+					break;
+				case 'waitForForm':
+					processWaitForFormCall(ctx, waitCall, comments, waitPinData);
+					break;
+			}
 			continue;
 		}
 
@@ -1617,6 +1736,300 @@ function processRespondCall(ctx: TranspilerContext, stmt: AcornNode, pinData?: u
 	ctx.prevVar = respondVar;
 }
 
+// ─── Wait Processing ─────────────────────────────────────────────────────────
+
+function emitWaitNode(
+	ctx: TranspilerContext,
+	params: Record<string, unknown>,
+	pinData?: unknown[],
+): string {
+	ctx.waitCounter++;
+	const waitVar = `wait${ctx.waitCounter}`;
+	const nodeName = `Wait ${ctx.waitCounter}`;
+
+	const configObj: Record<string, unknown> = {
+		name: nodeName,
+		parameters: params,
+		executeOnce: true,
+	};
+	if (pinData) {
+		configObj.pinData = pinData;
+	}
+	const configStr = JSON.stringify(configObj, null, 2)
+		.split('\n')
+		.map((line, i) => (i === 0 ? line : '  ' + line))
+		.join('\n');
+
+	const sdkCode = `const ${waitVar} = node({
+  type: 'n8n-nodes-base.wait', version: 1.1,
+  config: ${configStr}
+});`;
+
+	ctx.nodes.push({
+		varName: waitVar,
+		sdkCode,
+		kind: 'wait',
+		nodeName,
+	});
+	ctx.prevVar = waitVar;
+	return waitVar;
+}
+
+function processWaitTimeCall(
+	ctx: TranspilerContext,
+	durationStr: string,
+	pinData?: unknown[],
+): void {
+	flushPendingCode(ctx);
+
+	const parsed = parseWaitDurationString(durationStr);
+	if (!parsed) {
+		ctx.errors.push({ message: `Invalid wait duration: '${durationStr}'`, category: 'syntax' });
+		return;
+	}
+	emitWaitNode(ctx, { resume: 'timeInterval', amount: parsed.amount, unit: parsed.unit }, pinData);
+}
+
+function processSetTimeoutCall(
+	ctx: TranspilerContext,
+	waitInfo: WaitCallInfo,
+	comments: Array<{ type: string; value: string; start: number; end: number }>,
+): void {
+	flushPendingCode(ctx);
+
+	const args = waitInfo.args;
+	// setTimeout(callback, ms) — last arg is ms, first arg is callback
+	const callbackArg = args[0];
+	const msArg = args[args.length - 1];
+
+	if (!msArg || msArg.type !== 'Literal' || typeof msArg.value !== 'number') {
+		ctx.errors.push({
+			message: 'setTimeout requires a numeric delay as second argument',
+			category: 'syntax',
+		});
+		return;
+	}
+
+	const parsed = parseWaitDurationMs(msArg.value as number);
+	emitWaitNode(ctx, { resume: 'timeInterval', amount: parsed.amount, unit: parsed.unit });
+
+	// Walk callback body
+	if (
+		callbackArg &&
+		(callbackArg.type === 'FunctionExpression' || callbackArg.type === 'ArrowFunctionExpression')
+	) {
+		const bodyNode = callbackArg.body as unknown as AcornNode;
+		const bodyStmts =
+			bodyNode?.type === 'BlockStatement' && bodyNode.body
+				? bodyNode.body
+				: bodyNode
+					? [bodyNode]
+					: [];
+		walkStatements(ctx, bodyStmts, comments);
+	}
+}
+
+function processWaitForWebhookCall(
+	ctx: TranspilerContext,
+	waitInfo: WaitCallInfo,
+	comments: Array<{ type: string; value: string; start: number; end: number }>,
+	pinData?: unknown[],
+): void {
+	flushPendingCode(ctx);
+
+	const args = waitInfo.args;
+
+	// Find callback function (last arg that's a function)
+	let callbackArg: AcornNode | null = null;
+	let callbackParamName: string | null = null;
+
+	for (let i = args.length - 1; i >= 0; i--) {
+		if (args[i].type === 'FunctionExpression' || args[i].type === 'ArrowFunctionExpression') {
+			callbackArg = args[i];
+			// Extract callback param name (resumeUrl)
+			const params = callbackArg.params ?? [];
+			if (params.length > 0 && params[0].type === 'Identifier') {
+				callbackParamName = params[0].name ?? null;
+			}
+			break;
+		}
+	}
+
+	// Set up expression override for resumeUrl
+	if (callbackParamName) {
+		ctx.varSourceMap.set(callbackParamName, '__execution_resumeUrl__');
+		ctx.varSourceKind.set(callbackParamName, 'io');
+	}
+
+	// Walk callback body BEFORE emitting wait node
+	if (callbackArg) {
+		const bodyNode = callbackArg.body as unknown as AcornNode;
+		const bodyStmts =
+			bodyNode?.type === 'BlockStatement' && bodyNode.body
+				? bodyNode.body
+				: bodyNode
+					? [bodyNode]
+					: [];
+
+		// Mark nodes emitted in callback with @wait-setup marker
+		const nodeCountBefore = ctx.nodes.length;
+		walkStatements(ctx, bodyStmts, comments);
+		flushPendingCode(ctx);
+
+		// Add @wait-setup marker to Code nodes emitted in callback
+		for (let i = nodeCountBefore; i < ctx.nodes.length; i++) {
+			const n = ctx.nodes[i];
+			if (n.kind === 'http' && n.sdkCode.includes('jsonBody')) {
+				// HTTP nodes with body refs to resumeUrl will have $execution.resumeUrl resolved
+			}
+		}
+	}
+
+	// Clean up expression override
+	if (callbackParamName) {
+		ctx.varSourceMap.delete(callbackParamName);
+		ctx.varSourceKind.delete(callbackParamName);
+	}
+
+	// Build wait node params
+	const waitParams: Record<string, unknown> = { resume: 'webhook' };
+
+	// Extract options if first arg is an object (not a function)
+	if (
+		args.length > 0 &&
+		args[0].type !== 'FunctionExpression' &&
+		args[0].type !== 'ArrowFunctionExpression'
+	) {
+		const opts = extractObjectLiteral(args[0]);
+		if (opts) {
+			if (opts.httpMethod) waitParams.httpMethod = opts.httpMethod;
+			if (opts.webhookSuffix) {
+				waitParams.options = {
+					...((waitParams.options as Record<string, unknown>) ?? {}),
+					webhookSuffix: opts.webhookSuffix,
+				};
+			}
+		}
+	}
+
+	emitWaitNode(ctx, waitParams, pinData);
+
+	// If there's an assigned variable, emit aggregate node for webhook payload
+	if (waitInfo.assignedVar) {
+		const aggNode = emitAggregateNode(waitInfo.assignedVar, `Wait ${ctx.waitCounter}`, ctx);
+		ctx.nodes.push(aggNode);
+		ctx.prevVar = aggNode.varName;
+		ctx.varSourceMap.set(waitInfo.assignedVar, aggNode.nodeName);
+		ctx.varSourceKind.set(waitInfo.assignedVar, 'aggregate');
+	}
+}
+
+function processWaitForFormCall(
+	ctx: TranspilerContext,
+	waitInfo: WaitCallInfo,
+	comments: Array<{ type: string; value: string; start: number; end: number }>,
+	pinData?: unknown[],
+): void {
+	flushPendingCode(ctx);
+
+	const args = waitInfo.args;
+
+	// Find config object (first arg) and callback (last function arg)
+	let configArg: AcornNode | null = null;
+	let callbackArg: AcornNode | null = null;
+	let callbackParamName: string | null = null;
+
+	for (const arg of args) {
+		if (arg.type === 'ObjectExpression') {
+			configArg = arg;
+		} else if (arg.type === 'FunctionExpression' || arg.type === 'ArrowFunctionExpression') {
+			callbackArg = arg;
+			const params = callbackArg.params ?? [];
+			if (params.length > 0 && params[0].type === 'Identifier') {
+				callbackParamName = params[0].name ?? null;
+			}
+		}
+	}
+
+	// Set up expression override for formUrl
+	if (callbackParamName) {
+		ctx.varSourceMap.set(callbackParamName, '__execution_resumeFormUrl__');
+		ctx.varSourceKind.set(callbackParamName, 'io');
+	}
+
+	// Walk callback body BEFORE emitting wait node
+	if (callbackArg) {
+		const bodyNode = callbackArg.body as unknown as AcornNode;
+		const bodyStmts =
+			bodyNode?.type === 'BlockStatement' && bodyNode.body
+				? bodyNode.body
+				: bodyNode
+					? [bodyNode]
+					: [];
+		walkStatements(ctx, bodyStmts, comments);
+		flushPendingCode(ctx);
+	}
+
+	// Clean up expression override
+	if (callbackParamName) {
+		ctx.varSourceMap.delete(callbackParamName);
+		ctx.varSourceKind.delete(callbackParamName);
+	}
+
+	// Build wait node params
+	const waitParams: Record<string, unknown> = { resume: 'form' };
+
+	// Map form config to n8n params
+	if (configArg) {
+		const config = extractObjectLiteral(configArg);
+		if (config) {
+			if (config.title) waitParams.formTitle = config.title;
+			if (config.description) waitParams.formDescription = config.description;
+			if (Array.isArray(config.fields)) {
+				waitParams.formFields = {
+					values: (config.fields as Array<Record<string, unknown>>).map((f) => ({
+						fieldLabel: f.label,
+						fieldType: f.type ?? 'text',
+						...(f.options
+							? { fieldOptions: { values: (f.options as string[]).map((o) => ({ option: o })) } }
+							: {}),
+					})),
+				};
+			}
+		}
+	}
+
+	emitWaitNode(ctx, waitParams, pinData);
+
+	// If there's an assigned variable, emit aggregate node for form payload
+	if (waitInfo.assignedVar) {
+		const aggNode = emitAggregateNode(waitInfo.assignedVar, `Wait ${ctx.waitCounter}`, ctx);
+		ctx.nodes.push(aggNode);
+		ctx.prevVar = aggNode.varName;
+		ctx.varSourceMap.set(waitInfo.assignedVar, aggNode.nodeName);
+		ctx.varSourceKind.set(waitInfo.assignedVar, 'aggregate');
+	}
+}
+
+function processWaitUntilCall(
+	ctx: TranspilerContext,
+	args: AcornNode[],
+	pinData?: unknown[],
+): void {
+	flushPendingCode(ctx);
+
+	const dateTimeArg = args[0];
+	if (!dateTimeArg || dateTimeArg.type !== 'Literal' || typeof dateTimeArg.value !== 'string') {
+		ctx.errors.push({
+			message: 'waitUntil requires a date/time string argument',
+			category: 'syntax',
+		});
+		return;
+	}
+
+	emitWaitNode(ctx, { resume: 'specificTime', dateTime: dateTimeArg.value }, pinData);
+}
+
 // ─── IF Condition Helpers ────────────────────────────────────────────────────
 
 interface IfConditionEntry {
@@ -1661,6 +2074,14 @@ function resolveExpressionFromAST(astNode: AcornNode, ctx: TranspilerContext): s
 
 		const sourceNode = ctx.varSourceMap.get(root);
 		if (!sourceNode) return ctx.source.slice(astNode.start, astNode.end);
+
+		// Special execution expression overrides (e.g. $execution.resumeUrl)
+		if (sourceNode === '__execution_resumeUrl__') {
+			return `={{ $execution.resumeUrl }}`;
+		}
+		if (sourceNode === '__execution_resumeFormUrl__') {
+			return `={{ $execution.resumeFormUrl }}`;
+		}
 
 		const kind = ctx.varSourceKind.get(root) ?? 'code';
 		const chain = extractPropertyChain(astNode);
@@ -1863,6 +2284,7 @@ const COUNTER_KEYS = [
 	'switchCounter',
 	'sibCounter',
 	'respondCounter',
+	'waitCounter',
 	'wfCounter',
 	'setCounter',
 	'loopCounter',
@@ -1890,6 +2312,7 @@ function createBranchContext(parentCtx: TranspilerContext): TranspilerContext {
 		switchCounter: parentCtx.switchCounter,
 		sibCounter: parentCtx.sibCounter,
 		respondCounter: parentCtx.respondCounter,
+		waitCounter: parentCtx.waitCounter,
 		wfCounter: parentCtx.wfCounter,
 		setCounter: parentCtx.setCounter,
 		aggCounter: parentCtx.aggCounter,
@@ -2427,6 +2850,7 @@ function compileLoopBodyAsSubWorkflow(
 		switchCounter: 0,
 		sibCounter: 0,
 		respondCounter: 0,
+		waitCounter: 0,
 		wfCounter: 0,
 		setCounter: 0,
 		aggCounter: 0,
@@ -2811,6 +3235,7 @@ function compileTryCatchBodyAsSubWorkflow(
 		switchCounter: 0,
 		sibCounter: 0,
 		respondCounter: 0,
+		waitCounter: 0,
 		wfCounter: 0,
 		setCounter: 0,
 		aggCounter: 0,
@@ -3266,6 +3691,27 @@ function extractArrayElements(elements: AcornNode[]): unknown[] {
 	});
 }
 
+/** Recursively flatten a BinaryExpression (+) into a JS expression string,
+ *  replacing Identifiers with $json references and MemberExpressions with dotted chains. */
+function extractBinaryExprParts(node: AcornNode): string {
+	if (node.type === 'Literal') {
+		return JSON.stringify(node.value);
+	}
+	if (node.type === 'Identifier') {
+		return `$json.${node.name}`;
+	}
+	if (node.type === 'MemberExpression') {
+		const chain = extractMemberChain(node);
+		return chain ? `$json.${chain}` : '$json';
+	}
+	if (node.type === 'BinaryExpression' && node.operator === '+') {
+		const left = extractBinaryExprParts(node.left as AcornNode);
+		const right = extractBinaryExprParts(node.right as AcornNode);
+		return `${left} + ${right}`;
+	}
+	return '$json';
+}
+
 function extractObjectLiteral(node: AcornNode): Record<string, unknown> | undefined {
 	if (node.type !== 'ObjectExpression' || !node.properties) return undefined;
 
@@ -3286,6 +3732,9 @@ function extractObjectLiteral(node: AcornNode): Record<string, unknown> | undefi
 				} else if (valNode.type === 'MemberExpression') {
 					const chain = extractMemberChain(valNode);
 					obj[key] = chain ? `={{ $json.${chain} }}` : '={{$json}}';
+				} else if (valNode.type === 'BinaryExpression' && valNode.operator === '+') {
+					// String concatenation: 'literal' + varName → resolve each part
+					obj[key] = `={{ ${extractBinaryExprParts(valNode)} }}`;
 				} else {
 					const strVal = extractStringLiteral(valNode);
 					obj[key] = strVal ?? '={{$json}}';

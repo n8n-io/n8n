@@ -142,7 +142,7 @@ Assert: normalizeSDK(SDK₁) === normalizeSDK(SDK₂)
 | `examples.ts` | Pre-built DSL examples for UI quick-start templates |
 | `generate-report.ts` | HTML report generator for fixture validation results + expectation badges/diffs |
 | `index.ts` | Public exports: `transpileWorkflowJS`, `decompileWorkflowSDK`, `COMPILER_EXAMPLES` |
-| `__fixtures__/w01-w32/` | Test fixtures (real workflow patterns, w18-w22 sub-functions, w23-w24 try/catch, w25 CRUD+branching, w26 loop+sub-fn, w27 loop+try/catch, w28 else-if+numeric, w29 try+switch, w30 multi-trigger independent, w31 Promise.all, w32 app trigger) |
+| `__fixtures__/w01-w35/` | Test fixtures (real workflow patterns, w18-w22 sub-functions, w23-w24 try/catch, w25 CRUD+branching, w26 loop+sub-fn, w27 loop+try/catch, w28 else-if+numeric, w29 try+switch, w30 multi-trigger independent, w31 Promise.all, w32 app trigger, w33 wait-time, w34 wait-webhook, w35 wait-form) |
 
 **Decompile pipeline (in `src/codegen/`):**
 
@@ -206,6 +206,28 @@ onTrigger('jira', {
 
 **Decompiler**: `NODE_TYPE_TO_APP_TRIGGER` reverse lookup detects app trigger nodes. `emitTriggerHeader()` reconstructs `onTrigger('serviceName', { ...params, credential }, ...)` from the node's parameters and credentials.
 
+## Wait Node (`n8n-nodes-base.wait` v1.1)
+
+Five DSL functions map to the Wait node with different `resume` modes:
+
+| DSL Function | Resume Mode | Callback? | Expression Override |
+|---|---|---|---|
+| `await wait('5s')` | `timeInterval` | No | — |
+| `setTimeout(callback, ms)` | `timeInterval` | Yes (body emitted AFTER wait) | — |
+| `await waitUntil('2024-12-25T00:00:00Z')` | `specificTime` | No | — |
+| `await waitForWebhook(callback?)` | `webhook` | Yes (body emitted BEFORE wait) | `resumeUrl` → `$execution.resumeUrl` |
+| `await waitForForm(config, callback?)` | `form` | Yes (body emitted BEFORE wait) | `formUrl` → `$execution.resumeFormUrl` |
+
+**Callback semantics**: `setTimeout` emits wait THEN body (like native JS). `waitForWebhook`/`waitForForm` emit body THEN wait (setup runs before pause, e.g. send callback URL to external service).
+
+**Expression overrides**: Callback parameters (`resumeUrl`, `formUrl`) are mapped to n8n execution expressions via sentinel values in `varSourceMap` (`__execution_resumeUrl__`, `__execution_resumeFormUrl__`). These are intercepted in `resolveExpressionFromAST()` and `resolveJsonRefs()`.
+
+**Duration parsing**: `wait('5s')` → regex `/^(\d+)\s*(s|m|h|d)$/` → `{ amount, unit }`. `setTimeout(cb, ms)` → convert ms to best unit (days > hours > minutes > seconds).
+
+**Variable assignment**: `const data = await waitForWebhook()` emits an aggregate Code node after the Wait node (same pattern as HTTP). Time-based waits don't support assignment.
+
+**Decompiler**: `emitWaitNode()` in `simplified-generator.ts` dispatches by `resume` param. Time-based → `await wait('5s')`. Specific time → `await waitUntil(...)`. Webhook/form → simple `await waitForWebhook()`/`await waitForForm({...})`. The callback is not reconstructed in the decompiler (round-trip produces linear code).
+
 ## Supported Language Features
 
 | Category | DSL Syntax | Compiles To |
@@ -226,6 +248,10 @@ onTrigger('jira', {
 | **Variables** | `const x = "value"` | Set node (static assignments) |
 | **Code** | Any other JS statements | Code node with `jsCode` |
 | **Credentials** | `{ auth: { type: 'bearer', credential: 'My Key' } }` | Node credentials config |
+| **Wait (time)** | `await wait('5s')`, `setTimeout(cb, 5000)` | Wait node (`resume: 'timeInterval'`) |
+| **Wait (specific time)** | `await waitUntil('2024-12-25T00:00:00Z')` | Wait node (`resume: 'specificTime'`) |
+| **Wait (webhook)** | `await waitForWebhook(cb?)` | Wait node (`resume: 'webhook'`), callback body emitted BEFORE wait |
+| **Wait (form)** | `await waitForForm(config, cb?)` | Wait node (`resume: 'form'`), callback body emitted BEFORE wait |
 | **Pin Data** | `/** @example [{ id: 1 }] */` before IO call or trigger | `config.pinData` on node |
 
 ## Development Process
@@ -258,7 +284,7 @@ pushd packages/@n8n/workflow-sdk && pnpm test decompiler-debug.test.ts && popd
 
 ## Conventions
 
-- **Node variable naming**: `t0` (trigger), `http1`, `code1`, `if1`, `switch1`, `set1`, `agg1`, `respond1`, `wf1`
+- **Node variable naming**: `t0` (trigger), `http1`, `code1`, `if1`, `switch1`, `set1`, `agg1`, `respond1`, `wait1`, `wf1`
 - **No n8n expressions in DSL**: plain JS variables only — compiler resolves to `={{ $('NodeName').first().json.path }}`
 - **Never use `$json` in generated expressions**: always use explicit `$('NodeName').first().json.prop` references. This ensures expressions are unambiguous and don't depend on predecessor ordering.
 - **`executeOnce: true`** on all non-trigger nodes (single-item semantics)
@@ -329,8 +355,8 @@ Fixtures with HTTP calls can provide a `nock.ts` file exporting `setupNock(): no
 
 ## Coverage Status
 
-- **Round-trip**: 32/32 fixtures pass (100%)
-- **Schema validation**: 32/32 fixtures pass (100%). `KNOWN_SCHEMA_VIOLATIONS` is empty.
+- **Round-trip**: 35/35 fixtures pass (100%)
+- **Schema validation**: 34/35 fixtures pass. `KNOWN_SCHEMA_VIOLATIONS` has W35 (Wait node form fieldType schema).
 
 **Key insight**: Nested sub-workflow WorkflowBuilder references (e.g., `workflowJson: __tryCatch_1Workflow` inside a loop body sub-workflow) are handled automatically by `resolveWorkflowBuilderValues()` in `json-serializer.ts`. It duck-types WorkflowBuilder instances (`toJSON` + `add` methods) at any nesting depth and converts them to `JSON.stringify(value.toJSON())`.
 
