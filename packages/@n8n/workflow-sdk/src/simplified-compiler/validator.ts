@@ -596,6 +596,26 @@ function astValueToPlain(node: AcornNode): unknown {
 	return undefined; // Non-literal expressions can't be statically evaluated
 }
 
+/**
+ * Normalize subnode params before schema validation.
+ * Mirrors the compiler's normalizeSubnodeConfig — wraps model string in
+ * resource locator format and ensures options exists for model-category subnodes.
+ */
+function normalizeSubnodeParams(
+	params: Record<string, unknown>,
+	category: string,
+): Record<string, unknown> {
+	if (category === 'model' || category === 'completionModel') {
+		const result = { ...params };
+		if (typeof result.model === 'string') {
+			result.model = { __rl: true, mode: 'id', value: result.model };
+		}
+		if (!result.options) result.options = {};
+		return result;
+	}
+	return params;
+}
+
 /** Extract callback info from onX() call */
 function extractCallbackInfo(name: string, node: AcornNode): CallbackCallInfo {
 	const args = node.arguments ?? [];
@@ -825,7 +845,7 @@ function ruleInvalidAiClassProps(info: CollectedInfo): ValidationError[] {
 		for (const sub of call.subnodes) {
 			const entry = classNameToEntry(sub.className);
 			if (!entry || !sub.configNode) continue;
-			const params = astObjectToPlain(sub.configNode);
+			const params = normalizeSubnodeParams(astObjectToPlain(sub.configNode), entry.category);
 			const result = validateNodeConfig(
 				entry.nodeType,
 				entry.version,
