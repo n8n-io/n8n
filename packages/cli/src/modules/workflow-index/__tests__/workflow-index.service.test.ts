@@ -588,6 +588,26 @@ describe('WorkflowIndexService', () => {
 	});
 
 	describe('buildIndex()', () => {
+		it('should skip published index when workflow has activeVersionId but no activeVersion nodes', async () => {
+			mockWorkflowRepository.findWorkflowsNeedingIndexing.mockResolvedValue([]);
+
+			const workflow = createWorkflowEntity([
+				createNode({ id: 'node-1', type: 'n8n-nodes-base.manualTrigger' }),
+			]);
+			workflow.activeVersionId = 'some-version-id';
+			workflow.activeVersion = null;
+
+			mockWorkflowRepository.findWorkflowsNeedingPublishedVersionIndexing
+				.mockResolvedValueOnce([workflow])
+				.mockResolvedValueOnce([]);
+
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			await service.buildIndex();
+
+			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).not.toHaveBeenCalled();
+		});
+
 		it('should retrieve unindexed workflows and update their dependencies', async () => {
 			const workflow1 = createWorkflowEntity([
 				createNode({ id: 'node-1', type: 'n8n-nodes-base.manualTrigger' }),
