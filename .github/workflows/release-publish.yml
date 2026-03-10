@@ -175,7 +175,14 @@ jobs:
 
   post-release:
     name: Run Post-release actions
-    needs: [determine-version-info, publish-to-npm, create-github-release]
+    needs:
+      [
+        determine-version-info,
+        publish-to-npm,
+        create-github-release,
+        move-track-tag,
+        promote-stable-tag,
+      ]
     uses: ./.github/workflows/release-publish-post-release.yml
     with:
       track: ${{ needs.determine-version-info.outputs.track }}
