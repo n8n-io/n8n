@@ -2,21 +2,22 @@
 import { computed, ref, watch, provide } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
-import type { INodeProperties } from 'n8n-workflow';
+import { MANUAL_TRIGGER_NODE_TYPE, type INodeProperties } from 'n8n-workflow';
 
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
-import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
+import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import type { NodeSetupState } from '@/features/setupPanel/setupPanel.types';
-import type { INodeUi, IUpdateInformation } from '@/Interface';
+import type { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useCardNodeHighlight } from '@/features/setupPanel/composables/useCardNodeHighlight';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import SetupCard from '@/features/setupPanel/components/cards/SetupCard.vue';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
+import { isHttpRequestNodeType } from '@/features/setupPanel/setupPanel.utils';
 import { useExpressionResolveCtx } from '@/features/workflows/canvas/experimental/composables/useExpressionResolveCtx';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -34,6 +35,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const setupPanelStore = useSetupPanelStore();
 const nodeTypesStore = useNodeTypesStore();
 const credentialsStore = useCredentialsStore();
 const nodeHelpers = useNodeHelpers();
@@ -51,6 +53,8 @@ const nodeType = computed(() =>
 	nodeTypesStore.getNodeType(props.state.node.type, props.state.node.typeVersion),
 );
 
+const isHttpRequestNode = computed(() => isHttpRequestNodeType(props.state.node.type));
+
 const hasCredential = computed(() => !!props.state.credentialType);
 
 // Determines which node can be executed from this setup card.
@@ -58,7 +62,7 @@ const hasCredential = computed(() => !!props.state.credentialType);
 // - Non-triggers: only nodes with main or aiTool inputs (not AI sub-nodes like memory, model, etc.).
 const executableNode = computed(() => {
 	if (props.state.isTrigger) {
-		if (!props.firstTriggerName) return null;
+		if (!props.firstTriggerName || props.state.node.type === MANUAL_TRIGGER_NODE_TYPE) return null;
 		return props.state.node.name === props.firstTriggerName ? props.state.node : null;
 	}
 	if (!nodeHelpers.isNodeExecutable(props.state.node, true, [])) return null;
@@ -145,23 +149,25 @@ const telemetryPayload = computed(() => {
 	};
 });
 
-const onCredentialSelected = (credentialId: string) => {
-	if (!props.state.credentialType) return;
+const onCredentialSelected = (updateInfo: INodeUpdatePropertiesInformation) => {
+	if (!props.state.credentialType) throw new Error('Unexpected credential selection');
 	setupCard.value?.markInteracted();
-	emit('credentialSelected', {
-		credentialType: props.state.credentialType,
-		credentialId,
-		nodeName: props.state.node.name,
-	});
-};
 
-const onCredentialDeselected = () => {
-	if (!props.state.credentialType) return;
-	setupCard.value?.markInteracted();
-	emit('credentialDeselected', {
-		credentialType: props.state.credentialType,
-		nodeName: props.state.node.name,
-	});
+	const credentialData = updateInfo.properties.credentials?.[props.state.credentialType];
+	const credentialId = typeof credentialData === 'string' ? undefined : credentialData?.id;
+
+	if (credentialId) {
+		emit('credentialSelected', {
+			credentialType: props.state.credentialType,
+			credentialId,
+			nodeName: props.state.node.name,
+		});
+	} else {
+		emit('credentialDeselected', {
+			credentialType: props.state.credentialType,
+			nodeName: props.state.node.name,
+		});
+	}
 };
 
 const onValueChanged = (parameterData: IUpdateInformation) => {
@@ -181,22 +187,46 @@ const onValueChanged = (parameterData: IUpdateInformation) => {
 	nodeHelpers.updateNodesParameterIssues();
 };
 
-const { onSharedNodesHintEnter, onSharedNodesHintLeave } = useCardNodeHighlight(
-	computed(() => props.state.node.id),
-	computed(() => (props.state.allNodesUsingCredential ?? []).map((n) => n.id)),
+const onSharedNodesHintEnter = () => {
+	setupPanelStore.setHighlightedNodes((props.state.allNodesUsingCredential ?? []).map((n) => n.id));
+};
+
+const onSharedNodesHintLeave = () => {
+	setupPanelStore.setHighlightedNodes([props.state.node.id]);
+};
+
+const allNodeIssuesResolved = ref(Object.keys(props.state.parameterIssues).length === 0);
+const allParametersAddressed = computed(
+	() =>
+		allNodeIssuesResolved.value ||
+		// When template parameters exist but there are no current issues,
+		// the user already configured them in a previous session
+		((props.state.templateParameterNames?.length ?? 0) > 0 &&
+			Object.keys(props.state.parameterIssues).length === 0),
 );
 
-const allParametersAddressed = ref(
-	// When template parameters exist but there are no current issues,
-	// the user already configured them in a previous session
-	(props.state.templateParameterNames?.length ?? 0) > 0 &&
-		Object.keys(props.state.parameterIssues).length === 0,
+/** Auto-applied credential cards require manual collapse (or execution) to be marked complete */
+const autoAppliedAcknowledged = ref(!props.state.isAutoApplied);
+
+// When the user manually selects a different credential, auto-applied status clears
+watch(
+	() => props.state.isAutoApplied ?? false,
+	(isAutoApplied) => {
+		if (!isAutoApplied) {
+			autoAppliedAcknowledged.value = true;
+		}
+	},
 );
 
 // Only mark as complete if explicitly closed
 watch(expanded, (value, oldValue) => {
-	if (oldValue && !value && Object.keys(props.state.parameterIssues).length === 0) {
-		allParametersAddressed.value = true;
+	if (oldValue && !value) {
+		if (Object.keys(props.state.parameterIssues).length === 0) {
+			allNodeIssuesResolved.value = true;
+		}
+		if (props.state.isAutoApplied) {
+			autoAppliedAcknowledged.value = true;
+		}
 	}
 });
 
@@ -204,12 +234,17 @@ watch(expanded, (value, oldValue) => {
  * Card completion logic:
  * - Trigger-only / credential-only cards: pass through state.isComplete directly
  * - Cards with parameters: also require user to have collapsed the card after resolving all issues
+ * - Auto-applied credential cards: also require manual collapse or execution to acknowledge
  */
 const cardComplete = computed(() => {
 	if (hasShownParameters.value) {
-		return props.state.isComplete && allParametersAddressed.value;
+		return props.state.isComplete && allParametersAddressed.value && autoAppliedAcknowledged.value;
 	}
-	return props.state.isComplete;
+	return props.state.isComplete && autoAppliedAcknowledged.value;
+});
+
+const highlightNodeIds = computed(() => {
+	return (props.state.allNodesUsingCredential ?? [props.state.node]).map(({ id }) => id);
 });
 </script>
 
@@ -225,7 +260,7 @@ const cardComplete = computed(() => {
 		:is-trigger="state.isTrigger"
 		:is-testing-credential="isTestingCredential"
 		:telemetry-payload="telemetryPayload"
-		:highlight-node-ids="[state.node.id]"
+		:highlight-node-ids="highlightNodeIds"
 		card-test-id="node-setup-card"
 	>
 		<template #icon>
@@ -261,42 +296,33 @@ const cardComplete = computed(() => {
 		</template>
 		<div v-if="!isTriggerOnly" :class="$style.content">
 			<div v-if="state.showCredentialPicker" :class="$style['credential-container']">
-				<div :class="$style['credential-label-row']">
-					<label
-						data-test-id="node-setup-card-label"
-						:for="`credential-picker-${state.credentialType}`"
-						:class="$style['credential-label']"
-					>
-						{{ i18n.baseText('setupPanel.credentialLabel') }}
-					</label>
-					<N8nTooltip v-if="nodeNames.length > 1" placement="top">
-						<template #content>
-							{{ nodeNamesTooltip }}
-						</template>
-						<span
-							data-test-id="node-setup-card-nodes-hint"
-							:class="$style['nodes-hint']"
-							@mouseenter="onSharedNodesHintEnter"
-							@mouseleave="onSharedNodesHintLeave"
-						>
-							{{
-								i18n.baseText('setupPanel.usedInNodes', {
-									interpolate: { count: String(nodeNames.length) },
-								})
-							}}
-						</span>
-					</N8nTooltip>
-				</div>
-				<CredentialPicker
-					create-button-variant="subtle"
-					:class="$style['credential-picker']"
-					:app-name="state.credentialDisplayName ?? ''"
-					:credential-type="state.credentialType ?? ''"
-					:selected-credential-id="state.selectedCredentialId ?? null"
-					edit-icon-only
+				<NodeCredentials
+					:node="state.node"
+					:override-cred-type="state.credentialType ?? ''"
+					:skip-auto-select="isHttpRequestNode"
+					hide-issues
 					@credential-selected="onCredentialSelected"
-					@credential-deselected="onCredentialDeselected"
-				/>
+				>
+					<template v-if="nodeNames.length > 1" #label-postfix>
+						<N8nTooltip placement="top">
+							<template #content>
+								{{ nodeNamesTooltip }}
+							</template>
+							<span
+								data-test-id="node-setup-card-nodes-hint"
+								:class="$style['nodes-hint']"
+								@mouseenter="onSharedNodesHintEnter"
+								@mouseleave="onSharedNodesHintLeave"
+							>
+								{{
+									i18n.baseText('setupPanel.usedInNodes', {
+										interpolate: { count: String(nodeNames.length) },
+									})
+								}}
+							</span>
+						</N8nTooltip>
+					</template>
+				</NodeCredentials>
 			</div>
 
 			<ParameterInputList
@@ -327,29 +353,9 @@ const cardComplete = computed(() => {
 	gap: var(--spacing--3xs);
 }
 
-.credential-label-row {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-}
-
-.credential-label {
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--shade-1);
-}
-
 .nodes-hint {
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--tint-1);
 	cursor: default;
-	display: none;
-
-	.credential-container:hover & {
-		display: flex;
-	}
-}
-
-.credential-picker {
-	flex: 1;
 }
 </style>

@@ -10,7 +10,6 @@ export type CredentialResolveMetadata = {
 	/** Credential type (e.g., 'oAuth2Api') */
 	type: string;
 	resolverId?: string;
-	resolvableAllowFallback?: boolean;
 	isResolvable: boolean;
 };
 

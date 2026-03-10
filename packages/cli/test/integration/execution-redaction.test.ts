@@ -7,8 +7,8 @@ import {
 } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { stringify } from 'flatted';
-import type { IRunExecutionData, IWorkflowBase, WorkflowExecuteMode } from 'n8n-workflow';
-import { createRunExecutionData } from 'n8n-workflow';
+import type { INode, IRunExecutionData, IWorkflowBase, WorkflowExecuteMode } from 'n8n-workflow';
+import { createRunExecutionData, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { WaitTracker } from '@/wait-tracker';
@@ -404,6 +404,61 @@ describe('GET /executions/:id — Execution Redaction', () => {
 				.expect(200);
 
 			assertRedacted(parseResponseData(response.body));
+		});
+	});
+
+	describe('error redaction through DB round-trip', () => {
+		const mockNode: INode = {
+			id: 'node-1',
+			name: 'Test Node',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		};
+
+		test('task-level NodeApiError is redacted after DB round-trip', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const error = new NodeApiError(mockNode, { message: 'Bad Gateway' }, { httpCode: '502' });
+			const runData = buildRunExecutionData({ policy: 'all', mode: 'trigger' });
+			runData.resultData.runData['Test Node'][0].error = error;
+
+			const execution = await createExecution(
+				{ data: stringify(runData), mode: 'trigger' },
+				workflow,
+			);
+
+			const response = await testServer
+				.authAgentFor(owner)
+				.get(`/executions/${execution.id}`)
+				.expect(200);
+
+			const data = parseResponseData(response.body);
+			const taskData = data.resultData.runData['Test Node'][0];
+			expect(taskData.error).toBeUndefined();
+			expect(taskData.redactedError).toEqual({ type: 'NodeApiError', httpCode: null });
+		});
+
+		test('workflow-level NodeOperationError is redacted after DB round-trip', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const error = new NodeOperationError(mockNode, 'Workflow operation failed');
+			const runData = buildRunExecutionData({ policy: 'all', mode: 'trigger' });
+			runData.resultData.error = error;
+
+			const execution = await createExecution(
+				{ data: stringify(runData), mode: 'trigger' },
+				workflow,
+			);
+
+			const response = await testServer
+				.authAgentFor(owner)
+				.get(`/executions/${execution.id}`)
+				.expect(200);
+
+			const data = parseResponseData(response.body);
+			expect(data.resultData.error).toBeUndefined();
+			expect(data.resultData.redactedError).toEqual({ type: 'NodeOperationError' });
+			expect(data.resultData.redactedError).not.toHaveProperty('httpCode');
 		});
 	});
 });

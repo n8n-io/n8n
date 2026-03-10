@@ -38,15 +38,15 @@ export async function createWorkflowFromTemplate(opts: {
 	const { credentialOverrides, nodeTypeProvider, rootStore, template, workflowsStore } = opts;
 
 	const workflowData = await getNewWorkflow(rootStore.restApiContext, { name: template.name });
-	let nodesWithCreds = replaceAllTemplateNodeCredentials(
+	let nodesWithOverrides = replaceAllTemplateNodeCredentials(
 		nodeTypeProvider,
 		template.workflow.nodes,
 		credentialOverrides,
 	);
 	if (opts.clearResourceLocators) {
-		nodesWithCreds = clearAllNodeResourceLocatorValues(nodesWithCreds);
+		nodesWithOverrides = clearAllNodeResourceLocatorValues(nodesWithOverrides);
 	}
-	const nodes = getNodesWithNormalizedPosition(nodesWithCreds) as INodeUi[];
+	const nodes = getNodesWithNormalizedPosition(nodesWithOverrides) as INodeUi[];
 	const connections = template.workflow.connections;
 
 	const workflowToCreate: WorkflowData = {

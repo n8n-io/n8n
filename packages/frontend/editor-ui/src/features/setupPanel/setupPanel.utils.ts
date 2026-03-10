@@ -4,6 +4,9 @@ import { getNodeTypeDisplayableCredentials } from '@/app/utils/nodes/nodeTransfo
 import { HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { isExpression } from '@/app/utils/expressions';
 
+export const isHttpRequestNodeType = (nodeType: string): boolean =>
+	nodeType === HTTP_REQUEST_NODE_TYPE || nodeType === HTTP_REQUEST_TOOL_NODE_TYPE;
+
 import type {
 	CredentialTypeSetupState,
 	TriggerSetupState,
@@ -72,16 +75,32 @@ export function getNodeParametersIssues(nodeTypesStore: NodeTypeProvider, node: 
 	);
 	const allIssues = issues?.parameters ?? {};
 
-	// Only keep issues for top-level parameters that the setup card can display.
+	// Only keep issues for top-level parameters that the setup card can display
+	// AND that are actually visible given the current parameter values.
 	// Nested issues (e.g. a missing field inside a fixedCollection entry) use child
 	// property names as keys which don't match top-level properties and can't be
 	// configured in the setup card.
-	const topLevelNames = new Set(nodeType.properties.map((p) => p.name));
+	const topLevelProps = new Map(nodeType.properties.map((p) => [p.name, p]));
 	const filteredIssues: Record<string, string[]> = {};
 	for (const [key, value] of Object.entries(allIssues)) {
-		if (topLevelNames.has(key)) {
-			filteredIssues[key] = value;
+		const prop = topLevelProps.get(key);
+		if (!prop) continue;
+
+		// Skip hidden parameters — they are never shown to the user
+		if (prop.type === 'hidden') continue;
+
+		// Skip parameters whose displayOptions evaluate to hidden.
+		// NodeHelpers.getParameterIssues already checks this internally, but it
+		// treats expression values in controlling parameters as "always show".
+		// This explicit check ensures consistency with the NDV's display logic.
+		if (
+			prop.displayOptions &&
+			!NodeHelpers.displayParameter(paramsWithDefaults, prop, nodeWithDefaults, nodeType)
+		) {
+			continue;
 		}
+
+		filteredIssues[key] = value;
 	}
 	return filteredIssues;
 }
@@ -109,8 +128,7 @@ export function groupCredentialsByType(
 			// target different APIs even when using the same credential type.
 			// Expression URLs are resolved when possible (e.g. static expressions or those
 			// using only environment variables). Unresolvable expressions get their own card.
-			const isHttpRequest =
-				node.type === HTTP_REQUEST_NODE_TYPE || node.type === HTTP_REQUEST_TOOL_NODE_TYPE;
+			const isHttpRequest = isHttpRequestNodeType(node.type);
 			const url = node.parameters.url;
 
 			let mapKey: string;

@@ -152,6 +152,8 @@ export function clearResourceLocatorValues(parameters: INodeParameters): INodePa
 	for (const [key, value] of Object.entries(cleaned)) {
 		if (isResourceLocatorValue(value)) {
 			cleaned[key] = { __rl: true, mode: value.mode, value: '' };
+		} else if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+			cleaned[key] = clearResourceLocatorValues(value as INodeParameters);
 		}
 	}
 	return cleaned;

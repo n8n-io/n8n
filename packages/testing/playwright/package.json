@@ -26,6 +26,8 @@
     "install-browsers": "PLAYWRIGHT_BROWSERS_PATH=./.playwright-browsers playwright install chromium --with-deps",
     "browsers:uninstall": "playwright uninstall --all",
     "prepare-test-image": "node scripts/build-test-image.mjs",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
