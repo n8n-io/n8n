@@ -1,5 +1,4 @@
 {
 	"title": "F08: API fundamentals tutorial (webhooks + IF branching)",
-	"templateFile": "tutorial/api_fundamentals.json",
-	"skip": "Multi-trigger topology with fanOut and comment nodes cannot round-trip (CONFIGURATION fans out, TODO comments lost on re-parse)"
+	"templateFile": "tutorial/api_fundamentals.json"
 }

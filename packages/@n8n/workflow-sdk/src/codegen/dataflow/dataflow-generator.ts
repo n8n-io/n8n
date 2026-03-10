@@ -20,6 +20,8 @@ import type {
 	IfElseCompositeNode,
 	SwitchCaseCompositeNode,
 	MultiOutputNode,
+	FanOutCompositeNode,
+	VariableReference,
 } from '../composite-tree';
 import { AI_ALWAYS_ARRAY_TYPES } from '../constants';
 import type { IDataObject, WorkflowJSON } from '../../types/base';
@@ -217,6 +219,10 @@ function generateCompositeNode(
 			return generateSwitchCaseNode(compositeNode, ctx, depth, inputVar);
 		case 'multiOutput':
 			return generateMultiOutputNode(compositeNode, ctx, depth, inputVar);
+		case 'fanOut':
+			return generateFanOutNode(compositeNode as FanOutCompositeNode, ctx, depth, inputVar);
+		case 'varRef':
+			return { code: '', varName: (compositeNode as VariableReference).varName };
 		default:
 			return {
 				code: `${getIndent(depth)}// TODO: unsupported pattern (${compositeNode.kind})`,
@@ -671,6 +677,36 @@ function generateMultiOutputNode(
 		code: lines.join('\n'),
 		varName: null,
 	};
+}
+
+/**
+ * Generate code for a fan-out node: one source feeding multiple parallel targets.
+ *
+ * Produces code like:
+ *   const source = node({ ... })(input);
+ *   const target1 = node({ ... })(source);
+ *   const target2 = node({ ... })(source);
+ */
+function generateFanOutNode(
+	fanOut: FanOutCompositeNode,
+	ctx: DataFlowContext,
+	depth: number,
+	inputVar: string,
+): CompositeNodeResult {
+	const lines: string[] = [];
+
+	// Generate source node/chain
+	const sourceResult = generateCompositeNode(fanOut.sourceNode, ctx, depth, inputVar);
+	if (sourceResult.code) lines.push(sourceResult.code);
+	const sourceVar = sourceResult.varName ?? inputVar;
+
+	// Generate each target using the source variable as input
+	for (const target of fanOut.targets) {
+		const targetResult = generateCompositeNode(target, ctx, depth, sourceVar);
+		if (targetResult.code) lines.push(targetResult.code);
+	}
+
+	return { code: lines.join('\n'), varName: null };
 }
 
 /**

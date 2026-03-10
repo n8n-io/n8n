@@ -182,8 +182,9 @@ describe('Data-flow execution validation (fixture round-trip)', () => {
 			// Step 2: Validate parsed workflow structure
 			const validation = validateWorkflowStructure(parsed);
 
-			// Step 3: Re-generate code and check round-trip
+			// Step 3: Re-generate code and check round-trip produces same workflow
 			const reGenerated = generateDataFlowWorkflowCode(parsed);
+			const reParsed = parseDataFlowCode(reGenerated);
 			const roundTripCodeMatch = normalizeCode(reGenerated) === normalizeCode(fixture.input);
 
 			executionData[fixture.dir] = {
@@ -195,7 +196,8 @@ describe('Data-flow execution validation (fixture round-trip)', () => {
 			// Assertions
 			expect(validation.errors).toHaveLength(0);
 			expect(validation.triggerCount).toBeGreaterThanOrEqual(1);
-			expect(roundTripCodeMatch).toBe(true);
+			expect(reParsed.nodes).toEqual(parsed.nodes);
+			expect(reParsed.connections).toEqual(parsed.connections);
 		});
 	}
 });

@@ -109,9 +109,8 @@ describe('dataflow integration', () => {
 
 			// Should have workflow wrapper
 			expect(code).toContain('workflow(');
-			// This template uses Merge nodes heavily, so most patterns become fanOut
-			// which is unsupported in v1 — verify graceful degradation
-			expect(code).toContain('// TODO: unsupported pattern');
+			// fanOut is now supported — verify no unsupported patterns remain
+			expect(code).not.toContain('// TODO: unsupported pattern');
 		});
 	});
 });

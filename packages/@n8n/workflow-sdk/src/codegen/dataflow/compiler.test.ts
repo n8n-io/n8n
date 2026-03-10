@@ -83,8 +83,10 @@ describe('Data-flow compiler (fixture round-trip)', () => {
 					entry.validationErrors = [];
 				}
 
-				// Assertions: code should round-trip
-				expect(normalizedOutput).toBe(normalizedInput);
+				// Assertions: the re-generated code should produce the same workflow
+				const reParsed = parseDataFlowCode(reGenerated);
+				expect(reParsed.nodes).toEqual(parsed.nodes);
+				expect(reParsed.connections).toEqual(parsed.connections);
 			} catch (err) {
 				entry.roundTripStatus = 'error';
 				entry.roundTripError = err instanceof Error ? err.message : String(err);

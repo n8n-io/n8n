@@ -48,6 +48,7 @@ interface ParserState {
 	varToNode: Map<string, { nodeName: string; outputIndex: number }>;
 	workflowName: string;
 	nodeCounter: number;
+	usedNames: Set<string>;
 }
 
 interface NodeConfig {
@@ -195,7 +196,18 @@ function createNodeId(counter: number): string {
 
 function createNodeJSON(config: NodeConfig, state: ParserState): NodeJSON {
 	const id = createNodeId(state.nodeCounter);
-	const name = config.name ?? generateDefaultNodeName(config.type);
+	let name = config.name ?? generateDefaultNodeName(config.type);
+
+	// Ensure unique name — n8n connections are keyed by node name
+	if (state.usedNames.has(name)) {
+		let suffix = 1;
+		while (state.usedNames.has(`${name} ${suffix}`)) {
+			suffix++;
+		}
+		name = `${name} ${suffix}`;
+	}
+	state.usedNames.add(name);
+
 	const position: [number, number] = [state.nodeCounter * 200, 0];
 	state.nodeCounter++;
 
@@ -1109,6 +1121,7 @@ export function parseDataFlowCode(code: string): WorkflowJSON {
 		varToNode: new Map(),
 		workflowName: name,
 		nodeCounter: 0,
+		usedNames: new Set<string>(),
 	};
 
 	processWorkflowBody(bodyFn, state);
