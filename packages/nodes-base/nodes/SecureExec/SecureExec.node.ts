@@ -12,7 +12,7 @@ export class SecureExec implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Secure Exec',
 		name: 'secureExec',
-		icon: 'fa:shield-alt',
+		icon: 'fa:shield',
 		iconColor: 'green',
 		group: ['transform'],
 		version: 1,
