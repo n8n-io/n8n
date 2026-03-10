@@ -1,4 +1,5 @@
 import {
+	buildWorkflowTreeRows,
 	getStatusText,
 	getStatusTheme,
 	getPullPriorityByStatus,
@@ -34,6 +35,78 @@ describe('source control utils', () => {
 	describe('getPushPriorityByStatus()', () => {
 		it('defaults to 0', () => {
 			expect(getPushPriorityByStatus(SOURCE_CONTROL_FILE_STATUS.new)).toBe(0);
+		});
+	});
+
+	describe('buildWorkflowTreeRows()', () => {
+		it('builds folder and file rows with nested depth', () => {
+			const rows = buildWorkflowTreeRows([
+				{
+					id: 'wf-root',
+					name: 'Root',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/wf-root.json',
+					updatedAt: '2025-01-01T00:00:00.000Z',
+				},
+				{
+					id: 'wf-nested',
+					name: 'Nested',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/wf-nested.json',
+					updatedAt: '2025-01-01T00:00:00.000Z',
+					folderPath: ['Prod', 'Billing'],
+				},
+			]);
+
+			expect(rows).toEqual([
+				expect.objectContaining({ id: 'file:wf-root', type: 'file', depth: 0 }),
+				expect.objectContaining({ id: 'folder:Prod', type: 'folder', depth: 0, name: 'Prod' }),
+				expect.objectContaining({
+					id: 'folder:Prod/Billing',
+					type: 'folder',
+					depth: 1,
+					name: 'Billing',
+				}),
+				expect.objectContaining({ id: 'file:wf-nested', type: 'file', depth: 2 }),
+			]);
+		});
+
+		it('does not duplicate folders shared by multiple workflows', () => {
+			const rows = buildWorkflowTreeRows([
+				{
+					id: 'wf-1',
+					name: 'One',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/wf-1.json',
+					updatedAt: '2025-01-01T00:00:00.000Z',
+					folderPath: ['Prod'],
+				},
+				{
+					id: 'wf-2',
+					name: 'Two',
+					type: 'workflow',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					file: '/wf-2.json',
+					updatedAt: '2025-01-01T00:00:00.000Z',
+					folderPath: ['Prod'],
+				},
+			]);
+
+			expect(rows.filter((row) => row.type === 'folder' && row.id === 'folder:Prod')).toHaveLength(
+				1,
+			);
+			expect(rows.filter((row) => row.type === 'file')).toHaveLength(2);
 		});
 	});
 

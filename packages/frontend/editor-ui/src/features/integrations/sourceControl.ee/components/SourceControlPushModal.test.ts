@@ -72,6 +72,7 @@ vi.mock('@/app/composables/useToast', () => ({
 }));
 
 let telemetry: ReturnType<typeof useTelemetry>;
+const scrollToItemMock = vi.fn();
 
 const DynamicScrollerStub = {
 	props: {
@@ -83,7 +84,7 @@ const DynamicScrollerStub = {
 	template:
 		'<div><template v-for="(item, index) in items" :key="index"><slot v-bind="{ item, index, active: false }"></slot></template></div>',
 	methods: {
-		scrollToItem: vi.fn(),
+		scrollToItem: scrollToItemMock,
 	},
 };
 
@@ -140,6 +141,7 @@ describe('SourceControlPushModal', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		scrollToItemMock.mockClear();
 		telemetry = useTelemetry();
 
 		// Reset route mock to default values
@@ -587,6 +589,9 @@ describe('SourceControlPushModal', () => {
 		await waitFor(() => {
 			expect(getByRole('checkbox', { name: /My workflow 1/i })).toBeChecked();
 			expect(getByRole('checkbox', { name: /My workflow 2/i })).not.toBeChecked();
+		});
+		await waitFor(() => {
+			expect(scrollToItemMock).toHaveBeenCalled();
 		});
 
 		await userEvent.type(getByTestId('source-control-push-modal-commit'), 'message');
