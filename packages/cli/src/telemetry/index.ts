@@ -119,20 +119,51 @@ export class Telemetry {
 				return;
 			}
 
+			this.logger.info('[Telemetry Debug] RudderStack init', {
+				dataPlaneUrl,
+				keyPrefix: key.substring(0, 5),
+			});
+
 			const logLevel = this.globalConfig.logging.level;
 
 			const { default: RudderStack } = await import('@rudderstack/rudder-sdk-node');
 			const axiosInstance = axios.create();
 			axiosInstance.interceptors.request.use((cfg) => {
+				this.logger.info('[Telemetry Debug] RudderStack request', {
+					url: cfg.url,
+					method: cfg.method,
+				});
 				cfg.headers.setContentType('application/json', false);
 				return cfg;
 			});
+			axiosInstance.interceptors.response.use(
+				(response) => {
+					this.logger.info('[Telemetry Debug] RudderStack response', {
+						status: response.status,
+						url: response.config.url,
+					});
+					return response;
+				},
+				(error) => {
+					this.logger.error('[Telemetry Debug] RudderStack request failed', {
+						status: error.response?.status,
+						statusText: error.response?.statusText,
+						url: error.config?.url,
+						message: error.message,
+					});
+					return Promise.reject(error);
+				},
+			);
 			this.rudderStack = new RudderStack(key, {
 				axiosInstance,
 				logLevel,
 				dataPlaneUrl,
 				gzip: false,
 				errorHandler: (error) => {
+					this.logger.error('[Telemetry Debug] RudderStack errorHandler', {
+						error: error.message,
+						stack: error.stack,
+					});
 					this.errorReporter.error(error);
 				},
 			});
@@ -307,6 +338,9 @@ export class Telemetry {
 
 	track(eventName: string, properties: ITelemetryTrackProperties = {}) {
 		if (!this.rudderStack) {
+			this.logger.warn('[Telemetry Debug] track called but rudderStack is not initialized', {
+				eventName,
+			});
 			return;
 		}
 
@@ -338,8 +372,15 @@ export class Telemetry {
 		const maxPayloadSize = 32 << 10; // 32 KB
 
 		if (payloadSize > maxPayloadSize) {
+			this.logger.warn('[Telemetry Debug] Payload too large, skipping', { eventName, payloadSize });
 			return;
 		}
+
+		this.logger.info('[Telemetry Debug] Sending event', {
+			eventName,
+			payloadSize,
+			userId: rudderStackPayload.userId,
+		});
 
 		this.postHog?.track(payload);
 
