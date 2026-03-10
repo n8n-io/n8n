@@ -467,7 +467,7 @@ export async function getBase({
 		credentialsHelper: Container.get(CredentialsHelper),
 		executeWorkflow,
 		restApiUrl: urlBaseWebhook + globalConfig.endpoints.rest,
-		instanceBaseUrl,
+		instanceBaseUrl: `${instanceBaseUrl}/`,
 		formWaitingBaseUrl: urlBaseWebhook + globalConfig.endpoints.formWaiting,
 		webhookBaseUrl: urlBaseWebhook + globalConfig.endpoints.webhook,
 		webhookWaitingBaseUrl: urlBaseWebhook + globalConfig.endpoints.webhookWaiting,

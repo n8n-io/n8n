@@ -703,7 +703,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				credentialsHelper,
 				executeWorkflow: expect.any(Function),
 				restApiUrl: `${mockWebhookBaseUrl}/rest/`,
-				instanceBaseUrl: mockInstanceBaseUrl,
+				instanceBaseUrl: `${mockInstanceBaseUrl}/`,
 				formWaitingBaseUrl: `${mockWebhookBaseUrl}/form-waiting/`,
 				webhookBaseUrl: `${mockWebhookBaseUrl}/webhook/`,
 				webhookWaitingBaseUrl: `${mockWebhookBaseUrl}/webhook-waiting/`,
