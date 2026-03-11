@@ -8,6 +8,9 @@ on:
     paths-ignore:
       - packages/@n8n/task-runner-python/**
 
+permissions:
+  contents: read
+
 jobs:
   build-github:
     name: Build for Github Cache
