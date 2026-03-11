@@ -1,0 +1,87 @@
+### Health check
+GET http://localhost:5682/health
+
+### Create volume with name
+POST http://localhost:5682/volumes
+Content-Type: application/json
+
+{
+  "name": "my-workspace"
+}
+
+### Create volume without name (auto-generated)
+POST http://localhost:5682/volumes
+Content-Type: application/json
+
+{}
+
+### List all volumes
+GET http://localhost:5682/volumes
+
+### Delete a volume (replace with actual volume id)
+DELETE http://localhost:5682/volumes/vol_dkyG_nHODjPK
+
+### Execute a simple command (no volumes)
+POST http://localhost:5682/execute
+Content-Type: application/json
+
+{
+  "command": "echo hello world"
+}
+
+### Execute command with timeout and env vars
+POST http://localhost:5682/execute
+Content-Type: application/json
+
+{
+  "command": "echo $GREETING",
+  "timeoutMs": 5000,
+  "env": {
+    "GREETING": "hello from sandbox"
+  }
+}
+
+### Execute command with a single volume mounted at /data
+POST http://localhost:5682/execute
+Content-Type: application/json
+
+{
+  "command": "echo 'persisted' > /data/output.txt && cat /data/output.txt",
+  "volumes": [
+    { "volumeId": "vol_hV7C9p7LC4Ht", "mountPath": "/data" }
+  ]
+}
+
+### Execute command with a volume mounted at /workspace (working directory)
+POST http://localhost:5682/execute
+Content-Type: application/json
+
+{
+  "command": "echo 'in cwd' > output.txt && ls -la",
+  "volumes": [
+    { "volumeId": "vol_hV7C9p7LC4Ht", "mountPath": "/workspace" }
+  ]
+}
+
+### Execute command with multiple volumes
+POST http://localhost:5682/execute
+Content-Type: application/json
+
+{
+  "command": "cp /config/output.txt /data/output.txt && cat /data/output.txt",
+  "volumes": [
+    { "volumeId": "vol_Bnkp2_VrdJxT", "mountPath": "/data" },
+    { "volumeId": "vol_hV7C9p7LC4Ht", "mountPath": "/config", "readOnly": true }
+  ]
+}
+
+### Execute command with a read-only volume (files not synced back)
+POST http://localhost:5682/execute
+Content-Type: application/json
+
+{
+  "command": "cat /assets/output.txt",
+  "volumes": [
+    { "volumeId": "vol_hV7C9p7LC4Ht", "mountPath": "/assets", "readOnly": true }
+  ]
+}

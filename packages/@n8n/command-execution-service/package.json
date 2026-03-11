@@ -1,0 +1,42 @@
+{
+	"name": "@n8n/command-execution-service",
+	"version": "0.1.0",
+	"description": "Sandboxed command execution service with S3-backed volumes",
+	"license": "SEE LICENSE IN LICENSE.md",
+	"private": true,
+	"scripts": {
+		"clean": "rimraf dist .turbo",
+		"start": "node dist/main.js",
+		"dev": "pnpm build && pnpm start",
+		"typecheck": "tsc --noEmit",
+		"build": "tsc -p tsconfig.build.json",
+		"format": "biome format --write src",
+		"format:check": "biome ci src",
+		"lint": "eslint . --quiet",
+		"lint:fix": "eslint . --fix",
+		"watch": "tsc -p tsconfig.build.json --watch",
+		"test": "jest",
+		"test:unit": "jest",
+		"test:dev": "jest --watch"
+	},
+	"main": "dist/main.js",
+	"types": "dist/types.d.ts",
+	"files": [
+		"dist/**/*"
+	],
+	"dependencies": {
+		"@aws-sdk/client-s3": "3.808.0",
+		"@nestjs/common": "11.1.3",
+		"@nestjs/config": "4.0.2",
+		"@nestjs/core": "11.1.3",
+		"@nestjs/platform-express": "11.1.3",
+		"nanoid": "3.3.8",
+		"reflect-metadata": "0.2.2",
+		"rxjs": "7.8.1"
+	},
+	"devDependencies": {
+		"@types/express": "5.0.0",
+		"@n8n/eslint-config": "workspace:*",
+		"typescript": "5.9.2"
+	}
+}
