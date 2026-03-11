@@ -43,6 +43,10 @@ export class CanvasPage extends BasePage {
 		return this.page.locator(`[data-test-id="canvas-node"][data-node-name="${nodeName}"]`);
 	}
 
+	nodeOverflowButton(nodeName: string): Locator {
+		return this.nodeByName(nodeName).getByTestId('overflow-node-button');
+	}
+
 	nodeIssuesBadge(nodeName: string) {
 		return this.nodeByName(nodeName).getByTestId('node-issues');
 	}
