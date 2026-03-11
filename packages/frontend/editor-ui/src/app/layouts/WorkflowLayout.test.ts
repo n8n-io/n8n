@@ -85,6 +85,9 @@ const defaultStubs = {
 	AskAssistantFloatingButton: {
 		template: '<div data-test-id="ask-assistant-button">Ask Assistant</div>',
 	},
+	CanvasChatOverlay: {
+		template: '<div data-test-id="canvas-chat-overlay" />',
+	},
 	AppChatPanel: {
 		template: '<div data-test-id="app-chat-panel">Chat Panel</div>',
 	},
