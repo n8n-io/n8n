@@ -105,7 +105,10 @@ watch(
 		}
 
 		if (!initialized) {
-			// On first load, expand the first uncompleted card
+			// On first load, expand the first uncompleted card.
+			// Only mark initialized once cards are available — for templates,
+			// the first watcher fire may have an empty list before nodes load.
+			if (cards.length === 0) return;
 			const firstUncompleted = findNextUncompleted(cards, -1);
 			if (firstUncompleted) {
 				expandedStates[cardKey(firstUncompleted)] = true;
