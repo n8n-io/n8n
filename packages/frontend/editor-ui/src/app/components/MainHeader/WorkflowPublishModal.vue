@@ -150,7 +150,10 @@ const shouldShowFreeAiCreditsWarning = computed((): boolean => {
 	const managedOpenAiCredentialId = findManagedOpenAiCredentialId(usedCredentials);
 	if (!managedOpenAiCredentialId) return false;
 
-	return hasActiveNodeUsingCredential(workflowsStore.allNodes, managedOpenAiCredentialId);
+	return hasActiveNodeUsingCredential(
+		workflowDocumentStore.value?.allNodes ?? [],
+		managedOpenAiCredentialId,
+	);
 });
 
 async function displayActivationError() {
