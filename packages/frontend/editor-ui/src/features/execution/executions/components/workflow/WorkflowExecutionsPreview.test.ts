@@ -327,126 +327,10 @@ describe('WorkflowExecutionsPreview.vue', () => {
 		expect(queryByTestId('execution-preview-ellipsis-button')).not.toBeInTheDocument();
 	});
 
-	it('should not show version link when execution has no workflowVersionId', async () => {
-		const { queryByTestId } = renderComponent({
-			props: { execution: executionData },
-		});
-
-		await nextTick();
-
-		expect(queryByTestId('execution-preview-version-link')).not.toBeInTheDocument();
-	});
-
-	it('should show version link with named version', async () => {
-		const versionId = faker.string.uuid();
-		const workflowId = executionData.workflowId;
-
-		const pinia = createTestingPinia({
-			initialState: {
-				[STORES.SETTINGS]: {
-					settings: {
-						enterprise: {
-							[EnterpriseEditionFeature.AdvancedExecutionFilters]: true,
-						},
-					},
-				},
-				[STORES.EXECUTIONS]: {
-					activeExecution: executionData,
-				},
-			},
-		});
-
-		const workflowHistoryStore = mockedStore(useWorkflowHistoryStore);
-		workflowHistoryStore.getWorkflowVersion.mockResolvedValue({
-			versionId,
-			workflowId,
-			name: 'My release v2',
-			description: null,
-			authors: 'test',
-			createdAt: '2025-10-10T10:24:00.000Z',
-			updatedAt: '2025-10-10T10:24:00.000Z',
-			nodes: [],
-			connections: {},
-			workflowPublishHistory: [],
-		} as WorkflowVersion);
-
-		const executionWithVersion = {
-			...executionData,
-			workflowVersionId: versionId,
-		};
-
-		const { findByTestId } = renderComponent({
-			props: { execution: executionWithVersion },
-			pinia,
-		});
-
-		const versionLink = await findByTestId('execution-preview-version-link');
-		expect(versionLink).toBeInTheDocument();
-		expect(versionLink.textContent?.trim()).toContain('My release v2');
-		expect(versionLink.getAttribute('href')).toContain(
-			`/workflow/${workflowId}/history/${versionId}`,
-		);
-	});
-
-	it('should show version link with autosave label when version has no name', async () => {
-		const versionId = faker.string.uuid();
-		const workflowId = executionData.workflowId;
-
-		const pinia = createTestingPinia({
-			initialState: {
-				[STORES.SETTINGS]: {
-					settings: {
-						enterprise: {
-							[EnterpriseEditionFeature.AdvancedExecutionFilters]: true,
-						},
-					},
-				},
-				[STORES.EXECUTIONS]: {
-					activeExecution: executionData,
-				},
-			},
-		});
-
-		const workflowHistoryStore = mockedStore(useWorkflowHistoryStore);
-		workflowHistoryStore.getWorkflowVersion.mockResolvedValue({
-			versionId,
-			workflowId,
-			name: null,
-			description: null,
-			authors: 'test',
-			createdAt: '2025-10-10T10:24:00.000Z',
-			updatedAt: '2025-10-10T10:24:00.000Z',
-			nodes: [],
-			connections: {},
-			workflowPublishHistory: [],
-		} as WorkflowVersion);
-
-		const executionWithVersion = {
-			...executionData,
-			workflowVersionId: versionId,
-		};
-
-		const { findByTestId } = renderComponent({
-			props: { execution: executionWithVersion },
-			pinia,
-		});
-
-		const versionLink = await findByTestId('execution-preview-version-link');
-		expect(versionLink).toBeInTheDocument();
-		expect(versionLink.textContent?.trim()).toContain('Autosave');
-		expect(versionLink.getAttribute('href')).toContain(
-			`/workflow/${workflowId}/history/${versionId}`,
-		);
-	});
-
-	it('should not apply stale version response when execution changes during fetch', async () => {
-		const staleVersionId = faker.string.uuid();
-		const freshVersionId = faker.string.uuid();
-		const workflowId = executionData.workflowId;
-
-		const makeVersion = (overrides: Partial<WorkflowVersion>): WorkflowVersion => ({
+	describe('workflow version link', () => {
+		const makeVersion = (overrides: Partial<WorkflowVersion> = {}): WorkflowVersion => ({
 			versionId: faker.string.uuid(),
-			workflowId,
+			workflowId: executionData.workflowId,
 			name: null,
 			description: null,
 			authors: 'test',
@@ -458,81 +342,113 @@ describe('WorkflowExecutionsPreview.vue', () => {
 			...overrides,
 		});
 
-		const staleVersion = makeVersion({ versionId: staleVersionId, name: 'Stale version' });
-		const freshVersion = makeVersion({
-			versionId: freshVersionId,
-			name: 'Fresh version',
-			createdAt: '2025-10-11T10:24:00.000Z',
-			updatedAt: '2025-10-11T10:24:00.000Z',
+		it('should not show when execution has no workflowVersionId', async () => {
+			const { queryByTestId } = renderComponent({
+				props: { execution: executionData },
+			});
+
+			await nextTick();
+
+			expect(queryByTestId('execution-preview-version-link')).not.toBeInTheDocument();
 		});
 
-		const deferred = Promise.withResolvers<WorkflowVersion>();
+		it('should show with named version', async () => {
+			const versionId = faker.string.uuid();
 
-		const workflowHistoryStore = mockedStore(useWorkflowHistoryStore);
-		// First call (stale) hangs, second call (fresh) resolves immediately
-		workflowHistoryStore.getWorkflowVersion
-			.mockReturnValueOnce(deferred.promise)
-			.mockResolvedValueOnce(freshVersion);
+			const workflowHistoryStore = mockedStore(useWorkflowHistoryStore);
+			workflowHistoryStore.getWorkflowVersion.mockResolvedValue(
+				makeVersion({ versionId, name: 'My release v2' }),
+			);
 
-		const executionWithStaleVersion = {
-			...executionData,
-			workflowVersionId: staleVersionId,
-		};
+			const { findByTestId } = renderComponent({
+				props: { execution: { ...executionData, workflowVersionId: versionId } },
+			});
 
-		const { rerender, findByTestId } = renderComponent({
-			props: { execution: executionWithStaleVersion },
+			const versionLink = await findByTestId('execution-preview-version-link');
+			expect(versionLink).toBeInTheDocument();
+			expect(versionLink.textContent?.trim()).toContain('My release v2');
+			expect(versionLink.getAttribute('href')).toContain(
+				`/workflow/${executionData.workflowId}/history/${versionId}`,
+			);
 		});
 
-		// Switch to a different execution before the first fetch resolves
-		await rerender({
-			execution: { ...executionData, workflowVersionId: freshVersionId },
+		it('should show with autosave label when version has no name', async () => {
+			const versionId = faker.string.uuid();
+
+			const workflowHistoryStore = mockedStore(useWorkflowHistoryStore);
+			workflowHistoryStore.getWorkflowVersion.mockResolvedValue(makeVersion({ versionId }));
+
+			const { findByTestId } = renderComponent({
+				props: { execution: { ...executionData, workflowVersionId: versionId } },
+			});
+
+			const versionLink = await findByTestId('execution-preview-version-link');
+			expect(versionLink).toBeInTheDocument();
+			expect(versionLink.textContent?.trim()).toContain('Autosave');
+			expect(versionLink.getAttribute('href')).toContain(
+				`/workflow/${executionData.workflowId}/history/${versionId}`,
+			);
 		});
 
-		const versionLink = await findByTestId('execution-preview-version-link');
-		expect(versionLink.textContent?.trim()).toContain('Fresh version');
+		it('should not apply stale async response when execution changes during fetch', async () => {
+			const staleVersionId = faker.string.uuid();
+			const freshVersionId = faker.string.uuid();
 
-		// Now resolve the stale request — it should NOT overwrite the fresh version
-		deferred.resolve(staleVersion);
-		await nextTick();
-		await nextTick();
+			const staleVersion = makeVersion({ versionId: staleVersionId, name: 'Stale version' });
+			const freshVersion = makeVersion({
+				versionId: freshVersionId,
+				name: 'Fresh version',
+				createdAt: '2025-10-11T10:24:00.000Z',
+				updatedAt: '2025-10-11T10:24:00.000Z',
+			});
 
-		expect(versionLink.textContent?.trim()).toContain('Fresh version');
-		expect(versionLink.textContent?.trim()).not.toContain('Stale version');
-	});
+			const deferred = Promise.withResolvers<WorkflowVersion>();
 
-	it('should not show version link when version fetch fails', async () => {
-		const pinia = createTestingPinia({
-			initialState: {
-				[STORES.SETTINGS]: {
-					settings: {
-						enterprise: {
-							[EnterpriseEditionFeature.AdvancedExecutionFilters]: true,
-						},
-					},
-				},
-				[STORES.EXECUTIONS]: {
-					activeExecution: executionData,
-				},
-			},
+			const workflowHistoryStore = mockedStore(useWorkflowHistoryStore);
+			// First call (stale) hangs, second call (fresh) resolves immediately
+			workflowHistoryStore.getWorkflowVersion
+				.mockReturnValueOnce(deferred.promise)
+				.mockResolvedValueOnce(freshVersion);
+
+			const { rerender, findByTestId } = renderComponent({
+				props: { execution: { ...executionData, workflowVersionId: staleVersionId } },
+			});
+
+			// Switch to a different execution before the first fetch resolves
+			await rerender({
+				execution: { ...executionData, workflowVersionId: freshVersionId },
+			});
+
+			const versionLink = await findByTestId('execution-preview-version-link');
+			expect(versionLink.textContent?.trim()).toContain('Fresh version');
+
+			// Now resolve the stale request — it should NOT overwrite the fresh version
+			deferred.resolve(staleVersion);
+			await nextTick();
+			await nextTick();
+
+			expect(versionLink.textContent?.trim()).toContain('Fresh version');
+			expect(versionLink.textContent?.trim()).not.toContain('Stale version');
 		});
 
-		const workflowHistoryStore = mockedStore(useWorkflowHistoryStore);
-		workflowHistoryStore.getWorkflowVersion.mockRejectedValue(new Error('Not found'));
+		it('should not show when version fetch fails', async () => {
+			const versionId = faker.string.uuid();
+			const workflowHistoryStore = mockedStore(useWorkflowHistoryStore);
+			workflowHistoryStore.getWorkflowVersion.mockRejectedValue(new Error('Not found'));
 
-		const executionWithVersion = {
-			...executionData,
-			workflowVersionId: faker.string.uuid(),
-		};
+			const { queryByTestId } = renderComponent({
+				props: { execution: { ...executionData, workflowVersionId: versionId } },
+			});
 
-		const { queryByTestId } = renderComponent({
-			props: { execution: executionWithVersion },
-			pinia,
+			await nextTick();
+			// Wait for the async watch to settle
+			await nextTick();
+
+			expect(workflowHistoryStore.getWorkflowVersion).toHaveBeenCalledWith(
+				executionData.workflowId,
+				versionId,
+			);
+			expect(queryByTestId('execution-preview-version-link')).not.toBeInTheDocument();
 		});
-
-		await nextTick();
-		// Wait for the async watch to settle
-		await nextTick();
-
-		expect(queryByTestId('execution-preview-version-link')).not.toBeInTheDocument();
 	});
 });
