@@ -341,15 +341,27 @@ This MVP is built in a **separate feature branch** for exploration and validatio
 
 ## Implementation TODO
 
-### Frontend: Canvas
-
-- [ ]  Update AI Agent node to auto-pick model from gateway settings
-- [ ]  Add "n8n AI Gateway" option to credentials picker
-
 ### Frontend: Settings
 
-- [ ]  AI Gateway settings page (model source, category, usage overview)
-- [ ]  Workflow settings override for model source / category (?)
+- [x]  AI Gateway settings page at `/settings/ai-gateway` — model source selection
+- [x]  AI Gateway settings page at `/settings/ai-gateway` — category selection
+- [ ]  AI Gateway settings page at `/settings/ai-gateway` — usage overview (credits remaining, credits used, trend)
+- [x]  Global Pinia store (`aiGateway.store.ts`) with category/model state and mock OpenRouter model list
+- [x]  i18n labels for all settings page text
+- [x]  Settings sidebar entry and route registration
+- [ ]  Workflow settings override for model source / category
+
+### Frontend: Canvas
+
+- [x]  Auto-create and connect default LLM node (matching provider) when AI Agent is created
+- [x]  Prepopulate LLM node model parameter from AI Gateway store on new node creation
+- [ ]  Prepopulate credential from AI Gateway store on new node creation (currently sets a placeholder `id: 'n8nAiGateway'` — needs to use a real credential ID once backend creates/manages the gateway credential?)
+- [x]  `applyAIGatewayDefaultsToLlmNode` helper wired into `useCanvasOperations.addNode`
+
+### Frontend: Credentials / Provider Contracts
+
+- [x]  `N8nAiGatewayApi.credentials.ts` registered in `@n8n/nodes-langchain`
+- [ ]  AI nodes (OpenAI, Anthropic, Gemini, etc.) accept `n8nAiGatewayApi` as an alternative credential in their credential definitions, so users see "n8n AI Gateway" in the "Credential to connect with" dropdown alongside native credentials and is preselected if no native credential found
 
 ### Backend
 
@@ -375,3 +387,7 @@ This MVP is built in a **separate feature branch** for exploration and validatio
 
 - [ ]  Usage metering and credit tracking (?)
 - [ ]  Unified credit pool with AI Builder (?)
+
+> **Note:** The frontend store currently uses hardcoded mock data for the
+> OpenRouter model catalog and usage credits. These will be replaced by
+> backend API calls once the proxy layer is implemented.

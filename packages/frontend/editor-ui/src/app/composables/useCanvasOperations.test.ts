@@ -172,6 +172,11 @@ vi.mock('@/app/composables/useDataSchema', () => {
 	};
 });
 
+vi.mock('@/features/ai/gateway/useAIGatewayDefaults', () => ({
+	applyAIGatewayDefaultsToLlmNode: vi.fn(),
+	getGatewayLlmNodeData: vi.fn(() => null),
+}));
+
 describe('useCanvasOperations', () => {
 	const workflowId = 'test';
 	const initialState = {

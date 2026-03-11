@@ -3031,6 +3031,8 @@ export interface IWorkflowSettings {
 	availableInMCP?: boolean;
 	credentialResolverId?: string;
 	redactionPolicy?: WorkflowSettings.RedactionPolicy;
+	aiGatewayCategory?: 'DEFAULT' | string;
+	aiGatewayModel?: string;
 }
 
 export interface WorkflowFEMeta {
