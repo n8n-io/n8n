@@ -1,6 +1,7 @@
 import type {
 	ActionResultRequestDto,
 	CommunityNodeType,
+	ComputeValueRequestDto,
 	OptionsRequestDto,
 	ResourceLocatorRequestDto,
 	ResourceMapperFieldsRequestDto,
@@ -403,6 +404,10 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		return await nodeTypesApi.getNodeParameterActionResult(rootStore.restApiContext, sendData);
 	};
 
+	const getNodeComputedValue = async (sendData: ComputeValueRequestDto) => {
+		return await nodeTypesApi.getNodeComputedValue(rootStore.restApiContext, sendData);
+	};
+
 	const fetchCommunityNodePreviews = async () => {
 		if (!settingsStore.isCommunityNodesFeatureEnabled) {
 			return;
@@ -469,6 +474,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		getResourceMapperFields,
 		getLocalResourceMapperFields,
 		getNodeParameterActionResult,
+		getNodeComputedValue,
 		getResourceLocatorResults,
 		getNodeParameterOptions,
 		getNodesInformation,
