@@ -17,12 +17,12 @@ export class CreateWorkflowPublishedVersionTable1769698710000 implements Reversi
 			.withForeignKey('workflowId', {
 				tableName: 'workflow_entity',
 				columnName: 'id',
-				onDelete: 'RESTRICT',
+				onDelete: 'CASCADE',
 			})
 			.withForeignKey('publishedVersionId', {
 				tableName: 'workflow_history',
 				columnName: 'versionId',
-				onDelete: 'RESTRICT',
+				onDelete: 'CASCADE',
 			}).withTimestamps;
 	}
 
