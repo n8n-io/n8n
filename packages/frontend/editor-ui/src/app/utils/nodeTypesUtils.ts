@@ -1,4 +1,9 @@
-import type { AppliedThemeOption, INodeUi, NodeAuthenticationOption } from '@/Interface';
+import type {
+	AppliedThemeOption,
+	INodeUi,
+	INodeUpdatePropertiesInformation,
+	NodeAuthenticationOption,
+} from '@/Interface';
 import type { ITemplatesNode } from '@n8n/rest-api-client/api/templates';
 import {
 	CORE_NODES_CATEGORY,
@@ -22,8 +27,6 @@ import {
 	type ResourceMapperField,
 	type Themed,
 } from 'n8n-workflow';
-import type { WorkflowState } from '@/app/composables/useWorkflowState';
-
 /*
 	Constants and utility functions mainly used to get information about
 	or manipulate node types and nodes.
@@ -361,11 +364,14 @@ export const getCredentialsRelatedFields = (
 };
 
 export const updateNodeAuthType = (
-	workflowState: WorkflowState,
+	workflowDocumentStore:
+		| { updateNodeProperties: (info: INodeUpdatePropertiesInformation) => void }
+		| null
+		| undefined,
 	node: INodeUi | null,
 	type: string,
 ) => {
-	if (!node) {
+	if (!node || !workflowDocumentStore) {
 		return;
 	}
 	const nodeType = useNodeTypesStore().getNodeType(node.type, node.typeVersion);
@@ -381,7 +387,7 @@ export const updateNodeAuthType = (
 					},
 				},
 			};
-			workflowState.updateNodeProperties(updateInformation);
+			workflowDocumentStore.updateNodeProperties(updateInformation);
 		}
 	}
 };
