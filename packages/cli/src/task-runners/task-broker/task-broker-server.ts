@@ -20,8 +20,6 @@ import { type WebSocket, Server as WSServer } from 'ws';
 import { bodyParser, rawBodyReader } from '@/middlewares';
 import { send } from '@/response-helper';
 import { TaskBrokerAuthController } from '@/task-runners/task-broker/auth/task-broker-auth.controller';
-import { bearerTokenSchema } from '@/task-runners/task-broker/auth/task-broker-auth.schema';
-import { TaskBrokerAuthService } from '@/task-runners/task-broker/auth/task-broker-auth.service';
 import type {
 	TaskBrokerServerInitRequest,
 	TaskBrokerServerInitResponse,
@@ -54,7 +52,6 @@ export class TaskBrokerServer {
 		private readonly globalConfig: GlobalConfig,
 		private readonly authController: TaskBrokerAuthController,
 		private readonly taskBrokerWsServer: TaskBrokerWsServer,
-		private readonly authService: TaskBrokerAuthService,
 		private readonly errorReporter: ErrorReporter,
 	) {
 		this.app = express();
@@ -169,8 +166,6 @@ export class TaskBrokerServer {
 		this.app.use(
 			this.upgradeEndpoint,
 			createRateLimiter(),
-			// eslint-disable-next-line @typescript-eslint/unbound-method
-			this.authController.authMiddleware,
 			(req: TaskBrokerServerInitRequest, res: TaskBrokerServerInitResponse) =>
 				this.taskBrokerWsServer.handleRequest(req, res),
 		);
@@ -212,7 +207,7 @@ export class TaskBrokerServer {
 				return;
 			}
 
-			const runnerId = typeof parsedUrl.query.id === 'string' ? parsedUrl.query.id : '';
+			const runnerId = typeof parsedUrl.query.id === 'string' ? parsedUrl.query.id : undefined;
 			if (!runnerId) {
 				this.logger.warn(
 					'Task runner connection attempt failed: missing runner ID in query parameters',
@@ -223,22 +218,13 @@ export class TaskBrokerServer {
 
 			// Validate auth BEFORE upgrading the connection so the client
 			// receives a proper HTTP error instead of an opaque close frame
-			const grantToken = this.extractGrantToken(request.headers.authorization);
-			if (grantToken === undefined) {
-				this.logger.warn(
-					'Task runner connection attempt failed: missing or invalid Authorization header',
-					{ runnerId },
-				);
-				this.failUpgradeRequest(socket, 401);
-				return;
-			}
+			const result = await this.authController.validateUpgradeRequest(
+				request.headers.authorization,
+			);
 
-			const isValid = await this.authService.tryConsumeGrantToken(grantToken);
-			if (!isValid) {
-				this.logger.warn('Task runner connection attempt failed: invalid or expired grant token', {
-					runnerId,
-				});
-				this.failUpgradeRequest(socket, 403);
+			if (!result.isValid) {
+				this.logger.warn(`Task runner connection attempt failed: ${result.reason}`, { runnerId });
+				this.failUpgradeRequest(socket, result.statusCode);
 				return;
 			}
 
@@ -265,12 +251,6 @@ export class TaskBrokerServer {
 		const statusMessage = STATUS_CODES[statusCode] ?? 'Error';
 		socket.write(`HTTP/1.1 ${statusCode} ${statusMessage}\r\n\r\n`);
 		socket.destroy();
-	}
-
-	/** Extracts and validates the grant token from the Authorization header */
-	private extractGrantToken(authHeader: string | undefined): string | undefined {
-		const result = bearerTokenSchema.safeParse(authHeader);
-		return result.success ? result.data : undefined;
 	}
 
 	/** Returns the normalized base path for the task runner endpoints */
