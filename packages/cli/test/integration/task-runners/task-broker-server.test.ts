@@ -24,8 +24,8 @@ describe('TaskBrokerServer', () => {
 
 	describe('/runners/_ws', () => {
 		/** Sends an HTTP upgrade request and resolves with the raw status line */
-		const sendUpgradeRequest = () =>
-			new Promise<number>((resolve, reject) => {
+		const sendUpgradeRequest = async () =>
+			await new Promise<number>((resolve, reject) => {
 				const req = http.get(
 					{
 						hostname: '127.0.0.1',

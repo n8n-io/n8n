@@ -26,6 +26,29 @@ import { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-se
 type IncomingUpgradeRequest = IncomingMessage & { url: string; ws?: WebSocket };
 
 /**
+ * Simple sliding-window rate limiter for WebSocket upgrade requests.
+ * Unlike HTTP endpoints, upgrade requests bypass Express so we cannot
+ * reuse `express-rate-limit`. Kept inline because this is the only
+ * non-Express rate limiter in the codebase.
+ */
+class SlidingWindowRateLimiter {
+	private timestamps: number[] = [];
+
+	constructor(
+		private readonly windowMs: number,
+		private readonly limit: number,
+	) {}
+
+	isRateLimited(): boolean {
+		const now = Date.now();
+		this.timestamps = this.timestamps.filter((t) => now - t < this.windowMs);
+		if (this.timestamps.length >= this.limit) return true;
+		this.timestamps.push(now);
+		return false;
+	}
+}
+
+/**
  * Task Broker HTTP & WS server
  */
 @Service()
@@ -36,19 +59,10 @@ export class TaskBrokerServer {
 
 	readonly app: express.Application;
 
-	/** Simple sliding-window rate limiter for WebSocket upgrade requests */
-	private readonly upgradeRateLimiter = {
-		windowMs: 1 * Time.seconds.toMilliseconds,
-		limit: 5,
-		timestamps: [] as number[],
-		isRateLimited(): boolean {
-			const now = Date.now();
-			this.timestamps = this.timestamps.filter((t) => now - t < this.windowMs);
-			if (this.timestamps.length >= this.limit) return true;
-			this.timestamps.push(now);
-			return false;
-		},
-	};
+	private readonly upgradeRateLimiter = new SlidingWindowRateLimiter(
+		1 * Time.seconds.toMilliseconds,
+		5,
+	);
 
 	get port() {
 		return (this.server?.address() as AddressInfo)?.port;
