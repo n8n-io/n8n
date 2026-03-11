@@ -1,0 +1,10 @@
+{
+	"requests": {
+		"POST https://api.example.com/cleanup": {}
+	},
+	"nodes": {
+		"Run Cleanup": {
+			"items": [{ "cleaned": true }]
+		}
+	}
+}

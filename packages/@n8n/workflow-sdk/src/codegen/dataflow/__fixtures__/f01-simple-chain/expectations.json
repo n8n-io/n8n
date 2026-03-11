@@ -1,0 +1,10 @@
+{
+	"requests": {
+		"GET https://example.com/": {}
+	},
+	"nodes": {
+		"HTTP Request": {
+			"items": [{ "data": "response" }]
+		}
+	}
+}

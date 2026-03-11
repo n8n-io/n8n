@@ -1,0 +1,7 @@
+{
+	"Orders Webhook": [{ "orderId": "ORD-1" }],
+	"Returns Webhook": [{ "returnId": "RET-1" }],
+	"Daily Cleanup": [{}],
+	"Process Order": [{ "orderId": "ORD-1", "processed": true }],
+	"Process Return": [{ "returnId": "RET-1", "processed": true }]
+}

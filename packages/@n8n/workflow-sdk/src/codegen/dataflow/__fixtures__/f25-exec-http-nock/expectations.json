@@ -1,0 +1,10 @@
+{
+	"requests": {
+		"GET https://api.example.com/users": {}
+	},
+	"nodes": {
+		"Fetch Data": {
+			"items": [{ "users": [{ "name": "Alice" }] }]
+		}
+	}
+}

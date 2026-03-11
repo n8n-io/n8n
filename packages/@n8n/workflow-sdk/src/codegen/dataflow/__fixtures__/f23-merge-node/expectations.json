@@ -1,0 +1,14 @@
+{
+	"requests": {
+		"GET https://api.example.com/users": {},
+		"GET https://api.example.com/orders": {}
+	},
+	"nodes": {
+		"Fetch Users": {
+			"items": [{ "userId": 1, "name": "Alice" }]
+		},
+		"Fetch Orders": {
+			"items": [{ "orderId": 101, "total": 50 }]
+		}
+	}
+}

@@ -1,0 +1,10 @@
+{
+	"requests": {
+		"POST https://example.com/": {}
+	},
+	"nodes": {
+		"Set": {
+			"items": [{ "result": "ok" }]
+		}
+	}
+}

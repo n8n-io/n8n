@@ -1,0 +1,7 @@
+{
+	"nodes": {
+		"Format Output": {
+			"items": [{ "message": "hello" }]
+		}
+	}
+}

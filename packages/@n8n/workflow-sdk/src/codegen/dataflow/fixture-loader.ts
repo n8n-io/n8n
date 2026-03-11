@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
+import type { Expectations } from './expectation-matcher';
 
 export interface Fixture {
 	dir: string;
@@ -9,6 +10,16 @@ export interface Fixture {
 	/** Original WorkflowJSON for reference comparison (optional) */
 	referenceJson?: string;
 	skip?: string;
+	/** Whether this fixture has a nock.ts file for HTTP mocking */
+	hasNock: boolean;
+	/** Whether this fixture has expectations.json */
+	hasExpectations: boolean;
+	/** Loaded expectations (if present) */
+	expectations?: Expectations;
+	/** Whether this fixture has pin-data.json */
+	hasPinData: boolean;
+	/** Loaded pin data (if present) */
+	pinData?: Record<string, unknown[]>;
 }
 
 interface FixtureMeta {
@@ -24,7 +35,15 @@ function loadFixtureFromDir(dirPath: string, dirName: string): Fixture {
 	const inputPath = join(dirPath, 'input.ts');
 	if (!existsSync(inputPath)) {
 		if (meta.skip) {
-			return { dir: dirName, title: meta.title, input: '', skip: meta.skip };
+			return {
+				dir: dirName,
+				title: meta.title,
+				input: '',
+				skip: meta.skip,
+				hasNock: false,
+				hasExpectations: false,
+				hasPinData: false,
+			};
 		}
 		throw new Error(`No input.ts found for fixture at ${dirPath}`);
 	}
@@ -34,12 +53,32 @@ function loadFixtureFromDir(dirPath: string, dirName: string): Fixture {
 	const jsonPath = join(dirPath, 'input.json');
 	const referenceJson = existsSync(jsonPath) ? readFileSync(jsonPath, 'utf-8').trim() : undefined;
 
+	// Load execution test files
+	const hasNock = existsSync(join(dirPath, 'nock.ts'));
+
+	const expectationsPath = join(dirPath, 'expectations.json');
+	const hasExpectations = existsSync(expectationsPath);
+	const expectations = hasExpectations
+		? (JSON.parse(readFileSync(expectationsPath, 'utf-8')) as Expectations)
+		: undefined;
+
+	const pinDataPath = join(dirPath, 'pin-data.json');
+	const hasPinData = existsSync(pinDataPath);
+	const pinData = hasPinData
+		? (JSON.parse(readFileSync(pinDataPath, 'utf-8')) as Record<string, unknown[]>)
+		: undefined;
+
 	return {
 		dir: dirName,
 		title: meta.title,
 		input,
 		referenceJson,
 		skip: meta.skip,
+		hasNock,
+		hasExpectations,
+		expectations,
+		hasPinData,
+		pinData,
 	};
 }
 

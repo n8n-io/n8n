@@ -1,0 +1,10 @@
+{
+	"requests": {
+		"GET https://api.example.com/config": {}
+	},
+	"nodes": {
+		"Set": {
+			"items": [{ "setting": "enabled" }]
+		}
+	}
+}

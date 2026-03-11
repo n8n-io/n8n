@@ -1,0 +1,10 @@
+{
+	"requests": {
+		"POST https://api.example.com/start": {}
+	},
+	"nodes": {
+		"Start Request": {
+			"items": [{ "requestId": "req-123" }]
+		}
+	}
+}

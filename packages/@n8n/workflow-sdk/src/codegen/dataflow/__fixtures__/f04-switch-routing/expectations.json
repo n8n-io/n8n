@@ -1,0 +1,7 @@
+{
+	"nodes": {
+		"London Handler": {
+			"items": [{ "destination": "London" }]
+		}
+	}
+}

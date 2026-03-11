@@ -1,0 +1,11 @@
+{
+	"requests": {
+		"GET https://api.example.com/data": {},
+		"POST https://api.example.com/notify": {}
+	},
+	"nodes": {
+		"Notify Active": {
+			"items": [{ "notified": true }]
+		}
+	}
+}

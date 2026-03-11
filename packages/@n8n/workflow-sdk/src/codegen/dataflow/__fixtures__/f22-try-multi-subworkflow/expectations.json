@@ -1,0 +1,7 @@
+{
+	"nodes": {
+		"Execute Workflow": {
+			"items": [{ "data": "payload" }]
+		}
+	}
+}

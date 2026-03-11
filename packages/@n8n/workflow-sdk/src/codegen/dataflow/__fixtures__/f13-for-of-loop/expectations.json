@@ -1,0 +1,10 @@
+{
+	"requests": {
+		"GET https://api.example.com/items": {}
+	},
+	"nodes": {
+		"HTTP Request": {
+			"items": [{ "id": 1, "task": "Buy milk" }, { "id": 2, "task": "Walk dog" }]
+		}
+	}
+}

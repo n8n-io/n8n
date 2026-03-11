@@ -1,0 +1,11 @@
+{
+	"requests": {
+		"GET https://api.example.com/users": {},
+		"POST https://hooks.example.com/notify": {}
+	},
+	"nodes": {
+		"Send Notification": {
+			"items": [{ "success": true }]
+		}
+	}
+}

@@ -1,0 +1,10 @@
+{
+	"requests": {
+		"POST https://api.example.com/reports": {}
+	},
+	"nodes": {
+		"Send Report": {
+			"items": [{ "saved": true }]
+		}
+	}
+}
