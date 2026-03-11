@@ -10,14 +10,14 @@ workflow({ name: 'Multi Node Error Handling' }, () => {
 				type: 'n8n-nodes-base.set',
 				name: 'Transform',
 				params: {},
-				version: 3,
+				version: 3.4,
 			});
 		} catch (e) {
 			const error_Handler = executeNode({
 				type: 'n8n-nodes-base.set',
 				name: 'Error Handler',
 				params: {},
-				version: 3,
+				version: 3.4,
 			});
 		}
 	});

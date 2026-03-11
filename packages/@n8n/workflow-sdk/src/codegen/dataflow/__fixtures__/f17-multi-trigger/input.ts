@@ -12,7 +12,7 @@ workflow({ name: 'Multi Trigger' }, () => {
 				type: 'n8n-nodes-base.set',
 				name: 'Process Order',
 				params: {},
-				version: 3,
+				version: 3.4,
 				sampleData: [{ orderId: 'ORD-1', processed: true }],
 			});
 		},
@@ -30,7 +30,7 @@ workflow({ name: 'Multi Trigger' }, () => {
 				type: 'n8n-nodes-base.set',
 				name: 'Process Return',
 				params: {},
-				version: 3,
+				version: 3.4,
 				sampleData: [{ returnId: 'RET-1', processed: true }],
 			});
 		},

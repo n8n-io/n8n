@@ -10,8 +10,13 @@ workflow({ name: 'Three Node Chain' }, () => {
 		const set = hTTP_Request.map((item) =>
 			executeNode({
 				type: 'n8n-nodes-base.set',
-				params: { values: { string: [{ name: 'key', value: 'val' }] } },
-				version: 3,
+				params: {
+					options: {},
+					assignments: {
+						assignments: [{ id: 'a1', name: 'key', type: 'string', value: 'val' }],
+					},
+				},
+				version: 3.4,
 			}),
 		);
 	});

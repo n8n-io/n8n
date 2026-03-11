@@ -12,7 +12,7 @@ workflow({ name: 'Wait Webhook' }, () => {
 			type: 'n8n-nodes-base.set',
 			name: 'After Resume',
 			params: {},
-			version: 3,
+			version: 3.4,
 		});
 	});
 });

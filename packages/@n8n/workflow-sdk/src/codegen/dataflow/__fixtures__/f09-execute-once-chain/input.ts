@@ -7,8 +7,13 @@ workflow({ name: 'Execute Once Chain' }, () => {
 		});
 		const set = executeNode({
 			type: 'n8n-nodes-base.set',
-			params: { values: { string: [{ name: 'processed', value: 'true' }] } },
-			version: 3,
+			params: {
+				options: {},
+				assignments: {
+					assignments: [{ id: 'a1', name: 'processed', type: 'string', value: 'true' }],
+				},
+			},
+			version: 3.4,
 		});
 	});
 });

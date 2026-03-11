@@ -18,7 +18,7 @@ workflow({ name: 'Wait Webhook Callback' }, () => {
 				type: 'n8n-nodes-base.set',
 				name: 'Process Result',
 				params: {},
-				version: 3,
+				version: 3.4,
 			});
 		},
 	);

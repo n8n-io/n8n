@@ -11,7 +11,7 @@ workflow({ name: 'Error Handling' }, () => {
 				type: 'n8n-nodes-base.set',
 				name: 'Error Handler',
 				params: {},
-				version: 3,
+				version: 3.4,
 			});
 		}
 	});

@@ -25,6 +25,6 @@ workflow({ name: 'Merge Workflow' }, () => {
 		[fetch_Users, fetch_Orders],
 	);
 	const process_Result = merge_node.map((item) =>
-		executeNode({ type: 'n8n-nodes-base.set', name: 'Process Result', params: {}, version: 3 }),
+		executeNode({ type: 'n8n-nodes-base.set', name: 'Process Result', params: {}, version: 3.4 }),
 	);
 });

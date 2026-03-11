@@ -5,7 +5,7 @@ workflow({ name: 'Multi Output' }, () => {
 			type: 'n8n-nodes-base.set',
 			name: 'Data B',
 			params: {},
-			version: 3,
+			version: 3.4,
 			sampleData: [
 				{ id: 2, name: 'Robert' },
 				{ id: 3, name: 'Charlie' },
@@ -17,7 +17,7 @@ workflow({ name: 'Multi Output' }, () => {
 			type: 'n8n-nodes-base.set',
 			name: 'Data A',
 			params: {},
-			version: 3,
+			version: 3.4,
 			sampleData: [
 				{ id: 1, name: 'Alice' },
 				{ id: 2, name: 'Bob' },
@@ -33,12 +33,12 @@ workflow({ name: 'Multi Output' }, () => {
 		[data_A, data_B],
 	);
 	const only_In_A = compare_Datasets_0.map((item) =>
-		executeNode({ type: 'n8n-nodes-base.set', name: 'Only In A', params: {}, version: 3 }),
+		executeNode({ type: 'n8n-nodes-base.set', name: 'Only In A', params: {}, version: 3.4 }),
 	);
 	const only_In_B = compare_Datasets_1.map((item) =>
-		executeNode({ type: 'n8n-nodes-base.set', name: 'Only In B', params: {}, version: 3 }),
+		executeNode({ type: 'n8n-nodes-base.set', name: 'Only In B', params: {}, version: 3.4 }),
 	);
 	const in_Both = compare_Datasets_2.map((item) =>
-		executeNode({ type: 'n8n-nodes-base.set', name: 'In Both', params: {}, version: 3 }),
+		executeNode({ type: 'n8n-nodes-base.set', name: 'In Both', params: {}, version: 3.4 }),
 	);
 });

@@ -21,7 +21,7 @@ workflow({ name: 'Order Processing' }, () => {
 							type: 'n8n-nodes-base.set',
 							name: 'Standard Express',
 							params: {},
-							version: 3,
+							version: 3.4,
 						});
 					}
 					break;
@@ -31,7 +31,7 @@ workflow({ name: 'Order Processing' }, () => {
 						type: 'n8n-nodes-base.set',
 						name: 'Standard Delivery',
 						params: {},
-						version: 3,
+						version: 3.4,
 					});
 					break;
 				}
@@ -40,7 +40,7 @@ workflow({ name: 'Order Processing' }, () => {
 						type: 'n8n-nodes-base.set',
 						name: 'Unknown Order',
 						params: {},
-						version: 3,
+						version: 3.4,
 					});
 					break;
 				}

@@ -45,6 +45,6 @@ workflow({ name: 'Cascading Merges' }, () => {
 		[merge_node, fetch_C],
 	);
 	const final_Process = merge_1.map((item) =>
-		executeNode({ type: 'n8n-nodes-base.set', name: 'Final Process', params: {}, version: 3 }),
+		executeNode({ type: 'n8n-nodes-base.set', name: 'Final Process', params: {}, version: 3.4 }),
 	);
 });

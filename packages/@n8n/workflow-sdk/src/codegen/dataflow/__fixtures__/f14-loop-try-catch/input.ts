@@ -19,7 +19,7 @@ workflow({ name: 'Loop Try Catch' }, () => {
 					type: 'n8n-nodes-base.set',
 					name: 'Log Error',
 					params: {},
-					version: 3,
+					version: 3.4,
 				});
 			}
 		});
@@ -27,7 +27,7 @@ workflow({ name: 'Loop Try Catch' }, () => {
 			type: 'n8n-nodes-base.set',
 			name: 'Summary',
 			params: {},
-			version: 3,
+			version: 3.4,
 		});
 	});
 });

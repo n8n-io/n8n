@@ -21,7 +21,7 @@ workflow({ name: 'Wait Form Callback' }, () => {
 				type: 'n8n-nodes-base.set',
 				name: 'Handle Response',
 				params: {},
-				version: 3,
+				version: 3.4,
 			});
 		},
 	);

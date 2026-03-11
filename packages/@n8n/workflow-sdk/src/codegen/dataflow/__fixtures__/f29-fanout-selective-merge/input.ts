@@ -36,6 +36,6 @@ workflow({ name: 'Selective Merge' }, () => {
 		[fetch_Users, fetch_Orders],
 	);
 	const process_Combined = merge_node.map((item) =>
-		executeNode({ type: 'n8n-nodes-base.set', name: 'Process Combined', params: {}, version: 3 }),
+		executeNode({ type: 'n8n-nodes-base.set', name: 'Process Combined', params: {}, version: 3.4 }),
 	);
 });

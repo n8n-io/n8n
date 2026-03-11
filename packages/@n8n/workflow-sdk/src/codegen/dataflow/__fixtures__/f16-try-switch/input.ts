@@ -11,7 +11,7 @@ workflow({ name: 'Try Switch' }, () => {
 				type: 'n8n-nodes-base.set',
 				name: 'Error Handler',
 				params: {},
-				version: 3,
+				version: 3.4,
 			});
 		}
 		switch (items[0].json.type) {
@@ -39,7 +39,7 @@ workflow({ name: 'Try Switch' }, () => {
 					type: 'n8n-nodes-base.set',
 					name: 'Log Unknown',
 					params: {},
-					version: 3,
+					version: 3.4,
 				});
 				break;
 			}

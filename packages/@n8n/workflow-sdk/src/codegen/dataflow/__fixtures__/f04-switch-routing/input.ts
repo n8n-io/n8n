@@ -13,7 +13,7 @@ workflow({ name: 'Switch Workflow' }, () => {
 						type: 'n8n-nodes-base.set',
 						name: 'London Handler',
 						params: {},
-						version: 3,
+						version: 3.4,
 					});
 					break;
 				}
@@ -22,7 +22,7 @@ workflow({ name: 'Switch Workflow' }, () => {
 						type: 'n8n-nodes-base.set',
 						name: 'New York Handler',
 						params: {},
-						version: 3,
+						version: 3.4,
 					});
 					break;
 				}
@@ -31,7 +31,7 @@ workflow({ name: 'Switch Workflow' }, () => {
 						type: 'n8n-nodes-base.set',
 						name: 'Default Handler',
 						params: {},
-						version: 3,
+						version: 3.4,
 					});
 					break;
 				}

@@ -10,7 +10,7 @@ workflow({ name: 'For Of Loop' }, () => {
 				type: 'n8n-nodes-base.set',
 				name: 'Process Item',
 				params: {},
-				version: 3,
+				version: 3.4,
 			});
 		});
 	});

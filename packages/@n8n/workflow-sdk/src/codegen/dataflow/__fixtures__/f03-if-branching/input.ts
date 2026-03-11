@@ -12,14 +12,14 @@ workflow({ name: 'IF Workflow' }, () => {
 					type: 'n8n-nodes-base.set',
 					name: 'True Branch',
 					params: {},
-					version: 3,
+					version: 3.4,
 				});
 			} else {
 				const false_Branch = executeNode({
 					type: 'n8n-nodes-base.set',
 					name: 'False Branch',
 					params: {},
-					version: 3,
+					version: 3.4,
 				});
 			}
 		},

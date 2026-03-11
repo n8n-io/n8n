@@ -19,7 +19,7 @@ workflow({ name: 'Multi Condition Notification' }, () => {
 					type: 'n8n-nodes-base.set',
 					name: 'Skip Notification',
 					params: {},
-					version: 3,
+					version: 3.4,
 				});
 			}
 		},
