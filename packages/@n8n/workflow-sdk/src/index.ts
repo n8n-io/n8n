@@ -163,6 +163,7 @@ export { parseWorkflowCode, parseWorkflowCodeToBuilder } from './codegen/parse-w
 // Data-flow code format
 export {
 	generateDataFlowWorkflowCode,
+	generateDataFlowFromGraph,
 	parseDataFlowCode,
 	parseDataFlowCodeToGraph,
 } from './codegen/dataflow/index';

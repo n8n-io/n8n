@@ -1,5 +1,6 @@
-import { generateDataFlowWorkflowCode } from './index';
-import { parseDataFlowCode } from './dataflow-parser';
+import { generateDataFlowFromGraph } from './index';
+import { parseDataFlowCodeToGraph } from './dataflow-parser';
+import { semanticGraphToWorkflowJSON } from '../semantic-graph';
 import { generateReport } from './generate-report';
 import { loadFixtures } from './fixture-loader';
 import { validateWorkflow } from '../../validation';
@@ -60,24 +61,25 @@ describe('Data-flow compiler (fixture round-trip)', () => {
 			};
 
 			try {
-				// Step 1: Parse data-flow code → WorkflowJSON
-				const parsed = parseDataFlowCode(fixture.input);
+				// Step 1: Parse code → SemanticGraph
+				const graph1 = parseDataFlowCodeToGraph(fixture.input);
+				const parsed = semanticGraphToWorkflowJSON(graph1, fixture.title);
 				entry.parsedJson = JSON.stringify(parsed, null, 2);
 				entry.nodeCount = parsed.nodes.length;
 				entry.connectionCount = Object.keys(parsed.connections).length;
 
-				expect(parsed.nodes.length).toBeGreaterThan(0);
+				expect(graph1.nodes.size).toBeGreaterThan(0);
 
-				// Step 2: Re-generate data-flow code from parsed JSON
-				const reGenerated = generateDataFlowWorkflowCode(parsed);
+				// Step 2: SemanticGraph → Code (no JSON intermediary)
+				const reGenerated = generateDataFlowFromGraph(graph1, fixture.title);
 				entry.reGeneratedCode = reGenerated;
 
-				// Step 3: Compare JSON-level round-trip fidelity
-				// (code formatting differences are cosmetic — only semantic differences matter)
-				const reParsedForMatch = parseDataFlowCode(reGenerated);
+				// Step 3: Code → SemanticGraph again, compare via JSON serialization
+				const graph2 = parseDataFlowCodeToGraph(reGenerated);
+				const reParsed = semanticGraphToWorkflowJSON(graph2, fixture.title);
 				entry.codeMatch =
-					JSON.stringify(reParsedForMatch.nodes) === JSON.stringify(parsed.nodes) &&
-					JSON.stringify(reParsedForMatch.connections) === JSON.stringify(parsed.connections);
+					JSON.stringify(reParsed.nodes) === JSON.stringify(parsed.nodes) &&
+					JSON.stringify(reParsed.connections) === JSON.stringify(parsed.connections);
 
 				// Step 4: Validate the parsed workflow JSON
 				try {
@@ -87,8 +89,7 @@ describe('Data-flow compiler (fixture round-trip)', () => {
 					entry.validationErrors = [];
 				}
 
-				// Assertions: the re-generated code should produce the same workflow
-				const reParsed = parseDataFlowCode(reGenerated);
+				// Assertions: graphs produce the same JSON
 				expect(reParsed.nodes).toEqual(parsed.nodes);
 				expect(reParsed.connections).toEqual(parsed.connections);
 			} catch (err) {
@@ -104,7 +105,7 @@ describe('Data-flow compiler (fixture round-trip)', () => {
 	// Additional round-trip assertion tests
 
 	describe('round-trip property preservation', () => {
-		it('preserves onError through code → JSON → code', () => {
+		it('preserves onError through code → graph → code', () => {
 			const code = `workflow({ name: 'OnError Test' }, () => {
   onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
     try {
@@ -114,25 +115,27 @@ describe('Data-flow compiler (fixture round-trip)', () => {
     }
   });
 });`;
-			const parsed = parseDataFlowCode(code);
-			const httpNode = parsed.nodes.find((n) => n.type === 'n8n-nodes-base.httpRequest');
+			const graph = parseDataFlowCodeToGraph(code);
+			const json = semanticGraphToWorkflowJSON(graph, 'OnError Test');
+			const httpNode = json.nodes.find((n) => n.type === 'n8n-nodes-base.httpRequest');
 			expect(httpNode?.onError).toBe('continueErrorOutput');
 
-			const reGenerated = generateDataFlowWorkflowCode(parsed);
+			const reGenerated = generateDataFlowFromGraph(graph, 'OnError Test');
 			expect(normalizeCode(reGenerated)).toBe(normalizeCode(code));
 		});
 
-		it('preserves credentials through code → JSON → code', () => {
+		it('preserves credentials through code → graph → code', () => {
 			const code = `workflow({ name: 'Creds Test' }, () => {
   onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
     const hTTP_Request = executeNode({ type: 'n8n-nodes-base.httpRequest', params: { url: 'https://api.example.com' }, credentials: { httpBasicAuth: { id: '1', name: 'My Auth' } }, version: 4 });
   });
 });`;
-			const parsed = parseDataFlowCode(code);
-			const httpNode = parsed.nodes.find((n) => n.type === 'n8n-nodes-base.httpRequest');
+			const graph = parseDataFlowCodeToGraph(code);
+			const json = semanticGraphToWorkflowJSON(graph, 'Creds Test');
+			const httpNode = json.nodes.find((n) => n.type === 'n8n-nodes-base.httpRequest');
 			expect(httpNode?.credentials).toBeDefined();
 
-			const reGenerated = generateDataFlowWorkflowCode(parsed);
+			const reGenerated = generateDataFlowFromGraph(graph, 'Creds Test');
 			expect(reGenerated).toContain('httpBasicAuth');
 			expect(reGenerated).toContain("name: 'My Auth'");
 		});
@@ -144,38 +147,38 @@ describe('Data-flow compiler (fixture round-trip)', () => {
     const transform = executeNode({ type: 'n8n-nodes-base.set', params: { value: fetch_Data.json.name }, version: 3 });
   });
 });`;
-			const parsed = parseDataFlowCode(code);
+			const graph = parseDataFlowCodeToGraph(code);
+			const json = semanticGraphToWorkflowJSON(graph, 'VarRef Test');
 			// The param should be stored as an n8n expression
-			expect(parsed.nodes[2]!.parameters!.value).toBe('={{ $json.name }}');
+			expect(json.nodes[2]!.parameters!.value).toBe('={{ $json.name }}');
 
-			const reGenerated = generateDataFlowWorkflowCode(parsed);
+			const reGenerated = generateDataFlowFromGraph(graph, 'VarRef Test');
 			// The regenerated code should use variable references, not expr()
 			expect(reGenerated).not.toContain('expr(');
 			expect(reGenerated).toContain('.json.name');
 		});
 
-		it('preserves AI subnodes through code → JSON → code', () => {
+		it('preserves AI subnodes through code → graph → code', () => {
 			const code = `workflow({ name: 'AI Test' }, () => {
   onTrigger({ type: '@n8n/n8n-nodes-langchain.chatTrigger', params: {}, version: 1 }, (items) => {
     const agent = executeNode({ type: '@n8n/n8n-nodes-langchain.agent', params: { agent: 'conversationalAgent' }, version: 1, subnodes: { model: languageModel({ type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', params: { model: 'gpt-4' }, version: 1 }) } });
   });
 });`;
-			const parsed = parseDataFlowCode(code);
+			const graph = parseDataFlowCodeToGraph(code);
+			const json = semanticGraphToWorkflowJSON(graph, 'AI Test');
 
 			// AI model node should exist
-			const modelNode = parsed.nodes.find(
-				(n) => n.type === '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-			);
+			const modelNode = json.nodes.find((n) => n.type === '@n8n/n8n-nodes-langchain.lmChatOpenAi');
 			expect(modelNode).toBeDefined();
 
 			// Should have AI connection
-			const hasAiConn = Object.values(parsed.connections).some((nodeConns) => {
+			const hasAiConn = Object.values(json.connections).some((nodeConns) => {
 				const conns = nodeConns as Record<string, unknown>;
 				return Object.keys(conns).some((k) => k.startsWith('ai_'));
 			});
 			expect(hasAiConn).toBe(true);
 
-			const reGenerated = generateDataFlowWorkflowCode(parsed);
+			const reGenerated = generateDataFlowFromGraph(graph, 'AI Test');
 			expect(reGenerated).toContain('languageModel(');
 			expect(reGenerated).toContain('model:');
 			expect(reGenerated).toContain('lmChatOpenAi');

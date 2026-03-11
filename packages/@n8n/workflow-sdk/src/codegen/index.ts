@@ -66,6 +66,7 @@ export {
 // Data-flow format exports
 export {
 	generateDataFlowWorkflowCode,
+	generateDataFlowFromGraph,
 	parseDataFlowCode,
 	parseDataFlowCodeToGraph,
 } from './dataflow/index';

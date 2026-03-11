@@ -17,6 +17,7 @@ import { generateDataFlowCode } from './dataflow-generator';
 import { buildSemanticGraph } from '../semantic-graph';
 import { annotateGraph } from '../graph-annotator';
 import { buildCompositeTree } from '../composite-builder';
+import type { SemanticGraph } from '../types';
 import type { WorkflowJSON } from '../../types/base';
 
 /**
@@ -64,6 +65,25 @@ export function generateDataFlowWorkflowCode(
 
 	// Phase 4: Generate data-flow code
 	return generateDataFlowCode(tree, workflow, graph);
+}
+
+/**
+ * Generate data-flow code directly from a SemanticGraph.
+ * Skips the JSON intermediary — useful for graph-level round-trips.
+ *
+ * @param graph - The semantic graph (will be mutated by annotation)
+ * @param name - Workflow name
+ * @returns Generated data-flow code as a string
+ */
+export function generateDataFlowFromGraph(graph: SemanticGraph, name: string): string {
+	// Phase 1: Annotate graph with cycle and convergence info
+	annotateGraph(graph);
+
+	// Phase 2: Build composite tree
+	const tree = buildCompositeTree(graph);
+
+	// Phase 3: Generate code (minimal WorkflowJSON for name/pinData only)
+	return generateDataFlowCode(tree, { name, nodes: [], connections: {} }, graph);
 }
 
 // Re-export expression utilities
