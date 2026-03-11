@@ -1,11 +1,9 @@
 // Main exports
 export { ExpressionEvaluator } from './evaluator/expression-evaluator';
 
-// Bridge exports — IsolatedVmBridge uses isolated-vm (native module).
-// Kept as type-only to prevent loading the native binary when other consumers
-// statically import this barrel (e.g. for error classes).
-// Runtime consumers should use: await import('@n8n/expression-runtime/bridge/isolated-vm-bridge')
-export type { IsolatedVmBridge } from './bridge/isolated-vm-bridge';
+// Bridge exports — IsolatedVmBridge lazy-loads isolated-vm internally,
+// so this value re-export does NOT pull in the native binary at import time.
+export { IsolatedVmBridge } from './bridge/isolated-vm-bridge';
 
 // Types
 export type {

@@ -208,13 +208,8 @@ export class Expression {
 		if (this.expressionEngine !== 'vm' || IS_FRONTEND) return;
 
 		if (!this.vmEvaluator) {
-			// IsolatedVmBridge imported from subpath to avoid pulling the native
-			// isolated-vm binary via the barrel file (which is statically imported
-			// elsewhere for error classes).
-			const { ExpressionEvaluator } = await import('@n8n/expression-runtime');
-			const { IsolatedVmBridge } = await import(
-				'@n8n/expression-runtime/dist/esm/bridge/isolated-vm-bridge.js'
-			);
+			// Dynamic import to avoid loading expression-runtime in browser environments
+			const { ExpressionEvaluator, IsolatedVmBridge } = await import('@n8n/expression-runtime');
 			const bridge = new IsolatedVmBridge({ timeout: 5000 });
 			this.vmEvaluator = new ExpressionEvaluator({
 				bridge,
