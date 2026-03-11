@@ -4,7 +4,7 @@ workflow({ name: 'Demo: My first AI Agent in n8n' }, () => {
 			type: '@n8n/n8n-nodes-langchain.chatTrigger',
 			name: 'When chat message received',
 			params: { options: {} },
-			version: 1.1,
+			version: 1.4,
 		},
 		(items) => {
 			const agent = executeNode({
@@ -20,12 +20,12 @@ workflow({ name: 'Demo: My first AI Agent in n8n' }, () => {
 						),
 					},
 				},
-				version: 1.7,
+				version: 3.1,
 				subnodes: {
 					model: languageModel({
 						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
 						params: { options: {} },
-						version: 1,
+						version: 1.3,
 						name: 'OpenAI Model',
 					}),
 				},

@@ -156,7 +156,7 @@
 					"name": "openAiApi Credential"
 				}
 			},
-			"typeVersion": 1.6
+			"typeVersion": 2.1
 		},
 		{
 			"id": "31ab2958-64ed-4bc6-ab4f-a6b858c474f7",
@@ -175,7 +175,7 @@
 					"name": "openAiApi Credential"
 				}
 			},
-			"typeVersion": 1.8
+			"typeVersion": 2.1
 		},
 		{
 			"id": "0dcd7167-f0df-43c7-9b5c-d21b454bafe4",
@@ -204,7 +204,7 @@
 					"name": "openAiApi Credential"
 				}
 			},
-			"typeVersion": 1.8
+			"typeVersion": 2.1
 		},
 		{
 			"id": "3cd3bf29-a49f-475c-873f-79b34effc17b",
@@ -233,7 +233,7 @@
 					"name": "openAiApi Credential"
 				}
 			},
-			"typeVersion": 1.8
+			"typeVersion": 2.1
 		}
 	],
 	"connections": {

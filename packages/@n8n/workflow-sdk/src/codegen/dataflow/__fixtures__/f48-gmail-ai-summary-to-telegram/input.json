@@ -1,5 +1,5 @@
 {
-	"name": "📨 Send AI summaries of incoming emails from Gmail to Telegram",
+	"name": "\ud83d\udce8 Send AI summaries of incoming emails from Gmail to Telegram",
 	"nodes": [
 		{
 			"id": "28581eaf-47f8-43ad-81cf-688d8f77a630",
@@ -104,7 +104,7 @@
 					"name": "openAiApi Credential"
 				}
 			},
-			"typeVersion": 1.2
+			"typeVersion": 1.3
 		},
 		{
 			"id": "8823b3ab-4e9b-4be6-bf6c-9772f1fcd17e",
@@ -138,12 +138,12 @@
 			"parameters": {
 				"text": "=Summarize the following email in this language: {{ $json.summary_language }}\n\nFrom: {{ $json.from }}\nSubject: {{ $json.subject }}\n\n{{ $json.message }}",
 				"options": {
-					"systemMessage": "You summarize emails in a short, natural, and informal way. Use a casual tone, like you're talking to a friend. Always write in the language specified by the user. Include who sent the email, what it’s about, the most relevant details (like purchase info, prices, discounts, dates, or refund conditions), and ignore anything redundant or overly formal. Avoid robotic language, lists, or instructions like “keep this email.” Just say what matters."
+					"systemMessage": "You summarize emails in a short, natural, and informal way. Use a casual tone, like you're talking to a friend. Always write in the language specified by the user. Include who sent the email, what it\u2019s about, the most relevant details (like purchase info, prices, discounts, dates, or refund conditions), and ignore anything redundant or overly formal. Avoid robotic language, lists, or instructions like \u201ckeep this email.\u201d Just say what matters."
 				},
 				"promptType": "define"
 			},
 			"retryOnFail": true,
-			"typeVersion": 1.9,
+			"typeVersion": 3.1,
 			"waitBetweenTries": 3000
 		}
 	],

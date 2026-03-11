@@ -61,7 +61,7 @@ workflow({ name: 'Email Summary Agent' }, () => {
 						jsonOutput: true,
 					},
 					credentials: { openAiApi: { id: 'credential-id', name: 'openAiApi Credential' } },
-					version: 1.7,
+					version: 2.1,
 				}),
 			);
 			const send_Summary_Morning = summarize_Emails_with_OpenAI_Morning.map((item) =>

@@ -25,7 +25,7 @@ workflow({ name: 'Create LinkedIn Post from Telegram Voice or Text Message' }, (
 						name: 'Transcribe Audio',
 						params: { options: {}, resource: 'audio', operation: 'transcribe' },
 						credentials: { openAiApi: { id: 'credential-id', name: 'openAiApi Credential' } },
-						version: 1.6,
+						version: 2.1,
 					});
 					const linkedIn_Post_Text = executeNode({
 						type: '@n8n/n8n-nodes-langchain.openAi',
@@ -49,7 +49,7 @@ workflow({ name: 'Create LinkedIn Post from Telegram Voice or Text Message' }, (
 							},
 						},
 						credentials: { openAiApi: { id: 'credential-id', name: 'openAiApi Credential' } },
-						version: 1.8,
+						version: 2.1,
 					});
 					const image_Prompt = executeNode({
 						type: '@n8n/n8n-nodes-langchain.openAi',
@@ -73,7 +73,7 @@ workflow({ name: 'Create LinkedIn Post from Telegram Voice or Text Message' }, (
 							},
 						},
 						credentials: { openAiApi: { id: 'credential-id', name: 'openAiApi Credential' } },
-						version: 1.8,
+						version: 2.1,
 					});
 					const create_Image = executeNode({
 						type: '@n8n/n8n-nodes-langchain.openAi',
@@ -85,7 +85,7 @@ workflow({ name: 'Create LinkedIn Post from Telegram Voice or Text Message' }, (
 							resource: 'image',
 						},
 						credentials: { openAiApi: { id: 'credential-id', name: 'openAiApi Credential' } },
-						version: 1.8,
+						version: 2.1,
 					});
 					const create_a_post = executeNode({
 						type: 'n8n-nodes-base.linkedIn',

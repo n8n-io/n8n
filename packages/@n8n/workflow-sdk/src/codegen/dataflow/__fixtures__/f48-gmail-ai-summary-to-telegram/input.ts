@@ -88,12 +88,12 @@ workflow({ name: '📨 Send AI summaries of incoming emails from Gmail to Telegr
 						},
 						promptType: 'define',
 					},
-					version: 1.9,
+					version: 3.1,
 					subnodes: {
 						model: languageModel({
 							type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
 							params: { model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' }, options: {} },
-							version: 1.2,
+							version: 1.3,
 							name: 'OpenAI Model',
 							credentials: { openAiApi: { id: 'credential-id', name: 'openAiApi Credential' } },
 						}),
