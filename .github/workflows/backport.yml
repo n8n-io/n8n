@@ -50,7 +50,7 @@ jobs:
 
       - name: Backport
         if: steps.targets.outputs.target_branches != ''
-        uses: korthout/backport-action@c656f5d5851037b2b38fb5db2691a03fa229e3b2 # v4.0.1
+        uses: korthout/backport-action@4aaf0e03a94ff0a619c9a511b61aeb42adea5b02 # v4.2.0
         with:
           github_token: ${{ steps.generate-token.outputs.token }}
           source_pr_number: ${{ github.event.pull_request.number || inputs.pull-request-id }}

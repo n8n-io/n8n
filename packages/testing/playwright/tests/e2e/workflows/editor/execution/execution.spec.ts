@@ -147,7 +147,7 @@ test.describe(
 			await n8n.canvas.openNode('Webhook');
 
 			await n8n.clipboard.grant();
-			await n8n.page.getByTestId('copy-input').click();
+			await n8n.ndv.getCopyInputButton().click();
 			await n8n.ndv.clickBackToCanvasButton();
 
 			const webhookUrl = await n8n.clipboard.readText();

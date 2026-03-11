@@ -3,8 +3,11 @@ import { QdrantVectorStore } from '@langchain/qdrant';
 import {
 	jsonParse,
 	type INodeProperties,
+	type ICredentialsDecrypted,
+	type ICredentialTestFunctions,
 	type IDataObject,
 	type ILoadOptionsFunctions,
+	type INodeCredentialTestResult,
 	type NodeParameterValueType,
 } from 'n8n-workflow';
 
@@ -53,6 +56,28 @@ async function ensurePayloadIndexes(
 	}
 }
 
+async function chatHubVectorStoreQdrantApiConnectionTest(
+	this: ICredentialTestFunctions,
+	credential: ICredentialsDecrypted,
+): Promise<INodeCredentialTestResult> {
+	const credentials = credential.data as ChatHubVectorStoreQdrantApiCredentials;
+
+	try {
+		const client = createQdrantClient(credentials);
+		await client.getCollections();
+	} catch (error) {
+		return {
+			status: 'Error',
+			message: error.message as string,
+		};
+	}
+
+	return {
+		status: 'OK',
+		message: 'Connection successful',
+	};
+}
+
 async function deleteDocuments(
 	this: ILoadOptionsFunctions,
 	payload: IDataObject | string | undefined,
@@ -97,12 +122,16 @@ export class ChatHubVectorStoreQdrant extends createVectorStoreNode<QdrantVector
 			{
 				name: 'chatHubVectorStoreQdrantApi',
 				required: true,
+				testedBy: 'chatHubVectorStoreQdrantApiConnectionTest',
 			},
 		],
 		operationModes: ['load', 'insert', 'retrieve', 'retrieve-as-tool'],
 	},
 	hidden: true,
-	methods: { actionHandler: { deleteDocuments } },
+	methods: {
+		credentialTest: { chatHubVectorStoreQdrantApiConnectionTest },
+		actionHandler: { deleteDocuments },
+	},
 	sharedFields: [],
 	insertFields: [],
 	loadFields: retrieveFields,
