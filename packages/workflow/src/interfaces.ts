@@ -332,6 +332,11 @@ export interface ICredentialTestRequest {
 	rules?: IAuthenticateRuleResponseCode[] | IAuthenticateRuleResponseSuccessBody[];
 }
 
+export interface ICredentialTaglineRequest {
+	request: DeclarativeRestApiSettings.HttpRequestOptions;
+	result: (data: IDataObject) => string;
+}
+
 export interface ICredentialTestRequestData {
 	nodeType?: INodeType;
 	testRequest: ICredentialTestRequest;
@@ -366,6 +371,7 @@ export interface ICredentialType {
 		credentials: ICredentialDataDecryptedObject,
 	) => Promise<IDataObject>;
 	test?: ICredentialTestRequest;
+	tagline?: ICredentialTaglineRequest;
 	genericAuth?: boolean;
 	httpRequestNode?: ICredentialHttpRequestNode;
 	supportedNodes?: string[];

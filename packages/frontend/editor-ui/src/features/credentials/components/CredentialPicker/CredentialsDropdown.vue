@@ -10,6 +10,7 @@ export type CredentialOption = {
 	id: string;
 	name: string;
 	typeDisplayName: string | undefined;
+	tagline?: string;
 	homeProject?: ProjectSharingData;
 };
 
@@ -77,9 +78,9 @@ const onCreateNewCredential = async () => {
 			<div :class="[$style.credentialOption, 'mt-2xs mb-2xs']">
 				<N8nText bold>{{ item.name }}</N8nText>
 				<N8nText v-if="item.homeProject" size="small">
-					{{ `${item.typeDisplayName} - ${item.homeProject?.name}` }}
+					{{ `${item.tagline ?? item.typeDisplayName} - ${item.homeProject?.name}` }}
 				</N8nText>
-				<N8nText v-else size="small">{{ item.typeDisplayName }}</N8nText>
+				<N8nText v-else size="small">{{ item.tagline ?? item.typeDisplayName }}</N8nText>
 			</div>
 		</N8nOption>
 		<template #empty> </template>

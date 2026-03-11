@@ -54,6 +54,22 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 
 	const rootStore = useRootStore();
 
+	const credentialTaglines = ref(new Map<string, string>());
+
+	const fetchCredentialTagline = async (
+		credentialId: string,
+		{ force = false } = {},
+	): Promise<void> => {
+		if (!force && credentialTaglines.value.has(credentialId)) return;
+		const tagline = await credentialsApi.getCredentialTagline(
+			rootStore.restApiContext,
+			credentialId,
+		);
+		if (tagline !== null) {
+			credentialTaglines.value = new Map(credentialTaglines.value).set(credentialId, tagline);
+		}
+	};
+
 	// ---------------------------------------------------------------------------
 	// #region Computed
 	// ---------------------------------------------------------------------------
@@ -484,6 +500,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	return {
 		state,
 		credentialTestResults,
+		credentialTaglines,
 		isCredentialTestedOk,
 		isCredentialTestPending,
 		getCredentialOwnerName,
@@ -520,6 +537,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		getCredentialTranslation,
 		setCredentialSharedWith,
 		claimFreeAiCredits,
+		fetchCredentialTagline,
 	};
 });
 
