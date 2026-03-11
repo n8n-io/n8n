@@ -3,12 +3,19 @@ import { execSync } from 'child_process';
 import { accessSync, constants } from 'fs';
 
 import { BubblewrapDriver } from './drivers/BubblewrapDriver';
+import { CommandServiceDriver } from './drivers/CommandServiceDriver';
 import { DockerDriver } from './drivers/DockerDriver';
 import { HostDriver } from './drivers/HostDriver';
-import type { ICommandExecutor } from './drivers/ICommandExecutor';
+import type { ICommandExecutor, IVolumeManager } from './drivers/ICommandExecutor';
 import { SandboxRuntimeDriver } from './drivers/SandboxRuntimeDriver';
 
-export type DriverType = 'host' | 'docker' | 'bubblewrap' | 'sandbox-runtime' | 'auto';
+export type DriverType =
+	| 'host'
+	| 'docker'
+	| 'bubblewrap'
+	| 'sandbox-runtime'
+	| 'command-service'
+	| 'auto';
 
 export interface DriverSelection {
 	driver: ICommandExecutor;
@@ -50,6 +57,19 @@ export function createDriver(driverType: DriverType = 'auto'): DriverSelection {
 			: driverType;
 
 	switch (requested) {
+		case 'command-service': {
+			const serviceUrl = process.env.N8N_SECURE_EXEC_COMMAND_SERVICE_URL;
+			if (!serviceUrl) {
+				throw new Error(
+					'N8N_SECURE_EXEC_COMMAND_SERVICE_URL must be set when using the command-service driver',
+				);
+			}
+			return {
+				driver: new CommandServiceDriver(serviceUrl),
+				type: 'command-service',
+				isUnsafeFallback: false,
+			};
+		}
 		case 'docker':
 			return { driver: new DockerDriver(), type: 'docker', isUnsafeFallback: false };
 		case 'bubblewrap':
@@ -64,6 +84,7 @@ export function createDriver(driverType: DriverType = 'auto'): DriverSelection {
 			return { driver: new HostDriver(), type: 'host', isUnsafeFallback: false };
 		case 'auto':
 		default: {
+			// command-service is never auto-detected — must be explicitly configured
 			if (isDockerAvailable()) {
 				return { driver: new DockerDriver(), type: 'docker', isUnsafeFallback: false };
 			}
@@ -80,4 +101,14 @@ export function createDriver(driverType: DriverType = 'auto'): DriverSelection {
 			return { driver: new HostDriver(), type: 'host', isUnsafeFallback: true };
 		}
 	}
+}
+
+/**
+ * Type guard to check whether a driver supports volume management.
+ * Only the CommandServiceDriver implements IVolumeManager.
+ */
+export function isVolumeManager(
+	driver: ICommandExecutor,
+): driver is ICommandExecutor & IVolumeManager {
+	return 'createVolume' in driver && 'listVolumes' in driver && 'deleteVolume' in driver;
 }

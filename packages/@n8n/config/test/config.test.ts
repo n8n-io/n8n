@@ -168,6 +168,10 @@ describe('GlobalConfig', () => {
 			include: [],
 			exclude: ['n8n-nodes-base.executeCommand', 'n8n-nodes-base.localFileTrigger'],
 			pythonEnabled: true,
+			secureExecDriver: 'auto',
+			secureExecDockerImage: 'ubuntu:24.04',
+			secureExecTimeoutMs: 30_000,
+			secureExecCommandServiceUrl: '',
 		},
 		publicApi: {
 			disabled: false,

@@ -46,9 +46,10 @@ export class NodesConfig {
 	/**
 	 * Isolation driver used by the Secure Exec node.
 	 * `auto` (default) picks Docker → Bubblewrap → Host in order of availability.
+	 * `command-service` delegates to a remote command-execution-service over HTTP.
 	 */
 	@Env('N8N_SECURE_EXEC_DRIVER')
-	secureExecDriver: 'auto' | 'docker' | 'bubblewrap' | 'host' = 'auto';
+	secureExecDriver: 'auto' | 'docker' | 'bubblewrap' | 'host' | 'command-service' = 'auto';
 
 	/** Default Docker image for the Secure Exec node when using the Docker driver. */
 	@Env('N8N_SECURE_EXEC_DOCKER_IMAGE')
@@ -57,4 +58,12 @@ export class NodesConfig {
 	/** Default timeout in milliseconds for Secure Exec node commands. */
 	@Env('N8N_SECURE_EXEC_TIMEOUT_MS')
 	secureExecTimeoutMs: number = 30_000;
+
+	/**
+	 * Base URL of the command-execution-service.
+	 * Required when `N8N_SECURE_EXEC_DRIVER=command-service`.
+	 * @example 'http://localhost:5682'
+	 */
+	@Env('N8N_SECURE_EXEC_COMMAND_SERVICE_URL')
+	secureExecCommandServiceUrl: string = '';
 }
