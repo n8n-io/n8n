@@ -51,7 +51,7 @@ export interface GenerateWorkflowCodeOptions {
 }
 
 // Re-export individual functions for testing and extension
-export { buildSemanticGraph } from './semantic-graph';
+export { buildSemanticGraph, semanticGraphToWorkflowJSON } from './semantic-graph';
 export { annotateGraph } from './graph-annotator';
 export { buildCompositeTree } from './composite-builder';
 export { generateCode } from './code-generator';
@@ -64,7 +64,11 @@ export {
 } from './semantic-registry';
 
 // Data-flow format exports
-export { generateDataFlowWorkflowCode, parseDataFlowCode } from './dataflow/index';
+export {
+	generateDataFlowWorkflowCode,
+	parseDataFlowCode,
+	parseDataFlowCodeToGraph,
+} from './dataflow/index';
 export type { GenerateDataFlowCodeOptions } from './dataflow/index';
 export { n8nExprToDataFlow, dataFlowExprToN8n } from './dataflow/dataflow-expression';
 

@@ -161,7 +161,11 @@ export { generateWorkflowCode } from './codegen/index';
 export { parseWorkflowCode, parseWorkflowCodeToBuilder } from './codegen/parse-workflow-code';
 
 // Data-flow code format
-export { generateDataFlowWorkflowCode, parseDataFlowCode } from './codegen/dataflow/index';
+export {
+	generateDataFlowWorkflowCode,
+	parseDataFlowCode,
+	parseDataFlowCodeToGraph,
+} from './codegen/dataflow/index';
 export type { GenerateDataFlowCodeOptions } from './codegen/dataflow/index';
 export { n8nExprToDataFlow, dataFlowExprToN8n } from './codegen/dataflow/dataflow-expression';
 

@@ -206,3 +206,62 @@ export function isCycleOutput(type: string, outputName: string): boolean {
 	const semantics = NODE_SEMANTICS[type];
 	return semantics?.cycleOutput === outputName;
 }
+
+/**
+ * Reverse lookup: semantic output name → output index.
+ *
+ * @param type - Node type
+ * @param semanticName - Semantic output name (e.g., 'trueBranch', 'error', 'output0')
+ * @param node - Full node JSON (needed for dynamic outputs)
+ * @returns The output index, or -1 if not found
+ */
+export function getOutputIndex(type: string, semanticName: string, node: NodeJSON): number {
+	// Handle 'error' output
+	if (semanticName === 'error' && hasErrorOutput(node)) {
+		return getErrorOutputIndex(type, node);
+	}
+
+	// Handle generic 'outputN' names
+	const genericMatch = /^output(\d+)$/.exec(semanticName);
+	if (genericMatch) {
+		return parseInt(genericMatch[1], 10);
+	}
+
+	// Handle registered semantic names
+	const semantics = NODE_SEMANTICS[type];
+	if (semantics) {
+		const outputs =
+			typeof semantics.outputs === 'function' ? semantics.outputs(node) : semantics.outputs;
+		const index = outputs.indexOf(semanticName);
+		if (index >= 0) return index;
+	}
+
+	return -1;
+}
+
+/**
+ * Reverse lookup: semantic input name → input index.
+ *
+ * @param type - Node type
+ * @param semanticName - Semantic input name (e.g., 'branch0', 'input0')
+ * @param node - Full node JSON (needed for dynamic inputs)
+ * @returns The input index, or -1 if not found
+ */
+export function getInputIndex(type: string, semanticName: string, node: NodeJSON): number {
+	// Handle generic 'inputN' names
+	const genericMatch = /^input(\d+)$/.exec(semanticName);
+	if (genericMatch) {
+		return parseInt(genericMatch[1], 10);
+	}
+
+	// Handle registered semantic names
+	const semantics = NODE_SEMANTICS[type];
+	if (semantics) {
+		const inputs =
+			typeof semantics.inputs === 'function' ? semantics.inputs(node) : semantics.inputs;
+		const index = inputs.indexOf(semanticName);
+		if (index >= 0) return index;
+	}
+
+	return -1;
+}

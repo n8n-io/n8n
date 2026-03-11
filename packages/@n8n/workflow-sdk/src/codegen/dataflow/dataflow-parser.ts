@@ -44,6 +44,8 @@ import type {
 	IConnection,
 	IDataObject,
 } from '../../types/base';
+import type { SemanticGraph } from '../types';
+import { buildSemanticGraph, semanticGraphToWorkflowJSON } from '../semantic-graph';
 import { AI_CONNECTION_TO_CONFIG_KEY, AI_CONNECTION_TO_BUILDER } from '../constants';
 
 // Build reverse maps: builder name → connection type, config key → connection type
@@ -332,7 +334,7 @@ function addConnection(
 	connectionType: string = 'main',
 ): void {
 	if (!state.connections[fromNodeName]) {
-		state.connections[fromNodeName] = { main: [] };
+		state.connections[fromNodeName] = {};
 	}
 	const nodeConns = state.connections[fromNodeName];
 	if (!nodeConns[connectionType]) {
@@ -837,6 +839,12 @@ function processSubnodes(config: NodeConfig, parentNodeName: string, state: Pars
 			};
 
 			const { node: subnodeJSON } = createNodeJSON(subnodeConfig, state);
+
+			// Position subnode below its parent node (AI subnodes render beneath)
+			const parentNode = state.nodes.find((n) => n.name === parentNodeName);
+			if (parentNode) {
+				subnodeJSON.position = [parentNode.position[0] + i * 200, parentNode.position[1] + 200];
+			}
 
 			// Connect subnode to parent using the AI connection type
 			addConnection(state, subnodeJSON.name!, parentNodeName, 0, i, connectionType);
@@ -1958,7 +1966,7 @@ function processWorkflowBody(
  * @returns The WorkflowJSON representation
  * @throws Error if the code cannot be parsed
  */
-export function parseDataFlowCode(code: string): WorkflowJSON {
+function internalParseToJSON(code: string): WorkflowJSON {
 	const program = parseSDKCode(code);
 
 	const { name, bodyFn } = findWorkflowCall(program);
@@ -1992,4 +2000,30 @@ export function parseDataFlowCode(code: string): WorkflowJSON {
 		connections: state.connections,
 		...(Object.keys(pinData).length > 0 ? { pinData } : {}),
 	};
+}
+
+/**
+ * Parse data-flow code to a SemanticGraph.
+ * This is the canonical intermediate representation shared with the generation pipeline.
+ */
+export function parseDataFlowCodeToGraph(code: string): SemanticGraph {
+	const json = internalParseToJSON(code);
+	return buildSemanticGraph(json);
+}
+
+/**
+ * Parse data-flow code to WorkflowJSON.
+ * Routes through SemanticGraph for normalized output.
+ */
+export function parseDataFlowCode(code: string): WorkflowJSON {
+	const json = internalParseToJSON(code);
+	const graph = buildSemanticGraph(json);
+	const result = semanticGraphToWorkflowJSON(graph, json.name);
+
+	// Preserve pinData (collected from node.output fields, already in SemanticNode.json)
+	if (json.pinData && Object.keys(json.pinData).length > 0) {
+		result.pinData = json.pinData;
+	}
+
+	return result;
 }

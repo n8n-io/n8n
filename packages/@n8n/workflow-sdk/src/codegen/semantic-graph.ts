@@ -7,10 +7,10 @@
 
 import { deepCopy } from 'n8n-workflow';
 
-import { getOutputName, getInputName } from './semantic-registry';
+import { getOutputName, getInputName, getOutputIndex, getInputIndex } from './semantic-registry';
 import type { SemanticGraph, SemanticNode, SemanticConnection, AiConnectionType } from './types';
 import { AI_CONNECTION_TYPES } from './types';
-import type { WorkflowJSON, NodeJSON } from '../types/base';
+import type { WorkflowJSON, NodeJSON, IConnections } from '../types/base';
 import { normalizeConnections, generateUniqueName } from '../types/base';
 import { isTriggerNodeType } from '../utils/trigger-detection';
 
@@ -392,4 +392,91 @@ export function buildSemanticGraph(json: WorkflowJSON): SemanticGraph {
 	graph.roots.push(...disconnectedRoots);
 
 	return graph;
+}
+
+/**
+ * Convert a SemanticGraph back to WorkflowJSON.
+ * Inverse of buildSemanticGraph().
+ */
+export function semanticGraphToWorkflowJSON(graph: SemanticGraph, name: string): WorkflowJSON {
+	const nodes: NodeJSON[] = [];
+	const connections: IConnections = {};
+
+	// Collect all subnode names (to identify AI-only nodes)
+	const subnodeNames = new Set<string>();
+	for (const [, node] of graph.nodes) {
+		for (const sub of node.subnodes) {
+			subnodeNames.add(sub.subnodeName);
+		}
+	}
+
+	// Extract nodes (preserving insertion order from Map)
+	for (const [, node] of graph.nodes) {
+		nodes.push(node.json);
+	}
+
+	// Convert semantic outputs → index-based connections
+	for (const [nodeName, node] of graph.nodes) {
+		for (const [outputSlot, targets] of node.outputs) {
+			const outputIndex = getOutputIndex(node.type, outputSlot, node.json);
+			if (outputIndex < 0) continue;
+
+			// Determine connection type: 'error' semantic output uses 'main' at error index
+			const connType = 'main';
+
+			if (!connections[nodeName]) {
+				connections[nodeName] = {};
+			}
+			if (!connections[nodeName][connType]) {
+				connections[nodeName][connType] = [];
+			}
+			const outputs = connections[nodeName][connType];
+
+			// Ensure array is large enough
+			while (outputs.length <= outputIndex) {
+				outputs.push([]);
+			}
+			if (!outputs[outputIndex]) {
+				outputs[outputIndex] = [];
+			}
+
+			for (const target of targets) {
+				const targetNode = graph.nodes.get(target.target);
+				if (!targetNode) continue;
+				const inputIndex = getInputIndex(targetNode.type, target.targetInputSlot, targetNode.json);
+				outputs[outputIndex]!.push({
+					node: target.target,
+					type: connType,
+					index: inputIndex >= 0 ? inputIndex : 0,
+				});
+			}
+		}
+
+		// Convert subnodes → AI connections
+		for (const sub of node.subnodes) {
+			const subNodeName = sub.subnodeName;
+			if (!connections[subNodeName]) {
+				connections[subNodeName] = {};
+			}
+			const aiType = sub.connectionType;
+			if (!connections[subNodeName][aiType]) {
+				connections[subNodeName][aiType] = [];
+			}
+			const aiOutputs = connections[subNodeName][aiType];
+			// Subnodes connect from output 0 to the parent at the subnode's index
+			while (aiOutputs.length <= 0) {
+				aiOutputs.push([]);
+			}
+			if (!aiOutputs[0]) {
+				aiOutputs[0] = [];
+			}
+			aiOutputs[0]!.push({
+				node: nodeName,
+				type: aiType,
+				index: sub.index,
+			});
+		}
+	}
+
+	return { name, nodes, connections };
 }

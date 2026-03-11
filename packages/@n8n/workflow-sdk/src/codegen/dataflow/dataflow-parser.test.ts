@@ -1,4 +1,5 @@
-import { parseDataFlowCode } from './dataflow-parser';
+import { parseDataFlowCode, parseDataFlowCodeToGraph } from './dataflow-parser';
+import { semanticGraphToWorkflowJSON } from '../semantic-graph';
 
 describe('parseDataFlowCode', () => {
 	describe('executeNode() parsing', () => {
@@ -184,6 +185,38 @@ describe('parseDataFlowCode', () => {
 			expect(modelConns![0]).toEqual([
 				{ node: agentNode.name, type: 'ai_languageModel', index: 0 },
 			]);
+
+			// AI-only subnode should NOT have a spurious 'main' key in connections
+			expect(result.connections[modelNode.name!]?.main).toBeUndefined();
+		});
+
+		it('should position subnodes below their parent node', () => {
+			const code = `workflow({ name: 'AI' }, () => {
+  onTrigger({ type: '@n8n/n8n-nodes-langchain.chatTrigger', params: {}, version: 1 }, (items) => {
+    const agent = executeNode({
+      type: '@n8n/n8n-nodes-langchain.agent',
+      params: { agent: 'conversationalAgent' },
+      version: 1,
+      subnodes: {
+        model: languageModel({
+          type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+          params: { model: 'gpt-4' },
+          version: 1,
+        }),
+      },
+    });
+  });
+});`;
+
+			const result = parseDataFlowCode(code);
+
+			const agentNode = result.nodes.find((n) => n.type === '@n8n/n8n-nodes-langchain.agent')!;
+			const modelNode = result.nodes.find(
+				(n) => n.type === '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			)!;
+
+			// Subnode Y position should be greater than parent (below it on canvas)
+			expect(modelNode.position[1]).toBeGreaterThan(agentNode.position[1]);
 		});
 
 		it('should parse tools array with tool() builders', () => {
@@ -1025,6 +1058,106 @@ describe('parseDataFlowCode', () => {
 			expect(reParsed.nodes).toEqual(parsed.nodes);
 			expect(reParsed.connections).toEqual(parsed.connections);
 			expect(reParsed.pinData).toEqual(parsed.pinData);
+		});
+	});
+
+	describe('parseDataFlowCodeToGraph', () => {
+		it('should return a SemanticGraph with nodes and roots', () => {
+			const code = `workflow({ name: 'Test' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    const result = items.map((item) =>
+      executeNode({ type: 'n8n-nodes-base.httpRequest', params: { url: 'https://example.com' }, version: 4 }),
+    );
+  });
+});`;
+
+			const graph = parseDataFlowCodeToGraph(code);
+
+			expect(graph.nodes.size).toBe(2);
+			expect(graph.roots).toContain('Manual Trigger');
+			// HTTP Request should not be a root (it has incoming)
+			const httpNode = [...graph.nodes.values()].find(
+				(n) => n.type === 'n8n-nodes-base.httpRequest',
+			)!;
+			expect(graph.roots).not.toContain(httpNode.name);
+		});
+
+		it('should store semantic connections on nodes', () => {
+			const code = `workflow({ name: 'Test' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    const result = items.map((item) =>
+      executeNode({ type: 'n8n-nodes-base.httpRequest', params: { url: 'https://example.com' }, version: 4 }),
+    );
+  });
+});`;
+
+			const graph = parseDataFlowCodeToGraph(code);
+
+			const trigger = [...graph.nodes.values()].find(
+				(n) => n.type === 'n8n-nodes-base.manualTrigger',
+			)!;
+			const httpNode = [...graph.nodes.values()].find(
+				(n) => n.type === 'n8n-nodes-base.httpRequest',
+			)!;
+
+			// Trigger should have output0 → HTTP Request
+			const output = trigger.outputs.get('output0');
+			expect(output).toBeDefined();
+			expect(output![0].target).toBe(httpNode.name);
+
+			// HTTP should have input from trigger
+			const input = httpNode.inputSources.get('input0');
+			expect(input).toBeDefined();
+			expect(input![0].from).toBe(trigger.name);
+		});
+
+		it('should store AI subnodes on parent node', () => {
+			const code = `workflow({ name: 'AI' }, () => {
+  onTrigger({ type: '@n8n/n8n-nodes-langchain.chatTrigger', params: {}, version: 1 }, (items) => {
+    const agent = executeNode({
+      type: '@n8n/n8n-nodes-langchain.agent',
+      params: { agent: 'conversationalAgent' },
+      version: 1,
+      subnodes: {
+        model: languageModel({
+          type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+          params: { model: 'gpt-4' },
+          version: 1,
+        }),
+      },
+    });
+  });
+});`;
+
+			const graph = parseDataFlowCodeToGraph(code);
+
+			const agent = [...graph.nodes.values()].find(
+				(n) => n.type === '@n8n/n8n-nodes-langchain.agent',
+			)!;
+			expect(agent.subnodes).toHaveLength(1);
+			expect(agent.subnodes[0].connectionType).toBe('ai_languageModel');
+
+			// Model node should exist in graph but NOT have 'main' connections
+			const model = graph.nodes.get(agent.subnodes[0].subnodeName)!;
+			expect(model).toBeDefined();
+			expect(model.outputs.size).toBe(0);
+		});
+
+		it('should produce equivalent JSON when converted via semanticGraphToWorkflowJSON', () => {
+			const code = `workflow({ name: 'Test' }, () => {
+  onTrigger({ type: 'n8n-nodes-base.manualTrigger', params: {}, version: 1 }, (items) => {
+    const result = items.map((item) =>
+      executeNode({ type: 'n8n-nodes-base.httpRequest', params: { url: 'https://example.com' }, version: 4 }),
+    );
+  });
+});`;
+
+			const directJson = parseDataFlowCode(code);
+			const graph = parseDataFlowCodeToGraph(code);
+			const graphJson = semanticGraphToWorkflowJSON(graph, 'Test');
+
+			expect(graphJson.nodes).toEqual(directJson.nodes);
+			expect(graphJson.connections).toEqual(directJson.connections);
 		});
 	});
 });

@@ -73,4 +73,4 @@ export { n8nExprToDataFlow, dataFlowExprToN8n } from './dataflow-expression';
 export { generateDataFlowCode } from './dataflow-generator';
 
 // Parser
-export { parseDataFlowCode } from './dataflow-parser';
+export { parseDataFlowCode, parseDataFlowCodeToGraph } from './dataflow-parser';
