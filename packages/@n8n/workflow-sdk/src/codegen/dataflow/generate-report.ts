@@ -158,6 +158,8 @@ function generateHtml(entries: CompilerTestEntry[]): string {
     .code code.hljs { background: transparent; padding: 0; }
     .demo { margin-top: 12px; }
     n8n-demo { width: 100%; min-height: 300px; display: block; }
+    .sub-workflow { margin-top: 16px; border-left: 2px solid #30363d; padding-left: 12px; }
+    .sub-workflow-label { font-size: 13px; font-weight: 600; color: #8b949e; margin-bottom: 8px; }
 
     .summary { margin-bottom: 20px; display: flex; flex-direction: column; gap: 6px; }
     .summary-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
@@ -188,12 +190,59 @@ ${cards}
   }
   function saveOpenSet(s) { localStorage.setItem(STORAGE_KEY, JSON.stringify([...s])); }
 
+  function extractSubWorkflows(workflowJson, depth) {
+    depth = depth || 0;
+    var results = [];
+    try {
+      var wf = typeof workflowJson === 'string' ? JSON.parse(workflowJson) : workflowJson;
+      if (!wf || !wf.nodes) return results;
+      for (var i = 0; i < wf.nodes.length; i++) {
+        var node = wf.nodes[i];
+        if (node.parameters && node.parameters.workflowJson) {
+          try {
+            var subWf = typeof node.parameters.workflowJson === 'string'
+              ? JSON.parse(node.parameters.workflowJson)
+              : node.parameters.workflowJson;
+            results.push({ name: node.name || 'Sub-workflow', workflow: subWf, depth: depth + 1 });
+            var nested = extractSubWorkflows(subWf, depth + 1);
+            for (var j = 0; j < nested.length; j++) results.push(nested[j]);
+          } catch (e) {}
+        }
+      }
+    } catch (e) {}
+    return results;
+  }
+
   function hydrateDemos(container) {
     container.querySelectorAll('template.lazy-demo').forEach(tmpl => {
-      const demo = document.createElement('n8n-demo');
+      var wrapper = document.createElement('div');
+
+      var demo = document.createElement('n8n-demo');
       demo.setAttribute('tidyup', 'true');
       demo.setAttribute('workflow', tmpl.dataset.workflow);
-      tmpl.replaceWith(demo);
+      wrapper.appendChild(demo);
+
+      var subs = extractSubWorkflows(tmpl.dataset.workflow);
+      for (var i = 0; i < subs.length; i++) {
+        var sub = subs[i];
+        var section = document.createElement('div');
+        section.className = 'sub-workflow';
+        section.style.marginLeft = (sub.depth * 20) + 'px';
+
+        var label = document.createElement('div');
+        label.className = 'sub-workflow-label';
+        label.textContent = '\u21B3 Sub-workflow: ' + sub.name;
+        section.appendChild(label);
+
+        var subDemo = document.createElement('n8n-demo');
+        subDemo.setAttribute('tidyup', 'true');
+        subDemo.setAttribute('workflow', JSON.stringify(sub.workflow));
+        section.appendChild(subDemo);
+
+        wrapper.appendChild(section);
+      }
+
+      tmpl.replaceWith(wrapper);
     });
   }
 
