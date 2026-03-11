@@ -1,0 +1,22 @@
+# Frontend Dockerfile — builds from engine package context
+#
+# Build context: packages/@n8n/engine/
+# Usage: docker build -f Dockerfile.web .
+
+FROM node:22-alpine
+
+WORKDIR /app
+
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Copy web package manifest
+COPY src/web/package.json ./
+
+# Install dependencies (versions are pinned, no catalog: needed)
+RUN pnpm install
+
+# Copy web source
+COPY src/web/ ./
+
+EXPOSE 3200
+CMD ["npx", "vite", "--host", "0.0.0.0", "--port", "3200"]

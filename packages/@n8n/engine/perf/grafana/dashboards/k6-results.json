@@ -1,0 +1,127 @@
+{
+	"annotations": { "list": [] },
+	"editable": true,
+	"graphTooltip": 1,
+	"panels": [
+		{
+			"title": "HTTP Request Duration (ms)",
+			"type": "timeseries",
+			"gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+			"datasource": "InfluxDB",
+			"targets": [
+				{
+					"alias": "p95",
+					"query": "SELECT percentile(\"value\", 95) FROM \"http_req_duration\" WHERE $timeFilter GROUP BY time($__interval)",
+					"rawQuery": true,
+					"refId": "A",
+					"resultFormat": "time_series"
+				},
+				{
+					"alias": "p99",
+					"query": "SELECT percentile(\"value\", 99) FROM \"http_req_duration\" WHERE $timeFilter GROUP BY time($__interval)",
+					"rawQuery": true,
+					"refId": "B",
+					"resultFormat": "time_series"
+				},
+				{
+					"alias": "avg",
+					"query": "SELECT mean(\"value\") FROM \"http_req_duration\" WHERE $timeFilter GROUP BY time($__interval)",
+					"rawQuery": true,
+					"refId": "C",
+					"resultFormat": "time_series"
+				}
+			],
+			"fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] }
+		},
+		{
+			"title": "Request Rate (req/s)",
+			"type": "timeseries",
+			"gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+			"datasource": "InfluxDB",
+			"targets": [
+				{
+					"alias": "req/s",
+					"query": "SELECT count(\"value\") FROM \"http_reqs\" WHERE $timeFilter GROUP BY time($__interval)",
+					"rawQuery": true,
+					"refId": "A",
+					"resultFormat": "time_series"
+				}
+			],
+			"fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] }
+		},
+		{
+			"title": "Active VUs",
+			"type": "timeseries",
+			"gridPos": { "h": 6, "w": 12, "x": 0, "y": 8 },
+			"datasource": "InfluxDB",
+			"targets": [
+				{
+					"alias": "VUs",
+					"query": "SELECT mean(\"value\") FROM \"vus\" WHERE $timeFilter GROUP BY time($__interval)",
+					"rawQuery": true,
+					"refId": "A",
+					"resultFormat": "time_series"
+				}
+			]
+		},
+		{
+			"title": "Errors",
+			"type": "stat",
+			"gridPos": { "h": 6, "w": 12, "x": 12, "y": 8 },
+			"datasource": "InfluxDB",
+			"targets": [
+				{
+					"alias": "failed",
+					"query": "SELECT sum(\"value\") FROM \"http_req_failed\" WHERE $timeFilter",
+					"rawQuery": true,
+					"refId": "A",
+					"resultFormat": "time_series"
+				}
+			]
+		},
+		{
+			"title": "Response Time Distribution (ms)",
+			"type": "timeseries",
+			"gridPos": { "h": 8, "w": 24, "x": 0, "y": 14 },
+			"datasource": "InfluxDB",
+			"targets": [
+				{
+					"alias": "min",
+					"query": "SELECT min(\"value\") FROM \"http_req_duration\" WHERE $timeFilter GROUP BY time($__interval)",
+					"rawQuery": true,
+					"refId": "A",
+					"resultFormat": "time_series"
+				},
+				{
+					"alias": "p50",
+					"query": "SELECT percentile(\"value\", 50) FROM \"http_req_duration\" WHERE $timeFilter GROUP BY time($__interval)",
+					"rawQuery": true,
+					"refId": "B",
+					"resultFormat": "time_series"
+				},
+				{
+					"alias": "p90",
+					"query": "SELECT percentile(\"value\", 90) FROM \"http_req_duration\" WHERE $timeFilter GROUP BY time($__interval)",
+					"rawQuery": true,
+					"refId": "C",
+					"resultFormat": "time_series"
+				},
+				{
+					"alias": "max",
+					"query": "SELECT max(\"value\") FROM \"http_req_duration\" WHERE $timeFilter GROUP BY time($__interval)",
+					"rawQuery": true,
+					"refId": "D",
+					"resultFormat": "time_series"
+				}
+			],
+			"fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] }
+		}
+	],
+	"refresh": "5s",
+	"schemaVersion": 39,
+	"tags": ["k6"],
+	"time": { "from": "now-5m", "to": "now" },
+	"title": "k6 Performance Results",
+	"uid": "k6-perf",
+	"version": 1
+}

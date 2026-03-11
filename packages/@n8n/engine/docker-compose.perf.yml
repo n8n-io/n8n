@@ -1,0 +1,69 @@
+# Performance testing compose — isolated network, clean database
+#
+# Usage:
+#   pnpm perf:up    # Start
+#   pnpm perf       # Run k6 tests
+#   pnpm perf:down  # Tear down
+#
+# Grafana dashboard: http://localhost:3300/d/k6-perf
+
+networks:
+  perf:
+    name: engine-perf
+
+services:
+  postgres-perf:
+    image: postgres:16-alpine
+    networks: [perf]
+    environment:
+      POSTGRES_DB: engine_perf
+      POSTGRES_USER: engine
+      POSTGRES_PASSWORD: engine
+    ports:
+      - '5435:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U engine']
+      interval: 2s
+      timeout: 2s
+      retries: 10
+    tmpfs:
+      - /var/lib/postgresql/data
+
+  api-perf:
+    build:
+      context: ../../../
+      dockerfile: packages/@n8n/engine/Dockerfile
+      target: dev
+    networks: [perf]
+    ports:
+      - '3101:3101'
+    environment:
+      DATABASE_URL: postgres://engine:engine@postgres-perf:5432/engine_perf
+      PORT: '3101'
+      NODE_ENV: production
+    depends_on:
+      postgres-perf:
+        condition: service_healthy
+
+  influxdb:
+    image: influxdb:1.11
+    networks: [perf]
+    environment:
+      INFLUXDB_DB: k6
+    ports:
+      - '8086:8086'
+
+  grafana:
+    image: grafana/grafana:latest
+    networks: [perf]
+    ports:
+      - '3300:3000'
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: 'true'
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ./perf/grafana/provisioning:/etc/grafana/provisioning
+      - ./perf/grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - influxdb

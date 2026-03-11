@@ -1,0 +1,28 @@
+# Test compose — ephemeral database only
+#
+# Usage:
+#   docker compose -f docker-compose.test.yml up -d
+#   DATABASE_URL=postgres://engine:engine@localhost:5434/engine_test pnpm test
+#   docker compose -f docker-compose.test.yml down
+
+networks:
+  test:
+    name: engine-test
+
+services:
+  postgres-test:
+    image: postgres:16-alpine
+    networks: [test]
+    environment:
+      POSTGRES_DB: engine_test
+      POSTGRES_USER: engine
+      POSTGRES_PASSWORD: engine
+    ports:
+      - '5434:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U engine']
+      interval: 2s
+      timeout: 2s
+      retries: 10
+    tmpfs:
+      - /var/lib/postgresql/data
