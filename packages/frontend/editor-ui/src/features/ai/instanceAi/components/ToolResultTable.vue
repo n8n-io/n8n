@@ -99,7 +99,7 @@ function formatCell(value: unknown): string {
 .more {
 	padding: var(--spacing--4xs) var(--spacing--2xs);
 	font-size: var(--font-size--3xs);
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	font-style: italic;
 	text-align: center;
 	border-top: var(--border);

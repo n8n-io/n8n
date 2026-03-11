@@ -28,6 +28,8 @@ import type {
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 
+import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
+
 import type {
 	InstanceAiThreadStatusResponse,
 	InstanceAiGatewayCapabilities,
@@ -337,7 +339,7 @@ export class InstanceAiService {
 		// Reset chain depth on user-initiated runs so the circuit breaker
 		// starts fresh. Auto-follow-up runs use the internal (continue) message
 		// which preserves chain depth via the background task inheritance.
-		if (message !== '(continue)') {
+		if (message !== AUTO_FOLLOW_UP_MESSAGE) {
 			this.resetChainDepths(threadId);
 		}
 
@@ -1198,7 +1200,7 @@ export class InstanceAiService {
 		// Start a new run with a minimal continuation prompt.
 		// enrichMessageWithBackgroundTasks() will prepend the completed task results.
 		const researchMode = this.threadResearchMode.get(threadId);
-		this.startRun(user, threadId, '(continue)', researchMode);
+		this.startRun(user, threadId, AUTO_FOLLOW_UP_MESSAGE, researchMode);
 	}
 
 	/** Cancel all background tasks for a thread. */

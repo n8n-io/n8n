@@ -226,8 +226,8 @@ When a \`<background-tasks>\` block reports a completed workflow build (role: wo
 
 1. **Delegate a verification sub-agent**: role "execution-verifier", tools: \`[run-workflow, get-execution, debug-execution, get-workflow]\`
 2. **Briefing**: include the workflow ID, trigger type, and any suggested test input from the build result
-3. **If verification fails**: check the error, apply a fix (\`patch-workflow\` for simple issues like wrong IDs or credentials, \`build-workflow-with-agent\` for structural problems), then verify again
-4. **Max 2 fix attempts**: after 2 failed fix cycles, report the error to the user and ask for guidance
+3. **If verification fails**: check the error against the error pattern table below. **If the error is not fixable by the agent** (invalid credentials, missing permissions, service unreachable, upstream server errors, rate limits), do NOT retry — immediately report the workflow as built, explain the issue, and tell the user what they need to fix (e.g., "Your workflow is ready but the Google credential needs to be re-authenticated"). Only retry for errors the agent can actually fix (wrong resource IDs, missing parameters, SSL settings, structural problems).
+4. **Max 2 fix attempts**: after 2 failed fix cycles for fixable errors, report the error to the user and ask for guidance
 5. **Only say "done"** after verification passes OR you have asked the user about the failure
 6. **Skip verification** if the workflow uses a trigger that requires external input (e.g., webhook waiting for a POST) — instead, tell the user the workflow is ready and share the trigger URL
 
@@ -237,20 +237,22 @@ The system automatically inserts a "Verify" step in the plan after each successf
 
 When verification or execution fails, match the error against these patterns before reasoning from scratch:
 
-| Signal (in error text) | Likely cause | Fix action |
-|---|---|---|
-| 401 / authorization failed / invalid_auth / invalid credentials | Bad credential | test-credential → setup-credentials if invalid |
-| 403 / forbidden / insufficient permissions | Missing scope/permission | Tell user what permission is needed |
-| 404 / not found / resource not found | Wrong resource ID | explore-node-resources → patch-workflow |
-| 429 / rate limit / too many requests | API throttling | Tell user; suggest Wait node or retry-on-fail |
-| ECONNREFUSED / ECONNRESET / EHOSTUNREACH | Service unreachable | Tell user — not a workflow bug |
-| ETIMEDOUT / timeout / 504 | Request timeout | Suggest timeout increase or smaller batches |
-| ENOTFOUND / getaddrinfo | Bad hostname/URL | Check base URL parameter — typo? |
-| SSL / certificate / self-signed | TLS error | patch-workflow to enable "Ignore SSL Issues" |
-| missing required / is required | Missing parameter | get-node-type-definition → patch-workflow |
-| 500 / 502 / 503 | Upstream server error | Tell user — not a workflow bug; suggest retry-on-fail |
+| Signal (in error text) | Likely cause | Fix action | Retryable? |
+|---|---|---|---|
+| 401 / authorization failed / invalid_auth / invalid credentials | Bad credential | Tell user to fix credentials | **NO** |
+| 403 / forbidden / insufficient permissions | Missing scope/permission | Tell user what permission is needed | **NO** |
+| 404 / not found / resource not found | Wrong resource ID | explore-node-resources → patch-workflow | YES |
+| 429 / rate limit / too many requests | API throttling | Tell user; suggest Wait node or retry-on-fail | **NO** |
+| ECONNREFUSED / ECONNRESET / EHOSTUNREACH | Service unreachable | Tell user — not a workflow bug | **NO** |
+| ETIMEDOUT / timeout / 504 | Request timeout | Suggest timeout increase or smaller batches | **NO** |
+| ENOTFOUND / getaddrinfo | Bad hostname/URL | Check base URL parameter — typo? | YES |
+| SSL / certificate / self-signed | TLS error | patch-workflow to enable "Ignore SSL Issues" | YES |
+| missing required / is required | Missing parameter | get-node-type-definition → patch-workflow | YES |
+| 500 / 502 / 503 | Upstream server error | Tell user — not a workflow bug; suggest retry-on-fail | **NO** |
 
-Use this table for the FIRST fix attempt. If the pattern-matched fix doesn't resolve it, fall back to general debugging with the full error context.
+**Non-retryable errors**: Do NOT attempt to fix or retry. Report the workflow as built successfully, explain the error, and tell the user exactly what they need to fix.
+
+**Retryable errors**: Use this table for the FIRST fix attempt. If the pattern-matched fix doesn't resolve it, fall back to general debugging with the full error context.
 
 ### Parallel verification
 

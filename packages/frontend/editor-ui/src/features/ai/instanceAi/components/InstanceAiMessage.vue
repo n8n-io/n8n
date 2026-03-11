@@ -4,7 +4,6 @@ import { N8nIcon, N8nIconButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 import AgentActivityTree from './AgentActivityTree.vue';
-import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndicator.vue';
 import type { InstanceAiMessage } from '@n8n/api-types';
 import { useInstanceAiStore } from '../instanceAi.store';
 import CollapsibleMessage from './CollapsibleMessage.vue';
@@ -84,9 +83,10 @@ function formatJson(value: unknown): string {
 						<InstanceAiMarkdown v-if="props.message.content" :content="props.message.content" />
 					</div>
 
-					<!-- Streaming indicator -->
-					<ChatTypingIndicator
+					<!-- Blinking cursor while waiting for response -->
+					<span
 						v-if="isStreaming && !props.message.content && !props.message.agentTree"
+						:class="$style.blinkingCursor"
 					/>
 
 					<!-- Background task indicator (run finished but sub-agents still working) -->
@@ -137,7 +137,7 @@ function formatJson(value: unknown): string {
 }
 
 .userBubble {
-	background: var(--color--primary--tint-3);
+	background: color-mix(in srgb, var(--color--primary) 12%, var(--color--background));
 	color: var(--color--text);
 	padding: var(--spacing--xs) var(--spacing--sm);
 	border-radius: var(--radius--xl);
@@ -192,7 +192,26 @@ function formatJson(value: unknown): string {
 	padding: var(--spacing--3xs) 0;
 	margin-top: var(--spacing--4xs);
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
+	color: var(--color--text);
+}
+
+.blinkingCursor {
+	display: inline-block;
+	width: 2px;
+	height: 1.2em;
+	background: var(--color--text);
+	animation: cursor-blink 1s step-end infinite;
+	vertical-align: text-bottom;
+}
+
+@keyframes cursor-blink {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0;
+	}
 }
 
 .debugJson {

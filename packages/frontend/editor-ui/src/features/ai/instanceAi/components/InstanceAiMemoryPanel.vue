@@ -107,7 +107,7 @@ function handleSave() {
 	align-items: center;
 	justify-content: center;
 	height: 100%;
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 }
 
 .textarea {

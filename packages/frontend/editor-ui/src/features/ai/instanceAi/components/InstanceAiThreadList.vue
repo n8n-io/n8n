@@ -222,10 +222,10 @@ function handleThreadAction(action: string, threadId: string) {
 	}
 
 	&.active {
-		background-color: var(--color--primary--tint-3);
+		background-color: color-mix(in srgb, var(--color--primary) 12%, var(--color--background));
 
 		&:hover {
-			background-color: var(--color--primary--tint-2);
+			background-color: color-mix(in srgb, var(--color--primary) 20%, var(--color--background));
 		}
 	}
 }
@@ -245,7 +245,7 @@ function handleThreadAction(action: string, threadId: string) {
 
 .threadIcon {
 	flex-shrink: 0;
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 }
 
 .threadTitle {

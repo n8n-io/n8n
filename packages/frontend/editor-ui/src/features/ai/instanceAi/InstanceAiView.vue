@@ -13,7 +13,7 @@ import InstanceAiEmptyState from './components/InstanceAiEmptyState.vue';
 import InstanceAiThreadList from './components/InstanceAiThreadList.vue';
 import InstanceAiMemoryPanel from './components/InstanceAiMemoryPanel.vue';
 import InstanceAiDebugPanel from './components/InstanceAiDebugPanel.vue';
-import InstanceAiPlanPanel from './components/InstanceAiPlanPanel.vue';
+import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue';
 import InstanceAiSettingsPanel from './components/InstanceAiSettingsPanel.vue';
 import InstanceAiStatusBar from './components/InstanceAiStatusBar.vue';
 import InstanceAiDirectoryShare from './components/InstanceAiDirectoryShare.vue';
@@ -31,18 +31,16 @@ onMounted(() => {
 });
 
 // --- Side panels ---
-const showPlanPanel = ref(false);
+const showArtifactsPanel = ref(false);
 const showMemoryPanel = ref(false);
 const showDebugPanel = ref(false);
 const showSettingsPanel = ref(false);
 
-// Auto-open plan panel when a plan is first created
+// Auto-open artifacts panel when a plan or resource first appears
 watch(
-	() => store.currentPlan,
-	(plan, oldPlan) => {
-		if (plan && !oldPlan) {
-			showPlanPanel.value = true;
-		}
+	() => store.currentPlan !== null || store.resourceRegistry.size > 0,
+	(hasArtifacts, hadArtifacts) => {
+		if (hasArtifacts && !hadArtifacts) showArtifactsPanel.value = true;
 	},
 );
 
@@ -237,11 +235,11 @@ function handleStop() {
 				</N8nText>
 				<div :class="$style.headerActions">
 					<N8nIconButton
-						icon="list-checks"
+						icon="layers"
 						variant="ghost"
 						size="small"
-						:class="{ [$style.activeButton]: showPlanPanel }"
-						@click="showPlanPanel = !showPlanPanel"
+						:class="{ [$style.activeButton]: showArtifactsPanel }"
+						@click="showArtifactsPanel = !showArtifactsPanel"
 					/>
 					<N8nIconButton
 						icon="cog"
@@ -317,7 +315,7 @@ function handleStop() {
 			</div>
 
 			<!-- Side panels -->
-			<InstanceAiPlanPanel v-if="showPlanPanel" @close="showPlanPanel = false" />
+			<InstanceAiArtifactsPanel v-if="showArtifactsPanel" @close="showArtifactsPanel = false" />
 			<InstanceAiSettingsPanel v-if="showSettingsPanel" @close="showSettingsPanel = false" />
 			<InstanceAiMemoryPanel v-if="showMemoryPanel" @close="showMemoryPanel = false" />
 			<InstanceAiDebugPanel

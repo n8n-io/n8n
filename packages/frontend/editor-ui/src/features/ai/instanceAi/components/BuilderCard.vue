@@ -406,7 +406,7 @@ watch(
 	align-items: center;
 	gap: var(--spacing--4xs);
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 }
 
 .phaseActive {
@@ -426,7 +426,7 @@ watch(
 }
 
 .phaseIconPending {
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 }
 
 .phaseLabel {
@@ -454,7 +454,7 @@ watch(
 	font-family: var(--font-family);
 	font-size: var(--font-size--3xs);
 	font-weight: var(--font-weight--bold);
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
 
@@ -473,21 +473,21 @@ watch(
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--xs);
 	border-top: var(--border);
-	background: var(--color--success--tint-4);
+	background: color-mix(in srgb, var(--color--success) 10%, var(--color--background));
 	font-size: var(--font-size--2xs);
-	color: var(--color--success--shade-1);
+	color: var(--color--success);
 	animation: successPulse 0.6s ease-out;
 }
 
 @keyframes successPulse {
 	0% {
-		background-color: var(--color--success--tint-3);
+		background-color: color-mix(in srgb, var(--color--success) 18%, var(--color--background));
 	}
 	50% {
-		background-color: var(--color--success--tint-3);
+		background-color: color-mix(in srgb, var(--color--success) 18%, var(--color--background));
 	}
 	100% {
-		background-color: var(--color--success--tint-4);
+		background-color: color-mix(in srgb, var(--color--success) 10%, var(--color--background));
 	}
 }
 
@@ -527,9 +527,9 @@ watch(
 	align-items: center;
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--4xs) var(--spacing--2xs);
-	background: var(--color--success--tint-4);
+	background: color-mix(in srgb, var(--color--success) 10%, var(--color--background));
 	font-size: var(--font-size--2xs);
-	color: var(--color--success--shade-1);
+	color: var(--color--success);
 }
 
 .previewName {
@@ -546,7 +546,7 @@ watch(
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--xs);
 	border-top: var(--border);
-	background: var(--color--danger--tint-4);
+	background: color-mix(in srgb, var(--color--danger) 10%, var(--color--background));
 	font-size: var(--font-size--2xs);
 	color: var(--color--danger);
 }
@@ -573,13 +573,13 @@ watch(
 	font-size: var(--font-size--3xs);
 	font-weight: var(--font-weight--bold);
 	color: var(--color--danger);
-	background: var(--color--danger--tint-4);
+	background: color-mix(in srgb, var(--color--danger) 10%, var(--color--background));
 	border: var(--border-width) var(--border-style) var(--color--danger);
 	border-radius: var(--radius);
 	cursor: pointer;
 
 	&:hover {
-		background: var(--color--danger--tint-3);
+		background: color-mix(in srgb, var(--color--danger) 18%, var(--color--background));
 	}
 }
 

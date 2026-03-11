@@ -143,9 +143,9 @@ onUpdated(enhanceResourceLinks);
 	line-height: var(--line-height--md) !important;
 
 	&:hover {
-		background: var(--color--primary--tint-3) !important;
+		background: color-mix(in srgb, var(--color--primary) 12%, var(--color--background)) !important;
 		border-color: var(--color--primary) !important;
-		color: var(--color--primary--shade-1) !important;
+		color: var(--color--primary) !important;
 	}
 }
 

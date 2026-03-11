@@ -104,7 +104,7 @@ function findChild(agentId: string): InstanceAiAgentNode | undefined {
 	align-items: center;
 	gap: var(--spacing--4xs);
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	background: none;
 	border: none;
 	cursor: pointer;
@@ -119,7 +119,7 @@ function findChild(agentId: string): InstanceAiAgentNode | undefined {
 .reasoningContent {
 	padding: var(--spacing--4xs) var(--spacing--xs);
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	font-style: italic;
 	border-left: 2px solid var(--color--foreground);
 	margin-left: var(--spacing--4xs);

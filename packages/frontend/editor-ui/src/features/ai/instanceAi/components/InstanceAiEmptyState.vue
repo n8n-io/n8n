@@ -126,7 +126,7 @@ const suggestions = [
 
 	&:hover {
 		border-color: var(--color--primary);
-		background: var(--color--primary--tint-3);
+		background: color-mix(in srgb, var(--color--primary) 10%, var(--color--background));
 	}
 }
 

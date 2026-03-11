@@ -822,3 +822,44 @@ wins so the daemon's targeted project directory is preferred over unrestricted l
 - Removed: `isDaemonAvailable`, `probeDaemon`, `requestGatewayLink`, `gatewayCommand`,
   `showGatewayPanel`, "Connect" button, terminal icon trigger
 - i18n keys simplified: removed 4 keys, updated 2, added 1
+
+---
+
+## ADR-028: Artifacts Panel Replaces Plan Panel
+
+**Status**: Accepted
+
+**Context**: Generated plans and workflows were scattered across the chat
+message stream. The Plan side panel only showed the current plan. There was no
+single place to see all generated artifacts (plans, workflows) at a glance.
+Users want a shared workspace where they can see what the agent has produced
+and quickly navigate to or edit those artifacts.
+
+**Decision**: Replace `InstanceAiPlanPanel` with a unified `InstanceAiArtifactsPanel`
+that presents all agent-produced artifacts as a flat list of collapsible cards.
+
+**Design**:
+- Flat card list — no tabs or sections, just cards in order: plan first, then
+  workflows
+- Each card is collapsible (click to expand/collapse inline)
+- Plan card: shows goal (collapsed), expands to phase/iteration/steps
+- Workflow cards: show name + "Open" link (collapsed), expand to show a
+  `WorkflowMiniCanvas` preview (120px)
+- Workflow data sourced from `resourceRegistry` (existing composable that scans
+  tool-call results for workflow/credential/data-table entries)
+- Full workflow objects fetched lazily via `workflowsListStore.fetchWorkflow()`
+  for canvas preview
+- Auto-opens when a plan or resource first appears (same trigger as old plan
+  panel, extended to include `resourceRegistry.size > 0`)
+- Toolbar button changed from `list-checks` icon to `layers` icon
+
+**Consequences**:
+- `InstanceAiPlanPanel.vue` deleted — single consumer was `InstanceAiView.vue`
+- All plan-detail styles (metaRow, phaseBadge, stepList, etc.) moved into the
+  new component
+- New i18n keys: `instanceAi.artifactsPanel.*` (title, noArtifacts, plan,
+  openWorkflow)
+- Workflow cards link to `/workflow/:id` (opens in new tab) for editing
+- Canvas preview reuses existing `WorkflowMiniCanvas` component
+- Future artifact types (credentials, data tables) can be added as new card
+  variants without structural changes

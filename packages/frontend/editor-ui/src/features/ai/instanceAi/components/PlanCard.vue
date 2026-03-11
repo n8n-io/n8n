@@ -102,7 +102,7 @@ const statusIconMap: Record<PlanStep['status'], { icon: IconName; className: str
 
 .label {
 	font-weight: var(--font-weight--bold);
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
 	font-size: var(--font-size--3xs);
@@ -122,14 +122,14 @@ const statusIconMap: Record<PlanStep['status'], { icon: IconName; className: str
 	font-weight: var(--font-weight--bold);
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
-	background: var(--color--primary--tint-3);
+	background: color-mix(in srgb, var(--color--primary) 15%, transparent);
 	color: var(--color--primary);
 	border-radius: var(--radius--sm);
 }
 
 .iteration {
 	font-size: var(--font-size--3xs);
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 }
 
 .stepsTrigger {
@@ -145,7 +145,7 @@ const statusIconMap: Record<PlanStep['status'], { icon: IconName; className: str
 	font-family: var(--font-family);
 	font-size: var(--font-size--3xs);
 	font-weight: var(--font-weight--bold);
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
 
@@ -194,12 +194,12 @@ const statusIconMap: Record<PlanStep['status'], { icon: IconName; className: str
 
 .stepResult {
 	font-size: var(--font-size--3xs);
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	font-style: italic;
 }
 
 .pendingIcon {
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 }
 
 .inProgressIcon {
@@ -215,6 +215,6 @@ const statusIconMap: Record<PlanStep['status'], { icon: IconName; className: str
 }
 
 .skippedIcon {
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 }
 </style>

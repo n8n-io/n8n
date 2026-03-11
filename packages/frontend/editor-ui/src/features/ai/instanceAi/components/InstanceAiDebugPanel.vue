@@ -387,7 +387,7 @@ onMounted(() => {
 	cursor: pointer;
 	border: none;
 	background: none;
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	border-bottom: 2px solid transparent;
 	transition:
 		color 0.15s,
@@ -410,7 +410,7 @@ onMounted(() => {
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--4xs) var(--spacing--sm);
 	font-size: var(--font-size--3xs);
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	border-bottom: var(--border);
 }
 
@@ -418,7 +418,7 @@ onMounted(() => {
 	width: 6px;
 	height: 6px;
 	border-radius: 50%;
-	background: var(--color--text--tint-2);
+	background: var(--color--text--tint-1);
 
 	&[data-state='connected'] {
 		background: var(--color--success);
@@ -442,7 +442,7 @@ onMounted(() => {
 .timingTitle {
 	font-size: var(--font-size--3xs);
 	font-weight: var(--font-weight--bold);
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
 	margin-bottom: var(--spacing--4xs);
@@ -462,7 +462,7 @@ onMounted(() => {
 
 .timingDuration {
 	font-family: monospace;
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 }
 
 .eventList {
@@ -489,7 +489,7 @@ onMounted(() => {
 
 .eventTime {
 	font-family: monospace;
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 }
 
 .eventType {
@@ -500,38 +500,38 @@ onMounted(() => {
 }
 
 .error {
-	background: var(--color--danger--tint-4);
+	background: color-mix(in srgb, var(--color--danger) 15%, transparent);
 	color: var(--color--danger);
 }
 
 .finish {
-	background: var(--color--foreground--tint-1);
-	color: var(--color--text--tint-1);
+	background: var(--color--foreground);
+	color: var(--color--text);
 }
 
 .start {
-	background: var(--color--success--tint-4);
+	background: color-mix(in srgb, var(--color--success) 15%, transparent);
 	color: var(--color--success);
 }
 
 .tool {
-	background: var(--color--primary--tint-3);
+	background: color-mix(in srgb, var(--color--primary) 15%, transparent);
 	color: var(--color--primary);
 }
 
 .text {
-	background: var(--color--foreground--tint-2);
-	color: var(--color--text--tint-2);
+	background: var(--color--foreground);
+	color: var(--color--text);
 }
 
 .confirm {
-	background: var(--color--warning--tint-2);
+	background: color-mix(in srgb, var(--color--warning) 15%, transparent);
 	color: var(--color--warning);
 }
 
 .default {
-	background: var(--color--foreground--tint-2);
-	color: var(--color--text--tint-2);
+	background: var(--color--foreground);
+	color: var(--color--text);
 }
 
 .eventPayload {
@@ -561,7 +561,7 @@ onMounted(() => {
 .sectionLabel {
 	font-size: var(--font-size--3xs);
 	font-weight: var(--font-weight--bold);
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
 }
@@ -571,14 +571,14 @@ onMounted(() => {
 	align-items: center;
 	justify-content: center;
 	padding: var(--spacing--lg);
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 }
 
 .emptyState {
 	padding: var(--spacing--lg) var(--spacing--sm);
 	text-align: center;
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 }
 
 .threadList {
@@ -598,10 +598,10 @@ onMounted(() => {
 }
 
 .threadRowSelected {
-	background: var(--color--primary--tint-3);
+	background: color-mix(in srgb, var(--color--primary) 12%, var(--color--background));
 
 	&:hover {
-		background: var(--color--primary--tint-3);
+		background: color-mix(in srgb, var(--color--primary) 12%, var(--color--background));
 	}
 }
 
@@ -624,13 +624,13 @@ onMounted(() => {
 	padding: 0 var(--spacing--4xs);
 	border-radius: var(--radius--sm);
 	font-size: var(--font-size--3xs);
-	background: var(--color--success--tint-4);
+	background: color-mix(in srgb, var(--color--success) 15%, transparent);
 	color: var(--color--success);
 }
 
 .threadTime {
 	font-size: var(--font-size--3xs);
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 }
 
 .threadDetailHeader {
@@ -645,7 +645,7 @@ onMounted(() => {
 	cursor: pointer;
 	border: none;
 	background: none;
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	border-bottom: 2px solid transparent;
 	transition:
 		color 0.15s,
@@ -687,7 +687,7 @@ onMounted(() => {
 
 .messagePreview {
 	font-size: var(--font-size--3xs);
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -700,7 +700,7 @@ onMounted(() => {
 .contextLabel {
 	font-size: var(--font-size--3xs);
 	font-weight: var(--font-weight--bold);
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
 	margin-bottom: var(--spacing--4xs);

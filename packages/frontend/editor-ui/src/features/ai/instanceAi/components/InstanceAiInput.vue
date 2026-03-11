@@ -97,7 +97,7 @@ function handleTabAutocomplete() {
 	border: var(--border);
 	border-radius: var(--radius--lg);
 	background: transparent;
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	font-size: var(--font-size--2xs);
 	font-family: var(--font-family);
 	cursor: pointer;

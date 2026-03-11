@@ -163,7 +163,7 @@ function handleAutoSetup() {
 
 .credentialReason {
 	font-size: var(--font-size--3xs);
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 }
 
 .actions {

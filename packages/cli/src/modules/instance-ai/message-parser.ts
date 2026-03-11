@@ -7,6 +7,7 @@ import type {
 } from '@n8n/api-types';
 
 import type { AgentTreeSnapshot } from './agent-tree-snapshot';
+import { cleanStoredUserMessage } from './internal-messages';
 
 type RunSnapshots = AgentTreeSnapshot[];
 
@@ -209,11 +210,16 @@ export function parseStoredMessages(
 
 		if (msg.role === 'user') {
 			lastUserMessageId = msg.id;
+
+			// Strip LLM-facing enrichment and hide internal auto-follow-up messages.
+			const content = cleanStoredUserMessage(text);
+			if (content === null) continue;
+
 			messages.push({
 				id: msg.id,
 				role: 'user',
 				createdAt: msg.createdAt.toISOString(),
-				content: text,
+				content,
 				reasoning: '',
 				isStreaming: false,
 			});

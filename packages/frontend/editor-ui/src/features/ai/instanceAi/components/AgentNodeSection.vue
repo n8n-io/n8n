@@ -183,10 +183,10 @@ const runResults = computed(() => {
 	padding: 1px var(--spacing--4xs);
 	font-size: var(--font-size--3xs);
 	font-family: monospace;
-	background: var(--color--background);
+	background: var(--color--foreground);
 	border: var(--border);
 	border-radius: var(--radius--sm);
-	color: var(--color--text--tint-2);
+	color: var(--color--text);
 }
 
 .content {
@@ -203,7 +203,7 @@ const runResults = computed(() => {
 	align-items: center;
 	gap: var(--spacing--4xs);
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	background: none;
 	border: none;
 	cursor: pointer;
@@ -218,7 +218,7 @@ const runResults = computed(() => {
 .reasoningContent {
 	padding: var(--spacing--4xs) var(--spacing--xs);
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	font-style: italic;
 	border-left: var(--border-width) var(--border-style) var(--color--foreground);
 	margin-left: var(--spacing--4xs);
@@ -258,13 +258,13 @@ const runResults = computed(() => {
 	font-size: var(--font-size--3xs);
 	font-weight: var(--font-weight--bold);
 	color: var(--color--danger);
-	background: var(--color--danger--tint-4);
+	background: color-mix(in srgb, var(--color--danger) 10%, var(--color--background));
 	border: var(--border-width) var(--border-style) var(--color--danger);
 	border-radius: var(--radius);
 	cursor: pointer;
 
 	&:hover {
-		background: var(--color--danger--tint-3);
+		background: color-mix(in srgb, var(--color--danger) 18%, var(--color--background));
 	}
 }
 
@@ -277,7 +277,7 @@ const runResults = computed(() => {
 }
 
 .cancelledIcon {
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 }
 
 .errorIcon {

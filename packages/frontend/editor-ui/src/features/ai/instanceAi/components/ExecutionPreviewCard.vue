@@ -118,9 +118,9 @@ watch(
 	align-items: center;
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--4xs) var(--spacing--2xs);
-	background: var(--color--success--tint-4);
+	background: color-mix(in srgb, var(--color--success) 10%, var(--color--background));
 	font-size: var(--font-size--2xs);
-	color: var(--color--success--shade-1);
+	color: var(--color--success);
 }
 
 .previewName {
@@ -132,7 +132,7 @@ watch(
 }
 
 .previewHeaderError {
-	background: var(--color--danger--tint-4);
+	background: color-mix(in srgb, var(--color--danger) 10%, var(--color--background));
 	color: var(--color--danger);
 }
 
@@ -147,7 +147,7 @@ watch(
 	font-size: var(--font-size--3xs);
 	font-family: monospace;
 	color: var(--color--danger);
-	background: var(--color--danger--tint-4);
+	background: color-mix(in srgb, var(--color--danger) 10%, var(--color--background));
 	border-top: var(--border);
 	white-space: pre-wrap;
 	word-break: break-word;

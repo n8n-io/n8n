@@ -96,7 +96,7 @@ defineExpose({
 	padding: 16px;
 	box-shadow: 0 10px 24px 0 #00000010;
 	background-color: var(--color--background--light-3);
-	border: var(--border);
+	border: none;
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);

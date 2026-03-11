@@ -49,7 +49,7 @@ const href = computed(() => urlMap[props.type]?.(props.resourceId) ?? '#');
 	line-height: var(--line-height--md);
 
 	&:hover {
-		background: var(--color--primary--tint-3);
+		background: color-mix(in srgb, var(--color--primary) 12%, var(--color--background));
 		border-color: var(--color--primary);
 	}
 }

@@ -55,7 +55,7 @@ const highlighted = computed(() => highlightJson(props.value));
 }
 
 .json-string {
-	color: var(--color--success--shade-1);
+	color: var(--color--success);
 }
 
 .json-number {
@@ -63,7 +63,7 @@ const highlighted = computed(() => highlightJson(props.value));
 }
 
 .json-bool {
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	font-style: italic;
 }
 </style>

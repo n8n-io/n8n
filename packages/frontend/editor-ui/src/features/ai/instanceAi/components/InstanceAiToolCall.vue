@@ -414,7 +414,7 @@ function handleTextSkip() {
 	}
 
 	&::placeholder {
-		color: var(--color--text--tint-2);
+		color: var(--color--text--tint-1);
 	}
 }
 

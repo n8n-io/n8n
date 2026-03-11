@@ -515,7 +515,7 @@ const showDaytonaFields = computed(() => {
 	align-items: center;
 	justify-content: center;
 	height: 100%;
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 }
 
 .sections {
@@ -543,7 +543,7 @@ const showDaytonaFields = computed(() => {
 
 .permissionDescription {
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	line-height: var(--line-height--xl);
 }
 
@@ -574,13 +574,13 @@ const showDaytonaFields = computed(() => {
 }
 
 .badgeSet {
-	background: var(--color--success--tint-3);
-	color: var(--color--success--shade-1);
+	background: color-mix(in srgb, var(--color--success) 15%, transparent);
+	color: var(--color--success);
 }
 
 .badgeUnset {
-	background: var(--color--foreground--tint-1);
-	color: var(--color--text--tint-2);
+	background: var(--color--foreground);
+	color: var(--color--text);
 }
 
 .footer {

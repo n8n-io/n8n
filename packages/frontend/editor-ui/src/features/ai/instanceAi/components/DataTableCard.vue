@@ -211,7 +211,7 @@ const isCompleted = computed(
 	align-items: center;
 	gap: var(--spacing--4xs);
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 }
 
 .phaseActive {
@@ -231,7 +231,7 @@ const isCompleted = computed(
 }
 
 .phaseIconPending {
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 }
 
 .phaseLabel {
@@ -259,7 +259,7 @@ const isCompleted = computed(
 	font-family: var(--font-family);
 	font-size: var(--font-size--3xs);
 	font-weight: var(--font-weight--bold);
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
 
@@ -278,9 +278,9 @@ const isCompleted = computed(
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--xs);
 	border-top: var(--border);
-	background: var(--color--success--tint-4);
+	background: color-mix(in srgb, var(--color--success) 10%, var(--color--background));
 	font-size: var(--font-size--2xs);
-	color: var(--color--success--shade-1);
+	color: var(--color--success);
 }
 
 .errorResult {
@@ -289,7 +289,7 @@ const isCompleted = computed(
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--xs);
 	border-top: var(--border);
-	background: var(--color--danger--tint-4);
+	background: color-mix(in srgb, var(--color--danger) 10%, var(--color--background));
 	font-size: var(--font-size--2xs);
 	color: var(--color--danger);
 }
@@ -303,13 +303,13 @@ const isCompleted = computed(
 	font-size: var(--font-size--3xs);
 	font-weight: var(--font-weight--bold);
 	color: var(--color--danger);
-	background: var(--color--danger--tint-4);
+	background: color-mix(in srgb, var(--color--danger) 10%, var(--color--background));
 	border: var(--border-width) var(--border-style) var(--color--danger);
 	border-radius: var(--radius);
 	cursor: pointer;
 
 	&:hover {
-		background: var(--color--danger--tint-3);
+		background: color-mix(in srgb, var(--color--danger) 18%, var(--color--background));
 	}
 }
 

@@ -98,7 +98,7 @@ onUnmounted(() => {
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--4xs) var(--spacing--2xs) var(--spacing--2xs);
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	pointer-events: none;
 }
 
@@ -128,11 +128,11 @@ onUnmounted(() => {
 }
 
 .separator {
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 }
 
 .detail {
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 }
 
 .elapsed {
