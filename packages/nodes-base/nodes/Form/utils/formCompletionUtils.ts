@@ -1,5 +1,5 @@
 import { type Response } from 'express';
-import { getHtmlSandboxCSP, isFormHtmlSandboxingDisabled } from 'n8n-core';
+import { getWebhookSandboxCSP, isWebhookHtmlSandboxingDisabled } from 'n8n-core';
 import {
 	type NodeTypeAndVersion,
 	type IWebhookFunctions,
@@ -10,7 +10,6 @@ import {
 } from 'n8n-workflow';
 
 import { handleNewlines, sanitizeCustomCss, sanitizeHtml, validateSafeRedirectUrl } from './utils';
-
 const getBinaryDataFromNode = (context: IWebhookFunctions, nodeName: string): IDataObject => {
 	return context.evaluateExpression(`{{ $('${nodeName}').first().binary }}`) as IDataObject;
 };
@@ -71,8 +70,8 @@ export const renderFormCompletion = async (
 		`{{ $('${trigger?.name}').params.options?.appendAttribution === false ? false : true }}`,
 	) as boolean;
 
-	if (respondWith !== 'redirect' && !isFormHtmlSandboxingDisabled()) {
-		res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
+	if (respondWith !== 'redirect' && !isWebhookHtmlSandboxingDisabled()) {
+		res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
 	}
 
 	res.render('form-trigger-completion', {
