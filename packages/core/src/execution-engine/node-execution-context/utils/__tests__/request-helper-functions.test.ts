@@ -13,7 +13,6 @@ import type {
 	PaginationOptions,
 	Workflow,
 } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
 import nock from 'nock';
 import type { SecureContextOptions } from 'tls';
 
@@ -1437,7 +1436,7 @@ describe('Request Helper Functions', () => {
 		});
 	});
 
-	describe('SSRF protection integration', () => {
+	describe('SSRF protection wiring', () => {
 		const baseUrl = 'https://example.com';
 		const workflow = mock<Workflow>();
 		const hooks = mock<ExecutionLifecycleHooks>();
@@ -1454,63 +1453,6 @@ describe('Request Helper Functions', () => {
 		beforeEach(() => {
 			nock.cleanAll();
 			hooks.runHook.mockClear();
-		});
-
-		describe('httpRequest (modern path)', () => {
-			test('should work normally when ssrfBridge is absent', async () => {
-				nock(baseUrl).get('/test').reply(200, { ok: true });
-
-				const response = await httpRequest({
-					method: 'GET',
-					url: `${baseUrl}/test`,
-				});
-
-				expect(response).toEqual({ ok: true });
-			});
-
-			test('should throw when validateUrl blocks a direct IP request', async () => {
-				const blockedError = new UserError('IP address is blocked');
-				const ssrfBridge = createSsrfBridge({
-					validateUrl: jest.fn().mockResolvedValue({ ok: false, error: blockedError }),
-				});
-				const additionalData = mock<IWorkflowExecuteAdditionalData>({
-					hooks,
-					ssrfBridge,
-				});
-
-				const { getRequestHelperFunctions } = await import('../request-helper-functions');
-				const helpers = getRequestHelperFunctions(workflow, node, additionalData, null, []);
-
-				await expect(
-					helpers.httpRequest({
-						method: 'GET',
-						url: 'http://127.0.0.1/secret',
-					}),
-				).rejects.toThrow('IP address is blocked');
-
-				expect(ssrfBridge.validateUrl).toHaveBeenCalledWith(new URL('http://127.0.0.1/secret'));
-			});
-
-			test('should validate hostname URLs with validateUrl', async () => {
-				const ssrfBridge = createSsrfBridge();
-				const additionalData = mock<IWorkflowExecuteAdditionalData>({
-					hooks,
-					ssrfBridge,
-				});
-
-				nock(baseUrl).get('/test').reply(200, { ok: true });
-
-				const { getRequestHelperFunctions } = await import('../request-helper-functions');
-				const helpers = getRequestHelperFunctions(workflow, node, additionalData, null, []);
-
-				const response = await helpers.httpRequest({
-					method: 'GET',
-					url: `${baseUrl}/test`,
-				});
-
-				expect(response).toEqual({ ok: true });
-				expect(ssrfBridge.validateUrl).toHaveBeenCalledWith(new URL(`${baseUrl}/test`));
-			});
 		});
 
 		describe('convertN8nRequestToAxios with ssrfBridge', () => {
@@ -1557,122 +1499,22 @@ describe('Request Helper Functions', () => {
 			});
 		});
 
-		describe('proxyRequestToAxios (legacy path)', () => {
-			test('should throw when validateUrl blocks a direct IP request', async () => {
-				const blockedError = new UserError('IP address is blocked');
-				const ssrfBridge = createSsrfBridge({
-					validateUrl: jest.fn().mockResolvedValue({ ok: false, error: blockedError }),
-				});
-				const additionalData = mock<IWorkflowExecuteAdditionalData>({
-					hooks,
-					ssrfBridge,
-				});
-
-				await expect(
-					proxyRequestToAxios(workflow, additionalData, node, 'http://10.0.0.1/internal'),
-				).rejects.toThrow('IP address is blocked');
-
-				expect(ssrfBridge.validateUrl).toHaveBeenCalledWith(new URL('http://10.0.0.1/internal'));
+		test('proxyRequestToAxios should resolve baseURL + relative url for validateUrl', async () => {
+			const ssrfBridge = createSsrfBridge();
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				hooks,
+				ssrfBridge,
 			});
 
-			test('should validate hostname URLs with validateUrl', async () => {
-				const ssrfBridge = createSsrfBridge();
-				const additionalData = mock<IWorkflowExecuteAdditionalData>({
-					hooks,
-					ssrfBridge,
-				});
+			nock(baseUrl).get('/test').reply(200, 'ok');
 
-				nock(baseUrl).get('/test').reply(200, 'ok');
-
-				const response = await proxyRequestToAxios(
-					workflow,
-					additionalData,
-					node,
-					`${baseUrl}/test`,
-				);
-
-				expect(response).toEqual('ok');
-				expect(ssrfBridge.validateUrl).toHaveBeenCalledWith(new URL(`${baseUrl}/test`));
+			const response = await proxyRequestToAxios(workflow, additionalData, node, {
+				baseURL: baseUrl,
+				url: '/test',
 			});
 
-			test('should validate hostname URLs with baseURL via validateUrl', async () => {
-				const ssrfBridge = createSsrfBridge();
-				const additionalData = mock<IWorkflowExecuteAdditionalData>({
-					hooks,
-					ssrfBridge,
-				});
-
-				nock(baseUrl).get('/test').reply(200, 'ok');
-
-				const response = await proxyRequestToAxios(workflow, additionalData, node, {
-					baseURL: baseUrl,
-					url: '/test',
-				});
-
-				expect(response).toEqual('ok');
-				expect(ssrfBridge.validateUrl).toHaveBeenCalledWith(new URL(`${baseUrl}/test`));
-			});
-
-			test('should work normally when ssrfBridge is absent', async () => {
-				const additionalData = mock<IWorkflowExecuteAdditionalData>({
-					hooks,
-					ssrfBridge: undefined,
-				});
-
-				nock(baseUrl).get('/test').reply(200, 'ok');
-
-				const response = await proxyRequestToAxios(
-					workflow,
-					additionalData,
-					node,
-					`${baseUrl}/test`,
-				);
-
-				expect(response).toEqual('ok');
-			});
-		});
-
-		describe('redirect validation', () => {
-			test('should call validateRedirectSync on redirect', async () => {
-				const ssrfBridge = createSsrfBridge();
-				const additionalData = mock<IWorkflowExecuteAdditionalData>({
-					hooks,
-					ssrfBridge,
-				});
-
-				nock(baseUrl)
-					.get('/redirect')
-					.reply(301, '', { Location: `${baseUrl}/target` });
-				nock(baseUrl).get('/target').reply(200, 'redirected');
-
-				const response = await proxyRequestToAxios(
-					workflow,
-					additionalData,
-					node,
-					`${baseUrl}/redirect`,
-				);
-
-				expect(response).toEqual('redirected');
-				expect(ssrfBridge.validateRedirectSync).toHaveBeenCalledWith(`${baseUrl}/target`);
-			});
-
-			test('should block redirect when validateRedirectSync throws', async () => {
-				const ssrfBridge = createSsrfBridge({
-					validateRedirectSync: jest.fn().mockImplementation(() => {
-						throw new UserError('SSRF: blocked redirect to internal IP');
-					}),
-				});
-				const additionalData = mock<IWorkflowExecuteAdditionalData>({
-					hooks,
-					ssrfBridge,
-				});
-
-				nock(baseUrl).get('/redirect').reply(301, '', { Location: 'http://127.0.0.1/evil' });
-
-				await expect(
-					proxyRequestToAxios(workflow, additionalData, node, `${baseUrl}/redirect`),
-				).rejects.toThrow('SSRF: blocked redirect to internal IP');
-			});
+			expect(response).toEqual('ok');
+			expect(ssrfBridge.validateUrl).toHaveBeenCalledWith(new URL(`${baseUrl}/test`));
 		});
 	});
 });

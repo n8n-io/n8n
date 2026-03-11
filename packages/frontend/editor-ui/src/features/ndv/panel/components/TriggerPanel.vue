@@ -23,6 +23,7 @@ import { useRouter } from 'vue-router';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { isTriggerPanelObject } from '@/app/utils/typeGuards';
 import { useI18n } from '@n8n/i18n';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
@@ -50,6 +51,7 @@ const emit = defineEmits<{
 	execute: [];
 }>();
 
+const workflowId = useInjectWorkflowId();
 const nodesTypeStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
@@ -332,7 +334,7 @@ const expandExecutionHelp = () => {
 
 const openWebhookUrl = () => {
 	telemetry.track('User clicked ndv link', {
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowId.value,
 		push_ref: props.pushRef,
 		pane: 'input',
 		type: 'open-chat',
@@ -355,7 +357,7 @@ const onLinkClick = (e: MouseEvent) => {
 			emit('activate');
 		} else if (target.dataset.key === 'executions') {
 			telemetry.track('User clicked ndv link', {
-				workflow_id: workflowsStore.workflowId,
+				workflow_id: workflowId.value,
 				push_ref: props.pushRef,
 				pane: 'input',
 				type: 'open-executions-log',
