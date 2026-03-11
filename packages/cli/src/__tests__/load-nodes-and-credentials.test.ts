@@ -63,7 +63,7 @@ describe('NODE_PATH preservation (issue #24191)', () => {
 			.join(delimiter);
 
 		expect(process.env.NODE_PATH).toContain(existingPath);
-		expect(process.env.NODE_PATH!.endsWith(existingPath)).toBe(true);
+		expect(process.env.NODE_PATH?.endsWith(existingPath)).toBe(true);
 	});
 
 	it('should work when no existing NODE_PATH is set', () => {
