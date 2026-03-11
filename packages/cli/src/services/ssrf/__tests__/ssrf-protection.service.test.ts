@@ -278,7 +278,7 @@ describe('SsrfProtectionService', () => {
 			const { service } = createService();
 
 			expect(() => service.validateRedirectSync('http://127.0.0.1/admin')).toThrow(
-				'IP address is blocked',
+				'The request was blocked because it resolves to a restricted IP address',
 			);
 		});
 
@@ -294,7 +294,7 @@ describe('SsrfProtectionService', () => {
 
 			// Redirect target is private (blocked)
 			expect(() => service.validateRedirectSync('http://192.168.1.1/admin')).toThrow(
-				'IP address is blocked',
+				'The request was blocked because it resolves to a restricted IP address',
 			);
 		});
 
@@ -330,7 +330,9 @@ describe('SsrfProtectionService', () => {
 
 			lookup('evil.com', { all: false }, (lookupError) => {
 				expect(lookupError).toBeTruthy();
-				expect(lookupError?.message).toContain('IP address is blocked');
+				expect(lookupError?.message).toContain(
+					'The request was blocked because it resolves to a restricted IP address',
+				);
 				done();
 			});
 		});
@@ -504,7 +506,9 @@ describe('SsrfProtectionService', () => {
 
 				lookup('rebinding.evil.com', { all: false }, (lookupError) => {
 					expect(lookupError).toBeTruthy();
-					expect(lookupError?.message).toContain('IP address is blocked');
+					expect(lookupError?.message).toContain(
+						'The request was blocked because it resolves to a restricted IP address',
+					);
 					done();
 				});
 			});
@@ -515,7 +519,7 @@ describe('SsrfProtectionService', () => {
 				const { service } = createService();
 
 				expect(() => service.validateRedirectSync('http://10.0.0.1/internal')).toThrow(
-					'IP address is blocked',
+					'The request was blocked because it resolves to a restricted IP address',
 				);
 			});
 
@@ -523,7 +527,7 @@ describe('SsrfProtectionService', () => {
 				const { service } = createService();
 
 				expect(() => service.validateRedirectSync('http://[::1]/admin')).toThrow(
-					'IP address is blocked',
+					'The request was blocked because it resolves to a restricted IP address',
 				);
 			});
 		});
