@@ -204,4 +204,96 @@ export const SYNTHETIC_PROMPTS: PromptConfig[] = [
 		source: 'synthetic',
 		tags: ['auth', 'binary-data', 'credentials', 'subworkflow', 'data-table', 'batch', 'html'],
 	},
+
+	// Evaluation prompts (sourced from AI-1977 evaluation dataset)
+	{
+		text: 'Create a workflow with a Schedule Trigger that runs daily at 9am, an AI Agent that fetches and analyzes news from an RSS feed, and a Telegram chatbot that lets users ask questions about the analyzed news. Both AI Agents should share the same memory so the chatbot knows what was analyzed. Use OpenAI for both agents.',
+		complexity: 'complex',
+		source: 'manual',
+		tags: ['eval', 'tricky', 'agent', 'cron'],
+	},
+	{
+		text: 'Build a knowledge base workflow: Form trigger with file upload field for PDFs, process the uploaded PDF and store in Pinecone vector database, also create a chat interface to query the knowledge base. When querying, the AI should cite which document the answer came from.',
+		complexity: 'complex',
+		source: 'manual',
+		tags: ['eval', 'tricky', 'form', 'agent'],
+	},
+	{
+		text: 'Create an AI assistant that can search the web using Perplexity, create Google Calendar events, send Gmail emails, do calculations, and remember conversation history. The assistant should decide when to use each tool based on user requests.',
+		complexity: 'complex',
+		source: 'manual',
+		tags: ['eval', 'tricky', 'agent'],
+	},
+	{
+		text: 'Create a workflow that triggers on webhook, makes 3 parallel API calls to different endpoints, waits for all 3 to complete, merges the results, and sends a Slack notification with the combined data.',
+		complexity: 'medium',
+		source: 'manual',
+		tags: ['eval', 'tricky', 'webhook', 'parallel'],
+	},
+	{
+		text: "Build a lead qualification workflow: Form submission trigger, IF the lead's budget is over $10000 send to Salesforce, IF under $10000 add to a Google Sheet. After either path send a confirmation email to the lead.",
+		complexity: 'medium',
+		source: 'manual',
+		tags: ['eval', 'tricky', 'form', 'routing'],
+	},
+	{
+		text: 'Create a support ticket router: Webhook receives ticket data, route based on priority field (critical to PagerDuty, high to Slack #urgent, medium to Slack #support, low to Email digest, unknown to spreadsheet for review). All tickets should also be saved to a database.',
+		complexity: 'medium',
+		source: 'manual',
+		tags: ['eval', 'tricky', 'webhook', 'routing'],
+	},
+	{
+		text: 'Process a large CSV file: Webhook receives CSV, parse into rows, for each row call an external API to enrich the data, collect all enriched rows, generate a summary report, email the report.',
+		complexity: 'complex',
+		source: 'manual',
+		tags: ['eval', 'tricky', 'webhook', 'batch'],
+	},
+	{
+		text: 'Create a workflow that runs every hour, calls a REST API with POST method, JSON body with nested objects, Authorization header with Bearer token, custom timeout of 60 seconds. Parse the response and extract specific fields, save to Google Sheets.',
+		complexity: 'medium',
+		source: 'manual',
+		tags: ['eval', 'tricky', 'cron', 'api', 'credentials'],
+	},
+	{
+		text: "Build a notification workflow: Gmail trigger for new emails, AI Agent analyzes sentiment, IF negative send Slack alert. The Slack node should only send ONE alert even if multiple negative emails arrive in the same batch. If Slack API fails, log the error but don't stop the workflow.",
+		complexity: 'complex',
+		source: 'manual',
+		tags: ['eval', 'tricky', 'agent', 'routing', 'notification'],
+	},
+	{
+		text: 'Create a CRM workflow: Form submission with name, email, company, phone fields. Store in an n8n Data Table, also send a thank you email to the submitter.',
+		complexity: 'simple',
+		source: 'manual',
+		tags: ['eval', 'tricky', 'form', 'data-table'],
+	},
+	{
+		text: 'Build a document workflow: Schedule trigger daily at 6pm, get all documents from a specific Google Drive folder called Reports, for each document extract text using Google Docs, summarize all documents with AI, create a new Google Doc with the summary in folder Summaries.',
+		complexity: 'complex',
+		source: 'manual',
+		tags: ['eval', 'tricky', 'cron', 'loop', 'agent'],
+	},
+	{
+		text: 'Create a feedback collection workflow: Accept feedback from BOTH a web form AND email replies. Both should go through sentiment analysis. Negative feedback triggers immediate Slack alert. All feedback stored in Airtable with source (form/email) tagged.',
+		complexity: 'complex',
+		source: 'manual',
+		tags: ['eval', 'tricky', 'form', 'routing', 'notification'],
+	},
+	{
+		text: 'Create a Telegram bot that responds to user messages, uses AI to generate responses, can search the web when users ask questions, and remembers conversation history per user.',
+		complexity: 'medium',
+		source: 'manual',
+		tags: ['eval', 'tricky', 'agent'],
+	},
+	{
+		text: "Create a workflow that gets data from an API that sometimes returns empty arrays. Only process if data exists. Transform each item. If no data, log 'No new data' and stop gracefully.",
+		complexity: 'medium',
+		source: 'manual',
+		tags: ['eval', 'tricky', 'api', 'validation'],
+	},
+	{
+		text: 'Build a resilient API integration: Try primary API endpoint, if it fails try backup endpoint, if backup fails use cached data from Google Sheets. Always log which source was used.',
+		complexity: 'complex',
+		source: 'manual',
+		tags: ['eval', 'tricky', 'api', 'routing'],
+	},
 ];
