@@ -3,7 +3,7 @@ import type { GlobalConfig, SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { BinaryDataConfig, InstanceSettings } from 'n8n-core';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
@@ -59,6 +59,9 @@ describe('FrontendService', () => {
 			ldap: { loginEnabled: false },
 			saml: { loginEnabled: false },
 			oidc: { loginEnabled: false },
+		},
+		credentials: {
+			overwrite: { skipTypes: [] },
 		},
 	});
 
@@ -482,6 +485,74 @@ describe('FrontendService', () => {
 				expect.arrayContaining(['n8n-nodes-base.duplicate@1', 'n8n-nodes-base.duplicate@2']),
 			);
 			expect(identifiers).toHaveLength(2);
+		});
+	});
+
+	describe('overwriteCredentialsProperties', () => {
+		afterEach(() => {
+			// Restore globalConfig.credentials to the default so other tests are unaffected
+			(globalConfig as any).credentials = { overwrite: { skipTypes: [] } };
+			loadNodesAndCredentials.types = { credentials: [], nodes: [] };
+		});
+
+		it('should set __skipManagedCreation for types in the skip list', () => {
+			const skipCredential = {
+				name: 'googleSheetsOAuth2Api',
+				displayName: 'Google Sheets OAuth2 API',
+				properties: [],
+			} as ICredentialType;
+			const normalCredential = {
+				name: 'slackOAuth2Api',
+				displayName: 'Slack OAuth2 API',
+				properties: [],
+			} as ICredentialType;
+
+			loadNodesAndCredentials.types = {
+				credentials: [skipCredential, normalCredential],
+				nodes: [],
+			};
+			(globalConfig as any).credentials = {
+				overwrite: { skipTypes: ['googleSheetsOAuth2Api'] },
+			};
+
+			const { service } = createMockService();
+			(service as any).overwriteCredentialsProperties();
+
+			expect(skipCredential.__skipManagedCreation).toBe(true);
+			expect(normalCredential.__skipManagedCreation).toBeUndefined();
+		});
+
+		it('should not set __skipManagedCreation when skip list is empty', () => {
+			const credential = {
+				name: 'googleSheetsOAuth2Api',
+				displayName: 'Google Sheets OAuth2 API',
+				properties: [],
+			} as ICredentialType;
+
+			loadNodesAndCredentials.types = { credentials: [credential], nodes: [] };
+			(globalConfig as any).credentials = { overwrite: { skipTypes: [] } };
+
+			const { service } = createMockService();
+			(service as any).overwriteCredentialsProperties();
+
+			expect(credential.__skipManagedCreation).toBeUndefined();
+		});
+
+		it('should clear stale __skipManagedCreation when type is removed from skip list', () => {
+			const credential = {
+				name: 'googleSheetsOAuth2Api',
+				displayName: 'Google Sheets OAuth2 API',
+				properties: [],
+				__skipManagedCreation: true, // Previously set
+			} as ICredentialType;
+
+			loadNodesAndCredentials.types = { credentials: [credential], nodes: [] };
+			(globalConfig as any).credentials = { overwrite: { skipTypes: [] } };
+
+			const { service } = createMockService();
+			(service as any).overwriteCredentialsProperties();
+
+			expect(credential.__skipManagedCreation).toBeUndefined();
 		});
 	});
 

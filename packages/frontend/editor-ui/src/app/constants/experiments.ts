@@ -102,6 +102,7 @@ export const CODE_WORKFLOW_BUILDER_EXPERIMENT = createExperiment('071_coding_wor
 export const QUICK_CONNECT_EXPERIMENT = createExperiment('073_quick_connect');
 
 export const AI_BUILDER_SETUP_WIZARD_EXPERIMENT = createExperiment('079_ai_builder_setup_wizard');
+export const CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT = createExperiment('077_chat_hub_semantic_search');
 
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
@@ -127,4 +128,5 @@ export const EXPERIMENTS_TO_TRACK = [
 	AI_BUILDER_REVIEW_CHANGES_EXPERIMENT.name,
 	MERGE_ASK_BUILD_EXPERIMENT.name,
 	AI_BUILDER_SETUP_WIZARD_EXPERIMENT.name,
+	CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT.name,
 ];

@@ -42,7 +42,6 @@ export class DynamicCredentialsProxy
 		staticData: ICredentialDataDecryptedObject,
 		executionContext?: IExecutionContext,
 		workflowSettings?: IWorkflowSettings,
-		canUseExternalSecrets?: boolean,
 	): Promise<CredentialResolutionResult> {
 		if (!this.resolvingProvider) {
 			if (credentialsResolveMetadata.isResolvable) {
@@ -58,7 +57,6 @@ export class DynamicCredentialsProxy
 			staticData,
 			executionContext,
 			workflowSettings,
-			canUseExternalSecrets,
 		);
 	}
 

@@ -130,6 +130,10 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(workflo
 		// extract credentials types
 		const allNodeCredentials = Object.entries(node.credentials);
 		for (const [nodeCredentialType, nodeCredentials] of allNodeCredentials) {
+			// Skip undefined/null credentials (e.g. from SDK's newCredential() which serializes to undefined)
+			if (nodeCredentials === null || nodeCredentials === undefined) {
+				continue;
+			}
 			// Check if Node applies old credentials style
 			if (typeof nodeCredentials === 'string' || nodeCredentials.id === null) {
 				const name = typeof nodeCredentials === 'string' ? nodeCredentials : nodeCredentials.name;

@@ -41,8 +41,8 @@ export class Chat implements INodeType {
 		icon: 'fa:comments',
 		iconColor: 'black',
 		group: ['input'],
-		version: [1, 1.1, 1.2],
-		defaultVersion: 1.2,
+		version: [1, 1.1, 1.2, 1.3],
+		defaultVersion: 1.3,
 		description: 'Send a message into the chat',
 		defaults: {
 			name: 'Chat',
@@ -221,6 +221,9 @@ export class Chat implements INodeType {
 		}
 
 		if (!waitForReply) {
+			// return original message instead of input data
+			if (nodeVersion >= 1.3) return [[data]];
+
 			const inputData = context.getInputData();
 			return [inputData];
 		}

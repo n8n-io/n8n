@@ -13,7 +13,9 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { ref } from 'vue';
 import type { ChatModelDto } from '@n8n/api-types';
 
-vi.mock('@n8n/i18n', () => {
+vi.mock('@n8n/i18n', async (importOriginal) => {
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+	const actual = await importOriginal<typeof import('@n8n/i18n')>();
 	const i18n = {
 		baseText: (key: string) => key,
 		nodeText: () => ({
@@ -32,9 +34,9 @@ vi.mock('@n8n/i18n', () => {
 		}),
 	};
 	return {
+		...actual,
 		useI18n: () => i18n,
 		i18n,
-		i18nInstance: { install: vi.fn() },
 	};
 });
 
@@ -79,6 +81,7 @@ const MOCK_AGENT = {
 	toolIds: ['tool-1'],
 	icon: { type: 'emoji' as const, value: '🤖' },
 	suggestedPrompts: [{ text: 'Hello', icon: { type: 'icon' as const, value: 'comment' } }],
+	files: [],
 };
 
 const MOCK_AGENT_MODEL: ChatModelDto = {
@@ -324,6 +327,8 @@ describe('AgentEditorModal', () => {
 						provider: 'openai',
 						model: 'gpt-4',
 					}),
+					[], // newFiles
+					[], // removedFileKnowledgeIds
 					{ openai: 'cred-1' },
 				);
 				expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);

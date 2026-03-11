@@ -152,7 +152,11 @@ describe('WorkflowsController', () => {
 			 * Assert
 			 */
 			expect(result).toEqual(mockExecution);
-			expect(executionService.getLastSuccessfulExecution).toHaveBeenCalledWith(workflowId);
+			expect(executionService.getLastSuccessfulExecution).toHaveBeenCalledWith(
+				workflowId,
+				req.user,
+				undefined,
+			);
 		});
 
 		it('should return null when no successful execution exists', async () => {
@@ -173,7 +177,11 @@ describe('WorkflowsController', () => {
 			 * Assert
 			 */
 			expect(result).toBeNull();
-			expect(executionService.getLastSuccessfulExecution).toHaveBeenCalledWith(workflowId);
+			expect(executionService.getLastSuccessfulExecution).toHaveBeenCalledWith(
+				workflowId,
+				req.user,
+				undefined,
+			);
 		});
 	});
 });

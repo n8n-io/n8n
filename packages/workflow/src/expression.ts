@@ -1,10 +1,19 @@
 import { ApplicationError } from '@n8n/errors';
+import type { IExpressionEvaluator } from '@n8n/expression-runtime';
+import { MemoryLimitError, SecurityViolationError, TimeoutError } from '@n8n/expression-runtime';
 import { DateTime, Duration, Interval } from 'luxon';
 
+import { UnexpectedError } from './errors';
 import { ExpressionExtensionError } from './errors/expression-extension.error';
 import { ExpressionError } from './errors/expression.error';
 import { evaluateExpression, setErrorHandler } from './expression-evaluator-proxy';
-import { sanitizer, sanitizerName } from './expression-sandboxing';
+import {
+	DollarSignValidator,
+	PrototypeSanitizer,
+	ThisSanitizer,
+	sanitizer,
+	sanitizerName,
+} from './expression-sandboxing';
 import { isExpression } from './expressions/expression-helpers';
 import { extend, extendOptional } from './extensions';
 import { extendSyntax } from './extensions/expression-extension';
@@ -165,7 +174,85 @@ const createSafeErrorSubclass = <T extends ErrorConstructor>(ErrorClass: T): T =
 };
 
 export class Expression {
+	// Feature gate for expression engine selection
+	private static expressionEngine: 'current' | 'vm' = (() => {
+		if (typeof process === 'undefined') return 'current';
+		const env = process.env.N8N_EXPRESSION_ENGINE;
+		if (env === 'vm' || env === 'current') return env;
+		if (env) {
+			console.warn(
+				`Unknown N8N_EXPRESSION_ENGINE="${env}", falling back to "current". Valid values: current, vm`,
+			);
+		}
+		return 'current';
+	})();
+
+	private static vmEvaluator?: IExpressionEvaluator;
+
 	constructor(private readonly timezone: string) {}
+
+	/**
+	 * Check if VM evaluator should be used for evaluation.
+	 * @private
+	 */
+	private static shouldUseVm(): boolean {
+		return this.expressionEngine === 'vm' && !IS_FRONTEND && !!this.vmEvaluator;
+	}
+
+	/**
+	 * Initialize the VM evaluator (if feature flag is enabled).
+	 * Should be called once during application startup.
+	 * Only available in Node.js environments (not in browser).
+	 */
+	static async initializeVmEvaluator(): Promise<void> {
+		if (this.expressionEngine !== 'vm' || IS_FRONTEND) return;
+
+		if (!this.vmEvaluator) {
+			// Dynamic import to avoid loading expression-runtime in browser environments
+			const { ExpressionEvaluator, IsolatedVmBridge } = await import('@n8n/expression-runtime');
+			const bridge = new IsolatedVmBridge({ timeout: 5000 });
+			this.vmEvaluator = new ExpressionEvaluator({
+				bridge,
+				hooks: {
+					before: [ThisSanitizer],
+					after: [PrototypeSanitizer, DollarSignValidator],
+				},
+			});
+			await this.vmEvaluator.initialize();
+		}
+	}
+
+	/**
+	 * Dispose the VM evaluator and release resources.
+	 * Should be called during application shutdown or test teardown.
+	 */
+	static async disposeVmEvaluator(): Promise<void> {
+		if (this.vmEvaluator) {
+			await this.vmEvaluator.dispose();
+			this.vmEvaluator = undefined;
+		}
+	}
+
+	/**
+	 * Get the active expression evaluation implementation.
+	 * Used for testing and verification.
+	 */
+	static getActiveImplementation(): 'current' | 'vm' {
+		if (this.shouldUseVm()) return 'vm';
+		return 'current';
+	}
+
+	/**
+	 * Set the expression engine programmatically.
+	 *
+	 * WARNING: This is a global setting — switching engines mid-execution could
+	 * cause a workflow to evaluate some expressions with one engine and some with
+	 * another. Only use this in benchmarks and tests, never in production code.
+	 * In production, set `N8N_EXPRESSION_ENGINE` before process startup instead.
+	 */
+	static setExpressionEngine(engine: 'current' | 'vm'): void {
+		this.expressionEngine = engine;
+	}
 
 	static initializeGlobalContext(data: IDataObject) {
 		/**
@@ -435,6 +522,46 @@ export class Expression {
 	}
 
 	private renderExpression(expression: string, data: IWorkflowDataProxyData) {
+		// Use VM evaluator if engine is set to 'vm' and we're not in the browser
+		if (Expression.expressionEngine === 'vm' && !IS_FRONTEND) {
+			if (!Expression.vmEvaluator) {
+				throw new UnexpectedError(
+					'N8N_EXPRESSION_ENGINE=vm is enabled but VM evaluator is not initialized. Call Expression.initializeVmEvaluator() during application startup.',
+				);
+			}
+
+			try {
+				const result = Expression.vmEvaluator.evaluate(expression, data);
+				return result as string | null | (() => unknown);
+			} catch (error) {
+				if (isExpressionError(error)) throw error;
+
+				if (error instanceof TimeoutError) {
+					const wrapped = new ExpressionError('Expression timed out');
+					// Assign cause manually because ExecutionBaseError drops it if it's an instance of Error
+					wrapped.cause = error;
+					throw wrapped;
+				}
+				if (error instanceof MemoryLimitError) {
+					const wrapped = new ExpressionError('Expression exceeded memory limit');
+					// Assign cause manually because ExecutionBaseError drops it if it's an instance of Error
+					wrapped.cause = error;
+					throw wrapped;
+				}
+				if (error instanceof SecurityViolationError) {
+					const wrapped = new ExpressionError(error.message);
+					// Assign cause manually because ExecutionBaseError drops it if it's an instance of Error
+					wrapped.cause = error;
+					throw wrapped;
+				}
+
+				if (isSyntaxError(error)) throw new ExpressionError('invalid syntax');
+
+				throw error;
+			}
+		}
+
+		// Fall back to current implementation
 		try {
 			return evaluateExpression(expression, data);
 		} catch (error) {

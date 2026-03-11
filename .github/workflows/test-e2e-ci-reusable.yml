@@ -71,7 +71,7 @@ jobs:
         run: |
           ARGS=(--matrix 16 --orchestrate)
           if [[ "${{ inputs.playwright-only }}" == "true" ]]; then
-            ARGS+=(--impact "--files=$CHANGED_FILES")
+            ARGS+=(--impact "--files=$CHANGED_FILES" "--base=FETCH_HEAD")
           fi
           MATRIX=$(node packages/testing/playwright/scripts/distribute-tests.mjs "${ARGS[@]}")
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
