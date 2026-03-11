@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
+import { UpdateWorkflowHistoryVersionDto, WorkflowHistoryLookupDto } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import {
 	WorkflowHistory,
@@ -235,6 +235,26 @@ export class WorkflowHistoryService {
 		});
 
 		return versions.map((v) => ({ versionId: v.versionId, createdAt: v.createdAt }));
+	}
+
+	async lookupVersions(user: User, workflowId: string, body: WorkflowHistoryLookupDto) {
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+			'workflow:read',
+		]);
+
+		if (!workflow) {
+			throw new SharedWorkflowNotFoundError('');
+		}
+
+		const select: Array<keyof WorkflowHistory> = ['versionId', ...body.fields];
+
+		return await this.workflowHistoryRepository.find({
+			where: {
+				workflowId: workflow.id,
+				versionId: In(body.versionIds),
+			},
+			select,
+		});
 	}
 
 	async getPublishTimeline(user: User, workflowId: string) {
