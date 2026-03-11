@@ -1,5 +1,6 @@
 import type { NodeTypes } from '@/node-types';
 import { mockInstance } from '@n8n/backend-test-utils';
+import type { LicenseState } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import {
 	type CredentialsEntity,
@@ -26,15 +27,18 @@ import {
 import { N8N_VERSION } from '@/constants';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
-import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
+import { TelemetryEventRelay, getSemanticVersioning } from '@/events/relays/telemetry.event-relay';
 import type { License } from '@/license';
 import type { Telemetry } from '@/telemetry';
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
 
 describe('TelemetryEventRelay', () => {
-	const telemetry = mock<Telemetry>();
+	const telemetry = mock<Telemetry>({
+		sanitizeTelemetryProperties: jest.fn((data) => data),
+	});
 	const license = mock<License>();
+	const licenseState = mock<LicenseState>();
 	const globalConfig = mock<GlobalConfig>({
 		deployment: {
 			type: 'default',
@@ -67,6 +71,35 @@ describe('TelemetryEventRelay', () => {
 			optimizingTimeWindowHours: 400,
 			trimmingTimeWindowDays: 600,
 		},
+		host: 'localhost',
+		generic: {
+			timezone: 'UTC',
+			releaseChannel: 'stable',
+		},
+		defaultLocale: 'en',
+		personalization: {
+			enabled: true,
+		},
+		multiMainSetup: {
+			enabled: false,
+		},
+		taskRunners: {
+			mode: 'external',
+		},
+		templates: {
+			enabled: true,
+		},
+		ai: {
+			enabled: false,
+		},
+		license: {
+			tenantId: 1,
+			autoRenewalEnabled: false,
+			activationKey: '',
+		},
+		database: {
+			type: 'sqlite',
+		},
 	});
 	const binaryDataConfig = mock<BinaryDataConfig>({
 		mode: 'default',
@@ -87,6 +120,7 @@ describe('TelemetryEventRelay', () => {
 			eventService,
 			telemetry,
 			license,
+			licenseState,
 			globalConfig,
 			instanceSettings,
 			binaryDataConfig,
@@ -112,6 +146,7 @@ describe('TelemetryEventRelay', () => {
 				eventService,
 				telemetry,
 				license,
+				licenseState,
 				globalConfig,
 				instanceSettings,
 				binaryDataConfig,
@@ -136,6 +171,7 @@ describe('TelemetryEventRelay', () => {
 				eventService,
 				telemetry,
 				license,
+				licenseState,
 				globalConfig,
 				instanceSettings,
 				binaryDataConfig,
@@ -1266,6 +1302,13 @@ describe('TelemetryEventRelay', () => {
 
 			eventService.emit('user-updated', event);
 
+			expect(telemetry.identify).toHaveBeenCalledWith(
+				{
+					user_role: GLOBAL_OWNER_ROLE.slug,
+					user_email: 'user@example.com',
+				},
+				'user123',
+			);
 			expect(telemetry.track).toHaveBeenCalledWith('User changed personal settings', {
 				user_id: 'user123',
 				fields_changed: ['firstName', 'lastName'],
@@ -1298,6 +1341,12 @@ describe('TelemetryEventRelay', () => {
 				target_user_id: 'user456',
 				migration_user_id: 'user789',
 			});
+			expect(telemetry.identify).toHaveBeenCalledWith(
+				{
+					deleted: true,
+				},
+				'user456',
+			);
 		});
 
 		it('should track on `user-invited` event', () => {
@@ -1341,6 +1390,17 @@ describe('TelemetryEventRelay', () => {
 
 			eventService.emit('user-signed-up', event);
 
+			expect(telemetry.identify).toHaveBeenCalledWith(
+				{
+					user_id: 'user123',
+					user_type: 'email',
+					was_disabled_ldap_user: false,
+				},
+				'user123',
+			);
+			expect(telemetry.groupIdentify).toHaveBeenCalledWith({
+				userId: 'user123',
+			});
 			expect(telemetry.track).toHaveBeenCalledWith('User signed up', {
 				user_id: 'user123',
 				user_type: 'email',
@@ -1380,6 +1440,12 @@ describe('TelemetryEventRelay', () => {
 
 			eventService.emit('user-changed-role', event);
 
+			expect(telemetry.identify).toHaveBeenCalledWith(
+				{
+					user_role: 'global:member',
+				},
+				'user456',
+			);
 			expect(telemetry.track).toHaveBeenCalledWith('User changed role', {
 				user_id: 'user123',
 				target_user_id: 'user456',
@@ -1426,6 +1492,15 @@ describe('TelemetryEventRelay', () => {
 
 			await flushPromises();
 
+			expect(telemetry.groupIdentify).toHaveBeenCalledWith(
+				expect.objectContaining({
+					traits: expect.objectContaining({
+						n8n_host: expect.any(String),
+						version_cli: N8N_VERSION,
+						n8n_deployment_type: 'default',
+					}),
+				}),
+			);
 			expect(telemetry.identify).toHaveBeenCalledWith(
 				expect.objectContaining({
 					version_cli: N8N_VERSION,
@@ -1497,6 +1572,9 @@ describe('TelemetryEventRelay', () => {
 
 			eventService.emit('instance-owner-setup', event);
 
+			expect(telemetry.groupIdentify).toHaveBeenCalledWith({
+				userId: 'user123',
+			});
 			expect(telemetry.track).toHaveBeenCalledWith('Owner finished instance setup', {
 				user_id: 'user123',
 			});
@@ -2227,6 +2305,78 @@ describe('TelemetryEventRelay', () => {
 				user_id: 'user456',
 				'2fa_enforcement': false,
 			});
+		});
+	});
+
+	describe('getSemanticVersioning', () => {
+		it('should parse standard semantic version', () => {
+			const result = getSemanticVersioning('2.11.0');
+			expect(result).toEqual({ major: 2, minor: 11, patch: 0 });
+		});
+
+		it('should parse version with pre-release', () => {
+			const result = getSemanticVersioning('2.11.0-beta.1');
+			expect(result).toEqual({ major: 2, minor: 11, patch: 0 });
+		});
+
+		it('should parse version with pre-release rc', () => {
+			const result = getSemanticVersioning('2.11.0-rc.5');
+			expect(result).toEqual({ major: 2, minor: 11, patch: 0 });
+		});
+
+		it('should parse version with build metadata', () => {
+			const result = getSemanticVersioning('2.11.0+build.123');
+			expect(result).toEqual({ major: 2, minor: 11, patch: 0 });
+		});
+
+		it('should parse version with pre-release and build metadata', () => {
+			const result = getSemanticVersioning('2.11.0-alpha.1+build.456');
+			expect(result).toEqual({ major: 2, minor: 11, patch: 0 });
+		});
+
+		it('should handle single digit versions', () => {
+			const result = getSemanticVersioning('1.0.0');
+			expect(result).toEqual({ major: 1, minor: 0, patch: 0 });
+		});
+
+		it('should handle large version numbers', () => {
+			const result = getSemanticVersioning('100.200.300');
+			expect(result).toEqual({ major: 100, minor: 200, patch: 300 });
+		});
+
+		it('should return null for invalid version', () => {
+			const result = getSemanticVersioning('invalid');
+			expect(result).toEqual({ major: null, minor: null, patch: null });
+		});
+
+		it('should return null for empty string', () => {
+			const result = getSemanticVersioning('');
+			expect(result).toEqual({ major: null, minor: null, patch: null });
+		});
+
+		it('should return null for malformed version', () => {
+			const result = getSemanticVersioning('a.b.c');
+			expect(result).toEqual({ major: null, minor: null, patch: null });
+		});
+
+		it('should return null for version with only major.minor', () => {
+			const result = getSemanticVersioning('2.11');
+			expect(result).toEqual({ major: null, minor: null, patch: null });
+		});
+
+		it('should handle errors gracefully', () => {
+			const result = getSemanticVersioning('very.weird.version.string');
+			expect(result).toEqual({ major: null, minor: null, patch: null });
+		});
+
+		it('should parse the current N8N_VERSION', () => {
+			const result = getSemanticVersioning(N8N_VERSION);
+			expect(result.major).not.toBeNull();
+			expect(result.minor).not.toBeNull();
+			expect(result.patch).not.toBeNull();
+			expect(typeof result.major).toBe('number');
+			expect(typeof result.minor).toBe('number');
+			expect(typeof result.patch).toBe('number');
 		});
 	});
 });

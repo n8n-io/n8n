@@ -12,7 +12,7 @@ import {
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import {
 	getNodeCredentialTypes,
@@ -36,9 +36,9 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	const nodeTypesStore = useNodeTypesStore();
 	const environmentsStore = useEnvironmentsStore();
 	const nodeHelpers = useNodeHelpers();
-	const workflowState = injectWorkflowState();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
-	const sourceNodes = computed(() => nodes?.value ?? workflowsStore.allNodes);
+	const sourceNodes = computed(() => nodes?.value ?? workflowDocumentStore?.value?.allNodes ?? []);
 
 	const getCredentialDisplayName = (credentialType: string): string => {
 		const credentialTypeInfo = credentialsStore.getCredentialTypeByName(credentialType);
@@ -372,9 +372,9 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		void testCredentialInBackground(credentialId, credential.name, credentialType);
 
 		const assignCredentialToNode = (nodeName: string) => {
-			const node = workflowsStore.getNodeByName(nodeName);
+			const node = workflowDocumentStore?.value?.getNodeByName(nodeName);
 			if (!node) return;
-			workflowState.updateNodeProperties({
+			workflowDocumentStore?.value?.updateNodeProperties({
 				name: nodeName,
 				properties: {
 					credentials: {
@@ -407,13 +407,13 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 		if (!credState) return;
 
 		for (const stateNode of credState.nodes) {
-			const node = workflowsStore.getNodeByName(stateNode.name);
+			const node = workflowDocumentStore?.value?.getNodeByName(stateNode.name);
 			if (!node) continue;
 
 			const updatedCredentials = { ...node.credentials };
 			delete updatedCredentials[credentialType];
 
-			workflowState.updateNodeProperties({
+			workflowDocumentStore?.value?.updateNodeProperties({
 				name: stateNode.name,
 				properties: {
 					credentials: updatedCredentials,

@@ -35,13 +35,23 @@ runs:
         node-version: ${{ inputs.node-version }}
         cache: 'pnpm'
 
+    # To avoid setup-node cache failure.
+    # see: https://github.com/actions/setup-node/issues/1137
+    - name: Verify PNPM Cache Directory
+      shell: bash
+      run: |
+        PNPM_STORE_PATH="$( pnpm store path --silent )"
+        if [ ! -d "$PNPM_STORE_PATH" ]; then
+            mkdir -p "$PNPM_STORE_PATH"
+        fi
+
     - name: Install Aikido SafeChain
       if: runner.os != 'Windows'
       run: |
         VERSION="1.4.1"
         EXPECTED_SHA256="628235987175072a4255aa3f5f0128f31795b63970f1970ae8a04d07bf8527b0"
-        curl -fsSL -o install-safe-chain.sh \
-          "https://github.com/AikidoSec/safe-chain/releases/download/${VERSION}/install-safe-chain.sh"
+        node .github/scripts/retry.mjs --attempts 3 --delay 10 \
+          "curl -fsSL -o install-safe-chain.sh https://github.com/AikidoSec/safe-chain/releases/download/${VERSION}/install-safe-chain.sh"
         echo "${EXPECTED_SHA256}  install-safe-chain.sh" | sha256sum -c -
         sh install-safe-chain.sh --ci
         rm install-safe-chain.sh

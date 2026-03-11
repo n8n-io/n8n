@@ -493,6 +493,10 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 
 	const isScopedMode = computed(() => !!options.projectId);
 
+	const isReadOnly = computed(
+		() => isScopedMode.value && isSharedGlobally.value && isEditMode.value,
+	);
+
 	return {
 		// State refs
 		providerSecretsCount,
@@ -515,6 +519,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		canDelete,
 		canShareGlobally,
 		isScopedMode,
+		isReadOnly,
 		setScopeState,
 
 		// Computed

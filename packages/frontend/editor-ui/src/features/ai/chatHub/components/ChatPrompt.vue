@@ -12,7 +12,7 @@ import {
 	N8nTooltip,
 	N8nCallout,
 } from '@n8n/design-system';
-import { useSpeechRecognition } from '@vueuse/core';
+import { useElementSize, useSpeechRecognition } from '@vueuse/core';
 import { computed, ref, useTemplateRef, watch } from 'vue';
 import ToolsSelector from './ToolsSelector.vue';
 import {
@@ -54,6 +54,8 @@ const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef');
 const message = ref('');
 const committedSpokenMessage = ref('');
 const attachments = ref<File[]>([]);
+const attachmentsEl = useTemplateRef('attachmentsEl');
+const attachmentsElSize = useElementSize(attachmentsEl, undefined, { box: 'border-box' });
 
 const toast = useToast();
 const i18n = useI18n();
@@ -83,18 +85,10 @@ const acceptedMimeTypes = computed(() =>
 
 const canUploadFiles = computed(() => props.selectedModel?.metadata.allowFileUploads ?? false);
 
-const showMisisngAgentCallout = computed(() => props.messagingState === 'missingAgent');
+const showMissingAgentCallout = computed(() => props.messagingState === 'missingAgent');
 const showMissingCredentialsCallout = computed(
 	() => props.messagingState === 'missingCredentials' && !!llmProvider.value,
 );
-const calloutVisible = computed(() => {
-	return (
-		showMisisngAgentCallout.value ||
-		showMissingCredentialsCallout.value ||
-		props.showDynamicCredentialsMissingCallout ||
-		props.showCreditsClaimedCallout
-	);
-});
 
 function onMic() {
 	committedSpokenMessage.value = message.value;
@@ -158,10 +152,6 @@ function handleKeydownTextarea(e: KeyboardEvent) {
 		speechInput.stop();
 		emit('submit', trimmed, attachments.value);
 	}
-}
-
-function handleClickInputWrapper() {
-	inputRef.value?.focus();
 }
 
 watch(speechInput.result, (spoken) => {
@@ -233,10 +223,23 @@ defineExpose({
 </script>
 
 <template>
-	<form :class="$style.prompt" @submit.prevent="handleSubmitForm">
-		<div :class="$style.inputWrap">
+	<form
+		:class="$style.prompt"
+		:style="{ '--attachments-el--height': `${attachmentsElSize.height.value}px` }"
+		@submit.prevent="handleSubmitForm"
+	>
+		<input
+			ref="fileInputRef"
+			type="file"
+			:class="$style.fileInput"
+			:accept="acceptedMimeTypes"
+			multiple
+			@change="handleFileSelect"
+		/>
+
+		<div :class="$style.header">
 			<N8nCallout
-				v-if="showMisisngAgentCallout"
+				v-if="showMissingAgentCallout"
 				icon="info"
 				theme="secondary"
 				:class="$style.callout"
@@ -343,135 +346,107 @@ defineExpose({
 				</template>
 			</N8nCallout>
 
-			<input
-				ref="fileInputRef"
-				type="file"
-				:class="$style.fileInput"
-				:accept="acceptedMimeTypes"
-				multiple
-				@change="handleFileSelect"
-			/>
-
-			<div
-				:class="[{ [$style.calloutVisible]: calloutVisible }, $style.inputWrapper]"
-				@click="handleClickInputWrapper"
-			>
-				<div v-if="attachments.length > 0" :class="$style.attachments">
-					<ChatFile
-						v-for="(file, index) in attachments"
-						:key="index"
-						:file="file"
-						:is-previewable="true"
-						:is-removable="messagingState === 'idle'"
-						@remove="removeAttachment"
-					/>
-				</div>
-
-				<N8nInput
-					ref="inputRef"
-					v-model="message"
-					type="textarea"
-					:placeholder="placeholder"
-					autocomplete="off"
-					:autosize="{ minRows: 1, maxRows: 6 }"
-					autofocus
-					:disabled="messagingState !== 'idle'"
-					@keydown="handleKeydownTextarea"
+			<div v-if="attachments.length > 0" ref="attachmentsEl" :class="$style.attachments">
+				<ChatFile
+					v-for="(file, index) in attachments"
+					:key="index"
+					:file="file"
+					:is-previewable="true"
+					:is-removable="messagingState === 'idle'"
+					@remove="removeAttachment"
 				/>
+			</div>
+		</div>
 
-				<div :class="$style.footer">
-					<div :class="$style.tools">
-						<ToolsSelector
-							:class="$style.toolsButton"
-							:checked-tool-ids="checkedToolIds"
-							:custom-agent-id="customAgentId"
-							:disabled="messagingState !== 'idle' || !isToolsSelectable"
-							:disabled-tooltip="
-								isToolsSelectable
-									? undefined
-									: selectedModel
-										? i18n.baseText('chatHub.tools.selector.disabled.tooltip')
-										: i18n.baseText('chatHub.tools.selector.disabled.noModel.tooltip')
-							"
-							@toggle="handleToolToggle"
-						/>
-					</div>
-					<div :class="$style.actions">
-						<N8nTooltip
-							:content="
-								!canUploadFiles
-									? i18n.baseText('chatHub.chat.prompt.button.attach.disabled')
-									: i18n.baseText('chatHub.chat.prompt.button.attach')
-							"
-							:disabled="canUploadFiles && messagingState === 'idle'"
-							placement="top"
-						>
-							<N8nIconButton
-								variant="ghost"
-								:disabled="messagingState !== 'idle' || !canUploadFiles"
-								icon="paperclip"
-								icon-size="large"
-								@click.stop="onAttach"
-							/>
-						</N8nTooltip>
-						<N8nIconButton
-							v-if="speechInput.isSupported"
-							variant="outline"
-							:title="
-								speechInput.isListening.value
-									? i18n.baseText('chatHub.chat.prompt.button.stopRecording')
-									: i18n.baseText('chatHub.chat.prompt.button.voiceInput')
-							"
-							:disabled="messagingState !== 'idle'"
-							:icon="speechInput.isListening.value ? 'square' : 'mic'"
-							:class="{ [$style.recording]: speechInput.isListening.value }"
-							icon-size="large"
-							@click.stop="onMic"
-						/>
-						<N8nIconButton
-							v-if="messagingState !== 'receiving'"
-							type="submit"
-							:disabled="messagingState !== 'idle' || !message.trim()"
-							:title="i18n.baseText('chatHub.chat.prompt.button.send')"
-							:loading="messagingState === 'waitingFirstChunk'"
-							icon="arrow-up"
-							icon-size="large"
-							@click.stop
-						/>
-						<N8nIconButton
-							v-else
-							native-type="button"
-							:title="i18n.baseText('chatHub.chat.prompt.button.stopGenerating')"
-							icon="square"
-							icon-size="large"
-							@click.stop="onStop"
-						/>
-					</div>
-				</div>
+		<N8nInput
+			ref="inputRef"
+			v-model="message"
+			type="textarea"
+			:placeholder="placeholder"
+			autocomplete="off"
+			:autosize="{ minRows: 1, maxRows: 6 }"
+			autofocus
+			:disabled="messagingState !== 'idle'"
+			@keydown="handleKeydownTextarea"
+		/>
+
+		<div :class="$style.footer">
+			<div :class="$style.tools">
+				<ToolsSelector
+					:class="$style.toolsButton"
+					:checked-tool-ids="checkedToolIds"
+					:custom-agent-id="customAgentId"
+					:disabled="messagingState !== 'idle' || !isToolsSelectable"
+					:disabled-tooltip="
+						isToolsSelectable
+							? undefined
+							: selectedModel
+								? i18n.baseText('chatHub.tools.selector.disabled.tooltip')
+								: i18n.baseText('chatHub.tools.selector.disabled.noModel.tooltip')
+					"
+					@toggle="handleToolToggle"
+				/>
+			</div>
+			<div :class="$style.actions">
+				<N8nTooltip
+					:content="
+						!canUploadFiles
+							? i18n.baseText('chatHub.chat.prompt.button.attach.disabled')
+							: i18n.baseText('chatHub.chat.prompt.button.attach')
+					"
+					:disabled="canUploadFiles && messagingState === 'idle'"
+					placement="top"
+				>
+					<N8nIconButton
+						variant="ghost"
+						:disabled="messagingState !== 'idle' || !canUploadFiles"
+						icon="paperclip"
+						icon-size="large"
+						@click.stop="onAttach"
+					/>
+				</N8nTooltip>
+				<N8nIconButton
+					v-if="speechInput.isSupported"
+					variant="outline"
+					:title="
+						speechInput.isListening.value
+							? i18n.baseText('chatHub.chat.prompt.button.stopRecording')
+							: i18n.baseText('chatHub.chat.prompt.button.voiceInput')
+					"
+					:disabled="messagingState !== 'idle'"
+					:icon="speechInput.isListening.value ? 'square' : 'mic'"
+					:class="{ [$style.recording]: speechInput.isListening.value }"
+					icon-size="large"
+					@click.stop="onMic"
+				/>
+				<N8nIconButton
+					v-if="messagingState !== 'receiving'"
+					type="submit"
+					:disabled="messagingState !== 'idle' || !message.trim()"
+					:title="i18n.baseText('chatHub.chat.prompt.button.send')"
+					:loading="messagingState === 'waitingFirstChunk'"
+					icon="arrow-up"
+					icon-size="large"
+					@click.stop
+				/>
+				<N8nIconButton
+					v-else
+					native-type="button"
+					:title="i18n.baseText('chatHub.chat.prompt.button.stopGenerating')"
+					icon="square"
+					icon-size="large"
+					@click.stop="onStop"
+				/>
 			</div>
 		</div>
 	</form>
 </template>
 
 <style lang="scss" module>
-.prompt {
-	display: grid;
-	place-items: center;
-}
-
-.inputWrap {
-	position: relative;
-	display: flex;
-	align-items: center;
-	flex-direction: column;
-	width: 100%;
-}
-
 .callout {
-	width: 100%;
+	margin: -1px;
 	padding: var(--spacing--sm);
 	border-radius: 16px 16px 0 0;
-	box-shadow: 0 10px 24px 0 #00000010;
 }
 
 .closeButton {
@@ -482,53 +457,65 @@ defineExpose({
 	display: none;
 }
 
-.inputWrapper {
+.prompt {
 	width: 100%;
-	border-radius: 16px;
-	padding: 16px;
-	box-shadow: 0 10px 24px 0 #00000010;
-	background-color: var(--color--background--light-3);
-	border: var(--border);
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
-	transition: border-color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
-	--input--border-color: transparent;
-	--input--border-color--hover: transparent;
-	--input--border-color--focus: transparent;
-	--input--color--background: transparent;
-
-	&:focus-within,
-	&:hover:has(textarea:not(:disabled)) {
-		border-color: var(--color--secondary);
-	}
 
 	& textarea {
 		font-size: var(--font-size--md);
 		line-height: 1.5em;
-		resize: none;
-		padding: 0 !important;
+		padding: var(--spacing--sm);
+		padding-top: calc(var(--spacing--sm) + var(--attachments-el--height));
+		padding-bottom: 64px;
+		color: var(--color--text--shade-1);
+		box-shadow: 0 10px 24px 0 #00000010;
+		border-radius: 16px;
+
+		&::placeholder {
+			color: var(--color--text--tint-1);
+		}
 	}
 
-	:global(.n8n-input) > div {
-		padding: 0;
+	:global(.n8n-input__wrapper) {
+		--input--radius: 16px;
 	}
 
-	&.calloutVisible {
-		border-radius: 0 0 16px 16px;
-		border-top: 0;
+	&:has(.callout) textarea {
+		padding-top: calc(
+			var(--spacing--sm) + var(--attachments-el--height) + 52px /* callout height */
+		);
 	}
+}
+
+.header,
+.footer {
+	position: absolute;
+	left: 1px;
+	width: calc(100% - 2px);
+	z-index: 10;
+	background: var(--color--background--light-2);
+	border-radius: 16px;
+	pointer-events: none; /* click to focus textarea */
+
+	& > * {
+		pointer-events: auto;
+	}
+}
+
+.header {
+	top: 1px;
 }
 
 .footer {
+	bottom: 1px;
+	padding: var(--spacing--sm);
 	display: flex;
 	align-items: flex-end;
-	justify-content: flex-end;
+	justify-content: space-between;
 	gap: var(--spacing--sm);
-}
-
-.tools {
-	flex-grow: 1;
 }
 
 .toolsButton {
@@ -573,6 +560,8 @@ defineExpose({
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--spacing--2xs);
+	padding: var(--spacing--sm);
+	padding-bottom: 0;
 }
 
 .recording {

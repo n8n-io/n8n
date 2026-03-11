@@ -75,6 +75,10 @@ export class AIAssistantPage extends BasePage {
 		return this.page.getByTestId('new-assistant-session-modal');
 	}
 
+	getStartNewSessionButton() {
+		return this.getNewAssistantSessionModal().getByRole('button', { name: 'Start new session' });
+	}
+
 	getCodeDiffs() {
 		return this.page.getByTestId('code-diff-suggestion');
 	}

@@ -1384,6 +1384,7 @@ onUpdated(async () => {
 				'ignore-key-press-canvas',
 				{
 					[$style.noRightCornersInput]: canBeOverridden,
+					'no-right-corners': canBeOverridden,
 				},
 			]"
 			:style="parameterInputWrapperStyle"
@@ -2040,6 +2041,12 @@ onUpdated(async () => {
 	--input--border-style: dashed;
 	--input--border-width: 1.5px;
 
+	:global(.n8n-input__wrapper) {
+		outline: 1.5px dashed var(--ndv--droppable-parameter--color);
+		outline-offset: -1.5px;
+		transition: none;
+	}
+
 	.cm-editor {
 		border-color: transparent;
 		outline: 1.5px dashed var(--ndv--droppable-parameter--color);
@@ -2054,6 +2061,12 @@ onUpdated(async () => {
 	--input--color--background: var(--color--foreground--tint-2);
 	--input--border-style: solid;
 	--input--border-width: 1px;
+
+	:global(.n8n-input__wrapper) {
+		outline: 1px solid var(--color--success);
+		outline-offset: -1px;
+		transition: none;
+	}
 
 	textarea,
 	input,
@@ -2157,6 +2170,11 @@ onUpdated(async () => {
 	.code-node-editor {
 		height: 100%;
 	}
+}
+
+.no-right-corners .n8n-input__wrapper {
+	border-top-right-radius: 0;
+	border-bottom-right-radius: 0;
 }
 </style>
 

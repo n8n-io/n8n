@@ -66,4 +66,3 @@ When running lint/typecheck, suppress verbose output:
 const delimiter = `CLAUDE_PROMPT_DELIM_${randomUUID().replace(/-/g, '')}`;
 appendFileSync(envFile, `CLAUDE_PROMPT<<${delimiter}\n${prompt}\n${delimiter}\n`);
 
-console.log(`Prompt written to GITHUB_ENV (${prompt.length} chars)`);

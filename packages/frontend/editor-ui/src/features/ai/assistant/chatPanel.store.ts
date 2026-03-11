@@ -63,6 +63,8 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 
 	// Actions
 	async function open(options?: { mode?: ChatPanelMode; showCoachmark?: boolean }) {
+		if (!settingsStore.isAiAssistantOrBuilderEnabled) return;
+
 		const mode = options?.mode ? resolveMode(options.mode) : undefined;
 		const showCoachmark = options?.showCoachmark ?? true;
 

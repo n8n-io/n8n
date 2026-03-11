@@ -40,6 +40,7 @@ compiled
 docker-build-manifest.json
 packages/cli/src/modules/my-feature
 .secrets
+act-event.json
 packages/testing/**/.cursor/rules/
 .venv
 .ruff_cache
@@ -47,6 +48,7 @@ __pycache__
 packages/cli/THIRD_PARTY_LICENSES.md
 .coverage
 .nyc_output
+coverage-gaps.json
 packages/cli/src/commands/export/outputs
 *.bak
 .data
