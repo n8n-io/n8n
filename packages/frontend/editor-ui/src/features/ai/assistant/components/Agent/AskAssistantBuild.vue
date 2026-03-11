@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useBuilderStore } from '../../builder.store';
+import { useBuilderStore, type WorkflowBuilderJourneyEventType } from '../../builder.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import { useHistoryStore } from '@/app/stores/history.store';
@@ -621,6 +621,13 @@ defineExpose({
 					:disabled="builderStore.streaming"
 					:answered="isQuestionsAnswered(message)"
 					@submit="builderStore.resumeWithQuestionsAnswers"
+					@telemetry="
+						(event, properties) =>
+							builderStore.trackWorkflowBuilderJourney(
+								event as WorkflowBuilderJourneyEventType,
+								properties,
+							)
+					"
 				/>
 				<PlanDisplayMessage
 					v-else-if="isPlanModePlanMessage(message)"

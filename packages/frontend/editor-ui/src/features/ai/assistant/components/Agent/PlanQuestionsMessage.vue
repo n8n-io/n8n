@@ -2,14 +2,14 @@
 /**
  * PlanQuestionsMessage.vue
  *
- * Multi-step Q&A wizard for Plan Mode. Renders questions with radio buttons,
- * checkboxes, or text inputs based on question type.
+ * Multi-step Q&A wizard for Plan Mode. Renders questions with number badge rows
+ * (single-select), checkboxes (multi-select), or text inputs based on question type.
+ * Supports full keyboard navigation.
  */
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, nextTick } from 'vue';
 
-import { N8nButton, N8nCheckbox, N8nInput, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCheckbox, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { ElRadio } from 'element-plus';
 
 import type { PlanMode } from '../../assistant.types';
 
@@ -27,17 +27,20 @@ const i18n = useI18n();
 
 const emit = defineEmits<{
 	submit: [answers: PlanMode.QuestionResponse[]];
+	telemetry: [event: string, properties: Record<string, unknown>];
 }>();
 
 const currentIndex = ref(0);
 const isSubmitted = ref(false);
 const answers = ref<Map<string, PlanMode.QuestionResponse>>(new Map());
+const highlightedIndex = ref(-1);
+const containerRef = ref<HTMLElement | null>(null);
 
 const currentQuestion = computed(() => props.questions[currentIndex.value]);
 const isFirstQuestion = computed(() => currentIndex.value === 0);
 const isLastQuestion = computed(() => currentIndex.value === props.questions.length - 1);
 
-// Filter LLM-provided "Other" variants — we render our own "Other" option
+// Filter LLM-provided "Other" variants — we render our own "Something else" option
 const filteredOptions = computed(() => {
 	return (currentQuestion.value.options ?? []).filter(
 		(opt) => !opt.toLowerCase().trim().startsWith('other'),
@@ -49,25 +52,46 @@ const currentAnswer = computed(() => {
 	return q ? answers.value.get(q.id) : undefined;
 });
 
+const hasCustomText = computed(() => !!currentAnswer.value?.customText?.trim());
+
 const hasValidAnswer = computed(() => {
 	const answer = currentAnswer.value;
 	if (!answer) return false;
 	if (answer.skipped) return true;
 
-	const hasCustomText = !!answer.customText?.trim();
+	const customText = !!answer.customText?.trim();
 	const hasSelectedOptions = answer.selectedOptions.length > 0;
 
-	if (currentQuestion.value?.type === 'text') return hasCustomText;
-	if (answer.selectedOptions.includes(OTHER_SENTINEL)) return hasCustomText;
-	return hasSelectedOptions || hasCustomText;
+	if (currentQuestion.value?.type === 'text') return customText;
+	if (answer.selectedOptions.includes(OTHER_SENTINEL)) return customText;
+	return hasSelectedOptions || customText;
+});
+
+// Button visibility logic per question type
+const showSkipButton = computed(() => {
+	if (isLastQuestion.value) return false;
+	if (currentQuestion.value?.type === 'single' && hasCustomText.value) return false;
+	return true;
+});
+
+const showNextButton = computed(() => {
+	if (currentQuestion.value?.type === 'single') return hasCustomText.value;
+	return true;
+});
+
+const isNextEnabled = computed(() => {
+	const q = currentQuestion.value;
+	if (!q) return false;
+	if (q.type === 'single') return hasCustomText.value;
+	if (q.type === 'multi') {
+		const answer = currentAnswer.value;
+		return (answer?.selectedOptions.length ?? 0) > 0 || hasCustomText.value;
+	}
+	if (q.type === 'text') return hasCustomText.value;
+	return false;
 });
 
 const nextButtonLabel = computed(() => {
-	if (!hasValidAnswer.value) {
-		return isLastQuestion.value
-			? i18n.baseText('aiAssistant.builder.planMode.questions.skipAndSubmit')
-			: i18n.baseText('aiAssistant.builder.planMode.questions.skip');
-	}
 	return isLastQuestion.value
 		? i18n.baseText('aiAssistant.builder.planMode.questions.submitButton')
 		: i18n.baseText('aiAssistant.builder.planMode.questions.next');
@@ -87,6 +111,13 @@ watch(
 				skipped: false,
 			});
 		}
+		// Highlight first option by default so Enter works immediately
+		highlightedIndex.value = currentQuestion.value?.type === 'text' ? -1 : 0;
+
+		// Auto-focus the container so keyboard navigation works right away
+		void nextTick(() => {
+			containerRef.value?.focus();
+		});
 	},
 	{ immediate: true },
 );
@@ -99,6 +130,15 @@ function onSingleSelect(option: string) {
 		answer.customText = '';
 	}
 	answer.skipped = false;
+}
+
+function onSingleSelectAndAdvance(
+	option: string,
+	inputMethod: 'click' | 'keyboard_number' | 'keyboard_enter' = 'click',
+) {
+	onSingleSelect(option);
+	emitQuestionTelemetry('qa_question_answered', inputMethod);
+	goToNextInternal();
 }
 
 function onMultiToggle(option: string, checked: boolean) {
@@ -119,6 +159,27 @@ function onCustomTextChange(text: string) {
 	if (!answer) return;
 	answer.customText = text;
 	answer.skipped = false;
+
+	// For multi-select: auto-toggle the OTHER_SENTINEL checkbox
+	if (currentQuestion.value?.type === 'multi') {
+		if (text.trim()) {
+			if (!answer.selectedOptions.includes(OTHER_SENTINEL)) {
+				answer.selectedOptions.push(OTHER_SENTINEL);
+			}
+		} else {
+			const idx = answer.selectedOptions.indexOf(OTHER_SENTINEL);
+			if (idx > -1) answer.selectedOptions.splice(idx, 1);
+		}
+	}
+
+	// For single-select: auto-select OTHER_SENTINEL when typing
+	if (currentQuestion.value?.type === 'single') {
+		if (text.trim()) {
+			answer.selectedOptions = [OTHER_SENTINEL];
+		} else {
+			answer.selectedOptions = [];
+		}
+	}
 }
 
 function goToPrevious() {
@@ -127,7 +188,7 @@ function goToPrevious() {
 	}
 }
 
-function goToNext() {
+function goToNextInternal() {
 	if (!hasValidAnswer.value) {
 		const answer = currentAnswer.value;
 		if (answer) answer.skipped = true;
@@ -136,6 +197,33 @@ function goToNext() {
 	if (isLastQuestion.value) {
 		submitAnswers();
 	} else {
+		currentIndex.value++;
+	}
+}
+
+function goToNext() {
+	if (!hasValidAnswer.value) {
+		emitQuestionTelemetry('qa_question_skipped', 'click');
+	} else {
+		emitQuestionTelemetry('qa_question_answered', 'click');
+	}
+	goToNextInternal();
+}
+
+function skipQuestion() {
+	const answer = currentAnswer.value;
+	if (answer) answer.skipped = true;
+	emitQuestionTelemetry('qa_question_skipped', 'click');
+	goToNextInternal();
+}
+
+function goToNextWithoutAnswer() {
+	// Forward chevron navigation — skip without answering
+	const answer = currentAnswer.value;
+	if (answer && !hasValidAnswer.value) {
+		answer.skipped = true;
+	}
+	if (!isLastQuestion.value) {
 		currentIndex.value++;
 	}
 }
@@ -161,6 +249,118 @@ function submitAnswers() {
 		};
 	});
 	emit('submit', allAnswers);
+	emit('telemetry', 'qa_answers_submitted', {
+		total_questions: props.questions.length,
+	});
+}
+
+function emitQuestionTelemetry(event: string, inputMethod: string) {
+	emit('telemetry', event, {
+		question_type: currentQuestion.value?.type,
+		question_index: currentIndex.value,
+		total_questions: props.questions.length,
+		input_method: inputMethod,
+		custom_answer_used: hasCustomText.value,
+	});
+}
+
+// Keyboard navigation
+function onKeydown(event: KeyboardEvent) {
+	const q = currentQuestion.value;
+	if (!q || props.disabled) return;
+
+	// Don't handle events from within inputs/textareas (except Enter with modifiers)
+	const target = event.target as HTMLElement;
+	const isInputFocused = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+
+	if (isInputFocused) {
+		// Allow Cmd/Ctrl+Enter to pass through for advancing
+		if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+			event.preventDefault();
+			if (q.type === 'multi' && isNextEnabled.value) {
+				emitQuestionTelemetry('qa_question_answered', 'keyboard_enter');
+				goToNextInternal();
+			}
+			return;
+		}
+		// Allow plain Enter in text fields to advance
+		if (event.key === 'Enter' && q.type === 'text' && !event.shiftKey) {
+			event.preventDefault();
+			if (hasCustomText.value) {
+				emitQuestionTelemetry('qa_question_answered', 'keyboard_enter');
+				goToNextInternal();
+			}
+			return;
+		}
+		// Don't intercept other keys when input is focused
+		return;
+	}
+
+	const optionCount = filteredOptions.value.length;
+
+	switch (event.key) {
+		case 'ArrowUp':
+			event.preventDefault();
+			highlightedIndex.value = Math.max(0, highlightedIndex.value - 1);
+			scrollHighlightedIntoView();
+			break;
+		case 'ArrowDown':
+			event.preventDefault();
+			// +1 for the "Something else" row if applicable
+			{
+				const maxIdx = q.type === 'text' ? 0 : optionCount; // optionCount = last idx is "Something else"
+				highlightedIndex.value = Math.min(maxIdx, highlightedIndex.value + 1);
+			}
+			scrollHighlightedIntoView();
+			break;
+		case 'Enter':
+			event.preventDefault();
+			if (q.type === 'single') {
+				if (highlightedIndex.value >= 0 && highlightedIndex.value < optionCount) {
+					onSingleSelectAndAdvance(filteredOptions.value[highlightedIndex.value], 'keyboard_enter');
+				}
+			} else if (q.type === 'multi') {
+				if (event.metaKey || event.ctrlKey) {
+					if (isNextEnabled.value) {
+						emitQuestionTelemetry('qa_question_answered', 'keyboard_enter');
+						goToNextInternal();
+					}
+				} else if (highlightedIndex.value >= 0 && highlightedIndex.value < optionCount) {
+					const option = filteredOptions.value[highlightedIndex.value];
+					const answer = currentAnswer.value;
+					if (answer) {
+						const isChecked = answer.selectedOptions.includes(option);
+						onMultiToggle(option, !isChecked);
+					}
+				}
+			} else if (q.type === 'text') {
+				if (hasCustomText.value) {
+					emitQuestionTelemetry('qa_question_answered', 'keyboard_enter');
+					goToNextInternal();
+				}
+			}
+			break;
+		default:
+			// Number keys for single-select
+			if (q.type === 'single') {
+				const num = parseInt(event.key, 10);
+				if (num >= 1 && num <= optionCount) {
+					event.preventDefault();
+					onSingleSelectAndAdvance(filteredOptions.value[num - 1], 'keyboard_number');
+				}
+			}
+	}
+}
+
+function scrollHighlightedIntoView() {
+	void nextTick(() => {
+		const el = containerRef.value?.querySelector(`[data-option-index="${highlightedIndex.value}"]`);
+		el?.scrollIntoView({ block: 'nearest' });
+	});
+}
+
+function onOptionMouseEnter(idx: number) {
+	highlightedIndex.value = idx;
 }
 </script>
 
@@ -170,35 +370,69 @@ function submitAnswers() {
 			{{ introMessage }}
 		</N8nText>
 
-		<div v-if="!answered && currentQuestion && currentAnswer" :class="$style.container">
+		<div
+			v-if="!answered && currentQuestion && currentAnswer"
+			ref="containerRef"
+			:class="$style.container"
+			tabindex="0"
+			@keydown="onKeydown"
+		>
 			<div :class="$style.question">
 				<N8nText tag="p" :bold="true" :class="$style.questionText">
 					{{ currentQuestion.question }}
 				</N8nText>
 
-				<!-- Single choice (radio) -->
+				<!-- Single choice (number badge rows) -->
 				<div v-if="currentQuestion.type === 'single'" :class="$style.options">
-					<ElRadio
-						v-for="option in filteredOptions"
+					<button
+						v-for="(option, idx) in filteredOptions"
 						:key="option"
-						:model-value="currentAnswer.selectedOptions[0]"
-						:label="option"
+						:class="[$style.optionRow, { [$style.highlighted]: highlightedIndex === idx }]"
+						:data-option-index="idx"
 						:disabled="disabled"
-						@update:model-value="() => onSingleSelect(option)"
+						type="button"
+						@click="onSingleSelectAndAdvance(option)"
+						@mouseenter="onOptionMouseEnter(idx)"
 					>
-						{{ option }}
-					</ElRadio>
+						<span :class="$style.numberBadge">{{ idx + 1 }}</span>
+						<span :class="$style.optionLabel">{{ option }}</span>
+						<N8nIcon :class="$style.arrowIndicator" icon="arrow-right" size="small" />
+					</button>
+
+					<!-- "Something else" row for single-select -->
+					<div
+						:class="[
+							$style.somethingElseRow,
+							{ [$style.highlighted]: highlightedIndex === filteredOptions.length },
+						]"
+						:data-option-index="filteredOptions.length"
+						@mouseenter="onOptionMouseEnter(filteredOptions.length)"
+					>
+						<N8nIcon :class="$style.pencilIcon" icon="pencil" size="small" />
+						<N8nInput
+							:model-value="currentAnswer.customText"
+							:disabled="disabled"
+							:placeholder="i18n.baseText('aiAssistant.builder.planMode.questions.somethingElse')"
+							size="small"
+							:class="$style.somethingElseInput"
+							data-test-id="plan-mode-something-else-input"
+							@update:model-value="onCustomTextChange"
+						/>
+					</div>
 				</div>
 
-				<!-- Multi choice (checkbox) -->
+				<!-- Multi choice (checkbox rows) -->
 				<div v-else-if="currentQuestion.type === 'multi'" :class="$style.options">
 					<label
-						v-for="option in filteredOptions"
+						v-for="(option, idx) in filteredOptions"
 						:key="option"
 						:class="[
-							$style.checkboxOption,
+							$style.checkboxRow,
+							{ [$style.highlighted]: highlightedIndex === idx },
 							{ [$style.selected]: currentAnswer.selectedOptions.includes(option) },
 						]"
+						:data-option-index="idx"
+						@mouseenter="onOptionMouseEnter(idx)"
 					>
 						<N8nCheckbox
 							:model-value="currentAnswer.selectedOptions.includes(option)"
@@ -207,6 +441,35 @@ function submitAnswers() {
 						/>
 						<span :class="$style.optionLabel">{{ option }}</span>
 					</label>
+
+					<!-- "Something else" row for multi-select -->
+					<div
+						:class="[
+							$style.somethingElseRow,
+							{ [$style.highlighted]: highlightedIndex === filteredOptions.length },
+						]"
+						:data-option-index="filteredOptions.length"
+						@mouseenter="onOptionMouseEnter(filteredOptions.length)"
+					>
+						<N8nCheckbox
+							:model-value="!!currentAnswer.customText?.trim()"
+							:disabled="disabled"
+							@update:model-value="
+								(checked: boolean) => {
+									if (!checked) onCustomTextChange('');
+								}
+							"
+						/>
+						<N8nInput
+							:model-value="currentAnswer.customText"
+							:disabled="disabled"
+							:placeholder="i18n.baseText('aiAssistant.builder.planMode.questions.somethingElse')"
+							size="small"
+							:class="$style.somethingElseInput"
+							data-test-id="plan-mode-something-else-input"
+							@update:model-value="onCustomTextChange"
+						/>
+					</div>
 				</div>
 
 				<!-- Text input -->
@@ -216,78 +479,56 @@ function submitAnswers() {
 					type="textarea"
 					:rows="3"
 					:disabled="disabled"
-					:placeholder="i18n.baseText('aiAssistant.builder.planMode.questions.customPlaceholder')"
+					:placeholder="i18n.baseText('aiAssistant.builder.planMode.questions.clarifyPlaceholder')"
 					@update:model-value="onCustomTextChange"
 				/>
-
-				<!-- "Other" option — single choice -->
-				<div v-if="currentQuestion.type === 'single'" :class="$style.otherOption">
-					<ElRadio
-						:model-value="currentAnswer.selectedOptions[0]"
-						:label="OTHER_SENTINEL"
-						:disabled="disabled"
-						@update:model-value="() => onSingleSelect(OTHER_SENTINEL)"
-					>
-						<N8nInput
-							:model-value="currentAnswer.customText"
-							:disabled="disabled"
-							:placeholder="i18n.baseText('aiAssistant.builder.planMode.questions.other')"
-							size="small"
-							:class="$style.otherInput"
-							@update:model-value="onCustomTextChange"
-							@focus="() => onSingleSelect(OTHER_SENTINEL)"
-						/>
-					</ElRadio>
-				</div>
-
-				<!-- "Other" option — multi choice -->
-				<div v-else-if="currentQuestion.type === 'multi'" :class="$style.otherOption">
-					<N8nCheckbox
-						:model-value="!!currentAnswer.customText?.trim()"
-						:disabled="disabled"
-						@update:model-value="
-							(checked: boolean) => {
-								if (!checked) onCustomTextChange('');
-							}
-						"
-					/>
-					<N8nInput
-						:model-value="currentAnswer.customText"
-						:disabled="disabled"
-						:placeholder="i18n.baseText('aiAssistant.builder.planMode.questions.other')"
-						size="small"
-						:class="$style.otherInput"
-						@update:model-value="onCustomTextChange"
-					/>
-				</div>
 			</div>
 
 			<!-- Footer -->
 			<div :class="$style.footer">
-				<div :class="$style.progress">
-					<div
-						v-for="(_, i) in questions"
-						:key="i"
-						:class="[$style.progressDot, { [$style.active]: i <= currentIndex }]"
-					/>
+				<div :class="$style.pagination">
+					<button
+						:class="$style.paginationArrow"
+						:disabled="isFirstQuestion"
+						type="button"
+						data-test-id="plan-mode-pagination-back"
+						@click="goToPrevious"
+					>
+						<N8nIcon icon="chevron-left" size="xsmall" />
+					</button>
+					<N8nText :class="$style.paginationText" size="small">
+						{{ currentIndex + 1 }}
+						{{ i18n.baseText('aiAssistant.builder.planMode.questions.paginationOf') }}
+						{{ questions.length }}
+					</N8nText>
+					<button
+						:class="$style.paginationArrow"
+						:disabled="isLastQuestion"
+						type="button"
+						data-test-id="plan-mode-pagination-forward"
+						@click="goToNextWithoutAnswer"
+					>
+						<N8nIcon icon="chevron-right" size="xsmall" />
+					</button>
 				</div>
 
 				<div :class="$style.navigation">
 					<N8nButton
-						v-if="!isFirstQuestion"
+						v-if="showSkipButton"
 						variant="subtle"
 						size="small"
 						:disabled="disabled"
-						@click="goToPrevious"
+						data-test-id="plan-mode-questions-skip"
+						@click="skipQuestion"
 					>
-						{{ i18n.baseText('aiAssistant.builder.planMode.questions.back') }}
+						{{ i18n.baseText('aiAssistant.builder.planMode.questions.skip') }}
 					</N8nButton>
-					<div v-else />
 
 					<N8nButton
-						:type="isLastQuestion && hasValidAnswer ? 'primary' : 'secondary'"
+						v-if="showNextButton"
+						:type="isNextEnabled ? 'primary' : 'secondary'"
 						size="small"
-						:disabled="disabled || isSubmitted"
+						:disabled="disabled || isSubmitted || !isNextEnabled"
 						data-test-id="plan-mode-questions-next"
 						@click="goToNext"
 					>
@@ -313,6 +554,7 @@ function submitAnswers() {
 .container {
 	border: var(--border);
 	border-radius: var(--radius);
+	outline: none;
 }
 
 .question {
@@ -327,67 +569,117 @@ function submitAnswers() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
-
-	:global(.el-radio) {
-		display: flex;
-		align-items: center;
-		white-space: normal;
-		margin-right: 0;
-		height: auto;
-	}
-
-	:global(.el-radio__label) {
-		white-space: normal;
-		line-height: var(--line-height--xl);
-	}
 }
 
-.checkboxOption {
+.optionRow {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	cursor: pointer;
-	padding: var(--spacing--3xs) 0;
+	width: 100%;
+	padding: var(--spacing--3xs) var(--spacing--2xs);
+	border: none;
 	border-radius: var(--radius);
+	background: none;
+	cursor: pointer;
 	transition: background-color 0.15s ease;
+	text-align: left;
 
-	&:hover {
-		background-color: var(--color--foreground--tint-2);
+	&:hover,
+	&.highlighted {
+		background-color: var(--color--foreground);
 	}
 
-	&.selected {
-		background-color: var(--color--foreground--tint-2);
+	&:hover .arrowIndicator,
+	&.highlighted .arrowIndicator {
+		opacity: 1;
 	}
+
+	&:disabled {
+		color: var(--color--text--tint-1);
+		cursor: not-allowed;
+	}
+}
+
+.numberBadge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--spacing--lg);
+	height: var(--spacing--lg);
+	border-radius: var(--radius);
+	background-color: var(--color--foreground--tint-1);
+	color: var(--color--text);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--bold);
+	flex-shrink: 0;
+}
+
+.arrowIndicator {
+	margin-left: auto;
+	opacity: 0;
+	color: var(--color--text--tint-1);
+	transition: opacity 0.15s ease;
 }
 
 .optionLabel {
 	color: var(--color--text);
 	font-size: var(--font-size--sm);
+	line-height: var(--line-height--xl);
 }
 
-.otherOption {
+.checkboxRow {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	margin-top: var(--spacing--3xs);
-	padding: var(--spacing--3xs) 0;
+	cursor: pointer;
+	padding: var(--spacing--3xs) var(--spacing--2xs);
+	border-radius: var(--radius);
+	transition: background-color 0.15s ease;
 
-	:global(.el-radio) {
-		display: flex;
-		align-items: center;
-		white-space: normal;
-		margin-right: 0;
-		height: auto;
-		width: 100%;
+	&:hover,
+	&.highlighted {
+		background-color: var(--color--foreground);
 	}
 
-	:global(.el-radio__label) {
-		flex: 1;
+	&.selected {
+		background-color: var(--color--foreground);
 	}
 }
 
-.otherInput {
+.somethingElseRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--3xs) var(--spacing--2xs);
+	border-radius: var(--radius);
+	transition: background-color 0.15s ease;
+
+	&:hover,
+	&.highlighted {
+		background-color: var(--color--foreground);
+	}
+}
+
+.pencilIcon {
+	color: var(--color--text--tint-1);
+	flex-shrink: 0;
+}
+
+.somethingElseInput {
 	flex: 1;
+
+	:global(.el-input__wrapper) {
+		box-shadow: none !important;
+		background-color: transparent;
+
+		&:hover {
+			box-shadow: 0 0 0 1px var(--color--foreground) inset !important;
+		}
+
+		&:focus-within {
+			box-shadow: 0 0 0 1px var(--color--primary) inset !important;
+		}
+	}
 }
 
 .footer {
@@ -398,21 +690,36 @@ function submitAnswers() {
 	padding: var(--spacing--xs);
 }
 
-.progress {
+.pagination {
 	display: flex;
+	align-items: center;
 	gap: var(--spacing--3xs);
 }
 
-.progressDot {
-	width: var(--spacing--2xs);
-	height: var(--spacing--2xs);
-	border-radius: 50%;
-	background-color: var(--color--foreground--tint-1);
-	transition: background-color 0.2s ease;
+.paginationArrow {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing--4xs);
+	border: none;
+	border-radius: var(--radius);
+	background: none;
+	cursor: pointer;
+	color: var(--color--text);
 
-	&.active {
-		background-color: var(--color--text);
+	&:hover:not(:disabled) {
+		background-color: var(--color--foreground);
 	}
+
+	&:disabled {
+		color: var(--color--text--tint-2);
+		cursor: not-allowed;
+	}
+}
+
+.paginationText {
+	color: var(--color--text--tint-1);
+	user-select: none;
 }
 
 .navigation {

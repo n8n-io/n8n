@@ -83,7 +83,10 @@ export type WorkflowBuilderJourneyEventType =
 	| 'user_collapsed_review_changes'
 	| 'web_fetch_approval_prompted'
 	| 'web_fetch_decision'
-	| 'web_fetch_completed';
+	| 'web_fetch_completed'
+	| 'qa_question_answered'
+	| 'qa_question_skipped'
+	| 'qa_answers_submitted';
 
 interface WorkflowBuilderJourneyEventProperties {
 	node_type?: string;
@@ -99,6 +102,11 @@ interface WorkflowBuilderJourneyEventProperties {
 	url?: string;
 	decision?: 'allow_once' | 'allow_domain' | 'allow_all' | 'deny';
 	status?: string;
+	question_type?: 'single' | 'multi' | 'text';
+	question_index?: number;
+	total_questions?: number;
+	input_method?: 'click' | 'keyboard_number' | 'keyboard_enter';
+	custom_answer_used?: boolean;
 }
 
 interface WorkflowBuilderJourneyPayload extends ITelemetryTrackProperties {
