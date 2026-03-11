@@ -28,7 +28,7 @@ export const customerOperations: INodeProperties[] = [
 			{
 				name: 'Find by Email',
 				value: 'findEmail',
-				description: 'Find a customer by Email',
+				description: 'Find a customer by email. Requires App API Key to be configured.',
 				action: 'Find a customer by Email',
 			},
 		],

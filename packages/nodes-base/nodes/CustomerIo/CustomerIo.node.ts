@@ -262,7 +262,7 @@ export class CustomerIo implements INodeType {
 						responseData = await customerIoApiRequest.call(this, 'GET', endpoint, body, 'app', {
 							email,
 						});
-						responseData = responseData.results;
+						responseData = responseData?.results ?? [];
 					}
 
 					if (operation === 'delete') {
