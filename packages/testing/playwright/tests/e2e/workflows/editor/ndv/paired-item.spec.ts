@@ -231,9 +231,7 @@ test.describe(
 
 			await expect(n8n.ndv.inputPanel.getTableRow(1)).toContainText('1111');
 			await n8n.ndv.inputPanel.getTableRow(1).hover();
-			const outputHoveringItems = n8n.ndv.outputPanel
-				.get()
-				.locator('[data-test-id="hovering-item"]');
+			const outputHoveringItems = n8n.ndv.outputPanel.getHoveringItems();
 			await expect(outputHoveringItems).toHaveCount(0);
 
 			// Switch to False Branch

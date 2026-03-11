@@ -595,6 +595,9 @@ importers:
       '@langchain/openai':
         specifier: 'catalog:'
         version: 1.1.3(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.5.0(@opentelemetry/api@1.9.0))(openai@6.19.0(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))
+      '@mozilla/readability':
+        specifier: 0.6.0
+        version: 0.6.0
       '@n8n/api-types':
         specifier: workspace:*
         version: link:../api-types
@@ -619,6 +622,9 @@ importers:
       csv-parse:
         specifier: 5.5.0
         version: 5.5.0
+      jsdom:
+        specifier: 23.0.1
+        version: 23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       langchain:
         specifier: 'catalog:'
         version: 1.2.3(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.5.0(@opentelemetry/api@1.9.0))(openai@6.19.0(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.5.0(@opentelemetry/api@1.9.0))(openai@6.19.0(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod-to-json-schema@3.25.1(zod@3.25.67))
@@ -634,6 +640,9 @@ importers:
       picocolors:
         specifier: 'catalog:'
         version: 1.0.1
+      turndown:
+        specifier: ^7.2.2
+        version: 7.2.2
       zod:
         specifier: 3.25.67
         version: 3.25.67
@@ -644,6 +653,9 @@ importers:
       '@types/cli-progress':
         specifier: ^3.11.5
         version: 3.11.6
+      '@types/turndown':
+        specifier: ^5.0.6
+        version: 5.0.6
       cli-progress:
         specifier: ^3.12.0
         version: 3.12.0
@@ -1519,20 +1531,20 @@ importers:
         specifier: 1.0.1
         version: 1.0.1(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.5.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)
       '@microsoft/agents-a365-notifications':
-        specifier: 0.1.0-preview.64
-        version: 0.1.0-preview.64
+        specifier: 0.1.0-preview.113
+        version: 0.1.0-preview.113
       '@microsoft/agents-a365-observability':
-        specifier: 0.1.0-preview.64
-        version: 0.1.0-preview.64
+        specifier: 0.1.0-preview.113
+        version: 0.1.0-preview.113
       '@microsoft/agents-a365-runtime':
-        specifier: 0.1.0-preview.64
-        version: 0.1.0-preview.64
+        specifier: 0.1.0-preview.113
+        version: 0.1.0-preview.113
       '@microsoft/agents-a365-tooling':
-        specifier: 0.1.0-preview.64
-        version: 0.1.0-preview.64(zod@3.25.67)
+        specifier: 0.1.0-preview.113
+        version: 0.1.0-preview.113(zod@3.25.67)
       '@microsoft/agents-a365-tooling-extensions-langchain':
-        specifier: 0.1.0-preview.64
-        version: 0.1.0-preview.64(20a6a3036fb3eae368730af7ed3b8ad2)
+        specifier: 0.1.0-preview.113
+        version: 0.1.0-preview.113(@langchain/langgraph@1.0.2(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.5.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod-to-json-schema@3.23.3(zod@3.25.67))(zod@3.25.67))(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.5.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod-to-json-schema@3.23.3(zod@3.25.67))(zod@3.25.67)
       '@microsoft/agents-activity':
         specifier: 1.2.3
         version: 1.2.3
@@ -6768,24 +6780,29 @@ packages:
       '@types/react': '>=16'
       react: '>=16'
 
-  '@microsoft/agents-a365-notifications@0.1.0-preview.64':
-    resolution: {integrity: sha512-c0F/vJ75eD6GNTTFtDfrlP1pZD1EfU20Xh+A4i1nPpQCz51UjY04R8hkERxs16WMWf7c3Dmf0lA7KoGcWd1PWQ==}
+  '@microsoft/agents-a365-notifications@0.1.0-preview.113':
+    resolution: {integrity: sha512-f/KXvZCsFmBqvX3xzILL90RGuofjzoRD/m3YUVVyuxWa+hRGFaOgRq0+My3R+VMsjE/PnAY7uso1mAfgZ4ACeA==}
     engines: {node: '>=18.0.0'}
 
-  '@microsoft/agents-a365-observability@0.1.0-preview.64':
-    resolution: {integrity: sha512-qCA5mILBjSoLQalc3jpBt729BFwrbaAud+jtMQ6S8gQgu4RtXjjGD6ktFAmaOAEC6Aatsx+UmHj67NONR6A9zQ==}
+  '@microsoft/agents-a365-observability@0.1.0-preview.113':
+    resolution: {integrity: sha512-uAzlT7sbACuFl+9yTRImJ8BuzL0cbPkK1xr/H9YV4Du+/ACHUyh+gircubpJrc4nqNfNe0d4ks7SRlnVLO7V6g==}
     engines: {node: '>=18.0.0'}
 
-  '@microsoft/agents-a365-runtime@0.1.0-preview.64':
-    resolution: {integrity: sha512-+P88of1A6VDpxSnt7RZbULULmo3hSQ38ZH9bqDBiWSVQYGdz839FSK9JVe08CZh1F6RgyPaOkAll2is5ZpyPkQ==}
+  '@microsoft/agents-a365-runtime@0.1.0-preview.113':
+    resolution: {integrity: sha512-0F/BRnzdszKXC54tP6rOLJ4NesNMnlSYYx9PkXXQcZJHlm6aYcbb0mO2l065YlrtTCHlnGgVvBBppj5dqQxqaw==}
     engines: {node: '>=18.0.0'}
 
-  '@microsoft/agents-a365-tooling-extensions-langchain@0.1.0-preview.64':
-    resolution: {integrity: sha512-tYHGoqAygMhaDhoGhC/kCIaHj6F5vsSCKVyCWZ+og9vNR6BTuby8BDmHthzddgf0aE/aXYfEUsf5vjkC3c+NzQ==}
+  '@microsoft/agents-a365-tooling-extensions-langchain@0.1.0-preview.113':
+    resolution: {integrity: sha512-ixEvekShvk5KQqzc8wwTSAXwJ5xa9P8xqcdY103f2m9PSq+tJI6v3qAZetPHu/rlKl12S/euLVlB+6tnK+/Ozw==}
     engines: {node: '>=18.0.0'}
+    peerDependencies:
+      '@langchain/langgraph': ^1.0.0
+    peerDependenciesMeta:
+      '@langchain/langgraph':
+        optional: true
 
-  '@microsoft/agents-a365-tooling@0.1.0-preview.64':
-    resolution: {integrity: sha512-mn+AjqbZPTk4yrLMv5GZ+tQSZMtxH8fu5fLynKukYNKuxClKmUhLmkQIqS9mKnheZpC52HyveCanDCKQKDLmcw==}
+  '@microsoft/agents-a365-tooling@0.1.0-preview.113':
+    resolution: {integrity: sha512-tnZprFx3JqMDAZQfm0B7Q1pacvrnhSKfuA3aHpPIqGmgG+KqEger5nwHpGWrJuecnlfUMoJ2EerwicZocb0JKg==}
     engines: {node: '>=18.0.0'}
 
   '@microsoft/agents-activity@1.2.3':
@@ -6814,6 +6831,9 @@ packages:
 
   '@mistralai/mistralai@1.10.0':
     resolution: {integrity: sha512-tdIgWs4Le8vpvPiUEWne6tK0qbVc+jMenujnvTqOjogrJUsCSQhus0tHTU1avDDh5//Rq2dFgP9mWRAdIEoBqg==}
+
+  '@mixmark-io/domino@2.2.0':
+    resolution: {integrity: sha512-Y28PR25bHXUg88kCV7nivXrP2Nj2RueZ3/l/jdx6J9f8J4nsEGcgX0Qe6lt7Pa+J79+kPiJU3LguR6O/6zrLOw==}
 
   '@modelcontextprotocol/sdk@1.26.0':
     resolution: {integrity: sha512-Y5RmPncpiDtTXDbLKswIJzTqu2hyBKxTNsgKqKclDbhIgg1wgtf1fRuvxgTnRfcnxtvvgbIEcqUOzZrJ6iSReg==}
@@ -9520,6 +9540,9 @@ packages:
 
   '@types/triple-beam@1.3.5':
     resolution: {integrity: sha512-6WaYesThRMCl19iryMYP7/x2OVgCtbIVflDGFpWnb9irXI3UjYE4AzmYuiUKY1AJstGijoY+MgUszMgRxIYTYw==}
+
+  '@types/turndown@5.0.6':
+    resolution: {integrity: sha512-ru00MoyeeouE5BX4gRL+6m/BsDfbRayOskWqUvh7CLGW+UXxHQItqALa38kKnOiZPqJrtzJUgAC2+F0rL1S4Pg==}
 
   '@types/utf8@3.0.3':
     resolution: {integrity: sha512-+lqLGxWZsEe4Z6OrzBI7Ym4SMUTaMS5yOrHZ0/IL0bpIye1Qbs4PpobJL2mLDbftUXlPFZR7fu6d1yM+bHLX1w==}
@@ -17960,10 +17983,6 @@ packages:
     resolution: {integrity: sha512-WBx8Uy5TLtOSRtIq+M03/sKDrXCLHxwDcquSP2c43Le03/9serjQBIztjRz6FkJez9D/hleyAXTBGLwwZUw9lA==}
     hasBin: true
 
-  tough-cookie@4.1.3:
-    resolution: {integrity: sha512-aX/y5pVRkfRnfmuX+OdbSdXvPe6ieKX/G2s7e98f4poJHnqH3281gDPm/metm6E/WRamfx7WC4HUqkWHfQHprw==}
-    engines: {node: '>=6'}
-
   tough-cookie@4.1.4:
     resolution: {integrity: sha512-Loo5UUvLD9ScZ6jh8beX1T6sO1w2/MpCRpEP7V280GKMVUQ0Jzar2U3UJPsrdbziLEMMhu3Ujnq//rhiFuIeag==}
     engines: {node: '>=6'}
@@ -18209,6 +18228,9 @@ packages:
   turbo@2.8.9:
     resolution: {integrity: sha512-G+Mq8VVQAlpz/0HTsxiNNk/xywaHGl+dk1oiBREgOEVCCDjXInDlONWUn5srRnC9s5tdHTFD1bx1N19eR4hI+g==}
     hasBin: true
+
+  turndown@7.2.2:
+    resolution: {integrity: sha512-1F7db8BiExOKxjSMU2b7if62D/XOyQyZbPKq/nUwopfgnHlqXHqQ0lvfUTeUIr1lZJzOPFn43dODyMSIfvWRKQ==}
 
   tweetnacl-util@0.15.1:
     resolution: {integrity: sha512-RKJBIj8lySrShN4w6i/BonWp2Z/uxwC3h4y7xsRrpP59ZboCd0GpEVsOnMDYLMmKBpYhb5TgHzZXy7wTfYFBRw==}
@@ -21218,7 +21240,7 @@ snapshots:
 
   '@azure/monitor-opentelemetry-exporter@1.0.0-beta.32':
     dependencies:
-      '@azure/core-auth': 1.9.0
+      '@azure/core-auth': 1.10.1
       '@azure/core-client': 1.9.2
       '@azure/core-rest-pipeline': 1.20.0
       '@opentelemetry/api': 1.9.0
@@ -23802,19 +23824,19 @@ snapshots:
       '@types/react': 18.0.27
       react: 18.2.0
 
-  '@microsoft/agents-a365-notifications@0.1.0-preview.64':
+  '@microsoft/agents-a365-notifications@0.1.0-preview.113':
     dependencies:
-      '@microsoft/agents-a365-runtime': 0.1.0-preview.64
+      '@microsoft/agents-a365-runtime': 0.1.0-preview.113
       '@microsoft/agents-activity': 1.2.3
       '@microsoft/agents-hosting': 1.2.3
     transitivePeerDependencies:
       - debug
       - supports-color
 
-  '@microsoft/agents-a365-observability@0.1.0-preview.64':
+  '@microsoft/agents-a365-observability@0.1.0-preview.113':
     dependencies:
       '@azure/monitor-opentelemetry-exporter': 1.0.0-beta.32
-      '@microsoft/agents-a365-runtime': 0.1.0-preview.64
+      '@microsoft/agents-a365-runtime': 0.1.0-preview.113
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/exporter-trace-otlp-http': 0.205.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/instrumentation': 0.204.0(@opentelemetry/api@1.9.0)
@@ -23826,7 +23848,7 @@ snapshots:
       - debug
       - supports-color
 
-  '@microsoft/agents-a365-runtime@0.1.0-preview.64':
+  '@microsoft/agents-a365-runtime@0.1.0-preview.113':
     dependencies:
       '@azure/identity': 4.13.0
       '@microsoft/agents-hosting': 1.2.3
@@ -23835,17 +23857,20 @@ snapshots:
       - debug
       - supports-color
 
-  '@microsoft/agents-a365-tooling-extensions-langchain@0.1.0-preview.64(20a6a3036fb3eae368730af7ed3b8ad2)':
+  '@microsoft/agents-a365-tooling-extensions-langchain@0.1.0-preview.113(@langchain/langgraph@1.0.2(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.5.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod-to-json-schema@3.23.3(zod@3.25.67))(zod@3.25.67))(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.5.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod-to-json-schema@3.23.3(zod@3.25.67))(zod@3.25.67)':
     dependencies:
+      '@langchain/core': 1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.5.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
       '@langchain/mcp-adapters': 1.1.2(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.5.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(@langchain/langgraph@1.0.2(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.5.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod-to-json-schema@3.23.3(zod@3.25.67))(zod@3.25.67))
-      '@microsoft/agents-a365-runtime': 0.1.0-preview.64
-      '@microsoft/agents-a365-tooling': 0.1.0-preview.64(zod@3.25.67)
+      '@microsoft/agents-a365-runtime': 0.1.0-preview.113
+      '@microsoft/agents-a365-tooling': 0.1.0-preview.113(zod@3.25.67)
       '@microsoft/agents-hosting': 1.2.3
+      hono: 4.11.10
       langchain: 1.2.3(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.5.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.5.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod-to-json-schema@3.23.3(zod@3.25.67))
+      uuid: 9.0.1
+    optionalDependencies:
+      '@langchain/langgraph': 1.0.2(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.5.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod-to-json-schema@3.23.3(zod@3.25.67))(zod@3.25.67)
     transitivePeerDependencies:
       - '@cfworker/json-schema'
-      - '@langchain/core'
-      - '@langchain/langgraph'
       - '@opentelemetry/api'
       - '@opentelemetry/exporter-trace-otlp-proto'
       - '@opentelemetry/sdk-trace-base'
@@ -23857,12 +23882,13 @@ snapshots:
       - zod
       - zod-to-json-schema
 
-  '@microsoft/agents-a365-tooling@0.1.0-preview.64(zod@3.25.67)':
+  '@microsoft/agents-a365-tooling@0.1.0-preview.113(zod@3.25.67)':
     dependencies:
-      '@microsoft/agents-a365-runtime': 0.1.0-preview.64
+      '@microsoft/agents-a365-runtime': 0.1.0-preview.113
       '@microsoft/agents-hosting': 1.2.3
       '@modelcontextprotocol/sdk': 1.26.0(zod@3.25.67)
       express: 5.2.1
+      hono: 4.11.10
     transitivePeerDependencies:
       - '@cfworker/json-schema'
       - debug
@@ -23932,6 +23958,8 @@ snapshots:
     dependencies:
       zod: 3.25.67
       zod-to-json-schema: 3.25.0(zod@3.25.67)
+
+  '@mixmark-io/domino@2.2.0': {}
 
   '@modelcontextprotocol/sdk@1.26.0(zod@3.25.67)':
     dependencies:
@@ -27137,6 +27165,8 @@ snapshots:
   '@types/tough-cookie@4.0.5': {}
 
   '@types/triple-beam@1.3.5': {}
+
+  '@types/turndown@5.0.6': {}
 
   '@types/utf8@3.0.3': {}
 
@@ -33130,7 +33160,7 @@ snapshots:
       parse5: 7.1.2
       saxes: 6.0.0
       symbol-tree: 3.2.4
-      tough-cookie: 4.1.3
+      tough-cookie: 4.1.4
       w3c-xmlserializer: 3.0.0
       webidl-conversions: 7.0.0
       whatwg-encoding: 2.0.0
@@ -37795,13 +37825,6 @@ snapshots:
     dependencies:
       nopt: 1.0.10
 
-  tough-cookie@4.1.3:
-    dependencies:
-      psl: 1.9.0
-      punycode: 2.3.1
-      universalify: 0.2.0
-      url-parse: 1.5.10
-
   tough-cookie@4.1.4:
     dependencies:
       psl: 1.9.0
@@ -38056,6 +38079,10 @@ snapshots:
       turbo-linux-arm64: 2.8.9
       turbo-windows-64: 2.8.9
       turbo-windows-arm64: 2.8.9
+
+  turndown@7.2.2:
+    dependencies:
+      '@mixmark-io/domino': 2.2.0
 
   tweetnacl-util@0.15.1: {}
 

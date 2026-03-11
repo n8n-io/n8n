@@ -28,15 +28,16 @@ const BASE_ENV: Record<string, string> = {
 	NODE_OPTIONS: '--expose-gc',
 };
 
+// Port 5678 must match N8N_PORT / QUEUE_HEALTH_CHECK_PORT defaults.
+// If those defaults change, update the port here too.
 const MAIN_WAIT_STRATEGY = Wait.forAll([
 	Wait.forListeningPorts(),
-	Wait.forHttp('/healthz/readiness', 5678).forStatusCode(200).withStartupTimeout(30000),
-	Wait.forLogMessage('Editor is now accessible via').withStartupTimeout(30000),
+	Wait.forHttp('/healthz/readiness', 5678).forStatusCode(200).withStartupTimeout(60_000),
 ]);
 
 const WORKER_WAIT_STRATEGY = Wait.forAll([
 	Wait.forListeningPorts(),
-	Wait.forLogMessage('n8n worker is now ready').withStartupTimeout(30000),
+	Wait.forHttp('/healthz/readiness', 5678).forStatusCode(200).withStartupTimeout(60_000),
 ]);
 
 export interface N8NInstancesOptions {

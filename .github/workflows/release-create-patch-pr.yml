@@ -1,0 +1,54 @@
+name: 'Release: Create Patch Release PR'
+
+on:
+  workflow_dispatch:
+    inputs:
+      track:
+        description: 'Release Track'
+        required: true
+        type: choice
+        options: [stable, beta, v1]
+
+jobs:
+  determine-version-info:
+    name: Determine publishing track
+    runs-on: ubuntu-latest
+    outputs:
+      release_candidate_branch: ${{ steps.determine-branch.outputs.release_candidate_branch }}
+      should_update: ${{ steps.determine-branch.outputs.should_update }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+          install-command: npm install --prefix=.github/scripts --no-package-lock
+
+      - name: Determine release candidate branch from track
+        id: determine-branch
+        env:
+          TRACK: ${{ inputs.track }}
+        run: node .github/scripts/determine-release-candidate-branch-for-track.mjs
+
+  skip-release-pr:
+    name: Skip release PR (no new commits)
+    needs: [determine-version-info]
+    if: needs.determine-version-info.outputs.should_update != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log skip reason
+        run: echo "No new commits found between the release candidate branch and the current release tag. Skipping PR creation."
+
+  create-release-pr:
+    name: Create release PR
+    needs: [determine-version-info]
+    if: needs.determine-version-info.outputs.should_update == 'true'
+    uses: ./.github/workflows/release-create-pr.yml
+    secrets: inherit
+    with:
+      base-branch: ${{ needs.determine-version-info.outputs.release_candidate_branch }}
+      release-type: patch
