@@ -23,7 +23,7 @@ import { createDeepLazyProxy } from './lazy-proxy';
  * Called from bridge: context.evalSync('resetDataProxies()')
  */
 export function resetDataProxies(): void {
-	// Clear existing __data object.
+	// Clear existing __data object
 	globalThis.__data = {};
 
 	// __sanitize must be on __data because PrototypeSanitizer generates:
