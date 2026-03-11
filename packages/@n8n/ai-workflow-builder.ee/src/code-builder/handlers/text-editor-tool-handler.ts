@@ -67,6 +67,8 @@ export interface TextEditorToolParams {
 export interface TextEditorToolResult {
 	workflowReady?: boolean;
 	workflow?: WorkflowJSON;
+	/** Summary of the result for progress streaming (e.g. validation warnings, parse errors) */
+	resultSummary?: string;
 }
 
 /**
@@ -115,8 +117,8 @@ export class TextEditorToolHandler {
 
 		const command = args.command as string;
 
-		// Stream tool progress - running
-		yield this.createToolProgressChunk('running', command, toolCallId);
+		// Stream tool progress - running (include args so eval report can show the edit)
+		yield this.createToolProgressChunk('running', command, toolCallId, { args });
 
 		try {
 			// Execute the text editor command
@@ -136,7 +138,9 @@ export class TextEditorToolHandler {
 					yield this.createWorkflowUpdateChunk(autoValidateResult.workflow);
 				}
 
-				yield this.createToolProgressChunk('completed', command, toolCallId);
+				yield this.createToolProgressChunk('completed', command, toolCallId, {
+					result: autoValidateResult.resultSummary,
+				});
 				return autoValidateResult;
 			}
 
@@ -149,6 +153,7 @@ export class TextEditorToolHandler {
 			);
 
 			// Preview parse after edit commands for progressive canvas rendering
+			let resultSummary = result;
 			if (command !== 'view') {
 				const preview = await this.tryParseForPreview(currentWorkflow);
 				if (preview.chunk) {
@@ -157,10 +162,13 @@ export class TextEditorToolHandler {
 				if (preview.parseError) {
 					const lastMsg = messages[messages.length - 1] as ToolMessage;
 					lastMsg.content = `${lastMsg.content as string}\n\nParse error: ${preview.parseError}`;
+					resultSummary = `${result}\n\nParse error: ${preview.parseError}`;
 				}
 			}
 
-			yield this.createToolProgressChunk('completed', command, toolCallId);
+			yield this.createToolProgressChunk('completed', command, toolCallId, {
+				result: resultSummary,
+			});
 			return undefined;
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
@@ -173,7 +181,9 @@ export class TextEditorToolHandler {
 				}),
 			);
 
-			yield this.createToolProgressChunk('completed', command, toolCallId);
+			yield this.createToolProgressChunk('completed', command, toolCallId, {
+				error: errorMessage,
+			});
 			return undefined;
 		}
 	}
@@ -224,6 +234,7 @@ export class TextEditorToolHandler {
 					return {
 						workflowReady: false,
 						workflow: result.workflow,
+						resultSummary: `Validation warnings:\n${warningText}`,
 					};
 				}
 			}
@@ -234,6 +245,7 @@ export class TextEditorToolHandler {
 			return {
 				workflowReady: true,
 				workflow: result.workflow,
+				resultSummary: createResult,
 			};
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
@@ -248,7 +260,7 @@ export class TextEditorToolHandler {
 				}),
 			);
 
-			return { workflowReady: false };
+			return { workflowReady: false, resultSummary: `Parse error: ${errorMessage}` };
 		}
 	}
 
@@ -281,6 +293,11 @@ export class TextEditorToolHandler {
 		status: 'running' | 'completed',
 		command: string,
 		toolCallId: string,
+		extra?: {
+			args?: Record<string, unknown>;
+			result?: string;
+			error?: string;
+		},
 	): StreamOutput {
 		const displayTitle = command === 'view' ? 'Viewing workflow' : 'Editing workflow';
 		return {
@@ -291,6 +308,7 @@ export class TextEditorToolHandler {
 					toolCallId,
 					displayTitle,
 					status,
+					...extra,
 				} as ToolProgressChunk,
 			],
 		};

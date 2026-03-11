@@ -93,14 +93,26 @@ function renderToolCallDetail(tc: ToolCallDetail, idx: number, parentId: string)
 
 	let resultHtml = '';
 	if (tc.result) {
-		resultHtml = `<details class="tool-result-details"><summary>Output</summary><pre class="tool-json"><code>${escapeHtml(tc.result)}</code></pre></details>`;
+		const hasParseError = tc.result.includes('Parse error:');
+		const hasWarnings = tc.result.includes('Validation warnings:');
+		if (isEditTool && (hasParseError || hasWarnings)) {
+			resultHtml = `<div class="tool-validation-issue">${escapeHtml(tc.result)}</div>`;
+		} else {
+			resultHtml = `<details class="tool-result-details"><summary>Output</summary><pre class="tool-json"><code>${escapeHtml(tc.result)}</code></pre></details>`;
+		}
 	}
 	if (tc.error) {
 		resultHtml += `<div class="tool-error">${escapeHtml(tc.error)}</div>`;
 	}
 
+	const hasIssue =
+		isEditTool &&
+		tc.result &&
+		(tc.result.includes('Parse error:') || tc.result.includes('Validation warnings:'));
+	const warningBadge = hasIssue ? ' <span class="badge badge-warning">WARNINGS</span>' : '';
+
 	return `<details class="tool-call-detail" id="${parentId}-tc-${idx}">
-		<summary>${escapeHtml(tc.name)} ${statusBadge}</summary>
+		<summary>${escapeHtml(tc.name)} ${statusBadge}${warningBadge}</summary>
 		<div class="tool-call-body">
 			${argsHtml ? `<div class="tool-section"><div class="tool-section-label">Input</div>${argsHtml}</div>` : ''}
 			${resultHtml ? `<div class="tool-section">${resultHtml}</div>` : ''}
@@ -378,6 +390,8 @@ export function generateReport(runs: Run[]): string {
 	.diff-new { border-left: 3px solid #3fb950; }
 	.diff-new pre { background: #23863611; margin: 0; }
 	.no-tools { color: #8b949e; font-size: 12px; padding: 4px; }
+	.badge-warning { background: #d2992233; color: #d29922; }
+	.tool-validation-issue { color: #d29922; font-size: 12px; padding: 6px 8px; background: #d2992211; border-left: 3px solid #d29922; border-radius: 4px; white-space: pre-wrap; font-family: monospace; max-height: 200px; overflow-y: auto; }
 </style>
 </head>
 <body>
