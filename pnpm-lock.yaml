@@ -6780,6 +6780,10 @@ packages:
       '@types/react': '>=16'
       react: '>=16'
 
+  '@mergeapi/merge-node-client@3.0.1':
+    resolution: {integrity: sha512-xW43O62rst0kAKjaeUWKQOdTvHx8ajb5euAIgb84jft/MCD2tT7MmaJtjBALodtOMFAISXggzMQH5Rse/m3QXA==}
+    engines: {node: '>=18.0.0'}
+
   '@microsoft/agents-a365-notifications@0.1.0-preview.113':
     resolution: {integrity: sha512-f/KXvZCsFmBqvX3xzILL90RGuofjzoRD/m3YUVVyuxWa+hRGFaOgRq0+My3R+VMsjE/PnAY7uso1mAfgZ4ACeA==}
     engines: {node: '>=18.0.0'}
@@ -12994,12 +12998,12 @@ packages:
 
   glob@7.2.3:
     resolution: {integrity: sha512-nFR0zLpU2YCaRxwoCJvL6UvCH2JFyFVIvwTLsIf21AuHlMskA1hhTdk+LlYJtOlYt9v6dvszD2BGRqBL+iQK9Q==}
-    deprecated: Glob versions prior to v9 are no longer supported
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
 
   glob@8.1.0:
     resolution: {integrity: sha512-r8hpEjiQEYlF2QU0df3dS+nxxSIreXQS1qRhMJM0Q5NDdR386C7jb7Hwwod8Fgiuex+k0GFjgft18yvxm5XoCQ==}
     engines: {node: '>=12'}
-    deprecated: Glob versions prior to v9 are no longer supported
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
 
   glob@9.3.5:
     resolution: {integrity: sha512-e1LleDykUz2Iu+MTYdkSsuWX8lvAjAcs0Xef0lNIu0S2wOAzuTxCJtcd9S3cijlwYF18EsU3rzb8jPVobxDh9Q==}
@@ -23819,6 +23823,15 @@ snapshots:
       '@types/mdx': 2.0.3
       '@types/react': 18.0.27
       react: 18.2.0
+
+  '@mergeapi/merge-node-client@3.0.1(encoding@0.1.13)':
+    dependencies:
+      form-data: 4.0.4
+      formdata-node: 6.0.3
+      node-fetch: 2.7.0(encoding@0.1.13)
+      readable-stream: 4.5.2
+    transitivePeerDependencies:
+      - encoding
 
   '@microsoft/agents-a365-notifications@0.1.0-preview.113':
     dependencies:
