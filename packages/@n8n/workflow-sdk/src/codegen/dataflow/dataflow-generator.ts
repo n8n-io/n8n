@@ -744,31 +744,15 @@ function generateFilterNode(
 
 	const conditionExpr = extractIfCondition(node.filterNode.json.parameters, 'item', true);
 	const keptVar = getUniqueVarName(node.filterNode.name, ctx);
-	const hasDiscarded = node.discardedBranch !== null;
-
-	// Derive a discarded variable name from the first discarded branch node, or fallback
-	let discardedVar = `${keptVar}_discarded`;
-	if (hasDiscarded) {
-		const firstDiscarded = Array.isArray(node.discardedBranch)
-			? node.discardedBranch[0]
-			: node.discardedBranch;
-		if (firstDiscarded && firstDiscarded.kind === 'leaf') {
-			discardedVar = getUniqueVarName((firstDiscarded as LeafNode).node.name + '_filtered', ctx);
-		}
-	}
 
 	const filterExpr = conditionExpr
 		? `${inputVar}.filter((item) => ${conditionExpr})`
 		: `${inputVar}.filter((item) => /* complex */)`;
 
-	if (hasDiscarded) {
-		lines.push(`${indent}const [${keptVar}, ${discardedVar}] = ${filterExpr};`);
-	} else {
-		if (!conditionExpr) {
-			lines.push(`${indent}// Complex filter condition - see Filter node parameters`);
-		}
-		lines.push(`${indent}const ${keptVar} = ${filterExpr};`);
+	if (!conditionExpr) {
+		lines.push(`${indent}// Complex filter condition - see Filter node parameters`);
 	}
+	lines.push(`${indent}const ${keptVar} = ${filterExpr};`);
 
 	// Generate keptBranch at same depth using keptVar as input.
 	// Unlike if/else branches, filter kept output is a continuation (not a branch),
@@ -783,24 +767,6 @@ function generateFilterNode(
 			}
 			if (result.varName) {
 				prevVar = result.varName;
-			}
-		}
-	}
-
-	// Generate discardedBranch as a continuation (same depth, using discardedVar as input).
-	// NOT via generateBranchBody() which sets insideBranch = true.
-	if (node.discardedBranch !== null) {
-		const discardedNodes = Array.isArray(node.discardedBranch)
-			? node.discardedBranch
-			: [node.discardedBranch];
-		let prevDiscardedVar = discardedVar;
-		for (const discardedNode of discardedNodes) {
-			const result = generateCompositeNode(discardedNode, ctx, depth, prevDiscardedVar);
-			if (result.code) {
-				lines.push(result.code);
-			}
-			if (result.varName) {
-				prevDiscardedVar = result.varName;
 			}
 		}
 	}

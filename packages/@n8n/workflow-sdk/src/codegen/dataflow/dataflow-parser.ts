@@ -920,7 +920,7 @@ function processNodeVarDeclaration(
 				const filterConfig: NodeConfig = {
 					type: 'n8n-nodes-base.filter',
 					params: filterParams,
-					version: 2,
+					version: 2.3,
 				};
 				const { node: filterNode } = createSemanticNode(filterConfig, state);
 
@@ -930,22 +930,12 @@ function processNodeVarDeclaration(
 					addSemanticEdge(state, mapping.nodeName, filterNode.name, mapping.outputIndex);
 				}
 
-				// Handle LHS: Identifier (kept only) or ArrayPattern (kept + discarded)
+				// Filter only returns kept items (like JS .filter())
 				if (isIdentifier(declarator.id)) {
 					state.varToNode.set(declarator.id.name, {
 						nodeName: filterNode.name,
 						outputIndex: 0,
 					});
-				} else if (declarator.id.type === 'ArrayPattern') {
-					for (let i = 0; i < declarator.id.elements.length; i++) {
-						const el = declarator.id.elements[i];
-						if (el && isIdentifier(el)) {
-							state.varToNode.set(el.name, {
-								nodeName: filterNode.name,
-								outputIndex: i,
-							});
-						}
-					}
 				}
 				state.lastNodeInScope = { nodeName: filterNode.name, outputIndex: 0 };
 				return isIdentifier(declarator.id) ? declarator.id.name : undefined;
