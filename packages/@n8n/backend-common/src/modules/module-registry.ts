@@ -30,6 +30,7 @@ export class ModuleRegistry {
 	) {}
 
 	private readonly defaultModules: ModuleName[] = [
+		'ai-gateway',
 		'insights',
 		'external-secrets',
 		'community-packages',

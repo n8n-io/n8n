@@ -213,6 +213,26 @@ The n8n backend acts as a proxy layer that:
 4. Tracks token usage for billing/credits
 5. Returns the response to the workflow
 
+### Backend Implementation (decided)
+
+The backend is implemented as an `ai-gateway` backend module at
+`packages/cli/src/modules/ai-gateway/`. Key decisions:
+
+- **Direct execution (no proxy in MVP)**: LLM nodes call OpenRouter directly via the
+  auto-provisioned credential. No local HTTP proxy sits in the execution path. A proxy
+  layer can be added later when a cloud gateway materializes.
+- **Credential-based integration (no new sub-node)**: Existing LLM nodes add
+  `n8nAiGatewayApi` as an alternative credential. The credential is auto-provisioned
+  at startup with the OpenRouter API key and base URL.
+- **Shared model resolution**: The category-to-model mapping and `resolveAiGatewayModel()`
+  function live in `@n8n/api-types` so both the backend module and LLM nodes can import
+  them. Categories are resolved at the node level before calling `ChatOpenAI`.
+- **`@openrouter/sdk` for admin features**: The admin controller uses the OpenRouter SDK
+  for typed model listing, with caching. Admin endpoints serve settings, model categories,
+  available models, and usage statistics to the frontend.
+
+See [mvp-ai-gateway-backend.md](./mvp-ai-gateway-backend.md) for the full backend spec.
+
 ---
 
 ## Free Credits & Pricing
@@ -333,14 +353,21 @@ This MVP is built in a **separate feature branch** for exploration and validatio
 
 ### Backend
 
-- [ ]  OpenRouter proxy integration
-- [ ]  Model category → model resolution
-- [ ]  Workflow execution integration
+- [x]  `ai-gateway` backend module (`packages/cli/src/modules/ai-gateway/`)
+- [x]  Config class with env vars (`N8N_AI_GATEWAY_ENABLED`, `N8N_AI_GATEWAY_OPENROUTER_API_KEY`, etc.)
+- [x]  ~~OpenRouter proxy~~ → Direct execution: nodes call OpenRouter via auto-provisioned credential
+- [x]  Models list — `GET /rest/ai-gateway/models` (via `@openrouter/sdk`, with caching)
+- [x]  Model category → model resolution service (+ `resolveAiGatewayModel()` in `@n8n/api-types`)
+- [x]  Admin endpoints — `GET/PUT /rest/ai-gateway/settings`, `GET /rest/ai-gateway/model-categories`
+- [x]  `n8nAiGatewayApi` credential type (auto-provisioned at startup with OpenRouter key+URL)
+- [x]  ~~Internal auth token~~ → Not needed (no proxy; nodes call OpenRouter directly)
+- [x]  In-memory usage tracking — `GET /rest/ai-gateway/usage`
+- [x]  Unit tests (21 passing: model service, gateway service, usage service)
 
-```
+```json
 "credentials": {
-  "n8nAiGateway": {
-    "id": "n8nAiGateway",
+  "n8nAiGatewayApi": {
+    "id": "<auto-provisioned>",
     "name": "n8n AI Gateway"
   }
 }
