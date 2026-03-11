@@ -20,6 +20,7 @@ import type { CredentialsFinderService } from '../credentials-finder.service';
 import { CredentialsController } from '../credentials.controller';
 import { CredentialsService } from '../credentials.service';
 import * as validation from '../validation';
+import * as checkAccess from '@/permissions.ee/check-access';
 import { createNewCredentialsPayload, createdCredentialsWithScopes } from './credentials.test-data';
 
 describe('CredentialsController', () => {
@@ -461,6 +462,7 @@ describe('CredentialsController', () => {
 		});
 
 		it('should throw error when editing external secret expression without permission', async () => {
+			jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
 			const memberReq = {
 				user: { id: 'member-id', role: GLOBAL_MEMBER_ROLE },
 				params: { credentialId },
@@ -484,17 +486,17 @@ describe('CredentialsController', () => {
 			await expect(credentialsController.updateCredentials(memberReq)).rejects.toThrow(
 				'Lacking permissions to reference external secrets in credentials',
 			);
-			expect(validateExternalSecretsPermissionsSpy).toHaveBeenCalledWith(
-				memberReq.user,
-				memberReq.body.data,
-				{
-					apiKey: '$secrets.oldKey',
-				},
-			);
+			expect(validateExternalSecretsPermissionsSpy).toHaveBeenCalledWith({
+				user: memberReq.user,
+				projectId: existingCredential.shared[0].projectId,
+				dataToSave: memberReq.body.data,
+				decryptedExistingData: { apiKey: '$secrets.oldKey' },
+			});
 			expect(credentialsService.update).not.toHaveBeenCalled();
 		});
 
 		it('should throw error when adding new external secret expression without permission', async () => {
+			jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
 			const memberReq = {
 				user: { id: 'member-id', role: GLOBAL_MEMBER_ROLE },
 				params: { credentialId },
@@ -514,13 +516,12 @@ describe('CredentialsController', () => {
 			await expect(credentialsController.updateCredentials(memberReq)).rejects.toThrow(
 				'Lacking permissions to reference external secrets in credentials',
 			);
-			expect(validateExternalSecretsPermissionsSpy).toHaveBeenCalledWith(
-				memberReq.user,
-				memberReq.body.data,
-				{
-					apiKey: 'regular-key',
-				},
-			);
+			expect(validateExternalSecretsPermissionsSpy).toHaveBeenCalledWith({
+				user: memberReq.user,
+				projectId: existingCredential.shared[0].projectId,
+				dataToSave: memberReq.body.data,
+				decryptedExistingData: { apiKey: 'regular-key' },
+			});
 			expect(credentialsService.update).not.toHaveBeenCalled();
 		});
 	});

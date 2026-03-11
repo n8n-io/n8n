@@ -1,4 +1,5 @@
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
+import { resolveNodeWebhookId } from 'n8n-workflow';
 import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
@@ -124,6 +125,15 @@ export const createUpdateWorkflowTool = (
 				pinData: workflowJson.pinData,
 				meta: { ...workflowJson.meta, aiBuilderAssisted: true },
 			});
+
+			for (const node of workflowUpdateData.nodes) {
+				try {
+					const desc = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+					resolveNodeWebhookId(node, desc.description);
+				} catch {
+					// Node type not found, skip
+				}
+			}
 
 			// Resolve the project ID from the workflow's owner relationship
 			const sharedWorkflow = await sharedWorkflowRepository.findOneOrFail({

@@ -30,7 +30,12 @@ export const chatHubLLMProviderSchema = z.enum([
 	'cohere',
 	'mistralCloud',
 ]);
+
 export type ChatHubLLMProvider = z.infer<typeof chatHubLLMProviderSchema>;
+
+export const chatHubVectorStoreProviderSchema = z.enum(['pgvector', 'qdrant', 'pinecone']);
+
+export type ChatHubVectorStoreProvider = z.infer<typeof chatHubVectorStoreProviderSchema>;
 
 export interface ChatHubAgentKnowledgeItem {
 	id: string;
@@ -66,10 +71,7 @@ export type ChatHubProvider = z.infer<typeof chatHubProviderSchema>;
  * Map of providers to their credential types
  * Only LLM providers (openai, anthropic, google) have credentials
  */
-export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<
-	Exclude<ChatHubProvider, 'n8n' | 'custom-agent'>,
-	string
-> = {
+export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<ChatHubLLMProvider, string> = {
 	openai: 'openAiApi',
 	anthropic: 'anthropicApi',
 	google: 'googlePalmApi',
@@ -85,6 +87,13 @@ export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<
 	cohere: 'cohereApi',
 	mistralCloud: 'mistralCloudApi',
 };
+
+export const VECTOR_STORE_PROVIDER_CREDENTIAL_TYPE_MAP: Record<ChatHubVectorStoreProvider, string> =
+	{
+		pgvector: 'chatHubVectorStorePGVectorApi',
+		qdrant: 'chatHubVectorStoreQdrantApi',
+		pinecone: 'chatHubVectorStorePineconeApi',
+	};
 
 /**
  * Chat Hub conversation model configuration
@@ -493,8 +502,8 @@ export class ChatHubCreateAgentRequest extends Z.class({
 	name: z.string().min(1).max(128),
 	description: z.string().max(512).optional(),
 	icon: agentIconOrEmojiSchema,
+	systemPrompt: z.string().default(''),
 	suggestedPrompts: suggestedPromptsSchema.optional(),
-	systemPrompt: z.string().min(1),
 	credentialId: z.string(),
 	provider: chatHubLLMProviderSchema,
 	model: z.string().max(64),
@@ -505,8 +514,8 @@ export class ChatHubUpdateAgentRequest extends Z.class({
 	name: z.string().min(1).max(128).optional(),
 	description: z.string().max(512).optional(),
 	icon: agentIconOrEmojiSchema.optional(),
+	systemPrompt: z.string().optional(),
 	suggestedPrompts: suggestedPromptsSchema.optional(),
-	systemPrompt: z.string().min(1).optional(),
 	credentialId: z.string().optional(),
 	provider: chatHubLLMProviderSchema.optional(),
 	model: z.string().max(64).optional(),
@@ -545,6 +554,17 @@ export type ChatProviderSettingsDto = z.infer<typeof chatProviderSettingsSchema>
 
 export class UpdateChatSettingsRequest extends Z.class({
 	payload: chatProviderSettingsSchema,
+}) {}
+
+export class ChatHubSemanticSearchSettings extends Z.class({
+	vectorStore: z.object({
+		provider: chatHubVectorStoreProviderSchema,
+		credentialId: z.string().nullable(),
+	}),
+	embeddingModel: z.object({
+		provider: chatHubLLMProviderSchema,
+		credentialId: z.string().nullable(),
+	}),
 }) {}
 
 export interface ChatHubModuleSettings {

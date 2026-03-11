@@ -64,6 +64,7 @@ jobs:
         with:
           token: ${{ steps.generate-token.outputs.token }}
           commit-message: 'chore: Update node popularity data'
+          labels: 'automation:scheduled-update'
           title: 'chore: Update node popularity data'
           body: |
             This automated PR updates the node popularity data used for sorting nodes in the node creator panel.

@@ -115,8 +115,8 @@ describe('WorkflowHistoryListItem', () => {
 		expect(queryByTestId('workflow-history-compare-item-button')).not.toBeInTheDocument();
 	});
 
-	it('should render current changes for first item', () => {
-		const item = workflowHistoryDataFactory();
+	it('should render current changes for first unnamed item', () => {
+		const item = { ...workflowHistoryDataFactory(), name: null };
 		const { getByText } = renderComponent({
 			pinia,
 			props: {
@@ -130,7 +130,22 @@ describe('WorkflowHistoryListItem', () => {
 		expect(getByText('Current changes')).toBeInTheDocument();
 	});
 
-	it('should render generated version label when name is missing', () => {
+	it('should render version name for first named item', () => {
+		const item = { ...workflowHistoryDataFactory(), name: 'Named Version' };
+		const { getByText } = renderComponent({
+			pinia,
+			props: {
+				item,
+				index: 0,
+				actions,
+				isSelected: true,
+			},
+		});
+
+		expect(getByText('Named Version')).toBeInTheDocument();
+	});
+
+	it('should render a generated version label when the item has no name and it is not the first item', () => {
 		const item = { ...workflowHistoryDataFactory(), name: null };
 		const { getByText } = renderComponent({
 			pinia,

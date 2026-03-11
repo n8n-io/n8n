@@ -1,21 +1,35 @@
-import type {
-	ChatHubUpdateAgentRequest,
-	ChatHubCreateAgentRequest,
-	ChatHubAgentDto,
-	ChatModelDto,
+import {
+	type ChatHubUpdateAgentRequest,
+	type ChatHubCreateAgentRequest,
+	type ChatHubAgentDto,
+	type ChatModelDto,
+	type ChatHubAgentKnowledgeItem,
 } from '@n8n/api-types';
+
 import { Logger } from '@n8n/backend-common';
 import type { EntityManager, User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { readFile, unlink } from 'fs/promises';
+import { nanoid } from 'nanoid';
 import { v4 as uuidv4 } from 'uuid';
 
 import type { ChatHubAgent, IChatHubAgent } from './chat-hub-agent.entity';
 import { ChatHubAgentRepository } from './chat-hub-agent.repository';
 import { ChatHubCredentialsService } from './chat-hub-credentials.service';
-import { ChatHubToolService } from './chat-hub-tool.service';
 import { getModelMetadata } from './chat-hub.constants';
+import { ChatHubAttachmentService } from './chat-hub.attachment.service';
+import { type IBinaryData } from 'n8n-workflow';
+import { ChatHubWorkflowService } from './chat-hub-workflow.service';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ChatHubSettingsService } from './chat-hub.settings.service';
+import { ChatHubToolService } from './chat-hub-tool.service';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ChatHubExecutionService } from './chat-hub-execution.service';
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import { getBase } from '@/workflow-execute-additional-data';
+import type { SemanticSearchOptions } from './chat-hub.types';
 
 @Service()
 export class ChatHubAgentService {
@@ -23,6 +37,12 @@ export class ChatHubAgentService {
 		private readonly logger: Logger,
 		private readonly chatAgentRepository: ChatHubAgentRepository,
 		private readonly chatHubCredentialsService: ChatHubCredentialsService,
+		private readonly chatHubAttachmentService: ChatHubAttachmentService,
+		private readonly chatHubWorkflowService: ChatHubWorkflowService,
+		private readonly chatHubExecutionService: ChatHubExecutionService,
+		private readonly workflowExecutionService: WorkflowExecutionService,
+		private readonly chatHubSettingsService: ChatHubSettingsService,
+		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
 		private readonly chatHubToolService: ChatHubToolService,
 	) {
 		this.logger = this.logger.scoped('chat-hub');
@@ -58,16 +78,6 @@ export class ChatHubAgentService {
 		return await this.chatAgentRepository.getManyByUserId(userId);
 	}
 
-	async getAgentsByUserIdAsDtos(userId: string): Promise<ChatHubAgentDto[]> {
-		const agents = await this.chatAgentRepository.getManyByUserIdWithToolIds(userId);
-		return agents.map((agent) =>
-			this.toDto(
-				agent,
-				(agent.tools ?? []).map((t) => t.id),
-			),
-		);
-	}
-
 	async getAgentById(id: string, userId: string, trx?: EntityManager): Promise<ChatHubAgent> {
 		const agent = await this.chatAgentRepository.getOneById(id, userId, trx);
 		if (!agent) {
@@ -100,6 +110,7 @@ export class ChatHubAgentService {
 			credentialId: data.credentialId,
 			provider: data.provider,
 			model: data.model,
+			files: [],
 		});
 
 		if (data.toolIds.length > 0) {
@@ -137,6 +148,7 @@ export class ChatHubAgentService {
 		if (updates.credentialId !== undefined) updateData.credentialId = updates.credentialId ?? null;
 		if (updates.provider !== undefined) updateData.provider = updates.provider;
 		if (updates.model !== undefined) updateData.model = updates.model ?? null;
+
 		const agent = await this.chatAgentRepository.updateAgent(id, updateData);
 
 		if (updates.toolIds !== undefined) {
@@ -161,8 +173,8 @@ export class ChatHubAgentService {
 			credentialId: agent.credentialId,
 			provider: agent.provider,
 			model: agent.model,
+			files: agent.files,
 			toolIds,
-			files: [],
 			createdAt: agent.createdAt.toISOString(),
 			updatedAt: agent.updatedAt.toISOString(),
 		};
@@ -175,8 +187,248 @@ export class ChatHubAgentService {
 			throw new NotFoundError('Chat agent not found');
 		}
 
+		try {
+			await this.deleteEmbeddingsByAgentId(userId, id);
+		} catch (error) {
+			this.logger.warn(
+				`Could not delete embeddings from vector store for agent ${id}. Proceeding with agent deletion.`,
+				{ error },
+			);
+		}
+
 		await this.chatAgentRepository.deleteAgent(id);
 
 		this.logger.debug(`Chat agent deleted: ${id} by user ${userId}`);
+	}
+
+	private async ensureSemanticSearchOptions(): Promise<SemanticSearchOptions> {
+		const options = await this.chatHubSettingsService.getSemanticSearchOptions();
+
+		if (options === null) {
+			throw new BadRequestError(
+				'No vector store credential configured. Please set up a vector store credential in the Chat Hub settings.',
+			);
+		}
+
+		return options;
+	}
+
+	private async insertEmbeddings(
+		user: User,
+		agentId: string,
+		files: Array<{ attachment: IBinaryData; knowledgeId: string }>,
+		workflowId: string,
+	) {
+		if (files.length === 0) {
+			return;
+		}
+
+		try {
+			const settings = await this.ensureSemanticSearchOptions();
+
+			const { workflowData, executionData } = await this.chatAgentRepository.manager.transaction(
+				async (trx) => {
+					const project = await this.chatHubCredentialsService.findPersonalProject(user, trx);
+
+					return await this.chatHubWorkflowService.createEmbeddingsInsertionWorkflow(
+						user,
+						project.id,
+						files,
+						agentId,
+						settings,
+						trx,
+						workflowId,
+					);
+				},
+			);
+
+			const execution = await this.workflowExecutionService.executeChatWorkflow(
+				user,
+				workflowData,
+				executionData,
+				undefined,
+				false,
+				'chat',
+			);
+
+			await this.chatHubExecutionService.waitForExecutionCompletion(execution.executionId);
+			await this.chatHubExecutionService.ensureWasSuccessfulOrThrow(
+				execution.executionId,
+				'Could not insert documents',
+			);
+		} finally {
+			await this.chatHubWorkflowService.deleteChatWorkflow(workflowId);
+		}
+	}
+
+	async deleteAllEmbeddingsForUser(userId: string): Promise<void> {
+		const options = await this.chatHubSettingsService.getSemanticSearchOptions();
+		if (!options) {
+			return;
+		}
+
+		const additionalData = await getBase({ userId });
+
+		await this.dynamicNodeParametersService.getActionResult(
+			'deleteDocuments',
+			'',
+			additionalData,
+			{ name: options.vectorStore.nodeType, version: 1 },
+			{},
+			JSON.stringify({ filter: {} }),
+			{
+				[options.vectorStore.credentialType]: { id: options.vectorStore.credentialId, name: '' },
+			},
+		);
+
+		this.logger.debug(`Deleted all embeddings for user ${userId} from vector store`);
+	}
+
+	private async deleteEmbeddingsByAgentId(userId: string, agentId: string): Promise<void> {
+		const settings = await this.chatHubSettingsService.getSemanticSearchOptions();
+		if (!settings) {
+			return;
+		}
+		const additionalData = await getBase({ userId });
+
+		await this.dynamicNodeParametersService.getActionResult(
+			'deleteDocuments',
+			'',
+			additionalData,
+			{ name: settings.vectorStore.nodeType, version: 1 },
+			{},
+			JSON.stringify({ filter: { agentId } }),
+			{
+				[settings.vectorStore.credentialType]: { id: settings.vectorStore.credentialId, name: '' },
+			},
+		);
+
+		this.logger.debug(`Deleted embeddings for agent ${agentId} from vector store`);
+	}
+
+	private async deleteEmbeddingsByKnowledgeId(
+		user: User,
+		agentId: string,
+		fileKnowledgeId: string,
+	): Promise<void> {
+		const settings = await this.ensureSemanticSearchOptions();
+		const additionalData = await getBase({ userId: user.id });
+
+		await this.dynamicNodeParametersService.getActionResult(
+			'deleteDocuments',
+			'',
+			additionalData,
+			{ name: settings.vectorStore.nodeType, version: 1 },
+			{},
+			JSON.stringify({ filter: { agentId, fileKnowledgeId } }),
+			{
+				[settings.vectorStore.credentialType]: { id: settings.vectorStore.credentialId, name: '' },
+			},
+		);
+
+		this.logger.debug(
+			`Deleted embeddings from vector store (agentId: ${agentId}, knowledgeId: ${fileKnowledgeId})`,
+		);
+	}
+
+	async addFilesToAgent(
+		agentId: string,
+		user: User,
+		files: Express.Multer.File[],
+	): Promise<ChatHubAgentDto> {
+		const agent = await this.getAgentById(agentId, user.id);
+		const items = await this.indexFilesAsKnowledgeItems(user, agentId, files);
+
+		const updatedAgent = await this.chatAgentRepository.updateAgent(agentId, {
+			files: agent.files.concat(items),
+		});
+
+		const toolIds = await this.chatHubToolService.getToolIdsForAgent(agentId);
+		this.logger.debug(`Added ${files.length} file(s) to agent ${agentId} by user ${user.id}`);
+		return this.toDto(updatedAgent, toolIds);
+	}
+
+	async deleteAgentFile(agentId: string, user: User, fileKnowledgeId: string): Promise<void> {
+		const agent = await this.getAgentById(agentId, user.id);
+
+		const fileItem = agent.files.find((f) => f.id === fileKnowledgeId);
+		if (!fileItem) {
+			throw new NotFoundError('File not found');
+		}
+
+		try {
+			await this.deleteEmbeddingsByKnowledgeId(user, agentId, fileItem.id);
+		} catch (error) {
+			this.logger.warn(
+				`Could not delete embeddings from vector store for file "${fileItem.fileName}" (agentId: ${agentId}, knowledgeId: ${fileItem.id}). Proceeding with file deletion.`,
+				{ error },
+			);
+		}
+
+		await this.chatAgentRepository.updateAgent(agentId, {
+			files: agent.files.filter((f) => f.id !== fileKnowledgeId),
+		});
+
+		this.logger.debug(
+			`Deleted file "${fileItem.fileName}" from agent ${agentId} by user ${user.id}`,
+		);
+	}
+
+	private async indexFilesAsKnowledgeItems(
+		user: User,
+		agentId: string,
+		files: Express.Multer.File[],
+	): Promise<ChatHubAgentKnowledgeItem[]> {
+		const knowledgeItems: ChatHubAgentKnowledgeItem[] = [];
+		const pdfFilesToInsert: Array<{ attachment: IBinaryData; knowledgeId: string }> = [];
+		const workflowId = uuidv4();
+		const settings = await this.ensureSemanticSearchOptions();
+
+		// Ensure all file types are valid
+		for (const file of files) {
+			if (file.mimetype !== 'application/pdf') {
+				throw new BadRequestError(`Unsupported mime-type: ${file.mimetype}`);
+			}
+		}
+
+		for (const file of files) {
+			// Multer/busboy parses the Content-Disposition filename as Latin-1 by default,
+			// but browsers send it as UTF-8 bytes. Re-encode to get the correct string.
+			const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+
+			// With disk storage file.buffer is undefined; read from the temp path instead.
+			const buffer = file.buffer ?? (await readFile(file.path));
+			if (file.path) {
+				await unlink(file.path).catch((error) => {
+					this.logger.warn(`Could not unlink file in temporary path. File: ${originalName}`, {
+						error,
+					});
+				});
+			}
+
+			const storedFile = await this.chatHubAttachmentService.storeTemporaryExecutionFile(
+				workflowId,
+				buffer,
+				file.mimetype,
+				originalName,
+			);
+
+			const knowledgeId = nanoid();
+
+			knowledgeItems.push({
+				id: knowledgeId,
+				type: 'embedding',
+				mimeType: file.mimetype,
+				fileName: storedFile.fileName ?? originalName,
+				provider: settings.embeddingModel.provider,
+			});
+			pdfFilesToInsert.push({ attachment: storedFile, knowledgeId });
+		}
+
+		if (pdfFilesToInsert.length > 0) {
+			await this.insertEmbeddings(user, agentId, pdfFilesToInsert, workflowId);
+		}
+
+		return knowledgeItems;
 	}
 }
