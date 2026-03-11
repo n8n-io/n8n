@@ -3,9 +3,6 @@ import {
 	computed,
 	defineAsyncComponent,
 	nextTick,
-	onActivated,
-	onBeforeMount,
-	onDeactivated,
 	onMounted,
 	ref,
 	useCssModule,
@@ -101,7 +98,7 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
-import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
+
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { getBounds, getNodeViewTab } from '@/app/utils/nodeViewUtils';
 import CanvasStopCurrentExecutionButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopCurrentExecutionButton.vue';
@@ -135,8 +132,7 @@ import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimenta
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useActivityDetection } from '@/app/composables/useActivityDetection';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
-import { injectStrict } from '@/app/utils/injectStrict';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import { N8nCallout, N8nCanvasThinkingPill, N8nCanvasCollaborationPill } from '@n8n/design-system';
@@ -192,7 +188,7 @@ const npsSurveyStore = useNpsSurveyStore();
 const projectsStore = useProjectsStore();
 const usersStore = useUsersStore();
 const tagsStore = useTagsStore();
-const pushConnectionStore = usePushConnectionStore();
+
 const ndvStore = useNDVStore();
 const focusPanelStore = useFocusPanelStore();
 const builderStore = useBuilderStore();
@@ -266,7 +262,7 @@ const isLoading = ref(true);
 const readOnlyNotification = ref<null | { visible: boolean }>(null);
 const fallbackNodes = ref<INodeUi[]>([]);
 
-const workflowId = injectStrict(WorkflowIdKey);
+const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const routeNodeId = computed(() => {
 	const nodeId = route.params.nodeId;
@@ -1055,7 +1051,7 @@ async function onRunWorkflowToNode(id: string) {
 		});
 	} else {
 		trackRunWorkflowToNode(node);
-		agentRequestStore.clearAgentRequests(workflowsStore.workflowId, node.id);
+		agentRequestStore.clearAgentRequests(workflowId.value, node.id);
 
 		void runWorkflow({
 			destinationNode: { nodeName: node.name, mode: 'inclusive' },
@@ -1105,7 +1101,7 @@ async function onCopyProductionUrl(id: string) {
 function trackRunWorkflowToNode(node: INodeUi) {
 	const telemetryPayload = {
 		node_type: node.type,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowId.value,
 		source: 'canvas',
 		push_ref: ndvStore.pushRef,
 	};
@@ -1640,10 +1636,10 @@ onBeforeRouteLeave(async (to, from, next) => {
 		return;
 	}
 
-	await useWorkflowSaving({ router }).promptSaveUnsavedWorkflowChanges(next, {
+	await workflowSaving.promptSaveUnsavedWorkflowChanges(next, {
 		async confirm() {
 			if (from.name === VIEWS.NEW_WORKFLOW) {
-				const savedWorkflowId = workflowsStore.workflowId;
+				const savedWorkflowId = workflowId.value;
 				await router.replace({
 					name: VIEWS.WORKFLOW,
 					params: { name: savedWorkflowId },
@@ -1661,14 +1657,7 @@ onBeforeRouteLeave(async (to, from, next) => {
  * Lifecycle
  */
 
-onBeforeMount(() => {
-	if (!isDemoRoute.value) {
-		pushConnectionStore.pushConnect();
-	}
-});
-
 onMounted(async () => {
-	canvasStore.startLoading();
 	documentTitle.reset();
 
 	// Register callback for collaboration store to refresh canvas when workflow updates arrive
@@ -1689,7 +1678,6 @@ onMounted(async () => {
 		}
 	} finally {
 		isLoading.value = false;
-		canvasStore.stopLoading();
 
 		void externalHooks.run('nodeView.mount').catch(() => {});
 
@@ -1714,20 +1702,15 @@ onMounted(async () => {
 	addExecutionOpenedEventBindings();
 	addCommandBarEventBindings();
 	registerCustomActions();
-});
-
-onActivated(() => {
 	addUndoRedoEventBindings();
 	showAddFirstStepIfEnabled();
 });
 
-onDeactivated(() => {
-	uiStore.closeModal(WORKFLOW_SETTINGS_MODAL_KEY);
-	removeUndoRedoEventBindings();
-	toast.clearAllStickyNotifications();
-});
-
 onBeforeUnmount(() => {
+	uiStore.closeModal(WORKFLOW_SETTINGS_MODAL_KEY);
+	toast.clearAllStickyNotifications();
+	workflowDocumentStore?.value?.setViewport(viewportTransform.value);
+
 	removeSourceControlEventBindings();
 	removeWorkflowSavedEventBindings();
 	removeBeforeUnloadEventBindings();
@@ -1735,10 +1718,8 @@ onBeforeUnmount(() => {
 	removeExecutionOpenedEventBindings();
 	removeCommandBarEventBindings();
 	unregisterCustomActions();
+	removeUndoRedoEventBindings();
 	canvasEventBus.off('saved:workflow', onSaveFromWithinExecutionDebug);
-	if (!isDemoRoute.value) {
-		pushConnectionStore.pushDisconnect();
-	}
 });
 </script>
 
@@ -1758,6 +1739,7 @@ onBeforeUnmount(() => {
 			:key-bindings="keyBindingsEnabled"
 			:suppress-interaction="experimentalNdvStore.isMapperOpen"
 			:hide-controls="hideCanvasControls"
+			:initial-viewport="workflowDocumentStore?.viewport"
 			@update:nodes:position="onUpdateNodesPosition"
 			@update:node:position="onUpdateNodePosition"
 			@update:node:activated="onSetNodeActivated"

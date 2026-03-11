@@ -39,6 +39,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { computedAsync } from '@vueuse/core';
 import { useExecutionData } from '@/features/execution/executions/composables/useExecutionData';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import ExperimentalNodeDetailsDrawer from '@/features/workflows/canvas/experimental/components/ExperimentalNodeDetailsDrawer.vue';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -49,6 +50,7 @@ import { type CanvasNode, CanvasNodeRenderType } from '@/features/workflows/canv
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 
 import { N8nIcon, N8nInfoTip, N8nInput, N8nRadioButtons, N8nText } from '@n8n/design-system';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 defineOptions({ name: 'FocusPanel' });
 
@@ -69,7 +71,9 @@ const inputField = ref<InstanceType<typeof N8nInput> | HTMLElement>();
 const locale = useI18n();
 const nodeHelpers = useNodeHelpers();
 const focusPanelStore = useFocusPanelStore();
+const workflowId = useInjectWorkflowId();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowState = injectWorkflowState();
 const nodeTypesStore = useNodeTypesStore();
 const telemetry = useTelemetry();
@@ -77,7 +81,7 @@ const nodeSettingsParameters = useNodeSettingsParameters();
 const environmentsStore = useEnvironmentsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const ndvStore = useNDVStore();
-const vueFlow = useVueFlow(workflowsStore.workflowId);
+const vueFlow = useVueFlow(workflowId.value);
 const { renameNode } = useCanvasOperations();
 
 const resolvedParameter = computed(() => focusPanelStore.resolvedParameter);
@@ -128,7 +132,7 @@ const node = computed<INodeUi | undefined>(() => {
 	const selected: CanvasNode | undefined = vueFlow.getSelectedNodes.value[0];
 
 	return selected?.data?.render.type === CanvasNodeRenderType.Default
-		? workflowsStore.allNodes.find((n) => n.id === selected.id)
+		? (workflowDocumentStore?.value?.allNodes ?? []).find((n) => n.id === selected.id)
 		: undefined;
 });
 const multipleNodesSelected = computed(() => vueFlow.getSelectedNodes.value.length > 1);

@@ -14,7 +14,7 @@ function execCommand(command, options = {}) {
 }
 
 function cleanup(files = []) {
-	files.forEach(file => {
+	files.forEach((file) => {
 		try {
 			if (file.endsWith('/')) {
 				rmSync(file, { recursive: true, force: true });
@@ -35,7 +35,7 @@ function buildTestImage(targetImage) {
 
 		// Build CLI with e2e controller
 		execCommand('pnpm turbo build --filter=n8n', {
-			env: { ...process.env, INCLUDE_TEST_CONTROLLER: 'true' }
+			env: { ...process.env, INCLUDE_TEST_CONTROLLER: 'true' },
 		});
 
 		// Pull base image
@@ -53,8 +53,11 @@ function buildTestImage(targetImage) {
 		copyFileSync(controllerPath, path.join(tempBuildDir, 'e2e.controller.js'));
 
 		// Create Dockerfile
-		writeFileSync(dockerfilePath, `FROM ${targetImage}
-COPY temp-build-e2e/e2e.controller.js /usr/local/lib/node_modules/n8n/dist/controllers/e2e.controller.js`);
+		writeFileSync(
+			dockerfilePath,
+			`FROM ${targetImage}
+COPY temp-build-e2e/e2e.controller.js /usr/local/lib/node_modules/n8n/dist/controllers/e2e.controller.js`,
+		);
 
 		// Build and replace image
 		execCommand(`docker build -f Dockerfile.test -t ${tempTag} .`);

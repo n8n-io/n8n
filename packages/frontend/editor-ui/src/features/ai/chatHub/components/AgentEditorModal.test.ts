@@ -13,7 +13,9 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { ref } from 'vue';
 import type { ChatModelDto } from '@n8n/api-types';
 
-vi.mock('@n8n/i18n', () => {
+vi.mock('@n8n/i18n', async (importOriginal) => {
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+	const actual = await importOriginal<typeof import('@n8n/i18n')>();
 	const i18n = {
 		baseText: (key: string) => key,
 		nodeText: () => ({
@@ -32,9 +34,9 @@ vi.mock('@n8n/i18n', () => {
 		}),
 	};
 	return {
+		...actual,
 		useI18n: () => i18n,
 		i18n,
-		i18nInstance: { install: vi.fn() },
 	};
 });
 
@@ -78,6 +80,8 @@ const MOCK_AGENT = {
 	credentialId: 'cred-1',
 	toolIds: ['tool-1'],
 	icon: { type: 'emoji' as const, value: '🤖' },
+	suggestedPrompts: [{ text: 'Hello', icon: { type: 'icon' as const, value: 'comment' } }],
+	files: [],
 };
 
 const MOCK_AGENT_MODEL: ChatModelDto = {
@@ -144,6 +148,10 @@ const sharedStubs = {
 	N8nIconPicker: {
 		template: '<div data-test-id="icon-picker" />',
 		props: ['modelValue', 'buttonTooltip'],
+	},
+	SuggestedPromptsEditor: {
+		template: '<div data-test-id="suggested-prompts-editor" />',
+		props: ['modelValue'],
 	},
 };
 
@@ -232,10 +240,12 @@ describe('AgentEditorModal', () => {
 			expect(getByText('chatHub.agent.editor.name.label')).toBeTruthy();
 			expect(getByText('chatHub.agent.editor.description.label')).toBeTruthy();
 			expect(getByText('chatHub.agent.editor.systemPrompt.label')).toBeTruthy();
+			expect(getByText('chatHub.agent.editor.suggestedPrompts.label')).toBeTruthy();
 			expect(getByText('chatHub.agent.editor.model.label')).toBeTruthy();
 			expect(getByText('chatHub.agent.editor.tools.label')).toBeTruthy();
 			expect(getByTestId('model-selector')).toBeTruthy();
 			expect(getByTestId('tools-selector')).toBeTruthy();
+			expect(getByTestId('suggested-prompts-editor')).toBeTruthy();
 		});
 
 		it('should have save button disabled when form is empty', () => {
@@ -317,6 +327,8 @@ describe('AgentEditorModal', () => {
 						provider: 'openai',
 						model: 'gpt-4',
 					}),
+					[], // newFiles
+					[], // removedFileKnowledgeIds
 					{ openai: 'cred-1' },
 				);
 				expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);

@@ -4,8 +4,13 @@ import { addVarType } from '@/features/settings/environments.ee/completions/vari
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { INodeUi } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { escapeMappingString } from '@/app/utils/mappingUtils';
 import { useI18n } from '@n8n/i18n';
+import { computed } from 'vue';
 
 function getAutoCompletableNodeNames(nodes: INodeUi[]) {
 	return nodes
@@ -19,6 +24,11 @@ export function useBaseCompletions(
 ) {
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 
 	const itemCompletions = (context: CompletionContext): CompletionResult | null => {
 		const preCursor = context.matchBefore(/i\w*/);
@@ -103,15 +113,17 @@ export function useBaseCompletions(
 		const options: Completion[] = TOP_LEVEL_COMPLETIONS_IN_BOTH_MODES.map(addVarType);
 
 		options.push(
-			...getAutoCompletableNodeNames(workflowsStore.allNodes).map((nodeName) => {
-				return {
-					label: `${prefix}('${escapeMappingString(nodeName)}')`,
-					type: 'variable',
-					info: i18n.baseText('codeNodeEditor.completer.$()', {
-						interpolate: { nodeName },
-					}),
-				};
-			}),
+			...getAutoCompletableNodeNames(workflowDocumentStore.value?.allNodes ?? []).map(
+				(nodeName) => {
+					return {
+						label: `${prefix}('${escapeMappingString(nodeName)}')`,
+						type: 'variable',
+						info: i18n.baseText('codeNodeEditor.completer.$()', {
+							interpolate: { nodeName },
+						}),
+					};
+				},
+			),
 		);
 
 		if (mode === 'runOnceForEachItem') {
@@ -142,17 +154,17 @@ export function useBaseCompletions(
 
 		if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
 
-		const options: Completion[] = getAutoCompletableNodeNames(workflowsStore.allNodes).map(
-			(nodeName) => {
-				return {
-					label: `${prefix}('${escapeMappingString(nodeName)}')`,
-					type: 'variable',
-					info: i18n.baseText('codeNodeEditor.completer.$()', {
-						interpolate: { nodeName },
-					}),
-				};
-			},
-		);
+		const options: Completion[] = getAutoCompletableNodeNames(
+			workflowDocumentStore.value?.allNodes ?? [],
+		).map((nodeName) => {
+			return {
+				label: `${prefix}('${escapeMappingString(nodeName)}')`,
+				type: 'variable',
+				info: i18n.baseText('codeNodeEditor.completer.$()', {
+					interpolate: { nodeName },
+				}),
+			};
+		});
 
 		return {
 			from: preCursor.from,

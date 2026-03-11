@@ -257,10 +257,7 @@ export interface IWorkflowDb {
 	activeVersionId: string | null;
 	usedCredentials?: IUsedCredential[];
 	meta?: WorkflowMetadata;
-	parentFolder?: {
-		id: string;
-		name: string;
-		parentFolderId: string | null;
+	parentFolder?: ResourceParentFolder & {
 		createdAt?: string;
 		updatedAt?: string;
 	};

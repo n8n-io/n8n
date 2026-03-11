@@ -246,6 +246,62 @@ describe('OperationHandler', () => {
 				expect(mockTodoistApiGetAllRequest).toHaveBeenCalledWith(mockCtx, '/tasks', {}, undefined);
 				expect(result).toEqual({ data: expectedResponse });
 			});
+
+			it('should use /tasks/filter endpoint when filter is set on api/v1 (node version >= 2.2)', async () => {
+				const handler = new GetAllHandler();
+				const mockCtx = mock<IExecuteFunctions>({
+					getNodeParameter: jest.fn((key: string, _idx?: number, defaultValue?: any) => {
+						const params: Record<string, any> = {
+							returnAll: false,
+							limit: 5,
+							filters: { filter: 'today' },
+						};
+						return key in params ? params[key] : defaultValue;
+					}),
+					getNode: jest.fn(() => mock<INode>({ typeVersion: 2.2 })),
+				});
+
+				const mockApiResponse = [{ id: '1', content: 'Task due today' }];
+				mockTodoistApiGetAllRequest.mockResolvedValue([...mockApiResponse]);
+
+				const result = await handler.handleOperation(mockCtx, 0);
+
+				expect(mockTodoistApiGetAllRequest).toHaveBeenCalledWith(
+					mockCtx,
+					'/tasks/filter',
+					expect.objectContaining({ query: 'today' }),
+					5,
+				);
+				expect(result).toEqual({ data: mockApiResponse });
+			});
+
+			it('should use /tasks endpoint when filter is set on rest/v2 (node version < 2.2)', async () => {
+				const handler = new GetAllHandler();
+				const mockCtx = mock<IExecuteFunctions>({
+					getNodeParameter: jest.fn((key: string, _idx?: number, defaultValue?: any) => {
+						const params: Record<string, any> = {
+							returnAll: false,
+							limit: 5,
+							filters: { filter: 'today' },
+						};
+						return key in params ? params[key] : defaultValue;
+					}),
+					getNode: jest.fn(() => mock<INode>({ typeVersion: 2.1 })),
+				});
+
+				const mockApiResponse = [{ id: '1', content: 'Task due today' }];
+				mockTodoistApiGetAllRequest.mockResolvedValue([...mockApiResponse]);
+
+				const result = await handler.handleOperation(mockCtx, 0);
+
+				expect(mockTodoistApiGetAllRequest).toHaveBeenCalledWith(
+					mockCtx,
+					'/tasks',
+					expect.objectContaining({ filter: 'today' }),
+					5,
+				);
+				expect(result).toEqual({ data: mockApiResponse });
+			});
 		});
 
 		describe('ReopenHandler', () => {

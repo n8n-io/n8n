@@ -343,9 +343,8 @@ test.describe(
 			await expect(errorNotification).toBeVisible();
 			await expect(n8n.canvas.credentialModal.getModal()).toBeVisible();
 
-			const modalOverlay = n8n.page.locator('.el-overlay').first();
 			await expect(errorNotification).toHaveCSS('z-index', '2100');
-			await expect(modalOverlay).toHaveCSS('z-index', '2001');
+			await expect(n8n.notifications.getModalOverlay()).toHaveCSS('z-index', '2001');
 		});
 	},
 );
