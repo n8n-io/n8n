@@ -841,7 +841,6 @@ const tags = computed(
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
-	margin-left: var(--spacing--2xs);
 	padding: var(--spacing--4xs) var(--spacing--2xs);
 	border-radius: var(--spacing--4xs);
 	border: var(--border);
