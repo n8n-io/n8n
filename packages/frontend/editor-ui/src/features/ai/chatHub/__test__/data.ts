@@ -6,6 +6,8 @@ import type {
 	ChatHubConversationResponse,
 	MessageChunk,
 	ChatHubModuleSettings,
+	ChatHubAgentDto,
+	ChatHubAgentKnowledgeItem,
 } from '@n8n/api-types';
 import { emptyChatModelsResponse } from '@n8n/api-types';
 import type { ChatMessage } from '../chat.types';
@@ -143,6 +145,40 @@ export function createMockStreamChunk(
 			executionId: null,
 			...metadata,
 		},
+	};
+}
+
+export function createMockKnowledgeItem(
+	overrides: Partial<ChatHubAgentKnowledgeItem> = {},
+): ChatHubAgentKnowledgeItem {
+	return {
+		id: 'file-1',
+		type: 'embedding',
+		provider: 'openai',
+		fileName: 'document.pdf',
+		mimeType: 'application/pdf',
+		status: 'indexed',
+		...overrides,
+	};
+}
+
+export function createMockAgentDto(overrides: Partial<ChatHubAgentDto> = {}): ChatHubAgentDto {
+	return {
+		id: 'agent-1',
+		name: 'Test Agent',
+		description: null,
+		icon: null,
+		suggestedPrompts: [],
+		systemPrompt: '',
+		ownerId: 'user-1',
+		credentialId: null,
+		provider: 'openai',
+		model: 'gpt-4',
+		files: [],
+		toolIds: [],
+		createdAt: '',
+		updatedAt: '',
+		...overrides,
 	};
 }
 
