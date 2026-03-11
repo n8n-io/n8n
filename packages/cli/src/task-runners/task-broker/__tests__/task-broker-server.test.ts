@@ -120,6 +120,51 @@ describe('TaskBrokerServer', () => {
 			expect(socket.destroy).toHaveBeenCalled();
 		});
 
+		it('should return 429 when rate limit is exceeded', async () => {
+			const authController = mock<TaskBrokerAuthController>();
+			authController.validateUpgradeRequest.mockResolvedValue({
+				isValid: false,
+				statusCode: 401,
+				reason: 'missing or invalid Authorization header',
+			});
+
+			const { server } = createServer({ authController });
+			const wsServerMock = mock<WSServer>();
+
+			// @ts-expect-error Private property
+			server.wsServer = wsServerMock;
+
+			// Send 5 requests (the limit)
+			for (let i = 0; i < 5; i++) {
+				const socket = createSocket();
+				// @ts-expect-error Private property
+				await server.handleUpgradeRequest(
+					mock<TaskBrokerServerInitRequest>({
+						url: '/runners/_ws?id=runner1',
+						headers: {},
+					}),
+					socket,
+					Buffer.from(''),
+				);
+				// These should fail auth (401), not rate limit
+				expect(socket.write).toHaveBeenCalledWith('HTTP/1.1 401 Unauthorized\r\n\r\n');
+			}
+
+			// 6th should be rate limited
+			const socket = createSocket();
+			// @ts-expect-error Private property
+			await server.handleUpgradeRequest(
+				mock<TaskBrokerServerInitRequest>({
+					url: '/runners/_ws?id=runner1',
+					headers: {},
+				}),
+				socket,
+				Buffer.from(''),
+			);
+			expect(socket.write).toHaveBeenCalledWith('HTTP/1.1 429 Too Many Requests\r\n\r\n');
+			expect(socket.destroy).toHaveBeenCalled();
+		});
+
 		it('should proceed with upgrade when grant token is valid', async () => {
 			const authController = mock<TaskBrokerAuthController>();
 			authController.validateUpgradeRequest.mockResolvedValue({

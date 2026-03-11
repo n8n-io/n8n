@@ -1,5 +1,6 @@
 import { inTest, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import compression from 'compression';
 import express from 'express';
@@ -34,6 +35,20 @@ export class TaskBrokerServer {
 	private wsServer: WSServer | undefined;
 
 	readonly app: express.Application;
+
+	/** Simple sliding-window rate limiter for WebSocket upgrade requests */
+	private readonly upgradeRateLimiter = {
+		windowMs: 1 * Time.seconds.toMilliseconds,
+		limit: 5,
+		timestamps: [] as number[],
+		isRateLimited(): boolean {
+			const now = Date.now();
+			this.timestamps = this.timestamps.filter((t) => now - t < this.windowMs);
+			if (this.timestamps.length >= this.limit) return true;
+			this.timestamps.push(now);
+			return false;
+		},
+	};
 
 	get port() {
 		return (this.server?.address() as AddressInfo)?.port;
@@ -152,23 +167,14 @@ export class TaskBrokerServer {
 	}
 
 	private configureRoutes() {
-		const createRateLimiter = () =>
+		const authEndpoint = `${this.getEndpointBasePath()}/auth`;
+		this.app.post(
+			authEndpoint,
 			expressRateLimit({
 				windowMs: 1000,
 				limit: 5,
 				message: { message: 'Too many requests' },
-			});
-
-		this.app.use(this.upgradeEndpoint, createRateLimiter(), (_req, res) => {
-			// This endpoint only serves WebSocket upgrades which bypass Express.
-			// Any plain HTTP request reaching here is invalid.
-			res.status(426).json({ message: 'Upgrade Required' });
-		});
-
-		const authEndpoint = `${this.getEndpointBasePath()}/auth`;
-		this.app.post(
-			authEndpoint,
-			createRateLimiter(),
+			}),
 			send(async (req) => await this.authController.createGrantToken(req)),
 		);
 
@@ -194,6 +200,11 @@ export class TaskBrokerServer {
 
 			if (parsedUrl.pathname !== this.upgradeEndpoint) {
 				this.failUpgradeRequest(socket, 404);
+				return;
+			}
+
+			if (this.upgradeRateLimiter.isRateLimited()) {
+				this.failUpgradeRequest(socket, 429);
 				return;
 			}
 
