@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { ActiveWorkflows, InstanceSettings } from 'n8n-core';
@@ -19,7 +20,6 @@ import type { EventService } from '@/events/event.service';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { NodeTypes } from '@/node-types';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
-import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 describe('ActiveWorkflowManager', () => {
@@ -27,7 +27,7 @@ describe('ActiveWorkflowManager', () => {
 	const instanceSettings = mock<InstanceSettings>({ isMultiMain: false });
 	const nodeTypes = mock<NodeTypes>();
 	const workflowRepository = mock<WorkflowRepository>();
-	const defaultPublishedDataService = mock<WorkflowPublishedDataService>();
+	const workflowsConfig = mock<WorkflowsConfig>({ useWorkflowPublicationService: false });
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -47,11 +47,11 @@ describe('ActiveWorkflowManager', () => {
 			mock(),
 			instanceSettings,
 			mock(),
+			workflowsConfig,
 			mock(),
 			mock(),
 			mock(),
 			mock(),
-			defaultPublishedDataService,
 		);
 	});
 
@@ -141,7 +141,7 @@ describe('ActiveWorkflowManager', () => {
 			Object.assign(instanceSettings, { isLeader: true });
 		});
 
-		test('should use published version when calling executeErrorWorkflow on activation failure', async () => {
+		test('should use activeVersion nodes when calling executeErrorWorkflow on activation failure', async () => {
 			const activeNodes = [
 				{
 					id: 'active-node-1',
@@ -157,18 +157,10 @@ describe('ActiveWorkflowManager', () => {
 				id: 'workflow-1',
 				name: 'Test Workflow',
 				active: true,
+				activeVersion: { nodes: activeNodes, connections: {} },
 			});
 
 			workflowRepository.findById.mockResolvedValue(workflowEntity);
-			defaultPublishedDataService.getPublishedWorkflowData.mockResolvedValue({
-				id: 'workflow-1',
-				name: 'Test Workflow',
-				nodes: activeNodes,
-				connections: {},
-				staticData: undefined,
-				settings: undefined,
-				shared: [],
-			});
 
 			// Mock the add method to throw an error (simulating activation failure)
 			jest.spyOn(activeWorkflowManager, 'add').mockRejectedValue(new Error('Authorization failed'));
@@ -197,7 +189,6 @@ describe('ActiveWorkflowManager', () => {
 		const activeWorkflows = mock<ActiveWorkflows>();
 		const activationErrorsService = mock<ActivationErrorsService>();
 		const executionService = mock<ExecutionService>();
-		const workflowPublishedDataService = mock<WorkflowPublishedDataService>();
 
 		beforeEach(() => {
 			jest.clearAllMocks();
@@ -206,8 +197,6 @@ describe('ActiveWorkflowManager', () => {
 			activeWorkflows.remove.mockResolvedValue(true);
 			activationErrorsService.register.mockResolvedValue(undefined);
 			executionService.createErrorExecution.mockResolvedValue(undefined);
-			// By default, return null so loadFreshWorkflowData falls back to initial data
-			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue(null);
 
 			activeWorkflowManager = new ActiveWorkflowManager(
 				mockLogger(),
@@ -225,11 +214,11 @@ describe('ActiveWorkflowManager', () => {
 				workflowExecutionService,
 				instanceSettings,
 				mock(),
-				mock(),
+				workflowsConfig,
 				mock(),
 				eventService,
 				mock(),
-				workflowPublishedDataService,
+				mock(),
 			);
 		});
 

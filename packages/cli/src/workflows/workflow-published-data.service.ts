@@ -1,5 +1,4 @@
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
 import {
 	WorkflowPublishedVersionRepository,
 	WorkflowRepository,
@@ -19,11 +18,15 @@ export interface PublishedWorkflowData {
 }
 
 /**
- * Service for loading the currently-published workflow data.
+ * Service for loading the currently-published workflow data from the
+ * `workflow_published_version` table.
  *
- * When the feature flag is enabled, reads from the `workflow_published_version`
- * table which maps workflow IDs to their actually-deployed history version.
- * When disabled, falls back to reading from `workflow_entity.activeVersion`.
+ * Callers should only use this service when the feature flag
+ * (`N8N_USE_WORKFLOW_PUBLICATION_SERVICE`) is enabled. When the flag is off,
+ * callers should continue using the legacy `activeVersion` relation directly.
+ *
+ * If no record exists in the published version table (e.g. for workflows
+ * activated before the table was populated), falls back to `activeVersion`.
  *
  * TODO: Add a caching layer to avoid a DB lookup on every trigger/poll/webhook
  * execution. The cache should be invalidated when the published version changes
@@ -33,21 +36,11 @@ export interface PublishedWorkflowData {
 export class WorkflowPublishedDataService {
 	constructor(
 		private readonly logger: Logger,
-		private readonly globalConfig: GlobalConfig,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 	) {}
 
 	async getPublishedWorkflowData(workflowId: string): Promise<PublishedWorkflowData | null> {
-		if (this.globalConfig.workflows.useWorkflowPublicationService) {
-			return await this.getFromPublishedVersionTable(workflowId);
-		}
-		return await this.getFromActiveVersion(workflowId);
-	}
-
-	private async getFromPublishedVersionTable(
-		workflowId: string,
-	): Promise<PublishedWorkflowData | null> {
 		const record =
 			await this.workflowPublishedVersionRepository.getPublishedVersionWithRelations(workflowId);
 

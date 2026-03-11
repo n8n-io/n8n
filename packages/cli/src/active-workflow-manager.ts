@@ -240,33 +240,59 @@ export class ActiveWorkflowManager {
 	 * deregister those webhooks from external services.
 	 */
 	async clearWebhooks(workflowId: WorkflowId) {
-		const publishedData =
-			await this.workflowPublishedDataService.getPublishedWorkflowData(workflowId);
+		let nodes: INode[];
+		let connections: IWorkflowBase['connections'];
+		let name: string;
+		let staticData: IWorkflowBase['staticData'];
+		let settings: IWorkflowBase['settings'];
 
-		if (!publishedData) {
-			throw new UnexpectedError('Published version not found for workflow', {
-				extra: { workflowId },
+		if (this.workflowsConfig.useWorkflowPublicationService) {
+			const publishedData =
+				await this.workflowPublishedDataService.getPublishedWorkflowData(workflowId);
+			if (!publishedData) {
+				throw new UnexpectedError('Published version not found for workflow', {
+					extra: { workflowId },
+				});
+			}
+			({ nodes, connections } = publishedData);
+			name = publishedData.name;
+			staticData = publishedData.staticData;
+			settings = publishedData.settings;
+		} else {
+			const workflowData = await this.workflowRepository.findOne({
+				where: { id: workflowId },
+				relations: { activeVersion: true },
 			});
+			if (workflowData === null) {
+				throw new UnexpectedError('Could not find workflow', { extra: { workflowId } });
+			}
+			if (!workflowData.activeVersion) {
+				throw new UnexpectedError('Active version not found for workflow', {
+					extra: { workflowId },
+				});
+			}
+			({ nodes, connections } = workflowData.activeVersion);
+			name = workflowData.name;
+			staticData = workflowData.staticData;
+			settings = workflowData.settings;
 		}
-
-		const { nodes, connections } = publishedData;
 
 		const workflow = new Workflow({
 			id: workflowId,
-			name: publishedData.name,
+			name,
 			nodes,
 			connections,
 			active: true,
 			nodeTypes: this.nodeTypes,
-			staticData: publishedData.staticData,
-			settings: publishedData.settings,
+			staticData,
+			settings,
 		});
 
 		const mode = 'internal';
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
 			workflowId: workflow.id,
-			workflowSettings: publishedData.settings,
+			workflowSettings: settings,
 		});
 
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
@@ -289,6 +315,7 @@ export class ActiveWorkflowManager {
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
+		resolveWorkflowData: () => Promise<IWorkflowBase> = async () => workflowData,
 	): IGetExecutePollFunctions {
 		return (workflow: Workflow, node: INode) => {
 			const __emit = (
@@ -299,7 +326,7 @@ export class ActiveWorkflowManager {
 				this.logger.debug(`Received event to trigger execution for workflow "${workflow.name}"`);
 				void this.workflowStaticDataService.saveStaticData(workflow);
 
-				const executePromise = this.loadFreshWorkflowData(workflowData).then(
+				const executePromise = resolveWorkflowData().then(
 					async (freshWorkflowData) =>
 						await this.workflowExecutionService.runWorkflow(
 							freshWorkflowData,
@@ -344,6 +371,7 @@ export class ActiveWorkflowManager {
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
+		resolveWorkflowData: () => Promise<IWorkflowBase> = async () => workflowData,
 	): IGetExecuteTriggerFunctions {
 		return (workflow: Workflow, node: INode) => {
 			const emit = (
@@ -354,7 +382,7 @@ export class ActiveWorkflowManager {
 				this.logger.debug(`Received trigger for workflow "${workflow.name}"`);
 				void this.workflowStaticDataService.saveStaticData(workflow);
 
-				const executePromise = this.loadFreshWorkflowData(workflowData).then(
+				const executePromise = resolveWorkflowData().then(
 					async (freshWorkflowData) =>
 						await this.workflowExecutionService.runWorkflow(
 							freshWorkflowData,
@@ -555,19 +583,34 @@ export class ActiveWorkflowManager {
 				},
 			);
 
-			const publishedData = await this.workflowPublishedDataService.getPublishedWorkflowData(
-				dbWorkflow.id,
-			);
-			if (!publishedData) {
-				throw new UnexpectedError('Published version not found for workflow', {
-					extra: { workflowId: dbWorkflow.id },
-				});
+			let errorNodes: INode[];
+			let errorConnections: IWorkflowBase['connections'];
+
+			if (this.workflowsConfig.useWorkflowPublicationService) {
+				const publishedData = await this.workflowPublishedDataService.getPublishedWorkflowData(
+					dbWorkflow.id,
+				);
+				if (!publishedData) {
+					throw new UnexpectedError('Published version not found for workflow', {
+						extra: { workflowId: dbWorkflow.id },
+					});
+				}
+				errorNodes = publishedData.nodes;
+				errorConnections = publishedData.connections;
+			} else {
+				if (!dbWorkflow.activeVersion) {
+					throw new UnexpectedError('Active version not found for workflow', {
+						extra: { workflowId: dbWorkflow.id },
+					});
+				}
+				errorNodes = dbWorkflow.activeVersion.nodes;
+				errorConnections = dbWorkflow.activeVersion.connections;
 			}
 
 			const workflowForError = {
 				...dbWorkflow,
-				nodes: publishedData.nodes,
-				connections: publishedData.connections,
+				nodes: errorNodes,
+				connections: errorConnections,
 			};
 
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
@@ -656,26 +699,47 @@ export class ActiveWorkflowManager {
 		const shouldAddTriggersAndPollers = this.shouldAddTriggersAndPollers();
 
 		try {
-			const publishedData = await this.workflowPublishedDataService.getPublishedWorkflowData(
-				dbWorkflow.id,
-			);
+			let nodes: INode[];
+			let connections: IWorkflowBase['connections'];
 
-			if (['init', 'leadershipChange'].includes(activationMode) && !publishedData) {
-				this.logger.debug(
-					`Skipping workflow ${formatWorkflow(dbWorkflow)} as it is no longer active`,
-					{ workflowId: dbWorkflow.id },
+			if (this.workflowsConfig.useWorkflowPublicationService) {
+				const publishedData = await this.workflowPublishedDataService.getPublishedWorkflowData(
+					dbWorkflow.id,
 				);
 
-				return added;
+				if (['init', 'leadershipChange'].includes(activationMode) && !publishedData) {
+					this.logger.debug(
+						`Skipping workflow ${formatWorkflow(dbWorkflow)} as it is no longer active`,
+						{ workflowId: dbWorkflow.id },
+					);
+					return added;
+				}
+
+				if (!publishedData) {
+					throw new UnexpectedError('Published version not found for workflow', {
+						extra: { workflowId: dbWorkflow.id },
+					});
+				}
+
+				({ nodes, connections } = publishedData);
+			} else {
+				if (['init', 'leadershipChange'].includes(activationMode) && !dbWorkflow.activeVersion) {
+					this.logger.debug(
+						`Skipping workflow ${formatWorkflow(dbWorkflow)} as it is no longer active`,
+						{ workflowId: dbWorkflow.id },
+					);
+					return added;
+				}
+
+				if (!dbWorkflow.activeVersion) {
+					throw new UnexpectedError('Active version not found for workflow', {
+						extra: { workflowId: dbWorkflow.id },
+					});
+				}
+
+				({ nodes, connections } = dbWorkflow.activeVersion);
 			}
 
-			if (!publishedData) {
-				throw new UnexpectedError('Published version not found for workflow', {
-					extra: { workflowId: dbWorkflow.id },
-				});
-			}
-
-			const { nodes, connections } = publishedData;
 			dbWorkflow.nodes = nodes;
 			dbWorkflow.connections = connections;
 
@@ -717,11 +781,19 @@ export class ActiveWorkflowManager {
 				);
 			}
 
+			// When the flag is on, trigger/poller emit callbacks re-read the published
+			// version from the DB so they pick up updates without deactivate/reactivate.
+			// When the flag is off, they use the in-memory workflowData (same as before).
+			const resolveWorkflowData = this.workflowsConfig.useWorkflowPublicationService
+				? async () => await this.loadFreshWorkflowData(dbWorkflow)
+				: undefined;
+
 			if (shouldAddTriggersAndPollers) {
 				added.triggersAndPollers = await this.addTriggersAndPollers(dbWorkflow, workflow, {
 					activationMode,
 					executionMode: 'trigger',
 					additionalData,
+					resolveWorkflowData,
 				});
 			}
 
@@ -1005,10 +1077,12 @@ export class ActiveWorkflowManager {
 			activationMode,
 			executionMode,
 			additionalData,
+			resolveWorkflowData,
 		}: {
 			activationMode: WorkflowActivateMode;
 			executionMode: WorkflowExecuteMode;
 			additionalData: IWorkflowExecuteAdditionalData;
+			resolveWorkflowData?: () => Promise<IWorkflowBase>;
 		},
 	) {
 		const getTriggerFunctions = this.getExecuteTriggerFunctions(
@@ -1016,6 +1090,7 @@ export class ActiveWorkflowManager {
 			additionalData,
 			executionMode,
 			activationMode,
+			resolveWorkflowData,
 		);
 
 		const getPollFunctions = this.getExecutePollFunctions(
@@ -1023,6 +1098,7 @@ export class ActiveWorkflowManager {
 			additionalData,
 			executionMode,
 			activationMode,
+			resolveWorkflowData,
 		);
 
 		if (workflow.getTriggerNodes().length === 0 && workflow.getPollNodes().length === 0) {
