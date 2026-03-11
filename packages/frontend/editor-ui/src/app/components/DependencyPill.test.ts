@@ -8,6 +8,11 @@ import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
 import * as vueRouter from 'vue-router';
 import type { MockInstance } from 'vitest';
 
+const telemetryTrackMock = vi.fn();
+vi.mock('@/app/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: telemetryTrackMock }),
+}));
+
 vi.mock('vue-router', () => {
 	const resolve = vi.fn().mockReturnValue({ href: '/mock-href' });
 	return {
@@ -18,7 +23,9 @@ vi.mock('vue-router', () => {
 });
 
 let capturedSelectHandler: ((value: string) => void) | undefined;
+let capturedOpenHandler: ((open: boolean) => void) | undefined;
 let capturedItems: unknown[] = [];
+let capturedSearchable: boolean | undefined;
 
 vi.mock('@n8n/design-system/v2/components/DropdownMenu', () => ({
 	N8nDropdownMenu: {
@@ -34,10 +41,15 @@ vi.mock('@n8n/design-system/v2/components/DropdownMenu', () => ({
 			'dataTestId',
 			'extraPopperClass',
 		],
-		emits: ['select', 'search'],
-		setup(props: { items: unknown[] }, { emit }: { emit: (e: string, v: string) => void }) {
+		emits: ['select', 'search', 'update:modelValue'],
+		setup(
+			props: { items: unknown[]; searchable: boolean },
+			{ emit }: { emit: (e: string, v: unknown) => void },
+		) {
 			capturedItems = props.items;
+			capturedSearchable = props.searchable;
 			capturedSelectHandler = (value: string) => emit('select', value);
+			capturedOpenHandler = (open: boolean) => emit('update:modelValue', open);
 		},
 		template: '<div data-test-id="mock-dropdown"><slot name="trigger" /></div>',
 	},
@@ -62,7 +74,9 @@ describe('DependencyPill', () => {
 		router = vueRouter.useRouter();
 		windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
 		capturedSelectHandler = undefined;
+		capturedOpenHandler = undefined;
 		capturedItems = [];
+		capturedSearchable = undefined;
 	});
 
 	afterEach(() => {
@@ -71,20 +85,20 @@ describe('DependencyPill', () => {
 
 	it('should render badge with dependency count', () => {
 		const dependencies = createDependencies();
-		const { getByText } = renderComponent({ props: { dependencies } });
+		const { getByText } = renderComponent({ props: { dependencies, source: 'workflow_card' } });
 
 		expect(getByText(String(dependencies.length))).toBeInTheDocument();
 	});
 
 	it('should render badge with zero count when no dependencies', () => {
-		const { getByText } = renderComponent({ props: { dependencies: [] } });
+		const { getByText } = renderComponent({ props: { dependencies: [], source: 'workflow_card' } });
 
 		expect(getByText('0')).toBeInTheDocument();
 	});
 
 	it('should build menu items grouped by type', () => {
 		const dependencies = createDependencies();
-		renderComponent({ props: { dependencies } });
+		renderComponent({ props: { dependencies, source: 'workflow_card' } });
 
 		const items = capturedItems as Array<{ id: string; label: string; disabled?: boolean }>;
 
@@ -111,7 +125,7 @@ describe('DependencyPill', () => {
 
 	it('should open credential on select', () => {
 		const dependencies = [{ type: 'credentialId', id: 'cred-1', name: 'My Key' }];
-		renderComponent({ props: { dependencies } });
+		renderComponent({ props: { dependencies, source: 'workflow_card' } });
 		const uiStore = mockedStore(useUIStore);
 
 		capturedSelectHandler?.('credentialId:cred-1');
@@ -121,7 +135,7 @@ describe('DependencyPill', () => {
 
 	it('should open workflow in new tab on select', () => {
 		const dependencies = [{ type: 'workflowCall', id: 'wf-1', name: 'Sub WF' }];
-		renderComponent({ props: { dependencies } });
+		renderComponent({ props: { dependencies, source: 'workflow_card' } });
 
 		capturedSelectHandler?.('workflowCall:wf-1');
 
@@ -134,7 +148,7 @@ describe('DependencyPill', () => {
 
 	it('should open parent workflow in new tab on select', () => {
 		const dependencies = [{ type: 'workflowParent', id: 'wf-2', name: 'Parent WF' }];
-		renderComponent({ props: { dependencies } });
+		renderComponent({ props: { dependencies, source: 'workflow_card' } });
 
 		capturedSelectHandler?.('workflowParent:wf-2');
 
@@ -149,7 +163,7 @@ describe('DependencyPill', () => {
 		const dependencies = [
 			{ type: 'dataTableId', id: 'dt-1', name: 'My Table', projectId: 'proj-1' },
 		];
-		renderComponent({ props: { dependencies } });
+		renderComponent({ props: { dependencies, source: 'workflow_card' } });
 
 		capturedSelectHandler?.('dataTableId:dt-1');
 
@@ -162,7 +176,7 @@ describe('DependencyPill', () => {
 
 	it('should not open data table without projectId', () => {
 		const dependencies = [{ type: 'dataTableId', id: 'dt-1', name: 'My Table' }];
-		renderComponent({ props: { dependencies } });
+		renderComponent({ props: { dependencies, source: 'workflow_card' } });
 
 		capturedSelectHandler?.('dataTableId:dt-1');
 
@@ -171,12 +185,54 @@ describe('DependencyPill', () => {
 
 	it('should ignore select with invalid value', () => {
 		const dependencies = createDependencies();
-		renderComponent({ props: { dependencies } });
+		renderComponent({ props: { dependencies, source: 'workflow_card' } });
 		const uiStore = mockedStore(useUIStore);
 
 		capturedSelectHandler?.('invalid');
 
 		expect(uiStore.openExistingCredential).not.toHaveBeenCalled();
 		expect(windowOpenSpy).not.toHaveBeenCalled();
+	});
+
+	it('should hide search when fewer than 6 dependencies', () => {
+		const dependencies = createDependencies(); // 4 items
+		renderComponent({ props: { dependencies, source: 'workflow_card' } });
+
+		expect(capturedSearchable).toBe(false);
+	});
+
+	it('should show search when 6 or more dependencies', () => {
+		const dependencies = [
+			{ type: 'credentialId', id: 'c-1', name: 'Cred 1' },
+			{ type: 'credentialId', id: 'c-2', name: 'Cred 2' },
+			{ type: 'credentialId', id: 'c-3', name: 'Cred 3' },
+			{ type: 'workflowCall', id: 'w-1', name: 'WF 1' },
+			{ type: 'workflowCall', id: 'w-2', name: 'WF 2' },
+			{ type: 'workflowCall', id: 'w-3', name: 'WF 3' },
+		];
+		renderComponent({ props: { dependencies, source: 'workflow_card' } });
+
+		expect(capturedSearchable).toBe(true);
+	});
+
+	it('should track telemetry when dropdown opens', () => {
+		const dependencies = createDependencies();
+		renderComponent({ props: { dependencies, source: 'credential_card' } });
+
+		capturedOpenHandler?.(true);
+
+		expect(telemetryTrackMock).toHaveBeenCalledWith('User opened dependency pill', {
+			source: 'credential_card',
+			dependency_count: dependencies.length,
+		});
+	});
+
+	it('should not track telemetry when dropdown closes', () => {
+		const dependencies = createDependencies();
+		renderComponent({ props: { dependencies, source: 'workflow_card' } });
+
+		capturedOpenHandler?.(false);
+
+		expect(telemetryTrackMock).not.toHaveBeenCalled();
 	});
 });
