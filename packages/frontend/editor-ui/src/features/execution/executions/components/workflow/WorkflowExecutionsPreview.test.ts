@@ -439,6 +439,67 @@ describe('WorkflowExecutionsPreview.vue', () => {
 		);
 	});
 
+	it('should not apply stale version response when execution changes during fetch', async () => {
+		const staleVersionId = faker.string.uuid();
+		const freshVersionId = faker.string.uuid();
+		const workflowId = executionData.workflowId;
+
+		const makeVersion = (overrides: Partial<WorkflowVersion>): WorkflowVersion => ({
+			versionId: faker.string.uuid(),
+			workflowId,
+			name: null,
+			description: null,
+			authors: 'test',
+			createdAt: '2025-10-10T10:24:00.000Z',
+			updatedAt: '2025-10-10T10:24:00.000Z',
+			nodes: [],
+			connections: {},
+			workflowPublishHistory: [],
+			...overrides,
+		});
+
+		const staleVersion = makeVersion({ versionId: staleVersionId, name: 'Stale version' });
+		const freshVersion = makeVersion({
+			versionId: freshVersionId,
+			name: 'Fresh version',
+			createdAt: '2025-10-11T10:24:00.000Z',
+			updatedAt: '2025-10-11T10:24:00.000Z',
+		});
+
+		const deferred = Promise.withResolvers<WorkflowVersion>();
+
+		const workflowHistoryStore = mockedStore(useWorkflowHistoryStore);
+		// First call (stale) hangs, second call (fresh) resolves immediately
+		workflowHistoryStore.getWorkflowVersion
+			.mockReturnValueOnce(deferred.promise)
+			.mockResolvedValueOnce(freshVersion);
+
+		const executionWithStaleVersion = {
+			...executionData,
+			workflowVersionId: staleVersionId,
+		};
+
+		const { rerender, findByTestId } = renderComponent({
+			props: { execution: executionWithStaleVersion },
+		});
+
+		// Switch to a different execution before the first fetch resolves
+		await rerender({
+			execution: { ...executionData, workflowVersionId: freshVersionId },
+		});
+
+		const versionLink = await findByTestId('execution-preview-version-link');
+		expect(versionLink.textContent?.trim()).toContain('Fresh version');
+
+		// Now resolve the stale request — it should NOT overwrite the fresh version
+		deferred.resolve(staleVersion);
+		await nextTick();
+		await nextTick();
+
+		expect(versionLink.textContent?.trim()).toContain('Fresh version');
+		expect(versionLink.textContent?.trim()).not.toContain('Stale version');
+	});
+
 	it('should not show version link when version fetch fails', async () => {
 		const pinia = createTestingPinia({
 			initialState: {

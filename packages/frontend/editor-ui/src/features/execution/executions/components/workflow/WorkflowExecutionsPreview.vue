@@ -138,10 +138,14 @@ watch(
 		workflowVersion.value = null;
 		if (!versionId || !props.execution?.workflowId) return;
 		try {
-			workflowVersion.value = await workflowHistoryStore.getWorkflowVersion(
+			const version = await workflowHistoryStore.getWorkflowVersion(
 				props.execution.workflowId,
 				versionId,
 			);
+			// Guard against stale response if execution changed during fetch
+			if (props.execution?.workflowVersionId === versionId) {
+				workflowVersion.value = version;
+			}
 		} catch {
 			// Version may have been pruned — silently ignore
 		}
