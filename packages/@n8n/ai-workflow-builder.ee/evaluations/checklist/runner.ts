@@ -40,10 +40,14 @@ export async function runSingleExample(
 
 	// Track token usage per LLM call
 	const tokenSnapshots: TokenUsage[] = [];
+	const iterationDurations: number[] = [];
 	const toolCallsPerIteration: ToolCallDetail[][] = [];
 	let currentToolCalls: ToolCallDetail[] = [];
 	// Map toolCallId -> ToolCallDetail for merging running/completed/error chunks
 	const toolCallById = new Map<string, ToolCallDetail>();
+	let iterationStartTime = startTime;
+	let timeToFirstIterationMs: number | undefined;
+	let timeToFirstValidWorkflowMs: number | undefined;
 
 	const builder = new CodeWorkflowBuilder({
 		llm: config.llm,
@@ -51,7 +55,14 @@ export async function runSingleExample(
 		nodeDefinitionDirs: config.nodeDefinitionDirs,
 		codeFormat: config.codeFormat,
 		onTokenUsage: (usage: TokenUsage) => {
+			const now = Date.now();
+			const durationMs = now - iterationStartTime;
 			tokenSnapshots.push(usage);
+			iterationDurations.push(durationMs);
+			if (timeToFirstIterationMs === undefined) {
+				timeToFirstIterationMs = now - startTime;
+			}
+			iterationStartTime = now;
 			// Each token usage callback = end of one LLM iteration
 			// Capture accumulated tool calls for this iteration
 			toolCallsPerIteration.push([...currentToolCalls]);
@@ -113,6 +124,9 @@ export async function runSingleExample(
 				}
 
 				if (isWorkflowUpdateChunk(message)) {
+					if (timeToFirstValidWorkflowMs === undefined) {
+						timeToFirstValidWorkflowMs = Date.now() - startTime;
+					}
 					workflowJson = message.codeSnippet ?? '';
 					sourceCode = message.sourceCode ?? '';
 					success = true;
@@ -144,7 +158,7 @@ export async function runSingleExample(
 	// Build iterations from token snapshots
 	const iterations: Iteration[] = tokenSnapshots.map((snapshot, i) => ({
 		iterationNumber: i + 1,
-		durationMs: 0, // Individual iteration timing not available from token callback
+		durationMs: iterationDurations[i] ?? 0,
 		inputTokens: snapshot.inputTokens,
 		outputTokens: snapshot.outputTokens,
 		thinkingTokens: snapshot.thinkingTokens,
@@ -197,5 +211,7 @@ export async function runSingleExample(
 		totalInputTokens,
 		totalOutputTokens,
 		linesOfCode,
+		timeToFirstIterationMs,
+		timeToFirstValidWorkflowMs,
 	};
 }

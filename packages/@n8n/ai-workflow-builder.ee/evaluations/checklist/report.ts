@@ -222,6 +222,16 @@ function renderRunSection(run: Run, runIndex: number): string {
 			? run.results.reduce((sum, r) => sum + r.totalTimeMs, 0) / run.results.length
 			: 0;
 	const variant = getRunVariant(run);
+	const firstIterVals = run.results.flatMap((r) => r.timeToFirstIterationMs ?? []);
+	const avgFirstIter =
+		firstIterVals.length > 0
+			? firstIterVals.reduce((a, b) => a + b, 0) / firstIterVals.length
+			: undefined;
+	const firstWorkflowVals = run.results.flatMap((r) => r.timeToFirstValidWorkflowMs ?? []);
+	const avgFirstWorkflow =
+		firstWorkflowVals.length > 0
+			? firstWorkflowVals.reduce((a, b) => a + b, 0) / firstWorkflowVals.length
+			: undefined;
 
 	return `
 		<div class="run-section" data-variant="${variant}">
@@ -236,6 +246,8 @@ function renderRunSection(run: Run, runIndex: number): string {
 					<span>${run.results.length} results</span>
 					<span>Avg Score: ${formatScore(avgScore)}</span>
 					<span>Avg Time: ${formatDuration(avgTime)}</span>
+					${avgFirstIter !== undefined ? `<span>Avg 1st Iter: ${formatDuration(avgFirstIter)}</span>` : ''}
+					${avgFirstWorkflow !== undefined ? `<span>Avg 1st Workflow: ${formatDuration(avgFirstWorkflow)}</span>` : ''}
 					<span>${run.config.prompts.length} prompts</span>
 				</div>
 			</div>
@@ -404,6 +416,22 @@ export function generateReport(runs: Run[]): string {
 						)
 				: 0,
 		)}</div>
+	</div>
+	<div class="summary-card">
+		<div class="label">Avg Time to 1st Iteration</div>
+		<div class="value">${(() => {
+			const vals = runs.flatMap((r) => r.results.flatMap((rr) => rr.timeToFirstIterationMs ?? []));
+			return vals.length > 0 ? formatDuration(vals.reduce((a, b) => a + b, 0) / vals.length) : '-';
+		})()}</div>
+	</div>
+	<div class="summary-card">
+		<div class="label">Avg Time to 1st Valid Workflow</div>
+		<div class="value">${(() => {
+			const vals = runs.flatMap((r) =>
+				r.results.flatMap((rr) => rr.timeToFirstValidWorkflowMs ?? []),
+			);
+			return vals.length > 0 ? formatDuration(vals.reduce((a, b) => a + b, 0) / vals.length) : '-';
+		})()}</div>
 	</div>
 </div>
 

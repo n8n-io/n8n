@@ -43,6 +43,8 @@ export interface AgentResult {
 	totalInputTokens: number;
 	totalOutputTokens: number;
 	linesOfCode: number;
+	timeToFirstIterationMs?: number;
+	timeToFirstValidWorkflowMs?: number;
 }
 
 export interface PromptConfig {
