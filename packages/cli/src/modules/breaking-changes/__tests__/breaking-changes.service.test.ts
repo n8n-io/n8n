@@ -43,9 +43,6 @@ describe('BreakingChangeService', () => {
 		// Mock statistics repository to return empty array (tests focus on breaking change detection, not statistics)
 		workflowStatisticsRepository.find.mockResolvedValue([]);
 
-		// Spy on registerRules to prevent automatic registration in constructor
-		jest.spyOn(BreakingChangeService.prototype, 'registerRules').mockImplementation(() => {});
-
 		service = new BreakingChangeService(
 			ruleRegistry,
 			workflowRepository,

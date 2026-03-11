@@ -15,7 +15,8 @@ import {
 } from '@/features/credentials/credentials.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import {
 	getNodeCredentialTypes,
@@ -28,10 +29,8 @@ import {
 import { PLACEHOLDER_FILLED_AT_EXECUTION_TIME, MANUAL_TRIGGER_NODE_TYPE } from '@/app/constants';
 
 import { sortNodesByExecutionOrder } from '@/app/utils/workflowUtils';
-import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 /**
  * Composable that manages workflow setup state for credential configuration.
@@ -49,7 +48,7 @@ export const useWorkflowSetupState = (nodes?: Ref<INodeUi[]>) => {
 	const templatesStore = useTemplatesStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 
-	const sourceNodes = computed(() => nodes?.value ?? workflowsStore.allNodes);
+	const sourceNodes = computed(() => nodes?.value ?? workflowDocumentStore?.value?.allNodes ?? []);
 
 	/**
 	 * Synchronous: detects resource locator parameters from the current workflow

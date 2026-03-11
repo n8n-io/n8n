@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { ref, computed } from 'vue';
 import SetupPanelCards from '@/features/setupPanel/components/SetupPanelCards.vue';
 import type { SetupCardItem, NodeSetupState } from '@/features/setupPanel/setupPanel.types';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import type { INodeUi } from '@/Interface';
 
 const mockSetCredential = vi.fn();
@@ -40,7 +41,13 @@ vi.mock('./cards/NodeSetupCard.vue', () => ({
 	},
 }));
 
-const renderComponent = createComponentRenderer(SetupPanelCards);
+const renderComponent = createComponentRenderer(SetupPanelCards, {
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
+	},
+});
 
 const createTriggerCard = (overrides: Partial<NodeSetupState> = {}): SetupCardItem => ({
 	state: {
