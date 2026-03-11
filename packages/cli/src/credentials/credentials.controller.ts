@@ -36,6 +36,8 @@ import { CredentialsFinderService } from './credentials-finder.service';
 import { CredentialsService } from './credentials.service';
 import { EnterpriseCredentialsService } from './credentials.service.ee';
 
+import { CredentialsTester } from '@/services/credentials-tester.service';
+
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -61,6 +63,7 @@ export class CredentialsController {
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly eventService: EventService,
 		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly credentialsTester: CredentialsTester,
 	) {}
 
 	@Get('/', { middlewares: listQueryMiddleware })
@@ -171,6 +174,35 @@ export class CredentialsController {
 		}
 
 		return await this.credentialsService.test(req.user.id, mergedCredentials);
+	}
+
+	@Get('/:credentialId/tagline')
+	async getCredentialTagline(req: CredentialRequest.Get): Promise<{ tagline: string } | null> {
+		const storedCredential = await this.credentialsFinderService.findCredentialForUser(
+			req.params.credentialId,
+			req.user,
+			['credential:read'],
+		);
+
+		if (!storedCredential) {
+			throw new ForbiddenError();
+		}
+
+		const decryptedData = this.credentialsService.decrypt(storedCredential, true);
+		const credentialsDecrypted = {
+			id: storedCredential.id,
+			name: storedCredential.name,
+			type: storedCredential.type,
+			data: decryptedData,
+		};
+
+		const tagline = await this.credentialsTester.getTagline(
+			req.user.id,
+			storedCredential.type,
+			credentialsDecrypted,
+		);
+
+		return tagline !== null ? { tagline } : null;
 	}
 
 	@Post('/')

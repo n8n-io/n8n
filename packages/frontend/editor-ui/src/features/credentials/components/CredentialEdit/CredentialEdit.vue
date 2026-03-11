@@ -600,6 +600,7 @@ async function loadCurrentCredential(id = props.activeId ?? '') {
 		}
 
 		credentialName.value = currentCredentials.name;
+		void credentialsStore.fetchCredentialTagline(id);
 		isSharedGlobally.value =
 			'isGlobal' in currentCredentials && typeof currentCredentials.isGlobal === 'boolean'
 				? currentCredentials.isGlobal
@@ -768,6 +769,9 @@ async function testCredential(credentialDetails: ICredentialsDecrypted) {
 	} else {
 		authError.value = '';
 		testedSuccessfully.value = true;
+		if (credentialId.value) {
+			void credentialsStore.fetchCredentialTagline(credentialId.value, { force: true });
+		}
 	}
 
 	scrollToTop();
@@ -1361,6 +1365,7 @@ const { width } = useElementSize(credNameRef);
 							</N8nTag>
 						</div>
 						<N8nText v-if="credentialType" size="small" tag="p" color="text-light">{{
+							(credentialId && credentialsStore.credentialTaglines.get(credentialId)) ||
 							credentialType.displayName
 						}}</N8nText>
 					</div>

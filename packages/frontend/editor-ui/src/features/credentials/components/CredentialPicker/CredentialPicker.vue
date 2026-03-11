@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, onMounted } from 'vue';
 import { listenForModalChanges, useUIStore } from '@/app/stores/ui.store';
 import { listenForCredentialChanges, useCredentialsStore } from '../../credentials.store';
 import { assert } from '@n8n/utils/assert';
@@ -57,13 +57,25 @@ const availableCredentials = computed(() => {
 });
 
 const credentialOptions = computed(() => {
+	// Access credentialTaglines to establish reactive dependency
+	const taglines = credentialsStore.credentialTaglines;
 	return availableCredentials.value.map((credential) => ({
 		id: credential.id,
 		name: credential.name,
 		typeDisplayName: credentialsStore.getCredentialTypeByName(credential.type)?.displayName,
+		tagline: taglines.get(credential.id),
 		homeProject: credential.homeProject,
 	}));
 });
+
+function fetchTaglines() {
+	for (const credential of availableCredentials.value) {
+		void credentialsStore.fetchCredentialTagline(credential.id);
+	}
+}
+
+onMounted(fetchTaglines);
+watch(availableCredentials, fetchTaglines);
 
 async function loadCurrentCredential() {
 	if (!props.selectedCredentialId) {
