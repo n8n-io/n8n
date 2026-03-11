@@ -78,12 +78,23 @@ const mockChatPanelStateStore = reactive({
 	isOpen: true,
 });
 
+const mockDocumentStore = reactive({
+	get allNodes() {
+		return mockWorkflowsStore.workflow.nodes;
+	},
+});
+
 vi.mock('@/features/ai/assistant/builder.store', () => ({
 	useBuilderStore: () => mockBuilderStore,
 }));
 
 vi.mock('@/app/stores/workflows.store', () => ({
 	useWorkflowsStore: () => mockWorkflowsStore,
+}));
+
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	useWorkflowDocumentStore: () => mockDocumentStore,
+	createWorkflowDocumentId: () => 'test-id',
 }));
 
 vi.mock('@/features/workflows/workflowHistory/workflowHistory.store', () => ({

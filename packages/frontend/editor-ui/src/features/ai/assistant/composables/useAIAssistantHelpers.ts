@@ -25,6 +25,7 @@ import {
 	getNodeAuthOptions,
 } from '@/app/utils/nodeTypesUtils';
 import type { AssistantProcessOptions, ChatRequest } from '../assistant.types';
+import { computed } from 'vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentStore,
@@ -45,6 +46,12 @@ export const useAIAssistantHelpers = () => {
 	const ndvStore = useNDVStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
+
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 
 	const workflowHelpers = useWorkflowHelpers();
 	const locale = useI18n();
@@ -301,17 +308,14 @@ export const useAIAssistantHelpers = () => {
 	 * @returns schemas and list of node names whose schema was derived from pin data
 	 */
 	function getNodesSchemas(nodeNames: string[], excludeValues?: boolean) {
-		const workflowDocumentStore = workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined;
 		const schemas: ChatRequest.NodeExecutionSchema[] = [];
 		const pinnedNodeNames: string[] = [];
 		for (const name of nodeNames) {
-			const node = workflowsStore.getNodeByName(name);
+			const node = workflowDocumentStore.value?.getNodeByName(name);
 			if (!node) {
 				continue;
 			}
-			if (workflowDocumentStore?.pinData?.[node.name]) {
+			if (workflowDocumentStore.value?.pinData?.[node.name]) {
 				pinnedNodeNames.push(node.name);
 			}
 			const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema();
