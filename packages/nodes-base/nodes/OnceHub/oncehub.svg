@@ -1,0 +1,33 @@
+<svg width="60" height="60" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g clip-path="url(#clip0_1_438)">
+<rect width="16" height="16" fill="white"/>
+<rect width="16" height="16" fill="#FF9C00"/>
+<rect x="8" width="8" height="8" fill="#B731A9"/>
+<rect width="8" height="8" fill="#009BDE"/>
+<rect x="8" y="8" width="8" height="8" fill="#009B48"/>
+<rect y="8" width="8" height="8" fill="#FFAD00"/>
+<mask id="mask0_1_438" style="mask-type:luminance" maskUnits="userSpaceOnUse" x="0" y="8" width="8" height="8">
+<rect y="8" width="8" height="8" fill="white"/>
+</mask>
+<g mask="url(#mask0_1_438)">
+</g>
+<circle cx="8.00652" cy="7.99407" r="6.82" fill="#333333"/>
+<mask id="mask1_1_438" style="mask-type:luminance" maskUnits="userSpaceOnUse" x="0" y="0" width="16" height="16">
+<path d="M12.0909 1.63636L10.2727 4.36364L12.0909 7.09091L15.7273 6.18182L14.8182 13.4545L9.81818 15.2727L3 14.8182L0.727272 12.5455V1.18182L1.63636 0.727272H11.6364L12.0909 1.63636Z" fill="white"/>
+</mask>
+<g mask="url(#mask1_1_438)">
+<path d="M13.0978 8.00018C13.0978 5.18459 10.8157 2.90164 8.00018 2.90154C5.18453 2.90154 2.90154 5.18453 2.90154 8.00018C2.90164 10.8157 5.18459 13.0978 8.00018 13.0978V14.8185L7.64959 14.8097C4.16302 14.6333 1.36729 11.8373 1.19061 8.35076L1.18182 8.00018C1.18182 4.2346 4.2346 1.18182 8.00018 1.18182L8.35076 1.19061C11.9533 1.37317 14.8185 4.35224 14.8185 8.00018L14.8097 8.35076C14.6272 11.9533 11.648 14.8184 8.00018 14.8185V13.0978C10.8157 13.0977 13.0977 10.8157 13.0978 8.00018Z" fill="white"/>
+</g>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M14.0267 1.86918C14.0267 1.86918 14.7061 2.51593 15.2173 3.46971L7.86287 10.7938L4.97339 6.97839L6.08956 5.43561L8.00884 7.95338L14.0267 1.86918Z" fill="white"/>
+<mask id="mask2_1_438" style="mask-type:luminance" maskUnits="userSpaceOnUse" x="4" y="1" width="12" height="10">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M14.0267 1.86918C14.0267 1.86918 14.7061 2.51593 15.2173 3.46971L7.86287 10.7938L4.97339 6.97839L6.08956 5.43561L8.00884 7.95338L14.0267 1.86918Z" fill="white"/>
+</mask>
+<g mask="url(#mask2_1_438)">
+</g>
+</g>
+<defs>
+<clipPath id="clip0_1_438">
+<rect width="16" height="16" fill="white"/>
+</clipPath>
+</defs>
+</svg>

@@ -1,0 +1,19 @@
+{
+	"node": "n8n-nodes-base.onceHubTrigger",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Productivity", "Utility"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://developers.oncehub.com/reference/booking-calendars/#tag/authentication"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://developers.oncehub.com/reference/booking-calendars/#tag/webhooks"
+			}
+		],
+		"generic": []
+	}
+}
