@@ -36,14 +36,11 @@ jobs:
             security/vex.openvex.json
             security/trivy.yaml
             security/trivy-ignore-policy.rego
+            .github/scripts/retry.mjs
           sparse-checkout-cone-mode: false
 
       - name: Pull Docker image with retry
-        run: |
-          for i in {1..4}; do
-            docker pull "${{ inputs.image_ref }}" && break
-            [ "$i" -lt 4 ] && echo "Retry $i failed, waiting..." && sleep 15
-          done
+        run: node .github/scripts/retry.mjs --attempts 4 --delay 15 'docker pull "${{ inputs.image_ref }}"'
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@e368e328979b113139d6f9068e03accaed98a518 # v0.34.1

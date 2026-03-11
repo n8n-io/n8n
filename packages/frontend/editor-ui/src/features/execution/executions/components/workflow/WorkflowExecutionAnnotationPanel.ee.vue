@@ -4,8 +4,7 @@ import type { ExecutionSummary } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import { injectStrict } from '@/app/utils/injectStrict';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 import { ElDropdown } from 'element-plus';
 import { N8nBadge, N8nButton, N8nHeading, N8nText } from '@n8n/design-system';
@@ -21,7 +20,7 @@ const i18n = useI18n();
 const annotationDropdownRef = ref<InstanceType<typeof ElDropdown> | null>(null);
 const isDropdownVisible = ref(false);
 
-const workflowId = injectStrict(WorkflowIdKey);
+const workflowId = useInjectWorkflowId();
 const workflowPermissions = computed(
 	() =>
 		getResourcePermissions(workflowsListStore.getWorkflowById(workflowId.value)?.scopes).workflow,

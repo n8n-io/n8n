@@ -37,6 +37,7 @@ describe('determine-tracks', () => {
 
 		assert.equal(output.track, 'stable');
 		assert.equal(output.version, '2.9.3');
+		assert.equal(output.previous_version, '2.9.2');
 		assert.equal(output.bump, 'patch');
 		assert.equal(output.new_stable_version, null);
 		assert.equal(output.release_type, 'stable');
@@ -48,6 +49,7 @@ describe('determine-tracks', () => {
 
 		assert.equal(output.track, 'beta');
 		assert.equal(output.version, '2.10.2');
+		assert.equal(output.previous_version, '2.10.1');
 		assert.equal(output.bump, 'patch');
 		assert.equal(output.new_stable_version, null);
 		assert.equal(output.release_type, 'stable');
@@ -60,6 +62,7 @@ describe('determine-tracks', () => {
 
 		assert.equal(output.track, 'stable');
 		assert.equal(output.version, '2.9.4');
+		assert.equal(output.previous_version, '2.9.2');
 		assert.equal(output.bump, 'patch');
 		assert.equal(output.new_stable_version, null);
 		assert.equal(output.release_type, 'stable');
@@ -81,6 +84,7 @@ describe('determine-tracks', () => {
 
 		assert.equal(output.track, 'beta');
 		assert.equal(output.version, '2.11.0');
+		assert.equal(output.previous_version, '2.10.1');
 		assert.equal(output.bump, 'minor');
 		assert.equal(output.new_stable_version, '2.10.1');
 		assert.equal(output.release_type, 'stable');
@@ -92,6 +96,7 @@ describe('determine-tracks', () => {
 
 		assert.equal(output.track, 'beta');
 		assert.equal(output.version, '2.10.2-rc.1');
+		assert.equal(output.previous_version, '2.10.1');
 		assert.equal(output.bump, 'patch');
 		assert.equal(output.new_stable_version, null);
 		assert.equal(output.release_type, 'rc');

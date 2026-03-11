@@ -96,7 +96,7 @@ describe('SecretsProviderConnectionRepository', () => {
 		return credential;
 	}
 
-	describe('findGlobalConnections', () => {
+	describe('findEnabledGlobalConnections', () => {
 		it('returns only connections without project access', async () => {
 			await Promise.all([
 				createConnection('global1', 'awsSecretsManager'),
@@ -104,7 +104,7 @@ describe('SecretsProviderConnectionRepository', () => {
 				createConnection('project1', 'awsSecretsManager', [project1.id]),
 			]);
 
-			const connections = await connectionRepository.findGlobalConnections();
+			const connections = await connectionRepository.findEnabledGlobalConnections();
 
 			expect(connections).toHaveLength(2);
 			expect(connections.map((connection) => connection.providerKey).sort()).toEqual([
@@ -120,7 +120,7 @@ describe('SecretsProviderConnectionRepository', () => {
 				createConnection('globalGcp', 'gcpSecretsManager'),
 			]);
 
-			const connections = await connectionRepository.findGlobalConnections({
+			const connections = await connectionRepository.findEnabledGlobalConnections({
 				providerKeys: ['globalAws', 'globalVault'],
 			});
 
@@ -134,7 +134,7 @@ describe('SecretsProviderConnectionRepository', () => {
 		it('returns empty array when no global connections exist', async () => {
 			await createConnection('projectOnly', 'awsSecretsManager', [project1.id]);
 
-			const connections = await connectionRepository.findGlobalConnections();
+			const connections = await connectionRepository.findEnabledGlobalConnections();
 
 			expect(connections).toEqual([]);
 		});
@@ -146,7 +146,7 @@ describe('SecretsProviderConnectionRepository', () => {
 				createConnection('globalGcp', 'gcpSecretsManager'),
 			]);
 
-			const connections = await connectionRepository.findGlobalConnections({
+			const connections = await connectionRepository.findEnabledGlobalConnections({
 				providerKeys: [],
 			});
 
@@ -154,7 +154,7 @@ describe('SecretsProviderConnectionRepository', () => {
 		});
 	});
 
-	describe('findByProjectId', () => {
+	describe('findEnabledByProjectId', () => {
 		it('returns only connections assigned to the project', async () => {
 			await Promise.all([
 				createConnection('global', 'awsSecretsManager'),
@@ -163,7 +163,7 @@ describe('SecretsProviderConnectionRepository', () => {
 				createConnection('proj2A', 'gcpSecretsManager', [project2.id]),
 			]);
 
-			const connections = await connectionRepository.findByProjectId(project1.id);
+			const connections = await connectionRepository.findEnabledByProjectId(project1.id);
 
 			expect(connections).toHaveLength(2);
 			expect(connections.map((connection) => connection.providerKey).sort()).toEqual([
@@ -179,7 +179,7 @@ describe('SecretsProviderConnectionRepository', () => {
 				createConnection('projGcp', 'gcpSecretsManager', [project1.id]),
 			]);
 
-			const connections = await connectionRepository.findByProjectId(project1.id, {
+			const connections = await connectionRepository.findEnabledByProjectId(project1.id, {
 				providerKeys: ['projAws', 'projGcp'],
 			});
 
@@ -193,7 +193,7 @@ describe('SecretsProviderConnectionRepository', () => {
 		it('returns empty array when no connections exist for project', async () => {
 			await createConnection('otherProject', 'awsSecretsManager', [project2.id]);
 
-			const connections = await connectionRepository.findByProjectId(project1.id);
+			const connections = await connectionRepository.findEnabledByProjectId(project1.id);
 
 			expect(connections).toEqual([]);
 		});
@@ -205,7 +205,7 @@ describe('SecretsProviderConnectionRepository', () => {
 				createConnection('projGcp', 'gcpSecretsManager', [project1.id]),
 			]);
 
-			const connections = await connectionRepository.findByProjectId(project1.id, {
+			const connections = await connectionRepository.findEnabledByProjectId(project1.id, {
 				providerKeys: [],
 			});
 

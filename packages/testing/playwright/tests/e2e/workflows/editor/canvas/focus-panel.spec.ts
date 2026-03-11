@@ -19,7 +19,7 @@ test.describe(
 				setupRequirements,
 			}) => {
 				await setupRequirements(requirements);
-				await n8n.start.fromImportedWorkflow('Test_workflow_3.json');
+				await n8n.start.fromImportedWorkflow('schedule-trigger-with-set-nodes.json');
 				await n8n.canvas.clickZoomToFitButton();
 				await n8n.canvas.deselectAll();
 				await n8n.canvas.toggleFocusPanelButton().click();

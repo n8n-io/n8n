@@ -7,7 +7,7 @@ import type {
 	MergeClient,
 	Ticketing,
 } from '@mergeapi/merge-node-client';
-import { UserError } from 'n8n-workflow';
+import { type IDataObject, UserError } from 'n8n-workflow';
 
 export type CategoryClient =
 	| AtsClient
@@ -16,6 +16,8 @@ export type CategoryClient =
 	| HrisClient
 	| TicketingClient
 	| AccountingClient;
+
+export type MergeCredentials = { apiKey: string; accountToken: string };
 
 // SDK category client instance types
 type AtsClient = InstanceType<typeof Ats>;
@@ -30,16 +32,6 @@ export interface ModelOperation {
 	availableOperations: string[];
 	requiredPostParameters: string[];
 	supportedFields: string[];
-}
-
-/**
- * Returns the category of the linked account by calling accountDetails.
- * The account-details endpoint returns the correct linked account regardless of
- * which category URL is used, so we bootstrap through `filestorage`.
- */
-export async function getLinkedAccountCategory(merge: MergeClient): Promise<string> {
-	const details = await merge.filestorage.accountDetails.retrieve();
-	return details.category ?? 'filestorage';
 }
 
 export function getCategoryClient(merge: MergeClient, category: string): CategoryClient {
@@ -120,4 +112,11 @@ export function findResourceKey(categoryClient: CategoryClient, modelName: strin
 
 	if (bestKey) return bestKey;
 	throw new UserError(`No SDK resource found for model "${modelName}" in this category`);
+}
+
+/** Remove null/undefined/empty-string values so they don't override SDK defaults. */
+export function omitEmpty(obj: IDataObject): IDataObject {
+	return Object.fromEntries(
+		Object.entries(obj).filter(([, v]) => v !== null && v !== undefined && v !== ''),
+	);
 }

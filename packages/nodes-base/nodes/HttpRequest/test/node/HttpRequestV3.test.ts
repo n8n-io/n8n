@@ -300,6 +300,124 @@ describe('HttpRequestV3', () => {
 		});
 	});
 
+	describe('JSON Parameter Validation', () => {
+		it.each([
+			{
+				field: 'body',
+				params: {
+					sendBody: true,
+					specifyBody: 'json',
+					jsonBody: '{"valid": true}',
+					'bodyParameters.parameters': [],
+				},
+			},
+			{
+				field: 'query',
+				params: {
+					sendQuery: true,
+					specifyQuery: 'json',
+					jsonQuery: '{"key": "value"}',
+					'queryParameters.parameters': [],
+				},
+			},
+			{
+				field: 'headers',
+				params: {
+					sendHeaders: true,
+					specifyHeaders: 'json',
+					jsonHeaders: '{"X-Custom": "header"}',
+					'headerParameters.parameters': [],
+				},
+			},
+		])('should accept valid JSON in $field parameter', async ({ params }) => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'POST';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return options;
+					default:
+						return params[paramName as keyof typeof params] ?? undefined;
+				}
+			});
+			const response = {
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			};
+			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
+
+			const result = await node.execute.call(executeFunctions);
+
+			expect(result).toBeDefined();
+		});
+
+		it.each([
+			{
+				field: 'body',
+				fieldName: 'JSON Body',
+				params: {
+					sendBody: true,
+					specifyBody: 'json',
+					jsonBody: '{"invalid: json}',
+					'bodyParameters.parameters': [],
+				},
+			},
+			{
+				field: 'query',
+				fieldName: 'JSON Query Parameters',
+				params: {
+					sendQuery: true,
+					specifyQuery: 'json',
+					jsonQuery: '{not valid}',
+					'queryParameters.parameters': [],
+				},
+			},
+			{
+				field: 'headers',
+				fieldName: 'JSON Headers',
+				params: {
+					sendHeaders: true,
+					specifyHeaders: 'json',
+					jsonHeaders: 'not json at all',
+					'headerParameters.parameters': [],
+				},
+			},
+		])(
+			'should throw descriptive error for invalid JSON in $field parameter',
+			async ({ fieldName, params }) => {
+				(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+				(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+					switch (paramName) {
+						case 'method':
+							return 'POST';
+						case 'url':
+							return baseUrl;
+						case 'authentication':
+							return 'none';
+						case 'options':
+							return options;
+						default:
+							return params[paramName as keyof typeof params] ?? undefined;
+					}
+				});
+				const response = {
+					headers: { 'content-type': 'application/json' },
+					body: Buffer.from(JSON.stringify({ success: true })),
+				};
+				(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
+
+				await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+					`The value in the "${fieldName}" field is not valid JSON`,
+				);
+			},
+		);
+	});
+
 	describe('Cross-Origin Redirects', () => {
 		it('should pass sendCredentialsOnCrossOriginRedirect = true to the request by default for node versions < 4.4', async () => {
 			(executeFunctions.getNode as jest.Mock).mockReturnValue({
