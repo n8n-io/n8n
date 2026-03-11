@@ -11,7 +11,8 @@ const credentials = {
 };
 
 describe('Customer.io Node', () => {
-	nock.disableNetConnect();
+	beforeAll(() => nock.disableNetConnect());
+	afterAll(() => nock.enableNetConnect());
 
 	const trackingNock = nock('https://track.customer.io');
 	const apiNock = nock('https://api.customer.io');
