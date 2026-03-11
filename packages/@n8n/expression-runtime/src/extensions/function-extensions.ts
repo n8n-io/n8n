@@ -41,6 +41,10 @@ const not = (value: unknown): boolean => {
 
 function ifEmpty<T, V>(value: V, defaultValue: T) {
 	if (arguments.length !== 2) {
+		// DIVERGENCE from packages/workflow/src/extensions/extended-functions.ts:
+		// The original throws ExpressionError (from ExecutionBaseError). The runtime
+		// uses ExpressionExtensionError because the full ExpressionError class is not
+		// available in the extensions layer — only a minimal shim exists in safe-globals.
 		throw new ExpressionExtensionError(
 			'expected two arguments (value, defaultValue) for this function',
 		);
