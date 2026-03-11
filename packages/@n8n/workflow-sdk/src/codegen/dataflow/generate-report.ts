@@ -67,13 +67,13 @@ function generateHtml(entries: CompilerTestEntry[]): string {
         ${errorNote}
         <details>
           <summary>Input Code</summary>
-          <pre class="code"><code>${escapeHtml(entry.inputCode)}</code></pre>
+          <pre class="code"><code class="language-typescript">${escapeHtml(entry.inputCode)}</code></pre>
         </details>
         ${
 					entry.parsedJson
 						? `<details>
           <summary>Parsed JSON</summary>
-          <pre class="code"><code>${escapeHtml(entry.parsedJson)}</code></pre>
+          <pre class="code"><code class="language-json">${escapeHtml(entry.parsedJson)}</code></pre>
         </details>`
 						: ''
 				}
@@ -81,7 +81,7 @@ function generateHtml(entries: CompilerTestEntry[]): string {
 					entry.reGeneratedCode
 						? `<details>
           <summary>Re-Generated Code</summary>
-          <pre class="code"><code>${escapeHtml(entry.reGeneratedCode)}</code></pre>
+          <pre class="code"><code class="language-typescript">${escapeHtml(entry.reGeneratedCode)}</code></pre>
         </details>`
 						: ''
 				}
@@ -89,7 +89,7 @@ function generateHtml(entries: CompilerTestEntry[]): string {
 					entry.validationErrors && entry.validationErrors.length > 0
 						? `<details>
           <summary>Validation Errors (${entry.validationErrors.length})</summary>
-          <pre class="code"><code>${entry.validationErrors.map(escapeHtml).join('\n')}</code></pre>
+          <pre class="code"><code class="language-plaintext">${entry.validationErrors.map(escapeHtml).join('\n')}</code></pre>
         </details>`
 						: ''
 				}
@@ -130,6 +130,9 @@ function generateHtml(entries: CompilerTestEntry[]): string {
   <script src="https://cdn.jsdelivr.net/npm/@webcomponents/webcomponentsjs@2.0.0/webcomponents-loader.js"></script>
   <script src="https://www.unpkg.com/lit@2.0.0-rc.2/polyfill-support.js"></script>
   <script type="module" src="https://cdn.jsdelivr.net/npm/@n8n_io/n8n-demo-component/n8n-demo.bundled.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark.min.css">
+  <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/languages/typescript.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: Inter, system-ui, sans-serif; background: #0d1117; color: #c9d1d9; padding: 24px; }
@@ -151,6 +154,8 @@ function generateHtml(entries: CompilerTestEntry[]): string {
     details { margin-bottom: 12px; }
     summary { cursor: pointer; font-size: 13px; font-weight: 600; color: #8b949e; padding: 4px 0; }
     .code { background: #0d1117; color: #c9d1d9; padding: 16px; border-radius: 6px; overflow-x: auto; font-size: 13px; line-height: 1.5; margin-top: 8px; border: 1px solid #30363d; }
+    .code code { background: transparent; padding: 0; }
+    .code code.hljs { background: transparent; padding: 0; }
     .demo { margin-top: 12px; }
     n8n-demo { width: 100%; min-height: 300px; display: block; }
 
@@ -217,6 +222,8 @@ ${cards}
       saveOpenSet(s);
     });
   });
+
+  hljs.highlightAll();
 </script>
 </body>
 </html>`;
